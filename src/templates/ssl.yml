@@ -1,8 +1,2 @@
-# need more details...
-caCertificatePath: /Users/feng/Code/hummingbot/certs/ca_cert.pem
-
-# need more details...
-certificatePath: /Users/feng/Code/hummingbot/certs/server_cert.pem
-
-# need more details...
-keyPath: /Users/feng/Code/hummingbot/certs/server_key.pem
+# Path to folder where Hummingbot client generated self-signed certificates - ensure it ends in /
+certificatePath: /Users/feng/Code/hummingbot/certs/
