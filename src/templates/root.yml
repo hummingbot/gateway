@@ -24,10 +24,6 @@ configurations:
     configurationPath: logging.yml
     schemaPath: logging-schema.json
 
-  $namespace ssl:
-    configurationPath: ssl.yml
-    schemaPath: ssl-schema.json
-
   $namespace defira:
     configurationPath: defira.yml
     schemaPath: defira-schema.json

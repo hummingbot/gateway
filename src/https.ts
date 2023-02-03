@@ -6,20 +6,20 @@ import { ConfigManagerV2 } from './services/config-manager-v2';
 
 export const addHttps = (app: Application) => {
   const serverKey = fs.readFileSync(
-    ConfigManagerV2.getInstance().get('ssl.certificatePath') + 'server_key.pem',
+    ConfigManagerV2.getInstance().get('server.certificatePath') + 'server_key.pem',
     {
       encoding: 'utf-8',
     }
   );
   const serverCert = fs.readFileSync(
-    ConfigManagerV2.getInstance().get('ssl.certificatePath') +
+    ConfigManagerV2.getInstance().get('server.certificatePath') +
       'server_cert.pem',
     {
       encoding: 'utf-8',
     }
   );
   const caCert = fs.readFileSync(
-    ConfigManagerV2.getInstance().get('ssl.certificatePath') + 'ca_cert.pem',
+    ConfigManagerV2.getInstance().get('server.certificatePath') + 'ca_cert.pem',
     {
       encoding: 'utf-8',
     }

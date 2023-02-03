@@ -1,2 +1,0 @@
-# Path to folder where Hummingbot client generated self-signed certificates - ensure it ends in /
-certificatePath: /Users/feng/Code/hummingbot/certs/

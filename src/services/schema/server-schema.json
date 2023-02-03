@@ -6,8 +6,9 @@
     "ipWhitelist": { "type": "array" },
     "unsafeDevModeWithHTTP": { "type": "boolean" },
     "GMTOffset": { "type": "number" },
-    "id": { "type": "string" }
+    "id": { "type": "string" },
+    "certificatePath": { "type": "string" }
   },
   "additionalProperties": false,
-  "required": ["port", "unsafeDevModeWithHTTP"]
+  "required": ["port", "unsafeDevModeWithHTTP", "certificatePath"]
 }

@@ -8,3 +8,5 @@ unsafeDevModeWithHTTP: false
 
 
 GMTOffset: +0800
+
+certificatePath: /Users/feng/Code/hummingbot/certs/
