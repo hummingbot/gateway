@@ -4,9 +4,14 @@ port: 15888
 # The IPs allowed to access gateway. localhost is allowed by default.
 ipWhitelist: []
 
-unsafeDevModeWithHTTP: false
-
-
+# GMT Offset
 GMTOffset: +0800
 
-certificatePath: /Users/feng/Code/hummingbot/certs/
+# Path to folder where Hummingbot generates self-signed certificates
+certificatePath: /Users/feng1/Code/hummingbot/certs/
+
+# Runs Gateway in unsafe dev mode with HTTP if true
+unsafeDevModeWithHTTP: false
+
+# Collects data about API usage if true
+telemetry_enabled: false

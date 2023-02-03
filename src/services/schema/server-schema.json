@@ -7,8 +7,14 @@
     "unsafeDevModeWithHTTP": { "type": "boolean" },
     "GMTOffset": { "type": "number" },
     "id": { "type": "string" },
-    "certificatePath": { "type": "string" }
+    "certificatePath": { "type": "string" },
+    "telemetry_enabled": { "type": "boolean" }
   },
   "additionalProperties": false,
-  "required": ["port", "unsafeDevModeWithHTTP", "certificatePath"]
+  "required": [
+    "port", 
+    "unsafeDevModeWithHTTP", 
+    "certificatePath", 
+    "telemetry_enabled"
+  ]
 }

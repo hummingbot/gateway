@@ -83,7 +83,7 @@ export const updateLoggerToStdout = () => {
 };
 
 export const telemetry = () => {
-  ConfigManagerV2.getInstance().get('telemetry.enabled') === true
+  ConfigManagerV2.getInstance().get('server.telemetry_enabled') === true
     ? logger.add(reportingProxy)
     : logger.remove(reportingProxy);
 };

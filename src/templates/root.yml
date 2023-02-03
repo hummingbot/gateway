@@ -56,10 +56,6 @@ configurations:
     configurationPath: server.yml
     schemaPath: server-schema.json
 
-  $namespace telemetry:
-    configurationPath: telemetry.yml
-    schemaPath: telemetry-schema.json
-
   $namespace uniswap:
     configurationPath: uniswap.yml
     schemaPath: uniswap-schema.json
