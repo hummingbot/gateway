@@ -8,12 +8,12 @@ import {
 
 describe('Test logger', () => {
   it('updateLoggerToStdout works', (done) => {
-    ConfigManagerV2.getInstance().set('logging.logToStdOut', true);
+    ConfigManagerV2.getInstance().set('server.logToStdOut', true);
     updateLoggerToStdout();
     const ofTypeConsole = (element: any) =>
       element instanceof winston.transports.Console;
     expect(logger.transports.some(ofTypeConsole)).toEqual(true);
-    ConfigManagerV2.getInstance().set('logging.logToStdOut', false);
+    ConfigManagerV2.getInstance().set('server.logToStdOut', false);
     updateLoggerToStdout();
     // Not sure why the below test doesn't on Github but passes on local
     // expect(logger.transports.some(ofTypeConsole)).toEqual(false);

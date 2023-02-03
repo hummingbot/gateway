@@ -8,13 +8,16 @@
     "GMTOffset": { "type": "number" },
     "id": { "type": "string" },
     "certificatePath": { "type": "string" },
-    "telemetry_enabled": { "type": "boolean" }
+    "telemetry_enabled": { "type": "boolean" },
+    "logPath": { "type": "string" },
+    "logToStdOut": { "type": "boolean" }
   },
   "additionalProperties": false,
   "required": [
     "port", 
     "unsafeDevModeWithHTTP", 
     "certificatePath", 
-    "telemetry_enabled"
+    "telemetry_enabled",
+    "logPath"
   ]
 }

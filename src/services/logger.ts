@@ -46,7 +46,7 @@ const sdtoutFormat = winston.format.combine(
 );
 
 const getLogPath = () => {
-  let logPath = ConfigManagerV2.getInstance().get('logging.logPath');
+  let logPath = ConfigManagerV2.getInstance().get('server.logPath');
   logPath = [appRoot.path, 'logs'].join('/');
   return logPath;
 };
@@ -77,7 +77,7 @@ const reportingProxy = new TelemetryTransport({
 });
 
 export const updateLoggerToStdout = () => {
-  ConfigManagerV2.getInstance().get('logging.logToStdOut') === true
+  ConfigManagerV2.getInstance().get('server.logToStdOut') === true
     ? logger.add(toStdout)
     : logger.remove(toStdout);
 };
