@@ -1,7 +1,7 @@
 FROM node:18.10.0
 
 # Set labels
-LABEL application="gateway-v2"
+LABEL application="gateway"
 LABEL branch=${BRANCH}
 LABEL commit=${COMMIT}
 LABEL date=${BUILD_DATE}
@@ -22,6 +22,14 @@ RUN apt-get update && \
 
 # app directory
 WORKDIR /usr/src/app
+
+# copy pwd file to container
+COPY . .
+
+# create sym links
+RUN ln -s /conf /usr/src/app/conf && \
+    ln -s /logs /usr/src/app/logs && \
+    ln -s /certs /usr/src/app/certs
 
 # create app writable directory for db files
 RUN mkdir /var/lib/gateway
