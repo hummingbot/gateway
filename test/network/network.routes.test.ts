@@ -15,7 +15,7 @@ let polygon: Polygon;
 let cronos: Cronos;
 
 beforeAll(async () => {
-  eth = Ethereum.getInstance('kovan');
+  eth = Ethereum.getInstance('goerli');
   patchEVMNonceManager(eth.nonceManager);
   await eth.init();
 
@@ -86,7 +86,7 @@ describe('GET /network/status', () => {
 
   it('should return 200 when asking for ethereum network status', async () => {
     patch(eth, 'chain', () => {
-      return 'kovan';
+      return 'goerli';
     });
     patch(eth, 'rpcUrl', 'http://...');
     patch(eth, 'chainId', 34);
@@ -98,11 +98,11 @@ describe('GET /network/status', () => {
       .get(`/network/status`)
       .query({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
       })
       .expect('Content-Type', /json/)
       .expect(200)
-      .expect((res) => expect(res.body.chain).toBe('kovan'))
+      .expect((res) => expect(res.body.chain).toBe('goerli'))
       .expect((res) => expect(res.body.chainId).toBeDefined())
       .expect((res) => expect(res.body.rpcUrl).toBeDefined())
       .expect((res) => expect(res.body.currentBlockNumber).toBeDefined());
@@ -243,23 +243,23 @@ describe('GET /network/config', () => {
 });
 
 describe('GET /network/tokens', () => {
-  it('should return 200 when retrieving ethereum-kovan tokens, tokenSymbols parameter not provided', async () => {
+  it('should return 200 when retrieving ethereum-goerli tokens, tokenSymbols parameter not provided', async () => {
     await request(gatewayApp)
       .get(`/network/tokens`)
       .query({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
       })
       .expect('Content-Type', /json/)
       .expect(200);
   });
 
-  it('should return 200 when retrieving ethereum-kovan tokens, s parameter provided', async () => {
+  it('should return 200 when retrieving ethereum-goerli tokens, s parameter provided', async () => {
     await request(gatewayApp)
       .get(`/network/tokens`)
       .query({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         tokenSymbols: ['COIN3', 'COIN1'],
       })
       .expect('Content-Type', /json/)
@@ -340,7 +340,7 @@ describe('GET /network/tokens', () => {
       .get(`/network/tokens`)
       .query({
         chain: 'unknown',
-        network: 'kovan',
+        network: 'goerli',
       })
       .expect(500);
   });

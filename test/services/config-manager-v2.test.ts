@@ -76,9 +76,9 @@ describe('Configuration manager v2 tests', () => {
 
   it('reading from config file', (done) => {
     expect(configManager.get('server.certificatePath')).toEqual('gateway.crt');
-    expect(configManager.get('ethereum.networks.kovan.chainID')).toEqual(42);
+    expect(configManager.get('ethereum.networks.goerli.chainID')).toEqual(42);
     expect(
-      configManager.get('ethereum.networks.kovan.nativeCurrencySymbol')
+      configManager.get('ethereum.networks.goerli.nativeCurrencySymbol')
     ).toEqual('ETH');
     expect(
       configManager.get('defira.contractAddresses.testnet.initCodeHash')
@@ -89,7 +89,7 @@ describe('Configuration manager v2 tests', () => {
   });
 
   it('reading a non-existent config entry', (done) => {
-    expect(configManager.get('ethereum.kovan.chainID')).toBeUndefined();
+    expect(configManager.get('ethereum.goerli.chainID')).toBeUndefined();
     expect(configManager.get('server.keyPath.keyPath')).toBeUndefined();
     done();
   });
@@ -107,7 +107,7 @@ describe('Configuration manager v2 tests', () => {
   it('writing a valid configuration', (done) => {
     const newKeyPath: string = 'new-gateway.crt';
     configManager.set('server.certificatePath', newKeyPath);
-    configManager.set('ethereum.networks.kovan.chainID', 970);
+    configManager.set('ethereum.networks.goerli.chainID', 970);
     configManager.set('ethereum.networks.mainnet', {
       chainID: 61,
       nodeURL: 'http://localhost:8561',
@@ -124,7 +124,7 @@ describe('Configuration manager v2 tests', () => {
     expect(verifyConfigManager.get('server.certificatePath')).toEqual(
       newKeyPath
     );
-    expect(verifyConfigManager.get('ethereum.networks.kovan.chainID')).toEqual(
+    expect(verifyConfigManager.get('ethereum.networks.goerli.chainID')).toEqual(
       970
     );
     expect(
@@ -217,7 +217,7 @@ describe('Configuration manager v2 tests', () => {
   it('Get all configuration', (done) => {
     const allConfigs = configManager.allConfigurations;
     expect(allConfigs.server.certificatePath).toEqual('gateway.crt');
-    expect(allConfigs.ethereum.networks.kovan.chainID).toEqual(42);
+    expect(allConfigs.ethereum.networks.goerli.chainID).toEqual(42);
     done();
   });
 

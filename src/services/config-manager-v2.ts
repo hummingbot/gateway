@@ -90,8 +90,8 @@ export class ConfigurationNamespace {
    *
    * Note that configuration paths may have multiple levels. What it implies
    * is those configurations are stored in nested dictionaries - aka. a tree.
-   * e.g. if the config path is "ethereum.networks.kovan.networkID", then,
-   * what it means you're accessing ["networks"]["kovan"]["networkID"] under
+   * e.g. if the config path is "ethereum.networks.goerli.networkID", then,
+   * what it means you're accessing ["networks"]["goerli"]["networkID"] under
    * the "ethereum" namespace.
    */
   readonly #namespaceId: string;
@@ -243,10 +243,10 @@ export class ConfigManagerV2 {
    * initiation, the get() and set() functions will map configuration keys and
    * values to the appropriate namespaces.
    *
-   * e.g. get('ethereum.networks.kovan.networkID') will be mapped to
-   *      ethereumNamespace.get('networks.kovan.networkID')
-   * e.g. set('ethereum.networks.kovan.networkID', 42) will be mapped to
-   *      ethereumNamespace.set('networks.kovan.networkID', 42)
+   * e.g. get('ethereum.networks.goerli.networkID') will be mapped to
+   *      ethereumNamespace.get('networks.goerli.networkID')
+   * e.g. set('ethereum.networks.goerli.networkID', 42) will be mapped to
+   *      ethereumNamespace.set('networks.goerli.networkID', 42)
    *
    * File paths in the root configuration file may be defined as absolute paths
    * or relative paths. Any relative paths would be rebased to the root

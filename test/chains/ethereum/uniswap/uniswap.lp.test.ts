@@ -11,24 +11,24 @@ let uniswapLP: UniswapLP;
 let wallet: Wallet;
 
 const WETH = new Token(
-  42,
-  '0xd0A1E359811322d97991E03f863a0C30C2cF029C',
+  5,
+  '0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6',
   18,
   'WETH'
 );
 
 const DAI = new Token(
-  42,
-  '0x4f96fe3b7a6cf9725f59d353f723c1bdb64ca6aa',
+  5,
+  '0xdc31Ee1784292379Fbb2964b3B9C4124D8F89C60',
   18,
   'DAI'
 );
 
 const USDC = new Token(
-  42,
-  '0x2F375e94FC336Cdec2Dc0cCB5277FE59CBf1cAe5',
-  18,
-  'DAI'
+  5,
+  '0xD87Ba7A50B2E7E660f678A895E4B72E7CB4CCd9C',
+  6,
+  'USDC'
 );
 
 const TX = {
@@ -39,7 +39,7 @@ const TX = {
   maxFeePerGas: { toString: () => '106000000000' },
   gasPrice: { toString: () => null },
   gasLimit: { toString: () => '100000' },
-  to: '0x4F96Fe3b7A6Cf9725f59d353F723c1bDb64CA6Aa',
+  to: '0xdc31Ee1784292379Fbb2964b3B9C4124D8F89C60',
   value: { toString: () => '0' },
   data: '0x095ea7b30000000000000000000000007a250d5630b4cf539739df2c5dacb4c659f2488dffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff', // noqa: mock
   accessList: [],
@@ -68,7 +68,7 @@ const DAI_USDC_POOL = new uniV3.Pool(
 );
 
 beforeAll(async () => {
-  ethereum = Ethereum.getInstance('kovan');
+  ethereum = Ethereum.getInstance('goerli');
   patchEVMNonceManager(ethereum.nonceManager);
   await ethereum.init();
 
@@ -76,7 +76,7 @@ beforeAll(async () => {
     '0000000000000000000000000000000000000000000000000000000000000002', // noqa: mock
     ethereum.provider
   );
-  uniswapLP = UniswapLP.getInstance('ethereum', 'kovan');
+  uniswapLP = UniswapLP.getInstance('ethereum', 'goerli');
   await uniswapLP.init();
 });
 

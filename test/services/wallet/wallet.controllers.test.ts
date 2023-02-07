@@ -34,7 +34,7 @@ beforeAll(async () => {
   patch(ConfigManagerCertPassphrase, 'readPassphrase', () => 'a');
 
   avalanche = Avalanche.getInstance('fuji');
-  eth = Ethereum.getInstance('kovan');
+  eth = Ethereum.getInstance('goerli');
   harmony = Harmony.getInstance('testnet');
   bsc = BinanceSmartChain.getInstance('testnet');
   cronos = Cronos.getInstance('testnet');
@@ -115,7 +115,7 @@ describe('addWallet and getWallets', () => {
     await addWallet({
       privateKey: onePrivateKey,
       chain: 'ethereum',
-      network: 'kovan',
+      network: 'goerli',
     });
 
     const wallets = await getWallets();
@@ -312,7 +312,7 @@ describe('addWallet and removeWallets', () => {
     await addWallet({
       privateKey: onePrivateKey,
       chain: 'ethereum',
-      network: 'kovan',
+      network: 'goerli',
     });
 
     await removeWallet({ chain: 'ethereum', address: oneAddress });

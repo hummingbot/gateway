@@ -27,11 +27,11 @@ const DAI = new Token(
 );
 
 beforeAll(async () => {
-  ethereum = Ethereum.getInstance('kovan');
+  ethereum = Ethereum.getInstance('goerli');
   patchEVMNonceManager(ethereum.nonceManager);
   await ethereum.init();
 
-  uniswap = Uniswap.getInstance('ethereum', 'kovan');
+  uniswap = Uniswap.getInstance('ethereum', 'goerli');
   await uniswap.init();
 });
 

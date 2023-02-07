@@ -1,7 +1,7 @@
 {
   "connector": "uniswap",
   "chain": "ethereum",
-  "network": "kovan",
+  "network": "goerli",
   "quote": "WETH",
   "base": "DAI",
   "amount": "1",

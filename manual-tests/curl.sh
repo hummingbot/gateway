@@ -21,7 +21,7 @@ curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: app
 
 curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT https://localhost:15888/network/status | jq
 
-curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT "https://localhost:15888/network/status?chain=ethereum&network=kovan" | jq
+curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT "https://localhost:15888/network/status?chain=ethereum&network=goerli" | jq
 
 curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT "https://localhost:15888/network/status?chain=avalanche&network=avalanche" | jq
 
@@ -33,7 +33,7 @@ curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT https://localhost:1588
 
 curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/network_poll.json)" https://localhost:15888/network/poll | jq
 
-curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT "https://localhost:15888/network/tokens?chain=ethereum&network=kovan" | jq
+curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT "https://localhost:15888/network/tokens?chain=ethereum&network=goerli" | jq
 
 curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT "https://localhost:15888/network/tokens?chain=polygon&network=mumbai" | jq
 

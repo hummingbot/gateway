@@ -14,11 +14,11 @@ let uniswap: UniswapLP;
 beforeAll(async () => {
   app = express();
   app.use(express.json());
-  ethereum = Ethereum.getInstance('kovan');
+  ethereum = Ethereum.getInstance('goerli');
   patchEVMNonceManager(ethereum.nonceManager);
   await ethereum.init();
 
-  uniswap = UniswapLP.getInstance('ethereum', 'kovan');
+  uniswap = UniswapLP.getInstance('ethereum', 'goerli');
   await uniswap.init();
   app.use('/amm/liquidity', AmmLiquidityRoutes.router);
 });
@@ -171,7 +171,7 @@ describe('POST /liquidity/add', () => {
         lowerPrice: '1',
         upperPrice: '5',
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'uniswapLP',
       })
       .set('Accept', 'application/json')
@@ -196,7 +196,7 @@ describe('POST /liquidity/add', () => {
         lowerPrice: '1',
         upperPrice: '5',
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'uniswapLP',
       })
       .set('Accept', 'application/json')
@@ -222,7 +222,7 @@ describe('POST /liquidity/add', () => {
         lowerPrice: '1',
         upperPrice: '5',
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'uniswapLP',
       })
       .set('Accept', 'application/json')
@@ -251,7 +251,7 @@ describe('POST /liquidity/add', () => {
         lowerPrice: '1',
         upperPrice: '5',
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'uniswapLP',
       })
       .set('Accept', 'application/json')
@@ -278,7 +278,7 @@ describe('POST /liquidity/remove', () => {
         address: address,
         tokenId: 2732,
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'uniswapLP',
       })
       .set('Accept', 'application/json')
@@ -298,7 +298,7 @@ describe('POST /liquidity/remove', () => {
         address: address,
         tokenId: 'Invalid',
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'uniswapLP',
       })
       .set('Accept', 'application/json')
@@ -322,7 +322,7 @@ describe('POST /liquidity/collect_fees', () => {
         address: address,
         tokenId: 2732,
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'uniswapLP',
       })
       .set('Accept', 'application/json')
@@ -342,7 +342,7 @@ describe('POST /liquidity/collect_fees', () => {
         address: address,
         tokenId: 'Invalid',
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'uniswapLP',
       })
       .set('Accept', 'application/json')
@@ -363,7 +363,7 @@ describe('POST /liquidity/position', () => {
       .send({
         tokenId: 2732,
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'uniswapLP',
       })
       .set('Accept', 'application/json')
@@ -381,7 +381,7 @@ describe('POST /liquidity/position', () => {
       .send({
         tokenId: 'Invalid',
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'uniswapLP',
       })
       .set('Accept', 'application/json')
@@ -410,7 +410,7 @@ describe('POST /liquidity/price', () => {
         period: 120,
         interval: 60,
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'uniswapLP',
       })
       .set('Accept', 'application/json')
@@ -433,7 +433,7 @@ describe('POST /liquidity/price', () => {
         period: 120,
         interval: 60,
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'uniswapLP',
       })
       .set('Accept', 'application/json')

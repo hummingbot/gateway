@@ -5,9 +5,9 @@ networks:
     tokenListType: URL
     tokenListSource: https://wispy-bird-88a7.uniswap.workers.dev/?url=http://tokens.1inch.eth.link
     nativeCurrencySymbol: ETH
-  kovan:
+  goerli:
     chainID: 42
-    nodeURL: https://kovan.infura.io/v3/
+    nodeURL: https://goerli.infura.io/v3/
     tokenListType: FILE
     tokenListSource: src/chains/ethereum/erc20_tokens_kovan.json
     nativeCurrencySymbol: ETH

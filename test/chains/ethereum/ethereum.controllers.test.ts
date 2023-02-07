@@ -23,7 +23,7 @@ import { patchEVMNonceManager } from '../../evm.nonce.mock';
 let eth: Ethereum;
 
 beforeAll(async () => {
-  eth = Ethereum.getInstance('kovan');
+  eth = Ethereum.getInstance('goerli');
 
   patchEVMNonceManager(eth.nonceManager);
 
@@ -55,7 +55,7 @@ describe('nonce', () => {
     patch(eth.nonceManager, 'getNonce', () => 2);
     const n = await nonce(eth, {
       chain: 'ethereum',
-      network: 'kovan',
+      network: 'goerli',
       address: zeroAddress,
     });
     expect(n).toEqual({ nonce: 2 });
@@ -70,7 +70,7 @@ describe('nonce', () => {
     patch(eth.nonceManager, 'getNextNonce', () => 3);
     const n = await nextNonce(eth, {
       chain: 'ethereum',
-      network: 'kovan',
+      network: 'goerli',
       address: zeroAddress,
     });
     expect(n).toEqual({ nonce: 3 });
@@ -120,7 +120,7 @@ describe('allowances', () => {
 
     const result = await allowances(eth, {
       chain: 'ethereum',
-      network: 'kovan',
+      network: 'goerli',
       address: zeroAddress,
       spender: uniswap,
       tokenSymbols: ['WETH'],
@@ -161,7 +161,7 @@ describe('approve', () => {
 
     const result = await approve(eth, {
       chain: 'ethereum',
-      network: 'kovan',
+      network: 'goerli',
       address: zeroAddress,
       spender: uniswap,
       token: 'WETH',
@@ -182,7 +182,7 @@ describe('approve', () => {
     await expect(
       approve(eth, {
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         address: zeroAddress,
         spender: uniswap,
         token: 'WETH',
@@ -214,7 +214,7 @@ describe('approve', () => {
     await expect(
       approve(eth, {
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         address: zeroAddress,
         spender: uniswap,
         token: 'WETH',
@@ -239,7 +239,7 @@ describe('balances', () => {
     await expect(
       balances(eth, {
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         address: zeroAddress,
         tokenSymbols: ['WETH', 'DAI'],
       })
@@ -263,7 +263,7 @@ describe('cancel', () => {
     await expect(
       cancel(eth, {
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         nonce: 123,
         address: zeroAddress,
       })

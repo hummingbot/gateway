@@ -14,7 +14,7 @@ beforeAll(async () => {
   patch(ConfigManagerCertPassphrase, 'readPassphrase', () => 'a');
 
   avalanche = Avalanche.getInstance('fuji');
-  eth = Ethereum.getInstance('kovan');
+  eth = Ethereum.getInstance('goerli');
   harmony = Harmony.getInstance('testnet');
 });
 
@@ -74,7 +74,7 @@ describe('POST /wallet/add', () => {
       .send({
         privateKey: twoPrivateKey,
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
       })
       .expect('Content-Type', /json/)
       .expect(200);
@@ -180,7 +180,7 @@ describe('DELETE /wallet/remove', () => {
       .send({
         privateKey: twoPrivateKey,
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
       })
 
       .expect('Content-Type', /json/)
@@ -252,7 +252,7 @@ describe('GET /wallet', () => {
       .send({
         privateKey: twoPrivateKey,
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
       })
       .expect('Content-Type', /json/)
       .expect(200);

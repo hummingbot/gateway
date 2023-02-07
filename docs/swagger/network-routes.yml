@@ -72,7 +72,7 @@ paths:
           name: 'network'
           required: true
           type: 'string'
-          example: 'kovan'
+          example: 'goerli'
         - in: 'query'
           name: 'tokenSymbols'
           required: false
