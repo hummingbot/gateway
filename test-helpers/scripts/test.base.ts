@@ -2,8 +2,8 @@ import fs = require('fs');
 import path = require('path');
 import https = require('https');
 import axios from 'axios';
-import { ConfigManagerV2 } from '../src/services/config-manager-v2';
-
+import { ConfigManagerV2 } from '../../src/services/config-manager-v2';
+∂
 type method = 'GET' | 'POST';
 
 const confV2 = new ConfigManagerV2(path.join(__dirname, '../conf/root.yml'));
