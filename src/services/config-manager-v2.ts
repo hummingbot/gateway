@@ -71,13 +71,13 @@ export class ConfigurationNamespace {
   /**
    * This class encapsulates a namespace under the configuration tree.
    * A namespace represents the top-level component of a configuration path.
-   * e.g. if the config path is "ssl.certificatePath", then "ssl" is the
+   * e.g. if the config path is "server.certificatePath", then "server" is the
    * namespace.
    *
    * Each namespace contains a JSON schema and a YAML configuration file.
    *
    * The JSON schema specifies the properties and data types allowed within the
-   * namespace. e.g. you may specify that the "ssl" namespace has a few
+   * namespace. e.g. you may specify that the "server" namespace has a few
    * mandatory properties dealing with certificates and private keys. This means
    * any missing properties or any properties outsides of the JSON schema would
    * cause a failure to initialize the namespace, and also cannot be set into

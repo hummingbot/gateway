@@ -8,11 +8,9 @@ export class OverrideConfigs {
   #initialized: boolean = false;
 
   public constructor() {
-    this.nonceDbPath = ConfigManagerV2.getInstance().get(
-      'database.nonceDbPath'
-    );
+    this.nonceDbPath = ConfigManagerV2.getInstance().get('server.nonceDbPath');
     this.transactionDbPath = ConfigManagerV2.getInstance().get(
-      'database.transactionDbPath'
+      'server.transactionDbPath'
     );
   }
 
@@ -26,19 +24,19 @@ export class OverrideConfigs {
 
   updateConfigs(): void {
     ConfigManagerV2.getInstance().set(
-      'database.nonceDbPath',
+      'server.nonceDbPath',
       this.#testNonceDbPath
     );
     ConfigManagerV2.getInstance().set(
-      'database.transactionDbPath',
+      'server.transactionDbPath',
       this.#testTransactionDbPath
     );
   }
 
   resetConfigs(): void {
-    ConfigManagerV2.getInstance().set('database.nonceDbPath', this.nonceDbPath);
+    ConfigManagerV2.getInstance().set('server.nonceDbPath', this.nonceDbPath);
     ConfigManagerV2.getInstance().set(
-      'database.transactionDbPath',
+      'server.transactionDbPath',
       this.transactionDbPath
     );
   }

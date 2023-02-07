@@ -43,7 +43,7 @@ describe('Configuration manager v2 tests', () => {
   });
 
   it('loading a valid configuration root', (done) => {
-    expect(configManager.get('ssl.caCertificatePath')).toBeDefined();
+    expect(configManager.get('server.certificatePath')).toBeDefined();
     expect(configManager.get('ethereum.networks')).toBeDefined();
     expect(configManager.get('defira.contractAddresses')).toBeDefined();
     done();
@@ -75,7 +75,7 @@ describe('Configuration manager v2 tests', () => {
   });
 
   it('reading from config file', (done) => {
-    expect(configManager.get('ssl.keyPath')).toEqual('gateway.key');
+    expect(configManager.get('server.certificatePath')).toEqual('gateway.crt');
     expect(configManager.get('ethereum.networks.kovan.chainID')).toEqual(42);
     expect(
       configManager.get('ethereum.networks.kovan.nativeCurrencySymbol')
@@ -90,13 +90,13 @@ describe('Configuration manager v2 tests', () => {
 
   it('reading a non-existent config entry', (done) => {
     expect(configManager.get('ethereum.kovan.chainID')).toBeUndefined();
-    expect(configManager.get('ssl.keyPath.keyPath')).toBeUndefined();
+    expect(configManager.get('server.keyPath.keyPath')).toBeUndefined();
     done();
   });
 
   it('reading invalid config keys', (done) => {
     expect(() => {
-      configManager.get('ssl');
+      configManager.get('server');
     }).toThrow();
     done();
     expect(() => {
@@ -105,8 +105,8 @@ describe('Configuration manager v2 tests', () => {
   });
 
   it('writing a valid configuration', (done) => {
-    const newKeyPath: string = 'new-gateway.key';
-    configManager.set('ssl.keyPath', newKeyPath);
+    const newKeyPath: string = 'new-gateway.crt';
+    configManager.set('server.certificatePath', newKeyPath);
     configManager.set('ethereum.networks.kovan.chainID', 970);
     configManager.set('ethereum.networks.mainnet', {
       chainID: 61,
@@ -116,12 +116,14 @@ describe('Configuration manager v2 tests', () => {
         'https://wispy-bird-88a7.uniswap.workers.dev/?url=http://tokens.1inch.eth.link',
       nativeCurrencySymbol: 'ETH',
     });
-    expect(configManager.get('ssl.keyPath')).toEqual(newKeyPath);
+    expect(configManager.get('server.certificatePath')).toEqual(newKeyPath);
 
     const verifyConfigManager: ConfigManagerV2 = new ConfigManagerV2(
       path.join(tempDirPath, 'test1/root.yml')
     );
-    expect(verifyConfigManager.get('ssl.keyPath')).toEqual(newKeyPath);
+    expect(verifyConfigManager.get('server.certificatePath')).toEqual(
+      newKeyPath
+    );
     expect(verifyConfigManager.get('ethereum.networks.kovan.chainID')).toEqual(
       970
     );
@@ -133,7 +135,7 @@ describe('Configuration manager v2 tests', () => {
 
   it('writing an invalid configuration', (done) => {
     expect(() => {
-      configManager.set('ssl.nonKeyPath', 'noSuchFile.txt');
+      configManager.set('server.nonKeyPath', 'noSuchFile.txt');
     }).toThrow();
     expect(() => {
       configManager.set('ethereum', {});
@@ -155,30 +157,29 @@ describe('Configuration manager v2 tests', () => {
   });
 
   it('getting namespace objects', (done) => {
-    const sslNamespace: ConfigurationNamespace = configManager.getNamespace(
-      'ssl'
+    const serverNamespace: ConfigurationNamespace = configManager.getNamespace(
+      'server'
     ) as ConfigurationNamespace;
-    expect(path.basename(sslNamespace.schemaPath)).toEqual('ssl-schema.json');
-    expect(path.dirname(sslNamespace.schemaPath)).toEqual(
+    expect(path.basename(serverNamespace.schemaPath)).toEqual('server-schema.json');
+    expect(path.dirname(serverNamespace.schemaPath)).toEqual(
       path.dirname(ConfigRootSchemaPath)
     );
-    expect(sslNamespace.configurationPath).toEqual(
-      path.join(tempDirPath, 'test1/ssl.yml')
+    expect(serverNamespace.configurationPath).toEqual(
+      path.join(tempDirPath, 'test1/server.yml')
     );
     done();
   });
 
   it('Test upgradability', () => {
-    expect(configManager.get('logging.logPath')).toEqual('./logs');
-    expect(configManager.get('telemetry.allowed')).toEqual(false);
-    expect(configManager.get('telemetry.enabled')).toEqual(false);
+    expect(configManager.get('server.logPath')).toEqual('./logs');
+    expect(configManager.get('server.telemetry_enabled')).toEqual(false);
   });
 
   it('Dummy test to attempt migration', () => {
     const configManager2 = new ConfigManagerV2(
       path.join(tempDirPath, 'test1/root2.yml')
     );
-    expect(configManager2.get('ssl.caCertificatePath')).toBeDefined();
+    expect(configManager2.get('server.certificatePath')).toBeDefined();
   });
 
   it('Test deep copy', (done) => {
@@ -215,16 +216,16 @@ describe('Configuration manager v2 tests', () => {
 
   it('Get all configuration', (done) => {
     const allConfigs = configManager.allConfigurations;
-    expect(allConfigs.ssl.keyPath).toEqual('gateway.key');
+    expect(allConfigs.server.certificatePath).toEqual('gateway.crt');
     expect(allConfigs.ethereum.networks.kovan.chainID).toEqual(42);
     done();
   });
 
   it('Get instance', (done) => {
     let configManager = ConfigManagerV2.getInstance();
-    expect(configManager.allConfigurations.telemetry.enabled).toEqual(false);
+    expect(configManager.allConfigurations.server.telemetry_enabled).toEqual(false);
     configManager = ConfigManagerV2.getInstance();
-    expect(configManager.allConfigurations.telemetry.enabled).toEqual(false);
+    expect(configManager.allConfigurations.server.telemetry_enabled).toEqual(false);
     done();
   });
 });
@@ -232,7 +233,7 @@ describe('Configuration manager v2 tests', () => {
 describe('Sample configurations', () => {
   it('Read sample schemas', (done) => {
     const sampleConfigManager = new ConfigManagerV2('./src/templates/root.yml');
-    expect(sampleConfigManager.get('ssl.caCertificatePath')).toBeDefined();
+    expect(sampleConfigManager.get('server.certificatePath')).toBeDefined();
     done();
   });
 });

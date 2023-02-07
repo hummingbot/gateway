@@ -1,8 +1,8 @@
 version: 1
 configurations:
-  $namespace ssl:
-    configurationPath: ssl.yml
-    schemaPath: ssl-schema.json
+  $namespace server:
+    configurationPath: server.yml
+    schemaPath: server-schema.json
   $namespace ethereum:
     configurationPath: ethereum.yml
     schemaPath: ethereum-schema.json

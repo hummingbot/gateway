@@ -22,10 +22,10 @@ describe('Test logger', () => {
 
   it('test telemetry transport can be added', () => {
     const initTransports = logger.transports.length;
-    if (!ConfigManagerV2.getInstance().get('telemetry.enabled')) {
-      ConfigManagerV2.getInstance().set('telemetry.enabled', true);
+    if (!ConfigManagerV2.getInstance().get('server.telemetry_enabled')) {
+      ConfigManagerV2.getInstance().set('server.telemetry_enabled', true);
       telemetry();
-      ConfigManagerV2.getInstance().set('telemetry.enabled', false);
+      ConfigManagerV2.getInstance().set('server.telemetry_enabled', false);
       expect(logger.transports.length).toEqual(initTransports + 1);
     }
   });
