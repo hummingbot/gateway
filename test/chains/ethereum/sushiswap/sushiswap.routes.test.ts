@@ -13,9 +13,9 @@ let sushiswap: Sushiswap;
 beforeAll(async () => {
   app = express();
   app.use(express.json());
-  ethereum = Ethereum.getInstance('kovan');
+  ethereum = Ethereum.getInstance('goerli');
   await ethereum.init();
-  sushiswap = Sushiswap.getInstance('ethereum', 'kovan');
+  sushiswap = Sushiswap.getInstance('ethereum', 'goerli');
   await sushiswap.init();
   app.use('/amm', AmmRoutes.router);
 });
@@ -163,7 +163,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'sushiswap',
         quote: 'DAI',
         base: 'WETH',
@@ -193,7 +193,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'sushiswap',
         quote: 'DAI',
         base: 'WETH',
@@ -218,7 +218,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'sushiswap',
         quote: 'DOGE',
         base: 'WETH',
@@ -240,7 +240,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'sushiswap',
         quote: 'DAI',
         base: 'SHIBA',
@@ -262,7 +262,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'sushiswap',
         quote: 'DAI',
         base: 'SHIBA',
@@ -284,7 +284,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'sushiswap',
         quote: 'DAI',
         base: 'SHIBA',
@@ -309,7 +309,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'sushiswap',
         quote: 'DOGE',
         base: 'WETH',
@@ -334,7 +334,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'sushiswap',
         quote: 'DOGE',
         base: 'WETH',
@@ -364,7 +364,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'sushiswap',
         quote: 'DAI',
         base: 'WETH',
@@ -386,7 +386,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'sushiswap',
         quote: 'DAI',
         base: 'WETH',
@@ -404,7 +404,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'sushiswap',
         quote: 'DAI',
         base: 'WETH',
@@ -436,7 +436,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'sushiswap',
         quote: 'DAI',
         base: 'WETH',
@@ -458,7 +458,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'sushiswap',
         quote: 'DAI',
         base: 'WETH',
@@ -479,7 +479,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'sushiswap',
         quote: 'DAI',
         base: 'WETH',
@@ -499,7 +499,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'sushiswap',
         quote: 'DAI',
         base: 'WETH',
@@ -519,7 +519,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'sushiswap',
         quote: 'DAI',
         base: 'WETH',
@@ -539,7 +539,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'sushiswap',
         quote: 'DAI',
         base: 'WETH',
@@ -559,7 +559,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'sushiswap',
         quote: 'DAI',
         base: 'WETH',
@@ -584,7 +584,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'sushiswap',
         quote: 'DAI',
         base: 'WETH',
@@ -613,7 +613,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'sushiswap',
         quote: 'DAI',
         base: 'WETH',
@@ -638,13 +638,13 @@ describe('POST /amm/estimateGas', () => {
       .post('/amm/estimateGas')
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'sushiswap',
       })
       .set('Accept', 'application/json')
       .expect(200)
       .then((res: any) => {
-        expect(res.body.network).toEqual('kovan');
+        expect(res.body.network).toEqual('goerli');
         expect(res.body.gasPrice).toEqual(100);
         expect(res.body.gasCost).toEqual(
           gasCostInEthString(100, sushiswap.gasLimitEstimate)
@@ -660,7 +660,7 @@ describe('POST /amm/estimateGas', () => {
       .post('/amm/estimateGas')
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'pangolin',
       })
       .set('Accept', 'application/json')

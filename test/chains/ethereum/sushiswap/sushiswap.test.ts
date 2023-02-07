@@ -31,11 +31,11 @@ const DAI = new Token(
 );
 
 beforeAll(async () => {
-  ethereum = Ethereum.getInstance('kovan');
+  ethereum = Ethereum.getInstance('goerli');
   patchEVMNonceManager(ethereum.nonceManager);
   await ethereum.init();
 
-  sushiswap = Sushiswap.getInstance('ethereum', 'kovan');
+  sushiswap = Sushiswap.getInstance('ethereum', 'goerli');
   await sushiswap.init();
 });
 
@@ -128,7 +128,7 @@ describe('verify sushiswap estimateBuyTrade', () => {
 describe('verify sushiswap Token List', () => {
   it('Should return a token by address', async () => {
     const token = sushiswap.getTokenByAddress(
-      '0x4f96fe3b7a6cf9725f59d353f723c1bdb64ca6aa'
+      '0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6'
     );
     expect(token).toBeInstanceOf(Token);
   });
