@@ -107,7 +107,7 @@ describe('Test EVMNonceManager', () => {
     });
 
     await evmNonceManager.init(
-      new providers.StaticJsonRpcProvider('https://kovan.infura.io/v3/')
+      new providers.StaticJsonRpcProvider('https://goerli.infura.io/v3/')
     );
 
     const nonce = await evmNonceManager.getNonce(address1);

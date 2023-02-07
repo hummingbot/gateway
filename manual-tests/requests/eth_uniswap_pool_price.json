@@ -5,6 +5,6 @@
   "period": 120,
   "interval": 60,
   "chain": "ethereum",
-  "network": "kovan",
+  "network": "goerli",
   "connector": "uniswapLP"
 }

@@ -1,0 +1,4 @@
+certificatePath: gateway.crt
+
+# If true it will collect data about API usage.
+telemetry_enabled: false

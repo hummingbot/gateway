@@ -15,11 +15,11 @@ beforeAll(async () => {
   app = express();
   app.use(express.json());
 
-  ethereum = Ethereum.getInstance('kovan');
+  ethereum = Ethereum.getInstance('goerli');
   patchEVMNonceManager(ethereum.nonceManager);
   await ethereum.init();
 
-  uniswap = Uniswap.getInstance('ethereum', 'kovan');
+  uniswap = Uniswap.getInstance('ethereum', 'goerli');
   await uniswap.init();
 
   app.use('/amm', AmmRoutes.router);
@@ -60,14 +60,14 @@ const patchStoredTokenList = () => {
         chainId: 42,
         name: 'WETH',
         symbol: 'WETH',
-        address: '0xd0A1E359811322d97991E03f863a0C30C2cF029C',
+        address: '0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6',
         decimals: 18,
       },
       {
         chainId: 42,
         name: 'DAI',
         symbol: 'DAI',
-        address: '0x4f96fe3b7a6cf9725f59d353f723c1bdb64ca6aa',
+        address: '0xdc31Ee1784292379Fbb2964b3B9C4124D8F89C60',
         decimals: 18,
       },
     ];
@@ -81,7 +81,7 @@ const patchGetTokenBySymbol = () => {
         chainId: 42,
         name: 'WETH',
         symbol: 'WETH',
-        address: '0xd0A1E359811322d97991E03f863a0C30C2cF029C',
+        address: '0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6',
         decimals: 18,
       };
     } else {
@@ -89,7 +89,7 @@ const patchGetTokenBySymbol = () => {
         chainId: 42,
         name: 'DAI',
         symbol: 'DAI',
-        address: '0x4f96fe3b7a6cf9725f59d353f723c1bdb64ca6aa',
+        address: '0xdc31Ee1784292379Fbb2964b3B9C4124D8F89C60',
         decimals: 18,
       };
     }
@@ -102,7 +102,7 @@ const patchGetTokenByAddress = () => {
       chainId: 42,
       name: 'WETH',
       symbol: 'WETH',
-      address: '0xd0A1E359811322d97991E03f863a0C30C2cF029C',
+      address: '0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6',
       decimals: 18,
     };
   });
@@ -172,7 +172,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'uniswap',
         quote: 'DAI',
         base: 'WETH',
@@ -202,7 +202,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'uniswap',
         quote: 'DAI',
         base: 'WETH',
@@ -227,7 +227,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'uniswap',
         quote: 'DOGE',
         base: 'WETH',
@@ -249,7 +249,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'uniswap',
         quote: 'DAI',
         base: 'SHIBA',
@@ -271,7 +271,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'uniswap',
         quote: 'DAI',
         base: 'SHIBA',
@@ -293,7 +293,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'uniswap',
         quote: 'DAI',
         base: 'SHIBA',
@@ -318,7 +318,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'uniswap',
         quote: 'DOGE',
         base: 'WETH',
@@ -343,7 +343,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'uniswap',
         quote: 'DOGE',
         base: 'WETH',
@@ -373,7 +373,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'uniswap',
         quote: 'DAI',
         base: 'WETH',
@@ -395,7 +395,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'uniswap',
         quote: 'DAI',
         base: 'WETH',
@@ -413,7 +413,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'uniswap',
         quote: 'DAI',
         base: 'WETH',
@@ -445,7 +445,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'uniswap',
         quote: 'DAI',
         base: 'WETH',
@@ -467,7 +467,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'uniswap',
         quote: 'DAI',
         base: 'WETH',
@@ -488,7 +488,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'uniswap',
         quote: 'DAI',
         base: 'WETH',
@@ -508,7 +508,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'uniswap',
         quote: 'DAI',
         base: 'WETH',
@@ -528,7 +528,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'uniswap',
         quote: 'DAI',
         base: 'WETH',
@@ -548,7 +548,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'uniswap',
         quote: 'DAI',
         base: 'WETH',
@@ -568,7 +568,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'uniswap',
         quote: 'DAI',
         base: 'WETH',
@@ -593,7 +593,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'uniswap',
         quote: 'DAI',
         base: 'WETH',
@@ -622,7 +622,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'uniswap',
         quote: 'DAI',
         base: 'WETH',
@@ -647,13 +647,13 @@ describe('POST /amm/estimateGas', () => {
       .post('/amm/estimateGas')
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'uniswap',
       })
       .set('Accept', 'application/json')
       .expect(200)
       .then((res: any) => {
-        expect(res.body.network).toEqual('kovan');
+        expect(res.body.network).toEqual('goerli');
         expect(res.body.gasPrice).toEqual(100);
         expect(res.body.gasCost).toEqual(
           gasCostInEthString(100, uniswap.gasLimitEstimate)
@@ -669,7 +669,7 @@ describe('POST /amm/estimateGas', () => {
       .post('/amm/estimateGas')
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         connector: 'pangolin',
       })
       .set('Accept', 'application/json')

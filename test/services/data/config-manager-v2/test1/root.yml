@@ -1,5 +1,9 @@
 version: 1
 configurations:
+  $namespace server:
+    configurationPath: server.yml
+    schemaPath: server-schema.json
+
   $namespace harmony:
     configurationPath: harmony.yml
     schemaPath: harmony-schema.json
@@ -8,10 +12,6 @@ configurations:
     configurationPath: avalanche.yml
     schemaPath: ethereum-schema.json
 
-  $namespace database:
-    configurationPath: database.yml
-    schemaPath: database-schema.json
-    
   $namespace ethereum:
     configurationPath: ethereum.yml
     schemaPath: ethereum-schema.json
@@ -20,21 +20,9 @@ configurations:
     configurationPath: polygon.yml
     schemaPath: ethereum-schema.json
     
-  $namespace ethereumGasStation:
-    configurationPath: ethereum-gas-station.yml
-    schemaPath: ethereum-gas-station-schema.json
-
   $namespace defira:
     configurationPath: defira.yml
     schemaPath: defira-schema.json
-
-  $namespace logging:
-    configurationPath: logging.yml
-    schemaPath: logging-schema.json
-
-  $namespace ssl:
-    configurationPath: ssl.yml
-    schemaPath: ssl-schema.json
 
   $namespace pangolin:
     configurationPath: pangolin.yml
@@ -48,14 +36,6 @@ configurations:
     configurationPath: traderjoe.yml
     schemaPath: traderjoe-schema.json
     
-  $namespace server:
-    configurationPath: server.yml
-    schemaPath: server-schema.json
-
-  $namespace telemetry:
-    configurationPath: telemetry.yml
-    schemaPath: telemetry-schema.json
-
   $namespace uniswap:
     configurationPath: uniswap.yml
     schemaPath: uniswap-schema.json

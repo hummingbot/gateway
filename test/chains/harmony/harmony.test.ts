@@ -1,6 +1,5 @@
 import { Harmony } from '../../../src/chains/harmony/harmony';
 import { patchEVMNonceManager } from '../../evm.nonce.mock';
-import { SushiswapConfig } from '../../../src/connectors/sushiswap/sushiswap.config';
 import { DefikingdomsConfig } from '../../../src/connectors/defikingdoms/defikingdoms.config';
 import { DefiraConfig } from '../../../src/connectors/defira/defira.config';
 
@@ -30,16 +29,6 @@ describe('getSpender', () => {
       const viperswapAddress = harmony.getSpender('viperswap');
       expect(viperswapAddress.toLowerCase()).toEqual(
         '0xf012702a5f0e54015362cbca26a26fc90aa832a3'
-      );
-    });
-  });
-  describe('get sushiswap', () => {
-    it('returns sushiswap kovan address', () => {
-      const sushiswapAddress = harmony.getSpender('sushiswap');
-      expect(sushiswapAddress.toLowerCase()).toEqual(
-        SushiswapConfig.config
-          .sushiswapRouterAddress('ethereum', 'kovan')
-          .toLowerCase()
       );
     });
   });

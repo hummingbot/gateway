@@ -20,7 +20,7 @@ import * as transactionOutOfGasReceipt from './fixtures/transaction-out-of-gas-r
 let eth: Ethereum;
 
 beforeAll(async () => {
-  eth = Ethereum.getInstance('kovan');
+  eth = Ethereum.getInstance('goerli');
   patchEVMNonceManager(eth.nonceManager);
   await eth.init();
 });
@@ -136,7 +136,7 @@ describe('POST /evm/allowances', () => {
       .post(`/evm/allowances`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         address: '0xFaA12FD102FE8623C9299c72B03E45107F2772B5',
         spender: theSpender,
         tokenSymbols: ['WETH', 'DAI'],
@@ -154,7 +154,7 @@ describe('POST /evm/allowances', () => {
       .post(`/evm/allowances`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         address: '0xFaA12FD102FE8623C9299c72B03E45107F2772B5',
         spender: '0xSpender',
         tokenSymbols: ['WETH', 'DAI'],
@@ -177,7 +177,7 @@ describe('POST /network/balances', () => {
       .post(`/network/balances`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         address: '0xFaA12FD102FE8623C9299c72B03E45107F2772B5',
         tokenSymbols: ['WETH', 'DAI'],
       })
@@ -201,7 +201,7 @@ describe('POST /network/balances', () => {
       .post(`/network/balances`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         address: '0xFaA12FD102FE8623C9299c72B03E45107F2772B5',
         tokenSymbols: ['ETH'],
       })
@@ -225,7 +225,7 @@ describe('POST /network/balances', () => {
       .post(`/network/balances`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         address: '0xFaA12FD102FE8623C9299c72B03E45107F2772B5',
         tokenSymbols: ['XXX', 'YYY'],
       })
@@ -239,7 +239,7 @@ describe('POST /network/balances', () => {
       .post(`/network/balances`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         address: 'da857cbda0ba96757fed842617a4',
       })
       .expect(404);
@@ -255,7 +255,7 @@ describe('POST /evm/nonce', () => {
       .post(`/evm/nonce`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         address: '0xFaA12FD102FE8623C9299c72B03E45107F2772B5',
       })
       .set('Accept', 'application/json')
@@ -269,7 +269,7 @@ describe('POST /evm/nonce', () => {
       .post(`/evm/nonce`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         address: 'da857cbda0ba96757fed842617a4',
       })
       .expect(404);
@@ -285,7 +285,7 @@ describe('POST /evm/nextNonce', () => {
       .post(`/evm/nextNonce`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         address: '0xFaA12FD102FE8623C9299c72B03E45107F2772B5',
       })
       .set('Accept', 'application/json')
@@ -299,7 +299,7 @@ describe('POST /evm/nextNonce', () => {
       .post(`/evm/nextNonce`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         address: 'da857cbda0ba96757fed842617a4',
       })
       .expect(404);
@@ -320,7 +320,7 @@ describe('POST /evm/approve', () => {
       .post(`/evm/approve`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         address: '0xFaA12FD102FE8623C9299c72B03E45107F2772B5',
         spender: 'uniswap',
         token: 'WETH',
@@ -340,7 +340,7 @@ describe('POST /evm/approve', () => {
       .post(`/evm/approve`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         address: '0xFaA12FD102FE8623C9299c72B03E45107F2772B5',
         spender: 'uniswap',
         token: 'WETH',
@@ -364,7 +364,7 @@ describe('POST /evm/approve', () => {
       .post(`/evm/approve`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         address: '0xFaA12FD102FE8623C9299c72B03E45107F2772B5',
         spender: 'uniswap',
         token: 'WETH',
@@ -382,7 +382,7 @@ describe('POST /evm/approve', () => {
       .post(`/evm/approve`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         address: '0xFaA12FD102FE8623C9299c72B03E45107F2772B5',
         spender: 'uniswap',
         token: 123,
@@ -407,7 +407,7 @@ describe('POST /evm/cancel', () => {
       .post(`/evm/cancel`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         address: '0xFaA12FD102FE8623C9299c72B03E45107F2772B5',
         nonce: 23,
       })
@@ -426,7 +426,7 @@ describe('POST /evm/cancel', () => {
       .post(`/evm/cancel`)
       .send({
         chain: 'ethereum',
-        network: 'kovan',
+        network: 'goerli',
         address: '',
         nonce: '23',
       })
@@ -444,7 +444,7 @@ describe('POST /network/poll', () => {
 
     const res = await request(gatewayApp).post('/network/poll').send({
       chain: 'ethereum',
-      network: 'kovan',
+      network: 'goerli',
       txHash:
         '0x2faeb1aa55f96c1db55f643a8cf19b0f76bf091d0b7d1b068d2e829414576362', // noqa: mock
     });
@@ -474,7 +474,7 @@ describe('POST /network/poll', () => {
     patch(eth, 'getTransactionReceipt', () => transactionOutOfGasReceipt);
     const res = await request(gatewayApp).post('/network/poll').send({
       chain: 'ethereum',
-      network: 'kovan',
+      network: 'goerli',
       txHash:
         '0x2faeb1aa55f96c1db55f643a8cf19b0f76bf091d0b7d1b068d2e829414576362', // noqa: mock
     });
@@ -490,7 +490,7 @@ describe('POST /network/poll', () => {
     patch(eth, 'getTransactionReceipt', () => null);
     const res = await request(gatewayApp).post('/network/poll').send({
       chain: 'ethereum',
-      network: 'kovan',
+      network: 'goerli',
       txHash:
         '0x2faeb1aa55f96c1db55f643a8cf19b0f76bf091d0b7d1b068d2e829414576362', // noqa: mock
     });
@@ -505,7 +505,7 @@ describe('POST /network/poll', () => {
     patch(eth, 'getTransactionReceipt', () => null);
     const res = await request(gatewayApp).post('/network/poll').send({
       chain: 'ethereum',
-      network: 'kovan',
+      network: 'goerli',
       txHash:
         '0x2faeb1aa55f96c1db55f643a8cf19b0f76bf091d0b7d1b068d2e829414576362', // noqa: mock
     });
@@ -520,7 +520,7 @@ describe('POST /network/poll', () => {
     patch(eth, 'getTransactionReceipt', () => transactionSuccesfulReceipt);
     const res = await request(gatewayApp).post('/network/poll').send({
       chain: 'ethereum',
-      network: 'kovan',
+      network: 'goerli',
       txHash:
         '0x6d068067a5e5a0f08c6395b31938893d1cdad81f54a54456221ecd8c1941294d', // noqa: mock
     });
@@ -545,7 +545,7 @@ describe('POST /network/poll', () => {
     });
     const res = await request(gatewayApp).post('/network/poll').send({
       chain: 'ethereum',
-      network: 'kovan',
+      network: 'goerli',
       txHash:
         '0x2faeb1aa55f96c1db55f643a8cf19b0f76bf091d0b7d1b068d2e829414576362', // noqa: mock
     });
@@ -562,7 +562,7 @@ describe('POST /network/poll', () => {
     });
     const res = await request(gatewayApp).post('/network/poll').send({
       chain: 'ethereum',
-      network: 'kovan',
+      network: 'goerli',
       txHash:
         '0x2faeb1aa55f96c1db55f643a8cf19b0f76bf091d0b7d1b068d2e829414576362', // noqa: mock
     });
@@ -580,7 +580,7 @@ describe('overwrite existing transaction', () => {
 
     const requestParam = {
       chain: 'ethereum',
-      network: 'kovan',
+      network: 'goerli',
       address: '0xFaA12FD102FE8623C9299c72B03E45107F2772B5',
       spender: 'uniswap',
       token: 'WETH',
@@ -612,7 +612,7 @@ describe('overwrite existing transaction', () => {
     patch(eth, 'getTransactionReceipt', () => null);
     const res_1 = await request(gatewayApp).post('/network/poll').send({
       chain: 'ethereum',
-      network: 'kovan',
+      network: 'goerli',
       txHash: tx_1.body.approval.hash,
     });
     expect(res_1.statusCode).toEqual(200);
@@ -624,7 +624,7 @@ describe('overwrite existing transaction', () => {
     patch(eth, 'getTransactionReceipt', () => transactionSuccesfulReceipt);
     const res_2 = await request(gatewayApp).post('/network/poll').send({
       chain: 'ethereum',
-      network: 'kovan',
+      network: 'goerli',
       txHash: tx_2.body.approval.hash,
     });
     expect(res_2.statusCode).toEqual(200);

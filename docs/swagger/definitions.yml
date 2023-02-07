@@ -35,7 +35,7 @@ definitions:
         example: 'ethereum'
       network:
         type: 'string'
-        example: 'kovan'
+        example: 'goerli'
 
   NonceResponse:
     type: 'object'
@@ -70,7 +70,7 @@ definitions:
         example: 'ethereum'
       network:
         type: 'string'
-        example: 'kovan'
+        example: 'goerli'
 
   AllowancesResponse:
     type: 'object'
@@ -122,7 +122,7 @@ definitions:
         example: 'ethereum'
       network:
         type: 'string'
-        example: 'kovan'
+        example: 'goerli'
 
   BalancesResponse:
     type: 'object'
@@ -185,7 +185,7 @@ definitions:
         example: 'ethereum'
       network:
         type: 'string'
-        example: 'kovan'
+        example: 'goerli'
 
   ApproveResponse:
     type: 'object'
@@ -239,7 +239,7 @@ definitions:
         example: 'ethereum'
       network:
         type: 'string'
-        example: 'kovan'
+        example: 'goerli'
 
   PollResponse:
     type: 'object'
@@ -324,7 +324,7 @@ definitions:
         example: 'ethereum'
       network:
         type: 'string'
-        example: 'kovan'
+        example: 'goerli'
 
   PriceResponse:
     type: 'object'
@@ -414,7 +414,7 @@ definitions:
         example: 'ethereum'
       network:
         type: 'string'
-        example: 'kovan'
+        example: 'goerli'
       connector:
         type: 'string'
         example: 'uniswap'
@@ -492,7 +492,7 @@ definitions:
         example: 'ethereum'
       network:
         type: 'string'
-        example: 'kovan'
+        example: 'goerli'
   
   CancelResponse:
     type: 'object'
@@ -687,7 +687,7 @@ definitions:
         example: 'ethereum'
       network:
         type: 'string'
-        example: 'kovan'
+        example: 'goerli'
       connector:
         type: 'string'
         example: 'uniswap'
@@ -763,7 +763,7 @@ definitions:
         example: 'ethereum'
       network:
         type: 'string'
-        example: 'kovan'
+        example: 'goerli'
       connector:
         type: 'string'
         example: 'uniswapLP'
@@ -783,7 +783,7 @@ definitions:
     properties:
       network:
         type: 'string'
-        example: 'kovan'
+        example: 'goerli'
       timestamp:
         type: 'integer'
         example: 1636368085740
@@ -829,7 +829,7 @@ definitions:
         example: 'ethereum'
       network:
         type: 'string'
-        example: 'kovan'
+        example: 'goerli'
       connector:
         type: 'string'
         example: 'uniswapLP'
@@ -848,7 +848,7 @@ definitions:
     properties:
       network:
         type: 'string'
-        example: 'kovan'
+        example: 'goerli'
       timestamp:
         type: 'integer'
         example: 1636368085740
@@ -891,7 +891,7 @@ definitions:
         example: 'ethereum'
       network:
         type: 'string'
-        example: 'kovan'
+        example: 'goerli'
       connector:
         type: 'string'
         example: 'uniswapLP'
@@ -910,7 +910,7 @@ definitions:
     properties:
       network:
         type: 'string'
-        example: 'kovan'
+        example: 'goerli'
       timestamp:
         type: 'integer'
         example: 1636368085740
@@ -945,7 +945,7 @@ definitions:
         example: 'ethereum'
       network:
         type: 'string'
-        example: 'kovan'
+        example: 'goerli'
       connector:
         type: 'string'
         example: 'uniswapLP'
@@ -968,7 +968,7 @@ definitions:
     properties:
       network:
         type: 'string'
-        example: 'kovan'
+        example: 'goerli'
       timestamp:
         type: 'integer'
         example: 1636368085740
@@ -1032,7 +1032,7 @@ definitions:
         example: 'ethereum'
       network:
         type: 'string'
-        example: 'kovan'
+        example: 'goerli'
       connector:
         type: 'string'
         example: 'uniswapLP'
@@ -1050,7 +1050,7 @@ definitions:
     properties:
       network:
         type: 'string'
-        example: 'kovan'
+        example: 'goerli'
       timestamp:
         type: 'integer'
         example: 1636368085740

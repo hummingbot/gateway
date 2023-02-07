@@ -8,6 +8,6 @@
   "lowerPrice": "1",
   "upperPrice": "5",
   "chain": "ethereum",
-  "network": "kovan",
+  "network": "goerli",
   "connector": "uniswapLP"
 }

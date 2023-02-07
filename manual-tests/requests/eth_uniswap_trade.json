@@ -5,6 +5,6 @@
   "amount": "1",
   "side": "BUY",
   "chain": "ethereum",
-  "network": "kovan",
+  "network": "goerli",
   "connector": "uniswap"
 }
