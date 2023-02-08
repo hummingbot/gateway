@@ -1,9 +1,9 @@
 import axios from 'axios';
 import { promises as fs } from 'fs';
-import { TokenListType, TokenValue, walletPath } from './base';
+import { TokenListType, TokenValue, walletPath } from '../../services/base';
 import NodeCache from 'node-cache';
 import fse from 'fs-extra';
-import { ConfigManagerCertPassphrase } from './config-manager-cert-passphrase';
+import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { BigNumber } from 'ethers';
 import { AccountData, DirectSignResponse } from '@cosmjs/proto-signing';
 

@@ -25,7 +25,7 @@ import {
   UNKNOWN_CHAIN_ERROR_CODE,
   UNKNOWN_KNOWN_CHAIN_ERROR_MESSAGE,
 } from '../error-handler';
-import { EthereumBase } from '../ethereum-base';
+import { EthereumBase } from '../../chains/ethereum/ethereum-base';
 import { Near } from '../../chains/near/near';
 
 const walletPath = './conf/wallets';

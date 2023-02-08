@@ -1,5 +1,5 @@
 import { patch } from './services/patch';
-import { EVMNonceManager } from '../src/services/evm.nonce';
+import { EVMNonceManager } from '../src/evm/evm.nonce';
 
 // override values so that nonceManager doesn't crash due to lack of provider
 // connection

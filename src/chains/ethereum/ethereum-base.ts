@@ -9,15 +9,15 @@ import {
 import axios from 'axios';
 import { promises as fs } from 'fs';
 import path from 'path';
-import { rootPath } from '../paths';
-import { TokenListType, TokenValue, walletPath } from './base';
-import { EVMNonceManager } from './evm.nonce';
+import { rootPath } from '../../paths';
+import { TokenListType, TokenValue, walletPath } from '../../services/base';
+import { EVMNonceManager } from '../../evm/evm.nonce';
 import NodeCache from 'node-cache';
-import { EvmTxStorage } from './evm.tx-storage';
+import { EvmTxStorage } from '../../evm/evm.tx-storage';
 import fse from 'fs-extra';
-import { ConfigManagerCertPassphrase } from './config-manager-cert-passphrase';
-import { logger } from './logger';
-import { ReferenceCountingCloseable } from './refcounting-closeable';
+import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
+import { logger } from '../../services/logger';
+import { ReferenceCountingCloseable } from '../../services/refcounting-closeable';
 
 // information about an Ethereum token
 export interface TokenInfo {

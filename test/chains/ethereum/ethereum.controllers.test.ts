@@ -1,7 +1,7 @@
 import { BigNumber } from 'ethers';
 import { Ethereum } from '../../../src/chains/ethereum/ethereum';
 import { patch, unpatch } from '../../services/patch';
-import { TokenInfo } from '../../../src/services/ethereum-base';
+import { TokenInfo } from '../../../src/chains/ethereum/ethereum-base';
 import {
   nonce,
   nextNonce,

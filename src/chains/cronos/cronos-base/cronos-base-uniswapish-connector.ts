@@ -9,7 +9,7 @@ import {
   UniswapishCurrency,
   UniswapishSwapParameters,
   UniswapishTrade,
-} from '../../services/common-interfaces';
+} from '../../../services/common-interfaces';
 import {
   BigNumber,
   Contract,
@@ -19,11 +19,11 @@ import {
   Wallet,
 } from 'ethers';
 import { CronosBaseUniswapishConnectorConfig } from './cronos-base-uniswapish-connector.config';
-import { Cronos } from '../../chains/cronos/cronos';
-import { logger } from '../../services/logger';
-import { UniswapishPriceError } from '../../services/error-handler';
-import { isFractionString } from '../../services/validators';
-import { percentRegexp } from '../../services/config-manager-v2';
+import { Cronos } from '../cronos';
+import { logger } from '../../../services/logger';
+import { UniswapishPriceError } from '../../../services/error-handler';
+import { isFractionString } from '../../../services/validators';
+import { percentRegexp } from '../../../services/config-manager-v2';
 
 export abstract class CronosBaseUniswapishConnector implements Uniswapish {
   private static _instances: { [name: string]: CronosBaseUniswapishConnector };

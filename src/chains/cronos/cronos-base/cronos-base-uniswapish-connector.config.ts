@@ -1,5 +1,5 @@
-import { AvailableNetworks } from '../../services/config-manager-types';
-import { ConfigManagerV2 } from '../../services/config-manager-v2';
+import { AvailableNetworks } from '../../../services/config-manager-types';
+import { ConfigManagerV2 } from '../../../services/config-manager-v2';
 
 export namespace CronosBaseUniswapishConnectorConfig {
   export interface NetworkConfig {

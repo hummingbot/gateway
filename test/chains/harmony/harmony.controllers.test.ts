@@ -1,7 +1,7 @@
 import { BigNumber } from 'ethers';
 import { Harmony } from '../../../src/chains/harmony/harmony';
 import { patch, unpatch } from '../../services/patch';
-import { TokenInfo } from '../../../src/services/ethereum-base';
+import { TokenInfo } from '../../../src/chains/ethereum/ethereum-base';
 import {
   nonce,
   getTokenSymbolsToTokens,
