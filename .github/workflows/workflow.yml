@@ -76,15 +76,14 @@ jobs:
         run: |
           mkdir conf db
           cp src/templates/* conf
-          sed -i 's/https:\/\/goerli.infura.io\/v3\//http:\/\/127.0.0.1:8545\//g' ./conf/ethereum.yml
-          sed -i 's/https://arbitrum-rinkeby.infura.io/v3/http:\/\/127.0.0.1:8545\//g' ./conf/ethereum.yml
+          sed -i 's/https:\/\/rpc.ankr.com\/eth_goerli/http:\/\/127.0.0.1:8545\//g' ./conf/ethereum.yml
+          sed -i 's/https:\/\/arbitrum-rinkeby.infura.io\/v3/http:\/\/127.0.0.1:8545\//g' ./conf/ethereum.yml
           sed -i 's/https:\/\/rpc.ankr.com\/optimism/http:\/\/127.0.0.1:8545\//g' ./conf/ethereum.yml
           sed -i 's/https:\/\/rpc.ankr.com\/avalanche_fuji/http:\/\/127.0.0.1:8545\//g' ./conf/avalanche.yml
           sed -i 's/https:\/\/rpc.ankr.com\/polygon_mumbai/http:\/\/127.0.0.1:8545\//g' ./conf/polygon.yml
           sed -i 's/https:\/\/api.s0.b.hmny.io/http:\/\/127.0.0.1:8545\//g' ./conf/harmony.yml
           sed -i 's/https:\/\/data-seed-prebsc-1-s1.binance.org:8545/http:\/\/127.0.0.1:8545\//g' ./conf/binance-smart-chain.yml
           sed -i 's/https:\/\/cosmos-testnet-rpc.allthatnode.com:26657/http:\/\/127.0.0.1:8545\//g' ./conf/cosmos.yml
-          sed -i 's/https://rpc.testnet.near.org/http:\/\/127.0.0.1:8545\//g' ./conf/near.yml
           yarn test:unit 
 
       - name: Run unit test coverage

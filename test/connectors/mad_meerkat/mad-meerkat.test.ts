@@ -1,8 +1,9 @@
 jest.useFakeTimers();
-import { Pangolin } from '../../../../src/connectors/pangolin/pangolin';
-import { patch, unpatch } from '../../../services/patch';
-import { UniswapishPriceError } from '../../../../src/services/error-handler';
+import { MadMeerkat } from '../../../src/connectors/mad_meerkat/mad_meerkat';
+import { patch, unpatch } from '../../services/patch';
+import { UniswapishPriceError } from '../../../src/services/error-handler';
 import {
+  ChainId,
   Fetcher,
   Pair,
   Percent,
@@ -11,37 +12,37 @@ import {
   TokenAmount,
   Trade,
   TradeType,
-} from '@pangolindex/sdk';
+} from '@crocswap/sdk';
 import { BigNumber } from 'ethers';
-import { Avalanche } from '../../../../src/chains/avalanche/avalanche';
-import { patchEVMNonceManager } from '../../../evm.nonce.mock';
-let avalanche: Avalanche;
-let pangolin: Pangolin;
+import { Cronos } from '../../../src/chains/cronos/cronos';
+import { patchEVMNonceManager } from '../../evm.nonce.mock';
+
+let cronos: Cronos;
+let madMeerkat: MadMeerkat;
 
 const WETH = new Token(
-  43114,
+  ChainId.MAINNET,
   '0xd0A1E359811322d97991E03f863a0C30C2cF029C',
   18,
   'WETH'
 );
 const WAVAX = new Token(
-  43114,
+  ChainId.MAINNET,
   '0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7',
   18,
   'WAVAX'
 );
 
 beforeAll(async () => {
-  avalanche = Avalanche.getInstance('fuji');
-  patchEVMNonceManager(avalanche.nonceManager);
-  await avalanche.init();
-
-  pangolin = Pangolin.getInstance('avalanche', 'fuji');
-  await pangolin.init();
+  cronos = Cronos.getInstance('mainnet');
+  patchEVMNonceManager(cronos.nonceManager);
+  await cronos.init();
+  madMeerkat = MadMeerkat.getInstance('cronos', 'mainnet') as MadMeerkat;
+  await madMeerkat.init();
 });
 
 beforeEach(() => {
-  patchEVMNonceManager(avalanche.nonceManager);
+  patchEVMNonceManager(cronos.nonceManager);
 });
 
 afterEach(() => {
@@ -49,15 +50,14 @@ afterEach(() => {
 });
 
 afterAll(async () => {
-  await avalanche.close();
+  await cronos.close();
 });
 
 const patchFetchPairData = () => {
   patch(Fetcher, 'fetchPairData', () => {
     return new Pair(
       new TokenAmount(WETH, '2000000000000000000'),
-      new TokenAmount(WAVAX, '1000000000000000000'),
-      43114
+      new TokenAmount(WAVAX, '1000000000000000000')
     );
   });
 };
@@ -67,27 +67,25 @@ const patchTrade = (key: string, error?: Error) => {
     if (error) return [];
     const WETH_WAVAX = new Pair(
       new TokenAmount(WETH, '2000000000000000000'),
-      new TokenAmount(WAVAX, '1000000000000000000'),
-      43114
+      new TokenAmount(WAVAX, '1000000000000000000')
     );
     const WAVAX_TO_WETH = new Route([WETH_WAVAX], WAVAX);
     return [
       new Trade(
         WAVAX_TO_WETH,
         new TokenAmount(WAVAX, '1000000000000000'),
-        TradeType.EXACT_INPUT,
-        43114
+        TradeType.EXACT_INPUT
       ),
     ];
   });
 };
 
-describe('verify Pangolin estimateSellTrade', () => {
+describe('verify MadMeerkat estimateSellTrade', () => {
   it('Should return an ExpectedTrade when available', async () => {
     patchFetchPairData();
     patchTrade('bestTradeExactIn');
 
-    const expectedTrade = await pangolin.estimateSellTrade(
+    const expectedTrade = await madMeerkat.estimateSellTrade(
       WETH,
       WAVAX,
       BigNumber.from(1)
@@ -101,17 +99,17 @@ describe('verify Pangolin estimateSellTrade', () => {
     patchTrade('bestTradeExactIn', new Error('error getting trade'));
 
     await expect(async () => {
-      await pangolin.estimateSellTrade(WETH, WAVAX, BigNumber.from(1));
+      await madMeerkat.estimateSellTrade(WETH, WAVAX, BigNumber.from(1));
     }).rejects.toThrow(UniswapishPriceError);
   });
 });
 
-describe('verify Pangolin estimateBuyTrade', () => {
+describe('verify MadMeerkat estimateBuyTrade', () => {
   it('Should return an ExpectedTrade when available', async () => {
     patchFetchPairData();
     patchTrade('bestTradeExactOut');
 
-    const expectedTrade = await pangolin.estimateBuyTrade(
+    const expectedTrade = await madMeerkat.estimateBuyTrade(
       WETH,
       WAVAX,
       BigNumber.from(1)
@@ -125,24 +123,24 @@ describe('verify Pangolin estimateBuyTrade', () => {
     patchTrade('bestTradeExactOut', new Error('error getting trade'));
 
     await expect(async () => {
-      await pangolin.estimateBuyTrade(WETH, WAVAX, BigNumber.from(1));
+      await madMeerkat.estimateBuyTrade(WETH, WAVAX, BigNumber.from(1));
     }).rejects.toThrow(UniswapishPriceError);
   });
 });
 
 describe('getAllowedSlippage', () => {
   it('return value of string when not null', () => {
-    const allowedSlippage = pangolin.getAllowedSlippage('3/100');
+    const allowedSlippage = madMeerkat.getAllowedSlippage('3/100');
     expect(allowedSlippage).toEqual(new Percent('3', '100'));
   });
 
   it('return value from config when string is null', () => {
-    const allowedSlippage = pangolin.getAllowedSlippage();
+    const allowedSlippage = madMeerkat.getAllowedSlippage();
     expect(allowedSlippage).toEqual(new Percent('1', '100'));
   });
 
   it('return value from config when string is malformed', () => {
-    const allowedSlippage = pangolin.getAllowedSlippage('yo');
+    const allowedSlippage = madMeerkat.getAllowedSlippage('yo');
     expect(allowedSlippage).toEqual(new Percent('1', '100'));
   });
 });

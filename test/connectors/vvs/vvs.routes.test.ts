@@ -1,18 +1,18 @@
 import request from 'supertest';
-import { patch, unpatch } from '../../../services/patch';
-import { gatewayApp } from '../../../../src/app';
-import { Cronos } from '../../../../src/chains/cronos/cronos';
-import { MadMeerkat } from '../../../../src/connectors/mad_meerkat/mad_meerkat';
-import { patchEVMNonceManager } from '../../../evm.nonce.mock';
+import { patch, unpatch } from '../../services/patch';
+import { gatewayApp } from '../../../src/app';
+import { Cronos } from '../../../src/chains/cronos/cronos';
+import { VVSConnector } from '../../../src/connectors/vvs/vvs';
+import { patchEVMNonceManager } from '../../evm.nonce.mock';
 let cronos: Cronos;
-let madMeerkat: MadMeerkat;
+let vvs: VVSConnector;
 
 beforeAll(async () => {
   cronos = Cronos.getInstance('mainnet');
   patchEVMNonceManager(cronos.nonceManager);
   await cronos.init();
-  madMeerkat = MadMeerkat.getInstance('cronos', 'mainnet') as MadMeerkat;
-  await madMeerkat.init();
+  vvs = VVSConnector.getInstance('cronos', 'mainnet') as VVSConnector;
+  await vvs.init();
 });
 
 beforeEach(() => {
@@ -81,7 +81,7 @@ const patchGetTokenBySymbol = () => {
 };
 
 const patchGetTokenByAddress = () => {
-  patch(madMeerkat, 'getTokenByAddress', () => {
+  patch(vvs, 'getTokenByAddress', () => {
     return {
       chainId: 43114,
       name: 'WETH',
@@ -97,7 +97,7 @@ const patchGasPrice = () => {
 };
 
 const patchEstimateBuyTrade = () => {
-  patch(madMeerkat, 'estimateBuyTrade', () => {
+  patch(vvs, 'estimateBuyTrade', () => {
     return {
       expectedAmount: {
         toSignificant: () => 100,
@@ -115,7 +115,7 @@ const patchEstimateBuyTrade = () => {
 };
 
 const patchEstimateSellTrade = () => {
-  patch(madMeerkat, 'estimateSellTrade', () => {
+  patch(vvs, 'estimateSellTrade', () => {
     return {
       expectedAmount: {
         toSignificant: () => 100,
@@ -135,7 +135,7 @@ const patchGetNonce = () => {
 };
 
 const patchExecuteTrade = () => {
-  patch(madMeerkat, 'executeTrade', () => {
+  patch(vvs, 'executeTrade', () => {
     return { nonce: 21, hash: '000000000000000' };
   });
 };
@@ -156,7 +156,7 @@ describe('POST /amm/price', () => {
       .send({
         chain: 'cronos',
         network: 'mainnet',
-        connector: 'mad_meerkat',
+        connector: 'vvs',
         quote: 'WAVAX',
         base: 'WETH',
         amount: '10000',
@@ -185,7 +185,7 @@ describe('POST /amm/price', () => {
       .send({
         chain: 'cronos',
         network: 'mainnet',
-        connector: 'mad_meerkat',
+        connector: 'vvs',
         quote: 'WAVAX',
         base: 'WETH',
         amount: '10000',
@@ -222,7 +222,7 @@ describe('POST /amm/price', () => {
       .send({
         chain: 'cronos',
         network: 'mainnet',
-        connector: 'mad_meerkat',
+        connector: 'vvs',
         quote: 'DOGE',
         base: 'WETH',
         amount: '10000',
@@ -255,7 +255,7 @@ describe('POST /amm/price', () => {
       .send({
         chain: 'cronos',
         network: 'mainnet',
-        connector: 'mad_meerkat',
+        connector: 'vvs',
         quote: 'WAVAX',
         base: 'SHIBA',
         amount: '10000',
@@ -284,7 +284,7 @@ describe('POST /amm/trade', () => {
       .send({
         chain: 'cronos',
         network: 'mainnet',
-        connector: 'mad_meerkat',
+        connector: 'vvs',
         quote: 'WAVAX',
         base: 'WETH',
         amount: '10000',
@@ -306,7 +306,7 @@ describe('POST /amm/trade', () => {
       .send({
         chain: 'cronos',
         network: 'mainnet',
-        connector: 'mad_meerkat',
+        connector: 'vvs',
         quote: 'WAVAX',
         base: 'WETH',
         amount: '10000',
@@ -324,7 +324,7 @@ describe('POST /amm/trade', () => {
       .send({
         chain: 'cronos',
         network: 'mainnet',
-        connector: 'mad_meerkat',
+        connector: 'vvs',
         quote: 'WAVAX',
         base: 'WETH',
         amount: '10000',
@@ -355,7 +355,7 @@ describe('POST /amm/trade', () => {
       .send({
         chain: 'cronos',
         network: 'mainnet',
-        connector: 'mad_meerkat',
+        connector: 'vvs',
         quote: 'WAVAX',
         base: 'WETH',
         amount: '10000',
@@ -377,7 +377,7 @@ describe('POST /amm/trade', () => {
       .send({
         chain: 'cronos',
         network: 'mainnet',
-        connector: 'mad_meerkat',
+        connector: 'vvs',
         quote: 'WAVAX',
         base: 'WETH',
         amount: '10000',
@@ -397,7 +397,7 @@ describe('POST /amm/trade', () => {
       .send({
         chain: 'cronos',
         network: 'mainnet',
-        connector: 'mad_meerkat',
+        connector: 'vvs',
         quote: 'WAVAX',
         base: 'WETH',
         amount: 10000,
@@ -429,7 +429,7 @@ describe('POST /amm/trade', () => {
       .send({
         chain: 'cronos',
         network: 'mainnet',
-        connector: 'mad_meerkat',
+        connector: 'vvs',
         quote: 'WETH',
         base: 'BITCOIN',
         amount: '10000',
@@ -464,7 +464,7 @@ describe('POST /amm/trade', () => {
       .send({
         chain: 'cronos',
         network: 'mainnet',
-        connector: 'mad_meerkat',
+        connector: 'vvs',
         quote: 'BITCOIN',
         base: 'WETH',
         amount: '10000',
@@ -485,7 +485,7 @@ describe('POST /amm/trade', () => {
       .send({
         chain: 'cronos',
         network: 'mainnet',
-        connector: 'mad_meerkat',
+        connector: 'vvs',
         quote: 'WAVAX',
         base: 'WETH',
         amount: '10000',
@@ -505,7 +505,7 @@ describe('POST /amm/trade', () => {
       .send({
         chain: 'cronos',
         network: 'mainnet',
-        connector: 'mad_meerkat',
+        connector: 'vvs',
         quote: 'WAVAX',
         base: 'WETH',
         amount: '10000',
@@ -525,7 +525,7 @@ describe('POST /amm/trade', () => {
       .send({
         chain: 'cronos',
         network: 'mainnet',
-        connector: 'mad_meerkat',
+        connector: 'vvs',
         quote: 'WAVAX',
         base: 'WETH',
         amount: '10000',
@@ -545,7 +545,7 @@ describe('POST /amm/trade', () => {
       .send({
         chain: 'cronos',
         network: 'mainnet',
-        connector: 'mad_meerkat',
+        connector: 'vvs',
         quote: 'WAVAX',
         base: 'WETH',
         amount: '10000',

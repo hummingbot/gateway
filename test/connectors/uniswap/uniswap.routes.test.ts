@@ -1,32 +1,32 @@
-import request from 'supertest';
-import { Avalanche } from '../../../../src/chains/avalanche/avalanche';
-import { Openocean } from '../../../../src/connectors/openocean/openocean';
-import { patchEVMNonceManager } from '../../../evm.nonce.mock';
-import { patch, unpatch } from '../../../services/patch';
-import { gasCostInEthString } from '../../../../src/services/base';
-import { AmmRoutes } from '../../../../src/amm/amm.routes';
 import express from 'express';
 import { Express } from 'express-serve-static-core';
+import request from 'supertest';
+import { Ethereum } from '../../../src/chains/ethereum/ethereum';
+import { Uniswap } from '../../../src/connectors/uniswap/uniswap';
+import { AmmRoutes } from '../../../src/amm/amm.routes';
+import { patch, unpatch } from '../../services/patch';
+import { gasCostInEthString } from '../../../src/services/base';
+import { patchEVMNonceManager } from '../../evm.nonce.mock';
 let app: Express;
-let avalanche: Avalanche;
-let openocean: Openocean;
+let ethereum: Ethereum;
+let uniswap: Uniswap;
 
 beforeAll(async () => {
   app = express();
   app.use(express.json());
 
-  avalanche = Avalanche.getInstance('avalanche');
-  patchEVMNonceManager(avalanche.nonceManager);
-  await avalanche.init();
+  ethereum = Ethereum.getInstance('goerli');
+  patchEVMNonceManager(ethereum.nonceManager);
+  await ethereum.init();
 
-  openocean = Openocean.getInstance('avalanche', 'avalanche');
-  await openocean.init();
+  uniswap = Uniswap.getInstance('ethereum', 'goerli');
+  await uniswap.init();
 
   app.use('/amm', AmmRoutes.router);
 });
 
 beforeEach(() => {
-  patchEVMNonceManager(avalanche.nonceManager);
+  patchEVMNonceManager(ethereum.nonceManager);
 });
 
 afterEach(() => {
@@ -34,13 +34,13 @@ afterEach(() => {
 });
 
 afterAll(async () => {
-  await avalanche.close();
+  await ethereum.close();
 });
 
 const address: string = '0xFaA12FD102FE8623C9299c72B03E45107F2772B5';
 
 const patchGetWallet = () => {
-  patch(avalanche, 'getWallet', () => {
+  patch(ethereum, 'getWallet', () => {
     return {
       address: '0xFaA12FD102FE8623C9299c72B03E45107F2772B5',
     };
@@ -48,26 +48,26 @@ const patchGetWallet = () => {
 };
 
 const patchInit = () => {
-  patch(openocean, 'init', async () => {
+  patch(uniswap, 'init', async () => {
     return;
   });
 };
 
 const patchStoredTokenList = () => {
-  patch(avalanche, 'tokenList', () => {
+  patch(ethereum, 'tokenList', () => {
     return [
       {
-        chainId: 43114,
-        name: 'USDC',
-        symbol: 'USDC',
-        address: '0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E',
-        decimals: 6,
+        chainId: 42,
+        name: 'WETH',
+        symbol: 'WETH',
+        address: '0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6',
+        decimals: 18,
       },
       {
-        chainId: 43114,
-        name: 'sAVAX',
-        symbol: 'sAVAX',
-        address: '0x2b2C81e08f1Af8835a78Bb2A90AE924ACE0eA4bE',
+        chainId: 42,
+        name: 'DAI',
+        symbol: 'DAI',
+        address: '0xdc31Ee1784292379Fbb2964b3B9C4124D8F89C60',
         decimals: 18,
       },
     ];
@@ -75,21 +75,21 @@ const patchStoredTokenList = () => {
 };
 
 const patchGetTokenBySymbol = () => {
-  patch(avalanche, 'getTokenBySymbol', (symbol: string) => {
-    if (symbol === 'USDC') {
+  patch(ethereum, 'getTokenBySymbol', (symbol: string) => {
+    if (symbol === 'WETH') {
       return {
-        chainId: 43114,
-        name: 'USDC',
-        symbol: 'USDC',
-        address: '0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E',
-        decimals: 6,
+        chainId: 42,
+        name: 'WETH',
+        symbol: 'WETH',
+        address: '0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6',
+        decimals: 18,
       };
     } else {
       return {
-        chainId: 43114,
-        name: 'sAVAX',
-        symbol: 'sAVAX',
-        address: '0x2b2C81e08f1Af8835a78Bb2A90AE924ACE0eA4bE',
+        chainId: 42,
+        name: 'DAI',
+        symbol: 'DAI',
+        address: '0xdc31Ee1784292379Fbb2964b3B9C4124D8F89C60',
         decimals: 18,
       };
     }
@@ -97,23 +97,23 @@ const patchGetTokenBySymbol = () => {
 };
 
 const patchGetTokenByAddress = () => {
-  patch(openocean, 'getTokenByAddress', () => {
+  patch(uniswap, 'getTokenByAddress', () => {
     return {
-      chainId: 43114,
-      name: 'USDC',
-      symbol: 'USDC',
-      address: '0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E',
-      decimals: 6,
+      chainId: 42,
+      name: 'WETH',
+      symbol: 'WETH',
+      address: '0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6',
+      decimals: 18,
     };
   });
 };
 
 const patchGasPrice = () => {
-  patch(avalanche, 'gasPrice', () => 100);
+  patch(ethereum, 'gasPrice', () => 100);
 };
 
 const patchEstimateBuyTrade = () => {
-  patch(openocean, 'estimateBuyTrade', () => {
+  patch(uniswap, 'estimateBuyTrade', () => {
     return {
       expectedAmount: {
         toSignificant: () => 100,
@@ -131,7 +131,7 @@ const patchEstimateBuyTrade = () => {
 };
 
 const patchEstimateSellTrade = () => {
-  patch(openocean, 'estimateSellTrade', () => {
+  patch(uniswap, 'estimateSellTrade', () => {
     return {
       expectedAmount: {
         toSignificant: () => 100,
@@ -147,11 +147,11 @@ const patchEstimateSellTrade = () => {
 };
 
 const patchGetNonce = () => {
-  patch(avalanche.nonceManager, 'getNonce', () => 21);
+  patch(ethereum.nonceManager, 'getNonce', () => 21);
 };
 
 const patchExecuteTrade = () => {
-  patch(openocean, 'executeTrade', () => {
+  patch(uniswap, 'executeTrade', () => {
     return { nonce: 21, hash: '000000000000000' };
   });
 };
@@ -159,6 +159,7 @@ const patchExecuteTrade = () => {
 describe('POST /amm/price', () => {
   it('should return 200 for BUY', async () => {
     patchGetWallet();
+    patchInit();
     patchStoredTokenList();
     patchGetTokenBySymbol();
     patchGetTokenByAddress();
@@ -166,27 +167,29 @@ describe('POST /amm/price', () => {
     patchEstimateBuyTrade();
     patchGetNonce();
     patchExecuteTrade();
+
     await request(app)
       .post(`/amm/price`)
       .send({
-        chain: 'avalanche',
-        network: 'avalanche',
-        connector: 'openocean',
-        quote: 'sAVAX',
-        base: 'USDC',
-        amount: '0.01',
+        chain: 'ethereum',
+        network: 'goerli',
+        connector: 'uniswap',
+        quote: 'DAI',
+        base: 'WETH',
+        amount: '10000',
         side: 'BUY',
       })
       .set('Accept', 'application/json')
       .expect(200)
       .then((res: any) => {
-        expect(res.body.amount).toEqual('0.010000');
-        expect(res.body.rawAmount).toEqual('10000');
+        expect(res.body.amount).toEqual('10000.000000000000000000');
+        expect(res.body.rawAmount).toEqual('10000000000000000000000');
       });
   });
 
   it('should return 200 for SELL', async () => {
     patchGetWallet();
+    patchInit();
     patchStoredTokenList();
     patchGetTokenBySymbol();
     patchGetTokenByAddress();
@@ -194,50 +197,40 @@ describe('POST /amm/price', () => {
     patchEstimateSellTrade();
     patchGetNonce();
     patchExecuteTrade();
+
     await request(app)
       .post(`/amm/price`)
       .send({
-        chain: 'avalanche',
-        network: 'avalanche',
-        connector: 'openocean',
-        quote: 'USDC',
-        base: 'sAVAX',
+        chain: 'ethereum',
+        network: 'goerli',
+        connector: 'uniswap',
+        quote: 'DAI',
+        base: 'WETH',
         amount: '10000',
         side: 'SELL',
       })
       .set('Accept', 'application/json')
       .expect(200)
       .then((res: any) => {
-        expect(res.body.amount).toEqual('10000.000000');
-        expect(res.body.rawAmount).toEqual('10000000000');
+        expect(res.body.amount).toEqual('10000.000000000000000000');
+        expect(res.body.rawAmount).toEqual('10000000000000000000000');
       });
   });
 
   it('should return 500 for unrecognized quote symbol', async () => {
     patchGetWallet();
+    patchInit();
     patchStoredTokenList();
-    patch(avalanche, 'getTokenBySymbol', (symbol: string) => {
-      if (symbol === 'WETH') {
-        return {
-          chainId: 43114,
-          name: 'WETH',
-          symbol: 'WETH',
-          address: '0xd0A1E359811322d97991E03f863a0C30C2cF029C',
-          decimals: 18,
-        };
-      } else {
-        return null;
-      }
-    });
-    patchGetTokenByAddress();
+    patchGetTokenBySymbol();
+
     await request(app)
       .post(`/amm/price`)
       .send({
-        chain: 'avalanche',
-        network: 'avalanche',
-        connector: 'openocean',
-        quote: 'USDC',
-        base: 'bDAI',
+        chain: 'ethereum',
+        network: 'goerli',
+        connector: 'uniswap',
+        quote: 'DOGE',
+        base: 'WETH',
         amount: '10000',
         side: 'SELL',
       })
@@ -247,29 +240,19 @@ describe('POST /amm/price', () => {
 
   it('should return 500 for unrecognized base symbol', async () => {
     patchGetWallet();
+    patchInit();
     patchStoredTokenList();
-    patch(avalanche, 'getTokenBySymbol', (symbol: string) => {
-      if (symbol === 'WETH') {
-        return {
-          chainId: 43114,
-          name: 'WETH',
-          symbol: 'WETH',
-          address: '0xd0A1E359811322d97991E03f863a0C30C2cF029C',
-          decimals: 18,
-        };
-      } else {
-        return null;
-      }
-    });
+    patchGetTokenBySymbol();
     patchGetTokenByAddress();
+
     await request(app)
       .post(`/amm/price`)
       .send({
-        chain: 'avalanche',
-        network: 'avalanche',
-        connector: 'openocean',
-        quote: 'USDC',
-        base: 'bDAI',
+        chain: 'ethereum',
+        network: 'goerli',
+        connector: 'uniswap',
+        quote: 'DAI',
+        base: 'SHIBA',
         amount: '10000',
         side: 'SELL',
       })
@@ -287,11 +270,11 @@ describe('POST /amm/price', () => {
     await request(app)
       .post(`/amm/price`)
       .send({
-        chain: 'avalanche',
-        network: 'avalanche',
-        connector: 'openocean',
-        quote: 'USDC',
-        base: 'bDAI',
+        chain: 'ethereum',
+        network: 'goerli',
+        connector: 'uniswap',
+        quote: 'DAI',
+        base: 'SHIBA',
         amount: '10.000',
         side: 'SELL',
       })
@@ -309,11 +292,11 @@ describe('POST /amm/price', () => {
     await request(app)
       .post(`/amm/price`)
       .send({
-        chain: 'avalanche',
-        network: 'avalanche',
-        connector: 'openocean',
-        quote: 'USDC',
-        base: 'bDAI',
+        chain: 'ethereum',
+        network: 'goerli',
+        connector: 'uniswap',
+        quote: 'DAI',
+        base: 'SHIBA',
         amount: '10.000',
         side: 'BUY',
       })
@@ -327,18 +310,18 @@ describe('POST /amm/price', () => {
     patchStoredTokenList();
     patchGetTokenBySymbol();
     patchGetTokenByAddress();
-    patch(openocean, 'priceSwapIn', () => {
+    patch(uniswap, 'priceSwapIn', () => {
       return 'error';
     });
 
     await request(app)
       .post(`/amm/price`)
       .send({
-        chain: 'avalanche',
-        network: 'avalanche',
-        connector: 'openocean',
-        quote: 'USDC',
-        base: 'bDAI',
+        chain: 'ethereum',
+        network: 'goerli',
+        connector: 'uniswap',
+        quote: 'DOGE',
+        base: 'WETH',
         amount: '10000',
         side: 'SELL',
       })
@@ -352,18 +335,18 @@ describe('POST /amm/price', () => {
     patchStoredTokenList();
     patchGetTokenBySymbol();
     patchGetTokenByAddress();
-    patch(openocean, 'priceSwapOut', () => {
+    patch(uniswap, 'priceSwapOut', () => {
       return 'error';
     });
 
     await request(app)
       .post(`/amm/price`)
       .send({
-        chain: 'avalanche',
-        network: 'avalanche',
-        connector: 'openocean',
-        quote: 'USDC',
-        base: 'bDAI',
+        chain: 'ethereum',
+        network: 'goerli',
+        connector: 'uniswap',
+        quote: 'DOGE',
+        base: 'WETH',
         amount: '10000',
         side: 'BUY',
       })
@@ -375,6 +358,7 @@ describe('POST /amm/price', () => {
 describe('POST /amm/trade', () => {
   const patchForBuy = () => {
     patchGetWallet();
+    patchInit();
     patchStoredTokenList();
     patchGetTokenBySymbol();
     patchGetTokenByAddress();
@@ -388,12 +372,12 @@ describe('POST /amm/trade', () => {
     await request(app)
       .post(`/amm/trade`)
       .send({
-        chain: 'avalanche',
-        network: 'avalanche',
-        connector: 'openocean',
-        quote: 'sAVAX',
-        base: 'USDC',
-        amount: '0.01',
+        chain: 'ethereum',
+        network: 'goerli',
+        connector: 'uniswap',
+        quote: 'DAI',
+        base: 'WETH',
+        amount: '10000',
         address,
         side: 'BUY',
         nonce: 21,
@@ -410,12 +394,12 @@ describe('POST /amm/trade', () => {
     await request(app)
       .post(`/amm/trade`)
       .send({
-        chain: 'avalanche',
-        network: 'avalanche',
-        connector: 'openocean',
-        quote: 'sAVAX',
-        base: 'USDC',
-        amount: '0.01',
+        chain: 'ethereum',
+        network: 'goerli',
+        connector: 'uniswap',
+        quote: 'DAI',
+        base: 'WETH',
+        amount: '10000',
         address,
         side: 'BUY',
       })
@@ -428,12 +412,12 @@ describe('POST /amm/trade', () => {
     await request(app)
       .post(`/amm/trade`)
       .send({
-        chain: 'avalanche',
-        network: 'avalanche',
-        connector: 'openocean',
-        quote: 'sAVAX',
-        base: 'USDC',
-        amount: '0.01',
+        chain: 'ethereum',
+        network: 'goerli',
+        connector: 'uniswap',
+        quote: 'DAI',
+        base: 'WETH',
+        amount: '10000',
         address,
         side: 'BUY',
         nonce: 21,
@@ -446,6 +430,7 @@ describe('POST /amm/trade', () => {
 
   const patchForSell = () => {
     patchGetWallet();
+    patchInit();
     patchStoredTokenList();
     patchGetTokenBySymbol();
     patchGetTokenByAddress();
@@ -459,11 +444,11 @@ describe('POST /amm/trade', () => {
     await request(app)
       .post(`/amm/trade`)
       .send({
-        chain: 'avalanche',
-        network: 'avalanche',
-        connector: 'openocean',
-        quote: 'USDC',
-        base: 'sAVAX',
+        chain: 'ethereum',
+        network: 'goerli',
+        connector: 'uniswap',
+        quote: 'DAI',
+        base: 'WETH',
         amount: '10000',
         address,
         side: 'SELL',
@@ -481,11 +466,11 @@ describe('POST /amm/trade', () => {
     await request(app)
       .post(`/amm/trade`)
       .send({
-        chain: 'avalanche',
-        network: 'avalanche',
-        connector: 'openocean',
-        quote: 'USDC',
-        base: 'sAVAX',
+        chain: 'ethereum',
+        network: 'goerli',
+        connector: 'uniswap',
+        quote: 'DAI',
+        base: 'WETH',
         amount: '10000',
         address,
         side: 'SELL',
@@ -497,103 +482,16 @@ describe('POST /amm/trade', () => {
       .expect(200);
   });
 
-  it('should return 404 when parameters are incorrect', async () => {
-    await request(app)
-      .post(`/amm/trade`)
-      .send({
-        chain: 'avalanche',
-        network: 'avalanche',
-        connector: 'openocean',
-        quote: 'USDC',
-        base: 'sAVAX',
-        amount: 10000,
-        address: 'da8',
-        side: 'comprar',
-      })
-      .set('Accept', 'application/json')
-      .expect(404);
-  });
-
-  it('should return 500 when base token is unknown', async () => {
-    patchForSell();
-    patch(avalanche, 'getTokenBySymbol', (symbol: string) => {
-      if (symbol === 'USDC') {
-        return {
-          chainId: 43114,
-          name: 'USDC',
-          symbol: 'USDC',
-          address: '0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E',
-          decimals: 6,
-        };
-      } else {
-        return null;
-      }
-    });
-
-    await request(app)
-      .post(`/amm/trade`)
-      .send({
-        chain: 'avalanche',
-        network: 'avalanche',
-        connector: 'openocean',
-        quote: 'USDC',
-        base: 'BITCOIN',
-        amount: '10000',
-        address,
-        side: 'BUY',
-        nonce: 21,
-        maxFeePerGas: '5000000000',
-        maxPriorityFeePerGas: '5000000000',
-      })
-      .set('Accept', 'application/json')
-      .expect(500);
-  });
-
-  it('should return 500 when quote token is unknown', async () => {
-    patchForSell();
-    patch(avalanche, 'getTokenBySymbol', (symbol: string) => {
-      if (symbol === 'USDC') {
-        return {
-          chainId: 43114,
-          name: 'USDC',
-          symbol: 'USDC',
-          address: '0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E',
-          decimals: 6,
-        };
-      } else {
-        return null;
-      }
-    });
-
-    await request(app)
-      .post(`/amm/trade`)
-      .send({
-        chain: 'avalanche',
-        network: 'avalanche',
-        connector: 'openocean',
-        quote: 'BITCOIN',
-        base: 'USDC',
-        amount: '10000',
-        address,
-        side: 'BUY',
-        nonce: 21,
-        maxFeePerGas: '5000000000',
-        maxPriorityFeePerGas: '5000000000',
-      })
-      .set('Accept', 'application/json')
-      .expect(500);
-  });
-
   it('should return 200 for SELL with limitPrice', async () => {
     patchForSell();
     await request(app)
       .post(`/amm/trade`)
       .send({
-        chain: 'avalanche',
-        network: 'avalanche',
-        connector: 'openocean',
-        quote: 'USDC',
-        base: 'sAVAX',
+        chain: 'ethereum',
+        network: 'goerli',
+        connector: 'uniswap',
+        quote: 'DAI',
+        base: 'WETH',
         amount: '10000',
         address,
         side: 'SELL',
@@ -609,12 +507,12 @@ describe('POST /amm/trade', () => {
     await request(app)
       .post(`/amm/trade`)
       .send({
-        chain: 'avalanche',
-        network: 'avalanche',
-        connector: 'openocean',
-        quote: 'sAVAX',
-        base: 'USDC',
-        amount: '0.01',
+        chain: 'ethereum',
+        network: 'goerli',
+        connector: 'uniswap',
+        quote: 'DAI',
+        base: 'WETH',
+        amount: '10000',
         address,
         side: 'BUY',
         nonce: 21,
@@ -624,16 +522,36 @@ describe('POST /amm/trade', () => {
       .expect(200);
   });
 
-  it('should return 200 for SELL with price higher than limitPrice', async () => {
+  it('should return 500 for BUY with price smaller than limitPrice', async () => {
+    patchForBuy();
+    await request(app)
+      .post(`/amm/trade`)
+      .send({
+        chain: 'ethereum',
+        network: 'goerli',
+        connector: 'uniswap',
+        quote: 'DAI',
+        base: 'WETH',
+        amount: '10000',
+        address,
+        side: 'BUY',
+        nonce: 21,
+        limitPrice: '9',
+      })
+      .set('Accept', 'application/json')
+      .expect(500);
+  });
+
+  it('should return 500 for SELL with price higher than limitPrice', async () => {
     patchForSell();
     await request(app)
       .post(`/amm/trade`)
       .send({
-        chain: 'avalanche',
-        network: 'avalanche',
-        connector: 'openocean',
-        quote: 'USDC',
-        base: 'sAVAX',
+        chain: 'ethereum',
+        network: 'goerli',
+        connector: 'uniswap',
+        quote: 'DAI',
+        base: 'WETH',
         amount: '10000',
         address,
         side: 'SELL',
@@ -644,21 +562,76 @@ describe('POST /amm/trade', () => {
       .expect(500);
   });
 
-  it('should return 200 for BUY with price less than limitPrice', async () => {
-    patchForBuy();
+  it('should return 404 when parameters are incorrect', async () => {
+    patchInit();
     await request(app)
       .post(`/amm/trade`)
       .send({
-        chain: 'avalanche',
-        network: 'avalanche',
-        connector: 'openocean',
-        quote: 'sAVAX',
-        base: 'USDC',
-        amount: '0.01',
+        chain: 'ethereum',
+        network: 'goerli',
+        connector: 'uniswap',
+        quote: 'DAI',
+        base: 'WETH',
+        amount: 10000,
+        address: 'da8',
+        side: 'comprar',
+      })
+      .set('Accept', 'application/json')
+      .expect(404);
+  });
+  it('should return 500 when the priceSwapIn operation fails', async () => {
+    patchGetWallet();
+    patchInit();
+    patchStoredTokenList();
+    patchGetTokenBySymbol();
+    patchGetTokenByAddress();
+    patch(uniswap, 'priceSwapIn', () => {
+      return 'error';
+    });
+
+    await request(app)
+      .post(`/amm/trade`)
+      .send({
+        chain: 'ethereum',
+        network: 'goerli',
+        connector: 'uniswap',
+        quote: 'DAI',
+        base: 'WETH',
+        amount: '10000',
+        address,
+        side: 'SELL',
+        nonce: 21,
+        maxFeePerGas: '5000000000',
+        maxPriorityFeePerGas: '5000000000',
+      })
+      .set('Accept', 'application/json')
+      .expect(500);
+  });
+
+  it('should return 500 when the priceSwapOut operation fails', async () => {
+    patchGetWallet();
+    patchInit();
+    patchStoredTokenList();
+    patchGetTokenBySymbol();
+    patchGetTokenByAddress();
+    patch(uniswap, 'priceSwapOut', () => {
+      return 'error';
+    });
+
+    await request(app)
+      .post(`/amm/trade`)
+      .send({
+        chain: 'ethereum',
+        network: 'goerli',
+        connector: 'uniswap',
+        quote: 'DAI',
+        base: 'WETH',
+        amount: '10000',
         address,
         side: 'BUY',
         nonce: 21,
-        limitPrice: '9',
+        maxFeePerGas: '5000000000',
+        maxPriorityFeePerGas: '5000000000',
       })
       .set('Accept', 'application/json')
       .expect(500);
@@ -673,17 +646,17 @@ describe('POST /amm/estimateGas', () => {
     await request(app)
       .post('/amm/estimateGas')
       .send({
-        chain: 'avalanche',
-        network: 'avalanche',
-        connector: 'openocean',
+        chain: 'ethereum',
+        network: 'goerli',
+        connector: 'uniswap',
       })
       .set('Accept', 'application/json')
       .expect(200)
       .then((res: any) => {
-        expect(res.body.network).toEqual('avalanche');
+        expect(res.body.network).toEqual('goerli');
         expect(res.body.gasPrice).toEqual(100);
         expect(res.body.gasCost).toEqual(
-          gasCostInEthString(100, openocean.gasLimitEstimate)
+          gasCostInEthString(100, uniswap.gasLimitEstimate)
         );
       });
   });
@@ -695,9 +668,9 @@ describe('POST /amm/estimateGas', () => {
     await request(app)
       .post('/amm/estimateGas')
       .send({
-        chain: 'avalanche',
-        network: 'avalanche',
-        connector: 'sushiswap',
+        chain: 'ethereum',
+        network: 'goerli',
+        connector: 'pangolin',
       })
       .set('Accept', 'application/json')
       .expect(500);

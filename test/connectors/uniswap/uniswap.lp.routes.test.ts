@@ -1,11 +1,11 @@
 import express from 'express';
 import { Express } from 'express-serve-static-core';
 import request from 'supertest';
-import { Ethereum } from '../../../../src/chains/ethereum/ethereum';
-import { UniswapLP } from '../../../../src/connectors/uniswap/uniswap.lp';
-import { AmmLiquidityRoutes } from '../../../../src/amm/amm.routes';
-import { patch, unpatch } from '../../../services/patch';
-import { patchEVMNonceManager } from '../../../evm.nonce.mock';
+import { Ethereum } from '../../../src/chains/ethereum/ethereum';
+import { UniswapLP } from '../../../src/connectors/uniswap/uniswap.lp';
+import { AmmLiquidityRoutes } from '../../../src/amm/amm.routes';
+import { patch, unpatch } from '../../services/patch';
+import { patchEVMNonceManager } from '../../evm.nonce.mock';
 
 let app: Express;
 let ethereum: Ethereum;

@@ -1,11 +1,11 @@
 import express from 'express';
 import { Express } from 'express-serve-static-core';
 import request from 'supertest';
-import { Harmony } from '../../../../src/chains/harmony/harmony';
-import { Defikingdoms } from '../../../../src/connectors/defikingdoms/defikingdoms';
-import { AmmRoutes } from '../../../../src/amm/amm.routes';
-import { patch, unpatch } from '../../../services/patch';
-import { gasCostInEthString } from '../../../../src/services/base';
+import { Harmony } from '../../../src/chains/harmony/harmony';
+import { Defikingdoms } from '../../../src/connectors/defikingdoms/defikingdoms';
+import { AmmRoutes } from '../../../src/amm/amm.routes';
+import { patch, unpatch } from '../../services/patch';
+import { gasCostInEthString } from '../../../src/services/base';
 let app: Express;
 let harmony: Harmony;
 let defikingdoms: Defikingdoms;
