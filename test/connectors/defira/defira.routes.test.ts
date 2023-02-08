@@ -1,32 +1,23 @@
 import express from 'express';
 import { Express } from 'express-serve-static-core';
 import request from 'supertest';
-import { Ethereum } from '../../../../src/chains/ethereum/ethereum';
-import { Uniswap } from '../../../../src/connectors/uniswap/uniswap';
-import { AmmRoutes } from '../../../../src/amm/amm.routes';
-import { patch, unpatch } from '../../../services/patch';
-import { gasCostInEthString } from '../../../../src/services/base';
-import { patchEVMNonceManager } from '../../../evm.nonce.mock';
+import { Harmony } from '../../../src/chains/harmony/harmony';
+import { Defira } from '../../../src/connectors/defira/defira';
+import { AmmRoutes } from '../../../src/amm/amm.routes';
+import { patch, unpatch } from '../../services/patch';
+import { gasCostInEthString } from '../../../src/services/base';
 let app: Express;
-let ethereum: Ethereum;
-let uniswap: Uniswap;
+let harmony: Harmony;
+let defira: Defira;
 
 beforeAll(async () => {
   app = express();
   app.use(express.json());
-
-  ethereum = Ethereum.getInstance('goerli');
-  patchEVMNonceManager(ethereum.nonceManager);
-  await ethereum.init();
-
-  uniswap = Uniswap.getInstance('ethereum', 'goerli');
-  await uniswap.init();
-
+  harmony = Harmony.getInstance('testnet');
+  await harmony.init();
+  defira = Defira.getInstance('harmony', 'testnet');
+  await defira.init();
   app.use('/amm', AmmRoutes.router);
-});
-
-beforeEach(() => {
-  patchEVMNonceManager(ethereum.nonceManager);
 });
 
 afterEach(() => {
@@ -34,13 +25,13 @@ afterEach(() => {
 });
 
 afterAll(async () => {
-  await ethereum.close();
+  await harmony.close();
 });
 
 const address: string = '0xFaA12FD102FE8623C9299c72B03E45107F2772B5';
 
 const patchGetWallet = () => {
-  patch(ethereum, 'getWallet', () => {
+  patch(harmony, 'getWallet', () => {
     return {
       address: '0xFaA12FD102FE8623C9299c72B03E45107F2772B5',
     };
@@ -48,26 +39,26 @@ const patchGetWallet = () => {
 };
 
 const patchInit = () => {
-  patch(uniswap, 'init', async () => {
+  patch(defira, 'init', async () => {
     return;
   });
 };
 
 const patchStoredTokenList = () => {
-  patch(ethereum, 'tokenList', () => {
+  patch(harmony, 'tokenList', () => {
     return [
       {
-        chainId: 42,
-        name: 'WETH',
-        symbol: 'WETH',
-        address: '0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6',
+        chainId: 1666700000,
+        name: 'WONE74',
+        symbol: 'WONE74',
+        address: '0x4f96fe3b7a6cf9725f59d353f723c1bdb64ca6aa',
         decimals: 18,
       },
       {
-        chainId: 42,
-        name: 'DAI',
-        symbol: 'DAI',
-        address: '0xdc31Ee1784292379Fbb2964b3B9C4124D8F89C60',
+        chainId: 1666700000,
+        name: 'OneETH',
+        symbol: '1ETH',
+        address: '0x1E120B3b4aF96e7F394ECAF84375b1C661830013',
         decimals: 18,
       },
     ];
@@ -75,21 +66,21 @@ const patchStoredTokenList = () => {
 };
 
 const patchGetTokenBySymbol = () => {
-  patch(ethereum, 'getTokenBySymbol', (symbol: string) => {
-    if (symbol === 'WETH') {
+  patch(harmony, 'getTokenBySymbol', (symbol: string) => {
+    if (symbol === 'WONE74') {
       return {
-        chainId: 42,
-        name: 'WETH',
-        symbol: 'WETH',
-        address: '0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6',
+        chainId: 1666700000,
+        name: 'WONE74',
+        symbol: 'WONE74',
+        address: '0x4f96fe3b7a6cf9725f59d353f723c1bdb64ca6aa',
         decimals: 18,
       };
     } else {
       return {
-        chainId: 42,
-        name: 'DAI',
-        symbol: 'DAI',
-        address: '0xdc31Ee1784292379Fbb2964b3B9C4124D8F89C60',
+        chainId: 1666700000,
+        name: 'OneETH',
+        symbol: '1ETH',
+        address: '0x1E120B3b4aF96e7F394ECAF84375b1C661830013',
         decimals: 18,
       };
     }
@@ -97,23 +88,23 @@ const patchGetTokenBySymbol = () => {
 };
 
 const patchGetTokenByAddress = () => {
-  patch(uniswap, 'getTokenByAddress', () => {
+  patch(defira, 'getTokenByAddress', () => {
     return {
-      chainId: 42,
-      name: 'WETH',
-      symbol: 'WETH',
-      address: '0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6',
+      chainId: 1666700000,
+      name: 'WONE74',
+      symbol: 'WONE74',
+      address: '0x4f96fe3b7a6cf9725f59d353f723c1bdb64ca6aa',
       decimals: 18,
     };
   });
 };
 
 const patchGasPrice = () => {
-  patch(ethereum, 'gasPrice', () => 100);
+  patch(harmony, 'gasPrice', () => 100);
 };
 
 const patchEstimateBuyTrade = () => {
-  patch(uniswap, 'estimateBuyTrade', () => {
+  patch(defira, 'estimateBuyTrade', () => {
     return {
       expectedAmount: {
         toSignificant: () => 100,
@@ -131,7 +122,7 @@ const patchEstimateBuyTrade = () => {
 };
 
 const patchEstimateSellTrade = () => {
-  patch(uniswap, 'estimateSellTrade', () => {
+  patch(defira, 'estimateSellTrade', () => {
     return {
       expectedAmount: {
         toSignificant: () => 100,
@@ -147,11 +138,11 @@ const patchEstimateSellTrade = () => {
 };
 
 const patchGetNonce = () => {
-  patch(ethereum.nonceManager, 'getNonce', () => 21);
+  patch(harmony.nonceManager, 'getNonce', () => 21);
 };
 
 const patchExecuteTrade = () => {
-  patch(uniswap, 'executeTrade', () => {
+  patch(defira, 'executeTrade', () => {
     return { nonce: 21, hash: '000000000000000' };
   });
 };
@@ -171,11 +162,11 @@ describe('POST /amm/price', () => {
     await request(app)
       .post(`/amm/price`)
       .send({
-        chain: 'ethereum',
-        network: 'goerli',
-        connector: 'uniswap',
-        quote: 'DAI',
-        base: 'WETH',
+        chain: 'harmony',
+        network: 'testnet',
+        connector: 'defira',
+        quote: '1ETH',
+        base: 'WONE74',
         amount: '10000',
         side: 'BUY',
       })
@@ -201,11 +192,11 @@ describe('POST /amm/price', () => {
     await request(app)
       .post(`/amm/price`)
       .send({
-        chain: 'ethereum',
-        network: 'goerli',
-        connector: 'uniswap',
-        quote: 'DAI',
-        base: 'WETH',
+        chain: 'harmony',
+        network: 'testnet',
+        connector: 'defira',
+        quote: '1ETH',
+        base: 'WONE74',
         amount: '10000',
         side: 'SELL',
       })
@@ -226,11 +217,11 @@ describe('POST /amm/price', () => {
     await request(app)
       .post(`/amm/price`)
       .send({
-        chain: 'ethereum',
-        network: 'goerli',
-        connector: 'uniswap',
+        chain: 'harmony',
+        network: 'testnet',
+        connector: 'defira',
         quote: 'DOGE',
-        base: 'WETH',
+        base: 'WONE74',
         amount: '10000',
         side: 'SELL',
       })
@@ -248,10 +239,10 @@ describe('POST /amm/price', () => {
     await request(app)
       .post(`/amm/price`)
       .send({
-        chain: 'ethereum',
-        network: 'goerli',
-        connector: 'uniswap',
-        quote: 'DAI',
+        chain: 'harmony',
+        network: 'testnet',
+        connector: 'defira',
+        quote: '1ETH',
         base: 'SHIBA',
         amount: '10000',
         side: 'SELL',
@@ -270,10 +261,10 @@ describe('POST /amm/price', () => {
     await request(app)
       .post(`/amm/price`)
       .send({
-        chain: 'ethereum',
-        network: 'goerli',
-        connector: 'uniswap',
-        quote: 'DAI',
+        chain: 'harmony',
+        network: 'testnet',
+        connector: 'defira',
+        quote: '1ETH',
         base: 'SHIBA',
         amount: '10.000',
         side: 'SELL',
@@ -292,10 +283,10 @@ describe('POST /amm/price', () => {
     await request(app)
       .post(`/amm/price`)
       .send({
-        chain: 'ethereum',
-        network: 'goerli',
-        connector: 'uniswap',
-        quote: 'DAI',
+        chain: 'harmony',
+        network: 'testnet',
+        connector: 'defira',
+        quote: '1ETH',
         base: 'SHIBA',
         amount: '10.000',
         side: 'BUY',
@@ -310,18 +301,18 @@ describe('POST /amm/price', () => {
     patchStoredTokenList();
     patchGetTokenBySymbol();
     patchGetTokenByAddress();
-    patch(uniswap, 'priceSwapIn', () => {
+    patch(defira, 'priceSwapIn', () => {
       return 'error';
     });
 
     await request(app)
       .post(`/amm/price`)
       .send({
-        chain: 'ethereum',
-        network: 'goerli',
-        connector: 'uniswap',
+        chain: 'harmony',
+        network: 'testnet',
+        connector: 'defira',
         quote: 'DOGE',
-        base: 'WETH',
+        base: 'WONE74',
         amount: '10000',
         side: 'SELL',
       })
@@ -335,18 +326,18 @@ describe('POST /amm/price', () => {
     patchStoredTokenList();
     patchGetTokenBySymbol();
     patchGetTokenByAddress();
-    patch(uniswap, 'priceSwapOut', () => {
+    patch(defira, 'priceSwapOut', () => {
       return 'error';
     });
 
     await request(app)
       .post(`/amm/price`)
       .send({
-        chain: 'ethereum',
-        network: 'goerli',
-        connector: 'uniswap',
+        chain: 'harmony',
+        network: 'testnet',
+        connector: 'defira',
         quote: 'DOGE',
-        base: 'WETH',
+        base: 'WONE74',
         amount: '10000',
         side: 'BUY',
       })
@@ -372,11 +363,11 @@ describe('POST /amm/trade', () => {
     await request(app)
       .post(`/amm/trade`)
       .send({
-        chain: 'ethereum',
-        network: 'goerli',
-        connector: 'uniswap',
-        quote: 'DAI',
-        base: 'WETH',
+        chain: 'harmony',
+        network: 'testnet',
+        connector: 'defira',
+        quote: '1ETH',
+        base: 'WONE74',
         amount: '10000',
         address,
         side: 'BUY',
@@ -394,11 +385,11 @@ describe('POST /amm/trade', () => {
     await request(app)
       .post(`/amm/trade`)
       .send({
-        chain: 'ethereum',
-        network: 'goerli',
-        connector: 'uniswap',
-        quote: 'DAI',
-        base: 'WETH',
+        chain: 'harmony',
+        network: 'testnet',
+        connector: 'defira',
+        quote: '1ETH',
+        base: 'WONE74',
         amount: '10000',
         address,
         side: 'BUY',
@@ -412,11 +403,11 @@ describe('POST /amm/trade', () => {
     await request(app)
       .post(`/amm/trade`)
       .send({
-        chain: 'ethereum',
-        network: 'goerli',
-        connector: 'uniswap',
-        quote: 'DAI',
-        base: 'WETH',
+        chain: 'harmony',
+        network: 'testnet',
+        connector: 'defira',
+        quote: '1ETH',
+        base: 'WONE74',
         amount: '10000',
         address,
         side: 'BUY',
@@ -444,11 +435,11 @@ describe('POST /amm/trade', () => {
     await request(app)
       .post(`/amm/trade`)
       .send({
-        chain: 'ethereum',
-        network: 'goerli',
-        connector: 'uniswap',
-        quote: 'DAI',
-        base: 'WETH',
+        chain: 'harmony',
+        network: 'testnet',
+        connector: 'defira',
+        quote: '1ETH',
+        base: 'WONE74',
         amount: '10000',
         address,
         side: 'SELL',
@@ -466,11 +457,11 @@ describe('POST /amm/trade', () => {
     await request(app)
       .post(`/amm/trade`)
       .send({
-        chain: 'ethereum',
-        network: 'goerli',
-        connector: 'uniswap',
-        quote: 'DAI',
-        base: 'WETH',
+        chain: 'harmony',
+        network: 'testnet',
+        connector: 'defira',
+        quote: '1ETH',
+        base: 'WONE74',
         amount: '10000',
         address,
         side: 'SELL',
@@ -487,11 +478,11 @@ describe('POST /amm/trade', () => {
     await request(app)
       .post(`/amm/trade`)
       .send({
-        chain: 'ethereum',
-        network: 'goerli',
-        connector: 'uniswap',
-        quote: 'DAI',
-        base: 'WETH',
+        chain: 'harmony',
+        network: 'testnet',
+        connector: 'defira',
+        quote: '1ETH',
+        base: 'WONE74',
         amount: '10000',
         address,
         side: 'SELL',
@@ -507,11 +498,11 @@ describe('POST /amm/trade', () => {
     await request(app)
       .post(`/amm/trade`)
       .send({
-        chain: 'ethereum',
-        network: 'goerli',
-        connector: 'uniswap',
-        quote: 'DAI',
-        base: 'WETH',
+        chain: 'harmony',
+        network: 'testnet',
+        connector: 'defira',
+        quote: '1ETH',
+        base: 'WONE74',
         amount: '10000',
         address,
         side: 'BUY',
@@ -527,11 +518,11 @@ describe('POST /amm/trade', () => {
     await request(app)
       .post(`/amm/trade`)
       .send({
-        chain: 'ethereum',
-        network: 'goerli',
-        connector: 'uniswap',
-        quote: 'DAI',
-        base: 'WETH',
+        chain: 'harmony',
+        network: 'testnet',
+        connector: 'defira',
+        quote: '1ETH',
+        base: 'WONE74',
         amount: '10000',
         address,
         side: 'BUY',
@@ -547,11 +538,11 @@ describe('POST /amm/trade', () => {
     await request(app)
       .post(`/amm/trade`)
       .send({
-        chain: 'ethereum',
-        network: 'goerli',
-        connector: 'uniswap',
-        quote: 'DAI',
-        base: 'WETH',
+        chain: 'harmony',
+        network: 'testnet',
+        connector: 'defira',
+        quote: '1ETH',
+        base: 'WONE74',
         amount: '10000',
         address,
         side: 'SELL',
@@ -567,11 +558,11 @@ describe('POST /amm/trade', () => {
     await request(app)
       .post(`/amm/trade`)
       .send({
-        chain: 'ethereum',
-        network: 'goerli',
-        connector: 'uniswap',
-        quote: 'DAI',
-        base: 'WETH',
+        chain: 'harmony',
+        network: 'testnet',
+        connector: 'defira',
+        quote: '1ETH',
+        base: 'WONE74',
         amount: 10000,
         address: 'da8',
         side: 'comprar',
@@ -585,18 +576,18 @@ describe('POST /amm/trade', () => {
     patchStoredTokenList();
     patchGetTokenBySymbol();
     patchGetTokenByAddress();
-    patch(uniswap, 'priceSwapIn', () => {
+    patch(defira, 'priceSwapIn', () => {
       return 'error';
     });
 
     await request(app)
       .post(`/amm/trade`)
       .send({
-        chain: 'ethereum',
-        network: 'goerli',
-        connector: 'uniswap',
-        quote: 'DAI',
-        base: 'WETH',
+        chain: 'harmony',
+        network: 'testnet',
+        connector: 'defira',
+        quote: '1ETH',
+        base: 'WONE74',
         amount: '10000',
         address,
         side: 'SELL',
@@ -614,18 +605,18 @@ describe('POST /amm/trade', () => {
     patchStoredTokenList();
     patchGetTokenBySymbol();
     patchGetTokenByAddress();
-    patch(uniswap, 'priceSwapOut', () => {
+    patch(defira, 'priceSwapOut', () => {
       return 'error';
     });
 
     await request(app)
       .post(`/amm/trade`)
       .send({
-        chain: 'ethereum',
-        network: 'goerli',
-        connector: 'uniswap',
-        quote: 'DAI',
-        base: 'WETH',
+        chain: 'harmony',
+        network: 'testnet',
+        connector: 'defira',
+        quote: '1ETH',
+        base: 'WONE74',
         amount: '10000',
         address,
         side: 'BUY',
@@ -646,17 +637,17 @@ describe('POST /amm/estimateGas', () => {
     await request(app)
       .post('/amm/estimateGas')
       .send({
-        chain: 'ethereum',
-        network: 'goerli',
-        connector: 'uniswap',
+        chain: 'harmony',
+        network: 'testnet',
+        connector: 'defira',
       })
       .set('Accept', 'application/json')
       .expect(200)
       .then((res: any) => {
-        expect(res.body.network).toEqual('goerli');
+        expect(res.body.network).toEqual('testnet');
         expect(res.body.gasPrice).toEqual(100);
         expect(res.body.gasCost).toEqual(
-          gasCostInEthString(100, uniswap.gasLimitEstimate)
+          gasCostInEthString(100, defira.gasLimitEstimate)
         );
       });
   });
@@ -668,8 +659,8 @@ describe('POST /amm/estimateGas', () => {
     await request(app)
       .post('/amm/estimateGas')
       .send({
-        chain: 'ethereum',
-        network: 'goerli',
+        chain: 'harmony',
+        network: 'testnet',
         connector: 'pangolin',
       })
       .set('Accept', 'application/json')

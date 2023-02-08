@@ -1,7 +1,4 @@
 jest.useFakeTimers();
-import { Traderjoe } from '../../../../src/connectors/traderjoe/traderjoe';
-import { patch, unpatch } from '../../../services/patch';
-import { UniswapishPriceError } from '../../../../src/services/error-handler';
 import {
   Fetcher,
   Pair,
@@ -11,37 +8,36 @@ import {
   TokenAmount,
   Trade,
   TradeType,
-} from '@traderjoe-xyz/sdk';
+} from '@pancakeswap/sdk';
 import { BigNumber } from 'ethers';
-import { Avalanche } from '../../../../src/chains/avalanche/avalanche';
-import { patchEVMNonceManager } from '../../../evm.nonce.mock';
-let avalanche: Avalanche;
-let traderjoe: Traderjoe;
+import { BinanceSmartChain } from '../../../src/chains/binance-smart-chain/binance-smart-chain';
+import { PancakeSwap } from '../../../src/connectors/pancakeswap/pancakeswap';
+import { UniswapishPriceError } from '../../../src/services/error-handler';
+import { patchEVMNonceManager } from '../../evm.nonce.mock';
+import { patch, unpatch } from '../../services/patch';
 
-const WETH = new Token(
-  43114,
-  '0xd0A1E359811322d97991E03f863a0C30C2cF029C',
+let bsc: BinanceSmartChain;
+let pancakeswap: PancakeSwap;
+
+const WBNB = new Token(
+  97,
+  '0xae13d989dac2f0debff460ac112a837c89baa7cd',
   18,
-  'WETH'
+  'WBNB'
 );
-const WAVAX = new Token(
-  43114,
-  '0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7',
+const DAI = new Token(
+  97,
+  '0x8a9424745056Eb399FD19a0EC26A14316684e274',
   18,
-  'WAVAX'
+  'DAI'
 );
 
 beforeAll(async () => {
-  avalanche = Avalanche.getInstance('fuji');
-  patchEVMNonceManager(avalanche.nonceManager);
-  await avalanche.init();
-
-  traderjoe = Traderjoe.getInstance('avalanche', 'fuji');
-  await traderjoe.init();
-});
-
-beforeEach(() => {
-  patchEVMNonceManager(avalanche.nonceManager);
+  bsc = BinanceSmartChain.getInstance('testnet');
+  patchEVMNonceManager(bsc.nonceManager);
+  await bsc.init();
+  pancakeswap = PancakeSwap.getInstance('binance-smart-chain', 'testnet');
+  await pancakeswap.init();
 });
 
 afterEach(() => {
@@ -49,15 +45,14 @@ afterEach(() => {
 });
 
 afterAll(async () => {
-  await avalanche.close();
+  await bsc.close();
 });
 
 const patchFetchPairData = () => {
   patch(Fetcher, 'fetchPairData', () => {
     return new Pair(
-      new TokenAmount(WETH, '2000000000000000000'),
-      new TokenAmount(WAVAX, '1000000000000000000'),
-      43114
+      new TokenAmount(WBNB, '2000000000000000000'),
+      new TokenAmount(DAI, '1000000000000000000')
     );
   });
 };
@@ -65,31 +60,29 @@ const patchFetchPairData = () => {
 const patchTrade = (key: string, error?: Error) => {
   patch(Trade, key, () => {
     if (error) return [];
-    const WETH_WAVAX = new Pair(
-      new TokenAmount(WETH, '2000000000000000000'),
-      new TokenAmount(WAVAX, '1000000000000000000'),
-      43114
+    const WBNB_DAI = new Pair(
+      new TokenAmount(WBNB, '2000000000000000000'),
+      new TokenAmount(DAI, '1000000000000000000')
     );
-    const WAVAX_TO_WETH = new Route([WETH_WAVAX], WAVAX);
+    const DAI_TO_WBNB = new Route([WBNB_DAI], DAI);
     return [
       new Trade(
-        WAVAX_TO_WETH,
-        new TokenAmount(WAVAX, '1000000000000000'),
-        TradeType.EXACT_INPUT,
-        43114
+        DAI_TO_WBNB,
+        new TokenAmount(DAI, '1000000000000000'),
+        TradeType.EXACT_INPUT
       ),
     ];
   });
 };
 
-describe('verify Traderjoe estimateSellTrade', () => {
+describe('verify PancakeSwap estimateSellTrade', () => {
   it('Should return an ExpectedTrade when available', async () => {
     patchFetchPairData();
     patchTrade('bestTradeExactIn');
 
-    const expectedTrade = await traderjoe.estimateSellTrade(
-      WETH,
-      WAVAX,
+    const expectedTrade = await pancakeswap.estimateSellTrade(
+      WBNB,
+      DAI,
       BigNumber.from(1)
     );
     expect(expectedTrade).toHaveProperty('trade');
@@ -101,19 +94,19 @@ describe('verify Traderjoe estimateSellTrade', () => {
     patchTrade('bestTradeExactIn', new Error('error getting trade'));
 
     await expect(async () => {
-      await traderjoe.estimateSellTrade(WETH, WAVAX, BigNumber.from(1));
+      await pancakeswap.estimateSellTrade(WBNB, DAI, BigNumber.from(1));
     }).rejects.toThrow(UniswapishPriceError);
   });
 });
 
-describe('verify Traderjoe estimateBuyTrade', () => {
+describe('verify PancakeSwap estimateBuyTrade', () => {
   it('Should return an ExpectedTrade when available', async () => {
     patchFetchPairData();
     patchTrade('bestTradeExactOut');
 
-    const expectedTrade = await traderjoe.estimateBuyTrade(
-      WETH,
-      WAVAX,
+    const expectedTrade = await pancakeswap.estimateBuyTrade(
+      WBNB,
+      DAI,
       BigNumber.from(1)
     );
     expect(expectedTrade).toHaveProperty('trade');
@@ -125,24 +118,24 @@ describe('verify Traderjoe estimateBuyTrade', () => {
     patchTrade('bestTradeExactOut', new Error('error getting trade'));
 
     await expect(async () => {
-      await traderjoe.estimateBuyTrade(WETH, WAVAX, BigNumber.from(1));
+      await pancakeswap.estimateBuyTrade(WBNB, DAI, BigNumber.from(1));
     }).rejects.toThrow(UniswapishPriceError);
   });
 });
 
 describe('getAllowedSlippage', () => {
   it('return value of string when not null', () => {
-    const allowedSlippage = traderjoe.getAllowedSlippage('3/100');
+    const allowedSlippage = pancakeswap.getAllowedSlippage('3/100');
     expect(allowedSlippage).toEqual(new Percent('3', '100'));
   });
 
   it('return value from config when string is null', () => {
-    const allowedSlippage = traderjoe.getAllowedSlippage();
+    const allowedSlippage = pancakeswap.getAllowedSlippage();
     expect(allowedSlippage).toEqual(new Percent('1', '100'));
   });
 
   it('return value from config when string is malformed', () => {
-    const allowedSlippage = traderjoe.getAllowedSlippage('yo');
+    const allowedSlippage = pancakeswap.getAllowedSlippage('yo');
     expect(allowedSlippage).toEqual(new Percent('1', '100'));
   });
 });

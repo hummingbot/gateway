@@ -1,12 +1,12 @@
-import { patchEVMNonceManager } from '../../../evm.nonce.mock';
+import { patchEVMNonceManager } from '../../evm.nonce.mock';
 
 jest.useFakeTimers();
 jest.setTimeout(30000);
-import { Openocean } from '../../../../src/connectors/openocean/openocean';
-import { UniswapishPriceError } from '../../../../src/services/error-handler';
+import { Openocean } from '../../../src/connectors/openocean/openocean';
+import { UniswapishPriceError } from '../../../src/services/error-handler';
 import { Token } from '@uniswap/sdk';
 import { BigNumber } from 'ethers';
-import { Avalanche } from '../../../../src/chains/avalanche/avalanche';
+import { Avalanche } from '../../../src/chains/avalanche/avalanche';
 
 let avalanche: Avalanche;
 let openocean: Openocean;

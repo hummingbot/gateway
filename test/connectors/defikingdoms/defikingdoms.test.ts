@@ -1,7 +1,7 @@
 jest.useFakeTimers();
-import { Defikingdoms } from '../../../../src/connectors/defikingdoms/defikingdoms';
-import { patch, unpatch } from '../../../services/patch';
-import { UniswapishPriceError } from '../../../../src/services/error-handler';
+import { Defikingdoms } from '../../../src/connectors/defikingdoms/defikingdoms';
+import { patch, unpatch } from '../../services/patch';
+import { UniswapishPriceError } from '../../../src/services/error-handler';
 import {
   Token,
   TokenAmount,
@@ -12,9 +12,9 @@ import {
   Percent,
 } from '@switchboard-xyz/defikingdoms-sdk';
 import { BigNumber } from 'ethers';
-import { Harmony } from '../../../../src/chains/harmony/harmony';
-import { patchEVMNonceManager } from '../../../evm.nonce.mock';
-import { DefikingdomsConfig } from '../../../../src/connectors/defikingdoms/defikingdoms.config';
+import { Harmony } from '../../../src/chains/harmony/harmony';
+import { patchEVMNonceManager } from '../../evm.nonce.mock';
+import { DefikingdomsConfig } from '../../../src/connectors/defikingdoms/defikingdoms.config';
 
 let harmony: Harmony;
 let defikingdoms: Defikingdoms;

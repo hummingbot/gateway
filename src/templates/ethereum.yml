@@ -8,7 +8,7 @@ networks:
     gasPriceRefreshInterval: 60
   arbitrum_rinkeby:
     chainID: 421611
-    nodeURL: https://arbitrum-rinkeby.infura.io/v3/
+    nodeURL: https://arbitrum-rinkeby.infura.io/v3
     tokenListType: FILE
     tokenListSource: src/chains/ethereum/arbitrum_rinkeby_tokens.json
     nativeCurrencySymbol: ETH

@@ -1,22 +1,23 @@
 import request from 'supertest';
-import { patch, unpatch } from '../../../services/patch';
-import { gatewayApp } from '../../../../src/app';
-import { Cronos } from '../../../../src/chains/cronos/cronos';
-import { VVSConnector } from '../../../../src/connectors/vvs/vvs';
-import { patchEVMNonceManager } from '../../../evm.nonce.mock';
-let cronos: Cronos;
-let vvs: VVSConnector;
+import { gatewayApp } from '../../../src/app';
+import { BinanceSmartChain } from '../../../src/chains/binance-smart-chain/binance-smart-chain';
+import { PancakeSwap } from '../../../src/connectors/pancakeswap/pancakeswap';
+import { patch, unpatch } from '../../services/patch';
+import { patchEVMNonceManager } from '../../evm.nonce.mock';
+
+let bsc: BinanceSmartChain;
+let pancakeswap: PancakeSwap;
 
 beforeAll(async () => {
-  cronos = Cronos.getInstance('mainnet');
-  patchEVMNonceManager(cronos.nonceManager);
-  await cronos.init();
-  vvs = VVSConnector.getInstance('cronos', 'mainnet') as VVSConnector;
-  await vvs.init();
+  bsc = BinanceSmartChain.getInstance('testnet');
+  patchEVMNonceManager(bsc.nonceManager);
+  await bsc.init();
+  pancakeswap = PancakeSwap.getInstance('binance-smart-chain', 'testnet');
+  await pancakeswap.init();
 });
 
 beforeEach(() => {
-  patchEVMNonceManager(cronos.nonceManager);
+  patchEVMNonceManager(bsc.nonceManager);
 });
 
 afterEach(() => {
@@ -24,34 +25,34 @@ afterEach(() => {
 });
 
 afterAll(async () => {
-  await cronos.close();
+  await bsc.close();
 });
 
-const address: string = '0xFaA12FD102FE8623C9299c72B03E45107F2772B5';
+const address: string = '0x242532ebDfcc760f2Ddfe8378eB51f5F847CE5bD';
 
 const patchGetWallet = () => {
-  patch(cronos, 'getWallet', () => {
+  patch(bsc, 'getWallet', () => {
     return {
-      address: '0xFaA12FD102FE8623C9299c72B03E45107F2772B5',
+      address: address,
     };
   });
 };
 
 const patchStoredTokenList = () => {
-  patch(cronos, 'tokenList', () => {
+  patch(bsc, 'tokenList', () => {
     return [
       {
-        chainId: 43114,
-        name: 'WETH',
-        symbol: 'WETH',
-        address: '0xd0A1E359811322d97991E03f863a0C30C2cF029C',
+        chainId: 97,
+        name: 'WBNB',
+        symbol: 'WBNB',
+        address: '0xae13d989dac2f0debff460ac112a837c89baa7cd',
         decimals: 18,
       },
       {
-        chainId: 43114,
-        name: 'Wrapped AVAX',
-        symbol: 'WAVAX',
-        address: '0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7',
+        chainId: 97,
+        name: 'DAI',
+        symbol: 'DAI',
+        address: '0x8a9424745056Eb399FD19a0EC26A14316684e274',
         decimals: 18,
       },
     ];
@@ -59,21 +60,21 @@ const patchStoredTokenList = () => {
 };
 
 const patchGetTokenBySymbol = () => {
-  patch(cronos, 'getTokenBySymbol', (symbol: string) => {
-    if (symbol === 'WETH') {
+  patch(bsc, 'getTokenBySymbol', (symbol: string) => {
+    if (symbol === 'WBNB') {
       return {
-        chainId: 43114,
-        name: 'WETH',
-        symbol: 'WETH',
-        address: '0xd0A1E359811322d97991E03f863a0C30C2cF029C',
+        chainId: 97,
+        name: 'WBNB',
+        symbol: 'WBNB',
+        address: '0xae13d989dac2f0debff460ac112a837c89baa7cd',
         decimals: 18,
       };
     } else {
       return {
-        chainId: 42,
-        name: 'WAVAX',
-        symbol: 'WAVAX',
-        address: '0x4f96fe3b7a6cf9725f59d353f723c1bdb64ca6aa',
+        chainId: 97,
+        name: 'DAI',
+        symbol: 'DAI',
+        address: '0x8a9424745056Eb399FD19a0EC26A14316684e274',
         decimals: 18,
       };
     }
@@ -81,23 +82,23 @@ const patchGetTokenBySymbol = () => {
 };
 
 const patchGetTokenByAddress = () => {
-  patch(vvs, 'getTokenByAddress', () => {
+  patch(pancakeswap, 'getTokenByAddress', () => {
     return {
-      chainId: 43114,
-      name: 'WETH',
-      symbol: 'WETH',
-      address: '0xd0A1E359811322d97991E03f863a0C30C2cF029C',
+      chainId: 97,
+      name: 'WBNB',
+      symbol: 'WBNB',
+      address: '0xae13d989dac2f0debff460ac112a837c89baa7cd',
       decimals: 18,
     };
   });
 };
 
 const patchGasPrice = () => {
-  patch(cronos, 'gasPrice', () => 100);
+  patch(bsc, 'gasPrice', () => 100);
 };
 
 const patchEstimateBuyTrade = () => {
-  patch(vvs, 'estimateBuyTrade', () => {
+  patch(pancakeswap, 'estimateBuyTrade', () => {
     return {
       expectedAmount: {
         toSignificant: () => 100,
@@ -115,7 +116,7 @@ const patchEstimateBuyTrade = () => {
 };
 
 const patchEstimateSellTrade = () => {
-  patch(vvs, 'estimateSellTrade', () => {
+  patch(pancakeswap, 'estimateSellTrade', () => {
     return {
       expectedAmount: {
         toSignificant: () => 100,
@@ -131,11 +132,11 @@ const patchEstimateSellTrade = () => {
 };
 
 const patchGetNonce = () => {
-  patch(cronos.nonceManager, 'getNonce', () => 21);
+  patch(bsc.nonceManager, 'getNonce', () => 21);
 };
 
 const patchExecuteTrade = () => {
-  patch(vvs, 'executeTrade', () => {
+  patch(pancakeswap, 'executeTrade', () => {
     return { nonce: 21, hash: '000000000000000' };
   });
 };
@@ -154,11 +155,11 @@ describe('POST /amm/price', () => {
     await request(gatewayApp)
       .post(`/amm/price`)
       .send({
-        chain: 'cronos',
-        network: 'mainnet',
-        connector: 'vvs',
-        quote: 'WAVAX',
-        base: 'WETH',
+        chain: 'binance-smart-chain',
+        network: 'testnet',
+        connector: 'pancakeswap',
+        quote: 'DAI',
+        base: 'WBNB',
         amount: '10000',
         side: 'BUY',
       })
@@ -183,11 +184,11 @@ describe('POST /amm/price', () => {
     await request(gatewayApp)
       .post(`/amm/price`)
       .send({
-        chain: 'cronos',
-        network: 'mainnet',
-        connector: 'vvs',
-        quote: 'WAVAX',
-        base: 'WETH',
+        chain: 'binance-smart-chain',
+        network: 'testnet',
+        connector: 'pancakeswap',
+        quote: 'DAI',
+        base: 'WBNB',
         amount: '10000',
         side: 'SELL',
       })
@@ -202,13 +203,13 @@ describe('POST /amm/price', () => {
   it('should return 500 for unrecognized quote symbol', async () => {
     patchGetWallet();
     patchStoredTokenList();
-    patch(cronos, 'getTokenBySymbol', (symbol: string) => {
-      if (symbol === 'WETH') {
+    patch(bsc, 'getTokenBySymbol', (symbol: string) => {
+      if (symbol === 'WBNB') {
         return {
-          chainId: 43114,
-          name: 'WETH',
-          symbol: 'WETH',
-          address: '0xd0A1E359811322d97991E03f863a0C30C2cF029C',
+          chainId: 97,
+          name: 'WBNB',
+          symbol: 'WBNB',
+          address: '0xae13d989dac2f0debff460ac112a837c89baa7cd',
           decimals: 18,
         };
       } else {
@@ -220,11 +221,11 @@ describe('POST /amm/price', () => {
     await request(gatewayApp)
       .post(`/amm/price`)
       .send({
-        chain: 'cronos',
-        network: 'mainnet',
-        connector: 'vvs',
+        chain: 'binance-smart-chain',
+        network: 'testnet',
+        connector: 'pancakeswap',
         quote: 'DOGE',
-        base: 'WETH',
+        base: 'WBNB',
         amount: '10000',
         side: 'SELL',
       })
@@ -235,13 +236,13 @@ describe('POST /amm/price', () => {
   it('should return 500 for unrecognized base symbol', async () => {
     patchGetWallet();
     patchStoredTokenList();
-    patch(cronos, 'getTokenBySymbol', (symbol: string) => {
-      if (symbol === 'WETH') {
+    patch(bsc, 'getTokenBySymbol', (symbol: string) => {
+      if (symbol === 'WBNB') {
         return {
-          chainId: 43114,
-          name: 'WETH',
-          symbol: 'WETH',
-          address: '0xd0A1E359811322d97991E03f863a0C30C2cF029C',
+          chainId: 97,
+          name: 'WBNB',
+          symbol: 'WBNB',
+          address: '0xae13d989dac2f0debff460ac112a837c89baa7cd',
           decimals: 18,
         };
       } else {
@@ -253,10 +254,10 @@ describe('POST /amm/price', () => {
     await request(gatewayApp)
       .post(`/amm/price`)
       .send({
-        chain: 'cronos',
-        network: 'mainnet',
-        connector: 'vvs',
-        quote: 'WAVAX',
+        chain: 'binance-smart-chain',
+        network: 'testnet',
+        connector: 'pancakeswap',
+        quote: 'DAI',
         base: 'SHIBA',
         amount: '10000',
         side: 'SELL',
@@ -282,11 +283,11 @@ describe('POST /amm/trade', () => {
     await request(gatewayApp)
       .post(`/amm/trade`)
       .send({
-        chain: 'cronos',
-        network: 'mainnet',
-        connector: 'vvs',
-        quote: 'WAVAX',
-        base: 'WETH',
+        chain: 'binance-smart-chain',
+        network: 'testnet',
+        connector: 'pancakeswap',
+        quote: 'DAI',
+        base: 'WBNB',
         amount: '10000',
         address,
         side: 'BUY',
@@ -304,11 +305,11 @@ describe('POST /amm/trade', () => {
     await request(gatewayApp)
       .post(`/amm/trade`)
       .send({
-        chain: 'cronos',
-        network: 'mainnet',
-        connector: 'vvs',
-        quote: 'WAVAX',
-        base: 'WETH',
+        chain: 'binance-smart-chain',
+        network: 'testnet',
+        connector: 'pancakeswap',
+        quote: 'DAI',
+        base: 'WBNB',
         amount: '10000',
         address,
         side: 'BUY',
@@ -322,11 +323,11 @@ describe('POST /amm/trade', () => {
     await request(gatewayApp)
       .post(`/amm/trade`)
       .send({
-        chain: 'cronos',
-        network: 'mainnet',
-        connector: 'vvs',
-        quote: 'WAVAX',
-        base: 'WETH',
+        chain: 'binance-smart-chain',
+        network: 'testnet',
+        connector: 'pancakeswap',
+        quote: 'DAI',
+        base: 'WBNB',
         amount: '10000',
         address,
         side: 'BUY',
@@ -353,11 +354,11 @@ describe('POST /amm/trade', () => {
     await request(gatewayApp)
       .post(`/amm/trade`)
       .send({
-        chain: 'cronos',
-        network: 'mainnet',
-        connector: 'vvs',
-        quote: 'WAVAX',
-        base: 'WETH',
+        chain: 'binance-smart-chain',
+        network: 'testnet',
+        connector: 'pancakeswap',
+        quote: 'DAI',
+        base: 'WBNB',
         amount: '10000',
         address,
         side: 'SELL',
@@ -375,11 +376,11 @@ describe('POST /amm/trade', () => {
     await request(gatewayApp)
       .post(`/amm/trade`)
       .send({
-        chain: 'cronos',
-        network: 'mainnet',
-        connector: 'vvs',
-        quote: 'WAVAX',
-        base: 'WETH',
+        chain: 'binance-smart-chain',
+        network: 'testnet',
+        connector: 'pancakeswap',
+        quote: 'DAI',
+        base: 'WBNB',
         amount: '10000',
         address,
         side: 'SELL',
@@ -395,11 +396,11 @@ describe('POST /amm/trade', () => {
     await request(gatewayApp)
       .post(`/amm/trade`)
       .send({
-        chain: 'cronos',
-        network: 'mainnet',
-        connector: 'vvs',
-        quote: 'WAVAX',
-        base: 'WETH',
+        chain: 'binance-smart-chain',
+        network: 'testnet',
+        connector: 'pancakeswap',
+        quote: 'DAI',
+        base: 'WBNB',
         amount: 10000,
         address: 'da8',
         side: 'comprar',
@@ -410,13 +411,13 @@ describe('POST /amm/trade', () => {
 
   it('should return 500 when base token is unknown', async () => {
     patchForSell();
-    patch(cronos, 'getTokenBySymbol', (symbol: string) => {
-      if (symbol === 'WETH') {
+    patch(bsc, 'getTokenBySymbol', (symbol: string) => {
+      if (symbol === 'WBNB') {
         return {
-          chainId: 43114,
-          name: 'WETH',
-          symbol: 'WETH',
-          address: '0xd0A1E359811322d97991E03f863a0C30C2cF029C',
+          chainId: 97,
+          name: 'WBNB',
+          symbol: 'WBNB',
+          address: '0xae13d989dac2f0debff460ac112a837c89baa7cd',
           decimals: 18,
         };
       } else {
@@ -427,10 +428,10 @@ describe('POST /amm/trade', () => {
     await request(gatewayApp)
       .post(`/amm/trade`)
       .send({
-        chain: 'cronos',
-        network: 'mainnet',
-        connector: 'vvs',
-        quote: 'WETH',
+        chain: 'binance-smart-chain',
+        network: 'testnet',
+        connector: 'pancakeswap',
+        quote: 'WBNB',
         base: 'BITCOIN',
         amount: '10000',
         address,
@@ -445,13 +446,13 @@ describe('POST /amm/trade', () => {
 
   it('should return 500 when quote token is unknown', async () => {
     patchForSell();
-    patch(cronos, 'getTokenBySymbol', (symbol: string) => {
-      if (symbol === 'WETH') {
+    patch(bsc, 'getTokenBySymbol', (symbol: string) => {
+      if (symbol === 'WBNB') {
         return {
-          chainId: 43114,
-          name: 'WETH',
-          symbol: 'WETH',
-          address: '0xd0A1E359811322d97991E03f863a0C30C2cF029C',
+          chainId: 97,
+          name: 'WBNB',
+          symbol: 'WBNB',
+          address: '0xae13d989dac2f0debff460ac112a837c89baa7cd',
           decimals: 18,
         };
       } else {
@@ -462,11 +463,11 @@ describe('POST /amm/trade', () => {
     await request(gatewayApp)
       .post(`/amm/trade`)
       .send({
-        chain: 'cronos',
-        network: 'mainnet',
-        connector: 'vvs',
+        chain: 'binance-smart-chain',
+        network: 'testnet',
+        connector: 'pancakeswap',
         quote: 'BITCOIN',
-        base: 'WETH',
+        base: 'WBNB',
         amount: '10000',
         address,
         side: 'BUY',
@@ -483,11 +484,11 @@ describe('POST /amm/trade', () => {
     await request(gatewayApp)
       .post(`/amm/trade`)
       .send({
-        chain: 'cronos',
-        network: 'mainnet',
-        connector: 'vvs',
-        quote: 'WAVAX',
-        base: 'WETH',
+        chain: 'binance-smart-chain',
+        network: 'testnet',
+        connector: 'pancakeswap',
+        quote: 'DAI',
+        base: 'WBNB',
         amount: '10000',
         address,
         side: 'SELL',
@@ -503,11 +504,11 @@ describe('POST /amm/trade', () => {
     await request(gatewayApp)
       .post(`/amm/trade`)
       .send({
-        chain: 'cronos',
-        network: 'mainnet',
-        connector: 'vvs',
-        quote: 'WAVAX',
-        base: 'WETH',
+        chain: 'binance-smart-chain',
+        network: 'testnet',
+        connector: 'pancakeswap',
+        quote: 'DAI',
+        base: 'WBNB',
         amount: '10000',
         address,
         side: 'BUY',
@@ -523,11 +524,11 @@ describe('POST /amm/trade', () => {
     await request(gatewayApp)
       .post(`/amm/trade`)
       .send({
-        chain: 'cronos',
-        network: 'mainnet',
-        connector: 'vvs',
-        quote: 'WAVAX',
-        base: 'WETH',
+        chain: 'binance-smart-chain',
+        network: 'testnet',
+        connector: 'pancakeswap',
+        quote: 'DAI',
+        base: 'WBNB',
         amount: '10000',
         address,
         side: 'SELL',
@@ -543,11 +544,11 @@ describe('POST /amm/trade', () => {
     await request(gatewayApp)
       .post(`/amm/trade`)
       .send({
-        chain: 'cronos',
-        network: 'mainnet',
-        connector: 'vvs',
-        quote: 'WAVAX',
-        base: 'WETH',
+        chain: 'binance-smart-chain',
+        network: 'testnet',
+        connector: 'pancakeswap',
+        quote: 'DAI',
+        base: 'WBNB',
         amount: '10000',
         address,
         side: 'BUY',
