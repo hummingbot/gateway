@@ -9,7 +9,7 @@ import {
   EVMNonceManager,
   NonceInfo,
   NonceLocalStorage,
-} from '../../src/services/evm.nonce';
+} from '../../src/evm/evm.nonce';
 import { ReferenceCountingCloseable } from '../../src/services/refcounting-closeable';
 import { patch } from './patch';
 

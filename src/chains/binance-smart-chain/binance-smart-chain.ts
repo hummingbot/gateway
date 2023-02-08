@@ -1,7 +1,7 @@
-import abi from '../../services/ethereum.abi.json';
+import abi from '../ethereum/ethereum.abi.json';
 import { logger } from '../../services/logger';
 import { Contract, Transaction, Wallet } from 'ethers';
-import { EthereumBase } from '../../services/ethereum-base';
+import { EthereumBase } from '../ethereum/ethereum-base';
 import { getEthereumConfig as getBinanceSmartChainConfig } from '../ethereum/ethereum.config';
 import { Provider } from '@ethersproject/abstract-provider';
 import { Ethereumish } from '../../services/common-interfaces';

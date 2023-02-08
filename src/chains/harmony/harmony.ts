@@ -1,8 +1,8 @@
-import abi from '../../services/ethereum.abi.json';
+import abi from '../ethereum/ethereum.abi.json';
 import axios, { AxiosRequestConfig } from 'axios';
 import { logger } from '../../services/logger';
 import { Contract, Transaction, Wallet } from 'ethers';
-import { EthereumBase } from '../../services/ethereum-base';
+import { EthereumBase } from '../ethereum/ethereum-base';
 import { getHarmonyConfig } from './harmony.config';
 import { Provider } from '@ethersproject/abstract-provider';
 import { Ethereumish } from '../../services/common-interfaces';

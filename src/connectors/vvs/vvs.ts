@@ -18,8 +18,8 @@ import {
 import {
   CronosBaseUniswapishSDKProvider,
   CronosBaseUniswapishConnector,
-} from '../cronos-base/cronos-base-uniswapish-connector';
-import { CronosBaseUniswapishConnectorConfig } from '../cronos-base/cronos-base-uniswapish-connector.config';
+} from '../../chains/cronos/cronos-base/cronos-base-uniswapish-connector';
+import { CronosBaseUniswapishConnectorConfig } from '../../chains/cronos/cronos-base/cronos-base-uniswapish-connector.config';
 import routerAbi from './abi.json';
 import { VVSConfig } from './vvs.config';
 
