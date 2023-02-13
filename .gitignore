@@ -7,3 +7,4 @@ package-lock.json
 /certs
 /node_modules
 **/.DS_Store
+**/gateway_files
