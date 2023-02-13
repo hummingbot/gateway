@@ -24,7 +24,7 @@ echo "Stopping container: $INSTANCE_NAME"
 docker stop $INSTANCE_NAME
 
 # Ask for path to Gateway files folder
-read -p "Enter absolute path to Gateway files folder (default = \"gateway-files\") >>> " FOLDER
+read -p "Enter path to Gateway files folder (default = \"gateway-files\") >>> " FOLDER
 if [ "$FOLDER" == "" ]
 then
   FOLDER=$PWD/$DEFAULT_FOLDER
@@ -38,7 +38,7 @@ CERTS_FOLDER="$FOLDER/certs"
 # Copy hummingbot certs folder
 copy_certs () {
   echo
-  read -p "Enter the path to the folder where Hummingbot certificates are stored >>> " CERTS_PATH
+  read -p "Enter absolute path to the folder where Hummingbot certificates are stored >>> " CERTS_PATH
   if [ ! -d "$CERTS_PATH" ]; then
     echo "Error: $CERTS_PATH does not exist or is not a directory"
     copy_certs

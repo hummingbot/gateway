@@ -16,6 +16,15 @@ then
   GATEWAY_TAG="latest"
 fi
 
+# Check if container with same version already exists
+if docker ps -a | grep -q "hummingbot/gateway:$GATEWAY_TAG"; then
+  echo
+  echo "A Gateway container with version '$GATEWAY_TAG' already exists."
+  echo "Remove the existing container before creating a new one."
+  echo "Aborting..."
+  exit
+fi
+
 # Ask the user for the name of the new Gateway instance
 read -p "Enter a name for your new Gateway instance (default = \"gateway\") >>> " INSTANCE_NAME
 if [ "$INSTANCE_NAME" == "" ]
@@ -42,7 +51,7 @@ CERTS_FOLDER="$FOLDER/certs"
 # Ask the user for the hummingbot certs passphrase
 prompt_passphrase () {
 echo
-read -s -p "Enter the passphrase you used to generate certificates in Hummingbot  >>> " PASSPHRASE
+read -s -p "Enter the passphrase you used to generate certificates in Hummingbot >>> " PASSPHRASE
 if [ "$PASSPHRASE" == "" ]
 then
  echo
