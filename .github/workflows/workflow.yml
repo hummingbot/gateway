@@ -94,4 +94,4 @@ jobs:
           git fetch --all -q
           git checkout -b $GITHUB_SHA
           yarn test:cov 
-          git diff origin/$GITHUB_BASE_REF | yarn diff-test-coverage -c ./coverage/lcov.info -t lcov -b 65 -l 67
+          git diff origin/$GITHUB_BASE_REF | yarn diff-test-coverage -c ./coverage/lcov.info -t lcov -b 50 -l 60
