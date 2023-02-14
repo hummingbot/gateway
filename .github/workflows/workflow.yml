@@ -25,6 +25,7 @@ jobs:
           PATTERNS:  |
             **/*.+(ts|js|yml)
             !Dockerfile
+            !*.sh
       - name: Check if gateway files are modified
         id: check_files
         if: env.GIT_DIFF
