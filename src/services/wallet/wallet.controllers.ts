@@ -26,7 +26,7 @@ import {
   UNKNOWN_CHAIN_ERROR_CODE,
   UNKNOWN_KNOWN_CHAIN_ERROR_MESSAGE,
 } from '../error-handler';
-import { EthereumBase } from '../ethereum-base';
+import { EthereumBase } from '../../chains/ethereum/ethereum-base';
 import { Near } from '../../chains/near/near';
 import { convertXdcPrivateKey } from '../../helpers';
 
@@ -53,10 +53,10 @@ export async function addWallet(
     connection = Ethereum.getInstance(req.network);
   } else if (req.chain === 'avalanche') {
     connection = Avalanche.getInstance(req.network);
-  } else if (req.chain === 'polygon') {
-    connection = Polygon.getInstance(req.network);
   } else if (req.chain === 'harmony') {
     connection = Harmony.getInstance(req.network);
+  } else if (req.chain === 'polygon') {
+    connection = Polygon.getInstance(req.network);
   } else if (req.chain === 'cronos') {
     connection = Cronos.getInstance(req.network);
   } else if (req.chain === 'cosmos') {

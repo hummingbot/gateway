@@ -6,6 +6,7 @@
   "license": "Apache-2.0",
   "repository": "https://github.com/hummingbot/gateway",
   "scripts": {
+    "postinstall": "patch-package",
     "prebuild": "rimraf dist && mkdir dist",
     "build": "tsc --skipLibCheck --project ./ && yarn copy-files",
     "clean": "rm -rf ./node_modules && rm -rf ./coverage && rm -rf ./logs && yarn run clean:config",
@@ -73,8 +74,10 @@
     "mathjs": "^10.5.0",
     "minimist": "^1.2.6",
     "morgan": "^1.10.0",
-    "near-api-js": "1.0.0",
+    "patch-package": "^6.4.7",
+    "postinstall-postinstall": "^2.1.0",
     "quickswap-sdk": "^3.0.8",
+    "near-api-js": "1.0.0",
     "swagger-ui-express": "^4.1.6",
     "tslib": "^2.3.1",
     "uuid": "^8.3.2",
@@ -82,6 +85,7 @@
     "web3": "^1.7.3",
     "winston": "^3.3.3",
     "winston-daily-rotate-file": "^4.5.5",
+    "xdcswap-sdk": "^1.0.0",
     "yarn": "^1.22.17"
   },
   "devDependencies": {
