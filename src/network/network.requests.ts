@@ -4,7 +4,7 @@ import {
   NetworkSelectionRequest,
 } from '../services/common-interfaces';
 
-import { TokenInfo } from '../services/ethereum-base';
+import { TokenInfo } from '../chains/ethereum/ethereum-base';
 
 export interface BalanceRequest extends NetworkSelectionRequest {
   address: string; // the users public Ethereum key
