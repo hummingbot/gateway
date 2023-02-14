@@ -56,14 +56,14 @@ prompt_proceed () {
 
 copy_certs () {
   # Copy all files in the source folder to the destination folder
-  cp -r $CERTS_PATH/* $CERTS_FOLDER/
+  cp -r $CERTS_FROM_PATH/* $CERTS_TO_PATH/
 
   # Confirm that the files were copied
   echo
   if [ $? -eq 0 ]; then
-    echo "Files successfully copied from $CERTS_PATH to $CERTS_FOLDER"
+    echo "Files successfully copied from $CERTS_FROM_PATH to $CERTS_TO_PATH"
   else
-    echo "Error copying files from $CERTS_PATH to $CERTS_FOLDER"
+    echo "Error copying files from $CERTS_FROM_PATH to $CERTS_TO_PATH"
     copy_certs
   fi
 
