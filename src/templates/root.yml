@@ -87,3 +87,12 @@ configurations:
   $namespace pancakeswap:
     configurationPath: pancakeswap.yml
     schemaPath: pangolin-schema.json
+
+  $namespace xdc:
+    configurationPath: xdc.yml
+    schemaPath: ethereum-schema.json
+
+  $namespace xdcswap:
+    configurationPath: xdcswap.yml
+    schemaPath: xdcswap-schema.json
+    
