@@ -23,17 +23,6 @@ export interface Config {
   gasLimitTransaction: number;
 }
 
-export namespace EthereumConfig {
-  export const ethGasStationConfig: EthereumGasStationConfig = {
-    enabled: ConfigManagerV2.getInstance().get('ethereumGasStation.enabled'),
-    gasStationURL: ConfigManagerV2.getInstance().get(
-      'ethereumGasStation.gasStationURL'
-    ),
-    APIKey: ConfigManagerV2.getInstance().get('ethereumGasStation.APIKey'),
-    gasLevel: ConfigManagerV2.getInstance().get('ethereumGasStation.gasLevel'),
-  };
-}
-
 export function getEthereumConfig(
   chainName: string,
   networkName: string

@@ -2,12 +2,26 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "properties": {
+    "certificatePath": { "type": "string" },
+    "logPath": { "type": "string" },
     "port": { "type": "integer" },
     "ipWhitelist": { "type": "array" },
-    "unsafeDevModeWithHTTP": { "type": "boolean" },
     "GMTOffset": { "type": "number" },
-    "id": { "type": "string" }
+    "id": { "type": "string" },
+    "logToStdOut": { "type": "boolean" },
+    "unsafeDevModeWithHTTP": { "type": "boolean" },
+    "telemetry_enabled": { "type": "boolean" },
+    "nonceDbPath": { "type": "string" },
+    "transactionDbPath": { "type": "string" }
   },
   "additionalProperties": false,
-  "required": ["port", "unsafeDevModeWithHTTP"]
+  "required": [
+    "port",
+    "unsafeDevModeWithHTTP",
+    "certificatePath",
+    "telemetry_enabled",
+    "logPath",
+    "nonceDbPath",
+    "transactionDbPath"
+  ]
 }
