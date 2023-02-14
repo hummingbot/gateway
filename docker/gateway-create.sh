@@ -19,8 +19,8 @@ fi
 # Check if container with same version already exists
 if docker ps -a | grep -q "hummingbot/gateway:$GATEWAY_TAG"; then
   echo
-  echo "A Gateway container with version '$GATEWAY_TAG' already exists."
-  echo "Remove the existing container before creating a new one."
+  echo "A Gateway container with the same version '$GATEWAY_TAG' already exists on this machine."
+  echo "Remove the existing version by running 'docker rm <container-name>' before creating a new one."
   echo "Aborting..."
   exit
 fi
