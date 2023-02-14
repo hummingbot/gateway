@@ -1,4 +1,4 @@
-import { CronosBaseUniswapishConnectorConfig } from '../../chains/cronos/cronos-base/cronos-base-uniswapish-connector.config';
+import { CronosBaseUniswapishConnectorConfig } from '../cronos-base/cronos-base-uniswapish-connector.config';
 
 export namespace MadMeerkatConfig {
   const tradingTypes = ['EVM_AMM'];

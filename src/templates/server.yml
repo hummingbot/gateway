@@ -1,33 +1,10 @@
-# Path to folder where Hummingbot generates self-signed certificates
-certificatePath: /certs/
-
-# Path to folder where logs will be stored.
-logPath: './logs'
-
-# Port to expose the gateway server on
+# The port to expose the gateway server on.
 port: 15888
 
-# IPs allowed to access gateway. localhost is allowed by default.
+# The IPs allowed to access gateway. localhost is allowed by default.
 ipWhitelist: []
 
-# GMT Offset
-GMTOffset: +0800
-
-# If true, logs will be stored in logPath and printed to stdout. If false, they
-# will only be stored in logPath and not printed to stdout.
-logToStdOut: true
-
-# Runs Gateway in unsafe dev mode with HTTP if true
 unsafeDevModeWithHTTP: false
 
-# Collects data about API usage if true
-telemetry_enabled: false
 
-# Nonce database
-nonceDbPath: 'nonce.level'
-
-# Transaction database
-transactionDbPath: 'transaction.level'
-
-
-
+GMTOffset: +0800

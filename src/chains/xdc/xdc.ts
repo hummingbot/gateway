@@ -2,24 +2,26 @@ import abi from '../../services/ethereum.abi.json';
 import { logger } from '../../services/logger';
 import { Contract, Transaction, Wallet } from 'ethers';
 import { EthereumBase } from '../../services/ethereum-base';
-import { getEthereumConfig as getCronosConfig } from '../ethereum/ethereum.config';
+import { getEthereumConfig as getXdcConfig } from '../ethereum/ethereum.config';
 import { Provider } from '@ethersproject/abstract-provider';
+import { XdcswapConfig } from '../../connectors/xdcswap/xdcswap.config';
 import { Ethereumish } from '../../services/common-interfaces';
-import { MadMeerkatConfig } from '../../connectors/mad_meerkat/mad_meerkat.config';
-import { VVSConfig } from '../../connectors/vvs/vvs.config';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
+import { convertXdcPublicKey } from '../../helpers';
+import { walletPath } from '../../services/base';
+import fse from 'fs-extra';
+import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 
-export class Cronos extends EthereumBase implements Ethereumish {
-  private static _instances: { [name: string]: Cronos };
+export class Xdc extends EthereumBase implements Ethereumish {
+  private static _instances: { [name: string]: Xdc };
   private _gasPrice: number;
-  private _gasPriceRefreshInterval: number | null;
   private _nativeTokenSymbol: string;
   private _chain: string;
 
   private constructor(network: string) {
-    const config = getCronosConfig('cronos', network);
+    const config = getXdcConfig('xdc', network);
     super(
-      'cronos',
+      'xdc',
       config.network.chainID,
       config.network.nodeURL,
       config.network.tokenListSource,
@@ -32,49 +34,22 @@ export class Cronos extends EthereumBase implements Ethereumish {
     this._chain = config.network.name;
     this._nativeTokenSymbol = config.nativeCurrencySymbol;
     this._gasPrice = config.manualGasPrice;
-
-    this._gasPriceRefreshInterval =
-      config.network.gasPriceRefreshInterval !== undefined
-        ? config.network.gasPriceRefreshInterval
-        : null;
-
-    this.updateGasPrice();
   }
 
-  public static getInstance(network: string): Cronos {
-    if (Cronos._instances === undefined) {
-      Cronos._instances = {};
+  public static getInstance(network: string): Xdc {
+    if (Xdc._instances === undefined) {
+      Xdc._instances = {};
     }
-    if (!(network in Cronos._instances)) {
-      Cronos._instances[network] = new Cronos(network);
+    if (!(network in Xdc._instances)) {
+      Xdc._instances[network] = new Xdc(network);
     }
 
-    return Cronos._instances[network];
+    return Xdc._instances[network];
   }
 
-  public static getConnectedInstances(): { [name: string]: Cronos } {
-    return Cronos._instances;
+  public static getConnectedInstances(): { [name: string]: Xdc } {
+    return Xdc._instances;
   }
-
-  /**
-   * Automatically update the prevailing gas price on the network from the connected RPC node.
-   */
-  async updateGasPrice(): Promise<void> {
-    if (this._gasPriceRefreshInterval === null) {
-      return;
-    }
-
-    const gasPrice: number = (await this.provider.getGasPrice()).toNumber();
-
-    this._gasPrice = gasPrice * 1e-9;
-
-    setTimeout(
-      this.updateGasPrice.bind(this),
-      this._gasPriceRefreshInterval * 1000
-    );
-  }
-
-  // getters
 
   public get gasPrice(): number {
     return this._gasPrice;
@@ -94,12 +69,10 @@ export class Cronos extends EthereumBase implements Ethereumish {
 
   getSpender(reqSpender: string): string {
     let spender: string;
-    if (reqSpender === 'mad_meerkat') {
-      spender = MadMeerkatConfig.config.routerAddress(this._chain);
-    } else if (reqSpender == 'vvs') {
-      spender = VVSConfig.config.routerAddress(this._chain);
+    if (reqSpender === 'xdcswap') {
+      spender = XdcswapConfig.config.routerAddress(this._chain);
     } else {
-      spender = reqSpender;
+      spender = convertXdcPublicKey(reqSpender);
     }
     return spender;
   }
@@ -110,5 +83,28 @@ export class Cronos extends EthereumBase implements Ethereumish {
       'Canceling any existing transaction(s) with nonce number ' + nonce + '.'
     );
     return super.cancelTxWithGasPrice(wallet, nonce, this._gasPrice * 2);
+  }
+
+  // override
+  async getWallet(address: string): Promise<Wallet> {
+    const path = `${walletPath}/${this.chainName}`;
+
+    const encryptedPrivateKey: string = await fse.readFile(
+      `${path}/${convertXdcPublicKey(address)}.json`,
+      'utf8'
+    );
+
+    const passphrase = ConfigManagerCertPassphrase.readPassphrase();
+    if (!passphrase) {
+      throw new Error('missing passphrase');
+    }
+    return await this.decrypt(encryptedPrivateKey, passphrase);
+  }
+
+  async close() {
+    await super.close();
+    if (this._chain in Xdc._instances) {
+      delete Xdc._instances[this._chain];
+    }
   }
 }

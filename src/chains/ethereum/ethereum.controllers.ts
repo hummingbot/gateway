@@ -16,7 +16,7 @@ import {
   TOKEN_NOT_SUPPORTED_ERROR_MESSAGE,
 } from '../../services/error-handler';
 import { tokenValueToString } from '../../services/base';
-import { TokenInfo } from './ethereum-base';
+import { TokenInfo } from '../../services/ethereum-base';
 import { getConnector } from '../../services/connection-manager';
 
 import {

@@ -12,7 +12,7 @@ import axios from 'axios';
 import { promises as fs } from 'fs';
 import { TokenListType, TokenValue, walletPath } from '../../services/base';
 import NodeCache from 'node-cache';
-import { EvmTxStorage } from '../../evm/evm.tx-storage';
+import { EvmTxStorage } from '../../services/evm.tx-storage';
 import fse from 'fs-extra';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { logger } from '../../services/logger';

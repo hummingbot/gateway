@@ -23,7 +23,7 @@ export class Near extends NearBase {
       config.network.tokenListType,
       config.manualGasPrice,
       config.gasLimitTransaction,
-      ConfigManagerV2.getInstance().get('server.transactionDbPath')
+      ConfigManagerV2.getInstance().get('database.transactionDbPath')
     );
     this._chain = config.network.name;
     this._nativeTokenSymbol = config.nativeCurrencySymbol;

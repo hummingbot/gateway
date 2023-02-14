@@ -14,7 +14,7 @@ import {
   UNKNOWN_ERROR_ERROR_CODE,
   UNKNOWN_ERROR_MESSAGE,
 } from '../../services/error-handler';
-import { TokenInfo } from '../../chains/ethereum/ethereum-base';
+import { TokenInfo } from '../../services/ethereum-base';
 import { latency } from '../../services/base';
 import { Nearish, RefAMMish } from '../../services/common-interfaces';
 import { logger } from '../../services/logger';

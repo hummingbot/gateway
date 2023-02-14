@@ -435,9 +435,7 @@ export class UniswapLPHelper {
     const token1 = this.getTokenByAddress(positionData.token1);
     const fee = positionData.fee;
     if (!token0 || !token1) {
-      throw new Error(
-        `One of the tokens in this position isn't recognized. $token0: ${token0}, $token1: ${token1}`
-      );
+      throw new Error(`One of the tokens in this position isn't recognized.`);
     }
     const poolAddress = uniV3.Pool.getAddress(token0, token1, fee);
     const poolData = await this.getPoolState(poolAddress, fee);
