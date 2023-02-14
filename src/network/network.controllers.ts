@@ -9,13 +9,14 @@ import { BinanceSmartChain } from '../chains/binance-smart-chain/binance-smart-c
 import { Ethereum } from '../chains/ethereum/ethereum';
 import { Harmony } from '../chains/harmony/harmony';
 import { Polygon } from '../chains/polygon/polygon';
-import { TokenInfo } from '../chains/ethereum/ethereum-base';
+import { Xdc } from '../chains/xdc/xdc';
+import { TokenInfo } from '../services/ethereum-base';
 import {
   HttpException,
   UNKNOWN_CHAIN_ERROR_CODE,
   UNKNOWN_KNOWN_CHAIN_ERROR_MESSAGE,
 } from '../services/error-handler';
-import { EthereumBase } from '../chains/ethereum/ethereum-base';
+import { EthereumBase } from '../services/ethereum-base';
 import { Cronos } from '../chains/cronos/cronos';
 import { Near } from '../chains/near/near';
 import { Nearish } from '../services/common-interfaces';
@@ -42,6 +43,8 @@ export async function getStatus(
       connections.push(Ethereum.getInstance(req.network as string));
     } else if (req.chain === 'polygon') {
       connections.push(Polygon.getInstance(req.network as string));
+    } else if (req.chain === 'xdc') {
+      connections.push(Xdc.getInstance(req.network as string));
     } else if (req.chain === 'near') {
       connections.push(Near.getInstance(req.network as string));
     } else if (req.chain === 'cronos') {
@@ -73,7 +76,10 @@ export async function getStatus(
     connections = connections.concat(
       polygonConnections ? Object.values(polygonConnections) : []
     );
-
+    const xdcConnections = Xdc.getConnectedInstances();
+    connections = connections.concat(
+      xdcConnections ? Object.values(xdcConnections) : []
+    );
     const cronosConnections = Cronos.getConnectedInstances();
     connections = connections.concat(
       cronosConnections ? Object.values(cronosConnections) : []
@@ -131,6 +137,8 @@ export async function getTokens(req: TokensRequest): Promise<TokensResponse> {
       connection = Ethereum.getInstance(req.network);
     } else if (req.chain === 'polygon') {
       connection = Polygon.getInstance(req.network);
+    } else if (req.chain === 'xdc') {
+      connection = Xdc.getInstance(req.network);
     } else if (req.chain === 'near') {
       connection = Near.getInstance(req.network);
     } else if (req.chain === 'cronos') {

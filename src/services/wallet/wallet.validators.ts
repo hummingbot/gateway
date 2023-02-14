@@ -18,7 +18,7 @@ export const invalidCosmosPrivateKeyError: string =
 
 // test if a string matches the shape of an Ethereum private key
 export const isEthPrivateKey = (str: string): boolean => {
-  return /^(0x)?[a-fA-F0-9]{64}$/.test(str);
+  return /^(0x|xdc)?[a-fA-F0-9]{64}$/.test(str);
 };
 
 // test if a string matches the Near private key encoding format (i.e. <curve>:<encoded key>')
@@ -82,6 +82,11 @@ export const validatePrivateKey: Validator = mkSelectingValidator(
       invalidEthPrivateKeyError,
       (val) => typeof val === 'string' && isEthPrivateKey(val)
     ),
+    xdc: mkValidator(
+      'privateKey',
+      invalidEthPrivateKeyError,
+      (val) => typeof val === 'string' && isEthPrivateKey(val)
+    ),
   }
 );
 
@@ -101,7 +106,8 @@ export const validateChain: Validator = mkValidator(
     (val === 'ethereum' ||
       val === 'avalanche' ||
       val === 'polygon' ||
-      val == 'near' ||
+      val === 'xdc' ||
+      val === 'near' ||
       val === 'harmony' ||
       val === 'cronos' ||
       val === 'cosmos' ||

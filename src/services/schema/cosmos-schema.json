@@ -12,11 +12,7 @@
             "tokenListType": { "type": "string" },
             "tokenListSource": { "type": "string" }
           },
-          "required": [
-            "rpcURL",
-            "tokenListType",
-            "tokenListSource"
-          ],
+          "required": ["rpcURL", "tokenListType", "tokenListSource"],
           "additionalProperties": false
         }
       },

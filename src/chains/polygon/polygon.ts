@@ -1,7 +1,7 @@
-import abi from '../ethereum/ethereum.abi.json';
+import abi from '../../services/ethereum.abi.json';
 import { logger } from '../../services/logger';
 import { Contract, Transaction, Wallet } from 'ethers';
-import { EthereumBase } from '../ethereum/ethereum-base';
+import { EthereumBase } from '../../services/ethereum-base';
 import { getEthereumConfig as getPolygonConfig } from '../ethereum/ethereum.config';
 import { Provider } from '@ethersproject/abstract-provider';
 import { QuickswapConfig } from '../../connectors/quickswap/quickswap.config';
@@ -27,8 +27,8 @@ export class Polygon extends EthereumBase implements Ethereumish {
       config.network.tokenListType,
       config.manualGasPrice,
       config.gasLimitTransaction,
-      ConfigManagerV2.getInstance().get('server.nonceDbPath'),
-      ConfigManagerV2.getInstance().get('server.transactionDbPath')
+      ConfigManagerV2.getInstance().get('database.nonceDbPath'),
+      ConfigManagerV2.getInstance().get('database.transactionDbPath')
     );
     this._chain = config.network.name;
     this._nativeTokenSymbol = config.nativeCurrencySymbol;
