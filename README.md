@@ -78,10 +78,10 @@ Run all unit tests.
 yarn test:unit
 ```
 
-Run an individual test file.
+Run an individual test folder or file
 
 ```bash
-yarn jest test/app.test.ts
+yarn jest test/<folder>/<file>
 ```
 
 #### Manual tests
