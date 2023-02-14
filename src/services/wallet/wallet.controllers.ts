@@ -28,7 +28,18 @@ import {
 } from '../error-handler';
 import { EthereumBase } from '../../chains/ethereum/ethereum-base';
 import { Near } from '../../chains/near/near';
-import { convertXdcPrivateKey } from '../../helpers';
+
+export function convertXdcPublicKey(publicKey: string): string {
+  return publicKey.length === 43 && publicKey.slice(0, 3) === 'xdc'
+    ? '0x' + publicKey.slice(3)
+    : publicKey;
+}
+
+export function convertXdcPrivateKey(privateKey: string): string {
+  return privateKey.length === 67 && privateKey.slice(0, 3) === 'xdc'
+    ? '0x' + privateKey.slice(3)
+    : privateKey;
+}
 
 const walletPath = './conf/wallets';
 export async function mkdirIfDoesNotExist(path: string): Promise<void> {
