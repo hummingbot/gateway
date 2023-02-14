@@ -1,9 +1,8 @@
-import abi from '../../services/ethereum.abi.json';
-import axios from 'axios';
+import abi from '../ethereum/ethereum.abi.json';
 import { logger } from '../../services/logger';
 import { BigNumber, Contract, Transaction, Wallet } from 'ethers';
-import { EthereumBase } from '../../services/ethereum-base';
-import { EthereumConfig, getEthereumConfig } from './ethereum.config';
+import { EthereumBase } from './ethereum-base';
+import { getEthereumConfig } from './ethereum.config';
 import { Provider } from '@ethersproject/abstract-provider';
 import { UniswapConfig } from '../../connectors/uniswap/uniswap.config';
 import { Perp } from '../../connectors/perp/perp';
@@ -17,7 +16,6 @@ const MKR_ADDRESS = '0x9f8f72aa9304c8b593d555f12ef6589cc3a579a2';
 
 export class Ethereum extends EthereumBase implements Ethereumish {
   private static _instances: { [name: string]: Ethereum };
-  private _ethGasStationUrl: string;
   private _gasPrice: number;
   private _gasPriceRefreshInterval: number | null;
   private _nativeTokenSymbol: string;
@@ -35,15 +33,11 @@ export class Ethereum extends EthereumBase implements Ethereumish {
       config.network.tokenListType,
       config.manualGasPrice,
       config.gasLimitTransaction,
-      ConfigManagerV2.getInstance().get('database.nonceDbPath'),
-      ConfigManagerV2.getInstance().get('database.transactionDbPath')
+      ConfigManagerV2.getInstance().get('server.nonceDbPath'),
+      ConfigManagerV2.getInstance().get('server.transactionDbPath')
     );
     this._chain = network;
     this._nativeTokenSymbol = config.nativeCurrencySymbol;
-    this._ethGasStationUrl =
-      EthereumConfig.ethGasStationConfig.gasStationURL +
-      EthereumConfig.ethGasStationConfig.APIKey;
-
     this._gasPrice = config.manualGasPrice;
     this._gasPriceRefreshInterval =
       config.network.gasPriceRefreshInterval !== undefined
@@ -112,9 +106,6 @@ export class Ethereum extends EthereumBase implements Ethereumish {
   /**
    * Automatically update the prevailing gas price on the network.
    *
-   * If ethGasStationConfig.enable is true, and the network is mainnet, then
-   * the gas price will be updated from ETH gas station.
-   *
    * Otherwise, it'll obtain the prevailing gas price from the connected
    * ETH node.
    */
@@ -123,21 +114,11 @@ export class Ethereum extends EthereumBase implements Ethereumish {
       return;
     }
 
-    if (
-      EthereumConfig.ethGasStationConfig.enabled &&
-      this._chain === 'mainnet'
-    ) {
-      const { data } = await axios.get(this._ethGasStationUrl);
-
-      // divide by 10 to convert it to Gwei
-      this._gasPrice = data[EthereumConfig.ethGasStationConfig.gasLevel] / 10;
+    const gasPrice = await this.getGasPriceFromEthereumNode();
+    if (gasPrice !== null) {
+      this._gasPrice = gasPrice;
     } else {
-      const gasPrice = await this.getGasPriceFromEthereumNode();
-      if (gasPrice !== null) {
-        this._gasPrice = gasPrice;
-      } else {
-        logger.info('gasPrice is unexpectedly null.');
-      }
+      logger.info('gasPrice is unexpectedly null.');
     }
 
     setTimeout(

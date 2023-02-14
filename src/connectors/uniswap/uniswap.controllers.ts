@@ -19,7 +19,7 @@ import {
   UNKNOWN_ERROR_ERROR_CODE,
   UNKNOWN_ERROR_MESSAGE,
 } from '../../services/error-handler';
-import { TokenInfo } from '../../services/ethereum-base';
+import { TokenInfo } from '../../chains/ethereum/ethereum-base';
 import { latency, gasCostInEthString } from '../../services/base';
 import {
   Ethereumish,
