@@ -6,7 +6,19 @@ Hummingbot Gateway is a REST API that exposes connections to various blockchains
 
 Gateway may be used alongside the main [Hummingbot client](https://github.com/hummingbot/hummingbot) to enable trading on DEXs, or as a standalone module by external developers.
 
-## Install and run locally
+## Installation
+
+### Generate certificates
+
+To run Gateway in `https` (default):
+* **certs_path**: path to folder where Hummingbot generated and saved self-signed SSL certificates
+* **passphrase**: passphrase used to generate the certificates above
+
+### Install Gateway from source
+
+Dependencies:
+* NodeJS (16.0.0 or higher)
+* Yarn: run `npm install -g yarn` after installing NodeJS
 
 ```bash
 # Install dependencies
@@ -18,9 +30,19 @@ $ yarn build
 # Generate the config files and edit as needed, especially server.yml
 $ setup/generate_conf.sh
 
+# Replace certificatePath with certs_path from step 1
+(base) ➜ vi conf/server.yml 
+
 # Start the server using the passphrase you used to generate the certs in Hummingbot
 $ yarn start --passphrase=<passphrase>
 ```
+
+### Install Gateway using Docker
+
+Dependencies:
+* [Docker](https://docker.com)
+
+See the [`/docker`](./docker) folder for Docker installation scripts and instructions on how to use them.
 
 ## Documentation
 
