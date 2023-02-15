@@ -377,6 +377,28 @@ describe('POST /evm/approve', () => {
       .expect(200);
   });
 
+  it('should return 404 when spender is an xdc address', async () => {
+    patchGetWallet();
+    eth.getContract = jest.fn().mockReturnValue({
+      address: '0xFaA12FD102FE8623C9299c72B03E45107F2772B5',
+    });
+    patch(eth.nonceManager, 'getNonce', () => 115);
+    patchGetTokenBySymbol();
+    patchApproveERC20();
+
+    await request(gatewayApp)
+      .post(`/evm/approve`)
+      .send({
+        chain: 'ethereum',
+        network: 'goerli',
+        address: '0xFaA12FD102FE8623C9299c72B03E45107F2772B5',
+        spender: 'xdc010216bB52E46807a07d0101Bb828bA547534F37',
+        token: 'WETH',
+      })
+      .set('Accept', 'application/json')
+      .expect(404);
+  });
+
   it('should return 404 when parameters are invalid', async () => {
     await request(gatewayApp)
       .post(`/evm/approve`)

@@ -120,7 +120,7 @@ describe('POST /evm/nonce', () => {
 });
 
 describe('POST /evm/approve', () => {
-  it('should return 200', async () => {
+  it('should return 200 for spender as xdc', async () => {
     patchGetWallet();
     xdc.getContract = jest.fn().mockReturnValue({
       address,
@@ -136,6 +136,58 @@ describe('POST /evm/approve', () => {
         network: 'apothem',
         address,
         spender: 'xdcswap',
+        token: 'PNG',
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .then((res: any) => {
+        expect(res.body.nonce).toEqual(115);
+      });
+  });
+
+  it('should return 200 for a spender addressed prefixed with xdc', async () => {
+    patchGetWallet();
+    xdc.getContract = jest.fn().mockReturnValue({
+      address,
+    });
+    patch(xdc.nonceManager, 'getNonce', () => 115);
+    patchGetTokenBySymbol();
+    patchApproveERC20();
+
+    await request(gatewayApp)
+      .post(`/evm/approve`)
+      .send({
+        chain: 'xdc',
+        network: 'apothem',
+        address,
+        spender: 'xdc010216bB52E46807a07d0101Bb828bA547534F37',
+        token: 'PNG',
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .then((res: any) => {
+        expect(res.body.nonce).toEqual(115);
+      });
+  });
+
+  it('should return 200 for a spender addressed prefixed with 0x', async () => {
+    patchGetWallet();
+    xdc.getContract = jest.fn().mockReturnValue({
+      address,
+    });
+    patch(xdc.nonceManager, 'getNonce', () => 115);
+    patchGetTokenBySymbol();
+    patchApproveERC20();
+
+    await request(gatewayApp)
+      .post(`/evm/approve`)
+      .send({
+        chain: 'xdc',
+        network: 'apothem',
+        address,
+        spender: '0x010216bB52E46807a07d0101Bb828bA547534F37',
         token: 'PNG',
       })
       .set('Accept', 'application/json')
