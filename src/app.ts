@@ -74,14 +74,6 @@ gatewayApp.get('/', (_req: Request, res: Response) => {
 });
 
 interface ConnectorsResponse {
-  // uniswap: Array<AvailableNetworks>;
-  // pangolin: Array<AvailableNetworks>;
-  // quickswap: Array<AvailableNetworks>;
-  // xdcswap: Array<AvailableNetworks>;
-  // sushiswap: Array<AvailableNetworks>;
-  // openocean: Array<AvailableNetworks>;
-  // traderjoe: Array<AvailableNetworks>;
-  // defikingdoms: Array<AvailableNetworks>;
   [key: string]: Array<AvailableNetworks>;
 }
 
