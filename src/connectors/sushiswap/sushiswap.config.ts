@@ -34,6 +34,7 @@ export namespace SushiswapConfig {
         networks: ['mainnet', 'goerli'],
       },
       { chain: 'binance-smart-chain', networks: ['mainnet', 'testnet'] },
+      { chain: 'polygon', networks: ['mainnet', 'mumbai'] },
     ],
   };
 }
