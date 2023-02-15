@@ -7,6 +7,7 @@
 # export BSC_ADDRESS='put-your-binance-smart-chain-key-here'
 # export INJECTIVE_SUBACCOUNTID='put-your-injective-subaccount-id-here'
 # export POLYGON_ADDRESS='<put-your-public-key-here>'
+# export INJECTIVE_SUBACCOUNTID='put-your-injective-subaccount-id-here'
 
 # -k is --insecure, this disables certificate verification and should only be
 # used for local development and testing
@@ -65,6 +66,8 @@ curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: app
 curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/add_injective_key.json)" https://localhost:15888/wallet/add | jq
 
 curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/add_polygon_key.json)" https://localhost:15888/wallet/add | jq
+
+curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/add_injective_key.json)" https://localhost:15888/wallet/add | jq
 
 ## read public keys
 curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT https://localhost:15888/wallet | jq
