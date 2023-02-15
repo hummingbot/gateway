@@ -31,6 +31,7 @@ import morgan from 'morgan';
 import { SushiswapConfig } from './connectors/sushiswap/sushiswap.config';
 import { DefikingdomsConfig } from './connectors/defikingdoms/defikingdoms.config';
 import { PancakeSwapConfig } from './connectors/pancakeswap/pancakeswap.config';
+import { XsswapConfig } from './connectors/xsswap/xsswap.config';
 
 import swaggerUi from 'swagger-ui-express';
 import { NearRoutes } from './chains/near/near.routes';
@@ -92,6 +93,7 @@ gatewayApp.get(
       mad_meerkat: MadMeerkatConfig.config.availableNetworks,
       vvs: VVSConfig.config.availableNetworks,
       pancakeswap: PancakeSwapConfig.config.availableNetworks,
+      xsswap: XsswapConfig.config.availableNetworks,
     });
   })
 );
