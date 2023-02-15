@@ -96,6 +96,6 @@ configurations:
     configurationPath: xdcswap.yml
     schemaPath: xdcswap-schema.json
 
-    $namespace xsswap:
+  $namespace xsswap:
     configurationPath: xsswap.yml
     schemaPath: xsswap-schema.json

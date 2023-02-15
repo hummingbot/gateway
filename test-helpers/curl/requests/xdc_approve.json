@@ -1,0 +1,7 @@
+{
+  "chain": "xdc",
+  "network": "xinfin",
+  "address": "$XDC_ADDRESS",
+  "spender": "xsswap",
+  "token": "WXDC"
+}
