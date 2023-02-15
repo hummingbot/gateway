@@ -5,6 +5,7 @@
 # export AVALANCHE_ADDRESS='<put-your-public-key-here>'
 # export NEAR_ADDRESS='<put-your-public-key-here'
 # export BSC_ADDRESS='put-your-binance-smart-chain-key-here'
+# export INJECTIVE_SUBACCOUNTID='put-your-injective-subaccount-id-here'
 
 # -k is --insecure, this disables certificate verification and should only be
 # used for local development and testing
@@ -57,6 +58,8 @@ curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: app
 curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/add_near_key.json)" https://localhost:15888/wallet/add | jq
 
 curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/add_bsc_key.json)" https://localhost:15888/wallet/add | jq
+
+curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/add_injective_key.json)" https://localhost:15888/wallet/add | jq
 
 ## read public keys
 curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT https://localhost:15888/wallet | jq
@@ -203,3 +206,37 @@ curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT "https://localhost:158
 
 ## post poll
 curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/near_post_poll.json)" https://localhost:15888/near/poll | jq
+
+
+# CLOB
+
+## get markets
+curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT "https://localhost:15888/clob/markets?chain=injective&network=mainnet&connector=injective" | jq
+
+## get order books
+curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT "https://localhost:15888/clob/orderBook?chain=injective&network=mainnet&connector=injective&market=WETH-USDC" | jq
+
+## get tickers
+curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT "https://localhost:15888/clob/ticker?chain=injective&network=mainnet&connector=injective" | jq
+
+## get orders
+curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT "https://localhost:15888/clob/orders?chain=injective&network=mainnet&connector=injective&market=INJ-USDT&orderId=XXXX&address=XXXX" | jq
+
+## post orders
+curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/injective_post_order.json)" https://localhost:15888/clob/orders | jq
+
+## delete orders
+curl -s -X DELETE -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/injective_delete_order.json)" https://localhost:15888/clob/orders | jq
+
+
+# injective
+
+curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/injective_balances.json)" https://localhost:15888/injective/balances | jq
+
+curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT 'https://localhost:15888/injective/block/current?chain=injective&network=mainnet' | jq
+
+curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/injective_poll.json)" https://localhost:15888/injective/poll | jq
+
+curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/injective_transfer_to_bank.json)" https://localhost:15888/injective/transfer/to/bank | jq
+
+curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/injective_transfer_to_sub.json)" https://localhost:15888/injective/transfer/to/sub | jq

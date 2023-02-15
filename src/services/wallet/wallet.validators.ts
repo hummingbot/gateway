@@ -82,16 +82,23 @@ export const validatePrivateKey: Validator = mkSelectingValidator(
       invalidEthPrivateKeyError,
       (val) => typeof val === 'string' && isEthPrivateKey(val)
     ),
+    injective: mkValidator(
+      'privateKey',
+      invalidEthPrivateKeyError,
+      (val) => typeof val === 'string' && isEthPrivateKey(val)
+    ),
   }
 );
 
 export const invalidChainError: string =
-  'chain must be "ethereum", "avalanche", "near", "harmony", "cosmos" or "binance-smart-chain"';
+  'chain must be "ethereum", "avalanche", "near", "harmony", "cosmos", "binance-smart-chain" or "injective"';
 
 export const invalidNetworkError: string =
   'expected a string for the network key';
 
 export const invalidAddressError: string = 'address must be a string';
+
+export const invalidAccountIDError: string = 'account ID must be a string';
 
 export const validateChain: Validator = mkValidator(
   'chain',
@@ -105,7 +112,8 @@ export const validateChain: Validator = mkValidator(
       val === 'harmony' ||
       val === 'cronos' ||
       val === 'cosmos' ||
-      val === 'binance-smart-chain')
+      val === 'binance-smart-chain' ||
+      val === 'injective')
 );
 
 export const validateNetwork: Validator = mkValidator(
@@ -120,10 +128,18 @@ export const validateAddress: Validator = mkValidator(
   (val) => typeof val === 'string'
 );
 
+export const validateAccountID: Validator = mkValidator(
+  'accountId',
+  invalidAccountIDError,
+  (val) => typeof val === 'string',
+  true
+);
+
 export const validateAddWalletRequest: RequestValidator = mkRequestValidator([
   validatePrivateKey,
   validateChain,
   validateNetwork,
+  validateAccountID,
 ]);
 
 export const validateRemoveWalletRequest: RequestValidator = mkRequestValidator(
