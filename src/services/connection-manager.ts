@@ -29,6 +29,7 @@ import { Defikingdoms } from '../connectors/defikingdoms/defikingdoms';
 import { Defira } from '../connectors/defira/defira';
 import { Near } from '../chains/near/near';
 import { Ref } from '../connectors/ref/ref';
+import { Xsswap } from '../connectors/xsswap/xsswap';
 
 export type ChainUnion = Ethereumish | Nearish;
 
@@ -119,6 +120,8 @@ export async function getConnector<T>(
     connectorInstance = PancakeSwap.getInstance(chain, network);
   } else if (connector === 'sushiswap') {
     connectorInstance = Sushiswap.getInstance(chain, network);
+  } else if (chain === 'xdc' && connector === 'xsswap') {
+    connectorInstance = Xsswap.getInstance(chain, network);
   } else {
     throw new Error('unsupported chain or connector');
   }

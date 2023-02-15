@@ -92,6 +92,12 @@ import {
   Trade as PancakeSwapTrade,
   Fraction as PancakeSwapFraction,
 } from '@pancakeswap/sdk';
+import {
+  Token as TokenXsswap,
+  CurrencyAmount as CurrencyAmountXsswap,
+  Trade as TradeXsswap,
+  Fraction as XsswapFraction,
+} from 'xsswap-sdk';
 import { PerpPosition } from '../connectors/perp/perp';
 import { NearBase } from '../chains/near/near.base';
 import { Account, Contract as NearContract } from 'near-api-js';
@@ -112,7 +118,8 @@ export type Tokenish =
   | TokenDefikingdoms
   | PancakeSwapToken
   | MMFToken
-  | VVSToken;
+  | VVSToken
+  | TokenXsswap;
 
 export type TokenAmountish = MMFTokenAmount | VVSTokenAmount;
 
@@ -136,7 +143,8 @@ export type UniswapishTrade =
   | DefiraTrade<UniswapCoreToken, UniswapCoreToken, TradeType>
   | PancakeSwapTrade
   | MMFTrade
-  | VVSTrade;
+  | VVSTrade
+  | TradeXsswap;
 
 export type UniswapishTradeOptions =
   | MMFTradeOptions
@@ -157,7 +165,8 @@ export type UniswapishAmount =
   | CurrencyAmountDefikingdoms
   | PancakeSwapCurrencyAmount
   | CurrencyAmountMMF
-  | CurrencyAmountVVS;
+  | CurrencyAmountVVS
+  | CurrencyAmountXsswap;
 
 export type Fractionish =
   | UniswapFraction
@@ -169,7 +178,8 @@ export type Fractionish =
   | DefikingdomsFraction
   | PancakeSwapFraction
   | FractionMMF
-  | FractionVVS;
+  | FractionVVS
+  | XsswapFraction;
 
 export interface ExpectedTrade {
   trade: UniswapishTrade;

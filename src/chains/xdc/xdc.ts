@@ -11,6 +11,7 @@ import { walletPath } from '../../services/base';
 import { convertXdcPublicKey } from '../../services/wallet/wallet.controllers';
 import fse from 'fs-extra';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
+import { XsswapConfig } from '../../connectors/xsswap/xsswap.config';
 
 export class Xdc extends EthereumBase implements Ethereumish {
   private static _instances: { [name: string]: Xdc };
@@ -71,6 +72,8 @@ export class Xdc extends EthereumBase implements Ethereumish {
     let spender: string;
     if (reqSpender === 'xdcswap') {
       spender = XdcswapConfig.config.routerAddress(this._chain);
+    } else if (reqSpender === 'xsswap') {
+      spender = XsswapConfig.config.routerAddress(this._chain);
     } else {
       spender = convertXdcPublicKey(reqSpender);
     }
