@@ -214,10 +214,37 @@ describe('POST /evm/approve', () => {
 });
 
 describe('POST /evm/allowances', () => {
-  it('should return 200 asking for allowances', async () => {
+  it('should return 200 asking for allowances when spender is an 0x address', async () => {
     patchGetWallet();
     patchGetTokenBySymbol();
     const spender = '0xFaA12FD102FE8623C9299c72B03E45107F2772B5';
+    xdc.getSpender = jest.fn().mockReturnValue(spender);
+    xdc.getContract = jest.fn().mockReturnValue({
+      address: '0xFaA12FD102FE8623C9299c72B03E45107F2772B5',
+    });
+    patchGetERC20Allowance();
+
+    await request(gatewayApp)
+      .post(`/evm/allowances`)
+      .send({
+        chain: 'xdc',
+        network: 'apothem',
+        address: '0xFaA12FD102FE8623C9299c72B03E45107F2772B5',
+        spender: spender,
+        tokenSymbols: ['WETH', 'DAI'],
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .expect((res) => expect(res.body.spender).toEqual(spender))
+      .expect((res) => expect(res.body.approvals.WETH).toEqual('0.001'))
+      .expect((res) => expect(res.body.approvals.DAI).toEqual('0.001'));
+  });
+
+  it('should return 200 asking for allowances for an xdc address', async () => {
+    patchGetWallet();
+    patchGetTokenBySymbol();
+    const spender = 'xdcFaA12FD102FE8623C9299c72B03E45107F2772B5';
     xdc.getSpender = jest.fn().mockReturnValue(spender);
     xdc.getContract = jest.fn().mockReturnValue({
       address: '0xFaA12FD102FE8623C9299c72B03E45107F2772B5',
