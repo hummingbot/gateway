@@ -339,12 +339,9 @@ export async function poll(
   ethereumish: Ethereumish,
   req: PollRequest
 ): Promise<PollResponse> {
-  console.log('poll');
-  console.log(req);
   const initTime = Date.now();
   const currentBlock = await ethereumish.getCurrentBlockNumber();
   const txData = await ethereumish.getTransaction(req.txHash);
-  console.log(txData);
   let txBlock, txReceipt, txStatus;
   if (!txData) {
     // tx not found, didn't reach the mempool or it never existed
