@@ -8,7 +8,7 @@ import { XdcswapConfig } from '../../connectors/xdcswap/xdcswap.config';
 import { Ethereumish } from '../../services/common-interfaces';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { walletPath } from '../../services/base';
-import { convertEthAddressToXdcAddress } from '../../services/wallet/wallet.controllers';
+import { convertEthAddressToXdcAddress, convertXdxAddressToEthAddress } from '../../services/wallet/wallet.controllers';
 import fse from 'fs-extra';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 
@@ -72,7 +72,7 @@ export class Xdc extends EthereumBase implements Ethereumish {
     if (reqSpender === 'xdcswap') {
       spender = XdcswapConfig.config.routerAddress(this._chain);
     } else {
-      spender = convertEthAddressToXdcAddress(reqSpender);
+      spender = convertXdxAddressToEthAddress(reqSpender);
     }
     return spender;
   }

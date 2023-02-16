@@ -1,0 +1,9 @@
+{
+  "connector": "xdcswap",
+  "chain": "xdc",
+  "network": "apothem",
+  "base": "WBTC2",
+  "quote": "USDC2",
+  "amount": "1",
+  "side": "BUY"
+}
