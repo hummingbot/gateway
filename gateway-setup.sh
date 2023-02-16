@@ -1,28 +1,18 @@
 #!/bin/bash
 # init
-# =============================================
 
 echo
 echo
-echo "===============  COPY CERTS TO GATEWAY FOLDER ==============="
+echo "===============  SETUP GATEWAY ==============="
 echo
-echo "ℹ️  Press [ENTER] for default values:"
 echo
 
-# Ask for Gateway instance name
-echo "List of all Gateway containers:"
-docker ps -a --filter ancestor=hummingbot/gateway
-echo
-read -p "Enter Gateway container name (default = \"gateway\") >>> " INSTANCE_NAME
-echo
-if [ "$INSTANCE_NAME" == "" ]
-then
-  INSTANCE_NAME="gateway"
-fi
-DEFAULT_FOLDER="${INSTANCE_NAME}_files/certs"
-echo
-echo "Stopping container: $INSTANCE_NAME"
-docker stop $INSTANCE_NAME
+
+HOST_CONF_PATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )/conf"
+
+TEMPLATE_DIR="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )/src/templates"
+
+CERTS_TO_PATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )/certs"
 
 # Ask for path to Hummingbot certs folder
 read -p "Enter path to the Hummingbot certs folder >>> " CERTS_FROM_PATH
@@ -30,16 +20,6 @@ if [ ! -d "$CERTS_FROM_PATH" ]; then
   echo "Error: $CERTS_FROM_PATH does not exist or is not a directory"
   exit
 fi
-
-# Ask for path to Gateway files folder
-read -p "Enter path to the Gateway certs folder (default = \"./gateway-files/certs/\") >>> " FOLDER
-if [ "$FOLDER" == "" ]
-then
-  FOLDER=$PWD/$DEFAULT_FOLDER
-elif [[ ${FOLDER::1} != "/" ]]; then
-  FOLDER=$PWD/$FOLDER
-fi
-CERTS_TO_PATH="$FOLDER"
 
 prompt_proceed () {
  read -p "Do you want to proceed? [Y/N] >>> " PROCEED
@@ -54,27 +34,42 @@ prompt_proceed () {
  fi
 }
 
+copy_configs () {
+  echo
+  # Make destination folder if needed
+  mkdir $HOST_CONF_PATH
+  # Copy all files in the source folder to the destination folder
+  cp $TEMPLATE_DIR/**.yml $HOST_CONF_PATH
+  # Confirm that the files were copied
+  if [ $? -eq 0 ]; then
+    echo "Files successfully copied from $TEMPLATE_DIR to $HOST_CONF_PATH"
+  else
+    echo "Error copying files from $TEMPLATE_DIR to $HOST_CONF_PATH"
+    exit
+  fi
+}
+
 copy_certs () {
+  echo
+  # Make destination folder if needed
+  mkdir $CERTS_TO_PATH
   # Copy all files in the source folder to the destination folder
   cp -r $CERTS_FROM_PATH/* $CERTS_TO_PATH/
-
   # Confirm that the files were copied
-  echo
   if [ $? -eq 0 ]; then
     echo "Files successfully copied from $CERTS_FROM_PATH to $CERTS_TO_PATH"
   else
     echo "Error copying files from $CERTS_FROM_PATH to $CERTS_TO_PATH"
     exit
   fi
-
-  echo "Starting container: $INSTANCE_NAME"
-  docker start $INSTANCE_NAME && docker attach $INSTANCE_NAME
-  echo
 }
 
 # Ask user to confirm and proceed
 echo
 echo "ℹ️ Confirm if this is correct:"
+echo
+printf "%30s %5s\n" "Copy configs FROM:" "$TEMPLATE_DIR"
+printf "%30s %5s\n" "Copy configs TO:" "$HOST_CONF_PATH"
 echo
 printf "%30s %5s\n" "Copy certs FROM:" "$CERTS_FROM_PATH"
 printf "%30s %5s\n" "Copy certs TO:" "$CERTS_TO_PATH"
@@ -82,8 +77,9 @@ echo
 prompt_proceed
 if [[ "$PROCEED" == "Y" || "$PROCEED" == "y" ]]
 then
- copy_certs
+  copy_configs
+  copy_certs
 else
- echo "Exiting..."
- exit
+  echo "Exiting..."
+  exit
 fi

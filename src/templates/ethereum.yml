@@ -33,5 +33,6 @@ networks:
     tokenListSource: src/chains/ethereum/erc20_tokens_goerli.json
     nativeCurrencySymbol: ETH
 
+# if you use the gas assumptions below, your wallet needs >0.1 ETH balance for gas
 gasLimitTransaction: 3000000
-manualGasPrice: 30
+manualGasPrice: 33
