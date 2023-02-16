@@ -29,10 +29,10 @@ import {
 import { EthereumBase } from '../../chains/ethereum/ethereum-base';
 import { Near } from '../../chains/near/near';
 
-export function convertXdcPublicKey(publicKey: string): string {
-  return publicKey.length === 43 && publicKey.slice(0, 3) === 'xdc'
-    ? '0x' + publicKey.slice(3)
-    : publicKey;
+export function convertEthAddressToXdcAddress(address: string): string {
+  return address.length === 42 && address.slice(0, 2) === '0x'
+    ? 'xdc' + address.slice(2)
+    : address;
 }
 
 export function convertXdcPrivateKey(privateKey: string): string {
@@ -100,7 +100,9 @@ export async function addWallet(
     if (connection instanceof EthereumBase) {
       if (connection.chainName === 'xdc') {
         const privateKey = convertXdcPrivateKey(req.privateKey);
-        address = connection.getWalletFromPrivateKey(privateKey).address;
+        address = convertEthAddressToXdcAddress(
+          connection.getWalletFromPrivateKey(privateKey).address
+        );
         encryptedPrivateKey = await connection.encrypt(privateKey, passphrase);
       } else {
         address = connection.getWalletFromPrivateKey(req.privateKey).address;

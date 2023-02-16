@@ -8,7 +8,7 @@ import { XdcswapConfig } from '../../connectors/xdcswap/xdcswap.config';
 import { Ethereumish } from '../../services/common-interfaces';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { walletPath } from '../../services/base';
-import { convertXdcPublicKey } from '../../services/wallet/wallet.controllers';
+import { convertEthAddressToXdcAddress } from '../../services/wallet/wallet.controllers';
 import fse from 'fs-extra';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 
@@ -72,7 +72,7 @@ export class Xdc extends EthereumBase implements Ethereumish {
     if (reqSpender === 'xdcswap') {
       spender = XdcswapConfig.config.routerAddress(this._chain);
     } else {
-      spender = convertXdcPublicKey(reqSpender);
+      spender = convertEthAddressToXdcAddress(reqSpender);
     }
     return spender;
   }
@@ -90,7 +90,7 @@ export class Xdc extends EthereumBase implements Ethereumish {
     const path = `${walletPath}/${this.chainName}`;
 
     const encryptedPrivateKey: string = await fse.readFile(
-      `${path}/${convertXdcPublicKey(address)}.json`,
+      `${path}/${convertEthAddressToXdcAddress(address)}.json`,
       'utf8'
     );
 
