@@ -14449,7 +14449,7 @@ ws@^7, ws@^7.2.0, ws@^7.4.6:
   resolved "https://registry.yarnpkg.com/ws/-/ws-7.5.9.tgz#54fa7db29f4c7cec68b1ddd3a89de099942bb591"
   integrity sha512-F+P9Jil7UiSKSkppIiD94dN07AwvFixvLIj1Og1Rl9GGMuNipJnV9JzjD6XuqmAeiswGvUmNLjr5cFuXwNS77Q==
 
-xdcswap-sdk@^1.0.0:
+xdcswap-sdk@^1.0.1:
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/xdcswap-sdk/-/xdcswap-sdk-1.0.1.tgz#b79374fbd47e4b6c306c559e012375b98d42dff7"
   integrity sha512-gYDFZJbv8VzOqDmpn3L1xQmgIR9pJhM3DSBCHC/psbQpBIbIMVpU9fl+alpDnelrf8fWaajAsgU+O7elte8i3g==
