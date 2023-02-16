@@ -11,8 +11,8 @@ Gateway may be used alongside the main [Hummingbot client](https://github.com/hu
 ### Generate certificates
 
 To run Gateway in `https` (default):
-* **certs_path**: path to folder where Hummingbot generated and saved self-signed SSL certificates
-* **passphrase**: passphrase used to generate the certificates above
+* **CERTS_PATH**: path to folder where Hummingbot generated and saved self-signed SSL certificates
+* **PASSPHRASE**: passphrase used to generate the certificates above
 
 ### Run Gateway from source
 
@@ -27,14 +27,12 @@ yarn
 # Complile Typescript into JS
 $ yarn build
 
-# Generate the default config files from src/templates
-$ yarn config
+# Run Gateway setup script, which helps you set configs and CERTS_PATH
+$ chmod a+x gateway-setup.sh
+$ ./gateway-setup.sh
 
-# Replace the certificatePath variable in server.yml with certs_path
-(base) ➜ vi conf/server.yml 
-
-# Start the Gateway server using passphrase
-$ yarn start --passphrase=<passphrase>
+# Start the Gateway server using PASSPHRASE
+$ yarn start --passphrase=<PASSPHRASE>
 ```
 
 ### Run Gateway using Docker
