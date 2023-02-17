@@ -35,12 +35,6 @@ export function convertXdcAddressToEthAddress(publicKey: string): string {
     : publicKey;
 }
 
-export function convertXdcPrivateKey(privateKey: string): string {
-  return privateKey.length === 67 && privateKey.slice(0, 3) === 'xdc'
-    ? '0x' + privateKey.slice(3)
-    : privateKey;
-}
-
 const walletPath = './conf/wallets';
 export async function mkdirIfDoesNotExist(path: string): Promise<void> {
   const exists = await fse.pathExists(path);
@@ -104,11 +98,13 @@ export async function addWallet(
         passphrase
       );
     } else if (connection instanceof Xdc) {
-      const privateKey = convertXdcPrivateKey(req.privateKey);
       address = convertXdcAddressToEthAddress(
-        connection.getWalletFromPrivateKey(privateKey).address
+        connection.getWalletFromPrivateKey(req.privateKey).address
       );
-      encryptedPrivateKey = await connection.encrypt(privateKey, passphrase);
+      encryptedPrivateKey = await connection.encrypt(
+        req.privateKey,
+        passphrase
+      );
     } else if (connection instanceof Cosmos) {
       const wallet = await connection.getAccountsfromPrivateKey(
         req.privateKey,
