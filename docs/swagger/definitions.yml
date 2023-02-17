@@ -35,7 +35,7 @@ definitions:
         example: 'ethereum'
       network:
         type: 'string'
-        example: 'goerli'
+        example: 'kovan'
 
   NonceResponse:
     type: 'object'
@@ -70,7 +70,7 @@ definitions:
         example: 'ethereum'
       network:
         type: 'string'
-        example: 'goerli'
+        example: 'kovan'
 
   AllowancesResponse:
     type: 'object'
@@ -189,7 +189,7 @@ definitions:
         example: 'ethereum'
       network:
         type: 'string'
-        example: 'goerli'
+        example: 'kovan'
 
   ApproveResponse:
     type: 'object'
@@ -243,7 +243,7 @@ definitions:
         example: 'ethereum'
       network:
         type: 'string'
-        example: 'goerli'
+        example: 'kovan'
 
   PollResponse:
     type: 'object'
@@ -328,7 +328,7 @@ definitions:
         example: 'ethereum'
       network:
         type: 'string'
-        example: 'goerli'
+        example: 'kovan'
 
   PriceResponse:
     type: 'object'
@@ -418,7 +418,7 @@ definitions:
         example: 'ethereum'
       network:
         type: 'string'
-        example: 'goerli'
+        example: 'kovan'
       connector:
         type: 'string'
         example: 'uniswap'
@@ -496,7 +496,7 @@ definitions:
         example: 'ethereum'
       network:
         type: 'string'
-        example: 'goerli'
+        example: 'kovan'
   
   CancelResponse:
     type: 'object'
@@ -518,32 +518,19 @@ definitions:
         type: 'string'
         example: '0xa321bbe8888c3bc88ecb1ad4f03f22a71e6f5715dfcb19e0a2dca9036c981b6d'  # noqa: documentation
 
-  AddWalletRequest:
+  GetWalletRequest:
     type: 'object'
     required:
-      - 'chainName'
-      - 'privateKey'
+      - 'chain'
+      - 'network'
     properties:
-      chainName:
+      chain:
         type: 'string'
         example: 'ethereum'
-      privateKey:
+      network:
         type: 'string'
-        example: '6078d949c953351685fd2026646028f2a862e6148d25d504967ba63898d720c0'  # noqa: documentation
-  
-  RemoveWalletRequest:
-    type: 'object'
-    required:
-      - 'chainName'
-      - 'address'
-    properties:
-      chainName:
-        type: 'string'
-        example: 'ethereum'
-      address:
-        type: 'string'
-        example: '0xd0A1E359811322d97991E03f863a0C30C2cF029C'
-
+        example: 'testnet'
+        
   GetWalletResponse:
     type: 'object'
     required:
@@ -639,7 +626,7 @@ definitions:
         example: 'ethereum'
       network:
         type: 'string'
-        example: 'goerli'
+        example: 'kovan'
       connector:
         type: 'string'
         example: 'uniswap'
@@ -715,7 +702,7 @@ definitions:
         example: 'ethereum'
       network:
         type: 'string'
-        example: 'goerli'
+        example: 'kovan'
       connector:
         type: 'string'
         example: 'uniswapLP'
@@ -735,7 +722,7 @@ definitions:
     properties:
       network:
         type: 'string'
-        example: 'goerli'
+        example: 'kovan'
       timestamp:
         type: 'integer'
         example: 1636368085740
@@ -781,7 +768,7 @@ definitions:
         example: 'ethereum'
       network:
         type: 'string'
-        example: 'goerli'
+        example: 'kovan'
       connector:
         type: 'string'
         example: 'uniswapLP'
@@ -800,7 +787,7 @@ definitions:
     properties:
       network:
         type: 'string'
-        example: 'goerli'
+        example: 'kovan'
       timestamp:
         type: 'integer'
         example: 1636368085740
@@ -843,7 +830,7 @@ definitions:
         example: 'ethereum'
       network:
         type: 'string'
-        example: 'goerli'
+        example: 'kovan'
       connector:
         type: 'string'
         example: 'uniswapLP'
@@ -862,7 +849,7 @@ definitions:
     properties:
       network:
         type: 'string'
-        example: 'goerli'
+        example: 'kovan'
       timestamp:
         type: 'integer'
         example: 1636368085740
@@ -897,7 +884,7 @@ definitions:
         example: 'ethereum'
       network:
         type: 'string'
-        example: 'goerli'
+        example: 'kovan'
       connector:
         type: 'string'
         example: 'uniswapLP'
@@ -920,7 +907,7 @@ definitions:
     properties:
       network:
         type: 'string'
-        example: 'goerli'
+        example: 'kovan'
       timestamp:
         type: 'integer'
         example: 1636368085740
@@ -984,7 +971,7 @@ definitions:
         example: 'ethereum'
       network:
         type: 'string'
-        example: 'goerli'
+        example: 'kovan'
       connector:
         type: 'string'
         example: 'uniswapLP'
@@ -1002,7 +989,7 @@ definitions:
     properties:
       network:
         type: 'string'
-        example: 'goerli'
+        example: 'kovan'
       timestamp:
         type: 'integer'
         example: 1636368085740

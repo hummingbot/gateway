@@ -20,6 +20,7 @@ import { ConnectorsResponse } from './connectors.request';
 import { DexalotCLOBConfig } from './dexalot/dexalot.clob.config';
 import { TinymanConfig } from './tinyman/tinyman.config';
 import { PlentyConfig } from './plenty/plenty.config';
+import { XRPLDEXConfig } from './xrpldex/xrpldex.config';
 
 export namespace ConnectorsRoutes {
   export const router = Router();
@@ -157,7 +158,17 @@ export namespace ConnectorsRoutes {
             trading_type: PlentyConfig.config.tradingTypes,
             chain_type: PlentyConfig.config.chainType,
             available_networks: PlentyConfig.config.availableNetworks,
-          }
+          },
+          {
+            name: 'xrpldex',
+            trading_type: XRPLDEXConfig.config.tradingTypes,
+            chain_type: XRPLDEXConfig.config.chainType,
+            available_networks: XRPLDEXConfig.config.availableNetworks,
+            additional_add_wallet_prompts: {
+              api_key:
+                'Enter a XRPL Secret Key if you have one, otherwise hit return >>> ',
+            },
+          },
         ],
       });
     })

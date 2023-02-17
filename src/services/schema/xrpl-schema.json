@@ -1,0 +1,73 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "networks": {
+      "type": "object",
+      "patternProperties": {
+        "^\\w+$": {
+          "type": "object",
+          "properties": {
+            "nodeURL": { "type": "string" },
+            "tokenListType": { "type": "string" },
+            "tokenListSource": { "type": "string" },
+            "nativeCurrencySymbol": { "type": "string" }
+          },
+          "required": [
+            "nodeURL",
+            "tokenListType",
+            "tokenListSource",
+            "nativeCurrencySymbol"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "network": { "type": "string" },
+    "requestTimeout": { "type": "integer" },
+    "connectionTimeout": { "type": "integer" },
+    "feeCushion": { "type": "number" },
+    "maxFeeXRP": { "type": "string" },
+    "retry": {
+      "type": "object",
+      "required": ["all"],
+      "properties": {
+        "all": {
+          "type": "object",
+          "required": ["maxNumberOfRetries", "delayBetweenRetries"],
+          "properties": {
+            "maxNumberOfRetries": { "type": "integer" },
+            "delayBetweenRetries": {
+              "type": "integer"
+            }
+          }
+        }
+      }
+    },
+    "timeout": {
+      "type": "object",
+      "required": ["all"],
+      "properties": {
+        "all": { "type": "integer" }
+      }
+    },
+    "parallel": {
+      "type": "object",
+      "required": ["all"],
+      "properties": {
+        "all": {
+          "type": "object",
+          "required": ["batchSize", "delayBetweenBatches"],
+          "properties": {
+            "batchSize": { "type": "integer" },
+            "delayBetweenBatches": {
+              "type": "integer"
+            }
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

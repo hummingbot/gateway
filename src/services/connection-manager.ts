@@ -6,6 +6,7 @@ import { Harmony } from '../chains/harmony/harmony';
 import { Polygon } from '../chains/polygon/polygon';
 import { Xdc } from '../chains/xdc/xdc';
 import { Tezos } from '../chains/tezos/tezos';
+import { XRPL, XRPLish } from '../chains/xrpl/xrpl';
 import { MadMeerkat } from '../connectors/mad_meerkat/mad_meerkat';
 import { Openocean } from '../connectors/openocean/openocean';
 import { Pangolin } from '../connectors/pangolin/pangolin';
@@ -18,6 +19,7 @@ import { VVSConnector } from '../connectors/vvs/vvs';
 import { InjectiveCLOB } from '../connectors/injective/injective';
 import { InjectiveClobPerp } from '../connectors/injective_perpetual/injective.perp';
 import { Injective } from '../chains/injective/injective';
+import { XRPLDEX } from '../connectors/xrpldex/xrpldex';
 import {
   CLOBish,
   Ethereumish,
@@ -48,7 +50,8 @@ export type ChainUnion =
   | Nearish
   | Injective
   | Xdcish
-  | Tezosish;
+  | Tezosish
+  | XRPLish;
 
 export type Chain<T> = T extends Algorand
   ? Algorand
@@ -64,6 +67,8 @@ export type Chain<T> = T extends Algorand
   ? Injective
   : T extends Tezosish
   ? Tezosish
+  : T extends XRPLish
+  ? XRPLish
   : never;
 
 export class UnsupportedChainException extends Error {
@@ -125,6 +130,8 @@ export function getChainInstance(
     connection = Injective.getInstance(network);
   } else if (chain === 'tezos') {
     connection = Tezos.getInstance(network);
+  } else if (chain === 'xrpl') {
+    connection = XRPL.getInstance(network);
   } else {
     connection = undefined;
   }
@@ -140,7 +147,8 @@ export type ConnectorUnion =
   | CLOBish
   | InjectiveClobPerp
   | Tinyman
-  | Plenty;
+  | Plenty
+  | XRPLDEX;
 
 export type Connector<T> = T extends Uniswapish
   ? Uniswapish
@@ -212,6 +220,8 @@ export async function getConnector<T>(
     connectorInstance = Tinyman.getInstance(network);
   } else if (chain === 'tezos' && connector === 'plenty') {
     connectorInstance = Plenty.getInstance(network);
+  } else if (chain === 'xrpl' && connector === 'xrpldex') {
+    connectorInstance = XRPLDEX.getInstance(chain, network);
   } else {
     throw new Error('unsupported chain or connector');
   }

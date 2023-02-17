@@ -3,6 +3,7 @@ import { Xdc } from '../../chains/xdc/xdc';
 import { Cosmos } from '../../chains/cosmos/cosmos';
 import { Injective } from '../../chains/injective/injective';
 import { Tezos } from '../../chains/tezos/tezos';
+import { XRPL } from '../../chains/xrpl/xrpl';
 
 import {
   AddWalletRequest,
@@ -135,9 +136,14 @@ export async function addWallet(
         throw new Error('Injective wallet requires a subaccount id');
       }
     } else if (connection instanceof Tezos) {
-      const tezosWallet = await connection.getWalletFromPrivateKey(req.privateKey);
+      const tezosWallet = await connection.getWalletFromPrivateKey(
+        req.privateKey
+      );
       address = await tezosWallet.signer.publicKeyHash();
-      encryptedPrivateKey = connection.encrypt(
+      encryptedPrivateKey = connection.encrypt(req.privateKey, passphrase);
+    } else if (connection instanceof XRPL) {
+      address = connection.getWalletFromSeed(req.privateKey).classicAddress;
+      encryptedPrivateKey = await connection.encrypt(
         req.privateKey,
         passphrase
       );
@@ -170,9 +176,16 @@ export async function signMessage(
   if (req.chain === 'tezos') {
     const chain: Tezosish = await getInitializedChain(req.chain, req.network);
     const wallet = await chain.getWallet(req.address);
-    return { signature: (await wallet.signer.sign("0x03" + req.message)).sbytes.slice(4) };
+    return {
+      signature: (await wallet.signer.sign('0x03' + req.message)).sbytes.slice(
+        4
+      ),
+    };
   } else {
-    const chain: Ethereumish = await getInitializedChain(req.chain, req.network);
+    const chain: Ethereumish = await getInitializedChain(
+      req.chain,
+      req.network
+    );
     const wallet = await chain.getWallet(req.address);
     return { signature: await wallet.signMessage(req.message) };
   }

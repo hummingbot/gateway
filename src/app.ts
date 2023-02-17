@@ -112,14 +112,14 @@ export const startSwagger = async () => {
 
 export const startGateway = async () => {
   const port = ConfigManagerV2.getInstance().get('server.port');
-  const gateway_version="dev-1.19.0"; // gateway version
+  const gateway_version = 'dev-1.19.0'; // gateway version
   if (!ConfigManagerV2.getInstance().get('server.id')) {
     ConfigManagerV2.getInstance().set(
       'server.id',
       Math.random().toString(16).substr(2, 14)
     );
   }
-  logger.info(`Gateway Version: ${gateway_version}`) // display gateway version
+  logger.info(`Gateway Version: ${gateway_version}`); // display gateway version
   logger.info(`⚡️ Starting Gateway API on port ${port}...`);
   if (ConfigManagerV2.getInstance().get('server.unsafeDevModeWithHTTP')) {
     logger.info('Running in UNSAFE HTTP! This could expose private keys.');

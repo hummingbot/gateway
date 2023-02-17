@@ -77,6 +77,7 @@
     "express": "^4.17.1",
     "express-winston": "^4.1.0",
     "fs-extra": "^10.0.0",
+    "http-status-codes": "^2.2.0",
     "js-yaml": "^4.1.0",
     "level": "^8.0.0",
     "lodash": "^4.17.21",
@@ -95,6 +96,7 @@
     "winston": "^3.3.3",
     "winston-daily-rotate-file": "^4.5.5",
     "xsswap-sdk": "^1.0.1",
+    "xrpl": "^2.5.0",
     "yarn": "^1.22.17"
   },
   "devDependencies": {
