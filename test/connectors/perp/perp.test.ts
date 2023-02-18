@@ -1,10 +1,10 @@
 jest.useFakeTimers();
-import { Perp } from '../../../../src/connectors/perp/perp';
+import { Perp } from '../../../src/connectors/perp/perp';
 import { MarketStatus } from '@perp/sdk-curie';
-import { patch, unpatch } from '../../../services/patch';
+import { patch, unpatch } from '../../services/patch';
 import { Big } from 'big.js';
-import { Ethereum } from '../../../../src/chains/ethereum/ethereum';
-import { patchEVMNonceManager } from '../../../evm.nonce.mock';
+import { Ethereum } from '../../../src/chains/ethereum/ethereum';
+import { patchEVMNonceManager } from '../../evm.nonce.mock';
 
 let ethereum: Ethereum;
 let perp: Perp;
