@@ -1,8 +1,8 @@
 import request from 'supertest';
-import { patch, unpatch } from '../../../services/patch';
-import { gatewayApp } from '../../../../src/app';
-import { Near } from '../../../../src/chains/near/near';
-import { Ref } from '../../../../src/connectors/ref/ref';
+import { patch, unpatch } from '../../services/patch';
+import { gatewayApp } from '../../../src/app';
+import { Near } from '../../../src/chains/near/near';
+import { Ref } from '../../../src/connectors/ref/ref';
 let near: Near;
 let ref: Ref;
 

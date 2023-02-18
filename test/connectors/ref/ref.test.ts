@@ -1,8 +1,8 @@
 jest.useFakeTimers();
-import { Ref } from '../../../../src/connectors/ref/ref';
-import { patch, unpatch } from '../../../services/patch';
-import { UniswapishPriceError } from '../../../../src/services/error-handler';
-import { Near } from '../../../../src/chains/near/near';
+import { Ref } from '../../../src/connectors/ref/ref';
+import { patch, unpatch } from '../../services/patch';
+import { UniswapishPriceError } from '../../../src/services/error-handler';
+import { Near } from '../../../src/chains/near/near';
 import * as RefSDK from 'coinalpha-ref-sdk';
 
 let near: Near;
