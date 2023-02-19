@@ -109,14 +109,16 @@ export class Openocean implements Uniswapish {
     if (!this.chainInstance.ready()) {
       await this.chainInstance.init();
     }
-    for (const token of this.chainInstance.storedTokenList) {
-      this.tokenList[token.address] = new Token(
-        this.chainId,
-        token.address,
-        token.decimals,
-        token.symbol,
-        token.name
-      );
+    if (process.env.NODE_ENV === 'production') {
+      for (const token of this.chainInstance.storedTokenList) {
+        this.tokenList[token.address] = new Token(
+          this.chainId,
+          token.address,
+          token.decimals,
+          token.symbol,
+          token.name
+        );
+      }
     }
     this._ready = true;
   }

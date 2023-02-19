@@ -60,14 +60,14 @@ const patchStoredTokenList = () => {
         chainId: 1,
         name: 'USDC',
         symbol: 'USDC',
-        address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
+        address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
         decimals: 6,
       },
       {
         chainId: 1,
         name: 'BUSD',
         symbol: 'BUSD',
-        address: '0x4fabb145d64652a948d72533023f6e7a623c7c53',
+        address: '0x4Fabb145d64652a948d72533023f6E7A623C7C53',
         decimals: 18,
       },
     ];
@@ -81,7 +81,7 @@ const patchGetTokenBySymbol = () => {
         chainId: 1,
         name: 'USDC',
         symbol: 'USDC',
-        address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
+        address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
         decimals: 6,
       };
     } else {
@@ -89,7 +89,7 @@ const patchGetTokenBySymbol = () => {
         chainId: 1,
         name: 'BUSD',
         symbol: 'BUSD',
-        address: '0x4fabb145d64652a948d72533023f6e7a623c7c53',
+        address: '0x4Fabb145d64652a948d72533023f6E7A623C7C53',
         decimals: 18,
       };
     }
@@ -102,7 +102,7 @@ const patchGetTokenByAddress = () => {
       chainId: 1,
       name: 'USDC',
       symbol: 'USDC',
-      address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
+      address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
       decimals: 6,
     };
   });

@@ -60,7 +60,7 @@ const patchStoredTokenList = () => {
         chainId: 137,
         name: 'USDC',
         symbol: 'USDC',
-        address: '0x2791bca1f2de4661ed88a30c99a7a9449aa84174',
+        address: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174',
         decimals: 6,
       },
       {
@@ -81,7 +81,7 @@ const patchGetTokenBySymbol = () => {
         chainId: 137,
         name: 'USDC',
         symbol: 'USDC',
-        address: '0x2791bca1f2de4661ed88a30c99a7a9449aa84174',
+        address: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174',
         decimals: 6,
       };
     } else {
@@ -102,7 +102,7 @@ const patchGetTokenByAddress = () => {
       chainId: 137,
       name: 'USDC',
       symbol: 'USDC',
-      address: '0x2791bca1f2de4661ed88a30c99a7a9449aa84174',
+      address: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174',
       decimals: 6,
     };
   });
