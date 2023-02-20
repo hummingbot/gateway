@@ -60,14 +60,14 @@ const patchStoredTokenList = () => {
         chainId: 1666600000,
         name: 'USDC',
         symbol: '1USDC',
-        address: '0x985458e523db3d53125813ed68c274899e9dfab4',
+        address: '0x985458E523dB3d53125813eD68c274899e9DfAb4',
         decimals: 6,
       },
       {
         chainId: 1666600000,
         name: 'DAI',
         symbol: '1DAI',
-        address: '0xef977d2f931c1978db5f6747666fa1eacb0d0339',
+        address: '0xEf977d2f931C1978Db5F6747666fa1eACB0d0339',
         decimals: 18,
       },
     ];
@@ -81,7 +81,7 @@ const patchGetTokenBySymbol = () => {
         chainId: 1666600000,
         name: 'USDC',
         symbol: '1USDC',
-        address: '0x985458e523db3d53125813ed68c274899e9dfab4',
+        address: '0x985458E523dB3d53125813eD68c274899e9DfAb4',
         decimals: 6,
       };
     } else {
@@ -89,7 +89,7 @@ const patchGetTokenBySymbol = () => {
         chainId: 1666600000,
         name: 'DAI',
         symbol: '1DAI',
-        address: '0xef977d2f931c1978db5f6747666fa1eacb0d0339',
+        address: '0xEf977d2f931C1978Db5F6747666fa1eACB0d0339',
         decimals: 18,
       };
     }
@@ -102,7 +102,7 @@ const patchGetTokenByAddress = () => {
       chainId: 1666600000,
       name: 'USDC',
       symbol: '1USDC',
-      address: '0x985458e523db3d53125813ed68c274899e9dfab4',
+      address: '0x985458E523dB3d53125813eD68c274899e9DfAb4',
       decimals: 6,
     };
   });
@@ -522,7 +522,7 @@ describe('POST /amm/trade', () => {
           chainId: 43114,
           name: 'USDC',
           symbol: '1USDC',
-          address: '0x985458e523db3d53125813ed68c274899e9dfab4',
+          address: '0x985458E523dB3d53125813eD68c274899e9DfAb4',
           decimals: 6,
         };
       } else {
@@ -557,7 +557,7 @@ describe('POST /amm/trade', () => {
           chainId: 43114,
           name: 'USDC',
           symbol: '1USDC',
-          address: '0x985458e523db3d53125813ed68c274899e9dfab4',
+          address: '0x985458E523dB3d53125813eD68c274899e9DfAb4',
           decimals: 6,
         };
       } else {

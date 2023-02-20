@@ -1,4 +1,5 @@
 import { patchEVMNonceManager } from '../../evm.nonce.mock';
+import { patch } from '../../services/patch';
 
 jest.useFakeTimers();
 jest.setTimeout(30000);
@@ -13,7 +14,7 @@ let openocean: Openocean;
 
 const USDC = new Token(
   137,
-  '0x2791bca1f2de4661ed88a30c99a7a9449aa84174',
+  '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174',
   6,
   'USDC'
 );
@@ -30,9 +31,38 @@ const USDK = new Token(
   'USDK'
 );
 
+const patchStoredTokenList = () => {
+  patch(polygon, 'tokenList', () => {
+    return [
+      {
+        chainId: 137,
+        name: 'USDC',
+        symbol: 'USDC',
+        address: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174',
+        decimals: 6,
+      },
+      {
+        chainId: 137,
+        name: 'MATIC',
+        symbol: 'MATIC',
+        address: '0x0000000000000000000000000000000000001010',
+        decimals: 18,
+      },
+      {
+        chainId: 137,
+        name: 'USDK',
+        symbol: 'USDK',
+        address: '0xD07A7FAc2857901E4bEC0D89bBDAe764723AAB86',
+        decimals: 18,
+      },
+    ];
+  });
+};
+
 beforeAll(async () => {
   polygon = Polygon.getInstance('mainnet');
   patchEVMNonceManager(polygon.nonceManager);
+  patchStoredTokenList();
   await polygon.init();
   openocean = Openocean.getInstance('polygon', 'mainnet');
   await openocean.init();

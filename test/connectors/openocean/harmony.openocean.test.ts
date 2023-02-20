@@ -1,4 +1,5 @@
 import { patchEVMNonceManager } from '../../evm.nonce.mock';
+import { patch } from '../../services/patch';
 
 jest.useFakeTimers();
 jest.setTimeout(30000);
@@ -13,26 +14,55 @@ let openocean: Openocean;
 
 const USDC = new Token(
   1666600000,
-  '0x985458e523db3d53125813ed68c274899e9dfab4',
+  '0x985458E523dB3d53125813eD68c274899e9DfAb4',
   6,
   '1USDC'
 );
 const DAI = new Token(
   1666600000,
-  '0xef977d2f931c1978db5f6747666fa1eacb0d0339',
+  '0xEf977d2f931C1978Db5F6747666fa1eACB0d0339',
   18,
   '1DAI'
 );
 const mooOneBIFI = new Token(
   1666600000,
-  '0x6207536011918f1a0d8a53bc426f4fd54df2e5a8',
+  '0x6207536011918F1A0D8a53Bc426f4Fd54df2E5a8',
   18,
   'mooOneBIFI'
 );
 
+const patchStoredTokenList = () => {
+  patch(harmony, 'tokenList', () => {
+    return [
+      {
+        chainId: 1666600000,
+        name: 'USDC',
+        symbol: '1USDC',
+        address: '0x985458E523dB3d53125813eD68c274899e9DfAb4',
+        decimals: 6,
+      },
+      {
+        chainId: 1666600000,
+        name: 'DAI',
+        symbol: '1DAI',
+        address: '0xEf977d2f931C1978Db5F6747666fa1eACB0d0339',
+        decimals: 18,
+      },
+      {
+        chainId: 1666600000,
+        name: 'mooOneBIFI',
+        symbol: 'mooOneBIFI',
+        address: '0x6207536011918F1A0D8a53Bc426f4Fd54df2E5a8',
+        decimals: 18,
+      },
+    ];
+  });
+};
+
 beforeAll(async () => {
   harmony = Harmony.getInstance('mainnet');
   patchEVMNonceManager(harmony.nonceManager);
+  patchStoredTokenList();
   await harmony.init();
   openocean = Openocean.getInstance('harmony', 'mainnet');
   await openocean.init();
