@@ -15,11 +15,11 @@ beforeAll(async () => {
   app = express();
   app.use(express.json());
 
-  ethereum = Ethereum.getInstance('mainnet');
+  ethereum = Ethereum.getInstance('goerli');
   patchEVMNonceManager(ethereum.nonceManager);
   await ethereum.init();
 
-  openocean = Openocean.getInstance('ethereum', 'mainnet');
+  openocean = Openocean.getInstance('ethereum', 'goerli');
   await openocean.init();
 
   app.use('/amm', AmmRoutes.router);
@@ -54,7 +54,7 @@ const patchInit = () => {
 };
 
 const patchStoredTokenList = () => {
-  const tokenListFn = () => {
+  patch(ethereum, 'tokenList', () => {
     return [
       {
         chainId: 1,
@@ -71,9 +71,7 @@ const patchStoredTokenList = () => {
         decimals: 18,
       },
     ];
-  };
-  patch(ethereum, 'tokenList', tokenListFn);
-  patch(openocean, 'tokenList', tokenListFn);
+  });
 };
 
 const patchGetTokenBySymbol = () => {
@@ -172,7 +170,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'ethereum',
-        network: 'mainnet',
+        network: 'goerli',
         connector: 'openocean',
         quote: 'BUSD',
         base: 'USDC',
@@ -200,7 +198,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'ethereum',
-        network: 'mainnet',
+        network: 'goerli',
         connector: 'openocean',
         quote: 'USDC',
         base: 'BUSD',
@@ -236,7 +234,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'ethereum',
-        network: 'mainnet',
+        network: 'goerli',
         connector: 'openocean',
         quote: 'USDC',
         base: 'bDAI',
@@ -268,7 +266,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'ethereum',
-        network: 'mainnet',
+        network: 'goerli',
         connector: 'openocean',
         quote: 'USDC',
         base: 'bDAI',
@@ -290,7 +288,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'ethereum',
-        network: 'mainnet',
+        network: 'goerli',
         connector: 'openocean',
         quote: 'USDC',
         base: 'bDAI',
@@ -312,7 +310,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'ethereum',
-        network: 'mainnet',
+        network: 'goerli',
         connector: 'openocean',
         quote: 'USDC',
         base: 'bDAI',
@@ -337,7 +335,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'ethereum',
-        network: 'mainnet',
+        network: 'goerli',
         connector: 'openocean',
         quote: 'USDC',
         base: 'bDAI',
@@ -362,7 +360,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'ethereum',
-        network: 'mainnet',
+        network: 'goerli',
         connector: 'openocean',
         quote: 'USDC',
         base: 'bDAI',
@@ -391,7 +389,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'mainnet',
+        network: 'goerli',
         connector: 'openocean',
         quote: 'BUSD',
         base: 'USDC',
@@ -413,7 +411,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'mainnet',
+        network: 'goerli',
         connector: 'openocean',
         quote: 'BUSD',
         base: 'USDC',
@@ -431,7 +429,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'mainnet',
+        network: 'goerli',
         connector: 'openocean',
         quote: 'BUSD',
         base: 'USDC',
@@ -462,7 +460,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'mainnet',
+        network: 'goerli',
         connector: 'openocean',
         quote: 'USDC',
         base: 'BUSD',
@@ -484,7 +482,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'mainnet',
+        network: 'goerli',
         connector: 'openocean',
         quote: 'USDC',
         base: 'BUSD',
@@ -504,7 +502,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'mainnet',
+        network: 'goerli',
         connector: 'openocean',
         quote: 'USDC',
         base: 'BUSD',
@@ -536,7 +534,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'mainnet',
+        network: 'goerli',
         connector: 'openocean',
         quote: 'USDC',
         base: 'BITCOIN',
@@ -571,7 +569,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'mainnet',
+        network: 'goerli',
         connector: 'openocean',
         quote: 'BITCOIN',
         base: 'USDC',
@@ -592,7 +590,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'mainnet',
+        network: 'goerli',
         connector: 'openocean',
         quote: 'USDC',
         base: 'BUSD',
@@ -612,7 +610,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'mainnet',
+        network: 'goerli',
         connector: 'openocean',
         quote: 'BUSD',
         base: 'USDC',
@@ -632,7 +630,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'mainnet',
+        network: 'goerli',
         connector: 'openocean',
         quote: 'USDC',
         base: 'BUSD',
@@ -652,7 +650,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'mainnet',
+        network: 'goerli',
         connector: 'openocean',
         quote: 'BUSD',
         base: 'USDC',
@@ -676,13 +674,13 @@ describe('POST /amm/estimateGas', () => {
       .post('/amm/estimateGas')
       .send({
         chain: 'ethereum',
-        network: 'mainnet',
+        network: 'goerli',
         connector: 'openocean',
       })
       .set('Accept', 'application/json')
       .expect(200)
       .then((res: any) => {
-        expect(res.body.network).toEqual('mainnet');
+        expect(res.body.network).toEqual('goerli');
         expect(res.body.gasPrice).toEqual(100);
         expect(res.body.gasCost).toEqual(
           gasCostInEthString(100, openocean.gasLimitEstimate)
@@ -698,7 +696,7 @@ describe('POST /amm/estimateGas', () => {
       .post('/amm/estimateGas')
       .send({
         chain: 'ethereum',
-        network: 'mainnet',
+        network: 'goerli',
         connector: 'pangolin',
       })
       .set('Accept', 'application/json')

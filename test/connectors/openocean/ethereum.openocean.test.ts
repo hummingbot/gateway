@@ -32,7 +32,7 @@ const ocUSDC = new Token(
 );
 
 const patchStoredTokenList = () => {
-  const tokenListFn = () => {
+  patch(ethereum, 'tokenList', () => {
     return [
       {
         chainId: 1,
@@ -56,9 +56,7 @@ const patchStoredTokenList = () => {
         decimals: 18,
       },
     ];
-  };
-  patch(ethereum, 'tokenList', tokenListFn);
-  patch(openocean, 'tokenList', tokenListFn);
+  });
 };
 
 beforeAll(async () => {

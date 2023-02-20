@@ -54,7 +54,7 @@ const patchInit = () => {
 };
 
 const patchStoredTokenList = () => {
-  const tokenListFn = () => {
+  patch(polygon, 'tokenList', () => {
     return [
       {
         chainId: 137,
@@ -71,9 +71,7 @@ const patchStoredTokenList = () => {
         decimals: 18,
       },
     ];
-  };
-  patch(polygon, 'tokenList', tokenListFn);
-  patch(openocean, 'tokenList', tokenListFn);
+  });
 };
 
 const patchGetTokenBySymbol = () => {

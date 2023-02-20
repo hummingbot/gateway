@@ -32,7 +32,7 @@ const bDAI = new Token(
 );
 
 const patchStoredTokenList = () => {
-  const tokenListFn = () => {
+  patch(avalanche, 'tokenList', () => {
     return [
       {
         chainId: 43114,
@@ -56,9 +56,7 @@ const patchStoredTokenList = () => {
         decimals: 18,
       },
     ];
-  };
-  patch(avalanche, 'tokenList', tokenListFn);
-  patch(openocean, 'tokenList', tokenListFn);
+  });
 };
 
 beforeAll(async () => {
