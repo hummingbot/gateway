@@ -10,10 +10,7 @@ import { XdcswapConfig } from '../../connectors/xdcswap/xdcswap.config';
 import { Ethereumish } from '../../services/common-interfaces';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { walletPath } from '../../services/base';
-import {
-  convertEthAddressToXdcAddress,
-  convertXdxAddressToEthAddress,
-} from '../../services/wallet/wallet.controllers';
+import { convertXdcAddressToEthAddress } from '../../services/wallet/wallet.controllers';
 import fse from 'fs-extra';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 
@@ -81,7 +78,7 @@ export class Xdc extends EthereumBase implements Ethereumish {
     if (reqSpender === 'xdcswap') {
       spender = XdcswapConfig.config.routerAddress(this._chain);
     } else {
-      spender = convertXdxAddressToEthAddress(reqSpender);
+      spender = convertXdcAddressToEthAddress(reqSpender);
     }
     return spender;
   }
@@ -99,7 +96,7 @@ export class Xdc extends EthereumBase implements Ethereumish {
     const path = `${walletPath}/${this.chainName}`;
 
     const encryptedPrivateKey: string = await fse.readFile(
-      `${path}/${convertEthAddressToXdcAddress(address)}.json`,
+      `${path}/${convertXdcAddressToEthAddress(address)}.json`,
       'utf8'
     );
 
@@ -137,7 +134,6 @@ export class Xdc extends EthereumBase implements Ethereumish {
       return fetchedTxReceipt;
     }
   }
-  
 
   async close() {
     await super.close();

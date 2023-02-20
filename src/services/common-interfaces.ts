@@ -7,6 +7,12 @@ import {
   BigNumber,
   ethers,
 } from 'ethers';
+import {
+  Contract as XdcContract,
+  Transaction as XdcTransaction,
+  Wallet as XdcWallet,
+  providers as XdcProviders,
+} from 'ethers';
 import { EthereumBase } from '../chains/ethereum/ethereum-base';
 import { CosmosBase } from '../chains/cosmos/cosmos-base';
 import { Provider } from '@ethersproject/abstract-provider';
@@ -93,10 +99,12 @@ import {
   Fraction as PancakeSwapFraction,
 } from '@pancakeswap/sdk';
 import { PerpPosition } from '../connectors/perp/perp';
+import { XdcBase } from '../chains/xdc/xdc.base';
 import { NearBase } from '../chains/near/near.base';
 import { Account, Contract as NearContract } from 'near-api-js';
 import { EstimateSwapView, TokenMetadata } from 'coinalpha-ref-sdk';
 import { FinalExecutionOutcome } from 'near-api-js/lib/providers';
+// import { Contract as XdcContract } from 'ethers-xdc';
 
 // TODO Check the possibility to have clob/solana/serum equivalents here
 //  Check this link https://hummingbot.org/developers/gateway/building-gateway-connectors/#5-add-sdk-classes-to-uniswapish-interface
@@ -626,6 +634,14 @@ export interface Ethereumish extends BasicChainMethods, EthereumBase {
     tokenAddress: string,
     signerOrProvider?: Wallet | Provider
   ): Contract;
+}
+
+export interface Xdcish extends BasicChainMethods, XdcBase {
+  cancelTx(wallet: XdcWallet, nonce: number): Promise<XdcTransaction>;
+  getContract(
+    tokenAddress: string,
+    signerOrProvider?: XdcWallet | XdcProviders.Provider
+  ): XdcContract;
 }
 
 export interface Nearish extends BasicChainMethods, NearBase {
