@@ -98,19 +98,17 @@ export async function addWallet(
 
   try {
     if (connection instanceof EthereumBase) {
-      if (connection.chainName === 'xdc') {
-        const privateKey = convertXdcPrivateKey(req.privateKey);
-        address = convertXdcAddressToEthAddress(
-          connection.getWalletFromPrivateKey(privateKey).address
-        );
-        encryptedPrivateKey = await connection.encrypt(privateKey, passphrase);
-      } else {
-        address = connection.getWalletFromPrivateKey(req.privateKey).address;
-        encryptedPrivateKey = await connection.encrypt(
-          req.privateKey,
-          passphrase
-        );
-      }
+      address = connection.getWalletFromPrivateKey(req.privateKey).address;
+      encryptedPrivateKey = await connection.encrypt(
+        req.privateKey,
+        passphrase
+      );
+    } else if (connection instanceof Xdc) {
+      const privateKey = convertXdcPrivateKey(req.privateKey);
+      address = convertXdcAddressToEthAddress(
+        connection.getWalletFromPrivateKey(privateKey).address
+      );
+      encryptedPrivateKey = await connection.encrypt(privateKey, passphrase);
     } else if (connection instanceof Cosmos) {
       const wallet = await connection.getAccountsfromPrivateKey(
         req.privateKey,
