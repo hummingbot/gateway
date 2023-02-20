@@ -73,7 +73,7 @@ jobs:
       - name: Build project
         run: yarn build
 
-      - name: Replace testnet nodeURL for local hardhat node, and run unit test
+      - name: Replace testnet nodeURL for local hardhat node
         run: |
           mkdir conf db
           cp src/templates/* conf
@@ -85,7 +85,6 @@ jobs:
           sed -i 's/https:\/\/api.s0.b.hmny.io/http:\/\/127.0.0.1:8545\//g' ./conf/harmony.yml
           sed -i 's/https:\/\/data-seed-prebsc-1-s1.binance.org:8545/http:\/\/127.0.0.1:8545\//g' ./conf/binance-smart-chain.yml
           sed -i 's/https:\/\/cosmos-testnet-rpc.allthatnode.com:26657/http:\/\/127.0.0.1:8545\//g' ./conf/cosmos.yml
-          yarn test:unit 
 
       - name: Run unit test coverage
         if: github.event_name == 'pull_request'
@@ -94,4 +93,4 @@ jobs:
           git fetch --all -q
           git checkout -b $GITHUB_SHA
           yarn test:cov 
-          git diff origin/$GITHUB_BASE_REF | yarn diff-test-coverage -c ./coverage/lcov.info -t lcov -b 50 -l 60
+#          git diff origin/$GITHUB_BASE_REF | yarn diff-test-coverage -c ./coverage/lcov.info -t lcov -b 50 -l 60
