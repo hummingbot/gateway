@@ -1,25 +1,22 @@
 import abi from '../ethereum/ethereum.abi.json';
 import { logger } from '../../services/logger';
 import { Contract, Transaction, Wallet } from 'ethers';
-import { providers } from 'ethers-xdc';
-
-import { EthereumBase } from '../ethereum/ethereum-base';
+import { XdcBase } from './xdc.base';
 import { getEthereumConfig as getXdcConfig } from '../ethereum/ethereum.config';
 import { Provider } from '@ethersproject/abstract-provider';
 import { XdcswapConfig } from '../../connectors/xdcswap/xdcswap.config';
-import { Ethereumish } from '../../services/common-interfaces';
+import { Xdcish } from '../../services/common-interfaces';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { walletPath } from '../../services/base';
 import { convertXdcAddressToEthAddress } from '../../services/wallet/wallet.controllers';
 import fse from 'fs-extra';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 
-export class Xdc extends EthereumBase implements Ethereumish {
+export class Xdc extends XdcBase implements Xdcish {
   private static _instances: { [name: string]: Xdc };
   private _gasPrice: number;
   private _nativeTokenSymbol: string;
   private _chain: string;
-  private _xdcProvider: providers.Provider;
 
   private constructor(network: string) {
     const config = getXdcConfig('xdc', network);
@@ -37,9 +34,6 @@ export class Xdc extends EthereumBase implements Ethereumish {
     this._chain = config.network.name;
     this._nativeTokenSymbol = config.nativeCurrencySymbol;
     this._gasPrice = config.manualGasPrice;
-    this._xdcProvider = new providers.StaticJsonRpcProvider(
-      config.network.nodeURL
-    );
   }
 
   public static getInstance(network: string): Xdc {
@@ -105,34 +99,6 @@ export class Xdc extends EthereumBase implements Ethereumish {
       throw new Error('missing passphrase');
     }
     return await this.decrypt(encryptedPrivateKey, passphrase);
-  }
-
-  async getTransaction(txHash: string): Promise<providers.TransactionResponse> {
-    console.log('this._xdcProvider.getTransaction');
-    return this._xdcProvider.getTransaction(txHash);
-  }
-
-  // returns an ethereum TransactionReceipt for a txHash if the transaction has been mined.
-  async getTransactionReceipt(
-    txHash: string
-  ): Promise<providers.TransactionReceipt | null> {
-    if (this.cache.keys().includes(txHash)) {
-      // If it's in the cache, return the value in cache, whether it's null or not
-      return this.cache.get(txHash) as providers.TransactionReceipt;
-    } else {
-      // If it's not in the cache,
-      const fetchedTxReceipt = await this._xdcProvider.getTransactionReceipt(
-        txHash
-      );
-
-      this.cache.set(txHash, fetchedTxReceipt); // Cache the fetched receipt, whether it's null or not
-
-      if (!fetchedTxReceipt) {
-        this._xdcProvider.once(txHash, this.cacheTransactionReceipt.bind(this));
-      }
-
-      return fetchedTxReceipt;
-    }
   }
 
   async close() {

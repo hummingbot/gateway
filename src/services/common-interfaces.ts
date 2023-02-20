@@ -648,6 +648,7 @@ export interface Nearish extends BasicChainMethods, NearBase {
   cancelTx(account: Account, nonce: number): Promise<string>;
   getContract(tokenAddress: string, account: Account): NearContract;
 }
+
 export interface Cosmosish extends CosmosBase {
   gasPrice: number;
   nativeTokenSymbol: string;

@@ -18,7 +18,7 @@ import {
 import { EthereumBase, TokenInfo } from '../chains/ethereum/ethereum-base';
 import { Cronos } from '../chains/cronos/cronos';
 import { Near } from '../chains/near/near';
-import { Nearish } from '../services/common-interfaces';
+import { Nearish, Xdcish } from '../services/common-interfaces';
 
 export async function getStatus(
   req: StatusRequest
@@ -122,7 +122,7 @@ export async function getStatus(
 }
 
 export async function getTokens(req: TokensRequest): Promise<TokensResponse> {
-  let connection: EthereumBase | Nearish;
+  let connection: EthereumBase | Xdcish | Nearish;
   let tokens: TokenInfo[] = [];
 
   if (req.chain && req.network) {

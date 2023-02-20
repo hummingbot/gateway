@@ -22,6 +22,7 @@ import {
   RefAMMish,
   Uniswapish,
   UniswapLPish,
+  Xdcish,
 } from './common-interfaces';
 import { Traderjoe } from '../connectors/traderjoe/traderjoe';
 import { Sushiswap } from '../connectors/sushiswap/sushiswap';
@@ -30,12 +31,14 @@ import { Defira } from '../connectors/defira/defira';
 import { Near } from '../chains/near/near';
 import { Ref } from '../connectors/ref/ref';
 
-export type ChainUnion = Ethereumish | Nearish;
+export type ChainUnion = Ethereumish | Nearish | Xdcish;
 
 export type Chain<T> = T extends Ethereumish
   ? Ethereumish
   : T extends Nearish
   ? Nearish
+  : T extends Xdcish
+  ? Xdcish
   : never;
 
 export async function getChain<T>(
