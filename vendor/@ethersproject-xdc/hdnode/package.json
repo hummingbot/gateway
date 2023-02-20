@@ -1,0 +1,57 @@
+{
+  "author": "Richard Moore <me@ricmoo.com>",
+  "dependencies": {
+    "@ethersproject-xdc/abstract-signer": "file:../abstract-signer",
+    "@ethersproject-xdc/basex": "file:../basex",
+    "@ethersproject-xdc/bignumber": "file:../bignumber",
+    "@ethersproject-xdc/bytes": "file:../bytes",
+    "@ethersproject-xdc/logger": "file:../logger",
+    "@ethersproject-xdc/pbkdf2": "file:../pbkdf2",
+    "@ethersproject-xdc/properties": "file:../properties",
+    "@ethersproject-xdc/sha2": "file:../sha2",
+    "@ethersproject-xdc/signing-key": "file:../signing-key",
+    "@ethersproject-xdc/strings": "file:../strings",
+    "@ethersproject-xdc/transactions": "file:../transactions",
+    "@ethersproject-xdc/wordlists": "file:../wordlists"
+  },
+  "devDependencies": {
+    "typescript": "4.4.4"
+  },  
+  "description": "BIP32 Hierarchal Deterministic Node operations.",
+  "ethereum": "donations.ethers.eth",
+  "funding": [
+    {
+      "type": "individual",
+      "url": "https://gitcoin.co/grants/13/ethersjs-complete-simple-and-tiny-2"
+    },
+    {
+      "type": "individual",
+      "url": "https://www.buymeacoffee.com/ricmoo"
+    }
+  ],
+  "gitHead": "ec1b9583039a14a0e0fa15d0a2a6082a2f41cf5b",
+  "keywords": [
+    "Ethereum",
+    "ethers"
+  ],
+  "license": "MIT",
+  "main": "./lib/index.js",
+  "module": "./lib.esm/index.js",
+  "name": "@ethersproject-xdc/hdnode",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "directory": "packages/hdnode",
+    "type": "git",
+    "url": "git://github.com/ethers-io/ethers.js.git"
+  },
+  "scripts": {
+    "build": "tsc --skipLibCheck --project ./",    
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "sideEffects": false,
+  "tarballHash": "0xca4bad80837378d07524f450188a449b1a6578b8bbc733dea50146488c8143e0",
+  "types": "./lib/index.d.ts",
+  "version": "5.7.0"
+}

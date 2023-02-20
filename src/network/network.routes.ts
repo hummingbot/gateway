@@ -89,6 +89,7 @@ export namespace NetworkRoutes {
           req.body.chain,
           req.body.network
         );
+        console.log(chain.chainName);
 
         res.status(200).json(await ethereumControllers.poll(chain, req.body));
       }

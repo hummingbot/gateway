@@ -1,0 +1,8 @@
+node_modules/
+**/node_modules
+**/lib._esm
+obsolete/
+.DS_Store
+.tmp/
+**/src.ts/*.js
+**/tsconfig.tsbuildinfo
