@@ -32,7 +32,7 @@ const mooOneBIFI = new Token(
 );
 
 const patchStoredTokenList = () => {
-  patch(harmony, 'tokenList', () => {
+  const tokenListFn = () => {
     return [
       {
         chainId: 1666600000,
@@ -56,16 +56,18 @@ const patchStoredTokenList = () => {
         decimals: 18,
       },
     ];
-  });
+  };
+  patch(harmony, 'tokenList', tokenListFn);
+  patch(openocean, 'tokenList', tokenListFn);
 };
 
 beforeAll(async () => {
   harmony = Harmony.getInstance('mainnet');
   patchEVMNonceManager(harmony.nonceManager);
-  patchStoredTokenList();
   await harmony.init();
   openocean = Openocean.getInstance('harmony', 'mainnet');
   await openocean.init();
+  patchStoredTokenList();
 });
 
 describe('verify Openocean estimateSellTrade', () => {

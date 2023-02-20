@@ -32,7 +32,7 @@ const bDAI = new Token(
 );
 
 const patchStoredTokenList = () => {
-  patch(avalanche, 'tokenList', () => {
+  const tokenListFn = () => {
     return [
       {
         chainId: 43114,
@@ -56,16 +56,18 @@ const patchStoredTokenList = () => {
         decimals: 18,
       },
     ];
-  });
+  };
+  patch(avalanche, 'tokenList', tokenListFn);
+  patch(openocean, 'tokenList', tokenListFn);
 };
 
 beforeAll(async () => {
   avalanche = Avalanche.getInstance('avalanche');
   patchEVMNonceManager(avalanche.nonceManager);
-  patchStoredTokenList();
   await avalanche.init();
   openocean = Openocean.getInstance('avalanche', 'avalanche');
   await openocean.init();
+  patchStoredTokenList();
 });
 
 describe('verify Openocean estimateSellTrade', () => {

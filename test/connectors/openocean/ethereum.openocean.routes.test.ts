@@ -54,7 +54,7 @@ const patchInit = () => {
 };
 
 const patchStoredTokenList = () => {
-  patch(ethereum, 'tokenList', () => {
+  const tokenListFn = () => {
     return [
       {
         chainId: 1,
@@ -71,7 +71,9 @@ const patchStoredTokenList = () => {
         decimals: 18,
       },
     ];
-  });
+  };
+  patch(ethereum, 'tokenList', tokenListFn);
+  patch(openocean, 'tokenList', tokenListFn);
 };
 
 const patchGetTokenBySymbol = () => {

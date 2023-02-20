@@ -32,7 +32,7 @@ const ocUSDC = new Token(
 );
 
 const patchStoredTokenList = () => {
-  patch(ethereum, 'tokenList', () => {
+  const tokenListFn = () => {
     return [
       {
         chainId: 1,
@@ -56,16 +56,18 @@ const patchStoredTokenList = () => {
         decimals: 18,
       },
     ];
-  });
+  };
+  patch(ethereum, 'tokenList', tokenListFn);
+  patch(openocean, 'tokenList', tokenListFn);
 };
 
 beforeAll(async () => {
   ethereum = Ethereum.getInstance('mainnet');
   patchEVMNonceManager(ethereum.nonceManager);
-  patchStoredTokenList();
   await ethereum.init();
   openocean = Openocean.getInstance('ethereum', 'mainnet');
   await openocean.init();
+  patchStoredTokenList();
 });
 
 describe('verify Openocean estimateSellTrade', () => {

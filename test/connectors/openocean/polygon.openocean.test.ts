@@ -32,7 +32,7 @@ const USDK = new Token(
 );
 
 const patchStoredTokenList = () => {
-  patch(polygon, 'tokenList', () => {
+  const tokenListFn = () => {
     return [
       {
         chainId: 137,
@@ -56,16 +56,18 @@ const patchStoredTokenList = () => {
         decimals: 18,
       },
     ];
-  });
+  };
+  patch(polygon, 'tokenList', tokenListFn);
+  patch(openocean, 'tokenList', tokenListFn);
 };
 
 beforeAll(async () => {
   polygon = Polygon.getInstance('mainnet');
   patchEVMNonceManager(polygon.nonceManager);
-  patchStoredTokenList();
   await polygon.init();
   openocean = Openocean.getInstance('polygon', 'mainnet');
   await openocean.init();
+  patchStoredTokenList();
 });
 
 describe('verify Openocean estimateSellTrade', () => {

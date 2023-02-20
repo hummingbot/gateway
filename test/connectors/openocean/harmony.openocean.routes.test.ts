@@ -54,7 +54,7 @@ const patchInit = () => {
 };
 
 const patchStoredTokenList = () => {
-  patch(harmony, 'tokenList', () => {
+  const tokenListFn = () => {
     return [
       {
         chainId: 1666600000,
@@ -71,7 +71,9 @@ const patchStoredTokenList = () => {
         decimals: 18,
       },
     ];
-  });
+  };
+  patch(harmony, 'tokenList', tokenListFn);
+  patch(openocean, 'tokenList', tokenListFn);
 };
 
 const patchGetTokenBySymbol = () => {
