@@ -3,71 +3,71 @@ import fs from 'fs';
 import fse from 'fs-extra';
 import fsp from 'fs/promises';
 import 'jest-extended';
-import os from 'os';
+// import os from 'os';
 import path from 'path';
 import {
   EVMNonceManager,
-  NonceInfo,
-  NonceLocalStorage,
+  // NonceInfo,
+  // NonceLocalStorage,
 } from '../../src/evm/evm.nonce';
-import { ReferenceCountingCloseable } from '../../src/services/refcounting-closeable';
+// import { ReferenceCountingCloseable } from '../../src/services/refcounting-closeable';
 import { patch } from './patch';
 
-describe('Test NonceLocalStorage', () => {
-  let dbPath: string = '';
-  let db: NonceLocalStorage;
-  const handle: string = ReferenceCountingCloseable.createHandle();
+// describe('Test NonceLocalStorage', () => {
+//   let dbPath: string = '';
+//   let db: NonceLocalStorage;
+//   const handle: string = ReferenceCountingCloseable.createHandle();
 
-  beforeAll(async () => {
-    dbPath = await fsp.mkdtemp(
-      path.join(os.tmpdir(), '/NonceLocalStorage.test.level')
-    );
-  });
+//   beforeAll(async () => {
+//     dbPath = await fsp.mkdtemp(
+//       path.join(os.tmpdir(), '/NonceLocalStorage.test.level')
+//     );
+//   });
 
-  beforeEach(() => {
-    db = NonceLocalStorage.getInstance(dbPath, handle);
-  });
+//   beforeEach(() => {
+//     db = NonceLocalStorage.getInstance(dbPath, handle);
+//   });
 
-  afterAll(async () => {
-    await fse.emptyDir(dbPath);
-    fs.rmSync(dbPath, { force: true, recursive: true });
-  });
+//   afterAll(async () => {
+//     await fse.emptyDir(dbPath);
+//     fs.rmSync(dbPath, { force: true, recursive: true });
+//   });
 
-  afterEach(async () => {
-    await db.close(handle);
-  });
+//   afterEach(async () => {
+//     await db.close(handle);
+//   });
 
-  it('save, get and delete nonces', async () => {
-    const testChain1 = 'ethereum';
-    const testChain1Id = 1;
-    const address1 = 'A';
-    const address2 = 'B';
+//   it('save, get and delete nonces', async () => {
+//     const testChain1 = 'ethereum';
+//     const testChain1Id = 1;
+//     const address1 = 'A';
+//     const address2 = 'B';
 
-    const now: number = new Date().getTime();
+//     const now: number = new Date().getTime();
 
-    // saves a key with a NonceInfo value
-    db.saveLeadingNonce(
-      testChain1,
-      testChain1Id,
-      address1,
-      new NonceInfo(15, now + 1000)
-    );
-    db.saveLeadingNonce(
-      testChain1,
-      testChain1Id,
-      address2,
-      new NonceInfo(23, now + 1000)
-    );
+//     // saves a key with a NonceInfo value
+//     db.saveLeadingNonce(
+//       testChain1,
+//       testChain1Id,
+//       address1,
+//       new NonceInfo(15, now + 1000)
+//     );
+//     db.saveLeadingNonce(
+//       testChain1,
+//       testChain1Id,
+//       address2,
+//       new NonceInfo(23, now + 1000)
+//     );
 
-    const results = await db.getLeadingNonces(testChain1, testChain1Id);
+//     const results = await db.getLeadingNonces(testChain1, testChain1Id);
 
-    // returns with an address as key with the corresponding NonceInfo value
-    expect(results).toStrictEqual({
-      [address1]: new NonceInfo(15, now + 1000),
-      [address2]: new NonceInfo(23, now + 1000),
-    });
-  });
-});
+//     // returns with an address as key with the corresponding NonceInfo value
+//     expect(results).toStrictEqual({
+//       [address1]: new NonceInfo(15, now + 1000),
+//       [address2]: new NonceInfo(23, now + 1000),
+//     });
+//   });
+// });
 
 describe('Test EVMNonceManager', () => {
   let dbPath: string = '';

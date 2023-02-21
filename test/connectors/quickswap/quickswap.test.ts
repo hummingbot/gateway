@@ -1,7 +1,7 @@
 jest.useFakeTimers();
-import { Quickswap } from '../../../../src/connectors/quickswap/quickswap';
-import { patch, unpatch } from '../../../services/patch';
-import { UniswapishPriceError } from '../../../../src/services/error-handler';
+import { Quickswap } from '../../../src/connectors/quickswap/quickswap';
+import { patch, unpatch } from '../../services/patch';
+import { UniswapishPriceError } from '../../../src/services/error-handler';
 import {
   Fetcher,
   Percent,
@@ -13,8 +13,8 @@ import {
   Route,
 } from 'quickswap-sdk';
 import { BigNumber } from 'ethers';
-import { Polygon } from '../../../../src/chains/polygon/polygon';
-import { patchEVMNonceManager } from '../../../evm.nonce.mock';
+import { Polygon } from '../../../src/chains/polygon/polygon';
+import { patchEVMNonceManager } from '../../evm.nonce.mock';
 
 let polygon: Polygon;
 let quickswap: Quickswap;

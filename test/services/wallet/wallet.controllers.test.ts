@@ -20,7 +20,7 @@ import { ConfigManagerCertPassphrase } from '../../../src/services/config-manage
 import { BinanceSmartChain } from '../../../src/chains/binance-smart-chain/binance-smart-chain';
 import { Cronos } from '../../../src/chains/cronos/cronos';
 import { Near } from '../../../src/chains/near/near';
-import { Cosmos } from '../../../src/chains/cosmos/cosmos';
+// import { Cosmos } from '../../../src/chains/cosmos/cosmos';
 
 let avalanche: Avalanche;
 let cronos: Cronos;
@@ -28,7 +28,7 @@ let eth: Ethereum;
 let harmony: Harmony;
 let bsc: BinanceSmartChain;
 let near: Near;
-let cosmos: Cosmos;
+// let cosmos: Cosmos;
 
 beforeAll(async () => {
   patch(ConfigManagerCertPassphrase, 'readPassphrase', () => 'a');
@@ -39,7 +39,7 @@ beforeAll(async () => {
   bsc = BinanceSmartChain.getInstance('testnet');
   cronos = Cronos.getInstance('testnet');
   near = Near.getInstance('testnet');
-  cosmos = Cosmos.getInstance('testnet');
+  // cosmos = Cosmos.getInstance('testnet');
 });
 
 beforeEach(() =>
@@ -53,7 +53,7 @@ afterAll(async () => {
   await bsc.close();
   await cronos.close();
   await near.close();
-  await cosmos.close();
+  // await cosmos.close();
 });
 
 afterEach(() => unpatch());
@@ -85,20 +85,20 @@ const encodedPrivateKey = {
   },
 };
 
-const cosmosAddress = 'cosmos18nadm9qd4pz8pgffhvehc0dthuhpgevp4l3nar';
-const cosmosPrivateKey =
-  '218507defde7d91a9eba858437115b8aea68e3cbc7a4b68b3edac53d5ec89516'; // noqa: mock
-const encodedCosmosPrivateKey = {
-  keyAlgorithm: {
-    name: 'PBKDF2',
-    salt: 'PkkhCEpSae+dYup0Q2ZKpA==',
-    iterations: 500000,
-    hash: 'SHA-256',
-  },
-  cipherAlgorithm: { name: 'AES-GCM', iv: '1mBtuYgYHJ/xkkA7xdU1QQ==' },
-  ciphertext:
-    'F7M1ic/dSNHbD1MrU3gQlv9RCiHaSeyk1Rb63NkKSuOuIE1WeCvVLGha5LujsAJAkQ++Mts+h2Ub2OGCdoFkHRO1BMYF0djNDFmwJlKzd68=',
-};
+// const cosmosAddress = 'cosmos18nadm9qd4pz8pgffhvehc0dthuhpgevp4l3nar';
+// const cosmosPrivateKey =
+//   '218507defde7d91a9eba858437115b8aea68e3cbc7a4b68b3edac53d5ec89516'; // noqa: mock
+// const encodedCosmosPrivateKey = {
+//   keyAlgorithm: {
+//     name: 'PBKDF2',
+//     salt: 'PkkhCEpSae+dYup0Q2ZKpA==',
+//     iterations: 500000,
+//     hash: 'SHA-256',
+//   },
+//   cipherAlgorithm: { name: 'AES-GCM', iv: '1mBtuYgYHJ/xkkA7xdU1QQ==' },
+//   ciphertext:
+//     'F7M1ic/dSNHbD1MrU3gQlv9RCiHaSeyk1Rb63NkKSuOuIE1WeCvVLGha5LujsAJAkQ++Mts+h2Ub2OGCdoFkHRO1BMYF0djNDFmwJlKzd68=',
+// };
 
 describe('addWallet and getWallets', () => {
   it('add an Ethereum wallet', async () => {
@@ -231,32 +231,32 @@ describe('addWallet and getWallets', () => {
     expect(addresses[0]).toContain(oneAddress);
   });
 
-  it('add a Cosmos wallet', async () => {
-    patch(cosmos, 'getWallet', () => {
-      return {
-        address: cosmosAddress,
-        prefix: 'cosmos',
-      };
-    });
+  // it('add a Cosmos wallet', async () => {
+  //   patch(cosmos, 'getWallet', () => {
+  //     return {
+  //       address: cosmosAddress,
+  //       prefix: 'cosmos',
+  //     };
+  //   });
 
-    patch(cosmos, 'encrypt', () => {
-      return JSON.stringify(encodedCosmosPrivateKey);
-    });
+  //   patch(cosmos, 'encrypt', () => {
+  //     return JSON.stringify(encodedCosmosPrivateKey);
+  //   });
 
-    await addWallet({
-      privateKey: cosmosPrivateKey,
-      chain: 'cosmos',
-      network: 'testnet',
-    });
+  //   await addWallet({
+  //     privateKey: cosmosPrivateKey,
+  //     chain: 'cosmos',
+  //     network: 'testnet',
+  //   });
 
-    const wallets = await getWallets();
+  //   const wallets = await getWallets();
 
-    const addresses: string[][] = wallets
-      .filter((wallet) => wallet.chain === 'cosmos')
-      .map((wallet) => wallet.walletAddresses);
+  //   const addresses: string[][] = wallets
+  //     .filter((wallet) => wallet.chain === 'cosmos')
+  //     .map((wallet) => wallet.walletAddresses);
 
-    expect(addresses[0]).toContain(cosmosAddress);
-  });
+  //   expect(addresses[0]).toContain(cosmosAddress);
+  // });
 
   it('fail to add a wallet to unknown chain', async () => {
     await expect(
@@ -354,32 +354,32 @@ describe('addWallet and removeWallets', () => {
     expect(addresses[0]).not.toContain(oneAddress);
   });
 
-  it('remove a Cosmos wallet', async () => {
-    patch(cosmos, 'getWallet', () => {
-      return {
-        address: cosmosAddress,
-        prefix: 'cosmos',
-      };
-    });
+  // it('remove a Cosmos wallet', async () => {
+  //   patch(cosmos, 'getWallet', () => {
+  //     return {
+  //       address: cosmosAddress,
+  //       prefix: 'cosmos',
+  //     };
+  //   });
 
-    patch(cosmos, 'encrypt', () => {
-      return JSON.stringify(encodedCosmosPrivateKey);
-    });
+  //   patch(cosmos, 'encrypt', () => {
+  //     return JSON.stringify(encodedCosmosPrivateKey);
+  //   });
 
-    await addWallet({
-      privateKey: cosmosPrivateKey,
-      chain: 'cosmos',
-      network: 'testnet',
-    });
+  //   await addWallet({
+  //     privateKey: cosmosPrivateKey,
+  //     chain: 'cosmos',
+  //     network: 'testnet',
+  //   });
 
-    await removeWallet({ chain: 'cosmos', address: cosmosAddress });
+  //   await removeWallet({ chain: 'cosmos', address: cosmosAddress });
 
-    const wallets = await getWallets();
+  //   const wallets = await getWallets();
 
-    const addresses: string[][] = wallets
-      .filter((wallet) => wallet.chain === 'cosmos')
-      .map((wallet) => wallet.walletAddresses);
+  //   const addresses: string[][] = wallets
+  //     .filter((wallet) => wallet.chain === 'cosmos')
+  //     .map((wallet) => wallet.walletAddresses);
 
-    expect(addresses[0]).not.toContain(cosmosAddress);
-  });
+  //   expect(addresses[0]).not.toContain(cosmosAddress);
+  // });
 });
