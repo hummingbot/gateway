@@ -126,9 +126,7 @@ export async function addWallet(
 
 // if the file does not exist, this should not fail
 export async function removeWallet(req: RemoveWalletRequest): Promise<void> {
-  await fse.rm(`./conf/wallets/${req.chain}/${req.address}.json`, {
-    force: true,
-  });
+  await fse.remove(`./conf/wallets/${req.chain}/${req.address}.json`);
 }
 
 export async function getDirectories(source: string): Promise<string[]> {
