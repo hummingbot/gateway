@@ -16,15 +16,6 @@ then
   GATEWAY_TAG="latest"
 fi
 
-# Check if container with same version already exists
-if docker ps -a | grep -q "hummingbot/gateway:$GATEWAY_TAG"; then
-  echo
-  echo "A Gateway container with the same version '$GATEWAY_TAG' already exists on this machine."
-  echo "Remove the existing version by running 'docker rm <container-name>' before creating a new one."
-  echo "Aborting..."
-  exit
-fi
-
 # Ask the user for the name of the new Gateway instance
 read -p "Enter a name for your new Gateway instance (default = \"gateway\") >>> " INSTANCE_NAME
 if [ "$INSTANCE_NAME" == "" ]
@@ -150,7 +141,6 @@ create_instance () {
    docker run \
    --name $INSTANCE_NAME \
    -p $PORT:$PORT \
-   -p 8080:8080 \
    -v $CONF_FOLDER:/usr/src/app/conf \
    -v $LOGS_FOLDER:/usr/src/app/logs \
    -v $CERTS_FOLDER:/usr/src/app/certs \
