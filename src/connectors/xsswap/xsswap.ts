@@ -63,7 +63,6 @@ export class Xsswap implements Uniswapish {
    * @param address Token address
    */
   public getTokenByAddress(address: string): Token {
-    console.log(`Argument Address: ${address}`);
     return this.tokenList[convertXdcAddressToEthAddress(address)];
   }
 
@@ -71,7 +70,6 @@ export class Xsswap implements Uniswapish {
     if (!this.xdc.ready()) {
       await this.xdc.init();
     }
-    console.log(`Raw Token List: ${JSON.stringify(this.xdc.storedTokenList)}`);
     for (const token of this.xdc.storedTokenList) {
       const xdcAddress = convertXdcAddressToEthAddress(token.address);
       this.tokenList[xdcAddress] = new Token(
@@ -82,7 +80,6 @@ export class Xsswap implements Uniswapish {
         token.name
       );
     }
-    console.log(`Parsed Token List: ${JSON.stringify(this.tokenList)}`);
     this._ready = true;
   }
 

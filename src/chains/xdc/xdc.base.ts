@@ -163,7 +163,6 @@ export class XdcBase {
     } else {
       ({ tokens } = JSON.parse(await fs.readFile(tokenListSource, 'utf8')));
     }
-    console.log(`Fetched Token List: ${JSON.stringify(tokens)}`);
     return tokens;
   }
 
