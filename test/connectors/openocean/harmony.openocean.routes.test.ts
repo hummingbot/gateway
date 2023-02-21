@@ -15,11 +15,11 @@ beforeAll(async () => {
   app = express();
   app.use(express.json());
 
-  harmony = Harmony.getInstance('mainnet');
+  harmony = Harmony.getInstance('testnet');
   patchEVMNonceManager(harmony.nonceManager);
   await harmony.init();
 
-  openocean = Openocean.getInstance('harmony', 'mainnet');
+  openocean = Openocean.getInstance('harmony', 'testnet');
   await openocean.init();
 
   app.use('/amm', AmmRoutes.router);
@@ -170,7 +170,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'harmony',
-        network: 'mainnet',
+        network: 'testnet',
         connector: 'openocean',
         quote: 'DAI',
         base: 'USDC',
@@ -198,7 +198,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'harmony',
-        network: 'mainnet',
+        network: 'testnet',
         connector: 'openocean',
         quote: 'USDC',
         base: 'DAI',
@@ -234,7 +234,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'harmony',
-        network: 'mainnet',
+        network: 'testnet',
         connector: 'openocean',
         quote: 'USDC',
         base: 'bDAI',
@@ -266,7 +266,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'harmony',
-        network: 'mainnet',
+        network: 'testnet',
         connector: 'openocean',
         quote: 'USDC',
         base: 'bDAI',
@@ -288,7 +288,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'harmony',
-        network: 'mainnet',
+        network: 'testnet',
         connector: 'openocean',
         quote: 'USDC',
         base: 'bDAI',
@@ -310,7 +310,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'harmony',
-        network: 'mainnet',
+        network: 'testnet',
         connector: 'openocean',
         quote: 'USDC',
         base: 'bDAI',
@@ -335,7 +335,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'harmony',
-        network: 'mainnet',
+        network: 'testnet',
         connector: 'openocean',
         quote: 'USDC',
         base: 'bDAI',
@@ -360,7 +360,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'harmony',
-        network: 'mainnet',
+        network: 'testnet',
         connector: 'openocean',
         quote: 'USDC',
         base: 'bDAI',
@@ -389,7 +389,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'harmony',
-        network: 'mainnet',
+        network: 'testnet',
         connector: 'openocean',
         quote: 'DAI',
         base: 'USDC',
@@ -411,7 +411,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'harmony',
-        network: 'mainnet',
+        network: 'testnet',
         connector: 'openocean',
         quote: 'DAI',
         base: 'USDC',
@@ -429,7 +429,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'harmony',
-        network: 'mainnet',
+        network: 'testnet',
         connector: 'openocean',
         quote: 'DAI',
         base: 'USDC',
@@ -460,7 +460,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'harmony',
-        network: 'mainnet',
+        network: 'testnet',
         connector: 'openocean',
         quote: 'USDC',
         base: 'DAI',
@@ -482,7 +482,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'harmony',
-        network: 'mainnet',
+        network: 'testnet',
         connector: 'openocean',
         quote: 'USDC',
         base: 'DAI',
@@ -502,7 +502,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'harmony',
-        network: 'mainnet',
+        network: 'testnet',
         connector: 'openocean',
         quote: 'USDC',
         base: 'DAI',
@@ -534,7 +534,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'harmony',
-        network: 'mainnet',
+        network: 'testnet',
         connector: 'openocean',
         quote: 'USDC',
         base: 'BITCOIN',
@@ -569,7 +569,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'harmony',
-        network: 'mainnet',
+        network: 'testnet',
         connector: 'openocean',
         quote: 'BITCOIN',
         base: 'USDC',
@@ -590,7 +590,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'harmony',
-        network: 'mainnet',
+        network: 'testnet',
         connector: 'openocean',
         quote: 'USDC',
         base: 'DAI',
@@ -610,7 +610,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'harmony',
-        network: 'mainnet',
+        network: 'testnet',
         connector: 'openocean',
         quote: 'DAI',
         base: 'USDC',
@@ -630,7 +630,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'harmony',
-        network: 'mainnet',
+        network: 'testnet',
         connector: 'openocean',
         quote: 'USDC',
         base: 'DAI',
@@ -650,7 +650,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'harmony',
-        network: 'mainnet',
+        network: 'testnet',
         connector: 'openocean',
         quote: 'DAI',
         base: 'USDC',
@@ -674,13 +674,13 @@ describe('POST /amm/estimateGas', () => {
       .post('/amm/estimateGas')
       .send({
         chain: 'harmony',
-        network: 'mainnet',
+        network: 'testnet',
         connector: 'openocean',
       })
       .set('Accept', 'application/json')
       .expect(200)
       .then((res: any) => {
-        expect(res.body.network).toEqual('mainnet');
+        expect(res.body.network).toEqual('testnet');
         expect(res.body.gasPrice).toEqual(100);
         expect(res.body.gasCost).toEqual(
           gasCostInEthString(100, openocean.gasLimitEstimate)
@@ -696,7 +696,7 @@ describe('POST /amm/estimateGas', () => {
       .post('/amm/estimateGas')
       .send({
         chain: 'harmony',
-        network: 'mainnet',
+        network: 'testnet',
         connector: 'pangolin',
       })
       .set('Accept', 'application/json')

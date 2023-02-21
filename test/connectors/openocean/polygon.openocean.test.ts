@@ -60,10 +60,10 @@ const patchStoredTokenList = () => {
 };
 
 beforeAll(async () => {
-  polygon = Polygon.getInstance('mainnet');
+  polygon = Polygon.getInstance('mumbai');
   patchEVMNonceManager(polygon.nonceManager);
   await polygon.init();
-  openocean = Openocean.getInstance('polygon', 'mainnet');
+  openocean = Openocean.getInstance('polygon', 'mumbai');
   await openocean.init();
   patchStoredTokenList();
 });

@@ -60,10 +60,10 @@ const patchStoredTokenList = () => {
 };
 
 beforeAll(async () => {
-  harmony = Harmony.getInstance('mainnet');
+  harmony = Harmony.getInstance('testnet');
   patchEVMNonceManager(harmony.nonceManager);
   await harmony.init();
-  openocean = Openocean.getInstance('harmony', 'mainnet');
+  openocean = Openocean.getInstance('harmony', 'testnet');
   await openocean.init();
   patchStoredTokenList();
 });

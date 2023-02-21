@@ -60,10 +60,10 @@ const patchStoredTokenList = () => {
 };
 
 beforeAll(async () => {
-  ethereum = Ethereum.getInstance('mainnet');
+  ethereum = Ethereum.getInstance('goerli');
   patchEVMNonceManager(ethereum.nonceManager);
   await ethereum.init();
-  openocean = Openocean.getInstance('ethereum', 'mainnet');
+  openocean = Openocean.getInstance('ethereum', 'goerli');
   await openocean.init();
   patchStoredTokenList();
 });

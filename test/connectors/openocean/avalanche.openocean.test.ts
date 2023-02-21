@@ -60,10 +60,10 @@ const patchStoredTokenList = () => {
 };
 
 beforeAll(async () => {
-  avalanche = Avalanche.getInstance('avalanche');
+  avalanche = Avalanche.getInstance('fuji');
   patchEVMNonceManager(avalanche.nonceManager);
   await avalanche.init();
-  openocean = Openocean.getInstance('avalanche', 'avalanche');
+  openocean = Openocean.getInstance('avalanche', 'fuji');
   await openocean.init();
   patchStoredTokenList();
 });
