@@ -160,7 +160,9 @@ describe('Configuration manager v2 tests', () => {
     const serverNamespace: ConfigurationNamespace = configManager.getNamespace(
       'server'
     ) as ConfigurationNamespace;
-    expect(path.basename(serverNamespace.schemaPath)).toEqual('server-schema.json');
+    expect(path.basename(serverNamespace.schemaPath)).toEqual(
+      'server-schema.json'
+    );
     expect(path.dirname(serverNamespace.schemaPath)).toEqual(
       path.dirname(ConfigRootSchemaPath)
     );
@@ -223,9 +225,13 @@ describe('Configuration manager v2 tests', () => {
 
   it('Get instance', (done) => {
     let configManager = ConfigManagerV2.getInstance();
-    expect(configManager.allConfigurations.server.telemetry_enabled).toEqual(false);
+    expect(configManager.allConfigurations.server.telemetry_enabled).toEqual(
+      false
+    );
     configManager = ConfigManagerV2.getInstance();
-    expect(configManager.allConfigurations.server.telemetry_enabled).toEqual(false);
+    expect(configManager.allConfigurations.server.telemetry_enabled).toEqual(
+      false
+    );
     done();
   });
 });
