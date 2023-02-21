@@ -15,11 +15,11 @@ beforeAll(async () => {
   app = express();
   app.use(express.json());
 
-  avalanche = Avalanche.getInstance('fuji');
+  avalanche = Avalanche.getInstance('avalanche');
   patchEVMNonceManager(avalanche.nonceManager);
   await avalanche.init();
 
-  openocean = Openocean.getInstance('avalanche', 'fuji');
+  openocean = Openocean.getInstance('avalanche', 'avalanche');
   await openocean.init();
 
   app.use('/amm', AmmRoutes.router);

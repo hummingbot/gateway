@@ -13,19 +13,19 @@ let avalanche: Avalanche;
 let openocean: Openocean;
 
 const USDC = new Token(
-  43114,
+  43113,
   '0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E',
   6,
   'USDC'
 );
 const WAVAX = new Token(
-  43114,
+  43113,
   '0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7',
   18,
   'WAVAX'
 );
 const bDAI = new Token(
-  43114,
+  43113,
   '0x6807eD4369d9399847F306D7d835538915fA749d',
   18,
   'bDAI'
@@ -35,21 +35,21 @@ const patchStoredTokenList = () => {
   patch(avalanche, 'tokenList', () => {
     return [
       {
-        chainId: 43114,
+        chainId: 43113,
         name: 'USDC',
         symbol: 'USDC',
         address: '0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E',
         decimals: 6,
       },
       {
-        chainId: 43114,
+        chainId: 43113,
         name: 'WAVAX',
         symbol: 'WAVAX',
         address: '0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7',
         decimals: 18,
       },
       {
-        chainId: 43114,
+        chainId: 43113,
         name: 'bDAI',
         symbol: 'bDAI',
         address: '0x6807eD4369d9399847F306D7d835538915fA749d',

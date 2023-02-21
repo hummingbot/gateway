@@ -57,14 +57,14 @@ const patchStoredTokenList = () => {
   patch(ethereum, 'tokenList', () => {
     return [
       {
-        chainId: 1,
+        chainId: 42,
         name: 'USDC',
         symbol: 'USDC',
         address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
         decimals: 6,
       },
       {
-        chainId: 1,
+        chainId: 42,
         name: 'BUSD',
         symbol: 'BUSD',
         address: '0x4Fabb145d64652a948d72533023f6E7A623C7C53',
@@ -78,7 +78,7 @@ const patchGetTokenBySymbol = () => {
   patch(ethereum, 'getTokenBySymbol', (symbol: string) => {
     if (symbol === 'USDC') {
       return {
-        chainId: 1,
+        chainId: 42,
         name: 'USDC',
         symbol: 'USDC',
         address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
@@ -86,7 +86,7 @@ const patchGetTokenBySymbol = () => {
       };
     } else {
       return {
-        chainId: 1,
+        chainId: 42,
         name: 'BUSD',
         symbol: 'BUSD',
         address: '0x4Fabb145d64652a948d72533023f6E7A623C7C53',
@@ -99,7 +99,7 @@ const patchGetTokenBySymbol = () => {
 const patchGetTokenByAddress = () => {
   patch(openocean, 'getTokenByAddress', () => {
     return {
-      chainId: 1,
+      chainId: 42,
       name: 'USDC',
       symbol: 'USDC',
       address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
@@ -219,7 +219,7 @@ describe('POST /amm/price', () => {
     patch(ethereum, 'getTokenBySymbol', (symbol: string) => {
       if (symbol === 'WETH') {
         return {
-          chainId: 1,
+          chainId: 42,
           name: 'WETH',
           symbol: 'WETH',
           address: '0xd0A1E359811322d97991E03f863a0C30C2cF029C',
@@ -251,7 +251,7 @@ describe('POST /amm/price', () => {
     patch(ethereum, 'getTokenBySymbol', (symbol: string) => {
       if (symbol === 'WETH') {
         return {
-          chainId: 1,
+          chainId: 42,
           name: 'WETH',
           symbol: 'WETH',
           address: '0xd0A1E359811322d97991E03f863a0C30C2cF029C',
@@ -554,7 +554,7 @@ describe('POST /amm/trade', () => {
     patch(ethereum, 'getTokenBySymbol', (symbol: string) => {
       if (symbol === 'USDC') {
         return {
-          chainId: 43114,
+          chainId: 42,
           name: 'USDC',
           symbol: 'USDC',
           address: '0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E',
