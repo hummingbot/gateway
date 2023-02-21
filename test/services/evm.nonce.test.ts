@@ -3,14 +3,14 @@ import fs from 'fs';
 import fse from 'fs-extra';
 import fsp from 'fs/promises';
 import 'jest-extended';
-import os from 'os';
+// import os from 'os';
 import path from 'path';
 import {
   EVMNonceManager,
-  NonceInfo,
-  NonceLocalStorage,
+  // NonceInfo,
+  // NonceLocalStorage,
 } from '../../src/evm/evm.nonce';
-import { ReferenceCountingCloseable } from '../../src/services/refcounting-closeable';
+// import { ReferenceCountingCloseable } from '../../src/services/refcounting-closeable';
 import { patch } from './patch';
 
 // describe('Test NonceLocalStorage', () => {
