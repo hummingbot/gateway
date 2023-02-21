@@ -140,9 +140,13 @@ export class XdcBase {
       (token: TokenInfo) => token.chainId === this.chainId
     );
     if (this.tokenList) {
-      this.tokenList.forEach(
-        (token: TokenInfo) => (this._tokenMap[token.symbol] = token)
-      );
+      this.tokenList.forEach((token: TokenInfo) => {
+        // NOTE: This is included to resolve the duplicate WXDC token entries in xinfin tokenlist. We ignore the latter
+        //       since it is not being used in XSSwap and XDCSwap.
+        if (!(token.symbol in this._tokenMap)) {
+          this._tokenMap[token.symbol] = token;
+        }
+      });
     }
   }
 
@@ -159,6 +163,7 @@ export class XdcBase {
     } else {
       ({ tokens } = JSON.parse(await fs.readFile(tokenListSource, 'utf8')));
     }
+    console.log(`Fetched Token List: ${JSON.stringify(tokens)}`);
     return tokens;
   }
 

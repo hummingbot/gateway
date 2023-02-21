@@ -1,5 +1,3 @@
-import { percentRegexp } from '../../services/config-manager-v2';
-import { UniswapishPriceError } from '../../services/error-handler';
 import {
   BigNumber,
   Contract,
@@ -7,21 +5,24 @@ import {
   Transaction,
   Wallet,
 } from 'ethers';
-import { isFractionString } from '../../services/validators';
-import { XsswapConfig } from './xsswap.config';
-import routerAbi from './xsswap_v2_router_abi.json';
 import {
   Fetcher,
+  Pair,
   Percent,
   Router,
   Token,
   TokenAmount,
   Trade,
-  Pair,
 } from 'xsswap-sdk';
-import { logger } from '../../services/logger';
 import { Xdc } from '../../chains/xdc/xdc';
 import { ExpectedTrade, Uniswapish } from '../../services/common-interfaces';
+import { percentRegexp } from '../../services/config-manager-v2';
+import { UniswapishPriceError } from '../../services/error-handler';
+import { logger } from '../../services/logger';
+import { isFractionString } from '../../services/validators';
+import { convertXdcAddressToEthAddress } from '../../services/wallet/wallet.controllers';
+import { XsswapConfig } from './xsswap.config';
+import routerAbi from './xsswap_v2_router_abi.json';
 
 export class Xsswap implements Uniswapish {
   private static _instances: { [name: string]: Xsswap };
@@ -62,22 +63,26 @@ export class Xsswap implements Uniswapish {
    * @param address Token address
    */
   public getTokenByAddress(address: string): Token {
-    return this.tokenList[address];
+    console.log(`Argument Address: ${address}`);
+    return this.tokenList[convertXdcAddressToEthAddress(address)];
   }
 
   public async init() {
     if (!this.xdc.ready()) {
       await this.xdc.init();
     }
+    console.log(`Raw Token List: ${JSON.stringify(this.xdc.storedTokenList)}`);
     for (const token of this.xdc.storedTokenList) {
-      this.tokenList[token.address] = new Token(
+      const xdcAddress = convertXdcAddressToEthAddress(token.address);
+      this.tokenList[xdcAddress] = new Token(
         this.chainId,
-        token.address,
+        xdcAddress,
         token.decimals,
         token.symbol,
         token.name
       );
     }
+    console.log(`Parsed Token List: ${JSON.stringify(this.tokenList)}`);
     this._ready = true;
   }
 

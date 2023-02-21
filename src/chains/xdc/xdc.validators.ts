@@ -1,15 +1,15 @@
 import {
-  mkRequestValidator,
-  mkValidator,
   RequestValidator,
   Validator,
+  mkRequestValidator,
+  mkValidator,
   validateAmount,
   validateToken,
   validateTokenSymbols,
 } from '../../services/validators';
 import {
-  validateNonce,
   validateAddress,
+  validateNonce,
 } from '../ethereum/ethereum.validators';
 
 // test if a string matches the shape of an Ethereum address
@@ -24,7 +24,9 @@ export const invalidSpenderError: string =
 export const validateSpender: Validator = mkValidator(
   'spender',
   invalidSpenderError,
-  (val) => typeof val === 'string' && (val === 'xdcswap' || isAddress(val))
+  (val) =>
+    typeof val === 'string' &&
+    (val === 'xdcswap' || val === 'xsswap' || isAddress(val))
 );
 
 export const validateXdcApproveRequest: RequestValidator = mkRequestValidator([
