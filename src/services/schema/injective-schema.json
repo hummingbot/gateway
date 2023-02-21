@@ -17,7 +17,8 @@
         },
         "additionalProperties": false
       },
-      "nativeCurrencySymbol": { "type": "string" }
+      "nativeCurrencySymbol": { "type": "string" },
+      "gasLimitEstimate": { "type": "integer" }
     },
     "additionalProperties": false,
     "required": ["nativeCurrencySymbol"]

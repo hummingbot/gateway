@@ -10,7 +10,7 @@ export namespace InjectiveCLOBConfig {
 
   export const config: NetworkConfig = {
     gasLimitEstimate: ConfigManagerV2.getInstance().get(
-      `injectiveCLOB.gasLimitEstimate`
+      `injective.gasLimitEstimate`
     ),
     tradingTypes: (type: string) => {
       return type === 'spot' ? ['CLOB_SPOT'] : ['CLOB_PERP'];
