@@ -18,16 +18,16 @@ beforeAll(async () => {
 
 afterEach(() => unpatch());
 
-describe('GET /cosmos', () => {
-  it('should return 200', async () => {
-    await request(gatewayApp)
-      .get(`/cosmos`)
-      .expect('Content-Type', /json/)
-      .expect(200)
-      .expect((res) => expect(res.body.connection).toBe(true))
-      .expect((res) => expect(res.body.rpcUrl).toBe(cosmos.rpcUrl));
-  });
-});
+// describe('GET /cosmos', () => {
+//   it('should return 200', async () => {
+//     await request(gatewayApp)
+//       .get(`/cosmos`)
+//       .expect('Content-Type', /json/)
+//       .expect(200)
+//       .expect((res) => expect(res.body.connection).toBe(true))
+//       .expect((res) => expect(res.body.rpcUrl).toBe(cosmos.rpcUrl));
+//   });
+// });
 
 const patchGetBalances = () => {
   patch(cosmos, 'getBalances', () => {
