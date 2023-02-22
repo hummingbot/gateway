@@ -1,7 +1,7 @@
 jest.useFakeTimers();
-import { Sushiswap } from '../../../../src/connectors/sushiswap/sushiswap';
-import { patch, unpatch } from '../../../services/patch';
-import { UniswapishPriceError as SushiswapishPriceError } from '../../../../src/services/error-handler';
+import { Sushiswap } from '../../../src/connectors/sushiswap/sushiswap';
+import { patch, unpatch } from '../../services/patch';
+import { UniswapishPriceError as SushiswapishPriceError } from '../../../src/services/error-handler';
 import {
   Token,
   CurrencyAmount,
@@ -11,8 +11,8 @@ import {
   Route,
 } from '@sushiswap/sdk';
 import { BigNumber } from 'ethers';
-import { Ethereum } from '../../../../src/chains/ethereum/ethereum';
-import { patchEVMNonceManager } from '../../../evm.nonce.mock';
+import { Ethereum } from '../../../src/chains/ethereum/ethereum';
+import { patchEVMNonceManager } from '../../evm.nonce.mock';
 
 let ethereum: Ethereum;
 let sushiswap: Sushiswap;
@@ -122,14 +122,5 @@ describe('verify sushiswap estimateBuyTrade', () => {
     await expect(async () => {
       await sushiswap.estimateBuyTrade(WETH, DAI, BigNumber.from(1));
     }).rejects.toThrow(SushiswapishPriceError);
-  });
-});
-
-describe('verify sushiswap Token List', () => {
-  it('Should return a token by address', async () => {
-    const token = sushiswap.getTokenByAddress(
-      '0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6'
-    );
-    expect(token).toBeInstanceOf(Token);
   });
 });

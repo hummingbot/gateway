@@ -3,13 +3,13 @@ import { Express } from 'express-serve-static-core';
 import request from 'supertest';
 import { Big } from 'big.js';
 import { MarketStatus } from '@perp/sdk-curie';
-import { Ethereum } from '../../../../src/chains/ethereum/ethereum';
-import { Perp } from '../../../../src/connectors/perp/perp';
+import { Ethereum } from '../../../src/chains/ethereum/ethereum';
+import { Perp } from '../../../src/connectors/perp/perp';
 
-import { PerpAmmRoutes } from '../../../../src/amm/amm.routes';
-import { patch, unpatch } from '../../../services/patch';
-import { gasCostInEthString } from '../../../../src/services/base';
-import { patchEVMNonceManager } from '../../../evm.nonce.mock';
+import { PerpAmmRoutes } from '../../../src/amm/amm.routes';
+import { patch, unpatch } from '../../services/patch';
+import { gasCostInEthString } from '../../../src/services/base';
+import { patchEVMNonceManager } from '../../evm.nonce.mock';
 
 let app: Express;
 let ethereum: Ethereum;

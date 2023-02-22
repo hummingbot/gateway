@@ -1,5 +1,5 @@
 # Path to folder where Hummingbot generates self-signed certificates
-certificatePath: /certs/
+certificatePath: ./certs/
 
 # Path to folder where logs will be stored.
 logPath: './logs'
