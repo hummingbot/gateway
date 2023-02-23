@@ -42,6 +42,26 @@ Dependencies:
 
 See the [`/docker`](./docker) folder for Docker installation scripts and instructions on how to use them.
 
+
+### Build Gateway Docker Image locally
+
+Dependencies:
+* [Docker](https://docker.com)
+
+To build the gateway docker image locally execute the below make command:
+
+```bash
+make docker
+```
+
+Pass the `${TAG}` environmental variable to add a tag to the docker
+image. For example, the below command will create the `hummingbot/gateway:dev`
+image.
+
+```bash
+TAG=dev make docker
+```
+
 ## Documentation
 
 See the [official Gateway docs](https://docs.hummingbot.org/gateway/).
