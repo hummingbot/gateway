@@ -16,7 +16,6 @@ then
   GATEWAY_TAG="latest"
 fi
 
-
 # Ask the user for the name of the new Gateway instance
 read -p "Enter a name for your new Gateway instance (default = \"gateway\") >>> " INSTANCE_NAME
 if [ "$INSTANCE_NAME" == "" ]
@@ -155,8 +154,12 @@ create_instance () {
    # Launch a new instance of gateway
    docker run \
    --name $INSTANCE_NAME \
+<<<<<<< HEAD
    -p $GATEWAY_PORT:15888 \
    -p $DOCS_PORT:8080 \
+=======
+   -p $PORT:$PORT \
+>>>>>>> 7c0751792bb043fe6d594596e21d66a43f90ab98
    -v $CONF_FOLDER:/usr/src/app/conf \
    -v $LOGS_FOLDER:/usr/src/app/logs \
    -v $CERTS_FOLDER:/usr/src/app/certs \
