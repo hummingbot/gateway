@@ -30212,14 +30212,6 @@
       },
       {
         "chainId": 1,
-        "address": "0x2730d6fdc86c95a74253beffaa8306b40fedecbb",
-        "name": "UNICORN",
-        "symbol": "UNI",
-        "decimals": 8,
-        "logoURI": "https://assets.coingecko.com/coins/images/9383/thumb/54231438.png?1566777314"
-      },
-      {
-        "chainId": 1,
         "address": "0x21f54372c07b930b79c5c2d9bb0eaaca86c3b298",
         "name": "Banana Finance",
         "symbol": "BANANA",
@@ -37697,6 +37689,13 @@
         "symbol": "RISU",
         "decimals": 9,
         "logoURI": "https://assets.coingecko.com/coins/images/27229/thumb/logo_%288%29.png?1667725134"
+      },
+      {
+        "chainId": 1,
+        "address": "0xcb3c5438dae9fe30b18ea53da3dab0e7dcaa0e4b",
+        "name": "Blur",
+        "symbol": "BLUR",
+        "decimals": 18
       }
     ],
     "version": {
