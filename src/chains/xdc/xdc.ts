@@ -1,6 +1,6 @@
 import abi from '../ethereum/ethereum.abi.json';
 import { logger } from '../../services/logger';
-import { Contract, Transaction, Wallet } from 'ethers';
+import { Contract, Transaction, Wallet } from 'ethers-xdc';
 import { XdcBase } from './xdc.base';
 import { getEthereumConfig as getXdcConfig } from '../ethereum/ethereum.config';
 import { Provider } from '@ethersproject/abstract-provider';

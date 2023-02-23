@@ -6,7 +6,7 @@ import {
   ContractInterface,
   Transaction,
   Wallet,
-} from 'ethers';
+} from 'ethers-xdc';
 import { isFractionString } from '../../services/validators';
 import { XdcswapConfig } from './xdcswap.config';
 import routerAbi from './xdcswap_v2_router_abi.json';
@@ -22,6 +22,7 @@ import {
 import { logger } from '../../services/logger';
 import { Xdc } from '../../chains/xdc/xdc';
 import { ExpectedTrade, Uniswapish } from '../../services/common-interfaces';
+import { convertXdcAddressToEthAddress } from '../../services/wallet/wallet.controllers';
 
 export class Xdcswap implements Uniswapish {
   private static _instances: { [name: string]: Xdcswap };
@@ -62,7 +63,7 @@ export class Xdcswap implements Uniswapish {
    * @param address Token address
    */
   public getTokenByAddress(address: string): Token {
-    return this.tokenList[address];
+    return this.tokenList[convertXdcAddressToEthAddress(address)];
   }
 
   public async init() {
@@ -70,9 +71,10 @@ export class Xdcswap implements Uniswapish {
       await this.xdc.init();
     }
     for (const token of this.xdc.storedTokenList) {
-      this.tokenList[token.address] = new Token(
+      const ethAddress = convertXdcAddressToEthAddress(token.address);
+      this.tokenList[ethAddress] = new Token(
         this.chainId,
-        token.address,
+        ethAddress,
         token.decimals,
         token.symbol,
         token.name

@@ -4,7 +4,7 @@ import {
   ContractInterface,
   Transaction,
   Wallet,
-} from 'ethers';
+} from 'ethers-xdc';
 import {
   Fetcher,
   Pair,
@@ -71,10 +71,10 @@ export class Xsswap implements Uniswapish {
       await this.xdc.init();
     }
     for (const token of this.xdc.storedTokenList) {
-      const xdcAddress = convertXdcAddressToEthAddress(token.address);
-      this.tokenList[xdcAddress] = new Token(
+      const ethAddress = convertXdcAddressToEthAddress(token.address);
+      this.tokenList[ethAddress] = new Token(
         this.chainId,
-        xdcAddress,
+        ethAddress,
         token.decimals,
         token.symbol,
         token.name
