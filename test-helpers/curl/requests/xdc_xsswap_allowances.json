@@ -2,6 +2,6 @@
   "chain": "xdc",
   "network": "apothem",
   "address": "$XDC_ADDRESS",
-  "spender": "xdcswap",
+  "spender": "xsswap",
   "tokenSymbols": ["WBTC2", "YFI2", "MKR2", "AAVE2", "UNI2", "USDC2"]
 }

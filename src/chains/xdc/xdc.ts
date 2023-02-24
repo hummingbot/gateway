@@ -4,7 +4,6 @@ import { Contract, Transaction, Wallet } from 'ethers-xdc';
 import { XdcBase } from './xdc.base';
 import { getEthereumConfig as getXdcConfig } from '../ethereum/ethereum.config';
 import { Provider } from '@ethersproject/abstract-provider';
-import { XdcswapConfig } from '../../connectors/xdcswap/xdcswap.config';
 import { Xdcish } from '../../services/common-interfaces';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { walletPath } from '../../services/base';
@@ -70,9 +69,7 @@ export class Xdc extends XdcBase implements Xdcish {
 
   getSpender(reqSpender: string): string {
     let spender: string;
-    if (reqSpender === 'xdcswap') {
-      spender = XdcswapConfig.config.routerAddress(this._chain);
-    } else if (reqSpender === 'xsswap') {
+    if (reqSpender === 'xsswap') {
       spender = XsswapConfig.config.routerAddress(this._chain);
     } else {
       spender = convertXdcAddressToEthAddress(reqSpender);

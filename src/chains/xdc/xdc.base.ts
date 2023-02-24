@@ -142,7 +142,7 @@ export class XdcBase {
     if (this.tokenList) {
       this.tokenList.forEach((token: TokenInfo) => {
         // NOTE: This is included to resolve the duplicate WXDC token entries in xinfin tokenlist. We ignore the latter
-        //       since it is not being used in XSSwap and XDCSwap.
+        //       since it is not being used in XSSwap.
         if (!(token.symbol in this._tokenMap)) {
           this._tokenMap[token.symbol] = token;
         }

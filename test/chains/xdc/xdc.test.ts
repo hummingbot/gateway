@@ -45,7 +45,7 @@ afterAll(async () => {
   await xdc.close();
 });
 
-describe('verify Xdcswap storedTokenList', () => {
+describe('verify xdc storedTokenList', () => {
   it('Should only return tokens in the chain', async () => {
     const tokenList = xdc.storedTokenList;
     // Only one of them has chainId 51

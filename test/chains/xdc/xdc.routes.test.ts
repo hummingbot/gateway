@@ -135,7 +135,7 @@ describe('POST /evm/approve', () => {
         chain: 'xdc',
         network: 'apothem',
         address,
-        spender: 'xdcswap',
+        spender: 'xsswap',
         token: 'PNG',
       })
       .set('Accept', 'application/json')
@@ -205,7 +205,7 @@ describe('POST /evm/approve', () => {
         chain: 'xdc',
         network: 'apothem',
         address,
-        spender: 'xdcswap',
+        spender: 'xsswap',
         token: 123,
         nonce: '23',
       })

@@ -20,13 +20,11 @@ export const isAddress = (str: string): boolean => {
 export const invalidSpenderError: string =
   'The spender param is invalid xdc address (0x or xdc followed by 40 hexidecimal characters).';
 
-// given a request, look for a key called spender that is 'xdcswap' or an Ethereum address
+// given a request, look for a key called spender that is 'xsswap' or an Ethereum address
 export const validateSpender: Validator = mkValidator(
   'spender',
   invalidSpenderError,
-  (val) =>
-    typeof val === 'string' &&
-    (val === 'xdcswap' || val === 'xsswap' || isAddress(val))
+  (val) => typeof val === 'string' && (val === 'xsswap' || isAddress(val))
 );
 
 export const validateXdcApproveRequest: RequestValidator = mkRequestValidator([

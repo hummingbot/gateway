@@ -92,10 +92,6 @@ configurations:
     configurationPath: xdc.yml
     schemaPath: ethereum-schema.json
 
-  $namespace xdcswap:
-    configurationPath: xdcswap.yml
-    schemaPath: xdcswap-schema.json
-
   $namespace xsswap:
     configurationPath: xsswap.yml
     schemaPath: xsswap-schema.json

@@ -227,7 +227,7 @@ curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT "https://localhost:158
 ## post poll
 curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/near_post_poll.json)" https://localhost:15888/near/poll | jq
 
-# XDC and XDCSWAP
+# XDC and XSSWAP
 
 ## check for network status, let's us know that gateway  knows about xdc
 curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT "https://localhost:15888/network/status?chain=xdc&network=apothem" | jq
@@ -245,16 +245,16 @@ curl -s -X DELETE -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: a
 curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/xdc_poll.json)" https://localhost:15888/network/poll | jq
 
 ## get xdc swap price
-curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/price_xdc_xdcswap.json)" https://localhost:15888/amm/price | jq
+curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/price_xdc_xsswap.json)" https://localhost:15888/amm/price | jq
 
 ## buy swap
-curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/xdc_xdcswap_buy.json)" https://localhost:15888/amm/trade | jq
+curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/xdc_xsswap_buy.json)" https://localhost:15888/amm/trade | jq
 
 ## sell swap
-curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/xdc_xdcswap_sell.json)" https://localhost:15888/amm/trade | jq
+curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/xdc_xsswap_sell.json)" https://localhost:15888/amm/trade | jq
 
 ## allowances check
-curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/xdc_xdcswap_allowances.json)" https://localhost:15888/evm/allowances | jq
+curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/xdc_xsswap_allowances.json)" https://localhost:15888/evm/allowances | jq
 
 ## approve
 curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/xdc_approve.json)" https://localhost:15888/evm/approve | jq

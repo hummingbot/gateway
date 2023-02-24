@@ -26,7 +26,7 @@ describe('validateSpender', () => {
   it("valid when req.spender is a 'uniswap'", () => {
     expect(
       validateSpender({
-        spender: 'xdcswap',
+        spender: 'xsswap',
       })
     ).toEqual([]);
   });

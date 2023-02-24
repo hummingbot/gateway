@@ -3,8 +3,8 @@
   "base": "WBTC2",
   "quote": "USDC2",
   "amount": "1",
-  "side": "SELL",
+  "side": "BUY",
   "chain": "xdc",
   "network": "apothem",
-  "connector": "xdcswap"
+  "connector": "xsswap"
 }

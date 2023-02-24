@@ -21,7 +21,6 @@ import { AmmRoutes, AmmLiquidityRoutes, PerpAmmRoutes } from './amm/amm.routes';
 import { MadMeerkatConfig } from './connectors/mad_meerkat/mad_meerkat.config';
 import { PangolinConfig } from './connectors/pangolin/pangolin.config';
 import { QuickswapConfig } from './connectors/quickswap/quickswap.config';
-import { XdcswapConfig } from './connectors/xdcswap/xdcswap.config';
 import { TraderjoeConfig } from './connectors/traderjoe/traderjoe.config';
 import { UniswapConfig } from './connectors/uniswap/uniswap.config';
 import { OpenoceanConfig } from './connectors/openocean/openocean.config';
@@ -85,7 +84,6 @@ gatewayApp.get(
       uniswap: UniswapConfig.config.availableNetworks,
       pangolin: PangolinConfig.config.availableNetworks,
       quickswap: QuickswapConfig.config.availableNetworks,
-      xdcswap: XdcswapConfig.config.availableNetworks,
       sushiswap: SushiswapConfig.config.availableNetworks,
       openocean: OpenoceanConfig.config.availableNetworks,
       traderjoe: TraderjoeConfig.config.availableNetworks,
