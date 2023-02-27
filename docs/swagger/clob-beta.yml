@@ -1,0 +1,1410 @@
+swagger: '2.0'
+# TODO: Please verify if all clob-beta routes are compatible with Serum, if not please mark them and propose new changes
+# TODO: Once the schema is final, move paths to clob-routes.yml and Merge definitions to definitions.yml
+
+info:
+  description: 'Gateway allows clients to interoperate with blockchains and DeFi protocols via a REST API. This allows for a language agnostic way to use official SDKs for blockchains.'
+  version: '1.0.0'
+  title: 'gateway'
+  contact:
+    email: 'dev@hummingbot.io'
+  license:
+    name: 'Apache 2.0'
+    url: 'http://www.apache.org/licenses/LICENSE-2.0.html'
+
+host: 'localhost:15888'
+
+tags:
+  - name: 'clob-beta'
+    description: 'Interact with CLOB decentralized exchanges (BETA)'
+
+schemes:
+  - 'http'
+
+externalDocs:
+  description: 'Find out more about gateway'
+  url: 'https://github.com/hummingbot/hummingbot'
+
+
+paths:
+  /clob-beta:
+    get:
+      tags:
+        - 'clob-beta'
+      summary: 'Verify Clob Routes Status'
+      description: 'Verify if the Clob routes are ready to use and show some other useful information. '
+      operationId: 'clob.root'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          description: 'Request body.'
+          required: true
+          schema:
+            $ref: '#/definitions/CLOBRootRequest'
+
+      responses:
+        '200':
+          description: 'Successful response.'
+          schema:
+            $ref: '#/definitions/CLOBRootResponse'
+
+  /clob-beta/markets:
+    get:
+      tags:
+        - 'clob-beta'
+      summary: 'Get One or More Markets'
+      description: 'Get the information of one, several or all available markets. Depending on the connector kind, response body might be different.'
+      operationId: 'clob.markets'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          description: 'Request body.'
+          required: true
+          schema:
+            $ref: '#/definitions/CLOBGetMarketsRequest'
+      responses:
+        '200':
+          description: 'Successful response.'
+          schema:
+            $ref: '#/definitions/CLOBGetMarketsResponse'
+        '404':
+          description: 'Not found response.'
+
+  /clob-beta/orderBooks:
+    get:
+      tags:
+        - 'clob-beta'
+      summary: 'Get One or More Order Books'
+      description: 'Get the information of one, several or all available order books. Depending on the connector kind, response body might be different.'
+      operationId: 'clob.orderBooks'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          description: 'Request body.'
+          required: true
+          schema:
+            $ref: '#/definitions/CLOBGetOrderBooksRequest'
+      responses:
+        '200':
+          description: 'Successful response.'
+          schema:
+            $ref: '#/definitions/CLOBGetOrderBooksResponse'
+        '404':
+          description: 'Not found response.'
+
+  /clob-beta/tickers:
+    get:
+      tags:
+        - 'clob-beta'
+      summary: 'Get middle price ticker for requested market'
+      operationId: 'tickers'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          description: 'Request body.'
+          required: true
+          schema:
+            $ref: '#/definitions/CLOBGetTickersRequest'
+      responses:
+        '200':
+          description: 'Successful response.'
+          schema:
+            $ref: '#/definitions/CLOBGetTickersResponse'
+        '404':
+          description: 'Not found response.'
+
+  /clob-beta/orders:
+    get:
+      tags:
+        - 'clob-beta'
+      summary: 'Get status details of one or more orders'
+      operationId: 'getOrders'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          description: 'Request body.'
+          required: true
+          schema:
+            $ref: '#/definitions/CLOBGetOrdersRequest'
+      responses:
+        '200':
+          description: 'Successful response.'
+          schema:
+            $ref: '#/definitions/CLOBGetOrdersResponse'
+        '404':
+          description: 'Not found response.'
+    post:
+      tags:
+        - 'clob-beta'
+      summary: 'Create one or more orders'
+      description: 'Create one or more orders.'
+      operationId: 'createOrders'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          description: 'Request body.'
+          required: true
+          schema:
+            $ref: '#/definitions/CLOBPostCreateOrdersRequest'
+      responses:
+        '200':
+          description: 'Successful response.'
+          schema:
+            $ref: '#/definitions/CLOBPostCreateOrdersResponse'
+        '400':
+          description: 'Bad request response.'
+    delete:
+      tags:
+        - 'clob-beta'
+      summary: 'Cancel one or more orders'
+      description: 'Cancel one or more orders.'
+      operationId: 'cancelOrders'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          description: 'Request body.'
+          required: true
+          schema:
+            $ref: '#/definitions/CLOBDeleteOrdersRequest'
+      responses:
+        '200':
+          description: 'Successful response.'
+          schema:
+            $ref: '#/definitions/CLOBDeleteOrdersResponse'
+        '400':
+          description: 'Bad request response.'
+
+  /clob-beta/orders/open:
+    get:
+      tags:
+        - 'clob-beta'
+      summary: 'Get One Or More Open Orders'
+      description: 'Get the information of one, several or all open orders.'
+      operationId: 'clob.getOpenOrders'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          description: 'Request body.'
+          required: true
+          schema:
+            $ref: '#/definitions/CLOBGetOpenOrdersRequest'
+      responses:
+        '200':
+          description: 'Successful response.'
+          schema:
+            $ref: '#/definitions/CLOBGetOpenOrdersResponse'
+        '400':
+          description: 'Bad request response.'
+        '404':
+          description: 'Not found response.'
+
+  /clob-beta/orders/filled:
+    get:
+      tags:
+        - 'clob-beta'
+      summary: 'Get One Or More Filled Orders'
+      description: 'Get the information of one, several or all filled orders.'
+      operationId: 'clob.getFilledOrders'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          description: 'Request body.'
+          required: true
+          schema:
+            $ref: '#/definitions/CLOBGetFilledOrdersRequest'
+      responses:
+        '200':
+          description: 'Successful response.'
+          schema:
+            $ref: '#/definitions/CLOBGetFilledOrdersResponse'
+        '400':
+          description: 'Bad request response.'
+        '404':
+          description: 'Not found response.'
+
+  /clob-beta/settleFunds:
+    get:
+      tags:
+        - 'clob-beta'
+      summary: 'Settle Funds of One or More Markets'
+      description: 'Settle funds of one, several or all markets.'
+      operationId: 'clob.settleFunds'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          description: 'Request body.'
+          required: true
+          schema:
+            $ref: '#/definitions/CLOBPostSettleFundsRequest'
+      responses:
+        '200':
+          description: 'Successful response.'
+          schema:
+            $ref: '#/definitions/CLOBPostSettleFundsResponse'
+        '400':
+          description: 'Bad request response.'
+        '404':
+          description: 'Not found response.'
+
+
+definitions:
+  CLOBRootRequest:
+    type: 'object'
+    required:
+      - 'chain'
+      - 'network'
+      - 'connector'
+    properties:
+      chain:
+        type: string
+        example: solana
+      network:
+        type: string
+        example: mainnet-beta
+      connector:
+        type: string
+        example: serum
+  CLOBRootResponse:
+    type: 'object'
+    required:
+      - 'chain'
+      - 'network'
+      - 'connector'
+      - 'connection'
+      - 'timestamp'
+    properties:
+      chain:
+        type: string
+        example: solana
+      network:
+        type: string
+        example: mainnet-beta
+      connector:
+        type: string
+        example: serum
+      connection:
+        type: boolean
+        example: true
+      timestamp:
+        type: number
+        example: 1652304454740
+
+  CLOBGetMarketsRequest:
+    type: 'object'
+    required:
+      - 'chain'
+      - 'network'
+      - 'connector'
+    properties:
+      chain:
+        type: string
+        example: solana
+      network:
+        type: string
+        example: mainnet-beta
+      connector:
+        type: string
+        example: serum
+      name:
+        type: string
+        example: 'SOL/USDT'
+      names:
+        type: array
+        items:
+          type: string
+          example:
+            - 'SOL/USDT'
+            - 'SOL/USDC'
+  CLOBGetMarketsResponseItemCommon:
+    type: object
+    properties:
+      name:
+        type: string
+        example: SOL/USDT
+      deprecated:
+        type: boolean
+        example: false
+      minimumOrderSize:
+        type: number
+        example: 0.1
+      tickSize:
+        type: number
+        example: 0.001
+      minimumBaseIncrement:
+        type: string
+        example: 100000000
+  CLOBGetMarketsResponseItemSerum:
+    type: object
+    allOf:
+      - type: object
+      - $ref: '#/definitions/CLOBGetMarketsResponseItemCommon'
+    properties:
+      address:
+        type: string
+        example: HWHvQhFmJB3NUcu1aihKmrKegfVxBEHzwVX6yZCKEsi1
+      programId:
+        type: string
+        example: 9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin
+  CLOBGetMarketrResponseItemXRPLDEX:
+    type: object
+    allOf:
+      - type: object
+      - $ref: '#/definitions/CLOBGetMarketsResponseItemCommon'
+    properties:
+      name:
+        type: string
+        example: USD.rh8LssQyeBdEXk7Zv86HxHrx8k2R2DBUrx/VND.rh8LssQyeBdEXk7Zv86HxHrx8k2R2DBUrx
+      baseTransferRate:
+        type: number
+        example: 0.1
+      quoteTransferRate:
+        type: number
+        example: 0.1
+  CLOBGetMarketsResponse:
+    type: object
+    properties: 
+      SOL/USDC:
+        $ref: '#/definitions/CLOBGetMarketsResponseItemSerum'
+      "USD.rh8LssQyeBdEXk7Zv86HxHrx8k2R2DBUrx/VND.rh8LssQyeBdEXk7Zv86HxHrx8k2R2DBUrx": 
+        $ref: '#/definitions/CLOBGetMarketrResponseItemXRPLDEX'
+
+  CLOBGetOrderBooksRequest:
+    type: 'object'
+    required:
+      - 'chain'
+      - 'network'
+      - 'connector'
+    properties:
+      chain:
+        type: string
+        example: solana
+      network:
+        type: string
+        example: mainnet-beta
+      connector:
+        type: string
+        example: serum
+      marketName:
+        type: string
+        example: 'SOL/USDT'
+      marketNames:
+        type: array
+        items:
+          type: string
+          example:
+            - 'SOL/USDT'
+            - 'SOL/USDC'
+  CLOBGetOrderBooksResponseItemCommon:
+    type: object
+    properties:
+      market:
+        type: object
+      asks:
+        type: array
+      bids:
+        type: array
+  CLOBGetOrderBooksResponseItemSerum:
+    type: object
+    allOf:
+      - type: object
+      - $ref: '#/definitions/CLOBGetOrderBooksResponseItemCommon'
+    properties:
+      market:
+        type: object
+        $ref: '#/definitions/CLOBGetMarketsResponseItemSerum'
+      bids:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/CLOBGetOrderBooksResponseOrderBidItemCommon'
+      asks:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/CLOBGetOrderBooksResponseOrderAskItemCommon'
+  CLOBGetOrderBooksResponseItemXRPLDEX:
+    type: object
+    allOf:
+      - type: object
+      - $ref: '#/definitions/CLOBGetOrderBooksResponseItemCommon'
+    properties:
+      market:
+        type: object
+        $ref: '#/definitions/CLOBGetMarketrResponseItemXRPLDEX'
+      bids:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/CLOBGetOrderBooksResponseOrderBidItemCommon'
+      asks:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/CLOBGetOrderBooksResponseOrderAskItemCommon'
+      topAsk:
+        type: number
+        example: 25000
+      topBid:
+        type: number
+        example: 24000
+      midPrice:
+        type: number
+        example: 24500
+      timestamp:
+        type: number
+        example: 1676296168012
+  CLOBGetOrderBooksResponseOrderBidItemCommon:
+    type: object
+    properties: 
+      id:
+        type: string
+        example: 35332426
+      marketName:
+        type: string
+        example: SOL/USDT
+      ownerAddress:
+        type: string
+        example: 2wvayrdTmrJFUAdg0yHoBtPu1eE41t0fxruxTh7ufnJa
+      price:
+        type: number
+        example: 250
+      amount:
+        type: number
+        example: 0.1
+      side:
+        type: string
+        example: BUY
+      status:
+        type: string
+        example: OPEN
+      'type':
+        type: string
+        example: LIMIT
+  CLOBGetOrderBooksResponseOrderAskItemCommon:
+    type: object
+    properties: 
+      id:
+        type: string
+        example: 35332426
+      marketName:
+        type: string
+        example: SOL/USDT
+      ownerAddress:
+        type: string
+        example: 2wvayrdTmrJFUAdg0yHoBtPu1eE41t0fxruxTh7ufnJa
+      price:
+        type: number
+        example: 250
+      amount:
+        type: number
+        example: 0.1
+      side:
+        type: string
+        example: SELL
+      status:
+        type: string
+        example: OPEN
+      'type':
+        type: string
+        example: LIMIT
+  CLOBGetOrderBooksResponse:
+    type: object
+    properties:
+      SOL/USDC:
+        $ref: '#/definitions/CLOBGetOrderBooksResponseItemSerum'
+      "USD.rh8LssQyeBdEXk7Zv86HxHrx8k2R2DBUrx/VND.rh8LssQyeBdEXk7Zv86HxHrx8k2R2DBUrx":
+        $ref: '#/definitions/CLOBGetOrderBooksResponseItemXRPLDEX'
+
+  CLOBGetTickersRequest:
+    type: 'object'
+    required:
+      - 'chain'
+      - 'network'
+      - 'connector'
+    properties:
+      chain:
+        type: string
+        example: solana
+      network:
+        type: string
+        example: mainnet-beta
+      connector:
+        type: string
+        example: serum
+      marketName:
+        type: string
+        example: 'SOL/USDT'
+      marketNames:
+        type: array
+        items:
+          type: string
+          example:
+            - 'SOL/USDT'
+            - 'SOL/USDC'
+  CLOBGetTickersResponseItem:
+    type: object
+    properties:
+      price:
+        type: number
+        example: 43.37523838
+      timestamp:
+        type: number
+        example: 1652363040000 
+  CLOBGetTickersResponse:
+    type: object
+    properties:
+      SOL/USDT:
+        $ref: '#/definitions/CLOBGetTickersResponseItem'
+      SOL/USDC:
+        $ref: '#/definitions/CLOBGetTickersResponseItem'
+
+  CLOBGetOrdersRequest:
+    type: 'object'
+    required:
+      - 'chain'
+      - 'network'
+      - 'connector'
+    properties:
+      chain:
+        type: string
+        example: solana
+      network:
+        type: string
+        example: mainnet-beta
+      connector:
+        type: string
+        example: serum
+      order:
+        type: object
+        required:
+          - 'ownerAddress'
+        properties:
+          id:
+            type: string
+            example: 123456789
+          exchangeId:
+            type: string
+            example: 184467256269654779094895731
+          marketName:
+            type: string
+            example: SOL/USDT
+          ownerAddress:
+            type: string
+            example: 2wvayrdTmrJFUAdg0yHoBtPu1eE41t0fxruxTh7ufnJa
+      orders:
+        type: array
+        items:
+          type: object
+          required:
+              - 'ownerAddress'
+          properties:
+            ids:
+              type: array
+              items:
+                type: string
+            exchangeIds:
+              type: array
+              items:
+                type: string
+            marketName:
+              type: string
+            ownerAddress:
+              type: string
+        example:
+          - ids: ["123456789"]
+            exchangeIds: ["184467256269654779094895731"]
+            marketName: SOL/USDT
+            ownerAddress: 2wvayrdTmrJFUAdg0yHoBtPu1eE41t0fxruxTh7ufnJa
+          - ids: ["123456789"]
+            exchangeIds: ["184467256269654779094895731"]
+            marketName: SOL/USDC
+            ownerAddress: 2wvayrdTmrJFUAdg0yHoBtPu1eE41t0fxruxTh7ufnJa
+          - ids: ["1112234"]
+            exchangeIds: ["33485803"]
+            marketName: XRP/USDT
+            ownerAddress: r3z4R6KQWfwRf9G15AhUZe2GN67Sj6PYNV
+  CLOBGetOrdersResponseItemCommon:
+    type: 'object'
+    properties:
+      id:
+        type: string
+      exchangeId:
+        type: string
+      marketName:
+        type: string
+      ownderAddress:
+        type: string
+      side:
+        type: string
+      price:
+        type: number
+      amount:
+        type: number
+      type:
+        type: string
+      status:
+        type: string
+      fee:
+        type: number
+    example:
+      id: "123456789"
+      exchangeId: "184467256269654779094895731"
+      marketName: "SOL/USDT"
+      ownderAddress: "2wvayrdTmrJFUAdg0yHoBtPu1eE41t0fxruxTh7ufnJa"
+      side: "BUY"
+      price: 999.99
+      amount: 0.1
+      type: "LIMIT"
+      status: "OPEN"
+      fee: 0.1
+  CLOBGetOrdersResponseItemXRPLDEX:
+    type: 'object'
+    allOf:
+      - type: object
+      - $ref: '#/definitions/CLOBGetOrdersResponseItemCommon'
+    properties:
+      signature:
+        type: string
+      transactionResult:
+        type: string
+      orderLedgerIndex:
+        type: string
+    example:
+      id: "1112234"
+      exchangeId: "33485803"
+      marketName: "XRP/USDT"
+      ownderAddress: "r3z4R6KQWfwRf9G15AhUZe2GN67Sj6PYNV"
+      side: "BUY"
+      price: 999.99
+      amount: 0.1
+      type: "LIMIT"
+      status: "OPEN"
+      signature: "53CCABA69887B92D91AE27B083D11262B4393D95D9A0AEFF4B07A731FA1F74E8"
+      transactionResult: "tesSUCCESS"
+      orderLedgerIndex: "35357471"
+  CLOBGetOrdersResponse:
+    type: object
+    properties:
+      SOL/USDC:
+        type: object
+        properties:
+          "123456789":
+            $ref: '#/definitions/CLOBGetOrdersResponseItemCommon'
+                
+      SOL/USDT:
+        type: object
+        properties:
+          "123456789":
+            $ref: '#/definitions/CLOBGetOrdersResponseItemCommon'
+
+      XRP/USDT:
+        type: object
+        properties:
+          "1112234":
+            $ref: '#/definitions/CLOBGetOrdersResponseItemXRPLDEX'
+
+  CLOBPostCreateOrdersRequestCommon:
+    type: 'object'
+    required:
+      - 'chain'
+      - 'network'
+      - 'connector'
+    properties:
+      chain:
+        type: string
+        example: solana
+      network:
+        type: string
+        example: mainnet-beta
+      connector:
+        type: string
+        example: serum
+      order:
+        type: object
+        required:
+          - 'id'
+          - 'ownerAddress'
+          - 'marketName'
+          - 'side'
+          - 'price'
+          - 'amount'
+          - 'type'
+        properties:
+          id:
+            type: string
+            example: 123456789
+          marketName:
+            type: string
+            example: SOL/USDT
+          ownerAddress:
+            type: string
+            example: 2wvayrdTmrJFUAdg0yHoBtPu1eE41t0fxruxTh7ufnJa
+          side:
+            type: string
+            example: BUY
+          price:
+            type: number
+            example: 9999.9
+          amount:
+            type: number
+            example: 0.1
+          type:
+            type: string
+            example: LIMIT
+      orders:
+        type: array
+        items:
+          type: object
+          required:
+            - 'id'
+            - 'ownerAddress'
+            - 'marketName'
+            - 'side'
+            - 'price'
+            - 'amount'
+            - 'type'
+          properties:
+            id:
+              type: string
+              example: 123456789
+            marketName:
+              type: string
+              example: SOL/USDT
+            ownerAddress:
+              type: string
+              example: 2wvayrdTmrJFUAdg0yHoBtPu1eE41t0fxruxTh7ufnJa
+            side:
+              type: string
+              example: BUY
+            price:
+              type: number
+              example: 9999.9
+            amount:
+              type: number
+              example: 0.1
+            type:
+              type: string
+              example: LIMIT
+  CLOBPostCreateOrdersRequestSerum:
+    type: object
+    allOf:
+      - type: object
+      - $ref: '#/definitions/CLOBPostCreateOrdersRequestCommon'
+    properties:
+      order:
+        type: object
+        properties:
+          payerAddress: 
+            type: string
+            example: 2wvayrdTmrJFUAdg0yHoBtPu1eE41t0fxruxTh7ufnJa
+      orders:
+        type: array
+        items:
+          type: object
+          properties:
+            payerAddress: 
+              type: string
+              example: 2wvayrdTmrJFUAdg0yHoBtPu1eE41t0fxruxTh7ufnJa
+  CLOBPostCreateOrdersRequestXRPLDEX:
+    type: object
+    allOf:
+      - type: object
+      - $ref: '#/definitions/CLOBPostCreateOrdersRequestCommon'
+    properties:
+      waitUntilIncludedInBlock:
+        type: boolean
+        example: true
+  CLOBPostCreateOrdersRequest:
+    type: object
+    allOf:
+      - type: object
+      - $ref: '#/definitions/CLOBPostCreateOrdersRequestSerum'
+      - $ref: '#/definitions/CLOBPostCreateOrdersRequestXRPLDEX'
+  CLOBPostCreateOrdersResponseItemCommon:
+    type: object
+    properties:
+      id:
+        type: string
+        example: 123456789
+      exchangeId:
+        type: string
+        example: 184467256269654779094895731
+      marketName:
+        type: string
+        example: SOL/USDT
+      ownerAddress:
+        type: string
+        example: 2wvayrdTmrJFUAdg0yHoBtPu1eE41t0fxruxTh7ufnJa
+      price:
+        type: number
+        example: 250
+      amount:
+        type: number
+        example: 0.1
+      side:
+        type: string
+        example: BUY
+      status:
+        type: string
+        example: OPEN
+      type:
+        type: string
+        example: LIMIT
+      fee:
+        type: number
+        example: 0.1
+  CLOBPostCreateOrdersResponseItemXRPLDEX:
+    type: object
+    allOf:
+      - type: object
+      - $ref: '#/definitions/CLOBPostCreateOrdersResponseItemCommon'
+    properties:
+      signature:
+        type: string
+        example: "53CCABA69887B92D91AE27B083D11262B4393D95D9A0AEFF4B07A731FA1F74E8"
+      transactionResult:
+        type: string
+        example: "tesSUCCESS"
+      orderLedgerIndex:
+        type: string
+        example: "35357471"
+  CLOBPostCreateOrdersResponse:
+    type: object
+    properties:
+      "123456789":
+        $ref: '#/definitions/CLOBPostCreateOrdersResponseItemCommon'
+      "1112234":
+        type: object
+        allOf:
+          - $ref: '#/definitions/CLOBPostCreateOrdersResponseItemXRPLDEX'
+        example:
+          id: "1112234"
+          exchangeId: "33485803"
+          marketName: "XRP/USDT"
+          ownderAddress: "r3z4R6KQWfwRf9G15AhUZe2GN67Sj6PYNV"
+          side: "BUY"
+          price: 999.99
+          amount: 0.1
+          type: "LIMIT"
+          status: "OPEN"
+          signature: "53CCABA69887B92D91AE27B083D11262B4393D95D9A0AEFF4B07A731FA1F74E8"
+          transactionResult: "tesSUCCESS"
+          orderLedgerIndex: "35357471"
+
+  CLOBDeleteOrdersRequest:
+    type: 'object'
+    required:
+      - 'chain'
+      - 'network'
+      - 'connector'
+    properties:
+      chain:
+        type: string
+        example: solana
+      network:
+        type: string
+        example: mainnet-beta
+      connector:
+        type: string
+        example: serum
+      order:
+        type: object
+        required:
+          - 'ownerAddress'
+        properties:
+          id:
+            type: string
+            example: 123456789
+          exchangeId:
+            type: string
+            example: 184467256269654779094895731
+          marketName:
+            type: string
+            example: SOL/USDT
+          ownerAddress:
+            type: string
+            example: 2wvayrdTmrJFUAdg0yHoBtPu1eE41t0fxruxTh7ufnJa
+      orders:
+        type: array
+        items:
+          type: object
+          required:
+              - 'ownerAddress'
+          properties:
+            ids:
+              type: array
+              items:
+                type: string
+            exchangeIds:
+              type: array
+              items:
+                type: string
+            marketName:
+              type: string
+            ownerAddress:
+              type: string
+        example:
+          - ids: ["123456789", "123456789"]
+            exchangeIds: ["184467256269654779094895731", "284467256269654779094895723"]
+            marketName: SOL/USDT
+            ownerAddress: 2wvayrdTmrJFUAdg0yHoBtPu1eE41t0fxruxTh7ufnJa
+          - ids: ["123456789", "123456789"]
+            exchangeIds: ["184467256269654779094895731", "284467256269654779094895723"]
+            marketName: SOL/USDC
+            ownerAddress: 2wvayrdTmrJFUAdg0yHoBtPu1eE41t0fxruxTh7ufnJa
+          - ids: ["1112234"]
+            exchangeIds: ["33485803"]
+            marketName: XRP/USDT
+            ownerAddress: r3z4R6KQWfwRf9G15AhUZe2GN67Sj6PYNV
+  CLOBDeleteOrdersResponseItemCommon:
+    type: 'object'
+    properties:
+      id:
+        type: string
+      exchangeId:
+        type: string
+      marketName:
+        type: string
+      ownderAddress:
+        type: string
+      side:
+        type: string
+      price:
+        type: number
+      amount:
+        type: number
+      type:
+        type: string
+      status:
+        type: string 
+      fee:
+        type: number
+    example:
+      id: "123456789"
+      exchangeId: "184467256269654779094895731"
+      marketName: "SOL/USDT"
+      ownderAddress: "2wvayrdTmrJFUAdg0yHoBtPu1eE41t0fxruxTh7ufnJa"
+      side: "BUY"
+      price: 999.99
+      amount: 0.1
+      type: "LIMIT"
+      status: "CANCELED"
+      fee: 0.1
+  CLOBDeleteOrdersResponseItemXRPLDEX:
+    type: 'object'
+    allOf:
+      - type: object
+      - $ref: '#/definitions/CLOBDeleteOrdersResponseItemCommon'
+    properties:
+      signature:
+        type: string
+      transactionResult:
+        type: string
+      orderLedgerIndex:
+        type: string
+    example:
+      id: "1112234"
+      exchangeId: "33485803"
+      marketName: "XRP/USDT"
+      ownderAddress: "r3z4R6KQWfwRf9G15AhUZe2GN67Sj6PYNV"
+      side: "BUY"
+      price: 999.99
+      amount: 0.1
+      type: "LIMIT"
+      status: "CANCELED"
+      signature: "53CCABA69887B92D91AE27B083D11262B4393D95D9A0AEFF4B07A731FA1F74E8"
+      transactionResult: "tesSUCCESS"
+      orderLedgerIndex: "35357471"
+  CLOBDeleteOrdersResponse:
+    type: object
+    properties:
+      SOL/USDC:
+        type: object
+        properties:
+          "123456789":
+            $ref: '#/definitions/CLOBDeleteOrdersResponseItemCommon'
+                
+      SOL/USDT:
+        type: object
+        properties:
+          "123456789":
+            $ref: '#/definitions/CLOBDeleteOrdersResponseItemCommon'
+
+      XRP/USDT:
+        type: object
+        properties:
+          "33485803":
+            $ref: '#/definitions/CLOBDeleteOrdersResponseItemXRPLDEX'
+
+  CLOBGetOpenOrdersRequest:
+    type: 'object'
+    required:
+      - 'chain'
+      - 'network'
+      - 'connector'
+    properties:
+      chain:
+        type: string
+        example: solana
+      network:
+        type: string
+        example: mainnet-beta
+      connector:
+        type: string
+        example: serum
+      order:
+        type: object
+        required:
+          - 'ownerAddress'
+        properties:
+          id:
+            type: string
+            example: 123456789
+          exchangeId:
+            type: string
+            example: 184467256269654779094895731
+          marketName:
+            type: string
+            example: SOL/USDT
+          ownerAddress:
+            type: string
+            example: 2wvayrdTmrJFUAdg0yHoBtPu1eE41t0fxruxTh7ufnJa
+      orders:
+        type: array
+        items:
+          type: object
+          required:
+              - 'ownerAddress'
+          properties:
+            ids:
+              type: array
+              items:
+                type: string
+            exchangeIds:
+              type: array
+              items:
+                type: string
+            marketName:
+              type: string
+            ownerAddress:
+              type: string
+        example:
+          - ids: ["123456789", "987654321"]
+            exchangeIds: ["184467256269654779094895731", "284467256269654779094895723"]
+            marketName: SOL/USDT
+            ownerAddress: 2wvayrdTmrJFUAdg0yHoBtPu1eE41t0fxruxTh7ufnJa
+          - ids: ["123456789", "987654321"]
+            exchangeIds: ["184467256269654779094895731", "284467256269654779094895723"]
+            marketName: SOL/USDC
+            ownerAddress: 2wvayrdTmrJFUAdg0yHoBtPu1eE41t0fxruxTh7ufnJa
+          - ids: ["1112234", "6783991"]
+            exchangeIds: ["33485803", "33485000"]
+            marketName: XRP/USDT
+            ownerAddress: r3z4R6KQWfwRf9G15AhUZe2GN67Sj6PYNV
+  CLOBGetOpenOrdersResponseItemCommon:
+    type: 'object'
+    properties:
+      id:
+        type: string
+      exchangeId:
+        type: string
+      marketName:
+        type: string
+      ownderAddress:
+        type: string
+      side:
+        type: string
+      price:
+        type: number
+      amount:
+        type: number
+      type:
+        type: string
+      status:
+        type: string
+      fee:
+        type: number
+    example:
+      id: "123456789"
+      exchangeId: "184467256269654779094895731"
+      marketName: "SOL/USDT"
+      ownderAddress: "2wvayrdTmrJFUAdg0yHoBtPu1eE41t0fxruxTh7ufnJa"
+      side: "BUY"
+      price: 999.99
+      amount: 0.1
+      type: "LIMIT"
+      status: "OPEN"
+      fee: 0.1
+  CLOBGetOpenOrdersResponseItemXRPLDEX:
+    type: 'object'
+    allOf:
+      - type: object
+      - $ref: '#/definitions/CLOBGetOpenOrdersResponseItemCommon'
+    properties:
+      signature:
+        type: string
+      transactionResult:
+        type: string
+      orderLedgerIndex:
+        type: string
+    example:
+      id: "1112234"
+      exchangeId: "33485803"
+      marketName: "XRP/USDT"
+      ownderAddress: "r3z4R6KQWfwRf9G15AhUZe2GN67Sj6PYNV"
+      side: "BUY"
+      price: 999.99
+      amount: 0.1
+      type: "LIMIT"
+      status: "OPEN"
+      signature: "53CCABA69887B92D91AE27B083D11262B4393D95D9A0AEFF4B07A731FA1F74E8"
+      transactionResult: "tesSUCCESS"
+      orderLedgerIndex: "35357471"
+  CLOBGetOpenOrdersResponse:
+    type: object
+    properties:
+      SOL/USDC:
+        type: object
+        properties:
+          "123456789":
+            $ref: '#/definitions/CLOBGetOpenOrdersResponseItemCommon'
+                
+      SOL/USDT:
+        type: object
+        properties:
+          "123456789":
+            $ref: '#/definitions/CLOBGetOpenOrdersResponseItemCommon'
+
+      XRP/USDT:
+        type: object
+        properties:
+          "1112234":
+            $ref: '#/definitions/CLOBGetOpenOrdersResponseItemXRPLDEX'
+
+  CLOBGetFilledOrdersRequest:
+    type: 'object'
+    required:
+      - 'chain'
+      - 'network'
+      - 'connector'
+    properties:
+      chain:
+        type: string
+        example: solana
+      network:
+        type: string
+        example: mainnet-beta
+      connector:
+        type: string
+        example: serum
+      order:
+        type: object
+        required:
+          - 'ownerAddress'
+        properties:
+          id:
+            type: string
+            example: 123456789
+          exchangeId:
+            type: string
+            example: 184467256269654779094895731
+          marketName:
+            type: string
+            example: SOL/USDT
+          ownerAddress:
+            type: string
+            example: 2wvayrdTmrJFUAdg0yHoBtPu1eE41t0fxruxTh7ufnJa
+      orders:
+        type: array
+        items:
+          type: object
+          required:
+              - 'ownerAddress'
+          properties:
+            ids:
+              type: array
+              items:
+                type: string
+            exchangeIds:
+              type: array
+              items:
+                type: string
+            marketName:
+              type: string
+            ownerAddress:
+              type: string
+        example:
+          - ids: ["123456789", "987654321"]
+            exchangeIds: ["184467256269654779094895731", "284467256269654779094895723"]
+            marketName: SOL/USDT
+            ownerAddress: 2wvayrdTmrJFUAdg0yHoBtPu1eE41t0fxruxTh7ufnJa
+          - ids: ["123456789", "987654321"]
+            exchangeIds: ["184467256269654779094895731", "284467256269654779094895723"]
+            marketName: SOL/USDC
+            ownerAddress: 2wvayrdTmrJFUAdg0yHoBtPu1eE41t0fxruxTh7ufnJa
+          - ids: ["1112234", "6783991"]
+            exchangeIds: ["33485803", "33485000"]
+            marketName: XRP/USDT
+            ownerAddress: r3z4R6KQWfwRf9G15AhUZe2GN67Sj6PYNV
+  CLOBGetFilledOrdersResponseItemCommon:
+    type: 'object'
+    properties:
+      id:
+        type: string
+      exchangeId:
+        type: string
+      marketName:
+        type: string
+      ownderAddress:
+        type: string
+      side:
+        type: string
+      price:
+        type: number
+      amount:
+        type: number
+      type:
+        type: string
+      status:
+        type: string
+      fee:
+        type: number
+    example:
+      id: "123456789"
+      exchangeId: "184467256269654779094895731"
+      marketName: "SOL/USDT"
+      ownderAddress: "2wvayrdTmrJFUAdg0yHoBtPu1eE41t0fxruxTh7ufnJa"
+      side: "BUY"
+      price: 999.99
+      amount: 0.1
+      type: "LIMIT"
+      status: "FILLED"
+      fee: 0.1
+  CLOBGetFilledOrdersResponseItemXRPLDEX:
+    type: 'object'
+    allOf:
+      - type: object
+      - $ref: '#/definitions/CLOBGetFilledOrdersResponseItemCommon'
+    properties:
+      signature:
+        type: string
+      transactionResult:
+        type: string
+      orderLedgerIndex:
+        type: string
+    example:
+      id: "1112234"
+      exchangeId: "33485803"
+      marketName: "XRP/USDT"
+      ownderAddress: "r3z4R6KQWfwRf9G15AhUZe2GN67Sj6PYNV"
+      side: "BUY"
+      price: 999.99
+      amount: 0.1
+      type: "LIMIT"
+      status: "FILLED"
+      signature: "53CCABA69887B92D91AE27B083D11262B4393D95D9A0AEFF4B07A731FA1F74E8"
+      transactionResult: "tesSUCCESS"
+      orderLedgerIndex: "35357471"
+  CLOBGetFilledOrdersResponse:
+    type: object
+    properties:
+      SOL/USDC:
+        type: object
+        properties:
+          "123456789":
+            $ref: '#/definitions/CLOBGetFilledOrdersResponseItemCommon'
+                
+      SOL/USDT:
+        type: object
+        properties:
+          "123456789":
+            $ref: '#/definitions/CLOBGetFilledOrdersResponseItemCommon'
+
+      XRP/USDT:
+        type: object
+        properties:
+          "1112234":
+            $ref: '#/definitions/CLOBGetFilledOrdersResponseItemXRPLDEX'
+
+  CLOBPostSettleFundsRequest:
+    type: 'object'
+    required:
+      - 'chain'
+      - 'network'
+      - 'connector'
+      - 'ownerAddress'
+    properties:
+      chain:
+        type: string
+        example: solana
+      network:
+        type: string
+        example: mainnet-beta
+      connector:
+        type: string
+        example: serum
+      marketName:
+        type: string
+        example: SOL/USDT
+      marketNames:
+        type: array
+        items:
+          type: string
+          example:
+            - SOL/USDT
+            - BTC/USDT
+  CLOBPostSettleFundsResponse:
+    type: object
+    properties:
+      SOL/USDT:
+        type: array
+        items:
+          type: string
+        example:
+          - 4vAstoT7dgJ3LaexYRQbJ4HwbV8vPaMEUWVP3o89oq4vJcn9E11LJHyEpoc3sZ4dxmAtZGU7YyRS1uR36wuUEQMK
+      BTC/USDT:
+        type: array
+        items:
+          type: string
+        example:
+          - 4vAstoT7dgJ3LaexYRQbJ4HwbV8vPaMEUWVP3o89oq4vJcn9E11LJHyEpoc3sZ4dxmAtZGU7YyRS1uR36wuUEQMK
