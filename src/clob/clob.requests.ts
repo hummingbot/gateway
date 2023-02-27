@@ -1,13 +1,13 @@
 import { NetworkSelectionRequest } from '../services/common-interfaces';
 import { OrderType, Side } from '../amm/amm.requests';
-import { Orderbook, SpotMarket } from '@injectivelabs/sdk-ts';
+import { Orderbook, DerivativeMarket, SpotMarket } from '@injectivelabs/sdk-ts';
 
 export interface ClobMarketsRequest extends NetworkSelectionRequest {
   market?: string;
 }
 
 export interface CLOBMarkets {
-  [key: string]: SpotMarket;
+  [key: string]: SpotMarket | DerivativeMarket;
 }
 export interface ClobMarketResponse {
   network: string;
@@ -55,6 +55,7 @@ export interface ClobPostOrderRequest extends ClobOrderbookRequest {
   orderType: OrderType;
   price: string;
   amount: string;
+  leverage?: number; // float
 }
 
 export interface ClobPostOrderResponse {

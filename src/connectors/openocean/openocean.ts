@@ -392,7 +392,7 @@ export class Openocean implements Uniswapish {
             slippage: this.getSlippageNumberage(),
             account: wallet.address,
             gasPrice: gasPrice.toString(),
-            referrer: '0x3fb06064b88a65ba9b9eb840dbb5f3789f002642'
+            referrer: '0x3fb06064b88a65ba9b9eb840dbb5f3789f002642',
           },
         }
       );

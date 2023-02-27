@@ -1,6 +1,7 @@
 import {
   MsgBatchUpdateOrders,
   IndexerGrpcSpotApi,
+  IndexerGrpcDerivativesApi,
   Orderbook,
   SpotOrderHistory,
   GrpcOrderType,
@@ -28,6 +29,7 @@ export class InjectiveCLOB {
   private _chain;
   public conf;
   public spotApi: IndexerGrpcSpotApi;
+  public derivativeApi: IndexerGrpcDerivativesApi;
   private _ready: boolean = false;
   public parsedMarkets: CLOBMarkets = {};
 
@@ -35,6 +37,9 @@ export class InjectiveCLOB {
     this._chain = Injective.getInstance(network);
     this.conf = InjectiveCLOBConfig.config;
     this.spotApi = new IndexerGrpcSpotApi(this._chain.endpoints.indexer);
+    this.derivativeApi = new IndexerGrpcDerivativesApi(
+      this._chain.endpoints.indexer
+    );
   }
 
   public static getInstance(chain: string, network: string): InjectiveCLOB {
@@ -56,8 +61,12 @@ export class InjectiveCLOB {
   }
 
   public async loadMarkets() {
-    const rawMarkets = await this.spotApi.fetchMarkets();
-    for (const market of rawMarkets) {
+    const spotMarkets = await this.spotApi.fetchMarkets();
+    for (const market of spotMarkets) {
+      this.parsedMarkets[market.ticker.replace('/', '-')] = market;
+    }
+    const derivativeMarkets = await this.derivativeApi.fetchMarkets();
+    for (const market of derivativeMarkets) {
       this.parsedMarkets[market.ticker.replace('/', '-')] = market;
     }
   }
@@ -146,6 +155,26 @@ export class InjectiveCLOB {
         },
       ],
     });
+    /*
+
+    derivativeOrdersToCreate?: {
+      orderType: OrderTypeMap[keyof OrderTypeMap]
+      triggerPrice?: string
+      feeRecipient: string
+      marketId: string
+      price: string
+      margin: string
+      quantity: string
+    }[]
+
+getTriggerPrice
+derivativeMarginToChainMarginToFixed
+derivativeMarginFromChainMarginToFixed
+derivativePriceToChainPriceToFixed
+derivativePriceFromChainPriceToFixed
+derivativeQuantityToChainQuantityToFixed
+derivativeQuantityFromChainQuantityToFixed
+     */
 
     const { txHash } = await this._chain.broadcaster(privateKey).broadcast({
       msgs: msg,
