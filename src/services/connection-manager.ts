@@ -68,7 +68,12 @@ export async function getChain<T>(
   return chainInstance as Chain<T>;
 }
 
-type ConnectorUnion = Uniswapish | UniswapLPish | Perpish | RefAMMish | CLOBish;
+export type ConnectorUnion =
+  | Uniswapish
+  | UniswapLPish
+  | Perpish
+  | RefAMMish
+  | CLOBish;
 
 export type Connector<T> = T extends Uniswapish
   ? Uniswapish

@@ -5,14 +5,15 @@ import {
 } from '@ethersproject/providers';
 import { BigNumber, utils, Wallet } from 'ethers';
 import LRUCache from 'lru-cache';
+import { env } from 'process';
 import { Ethereumish } from '../../services/common-interfaces';
 import { logger } from '../../services/logger';
 
 /**
  * This class is used to broadcast transactions
- * using a privateKey as a signer
- * for the transactions and broadcasting
- * the transactions directly to the node
+ * using a signer for the transactions and
+ *  and broadcasting the transactions directly
+ * in series to the node.
  *
  * Mainly used for working in a Node Environment
  */
@@ -118,7 +119,7 @@ export class EVMTxBroadcaster {
       this._txQueue.shift();
       this._isBlocked = false;
     }
-    logger.error(await this.getRevertReason(txResponse));
+    if (env.DEBUG) logger.error(await this.getRevertReason(txResponse));
     return txResponse;
   }
 

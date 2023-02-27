@@ -6,6 +6,9 @@ import {
   ClobPostOrderRequest,
   ClobDeleteOrderRequest,
   ClobGetOrderResponse,
+  ClobBatchUpdateRequest,
+  CreateOrderParam,
+  ClobDeleteOrderRequestExtract,
 } from '../../clob/clob.requests';
 import {
   CLOBish,
@@ -13,13 +16,12 @@ import {
   NetworkSelectionRequest,
   Orderbook,
 } from '../../services/common-interfaces';
-import { BigNumber, Contract, utils } from 'ethers';
+import { BigNumber, Contract, PopulatedTransaction, utils } from 'ethers';
 import { DexalotCLOBConfig } from './dexalot.clob.config';
 import LRUCache from 'lru-cache';
 import {
+  bigNumberWithDecimalToStr,
   floatStringWithDecimalToFixed,
-  TokenInfo,
-  TokenValue,
 } from '../../services/base';
 import { logger } from '../../services/logger';
 import { Avalanche } from '../../chains/avalanche/avalanche';
@@ -33,6 +35,8 @@ import {
   parseMarkerInfo,
   parseOrderInfo,
 } from './dexalot.constants';
+import { BalanceRequest } from '../../network/network.requests';
+import { indexOf } from 'lodash';
 
 export class DexalotCLOB implements CLOBish {
   private static _instances: LRUCache<string, DexalotCLOB>;
@@ -115,16 +119,28 @@ export class DexalotCLOB implements CLOBish {
     return this._ready;
   }
 
-  public async getBalance(
-    address: string,
-    symbol: string
-  ): Promise<{ available: TokenValue; total: TokenValue }> {
-    const bal = this._portfolioContract.getBalance(address, symbol);
-    const token = <TokenInfo>this._chain.getTokenBySymbol(symbol);
-    return {
-      available: { value: bal.available, decimals: token.decimals },
-      total: { value: bal.total, decimals: token.decimals },
-    };
+  public async balances(req: BalanceRequest): Promise<Record<string, string>> {
+    const tokens = req.tokenSymbols.map((symbol) => {
+      return this._chain.getTokenBySymbol(symbol);
+    });
+    const balances = await Promise.all(
+      req.tokenSymbols.map((symbol) => {
+        return this._portfolioContract.getBalance(
+          req.address,
+          fromUtf8(symbol)
+        );
+      })
+    );
+    const formattedBalances: Record<string, string> = {};
+    for (const token of tokens) {
+      if (token) {
+        formattedBalances[token.symbol] = bigNumberWithDecimalToStr(
+          balances[indexOf(tokens, token)].available,
+          token.decimals
+        );
+      }
+    }
+    return formattedBalances;
   }
 
   public async markets(
@@ -281,6 +297,104 @@ export class DexalotCLOB implements CLOBish {
       gasLimit: this._conf.gasLimitEstimate,
       gasCost: this._chain.gasPrice * this._conf.gasLimitEstimate,
     };
+  }
+
+  public async batchOrders(
+    req: ClobBatchUpdateRequest
+  ): Promise<{ txHash: string }> {
+    return this.orderUpdate(req);
+  }
+
+  public async orderUpdate(
+    req: ClobBatchUpdateRequest
+  ): Promise<{ txHash: string; clientOrderID?: string[] }> {
+    let txData: PopulatedTransaction = {};
+    let data: { txData: PopulatedTransaction; clientOrderID: string[] } = {
+      txData: {},
+      clientOrderID: [],
+    };
+    if (req.createOrderParams) {
+      data = await this.buildPostOrder(req.createOrderParams, req.address);
+      txData = data.txData;
+    } else if (req.cancelOrderParams)
+      txData = await this.buildDeleteOrder(req.cancelOrderParams);
+
+    txData.gasLimit = BigNumber.from(String(this._conf.gasLimitEstimate));
+    const txResponse = await EVMTxBroadcaster.getInstance(
+      this._chain,
+      req.address
+    ).broadcast(txData);
+    return { txHash: txResponse.hash, clientOrderID: data.clientOrderID };
+  }
+
+  public async buildPostOrder(
+    orderParams: CreateOrderParam[],
+    address: string
+  ): Promise<{ txData: PopulatedTransaction; clientOrderID: string[] }> {
+    const clientOrderID = [];
+    const prices = [];
+    const amounts = [];
+    const sides = [];
+    const types = [];
+    const market: string = orderParams[0].market; // assumes batch orders to one market as limited by contract abi
+    const marketInfo: MarketInfo = this.parsedMarkets[market];
+    if (marketInfo === undefined)
+      throw Error(`Invalid market ${orderParams[0].market}`);
+
+    for (const order of orderParams) {
+      clientOrderID.push(
+        order.clientOrderID || (await this.getClientOrderId(address))
+      );
+      prices.push(
+        utils.parseUnits(
+          floatStringWithDecimalToFixed(
+            order.price,
+            marketInfo.quoteDisplayDecimals
+          ) || order.price,
+          marketInfo.quoteDecimals
+        )
+      );
+      amounts.push(
+        utils.parseUnits(
+          floatStringWithDecimalToFixed(
+            order.amount,
+            marketInfo.baseDisplayDecimals
+          ) || order.price,
+          marketInfo.baseDecimals
+        )
+      );
+      sides.push(OrderSide[order.side.toUpperCase()]);
+      types.push(
+        order.orderType === 'LIMIT_MAKER' ? OrderType2.PO : OrderType2.GTC
+      );
+    }
+    return {
+      txData:
+        await this._tradePairsContract.populateTransaction.addLimitOrderList(
+          fromUtf8(market.replace('-', '/')), // market id
+          clientOrderID,
+          prices,
+          amounts,
+          sides,
+          types,
+          true // To-do: Remove when mainnet is updated.
+        ),
+      clientOrderID,
+    };
+  }
+
+  public async buildDeleteOrder(
+    orders: ClobDeleteOrderRequestExtract[]
+  ): Promise<PopulatedTransaction> {
+    const spotOrdersToCancel = [];
+    for (const order of orders) {
+      spotOrdersToCancel.push(order.orderId);
+    }
+
+    return await this._tradePairsContract.populateTransaction.cancelAllOrders(
+      // To-do: Rename method to cancelOrderList when mainnet is updated.
+      spotOrdersToCancel
+    );
   }
 
   async getClientOrderId(address: string): Promise<string> {

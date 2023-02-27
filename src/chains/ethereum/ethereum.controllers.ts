@@ -28,6 +28,7 @@ import {
   Ethereumish,
   UniswapLPish,
   Uniswapish,
+  CLOBish,
 } from '../../services/common-interfaces';
 import {
   NonceRequest,
@@ -128,52 +129,68 @@ export async function balances(
   const initTime = Date.now();
 
   let wallet: Wallet;
-  try {
-    wallet = await ethereumish.getWallet(req.address);
-  } catch (err) {
-    throw new HttpException(
-      500,
-      LOAD_WALLET_ERROR_MESSAGE + err,
-      LOAD_WALLET_ERROR_CODE
-    );
-  }
-  const tokens = getTokenSymbolsToTokens(ethereumish, req.tokenSymbols);
   const balances: Record<string, string> = {};
-  if (req.tokenSymbols.includes(ethereumish.nativeTokenSymbol)) {
-    balances[ethereumish.nativeTokenSymbol] = tokenValueToString(
-      await ethereumish.getNativeBalance(wallet)
-    );
-  }
-  await Promise.all(
-    Object.keys(tokens).map(async (symbol) => {
-      if (tokens[symbol] !== undefined) {
-        const address = tokens[symbol].address;
-        const decimals = tokens[symbol].decimals;
-        // instantiate a contract and pass in provider for read-only access
-        const contract = ethereumish.getContract(address, ethereumish.provider);
-        const balance = await ethereumish.getERC20Balance(
-          contract,
-          wallet,
-          decimals
-        );
-        balances[symbol] = tokenValueToString(balance);
-      }
-    })
-  );
+  let connectorBalances: { [key: string]: string } | undefined;
 
-  if (!Object.keys(balances).length) {
-    throw new HttpException(
-      500,
-      TOKEN_NOT_SUPPORTED_ERROR_MESSAGE,
-      TOKEN_NOT_SUPPORTED_ERROR_CODE
+  if (!req.connector) {
+    try {
+      wallet = await ethereumish.getWallet(req.address);
+    } catch (err) {
+      throw new HttpException(
+        500,
+        LOAD_WALLET_ERROR_MESSAGE + err,
+        LOAD_WALLET_ERROR_CODE
+      );
+    }
+
+    const tokens = getTokenSymbolsToTokens(ethereumish, req.tokenSymbols);
+    if (req.tokenSymbols.includes(ethereumish.nativeTokenSymbol)) {
+      balances[ethereumish.nativeTokenSymbol] = tokenValueToString(
+        await ethereumish.getNativeBalance(wallet)
+      );
+    }
+    await Promise.all(
+      Object.keys(tokens).map(async (symbol) => {
+        if (tokens[symbol] !== undefined) {
+          const address = tokens[symbol].address;
+          const decimals = tokens[symbol].decimals;
+          // instantiate a contract and pass in provider for read-only access
+          const contract = ethereumish.getContract(
+            address,
+            ethereumish.provider
+          );
+          const balance = await ethereumish.getERC20Balance(
+            contract,
+            wallet,
+            decimals
+          );
+          balances[symbol] = tokenValueToString(balance);
+        }
+      })
     );
+
+    if (!Object.keys(balances).length) {
+      throw new HttpException(
+        500,
+        TOKEN_NOT_SUPPORTED_ERROR_MESSAGE,
+        TOKEN_NOT_SUPPORTED_ERROR_CODE
+      );
+    }
+  } else {
+    // CLOB connector or any other connector that has the concept of separation of account has to implement a balance function
+    const connector: CLOBish = await getConnector(
+      req.chain,
+      req.network,
+      req.connector
+    );
+    connectorBalances = connector.balances ? await connector.balances(req) : {};
   }
 
   return {
     network: ethereumish.chain,
     timestamp: initTime,
     latency: latency(initTime, Date.now()),
-    balances: balances,
+    balances: connectorBalances || balances,
   };
 }
 

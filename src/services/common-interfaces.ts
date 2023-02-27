@@ -100,6 +100,7 @@ import {
   ClobPostOrderRequest,
   ClobTickerRequest,
 } from '../clob/clob.requests';
+import { BalanceRequest } from '../network/network.requests';
 
 // TODO Check the possibility to have clob/solana/serum equivalents here
 //  Check this link https://hummingbot.org/developers/gateway/building-gateway-connectors/#5-add-sdk-classes-to-uniswapish-interface
@@ -217,6 +218,8 @@ export interface Uniswapish {
 
   ready(): boolean;
 
+  balances?(req: BalanceRequest): Promise<Record<string, string>>;
+
   /**
    * Given a token's address, return the connector's native representation of
    * the token.
@@ -307,6 +310,8 @@ export interface RefAMMish {
   init(): Promise<void>;
 
   ready(): boolean;
+
+  balances?(req: BalanceRequest): Promise<Record<string, string>>;
 
   /**
    * Given a token's address, return the connector's native representation of
@@ -427,6 +432,8 @@ export interface UniswapLPish {
 
   ready(): boolean;
 
+  balances?(req: BalanceRequest): Promise<Record<string, string>>;
+
   /**
    * Given a token's address, return the connector's native representation of
    * the token.
@@ -543,6 +550,8 @@ export interface Perpish {
   init(): Promise<void>;
 
   ready(): boolean;
+
+  balances?(req: BalanceRequest): Promise<Record<string, string>>;
 
   /**
    * Given a token's address, return the connector's native representation of
@@ -663,6 +672,8 @@ export interface CLOBish {
   postOrder(req: ClobPostOrderRequest): Promise<{ txHash: string }>;
 
   deleteOrder(req: ClobDeleteOrderRequest): Promise<{ txHash: string }>;
+
+  balances?(req: BalanceRequest): Promise<Record<string, string>>;
 
   estimateGas(_req: NetworkSelectionRequest): {
     gasPrice: number;

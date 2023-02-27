@@ -81,7 +81,7 @@ export interface ClobPostOrderResponse {
   timestamp: number;
   latency: number;
   txHash: string;
-  clientOrderID?: string;
+  clientOrderID?: string | string[];
 }
 
 export type ClobDeleteOrderRequest = ClobGetOrderRequest;
