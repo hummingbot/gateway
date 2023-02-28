@@ -1,11 +1,12 @@
 import express from 'express';
 import { Express } from 'express-serve-static-core';
 import request from 'supertest';
-import { Ethereum } from '../../../../src/chains/ethereum/ethereum';
-import { Sushiswap } from '../../../../src/connectors/sushiswap/sushiswap';
-import { AmmRoutes } from '../../../../src/amm/amm.routes';
-import { patch, unpatch } from '../../../services/patch';
-import { gasCostInEthString } from '../../../../src/services/base';
+import { Ethereum } from '../../../src/chains/ethereum/ethereum';
+import { Sushiswap } from '../../../src/connectors/sushiswap/sushiswap';
+import { AmmRoutes } from '../../../src/amm/amm.routes';
+import { patch, unpatch } from '../../services/patch';
+import { gasCostInEthString } from '../../../src/services/base';
+
 let app: Express;
 let ethereum: Ethereum;
 let sushiswap: Sushiswap;
@@ -51,14 +52,14 @@ const patchStoredTokenList = () => {
         chainId: 42,
         name: 'WETH',
         symbol: 'WETH',
-        address: '0xd0A1E359811322d97991E03f863a0C30C2cF029C',
+        address: '0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6',
         decimals: 18,
       },
       {
         chainId: 42,
         name: 'DAI',
         symbol: 'DAI',
-        address: '0x4f96fe3b7a6cf9725f59d353f723c1bdb64ca6aa',
+        address: '0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6',
         decimals: 18,
       },
     ];
@@ -72,7 +73,7 @@ const patchGetTokenBySymbol = () => {
         chainId: 42,
         name: 'WETH',
         symbol: 'WETH',
-        address: '0xd0A1E359811322d97991E03f863a0C30C2cF029C',
+        address: '0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6',
         decimals: 18,
       };
     } else {
@@ -80,7 +81,7 @@ const patchGetTokenBySymbol = () => {
         chainId: 42,
         name: 'DAI',
         symbol: 'DAI',
-        address: '0x4f96fe3b7a6cf9725f59d353f723c1bdb64ca6aa',
+        address: '0xdc31Ee1784292379Fbb2964b3B9C4124D8F89C60',
         decimals: 18,
       };
     }
@@ -93,7 +94,7 @@ const patchGetTokenByAddress = () => {
       chainId: 42,
       name: 'WETH',
       symbol: 'WETH',
-      address: '0xd0A1E359811322d97991E03f863a0C30C2cF029C',
+      address: '0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6',
       decimals: 18,
     };
   });
@@ -220,7 +221,7 @@ describe('POST /amm/price', () => {
         chain: 'ethereum',
         network: 'goerli',
         connector: 'sushiswap',
-        quote: 'DOGE',
+        quote: 'NOTASYMBOL',
         base: 'WETH',
         amount: '10000',
         side: 'SELL',
@@ -243,7 +244,7 @@ describe('POST /amm/price', () => {
         network: 'goerli',
         connector: 'sushiswap',
         quote: 'DAI',
-        base: 'SHIBA',
+        base: 'NOTASYMBOL',
         amount: '10000',
         side: 'SELL',
       })
@@ -265,7 +266,7 @@ describe('POST /amm/price', () => {
         network: 'goerli',
         connector: 'sushiswap',
         quote: 'DAI',
-        base: 'SHIBA',
+        base: 'NOTASYMBOL',
         amount: '10.000',
         side: 'SELL',
       })
@@ -287,7 +288,7 @@ describe('POST /amm/price', () => {
         network: 'goerli',
         connector: 'sushiswap',
         quote: 'DAI',
-        base: 'SHIBA',
+        base: 'NOTASYMBOL',
         amount: '10.000',
         side: 'BUY',
       })
@@ -311,7 +312,7 @@ describe('POST /amm/price', () => {
         chain: 'ethereum',
         network: 'goerli',
         connector: 'sushiswap',
-        quote: 'DOGE',
+        quote: 'NOTASYMBOL',
         base: 'WETH',
         amount: '10000',
         side: 'SELL',
@@ -336,7 +337,7 @@ describe('POST /amm/price', () => {
         chain: 'ethereum',
         network: 'goerli',
         connector: 'sushiswap',
-        quote: 'DOGE',
+        quote: 'NOTASYMBOL',
         base: 'WETH',
         amount: '10000',
         side: 'BUY',

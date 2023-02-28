@@ -14,6 +14,9 @@ import Decimal from 'decimal.js-light';
 import axios from 'axios';
 import { logger } from '../../services/logger';
 import { Avalanche } from '../../chains/avalanche/avalanche';
+import { Ethereum } from '../../chains/ethereum/ethereum';
+import { Polygon } from '../../chains/polygon/polygon';
+import { Harmony } from '../../chains/harmony/harmony';
 import { ExpectedTrade, Uniswapish } from '../../services/common-interfaces';
 import {
   HttpException,
@@ -48,7 +51,7 @@ export function newFakeTrade(
 
 export class Openocean implements Uniswapish {
   private static _instances: { [name: string]: Openocean };
-  private avalanche: Avalanche;
+  private chainInstance;
   private _chain: string;
   private _router: string;
   private _gasLimitEstimate: number;
@@ -60,9 +63,9 @@ export class Openocean implements Uniswapish {
   private constructor(chain: string, network: string) {
     this._chain = chain;
     const config = OpenoceanConfig.config;
-    this.avalanche = Avalanche.getInstance(network);
-    this.chainId = this.avalanche.chainId;
-    this._router = config.routerAddress(network);
+    this.chainInstance = this.getChainInstance(network);
+    this.chainId = this.chainInstance.chainId;
+    this._router = config.routerAddress(chain, network);
     this._ttl = config.ttl;
     this._gasLimitEstimate = config.gasLimitEstimate;
   }
@@ -78,6 +81,20 @@ export class Openocean implements Uniswapish {
     return Openocean._instances[chain + network];
   }
 
+  public getChainInstance(network: string) {
+    if (this._chain === 'ethereum') {
+      return Ethereum.getInstance(network);
+    } else if (this._chain === 'avalanche') {
+      return Avalanche.getInstance(network);
+    } else if (this._chain === 'polygon') {
+      return Polygon.getInstance(network);
+    } else if (this._chain === 'harmony') {
+      return Harmony.getInstance(network);
+    } else {
+      throw new Error('unsupported chain');
+    }
+  }
+
   /**
    * Given a token's address, return the connector's native representation of
    * the token.
@@ -89,10 +106,10 @@ export class Openocean implements Uniswapish {
   }
 
   public async init() {
-    if (!this.avalanche.ready()) {
-      await this.avalanche.init();
+    if (!this.chainInstance.ready()) {
+      await this.chainInstance.init();
     }
-    for (const token of this.avalanche.storedTokenList) {
+    for (const token of this.chainInstance.storedTokenList) {
       this.tokenList[token.address] = new Token(
         this.chainId,
         token.address,
@@ -137,7 +154,16 @@ export class Openocean implements Uniswapish {
   }
 
   public get chainName(): string {
-    return this._chain === 'avalanche' ? 'avax' : this._chain;
+    if (this._chain === 'ethereum') {
+      return 'eth';
+    } else if (this._chain === 'avalanche') {
+      return 'avax';
+    } else if (this._chain === 'polygon') {
+      return 'polygon';
+    } else if (this._chain === 'harmony') {
+      return 'harmony';
+    }
+    return this._chain;
   }
 
   getSlippageNumberage(): number {
@@ -165,14 +191,14 @@ export class Openocean implements Uniswapish {
     amount: BigNumber
   ): Promise<ExpectedTrade> {
     logger.info(
-      `estimateSellTrade getting amounts out ${baseToken.address}-${quoteToken.address}.`
+      `estimateSellTrade getting amounts out baseToken(${baseToken.symbol}): ${baseToken.address} - quoteToken(${quoteToken.symbol}): ${quoteToken.address}.`
     );
 
     const reqAmount = new Decimal(amount.toString())
       .div(new Decimal((10 ** baseToken.decimals).toString()))
       .toNumber();
-    logger.info(`reqAmount:${reqAmount}`);
-    const gasPrice = this.avalanche.gasPrice;
+    logger.info(`reqAmount(${baseToken.symbol}):${reqAmount}`);
+    const gasPrice = this.chainInstance.gasPrice;
     let quoteRes;
     try {
       quoteRes = await axios.get(
@@ -210,6 +236,9 @@ export class Openocean implements Uniswapish {
         Number(quoteRes.data.data.outAmount) > 0
       ) {
         const quoteData = quoteRes.data.data;
+        logger.info(
+          `estimateSellTrade quoteData inAmount(${baseToken.symbol}): ${quoteData.inAmount}, outAmount(${quoteToken.symbol}): ${quoteData.outAmount}`
+        );
         const amounts = [quoteData.inAmount, quoteData.outAmount];
         const maximumOutput = new TokenAmount(
           quoteToken,
@@ -251,14 +280,14 @@ export class Openocean implements Uniswapish {
     amount: BigNumber
   ): Promise<ExpectedTrade> {
     logger.info(
-      `estimateBuyTrade getting amounts in ${quoteToken.address}-${baseToken.address}.`
+      `estimateBuyTrade getting amounts in quoteToken(${quoteToken.symbol}): ${quoteToken.address} - baseToken(${baseToken.symbol}): ${baseToken.address}.`
     );
 
     const reqAmount = new Decimal(amount.toString())
       .div(new Decimal((10 ** baseToken.decimals).toString()))
       .toNumber();
     logger.info(`reqAmount:${reqAmount}`);
-    const gasPrice = this.avalanche.gasPrice;
+    const gasPrice = this.chainInstance.gasPrice;
     let quoteRes;
     try {
       quoteRes = await axios.get(
@@ -295,6 +324,9 @@ export class Openocean implements Uniswapish {
         Number(quoteRes.data.data.reverseAmount) > 0
       ) {
         const quoteData = quoteRes.data.data;
+        logger.info(
+          `estimateBuyTrade reverseData inAmount(${quoteToken.symbol}): ${quoteData.reverseAmount}, outAmount(${baseToken.symbol}): ${quoteData.inAmount}`
+        );
         const amounts = [quoteData.reverseAmount, quoteData.inAmount];
         const minimumInput = new TokenAmount(quoteToken, amounts[0].toString());
         const trade = newFakeTrade(
@@ -360,6 +392,7 @@ export class Openocean implements Uniswapish {
             slippage: this.getSlippageNumberage(),
             account: wallet.address,
             gasPrice: gasPrice.toString(),
+            referrer: '0x3fb06064b88a65ba9b9eb840dbb5f3789f002642'
           },
         }
       );
@@ -382,7 +415,7 @@ export class Openocean implements Uniswapish {
     }
     if (swapRes.status == 200 && swapRes.data.code == 200) {
       const swapData = swapRes.data.data;
-      return this.avalanche.nonceManager.provideNonce(
+      return this.chainInstance.nonceManager.provideNonce(
         nonce,
         wallet.address,
         async (nextNonce) => {

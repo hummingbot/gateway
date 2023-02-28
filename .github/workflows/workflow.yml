@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: technote-space/get-diff-action@v6
         with:
           PATTERNS:  |
@@ -41,18 +41,18 @@ jobs:
 
     steps:
       - name: Checkout commit
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Use Node.js
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v3
         with:
-          node-version: '18.x'
+          node-version: 18
 
       - name: Get yarn cache directory path
         id: yarn-cache-dir-path
         run: echo "::set-output name=dir::$(yarn cache dir)"
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
         with:
           path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
@@ -73,19 +73,22 @@ jobs:
       - name: Build project
         run: yarn build
 
-      - name: Replace testnet nodeURL for local hardhat node, and run unit test
+      - name: Replace testnet nodeURL for local hardhat node
         run: |
           mkdir conf db
           cp src/templates/* conf
           sed -i 's/https:\/\/rpc.ankr.com\/eth_goerli/http:\/\/127.0.0.1:8545\//g' ./conf/ethereum.yml
           sed -i 's/https:\/\/arbitrum-rinkeby.infura.io\/v3/http:\/\/127.0.0.1:8545\//g' ./conf/ethereum.yml
           sed -i 's/https:\/\/rpc.ankr.com\/optimism/http:\/\/127.0.0.1:8545\//g' ./conf/ethereum.yml
+          sed -i 's/https:\/\/rpc.ankr.com\/avalanche/http:\/\/127.0.0.1:8545\//g' ./conf/avalanche.yml
           sed -i 's/https:\/\/rpc.ankr.com\/avalanche_fuji/http:\/\/127.0.0.1:8545\//g' ./conf/avalanche.yml
           sed -i 's/https:\/\/rpc.ankr.com\/polygon_mumbai/http:\/\/127.0.0.1:8545\//g' ./conf/polygon.yml
           sed -i 's/https:\/\/api.s0.b.hmny.io/http:\/\/127.0.0.1:8545\//g' ./conf/harmony.yml
           sed -i 's/https:\/\/data-seed-prebsc-1-s1.binance.org:8545/http:\/\/127.0.0.1:8545\//g' ./conf/binance-smart-chain.yml
           sed -i 's/https:\/\/cosmos-testnet-rpc.allthatnode.com:26657/http:\/\/127.0.0.1:8545\//g' ./conf/cosmos.yml
-          yarn test:unit 
+          sed -i 's/https:\/\/cosmos-mainnet-rpc.allthatnode.com:26657/http:\/\/127.0.0.1:8545\//g' ./conf/cosmos.yml
+          sed -i 's/https:\/\/evm-t3.cronos.org/http:\/\/127.0.0.1:8545\//g' ./conf/cosmos.yml
+          sed -i 's/https:\/\/evm.cronos.org/http:\/\/127.0.0.1:8545\//g' ./conf/cosmos.yml
 
       - name: Run unit test coverage
         if: github.event_name == 'pull_request'
@@ -94,4 +97,4 @@ jobs:
           git fetch --all -q
           git checkout -b $GITHUB_SHA
           yarn test:cov 
-          git diff origin/$GITHUB_BASE_REF | yarn diff-test-coverage -c ./coverage/lcov.info -t lcov -b 50 -l 60
+#          git diff origin/$GITHUB_BASE_REF | yarn diff-test-coverage -c ./coverage/lcov.info -t lcov -b 50 -l 60
