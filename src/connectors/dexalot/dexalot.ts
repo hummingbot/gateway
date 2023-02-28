@@ -62,6 +62,13 @@ export class DexalotCLOB implements CLOBish {
     // this._gasStationContract = this.getContract('GasStation', this._resources);
   }
 
+  public get tradePairsContract(): Contract {
+    return this._tradePairsContract;
+  }
+  public set tradePairsContract(value: Contract) {
+    this._tradePairsContract = value;
+  }
+
   public getContract(name: string, data: any[]): Contract {
     const validContractNames = [
       'ExchangeSub',
@@ -96,9 +103,9 @@ export class DexalotCLOB implements CLOBish {
     const rawMarkets = (
       await Promise.all(
         (
-          await this._tradePairsContract.getTradePairs()
+          await this.tradePairsContract.getTradePairs()
         ).map(async (marketId: string) => {
-          return this._tradePairsContract.getTradePair(marketId);
+          return this.tradePairsContract.getTradePair(marketId);
         })
       )
     ).map(parseMarkerInfo);
@@ -154,7 +161,7 @@ export class DexalotCLOB implements CLOBish {
   public async orderBook(req: ClobOrderbookRequest): Promise<Orderbook> {
     const markerId = fromUtf8(req.market.replace('-', '/'));
     const books = await Promise.all([
-      this._tradePairsContract.getNBook(
+      this.tradePairsContract.getNBook(
         markerId,
         OrderSide.BUY,
         50,
@@ -162,7 +169,7 @@ export class DexalotCLOB implements CLOBish {
         0,
         fromUtf8('')
       ),
-      this._tradePairsContract.getNBook(
+      this.tradePairsContract.getNBook(
         markerId,
         OrderSide.SELL,
         50,
@@ -209,12 +216,12 @@ export class DexalotCLOB implements CLOBish {
     let order;
     const marketInfo = this.parsedMarkets[req.market];
     if (!req.address) {
-      order = [await this._tradePairsContract.getOrder(req.orderId)].map(
+      order = [await this.tradePairsContract.getOrder(req.orderId)].map(
         parseMarkerInfo
       )[0];
     }
     order = [
-      await this._tradePairsContract.getOrderByClientOrderId(
+      await this.tradePairsContract.getOrderByClientOrderId(
         req.address,
         req.orderId
       ),
@@ -244,7 +251,7 @@ export class DexalotCLOB implements CLOBish {
     const clientOrderID =
       req.clientOrderID || (await this.getClientOrderId(req.address));
 
-    const txData = await this._tradePairsContract.populateTransaction.addOrder(
+    const txData = await this.tradePairsContract.populateTransaction.addOrder(
       req.address,
       clientOrderID,
       fromUtf8(req.market.replace('-', '/')), // market id
@@ -274,7 +281,7 @@ export class DexalotCLOB implements CLOBish {
     req: ClobDeleteOrderRequest
   ): Promise<{ txHash: string }> {
     const txData =
-      await this._tradePairsContract.populateTransaction.cancelOrder(
+      await this.tradePairsContract.populateTransaction.cancelOrder(
         req.orderId
       );
     txData.gasLimit = BigNumber.from(String(this._conf.gasLimitEstimate));
@@ -370,7 +377,7 @@ export class DexalotCLOB implements CLOBish {
     }
     return {
       txData:
-        await this._tradePairsContract.populateTransaction.addLimitOrderList(
+        await this.tradePairsContract.populateTransaction.addLimitOrderList(
           fromUtf8(market.replace('-', '/')), // market id
           clientOrderID,
           prices,
@@ -391,7 +398,7 @@ export class DexalotCLOB implements CLOBish {
       spotOrdersToCancel.push(order.orderId);
     }
 
-    return await this._tradePairsContract.populateTransaction.cancelAllOrders(
+    return await this.tradePairsContract.populateTransaction.cancelAllOrders(
       // To-do: Rename method to cancelOrderList when mainnet is updated.
       spotOrdersToCancel
     );

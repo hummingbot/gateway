@@ -1,102 +1,56 @@
+import { BigNumber } from 'ethers';
 import request from 'supertest';
-import { patch, unpatch } from '../services/patch';
-import { gatewayApp } from '../../src/app';
-import { Injective } from '../../src/chains/injective/injective';
-import { InjectiveCLOB } from '../../src/connectors/injective/injective';
+import { gatewayApp } from '../../../src/app';
+import { Avalanche } from '../../../src/chains/avalanche/avalanche';
+import { EVMTxBroadcaster } from '../../../src/chains/ethereum/evm.broadcaster';
+import { DexalotCLOB } from '../../../src/connectors/dexalot/dexalot';
+import { fromUtf8 } from '../../../src/connectors/dexalot/dexalot.constants';
+import { patch, unpatch } from '../../services/patch';
 
-let inj: Injective;
-let injCLOB: InjectiveCLOB;
+let avalanche: Avalanche;
+let dexalot: DexalotCLOB;
 
 const TX_HASH =
-  'CC6BF44223B4BD05396F83D55A0ABC0F16CE80836C0E34B08F4558CF72944299'; // noqa: mock
-const MARKET = 'INJ-USDT';
+  '0xf6f81a37796bd06a797484467302e4d6f72832409545e2e01feb86dd8b22e4b2'; // noqa: mock
+const MARKET = 'ALOT-USDC';
 
-const MARKETS = [
-  {
-    marketId:
-      '0xa508cb32923323679f29a032c70342c147c17d0145625922b0ef22e955c844c0', // noqa: mock
-    marketStatus: 'active',
-    ticker: 'INJ/USDT',
-    baseDenom: 'inj',
-    quoteDenom: 'peggy0xdAC17F958D2ee523a2206206994597C13D831ec7',
-    quoteToken: {
-      name: 'Tether',
-      address: '0xdAC17F958D2ee523a2206206994597C13D831ec7',
-      symbol: 'USDT',
-      logo: 'https://static.alchemyapi.io/images/assets/825.png',
-      decimals: 6,
-      updatedAt: 1669849325905,
-      coinGeckoId: '',
-    },
-    baseToken: {
-      name: 'Injective Protocol',
-      address: '0xe28b3B32B6c345A34Ff64674606124Dd5Aceca30',
-      symbol: 'INJ',
-      logo: 'https://static.alchemyapi.io/images/assets/7226.png',
-      decimals: 18,
-      updatedAt: 1659191789475,
-      coinGeckoId: '',
-    },
-    makerFeeRate: '-0.0001',
-    takerFeeRate: '0.001',
-    serviceProviderFee: '0.4',
-    minPriceTickSize: 1e-15,
-    minQuantityTickSize: 1000000000000000,
-  },
-];
-
-const ORDER_BOOK = {
-  sells: [
-    ['12', '1'],
-    ['11', '0.3'],
-  ],
-  buys: [
-    ['10', '1'],
-    ['9', '0.3'],
-  ],
+const MARKETS = {
+  baseSymbol: fromUtf8('ALOT'),
+  quoteSymbol: fromUtf8('USDC'),
+  buyBookId: fromUtf8('ALOT-USDC-BUYBOOK'),
+  sellBookId: fromUtf8('ALOT-USDC-SELLBOOK'),
+  minTradeAmount: BigNumber.from('5'),
+  maxTradeAmount: BigNumber.from('5000'),
+  auctionPrice: BigNumber.from('5'),
+  auctionMode: true,
+  makerRate: '0.1',
+  takerRate: '0.1',
+  baseDecimals: 6,
+  baseDisplayDecimals: 2,
+  quoteDecimals: 18,
+  quoteDisplayDecimals: 6,
+  allowedSlippagePercent: '1',
+  addOrderPaused: false,
+  pairPaused: false,
+  postOnly: true,
 };
 
 const ORDERS = {
-  orderHistory: [
-    {
-      orderHash:
-        '0xf6f81a37796bd06a797484467302e4d6f72832409545e2e01feb86dd8b22e4b2', // noqa: mock
-      marketId:
-        '0xa508cb32923323679f29a032c70342c147c17d0145625922b0ef22e955c844c0', // noqa: mock
-      active: false,
-      subaccountId:
-        '0x261362dbc1d83705ab03e99792355689a4589b8e000000000000000000000000', // noqa: mock
-      executionType: 'limit',
-      orderType: 'sell',
-      price: '0.000000000002',
-      triggerPrice: '0',
-      quantity: '2000000000000000000',
-      filledQuantity: '0',
-      state: 'canceled',
-      createdAt: 1669850499821,
-      updatedAt: 1669853807685,
-      direction: 'sell',
-    },
-    {
-      orderHash:
-        '0x751a0fcfa52562d0cfe842d21673ebcb654a3774739654800388b1037bc267bc', // noqa: mock
-      marketId:
-        '0xa508cb32923323679f29a032c70342c147c17d0145625922b0ef22e955c844c0', // noqa: mock
-      active: true,
-      subaccountId:
-        '0x261362dbc1d83705ab03e99792355689a4589b8e000000000000000000000000', // noqa: mock
-      executionType: 'limit',
-      orderType: 'sell',
-      price: '0.000000000002',
-      triggerPrice: '0',
-      quantity: '2000000000000000000',
-      filledQuantity: '0',
-      state: 'booked',
-      createdAt: 1669850223538,
-      updatedAt: 1669850223538,
-      direction: 'sell',
-    },
-  ],
+  id: '0xf6f81a37796bd06a797484467302e4d6f72832409545e2e01feb86dd8b22e4b2', // noqa: mock
+  clientOrderId:
+    '0xa508cb32923323679f29a032c70342c147c17d0145625922b0ef22e955c844c0', // noqa: mock
+  tradePairId:
+    '0xa508cb32923323679f29a032c70342c147c17d0145625922b0ef22e955c844c0', // noqa: mock
+  price: BigNumber.from('500'),
+  totalAmount: BigNumber.from('10'),
+  quantity: BigNumber.from('5'),
+  quantityFilled: BigNumber.from('5'),
+  totalFee: BigNumber.from('1'),
+  traderaddress: '0x...',
+  side: 0,
+  type1: 1,
+  type2: 0,
+  status: 0,
 };
 
 const GAS_PRICES = {
@@ -108,16 +62,16 @@ const GAS_PRICES = {
 
 const INVALID_REQUEST = {
   chain: 'unknown',
-  network: 'mainnet',
+  network: 'dexalot',
 };
 
 beforeAll(async () => {
-  inj = Injective.getInstance('mainnet');
+  avalanche = Avalanche.getInstance('dexalot');
   patchCurrentBlockNumber();
-  inj.init();
-  injCLOB = InjectiveCLOB.getInstance('injective', 'mainnet');
+  avalanche.init();
+  dexalot = DexalotCLOB.getInstance('dexalot');
   patchMarkets();
-  await injCLOB.init();
+  await dexalot.init();
 });
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
@@ -130,42 +84,49 @@ afterEach(() => {
 });
 
 afterAll(async () => {
-  await inj.close();
+  await avalanche.close();
 });
 
 const patchCurrentBlockNumber = (withError: boolean = false) => {
-  patch(inj.chainRestTendermintApi, 'fetchLatestBlock', () => {
-    return withError ? {} : { header: { height: 100 } };
+  patch(avalanche, 'getCurrentBlockNumber', () => {
+    return withError ? -1 : 100;
   });
 };
 
 const patchMarkets = () => {
-  patch(injCLOB.spotApi, 'fetchMarkets', () => {
-    return MARKETS;
+  patch(dexalot, 'tradePairsContract', () => {
+    return {
+      async getTradePairs() {
+        return [
+          '0xa508cb32923323679f29a032c70342c147c17d0145625922b0ef22e955c844c0',
+        ];
+      },
+      async getTradePair() {
+        return MARKETS;
+      },
+    };
   });
 };
 
 const patchOrderBook = () => {
-  patch(injCLOB.spotApi, 'fetchOrderbook', () => {
-    return ORDER_BOOK;
-  });
-};
-const patchGetWallet = () => {
-  patch(inj, 'getWallet', () => {
+  patch(dexalot, 'tradePairsContract', () => {
     return {
-      privateKey:
-        'b5959390c834283a11ad71f3668fee9784853f1422e921a7015c275c98c95c08', // noqa: mock
-      injectiveAddress: 'inj1ycfk9k7pmqmst2craxteyd2k3xj93xuw2x0vgp',
+      async getNBook() {
+        return [
+          [BigNumber.from('5000000000000000000')],
+          [BigNumber.from('100000')],
+        ];
+      },
     };
   });
 };
 
 const patchMsgBroadcaster = () => {
-  patch(inj, 'broadcaster', () => {
+  patch(EVMTxBroadcaster, 'getInstance', () => {
     return {
       broadcast() {
         return {
-          txHash: TX_HASH,
+          hash: TX_HASH,
         };
       },
     };
@@ -173,13 +134,17 @@ const patchMsgBroadcaster = () => {
 };
 
 const patchOrders = () => {
-  patch(injCLOB.spotApi, 'fetchOrderHistory', () => {
-    return ORDERS;
+  patch(dexalot, 'tradePairsContract', () => {
+    return {
+      async getOrderByClientOrderId() {
+        return ORDERS;
+      },
+    };
   });
 };
 
 const patchGasPrices = () => {
-  patch(injCLOB, 'estimateGas', () => {
+  patch(dexalot, 'estimateGas', () => {
     return GAS_PRICES;
   });
 };
@@ -190,14 +155,16 @@ describe('GET /clob/markets', () => {
     await request(gatewayApp)
       .get(`/clob/markets`)
       .query({
-        chain: 'injective',
-        network: 'mainnet',
-        connector: 'injective',
+        chain: 'avalanche',
+        network: 'dexalot',
+        connector: 'dexalot',
       })
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(200)
-      .expect((res) => expect(res.body.markets).toEqual(injCLOB.parsedMarkets));
+      .expect((res) => {
+        expect(res.body.markets.length).toEqual(1);
+      });
   });
 
   it('should return 404 when parameters are invalid', async () => {
@@ -214,16 +181,16 @@ describe('GET /clob/orderBook', () => {
     await request(gatewayApp)
       .get(`/clob/orderBook`)
       .query({
-        chain: 'injective',
-        network: 'mainnet',
-        connector: 'injective',
+        chain: 'avalanche',
+        network: 'dexalot',
+        connector: 'dexalot',
         market: MARKET,
       })
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(200)
-      .expect((res) => expect(res.body.buys).toEqual(ORDER_BOOK.buys))
-      .expect((res) => expect(res.body.sells).toEqual(ORDER_BOOK.sells));
+      .expect((res) => expect(res.body.buys[0].price).toEqual('5.0'))
+      .expect((res) => expect(res.body.sells[0].price).toEqual('5.0'));
   });
 
   it('should return 404 when parameters are invalid', async () => {
@@ -240,15 +207,16 @@ describe('GET /clob/ticker', () => {
     await request(gatewayApp)
       .get(`/clob/ticker`)
       .query({
-        chain: 'injective',
-        network: 'mainnet',
-        connector: 'injective',
+        chain: 'avalanche',
+        network: 'dexalot',
+        connector: 'dexalot',
         market: MARKET,
       })
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(200)
-      .expect((res) => expect(res.body.markets).toEqual(injCLOB.parsedMarkets));
+      .expect((res) => expect(res.body.markets.baseSymbol).toEqual('ALOT'))
+      .expect((res) => expect(res.body.markets.quoteSymbol).toEqual('USDC'));
   });
 
   it('should return 404 when parameters are invalid', async () => {
@@ -265,9 +233,9 @@ describe('GET /clob/orders', () => {
     await request(gatewayApp)
       .get(`/clob/orders`)
       .query({
-        chain: 'injective',
-        network: 'mainnet',
-        connector: 'injective',
+        chain: 'avalanche',
+        network: 'dexalot',
+        connector: 'dexalot',
         address:
           '0x261362dBC1D83705AB03e99792355689A4589b8E000000000000000000000000', // noqa: mock
         market: MARKET,
@@ -276,7 +244,7 @@ describe('GET /clob/orders', () => {
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(200)
-      .expect((res) => expect(res.body.orders).toEqual(ORDERS.orderHistory));
+      .expect((res) => expect(res.body.orders.length).toEqual(1));
   });
 
   it('should return 404 when parameters are invalid', async () => {
@@ -289,16 +257,14 @@ describe('GET /clob/orders', () => {
 
 describe('POST /clob/orders', () => {
   it('should return 200 with proper request', async () => {
-    patchGetWallet();
     patchMsgBroadcaster();
     await request(gatewayApp)
       .post(`/clob/orders`)
       .send({
-        chain: 'injective',
-        network: 'mainnet',
-        connector: 'injective',
-        address:
-          '0x261362dBC1D83705AB03e99792355689A4589b8E000000000000000000000000', // noqa: mock
+        chain: 'avalanche',
+        network: 'dexalot',
+        connector: 'dexalot',
+        address: '0x261362dBC1D83705AB03e99792355689A4589b8E', // noqa: mock
         market: MARKET,
         price: '10000.12',
         amount: '0.12',
@@ -321,18 +287,17 @@ describe('POST /clob/orders', () => {
 
 describe('DELETE /clob/orders', () => {
   it('should return 200 with proper request', async () => {
-    patchGetWallet();
     patchMsgBroadcaster();
     await request(gatewayApp)
       .delete(`/clob/orders`)
       .send({
-        chain: 'injective',
-        network: 'mainnet',
-        connector: 'injective',
-        address:
-          '0x261362dBC1D83705AB03e99792355689A4589b8E000000000000000000000000', // noqa: mock
+        chain: 'avalanche',
+        network: 'dexalot',
+        connector: 'dexalot',
+        address: '0x261362dBC1D83705AB03e99792355689A4589b8E', // noqa: mock
         market: MARKET,
-        orderId: '0x...',
+        orderId:
+          '0x8ce222ca5da95aaffd87b3d38a307f25d6e2c09e70a0cb8599bc6c8a0851fda3',
       })
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
@@ -350,16 +315,14 @@ describe('DELETE /clob/orders', () => {
 
 describe('POST /clob/batchOrders', () => {
   it('should return 200 with proper request to create batch orders', async () => {
-    patchGetWallet();
     patchMsgBroadcaster();
     await request(gatewayApp)
       .post(`/clob/batchOrders`)
       .send({
-        chain: 'injective',
-        network: 'mainnet',
-        connector: 'injective',
-        address:
-          '0x261362dBC1D83705AB03e99792355689A4589b8E000000000000000000000000', // noqa: mock
+        chain: 'avalanche',
+        network: 'dexalot',
+        connector: 'dexalot',
+        address: '0x261362dBC1D83705AB03e99792355689A4589b8E', // noqa: mock
         createOrderParams: [
           {
             price: '2',
@@ -383,16 +346,14 @@ describe('POST /clob/batchOrders', () => {
   });
 
   it('should return 200 with proper request to delete batch orders', async () => {
-    patchGetWallet();
     patchMsgBroadcaster();
     await request(gatewayApp)
       .post(`/clob/batchOrders`)
       .send({
-        chain: 'injective',
-        network: 'mainnet',
-        connector: 'injective',
-        address:
-          '0x261362dBC1D83705AB03e99792355689A4589b8E000000000000000000000000', // noqa: mock
+        chain: 'avalanche',
+        network: 'dexalot',
+        connector: 'dexalot',
+        address: '0x261362dBC1D83705AB03e99792355689A4589b8E', // noqa: mock
         market: MARKET,
         cancelOrderIds: [
           '0x73af517124c3f564d1d70e38ad5200dfc7101d04986c14df410042e00932d4bf', // noqa: mock
@@ -419,9 +380,9 @@ describe('GET /clob/estimateGas', () => {
     await request(gatewayApp)
       .get(`/clob/estimateGas`)
       .query({
-        chain: 'injective',
-        network: 'mainnet',
-        connector: 'injective',
+        chain: 'avalanche',
+        network: 'dexalot',
+        connector: 'dexalot',
       })
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
