@@ -441,8 +441,14 @@ definitions:
         type: object
       asks:
         type: array
+        items:
+          type: object
+          $ref: '#/definitions/CLOBGetOrderBooksResponseOrderAskItemCommon'
       bids:
         type: array
+        items:
+          type: object
+          $ref: '#/definitions/CLOBGetOrderBooksResponseOrderBidItemCommon'
   CLOBGetOrderBooksResponseItemSerum:
     type: object
     allOf:
