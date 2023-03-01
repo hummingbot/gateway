@@ -76,7 +76,7 @@ describe('uninitiated EVMNodeService', () => {
 
   it('localNonceTTL value too low', async () => {
     const provider = new providers.StaticJsonRpcProvider(
-      'https://ethereum.node.com'
+      'http://127.0.0.1:8545/'
     );
 
     const nonceManager2 = new EVMNonceManager('ethereum', 43, dbPath, -5, 0);
@@ -102,7 +102,7 @@ describe('uninitiated EVMNodeService', () => {
 
   it('pendingNonceTTL value too low', async () => {
     const provider = new providers.StaticJsonRpcProvider(
-      'https://ethereum.node.com'
+      'http://127.0.0.1:8545/'
     );
 
     const nonceManager2 = new EVMNonceManager('ethereum', 43, dbPath, 0, -5);
@@ -132,7 +132,7 @@ describe('EVMNodeService', () => {
   let dbPath = '';
   const handle: string = ReferenceCountingCloseable.createHandle();
   const provider = new providers.StaticJsonRpcProvider(
-    'https://ethereum.node.com'
+    'http://127.0.0.1:8545/'
   );
 
   beforeEach(async () => {
@@ -292,7 +292,7 @@ describe("EVMNodeService was previously a singleton. Let's prove that it no long
     );
     nonceManager1 = new EVMNonceManager('ethereum', 43, dbPath, 60, 60);
     const provider1 = new providers.StaticJsonRpcProvider(
-      'https://ethereum.node.com'
+      'http://127.0.0.1:8545/'
     );
     nonceManager1.declareOwnership(handle);
     await nonceManager1.init(
@@ -302,7 +302,7 @@ describe("EVMNodeService was previously a singleton. Let's prove that it no long
     nonceManager2 = new EVMNonceManager('avalanche', 56, dbPath, 60, 60);
     nonceManager2.declareOwnership(handle);
     const provider2 = new providers.StaticJsonRpcProvider(
-      'https://avalanche.node.com'
+      'http://127.0.0.1:8545/'
     );
     await nonceManager2.init(
       async (address) => (await provider2.getTransactionCount(address)) - 1

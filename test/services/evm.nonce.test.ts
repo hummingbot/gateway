@@ -109,7 +109,7 @@ describe('Test EVMNonceManager', () => {
     await evmNonceManager.init(
       async (address) =>
         (await new providers.StaticJsonRpcProvider(
-          'https://mainnet.infura.io/v3/'
+          'http://127.0.0.1:8545/'
         ).getTransactionCount(address)) - 1
     );
 
