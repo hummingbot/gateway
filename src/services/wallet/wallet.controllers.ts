@@ -6,7 +6,6 @@ import { Ethereum } from '../../chains/ethereum/ethereum';
 import { Polygon } from '../../chains/polygon/polygon';
 import { Cosmos } from '../../chains/cosmos/cosmos';
 import { Harmony } from '../../chains/harmony/harmony';
-import { Injective } from '../../chains/injective/injective';
 
 import {
   AddWalletRequest,
@@ -44,7 +43,7 @@ export async function addWallet(
   if (!passphrase) {
     throw new Error('There is no passphrase');
   }
-  let connection: EthereumBase | Near | Cosmos | Injective;
+  let connection: EthereumBase | Near | Cosmos;
   let address: string | undefined;
   let encryptedPrivateKey: string | undefined;
 
@@ -70,8 +69,6 @@ export async function addWallet(
     connection = Near.getInstance(req.network);
   } else if (req.chain === 'binance-smart-chain') {
     connection = BinanceSmartChain.getInstance(req.network);
-  } else if (req.chain === 'injective') {
-    connection = Injective.getInstance(req.network);
   } else {
     throw new HttpException(
       500,
@@ -109,21 +106,6 @@ export async function addWallet(
         )
       ).accountId;
       encryptedPrivateKey = connection.encrypt(req.privateKey, passphrase);
-    } else if (connection instanceof Injective) {
-      const ethereumAddress = connection.getWalletFromPrivateKey(
-        req.privateKey
-      ).address;
-      const subaccountId = req.accountId;
-      if (subaccountId !== undefined) {
-        address = ethereumAddress + subaccountId.toString(16).padStart(24, '0');
-
-        encryptedPrivateKey = await connection.encrypt(
-          req.privateKey,
-          passphrase
-        );
-      } else {
-        throw new Error('Injective wallet requires a subaccount id');
-      }
     }
 
     if (address === undefined || encryptedPrivateKey === undefined) {
