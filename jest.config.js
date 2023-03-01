@@ -2,6 +2,7 @@ module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   forceExit: true,
+  timers: 'timers',
   coveragePathIgnorePatterns: [
     'src/app.ts',
     'src/https.ts',
