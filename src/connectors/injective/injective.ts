@@ -135,26 +135,52 @@ export class InjectiveCLOB {
         ? ((orderType + 6) as GrpcOrderType) // i.e. BUY_LIMIT, SELL_LIMIT are 7, 8 respectively
         : orderType;
 
-    const msg = MsgBatchUpdateOrders.fromJSON({
-      subaccountId: req.address,
-      injectiveAddress,
-      spotOrdersToCreate: [
-        {
-          orderType,
-          price: spotPriceToChainPriceToFixed({
-            value: req.price,
-            baseDecimals: this._chain.getTokenForSymbol(base)?.decimals,
-            quoteDecimals: this._chain.getTokenForSymbol(quote)?.decimals,
-          }),
-          quantity: spotQuantityToChainQuantityToFixed({
-            value: req.amount,
-            baseDecimals: this._chain.getTokenForSymbol(base)?.decimals,
-          }),
-          marketId: market.marketId,
-          feeRecipient: injectiveAddress,
-        },
-      ],
-    });
+    let msg;
+    if (req.leverage !== undefined) {
+      msg = MsgBatchUpdateOrders.fromJSON({
+        subaccountId: req.address,
+        injectiveAddress,
+        derivativeOrdersToCreate: [
+          {
+            orderType,
+            price: spotPriceToChainPriceToFixed({
+              value: req.price,
+              baseDecimals: this._chain.getTokenForSymbol(base)?.decimals,
+              quoteDecimals: this._chain.getTokenForSymbol(quote)?.decimals,
+            }),
+            quantity: spotQuantityToChainQuantityToFixed({
+              value: req.amount,
+              baseDecimals: this._chain.getTokenForSymbol(base)?.decimals,
+            }),
+            marketId: market.marketId,
+            feeRecipient: injectiveAddress,
+            margin: '', // TODO: calculate from leverage, waiting on injective team
+            // NOTE: we are not using the optional field triggerPrice?
+          },
+        ],
+      });
+    } else {
+      msg = MsgBatchUpdateOrders.fromJSON({
+        subaccountId: req.address,
+        injectiveAddress,
+        spotOrdersToCreate: [
+          {
+            orderType,
+            price: spotPriceToChainPriceToFixed({
+              value: req.price,
+              baseDecimals: this._chain.getTokenForSymbol(base)?.decimals,
+              quoteDecimals: this._chain.getTokenForSymbol(quote)?.decimals,
+            }),
+            quantity: spotQuantityToChainQuantityToFixed({
+              value: req.amount,
+              baseDecimals: this._chain.getTokenForSymbol(base)?.decimals,
+            }),
+            marketId: market.marketId,
+            feeRecipient: injectiveAddress,
+          },
+        ],
+      });
+    }
     /*
 
     derivativeOrdersToCreate?: {
@@ -198,7 +224,6 @@ derivativeQuantityFromChainQuantityToFixed
         {
           marketId: market.marketId,
           subaccountId: req.address,
-
           orderHash: req.orderId,
         },
       ],
