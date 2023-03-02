@@ -1,6 +1,7 @@
 import { NetworkSelectionRequest } from '../services/common-interfaces';
 import { OrderType, Side } from '../amm/amm.requests';
 import {
+  FundingPayment,
   FundingRate,
   Orderbook,
   DerivativeMarket,
@@ -92,5 +93,18 @@ export interface ClobFundingRatesResponse {
   pagination: ExchangePagination;
 }
 
-// export type ClobFundingPaymentsRequest
-// export type ClobFundingPaymentsResponse
+export interface ClobFundingPaymentsRequest extends NetworkSelectionRequest {
+  address: string;
+  marketId: string;
+  skip?: number; // skip last n funding payments
+  limit?: number; // 1 to 100
+  endTime?: number; // Upper bound of funding payment timestamp
+}
+
+export interface ClobFundingPaymentsResponse {
+  network: string;
+  timestamp: number;
+  latency: number;
+  fundingPayments: Array<FundingPayment>;
+  pagination: ExchangePagination;
+}

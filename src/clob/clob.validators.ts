@@ -66,7 +66,9 @@ export const validateSkip: Validator = mkValidator(
 export const validateLimit: Validator = mkValidator(
   'limit',
   invalidLimitError,
-  (val) => typeof val === 'undefined' || (typeof val === 'number' && val >= 0 && val <= 100)
+  (val) =>
+    typeof val === 'undefined' ||
+    (typeof val === 'number' && val >= 0 && val <= 100)
 );
 
 export const validateEndTime: Validator = mkValidator(
@@ -130,5 +132,21 @@ export const validateOrderRequest: RequestValidator = mkRequestValidator(
 );
 
 export const validateFundingRatesRequest: RequestValidator = mkRequestValidator(
-  NETWORK_VALIDATIONS.concat([validateMarketId, validateSkip, validateLimit, validateEndTime])
+  NETWORK_VALIDATIONS.concat([
+    validateMarketId,
+    validateSkip,
+    validateLimit,
+    validateEndTime,
+  ])
 );
+
+export const validateFundingPaymentsRequest: RequestValidator =
+  mkRequestValidator(
+    NETWORK_VALIDATIONS.concat([
+      validateWallet,
+      validateMarketId,
+      validateSkip,
+      validateLimit,
+      validateEndTime,
+    ])
+  );

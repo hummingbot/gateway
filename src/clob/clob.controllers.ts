@@ -17,6 +17,8 @@ import {
   ClobTickerResponse,
   ClobFundingRatesRequest,
   ClobFundingRatesResponse,
+  ClobFundingPaymentsRequest,
+  ClobFundingPaymentsResponse,
 } from './clob.requests';
 import { latency } from '../services/base';
 
@@ -201,6 +203,25 @@ export async function fundingRates(
     request.connector
   );
   const result = await connector.fundingRates(request);
+  return {
+    network: request.network,
+    timestamp: startTimestamp,
+    latency: latency(startTimestamp, Date.now()),
+    ...result,
+  };
+}
+
+export async function fundingPayments(
+  request: ClobFundingPaymentsRequest
+): Promise<ClobFundingPaymentsResponse> {
+  const startTimestamp: number = Date.now();
+  await getChain(request.chain, request.network);
+  const connector: any = await getConnector(
+    request.chain,
+    request.network,
+    request.connector
+  );
+  const result = await connector.fundingPayments(request);
   return {
     network: request.network,
     timestamp: startTimestamp,

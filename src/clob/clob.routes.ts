@@ -13,6 +13,7 @@ import {
   postOrder,
   deleteOrder,
   estimateGas,
+  fundingPayments,
   fundingRates,
 } from './clob.controllers';
 import {
@@ -30,6 +31,8 @@ import {
   ClobTickerResponse,
   ClobFundingRatesRequest,
   ClobFundingRatesResponse,
+  ClobFundingPaymentsRequest,
+  ClobFundingPaymentsResponse,
 } from './clob.requests';
 import {
   validateBasicRequest,
@@ -37,6 +40,7 @@ import {
   validatePostOrderRequest,
   validateOrderRequest,
   validateFundingRatesRequest,
+  validateFundingPaymentsRequest,
 } from './clob.validators';
 
 export namespace CLOBRoutes {
@@ -156,6 +160,19 @@ export namespace CLOBRoutes {
       ) => {
         validateFundingRatesRequest(req.query);
         res.status(200).json(await fundingRates(req.body));
+      }
+    )
+  );
+
+  router.post(
+    '/funding/payments',
+    asyncHandler(
+      async (
+        req: Request<{}, {}, ClobFundingPaymentsRequest>,
+        res: Response<ClobFundingPaymentsResponse | string, {}>
+      ) => {
+        validateFundingPaymentsRequest(req.query);
+        res.status(200).json(await fundingPayments(req.body));
       }
     )
   );

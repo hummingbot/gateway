@@ -5,6 +5,7 @@ import {
   Orderbook,
   SpotOrderHistory,
   GrpcOrderType,
+  FundingPayment,
   FundingRate,
   ExchangePagination,
   spotPriceToChainPriceToFixed,
@@ -22,6 +23,7 @@ import {
   CLOBMarkets,
   ClobGetOrderResponse,
   ClobFundingRatesRequest,
+  ClobFundingPaymentsRequest,
 } from '../../clob/clob.requests';
 import { NetworkSelectionRequest } from '../../services/common-interfaces';
 import { InjectiveCLOBConfig } from './injective.clob.config';
@@ -299,5 +301,13 @@ derivativeQuantityFromChainQuantityToFixed
     });
   }
 
-  // public fundingPayments
+  public async fundingPayments(req: ClobFundingPaymentsRequest): Promise<{
+    fundingPayments: Array<FundingPayment>;
+    pagination: ExchangePagination;
+  }> {
+    return await this.derivativeApi.fetchFundingPayments({
+      marketId: req.marketId,
+      pagination: { skip: req.skip, limit: req.limit, endTime: req.endTime },
+    });
+  }
 }
