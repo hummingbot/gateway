@@ -40,4 +40,5 @@ module.exports = {
   moduleNameMapper: {
     eccrypto: '<rootDir>/test/mock/eccrypto-mock.js',
   },
+  testPathIgnorePatterns: ['/node_modules/', 'test-helpers'],
 };
