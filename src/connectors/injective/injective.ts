@@ -5,6 +5,8 @@ import {
   Orderbook,
   SpotOrderHistory,
   GrpcOrderType,
+  FundingRate,
+  ExchangePagination,
   spotPriceToChainPriceToFixed,
   spotQuantityToChainQuantityToFixed,
   derivativePriceToChainPriceToFixed,
@@ -19,6 +21,7 @@ import {
   ClobDeleteOrderRequest,
   CLOBMarkets,
   ClobGetOrderResponse,
+  ClobFundingRatesRequest,
 } from '../../clob/clob.requests';
 import { NetworkSelectionRequest } from '../../services/common-interfaces';
 import { InjectiveCLOBConfig } from './injective.clob.config';
@@ -285,4 +288,16 @@ derivativeQuantityFromChainQuantityToFixed
       gasCost: this._chain.gasPrice * this.conf.gasLimitEstimate,
     };
   }
+
+  public async fundingRates(req: ClobFundingRatesRequest): Promise<{
+    fundingRates: Array<FundingRate>;
+    pagination: ExchangePagination;
+  }> {
+    return await this.derivativeApi.fetchFundingRates({
+      marketId: req.marketId,
+      pagination: { skip: req.skip, limit: req.limit, endTime: req.endTime },
+    });
+  }
+
+  // public fundingPayments
 }

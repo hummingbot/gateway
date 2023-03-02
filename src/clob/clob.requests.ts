@@ -1,6 +1,12 @@
 import { NetworkSelectionRequest } from '../services/common-interfaces';
 import { OrderType, Side } from '../amm/amm.requests';
-import { Orderbook, DerivativeMarket, SpotMarket } from '@injectivelabs/sdk-ts';
+import {
+  FundingRate,
+  Orderbook,
+  DerivativeMarket,
+  SpotMarket,
+  ExchangePagination,
+} from '@injectivelabs/sdk-ts';
 
 export interface ClobMarketsRequest extends NetworkSelectionRequest {
   market?: string;
@@ -70,3 +76,21 @@ export interface ClobPostOrderResponse {
 export type ClobDeleteOrderRequest = ClobGetOrderRequest;
 
 export type ClobDeleteOrderResponse = ClobPostOrderResponse;
+
+export interface ClobFundingRatesRequest extends NetworkSelectionRequest {
+  marketId: string;
+  skip?: number; // skip last n funding rates
+  limit?: number; // 1 to 100
+  endTime?: number; // Upper bound of funding rate timestamp
+}
+
+export interface ClobFundingRatesResponse {
+  network: string;
+  timestamp: number;
+  latency: number;
+  fundingRates: Array<FundingRate>;
+  pagination: ExchangePagination;
+}
+
+// export type ClobFundingPaymentsRequest
+// export type ClobFundingPaymentsResponse

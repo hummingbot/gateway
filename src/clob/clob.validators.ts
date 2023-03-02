@@ -18,8 +18,20 @@ import {
   validateSide,
 } from '../amm/amm.validators';
 
-export const invalidMarkerError: string =
+export const invalidMarketError: string =
   'The market param is not a valid market. Market should be in {base}-{quote} format.';
+
+export const invalidMarketIdError: string =
+  'The market id is not valid market. Market id should be a string.';
+
+export const invalidSkipError: string =
+  'skip is not valid. It should either be undefined or a non-negative integer.';
+
+export const invalidLimitError: string =
+  'limit is not valid. It should either be undefined or an integer between 0 and 100.';
+
+export const invalidEndTimeError: string =
+  'endTime is not valid. It should either be undefined or a timestamp.';
 
 export const invalidPriceError: string =
   'The price param may be null or a string of a float or integer number.';
@@ -35,8 +47,32 @@ export const invalidOrderTypeError: string =
 
 export const validateMarket: Validator = mkValidator(
   'market',
-  invalidMarkerError,
+  invalidMarketError,
   (val) => typeof val === 'string' && val.split('-').length === 2
+);
+
+export const validateMarketId: Validator = mkValidator(
+  'marketId',
+  invalidMarketIdError,
+  (val) => typeof val === 'string'
+);
+
+export const validateSkip: Validator = mkValidator(
+  'skip',
+  invalidSkipError,
+  (val) => typeof val === 'undefined' || (typeof val === 'number' && val >= 0)
+);
+
+export const validateLimit: Validator = mkValidator(
+  'limit',
+  invalidLimitError,
+  (val) => typeof val === 'undefined' || (typeof val === 'number' && val >= 0 && val <= 100)
+);
+
+export const validateEndTime: Validator = mkValidator(
+  'endTime',
+  invalidEndTimeError,
+  (val) => typeof val === 'undefined' || (typeof val === 'number' && val >= 0)
 );
 
 export const validatePrice: Validator = mkValidator(
@@ -70,17 +106,17 @@ export const validateOrderType: Validator = mkValidator(
   (val) => typeof val === 'string' && (val === 'LIMIT' || val === 'LIMIT_MAKER')
 );
 
-const NETWORL_VALIDATIONS = [validateConnector, validateChain, validateNetwork];
+const NETWORK_VALIDATIONS = [validateConnector, validateChain, validateNetwork];
 
 export const validateBasicRequest: RequestValidator =
-  mkRequestValidator(NETWORL_VALIDATIONS);
+  mkRequestValidator(NETWORK_VALIDATIONS);
 
 export const validateMarketRequest: RequestValidator = mkRequestValidator(
-  NETWORL_VALIDATIONS.concat([validateMarket])
+  NETWORK_VALIDATIONS.concat([validateMarket])
 );
 
 export const validatePostOrderRequest: RequestValidator = mkRequestValidator(
-  NETWORL_VALIDATIONS.concat([
+  NETWORK_VALIDATIONS.concat([
     validateAmount,
     validateWallet,
     validateSide,
@@ -90,5 +126,9 @@ export const validatePostOrderRequest: RequestValidator = mkRequestValidator(
 );
 
 export const validateOrderRequest: RequestValidator = mkRequestValidator(
-  NETWORL_VALIDATIONS.concat([validateOrderId, validateWallet])
+  NETWORK_VALIDATIONS.concat([validateOrderId, validateWallet])
+);
+
+export const validateFundingRatesRequest: RequestValidator = mkRequestValidator(
+  NETWORK_VALIDATIONS.concat([validateMarketId, validateSkip, validateLimit, validateEndTime])
 );

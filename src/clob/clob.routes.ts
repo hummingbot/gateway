@@ -13,6 +13,7 @@ import {
   postOrder,
   deleteOrder,
   estimateGas,
+  fundingRates,
 } from './clob.controllers';
 import {
   ClobDeleteOrderRequest,
@@ -27,12 +28,15 @@ import {
   ClobPostOrderResponse,
   ClobTickerRequest,
   ClobTickerResponse,
+  ClobFundingRatesRequest,
+  ClobFundingRatesResponse,
 } from './clob.requests';
 import {
   validateBasicRequest,
   validateMarketRequest,
   validatePostOrderRequest,
   validateOrderRequest,
+  validateFundingRatesRequest,
 } from './clob.validators';
 
 export namespace CLOBRoutes {
@@ -139,6 +143,19 @@ export namespace CLOBRoutes {
           .json(
             await estimateGas(req.query as unknown as NetworkSelectionRequest)
           );
+      }
+    )
+  );
+
+  router.post(
+    '/funding/rates',
+    asyncHandler(
+      async (
+        req: Request<{}, {}, ClobFundingRatesRequest>,
+        res: Response<ClobFundingRatesResponse | string, {}>
+      ) => {
+        validateFundingRatesRequest(req.query);
+        res.status(200).json(await fundingRates(req.body));
       }
     )
   );
