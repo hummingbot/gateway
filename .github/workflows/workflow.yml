@@ -98,5 +98,5 @@ jobs:
           git checkout -b $GITHUB_SHA
           DIFF_FILES=`git diff --name-only origin/$GITHUB_BASE_REF ./src/`
           ./node_modules/.bin/jest --listTests  --findRelatedTests ${DIFF_FILES//$'\n'/ }
-          NODE_OPTIONS=--max-old-space-size=10240 node ./node_modules/.bin/jest --runInBand --coverage --findRelatedTests ${DIFF_FILES//$'\n'/ }
+          node --max-old-space-size=10240 ./node_modules/.bin/jest --runInBand --coverage --findRelatedTests ${DIFF_FILES//$'\n'/ }
 #          git diff origin/$GITHUB_BASE_REF | yarn diff-test-coverage -c ./coverage/lcov.info -t lcov -b 50 -l 60
