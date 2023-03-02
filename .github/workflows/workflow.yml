@@ -96,5 +96,5 @@ jobs:
         run: |
           git fetch --all -q
           git checkout -b $GITHUB_SHA
-          yarn test:cov 
+          ./node_modules/.bin/jest --runInBand --coverage --changedSince=origin/$GITHUB_BASE_REF
 #          git diff origin/$GITHUB_BASE_REF | yarn diff-test-coverage -c ./coverage/lcov.info -t lcov -b 50 -l 60
