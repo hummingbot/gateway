@@ -42,4 +42,5 @@ module.exports = {
     eccrypto: '<rootDir>/test/mock/eccrypto-mock.js',
   },
   testPathIgnorePatterns: ['/node_modules/', 'test-helpers'],
+  workerIdleMemoryLimit: '10G',
 };
