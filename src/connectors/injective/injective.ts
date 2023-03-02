@@ -7,6 +7,8 @@ import {
   GrpcOrderType,
   spotPriceToChainPriceToFixed,
   spotQuantityToChainQuantityToFixed,
+  derivativePriceToChainPriceToFixed,
+  derivativeQuantityToChainQuantityToFixed,
 } from '@injectivelabs/sdk-ts';
 import {
   ClobMarketsRequest,
@@ -121,6 +123,19 @@ export class InjectiveCLOB {
     return { orders } as ClobGetOrderResponse;
   }
 
+  // public static calculateMargin(price: string, quantity: string, decimals: number, leverage: number) {
+  //   const leverageBigNumber = utils.parseUnits(leverage.toString(), decimals);
+  //   BigNumber.mul div
+
+  // export interface TokenInfo {
+  //   address: string;
+  //   chainId: number; // not all chains have chainId as a number, if it does not, come up with an internal number system.
+  //   decimals: number;
+  //   denom?: string; // this is a concept for injective, if it does not exist in a chain, set it to be the same as address or ignore it.
+  //   name: string;
+  //   symbol: string;
+  // }
+
   public async postOrder(
     req: ClobPostOrderRequest
   ): Promise<{ txHash: string }> {
@@ -137,20 +152,21 @@ export class InjectiveCLOB {
 
     let msg;
     if (req.leverage !== undefined) {
+      // margin = (price * quantity) / leverage
       msg = MsgBatchUpdateOrders.fromJSON({
         subaccountId: req.address,
         injectiveAddress,
         derivativeOrdersToCreate: [
           {
             orderType,
-            price: spotPriceToChainPriceToFixed({
+            price: derivativePriceToChainPriceToFixed({
               value: req.price,
-              baseDecimals: this._chain.getTokenForSymbol(base)?.decimals,
+              decimalPlaces: this._chain.getTokenForSymbol(base)?.decimals, // TODO: reviewer double check this
               quoteDecimals: this._chain.getTokenForSymbol(quote)?.decimals,
             }),
-            quantity: spotQuantityToChainQuantityToFixed({
+            quantity: derivativeQuantityToChainQuantityToFixed({
               value: req.amount,
-              baseDecimals: this._chain.getTokenForSymbol(base)?.decimals,
+              decimalPlaces: this._chain.getTokenForSymbol(base)?.decimals, // TODO: reviewer double check this
             }),
             marketId: market.marketId,
             feeRecipient: injectiveAddress,
@@ -193,7 +209,6 @@ export class InjectiveCLOB {
       quantity: string
     }[]
 
-getTriggerPrice
 derivativeMarginToChainMarginToFixed
 derivativeMarginFromChainMarginToFixed
 derivativePriceToChainPriceToFixed
@@ -217,17 +232,32 @@ derivativeQuantityFromChainQuantityToFixed
     const injectiveAddress: string = wallet.injectiveAddress;
     const market = this.parsedMarkets[req.market];
 
-    const msg = MsgBatchUpdateOrders.fromJSON({
-      injectiveAddress,
-      subaccountId: req.address,
-      spotOrdersToCancel: [
-        {
-          marketId: market.marketId,
-          subaccountId: req.address,
-          orderHash: req.orderId,
-        },
-      ],
-    });
+    let msg;
+    if (req.orderType !== undefined && req.orderType === 'perpetual') {
+      msg = MsgBatchUpdateOrders.fromJSON({
+        injectiveAddress,
+        subaccountId: req.address,
+        derivativeOrdersToCancel: [
+          {
+            marketId: market.marketId,
+            subaccountId: req.address,
+            orderHash: req.orderId,
+          },
+        ],
+      });
+    } else {
+      msg = MsgBatchUpdateOrders.fromJSON({
+        injectiveAddress,
+        subaccountId: req.address,
+        spotOrdersToCancel: [
+          {
+            marketId: market.marketId,
+            subaccountId: req.address,
+            orderHash: req.orderId,
+          },
+        ],
+      });
+    }
 
     const { txHash } = await this._chain.broadcaster(privateKey).broadcast({
       msgs: msg,

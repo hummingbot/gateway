@@ -34,6 +34,7 @@ export interface ClobOrderbookResponse {
 export interface ClobGetOrderRequest extends ClobOrderbookRequest {
   address: string;
   orderId: string;
+  orderType?: string; // spot is default, perpetual
 }
 
 export interface ClobGetOrderResponse {
