@@ -97,9 +97,15 @@ export class InjectiveCLOB {
   }
 
   public async orderBook(req: ClobOrderbookRequest): Promise<Orderbook> {
-    return await this.spotApi.fetchOrderbook(
-      this.parsedMarkets[req.market].marketId
-    );
+    if (req.isDerivative !== undefined && req.isDerivative === true) {
+      return await this.derivativeApi.fetchOrderbook(
+        this.parsedMarkets[req.market].marketId
+      );
+    } else {
+      return await this.spotApi.fetchOrderbook(
+        this.parsedMarkets[req.market].marketId
+      );
+    }
   }
 
   public async ticker(
@@ -233,7 +239,7 @@ derivativeQuantityFromChainQuantityToFixed
     const market = this.parsedMarkets[req.market];
 
     let msg;
-    if (req.orderType !== undefined && req.orderType === 'perpetual') {
+    if (req.isDerivative !== undefined && req.isDerivative === true) {
       msg = MsgBatchUpdateOrders.fromJSON({
         injectiveAddress,
         subaccountId: req.address,

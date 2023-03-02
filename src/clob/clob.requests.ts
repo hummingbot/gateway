@@ -22,6 +22,7 @@ export type ClobTickerResponse = ClobMarketResponse;
 
 export interface ClobOrderbookRequest extends ClobMarketsRequest {
   market: string;
+  isDerivative?: boolean; // spot is default
 }
 
 export interface ClobOrderbookResponse {
@@ -34,7 +35,7 @@ export interface ClobOrderbookResponse {
 export interface ClobGetOrderRequest extends ClobOrderbookRequest {
   address: string;
   orderId: string;
-  orderType?: string; // spot is default, perpetual
+  isDerivative?: boolean; // spot is default
 }
 
 export interface ClobGetOrderResponse {
