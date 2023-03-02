@@ -33,10 +33,10 @@ const ETH = new Token(
 );
 
 beforeAll(async () => {
-  harmony = Harmony.getInstance('mainnet');
+  harmony = Harmony.getInstance('testnet');
   patchEVMNonceManager(harmony.nonceManager);
 
-  defikingdoms = Defikingdoms.getInstance('harmony', 'mainnet');
+  defikingdoms = Defikingdoms.getInstance('harmony', 'testnet');
   await defikingdoms.init();
 });
 
