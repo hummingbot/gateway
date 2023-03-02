@@ -126,7 +126,7 @@ export class DexalotCLOB implements CLOBish {
     return this._ready;
   }
 
-  public async balances(req: BalanceRequest): Promise<Record<string, string>> {
+  public async balances(req: BalanceRequest): Promise<Record<string, any>> {
     const tokens = req.tokenSymbols.map((symbol) => {
       return this._chain.getTokenBySymbol(symbol);
     });
@@ -138,11 +138,15 @@ export class DexalotCLOB implements CLOBish {
         );
       })
     );
-    const formattedBalances: Record<string, string> = {};
+    const formattedBalances: Record<string, any> = { available: {}, total: {} };
     for (const token of tokens) {
       if (token) {
-        formattedBalances[token.symbol] = bigNumberWithDecimalToStr(
+        formattedBalances.available[token.symbol] = bigNumberWithDecimalToStr(
           balances[indexOf(tokens, token)].available,
+          token.decimals
+        );
+        formattedBalances.total[token.symbol] = bigNumberWithDecimalToStr(
+          balances[indexOf(tokens, token)].total,
           token.decimals
         );
       }
