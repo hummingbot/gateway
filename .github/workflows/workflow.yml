@@ -96,6 +96,7 @@ jobs:
         run: |
           git fetch --all -q
           git checkout -b $GITHUB_SHA
+          NODE_OPTIONS=--max-old-space-size=10240
           DIFF_FILES=`git diff --name-only origin/$GITHUB_BASE_REF`
           ./node_modules/.bin/jest --listTests  --findRelatedTests ${DIFF_FILES//$'\n'/ }
           ./node_modules/.bin/jest --runInBand --coverage --findRelatedTests ${DIFF_FILES//$'\n'/ }
