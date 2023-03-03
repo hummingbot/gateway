@@ -17,6 +17,7 @@ import { RefConfig } from './ref/ref.config';
 import { PancakeSwapConfig } from './pancakeswap/pancakeswap.config';
 import { InjectiveCLOBConfig } from './injective/injective.clob.config';
 import { ConnectorsResponse } from './connectors.request';
+import { DexalotCLOBConfig } from './dexalot/dexalot.clob.config';
 
 export namespace ConnectorsRoutes {
   export const router = Router();
@@ -107,6 +108,11 @@ export namespace ConnectorsRoutes {
               accountId:
                 'Enter your injective sub account id wallet key (input 0 if unsure) >>> ',
             },
+          },
+          {
+            name: 'dexalot',
+            trading_type: DexalotCLOBConfig.config.tradingTypes('spot'),
+            available_networks: DexalotCLOBConfig.config.availableNetworks,
           },
         ],
       });

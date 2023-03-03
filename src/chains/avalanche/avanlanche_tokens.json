@@ -68,7 +68,7 @@
   {
       "chainId": 432204,
       "address": "0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7",
-      "decimals": 18,
+      "decimals": 6,
       "name": "TetherToken",
       "symbol": "USDT",
       "logoURI": "https://raw.githubusercontent.com/Dexalot/tokenlist/main/imgs/usdt/logo.png"

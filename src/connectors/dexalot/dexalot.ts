@@ -37,6 +37,8 @@ import {
 } from './dexalot.constants';
 import { BalanceRequest } from '../../network/network.requests';
 import { indexOf } from 'lodash';
+import path from 'path';
+import { rootPath } from '../../paths';
 
 export class DexalotCLOB implements CLOBish {
   private static _instances: LRUCache<string, DexalotCLOB>;
@@ -54,7 +56,10 @@ export class DexalotCLOB implements CLOBish {
   private constructor(network: string) {
     this._chain = Avalanche.getInstance(network);
     this._conf = DexalotCLOBConfig.config;
-    this._resources = require('./dexalot_mainnet.json');
+    this._resources = require(path.join(
+      rootPath(),
+      'src/connectors/dexalot/dexalot_mainnet.json'
+    ));
     // this._exchangeContract = this.getContract('ExchangeSub', this._resources);
     this._portfolioContract = this.getContract('PortfolioSub', this._resources);
     // this._orderBooksContract = this.getContract('OrderBooks', this._resources);
