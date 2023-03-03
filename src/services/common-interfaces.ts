@@ -653,6 +653,8 @@ export interface MarketInfo {
 export interface CLOBish {
   parsedMarkets: MarketInfo;
 
+  abiDecoder?: any;
+
   loadMarkets(): Promise<void>;
 
   init(): Promise<void>;

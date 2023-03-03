@@ -52,6 +52,7 @@ export class DexalotCLOB implements CLOBish {
   // private _gasStationContract: Contract;
   private _resources: any;
   private _conf: DexalotCLOBConfig.NetworkConfig;
+  public abiDecoder: any = require('abi-decoder');
 
   private constructor(network: string) {
     this._chain = Avalanche.getInstance(network);
@@ -88,6 +89,7 @@ export class DexalotCLOB implements CLOBish {
     }
 
     const info = data.filter((entry) => entry.contract_name === name)[0];
+    this.abiDecoder.addABI(info.abi.abi);
     return new Contract(info.address, info.abi.abi, this._chain.provider);
   }
 
