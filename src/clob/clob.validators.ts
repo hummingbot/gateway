@@ -70,17 +70,17 @@ export const validateOrderType: Validator = mkValidator(
   (val) => typeof val === 'string' && (val === 'LIMIT' || val === 'LIMIT_MAKER')
 );
 
-const NETWORL_VALIDATIONS = [validateConnector, validateChain, validateNetwork];
+const NETWORK_VALIDATIONS = [validateConnector, validateChain, validateNetwork];
 
 export const validateBasicRequest: RequestValidator =
-  mkRequestValidator(NETWORL_VALIDATIONS);
+  mkRequestValidator(NETWORK_VALIDATIONS);
 
 export const validateMarketRequest: RequestValidator = mkRequestValidator(
-  NETWORL_VALIDATIONS.concat([validateMarket])
+  NETWORK_VALIDATIONS.concat([validateMarket])
 );
 
 export const validatePostOrderRequest: RequestValidator = mkRequestValidator(
-  NETWORL_VALIDATIONS.concat([
+  NETWORK_VALIDATIONS.concat([
     validateAmount,
     validateWallet,
     validateSide,
@@ -90,5 +90,5 @@ export const validatePostOrderRequest: RequestValidator = mkRequestValidator(
 );
 
 export const validateOrderRequest: RequestValidator = mkRequestValidator(
-  NETWORL_VALIDATIONS.concat([validateOrderId, validateWallet])
+  NETWORK_VALIDATIONS.concat([validateOrderId, validateWallet])
 );
