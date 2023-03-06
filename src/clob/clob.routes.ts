@@ -158,7 +158,7 @@ export namespace CLOBRoutes {
         req: Request<{}, {}, ClobFundingRatesRequest>,
         res: Response<ClobFundingRatesResponse | string, {}>
       ) => {
-        validateFundingRatesRequest(req.query);
+        validateFundingRatesRequest(req.body);
         res.status(200).json(await fundingRates(req.body));
       }
     )
@@ -171,7 +171,7 @@ export namespace CLOBRoutes {
         req: Request<{}, {}, ClobFundingPaymentsRequest>,
         res: Response<ClobFundingPaymentsResponse | string, {}>
       ) => {
-        validateFundingPaymentsRequest(req.query);
+        validateFundingPaymentsRequest(req.body);
         res.status(200).json(await fundingPayments(req.body));
       }
     )

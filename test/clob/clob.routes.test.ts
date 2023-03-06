@@ -204,7 +204,7 @@ const patchOrderBook = () => {
 };
 
 const patchFundingRates = () => {
-  patch(injCLOB, 'fundingRates', () => {
+  patch(injCLOB.derivativeApi, 'fetchFundingRates', () => {
     return FUNDING_RATES;
   });
 };

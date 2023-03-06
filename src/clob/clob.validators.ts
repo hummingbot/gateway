@@ -60,21 +60,22 @@ export const validateMarketId: Validator = mkValidator(
 export const validateSkip: Validator = mkValidator(
   'skip',
   invalidSkipError,
-  (val) => typeof val === 'undefined' || (typeof val === 'number' && val >= 0)
+  (val) => typeof val === 'number' && val >= 0,
+  true
 );
 
 export const validateLimit: Validator = mkValidator(
   'limit',
   invalidLimitError,
-  (val) =>
-    typeof val === 'undefined' ||
-    (typeof val === 'number' && val >= 0 && val <= 100)
+  (val) => typeof val === 'number' && val >= 0 && val <= 100,
+  true
 );
 
 export const validateEndTime: Validator = mkValidator(
   'endTime',
   invalidEndTimeError,
-  (val) => typeof val === 'undefined' || (typeof val === 'number' && val >= 0)
+  (val) => typeof val === 'number' && val >= 0,
+  true
 );
 
 export const validatePrice: Validator = mkValidator(
