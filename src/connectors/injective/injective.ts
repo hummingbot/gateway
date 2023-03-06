@@ -141,9 +141,10 @@ export class InjectiveCLOB {
     decimals: number,
     leverage: number
   ): BigNumber {
+    // margin = (price * quantity) / leverage
     const priceBig = utils.parseUnits(price, decimals);
     const quantityBig = utils.parseUnits(quantity, decimals);
-    const leverageBig = utils.parseUnits(leverage.toString(), decimals);
+    const leverageBig = utils.parseUnits(leverage.toString(), decimals); 
     const decimalsBig = BigNumber.from(10).pow(decimals);
 
     const numerator = priceBig.mul(quantityBig).mul(decimalsBig);
@@ -153,20 +154,7 @@ export class InjectiveCLOB {
 
     return margin;
   }
-
-  // public static calculateMargin(price: string, quantity: string, decimals: number, leverage: number) {
-  //   const leverageBigNumber = utils.parseUnits(leverage.toString(), decimals);
-  //   BigNumber.mul div
-
-  // export interface TokenInfo {
-  //   address: string;
-  //   chainId: number; // not all chains have chainId as a number, if it does not, come up with an internal number system.
-  //   decimals: number;
-  //   denom?: string; // this is a concept for injective, if it does not exist in a chain, set it to be the same as address or ignore it.
-  //   name: string;
-  //   symbol: string;
-  // }
-
+  
   public async postOrder(
     req: ClobPostOrderRequest
   ): Promise<{ txHash: string }> {
@@ -183,7 +171,7 @@ export class InjectiveCLOB {
 
     let msg;
     if (req.leverage !== undefined) {
-      // margin = (price * quantity) / leverage
+      
       const price = derivativePriceToChainPriceToFixed({
         value: req.price,
         decimalPlaces: this._chain.getTokenForSymbol(base)?.decimals, // TODO: reviewer double check this
