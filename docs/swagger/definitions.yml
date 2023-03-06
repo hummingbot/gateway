@@ -1692,6 +1692,9 @@ definitions:
       connector:
         type: 'string'
         example: 'injective'
+      isDerivative:
+        type: 'boolean'
+        example: false
 
   ClobOrderbookResponse:
     type: 'object'
@@ -1741,6 +1744,9 @@ definitions:
       address:
         type: 'string'
         example: '0x...'
+      leverage:
+        type: 'number'
+        example: 20.0
 
   ClobGetOrderResponse:
     type: 'object'
@@ -1875,6 +1881,135 @@ definitions:
         type: 'string'
         example: '0x...'
 
+  ClobFundingRatesRequest:
+    type: 'object'
+    required:
+      - 'chain'
+      - 'network'
+      - 'connector'
+      - 'marketId'
+    properties:
+      marketId:
+        type: 'string'
+        example: '0xa508cb32923323679f29a032c70342c147c17d0145625922b0ef22e955c844c0'
+      chain:
+        type: 'string'
+        example: 'injective'
+      network:
+        type: 'string'
+        example: 'mainnet'
+      skip:
+        type: 'number'
+        example: 0
+      limit:
+        type: 'number'
+        example: 10
+      endTime:
+        type: 'number'
+        example: 1678122531
+
+  ClobFundingRatesResponse:
+    type: 'object'
+    required:
+      - 'network'
+      - 'timestamp'
+      - 'latency'
+      - 'fundingRates'
+      - 'pagination'
+    properties:
+      network:
+        type: 'string'
+        example: 'mainnet'
+      timestamp:
+        type: 'integer'
+        example: 1636368085740
+      latency:
+        type: 'number'
+        example: 0.5
+      txHash:
+        type: 'string'
+        example: '0x...'
+      fundingRates:
+        type: 'array'
+        example: []
+      pagination:
+        type: 'object'
+        properties:
+          to:
+            type: 'number'
+          from:
+            type: 'number'
+          total:
+            type: 'number'        
+        example: '{"to":0, "from":0, "total":1}'
+
+  ClobFundingPaymentsRequest:
+    type: 'object'
+    required:
+      - 'chain'
+      - 'network'
+      - 'connector'
+      - 'marketId'
+      - 'address'
+    properties:
+      marketId:
+        type: 'string'
+        example: '0xa508cb32923323679f29a032c70342c147c17d0145625922b0ef22e955c844c0'
+      chain:
+        type: 'string'
+        example: 'injective'
+      network:
+        type: 'string'
+        example: 'mainnet'
+      address:
+        type: 'string'
+        example: '0x261362dBC1D83705AB03e99792355689A4589b8E000000000000000000000000'
+      skip:
+        type: 'number'
+        example: 0
+      limit:
+        type: 'number'
+        example: 10
+      endTime:
+        type: 'number'
+        example: 1678122531
+
+  ClobFundingPaymentsResponse:
+    type: 'object'
+    required:
+      - 'network'
+      - 'timestamp'
+      - 'latency'
+      - 'fundingPayments'
+      - 'pagination'
+    properties:
+      network:
+        type: 'string'
+        example: 'mainnet'
+      timestamp:
+        type: 'integer'
+        example: 1636368085740
+      latency:
+        type: 'number'
+        example: 0.5
+      txHash:
+        type: 'string'
+        example: '0x...'
+      fundingPayments:
+        type: 'array'
+        example: []
+      pagination:
+        type: 'object'
+        properties:
+          to:
+            type: 'number'
+          from:
+            type: 'number'
+          total:
+            type: 'number'        
+        example: '{"to":0, "from":0, "total":1}'
+
+        
   TransferToSubAccountRequest:
     type: 'object'
     required:

@@ -273,3 +273,55 @@ paths:
         '200':
           schema:
             $ref: '#/definitions/EstimateGasResponse'
+  /clob/funding/rates:
+    post:
+      tags:
+        - 'clob'
+      summary: 'Get funding rates for a market'
+      description: 'Get funding rates for a market.'
+      operationId: 'fundingRates'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          description: 'Request body.'
+          required: true
+          schema:
+            $ref: '#/definitions/ClobFundingRatesRequest'
+      responses:
+        '200':
+          description: 'Successful response.'
+          schema:
+            $ref: '#/definitions/ClobFundingRatesResponse'
+        '400':
+          description: 'Bad request response.'
+  /clob/funding/payments:
+    post:
+      tags:
+        - 'clob'
+      summary: 'Get funding payments for a market'
+      description: 'Get funding payments for a market.'
+      operationId: 'fundingPayments'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          description: 'Request body.'
+          required: true
+          schema:
+            $ref: '#/definitions/ClobFundingPaymentsRequest'
+      responses:
+        '200':
+          description: 'Successful response.'
+          schema:
+            $ref: '#/definitions/ClobFundingPaymentsResponse'
+        '400':
+          description: 'Bad request response.'
+            
+            
