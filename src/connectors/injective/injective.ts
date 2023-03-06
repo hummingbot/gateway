@@ -144,17 +144,15 @@ export class InjectiveCLOB {
     // margin = (price * quantity) / leverage
     const priceBig = utils.parseUnits(price, decimals);
     const quantityBig = utils.parseUnits(quantity, decimals);
-    const leverageBig = utils.parseUnits(leverage.toString(), decimals); 
+    const leverageBig = utils.parseUnits(leverage.toString(), decimals);
     const decimalsBig = BigNumber.from(10).pow(decimals);
 
     const numerator = priceBig.mul(quantityBig).mul(decimalsBig);
     const denominator = leverageBig.mul(decimalsBig);
 
-    const margin = numerator.div(denominator);
-
-    return margin;
+    return numerator.div(denominator);
   }
-  
+
   public async postOrder(
     req: ClobPostOrderRequest
   ): Promise<{ txHash: string }> {
@@ -171,7 +169,6 @@ export class InjectiveCLOB {
 
     let msg;
     if (req.leverage !== undefined) {
-      
       const price = derivativePriceToChainPriceToFixed({
         value: req.price,
         decimalPlaces: this._chain.getTokenForSymbol(base)?.decimals, // TODO: reviewer double check this
