@@ -85,6 +85,18 @@ const MARKETS = [
   },
 ];
 
+const FUNDING_RATES = {
+  fundingRates: [
+    {
+      marketId:
+        '0x1c79dac019f73e4060494ab1b4fcba734350656d6fc4d474f6a238c13c6f9ced',
+      rate: '0.000122',
+      timestamp: 1654246801786,
+    },
+  ],
+  pagination: { to: 0, from: 0, total: 1 },
+};
+
 const ORDER_BOOK = {
   sells: [
     ['12', '1'],
@@ -190,6 +202,13 @@ const patchOrderBook = () => {
     return ORDER_BOOK;
   });
 };
+
+const patchFundingRates = () => {
+  patch(injCLOB, 'fundingRates', () => {
+    return FUNDING_RATES;
+  });
+};
+
 const patchGetWallet = () => {
   patch(inj, 'getWallet', () => {
     return {
@@ -471,6 +490,35 @@ describe('GET /clob/estimateGas', () => {
     await request(gatewayApp)
       .get(`/clob/estimateGas`)
       .query(INVALID_REQUEST)
+      .expect(404);
+  });
+});
+
+describe('POST /clob/funding/rates', () => {
+  it('should return 200 with proper request', async () => {
+    patchFundingRates();
+    await request(gatewayApp)
+      .post(`/clob/funding/rates`)
+      .send({
+        chain: 'injective',
+        network: 'mainnet',
+        connector: 'injective',
+        marketId:
+          '0x1c79dac019f73e4060494ab1b4fcba734350656d6fc4d474f6a238c13c6f9ced',
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .expect((res) =>
+        expect(res.body.fundingRates).toEqual(FUNDING_RATES.fundingRates)
+      );
+  });
+
+  it('should return 404 when parameters are invalid', async () => {
+    await request(gatewayApp)
+      .post(`/clob/funding/rates`)
+      .send(INVALID_REQUEST)
+      .set('Accept', 'application/json')
       .expect(404);
   });
 });
