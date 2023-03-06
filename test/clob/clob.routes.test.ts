@@ -11,6 +11,8 @@ const TX_HASH =
   'CC6BF44223B4BD05396F83D55A0ABC0F16CE80836C0E34B08F4558CF72944299'; // noqa: mock
 const MARKET = 'INJ-USDT';
 
+const PERP_MARKET = 'BNB-USDT PERP';
+
 const MARKETS = [
   {
     marketId:
@@ -42,6 +44,44 @@ const MARKETS = [
     serviceProviderFee: '0.4',
     minPriceTickSize: 1e-15,
     minQuantityTickSize: 1000000000000000,
+  },
+  {
+    marketId:
+      '0x1c79dac019f73e4060494ab1b4fcba734350656d6fc4d474f6a238c13c6f9ced',
+    marketStatus: 'active',
+    ticker: 'BNB/USDT PERP',
+    oracleBase: 'BNB',
+    oracleQuote: 'USDT',
+    oracleType: 'bandibc',
+    oracleScaleFactor: 6,
+    initialMarginRatio: '0.095',
+    maintenanceMarginRatio: '0.05',
+    quoteDenom: 'peggy0xdAC17F958D2ee523a2206206994597C13D831ec7',
+    quoteTokenMeta: {
+      name: 'Tether',
+      address: '0xdAC17F958D2ee523a2206206994597C13D831ec7',
+      symbol: 'USDT',
+      logo: 'https://static.alchemyapi.io/images/assets/825.png',
+      decimals: 6,
+      updatedAt: 1650978923353,
+    },
+    makerFeeRate: '0.0005',
+    takerFeeRate: '0.0012',
+    serviceProviderFee: '0.4',
+    isPerpetual: true,
+    minPriceTickSize: '10000',
+    minQuantityTickSize: '0.01',
+    perpetualMarketInfo: {
+      hourlyFundingRateCap: '0.000625',
+      hourlyInterestRate: '0.00000416666',
+      nextFundingTimestamp: 1654246800,
+      fundingInterval: 3600,
+    },
+    perpetualMarketFunding: {
+      cumulativeFunding: '56890491.178246679699729639',
+      cumulativePrice: '7.082760891515203314',
+      lastTimestamp: 1654245985,
+    },
   },
 ];
 
@@ -226,6 +266,24 @@ describe('GET /clob/orderBook', () => {
       .expect((res) => expect(res.body.sells).toEqual(ORDER_BOOK.sells));
   });
 
+  it('should return 200 with proper request', async () => {
+    patchOrderBook();
+    await request(gatewayApp)
+      .get(`/clob/orderBook`)
+      .query({
+        chain: 'injective',
+        network: 'mainnet',
+        connector: 'injective',
+        market: MARKET,
+        isDerivative: true,
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .expect((res) => expect(res.body.buys).toEqual(ORDER_BOOK.buys))
+      .expect((res) => expect(res.body.sells).toEqual(ORDER_BOOK.sells));
+  });
+
   it('should return 404 when parameters are invalid', async () => {
     await request(gatewayApp)
       .get(`/clob/orderBook`)
@@ -311,6 +369,30 @@ describe('POST /clob/orders', () => {
       .expect((res) => expect(res.body.txHash).toEqual(TX_HASH));
   });
 
+  it('should return 200 with proper request', async () => {
+    patchGetWallet();
+    patchMsgBroadcaster();
+    await request(gatewayApp)
+      .post(`/clob/orders`)
+      .send({
+        chain: 'injective',
+        network: 'mainnet',
+        connector: 'injective',
+        address:
+          '0x261362dBC1D83705AB03e99792355689A4589b8E000000000000000000000000', // noqa: mock
+        market: PERP_MARKET,
+        price: '10000.12',
+        amount: '0.12',
+        side: 'BUY',
+        orderType: 'LIMIT',
+        leverage: 20.0,
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .expect((res) => expect(res.body.txHash).toEqual(TX_HASH));
+  });
+
   it('should return 404 when parameters are invalid', async () => {
     await request(gatewayApp)
       .post(`/clob/orders`)
@@ -333,6 +415,27 @@ describe('DELETE /clob/orders', () => {
           '0x261362dBC1D83705AB03e99792355689A4589b8E000000000000000000000000', // noqa: mock
         market: MARKET,
         orderId: '0x...',
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .expect((res) => expect(res.body.txHash).toEqual(TX_HASH));
+  });
+
+  it('should return 200 with proper request', async () => {
+    patchGetWallet();
+    patchMsgBroadcaster();
+    await request(gatewayApp)
+      .delete(`/clob/orders`)
+      .send({
+        chain: 'injective',
+        network: 'mainnet',
+        connector: 'injective',
+        address:
+          '0x261362dBC1D83705AB03e99792355689A4589b8E000000000000000000000000', // noqa: mock
+        market: MARKET,
+        orderId: '0x...',
+        isDerivative: true,
       })
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)

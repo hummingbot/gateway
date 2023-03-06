@@ -171,12 +171,10 @@ export class InjectiveCLOB {
     if (req.leverage !== undefined) {
       const price = derivativePriceToChainPriceToFixed({
         value: req.price,
-        decimalPlaces: this._chain.getTokenForSymbol(base)?.decimals, // TODO: reviewer double check this
         quoteDecimals: this._chain.getTokenForSymbol(quote)?.decimals,
       });
       const quantity = derivativeQuantityToChainQuantityToFixed({
         value: req.amount,
-        decimalPlaces: this._chain.getTokenForSymbol(base)?.decimals, // TODO: reviewer double check this
       });
 
       const baseToken = this._chain.getTokenForSymbol(base);
@@ -227,25 +225,6 @@ export class InjectiveCLOB {
         ],
       });
     }
-    /*
-
-    derivativeOrdersToCreate?: {
-      orderType: OrderTypeMap[keyof OrderTypeMap]
-      triggerPrice?: string
-      feeRecipient: string
-      marketId: string
-      price: string
-      margin: string
-      quantity: string
-    }[]
-
-derivativeMarginToChainMarginToFixed
-derivativeMarginFromChainMarginToFixed
-derivativePriceToChainPriceToFixed
-derivativePriceFromChainPriceToFixed
-derivativeQuantityToChainQuantityToFixed
-derivativeQuantityFromChainQuantityToFixed
-     */
 
     const { txHash } = await this._chain.broadcaster(privateKey).broadcast({
       msgs: msg,
