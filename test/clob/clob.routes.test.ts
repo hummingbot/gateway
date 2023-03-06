@@ -97,6 +97,20 @@ const FUNDING_RATES = {
   pagination: { to: 0, from: 0, total: 1 },
 };
 
+const FUNDING_PAYMENTS = {
+  fundingPayments: [
+    {
+      marketId:
+        '0x4ca0f92fc28be0c9761326016b5a1a2177dd6375558365116b5bdda9abc229ce',
+      subaccountId:
+        '0xaf79152ac5df276d9a8e1e2e22822f9713474902000000000000000000000000',
+      amount: '-4895705.795221',
+      timestamp: 1654246801786,
+    },
+  ],
+  pagination: { to: 0, from: 0, total: 1 },
+};
+
 const ORDER_BOOK = {
   sells: [
     ['12', '1'],
@@ -206,6 +220,12 @@ const patchOrderBook = () => {
 const patchFundingRates = () => {
   patch(injCLOB.derivativeApi, 'fetchFundingRates', () => {
     return FUNDING_RATES;
+  });
+};
+
+const patchFundingPayments = () => {
+  patch(injCLOB.derivativeApi, 'fetchFundingPayments', () => {
+    return FUNDING_PAYMENTS;
   });
 };
 
@@ -517,6 +537,39 @@ describe('POST /clob/funding/rates', () => {
   it('should return 404 when parameters are invalid', async () => {
     await request(gatewayApp)
       .post(`/clob/funding/rates`)
+      .send(INVALID_REQUEST)
+      .set('Accept', 'application/json')
+      .expect(404);
+  });
+});
+
+describe('POST /clob/funding/payments', () => {
+  it('should return 200 with proper request', async () => {
+    patchFundingPayments();
+    await request(gatewayApp)
+      .post(`/clob/funding/payments`)
+      .send({
+        chain: 'injective',
+        network: 'mainnet',
+        connector: 'injective',
+        marketId:
+          '0x1c79dac019f73e4060494ab1b4fcba734350656d6fc4d474f6a238c13c6f9ced',
+        address:
+          '0x261362dBC1D83705AB03e99792355689A4589b8E000000000000000000000000',
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .expect((res) =>
+        expect(res.body.fundingPayments).toEqual(
+          FUNDING_PAYMENTS.fundingPayments
+        )
+      );
+  });
+
+  it('should return 404 when parameters are invalid', async () => {
+    await request(gatewayApp)
+      .post(`/clob/funding/payments`)
       .send(INVALID_REQUEST)
       .set('Accept', 'application/json')
       .expect(404);
