@@ -1,3 +1,4 @@
+import { BigNumber, utils } from 'ethers';
 import {
   MsgBatchUpdateOrders,
   IndexerGrpcSpotApi,
@@ -134,6 +135,25 @@ export class InjectiveCLOB {
     return { orders } as ClobGetOrderResponse;
   }
 
+  public static calculateMargin(
+    price: string,
+    quantity: string,
+    decimals: number,
+    leverage: number
+  ): BigNumber {
+    const priceBig = utils.parseUnits(price, decimals);
+    const quantityBig = utils.parseUnits(quantity, decimals);
+    const leverageBig = utils.parseUnits(leverage.toString(), decimals);
+    const decimalsBig = BigNumber.from(10).pow(decimals);
+
+    const numerator = priceBig.mul(quantityBig).mul(decimalsBig);
+    const denominator = leverageBig.mul(decimalsBig);
+
+    const margin = numerator.div(denominator);
+
+    return margin;
+  }
+
   // public static calculateMargin(price: string, quantity: string, decimals: number, leverage: number) {
   //   const leverageBigNumber = utils.parseUnits(leverage.toString(), decimals);
   //   BigNumber.mul div
@@ -164,25 +184,39 @@ export class InjectiveCLOB {
     let msg;
     if (req.leverage !== undefined) {
       // margin = (price * quantity) / leverage
+      const price = derivativePriceToChainPriceToFixed({
+        value: req.price,
+        decimalPlaces: this._chain.getTokenForSymbol(base)?.decimals, // TODO: reviewer double check this
+        quoteDecimals: this._chain.getTokenForSymbol(quote)?.decimals,
+      });
+      const quantity = derivativeQuantityToChainQuantityToFixed({
+        value: req.amount,
+        decimalPlaces: this._chain.getTokenForSymbol(base)?.decimals, // TODO: reviewer double check this
+      });
+
+      const baseToken = this._chain.getTokenForSymbol(base);
+
+      const decimalForMargin = baseToken ? baseToken.decimals : 18;
+
       msg = MsgBatchUpdateOrders.fromJSON({
         subaccountId: req.address,
         injectiveAddress,
         derivativeOrdersToCreate: [
           {
             orderType,
-            price: derivativePriceToChainPriceToFixed({
-              value: req.price,
-              decimalPlaces: this._chain.getTokenForSymbol(base)?.decimals, // TODO: reviewer double check this
-              quoteDecimals: this._chain.getTokenForSymbol(quote)?.decimals,
-            }),
-            quantity: derivativeQuantityToChainQuantityToFixed({
-              value: req.amount,
-              decimalPlaces: this._chain.getTokenForSymbol(base)?.decimals, // TODO: reviewer double check this
-            }),
+            price,
+            quantity,
             marketId: market.marketId,
             feeRecipient: injectiveAddress,
-            margin: '', // TODO: calculate from leverage, waiting on injective team
-            // NOTE: we are not using the optional field triggerPrice?
+            margin: utils.formatUnits(
+              InjectiveCLOB.calculateMargin(
+                price,
+                quantity,
+                decimalForMargin,
+                req.leverage
+              ),
+              decimalForMargin
+            ),
           },
         ],
       });
