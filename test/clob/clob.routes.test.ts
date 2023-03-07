@@ -316,24 +316,6 @@ describe('GET /clob/orderBook', () => {
       .expect((res) => expect(res.body.sells).toEqual(ORDER_BOOK.sells));
   });
 
-  it('should return 200 with proper request for PERP', async () => {
-    patchOrderBook();
-    await request(gatewayApp)
-      .get(`/clob/orderBook`)
-      .query({
-        chain: 'injective',
-        network: 'mainnet',
-        connector: 'injective',
-        market: MARKET,
-        isDerivative: true,
-      })
-      .set('Accept', 'application/json')
-      .expect('Content-Type', /json/)
-      .expect(200)
-      .expect((res) => expect(res.body.buys).toEqual(ORDER_BOOK.buys))
-      .expect((res) => expect(res.body.sells).toEqual(ORDER_BOOK.sells));
-  });
-
   it('should return 404 when parameters are invalid', async () => {
     await request(gatewayApp)
       .get(`/clob/orderBook`)
@@ -418,30 +400,6 @@ describe('POST /clob/orders', () => {
       .expect((res) => expect(res.body.txHash).toEqual(TX_HASH));
   });
 
-  it('should return 200 with proper request', async () => {
-    patchGetWallet();
-    patchMsgBroadcaster();
-    await request(gatewayApp)
-      .post(`/clob/orders`)
-      .send({
-        chain: 'injective',
-        network: 'mainnet',
-        connector: 'injective',
-        address:
-          '0x261362dBC1D83705AB03e99792355689A4589b8E000000000000000000000000', // noqa: mock
-        market: MARKET,
-        price: '10000.12',
-        amount: '0.12',
-        side: 'BUY',
-        orderType: 'LIMIT',
-        leverage: 20.0,
-      })
-      .set('Accept', 'application/json')
-      .expect('Content-Type', /json/)
-      .expect(200)
-      .expect((res) => expect(res.body.txHash).toEqual(TX_HASH));
-  });
-
   it('should return 404 when parameters are invalid', async () => {
     await request(gatewayApp)
       .post(`/clob/orders`)
@@ -464,27 +422,6 @@ describe('DELETE /clob/orders', () => {
           '0x261362dBC1D83705AB03e99792355689A4589b8E000000000000000000000000', // noqa: mock
         market: MARKET,
         orderId: '0x...',
-      })
-      .set('Accept', 'application/json')
-      .expect('Content-Type', /json/)
-      .expect(200)
-      .expect((res) => expect(res.body.txHash).toEqual(TX_HASH));
-  });
-
-  it('should return 200 with proper request', async () => {
-    patchGetWallet();
-    patchMsgBroadcaster();
-    await request(gatewayApp)
-      .delete(`/clob/orders`)
-      .send({
-        chain: 'injective',
-        network: 'mainnet',
-        connector: 'injective',
-        address:
-          '0x261362dBC1D83705AB03e99792355689A4589b8E000000000000000000000000', // noqa: mock
-        market: MARKET,
-        orderId: '0x...',
-        isDerivative: true,
       })
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
@@ -524,7 +461,9 @@ describe('GET /clob/estimateGas', () => {
   });
 });
 
-describe('POST /clob/funding/rates', () => {
+// perp stuff
+
+describe('POST /clob/perp/funding/rates', () => {
   it('should return 200 with proper request', async () => {
     patchFundingRates();
     await request(gatewayApp)
@@ -545,18 +484,18 @@ describe('POST /clob/funding/rates', () => {
 
   it('should return 404 when parameters are invalid', async () => {
     await request(gatewayApp)
-      .post(`/clob/funding/rates`)
+      .post(`/clob/perp/funding/rates`)
       .send(INVALID_REQUEST)
       .set('Accept', 'application/json')
       .expect(404);
   });
 });
 
-describe('POST /clob/funding/payments', () => {
+describe('POST /clob/perp/funding/payments', () => {
   it('should return 200 with proper request', async () => {
     patchFundingPayments();
     await request(gatewayApp)
-      .post(`/clob/funding/payments`)
+      .post(`/clob/perp/funding/payments`)
       .send({
         chain: 'injective',
         network: 'mainnet',
@@ -577,7 +516,250 @@ describe('POST /clob/funding/payments', () => {
 
   it('should return 404 when parameters are invalid', async () => {
     await request(gatewayApp)
-      .post(`/clob/funding/payments`)
+      .post(`/clob/perp/funding/payments`)
+      .send(INVALID_REQUEST)
+      .set('Accept', 'application/json')
+      .expect(404);
+  });
+});
+
+describe('GET /clob/perp/markets', () => {
+  it('should return 200 with proper request', async () => {
+    patchMarkets();
+    await request(gatewayApp)
+      .get(`/clob/perp/markets`)
+      .query({
+        chain: 'injective',
+        network: 'mainnet',
+        connector: 'injective',
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .expect((res) =>
+        expect(res.body.markets).toEqual(injClobPerp.parsedMarkets)
+      );
+  });
+
+  it('should return 404 when parameters are invalid', async () => {
+    await request(gatewayApp)
+      .get(`/clob/perp/markets`)
+      .query(INVALID_REQUEST)
+      .expect(404);
+  });
+});
+
+describe('GET /clob/perp/orderBook', () => {
+  it('should return 200 with proper request', async () => {
+    patchOrderBook();
+    await request(gatewayApp)
+      .get(`/clob/perp/orderBook`)
+      .query({
+        chain: 'injective',
+        network: 'mainnet',
+        connector: 'injective',
+        market: MARKET,
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .expect((res) => expect(res.body.buys).toEqual(ORDER_BOOK.buys))
+      .expect((res) => expect(res.body.sells).toEqual(ORDER_BOOK.sells));
+  });
+
+  it('should return 404 when parameters are invalid', async () => {
+    await request(gatewayApp)
+      .get(`/clob/perp/orderBook`)
+      .query(INVALID_REQUEST)
+      .expect(404);
+  });
+});
+
+describe('GET /clob/perp/ticker', () => {
+  it('should return 200 with proper request', async () => {
+    patchMarkets();
+    await request(gatewayApp)
+      .get(`/clob/perp/ticker`)
+      .query({
+        chain: 'injective',
+        network: 'mainnet',
+        connector: 'injective',
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .expect((res) =>
+        expect(res.body.markets).toEqual(injClobPerp.parsedMarkets)
+      );
+  });
+
+  it('should return 404 when parameters are invalid', async () => {
+    await request(gatewayApp)
+      .get(`/clob/perp/ticker`)
+      .query(INVALID_REQUEST)
+      .expect(404);
+  });
+});
+
+describe('GET /clob/perp/orders', () => {
+  it('should return 200 with proper request', async () => {
+    patchOrders();
+    await request(gatewayApp)
+      .get(`/clob/perp/orders`)
+      .query({
+        chain: 'injective',
+        network: 'mainnet',
+        connector: 'injective',
+        address:
+          '0x261362dBC1D83705AB03e99792355689A4589b8E000000000000000000000000', // noqa: mock
+        market: MARKET,
+        orderId: '0x...',
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .expect((res) => expect(res.body.orders).toEqual(ORDERS.orderHistory));
+  });
+
+  it('should return 404 when parameters are invalid', async () => {
+    await request(gatewayApp)
+      .get(`/clob/perp/orders`)
+      .query(INVALID_REQUEST)
+      .expect(404);
+  });
+});
+
+describe('POST /clob/perp/orders', () => {
+  it('should return 200 with proper request', async () => {
+    patchGetWallet();
+    patchMsgBroadcaster();
+    await request(gatewayApp)
+      .post(`/clob/perp/orders`)
+      .send({
+        chain: 'injective',
+        network: 'mainnet',
+        connector: 'injective',
+        address:
+          '0x261362dBC1D83705AB03e99792355689A4589b8E000000000000000000000000', // noqa: mock
+        market: MARKET,
+        price: '10000.12',
+        amount: '0.12',
+        side: 'BUY',
+        orderType: 'LIMIT',
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .expect((res) => expect(res.body.txHash).toEqual(TX_HASH));
+  });
+
+  it('should return 200 with proper request', async () => {
+    patchGetWallet();
+    patchMsgBroadcaster();
+    await request(gatewayApp)
+      .post(`/clob/perp/orders`)
+      .send({
+        chain: 'injective',
+        network: 'mainnet',
+        connector: 'injective',
+        address:
+          '0x261362dBC1D83705AB03e99792355689A4589b8E000000000000000000000000', // noqa: mock
+        market: MARKET,
+        price: '10000.12',
+        amount: '0.12',
+        side: 'BUY',
+        orderType: 'LIMIT',
+        leverage: 20.0,
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .expect((res) => expect(res.body.txHash).toEqual(TX_HASH));
+  });
+
+  it('should return 404 when parameters are invalid', async () => {
+    await request(gatewayApp)
+      .post(`/clob/perp/orders`)
+      .send(INVALID_REQUEST)
+      .expect(404);
+  });
+});
+
+describe('DELETE /clob/perp/orders', () => {
+  it('should return 200 with proper request', async () => {
+    patchGetWallet();
+    patchMsgBroadcaster();
+    await request(gatewayApp)
+      .delete(`/clob/perp/orders`)
+      .send({
+        chain: 'injective',
+        network: 'mainnet',
+        connector: 'injective',
+        address:
+          '0x261362dBC1D83705AB03e99792355689A4589b8E000000000000000000000000', // noqa: mock
+        market: MARKET,
+        orderId: '0x...',
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .expect((res) => expect(res.body.txHash).toEqual(TX_HASH));
+  });
+
+  it('should return 404 when parameters are invalid', async () => {
+    await request(gatewayApp)
+      .delete(`/clob/perp/orders`)
+      .send(INVALID_REQUEST)
+      .expect(404);
+  });
+});
+
+describe('GET /clob/perp/estimateGas', () => {
+  it('should return 200 with proper request', async () => {
+    patchGasPrices();
+    await request(gatewayApp)
+      .get(`/clob/perp/estimateGas`)
+      .query({
+        chain: 'injective',
+        network: 'mainnet',
+        connector: 'injective',
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .expect((res) => expect(res.body.gasPrice).toEqual(GAS_PRICES.gasPrice));
+  });
+
+  it('should return 404 when parameters are invalid', async () => {
+    await request(gatewayApp)
+      .get(`/clob/perp/estimateGas`)
+      .query(INVALID_REQUEST)
+      .expect(404);
+  });
+});
+
+describe('POST /clob/perp/funding/rates', () => {
+  it('should return 200 with proper request', async () => {
+    patchFundingRates();
+    await request(gatewayApp)
+      .post(`/clob/funding/rates`)
+      .send({
+        chain: 'injective',
+        network: 'mainnet',
+        connector: 'injective',
+        market: MARKET,
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .expect((res) =>
+        expect(res.body.fundingRates).toEqual(FUNDING_RATES.fundingRates)
+      );
+  });
+
+  it('should return 404 when parameters are invalid', async () => {
+    await request(gatewayApp)
+      .post(`/clob/perp/funding/rates`)
       .send(INVALID_REQUEST)
       .set('Accept', 'application/json')
       .expect(404);
