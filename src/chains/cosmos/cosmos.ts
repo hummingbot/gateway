@@ -10,6 +10,7 @@ export class Cosmos extends CosmosBase implements Cosmosish {
   private _chain: string;
   private _requestCount: number;
   private _metricsLogInterval: number;
+  private _metricTimer;
 
   private constructor(network: string) {
     const config = getCosmosConfig('cosmos');
@@ -28,7 +29,10 @@ export class Cosmos extends CosmosBase implements Cosmosish {
     this._requestCount = 0;
     this._metricsLogInterval = 300000; // 5 minutes
 
-    setInterval(this.metricLogger.bind(this), this.metricsLogInterval);
+    this._metricTimer = setInterval(
+      this.metricLogger.bind(this),
+      this.metricsLogInterval
+    );
   }
 
   public static getInstance(network: string): Cosmos {
@@ -80,6 +84,7 @@ export class Cosmos extends CosmosBase implements Cosmosish {
   }
 
   async close() {
+    clearInterval(this._metricTimer);
     if (this._chain in Cosmos._instances) {
       delete Cosmos._instances[this._chain];
     }

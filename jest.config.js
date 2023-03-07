@@ -15,6 +15,7 @@ module.exports = {
     'src/chains/avalanche/avalanche.ts',
     'src/chains/avalanche/pangolin/pangolin.ts',
     'src/chains/cosmos/cosmos.ts',
+    'src/chains/injective/injective.ts',
     'src/chains/near/near.ts',
     'src/chains/near/near.base.ts',
     'src/connectors/uniswap/uniswap.config.ts',
@@ -40,4 +41,6 @@ module.exports = {
   moduleNameMapper: {
     eccrypto: '<rootDir>/test/mock/eccrypto-mock.js',
   },
+  testPathIgnorePatterns: ['/node_modules/', 'test-helpers'],
+  workerIdleMemoryLimit: '0.5',
 };
