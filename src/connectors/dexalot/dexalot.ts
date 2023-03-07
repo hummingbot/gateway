@@ -226,17 +226,18 @@ export class DexalotCLOB implements CLOBish {
   ): Promise<{ orders: ClobGetOrderResponse['orders'] }> {
     let order;
     const marketInfo = this.parsedMarkets[req.market];
-    if (!req.address) {
-      order = [await this.tradePairsContract.getOrder(req.orderId)].map(
-        parseMarkerInfo
-      )[0];
+    if (req.address) {
+      order = [
+        await this.tradePairsContract.getOrderByClientOrderId(
+          req.address,
+          req.orderId
+        ),
+      ].map(parseOrderInfo)[0];
     }
-    order = [
-      await this.tradePairsContract.getOrderByClientOrderId(
-        req.address,
-        req.orderId
-      ),
-    ].map(parseOrderInfo)[0];
+    order = [await this.tradePairsContract.getOrder(req.orderId)].map(
+      parseOrderInfo
+    )[0];
+
     order.price = utils.formatUnits(order.price, marketInfo.quoteDecimals);
     order.totalAmount = utils.formatUnits(
       order.totalAmount,

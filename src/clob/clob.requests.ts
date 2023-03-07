@@ -33,7 +33,7 @@ export interface ClobOrderbookResponse {
 }
 
 export interface ClobGetOrderRequest extends ClobOrderbookRequest {
-  address: string;
+  address?: string;
   orderId: string;
 }
 
@@ -84,6 +84,6 @@ export interface ClobPostOrderResponse {
   clientOrderID?: string | string[];
 }
 
-export type ClobDeleteOrderRequest = ClobGetOrderRequest;
+export type ClobDeleteOrderRequest = ClobGetOrderRequest & { address: string };
 
 export type ClobDeleteOrderResponse = ClobPostOrderResponse;
