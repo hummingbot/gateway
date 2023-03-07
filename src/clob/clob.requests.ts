@@ -11,6 +11,7 @@ import {
 
 export interface ClobMarketsRequest extends NetworkSelectionRequest {
   market?: string;
+  isDerivative?: boolean;
 }
 
 export interface CLOBMarkets {

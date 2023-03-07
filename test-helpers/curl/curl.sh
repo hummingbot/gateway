@@ -232,6 +232,9 @@ curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT "https://localhost:158
 ## get order books
 curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT "https://localhost:15888/clob/orderBook?chain=injective&network=mainnet&connector=injective&market=WETH-USDC" | jq
 
+## get PERP order books
+curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT "https://localhost:15888/clob/orderBook?chain=injective&network=mainnet&connector=injective&market=BONK-USDT&isDerivative=true" | jq
+
 ## get tickers
 curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT "https://localhost:15888/clob/ticker?chain=injective&network=mainnet&connector=injective" | jq
 
@@ -256,3 +259,5 @@ curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: app
 curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/injective_transfer_to_bank.json)" https://localhost:15888/injective/transfer/to/bank | jq
 
 curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/injective_transfer_to_sub.json)" https://localhost:15888/injective/transfer/to/sub | jq
+
+# CLOB perpetual

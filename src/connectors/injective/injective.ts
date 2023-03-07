@@ -75,7 +75,8 @@ export class InjectiveCLOB {
     }
     const derivativeMarkets = await this.derivativeApi.fetchMarkets();
     for (const market of derivativeMarkets) {
-      this.parsedMarkets[market.ticker.replace('/', '-')] = market;
+      const key = market.ticker.replace('/', '-').replace(' PERP', '-PERP');
+      this.parsedMarkets[key] = market;
     }
   }
 
@@ -95,17 +96,23 @@ export class InjectiveCLOB {
     req: ClobMarketsRequest
   ): Promise<{ markets: CLOBMarkets }> {
     if (req.market && req.market.split('-').length === 2) {
-      const resp: CLOBMarkets = {};
-      resp[req.market] = this.parsedMarkets[req.market];
-      return { markets: resp };
+      if (req.isDerivative === undefined || !req.isDerivative) {
+        const resp: CLOBMarkets = {};
+        resp[req.market] = this.parsedMarkets[req.market];
+        return { markets: resp };
+      } else if (req.isDerivative) {
+        const resp: CLOBMarkets = {};
+        resp[req.market] = this.parsedMarkets[req.market + '-PERP'];
+        return { markets: resp };
+      }
     }
     return { markets: this.parsedMarkets };
   }
 
   public async orderBook(req: ClobOrderbookRequest): Promise<Orderbook> {
-    if (req.isDerivative !== undefined && req.isDerivative === true) {
+    if (req.isDerivative !== undefined && req.isDerivative) {
       return await this.derivativeApi.fetchOrderbook(
-        this.parsedMarkets[req.market].marketId
+        this.parsedMarkets[req.market + '-PERP'].marketId
       );
     } else {
       return await this.spotApi.fetchOrderbook(
