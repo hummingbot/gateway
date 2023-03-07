@@ -18,18 +18,7 @@ import { NetworkRoutes } from './network/network.routes';
 import { ConnectorsRoutes } from './connectors/connectors.routes';
 import { EVMRoutes } from './evm/evm.routes';
 import { AmmRoutes, AmmLiquidityRoutes, PerpAmmRoutes } from './amm/amm.routes';
-import { MadMeerkatConfig } from './connectors/mad_meerkat/mad_meerkat.config';
-import { PangolinConfig } from './connectors/pangolin/pangolin.config';
-import { QuickswapConfig } from './connectors/quickswap/quickswap.config';
-import { TraderjoeConfig } from './connectors/traderjoe/traderjoe.config';
-import { UniswapConfig } from './connectors/uniswap/uniswap.config';
-import { OpenoceanConfig } from './connectors/openocean/openocean.config';
-import { VVSConfig } from './connectors/vvs/vvs.config';
-import { AvailableNetworks } from './services/config-manager-types';
 import morgan from 'morgan';
-import { SushiswapConfig } from './connectors/sushiswap/sushiswap.config';
-import { DefikingdomsConfig } from './connectors/defikingdoms/defikingdoms.config';
-import { PancakeSwapConfig } from './connectors/pancakeswap/pancakeswap.config';
 
 import swaggerUi from 'swagger-ui-express';
 import { NearRoutes } from './chains/near/near.routes';
@@ -71,28 +60,6 @@ gatewayApp.use('/near', NearRoutes.router);
 gatewayApp.get('/', (_req: Request, res: Response) => {
   res.status(200).json({ status: 'ok' });
 });
-
-interface ConnectorsResponse {
-  [key: string]: Array<AvailableNetworks>;
-}
-
-gatewayApp.get(
-  '/connectors',
-  asyncHandler(async (_req, res: Response<ConnectorsResponse, {}>) => {
-    res.status(200).json({
-      uniswap: UniswapConfig.config.availableNetworks,
-      pangolin: PangolinConfig.config.availableNetworks,
-      quickswap: QuickswapConfig.config.availableNetworks,
-      sushiswap: SushiswapConfig.config.availableNetworks,
-      openocean: OpenoceanConfig.config.availableNetworks,
-      traderjoe: TraderjoeConfig.config.availableNetworks,
-      defikingdoms: DefikingdomsConfig.config.availableNetworks,
-      mad_meerkat: MadMeerkatConfig.config.availableNetworks,
-      vvs: VVSConfig.config.availableNetworks,
-      pancakeswap: PancakeSwapConfig.config.availableNetworks,
-    });
-  })
-);
 
 gatewayApp.post(
   '/restart',
