@@ -9,14 +9,14 @@ import {
   ExchangePagination,
 } from '@injectivelabs/sdk-ts';
 
-export interface ClobMarketsRequest extends NetworkSelectionRequest {
+export interface ClobMarketRequest extends NetworkSelectionRequest {
   market?: string;
-  isDerivative?: boolean;
 }
 
 export interface CLOBMarkets {
-  [key: string]: SpotMarket | DerivativeMarket;
+  [key: string]: SpotMarket;
 }
+
 export interface ClobMarketResponse {
   network: string;
   timestamp: number;
@@ -24,13 +24,12 @@ export interface ClobMarketResponse {
   markets: CLOBMarkets;
 }
 
-export type ClobTickerRequest = ClobMarketsRequest;
+export type ClobTickerRequest = ClobMarketRequest;
 
 export type ClobTickerResponse = ClobMarketResponse;
 
-export interface ClobOrderbookRequest extends ClobMarketsRequest {
+export interface ClobOrderbookRequest extends ClobMarketRequest {
   market: string;
-  isDerivative?: boolean; // spot is default
 }
 
 export interface ClobOrderbookResponse {
@@ -43,7 +42,6 @@ export interface ClobOrderbookResponse {
 export interface ClobGetOrderRequest extends ClobOrderbookRequest {
   address: string;
   orderId: string;
-  isDerivative?: boolean; // spot is default
 }
 
 export interface ClobGetOrderResponse {
@@ -79,14 +77,56 @@ export type ClobDeleteOrderRequest = ClobGetOrderRequest;
 
 export type ClobDeleteOrderResponse = ClobPostOrderResponse;
 
-export interface ClobFundingRatesRequest extends NetworkSelectionRequest {
+// PerpClob requests and responses
+
+export type PerpClobMarketRequest = ClobMarketRequest;
+
+export interface PerpClobMarkets {
+  [key: string]: DerivativeMarket;
+}
+
+export interface PerpClobMarketResponse {
+  network: string;
+  timestamp: number;
+  latency: number;
+  markets: PerpClobMarkets;
+}
+
+export type PerpClobTickerRequest = PerpClobMarketRequest;
+
+export type PerpClobTickerResponse = PerpClobMarketResponse;
+
+export type PerpClobOrderbookRequest = ClobOrderbookRequest;
+
+export type PerpClobOrderbookResponse = ClobOrderbookResponse;
+
+export type PerpClobGetOrderRequest = ClobGetOrderRequest;
+
+export type PerpClobGetOrderResponse = ClobGetOrderResponse;
+
+export interface PerpClobPostOrderRequest extends ClobOrderbookRequest {
+  address: string;
+  side: Side;
+  orderType: OrderType;
+  price: string;
+  amount: string;
+  leverage: number;
+}
+
+export type PerpClobPostOrderResponse = ClobPostOrderResponse;
+
+export type PerpClobDeleteOrderRequest = PerpClobGetOrderRequest;
+
+export type PerpClobDeleteOrderResponse = PerpClobPostOrderResponse;
+
+export interface PerpClobFundingRatesRequest extends NetworkSelectionRequest {
   market: string;
   skip?: number; // skip last n funding rates
   limit?: number; // 1 to 100
   endTime?: number; // Upper bound of funding rate timestamp
 }
 
-export interface ClobFundingRatesResponse {
+export interface PerpClobFundingRatesResponse {
   network: string;
   timestamp: number;
   latency: number;
@@ -94,7 +134,8 @@ export interface ClobFundingRatesResponse {
   pagination: ExchangePagination;
 }
 
-export interface ClobFundingPaymentsRequest extends NetworkSelectionRequest {
+export interface PerpClobFundingPaymentsRequest
+  extends NetworkSelectionRequest {
   address: string;
   market: string;
   skip?: number; // skip last n funding payments
@@ -102,7 +143,7 @@ export interface ClobFundingPaymentsRequest extends NetworkSelectionRequest {
   endTime?: number; // Upper bound of funding payment timestamp
 }
 
-export interface ClobFundingPaymentsResponse {
+export interface PerpClobFundingPaymentsResponse {
   network: string;
   timestamp: number;
   latency: number;

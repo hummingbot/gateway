@@ -3,9 +3,11 @@ import { patch, unpatch } from '../services/patch';
 import { gatewayApp } from '../../src/app';
 import { Injective } from '../../src/chains/injective/injective';
 import { InjectiveCLOB } from '../../src/connectors/injective/injective';
+import { InjectiveClobPerp } from '../../src/connectors/injective-perp/injective.perp';
 
 let inj: Injective;
 let injCLOB: InjectiveCLOB;
+let injClobPerp: InjectiveClobPerp;
 
 const TX_HASH =
   'CC6BF44223B4BD05396F83D55A0ABC0F16CE80836C0E34B08F4558CF72944299'; // noqa: mock
@@ -183,8 +185,10 @@ beforeAll(async () => {
   patchCurrentBlockNumber();
   inj.init();
   injCLOB = InjectiveCLOB.getInstance('injective', 'mainnet');
+  injClobPerp = InjectiveClobPerp.getInstance('injective', 'mainnet');
   patchMarkets();
   await injCLOB.init();
+  await injClobPerp.init();
 });
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
@@ -210,7 +214,7 @@ const patchMarkets = () => {
   patch(injCLOB.spotApi, 'fetchMarkets', () => {
     return SPOT_MARKETS;
   });
-  patch(injCLOB.derivativeApi, 'fetchMarkets', () => {
+  patch(injClobPerp.derivativeApi, 'fetchMarkets', () => {
     return DERIVATIVE_MARKETS;
   });
 };
@@ -219,19 +223,19 @@ const patchOrderBook = () => {
   patch(injCLOB.spotApi, 'fetchOrderbook', () => {
     return ORDER_BOOK;
   });
-  patch(injCLOB.derivativeApi, 'fetchOrderbook', () => {
+  patch(injClobPerp.derivativeApi, 'fetchOrderbook', () => {
     return ORDER_BOOK;
   });
 };
 
 const patchFundingRates = () => {
-  patch(injCLOB.derivativeApi, 'fetchFundingRates', () => {
+  patch(injClobPerp.derivativeApi, 'fetchFundingRates', () => {
     return FUNDING_RATES;
   });
 };
 
 const patchFundingPayments = () => {
-  patch(injCLOB.derivativeApi, 'fetchFundingPayments', () => {
+  patch(injClobPerp.derivativeApi, 'fetchFundingPayments', () => {
     return FUNDING_PAYMENTS;
   });
 };

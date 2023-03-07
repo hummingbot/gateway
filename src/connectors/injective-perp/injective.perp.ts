@@ -1,65 +1,73 @@
 import { BigNumber, utils } from 'ethers';
 import {
   MsgBatchUpdateOrders,
-  IndexerGrpcSpotApi,
+  IndexerGrpcDerivativesApi,
+  DerivativeOrderHistory,
   Orderbook,
-  SpotOrderHistory,
   GrpcOrderType,
-  spotPriceToChainPriceToFixed,
-  spotQuantityToChainQuantityToFixed,
+  FundingPayment,
+  FundingRate,
+  ExchangePagination,
+  derivativePriceToChainPriceToFixed,
+  derivativeQuantityToChainQuantityToFixed,
 } from '@injectivelabs/sdk-ts';
 import {
-  ClobMarketRequest,
-  ClobOrderbookRequest,
-  ClobTickerRequest,
-  ClobGetOrderRequest,
-  ClobPostOrderRequest,
-  ClobDeleteOrderRequest,
-  CLOBMarkets,
-  ClobGetOrderResponse,
+  PerpClobMarketRequest,
+  PerpClobOrderbookRequest,
+  PerpClobTickerRequest,
+  PerpClobGetOrderRequest,
+  PerpClobPostOrderRequest,
+  PerpClobDeleteOrderRequest,
+  PerpClobMarkets,
+  PerpClobGetOrderResponse,
+  PerpClobFundingRatesRequest,
+  PerpClobFundingPaymentsRequest,
 } from '../../clob/clob.requests';
 import { NetworkSelectionRequest } from '../../services/common-interfaces';
-import { InjectiveCLOBConfig } from './injective.clob.config';
+import { InjectiveCLOBConfig } from '../injective/injective.clob.config';
 import { Injective } from '../../chains/injective/injective';
 import LRUCache from 'lru-cache';
 import { getInjectiveConfig } from '../../chains/injective/injective.config';
 
-export class InjectiveCLOB {
-  private static _instances: LRUCache<string, InjectiveCLOB>;
+export class InjectiveClobPerp {
+  private static _instances: LRUCache<string, InjectiveClobPerp>;
   private _chain;
   public conf;
-  public spotApi: IndexerGrpcSpotApi;
+  public derivativeApi: IndexerGrpcDerivativesApi;
   private _ready: boolean = false;
-  public parsedMarkets: CLOBMarkets = {};
+  public parsedMarkets: PerpClobMarkets = {};
 
   private constructor(_chain: string, network: string) {
     this._chain = Injective.getInstance(network);
     this.conf = InjectiveCLOBConfig.config;
-    this.spotApi = new IndexerGrpcSpotApi(this._chain.endpoints.indexer);
+    this.derivativeApi = new IndexerGrpcDerivativesApi(
+      this._chain.endpoints.indexer
+    );
   }
 
-  public static getInstance(chain: string, network: string): InjectiveCLOB {
-    if (InjectiveCLOB._instances === undefined) {
+  public static getInstance(chain: string, network: string): InjectiveClobPerp {
+    if (InjectiveClobPerp._instances === undefined) {
       const config = getInjectiveConfig(network);
-      InjectiveCLOB._instances = new LRUCache<string, InjectiveCLOB>({
+      InjectiveClobPerp._instances = new LRUCache<string, InjectiveClobPerp>({
         max: config.network.maxLRUCacheInstances,
       });
     }
     const instanceKey = chain + network;
-    if (!InjectiveCLOB._instances.has(instanceKey)) {
-      InjectiveCLOB._instances.set(
+    if (!InjectiveClobPerp._instances.has(instanceKey)) {
+      InjectiveClobPerp._instances.set(
         instanceKey,
-        new InjectiveCLOB(chain, network)
+        new InjectiveClobPerp(chain, network)
       );
     }
 
-    return InjectiveCLOB._instances.get(instanceKey) as InjectiveCLOB;
+    return InjectiveClobPerp._instances.get(instanceKey) as InjectiveClobPerp;
   }
 
   public async loadMarkets() {
-    const spotMarkets = await this.spotApi.fetchMarkets();
-    for (const market of spotMarkets) {
-      this.parsedMarkets[market.ticker.replace('/', '-')] = market;
+    const derivativeMarkets = await this.derivativeApi.fetchMarkets();
+    for (const market of derivativeMarkets) {
+      const key = market.ticker.replace('/', '-').replace(' PERP', '');
+      this.parsedMarkets[key] = market;
     }
   }
 
@@ -76,41 +84,43 @@ export class InjectiveCLOB {
   }
 
   public async markets(
-    req: ClobMarketRequest
-  ): Promise<{ markets: CLOBMarkets }> {
+    req: PerpClobMarketRequest
+  ): Promise<{ markets: PerpClobMarkets }> {
     if (req.market && req.market.split('-').length === 2) {
-      const resp: CLOBMarkets = {};
+      const resp: PerpClobMarkets = {};
+
       resp[req.market] = this.parsedMarkets[req.market];
       return { markets: resp };
     }
     return { markets: this.parsedMarkets };
   }
 
-  public async orderBook(req: ClobOrderbookRequest): Promise<Orderbook> {
-    return await this.spotApi.fetchOrderbook(
+  public async orderBook(req: PerpClobOrderbookRequest): Promise<Orderbook> {
+    return await this.derivativeApi.fetchOrderbook(
       this.parsedMarkets[req.market].marketId
     );
   }
 
   public async ticker(
-    req: ClobTickerRequest
-  ): Promise<{ markets: CLOBMarkets }> {
+    req: PerpClobTickerRequest
+  ): Promise<{ markets: PerpClobMarkets }> {
     return await this.markets(req);
   }
 
   public async orders(
-    req: ClobGetOrderRequest
-  ): Promise<{ orders: ClobGetOrderResponse['orders'] }> {
+    req: PerpClobGetOrderRequest
+  ): Promise<{ orders: PerpClobGetOrderResponse['orders'] }> {
     if (!req.market) return { orders: [] };
     const marketId = this.parsedMarkets[req.market].marketId;
-    const orders: SpotOrderHistory[] = (
-      await this.spotApi.fetchOrderHistory({
+
+    const orders: DerivativeOrderHistory[] = (
+      await this.derivativeApi.fetchOrderHistory({
         subaccountId: req.address,
         marketId,
       })
     ).orderHistory;
 
-    return { orders } as ClobGetOrderResponse;
+    return { orders } as PerpClobGetOrderResponse;
   }
 
   public static calculateMargin(
@@ -132,12 +142,13 @@ export class InjectiveCLOB {
   }
 
   public async postOrder(
-    req: ClobPostOrderRequest
+    req: PerpClobPostOrderRequest
   ): Promise<{ txHash: string }> {
     const [base, quote] = req.market.split('-');
     const wallet = await this._chain.getWallet(req.address);
     const privateKey: string = wallet.privateKey;
     const injectiveAddress: string = wallet.injectiveAddress;
+
     const market = this.parsedMarkets[req.market];
 
     let orderType: GrpcOrderType = req.side === 'BUY' ? 1 : 2;
@@ -146,23 +157,37 @@ export class InjectiveCLOB {
         ? ((orderType + 6) as GrpcOrderType) // i.e. BUY_LIMIT, SELL_LIMIT are 7, 8 respectively
         : orderType;
 
+    const price = derivativePriceToChainPriceToFixed({
+      value: req.price,
+      quoteDecimals: this._chain.getTokenForSymbol(quote)?.decimals,
+    });
+    const quantity = derivativeQuantityToChainQuantityToFixed({
+      value: req.amount,
+    });
+
+    const baseToken = this._chain.getTokenForSymbol(base);
+
+    const decimalForMargin = baseToken ? baseToken.decimals : 18;
+
     const msg = MsgBatchUpdateOrders.fromJSON({
       subaccountId: req.address,
       injectiveAddress,
-      spotOrdersToCreate: [
+      derivativeOrdersToCreate: [
         {
           orderType,
-          price: spotPriceToChainPriceToFixed({
-            value: req.price,
-            baseDecimals: this._chain.getTokenForSymbol(base)?.decimals,
-            quoteDecimals: this._chain.getTokenForSymbol(quote)?.decimals,
-          }),
-          quantity: spotQuantityToChainQuantityToFixed({
-            value: req.amount,
-            baseDecimals: this._chain.getTokenForSymbol(base)?.decimals,
-          }),
+          price,
+          quantity,
           marketId: market.marketId,
           feeRecipient: injectiveAddress,
+          margin: utils.formatUnits(
+            InjectiveClobPerp.calculateMargin(
+              price,
+              quantity,
+              decimalForMargin,
+              req.leverage
+            ),
+            decimalForMargin
+          ),
         },
       ],
     });
@@ -175,7 +200,7 @@ export class InjectiveCLOB {
   }
 
   public async deleteOrder(
-    req: ClobDeleteOrderRequest
+    req: PerpClobDeleteOrderRequest
   ): Promise<{ txHash: string }> {
     const wallet = await this._chain.getWallet(req.address);
     const privateKey: string = wallet.privateKey;
@@ -186,7 +211,7 @@ export class InjectiveCLOB {
     const msg = MsgBatchUpdateOrders.fromJSON({
       injectiveAddress,
       subaccountId: req.address,
-      spotOrdersToCancel: [
+      derivativeOrdersToCancel: [
         {
           marketId: market.marketId,
           subaccountId: req.address,
@@ -214,5 +239,25 @@ export class InjectiveCLOB {
       gasLimit: this.conf.gasLimitEstimate,
       gasCost: this._chain.gasPrice * this.conf.gasLimitEstimate,
     };
+  }
+
+  public async fundingRates(req: PerpClobFundingRatesRequest): Promise<{
+    fundingRates: Array<FundingRate>;
+    pagination: ExchangePagination;
+  }> {
+    return await this.derivativeApi.fetchFundingRates({
+      marketId: this.parsedMarkets[req.market].marketId,
+      pagination: { skip: req.skip, limit: req.limit, endTime: req.endTime },
+    });
+  }
+
+  public async fundingPayments(req: PerpClobFundingPaymentsRequest): Promise<{
+    fundingPayments: Array<FundingPayment>;
+    pagination: ExchangePagination;
+  }> {
+    return await this.derivativeApi.fetchFundingPayments({
+      marketId: this.parsedMarkets[req.market].marketId,
+      pagination: { skip: req.skip, limit: req.limit, endTime: req.endTime },
+    });
   }
 }

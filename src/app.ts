@@ -20,7 +20,7 @@ import { EVMRoutes } from './evm/evm.routes';
 import { AmmRoutes, AmmLiquidityRoutes, PerpAmmRoutes } from './amm/amm.routes';
 import morgan from 'morgan';
 import { InjectiveRoutes } from './chains/injective/injective.routes';
-import { CLOBRoutes } from './clob/clob.routes';
+import { CLOBRoutes, PerpClobRoutes } from './clob/clob.routes';
 
 import swaggerUi from 'swagger-ui-express';
 import { NearRoutes } from './chains/near/near.routes';
@@ -57,6 +57,7 @@ gatewayApp.use('/amm/perp', PerpAmmRoutes.router);
 gatewayApp.use('/amm/liquidity', AmmLiquidityRoutes.router);
 gatewayApp.use('/wallet', WalletRoutes.router);
 gatewayApp.use('/clob', CLOBRoutes.router);
+gatewayApp.use('/clob/perp', PerpClobRoutes.router);
 gatewayApp.use('/cosmos', CosmosRoutes.router);
 gatewayApp.use('/near', NearRoutes.router);
 
