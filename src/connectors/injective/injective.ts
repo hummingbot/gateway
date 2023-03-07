@@ -113,24 +113,6 @@ export class InjectiveCLOB {
     return { orders } as ClobGetOrderResponse;
   }
 
-  public static calculateMargin(
-    price: string,
-    quantity: string,
-    decimals: number,
-    leverage: number
-  ): BigNumber {
-    // margin = (price * quantity) / leverage
-    const priceBig = utils.parseUnits(price, decimals);
-    const quantityBig = utils.parseUnits(quantity, decimals);
-    const leverageBig = utils.parseUnits(leverage.toString(), decimals);
-    const decimalsBig = BigNumber.from(10).pow(decimals);
-
-    const numerator = priceBig.mul(quantityBig).mul(decimalsBig);
-    const denominator = leverageBig.mul(decimalsBig);
-
-    return numerator.div(denominator);
-  }
-
   public async postOrder(
     req: ClobPostOrderRequest
   ): Promise<{ txHash: string }> {
