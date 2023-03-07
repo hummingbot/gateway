@@ -1,7 +1,7 @@
 {
   "network": "mainnet",
-  "timestamp": 1677540410618,
-  "latency": 0,
+  "timestamp": 1678185486382,
+  "latency": 2.26,
   "markets": {
     "WETH-USDC": {
       "marketId": "0x01e920e081b6f3b2e5183399d5b6733bb6f80319e6be3805b95cb7236910ff0e",
@@ -15,7 +15,7 @@
         "symbol": "USDC",
         "logo": "https://static.alchemyapi.io/images/assets/3408.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "baseToken": {
@@ -24,7 +24,7 @@
         "symbol": "WETH",
         "logo": "https://static.alchemyapi.io/images/assets/2396.png",
         "decimals": 18,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "makerFeeRate": "0.001",
@@ -45,7 +45,7 @@
         "symbol": "USDC",
         "logo": "https://static.alchemyapi.io/images/assets/3408.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "baseToken": {
@@ -54,7 +54,7 @@
         "symbol": "INJ",
         "logo": "https://static.alchemyapi.io/images/assets/7226.png",
         "decimals": 18,
-        "updatedAt": 1676498049708,
+        "updatedAt": 1677706712777,
         "coinGeckoId": ""
       },
       "makerFeeRate": "0.001",
@@ -75,7 +75,7 @@
         "symbol": "USDC",
         "logo": "https://static.alchemyapi.io/images/assets/3408.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "baseToken": {
@@ -84,7 +84,7 @@
         "symbol": "USDT",
         "logo": "https://static.alchemyapi.io/images/assets/825.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "makerFeeRate": "-0.0001",
@@ -105,7 +105,7 @@
         "symbol": "USDC",
         "logo": "https://static.alchemyapi.io/images/assets/3408.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "baseToken": {
@@ -114,7 +114,7 @@
         "symbol": "LINK",
         "logo": "https://static.alchemyapi.io/images/assets/1975.png",
         "decimals": 18,
-        "updatedAt": 1676498049708,
+        "updatedAt": 1677706712777,
         "coinGeckoId": ""
       },
       "makerFeeRate": "0.001",
@@ -135,7 +135,7 @@
         "symbol": "USDC",
         "logo": "https://static.alchemyapi.io/images/assets/3408.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "baseToken": {
@@ -144,7 +144,7 @@
         "symbol": "AAVE",
         "logo": "https://static.alchemyapi.io/images/assets/7278.png",
         "decimals": 18,
-        "updatedAt": 1676498049707,
+        "updatedAt": 1677706712776,
         "coinGeckoId": ""
       },
       "makerFeeRate": "0.001",
@@ -165,7 +165,7 @@
         "symbol": "USDC",
         "logo": "https://static.alchemyapi.io/images/assets/3408.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "baseToken": {
@@ -174,7 +174,7 @@
         "symbol": "MATIC",
         "logo": "https://static.alchemyapi.io/images/assets/3890.png",
         "decimals": 18,
-        "updatedAt": 1676498049708,
+        "updatedAt": 1677706712777,
         "coinGeckoId": ""
       },
       "makerFeeRate": "0.001",
@@ -195,7 +195,7 @@
         "symbol": "USDT",
         "logo": "https://static.alchemyapi.io/images/assets/825.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "baseToken": {
@@ -204,7 +204,7 @@
         "symbol": "UNI",
         "logo": "https://static.alchemyapi.io/images/assets/7083.png",
         "decimals": 18,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "makerFeeRate": "0.001",
@@ -225,7 +225,7 @@
         "symbol": "USDC",
         "logo": "https://static.alchemyapi.io/images/assets/3408.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "baseToken": {
@@ -234,7 +234,7 @@
         "symbol": "SUSHI",
         "logo": "https://static.alchemyapi.io/images/assets/6758.png",
         "decimals": 18,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712777,
         "coinGeckoId": ""
       },
       "makerFeeRate": "0.001",
@@ -255,7 +255,7 @@
         "symbol": "USDC",
         "logo": "https://static.alchemyapi.io/images/assets/3408.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "baseToken": {
@@ -264,7 +264,7 @@
         "symbol": "GRT",
         "logo": "https://static.alchemyapi.io/images/assets/6719.png",
         "decimals": 18,
-        "updatedAt": 1676498049708,
+        "updatedAt": 1677706712777,
         "coinGeckoId": ""
       },
       "makerFeeRate": "0.001",
@@ -285,7 +285,7 @@
         "symbol": "USDT",
         "logo": "https://static.alchemyapi.io/images/assets/825.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "baseToken": {
@@ -294,7 +294,7 @@
         "symbol": "INJ",
         "logo": "https://static.alchemyapi.io/images/assets/7226.png",
         "decimals": 18,
-        "updatedAt": 1676498049708,
+        "updatedAt": 1677706712777,
         "coinGeckoId": ""
       },
       "makerFeeRate": "-0.0001",
@@ -315,7 +315,7 @@
         "symbol": "USDT",
         "logo": "https://static.alchemyapi.io/images/assets/825.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "baseToken": {
@@ -324,7 +324,7 @@
         "symbol": "MATIC",
         "logo": "https://static.alchemyapi.io/images/assets/3890.png",
         "decimals": 18,
-        "updatedAt": 1676498049708,
+        "updatedAt": 1677706712777,
         "coinGeckoId": ""
       },
       "makerFeeRate": "0.001",
@@ -345,7 +345,7 @@
         "symbol": "USDC",
         "logo": "https://static.alchemyapi.io/images/assets/3408.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "baseToken": {
@@ -354,7 +354,7 @@
         "symbol": "UNI",
         "logo": "https://static.alchemyapi.io/images/assets/7083.png",
         "decimals": 18,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "makerFeeRate": "0.001",
@@ -375,7 +375,7 @@
         "symbol": "USDT",
         "logo": "https://static.alchemyapi.io/images/assets/825.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "baseToken": {
@@ -384,7 +384,7 @@
         "symbol": "LINK",
         "logo": "https://static.alchemyapi.io/images/assets/1975.png",
         "decimals": 18,
-        "updatedAt": 1676498049708,
+        "updatedAt": 1677706712777,
         "coinGeckoId": ""
       },
       "makerFeeRate": "-0.0001",
@@ -405,7 +405,7 @@
         "symbol": "USDT",
         "logo": "https://static.alchemyapi.io/images/assets/825.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "baseToken": {
@@ -414,7 +414,7 @@
         "symbol": "WETH",
         "logo": "https://static.alchemyapi.io/images/assets/2396.png",
         "decimals": 18,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "makerFeeRate": "-0.0001",
@@ -435,7 +435,7 @@
         "symbol": "USDT",
         "logo": "https://static.alchemyapi.io/images/assets/825.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "baseToken": {
@@ -444,7 +444,7 @@
         "symbol": "AAVE",
         "logo": "https://static.alchemyapi.io/images/assets/7278.png",
         "decimals": 18,
-        "updatedAt": 1676498049707,
+        "updatedAt": 1677706712776,
         "coinGeckoId": ""
       },
       "makerFeeRate": "0.001",
@@ -465,7 +465,7 @@
         "symbol": "USDT",
         "logo": "https://static.alchemyapi.io/images/assets/825.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "baseToken": {
@@ -474,7 +474,7 @@
         "symbol": "GRT",
         "logo": "https://static.alchemyapi.io/images/assets/6719.png",
         "decimals": 18,
-        "updatedAt": 1676498049708,
+        "updatedAt": 1677706712777,
         "coinGeckoId": ""
       },
       "makerFeeRate": "0.001",
@@ -495,7 +495,7 @@
         "symbol": "USDT",
         "logo": "https://static.alchemyapi.io/images/assets/825.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "baseToken": {
@@ -504,7 +504,7 @@
         "symbol": "SUSHI",
         "logo": "https://static.alchemyapi.io/images/assets/6758.png",
         "decimals": 18,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712777,
         "coinGeckoId": ""
       },
       "makerFeeRate": "0.001",
@@ -525,7 +525,7 @@
         "symbol": "USDT",
         "logo": "https://static.alchemyapi.io/images/assets/825.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "baseToken": {
@@ -534,7 +534,7 @@
         "symbol": "SNX",
         "logo": "https://static.alchemyapi.io/images/assets/2586.png",
         "decimals": 18,
-        "updatedAt": 1676498049708,
+        "updatedAt": 1677706712777,
         "coinGeckoId": ""
       },
       "makerFeeRate": "0.001",
@@ -555,7 +555,7 @@
         "symbol": "USDT",
         "logo": "https://static.alchemyapi.io/images/assets/825.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "baseToken": {
@@ -564,7 +564,7 @@
         "symbol": "QNT",
         "logo": "https://static.alchemyapi.io/images/assets/3155.png",
         "decimals": 18,
-        "updatedAt": 1676498049708,
+        "updatedAt": 1677706712777,
         "coinGeckoId": ""
       },
       "makerFeeRate": "0.001",
@@ -585,7 +585,7 @@
         "symbol": "USDC",
         "logo": "https://static.alchemyapi.io/images/assets/3408.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "baseToken": {
@@ -594,7 +594,7 @@
         "symbol": "WBTC",
         "logo": "https://static.alchemyapi.io/images/assets/3717.png",
         "decimals": 8,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "makerFeeRate": "0.001",
@@ -615,7 +615,7 @@
         "symbol": "USDT",
         "logo": "https://static.alchemyapi.io/images/assets/825.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "baseToken": {
@@ -624,7 +624,7 @@
         "symbol": "AXS",
         "logo": "https://static.alchemyapi.io/images/assets/6783.png",
         "decimals": 18,
-        "updatedAt": 1676498049707,
+        "updatedAt": 1677706712776,
         "coinGeckoId": ""
       },
       "makerFeeRate": "-0.0001",
@@ -645,7 +645,7 @@
         "symbol": "USDT",
         "logo": "https://static.alchemyapi.io/images/assets/825.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "baseToken": {
@@ -654,7 +654,7 @@
         "symbol": "ATOM",
         "logo": "https://s2.coinmarketcap.com/static/img/coins/64x64/3794.png",
         "decimals": 6,
-        "updatedAt": 1676498049707,
+        "updatedAt": 1677706712776,
         "coinGeckoId": ""
       },
       "makerFeeRate": "-0.0001",
@@ -675,7 +675,7 @@
         "symbol": "USDT",
         "logo": "https://static.alchemyapi.io/images/assets/825.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "baseToken": {
@@ -684,7 +684,7 @@
         "symbol": "GF",
         "logo": "https://s2.coinmarketcap.com/static/img/coins/64x64/15585.png",
         "decimals": 18,
-        "updatedAt": 1676498049708,
+        "updatedAt": 1677706712777,
         "coinGeckoId": ""
       },
       "makerFeeRate": "-0.0001",
@@ -705,7 +705,7 @@
         "symbol": "USDT",
         "logo": "https://static.alchemyapi.io/images/assets/825.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "baseToken": {
@@ -714,7 +714,7 @@
         "symbol": "UST",
         "logo": "https://s2.coinmarketcap.com/static/img/coins/64x64/7129.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "makerFeeRate": "0.0001",
@@ -735,7 +735,7 @@
         "symbol": "UST",
         "logo": "https://s2.coinmarketcap.com/static/img/coins/64x64/7129.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "baseToken": {
@@ -744,7 +744,7 @@
         "symbol": "LUNA",
         "logo": "https://s2.coinmarketcap.com/static/img/coins/64x64/4172.png",
         "decimals": 6,
-        "updatedAt": 1676498049708,
+        "updatedAt": 1677706712777,
         "coinGeckoId": ""
       },
       "makerFeeRate": "0.0005",
@@ -765,7 +765,7 @@
         "symbol": "UST",
         "logo": "https://s2.coinmarketcap.com/static/img/coins/64x64/7129.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "baseToken": {
@@ -774,7 +774,7 @@
         "symbol": "INJ",
         "logo": "https://static.alchemyapi.io/images/assets/7226.png",
         "decimals": 18,
-        "updatedAt": 1676498049708,
+        "updatedAt": 1677706712777,
         "coinGeckoId": ""
       },
       "makerFeeRate": "0.001",
@@ -795,7 +795,7 @@
         "symbol": "USDT",
         "logo": "https://static.alchemyapi.io/images/assets/825.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "baseToken": {
@@ -804,7 +804,7 @@
         "symbol": "XBX",
         "logo": "https://assets.coingecko.com/coins/images/26381/small/xblox-logo.png?1657678295",
         "decimals": 18,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "makerFeeRate": "0.001",
@@ -825,7 +825,7 @@
         "symbol": "USDT",
         "logo": "https://static.alchemyapi.io/images/assets/825.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "baseToken": {
@@ -834,7 +834,7 @@
         "symbol": "HUAHUA",
         "logo": "https://s2.coinmarketcap.com/static/img/coins/64x64/17208.png",
         "decimals": 6,
-        "updatedAt": 1676498049708,
+        "updatedAt": 1677706712777,
         "coinGeckoId": ""
       },
       "makerFeeRate": "0.001",
@@ -855,7 +855,7 @@
         "symbol": "USDT",
         "logo": "https://static.alchemyapi.io/images/assets/825.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "baseToken": {
@@ -864,7 +864,7 @@
         "symbol": "APE",
         "logo": "https://assets.coingecko.com/coins/images/24383/small/apecoin.jpg?1647476455",
         "decimals": 18,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "makerFeeRate": "-0.0001",
@@ -885,7 +885,7 @@
         "symbol": "USDT",
         "logo": "https://static.alchemyapi.io/images/assets/825.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "baseToken": {
@@ -894,7 +894,7 @@
         "symbol": "EVMOS",
         "logo": "https://assets.coingecko.com/coins/images/24023/large/logo-orange.png?1651223278",
         "decimals": 18,
-        "updatedAt": 1676498049708,
+        "updatedAt": 1677706712777,
         "coinGeckoId": ""
       },
       "makerFeeRate": "-0.0001",
@@ -915,7 +915,7 @@
         "symbol": "USDT",
         "logo": "https://static.alchemyapi.io/images/assets/825.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "baseToken": {
@@ -924,7 +924,7 @@
         "symbol": "XPRT",
         "logo": "https://assets.coingecko.com/coins/images/14582/large/512_Light.png?1617149658",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "makerFeeRate": "-0.0001",
@@ -945,7 +945,7 @@
         "symbol": "USDT",
         "logo": "https://static.alchemyapi.io/images/assets/825.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "baseToken": {
@@ -954,7 +954,7 @@
         "symbol": "DOT",
         "logo": "https://assets.coingecko.com/coins/images/12171/large/polkadot.png?1639712644",
         "decimals": 10,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "makerFeeRate": "-0.0001",
@@ -975,7 +975,7 @@
         "symbol": "USDT",
         "logo": "https://static.alchemyapi.io/images/assets/825.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "baseToken": {
@@ -984,7 +984,7 @@
         "symbol": "USDC",
         "logo": "https://static.alchemyapi.io/images/assets/3408.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "makerFeeRate": "-0.00002",
@@ -1005,7 +1005,7 @@
         "symbol": "USDT",
         "logo": "https://static.alchemyapi.io/images/assets/825.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "baseToken": {
@@ -1014,7 +1014,7 @@
         "symbol": "STRD",
         "logo": "",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "makerFeeRate": "-0.0001",
@@ -1035,7 +1035,7 @@
         "symbol": "USDT",
         "logo": "https://static.alchemyapi.io/images/assets/825.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "baseToken": {
@@ -1044,7 +1044,7 @@
         "symbol": "USDC",
         "logo": "https://assets.coingecko.com/coins/images/26476/small/axlUSDC.png?1658207579",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "makerFeeRate": "-0.0001",
@@ -1065,7 +1065,7 @@
         "symbol": "USDT",
         "logo": "https://static.alchemyapi.io/images/assets/825.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "baseToken": {
@@ -1074,7 +1074,7 @@
         "symbol": "CRE",
         "logo": "https://assets.coingecko.com/coins/images/25061/small/logo_200x200.png?1649943220",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "makerFeeRate": "0.001",
@@ -1095,7 +1095,7 @@
         "symbol": "USDT",
         "logo": "https://static.alchemyapi.io/images/assets/825.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "makerFeeRate": "-0.0001",
@@ -1116,7 +1116,7 @@
         "symbol": "USDT",
         "logo": "https://static.alchemyapi.io/images/assets/825.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "makerFeeRate": "-0.0001",
@@ -1137,7 +1137,7 @@
         "symbol": "USDT",
         "logo": "https://static.alchemyapi.io/images/assets/825.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "baseToken": {
@@ -1146,7 +1146,7 @@
         "symbol": "ETHBTCTrend",
         "logo": "https://assets.coingecko.com/coins/images/26476/small/axlUSDC.png?1658207579",
         "decimals": 18,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "makerFeeRate": "-0.0001",
@@ -1167,7 +1167,7 @@
         "symbol": "USDT",
         "logo": "https://static.alchemyapi.io/images/assets/825.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "baseToken": {
@@ -1176,7 +1176,7 @@
         "symbol": "SOMM",
         "logo": "https://assets.coingecko.com/coins/images/23308/small/somm_new.png?1650884424",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "makerFeeRate": "-0.0001",
@@ -1197,7 +1197,7 @@
         "symbol": "USDC",
         "logo": "https://static.alchemyapi.io/images/assets/3408.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "baseToken": {
@@ -1206,7 +1206,7 @@
         "symbol": "SOL",
         "logo": "https://assets.coingecko.com/coins/images/4128/small/solana.png?1640133422",
         "decimals": 8,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "makerFeeRate": "-0.0001",
@@ -1227,7 +1227,7 @@
         "symbol": "USDC",
         "logo": "https://static.alchemyapi.io/images/assets/3408.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "baseToken": {
@@ -1236,7 +1236,7 @@
         "symbol": "USDC",
         "logo": "https://static.alchemyapi.io/images/assets/3408.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "makerFeeRate": "-0.0001",
@@ -1257,7 +1257,7 @@
         "symbol": "USDC",
         "logo": "https://static.alchemyapi.io/images/assets/3408.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "baseToken": {
@@ -1266,7 +1266,7 @@
         "symbol": "USDC",
         "logo": "https://static.alchemyapi.io/images/assets/3408.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "makerFeeRate": "-0.0001",
@@ -1287,7 +1287,7 @@
         "symbol": "USDC",
         "logo": "https://static.alchemyapi.io/images/assets/3408.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "baseToken": {
@@ -1296,7 +1296,7 @@
         "symbol": "CHZ",
         "logo": "https://static.alchemyapi.io/images/assets/4066.png",
         "decimals": 8,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "makerFeeRate": "-0.0001",
@@ -1317,7 +1317,7 @@
         "symbol": "USDT",
         "logo": "https://static.alchemyapi.io/images/assets/825.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "baseToken": {
@@ -1326,7 +1326,7 @@
         "symbol": "CANTO",
         "logo": "https://assets.coingecko.com/coins/images/26959/large/canto-network.png?1661215219",
         "decimals": 18,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "makerFeeRate": "-0.0001",
@@ -1335,10 +1335,41 @@
       "minPriceTickSize": 1e-16,
       "minQuantityTickSize": 1e19
     },
-    "BTC-USDT PERP": {
+    "LDO-USDC": {
+      "marketId": "0x66a113e1f0c57196985f8f1f1cfce2f220fa0a96bca39360c70b6788a0bc06e0",
+      "marketStatus": "active",
+      "ticker": "LDO/USDC",
+      "baseDenom": "factory/inj14ejqjyq8um4p3xfqj74yld5waqljf88f9eneuk/inj1me6t602jlndzxgv2d7ekcnkjuqdp7vfh4txpyy",
+      "quoteDenom": "factory/inj14ejqjyq8um4p3xfqj74yld5waqljf88f9eneuk/inj1q6zlut7gtkzknkk773jecujwsdkgq882akqksk",
+      "quoteToken": {
+        "name": "USC Coin (Wormhole from Ethereum)",
+        "address": "0x0000000000000000000000000000000000000000",
+        "symbol": "USDC",
+        "logo": "https://static.alchemyapi.io/images/assets/3408.png",
+        "decimals": 6,
+        "updatedAt": 1677706712778,
+        "coinGeckoId": ""
+      },
+      "baseToken": {
+        "name": "Lido DAO",
+        "address": "0x0000000000000000000000000000000000000000",
+        "symbol": "LDO",
+        "logo": "https://assets.coingecko.com/coins/images/13573/large/Lido_DAO.png?1609873644",
+        "decimals": 8,
+        "updatedAt": 1677706712778,
+        "coinGeckoId": ""
+      },
+      "makerFeeRate": "-0.0001",
+      "takerFeeRate": "0.001",
+      "serviceProviderFee": "0.4",
+      "minPriceTickSize": 1e-5,
+      "minQuantityTickSize": 100000
+    },
+    "BTC-USDT-PERP": {
       "oracleBase": "BTC",
       "oracleQuote": "USDT",
       "oracleType": "bandibc",
+      "oracleScaleFactor": 6,
       "initialMarginRatio": "0.095",
       "maintenanceMarginRatio": "0.05",
       "isPerpetual": true,
@@ -1352,7 +1383,7 @@
         "symbol": "USDT",
         "logo": "https://static.alchemyapi.io/images/assets/825.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "makerFeeRate": "-0.0001",
@@ -1363,19 +1394,20 @@
       "perpetualMarketInfo": {
         "hourlyFundingRateCap": "0.0000625",
         "hourlyInterestRate": "0.00000416666",
-        "nextFundingTimestamp": 1677542400,
+        "nextFundingTimestamp": 1678186800,
         "fundingInterval": 3600
       },
       "perpetualMarketFunding": {
-        "cumulativeFunding": "6738520972.813209357477725527",
-        "cumulativePrice": "0.06277372783893848",
-        "lastTimestamp": 1677540073
+        "cumulativeFunding": "6740833038.643578708150215215",
+        "cumulativePrice": "-1.538612341615811856",
+        "lastTimestamp": 1678184976
       }
     },
-    "ETH-USDT PERP": {
+    "ETH-USDT-PERP": {
       "oracleBase": "ETH",
       "oracleQuote": "USDT",
       "oracleType": "bandibc",
+      "oracleScaleFactor": 6,
       "initialMarginRatio": "0.195",
       "maintenanceMarginRatio": "0.05",
       "isPerpetual": true,
@@ -1389,7 +1421,7 @@
         "symbol": "USDT",
         "logo": "https://static.alchemyapi.io/images/assets/825.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "makerFeeRate": "-0.0001",
@@ -1400,19 +1432,20 @@
       "perpetualMarketInfo": {
         "hourlyFundingRateCap": "0.0000625",
         "hourlyInterestRate": "0.00000416666",
-        "nextFundingTimestamp": 1676905200,
+        "nextFundingTimestamp": 1677549600,
         "fundingInterval": 3600
       },
       "perpetualMarketFunding": {
-        "cumulativeFunding": "559727594.645968079485396168",
-        "cumulativePrice": "-486.189639632049119551",
-        "lastTimestamp": 1677540160
+        "cumulativeFunding": "557062453.697006286839874497",
+        "cumulativePrice": "-56.511029218858766445",
+        "lastTimestamp": 1678183935
       }
     },
-    "BNB-USDT PERP": {
+    "BNB-USDT-PERP": {
       "oracleBase": "BNB",
       "oracleQuote": "USDT",
       "oracleType": "bandibc",
+      "oracleScaleFactor": 6,
       "initialMarginRatio": "0.095",
       "maintenanceMarginRatio": "0.05",
       "isPerpetual": true,
@@ -1426,7 +1459,7 @@
         "symbol": "USDT",
         "logo": "https://static.alchemyapi.io/images/assets/825.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "makerFeeRate": "-0.0001",
@@ -1437,19 +1470,20 @@
       "perpetualMarketInfo": {
         "hourlyFundingRateCap": "0.0000625",
         "hourlyInterestRate": "0.00000416666",
-        "nextFundingTimestamp": 1677542400,
+        "nextFundingTimestamp": 1678186800,
         "fundingInterval": 3600
       },
       "perpetualMarketFunding": {
-        "cumulativeFunding": "8973304.377729126850750308",
-        "cumulativePrice": "1.569939695948722956",
-        "lastTimestamp": 1677538398
+        "cumulativeFunding": "7123618.471578233977557283",
+        "cumulativePrice": "-2.680254733674219373",
+        "lastTimestamp": 1678185104
       }
     },
-    "INJ-USDT PERP": {
+    "INJ-USDT-PERP": {
       "oracleBase": "INJ",
       "oracleQuote": "USDT",
       "oracleType": "bandibc",
+      "oracleScaleFactor": 6,
       "initialMarginRatio": "0.195",
       "maintenanceMarginRatio": "0.095",
       "isPerpetual": true,
@@ -1463,7 +1497,7 @@
         "symbol": "USDT",
         "logo": "https://static.alchemyapi.io/images/assets/825.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "makerFeeRate": "-0.0001",
@@ -1474,19 +1508,20 @@
       "perpetualMarketInfo": {
         "hourlyFundingRateCap": "0.0000625",
         "hourlyInterestRate": "0.00000416666",
-        "nextFundingTimestamp": 1677542400,
+        "nextFundingTimestamp": 1678186800,
         "fundingInterval": 3600
       },
       "perpetualMarketFunding": {
-        "cumulativeFunding": "1139821.202240703631094522",
-        "cumulativePrice": "3.104376719811931739",
-        "lastTimestamp": 1677540011
+        "cumulativeFunding": "1161622.340224922505695088",
+        "cumulativePrice": "3.308427930614979416",
+        "lastTimestamp": 1678185153
       }
     },
-    "LUNA-UST PERP": {
+    "LUNA-UST-PERP": {
       "oracleBase": "LUNA",
       "oracleQuote": "UST",
       "oracleType": "bandibc",
+      "oracleScaleFactor": 6,
       "initialMarginRatio": "0.095",
       "maintenanceMarginRatio": "0.05",
       "isPerpetual": true,
@@ -1500,7 +1535,7 @@
         "symbol": "UST",
         "logo": "https://s2.coinmarketcap.com/static/img/coins/64x64/7129.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "makerFeeRate": "0.0005",
@@ -1511,7 +1546,7 @@
       "perpetualMarketInfo": {
         "hourlyFundingRateCap": "0.0000625",
         "hourlyInterestRate": "0.00000416666",
-        "nextFundingTimestamp": 1677542400,
+        "nextFundingTimestamp": 1678186800,
         "fundingInterval": 3600
       },
       "perpetualMarketFunding": {
@@ -1520,10 +1555,11 @@
         "lastTimestamp": 1653127200
       }
     },
-    "ATOM-USDT PERP": {
+    "ATOM-USDT-PERP": {
       "oracleBase": "ATOM",
       "oracleQuote": "USDT",
       "oracleType": "bandibc",
+      "oracleScaleFactor": 6,
       "initialMarginRatio": "0.195",
       "maintenanceMarginRatio": "0.095",
       "isPerpetual": true,
@@ -1537,7 +1573,7 @@
         "symbol": "USDT",
         "logo": "https://static.alchemyapi.io/images/assets/825.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "makerFeeRate": "-0.0001",
@@ -1548,19 +1584,20 @@
       "perpetualMarketInfo": {
         "hourlyFundingRateCap": "0.0000625",
         "hourlyInterestRate": "0.00000416666",
-        "nextFundingTimestamp": 1677542400,
+        "nextFundingTimestamp": 1678186800,
         "fundingInterval": 3600
       },
       "perpetualMarketFunding": {
-        "cumulativeFunding": "4785700.996089644278509194",
-        "cumulativePrice": "0.657103729661676595",
-        "lastTimestamp": 1677540393
+        "cumulativeFunding": "4808301.079078869359092374",
+        "cumulativePrice": "-0.592210313290404349",
+        "lastTimestamp": 1678185484
       }
     },
-    "STX-USDT PERP": {
+    "STX-USDT-PERP": {
       "oracleBase": "STX",
       "oracleQuote": "USDT",
       "oracleType": "bandibc",
+      "oracleScaleFactor": 6,
       "initialMarginRatio": "0.195",
       "maintenanceMarginRatio": "0.05",
       "isPerpetual": true,
@@ -1574,7 +1611,7 @@
         "symbol": "USDT",
         "logo": "https://static.alchemyapi.io/images/assets/825.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "makerFeeRate": "-0.0001",
@@ -1585,19 +1622,20 @@
       "perpetualMarketInfo": {
         "hourlyFundingRateCap": "0.0000625",
         "hourlyInterestRate": "0.00000416666",
-        "nextFundingTimestamp": 1677542400,
+        "nextFundingTimestamp": 1678186800,
         "fundingInterval": 3600
       },
       "perpetualMarketFunding": {
-        "cumulativeFunding": "-33380.278077775913912191",
-        "cumulativePrice": "11.900895240576608256",
-        "lastTimestamp": 1677538272
+        "cumulativeFunding": "-27411.193567144902121933",
+        "cumulativePrice": "-28.16838804256491245",
+        "lastTimestamp": 1678185453
       }
     },
-    "BAYC-WETH PERP": {
+    "BAYC-WETH-PERP": {
       "oracleBase": "BAYC",
       "oracleQuote": "WETH",
       "oracleType": "pricefeed",
+      "oracleScaleFactor": 18,
       "initialMarginRatio": "0.5",
       "maintenanceMarginRatio": "0.25",
       "isPerpetual": true,
@@ -1611,7 +1649,7 @@
         "symbol": "WETH",
         "logo": "https://static.alchemyapi.io/images/assets/2396.png",
         "decimals": 18,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "makerFeeRate": "-0.0001",
@@ -1622,7 +1660,7 @@
       "perpetualMarketInfo": {
         "hourlyFundingRateCap": "0.0000625",
         "hourlyInterestRate": "0.00000416666",
-        "nextFundingTimestamp": 1677542400,
+        "nextFundingTimestamp": 1678186800,
         "fundingInterval": 3600
       },
       "perpetualMarketFunding": {
@@ -1631,10 +1669,11 @@
         "lastTimestamp": 1667940243
       }
     },
-    "OSMO-UST PERP": {
+    "OSMO-UST-PERP": {
       "oracleBase": "OSMO",
       "oracleQuote": "UST",
       "oracleType": "bandibc",
+      "oracleScaleFactor": 6,
       "initialMarginRatio": "0.195",
       "maintenanceMarginRatio": "0.05",
       "isPerpetual": true,
@@ -1648,7 +1687,7 @@
         "symbol": "UST",
         "logo": "https://s2.coinmarketcap.com/static/img/coins/64x64/7129.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "makerFeeRate": "0.0005",
@@ -1659,7 +1698,7 @@
       "perpetualMarketInfo": {
         "hourlyFundingRateCap": "0.0000625",
         "hourlyInterestRate": "0.00000416666",
-        "nextFundingTimestamp": 1677542400,
+        "nextFundingTimestamp": 1678186800,
         "fundingInterval": 3600
       },
       "perpetualMarketFunding": {
@@ -1668,10 +1707,11 @@
         "lastTimestamp": 1652077029
       }
     },
-    "OSMO-USDT PERP": {
+    "OSMO-USDT-PERP": {
       "oracleBase": "OSMO",
       "oracleQuote": "USDT",
       "oracleType": "bandibc",
+      "oracleScaleFactor": 6,
       "initialMarginRatio": "0.195",
       "maintenanceMarginRatio": "0.05",
       "isPerpetual": true,
@@ -1685,7 +1725,7 @@
         "symbol": "USDT",
         "logo": "https://static.alchemyapi.io/images/assets/825.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "makerFeeRate": "-0.0001",
@@ -1696,19 +1736,20 @@
       "perpetualMarketInfo": {
         "hourlyFundingRateCap": "0.0000625",
         "hourlyInterestRate": "0.00000416666",
-        "nextFundingTimestamp": 1677542400,
+        "nextFundingTimestamp": 1678186800,
         "fundingInterval": 3600
       },
       "perpetualMarketFunding": {
-        "cumulativeFunding": "-115116.912896641711060722",
-        "cumulativePrice": "7.37865093168320116",
-        "lastTimestamp": 1677450257
+        "cumulativeFunding": "-110209.318260508574912463",
+        "cumulativePrice": "11.409798853650586744",
+        "lastTimestamp": 1678185105
       }
     },
-    "SOL-USDT PERP": {
+    "SOL-USDT-PERP": {
       "oracleBase": "SOL",
       "oracleQuote": "USDT",
       "oracleType": "bandibc",
+      "oracleScaleFactor": 6,
       "initialMarginRatio": "0.095",
       "maintenanceMarginRatio": "0.05",
       "isPerpetual": true,
@@ -1722,7 +1763,7 @@
         "symbol": "USDT",
         "logo": "https://static.alchemyapi.io/images/assets/825.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "makerFeeRate": "-0.0001",
@@ -1733,7 +1774,7 @@
       "perpetualMarketInfo": {
         "hourlyFundingRateCap": "0.0000625",
         "hourlyInterestRate": "0.00000416666",
-        "nextFundingTimestamp": 1677542400,
+        "nextFundingTimestamp": 1678186800,
         "fundingInterval": 3600
       },
       "perpetualMarketFunding": {
@@ -1742,10 +1783,11 @@
         "lastTimestamp": 1660758470
       }
     },
-    "BONK-USDT PERP": {
+    "BONK-USDT-PERP": {
       "oracleBase": "BONK",
       "oracleQuote": "USDT",
       "oracleType": "pricefeed",
+      "oracleScaleFactor": 6,
       "initialMarginRatio": "0.195",
       "maintenanceMarginRatio": "0.05",
       "isPerpetual": true,
@@ -1759,7 +1801,7 @@
         "symbol": "USDT",
         "logo": "https://static.alchemyapi.io/images/assets/825.png",
         "decimals": 6,
-        "updatedAt": 1676498049709,
+        "updatedAt": 1677706712778,
         "coinGeckoId": ""
       },
       "makerFeeRate": "-0.0003",
@@ -1770,13 +1812,13 @@
       "perpetualMarketInfo": {
         "hourlyFundingRateCap": "0.000625",
         "hourlyInterestRate": "0.00000416666",
-        "nextFundingTimestamp": 1677542400,
+        "nextFundingTimestamp": 1678186800,
         "fundingInterval": 3600
       },
       "perpetualMarketFunding": {
-        "cumulativeFunding": "0.000522806659143227",
-        "cumulativePrice": "6.283865121998576255",
-        "lastTimestamp": 1677251203
+        "cumulativeFunding": "0.002484823367715407",
+        "cumulativePrice": "37.807340813319200418",
+        "lastTimestamp": 1677939003
       }
     }
   }

@@ -96,15 +96,13 @@ export class InjectiveCLOB {
     req: ClobMarketsRequest
   ): Promise<{ markets: CLOBMarkets }> {
     if (req.market && req.market.split('-').length === 2) {
-      if (req.isDerivative === undefined || !req.isDerivative) {
-        const resp: CLOBMarkets = {};
-        resp[req.market] = this.parsedMarkets[req.market];
-        return { markets: resp };
-      } else if (req.isDerivative) {
-        const resp: CLOBMarkets = {};
+      const resp: CLOBMarkets = {};
+      if (req.isDerivative !== undefined && req.isDerivative) {
         resp[req.market] = this.parsedMarkets[req.market + '-PERP'];
-        return { markets: resp };
+      } else {
+        resp[req.market] = this.parsedMarkets[req.market];
       }
+      return { markets: resp };
     }
     return { markets: this.parsedMarkets };
   }
@@ -172,7 +170,14 @@ export class InjectiveCLOB {
     const wallet = await this._chain.getWallet(req.address);
     const privateKey: string = wallet.privateKey;
     const injectiveAddress: string = wallet.injectiveAddress;
-    const market = this.parsedMarkets[req.market];
+
+    let market;
+    if (req.leverage !== undefined) {
+      market = this.parsedMarkets[req.market + '-PERP'];
+    } else {
+      market = this.parsedMarkets[req.market];
+    }
+
     let orderType: GrpcOrderType = req.side === 'BUY' ? 1 : 2;
     orderType =
       req.orderType === 'LIMIT_MAKER'
@@ -251,7 +256,13 @@ export class InjectiveCLOB {
     const wallet = await this._chain.getWallet(req.address);
     const privateKey: string = wallet.privateKey;
     const injectiveAddress: string = wallet.injectiveAddress;
-    const market = this.parsedMarkets[req.market];
+    let market;
+
+    if (req.isDerivative !== undefined && req.isDerivative) {
+      market = this.parsedMarkets[req.market + '-PERP'];
+    } else {
+      market = this.parsedMarkets[req.market];
+    }
 
     let msg;
     if (req.isDerivative !== undefined && req.isDerivative === true) {
@@ -306,7 +317,7 @@ export class InjectiveCLOB {
     pagination: ExchangePagination;
   }> {
     return await this.derivativeApi.fetchFundingRates({
-      marketId: req.marketId,
+      marketId: this.parsedMarkets[req.market + '-PERP'].marketId,
       pagination: { skip: req.skip, limit: req.limit, endTime: req.endTime },
     });
   }
@@ -316,7 +327,7 @@ export class InjectiveCLOB {
     pagination: ExchangePagination;
   }> {
     return await this.derivativeApi.fetchFundingPayments({
-      marketId: req.marketId,
+      marketId: this.parsedMarkets[req.market + '-PERP'].marketId,
       pagination: { skip: req.skip, limit: req.limit, endTime: req.endTime },
     });
   }

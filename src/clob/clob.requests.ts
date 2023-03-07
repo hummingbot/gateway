@@ -80,7 +80,7 @@ export type ClobDeleteOrderRequest = ClobGetOrderRequest;
 export type ClobDeleteOrderResponse = ClobPostOrderResponse;
 
 export interface ClobFundingRatesRequest extends NetworkSelectionRequest {
-  marketId: string;
+  market: string;
   skip?: number; // skip last n funding rates
   limit?: number; // 1 to 100
   endTime?: number; // Upper bound of funding rate timestamp
@@ -96,7 +96,7 @@ export interface ClobFundingRatesResponse {
 
 export interface ClobFundingPaymentsRequest extends NetworkSelectionRequest {
   address: string;
-  marketId: string;
+  market: string;
   skip?: number; // skip last n funding payments
   limit?: number; // 1 to 100
   endTime?: number; // Upper bound of funding payment timestamp

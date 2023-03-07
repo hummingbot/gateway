@@ -233,7 +233,7 @@ curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT "https://localhost:158
 curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT "https://localhost:15888/clob/orderBook?chain=injective&network=mainnet&connector=injective&market=WETH-USDC" | jq
 
 ## get PERP pair order books
-curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT "https://localhost:15888/clob/orderBook?chain=injective&network=mainnet&connector=injective&market=BONK-USDT&isDerivative=true" | jq
+curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT "https://localhost:15888/clob/orderBook?chain=injective&network=mainnet&connector=injective&market=INJ-USDT&isDerivative=true" | jq
 
 ## get tickers
 curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT "https://localhost:15888/clob/ticker?chain=injective&network=mainnet&connector=injective" | jq
@@ -244,9 +244,19 @@ curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT "https://localhost:158
 ## post orders
 curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/injective_post_order.json)" https://localhost:15888/clob/orders | jq
 
+## post PERP order
+curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/injective_post_perp_order.json)" https://localhost:15888/clob/orders | jq
+
 ## delete orders
 curl -s -X DELETE -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/injective_delete_order.json)" https://localhost:15888/clob/orders | jq
 
+## delete PERP orders
+curl -s -X DELETE -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/injective_delete_perp_order.json)" https://localhost:15888/clob/orders | jq
+
+# CLOB perpetual only
+curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/injective_perp_funding_rates.json)" https://localhost:15888/clob/funding/rates | jq
+
+curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/injective_perp_funding_payments.json)" https://localhost:15888/clob/funding/payments | jq
 
 # injective
 
@@ -260,4 +270,4 @@ curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: app
 
 curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/injective_transfer_to_sub.json)" https://localhost:15888/injective/transfer/to/sub | jq
 
-# CLOB perpetual
+

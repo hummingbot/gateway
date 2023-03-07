@@ -11,9 +11,7 @@ const TX_HASH =
   'CC6BF44223B4BD05396F83D55A0ABC0F16CE80836C0E34B08F4558CF72944299'; // noqa: mock
 const MARKET = 'INJ-USDT';
 
-const PERP_MARKET = 'BNB-USDT PERP';
-
-const MARKETS = [
+const SPOT_MARKETS = [
   {
     marketId:
       '0xa508cb32923323679f29a032c70342c147c17d0145625922b0ef22e955c844c0', // noqa: mock
@@ -45,42 +43,45 @@ const MARKETS = [
     minPriceTickSize: 1e-15,
     minQuantityTickSize: 1000000000000000,
   },
+];
+const DERIVATIVE_MARKETS = [
   {
-    marketId:
-      '0x1c79dac019f73e4060494ab1b4fcba734350656d6fc4d474f6a238c13c6f9ced',
-    marketStatus: 'active',
-    ticker: 'BNB/USDT PERP',
-    oracleBase: 'BNB',
+    oracleBase: 'INJ',
     oracleQuote: 'USDT',
     oracleType: 'bandibc',
     oracleScaleFactor: 6,
-    initialMarginRatio: '0.095',
-    maintenanceMarginRatio: '0.05',
+    initialMarginRatio: '0.195',
+    maintenanceMarginRatio: '0.095',
+    isPerpetual: true,
+    marketId:
+      '0x9b9980167ecc3645ff1a5517886652d94a0825e54a77d2057cbbe3ebee015963',
+    marketStatus: 'active',
+    ticker: 'INJ/USDT PERP',
     quoteDenom: 'peggy0xdAC17F958D2ee523a2206206994597C13D831ec7',
-    quoteTokenMeta: {
+    quoteToken: {
       name: 'Tether',
       address: '0xdAC17F958D2ee523a2206206994597C13D831ec7',
       symbol: 'USDT',
       logo: 'https://static.alchemyapi.io/images/assets/825.png',
       decimals: 6,
-      updatedAt: 1650978923353,
+      updatedAt: 1677706712778,
+      coinGeckoId: '',
     },
-    makerFeeRate: '0.0005',
-    takerFeeRate: '0.0012',
+    makerFeeRate: '-0.0001',
+    takerFeeRate: '0.001',
     serviceProviderFee: '0.4',
-    isPerpetual: true,
-    minPriceTickSize: '10000',
-    minQuantityTickSize: '0.01',
+    minPriceTickSize: 1000,
+    minQuantityTickSize: 0.001,
     perpetualMarketInfo: {
-      hourlyFundingRateCap: '0.000625',
+      hourlyFundingRateCap: '0.0000625',
       hourlyInterestRate: '0.00000416666',
-      nextFundingTimestamp: 1654246800,
+      nextFundingTimestamp: 1678186800,
       fundingInterval: 3600,
     },
     perpetualMarketFunding: {
-      cumulativeFunding: '56890491.178246679699729639',
-      cumulativePrice: '7.082760891515203314',
-      lastTimestamp: 1654245985,
+      cumulativeFunding: '1161622.340224922505695088',
+      cumulativePrice: '3.308427930614979416',
+      lastTimestamp: 1678185153,
     },
   },
 ];
@@ -207,12 +208,18 @@ const patchCurrentBlockNumber = (withError: boolean = false) => {
 
 const patchMarkets = () => {
   patch(injCLOB.spotApi, 'fetchMarkets', () => {
-    return MARKETS;
+    return SPOT_MARKETS;
+  });
+  patch(injCLOB.derivativeApi, 'fetchMarkets', () => {
+    return DERIVATIVE_MARKETS;
   });
 };
 
 const patchOrderBook = () => {
   patch(injCLOB.spotApi, 'fetchOrderbook', () => {
+    return ORDER_BOOK;
+  });
+  patch(injCLOB.derivativeApi, 'fetchOrderbook', () => {
     return ORDER_BOOK;
   });
 };
@@ -305,7 +312,7 @@ describe('GET /clob/orderBook', () => {
       .expect((res) => expect(res.body.sells).toEqual(ORDER_BOOK.sells));
   });
 
-  it('should return 200 with proper request', async () => {
+  it('should return 200 with proper request for PERP', async () => {
     patchOrderBook();
     await request(gatewayApp)
       .get(`/clob/orderBook`)
@@ -340,7 +347,6 @@ describe('GET /clob/ticker', () => {
         chain: 'injective',
         network: 'mainnet',
         connector: 'injective',
-        market: MARKET,
       })
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
@@ -419,7 +425,7 @@ describe('POST /clob/orders', () => {
         connector: 'injective',
         address:
           '0x261362dBC1D83705AB03e99792355689A4589b8E000000000000000000000000', // noqa: mock
-        market: PERP_MARKET,
+        market: MARKET,
         price: '10000.12',
         amount: '0.12',
         side: 'BUY',
@@ -523,8 +529,7 @@ describe('POST /clob/funding/rates', () => {
         chain: 'injective',
         network: 'mainnet',
         connector: 'injective',
-        marketId:
-          '0x1c79dac019f73e4060494ab1b4fcba734350656d6fc4d474f6a238c13c6f9ced',
+        market: MARKET,
       })
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
@@ -552,8 +557,7 @@ describe('POST /clob/funding/payments', () => {
         chain: 'injective',
         network: 'mainnet',
         connector: 'injective',
-        marketId:
-          '0x1c79dac019f73e4060494ab1b4fcba734350656d6fc4d474f6a238c13c6f9ced',
+        market: MARKET,
         address:
           '0x261362dBC1D83705AB03e99792355689A4589b8E000000000000000000000000',
       })

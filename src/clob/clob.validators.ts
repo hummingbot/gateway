@@ -21,9 +21,6 @@ import {
 export const invalidMarketError: string =
   'The market param is not a valid market. Market should be in {base}-{quote} format.';
 
-export const invalidMarketIdError: string =
-  'The market id is not valid market. Market id should be a string.';
-
 export const invalidSkipError: string =
   'skip is not valid. It should either be undefined or a non-negative integer.';
 
@@ -49,12 +46,6 @@ export const validateMarket: Validator = mkValidator(
   'market',
   invalidMarketError,
   (val) => typeof val === 'string' && val.split('-').length === 2
-);
-
-export const validateMarketId: Validator = mkValidator(
-  'marketId',
-  invalidMarketIdError,
-  (val) => typeof val === 'string'
 );
 
 export const validateSkip: Validator = mkValidator(
@@ -134,7 +125,7 @@ export const validateOrderRequest: RequestValidator = mkRequestValidator(
 
 export const validateFundingRatesRequest: RequestValidator = mkRequestValidator(
   NETWORK_VALIDATIONS.concat([
-    validateMarketId,
+    validateMarket,
     validateSkip,
     validateLimit,
     validateEndTime,
@@ -145,7 +136,7 @@ export const validateFundingPaymentsRequest: RequestValidator =
   mkRequestValidator(
     NETWORK_VALIDATIONS.concat([
       validateWallet,
-      validateMarketId,
+      validateMarket,
       validateSkip,
       validateLimit,
       validateEndTime,
