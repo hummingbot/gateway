@@ -60,6 +60,7 @@ import {
   validateOrderRequest,
   validateFundingRatesRequest,
   validateFundingPaymentsRequest,
+  validatePostPerpOrderRequest,
 } from './clob.validators';
 
 export namespace CLOBRoutes {
@@ -251,7 +252,7 @@ export namespace PerpClobRoutes {
         req: Request<{}, {}, PerpClobPostOrderRequest>,
         res: Response<PerpClobPostOrderResponse | string, {}>
       ) => {
-        validatePostOrderRequest(req.body);
+        validatePostPerpOrderRequest(req.body);
         res.status(200).json(await perpPostOrder(req.body));
       }
     )

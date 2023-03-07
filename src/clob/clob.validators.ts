@@ -42,6 +42,9 @@ export const invalidOrderIdError: string =
 export const invalidOrderTypeError: string =
   'The orderType specified is invalid. Valid value is either `LIMIT` or `LIMIT_MAKER`';
 
+export const invalidLeverageError: string =
+  'The leverage param must be a number.';
+
 export const validateMarket: Validator = mkValidator(
   'market',
   invalidMarketError,
@@ -53,6 +56,12 @@ export const validateSkip: Validator = mkValidator(
   invalidSkipError,
   (val) => typeof val === 'number' && val >= 0,
   true
+);
+
+export const validateLeverage: Validator = mkValidator(
+  'leverage',
+  invalidLimitError,
+  (val) => typeof val === 'number'
 );
 
 export const validateLimit: Validator = mkValidator(
@@ -118,6 +127,18 @@ export const validatePostOrderRequest: RequestValidator = mkRequestValidator(
     validatePrice,
   ])
 );
+
+export const validatePostPerpOrderRequest: RequestValidator =
+  mkRequestValidator(
+    NETWORK_VALIDATIONS.concat([
+      validateAmount,
+      validateWallet,
+      validateSide,
+      validateOrderType,
+      validatePrice,
+      validateLeverage,
+    ])
+  );
 
 export const validateOrderRequest: RequestValidator = mkRequestValidator(
   NETWORK_VALIDATIONS.concat([validateOrderId, validateWallet])
