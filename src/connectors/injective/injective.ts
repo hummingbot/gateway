@@ -131,7 +131,12 @@ export class InjectiveCLOB {
     req: ClobGetOrderRequest
   ): Promise<{ orders: ClobGetOrderResponse['orders'] }> {
     if (!req.market) return { orders: [] };
-    const marketId = this.parsedMarkets[req.market].marketId;
+    let marketId;
+    if (req.isDerivative !== undefined && req.isDerivative) {
+      marketId = this.parsedMarkets[req.market + '-PERP'].marketId;
+    } else {
+      marketId = this.parsedMarkets[req.market].marketId;
+    }
     const orders: SpotOrderHistory[] = (
       await this.spotApi.fetchOrderHistory({
         subaccountId: req.address,
