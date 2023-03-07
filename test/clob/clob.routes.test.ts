@@ -266,10 +266,16 @@ const patchOrders = () => {
   patch(injCLOB.spotApi, 'fetchOrderHistory', () => {
     return ORDERS;
   });
+  patch(injClobPerp.derivativeApi, 'fetchOrderHistory', () => {
+    return ORDERS;
+  });
 };
 
 const patchGasPrices = () => {
   patch(injCLOB, 'estimateGas', () => {
+    return GAS_PRICES;
+  });
+  patch(injClobPerp, 'estimateGas', () => {
     return GAS_PRICES;
   });
 };
@@ -467,11 +473,11 @@ describe('POST /clob/perp/funding/rates', () => {
   it('should return 200 with proper request', async () => {
     patchFundingRates();
     await request(gatewayApp)
-      .post(`/clob/funding/rates`)
+      .post(`/clob/perp/funding/rates`)
       .send({
         chain: 'injective',
         network: 'mainnet',
-        connector: 'injective',
+        connector: 'injective-perp',
         market: MARKET,
       })
       .set('Accept', 'application/json')
@@ -499,7 +505,7 @@ describe('POST /clob/perp/funding/payments', () => {
       .send({
         chain: 'injective',
         network: 'mainnet',
-        connector: 'injective',
+        connector: 'injective-perp',
         market: MARKET,
         address:
           '0x261362dBC1D83705AB03e99792355689A4589b8E000000000000000000000000',
@@ -531,7 +537,7 @@ describe('GET /clob/perp/markets', () => {
       .query({
         chain: 'injective',
         network: 'mainnet',
-        connector: 'injective',
+        connector: 'injective-perp',
       })
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
@@ -557,7 +563,7 @@ describe('GET /clob/perp/orderBook', () => {
       .query({
         chain: 'injective',
         network: 'mainnet',
-        connector: 'injective',
+        connector: 'injective-perp',
         market: MARKET,
       })
       .set('Accept', 'application/json')
@@ -583,7 +589,7 @@ describe('GET /clob/perp/ticker', () => {
       .query({
         chain: 'injective',
         network: 'mainnet',
-        connector: 'injective',
+        connector: 'injective-perp',
       })
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
@@ -609,7 +615,7 @@ describe('GET /clob/perp/orders', () => {
       .query({
         chain: 'injective',
         network: 'mainnet',
-        connector: 'injective',
+        connector: 'injective-perp',
         address:
           '0x261362dBC1D83705AB03e99792355689A4589b8E000000000000000000000000', // noqa: mock
         market: MARKET,
@@ -638,30 +644,7 @@ describe('POST /clob/perp/orders', () => {
       .send({
         chain: 'injective',
         network: 'mainnet',
-        connector: 'injective',
-        address:
-          '0x261362dBC1D83705AB03e99792355689A4589b8E000000000000000000000000', // noqa: mock
-        market: MARKET,
-        price: '10000.12',
-        amount: '0.12',
-        side: 'BUY',
-        orderType: 'LIMIT',
-      })
-      .set('Accept', 'application/json')
-      .expect('Content-Type', /json/)
-      .expect(200)
-      .expect((res) => expect(res.body.txHash).toEqual(TX_HASH));
-  });
-
-  it('should return 200 with proper request', async () => {
-    patchGetWallet();
-    patchMsgBroadcaster();
-    await request(gatewayApp)
-      .post(`/clob/perp/orders`)
-      .send({
-        chain: 'injective',
-        network: 'mainnet',
-        connector: 'injective',
+        connector: 'injective-perp',
         address:
           '0x261362dBC1D83705AB03e99792355689A4589b8E000000000000000000000000', // noqa: mock
         market: MARKET,
@@ -694,7 +677,7 @@ describe('DELETE /clob/perp/orders', () => {
       .send({
         chain: 'injective',
         network: 'mainnet',
-        connector: 'injective',
+        connector: 'injective-perp',
         address:
           '0x261362dBC1D83705AB03e99792355689A4589b8E000000000000000000000000', // noqa: mock
         market: MARKET,
@@ -722,7 +705,7 @@ describe('GET /clob/perp/estimateGas', () => {
       .query({
         chain: 'injective',
         network: 'mainnet',
-        connector: 'injective',
+        connector: 'injective-perp',
       })
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
@@ -734,34 +717,6 @@ describe('GET /clob/perp/estimateGas', () => {
     await request(gatewayApp)
       .get(`/clob/perp/estimateGas`)
       .query(INVALID_REQUEST)
-      .expect(404);
-  });
-});
-
-describe('POST /clob/perp/funding/rates', () => {
-  it('should return 200 with proper request', async () => {
-    patchFundingRates();
-    await request(gatewayApp)
-      .post(`/clob/funding/rates`)
-      .send({
-        chain: 'injective',
-        network: 'mainnet',
-        connector: 'injective',
-        market: MARKET,
-      })
-      .set('Accept', 'application/json')
-      .expect('Content-Type', /json/)
-      .expect(200)
-      .expect((res) =>
-        expect(res.body.fundingRates).toEqual(FUNDING_RATES.fundingRates)
-      );
-  });
-
-  it('should return 404 when parameters are invalid', async () => {
-    await request(gatewayApp)
-      .post(`/clob/perp/funding/rates`)
-      .send(INVALID_REQUEST)
-      .set('Accept', 'application/json')
       .expect(404);
   });
 });

@@ -14,6 +14,7 @@ import { Uniswap } from '../connectors/uniswap/uniswap';
 import { UniswapLP } from '../connectors/uniswap/uniswap.lp';
 import { VVSConnector } from '../connectors/vvs/vvs';
 import { InjectiveCLOB } from '../connectors/injective/injective';
+import { InjectiveClobPerp } from '../connectors/injective-perp/injective.perp';
 import { Injective } from '../chains/injective/injective';
 import {
   Ethereumish,
@@ -71,7 +72,8 @@ type ConnectorUnion =
   | UniswapLPish
   | Perpish
   | RefAMMish
-  | InjectiveCLOB;
+  | InjectiveCLOB
+  | InjectiveClobPerp;
 
 export type Connector<T> = T extends Uniswapish
   ? Uniswapish
@@ -83,6 +85,8 @@ export type Connector<T> = T extends Uniswapish
   ? RefAMMish
   : T extends InjectiveCLOB
   ? InjectiveCLOB
+  : T extends InjectiveClobPerp
+  ? InjectiveClobPerp
   : never;
 
 export async function getConnector<T>(
@@ -127,6 +131,8 @@ export async function getConnector<T>(
     connectorInstance = PancakeSwap.getInstance(chain, network);
   } else if (connector === 'sushiswap') {
     connectorInstance = Sushiswap.getInstance(chain, network);
+  } else if (chain === 'injective' && connector === 'injective-perp') {
+    connectorInstance = InjectiveClobPerp.getInstance(chain, network);
   } else if (chain === 'injective' && connector === 'injective') {
     connectorInstance = InjectiveCLOB.getInstance(chain, network);
   } else {
