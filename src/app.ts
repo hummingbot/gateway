@@ -18,10 +18,12 @@ import { NetworkRoutes } from './network/network.routes';
 import { ConnectorsRoutes } from './connectors/connectors.routes';
 import { EVMRoutes } from './evm/evm.routes';
 import { AmmRoutes, AmmLiquidityRoutes, PerpAmmRoutes } from './amm/amm.routes';
-import morgan from 'morgan';
-
-import swaggerUi from 'swagger-ui-express';
+import { InjectiveRoutes } from './chains/injective/injective.routes';
 import { NearRoutes } from './chains/near/near.routes';
+import { CLOBRoutes } from './clob/clob.routes';
+
+import morgan from 'morgan';
+import swaggerUi from 'swagger-ui-express';
 
 export const gatewayApp = express();
 
@@ -47,12 +49,14 @@ gatewayApp.use(
 gatewayApp.use('/config', ConfigRoutes.router);
 gatewayApp.use('/network', NetworkRoutes.router);
 gatewayApp.use('/evm', EVMRoutes.router);
+gatewayApp.use('/injective', InjectiveRoutes.router);
 gatewayApp.use('/connectors', ConnectorsRoutes.router);
 
 gatewayApp.use('/amm', AmmRoutes.router);
 gatewayApp.use('/amm/perp', PerpAmmRoutes.router);
 gatewayApp.use('/amm/liquidity', AmmLiquidityRoutes.router);
 gatewayApp.use('/wallet', WalletRoutes.router);
+gatewayApp.use('/clob', CLOBRoutes.router);
 gatewayApp.use('/cosmos', CosmosRoutes.router);
 gatewayApp.use('/near', NearRoutes.router);
 
@@ -91,6 +95,7 @@ export const swaggerDocument = SwaggerManager.generateSwaggerJson(
   [
     './docs/swagger/main-routes.yml',
     './docs/swagger/connectors-routes.yml',
+    './docs/swagger/clob-routes.yml',
     './docs/swagger/wallet-routes.yml',
     './docs/swagger/amm-routes.yml',
     './docs/swagger/amm-liquidity-routes.yml',
@@ -98,6 +103,7 @@ export const swaggerDocument = SwaggerManager.generateSwaggerJson(
     './docs/swagger/network-routes.yml',
     './docs/swagger/near-routes.yml',
     './docs/swagger/cosmos-routes.yml',
+    './docs/swagger/injective-routes.yml',
   ]
 );
 

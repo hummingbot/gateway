@@ -17,6 +17,7 @@ export class Harmony extends EthereumBase implements Ethereumish {
   private _chain: string;
   private _requestCount: number;
   private _metricsLogInterval: number;
+  private _metricTimer;
 
   private constructor(network: string) {
     const config = getHarmonyConfig('harmony', network);
@@ -42,7 +43,10 @@ export class Harmony extends EthereumBase implements Ethereumish {
     this._metricsLogInterval = 300000; // 5 minutes
 
     this.onDebugMessage(this.requestCounter.bind(this));
-    setInterval(this.metricLogger.bind(this), this.metricsLogInterval);
+    this._metricTimer = setInterval(
+      this.metricLogger.bind(this),
+      this.metricsLogInterval
+    );
   }
 
   public static getInstance(network: string): Harmony {
@@ -165,6 +169,7 @@ export class Harmony extends EthereumBase implements Ethereumish {
 
   async close() {
     await super.close();
+    clearInterval(this._metricTimer);
     if (this._chain in Harmony._instances) {
       delete Harmony._instances[this._chain];
     }
