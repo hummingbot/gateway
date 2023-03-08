@@ -22,6 +22,7 @@ export class Ethereum extends EthereumBase implements Ethereumish {
   private _chain: string;
   private _requestCount: number;
   private _metricsLogInterval: number;
+  private _metricTimer;
 
   private constructor(network: string) {
     const config = getEthereumConfig('ethereum', network);
@@ -50,7 +51,10 @@ export class Ethereum extends EthereumBase implements Ethereumish {
     this._metricsLogInterval = 300000; // 5 minutes
 
     this.onDebugMessage(this.requestCounter.bind(this));
-    setInterval(this.metricLogger.bind(this), this.metricsLogInterval);
+    this._metricTimer = setInterval(
+      this.metricLogger.bind(this),
+      this.metricsLogInterval
+    );
   }
 
   public static getInstance(network: string): Ethereum {
@@ -191,6 +195,7 @@ export class Ethereum extends EthereumBase implements Ethereumish {
 
   async close() {
     await super.close();
+    clearInterval(this._metricTimer);
     if (this._chain in Ethereum._instances) {
       delete Ethereum._instances[this._chain];
     }
