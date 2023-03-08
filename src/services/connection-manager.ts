@@ -13,6 +13,8 @@ import { PancakeSwap } from '../connectors/pancakeswap/pancakeswap';
 import { Uniswap } from '../connectors/uniswap/uniswap';
 import { UniswapLP } from '../connectors/uniswap/uniswap.lp';
 import { VVSConnector } from '../connectors/vvs/vvs';
+import { InjectiveCLOB } from '../connectors/injective/injective';
+import { Injective } from '../chains/injective/injective';
 import {
   Ethereumish,
   Nearish,
@@ -28,12 +30,14 @@ import { Defira } from '../connectors/defira/defira';
 import { Near } from '../chains/near/near';
 import { Ref } from '../connectors/ref/ref';
 
-export type ChainUnion = Ethereumish | Nearish;
+export type ChainUnion = Ethereumish | Nearish | Injective;
 
 export type Chain<T> = T extends Ethereumish
   ? Ethereumish
   : T extends Nearish
   ? Nearish
+  : T extends Injective
+  ? Injective
   : never;
 
 export async function getChain<T>(
@@ -51,6 +55,8 @@ export async function getChain<T>(
   else if (chain === 'binance-smart-chain')
     chainInstance = BinanceSmartChain.getInstance(network);
   else if (chain === 'cronos') chainInstance = Cronos.getInstance(network);
+  else if (chain === 'injective')
+    chainInstance = Injective.getInstance(network);
   else throw new Error('unsupported chain');
 
   if (!chainInstance.ready()) {
@@ -60,7 +66,12 @@ export async function getChain<T>(
   return chainInstance as Chain<T>;
 }
 
-type ConnectorUnion = Uniswapish | UniswapLPish | Perpish | RefAMMish;
+type ConnectorUnion =
+  | Uniswapish
+  | UniswapLPish
+  | Perpish
+  | RefAMMish
+  | InjectiveCLOB;
 
 export type Connector<T> = T extends Uniswapish
   ? Uniswapish
@@ -70,6 +81,8 @@ export type Connector<T> = T extends Uniswapish
   ? Perpish
   : T extends RefAMMish
   ? RefAMMish
+  : T extends InjectiveCLOB
+  ? InjectiveCLOB
   : never;
 
 export async function getConnector<T>(
@@ -114,6 +127,8 @@ export async function getConnector<T>(
     connectorInstance = PancakeSwap.getInstance(chain, network);
   } else if (connector === 'sushiswap') {
     connectorInstance = Sushiswap.getInstance(chain, network);
+  } else if (chain === 'injective' && connector === 'injective') {
+    connectorInstance = InjectiveCLOB.getInstance(chain, network);
   } else {
     throw new Error('unsupported chain or connector');
   }

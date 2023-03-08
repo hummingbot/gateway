@@ -13,9 +13,9 @@ let defikingdoms: Defikingdoms;
 beforeAll(async () => {
   app = express();
   app.use(express.json());
-  harmony = Harmony.getInstance('mainnet');
+  harmony = Harmony.getInstance('testnet');
   await harmony.init();
-  defikingdoms = Defikingdoms.getInstance('harmony', 'mainnet');
+  defikingdoms = Defikingdoms.getInstance('harmony', 'testnet');
   await defikingdoms.init();
   app.use('/amm', AmmRoutes.router);
 });
@@ -163,7 +163,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'harmony',
-        network: 'mainnet',
+        network: 'testnet',
         connector: 'defikingdoms',
         quote: '1ETH',
         base: 'WONE74',
@@ -193,7 +193,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'harmony',
-        network: 'mainnet',
+        network: 'testnet',
         connector: 'defikingdoms',
         quote: '1ETH',
         base: 'WONE74',
@@ -218,7 +218,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'harmony',
-        network: 'mainnet',
+        network: 'testnet',
         connector: 'defikingdoms',
         quote: 'DOGE',
         base: 'WONE74',
@@ -240,7 +240,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'harmony',
-        network: 'mainnet',
+        network: 'testnet',
         connector: 'defikingdoms',
         quote: '1ETH',
         base: 'SHIBA',
@@ -262,7 +262,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'harmony',
-        network: 'mainnet',
+        network: 'testnet',
         connector: 'defikingdoms',
         quote: '1ETH',
         base: 'SHIBA',
@@ -284,7 +284,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'harmony',
-        network: 'mainnet',
+        network: 'testnet',
         connector: 'defikingdoms',
         quote: '1ETH',
         base: 'SHIBA',
@@ -309,7 +309,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'harmony',
-        network: 'mainnet',
+        network: 'testnet',
         connector: 'defikingdoms',
         quote: 'DOGE',
         base: 'WONE74',
@@ -334,7 +334,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'harmony',
-        network: 'mainnet',
+        network: 'testnet',
         connector: 'defikingdoms',
         quote: 'DOGE',
         base: 'WONE74',
@@ -364,7 +364,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'harmony',
-        network: 'mainnet',
+        network: 'testnet',
         connector: 'defikingdoms',
         quote: '1ETH',
         base: 'WONE74',
@@ -386,7 +386,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'harmony',
-        network: 'mainnet',
+        network: 'testnet',
         connector: 'defikingdoms',
         quote: '1ETH',
         base: 'WONE74',
@@ -404,7 +404,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'harmony',
-        network: 'mainnet',
+        network: 'testnet',
         connector: 'defikingdoms',
         quote: '1ETH',
         base: 'WONE74',
@@ -436,7 +436,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'harmony',
-        network: 'mainnet',
+        network: 'testnet',
         connector: 'defikingdoms',
         quote: '1ETH',
         base: 'WONE74',
@@ -458,7 +458,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'harmony',
-        network: 'mainnet',
+        network: 'testnet',
         connector: 'defikingdoms',
         quote: '1ETH',
         base: 'WONE74',
@@ -479,7 +479,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'harmony',
-        network: 'mainnet',
+        network: 'testnet',
         connector: 'defikingdoms',
         quote: '1ETH',
         base: 'WONE74',
@@ -499,7 +499,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'harmony',
-        network: 'mainnet',
+        network: 'testnet',
         connector: 'defikingdoms',
         quote: '1ETH',
         base: 'WONE74',
@@ -519,7 +519,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'harmony',
-        network: 'mainnet',
+        network: 'testnet',
         connector: 'defikingdoms',
         quote: '1ETH',
         base: 'WONE74',
@@ -539,7 +539,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'harmony',
-        network: 'mainnet',
+        network: 'testnet',
         connector: 'defikingdoms',
         quote: '1ETH',
         base: 'WONE74',
@@ -559,7 +559,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'harmony',
-        network: 'mainnet',
+        network: 'testnet',
         connector: 'defikingdoms',
         quote: '1ETH',
         base: 'WONE74',
@@ -584,7 +584,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'harmony',
-        network: 'mainnet',
+        network: 'testnet',
         connector: 'defikingdoms',
         quote: '1ETH',
         base: 'WONE74',
@@ -613,7 +613,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'harmony',
-        network: 'mainnet',
+        network: 'testnet',
         connector: 'defikingdoms',
         quote: '1ETH',
         base: 'WONE74',
@@ -638,13 +638,13 @@ describe('POST /amm/estimateGas', () => {
       .post('/amm/estimateGas')
       .send({
         chain: 'harmony',
-        network: 'mainnet',
+        network: 'testnet',
         connector: 'defikingdoms',
       })
       .set('Accept', 'application/json')
       .expect(200)
       .then((res: any) => {
-        expect(res.body.network).toEqual('mainnet');
+        expect(res.body.network).toEqual('testnet');
         expect(res.body.gasPrice).toEqual(100);
         expect(res.body.gasCost).toEqual(
           gasCostInEthString(100, defikingdoms.gasLimitEstimate)
@@ -660,7 +660,7 @@ describe('POST /amm/estimateGas', () => {
       .post('/amm/estimateGas')
       .send({
         chain: 'harmony',
-        network: 'mainnet',
+        network: 'testnet',
         connector: 'pangolin',
       })
       .set('Accept', 'application/json')

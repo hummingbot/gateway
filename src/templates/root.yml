@@ -87,3 +87,7 @@ configurations:
   $namespace pancakeswap:
     configurationPath: pancakeswap.yml
     schemaPath: pangolin-schema.json
+  
+  $namespace injective:
+    configurationPath: injective.yml
+    schemaPath: injective-schema.json
