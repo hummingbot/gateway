@@ -147,15 +147,12 @@ export class DexalotCLOB implements CLOBish {
     );
     const formattedBalances: Record<string, any> = { available: {}, total: {} };
     for (const token of tokens) {
+      const index = indexOf(tokens, token);
       if (token) {
-        formattedBalances.available[token.symbol] = bigNumberWithDecimalToStr(
-          balances[indexOf(tokens, token)].available,
-          token.decimals
-        );
-        formattedBalances.total[token.symbol] = bigNumberWithDecimalToStr(
-          balances[indexOf(tokens, token)].total,
-          token.decimals
-        );
+        formattedBalances.available[req.tokenSymbols[index]] =
+          bigNumberWithDecimalToStr(balances[index].available, token.decimals);
+        formattedBalances.total[req.tokenSymbols[index]] =
+          bigNumberWithDecimalToStr(balances[index].total, token.decimals);
       }
     }
     return formattedBalances;
