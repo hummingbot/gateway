@@ -94,4 +94,4 @@ export const validateOrderRequest: RequestValidator = mkRequestValidator(
 );
 
 export const validateBatchOrdersRequest: RequestValidator =
-  mkRequestValidator(NETWORL_VALIDATIONS);
+  mkRequestValidator(NETWORK_VALIDATIONS);
