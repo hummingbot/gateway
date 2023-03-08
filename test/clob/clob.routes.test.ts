@@ -360,18 +360,19 @@ describe('POST /clob/batchOrders', () => {
         connector: 'injective',
         address:
           '0x261362dBC1D83705AB03e99792355689A4589b8E000000000000000000000000', // noqa: mock
-        market: MARKET,
         createOrderParams: [
           {
             price: '2',
             amount: '0.10',
             side: 'SELL',
             orderType: 'LIMIT',
+            market: MARKET,
           },
           {
             price: '3',
             amount: '0.10',
             side: 'SELL',
+            market: MARKET,
           },
         ],
       })
