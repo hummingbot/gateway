@@ -16,7 +16,6 @@ then
   GATEWAY_TAG="latest"
 fi
 
-
 # Ask the user for the name of the new Gateway instance
 read -p "Enter a name for your new Gateway instance (default = \"gateway\") >>> " INSTANCE_NAME
 if [ "$INSTANCE_NAME" == "" ]

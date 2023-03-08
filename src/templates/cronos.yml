@@ -2,14 +2,14 @@
 networks:
   mainnet: 
     chainID: 25
-    nodeURL: 'https://evm.cronos.org/'
+    nodeURL: 'https://evm.cronos.org'
     tokenListType: 'FILE'
     tokenListSource: 'src/chains/cronos/mainnet_beta.json'
     nativeCurrencySymbol: 'CRO'
     gasPriceRefreshInterval: 60
   testnet: 
     chainID: 338
-    nodeURL: 'https://evm-t3.cronos.org/'
+    nodeURL: 'https://evm-t3.cronos.org'
     tokenListType: 'FILE'
     tokenListSource: 'src/chains/cronos/testnet.json'
     nativeCurrencySymbol: 'CRO'

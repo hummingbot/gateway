@@ -1,752 +1,875 @@
 {
-  "info": {
-    "_postman_id": "ade812ab-996f-42ee-ab2a-f1811923360a",
-    "name": "Gateway API",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "_uid": "25477543-ade812ab-996f-42ee-ab2a-f1811923360a"
-  },
-  "item": [
-    {
-      "name": "system",
-      "item": [
-        {
-          "name": "/",
-          "id": "c8ba9eb4-d180-426e-8d84-e15725d902d2",
-          "protocolProfileBehavior": {
-            "disableBodyPruning": true
-          },
-          "request": {
-            "method": "GET",
-            "header": [],
-            "body": {
-              "mode": "raw",
-              "raw": ""
-            },
-            "url": {
-              "raw": "https://localhost:{{port}}/",
-              "protocol": "https",
-              "host": ["localhost"],
-              "port": "{{port}}",
-              "path": [""]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "config/update",
-          "id": "53fb0b0b-f511-4b52-85c1-28b6513036a0",
-          "protocolProfileBehavior": {
-            "disableBodyPruning": true
-          },
-          "request": {
-            "method": "POST",
-            "header": [],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"configPath\": \"ethereum.manualGasPrice\",\n    \"configValue\": 100\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "https://localhost:{{port}}/config/update",
-              "protocol": "https",
-              "host": ["localhost"],
-              "port": "{{port}}",
-              "path": ["config", "update"]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "connectors",
-          "id": "924959db-0fbd-4e70-901f-4a1d819d2ab4",
-          "protocolProfileBehavior": {
-            "disableBodyPruning": true
-          },
-          "request": {
-            "method": "GET",
-            "header": [],
-            "body": {
-              "mode": "urlencoded",
-              "urlencoded": []
-            },
-            "url": {
-              "raw": "https://localhost:{{port}}/connectors",
-              "protocol": "https",
-              "host": ["localhost"],
-              "port": "{{port}}",
-              "path": ["connectors"]
-            }
-          },
-          "response": []
-        }
-      ],
-      "id": "c2a569af-9bf2-4afd-86c6-57b52b4205a8"
-    },
-    {
-      "name": "network",
-      "item": [
-        {
-          "name": "status",
-          "id": "7d5d3585-72b1-4d3e-9528-ba7405d71bbd",
-          "protocolProfileBehavior": {
-            "disableBodyPruning": true
-          },
-          "request": {
-            "method": "GET",
-            "header": [],
-            "body": {
-              "mode": "urlencoded",
-              "urlencoded": []
-            },
-            "url": {
-              "raw": "https://localhost:{{port}}/network/status",
-              "protocol": "https",
-              "host": ["localhost"],
-              "port": "{{port}}",
-              "path": ["network", "status"]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "config",
-          "id": "1733866b-a938-418d-967c-7a2bae99a3c7",
-          "protocolProfileBehavior": {
-            "disableBodyPruning": true
-          },
-          "request": {
-            "method": "GET",
-            "header": [],
-            "body": {
-              "mode": "urlencoded",
-              "urlencoded": []
-            },
-            "url": {
-              "raw": "https://localhost:{{port}}/network/config",
-              "protocol": "https",
-              "host": ["localhost"],
-              "port": "{{port}}",
-              "path": ["network", "config"]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "balances",
-          "id": "28e1a02f-972b-4dca-ad2f-8f4b8f512673",
-          "protocolProfileBehavior": {
-            "disableBodyPruning": true
-          },
-          "request": {
-            "method": "POST",
-            "header": [],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"chain\": \"{{chain}}\",\n    \"network\": \"{{network}}\",\n    \"address\": \"{{eth_address}}\",\n    \"tokenSymbols\": [\n        \"ETH\",\n        \"WETH\",\n        \"DAI\",\n        \"UNI\"\n    ]\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "https://localhost:{{port}}/network/balances",
-              "protocol": "https",
-              "host": ["localhost"],
-              "port": "{{port}}",
-              "path": ["network", "balances"]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "poll",
-          "id": "5ddbd3a6-0a18-4e42-8c36-4daba7d25703",
-          "protocolProfileBehavior": {
-            "disableBodyPruning": true
-          },
-          "request": {
-            "method": "POST",
-            "header": [],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"network\": \"{{network}}\",\n    \"chain\": \"{{chain}}\",\n    \"txHash\": \"0x7c61b2954d30ef918ebd491c546c398664f92b49a07651c9452dd708273e780d\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "https://localhost:{{port}}/network/poll",
-              "protocol": "https",
-              "host": ["localhost"],
-              "port": "{{port}}",
-              "path": ["network", "poll"]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "tokens",
-          "id": "81b74c6d-ce3e-45d3-8bba-95b9c08ee3ca",
-          "protocolProfileBehavior": {
-            "disableBodyPruning": true
-          },
-          "request": {
-            "method": "GET",
-            "header": [],
-            "body": {
-              "mode": "raw",
-              "raw": ""
-            },
-            "url": {
-              "raw": "https://localhost:{{port}}/network/tokens?chain={{chain}}&network={{network}}&tokenSymbols[]=UNI&tokenSymbols[]=WETH&tokenSymbols[]=LINK",
-              "protocol": "https",
-              "host": ["localhost"],
-              "port": "{{port}}",
-              "path": ["network", "tokens"],
-              "query": [
-                {
-                  "key": "chain",
-                  "value": "{{chain}}"
-                },
-                {
-                  "key": "network",
-                  "value": "{{network}}"
-                },
-                {
-                  "key": "tokenSymbols[]",
-                  "value": "UNI"
-                },
-                {
-                  "key": "tokenSymbols[]",
-                  "value": "WETH"
-                },
-                {
-                  "key": "tokenSymbols[]",
-                  "value": "LINK"
-                }
-              ]
-            }
-          },
-          "response": []
-        }
-      ],
-      "id": "55b4f4d3-2223-4135-87da-a88ffe51c3f1"
-    },
-    {
-      "name": "wallet",
-      "item": [
-        {
-          "name": "/",
-          "id": "c9207cde-1848-49ce-abc0-81d988573724",
-          "protocolProfileBehavior": {
-            "disableBodyPruning": true
-          },
-          "request": {
-            "method": "GET",
-            "header": [],
-            "body": {
-              "mode": "urlencoded",
-              "urlencoded": []
-            },
-            "url": {
-              "raw": "https://localhost:{{port}}/wallet/",
-              "protocol": "https",
-              "host": ["localhost"],
-              "port": "{{port}}",
-              "path": ["wallet", ""]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "add",
-          "id": "46769eeb-99cf-4fed-ba23-3ee19fd3fe96",
-          "protocolProfileBehavior": {
-            "disableBodyPruning": true
-          },
-          "request": {
-            "method": "POST",
-            "header": [],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"chain\": \"{{chain}}\",\n    \"network\": \"{{network}}\",\n    \"privateKey\": \"{{eth_privateKey2}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "https://localhost:{{port}}/wallet/add",
-              "protocol": "https",
-              "host": ["localhost"],
-              "port": "{{port}}",
-              "path": ["wallet", "add"]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "remove",
-          "id": "25da6946-481e-48ad-a1d6-5be3595672df",
-          "protocolProfileBehavior": {
-            "disableBodyPruning": true
-          },
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "chain",
-                "value": "{{chain}}",
-                "type": "text"
-              },
-              {
-                "key": "address",
-                "value": "{{eth_address2}}",
-                "type": "text"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"chain\": \"{{chain}}\",\n    \"address\": \"{{eth_address2}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "https://localhost:{{port}}/wallet/remove",
-              "protocol": "https",
-              "host": ["localhost"],
-              "port": "{{port}}",
-              "path": ["wallet", "remove"]
-            }
-          },
-          "response": []
-        }
-      ],
-      "id": "b89e15df-97a7-4678-aec7-9cb7867c60af"
-    },
-    {
-      "name": "evm",
-      "item": [
-        {
-          "name": "nonce",
-          "id": "fe587076-15ff-419f-a97e-121a5012aefd",
-          "protocolProfileBehavior": {
-            "disableBodyPruning": true
-          },
-          "request": {
-            "method": "POST",
-            "header": [],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"chain\": \"{{chain}}\",\n    \"network\": \"{{network}}\",\n    \"address\": \"{{eth_address}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "https://localhost:{{port}}/evm/nonce",
-              "protocol": "https",
-              "host": ["localhost"],
-              "port": "{{port}}",
-              "path": ["evm", "nonce"]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "nextNonce",
-          "id": "e96333a8-adb7-450b-b16e-039526a0aa2f",
-          "protocolProfileBehavior": {
-            "disableBodyPruning": true
-          },
-          "request": {
-            "method": "POST",
-            "header": [],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"chain\": \"{{chain}}\",\n    \"network\": \"{{network}}\",\n    \"address\": \"{{eth_address}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "https://localhost:{{port}}/evm/nextNonce",
-              "protocol": "https",
-              "host": ["localhost"],
-              "port": "{{port}}",
-              "path": ["evm", "nextNonce"]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "allowances",
-          "id": "a0193e45-5509-4516-8d69-e265d8a2ca03",
-          "protocolProfileBehavior": {
-            "disableBodyPruning": true
-          },
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "chain",
-                "value": "{{chain}}",
-                "type": "text",
-                "disabled": true
-              },
-              {
-                "key": "network",
-                "value": "{{network}}",
-                "type": "text",
-                "disabled": true
-              },
-              {
-                "key": "spender",
-                "value": "uniswap",
-                "type": "text",
-                "disabled": true
-              },
-              {
-                "key": "address",
-                "value": "{{wallet}}",
-                "type": "text",
-                "disabled": true
-              },
-              {
-                "key": "tokenSymbols[]",
-                "value": "",
-                "type": "text",
-                "disabled": true
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"chain\": \"{{chain}}\",\n    \"network\": \"{{network}}\",\n    \"address\": \"{{eth_address}}\",\n    \"spender\": \"uniswap\",\n    \"tokenSymbols\": [\n        \"DAI\",\n        \"WETH\"\n    ]\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "https://localhost:{{port}}/evm/allowances",
-              "protocol": "https",
-              "host": ["localhost"],
-              "port": "{{port}}",
-              "path": ["evm", "allowances"]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "approve",
-          "id": "b5be2969-7623-4664-9d58-4560f6a0fdd0",
-          "protocolProfileBehavior": {
-            "disableBodyPruning": true
-          },
-          "request": {
-            "method": "POST",
-            "header": [],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"chain\": \"{{chain}}\",\n    \"network\": \"{{network}}\",\n    \"address\": \"{{eth_address}}\",\n    \"spender\": \"uniswap\",\n    \"token\": \"DAI\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "https://localhost:{{port}}/evm/approve",
-              "protocol": "https",
-              "host": ["localhost"],
-              "port": "{{port}}",
-              "path": ["evm", "approve"]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "cancel",
-          "id": "1af08eb3-9fa8-4c72-b8e5-694996de503d",
-          "protocolProfileBehavior": {
-            "disableBodyPruning": true
-          },
-          "request": {
-            "method": "POST",
-            "header": [],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"chain\": \"{{chain}}\",\n    \"network\": \"{{network}}\",\n    \"address\": \"{{eth_address}}\",\n    \"nonce\": 288\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "https://localhost:{{port}}/evm/cancel",
-              "protocol": "https",
-              "host": ["localhost"],
-              "port": "{{port}}",
-              "path": ["evm", "cancel"]
-            }
-          },
-          "response": []
-        }
-      ],
-      "id": "f0d6ed7d-7fcd-44e8-8af4-29ede5634f6d"
-    },
-    {
-      "name": "amm",
-      "item": [
-        {
-          "name": "price",
-          "id": "1dfb9e4d-c2ea-43bd-a361-8ccd69285cdb",
-          "protocolProfileBehavior": {
-            "disableBodyPruning": true
-          },
-          "request": {
-            "method": "POST",
-            "header": [],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"chain\": \"{{chain}}\",\n    \"network\": \"{{network}}\",\n    \"connector\": \"uniswap\",\n    \"base\": \"WETH\",\n    \"quote\": \"UNI\",\n    \"amount\": \"0.1\",\n    \"side\": \"BUY\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "https://localhost:{{port}}/amm/price",
-              "protocol": "https",
-              "host": ["localhost"],
-              "port": "{{port}}",
-              "path": ["amm", "price"]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "trade",
-          "id": "3a58516b-3ab6-409d-aac9-7ea7d2dfc9e8",
-          "protocolProfileBehavior": {
-            "disableBodyPruning": true
-          },
-          "request": {
-            "method": "POST",
-            "header": [],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"chain\": \"{{chain}}\",\n    \"network\": \"{{network}}\",\n    \"address\": \"{{eth_address}}\",\n    \"connector\": \"uniswap\",\n    \"base\": \"WETH\",\n    \"quote\": \"UNI\",\n    \"amount\": \"0.1\",\n    \"side\": \"BUY\",\n    \"limitPrice\": \"1.4\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "https://localhost:{{port}}/amm/trade",
-              "protocol": "https",
-              "host": ["localhost"],
-              "port": "{{port}}",
-              "path": ["amm", "trade"]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "estimateGas",
-          "id": "7d8b129a-b97a-41d3-8b07-7330494c259c",
-          "protocolProfileBehavior": {
-            "disableBodyPruning": true
-          },
-          "request": {
-            "method": "POST",
-            "header": [],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"chain\": \"{{chain}}\",\n    \"network\": \"{{network}}\",\n    \"connector\": \"uniswap\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "https://localhost:{{port}}/amm/estimateGas",
-              "protocol": "https",
-              "host": ["localhost"],
-              "port": "{{port}}",
-              "path": ["amm", "estimateGas"]
-            }
-          },
-          "response": []
-        }
-      ],
-      "id": "d975e0eb-65d0-4356-a551-c83c3edfe36a"
-    },
-    {
-      "name": "amm / liquidity",
-      "item": [
-        {
-          "name": "price",
-          "id": "e7cd3296-6a61-4b53-9a76-1bab9081121e",
-          "protocolProfileBehavior": {
-            "disableBodyPruning": true
-          },
-          "request": {
-            "method": "POST",
-            "header": [],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"chain\": \"{{chain}}\",\n    \"network\": \"{{network}}\",\n    \"connector\": \"uniswapLP\",\n    \"token0\": \"UNI\",\n    \"token1\": \"WETH\",\n    \"fee\": \"LOW\",\n    \"period\": 120,\n    \"interval\": 60\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "https://localhost:{{port}}/amm/liquidity/price",
-              "protocol": "https",
-              "host": ["localhost"],
-              "port": "{{port}}",
-              "path": ["amm", "liquidity", "price"]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "add",
-          "id": "ac826888-6545-4490-a130-d109334ac4c1",
-          "protocolProfileBehavior": {
-            "disableBodyPruning": true
-          },
-          "request": {
-            "method": "POST",
-            "header": [],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"chain\": \"{{chain}}\",\n    \"network\": \"{{network}}\",\n    \"address\": \"{{eth_address}}\",\n    \"connector\": \"uniswapLP\",\n    \"token0\": \"UNI\",\n    \"token1\": \"WETH\",\n    \"amount0\": \"0.1\",\n    \"amount1\": \"0.1\",\n    \"fee\": \"LOW\",\n    \"lowerPrice\": \"0.5\",\n    \"upperPrice\": \"1\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "https://localhost:{{port}}/amm/liquidity/add",
-              "protocol": "https",
-              "host": ["localhost"],
-              "port": "{{port}}",
-              "path": ["amm", "liquidity", "add"]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "remove",
-          "id": "19a14e19-af94-4fa6-8ed8-5b3e2c26035c",
-          "protocolProfileBehavior": {
-            "disableBodyPruning": true
-          },
-          "request": {
-            "method": "POST",
-            "header": [],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"chain\": \"{{chain}}\",\n    \"network\": \"{{network}}\",\n    \"address\": \"{{eth_address}}\",\n    \"connector\": \"uniswapLP\",\n    \"tokenId\": 51667\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "https://localhost:{{port}}/amm/liquidity/remove",
-              "protocol": "https",
-              "host": ["localhost"],
-              "port": "{{port}}",
-              "path": ["amm", "liquidity", "remove"]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "position",
-          "id": "6346302f-50d4-4474-8e95-04acb4556754",
-          "protocolProfileBehavior": {
-            "disableBodyPruning": true
-          },
-          "request": {
-            "method": "POST",
-            "header": [],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"chain\": \"{{chain}}\",\n    \"network\": \"{{network}}\",\n    \"address\": \"{{eth_address}}\",\n    \"connector\": \"uniswapLP\",\n    \"tokenId\": 51675\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "https://localhost:{{port}}/amm/liquidity/position",
-              "protocol": "https",
-              "host": ["localhost"],
-              "port": "{{port}}",
-              "path": ["amm", "liquidity", "position"]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "collect_fees",
-          "id": "c6fd3ed3-64aa-4995-9671-13c8165cae61",
-          "protocolProfileBehavior": {
-            "disableBodyPruning": true
-          },
-          "request": {
-            "method": "POST",
-            "header": [],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"chain\": \"{{chain}}\",\n    \"network\": \"{{network}}\",\n    \"address\": \"{{eth_address}}\",\n    \"connector\": \"uniswapLP\",\n    \"tokenId\": 51675\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "https://localhost:{{port}}/amm/liquidity/collect_fees",
-              "protocol": "https",
-              "host": ["localhost"],
-              "port": "{{port}}",
-              "path": ["amm", "liquidity", "collect_fees"]
-            }
-          },
-          "response": []
-        }
-      ],
-      "id": "3d7a5eb9-b2a6-43d5-bfa2-89651abd5a91"
-    }
-  ]
+	"info": {
+		"_postman_id": "ade812ab-996f-42ee-ab2a-f1811923360a",
+		"name": "Gateway API",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_uid": "25477543-ade812ab-996f-42ee-ab2a-f1811923360a"
+	},
+	"item": [
+		{
+			"name": "system",
+			"item": [
+				{
+					"name": "/",
+					"id": "c8ba9eb4-d180-426e-8d84-e15725d902d2",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "https://{{host}}:{{port}}/",
+							"protocol": "https",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "config/update",
+					"id": "53fb0b0b-f511-4b52-85c1-28b6513036a0",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"configPath\": \"ethereum.manualGasPrice\",\n    \"configValue\": 35\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://{{host}}:{{port}}/config/update",
+							"protocol": "https",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"config",
+								"update"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "connectors",
+					"id": "924959db-0fbd-4e70-901f-4a1d819d2ab4",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": []
+						},
+						"url": {
+							"raw": "https://{{host}}:{{port}}/connectors",
+							"protocol": "https",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"connectors"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"id": "c2a569af-9bf2-4afd-86c6-57b52b4205a8"
+		},
+		{
+			"name": "network",
+			"item": [
+				{
+					"name": "status",
+					"id": "7d5d3585-72b1-4d3e-9528-ba7405d71bbd",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": []
+						},
+						"url": {
+							"raw": "https://{{host}}:{{port}}/network/status",
+							"protocol": "https",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"network",
+								"status"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "config",
+					"id": "1733866b-a938-418d-967c-7a2bae99a3c7",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": []
+						},
+						"url": {
+							"raw": "https://{{host}}:{{port}}/network/config",
+							"protocol": "https",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"network",
+								"config"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "balances",
+					"id": "28e1a02f-972b-4dca-ad2f-8f4b8f512673",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"chain\": \"{{chain}}\",\n    \"network\": \"{{network}}\",\n    \"address\": \"{{eth_address}}\",\n    \"tokenSymbols\": [\n        \"ETH\",\n        \"WETH\",\n        \"DAI\",\n        \"UNI\"\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://{{host}}:{{port}}/network/balances",
+							"protocol": "https",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"network",
+								"balances"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "poll",
+					"id": "5ddbd3a6-0a18-4e42-8c36-4daba7d25703",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"network\": \"{{network}}\",\n    \"chain\": \"{{chain}}\",\n    \"txHash\": \"0x7c61b2954d30ef918ebd491c546c398664f92b49a07651c9452dd708273e780d\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://{{host}}:{{port}}/network/poll",
+							"protocol": "https",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"network",
+								"poll"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "tokens",
+					"id": "81b74c6d-ce3e-45d3-8bba-95b9c08ee3ca",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "https://{{host}}:{{port}}/network/tokens?chain={{chain}}&network={{network}}&tokenSymbols[]=UNI&tokenSymbols[]=WETH&tokenSymbols[]=LINK",
+							"protocol": "https",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"network",
+								"tokens"
+							],
+							"query": [
+								{
+									"key": "chain",
+									"value": "{{chain}}"
+								},
+								{
+									"key": "network",
+									"value": "{{network}}"
+								},
+								{
+									"key": "tokenSymbols[]",
+									"value": "UNI"
+								},
+								{
+									"key": "tokenSymbols[]",
+									"value": "WETH"
+								},
+								{
+									"key": "tokenSymbols[]",
+									"value": "LINK"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"id": "55b4f4d3-2223-4135-87da-a88ffe51c3f1"
+		},
+		{
+			"name": "wallet",
+			"item": [
+				{
+					"name": "/",
+					"id": "c9207cde-1848-49ce-abc0-81d988573724",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": []
+						},
+						"url": {
+							"raw": "https://{{host}}:{{port}}/wallet/",
+							"protocol": "https",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"wallet",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "add",
+					"id": "46769eeb-99cf-4fed-ba23-3ee19fd3fe96",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"chain\": \"{{chain}}\",\n    \"network\": \"{{network}}\",\n    \"privateKey\": \"{{eth_privateKey}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://{{host}}:{{port}}/wallet/add",
+							"protocol": "https",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"wallet",
+								"add"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "remove",
+					"id": "25da6946-481e-48ad-a1d6-5be3595672df",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "chain",
+								"value": "{{chain}}",
+								"type": "text"
+							},
+							{
+								"key": "address",
+								"value": "{{eth_address2}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"chain\": \"{{chain}}\",\n    \"address\": \"{{eth_address}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://{{host}}:{{port}}/wallet/remove",
+							"protocol": "https",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"wallet",
+								"remove"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"id": "b89e15df-97a7-4678-aec7-9cb7867c60af"
+		},
+		{
+			"name": "evm",
+			"item": [
+				{
+					"name": "nonce",
+					"id": "fe587076-15ff-419f-a97e-121a5012aefd",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"chain\": \"{{chain}}\",\n    \"network\": \"{{network}}\",\n    \"address\": \"{{eth_address}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://{{host}}:{{port}}/evm/nonce",
+							"protocol": "https",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"evm",
+								"nonce"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "nextNonce",
+					"id": "e96333a8-adb7-450b-b16e-039526a0aa2f",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"chain\": \"{{chain}}\",\n    \"network\": \"{{network}}\",\n    \"address\": \"{{eth_address}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://{{host}}:{{port}}/evm/nextNonce",
+							"protocol": "https",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"evm",
+								"nextNonce"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "allowances",
+					"id": "a0193e45-5509-4516-8d69-e265d8a2ca03",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "chain",
+								"value": "{{chain}}",
+								"type": "text",
+								"disabled": true
+							},
+							{
+								"key": "network",
+								"value": "{{network}}",
+								"type": "text",
+								"disabled": true
+							},
+							{
+								"key": "spender",
+								"value": "uniswap",
+								"type": "text",
+								"disabled": true
+							},
+							{
+								"key": "address",
+								"value": "{{wallet}}",
+								"type": "text",
+								"disabled": true
+							},
+							{
+								"key": "tokenSymbols[]",
+								"value": "",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"chain\": \"{{chain}}\",\n    \"network\": \"{{network}}\",\n    \"address\": \"{{eth_address}}\",\n    \"spender\": \"uniswap\",\n    \"tokenSymbols\": [\n        \"DAI\",\n        \"WETH\"\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://{{host}}:{{port}}/evm/allowances",
+							"protocol": "https",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"evm",
+								"allowances"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "approve",
+					"id": "b5be2969-7623-4664-9d58-4560f6a0fdd0",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"chain\": \"{{chain}}\",\n    \"network\": \"{{network}}\",\n    \"address\": \"{{eth_address}}\",\n    \"spender\": \"uniswap\",\n    \"token\": \"USDC\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://{{host}}:{{port}}/evm/approve",
+							"protocol": "https",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"evm",
+								"approve"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "cancel",
+					"id": "1af08eb3-9fa8-4c72-b8e5-694996de503d",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"chain\": \"{{chain}}\",\n    \"network\": \"{{network}}\",\n    \"address\": \"{{eth_address}}\",\n    \"nonce\": 288\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://{{host}}:{{port}}/evm/cancel",
+							"protocol": "https",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"evm",
+								"cancel"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"id": "f0d6ed7d-7fcd-44e8-8af4-29ede5634f6d"
+		},
+		{
+			"name": "amm",
+			"item": [
+				{
+					"name": "price",
+					"id": "1dfb9e4d-c2ea-43bd-a361-8ccd69285cdb",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"chain\": \"{{chain}}\",\n    \"network\": \"{{network}}\",\n    \"connector\": \"uniswap\",\n    \"base\": \"WETH\",\n    \"quote\": \"DAI\",\n    \"amount\": \"0.1\",\n    \"side\": \"BUY\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://{{host}}:{{port}}/amm/price",
+							"protocol": "https",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"amm",
+								"price"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "trade",
+					"id": "3a58516b-3ab6-409d-aac9-7ea7d2dfc9e8",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"chain\": \"{{chain}}\",\n    \"network\": \"{{network}}\",\n    \"address\": \"{{eth_address}}\",\n    \"connector\": \"uniswap\",\n    \"base\": \"WETH\",\n    \"quote\": \"UNI\",\n    \"amount\": \"0.1\",\n    \"side\": \"BUY\",\n    \"limitPrice\": \"1.4\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://{{host}}:{{port}}/amm/trade",
+							"protocol": "https",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"amm",
+								"trade"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "estimateGas",
+					"id": "7d8b129a-b97a-41d3-8b07-7330494c259c",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"chain\": \"{{chain}}\",\n    \"network\": \"{{network}}\",\n    \"connector\": \"uniswap\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://{{host}}:{{port}}/amm/estimateGas",
+							"protocol": "https",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"amm",
+								"estimateGas"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"id": "d975e0eb-65d0-4356-a551-c83c3edfe36a"
+		},
+		{
+			"name": "amm / liquidity",
+			"item": [
+				{
+					"name": "price",
+					"id": "e7cd3296-6a61-4b53-9a76-1bab9081121e",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"chain\": \"{{chain}}\",\n    \"network\": \"{{network}}\",\n    \"connector\": \"uniswapLP\",\n    \"token0\": \"UNI\",\n    \"token1\": \"WETH\",\n    \"fee\": \"LOW\",\n    \"period\": 120,\n    \"interval\": 60\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://{{host}}:{{port}}/amm/liquidity/price",
+							"protocol": "https",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"amm",
+								"liquidity",
+								"price"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "add",
+					"id": "ac826888-6545-4490-a130-d109334ac4c1",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"chain\": \"{{chain}}\",\n    \"network\": \"{{network}}\",\n    \"address\": \"{{eth_address}}\",\n    \"connector\": \"uniswapLP\",\n    \"token0\": \"UNI\",\n    \"token1\": \"WETH\",\n    \"amount0\": \"0.1\",\n    \"amount1\": \"0.1\",\n    \"fee\": \"LOW\",\n    \"lowerPrice\": \"0.5\",\n    \"upperPrice\": \"1\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://{{host}}:{{port}}/amm/liquidity/add",
+							"protocol": "https",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"amm",
+								"liquidity",
+								"add"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "remove",
+					"id": "19a14e19-af94-4fa6-8ed8-5b3e2c26035c",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"chain\": \"{{chain}}\",\n    \"network\": \"{{network}}\",\n    \"address\": \"{{eth_address}}\",\n    \"connector\": \"uniswapLP\",\n    \"tokenId\": 51667\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://{{host}}:{{port}}/amm/liquidity/remove",
+							"protocol": "https",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"amm",
+								"liquidity",
+								"remove"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "position",
+					"id": "6346302f-50d4-4474-8e95-04acb4556754",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"chain\": \"{{chain}}\",\n    \"network\": \"{{network}}\",\n    \"address\": \"{{eth_address}}\",\n    \"connector\": \"uniswapLP\",\n    \"tokenId\": 51675\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://{{host}}:{{port}}/amm/liquidity/position",
+							"protocol": "https",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"amm",
+								"liquidity",
+								"position"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "collect_fees",
+					"id": "c6fd3ed3-64aa-4995-9671-13c8165cae61",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"chain\": \"{{chain}}\",\n    \"network\": \"{{network}}\",\n    \"address\": \"{{eth_address}}\",\n    \"connector\": \"uniswapLP\",\n    \"tokenId\": 51675\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://{{host}}:{{port}}/amm/liquidity/collect_fees",
+							"protocol": "https",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"amm",
+								"liquidity",
+								"collect_fees"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"id": "3d7a5eb9-b2a6-43d5-bfa2-89651abd5a91"
+		}
+	]
 }

@@ -13,6 +13,7 @@ export class TelemetryTransport extends winston.transports.Http {
   private errorLogBuffer: string[];
   private requestCountAggregator: number;
   private instanceId: string;
+  public metricTimer;
 
   constructor(opts: any) {
     super(opts);
@@ -21,7 +22,7 @@ export class TelemetryTransport extends winston.transports.Http {
     this.instanceId = opts.instanceId || '';
     this.errorLogBuffer = [];
     this.requestCountAggregator = 0;
-    setInterval(this.sendLogs.bind(this), this.logInterval);
+    this.metricTimer = setInterval(this.sendLogs.bind(this), this.logInterval);
   }
 
   private processData(log: any): void {

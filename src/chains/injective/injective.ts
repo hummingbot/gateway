@@ -519,7 +519,7 @@ export class Injective {
       if (instance._blockUpdateIntervalID !== undefined) {
         clearInterval(instance._blockUpdateIntervalID as number);
       }
-      Injective._instances.del(this._network);
+      Injective._instances.delete(this._network);
     }
 
     await this._nonceManager.close(this._refCountingHandle);
