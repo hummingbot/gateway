@@ -219,5 +219,3 @@ paths:
             $ref: '#/definitions/ClobFundingPaymentsResponse'
         '400':
           description: 'Bad request response.'
-            
-            

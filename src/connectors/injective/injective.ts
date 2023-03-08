@@ -1,4 +1,3 @@
-import { BigNumber, utils } from 'ethers';
 import {
   MsgBatchUpdateOrders,
   IndexerGrpcSpotApi,

@@ -18,12 +18,12 @@ import { NetworkRoutes } from './network/network.routes';
 import { ConnectorsRoutes } from './connectors/connectors.routes';
 import { EVMRoutes } from './evm/evm.routes';
 import { AmmRoutes, AmmLiquidityRoutes, PerpAmmRoutes } from './amm/amm.routes';
-import morgan from 'morgan';
 import { InjectiveRoutes } from './chains/injective/injective.routes';
+import { NearRoutes } from './chains/near/near.routes';
 import { CLOBRoutes, PerpClobRoutes } from './clob/clob.routes';
 
+import morgan from 'morgan';
 import swaggerUi from 'swagger-ui-express';
-import { NearRoutes } from './chains/near/near.routes';
 
 export const gatewayApp = express();
 
