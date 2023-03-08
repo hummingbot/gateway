@@ -9,6 +9,7 @@ import { BinanceSmartChain } from '../chains/binance-smart-chain/binance-smart-c
 import { Ethereum } from '../chains/ethereum/ethereum';
 import { Harmony } from '../chains/harmony/harmony';
 import { Polygon } from '../chains/polygon/polygon';
+import { Injective } from '../chains/injective/injective';
 import { Xdc } from '../chains/xdc/xdc';
 import {
   HttpException,
@@ -48,6 +49,8 @@ export async function getStatus(
       connections.push(Near.getInstance(req.network as string));
     } else if (req.chain === 'cronos') {
       connections.push(await Cronos.getInstance(req.network as string));
+    } else if (req.chain === 'injective') {
+      connections.push(Injective.getInstance(req.network as string));
     } else {
       throw new HttpException(
         500,
@@ -93,6 +96,11 @@ export async function getStatus(
     connections = connections.concat(
       bscConnections ? Object.values(bscConnections) : []
     );
+
+    const injectiveConnections = Injective.getConnectedInstances();
+    connections = connections.concat(
+      injectiveConnections ? Object.values(injectiveConnections) : []
+    );
   }
 
   for (const connection of connections) {
@@ -122,7 +130,7 @@ export async function getStatus(
 }
 
 export async function getTokens(req: TokensRequest): Promise<TokensResponse> {
-  let connection: EthereumBase | Xdcish | Nearish;
+  let connection: EthereumBase | Nearish | Injective | Xdcish;
   let tokens: TokenInfo[] = [];
 
   if (req.chain && req.network) {
@@ -142,6 +150,8 @@ export async function getTokens(req: TokensRequest): Promise<TokensResponse> {
       connection = Near.getInstance(req.network);
     } else if (req.chain === 'cronos') {
       connection = await Cronos.getInstance(req.network);
+    } else if (req.chain === 'injective') {
+      connection = Injective.getInstance(req.network);
     } else {
       throw new HttpException(
         500,

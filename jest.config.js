@@ -15,6 +15,7 @@ module.exports = {
     'src/chains/avalanche/avalanche.ts',
     'src/chains/avalanche/pangolin/pangolin.ts',
     'src/chains/cosmos/cosmos.ts',
+    'src/chains/injective/injective.ts',
     'src/chains/near/near.ts',
     'src/chains/near/near.base.ts',
     'src/connectors/uniswap/uniswap.config.ts',
@@ -24,6 +25,7 @@ module.exports = {
     'src/connectors/defira/defira.ts',
     'src/connectors/openocean/openocean.ts',
     'src/connectors/pangolin/pangolin.ts',
+    'src/chains/injective/injective.mappers.ts',
     'src/connectors/quickswap/quickswap.ts',
     'src/connectors/sushiswap/sushiswap.ts',
     'src/connectors/traderjoe/traderjoe.ts',
@@ -36,4 +38,8 @@ module.exports = {
   setupFilesAfterEnv: ['<rootDir>/test/setupTests.js'],
   globalSetup: '<rootDir>/test/setup.ts',
   globalTeardown: '<rootDir>/test/teardown.ts',
+  moduleNameMapper: {
+    eccrypto: '<rootDir>/test/mock/eccrypto-mock.js',
+  },
+  testPathIgnorePatterns: ['/node_modules/', 'test-helpers'],
 };
