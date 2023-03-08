@@ -1,27 +1,4 @@
 paths:
-  /clob:
-    get:
-      tags:
-        - 'clob'
-      summary: 'Verify Clob Routes Status'
-      description: 'Verify if the Clob routes are ready to use and show some other useful information. '
-      operationId: 'clob.root'
-      consumes:
-        - 'application/json'
-      produces:
-        - 'application/json'
-      parameters:
-        - in: 'body'
-          name: 'body'
-          description: 'Request body.'
-          required: true
-          schema:
-            $ref: '#/definitions/SerumRootRequest'
-      responses:
-        '200':
-          description: 'Successful response.'
-          schema:
-            $ref: '#/definitions/SerumRootResponse'
   /clob/markets:
     get:
       tags:

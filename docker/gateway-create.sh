@@ -16,15 +16,6 @@ then
   GATEWAY_TAG="latest"
 fi
 
-# Check if container with same version already exists
-if docker ps -a | grep "hummingbot/gateway:$GATEWAY_TAG"; then
-  echo
-  echo "A Gateway container with the same version '$GATEWAY_TAG' already exists on this machine."
-  echo "Remove the existing version by running 'docker rm <container-name>' before creating a new one."
-  echo "Aborting..."
-  exit
-fi
-
 # Ask the user for the name of the new Gateway instance
 read -p "Enter a name for your new Gateway instance (default = \"gateway\") >>> " INSTANCE_NAME
 if [ "$INSTANCE_NAME" == "" ]
@@ -66,13 +57,26 @@ prompt_passphrase
 GMT_OFFSET=$(date +%z)
 
 # Check available open port for Gateway
-PORT=15888
-LIMIT=$((PORT+1000))
-while [[ $PORT -le LIMIT ]]
+GATEWAY_PORT=15888
+LIMIT=$((GATEWAY_PORT+1000))
+while [[ $GATEWAY_PORT -le LIMIT ]]
   do
-    if [[ $(netstat -nat | grep "$PORT") ]]; then
+    if [[ $(netstat -nat | grep "$GATEWAY_PORT") ]]; then
       # check another port
-      ((PORT = PORT + 1))
+      ((GATEWAY_PORT = GATEWAY_PORT + 1))
+    else
+      break
+    fi
+done
+
+# Check available open port for Gateway docs
+DOCS_PORT=8080
+LIMIT=$((DOCS_PORT+1000))
+while [[ $DOCS_PORT -le LIMIT ]]
+  do
+    if [[ $(netstat -nat | grep "$DOCS_PORT") ]]; then
+      # check another port
+      ((DOCS_PORT = DOCS_PORT + 1))
     else
       break
     fi
@@ -89,7 +93,8 @@ printf "%30s %5s\n" "Hummingbot instance ID:" "$HUMMINGBOT_INSTANCE_ID"
 printf "%30s %5s\n" "Gateway conf path:" "$CONF_FOLDER"
 printf "%30s %5s\n" "Gateway log path:" "$LOGS_FOLDER"
 printf "%30s %5s\n" "Gateway certs path:" "$CERTS_FOLDER"
-printf "%30s %5s\n" "Gateway port:" "$PORT"
+printf "%30s %5s\n" "Gateway port:" "$GATEWAY_PORT"
+printf "%30s %5s\n" "Gateway docs port:" "$DOCS_PORT"
 echo
 
 prompt_existing_certs_path () {
@@ -149,8 +154,8 @@ create_instance () {
    # Launch a new instance of gateway
    docker run \
    --name $INSTANCE_NAME \
-   -p $PORT:$PORT \
-   -p 8080:8080 \
+   -p $GATEWAY_PORT:15888 \
+   -p $DOCS_PORT:8080 \
    -v $CONF_FOLDER:/usr/src/app/conf \
    -v $LOGS_FOLDER:/usr/src/app/logs \
    -v $CERTS_FOLDER:/usr/src/app/certs \
