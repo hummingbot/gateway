@@ -129,10 +129,13 @@ export async function balances(
   const initTime = Date.now();
 
   let wallet: Wallet;
+  const connector: CLOBish | undefined = req.connector
+    ? ((await getConnector(req.chain, req.network, req.connector)) as CLOBish)
+    : undefined;
   const balances: Record<string, string> = {};
   let connectorBalances: { [key: string]: string } | undefined;
 
-  if (!req.connector) {
+  if (!connector?.balances) {
     try {
       wallet = await ethereumish.getWallet(req.address);
     } catch (err) {
@@ -178,12 +181,7 @@ export async function balances(
     }
   } else {
     // CLOB connector or any other connector that has the concept of separation of account has to implement a balance function
-    const connector: CLOBish = await getConnector(
-      req.chain,
-      req.network,
-      req.connector
-    );
-    connectorBalances = connector.balances ? await connector.balances(req) : {};
+    connectorBalances = await connector.balances(req);
   }
 
   return {
