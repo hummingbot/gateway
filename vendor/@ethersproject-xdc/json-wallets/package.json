@@ -1,0 +1,58 @@
+{
+  "author": "Richard Moore <me@ricmoo.com>",
+  "dependencies": {
+    "@ethersproject-xdc/abstract-signer": "file:../abstract-signer",
+    "@ethersproject-xdc/address": "file:../address",
+    "@ethersproject-xdc/bytes": "file:../bytes",
+    "@ethersproject-xdc/hdnode": "file:../hdnode",
+    "@ethersproject-xdc/keccak256": "file:../keccak256",
+    "@ethersproject-xdc/logger": "file:../logger",
+    "@ethersproject-xdc/pbkdf2": "file:../pbkdf2",
+    "@ethersproject-xdc/properties": "file:../properties",
+    "@ethersproject-xdc/random": "file:../random",
+    "@ethersproject-xdc/strings": "file:../strings",
+    "@ethersproject-xdc/transactions": "file:../transactions",
+    "aes-js": "3.0.0",
+    "scrypt-js": "3.0.1"
+  },
+  "devDependencies": {
+    "typescript": "4.4.4"
+  },  
+  "description": "Wallet management utilities for KeyStore and Crowdsale JSON wallets.",
+  "ethereum": "donations.ethers.eth",
+  "funding": [
+    {
+      "type": "individual",
+      "url": "https://gitcoin.co/grants/13/ethersjs-complete-simple-and-tiny-2"
+    },
+    {
+      "type": "individual",
+      "url": "https://www.buymeacoffee.com/ricmoo"
+    }
+  ],
+  "gitHead": "b8cda5dffdcb688e38d7c6a0aec4c7b8b59c1af5",
+  "keywords": [
+    "Ethereum",
+    "ethers"
+  ],
+  "license": "MIT",
+  "main": "./lib/index.js",
+  "module": "./lib.esm/index.js",
+  "name": "@ethersproject-xdc/json-wallets",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "directory": "packages/json-wallets",
+    "type": "git",
+    "url": "git://github.com/ethers-io/ethers.js.git"
+  },
+  "scripts": {
+    "build": "tsc --skipLibCheck --project ./",    
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "sideEffects": false,
+  "tarballHash": "0x1eb95dbfcd029f96174ce869a3999ad4bd55e6f9e3929517e36735279e2c347b",
+  "types": "./lib/index.d.ts",
+  "version": "5.6.0"
+}
