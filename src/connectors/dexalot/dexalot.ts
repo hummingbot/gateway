@@ -230,10 +230,11 @@ export class DexalotCLOB implements CLOBish {
           req.orderId
         ),
       ].map(parseOrderInfo)[0];
+    } else {
+      order = [await this.tradePairsContract.getOrder(req.orderId)].map(
+        parseOrderInfo
+      )[0];
     }
-    order = [await this.tradePairsContract.getOrder(req.orderId)].map(
-      parseOrderInfo
-    )[0];
 
     order.price = utils.formatUnits(order.price, marketInfo.quoteDecimals);
     order.totalAmount = utils.formatUnits(
@@ -392,8 +393,7 @@ export class DexalotCLOB implements CLOBish {
           prices,
           amounts,
           sides,
-          types,
-          true // To-do: Remove when mainnet is updated.
+          types
         ),
       clientOrderID,
     };
@@ -407,8 +407,7 @@ export class DexalotCLOB implements CLOBish {
       spotOrdersToCancel.push(order.orderId);
     }
 
-    return await this.tradePairsContract.populateTransaction.cancelAllOrders(
-      // To-do: Rename method to cancelOrderList when mainnet is updated.
+    return await this.tradePairsContract.populateTransaction.cancelOrderList(
       spotOrdersToCancel
     );
   }
