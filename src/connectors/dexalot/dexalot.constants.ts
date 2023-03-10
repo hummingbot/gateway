@@ -49,8 +49,8 @@ export const parseMarkerInfo = (marketInfo: MarketInfoStruct) => {
     maxTradeAmount: marketInfo.maxTradeAmount.toString(),
     auctionPrice: marketInfo.auctionPrice.toString(),
     auctionMode: marketInfo.auctionMode,
-    makerRate: marketInfo.makerRate,
-    takerRate: marketInfo.takerRate,
+    makerRate: marketInfo.makerRate / 10000, // https://github.com/Dexalot/contracts/blob/1ec4b732b06dd2a25fe666cfde5b619af5b6f20b/contracts/TradePairs.sol#L43
+    takerRate: marketInfo.takerRate / 10000, // https://github.com/Dexalot/contracts/blob/1ec4b732b06dd2a25fe666cfde5b619af5b6f20b/contracts/TradePairs.sol#L43
     baseDecimals: marketInfo.baseDecimals,
     baseDisplayDecimals: marketInfo.baseDisplayDecimals,
     quoteDecimals: marketInfo.quoteDecimals,
