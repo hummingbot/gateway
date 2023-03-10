@@ -7,6 +7,12 @@ import {
   BigNumber,
   ethers,
 } from 'ethers';
+import {
+  Contract as XdcContract,
+  Transaction as XdcTransaction,
+  Wallet as XdcWallet,
+  providers as XdcProviders,
+} from 'ethers-xdc';
 import { EthereumBase } from '../chains/ethereum/ethereum-base';
 import { CosmosBase } from '../chains/cosmos/cosmos-base';
 import { Provider } from '@ethersproject/abstract-provider';
@@ -86,7 +92,14 @@ import {
   Trade as PancakeSwapTrade,
   Fraction as PancakeSwapFraction,
 } from '@pancakeswap/sdk';
+import {
+  Token as TokenXsswap,
+  CurrencyAmount as CurrencyAmountXsswap,
+  Trade as TradeXsswap,
+  Fraction as XsswapFraction,
+} from 'xsswap-sdk';
 import { PerpPosition } from '../connectors/perp/perp';
+import { XdcBase } from '../chains/xdc/xdc.base';
 import { NearBase } from '../chains/near/near.base';
 import { Account, Contract as NearContract } from 'near-api-js';
 import { EstimateSwapView, TokenMetadata } from 'coinalpha-ref-sdk';
@@ -115,7 +128,8 @@ export type Tokenish =
   | TokenDefikingdoms
   | PancakeSwapToken
   | MMFToken
-  | VVSToken;
+  | VVSToken
+  | TokenXsswap;
 
 export type TokenAmountish = MMFTokenAmount | VVSTokenAmount;
 
@@ -138,7 +152,8 @@ export type UniswapishTrade =
   | DefiraTrade<UniswapCoreToken, UniswapCoreToken, TradeType>
   | PancakeSwapTrade
   | MMFTrade
-  | VVSTrade;
+  | VVSTrade
+  | TradeXsswap;
 
 export type UniswapishTradeOptions =
   | MMFTradeOptions
@@ -158,7 +173,8 @@ export type UniswapishAmount =
   | CurrencyAmountDefikingdoms
   | PancakeSwapCurrencyAmount
   | CurrencyAmountMMF
-  | CurrencyAmountVVS;
+  | CurrencyAmountVVS
+  | CurrencyAmountXsswap;
 
 export type Fractionish =
   | UniswapFraction
@@ -169,7 +185,8 @@ export type Fractionish =
   | DefikingdomsFraction
   | PancakeSwapFraction
   | FractionMMF
-  | FractionVVS;
+  | FractionVVS
+  | XsswapFraction;
 
 export interface ExpectedTrade {
   trade: UniswapishTrade;
@@ -636,6 +653,14 @@ export interface Ethereumish extends BasicChainMethods, EthereumBase {
   ): Contract;
 }
 
+export interface Xdcish extends BasicChainMethods, XdcBase {
+  cancelTx(wallet: XdcWallet, nonce: number): Promise<XdcTransaction>;
+  getContract(
+    tokenAddress: string,
+    signerOrProvider?: XdcWallet | XdcProviders.Provider
+  ): XdcContract;
+}
+
 export interface PriceLevel {
   price: string;
   quantity: string;
@@ -689,6 +714,7 @@ export interface Nearish extends BasicChainMethods, NearBase {
   cancelTx(account: Account, nonce: number): Promise<string>;
   getContract(tokenAddress: string, account: Account): NearContract;
 }
+
 export interface Cosmosish extends CosmosBase {
   gasPrice: number;
   nativeTokenSymbol: string;

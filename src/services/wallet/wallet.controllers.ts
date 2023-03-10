@@ -4,6 +4,7 @@ import { BinanceSmartChain } from '../../chains/binance-smart-chain/binance-smar
 import { Cronos } from '../../chains/cronos/cronos';
 import { Ethereum } from '../../chains/ethereum/ethereum';
 import { Polygon } from '../../chains/polygon/polygon';
+import { Xdc } from '../../chains/xdc/xdc';
 import { Cosmos } from '../../chains/cosmos/cosmos';
 import { Harmony } from '../../chains/harmony/harmony';
 import { Injective } from '../../chains/injective/injective';
@@ -33,6 +34,12 @@ import { Near } from '../../chains/near/near';
 import { getChain } from '../connection-manager';
 import { Ethereumish } from '../common-interfaces';
 
+export function convertXdcAddressToEthAddress(publicKey: string): string {
+  return publicKey.length === 43 && publicKey.slice(0, 3) === 'xdc'
+    ? '0x' + publicKey.slice(3)
+    : publicKey;
+}
+
 const walletPath = './conf/wallets';
 export async function mkdirIfDoesNotExist(path: string): Promise<void> {
   const exists = await fse.pathExists(path);
@@ -48,7 +55,7 @@ export async function addWallet(
   if (!passphrase) {
     throw new Error('There is no passphrase');
   }
-  let connection: EthereumBase | Near | Cosmos | Injective;
+  let connection: EthereumBase | Near | Cosmos | Injective | Xdc;
   let address: string | undefined;
   let encryptedPrivateKey: string | undefined;
 
@@ -58,10 +65,10 @@ export async function addWallet(
     connection = Avalanche.getInstance(req.network);
   } else if (req.chain === 'harmony') {
     connection = Harmony.getInstance(req.network);
-  } else if (req.chain === 'cronos') {
-    connection = Cronos.getInstance(req.network);
   } else if (req.chain === 'polygon') {
     connection = Polygon.getInstance(req.network);
+  } else if (req.chain === 'cronos') {
+    connection = Cronos.getInstance(req.network);
   } else if (req.chain === 'cosmos') {
     connection = Cosmos.getInstance(req.network);
   } else if (req.chain === 'near') {
@@ -74,6 +81,8 @@ export async function addWallet(
     connection = Near.getInstance(req.network);
   } else if (req.chain === 'binance-smart-chain') {
     connection = BinanceSmartChain.getInstance(req.network);
+  } else if (req.chain === 'xdc') {
+    connection = Xdc.getInstance(req.network);
   } else if (req.chain === 'injective') {
     connection = Injective.getInstance(req.network);
   } else {
@@ -91,6 +100,14 @@ export async function addWallet(
   try {
     if (connection instanceof EthereumBase) {
       address = connection.getWalletFromPrivateKey(req.privateKey).address;
+      encryptedPrivateKey = await connection.encrypt(
+        req.privateKey,
+        passphrase
+      );
+    } else if (connection instanceof Xdc) {
+      address = convertXdcAddressToEthAddress(
+        connection.getWalletFromPrivateKey(req.privateKey).address
+      );
       encryptedPrivateKey = await connection.encrypt(
         req.privateKey,
         passphrase
