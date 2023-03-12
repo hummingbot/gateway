@@ -2,14 +2,14 @@
 networks:
   mainnet: 
     chainID: 56
-    nodeURL: 'https://bsc-dataseed1.binance.org/'
+    nodeURL: 'https://rpc.ankr.com/bsc'
     tokenListType: FILE
     tokenListSource: src/chains/binance-smart-chain/bep20_tokens_mainnet.json
     nativeCurrencySymbol: 'BNB'
     gasPriceRefreshInterval: 60
   testnet: 
     chainID: 97
-    nodeURL: 'https://data-seed-prebsc-1-s1.binance.org:8545/'
+    nodeURL: 'https://rpc.ankr.com/bsc_testnet_chapel'
     tokenListType: 'FILE'
     tokenListSource: 'src/chains/binance-smart-chain/bep20_tokens_testnet.json'
     nativeCurrencySymbol: 'BNB'
