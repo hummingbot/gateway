@@ -998,14 +998,14 @@
       "symbol": "BLOCK",
       "address": "0xbc7a566b85ef73f935e640a06b5a8b031cd975df",
       "chainId": 56,
-      "decimals": 18
+      "decimals": 6
     },
     {
       "name": "FIRO Token",
       "symbol": "FIRO",
       "address": "0xd5d0322b6bAb6a762C79f8c81A0B674778E13aeD",
       "chainId": 56,
-      "decimals": 18
+      "decimals": 8
     }
   ]
 }
