@@ -2008,7 +2008,6 @@ definitions:
           total:
             type: 'number'        
         example: '{"to":0, "from":0, "total":1}'
-
         
   TransferToSubAccountRequest:
     type: 'object'

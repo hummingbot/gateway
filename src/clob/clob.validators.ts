@@ -163,3 +163,6 @@ export const validateFundingPaymentsRequest: RequestValidator =
       validateEndTime,
     ])
   );
+
+export const validateBatchOrdersRequest: RequestValidator =
+  mkRequestValidator(NETWORK_VALIDATIONS);

@@ -9,7 +9,7 @@ import {
   ExchangePagination,
 } from '@injectivelabs/sdk-ts';
 
-export interface ClobMarketRequest extends NetworkSelectionRequest {
+export interface ClobMarketsRequest extends NetworkSelectionRequest {
   market?: string;
 }
 
@@ -24,11 +24,11 @@ export interface ClobMarketResponse {
   markets: CLOBMarkets;
 }
 
-export type ClobTickerRequest = ClobMarketRequest;
+export type ClobTickerRequest = ClobMarketsRequest;
 
 export type ClobTickerResponse = ClobMarketResponse;
 
-export interface ClobOrderbookRequest extends ClobMarketRequest {
+export interface ClobOrderbookRequest extends ClobMarketsRequest {
   market: string;
 }
 
@@ -57,13 +57,29 @@ export interface ClobGetOrderResponse {
     | [];
 }
 
-export interface ClobPostOrderRequest extends ClobOrderbookRequest {
-  address: string;
-  side: Side;
-  orderType: OrderType;
+export interface CreateOrderParam {
   price: string;
   amount: string;
-  leverage?: number; // float
+  orderType: OrderType;
+  side: Side;
+  market: string;
+}
+
+export interface ClobPostOrderRequest
+  extends NetworkSelectionRequest,
+    CreateOrderParam {
+  address: string;
+}
+
+export interface ClobDeleteOrderRequestExtract {
+  market: string;
+  orderId: string;
+}
+
+export interface ClobBatchUpdateRequest extends NetworkSelectionRequest {
+  address: string;
+  createOrderParams?: CreateOrderParam[];
+  cancelOrderParams?: ClobDeleteOrderRequestExtract[];
 }
 
 export interface ClobPostOrderResponse {
@@ -79,7 +95,7 @@ export type ClobDeleteOrderResponse = ClobPostOrderResponse;
 
 // PerpClob requests and responses
 
-export type PerpClobMarketRequest = ClobMarketRequest;
+export type PerpClobMarketRequest = ClobMarketsRequest;
 
 export interface PerpClobMarkets {
   [key: string]: DerivativeMarket;

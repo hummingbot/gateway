@@ -4,6 +4,7 @@ import { Ethereum } from '../chains/ethereum/ethereum';
 import { BinanceSmartChain } from '../chains/binance-smart-chain/binance-smart-chain';
 import { Harmony } from '../chains/harmony/harmony';
 import { Polygon } from '../chains/polygon/polygon';
+import { Xdc } from '../chains/xdc/xdc';
 import { MadMeerkat } from '../connectors/mad_meerkat/mad_meerkat';
 import { Openocean } from '../connectors/openocean/openocean';
 import { Pangolin } from '../connectors/pangolin/pangolin';
@@ -23,6 +24,7 @@ import {
   RefAMMish,
   Uniswapish,
   UniswapLPish,
+  Xdcish,
 } from './common-interfaces';
 import { Traderjoe } from '../connectors/traderjoe/traderjoe';
 import { Sushiswap } from '../connectors/sushiswap/sushiswap';
@@ -30,13 +32,16 @@ import { Defikingdoms } from '../connectors/defikingdoms/defikingdoms';
 import { Defira } from '../connectors/defira/defira';
 import { Near } from '../chains/near/near';
 import { Ref } from '../connectors/ref/ref';
+import { Xsswap } from '../connectors/xsswap/xsswap';
 
-export type ChainUnion = Ethereumish | Nearish | Injective;
+export type ChainUnion = Ethereumish | Nearish | Injective | Xdcish;
 
 export type Chain<T> = T extends Ethereumish
   ? Ethereumish
   : T extends Nearish
   ? Nearish
+  : T extends Xdcish
+  ? Xdcish
   : T extends Injective
   ? Injective
   : never;
@@ -51,6 +56,7 @@ export async function getChain<T>(
   else if (chain === 'avalanche')
     chainInstance = Avalanche.getInstance(network);
   else if (chain === 'polygon') chainInstance = Polygon.getInstance(network);
+  else if (chain === 'xdc') chainInstance = Xdc.getInstance(network);
   else if (chain === 'harmony') chainInstance = Harmony.getInstance(network);
   else if (chain === 'near') chainInstance = Near.getInstance(network);
   else if (chain === 'binance-smart-chain')
@@ -133,6 +139,8 @@ export async function getConnector<T>(
     connectorInstance = Sushiswap.getInstance(chain, network);
   } else if (chain === 'injective' && connector === 'injective-perp') {
     connectorInstance = InjectiveClobPerp.getInstance(chain, network);
+  } else if (chain === 'xdc' && connector === 'xsswap') {
+    connectorInstance = Xsswap.getInstance(chain, network);
   } else if (chain === 'injective' && connector === 'injective') {
     connectorInstance = InjectiveCLOB.getInstance(chain, network);
   } else {

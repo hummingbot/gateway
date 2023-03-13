@@ -985,6 +985,27 @@
       "chainId": 56,
       "decimals": 18,
       "logoURI": "https://exchange.pancakeswap.finance/images/coins/0x8f0528ce5ef7b51152a59745befdd91d97091d2f.png"
+    },
+    {
+      "name": "XCAD Network",
+      "symbol": "XCAD",
+      "address": "0x431e0cD023a32532BF3969CddFc002c00E98429d",
+      "chainId": 56,
+      "decimals": 18
+    },
+    {
+      "name": "Blockasset",
+      "symbol": "BLOCK",
+      "address": "0xbc7a566b85ef73f935e640a06b5a8b031cd975df",
+      "chainId": 56,
+      "decimals": 18
+    },
+    {
+      "name": "FIRO Token",
+      "symbol": "FIRO",
+      "address": "0xd5d0322b6bAb6a762C79f8c81A0B674778E13aeD",
+      "chainId": 56,
+      "decimals": 18
     }
   ]
 }
