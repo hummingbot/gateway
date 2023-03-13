@@ -1,0 +1,9 @@
+networks:
+  mainnet:
+    chainId: mainnet
+    exchangeApiUrl: https://zigzag-exchange.herokuapp.com
+    exchangeWebsocketUrl: wss://zigzag-exchange.herokuapp.com
+  rinkeby:
+    chainId: rinkeby
+    exchangeApiUrl: https://secret-thicket-93345.herokuapp.com
+    exchangeWebsocketUrl: wss://secret-thicket-93345.herokuapp.com
