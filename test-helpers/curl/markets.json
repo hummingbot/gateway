@@ -1,1371 +1,9 @@
 {
   "network": "mainnet",
-  "timestamp": 1678185486382,
-  "latency": 2.26,
+  "timestamp": 1678746478602,
+  "latency": 1.639,
   "markets": {
-    "WETH-USDC": {
-      "marketId": "0x01e920e081b6f3b2e5183399d5b6733bb6f80319e6be3805b95cb7236910ff0e",
-      "marketStatus": "active",
-      "ticker": "WETH/USDC",
-      "baseDenom": "peggy0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-      "quoteDenom": "peggy0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-      "quoteToken": {
-        "name": "USD Coin",
-        "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-        "symbol": "USDC",
-        "logo": "https://static.alchemyapi.io/images/assets/3408.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "baseToken": {
-        "name": "WETH",
-        "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-        "symbol": "WETH",
-        "logo": "https://static.alchemyapi.io/images/assets/2396.png",
-        "decimals": 18,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "0.001",
-      "takerFeeRate": "0.002",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 1e-15,
-      "minQuantityTickSize": 1000000000000000
-    },
-    "INJ-USDC": {
-      "marketId": "0xe0dc13205fb8b23111d8555a6402681965223135d368eeeb964681f9ff12eb2a",
-      "marketStatus": "active",
-      "ticker": "INJ/USDC",
-      "baseDenom": "inj",
-      "quoteDenom": "peggy0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-      "quoteToken": {
-        "name": "USD Coin",
-        "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-        "symbol": "USDC",
-        "logo": "https://static.alchemyapi.io/images/assets/3408.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "baseToken": {
-        "name": "Injective Protocol",
-        "address": "0xe28b3B32B6c345A34Ff64674606124Dd5Aceca30",
-        "symbol": "INJ",
-        "logo": "https://static.alchemyapi.io/images/assets/7226.png",
-        "decimals": 18,
-        "updatedAt": 1677706712777,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "0.001",
-      "takerFeeRate": "0.002",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 1e-15,
-      "minQuantityTickSize": 1000000000000000
-    },
-    "USDT-USDC": {
-      "marketId": "0xda0bb7a7d8361d17a9d2327ed161748f33ecbf02738b45a7dd1d812735d1531c",
-      "marketStatus": "active",
-      "ticker": "USDT/USDC",
-      "baseDenom": "peggy0xdAC17F958D2ee523a2206206994597C13D831ec7",
-      "quoteDenom": "factory/inj14ejqjyq8um4p3xfqj74yld5waqljf88f9eneuk/inj1q6zlut7gtkzknkk773jecujwsdkgq882akqksk",
-      "quoteToken": {
-        "name": "USC Coin (Wormhole from Ethereum)",
-        "address": "0x0000000000000000000000000000000000000000",
-        "symbol": "USDC",
-        "logo": "https://static.alchemyapi.io/images/assets/3408.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "baseToken": {
-        "name": "Tether",
-        "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-        "symbol": "USDT",
-        "logo": "https://static.alchemyapi.io/images/assets/825.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "-0.0001",
-      "takerFeeRate": "0.001",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 0.0001,
-      "minQuantityTickSize": 100
-    },
-    "LINK-USDC": {
-      "marketId": "0xfe93c19c0a072c8dd208b96694e024305a7dff01bbf12cac2bfa81b246c69040",
-      "marketStatus": "active",
-      "ticker": "LINK/USDC",
-      "baseDenom": "peggy0x514910771AF9Ca656af840dff83E8264EcF986CA",
-      "quoteDenom": "peggy0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-      "quoteToken": {
-        "name": "USD Coin",
-        "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-        "symbol": "USDC",
-        "logo": "https://static.alchemyapi.io/images/assets/3408.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "baseToken": {
-        "name": "Chainlink",
-        "address": "0x514910771AF9Ca656af840dff83E8264EcF986CA",
-        "symbol": "LINK",
-        "logo": "https://static.alchemyapi.io/images/assets/1975.png",
-        "decimals": 18,
-        "updatedAt": 1677706712777,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "0.001",
-      "takerFeeRate": "0.002",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 1e-15,
-      "minQuantityTickSize": 1000000000000000
-    },
-    "AAVE-USDC": {
-      "marketId": "0xcdfbfaf1f24055e89b3c7cc763b8cb46ffff08cdc38c999d01f58d64af75dca9",
-      "marketStatus": "active",
-      "ticker": "AAVE/USDC",
-      "baseDenom": "peggy0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9",
-      "quoteDenom": "peggy0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-      "quoteToken": {
-        "name": "USD Coin",
-        "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-        "symbol": "USDC",
-        "logo": "https://static.alchemyapi.io/images/assets/3408.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "baseToken": {
-        "name": "Aave",
-        "address": "0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9",
-        "symbol": "AAVE",
-        "logo": "https://static.alchemyapi.io/images/assets/7278.png",
-        "decimals": 18,
-        "updatedAt": 1677706712776,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "0.001",
-      "takerFeeRate": "0.002",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 1e-15,
-      "minQuantityTickSize": 1000000000000000
-    },
-    "MATIC-USDC": {
-      "marketId": "0x5abfffe9079d53e0bf8ee9b3064b427acc3d71d6ba58a44235abe38f60115678",
-      "marketStatus": "active",
-      "ticker": "MATIC/USDC",
-      "baseDenom": "peggy0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0",
-      "quoteDenom": "peggy0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-      "quoteToken": {
-        "name": "USD Coin",
-        "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-        "symbol": "USDC",
-        "logo": "https://static.alchemyapi.io/images/assets/3408.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "baseToken": {
-        "name": "Polygon",
-        "address": "0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0",
-        "symbol": "MATIC",
-        "logo": "https://static.alchemyapi.io/images/assets/3890.png",
-        "decimals": 18,
-        "updatedAt": 1677706712777,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "0.001",
-      "takerFeeRate": "0.002",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 1e-15,
-      "minQuantityTickSize": 1000000000000000
-    },
-    "UNI-USDT": {
-      "marketId": "0xe8bf0467208c24209c1cf0fd64833fa43eb6e8035869f9d043dbff815ab76d01",
-      "marketStatus": "active",
-      "ticker": "UNI/USDT",
-      "baseDenom": "peggy0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984",
-      "quoteDenom": "peggy0xdAC17F958D2ee523a2206206994597C13D831ec7",
-      "quoteToken": {
-        "name": "Tether",
-        "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-        "symbol": "USDT",
-        "logo": "https://static.alchemyapi.io/images/assets/825.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "baseToken": {
-        "name": "Uniswap",
-        "address": "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984",
-        "symbol": "UNI",
-        "logo": "https://static.alchemyapi.io/images/assets/7083.png",
-        "decimals": 18,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "0.001",
-      "takerFeeRate": "0.002",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 1e-15,
-      "minQuantityTickSize": 1000000000000000
-    },
-    "SUSHI-USDC": {
-      "marketId": "0x9a629b947b6f946af4f6076cfda67f3535d73ee3cef6176cf6d9c8d6b0a03f37",
-      "marketStatus": "active",
-      "ticker": "SUSHI/USDC",
-      "baseDenom": "peggy0x6B3595068778DD592e39A122f4f5a5cF09C90fE2",
-      "quoteDenom": "peggy0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-      "quoteToken": {
-        "name": "USD Coin",
-        "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-        "symbol": "USDC",
-        "logo": "https://static.alchemyapi.io/images/assets/3408.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "baseToken": {
-        "name": "SushiSwap",
-        "address": "0x6B3595068778DD592e39A122f4f5a5cF09C90fE2",
-        "symbol": "SUSHI",
-        "logo": "https://static.alchemyapi.io/images/assets/6758.png",
-        "decimals": 18,
-        "updatedAt": 1677706712777,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "0.001",
-      "takerFeeRate": "0.002",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 1e-15,
-      "minQuantityTickSize": 1000000000000000
-    },
-    "GRT-USDC": {
-      "marketId": "0xa43d2be9861efb0d188b136cef0ae2150f80e08ec318392df654520dd359fcd7",
-      "marketStatus": "active",
-      "ticker": "GRT/USDC",
-      "baseDenom": "peggy0xc944E90C64B2c07662A292be6244BDf05Cda44a7",
-      "quoteDenom": "peggy0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-      "quoteToken": {
-        "name": "USD Coin",
-        "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-        "symbol": "USDC",
-        "logo": "https://static.alchemyapi.io/images/assets/3408.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "baseToken": {
-        "name": "The Graph",
-        "address": "0xc944E90C64B2c07662A292be6244BDf05Cda44a7",
-        "symbol": "GRT",
-        "logo": "https://static.alchemyapi.io/images/assets/6719.png",
-        "decimals": 18,
-        "updatedAt": 1677706712777,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "0.001",
-      "takerFeeRate": "0.002",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 1e-15,
-      "minQuantityTickSize": 1000000000000000
-    },
-    "INJ-USDT": {
-      "marketId": "0xa508cb32923323679f29a032c70342c147c17d0145625922b0ef22e955c844c0",
-      "marketStatus": "active",
-      "ticker": "INJ/USDT",
-      "baseDenom": "inj",
-      "quoteDenom": "peggy0xdAC17F958D2ee523a2206206994597C13D831ec7",
-      "quoteToken": {
-        "name": "Tether",
-        "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-        "symbol": "USDT",
-        "logo": "https://static.alchemyapi.io/images/assets/825.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "baseToken": {
-        "name": "Injective Protocol",
-        "address": "0xe28b3B32B6c345A34Ff64674606124Dd5Aceca30",
-        "symbol": "INJ",
-        "logo": "https://static.alchemyapi.io/images/assets/7226.png",
-        "decimals": 18,
-        "updatedAt": 1677706712777,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "-0.0001",
-      "takerFeeRate": "0.001",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 1e-15,
-      "minQuantityTickSize": 1000000000000000
-    },
-    "MATIC-USDT": {
-      "marketId": "0x28f3c9897e23750bf653889224f93390c467b83c86d736af79431958fff833d1",
-      "marketStatus": "active",
-      "ticker": "MATIC/USDT",
-      "baseDenom": "peggy0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0",
-      "quoteDenom": "peggy0xdAC17F958D2ee523a2206206994597C13D831ec7",
-      "quoteToken": {
-        "name": "Tether",
-        "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-        "symbol": "USDT",
-        "logo": "https://static.alchemyapi.io/images/assets/825.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "baseToken": {
-        "name": "Polygon",
-        "address": "0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0",
-        "symbol": "MATIC",
-        "logo": "https://static.alchemyapi.io/images/assets/3890.png",
-        "decimals": 18,
-        "updatedAt": 1677706712777,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "0.001",
-      "takerFeeRate": "0.002",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 1e-15,
-      "minQuantityTickSize": 1000000000000000
-    },
-    "UNI-USDC": {
-      "marketId": "0x09cc2c28fbedbdd677e07924653f8f583d0ee5886e74046e7f114210d990784b",
-      "marketStatus": "active",
-      "ticker": "UNI/USDC",
-      "baseDenom": "peggy0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984",
-      "quoteDenom": "peggy0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-      "quoteToken": {
-        "name": "USD Coin",
-        "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-        "symbol": "USDC",
-        "logo": "https://static.alchemyapi.io/images/assets/3408.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "baseToken": {
-        "name": "Uniswap",
-        "address": "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984",
-        "symbol": "UNI",
-        "logo": "https://static.alchemyapi.io/images/assets/7083.png",
-        "decimals": 18,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "0.001",
-      "takerFeeRate": "0.002",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 1e-15,
-      "minQuantityTickSize": 1000000000000000
-    },
-    "LINK-USDT": {
-      "marketId": "0x26413a70c9b78a495023e5ab8003c9cf963ef963f6755f8b57255feb5744bf31",
-      "marketStatus": "active",
-      "ticker": "LINK/USDT",
-      "baseDenom": "peggy0x514910771AF9Ca656af840dff83E8264EcF986CA",
-      "quoteDenom": "peggy0xdAC17F958D2ee523a2206206994597C13D831ec7",
-      "quoteToken": {
-        "name": "Tether",
-        "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-        "symbol": "USDT",
-        "logo": "https://static.alchemyapi.io/images/assets/825.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "baseToken": {
-        "name": "Chainlink",
-        "address": "0x514910771AF9Ca656af840dff83E8264EcF986CA",
-        "symbol": "LINK",
-        "logo": "https://static.alchemyapi.io/images/assets/1975.png",
-        "decimals": 18,
-        "updatedAt": 1677706712777,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "-0.0001",
-      "takerFeeRate": "0.001",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 1e-15,
-      "minQuantityTickSize": 1000000000000000
-    },
-    "WETH-USDT": {
-      "marketId": "0xd1956e20d74eeb1febe31cd37060781ff1cb266f49e0512b446a5fafa9a16034",
-      "marketStatus": "active",
-      "ticker": "WETH/USDT",
-      "baseDenom": "peggy0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-      "quoteDenom": "peggy0xdAC17F958D2ee523a2206206994597C13D831ec7",
-      "quoteToken": {
-        "name": "Tether",
-        "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-        "symbol": "USDT",
-        "logo": "https://static.alchemyapi.io/images/assets/825.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "baseToken": {
-        "name": "WETH",
-        "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-        "symbol": "WETH",
-        "logo": "https://static.alchemyapi.io/images/assets/2396.png",
-        "decimals": 18,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "-0.0001",
-      "takerFeeRate": "0.001",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 1e-15,
-      "minQuantityTickSize": 1000000000000000
-    },
-    "AAVE-USDT": {
-      "marketId": "0x01edfab47f124748dc89998eb33144af734484ba07099014594321729a0ca16b",
-      "marketStatus": "active",
-      "ticker": "AAVE/USDT",
-      "baseDenom": "peggy0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9",
-      "quoteDenom": "peggy0xdAC17F958D2ee523a2206206994597C13D831ec7",
-      "quoteToken": {
-        "name": "Tether",
-        "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-        "symbol": "USDT",
-        "logo": "https://static.alchemyapi.io/images/assets/825.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "baseToken": {
-        "name": "Aave",
-        "address": "0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9",
-        "symbol": "AAVE",
-        "logo": "https://static.alchemyapi.io/images/assets/7278.png",
-        "decimals": 18,
-        "updatedAt": 1677706712776,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "0.001",
-      "takerFeeRate": "0.002",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 1e-15,
-      "minQuantityTickSize": 1000000000000000
-    },
-    "GRT-USDT": {
-      "marketId": "0x29255e99290ff967bc8b351ce5b1cb08bc76a9a9d012133fb242bdf92cd28d89",
-      "marketStatus": "active",
-      "ticker": "GRT/USDT",
-      "baseDenom": "peggy0xc944E90C64B2c07662A292be6244BDf05Cda44a7",
-      "quoteDenom": "peggy0xdAC17F958D2ee523a2206206994597C13D831ec7",
-      "quoteToken": {
-        "name": "Tether",
-        "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-        "symbol": "USDT",
-        "logo": "https://static.alchemyapi.io/images/assets/825.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "baseToken": {
-        "name": "The Graph",
-        "address": "0xc944E90C64B2c07662A292be6244BDf05Cda44a7",
-        "symbol": "GRT",
-        "logo": "https://static.alchemyapi.io/images/assets/6719.png",
-        "decimals": 18,
-        "updatedAt": 1677706712777,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "0.001",
-      "takerFeeRate": "0.002",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 1e-15,
-      "minQuantityTickSize": 1000000000000000
-    },
-    "SUSHI-USDT": {
-      "marketId": "0x0c9f98c99b23e89dbf6a60bec05372790b39e03da0f86dd0208fc8e28751bd8c",
-      "marketStatus": "active",
-      "ticker": "SUSHI/USDT",
-      "baseDenom": "peggy0x6B3595068778DD592e39A122f4f5a5cF09C90fE2",
-      "quoteDenom": "peggy0xdAC17F958D2ee523a2206206994597C13D831ec7",
-      "quoteToken": {
-        "name": "Tether",
-        "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-        "symbol": "USDT",
-        "logo": "https://static.alchemyapi.io/images/assets/825.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "baseToken": {
-        "name": "SushiSwap",
-        "address": "0x6B3595068778DD592e39A122f4f5a5cF09C90fE2",
-        "symbol": "SUSHI",
-        "logo": "https://static.alchemyapi.io/images/assets/6758.png",
-        "decimals": 18,
-        "updatedAt": 1677706712777,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "0.001",
-      "takerFeeRate": "0.002",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 1e-15,
-      "minQuantityTickSize": 1000000000000000
-    },
-    "SNX-USDT": {
-      "marketId": "0x51092ddec80dfd0d41fee1a7d93c8465de47cd33966c8af8ee66c14fe341a545",
-      "marketStatus": "active",
-      "ticker": "SNX/USDT",
-      "baseDenom": "peggy0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F",
-      "quoteDenom": "peggy0xdAC17F958D2ee523a2206206994597C13D831ec7",
-      "quoteToken": {
-        "name": "Tether",
-        "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-        "symbol": "USDT",
-        "logo": "https://static.alchemyapi.io/images/assets/825.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "baseToken": {
-        "name": "Synthetix",
-        "address": "0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F",
-        "symbol": "SNX",
-        "logo": "https://static.alchemyapi.io/images/assets/2586.png",
-        "decimals": 18,
-        "updatedAt": 1677706712777,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "0.001",
-      "takerFeeRate": "0.002",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 1e-15,
-      "minQuantityTickSize": 1000000000000000
-    },
-    "QNT-USDT": {
-      "marketId": "0xbe9d4a0a768c7e8efb6740be76af955928f93c247e0b3a1a106184c6cf3216a7",
-      "marketStatus": "active",
-      "ticker": "QNT/USDT",
-      "baseDenom": "peggy0x4a220E6096B25EADb88358cb44068A3248254675",
-      "quoteDenom": "peggy0xdAC17F958D2ee523a2206206994597C13D831ec7",
-      "quoteToken": {
-        "name": "Tether",
-        "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-        "symbol": "USDT",
-        "logo": "https://static.alchemyapi.io/images/assets/825.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "baseToken": {
-        "name": "Quant",
-        "address": "0x4a220E6096B25EADb88358cb44068A3248254675",
-        "symbol": "QNT",
-        "logo": "https://static.alchemyapi.io/images/assets/3155.png",
-        "decimals": 18,
-        "updatedAt": 1677706712777,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "0.001",
-      "takerFeeRate": "0.002",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 1e-15,
-      "minQuantityTickSize": 1000000000000000
-    },
-    "WBTC-USDC": {
-      "marketId": "0x170a06eb653548f67e94b0fcb82c5258c83b0a2b62ed24c55749d5ac77bc7621",
-      "marketStatus": "active",
-      "ticker": "WBTC/USDC",
-      "baseDenom": "peggy0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
-      "quoteDenom": "peggy0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-      "quoteToken": {
-        "name": "USD Coin",
-        "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-        "symbol": "USDC",
-        "logo": "https://static.alchemyapi.io/images/assets/3408.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "baseToken": {
-        "name": "Wrapped Bitcoin",
-        "address": "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
-        "symbol": "WBTC",
-        "logo": "https://static.alchemyapi.io/images/assets/3717.png",
-        "decimals": 8,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "0.001",
-      "takerFeeRate": "0.002",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 0.0001,
-      "minQuantityTickSize": 10000
-    },
-    "AXS-USDT": {
-      "marketId": "0x7471d361b90fc8541267bd088f498c2a461a2c0c57ff2b9a08279480e803b470",
-      "marketStatus": "active",
-      "ticker": "AXS/USDT",
-      "baseDenom": "peggy0xBB0E17EF65F82Ab018d8EDd776e8DD940327B28b",
-      "quoteDenom": "peggy0xdAC17F958D2ee523a2206206994597C13D831ec7",
-      "quoteToken": {
-        "name": "Tether",
-        "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-        "symbol": "USDT",
-        "logo": "https://static.alchemyapi.io/images/assets/825.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "baseToken": {
-        "name": "Axie Infinity",
-        "address": "0xBB0E17EF65F82Ab018d8EDd776e8DD940327B28b",
-        "symbol": "AXS",
-        "logo": "https://static.alchemyapi.io/images/assets/6783.png",
-        "decimals": 18,
-        "updatedAt": 1677706712776,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "-0.0001",
-      "takerFeeRate": "0.001",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 1e-14,
-      "minQuantityTickSize": 1e16
-    },
-    "ATOM-USDT": {
-      "marketId": "0x0511ddc4e6586f3bfe1acb2dd905f8b8a82c97e1edaef654b12ca7e6031ca0fa",
-      "marketStatus": "active",
-      "ticker": "ATOM/USDT",
-      "baseDenom": "ibc/C4CFF46FD6DE35CA4CF4CE031E643C8FDC9BA4B99AE598E9B0ED98FE3A2319F9",
-      "quoteDenom": "peggy0xdAC17F958D2ee523a2206206994597C13D831ec7",
-      "quoteToken": {
-        "name": "Tether",
-        "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-        "symbol": "USDT",
-        "logo": "https://static.alchemyapi.io/images/assets/825.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "baseToken": {
-        "name": "Cosmos",
-        "address": "0x8D983cb9388EaC77af0474fA441C4815500Cb7BB",
-        "symbol": "ATOM",
-        "logo": "https://s2.coinmarketcap.com/static/img/coins/64x64/3794.png",
-        "decimals": 6,
-        "updatedAt": 1677706712776,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "-0.0001",
-      "takerFeeRate": "0.001",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 0.01,
-      "minQuantityTickSize": 10000
-    },
-    "GF-USDT": {
-      "marketId": "0x7f71c4fba375c964be8db7fc7a5275d974f8c6cdc4d758f2ac4997f106bb052b",
-      "marketStatus": "active",
-      "ticker": "GF/USDT",
-      "baseDenom": "peggy0xAaEf88cEa01475125522e117BFe45cF32044E238",
-      "quoteDenom": "peggy0xdAC17F958D2ee523a2206206994597C13D831ec7",
-      "quoteToken": {
-        "name": "Tether",
-        "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-        "symbol": "USDT",
-        "logo": "https://static.alchemyapi.io/images/assets/825.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "baseToken": {
-        "name": "GuildFi Token",
-        "address": "0xAaEf88cEa01475125522e117BFe45cF32044E238",
-        "symbol": "GF",
-        "logo": "https://s2.coinmarketcap.com/static/img/coins/64x64/15585.png",
-        "decimals": 18,
-        "updatedAt": 1677706712777,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "-0.0001",
-      "takerFeeRate": "0.001",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 1e-15,
-      "minQuantityTickSize": 1000000000000000
-    },
-    "UST-USDT": {
-      "marketId": "0x0f1a11df46d748c2b20681273d9528021522c6a0db00de4684503bbd53bef16e",
-      "marketStatus": "active",
-      "ticker": "UST/USDT",
-      "baseDenom": "ibc/B448C0CA358B958301D328CCDC5D5AD642FC30A6D3AE106FF721DB315F3DDE5C",
-      "quoteDenom": "peggy0xdAC17F958D2ee523a2206206994597C13D831ec7",
-      "quoteToken": {
-        "name": "Tether",
-        "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-        "symbol": "USDT",
-        "logo": "https://static.alchemyapi.io/images/assets/825.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "baseToken": {
-        "name": "TerraUSD",
-        "address": "0xa47c8bf37f92aBed4A126BDA807A7b7498661acD",
-        "symbol": "UST",
-        "logo": "https://s2.coinmarketcap.com/static/img/coins/64x64/7129.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "0.0001",
-      "takerFeeRate": "0.0007",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 0.0001,
-      "minQuantityTickSize": 10000
-    },
-    "LUNA-UST": {
-      "marketId": "0xdce84d5e9c4560b549256f34583fb4ed07c82026987451d5da361e6e238287b3",
-      "marketStatus": "active",
-      "ticker": "LUNA/UST",
-      "baseDenom": "ibc/B8AF5D92165F35AB31F3FC7C7B444B9D240760FA5D406C49D24862BD0284E395",
-      "quoteDenom": "ibc/B448C0CA358B958301D328CCDC5D5AD642FC30A6D3AE106FF721DB315F3DDE5C",
-      "quoteToken": {
-        "name": "TerraUSD",
-        "address": "0xa47c8bf37f92aBed4A126BDA807A7b7498661acD",
-        "symbol": "UST",
-        "logo": "https://s2.coinmarketcap.com/static/img/coins/64x64/7129.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "baseToken": {
-        "name": "Terra",
-        "address": "0xd2877702675e6cEb975b4A1dFf9fb7BAF4C91ea9",
-        "symbol": "LUNA",
-        "logo": "https://s2.coinmarketcap.com/static/img/coins/64x64/4172.png",
-        "decimals": 6,
-        "updatedAt": 1677706712777,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "0.0005",
-      "takerFeeRate": "0.0012",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 1e-8,
-      "minQuantityTickSize": 100000
-    },
-    "INJ-UST": {
-      "marketId": "0xfbc729e93b05b4c48916c1433c9f9c2ddb24605a73483303ea0f87a8886b52af",
-      "marketStatus": "active",
-      "ticker": "INJ/UST",
-      "baseDenom": "inj",
-      "quoteDenom": "ibc/B448C0CA358B958301D328CCDC5D5AD642FC30A6D3AE106FF721DB315F3DDE5C",
-      "quoteToken": {
-        "name": "TerraUSD",
-        "address": "0xa47c8bf37f92aBed4A126BDA807A7b7498661acD",
-        "symbol": "UST",
-        "logo": "https://s2.coinmarketcap.com/static/img/coins/64x64/7129.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "baseToken": {
-        "name": "Injective Protocol",
-        "address": "0xe28b3B32B6c345A34Ff64674606124Dd5Aceca30",
-        "symbol": "INJ",
-        "logo": "https://static.alchemyapi.io/images/assets/7226.png",
-        "decimals": 18,
-        "updatedAt": 1677706712777,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "0.001",
-      "takerFeeRate": "0.001",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 1e-15,
-      "minQuantityTickSize": 1000000000000000
-    },
-    "XBX-USDT": {
-      "marketId": "0xd7487c1fc78fdb283d838fa562339db0ca05cd4af57c6a20e6561f260c78d1ae",
-      "marketStatus": "active",
-      "ticker": "XBX/USDT",
-      "baseDenom": "peggy0x080B12E80C9b45e97C23b6ad10a16B3e2a123949",
-      "quoteDenom": "peggy0xdAC17F958D2ee523a2206206994597C13D831ec7",
-      "quoteToken": {
-        "name": "Tether",
-        "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-        "symbol": "USDT",
-        "logo": "https://static.alchemyapi.io/images/assets/825.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "baseToken": {
-        "name": "X-BLOX",
-        "address": "0x080B12E80C9b45e97C23b6ad10a16B3e2a123949",
-        "symbol": "XBX",
-        "logo": "https://assets.coingecko.com/coins/images/26381/small/xblox-logo.png?1657678295",
-        "decimals": 18,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "0.001",
-      "takerFeeRate": "0.002",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 1e-15,
-      "minQuantityTickSize": 1000000000000000
-    },
-    "HUAHUA-USDT": {
-      "marketId": "0xf04d1b7acf40b331d239fcff7950f98a4f2ab7adb2ceb8f65aa32ac29455d7b4",
-      "marketStatus": "active",
-      "ticker": "HUAHUA/USDT",
-      "baseDenom": "ibc/E7807A46C0B7B44B350DA58F51F278881B863EC4DCA94635DAB39E52C30766CB",
-      "quoteDenom": "peggy0xdAC17F958D2ee523a2206206994597C13D831ec7",
-      "quoteToken": {
-        "name": "Tether",
-        "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-        "symbol": "USDT",
-        "logo": "https://static.alchemyapi.io/images/assets/825.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "baseToken": {
-        "name": "Chihuahua",
-        "address": "0x0000000000000000000000000000000000000000",
-        "symbol": "HUAHUA",
-        "logo": "https://s2.coinmarketcap.com/static/img/coins/64x64/17208.png",
-        "decimals": 6,
-        "updatedAt": 1677706712777,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "0.001",
-      "takerFeeRate": "0.001",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 1e-6,
-      "minQuantityTickSize": 100000000
-    },
-    "APE-USDT": {
-      "marketId": "0x572f05fd93a6c2c4611b2eba1a0a36e102b6a592781956f0128a27662d84f112",
-      "marketStatus": "active",
-      "ticker": "APE/USDT",
-      "baseDenom": "peggy0x4d224452801ACEd8B2F0aebE155379bb5D594381",
-      "quoteDenom": "peggy0xdAC17F958D2ee523a2206206994597C13D831ec7",
-      "quoteToken": {
-        "name": "Tether",
-        "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-        "symbol": "USDT",
-        "logo": "https://static.alchemyapi.io/images/assets/825.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "baseToken": {
-        "name": "ApeCoin",
-        "address": "0x4d224452801ACEd8B2F0aebE155379bb5D594381",
-        "symbol": "APE",
-        "logo": "https://assets.coingecko.com/coins/images/24383/small/apecoin.jpg?1647476455",
-        "decimals": 18,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "-0.0001",
-      "takerFeeRate": "0.001",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 1e-15,
-      "minQuantityTickSize": 1e16
-    },
-    "EVMOS-USDT": {
-      "marketId": "0x719f1617efc6e998472b70436549e0999fab8c05701177b15ba8910f2c5e7ab2",
-      "marketStatus": "active",
-      "ticker": "EVMOS/USDT",
-      "baseDenom": "ibc/16618B7F7AC551F48C057A13F4CA5503693FBFF507719A85BC6876B8BD75F821",
-      "quoteDenom": "peggy0xdAC17F958D2ee523a2206206994597C13D831ec7",
-      "quoteToken": {
-        "name": "Tether",
-        "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-        "symbol": "USDT",
-        "logo": "https://static.alchemyapi.io/images/assets/825.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "baseToken": {
-        "name": "Evmos",
-        "address": "0x0000000000000000000000000000000000000000",
-        "symbol": "EVMOS",
-        "logo": "https://assets.coingecko.com/coins/images/24023/large/logo-orange.png?1651223278",
-        "decimals": 18,
-        "updatedAt": 1677706712777,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "-0.0001",
-      "takerFeeRate": "0.001",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 1e-16,
-      "minQuantityTickSize": 1000000000000000
-    },
-    "XPRT-USDT": {
-      "marketId": "0x4d030dccc9564ab1536a7751c3a566fa3adcb6a08ac807edc82890f2a6ec4fed",
-      "marketStatus": "active",
-      "ticker": "XPRT/USDT",
-      "baseDenom": "ibc/B786E7CBBF026F6F15A8DA248E0F18C62A0F7A70CB2DABD9239398C8B5150ABB",
-      "quoteDenom": "peggy0xdAC17F958D2ee523a2206206994597C13D831ec7",
-      "quoteToken": {
-        "name": "Tether",
-        "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-        "symbol": "USDT",
-        "logo": "https://static.alchemyapi.io/images/assets/825.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "baseToken": {
-        "name": "Persistence",
-        "address": "0xae837EacBAE2a6bA166ce0DEd5C72340f212835c",
-        "symbol": "XPRT",
-        "logo": "https://assets.coingecko.com/coins/images/14582/large/512_Light.png?1617149658",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "-0.0001",
-      "takerFeeRate": "0.001",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 0.0001,
-      "minQuantityTickSize": 1000
-    },
-    "DOT-USDT": {
-      "marketId": "0xd5f5895102b67300a2f8f2c2e4b8d7c4c820d612bc93c039ba8cb5b93ccedf22",
-      "marketStatus": "active",
-      "ticker": "DOT/USDT",
-      "baseDenom": "ibc/624BA9DD171915A2B9EA70F69638B2CEA179959850C1A586F6C485498F29EDD4",
-      "quoteDenom": "peggy0xdAC17F958D2ee523a2206206994597C13D831ec7",
-      "quoteToken": {
-        "name": "Tether",
-        "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-        "symbol": "USDT",
-        "logo": "https://static.alchemyapi.io/images/assets/825.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "baseToken": {
-        "name": "Polkadot",
-        "address": "0x0000000000000000000000000000000000000000",
-        "symbol": "DOT",
-        "logo": "https://assets.coingecko.com/coins/images/12171/large/polkadot.png?1639712644",
-        "decimals": 10,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "-0.0001",
-      "takerFeeRate": "0.001",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 1e-6,
-      "minQuantityTickSize": 100000000
-    },
-    "USDC-USDT": {
-      "marketId": "0xabc20971099f5df5d1de138f8ea871e7e9832e3b0b54b61056eae15b09fed678",
-      "marketStatus": "active",
-      "ticker": "USDC/USDT",
-      "baseDenom": "peggy0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-      "quoteDenom": "peggy0xdAC17F958D2ee523a2206206994597C13D831ec7",
-      "quoteToken": {
-        "name": "Tether",
-        "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-        "symbol": "USDT",
-        "logo": "https://static.alchemyapi.io/images/assets/825.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "baseToken": {
-        "name": "USD Coin",
-        "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-        "symbol": "USDC",
-        "logo": "https://static.alchemyapi.io/images/assets/3408.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "-0.00002",
-      "takerFeeRate": "0.0002",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 0.0001,
-      "minQuantityTickSize": 1000000
-    },
-    "STRD-USDT": {
-      "marketId": "0xcd4b823ad32db2245b61bf498936145d22cdedab808d2f9d65100330da315d29",
-      "marketStatus": "active",
-      "ticker": "STRD/USDT",
-      "baseDenom": "ibc/3FDD002A3A4019B05A33D324B2F29748E77AF501BEA5C96D1F28B2D6755F9F25",
-      "quoteDenom": "peggy0xdAC17F958D2ee523a2206206994597C13D831ec7",
-      "quoteToken": {
-        "name": "Tether",
-        "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-        "symbol": "USDT",
-        "logo": "https://static.alchemyapi.io/images/assets/825.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "baseToken": {
-        "name": "Stride",
-        "address": "0x0000000000000000000000000000000000000000",
-        "symbol": "STRD",
-        "logo": "",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "-0.0001",
-      "takerFeeRate": "0.001",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 0.001,
-      "minQuantityTickSize": 1000
-    },
-    "axlUSDC-USDT": {
-      "marketId": "0x4807e9ac33c565b4278fb9d288bd79546abbf5a368dfc73f160fe9caa37a70b1",
-      "marketStatus": "active",
-      "ticker": "axlUSDC/USDT",
-      "baseDenom": "ibc/7E1AF94AD246BE522892751046F0C959B768642E5671CC3742264068D49553C0",
-      "quoteDenom": "peggy0xdAC17F958D2ee523a2206206994597C13D831ec7",
-      "quoteToken": {
-        "name": "Tether",
-        "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-        "symbol": "USDT",
-        "logo": "https://static.alchemyapi.io/images/assets/825.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "baseToken": {
-        "name": "Axelar Wrapped USDC",
-        "address": "0x0000000000000000000000000000000000000000",
-        "symbol": "USDC",
-        "logo": "https://assets.coingecko.com/coins/images/26476/small/axlUSDC.png?1658207579",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "-0.0001",
-      "takerFeeRate": "0.001",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 0.0001,
-      "minQuantityTickSize": 1000000
-    },
-    "CRE-USDT": {
-      "marketId": "0xe03df6e1571acb076c3d8f22564a692413b6843ad2df67411d8d8e56449c7ff4",
-      "marketStatus": "active",
-      "ticker": "CRE/USDT",
-      "baseDenom": "ibc/3A6DD3358D9F7ADD18CDE79BA10B400511A5DE4AE2C037D7C9639B52ADAF35C6",
-      "quoteDenom": "peggy0xdAC17F958D2ee523a2206206994597C13D831ec7",
-      "quoteToken": {
-        "name": "Tether",
-        "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-        "symbol": "USDT",
-        "logo": "https://static.alchemyapi.io/images/assets/825.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "baseToken": {
-        "name": "Cresent Network",
-        "address": "0x0000000000000000000000000000000000000000",
-        "symbol": "CRE",
-        "logo": "https://assets.coingecko.com/coins/images/25061/small/logo_200x200.png?1649943220",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "0.001",
-      "takerFeeRate": "0.001",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 0.0001,
-      "minQuantityTickSize": 1000
-    },
-    "SteadyETH-USDT": {
-      "marketId": "0x219b522871725d175f63d5cb0a55e95aa688b1c030272c5ae967331e45620032",
-      "marketStatus": "active",
-      "ticker": "SteadyETH/USDT",
-      "baseDenom": "peggy0x3F07A84eCdf494310D397d24c1C78B041D2fa622",
-      "quoteDenom": "peggy0xdAC17F958D2ee523a2206206994597C13D831ec7",
-      "quoteToken": {
-        "name": "Tether",
-        "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-        "symbol": "USDT",
-        "logo": "https://static.alchemyapi.io/images/assets/825.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "-0.0001",
-      "takerFeeRate": "0.001",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 1e-15,
-      "minQuantityTickSize": 1e16
-    },
-    "SteadyBTC-USDT": {
-      "marketId": "0x510855ccf9148b47c6114e1c9e26731f9fd68a6f6dbc5d148152d02c0f3e5ce0",
-      "marketStatus": "active",
-      "ticker": "SteadyBTC/USDT",
-      "baseDenom": "peggy0x4986fD36b6b16f49b43282Ee2e24C5cF90ed166d",
-      "quoteDenom": "peggy0xdAC17F958D2ee523a2206206994597C13D831ec7",
-      "quoteToken": {
-        "name": "Tether",
-        "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-        "symbol": "USDT",
-        "logo": "https://static.alchemyapi.io/images/assets/825.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "-0.0001",
-      "takerFeeRate": "0.001",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 1e-15,
-      "minQuantityTickSize": 1e16
-    },
-    "ETHBTCTrend-USDT": {
-      "marketId": "0x2021159081a88c9a627c66f770fb60c7be78d492509c89b203e1829d0413995a",
-      "marketStatus": "active",
-      "ticker": "ETHBTCTrend/USDT",
-      "baseDenom": "peggy0x6b7f87279982d919Bbf85182DDeAB179B366D8f2",
-      "quoteDenom": "peggy0xdAC17F958D2ee523a2206206994597C13D831ec7",
-      "quoteToken": {
-        "name": "Tether",
-        "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-        "symbol": "USDT",
-        "logo": "https://static.alchemyapi.io/images/assets/825.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "baseToken": {
-        "name": "ETH-BTC Trend",
-        "address": "0x0000000000000000000000000000000000000000",
-        "symbol": "ETHBTCTrend",
-        "logo": "https://assets.coingecko.com/coins/images/26476/small/axlUSDC.png?1658207579",
-        "decimals": 18,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "-0.0001",
-      "takerFeeRate": "0.001",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 1e-15,
-      "minQuantityTickSize": 1e16
-    },
-    "SOMM-USDT": {
-      "marketId": "0x0686357b934c761784d58a2b8b12618dfe557de108a220e06f8f6580abb83aab",
-      "marketStatus": "active",
-      "ticker": "SOMM/USDT",
-      "baseDenom": "ibc/34346A60A95EB030D62D6F5BDD4B745BE18E8A693372A8A347D5D53DBBB1328B",
-      "quoteDenom": "peggy0xdAC17F958D2ee523a2206206994597C13D831ec7",
-      "quoteToken": {
-        "name": "Tether",
-        "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-        "symbol": "USDT",
-        "logo": "https://static.alchemyapi.io/images/assets/825.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "baseToken": {
-        "name": "Sommelier",
-        "address": "0xa670d7237398238DE01267472C6f13e5B8010FD1",
-        "symbol": "SOMM",
-        "logo": "https://assets.coingecko.com/coins/images/23308/small/somm_new.png?1650884424",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "-0.0001",
-      "takerFeeRate": "0.001",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 0.0001,
-      "minQuantityTickSize": 10000000
-    },
-    "SOL-USDC": {
-      "marketId": "0x84ba79ffde31db8273a9655eb515cb6cadfdf451b8f57b83eb3f78dca5bbbe6d",
-      "marketStatus": "active",
-      "ticker": "SOL/USDC",
-      "baseDenom": "factory/inj14ejqjyq8um4p3xfqj74yld5waqljf88f9eneuk/inj1sthrn5ep8ls5vzz8f9gp89khhmedahhdkqa8z3",
-      "quoteDenom": "factory/inj14ejqjyq8um4p3xfqj74yld5waqljf88f9eneuk/inj1q6zlut7gtkzknkk773jecujwsdkgq882akqksk",
-      "quoteToken": {
-        "name": "USC Coin (Wormhole from Ethereum)",
-        "address": "0x0000000000000000000000000000000000000000",
-        "symbol": "USDC",
-        "logo": "https://static.alchemyapi.io/images/assets/3408.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "baseToken": {
-        "name": "Wormhole Wrapped SOL",
-        "address": "0x0000000000000000000000000000000000000000",
-        "symbol": "SOL",
-        "logo": "https://assets.coingecko.com/coins/images/4128/small/solana.png?1640133422",
-        "decimals": 8,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "-0.0001",
-      "takerFeeRate": "0.001",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 0.0001,
-      "minQuantityTickSize": 1000000
-    },
-    "USDCso-USDCet": {
-      "marketId": "0xb825e2e4dbe369446e454e21c16e041cbc4d95d73f025c369f92210e82d2106f",
-      "marketStatus": "active",
-      "ticker": "USDCso/USDCet",
-      "baseDenom": "factory/inj14ejqjyq8um4p3xfqj74yld5waqljf88f9eneuk/inj12pwnhtv7yat2s30xuf4gdk9qm85v4j3e60dgvu",
-      "quoteDenom": "factory/inj14ejqjyq8um4p3xfqj74yld5waqljf88f9eneuk/inj1q6zlut7gtkzknkk773jecujwsdkgq882akqksk",
-      "quoteToken": {
-        "name": "USC Coin (Wormhole from Ethereum)",
-        "address": "0x0000000000000000000000000000000000000000",
-        "symbol": "USDC",
-        "logo": "https://static.alchemyapi.io/images/assets/3408.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "baseToken": {
-        "name": "USD Coin (Wormhole from Solana)",
-        "address": "0x0000000000000000000000000000000000000000",
-        "symbol": "USDC",
-        "logo": "https://static.alchemyapi.io/images/assets/3408.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "-0.0001",
-      "takerFeeRate": "0.001",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 0.0001,
-      "minQuantityTickSize": 100
-    },
-    "USDC-USDCet": {
-      "marketId": "0xf66f797a0ff49bd2170a04d288ca3f13b5df1c822a7b0cc4204aca64a5860666",
-      "marketStatus": "active",
-      "ticker": "USDC/USDCet",
-      "baseDenom": "peggy0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-      "quoteDenom": "factory/inj14ejqjyq8um4p3xfqj74yld5waqljf88f9eneuk/inj1q6zlut7gtkzknkk773jecujwsdkgq882akqksk",
-      "quoteToken": {
-        "name": "USC Coin (Wormhole from Ethereum)",
-        "address": "0x0000000000000000000000000000000000000000",
-        "symbol": "USDC",
-        "logo": "https://static.alchemyapi.io/images/assets/3408.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "baseToken": {
-        "name": "USD Coin",
-        "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-        "symbol": "USDC",
-        "logo": "https://static.alchemyapi.io/images/assets/3408.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "-0.0001",
-      "takerFeeRate": "0.001",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 0.0001,
-      "minQuantityTickSize": 100
-    },
-    "CHZ-USDC": {
-      "marketId": "0x4fa0bd2c2adbfe077f58395c18a72f5cbf89532743e3bddf43bc7aba706b0b74",
-      "marketStatus": "active",
-      "ticker": "CHZ/USDC",
-      "baseDenom": "factory/inj14ejqjyq8um4p3xfqj74yld5waqljf88f9eneuk/inj1q6kpxy6ar5lkxqudjvryarrrttmakwsvzkvcyh",
-      "quoteDenom": "factory/inj14ejqjyq8um4p3xfqj74yld5waqljf88f9eneuk/inj1q6zlut7gtkzknkk773jecujwsdkgq882akqksk",
-      "quoteToken": {
-        "name": "USC Coin (Wormhole from Ethereum)",
-        "address": "0x0000000000000000000000000000000000000000",
-        "symbol": "USDC",
-        "logo": "https://static.alchemyapi.io/images/assets/3408.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "baseToken": {
-        "name": "Chiliz (Wormhole)",
-        "address": "0x0000000000000000000000000000000000000000",
-        "symbol": "CHZ",
-        "logo": "https://static.alchemyapi.io/images/assets/4066.png",
-        "decimals": 8,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "-0.0001",
-      "takerFeeRate": "0.001",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 1e-6,
-      "minQuantityTickSize": 100000000
-    },
-    "CANTO-USDT": {
-      "marketId": "0xa7fb70ac87e220f3ea7f7f77faf48b47b3575a9f7ad22291f04a02799e631ca9",
-      "marketStatus": "active",
-      "ticker": "CANTO/USDT",
-      "baseDenom": "ibc/D91A2C4EE7CD86BBAFCE0FA44A60DDD9AFBB7EEB5B2D46C0984DEBCC6FEDFAE8",
-      "quoteDenom": "peggy0xdAC17F958D2ee523a2206206994597C13D831ec7",
-      "quoteToken": {
-        "name": "Tether",
-        "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-        "symbol": "USDT",
-        "logo": "https://static.alchemyapi.io/images/assets/825.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "baseToken": {
-        "name": "CANTO",
-        "address": "0x0000000000000000000000000000000000000000",
-        "symbol": "CANTO",
-        "logo": "https://assets.coingecko.com/coins/images/26959/large/canto-network.png?1661215219",
-        "decimals": 18,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "-0.0001",
-      "takerFeeRate": "0.001",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 1e-16,
-      "minQuantityTickSize": 1e19
-    },
-    "LDO-USDC": {
-      "marketId": "0x66a113e1f0c57196985f8f1f1cfce2f220fa0a96bca39360c70b6788a0bc06e0",
-      "marketStatus": "active",
-      "ticker": "LDO/USDC",
-      "baseDenom": "factory/inj14ejqjyq8um4p3xfqj74yld5waqljf88f9eneuk/inj1me6t602jlndzxgv2d7ekcnkjuqdp7vfh4txpyy",
-      "quoteDenom": "factory/inj14ejqjyq8um4p3xfqj74yld5waqljf88f9eneuk/inj1q6zlut7gtkzknkk773jecujwsdkgq882akqksk",
-      "quoteToken": {
-        "name": "USC Coin (Wormhole from Ethereum)",
-        "address": "0x0000000000000000000000000000000000000000",
-        "symbol": "USDC",
-        "logo": "https://static.alchemyapi.io/images/assets/3408.png",
-        "decimals": 6,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "baseToken": {
-        "name": "Lido DAO",
-        "address": "0x0000000000000000000000000000000000000000",
-        "symbol": "LDO",
-        "logo": "https://assets.coingecko.com/coins/images/13573/large/Lido_DAO.png?1609873644",
-        "decimals": 8,
-        "updatedAt": 1677706712778,
-        "coinGeckoId": ""
-      },
-      "makerFeeRate": "-0.0001",
-      "takerFeeRate": "0.001",
-      "serviceProviderFee": "0.4",
-      "minPriceTickSize": 1e-5,
-      "minQuantityTickSize": 100000
-    },
-    "BTC-USDT-PERP": {
+    "BTC-USDT": {
       "oracleBase": "BTC",
       "oracleQuote": "USDT",
       "oracleType": "bandibc",
@@ -1394,16 +32,16 @@
       "perpetualMarketInfo": {
         "hourlyFundingRateCap": "0.0000625",
         "hourlyInterestRate": "0.00000416666",
-        "nextFundingTimestamp": 1678186800,
+        "nextFundingTimestamp": 1678748400,
         "fundingInterval": 3600
       },
       "perpetualMarketFunding": {
-        "cumulativeFunding": "6740833038.643578708150215215",
-        "cumulativePrice": "-1.538612341615811856",
-        "lastTimestamp": 1678184976
+        "cumulativeFunding": "6731749864.842542150404409386",
+        "cumulativePrice": "0.882058781944930425",
+        "lastTimestamp": 1678745597
       }
     },
-    "ETH-USDT-PERP": {
+    "ETH-USDT": {
       "oracleBase": "ETH",
       "oracleQuote": "USDT",
       "oracleType": "bandibc",
@@ -1432,16 +70,16 @@
       "perpetualMarketInfo": {
         "hourlyFundingRateCap": "0.0000625",
         "hourlyInterestRate": "0.00000416666",
-        "nextFundingTimestamp": 1677549600,
+        "nextFundingTimestamp": 1678111200,
         "fundingInterval": 3600
       },
       "perpetualMarketFunding": {
-        "cumulativeFunding": "557062453.697006286839874497",
-        "cumulativePrice": "-56.511029218858766445",
-        "lastTimestamp": 1678183935
+        "cumulativeFunding": "556952283.54530681322048828",
+        "cumulativePrice": "138.363307250672417932",
+        "lastTimestamp": 1678745592
       }
     },
-    "BNB-USDT-PERP": {
+    "BNB-USDT": {
       "oracleBase": "BNB",
       "oracleQuote": "USDT",
       "oracleType": "bandibc",
@@ -1470,16 +108,16 @@
       "perpetualMarketInfo": {
         "hourlyFundingRateCap": "0.0000625",
         "hourlyInterestRate": "0.00000416666",
-        "nextFundingTimestamp": 1678186800,
+        "nextFundingTimestamp": 1678748400,
         "fundingInterval": 3600
       },
       "perpetualMarketFunding": {
-        "cumulativeFunding": "7123618.471578233977557283",
-        "cumulativePrice": "-2.680254733674219373",
-        "lastTimestamp": 1678185104
+        "cumulativeFunding": "5418687.450728538275298",
+        "cumulativePrice": "0.214767258585140298",
+        "lastTimestamp": 1678745802
       }
     },
-    "INJ-USDT-PERP": {
+    "INJ-USDT": {
       "oracleBase": "INJ",
       "oracleQuote": "USDT",
       "oracleType": "bandibc",
@@ -1508,16 +146,16 @@
       "perpetualMarketInfo": {
         "hourlyFundingRateCap": "0.0000625",
         "hourlyInterestRate": "0.00000416666",
-        "nextFundingTimestamp": 1678186800,
+        "nextFundingTimestamp": 1678748400,
         "fundingInterval": 3600
       },
       "perpetualMarketFunding": {
-        "cumulativeFunding": "1161622.340224922505695088",
-        "cumulativePrice": "3.308427930614979416",
-        "lastTimestamp": 1678185153
+        "cumulativeFunding": "1181498.483722724452307315",
+        "cumulativePrice": "6.401091764666917117",
+        "lastTimestamp": 1678746470
       }
     },
-    "LUNA-UST-PERP": {
+    "LUNA-UST": {
       "oracleBase": "LUNA",
       "oracleQuote": "UST",
       "oracleType": "bandibc",
@@ -1546,7 +184,7 @@
       "perpetualMarketInfo": {
         "hourlyFundingRateCap": "0.0000625",
         "hourlyInterestRate": "0.00000416666",
-        "nextFundingTimestamp": 1678186800,
+        "nextFundingTimestamp": 1678748400,
         "fundingInterval": 3600
       },
       "perpetualMarketFunding": {
@@ -1555,7 +193,7 @@
         "lastTimestamp": 1653127200
       }
     },
-    "ATOM-USDT-PERP": {
+    "ATOM-USDT": {
       "oracleBase": "ATOM",
       "oracleQuote": "USDT",
       "oracleType": "bandibc",
@@ -1584,16 +222,16 @@
       "perpetualMarketInfo": {
         "hourlyFundingRateCap": "0.0000625",
         "hourlyInterestRate": "0.00000416666",
-        "nextFundingTimestamp": 1678186800,
+        "nextFundingTimestamp": 1678748400,
         "fundingInterval": 3600
       },
       "perpetualMarketFunding": {
-        "cumulativeFunding": "4808301.079078869359092374",
-        "cumulativePrice": "-0.592210313290404349",
-        "lastTimestamp": 1678185484
+        "cumulativeFunding": "4856494.340860712238644439",
+        "cumulativePrice": "2.654866708346852625",
+        "lastTimestamp": 1678746452
       }
     },
-    "STX-USDT-PERP": {
+    "STX-USDT": {
       "oracleBase": "STX",
       "oracleQuote": "USDT",
       "oracleType": "bandibc",
@@ -1622,16 +260,16 @@
       "perpetualMarketInfo": {
         "hourlyFundingRateCap": "0.0000625",
         "hourlyInterestRate": "0.00000416666",
-        "nextFundingTimestamp": 1678186800,
+        "nextFundingTimestamp": 1678748400,
         "fundingInterval": 3600
       },
       "perpetualMarketFunding": {
-        "cumulativeFunding": "-27411.193567144902121933",
-        "cumulativePrice": "-28.16838804256491245",
-        "lastTimestamp": 1678185453
+        "cumulativeFunding": "-22442.129509484949723338",
+        "cumulativePrice": "8.738048820184402884",
+        "lastTimestamp": 1678745802
       }
     },
-    "BAYC-WETH-PERP": {
+    "BAYC-WETH": {
       "oracleBase": "BAYC",
       "oracleQuote": "WETH",
       "oracleType": "pricefeed",
@@ -1660,7 +298,7 @@
       "perpetualMarketInfo": {
         "hourlyFundingRateCap": "0.0000625",
         "hourlyInterestRate": "0.00000416666",
-        "nextFundingTimestamp": 1678186800,
+        "nextFundingTimestamp": 1678748400,
         "fundingInterval": 3600
       },
       "perpetualMarketFunding": {
@@ -1669,7 +307,7 @@
         "lastTimestamp": 1667940243
       }
     },
-    "OSMO-UST-PERP": {
+    "OSMO-UST": {
       "oracleBase": "OSMO",
       "oracleQuote": "UST",
       "oracleType": "bandibc",
@@ -1698,7 +336,7 @@
       "perpetualMarketInfo": {
         "hourlyFundingRateCap": "0.0000625",
         "hourlyInterestRate": "0.00000416666",
-        "nextFundingTimestamp": 1678186800,
+        "nextFundingTimestamp": 1678748400,
         "fundingInterval": 3600
       },
       "perpetualMarketFunding": {
@@ -1707,7 +345,7 @@
         "lastTimestamp": 1652077029
       }
     },
-    "OSMO-USDT-PERP": {
+    "OSMO-USDT": {
       "oracleBase": "OSMO",
       "oracleQuote": "USDT",
       "oracleType": "bandibc",
@@ -1736,16 +374,16 @@
       "perpetualMarketInfo": {
         "hourlyFundingRateCap": "0.0000625",
         "hourlyInterestRate": "0.00000416666",
-        "nextFundingTimestamp": 1678186800,
+        "nextFundingTimestamp": 1678748400,
         "fundingInterval": 3600
       },
       "perpetualMarketFunding": {
-        "cumulativeFunding": "-110209.318260508574912463",
-        "cumulativePrice": "11.409798853650586744",
-        "lastTimestamp": 1678185105
+        "cumulativeFunding": "-106663.572847442261753122",
+        "cumulativePrice": "0.420504975760548035",
+        "lastTimestamp": 1678725685
       }
     },
-    "SOL-USDT-PERP": {
+    "SOL-USDT": {
       "oracleBase": "SOL",
       "oracleQuote": "USDT",
       "oracleType": "bandibc",
@@ -1774,7 +412,7 @@
       "perpetualMarketInfo": {
         "hourlyFundingRateCap": "0.0000625",
         "hourlyInterestRate": "0.00000416666",
-        "nextFundingTimestamp": 1678186800,
+        "nextFundingTimestamp": 1678748400,
         "fundingInterval": 3600
       },
       "perpetualMarketFunding": {
@@ -1783,7 +421,7 @@
         "lastTimestamp": 1660758470
       }
     },
-    "BONK-USDT-PERP": {
+    "BONK-USDT": {
       "oracleBase": "BONK",
       "oracleQuote": "USDT",
       "oracleType": "pricefeed",
@@ -1812,7 +450,7 @@
       "perpetualMarketInfo": {
         "hourlyFundingRateCap": "0.000625",
         "hourlyInterestRate": "0.00000416666",
-        "nextFundingTimestamp": 1678186800,
+        "nextFundingTimestamp": 1678748400,
         "fundingInterval": 3600
       },
       "perpetualMarketFunding": {
