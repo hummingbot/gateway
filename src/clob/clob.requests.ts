@@ -127,6 +127,7 @@ export interface PerpClobPostOrderRequest extends ClobOrderbookRequest {
   price: string;
   amount: string;
   leverage: number;
+  isPo: boolean;
 }
 
 export type PerpClobPostOrderResponse = ClobPostOrderResponse;
