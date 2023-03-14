@@ -1630,7 +1630,7 @@ definitions:
       markets:
         type: 'object'
         example: '[{market info}, ...]'
-
+        
   ClobTickerRequest:
     type: 'object'
     required:
@@ -1744,9 +1744,6 @@ definitions:
       address:
         type: 'string'
         example: '0x...'
-      leverage:
-        type: 'number'
-        example: 20.0
 
   ClobGetOrderResponse:
     type: 'object'
@@ -1881,7 +1878,7 @@ definitions:
         type: 'string'
         example: '0x...'
 
-  ClobFundingRatesRequest:
+  PerpClobFundingRatesRequest:
     type: 'object'
     required:
       - 'chain'
@@ -1908,7 +1905,7 @@ definitions:
         type: 'number'
         example: 1678122531
 
-  ClobFundingRatesResponse:
+  PerpClobFundingRatesResponse:
     type: 'object'
     required:
       - 'network'
@@ -1943,7 +1940,7 @@ definitions:
             type: 'number'        
         example: '{"to":0, "from":0, "total":1}'
 
-  ClobFundingPaymentsRequest:
+  PerpClobFundingPaymentsRequest:
     type: 'object'
     required:
       - 'chain'
@@ -1974,7 +1971,7 @@ definitions:
         type: 'number'
         example: 1678122531
 
-  ClobFundingPaymentsResponse:
+  PerpClobFundingPaymentsResponse:
     type: 'object'
     required:
       - 'network'
@@ -2132,3 +2129,34 @@ definitions:
       txReceipt:
         type: 'object'
 
+  PerpClobPostOrderRequest:
+    type: 'object'
+    required:
+      - 'market'
+      - 'chain'
+      - 'network'
+      - 'connector'
+      - 'address'
+      - 'leverage'
+    properties:
+      market:
+        type: 'string'
+        example: 'AAVE-USDT'
+      orderId:
+        type: 'string'
+        example: 'Buy-21342453'
+      chain:
+        type: 'string'
+        example: 'injective'
+      network:
+        type: 'string'
+        example: 'mainnet'
+      connector:
+        type: 'string'
+        example: 'injective'
+      address:
+        type: 'string'
+        example: '0x...'
+      leverage:
+        type: 'number'
+        example: 20.0

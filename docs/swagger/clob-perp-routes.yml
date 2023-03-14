@@ -1,5 +1,5 @@
 paths:
-  /clob/markets:
+  /clob/perp/markets:
     get:
       tags:
         - 'clob'
@@ -23,7 +23,7 @@ paths:
             $ref: '#/definitions/ClobMarketResponse'
         '404':
           description: 'Not found response.'
-  /clob/orderBook:
+  /clob/perp/orderBook:
     get:
       tags:
         - 'clob'
@@ -47,7 +47,7 @@ paths:
             $ref: '#/definitions/ClobOrderbookResponse'
         '404':
           description: 'Not found response.'
-  /clob/ticker:
+  /clob/perp/ticker:
     get:
       tags:
         - 'clob'
@@ -72,7 +72,7 @@ paths:
             $ref: '#/definitions/ClobTickerResponse'
         '404':
           description: 'Not found response.'
-  /clob/orders:
+  /clob/perp/orders:
     post:
       tags:
         - 'clob'
@@ -89,7 +89,7 @@ paths:
           description: 'Request body.'
           required: true
           schema:
-            $ref: '#/definitions/ClobPostOrderRequest'
+            $ref: '#/definitions/PerpClobPostOrderRequest'
       responses:
         '200':
           description: 'Successful response.'
@@ -149,32 +149,7 @@ paths:
           description: 'Bad request response.'
         '404':
           description: 'Not found response.'
-  /clob/batchOrders:
-    post:
-      tags:
-        - 'clob'
-      summary: 'Batch create or delete orders'
-      description: 'Create or delete orders in batch.'
-      operationId: 'batchOrders'
-      consumes:
-        - 'application/json'
-      produces:
-        - 'application/json'
-      parameters:
-        - in: 'body'
-          name: 'body'
-          description: 'Request body.'
-          required: true
-          schema:
-            $ref: '#/definitions/ClobBatchOrdersRequest'
-      responses:
-        '200':
-          description: 'Successful response.'
-          schema:
-            $ref: '#/definitions/ClobBatchOrdersResponse'
-        '400':
-          description: 'Bad request response.'
-  /clob/estimateGas:
+  /clob/perp/estimateGas:
     post:
       tags:
         - 'clob'
@@ -194,3 +169,53 @@ paths:
         '200':
           schema:
             $ref: '#/definitions/EstimateGasResponse'
+  /clob/perp/funding/rates:
+    post:
+      tags:
+        - 'clob'
+      summary: 'Get funding rates for a market'
+      description: 'Get funding rates for a market.'
+      operationId: 'fundingRates'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          description: 'Request body.'
+          required: true
+          schema:
+            $ref: '#/definitions/PerpClobFundingRatesRequest'
+      responses:
+        '200':
+          description: 'Successful response.'
+          schema:
+            $ref: '#/definitions/PerpClobFundingRatesResponse'
+        '400':
+          description: 'Bad request response.'
+  /clob/perp/funding/payments:
+    post:
+      tags:
+        - 'clob'
+      summary: 'Get funding payments for a market'
+      description: 'Get funding payments for a market.'
+      operationId: 'fundingPayments'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          description: 'Request body.'
+          required: true
+          schema:
+            $ref: '#/definitions/PerpClobFundingPaymentsRequest'
+      responses:
+        '200':
+          description: 'Successful response.'
+          schema:
+            $ref: '#/definitions/PerpClobFundingPaymentsResponse'
+        '400':
+          description: 'Bad request response.'
