@@ -22,6 +22,7 @@ import {
   PerpClobGetOrderResponse,
   PerpClobFundingRatesRequest,
   PerpClobFundingPaymentsRequest,
+  PerpClobPositionRequest,
 } from '../../clob/clob.requests';
 import { NetworkSelectionRequest } from '../../services/common-interfaces';
 import { InjectiveCLOBConfig } from '../injective/injective.clob.config';
@@ -258,6 +259,25 @@ export class InjectiveClobPerp {
     return await this.derivativeApi.fetchFundingPayments({
       marketId: this.parsedMarkets[req.market].marketId,
       pagination: { skip: req.skip, limit: req.limit, endTime: req.endTime },
+    });
+  }
+
+  public async position(req: PerpClobPositionRequest) {
+    let marketIds = [];
+    for (const market of req.markets) {
+      marketIds.push(this.parsedMarkets[market].marketId);
+    }
+
+    const pagination = {
+      skip: 0,
+      limit: 10,
+      key: '',
+    };
+
+    return await this.derivativeApi.fetchPositions({
+      marketIds,
+      subaccountId: req.address,
+      pagination,
     });
   }
 }

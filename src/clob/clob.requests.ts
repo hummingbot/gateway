@@ -166,3 +166,8 @@ export interface PerpClobFundingPaymentsResponse {
   fundingPayments: Array<FundingPayment>;
   pagination: ExchangePagination;
 }
+
+export interface PerpClobPositionRequest extends NetworkSelectionRequest {
+  markets: Array<string>;
+  address: string;
+}
