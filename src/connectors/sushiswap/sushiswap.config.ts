@@ -33,6 +33,7 @@ export namespace SushiswapConfig {
         chain: 'ethereum',
         networks: ['mainnet', 'goerli'],
       },
+      { chain: 'avalanche', networks: ['avalanche', 'fuji'] },
       { chain: 'binance-smart-chain', networks: ['mainnet', 'testnet'] },
       { chain: 'polygon', networks: ['mainnet', 'mumbai'] },
     ],
