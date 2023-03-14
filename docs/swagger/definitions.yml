@@ -1912,7 +1912,6 @@ definitions:
       - 'timestamp'
       - 'latency'
       - 'fundingRates'
-      - 'pagination'
     properties:
       network:
         type: 'string'
@@ -1929,16 +1928,6 @@ definitions:
       fundingRates:
         type: 'array'
         example: []
-      pagination:
-        type: 'object'
-        properties:
-          to:
-            type: 'number'
-          from:
-            type: 'number'
-          total:
-            type: 'number'        
-        example: '{"to":0, "from":0, "total":1}'
 
   PerpClobFundingPaymentsRequest:
     type: 'object'
@@ -1978,7 +1967,6 @@ definitions:
       - 'timestamp'
       - 'latency'
       - 'fundingPayments'
-      - 'pagination'
     properties:
       network:
         type: 'string'
@@ -1995,16 +1983,43 @@ definitions:
       fundingPayments:
         type: 'array'
         example: []
-      pagination:
-        type: 'object'
-        properties:
-          to:
-            type: 'number'
-          from:
-            type: 'number'
-          total:
-            type: 'number'        
-        example: '{"to":0, "from":0, "total":1}'
+
+  PerpClobPositionsRequest:
+    type: 'object'
+    required:
+      - 'markets'
+      - 'address'
+    properties:
+      markets:
+        type: 'array'
+        example: ['INJ-USDC','INJ-WETH']
+      address:
+        type: 'string'
+        example: '0x...'
+
+  PerpClobPositionsResponse:
+    type: 'object'
+    required:
+      - 'network'
+      - 'timestamp'
+      - 'latency'
+      - 'positions'
+    properties:
+      network:
+        type: 'string'
+        example: 'mainnet'
+      timestamp:
+        type: 'integer'
+        example: 1636368085740
+      latency:
+        type: 'number'
+        example: 0.5
+      txHash:
+        type: 'string'
+        example: '0x...'
+      positions:
+        type: 'array'
+        example: []
         
   TransferToSubAccountRequest:
     type: 'object'

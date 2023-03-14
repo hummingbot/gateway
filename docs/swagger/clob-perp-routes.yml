@@ -219,3 +219,28 @@ paths:
             $ref: '#/definitions/PerpClobFundingPaymentsResponse'
         '400':
           description: 'Bad request response.'
+  /clob/perp/positions:
+    post:
+      tags:
+        - 'clob'
+      summary: 'Get all positions for an address in the provided for markets'
+      description: 'Get all positions for an address in the provided for markets.'
+      operationId: 'clobPerpPositions'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          description: 'Request body.'
+          required: true
+          schema:
+            $ref: '#/definitions/PerpClobPositionsRequest'
+      responses:
+        '200':
+          description: 'Successful response.'
+          schema:
+            $ref: '#/definitions/PerpClobPositionsResponse'
+        '400':
+          description: 'Bad request response.'
