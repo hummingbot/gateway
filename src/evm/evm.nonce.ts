@@ -275,8 +275,7 @@ export class EVMNonceManager extends ReferenceCountingCloseable {
         return;
       }
 
-      const externalNonce: number =
-        (await this._getTransactionCount(ethAddress)) - 1;
+      const externalNonce: number = await this._getTransactionCount(ethAddress);
 
       // update the address's leading nonce to the latest nonce from the block chain
       this.#addressToLeadingNonce[ethAddress] = new NonceInfo(
@@ -327,8 +326,7 @@ export class EVMNonceManager extends ReferenceCountingCloseable {
 
   async getNonceFromNode(ethAddress: string): Promise<number> {
     if (this.#initialized) {
-      const externalNonce: number =
-        (await this._getTransactionCount(ethAddress)) - 1;
+      const externalNonce: number = await this._getTransactionCount(ethAddress);
 
       const now: number = new Date().getTime();
       this.#addressToLeadingNonce[ethAddress] = new NonceInfo(
