@@ -1,5 +1,5 @@
 import { utils } from 'ethers';
-import { InjectiveClobPerp } from '../../../src/connectors/injective-perp/injective.perp';
+import { InjectiveClobPerp } from '../../../src/connectors/injective_perpetual/injective.perp';
 
 // const margin = calculateMargin('1.234', '567.89', 4, 100);
 describe('calculateMargin', () => {

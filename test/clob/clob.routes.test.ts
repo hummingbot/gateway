@@ -3,7 +3,7 @@ import { patch, unpatch } from '../services/patch';
 import { gatewayApp } from '../../src/app';
 import { Injective } from '../../src/chains/injective/injective';
 import { InjectiveCLOB } from '../../src/connectors/injective/injective';
-import { InjectiveClobPerp } from '../../src/connectors/injective-perp/injective.perp';
+import { InjectiveClobPerp } from '../../src/connectors/injective_perpetual/injective.perp';
 
 let inj: Injective;
 let injCLOB: InjectiveCLOB;
@@ -542,7 +542,7 @@ describe('POST /clob/perp/funding/rates', () => {
       .send({
         chain: 'injective',
         network: 'mainnet',
-        connector: 'injective-perp',
+        connector: 'injective_perp',
         market: MARKET,
       })
       .set('Accept', 'application/json')
@@ -570,7 +570,7 @@ describe('POST /clob/perp/funding/payments', () => {
       .send({
         chain: 'injective',
         network: 'mainnet',
-        connector: 'injective-perp',
+        connector: 'injective_perp',
         market: MARKET,
         address:
           '0x261362dBC1D83705AB03e99792355689A4589b8E000000000000000000000000',
@@ -602,7 +602,7 @@ describe('GET /clob/perp/markets', () => {
       .query({
         chain: 'injective',
         network: 'mainnet',
-        connector: 'injective-perp',
+        connector: 'injective_perp',
       })
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
@@ -628,7 +628,7 @@ describe('GET /clob/perp/orderBook', () => {
       .query({
         chain: 'injective',
         network: 'mainnet',
-        connector: 'injective-perp',
+        connector: 'injective_perp',
         market: MARKET,
       })
       .set('Accept', 'application/json')
@@ -654,7 +654,7 @@ describe('GET /clob/perp/ticker', () => {
       .query({
         chain: 'injective',
         network: 'mainnet',
-        connector: 'injective-perp',
+        connector: 'injective_perp',
       })
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
@@ -680,7 +680,7 @@ describe('GET /clob/perp/orders', () => {
       .query({
         chain: 'injective',
         network: 'mainnet',
-        connector: 'injective-perp',
+        connector: 'injective_perp',
         address:
           '0x261362dBC1D83705AB03e99792355689A4589b8E000000000000000000000000', // noqa: mock
         market: MARKET,
@@ -709,7 +709,7 @@ describe('POST /clob/perp/orders', () => {
       .send({
         chain: 'injective',
         network: 'mainnet',
-        connector: 'injective-perp',
+        connector: 'injective_perp',
         address:
           '0x261362dBC1D83705AB03e99792355689A4589b8E000000000000000000000000', // noqa: mock
         market: MARKET,
@@ -742,7 +742,7 @@ describe('DELETE /clob/perp/orders', () => {
       .send({
         chain: 'injective',
         network: 'mainnet',
-        connector: 'injective-perp',
+        connector: 'injective_perp',
         address:
           '0x261362dBC1D83705AB03e99792355689A4589b8E000000000000000000000000', // noqa: mock
         market: MARKET,
@@ -770,7 +770,7 @@ describe('GET /clob/perp/estimateGas', () => {
       .query({
         chain: 'injective',
         network: 'mainnet',
-        connector: 'injective-perp',
+        connector: 'injective_perp',
       })
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)

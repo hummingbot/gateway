@@ -1,7 +1,7 @@
 {
   "chain": "injective",
   "network": "mainnet",
-  "connector": "injective-perp",
+  "connector": "injective_perpetual",
   "market": "INJ-USDT",
   "address": "$INJECTIVE_SUBACCOUNTID"
 }

@@ -110,7 +110,7 @@ export namespace ConnectorsRoutes {
             },
           },
           {
-            name: 'injective-perp',
+            name: 'injective_perpetual',
             trading_type: InjectiveCLOBConfig.config.tradingTypes('perp'),
             available_networks: InjectiveCLOBConfig.config.availableNetworks,
             additional_add_wallet_prompts: {

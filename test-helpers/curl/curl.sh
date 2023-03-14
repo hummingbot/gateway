@@ -294,13 +294,13 @@ curl -s -X DELETE -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: a
 # CLOB perpetual
 
 ## get markets
-curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT "https://localhost:15888/clob/perp/markets?chain=injective&network=mainnet&connector=injective-perp" | jq
+curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT "https://localhost:15888/clob/perp/markets?chain=injective&network=mainnet&connector=injective_perpetual" | jq
 
 ## get order books
-curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT "https://localhost:15888/clob/perp/orderBook?chain=injective&network=mainnet&connector=injective-perp&market=INJ-USDT" | jq
+curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT "https://localhost:15888/clob/perp/orderBook?chain=injective&network=mainnet&connector=injective_perpetual&market=INJ-USDT" | jq
 
 ## get tickers
-curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT "https://localhost:15888/clob/perp/ticker?chain=injective&network=mainnet&connector=injective-perp" | jq
+curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT "https://localhost:15888/clob/perp/ticker?chain=injective&network=mainnet&connector=injective_perpetual" | jq
 
 ## get orders
 curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT "https://localhost:15888/clob/perp/orders?chain=injective&network=mainnet&connector=injective&market=INJ-USDT&orderId=XXXX&address=XXXX" | jq
