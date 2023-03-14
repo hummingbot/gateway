@@ -153,7 +153,7 @@ describe('EVMNodeService', () => {
   });
 
   const patchGetTransactionCount = () => {
-    patch(nonceManager, '_getTransactionCount', () => 11);
+    patch(nonceManager, '_getTransactionCount', () => 10);
   };
 
   const patchDropExpiredPendingNonces = () => {
@@ -180,7 +180,7 @@ describe('EVMNodeService', () => {
   });
 
   it('mergeNonceFromEVMNode should update with nonce from EVM node (local<node)', async () => {
-    patch(nonceManager, '_getTransactionCount', () => 20);
+    patch(nonceManager, '_getTransactionCount', () => 19);
 
     await nonceManager.commitNonce(exampleAddress, 8);
     jest.advanceTimersByTime(300000);
@@ -316,8 +316,8 @@ describe("EVMNodeService was previously a singleton. Let's prove that it no long
   });
 
   it('commitNonce with a provided txNonce will only update current nonce if txNonce > currentNonce', async () => {
-    patch(nonceManager1, '_getTransactionCount', () => 11);
-    patch(nonceManager2, '_getTransactionCount', () => 24);
+    patch(nonceManager1, '_getTransactionCount', () => 10);
+    patch(nonceManager2, '_getTransactionCount', () => 23);
 
     await nonceManager1.commitNonce(exampleAddress, 10);
     jest.advanceTimersByTime(300000);
