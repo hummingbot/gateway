@@ -258,23 +258,7 @@ export class InjectiveClobPerp {
       pagination,
     });
 
-    const fundingRates = firstPage.fundingRates;
-
-    const total = firstPage.pagination.total;
-    if (total > 100) {
-      skip = skip + 99;
-      while (fundingRates.length < total) {
-        pagination.skip = skip;
-        const page = await this.derivativeApi.fetchFundingRates({
-          marketId,
-          pagination,
-        });
-        skip = skip + 100;
-        fundingRates.concat(page.fundingRates);
-      }
-    }
-
-    return fundingRates;
+    return firstPage.fundingRates;
   }
 
   public async fundingPayments(
