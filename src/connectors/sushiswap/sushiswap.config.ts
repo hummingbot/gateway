@@ -31,11 +31,12 @@ export namespace SushiswapConfig {
     availableNetworks: [
       {
         chain: 'ethereum',
-        networks: ['mainnet', 'goerli'],
+        networks: ['mainnet', 'goerli', 'arbitrum_one'],
       },
       { chain: 'avalanche', networks: ['avalanche', 'fuji'] },
       { chain: 'binance-smart-chain', networks: ['mainnet', 'testnet'] },
       { chain: 'polygon', networks: ['mainnet', 'mumbai'] },
+      { chain: 'harmony', networks: ['mainnet'] },
     ],
   };
 }

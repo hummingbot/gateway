@@ -20,6 +20,7 @@ import { Ethereum } from '../../chains/ethereum/ethereum';
 import { BinanceSmartChain } from '../../chains/binance-smart-chain/binance-smart-chain';
 import { Polygon } from '../../chains/polygon/polygon';
 import { Avalanche } from '../../chains/avalanche/avalanche';
+import { Harmony } from '../../chains/harmony/harmony';
 
 import {
   BigNumber,
@@ -33,7 +34,7 @@ import { logger } from '../../services/logger';
 
 export class Sushiswap implements Uniswapish {
   private static _instances: { [name: string]: Sushiswap };
-  private chain: Ethereum | BinanceSmartChain | Polygon | Avalanche;
+  private chain: Ethereum | BinanceSmartChain | Polygon | Avalanche | Harmony;
   private _router: string;
   private _routerAbi: ContractInterface;
   private _gasLimitEstimate: number;
@@ -52,6 +53,8 @@ export class Sushiswap implements Uniswapish {
       this.chain = Polygon.getInstance(network);
     } else if (chain === 'avalanche') {
       this.chain = Avalanche.getInstance(network);
+    } else if (chain === 'harmony') {
+      this.chain = Harmony.getInstance(network);
     } else {
       throw new Error('unsupported chain');
     }
