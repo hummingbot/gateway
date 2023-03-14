@@ -32,6 +32,8 @@ import {
   PerpClobFundingRatesResponse,
   PerpClobFundingPaymentsRequest,
   PerpClobFundingPaymentsResponse,
+  PerpClobPositionRequest,
+  PerpClobPositionResponse,
 } from './clob.requests';
 import { latency } from '../services/base';
 
@@ -395,6 +397,25 @@ export async function perpFundingPayments(
     request.connector
   );
   const result = await connector.fundingPayments(request);
+  return {
+    network: request.network,
+    timestamp: startTimestamp,
+    latency: latency(startTimestamp, Date.now()),
+    ...result,
+  };
+}
+
+export async function perpPositions(
+  request: PerpClobPositionRequest
+): Promise<PerpClobPositionResponse> {
+  const startTimestamp: number = Date.now();
+  await getChain(request.chain, request.network);
+  const connector: any = await getConnector(
+    request.chain,
+    request.network,
+    request.connector
+  );
+  const result = await connector.positions(request);
   return {
     network: request.network,
     timestamp: startTimestamp,

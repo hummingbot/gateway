@@ -23,6 +23,7 @@ import {
   perpEstimateGas,
   perpFundingPayments,
   perpFundingRates,
+  perpPositions,
 } from './clob.controllers';
 import {
   ClobBatchUpdateRequest,
@@ -54,6 +55,8 @@ import {
   PerpClobFundingRatesResponse,
   PerpClobFundingPaymentsRequest,
   PerpClobFundingPaymentsResponse,
+  PerpClobPositionRequest,
+  PerpClobPositionResponse,
 } from './clob.requests';
 import {
   validateBasicRequest,
@@ -311,7 +314,7 @@ export namespace PerpClobRoutes {
     asyncHandler(
       async (
         req: Request<{}, {}, PerpClobFundingRatesRequest>,
-        res: Response<PerpClobFundingRatesResponse | string, {}>
+        res: Response<PerpClobFundingRatesResponse, {}>
       ) => {
         validateFundingRatesRequest(req.body);
         res.status(200).json(await perpFundingRates(req.body));
@@ -324,10 +327,23 @@ export namespace PerpClobRoutes {
     asyncHandler(
       async (
         req: Request<{}, {}, PerpClobFundingPaymentsRequest>,
-        res: Response<PerpClobFundingPaymentsResponse | string, {}>
+        res: Response<PerpClobFundingPaymentsResponse, {}>
       ) => {
         validateFundingPaymentsRequest(req.body);
         res.status(200).json(await perpFundingPayments(req.body));
+      }
+    )
+  );
+
+  router.post(
+    '/positions',
+    asyncHandler(
+      async (
+        req: Request<{}, {}, PerpClobPositionRequest>,
+        res: Response<PerpClobPositionResponse, {}>
+      ) => {
+        validateFundingPaymentsRequest(req.body);
+        res.status(200).json(await perpPositions(req.body));
       }
     )
   );

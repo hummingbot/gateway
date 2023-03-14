@@ -8,6 +8,7 @@ import {
   FundingPayment,
   FundingRate,
   ExchangePagination,
+  Position,
   derivativePriceToChainPriceToFixed,
   derivativeQuantityToChainQuantityToFixed,
 } from '@injectivelabs/sdk-ts';
@@ -262,22 +263,43 @@ export class InjectiveClobPerp {
     });
   }
 
-  public async position(req: PerpClobPositionRequest) {
+  public async positions(
+    req: PerpClobPositionRequest
+  ): Promise<Array<Position>> {
     let marketIds = [];
     for (const market of req.markets) {
       marketIds.push(this.parsedMarkets[market].marketId);
     }
 
+    let skip = 0;
     const pagination = {
-      skip: 0,
-      limit: 10,
+      skip,
+      limit: 100,
       key: '',
     };
 
-    return await this.derivativeApi.fetchPositions({
+    const firstPage = await this.derivativeApi.fetchPositions({
       marketIds,
       subaccountId: req.address,
       pagination,
     });
+
+    const positions = firstPage.positions;
+
+    const total = firstPage.pagination.total;
+    if (total > 100) {
+      skip = skip + 99;
+      while (total - 1 > skip) {
+        const page = await this.derivativeApi.fetchPositions({
+          marketIds,
+          subaccountId: req.address,
+          pagination,
+        });
+        skip = skip + 100;
+        positions.concat(page.positions);
+      }
+    }
+
+    return positions;
   }
 }

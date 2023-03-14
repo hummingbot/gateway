@@ -7,6 +7,7 @@ import {
   DerivativeMarket,
   SpotMarket,
   ExchangePagination,
+  Position,
 } from '@injectivelabs/sdk-ts';
 
 export interface ClobMarketsRequest extends NetworkSelectionRequest {
@@ -170,4 +171,12 @@ export interface PerpClobFundingPaymentsResponse {
 export interface PerpClobPositionRequest extends NetworkSelectionRequest {
   markets: Array<string>;
   address: string;
+}
+
+export interface PerpClobPositionResponse {
+  network: string;
+  timestamp: number;
+  latency: number;
+  positions: Array<Position>;
+  pagination: ExchangePagination;
 }
