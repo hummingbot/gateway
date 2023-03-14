@@ -7,7 +7,6 @@ import {
   GrpcOrderType,
   FundingPayment,
   FundingRate,
-  ExchangePagination,
   Position,
   derivativePriceToChainPriceToFixed,
   derivativeQuantityToChainQuantityToFixed,
@@ -243,14 +242,39 @@ export class InjectiveClobPerp {
     };
   }
 
-  public async fundingRates(req: PerpClobFundingRatesRequest): Promise<{
-    fundingRates: Array<FundingRate>;
-    pagination: ExchangePagination;
-  }> {
-    return await this.derivativeApi.fetchFundingRates({
-      marketId: this.parsedMarkets[req.market].marketId,
-      pagination: { skip: req.skip, limit: req.limit, endTime: req.endTime },
+  public async fundingRates(
+    req: PerpClobFundingRatesRequest
+  ): Promise<Array<FundingRate>> {
+    let skip = 0;
+    const marketId = this.parsedMarkets[req.market].marketId;
+    const pagination = {
+      skip,
+      limit: 100,
+      key: '',
+    };
+
+    const firstPage = await this.derivativeApi.fetchFundingRates({
+      marketId,
+      pagination,
     });
+
+    const fundingRates = firstPage.fundingRates;
+
+    const total = firstPage.pagination.total;
+    if (total > 100) {
+      skip = skip + 99;
+      while (fundingRates.length < total) {
+        pagination.skip = skip;
+        const page = await this.derivativeApi.fetchFundingRates({
+          marketId,
+          pagination,
+        });
+        skip = skip + 100;
+        fundingRates.concat(page.fundingRates);
+      }
+    }
+
+    return fundingRates;
   }
 
   public async fundingPayments(
