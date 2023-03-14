@@ -87,7 +87,7 @@ export class Avalanche extends EthereumBase implements Ethereumish {
       spender = TraderjoeConfig.config.routerAddress(this._chain);
     } else if (reqSpender === 'sushiswap') {
       spender = SushiswapConfig.config.sushiswapRouterAddress(
-        this.chainName,
+        'polygon',
         this._chain
       );
     } else {
