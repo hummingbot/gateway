@@ -145,23 +145,12 @@ export const validateOrderRequest: RequestValidator = mkRequestValidator(
 );
 
 export const validateFundingRatesRequest: RequestValidator = mkRequestValidator(
-  NETWORK_VALIDATIONS.concat([
-    validateMarket,
-    validateSkip,
-    validateLimit,
-    validateEndTime,
-  ])
+  NETWORK_VALIDATIONS.concat([validateMarket])
 );
 
 export const validateFundingPaymentsRequest: RequestValidator =
   mkRequestValidator(
-    NETWORK_VALIDATIONS.concat([
-      validateWallet,
-      validateMarket,
-      validateSkip,
-      validateLimit,
-      validateEndTime,
-    ])
+    NETWORK_VALIDATIONS.concat([validateWallet, validateMarket])
   );
 
 export const validateBatchOrdersRequest: RequestValidator =

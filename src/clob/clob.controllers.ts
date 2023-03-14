@@ -382,7 +382,7 @@ export async function perpFundingRates(
     network: request.network,
     timestamp: startTimestamp,
     latency: latency(startTimestamp, Date.now()),
-    ...result,
+    fundingRates: result,
   };
 }
 
@@ -401,7 +401,7 @@ export async function perpFundingPayments(
     network: request.network,
     timestamp: startTimestamp,
     latency: latency(startTimestamp, Date.now()),
-    ...result,
+    fundingPayments: result,
   };
 }
 
@@ -420,6 +420,6 @@ export async function perpPositions(
     network: request.network,
     timestamp: startTimestamp,
     latency: latency(startTimestamp, Date.now()),
-    ...result,
+    positions: result,
   };
 }

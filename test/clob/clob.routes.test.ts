@@ -88,31 +88,25 @@ const DERIVATIVE_MARKETS = [
   },
 ];
 
-const FUNDING_RATES = {
-  fundingRates: [
-    {
-      marketId:
-        '0x1c79dac019f73e4060494ab1b4fcba734350656d6fc4d474f6a238c13c6f9ced',
-      rate: '0.000122',
-      timestamp: 1654246801786,
-    },
-  ],
-  pagination: { to: 0, from: 0, total: 1 },
-};
+const FUNDING_RATES = [
+  {
+    marketId:
+      '0x1c79dac019f73e4060494ab1b4fcba734350656d6fc4d474f6a238c13c6f9ced',
+    rate: '0.000122',
+    timestamp: 1654246801786,
+  },
+];
 
-const FUNDING_PAYMENTS = {
-  fundingPayments: [
-    {
-      marketId:
-        '0x4ca0f92fc28be0c9761326016b5a1a2177dd6375558365116b5bdda9abc229ce',
-      subaccountId:
-        '0xaf79152ac5df276d9a8e1e2e22822f9713474902000000000000000000000000',
-      amount: '-4895705.795221',
-      timestamp: 1654246801786,
-    },
-  ],
-  pagination: { to: 0, from: 0, total: 1 },
-};
+const FUNDING_PAYMENTS = [
+  {
+    marketId:
+      '0x4ca0f92fc28be0c9761326016b5a1a2177dd6375558365116b5bdda9abc229ce',
+    subaccountId:
+      '0xaf79152ac5df276d9a8e1e2e22822f9713474902000000000000000000000000',
+    amount: '-4895705.795221',
+    timestamp: 1654246801786,
+  },
+];
 
 const ORDER_BOOK = {
   sells: [
@@ -230,13 +224,19 @@ const patchOrderBook = () => {
 
 const patchFundingRates = () => {
   patch(injClobPerp.derivativeApi, 'fetchFundingRates', () => {
-    return FUNDING_RATES;
+    return {
+      fundingRates: FUNDING_RATES,
+      pagination: { to: 0, from: 0, total: 1 },
+    };
   });
 };
 
 const patchFundingPayments = () => {
   patch(injClobPerp.derivativeApi, 'fetchFundingPayments', () => {
-    return FUNDING_PAYMENTS;
+    return {
+      fundingPayments: FUNDING_PAYMENTS,
+      pagination: { to: 0, from: 0, total: 1 },
+    };
   });
 };
 
@@ -542,15 +542,13 @@ describe('POST /clob/perp/funding/rates', () => {
       .send({
         chain: 'injective',
         network: 'mainnet',
-        connector: 'injective_perp',
+        connector: 'injective_perpetual',
         market: MARKET,
       })
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(200)
-      .expect((res) =>
-        expect(res.body.fundingRates).toEqual(FUNDING_RATES.fundingRates)
-      );
+      .expect((res) => expect(res.body.fundingRates).toEqual(FUNDING_RATES));
   });
 
   it('should return 404 when parameters are invalid', async () => {
@@ -570,7 +568,7 @@ describe('POST /clob/perp/funding/payments', () => {
       .send({
         chain: 'injective',
         network: 'mainnet',
-        connector: 'injective_perp',
+        connector: 'injective_perpetual',
         market: MARKET,
         address:
           '0x261362dBC1D83705AB03e99792355689A4589b8E000000000000000000000000',
@@ -579,9 +577,7 @@ describe('POST /clob/perp/funding/payments', () => {
       .expect('Content-Type', /json/)
       .expect(200)
       .expect((res) =>
-        expect(res.body.fundingPayments).toEqual(
-          FUNDING_PAYMENTS.fundingPayments
-        )
+        expect(res.body.fundingPayments).toEqual(FUNDING_PAYMENTS)
       );
   });
 
@@ -602,7 +598,7 @@ describe('GET /clob/perp/markets', () => {
       .query({
         chain: 'injective',
         network: 'mainnet',
-        connector: 'injective_perp',
+        connector: 'injective_perpetual',
       })
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
@@ -628,7 +624,7 @@ describe('GET /clob/perp/orderBook', () => {
       .query({
         chain: 'injective',
         network: 'mainnet',
-        connector: 'injective_perp',
+        connector: 'injective_perpetual',
         market: MARKET,
       })
       .set('Accept', 'application/json')
@@ -654,7 +650,7 @@ describe('GET /clob/perp/ticker', () => {
       .query({
         chain: 'injective',
         network: 'mainnet',
-        connector: 'injective_perp',
+        connector: 'injective_perpetual',
       })
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
@@ -680,7 +676,7 @@ describe('GET /clob/perp/orders', () => {
       .query({
         chain: 'injective',
         network: 'mainnet',
-        connector: 'injective_perp',
+        connector: 'injective_perpetual',
         address:
           '0x261362dBC1D83705AB03e99792355689A4589b8E000000000000000000000000', // noqa: mock
         market: MARKET,
@@ -709,7 +705,7 @@ describe('POST /clob/perp/orders', () => {
       .send({
         chain: 'injective',
         network: 'mainnet',
-        connector: 'injective_perp',
+        connector: 'injective_perpetual',
         address:
           '0x261362dBC1D83705AB03e99792355689A4589b8E000000000000000000000000', // noqa: mock
         market: MARKET,
@@ -742,7 +738,7 @@ describe('DELETE /clob/perp/orders', () => {
       .send({
         chain: 'injective',
         network: 'mainnet',
-        connector: 'injective_perp',
+        connector: 'injective_perpetual',
         address:
           '0x261362dBC1D83705AB03e99792355689A4589b8E000000000000000000000000', // noqa: mock
         market: MARKET,
@@ -770,7 +766,7 @@ describe('GET /clob/perp/estimateGas', () => {
       .query({
         chain: 'injective',
         network: 'mainnet',
-        connector: 'injective_perp',
+        connector: 'injective_perpetual',
       })
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)

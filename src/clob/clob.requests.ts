@@ -6,7 +6,6 @@ import {
   Orderbook,
   DerivativeMarket,
   SpotMarket,
-  ExchangePagination,
   Position,
 } from '@injectivelabs/sdk-ts';
 
@@ -148,7 +147,6 @@ export interface PerpClobFundingRatesResponse {
   timestamp: number;
   latency: number;
   fundingRates: Array<FundingRate>;
-  pagination: ExchangePagination;
 }
 
 export interface PerpClobFundingPaymentsRequest
@@ -174,5 +172,4 @@ export interface PerpClobPositionResponse {
   timestamp: number;
   latency: number;
   positions: Array<Position>;
-  pagination: ExchangePagination;
 }
