@@ -155,9 +155,6 @@ export interface PerpClobFundingPaymentsRequest
   extends NetworkSelectionRequest {
   address: string;
   market: string;
-  skip?: number; // skip last n funding payments
-  limit?: number; // 1 to 100
-  endTime?: number; // Upper bound of funding payment timestamp
 }
 
 export interface PerpClobFundingPaymentsResponse {
@@ -165,7 +162,6 @@ export interface PerpClobFundingPaymentsResponse {
   timestamp: number;
   latency: number;
   fundingPayments: Array<FundingPayment>;
-  pagination: ExchangePagination;
 }
 
 export interface PerpClobPositionRequest extends NetworkSelectionRequest {

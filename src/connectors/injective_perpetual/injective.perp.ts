@@ -253,14 +253,41 @@ export class InjectiveClobPerp {
     });
   }
 
-  public async fundingPayments(req: PerpClobFundingPaymentsRequest): Promise<{
-    fundingPayments: Array<FundingPayment>;
-    pagination: ExchangePagination;
-  }> {
-    return await this.derivativeApi.fetchFundingPayments({
-      marketId: this.parsedMarkets[req.market].marketId,
-      pagination: { skip: req.skip, limit: req.limit, endTime: req.endTime },
+  public async fundingPayments(
+    req: PerpClobFundingPaymentsRequest
+  ): Promise<Array<FundingPayment>> {
+    let skip = 0;
+    const marketId = this.parsedMarkets[req.market].marketId;
+    const pagination = {
+      skip,
+      limit: 100,
+      key: '',
+    };
+
+    const firstPage = await this.derivativeApi.fetchFundingPayments({
+      marketId,
+      subaccountId: req.address,
+      pagination,
     });
+
+    const fundingPayments = firstPage.fundingPayments;
+
+    const total = firstPage.pagination.total;
+    if (total > 100) {
+      skip = skip + 99;
+      while (fundingPayments.length < total) {
+        pagination.skip = skip;
+        const page = await this.derivativeApi.fetchFundingPayments({
+          marketId,
+          subaccountId: req.address,
+          pagination,
+        });
+        skip = skip + 100;
+        fundingPayments.concat(page.fundingPayments);
+      }
+    }
+
+    return fundingPayments;
   }
 
   public async positions(
@@ -289,7 +316,8 @@ export class InjectiveClobPerp {
     const total = firstPage.pagination.total;
     if (total > 100) {
       skip = skip + 99;
-      while (total - 1 > skip) {
+      while (positions.length < total) {
+        pagination.skip = skip;
         const page = await this.derivativeApi.fetchPositions({
           marketIds,
           subaccountId: req.address,
