@@ -1,0 +1,72 @@
+{
+  "author": "Richard Moore <me@ricmoo.com>",
+  "browser-old": "./dist/ethers.umd.js",
+  "dependencies": {
+    "@ethersproject-xdc/abi": "file:../@ethersproject-xdc/abi",
+    "@ethersproject-xdc/abstract-provider": "file:../@ethersproject-xdc/abstract-provider",
+    "@ethersproject-xdc/abstract-signer": "file:../@ethersproject-xdc/abstract-signer",
+    "@ethersproject-xdc/address": "file:../@ethersproject-xdc/address",
+    "@ethersproject-xdc/base64": "file:../@ethersproject-xdc/base64",
+    "@ethersproject-xdc/basex": "file:../@ethersproject-xdc/basex",
+    "@ethersproject-xdc/bignumber": "file:../@ethersproject-xdc/bignumber",
+    "@ethersproject-xdc/bytes": "file:../@ethersproject-xdc/bytes",
+    "@ethersproject-xdc/constants": "file:../@ethersproject-xdc/constants",
+    "@ethersproject-xdc/contracts": "file:../@ethersproject-xdc/contracts",
+    "@ethersproject-xdc/hash": "file:../@ethersproject-xdc/hash",
+    "@ethersproject-xdc/hdnode": "file:../@ethersproject-xdc/hdnode",
+    "@ethersproject-xdc/json-wallets": "file:../@ethersproject-xdc/json-wallets",
+    "@ethersproject-xdc/keccak256": "file:../@ethersproject-xdc/keccak256",
+    "@ethersproject-xdc/logger": "file:../@ethersproject-xdc/logger",
+    "@ethersproject-xdc/networks": "file:../@ethersproject-xdc/networks",
+    "@ethersproject-xdc/pbkdf2": "file:../@ethersproject-xdc/pbkdf2",
+    "@ethersproject-xdc/properties": "file:../@ethersproject-xdc/properties",
+    "@ethersproject-xdc/providers": "file:../@ethersproject-xdc/providers",
+    "@ethersproject-xdc/random": "file:../@ethersproject-xdc/random",
+    "@ethersproject-xdc/rlp": "file:../@ethersproject-xdc/rlp",
+    "@ethersproject-xdc/sha2": "file:../@ethersproject-xdc/sha2",
+    "@ethersproject-xdc/signing-key": "file:../@ethersproject-xdc/signing-key",
+    "@ethersproject-xdc/solidity": "file:../@ethersproject-xdc/solidity",
+    "@ethersproject-xdc/strings": "file:../@ethersproject-xdc/strings",
+    "@ethersproject-xdc/transactions": "file:../@ethersproject-xdc/transactions",
+    "@ethersproject-xdc/units": "file:../@ethersproject-xdc/units",
+    "@ethersproject-xdc/wallet": "file:../@ethersproject-xdc/wallet",
+    "@ethersproject-xdc/web": "file:../@ethersproject-xdc/web",
+    "@ethersproject-xdc/wordlists": "file:../@ethersproject-xdc/wordlists"
+  },
+  "devDependencies": {
+    "typescript": "4.4.4"
+  },    
+  "description": "Umbrella package for most common Ethers libraries.",
+  "ethereum": "donations.ethers.eth",
+  "funding": [
+    {
+      "type": "individual",
+      "url": "https://gitcoin.co/grants/13/ethersjs-complete-simple-and-tiny-2"
+    },
+    {
+      "type": "individual",
+      "url": "https://www.buymeacoffee.com/ricmoo"
+    }
+  ],
+  "keywords": [
+    "Ethereum",
+    "ethers"
+  ],
+  "license": "MIT",
+  "main": "./lib/index.js",
+  "module": "./lib.esm/index.js",
+  "name": "ethers-xdc",
+  "repository": {
+    "directory": "packages/ethers",
+    "type": "git",
+    "url": "git://github.com/ethers-io/ethers.js.git"
+  },
+  "scripts": {
+    "build": "tsc --skipLibCheck --project ./",    
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "sideEffects": false,
+  "tarballHash": "0x0787812d30a16e79d3a3da2017697837614f159ce6af12fa5704c9ee3a71995d",
+  "types": "./lib/index.d.ts",
+  "version": "5.7.2"
+}

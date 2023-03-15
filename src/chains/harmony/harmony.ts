@@ -8,6 +8,7 @@ import { Provider } from '@ethersproject/abstract-provider';
 import { Ethereumish } from '../../services/common-interfaces';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { OpenoceanConfig } from '../../connectors/openocean/openocean.config';
+import { SushiswapConfig } from '../../connectors/sushiswap/sushiswap.config';
 
 export class Harmony extends EthereumBase implements Ethereumish {
   private static _instances: { [name: string]: Harmony };
@@ -141,18 +142,18 @@ export class Harmony extends EthereumBase implements Ethereumish {
   }
 
   getSpender(reqSpender: string): string {
-    // TODO: add SushiswapConfig and ViperswapConfig and Defira configs (or move `approve` to AMM)
     let spender: string;
-    if (reqSpender === 'sushiswap') {
-      spender = '0x1b02da8cb0d097eb8d57a175b88c7d8b47997506';
-    } else if (reqSpender === 'viperswap') {
-      spender = '0xf012702a5f0e54015362cbca26a26fc90aa832a3';
-    } else if (reqSpender === 'defikingdoms') {
+    if (reqSpender === 'defikingdoms') {
       spender = '0x24ad62502d1C652Cc7684081169D04896aC20f30';
     } else if (reqSpender === 'defira') {
       spender = '0x3C8BF7e25EbfAaFb863256A4380A8a93490d8065';
     } else if (reqSpender === 'openocean') {
       spender = OpenoceanConfig.config.routerAddress('ethereum', this._chain);
+    } else if (reqSpender === 'sushiswap') {
+      spender = SushiswapConfig.config.sushiswapRouterAddress(
+        'harmony',
+        this._chain
+      );
     } else {
       spender = reqSpender;
     }
