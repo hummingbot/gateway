@@ -8,6 +8,7 @@ import { TraderjoeConfig } from '../../connectors/traderjoe/traderjoe.config';
 import { PangolinConfig } from '../../connectors/pangolin/pangolin.config';
 import { OpenoceanConfig } from '../../connectors/openocean/openocean.config';
 import { Ethereumish } from '../../services/common-interfaces';
+import { SushiswapConfig } from '../../connectors/sushiswap/sushiswap.config';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 
 export class Avalanche extends EthereumBase implements Ethereumish {
@@ -84,6 +85,11 @@ export class Avalanche extends EthereumBase implements Ethereumish {
       spender = OpenoceanConfig.config.routerAddress('avalanche', this._chain);
     } else if (reqSpender === 'traderjoe') {
       spender = TraderjoeConfig.config.routerAddress(this._chain);
+    } else if (reqSpender === 'sushiswap') {
+      spender = SushiswapConfig.config.sushiswapRouterAddress(
+        'avalanche',
+        this._chain
+      );
     } else {
       spender = reqSpender;
     }
