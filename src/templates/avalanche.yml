@@ -15,5 +15,6 @@ networks:
     nativeCurrencySymbol: 'AVAX'
     gasPriceRefreshInterval: 60
 
-manualGasPrice: 100
+# if you use the gas assumptions below, your wallet needs >0.01 AVAX balance for gas
 gasLimitTransaction: 3000000
+manualGasPrice: 33
