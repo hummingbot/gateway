@@ -108,6 +108,23 @@ const FUNDING_PAYMENTS = [
   },
 ];
 
+const POSITIONS = [
+  {
+    ticker: 'BTC/USDT PERP',
+    marketId:
+      '0x4ca0f92fc28be0c9761326016b5a1a2177dd6375558365116b5bdda9abc229ce',
+    subaccountId:
+      '0xc6fe5d33615a1c52c08018c47e8bc53646a0e101000000000000000000000000',
+    direction: 'short',
+    quantity: '1.6321',
+    entryPrice: '40673269578.764267860566718788',
+    margin: '65479686044.860453741141489314',
+    liquidationPrice: '76945874187.425265',
+    markPrice: '40128736026.4094317665',
+    aggregateReduceOnlyQuantity: '0',
+  },
+];
+
 const ORDER_BOOK = {
   sells: [
     ['12', '1'],
@@ -235,6 +252,15 @@ const patchFundingPayments = () => {
   patch(injClobPerp.derivativeApi, 'fetchFundingPayments', () => {
     return {
       fundingPayments: FUNDING_PAYMENTS,
+      pagination: { to: 0, from: 0, total: 1 },
+    };
+  });
+};
+
+const patchPositions = () => {
+  patch(injClobPerp.derivativeApi, 'fetchPositions', () => {
+    return {
+      positions: POSITIONS,
       pagination: { to: 0, from: 0, total: 1 },
     };
   });
@@ -533,6 +559,34 @@ describe('GET /clob/estimateGas', () => {
 });
 
 // perp stuff
+
+describe('POST /clob/perp/positions', () => {
+  it('should return 200 with proper request', async () => {
+    patchPositions();
+    await request(gatewayApp)
+      .post(`/clob/perp/positions`)
+      .send({
+        chain: 'injective',
+        network: 'mainnet',
+        connector: 'injective_perpetual',
+        markets: [MARKET],
+        address:
+          '0x261362dBC1D83705AB03e99792355689A4589b8E000000000000000000000000',
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .expect((res) => expect(res.body.positions).toEqual(POSITIONS));
+  });
+
+  it('should return 404 when parameters are invalid', async () => {
+    await request(gatewayApp)
+      .post(`/clob/perp/positions`)
+      .send(INVALID_REQUEST)
+      .set('Accept', 'application/json')
+      .expect(404);
+  });
+});
 
 describe('POST /clob/perp/funding/rates', () => {
   it('should return 200 with proper request', async () => {

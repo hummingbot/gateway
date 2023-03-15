@@ -51,6 +51,12 @@ export const validateMarket: Validator = mkValidator(
   (val) => typeof val === 'string' && val.split('-').length === 2
 );
 
+export const validateMarkets: Validator = mkValidator(
+  'markets',
+  invalidMarketError,
+  (val) => typeof val === 'object' && val.map((x: any) => typeof x === 'string')
+);
+
 export const validateSkip: Validator = mkValidator(
   'skip',
   invalidSkipError,
@@ -155,3 +161,7 @@ export const validateFundingPaymentsRequest: RequestValidator =
 
 export const validateBatchOrdersRequest: RequestValidator =
   mkRequestValidator(NETWORK_VALIDATIONS);
+
+export const validatePositionsRequest: RequestValidator = mkRequestValidator(
+  NETWORK_VALIDATIONS.concat([validateWallet, validateMarkets])
+);
