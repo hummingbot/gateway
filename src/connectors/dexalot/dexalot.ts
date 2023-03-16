@@ -26,19 +26,17 @@ import {
 import { logger } from '../../services/logger';
 import { Avalanche } from '../../chains/avalanche/avalanche';
 import { EVMTxBroadcaster } from '../../chains/ethereum/evm.broadcaster';
-import {
-  createBook,
-  fromUtf8,
-  OrderSide,
-  OrderType1,
-  OrderType2,
-  parseMarkerInfo,
-  parseOrderInfo,
-} from './dexalot.constants';
+import { OrderSide, OrderType, TimeInForce } from './dexalot.constants';
 import { BalanceRequest } from '../../network/network.requests';
 import { indexOf } from 'lodash';
 import path from 'path';
 import { rootPath } from '../../paths';
+import {
+  parseMarkerInfo,
+  createBook,
+  parseOrderInfo,
+  fromUtf8,
+} from './dexalot.utils';
 
 export class DexalotCLOB implements CLOBish {
   private static _instances: LRUCache<string, DexalotCLOB>;
@@ -270,8 +268,8 @@ export class DexalotCLOB implements CLOBish {
         market.baseDecimals
       ),
       OrderSide[req.side.toUpperCase()],
-      req.orderType.startsWith('LIMIT') ? OrderType1.LIMIT : OrderType1.MARKET,
-      req.orderType === 'LIMIT_MAKER' ? OrderType2.PO : OrderType2.GTC
+      req.orderType.startsWith('LIMIT') ? OrderType.LIMIT : OrderType.MARKET,
+      req.orderType === 'LIMIT_MAKER' ? TimeInForce.PO : TimeInForce.GTC
     );
     txData.gasLimit = BigNumber.from(String(this._conf.gasLimitEstimate));
     const txResponse = await EVMTxBroadcaster.getInstance(
@@ -376,7 +374,7 @@ export class DexalotCLOB implements CLOBish {
       );
       sides.push(OrderSide[order.side.toUpperCase()]);
       types.push(
-        order.orderType === 'LIMIT_MAKER' ? OrderType2.PO : OrderType2.GTC
+        order.orderType === 'LIMIT_MAKER' ? TimeInForce.PO : TimeInForce.GTC
       );
     }
     return {
