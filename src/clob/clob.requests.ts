@@ -116,9 +116,26 @@ export type PerpClobOrderbookRequest = ClobOrderbookRequest;
 
 export type PerpClobOrderbookResponse = ClobOrderbookResponse;
 
-export type PerpClobGetOrderRequest = ClobGetOrderRequest;
+export interface PerpClobGetOrderRequest extends NetworkSelectionRequest {
+  market: string;
+  address: string;
+  orderHash: string;
+  direction?: string;
+  orderTypes?: Array<string>;
+}
 
-export type PerpClobGetOrderResponse = ClobGetOrderResponse;
+export interface PerpClobGetOrderResponse {
+  network: string;
+  timestamp: number;
+  latency: number;
+  orders:
+    | [
+        {
+          [key: string]: string;
+        }
+      ]
+    | [];
+}
 
 export interface PerpClobPostOrderRequest extends ClobOrderbookRequest {
   address: string;
@@ -131,7 +148,11 @@ export interface PerpClobPostOrderRequest extends ClobOrderbookRequest {
 
 export type PerpClobPostOrderResponse = ClobPostOrderResponse;
 
-export type PerpClobDeleteOrderRequest = PerpClobGetOrderRequest;
+export interface PerpClobDeleteOrderRequest extends NetworkSelectionRequest {
+  market: string;
+  address: string;
+  orderId: string;
+}
 
 export type PerpClobDeleteOrderResponse = PerpClobPostOrderResponse;
 

@@ -10,6 +10,8 @@ import {
   Position,
   derivativePriceToChainPriceToFixed,
   derivativeQuantityToChainQuantityToFixed,
+  DerivativeOrderSide,
+  TradeDirection,
 } from '@injectivelabs/sdk-ts';
 import {
   PerpClobMarketRequest,
@@ -19,7 +21,6 @@ import {
   PerpClobPostOrderRequest,
   PerpClobDeleteOrderRequest,
   PerpClobMarkets,
-  PerpClobGetOrderResponse,
   PerpClobFundingRatesRequest,
   PerpClobFundingPaymentsRequest,
   PerpClobPositionRequest,
@@ -29,6 +30,15 @@ import { InjectiveCLOBConfig } from '../injective/injective.clob.config';
 import { Injective } from '../../chains/injective/injective';
 import LRUCache from 'lru-cache';
 import { getInjectiveConfig } from '../../chains/injective/injective.config';
+
+function enumFromStringValue<T>(
+  enm: { [s: string]: T },
+  value: string
+): T | undefined {
+  return (Object.values(enm) as unknown as string[]).includes(value)
+    ? (value as unknown as T)
+    : undefined;
+}
 
 export class InjectiveClobPerp {
   private static _instances: LRUCache<string, InjectiveClobPerp>;
@@ -110,18 +120,84 @@ export class InjectiveClobPerp {
 
   public async orders(
     req: PerpClobGetOrderRequest
-  ): Promise<{ orders: PerpClobGetOrderResponse['orders'] }> {
-    if (!req.market) return { orders: [] };
+  ): Promise<Array<DerivativeOrderHistory>> {
     const marketId = this.parsedMarkets[req.market].marketId;
+    const orderTypes: Array<DerivativeOrderSide> = [];
+    if (req.orderTypes) {
+      for (const orderTypeString of req.orderTypes) {
+        const orderType = enumFromStringValue(
+          DerivativeOrderSide,
+          orderTypeString
+        );
+        if (orderType !== undefined) {
+          orderTypes.push(orderType);
+        }
+      }
+    }
+    let direction = undefined;
+    if (req.direction) {
+      direction = enumFromStringValue(TradeDirection, req.direction);
+    }
 
-    const orders: DerivativeOrderHistory[] = (
-      await this.derivativeApi.fetchOrderHistory({
-        subaccountId: req.address,
-        marketId,
-      })
-    ).orderHistory;
+    let targetOrder = undefined;
 
-    return { orders } as PerpClobGetOrderResponse;
+    let skip = 0;
+    const pagination = {
+      skip,
+      limit: 100,
+      key: '',
+    };
+
+    const firstPage = await this.derivativeApi.fetchOrderHistory({
+      subaccountId: req.address,
+      marketId,
+      direction,
+      orderTypes,
+      pagination,
+    });
+
+    const orders = firstPage.orderHistory;
+
+    if (req.orderHash !== undefined) {
+      for (const order of orders) {
+        if (order.orderHash === req.orderHash) {
+          targetOrder = order;
+          break;
+        }
+      }
+    }
+
+    const total = firstPage.pagination.total;
+    if (total > 100) {
+      skip = skip + 99;
+      while (orders.length < total) {
+        pagination.skip = skip;
+        const page = await this.derivativeApi.fetchOrderHistory({
+          subaccountId: req.address,
+          marketId,
+          direction,
+          orderTypes,
+          pagination,
+        });
+        if (req.orderHash !== undefined) {
+          for (const order of page.orderHistory) {
+            if (order.orderHash === req.orderHash) {
+              targetOrder = order;
+              break;
+            }
+          }
+        }
+
+        skip = skip + 100;
+        orders.concat(page.orderHistory);
+      }
+    }
+
+    if (req.orderHash !== undefined) {
+      return targetOrder ? [targetOrder] : [];
+    } else {
+      return orders;
+    }
   }
 
   public static calculateMargin(
@@ -339,3 +415,48 @@ export class InjectiveClobPerp {
     return positions;
   }
 }
+
+/*
+orderHash
+
+
+  async fetchOrderHistory(params?: {
+    subaccountId?: string
+    marketId?: string
+    marketIds?: string[]
+    orderTypes?: DerivativeOrderSide[]
+    executionTypes?: TradeExecutionType[]
+    direction?: TradeDirection
+    isConditional?: boolean
+    state?: DerivativeOrderState
+    pagination?: PaginationOption
+  }) {
+
+
+direction: str
+start_time: int
+limit: int
+skip: int
+order_types: List[str]
+
+export enum TradeDirection {
+  Buy = 'buy',
+  Sell = 'sell',
+  Long = 'long',
+  Short = 'short',
+}
+
+export enum DerivativeOrderSide {
+  Unspecified = 'unspecified',
+  Buy = 'buy',
+  Sell = 'sell',
+  StopBuy = 'stop_buy',
+  StopSell = 'stop_sell',
+  TakeBuy = 'take_buy',
+  TakeSell = 'take_sell',
+  BuyPO = 'buy_po',
+  SellPO = 'sell_po',
+}
+
+
+*/
