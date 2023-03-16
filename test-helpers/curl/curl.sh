@@ -317,6 +317,9 @@ curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: app
 ## get funding payment
 curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/injective_perp_funding_payments.json)" https://localhost:15888/clob/perp/funding/payments | jq
 
+## get positions
+curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/injective_perp_positions.json)" https://localhost:15888/clob/perp/positions | jq
+
 ## post batch orders create
 curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/injective_batch_create.json)" https://localhost:15888/clob/batchOrders | jq
 
