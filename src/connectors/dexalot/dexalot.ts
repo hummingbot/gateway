@@ -45,11 +45,8 @@ export class DexalotCLOB implements CLOBish {
   private _chain;
   private _ready: boolean = false;
   public parsedMarkets: MarketInfo = [];
-  // private _exchangeContract: Contract;
   private _portfolioContract: Contract;
-  // private _orderBooksContract: Contract;
   private _tradePairsContract: Contract;
-  // private _gasStationContract: Contract;
   private _resources: any;
   private _conf: DexalotCLOBConfig.NetworkConfig;
   public abiDecoder: any = require('abi-decoder');
@@ -61,11 +58,8 @@ export class DexalotCLOB implements CLOBish {
       rootPath(),
       'src/connectors/dexalot/dexalot_mainnet.json'
     ));
-    // this._exchangeContract = this.getContract('ExchangeSub', this._resources);
     this._portfolioContract = this.getContract('PortfolioSub', this._resources);
-    // this._orderBooksContract = this.getContract('OrderBooks', this._resources);
     this._tradePairsContract = this.getContract('TradePairs', this._resources);
-    // this._gasStationContract = this.getContract('GasStation', this._resources);
   }
 
   public get tradePairsContract(): Contract {
