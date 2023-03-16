@@ -14,7 +14,6 @@ import { patchEVMNonceManager } from '../../evm.nonce.mock';
 import * as transactionSuccesful from './fixtures/transaction-succesful.json';
 import * as transactionSuccesfulReceipt from './fixtures/transaction-succesful-receipt.json';
 import * as transactionOutOfGas from './fixtures/transaction-out-of-gas.json';
-import * as transactionOutOfGasReceipt from './fixtures/transaction-out-of-gas-receipt.json';
 let eth: Ethereum;
 
 beforeAll(async () => {

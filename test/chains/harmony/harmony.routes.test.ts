@@ -10,7 +10,6 @@ import {
 import * as transactionSuccesful from '../ethereum/fixtures/transaction-succesful.json';
 import * as transactionSuccesfulReceipt from '../ethereum/fixtures/transaction-succesful-receipt.json';
 import * as transactionOutOfGas from '../ethereum/fixtures/transaction-out-of-gas.json';
-import * as transactionOutOfGasReceipt from '../ethereum/fixtures/transaction-out-of-gas-receipt.json';
 import { Harmony } from '../../../src/chains/harmony/harmony';
 import { patchEVMNonceManager } from '../../evm.nonce.mock';
 let harmony: Harmony;
