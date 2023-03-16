@@ -4,7 +4,7 @@ import { gatewayApp } from '../../../src/app';
 import { Avalanche } from '../../../src/chains/avalanche/avalanche';
 import { EVMTxBroadcaster } from '../../../src/chains/ethereum/evm.broadcaster';
 import { DexalotCLOB } from '../../../src/connectors/dexalot/dexalot';
-import { fromUtf8 } from '../../../src/connectors/dexalot/dexalot.constants';
+import { fromUtf8 } from '../../../src/connectors/dexalot/dexalot.utils';
 import { patch, unpatch } from '../../services/patch';
 
 let avalanche: Avalanche;
