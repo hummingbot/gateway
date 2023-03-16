@@ -29,7 +29,7 @@ export function getNetworkFromString(network: string): Network | null {
   if (network === 'mainnetK8s') {
     return Network.MainnetK8s;
   } else if (network === 'mainnet') {
-    return Network.Mainnet;
+    return Network.MainnetLB;
   } else if (network === 'staging') {
     return Network.Staging;
   } else if (network === 'public') {
@@ -37,7 +37,7 @@ export function getNetworkFromString(network: string): Network | null {
   } else if (network === 'testnetK8s') {
     return Network.TestnetK8s;
   } else if (network === 'testnet') {
-    return Network.Testnet;
+    return Network.TestnetK8s;
   } else if (network === 'devnet1') {
     return Network.Devnet1;
   } else if (network === 'devnet') {
@@ -52,14 +52,14 @@ export function getNetworkFromString(network: string): Network | null {
 export function networkToString(network: Network): string {
   if (network === Network.MainnetK8s) {
     return 'mainnetK8s';
-  } else if (network === Network.Mainnet) {
+  } else if (network === Network.MainnetLB) {
     return 'mainnet';
   } else if (network === Network.Staging) {
     return 'staging';
   } else if (network === Network.Public) {
     return 'public';
   } else if (network === Network.TestnetK8s) {
-    return 'testnetK8s';
+    return 'testnet';
   } else if (network === Network.Testnet) {
     return 'testnet';
   } else if (network === Network.Devnet1) {
