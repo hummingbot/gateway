@@ -4,6 +4,11 @@ import axios from 'axios';
 import { Ethereum } from '../../chains/ethereum/ethereum';
 
 // https://api.arbitrum.zigzag.exchange/v1/info
+
+// https://zigzag-exchange.herokuapp.com/api/coingecko/v1/pairs/42161
+// https://zigzag-exchange.herokuapp.com/api/coingecko/v1/tickers/42161
+// https://zigzag-exchange.herokuapp.com/api/coingecko/v1/orderbook/42161/?ticker_id=eth-ust
+// https://zigzag-exchange.herokuapp.com/api/coingecko/v1/historical_trades/42161?ticker_id=eth-ust&type=b
 export interface Token {
   address: string;
   symbol: string;
@@ -33,7 +38,7 @@ export class ZigZag {
   private _chain: Ethereum;
   private tokenList: Record<string, Token> = {};
   public config;
-  // public cachedMarkets: Record<string, Market> = {};
+  public parsedMarkets: Record<string, Market> = {};
 
   private constructor(_chain: string, network: string) {
     this._chain = Ethereum.getInstance(network);
@@ -54,11 +59,11 @@ export class ZigZag {
     return ZigZag._instances.get(instanceKey) as ZigZag;
   }
 
-  // public async loadMarkets() {
-  //   this.cahemarkets = await axios.get(
-  //     'https://zigzag-exchange.herokuapp.com/api/v1/markets/1'
-  //   );
-  // }
+  public async loadMarkets() {
+    this.parsedMarkets = await axios.get(
+      'https://zigzag-exchange.herokuapp.com/api/v1/markets/1'
+    );
+  }
 
   public async init() {
     if (!this._chain.ready()) {
@@ -78,6 +83,26 @@ export class ZigZag {
 
   public ready(): boolean {
     return this._ready;
+  }
+
+  public getTokenByAddress(address: string): Token {
+    return this.tokenList[address];
+  }
+  
+  public getTokenInfo(tokenSymbol: string) {
+
+    // https://api.zksync.io/api/v0.2/tokens/USDC
+    // https://api.zksync.io/api/v0.2/tokens/WETH
+    
+    const tokenInfo = await axios.get(`https://api.zksync.io/api/v0.2/tokens/${token}`);
+    const priceInfo = await axios.get(
+            `https://api.zksync.io/api/v0.2/tokens/${token}/priceIn/usd`
+    );
+
+    0xf4037f59c92c9893c43c2372286699430310cfe7
+
+    console.log(tokenInfo);
+    console.log(priceInfo);
   }
 
   // public async markets(
@@ -130,5 +155,27 @@ https://swap.zigzag.exchange/
 GET
 	https://api.arbitrum.zigzag.exchange/v1/info
 
+
+*/
+
+
+
+
+/*
+
+  changePubKeyFee = async (currency = "USDC") => {
+    const { data } = await axios.post(
+      this.getZkSyncBaseUrl(this.network) + "/fee",
+      {
+        txType: { ChangePubKey: "ECDSA" },
+        address: "0x5364ff0cecb1d44efd9e4c7e4fe16bf5774530e3",
+        tokenLike: currency,
+      },
+      { headers: { "Content-Type": "application/json" } }
+    );
+    // somehow the fee is ~50% too low
+    if (currency === "USDC") return (data.result.totalFee / 10 ** 6) * 2;
+    else return (data.result.totalFee / 10 ** 18) * 2;
+  };
 
 */
