@@ -120,9 +120,9 @@ export interface PerpClobGetOrderRequest extends NetworkSelectionRequest {
   market: string;
   address: string;
   orderHash?: string;
-  direction?: string;
-  orderTypes?: Array<string>;
-  limit?: number;
+  direction?: string; // 'buy', 'sell', 'long', 'short'
+  orderTypes?: string; // string like 'buy,sell,stop_buy,stop_sell,take_buy,take_sell,buy_po,sell_po'
+  limit?: number; // 1 or greater, otherwise it gets all orders
 }
 
 export interface PerpClobGetOrderResponse {

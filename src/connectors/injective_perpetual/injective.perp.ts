@@ -124,7 +124,7 @@ export class InjectiveClobPerp {
     const marketId = this.parsedMarkets[req.market].marketId;
     const orderTypes: Array<DerivativeOrderSide> = [];
     if (req.orderTypes) {
-      for (const orderTypeString of req.orderTypes) {
+      for (const orderTypeString of req.orderTypes.split(',')) {
         const orderType = enumFromStringValue(
           DerivativeOrderSide,
           orderTypeString
