@@ -62,6 +62,7 @@ import {
   validateBasicRequest,
   validateMarketRequest,
   validatePostOrderRequest,
+  validatePerpOrderRequest,
   validateOrderRequest,
   validateBatchOrdersRequest,
   validateFundingRatesRequest,
@@ -255,7 +256,7 @@ export namespace PerpClobRoutes {
         req: Request<{}, {}, PerpClobGetOrderRequest>,
         res: Response<PerpClobGetOrderResponse | string, {}>
       ) => {
-        validateOrderRequest(req.query);
+        validatePerpOrderRequest(req.query);
         res
           .status(200)
           .json(

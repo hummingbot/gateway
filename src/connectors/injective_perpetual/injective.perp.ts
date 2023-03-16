@@ -142,9 +142,13 @@ export class InjectiveClobPerp {
     let targetOrder = undefined;
 
     let skip = 0;
+    let limit = 100;
+    if (req.limit) {
+      limit = req.limit;
+    }
     const pagination = {
       skip,
-      limit: 100,
+      limit,
       key: '',
     };
 
@@ -157,7 +161,6 @@ export class InjectiveClobPerp {
     });
 
     const orders = firstPage.orderHistory;
-
     if (req.orderHash !== undefined) {
       for (const order of orders) {
         if (order.orderHash === req.orderHash) {
@@ -168,7 +171,7 @@ export class InjectiveClobPerp {
     }
 
     const total = firstPage.pagination.total;
-    if (total > 100) {
+    if (total > 100 && limit >= 100) {
       skip = skip + 99;
       while (orders.length < total) {
         pagination.skip = skip;

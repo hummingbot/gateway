@@ -150,6 +150,10 @@ export const validateOrderRequest: RequestValidator = mkRequestValidator(
   NETWORK_VALIDATIONS.concat([validateOrderId, validateWallet])
 );
 
+export const validatePerpOrderRequest: RequestValidator = mkRequestValidator(
+  NETWORK_VALIDATIONS.concat([validateWallet, validateMarket])
+);
+
 export const validateFundingRatesRequest: RequestValidator = mkRequestValidator(
   NETWORK_VALIDATIONS.concat([validateMarket])
 );

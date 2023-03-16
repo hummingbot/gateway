@@ -177,6 +177,7 @@ const ORDERS = {
       direction: 'sell',
     },
   ],
+  pagination: { to: 0, from: 0, total: 2 },
 };
 
 const GAS_PRICES = {
@@ -734,7 +735,6 @@ describe('GET /clob/perp/orders', () => {
         address:
           '0x261362dBC1D83705AB03e99792355689A4589b8E000000000000000000000000', // noqa: mock
         market: MARKET,
-        orderId: '0x...',
       })
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)

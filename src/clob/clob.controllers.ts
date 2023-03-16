@@ -301,12 +301,12 @@ export async function perpGetOrders(
     request.network,
     request.connector
   );
-  const result = await connector.orders(request);
+  const orders = await connector.orders(request);
   return {
     network: request.network,
     timestamp: startTimestamp,
     latency: latency(startTimestamp, Date.now()),
-    ...result,
+    orders,
   };
 }
 

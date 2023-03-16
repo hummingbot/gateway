@@ -119,9 +119,10 @@ export type PerpClobOrderbookResponse = ClobOrderbookResponse;
 export interface PerpClobGetOrderRequest extends NetworkSelectionRequest {
   market: string;
   address: string;
-  orderHash: string;
+  orderHash?: string;
   direction?: string;
   orderTypes?: Array<string>;
+  limit?: number;
 }
 
 export interface PerpClobGetOrderResponse {
