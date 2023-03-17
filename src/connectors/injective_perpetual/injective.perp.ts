@@ -1,6 +1,18 @@
 import {
-  DerivativeOrderHistory, DerivativeOrderSide, derivativePriceToChainPriceToFixed,
-  derivativeQuantityToChainQuantityToFixed, DerivativeTrade, FundingPayment, GrpcOrderType, IndexerGrpcDerivativesApi, IndexerGrpcOracleApi, MsgBatchUpdateOrders, Orderbook, PerpetualMarket, Position, TradeDirection
+  DerivativeOrderHistory,
+  DerivativeOrderSide,
+  derivativePriceToChainPriceToFixed,
+  derivativeQuantityToChainQuantityToFixed,
+  DerivativeTrade,
+  FundingPayment,
+  GrpcOrderType,
+  IndexerGrpcDerivativesApi,
+  IndexerGrpcOracleApi,
+  MsgBatchUpdateOrders,
+  Orderbook,
+  PerpetualMarket,
+  Position,
+  TradeDirection,
 } from '@injectivelabs/sdk-ts';
 import { BigNumber, utils } from 'ethers';
 import LRUCache from 'lru-cache';
@@ -8,8 +20,18 @@ import { Injective } from '../../chains/injective/injective';
 import { getInjectiveConfig } from '../../chains/injective/injective.config';
 import {
   FundingInfo,
-  PerpClobDeleteOrderRequest, PerpClobFundingInfoRequest,
-  PerpClobFundingPaymentsRequest, PerpClobGetOrderRequest, PerpClobGetTradesRequest, PerpClobMarketRequest, PerpClobMarkets, PerpClobOrderbookRequest, PerpClobPositionRequest, PerpClobPostOrderRequest, PerpClobTickerRequest
+  PerpClobDeleteOrderRequest,
+  PerpClobFundingInfoRequest,
+  PerpClobFundingPaymentsRequest,
+  PerpClobGetOrderRequest,
+  PerpClobGetTradesRequest,
+  PerpClobMarketRequest,
+  PerpClobMarkets,
+  PerpClobOrderbookRequest,
+  PerpClobPositionRequest,
+  PerpClobPostOrderRequest,
+  PerpClobTickerRequest,
+  PerpClobGetLastTradePriceRequest,
 } from '../../clob/clob.requests';
 import { NetworkSelectionRequest } from '../../services/common-interfaces';
 import { InjectiveCLOBConfig } from '../injective/injective.clob.config';
@@ -38,9 +60,7 @@ export class InjectiveClobPerp {
     this.derivativeApi = new IndexerGrpcDerivativesApi(
       this._chain.endpoints.indexer
     );
-    this.oracleApi = new IndexerGrpcOracleApi(
-      this._chain.endpoints.indexer
-    )
+    this.oracleApi = new IndexerGrpcOracleApi(this._chain.endpoints.indexer);
   }
 
   public static getInstance(chain: string, network: string): InjectiveClobPerp {
@@ -103,6 +123,28 @@ export class InjectiveClobPerp {
     req: PerpClobTickerRequest
   ): Promise<{ markets: PerpClobMarkets }> {
     return await this.markets(req);
+  }
+
+  public async lastTradePrice(
+    req: PerpClobGetLastTradePriceRequest
+  ): Promise<string | null> {
+    const marketId = this.parsedMarkets[req.market].marketId;
+    const pagination = {
+      skip: 0,
+      limit: 1,
+      key: '',
+    };
+    const result = await this.derivativeApi.fetchTrades({
+      marketId,
+      pagination,
+    });
+
+    let price = null;
+    if (result.trades.length > 0) {
+      price = result.trades[0].executionPrice;
+    }
+
+    return price;
   }
 
   public async trades(
@@ -362,27 +404,29 @@ export class InjectiveClobPerp {
   private _getNextHourUnixTimestamp(): number {
     // Returns the next hour unix timestamp in seconds.
     const now = Date.now() * 1e-3;
-    return ((now - (now % 3600)) + 3600) * 1e3;
+    return (now - (now % 3600) + 3600) * 1e3;
   }
 
   public async fundingInfo(
     req: PerpClobFundingInfoRequest
   ): Promise<FundingInfo> {
     // Ensures that the latest Derivative Market Info is loaded.
-    await this.loadMarkets()
+    await this.loadMarkets();
 
-    const marketInfo = this.parsedMarkets[req.market]
+    const marketInfo = this.parsedMarkets[req.market];
     const marketId = marketInfo.marketId;
     const [baseSymbol, quoteSymbol] = req.market.split('-');
     const oracleType = marketInfo.oracleType;
     const oracleScaleFactor = parseFloat(`1e-${marketInfo.oracleScaleFactor}`);
-    const nextFundingTimestamp = marketInfo.perpetualMarketInfo?.nextFundingTimestamp || this._getNextHourUnixTimestamp();
+    const nextFundingTimestamp =
+      marketInfo.perpetualMarketInfo?.nextFundingTimestamp ||
+      this._getNextHourUnixTimestamp();
 
     const fundingRateResp = await this.derivativeApi.fetchFundingRates({
       marketId,
     });
     const tradesResp = await this.derivativeApi.fetchTrades({
-      marketId
+      marketId,
     });
     const oraclePriceResp = await this.oracleApi.fetchOraclePrice({
       baseSymbol,
@@ -390,7 +434,9 @@ export class InjectiveClobPerp {
       oracleType,
     });
 
-    const indexPrice = (parseFloat(tradesResp.trades[0].executionPrice) * oracleScaleFactor).toString();
+    const indexPrice = (
+      parseFloat(tradesResp.trades[0].executionPrice) * oracleScaleFactor
+    ).toString();
     const fundingRate: string = fundingRateResp.fundingRates[0].rate;
     const markPrice = oraclePriceResp.price;
 
@@ -399,7 +445,7 @@ export class InjectiveClobPerp {
       indexPrice,
       markPrice,
       fundingRate,
-      "nextFundingTimestamp": (nextFundingTimestamp * 1e3)
+      nextFundingTimestamp: nextFundingTimestamp * 1e3,
     };
   }
 
@@ -481,74 +527,3 @@ export class InjectiveClobPerp {
     return positions;
   }
 }
-
-/*
-
-
-  async fetchOrderHistory(params?: {
-    subaccountId?: string
-    marketId?: string
-    marketIds?: string[]
-    orderTypes?: DerivativeOrderSide[]
-    executionTypes?: TradeExecutionType[]
-    direction?: TradeDirection
-    isConditional?: boolean
-    state?: DerivativeOrderState
-    pagination?: PaginationOption
-  }) {
-
-export enum TradeDirection {
-  Buy = 'buy',
-  Sell = 'sell',
-  Long = 'long',
-  Short = 'short',
-}
-
-export enum DerivativeOrderSide {
-  Unspecified = 'unspecified',
-  Buy = 'buy',
-  Sell = 'sell',
-  StopBuy = 'stop_buy',
-  StopSell = 'stop_sell',
-  TakeBuy = 'take_buy',
-  TakeSell = 'take_sell',
-  BuyPO = 'buy_po',
-  SellPO = 'sell_po',
-}
-
-
-export interface PositionDelta {
-  tradeDirection: TradeDirection
-  executionPrice: string
-  executionQuantity: string
-  executionMargin: string
-}
-
-export interface DerivativeTrade extends PositionDelta {
-  orderHash: string
-  subaccountId: string
-  tradeId: string
-  marketId: string
-  executedAt: number
-  tradeExecutionType: TradeExecutionType
-  tradeDirection: TradeDirection
-  executionSide: TradeExecutionSide
-  fee: string
-  feeRecipient: string
-  isLiquidation: boolean
-  payout: string
-}
-
-  async fetchTrades(params?: {
-    marketId?: string
-    direction?: TradeDirection
-    subaccountId?: string
-    startTime?: number
-    endTime?: number
-    executionTypes?: TradeExecutionType[]
-    executionSide?: TradeExecutionSide
-    pagination?: PaginationOption
-    marketIds?: string[]
-  }) {
-
-*/

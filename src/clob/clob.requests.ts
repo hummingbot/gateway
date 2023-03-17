@@ -1,5 +1,10 @@
 import {
-  DerivativeTrade, FundingPayment, Orderbook, PerpetualMarket, Position, SpotMarket
+  DerivativeTrade,
+  FundingPayment,
+  Orderbook,
+  PerpetualMarket,
+  Position,
+  SpotMarket,
 } from '@injectivelabs/sdk-ts';
 import { OrderType, Side } from '../amm/amm.requests';
 import { NetworkSelectionRequest } from '../services/common-interfaces';
@@ -158,8 +163,8 @@ export interface PerpClobFundingInfoRequest extends NetworkSelectionRequest {
 
 export interface FundingInfo {
   marketId: string;
-  indexPrice: string,
-  markPrice: string,
+  indexPrice: string;
+  markPrice: string;
   fundingRate: string;
   nextFundingTimestamp: number;
 }
@@ -169,6 +174,18 @@ export interface PerpClobFundingInfoResponse {
   timestamp: number;
   latency: number;
   fundingInfo: FundingInfo;
+}
+
+export interface PerpClobGetLastTradePriceRequest
+  extends NetworkSelectionRequest {
+  market: string;
+}
+
+export interface PerpClobGetLastTradePriceResponse {
+  network: string;
+  timestamp: number;
+  latency: number;
+  lastTradePrice: string;
 }
 
 export interface PerpClobGetTradesRequest extends NetworkSelectionRequest {

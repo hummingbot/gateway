@@ -18,16 +18,33 @@ import {
   ClobTickerRequest,
   ClobTickerResponse,
   PerpClobDeleteOrderRequest,
-  PerpClobDeleteOrderResponse, PerpClobFundingInfoRequest, PerpClobFundingInfoResponse, PerpClobFundingPaymentsRequest,
-  PerpClobFundingPaymentsResponse, PerpClobGetOrderRequest,
-  PerpClobGetOrderResponse, PerpClobGetTradesRequest,
-  PerpClobGetTradesResponse, PerpClobMarketRequest, PerpClobMarketResponse, PerpClobOrderbookRequest,
-  PerpClobOrderbookResponse, PerpClobPositionRequest,
-  PerpClobPositionResponse, PerpClobPostOrderRequest,
+  PerpClobDeleteOrderResponse,
+  PerpClobFundingInfoRequest,
+  PerpClobFundingInfoResponse,
+  PerpClobFundingPaymentsRequest,
+  PerpClobFundingPaymentsResponse,
+  PerpClobGetOrderRequest,
+  PerpClobGetOrderResponse,
+  PerpClobGetTradesRequest,
+  PerpClobGetTradesResponse,
+  PerpClobMarketRequest,
+  PerpClobMarketResponse,
+  PerpClobOrderbookRequest,
+  PerpClobOrderbookResponse,
+  PerpClobPositionRequest,
+  PerpClobPositionResponse,
+  PerpClobPostOrderRequest,
   PerpClobPostOrderResponse,
   PerpClobTickerRequest,
-  PerpClobTickerResponse
+  PerpClobTickerResponse,
+  PerpClobGetLastTradePriceRequest,
+  PerpClobGetLastTradePriceResponse,
 } from './clob.requests';
+import {
+  HttpException,
+  TRADE_NOT_FOUND_ERROR_MESSAGE,
+  TRADE_NOT_FOUND_ERROR_CODE,
+} from '../services/error-handler';
 
 /**
  * GET /clob/markets
@@ -433,4 +450,32 @@ export async function perpTrades(
     latency: latency(startTimestamp, Date.now()),
     trades,
   };
+}
+
+export async function perpLastTradePrice(
+  request: PerpClobGetLastTradePriceRequest
+): Promise<PerpClobGetLastTradePriceResponse> {
+  const startTimestamp: number = Date.now();
+  await getChain(request.chain, request.network);
+  const connector: any = await getConnector(
+    request.chain,
+    request.network,
+    request.connector
+  );
+  const lastTradePrice = await connector.lastTradePrice(request);
+
+  if (lastTradePrice === null) {
+    throw new HttpException(
+      404,
+      TRADE_NOT_FOUND_ERROR_MESSAGE,
+      TRADE_NOT_FOUND_ERROR_CODE
+    );
+  } else {
+    return {
+      network: request.network,
+      timestamp: startTimestamp,
+      latency: latency(startTimestamp, Date.now()),
+      lastTradePrice,
+    };
+  }
 }

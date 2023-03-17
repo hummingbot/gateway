@@ -173,3 +173,7 @@ export const validateBatchOrdersRequest: RequestValidator =
 export const validatePositionsRequest: RequestValidator = mkRequestValidator(
   NETWORK_VALIDATIONS.concat([validateWallet, validateMarkets])
 );
+
+export const validatePerpLastTradePrice: RequestValidator = mkRequestValidator(
+  NETWORK_VALIDATIONS.concat([validateMarket])
+);

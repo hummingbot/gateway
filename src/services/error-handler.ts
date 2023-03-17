@@ -101,6 +101,7 @@ export const PRICE_FAILED_ERROR_CODE = 1013;
 export const INCOMPLETE_REQUEST_PARAM_CODE = 1014;
 export const ERROR_RETRIEVING_WALLET_ADDRESS_ERROR_CODE = 1015;
 export const ACCOUNT_NOT_SPECIFIED_CODE = 1016;
+export const TRADE_NOT_FOUND_ERROR_CODE = 1017;
 export const UNKNOWN_ERROR_ERROR_CODE = 1099;
 export const AMOUNT_NOT_SUPPORTED_ERROR_CODE = 1016;
 
@@ -147,6 +148,8 @@ export const ERROR_RETRIEVING_WALLET_ADDRESS_ERROR_MESSAGE = (
 export const UNKNOWN_ERROR_MESSAGE = 'Unknown error.';
 
 export const PRICE_FAILED_ERROR_MESSAGE = 'Price query failed: ';
+
+export const TRADE_NOT_FOUND_ERROR_MESSAGE = 'Trade not found.';
 
 export interface ErrorResponse {
   stack?: any;

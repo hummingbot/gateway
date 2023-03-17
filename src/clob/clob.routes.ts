@@ -6,11 +6,26 @@ import { validateEstimateGasRequest } from '../amm/amm.validators';
 import { NetworkSelectionRequest } from '../services/common-interfaces';
 import { asyncHandler } from '../services/error-handler';
 import {
-  batchOrders, deleteOrder,
-  estimateGas, getMarkets,
-  getOrderBooks, getOrders, getTickers, perpDeleteOrder,
-  perpEstimateGas, perpFundingInfo, perpFundingPayments, perpGetMarkets,
-  perpGetOrderBooks, perpGetOrders, perpGetTickers, perpPositions, perpPostOrder, perpTrades, postOrder
+  batchOrders,
+  deleteOrder,
+  estimateGas,
+  getMarkets,
+  getOrderBooks,
+  getOrders,
+  getTickers,
+  perpDeleteOrder,
+  perpEstimateGas,
+  perpFundingInfo,
+  perpFundingPayments,
+  perpGetMarkets,
+  perpGetOrderBooks,
+  perpGetOrders,
+  perpGetTickers,
+  perpPositions,
+  perpPostOrder,
+  perpTrades,
+  postOrder,
+  perpLastTradePrice,
 } from './clob.controllers';
 import {
   ClobBatchUpdateRequest,
@@ -27,20 +42,41 @@ import {
   ClobTickerRequest,
   ClobTickerResponse,
   PerpClobDeleteOrderRequest,
-  PerpClobDeleteOrderResponse, PerpClobFundingInfoRequest, PerpClobFundingInfoResponse, PerpClobFundingPaymentsRequest,
-  PerpClobFundingPaymentsResponse, PerpClobGetOrderRequest,
-  PerpClobGetOrderResponse, PerpClobGetTradesRequest,
-  PerpClobGetTradesResponse, PerpClobMarketRequest, PerpClobMarketResponse, PerpClobOrderbookRequest,
-  PerpClobOrderbookResponse, PerpClobPositionRequest,
-  PerpClobPositionResponse, PerpClobPostOrderRequest,
+  PerpClobDeleteOrderResponse,
+  PerpClobFundingInfoRequest,
+  PerpClobFundingInfoResponse,
+  PerpClobFundingPaymentsRequest,
+  PerpClobFundingPaymentsResponse,
+  PerpClobGetOrderRequest,
+  PerpClobGetOrderResponse,
+  PerpClobGetTradesRequest,
+  PerpClobGetTradesResponse,
+  PerpClobMarketRequest,
+  PerpClobMarketResponse,
+  PerpClobOrderbookRequest,
+  PerpClobOrderbookResponse,
+  PerpClobPositionRequest,
+  PerpClobPositionResponse,
+  PerpClobPostOrderRequest,
   PerpClobPostOrderResponse,
   PerpClobTickerRequest,
-  PerpClobTickerResponse
+  PerpClobTickerResponse,
+  PerpClobGetLastTradePriceRequest,
+  PerpClobGetLastTradePriceResponse,
 } from './clob.requests';
 import {
-  validateBasicRequest, validateBatchOrdersRequest,
+  validateBasicRequest,
+  validateBatchOrdersRequest,
   validateFundingInfoRequest,
-  validateFundingPaymentsRequest, validateMarketRequest, validateOrderRequest, validatePerpOrderRequest, validatePerpTradesRequest, validatePositionsRequest, validatePostOrderRequest, validatePostPerpOrderRequest
+  validateFundingPaymentsRequest,
+  validateMarketRequest,
+  validateOrderRequest,
+  validatePerpOrderRequest,
+  validatePerpTradesRequest,
+  validatePositionsRequest,
+  validatePostOrderRequest,
+  validatePostPerpOrderRequest,
+  validatePerpLastTradePrice,
 } from './clob.validators';
 
 export namespace CLOBRoutes {
@@ -334,6 +370,25 @@ export namespace PerpClobRoutes {
           .status(200)
           .json(
             await perpTrades(req.body as unknown as PerpClobGetTradesRequest)
+          );
+      }
+    )
+  );
+
+  router.post(
+    '/lastTradePrice',
+    asyncHandler(
+      async (
+        req: Request<{}, {}, PerpClobGetLastTradePriceRequest>,
+        res: Response<PerpClobGetLastTradePriceResponse, {}>
+      ) => {
+        validatePerpLastTradePrice(req.body);
+        res
+          .status(200)
+          .json(
+            await perpLastTradePrice(
+              req.body as unknown as PerpClobGetLastTradePriceRequest
+            )
           );
       }
     )
