@@ -136,6 +136,15 @@ const ORDER_BOOK = {
   ],
 };
 
+const TRADES = {
+  trades: [
+    {
+      executionPrice: '1.0123',
+    },
+  ],
+  pagination: { to: 0, from: 0, total: 1 },
+};
+
 const ORDERS = {
   orderHistory: [
     {
@@ -240,11 +249,25 @@ const patchOrderBook = () => {
   });
 };
 
+const patchTrades = () => {
+  patch(injClobPerp.derivativeApi, 'fetchTrades', () => {
+    return TRADES;
+  });
+};
+
 const patchFundingRates = () => {
   patch(injClobPerp.derivativeApi, 'fetchFundingRates', () => {
     return {
       fundingRates: FUNDING_RATES,
       pagination: { to: 0, from: 0, total: 1 },
+    };
+  });
+};
+
+const patchOraclePrice = () => {
+  patch(injClobPerp.oracleApi, 'fetchOraclePrice', () => {
+    return {
+      price: '1.234',
     };
   });
 };
@@ -589,11 +612,14 @@ describe('POST /clob/perp/positions', () => {
   });
 });
 
-describe('POST /clob/perp/funding/rates', () => {
+describe('POST /clob/perp/funding/info', () => {
   it('should return 200 with proper request', async () => {
+    patchMarkets();
     patchFundingRates();
+    patchTrades();
+    patchOraclePrice();
     await request(gatewayApp)
-      .post(`/clob/perp/funding/rates`)
+      .post(`/clob/perp/funding/info`)
       .send({
         chain: 'injective',
         network: 'mainnet',
@@ -603,12 +629,12 @@ describe('POST /clob/perp/funding/rates', () => {
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(200)
-      .expect((res) => expect(res.body.fundingRates).toEqual(FUNDING_RATES));
+      .expect((res) => expect(res.body.fundingInfo.markPrice).toEqual('1.234'));
   });
 
   it('should return 404 when parameters are invalid', async () => {
     await request(gatewayApp)
-      .post(`/clob/perp/funding/rates`)
+      .post(`/clob/perp/funding/info`)
       .send(INVALID_REQUEST)
       .set('Accept', 'application/json')
       .expect(404);
@@ -831,6 +857,33 @@ describe('GET /clob/perp/estimateGas', () => {
   it('should return 404 when parameters are invalid', async () => {
     await request(gatewayApp)
       .get(`/clob/perp/estimateGas`)
+      .query(INVALID_REQUEST)
+      .expect(404);
+  });
+});
+
+describe('GET /clob/perp/lastTradePrice', () => {
+  it('should return 200 with proper request', async () => {
+    patchTrades();
+    await request(gatewayApp)
+      .get(`/clob/perp/lastTradePrice`)
+      .query({
+        chain: 'injective',
+        network: 'mainnet',
+        connector: 'injective_perpetual',
+        market: MARKET,
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .expect((res) =>
+        expect(res.body.lastTradePrice).toEqual(TRADES.trades[0].executionPrice)
+      );
+  });
+
+  it('should return 404 when parameters are invalid', async () => {
+    await request(gatewayApp)
+      .get(`/clob/perp/lastTradePrice`)
       .query(INVALID_REQUEST)
       .expect(404);
   });

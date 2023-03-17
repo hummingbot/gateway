@@ -375,19 +375,19 @@ export namespace PerpClobRoutes {
     )
   );
 
-  router.post(
+  router.get(
     '/lastTradePrice',
     asyncHandler(
       async (
         req: Request<{}, {}, PerpClobGetLastTradePriceRequest>,
         res: Response<PerpClobGetLastTradePriceResponse, {}>
       ) => {
-        validatePerpLastTradePrice(req.body);
+        validatePerpLastTradePrice(req.query);
         res
           .status(200)
           .json(
             await perpLastTradePrice(
-              req.body as unknown as PerpClobGetLastTradePriceRequest
+              req.query as unknown as PerpClobGetLastTradePriceRequest
             )
           );
       }
