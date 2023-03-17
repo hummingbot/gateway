@@ -8,8 +8,6 @@ import ethers, {
 import { latency, bigNumberWithDecimalToStr } from '../../services/base';
 import {
   HttpException,
-  OUT_OF_GAS_ERROR_CODE,
-  OUT_OF_GAS_ERROR_MESSAGE,
   LOAD_WALLET_ERROR_CODE,
   LOAD_WALLET_ERROR_MESSAGE,
   TOKEN_NOT_SUPPORTED_ERROR_CODE,
@@ -377,17 +375,7 @@ export async function poll(
       // tx has been processed
       txBlock = txReceipt.blockNumber;
       txStatus = typeof txReceipt.status === 'number' ? 1 : -1;
-      if (txReceipt.status === 0) {
-        const gasUsed = BigNumber.from(txReceipt.gasUsed).toNumber();
-        const gasLimit = BigNumber.from(txData.gasLimit).toNumber();
-        if (gasUsed / gasLimit > 0.9) {
-          throw new HttpException(
-            503,
-            OUT_OF_GAS_ERROR_MESSAGE,
-            OUT_OF_GAS_ERROR_CODE
-          );
-        }
-      }
+
       // decode logs
       if (req.connector) {
         try {
