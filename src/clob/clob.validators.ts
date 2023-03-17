@@ -151,7 +151,7 @@ export const validateOrderRequest: RequestValidator = mkRequestValidator(
 );
 
 export const validatePerpTradesRequest: RequestValidator = mkRequestValidator(
-  NETWORK_VALIDATIONS.concat([validateOrderId, validateWallet, validateOrderId])
+  NETWORK_VALIDATIONS.concat([validateOrderId, validateWallet, validateMarket])
 );
 
 export const validatePerpOrderRequest: RequestValidator = mkRequestValidator(

@@ -354,18 +354,18 @@ export namespace PerpClobRoutes {
     )
   );
 
-  router.get(
+  router.post(
     '/order/trades',
     asyncHandler(
       async (
         req: Request<{}, {}, PerpClobGetTradesRequest>,
         res: Response<PerpClobGetTradesResponse | string, {}>
       ) => {
-        validatePerpTradesRequest(req.query);
+        validatePerpTradesRequest(req.body);
         res
           .status(200)
           .json(
-            await perpTrades(req.query as unknown as PerpClobGetTradesRequest)
+            await perpTrades(req.body as unknown as PerpClobGetTradesRequest)
           );
       }
     )
