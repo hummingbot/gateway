@@ -1,5 +1,5 @@
 {
-    "chain": "injective",
-    "network": "mainnet",
-    "address": "$INJECTIVE_SUBACCOUNTID"
-  }
+  "chain": "injective",
+  "network": "mainnet",
+  "address": "$INJECTIVE_SUBACCOUNTID"
+}

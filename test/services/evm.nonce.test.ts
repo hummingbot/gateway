@@ -108,9 +108,9 @@ describe('Test EVMNonceManager', () => {
 
     await evmNonceManager.init(
       async (address) =>
-        (await new providers.StaticJsonRpcProvider(
+        await new providers.StaticJsonRpcProvider(
           'http://127.0.0.1:8545/'
-        ).getTransactionCount(address)) - 1
+        ).getTransactionCount(address)
     );
 
     const nonce = await evmNonceManager.getNonce(address1);

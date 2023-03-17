@@ -1,0 +1,9 @@
+{
+  "connector": "xsswap",
+  "chain": "xdc",
+  "network": "xinfin",
+  "quote": "xUSDT",
+  "base": "WXDC",
+  "amount": "10000000000000000",
+  "side": "SELL"
+}

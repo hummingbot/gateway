@@ -26,6 +26,7 @@ export const validateSpender: Validator = mkValidator(
     (val === 'pangolin' ||
       val === 'traderjoe' ||
       val === 'openocean' ||
+      val === 'sushiswap' ||
       isAddress(val))
 );
 
