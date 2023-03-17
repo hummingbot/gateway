@@ -12,6 +12,7 @@ import {
   derivativeQuantityToChainQuantityToFixed,
   DerivativeOrderSide,
   TradeDirection,
+  DerivativeTrade,
 } from '@injectivelabs/sdk-ts';
 import {
   PerpClobMarketRequest,
@@ -24,6 +25,7 @@ import {
   PerpClobFundingRatesRequest,
   PerpClobFundingPaymentsRequest,
   PerpClobPositionRequest,
+  PerpClobGetTradesRequest,
 } from '../../clob/clob.requests';
 import { NetworkSelectionRequest } from '../../services/common-interfaces';
 import { InjectiveCLOBConfig } from '../injective/injective.clob.config';
@@ -118,6 +120,57 @@ export class InjectiveClobPerp {
     return await this.markets(req);
   }
 
+  public async trades(
+    req: PerpClobGetTradesRequest
+  ): Promise<Array<DerivativeTrade>> {
+    const marketId = this.parsedMarkets[req.market].marketId;
+
+    const firstPage = await this.derivativeApi.fetchTrades({
+      marketId,
+      subaccountId: req.address,
+    });
+
+    let targetTrade = undefined;
+
+    let skip = 0;
+    const pagination = {
+      skip,
+      limit: 100,
+      key: '',
+    };
+
+    const trades = firstPage.trades;
+    if (req.orderId !== undefined) {
+      for (const trade of trades) {
+        if (trade.orderHash === req.orderId) {
+          targetTrade = trade;
+          break;
+        }
+      }
+    }
+
+    const total = firstPage.pagination.total;
+    if (total > 100) {
+      skip = skip + 99;
+      while (trades.length < total) {
+        pagination.skip = skip;
+        const page = await this.derivativeApi.fetchTrades({
+          marketId,
+          subaccountId: req.address,
+        });
+
+        skip = skip + 100;
+        trades.concat(page.trades);
+      }
+    }
+
+    if (req.orderId !== undefined) {
+      return targetTrade ? [targetTrade] : [];
+    } else {
+      return trades;
+    }
+  }
+
   public async orders(
     req: PerpClobGetOrderRequest
   ): Promise<Array<DerivativeOrderHistory>> {
@@ -161,9 +214,9 @@ export class InjectiveClobPerp {
     });
 
     const orders = firstPage.orderHistory;
-    if (req.orderHash !== undefined) {
+    if (req.orderId !== undefined) {
       for (const order of orders) {
-        if (order.orderHash === req.orderHash) {
+        if (order.orderHash === req.orderId) {
           targetOrder = order;
           break;
         }
@@ -182,9 +235,9 @@ export class InjectiveClobPerp {
           orderTypes,
           pagination,
         });
-        if (req.orderHash !== undefined) {
+        if (req.orderId !== undefined) {
           for (const order of page.orderHistory) {
-            if (order.orderHash === req.orderHash) {
+            if (order.orderHash === req.orderId) {
               targetOrder = order;
               break;
             }
@@ -196,7 +249,7 @@ export class InjectiveClobPerp {
       }
     }
 
-    if (req.orderHash !== undefined) {
+    if (req.orderId !== undefined) {
       return targetOrder ? [targetOrder] : [];
     } else {
       return orders;
@@ -338,6 +391,10 @@ export class InjectiveClobPerp {
     });
 
     return firstPage.fundingRates;
+
+    // "indexPrice": string,
+    //  "markPrice": string,
+    //  "fundingRate: string
   }
 
   public async fundingPayments(
@@ -420,7 +477,6 @@ export class InjectiveClobPerp {
 }
 
 /*
-orderHash
 
 
   async fetchOrderHistory(params?: {
@@ -434,13 +490,6 @@ orderHash
     state?: DerivativeOrderState
     pagination?: PaginationOption
   }) {
-
-
-direction: str
-start_time: int
-limit: int
-skip: int
-order_types: List[str]
 
 export enum TradeDirection {
   Buy = 'buy',
@@ -461,5 +510,39 @@ export enum DerivativeOrderSide {
   SellPO = 'sell_po',
 }
 
+
+export interface PositionDelta {
+  tradeDirection: TradeDirection
+  executionPrice: string
+  executionQuantity: string
+  executionMargin: string
+}
+
+export interface DerivativeTrade extends PositionDelta {
+  orderHash: string
+  subaccountId: string
+  tradeId: string
+  marketId: string
+  executedAt: number
+  tradeExecutionType: TradeExecutionType
+  tradeDirection: TradeDirection
+  executionSide: TradeExecutionSide
+  fee: string
+  feeRecipient: string
+  isLiquidation: boolean
+  payout: string
+}
+
+  async fetchTrades(params?: {
+    marketId?: string
+    direction?: TradeDirection
+    subaccountId?: string
+    startTime?: number
+    endTime?: number
+    executionTypes?: TradeExecutionType[]
+    executionSide?: TradeExecutionSide
+    pagination?: PaginationOption
+    marketIds?: string[]
+  }) {
 
 */

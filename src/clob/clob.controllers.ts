@@ -34,6 +34,8 @@ import {
   PerpClobFundingPaymentsResponse,
   PerpClobPositionRequest,
   PerpClobPositionResponse,
+  PerpClobGetTradesRequest,
+  PerpClobGetTradesResponse,
 } from './clob.requests';
 import { latency } from '../services/base';
 
@@ -421,5 +423,24 @@ export async function perpPositions(
     timestamp: startTimestamp,
     latency: latency(startTimestamp, Date.now()),
     positions: result,
+  };
+}
+
+export async function perpTrades(
+  request: PerpClobGetTradesRequest
+): Promise<PerpClobGetTradesResponse> {
+  const startTimestamp: number = Date.now();
+  await getChain(request.chain, request.network);
+  const connector: any = await getConnector(
+    request.chain,
+    request.network,
+    request.connector
+  );
+  const trades = await connector.trades(request);
+  return {
+    network: request.network,
+    timestamp: startTimestamp,
+    latency: latency(startTimestamp, Date.now()),
+    trades,
   };
 }

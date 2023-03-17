@@ -7,6 +7,7 @@ import {
   DerivativeMarket,
   SpotMarket,
   Position,
+  DerivativeTrade,
 } from '@injectivelabs/sdk-ts';
 
 export interface ClobMarketsRequest extends NetworkSelectionRequest {
@@ -119,7 +120,7 @@ export type PerpClobOrderbookResponse = ClobOrderbookResponse;
 export interface PerpClobGetOrderRequest extends NetworkSelectionRequest {
   market: string;
   address: string;
-  orderHash?: string;
+  orderId?: string;
   direction?: string; // 'buy', 'sell', 'long', 'short'
   orderTypes?: string; // string like 'buy,sell,stop_buy,stop_sell,take_buy,take_sell,buy_po,sell_po'
   limit?: number; // 1 or greater, otherwise it gets all orders
@@ -169,6 +170,19 @@ export interface PerpClobFundingRatesResponse {
   timestamp: number;
   latency: number;
   fundingRates: Array<FundingRate>;
+}
+
+export interface PerpClobGetTradesRequest extends NetworkSelectionRequest {
+  market: string;
+  address: string;
+  orderId: string;
+}
+
+export interface PerpClobGetTradesResponse {
+  network: string;
+  timestamp: number;
+  latency: number;
+  trades: Array<DerivativeTrade>;
 }
 
 export interface PerpClobFundingPaymentsRequest
