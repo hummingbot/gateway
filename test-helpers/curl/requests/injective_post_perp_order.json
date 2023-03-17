@@ -4,9 +4,9 @@
   "connector": "injective_perpetual",
   "address": "$INJECTIVE_SUBACCOUNTID",
   "market": "INJ-USDT",
-  "price": "2",
-  "amount": "0.10",
-  "leverage": 20.0,
-  "side": "SELL",
+  "price": "4.25",
+  "amount": "4.0",
+  "leverage": 1.0,
+  "side": "BUY",
   "orderType": "LIMIT"
 }
