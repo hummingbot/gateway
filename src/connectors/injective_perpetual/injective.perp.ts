@@ -1,37 +1,18 @@
-import { BigNumber, utils } from 'ethers';
 import {
-  MsgBatchUpdateOrders,
-  IndexerGrpcDerivativesApi,
-  DerivativeOrderHistory,
-  Orderbook,
-  GrpcOrderType,
-  FundingPayment,
-  FundingRate,
-  Position,
-  derivativePriceToChainPriceToFixed,
-  derivativeQuantityToChainQuantityToFixed,
-  DerivativeOrderSide,
-  TradeDirection,
-  DerivativeTrade,
+  DerivativeOrderHistory, DerivativeOrderSide, derivativePriceToChainPriceToFixed,
+  derivativeQuantityToChainQuantityToFixed, DerivativeTrade, FundingPayment, GrpcOrderType, IndexerGrpcDerivativesApi, IndexerGrpcOracleApi, MsgBatchUpdateOrders, Orderbook, PerpetualMarket, Position, TradeDirection
 } from '@injectivelabs/sdk-ts';
+import { BigNumber, utils } from 'ethers';
+import LRUCache from 'lru-cache';
+import { Injective } from '../../chains/injective/injective';
+import { getInjectiveConfig } from '../../chains/injective/injective.config';
 import {
-  PerpClobMarketRequest,
-  PerpClobOrderbookRequest,
-  PerpClobTickerRequest,
-  PerpClobGetOrderRequest,
-  PerpClobPostOrderRequest,
-  PerpClobDeleteOrderRequest,
-  PerpClobMarkets,
-  PerpClobFundingRatesRequest,
-  PerpClobFundingPaymentsRequest,
-  PerpClobPositionRequest,
-  PerpClobGetTradesRequest,
+  FundingInfo,
+  PerpClobDeleteOrderRequest, PerpClobFundingInfoRequest,
+  PerpClobFundingPaymentsRequest, PerpClobGetOrderRequest, PerpClobGetTradesRequest, PerpClobMarketRequest, PerpClobMarkets, PerpClobOrderbookRequest, PerpClobPositionRequest, PerpClobPostOrderRequest, PerpClobTickerRequest
 } from '../../clob/clob.requests';
 import { NetworkSelectionRequest } from '../../services/common-interfaces';
 import { InjectiveCLOBConfig } from '../injective/injective.clob.config';
-import { Injective } from '../../chains/injective/injective';
-import LRUCache from 'lru-cache';
-import { getInjectiveConfig } from '../../chains/injective/injective.config';
 
 function enumFromStringValue<T>(
   enm: { [s: string]: T },
@@ -47,6 +28,7 @@ export class InjectiveClobPerp {
   private _chain;
   public conf;
   public derivativeApi: IndexerGrpcDerivativesApi;
+  public oracleApi: IndexerGrpcOracleApi;
   private _ready: boolean = false;
   public parsedMarkets: PerpClobMarkets = {};
 
@@ -56,6 +38,9 @@ export class InjectiveClobPerp {
     this.derivativeApi = new IndexerGrpcDerivativesApi(
       this._chain.endpoints.indexer
     );
+    this.oracleApi = new IndexerGrpcOracleApi(
+      this._chain.endpoints.indexer
+    )
   }
 
   public static getInstance(chain: string, network: string): InjectiveClobPerp {
@@ -80,7 +65,7 @@ export class InjectiveClobPerp {
     const derivativeMarkets = await this.derivativeApi.fetchMarkets();
     for (const market of derivativeMarkets) {
       const key = market.ticker.replace('/', '-').replace(' PERP', '');
-      this.parsedMarkets[key] = market;
+      this.parsedMarkets[key] = <PerpetualMarket>market;
     }
   }
 
@@ -374,27 +359,48 @@ export class InjectiveClobPerp {
     };
   }
 
-  public async fundingRates(
-    req: PerpClobFundingRatesRequest
-  ): Promise<Array<FundingRate>> {
-    let skip = 0;
-    const marketId = this.parsedMarkets[req.market].marketId;
-    const pagination = {
-      skip,
-      limit: 100,
-      key: '',
-    };
+  private _getNextHourUnixTimestamp(): number {
+    // Returns the next hour unix timestamp in seconds.
+    const now = Date.now() * 1e-3;
+    return ((now - (now % 3600)) + 3600) * 1e3;
+  }
 
-    const firstPage = await this.derivativeApi.fetchFundingRates({
+  public async fundingInfo(
+    req: PerpClobFundingInfoRequest
+  ): Promise<FundingInfo> {
+    // Ensures that the latest Derivative Market Info is loaded.
+    await this.loadMarkets()
+
+    const marketInfo = this.parsedMarkets[req.market]
+    const marketId = marketInfo.marketId;
+    const [baseSymbol, quoteSymbol] = req.market.split('-');
+    const oracleType = marketInfo.oracleType;
+    const oracleScaleFactor = parseFloat(`1e-${marketInfo.oracleScaleFactor}`);
+    const nextFundingTimestamp = marketInfo.perpetualMarketInfo?.nextFundingTimestamp || this._getNextHourUnixTimestamp();
+
+    const fundingRateResp = await this.derivativeApi.fetchFundingRates({
       marketId,
-      pagination,
+    });
+    const tradesResp = await this.derivativeApi.fetchTrades({
+      marketId
+    });
+    const oraclePriceResp = await this.oracleApi.fetchOraclePrice({
+      baseSymbol,
+      quoteSymbol,
+      oracleType,
     });
 
-    return firstPage.fundingRates;
+    const indexPrice = (parseFloat(tradesResp.trades[0].executionPrice) * oracleScaleFactor).toString();
+    const fundingRate: string = fundingRateResp.fundingRates[0].rate;
+    const markPrice = oraclePriceResp.price;
 
-    // "indexPrice": string,
-    //  "markPrice": string,
-    //  "fundingRate: string
+    return {
+      marketId,
+      indexPrice,
+      markPrice,
+      fundingRate,
+      "nextFundingTimestamp": (nextFundingTimestamp * 1e3)
+    };
   }
 
   public async fundingPayments(

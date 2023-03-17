@@ -1,30 +1,16 @@
 /* eslint-disable no-inner-declarations */
 /* eslint-disable @typescript-eslint/ban-types */
-import { Router, Request, Response } from 'express';
+import { Request, Response, Router } from 'express';
 import { EstimateGasResponse } from '../amm/amm.requests';
 import { validateEstimateGasRequest } from '../amm/amm.validators';
 import { NetworkSelectionRequest } from '../services/common-interfaces';
 import { asyncHandler } from '../services/error-handler';
 import {
-  getMarkets,
-  getOrderBooks,
-  getTickers,
-  getOrders,
-  postOrder,
-  deleteOrder,
-  estimateGas,
-  batchOrders,
-  perpGetMarkets,
-  perpGetOrderBooks,
-  perpGetTickers,
-  perpGetOrders,
-  perpPostOrder,
-  perpDeleteOrder,
-  perpEstimateGas,
-  perpFundingPayments,
-  perpFundingRates,
-  perpPositions,
-  perpTrades,
+  batchOrders, deleteOrder,
+  estimateGas, getMarkets,
+  getOrderBooks, getOrders, getTickers, perpDeleteOrder,
+  perpEstimateGas, perpFundingInfo, perpFundingPayments, perpGetMarkets,
+  perpGetOrderBooks, perpGetOrders, perpGetTickers, perpPositions, perpPostOrder, perpTrades, postOrder
 } from './clob.controllers';
 import {
   ClobBatchUpdateRequest,
@@ -41,38 +27,20 @@ import {
   ClobTickerRequest,
   ClobTickerResponse,
   PerpClobDeleteOrderRequest,
-  PerpClobDeleteOrderResponse,
-  PerpClobGetOrderRequest,
-  PerpClobGetOrderResponse,
-  PerpClobMarketResponse,
-  PerpClobMarketRequest,
-  PerpClobOrderbookRequest,
-  PerpClobOrderbookResponse,
-  PerpClobPostOrderRequest,
+  PerpClobDeleteOrderResponse, PerpClobFundingInfoRequest, PerpClobFundingInfoResponse, PerpClobFundingPaymentsRequest,
+  PerpClobFundingPaymentsResponse, PerpClobGetOrderRequest,
+  PerpClobGetOrderResponse, PerpClobGetTradesRequest,
+  PerpClobGetTradesResponse, PerpClobMarketRequest, PerpClobMarketResponse, PerpClobOrderbookRequest,
+  PerpClobOrderbookResponse, PerpClobPositionRequest,
+  PerpClobPositionResponse, PerpClobPostOrderRequest,
   PerpClobPostOrderResponse,
   PerpClobTickerRequest,
-  PerpClobTickerResponse,
-  PerpClobFundingRatesRequest,
-  PerpClobFundingRatesResponse,
-  PerpClobFundingPaymentsRequest,
-  PerpClobFundingPaymentsResponse,
-  PerpClobPositionRequest,
-  PerpClobPositionResponse,
-  PerpClobGetTradesRequest,
-  PerpClobGetTradesResponse,
+  PerpClobTickerResponse
 } from './clob.requests';
 import {
-  validateBasicRequest,
-  validateMarketRequest,
-  validatePostOrderRequest,
-  validatePerpOrderRequest,
-  validateOrderRequest,
-  validateBatchOrdersRequest,
-  validateFundingRatesRequest,
-  validateFundingPaymentsRequest,
-  validatePostPerpOrderRequest,
-  validatePositionsRequest,
-  validatePerpTradesRequest,
+  validateBasicRequest, validateBatchOrdersRequest,
+  validateFundingInfoRequest,
+  validateFundingPaymentsRequest, validateMarketRequest, validateOrderRequest, validatePerpOrderRequest, validatePerpTradesRequest, validatePositionsRequest, validatePostOrderRequest, validatePostPerpOrderRequest
 } from './clob.validators';
 
 export namespace CLOBRoutes {
@@ -316,14 +284,14 @@ export namespace PerpClobRoutes {
   );
 
   router.post(
-    '/funding/rates',
+    '/funding/info',
     asyncHandler(
       async (
-        req: Request<{}, {}, PerpClobFundingRatesRequest>,
-        res: Response<PerpClobFundingRatesResponse, {}>
+        req: Request<{}, {}, PerpClobFundingInfoRequest>,
+        res: Response<PerpClobFundingInfoResponse, {}>
       ) => {
-        validateFundingRatesRequest(req.body);
-        res.status(200).json(await perpFundingRates(req.body));
+        validateFundingInfoRequest(req.body);
+        res.status(200).json(await perpFundingInfo(req.body));
       }
     )
   );

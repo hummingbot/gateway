@@ -1,14 +1,8 @@
-import { NetworkSelectionRequest } from '../services/common-interfaces';
-import { OrderType, Side } from '../amm/amm.requests';
 import {
-  FundingPayment,
-  FundingRate,
-  Orderbook,
-  DerivativeMarket,
-  SpotMarket,
-  Position,
-  DerivativeTrade,
+  DerivativeTrade, FundingPayment, Orderbook, PerpetualMarket, Position, SpotMarket
 } from '@injectivelabs/sdk-ts';
+import { OrderType, Side } from '../amm/amm.requests';
+import { NetworkSelectionRequest } from '../services/common-interfaces';
 
 export interface ClobMarketsRequest extends NetworkSelectionRequest {
   market?: string;
@@ -99,7 +93,7 @@ export type ClobDeleteOrderResponse = ClobPostOrderResponse;
 export type PerpClobMarketRequest = ClobMarketsRequest;
 
 export interface PerpClobMarkets {
-  [key: string]: DerivativeMarket;
+  [key: string]: PerpetualMarket;
 }
 
 export interface PerpClobMarketResponse {
@@ -158,18 +152,23 @@ export interface PerpClobDeleteOrderRequest extends NetworkSelectionRequest {
 
 export type PerpClobDeleteOrderResponse = PerpClobPostOrderResponse;
 
-export interface PerpClobFundingRatesRequest extends NetworkSelectionRequest {
+export interface PerpClobFundingInfoRequest extends NetworkSelectionRequest {
   market: string;
-  skip?: number; // skip last n funding rates
-  limit?: number; // 1 to 100
-  endTime?: number; // Upper bound of funding rate timestamp
 }
 
-export interface PerpClobFundingRatesResponse {
+export interface FundingInfo {
+  marketId: string;
+  indexPrice: string,
+  markPrice: string,
+  fundingRate: string;
+  nextFundingTimestamp: number;
+}
+
+export interface PerpClobFundingInfoResponse {
   network: string;
   timestamp: number;
   latency: number;
-  fundingRates: Array<FundingRate>;
+  fundingInfo: FundingInfo;
 }
 
 export interface PerpClobGetTradesRequest extends NetworkSelectionRequest {

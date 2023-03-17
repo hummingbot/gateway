@@ -1,5 +1,6 @@
 /* eslint-disable prettier/prettier */
 import { EstimateGasResponse } from '../amm/amm.requests';
+import { latency } from '../services/base';
 import { NetworkSelectionRequest } from '../services/common-interfaces';
 import { getChain, getConnector } from '../services/connection-manager';
 import {
@@ -17,27 +18,16 @@ import {
   ClobTickerRequest,
   ClobTickerResponse,
   PerpClobDeleteOrderRequest,
-  PerpClobDeleteOrderResponse,
-  PerpClobGetOrderRequest,
-  PerpClobGetOrderResponse,
-  PerpClobMarketResponse,
-  PerpClobMarketRequest,
-  PerpClobOrderbookRequest,
-  PerpClobOrderbookResponse,
-  PerpClobPostOrderRequest,
+  PerpClobDeleteOrderResponse, PerpClobFundingInfoRequest, PerpClobFundingInfoResponse, PerpClobFundingPaymentsRequest,
+  PerpClobFundingPaymentsResponse, PerpClobGetOrderRequest,
+  PerpClobGetOrderResponse, PerpClobGetTradesRequest,
+  PerpClobGetTradesResponse, PerpClobMarketRequest, PerpClobMarketResponse, PerpClobOrderbookRequest,
+  PerpClobOrderbookResponse, PerpClobPositionRequest,
+  PerpClobPositionResponse, PerpClobPostOrderRequest,
   PerpClobPostOrderResponse,
   PerpClobTickerRequest,
-  PerpClobTickerResponse,
-  PerpClobFundingRatesRequest,
-  PerpClobFundingRatesResponse,
-  PerpClobFundingPaymentsRequest,
-  PerpClobFundingPaymentsResponse,
-  PerpClobPositionRequest,
-  PerpClobPositionResponse,
-  PerpClobGetTradesRequest,
-  PerpClobGetTradesResponse,
+  PerpClobTickerResponse
 } from './clob.requests';
-import { latency } from '../services/base';
 
 /**
  * GET /clob/markets
@@ -369,9 +359,9 @@ export async function perpEstimateGas(
   } as EstimateGasResponse;
 }
 
-export async function perpFundingRates(
-  request: PerpClobFundingRatesRequest
-): Promise<PerpClobFundingRatesResponse> {
+export async function perpFundingInfo(
+  request: PerpClobFundingInfoRequest
+): Promise<PerpClobFundingInfoResponse> {
   const startTimestamp: number = Date.now();
   await getChain(request.chain, request.network);
   const connector: any = await getConnector(
@@ -379,12 +369,12 @@ export async function perpFundingRates(
     request.network,
     request.connector
   );
-  const result = await connector.fundingRates(request);
+  const result = await connector.fundingInfo(request);
   return {
     network: request.network,
     timestamp: startTimestamp,
     latency: latency(startTimestamp, Date.now()),
-    fundingRates: result,
+    fundingInfo: result,
   };
 }
 

@@ -158,7 +158,7 @@ export const validatePerpOrderRequest: RequestValidator = mkRequestValidator(
   NETWORK_VALIDATIONS.concat([validateWallet, validateMarket])
 );
 
-export const validateFundingRatesRequest: RequestValidator = mkRequestValidator(
+export const validateFundingInfoRequest: RequestValidator = mkRequestValidator(
   NETWORK_VALIDATIONS.concat([validateMarket])
 );
 
