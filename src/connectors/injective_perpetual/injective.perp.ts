@@ -128,7 +128,9 @@ export class InjectiveClobPerp {
   public async lastTradePrice(
     req: PerpClobGetLastTradePriceRequest
   ): Promise<string | null> {
-    const marketId = this.parsedMarkets[req.market].marketId;
+    const marketInfo = this.parsedMarkets[req.market];
+    const marketId = marketInfo.marketId;
+    const oracleScaleFactor = parseFloat(`1e-${marketInfo.oracleScaleFactor}`);
     const pagination = {
       skip: 0,
       limit: 1,
@@ -141,7 +143,7 @@ export class InjectiveClobPerp {
 
     let price = null;
     if (result.trades.length > 0) {
-      price = result.trades[0].executionPrice;
+      price = (parseFloat(result.trades[0].executionPrice) * oracleScaleFactor).toString();
     }
 
     return price;
