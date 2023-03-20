@@ -143,7 +143,9 @@ export class InjectiveClobPerp {
 
     let price = null;
     if (result.trades.length > 0) {
-      price = (parseFloat(result.trades[0].executionPrice) * oracleScaleFactor).toString();
+      price = (
+        parseFloat(result.trades[0].executionPrice) * oracleScaleFactor
+      ).toString();
     }
 
     return price;

@@ -877,7 +877,11 @@ describe('GET /clob/perp/lastTradePrice', () => {
       .expect('Content-Type', /json/)
       .expect(200)
       .expect((res) =>
-        expect(res.body.lastTradePrice).toEqual(TRADES.trades[0].executionPrice)
+        expect(res.body.lastTradePrice).toEqual(
+          (
+            parseFloat(TRADES.trades[0].executionPrice) * parseFloat(`1e-6`)
+          ).toString()
+        )
       );
   });
 
