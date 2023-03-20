@@ -166,17 +166,17 @@ describe('EVMNodeService', () => {
     patchGetTransactionCount();
     await nonceManager.commitNonce(exampleAddress, 10);
     let nonce = await nonceManager.getNonce(exampleAddress);
-    await expect(nonce).toEqual(10);
+    await expect(nonce).toEqual(9);
 
     await expect(nonceManager.commitNonce(exampleAddress, 5)).rejects.toThrow(
       new InvalidNonceError(
-        INVALID_NONCE_ERROR_MESSAGE + `txNonce(5) < currentNonce(10)`,
+        INVALID_NONCE_ERROR_MESSAGE + `txNonce(5) < currentNonce(9)`,
         INVALID_NONCE_ERROR_CODE
       )
     );
 
     nonce = await nonceManager.getNonce(exampleAddress);
-    await expect(nonce).toEqual(10);
+    await expect(nonce).toEqual(9);
   });
 
   it('mergeNonceFromEVMNode should update with nonce from EVM node (local<node)', async () => {
@@ -186,7 +186,7 @@ describe('EVMNodeService', () => {
     jest.advanceTimersByTime(300000);
     await nonceManager.mergeNonceFromEVMNode(exampleAddress);
     const nonce = await nonceManager.getNonce(exampleAddress);
-    await expect(nonce).toEqual(19);
+    await expect(nonce).toEqual(18);
   });
 
   it('getNextNonce should return nonces that are sequentially increasing', async () => {
@@ -198,7 +198,7 @@ describe('EVMNodeService', () => {
     jest.advanceTimersByTime(300000);
 
     const pendingNonce1 = await nonceManager.getNextNonce(exampleAddress);
-    expect(pendingNonce1).toEqual(11);
+    expect(pendingNonce1).toEqual(10);
 
     const pendingNonce2 = await nonceManager.getNextNonce(exampleAddress);
     expect(pendingNonce2).toEqual(pendingNonce1 + 1);
@@ -209,7 +209,7 @@ describe('EVMNodeService', () => {
     patchGetTransactionCount();
 
     const pendingNonce1 = await nonceManager.getNextNonce(exampleAddress);
-    expect(pendingNonce1).toEqual(11);
+    expect(pendingNonce1).toEqual(10);
 
     // if this runs too quickly it will fail (the nonce has not expired yet)
     jest.advanceTimersByTime(1000);
@@ -221,7 +221,7 @@ describe('EVMNodeService', () => {
     jest.advanceTimersByTime(300000);
     await nonceManager.mergeNonceFromEVMNode(exampleAddress);
     const nonce = await nonceManager.getNonce(exampleAddress);
-    await expect(nonce).toEqual(10);
+    await expect(nonce).toEqual(9);
   });
 
   it('provideNonce, nonce not provided. should return function results and commit nonce on successful execution of transaction', async () => {
@@ -243,8 +243,8 @@ describe('EVMNodeService', () => {
       exampleAddress
     );
 
-    expect(transactionResult.nonce).toEqual(11);
-    expect(currentNonceFromMemory).toEqual(11);
+    expect(transactionResult.nonce).toEqual(10);
+    expect(currentNonceFromMemory).toEqual(10);
   });
 
   it('provideNonce, nonce not provided. should remove all pendingNonces greater or equal should function fail', async () => {
@@ -252,10 +252,10 @@ describe('EVMNodeService', () => {
     patchGetTransactionCount();
 
     const expectedNonce = await nonceManager.getNonceFromMemory(exampleAddress);
-    expect(expectedNonce).toEqual(10);
+    expect(expectedNonce).toEqual(9);
 
     const pendingNonce1 = await nonceManager.getNextNonce(exampleAddress); // This nonce should expire.
-    expect(pendingNonce1).toEqual(11);
+    expect(pendingNonce1).toEqual(10);
 
     const testFunction = async (_nonce: number) => {
       throw new Error('testFunction has failed.');
@@ -322,16 +322,16 @@ describe("EVMNodeService was previously a singleton. Let's prove that it no long
     await nonceManager1.commitNonce(exampleAddress, 10);
     jest.advanceTimersByTime(300000);
     const nonce1 = await nonceManager1.getNonce(exampleAddress);
-    await expect(nonce1).toEqual(10);
+    await expect(nonce1).toEqual(9);
 
     await nonceManager2.commitNonce(exampleAddress, 23);
     jest.advanceTimersByTime(300000);
     const nonce2 = await nonceManager2.getNonce(exampleAddress);
-    await expect(nonce2).toEqual(23);
+    await expect(nonce2).toEqual(22);
 
     await nonceManager1.commitNonce(exampleAddress, 11);
     jest.advanceTimersByTime(300000);
     const nonce3 = await nonceManager1.getNonce(exampleAddress);
-    await expect(nonce3).toEqual(10);
+    await expect(nonce3).toEqual(9);
   });
 });

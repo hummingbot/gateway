@@ -4,15 +4,24 @@ import { BigNumber, Contract, Transaction, Wallet } from 'ethers';
 import { EthereumBase } from './ethereum-base';
 import { getEthereumConfig } from './ethereum.config';
 import { Provider } from '@ethersproject/abstract-provider';
+import { ConfigManagerV2 } from '../../services/config-manager-v2';
+// import { throttleRetryWrapper } from '../../services/retry';
+import { Ethereumish } from '../../services/common-interfaces';
+
 import { UniswapConfig } from '../../connectors/uniswap/uniswap.config';
 import { Perp } from '../../connectors/perp/perp';
-import { Ethereumish } from '../../services/common-interfaces';
 import { SushiswapConfig } from '../../connectors/sushiswap/sushiswap.config';
-import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { OpenoceanConfig } from '../../connectors/openocean/openocean.config';
 
 // MKR does not match the ERC20 perfectly so we need to use a separate ABI.
 const MKR_ADDRESS = '0x9f8f72aa9304c8b593d555f12ef6589cc3a579a2';
+
+// See: https://docs.infura.io/infura/networks/ethereum/json-rpc-methods/eth_feehistory
+// interface EthFeeHistoryResponse {
+//   baseFeePerGas: string[];
+//   gasUsedRatio: number[];
+//   oldestBlock: string;
+// }
 
 export class Ethereum extends EthereumBase implements Ethereumish {
   private static _instances: { [name: string]: Ethereum };
@@ -132,7 +141,7 @@ export class Ethereum extends EthereumBase implements Ethereumish {
   }
 
   /**
-   * Get the base gas fee and the current max priority fee from the Ethereum
+   * Get the base gas fee from and the current max priority fee from the Ethereum
    * node, and add them together.
    */
   async getGasPriceFromEthereumNode(): Promise<number> {
