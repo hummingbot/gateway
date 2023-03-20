@@ -65,7 +65,7 @@ jobs:
             mkdir hardhat && cd hardhat && npm init -y
             touch hardhat.config.js
             yarn add --dev hardhat
-            yarn hardhat node --fork https://eth-mainnet.g.alchemy.com/v2/${{ secrets.ALCHEMY_KEY }} --fork-block-number 16862355
+            yarn hardhat node &
 
       - name: Install Dependencies
         run: yarn
