@@ -26,6 +26,7 @@ import {
   perpTrades,
   postOrder,
   perpLastTradePrice,
+  perpBatchOrders,
 } from './clob.controllers';
 import {
   ClobBatchUpdateRequest,
@@ -63,6 +64,7 @@ import {
   PerpClobTickerResponse,
   PerpClobGetLastTradePriceRequest,
   PerpClobGetLastTradePriceResponse,
+  PerpClobBatchUpdateRequest,
 } from './clob.requests';
 import {
   validateBasicRequest,
@@ -393,4 +395,18 @@ export namespace PerpClobRoutes {
       }
     )
   );
+
+  router.post(
+    '/batchOrders',
+    asyncHandler(
+      async (
+        req: Request<{}, {}, PerpClobBatchUpdateRequest>,
+        res: Response<ClobPostOrderResponse | string, {}>
+      ) => {
+        validateBatchOrdersRequest(req.body);
+        res.status(200).json(await perpBatchOrders(req.body));
+      }
+    )
+  );
+
 }

@@ -39,6 +39,8 @@ import {
   PerpClobTickerResponse,
   PerpClobGetLastTradePriceRequest,
   PerpClobGetLastTradePriceResponse,
+  PerpClobBatchUpdateRequest,
+  PerpClobBatchUpdateResponse
 } from './clob.requests';
 import {
   HttpException,
@@ -478,4 +480,23 @@ export async function perpLastTradePrice(
       lastTradePrice,
     };
   }
+}
+
+export async function perpBatchOrders(
+  request: PerpClobBatchUpdateRequest
+): Promise<PerpClobBatchUpdateResponse> {
+  const startTimestamp: number = Date.now();
+  await getChain(request.chain, request.network);
+  const connector: any = await getConnector(
+    request.chain,
+    request.network,
+    request.connector
+  );
+  const result = await connector.batchPerpOrders(request);
+  return {
+    network: request.network,
+    timestamp: startTimestamp,
+    latency: latency(startTimestamp, Date.now()),
+    ...result,
+  };
 }

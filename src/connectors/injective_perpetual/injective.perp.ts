@@ -32,6 +32,9 @@ import {
   PerpClobPostOrderRequest,
   PerpClobTickerRequest,
   PerpClobGetLastTradePriceRequest,
+  PerpClobBatchUpdateRequest,
+  ClobDeleteOrderRequestExtract,
+  CreatePerpOrderParam,
 } from '../../clob/clob.requests';
 import { NetworkSelectionRequest } from '../../services/common-interfaces';
 import { InjectiveCLOBConfig } from '../injective/injective.clob.config';
@@ -308,88 +311,20 @@ export class InjectiveClobPerp {
   public async postOrder(
     req: PerpClobPostOrderRequest
   ): Promise<{ txHash: string }> {
-    const [base, quote] = req.market.split('-');
-    const wallet = await this._chain.getWallet(req.address);
-    const privateKey: string = wallet.privateKey;
-    const injectiveAddress: string = wallet.injectiveAddress;
-
-    const market = this.parsedMarkets[req.market];
-
-    let orderType: GrpcOrderType = req.side === 'BUY' ? 1 : 2;
-    orderType =
-      req.orderType === 'LIMIT_MAKER'
-        ? ((orderType + 6) as GrpcOrderType) // i.e. BUY_LIMIT, SELL_LIMIT are 7, 8 respectively
-        : orderType;
-
-    const price = derivativePriceToChainPriceToFixed({
-      value: req.price,
-      quoteDecimals: this._chain.getTokenForSymbol(quote)?.decimals,
-    });
-    const quantity = derivativeQuantityToChainQuantityToFixed({
-      value: req.amount,
-    });
-
-    const baseToken = this._chain.getTokenForSymbol(base);
-
-    const decimalForMargin = baseToken ? baseToken.decimals : 18;
-
-    const msg = MsgBatchUpdateOrders.fromJSON({
-      subaccountId: req.address,
-      injectiveAddress,
-      derivativeOrdersToCreate: [
-        {
-          orderType,
-          price,
-          quantity,
-          marketId: market.marketId,
-          feeRecipient: injectiveAddress,
-          margin: utils.formatUnits(
-            InjectiveClobPerp.calculateMargin(
-              price,
-              quantity,
-              decimalForMargin,
-              req.leverage
-            ),
-            decimalForMargin
-          ),
-        },
-      ],
-    });
-
-    const { txHash } = await this._chain.broadcaster(privateKey).broadcast({
-      msgs: msg,
-      injectiveAddress,
-    });
-    return { txHash };
+    return await this.orderUpdate(req);
   }
 
   public async deleteOrder(
     req: PerpClobDeleteOrderRequest
   ): Promise<{ txHash: string }> {
-    const wallet = await this._chain.getWallet(req.address);
-    const privateKey: string = wallet.privateKey;
-    const injectiveAddress: string = wallet.injectiveAddress;
-
-    const market = this.parsedMarkets[req.market];
-
-    const msg = MsgBatchUpdateOrders.fromJSON({
-      injectiveAddress,
-      subaccountId: req.address,
-      derivativeOrdersToCancel: [
-        {
-          marketId: market.marketId,
-          subaccountId: req.address,
-          orderHash: req.orderId,
-        },
-      ],
-    });
-
-    const { txHash } = await this._chain.broadcaster(privateKey).broadcast({
-      msgs: msg,
-      injectiveAddress,
-    });
-    return { txHash };
+    return this.orderUpdate(req);
   }
+
+  public async batchPerpOrders(
+    req: PerpClobBatchUpdateRequest
+    ): Promise<{ txHash: string }> {
+      return this.orderUpdate(req);
+    }
 
   public estimateGas(_req: NetworkSelectionRequest): {
     gasPrice: number;
@@ -529,5 +464,119 @@ export class InjectiveClobPerp {
     }
 
     return positions;
+  }
+
+  public buildPostOrder(
+    orderParams: CreatePerpOrderParam[],
+    injectiveAddress: string
+  ): {
+    orderType: GrpcOrderType;
+    price: string;
+    quantity: string;
+    marketId: any;
+    feeRecipient: string;
+    margin: string
+  }[] {
+    const derivativeOrdersToCreate = [];
+    for (const order of orderParams) {
+      const market = this.parsedMarkets[order.market];
+      const [base, quote] = order.market.split('-');
+      let orderType: GrpcOrderType = order.side === 'BUY' ? 1 : 2;
+      orderType =
+        order.orderType === 'LIMIT_MAKER'
+          ? ((orderType + 6) as GrpcOrderType) // i.e. BUY_LIMIT, SELL_LIMIT are 7, 8 respectively
+          : orderType;
+
+      const price = derivativePriceToChainPriceToFixed({
+        value: order.price,
+        quoteDecimals: this._chain.getTokenForSymbol(quote)?.decimals,
+      });
+      const quantity =  derivativeQuantityToChainQuantityToFixed({
+        value: order.amount,
+      });
+      const baseToken = this._chain.getTokenForSymbol(base);
+      const decimalForMargin = baseToken ? baseToken.decimals : 18;
+
+      derivativeOrdersToCreate.push({
+        orderType,
+        price,
+        quantity,
+        marketId: market.marketId,
+        feeRecipient: injectiveAddress,
+        margin: utils.formatUnits(
+          InjectiveClobPerp.calculateMargin(
+            price,
+            quantity,
+            decimalForMargin,
+            order.leverage,
+          ),
+          decimalForMargin,
+        )
+      });
+    }
+    return derivativeOrdersToCreate;
+  }
+
+  public buildDeleteOrder(
+    orders: ClobDeleteOrderRequestExtract[],
+    injectiveAddress: string
+  ): { marketId: any; subaccountId: string; orderHash: string }[] {
+    const derivativeOrdersToCancel = [];
+    for (const order of orders) {
+      derivativeOrdersToCancel.push({
+        marketId: this.parsedMarkets[order.market].marketId,
+        subaccountId: injectiveAddress,
+        orderHash: order.orderId,
+      });
+    }
+    return derivativeOrdersToCancel;
+  }
+
+  public async orderUpdate(
+    req: PerpClobDeleteOrderRequest | PerpClobPostOrderRequest | PerpClobBatchUpdateRequest
+  ): Promise<{ txHash: string }> {
+    const wallet = await this._chain.getWallet(req.address);
+    const privateKey: string = wallet.privateKey;
+    const injectiveAddress: string = wallet.injectiveAddress;
+    let derivativeOrdersToCreate: CreatePerpOrderParam[] = [];
+    let derivativeOrdersToCancel: ClobDeleteOrderRequestExtract[] = [];
+    if ('createOrderParams' in req)
+      derivativeOrdersToCreate = derivativeOrdersToCreate.concat(
+        req.createOrderParams as CreatePerpOrderParam[]
+      );
+    if ('price' in req)
+      derivativeOrdersToCreate.push({
+        price: req.price,
+        amount: req.amount,
+        orderType: req.orderType,
+        side: req.side,
+        market: req.market,
+        leverage: req.leverage
+      });
+    if ('cancelOrderParams' in req)
+      derivativeOrdersToCancel = derivativeOrdersToCancel.concat(
+        req.cancelOrderParams as ClobDeleteOrderRequestExtract[]
+      );
+    if ('orderId' in req)
+      derivativeOrdersToCancel.push({ orderId: req.orderId, market: req.market });
+
+    const msg = MsgBatchUpdateOrders.fromJSON({
+      subaccountId: req.address,
+      injectiveAddress,
+      derivativeOrdersToCreate: this.buildPostOrder(
+        derivativeOrdersToCreate,
+        injectiveAddress
+      ),
+      derivativeOrdersToCancel: this.buildDeleteOrder(
+        derivativeOrdersToCancel,
+        req.address
+      ),
+    });
+
+    const { txHash } = await this._chain.broadcaster(privateKey).broadcast({
+      msgs: msg,
+      injectiveAddress,
+    });
+    return { txHash };
   }
 }
