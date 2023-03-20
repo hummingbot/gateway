@@ -5,7 +5,7 @@ import { EthereumBase } from './ethereum-base';
 import { getEthereumConfig } from './ethereum.config';
 import { Provider } from '@ethersproject/abstract-provider';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
-import { throttleRetryWrapper } from '../../services/retry';
+// import { throttleRetryWrapper } from '../../services/retry';
 import { Ethereumish } from '../../services/common-interfaces';
 
 import { UniswapConfig } from '../../connectors/uniswap/uniswap.config';
@@ -17,11 +17,11 @@ import { OpenoceanConfig } from '../../connectors/openocean/openocean.config';
 const MKR_ADDRESS = '0x9f8f72aa9304c8b593d555f12ef6589cc3a579a2';
 
 // See: https://docs.infura.io/infura/networks/ethereum/json-rpc-methods/eth_feehistory
-interface EthFeeHistoryResponse {
-  baseFeePerGas: string[];
-  gasUsedRatio: number[];
-  oldestBlock: string;
-}
+// interface EthFeeHistoryResponse {
+//   baseFeePerGas: string[];
+//   gasUsedRatio: number[];
+//   oldestBlock: string;
+// }
 
 export class Ethereum extends EthereumBase implements Ethereumish {
   private static _instances: { [name: string]: Ethereum };
@@ -141,28 +141,18 @@ export class Ethereum extends EthereumBase implements Ethereumish {
   }
 
   /**
-   * Get the base gas fee from fee history and the current max priority fee from the Ethereum
+   * Get the base gas fee from and the current max priority fee from the Ethereum
    * node, and add them together.
    */
   async getGasPriceFromEthereumNode(): Promise<number> {
-    const feeHistoryData: EthFeeHistoryResponse = await throttleRetryWrapper(
-      async () =>
-        await this.provider.send('eth_feeHistory', ['0x5', 'latest', []])
-    );
-    const feeHistory: number[] = feeHistoryData.baseFeePerGas.map(
-      (i) => BigNumber.from(i).toNumber() * 1e-9
-    );
-    const priorityFee: number =
-      BigNumber.from(
-        await throttleRetryWrapper(
-          async () => await this.provider.send('eth_maxPriorityFeePerGas', [])
-        )
-      ).toNumber() * 1e-9;
-    /*
-     * Base fee can increase by up to 12.5% after a fully filled block. Assume here that our tx will come after
-     * two consecutively filled blocks, this means current highest fee * (1.125 ** 2)
-     */
-    return (Math.max(...feeHistory) + priorityFee) * 1.125 ** 2;
+    const baseFee: BigNumber = await this.provider.getGasPrice();
+    let priorityFee: BigNumber = BigNumber.from('0');
+    if (this._chain === 'mainnet') {
+      priorityFee = BigNumber.from(
+        await this.provider.send('eth_maxPriorityFeePerGas', [])
+      );
+    }
+    return baseFee.add(priorityFee).toNumber() * 1e-9;
   }
 
   getContract(
