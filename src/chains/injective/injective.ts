@@ -123,19 +123,21 @@ export class Injective {
   }
 
   public static getInstance(networkStr: string): Injective {
+    const config = getInjectiveConfig(networkStr);
     if (Injective._instances === undefined) {
-      const config = getInjectiveConfig(networkStr);
       Injective._instances = new LRUCache<string, Injective>({
         max: config.network.maxLRUCacheInstances,
       });
     }
 
-    if (!Injective._instances.has(networkStr)) {
-      const config = getInjectiveConfig(networkStr);
-      const network = getNetworkFromString(networkStr);
+    if (!Injective._instances.has(config.network.name)) {
+      const network = getNetworkFromString(config.network.name);
       const chainId = getChainIdFromString(config.network.chainId);
       if (network !== null && chainId !== null) {
-        Injective._instances.set(networkStr, new Injective(network, chainId));
+        Injective._instances.set(
+          config.network.name,
+          new Injective(network, chainId)
+        );
       } else {
         throw new Error(
           `Injective.getInstance received an unexpected network: ${network}.`
@@ -143,7 +145,7 @@ export class Injective {
       }
     }
 
-    return Injective._instances.get(networkStr) as Injective;
+    return Injective._instances.get(config.network.name) as Injective;
   }
 
   public async init(): Promise<void> {
