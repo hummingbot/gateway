@@ -2,7 +2,8 @@ import { ZigZag, ZigZagOrder } from '../../../src/connectors/zigzag/zigzag';
 import { patch, unpatch } from '../../services/patch';
 import { Ethereum } from '../../../src/chains/ethereum/ethereum';
 import { patchEVMNonceManager } from '../../evm.nonce.mock';
-
+import { BigNumber } from 'ethers';
+import { floatStringWithDecimalToBigNumber } from '../../../src/services/base';
 let ethereum: Ethereum;
 let zigzag: ZigZag;
 
@@ -100,8 +101,11 @@ const patchInit = () => {
 };
 
 const patchStoredTokenList = () => {
-  patch(zigzag, 'tokenList', () => {
-    return [WETH, ZZ, ZZLP, USDT];
+  patch(zigzag, 'tokenList', {
+    [WETH.address]: WETH,
+    [ZZ.address]: ZZ,
+    [ZZLP.address]: ZZLP,
+    [USDT.address]: USDT,
   });
 };
 
@@ -206,3 +210,47 @@ describe('getOrderBook', () => {
     expect(orders).toEqual(result);
   });
 });
+
+describe('estimate', () => {
+  it('Estimate ZZ-USDT sell', async () => {
+    patchGetMarketOrders();
+    const one = floatStringWithDecimalToBigNumber('1', ZZ.decimals);
+    if (one !== null) {
+      const estimate = await zigzag.estimate(
+        ZZ,
+        USDT,
+        one,
+        BigNumber.from(0),
+        'sell'
+      );
+      expect(estimate.sellAmount).toEqual(one);
+      expect(estimate.buyAmount).toEqual(BigNumber.from('300421'));
+    }
+  });
+
+  it('Estimate ZZ-USDT buy', async () => {
+    patchGetMarketOrders();
+    const one = floatStringWithDecimalToBigNumber('1', USDT.decimals);
+    if (one !== null) {
+      const estimate = await zigzag.estimate(
+        ZZ,
+        USDT,
+        BigNumber.from(0),
+        one,
+        'buy'
+      );
+      expect(estimate.buyAmount).toEqual(one);
+      expect(estimate.sellAmount).toEqual(
+        BigNumber.from('3328655934904438927')
+      );
+    }
+  });
+});
+
+/*
+export enum TradeType {
+  EXACT_INPUT,
+  EXACT_OUTPUT
+}
+
+*/
