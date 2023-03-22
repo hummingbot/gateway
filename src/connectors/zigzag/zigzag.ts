@@ -12,48 +12,41 @@ import { Ethereum } from '../../chains/ethereum/ethereum';
 // https://zigzag-exchange.herokuapp.com/api/coingecko/v1/orderbook/42161/?ticker_id=eth-ust
 // https://zigzag-exchange.herokuapp.com/api/coingecko/v1/historical_trades/42161?ticker_id=eth-ust&type=b
 
-export type ZZMarketInfo = {
+export type ZigZagMarket = {
   buyToken: string;
   sellToken: string;
   verified: boolean;
 };
 
-export type EIP712DomainInfo = {
-  name: string;
-  version: string;
-  chainId: string;
-  verifyingContract: string;
-};
+// export type EIP712DomainInfo = {
+//   name: string;
+//   version: string;
+//   chainId: string;
+//   verifyingContract: string;
+// };
 
-export type EIP712TypeInfo = {
-  Order: { name: string; type: string }[];
-};
+// export type EIP712TypeInfo = {
+//   Order: { name: string; type: string }[];
+// };
 
-export type ZZTokenInfo = {
+export type ZigZagToken = {
   address: string;
   symbol: string;
   decimals: number;
   name: string;
 };
 
-export type ZZInfoMsg = {
-  markets: ZZMarketInfo[];
-  verifiedTokens: ZZTokenInfo[];
+export type ZigZagInfo = {
+  markets: Array<ZigZagMarket>;
+  verifiedTokens: Array<ZigZagToken>;
   exchange: {
     exchangeAddress: string;
     makerVolumeFee: number;
     takerVolumeFee: number;
-    domain: EIP712DomainInfo;
-    types: EIP712TypeInfo;
+    // domain: EIP712DomainInfo;
+    // types: EIP712TypeInfo;
   };
 };
-
-export interface Token {
-  address: string;
-  symbol: string;
-  decimals: number;
-  name: string;
-}
 
 export interface Market {
   market: string;
@@ -76,7 +69,7 @@ export type RouteMarket = {
   sellTokenAddress: string;
 };
 
-export type ZZOrder = {
+export type ZigZagOrder = {
   order: {
     user: string;
     buyToken: string;
@@ -88,46 +81,15 @@ export type ZZOrder = {
   signature: string;
 };
 
-// const parsedMarkets = [
-//   `${ethers.constants.AddressZero}-${network.wethContractAddress}`,
-//   `${network.wethContractAddress}-${ethers.constants.AddressZero}`
-// ]
-
-// const response = await fetch(`${network.backendUrl}/v1/info`)
-// if (response.status !== 200) {
-//   console.error("fetchMarketsInfo: Failed to fetch market info.")
-//   return
-// }
-
-// result = await response.json()
-// result.markets.forEach(market => {
-//   if (!market.verified) return
-
-//   const parsedBuyToken = market.buyToken.toLowerCase()
-//   const parsedSellToken = market.sellToken.toLowerCase()
-//   parsedMarkets.push(`${parsedBuyToken}-${parsedSellToken}`)
-
-//   // add ETH version of market
-//   if (network.wethContractAddress === parsedBuyToken) {
-//     parsedMarkets.push(`${ethers.constants.AddressZero}-${parsedSellToken}`)
-//   } else if (network.wethContractAddress === parsedSellToken) {
-//     parsedMarkets.push(`${parsedBuyToken}-${ethers.constants.AddressZero}`)
-//   }
-// })
-
-// if (network.wethContractAddress) {
-//   // add wrap/unwrap
-//   parsedMarkets.push(`${ethers.constants.AddressZero}-${network.wethContractAddress}`)
-//   parsedMarkets.push(`${network.wethContractAddress}-${ethers.constants.AddressZero}`)
-// }
-
 export class ZigZag {
   private static _instances: LRUCache<string, ZigZag>;
   private _ready = false;
   private _chain: Ethereum;
-  private tokenList: Record<string, Token> = {};
+  private tokenList: Record<string, ZigZagToken> = {}; // keep track of tokens that are in a ZigZag market
+  // public markets: Array<string> = []; // keep track of ZigZag markets, ZZ-USDT
+  public markets: Array<string> = []; // keep track of ZigZag markets, 0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9-0xf4037f59c92c9893c43c2372286699430310cfe7
   public config;
-  public parsedMarkets: Record<string, Market> = {};
+
   public makerFee = 0.0;
   public takerFee = 0.0;
 
@@ -150,25 +112,31 @@ export class ZigZag {
     return ZigZag._instances.get(instanceKey) as ZigZag;
   }
 
-  public async loadMarkets() {
-    this.parsedMarkets = await axios.get(
-      'https://zigzag-exchange.herokuapp.com/api/v1/markets'
-    );
-  }
+  // public async loadMarkets() {
+  //   this.parsedMarkets = await axios.get(
+  //     'https://zigzag-exchange.herokuapp.com/api/v1/markets'
+  //   );
+  // }
 
   public async init() {
     if (!this._chain.ready()) {
       await this._chain.init();
-      const info = await axios.get(
+      const response = await axios.get(
         'https://api.arbitrum.zigzag.exchange/v1/info'
       );
-      // ZZInfoMsg
-      if (info.status === 200) {
-        for (const token of info.data['verifiedTokens']) {
+      if (response.status === 200) {
+        const zigZagData: ZigZagInfo = response.data;
+        for (const token of zigZagData.verifiedTokens) {
           this.tokenList[token.address] = token;
         }
-        this.makerFee = info.data.exchange.makerVolumeFee;
-        this.takerFee = info.data.exchange.takerVolumeFee;
+        for (const market of zigZagData.markets) {
+          const base = this.tokenList[market.buyToken];
+          const quote = this.tokenList[market.sellToken];
+          // this.markets.push(base.symbol + '-' + quote.symbol);
+          this.markets.push(base.address + '-' + quote.address);
+        }
+        this.makerFee = zigZagData.exchange.makerVolumeFee;
+        this.takerFee = zigZagData.exchange.takerVolumeFee;
       }
 
       this._ready = true;
@@ -179,15 +147,16 @@ export class ZigZag {
     return this._ready;
   }
 
+  // For an array of possible routes, get recent orders for the corresponding markets
   public async getOrderBook(
-    possibleRoutes: RouteMarket[][]
-  ): Promise<{ [key: string]: ZZOrder[] }> {
+    possibleRoutes: Array<Array<RouteMarket>>
+  ): Promise<{ [key: string]: Array<ZigZagOrder> }> {
     const minExpires = (Date.now() / 1000 + 11).toFixed(0);
     const minTimeStamp: number = Date.now() / 1000 + 10;
-    let orders: { orders: ZZOrder[] };
-    const newOrderBook: { [key: string]: ZZOrder[] } = {};
+    let orders: { orders: ZigZagOrder[] };
+    const newOrderBook: { [key: string]: Array<ZigZagOrder> } = {};
 
-    const promise0 = possibleRoutes.map(async (routes: RouteMarket[]) => {
+    const promise0 = possibleRoutes.map(async (routes: Array<RouteMarket>) => {
       const promise1 = routes.map(async (market: RouteMarket) => {
         const requestSellTokenAddress = market.sellTokenAddress;
         const requestBuyTokenAddress = market.buyTokenAddress;
@@ -197,7 +166,8 @@ export class ZigZag {
 
         orders = await response.json();
         const goodOrders = orders.orders.filter(
-          (o: ZZOrder) => minTimeStamp < Number(o.order.expirationTimeSeconds)
+          (order: ZigZagOrder) =>
+            minTimeStamp < Number(order.order.expirationTimeSeconds)
         );
         const key = `${requestBuyTokenAddress}-${requestSellTokenAddress}`;
         newOrderBook[key] = goodOrders;
@@ -209,15 +179,17 @@ export class ZigZag {
     return newOrderBook;
   }
 
+  // if a direct market between two pairs exists, use it. Otherwise generate
+  // routes using stable coins.
   public getPossibleRoutes(
-    markets: Array<string>,
-    sellToken: Token,
-    buyToken: Token
+    sellToken: ZigZagToken,
+    buyToken: ZigZagToken
   ): Array<Array<RouteMarket>> {
     let newRoute: Array<Array<RouteMarket>> = [];
     const tradeMarket = `${sellToken.address}-${buyToken.address}`;
 
-    if (markets.includes(tradeMarket)) {
+    // check for a direct route between pairs, if this exists, use it.
+    if (this.markets.includes(tradeMarket)) {
       newRoute.push([
         {
           buyTokenAddress: sellToken.address,
@@ -229,16 +201,16 @@ export class ZigZag {
     // check routes via other tokens
     if (newRoute.length === 0) {
       const possibleRoutes = [
-        '0x82af49447d8a07e3bd95bd0d56f35241523fbab1', // weth
-        '0xff970a61a04b1ca14834a43f5de4533ebddb5cc8', // usdc
-        '0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9', // usdt
+        '0x82af49447d8a07e3bd95bd0d56f35241523fbab1', // WETH
+        '0xff970a61a04b1ca14834a43f5de4533ebddb5cc8', // USDC
+        '0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9', // USDT
       ];
       possibleRoutes.forEach((routeTokenAddress) => {
         const firstTradeMarket = `${sellToken.address}-${routeTokenAddress}`;
         const secondTradeMarket = `${routeTokenAddress}-${buyToken.address}`;
         if (
-          markets.includes(firstTradeMarket) &&
-          markets.includes(secondTradeMarket)
+          this.markets.includes(firstTradeMarket) &&
+          this.markets.includes(secondTradeMarket)
         ) {
           newRoute.push([
             {
@@ -257,36 +229,33 @@ export class ZigZag {
     return newRoute;
   }
 
+  // estimate trade details between two tokens
   public async estimate(
-    markets: Array<string>,
-    sellToken: Token,
-    buyToken: Token,
+    sellToken: ZigZagToken,
+    buyToken: ZigZagToken,
     sellAmount: BigNumber,
     buyAmount: BigNumber,
     side: string
   ) {
-    let newQuoteOrderArray: ZZOrder[] = [];
+    let newQuoteOrderArray: Array<ZigZagOrder> = [];
     let newSwapPrice: number = 0;
-    let bestSwapRoute: RouteMarket[] = [];
-    // const minTimeStamp: number = Date.now() / 1000 + 5;
+    let bestSwapRoute: Array<RouteMarket> = [];
 
-    const possibleRoutes = this.getPossibleRoutes(markets, sellToken, buyToken);
+    const possibleRoutes = this.getPossibleRoutes(sellToken, buyToken);
     const orderBook = await this.getOrderBook(possibleRoutes);
 
-    possibleRoutes.forEach((route: RouteMarket[]) => {
+    possibleRoutes.forEach((route: Array<RouteMarket>) => {
       let routeSwapPrice = 0;
-      const routeQuoteOrderArray: ZZOrder[] = [];
+      const routeQuoteOrderArray: Array<ZigZagOrder> = [];
       let stepBuyAmount = buyAmount;
       route.forEach((market: RouteMarket) => {
         let marketSwapPrice = 0;
-        let marketQuoteOrder: ZZOrder | undefined;
+        let marketQuoteOrder: ZigZagOrder | undefined;
         const key = `${market.buyTokenAddress}-${market.sellTokenAddress}`;
         const currentOrderBook = orderBook[key];
-        // if (!currentOrderBook) return
 
         for (let i = 0; i < currentOrderBook.length; i++) {
           const { order } = currentOrderBook[i];
-          // if (minTimeStamp > Number(order.expirationTimeSeconds)) return
 
           const quoteSellAmount = ethers.BigNumber.from(order.sellAmount);
           const quoteBuyAmount = ethers.BigNumber.from(order.buyAmount);
@@ -294,7 +263,7 @@ export class ZigZag {
 
           const quoteSellTokenInfo = this.tokenList[order.sellToken];
           const quoteBuyTokenInfo = this.tokenList[order.buyToken];
-          // if (!quoteSellTokenInfo || !quoteBuyTokenInfo) return
+
           const quoteSellAmountFormated = Number(
             ethers.utils.formatUnits(
               quoteSellAmount,
@@ -340,7 +309,7 @@ export class ZigZag {
       newBuyAmount = buyAmount;
       newSellAmount = newBuyAmount;
 
-      newQuoteOrderArray.forEach((quoteOrder: ZZOrder) => {
+      newQuoteOrderArray.forEach((quoteOrder: ZigZagOrder) => {
         const quoteSellAmount = ethers.BigNumber.from(
           quoteOrder.order.sellAmount
         );
@@ -360,7 +329,7 @@ export class ZigZag {
     } else {
       newSellAmount = sellAmount;
       newBuyAmount = newSellAmount;
-      newQuoteOrderArray.forEach((quoteOrder: ZZOrder) => {
+      newQuoteOrderArray.forEach((quoteOrder: ZigZagOrder) => {
         const quoteSellAmount = ethers.BigNumber.from(
           quoteOrder.order.sellAmount
         );
