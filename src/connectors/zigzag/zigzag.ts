@@ -147,25 +147,36 @@ export class ZigZag {
     return this._ready;
   }
 
+  public async getMarketOrders(
+    buyTokenAddress: string,
+    sellTokenAddress: string,
+    minExpires: string
+  ): Promise<Array<ZigZagOrder>> {
+    const response = await axios.get(
+      `https://api.arbitrum.zigzag.exchange/v1/orders?buyToken=${buyTokenAddress}&sellToken=${sellTokenAddress}&minExpires=${minExpires}`
+    );
+
+    return response.data.orders;
+  }
+
   // For an array of possible routes, get recent orders for the corresponding markets
   public async getOrderBook(
     possibleRoutes: Array<Array<RouteMarket>>
   ): Promise<{ [key: string]: Array<ZigZagOrder> }> {
     const minExpires = (Date.now() / 1000 + 11).toFixed(0);
     const minTimeStamp: number = Date.now() / 1000 + 10;
-    let orders: { orders: ZigZagOrder[] };
     const newOrderBook: { [key: string]: Array<ZigZagOrder> } = {};
 
     const promise0 = possibleRoutes.map(async (routes: Array<RouteMarket>) => {
       const promise1 = routes.map(async (market: RouteMarket) => {
         const requestSellTokenAddress = market.sellTokenAddress;
         const requestBuyTokenAddress = market.buyTokenAddress;
-        const response = await fetch(
-          `https://zigzag-exchange.herokuapp.com/v1/orders?buyToken=${requestBuyTokenAddress}&sellToken=${requestSellTokenAddress}&minExpires=${minExpires}`
+        const orders = await this.getMarketOrders(
+          requestBuyTokenAddress,
+          requestSellTokenAddress,
+          minExpires
         );
-
-        orders = await response.json();
-        const goodOrders = orders.orders.filter(
+        const goodOrders = orders.filter(
           (order: ZigZagOrder) =>
             minTimeStamp < Number(order.order.expirationTimeSeconds)
         );
