@@ -57,17 +57,22 @@ import {
   RefAMMish,
   Uniswapish,
   UniswapLPish,
+  ZigZagish,
 } from '../services/common-interfaces';
+// import { ZigZag } from '../connectors/zigzag/zigzag';
+import { price as zigzagPrice } from '../connectors/zigzag/zigzag.controllers';
 
 export async function price(req: PriceRequest): Promise<PriceResponse> {
   const chain = await getChain<Ethereumish | Nearish>(req.chain, req.network);
-  const connector: Uniswapish | RefAMMish = await getConnector<
-    Uniswapish | RefAMMish
+  const connector: Uniswapish | RefAMMish | ZigZagish = await getConnector<
+    Uniswapish | RefAMMish | ZigZagish
   >(req.chain, req.network, req.connector);
 
   // we currently use the presence of routerAbi to distinguish Uniswapish from RefAMMish
   if ('routerAbi' in connector) {
     return uniswapPrice(<Ethereumish>chain, connector, req);
+  } else if ('makerFee' in connector) {
+    return zigzagPrice(<Ethereumish>chain, connector as any, req);
   } else {
     return refPrice(<Nearish>chain, connector, req);
   }

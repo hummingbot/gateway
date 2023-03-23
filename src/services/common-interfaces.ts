@@ -296,6 +296,44 @@ export interface Uniswapish {
   ): Promise<Transaction>;
 }
 
+export interface ZigZagTrade {
+  buyAmount: BigNumber;
+  sellAmount: BigNumber;
+}
+
+export interface ZigZagish {
+  makerFee: number;
+  // takerFee: number;
+
+  init(): Promise<void>;
+
+  ready(): boolean;
+
+  getTokenByAddress(address: string): Tokenish;
+
+  estimate(
+    sellToken: Tokenish,
+    buyToken: Tokenish,
+    sellAmount: BigNumber,
+    buyAmount: BigNumber,
+    side: string
+  ): Promise<ZigZagTrade>;
+
+  // executeTrade(
+  //   wallet: Wallet,
+  //   trade: UniswapishTrade,
+  //   gasPrice: number,
+  //   uniswapRouter: string,
+  //   ttl: number,
+  //   abi: ContractInterface,
+  //   gasLimit: number,
+  //   nonce?: number,
+  //   maxFeePerGas?: BigNumber,
+  //   maxPriorityFeePerGas?: BigNumber,
+  //   allowedSlippage?: string
+  // ): Promise<Transaction>;
+}
+
 export interface RefAMMish {
   /**
    * Router address.

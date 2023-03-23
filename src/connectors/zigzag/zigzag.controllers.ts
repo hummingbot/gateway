@@ -1,7 +1,8 @@
-import { ZigZag } from './zigzag';
+import { ZigZagish } from '../../services/common-interfaces';
 import { bigNumberWithDecimalToStr } from '../../services/base';
-import { Ethereumish } from '../../services/common-interfaces';
-
+import { Ethereumish, Tokenish } from '../../services/common-interfaces';
+import { Token } from '@uniswap/sdk-core';
+import { TokenInfo } from '../../chains/ethereum/ethereum-base';
 import Decimal from 'decimal.js-light';
 import { BigNumber } from 'ethers';
 import {
@@ -14,34 +15,43 @@ import {
   UNKNOWN_ERROR_MESSAGE,
 } from '../../services/error-handler';
 import { latency, gasCostInEthString } from '../../services/base';
-import {
-  PriceRequest,
-  PriceResponse,
-} from '../../amm/amm.requests';
+import { PriceRequest, PriceResponse } from '../../amm/amm.requests';
+
+export function getFullTokenFromSymbol(
+  ethereumish: Ethereumish,
+  zigzagish: ZigZagish,
+  tokenSymbol: string
+): Tokenish | Token {
+  const tokenInfo: TokenInfo | undefined =
+    ethereumish.getTokenBySymbol(tokenSymbol);
+  let fullToken: Tokenish | Token | undefined;
+  if (tokenInfo) {
+    fullToken = zigzagish.getTokenByAddress(tokenInfo.address);
+  }
+  if (!fullToken)
+    throw new HttpException(
+      500,
+      TOKEN_NOT_SUPPORTED_ERROR_MESSAGE + tokenSymbol,
+      TOKEN_NOT_SUPPORTED_ERROR_CODE
+    );
+  return fullToken;
+}
 
 export async function price(
   ethereumish: Ethereumish,
-  zigzag: ZigZag,
+  zigzagish: ZigZagish,
   req: PriceRequest
 ): Promise<PriceResponse> {
   const startTimestamp: number = Date.now();
-  const baseToken = ethereumish.getTokenBySymbol(req.base);
-  const quoteToken = ethereumish.getTokenBySymbol(req.quote);
-
-  if (baseToken === undefined || quoteToken === undefined) {
-    throw new HttpException(
-      500,
-      TOKEN_NOT_SUPPORTED_ERROR_MESSAGE,
-      TOKEN_NOT_SUPPORTED_ERROR_CODE
-    );
-  }
+  const baseToken = getFullTokenFromSymbol(ethereumish, zigzagish, req.base);
+  const quoteToken = getFullTokenFromSymbol(ethereumish, zigzagish, req.quote);
 
   let expectedAmount;
   let tradePrice;
 
   try {
     if (req.side === 'BUY') {
-      const tradeInfo = await zigzag.estimate(
+      const tradeInfo = await zigzagish.estimate(
         baseToken,
         quoteToken,
         BigNumber.from(0),
@@ -51,7 +61,7 @@ export async function price(
       expectedAmount = tradeInfo.buyAmount;
       tradePrice = tradeInfo.sellAmount;
     } else {
-      const tradeInfo = await zigzag.estimate(
+      const tradeInfo = await zigzagish.estimate(
         baseToken,
         quoteToken,
         BigNumber.from(req.amount),
