@@ -4,7 +4,6 @@ import { Ethereum } from '../../../src/chains/ethereum/ethereum';
 import { patchEVMNonceManager } from '../../evm.nonce.mock';
 import { BigNumber } from 'ethers';
 import { floatStringWithDecimalToBigNumber } from '../../../src/services/base';
-import { Token } from '@uniswap/sdk-core';
 
 let ethereum: Ethereum;
 let zigzag: ZigZag;
@@ -68,38 +67,37 @@ const ORDERS = {
   ],
 };
 
-const WETH = new Token(
-  0,
-  '0x82af49447d8a07e3bd95bd0d56f35241523fbab1',
-  18,
-  'WETH',
+const WETH = {
+  chainId: 0,
+  address: '0x82af49447d8a07e3bd95bd0d56f35241523fbab1',
+  decimals: 18,
+  symbol: 'WETH',
+  name: 'Wrapped Ether',
+};
 
-  'Wrapped Ether'
-);
+const ZZ = {
+  chainId: 0,
+  address: '0xada42bb73b42e0472a994218fb3799dfcda21237',
+  decimals: 18,
+  symbol: 'ZZ',
+  name: 'ZigZag',
+};
 
-const ZZ = new Token(
-  0,
-  '0xada42bb73b42e0472a994218fb3799dfcda21237',
-  18,
-  'ZZ',
-  'ZigZag'
-);
+const ZZLP = {
+  chainId: 0,
+  address: '0xF4037F59C92c9893C43c2372286699430310CFe7',
+  decimals: 18,
+  symbol: 'ZZLP',
+  name: 'ZigZag LP',
+};
 
-const ZZLP = new Token(
-  0,
-  '0xF4037F59C92c9893C43c2372286699430310CFe7',
-  18,
-  'ZZLP',
-  'ZigZag LP'
-);
-
-const USDT = new Token(
-  0,
-  '0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9',
-  6,
-  'USDT',
-  'Tether USD'
-);
+const USDT = {
+  chainId: 0,
+  address: '0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9',
+  decimals: 6,
+  symbol: 'USDT',
+  name: 'Tether USD',
+};
 
 const patchInit = () => {
   patch(zigzag, 'init', async () => {
