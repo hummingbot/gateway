@@ -44,3 +44,26 @@ paths:
           schema:
             $ref: '#/definitions/RemoveWalletRequest'
       responses: '200'
+
+  /wallet/sign:
+    get:
+      tags:
+        - 'wallet'
+      summary: 'Sign a message using the private key associated with the supplied public key address'
+      operationId: 'get'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          description: 'Request body.'
+          required: true
+          schema:
+            $ref: '#/definitions/GetWalletSignRequest'
+      responses:
+        '200':
+          description: 'Successful response.'
+          schema:
+            $ref: '#/definitions/GetWalletSignResponse'
