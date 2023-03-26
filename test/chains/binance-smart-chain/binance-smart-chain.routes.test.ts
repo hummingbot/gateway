@@ -4,15 +4,12 @@ import { gatewayApp } from '../../../src/app';
 import {
   NETWORK_ERROR_CODE,
   NETWORK_ERROR_MESSAGE,
-  OUT_OF_GAS_ERROR_CODE,
-  OUT_OF_GAS_ERROR_MESSAGE,
   UNKNOWN_ERROR_ERROR_CODE,
   UNKNOWN_ERROR_MESSAGE,
 } from '../../../src/services/error-handler';
 import * as transactionSuccesful from '../ethereum/fixtures/transaction-succesful.json';
 import * as transactionSuccesfulReceipt from '../ethereum//fixtures/transaction-succesful-receipt.json';
 import * as transactionOutOfGas from '../ethereum//fixtures/transaction-out-of-gas.json';
-import * as transactionOutOfGasReceipt from '../ethereum/fixtures/transaction-out-of-gas-receipt.json';
 import { BinanceSmartChain } from '../../../src/chains/binance-smart-chain/binance-smart-chain';
 import { patchEVMNonceManager } from '../../evm.nonce.mock';
 
@@ -294,22 +291,6 @@ describe('POST /network/poll', () => {
 
     expect(res.statusCode).toEqual(503);
     expect(res.body.errorCode).toEqual(UNKNOWN_ERROR_ERROR_CODE);
-  });
-
-  it('should get an OUT of GAS error for failed out of gas transactions', async () => {
-    patch(bsc, 'getCurrentBlockNumber', () => 1);
-    patch(bsc, 'getTransaction', () => transactionOutOfGas);
-    patch(bsc, 'getTransactionReceipt', () => transactionOutOfGasReceipt);
-    const res = await request(gatewayApp).post('/network/poll').send({
-      chain: 'binance-smart-chain',
-      network: 'testnet',
-      txHash:
-        '0xffdb7b393b46d3795b82c94b8d836ad6b3087a914244634fa89c3abbbf00ed72', // noqa: mock
-    });
-
-    expect(res.statusCode).toEqual(503);
-    expect(res.body.errorCode).toEqual(OUT_OF_GAS_ERROR_CODE);
-    expect(res.body.message).toEqual(OUT_OF_GAS_ERROR_MESSAGE);
   });
 
   it('should get a null in txReceipt for Tx in the mempool', async () => {

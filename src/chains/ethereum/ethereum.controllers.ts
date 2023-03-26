@@ -8,8 +8,6 @@ import ethers, {
 import { latency, bigNumberWithDecimalToStr } from '../../services/base';
 import {
   HttpException,
-  OUT_OF_GAS_ERROR_CODE,
-  OUT_OF_GAS_ERROR_MESSAGE,
   LOAD_WALLET_ERROR_CODE,
   LOAD_WALLET_ERROR_MESSAGE,
   TOKEN_NOT_SUPPORTED_ERROR_CODE,
@@ -28,6 +26,7 @@ import {
   Ethereumish,
   UniswapLPish,
   Uniswapish,
+  CLOBish,
 } from '../../services/common-interfaces';
 import {
   NonceRequest,
@@ -128,52 +127,66 @@ export async function balances(
   const initTime = Date.now();
 
   let wallet: Wallet;
-  try {
-    wallet = await ethereumish.getWallet(req.address);
-  } catch (err) {
-    throw new HttpException(
-      500,
-      LOAD_WALLET_ERROR_MESSAGE + err,
-      LOAD_WALLET_ERROR_CODE
-    );
-  }
-  const tokens = getTokenSymbolsToTokens(ethereumish, req.tokenSymbols);
+  const connector: CLOBish | undefined = req.connector
+    ? ((await getConnector(req.chain, req.network, req.connector)) as CLOBish)
+    : undefined;
   const balances: Record<string, string> = {};
-  if (req.tokenSymbols.includes(ethereumish.nativeTokenSymbol)) {
-    balances[ethereumish.nativeTokenSymbol] = tokenValueToString(
-      await ethereumish.getNativeBalance(wallet)
-    );
-  }
-  await Promise.all(
-    Object.keys(tokens).map(async (symbol) => {
-      if (tokens[symbol] !== undefined) {
-        const address = tokens[symbol].address;
-        const decimals = tokens[symbol].decimals;
-        // instantiate a contract and pass in provider for read-only access
-        const contract = ethereumish.getContract(address, ethereumish.provider);
-        const balance = await ethereumish.getERC20Balance(
-          contract,
-          wallet,
-          decimals
-        );
-        balances[symbol] = tokenValueToString(balance);
-      }
-    })
-  );
+  let connectorBalances: { [key: string]: string } | undefined;
 
-  if (!Object.keys(balances).length) {
-    throw new HttpException(
-      500,
-      TOKEN_NOT_SUPPORTED_ERROR_MESSAGE,
-      TOKEN_NOT_SUPPORTED_ERROR_CODE
+  if (!connector?.balances) {
+    try {
+      wallet = await ethereumish.getWallet(req.address);
+    } catch (err) {
+      throw new HttpException(
+        500,
+        LOAD_WALLET_ERROR_MESSAGE + err,
+        LOAD_WALLET_ERROR_CODE
+      );
+    }
+
+    const tokens = getTokenSymbolsToTokens(ethereumish, req.tokenSymbols);
+    if (req.tokenSymbols.includes(ethereumish.nativeTokenSymbol)) {
+      balances[ethereumish.nativeTokenSymbol] = tokenValueToString(
+        await ethereumish.getNativeBalance(wallet)
+      );
+    }
+    await Promise.all(
+      Object.keys(tokens).map(async (symbol) => {
+        if (tokens[symbol] !== undefined) {
+          const address = tokens[symbol].address;
+          const decimals = tokens[symbol].decimals;
+          // instantiate a contract and pass in provider for read-only access
+          const contract = ethereumish.getContract(
+            address,
+            ethereumish.provider
+          );
+          const balance = await ethereumish.getERC20Balance(
+            contract,
+            wallet,
+            decimals
+          );
+          balances[symbol] = tokenValueToString(balance);
+        }
+      })
     );
+
+    if (!Object.keys(balances).length) {
+      throw new HttpException(
+        500,
+        TOKEN_NOT_SUPPORTED_ERROR_MESSAGE,
+        TOKEN_NOT_SUPPORTED_ERROR_CODE
+      );
+    }
+  } else {
+    // CLOB connector or any other connector that has the concept of separation of account has to implement a balance function
+    connectorBalances = await connector.balances(req);
   }
 
   return {
     network: ethereumish.chain,
     timestamp: initTime,
     latency: latency(initTime, Date.now()),
-    balances: balances,
+    balances: connectorBalances || balances,
   };
 }
 
@@ -377,23 +390,17 @@ export async function poll(
       // tx has been processed
       txBlock = txReceipt.blockNumber;
       txStatus = typeof txReceipt.status === 'number' ? 1 : -1;
-      if (txReceipt.status === 0) {
-        const gasUsed = BigNumber.from(txReceipt.gasUsed).toNumber();
-        const gasLimit = BigNumber.from(txData.gasLimit).toNumber();
-        if (gasUsed / gasLimit > 0.9) {
-          throw new HttpException(
-            503,
-            OUT_OF_GAS_ERROR_MESSAGE,
-            OUT_OF_GAS_ERROR_CODE
-          );
-        }
-      }
+
       // decode logs
       if (req.connector) {
         try {
-          const connector: Uniswapish | UniswapLPish = await getConnector<
-            Uniswapish | UniswapLPish
-          >(req.chain, req.network, req.connector);
+          const connector: Uniswapish | UniswapLPish | CLOBish =
+            await getConnector<Uniswapish | UniswapLPish | CLOBish>(
+              req.chain,
+              req.network,
+              req.connector
+            );
+
           txReceipt.logs = connector.abiDecoder?.decodeLogs(txReceipt.logs);
         } catch (e) {
           logger.error(e);
