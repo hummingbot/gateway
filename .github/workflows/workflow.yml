@@ -89,8 +89,8 @@ jobs:
           sed -i 's/https:\/\/rpc.ankr.com\/bsc_testnet_chapel/http:\/\/127.0.0.1:8545\//g' ./conf/binance-smart-chain.yml
           sed -i 's/https:\/\/cosmos-testnet-rpc.allthatnode.com:26657/http:\/\/127.0.0.1:8545\//g' ./conf/cosmos.yml
           sed -i 's/https:\/\/cosmos-mainnet-rpc.allthatnode.com:26657/http:\/\/127.0.0.1:8545\//g' ./conf/cosmos.yml
-          sed -i 's/https:\/\/evm-t3.cronos.org/http:\/\/127.0.0.1:8545\//g' ./conf/cronos.yml
-          sed -i 's/https:\/\/evm.cronos.org/http:\/\/127.0.0.1:8545\//g' ./conf/cronos.yml
+          sed -i 's/https:\/\/evm-t3.cronos.org/http:\/\/127.0.0.1:8545\//g' ./conf/cosmos.yml
+          sed -i 's/https:\/\/evm.cronos.org/http:\/\/127.0.0.1:8545\//g' ./conf/cosmos.yml
 
       - name: Run unit test coverage
         if: github.event_name == 'pull_request'
