@@ -24,14 +24,6 @@ describe('getSpender', () => {
       );
     });
   });
-  describe('get viperswap', () => {
-    it('returns viperswap mainnet address', () => {
-      const viperswapAddress = harmony.getSpender('viperswap');
-      expect(viperswapAddress.toLowerCase()).toEqual(
-        '0xf012702a5f0e54015362cbca26a26fc90aa832a3'
-      );
-    });
-  });
   describe('get defikingdoms', () => {
     it('returns defikingdoms mainnet router address', () => {
       const dfkAddress = harmony.getSpender('defikingdoms');
