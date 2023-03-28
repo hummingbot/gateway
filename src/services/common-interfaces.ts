@@ -104,6 +104,7 @@ import { NearBase } from '../chains/near/near.base';
 import { Account, Contract as NearContract } from 'near-api-js';
 import { EstimateSwapView, TokenMetadata } from 'coinalpha-ref-sdk';
 import { FinalExecutionOutcome } from 'near-api-js/lib/providers';
+import { RouteMarket } from '../connectors/zigzag/zigzag';
 
 // TODO Check the possibility to have clob/solana/serum equivalents here
 //  Check this link https://hummingbot.org/developers/gateway/building-gateway-connectors/#5-add-sdk-classes-to-uniswapish-interface
@@ -299,9 +300,11 @@ export interface Uniswapish {
 export interface ZigZagTrade {
   buyAmount: BigNumber;
   sellAmount: BigNumber;
+  route: RouteMarket[];
 }
 
-export interface ZigZagish {
+export interface ZigZagish extends Uniswapish {
+  gasLimitEstimate: number;
   makerFee: number;
   // takerFee: number;
 
@@ -319,19 +322,18 @@ export interface ZigZagish {
     side: string
   ): Promise<ZigZagTrade>;
 
-  // executeTrade(
-  //   wallet: Wallet,
-  //   trade: UniswapishTrade,
-  //   gasPrice: number,
-  //   uniswapRouter: string,
-  //   ttl: number,
-  //   abi: ContractInterface,
-  //   gasLimit: number,
-  //   nonce?: number,
-  //   maxFeePerGas?: BigNumber,
-  //   maxPriorityFeePerGas?: BigNumber,
-  //   allowedSlippage?: string
-  // ): Promise<Transaction>;
+  executeTrade(
+    wallet: Wallet,
+    trade: UniswapishTrade,
+    gasPrice: number,
+    zigzagRouter: string,
+    ttl: number,
+    abi: ContractInterface,
+    gasLimit: number,
+    nonce?: number,
+    maxFeePerGas?: BigNumber,
+    maxPriorityFeePerGas?: BigNumber
+  ): Promise<Transaction>;
 }
 
 export interface RefAMMish {
