@@ -91,8 +91,7 @@ export async function trade(req: TradeRequest): Promise<TradeResponse> {
   if ('routerAbi' in connector) {
     return uniswapTrade(<Ethereumish>chain, connector, req);
   } else if ('makerFee' in connector) {
-    return zigzagTrade
-    (<Ethereumish>chain, connector as any, req);
+    return zigzagTrade(<Ethereumish>chain, connector as any, req);
   } else {
     return refTrade(<Nearish>chain, connector, req);
   }

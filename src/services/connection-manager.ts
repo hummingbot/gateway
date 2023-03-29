@@ -142,7 +142,7 @@ export async function getConnector<T>(
   } else if (chain === 'injective' && connector === 'injective') {
     connectorInstance = InjectiveCLOB.getInstance(chain, network);
   } else if (chain === 'ethereum' && connector === 'zigzag') {
-    connectorInstance = ZigZag.getInstance(chain, network);
+    connectorInstance = ZigZag.getInstance(network);
   } else {
     throw new Error('unsupported chain or connector');
   }
