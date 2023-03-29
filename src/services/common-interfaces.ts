@@ -334,7 +334,11 @@ export interface ZigZagish {
     side: string
   ): Promise<ZigZagTrade>;
 
-  executeTrade(wallet: Wallet, trade: ZigZagTrade): Promise<Transaction>;
+  executeTrade(
+    wallet: Wallet,
+    trade: ZigZagTrade,
+    is_buy: boolean
+  ): Promise<Transaction>;
 }
 
 export interface RefAMMish {

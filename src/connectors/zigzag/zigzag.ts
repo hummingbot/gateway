@@ -1,4 +1,4 @@
-import { BigNumber } from 'ethers';
+import { BigNumber, Contract, Transaction, Wallet } from 'ethers';
 import { ethers } from 'ethers';
 import LRUCache from 'lru-cache';
 import { ZigZagConfig } from './zigzag.config';
@@ -7,6 +7,8 @@ import { Ethereum } from '../../chains/ethereum/ethereum';
 import { Token } from '@uniswap/sdk-core';
 import { ZigZagTrade } from '../../services/common-interfaces';
 import { ZigZagish } from '../../services/common-interfaces';
+import { logger } from '../../services/logger';
+import { EVMTxBroadcaster } from '../../chains/ethereum/evm.broadcaster';
 
 // https://api.arbitrum.zigzag.exchange/v1/info
 
@@ -88,28 +90,36 @@ export class ZigZag implements ZigZagish {
   private static _instances: LRUCache<string, ZigZag>;
   private _ready = false;
   private _chain: Ethereum;
+  private _network: string;
+  private _abi = require('./zigzag.exchange.abi.json');
+  private _router: Contract;
   private tokenList: Record<string, Token> = {}; // keep track of tokens that are in a ZigZag market
   // public markets: Array<string> = []; // keep track of ZigZag markets, ZZ-USDT
   public markets: Array<string> = []; // keep track of ZigZag markets, 0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9-0xf4037f59c92c9893c43c2372286699430310cfe7
   public config;
-
   public makerFee = 0.0;
   public takerFee = 0.0;
 
-  private constructor(_chain: string, network: string) {
+  private constructor(network: string) {
     this._chain = Ethereum.getInstance(network);
     this.config = ZigZagConfig.config;
+    this._network = network;
+    this._router = new Contract(
+      this.config.contractAddress(this._network),
+      this._abi,
+      this._chain.provider
+    );
   }
 
-  public static getInstance(chain: string, network: string): ZigZag {
+  public static getInstance(network: string): ZigZag {
     if (ZigZag._instances === undefined) {
       ZigZag._instances = new LRUCache<string, ZigZag>({
         max: 2,
       });
     }
-    const instanceKey = chain + network;
+    const instanceKey = network;
     if (!ZigZag._instances.has(instanceKey)) {
-      ZigZag._instances.set(instanceKey, new ZigZag(chain, network));
+      ZigZag._instances.set(instanceKey, new ZigZag(network));
     }
 
     return ZigZag._instances.get(instanceKey) as ZigZag;
@@ -122,38 +132,36 @@ export class ZigZag implements ZigZagish {
   // }
 
   public getTokenByAddress(address: string): Token {
-    return this.tokenList[address];
+    return this.tokenList[address.toLowerCase()];
   }
 
   public async init() {
-    if (!this._chain.ready()) {
-      await this._chain.init();
-      const response = await axios.get(
-        'https://api.arbitrum.zigzag.exchange/v1/info'
-      );
-      if (response.status === 200) {
-        const zigZagData: ZigZagInfo = response.data;
-        for (const token of zigZagData.verifiedTokens) {
-          this.tokenList[token.address] = new Token(
-            this._chain.chainId,
-            token.address,
-            token.decimals,
-            token.symbol,
-            token.name
-          );
-        }
-        for (const market of zigZagData.markets) {
-          const base = this.tokenList[market.buyToken];
-          const quote = this.tokenList[market.sellToken];
-          // this.markets.push(base.symbol + '-' + quote.symbol);
-          this.markets.push(base.address + '-' + quote.address);
-        }
-        this.makerFee = zigZagData.exchange.makerVolumeFee;
-        this.takerFee = zigZagData.exchange.takerVolumeFee;
+    await this._chain.init();
+    const response = await axios.get(
+      'https://api.arbitrum.zigzag.exchange/v1/info'
+    );
+    if (response.status === 200) {
+      const zigZagData: ZigZagInfo = response.data;
+      for (const token of zigZagData.verifiedTokens) {
+        this.tokenList[token.address.toLowerCase()] = new Token(
+          this._chain.chainId,
+          token.address.toLowerCase(),
+          token.decimals,
+          token.symbol,
+          token.name
+        );
       }
-
-      this._ready = true;
+      for (const market of zigZagData.markets) {
+        const base = this.tokenList[market.buyToken];
+        const quote = this.tokenList[market.sellToken];
+        // this.markets.push(base.symbol + '-' + quote.symbol);
+        this.markets.push(base.address + '-' + quote.address);
+      }
+      this.makerFee = zigZagData.exchange.makerVolumeFee;
+      this.takerFee = zigZagData.exchange.takerVolumeFee;
     }
+
+    this._ready = true;
   }
 
   public ready(): boolean {
@@ -209,7 +217,7 @@ export class ZigZag implements ZigZagish {
     sellToken: Token,
     buyToken: Token
   ): Array<Array<RouteMarket>> {
-    let newRoute: Array<Array<RouteMarket>> = [];
+    const newRoute: Array<Array<RouteMarket>> = [];
     const tradeMarket = `${sellToken.address}-${buyToken.address}`;
 
     // check for a direct route between pairs, if this exists, use it.
@@ -271,7 +279,7 @@ export class ZigZag implements ZigZagish {
     possibleRoutes.forEach((route: Array<RouteMarket>) => {
       let routeSwapPrice = 0;
       const routeQuoteOrderArray: Array<ZigZagOrder> = [];
-      let stepBuyAmount = buyAmount;
+      const stepBuyAmount = buyAmount;
       route.forEach((market: RouteMarket) => {
         let marketSwapPrice = 0;
         let marketQuoteOrder: ZigZagOrder | undefined;
@@ -318,6 +326,8 @@ export class ZigZag implements ZigZagish {
         newQuoteOrderArray = routeQuoteOrderArray;
         bestSwapRoute = route;
       }
+
+      if (bestSwapRoute.length === 0) bestSwapRoute = route;
     });
 
     let newBuyAmount: BigNumber;
@@ -355,12 +365,65 @@ export class ZigZag implements ZigZagish {
     // const currencySellAmount = CurrencyAmount.fromRawAmount(sellToken, newSellAmount.toString());
     console.log(bestSwapRoute);
     return {
-      // bestSwapRoute,
       // newSwapPrice,
-      // newQuoteOrderArray,
+      newQuoteOrderArray: newQuoteOrderArray,
       buyAmount: newBuyAmount,
       sellAmount: newSellAmount,
+      bestSwapRoute: bestSwapRoute,
     };
+  }
+
+  /**
+   * Given a wallet and a Uniswap-ish trade, try to execute it on blockchain.
+   *
+   * @param wallet Wallet
+   * @param trade Expected trade
+   */
+  async executeTrade(
+    wallet: Wallet,
+    trade: ZigZagTrade,
+    is_buy: boolean
+  ): Promise<Transaction> {
+    let txData;
+    if (is_buy === true) {
+      // sell
+      txData = await this._router.populateTransaction.fillOrderExactInput(
+        [
+          trade.newQuoteOrderArray[0].order.user,
+          trade.newQuoteOrderArray[0].order.sellToken,
+          trade.newQuoteOrderArray[0].order.buyToken,
+          trade.newQuoteOrderArray[0].order.sellAmount,
+          trade.newQuoteOrderArray[0].order.buyAmount,
+          trade.newQuoteOrderArray[0].order.expirationTimeSeconds,
+        ],
+        trade.newQuoteOrderArray[0].signature,
+        trade.sellAmount.toString(),
+        false
+      );
+    } else {
+      // buy
+      txData = await this._router.populateTransaction.fillOrderExactOutput(
+        [
+          trade.newQuoteOrderArray[0].order.user,
+          trade.newQuoteOrderArray[0].order.sellToken,
+          trade.newQuoteOrderArray[0].order.buyToken,
+          trade.newQuoteOrderArray[0].order.sellAmount,
+          trade.newQuoteOrderArray[0].order.buyAmount,
+          trade.newQuoteOrderArray[0].order.expirationTimeSeconds,
+        ],
+        trade.newQuoteOrderArray[0].signature,
+        trade.sellAmount.toString(),
+        false
+      );
+    }
+    txData.gasLimit = BigNumber.from(String(this._chain.gasLimitTransaction));
+    const txResponse = await EVMTxBroadcaster.getInstance(
+      this._chain,
+      wallet.address
+    ).broadcast(txData);
+
+    logger.info(txResponse);
+    return txResponse;
   }
 }
 // https://github.com/ZigZagExchange/backend/blob/master/README.md

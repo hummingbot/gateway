@@ -1,4 +1,4 @@
 networks:
-  mainnet:
+  arbitrum_one:
     exchangeApiUrl: https://zigzag-exchange.herokuapp.com
     contractAddress: '0x094cAb67fBB074b7797AB0975c69A341b7A40641'

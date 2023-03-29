@@ -149,7 +149,7 @@ beforeAll(async () => {
   patchEVMNonceManager(ethereum.nonceManager);
   await ethereum.init();
 
-  zigzag = ZigZag.getInstance('ethereum', 'arbitrum_one');
+  zigzag = ZigZag.getInstance('arbitrum_one');
   patchInit();
   await zigzag.init();
 });
