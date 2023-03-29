@@ -149,6 +149,56 @@ paths:
           description: 'Bad request response.'
         '404':
           description: 'Not found response.'
+  /clob/perp/batchOrders:
+    post:
+      tags:
+        - 'clob'
+      summary: 'Create One Or More Orders'
+      description: 'Create one or more orders.'
+      operationId: 'postOrders'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          description: 'Request body.'
+          required: true
+          schema:
+            $ref: '#/definitions/PerpClobPostBatchOrderRequest'
+      responses:
+        '200':
+          description: 'Successful response.'
+          schema:
+            $ref: '#/definitions/ClobPostOrderResponse'
+        '400':
+          description: 'Bad request response.'
+  /clob/perp/order/trades:
+    get:
+      tags:
+        - 'clob'
+      summary: 'Get trades for an order'
+      description: 'Retrieves trades for an order.'
+      operationId: 'trades'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          description: 'Request body.'
+          required: true
+          schema:
+            $ref: '#/definitions/PerpClobGetOrderTradesRequest'
+      responses:
+        '200':
+          description: 'Successful response.'
+          schema:
+            $ref: '#/definitions/PerpClobGetOrderTradesResponse'
+        '400':
+          description: 'Bad request response.'
   /clob/perp/estimateGas:
     post:
       tags:
@@ -219,6 +269,31 @@ paths:
             $ref: '#/definitions/PerpClobFundingPaymentsResponse'
         '400':
           description: 'Bad request response.'
+  /clob/perp/funding/info:
+    post:
+      tags:
+        - 'clob'
+      summary: 'Get funding info for a market'
+      description: 'Get funding info for a market.'
+      operationId: 'fundinginfo'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          description: 'Request body.'
+          required: true
+          schema:
+            $ref: '#/definitions/PerpClobFundingInfoRequest'
+      responses:
+        '200':
+          description: 'Successful response.'
+          schema:
+            $ref: '#/definitions/PerpClobFundingInfoResponse'
+        '400':
+          description: 'Bad request response.'
   /clob/perp/positions:
     post:
       tags:
@@ -242,5 +317,30 @@ paths:
           description: 'Successful response.'
           schema:
             $ref: '#/definitions/PerpClobPositionsResponse'
+        '400':
+          description: 'Bad request response.'
+  /clob/perp/lastTradePrice:
+    post:
+      tags:
+        - 'clob'
+      summary: 'Get last trade price for markets'
+      description: 'Get last trade price for markets.'
+      operationId: 'lastTradePrice'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          description: 'Request body.'
+          required: true
+          schema:
+            $ref: '#/definitions/PerpClobFundingInfoRequest'
+      responses:
+        '200':
+          description: 'Successful response.'
+          schema:
+            $ref: '#/definitions/PerpClobLastTradePriceResponse'
         '400':
           description: 'Bad request response.'

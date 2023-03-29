@@ -2175,3 +2175,116 @@ definitions:
       leverage:
         type: 'number'
         example: 20.0
+
+  PerpClobGetOrderTradesRequest:
+    type: 'object'
+    required:
+      - 'chain'
+      - 'network'
+      - 'connector'
+      - 'address'
+      - 'orderId'
+    properties:
+      orderId:
+        type: 'string'
+        example: 'Buy-21342453'
+      chain:
+        type: 'string'
+        example: 'injective'
+      network:
+        type: 'string'
+        example: 'mainnet'
+      connector:
+        type: 'string'
+        example: 'injective'
+      address:
+        type: 'string'
+        example: '0x...'
+
+  PerpClobGetOrderTradesResponse:
+    type: 'object'
+    required:
+      - 'network'
+      - 'timestamp'
+      - 'latency'
+      - 'trades'
+    properties:
+      network:
+        type: 'string'
+        example: 'testnet'
+      timestamp:
+        type: 'integer'
+        example: 1636368085740
+      latency:
+        type: 'number'
+        example: 0.5
+      trades:
+        type: 'array'
+        example: [{}]
+
+  PerpClobFundingInfoRequest:
+    type: 'object'
+    required:
+      - 'chain'
+      - 'network'
+      - 'connector'
+      - 'market'
+    properties:
+      market:
+        type: 'string'
+        example: 'INJ-USDT'
+      chain:
+        type: 'string'
+        example: 'injective'
+      network:
+        type: 'string'
+        example: 'mainnet'
+      connector:
+        type: 'string'
+        example: 'injective'
+
+  PerpClobFundingInfoResponse:
+    type: 'object'
+    required:
+      - 'network'
+      - 'timestamp'
+      - 'latency'
+      - 'fundingInfo'
+    properties:
+      network:
+        type: 'string'
+        example: 'testnet'
+      timestamp:
+        type: 'integer'
+        example: 1636368085740
+      latency:
+        type: 'number'
+        example: 0.5
+      fundingInfo:
+        type: 'object'
+        example: {marketId: '12345',
+                  indexPrice: '1.234',
+                  markPrice: '1.111',
+                  fundingRate: '0.123',
+                  nextFundingTimestamp: 123456789}
+
+  PerpClobLastTradePriceResponse:
+    type: 'object'
+    required:
+      - 'network'
+      - 'timestamp'
+      - 'latency'
+      - 'lastTradePrice'
+    properties:
+      network:
+        type: 'string'
+        example: 'testnet'
+      timestamp:
+        type: 'integer'
+        example: 1636368085740
+      latency:
+        type: 'number'
+        example: 0.5
+      lastTradePrice:
+        type: 'string'
+        example: '1.234'

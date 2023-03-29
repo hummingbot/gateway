@@ -65,7 +65,9 @@ export interface CreateOrderParam {
   market: string;
 }
 
-export interface ClobPostOrderRequest extends NetworkSelectionRequest, CreateOrderParam {
+export interface ClobPostOrderRequest
+  extends NetworkSelectionRequest,
+    CreateOrderParam {
   address: string;
 }
 
@@ -143,9 +145,11 @@ export interface CreatePerpOrderParam {
   side: Side;
   market: string;
   leverage: number;
-} 
+}
 
-export interface PerpClobPostOrderRequest extends  NetworkSelectionRequest, CreatePerpOrderParam {
+export interface PerpClobPostOrderRequest
+  extends NetworkSelectionRequest,
+    CreatePerpOrderParam {
   address: string;
 }
 
@@ -165,7 +169,7 @@ export interface PerpClobBatchUpdateRequest extends NetworkSelectionRequest {
   cancelOrderParams?: ClobDeleteOrderRequestExtract[];
 }
 
-export type PerpClobBatchUpdateResponse = ClobPostOrderResponse
+export type PerpClobBatchUpdateResponse = ClobPostOrderResponse;
 
 export interface PerpClobFundingInfoRequest extends NetworkSelectionRequest {
   market: string;
