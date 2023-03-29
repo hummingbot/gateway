@@ -20,13 +20,16 @@ import {
   CreateOrderParam,
   ClobDeleteOrderRequestExtract,
 } from '../../clob/clob.requests';
-import { NetworkSelectionRequest } from '../../services/common-interfaces';
+import {
+  CLOBish,
+  NetworkSelectionRequest,
+} from '../../services/common-interfaces';
 import { InjectiveCLOBConfig } from './injective.clob.config';
 import { Injective } from '../../chains/injective/injective';
 import LRUCache from 'lru-cache';
 import { getInjectiveConfig } from '../../chains/injective/injective.config';
 
-export class InjectiveCLOB {
+export class InjectiveCLOB implements CLOBish {
   private static _instances: LRUCache<string, InjectiveCLOB>;
   private _chain;
   public conf;

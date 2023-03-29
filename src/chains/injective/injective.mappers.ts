@@ -2,9 +2,9 @@ import { Network } from '@injectivelabs/networks';
 import { ChainId } from '@injectivelabs/ts-types';
 
 export function getChainIdFromString(chainId: string): ChainId | null {
-  if (chainId === 'mainnet') {
+  if (['mainnet', 'mainnetLB'].includes(chainId)) {
     return ChainId.Mainnet;
-  } else if (chainId === 'testnet') {
+  } else if (['testnet', 'testnetK8s'].includes(chainId)) {
     return ChainId.Testnet;
   } else if (chainId === 'devnet') {
     return ChainId.Devnet;
@@ -28,16 +28,14 @@ export function chainIdToInt(chainId: ChainId): number {
 export function getNetworkFromString(network: string): Network | null {
   if (network === 'mainnetK8s') {
     return Network.MainnetK8s;
-  } else if (network === 'mainnet') {
-    return Network.Mainnet;
+  } else if (['mainnet', 'mainnetLB'].includes(network)) {
+    return Network.MainnetLB;
   } else if (network === 'staging') {
     return Network.Staging;
   } else if (network === 'public') {
     return Network.Public;
-  } else if (network === 'testnetK8s') {
+  } else if (['testnet', 'testnetK8s'].includes(network)) {
     return Network.TestnetK8s;
-  } else if (network === 'testnet') {
-    return Network.Testnet;
   } else if (network === 'devnet1') {
     return Network.Devnet1;
   } else if (network === 'devnet') {
@@ -52,15 +50,13 @@ export function getNetworkFromString(network: string): Network | null {
 export function networkToString(network: Network): string {
   if (network === Network.MainnetK8s) {
     return 'mainnetK8s';
-  } else if (network === Network.Mainnet) {
+  } else if ([Network.MainnetLB, Network.Mainnet].includes(network)) {
     return 'mainnet';
   } else if (network === Network.Staging) {
     return 'staging';
   } else if (network === Network.Public) {
     return 'public';
-  } else if (network === Network.TestnetK8s) {
-    return 'testnetK8s';
-  } else if (network === Network.Testnet) {
+  } else if ([Network.TestnetK8s, Network.Testnet].includes(network)) {
     return 'testnet';
   } else if (network === Network.Devnet1) {
     return 'devnet1';

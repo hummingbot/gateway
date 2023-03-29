@@ -1,18 +1,25 @@
 # list the Avalanche networks available to gateway
 networks:
-  fuji: 
+  fuji:
     chainID: 43113
     nodeURL: https://rpc.ankr.com/avalanche_fuji
     tokenListType: 'FILE'
     tokenListSource: 'src/chains/avalanche/avalanche_tokens_fuji.json'
     nativeCurrencySymbol: 'AVAX'
     gasPriceRefreshInterval: 60
-  avalanche: 
+  avalanche:
     chainID: 43114
     nodeURL: https://rpc.ankr.com/avalanche
     tokenListType: 'FILE'
     tokenListSource: 'src/chains/avalanche/avanlanche_tokens.json'
     nativeCurrencySymbol: 'AVAX'
+    gasPriceRefreshInterval: 60
+  dexalot:
+    chainID: 432204
+    nodeURL: https://subnets.avax.network/dexalot/mainnet/rpc
+    tokenListType: 'FILE'
+    tokenListSource: 'src/chains/avalanche/avanlanche_tokens.json'
+    nativeCurrencySymbol: 'ALOT'
     gasPriceRefreshInterval: 60
 
 # if you use the gas assumptions below, your wallet needs >0.01 AVAX balance for gas

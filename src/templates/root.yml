@@ -16,6 +16,10 @@ configurations:
     configurationPath: avalanche.yml
     schemaPath: ethereum-schema.json
 
+  $namespace dexalot:
+    configurationPath: dexalot.yml
+    schemaPath: dexalot-schema.json  
+
   $namespace polygon:
     configurationPath: polygon.yml
     schemaPath: ethereum-schema.json

@@ -1,0 +1,6 @@
+{
+  "chain": "avalanche",
+  "network": "dexalot",
+  "connector": "dexalot",
+  "address": "$AVALANCHE_ADDRESS"
+}

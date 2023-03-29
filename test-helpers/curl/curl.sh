@@ -76,6 +76,9 @@ curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: app
 ## read public keys
 curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT https://localhost:15888/wallet | jq
 
+## sign message
+curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT "https://localhost:15888/wallet/sign?chain=ethereum&network=mainnet&address=$ETH_ADDRESS&message=messageToBeSigned" | jq
+
 ## remove keys
 curl -s -X DELETE -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/remove_ethereum_key.json)" https://localhost:15888/wallet/remove | jq
 
@@ -267,34 +270,35 @@ curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: app
 
 # CLOB
 
-## get markets
+## injective
+### get markets
 curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT "https://localhost:15888/clob/markets?chain=injective&network=mainnet&connector=injective" | jq
 
-## get order books
+### get order books
 curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT "https://localhost:15888/clob/orderBook?chain=injective&network=mainnet&connector=injective&market=WETH-USDC" | jq
 
-## get tickers
+### get tickers
 curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT "https://localhost:15888/clob/ticker?chain=injective&network=mainnet&connector=injective" | jq
 
-## get orders
+### get orders
 curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT "https://localhost:15888/clob/orders?chain=injective&network=mainnet&connector=injective&market=INJ-USDT&orderId=XXXX&address=XXXX" | jq
 
-## post orders
+### post orders
 curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/injective_post_order.json)" https://localhost:15888/clob/orders | jq
 
-## post PERP order
-curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/injective_post_perp_order.json)" https://localhost:15888/clob/orders | jq
-
-## delete orders
+### delete orders
 curl -s -X DELETE -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/injective_delete_order.json)" https://localhost:15888/clob/orders | jq
 
-## post batch orders create
+### post batch orders create
 curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/injective_batch_create.json)" https://localhost:15888/clob/batchOrders | jq
 
-## post batch orders delete
+### post batch orders delete
 curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/injective_batch_delete.json)" https://localhost:15888/clob/batchOrders | jq
 
 # CLOB perpetual
+
+## post PERP order
+curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/injective_post_perp_order.json)" https://localhost:15888/clob/orders | jq
 
 ## get markets
 curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT "https://localhost:15888/clob/perp/markets?chain=injective&network=mainnet&connector=injective_perpetual" | jq
@@ -335,14 +339,48 @@ curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: app
 #  get last trade price
 curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT "https://localhost:15888/clob/perp/lastTradePrice?chain=injective&network=mainnet&connector=injective_perpetual&market=INJ-USDT" | jq
 
-# injective
-
+### get balances
 curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/injective_balances.json)" https://localhost:15888/injective/balances | jq
 
+### get block number
 curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT 'https://localhost:15888/injective/block/current?chain=injective&network=mainnet' | jq
 
+### get transaction status
 curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/injective_poll.json)" https://localhost:15888/injective/poll | jq
 
+### transfer to bank
 curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/injective_transfer_to_bank.json)" https://localhost:15888/injective/transfer/to/bank | jq
 
+### transfer from bank
 curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/injective_transfer_to_sub.json)" https://localhost:15888/injective/transfer/to/sub | jq
+
+## dexalot
+### get markets
+curl % curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT "https://localhost:15888/clob/markets?chain=avalanche&network=dexalot&connector=dexalot&market=ALOT-USDC" | jq
+
+### get order books
+curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT "https://localhost:15888/clob/orderBook?chain=avalanche&network=dexalot&connector=dexalot&market=ALOT-USDC" | jq
+
+### get tickers
+curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT "https://localhost:15888/clob/ticker?chain=avalanche&network=dexalot&connector=dexalot" | jq
+
+### get orders
+curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT "https://localhost:15888/clob/orders?chain=avalanche&network=dexalot&connector=dexalot&market=ALOT-USDC&orderId=XXXX&address=$AVALANCHE_ADDRESS" | jq
+
+### post orders
+curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/dexalot_post_order.json)" https://localhost:15888/clob/orders | jq
+
+### delete orders
+curl -s -X DELETE -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/dexalot_delete_order.json)" https://localhost:15888/clob/orders | jq
+
+### post batch orders create
+curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/dexalot_batch_create.json)" https://localhost:15888/clob/batchOrders | jq
+
+### post batch orders delete
+curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/dexalot_batch_delete.json)" https://localhost:15888/clob/batchOrders | jq
+
+### get balances
+curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/dexalot_balances.json)" https://localhost:15888/network/balances | jq
+
+### get transaction status
+curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/dexalot_poll.json)" https://localhost:15888/network/poll | jq

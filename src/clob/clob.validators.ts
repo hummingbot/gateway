@@ -95,11 +95,7 @@ export const validateWallet: Validator = mkValidator(
   'address',
   invalidWalletError,
   (val) => {
-    return (
-      typeof val === 'string' &&
-      val.length === 66 &&
-      isAddress(val.slice(0, 42))
-    );
+    return typeof val === 'string' && isAddress(val.slice(0, 42));
   }
 );
 
@@ -147,7 +143,7 @@ export const validatePostPerpOrderRequest: RequestValidator =
   );
 
 export const validateOrderRequest: RequestValidator = mkRequestValidator(
-  NETWORK_VALIDATIONS.concat([validateOrderId, validateWallet])
+  NETWORK_VALIDATIONS.concat([validateOrderId])
 );
 
 export const validatePerpTradesRequest: RequestValidator = mkRequestValidator(

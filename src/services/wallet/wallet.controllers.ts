@@ -14,6 +14,8 @@ import {
   AddWalletResponse,
   RemoveWalletRequest,
   GetWalletResponse,
+  WalletSignRequest,
+  WalletSignResponse,
 } from './wallet.requests';
 
 import { ConfigManagerCertPassphrase } from '../config-manager-cert-passphrase';
@@ -29,6 +31,8 @@ import {
 } from '../error-handler';
 import { EthereumBase } from '../../chains/ethereum/ethereum-base';
 import { Near } from '../../chains/near/near';
+import { getChain } from '../connection-manager';
+import { Ethereumish } from '../common-interfaces';
 
 export function convertXdcAddressToEthAddress(publicKey: string): string {
   return publicKey.length === 43 && publicKey.slice(0, 3) === 'xdc'
@@ -162,6 +166,14 @@ export async function addWallet(
 // if the file does not exist, this should not fail
 export async function removeWallet(req: RemoveWalletRequest): Promise<void> {
   await fse.remove(`./conf/wallets/${req.chain}/${req.address}.json`);
+}
+
+export async function signMessage(
+  req: WalletSignRequest
+): Promise<WalletSignResponse> {
+  const chain: Ethereumish = await getChain(req.chain, req.network);
+  const wallet = await chain.getWallet(req.address);
+  return { signature: await wallet.signMessage(req.message) };
 }
 
 export async function getDirectories(source: string): Promise<string[]> {

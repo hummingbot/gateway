@@ -144,3 +144,25 @@ export const floatStringWithDecimalToBigNumber = (
     return null;
   }
 };
+
+export const floatStringWithDecimalToFixed = (
+  floatString: string,
+  d: number
+): string | null => {
+  if (d < 0) {
+    return null;
+  }
+  const split = floatString.split('.');
+  const left = split[0];
+  let right: string;
+  if (split.length === 2) {
+    right = split[1].slice(0, d).padEnd(d, '0');
+  } else {
+    right = ''.padEnd(d, '0');
+  }
+  try {
+    return left + '.' + right;
+  } catch (_e) {
+    return null;
+  }
+};

@@ -4,7 +4,6 @@ import {
   Orderbook,
   PerpetualMarket,
   Position,
-  SpotMarket,
 } from '@injectivelabs/sdk-ts';
 import { OrderType, Side } from '../amm/amm.requests';
 import { NetworkSelectionRequest } from '../services/common-interfaces';
@@ -14,7 +13,7 @@ export interface ClobMarketsRequest extends NetworkSelectionRequest {
 }
 
 export interface CLOBMarkets {
-  [key: string]: SpotMarket;
+  [key: string]: any;
 }
 
 export interface ClobMarketResponse {
@@ -40,7 +39,7 @@ export interface ClobOrderbookResponse {
 }
 
 export interface ClobGetOrderRequest extends ClobOrderbookRequest {
-  address: string;
+  address?: string;
   orderId: string;
 }
 
@@ -63,6 +62,7 @@ export interface CreateOrderParam {
   orderType: OrderType;
   side: Side;
   market: string;
+  clientOrderID?: string;
 }
 
 export interface ClobPostOrderRequest
@@ -87,9 +87,10 @@ export interface ClobPostOrderResponse {
   timestamp: number;
   latency: number;
   txHash: string;
+  clientOrderID?: string | string[];
 }
 
-export type ClobDeleteOrderRequest = ClobGetOrderRequest;
+export type ClobDeleteOrderRequest = ClobGetOrderRequest & { address: string };
 
 export type ClobDeleteOrderResponse = ClobPostOrderResponse;
 
