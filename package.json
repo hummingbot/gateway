@@ -13,7 +13,7 @@
     "format": "prettier . --write",
     "lint": "eslint src test test-scripts --format table --fix",
     "dev": "nodemon src/index.ts",
-    "dev:debug": "nodemon --inspect src/index.ts",
+    "dev:debug": "NODE_ENV=dev DEBUG=* nodemon src/index.ts",
     "start": "/bin/bash ./startup.sh",
     "copy-files": "copyfiles -a 'src/**/schema/*.json' 'src/templates/*.yml' 'test/services/data/**/*.*' dist",
     "test": "jest --verbose",

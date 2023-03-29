@@ -104,6 +104,16 @@ import { NearBase } from '../chains/near/near.base';
 import { Account, Contract as NearContract } from 'near-api-js';
 import { EstimateSwapView, TokenMetadata } from 'coinalpha-ref-sdk';
 import { FinalExecutionOutcome } from 'near-api-js/lib/providers';
+import {
+  ClobDeleteOrderRequest,
+  ClobGetOrderRequest,
+  ClobGetOrderResponse,
+  ClobMarketsRequest,
+  ClobOrderbookRequest,
+  ClobPostOrderRequest,
+  ClobTickerRequest,
+} from '../clob/clob.requests';
+import { BalanceRequest } from '../network/network.requests';
 import { RouteMarket, ZigZagOrder } from '../connectors/zigzag/zigzag';
 
 // TODO Check the possibility to have clob/solana/serum equivalents here
@@ -226,6 +236,8 @@ export interface Uniswapish {
 
   ready(): boolean;
 
+  balances?(req: BalanceRequest): Promise<Record<string, string>>;
+
   /**
    * Given a token's address, return the connector's native representation of
    * the token.
@@ -344,6 +356,8 @@ export interface RefAMMish {
   init(): Promise<void>;
 
   ready(): boolean;
+
+  balances?(req: BalanceRequest): Promise<Record<string, string>>;
 
   /**
    * Given a token's address, return the connector's native representation of
@@ -464,6 +478,8 @@ export interface UniswapLPish {
 
   ready(): boolean;
 
+  balances?(req: BalanceRequest): Promise<Record<string, string>>;
+
   /**
    * Given a token's address, return the connector's native representation of
    * the token.
@@ -581,6 +597,8 @@ export interface Perpish {
 
   ready(): boolean;
 
+  balances?(req: BalanceRequest): Promise<Record<string, string>>;
+
   /**
    * Given a token's address, return the connector's native representation of
    * the token.
@@ -670,6 +688,55 @@ export interface Xdcish extends BasicChainMethods, XdcBase {
     tokenAddress: string,
     signerOrProvider?: XdcWallet | XdcProviders.Provider
   ): XdcContract;
+}
+
+export interface PriceLevel {
+  price: string;
+  quantity: string;
+  timestamp: number;
+}
+export interface Orderbook {
+  buys: PriceLevel[];
+  sells: PriceLevel[];
+}
+
+export interface MarketInfo {
+  [key: string]: any;
+}
+
+export interface CLOBish {
+  parsedMarkets: MarketInfo;
+
+  abiDecoder?: any;
+
+  loadMarkets(): Promise<void>;
+
+  init(): Promise<void>;
+
+  ready(): boolean;
+
+  markets(req: ClobMarketsRequest): Promise<{ markets: MarketInfo }>;
+
+  orderBook(req: ClobOrderbookRequest): Promise<Orderbook>;
+
+  ticker(req: ClobTickerRequest): Promise<{ markets: MarketInfo }>;
+
+  orders(
+    req: ClobGetOrderRequest
+  ): Promise<{ orders: ClobGetOrderResponse['orders'] }>;
+
+  postOrder(req: ClobPostOrderRequest): Promise<{ txHash: string }>;
+
+  deleteOrder(req: ClobDeleteOrderRequest): Promise<{ txHash: string }>;
+
+  balances?(req: BalanceRequest): Promise<Record<string, string>>;
+
+  estimateGas(_req: NetworkSelectionRequest): {
+    gasPrice: number;
+    gasPriceToken: string;
+    gasLimit: number;
+    gasCost: number;
+  };
 }
 
 export interface Nearish extends BasicChainMethods, NearBase {

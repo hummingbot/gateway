@@ -34,7 +34,7 @@ RUN ln -s /conf /usr/src/app/conf && \
 RUN mkdir -p /var/lib/gateway /certs /conf /logs /usr/src/app/gateway.level /usr/src/app/transactions.level \
     /usr/src/app/db
 RUN chown -R hummingbot:hummingbot /var/lib/gateway /usr/src/app/logs /usr/src/app/conf /usr/src/app/certs \
-    /usr/src/app/gateway.level /usr/src/app/transactions.level /usr/src/app/db
+    /usr/src/app/gateway.level /usr/src/app/transactions.level /usr/src/app/db /usr/src/app/conf/
 
 # install dependencies
 RUN yarn install --frozen-lockfile

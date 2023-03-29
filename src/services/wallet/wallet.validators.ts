@@ -106,6 +106,9 @@ export const invalidAddressError: string = 'address must be a string';
 
 export const invalidAccountIDError: string = 'account ID must be a string';
 
+export const invalidMessageError: string =
+  'message to be signed must be a string';
+
 export const validateChain: Validator = mkValidator(
   'chain',
   invalidChainError,
@@ -142,6 +145,13 @@ export const validateAccountID: Validator = mkValidator(
   true
 );
 
+export const validateMessage: Validator = mkValidator(
+  'message',
+  invalidMessageError,
+  (val) => typeof val === 'string',
+  true
+);
+
 export const validateAddWalletRequest: RequestValidator = mkRequestValidator([
   validatePrivateKey,
   validateChain,
@@ -152,3 +162,10 @@ export const validateAddWalletRequest: RequestValidator = mkRequestValidator([
 export const validateRemoveWalletRequest: RequestValidator = mkRequestValidator(
   [validateAddress, validateChain]
 );
+
+export const validateWalletSignRequest: RequestValidator = mkRequestValidator([
+  validateAddress,
+  validateChain,
+  validateNetwork,
+  validateMessage,
+]);
