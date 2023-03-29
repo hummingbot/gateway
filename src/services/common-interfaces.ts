@@ -310,6 +310,7 @@ export interface Uniswapish {
 }
 
 export interface ZigZagTrade {
+  newSwapPrice: number;
   buyAmount: BigNumber;
   sellAmount: BigNumber;
   bestSwapRoute: RouteMarket[];

@@ -23,17 +23,6 @@ export type ZigZagMarket = {
   verified: boolean;
 };
 
-// export type EIP712DomainInfo = {
-//   name: string;
-//   version: string;
-//   chainId: string;
-//   verifyingContract: string;
-// };
-
-// export type EIP712TypeInfo = {
-//   Order: { name: string; type: string }[];
-// };
-
 export type ZigZagToken = {
   address: string;
   symbol: string;
@@ -365,7 +354,7 @@ export class ZigZag implements ZigZagish {
     // const currencySellAmount = CurrencyAmount.fromRawAmount(sellToken, newSellAmount.toString());
     console.log(bestSwapRoute);
     return {
-      // newSwapPrice,
+      newSwapPrice: newSwapPrice,
       newQuoteOrderArray: newQuoteOrderArray,
       buyAmount: newBuyAmount,
       sellAmount: newSellAmount,
@@ -426,65 +415,3 @@ export class ZigZag implements ZigZagish {
     return txResponse;
   }
 }
-// https://github.com/ZigZagExchange/backend/blob/master/README.md
-// All messages the Zigzag Websocket API have the following structure
-// https://github.com/ZigZagExchange/backend/blob/master/README.md#zigzag-endpoints
-// { "op": "operation", "args": ["list", "of", "args"] }
-// submitorder3, requestquote, orderreceiptreq, refreshliquidity, dailyvolumereq, marketsreq
-// curl -X POST "https://zigzag-exchange.herokuapp.com/" --header "Content-Type: application/json" -d '{"op":"requestquote", "args": [1, "ETH-USDT", "b", "0.232"]}'
-
-// curl -X POST "https://zigzag-exchange.herokuapp.com/" --header "Content-Type: application/json" -d '{"op":"requestquote", "args": [42161, "ETH-USDT", "b", "0.232"]}'
-
-// curl -X POST "https://zigzag-exchange.herokuapp.com/" --header "Content-Type: application/json" -d '{"op":"requestquote", "args": [1002, "ETH-USDT", "b", "0.232"]}'
-
-// curl -X GET "https://zigzag-exchange.herokuapp.com/api/v1/markets/1" --header "Content-Type: application/json"
-
-//  /api/v1/ticker/:chainId?
-//  /api/v1/orderbook/:market/:chainId?
-
-// submit order
-
-// https://github.com/ZigZagExchange/frontend/blob/67cbf733af636dda81a37a3f3db3ae84aa2e3cbb/src/lib/api/providers/APIStarknetProvider.js#L25
-
-/*
-
-        const { symbol } = (
-          await axios.get(`https://api.zksync.io/api/v0.2/tokens/${assetId}`)
-        ).data.result;
-        const { price: apiPrice } = (
-          await axios.get(
-            `https://api.zksync.io/api/v0.2/tokens/${assetId}/priceIn/usd`
-          )
-        ).data.result;
-
-
-                      zigZagChainId === 1
-                        ? "https://zkscan.io/explorer/tokens"
-                        : "https://rinkeby.zkscan.io/explorer/tokens"
-
-https://swap.zigzag.exchange/
-
-GET
-	https://api.arbitrum.zigzag.exchange/v1/info
-
-
-*/
-
-/*
-
-  changePubKeyFee = async (currency = "USDC") => {
-    const { data } = await axios.post(
-      this.getZkSyncBaseUrl(this.network) + "/fee",
-      {
-        txType: { ChangePubKey: "ECDSA" },
-        address: "0x5364ff0cecb1d44efd9e4c7e4fe16bf5774530e3",
-        tokenLike: currency,
-      },
-      { headers: { "Content-Type": "application/json" } }
-    );
-    // somehow the fee is ~50% too low
-    if (currency === "USDC") return (data.result.totalFee / 10 ** 6) * 2;
-    else return (data.result.totalFee / 10 ** 18) * 2;
-  };
-
-*/

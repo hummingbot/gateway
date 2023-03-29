@@ -1,10 +1,9 @@
-import { ZigZagish } from '../../services/common-interfaces';
-import { bigNumberWithDecimalToStr } from '../../services/base';
+import { ZigZagish, ZigZagTrade } from '../../services/common-interfaces';
 import { Ethereumish, Tokenish } from '../../services/common-interfaces';
 import { Token } from '@uniswap/sdk-core';
 import { TokenInfo } from '../../chains/ethereum/ethereum-base';
 import Decimal from 'decimal.js-light';
-import { BigNumber } from 'ethers';
+import { BigNumber, Transaction } from 'ethers';
 import {
   HttpException,
   TOKEN_NOT_SUPPORTED_ERROR_CODE,
@@ -57,7 +56,6 @@ export async function price(
   const baseToken = getFullTokenFromSymbol(ethereumish, zigzagish, req.base);
   const quoteToken = getFullTokenFromSymbol(ethereumish, zigzagish, req.quote);
 
-  let expectedAmount;
   let tradePrice;
 
   try {
@@ -69,8 +67,7 @@ export async function price(
         BigNumber.from(req.amount),
         'buy'
       );
-      expectedAmount = tradeInfo.buyAmount;
-      tradePrice = tradeInfo.sellAmount;
+      tradePrice = tradeInfo.newSwapPrice;
     } else {
       const tradeInfo = await zigzagish.estimate(
         baseToken,
@@ -80,8 +77,7 @@ export async function price(
         'sell'
       );
 
-      expectedAmount = tradeInfo.sellAmount;
-      tradePrice = tradeInfo.buyAmount;
+      tradePrice = tradeInfo.newSwapPrice;
     }
   } catch (e) {
     if (e instanceof Error) {
@@ -108,16 +104,10 @@ export async function price(
     latency: latency(startTimestamp, Date.now()),
     base: baseToken.address,
     quote: quoteToken.address,
-    amount: new Decimal(req.amount).toFixed(baseToken.decimals),
-    rawAmount: req.amount.toString(),
-    expectedAmount: bigNumberWithDecimalToStr(
-      expectedAmount,
-      req.side === 'SELL' ? quoteToken.decimals : baseToken.decimals
-    ),
-    price: bigNumberWithDecimalToStr(
-      tradePrice,
-      req.side === 'SELL' ? baseToken.decimals : quoteToken.decimals
-    ),
+    amount: req.amount,
+    rawAmount: req.amount,
+    expectedAmount: String(tradePrice * Number(req.amount)),
+    price: String(tradePrice),
     gasPrice: gasPrice,
     gasPriceToken: ethereumish.nativeTokenSymbol,
     gasLimit: gasLimitTransaction,
@@ -135,7 +125,7 @@ export async function trade(
   const quoteToken = getFullTokenFromSymbol(ethereumish, zigzagish, req.quote);
 
   const limitPrice = req.limitPrice;
-  let tradeInfo;
+  let tradeInfo: ZigZagTrade, tx: Transaction, price: number;
   const { wallet } = await txWriteData(
     ethereumish,
     req.address,
@@ -150,16 +140,54 @@ export async function trade(
         quoteToken,
         BigNumber.from(0),
         BigNumber.from(req.amount),
-        'buy'
+        req.side.toLowerCase()
       );
+      price = tradeInfo.newSwapPrice;
+      if (
+        limitPrice &&
+        new Decimal(price.toString()).gt(new Decimal(limitPrice))
+      ) {
+        logger.error('Swap price exceeded limit price.');
+        throw new HttpException(
+          500,
+          SWAP_PRICE_EXCEEDS_LIMIT_PRICE_ERROR_MESSAGE(
+            price.toString(),
+            limitPrice
+          ),
+          SWAP_PRICE_EXCEEDS_LIMIT_PRICE_ERROR_CODE
+        );
+      }
+
+      tx = await zigzagish.executeTrade(wallet, tradeInfo, true);
     } else {
       tradeInfo = await zigzagish.estimate(
         baseToken,
         quoteToken,
         BigNumber.from(req.amount),
         BigNumber.from(0),
-        'sell'
+        req.side.toLowerCase()
       );
+      price = tradeInfo.newSwapPrice;
+      logger.info(
+        `Expected execution price is ${price.toString()}, ` +
+          `limit price is ${limitPrice}.`
+      );
+      if (
+        limitPrice &&
+        new Decimal(price.toString()).lt(new Decimal(limitPrice))
+      ) {
+        logger.error('Swap price lower than limit price.');
+        throw new HttpException(
+          500,
+          SWAP_PRICE_LOWER_THAN_LIMIT_PRICE_ERROR_MESSAGE(
+            price.toString(),
+            limitPrice
+          ),
+          SWAP_PRICE_LOWER_THAN_LIMIT_PRICE_ERROR_CODE
+        );
+      }
+
+      tx = await zigzagish.executeTrade(wallet, tradeInfo, false);
     }
   } catch (e) {
     if (e instanceof Error) {
@@ -178,102 +206,36 @@ export async function trade(
   }
 
   const gasPrice: number = ethereumish.gasPrice;
-  const gasLimitTransaction: number = ethereumish.gasLimitTransaction;
-  const gasLimitEstimate: number = ethereumish.gasLimitTransaction;
 
-  if (req.side === 'BUY') {
-    const price = tradeInfo.sellAmount;
-    if (
-      limitPrice &&
-      new Decimal(price.toString()).gt(new Decimal(limitPrice))
-    ) {
-      logger.error('Swap price exceeded limit price.');
-      throw new HttpException(
-        500,
-        SWAP_PRICE_EXCEEDS_LIMIT_PRICE_ERROR_MESSAGE(
-          price.toString(),
-          limitPrice
-        ),
-        SWAP_PRICE_EXCEEDS_LIMIT_PRICE_ERROR_CODE
-      );
-    }
-
-    const tx = await zigzagish.executeTrade(wallet, tradeInfo, true);
-
-    if (tx.hash) {
-      await ethereumish.txStorage.saveTx(
-        ethereumish.chain,
-        ethereumish.chainId,
-        tx.hash,
-        new Date(),
-        ethereumish.gasPrice
-      );
-    }
-
-    logger.info(
-      `Trade has been executed, txHash is ${tx.hash}, nonce is ${tx.nonce}, gasPrice is ${gasPrice}.`
+  if (tx.hash) {
+    await ethereumish.txStorage.saveTx(
+      ethereumish.chain,
+      ethereumish.chainId,
+      tx.hash,
+      new Date(),
+      gasPrice
     );
-
-    return {
-      network: ethereumish.chain,
-      timestamp: startTimestamp,
-      latency: latency(startTimestamp, Date.now()),
-      base: baseToken.address,
-      quote: quoteToken.address,
-      amount: new Decimal(req.amount).toFixed(baseToken.decimals),
-      rawAmount: tradeInfo.sellAmount.toString(),
-      expectedIn: req.amount,
-      price: price.toString(),
-      gasPrice: gasPrice,
-      gasPriceToken: ethereumish.nativeTokenSymbol,
-      gasLimit: gasLimitTransaction,
-      gasCost: gasCostInEthString(gasPrice, gasLimitEstimate),
-      nonce: tx.nonce,
-      txHash: tx.hash,
-    };
-  } else {
-    const price = tradeInfo.buyAmount;
-    logger.info(
-      `Expected execution price is ${price.toString()}, ` +
-        `limit price is ${limitPrice}.`
-    );
-    if (
-      limitPrice &&
-      new Decimal(price.toString()).lt(new Decimal(limitPrice))
-    ) {
-      logger.error('Swap price lower than limit price.');
-      throw new HttpException(
-        500,
-        SWAP_PRICE_LOWER_THAN_LIMIT_PRICE_ERROR_MESSAGE(
-          price.toString(),
-          limitPrice
-        ),
-        SWAP_PRICE_LOWER_THAN_LIMIT_PRICE_ERROR_CODE
-      );
-    }
-
-    const tx = await zigzagish.executeTrade(wallet, tradeInfo, false);
-
-    logger.info(
-      `Trade has been executed, txHash is ${tx.hash}, nonce is ${tx.nonce}, gasPrice is ${gasPrice}.`
-    );
-
-    return {
-      network: ethereumish.chain,
-      timestamp: startTimestamp,
-      latency: latency(startTimestamp, Date.now()),
-      base: baseToken.address,
-      quote: quoteToken.address,
-      amount: new Decimal(req.amount).toFixed(baseToken.decimals),
-      rawAmount: tradeInfo.buyAmount.toString(),
-      expectedOut: req.amount,
-      price: price.toString(),
-      gasPrice: gasPrice,
-      gasPriceToken: ethereumish.nativeTokenSymbol,
-      gasLimit: gasLimitTransaction,
-      gasCost: gasCostInEthString(gasPrice, gasLimitEstimate),
-      nonce: tx.nonce,
-      txHash: tx.hash,
-    };
   }
+
+  logger.info(
+    `Trade has been executed, txHash is ${tx.hash}, nonce is ${tx.nonce}, gasPrice is ${gasPrice}.`
+  );
+
+  return {
+    network: ethereumish.chain,
+    timestamp: startTimestamp,
+    latency: latency(startTimestamp, Date.now()),
+    base: baseToken.address,
+    quote: quoteToken.address,
+    amount: new Decimal(req.amount).toFixed(baseToken.decimals),
+    rawAmount: tradeInfo.sellAmount.toString(),
+    expectedIn: req.amount,
+    price: price.toString(),
+    gasPrice: gasPrice,
+    gasPriceToken: ethereumish.nativeTokenSymbol,
+    gasLimit: ethereumish.gasLimitTransaction,
+    gasCost: gasCostInEthString(gasPrice, ethereumish.gasLimitTransaction),
+    nonce: tx.nonce,
+    txHash: tx.hash,
+  };
 }
