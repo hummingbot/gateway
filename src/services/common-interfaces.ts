@@ -311,8 +311,6 @@ export interface Uniswapish {
 
 export interface ZigZagTrade {
   newSwapPrice: number;
-  buyAmount: BigNumber;
-  sellAmount: BigNumber;
   bestSwapRoute: RouteMarket[];
   newQuoteOrderArray: ZigZagOrder[];
 }
@@ -330,14 +328,14 @@ export interface ZigZagish {
   estimate(
     sellToken: Tokenish,
     buyToken: Tokenish,
-    sellAmount: BigNumber,
     buyAmount: BigNumber,
     side: string
   ): Promise<ZigZagTrade>;
 
   executeTrade(
-    wallet: Wallet,
+    walletAddress: string,
     trade: ZigZagTrade,
+    rawAmount: BigNumber,
     is_buy: boolean
   ): Promise<Transaction>;
 }

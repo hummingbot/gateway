@@ -3,7 +3,7 @@ import { Ethereumish, Tokenish } from '../../services/common-interfaces';
 import { Token } from '@uniswap/sdk-core';
 import { TokenInfo } from '../../chains/ethereum/ethereum-base';
 import Decimal from 'decimal.js-light';
-import { BigNumber, Transaction } from 'ethers';
+import { Transaction, utils, Wallet } from 'ethers';
 import {
   HttpException,
   TOKEN_NOT_SUPPORTED_ERROR_CODE,
@@ -16,6 +16,8 @@ import {
   SWAP_PRICE_LOWER_THAN_LIMIT_PRICE_ERROR_CODE,
   SWAP_PRICE_EXCEEDS_LIMIT_PRICE_ERROR_CODE,
   SWAP_PRICE_EXCEEDS_LIMIT_PRICE_ERROR_MESSAGE,
+  LOAD_WALLET_ERROR_MESSAGE,
+  LOAD_WALLET_ERROR_CODE,
 } from '../../services/error-handler';
 import { latency, gasCostInEthString } from '../../services/base';
 import {
@@ -25,7 +27,6 @@ import {
   TradeResponse,
 } from '../../amm/amm.requests';
 import { logger } from '../../services/logger';
-import { txWriteData } from '../uniswap/uniswap.controllers';
 
 export function getFullTokenFromSymbol(
   ethereumish: Ethereumish,
@@ -53,32 +54,27 @@ export async function price(
   req: PriceRequest
 ): Promise<PriceResponse> {
   const startTimestamp: number = Date.now();
-  const baseToken = getFullTokenFromSymbol(ethereumish, zigzagish, req.base);
-  const quoteToken = getFullTokenFromSymbol(ethereumish, zigzagish, req.quote);
+  let baseToken, quoteToken, rawAmount;
+  if (req.side === 'SELL') {
+    baseToken = getFullTokenFromSymbol(ethereumish, zigzagish, req.base);
+    quoteToken = getFullTokenFromSymbol(ethereumish, zigzagish, req.quote);
+    rawAmount = utils.parseUnits(req.amount, baseToken.decimals);
+  } else {
+    baseToken = getFullTokenFromSymbol(ethereumish, zigzagish, req.quote);
+    quoteToken = getFullTokenFromSymbol(ethereumish, zigzagish, req.base);
+    rawAmount = utils.parseUnits(req.amount, quoteToken.decimals);
+  }
 
   let tradePrice;
 
   try {
-    if (req.side === 'BUY') {
-      const tradeInfo = await zigzagish.estimate(
-        baseToken,
-        quoteToken,
-        BigNumber.from(0),
-        BigNumber.from(req.amount),
-        'buy'
-      );
-      tradePrice = tradeInfo.newSwapPrice;
-    } else {
-      const tradeInfo = await zigzagish.estimate(
-        baseToken,
-        quoteToken,
-        BigNumber.from(req.amount),
-        BigNumber.from(0),
-        'sell'
-      );
-
-      tradePrice = tradeInfo.newSwapPrice;
-    }
+    const tradeInfo = await zigzagish.estimate(
+      baseToken,
+      quoteToken,
+      rawAmount,
+      req.side.toLowerCase()
+    );
+    tradePrice = tradeInfo.newSwapPrice;
   } catch (e) {
     if (e instanceof Error) {
       throw new HttpException(
@@ -105,7 +101,7 @@ export async function price(
     base: baseToken.address,
     quote: quoteToken.address,
     amount: req.amount,
-    rawAmount: req.amount,
+    rawAmount: rawAmount.toString(),
     expectedAmount: String(tradePrice * Number(req.amount)),
     price: String(tradePrice),
     gasPrice: gasPrice,
@@ -121,92 +117,89 @@ export async function trade(
   req: TradeRequest
 ): Promise<TradeResponse> {
   const startTimestamp: number = Date.now();
-  const baseToken = getFullTokenFromSymbol(ethereumish, zigzagish, req.base);
-  const quoteToken = getFullTokenFromSymbol(ethereumish, zigzagish, req.quote);
+  let baseToken, quoteToken, rawAmount;
+  if (req.side === 'SELL') {
+    baseToken = getFullTokenFromSymbol(ethereumish, zigzagish, req.base);
+    quoteToken = getFullTokenFromSymbol(ethereumish, zigzagish, req.quote);
+    rawAmount = utils.parseUnits(req.amount, baseToken.decimals);
+  } else {
+    baseToken = getFullTokenFromSymbol(ethereumish, zigzagish, req.quote);
+    quoteToken = getFullTokenFromSymbol(ethereumish, zigzagish, req.base);
+    rawAmount = utils.parseUnits(req.amount, quoteToken.decimals);
+  }
 
   const limitPrice = req.limitPrice;
-  let tradeInfo: ZigZagTrade, tx: Transaction, price: number;
-  const { wallet } = await txWriteData(
-    ethereumish,
-    req.address,
-    req.maxFeePerGas,
-    req.maxPriorityFeePerGas
+
+  // Get wallet
+  let wallet: Wallet;
+  try {
+    wallet = await ethereumish.getWallet(req.address);
+  } catch (err) {
+    logger.error(`Wallet ${req.address} not available.`);
+    throw new HttpException(
+      500,
+      LOAD_WALLET_ERROR_MESSAGE + err,
+      LOAD_WALLET_ERROR_CODE
+    );
+  }
+
+  // Get route data
+  const tradeInfo: ZigZagTrade = await zigzagish.estimate(
+    baseToken,
+    quoteToken,
+    rawAmount,
+    req.side.toLowerCase()
+  );
+  const price: number = tradeInfo.newSwapPrice;
+
+  //  Basic price check
+  if (
+    req.side === 'BUY' &&
+    limitPrice &&
+    new Decimal(price.toString()).gt(new Decimal(limitPrice))
+  ) {
+    logger.error('Swap price exceeded limit price.');
+    throw new HttpException(
+      500,
+      SWAP_PRICE_EXCEEDS_LIMIT_PRICE_ERROR_MESSAGE(
+        price.toString(),
+        limitPrice
+      ),
+      SWAP_PRICE_EXCEEDS_LIMIT_PRICE_ERROR_CODE
+    );
+  } else if (
+    req.side === 'SELL' &&
+    limitPrice &&
+    new Decimal(price.toString()).lt(new Decimal(limitPrice))
+  ) {
+    logger.error('Swap price lower than limit price.');
+    throw new HttpException(
+      500,
+      SWAP_PRICE_LOWER_THAN_LIMIT_PRICE_ERROR_MESSAGE(
+        price.toString(),
+        limitPrice
+      ),
+      SWAP_PRICE_LOWER_THAN_LIMIT_PRICE_ERROR_CODE
+    );
+  }
+
+  // Price info log
+  logger.info(
+    `Expected execution price is ${price.toString()}, ` +
+      `limit price is ${limitPrice}.`
   );
 
-  try {
-    if (req.side === 'BUY') {
-      tradeInfo = await zigzagish.estimate(
-        baseToken,
-        quoteToken,
-        BigNumber.from(0),
-        BigNumber.from(req.amount),
-        req.side.toLowerCase()
-      );
-      price = tradeInfo.newSwapPrice;
-      if (
-        limitPrice &&
-        new Decimal(price.toString()).gt(new Decimal(limitPrice))
-      ) {
-        logger.error('Swap price exceeded limit price.');
-        throw new HttpException(
-          500,
-          SWAP_PRICE_EXCEEDS_LIMIT_PRICE_ERROR_MESSAGE(
-            price.toString(),
-            limitPrice
-          ),
-          SWAP_PRICE_EXCEEDS_LIMIT_PRICE_ERROR_CODE
-        );
-      }
-
-      tx = await zigzagish.executeTrade(wallet, tradeInfo, true);
-    } else {
-      tradeInfo = await zigzagish.estimate(
-        baseToken,
-        quoteToken,
-        BigNumber.from(req.amount),
-        BigNumber.from(0),
-        req.side.toLowerCase()
-      );
-      price = tradeInfo.newSwapPrice;
-      logger.info(
-        `Expected execution price is ${price.toString()}, ` +
-          `limit price is ${limitPrice}.`
-      );
-      if (
-        limitPrice &&
-        new Decimal(price.toString()).lt(new Decimal(limitPrice))
-      ) {
-        logger.error('Swap price lower than limit price.');
-        throw new HttpException(
-          500,
-          SWAP_PRICE_LOWER_THAN_LIMIT_PRICE_ERROR_MESSAGE(
-            price.toString(),
-            limitPrice
-          ),
-          SWAP_PRICE_LOWER_THAN_LIMIT_PRICE_ERROR_CODE
-        );
-      }
-
-      tx = await zigzagish.executeTrade(wallet, tradeInfo, false);
-    }
-  } catch (e) {
-    if (e instanceof Error) {
-      throw new HttpException(
-        500,
-        PRICE_FAILED_ERROR_MESSAGE + e.message,
-        PRICE_FAILED_ERROR_CODE
-      );
-    } else {
-      throw new HttpException(
-        500,
-        UNKNOWN_ERROR_MESSAGE,
-        UNKNOWN_ERROR_ERROR_CODE
-      );
-    }
-  }
+  // Execute trade
+  const tx: Transaction = await zigzagish.executeTrade(
+    wallet.address,
+    tradeInfo,
+    rawAmount,
+    req.side === 'BUY'
+  );
 
   const gasPrice: number = ethereumish.gasPrice;
 
+  // Save Tx
   if (tx.hash) {
     await ethereumish.txStorage.saveTx(
       ethereumish.chain,
@@ -228,8 +221,7 @@ export async function trade(
     base: baseToken.address,
     quote: quoteToken.address,
     amount: new Decimal(req.amount).toFixed(baseToken.decimals),
-    rawAmount: tradeInfo.sellAmount.toString(),
-    expectedIn: req.amount,
+    rawAmount: rawAmount.toString(),
     price: price.toString(),
     gasPrice: gasPrice,
     gasPriceToken: ethereumish.nativeTokenSymbol,

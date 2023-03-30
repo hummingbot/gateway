@@ -1,4 +1,4 @@
-import { BigNumber, Contract, Transaction, Wallet } from 'ethers';
+import { BigNumber, Contract, Transaction } from 'ethers';
 import { ethers } from 'ethers';
 import LRUCache from 'lru-cache';
 import { ZigZagConfig } from './zigzag.config';
@@ -144,7 +144,9 @@ export class ZigZag implements ZigZagish {
         const base = this.tokenList[market.buyToken];
         const quote = this.tokenList[market.sellToken];
         // this.markets.push(base.symbol + '-' + quote.symbol);
-        this.markets.push(base.address + '-' + quote.address);
+        this.markets.push(
+          base.address.toLowerCase() + '-' + quote.address.toLowerCase()
+        );
       }
       this.makerFee = zigZagData.exchange.makerVolumeFee;
       this.takerFee = zigZagData.exchange.takerVolumeFee;
@@ -207,14 +209,14 @@ export class ZigZag implements ZigZagish {
     buyToken: Token
   ): Array<Array<RouteMarket>> {
     const newRoute: Array<Array<RouteMarket>> = [];
-    const tradeMarket = `${sellToken.address}-${buyToken.address}`;
+    const tradeMarket = `${sellToken.address.toLowerCase()}-${buyToken.address.toLowerCase()}`;
 
     // check for a direct route between pairs, if this exists, use it.
     if (this.markets.includes(tradeMarket)) {
       newRoute.push([
         {
-          buyTokenAddress: sellToken.address,
-          sellTokenAddress: buyToken.address,
+          buyTokenAddress: sellToken.address.toLowerCase(),
+          sellTokenAddress: buyToken.address.toLowerCase(),
         },
       ]);
     }
@@ -227,20 +229,20 @@ export class ZigZag implements ZigZagish {
         '0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9', // USDT
       ];
       possibleRoutes.forEach((routeTokenAddress) => {
-        const firstTradeMarket = `${sellToken.address}-${routeTokenAddress}`;
-        const secondTradeMarket = `${routeTokenAddress}-${buyToken.address}`;
+        const firstTradeMarket = `${sellToken.address.toLowerCase()}-${routeTokenAddress.toLowerCase()}`;
+        const secondTradeMarket = `${routeTokenAddress.toLowerCase()}-${buyToken.address.toLowerCase()}`;
         if (
           this.markets.includes(firstTradeMarket) &&
           this.markets.includes(secondTradeMarket)
         ) {
           newRoute.push([
             {
-              buyTokenAddress: sellToken.address,
-              sellTokenAddress: routeTokenAddress,
+              buyTokenAddress: sellToken.address.toLowerCase(),
+              sellTokenAddress: routeTokenAddress.toLowerCase(),
             },
             {
-              buyTokenAddress: routeTokenAddress,
-              sellTokenAddress: buyToken.address,
+              buyTokenAddress: routeTokenAddress.toLowerCase(),
+              sellTokenAddress: buyToken.address.toLowerCase(),
             },
           ]);
         }
@@ -254,11 +256,11 @@ export class ZigZag implements ZigZagish {
   public async estimate(
     sellToken: Token,
     buyToken: Token,
-    sellAmount: BigNumber,
     buyAmount: BigNumber,
     side: string
   ): Promise<ZigZagTrade> {
     let newQuoteOrderArray: Array<ZigZagOrder> = [];
+    const minTimeStamp: number = Date.now() / 1000 + 5;
     let newSwapPrice: number = 0;
     let bestSwapRoute: Array<RouteMarket> = [];
 
@@ -274,15 +276,19 @@ export class ZigZag implements ZigZagish {
         let marketQuoteOrder: ZigZagOrder | undefined;
         const key = `${market.buyTokenAddress}-${market.sellTokenAddress}`;
         const currentOrderBook = orderBook[key];
+        if (!currentOrderBook) return;
 
         for (let i = 0; i < currentOrderBook.length; i++) {
           const { order } = currentOrderBook[i];
+          if (minTimeStamp > Number(order.expirationTimeSeconds)) return;
 
           const quoteSellAmount = ethers.BigNumber.from(order.sellAmount);
           const quoteBuyAmount = ethers.BigNumber.from(order.buyAmount);
+          if (side === 'buy' && quoteSellAmount.lt(stepBuyAmount)) continue;
 
           const quoteSellToken = this.tokenList[order.sellToken];
           const quoteBuyToken = this.tokenList[order.buyToken];
+          if (!quoteSellToken || !quoteBuyToken) return;
 
           const quoteSellAmountFormated = Number(
             ethers.utils.formatUnits(quoteSellAmount, quoteSellToken.decimals)
@@ -319,45 +325,9 @@ export class ZigZag implements ZigZagish {
       if (bestSwapRoute.length === 0) bestSwapRoute = route;
     });
 
-    let newBuyAmount: BigNumber;
-    let newSellAmount: BigNumber;
-    if (side === 'buy') {
-      newBuyAmount = buyAmount;
-      newSellAmount = newBuyAmount;
-
-      newQuoteOrderArray.forEach((quoteOrder: ZigZagOrder) => {
-        const quoteSellAmount = ethers.BigNumber.from(
-          quoteOrder.order.sellAmount
-        );
-        const quoteBuyAmount = ethers.BigNumber.from(
-          quoteOrder.order.buyAmount
-        );
-
-        newSellAmount = newSellAmount.mul(quoteBuyAmount).div(quoteSellAmount);
-      });
-    } else {
-      newSellAmount = sellAmount;
-      newBuyAmount = newSellAmount;
-      newQuoteOrderArray.forEach((quoteOrder: ZigZagOrder) => {
-        const quoteSellAmount = ethers.BigNumber.from(
-          quoteOrder.order.sellAmount
-        );
-        const quoteBuyAmount = ethers.BigNumber.from(
-          quoteOrder.order.buyAmount
-        );
-
-        newBuyAmount = newBuyAmount.mul(quoteSellAmount).div(quoteBuyAmount);
-      });
-    }
-
-    // const currencyBuyAmount = CurrencyAmount.fromRawAmount(buyToken, newBuyAmount.toString());
-    // const currencySellAmount = CurrencyAmount.fromRawAmount(sellToken, newSellAmount.toString());
-    console.log(bestSwapRoute);
     return {
-      newSwapPrice: newSwapPrice,
+      newSwapPrice: side === 'sell' ? newSwapPrice : 1 / newSwapPrice,
       newQuoteOrderArray: newQuoteOrderArray,
-      buyAmount: newBuyAmount,
-      sellAmount: newSellAmount,
       bestSwapRoute: bestSwapRoute,
     };
   }
@@ -369,46 +339,73 @@ export class ZigZag implements ZigZagish {
    * @param trade Expected trade
    */
   async executeTrade(
-    wallet: Wallet,
+    walletAddress: string,
     trade: ZigZagTrade,
+    rawAmount: BigNumber,
     is_buy: boolean
   ): Promise<Transaction> {
     let txData;
-    if (is_buy === true) {
-      // sell
-      txData = await this._router.populateTransaction.fillOrderExactInput(
-        [
-          trade.newQuoteOrderArray[0].order.user,
-          trade.newQuoteOrderArray[0].order.sellToken,
-          trade.newQuoteOrderArray[0].order.buyToken,
-          trade.newQuoteOrderArray[0].order.sellAmount,
-          trade.newQuoteOrderArray[0].order.buyAmount,
-          trade.newQuoteOrderArray[0].order.expirationTimeSeconds,
-        ],
-        trade.newQuoteOrderArray[0].signature,
-        trade.sellAmount.toString(),
-        false
-      );
+    if (trade.newQuoteOrderArray.length === 0)
+      throw new Error('No route available.');
+    else if (trade.newQuoteOrderArray.length === 1) {
+      if (is_buy === true) {
+        // buy
+        txData = await this._router.populateTransaction.fillOrderExactOutput(
+          [
+            trade.newQuoteOrderArray[0].order.user,
+            trade.newQuoteOrderArray[0].order.sellToken,
+            trade.newQuoteOrderArray[0].order.buyToken,
+            trade.newQuoteOrderArray[0].order.sellAmount,
+            trade.newQuoteOrderArray[0].order.buyAmount,
+            trade.newQuoteOrderArray[0].order.expirationTimeSeconds,
+          ],
+          trade.newQuoteOrderArray[0].signature,
+          rawAmount.toString(),
+          false
+        );
+      } else {
+        // sell
+        txData = await this._router.populateTransaction.fillOrderExactInput(
+          [
+            trade.newQuoteOrderArray[0].order.user,
+            trade.newQuoteOrderArray[0].order.sellToken,
+            trade.newQuoteOrderArray[0].order.buyToken,
+            trade.newQuoteOrderArray[0].order.sellAmount,
+            trade.newQuoteOrderArray[0].order.buyAmount,
+            trade.newQuoteOrderArray[0].order.expirationTimeSeconds,
+          ],
+          trade.newQuoteOrderArray[0].signature,
+          rawAmount.toString(),
+          false
+        );
+      }
     } else {
-      // buy
-      txData = await this._router.populateTransaction.fillOrderExactOutput(
-        [
-          trade.newQuoteOrderArray[0].order.user,
-          trade.newQuoteOrderArray[0].order.sellToken,
-          trade.newQuoteOrderArray[0].order.buyToken,
-          trade.newQuoteOrderArray[0].order.sellAmount,
-          trade.newQuoteOrderArray[0].order.buyAmount,
-          trade.newQuoteOrderArray[0].order.expirationTimeSeconds,
-        ],
-        trade.newQuoteOrderArray[0].signature,
-        trade.sellAmount.toString(),
+      const quoteOrderCalldataArray = trade.newQuoteOrderArray.map(
+        (quoteOrder: ZigZagOrder) => {
+          return [
+            quoteOrder.order.user,
+            quoteOrder.order.sellToken,
+            quoteOrder.order.buyToken,
+            quoteOrder.order.sellAmount,
+            quoteOrder.order.buyAmount,
+            quoteOrder.order.expirationTimeSeconds,
+          ];
+        }
+      );
+      const signatureCalldataArray = trade.newQuoteOrderArray.map(
+        (quoteOrder: ZigZagOrder) => quoteOrder.signature
+      );
+      txData = await this._router.populateTransaction.fillOrderRoute(
+        Object.values(quoteOrderCalldataArray),
+        Object.values(signatureCalldataArray),
+        rawAmount.toString(),
         false
       );
     }
     txData.gasLimit = BigNumber.from(String(this._chain.gasLimitTransaction));
     const txResponse = await EVMTxBroadcaster.getInstance(
       this._chain,
-      wallet.address
+      walletAddress
     ).broadcast(txData);
 
     logger.info(txResponse);
