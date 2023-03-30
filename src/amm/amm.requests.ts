@@ -3,6 +3,8 @@ import {
   NetworkSelectionRequest,
   PositionInfo as LPPositionInfo,
 } from '../services/common-interfaces';
+
+export type OrderType = 'LIMIT' | 'LIMIT_MAKER';
 export type Side = 'BUY' | 'SELL';
 export type PerpSide = 'LONG' | 'SHORT';
 

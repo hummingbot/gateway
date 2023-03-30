@@ -697,7 +697,7 @@ describe('POST /amm/estimateGas', () => {
       .send({
         chain: 'avalanche',
         network: 'avalanche',
-        connector: 'sushiswap',
+        connector: 'invalid-connector',
       })
       .set('Accept', 'application/json')
       .expect(500);

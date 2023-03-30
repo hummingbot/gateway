@@ -7,6 +7,12 @@ import {
   BigNumber,
   ethers,
 } from 'ethers';
+import {
+  Contract as XdcContract,
+  Transaction as XdcTransaction,
+  Wallet as XdcWallet,
+  providers as XdcProviders,
+} from 'ethers-xdc';
 import { EthereumBase } from '../chains/ethereum/ethereum-base';
 import { CosmosBase } from '../chains/cosmos/cosmos-base';
 import { Provider } from '@ethersproject/abstract-provider';
@@ -86,11 +92,28 @@ import {
   Trade as PancakeSwapTrade,
   Fraction as PancakeSwapFraction,
 } from '@pancakeswap/sdk';
+import {
+  Token as TokenXsswap,
+  CurrencyAmount as CurrencyAmountXsswap,
+  Trade as TradeXsswap,
+  Fraction as XsswapFraction,
+} from 'xsswap-sdk';
 import { PerpPosition } from '../connectors/perp/perp';
+import { XdcBase } from '../chains/xdc/xdc.base';
 import { NearBase } from '../chains/near/near.base';
 import { Account, Contract as NearContract } from 'near-api-js';
 import { EstimateSwapView, TokenMetadata } from 'coinalpha-ref-sdk';
 import { FinalExecutionOutcome } from 'near-api-js/lib/providers';
+import {
+  ClobDeleteOrderRequest,
+  ClobGetOrderRequest,
+  ClobGetOrderResponse,
+  ClobMarketsRequest,
+  ClobOrderbookRequest,
+  ClobPostOrderRequest,
+  ClobTickerRequest,
+} from '../clob/clob.requests';
+import { BalanceRequest } from '../network/network.requests';
 
 // TODO Check the possibility to have clob/solana/serum equivalents here
 //  Check this link https://hummingbot.org/developers/gateway/building-gateway-connectors/#5-add-sdk-classes-to-uniswapish-interface
@@ -105,7 +128,8 @@ export type Tokenish =
   | TokenDefikingdoms
   | PancakeSwapToken
   | MMFToken
-  | VVSToken;
+  | VVSToken
+  | TokenXsswap;
 
 export type TokenAmountish = MMFTokenAmount | VVSTokenAmount;
 
@@ -128,7 +152,8 @@ export type UniswapishTrade =
   | DefiraTrade<UniswapCoreToken, UniswapCoreToken, TradeType>
   | PancakeSwapTrade
   | MMFTrade
-  | VVSTrade;
+  | VVSTrade
+  | TradeXsswap;
 
 export type UniswapishTradeOptions =
   | MMFTradeOptions
@@ -148,7 +173,8 @@ export type UniswapishAmount =
   | CurrencyAmountDefikingdoms
   | PancakeSwapCurrencyAmount
   | CurrencyAmountMMF
-  | CurrencyAmountVVS;
+  | CurrencyAmountVVS
+  | CurrencyAmountXsswap;
 
 export type Fractionish =
   | UniswapFraction
@@ -159,7 +185,8 @@ export type Fractionish =
   | DefikingdomsFraction
   | PancakeSwapFraction
   | FractionMMF
-  | FractionVVS;
+  | FractionVVS
+  | XsswapFraction;
 
 export interface ExpectedTrade {
   trade: UniswapishTrade;
@@ -207,6 +234,8 @@ export interface Uniswapish {
   init(): Promise<void>;
 
   ready(): boolean;
+
+  balances?(req: BalanceRequest): Promise<Record<string, string>>;
 
   /**
    * Given a token's address, return the connector's native representation of
@@ -298,6 +327,8 @@ export interface RefAMMish {
   init(): Promise<void>;
 
   ready(): boolean;
+
+  balances?(req: BalanceRequest): Promise<Record<string, string>>;
 
   /**
    * Given a token's address, return the connector's native representation of
@@ -418,6 +449,8 @@ export interface UniswapLPish {
 
   ready(): boolean;
 
+  balances?(req: BalanceRequest): Promise<Record<string, string>>;
+
   /**
    * Given a token's address, return the connector's native representation of
    * the token.
@@ -535,6 +568,8 @@ export interface Perpish {
 
   ready(): boolean;
 
+  balances?(req: BalanceRequest): Promise<Record<string, string>>;
+
   /**
    * Given a token's address, return the connector's native representation of
    * the token.
@@ -618,10 +653,68 @@ export interface Ethereumish extends BasicChainMethods, EthereumBase {
   ): Contract;
 }
 
+export interface Xdcish extends BasicChainMethods, XdcBase {
+  cancelTx(wallet: XdcWallet, nonce: number): Promise<XdcTransaction>;
+  getContract(
+    tokenAddress: string,
+    signerOrProvider?: XdcWallet | XdcProviders.Provider
+  ): XdcContract;
+}
+
+export interface PriceLevel {
+  price: string;
+  quantity: string;
+  timestamp: number;
+}
+export interface Orderbook {
+  buys: PriceLevel[];
+  sells: PriceLevel[];
+}
+
+export interface MarketInfo {
+  [key: string]: any;
+}
+
+export interface CLOBish {
+  parsedMarkets: MarketInfo;
+
+  abiDecoder?: any;
+
+  loadMarkets(): Promise<void>;
+
+  init(): Promise<void>;
+
+  ready(): boolean;
+
+  markets(req: ClobMarketsRequest): Promise<{ markets: MarketInfo }>;
+
+  orderBook(req: ClobOrderbookRequest): Promise<Orderbook>;
+
+  ticker(req: ClobTickerRequest): Promise<{ markets: MarketInfo }>;
+
+  orders(
+    req: ClobGetOrderRequest
+  ): Promise<{ orders: ClobGetOrderResponse['orders'] }>;
+
+  postOrder(req: ClobPostOrderRequest): Promise<{ txHash: string }>;
+
+  deleteOrder(req: ClobDeleteOrderRequest): Promise<{ txHash: string }>;
+
+  balances?(req: BalanceRequest): Promise<Record<string, string>>;
+
+  estimateGas(_req: NetworkSelectionRequest): {
+    gasPrice: number;
+    gasPriceToken: string;
+    gasLimit: number;
+    gasCost: number;
+  };
+}
+
 export interface Nearish extends BasicChainMethods, NearBase {
   cancelTx(account: Account, nonce: number): Promise<string>;
   getContract(tokenAddress: string, account: Account): NearContract;
 }
+
 export interface Cosmosish extends CosmosBase {
   gasPrice: number;
   nativeTokenSymbol: string;

@@ -3,16 +3,13 @@ import { patch, unpatch } from '../../services/patch';
 import { gatewayApp } from '../../../src/app';
 import {
   NETWORK_ERROR_CODE,
-  OUT_OF_GAS_ERROR_CODE,
   UNKNOWN_ERROR_ERROR_CODE,
   NETWORK_ERROR_MESSAGE,
-  OUT_OF_GAS_ERROR_MESSAGE,
   UNKNOWN_ERROR_MESSAGE,
 } from '../../../src/services/error-handler';
 import * as transactionSuccesful from '../ethereum/fixtures/transaction-succesful.json';
 import * as transactionSuccesfulReceipt from '../ethereum/fixtures/transaction-succesful-receipt.json';
 import * as transactionOutOfGas from '../ethereum/fixtures/transaction-out-of-gas.json';
-import * as transactionOutOfGasReceipt from '../ethereum/fixtures/transaction-out-of-gas-receipt.json';
 import { Avalanche } from '../../../src/chains/avalanche/avalanche';
 let avalanche: Avalanche;
 
@@ -293,22 +290,6 @@ describe('POST /network/poll', () => {
 
     expect(res.statusCode).toEqual(503);
     expect(res.body.errorCode).toEqual(UNKNOWN_ERROR_ERROR_CODE);
-  });
-
-  it('should get an OUT of GAS error for failed out of gas transactions', async () => {
-    patch(avalanche, 'getCurrentBlockNumber', () => 1);
-    patch(avalanche, 'getTransaction', () => transactionOutOfGas);
-    patch(avalanche, 'getTransactionReceipt', () => transactionOutOfGasReceipt);
-    const res = await request(gatewayApp).post('/network/poll').send({
-      chain: 'avalanche',
-      network: 'fuji',
-      txHash:
-        '0x2faeb1aa55f96c1db55f643a8cf19b0f76bf091d0b7d1b068d2e829414576362', // noqa: mock
-    });
-
-    expect(res.statusCode).toEqual(503);
-    expect(res.body.errorCode).toEqual(OUT_OF_GAS_ERROR_CODE);
-    expect(res.body.message).toEqual(OUT_OF_GAS_ERROR_MESSAGE);
   });
 
   it('should get a null in txReceipt for Tx in the mempool', async () => {

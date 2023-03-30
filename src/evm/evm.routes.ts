@@ -17,6 +17,11 @@ import {
   validateCancelRequest,
   validateNonceRequest,
 } from '../chains/ethereum/ethereum.validators';
+import {
+  validateXdcApproveRequest,
+  validateXdcAllowancesRequest,
+} from '../chains/xdc/xdc.validators';
+
 import { getChain } from '../services/connection-manager';
 import {
   AllowancesRequest,
@@ -73,7 +78,11 @@ export namespace EVMRoutes {
         req: Request<{}, {}, AllowancesRequest>,
         res: Response<AllowancesResponse | string, {}>
       ) => {
-        validateAllowancesRequest(req.body);
+        if (req.body.chain === 'xdc') {
+          validateXdcAllowancesRequest(req.body);
+        } else {
+          validateAllowancesRequest(req.body);
+        }
         const chain = await getChain<Ethereumish>(
           req.body.chain,
           req.body.network
@@ -90,7 +99,12 @@ export namespace EVMRoutes {
         req: Request<{}, {}, ApproveRequest>,
         res: Response<ApproveResponse | string, {}>
       ) => {
-        validateApproveRequest(req.body);
+        if (req.body.chain === 'xdc') {
+          validateXdcApproveRequest(req.body);
+        } else {
+          validateApproveRequest(req.body);
+        }
+
         const chain = await getChain<Ethereumish>(
           req.body.chain,
           req.body.network

@@ -4,14 +4,18 @@ import { BinanceSmartChain } from '../../chains/binance-smart-chain/binance-smar
 import { Cronos } from '../../chains/cronos/cronos';
 import { Ethereum } from '../../chains/ethereum/ethereum';
 import { Polygon } from '../../chains/polygon/polygon';
+import { Xdc } from '../../chains/xdc/xdc';
 import { Cosmos } from '../../chains/cosmos/cosmos';
 import { Harmony } from '../../chains/harmony/harmony';
+import { Injective } from '../../chains/injective/injective';
 
 import {
   AddWalletRequest,
   AddWalletResponse,
   RemoveWalletRequest,
   GetWalletResponse,
+  WalletSignRequest,
+  WalletSignResponse,
 } from './wallet.requests';
 
 import { ConfigManagerCertPassphrase } from '../config-manager-cert-passphrase';
@@ -27,6 +31,14 @@ import {
 } from '../error-handler';
 import { EthereumBase } from '../../chains/ethereum/ethereum-base';
 import { Near } from '../../chains/near/near';
+import { getChain } from '../connection-manager';
+import { Ethereumish } from '../common-interfaces';
+
+export function convertXdcAddressToEthAddress(publicKey: string): string {
+  return publicKey.length === 43 && publicKey.slice(0, 3) === 'xdc'
+    ? '0x' + publicKey.slice(3)
+    : publicKey;
+}
 
 const walletPath = './conf/wallets';
 export async function mkdirIfDoesNotExist(path: string): Promise<void> {
@@ -43,7 +55,7 @@ export async function addWallet(
   if (!passphrase) {
     throw new Error('There is no passphrase');
   }
-  let connection: EthereumBase | Near | Cosmos;
+  let connection: EthereumBase | Near | Cosmos | Injective | Xdc;
   let address: string | undefined;
   let encryptedPrivateKey: string | undefined;
 
@@ -53,10 +65,10 @@ export async function addWallet(
     connection = Avalanche.getInstance(req.network);
   } else if (req.chain === 'harmony') {
     connection = Harmony.getInstance(req.network);
-  } else if (req.chain === 'cronos') {
-    connection = Cronos.getInstance(req.network);
   } else if (req.chain === 'polygon') {
     connection = Polygon.getInstance(req.network);
+  } else if (req.chain === 'cronos') {
+    connection = Cronos.getInstance(req.network);
   } else if (req.chain === 'cosmos') {
     connection = Cosmos.getInstance(req.network);
   } else if (req.chain === 'near') {
@@ -69,6 +81,10 @@ export async function addWallet(
     connection = Near.getInstance(req.network);
   } else if (req.chain === 'binance-smart-chain') {
     connection = BinanceSmartChain.getInstance(req.network);
+  } else if (req.chain === 'xdc') {
+    connection = Xdc.getInstance(req.network);
+  } else if (req.chain === 'injective') {
+    connection = Injective.getInstance(req.network);
   } else {
     throw new HttpException(
       500,
@@ -84,6 +100,14 @@ export async function addWallet(
   try {
     if (connection instanceof EthereumBase) {
       address = connection.getWalletFromPrivateKey(req.privateKey).address;
+      encryptedPrivateKey = await connection.encrypt(
+        req.privateKey,
+        passphrase
+      );
+    } else if (connection instanceof Xdc) {
+      address = convertXdcAddressToEthAddress(
+        connection.getWalletFromPrivateKey(req.privateKey).address
+      );
       encryptedPrivateKey = await connection.encrypt(
         req.privateKey,
         passphrase
@@ -106,6 +130,21 @@ export async function addWallet(
         )
       ).accountId;
       encryptedPrivateKey = connection.encrypt(req.privateKey, passphrase);
+    } else if (connection instanceof Injective) {
+      const ethereumAddress = connection.getWalletFromPrivateKey(
+        req.privateKey
+      ).address;
+      const subaccountId = req.accountId;
+      if (subaccountId !== undefined) {
+        address = ethereumAddress + subaccountId.toString(16).padStart(24, '0');
+
+        encryptedPrivateKey = await connection.encrypt(
+          req.privateKey,
+          passphrase
+        );
+      } else {
+        throw new Error('Injective wallet requires a subaccount id');
+      }
     }
 
     if (address === undefined || encryptedPrivateKey === undefined) {
@@ -127,6 +166,14 @@ export async function addWallet(
 // if the file does not exist, this should not fail
 export async function removeWallet(req: RemoveWalletRequest): Promise<void> {
   await fse.remove(`./conf/wallets/${req.chain}/${req.address}.json`);
+}
+
+export async function signMessage(
+  req: WalletSignRequest
+): Promise<WalletSignResponse> {
+  const chain: Ethereumish = await getChain(req.chain, req.network);
+  const wallet = await chain.getWallet(req.address);
+  return { signature: await wallet.signMessage(req.message) };
 }
 
 export async function getDirectories(source: string): Promise<string[]> {

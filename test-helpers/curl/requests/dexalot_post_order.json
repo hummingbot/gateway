@@ -1,0 +1,11 @@
+{
+  "chain": "avalanche",
+  "network": "dexalot",
+  "connector": "dexalot",
+  "address": "$AVALANCHE_ADDRESS",
+  "market": "ALOT-USDC",
+  "price": "2",
+  "amount": "0.10",
+  "side": "SELL",
+  "orderType": "LIMIT"
+}

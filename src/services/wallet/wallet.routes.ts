@@ -3,18 +3,26 @@ import { Router, Request, Response } from 'express';
 
 import { asyncHandler } from '../error-handler';
 
-import { addWallet, removeWallet, getWallets } from './wallet.controllers';
+import {
+  addWallet,
+  removeWallet,
+  getWallets,
+  signMessage,
+} from './wallet.controllers';
 
 import {
   AddWalletRequest,
   AddWalletResponse,
   RemoveWalletRequest,
   GetWalletResponse,
+  WalletSignRequest,
+  WalletSignResponse,
 } from './wallet.requests';
 
 import {
   validateAddWalletRequest,
   validateRemoveWalletRequest,
+  validateWalletSignRequest,
 } from './wallet.validators';
 
 export namespace WalletRoutes {
@@ -51,6 +59,21 @@ export namespace WalletRoutes {
         validateRemoveWalletRequest(req.body);
         await removeWallet(req.body);
         res.status(200).json();
+      }
+    )
+  );
+
+  router.get(
+    '/sign',
+    asyncHandler(
+      async (
+        req: Request<{}, {}, WalletSignRequest>,
+        res: Response<WalletSignResponse, {}>
+      ) => {
+        validateWalletSignRequest(req.query);
+        res
+          .status(200)
+          .json(await signMessage(<WalletSignRequest>(<unknown>req.query)));
       }
     )
   );

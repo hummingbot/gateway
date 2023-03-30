@@ -20,23 +20,23 @@ let harmony: Harmony;
 let defikingdoms: Defikingdoms;
 
 const WONE = new Token(
-  1666600000,
-  '0xcF664087a5bB0237a0BAd6742852ec6c8d69A27a',
+  1666700000,
+  '0x7466d7d0C21Fa05F32F5a0Fa27e12bdC06348Ce2',
   18,
   'WONE'
 );
 const ETH = new Token(
-  1666600000,
-  '0x6983D1E6DEf3690C4d616b13597A09e6193EA013',
+  1666700000,
+  '0x1E120B3b4aF96e7F394ECAF84375b1C661830013',
   18,
   'ETH'
 );
 
 beforeAll(async () => {
-  harmony = Harmony.getInstance('mainnet');
+  harmony = Harmony.getInstance('testnet');
   patchEVMNonceManager(harmony.nonceManager);
 
-  defikingdoms = Defikingdoms.getInstance('harmony', 'mainnet');
+  defikingdoms = Defikingdoms.getInstance('harmony', 'testnet');
   await defikingdoms.init();
 });
 
