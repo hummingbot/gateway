@@ -284,7 +284,7 @@ export class ZigZag implements ZigZagish {
 
           const quoteSellAmount = ethers.BigNumber.from(order.sellAmount);
           const quoteBuyAmount = ethers.BigNumber.from(order.buyAmount);
-          if (side === 'buy' && quoteSellAmount.lt(stepBuyAmount)) continue;
+          if (side === 'buy' && quoteSellAmount.lt(stepBuyAmount)) return;
 
           const quoteSellToken = this.tokenList[order.sellToken];
           const quoteBuyToken = this.tokenList[order.buyToken];
