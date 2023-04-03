@@ -9,6 +9,7 @@ import { ZigZagTrade } from '../../services/common-interfaces';
 import { ZigZagish } from '../../services/common-interfaces';
 import { logger } from '../../services/logger';
 import { EVMTxBroadcaster } from '../../chains/ethereum/evm.broadcaster';
+import { abi } from './zigzag.exchange.abi.json';
 
 // https://api.arbitrum.zigzag.exchange/v1/info
 
@@ -80,7 +81,6 @@ export class ZigZag implements ZigZagish {
   private _ready = false;
   private _chain: Ethereum;
   private _network: string;
-  private _abi = require('./zigzag.exchange.abi.json');
   private _router: Contract;
   private tokenList: Record<string, Token> = {}; // keep track of tokens that are in a ZigZag market
   // public markets: Array<string> = []; // keep track of ZigZag markets, ZZ-USDT
@@ -95,7 +95,7 @@ export class ZigZag implements ZigZagish {
     this._network = network;
     this._router = new Contract(
       this.config.contractAddress(this._network),
-      this._abi,
+      abi,
       this._chain.provider
     );
   }
