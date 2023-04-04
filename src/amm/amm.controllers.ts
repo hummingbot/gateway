@@ -59,7 +59,6 @@ import {
   UniswapLPish,
   ZigZagish,
 } from '../services/common-interfaces';
-// import { ZigZag } from '../connectors/zigzag/zigzag';
 import {
   price as zigzagPrice,
   trade as zigzagTrade,
