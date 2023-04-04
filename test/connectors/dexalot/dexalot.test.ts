@@ -12,13 +12,13 @@ let dexalot: DexalotCLOB;
 
 const TX_HASH =
   '0xf6f81a37796bd06a797484467302e4d6f72832409545e2e01feb86dd8b22e4b2'; // noqa: mock
-const MARKET = 'ALOT-USDC';
+const MARKET = 'BTC.B-USDC';
 
 const MARKETS = {
-  baseSymbol: fromUtf8('ALOT'),
+  baseSymbol: fromUtf8('BTC.b'),
   quoteSymbol: fromUtf8('USDC'),
-  buyBookId: fromUtf8('ALOT-USDC-BUYBOOK'),
-  sellBookId: fromUtf8('ALOT-USDC-SELLBOOK'),
+  buyBookId: fromUtf8('BTC.b/USDC-BUYBOOK'),
+  sellBookId: fromUtf8('BTC.b/USDC-SELLBOOK'),
   minTradeAmount: BigNumber.from('5'),
   maxTradeAmount: BigNumber.from('5000'),
   auctionPrice: BigNumber.from('5'),
@@ -215,7 +215,7 @@ describe('GET /clob/ticker', () => {
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(200)
-      .expect((res) => expect(res.body.markets.baseSymbol).toEqual('ALOT'))
+      .expect((res) => expect(res.body.markets.baseSymbol).toEqual('BTC.b'))
       .expect((res) => expect(res.body.markets.quoteSymbol).toEqual('USDC'));
   });
 
