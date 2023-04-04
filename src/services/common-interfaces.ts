@@ -317,7 +317,6 @@ export interface ZigZagTrade {
 
 export interface ZigZagish {
   makerFee: number;
-  // takerFee: number;
 
   init(): Promise<void>;
 
