@@ -88,6 +88,7 @@ export class ZigZag implements ZigZagish {
   public config;
   public makerFee = 0.0;
   public takerFee = 0.0;
+  gasLimitEstimate: number;
 
   private constructor(network: string) {
     this._chain = Ethereum.getInstance(network);
@@ -98,6 +99,7 @@ export class ZigZag implements ZigZagish {
       abi,
       this._chain.provider
     );
+    this.gasLimitEstimate = this._chain.gasLimitTransaction;
   }
 
   public static getInstance(network: string): ZigZag {
