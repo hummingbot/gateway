@@ -103,6 +103,7 @@ export const swaggerDocument = SwaggerManager.generateSwaggerJson(
     './docs/swagger/amm-liquidity-routes.yml',
     './docs/swagger/evm-routes.yml',
     './docs/swagger/network-routes.yml',
+    './docs/swagger/algorand-routes.yml',
     './docs/swagger/near-routes.yml',
     './docs/swagger/cosmos-routes.yml',
     './docs/swagger/injective-routes.yml',

@@ -14,7 +14,7 @@ host: 'localhost:15888'
 
 tags:
   - name: 'system'
-    description: 'Get information about the currently running Gateway program'  
+    description: 'Get information about the currently running Gateway program'
   - name: 'network'
     description: 'Get information about specific networks'
   - name: 'wallet'
@@ -27,6 +27,8 @@ tags:
     description: 'Interact with AMM LP contracts'
   - name: 'evm'
     description: 'Interact with EVM based blockchains'
+  - name: 'algorand'
+    description: 'Interact with the Algorand blockchain'
   - name: 'cosmos'
     description: 'Interact with the Cosmos blockchain'
   - name: 'near'

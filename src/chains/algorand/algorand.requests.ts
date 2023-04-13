@@ -7,5 +7,5 @@ export type PollResponse = {
   currentBlock: number;
   txBlock: number | null;
   txHash: string;
-  fee: string;
+  fee: number;
 };
