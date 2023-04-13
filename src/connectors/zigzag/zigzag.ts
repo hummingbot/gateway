@@ -86,8 +86,6 @@ export class ZigZag implements ZigZagish {
   // public markets: Array<string> = []; // keep track of ZigZag markets, ZZ-USDT
   public markets: Array<string> = []; // keep track of ZigZag markets, 0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9-0xf4037f59c92c9893c43c2372286699430310cfe7
   public config;
-  public makerFee = 0.0;
-  public takerFee = 0.0;
   gasLimitEstimate: number;
 
   private constructor(network: string) {
@@ -150,8 +148,6 @@ export class ZigZag implements ZigZagish {
           base.address.toLowerCase() + '-' + quote.address.toLowerCase()
         );
       }
-      this.makerFee = zigZagData.exchange.makerVolumeFee;
-      this.takerFee = zigZagData.exchange.takerVolumeFee;
     }
 
     this._ready = true;
@@ -299,9 +295,7 @@ export class ZigZag implements ZigZagish {
             ethers.utils.formatUnits(quoteBuyAmount, quoteBuyToken.decimals)
           );
 
-          const thisPrice =
-            (quoteSellAmountFormated * (1 - this.takerFee)) /
-            (quoteBuyAmountFormated * (1 - this.makerFee));
+          const thisPrice = quoteSellAmountFormated / quoteBuyAmountFormated;
           if (thisPrice > marketSwapPrice) {
             marketSwapPrice = thisPrice;
             marketQuoteOrder = currentOrderBook[i];

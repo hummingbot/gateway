@@ -73,7 +73,7 @@ export async function price(req: PriceRequest): Promise<PriceResponse> {
   // we currently use the presence of routerAbi to distinguish Uniswapish from RefAMMish
   if ('routerAbi' in connector) {
     return uniswapPrice(<Ethereumish>chain, connector, req);
-  } else if ('makerFee' in connector) {
+  } else if ('estimate' in connector) {
     return zigzagPrice(<Ethereumish>chain, connector as any, req);
   } else {
     return refPrice(<Nearish>chain, connector, req);
@@ -89,7 +89,7 @@ export async function trade(req: TradeRequest): Promise<TradeResponse> {
   // we currently use the presence of routerAbi to distinguish Uniswapish from RefAMMish
   if ('routerAbi' in connector) {
     return uniswapTrade(<Ethereumish>chain, connector, req);
-  } else if ('makerFee' in connector) {
+  } else if ('estimate' in connector) {
     return zigzagTrade(<Ethereumish>chain, connector as any, req);
   } else {
     return refTrade(<Nearish>chain, connector, req);
