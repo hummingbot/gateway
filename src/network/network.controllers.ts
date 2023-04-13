@@ -20,6 +20,7 @@ import { EthereumBase, TokenInfo } from '../chains/ethereum/ethereum-base';
 import { Cronos } from '../chains/cronos/cronos';
 import { Near } from '../chains/near/near';
 import { Nearish, Xdcish } from '../services/common-interfaces';
+import { Algorand } from '../chains/algorand/algorand';
 
 export async function getStatus(
   req: StatusRequest
@@ -28,12 +29,15 @@ export async function getStatus(
   let connections: any[] = [];
   let chain: string;
   let chainId: number;
+  let network: string;
   let rpcUrl: string;
   let currentBlockNumber: number | undefined;
   let nativeCurrency: string;
 
   if (req.chain) {
-    if (req.chain === 'avalanche') {
+    if (req.chain == 'algorand') {
+      connections.push(await Algorand.getInstance(req.network as string));
+    } else if (req.chain === 'avalanche') {
       connections.push(Avalanche.getInstance(req.network as string));
     } else if (req.chain === 'binance-smart-chain') {
       connections.push(BinanceSmartChain.getInstance(req.network as string));
@@ -59,6 +63,11 @@ export async function getStatus(
       );
     }
   } else {
+    const algorandConnections = Algorand.getConnectedInstances();
+    connections = connections.concat(
+      algorandConnections ? Object.values(algorandConnections) : []
+    );
+
     const avalancheConnections = Avalanche.getConnectedInstances();
     connections = connections.concat(
       avalancheConnections ? Object.values(avalancheConnections) : []
@@ -109,6 +118,7 @@ export async function getStatus(
     }
     chain = connection.chain;
     chainId = connection.chainId;
+    network = connection.network;
     rpcUrl = connection.rpcUrl;
     nativeCurrency = connection.nativeTokenSymbol;
 
@@ -120,6 +130,7 @@ export async function getStatus(
     statuses.push({
       chain,
       chainId,
+      network,
       rpcUrl,
       currentBlockNumber,
       nativeCurrency,

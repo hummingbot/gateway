@@ -34,8 +34,9 @@ import { Near } from '../chains/near/near';
 import { Ref } from '../connectors/ref/ref';
 import { Xsswap } from '../connectors/xsswap/xsswap';
 import { DexalotCLOB } from '../connectors/dexalot/dexalot';
+import { Algorand } from '../chains/algorand/algorand';
 
-export type ChainUnion = Ethereumish | Nearish | Injective | Xdcish;
+export type ChainUnion = Algorand | Ethereumish | Nearish | Injective | Xdcish;
 
 export type Chain<T> = T extends Ethereumish
   ? Ethereumish
@@ -53,7 +54,8 @@ export async function getChain<T>(
 ): Promise<Chain<T>> {
   let chainInstance: ChainUnion;
 
-  if (chain === 'ethereum') chainInstance = Ethereum.getInstance(network);
+  if (chain === 'algorand') chainInstance = Algorand.getInstance(network);
+  else if (chain === 'ethereum') chainInstance = Ethereum.getInstance(network);
   else if (chain === 'avalanche')
     chainInstance = Avalanche.getInstance(network);
   else if (chain === 'polygon') chainInstance = Polygon.getInstance(network);
