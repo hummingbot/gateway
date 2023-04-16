@@ -37,3 +37,18 @@ paths:
         '200':
           schema:
             $ref: '#/definitions/BalancesResponse'
+  /algorand/assets:
+    get:
+      tags:
+        - 'algorand'
+      summary: 'Get assets info'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'query'
+          name: 'query'
+          required: true
+          schema:
+            $ref: '#/definitions/AlgorandAssetsRequest'

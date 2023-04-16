@@ -62,12 +62,17 @@ beforeAll(async () => {
 beforeEach(() => {
   setUpTempDir('algorand-tests');
   patchCurrentBlockNumber();
+  patchCertPassphrase();
 });
 
 afterEach(() => {
   tearDownTempDir();
   unpatch();
 });
+
+const patchCertPassphrase = () => {
+  patch(ConfigManagerCertPassphrase, 'readPassphrase', () => 'a');
+};
 
 const patchCurrentBlockNumber = (
   withError: boolean = false,
@@ -337,8 +342,6 @@ describe('POST /algorand/poll', () => {
 });
 
 describe('test managing Algorand wallets', () => {
-  patch(ConfigManagerCertPassphrase, 'readPassphrase', () => 'a');
-
   test('adding and removing a wallet', async () => {
     await request(gatewayApp)
       .get('/wallet')
@@ -391,7 +394,6 @@ describe('test managing Algorand wallets', () => {
 });
 
 describe('POST /algorand/balances', () => {
-  patch(ConfigManagerCertPassphrase, 'readPassphrase', () => 'a');
   const nativeToken = 'ALGO';
   const otherToken = 'USDC';
   const expectedBalance = '9';
@@ -513,6 +515,56 @@ describe('POST /algorand/balances', () => {
         network: NETWORK,
       })
       .expect(404);
+  });
+});
+
+describe('GET /algorand/assets', () => {
+  it('should return 200 with all assets if assetSymbols not provided', async () => {
+    await request(gatewayApp)
+      .get(`/algorand/assets`)
+      .query({
+        network: NETWORK,
+      })
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .expect((resp) => {
+        expect(resp.body).toEqual({
+          assets: [
+            {
+              symbol: 'ALGO',
+              assetId: 0,
+              decimals: ALGO_DECIMALS,
+            },
+            {
+              symbol: 'USDC',
+              assetId: 10458941,
+              decimals: USDC_DECIMALS,
+            },
+          ],
+        });
+      });
+  });
+
+  it('should return 200 with the requested asset', async () => {
+    await request(gatewayApp)
+      .get(`/algorand/assets`)
+      .query({
+        network: NETWORK,
+        assetSymbols: ['USDC'],
+      })
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .expect((resp) => {
+        expect(resp.body).toEqual({
+          assets: [
+            {
+              symbol: 'USDC',
+              assetId: 10458941,
+              decimals: USDC_DECIMALS,
+            },
+          ],
+        });
+      });
   });
 });
 

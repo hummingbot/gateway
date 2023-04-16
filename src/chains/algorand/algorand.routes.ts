@@ -2,14 +2,20 @@
 /* eslint-disable @typescript-eslint/ban-types */
 import { Response, Router, Request, NextFunction } from 'express';
 import { asyncHandler } from '../../services/error-handler';
-import { PollRequest, PollResponse } from './algorand.requests';
+import {
+  AssetsRequest,
+  AssetsResponse,
+  PollRequest,
+  PollResponse,
+} from './algorand.requests';
 import {
   validateAlgorandBalanceRequest,
   validateAlgorandPollRequest,
+  validateAssetsRequest,
 } from './algorand.validators';
 import { getChain } from '../../services/connection-manager';
 import { Algorand } from './algorand';
-import { balances, poll } from './algorand.controller';
+import { balances, getAssets, poll } from './algorand.controller';
 import {
   BalanceRequest,
   BalanceResponse,
@@ -47,6 +53,19 @@ export namespace AlgorandRoutes {
         );
 
         res.status(200).json(await balances(chain, req.body));
+      }
+    )
+  );
+
+  router.get(
+    '/assets',
+    asyncHandler(
+      async (
+        req: Request<{}, {}, {}, AssetsRequest>,
+        res: Response<AssetsResponse, {}>
+      ) => {
+        validateAssetsRequest(req.query);
+        res.status(200).json(await getAssets(req.query));
       }
     )
   );

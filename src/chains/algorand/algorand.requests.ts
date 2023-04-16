@@ -9,3 +9,18 @@ export type PollResponse = {
   txHash: string;
   fee: number;
 };
+
+export type AssetsRequest = {
+  network?: string;
+  assetSymbols?: string[];
+};
+
+export interface AlgorandAsset {
+  symbol: string;
+  assetId: number;
+  decimals: number;
+}
+
+export type AssetsResponse = {
+  assets: AlgorandAsset[];
+};

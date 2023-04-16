@@ -1,4 +1,5 @@
 import {
+  invalidTokenSymbolsError,
   mkRequestValidator,
   mkValidator,
   RequestValidator,
@@ -35,3 +36,24 @@ export const validateAlgorandBalanceRequest: RequestValidator =
     validateAlgorandAddress,
     validateTokenSymbols,
   ]);
+
+export const validateAssetSymbols: Validator = (req: any) => {
+  const errors: Array<string> = [];
+  if (req.assetSymbols) {
+    if (Array.isArray(req.assetSymbols)) {
+      req.tokenSymbols.forEach((symbol: any) => {
+        if (typeof symbol !== 'string') {
+          errors.push(invalidTokenSymbolsError);
+        }
+      });
+    } else if (typeof req.assetSymbols !== 'string') {
+      errors.push(invalidTokenSymbolsError);
+    }
+  }
+  return errors;
+};
+
+export const validateAssetsRequest: RequestValidator = mkRequestValidator([
+  validateNetwork,
+  validateAssetSymbols,
+]);

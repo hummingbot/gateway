@@ -1,7 +1,7 @@
 import LRUCache from 'lru-cache';
 import { getAlgorandConfig } from './algorand.config';
 import { Algodv2, Indexer, mnemonicToSecretKey } from 'algosdk';
-import { PollResponse } from './algorand.requests';
+import { AlgorandAsset, PollResponse } from './algorand.requests';
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 import { TokenListType, walletPath } from '../../services/base';
 import fse from 'fs-extra';
@@ -14,12 +14,6 @@ type AssetListType = TokenListType;
 export interface AlgorandAccount {
   address: string;
   mnemonic: string;
-}
-
-export interface AlgorandAsset {
-  symbol: string;
-  assetId: number;
-  decimals: number;
 }
 
 export class Algorand {
@@ -60,6 +54,10 @@ export class Algorand {
 
   public get network(): string {
     return this._network;
+  }
+
+  public get storedAssetList(): AlgorandAsset[] {
+    return Object.values(this._assetMap);
   }
 
   public ready(): boolean {
@@ -252,6 +250,10 @@ export class Algorand {
     return (
       accountInfo.amount * parseFloat(`1e-${algoAsset.decimals}`)
     ).toString();
+  }
+
+  public getAssetForSymbol(symbol: string): AlgorandAsset | null {
+    return this._assetMap[symbol] ? this._assetMap[symbol] : null;
   }
 
   private async loadAssets(): Promise<void> {

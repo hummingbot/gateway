@@ -2132,3 +2132,23 @@ definitions:
         type: 'integer'
         example: 1000
 
+  AlgorandAssetsRequest:
+    type: 'object'
+    properties:
+      network:
+        type: 'string'
+        example: 'testnet'
+      assetSymbols:
+        type: 'array'
+        items: 'string'
+        example: [ 'ALGO', 'USDC' ]
+
+  AlgorandAssetsResponse:
+    type: 'object'
+    required:
+      - 'assets'
+    properties:
+      assets:
+        type: 'array'
+        items: 'object'
+        example: [ { symbol: 'ALGO', assetId: 0, decimal: 6 } ]
