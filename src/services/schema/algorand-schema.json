@@ -16,12 +16,20 @@
             },
             "indexerURL": {
               "type": "string"
+            },
+            "assetListType": {
+              "type": "string"
+            },
+            "assetListSource": {
+              "type": "string"
             }
           },
           "required": [
             "chainId",
             "nodeURL",
-            "indexerURL"
+            "indexerURL",
+            "assetListType",
+            "assetListSource"
           ],
           "additionalProperties": false
         }

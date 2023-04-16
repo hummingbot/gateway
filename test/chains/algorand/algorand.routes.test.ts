@@ -1,32 +1,71 @@
 import request from 'supertest';
 import { gatewayApp } from '../../../src/app';
 import { Algorand } from '../../../src/chains/algorand/algorand';
-import { patch, unpatch } from '../../services/patch';
+import {
+  patch,
+  setUpTempDir,
+  tearDownTempDir,
+  unpatch,
+} from '../../services/patch';
 import { getAlgorandConfig } from '../../../src/chains/algorand/algorand.config';
 import {
   NETWORK_ERROR_CODE,
   NETWORK_ERROR_MESSAGE,
   UNKNOWN_ERROR_ERROR_CODE,
 } from '../../../src/services/error-handler';
+import { ConfigManagerCertPassphrase } from '../../../src/services/config-manager-cert-passphrase';
 
 let algorand: Algorand;
 const EXPECTED_CURRENT_BLOCK_NUMBER = 100;
 const CHAIN_NAME = 'algorand';
-const NETWORK = 'mainnet';
+const NETWORK = 'testnet';
 const CONFIG = getAlgorandConfig(NETWORK);
 const NATIVE_CURRENCY = CONFIG.nativeCurrencySymbol;
+const ACCOUNT_ADDRESS =
+  'FJZ4AJ3EWSNV4PXULFTTT4R5PLMNASEIMWEK5H4EY6E67RGJNSEY7OZEMA'; // noqa: mock
+const MNEUMONIC =
+  'share' +
+  ' general' +
+  ' gasp' +
+  ' trial' +
+  ' until' +
+  ' jelly' +
+  ' mobile' +
+  ' category' +
+  ' viable' +
+  ' meadow' +
+  ' civil' +
+  ' pigeon' +
+  ' dream' +
+  ' vehicle' +
+  ' process' +
+  ' crack' +
+  ' devote' +
+  ' outside' +
+  ' ankle' +
+  ' mobile' +
+  ' analyst' +
+  ' stomach' +
+  ' dignity' +
+  ' above' +
+  ' vast'; // mock
+const ALGO_DECIMALS = 6;
+const USDC_DECIMALS = 6;
 
 beforeAll(async () => {
   algorand = Algorand.getInstance(NETWORK);
+  patchGetAssetData();
   patchCurrentBlockNumber();
   await algorand.init();
 });
 
 beforeEach(() => {
+  setUpTempDir('algorand-tests');
   patchCurrentBlockNumber();
 });
 
 afterEach(() => {
+  tearDownTempDir();
   unpatch();
 });
 
@@ -44,6 +83,48 @@ const patchCurrentBlockNumber = (
             return { 'next-version-round': expectedCurrentBlockNumber };
           },
         };
+  });
+};
+
+const patchGetAssetData = () => {
+  patch(algorand, 'getAssetData', async () => {
+    return [
+      {
+        id: '0',
+        is_liquidity_token: false,
+        name: 'Algorand',
+        unit_name: 'ALGO',
+        decimals: ALGO_DECIMALS,
+        total_amount: null,
+        url: 'https://algorand.org',
+        is_verified: true,
+        clawback_address: '',
+        liquidity_in_usd: '744662.849801994861',
+        last_day_volume_in_usd: '58.407348762305',
+        last_week_volume_in_usd: '2261.387003578427',
+        last_day_price_change: '-0.156310',
+        is_stable: false,
+        is_wrapped: false,
+      },
+      {
+        id: '10458941',
+        is_liquidity_token: false,
+        name: 'USDC',
+        unit_name: 'USDC',
+        decimals: USDC_DECIMALS,
+        total_amount: '18446744073709551615',
+        url: 'https://centre.io',
+        is_verified: true,
+        clawback_address:
+          'XM2W7VZODABS6RAL3FENBRKCOF6XLOQZZWIVVZTBYCVH2ADRYKN53CQLXM',
+        liquidity_in_usd: '210464.272543000000',
+        last_day_volume_in_usd: '8.000000000000',
+        last_week_volume_in_usd: '6198.073873000000',
+        last_day_price_change: '0.000000',
+        is_stable: false,
+        is_wrapped: false,
+      },
+    ];
   });
 };
 
@@ -74,6 +155,7 @@ describe('GET /network/status', () => {
         nativeCurrency: NATIVE_CURRENCY,
       });
   });
+
   it('should return 200 with a status list, if an instance is already instantiated', async () => {
     await request(gatewayApp)
       .get(`/network/status`)
@@ -88,9 +170,9 @@ describe('GET /network/status', () => {
         },
       ]);
 
-    const testnetAlgorandChain = Algorand.getInstance('testnet');
-    const testnetBlockNumber = EXPECTED_CURRENT_BLOCK_NUMBER + 1;
-    patchCurrentBlockNumber(false, testnetAlgorandChain, testnetBlockNumber);
+    const mainnetAlgorandChain = Algorand.getInstance('mainnet');
+    const mainnetBlockNumber = EXPECTED_CURRENT_BLOCK_NUMBER + 1;
+    patchCurrentBlockNumber(false, mainnetAlgorandChain, mainnetBlockNumber);
 
     await request(gatewayApp)
       .get(`/network/status`)
@@ -99,8 +181,8 @@ describe('GET /network/status', () => {
       .expect(200)
       .expect([
         {
-          network: 'testnet',
-          currentBlockNumber: testnetBlockNumber,
+          network: 'mainnet',
+          currentBlockNumber: mainnetBlockNumber,
           nativeCurrency: NATIVE_CURRENCY,
         },
         {
@@ -253,3 +335,185 @@ describe('POST /algorand/poll', () => {
       });
   });
 });
+
+describe('test managing Algorand wallets', () => {
+  patch(ConfigManagerCertPassphrase, 'readPassphrase', () => 'a');
+
+  test('adding and removing a wallet', async () => {
+    await request(gatewayApp)
+      .get('/wallet')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .expect([]);
+
+    await request(gatewayApp)
+      .post('/wallet/add')
+      .send({
+        chain: CHAIN_NAME,
+        network: NETWORK,
+        privateKey: MNEUMONIC,
+      })
+      .expect(200)
+      .expect({
+        address: ACCOUNT_ADDRESS,
+      });
+
+    await request(gatewayApp)
+      .get('/wallet')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .expect([
+        {
+          chain: CHAIN_NAME,
+          walletAddresses: [ACCOUNT_ADDRESS],
+        },
+      ]);
+
+    await request(gatewayApp)
+      .delete('/wallet/remove')
+      .send({
+        chain: CHAIN_NAME,
+        address: ACCOUNT_ADDRESS,
+      })
+      .expect(200);
+
+    await request(gatewayApp)
+      .get('/wallet')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .expect([
+        {
+          chain: CHAIN_NAME,
+          walletAddresses: [],
+        },
+      ]);
+  });
+});
+
+describe('POST /algorand/balances', () => {
+  patch(ConfigManagerCertPassphrase, 'readPassphrase', () => 'a');
+  const nativeToken = 'ALGO';
+  const otherToken = 'USDC';
+  const expectedBalance = '9';
+
+  it('should return 200 with correct balance for native token', async () => {
+    patch(algorand.algod, 'accountInformation', (_: any) => {
+      return {
+        do: async () => {
+          return {
+            amount:
+              parseFloat(expectedBalance) * parseFloat(`1e${ALGO_DECIMALS}`),
+          };
+        },
+      };
+    });
+
+    await request(gatewayApp).post('/wallet/add').send({
+      chain: CHAIN_NAME,
+      network: NETWORK,
+      privateKey: MNEUMONIC,
+    });
+
+    await request(gatewayApp)
+      .post(`/algorand/balances`)
+      .send({
+        chain: CHAIN_NAME,
+        network: NETWORK,
+        address: ACCOUNT_ADDRESS,
+        tokenSymbols: [nativeToken],
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .expect((resp) => {
+        expect(resp.body).toHaveProperty('timestamp');
+        expect(resp.body).toHaveProperty('latency');
+        expect(resp.body.network).toEqual(NETWORK);
+        expect(resp.body.balances[nativeToken]).toEqual(expectedBalance);
+      });
+  });
+
+  it('should return 200 with correct balance for non-native token', async () => {
+    patch(algorand.algod, 'accountAssetInformation', (_: any, __: any) => {
+      return {
+        do: async () => {
+          return {
+            'asset-holding': {
+              amount: Math.round(
+                parseFloat(expectedBalance) * parseFloat(`1e${USDC_DECIMALS}`)
+              ),
+            },
+          };
+        },
+      };
+    });
+
+    await request(gatewayApp).post('/wallet/add').send({
+      chain: CHAIN_NAME,
+      network: NETWORK,
+      privateKey: MNEUMONIC,
+    });
+
+    await request(gatewayApp)
+      .post(`/algorand/balances`)
+      .send({
+        chain: CHAIN_NAME,
+        network: NETWORK,
+        address: ACCOUNT_ADDRESS,
+        tokenSymbols: [otherToken],
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .expect((resp) => {
+        expect(resp.body).toHaveProperty('timestamp');
+        expect(resp.body).toHaveProperty('latency');
+        expect(resp.body.network).toEqual(NETWORK);
+        expect(resp.body.balances).toEqual({ USDC: expectedBalance });
+      });
+  });
+
+  it('should return 200 with zero balance', async () => {
+    patch(algorand.algod, 'accountAssetInformation', (_: any, __: any) => {
+      const error: any = new Error('account asset info not found');
+      error.code = 404;
+      throw error;
+    });
+
+    await request(gatewayApp).post('/wallet/add').send({
+      chain: CHAIN_NAME,
+      network: NETWORK,
+      privateKey: MNEUMONIC,
+    });
+
+    await request(gatewayApp)
+      .post(`/algorand/balances`)
+      .send({
+        chain: CHAIN_NAME,
+        network: NETWORK,
+        address: ACCOUNT_ADDRESS,
+        tokenSymbols: [otherToken],
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .expect((resp) => {
+        expect(resp.body).toHaveProperty('timestamp');
+        expect(resp.body).toHaveProperty('latency');
+        expect(resp.body.network).toEqual(NETWORK);
+        expect(resp.body.balances).toEqual({ USDC: '0' });
+      });
+  });
+
+  it('should return 404 when parameters are invalid/incomplete', async () => {
+    await request(gatewayApp)
+      .post(`/algorand/balances`)
+      .send({
+        chain: CHAIN_NAME,
+        network: NETWORK,
+      })
+      .expect(404);
+  });
+});
+
+// todo: test opt-in

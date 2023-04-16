@@ -1,24 +1,53 @@
 import LRUCache from 'lru-cache';
 import { getAlgorandConfig } from './algorand.config';
-import { Algodv2, Indexer } from 'algosdk';
-import { Token } from '../cosmos/cosmos-base';
+import { Algodv2, Indexer, mnemonicToSecretKey } from 'algosdk';
 import { PollResponse } from './algorand.requests';
+import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
+import { TokenListType, walletPath } from '../../services/base';
+import fse from 'fs-extra';
+import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
+import axios from 'axios';
+import { promises as fs } from 'fs';
+
+type AssetListType = TokenListType;
+
+export interface AlgorandAccount {
+  address: string;
+  mnemonic: string;
+}
+
+export interface AlgorandAsset {
+  symbol: string;
+  assetId: number;
+  decimals: number;
+}
 
 export class Algorand {
   public nativeTokenSymbol;
-  protected tokenList: Token[] = [];
+  private _assetMap: Record<string, AlgorandAsset> = {};
   private static _instances: LRUCache<string, Algorand>;
+  private _chain: string = 'algorand';
   private _network: string;
   private _algod: Algodv2;
   private _indexer: Indexer;
   private _ready: boolean = false;
+  private _assetListType: AssetListType;
+  private _assetListSource: string;
 
-  constructor(network: string, nodeUrl: string, indexerUrl: string) {
+  constructor(
+    network: string,
+    nodeUrl: string,
+    indexerUrl: string,
+    assetListType: AssetListType,
+    assetListSource: string
+  ) {
     this._network = network;
     const config = getAlgorandConfig(network);
     this.nativeTokenSymbol = config.nativeCurrencySymbol;
     this._algod = new Algodv2('', nodeUrl);
     this._indexer = new Indexer('', indexerUrl, 'undefined');
+    this._assetListType = assetListType;
+    this._assetListSource = assetListSource;
   }
 
   public get algod(): Algodv2 {
@@ -39,6 +68,7 @@ export class Algorand {
 
   public async init(): Promise<void> {
     // todo: common EVM-like interface
+    await this.loadAssets();
     this._ready = true;
     return;
   }
@@ -59,9 +89,17 @@ export class Algorand {
       if (network !== null) {
         const nodeUrl = config.network.nodeURL;
         const indexerUrl = config.network.indexerURL;
+        const assetListType = config.network.assetListType as TokenListType;
+        const assetListSource = config.network.assetListSource;
         Algorand._instances.set(
           config.network.name,
-          new Algorand(network, nodeUrl, indexerUrl)
+          new Algorand(
+            network,
+            nodeUrl,
+            indexerUrl,
+            assetListType,
+            assetListSource
+          )
         );
       } else {
         throw new Error(
@@ -125,5 +163,117 @@ export class Algorand {
       txHash: '0x' + transactionId,
       fee,
     };
+  }
+
+  public getAccountFromPrivateKey(mnemonic: string): AlgorandAccount {
+    const account = mnemonicToSecretKey(mnemonic);
+    const address = account.addr;
+
+    return {
+      address,
+      mnemonic,
+    };
+  }
+
+  async getAccountFromAddress(address: string): Promise<AlgorandAccount> {
+    const path = `${walletPath}/${this._chain}`;
+    const encryptedMnemonic: string = await fse.readFile(
+      `${path}/${address}.json`,
+      'utf8'
+    );
+    const passphrase = ConfigManagerCertPassphrase.readPassphrase();
+    if (!passphrase) {
+      throw new Error('missing passphrase');
+    }
+    const mnemonic = this.decrypt(encryptedMnemonic, passphrase);
+
+    return this.getAccountFromPrivateKey(mnemonic);
+  }
+
+  public encrypt(mnemonic: string, password: string): string {
+    const iv = randomBytes(16);
+    const key = Buffer.alloc(32);
+    key.write(password);
+
+    const cipher = createCipheriv('aes-256-cbc', key, iv);
+
+    const encrypted = Buffer.concat([cipher.update(mnemonic), cipher.final()]);
+
+    return `${iv.toString('hex')}:${encrypted.toString('hex')}`;
+  }
+
+  public decrypt(encryptedMnemonic: string, password: string): string {
+    const [iv, encryptedKey] = encryptedMnemonic.split(':');
+    const key = Buffer.alloc(32);
+    key.write(password);
+
+    const decipher = createDecipheriv(
+      'aes-256-cbc',
+      key,
+      Buffer.from(iv, 'hex')
+    );
+
+    const decrpyted = Buffer.concat([
+      decipher.update(Buffer.from(encryptedKey, 'hex')),
+      decipher.final(),
+    ]);
+
+    return decrpyted.toString();
+  }
+
+  public async getAssetBalance(
+    account: AlgorandAccount,
+    assetName: string
+  ): Promise<string> {
+    const algorandAsset = this._assetMap[assetName];
+    let balance;
+
+    try {
+      const response = await this._algod
+        .accountAssetInformation(account.address, algorandAsset.assetId)
+        .do();
+      balance = response['asset-holding'].amount;
+    } catch (error: any) {
+      if (!error.message.includes('account asset info not found')) {
+        throw error;
+      }
+      balance = 0;
+    }
+
+    const amount = balance * parseFloat(`1e-${algorandAsset.decimals}`);
+    return amount.toString();
+  }
+
+  public async getNativeBalance(account: AlgorandAccount): Promise<string> {
+    const accountInfo = await this._algod
+      .accountInformation(account.address)
+      .do();
+    const algoAsset = this._assetMap[this.nativeTokenSymbol];
+    return (
+      accountInfo.amount * parseFloat(`1e-${algoAsset.decimals}`)
+    ).toString();
+  }
+
+  private async loadAssets(): Promise<void> {
+    const assetData = await this.getAssetData();
+    for (const result of assetData) {
+      this._assetMap[result.unit_name] = {
+        symbol: result.unit_name,
+        assetId: +result.id,
+        decimals: result.decimals,
+      };
+    }
+  }
+
+  private async getAssetData(): Promise<any> {
+    let assetData;
+    if (this._assetListType === 'URL') {
+      const response = await axios.get(this._assetListSource);
+      assetData = response.data.results;
+    } else {
+      const data = JSON.parse(await fs.readFile(this._assetListSource, 'utf8'));
+      assetData = data.results;
+    }
+    return assetData;
   }
 }

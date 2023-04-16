@@ -33,6 +33,7 @@ import { EthereumBase } from '../../chains/ethereum/ethereum-base';
 import { Near } from '../../chains/near/near';
 import { getChain } from '../connection-manager';
 import { Ethereumish } from '../common-interfaces';
+import { Algorand } from '../../chains/algorand/algorand';
 
 export function convertXdcAddressToEthAddress(publicKey: string): string {
   return publicKey.length === 43 && publicKey.slice(0, 3) === 'xdc'
@@ -41,6 +42,7 @@ export function convertXdcAddressToEthAddress(publicKey: string): string {
 }
 
 const walletPath = './conf/wallets';
+
 export async function mkdirIfDoesNotExist(path: string): Promise<void> {
   const exists = await fse.pathExists(path);
   if (!exists) {
@@ -55,11 +57,13 @@ export async function addWallet(
   if (!passphrase) {
     throw new Error('There is no passphrase');
   }
-  let connection: EthereumBase | Near | Cosmos | Injective | Xdc;
+  let connection: Algorand | EthereumBase | Near | Cosmos | Injective | Xdc;
   let address: string | undefined;
   let encryptedPrivateKey: string | undefined;
 
-  if (req.chain === 'ethereum') {
+  if (req.chain === 'algorand') {
+    connection = Algorand.getInstance(req.network);
+  } else if (req.chain === 'ethereum') {
     connection = Ethereum.getInstance(req.network);
   } else if (req.chain === 'avalanche') {
     connection = Avalanche.getInstance(req.network);
@@ -98,7 +102,10 @@ export async function addWallet(
   }
 
   try {
-    if (connection instanceof EthereumBase) {
+    if (connection instanceof Algorand) {
+      address = connection.getAccountFromPrivateKey(req.privateKey).address;
+      encryptedPrivateKey = connection.encrypt(req.privateKey, passphrase);
+    } else if (connection instanceof EthereumBase) {
       address = connection.getWalletFromPrivateKey(req.privateKey).address;
       encryptedPrivateKey = await connection.encrypt(
         req.privateKey,

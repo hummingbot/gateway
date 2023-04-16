@@ -4,6 +4,8 @@ export interface NetworkConfig {
   name: string;
   nodeURL: string;
   indexerURL: string;
+  assetListType: string;
+  assetListSource: string;
   maxLRUCacheInstances: number;
 }
 
@@ -21,6 +23,12 @@ export function getAlgorandConfig(network: string): Config {
       ),
       indexerURL: ConfigManagerV2.getInstance().get(
         'algorand.networks.' + network + '.indexerURL'
+      ),
+      assetListType: ConfigManagerV2.getInstance().get(
+        'algorand.networks.' + network + '.assetListType'
+      ),
+      assetListSource: ConfigManagerV2.getInstance().get(
+        'algorand.networks.' + network + '.assetListSource'
       ),
       maxLRUCacheInstances: 10,
     },
