@@ -24,3 +24,17 @@ export interface AlgorandAsset {
 export type AssetsResponse = {
   assets: AlgorandAsset[];
 };
+
+export interface OptInRequest {
+  network: string;
+  address: string;
+  assetSymbol: string;
+}
+
+export interface OptInResponse {
+  network: string;
+  timestamp: number;
+  latency: number;
+  assetId: number;
+  transactionResponse: any;
+}

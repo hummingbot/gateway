@@ -103,7 +103,7 @@ export async function addWallet(
 
   try {
     if (connection instanceof Algorand) {
-      address = connection.getAccountFromPrivateKey(req.privateKey).address;
+      address = connection.getAccountFromMnemonic(req.privateKey).address;
       encryptedPrivateKey = connection.encrypt(req.privateKey, passphrase);
     } else if (connection instanceof EthereumBase) {
       address = connection.getWalletFromPrivateKey(req.privateKey).address;

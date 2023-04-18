@@ -53,7 +53,19 @@ export const validateAssetSymbols: Validator = (req: any) => {
   return errors;
 };
 
+export const validateAssetSymbol: Validator = mkValidator(
+  'assetSymbol',
+  invalidTokenSymbolsError,
+  (val) => typeof val === 'string'
+);
+
 export const validateAssetsRequest: RequestValidator = mkRequestValidator([
   validateNetwork,
   validateAssetSymbols,
+]);
+
+export const validateOptInRequest: RequestValidator = mkRequestValidator([
+  validateNetwork,
+  validateAlgorandAddress,
+  validateAssetSymbol,
 ]);

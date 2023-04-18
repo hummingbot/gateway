@@ -7,15 +7,18 @@ import {
   AssetsResponse,
   PollRequest,
   PollResponse,
+  OptInRequest,
+  OptInResponse,
 } from './algorand.requests';
 import {
   validateAlgorandBalanceRequest,
   validateAlgorandPollRequest,
   validateAssetsRequest,
+  validateOptInRequest,
 } from './algorand.validators';
 import { getChain } from '../../services/connection-manager';
 import { Algorand } from './algorand';
-import { balances, getAssets, poll } from './algorand.controller';
+import { balances, getAssets, optIn, poll } from './algorand.controller';
 import {
   BalanceRequest,
   BalanceResponse,
@@ -66,6 +69,19 @@ export namespace AlgorandRoutes {
       ) => {
         validateAssetsRequest(req.query);
         res.status(200).json(await getAssets(req.query));
+      }
+    )
+  );
+
+  router.post(
+    '/opt-in',
+    asyncHandler(
+      async (
+        req: Request<{}, {}, OptInRequest>,
+        res: Response<OptInResponse, {}>
+      ) => {
+        validateOptInRequest(req.body);
+        res.status(200).json(await optIn(req.body));
       }
     )
   );

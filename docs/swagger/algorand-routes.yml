@@ -52,3 +52,22 @@ paths:
           required: true
           schema:
             $ref: '#/definitions/AlgorandAssetsRequest'
+  /algorand/opt-in:
+    post:
+      tags:
+        - 'algorand'
+      summary: 'Opt into an asset'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          required: true
+          schema:
+            $ref: '#/definitions/AlgorandOptInRequest'
+      responses:
+        '200':
+          schema:
+            $ref: '#/definitions/AlgorandOptInResponse'
