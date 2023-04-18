@@ -21,6 +21,10 @@ import { Cronos } from '../chains/cronos/cronos';
 import { Near } from '../chains/near/near';
 import { Nearish, Xdcish } from '../services/common-interfaces';
 import { Algorand } from '../chains/algorand/algorand';
+import {
+  getInitializedChain,
+  UnsupportedChainException,
+} from '../services/connection-manager';
 
 export async function getStatus(
   req: StatusRequest
@@ -35,32 +39,19 @@ export async function getStatus(
   let nativeCurrency: string;
 
   if (req.chain) {
-    if (req.chain == 'algorand') {
-      connections.push(await Algorand.getInstance(req.network as string));
-    } else if (req.chain === 'avalanche') {
-      connections.push(Avalanche.getInstance(req.network as string));
-    } else if (req.chain === 'binance-smart-chain') {
-      connections.push(BinanceSmartChain.getInstance(req.network as string));
-    } else if (req.chain === 'harmony') {
-      connections.push(Harmony.getInstance(req.network as string));
-    } else if (req.chain === 'ethereum') {
-      connections.push(Ethereum.getInstance(req.network as string));
-    } else if (req.chain === 'polygon') {
-      connections.push(Polygon.getInstance(req.network as string));
-    } else if (req.chain === 'xdc') {
-      connections.push(Xdc.getInstance(req.network as string));
-    } else if (req.chain === 'near') {
-      connections.push(Near.getInstance(req.network as string));
-    } else if (req.chain === 'cronos') {
-      connections.push(await Cronos.getInstance(req.network as string));
-    } else if (req.chain === 'injective') {
-      connections.push(Injective.getInstance(req.network as string));
-    } else {
-      throw new HttpException(
-        500,
-        UNKNOWN_KNOWN_CHAIN_ERROR_MESSAGE(req.chain),
-        UNKNOWN_CHAIN_ERROR_CODE
+    try {
+      connections.push(
+        await getInitializedChain(req.chain, req.network as string)
       );
+    } catch (e) {
+      if (e instanceof UnsupportedChainException) {
+        throw new HttpException(
+          500,
+          UNKNOWN_KNOWN_CHAIN_ERROR_MESSAGE(req.chain),
+          UNKNOWN_CHAIN_ERROR_CODE
+        );
+      }
+      throw e;
     }
   } else {
     const algorandConnections = Algorand.getConnectedInstances();
@@ -113,9 +104,6 @@ export async function getStatus(
   }
 
   for (const connection of connections) {
-    if (!connection.ready()) {
-      await connection.init();
-    }
     chain = connection.chain;
     chainId = connection.chainId;
     network = connection.network;
@@ -141,34 +129,25 @@ export async function getStatus(
 }
 
 export async function getTokens(req: TokensRequest): Promise<TokensResponse> {
-  let connection: EthereumBase | Nearish | Injective | Xdcish;
+  type connectionType = EthereumBase | Nearish | Injective | Xdcish;
+  let connection: connectionType;
   let tokens: TokenInfo[] = [];
 
   if (req.chain && req.network) {
-    if (req.chain === 'avalanche') {
-      connection = Avalanche.getInstance(req.network);
-    } else if (req.chain === 'binance-smart-chain') {
-      connection = BinanceSmartChain.getInstance(req.network);
-    } else if (req.chain === 'harmony') {
-      connection = Harmony.getInstance(req.network);
-    } else if (req.chain === 'ethereum') {
-      connection = Ethereum.getInstance(req.network);
-    } else if (req.chain === 'polygon') {
-      connection = Polygon.getInstance(req.network);
-    } else if (req.chain === 'xdc') {
-      connection = Xdc.getInstance(req.network);
-    } else if (req.chain === 'near') {
-      connection = Near.getInstance(req.network);
-    } else if (req.chain === 'cronos') {
-      connection = await Cronos.getInstance(req.network);
-    } else if (req.chain === 'injective') {
-      connection = Injective.getInstance(req.network);
-    } else {
-      throw new HttpException(
-        500,
-        UNKNOWN_KNOWN_CHAIN_ERROR_MESSAGE(req.chain),
-        UNKNOWN_CHAIN_ERROR_CODE
-      );
+    try {
+      connection = (await getInitializedChain(
+        req.chain as string,
+        req.network as string
+      )) as connectionType;
+    } catch (e) {
+      if (e instanceof UnsupportedChainException) {
+        throw new HttpException(
+          500,
+          UNKNOWN_KNOWN_CHAIN_ERROR_MESSAGE(req.chain),
+          UNKNOWN_CHAIN_ERROR_CODE
+        );
+      }
+      throw e;
     }
   } else {
     throw new HttpException(
@@ -176,10 +155,6 @@ export async function getTokens(req: TokensRequest): Promise<TokensResponse> {
       UNKNOWN_KNOWN_CHAIN_ERROR_MESSAGE(req.chain),
       UNKNOWN_CHAIN_ERROR_CODE
     );
-  }
-
-  if (!connection.ready()) {
-    await connection.init();
   }
 
   if (!req.tokenSymbols) {

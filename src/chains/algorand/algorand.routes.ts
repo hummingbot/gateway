@@ -16,7 +16,7 @@ import {
   validateAssetsRequest,
   validateOptInRequest,
 } from './algorand.validators';
-import { getChain } from '../../services/connection-manager';
+import { getInitializedChain } from '../../services/connection-manager';
 import { Algorand } from './algorand';
 import { balances, getAssets, optIn, poll } from './algorand.controller';
 import {
@@ -35,7 +35,10 @@ export namespace AlgorandRoutes {
         res: Response<PollResponse, {}>
       ) => {
         validateAlgorandPollRequest(req.body);
-        const algorand = await getChain('algorand', req.body.network);
+        const algorand = await getInitializedChain(
+          'algorand',
+          req.body.network
+        );
         res.status(200).json(await poll(<Algorand>algorand, req.body));
       }
     )
@@ -50,7 +53,7 @@ export namespace AlgorandRoutes {
         _next: NextFunction
       ) => {
         validateAlgorandBalanceRequest(req.body);
-        const chain = await getChain<Algorand>(
+        const chain = await getInitializedChain<Algorand>(
           req.body.chain,
           req.body.network
         );

@@ -1,7 +1,10 @@
 /* eslint-disable prettier/prettier */
 import { EstimateGasResponse } from '../amm/amm.requests';
 import { NetworkSelectionRequest } from '../services/common-interfaces';
-import { getChain, getConnector } from '../services/connection-manager';
+import {
+  getInitializedChain,
+  getConnector,
+} from '../services/connection-manager';
 import {
   ClobBatchUpdateRequest,
   ClobDeleteOrderRequest,
@@ -28,7 +31,7 @@ export async function getMarkets(
   request: ClobMarketsRequest
 ): Promise<ClobMarketResponse> {
   const startTimestamp: number = Date.now();
-  await getChain(request.chain, request.network);
+  await getInitializedChain(request.chain, request.network);
   const connector: any = await getConnector(
     request.chain,
     request.network,
@@ -52,7 +55,7 @@ export async function getOrderBooks(
   request: ClobOrderbookRequest
 ): Promise<ClobOrderbookResponse> {
   const startTimestamp: number = Date.now();
-  await getChain(request.chain, request.network);
+  await getInitializedChain(request.chain, request.network);
   const connector: any = await getConnector(
     request.chain,
     request.network,
@@ -76,7 +79,7 @@ export async function getTickers(
   request: ClobTickerRequest
 ): Promise<ClobTickerResponse> {
   const startTimestamp: number = Date.now();
-  await getChain(request.chain, request.network);
+  await getInitializedChain(request.chain, request.network);
   const connector: any = await getConnector(
     request.chain,
     request.network,
@@ -100,7 +103,7 @@ export async function getOrders(
   request: ClobGetOrderRequest
 ): Promise<ClobGetOrderResponse> {
   const startTimestamp: number = Date.now();
-  await getChain(request.chain, request.network);
+  await getInitializedChain(request.chain, request.network);
   const connector: any = await getConnector(
     request.chain,
     request.network,
@@ -124,7 +127,7 @@ export async function postOrder(
   request: ClobPostOrderRequest
 ): Promise<ClobPostOrderResponse> {
   const startTimestamp: number = Date.now();
-  await getChain(request.chain, request.network);
+  await getInitializedChain(request.chain, request.network);
   const connector: any = await getConnector(
     request.chain,
     request.network,
@@ -148,7 +151,7 @@ export async function deleteOrder(
   request: ClobDeleteOrderRequest
 ): Promise<ClobDeleteOrderResponse> {
   const startTimestamp: number = Date.now();
-  await getChain(request.chain, request.network);
+  await getInitializedChain(request.chain, request.network);
   const connector: any = await getConnector(
     request.chain,
     request.network,
@@ -173,7 +176,7 @@ export async function batchOrders(
   request: ClobBatchUpdateRequest
 ): Promise<ClobDeleteOrderResponse> {
   const startTimestamp: number = Date.now();
-  await getChain(request.chain, request.network);
+  await getInitializedChain(request.chain, request.network);
   const connector: any = await getConnector(
     request.chain,
     request.network,
@@ -199,7 +202,7 @@ export async function estimateGas(
   request: NetworkSelectionRequest
 ): Promise<EstimateGasResponse> {
   const startTimestamp: number = Date.now();
-  await getChain(request.chain, request.network);
+  await getInitializedChain(request.chain, request.network);
   const connector: any = await getConnector(
     request.chain,
     request.network,
