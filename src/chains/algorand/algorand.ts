@@ -1,6 +1,11 @@
 import LRUCache from 'lru-cache';
 import { getAlgorandConfig } from './algorand.config';
-import { Algodv2, Indexer, mnemonicToSecretKey } from 'algosdk';
+import {
+  Algodv2,
+  Indexer,
+  mnemonicToSecretKey,
+  makeAssetTransferTxnWithSuggestedParamsFromObject,
+} from 'algosdk';
 import { AlgorandAsset, PollResponse } from './algorand.requests';
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 import { TokenListType, walletPath } from '../../services/base';
@@ -163,7 +168,7 @@ export class Algorand {
     };
   }
 
-  public getAccountFromPrivateKey(mnemonic: string): AlgorandAccount {
+  public getAccountFromMnemonic(mnemonic: string): AlgorandAccount {
     const account = mnemonicToSecretKey(mnemonic);
     const address = account.addr;
 
@@ -174,18 +179,18 @@ export class Algorand {
   }
 
   async getAccountFromAddress(address: string): Promise<AlgorandAccount> {
-    const path = `${walletPath}/${this._chain}`;
-    const encryptedMnemonic: string = await fse.readFile(
-      `${path}/${address}.json`,
-      'utf8'
-    );
+    const path = `${walletPath}/${this._chain}/${address}.json`;
+    if (!(await fse.pathExists(path))) {
+      throw new Error(`account ${address} not found`);
+    }
+    const encryptedMnemonic: string = await fse.readFile(path, 'utf8');
     const passphrase = ConfigManagerCertPassphrase.readPassphrase();
     if (!passphrase) {
       throw new Error('missing passphrase');
     }
     const mnemonic = this.decrypt(encryptedMnemonic, passphrase);
 
-    return this.getAccountFromPrivateKey(mnemonic);
+    return this.getAccountFromMnemonic(mnemonic);
   }
 
   public encrypt(mnemonic: string, password: string): string {
@@ -256,10 +261,26 @@ export class Algorand {
     return this._assetMap[symbol] ? this._assetMap[symbol] : null;
   }
 
+  public async optIn(address: string, symbol: string) {
+    const account = await this.getAccountFromAddress(address);
+    const assetIndex = this._assetMap[symbol].assetId;
+    const suggestedParams = await this._algod.getTransactionParams().do();
+    const optInTxn = makeAssetTransferTxnWithSuggestedParamsFromObject({
+      from: account.address,
+      to: address,
+      suggestedParams,
+      assetIndex,
+      amount: 0,
+    });
+    const signedOptInTxn = optInTxn.signTxn(this.getSk(account.mnemonic));
+    const resp = await this._algod.sendRawTransaction(signedOptInTxn).do();
+    return resp;
+  }
+
   private async loadAssets(): Promise<void> {
     const assetData = await this.getAssetData();
     for (const result of assetData) {
-      this._assetMap[result.unit_name] = {
+      this._assetMap[result.unit_name.toUpperCase()] = {
         symbol: result.unit_name,
         assetId: +result.id,
         decimals: result.decimals,
@@ -277,5 +298,9 @@ export class Algorand {
       assetData = data.results;
     }
     return assetData;
+  }
+
+  private getSk(mnemonic: string) {
+    return mnemonicToSecretKey(mnemonic).sk;
   }
 }

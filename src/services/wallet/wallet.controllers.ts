@@ -84,7 +84,7 @@ export async function addWallet(
 
   try {
     if (connection instanceof Algorand) {
-      address = (connection as Algorand).getAccountFromPrivateKey(
+      address = (connection as Algorand).getAccountFromMnemonic(
         req.privateKey
       ).address;
       encryptedPrivateKey = (connection as Algorand).encrypt(
