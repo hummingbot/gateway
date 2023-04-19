@@ -30,9 +30,11 @@ export namespace OpenoceanConfig {
     tradingTypes: ['EVM_AMM'],
     availableNetworks: [
       { chain: 'avalanche', networks: ['avalanche'] },
-      { chain: 'ethereum', networks: ['mainnet'] },
+      { chain: 'ethereum', networks: ['mainnet', 'arbitrum_one', 'optimism'] },
       { chain: 'polygon', networks: ['mainnet'] },
       { chain: 'harmony', networks: ['mainnet'] },
+      { chain: 'binance-smart-chain', networks: ['mainnet'] },
+      { chain: 'cronos', networks: ['mainnet'] },
     ],
   };
 }

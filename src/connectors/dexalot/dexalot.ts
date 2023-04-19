@@ -109,7 +109,9 @@ export class DexalotCLOB implements CLOBish {
       )
     ).map(parseMarkerInfo);
     for (const market of rawMarkets) {
-      this.parsedMarkets[market.baseSymbol + '-' + market.quoteSymbol] = market;
+      this.parsedMarkets[
+        market.baseSymbol.toUpperCase() + '-' + market.quoteSymbol.toUpperCase()
+      ] = market;
     }
   }
 
@@ -159,7 +161,7 @@ export class DexalotCLOB implements CLOBish {
   }
 
   public async orderBook(req: ClobOrderbookRequest): Promise<Orderbook> {
-    const markerId = fromUtf8(req.market.replace('-', '/'));
+    const markerId = this.getDexalotTradingPair(req.market);
     const books = await Promise.all([
       this.tradePairsContract.getNBook(
         markerId,
@@ -256,7 +258,7 @@ export class DexalotCLOB implements CLOBish {
     const txData = await this.tradePairsContract.populateTransaction.addOrder(
       req.address,
       clientOrderID,
-      fromUtf8(req.market.replace('-', '/')), // market id
+      this.getDexalotTradingPair(req.market),
       utils.parseUnits(
         floatStringWithDecimalToFixed(req.price, market.quoteDisplayDecimals) ||
           req.price,
@@ -380,7 +382,7 @@ export class DexalotCLOB implements CLOBish {
     return {
       txData:
         await this.tradePairsContract.populateTransaction.addLimitOrderList(
-          fromUtf8(market.replace('-', '/')), // market id
+          this.getDexalotTradingPair(market),
           clientOrderID,
           prices,
           amounts,
@@ -410,5 +412,11 @@ export class DexalotCLOB implements CLOBish {
     const timestamp = new Date().toISOString();
     const id = utils.toUtf8Bytes(`${address}${blocknumber}${timestamp}`);
     return utils.keccak256(id);
+  }
+
+  getDexalotTradingPair(market: string): string {
+    const marketInfo: MarketInfo = this.parsedMarkets[market];
+    if (marketInfo === undefined) throw Error(`Invalid market ${market}`);
+    return fromUtf8(`${marketInfo.baseSymbol}/${marketInfo.quoteSymbol}`);
   }
 }

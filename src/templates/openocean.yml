@@ -22,3 +22,9 @@ contractAddresses:
   harmony:
     mainnet:
       routerAddress: '0x6352a56caadC4F1E25CD6c75970Fa768A3304e64'
+  binance-smart-chain:
+    mainnet:
+      routerAddress: '0x6352a56caadC4F1E25CD6c75970Fa768A3304e64'
+  cronos:
+    mainnet:
+      routerAddress: '0x6352a56caadC4F1E25CD6c75970Fa768A3304e64'
