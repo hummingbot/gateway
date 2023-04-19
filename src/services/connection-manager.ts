@@ -35,6 +35,7 @@ import { Ref } from '../connectors/ref/ref';
 import { Xsswap } from '../connectors/xsswap/xsswap';
 import { DexalotCLOB } from '../connectors/dexalot/dexalot';
 import { Algorand } from '../chains/algorand/algorand';
+import { Tinyman } from '../connectors/tinyman/tinyman';
 
 export type ChainUnion = Algorand | Ethereumish | Nearish | Injective | Xdcish;
 
@@ -81,7 +82,8 @@ export type ConnectorUnion =
   | UniswapLPish
   | Perpish
   | RefAMMish
-  | CLOBish;
+  | CLOBish
+  | Tinyman;
 
 export type Connector<T> = T extends Uniswapish
   ? Uniswapish
@@ -93,6 +95,8 @@ export type Connector<T> = T extends Uniswapish
   ? RefAMMish
   : T extends CLOBish
   ? CLOBish
+  : T extends Tinyman
+  ? Tinyman
   : never;
 
 export async function getConnector<T>(
@@ -143,6 +147,8 @@ export async function getConnector<T>(
     connectorInstance = InjectiveCLOB.getInstance(chain, network);
   } else if (chain === 'avalanche' && connector === 'dexalot') {
     connectorInstance = DexalotCLOB.getInstance(network);
+  } else if (chain == 'algorand' && connector == 'tinyman') {
+    connectorInstance = Tinyman.getInstance(network);
   } else {
     throw new Error('unsupported chain or connector');
   }
