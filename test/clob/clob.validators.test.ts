@@ -1,5 +1,5 @@
 import {
-  invalidMarkerError,
+  invalidMarketError,
   validateMarket,
   invalidPriceError,
   validatePrice,
@@ -41,7 +41,7 @@ describe('validateMarket', () => {
       validateMarket({
         market: 'BTC',
       })
-    ).toEqual([invalidMarkerError]);
+    ).toEqual([invalidMarketError]);
   });
 });
 
