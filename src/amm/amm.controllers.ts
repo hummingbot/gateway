@@ -40,6 +40,11 @@ import {
   estimateGas as refEstimateGas,
 } from '../connectors/ref/ref.controllers';
 import {
+  price as tinymanPrice,
+  trade as tinymanTrade,
+  estimateGas as tinymanEstimateGas,
+} from '../connectors/tinyman/tinyman.controllers';
+import {
   getPriceData as perpPriceData,
   createTakerOrder,
   estimateGas as perpEstimateGas,
@@ -58,30 +63,42 @@ import {
   Uniswapish,
   UniswapLPish,
 } from '../services/common-interfaces';
+import { Algorand } from '../chains/algorand/algorand';
+import { Tinyman } from '../connectors/tinyman/tinyman';
 
 export async function price(req: PriceRequest): Promise<PriceResponse> {
-  const chain = await getChain<Ethereumish | Nearish>(req.chain, req.network);
-  const connector: Uniswapish | RefAMMish = await getConnector<
+  const chain = await getChain<Algorand | Ethereumish | Nearish>(
+    req.chain,
+    req.network
+  );
+  const connector: Uniswapish | RefAMMish | Tinyman = await getConnector<
     Uniswapish | RefAMMish
   >(req.chain, req.network, req.connector);
 
   // we currently use the presence of routerAbi to distinguish Uniswapish from RefAMMish
   if ('routerAbi' in connector) {
     return uniswapPrice(<Ethereumish>chain, connector, req);
+  } else if (connector instanceof Tinyman) {
+    return tinymanPrice(chain as unknown as Algorand, connector, req);
   } else {
     return refPrice(<Nearish>chain, connector, req);
   }
 }
 
 export async function trade(req: TradeRequest): Promise<TradeResponse> {
-  const chain = await getChain<Ethereumish | Nearish>(req.chain, req.network);
-  const connector: Uniswapish | RefAMMish = await getConnector<
+  const chain = await getChain<Algorand | Ethereumish | Nearish>(
+    req.chain,
+    req.network
+  );
+  const connector: Uniswapish | RefAMMish | Tinyman = await getConnector<
     Uniswapish | RefAMMish
   >(req.chain, req.network, req.connector);
 
   // we currently use the presence of routerAbi to distinguish Uniswapish from RefAMMish
   if ('routerAbi' in connector) {
     return uniswapTrade(<Ethereumish>chain, connector, req);
+  } else if (connector instanceof Tinyman) {
+    return tinymanTrade(chain as unknown as Algorand, connector, req);
   } else {
     return refTrade(<Nearish>chain, connector, req);
   }
@@ -152,14 +169,19 @@ export async function poolPrice(
 export async function estimateGas(
   req: NetworkSelectionRequest
 ): Promise<EstimateGasResponse> {
-  const chain = await getChain<Ethereumish | Nearish>(req.chain, req.network);
-  const connector: Uniswapish | RefAMMish = await getConnector<
+  const chain = await getChain<Algorand | Ethereumish | Nearish>(
+    req.chain,
+    req.network
+  );
+  const connector: Uniswapish | RefAMMish | Tinyman = await getConnector<
     Uniswapish | RefAMMish
   >(req.chain, req.network, req.connector);
 
   // we currently use the presence of routerAbi to distinguish Uniswapish from RefAMMish
   if ('routerAbi' in connector) {
     return uniswapEstimateGas(<Ethereumish>chain, connector);
+  } else if (connector instanceof Tinyman) {
+    return tinymanEstimateGas(chain as unknown as Algorand, connector);
   } else {
     return refEstimateGas(<Nearish>chain, connector);
   }

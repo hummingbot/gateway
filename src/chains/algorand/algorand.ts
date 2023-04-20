@@ -1,6 +1,6 @@
 import LRUCache from 'lru-cache';
 import { getAlgorandConfig } from './algorand.config';
-import { Algodv2, Indexer, mnemonicToSecretKey } from 'algosdk';
+import { Account, Algodv2, Indexer, mnemonicToSecretKey } from 'algosdk';
 import { AlgorandAsset, PollResponse } from './algorand.requests';
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 import { TokenListType, walletPath } from '../../services/base';
@@ -10,11 +10,6 @@ import axios from 'axios';
 import { promises as fs } from 'fs';
 
 type AssetListType = TokenListType;
-
-export interface AlgorandAccount {
-  address: string;
-  mnemonic: string;
-}
 
 export class Algorand {
   public nativeTokenSymbol;
@@ -163,17 +158,10 @@ export class Algorand {
     };
   }
 
-  public getAccountFromPrivateKey(mnemonic: string): AlgorandAccount {
-    const account = mnemonicToSecretKey(mnemonic);
-    const address = account.addr;
-
-    return {
-      address,
-      mnemonic,
-    };
+  public getAccountFromPrivateKey(mnemonic: string): Account {
+    return mnemonicToSecretKey(mnemonic);
   }
-
-  async getAccountFromAddress(address: string): Promise<AlgorandAccount> {
+  async getAccountFromAddress(address: string): Promise<Account> {
     const path = `${walletPath}/${this._chain}`;
     const encryptedMnemonic: string = await fse.readFile(
       `${path}/${address}.json`,
@@ -185,7 +173,7 @@ export class Algorand {
     }
     const mnemonic = this.decrypt(encryptedMnemonic, passphrase);
 
-    return this.getAccountFromPrivateKey(mnemonic);
+    return mnemonicToSecretKey(mnemonic);
   }
 
   public encrypt(mnemonic: string, password: string): string {
@@ -220,7 +208,7 @@ export class Algorand {
   }
 
   public async getAssetBalance(
-    account: AlgorandAccount,
+    account: Account,
     assetName: string
   ): Promise<string> {
     const algorandAsset = this._assetMap[assetName];
@@ -228,7 +216,7 @@ export class Algorand {
 
     try {
       const response = await this._algod
-        .accountAssetInformation(account.address, algorandAsset.assetId)
+        .accountAssetInformation(account.addr, algorandAsset.assetId)
         .do();
       balance = response['asset-holding'].amount;
     } catch (error: any) {
@@ -242,10 +230,8 @@ export class Algorand {
     return amount.toString();
   }
 
-  public async getNativeBalance(account: AlgorandAccount): Promise<string> {
-    const accountInfo = await this._algod
-      .accountInformation(account.address)
-      .do();
+  public async getNativeBalance(account: Account): Promise<string> {
+    const accountInfo = await this._algod.accountInformation(account.addr).do();
     const algoAsset = this._assetMap[this.nativeTokenSymbol];
     return (
       accountInfo.amount * parseFloat(`1e-${algoAsset.decimals}`)

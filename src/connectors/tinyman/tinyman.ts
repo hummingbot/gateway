@@ -10,25 +10,28 @@ import {
 } from '@tinymanorg/tinyman-js-sdk';
 import { V2SwapExecution } from '@tinymanorg/tinyman-js-sdk/dist/swap/types';
 import { Account } from 'algosdk';
+import { pow } from 'mathjs';
+import { PriceRequest } from '../../amm/amm.requests';
 import { Algorand } from '../../chains/algorand/algorand';
 import { AlgorandAsset } from '../../chains/algorand/algorand.requests';
 import { percentRegexp } from '../../services/config-manager-v2';
+import {
+  HttpException,
+  TOKEN_NOT_SUPPORTED_ERROR_CODE,
+  TOKEN_NOT_SUPPORTED_ERROR_MESSAGE,
+} from '../../services/error-handler';
 import { logger } from '../../services/logger';
 import { TinymanConfig } from './tinyman.config';
 
 export class Tinyman {
   private static _instances: { [name: string]: Tinyman };
   private chain: Algorand;
-  private _gasLimitEstimate: number;
-  private _ttl: number;
   private _ready: boolean = false;
   private _config: TinymanConfig.NetworkConfig;
 
   private constructor(network: string) {
     this._config = TinymanConfig.config;
     this.chain = Algorand.getInstance(network);
-    this._ttl = this._config.ttl;
-    this._gasLimitEstimate = this._config.gasLimitEstimate;
   }
 
   public static getInstance(network: string): Tinyman {
@@ -51,20 +54,6 @@ export class Tinyman {
 
   public ready(): boolean {
     return this._ready;
-  }
-
-  /**
-   * Default gas limit for swap transactions.
-   */
-  public get gasLimitEstimate(): number {
-    return this._gasLimitEstimate;
-  }
-
-  /**
-   * Default time-to-live for swap transactions, in seconds.
-   */
-  public get ttl(): number {
-    return this._ttl;
   }
 
   /**
@@ -112,12 +101,21 @@ export class Tinyman {
    * @param isBuy Indicate if it's a swapin or swapout
    */
 
-  async estimateSellTrade(
-    baseToken: AlgorandAsset,
-    quoteToken: AlgorandAsset,
-    amount: number,
-    isBuy: boolean
-  ) {
+  async estimateTrade(req: PriceRequest) {
+    const baseToken: AlgorandAsset | null = this.chain.getAssetForSymbol(
+      req.base
+    );
+    const quoteToken: AlgorandAsset | null = this.chain.getAssetForSymbol(
+      req.quote
+    );
+    if (baseToken === null || quoteToken === null)
+      throw new HttpException(
+        500,
+        TOKEN_NOT_SUPPORTED_ERROR_MESSAGE,
+        TOKEN_NOT_SUPPORTED_ERROR_CODE
+      );
+    const amount = Number(req.amount) * <number>pow(10, baseToken.decimals);
+    const isBuy: boolean = req.side === 'BUY';
     const pool: V2PoolInfo = await this.fetchData(baseToken, quoteToken);
 
     const quote = await Swap.v2.getQuote({
@@ -138,21 +136,20 @@ export class Tinyman {
         `${price}` +
         `${baseToken.symbol}.`
     );
-    const expectedAmount = Number(price) * amount;
+    const expectedAmount =
+      req.side === 'BUY'
+        ? Number(req.amount)
+        : Number(price) * Number(req.amount);
 
-    return { trade: quote, expectedAmount };
+    return { trade: quote, expectedAmount, expectedPrice: price };
   }
 
   /**
-   * Given a wallet and a Uniswap trade, try to execute it on blockchain.
+   * Given an account and a tinyman trade, try to execute it on blockchain.
    *
-   * @param wallet Wallet
+   * @param account Algorand account
    * @param trade Expected trade
-   * @param gasPrice Base gas price, for pre-EIP1559 transactions
-   * @param gasLimit Gas limit
-   * @param nonce (Optional) EVM transaction nonce
-   * @param maxFeePerGas (Optional) Maximum total fee per gas you want to pay
-   * @param maxPriorityFeePerGas (Optional) Maximum tip per gas you want to pay
+   * @param isBuy Used to indicate buy or sell swap
    */
 
   async executeTrade(

@@ -52,6 +52,10 @@ configurations:
     configurationPath: sushiswap.yml
     schemaPath: sushiswap-schema.json
 
+  $namespace tinyman:
+    configurationPath: tinyman.yml
+    schemaPath: tinyman-schema.json
+
   $namespace traderjoe:
     configurationPath: traderjoe.yml
     schemaPath: traderjoe-schema.json

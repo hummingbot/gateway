@@ -1,0 +1,10 @@
+{
+  "address": "$ALGORAND_ADDRESS",
+  "quote": "USDC",
+  "base": "ALGO",
+  "amount": "1",
+  "side": "BUY",
+  "chain": "algorand",
+  "network": "mainnet",
+  "connector": "tinyman"
+}
