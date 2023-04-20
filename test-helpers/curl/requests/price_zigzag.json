@@ -1,0 +1,9 @@
+{
+  "connector": "zigzag",
+  "chain": "ethereum",
+  "network": "arbitrum_one",
+  "quote": "USDC",
+  "base": "WETH",
+  "amount": "2",
+  "side": "SELL"
+}

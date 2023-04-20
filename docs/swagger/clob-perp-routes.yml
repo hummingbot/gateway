@@ -2,7 +2,7 @@ paths:
   /clob/perp/markets:
     get:
       tags:
-        - 'clob'
+        - 'clob/perp'
       summary: 'Get the markets for a clob'
       operationId: 'markets'
       consumes:
@@ -26,7 +26,7 @@ paths:
   /clob/perp/orderBook:
     get:
       tags:
-        - 'clob'
+        - 'clob/perp'
       summary: 'Gets orderbook for a market'
       operationId: 'orderBook'
       consumes:
@@ -50,7 +50,7 @@ paths:
   /clob/perp/ticker:
     get:
       tags:
-        - 'clob'
+        - 'clob/perp'
       summary: 'Get One or More Tickers'
       description: 'Get the information of one, several or all available tickers.'
       operationId: 'tickers'
@@ -75,7 +75,7 @@ paths:
   /clob/perp/orders:
     post:
       tags:
-        - 'clob'
+        - 'clob/perp'
       summary: 'Create One Or More Orders'
       description: 'Create one or more orders.'
       operationId: 'postOrders'
@@ -99,7 +99,7 @@ paths:
           description: 'Bad request response.'
     get:
       tags:
-        - 'clob'
+        - 'clob/perp'
       summary: 'Get One Or More Orders'
       description: 'Get the information of one, several or all orders.'
       operationId: 'orders'
@@ -125,7 +125,7 @@ paths:
           description: 'Not found response.'
     delete:
       tags:
-        - 'clob'
+        - 'clob/perp'
       summary: 'Cancel One Or More Orders Open Orders'
       description: 'Cancel one, several or all open orders.'
       operationId: 'deleteOrders'
@@ -152,7 +152,7 @@ paths:
   /clob/perp/batchOrders:
     post:
       tags:
-        - 'clob'
+        - 'clob/perp'
       summary: 'Create One Or More Orders'
       description: 'Create one or more orders.'
       operationId: 'postOrders'
@@ -177,7 +177,7 @@ paths:
   /clob/perp/order/trades:
     get:
       tags:
-        - 'clob'
+        - 'clob/perp'
       summary: 'Get trades for an order'
       description: 'Retrieves trades for an order.'
       operationId: 'trades'
@@ -202,7 +202,7 @@ paths:
   /clob/perp/estimateGas:
     post:
       tags:
-        - 'clob'
+        - 'clob/perp'
       summary: 'Estimate the total gas costs for sending an clob order'
       operationId: 'estimateGas'
       consumes:
@@ -222,7 +222,7 @@ paths:
   /clob/perp/funding/rates:
     post:
       tags:
-        - 'clob'
+        - 'clob/perp'
       summary: 'Get funding rates for a market'
       description: 'Get funding rates for a market.'
       operationId: 'fundingRates'
@@ -247,7 +247,7 @@ paths:
   /clob/perp/funding/payments:
     post:
       tags:
-        - 'clob'
+        - 'clob/perp'
       summary: 'Get funding payments for a market'
       description: 'Get funding payments for a market.'
       operationId: 'fundingPayments'
@@ -272,7 +272,7 @@ paths:
   /clob/perp/funding/info:
     post:
       tags:
-        - 'clob'
+        - 'clob/perp'
       summary: 'Get funding info for a market'
       description: 'Get funding info for a market.'
       operationId: 'fundinginfo'
@@ -297,7 +297,7 @@ paths:
   /clob/perp/positions:
     post:
       tags:
-        - 'clob'
+        - 'clob/perp'
       summary: 'Get all positions for an address in the provided for markets'
       description: 'Get all positions for an address in the provided for markets.'
       operationId: 'clobPerpPositions'
@@ -322,7 +322,7 @@ paths:
   /clob/perp/lastTradePrice:
     post:
       tags:
-        - 'clob'
+        - 'clob/perp'
       summary: 'Get last trade price for markets'
       description: 'Get last trade price for markets.'
       operationId: 'lastTradePrice'
