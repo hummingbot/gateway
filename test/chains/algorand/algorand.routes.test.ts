@@ -20,7 +20,10 @@ const EXPECTED_CURRENT_BLOCK_NUMBER = 100;
 const CHAIN_NAME = 'algorand';
 const NETWORK = 'testnet';
 const CONFIG = getAlgorandConfig(NETWORK);
-const NATIVE_CURRENCY = CONFIG.nativeCurrencySymbol;
+const NATIVE_TOKEN = CONFIG.nativeCurrencySymbol;
+const NATIVE_TOKEN_ID = 0;
+const USDC_TOKEN = 'USDC';
+const USDC_TOKEN_ID = 10458941;
 const ACCOUNT_ADDRESS =
   'FJZ4AJ3EWSNV4PXULFTTT4R5PLMNASEIMWEK5H4EY6E67RGJNSEY7OZEMA'; // noqa: mock
 const MNEUMONIC =
@@ -95,10 +98,10 @@ const patchGetAssetData = () => {
   patch(algorand, 'getAssetData', async () => {
     return [
       {
-        id: '0',
+        id: NATIVE_TOKEN_ID.toString(),
         is_liquidity_token: false,
         name: 'Algorand',
-        unit_name: 'ALGO',
+        unit_name: NATIVE_TOKEN,
         decimals: ALGO_DECIMALS,
         total_amount: null,
         url: 'https://algorand.org',
@@ -112,10 +115,10 @@ const patchGetAssetData = () => {
         is_wrapped: false,
       },
       {
-        id: '10458941',
+        id: USDC_TOKEN_ID.toString(),
         is_liquidity_token: false,
         name: 'USDC',
-        unit_name: 'USDC',
+        unit_name: USDC_TOKEN,
         decimals: USDC_DECIMALS,
         total_amount: '18446744073709551615',
         url: 'https://centre.io',
@@ -157,7 +160,7 @@ describe('GET /network/status', () => {
       .expect({
         network: NETWORK,
         currentBlockNumber: EXPECTED_CURRENT_BLOCK_NUMBER,
-        nativeCurrency: NATIVE_CURRENCY,
+        nativeCurrency: NATIVE_TOKEN,
       });
   });
 
@@ -171,7 +174,7 @@ describe('GET /network/status', () => {
         {
           network: NETWORK,
           currentBlockNumber: EXPECTED_CURRENT_BLOCK_NUMBER,
-          nativeCurrency: NATIVE_CURRENCY,
+          nativeCurrency: NATIVE_TOKEN,
         },
       ]);
 
@@ -188,12 +191,12 @@ describe('GET /network/status', () => {
         {
           network: 'mainnet',
           currentBlockNumber: mainnetBlockNumber,
-          nativeCurrency: NATIVE_CURRENCY,
+          nativeCurrency: NATIVE_TOKEN,
         },
         {
           network: NETWORK,
           currentBlockNumber: EXPECTED_CURRENT_BLOCK_NUMBER,
-          nativeCurrency: NATIVE_CURRENCY,
+          nativeCurrency: NATIVE_TOKEN,
         },
       ]);
   });
@@ -394,8 +397,6 @@ describe('test managing Algorand wallets', () => {
 });
 
 describe('POST /algorand/balances', () => {
-  const nativeToken = 'ALGO';
-  const otherToken = 'USDC';
   const expectedBalance = '9';
 
   it('should return 200 with correct balance for native token', async () => {
@@ -422,7 +423,7 @@ describe('POST /algorand/balances', () => {
         chain: CHAIN_NAME,
         network: NETWORK,
         address: ACCOUNT_ADDRESS,
-        tokenSymbols: [nativeToken],
+        tokenSymbols: [NATIVE_TOKEN],
       })
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
@@ -431,7 +432,7 @@ describe('POST /algorand/balances', () => {
         expect(resp.body).toHaveProperty('timestamp');
         expect(resp.body).toHaveProperty('latency');
         expect(resp.body.network).toEqual(NETWORK);
-        expect(resp.body.balances[nativeToken]).toEqual(expectedBalance);
+        expect(resp.body.balances[NATIVE_TOKEN]).toEqual(expectedBalance);
       });
   });
 
@@ -462,7 +463,7 @@ describe('POST /algorand/balances', () => {
         chain: CHAIN_NAME,
         network: NETWORK,
         address: ACCOUNT_ADDRESS,
-        tokenSymbols: [otherToken],
+        tokenSymbols: [USDC_TOKEN],
       })
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
@@ -494,7 +495,7 @@ describe('POST /algorand/balances', () => {
         chain: CHAIN_NAME,
         network: NETWORK,
         address: ACCOUNT_ADDRESS,
-        tokenSymbols: [otherToken],
+        tokenSymbols: [USDC_TOKEN],
       })
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
@@ -531,13 +532,13 @@ describe('GET /algorand/assets', () => {
         expect(resp.body).toEqual({
           assets: [
             {
-              symbol: 'ALGO',
-              assetId: 0,
+              symbol: NATIVE_TOKEN,
+              assetId: NATIVE_TOKEN_ID,
               decimals: ALGO_DECIMALS,
             },
             {
-              symbol: 'USDC',
-              assetId: 10458941,
+              symbol: USDC_TOKEN,
+              assetId: USDC_TOKEN_ID,
               decimals: USDC_DECIMALS,
             },
           ],
@@ -550,7 +551,7 @@ describe('GET /algorand/assets', () => {
       .get(`/algorand/assets`)
       .query({
         network: NETWORK,
-        assetSymbols: ['USDC'],
+        assetSymbols: [USDC_TOKEN],
       })
       .expect('Content-Type', /json/)
       .expect(200)
@@ -558,8 +559,8 @@ describe('GET /algorand/assets', () => {
         expect(resp.body).toEqual({
           assets: [
             {
-              symbol: 'USDC',
-              assetId: 10458941,
+              symbol: USDC_TOKEN,
+              assetId: USDC_TOKEN_ID,
               decimals: USDC_DECIMALS,
             },
           ],
@@ -568,4 +569,57 @@ describe('GET /algorand/assets', () => {
   });
 });
 
-// todo: test opt-in
+describe('POST /algorand/opt-in', () => {
+  it('should return 200 with the opt-in response', async () => {
+    const expectedTransactionId =
+      'RVZ24ML6UE3OFXFN5ID3L65EHSRAYYX3FCCTKQP3P3P5K73Y65CQ';
+
+    patch(algorand.algod, 'getTransactionParams', () => {
+      return {
+        do: async () => {
+          return {
+            fee: 0,
+            firstRound: 29228608,
+            flatFee: false,
+            genesisHash: 'SGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiI=',
+            genesisID: 'testnet-v1.0',
+            lastRound: 29229608,
+          };
+        },
+      };
+    });
+
+    patch(algorand.algod, 'sendRawTransaction', (_: Uint8Array) => {
+      return {
+        do: async () => {
+          return {
+            txId: expectedTransactionId,
+          };
+        },
+      };
+    });
+
+    await request(gatewayApp).post('/wallet/add').send({
+      chain: CHAIN_NAME,
+      network: NETWORK,
+      privateKey: MNEUMONIC,
+    });
+
+    await request(gatewayApp)
+      .post('/algorand/opt-in')
+      .send({
+        network: NETWORK,
+        address: ACCOUNT_ADDRESS,
+        assetSymbol: USDC_TOKEN,
+      })
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .expect((resp) => {
+        expect(resp.body.network).toEqual(NETWORK);
+        expect(resp.body.assetId).toEqual(USDC_TOKEN_ID);
+        expect(resp.body.transactionResponse).toEqual({
+          txId: expectedTransactionId,
+        });
+      });
+  });
+});

@@ -26,7 +26,7 @@ import {
   validateTransferToBankAccountRequest,
   validateTransferToSubAccountRequest,
 } from './injective.validators';
-import { getChain } from '../../services/connection-manager';
+import { getInitializedChain } from '../../services/connection-manager';
 import { NetworkSelectionRequest } from '../../services/common-interfaces';
 
 export namespace InjectiveRoutes {
@@ -39,7 +39,7 @@ export namespace InjectiveRoutes {
         req: Request<{}, {}, NetworkSelectionRequest>,
         res: Response<number, {}>
       ) => {
-        const injective = await getChain(
+        const injective = await getInitializedChain(
           <string>req.query.chain,
           <string>req.query.network
         );
@@ -56,7 +56,7 @@ export namespace InjectiveRoutes {
         res: Response<TransferToBankAccountResponse, {}>
       ) => {
         validateTransferToBankAccountRequest(req.body);
-        const injective = await getChain(
+        const injective = await getInitializedChain(
           <string>req.body.chain,
           <string>req.body.network
         );
@@ -75,7 +75,7 @@ export namespace InjectiveRoutes {
         res: Response<TransferToSubAccountResponse, {}>
       ) => {
         validateTransferToSubAccountRequest(req.body);
-        const injective = await getChain(
+        const injective = await getInitializedChain(
           <string>req.body.chain,
           <string>req.body.network
         );
@@ -94,7 +94,7 @@ export namespace InjectiveRoutes {
         res: Response<BalancesResponse, {}>
       ) => {
         validateBalanceRequest(req.body);
-        const injective = await getChain(
+        const injective = await getInitializedChain(
           <string>req.body.chain,
           <string>req.body.network
         );
@@ -111,7 +111,7 @@ export namespace InjectiveRoutes {
         res: Response<PollResponse, {}>
       ) => {
         validatePollRequest(req.body);
-        const injective = await getChain(
+        const injective = await getInitializedChain(
           <string>req.body.chain,
           <string>req.body.network
         );

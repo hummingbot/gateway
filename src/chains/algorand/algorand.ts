@@ -1,6 +1,11 @@
 import LRUCache from 'lru-cache';
 import { getAlgorandConfig } from './algorand.config';
-import { Account, Algodv2, Indexer, mnemonicToSecretKey } from 'algosdk';
+import {
+  Algodv2,
+  Indexer,
+  mnemonicToSecretKey,
+  makeAssetTransferTxnWithSuggestedParamsFromObject,
+} from 'algosdk';
 import { AlgorandAsset, PollResponse } from './algorand.requests';
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 import { TokenListType, walletPath } from '../../services/base';
@@ -242,10 +247,26 @@ export class Algorand {
     return this._assetMap[symbol] ? this._assetMap[symbol] : null;
   }
 
+  public async optIn(address: string, symbol: string) {
+    const account = await this.getAccountFromAddress(address);
+    const assetIndex = this._assetMap[symbol].assetId;
+    const suggestedParams = await this._algod.getTransactionParams().do();
+    const optInTxn = makeAssetTransferTxnWithSuggestedParamsFromObject({
+      from: account.address,
+      to: address,
+      suggestedParams,
+      assetIndex,
+      amount: 0,
+    });
+    const signedOptInTxn = optInTxn.signTxn(this.getSk(account.mnemonic));
+    const resp = await this._algod.sendRawTransaction(signedOptInTxn).do();
+    return resp;
+  }
+
   private async loadAssets(): Promise<void> {
     const assetData = await this.getAssetData();
     for (const result of assetData) {
-      this._assetMap[result.unit_name] = {
+      this._assetMap[result.unit_name.toUpperCase()] = {
         symbol: result.unit_name,
         assetId: +result.id,
         decimals: result.decimals,
@@ -263,5 +284,9 @@ export class Algorand {
       assetData = data.results;
     }
     return assetData;
+  }
+
+  private getSk(mnemonic: string) {
+    return mnemonicToSecretKey(mnemonic).sk;
   }
 }

@@ -2152,3 +2152,44 @@ definitions:
         type: 'array'
         items: 'object'
         example: [ { symbol: 'ALGO', assetId: 0, decimal: 6 } ]
+
+  AlgorandOptInRequest:
+    type: 'object'
+    required:
+      - 'network'
+      - 'address'
+      - 'assetSymbol'
+    properties:
+      network:
+        type: 'string'
+        example: 'testnet'
+      address:
+        type: 'string'
+        example: 'T3ZUYEJ5Y7KEDKITIXO4B5OWU4SBVGOFCPOYGZQHF2XZGENZUBQA'
+      assetSymbol:
+        type: 'string'
+        example: 'USDC'
+
+  AlgorandOptInResponse:
+    type: 'object'
+    required:
+      - 'network'
+      - 'timestamp'
+      - 'latency'
+      - 'assetId'
+      - 'transactionResponse'
+    properties:
+      network:
+        type: 'string'
+        example: 'testnet'
+      timestamp:
+        type: 'integer'
+        example: 163636808574
+      latency:
+        type: 'number'
+        example: 0.5
+      assetId:
+        type: 'string'
+        example: 'USDC'
+      transactionResponse:
+        type: 'object'

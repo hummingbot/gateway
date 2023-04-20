@@ -246,6 +246,9 @@ curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: app
 ## get assets
 curl -s -X GET -k --key $GATEWAY_KEY --cert $GATEWAY_CERT "https://localhost:15888/algorand/assets?network=mainnet" | jq
 
+## post opt-in
+curl -s -X POST -k --key $GATEWAY_KEY --cert $GATEWAY_CERT -H "Content-Type: application/json" -d "$(envsubst < ./requests/algorand_opt_in.json)" https://localhost:15888/algorand/opt-in | jq
+
 # NEAR
 
 ## get balances
