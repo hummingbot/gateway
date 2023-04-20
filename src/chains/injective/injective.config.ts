@@ -15,7 +15,7 @@ export interface Config {
 }
 
 export function getInjectiveConfig(networkName: string): Config {
-  networkName = ['mainnet', 'mainnetLB'].includes(networkName)
+  networkName = ['mainnet', 'mainnetLB', 'mainnetK8s'].includes(networkName)
     ? 'mainnet'
     : 'testnet';
   const network = getNetworkFromString(networkName);

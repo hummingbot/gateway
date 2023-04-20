@@ -65,7 +65,6 @@ export class Algorand {
   }
 
   public async init(): Promise<void> {
-    // todo: common EVM-like interface
     await this.loadAssets();
     this._ready = true;
     return;
@@ -125,7 +124,6 @@ export class Algorand {
   }
 
   async getCurrentBlockNumber(): Promise<number> {
-    // todo: common EVM-like interface
     const status = await this._algod.status().do();
     return status['next-version-round'];
   }

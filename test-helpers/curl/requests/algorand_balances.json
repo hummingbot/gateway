@@ -1,7 +1,7 @@
 {
   "chain": "algorand",
   "network": "mainnet",
-  "address": "FJZ4AJ3EWSNV4PXULFTTT4R5PLMNASEIMWEK5H4EY6E67RGJNSEY7OZEMA",
+  "address": "$ALGORAND_ADDRESS",
   "tokenSymbols": [
     "ALGO"
   ]

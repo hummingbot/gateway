@@ -29,7 +29,7 @@ export function getNetworkFromString(network: string): Network | null {
   if (network === 'mainnetK8s') {
     return Network.MainnetK8s;
   } else if (['mainnet', 'mainnetLB'].includes(network)) {
-    return Network.MainnetLB;
+    return Network.MainnetK8s;
   } else if (network === 'staging') {
     return Network.Staging;
   } else if (network === 'public') {
