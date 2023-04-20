@@ -112,6 +112,15 @@ export namespace ConnectorsRoutes {
             },
           },
           {
+            name: 'injective_perpetual',
+            trading_type: InjectiveCLOBConfig.config.tradingTypes('perp'),
+            available_networks: InjectiveCLOBConfig.config.availableNetworks,
+            additional_add_wallet_prompts: {
+              accountId:
+                'Enter your injective sub account id wallet key (input 0 if unsure) >>> ',
+            },
+          },
+          {
             name: 'xsswap',
             trading_type: XsswapConfig.config.tradingTypes,
             available_networks: XsswapConfig.config.availableNetworks,

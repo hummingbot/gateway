@@ -15,6 +15,7 @@ import { Uniswap } from '../connectors/uniswap/uniswap';
 import { UniswapLP } from '../connectors/uniswap/uniswap.lp';
 import { VVSConnector } from '../connectors/vvs/vvs';
 import { InjectiveCLOB } from '../connectors/injective/injective';
+import { InjectiveClobPerp } from '../connectors/injective_perpetual/injective.perp';
 import { Injective } from '../chains/injective/injective';
 import { ZigZag } from '../connectors/zigzag/zigzag';
 import {
@@ -81,7 +82,8 @@ export type ConnectorUnion =
   | Perpish
   | RefAMMish
   | CLOBish
-  | ZigZag;
+  | ZigZag
+  | InjectiveClobPerp;
 
 export type Connector<T> = T extends Uniswapish
   ? Uniswapish
@@ -95,6 +97,8 @@ export type Connector<T> = T extends Uniswapish
   ? CLOBish
   : T extends ZigZag
   ? ZigZag
+  : T extends InjectiveClobPerp
+  ? InjectiveClobPerp
   : never;
 
 export async function getConnector<T>(
@@ -139,6 +143,8 @@ export async function getConnector<T>(
     connectorInstance = PancakeSwap.getInstance(chain, network);
   } else if (connector === 'sushiswap') {
     connectorInstance = Sushiswap.getInstance(chain, network);
+  } else if (chain === 'injective' && connector === 'injective_perpetual') {
+    connectorInstance = InjectiveClobPerp.getInstance(chain, network);
   } else if (chain === 'xdc' && connector === 'xsswap') {
     connectorInstance = Xsswap.getInstance(chain, network);
   } else if (chain === 'injective' && connector === 'injective') {
