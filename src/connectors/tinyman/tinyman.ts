@@ -90,15 +90,9 @@ export class Tinyman {
   }
 
   /**
-   * Given the amount of `baseToken` to put into a transaction, calculate the
-   * amount of `quoteToken` that can be expected from the transaction.
+   * This is typically used for calculating token prices.
    *
-   * This is typically used for calculating token sell prices.
-   *
-   * @param baseToken Token input for the transaction
-   * @param quoteToken Output from the transaction
-   * @param amount Amount of `baseToken` to put into the transaction
-   * @param isBuy Indicate if it's a swapin or swapout
+   * @param req Price request object
    */
 
   async estimateTrade(req: PriceRequest) {
@@ -108,40 +102,45 @@ export class Tinyman {
     const quoteToken: AlgorandAsset | null = this.chain.getAssetForSymbol(
       req.quote
     );
+
     if (baseToken === null || quoteToken === null)
       throw new HttpException(
         500,
         TOKEN_NOT_SUPPORTED_ERROR_MESSAGE,
         TOKEN_NOT_SUPPORTED_ERROR_CODE
       );
+    const baseAsset = { id: baseToken.assetId, decimals: baseToken.decimals };
+    const quoteAsset = {
+      id: quoteToken.assetId,
+      decimals: quoteToken.decimals,
+    };
     const amount = Number(req.amount) * <number>pow(10, baseToken.decimals);
     const isBuy: boolean = req.side === 'BUY';
     const pool: V2PoolInfo = await this.fetchData(baseToken, quoteToken);
 
     const quote = await Swap.v2.getQuote({
-      type: isBuy ? SwapType.FixedOutput : SwapType.FixedInput,
+      type: isBuy === true ? SwapType.FixedOutput : SwapType.FixedInput,
       amount: Number(amount.toString()),
-      assetIn: { id: baseToken.assetId, decimals: baseToken.decimals },
-      assetOut: { id: quoteToken.assetId, decimals: quoteToken.decimals },
+      assetIn: isBuy === true ? quoteAsset : baseAsset,
+      assetOut: isBuy === true ? baseAsset : quoteAsset,
       pool,
       network: this.chain.network as SupportedNetwork,
       isSwapRouterEnabled: false,
     });
     const price =
-      quote.type === SwapQuoteType.Direct
-        ? quote.data.quote.rate
-        : quote.data.price_impact;
+      quote.type === SwapQuoteType.Direct ? quote.data.quote.rate : 0;
     logger.info(
       `Best quote for ${baseToken.symbol}-${quoteToken.symbol}: ` +
         `${price}` +
         `${baseToken.symbol}.`
     );
+    const expectedPrice = isBuy === true ? 1 / price : price;
     const expectedAmount =
       req.side === 'BUY'
         ? Number(req.amount)
-        : Number(price) * Number(req.amount);
+        : expectedPrice * Number(req.amount);
 
-    return { trade: quote, expectedAmount, expectedPrice: price };
+    return { trade: quote, expectedAmount, expectedPrice };
   }
 
   /**
@@ -161,9 +160,9 @@ export class Tinyman {
     const fixedSwapTxns = await Swap.v2.generateTxns({
       client: this.chain.algod,
       network,
-      swapType: isBuy ? SwapType.FixedOutput : SwapType.FixedInput,
+      swapType: isBuy === true ? SwapType.FixedOutput : SwapType.FixedInput,
       quote: trade,
-      slippage: 0.05,
+      slippage: this.getSlippagePercentage(),
       initiatorAddr: account.addr,
     });
     const signedTxns = await Swap.v2.signTxns({
@@ -177,7 +176,7 @@ export class Tinyman {
       signedTxns,
     });
 
-    logger.info(JSON.stringify(tx));
+    logger.info(`Swap transaction Id: ${tx.txnID}`);
     return tx;
   }
 

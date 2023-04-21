@@ -70,7 +70,7 @@ import { Algorand } from '../chains/algorand/algorand';
 import { Tinyman } from '../connectors/tinyman/tinyman';
 
 export async function price(req: PriceRequest): Promise<PriceResponse> {
-  const chain = await getChain<Algorand | Ethereumish | Nearish>(
+  const chain = await getInitializedChain<Algorand | Ethereumish | Nearish>(
     req.chain,
     req.network
   );
@@ -89,7 +89,7 @@ export async function price(req: PriceRequest): Promise<PriceResponse> {
 }
 
 export async function trade(req: TradeRequest): Promise<TradeResponse> {
-  const chain = await getChain<Algorand | Ethereumish | Nearish>(
+  const chain = await getInitializedChain<Algorand | Ethereumish | Nearish>(
     req.chain,
     req.network
   );
@@ -172,7 +172,7 @@ export async function poolPrice(
 export async function estimateGas(
   req: NetworkSelectionRequest
 ): Promise<EstimateGasResponse> {
-  const chain = await getChain<Algorand | Ethereumish | Nearish>(
+  const chain = await getInitializedChain<Algorand | Ethereumish | Nearish>(
     req.chain,
     req.network
   );

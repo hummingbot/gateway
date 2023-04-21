@@ -5,6 +5,7 @@ import {
   Indexer,
   mnemonicToSecretKey,
   makeAssetTransferTxnWithSuggestedParamsFromObject,
+  Account,
 } from 'algosdk';
 import { AlgorandAsset, PollResponse } from './algorand.requests';
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
@@ -250,13 +251,13 @@ export class Algorand {
     const assetIndex = this._assetMap[symbol].assetId;
     const suggestedParams = await this._algod.getTransactionParams().do();
     const optInTxn = makeAssetTransferTxnWithSuggestedParamsFromObject({
-      from: account.address,
+      from: account.addr,
       to: address,
       suggestedParams,
       assetIndex,
       amount: 0,
     });
-    const signedOptInTxn = optInTxn.signTxn(this.getSk(account.mnemonic));
+    const signedOptInTxn = optInTxn.signTxn(account.sk);
     const resp = await this._algod.sendRawTransaction(signedOptInTxn).do();
     return resp;
   }
@@ -282,9 +283,5 @@ export class Algorand {
       assetData = data.results;
     }
     return assetData;
-  }
-
-  private getSk(mnemonic: string) {
-    return mnemonicToSecretKey(mnemonic).sk;
   }
 }

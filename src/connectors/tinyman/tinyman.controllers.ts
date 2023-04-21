@@ -141,7 +141,7 @@ export async function trade(
     gasPriceToken: algorand.nativeTokenSymbol,
     gasLimit: 0,
     gasCost: '0.001',
-    txHash: tx,
+    txHash: tx.txnID,
   };
 }
 
