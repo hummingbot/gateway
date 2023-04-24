@@ -40,7 +40,7 @@
     "@injectivelabs/wallet-ts": "^1.0.300",
     "@pancakeswap/sdk": "^2.4.5",
     "@pangolindex/sdk": "^1.1.0",
-    "@perp/sdk-curie": "^1.18.0",
+    "@perp/sdk-curie": "^1.16.0",
     "@sushiswap/sdk": "^5.0.0-canary.116",
     "@switchboard-xyz/defikingdoms-sdk": "^1.0.7",
     "@tinymanorg/tinyman-js-sdk": "^3.0.0",
