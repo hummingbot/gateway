@@ -28,6 +28,9 @@ export class Algorand {
   private _ready: boolean = false;
   private _assetListType: AssetListType;
   private _assetListSource: string;
+  public gasPrice: number;
+  public gasLimit: number;
+  public gasCost: number;
 
   constructor(
     network: string,
@@ -43,6 +46,9 @@ export class Algorand {
     this._indexer = new Indexer('', indexerUrl, 'undefined');
     this._assetListType = assetListType;
     this._assetListSource = assetListSource;
+    this.gasPrice = 0;
+    this.gasLimit = 0;
+    this.gasCost = 0.001;
   }
 
   public get algod(): Algodv2 {

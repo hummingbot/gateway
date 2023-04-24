@@ -10,9 +10,11 @@ import {
 } from '@tinymanorg/tinyman-js-sdk';
 import { V2SwapExecution } from '@tinymanorg/tinyman-js-sdk/dist/swap/types';
 import { Account } from 'algosdk';
+import LRUCache from 'lru-cache';
 import { pow } from 'mathjs';
 import { PriceRequest } from '../../amm/amm.requests';
 import { Algorand } from '../../chains/algorand/algorand';
+import { getAlgorandConfig } from '../../chains/algorand/algorand.config';
 import { AlgorandAsset } from '../../chains/algorand/algorand.requests';
 import { percentRegexp } from '../../services/config-manager-v2';
 import {
@@ -24,7 +26,7 @@ import { logger } from '../../services/logger';
 import { TinymanConfig } from './tinyman.config';
 
 export class Tinyman {
-  private static _instances: { [name: string]: Tinyman };
+  private static _instances: LRUCache<string, Tinyman>;
   private chain: Algorand;
   private _ready: boolean = false;
   private _config: TinymanConfig.NetworkConfig;
@@ -35,14 +37,24 @@ export class Tinyman {
   }
 
   public static getInstance(network: string): Tinyman {
+    const config = getAlgorandConfig(network);
     if (Tinyman._instances === undefined) {
-      Tinyman._instances = {};
-    }
-    if (!(network in Tinyman._instances)) {
-      Tinyman._instances[network] = new Tinyman(network);
+      Tinyman._instances = new LRUCache<string, Tinyman>({
+        max: config.network.maxLRUCacheInstances,
+      });
     }
 
-    return Tinyman._instances[network];
+    if (!Tinyman._instances.has(network)) {
+      if (network !== null) {
+        Tinyman._instances.set(network, new Tinyman(network));
+      } else {
+        throw new Error(
+          `Tinyman.getInstance received an unexpected network: ${network}.`
+        );
+      }
+    }
+
+    return Tinyman._instances.get(network) as Tinyman;
   }
 
   public async init() {

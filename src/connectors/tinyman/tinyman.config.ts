@@ -1,9 +1,6 @@
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { AvailableNetworks } from '../../services/config-manager-types';
 
-/**
- * To-do: Update.
- */
 export namespace TinymanConfig {
   export interface NetworkConfig {
     allowedSlippage: string;

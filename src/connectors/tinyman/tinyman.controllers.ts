@@ -60,10 +60,10 @@ export async function price(
     rawAmount: req.amount,
     expectedAmount: String(trade.expectedAmount),
     price: String(trade.expectedPrice),
-    gasPrice: 0,
+    gasPrice: algorand.gasPrice,
     gasPriceToken: algorand.nativeTokenSymbol,
-    gasLimit: 0,
-    gasCost: '0.001',
+    gasLimit: algorand.gasLimit,
+    gasCost: String(algorand.gasCost),
   };
 }
 
@@ -137,10 +137,10 @@ export async function trade(
     rawAmount: req.amount,
     expectedIn: String(trade.expectedAmount),
     price: String(estimatedPrice),
-    gasPrice: 0,
+    gasPrice: algorand.gasPrice,
     gasPriceToken: algorand.nativeTokenSymbol,
-    gasLimit: 0,
-    gasCost: '0.001',
+    gasLimit: algorand.gasLimit,
+    gasCost: String(algorand.gasCost),
     txHash: tx.txnID,
   };
 }
@@ -152,9 +152,9 @@ export async function estimateGas(
   return {
     network: algorand.network,
     timestamp: Date.now(),
-    gasPrice: 0,
+    gasPrice: algorand.gasPrice,
     gasPriceToken: algorand.nativeTokenSymbol,
-    gasLimit: 0,
-    gasCost: '0.001',
+    gasLimit: algorand.gasLimit,
+    gasCost: String(algorand.gasCost),
   };
 }
