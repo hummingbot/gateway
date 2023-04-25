@@ -92,7 +92,7 @@ export class InjectiveCLOB implements CLOBish {
   }
 
   public async orderBook(req: ClobOrderbookRequest): Promise<Orderbook> {
-    return await this.spotApi.fetchOrderbook(
+    return await this.spotApi.fetchOrderbookV2(
       this.parsedMarkets[req.market].marketId
     );
   }

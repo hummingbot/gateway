@@ -49,10 +49,10 @@ import {
   resolveDBPath,
 } from '../../services/config-manager-v2';
 import { MsgBroadcasterLocal } from './injective.message';
-import { AccountDetails } from '@injectivelabs/sdk-ts/dist/types/auth';
 import LRUCache from 'lru-cache';
 import { TokenInfo } from '../../services/base';
 import { EVMNonceManager } from '../../evm/evm.nonce';
+import { AccountDetails } from '@injectivelabs/sdk-ts/dist/cjs/types/auth';
 
 export interface InjectiveWallet {
   ethereumAddress: string;
