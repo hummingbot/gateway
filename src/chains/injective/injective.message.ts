@@ -224,7 +224,7 @@ export class MsgBroadcasterLocal {
     accountDetails: AccountDetails,
     sequence: number
   ): Promise<{ data: any }> {
-    const { txRaw } = createTransaction({
+    const { signBytes, txRaw } = createTransaction({
       memo: '',
       fee: DEFAULT_STD_FEE,
       message: tx.msgs as Msgs[],
@@ -234,6 +234,12 @@ export class MsgBroadcasterLocal {
       accountNumber: accountDetails.accountNumber,
       chainId: this.chainId,
     });
+
+    /** Sign transaction */
+    const signature = await this._privateKey.sign(Buffer.from(signBytes));
+
+    /** Append Signatures */
+    txRaw.signatures = [signature];
 
     /** Broadcast transaction */
     const txResponse = await this.broadcastUsingInjective(
