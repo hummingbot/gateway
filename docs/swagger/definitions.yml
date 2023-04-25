@@ -1664,7 +1664,7 @@ definitions:
       markets:
         type: 'object'
         example: '[{market info}, ...]'
-
+        
   ClobTickerRequest:
     type: 'object'
     required:
@@ -1726,6 +1726,9 @@ definitions:
       connector:
         type: 'string'
         example: 'injective'
+      isDerivative:
+        type: 'boolean'
+        example: false
 
   ClobOrderbookResponse:
     type: 'object'
@@ -1909,58 +1912,40 @@ definitions:
         type: 'string'
         example: '0x...'
 
-  ClobBatchOrdersRequest:
+  PerpClobFundingRatesRequest:
     type: 'object'
     required:
       - 'chain'
       - 'network'
       - 'connector'
-      - 'address'
-      - 'createOrderParams'
-      - 'cancelOrderIds'
+      - 'marketId'
     properties:
+      marketId:
+        type: 'string'
+        example: '0xa508cb32923323679f29a032c70342c147c17d0145625922b0ef22e955c844c0'
       chain:
         type: 'string'
         example: 'injective'
       network:
         type: 'string'
         example: 'mainnet'
-      connector:
-        type: 'string'
-        example: 'injective'
-      address:
-        type: 'string'
-        example: '0x...'
-      createOrderParams:
-        type: 'array'
-        items: 'object'
-        example: [{
-            market: 'AAVE-USDT',
-            price: '2',
-            amount: '0.10',
-            side: 'SELL',
-            orderType: 'LIMIT',
-          },
-          {
-            price: '3',
-            amount: '0.10',
-            side: 'SELL',
-          }]
-      cancelOrderParams:
-        type: 'array'
-        items: 'object'
-        example: [
-          {market: 'AAVE-USDT', orderId: '0x...'},
-          {market: 'AAVE-USDT', orderId: '0x...'}, 
-        ]
+      skip:
+        type: 'number'
+        example: 0
+      limit:
+        type: 'number'
+        example: 10
+      endTime:
+        type: 'number'
+        example: 1678122531
 
-  ClobBatchOrdersResponse:
+  PerpClobFundingRatesResponse:
     type: 'object'
     required:
       - 'network'
       - 'timestamp'
       - 'latency'
-      - 'txHash'
+      - 'fundingRates'
     properties:
       network:
         type: 'string'
@@ -1974,6 +1959,101 @@ definitions:
       txHash:
         type: 'string'
         example: '0x...'
+      fundingRates:
+        type: 'array'
+        example: []
+
+  PerpClobFundingPaymentsRequest:
+    type: 'object'
+    required:
+      - 'chain'
+      - 'network'
+      - 'connector'
+      - 'marketId'
+      - 'address'
+    properties:
+      marketId:
+        type: 'string'
+        example: '0xa508cb32923323679f29a032c70342c147c17d0145625922b0ef22e955c844c0'
+      chain:
+        type: 'string'
+        example: 'injective'
+      network:
+        type: 'string'
+        example: 'mainnet'
+      address:
+        type: 'string'
+        example: '0x261362dBC1D83705AB03e99792355689A4589b8E000000000000000000000000'
+      skip:
+        type: 'number'
+        example: 0
+      limit:
+        type: 'number'
+        example: 10
+      endTime:
+        type: 'number'
+        example: 1678122531
+
+  PerpClobFundingPaymentsResponse:
+    type: 'object'
+    required:
+      - 'network'
+      - 'timestamp'
+      - 'latency'
+      - 'fundingPayments'
+    properties:
+      network:
+        type: 'string'
+        example: 'mainnet'
+      timestamp:
+        type: 'integer'
+        example: 1636368085740
+      latency:
+        type: 'number'
+        example: 0.5
+      txHash:
+        type: 'string'
+        example: '0x...'
+      fundingPayments:
+        type: 'array'
+        example: []
+
+  PerpClobPositionsRequest:
+    type: 'object'
+    required:
+      - 'markets'
+      - 'address'
+    properties:
+      markets:
+        type: 'array'
+        example: ['INJ-USDC','INJ-WETH']
+      address:
+        type: 'string'
+        example: '0x...'
+
+  PerpClobPositionsResponse:
+    type: 'object'
+    required:
+      - 'network'
+      - 'timestamp'
+      - 'latency'
+      - 'positions'
+    properties:
+      network:
+        type: 'string'
+        example: 'mainnet'
+      timestamp:
+        type: 'integer'
+        example: 1636368085740
+      latency:
+        type: 'number'
+        example: 0.5
+      txHash:
+        type: 'string'
+        example: '0x...'
+      positions:
+        type: 'array'
+        example: []
         
   TransferToSubAccountRequest:
     type: 'object'
@@ -2098,3 +2178,147 @@ definitions:
       txReceipt:
         type: 'object'
 
+  PerpClobPostOrderRequest:
+    type: 'object'
+    required:
+      - 'market'
+      - 'chain'
+      - 'network'
+      - 'connector'
+      - 'address'
+      - 'leverage'
+    properties:
+      market:
+        type: 'string'
+        example: 'AAVE-USDT'
+      orderId:
+        type: 'string'
+        example: 'Buy-21342453'
+      chain:
+        type: 'string'
+        example: 'injective'
+      network:
+        type: 'string'
+        example: 'mainnet'
+      connector:
+        type: 'string'
+        example: 'injective'
+      address:
+        type: 'string'
+        example: '0x...'
+      leverage:
+        type: 'number'
+        example: 20.0
+
+  PerpClobGetOrderTradesRequest:
+    type: 'object'
+    required:
+      - 'chain'
+      - 'network'
+      - 'connector'
+      - 'address'
+      - 'orderId'
+    properties:
+      orderId:
+        type: 'string'
+        example: 'Buy-21342453'
+      chain:
+        type: 'string'
+        example: 'injective'
+      network:
+        type: 'string'
+        example: 'mainnet'
+      connector:
+        type: 'string'
+        example: 'injective'
+      address:
+        type: 'string'
+        example: '0x...'
+
+  PerpClobGetOrderTradesResponse:
+    type: 'object'
+    required:
+      - 'network'
+      - 'timestamp'
+      - 'latency'
+      - 'trades'
+    properties:
+      network:
+        type: 'string'
+        example: 'testnet'
+      timestamp:
+        type: 'integer'
+        example: 1636368085740
+      latency:
+        type: 'number'
+        example: 0.5
+      trades:
+        type: 'array'
+        example: [{}]
+
+  PerpClobFundingInfoRequest:
+    type: 'object'
+    required:
+      - 'chain'
+      - 'network'
+      - 'connector'
+      - 'market'
+    properties:
+      market:
+        type: 'string'
+        example: 'INJ-USDT'
+      chain:
+        type: 'string'
+        example: 'injective'
+      network:
+        type: 'string'
+        example: 'mainnet'
+      connector:
+        type: 'string'
+        example: 'injective'
+
+  PerpClobFundingInfoResponse:
+    type: 'object'
+    required:
+      - 'network'
+      - 'timestamp'
+      - 'latency'
+      - 'fundingInfo'
+    properties:
+      network:
+        type: 'string'
+        example: 'testnet'
+      timestamp:
+        type: 'integer'
+        example: 1636368085740
+      latency:
+        type: 'number'
+        example: 0.5
+      fundingInfo:
+        type: 'object'
+        example: {marketId: '12345',
+                  indexPrice: '1.234',
+                  markPrice: '1.111',
+                  fundingRate: '0.123',
+                  nextFundingTimestamp: 123456789}
+
+  PerpClobLastTradePriceResponse:
+    type: 'object'
+    required:
+      - 'network'
+      - 'timestamp'
+      - 'latency'
+      - 'lastTradePrice'
+    properties:
+      network:
+        type: 'string'
+        example: 'testnet'
+      timestamp:
+        type: 'integer'
+        example: 1636368085740
+      latency:
+        type: 'number'
+        example: 0.5
+      lastTradePrice:
+        type: 'string'
+        example: '1.234'

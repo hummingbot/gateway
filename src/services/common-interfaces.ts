@@ -114,6 +114,7 @@ import {
   ClobTickerRequest,
 } from '../clob/clob.requests';
 import { BalanceRequest } from '../network/network.requests';
+import { RouteMarket, ZigZagOrder } from '../connectors/zigzag/zigzag';
 
 // TODO Check the possibility to have clob/solana/serum equivalents here
 //  Check this link https://hummingbot.org/developers/gateway/building-gateway-connectors/#5-add-sdk-classes-to-uniswapish-interface
@@ -305,6 +306,34 @@ export interface Uniswapish {
     maxFeePerGas?: BigNumber,
     maxPriorityFeePerGas?: BigNumber,
     allowedSlippage?: string
+  ): Promise<Transaction>;
+}
+
+export interface ZigZagTrade {
+  newSwapPrice: number;
+  bestSwapRoute: RouteMarket[];
+  newQuoteOrderArray: ZigZagOrder[];
+}
+
+export interface ZigZagish {
+  init(): Promise<void>;
+
+  ready(): boolean;
+
+  getTokenByAddress(address: string): Tokenish;
+
+  estimate(
+    sellToken: Tokenish,
+    buyToken: Tokenish,
+    buyAmount: BigNumber,
+    side: string
+  ): Promise<ZigZagTrade>;
+
+  executeTrade(
+    walletAddress: string,
+    trade: ZigZagTrade,
+    rawAmount: BigNumber,
+    is_buy: boolean
   ): Promise<Transaction>;
 }
 

@@ -103,3 +103,7 @@ configurations:
   $namespace xsswap:
     configurationPath: xsswap.yml
     schemaPath: xsswap-schema.json
+
+  $namespace zigzag:
+    configurationPath: zigzag.yml
+    schemaPath: zigzag-schema.json

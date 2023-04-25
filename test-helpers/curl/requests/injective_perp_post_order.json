@@ -1,0 +1,12 @@
+{
+  "chain": "injective",
+  "network": "mainnet",
+  "connector": "injective_perpetual",
+  "address": "$INJECTIVE_SUBACCOUNTID",
+  "market": "INJ-USDT",
+  "price": "3.9",
+  "amount": "4.0",
+  "leverage": 1.0,
+  "side": "BUY",
+  "orderType": "LIMIT"
+}
