@@ -128,7 +128,7 @@ export namespace ConnectorsRoutes {
           {
             name: 'tinyman',
             trading_type: TinymanConfig.config.tradingTypes,
-            available_networks: DexalotCLOBConfig.config.availableNetworks,
+            available_networks: TinymanConfig.config.availableNetworks,
           },
         ],
       });

@@ -12,7 +12,7 @@ export namespace TinymanConfig {
     allowedSlippage: ConfigManagerV2.getInstance().get(
       'tinyman.allowedSlippage'
     ),
-    tradingTypes: ['EVM_AMM'],
+    tradingTypes: ['ALGORAND_AMM'],
     availableNetworks: [
       { chain: 'algorand', networks: ['mainnet', 'testnet'] },
     ],
