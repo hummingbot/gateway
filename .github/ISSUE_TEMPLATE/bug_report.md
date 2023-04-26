@@ -2,7 +2,7 @@
 name: Bug report
 about: Create a report to help us improve
 title: ''
-labels: ''
+labels: bug
 assignees: ''
 
 ---
@@ -34,7 +34,8 @@ Here are the steps to reproduce the issue (see attachments in the section below)
 // Include your bot's version number (Can be found at the upper left corner of your CLI).
 
 **Attachments**
-// Please attach your config file and log file to help us debug. It would be difficult for us to help you without those! 
+// It is important that you attach the required files for us to be able to investigate the issue. 
+// Please attach the chain.yml file from your gateway "conf" folder, e.g ethereum.yml
 
 
 *WARNING: Do NOT publish any exchange API keys or your wallet's private key. Whoever has access to them may steal your assets!*
