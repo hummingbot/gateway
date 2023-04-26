@@ -8,6 +8,7 @@ import {
   BroadcastMode,
   TxRestClient,
   TxClient,
+  TxRaw,
 } from '@injectivelabs/sdk-ts';
 import { EthereumChainId } from '@injectivelabs/ts-types';
 import {
@@ -17,11 +18,10 @@ import {
   NetworkEndpoints,
 } from '@injectivelabs/networks';
 import { Injective } from './injective';
-import { AccountDetails } from '@injectivelabs/sdk-ts/dist/types/auth';
 import LRUCache from 'lru-cache';
 import { getInjectiveConfig } from './injective.config';
 import { networkToString } from './injective.mappers';
-import { TxRaw } from '@injectivelabs/chain-api/cosmos/tx/v1beta1/tx_pb';
+import { AccountDetails } from '@injectivelabs/sdk-ts/dist/cjs/types/auth';
 
 interface MsgBroadcasterTxOptions {
   msgs: Msgs | Msgs[];
@@ -227,7 +227,7 @@ export class MsgBroadcasterLocal {
     const { signBytes, txRaw } = createTransaction({
       memo: '',
       fee: DEFAULT_STD_FEE,
-      message: (tx.msgs as Msgs[]).map((m) => m.toDirectSign()),
+      message: tx.msgs as Msgs[],
       timeoutHeight: timeoutHeight.toNumber(),
       pubKey: this._privateKey.toPublicKey().toBase64(),
       sequence: sequence,
@@ -239,7 +239,8 @@ export class MsgBroadcasterLocal {
     const signature = await this._privateKey.sign(Buffer.from(signBytes));
 
     /** Append Signatures */
-    txRaw.setSignaturesList([signature]);
+    txRaw.signatures = [signature];
+
     /** Broadcast transaction */
     const txResponse = await this.broadcastUsingInjective(
       txRaw,
