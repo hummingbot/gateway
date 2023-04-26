@@ -36,7 +36,7 @@
   {
       "chainId": 432204,
       "address": "0x152b9d0FdC40C096757F570A51E494bd4b943E50",
-      "decimals": 18,
+      "decimals": 8,
       "name": "BTC.b",
       "symbol": "BTC.b",
       "logoURI": "https://raw.githubusercontent.com/Dexalot/tokenlist/main/imgs/btc/logo.png"

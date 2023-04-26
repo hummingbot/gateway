@@ -8,6 +8,7 @@ import { Ethereumish } from '../../services/common-interfaces';
 import { MadMeerkatConfig } from '../../connectors/mad_meerkat/mad_meerkat.config';
 import { VVSConfig } from '../../connectors/vvs/vvs.config';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
+import { OpenoceanConfig } from '../../connectors/openocean/openocean.config';
 
 export class Cronos extends EthereumBase implements Ethereumish {
   private static _instances: { [name: string]: Cronos };
@@ -98,6 +99,8 @@ export class Cronos extends EthereumBase implements Ethereumish {
       spender = MadMeerkatConfig.config.routerAddress(this._chain);
     } else if (reqSpender == 'vvs') {
       spender = VVSConfig.config.routerAddress(this._chain);
+    } else if (reqSpender === 'openocean') {
+      spender = OpenoceanConfig.config.routerAddress('cronos', this._chain);
     } else {
       spender = reqSpender;
     }

@@ -1,0 +1,346 @@
+paths:
+  /clob/perp/markets:
+    get:
+      tags:
+        - 'clob/perp'
+      summary: 'Get the markets for a clob'
+      operationId: 'markets'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          description: 'Request body.'
+          required: true
+          schema:
+            $ref: '#/definitions/ClobMarketsRequest'
+      responses:
+        '200':
+          description: 'Successful response.'
+          schema:
+            $ref: '#/definitions/ClobMarketResponse'
+        '404':
+          description: 'Not found response.'
+  /clob/perp/orderBook:
+    get:
+      tags:
+        - 'clob/perp'
+      summary: 'Gets orderbook for a market'
+      operationId: 'orderBook'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          description: 'Request body.'
+          required: true
+          schema:
+            $ref: '#/definitions/ClobOrderbookRequest'
+      responses:
+        '200':
+          description: 'Successful response.'
+          schema:
+            $ref: '#/definitions/ClobOrderbookResponse'
+        '404':
+          description: 'Not found response.'
+  /clob/perp/ticker:
+    get:
+      tags:
+        - 'clob/perp'
+      summary: 'Get One or More Tickers'
+      description: 'Get the information of one, several or all available tickers.'
+      operationId: 'tickers'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          description: 'Request body.'
+          required: true
+          schema:
+            $ref: '#/definitions/ClobTickerRequest'
+      responses:
+        '200':
+          description: 'Successful response.'
+          schema:
+            $ref: '#/definitions/ClobTickerResponse'
+        '404':
+          description: 'Not found response.'
+  /clob/perp/orders:
+    post:
+      tags:
+        - 'clob/perp'
+      summary: 'Create One Or More Orders'
+      description: 'Create one or more orders.'
+      operationId: 'postOrders'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          description: 'Request body.'
+          required: true
+          schema:
+            $ref: '#/definitions/PerpClobPostOrderRequest'
+      responses:
+        '200':
+          description: 'Successful response.'
+          schema:
+            $ref: '#/definitions/ClobPostOrderResponse'
+        '400':
+          description: 'Bad request response.'
+    get:
+      tags:
+        - 'clob/perp'
+      summary: 'Get One Or More Orders'
+      description: 'Get the information of one, several or all orders.'
+      operationId: 'orders'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          description: 'Request body.'
+          required: true
+          schema:
+            $ref: '#/definitions/ClobGetOrderRequest'
+      responses:
+        '200':
+          description: 'Successful response.'
+          schema:
+            $ref: '#/definitions/ClobGetOrderResponse'
+        '400':
+          description: 'Bad request response.'
+        '404':
+          description: 'Not found response.'
+    delete:
+      tags:
+        - 'clob/perp'
+      summary: 'Cancel One Or More Orders Open Orders'
+      description: 'Cancel one, several or all open orders.'
+      operationId: 'deleteOrders'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          description: 'Request body.'
+          required: true
+          schema:
+            $ref: '#/definitions/ClobDeleteOrderRequest'
+      responses:
+        '200':
+          description: 'Successful response.'
+          schema:
+            $ref: '#/definitions/ClobDeleteOrderResponse'
+        '400':
+          description: 'Bad request response.'
+        '404':
+          description: 'Not found response.'
+  /clob/perp/batchOrders:
+    post:
+      tags:
+        - 'clob/perp'
+      summary: 'Create One Or More Orders'
+      description: 'Create one or more orders.'
+      operationId: 'postOrders'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          description: 'Request body.'
+          required: true
+          schema:
+            $ref: '#/definitions/PerpClobPostBatchOrderRequest'
+      responses:
+        '200':
+          description: 'Successful response.'
+          schema:
+            $ref: '#/definitions/ClobPostOrderResponse'
+        '400':
+          description: 'Bad request response.'
+  /clob/perp/order/trades:
+    get:
+      tags:
+        - 'clob/perp'
+      summary: 'Get trades for an order'
+      description: 'Retrieves trades for an order.'
+      operationId: 'trades'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          description: 'Request body.'
+          required: true
+          schema:
+            $ref: '#/definitions/PerpClobGetOrderTradesRequest'
+      responses:
+        '200':
+          description: 'Successful response.'
+          schema:
+            $ref: '#/definitions/PerpClobGetOrderTradesResponse'
+        '400':
+          description: 'Bad request response.'
+  /clob/perp/estimateGas:
+    post:
+      tags:
+        - 'clob/perp'
+      summary: 'Estimate the total gas costs for sending an clob order'
+      operationId: 'estimateGas'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          required: true
+          schema:
+            $ref: '#/definitions/NetworkSelectionRequest'
+      responses:
+        '200':
+          schema:
+            $ref: '#/definitions/EstimateGasResponse'
+  /clob/perp/funding/rates:
+    post:
+      tags:
+        - 'clob/perp'
+      summary: 'Get funding rates for a market'
+      description: 'Get funding rates for a market.'
+      operationId: 'fundingRates'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          description: 'Request body.'
+          required: true
+          schema:
+            $ref: '#/definitions/PerpClobFundingRatesRequest'
+      responses:
+        '200':
+          description: 'Successful response.'
+          schema:
+            $ref: '#/definitions/PerpClobFundingRatesResponse'
+        '400':
+          description: 'Bad request response.'
+  /clob/perp/funding/payments:
+    post:
+      tags:
+        - 'clob/perp'
+      summary: 'Get funding payments for a market'
+      description: 'Get funding payments for a market.'
+      operationId: 'fundingPayments'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          description: 'Request body.'
+          required: true
+          schema:
+            $ref: '#/definitions/PerpClobFundingPaymentsRequest'
+      responses:
+        '200':
+          description: 'Successful response.'
+          schema:
+            $ref: '#/definitions/PerpClobFundingPaymentsResponse'
+        '400':
+          description: 'Bad request response.'
+  /clob/perp/funding/info:
+    post:
+      tags:
+        - 'clob/perp'
+      summary: 'Get funding info for a market'
+      description: 'Get funding info for a market.'
+      operationId: 'fundinginfo'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          description: 'Request body.'
+          required: true
+          schema:
+            $ref: '#/definitions/PerpClobFundingInfoRequest'
+      responses:
+        '200':
+          description: 'Successful response.'
+          schema:
+            $ref: '#/definitions/PerpClobFundingInfoResponse'
+        '400':
+          description: 'Bad request response.'
+  /clob/perp/positions:
+    post:
+      tags:
+        - 'clob/perp'
+      summary: 'Get all positions for an address in the provided for markets'
+      description: 'Get all positions for an address in the provided for markets.'
+      operationId: 'clobPerpPositions'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          description: 'Request body.'
+          required: true
+          schema:
+            $ref: '#/definitions/PerpClobPositionsRequest'
+      responses:
+        '200':
+          description: 'Successful response.'
+          schema:
+            $ref: '#/definitions/PerpClobPositionsResponse'
+        '400':
+          description: 'Bad request response.'
+  /clob/perp/lastTradePrice:
+    post:
+      tags:
+        - 'clob/perp'
+      summary: 'Get last trade price for markets'
+      description: 'Get last trade price for markets.'
+      operationId: 'lastTradePrice'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          description: 'Request body.'
+          required: true
+          schema:
+            $ref: '#/definitions/PerpClobFundingInfoRequest'
+      responses:
+        '200':
+          description: 'Successful response.'
+          schema:
+            $ref: '#/definitions/PerpClobLastTradePriceResponse'
+        '400':
+          description: 'Bad request response.'
