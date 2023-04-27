@@ -2,7 +2,7 @@ jest.useFakeTimers();
 import { Tinyman } from '../../../src/connectors/tinyman/tinyman';
 import { patch, unpatch } from '../../services/patch';
 import { Algorand } from '../../../src/chains/algorand/algorand';
-import { poolUtils, Swap } from '@tinymanorg/tinyman-js-sdk';
+import { poolUtils, SwapQuoteType, } from '@tinymanorg/tinyman-js-sdk';
 import { getAlgorandConfig } from '../../../src/chains/algorand/algorand.config';
 
 let algorand: Algorand;
@@ -15,6 +15,12 @@ const NATIVE_TOKEN = CONFIG.nativeCurrencySymbol;
 const NATIVE_TOKEN_ID = 0;
 const USDC_TOKEN = 'USDC';
 const USDC_TOKEN_ID = 10458941;
+const TX = {
+  txnID: 1234,
+  round: 1,
+  quote: {},
+  assetOut: undefined,
+};
 const MNEUMONIC =
   'share' +
   ' general' +
@@ -105,9 +111,9 @@ export const patchGetAssetData = () => {
 
 beforeAll(async () => {
   algorand = Algorand.getInstance(NETWORK);
-  await algorand.init();
   patchCurrentBlockNumber();
   patchGetAssetData();
+  await algorand.init();
 
   tm = Tinyman.getInstance(NETWORK);
   await tm.init();
@@ -121,9 +127,20 @@ afterAll(async () => {
   await algorand.close();
 });
 
-const patchSendHelper = () => {
-  patch(Swap.v2, 'execute', () => {
-    return { txID: 1234, round: 1 };
+const patchSwap = () => {
+  patch(tm.swap, 'v2', {
+    getQuote() {
+      return { type: SwapQuoteType.Direct, data: { quote: { rate: 1 } } };
+    },
+    generateTxns() {
+      return [];
+    },
+    signTxns() {
+      return;
+    },
+    async execute() {
+      return TX;
+    },
   });
 };
 
@@ -176,6 +193,8 @@ describe('verify Tinyman estimate Sell Trade', () => {
     });
     expect(expectedTrade).toHaveProperty('trade');
     expect(expectedTrade).toHaveProperty('expectedAmount');
+    expect(expectedTrade.expectedAmount).toEqual(0.180363);
+    expect(expectedTrade.expectedPrice).toEqual(0.180363);
   });
 
   it('Should throw an error if no pair is available', async () => {
@@ -208,6 +227,8 @@ describe('verify Tinyman estimate Buy Trade', () => {
     });
     expect(expectedTrade).toHaveProperty('trade');
     expect(expectedTrade).toHaveProperty('expectedAmount');
+    expect(expectedTrade.expectedAmount).toEqual(1);
+    expect(expectedTrade.expectedPrice).toEqual(0.18145);
   });
 
   it('Should return an error if no pair is available', async () => {
@@ -236,7 +257,7 @@ describe('getAllowedSlippage', () => {
 describe('verify Tinyman executeTrade', () => {
   it('Should pass when pair is available', async () => {
     patchFetcher();
-    patchSendHelper();
+    patchSwap();
 
     const trade = await tm.estimateTrade({
       chain: CHAIN_NAME,
@@ -252,7 +273,7 @@ describe('verify Tinyman executeTrade', () => {
       trade.trade,
       true
     );
-    expect(tradeResult.txnID).toEqual(123);
-    expect(tradeResult.round).toEqual(1);
+    expect(tradeResult.txnID).toEqual(TX.txnID);
+    expect(tradeResult.round).toEqual(TX.round);
   });
 });

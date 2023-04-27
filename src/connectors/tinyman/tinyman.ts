@@ -30,10 +30,16 @@ export class Tinyman {
   private chain: Algorand;
   private _ready: boolean = false;
   private _config: TinymanConfig.NetworkConfig;
+  private _swap;
+
+  public get swap() {
+    return this._swap;
+  }
 
   private constructor(network: string) {
     this._config = TinymanConfig.config;
     this.chain = Algorand.getInstance(network);
+    this._swap = Swap;
   }
 
   public static getInstance(network: string): Tinyman {
@@ -130,7 +136,7 @@ export class Tinyman {
     const isBuy: boolean = req.side === 'BUY';
     const pool: V2PoolInfo = await this.fetchData(baseToken, quoteToken);
 
-    const quote = await Swap.v2.getQuote({
+    const quote = await this.swap.v2.getQuote({
       type: isBuy === true ? SwapType.FixedOutput : SwapType.FixedInput,
       amount: Number(amount.toString()),
       assetIn: isBuy === true ? quoteAsset : baseAsset,
@@ -159,31 +165,31 @@ export class Tinyman {
    * Given an account and a tinyman trade, try to execute it on blockchain.
    *
    * @param account Algorand account
-   * @param trade Expected trade
+   * @param quote Expected trade
    * @param isBuy Used to indicate buy or sell swap
    */
 
   async executeTrade(
     account: Account,
-    trade: SwapQuote,
+    quote: SwapQuote,
     isBuy: boolean
   ): Promise<V2SwapExecution> {
     const network = this.chain.network as SupportedNetwork;
-    const fixedSwapTxns = await Swap.v2.generateTxns({
+    const fixedSwapTxns = await this.swap.v2.generateTxns({
       client: this.chain.algod,
       network,
       swapType: isBuy === true ? SwapType.FixedOutput : SwapType.FixedInput,
-      quote: trade,
+      quote,
       slippage: this.getSlippage(),
       initiatorAddr: account.addr,
     });
-    const signedTxns = await Swap.v2.signTxns({
+    const signedTxns = await this.swap.v2.signTxns({
       txGroup: fixedSwapTxns,
       initiatorSigner: this.signerWithSecretKey(account),
     });
-    const tx = await Swap.v2.execute({
+    const tx = await this.swap.v2.execute({
       client: this.chain.algod,
-      quote: trade,
+      quote,
       txGroup: fixedSwapTxns,
       signedTxns,
     });
