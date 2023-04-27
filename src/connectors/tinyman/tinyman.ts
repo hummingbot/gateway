@@ -71,7 +71,7 @@ export class Tinyman {
   /**
    * Gets the allowed slippage percent from configuration.
    */
-  getSlippagePercentage(): number {
+  getSlippage(): number {
     const allowedSlippage = this._config.allowedSlippage;
     const nd = allowedSlippage.match(percentRegexp);
     let slippage = 0.0;
@@ -174,7 +174,7 @@ export class Tinyman {
       network,
       swapType: isBuy === true ? SwapType.FixedOutput : SwapType.FixedInput,
       quote: trade,
-      slippage: this.getSlippagePercentage(),
+      slippage: this.getSlippage(),
       initiatorAddr: account.addr,
     });
     const signedTxns = await Swap.v2.signTxns({
