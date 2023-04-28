@@ -129,10 +129,6 @@ export namespace ConnectorsRoutes {
             name: 'dexalot',
             trading_type: DexalotCLOBConfig.config.tradingTypes('spot'),
             available_networks: DexalotCLOBConfig.config.availableNetworks,
-            additional_add_wallet_prompts: {
-              api_key:
-                'Enter your Dexalot API Key (you can request one from the Dexalot team) >>> ',
-            },
           },
           {
             name: 'zigzag',
