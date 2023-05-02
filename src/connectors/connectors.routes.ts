@@ -19,6 +19,7 @@ import { InjectiveCLOBConfig } from './injective/injective.clob.config';
 import { XsswapConfig } from './xsswap/xsswap.config';
 import { ConnectorsResponse } from './connectors.request';
 import { DexalotCLOBConfig } from './dexalot/dexalot.clob.config';
+import { ZigZagConfig } from './zigzag/zigzag.config';
 import { TinymanConfig } from './tinyman/tinyman.config';
 
 export namespace ConnectorsRoutes {
@@ -112,7 +113,16 @@ export namespace ConnectorsRoutes {
             },
           },
           {
-            name: 'xsswap',
+            name: 'injective_perpetual',
+            trading_type: InjectiveCLOBConfig.config.tradingTypes('perp'),
+            available_networks: InjectiveCLOBConfig.config.availableNetworks,
+            additional_add_wallet_prompts: {
+              accountId:
+                'Enter your injective sub account id wallet key (input 0 if unsure) >>> ',
+            },
+          },
+          {
+            name: 'xswap',
             trading_type: XsswapConfig.config.tradingTypes,
             available_networks: XsswapConfig.config.availableNetworks,
           },
@@ -124,6 +134,11 @@ export namespace ConnectorsRoutes {
               api_key:
                 'Enter your Dexalot API Key (you can request one from the Dexalot team) >>> ',
             },
+          },
+          {
+            name: 'zigzag',
+            trading_type: ZigZagConfig.config.tradingTypes,
+            available_networks: ZigZagConfig.config.availableNetworks,
           },
           {
             name: 'tinyman',

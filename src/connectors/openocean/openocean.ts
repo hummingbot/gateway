@@ -17,6 +17,8 @@ import { Avalanche } from '../../chains/avalanche/avalanche';
 import { Ethereum } from '../../chains/ethereum/ethereum';
 import { Polygon } from '../../chains/polygon/polygon';
 import { Harmony } from '../../chains/harmony/harmony';
+import { BinanceSmartChain } from '../../chains/binance-smart-chain/binance-smart-chain';
+import { Cronos } from '../../chains/cronos/cronos';
 import { ExpectedTrade, Uniswapish } from '../../services/common-interfaces';
 import {
   HttpException,
@@ -53,6 +55,7 @@ export class Openocean implements Uniswapish {
   private static _instances: { [name: string]: Openocean };
   private chainInstance;
   private _chain: string;
+  private _network: string;
   private _router: string;
   private _gasLimitEstimate: number;
   private _ttl: number;
@@ -62,6 +65,7 @@ export class Openocean implements Uniswapish {
 
   private constructor(chain: string, network: string) {
     this._chain = chain;
+    this._network = network;
     const config = OpenoceanConfig.config;
     this.chainInstance = this.getChainInstance(network);
     this.chainId = this.chainInstance.chainId;
@@ -90,6 +94,10 @@ export class Openocean implements Uniswapish {
       return Polygon.getInstance(network);
     } else if (this._chain === 'harmony') {
       return Harmony.getInstance(network);
+    } else if (this._chain === 'binance-smart-chain') {
+      return BinanceSmartChain.getInstance(network);
+    } else if (this._chain === 'cronos') {
+      return Cronos.getInstance(network);
     } else {
       throw new Error('unsupported chain');
     }
@@ -154,15 +162,24 @@ export class Openocean implements Uniswapish {
   }
 
   public get chainName(): string {
-    if (this._chain === 'ethereum') {
+    if (this._chain === 'ethereum' && this._network === 'mainnet') {
       return 'eth';
+    } else if (this._chain === 'ethereum' && this._network === 'arbitrum_one') {
+      return 'arbitrum';
+    } else if (this._chain === 'ethereum' && this._network === 'optimism') {
+      return 'optimism';
     } else if (this._chain === 'avalanche') {
       return 'avax';
-    } else if (this._chain === 'polygon') {
-      return 'polygon';
-    } else if (this._chain === 'harmony') {
-      return 'harmony';
+    } else if (this._chain === 'binance-smart-chain') {
+      return 'bsc';
     }
+    // else if (this._chain === 'polygon') {
+    //   return 'polygon';
+    // } else if (this._chain === 'harmony') {
+    //   return 'harmony';
+    // } else if (this._chain === 'cronos') {
+    //   return 'cronos';
+    // }
     return this._chain;
   }
 

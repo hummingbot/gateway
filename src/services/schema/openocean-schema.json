@@ -8,7 +8,7 @@
     "contractAddresses": {
       "type": "object",
       "patternProperties": {
-        "^\\w+$": {
+        "[\\w-]+$": {
           "type": "object",
           "patternProperties": {
             "^\\w+$": {
