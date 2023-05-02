@@ -1,5 +1,5 @@
 import { BalanceRequest, PollRequest } from '../../../src/chains/tezos/tezos.request';
-import { NonceRequest } from '../../../src/evm/evm.requests';
+import { NonceRequest } from '../../../src/chains/chain.requests';
 import { allowances, approve, balances, getTokenSymbolsToTokens, nonce, poll } from '../../../src/chains/tezos/tezos.controllers';
 import { BigNumber } from 'ethers';
 

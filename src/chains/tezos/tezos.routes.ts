@@ -37,7 +37,7 @@ export namespace TezosRoutes {
         res: Response<NonceResponse | string, {}>
       ) => {
         validateTezosNonceRequest(req.body);
-        const chain = await getChain(req.body.chain, req.body.network);
+        const chain = await getInitializedChain(req.body.chain, req.body.network);
         const nonceRes = await tezosControllers.nonce(chain, req.body);
         res.status(200).json({
           ...nonceRes,

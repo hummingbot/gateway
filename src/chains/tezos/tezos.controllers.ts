@@ -27,9 +27,8 @@ import {
   NonceResponse,
   AllowancesRequest,
   AllowancesResponse,
-} from '../../evm/evm.requests';
+} from '../../chains/chain.requests';
 import { Tezosish, CustomTransaction } from '../../services/common-interfaces';
-import { isAddress } from './tezos.validators';
 
 export const getTokenSymbolsToTokens = (
   tezos: Tezosish,
@@ -212,7 +211,7 @@ export async function approve(
   req: ApproveRequest
 ): Promise<ApproveResponse | string> {
   const initTime = Date.now();
-  const { amount, address, token, network } = req;
+  const { amount, address, token } = req;
 
   let spender = req.spender;
   let wallet: TezosToolkit;

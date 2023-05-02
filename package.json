@@ -48,6 +48,7 @@
     "@taquito/rpc": "^16.1.2",
     "@taquito/signer": "^16.1.2",
     "@taquito/taquito": "^16.1.2",
+    "@traderjoe-xyz/sdk": "^1.6.1",
     "@types/fs-extra": "^9.0.13",
     "@types/lodash": "^4.14.178",
     "@types/minimist": "^1.2.2",
