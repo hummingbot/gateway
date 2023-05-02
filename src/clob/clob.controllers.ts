@@ -252,7 +252,7 @@ export async function perpGetMarkets(
   request: PerpClobMarketRequest
 ): Promise<PerpClobMarketResponse> {
   const startTimestamp: number = Date.now();
-  await getChain(request.chain, request.network);
+  await getInitializedChain(request.chain, request.network);
   const connector: any = await getConnector(
     request.chain,
     request.network,
@@ -271,7 +271,7 @@ export async function perpGetOrderBooks(
   request: PerpClobOrderbookRequest
 ): Promise<PerpClobOrderbookResponse> {
   const startTimestamp: number = Date.now();
-  await getChain(request.chain, request.network);
+  await getInitializedChain(request.chain, request.network);
   const connector: any = await getConnector(
     request.chain,
     request.network,
@@ -290,7 +290,7 @@ export async function perpGetTickers(
   request: PerpClobTickerRequest
 ): Promise<PerpClobTickerResponse> {
   const startTimestamp: number = Date.now();
-  await getChain(request.chain, request.network);
+  await getInitializedChain(request.chain, request.network);
   const connector: any = await getConnector(
     request.chain,
     request.network,
@@ -309,7 +309,7 @@ export async function perpGetOrders(
   request: PerpClobGetOrderRequest
 ): Promise<PerpClobGetOrderResponse> {
   const startTimestamp: number = Date.now();
-  await getChain(request.chain, request.network);
+  await getInitializedChain(request.chain, request.network);
   const connector: any = await getConnector(
     request.chain,
     request.network,
@@ -328,7 +328,7 @@ export async function perpPostOrder(
   request: PerpClobPostOrderRequest
 ): Promise<PerpClobPostOrderResponse> {
   const startTimestamp: number = Date.now();
-  await getChain(request.chain, request.network);
+  await getInitializedChain(request.chain, request.network);
   const connector: any = await getConnector(
     request.chain,
     request.network,
@@ -347,7 +347,7 @@ export async function perpDeleteOrder(
   request: PerpClobDeleteOrderRequest
 ): Promise<PerpClobDeleteOrderResponse> {
   const startTimestamp: number = Date.now();
-  await getChain(request.chain, request.network);
+  await getInitializedChain(request.chain, request.network);
   const connector: any = await getConnector(
     request.chain,
     request.network,
@@ -366,7 +366,7 @@ export async function perpEstimateGas(
   request: NetworkSelectionRequest
 ): Promise<EstimateGasResponse> {
   const startTimestamp: number = Date.now();
-  await getChain(request.chain, request.network);
+  await getInitializedChain(request.chain, request.network);
   const connector: any = await getConnector(
     request.chain,
     request.network,
@@ -385,7 +385,7 @@ export async function perpFundingInfo(
   request: PerpClobFundingInfoRequest
 ): Promise<PerpClobFundingInfoResponse> {
   const startTimestamp: number = Date.now();
-  await getChain(request.chain, request.network);
+  await getInitializedChain(request.chain, request.network);
   const connector: any = await getConnector(
     request.chain,
     request.network,
@@ -404,7 +404,7 @@ export async function perpFundingPayments(
   request: PerpClobFundingPaymentsRequest
 ): Promise<PerpClobFundingPaymentsResponse> {
   const startTimestamp: number = Date.now();
-  await getChain(request.chain, request.network);
+  await getInitializedChain(request.chain, request.network);
   const connector: any = await getConnector(
     request.chain,
     request.network,
@@ -423,7 +423,7 @@ export async function perpPositions(
   request: PerpClobPositionRequest
 ): Promise<PerpClobPositionResponse> {
   const startTimestamp: number = Date.now();
-  await getChain(request.chain, request.network);
+  await getInitializedChain(request.chain, request.network);
   const connector: any = await getConnector(
     request.chain,
     request.network,
@@ -442,7 +442,7 @@ export async function perpTrades(
   request: PerpClobGetTradesRequest
 ): Promise<PerpClobGetTradesResponse> {
   const startTimestamp: number = Date.now();
-  await getChain(request.chain, request.network);
+  await getInitializedChain(request.chain, request.network);
   const connector: any = await getConnector(
     request.chain,
     request.network,
@@ -461,7 +461,7 @@ export async function perpLastTradePrice(
   request: PerpClobGetLastTradePriceRequest
 ): Promise<PerpClobGetLastTradePriceResponse> {
   const startTimestamp: number = Date.now();
-  await getChain(request.chain, request.network);
+  await getInitializedChain(request.chain, request.network);
   const connector: any = await getConnector(
     request.chain,
     request.network,
@@ -489,7 +489,7 @@ export async function perpBatchOrders(
   request: PerpClobBatchUpdateRequest
 ): Promise<PerpClobBatchUpdateResponse> {
   const startTimestamp: number = Date.now();
-  await getChain(request.chain, request.network);
+  await getInitializedChain(request.chain, request.network);
   const connector: any = await getConnector(
     request.chain,
     request.network,
