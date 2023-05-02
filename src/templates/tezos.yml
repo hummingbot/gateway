@@ -1,0 +1,22 @@
+
+# list the Tezos networks available to gateway
+networks:
+
+  mainnet: 
+    chainID: 'mainnet'
+    nativeCurrencySymbol: 'XTZ'    
+    nodeURL: 'https://rpc.tzbeta.net'
+    tokenListType: 'FILE'
+    tokenListSource: 'src/chains/tezos/tezos.mainnet.tokens.json'
+    tzktURL: 'https://api.tzkt.io'
+
+  ghostnet:
+    chainID: 'ghostnet'
+    nativeCurrencySymbol: 'XTZ'    
+    nodeURL: 'https://ghostnet.smartpy.io'
+    tokenListType: 'FILE'
+    tokenListSource: 'src/chains/tezos/tezos.ghostnet.tokens.json'
+    tzktURL: 'https://api.ghostnet.tzkt.io'
+
+manualGasPrice: 100
+gasLimitTransaction: 2600000

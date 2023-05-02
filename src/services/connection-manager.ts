@@ -5,6 +5,7 @@ import { BinanceSmartChain } from '../chains/binance-smart-chain/binance-smart-c
 import { Harmony } from '../chains/harmony/harmony';
 import { Polygon } from '../chains/polygon/polygon';
 import { Xdc } from '../chains/xdc/xdc';
+import { Tezos } from '../chains/tezos/tezos';
 import { MadMeerkat } from '../connectors/mad_meerkat/mad_meerkat';
 import { Openocean } from '../connectors/openocean/openocean';
 import { Pangolin } from '../connectors/pangolin/pangolin';
@@ -26,6 +27,7 @@ import {
   Uniswapish,
   UniswapLPish,
   Xdcish,
+  Tezosish
 } from './common-interfaces';
 import { Traderjoe } from '../connectors/traderjoe/traderjoe';
 import { Sushiswap } from '../connectors/sushiswap/sushiswap';
@@ -44,7 +46,8 @@ export type ChainUnion =
   | Ethereumish
   | Nearish
   | Injective
-  | Xdcish;
+  | Xdcish
+  | Tezosish;
 
 export type Chain<T> = T extends Algorand
   ? Algorand
@@ -58,6 +61,8 @@ export type Chain<T> = T extends Algorand
   ? Xdcish
   : T extends Injective
   ? Injective
+  : T extends Tezosish
+  ? Tezosish
   : never;
 
 export class UnsupportedChainException extends Error {
@@ -117,6 +122,8 @@ export function getChainInstance(
     connection = Xdc.getInstance(network);
   } else if (chain === 'injective') {
     connection = Injective.getInstance(network);
+  } else if (chain === 'tezos') {
+    connection = Tezos.getInstance(network);
   } else {
     connection = undefined;
   }

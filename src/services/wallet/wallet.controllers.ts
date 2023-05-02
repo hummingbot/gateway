@@ -2,6 +2,7 @@ import fse from 'fs-extra';
 import { Xdc } from '../../chains/xdc/xdc';
 import { Cosmos } from '../../chains/cosmos/cosmos';
 import { Injective } from '../../chains/injective/injective';
+import { Tezos } from '../../chains/tezos/tezos';
 
 import {
   AddWalletRequest,
@@ -133,6 +134,13 @@ export async function addWallet(
       } else {
         throw new Error('Injective wallet requires a subaccount id');
       }
+    } else if (connection instanceof Tezos) {
+      const tezosWallet = await connection.getWalletFromPrivateKey(req.privateKey);
+      address = await tezosWallet.signer.publicKeyHash();
+      encryptedPrivateKey = connection.encrypt(
+        req.privateKey,
+        passphrase
+      );
     }
 
     if (address === undefined || encryptedPrivateKey === undefined) {

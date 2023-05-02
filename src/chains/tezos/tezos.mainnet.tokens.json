@@ -1,0 +1,100 @@
+{
+  "tokens": [
+    {
+      "name": "Kolibri USD",
+      "symbol": "KUSD",
+      "address": "KT1K9gCRgaLRFKTErYt1wVxA3Frb9FjasjTV",
+      "decimals": 18,
+      "standard": "fa1.2",
+      "tokenId": 0
+    },
+    {
+      "name": "wXTZ",
+      "symbol": "WXTZ",
+      "address": "KT1VYsVfmobT7rsMVivvZ4J8i3bPiqz12NaH",
+      "decimals": 6,
+      "standard": "fa1.2",
+      "tokenId": 0
+    },
+    {
+      "name": "tzBTC",
+      "symbol": "TZBTC",
+      "address": "KT1PWx2mnDueood7fEmfbBDKx1D9BAnnXitn",
+      "decimals": 8,
+      "standard": "fa1.2",
+      "tokenId": 0
+    },
+    {
+      "name": "Staker DAO",
+      "symbol": "STKR",
+      "address": "KT1AEfeckNbdEYwaMKkytBwPJPycz7jdSGea",
+      "decimals": 18,
+      "standard": "fa1.2",
+      "tokenId": 0
+    },
+    {
+      "name": "USDtez",
+      "symbol": "USDTZ",
+      "address": "KT1LN4LPSqTMS7Sd2CJw4bbDGRkMv2t68Fy9",
+      "decimals": 6,
+      "standard": "fa1.2",
+      "tokenId": 0
+    },
+    {
+      "name": "ETHtez",
+      "symbol": "ETHTZ",
+      "address": "KT19at7rQUvyjxnZ2fBv7D9zc8rkyG7gAoU8",
+      "decimals": 18,
+      "standard": "fa1.2",
+      "tokenId": 0
+    },
+    {
+      "name": "Stably USD",
+      "symbol": "USDS",
+      "address": "KT1REEb5VxWRjcHm5GzDMwErMmNFftsE5Gpf",
+      "decimals": 6,
+      "standard": "fa2",
+      "tokenId": 0
+    },
+    {
+      "name": "hDAO",
+      "symbol": "HDAO",
+      "address": "KT1AFA2mwNUMNd4SsujE1YYp29vd8BZejyKW",
+      "decimals": 0,
+      "standard": "fa2",
+      "tokenId": 0
+    },
+    {
+      "name": "sDAO",
+      "symbol": "SDAO",
+      "address": "KT19ovJhcsUn4YU8Q5L3BGovKSixfbWcecEA",
+      "decimals": 0,
+      "standard": "fa2",
+      "tokenId": 1
+    },
+    {
+      "name": "RSAL",
+      "symbol": "RSAL",
+      "address": "KT19ovJhcsUn4YU8Q5L3BGovKSixfbWcecEA",
+      "decimals": 0,
+      "standard": "fa2",
+      "tokenId": 0
+    },
+    {
+      "name": "CRUNCH",
+      "symbol": "CRUNCH",
+      "address": "KT1RRgK6eXvCWCiEGWhRZCSVGzhDzwXEEjS4",
+      "decimals": 8,
+      "standard": "fa2",
+      "tokenId": 0
+    },
+    {
+      "name": "Ctez",
+      "symbol": "CTEZ",
+      "address": "KT1FbYwEWU8BTfrvNoL5xDEC5owsDxv9nqKT",
+      "decimals": 6,
+      "standard": "fa1.2",
+      "tokenId": 0
+    }
+  ]
+}
