@@ -131,7 +131,7 @@ export namespace ConnectorsRoutes {
             available_networks: DexalotCLOBConfig.config.availableNetworks,
             additional_add_wallet_prompts: {
               api_key:
-                'Enter your Dexalot API Key (you can request one from the Dexalot team) >>> ',
+                'Enter a Dexalot API Key if you have one, otherwise hit return >>> ',
             },
           },
           {
