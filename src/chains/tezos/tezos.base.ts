@@ -26,7 +26,7 @@ export interface WalletData {
 }
 
 export interface TokenInfo {
-  chainId: number;
+  chainId: string;
   address: string;
   decimals: number;
   name: string;
