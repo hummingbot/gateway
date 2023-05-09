@@ -39,6 +39,10 @@ describe('Tezos', () => {
         expect(tezos.gasPrice).toEqual(123456);
     });
 
+    it('should have a gas limit of 2600000', () => {
+        expect(tezos.gasLimitTransaction).toEqual(2600000);
+    });
+
     it('should have a request count of 0', () => {
         expect(tezos.requestCount).toEqual(0);
     });

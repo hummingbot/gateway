@@ -7,6 +7,7 @@ import { logger } from '../../services/logger';
 export class Tezos extends TezosBase implements Tezosish {
   private static _instances: { [name: string]: Tezos };
   private _gasPrice: number;
+  private _gasLimitTransaction: number;
   private _nativeTokenSymbol: string;
   private _chain: string;
   private _requestCount: number;
@@ -20,6 +21,7 @@ export class Tezos extends TezosBase implements Tezosish {
     this._nativeTokenSymbol = config.nativeCurrencySymbol;
 
     this._gasPrice = config.manualGasPrice;
+    this._gasLimitTransaction = config.gasLimitTransaction;
 
     this._requestCount = 0;
     this._metricsLogInterval = 300000; // 5 minutes
@@ -61,6 +63,10 @@ export class Tezos extends TezosBase implements Tezosish {
 
   public get gasPrice(): number {
     return this._gasPrice;
+  }
+
+  public get gasLimitTransaction() {
+    return this._gasLimitTransaction;
   }
 
   public get chain(): string {
