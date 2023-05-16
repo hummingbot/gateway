@@ -8,8 +8,8 @@ export namespace MadMeerkatConfig {
   const networks: Array<string> = Object.keys(contractAddresses);
   export const config: NetworkConfig = buildConfig(
     'mad_meerkat',
-    ['EVM'],
+    ['AMM'],
     [{ chain: 'cronos', networks }],
-    'AMM'
+    'EVM'
   );
 }
