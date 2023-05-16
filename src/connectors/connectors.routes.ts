@@ -32,13 +32,13 @@ export namespace ConnectorsRoutes {
           {
             name: 'uniswap',
             trading_type: UniswapConfig.config.tradingTypes('swap'),
-            chainType: UniswapConfig.config.chainType,
+            chain_type: UniswapConfig.config.chainType,
             available_networks: UniswapConfig.config.availableNetworks,
           },
           {
             name: 'uniswapLP',
             trading_type: UniswapConfig.config.tradingTypes('LP'),
-            chainType: UniswapConfig.config.chainType,
+            chain_type: UniswapConfig.config.chainType,
             available_networks: JSON.parse(
               JSON.stringify(UniswapConfig.config.availableNetworks)
             ),
@@ -47,79 +47,79 @@ export namespace ConnectorsRoutes {
           {
             name: 'pangolin',
             trading_type: PangolinConfig.config.tradingTypes,
-            chainType: PangolinConfig.config.chainType,
+            chain_type: PangolinConfig.config.chainType,
             available_networks: PangolinConfig.config.availableNetworks,
           },
           {
             name: 'openocean',
             trading_type: OpenoceanConfig.config.tradingTypes,
-            chainType: OpenoceanConfig.config.chainType,
+            chain_type: OpenoceanConfig.config.chainType,
             available_networks: OpenoceanConfig.config.availableNetworks,
           },
           {
             name: 'quickswap',
             trading_type: QuickswapConfig.config.tradingTypes,
-            chainType: QuickswapConfig.config.chainType,
+            chain_type: QuickswapConfig.config.chainType,
             available_networks: QuickswapConfig.config.availableNetworks,
           },
           {
             name: 'perp',
             trading_type: PerpConfig.config.tradingTypes('perp'),
-            chainType: PerpConfig.config.chainType,
+            chain_type: PerpConfig.config.chainType,
             available_networks: PerpConfig.config.availableNetworks,
           },
           {
             name: 'sushiswap',
             trading_type: SushiswapConfig.config.tradingTypes,
-            chainType: SushiswapConfig.config.chainType,
+            chain_type: SushiswapConfig.config.chainType,
             available_networks: SushiswapConfig.config.availableNetworks,
           },
           {
             name: 'traderjoe',
             trading_type: TraderjoeConfig.config.tradingTypes,
-            chainType: TraderjoeConfig.config.chainType,
+            chain_type: TraderjoeConfig.config.chainType,
             available_networks: TraderjoeConfig.config.availableNetworks,
           },
           {
             name: 'defikingdoms',
             trading_type: DefikingdomsConfig.config.tradingTypes,
-            chainType: DefikingdomsConfig.config.chainType,
+            chain_type: DefikingdomsConfig.config.chainType,
             available_networks: DefikingdomsConfig.config.availableNetworks,
           },
           {
             name: 'defira',
             trading_type: DefiraConfig.config.tradingTypes,
-            chainType: DefiraConfig.config.chainType,
+            chain_type: DefiraConfig.config.chainType,
             available_networks: DefiraConfig.config.availableNetworks,
           },
           {
             name: 'mad_meerkat',
             trading_type: MadMeerkatConfig.config.tradingTypes,
-            chainType: MadMeerkatConfig.config.chainType,
+            chain_type: MadMeerkatConfig.config.chainType,
             available_networks: MadMeerkatConfig.config.availableNetworks,
           },
           {
             name: 'vvs',
             trading_type: VVSConfig.config.tradingTypes,
-            chainType: VVSConfig.config.chainType,
+            chain_type: VVSConfig.config.chainType,
             available_networks: VVSConfig.config.availableNetworks,
           },
           {
             name: 'ref',
             trading_type: RefConfig.config.tradingTypes,
-            chainType: RefConfig.config.chainType,
+            chain_type: RefConfig.config.chainType,
             available_networks: RefConfig.config.availableNetworks,
           },
           {
             name: 'pancakeswap',
             trading_type: PancakeSwapConfig.config.tradingTypes,
-            chainType: PancakeSwapConfig.config.chainType,
+            chain_type: PancakeSwapConfig.config.chainType,
             available_networks: PancakeSwapConfig.config.availableNetworks,
           },
           {
             name: 'injective',
             trading_type: InjectiveCLOBConfig.config.tradingTypes('spot'),
-            chainType: InjectiveCLOBConfig.config.chainType,
+            chain_type: InjectiveCLOBConfig.config.chainType,
             available_networks: InjectiveCLOBConfig.config.availableNetworks,
             additional_add_wallet_prompts: {
               accountId:
@@ -129,7 +129,7 @@ export namespace ConnectorsRoutes {
           {
             name: 'injective_perpetual',
             trading_type: InjectiveCLOBConfig.config.tradingTypes('perp'),
-            chainType: InjectiveCLOBConfig.config.chainType,
+            chain_type: InjectiveCLOBConfig.config.chainType,
             available_networks: InjectiveCLOBConfig.config.availableNetworks,
             additional_add_wallet_prompts: {
               accountId:
@@ -139,13 +139,13 @@ export namespace ConnectorsRoutes {
           {
             name: 'xswap',
             trading_type: XsswapConfig.config.tradingTypes,
-            chainType: XsswapConfig.config.chainType,
+            chain_type: XsswapConfig.config.chainType,
             available_networks: XsswapConfig.config.availableNetworks,
           },
           {
             name: 'dexalot',
             trading_type: DexalotCLOBConfig.config.tradingTypes('spot'),
-            chainType: DexalotCLOBConfig.config.chainType,
+            chain_type: DexalotCLOBConfig.config.chainType,
             available_networks: DexalotCLOBConfig.config.availableNetworks,
             additional_add_wallet_prompts: {
               api_key:
@@ -155,7 +155,7 @@ export namespace ConnectorsRoutes {
           {
             name: 'zigzag',
             trading_type: ZigZagConfig.config.tradingTypes,
-            chainType: ZigZagConfig.config.chainType,
+            chain_type: ZigZagConfig.config.chainType,
             available_networks: ZigZagConfig.config.availableNetworks,
           },
         ],
