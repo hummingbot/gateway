@@ -18,16 +18,16 @@ import {
   Transaction,
   Wallet,
 } from 'ethers';
-import { CronosBaseUniswapishConnectorConfig } from './cronos-base-uniswapish-connector.config';
 import { Cronos } from '../cronos';
 import { logger } from '../../../services/logger';
 import { UniswapishPriceError } from '../../../services/error-handler';
 import { isFractionString } from '../../../services/validators';
 import { percentRegexp } from '../../../services/config-manager-v2';
+import { NetworkConfig } from '../../../network/network.utils';
 
 export abstract class CronosBaseUniswapishConnector implements Uniswapish {
   private static _instances: { [name: string]: CronosBaseUniswapishConnector };
-  private _config: CronosBaseUniswapishConnectorConfig.NetworkConfig;
+  private _config: NetworkConfig;
   private _cronos: Cronos;
   private _chainId: number;
   private _chain: string;
@@ -71,7 +71,7 @@ export abstract class CronosBaseUniswapishConnector implements Uniswapish {
     return this._ready;
   }
 
-  protected abstract buildConfig(): CronosBaseUniswapishConnectorConfig.NetworkConfig;
+  protected abstract buildConfig(): NetworkConfig;
 
   /**
    * Router address.

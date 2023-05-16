@@ -7,6 +7,7 @@ export namespace DefikingdomsConfig {
     ttl: number;
     routerAddress: (network: string) => string;
     tradingTypes: Array<string>;
+    chainType: string;
     availableNetworks: Array<AvailableNetworks>;
   }
 
@@ -20,7 +21,8 @@ export namespace DefikingdomsConfig {
       ConfigManagerV2.getInstance().get(
         `defikingdoms.contractAddresses.${network}.routerAddress`
       ),
-    tradingTypes: ['EVM_AMM'],
+    tradingTypes: ['AMM'],
+    chainType: 'EVM',
     availableNetworks: [
       {
         chain: 'harmony',
