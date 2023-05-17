@@ -5,6 +5,7 @@ export namespace TinymanConfig {
   export interface NetworkConfig {
     allowedSlippage: string;
     tradingTypes: Array<string>;
+    chainType: string;
     availableNetworks: Array<AvailableNetworks>;
   }
 
@@ -12,7 +13,8 @@ export namespace TinymanConfig {
     allowedSlippage: ConfigManagerV2.getInstance().get(
       'tinyman.allowedSlippage'
     ),
-    tradingTypes: ['ALGORAND_AMM'],
+    tradingTypes: ['AMM'],
+    chainType: 'ALGORAND',
     availableNetworks: [
       { chain: 'algorand', networks: ['mainnet', 'testnet'] },
     ],

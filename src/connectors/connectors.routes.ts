@@ -143,6 +143,7 @@ export namespace ConnectorsRoutes {
           {
             name: 'tinyman',
             trading_type: TinymanConfig.config.tradingTypes,
+            chain_type: TinymanConfig.config.chainType,
             available_networks: TinymanConfig.config.availableNetworks,
           },
         ],
