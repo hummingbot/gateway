@@ -272,7 +272,7 @@ export class Algorand {
     const assetData = await this.getAssetData();
     for (const result of assetData) {
       this._assetMap[result.unit_name.toUpperCase()] = {
-        symbol: result.unit_name,
+        symbol: result.unit_name.toUpperCase(),
         assetId: +result.id,
         decimals: result.decimals,
       };
