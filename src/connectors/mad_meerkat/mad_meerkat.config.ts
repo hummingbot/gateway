@@ -1,10 +1,15 @@
-import { CronosBaseUniswapishConnectorConfig } from '../../chains/cronos/cronos-base/cronos-base-uniswapish-connector.config';
+import { buildConfig, NetworkConfig } from '../../network/network.utils';
+import { ConfigManagerV2 } from '../../services/config-manager-v2';
 
 export namespace MadMeerkatConfig {
-  const tradingTypes = ['EVM_AMM'];
-  export const config: CronosBaseUniswapishConnectorConfig.NetworkConfig =
-    CronosBaseUniswapishConnectorConfig.buildConfig(
-      'mad_meerkat',
-      tradingTypes
-    );
+  const contractAddresses: any = ConfigManagerV2.getInstance().get(
+    'mad_meerkat.contractAddresses'
+  );
+  const networks: Array<string> = Object.keys(contractAddresses);
+  export const config: NetworkConfig = buildConfig(
+    'mad_meerkat',
+    ['AMM'],
+    [{ chain: 'cronos', networks }],
+    'EVM'
+  );
 }

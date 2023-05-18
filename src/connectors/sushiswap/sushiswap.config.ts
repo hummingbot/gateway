@@ -8,6 +8,7 @@ export namespace SushiswapConfig {
     ttl: number;
     sushiswapRouterAddress: (chain: string, network: string) => string;
     tradingTypes: Array<string>;
+    chainType: string;
     availableNetworks: Array<AvailableNetworks>;
   }
 
@@ -27,7 +28,8 @@ export namespace SushiswapConfig {
           network +
           '.sushiswapRouterAddress'
       ),
-    tradingTypes: ['EVM_AMM'],
+    tradingTypes: ['AMM'],
+    chainType: 'EVM',
     availableNetworks: [
       {
         chain: 'ethereum',

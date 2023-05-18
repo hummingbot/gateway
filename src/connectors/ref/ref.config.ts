@@ -1,25 +1,11 @@
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
-import { AvailableNetworks } from '../../services/config-manager-types';
-export namespace RefConfig {
-  export interface NetworkConfig {
-    allowedSlippage: string;
-    gasLimitEstimate: number;
-    ttl: number;
-    routerAddress: (network: string) => string;
-    tradingTypes: Array<string>;
-    availableNetworks: Array<AvailableNetworks>;
-  }
+import { buildConfig, NetworkConfig } from '../../network/network.utils';
 
-  export const config: NetworkConfig = {
-    allowedSlippage: ConfigManagerV2.getInstance().get(`ref.allowedSlippage`),
-    gasLimitEstimate: ConfigManagerV2.getInstance().get(`ref.gasLimitEstimate`),
-    ttl: ConfigManagerV2.getInstance().get(`ref.ttl`),
-    routerAddress: (network: string) =>
-      ConfigManagerV2.getInstance().get(
-        `ref.contractAddresses.${network}.routerAddress`
-      ),
-    tradingTypes: ['NEAR_AMM'],
-    availableNetworks: [
+export namespace RefConfig {
+  export const config: NetworkConfig = buildConfig(
+    'ref',
+    ['AMM'],
+    [
       {
         chain: 'near',
         networks: Object.keys(
@@ -31,5 +17,6 @@ export namespace RefConfig {
         ),
       },
     ],
-  };
+    'NEAR'
+  );
 }

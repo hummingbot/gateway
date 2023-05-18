@@ -5,6 +5,7 @@ export namespace DexalotCLOBConfig {
   export interface NetworkConfig {
     gasLimitEstimate: number;
     tradingTypes: (type: string) => Array<string>;
+    chainType: string;
     availableNetworks: Array<AvailableNetworks>;
     addresses: (network: string) => { [name: string]: string };
     maxLRUCacheInstances: number;
@@ -18,6 +19,7 @@ export namespace DexalotCLOBConfig {
     tradingTypes: (type: string) => {
       return type === 'spot' ? ['CLOB_SPOT'] : ['CLOB_PERP'];
     },
+    chainType: 'EVM',
     availableNetworks: [
       {
         chain: 'avalanche',
