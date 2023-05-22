@@ -20,6 +20,7 @@ import { XsswapConfig } from './xsswap/xsswap.config';
 import { ConnectorsResponse } from './connectors.request';
 import { DexalotCLOBConfig } from './dexalot/dexalot.clob.config';
 import { ZigZagConfig } from './zigzag/zigzag.config';
+import { TinymanConfig } from './tinyman/tinyman.config';
 
 export namespace ConnectorsRoutes {
   export const router = Router();
@@ -157,6 +158,12 @@ export namespace ConnectorsRoutes {
             trading_type: ZigZagConfig.config.tradingTypes,
             chain_type: ZigZagConfig.config.chainType,
             available_networks: ZigZagConfig.config.availableNetworks,
+          },
+          {
+            name: 'tinyman',
+            trading_type: TinymanConfig.config.tradingTypes,
+            chain_type: TinymanConfig.config.chainType,
+            available_networks: TinymanConfig.config.availableNetworks,
           },
         ],
       });

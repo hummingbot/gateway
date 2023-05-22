@@ -3,7 +3,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { Nearish } from '../../services/common-interfaces';
 import { asyncHandler } from '../../services/error-handler';
 
-import { getChain } from '../../services/connection-manager';
+import { getInitializedChain } from '../../services/connection-manager';
 import { BalanceResponse, PollRequest, PollResponse } from './near.requests';
 import { validateBalanceRequest } from './near.validators';
 import * as nearControllers from './near.controllers';
@@ -31,7 +31,10 @@ export namespace NearRoutes {
       ) => {
         validateBalanceRequest(req.body);
 
-        const chain = await getChain<Nearish>('near', req.body.network);
+        const chain = await getInitializedChain<Nearish>(
+          'near',
+          req.body.network
+        );
 
         res
           .status(200)
@@ -51,7 +54,10 @@ export namespace NearRoutes {
       ) => {
         validatePollRequest(req.body);
 
-        const chain = await getChain<Nearish>('near', <string>req.body.network);
+        const chain = await getInitializedChain<Nearish>(
+          'near',
+          <string>req.body.network
+        );
 
         res
           .status(200)

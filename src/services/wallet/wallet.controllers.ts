@@ -1,12 +1,6 @@
 import fse from 'fs-extra';
-import { Avalanche } from '../../chains/avalanche/avalanche';
-import { BinanceSmartChain } from '../../chains/binance-smart-chain/binance-smart-chain';
-import { Cronos } from '../../chains/cronos/cronos';
-import { Ethereum } from '../../chains/ethereum/ethereum';
-import { Polygon } from '../../chains/polygon/polygon';
 import { Xdc } from '../../chains/xdc/xdc';
 import { Cosmos } from '../../chains/cosmos/cosmos';
-import { Harmony } from '../../chains/harmony/harmony';
 import { Injective } from '../../chains/injective/injective';
 
 import {
@@ -31,8 +25,13 @@ import {
 } from '../error-handler';
 import { EthereumBase } from '../../chains/ethereum/ethereum-base';
 import { Near } from '../../chains/near/near';
-import { getChain } from '../connection-manager';
+import {
+  ChainUnion,
+  getInitializedChain,
+  UnsupportedChainException,
+} from '../connection-manager';
 import { Ethereumish } from '../common-interfaces';
+import { Algorand } from '../../chains/algorand/algorand';
 
 export function convertXdcAddressToEthAddress(publicKey: string): string {
   return publicKey.length === 43 && publicKey.slice(0, 3) === 'xdc'
@@ -41,6 +40,7 @@ export function convertXdcAddressToEthAddress(publicKey: string): string {
 }
 
 const walletPath = './conf/wallets';
+
 export async function mkdirIfDoesNotExist(path: string): Promise<void> {
   const exists = await fse.pathExists(path);
   if (!exists) {
@@ -55,50 +55,38 @@ export async function addWallet(
   if (!passphrase) {
     throw new Error('There is no passphrase');
   }
-  let connection: EthereumBase | Near | Cosmos | Injective | Xdc;
+  let connection: ChainUnion;
   let address: string | undefined;
   let encryptedPrivateKey: string | undefined;
 
-  if (req.chain === 'ethereum') {
-    connection = Ethereum.getInstance(req.network);
-  } else if (req.chain === 'avalanche') {
-    connection = Avalanche.getInstance(req.network);
-  } else if (req.chain === 'harmony') {
-    connection = Harmony.getInstance(req.network);
-  } else if (req.chain === 'polygon') {
-    connection = Polygon.getInstance(req.network);
-  } else if (req.chain === 'cronos') {
-    connection = Cronos.getInstance(req.network);
-  } else if (req.chain === 'cosmos') {
-    connection = Cosmos.getInstance(req.network);
-  } else if (req.chain === 'near') {
-    if (!('address' in req))
+  if (req.chain === 'near') {
+    if (!('address' in req)) {
       throw new HttpException(
         500,
         ACCOUNT_NOT_SPECIFIED_ERROR_MESSAGE(),
         ACCOUNT_NOT_SPECIFIED_CODE
       );
-    connection = Near.getInstance(req.network);
-  } else if (req.chain === 'binance-smart-chain') {
-    connection = BinanceSmartChain.getInstance(req.network);
-  } else if (req.chain === 'xdc') {
-    connection = Xdc.getInstance(req.network);
-  } else if (req.chain === 'injective') {
-    connection = Injective.getInstance(req.network);
-  } else {
-    throw new HttpException(
-      500,
-      UNKNOWN_KNOWN_CHAIN_ERROR_MESSAGE(req.chain),
-      UNKNOWN_CHAIN_ERROR_CODE
-    );
-  }
-
-  if (!connection.ready()) {
-    await connection.init();
+    }
   }
 
   try {
-    if (connection instanceof EthereumBase) {
+    connection = await getInitializedChain<ChainUnion>(req.chain, req.network);
+  } catch (e) {
+    if (e instanceof UnsupportedChainException) {
+      throw new HttpException(
+        500,
+        UNKNOWN_KNOWN_CHAIN_ERROR_MESSAGE(req.chain),
+        UNKNOWN_CHAIN_ERROR_CODE
+      );
+    }
+    throw e;
+  }
+
+  try {
+    if (connection instanceof Algorand) {
+      address = connection.getAccountFromPrivateKey(req.privateKey).addr;
+      encryptedPrivateKey = connection.encrypt(req.privateKey, passphrase);
+    } else if (connection instanceof EthereumBase) {
       address = connection.getWalletFromPrivateKey(req.privateKey).address;
       encryptedPrivateKey = await connection.encrypt(
         req.privateKey,
@@ -113,12 +101,12 @@ export async function addWallet(
         passphrase
       );
     } else if (connection instanceof Cosmos) {
-      const wallet = await connection.getAccountsfromPrivateKey(
+      const wallet = await (connection as Cosmos).getAccountsfromPrivateKey(
         req.privateKey,
         'cosmos'
       );
       address = wallet.address;
-      encryptedPrivateKey = await connection.encrypt(
+      encryptedPrivateKey = await (connection as Cosmos).encrypt(
         req.privateKey,
         passphrase
       );
@@ -171,7 +159,7 @@ export async function removeWallet(req: RemoveWalletRequest): Promise<void> {
 export async function signMessage(
   req: WalletSignRequest
 ): Promise<WalletSignResponse> {
-  const chain: Ethereumish = await getChain(req.chain, req.network);
+  const chain: Ethereumish = await getInitializedChain(req.chain, req.network);
   const wallet = await chain.getWallet(req.address);
   return { signature: await wallet.signMessage(req.message) };
 }

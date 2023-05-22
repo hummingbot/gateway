@@ -234,10 +234,13 @@ export class Injective {
   public static getConnectedInstances(): { [name: string]: Injective } {
     const connectedInstances: { [name: string]: Injective } = {};
     if (this._instances !== undefined) {
-      for (const instance of this._instances.keys()) {
-        connectedInstances[instance] = this._instances.get(
-          instance
-        ) as Injective;
+      const keys = Array.from(this._instances.keys());
+      for (const instance of keys) {
+        if (instance !== undefined) {
+          connectedInstances[instance] = this._instances.get(
+            instance
+          ) as Injective;
+        }
       }
     }
     return connectedInstances;
