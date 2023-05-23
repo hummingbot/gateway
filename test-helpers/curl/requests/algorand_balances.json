@@ -1,0 +1,8 @@
+{
+  "chain": "algorand",
+  "network": "mainnet",
+  "address": "$ALGORAND_ADDRESS",
+  "tokenSymbols": [
+    "ALGO"
+  ]
+}

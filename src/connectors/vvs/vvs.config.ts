@@ -1,7 +1,15 @@
-import { CronosBaseUniswapishConnectorConfig } from '../../chains/cronos/cronos-base/cronos-base-uniswapish-connector.config';
+import { buildConfig, NetworkConfig } from '../../network/network.utils';
+import { ConfigManagerV2 } from '../../services/config-manager-v2';
 
 export namespace VVSConfig {
-  const tradingTypes = ['EVM_AMM'];
-  export const config: CronosBaseUniswapishConnectorConfig.NetworkConfig =
-    CronosBaseUniswapishConnectorConfig.buildConfig('vvs', tradingTypes);
+  const contractAddresses: any = ConfigManagerV2.getInstance().get(
+    'vvs.contractAddresses'
+  );
+  const networks: Array<string> = Object.keys(contractAddresses);
+  export const config: NetworkConfig = buildConfig(
+    'vvs',
+    ['AMM'],
+    [{ chain: 'cronos', networks }],
+    'EVM'
+  );
 }

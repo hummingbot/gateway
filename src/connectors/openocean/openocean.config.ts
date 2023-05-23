@@ -1,5 +1,5 @@
-import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { AvailableNetworks } from '../../services/config-manager-types';
+import { ConfigManagerV2 } from '../../services/config-manager-v2';
 
 export namespace OpenoceanConfig {
   export interface NetworkConfig {
@@ -8,6 +8,7 @@ export namespace OpenoceanConfig {
     ttl: number;
     routerAddress: (chain: string, network: string) => string;
     tradingTypes: Array<string>;
+    chainType: string;
     availableNetworks: Array<AvailableNetworks>;
   }
 
@@ -27,7 +28,8 @@ export namespace OpenoceanConfig {
           network +
           '.routerAddress'
       ),
-    tradingTypes: ['EVM_AMM'],
+    tradingTypes: ['AMM'],
+    chainType: 'EVM',
     availableNetworks: [
       { chain: 'avalanche', networks: ['avalanche'] },
       { chain: 'ethereum', networks: ['mainnet', 'arbitrum_one', 'optimism'] },

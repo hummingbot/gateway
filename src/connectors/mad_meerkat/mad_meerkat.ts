@@ -19,16 +19,16 @@ import {
   CronosBaseUniswapishSDKProvider,
   CronosBaseUniswapishConnector,
 } from '../../chains/cronos/cronos-base/cronos-base-uniswapish-connector';
-import { CronosBaseUniswapishConnectorConfig } from '../../chains/cronos/cronos-base/cronos-base-uniswapish-connector.config';
 import routerAbi from './abi.json';
 import { MadMeerkatConfig } from './mad_meerkat.config';
+import { NetworkConfig } from '../../network/network.utils';
 
 export class MadMeerkat extends CronosBaseUniswapishConnector {
   constructor(chain: string, network: string) {
     const sdkProvider = new MadMeerkatSDKProvider();
     super(sdkProvider, routerAbi, chain, network);
   }
-  protected buildConfig(): CronosBaseUniswapishConnectorConfig.NetworkConfig {
+  protected buildConfig(): NetworkConfig {
     return MadMeerkatConfig.config;
   }
 }
