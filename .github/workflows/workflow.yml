@@ -22,7 +22,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: technote-space/get-diff-action@v6
         with:
-          PATTERNS:  |
+          PATTERNS: |
             **/*.+(ts|js|yml)
             !Dockerfile
             !*.sh
@@ -31,8 +31,7 @@ jobs:
         if: env.GIT_DIFF
         run: |
           echo ${{ env.GIT_DIFF }}
-          echo "::set-output name=is_set::true"
-
+          echo "is_set=true" >> $GITHUB_ENV
   build_gateway:
     name: Gateway build + unit tests
     needs: run_gateway
@@ -59,14 +58,12 @@ jobs:
           key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
           restore-keys: |
             ${{ runner.os }}-yarn-
-
       - name: Install hardhat and start node.
         run: |
-            mkdir hardhat && cd hardhat && npm init -y
-            touch hardhat.config.js
-            yarn add --dev hardhat
-            yarn hardhat node &
-
+          mkdir hardhat && cd hardhat && npm init -y
+          touch hardhat.config.js
+          yarn add --dev hardhat
+          yarn hardhat node &
       - name: Install Dependencies
         run: yarn
 
@@ -91,14 +88,11 @@ jobs:
           sed -i 's/https:\/\/cosmos-mainnet-rpc.allthatnode.com:26657/http:\/\/127.0.0.1:8545\//g' ./conf/cosmos.yml
           sed -i 's/https:\/\/evm-t3.cronos.org/http:\/\/127.0.0.1:8545\//g' ./conf/cosmos.yml
           sed -i 's/https:\/\/evm.cronos.org/http:\/\/127.0.0.1:8545\//g' ./conf/cosmos.yml
-
       - name: Run unit test coverage
         if: github.event_name == 'pull_request'
-        shell: bash
         run: |
           git fetch --all -q
           git checkout -b $GITHUB_SHA
-          DIFF_FILES=`git diff --name-only origin/$GITHUB_BASE_REF ./src/`
-          ./node_modules/.bin/jest --listTests  --findRelatedTests ${DIFF_FILES//$'\n'/ }
-          NODE_OPTIONS=--max-old-space-size=10240 node ./node_modules/.bin/jest --runInBand --coverage --findRelatedTests ${DIFF_FILES//$'\n'/ }
-#          git diff origin/$GITHUB_BASE_REF | yarn diff-test-coverage -c ./coverage/lcov.info -t lcov -b 50 -l 60
+          DIFF_FILES=$(git diff --name-only origin/$GITHUB_BASE_REF ./src/)
+          ./node_modules/.bin/jest --listTests --findRelatedTests "${DIFF_FILES//$'\n'/ }"
+          NODE_OPTIONS=--max-old-space-size=10240 node ./node_modules/.bin/jest --runInBand --coverage --findRelatedTests "${DIFF_FILES//$'\n'/ }"
