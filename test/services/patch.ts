@@ -1,3 +1,7 @@
+import path from 'path';
+import fs from 'fs';
+import os from 'os';
+
 let patchedObjects: Set<any> = new Set();
 
 export const classHasGetter = (obj: any, prop: string): boolean => {
@@ -78,3 +82,25 @@ export const unpatch = (): void => {
   });
   patchedObjects = new Set();
 };
+
+let currDir: string | null = null;
+let tempDir: string;
+
+export function setUpTempDir(dirPrefix: string = ''): string {
+  if (currDir !== null) {
+    throw new Error('Temp dir already set up');
+  }
+  currDir = process.cwd();
+  tempDir = fs.mkdtempSync(path.join(os.tmpdir(), dirPrefix));
+  process.chdir(tempDir);
+  return tempDir;
+}
+
+export function tearDownTempDir(): void {
+  if (currDir === null) {
+    throw new Error('Temp dir not set up');
+  }
+  process.chdir(currDir as string);
+  fs.rmSync(tempDir, { recursive: true });
+  currDir = null;
+}

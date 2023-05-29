@@ -26,9 +26,7 @@ export function chainIdToInt(chainId: ChainId): number {
 }
 
 export function getNetworkFromString(network: string): Network | null {
-  if (network === 'mainnetK8s') {
-    return Network.MainnetK8s;
-  } else if (['mainnet', 'mainnetLB'].includes(network)) {
+  if (['mainnet', 'mainnetLB'].includes(network)) {
     return Network.MainnetLB;
   } else if (network === 'staging') {
     return Network.Staging;
@@ -48,9 +46,7 @@ export function getNetworkFromString(network: string): Network | null {
 }
 
 export function networkToString(network: Network): string {
-  if (network === Network.MainnetK8s) {
-    return 'mainnetK8s';
-  } else if ([Network.MainnetLB, Network.Mainnet].includes(network)) {
+  if ([Network.MainnetLB, Network.Mainnet].includes(network)) {
     return 'mainnet';
   } else if (network === Network.Staging) {
     return 'staging';

@@ -5,11 +5,11 @@ import {
   MsgBid,
   PrivateKey,
   TxClientBroadcastOptions,
+  TxRaw,
 } from '@injectivelabs/sdk-ts';
 import { Injective } from '../../../src/chains/injective/injective';
 import { patchEVMNonceManager } from '../../evm.nonce.mock';
-import { AccountDetails } from '@injectivelabs/sdk-ts/dist/types/auth';
-import { TxRaw } from '@injectivelabs/chain-api/cosmos/tx/v1beta1/tx_pb';
+import { AccountDetails } from '@injectivelabs/sdk-ts/dist/cjs/types/auth';
 
 const TX_HASH =
   'CC6BF44223B4BD05396F83D55A0ABC0F16CE80836C0E34B08F4558CF72944299'; // noqa: mock
