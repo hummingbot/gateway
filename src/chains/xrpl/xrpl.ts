@@ -14,11 +14,15 @@ import axios from 'axios';
 import { promises as fs } from 'fs';
 import crypto from 'crypto';
 import fse from 'fs-extra';
+import path from 'path';
+import { rootPath } from '../../paths';
 import { TokenListType, walletPath } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { getXRPLConfig } from './xrpl.config';
 import { logger } from '../../services/logger';
 import { TransactionResponseStatusCode } from './xrpl.requests';
+import { XRPLOrderStorage } from './xrpl.order-storage';
+import { ReferenceCountingCloseable } from '../../services/refcounting-closeable';
 
 export type TrustlineInfo = {
   id: number;
@@ -35,9 +39,17 @@ export type TokenBalance = {
   value: string;
 };
 
+export type Fee = {
+  base: string;
+  median: string;
+  minimum: string;
+  openLedger: string;
+};
+
 export class XRPL implements XRPLish {
   private static _instances: { [name: string]: XRPL };
   public rpcUrl;
+  public fee: Fee;
 
   protected tokenList: TrustlineInfo[] = [];
   private _tokenMap: Record<string, TrustlineInfo[]> = {};
@@ -53,6 +65,9 @@ export class XRPL implements XRPLish {
 
   private _ready: boolean = false;
   private initializing: boolean = false;
+
+  private readonly _refCountingHandle: string;
+  private readonly _orderStorage: XRPLOrderStorage;
 
   private constructor(network: string) {
     const config = getXRPLConfig('xrpl', network);
@@ -71,6 +86,12 @@ export class XRPL implements XRPLish {
       maxFeeXRP: config.maxFeeXRP,
     });
 
+    this.fee = {
+      base: '0',
+      median: '0',
+      minimum: '0',
+      openLedger: '0',
+    };
     // this._client.connect();
 
     this._requestCount = 0;
@@ -78,6 +99,13 @@ export class XRPL implements XRPLish {
 
     this.onValidationReceived(this.requestCounter.bind(this));
     setInterval(this.metricLogger.bind(this), this.metricsLogInterval);
+
+    this._refCountingHandle = ReferenceCountingCloseable.createHandle();
+    this._orderStorage = XRPLOrderStorage.getInstance(
+      this.resolveDBPath(config.orderDbPath),
+      this._refCountingHandle
+    );
+    this._orderStorage.declareOwnership(this._refCountingHandle);
   }
 
   public static getInstance(network: string): XRPL {
@@ -93,6 +121,13 @@ export class XRPL implements XRPLish {
 
   public static getConnectedInstances(): { [name: string]: XRPL } {
     return XRPL._instances;
+  }
+
+  public resolveDBPath(oldPath: string): string {
+    if (oldPath.charAt(0) === '/') return oldPath;
+    const dbDir: string = path.join(rootPath(), 'db/');
+    fse.mkdirSync(dbDir, { recursive: true });
+    return path.join(dbDir, oldPath);
   }
 
   public get client() {
@@ -142,6 +177,7 @@ export class XRPL implements XRPLish {
       this.initializing = true;
       await this._client.connect();
       await this.loadTokens(this._tokenListSource, this._tokenListType);
+      await this.getFee();
       this._ready = true;
       this.initializing = false;
     }
@@ -360,8 +396,29 @@ export class XRPL implements XRPLish {
 
   async close() {
     if (this._network in XRPL._instances) {
+      await this._orderStorage.close(this._refCountingHandle);
       delete XRPL._instances[this._network];
     }
+  }
+
+  async getFee() {
+    await this.ensureConnection();
+    const tx_resp = await this._client.request({
+      command: 'fee',
+    });
+
+    this.fee = {
+      base: tx_resp.result.drops.base_fee,
+      median: tx_resp.result.drops.median_fee,
+      minimum: tx_resp.result.drops.minimum_fee,
+      openLedger: tx_resp.result.drops.open_ledger_fee,
+    };
+
+    return this.fee;
+  }
+
+  public get orderStorage(): XRPLOrderStorage {
+    return this._orderStorage;
   }
 }
 

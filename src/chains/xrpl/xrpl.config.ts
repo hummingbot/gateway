@@ -6,6 +6,7 @@ export interface NetworkConfig {
   tokenListType: string; // default: FILE
   tokenListSource: string; // default: src/chains/xrpl/xrpl_tokens.json
   nativeCurrencySymbol: string; // XRP
+  maxLRUCacheInstances: number;
 }
 
 export interface Config {
@@ -15,6 +16,7 @@ export interface Config {
   connectionTimeout: number; // default: 5
   feeCushion: number; // default: 1.2
   maxFeeXRP: string; // default: 2
+  orderDbPath: string;
 }
 
 // @todo: find out which configs are required
@@ -35,6 +37,9 @@ export function getXRPLConfig(chainName: string, networkName: string): Config {
       nativeCurrencySymbol: ConfigManagerV2.getInstance().get(
         chainName + '.networks.' + networkName + '.nativeCurrencySymbol'
       ),
+      maxLRUCacheInstances: ConfigManagerV2.getInstance().get(
+        chainName + '.maxLRUCacheInstances'
+      ),
     },
     requestTimeout: ConfigManagerV2.getInstance().get(
       chainName + '.requestTimeout'
@@ -44,5 +49,6 @@ export function getXRPLConfig(chainName: string, networkName: string): Config {
     ),
     feeCushion: ConfigManagerV2.getInstance().get(chainName + '.feeCushion'),
     maxFeeXRP: ConfigManagerV2.getInstance().get(chainName + '.maxFeeXRP'),
+    orderDbPath: ConfigManagerV2.getInstance().get(chainName + '.orderDbPath'),
   };
 }
