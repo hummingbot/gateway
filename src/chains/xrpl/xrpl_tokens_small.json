@@ -1,5 +1,13 @@
 [
   {
+    "id": 0,
+    "code": "XRP",
+    "issuer": "",
+    "title": "XRP",
+    "trustlines": -1,
+    "placeInTop": 0
+  },
+  {
     "id": 31,
     "code": "SOLO",
     "issuer": "rsoLo2S1kiGeCcn6hCUXVrCpGMWLrRrLZz",

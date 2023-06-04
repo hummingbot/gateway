@@ -21,10 +21,11 @@ export class XRPLOrderStorage extends ReferenceCountingCloseable {
   public async saveOrder(
     chain: string,
     chainId: string,
-    order: Order
+    order: Order,
+    walletAddress: string
   ): Promise<void> {
     return this.localStorage.save(
-      chain + '/' + chainId + '/' + order.hash,
+      chain + '/' + chainId + '/' + walletAddress + '/' + order.hash,
       JSON.stringify(order)
     );
   }
@@ -32,23 +33,28 @@ export class XRPLOrderStorage extends ReferenceCountingCloseable {
   public async deleteOrder(
     chain: string,
     chainId: string,
-    order: Order
+    order: Order,
+    walletAddress: string
   ): Promise<void> {
-    return this.localStorage.del(chain + '/' + chainId + '/' + order.hash);
+    return this.localStorage.del(
+      chain + '/' + chainId + '/' + walletAddress + '/' + order.hash
+    );
   }
 
   public async getOrders(
     chain: string,
-    chainId: string
+    chainId: string,
+    walletAddress: string
   ): Promise<Record<string, Order>> {
     return this.localStorage.get((key: string, value: string) => {
       const splitKey = key.split('/');
       if (
-        splitKey.length === 3 &&
+        splitKey.length === 4 &&
         splitKey[0] === chain &&
-        splitKey[1] === chainId
+        splitKey[1] === chainId &&
+        splitKey[2] === walletAddress
       ) {
-        return [splitKey[2], JSON.parse(value)];
+        return [splitKey[3], JSON.parse(value)];
       }
       return;
     });
@@ -57,18 +63,20 @@ export class XRPLOrderStorage extends ReferenceCountingCloseable {
   public async getOrdersByState(
     chain: string,
     chainId: string,
+    walletAddress: string,
     state: OrderStatus
   ): Promise<Record<string, Order>> {
     return this.localStorage.get((key: string, value: string) => {
       const splitKey = key.split('/');
       if (
-        splitKey.length === 3 &&
+        splitKey.length === 4 &&
         splitKey[0] === chain &&
-        splitKey[1] === chainId
+        splitKey[1] === chainId &&
+        splitKey[2] === walletAddress
       ) {
         const order: Order = JSON.parse(value);
         if (order.state === state) {
-          return [splitKey[2], order];
+          return [splitKey[3], order];
         }
       }
       return;

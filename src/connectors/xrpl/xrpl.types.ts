@@ -55,6 +55,10 @@ export interface Market {
   tickSize: number;
   baseTransferRate: number;
   quoteTransferRate: number;
+  baseIssuer: string;
+  quoteIssuer: string;
+  baseCurrency: string;
+  quoteCurrency: string;
 }
 
 export type GetMarketsResponse =

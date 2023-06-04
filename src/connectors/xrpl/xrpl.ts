@@ -1,4 +1,4 @@
-import { XRPL } from '../../chains/xrpl/xrpl';
+import { MarketInfo, XRPL } from '../../chains/xrpl/xrpl';
 import {
   Client,
   OfferCancel,
@@ -114,26 +114,21 @@ export class XRPLCLOB implements CLOBish {
   // Utility methods:
   async fetchMarkets(): Promise<Market[]> {
     const loadedMarkets: Market[] = [];
-    // TODO: Move marketsToLoad to config file
-    const marketsToLoad = [
-      'ETH.rcA8X3TVMST1n3CJeAdGk1RdRCHii7N2h/USD.rcA8X3TVMST1n3CJeAdGk1RdRCHii7N2h',
-      'XRP/ETH.rcA8X3TVMST1n3CJeAdGk1RdRCHii7N2h',
-      'ETH.rcA8X3TVMST1n3CJeAdGk1RdRCHii7N2h/XRP',
-    ];
+    const markets = this._xrpl.storedMarketList;
 
-    const getMarket = async (marketId: string): Promise<void> => {
-      const market = await this.getMarket(marketId);
+    const getMarket = async (market: MarketInfo): Promise<void> => {
+      const processedMarket = await this.getMarket(market);
 
-      loadedMarkets.concat(market);
+      loadedMarkets.push(processedMarket);
     };
 
-    await promiseAllInBatches(getMarket, marketsToLoad, 1, 1);
+    await promiseAllInBatches(getMarket, markets, 1, 1);
 
     return loadedMarkets;
   }
 
-  async getMarket(marketId?: string): Promise<Market> {
-    if (!marketId) throw new MarketNotFoundError(`No market informed.`);
+  async getMarket(market: MarketInfo): Promise<Market> {
+    if (!market) throw new MarketNotFoundError(`No market informed.`);
     // Market marketId format:
     // 1: "ETH.rcA8X3TVMST1n3CJeAdGk1RdRCHii7N2h/USD.rcA8X3TVMST1n3CJeAdGk1RdRCHii7N2h"
     // 2: "XRP/ETH.rcA8X3TVMST1n3CJeAdGk1RdRCHii7N2h"
@@ -144,10 +139,9 @@ export class XRPLCLOB implements CLOBish {
     let quoteTransferRate: number;
     const zeroTransferRate = 1000000000;
 
-    const [base, quote] = marketId.split('/');
-
-    const [baseCurrency, baseIssuer] = base.split('.');
-    const [quoteCurrency, quoteIssuer] = quote.split('.');
+    const [baseCurrency, quoteCurrency] = market.code.split('/');
+    const baseIssuer = market.baseIssuer;
+    const quoteIssuer = market.quoteIssuer;
 
     if (baseCurrency != 'XRP') {
       const baseMarketResp: AccountInfoResponse = await this._client.request({
@@ -157,7 +151,9 @@ export class XRPLCLOB implements CLOBish {
       });
 
       if (!baseMarketResp)
-        throw new MarketNotFoundError(`Market "${base}" not found.`);
+        throw new MarketNotFoundError(
+          `Market "${baseCurrency}.${baseIssuer}" not found.`
+        );
 
       baseTickSize = baseMarketResp.result.account_data.TickSize ?? 15;
       const rawTransferRate =
@@ -176,7 +172,9 @@ export class XRPLCLOB implements CLOBish {
       });
 
       if (!quoteMarketResp)
-        throw new MarketNotFoundError(`Market "${quote}" not found.`);
+        throw new MarketNotFoundError(
+          `Market "${quoteCurrency}.${quoteIssuer}" not found.`
+        );
 
       quoteTickSize = quoteMarketResp.result.account_data.TickSize ?? 15;
       const rawTransferRate =
@@ -190,20 +188,16 @@ export class XRPLCLOB implements CLOBish {
     const smallestTickSize = Math.min(baseTickSize, quoteTickSize);
     const minimumOrderSize = smallestTickSize;
 
-    // TODO: conform to this type:
-    // export interface ClobMarketResponse {
-    //   network: string;
-    //   timestamp: number;
-    //   latency: number;
-    //   markets: CLOBMarkets;
-    // }
-
     const result = {
-      marketId: marketId,
+      marketId: market.code,
       minimumOrderSize: minimumOrderSize,
       tickSize: smallestTickSize,
       baseTransferRate: baseTransferRate,
       quoteTransferRate: quoteTransferRate,
+      baseIssuer: baseIssuer,
+      quoteIssuer: quoteIssuer,
+      baseCurrency: baseCurrency,
+      quoteCurrency: quoteCurrency,
     };
 
     return result;
@@ -382,17 +376,17 @@ export class XRPLCLOB implements CLOBish {
         amount = ask.TakerGets;
       }
 
-      orders.push({
-        hash: ask.Sequence,
-        marketId: marketId,
-        price: price,
-        amount: amount,
-        state: OrderStatus.OPEN, // TODO: create middle class to track this property
-        tradeType: TradeType.SELL,
-        orderType: OrderType.LIMIT,
-        createdAt: Date.now(), // TODO: create middle class to track this property
-        updatedAt: Date.now(), // TODO: create middle class to track this property
-      });
+      // orders.push({
+      //   hash: ask.Sequence,
+      //   marketId: marketId,
+      //   price: price,
+      //   amount: amount,
+      //   state: OrderStatus.OPEN, // TODO: create middle class to track this property
+      //   tradeType: TradeType.SELL,
+      //   orderType: OrderType.LIMIT,
+      //   createdAt: Date.now(), // TODO: create middle class to track this property
+      //   updatedAt: Date.now(), // TODO: create middle class to track this property
+      // });
     }
 
     for (const bid of bids) {
@@ -405,17 +399,17 @@ export class XRPLCLOB implements CLOBish {
         amount = bid.TakerGets;
       }
 
-      orders.push({
-        hash: bid.Sequence,
-        marketId: marketId,
-        price: price,
-        amount: amount,
-        state: OrderStatus.OPEN, // TODO: create middle class to track this property
-        tradeType: TradeType.BUY,
-        orderType: OrderType.LIMIT,
-        createdAt: Date.now(), // TODO: create middle class to track this property
-        updatedAt: Date.now(), // TODO: create middle class to track this property
-      });
+      // orders.push({
+      //   hash: bid.Sequence,
+      //   marketId: marketId,
+      //   price: price,
+      //   amount: amount,
+      //   state: OrderStatus.OPEN, // TODO: create middle class to track this property
+      //   tradeType: TradeType.BUY,
+      //   orderType: OrderType.LIMIT,
+      //   createdAt: Date.now(), // TODO: create middle class to track this property
+      //   updatedAt: Date.now(), // TODO: create middle class to track this property
+      // });
     }
 
     return { orders } as ClobGetOrderResponse;

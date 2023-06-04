@@ -5,6 +5,8 @@ export interface NetworkConfig {
   nodeUrl: string; // example: wss://xrplcluster.com/
   tokenListType: string; // default: FILE
   tokenListSource: string; // default: src/chains/xrpl/xrpl_tokens.json
+  marketListType: string; // default: FILE
+  marketListSource: string; // default: src/chains/xrpl/xrpl_markets.json
   nativeCurrencySymbol: string; // XRP
   maxLRUCacheInstances: number;
 }
@@ -33,6 +35,12 @@ export function getXRPLConfig(chainName: string, networkName: string): Config {
       ),
       tokenListSource: ConfigManagerV2.getInstance().get(
         chainName + '.networks.' + networkName + '.tokenListSource'
+      ),
+      marketListType: ConfigManagerV2.getInstance().get(
+        chainName + '.networks.' + networkName + '.marketListType'
+      ),
+      marketListSource: ConfigManagerV2.getInstance().get(
+        chainName + '.networks.' + networkName + '.marketListSource'
       ),
       nativeCurrencySymbol: ConfigManagerV2.getInstance().get(
         chainName + '.networks.' + networkName + '.nativeCurrencySymbol'

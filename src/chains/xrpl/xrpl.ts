@@ -16,7 +16,7 @@ import crypto from 'crypto';
 import fse from 'fs-extra';
 import path from 'path';
 import { rootPath } from '../../paths';
-import { TokenListType, walletPath } from '../../services/base';
+import { TokenListType, walletPath, MarketListType } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { getXRPLConfig } from './xrpl.config';
 import { logger } from '../../services/logger';
@@ -24,13 +24,22 @@ import { TransactionResponseStatusCode } from './xrpl.requests';
 import { XRPLOrderStorage } from './xrpl.order-storage';
 import { ReferenceCountingCloseable } from '../../services/refcounting-closeable';
 
-export type TrustlineInfo = {
+export type TokenInfo = {
   id: number;
   code: string;
   issuer: string;
   title: string;
   trustlines: number;
   placeInTop: null;
+};
+
+export type MarketInfo = {
+  id: number;
+  code: string;
+  baseIssuer: string;
+  quoteIssuer: string;
+  baseTokenID: number;
+  quoteTokenID: number;
 };
 
 export type TokenBalance = {
@@ -51,8 +60,10 @@ export class XRPL implements XRPLish {
   public rpcUrl;
   public fee: Fee;
 
-  protected tokenList: TrustlineInfo[] = [];
-  private _tokenMap: Record<string, TrustlineInfo[]> = {};
+  protected tokenList: TokenInfo[] = [];
+  protected marketList: MarketInfo[] = [];
+  private _tokenMap: Record<string, TokenInfo[]> = {};
+  private _marketMap: Record<string, MarketInfo[]> = {};
 
   private _client: Client;
   private _nativeTokenSymbol: string;
@@ -61,7 +72,9 @@ export class XRPL implements XRPLish {
   private _requestCount: number;
   private _metricsLogInterval: number;
   private _tokenListSource: string;
+  private _marketListSource: string;
   private _tokenListType: TokenListType;
+  private _marketListType: MarketListType;
 
   private _ready: boolean = false;
   private initializing: boolean = false;
@@ -78,6 +91,8 @@ export class XRPL implements XRPLish {
     this._nativeTokenSymbol = config.network.nativeCurrencySymbol;
     this._tokenListSource = config.network.tokenListSource;
     this._tokenListType = <TokenListType>config.network.tokenListType;
+    this._marketListSource = config.network.marketListSource;
+    this._marketListType = <MarketListType>config.network.marketListType;
 
     this._client = new Client(this.rpcUrl, {
       timeout: config.requestTimeout,
@@ -177,6 +192,7 @@ export class XRPL implements XRPLish {
       this.initializing = true;
       await this._client.connect();
       await this.loadTokens(this._tokenListSource, this._tokenListType);
+      await this.loadMarkets(this._marketListSource, this._marketListType);
       await this.getFee();
       this._ready = true;
       this.initializing = false;
@@ -189,8 +205,23 @@ export class XRPL implements XRPLish {
   ): Promise<void> {
     this.tokenList = await this.getTokenList(tokenListSource, tokenListType);
     if (this.tokenList) {
-      this.tokenList.forEach((token: TrustlineInfo) =>
+      this.tokenList.forEach((token: TokenInfo) =>
         this._tokenMap[token.code].push(token)
+      );
+    }
+  }
+
+  async loadMarkets(
+    marketListSource: string,
+    marketListType: MarketListType
+  ): Promise<void> {
+    this.marketList = await this.getMarketList(
+      marketListSource,
+      marketListType
+    );
+    if (this.marketList) {
+      this.marketList.forEach((market: MarketInfo) =>
+        this._marketMap[market.code].push(market)
       );
     }
   }
@@ -198,7 +229,7 @@ export class XRPL implements XRPLish {
   async getTokenList(
     tokenListSource: string,
     tokenListType: TokenListType
-  ): Promise<TrustlineInfo[]> {
+  ): Promise<TokenInfo[]> {
     let tokens;
     if (tokenListType === 'URL') {
       ({
@@ -210,11 +241,30 @@ export class XRPL implements XRPLish {
     return tokens;
   }
 
-  public get storedTokenList(): TrustlineInfo[] {
+  async getMarketList(
+    marketListSource: string,
+    marketListType: TokenListType
+  ): Promise<MarketInfo[]> {
+    let tokens;
+    if (marketListType === 'URL') {
+      ({
+        data: { tokens },
+      } = await axios.get(marketListSource));
+    } else {
+      ({ tokens } = JSON.parse(await fs.readFile(marketListSource, 'utf8')));
+    }
+    return tokens;
+  }
+
+  public get storedTokenList(): TokenInfo[] {
     return this.tokenList;
   }
 
-  public getTokenForSymbol(code: string): TrustlineInfo[] | null {
+  public get storedMarketList(): MarketInfo[] {
+    return this.marketList;
+  }
+
+  public getTokenForSymbol(code: string): TokenInfo[] | null {
     return this._tokenMap[code] ? this._tokenMap[code] : null;
   }
 
