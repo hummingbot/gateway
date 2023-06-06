@@ -1,5 +1,6 @@
 import { Map as ImmutableMap, Set as ImmutableSet } from 'immutable';
 import { BookOffer } from 'xrpl';
+import { TransactionMetadata, Transaction } from 'xrpl';
 
 export type IMap<K, V> = ImmutableMap<K, V>;
 export const IMap = ImmutableMap;
@@ -28,6 +29,14 @@ export enum OrderType {
   IOC = 'IOC', // Immediate or Cancel
   FOK = 'FOK', // Fill or Kill
   SELL = 'SELL', // Sell
+}
+
+export enum TransactionIntentType {
+  OFFER_CREATE_FINALIZED = 'OfferCreateFinalized',
+  OFFER_CANCEL_FINALIZED = 'OfferCancelFinalized',
+  OFFER_PARTIAL_FILL = 'OfferPartialFill',
+  OFFER_FILL = 'OfferFill',
+  UNKNOWN = 'UNKNOWN',
 }
 
 export interface Token {
@@ -224,4 +233,36 @@ export interface Order {
 
 export interface InflightOrders {
   [hash: number]: Order;
+}
+
+export interface OrderLocks {
+  [key: number]: boolean;
+}
+
+export interface AccountTransaction {
+  ledger_index: number;
+  meta: string | TransactionMetadata;
+  tx?: Transaction & ResponseOnlyTxInfo;
+  tx_blob?: string;
+  validated: boolean;
+}
+
+export interface TransaformedAccountTransaction {
+  ledger_index: number;
+  meta: TransactionMetadata;
+  transaction: Transaction & ResponseOnlyTxInfo;
+  tx_blob?: string;
+  validated: boolean;
+}
+
+export interface ResponseOnlyTxInfo {
+  date?: number;
+  hash?: string;
+  ledger_index?: number;
+  inLedger?: number;
+}
+
+export interface TransactionIntent {
+  type: TransactionIntentType;
+  sequence?: number;
 }
