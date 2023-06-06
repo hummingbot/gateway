@@ -13,5 +13,5 @@ networks:
     tokenListSource: 'src/chains/polygon/polygon_tokens_mumbai.json'
     nativeCurrencySymbol: 'MATIC'
 
-manualGasPrice: 100
+manualGasPrice: 400
 gasLimitTransaction: 3000000
