@@ -4,6 +4,7 @@ import { AvailableNetworks } from '../../services/config-manager-types';
 export namespace XRPLDEXConfig {
   export interface Config {
     availableNetworks: Array<AvailableNetworks>;
+    chainType: string;
     tradingTypes: Array<string>;
     // markets: MarketsConfig;
     // tickers: TickersConfig;
@@ -35,6 +36,7 @@ export namespace XRPLDEXConfig {
     //   source: ConfigManagerV2.getInstance().get(`rippledex.tickers.source`),
     //   url: ConfigManagerV2.getInstance().get(`rippledex.tickers.url`),
     // },
+    chainType: 'XRPL',
     availableNetworks: [
       {
         chain: 'xrpl',

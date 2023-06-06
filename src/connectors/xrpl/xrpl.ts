@@ -11,11 +11,11 @@ import {
   Market,
   MarketNotFoundError,
   Token,
-  OrderStatus,
+  // OrderStatus,
   TradeType,
   Orderbook,
   PriceLevel,
-  Order,
+  // Order,
 } from './xrpl.types';
 import {
   ClobMarketsRequest,
@@ -28,7 +28,7 @@ import {
   ClobGetOrderResponse,
 } from '../../clob/clob.requests';
 import { promiseAllInBatches } from '../../chains/xrpl/xrpl.helpers';
-import { isIssuedCurrency } from 'xrpl/dist/npm/models/transactions/common';
+// import { isIssuedCurrency } from 'xrpl/dist/npm/models/transactions/common';
 import {
   CLOBish,
   NetworkSelectionRequest,
@@ -36,7 +36,7 @@ import {
 import LRUCache from 'lru-cache';
 import { getXRPLConfig } from '../../chains/xrpl/xrpl.config';
 import { isUndefined } from 'mathjs';
-import { OrderType } from './xrpl.types';
+// import { OrderType } from './xrpl.types';
 
 const XRP_FACTOR = 1000000;
 const ORDERBOOK_LIMIT = 10;
@@ -129,14 +129,10 @@ export class XRPLCLOB implements CLOBish {
 
   async getMarket(market: MarketInfo): Promise<Market> {
     if (!market) throw new MarketNotFoundError(`No market informed.`);
-    // Market marketId format:
-    // 1: "ETH.rcA8X3TVMST1n3CJeAdGk1RdRCHii7N2h/USD.rcA8X3TVMST1n3CJeAdGk1RdRCHii7N2h"
-    // 2: "XRP/ETH.rcA8X3TVMST1n3CJeAdGk1RdRCHii7N2h"
-    // 3: "ETH.rcA8X3TVMST1n3CJeAdGk1RdRCHii7N2h/XRP"
-    let baseTickSize: number;
-    let baseTransferRate: number;
-    let quoteTickSize: number;
-    let quoteTransferRate: number;
+    let baseTickSize,
+      baseTransferRate,
+      quoteTickSize,
+      quoteTransferRate: number;
     const zeroTransferRate = 1000000000;
 
     const [baseCurrency, quoteCurrency] = market.code.split('/');
@@ -203,11 +199,10 @@ export class XRPLCLOB implements CLOBish {
     return result;
   }
 
-  async getOrderBook(marketId: string): Promise<Orderbook> {
-    const [base, quote] = marketId.split('/');
-
-    const [baseCurrency, baseIssuer] = base.split('.');
-    const [quoteCurrency, quoteIssuer] = quote.split('.');
+  async getOrderBook(market: MarketInfo): Promise<Orderbook> {
+    const [baseCurrency, quoteCurrency] = market.code.split('/');
+    const baseIssuer = market.baseIssuer;
+    const quoteIssuer = market.quoteIssuer;
 
     const baseRequest: any = {
       currency: baseCurrency,
@@ -320,111 +315,105 @@ export class XRPLCLOB implements CLOBish {
     req: ClobGetOrderRequest
   ): Promise<{ orders: ClobGetOrderResponse['orders'] }> {
     if (!req.market) return { orders: [] };
-    const marketId: string = this.parsedMarkets[req.market].marketId;
+    // const market = this.parsedMarkets[req.market] as Market;
+    // const [baseCurrency, quoteCurrency] = market.marketId.split('/');
+    // const baseIssuer = market.baseIssuer;
+    // const quoteIssuer = market.quoteIssuer;
+    // const orders: Order[] = [];
 
-    const [base, quote] = marketId.split('/');
+    // const baseRequest: any = {
+    //   currency: baseCurrency,
+    // };
 
-    const [baseCurrency, baseIssuer] = base.split('.');
-    const [quoteCurrency, quoteIssuer] = quote.split('.');
+    // const quoteRequest: any = {
+    //   currency: quoteCurrency,
+    // };
 
-    const orders: Order[] = [];
+    // if (baseIssuer) {
+    //   baseRequest['issuer'] = baseIssuer;
+    // }
+    // if (quoteIssuer) {
+    //   quoteRequest['issuer'] = quoteIssuer;
+    // }
 
-    const baseRequest: any = {
-      currency: baseCurrency,
-    };
+    // const orderbook_resp_ask: BookOffersResponse = await this._client.request({
+    //   command: 'book_offers',
+    //   ledger_index: 'validated',
+    //   taker: req.address,
+    //   taker_gets: baseRequest,
+    //   taker_pays: quoteRequest,
+    // });
 
-    const quoteRequest: any = {
-      currency: quoteCurrency,
-    };
+    // const orderbook_resp_bid: BookOffersResponse = await this._client.request({
+    //   command: 'book_offers',
+    //   ledger_index: 'validated',
+    //   taker: req.address,
+    //   taker_gets: quoteRequest,
+    //   taker_pays: baseRequest,
+    // });
 
-    if (baseIssuer) {
-      baseRequest['issuer'] = baseIssuer;
-    }
-    if (quoteIssuer) {
-      quoteRequest['issuer'] = quoteIssuer;
-    }
+    // let asks = orderbook_resp_ask.result.offers;
+    // let bids = orderbook_resp_bid.result.offers;
 
-    const orderbook_resp_ask: BookOffersResponse = await this._client.request({
-      command: 'book_offers',
-      ledger_index: 'validated',
-      taker: req.address,
-      taker_gets: baseRequest,
-      taker_pays: quoteRequest,
-    });
+    // asks = asks.filter((ask) => ask.Account == req.address);
+    // bids = bids.filter((bid) => bid.Account == req.address);
 
-    const orderbook_resp_bid: BookOffersResponse = await this._client.request({
-      command: 'book_offers',
-      ledger_index: 'validated',
-      taker: req.address,
-      taker_gets: quoteRequest,
-      taker_pays: baseRequest,
-    });
+    // for (const ask of asks) {
+    //   const price = ask.quality ?? '-1';
+    //   let amount: string = '';
 
-    let asks = orderbook_resp_ask.result.offers;
-    let bids = orderbook_resp_bid.result.offers;
+    //   if (isIssuedCurrency(ask.TakerGets)) {
+    //     amount = ask.TakerGets.value;
+    //   } else {
+    //     amount = ask.TakerGets;
+    //   }
 
-    asks = asks.filter((ask) => ask.Account == req.address);
-    bids = bids.filter((bid) => bid.Account == req.address);
+    //   // orders.push({
+    //   //   hash: ask.Sequence,
+    //   //   marketId: marketId,
+    //   //   price: price,
+    //   //   amount: amount,
+    //   //   state: OrderStatus.OPEN, // TODO: create middle class to track this property
+    //   //   tradeType: TradeType.SELL,
+    //   //   orderType: OrderType.LIMIT,
+    //   //   createdAt: Date.now(), // TODO: create middle class to track this property
+    //   //   updatedAt: Date.now(), // TODO: create middle class to track this property
+    //   // });
+    // }
 
-    for (const ask of asks) {
-      const price = ask.quality ?? '-1';
-      let amount: string = '';
+    // for (const bid of bids) {
+    //   const price = Math.pow(Number(bid.quality), -1).toString() ?? '-1';
+    //   let amount: string = '';
 
-      if (isIssuedCurrency(ask.TakerGets)) {
-        amount = ask.TakerGets.value;
-      } else {
-        amount = ask.TakerGets;
-      }
+    //   if (isIssuedCurrency(bid.TakerGets)) {
+    //     amount = bid.TakerGets.value;
+    //   } else {
+    //     amount = bid.TakerGets;
+    //   }
 
-      // orders.push({
-      //   hash: ask.Sequence,
-      //   marketId: marketId,
-      //   price: price,
-      //   amount: amount,
-      //   state: OrderStatus.OPEN, // TODO: create middle class to track this property
-      //   tradeType: TradeType.SELL,
-      //   orderType: OrderType.LIMIT,
-      //   createdAt: Date.now(), // TODO: create middle class to track this property
-      //   updatedAt: Date.now(), // TODO: create middle class to track this property
-      // });
-    }
+    //   // orders.push({
+    //   //   hash: bid.Sequence,
+    //   //   marketId: marketId,
+    //   //   price: price,
+    //   //   amount: amount,
+    //   //   state: OrderStatus.OPEN, // TODO: create middle class to track this property
+    //   //   tradeType: TradeType.BUY,
+    //   //   orderType: OrderType.LIMIT,
+    //   //   createdAt: Date.now(), // TODO: create middle class to track this property
+    //   //   updatedAt: Date.now(), // TODO: create middle class to track this property
+    //   // });
+    // }
 
-    for (const bid of bids) {
-      const price = Math.pow(Number(bid.quality), -1).toString() ?? '-1';
-      let amount: string = '';
-
-      if (isIssuedCurrency(bid.TakerGets)) {
-        amount = bid.TakerGets.value;
-      } else {
-        amount = bid.TakerGets;
-      }
-
-      // orders.push({
-      //   hash: bid.Sequence,
-      //   marketId: marketId,
-      //   price: price,
-      //   amount: amount,
-      //   state: OrderStatus.OPEN, // TODO: create middle class to track this property
-      //   tradeType: TradeType.BUY,
-      //   orderType: OrderType.LIMIT,
-      //   createdAt: Date.now(), // TODO: create middle class to track this property
-      //   updatedAt: Date.now(), // TODO: create middle class to track this property
-      // });
-    }
-
-    return { orders } as ClobGetOrderResponse;
+    return { orders: [] } as ClobGetOrderResponse;
   }
 
   public async postOrder(
     req: ClobPostOrderRequest
   ): Promise<{ txHash: string }> {
-    const marketId: string = this.parsedMarkets[req.market].marketId;
-
-    const [base, quote] = marketId.split('/');
-    const [baseCurrency, baseIssuer] = base.split('.');
-    const [quoteCurrency, quoteIssuer] = quote.split('.');
-
-    const market = await this.getMarket(marketId);
+    const market = this.parsedMarkets[req.market] as Market;
+    const [baseCurrency, quoteCurrency] = market.marketId.split('/');
+    const baseIssuer = market.baseIssuer;
+    const quoteIssuer = market.quoteIssuer;
 
     const xrpl = this._xrpl;
     const wallet = await xrpl.getWallet(req.address);

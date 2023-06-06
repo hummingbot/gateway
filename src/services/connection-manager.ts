@@ -166,6 +166,8 @@ export type Connector<T> = T extends Uniswapish
   ? Tinyman
   : T extends Plenty
   ? Plenty
+  : T extends XRPLish
+  ? XRPLDEX
   : never;
 
 export async function getConnector<T>(

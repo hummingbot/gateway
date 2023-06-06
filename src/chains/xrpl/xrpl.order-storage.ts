@@ -21,8 +21,8 @@ export class XRPLOrderStorage extends ReferenceCountingCloseable {
   public async saveOrder(
     chain: string,
     chainId: string,
-    order: Order,
-    walletAddress: string
+    walletAddress: string,
+    order: Order
   ): Promise<void> {
     return this.localStorage.save(
       chain + '/' + chainId + '/' + walletAddress + '/' + order.hash,
@@ -33,8 +33,8 @@ export class XRPLOrderStorage extends ReferenceCountingCloseable {
   public async deleteOrder(
     chain: string,
     chainId: string,
-    order: Order,
-    walletAddress: string
+    walletAddress: string,
+    order: Order
   ): Promise<void> {
     return this.localStorage.del(
       chain + '/' + chainId + '/' + walletAddress + '/' + order.hash

@@ -221,3 +221,7 @@ export interface Order {
   updatedAtLedgerIndex: number;
   associatedTxns: string[];
 }
+
+export interface InflightOrders {
+  [hash: number]: Order;
+}
