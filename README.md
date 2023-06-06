@@ -97,16 +97,16 @@ There are a number of ways to contribute to gateway.
 
 Here are some files we recommend you look at in order to get familiar with the Gateway codebase:
 
-- [src/services/ethereum-base.ts](./src/services/ethereum-base.ts): base class for EVM chains.
+- [src/services/ethereum-base.ts](./src/chains/ethereum/ethereum-base.ts): base class for EVM chains.
 
 - [src/connectors/uniswap/uniswap.ts](./src/connectors/uniswap/uniswap.ts): functionality for interacting with Uniswap.
 
-- [src/services/validator.ts](./src/services/validator.ts): defines functions for validating request payloads.
+- [src/services/validators.ts](./src/services/validators.ts): defines functions for validating request payloads.
 
 
 ### Testing
 
-For a pull request merged into the codebase, it has to pass unit test coverage requirements. Take a look at [Workflow](../.github/workflows/workflow.yml) for more details.
+For a pull request merged into the codebase, it has to pass unit test coverage requirements. Take a look at [Workflow](./.github/workflows/workflow.yml) for more details.
 
 #### Unit tests
 
@@ -126,7 +126,7 @@ yarn jest test/<folder>/<file>
 
 #### Manual tests
 
-We have found it is useful to test individual endpoints with `curl` commands. We have a collection of prepared curl calls. POST bodies are stored in JSON files. Take a look at the [curl calls for gateway](./manual-tests/curl.sh). Note that some environment variables are expected.
+We have found it is useful to test individual endpoints with `curl` commands. We have a collection of prepared curl calls. POST bodies are stored in JSON files. Take a look at the [curl calls for gateway](./test-helpers/curl/curl.sh). Note that some environment variables are expected.
 
 ## Linting
 
