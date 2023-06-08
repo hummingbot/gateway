@@ -266,7 +266,7 @@ export class OrderTracker {
 
     // Wait until the order is not locked
     while (omm.isLocked(order.hash)) {
-      console.log('Order is locked! Wait for 300ms');
+      // console.log('Order is locked! Wait for 300ms');
       await new Promise((resolve) => setTimeout(resolve, 300));
     }
 
@@ -292,7 +292,7 @@ export class OrderTracker {
             : 0,
           updatedAtLedgerIndex: latestTxnResp?.result.ledger_index ?? 0,
         };
-        console.log('Order opened!');
+        // console.log('Order opened!');
       } else {
         // Handle other cases here
         // https://xrpl.org/transaction-results.html
@@ -319,7 +319,7 @@ export class OrderTracker {
             : 0,
           updatedAtLedgerIndex: latestTxnResp?.result.ledger_index ?? 0,
         };
-        console.log('Order canceled!');
+        // console.log('Order canceled!');
       } else {
         // Handle other cases here
         // https://xrpl.org/transaction-results.html
@@ -406,20 +406,20 @@ export class OrderTracker {
     // console.log(inspect(transactionIntent, { colors: true, depth: null }));
 
     if (transactionIntent.sequence === undefined) {
-      console.log('No sequence found!');
+      // console.log('No sequence found!');
       return ordersToCheck;
     }
 
     const matchOrder = ordersToCheck[transactionIntent.sequence];
 
     if (matchOrder === undefined) {
-      console.log('No match order found!');
+      // console.log('No match order found!');
       return ordersToCheck;
     }
 
     // Wait until the order is not locked
     while (omm.isLocked(matchOrder.hash)) {
-      console.log('Order is locked! Wait for 300ms');
+      // console.log('Order is locked! Wait for 300ms');
       await new Promise((resolve) => setTimeout(resolve, 300));
     }
 
@@ -439,37 +439,37 @@ export class OrderTracker {
     if (foundIndex === -1) {
       matchOrder.associatedTxns.push(transaction.transaction.hash ?? 'UNKNOWN');
     } else {
-      console.log('Transaction already found!');
+      // console.log('Transaction already found!');
     }
 
     switch (transactionIntent.type) {
       case TransactionIntentType.OFFER_CREATE_FINALIZED:
-        console.log('Offer create finalized!');
+        // console.log('Offer create finalized!');
         matchOrder.state = OrderStatus.OPEN;
         break;
 
       case TransactionIntentType.OFFER_CANCEL_FINALIZED:
-        console.log('Offer cancel finalized!');
+        // console.log('Offer cancel finalized!');
         matchOrder.state = OrderStatus.CANCELED;
         break;
 
       case TransactionIntentType.OFFER_PARTIAL_FILL:
-        console.log('Offer partial fill!');
+        // console.log('Offer partial fill!');
         matchOrder.state = OrderStatus.PARTIALLY_FILLED;
 
         if (transaction.meta === undefined) {
-          console.log('No meta found!');
+          // console.log('No meta found!');
           break;
         }
 
         for (const affnode of transaction.meta.AffectedNodes) {
           if (isModifiedNode(affnode)) {
-            console.log('Modified node found!');
+            // console.log('Modified node found!');
             if (affnode.ModifiedNode.LedgerEntryType == 'Offer') {
               // Usually a ModifiedNode of type Offer indicates a previous Offer that
               // was partially consumed by this one.
               if (affnode.ModifiedNode.FinalFields === undefined) {
-                console.log('No final fields found!');
+                // console.log('No final fields found!');
                 break;
               }
 
@@ -501,7 +501,7 @@ export class OrderTracker {
                 }
               }
 
-              console.log('Filled amount: ', filledAmount);
+              // console.log('Filled amount: ', filledAmount);
               matchOrder.filledAmount = filledAmount.toString();
               break;
             }
