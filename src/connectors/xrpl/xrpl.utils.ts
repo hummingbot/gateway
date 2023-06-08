@@ -1,4 +1,4 @@
-import { InflightOrders, OrderLocks } from './xrpl.types';  
+import { InflightOrders, OrderLocks } from './xrpl.types';
 
 export class OrderMutexManager {
   private locks: OrderLocks = {};
