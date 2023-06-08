@@ -3,34 +3,34 @@ networks:
     chainID: 42161
     nodeURL: https://rpc.ankr.com/arbitrum
     tokenListType: FILE
-    tokenListSource: conf/lists/arbitrum_one_tokens.json
+    tokenListSource: conf/arbitrum_one_tokens.json
     nativeCurrencySymbol: ETH
     gasPriceRefreshInterval: 60
   arbitrum_rinkeby:
     chainID: 421611
     nodeURL: https://arbitrum-rinkeby.infura.io/v3
     tokenListType: FILE
-    tokenListSource: conf/lists/arbitrum_rinkeby_tokens.json
+    tokenListSource: conf/arbitrum_rinkeby_tokens.json
     nativeCurrencySymbol: ETH
   mainnet:
     chainID: 1
     nodeURL: https://rpc.ankr.com/eth
     tokenListType: FILE
     nativeCurrencySymbol: ETH
-    tokenListSource: conf/lists/erc20_tokens_mainnet.json
+    tokenListSource: conf/erc20_tokens_mainnet.json
     gasPriceRefreshInterval: 60
   optimism:
     chainID: 10
     nodeURL: https://rpc.ankr.com/optimism
     tokenListType: FILE
-    tokenListSource: conf/lists/optimism_tokens.json
+    tokenListSource: conf/optimism_tokens.json
     nativeCurrencySymbol: OETH
     gasPriceRefreshInterval: 60
   goerli:
     chainID: 5
     nodeURL: https://rpc.ankr.com/eth_goerli
     tokenListType: FILE
-    tokenListSource: conf/lists/erc20_tokens_goerli.json
+    tokenListSource: conf/erc20_tokens_goerli.json
     nativeCurrencySymbol: ETH
 
 # if you use the gas assumptions below, your wallet needs >0.1 ETH balance for gas

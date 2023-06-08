@@ -13,13 +13,6 @@
   ],
   "tokens": [
     {
-      "name": "Hypercycle",
-      "symbol": "HYPC",
-      "address": "0x7881cD2B5724431372F57C50E91611352557A606",
-      "chainId": 56,
-      "decimals": 6
-    },
-    {
       "name": "PancakeSwap Token",
       "symbol": "CAKE",
       "address": "0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82",
