@@ -11,14 +11,14 @@ networks:
     chainID: 43114
     nodeURL: https://rpc.ankr.com/avalanche
     tokenListType: 'FILE'
-    tokenListSource: 'src/chains/avalanche/avanlanche_tokens.json'
+    tokenListSource: 'src/chains/avalanche/avalanche_tokens.json'
     nativeCurrencySymbol: 'AVAX'
     gasPriceRefreshInterval: 60
   dexalot:
     chainID: 432204
     nodeURL: https://subnets.avax.network/dexalot/mainnet/rpc
     tokenListType: 'FILE'
-    tokenListSource: 'src/chains/avalanche/avanlanche_tokens.json'
+    tokenListSource: 'src/chains/avalanche/avalanche_tokens.json'
     nativeCurrencySymbol: 'ALOT'
     gasPriceRefreshInterval: 60
 
