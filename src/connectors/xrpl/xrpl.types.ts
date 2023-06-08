@@ -202,9 +202,9 @@ export type GetOpenOrdersResponse =
   | IMap<number, GetOpenOrderResponse>
   | GetOpenOrderResponse;
 
-export class XRPLDEXishError extends Error {}
+export class XRPLishError extends Error {}
 
-export class MarketNotFoundError extends XRPLDEXishError {}
+export class MarketNotFoundError extends XRPLishError {}
 
 export interface PriceLevel {
   price: string;
