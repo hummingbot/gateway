@@ -19,7 +19,7 @@ import { VVSConnector } from '../connectors/vvs/vvs';
 import { InjectiveCLOB } from '../connectors/injective/injective';
 import { InjectiveClobPerp } from '../connectors/injective_perpetual/injective.perp';
 import { Injective } from '../chains/injective/injective';
-import { XRPLDEX } from '../connectors/xrpldex/xrpldex';
+import { XRPLCLOB } from '../connectors/xrpl/xrpl';
 import {
   CLOBish,
   Ethereumish,
@@ -29,7 +29,7 @@ import {
   Uniswapish,
   UniswapLPish,
   Xdcish,
-  Tezosish
+  Tezosish,
 } from './common-interfaces';
 import { Traderjoe } from '../connectors/traderjoe/traderjoe';
 import { Sushiswap } from '../connectors/sushiswap/sushiswap';
@@ -148,7 +148,7 @@ export type ConnectorUnion =
   | InjectiveClobPerp
   | Tinyman
   | Plenty
-  | XRPLDEX;
+  | XRPLCLOB;
 
 export type Connector<T> = T extends Uniswapish
   ? Uniswapish
@@ -167,7 +167,7 @@ export type Connector<T> = T extends Uniswapish
   : T extends Plenty
   ? Plenty
   : T extends XRPLish
-  ? XRPLDEX
+  ? XRPLCLOB
   : never;
 
 export async function getConnector<T>(
@@ -222,8 +222,8 @@ export async function getConnector<T>(
     connectorInstance = Tinyman.getInstance(network);
   } else if (chain === 'tezos' && connector === 'plenty') {
     connectorInstance = Plenty.getInstance(network);
-  } else if (chain === 'xrpl' && connector === 'xrpldex') {
-    connectorInstance = XRPLDEX.getInstance(chain, network);
+  } else if (chain === 'xrpl' && connector === 'xrpl') {
+    connectorInstance = XRPLCLOB.getInstance(chain, network);
   } else {
     throw new Error('unsupported chain or connector');
   }

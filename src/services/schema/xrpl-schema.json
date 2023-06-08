@@ -11,6 +11,8 @@
             "nodeURL": { "type": "string" },
             "tokenListType": { "type": "string" },
             "tokenListSource": { "type": "string" },
+            "marketListType": { "type": "string" },
+            "marketListSource": { "type": "string" },
             "nativeCurrencySymbol": { "type": "string" }
           },
           "required": [
@@ -29,6 +31,8 @@
     "connectionTimeout": { "type": "integer" },
     "feeCushion": { "type": "number" },
     "maxFeeXRP": { "type": "string" },
+    "orderDbPath": { "type": "string" },
+    "maxLRUCacheInstances": { "type": "number" },
     "retry": {
       "type": "object",
       "required": ["all"],

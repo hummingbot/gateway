@@ -19,9 +19,10 @@ import { rootPath } from '../../paths';
 import { TokenListType, walletPath, MarketListType } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { getXRPLConfig } from './xrpl.config';
-import { logger } from '../../services/logger';
+// import { logger } from '../../services/logger';
 import { TransactionResponseStatusCode } from './xrpl.requests';
 import { XRPLOrderStorage } from './xrpl.order-storage';
+import { OrderTracker } from '../../connectors/xrpl/xrpl.order-tracker';
 import { ReferenceCountingCloseable } from '../../services/refcounting-closeable';
 
 export type TokenInfo = {
@@ -35,7 +36,7 @@ export type TokenInfo = {
 
 export type MarketInfo = {
   id: number;
-  code: string;
+  marketId: string;
   baseIssuer: string;
   quoteIssuer: string;
   baseTokenID: number;
@@ -107,13 +108,12 @@ export class XRPL implements XRPLish {
       minimum: '0',
       openLedger: '0',
     };
-    // this._client.connect();
 
     this._requestCount = 0;
     this._metricsLogInterval = 300000; // 5 minutes
 
     this.onValidationReceived(this.requestCounter.bind(this));
-    setInterval(this.metricLogger.bind(this), this.metricsLogInterval);
+    // setInterval(this.metricLogger.bind(this), this.metricsLogInterval);
 
     this._refCountingHandle = ReferenceCountingCloseable.createHandle();
     this._orderStorage = XRPLOrderStorage.getInstance(
@@ -190,7 +190,7 @@ export class XRPL implements XRPLish {
   async init(): Promise<void> {
     if (!this.ready() && !this.initializing) {
       this.initializing = true;
-      await this._client.connect();
+      await this.ensureConnection();
       await this.loadTokens(this._tokenListSource, this._tokenListType);
       await this.loadMarkets(this._marketListSource, this._marketListType);
       await this.getFee();
@@ -221,7 +221,7 @@ export class XRPL implements XRPLish {
     );
     if (this.marketList) {
       this.marketList.forEach((market: MarketInfo) =>
-        this._marketMap[market.code].push(market)
+        this._marketMap[market.marketId].push(market)
       );
     }
   }
@@ -381,15 +381,15 @@ export class XRPL implements XRPLish {
     this._requestCount += 1;
   }
 
-  public metricLogger(): void {
-    logger.info(
-      this.requestCount +
-        ' request(s) sent in last ' +
-        this.metricsLogInterval / 1000 +
-        ' seconds.'
-    );
-    this._requestCount = 0; // reset
-  }
+  // public metricLogger(): void {
+  //   logger.info(
+  //     this.requestCount +
+  //       ' request(s) sent in last ' +
+  //       this.metricsLogInterval / 1000 +
+  //       ' seconds.'
+  //   );
+  //   this._requestCount = 0; // reset
+  // }
 
   public get requestCount(): number {
     return this._requestCount;
@@ -446,6 +446,7 @@ export class XRPL implements XRPLish {
 
   async close() {
     if (this._network in XRPL._instances) {
+      await OrderTracker.stopTrackingOnAllInstancesForNetwork(this._network);
       await this._orderStorage.close(this._refCountingHandle);
       delete XRPL._instances[this._network];
     }

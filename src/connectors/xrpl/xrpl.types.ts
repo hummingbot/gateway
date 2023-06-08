@@ -10,6 +10,7 @@ export const ISet = ImmutableSet;
 export enum TradeType {
   BUY = 'BUY',
   SELL = 'SELL',
+  UNKNOWN = 'UNKNOWN',
 }
 
 export enum OrderStatus {

@@ -20,30 +20,30 @@ export class XRPLOrderStorage extends ReferenceCountingCloseable {
 
   public async saveOrder(
     chain: string,
-    chainId: string,
+    network: string,
     walletAddress: string,
     order: Order
   ): Promise<void> {
     return this.localStorage.save(
-      chain + '/' + chainId + '/' + walletAddress + '/' + order.hash,
+      chain + '/' + network + '/' + walletAddress + '/' + order.hash,
       JSON.stringify(order)
     );
   }
 
   public async deleteOrder(
     chain: string,
-    chainId: string,
+    network: string,
     walletAddress: string,
     order: Order
   ): Promise<void> {
     return this.localStorage.del(
-      chain + '/' + chainId + '/' + walletAddress + '/' + order.hash
+      chain + '/' + network + '/' + walletAddress + '/' + order.hash
     );
   }
 
   public async getOrders(
     chain: string,
-    chainId: string,
+    network: string,
     walletAddress: string
   ): Promise<Record<string, Order>> {
     return this.localStorage.get((key: string, value: string) => {
@@ -51,7 +51,7 @@ export class XRPLOrderStorage extends ReferenceCountingCloseable {
       if (
         splitKey.length === 4 &&
         splitKey[0] === chain &&
-        splitKey[1] === chainId &&
+        splitKey[1] === network &&
         splitKey[2] === walletAddress
       ) {
         return [splitKey[3], JSON.parse(value)];
@@ -62,7 +62,7 @@ export class XRPLOrderStorage extends ReferenceCountingCloseable {
 
   public async getOrdersByState(
     chain: string,
-    chainId: string,
+    network: string,
     walletAddress: string,
     state: OrderStatus
   ): Promise<Record<string, Order>> {
@@ -71,11 +71,107 @@ export class XRPLOrderStorage extends ReferenceCountingCloseable {
       if (
         splitKey.length === 4 &&
         splitKey[0] === chain &&
-        splitKey[1] === chainId &&
+        splitKey[1] === network &&
         splitKey[2] === walletAddress
       ) {
         const order: Order = JSON.parse(value);
         if (order.state === state) {
+          return [splitKey[3], order];
+        }
+      }
+      return;
+    });
+  }
+
+  public async getOrdersByMarket(
+    chain: string,
+    network: string,
+    walletAddress: string,
+    marketId: string
+  ): Promise<Record<string, Order>> {
+    return this.localStorage.get((key: string, value: string) => {
+      const splitKey = key.split('/');
+      if (
+        splitKey.length === 4 &&
+        splitKey[0] === chain &&
+        splitKey[1] === network &&
+        splitKey[2] === walletAddress
+      ) {
+        const order: Order = JSON.parse(value);
+        if (order.marketId === marketId) {
+          return [splitKey[3], order];
+        }
+      }
+      return;
+    });
+  }
+
+  public async getOrderByMarketAndHash(
+    chain: string,
+    network: string,
+    walletAddress: string,
+    marketId: string,
+    hash: string
+  ): Promise<Record<string, Order>> {
+    return this.localStorage.get((key: string, value: string) => {
+      const splitKey = key.split('/');
+      if (
+        splitKey.length === 4 &&
+        splitKey[0] === chain &&
+        splitKey[1] === network &&
+        splitKey[2] === walletAddress
+      ) {
+        const order: Order = JSON.parse(value);
+        if (order.marketId === marketId && order.hash === parseInt(hash)) {
+          return [splitKey[3], order];
+        }
+      }
+      return;
+    });
+  }
+
+  public async getOrdersByHash(
+    chain: string,
+    network: string,
+    walletAddress: string,
+    hash: string
+  ): Promise<Record<string, Order>> {
+    return this.localStorage.get((key: string, value: string) => {
+      const splitKey = key.split('/');
+      if (
+        splitKey.length === 4 &&
+        splitKey[0] === chain &&
+        splitKey[1] === network &&
+        splitKey[2] === walletAddress &&
+        splitKey[3] === hash
+      ) {
+        const order: Order = JSON.parse(value);
+        return [splitKey[3], order];
+      }
+      return;
+    });
+  }
+
+  public async getInflightOrders(
+    chain: string,
+    network: string,
+    walletAddress: string
+  ): Promise<Record<string, Order>> {
+    return this.localStorage.get((key: string, value: string) => {
+      const splitKey = key.split('/');
+      if (
+        splitKey.length === 4 &&
+        splitKey[0] === chain &&
+        splitKey[1] === network &&
+        splitKey[2] === walletAddress
+      ) {
+        const order: Order = JSON.parse(value);
+        if (
+          order.state === OrderStatus.OPEN ||
+          order.state === OrderStatus.PENDING_OPEN ||
+          order.state === OrderStatus.PENDING_CANCEL ||
+          order.state === OrderStatus.PARTIALLY_FILLED
+        ) {
           return [splitKey[3], order];
         }
       }

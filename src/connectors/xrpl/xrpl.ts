@@ -1,21 +1,22 @@
 import { MarketInfo, XRPL } from '../../chains/xrpl/xrpl';
+import { XRPLOrderStorage } from '../../chains/xrpl/xrpl.order-storage';
 import {
   Client,
-  OfferCancel,
+  Wallet,
   Transaction,
   xrpToDrops,
   AccountInfoResponse,
   BookOffersResponse,
 } from 'xrpl';
+import { OrderTracker } from './xrpl.order-tracker';
 import {
   Market,
   MarketNotFoundError,
   Token,
-  // OrderStatus,
   TradeType,
   Orderbook,
   PriceLevel,
-  // Order,
+  Order,
 } from './xrpl.types';
 import {
   ClobMarketsRequest,
@@ -28,7 +29,6 @@ import {
   ClobGetOrderResponse,
 } from '../../clob/clob.requests';
 import { promiseAllInBatches } from '../../chains/xrpl/xrpl.helpers';
-// import { isIssuedCurrency } from 'xrpl/dist/npm/models/transactions/common';
 import {
   CLOBish,
   NetworkSelectionRequest,
@@ -36,7 +36,6 @@ import {
 import LRUCache from 'lru-cache';
 import { getXRPLConfig } from '../../chains/xrpl/xrpl.config';
 import { isUndefined } from 'mathjs';
-// import { OrderType } from './xrpl.types';
 
 const XRP_FACTOR = 1000000;
 const ORDERBOOK_LIMIT = 10;
@@ -45,6 +44,7 @@ export class XRPLCLOB implements CLOBish {
   private static _instances: LRUCache<string, XRPLCLOB>;
   private readonly _client: Client;
   private readonly _xrpl: XRPL;
+  private readonly _orderStorage: XRPLOrderStorage;
 
   private _ready: boolean = false;
 
@@ -58,6 +58,7 @@ export class XRPLCLOB implements CLOBish {
 
     this._xrpl = XRPL.getInstance(network);
     this._client = this._xrpl.client;
+    this._orderStorage = this._xrpl.orderStorage;
   }
 
   public static getInstance(chain: string, network: string): XRPLCLOB {
@@ -78,7 +79,7 @@ export class XRPLCLOB implements CLOBish {
   public async loadMarkets() {
     const rawMarkets = await this.fetchMarkets();
     for (const market of rawMarkets) {
-      this.parsedMarkets[market.marketId.replace('/', '-')] = market;
+      this.parsedMarkets[market.marketId] = market;
     }
   }
 
@@ -99,16 +100,13 @@ export class XRPLCLOB implements CLOBish {
   public async markets(
     req: ClobMarketsRequest
   ): Promise<{ markets: CLOBMarkets }> {
-    if (req.market && req.market.split('-').length === 2) {
-      const resp: CLOBMarkets = {};
-      resp[req.market] = this.parsedMarkets[req.market];
-      return { markets: resp };
-    }
-    return { markets: this.parsedMarkets };
+    if (req.market && req.market in this.parsedMarkets)
+      return { markets: this.parsedMarkets[req.market] };
+    return { markets: Object.values(this.parsedMarkets) };
   }
 
   public async orderBook(req: ClobOrderbookRequest): Promise<Orderbook> {
-    return await this.getOrderBook(this.parsedMarkets[req.market].marketId);
+    return await this.getOrderBook(this.parsedMarkets[req.market]);
   }
 
   // Utility methods:
@@ -135,7 +133,7 @@ export class XRPLCLOB implements CLOBish {
       quoteTransferRate: number;
     const zeroTransferRate = 1000000000;
 
-    const [baseCurrency, quoteCurrency] = market.code.split('/');
+    const [baseCurrency, quoteCurrency] = market.marketId.split('-');
     const baseIssuer = market.baseIssuer;
     const quoteIssuer = market.quoteIssuer;
 
@@ -185,7 +183,7 @@ export class XRPLCLOB implements CLOBish {
     const minimumOrderSize = smallestTickSize;
 
     const result = {
-      marketId: market.code,
+      marketId: market.marketId,
       minimumOrderSize: minimumOrderSize,
       tickSize: smallestTickSize,
       baseTransferRate: baseTransferRate,
@@ -200,7 +198,7 @@ export class XRPLCLOB implements CLOBish {
   }
 
   async getOrderBook(market: MarketInfo): Promise<Orderbook> {
-    const [baseCurrency, quoteCurrency] = market.code.split('/');
+    const [baseCurrency, quoteCurrency] = market.marketId.split('-');
     const baseIssuer = market.baseIssuer;
     const quoteIssuer = market.quoteIssuer;
 
@@ -219,24 +217,10 @@ export class XRPLCLOB implements CLOBish {
       quoteRequest['issuer'] = quoteIssuer;
     }
 
-    const orderbook_resp_ask: BookOffersResponse = await this._client.request({
-      command: 'book_offers',
-      ledger_index: 'validated',
-      taker_gets: baseRequest,
-      taker_pays: quoteRequest,
-      limit: ORDERBOOK_LIMIT,
-    });
-
-    const orderbook_resp_bid: BookOffersResponse = await this._client.request({
-      command: 'book_offers',
-      ledger_index: 'validated',
-      taker_gets: quoteRequest,
-      taker_pays: baseRequest,
-      limit: ORDERBOOK_LIMIT,
-    });
-
-    const asks = orderbook_resp_ask.result.offers;
-    const bids = orderbook_resp_bid.result.offers;
+    const { bids, asks } = await this.getOrderBookFromXRPL(
+      baseRequest,
+      quoteRequest
+    );
 
     const buys: PriceLevel[] = [];
     const sells: PriceLevel[] = [];
@@ -246,24 +230,56 @@ export class XRPLCLOB implements CLOBish {
 
       let price, quantity: string;
 
-      if (typeof bid.taker_gets_funded === 'string') {
-        price = (Math.pow(parseFloat(bid.quality), -1) / XRP_FACTOR).toString();
-        quantity = (parseFloat(bid.taker_gets_funded) * XRP_FACTOR).toString();
-      } else if (typeof bid.taker_pays_funded === 'string') {
-        if (isUndefined(bid.taker_gets_funded)) return;
-        if (isUndefined(bid.taker_gets_funded?.value)) return;
+      if (
+        isUndefined(bid.taker_gets_funded) &&
+        isUndefined(bid.taker_pays_funded)
+      ) {
+        if (typeof bid.TakerGets === 'string') {
+          price = (
+            Math.pow(parseFloat(bid.quality), -1) / XRP_FACTOR
+          ).toString();
+          quantity = (parseFloat(bid.TakerGets) * XRP_FACTOR).toString();
+        } else if (typeof bid.TakerPays === 'string') {
+          if (isUndefined(bid.TakerGets)) return;
+          if (isUndefined(bid.TakerGets?.value)) return;
 
-        price = (Math.pow(parseFloat(bid.quality), -1) * XRP_FACTOR).toString();
-        quantity = bid.taker_gets_funded.value;
+          price = (
+            Math.pow(parseFloat(bid.quality), -1) * XRP_FACTOR
+          ).toString();
+          quantity = bid.TakerGets.value;
+        } else {
+          if (isUndefined(bid.TakerGets)) return;
+          if (isUndefined(bid.TakerGets?.value)) return;
+
+          price = Math.pow(parseFloat(bid.quality), -1).toString();
+          quantity = bid.TakerGets.value;
+        }
       } else {
-        if (isUndefined(bid.taker_gets_funded)) return;
-        if (isUndefined(bid.taker_gets_funded?.value)) return;
+        if (typeof bid.taker_gets_funded === 'string') {
+          price = (
+            Math.pow(parseFloat(bid.quality), -1) / XRP_FACTOR
+          ).toString();
+          quantity = (
+            parseFloat(bid.taker_gets_funded) * XRP_FACTOR
+          ).toString();
+        } else if (typeof bid.taker_pays_funded === 'string') {
+          if (isUndefined(bid.taker_gets_funded)) return;
+          if (isUndefined(bid.taker_gets_funded?.value)) return;
 
-        price = Math.pow(parseFloat(bid.quality), -1).toString();
-        quantity = bid.taker_gets_funded.value;
+          price = (
+            Math.pow(parseFloat(bid.quality), -1) * XRP_FACTOR
+          ).toString();
+          quantity = bid.taker_gets_funded.value;
+        } else {
+          if (isUndefined(bid.taker_gets_funded)) return;
+          if (isUndefined(bid.taker_gets_funded?.value)) return;
+
+          price = Math.pow(parseFloat(bid.quality), -1).toString();
+          quantity = bid.taker_gets_funded.value;
+        }
       }
 
-      buys.concat({
+      buys.push({
         price,
         quantity,
         timestamp: Date.now(),
@@ -275,24 +291,48 @@ export class XRPLCLOB implements CLOBish {
 
       let price, quantity: string;
 
-      if (typeof ask.taker_gets_funded === 'string') {
-        price = (parseFloat(ask.quality) * XRP_FACTOR).toString();
-        quantity = (parseFloat(ask.taker_gets_funded) * XRP_FACTOR).toString();
-      } else if (typeof ask.taker_pays_funded === 'string') {
-        if (isUndefined(ask.taker_gets_funded)) return;
-        if (isUndefined(ask.taker_gets_funded?.value)) return;
+      if (
+        isUndefined(ask.taker_gets_funded) &&
+        isUndefined(ask.taker_pays_funded)
+      ) {
+        if (typeof ask.TakerGets === 'string') {
+          price = (parseFloat(ask.quality) * XRP_FACTOR).toString();
+          quantity = (parseFloat(ask.TakerGets) / XRP_FACTOR).toString();
+        } else if (typeof ask.TakerPays === 'string') {
+          if (isUndefined(ask.TakerGets)) return;
+          if (isUndefined(ask.TakerGets?.value)) return;
 
-        price = (parseFloat(ask.quality) / XRP_FACTOR).toString();
-        quantity = ask.taker_gets_funded.value;
+          price = (parseFloat(ask.quality) / XRP_FACTOR).toString();
+          quantity = ask.TakerGets.value;
+        } else {
+          if (isUndefined(ask.TakerPays)) return;
+          if (isUndefined(ask.TakerPays?.value)) return;
+
+          price = ask.quality;
+          quantity = ask.TakerGets.value;
+        }
       } else {
-        if (isUndefined(ask.taker_gets_funded)) return;
-        if (isUndefined(ask.taker_gets_funded?.value)) return;
+        if (typeof ask.taker_gets_funded === 'string') {
+          price = (parseFloat(ask.quality) * XRP_FACTOR).toString();
+          quantity = (
+            parseFloat(ask.taker_gets_funded) / XRP_FACTOR
+          ).toString();
+        } else if (typeof ask.taker_pays_funded === 'string') {
+          if (isUndefined(ask.taker_gets_funded)) return;
+          if (isUndefined(ask.taker_gets_funded?.value)) return;
 
-        price = ask.quality;
-        quantity = ask.taker_gets_funded.value;
+          price = (parseFloat(ask.quality) / XRP_FACTOR).toString();
+          quantity = ask.taker_gets_funded.value;
+        } else {
+          if (isUndefined(ask.taker_gets_funded)) return;
+          if (isUndefined(ask.taker_gets_funded?.value)) return;
+
+          price = ask.quality;
+          quantity = ask.taker_gets_funded.value;
+        }
       }
 
-      sells.concat({
+      sells.push({
         price,
         quantity,
         timestamp: Date.now(),
@@ -315,108 +355,47 @@ export class XRPLCLOB implements CLOBish {
     req: ClobGetOrderRequest
   ): Promise<{ orders: ClobGetOrderResponse['orders'] }> {
     if (!req.market) return { orders: [] };
-    // const market = this.parsedMarkets[req.market] as Market;
-    // const [baseCurrency, quoteCurrency] = market.marketId.split('/');
-    // const baseIssuer = market.baseIssuer;
-    // const quoteIssuer = market.quoteIssuer;
-    // const orders: Order[] = [];
+    if (!req.address) return { orders: [] };
 
-    // const baseRequest: any = {
-    //   currency: baseCurrency,
-    // };
+    if (!req.orderId) {
+      const marketId = this.parsedMarkets[req.market].marketId;
+      const orders = await this._orderStorage.getOrdersByMarket(
+        this.chain,
+        this.network,
+        req.address,
+        marketId
+      );
 
-    // const quoteRequest: any = {
-    //   currency: quoteCurrency,
-    // };
+      const keys = Object.keys(orders);
+      const ordersArray = keys.map((key) => orders[key]);
 
-    // if (baseIssuer) {
-    //   baseRequest['issuer'] = baseIssuer;
-    // }
-    // if (quoteIssuer) {
-    //   quoteRequest['issuer'] = quoteIssuer;
-    // }
+      return { orders: ordersArray } as ClobGetOrderResponse;
+    } else {
+      const marketId = this.parsedMarkets[req.market].marketId;
+      const orders = await this._orderStorage.getOrderByMarketAndHash(
+        this.chain,
+        this.network,
+        req.address,
+        marketId,
+        req.orderId
+      );
 
-    // const orderbook_resp_ask: BookOffersResponse = await this._client.request({
-    //   command: 'book_offers',
-    //   ledger_index: 'validated',
-    //   taker: req.address,
-    //   taker_gets: baseRequest,
-    //   taker_pays: quoteRequest,
-    // });
+      const keys = Object.keys(orders);
+      const ordersArray = keys.map((key) => orders[key]);
 
-    // const orderbook_resp_bid: BookOffersResponse = await this._client.request({
-    //   command: 'book_offers',
-    //   ledger_index: 'validated',
-    //   taker: req.address,
-    //   taker_gets: quoteRequest,
-    //   taker_pays: baseRequest,
-    // });
-
-    // let asks = orderbook_resp_ask.result.offers;
-    // let bids = orderbook_resp_bid.result.offers;
-
-    // asks = asks.filter((ask) => ask.Account == req.address);
-    // bids = bids.filter((bid) => bid.Account == req.address);
-
-    // for (const ask of asks) {
-    //   const price = ask.quality ?? '-1';
-    //   let amount: string = '';
-
-    //   if (isIssuedCurrency(ask.TakerGets)) {
-    //     amount = ask.TakerGets.value;
-    //   } else {
-    //     amount = ask.TakerGets;
-    //   }
-
-    //   // orders.push({
-    //   //   hash: ask.Sequence,
-    //   //   marketId: marketId,
-    //   //   price: price,
-    //   //   amount: amount,
-    //   //   state: OrderStatus.OPEN, // TODO: create middle class to track this property
-    //   //   tradeType: TradeType.SELL,
-    //   //   orderType: OrderType.LIMIT,
-    //   //   createdAt: Date.now(), // TODO: create middle class to track this property
-    //   //   updatedAt: Date.now(), // TODO: create middle class to track this property
-    //   // });
-    // }
-
-    // for (const bid of bids) {
-    //   const price = Math.pow(Number(bid.quality), -1).toString() ?? '-1';
-    //   let amount: string = '';
-
-    //   if (isIssuedCurrency(bid.TakerGets)) {
-    //     amount = bid.TakerGets.value;
-    //   } else {
-    //     amount = bid.TakerGets;
-    //   }
-
-    //   // orders.push({
-    //   //   hash: bid.Sequence,
-    //   //   marketId: marketId,
-    //   //   price: price,
-    //   //   amount: amount,
-    //   //   state: OrderStatus.OPEN, // TODO: create middle class to track this property
-    //   //   tradeType: TradeType.BUY,
-    //   //   orderType: OrderType.LIMIT,
-    //   //   createdAt: Date.now(), // TODO: create middle class to track this property
-    //   //   updatedAt: Date.now(), // TODO: create middle class to track this property
-    //   // });
-    // }
-
-    return { orders: [] } as ClobGetOrderResponse;
+      return { orders: ordersArray } as ClobGetOrderResponse;
+    }
   }
 
   public async postOrder(
     req: ClobPostOrderRequest
   ): Promise<{ txHash: string }> {
     const market = this.parsedMarkets[req.market] as Market;
-    const [baseCurrency, quoteCurrency] = market.marketId.split('/');
+    const [baseCurrency, quoteCurrency] = market.marketId.split('-');
     const baseIssuer = market.baseIssuer;
     const quoteIssuer = market.quoteIssuer;
 
-    const xrpl = this._xrpl;
-    const wallet = await xrpl.getWallet(req.address);
+    const wallet = await this.getWallet(req.address);
     const total = parseFloat(req.price) * parseFloat(req.amount);
 
     let we_pay: Token = {
@@ -469,37 +448,88 @@ export class XRPLCLOB implements CLOBish {
       TakerPays: we_get.currency == 'XRP' ? we_get.value : we_get,
     };
 
-    const prepared = await this._client.autofill(offer);
-    const signed = wallet.sign(prepared);
-    const response = await this._client.submit(signed.tx_blob);
+    const { prepared, signed } = await this.submitTxn(offer, wallet);
 
-    const txHash = response.result.tx_json.hash
-      ? response.result.tx_json.hash
-      : '';
+    const currentTime = Date.now();
+    const currentLedgerIndex = await this.getCurrentBlockNumber();
 
-    return { txHash };
+    const order: Order = {
+      hash: prepared.Sequence ? prepared.Sequence : 0,
+      marketId: baseCurrency + '-' + quoteCurrency,
+      price: req.price,
+      amount: req.amount,
+      filledAmount: '0',
+      state: 'PENDING_OPEN',
+      tradeType: req.side,
+      orderType: 'LIMIT',
+      createdAt: currentTime,
+      createdAtLedgerIndex: currentLedgerIndex,
+      updatedAt: currentTime,
+      updatedAtLedgerIndex: currentLedgerIndex,
+      associatedTxns: [signed.hash],
+    };
+
+    const orderTracker = OrderTracker.getInstance(
+      this.chain,
+      this.network,
+      wallet
+    );
+
+    orderTracker.addOrder(order);
+
+    if (orderTracker.isTracking) {
+      orderTracker.startTracking();
+    }
+
+    return { txHash: signed.hash };
   }
 
   public async deleteOrder(
     req: ClobDeleteOrderRequest
   ): Promise<{ txHash: string }> {
-    const xrpl = this._xrpl;
-    const wallet = await xrpl.getWallet(req.address);
-    const request: OfferCancel = {
+    const wallet = await this.getWallet(req.address);
+    const offer: Transaction = {
       TransactionType: 'OfferCancel',
       Account: wallet.classicAddress,
       OfferSequence: parseInt(req.orderId),
     };
 
-    const prepared = await this._client.autofill(request);
-    const signed = wallet.sign(prepared);
-    const response = await this._client.submit(signed.tx_blob);
+    const { signed } = await this.submitTxn(offer, wallet);
 
-    const txHash = response.result.tx_json.hash
-      ? response.result.tx_json.hash
-      : '';
+    const orderTracker = OrderTracker.getInstance(
+      this.chain,
+      this.network,
+      wallet
+    );
 
-    return { txHash };
+    let order = orderTracker.getOrder(parseInt(req.orderId));
+
+    if (order) {
+      order.state = 'PENDING_CANCEL';
+      order.updatedAt = Date.now();
+      order.updatedAtLedgerIndex = await this.getCurrentBlockNumber();
+      order.associatedTxns.push(signed.hash);
+    } else {
+      order = {
+        hash: parseInt(req.orderId),
+        marketId: '',
+        price: '',
+        amount: '',
+        filledAmount: '',
+        state: 'PENDING_CANCEL',
+        tradeType: TradeType.UNKNOWN,
+        orderType: 'LIMIT',
+        createdAt: Date.now(),
+        createdAtLedgerIndex: await this.getCurrentBlockNumber(),
+        updatedAt: Date.now(),
+        updatedAtLedgerIndex: await this.getCurrentBlockNumber(),
+        associatedTxns: [signed.hash],
+      };
+    }
+
+    orderTracker.addOrder(order);
+
+    return { txHash: signed.hash };
   }
 
   public estimateGas(_req: NetworkSelectionRequest): {
@@ -508,6 +538,48 @@ export class XRPLCLOB implements CLOBish {
     gasLimit: number;
     gasCost: number;
   } {
+    return this.getFeeEstimate();
+  }
+
+  private async submitTxn(offer: Transaction, wallet: Wallet) {
+    const prepared = await this._client.autofill(offer);
+    const signed = wallet.sign(prepared);
+    await this._client.submit(signed.tx_blob);
+    return { prepared, signed };
+  }
+
+  private async getWallet(address: string) {
+    const wallet = await this._xrpl.getWallet(address);
+    return wallet;
+  }
+
+  private async getOrderBookFromXRPL(baseRequest: any, quoteRequest: any) {
+    const orderbook_resp_ask: BookOffersResponse = await this._client.request({
+      command: 'book_offers',
+      ledger_index: 'validated',
+      taker_gets: baseRequest,
+      taker_pays: quoteRequest,
+      limit: ORDERBOOK_LIMIT,
+    });
+
+    const orderbook_resp_bid: BookOffersResponse = await this._client.request({
+      command: 'book_offers',
+      ledger_index: 'validated',
+      taker_gets: quoteRequest,
+      taker_pays: baseRequest,
+      limit: ORDERBOOK_LIMIT,
+    });
+
+    const asks = orderbook_resp_ask.result.offers;
+    const bids = orderbook_resp_bid.result.offers;
+    return { bids, asks };
+  }
+
+  private async getCurrentBlockNumber() {
+    return await this._client.getLedgerIndex();
+  }
+
+  private getFeeEstimate() {
     const fee_estimate = this._xrpl.fee;
 
     return {

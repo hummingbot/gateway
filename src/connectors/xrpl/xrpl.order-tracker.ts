@@ -12,16 +12,15 @@ import { XRPL } from '../../chains/xrpl/xrpl';
 import { getXRPLConfig } from '../../chains/xrpl/xrpl.config';
 import {
   OrderStatus,
-  // TradeType,
   Order,
   InflightOrders,
-  OrderLocks,
   TransaformedAccountTransaction,
   TransactionIntentType,
   TransactionIntent,
   AccountTransaction,
   ResponseOnlyTxInfo,
 } from './xrpl.types';
+import { OrderMutexManager } from './xrpl.utils';
 import {
   isModifiedNode,
   isDeletedNode,
@@ -41,6 +40,10 @@ export class OrderTracker {
   private readonly _xrpl: XRPL;
   private readonly _orderStorage: XRPLOrderStorage;
   private _wallet: Wallet;
+  private _orderMutexManager: OrderMutexManager;
+  private _inflightOrders: InflightOrders;
+  private _isTracking: boolean;
+  private _orderTrackingInterval: number;
 
   public chain: string;
   public network: string;
@@ -52,6 +55,11 @@ export class OrderTracker {
     this._xrpl = XRPL.getInstance(network);
     this._orderStorage = this._xrpl.orderStorage;
     this._wallet = wallet;
+    this._inflightOrders = {};
+    this._orderMutexManager = new OrderMutexManager(this._inflightOrders);
+    this._isTracking = false;
+    // set tracking interval to 10 seconds
+    this._orderTrackingInterval = 10000;
   }
 
   public static getInstance(
@@ -76,54 +84,162 @@ export class OrderTracker {
     return OrderTracker._instances.get(instanceKey) as OrderTracker;
   }
 
-  public async saveOrder(order: Order): Promise<void> {
-    this._orderStorage.saveOrder(
-      this.chain,
-      this.network,
-      this._wallet.classicAddress,
-      order
+  public get wallet(): Wallet {
+    return this._wallet;
+  }
+
+  public get isTracking(): boolean {
+    return this._isTracking;
+  }
+
+  public addOrder(order: Order): void {
+    this._inflightOrders[order.hash] = order;
+  }
+
+  public getOrder(hash: number): Order | undefined {
+    return this._inflightOrders[hash];
+  }
+
+  async saveInflightOrdersToDB(): Promise<void> {
+    await Promise.all(
+      Object.keys(this._inflightOrders).map(async (hash) => {
+        await this._orderStorage.saveOrder(
+          this.chain,
+          this.network,
+          this._wallet.classicAddress,
+          this._inflightOrders[parseInt(hash)]
+        );
+      })
     );
   }
 
-  public async deleteOrder(order: Order): Promise<void> {
-    this._orderStorage.deleteOrder(
+  public async loadInflightOrders(): Promise<void> {
+    const orders = await this._orderStorage.getInflightOrders(
       this.chain,
       this.network,
-      this._wallet.classicAddress,
-      order
+      this._wallet.classicAddress
+    );
+
+    Object.keys(orders).forEach((hash) => {
+      this._inflightOrders[parseInt(hash)] = orders[parseInt(hash)];
+    });
+    this._orderMutexManager.updateOrders(this._inflightOrders);
+  }
+
+  public async startTracking(): Promise<void> {
+    if (this._isTracking) {
+      return;
+    }
+
+    this._isTracking = true;
+
+    await this._xrpl.ensureConnection();
+    await this.loadInflightOrders();
+
+    const client = this._xrpl.client;
+
+    client.on('transaction', async (event) => {
+      const updatedOrders = await this.processTransactionStream(
+        this._inflightOrders,
+        event,
+        this._orderMutexManager
+      );
+
+      // merge updateOrders with inflightOrders
+      Object.keys(updatedOrders).forEach((hash) => {
+        this._inflightOrders[parseInt(hash)] = updatedOrders[parseInt(hash)];
+      });
+
+      this._orderMutexManager.updateOrders(this._inflightOrders);
+    });
+
+    await client.request({
+      command: 'subscribe',
+      accounts: [this._wallet.classicAddress],
+    });
+
+    while (this._isTracking) {
+      // Make sure connection is good
+      await this._xrpl.ensureConnection();
+
+      // Check pending inflightOrders
+      const hashes = Object.keys(this._inflightOrders);
+      for (const hash of hashes) {
+        this._inflightOrders[parseInt(hash)] = await this.checkPendingOrder(
+          client,
+          this._inflightOrders[parseInt(hash)],
+          this._orderMutexManager
+        );
+      }
+
+      // Check open inflightOrders
+      const updatedOrders = await this.checkOpenOrders(
+        this._inflightOrders,
+        this._wallet.classicAddress,
+        client,
+        this._orderMutexManager
+      );
+
+      // merge updateOrders with inflightOrders
+      Object.keys(updatedOrders).forEach((hash) => {
+        this._inflightOrders[parseInt(hash)] = updatedOrders[parseInt(hash)];
+      });
+
+      // Update mutex manager
+      this._orderMutexManager.updateOrders(this._inflightOrders);
+
+      // Save inflightOrders to DB
+      await this.saveInflightOrdersToDB();
+
+      // Wait for next interval
+      await new Promise((resolve) =>
+        setTimeout(resolve, this._orderTrackingInterval)
+      );
+    }
+  }
+
+  public async stopTracking(): Promise<void> {
+    this._isTracking = false;
+    const client = this._xrpl.client;
+    client.removeAllListeners('transaction');
+
+    if (client.isConnected()) {
+      await client.request({
+        command: 'unsubscribe',
+        accounts: [this._wallet.classicAddress],
+      });
+    }
+  }
+
+  public static async stopTrackingOnAllInstances(): Promise<void> {
+    const instances = OrderTracker._instances;
+    if (instances === undefined) {
+      return;
+    }
+
+    await Promise.all(
+      Array.from(instances.values()).map(async (instance) => {
+        await instance.stopTracking();
+      })
     );
   }
 
-  public async getOrdersByState(
-    state: OrderStatus
-  ): Promise<Record<string, Order>> {
-    return this._orderStorage.getOrdersByState(
-      this.chain,
-      this.network,
-      this._wallet.classicAddress,
-      state
+  public static async stopTrackingOnAllInstancesForNetwork(
+    network: string
+  ): Promise<void> {
+    const instances = OrderTracker._instances;
+    if (instances === undefined) {
+      return;
+    }
+
+    await Promise.all(
+      Array.from(instances.values()).map(async (instance) => {
+        if (instance.network === network) {
+          await instance.stopTracking();
+        }
+      })
     );
   }
-
-  // TODO: Start implementing order tracker!
-
-  // startTracking(): void {
-  //   if (this._trackingId) {
-  //     return;
-  //   }
-
-  //   this._trackingId = setInterval(() => {
-  //     this._trackOrders();
-  //   }, 1000);
-  // }
-
-  // stopTracking(): void {
-  //   clearInterval(this._trackingId);
-  // }
-
-  // private async _trackOrders(): Promise<void> {
-  //   return;
-  // }
 
   async checkPendingOrder(
     client: Client,
@@ -217,8 +333,8 @@ export class OrderTracker {
     return result;
   }
 
-  async checkOpenOrder(
-    inflightOrders: InflightOrders,
+  async checkOpenOrders(
+    openOrders: InflightOrders,
     account: string,
     client: Client,
     omm: OrderMutexManager
@@ -228,15 +344,14 @@ export class OrderTracker {
     // 2. Get the transactions stack based on minLedgerIndex and account id
     // 3. Process the transactions stack
     // 4. Update the inflightOrders
+    const ordersToCheck: InflightOrders = openOrders;
 
     // 1. Get the minLedgerIndex from the inflightOrders
-    const hashes = Object.keys(inflightOrders);
+    const hashes = Object.keys(ordersToCheck);
     let minLedgerIndex = 0;
     for (const hash of hashes) {
-      if (
-        inflightOrders[parseInt(hash)].updatedAtLedgerIndex > minLedgerIndex
-      ) {
-        minLedgerIndex = inflightOrders[parseInt(hash)].updatedAtLedgerIndex;
+      if (ordersToCheck[parseInt(hash)].updatedAtLedgerIndex > minLedgerIndex) {
+        minLedgerIndex = ordersToCheck[parseInt(hash)].updatedAtLedgerIndex;
       }
     }
 
@@ -249,11 +364,11 @@ export class OrderTracker {
 
     // 3. Process the transactions stack
     if (txStack === null) {
-      return inflightOrders;
+      return ordersToCheck;
     }
 
     if (txStack.result?.transactions === undefined) {
-      return inflightOrders;
+      return ordersToCheck;
     }
 
     for (const tx of txStack.result.transactions) {
@@ -264,16 +379,18 @@ export class OrderTracker {
       }
 
       const updatedOrders = await this.processTransactionStream(
-        inflightOrders,
+        ordersToCheck,
         transformedTx,
         omm
       );
 
-      // merge updateOrders with inflightOrders
+      // merge updateOrders to ordersToCheck
       Object.keys(updatedOrders).forEach((hash) => {
-        inflightOrders[parseInt(hash)] = updatedOrders[parseInt(hash)];
+        ordersToCheck[parseInt(hash)] = updatedOrders[parseInt(hash)];
       });
     }
+
+    return ordersToCheck;
   }
 
   async processTransactionStream(
@@ -284,19 +401,20 @@ export class OrderTracker {
     const transactionIntent = await this.getTransactionIntentFromStream(
       transaction
     );
+    const ordersToCheck = inflightOrders;
     // console.log('Transaction intent: ');
     // console.log(inspect(transactionIntent, { colors: true, depth: null }));
 
     if (transactionIntent.sequence === undefined) {
       console.log('No sequence found!');
-      return inflightOrders;
+      return ordersToCheck;
     }
 
-    const matchOrder = inflightOrders[transactionIntent.sequence];
+    const matchOrder = ordersToCheck[transactionIntent.sequence];
 
     if (matchOrder === undefined) {
       console.log('No match order found!');
-      return inflightOrders;
+      return ordersToCheck;
     }
 
     // Wait until the order is not locked
@@ -405,13 +523,13 @@ export class OrderTracker {
     // console.log('Updated matchOrder: ');
     // console.log(inspect(matchOrder, { colors: true, depth: null }));
 
-    // Update inflightOrders
-    inflightOrders[matchOrder.hash] = matchOrder;
+    // Update ordersToCheck
+    ordersToCheck[matchOrder.hash] = matchOrder;
 
     // Release the lock
     omm.release(matchOrder.hash);
 
-    return inflightOrders;
+    return ordersToCheck;
   }
 
   // Utility methods
@@ -537,46 +655,5 @@ export class OrderTracker {
     };
 
     return transformedTx;
-  }
-}
-
-class OrderMutexManager {
-  private locks: OrderLocks = {};
-  private orders: InflightOrders = {}; // orders to manage
-
-  constructor(ordersToManage: InflightOrders) {
-    this.orders = ordersToManage;
-
-    Object.keys(this.orders).forEach((hash) => {
-      this.locks[parseInt(hash)] = false;
-    });
-  }
-
-  // lock an order by hash
-  lock(hash: number) {
-    this.locks[hash] = true;
-  }
-
-  // release an order by hash
-  release(hash: number) {
-    this.locks[hash] = false;
-  }
-
-  // reset all locks
-  reset() {
-    Object.keys(this.orders).forEach((hash) => {
-      this.locks[parseInt(hash)] = false;
-    });
-  }
-
-  // update orders list and locks
-  updateOrders(orders: InflightOrders) {
-    this.orders = orders;
-    this.reset();
-  }
-
-  // get lock satus of an order by hash
-  isLocked(hash: number) {
-    return this.locks[hash];
   }
 }

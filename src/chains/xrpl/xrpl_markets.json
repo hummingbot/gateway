@@ -1,7 +1,7 @@
 [
   {
     "id": 1,
-    "code": "SOLO/XRP",
+    "marketId": "SOLO-XRP",
     "baseIssuer": "rsoLo2S1kiGeCcn6hCUXVrCpGMWLrRrLZz",
     "quoteIssuer": "XRP",
     "baseTokenID": 31,
@@ -9,7 +9,7 @@
   },
   {
     "id": 2,
-    "code": "SOLO/USDC",
+    "marketId": "SOLO-USDC",
     "baseIssuer": "rsoLo2S1kiGeCcn6hCUXVrCpGMWLrRrLZz",
     "quoteIssuer": "rcEGREd8NmkKRE8GE424sksyt1tJVFZwu",
     "baseTokenID": 31,
@@ -17,7 +17,7 @@
   },
   {
     "id": 3,
-    "code": "USDC/XRP",
+    "marketId": "USDC-XRP",
     "baseIssuer": "rcEGREd8NmkKRE8GE424sksyt1tJVFZwu",
     "quoteIssuer": "XRP",
     "baseTokenID": 18465,
@@ -25,7 +25,7 @@
   },
   {
     "id": 4,
-    "code": "USDC/USD",
+    "marketId": "USDC-USD",
     "baseIssuer": "rcEGREd8NmkKRE8GE424sksyt1tJVFZwu",
     "quoteIssuer": "rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq",
     "baseTokenID": 18465,
@@ -33,7 +33,7 @@
   },
   {
     "id": 5,
-    "code": "BTC/XRP",
+    "marketId": "BTC-XRP",
     "baseIssuer": "rchGBxcD1A1C2tdxF6papQYZ8kjRKMYcL",
     "quoteIssuer": "XRP",
     "baseTokenID": 1381,
@@ -41,7 +41,7 @@
   },
   {
     "id": 6,
-    "code": "BTC/USD",
+    "marketId": "BTC-USD",
     "baseIssuer": "rchGBxcD1A1C2tdxF6papQYZ8kjRKMYcL",
     "quoteIssuer": "rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq",
     "baseTokenID": 1381,
