@@ -22,7 +22,7 @@ import { getXRPLConfig } from './xrpl.config';
 // import { logger } from '../../services/logger';
 import { TransactionResponseStatusCode } from './xrpl.requests';
 import { XRPLOrderStorage } from './xrpl.order-storage';
-import { OrderTracker } from '../../connectors/xrpl/xrpl.order-tracker';
+import { OrderTracker } from './xrpl.order-tracker';
 import { ReferenceCountingCloseable } from '../../services/refcounting-closeable';
 
 export type TokenInfo = {

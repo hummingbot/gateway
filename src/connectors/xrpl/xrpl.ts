@@ -8,7 +8,7 @@ import {
   AccountInfoResponse,
   BookOffersResponse,
 } from 'xrpl';
-import { OrderTracker } from './xrpl.order-tracker';
+import { OrderTracker } from '../../chains/xrpl/xrpl.order-tracker';
 import {
   Market,
   MarketNotFoundError,

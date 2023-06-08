@@ -8,8 +8,8 @@ import {
   TransactionMetadata,
   Transaction,
 } from 'xrpl';
-import { XRPL } from '../../chains/xrpl/xrpl';
-import { getXRPLConfig } from '../../chains/xrpl/xrpl.config';
+import { XRPL } from './xrpl';
+import { getXRPLConfig } from './xrpl.config';
 import {
   OrderStatus,
   Order,
@@ -19,15 +19,15 @@ import {
   TransactionIntent,
   AccountTransaction,
   ResponseOnlyTxInfo,
-} from './xrpl.types';
-import { OrderMutexManager } from './xrpl.utils';
+} from '../../connectors/xrpl/xrpl.types';
+import { OrderMutexManager } from '../../connectors/xrpl/xrpl.utils';
 import {
   isModifiedNode,
   isDeletedNode,
 } from 'xrpl/dist/npm/models/transactions/metadata';
 
 import LRUCache from 'lru-cache';
-import { XRPLOrderStorage } from '../../chains/xrpl/xrpl.order-storage';
+import { XRPLOrderStorage } from './xrpl.order-storage';
 
 // This class should:
 // 1. Track orders that are created by xrpl.postOrder
