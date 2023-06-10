@@ -3,7 +3,7 @@ networks:
     chainID: 42161
     nodeURL: https://rpc.ankr.com/arbitrum
     tokenListType: FILE
-    tokenListSource: /home/gateway/conf/lists/arbitrum_one_tokens.json
+    tokenListSource: /home/gateway/conf/lists/arbitrum_one_coingecko_20230610.json
     nativeCurrencySymbol: ETH
     gasPriceRefreshInterval: 60
   arbitrum_rinkeby:
@@ -17,13 +17,13 @@ networks:
     nodeURL: https://rpc.ankr.com/eth
     tokenListType: FILE
     nativeCurrencySymbol: ETH
-    tokenListSource: /home/gateway/conf/lists/erc20_tokens_mainnet.json
+    tokenListSource: /home/gateway/conf/lists/ethereum_coingecko_20230610.json
     gasPriceRefreshInterval: 60
   optimism:
     chainID: 10
     nodeURL: https://rpc.ankr.com/optimism
     tokenListType: FILE
-    tokenListSource: /home/gateway/conf/lists/optimism_tokens.json
+    tokenListSource: /home/gateway/conf/lists/optimism_superchain_2023010.json
     nativeCurrencySymbol: OETH
     gasPriceRefreshInterval: 60
   goerli:

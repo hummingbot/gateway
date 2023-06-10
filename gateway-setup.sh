@@ -78,7 +78,7 @@ replace_lists_source () {
     # Check for references to Docker lists folder
     if grep -q "/home/gateway/conf/lists/" $file; then
       # Replace with local lists folder
-      sed -i '' 's|/home/gateway/conf/lists/|conf/lists/|g' $file
+      perl -pi -e 's|/home/gateway/conf/lists/|conf/lists/|g' $file
       echo "Replaced list locations in: $file"
     fi
   done
