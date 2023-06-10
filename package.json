@@ -23,6 +23,10 @@
     "test:scripts": "jest -i --verbose ./test-scripts/*.test.ts"
   },
   "dependencies": {
+    "@celo-tools/celo-ethers-wrapper": "^0.4.0",
+    "@celo/contractkit": "^4.1.0",
+    "@celo/wallet-walletconnect-v1": "^4.2.1",
+    "@ubeswap/sdk": "^2.1.1",
     "@cosmjs/proto-signing": "^0.28.10",
     "@cosmjs/stargate": "^0.28.13",
     "@crocswap/sdk": "^2.4.5",

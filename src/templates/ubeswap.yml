@@ -1,0 +1,9 @@
+allowedSlippage: '2/100'
+gasLimitEstimate: 150688
+ttl: 600
+
+contractAddresses:
+  mainnet:
+    routerAddress: '0xE3D8bd6Aed4F159bc8000a9cD47CffDb95F96121'
+  mumbai:
+    routerAddress: '0xE3D8bd6Aed4F159bc8000a9cD47CffDb95F96121'

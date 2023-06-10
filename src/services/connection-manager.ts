@@ -19,6 +19,7 @@ import { InjectiveClobPerp } from '../connectors/injective_perpetual/injective.p
 import { Injective } from '../chains/injective/injective';
 import { ZigZag } from '../connectors/zigzag/zigzag';
 import {
+  Celoish,
   CLOBish,
   Ethereumish,
   Nearish,
@@ -36,8 +37,10 @@ import { Near } from '../chains/near/near';
 import { Ref } from '../connectors/ref/ref';
 import { Xsswap } from '../connectors/xsswap/xsswap';
 import { DexalotCLOB } from '../connectors/dexalot/dexalot';
+import { Celo } from '../chains/celo/celo';
+import { Ubeswap } from '../connectors/ubeswap/ubeswap';
 
-export type ChainUnion = Ethereumish | Nearish | Injective | Xdcish;
+export type ChainUnion = Ethereumish | Nearish | Injective | Xdcish | Celoish;
 
 export type Chain<T> = T extends Ethereumish
   ? Ethereumish
@@ -47,6 +50,8 @@ export type Chain<T> = T extends Ethereumish
   ? Xdcish
   : T extends Injective
   ? Injective
+  : T extends Celoish
+  ? Celoish
   : never;
 
 export async function getChain<T>(
@@ -62,6 +67,7 @@ export async function getChain<T>(
   else if (chain === 'xdc') chainInstance = Xdc.getInstance(network);
   else if (chain === 'harmony') chainInstance = Harmony.getInstance(network);
   else if (chain === 'near') chainInstance = Near.getInstance(network);
+  else if (chain === 'celo') chainInstance = Celo.getInstance(network);
   else if (chain === 'binance-smart-chain')
     chainInstance = BinanceSmartChain.getInstance(network);
   else if (chain === 'cronos') chainInstance = Cronos.getInstance(network);
@@ -153,6 +159,8 @@ export async function getConnector<T>(
     connectorInstance = DexalotCLOB.getInstance(network);
   } else if (chain === 'ethereum' && connector === 'zigzag') {
     connectorInstance = ZigZag.getInstance(network);
+  } else if (chain === 'celo' && connector === 'ubeswap') {
+    connectorInstance = Ubeswap.getInstance(chain, network);
   } else {
     throw new Error('unsupported chain or connector');
   }

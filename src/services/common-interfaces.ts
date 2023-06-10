@@ -115,6 +115,16 @@ import {
 } from '../clob/clob.requests';
 import { BalanceRequest } from '../network/network.requests';
 import { RouteMarket, ZigZagOrder } from '../connectors/zigzag/zigzag';
+import { Ierc20 } from '@celo/contractkit/lib/generated/IERC20';
+import { CeloBase } from '../chains/celo/celo.base';
+import { Erc20Wrapper } from '@celo/contractkit/lib/wrappers/Erc20Wrapper';
+import {
+  Token as UbeToken,
+  Trade as UbeswapTrade,
+  TokenAmount as CurrencyAmountUbeswap,
+  Fraction as UbeswapFraction,
+  Percent as UbeswapPercent,
+} from '@ubeswap/sdk';
 
 // TODO Check the possibility to have clob/solana/serum equivalents here
 //  Check this link https://hummingbot.org/developers/gateway/building-gateway-connectors/#5-add-sdk-classes-to-uniswapish-interface
@@ -130,13 +140,14 @@ export type Tokenish =
   | PancakeSwapToken
   | MMFToken
   | VVSToken
-  | TokenXsswap;
+  | TokenXsswap
+  | UbeToken;
 
 export type TokenAmountish = MMFTokenAmount | VVSTokenAmount;
 
 export type Pairish = MMFPair | VVSPair;
 
-export type Percentish = MMFPercent | VVSPercent;
+export type Percentish = MMFPercent | VVSPercent | UbeswapPercent;
 
 export type UniswapishCurrency = MMFCurrency | VVSCurrency;
 
@@ -154,7 +165,8 @@ export type UniswapishTrade =
   | PancakeSwapTrade
   | MMFTrade
   | VVSTrade
-  | TradeXsswap;
+  | TradeXsswap
+  | UbeswapTrade;
 
 export type UniswapishTradeOptions =
   | MMFTradeOptions
@@ -175,7 +187,8 @@ export type UniswapishAmount =
   | PancakeSwapCurrencyAmount
   | CurrencyAmountMMF
   | CurrencyAmountVVS
-  | CurrencyAmountXsswap;
+  | CurrencyAmountXsswap
+  | CurrencyAmountUbeswap;
 
 export type Fractionish =
   | UniswapFraction
@@ -187,7 +200,8 @@ export type Fractionish =
   | PancakeSwapFraction
   | FractionMMF
   | FractionVVS
-  | XsswapFraction;
+  | XsswapFraction
+  | UbeswapFraction;
 
 export interface ExpectedTrade {
   trade: UniswapishTrade;
@@ -742,6 +756,12 @@ export interface CLOBish {
 export interface Nearish extends BasicChainMethods, NearBase {
   cancelTx(account: Account, nonce: number): Promise<string>;
   getContract(tokenAddress: string, account: Account): NearContract;
+}
+
+export interface Celoish extends BasicChainMethods, CeloBase {
+  getContract(tokenAddress: string): Promise<Erc20Wrapper<Ierc20>>;
+
+  cancelTx(wallet: Wallet, nonce: number): Promise<Transaction>;
 }
 
 export interface Cosmosish extends CosmosBase {

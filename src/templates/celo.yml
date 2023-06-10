@@ -1,0 +1,17 @@
+# list the Celo networks available to gateway
+networks:
+  mainnet:
+    chainID: 42220
+    nodeURL: https://forno.celo.org
+    tokenListType: 'FILE'
+    tokenListSource: 'src/chains/celo/celo_tokens.json'
+    nativeCurrencySymbol: 'CELO'
+  mumbai:
+    chainID: 80001
+    nodeURL: https://forno.celo.org
+    tokenListType: 'FILE'
+    tokenListSource: 'src/chains/celo/celo_tokens.json'
+    nativeCurrencySymbol: 'CELO'
+
+manualGasPrice: 100
+gasLimitTransaction: 3000000

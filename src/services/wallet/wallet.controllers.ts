@@ -32,7 +32,8 @@ import {
 import { EthereumBase } from '../../chains/ethereum/ethereum-base';
 import { Near } from '../../chains/near/near';
 import { getChain } from '../connection-manager';
-import { Ethereumish } from '../common-interfaces';
+import { Celoish, Ethereumish } from '../common-interfaces';
+import { Celo } from '../../chains/celo/celo';
 
 export function convertXdcAddressToEthAddress(publicKey: string): string {
   return publicKey.length === 43 && publicKey.slice(0, 3) === 'xdc'
@@ -55,7 +56,7 @@ export async function addWallet(
   if (!passphrase) {
     throw new Error('There is no passphrase');
   }
-  let connection: EthereumBase | Near | Cosmos | Injective | Xdc;
+  let connection: EthereumBase | Near | Cosmos | Injective | Xdc | Celoish;
   let address: string | undefined;
   let encryptedPrivateKey: string | undefined;
 
@@ -85,6 +86,8 @@ export async function addWallet(
     connection = Xdc.getInstance(req.network);
   } else if (req.chain === 'injective') {
     connection = Injective.getInstance(req.network);
+  } else if (req.chain === 'celo') {
+    connection = Celo.getInstance(req.network);
   } else {
     throw new HttpException(
       500,
@@ -98,7 +101,13 @@ export async function addWallet(
   }
 
   try {
-    if (connection instanceof EthereumBase) {
+    if (connection instanceof Celo) {
+      address = connection.getWalletFromPrivateKey(req.privateKey).address;
+      encryptedPrivateKey = await connection.encrypt(
+        req.privateKey,
+        passphrase
+      );
+    } else if (connection instanceof EthereumBase) {
       address = connection.getWalletFromPrivateKey(req.privateKey).address;
       encryptedPrivateKey = await connection.encrypt(
         req.privateKey,

@@ -19,7 +19,8 @@ import {
 import { EthereumBase, TokenInfo } from '../chains/ethereum/ethereum-base';
 import { Cronos } from '../chains/cronos/cronos';
 import { Near } from '../chains/near/near';
-import { Nearish, Xdcish } from '../services/common-interfaces';
+import { Celoish, Nearish, Xdcish } from '../services/common-interfaces';
+import { Celo } from '../chains/celo/celo';
 
 export async function getStatus(
   req: StatusRequest
@@ -51,6 +52,8 @@ export async function getStatus(
       connections.push(await Cronos.getInstance(req.network as string));
     } else if (req.chain === 'injective') {
       connections.push(Injective.getInstance(req.network as string));
+    } else if (req.chain === 'celo') {
+      connections.push(Celo.getInstance(req.network as string));
     } else {
       throw new HttpException(
         500,
@@ -101,6 +104,11 @@ export async function getStatus(
     connections = connections.concat(
       injectiveConnections ? Object.values(injectiveConnections) : []
     );
+
+    const celoConnections = Celo.getConnectedInstances();
+    connections = connections.concat(
+      celoConnections ? Object.values(celoConnections) : []
+    );
   }
 
   for (const connection of connections) {
@@ -130,7 +138,7 @@ export async function getStatus(
 }
 
 export async function getTokens(req: TokensRequest): Promise<TokensResponse> {
-  let connection: EthereumBase | Nearish | Injective | Xdcish;
+  let connection: EthereumBase | Nearish | Injective | Xdcish | Celoish;
   let tokens: TokenInfo[] = [];
 
   if (req.chain && req.network) {
@@ -152,6 +160,8 @@ export async function getTokens(req: TokensRequest): Promise<TokensResponse> {
       connection = await Cronos.getInstance(req.network);
     } else if (req.chain === 'injective') {
       connection = Injective.getInstance(req.network);
+    } else if (req.chain === 'celo') {
+      connection = Celo.getInstance(req.network);
     } else {
       throw new HttpException(
         500,

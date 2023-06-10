@@ -107,3 +107,11 @@ configurations:
   $namespace zigzag:
     configurationPath: zigzag.yml
     schemaPath: zigzag-schema.json
+
+  $namespace celo:
+    configurationPath: celo.yml
+    schemaPath: celo-schema.json
+
+  $namespace ubeswap:
+    configurationPath: ubeswap.yml
+    schemaPath: ubeswap-schema.json

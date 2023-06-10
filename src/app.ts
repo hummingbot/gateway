@@ -24,6 +24,7 @@ import { CLOBRoutes, PerpClobRoutes } from './clob/clob.routes';
 
 import morgan from 'morgan';
 import swaggerUi from 'swagger-ui-express';
+import { CeloRoutes } from './chains/celo/celo.routes';
 
 export const gatewayApp = express();
 
@@ -60,6 +61,7 @@ gatewayApp.use('/clob', CLOBRoutes.router);
 gatewayApp.use('/clob/perp', PerpClobRoutes.router);
 gatewayApp.use('/cosmos', CosmosRoutes.router);
 gatewayApp.use('/near', NearRoutes.router);
+gatewayApp.use('/celo', CeloRoutes.router);
 
 // a simple route to test that the server is running
 gatewayApp.get('/', (_req: Request, res: Response) => {
@@ -106,6 +108,7 @@ export const swaggerDocument = SwaggerManager.generateSwaggerJson(
     './docs/swagger/near-routes.yml',
     './docs/swagger/cosmos-routes.yml',
     './docs/swagger/injective-routes.yml',
+    './docs/swagger/celo-routes.yml',
   ]
 );
 
