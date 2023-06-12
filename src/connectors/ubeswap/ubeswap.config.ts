@@ -26,7 +26,7 @@ export namespace UbeswapConfig {
       ConfigManagerV2.getInstance().get(
         'ubeswap.contractAddresses.' + network + '.routerAddress'
       ),
-    tradingTypes: ['EVM_AMM'],
+    tradingTypes: ['AMM'],
     chainType: 'EVM',
     availableNetworks: [{ chain: 'celo', networks: ['mainnet', 'mumbai'] }],
   };
