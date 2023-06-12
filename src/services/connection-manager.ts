@@ -39,6 +39,7 @@ import { DexalotCLOB } from '../connectors/dexalot/dexalot';
 import { Algorand } from '../chains/algorand/algorand';
 import { Cosmos } from '../chains/cosmos/cosmos';
 import { Tinyman } from '../connectors/tinyman/tinyman';
+import { Balancer } from '../connectors/balancer/balancer';
 
 export type ChainUnion =
   | Algorand
@@ -174,6 +175,8 @@ export async function getConnector<T>(
     connector === 'uniswapLP'
   ) {
     connectorInstance = UniswapLP.getInstance(chain, network);
+  } else if (chain === 'ethereum' && connector == 'balancer') {
+    connectorInstance = Balancer.getInstance(chain, network);
   } else if (chain === 'ethereum' && connector === 'perp') {
     connectorInstance = Perp.getInstance(chain, network, address);
   } else if (chain === 'avalanche' && connector === 'pangolin') {

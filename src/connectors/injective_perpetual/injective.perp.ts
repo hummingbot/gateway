@@ -15,7 +15,7 @@ import {
 } from '@injectivelabs/sdk-ts';
 import { BigNumber, utils } from 'ethers';
 import LRUCache from 'lru-cache';
-import { OrderSide } from '@injectivelabs/networks/node_modules/@injectivelabs/ts-types/dist/cjs/trade';
+import { OrderSide } from '@injectivelabs/ts-types';
 import { Injective } from '../../chains/injective/injective';
 import { getInjectiveConfig } from '../../chains/injective/injective.config';
 import {

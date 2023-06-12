@@ -1,6 +1,5 @@
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { AvailableNetworks } from '../../services/config-manager-types';
-import { BALANCER_NETWORK_CONFIG, Network } from '@balancer-labs/sdk';
 
 export namespace BalancerConfig {
   export interface NetworkConfig {
@@ -8,7 +7,7 @@ export namespace BalancerConfig {
     gasLimitEstimate: number;
     ttl: number;
     maximumHops: number;
-    balancerV2VaultAddress: (chainId: number) => string;
+    balancerV2VaultAddress: (chain: string, network: string) => string;
     tradingTypes: Array<string>;
     chainType: string;
     availableNetworks: Array<AvailableNetworks>;
@@ -23,8 +22,14 @@ export namespace BalancerConfig {
     ),
     ttl: ConfigManagerV2.getInstance().get('balancer.ttl'),
     maximumHops: ConfigManagerV2.getInstance().get('balancer.maximumHops'),
-    balancerV2VaultAddress: (chainId: number) =>
-      BALANCER_NETWORK_CONFIG[chainId as Network].addresses.contracts.vault,
+    balancerV2VaultAddress: (chain: string, network: string) =>
+      ConfigManagerV2.getInstance().get(
+        'balancer.contractAddresses.' +
+          chain +
+          '.' +
+          network +
+          '.balancerRouterAddress'
+      ),
     tradingTypes: ['AMM'],
     chainType: 'EVM',
     availableNetworks: [
