@@ -19,6 +19,7 @@ import { InjectiveClobPerp } from '../connectors/injective_perpetual/injective.p
 import { Injective } from '../chains/injective/injective';
 import { ZigZag } from '../connectors/zigzag/zigzag';
 import {
+  Celoish,
   CLOBish,
   Ethereumish,
   Nearish,
@@ -39,6 +40,8 @@ import { DexalotCLOB } from '../connectors/dexalot/dexalot';
 import { Algorand } from '../chains/algorand/algorand';
 import { Cosmos } from '../chains/cosmos/cosmos';
 import { Tinyman } from '../connectors/tinyman/tinyman';
+import { Celo } from '../chains/celo/celo';
+import { Ubeswap } from '../connectors/ubeswap/ubeswap';
 
 export type ChainUnion =
   | Algorand
@@ -46,7 +49,8 @@ export type ChainUnion =
   | Ethereumish
   | Nearish
   | Injective
-  | Xdcish;
+  | Xdcish
+  | Celoish;
 
 export type Chain<T> = T extends Algorand
   ? Algorand
@@ -60,6 +64,8 @@ export type Chain<T> = T extends Algorand
   ? Xdcish
   : T extends Injective
   ? Injective
+  : T extends Celoish
+  ? Celoish
   : never;
 
 export class UnsupportedChainException extends Error {
@@ -119,6 +125,8 @@ export function getChainInstance(
     connection = Xdc.getInstance(network);
   } else if (chain === 'injective') {
     connection = Injective.getInstance(network);
+  } else if (chain === 'celo') {
+    connection = Celo.getInstance(network);
   } else {
     connection = undefined;
   }
@@ -208,6 +216,8 @@ export async function getConnector<T>(
     connectorInstance = ZigZag.getInstance(network);
   } else if (chain == 'algorand' && connector == 'tinyman') {
     connectorInstance = Tinyman.getInstance(network);
+  } else if (chain === 'celo' && connector === 'ubeswap') {
+    connectorInstance = Ubeswap.getInstance(chain, network);
   } else {
     throw new Error('unsupported chain or connector');
   }

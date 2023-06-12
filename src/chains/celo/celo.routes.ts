@@ -12,7 +12,7 @@ import {
   balances,
 } from './celo.controllers';
 
-import { getChain } from '../../services/connection-manager';
+import { getInitializedChain } from '../../services/connection-manager';
 import {
   AllowancesRequest,
   AllowancesResponse,
@@ -48,7 +48,10 @@ export namespace CeloRoutes {
         res: Response<NonceResponse | string, {}>
       ) => {
         validateNonceRequest(req.body);
-        const chain = await getChain<Celoish>(req.body.chain, req.body.network);
+        const chain = await getInitializedChain<Celoish>(
+          req.body.chain,
+          req.body.network
+        );
         res.status(200).json(await nextNonce(chain, req.body));
       }
     )
@@ -62,7 +65,10 @@ export namespace CeloRoutes {
         res: Response<NonceResponse | string, {}>
       ) => {
         validateNonceRequest(req.body);
-        const chain = await getChain<Celoish>(req.body.chain, req.body.network);
+        const chain = await getInitializedChain<Celoish>(
+          req.body.chain,
+          req.body.network
+        );
         res.status(200).json(await nonce(chain, req.body));
       }
     )
@@ -76,7 +82,10 @@ export namespace CeloRoutes {
         res: Response<AllowancesResponse | string, {}>
       ) => {
         validateCeloAllowancesRequest(req.body);
-        const chain = await getChain<Celoish>(req.body.chain, req.body.network);
+        const chain = await getInitializedChain<Celoish>(
+          req.body.chain,
+          req.body.network
+        );
         res.status(200).json(await allowances(chain, req.body));
       }
     )
@@ -90,7 +99,10 @@ export namespace CeloRoutes {
         res: Response<ApproveResponse | string, {}>
       ) => {
         validateCeloApproveRequest(req.body);
-        const chain = await getChain<Celoish>(req.body.chain, req.body.network);
+        const chain = await getInitializedChain<Celoish>(
+          req.body.chain,
+          req.body.network
+        );
         res.status(200).json(await approve(chain, req.body));
       }
     )
@@ -103,7 +115,10 @@ export namespace CeloRoutes {
         res: Response<CancelResponse, {}>
       ) => {
         validateCancelRequest(req.body);
-        const chain = await getChain<Celoish>(req.body.chain, req.body.network);
+        const chain = await getInitializedChain<Celoish>(
+          req.body.chain,
+          req.body.network
+        );
         res.status(200).json(await cancel(chain, req.body));
       }
     )
@@ -118,7 +133,10 @@ export namespace CeloRoutes {
         _next: NextFunction
       ) => {
         validateEthereumBalanceRequest(req.body);
-        const chain = await getChain<Celoish>(req.body.chain, req.body.network);
+        const chain = await getInitializedChain<Celoish>(
+          req.body.chain,
+          req.body.network
+        );
 
         res.status(200).json(await balances(chain, req.body));
       }

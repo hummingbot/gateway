@@ -32,6 +32,7 @@ import {
 } from '../connection-manager';
 import { Ethereumish } from '../common-interfaces';
 import { Algorand } from '../../chains/algorand/algorand';
+import { Celo } from '../../chains/celo/celo';
 
 export function convertXdcAddressToEthAddress(publicKey: string): string {
   return publicKey.length === 43 && publicKey.slice(0, 3) === 'xdc'
@@ -133,6 +134,12 @@ export async function addWallet(
       } else {
         throw new Error('Injective wallet requires a subaccount id');
       }
+    } else if (connection instanceof Celo) {
+      address = connection.getWalletFromPrivateKey(req.privateKey).address;
+      encryptedPrivateKey = await connection.encrypt(
+        req.privateKey,
+        passphrase
+      );
     }
 
     if (address === undefined || encryptedPrivateKey === undefined) {

@@ -79,9 +79,12 @@ export async function price(req: PriceRequest): Promise<PriceResponse> {
     req.chain,
     req.network
   );
-  const connector: Uniswapish | RefAMMish | Tinyman | ZigZagish= await getConnector<
-    Uniswapish | RefAMMish | Tinyman | ZigZagish 
-  >(req.chain, req.network, req.connector);
+  const connector: Uniswapish | RefAMMish | Tinyman | ZigZagish =
+    await getConnector<Uniswapish | RefAMMish | Tinyman | ZigZagish>(
+      req.chain,
+      req.network,
+      req.connector
+    );
 
   // we currently use the presence of routerAbi to distinguish Uniswapish from RefAMMish
   if ('routerAbi' in connector) {
@@ -100,9 +103,12 @@ export async function trade(req: TradeRequest): Promise<TradeResponse> {
     req.chain,
     req.network
   );
-  const connector: Uniswapish | RefAMMish | Tinyman | ZigZagish = await getConnector<
-    Uniswapish | RefAMMish | Tinyman | ZigZagish 
-  >(req.chain, req.network, req.connector);
+  const connector: Uniswapish | RefAMMish | Tinyman | ZigZagish =
+    await getConnector<Uniswapish | RefAMMish | Tinyman | ZigZagish>(
+      req.chain,
+      req.network,
+      req.connector
+    );
 
   // we currently use the presence of routerAbi to distinguish Uniswapish from RefAMMish
   if ('routerAbi' in connector) {

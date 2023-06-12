@@ -21,6 +21,7 @@ import { ConnectorsResponse } from './connectors.request';
 import { DexalotCLOBConfig } from './dexalot/dexalot.clob.config';
 import { ZigZagConfig } from './zigzag/zigzag.config';
 import { TinymanConfig } from './tinyman/tinyman.config';
+import { UbeswapConfig } from './ubeswap/ubeswap.config';
 
 export namespace ConnectorsRoutes {
   export const router = Router();
@@ -164,6 +165,12 @@ export namespace ConnectorsRoutes {
             trading_type: TinymanConfig.config.tradingTypes,
             chain_type: TinymanConfig.config.chainType,
             available_networks: TinymanConfig.config.availableNetworks,
+          },
+          {
+            name: 'ubeswap',
+            trading_type: UbeswapConfig.config.tradingTypes,
+            chain_type: UbeswapConfig.config.chainType,
+            available_networks: UbeswapConfig.config.availableNetworks,
           },
         ],
       });

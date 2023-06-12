@@ -37,6 +37,8 @@ tags:
     description: 'Interact with the Near blockchain'
   - name: 'injective'
     description: 'Interact with the Injective blockchain'
+  - name: 'celo'
+    description: 'Interact with the Celo blockchain'
 
 schemes:
   - 'http'

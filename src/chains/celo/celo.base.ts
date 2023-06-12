@@ -1,10 +1,4 @@
-import {
-  BigNumber,
-  providers,
-  Transaction,
-  utils,
-  Wallet,
-} from 'ethers';
+import { BigNumber, providers, Transaction, utils, Wallet } from 'ethers';
 import axios from 'axios';
 import { promises as fs } from 'fs';
 import path from 'path';
@@ -19,7 +13,6 @@ import { logger } from '../../services/logger';
 import { ReferenceCountingCloseable } from '../../services/refcounting-closeable';
 import { newKit } from '@celo/contractkit';
 import { ContractKit } from '@celo/contractkit/lib/kit';
-import { Account } from 'web3-core';
 import { CeloProvider, CeloWallet } from '@celo-tools/celo-ethers-wrapper';
 import { Ierc20 } from '@celo/contractkit/lib/generated/IERC20';
 import { Erc20Wrapper } from '@celo/contractkit/lib/wrappers/Erc20Wrapper';
@@ -192,7 +185,7 @@ export class CeloBase {
     return this._tokenMap[symbol] ? this._tokenMap[symbol] : null;
   }
 
-  getUserAccount(privateKey: string): Account {
+  getUserAccount(privateKey: string) {
     return this.kit.web3.eth.accounts.privateKeyToAccount(privateKey);
   }
 

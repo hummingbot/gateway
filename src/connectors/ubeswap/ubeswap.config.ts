@@ -10,6 +10,7 @@ export namespace UbeswapConfig {
     tradingTypes: Array<string>;
     availableNetworks: Array<AvailableNetworks>;
     maximumHops: number;
+    chainType: string;
   }
 
   export const config: NetworkConfig = {
@@ -26,6 +27,7 @@ export namespace UbeswapConfig {
         'ubeswap.contractAddresses.' + network + '.routerAddress'
       ),
     tradingTypes: ['EVM_AMM'],
-    availableNetworks: [{ chain: 'mainnet', networks: ['mainnet', 'mumbai'] }],
+    chainType: 'EVM',
+    availableNetworks: [{ chain: 'celo', networks: ['mainnet', 'mumbai'] }],
   };
 }
