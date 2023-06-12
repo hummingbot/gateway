@@ -5,6 +5,7 @@
     "allowedSlippage": { "type": "string" },
     "gasLimitEstimate": { "type": "integer" },
     "ttl": { "type": "integer" },
+    "maximumHops": { "type": "integer" },
     "contractAddresses": {
       "type": "object",
       "patternProperties": {
@@ -14,7 +15,7 @@
             "^\\w+$": {
               "type": "object",
               "properties": {
-                "sushiswapRouterAddress": { "type": "string" }
+                "balancerV2VaultAddress": { "type": "string" }
               },
               "required": ["balancerV2VaultAddress"],
               "additionalProperties": false

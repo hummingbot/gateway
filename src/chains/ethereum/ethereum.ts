@@ -13,6 +13,7 @@ import { Perp } from '../../connectors/perp/perp';
 import { SushiswapConfig } from '../../connectors/sushiswap/sushiswap.config';
 import { OpenoceanConfig } from '../../connectors/openocean/openocean.config';
 import { ZigZagConfig } from '../../connectors/zigzag/zigzag.config';
+import { BalancerConfig } from '../../connectors/balancer/balancer.config';
 
 // MKR does not match the ERC20 perfectly so we need to use a separate ABI.
 const MKR_ADDRESS = '0x9f8f72aa9304c8b593d555f12ef6589cc3a579a2';
@@ -196,6 +197,11 @@ export class Ethereum extends EthereumBase implements Ethereumish {
       spender = OpenoceanConfig.config.routerAddress('ethereum', this._chain);
     } else if (reqSpender === 'zigzag') {
       spender = ZigZagConfig.config.contractAddress(this._chain);
+    } else if (reqSpender === 'balancer') {
+      spender = BalancerConfig.config.balancerV2VaultAddress(
+        this.chainName,
+        this._chain
+      );
     } else {
       spender = reqSpender;
     }

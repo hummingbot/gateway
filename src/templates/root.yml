@@ -115,3 +115,7 @@ configurations:
   $namespace zigzag:
     configurationPath: zigzag.yml
     schemaPath: zigzag-schema.json
+
+  $namespace balancer:
+    configurationPath: balancer.yml
+    schemaPath: balancer-schema.json

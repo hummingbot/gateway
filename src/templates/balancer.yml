@@ -12,3 +12,17 @@ ttl: 600
 # For each swap, the maximum number of hops to consider. 
 # Note: More hops will increase latency of the algorithm.
 maximumHops: 4
+
+contractAddresses:
+  ethereum:
+    mainnet:
+      balancerV2VaultAddress: '0xBA12222222228d8Ba445958a75a0704d566BF2C8'
+    goerli:
+      balancerV2VaultAddress: '0xBA12222222228d8Ba445958a75a0704d566BF2C8'
+    arbitrum_one:
+      balancerV2VaultAddress: '0xBA12222222228d8Ba445958a75a0704d566BF2C8'
+  polygon:
+    mainnet:
+      balancerV2VaultAddress: '0xBA12222222228d8Ba445958a75a0704d566BF2C8'
+    mumbai:
+      balancerV2VaultAddress: '0xBA12222222228d8Ba445958a75a0704d566BF2C8'
