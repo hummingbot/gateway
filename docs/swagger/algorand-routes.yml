@@ -1,0 +1,73 @@
+paths:
+  /algorand/poll:
+    post:
+      tags:
+        - 'algorand'
+      summary: 'Poll the status of a transaction'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          required: true
+          schema:
+            $ref: '#/definitions/AlgorandPollRequest'
+      responses:
+        '200':
+          schema:
+            $ref: '#/definitions/AlgorandPollResponse'
+  /algorand/balances:
+    post:
+      tags:
+        - 'algorand'
+      summary: 'Get the balances of an account'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          required: true
+          schema:
+            $ref: '#/definitions/BalancesRequest'
+      responses:
+        '200':
+          schema:
+            $ref: '#/definitions/BalancesResponse'
+  /algorand/assets:
+    get:
+      tags:
+        - 'algorand'
+      summary: 'Get assets info'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'query'
+          name: 'query'
+          required: true
+          schema:
+            $ref: '#/definitions/AlgorandAssetsRequest'
+  /algorand/opt-in:
+    post:
+      tags:
+        - 'algorand'
+      summary: 'Opt into an asset'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          required: true
+          schema:
+            $ref: '#/definitions/AlgorandOptInRequest'
+      responses:
+        '200':
+          schema:
+            $ref: '#/definitions/AlgorandOptInResponse'

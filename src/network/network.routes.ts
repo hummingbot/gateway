@@ -3,7 +3,7 @@ import { NextFunction, Request, Response, Router } from 'express';
 import * as ethereumControllers from '../chains/ethereum/ethereum.controllers';
 import { Ethereumish } from '../services/common-interfaces';
 import { ConfigManagerV2 } from '../services/config-manager-v2';
-import { getChain } from '../services/connection-manager';
+import { getInitializedChain } from '../services/connection-manager';
 import { asyncHandler } from '../services/error-handler';
 import {
   mkRequestValidator,
@@ -64,7 +64,7 @@ export namespace NetworkRoutes {
         _next: NextFunction
       ) => {
         validateEthereumBalanceRequest(req.body);
-        const chain = await getChain<Ethereumish>(
+        const chain = await getInitializedChain<Ethereumish>(
           req.body.chain,
           req.body.network
         );
@@ -85,7 +85,7 @@ export namespace NetworkRoutes {
       ) => {
         validatePollRequest(req.body);
 
-        const chain = await getChain<Ethereumish>(
+        const chain = await getInitializedChain<Ethereumish>(
           req.body.chain,
           req.body.network
         );

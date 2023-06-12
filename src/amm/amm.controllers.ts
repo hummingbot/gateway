@@ -40,6 +40,11 @@ import {
   estimateGas as refEstimateGas,
 } from '../connectors/ref/ref.controllers';
 import {
+  price as tinymanPrice,
+  trade as tinymanTrade,
+  estimateGas as tinymanEstimateGas,
+} from '../connectors/tinyman/tinyman.controllers';
+import {
   getPriceData as perpPriceData,
   createTakerOrder,
   estimateGas as perpEstimateGas,
@@ -48,7 +53,10 @@ import {
   checkMarketStatus,
   getAccountValue,
 } from '../connectors/perp/perp.controllers';
-import { getChain, getConnector } from '../services/connection-manager';
+import {
+  getInitializedChain,
+  getConnector,
+} from '../services/connection-manager';
 import {
   Ethereumish,
   Nearish,
@@ -63,11 +71,16 @@ import {
   price as zigzagPrice,
   trade as zigzagTrade,
 } from '../connectors/zigzag/zigzag.controllers';
+import { Algorand } from '../chains/algorand/algorand';
+import { Tinyman } from '../connectors/tinyman/tinyman';
 
 export async function price(req: PriceRequest): Promise<PriceResponse> {
-  const chain = await getChain<Ethereumish | Nearish>(req.chain, req.network);
-  const connector: Uniswapish | RefAMMish | ZigZagish = await getConnector<
-    Uniswapish | RefAMMish | ZigZagish
+  const chain = await getInitializedChain<Algorand | Ethereumish | Nearish>(
+    req.chain,
+    req.network
+  );
+  const connector: Uniswapish | RefAMMish | Tinyman | ZigZagish= await getConnector<
+    Uniswapish | RefAMMish | Tinyman | ZigZagish 
   >(req.chain, req.network, req.connector);
 
   // we currently use the presence of routerAbi to distinguish Uniswapish from RefAMMish
@@ -75,15 +88,20 @@ export async function price(req: PriceRequest): Promise<PriceResponse> {
     return uniswapPrice(<Ethereumish>chain, connector, req);
   } else if ('estimate' in connector) {
     return zigzagPrice(<Ethereumish>chain, connector as any, req);
+  } else if (connector instanceof Tinyman) {
+    return tinymanPrice(chain as unknown as Algorand, connector, req);
   } else {
     return refPrice(<Nearish>chain, connector, req);
   }
 }
 
 export async function trade(req: TradeRequest): Promise<TradeResponse> {
-  const chain = await getChain<Ethereumish | Nearish>(req.chain, req.network);
-  const connector: Uniswapish | RefAMMish | ZigZagish = await getConnector<
-    Uniswapish | RefAMMish | ZigZagish
+  const chain = await getInitializedChain<Algorand | Ethereumish | Nearish>(
+    req.chain,
+    req.network
+  );
+  const connector: Uniswapish | RefAMMish | Tinyman | ZigZagish = await getConnector<
+    Uniswapish | RefAMMish | Tinyman | ZigZagish 
   >(req.chain, req.network, req.connector);
 
   // we currently use the presence of routerAbi to distinguish Uniswapish from RefAMMish
@@ -91,6 +109,8 @@ export async function trade(req: TradeRequest): Promise<TradeResponse> {
     return uniswapTrade(<Ethereumish>chain, connector, req);
   } else if ('estimate' in connector) {
     return zigzagTrade(<Ethereumish>chain, connector as any, req);
+  } else if (connector instanceof Tinyman) {
+    return tinymanTrade(chain as unknown as Algorand, connector, req);
   } else {
     return refTrade(<Nearish>chain, connector, req);
   }
@@ -99,7 +119,7 @@ export async function trade(req: TradeRequest): Promise<TradeResponse> {
 export async function addLiquidity(
   req: AddLiquidityRequest
 ): Promise<AddLiquidityResponse> {
-  const chain = await getChain<Ethereumish>(req.chain, req.network);
+  const chain = await getInitializedChain<Ethereumish>(req.chain, req.network);
   const connector: UniswapLPish = await getConnector<UniswapLPish>(
     req.chain,
     req.network,
@@ -112,7 +132,7 @@ export async function addLiquidity(
 export async function reduceLiquidity(
   req: RemoveLiquidityRequest
 ): Promise<RemoveLiquidityResponse> {
-  const chain = await getChain<Ethereumish>(req.chain, req.network);
+  const chain = await getInitializedChain<Ethereumish>(req.chain, req.network);
   const connector: UniswapLPish = await getConnector<UniswapLPish>(
     req.chain,
     req.network,
@@ -125,7 +145,7 @@ export async function reduceLiquidity(
 export async function collectFees(
   req: CollectEarnedFeesRequest
 ): Promise<RemoveLiquidityResponse> {
-  const chain = await getChain<Ethereumish>(req.chain, req.network);
+  const chain = await getInitializedChain<Ethereumish>(req.chain, req.network);
   const connector: UniswapLPish = await getConnector<UniswapLPish>(
     req.chain,
     req.network,
@@ -137,7 +157,7 @@ export async function collectFees(
 export async function positionInfo(
   req: PositionRequest
 ): Promise<PositionResponse> {
-  const chain = await getChain<Ethereumish>(req.chain, req.network);
+  const chain = await getInitializedChain<Ethereumish>(req.chain, req.network);
   const connector: UniswapLPish = await getConnector<UniswapLPish>(
     req.chain,
     req.network,
@@ -149,7 +169,7 @@ export async function positionInfo(
 export async function poolPrice(
   req: PoolPriceRequest
 ): Promise<PoolPriceResponse> {
-  const chain = await getChain<Ethereumish>(req.chain, req.network);
+  const chain = await getInitializedChain<Ethereumish>(req.chain, req.network);
   const connector: UniswapLPish = await getConnector<UniswapLPish>(
     req.chain,
     req.network,
@@ -161,14 +181,19 @@ export async function poolPrice(
 export async function estimateGas(
   req: NetworkSelectionRequest
 ): Promise<EstimateGasResponse> {
-  const chain = await getChain<Ethereumish | Nearish>(req.chain, req.network);
-  const connector: Uniswapish | RefAMMish = await getConnector<
+  const chain = await getInitializedChain<Algorand | Ethereumish | Nearish>(
+    req.chain,
+    req.network
+  );
+  const connector: Uniswapish | RefAMMish | Tinyman = await getConnector<
     Uniswapish | RefAMMish
   >(req.chain, req.network, req.connector);
 
   // we currently use the presence of routerAbi to distinguish Uniswapish from RefAMMish
   if ('routerAbi' in connector) {
     return uniswapEstimateGas(<Ethereumish>chain, connector);
+  } else if (connector instanceof Tinyman) {
+    return tinymanEstimateGas(chain as unknown as Algorand, connector);
   } else {
     return refEstimateGas(<Nearish>chain, connector);
   }
@@ -178,7 +203,7 @@ export async function estimateGas(
 export async function perpMarketPrices(
   req: PriceRequest
 ): Promise<PerpPricesResponse> {
-  const chain = await getChain<Ethereumish>(req.chain, req.network);
+  const chain = await getInitializedChain<Ethereumish>(req.chain, req.network);
   const connector: Perpish = await getConnector<Perpish>(
     req.chain,
     req.network,
@@ -191,7 +216,7 @@ export async function perpOrder(
   req: PerpCreateTakerRequest,
   isOpen: boolean
 ): Promise<PerpCreateTakerResponse> {
-  const chain = await getChain<Ethereumish>(req.chain, req.network);
+  const chain = await getInitializedChain<Ethereumish>(req.chain, req.network);
   const connector: Perpish = await getConnector<Perpish>(
     req.chain,
     req.network,
@@ -204,7 +229,7 @@ export async function perpOrder(
 export async function perpPosition(
   req: PerpPositionRequest
 ): Promise<PerpPositionResponse> {
-  const chain = await getChain<Ethereumish>(req.chain, req.network);
+  const chain = await getInitializedChain<Ethereumish>(req.chain, req.network);
   const connector: Perpish = await getConnector<Perpish>(
     req.chain,
     req.network,
@@ -217,7 +242,7 @@ export async function perpPosition(
 export async function perpBalance(
   req: PerpBalanceRequest
 ): Promise<PerpBalanceResponse> {
-  const chain = await getChain(req.chain, req.network);
+  const chain = await getInitializedChain(req.chain, req.network);
   const connector: Perpish = <Perpish>(
     await getConnector(req.chain, req.network, req.connector, req.address)
   );
@@ -227,7 +252,7 @@ export async function perpBalance(
 export async function perpPairs(
   req: NetworkSelectionRequest
 ): Promise<PerpAvailablePairsResponse> {
-  const chain = await getChain<Ethereumish>(req.chain, req.network);
+  const chain = await getInitializedChain<Ethereumish>(req.chain, req.network);
   const connector: Perpish = await getConnector<Perpish>(
     req.chain,
     req.network,
@@ -239,7 +264,7 @@ export async function perpPairs(
 export async function getMarketStatus(
   req: PerpMarketRequest
 ): Promise<PerpMarketResponse> {
-  const chain = await getChain<Ethereumish>(req.chain, req.network);
+  const chain = await getInitializedChain<Ethereumish>(req.chain, req.network);
   const connector: Perpish = await getConnector<Perpish>(
     req.chain,
     req.network,
@@ -251,7 +276,7 @@ export async function getMarketStatus(
 export async function estimatePerpGas(
   req: NetworkSelectionRequest
 ): Promise<EstimateGasResponse> {
-  const chain = await getChain<Ethereumish>(req.chain, req.network);
+  const chain = await getInitializedChain<Ethereumish>(req.chain, req.network);
   const connector: Perpish = await getConnector<Perpish>(
     req.chain,
     req.network,

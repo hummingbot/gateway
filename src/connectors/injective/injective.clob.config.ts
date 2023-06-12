@@ -5,6 +5,7 @@ export namespace InjectiveCLOBConfig {
   export interface NetworkConfig {
     gasLimitEstimate: number;
     tradingTypes: (type: string) => Array<string>;
+    chainType: string;
     availableNetworks: Array<AvailableNetworks>;
   }
 
@@ -15,6 +16,7 @@ export namespace InjectiveCLOBConfig {
     tradingTypes: (type: string) => {
       return type === 'spot' ? ['CLOB_SPOT'] : ['CLOB_PERP'];
     },
+    chainType: 'INJECTIVE',
     availableNetworks: [
       {
         chain: 'injective',

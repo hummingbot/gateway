@@ -22,7 +22,7 @@ import {
   validateXdcAllowancesRequest,
 } from '../chains/xdc/xdc.validators';
 
-import { getChain } from '../services/connection-manager';
+import { getInitializedChain } from '../services/connection-manager';
 import {
   AllowancesRequest,
   AllowancesResponse,
@@ -45,7 +45,7 @@ export namespace EVMRoutes {
         res: Response<NonceResponse | string, {}>
       ) => {
         validateNonceRequest(req.body);
-        const chain = await getChain<Ethereumish>(
+        const chain = await getInitializedChain<Ethereumish>(
           req.body.chain,
           req.body.network
         );
@@ -62,7 +62,7 @@ export namespace EVMRoutes {
         res: Response<NonceResponse | string, {}>
       ) => {
         validateNonceRequest(req.body);
-        const chain = await getChain<Ethereumish>(
+        const chain = await getInitializedChain<Ethereumish>(
           req.body.chain,
           req.body.network
         );
@@ -83,7 +83,7 @@ export namespace EVMRoutes {
         } else {
           validateAllowancesRequest(req.body);
         }
-        const chain = await getChain<Ethereumish>(
+        const chain = await getInitializedChain<Ethereumish>(
           req.body.chain,
           req.body.network
         );
@@ -105,7 +105,7 @@ export namespace EVMRoutes {
           validateApproveRequest(req.body);
         }
 
-        const chain = await getChain<Ethereumish>(
+        const chain = await getInitializedChain<Ethereumish>(
           req.body.chain,
           req.body.network
         );
@@ -122,7 +122,7 @@ export namespace EVMRoutes {
         res: Response<CancelResponse, {}>
       ) => {
         validateCancelRequest(req.body);
-        const chain = await getChain<Ethereumish>(
+        const chain = await getInitializedChain<Ethereumish>(
           req.body.chain,
           req.body.network
         );

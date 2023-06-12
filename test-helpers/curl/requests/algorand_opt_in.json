@@ -1,0 +1,5 @@
+{
+  "network": "testnet",
+  "address": "$ALGORAND_ADDRESS",
+  "assetSymbol": "USDC"
+}

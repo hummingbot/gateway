@@ -64,7 +64,7 @@ definitions:
       tokenSymbols:
         type: 'array'
         items: 'string'
-        example: ['WETH', 'DAI']
+        example: [ 'WETH', 'DAI' ]
       chain:
         type: 'string'
         example: 'ethereum'
@@ -117,7 +117,7 @@ definitions:
       tokenSymbols:
         type: 'array'
         items: 'string'
-        example: ['WETH', 'DAI']
+        example: [ 'WETH', 'DAI' ]
       chain:
         type: 'string'
         example: 'ethereum'
@@ -293,34 +293,34 @@ definitions:
         example: '{"type": 2,"chainId": 42,"nonce": 129,"maxPriorityFeePerGas": "94000000000","maxFeePerGas": "94000000000","gasPrice": null,"gasLimit": "100000","to": "0xd0A1E359811322d97991E03f863a0C30C2cF029C","value": "0","data": "0x095ea7b30000000000000000000000007a250d5630b4cf539739df2c5dacb4c659f2488dffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff","accessList": [],"hash": "0xa321bbe8888c3bc88ecb1ad4f03f22a71e6f5715dfcb19e0a2dca9036c981b6d","v": 1,"r": "0x47c517271885b7041d81bcd65cd050a5d6be3fbd67a8f1660ac8d7e68fc8221f","s": "0x7c62e114b2cb0eae6236b597fb4aacb01c51e56afd7f734e6039d83aa400ba82","from": "0xFaA12FD102FE8623C9299c72B03E45107F2772B5","confirmations": 0}'  # noqa: documentation
 
   InjectivePollResponse:
-      type: 'object'
-      required:
-        - 'blockNumber'
-        - 'hash'
-        - 'gasWanted'
-        - 'gasLimit'
-        - 'gasUsed'
-        - 'sequences'
-      properties:
-        blockNumber:
-          type: 'number'
-          example: 123456
-        hash:
-          type: 'string'
-          example: '0xaaaaaaaaaabbbb'
-        gasWanted:
-          type: 'number'
-          example: 1000000
-        gasLimit:
-          type: 'number'
-          example: 2000000
-        gasUsed:
-          type: 'number'
-          example: 1000000
-        sequences:
-          type: 'array'
-          items: 'number'
-          example: [1,2]
+    type: 'object'
+    required:
+      - 'blockNumber'
+      - 'hash'
+      - 'gasWanted'
+      - 'gasLimit'
+      - 'gasUsed'
+      - 'sequences'
+    properties:
+      blockNumber:
+        type: 'number'
+        example: 123456
+      hash:
+        type: 'string'
+        example: '0xaaaaaaaaaabbbb'
+      gasWanted:
+        type: 'number'
+        example: 1000000
+      gasLimit:
+        type: 'number'
+        example: 2000000
+      gasUsed:
+        type: 'number'
+        example: 1000000
+      sequences:
+        type: 'array'
+        items: 'number'
+        example: [ 1,2 ]
 
   InjectivePollRequest:
     type: 'object'
@@ -666,7 +666,7 @@ definitions:
       walletAddresses:
         type: 'array'
         items: 'string'
-        example: ['0xd0A1E359811322d97991E03f863a0C30C2cF029C', '0xd0A1E359811322d97991E03f863a0C30C2XXXXXX']
+        example: [ '0xd0A1E359811322d97991E03f863a0C30C2cF029C', '0xd0A1E359811322d97991E03f863a0C30C2XXXXXX' ]
 
   GetWalletSignRequest:
     type: 'object'
@@ -744,7 +744,7 @@ definitions:
       tokenSymbols:
         type: 'array'
         items: 'string'
-        example: ['ATOM', 'NETA']
+        example: [ 'ATOM', 'NETA' ]
 
   CosmosPollRequest:
     type: 'object'
@@ -1214,7 +1214,7 @@ definitions:
         example: 5
       prices:
         type: 'object'
-        example: ['1', '2', '3']
+        example: [ '1', '2', '3' ]
 
 
   PerpPairsRequest:
@@ -1254,7 +1254,7 @@ definitions:
       pairs:
         type: 'array'
         items: 'string'
-        example: ['AAVEUSD', 'PERPUSD', 'BTCUSD']
+        example: [ 'AAVEUSD', 'PERPUSD', 'BTCUSD' ]
 
   PerpPriceRequest:
     type: 'object'
@@ -1625,24 +1625,24 @@ definitions:
         type: 'string'
 
   ClobMarketsRequest:
-     type: 'object'
-     required:
-       - 'chain'
-       - 'network'
-       - 'connector'
-     properties:
-       market:
-         type: 'string'
-         example: 'AAVE-USDT'
-       chain:
-         type: 'string'
-         example: 'injective'
-       network:
-         type: 'string'
-         example: 'mainnet'
-       connector:
-         type: 'string'
-         example: 'injective'
+    type: 'object'
+    required:
+      - 'chain'
+      - 'network'
+      - 'connector'
+    properties:
+      market:
+        type: 'string'
+        example: 'AAVE-USDT'
+      chain:
+        type: 'string'
+        example: 'injective'
+      network:
+        type: 'string'
+        example: 'mainnet'
+      connector:
+        type: 'string'
+        example: 'injective'
 
   ClobMarketResponse:
     type: 'object'
@@ -2070,7 +2070,7 @@ definitions:
         example: 'injective'
       network:
         type: 'string'
-        example: 'mainnet'        
+        example: 'mainnet'
       address:
         type: 'string'
         example: '0x...'
@@ -2095,7 +2095,7 @@ definitions:
       tokenSymbols:
         type: 'array'
         items: 'string'
-        example: ["NEAR", "ETH", "AURORA"]
+        example: [ "NEAR", "ETH", "AURORA" ]
       chain:
         type: 'string'
         example: 'near'
@@ -2322,3 +2322,165 @@ definitions:
       lastTradePrice:
         type: 'string'
         example: '1.234'
+
+  AlgorandPollRequest:
+    type: 'object'
+    required:
+      - 'network'
+      - 'txHash'
+    properties:
+      network:
+        type: 'string'
+        example: 'testnet'
+      txHash:
+        type: 'string'
+        example: 'T3ZUYEJ5Y7KEDKITIXO4B5OWU4SBVGOFCPOYGZQHF2XZGENZUBQA'
+
+  AlgorandPollResponse:
+    type: 'object'
+    required:
+      - 'currentBlock'
+      - 'txBlock'
+      - 'txHash'
+      - 'fee'
+    properties:
+      currentBlock:
+        type: 'integer'
+        example: 28243911
+      txBlock:
+        type: 'integer'
+        example: 28243910
+      txHash:
+        type: 'string'
+        example: 'T3ZUYEJ5Y7KEDKITIXO4B5OWU4SBVGOFCPOYGZQHF2XZGENZUBQA'
+      fee:
+        type: 'integer'
+        example: 1000
+
+  AlgorandAssetsRequest:
+    type: 'object'
+    properties:
+      network:
+        type: 'string'
+        example: 'testnet'
+      assetSymbols:
+        type: 'array'
+        items: 'string'
+        example: [ 'ALGO', 'USDC' ]
+
+  AlgorandAssetsResponse:
+    type: 'object'
+    required:
+      - 'assets'
+    properties:
+      assets:
+        type: 'array'
+        items: 'object'
+        example: [ { symbol: 'ALGO', assetId: 0, decimal: 6 } ]
+
+  AlgorandOptInRequest:
+    type: 'object'
+    required:
+      - 'network'
+      - 'address'
+      - 'assetSymbol'
+    properties:
+      network:
+        type: 'string'
+        example: 'testnet'
+      address:
+        type: 'string'
+        example: 'T3ZUYEJ5Y7KEDKITIXO4B5OWU4SBVGOFCPOYGZQHF2XZGENZUBQA'
+      assetSymbol:
+        type: 'string'
+        example: 'USDC'
+
+  AlgorandOptInResponse:
+    type: 'object'
+    required:
+      - 'network'
+      - 'timestamp'
+      - 'latency'
+      - 'assetId'
+      - 'transactionResponse'
+    properties:
+      network:
+        type: 'string'
+        example: 'testnet'
+      timestamp:
+        type: 'integer'
+        example: 163636808574
+      latency:
+        type: 'number'
+        example: 0.5
+      assetId:
+        type: 'string'
+        example: 'USDC'
+      transactionResponse:
+        type: 'object'
+
+  ClobBatchOrdersRequest:
+    type: 'object'
+    required:
+      - 'chain'
+      - 'network'
+      - 'connector'
+      - 'address'
+      - 'createOrderParams'
+      - 'cancelOrderIds'
+    properties:
+      chain:
+        type: 'string'
+        example: 'injective'
+      network:
+        type: 'string'
+        example: 'mainnet'
+      connector:
+        type: 'string'
+        example: 'injective'
+      address:
+        type: 'string'
+        example: '0x...'
+      createOrderParams:
+        type: 'array'
+        items: 'object'
+        example: [ {
+          market: 'AAVE-USDT',
+          price: '2',
+          amount: '0.10',
+          side: 'SELL',
+          orderType: 'LIMIT',
+        },
+          {
+            price: '3',
+            amount: '0.10',
+            side: 'SELL',
+          } ]
+      cancelOrderParams:
+        type: 'array'
+        items: 'object'
+        example: [
+          { market: 'AAVE-USDT', orderId: '0x...' },
+          { market: 'AAVE-USDT', orderId: '0x...' },
+        ]
+
+  ClobBatchOrdersResponse:
+    type: 'object'
+    required:
+      - 'network'
+      - 'timestamp'
+      - 'latency'
+      - 'txHash'
+    properties:
+      network:
+        type: 'string'
+        example: 'mainnet'
+      timestamp:
+        type: 'integer'
+        example: 1636368085740
+      latency:
+        type: 'number'
+        example: 0.5
+      txHash:
+        type: 'string'
+        example: '0x...'

@@ -5,6 +5,7 @@ export namespace ZigZagConfig {
   export interface NetworkConfig {
     contractAddress: (network: string) => string;
     tradingTypes: Array<string>;
+    chainType: string;
     availableNetworks: Array<AvailableNetworks>;
   }
 
@@ -13,7 +14,8 @@ export namespace ZigZagConfig {
       ConfigManagerV2.getInstance().get(
         `zigzag.networks.${network}.contractAddress`
       ),
-    tradingTypes: ['EVM_AMM'],
+    tradingTypes: ['AMM'],
+    chainType: 'EVM',
     availableNetworks: [
       {
         chain: 'ethereum',

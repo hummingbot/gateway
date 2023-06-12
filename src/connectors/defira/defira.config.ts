@@ -8,6 +8,7 @@ export namespace DefiraConfig {
     routerAddress: (network: string) => string;
     initCodeHash: (network: string) => string;
     tradingTypes: Array<string>;
+    chainType: string;
     availableNetworks: Array<AvailableNetworks>;
   }
 
@@ -25,7 +26,8 @@ export namespace DefiraConfig {
       ConfigManagerV2.getInstance().get(
         `defira.contractAddresses.${network}.initCodeHash`
       ),
-    tradingTypes: ['EVM_AMM'],
+    tradingTypes: ['AMM'],
+    chainType: 'EVM',
     availableNetworks: [
       {
         chain: 'harmony',
