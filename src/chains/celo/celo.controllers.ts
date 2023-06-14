@@ -226,7 +226,12 @@ export async function approve(
       ? utils.parseUnits(amount, decimals)
       : constants.MaxUint256;
 
-    approval = await celo.approveCelo(celoToken, spender, amountBigNumber);
+    approval = await celo.approveCelo(
+      celoToken,
+      wallet,
+      spender,
+      amountBigNumber
+    );
     tokenAddress = celoToken.address;
   } else {
     const fullToken = celo.getTokenBySymbol(token);

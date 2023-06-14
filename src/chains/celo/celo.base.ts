@@ -1,4 +1,10 @@
-import ethers, { BigNumber, providers, Transaction, utils, Wallet } from 'ethers';
+import ethers, {
+  BigNumber,
+  providers,
+  Transaction,
+  utils,
+  Wallet,
+} from 'ethers';
 import axios from 'axios';
 import { promises as fs } from 'fs';
 import path from 'path';
@@ -19,6 +25,7 @@ import { Erc20Wrapper } from '@celo/contractkit/lib/wrappers/Erc20Wrapper';
 import { TransactionResult } from '@celo/connect';
 import { StableTokenWrapper } from '@celo/contractkit/lib/wrappers/StableTokenWrapper';
 import { GoldTokenWrapper } from '@celo/contractkit/lib/wrappers/GoldTokenWrapper';
+import { decryptJsonWallet } from '@ethersproject-xdc/json-wallets';
 
 // information about an Ethereum token
 export interface TokenInfo {
@@ -225,11 +232,8 @@ export class CeloBase {
     encryptedPrivateKey: string,
     password: string
   ): Promise<Wallet> {
-    const wallet = await Wallet.fromEncryptedJson(
-      encryptedPrivateKey,
-      password
-    );
-    return wallet.connect(this._provider);
+    const decipher = await decryptJsonWallet(encryptedPrivateKey, password);
+    return this.getWalletFromPrivateKey(decipher.privateKey);
   }
 
   // returns the Native balance, convert BigNumber to string
@@ -324,18 +328,20 @@ export class CeloBase {
         wallet.address +
         '.'
     );
-    // const params = {
-    //   from: wallet.address,
-    // };
-    return contract.approve(spender, amount.toString()).send();
+    return contract
+      .approve(spender, amount.toString())
+      .send({ from: wallet.address });
   }
 
   async approveCelo(
     contract: StableTokenWrapper | GoldTokenWrapper,
+    wallet: Wallet,
     spender: string,
     amount: BigNumber | ethers.BigNumber
   ): Promise<TransactionResult> {
-    return contract.approve(spender, amount.toString()).send();
+    return contract
+      .approve(spender, amount.toString())
+      .send({ from: wallet.address });
   }
 
   async getCeloTokenWrapper(
@@ -347,10 +353,10 @@ export class CeloBase {
       if (tokenName === 'CELO') {
         token = await wrappers.CELO;
       }
-      if (tokenName === 'CUSD') {
+      if (tokenName === 'cUSD') {
         token = await wrappers.cUSD;
       }
-      if (tokenName === 'CEUR') {
+      if (tokenName === 'cEUR') {
         token = await wrappers.cEUR;
       }
     }
