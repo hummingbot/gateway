@@ -252,7 +252,8 @@ export async function approve(
     tokenAddress = fullToken.address;
   }
 
-  const hash = await approval.getHash();
+  const result = await approval.waitReceipt();
+  const hash = result.transactionHash;
   if (hash) {
     await celo.txStorage.saveTx(
       celo.chain,
@@ -262,8 +263,6 @@ export async function approve(
       celo.gasPrice
     );
   }
-
-  const result = await approval.waitReceipt();
 
   return {
     network: celo.chain,
