@@ -1,4 +1,4 @@
-import { BigNumber, providers, Transaction, utils, Wallet } from 'ethers';
+import ethers, { BigNumber, providers, Transaction, utils, Wallet } from 'ethers';
 import axios from 'axios';
 import { promises as fs } from 'fs';
 import path from 'path';
@@ -16,6 +16,9 @@ import { ContractKit } from '@celo/contractkit/lib/kit';
 import { CeloProvider, CeloWallet } from '@celo-tools/celo-ethers-wrapper';
 import { Ierc20 } from '@celo/contractkit/lib/generated/IERC20';
 import { Erc20Wrapper } from '@celo/contractkit/lib/wrappers/Erc20Wrapper';
+import { TransactionResult } from '@celo/connect';
+import { StableTokenWrapper } from '@celo/contractkit/lib/wrappers/StableTokenWrapper';
+import { GoldTokenWrapper } from '@celo/contractkit/lib/wrappers/GoldTokenWrapper';
 
 // information about an Ethereum token
 export interface TokenInfo {
@@ -310,12 +313,8 @@ export class CeloBase {
     contract: Erc20Wrapper<Ierc20>,
     wallet: Wallet,
     spender: string,
-    amount: BigNumber,
-    nonce?: number,
-    maxFeePerGas?: BigNumber,
-    maxPriorityFeePerGas?: BigNumber,
-    gasPrice?: number
-  ): Promise<Transaction> {
+    amount: BigNumber
+  ): Promise<TransactionResult> {
     logger.info(
       'Calling approve method called for spender ' +
         spender +
@@ -325,23 +324,37 @@ export class CeloBase {
         wallet.address +
         '.'
     );
-    return this.nonceManager.provideNonce(
-      nonce,
-      wallet.address,
-      async (nextNonce) => {
-        const params: any = {
-          gasLimit: this._gasLimitTransaction,
-          nonce: nextNonce,
-        };
-        if (maxFeePerGas || maxPriorityFeePerGas) {
-          params.maxFeePerGas = maxFeePerGas;
-          params.maxPriorityFeePerGas = maxPriorityFeePerGas;
-        } else if (gasPrice) {
-          params.gasPrice = (gasPrice * 1e9).toFixed(0);
-        }
-        return contract.approve(spender, amount.toString());
+    // const params = {
+    //   from: wallet.address,
+    // };
+    return contract.approve(spender, amount.toString()).send();
+  }
+
+  async approveCelo(
+    contract: StableTokenWrapper | GoldTokenWrapper,
+    spender: string,
+    amount: BigNumber | ethers.BigNumber
+  ): Promise<TransactionResult> {
+    return contract.approve(spender, amount.toString()).send();
+  }
+
+  async getCeloTokenWrapper(
+    tokenName: string
+  ): Promise<StableTokenWrapper | GoldTokenWrapper | undefined> {
+    const wrappers = await this.kit.celoTokens.getWrappers();
+    let token;
+    if (wrappers) {
+      if (tokenName === 'CELO') {
+        token = await wrappers.CELO;
       }
-    );
+      if (tokenName === 'CUSD') {
+        token = await wrappers.cUSD;
+      }
+      if (tokenName === 'CEUR') {
+        token = await wrappers.cEUR;
+      }
+    }
+    return token;
   }
 
   public getTokenBySymbol(tokenSymbol: string): TokenInfo | undefined {

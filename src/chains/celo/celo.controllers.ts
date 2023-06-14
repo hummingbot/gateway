@@ -1,10 +1,4 @@
-import ethers, {
-  constants,
-  Wallet,
-  utils,
-  BigNumber,
-  Transaction,
-} from 'ethers';
+import ethers, { constants, Wallet, utils, BigNumber } from 'ethers';
 import { latency, bigNumberWithDecimalToStr } from '../../services/base';
 import {
   HttpException,
@@ -43,7 +37,7 @@ import {
 } from '../../network/network.requests';
 import { logger } from '../../services/logger';
 import { TokenInfo } from '../ethereum/ethereum-base';
-
+import { CeloTxReceipt } from '@celo/connect/lib/types';
 export async function nonce(
   celo: Celoish,
   req: NonceRequest
@@ -182,25 +176,24 @@ export async function balances(
   };
 }
 
-const toEthereumTransaction = (transaction: Transaction): CustomTransaction => {
-  let maxFeePerGas = null;
-  if (transaction.maxFeePerGas) {
-    maxFeePerGas = transaction.maxFeePerGas.toString();
+const toEthereumTransaction = (
+  transaction: CeloTxReceipt
+): CustomTransaction => {
+  let gasPrice = transaction.gatewayFee?.toString();
+  if (gasPrice == undefined) {
+    gasPrice = '0';
   }
-  let maxPriorityFeePerGas = null;
-  if (transaction.maxPriorityFeePerGas) {
-    maxPriorityFeePerGas = transaction.maxPriorityFeePerGas.toString();
-  }
-  let gasLimit = null;
-  if (transaction.gasLimit) {
-    gasLimit = transaction.gasLimit.toString();
-  }
+  const hash = transaction.transactionHash;
   return {
-    ...transaction,
-    maxPriorityFeePerGas,
-    maxFeePerGas,
-    gasLimit,
-    value: transaction.value.toString(),
+    chainId: 42220,
+    data: transaction.logs.toString(),
+    gasLimit: transaction.gasUsed.toString(),
+    maxFeePerGas: gasPrice,
+    maxPriorityFeePerGas: '0',
+    nonce: 0,
+    value: '',
+    hash: hash,
+    gasPrice: BigNumber.from(gasPrice),
   };
 };
 
@@ -208,8 +201,7 @@ export async function approve(
   celo: Celoish,
   req: ApproveRequest
 ): Promise<ApproveResponse | string> {
-  const { amount, nonce, address, token, maxFeePerGas, maxPriorityFeePerGas } =
-    req;
+  const { amount, address, token } = req;
 
   const spender = celo.getSpender(req.spender);
   const initTime = Date.now();
@@ -223,61 +215,65 @@ export async function approve(
       LOAD_WALLET_ERROR_CODE
     );
   }
-  const fullToken = celo.getTokenBySymbol(token);
-  if (!fullToken) {
-    throw new HttpException(
-      500,
-      TOKEN_NOT_SUPPORTED_ERROR_MESSAGE + token,
-      TOKEN_NOT_SUPPORTED_ERROR_CODE
+  let approval;
+  let tokenAddress: string;
+  let decimals;
+  let amountBigNumber;
+  const celoToken = await celo.getCeloTokenWrapper(token);
+  if (celoToken) {
+    decimals = await celoToken.decimals();
+    amountBigNumber = amount
+      ? utils.parseUnits(amount, decimals)
+      : constants.MaxUint256;
+
+    approval = await celo.approveCelo(celoToken, spender, amountBigNumber);
+    tokenAddress = celoToken.address;
+  } else {
+    const fullToken = celo.getTokenBySymbol(token);
+    if (!fullToken) {
+      throw new HttpException(
+        500,
+        TOKEN_NOT_SUPPORTED_ERROR_MESSAGE + token,
+        TOKEN_NOT_SUPPORTED_ERROR_CODE
+      );
+    }
+    decimals = fullToken.decimals;
+    amountBigNumber = amount
+      ? utils.parseUnits(amount, decimals)
+      : constants.MaxUint256;
+    const contract = await celo.getContract(fullToken.address);
+
+    approval = await celo.approveERC20(
+      contract,
+      wallet,
+      spender,
+      amountBigNumber
     );
+    tokenAddress = fullToken.address;
   }
-  const amountBigNumber = amount
-    ? utils.parseUnits(amount, fullToken.decimals)
-    : constants.MaxUint256;
 
-  let maxFeePerGasBigNumber;
-  if (maxFeePerGas) {
-    maxFeePerGasBigNumber = BigNumber.from(maxFeePerGas);
-  }
-  let maxPriorityFeePerGasBigNumber;
-  if (maxPriorityFeePerGas) {
-    maxPriorityFeePerGasBigNumber = BigNumber.from(maxPriorityFeePerGas);
-  }
-  // instantiate a contract and pass in wallet, which act on behalf of that signer
-  const contract = await celo.getContract(fullToken.address);
-
-  // convert strings to BigNumber
-  // call approve function
-  const approval = await celo.approveERC20(
-    contract,
-    wallet,
-    spender,
-    amountBigNumber,
-    nonce,
-    maxFeePerGasBigNumber,
-    maxPriorityFeePerGasBigNumber,
-    celo.gasPrice
-  );
-
-  if (approval.hash) {
+  const hash = await approval.getHash();
+  if (hash) {
     await celo.txStorage.saveTx(
       celo.chain,
       celo.chainId,
-      approval.hash,
+      hash,
       new Date(),
       celo.gasPrice
     );
   }
 
+  const result = await approval.waitReceipt();
+
   return {
     network: celo.chain,
     timestamp: initTime,
     latency: latency(initTime, Date.now()),
-    tokenAddress: fullToken.address,
+    tokenAddress: tokenAddress,
     spender: spender,
-    amount: bigNumberWithDecimalToStr(amountBigNumber, fullToken.decimals),
-    nonce: approval.nonce,
-    approval: toEthereumTransaction(approval),
+    amount: bigNumberWithDecimalToStr(amountBigNumber, decimals),
+    nonce: result.blockNumber,
+    approval: toEthereumTransaction(result),
   };
 }
 
