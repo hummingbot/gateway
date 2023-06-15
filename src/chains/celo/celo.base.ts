@@ -316,7 +316,7 @@ export class CeloBase {
     spender: string,
     amount: BigNumber
   ): Promise<TransactionResult> {
-    const finalAmount = amount.toString();
+    const finalAmount = amount.toNumber();
     logger.info(
       `Approve for spender: ${spender}, allowance: ${finalAmount} for owner: ${wallet.address}`
     );
@@ -331,7 +331,7 @@ export class CeloBase {
     spender: string,
     amount: BigNumber | ethers.BigNumber
   ): Promise<TransactionResult> {
-    const finalAmount = amount.toString();
+    const finalAmount = amount.toNumber();
     logger.info(
       `Approve for spender: ${spender}, allowance: ${finalAmount} for owner: ${wallet.address}`
     );

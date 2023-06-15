@@ -179,6 +179,7 @@ export async function balances(
 const toEthereumTransaction = (
   transaction: CeloTxReceipt
 ): CustomTransaction => {
+  logger.info(`Converting transaction: ${transaction}`);
   let gasPrice = transaction.gatewayFee?.toString();
   if (gasPrice == undefined) {
     gasPrice = '0';
