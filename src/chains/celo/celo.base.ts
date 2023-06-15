@@ -249,7 +249,7 @@ export class CeloBase {
       `Raw balance of ${contract.address} for ` +
         `${wallet.address}: ${balance.toString()}`
     );
-    const result = ethers.BigNumber.from(balance.toNumber());
+    const result = ethers.BigNumber.from(balance.toString());
     return { value: result, decimals: decimals };
   }
 
@@ -264,7 +264,7 @@ export class CeloBase {
       `Requesting spender: ${spender}, allowance for owner: ${wallet.address}`
     );
     const allowance = await contract.allowance(wallet.address, spender);
-    const converted = allowance.toNumber();
+    const converted = allowance.toString();
     const result = ethers.BigNumber.from(converted);
     logger.info(allowance);
     return { value: result, decimals: decimals };
@@ -310,7 +310,7 @@ export class CeloBase {
     spender: string,
     amount: BigNumber | ethers.BigNumber
   ): Promise<TransactionResult> {
-    const finalAmount = amount.toNumber();
+    const finalAmount = amount.toString();
     logger.info(
       `Approve for spender: ${spender}, allowance: ${finalAmount} for owner: ${wallet.address}`
     );
@@ -325,7 +325,7 @@ export class CeloBase {
     spender: string,
     amount: BigNumber | ethers.BigNumber
   ): Promise<TransactionResult> {
-    const finalAmount = amount.toNumber();
+    const finalAmount = amount.toString();
     logger.info(
       `Approve for spender: ${spender}, allowance: ${finalAmount} for owner: ${wallet.address}`
     );
