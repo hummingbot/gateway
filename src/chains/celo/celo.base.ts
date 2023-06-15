@@ -266,12 +266,9 @@ export class CeloBase {
     decimals: number
   ): Promise<TokenValue> {
     logger.info(
-      'Requesting spender ' +
-        spender +
-        ' allowance for owner ' +
-        wallet.address +
-        '.'
+      `Requesting spender: ${spender}, allowance for owner: ${wallet.address}`
     );
+
     const allowance = await contract.allowance(wallet.address, spender);
     const converted = allowance.toString();
     const result = BigNumber.from(converted);
@@ -319,17 +316,12 @@ export class CeloBase {
     spender: string,
     amount: BigNumber
   ): Promise<TransactionResult> {
+    const finalAmount = amount.toString();
     logger.info(
-      'Calling approve method called for spender ' +
-        spender +
-        ' requesting allowance ' +
-        amount.toString() +
-        ' from owner ' +
-        wallet.address +
-        '.'
+      `Approve for spender: ${spender}, allowance: ${finalAmount} for owner: ${wallet.address}`
     );
     return contract
-      .approve(spender, amount.toString())
+      .approve(spender, finalAmount)
       .send({ from: wallet.address });
   }
 
@@ -339,8 +331,12 @@ export class CeloBase {
     spender: string,
     amount: BigNumber | ethers.BigNumber
   ): Promise<TransactionResult> {
+    const finalAmount = amount.toString();
+    logger.info(
+      `Approve for spender: ${spender}, allowance: ${finalAmount} for owner: ${wallet.address}`
+    );
     return contract
-      .approve(spender, amount.toString())
+      .approve(spender, finalAmount)
       .send({ from: wallet.address });
   }
 
