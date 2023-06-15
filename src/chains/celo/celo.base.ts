@@ -270,7 +270,7 @@ export class CeloBase {
     );
 
     const allowance = await contract.allowance(wallet.address, spender);
-    const converted = allowance.toString();
+    const converted = allowance.toNumber();
     const result = BigNumber.from(converted);
     logger.info(allowance);
     return { value: result, decimals: decimals };
