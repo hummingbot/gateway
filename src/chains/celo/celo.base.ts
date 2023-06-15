@@ -344,15 +344,16 @@ export class CeloBase {
     tokenName: string
   ): Promise<StableTokenWrapper | GoldTokenWrapper | undefined> {
     const wrappers = await this.kit.celoTokens.getWrappers();
+    const converted = tokenName.toUpperCase();
     let token;
     if (wrappers) {
-      if (tokenName === 'CELO') {
+      if (converted === 'CELO') {
         token = await wrappers.CELO;
       }
-      if (tokenName === 'cUSD') {
+      if (converted === 'cUSD') {
         token = await wrappers.cUSD;
       }
-      if (tokenName === 'cEUR') {
+      if (converted === 'cEUR') {
         token = await wrappers.cEUR;
       }
     }
