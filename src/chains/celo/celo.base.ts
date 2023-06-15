@@ -1,10 +1,5 @@
-import ethers, {
-  BigNumber,
-  providers,
-  Transaction,
-  utils,
-  Wallet,
-} from 'ethers';
+import ethers, { providers, Transaction, utils, Wallet } from 'ethers';
+import BigNumber from 'bignumber.js';
 import axios from 'axios';
 import { promises as fs } from 'fs';
 import path from 'path';
@@ -254,7 +249,7 @@ export class CeloBase {
       `Raw balance of ${contract.address} for ` +
         `${wallet.address}: ${balance.toString()}`
     );
-    const result = BigNumber.from(balance.toString());
+    const result = ethers.BigNumber.from(balance.toNumber());
     return { value: result, decimals: decimals };
   }
 
@@ -268,10 +263,9 @@ export class CeloBase {
     logger.info(
       `Requesting spender: ${spender}, allowance for owner: ${wallet.address}`
     );
-
     const allowance = await contract.allowance(wallet.address, spender);
     const converted = allowance.toNumber();
-    const result = BigNumber.from(converted);
+    const result = ethers.BigNumber.from(converted);
     logger.info(allowance);
     return { value: result, decimals: decimals };
   }
@@ -314,7 +308,7 @@ export class CeloBase {
     contract: Erc20Wrapper<Ierc20>,
     wallet: Wallet,
     spender: string,
-    amount: BigNumber
+    amount: BigNumber | ethers.BigNumber
   ): Promise<TransactionResult> {
     const finalAmount = amount.toNumber();
     logger.info(
