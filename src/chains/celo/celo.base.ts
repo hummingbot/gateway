@@ -1,4 +1,10 @@
-import ethers, { providers, Transaction, utils, Wallet } from 'ethers';
+import {
+  providers,
+  Transaction,
+  utils,
+  Wallet,
+  BigNumber as EthersBigNumber,
+} from 'ethers';
 import BigNumber from 'bignumber.js';
 import axios from 'axios';
 import { promises as fs } from 'fs';
@@ -249,7 +255,7 @@ export class CeloBase {
       `Raw balance of ${contract.address} for ` +
         `${wallet.address}: ${balance.toString()}`
     );
-    const result = ethers.BigNumber.from(balance.toString());
+    const result = EthersBigNumber.from(balance.toString());
     return { value: result, decimals: decimals };
   }
 
@@ -265,7 +271,7 @@ export class CeloBase {
     );
     const allowance = await contract.allowance(wallet.address, spender);
     const converted = allowance.toString();
-    const result = ethers.BigNumber.from(converted);
+    const result = EthersBigNumber.from(converted);
     logger.info(allowance);
     return { value: result, decimals: decimals };
   }
@@ -308,7 +314,7 @@ export class CeloBase {
     contract: Erc20Wrapper<Ierc20>,
     wallet: Wallet,
     spender: string,
-    amount: BigNumber | ethers.BigNumber
+    amount: BigNumber | EthersBigNumber
   ): Promise<TransactionResult> {
     const finalAmount = amount.toString();
     logger.info(
@@ -323,7 +329,7 @@ export class CeloBase {
     contract: StableTokenWrapper | GoldTokenWrapper,
     wallet: Wallet,
     spender: string,
-    amount: BigNumber | ethers.BigNumber
+    amount: BigNumber | EthersBigNumber
   ): Promise<TransactionResult> {
     const finalAmount = amount.toString();
     logger.info(
