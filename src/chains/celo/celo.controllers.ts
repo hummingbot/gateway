@@ -1,4 +1,9 @@
-import ethers, { constants, Wallet, utils, BigNumber } from 'ethers';
+import ethers, {
+  constants,
+  Wallet,
+  utils,
+  BigNumber as EthersBigNumber,
+} from 'ethers';
 import { latency, bigNumberWithDecimalToStr } from '../../services/base';
 import {
   HttpException,
@@ -180,21 +185,17 @@ const toEthereumTransaction = (
   transaction: CeloTxReceipt
 ): CustomTransaction => {
   logger.info(`Converting transaction: ${transaction}`);
-  let gasPrice = transaction.gatewayFee?.toString();
-  if (gasPrice == undefined) {
-    gasPrice = '0';
-  }
   const hash = transaction.transactionHash;
   return {
     chainId: 42220,
-    data: transaction.logs.toString(),
+    data: '',
     gasLimit: transaction.gasUsed.toString(),
-    maxFeePerGas: gasPrice,
+    maxFeePerGas: transaction.cumulativeGasUsed.toString(),
     maxPriorityFeePerGas: '0',
-    nonce: 0,
+    nonce: transaction.transactionIndex,
     value: '',
     hash: hash,
-    gasPrice: BigNumber.from(gasPrice),
+    gasPrice: EthersBigNumber.from(transaction.gasUsed),
   };
 };
 

@@ -270,9 +270,8 @@ export class CeloBase {
       `Requesting spender: ${spender}, allowance for owner: ${wallet.address}`
     );
     const allowance = await contract.allowance(wallet.address, spender);
-    const converted = allowance.toString();
+    const converted = allowance.toFixed();
     const result = EthersBigNumber.from(converted);
-    logger.info(allowance);
     return { value: result, decimals: decimals };
   }
 
