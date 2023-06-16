@@ -67,7 +67,8 @@ export class EVMTxBroadcaster {
    * @returns {string} transaction hash
    */
   async broadcast(
-    transaction: TransactionRequest
+    transaction: TransactionRequest,
+    nonce?: number
   ): Promise<TransactionResponse> {
     let txResponse: TransactionResponse = {
       hash: '',
@@ -97,7 +98,10 @@ export class EVMTxBroadcaster {
       const currentNonce = await this._chain.nonceManager.getNextNonce(
         this._wallet_address
       );
-      txResponse = await this.createAndSend(transaction, currentNonce);
+      txResponse = await this.createAndSend(
+        transaction,
+        nonce ? nonce : currentNonce
+      );
 
       await this._chain.nonceManager.commitNonce(
         this._wallet_address,
