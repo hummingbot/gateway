@@ -6,15 +6,15 @@ Hummingbot Gateway is a REST API that exposes connections to various blockchains
 
 Gateway may be used alongside the main [Hummingbot client](https://github.com/hummingbot/hummingbot) to enable trading on DEXs, or as a standalone module by external developers.
 
-## Installation
+## Installation via Docker
 
-### Generate certificates
+If you are installing Gateway alongside Hummingbot, check out the [Deploy Examples](https://github.com/hummingbot/deploy-examples) repository that helps you deployg various Hummingbot and Gateway configurations.
 
-To run Gateway in `https` (default):
-* **CERTS_PATH**: path to folder where Hummingbot generated and saved self-signed SSL certificates
-* **PASSPHRASE**: passphrase used to generate the certificates above
+For most new users, we recommend following the process outlined here: [Hummingbot Gateway Compose](https://github.com/hummingbot/deploy-examples/tree/main/hummingbot_gateway_compose)
 
-### Run Gateway from source
+[Bash scripts](https://github.com/hummingbot/deploy-examples/tree/main/bash_scripts) that help you install the Gateway Docker image are also found in the same repo.
+
+## Installation from source
 
 Dependencies:
 * NodeJS (16.0.0 or higher)
@@ -35,18 +35,7 @@ $ ./gateway-setup.sh
 $ yarn start --passphrase=<PASSPHRASE>
 ```
 
-### Run Gateway using Docker
-
-Dependencies:
-* [Docker](https://docker.com)
-
-See the [`/docker`](./docker) folder for Docker installation scripts and instructions on how to use them.
-
-
-### Build Gateway Docker Image locally
-
-Dependencies:
-* [Docker](https://docker.com)
+### Build Docker image
 
 To build the gateway docker image locally execute the below make command:
 
@@ -84,13 +73,15 @@ There are a number of ways to contribute to gateway.
 
 ### Configuration
 
-- Edit `certs_path` in [conf/server.yml](./conf/server.yml) and enter the absolute path to the folder where Hummingbot stored the certificates it created with `gateway generate-certs`. You can also edit this config inside the Hummingbot client by running the command: `gateway config server.certs_path`.
-
 - If you want to turn off `https`, set `unsafeDevModeWithHTTP` to `true` in [conf/server.yml](./conf/server.yml). 
 
 - If you want Gateway to log to standard out, set `logToStdOut` to `true` in [conf/server.yml](./conf/server.yml).
 
 - The format of configuration files are dictated by [src/services/config-manager-v2.ts](./src/services/config-manager-v2.ts) and the corresponding schema files in [src/services/schema](./src/services/schema).
+
+- If you want to turn off `https`, set `unsafeDevModeWithHTTP` to `true` in [conf/server.yml](./conf/server.yml). 
+
+- For each supported chain, token lists that translate address to symbols for each chain are stored in `/conf/lists`. You can add tokens here to make them available to Gateway.
 
 
 ### Architecture
