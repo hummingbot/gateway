@@ -76,7 +76,7 @@ jobs:
       - name: Replace testnet nodeURL for local hardhat node
         run: |
           mkdir conf db
-          cp src/templates/* conf
+          cp -r src/templates/* conf
           sed -i 's/https:\/\/rpc.ankr.com\/eth_goerli/http:\/\/127.0.0.1:8545\//g' ./conf/ethereum.yml
           sed -i 's/https:\/\/arbitrum-rinkeby.infura.io\/v3/http:\/\/127.0.0.1:8545\//g' ./conf/ethereum.yml
           sed -i 's/https:\/\/rpc.ankr.com\/optimism/http:\/\/127.0.0.1:8545\//g' ./conf/ethereum.yml
