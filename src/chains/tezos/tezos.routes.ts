@@ -30,6 +30,24 @@ export namespace TezosRoutes {
   export const router = Router();
 
   router.post(
+    '/nextNonce',
+    asyncHandler(
+      async (
+        req: Request<{}, {}, NonceRequest>,
+        res: Response<NonceResponse | string, {}>
+      ) => {
+        validateTezosNonceRequest(req.body);
+        const chain = await getChain(req.body.chain, req.body.network);
+        const nonceRes = await tezosControllers.nonce(chain, req.body);
+        res.status(200).json({
+          ...nonceRes,
+          nonce: nonceRes.nonce + 1,
+        });
+      }
+    )
+  );
+
+  router.post(
     '/nonce',
     asyncHandler(
       async (
