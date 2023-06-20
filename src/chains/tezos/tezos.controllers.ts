@@ -1,4 +1,4 @@
-import { constants, utils } from 'ethers';
+import { BigNumber } from 'bignumber.js';
 import {
   HttpException,
   LOAD_WALLET_ERROR_CODE,
@@ -10,7 +10,6 @@ import { TokenInfo } from './tezos.base';
 import { TransactionOperation, TezosToolkit } from '@taquito/taquito';
 import { OperationContentsAndResultTransaction } from '@taquito/rpc';
 import {
-  bigNumberWithDecimalToStr,
   latency,
   tokenValueToString,
 } from '../../services/base';
@@ -30,6 +29,7 @@ import {
   AllowancesResponse,
 } from '../../evm/evm.requests';
 import { Tezosish, CustomTransaction } from '../../services/common-interfaces';
+import { isAddress } from './tezos.validators';
 
 export const getTokenSymbolsToTokens = (
   tezos: Tezosish,
@@ -106,40 +106,48 @@ export async function balances(
 // -1: not in the mempool or failed
 // 1: applied
 // 2: branch_delayed
-// 3: branch_refused
-// 4: refused
-// 5: unprocessed
+// 3: branch_refused or refused
+// 0: unprocessed
 export async function poll(
   tezosish: Tezosish,
   req: PollRequest
 ): Promise<PollResponse> {
   const initTime = Date.now();
 
-  const currentBlock = await tezosish.getCurrentBlockNumber();
-
   let txStatus = -1;
   let txData = null;
+  let txReceipt = null;
   const pendingTxs = await tezosish.getPendingTransactions();
   const appliedTx = pendingTxs.applied.find((tx) => tx.hash === req.txHash);
   if (appliedTx) {
     txStatus = 1;
     txData = appliedTx.contents;
+    const tx = await tezosish.getTransaction(req.txHash);
+    txReceipt = {
+      status: txStatus,
+      gasUsed: tx.reduce((acc, tx) => acc + tx.gasUsed, 0),
+    };
   } else if (pendingTxs.branch_delayed.find((tx) => tx.hash === req.txHash)) {
     txStatus = 2;
   } else if (pendingTxs.branch_refused.find((tx) => tx.hash === req.txHash)) {
     txStatus = 3;
   } else if (pendingTxs.refused.find((tx) => tx.hash === req.txHash)) {
-    txStatus = 4;
+    txStatus = 3;
   } else if (pendingTxs.unprocessed.find((tx) => tx.hash === req.txHash)) {
-    txStatus = 5;
+    txStatus = 0;
   } else {
     const tx = await tezosish.getTransaction(req.txHash);
     if (tx) {
       txStatus = 1;
       txData = tx;
+      txReceipt = {
+        status: txStatus,
+        gasUsed: tx.reduce((acc, tx) => acc + tx.gasUsed, 0),
+      }
     }
   }
 
+  const currentBlock = await tezosish.getCurrentBlockNumber();
   return {
     network: tezosish.chain,
     currentBlock,
@@ -147,6 +155,7 @@ export async function poll(
     txHash: req.txHash,
     txStatus,
     txData,
+    txReceipt,
   };
 }
 
@@ -161,15 +170,18 @@ export async function allowances(
   const approvals: Record<string, string> = {};
   await Promise.all(
     Object.keys(tokens).map(async (symbol) => {
-      if (tokens[symbol].standard === 'fa1.2') {
-        approvals[symbol] = '0.000000';
+      if (tokens[symbol].standard === 'TEZ') {
+        const balance = await tezos.getNativeBalance(req.address);
+        approvals[symbol] = balance.value.toString();
+      } else if (tokens[symbol].standard === 'FA1.2') {
+        approvals[symbol] = new BigNumber(2).pow(256).minus(1).toString();
       } else {
         approvals[symbol] = tokenValueToString(
           await tezos.getTokenAllowance(
             tokens[symbol].address,
             req.address,
             spender,
-            'fa2',
+            'FA2',
             tokens[symbol].tokenId,
             tokens[symbol].decimals
           )
@@ -199,10 +211,10 @@ export async function approve(
   tezos: Tezosish,
   req: ApproveRequest
 ): Promise<ApproveResponse | string> {
-  const { amount, address, token } = req;
-
-  const spender = req.spender;
   const initTime = Date.now();
+  const { amount, address, token, network } = req;
+
+  let spender = req.spender;
   let wallet: TezosToolkit;
   try {
     wallet = await tezos.getWallet(address);
@@ -222,8 +234,8 @@ export async function approve(
     );
   }
   const amountBigNumber = amount
-    ? utils.parseUnits(amount, fullToken.decimals)
-    : constants.MaxUint256;
+    ? new BigNumber(amount)
+    : new BigNumber(2).pow(256).minus(1);
 
   // instantiate a contract and pass in wallet, which act on behalf of that signer
   const contract = await wallet.contract.at(fullToken.address);
@@ -231,19 +243,19 @@ export async function approve(
   // convert strings to BigNumber
   // call approve function
   let approvalOperation: TransactionOperation | null = null;
-  if (fullToken.standard == 'fa1.2') {
+  if (fullToken.standard == 'FA1.2') {
     approvalOperation = await contract.methods
-      .approve({ spender: spender, value: amountBigNumber })
+      .approve(spender, amountBigNumber)
       .send();
-  } else if (fullToken.standard == 'fa2') {
+  } else if (fullToken.standard == 'FA2') {
     approvalOperation = await contract.methods
-      .update_operators({
+      .update_operators([{
         add_operator: {
           owner: address,
           operator: spender,
           token_id: fullToken.tokenId,
         },
-      })
+      }])
       .send();
   } else {
     throw new HttpException(
@@ -265,7 +277,7 @@ export async function approve(
       latency: latency(initTime, Date.now()),
       tokenAddress: fullToken.address,
       spender: spender,
-      amount: bigNumberWithDecimalToStr(amountBigNumber, fullToken.decimals),
+      amount: amountBigNumber.toFixed(fullToken.decimals),
       nonce: parseInt(op.counter),
       approval: toTezosTransaction(approvalOperation.hash, op, chainId),
     };

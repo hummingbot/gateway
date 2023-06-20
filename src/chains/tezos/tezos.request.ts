@@ -41,6 +41,10 @@ export interface PollResponse {
   txHash: string;
   txStatus: number;
   txData: (OperationContents | OperationContentsAndResult | TransactionResponse)[] | null;
+  txReceipt: {
+    status: number;
+    gasUsed: number;
+  } | null;
 }
 
 export interface AllowancesResponse {

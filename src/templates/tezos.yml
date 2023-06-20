@@ -18,5 +18,5 @@ networks:
     tokenListSource: 'src/chains/tezos/tezos.ghostnet.tokens.json'
     tzktURL: 'https://api.ghostnet.tzkt.io'
 
-manualGasPrice: 12500 # Refer https://tezos.stackexchange.com/questions/2176/how-to-calculate-price-of-gas/2177#2177
-gasLimitTransaction: 2600000
+manualGasPrice: 123456 # Refer https://tezos.stackexchange.com/questions/2176/how-to-calculate-price-of-gas/2177#2177
+gasLimitTransaction: 100000

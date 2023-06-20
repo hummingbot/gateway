@@ -9,7 +9,7 @@ import {
 } from '../../services/base';
 import { PendingOperations, PendingOperationsQueryArguments, RpcClient } from '@taquito/rpc';
 import { InMemorySigner } from '@taquito/signer';
-import { TezosToolkit, RpcReadAdapter } from '@taquito/taquito';
+import { TezosToolkit, RpcReadAdapter, ContractAbstraction } from '@taquito/taquito';
 import {
   TokenResponse,
   TransactionResponse,
@@ -40,6 +40,8 @@ export class TezosBase {
   private _provider: TezosToolkit;
   protected tokenList: TokenInfo[] = [];
   private _tokenMap: Record<string, TokenInfo> = {};
+  private _contractMap: Record<string, ContractAbstraction<any>> = {};
+  private _contractStorageMap: Record<string, any> = {};
 
   private _ready: boolean = false;
   private _initializing: boolean = false;
@@ -84,6 +86,7 @@ export class TezosBase {
         this._ready = true;
         this._initializing = false;
       });
+      this.provider.setRpcProvider(this.rpcUrl);
     }
     return this._initPromise;
   }
@@ -99,6 +102,27 @@ export class TezosBase {
       );
     }
   }
+
+  // returns the contract instance for a given address
+  async getContract(address: string) {
+    if (!this._contractMap[address]) {
+      this._contractMap[address] = await this._provider.contract.at(address);
+    }
+    return this._contractMap[address];
+  }
+
+  // returns the contract storage for a given address (cached for 15 seconds)
+  async getContractStorage(address: string) {
+    const timestamp = Date.now();
+    if (!this._contractStorageMap[address] || timestamp - this._contractStorageMap[address].timestamp > 15000) {
+      const contract = await this.getContract(address);
+      this._contractStorageMap[address] = {
+        storage: await contract.storage(),
+        timestamp: Date.now(),
+      };
+    }
+    return this._contractStorageMap[address].storage;
+  };
 
   // return the pending transactions that are currently in the mempool
   async getPendingTransactions(
@@ -122,6 +146,7 @@ export class TezosBase {
     return tokens;
   }
 
+  // returns the list of the tokens that are stored in the class
   public get storedTokenList(): TokenInfo[] {
     return this.tokenList;
   }
@@ -168,14 +193,14 @@ export class TezosBase {
     contractAddress: string,
     ownerAddress: string,
     spender: string,
-    tokenStandard: 'fa2',
+    tokenStandard: 'FA2',
     tokenId: number,
     tokenDecimals: number
   ): Promise<TokenValue> {
     const contract = await this._provider.contract.at(contractAddress);
 
     let value = BigNumber.from(0);
-    if (tokenStandard === 'fa2' && tokenId !== null) {
+    if (tokenStandard === 'FA2' && tokenId !== null) {
       // TODO: add better support.
       let isOperator;
       try {
@@ -209,36 +234,74 @@ export class TezosBase {
   }
 
   // returns wallet for a given private key
-  async getWalletFromPrivateKey(privateKey: string): Promise<TezosToolkit> {
-    const wallet = new TezosToolkit(this.rpcUrl);
-    wallet.setSignerProvider(await InMemorySigner.fromSecretKey(privateKey));
-    wallet.setRpcProvider(this.rpcUrl);
+  async getWalletFromPrivateKey(privateKey: string, setAsSigner: boolean = false): Promise<TezosToolkit> {
+    let wallet: TezosToolkit;
+    if (setAsSigner) {
+      this.provider.setSignerProvider(await InMemorySigner.fromSecretKey(privateKey));
+      wallet = this.provider;
+    } else {
+      wallet = new TezosToolkit(this.rpcUrl);
+      wallet.setSignerProvider(await InMemorySigner.fromSecretKey(privateKey));
+      wallet.setRpcProvider(this.rpcUrl);
+    }
     return wallet;
   }
 
-  // return saved wallet for a given address
-  async getWallet(address: string, password?: string): Promise<TezosToolkit> {
+  // return saved wallet for a given address, if no address is provided, return saved wallet with most balance
+  async getWallet(address?: string, password?: string, setAsSigner: boolean = false): Promise<TezosToolkit> {
     const path = `${walletPath}/${this.chainName}`;
 
-    const rawData: string = await fse.readFile(
-      `${path}/${address}.json`,
-      'utf8'
-    );
-
-    if (!password) {
-      const passphrase = ConfigManagerCertPassphrase.readPassphrase();
-      if (!passphrase) {
-        throw new Error('missing passphrase');
+    try {
+      let rawData = [];
+      if (!address) {
+        const filenames = fse.readdirSync(`${path}/`);
+        for (const filename of filenames) {
+          const fileData = await fs.readFile(`${path}/` + filename, 'utf-8');
+          rawData.push(fileData);
+        }
+      } else {
+        rawData.push(await fse.readFile(`${path}/${address}.json`, 'utf8'));
       }
-      password = passphrase;
+
+      if (rawData.length === 0) {
+        logger.error('Tezos: No wallets found');
+      }
+
+      if (!password) {
+        const passphrase = ConfigManagerCertPassphrase.readPassphrase();
+        if (!passphrase) {
+          throw new Error('missing passphrase');
+        }
+        password = passphrase;
+      }
+
+      let privateKeys = [];
+      for (const data of rawData) {
+        const privateKey = this.decrypt(
+          data,
+          password
+        );
+        privateKeys.push(privateKey);
+      }
+
+      let bestBalance = BigNumber.from(0);
+      let bestPrivateKey = privateKeys[0];
+      if (privateKeys.length > 1)
+        for (const privateKey of privateKeys) {
+          const wallet = await this.getWalletFromPrivateKey(privateKey);
+          const address = await wallet.signer.publicKeyHash();
+          const balance = await this.getNativeBalance(address);
+          if (balance.value.gt(bestBalance)) {
+            bestBalance = balance.value;
+            bestPrivateKey = privateKey;
+          }
+        }
+
+      return await this.getWalletFromPrivateKey(bestPrivateKey!, setAsSigner);
+    } catch (e) {
+      logger.error('Tezos: Could not find wallet' + address, e);
+      throw e;
     }
-
-    const privateKey = this.decrypt(
-      rawData,
-      password
-    );
-
-    return await this.getWalletFromPrivateKey(privateKey);
   }
 
   // save encrypted wallet to disk
