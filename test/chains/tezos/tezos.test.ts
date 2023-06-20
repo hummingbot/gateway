@@ -39,8 +39,8 @@ describe('Tezos', () => {
         expect(tezos.gasPrice).toEqual(123456);
     });
 
-    it('should have a gas limit of 2600000', () => {
-        expect(tezos.gasLimitTransaction).toEqual(2600000);
+    it('should have a gas limit of 100000', () => {
+        expect(tezos.gasLimitTransaction).toEqual(100000);
     });
 
     it('should have a request count of 0', () => {
@@ -74,10 +74,20 @@ describe('Tezos', () => {
             expect(tezos.provider).toBeDefined();
         });
 
+        it('should get contract instance from address', async () => {
+            const contract = await tezos.getContract('KT1GRSvLoikDsXujKgZPsGLX8k8VvR2Tq95b');
+            expect(contract).toBeDefined();
+        });
+
+        it('should get contract storage from address', async () => {
+            const storage = await tezos.getContractStorage('KT1GRSvLoikDsXujKgZPsGLX8k8VvR2Tq95b');
+            expect(storage).toBeDefined();
+        });
+
         it('should return the pending transactions in the mempool', async () => {
             const txs = await tezos.getPendingTransactions();
             expect(txs).toBeDefined();
-        });
+        }, 15000);
 
         it('should returns tokens for a given list source from a URL', async () => {
             const tokens = await tezos.getTokenList('https://api.tzkt.io/v1/tokens?limit=1', 'URL');
@@ -94,7 +104,7 @@ describe('Tezos', () => {
         });
 
         it('should return a token object for a symbol', async () => {
-            const token = tezos.getTokenForSymbol('CTEZ');
+            const token = tezos.getTokenForSymbol('CTez');
             expect(token).toHaveProperty('name');
             expect(token).toHaveProperty('symbol');
             expect(token).toHaveProperty('address');
@@ -125,12 +135,12 @@ describe('Tezos', () => {
             expect(balance).toHaveProperty('decimals');
         });
 
-        it('should return fa2 token operator for an address', async () => {
+        it('should return FA2 token operator for an address', async () => {
             const allowance = await tezos.getTokenAllowance(
                 'KT1914CUZ7EegAFPbfgQMRkw8Uz5mYkEz2ui',
                 'tz1QcqXfKyweGoGt8aeva4uNRPwY9b83CuJm',
                 'KT1PvEyN1xCFCgorN92QCfYjw3axS6jawCiJ',
-                'fa2',
+                'FA2',
                 0,
                 8
             );
@@ -190,6 +200,7 @@ describe('Tezos', () => {
             }
             const wallet = await tezos.getWallet('tz1TGu6TN5GSez2ndXXeDX6LgUDvLzPLqgYV', 'password');
             expect(wallet).toBeInstanceOf(TezosToolkit);
+            fs.rmSync(filePath);
         });
 
         describe('should be able to encrypt/decrypt private key', () => {

@@ -12,6 +12,20 @@ afterAll(async () => {
 });
 
 
+describe('POST /tezos/nextNonce', () => {
+    it('should get a nonce value for a succesful query', async () => {
+        const res = await request(gatewayApp)
+            .post('/tezos/nextNonce')
+            .send({
+                chain: 'tezos',
+                network: 'mainnet',
+                address: 'tz1QcqXfKyweGoGt8aeva4uNRPwY9b83CuJm',
+            });
+        expect(res.statusCode).toEqual(200);
+        expect(res.body.nonce).toBeDefined();
+    });
+});
+
 describe('POST /tezos/nonce', () => {
     it('should get a nonce value for a succesful query', async () => {
         const res = await request(gatewayApp)
@@ -34,7 +48,7 @@ describe('POST /tezos/balances', () => {
                 chain: 'tezos',
                 network: 'mainnet',
                 address: 'tz1burnburnburnburnburnburnburjAYjjX',
-                tokenSymbols: ['CTEZ', 'USDS'],
+                tokenSymbols: ['CTEZ', 'USDT', 'XTZ'],
             })
             .set('Accept', 'application/json')
         expect(res.body.balances).toBeDefined();
@@ -64,8 +78,8 @@ describe('POST /tezos/allowances', () => {
                 chain: 'tezos',
                 network: 'mainnet',
                 address: 'tz1TGu6TN5GSez2ndXXeDX6LgUDvLzPLqgYV',
-                spender: 'tz1burnburnburnburnburnburnburjAYjjX',
-                tokenSymbols: ['CTEZ', 'USDS']
+                spender: 'plenty',
+                tokenSymbols: ['CTEZ', 'USDT']
             });
         expect(res.statusCode).toEqual(200);
         expect(res.body.approvals).toBeDefined();

@@ -29,7 +29,7 @@ describe('Tezos API', () => {
         decimals: "6",
         name: "token",
         symbol: "token",
-        standard: "fa1.2",
+        standard: "FA1.2",
         tokenId: "tokenId",
       };
       const tezos = {
@@ -52,7 +52,7 @@ describe('Tezos API', () => {
         decimals: "6",
         name: "token",
         symbol: "token",
-        standard: "fa1.2",
+        standard: "FA1.2",
         tokenId: "tokenId",
       };
 
@@ -96,6 +96,14 @@ describe('Tezos API', () => {
       const tezosish = {
         chain: 'tezos',
         getCurrentBlockNumber: jest.fn().mockReturnValue(500),
+        getTransaction: jest.fn().mockReturnValue([
+          {
+            gasUsed: 1000,
+          },
+          {
+            gasUsed: 2000,
+          }
+        ]),
         getPendingTransactions: jest.fn().mockReturnValue({
           applied: [
             {
@@ -130,6 +138,10 @@ describe('Tezos API', () => {
         fee: '10000',
         gas_limit: '1000',
         storage_limit: '1000',
+      });
+      expect(res.txReceipt).toEqual({
+        gasUsed: 3000,
+        status: 1,
       });
     });
 
@@ -185,7 +197,7 @@ describe('Tezos API', () => {
       expect(res.txData).toBeNull();
     });
 
-    it('should return txStatus 4 for a refused transaction', async () => {
+    it('should return txStatus 3 for a refused transaction', async () => {
       const tezosish = {
         chain: 'tezos',
         getCurrentBlockNumber: jest.fn().mockReturnValue(500),
@@ -207,7 +219,7 @@ describe('Tezos API', () => {
       expect(res.currentBlock).toEqual(500);
       expect(res.timestamp).toBeDefined();
       expect(res.txHash).toEqual('txHash1');
-      expect(res.txStatus).toEqual(4);
+      expect(res.txStatus).toEqual(3);
       expect(res.txData).toBeNull();
     });
 
@@ -233,7 +245,7 @@ describe('Tezos API', () => {
       expect(res.currentBlock).toEqual(500);
       expect(res.timestamp).toBeDefined();
       expect(res.txHash).toEqual('txHash1');
-      expect(res.txStatus).toEqual(5);
+      expect(res.txStatus).toEqual(0);
       expect(res.txData).toBeNull();
     });
   });
@@ -245,7 +257,7 @@ describe('Tezos API', () => {
       decimals: "6",
       name: "token",
       symbol: "token",
-      standard: "fa1.2",
+      standard: "FA1.2",
       tokenId: "tokenId",
     };
     const tokenInfoUsds = {
@@ -254,7 +266,7 @@ describe('Tezos API', () => {
       decimals: "6",
       name: "token",
       symbol: "token",
-      standard: "fa2",
+      standard: "FA2",
       tokenId: "tokenId",
     };
 
@@ -281,7 +293,7 @@ describe('Tezos API', () => {
         latency: expect.any(Number),
         spender: 'spenderAddress',
         approvals: {
-          CTEZ: '0.000000',
+          CTEZ: '1.15792089237316195423570985008687907853269984665640564039457584007913129639935e+77',
           USDS: '10.000000',
         },
       });
@@ -294,10 +306,10 @@ describe('Tezos API', () => {
       getTokenForSymbol: jest.fn().mockReturnValue({
         address: 'tokenAddress',
         chainId: 'tezos',
-        decimals: '6',
+        decimals: 6,
         name: 'token',
         symbol: 'token',
-        standard: 'fa1.2',
+        standard: 'FA1.2',
         tokenId: 1,
       }),
       chainName: 'tezos',
