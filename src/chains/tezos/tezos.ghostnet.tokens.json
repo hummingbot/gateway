@@ -5,7 +5,7 @@
       "symbol": "KUSD",
       "address": "KT1K9gCRgaLRFKTErYt1wVxA3Frb9FjasjTV",
       "decimals": 18,
-      "standard": "fa1.2",
+      "standard": "FA1.2",
       "tokenId": 0
     },
     {
@@ -13,7 +13,7 @@
       "symbol": "USDTZ",
       "address": "KT1LN4LPSqTMS7Sd2CJw4bbDGRkMv2t68Fy9",
       "decimals": 6,
-      "standard": "fa1.2",
+      "standard": "FA1.2",
       "tokenId": 0
     },
     {
@@ -21,7 +21,7 @@
       "symbol": "CTEZ",
       "address": "KT1Ht47XHCYHFYmSpTrHPbQxQaEe3SBYgHaD",
       "decimals": 6,
-      "standard": "fa1.2",
+      "standard": "FA1.2",
       "tokenId": 0
     },
     {
@@ -29,7 +29,7 @@
       "symbol": "PLY",
       "address": "KT1BxKvsSCKTJ9XrmkjQRDQfh5mZBb14ue8D",
       "decimals": 18,
-      "standard": "fa1.2",
+      "standard": "FA1.2",
       "tokenId": 0
     },
     {
@@ -37,7 +37,7 @@
       "symbol": "MATIC.e",
       "address": "KT1Uw1oio434UoWFuZTNKFgt5wTM9tfuf7m7",
       "decimals": 18,
-      "standard": "fa2",
+      "standard": "FA2",
       "tokenId": 4
     },
     {
@@ -45,7 +45,7 @@
       "symbol": "DAI.e",
       "address": "KT1Uw1oio434UoWFuZTNKFgt5wTM9tfuf7m7",
       "decimals": 18,
-      "standard": "fa2",
+      "standard": "FA2",
       "tokenId": 5
     },
     {
@@ -53,7 +53,7 @@
       "symbol": "USDT.e",
       "address": "KT1Uw1oio434UoWFuZTNKFgt5wTM9tfuf7m7",
       "decimals": 6,
-      "standard": "fa2",
+      "standard": "FA2",
       "tokenId": 3
     },
     {
@@ -61,7 +61,7 @@
       "symbol": "USDC.e",
       "address": "KT1Uw1oio434UoWFuZTNKFgt5wTM9tfuf7m7",
       "decimals": 6,
-      "standard": "fa2",
+      "standard": "FA2",
       "tokenId": 2
     }
   ]
