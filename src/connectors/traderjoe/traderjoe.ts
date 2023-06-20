@@ -9,19 +9,22 @@ import {
 } from 'ethers';
 import { isFractionString } from '../../services/validators';
 import { TraderjoeConfig } from './traderjoe.config';
-import routerAbi from './IJoeRouter02.json';
-import {
-  Fetcher,
-  Percent,
-  Router,
-  Token,
-  TokenAmount,
-  Trade,
-  Pair,
-} from '@traderjoe-xyz/sdk';
 import { logger } from '../../services/logger';
 import { Avalanche } from '../../chains/avalanche/avalanche';
 import { ExpectedTrade, Uniswapish } from '../../services/common-interfaces';
+import { Token, TokenAmount, JSBI, Percent } from '@traderjoe-xyz/sdk';
+import {
+  LBRouterV21ABI,
+  PairV2,
+  RouteV2,
+  TradeV2,
+} from '@traderjoe-xyz/sdk-v2';
+import { EVMTxBroadcaster } from '../../chains/ethereum/evm.broadcaster';
+import { createPublicClient, http } from 'viem';
+import { avalanche, avalancheFuji } from 'viem/chains';
+
+const MAX_HOPS = 2;
+const BASES = ['USDT', 'USDC', 'WAVAX'];
 
 export class Traderjoe implements Uniswapish {
   private static _instances: { [name: string]: Traderjoe };
@@ -32,7 +35,9 @@ export class Traderjoe implements Uniswapish {
   private _ttl: number;
   private chainId;
   private tokenList: Record<string, Token> = {};
+  private bases: Token[] = [];
   private _ready: boolean = false;
+  private _client;
 
   private constructor(network: string) {
     const config = TraderjoeConfig.config;
@@ -40,8 +45,12 @@ export class Traderjoe implements Uniswapish {
     this.chainId = this.avalanche.chainId;
     this._router = config.routerAddress(network);
     this._ttl = config.ttl;
-    this._routerAbi = routerAbi.abi;
+    this._routerAbi = LBRouterV21ABI;
     this._gasLimitEstimate = config.gasLimitEstimate;
+    this._client = createPublicClient({
+      chain: network === 'avalanche' ? avalanche : avalancheFuji,
+      transport: http(),
+    });
   }
 
   public static getInstance(chain: string, network: string): Traderjoe {
@@ -70,14 +79,18 @@ export class Traderjoe implements Uniswapish {
       await this.avalanche.init();
     }
 
+    this.bases = [];
+
     for (const token of this.avalanche.storedTokenList) {
-      this.tokenList[token.address] = new Token(
+      const tokenObj = new Token(
         this.chainId,
         token.address,
         token.decimals,
         token.symbol,
         token.name
       );
+      this.tokenList[token.address] = tokenObj;
+      if (BASES.includes(token.symbol)) this.bases.push(tokenObj);
     }
     this._ready = true;
   }
@@ -111,7 +124,7 @@ export class Traderjoe implements Uniswapish {
    * Default time-to-live for swap transactions, in seconds.
    */
   public get ttl(): number {
-    return this._ttl;
+    return Math.floor(new Date().getTime() / 1000) + this._ttl;
   }
 
   /**
@@ -123,7 +136,10 @@ export class Traderjoe implements Uniswapish {
   public getAllowedSlippage(allowedSlippageStr?: string): Percent {
     if (allowedSlippageStr != null && isFractionString(allowedSlippageStr)) {
       const fractionSplit = allowedSlippageStr.split('/');
-      return new Percent(fractionSplit[0], fractionSplit[1]);
+      return new Percent(
+        JSBI.BigInt(fractionSplit[0]),
+        JSBI.BigInt(fractionSplit[1])
+      );
     }
 
     const allowedSlippage = TraderjoeConfig.config.allowedSlippage;
@@ -132,6 +148,20 @@ export class Traderjoe implements Uniswapish {
     throw new Error(
       'Encountered a malformed percent string in the config for ALLOWED_SLIPPAGE.'
     );
+  }
+
+  getRoutes(inputToken: Token, outputToken: Token): RouteV2[] {
+    // get all [Token, Token] combinations
+    const allTokenPairs = PairV2.createAllTokenPairs(
+      inputToken,
+      outputToken,
+      this.bases
+    );
+
+    const allPairs = PairV2.initPairs(allTokenPairs);
+
+    // generates all possible routes to consider
+    return RouteV2.createAllRoutes(allPairs, inputToken, outputToken, MAX_HOPS);
   }
 
   /**
@@ -150,36 +180,40 @@ export class Traderjoe implements Uniswapish {
     amount: BigNumber,
     allowedSlippage?: string
   ): Promise<ExpectedTrade> {
-    const nativeTokenAmount: TokenAmount = new TokenAmount(
-      baseToken,
-      amount.toString()
-    );
+    const amountIn: TokenAmount = new TokenAmount(baseToken, amount.toString());
     logger.info(
       `Fetching pair data for ${baseToken.address}-${quoteToken.address}.`
     );
-    const pair: Pair = await Fetcher.fetchPairData(
-      baseToken,
+    const allRoutes = this.getRoutes(baseToken, quoteToken);
+
+    // generates all possible TradeV2 instances
+    const trades = await TradeV2.getTradesExactIn(
+      allRoutes,
+      amountIn,
       quoteToken,
-      this.avalanche.provider
+      false,
+      false,
+      this._client,
+      this.avalanche.chainId
     );
-    const trades: Trade[] = Trade.bestTradeExactIn(
-      [pair],
-      nativeTokenAmount,
-      quoteToken,
-      { maxHops: 1 }
-    );
+
     if (!trades || trades.length === 0) {
       throw new UniswapishPriceError(
         `priceSwapIn: no trade pair found for ${baseToken} to ${quoteToken}.`
       );
     }
-    logger.info(
-      `Best trade for ${baseToken.address}-${quoteToken.address}: ${trades[0]}`
+    const bestTrade: TradeV2 = <TradeV2>(
+      TradeV2.chooseBestTrade(<TradeV2[]>trades, true)
     );
-    const expectedAmount = trades[0].minimumAmountOut(
+    logger.info(
+      `Best trade for ${baseToken.address}-${
+        quoteToken.address
+      }: ${bestTrade.toLog()}`
+    );
+    const expectedAmount = bestTrade.minimumAmountOut(
       this.getAllowedSlippage(allowedSlippage)
     );
-    return { trade: trades[0], expectedAmount };
+    return { trade: bestTrade, expectedAmount };
   }
 
   /**
@@ -198,37 +232,40 @@ export class Traderjoe implements Uniswapish {
     amount: BigNumber,
     allowedSlippage?: string
   ): Promise<ExpectedTrade> {
-    const nativeTokenAmount: TokenAmount = new TokenAmount(
-      baseToken,
-      amount.toString()
-    );
+    const amountIn: TokenAmount = new TokenAmount(baseToken, amount.toString());
     logger.info(
       `Fetching pair data for ${quoteToken.address}-${baseToken.address}.`
     );
-    const pair: Pair = await Fetcher.fetchPairData(
+    const allRoutes = this.getRoutes(baseToken, quoteToken);
+
+    // generates all possible TradeV2 instances
+    const trades = await TradeV2.getTradesExactOut(
+      allRoutes,
+      amountIn,
       quoteToken,
-      baseToken,
-      this.avalanche.provider
-    );
-    const trades: Trade[] = Trade.bestTradeExactOut(
-      [pair],
-      quoteToken,
-      nativeTokenAmount,
-      { maxHops: 1 }
+      false,
+      false,
+      this._client,
+      this.avalanche.chainId
     );
     if (!trades || trades.length === 0) {
       throw new UniswapishPriceError(
         `priceSwapOut: no trade pair found for ${quoteToken.address} to ${baseToken.address}.`
       );
     }
+    const bestTrade: TradeV2 = <TradeV2>(
+      TradeV2.chooseBestTrade(<TradeV2[]>trades, false)
+    );
     logger.info(
-      `Best trade for ${quoteToken.address}-${baseToken.address}: ${trades[0]}`
+      `Best trade for ${quoteToken.address}-${
+        baseToken.address
+      }: ${bestTrade.toLog()}`
     );
 
-    const expectedAmount = trades[0].maximumAmountIn(
+    const expectedAmount = bestTrade.maximumAmountIn(
       this.getAllowedSlippage(allowedSlippage)
     );
-    return { trade: trades[0], expectedAmount };
+    return { trade: bestTrade, expectedAmount };
   }
 
   /**
@@ -247,7 +284,7 @@ export class Traderjoe implements Uniswapish {
    */
   async executeTrade(
     wallet: Wallet,
-    trade: Trade,
+    trade: TradeV2,
     gasPrice: number,
     traderjoeRouter: string,
     ttl: number,
@@ -258,38 +295,40 @@ export class Traderjoe implements Uniswapish {
     maxPriorityFeePerGas?: BigNumber,
     allowedSlippage?: string
   ): Promise<Transaction> {
-    const result = Router.swapCallParameters(trade, {
-      ttl,
+    const result = trade.swapCallParameters({
+      deadline: ttl,
       recipient: wallet.address,
       allowedSlippage: this.getAllowedSlippage(allowedSlippage),
     });
 
     const contract = new Contract(traderjoeRouter, abi, wallet);
-    return this.avalanche.nonceManager.provideNonce(
-      nonce,
-      wallet.address,
-      async (nextNonce) => {
-        let tx;
-        if (maxFeePerGas || maxPriorityFeePerGas) {
-          tx = await contract[result.methodName](...result.args, {
-            gasLimit: gasLimit,
-            value: result.value,
-            nonce: nextNonce,
-            maxFeePerGas,
-            maxPriorityFeePerGas,
-          });
-        } else {
-          tx = await contract[result.methodName](...result.args, {
-            gasPrice: (gasPrice * 1e9).toFixed(0),
-            gasLimit: gasLimit.toFixed(0),
-            value: result.value,
-            nonce: nextNonce,
-          });
+    let txData;
+    if (maxFeePerGas || maxPriorityFeePerGas) {
+      txData = await contract.populateTransaction[result.methodName](
+        ...result.args,
+        {
+          gasLimit: gasLimit,
+          value: result.value,
+          maxFeePerGas,
+          maxPriorityFeePerGas,
         }
-        logger.info(JSON.stringify(tx));
+      );
+    } else {
+      txData = await contract.populateTransaction[result.methodName](
+        ...result.args,
+        {
+          gasPrice: (gasPrice * 1e9).toFixed(0),
+          gasLimit: gasLimit.toFixed(0),
+          value: result.value,
+        }
+      );
+    }
+    const tx = await EVMTxBroadcaster.getInstance(
+      this.avalanche,
+      wallet.address
+    ).broadcast(txData, nonce);
+    logger.info(JSON.stringify(tx));
 
-        return tx;
-      }
-    );
+    return tx;
   }
 }
