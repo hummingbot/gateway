@@ -193,12 +193,20 @@ export class TezosBase {
     contractAddress: string,
     ownerAddress: string,
     spender: string,
-    tokenStandard: 'FA2',
+    tokenStandard: 'TEZ' | 'FA1.2' | 'FA2',
     tokenId: number,
     tokenDecimals: number
   ): Promise<TokenValue> {
+    if (spender === 'plenty') {
+      // plenty doesn't need an allowance
+      return { value: constants.MaxUint256, decimals: tokenDecimals };
+    }
+
     let value = BigNumber.from(0);
-    if (tokenStandard === 'FA2' && tokenId !== null) {
+    if (tokenStandard === 'FA1.2') {
+      // TODO: add better support.
+      return { value: BigNumber.from(0), decimals: tokenDecimals };
+    } else if (tokenStandard === 'FA2' && tokenId !== null) {
       // TODO: add better support.
       let isOperator;
       try {

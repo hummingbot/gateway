@@ -39,6 +39,7 @@ import { DexalotCLOB } from '../connectors/dexalot/dexalot';
 import { Algorand } from '../chains/algorand/algorand';
 import { Cosmos } from '../chains/cosmos/cosmos';
 import { Tinyman } from '../connectors/tinyman/tinyman';
+import { Plenty } from '../connectors/plenty/plenty';
 
 export type ChainUnion =
   | Algorand
@@ -138,7 +139,8 @@ export type ConnectorUnion =
   | RefAMMish
   | CLOBish
   | InjectiveClobPerp
-  | Tinyman;
+  | Tinyman
+  | Plenty;
 
 export type Connector<T> = T extends Uniswapish
   ? Uniswapish
@@ -154,6 +156,8 @@ export type Connector<T> = T extends Uniswapish
   ? InjectiveClobPerp
   : T extends Tinyman
   ? Tinyman
+  : T extends Plenty
+  ? Plenty
   : never;
 
 export async function getConnector<T>(
@@ -206,6 +210,8 @@ export async function getConnector<T>(
     connectorInstance = DexalotCLOB.getInstance(network);
   } else if (chain == 'algorand' && connector == 'tinyman') {
     connectorInstance = Tinyman.getInstance(network);
+  } else if (chain === 'tezos' && connector === 'plenty') {
+    connectorInstance = Plenty.getInstance(network);
   } else {
     throw new Error('unsupported chain or connector');
   }

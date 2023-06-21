@@ -19,6 +19,7 @@ import { XsswapConfig } from './xsswap/xsswap.config';
 import { ConnectorsResponse } from './connectors.request';
 import { DexalotCLOBConfig } from './dexalot/dexalot.clob.config';
 import { TinymanConfig } from './tinyman/tinyman.config';
+import { PlentyConfig } from './plenty/plenty.config';
 
 export namespace ConnectorsRoutes {
   export const router = Router();
@@ -151,6 +152,12 @@ export namespace ConnectorsRoutes {
             chain_type: TinymanConfig.config.chainType,
             available_networks: TinymanConfig.config.availableNetworks,
           },
+          {
+            name: 'plenty',
+            trading_type: PlentyConfig.config.tradingTypes,
+            chain_type: PlentyConfig.config.chainType,
+            available_networks: PlentyConfig.config.availableNetworks,
+          }
         ],
       });
     })
