@@ -117,6 +117,11 @@ export class Ethereum extends EthereumBase implements Ethereumish {
     return this._metricsLogInterval;
   }
 
+  // in place for mocking
+  public get provider() {
+    return super.provider;
+  }
+
   /**
    * Automatically update the prevailing gas price on the network.
    *
