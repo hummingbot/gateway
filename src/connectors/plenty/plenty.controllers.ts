@@ -349,7 +349,6 @@ export function estimateGas(
   const gasPrice: number = tezosish.gasPrice / 10 ** 6;
   const gasLimitTransaction: number = tezosish.gasLimitTransaction;
   const gasLimitEstimate: number = plenty.gasLimitEstimate;
-
   return {
     network: tezosish.chain,
     timestamp: Date.now(),
