@@ -54,7 +54,7 @@ export const calculateTokensOutWrapper = (
         tokenOutConfig,
       );
     } else {
-      if (tokenInConfig.symbol === "XTZ" && tokenOutConfig.symbol === "CTez" && target) {
+      if (tokenInConfig.symbol === "XTZ" && tokenOutConfig.symbol === "CTEZ" && target) {
         outputData = calculateTokensOutTezCtez(
           tokenInSupply,
           tokenOutSupply,
@@ -64,7 +64,7 @@ export const calculateTokensOutWrapper = (
           target,
           tokenInConfig.symbol
         );
-      } else if (tokenInConfig.symbol === "CTez" && tokenOutConfig.symbol === "XTZ" && target) {
+      } else if (tokenInConfig.symbol === "CTEZ" && tokenOutConfig.symbol === "XTZ" && target) {
         outputData = calculateTokensOutTezCtez(
           tokenOutSupply,
           tokenInSupply,
@@ -137,7 +137,7 @@ export const calculateTokensInWrapper = (
         tokenOutConfig
       );
     } else {
-      if (tokenIn === "XTZ" && tokenOut === "CTez" && target) {
+      if (tokenIn === "XTZ" && tokenOut === "CTEZ" && target) {
         outputData = calculateTokensInTezCtez(
           tokenInSupply,
           tokenOutSupply,
@@ -147,7 +147,7 @@ export const calculateTokensInWrapper = (
           target,
           tokenIn
         );
-      } else if (tokenIn === "CTez" && tokenOut === "XTZ" && target) {
+      } else if (tokenIn === "CTEZ" && tokenOut === "XTZ" && target) {
         outputData = calculateTokensInTezCtez(
           tokenOutSupply,
           tokenInSupply,
@@ -405,8 +405,8 @@ export const loadSwapDataWrapper = async (
       swapData = await loadSwapDataVolatile(tezos, dex, fullTokenIn, fullTokenOut);
     } else {
       if (
-        (tokenIn === "XTZ" && tokenOut === "CTez") ||
-        (tokenIn === "CTez" && tokenOut === "XTZ")
+        (tokenIn === "XTZ" && tokenOut === "CTEZ") ||
+        (tokenIn === "CTEZ" && tokenOut === "XTZ")
       ) {
         const ctez = await plenty.ctezContract(tezos);
         swapData = await loadSwapDataTezCtez(tezos, dex, ctez, tokenIn, tokenOut);
