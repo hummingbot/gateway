@@ -1,32 +1,27 @@
+import { BigNumber } from 'bignumber.js';
 import express from 'express';
 import { Express } from 'express-serve-static-core';
 import request from 'supertest';
-import { Ethereum } from '../../../src/chains/ethereum/ethereum';
-import { Uniswap } from '../../../src/connectors/uniswap/uniswap';
 import { AmmRoutes } from '../../../src/amm/amm.routes';
 import { patch, unpatch } from '../../services/patch';
-import { gasCostInEthString } from '../../../src/services/base';
-import { patchEVMNonceManager } from '../../evm.nonce.mock';
+import { Tezos } from '../../../src/chains/tezos/tezos';
+import { Plenty } from '../../../src/connectors/plenty/plenty';
+import * as plentyUtils from '../../../src/connectors/plenty/utils/router';
 let app: Express;
-let ethereum: Ethereum;
-let uniswap: Uniswap;
+let tezos: Tezos;
+let plenty: Plenty;
+
 
 beforeAll(async () => {
   app = express();
   app.use(express.json());
 
-  ethereum = Ethereum.getInstance('goerli');
-  patchEVMNonceManager(ethereum.nonceManager);
-  await ethereum.init();
+  tezos = Tezos.getInstance('mainnet');
+  await tezos.init();
+  plenty = Plenty.getInstance('mainnet');
 
-  uniswap = Uniswap.getInstance('ethereum', 'goerli');
-  await uniswap.init();
 
   app.use('/amm', AmmRoutes.router);
-});
-
-beforeEach(() => {
-  patchEVMNonceManager(ethereum.nonceManager);
 });
 
 afterEach(() => {
@@ -34,204 +29,196 @@ afterEach(() => {
 });
 
 afterAll(async () => {
-  await ethereum.close();
+  await tezos.close();
 });
 
-const address: string = '0xFaA12FD102FE8623C9299c72B03E45107F2772B5';
+const address: string = 'tz1TGu6TN5GSez2ndXXeDX6LgUDvLzPLqgYV';
 
 const patchGetWallet = () => {
-  patch(ethereum, 'getWallet', () => {
+  patch(tezos, 'getWallet', () => {
     return {
-      address: '0xFaA12FD102FE8623C9299c72B03E45107F2772B5',
+      signer: {
+        publicKeyHash: () => 'tz1TGu6TN5GSez2ndXXeDX6LgUDvLzPLqgYV'
+      },
+      estimate: {
+        batch: () => [
+          {
+            totalCost: 100,
+            gasLimit: 100,
+          },
+          {
+            totalCost: 200,
+            gasLimit: 200,
+          }
+        ]
+      }
     };
   });
 };
 
-const patchInit = () => {
-  patch(uniswap, 'init', async () => {
-    return;
-  });
+const patchRouterSwap = () => {
+  patch(plentyUtils, 'routerSwap', () => { });
 };
 
 const patchStoredTokenList = () => {
-  patch(ethereum, 'tokenList', () => {
+  patch(tezos, 'tokenList', () => {
     return [
       {
-        chainId: 42,
-        name: 'WETH',
-        symbol: 'WETH',
-        address: '0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6',
-        decimals: 18,
+        name: "Tezos",
+        symbol: "XTZ",
+        address: null,
+        decimals: 6,
+        standard: "TEZ",
+        tokenId: null
       },
       {
-        chainId: 42,
-        name: 'DAI',
-        symbol: 'DAI',
-        address: '0xdc31Ee1784292379Fbb2964b3B9C4124D8F89C60',
-        decimals: 18,
+        name: "Tether USD",
+        symbol: "USDT",
+        address: "KT1XnTn74bUtxHfDtBmm2bGZAQfhPbvKWR8o",
+        decimals: 6,
+        standard: "FA2",
+        tokenId: 0
       },
     ];
   });
 };
 
 const patchGetTokenBySymbol = () => {
-  patch(ethereum, 'getTokenBySymbol', (symbol: string) => {
-    if (symbol === 'WETH') {
+  patch(tezos, 'getTokenBySymbol', (symbol: string) => {
+    if (symbol === 'XTZ') {
       return {
-        chainId: 42,
-        name: 'WETH',
-        symbol: 'WETH',
-        address: '0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6',
-        decimals: 18,
+        name: "Tezos",
+        symbol: "XTZ",
+        address: null,
+        decimals: 6,
+        standard: "TEZ",
+        tokenId: null
       };
     } else {
       return {
-        chainId: 42,
-        name: 'DAI',
-        symbol: 'DAI',
-        address: '0xdc31Ee1784292379Fbb2964b3B9C4124D8F89C60',
-        decimals: 18,
+        name: "Tether USD",
+        symbol: "USDT",
+        address: "KT1XnTn74bUtxHfDtBmm2bGZAQfhPbvKWR8o",
+        decimals: 6,
+        standard: "FA2",
+        tokenId: 0
       };
     }
   });
 };
 
-const patchGetTokenByAddress = () => {
-  patch(uniswap, 'getTokenByAddress', () => {
-    return {
-      chainId: 42,
-      name: 'WETH',
-      symbol: 'WETH',
-      address: '0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6',
-      decimals: 18,
-    };
-  });
-};
-
 const patchGasPrice = () => {
-  patch(ethereum, 'gasPrice', () => 100);
+  patch(tezos, 'gasPrice', () => 123456);
 };
 
 const patchEstimateBuyTrade = () => {
-  patch(uniswap, 'estimateBuyTrade', () => {
+  patch(plenty, 'estimateBuyTrade', () => {
     return {
       expectedAmount: {
-        toSignificant: () => 100,
+        toString: () => '1',
       },
       trade: {
-        executionPrice: {
-          invert: jest.fn().mockReturnValue({
-            toSignificant: () => 100,
-            toFixed: () => '100',
-          }),
-        },
-      },
+        executionPrice: new BigNumber(1),
+        routeParams: [],
+        amountIn: new BigNumber(1000000),
+      }
     };
   });
 };
 
 const patchEstimateSellTrade = () => {
-  patch(uniswap, 'estimateSellTrade', () => {
+  patch(plenty, 'estimateSellTrade', () => {
     return {
       expectedAmount: {
-        toSignificant: () => 100,
+        toString: () => '1',
       },
       trade: {
-        executionPrice: {
-          toSignificant: () => 100,
-          toFixed: () => '100',
-        },
-      },
+        executionPrice: new BigNumber(1),
+        routeParams: [],
+        amountIn: new BigNumber(1000000),
+      }
     };
   });
 };
 
-const patchGetNonce = () => {
-  patch(ethereum.nonceManager, 'getNonce', () => 21);
-};
-
 const patchExecuteTrade = () => {
-  patch(uniswap, 'executeTrade', () => {
-    return { nonce: 21, hash: '000000000000000' };
+  patch(plenty, 'executeTrade', () => {
+    return { nonce: 21, hash: '000000000000000', operations: [{ counter: 21 }] };
   });
 };
 
 describe('POST /amm/price', () => {
   it('should return 200 for BUY', async () => {
     patchGetWallet();
-    patchInit();
     patchStoredTokenList();
     patchGetTokenBySymbol();
-    patchGetTokenByAddress();
     patchGasPrice();
     patchEstimateBuyTrade();
-    patchGetNonce();
     patchExecuteTrade();
+    patchRouterSwap();
 
     await request(app)
       .post(`/amm/price`)
       .send({
-        chain: 'ethereum',
-        network: 'goerli',
-        connector: 'uniswap',
-        quote: 'DAI',
-        base: 'WETH',
-        amount: '10000',
+        chain: 'tezos',
+        network: 'mainnet',
+        connector: 'plenty',
+        quote: 'USDT',
+        base: 'XTZ',
+        amount: '1',
         side: 'BUY',
       })
       .set('Accept', 'application/json')
       .expect(200)
       .then((res: any) => {
-        expect(res.body.amount).toEqual('10000.000000000000000000');
-        expect(res.body.rawAmount).toEqual('10000000000000000000000');
+        expect(res.body.amount).toEqual('1.000000');
+        expect(res.body.rawAmount).toEqual('1000000');
       });
   });
 
   it('should return 200 for SELL', async () => {
     patchGetWallet();
-    patchInit();
     patchStoredTokenList();
     patchGetTokenBySymbol();
-    patchGetTokenByAddress();
     patchGasPrice();
     patchEstimateSellTrade();
-    patchGetNonce();
     patchExecuteTrade();
+    patchRouterSwap();
 
     await request(app)
       .post(`/amm/price`)
       .send({
-        chain: 'ethereum',
-        network: 'goerli',
-        connector: 'uniswap',
-        quote: 'DAI',
-        base: 'WETH',
-        amount: '10000',
+        chain: 'tezos',
+        network: 'mainnet',
+        connector: 'plenty',
+        quote: 'USDT',
+        base: 'XTZ',
+        amount: '1',
         side: 'SELL',
       })
       .set('Accept', 'application/json')
       .expect(200)
       .then((res: any) => {
-        expect(res.body.amount).toEqual('10000.000000000000000000');
-        expect(res.body.rawAmount).toEqual('10000000000000000000000');
+        expect(res.body.amount).toEqual('1.000000');
+        expect(res.body.rawAmount).toEqual('1000000');
       });
   });
 
   it('should return 500 for unrecognized quote symbol', async () => {
     patchGetWallet();
-    patchInit();
     patchStoredTokenList();
     patchGetTokenBySymbol();
+    patchEstimateSellTrade();
 
     await request(app)
       .post(`/amm/price`)
       .send({
-        chain: 'ethereum',
-        network: 'goerli',
-        connector: 'uniswap',
-        quote: 'DOGE',
-        base: 'WETH',
-        amount: '10000',
+        chain: 'tezos',
+        network: 'mainnet',
+        connector: 'plenty',
+        quote: 'CTEZ',
+        base: 'XTZ',
+        amount: '1',
         side: 'SELL',
       })
       .set('Accept', 'application/json')
@@ -240,20 +227,19 @@ describe('POST /amm/price', () => {
 
   it('should return 500 for unrecognized base symbol', async () => {
     patchGetWallet();
-    patchInit();
     patchStoredTokenList();
     patchGetTokenBySymbol();
-    patchGetTokenByAddress();
+    patchEstimateSellTrade();
 
     await request(app)
       .post(`/amm/price`)
       .send({
-        chain: 'ethereum',
-        network: 'goerli',
-        connector: 'uniswap',
-        quote: 'DAI',
-        base: 'SHIBA',
-        amount: '10000',
+        chain: 'tezos',
+        network: 'mainnet',
+        connector: 'plenty',
+        quote: 'USDT',
+        base: 'CTEZ',
+        amount: '1',
         side: 'SELL',
       })
       .set('Accept', 'application/json')
@@ -262,20 +248,19 @@ describe('POST /amm/price', () => {
 
   it('should return 500 for unrecognized base symbol with decimals in the amount and SELL', async () => {
     patchGetWallet();
-    patchInit();
     patchStoredTokenList();
     patchGetTokenBySymbol();
-    patchGetTokenByAddress();
+    patchEstimateSellTrade();
 
     await request(app)
       .post(`/amm/price`)
       .send({
-        chain: 'ethereum',
-        network: 'goerli',
-        connector: 'uniswap',
-        quote: 'DAI',
-        base: 'SHIBA',
-        amount: '10.000',
+        chain: 'tezos',
+        network: 'mainnet',
+        connector: 'plenty',
+        quote: 'USDT',
+        base: 'XTZ',
+        amount: '1.000',
         side: 'SELL',
       })
       .set('Accept', 'application/json')
@@ -284,45 +269,44 @@ describe('POST /amm/price', () => {
 
   it('should return 500 for unrecognized base symbol with decimals in the amount and BUY', async () => {
     patchGetWallet();
-    patchInit();
     patchStoredTokenList();
     patchGetTokenBySymbol();
-    patchGetTokenByAddress();
+    patchEstimateBuyTrade();
 
     await request(app)
       .post(`/amm/price`)
       .send({
-        chain: 'ethereum',
-        network: 'goerli',
-        connector: 'uniswap',
-        quote: 'DAI',
-        base: 'SHIBA',
-        amount: '10.000',
+        chain: 'tezos',
+        network: 'mainnet',
+        connector: 'plenty',
+        quote: 'USDT',
+        base: 'CTEZ',
+        amount: '1.000',
         side: 'BUY',
       })
       .set('Accept', 'application/json')
       .expect(500);
   });
 
-  it('should return 500 when the priceSwapIn operation fails', async () => {
+  it('should return 500 when the routerSwap operation fails', async () => {
     patchGetWallet();
-    patchInit();
     patchStoredTokenList();
     patchGetTokenBySymbol();
-    patchGetTokenByAddress();
-    patch(uniswap, 'priceSwapIn', () => {
+    patchEstimateSellTrade();
+
+    patch(plenty, 'routerSwap', () => {
       return 'error';
     });
 
     await request(app)
       .post(`/amm/price`)
       .send({
-        chain: 'ethereum',
-        network: 'goerli',
-        connector: 'uniswap',
-        quote: 'DOGE',
-        base: 'WETH',
-        amount: '10000',
+        chain: 'tezos',
+        network: 'mainnet',
+        connector: 'plenty',
+        quote: 'USDT',
+        base: 'XTZ',
+        amount: '1',
         side: 'SELL',
       })
       .set('Accept', 'application/json')
@@ -331,23 +315,23 @@ describe('POST /amm/price', () => {
 
   it('should return 500 when the priceSwapOut operation fails', async () => {
     patchGetWallet();
-    patchInit();
     patchStoredTokenList();
     patchGetTokenBySymbol();
-    patchGetTokenByAddress();
-    patch(uniswap, 'priceSwapOut', () => {
+    patchEstimateBuyTrade();
+
+    patch(plenty, 'priceSwapOut', () => {
       return 'error';
     });
 
     await request(app)
       .post(`/amm/price`)
       .send({
-        chain: 'ethereum',
-        network: 'goerli',
-        connector: 'uniswap',
-        quote: 'DOGE',
-        base: 'WETH',
-        amount: '10000',
+        chain: 'tezos',
+        network: 'mainnet',
+        connector: 'plenty',
+        quote: 'USDT',
+        base: 'XTZ',
+        amount: '1',
         side: 'BUY',
       })
       .set('Accept', 'application/json')
@@ -358,29 +342,27 @@ describe('POST /amm/price', () => {
 describe('POST /amm/trade', () => {
   const patchForBuy = () => {
     patchGetWallet();
-    patchInit();
     patchStoredTokenList();
     patchGetTokenBySymbol();
-    patchGetTokenByAddress();
     patchGasPrice();
     patchEstimateBuyTrade();
-    patchGetNonce();
     patchExecuteTrade();
+    patchRouterSwap();
   };
+
   it('should return 200 for BUY', async () => {
     patchForBuy();
     await request(app)
       .post(`/amm/trade`)
       .send({
-        chain: 'ethereum',
-        network: 'goerli',
-        connector: 'uniswap',
-        quote: 'DAI',
-        base: 'WETH',
-        amount: '10000',
+        chain: 'tezos',
+        network: 'mainnet',
+        connector: 'plenty',
+        quote: 'USDT',
+        base: 'XTZ',
+        amount: '1',
         address,
         side: 'BUY',
-        nonce: 21,
       })
       .set('Accept', 'application/json')
       .expect(200)
@@ -389,97 +371,35 @@ describe('POST /amm/trade', () => {
       });
   });
 
-  it('should return 200 for BUY without nonce parameter', async () => {
-    patchForBuy();
-    await request(app)
-      .post(`/amm/trade`)
-      .send({
-        chain: 'ethereum',
-        network: 'goerli',
-        connector: 'uniswap',
-        quote: 'DAI',
-        base: 'WETH',
-        amount: '10000',
-        address,
-        side: 'BUY',
-      })
-      .set('Accept', 'application/json')
-      .expect(200);
-  });
-
-  it('should return 200 for BUY with maxFeePerGas and maxPriorityFeePerGas', async () => {
-    patchForBuy();
-    await request(app)
-      .post(`/amm/trade`)
-      .send({
-        chain: 'ethereum',
-        network: 'goerli',
-        connector: 'uniswap',
-        quote: 'DAI',
-        base: 'WETH',
-        amount: '10000',
-        address,
-        side: 'BUY',
-        nonce: 21,
-        maxFeePerGas: '5000000000',
-        maxPriorityFeePerGas: '5000000000',
-      })
-      .set('Accept', 'application/json')
-      .expect(200);
-  });
-
   const patchForSell = () => {
     patchGetWallet();
-    patchInit();
     patchStoredTokenList();
     patchGetTokenBySymbol();
-    patchGetTokenByAddress();
     patchGasPrice();
     patchEstimateSellTrade();
-    patchGetNonce();
     patchExecuteTrade();
+    patchRouterSwap();
   };
+
   it('should return 200 for SELL', async () => {
     patchForSell();
     await request(app)
       .post(`/amm/trade`)
       .send({
-        chain: 'ethereum',
-        network: 'goerli',
-        connector: 'uniswap',
-        quote: 'DAI',
-        base: 'WETH',
-        amount: '10000',
+        chain: 'tezos',
+        network: 'mainnet',
+        connector: 'plenty',
+        quote: 'USDT',
+        base: 'XTZ',
+        amount: '1',
         address,
         side: 'SELL',
-        nonce: 21,
       })
       .set('Accept', 'application/json')
       .expect(200)
       .then((res: any) => {
         expect(res.body.nonce).toEqual(21);
       });
-  });
-
-  it('should return 200 for SELL  with maxFeePerGas and maxPriorityFeePerGas', async () => {
-    patchForSell();
-    await request(app)
-      .post(`/amm/trade`)
-      .send({
-        chain: 'ethereum',
-        network: 'goerli',
-        connector: 'uniswap',
-        quote: 'DAI',
-        base: 'WETH',
-        amount: '10000',
-        address,
-        side: 'SELL',
-        nonce: 21,
-        maxFeePerGas: '5000000000',
-        maxPriorityFeePerGas: '5000000000',
-      })
-      .set('Accept', 'application/json')
-      .expect(200);
   });
 
   it('should return 200 for SELL with limitPrice', async () => {
@@ -487,16 +407,15 @@ describe('POST /amm/trade', () => {
     await request(app)
       .post(`/amm/trade`)
       .send({
-        chain: 'ethereum',
-        network: 'goerli',
-        connector: 'uniswap',
-        quote: 'DAI',
-        base: 'WETH',
-        amount: '10000',
+        chain: 'tezos',
+        network: 'mainnet',
+        connector: 'plenty',
+        quote: 'USDT',
+        base: 'XTZ',
+        amount: '1',
         address,
         side: 'SELL',
-        nonce: 21,
-        limitPrice: '9',
+        limitPrice: '1',
       })
       .set('Accept', 'application/json')
       .expect(200);
@@ -507,55 +426,52 @@ describe('POST /amm/trade', () => {
     await request(app)
       .post(`/amm/trade`)
       .send({
-        chain: 'ethereum',
-        network: 'goerli',
-        connector: 'uniswap',
-        quote: 'DAI',
-        base: 'WETH',
-        amount: '10000',
+        chain: 'tezos',
+        network: 'mainnet',
+        connector: 'plenty',
+        quote: 'USDT',
+        base: 'XTZ',
+        amount: '1',
         address,
         side: 'BUY',
-        nonce: 21,
         limitPrice: '999999999999999999999',
       })
       .set('Accept', 'application/json')
       .expect(200);
   });
 
-  it('should return 500 for BUY with price smaller than limitPrice', async () => {
+  it('should return 500 for BUY with price greater than limitPrice', async () => {
     patchForBuy();
     await request(app)
       .post(`/amm/trade`)
       .send({
-        chain: 'ethereum',
-        network: 'goerli',
-        connector: 'uniswap',
-        quote: 'DAI',
-        base: 'WETH',
-        amount: '10000',
+        chain: 'tezos',
+        network: 'mainnet',
+        connector: 'plenty',
+        quote: 'USDT',
+        base: 'XTZ',
+        amount: '1',
         address,
         side: 'BUY',
-        nonce: 21,
-        limitPrice: '9',
+        limitPrice: '0.9',
       })
       .set('Accept', 'application/json')
       .expect(500);
   });
 
-  it('should return 500 for SELL with price higher than limitPrice', async () => {
+  it('should return 500 for SELL with price lower than limitPrice', async () => {
     patchForSell();
     await request(app)
       .post(`/amm/trade`)
       .send({
-        chain: 'ethereum',
-        network: 'goerli',
-        connector: 'uniswap',
-        quote: 'DAI',
-        base: 'WETH',
-        amount: '10000',
+        chain: 'tezos',
+        network: 'mainnet',
+        connector: 'plenty',
+        quote: 'USDT',
+        base: 'XTZ',
+        amount: '1',
         address,
         side: 'SELL',
-        nonce: 21,
         limitPrice: '99999999999',
       })
       .set('Accept', 'application/json')
@@ -563,44 +479,41 @@ describe('POST /amm/trade', () => {
   });
 
   it('should return 404 when parameters are incorrect', async () => {
-    patchInit();
     await request(app)
       .post(`/amm/trade`)
       .send({
-        chain: 'ethereum',
-        network: 'goerli',
-        connector: 'uniswap',
-        quote: 'DAI',
-        base: 'WETH',
-        amount: 10000,
+        chain: 'tezos',
+        network: 'mainnet',
+        connector: 'plenty',
+        quote: 'USDT',
+        base: 'XTZ',
+        amount: 1,
         address: 'da8',
         side: 'comprar',
       })
       .set('Accept', 'application/json')
       .expect(404);
   });
-  it('should return 500 when the priceSwapIn operation fails', async () => {
+
+  it('should return 500 when the routerSwap operation fails', async () => {
     patchGetWallet();
-    patchInit();
     patchStoredTokenList();
     patchGetTokenBySymbol();
-    patchGetTokenByAddress();
-    patch(uniswap, 'priceSwapIn', () => {
+    patch(plenty, 'routerSwap', () => {
       return 'error';
     });
 
     await request(app)
       .post(`/amm/trade`)
       .send({
-        chain: 'ethereum',
-        network: 'goerli',
-        connector: 'uniswap',
-        quote: 'DAI',
-        base: 'WETH',
-        amount: '10000',
+        chain: 'tezos',
+        network: 'mainnet',
+        connector: 'plenty',
+        quote: 'USDT',
+        base: 'XTZ',
+        amount: '1',
         address,
         side: 'SELL',
-        nonce: 21,
         maxFeePerGas: '5000000000',
         maxPriorityFeePerGas: '5000000000',
       })
@@ -610,26 +523,23 @@ describe('POST /amm/trade', () => {
 
   it('should return 500 when the priceSwapOut operation fails', async () => {
     patchGetWallet();
-    patchInit();
     patchStoredTokenList();
     patchGetTokenBySymbol();
-    patchGetTokenByAddress();
-    patch(uniswap, 'priceSwapOut', () => {
+    patch(plenty, 'priceSwapOut', () => {
       return 'error';
     });
 
     await request(app)
       .post(`/amm/trade`)
       .send({
-        chain: 'ethereum',
-        network: 'goerli',
-        connector: 'uniswap',
-        quote: 'DAI',
-        base: 'WETH',
-        amount: '10000',
+        chain: 'tezos',
+        network: 'mainnet',
+        connector: 'plenty',
+        quote: 'USDT',
+        base: 'XTZ',
+        amount: '1',
         address,
         side: 'BUY',
-        nonce: 21,
         maxFeePerGas: '5000000000',
         maxPriorityFeePerGas: '5000000000',
       })
@@ -640,36 +550,32 @@ describe('POST /amm/trade', () => {
 
 describe('POST /amm/estimateGas', () => {
   it('should return 200 for valid connector', async () => {
-    patchInit();
     patchGasPrice();
 
     await request(app)
       .post('/amm/estimateGas')
       .send({
-        chain: 'ethereum',
-        network: 'goerli',
-        connector: 'uniswap',
+        chain: 'tezos',
+        network: 'mainnet',
+        connector: 'plenty',
       })
       .set('Accept', 'application/json')
       .expect(200)
       .then((res: any) => {
-        expect(res.body.network).toEqual('goerli');
-        expect(res.body.gasPrice).toEqual(100);
-        expect(res.body.gasCost).toEqual(
-          gasCostInEthString(100, uniswap.gasLimitEstimate)
-        );
+        expect(res.body.network).toEqual('mainnet');
+        expect(res.body.gasPrice).toEqual(0.123456);
+        expect(res.body.gasCost).toEqual('0.001852');
       });
   });
 
   it('should return 500 for invalid connector', async () => {
-    patchInit();
     patchGasPrice();
 
     await request(app)
       .post('/amm/estimateGas')
       .send({
-        chain: 'ethereum',
-        network: 'goerli',
+        chain: 'tezos',
+        network: 'mainnet',
         connector: 'pangolin',
       })
       .set('Accept', 'application/json')
