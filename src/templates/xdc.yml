@@ -4,13 +4,13 @@ networks:
     chainID: 50
     nodeURL: https://rpc.xinfin.network
     tokenListType: 'FILE'
-    tokenListSource: 'src/chains/xdc/xdc_tokens_xinfin.json'
+    tokenListSource: '/home/gateway/conf/lists/xdc_tokens_xinfin.json'
     nativeCurrencySymbol: 'XDC'
   apothem:
     chainID: 51
     nodeURL: https://rpc.apothem.network
     tokenListType: 'FILE'
-    tokenListSource: 'src/chains/xdc/xdc_tokens_apothem.json'
+    tokenListSource: '/home/gateway/conf/lists/xdc_tokens_apothem.json'
     nativeCurrencySymbol: 'XDC'
 
 manualGasPrice: 1
