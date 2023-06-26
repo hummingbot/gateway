@@ -1,4 +1,6 @@
 import { InflightOrders, OrderLocks } from './xrpl.types';
+import { BookOffer, dropsToXrp } from 'xrpl';
+import { XRPL } from '../../chains/xrpl/xrpl';
 
 export class OrderMutexManager {
   private locks: OrderLocks = {};
@@ -55,4 +57,58 @@ export class OrderMutexManager {
   isLocked(hash: number) {
     return this.locks[hash];
   }
+}
+
+export function getTakerGetsAmount(offer: BookOffer): string {
+  if (typeof offer.TakerGets === 'string') {
+    return dropsToXrp(offer.TakerGets);
+  }
+
+  return offer.TakerGets.value;
+}
+
+export function getTakerPaysAmount(offer: BookOffer): string {
+  if (typeof offer.TakerPays === 'string') {
+    return dropsToXrp(offer.TakerPays);
+  }
+
+  return offer.TakerPays.value;
+}
+
+export function getTakerGetsFundedAmount(offer: BookOffer): string {
+  if (typeof offer.taker_gets_funded === 'string') {
+    return dropsToXrp(offer.taker_gets_funded);
+  }
+
+  if (!offer.taker_gets_funded) {
+    return '0';
+  }
+
+  return offer.taker_gets_funded.value;
+}
+
+export function getTakerPaysFundedAmount(offer: BookOffer): string {
+  if (typeof offer.taker_pays_funded === 'string') {
+    return dropsToXrp(offer.taker_pays_funded);
+  }
+
+  if (!offer.taker_pays_funded) {
+    return '0';
+  }
+
+  return offer.taker_pays_funded.value;
+}
+
+export async function getsSequenceNumberFromTxn(
+  network: string,
+  TxnHash: string
+): Promise<number | undefined> {
+  const xrpl = XRPL.getInstance(network);
+  const txn = await xrpl.getTransaction(TxnHash);
+
+  if (txn) {
+    return txn.result.Sequence;
+  }
+
+  return undefined;
 }

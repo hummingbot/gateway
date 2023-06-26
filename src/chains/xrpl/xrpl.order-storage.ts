@@ -15,7 +15,18 @@ export class XRPLOrderStorage extends ReferenceCountingCloseable {
   }
 
   public async init(): Promise<void> {
-    await this.localStorage.init();
+    try {
+      await this.localStorage.init();
+    } catch (error) {
+      console.log(
+        '🪧 -> file: xrpl.order-storage.ts:22 -> XRPLOrderStorage -> init -> error:',
+        error
+      );
+    }
+  }
+
+  public storageStatus(): string {
+    return this.localStorage.dbStatus;
   }
 
   public async saveOrder(
@@ -46,8 +57,16 @@ export class XRPLOrderStorage extends ReferenceCountingCloseable {
     network: string,
     walletAddress: string
   ): Promise<Record<string, Order>> {
+    console.log(
+      '🪧 -> file: xrpl.order-storage.ts:60 -> XRPLOrderStorage -> walletAddress:',
+      walletAddress
+    );
     return this.localStorage.get((key: string, value: string) => {
       const splitKey = key.split('/');
+      console.log(
+        '🪧 -> file: xrpl.order-storage.ts:62 -> XRPLOrderStorage -> returnthis.localStorage.get -> splitKey:',
+        splitKey
+      );
       if (
         splitKey.length === 4 &&
         splitKey[0] === chain &&

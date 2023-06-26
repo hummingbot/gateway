@@ -3,7 +3,7 @@
     "id": 1,
     "marketId": "SOLO-XRP",
     "baseIssuer": "rsoLo2S1kiGeCcn6hCUXVrCpGMWLrRrLZz",
-    "quoteIssuer": "XRP",
+    "quoteIssuer": "",
     "baseTokenID": 31,
     "quoteTokenID": 0
   },
@@ -19,7 +19,7 @@
     "id": 3,
     "marketId": "USDC-XRP",
     "baseIssuer": "rcEGREd8NmkKRE8GE424sksyt1tJVFZwu",
-    "quoteIssuer": "XRP",
+    "quoteIssuer": "",
     "baseTokenID": 18465,
     "quoteTokenID": 0
   },
@@ -35,7 +35,7 @@
     "id": 5,
     "marketId": "BTC-XRP",
     "baseIssuer": "rchGBxcD1A1C2tdxF6papQYZ8kjRKMYcL",
-    "quoteIssuer": "XRP",
+    "quoteIssuer": "",
     "baseTokenID": 1381,
     "quoteTokenID": 0
   },

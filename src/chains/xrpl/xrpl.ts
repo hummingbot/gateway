@@ -194,6 +194,7 @@ export class XRPL implements XRPLish {
       await this.loadTokens(this._tokenListSource, this._tokenListType);
       await this.loadMarkets(this._marketListSource, this._marketListType);
       await this.getFee();
+      await this._orderStorage.init();
       this._ready = true;
       this.initializing = false;
     }
@@ -205,9 +206,13 @@ export class XRPL implements XRPLish {
   ): Promise<void> {
     this.tokenList = await this.getTokenList(tokenListSource, tokenListType);
     if (this.tokenList) {
-      this.tokenList.forEach((token: TokenInfo) =>
-        this._tokenMap[token.code].push(token)
-      );
+      this.tokenList.forEach((token: TokenInfo) => {
+        if (!this._tokenMap[token.code]) {
+          this._tokenMap[token.code] = [];
+        }
+
+        this._tokenMap[token.code].push(token);
+      });
     }
   }
 
@@ -220,9 +225,13 @@ export class XRPL implements XRPLish {
       marketListType
     );
     if (this.marketList) {
-      this.marketList.forEach((market: MarketInfo) =>
-        this._marketMap[market.marketId].push(market)
-      );
+      this.marketList.forEach((market: MarketInfo) => {
+        if (!this._marketMap[market.marketId]) {
+          this._marketMap[market.marketId] = [];
+        }
+
+        this._marketMap[market.marketId].push(market);
+      });
     }
   }
 
@@ -247,11 +256,10 @@ export class XRPL implements XRPLish {
   ): Promise<MarketInfo[]> {
     let tokens;
     if (marketListType === 'URL') {
-      ({
-        data: { tokens },
-      } = await axios.get(marketListSource));
+      const resp = await axios.get(marketListSource);
+      tokens = resp.data.tokens;
     } else {
-      ({ tokens } = JSON.parse(await fs.readFile(marketListSource, 'utf8')));
+      tokens = JSON.parse(await fs.readFile(marketListSource, 'utf8'));
     }
     return tokens;
   }
@@ -360,6 +368,10 @@ export class XRPL implements XRPLish {
   }
 
   async ensureConnection() {
+    console.log(
+      '🪧 -> file: xrpl.ts:372 -> XRPL -> ensureConnection -> isConnected:',
+      this.isConnected()
+    );
     if (!this.isConnected()) {
       await this._client.connect();
     }

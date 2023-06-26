@@ -22,6 +22,7 @@
     "test:cov": "NODE_OPTIONS=--max_old_space_size=10240 jest --runInBand --coverage ./test/",
     "test:scripts": "jest -i --verbose ./test-scripts/*.test.ts",
     "test:xrpl": "jest -i --verbose test/connectors/xrpl/*.test.ts",
+    "test:e2e:xrpl": "jest -i --verbose test/connectors/xrpl/xrpl.e2e.test.ts",
     "test:cov:xrpl": "NODE_OPTIONS=--max_old_space_size=10240 jest --runInBand --coverage ./test/connectors/xrpl/*.test.ts"
   },
   "dependencies": {

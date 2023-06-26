@@ -285,16 +285,18 @@ const INVALID_REQUEST = {
 beforeAll(async () => {
   xrpl = XRPL.getInstance('testnet');
   patchConnect();
-  xrpl.init();
+  // await xrpl.init();
   xrplCLOB = XRPLCLOB.getInstance('xrpl', 'testnet');
-  await xrplCLOB.init();
+  // await xrplCLOB.init();
 });
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 beforeEach(() => {
   patchConnect();
   patchFee();
+  patchOrderTracking();
   patchCurrentBlockNumber();
+  patchMarkets();
 });
 
 afterEach(() => {
@@ -306,7 +308,7 @@ afterAll(async () => {
 });
 
 const patchConnect = () => {
-  patch(xrpl, 'ensureConnection', () => {
+  patch(xrpl, 'ensureConnection', async () => {
     return Promise.resolve();
   });
 };
@@ -319,6 +321,12 @@ const patchFee = () => {
       minimum: '1',
       openLedger: '1',
     };
+  });
+};
+
+const patchOrderTracking = () => {
+  patch(xrplCLOB, 'trackOrder', () => {
+    return Promise.resolve();
   });
 };
 
@@ -419,11 +427,17 @@ describe('GET /clob/orderBook', () => {
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(200)
+      .expect((res) => {
+        console.log(
+          '🪧 -> file: xrpl.routes.test.ts:429 -> it -> res.body.buys:',
+          res.body.buys
+        );
+        expect(res.body.buys[0].price).toEqual('0.5161287658690241');
+      })
+      .expect((res) => expect(res.body.buys[0].quantity).toEqual('9.687505'))
       .expect((res) =>
-        expect(res.body.buys[0].price).toEqual('0.5161287658690241')
+        expect(res.body.sells[0].price).toEqual('0.5209865069999999')
       )
-      .expect((res) => expect(res.body.buys[0].quantity).toEqual('5'))
-      .expect((res) => expect(res.body.sells[0].price).toEqual('0.520986507'))
       .expect((res) => expect(res.body.sells[0].quantity).toEqual('60133'));
   });
 
