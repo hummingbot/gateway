@@ -44,7 +44,7 @@ import { getXRPLConfig } from '../../chains/xrpl/xrpl.config';
 import { isUndefined } from 'mathjs';
 
 // const XRP_FACTOR = 1000000;
-const ORDERBOOK_LIMIT = 10;
+const ORDERBOOK_LIMIT = 100;
 
 export class XRPLCLOB implements CLOBish {
   private static _instances: LRUCache<string, XRPLCLOB>;

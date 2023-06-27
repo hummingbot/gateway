@@ -58,8 +58,8 @@ export class OrderTracker {
     this._inflightOrders = {};
     this._orderMutexManager = new OrderMutexManager(this._inflightOrders);
     this._isTracking = false;
-    // set tracking interval to 10 seconds
-    this._orderTrackingInterval = 10000;
+    // set tracking interval to 1 seconds
+    this._orderTrackingInterval = 1000;
   }
 
   public static getInstance(
@@ -187,7 +187,6 @@ export class OrderTracker {
 
       // Update mutex manager
       this._orderMutexManager.updateOrders(this._inflightOrders);
-
       // Save inflightOrders to DB
       await this.saveInflightOrdersToDB();
 
@@ -430,7 +429,6 @@ export class OrderTracker {
       ? rippleTimeToUnixTime(transaction.transaction.date)
       : 0;
     matchOrder.updatedAtLedgerIndex = transaction.ledger_index ?? 0;
-
     // Find if transaction.transaction.hash already in associatedTxns, if not, then push it
     const foundIndex = matchOrder.associatedTxns.findIndex((hash) => {
       return hash === transaction.transaction.hash;
@@ -647,7 +645,7 @@ export class OrderTracker {
     }
 
     const transformedTx: TransaformedAccountTransaction = {
-      ledger_index: transaction.ledger_index,
+      ledger_index: transaction.tx.ledger_index ?? 0,
       meta: transaction.meta as TransactionMetadata,
       transaction: transaction.tx as Transaction & ResponseOnlyTxInfo,
       tx_blob: transaction.tx_blob,

@@ -368,10 +368,6 @@ export class XRPL implements XRPLish {
   }
 
   async ensureConnection() {
-    console.log(
-      '🪧 -> file: xrpl.ts:372 -> XRPL -> ensureConnection -> isConnected:',
-      this.isConnected()
-    );
     if (!this.isConnected()) {
       await this._client.connect();
     }
