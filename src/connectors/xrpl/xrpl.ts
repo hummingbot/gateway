@@ -432,7 +432,7 @@ export class XRPLCLOB implements CLOBish {
       associatedTxns: [signed.hash],
     };
 
-    this.trackOrder(wallet, order);
+    await this.trackOrder(wallet, order);
 
     return { txHash: signed.hash };
   }
@@ -448,7 +448,6 @@ export class XRPLCLOB implements CLOBish {
     };
 
     const { signed } = await this.submitTxn(offer, wallet);
-    console.log('🪧 -> file: xrpl.ts:451 -> XRPLCLOB -> signed:', signed);
 
     let order = this.getOrder(wallet, req);
 
@@ -475,7 +474,7 @@ export class XRPLCLOB implements CLOBish {
       };
     }
 
-    this.trackOrder(wallet, order);
+    await this.trackOrder(wallet, order);
 
     return { txHash: signed.hash };
   }
@@ -548,14 +547,14 @@ export class XRPLCLOB implements CLOBish {
     return orderTracker.getOrder(parseInt(req.orderId));
   }
 
-  private trackOrder(wallet: Wallet, order: Order) {
+  private async trackOrder(wallet: Wallet, order: Order) {
     const orderTracker = OrderTracker.getInstance(
       this.chain,
       this.network,
       wallet
     );
 
-    orderTracker.addOrder(order);
-    orderTracker.startTracking();
+    await orderTracker.addOrder(order);
+    // orderTracker.startTracking();
   }
 }

@@ -7,6 +7,7 @@ import {
   TransactionStream,
   TransactionMetadata,
   Transaction,
+  dropsToXrp,
 } from 'xrpl';
 import { XRPL } from './xrpl';
 import { getXRPLConfig } from './xrpl.config';
@@ -19,11 +20,14 @@ import {
   TransactionIntent,
   AccountTransaction,
   ResponseOnlyTxInfo,
+  CreatedNode,
+  ModifiedNode,
 } from '../../connectors/xrpl/xrpl.types';
 import { OrderMutexManager } from '../../connectors/xrpl/xrpl.utils';
 import {
   isModifiedNode,
   isDeletedNode,
+  isCreatedNode,
 } from 'xrpl/dist/npm/models/transactions/metadata';
 
 import LRUCache from 'lru-cache';
@@ -43,6 +47,7 @@ export class OrderTracker {
   private _orderMutexManager: OrderMutexManager;
   private _inflightOrders: InflightOrders;
   private _isTracking: boolean;
+  private _isProcessing: boolean;
   private _orderTrackingInterval: number;
 
   public chain: string;
@@ -58,8 +63,10 @@ export class OrderTracker {
     this._inflightOrders = {};
     this._orderMutexManager = new OrderMutexManager(this._inflightOrders);
     this._isTracking = false;
+    this._isProcessing = false;
     // set tracking interval to 1 seconds
     this._orderTrackingInterval = 1000;
+    this.startTracking();
   }
 
   public static getInstance(
@@ -92,8 +99,22 @@ export class OrderTracker {
     return this._isTracking;
   }
 
-  public addOrder(order: Order): void {
+  public async addOrder(order: Order): Promise<void> {
     this._inflightOrders[order.hash] = order;
+
+    // Check if isProcessing is on, if so, wait until it's done
+    while (this._isProcessing) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+
+    // Mark isProcessing as true
+    this._isProcessing = true;
+
+    // save inflightOrders to DB
+    await this.saveInflightOrdersToDB();
+
+    // Mark isProcessing as false
+    this._isProcessing = false;
   }
 
   public getOrder(hash: number): Order | undefined {
@@ -139,6 +160,14 @@ export class OrderTracker {
     const client = this._xrpl.client;
 
     client.on('transaction', async (event) => {
+      // Check if isProcessing is on, if so, wait until it's done
+      while (this._isProcessing) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+
+      // Mark isProcessing as true
+      this._isProcessing = true;
+
       const updatedOrders = await this.processTransactionStream(
         this._inflightOrders,
         event,
@@ -151,6 +180,12 @@ export class OrderTracker {
       });
 
       this._orderMutexManager.updateOrders(this._inflightOrders);
+
+      // Save inflightOrders to DB
+      await this.saveInflightOrdersToDB();
+
+      // Mark isProcessing as false
+      this._isProcessing = false;
     });
 
     await client.request({
@@ -162,17 +197,15 @@ export class OrderTracker {
       // Make sure connection is good
       await this._xrpl.ensureConnection();
 
-      // Check pending inflightOrders
-      const hashes = Object.keys(this._inflightOrders);
-      for (const hash of hashes) {
-        this._inflightOrders[parseInt(hash)] = await this.checkPendingOrder(
-          client,
-          this._inflightOrders[parseInt(hash)],
-          this._orderMutexManager
-        );
+      // Check if isProcessing is on, if so, wait until it's done
+      while (this._isProcessing) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
       }
 
-      // Check open inflightOrders
+      // Mark isProcessing as true
+      this._isProcessing = true;
+
+      // Check inflightOrders
       const updatedOrders = await this.checkOpenOrders(
         this._inflightOrders,
         this._wallet.classicAddress,
@@ -189,6 +222,14 @@ export class OrderTracker {
       this._orderMutexManager.updateOrders(this._inflightOrders);
       // Save inflightOrders to DB
       await this.saveInflightOrdersToDB();
+
+      // Mark isProcessing as false
+      this._isProcessing = false;
+
+      // console.log(
+      //   '🪧 -> file: xrpl.order-tracker.ts:241 -> OrderTracker -> startTracking -> _inflightOrders:',
+      //   this._inflightOrders
+      // );
 
       // Wait for next interval
       await new Promise((resolve) =>
@@ -240,98 +281,6 @@ export class OrderTracker {
     );
   }
 
-  async checkPendingOrder(
-    client: Client,
-    order: Order,
-    omm: OrderMutexManager
-  ): Promise<Order> {
-    // Check if order is canceled
-    // Check if order is open
-    let result: Order = order;
-    const currentLedgerIndex = await client.getLedgerIndex();
-
-    // If order state is not pending open or pending cancel, then return
-    if (
-      order.state !== OrderStatus.PENDING_OPEN &&
-      order.state !== OrderStatus.PENDING_CANCEL
-    ) {
-      return order;
-    }
-
-    // If order currentLedgerIndex is less than or equal than order createdAtLedgerIndex, then return
-    if (currentLedgerIndex <= order.updatedAtLedgerIndex) {
-      return order;
-    }
-
-    // Wait until the order is not locked
-    while (omm.isLocked(order.hash)) {
-      // console.log('Order is locked! Wait for 300ms');
-      await new Promise((resolve) => setTimeout(resolve, 300));
-    }
-
-    // Lock the order
-    omm.lock(order.hash);
-
-    // If order state is pending open, check if order is open
-    if (order.state === OrderStatus.PENDING_OPEN) {
-      const latestTxnResp = await this.getTransaction(
-        client,
-        order.associatedTxns[0] || ''
-      );
-      if (typeof latestTxnResp?.result.meta === 'string') {
-        result = order;
-      } else if (
-        latestTxnResp?.result.meta?.TransactionResult === 'tesSUCCESS'
-      ) {
-        result = {
-          ...order,
-          state: OrderStatus.OPEN,
-          updatedAt: latestTxnResp?.result.date
-            ? rippleTimeToUnixTime(latestTxnResp?.result.date)
-            : 0,
-          updatedAtLedgerIndex: latestTxnResp?.result.ledger_index ?? 0,
-        };
-        // console.log('Order opened!');
-      } else {
-        // Handle other cases here
-        // https://xrpl.org/transaction-results.html
-        result = order;
-      }
-    }
-
-    // If order state is pending cancel, check if order is canceled
-    if (order.state === OrderStatus.PENDING_CANCEL) {
-      const latestTxnResp = await this.getTransaction(
-        client,
-        order.associatedTxns[order.associatedTxns.length - 1] || ''
-      );
-      if (typeof latestTxnResp?.result.meta === 'string') {
-        result = order;
-      } else if (
-        latestTxnResp?.result.meta?.TransactionResult === 'tesSUCCESS'
-      ) {
-        result = {
-          ...order,
-          state: OrderStatus.CANCELED,
-          updatedAt: latestTxnResp?.result.date
-            ? rippleTimeToUnixTime(latestTxnResp?.result.date)
-            : 0,
-          updatedAtLedgerIndex: latestTxnResp?.result.ledger_index ?? 0,
-        };
-        // console.log('Order canceled!');
-      } else {
-        // Handle other cases here
-        // https://xrpl.org/transaction-results.html
-        result = order;
-      }
-    }
-
-    // Release the lock
-    omm.release(order.hash);
-
-    return result;
-  }
-
   async checkOpenOrders(
     openOrders: InflightOrders,
     account: string,
@@ -344,12 +293,16 @@ export class OrderTracker {
     // 3. Process the transactions stack
     // 4. Update the inflightOrders
     const ordersToCheck: InflightOrders = openOrders;
+    console.log(
+      '🪧 -> file: xrpl.order-tracker.ts:296 -> OrderTracker -> BEFORE ordersToCheck:',
+      ordersToCheck
+    );
 
     // 1. Get the minLedgerIndex from the inflightOrders
     const hashes = Object.keys(ordersToCheck);
-    let minLedgerIndex = 0;
+    let minLedgerIndex = await this._xrpl.getCurrentLedgerIndex();
     for (const hash of hashes) {
-      if (ordersToCheck[parseInt(hash)].updatedAtLedgerIndex > minLedgerIndex) {
+      if (ordersToCheck[parseInt(hash)].updatedAtLedgerIndex < minLedgerIndex) {
         minLedgerIndex = ordersToCheck[parseInt(hash)].updatedAtLedgerIndex;
       }
     }
@@ -370,7 +323,10 @@ export class OrderTracker {
       return ordersToCheck;
     }
 
-    for (const tx of txStack.result.transactions) {
+    const transactionStack = txStack.result.transactions;
+    transactionStack.reverse();
+
+    for (const tx of transactionStack) {
       const transformedTx = this.transformAccountTransaction(tx);
 
       if (transformedTx === null) {
@@ -389,6 +345,11 @@ export class OrderTracker {
       });
     }
 
+    console.log(
+      '🪧 -> file: xrpl.order-tracker.ts:296 -> OrderTracker -> AFTER ordersToCheck:',
+      ordersToCheck
+    );
+
     return ordersToCheck;
   }
 
@@ -397,202 +358,396 @@ export class OrderTracker {
     transaction: TransactionStream | TransaformedAccountTransaction,
     omm: OrderMutexManager
   ): Promise<InflightOrders> {
-    const transactionIntent = await this.getTransactionIntentFromStream(
+    // TODO: Extend this function to handle multiple intents
+    const transactionIntents = await this.getTransactionIntentsFromStream(
+      this.wallet.classicAddress,
       transaction
     );
+
     const ordersToCheck = inflightOrders;
     // console.log('Transaction intent: ');
     // console.log(inspect(transactionIntent, { colors: true, depth: null }));
 
-    if (transactionIntent.sequence === undefined) {
-      // console.log('No sequence found!');
+    if (transactionIntents.length === 0) {
+      // console.log('No intent found!');
       return ordersToCheck;
     }
 
-    const matchOrder = ordersToCheck[transactionIntent.sequence];
+    for (const intent of transactionIntents) {
+      if (intent.sequence === undefined) {
+        continue;
+      }
 
-    if (matchOrder === undefined) {
-      // console.log('No match order found!');
-      return ordersToCheck;
-    }
+      const matchOrder = ordersToCheck[intent.sequence];
 
-    // Wait until the order is not locked
-    while (omm.isLocked(matchOrder.hash)) {
-      // console.log('Order is locked! Wait for 300ms');
-      await new Promise((resolve) => setTimeout(resolve, 300));
-    }
+      if (matchOrder === undefined) {
+        // console.log('No match order found!');
+        continue;
+      }
 
-    // Lock the order
-    omm.lock(matchOrder.hash);
+      // Wait until the order is not locked
+      while (omm.isLocked(matchOrder.hash)) {
+        // console.log('Order is locked! Wait for 300ms');
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      }
 
-    matchOrder.updatedAt = transaction.transaction.date
-      ? rippleTimeToUnixTime(transaction.transaction.date)
-      : 0;
-    matchOrder.updatedAtLedgerIndex = transaction.ledger_index ?? 0;
-    // Find if transaction.transaction.hash already in associatedTxns, if not, then push it
-    const foundIndex = matchOrder.associatedTxns.findIndex((hash) => {
-      return hash === transaction.transaction.hash;
-    });
+      // Lock the order
+      omm.lock(matchOrder.hash);
 
-    if (foundIndex === -1) {
-      matchOrder.associatedTxns.push(transaction.transaction.hash ?? 'UNKNOWN');
-    } else {
-      // console.log('Transaction already found!');
-    }
+      matchOrder.updatedAt = transaction.transaction.date
+        ? rippleTimeToUnixTime(transaction.transaction.date)
+        : 0;
+      matchOrder.updatedAtLedgerIndex = transaction.ledger_index ?? 0;
 
-    switch (transactionIntent.type) {
-      case TransactionIntentType.OFFER_CREATE_FINALIZED:
-        // console.log('Offer create finalized!');
-        matchOrder.state = OrderStatus.OPEN;
-        break;
+      // Find if transaction.transaction.hash already in associatedTxns, if not, then push it
+      const foundIndex = matchOrder.associatedTxns.findIndex((hash) => {
+        return hash === intent.tx.transaction.hash;
+      });
 
-      case TransactionIntentType.OFFER_CANCEL_FINALIZED:
-        // console.log('Offer cancel finalized!');
-        matchOrder.state = OrderStatus.CANCELED;
-        break;
+      if (foundIndex === -1) {
+        matchOrder.associatedTxns.push(intent.tx.transaction.hash ?? 'UNKNOWN');
+      } else {
+        // console.log('Transaction already found!');
+      }
 
-      case TransactionIntentType.OFFER_PARTIAL_FILL:
-        // console.log('Offer partial fill!');
-        matchOrder.state = OrderStatus.PARTIALLY_FILLED;
+      let filledAmount = 0.0;
+      let node: CreatedNode | ModifiedNode;
+      let fields: any;
 
-        if (transaction.meta === undefined) {
-          // console.log('No meta found!');
+      switch (intent.type) {
+        case TransactionIntentType.OFFER_CREATE_FINALIZED:
+          // console.log('Offer create finalized!');
+          if (matchOrder.state === OrderStatus.PENDING_OPEN) {
+            matchOrder.state = OrderStatus.OPEN;
+          }
           break;
-        }
 
-        for (const affnode of transaction.meta.AffectedNodes) {
-          if (isModifiedNode(affnode)) {
-            // console.log('Modified node found!');
-            if (affnode.ModifiedNode.LedgerEntryType == 'Offer') {
-              // Usually a ModifiedNode of type Offer indicates a previous Offer that
-              // was partially consumed by this one.
-              if (affnode.ModifiedNode.FinalFields === undefined) {
-                // console.log('No final fields found!');
-                break;
-              }
+        case TransactionIntentType.OFFER_CANCEL_FINALIZED:
+          // console.log('Offer cancel finalized!');
+          matchOrder.state = OrderStatus.CANCELED;
+          break;
 
-              const finalFields = affnode.ModifiedNode.FinalFields as any;
-              let filledAmount = 0.0;
+        case TransactionIntentType.OFFER_PARTIAL_FILL:
+          // console.log('Offer partial fill!');
+          matchOrder.state = OrderStatus.PARTIALLY_FILLED;
 
-              // Update filled amount
-              if (matchOrder.tradeType === 'SELL') {
-                if (typeof finalFields.TakerGets === 'string') {
-                  filledAmount =
-                    parseFloat(matchOrder.amount) -
-                    parseFloat(finalFields.TakerGets as string);
-                } else {
-                  filledAmount =
-                    parseFloat(matchOrder.amount) -
-                    parseFloat(finalFields.TakerGets.value as string);
-                }
-              }
+          if (intent.node === undefined) {
+            // console.log('No node found!');
+            break;
+          }
 
-              if (matchOrder.tradeType === 'BUY') {
-                if (typeof finalFields.TakerPays === 'string') {
-                  filledAmount =
-                    parseFloat(matchOrder.amount) -
-                    parseFloat(finalFields.TakerPays as string);
-                } else {
-                  filledAmount =
-                    parseFloat(matchOrder.amount) -
-                    parseFloat(finalFields.TakerPays.value as string);
-                }
-              }
+          node = intent.node as CreatedNode | ModifiedNode;
 
-              // console.log('Filled amount: ', filledAmount);
-              matchOrder.filledAmount = filledAmount.toString();
-              break;
+          if (isCreatedNode(node)) {
+            fields = node.CreatedNode.NewFields;
+          } else {
+            fields = node.ModifiedNode.FinalFields;
+          }
+
+          // Update filled amount
+          if (matchOrder.tradeType === 'SELL') {
+            if (typeof fields.TakerGets === 'string') {
+              filledAmount =
+                parseFloat(matchOrder.amount) -
+                parseFloat(dropsToXrp(fields.TakerGets as string));
+            } else {
+              filledAmount =
+                parseFloat(matchOrder.amount) -
+                parseFloat(fields.TakerGets.value as string);
             }
           }
-        }
-        break;
 
-      case TransactionIntentType.OFFER_FILL:
-        matchOrder.state = OrderStatus.FILLED;
-        matchOrder.filledAmount = matchOrder.amount;
-        break;
+          if (matchOrder.tradeType === 'BUY') {
+            if (typeof fields.TakerPays === 'string') {
+              filledAmount =
+                parseFloat(matchOrder.amount) -
+                parseFloat(dropsToXrp(fields.TakerPays as string));
+            } else {
+              filledAmount =
+                parseFloat(matchOrder.amount) -
+                parseFloat(fields.TakerPays.value as string);
+            }
+          }
 
-      case TransactionIntentType.UNKNOWN:
-        matchOrder.state = OrderStatus.UNKNOWN;
-        break;
+          // console.log('Filled amount: ', filledAmount);
+          matchOrder.filledAmount = filledAmount.toString();
+          break;
+
+        case TransactionIntentType.OFFER_FILL:
+          matchOrder.state = OrderStatus.FILLED;
+          matchOrder.filledAmount = matchOrder.amount;
+          break;
+
+        case TransactionIntentType.OFFER_EXPIRED_OR_UNFUNDED:
+          matchOrder.state = OrderStatus.OFFER_EXPIRED_OR_UNFUNDED;
+          break;
+
+        case TransactionIntentType.UNKNOWN:
+          matchOrder.state = OrderStatus.UNKNOWN;
+          break;
+      }
+
+      // Check matchOrder value
+      // console.log('Updated matchOrder: ');
+      // console.log(inspect(matchOrder, { colors: true, depth: null }));
+
+      // Update ordersToCheck
+      ordersToCheck[matchOrder.hash] = matchOrder;
+
+      // Release the lock
+      omm.release(matchOrder.hash);
     }
-
-    // Check matchOrder value
-    // console.log('Updated matchOrder: ');
-    // console.log(inspect(matchOrder, { colors: true, depth: null }));
-
-    // Update ordersToCheck
-    ordersToCheck[matchOrder.hash] = matchOrder;
-
-    // Release the lock
-    omm.release(matchOrder.hash);
 
     return ordersToCheck;
   }
 
   // Utility methods
-  async getTransactionIntentFromStream(
+  async getTransactionIntentsFromStream(
+    walletAddress: string,
     transaction: TransactionStream | TransaformedAccountTransaction
-  ): Promise<TransactionIntent> {
+  ): Promise<TransactionIntent[]> {
     const transactionType = transaction.transaction.TransactionType;
+    const intents: TransactionIntent[] = [];
 
     if (transaction.transaction.Sequence === undefined) {
-      return { type: TransactionIntentType.UNKNOWN };
+      return [
+        {
+          type: TransactionIntentType.UNKNOWN,
+          sequence: 0,
+          tx: transaction,
+        },
+      ];
     }
 
     if (transaction.meta === undefined) {
-      return { type: TransactionIntentType.UNKNOWN };
+      return [
+        {
+          type: TransactionIntentType.UNKNOWN,
+          sequence: transaction.transaction.Sequence,
+          tx: transaction,
+        },
+      ];
     }
 
-    switch (transactionType) {
-      case 'OfferCreate':
-        // return { type:  TransactionIntentType.OFFER_CREATE_FINALIZED, hash: transaction.transaction.Sequence };
-        for (const affnode of transaction.meta.AffectedNodes) {
-          if (isModifiedNode(affnode)) {
-            if (affnode.ModifiedNode.LedgerEntryType == 'Offer') {
-              // Usually a ModifiedNode of type Offer indicates a previous Offer that
-              // was partially consumed by this one.
-              if (affnode.ModifiedNode.FinalFields === undefined) {
-                return { type: TransactionIntentType.UNKNOWN };
-              }
+    if (transaction.transaction.Account !== walletAddress) {
+      // console.log('Transaction is not from wallet!');
+      switch (transactionType) {
+        case 'OfferCreate':
+          for (const affnode of transaction.meta.AffectedNodes) {
+            if (isModifiedNode(affnode)) {
+              if (affnode.ModifiedNode.LedgerEntryType == 'Offer') {
+                // Usually a ModifiedNode of type Offer indicates a previous Offer that
+                // was partially consumed by this one.
+                if (affnode.ModifiedNode.FinalFields === undefined) {
+                  intents.push({
+                    type: TransactionIntentType.UNKNOWN,
+                    sequence: transaction.transaction.Sequence,
+                    tx: transaction,
+                    node: affnode,
+                  });
+                }
 
-              return {
-                type: TransactionIntentType.OFFER_PARTIAL_FILL,
-                sequence: affnode.ModifiedNode.FinalFields.Sequence as number,
-              };
-            }
-          } else if (isDeletedNode(affnode)) {
-            if (affnode.DeletedNode.LedgerEntryType == 'Offer') {
-              // The removed Offer may have been fully consumed, or it may have been
-              // found to be expired or unfunded.
-              if (affnode.DeletedNode.FinalFields === undefined) {
-                return { type: TransactionIntentType.UNKNOWN };
-              }
+                const finalFields = affnode.ModifiedNode.FinalFields as any;
 
-              return {
-                type: TransactionIntentType.OFFER_FILL,
-                sequence: affnode.DeletedNode.FinalFields.Sequence as number,
-              };
+                intents.push({
+                  type: TransactionIntentType.OFFER_PARTIAL_FILL,
+                  sequence: finalFields.Sequence as number,
+                  tx: transaction,
+                  node: affnode,
+                });
+              }
+            } else if (isDeletedNode(affnode)) {
+              if (affnode.DeletedNode.LedgerEntryType == 'Offer') {
+                // The removed Offer may have been fully consumed, or it may have been
+                // found to be expired or unfunded.
+                if (affnode.DeletedNode.FinalFields === undefined) {
+                  intents.push({
+                    type: TransactionIntentType.UNKNOWN,
+                    sequence: transaction.transaction.Sequence,
+                    tx: transaction,
+                    node: affnode,
+                  });
+                }
+
+                const finalFields = affnode.DeletedNode.FinalFields as any;
+
+                intents.push({
+                  type: TransactionIntentType.OFFER_FILL,
+                  sequence: finalFields.Sequence as number,
+                  tx: transaction,
+                  node: affnode,
+                });
+              }
             }
-          } else {
-            return {
-              type: TransactionIntentType.OFFER_CREATE_FINALIZED,
-              sequence: transaction.transaction.Sequence,
-            };
           }
-        }
-        break;
+          break;
+      }
+    } else {
+      // console.log('Transaction is from wallet!');
+      let consumedNodeCount = 0;
+      let createNodeCount = 0;
+      let deleteNodeCount = 0;
 
-      case 'OfferCancel':
-        return {
-          type: TransactionIntentType.OFFER_CANCEL_FINALIZED,
-          sequence: transaction.transaction.OfferSequence,
-        };
+      switch (transactionType) {
+        case 'OfferCreate':
+          for (const affnode of transaction.meta.AffectedNodes) {
+            if (isModifiedNode(affnode)) {
+              if (affnode.ModifiedNode.LedgerEntryType == 'Offer') {
+                // Usually a ModifiedNode of type Offer indicates a previous Offer that
+                // was partially consumed by this one.
+
+                if (affnode.ModifiedNode.FinalFields === undefined) {
+                  intents.push({
+                    type: TransactionIntentType.UNKNOWN,
+                    sequence: transaction.transaction.Sequence,
+                    tx: transaction,
+                    node: affnode,
+                  });
+                }
+
+                const finalFields = affnode.ModifiedNode.FinalFields as any;
+                intents.push({
+                  type: TransactionIntentType.OFFER_PARTIAL_FILL,
+                  sequence: finalFields.Sequence as number,
+                  tx: transaction,
+                  node: affnode,
+                });
+                consumedNodeCount++;
+              }
+            } else if (isDeletedNode(affnode)) {
+              if (affnode.DeletedNode.LedgerEntryType == 'Offer') {
+                // The removed Offer may have been fully consumed, or it may have been
+                // found to be expired or unfunded.
+                if (affnode.DeletedNode.FinalFields === undefined) {
+                  intents.push({
+                    type: TransactionIntentType.UNKNOWN,
+                    sequence: transaction.transaction.Sequence,
+                    tx: transaction,
+                    node: affnode,
+                  });
+                } else {
+                  const finalFields = affnode.DeletedNode.FinalFields as any;
+
+                  if (finalFields.Account === walletAddress) {
+                    const replacingOfferSequnce =
+                      transaction.transaction.OfferSequence;
+
+                    if (finalFields.Sequence !== replacingOfferSequnce) {
+                      intents.push({
+                        type: TransactionIntentType.OFFER_EXPIRED_OR_UNFUNDED,
+                        sequence: finalFields.Sequence as number,
+                        tx: transaction,
+                        node: affnode,
+                      });
+                    } else {
+                      intents.push({
+                        type: TransactionIntentType.OFFER_CANCEL_FINALIZED,
+                        sequence: finalFields.Sequence as number,
+                        tx: transaction,
+                        node: affnode,
+                      });
+                    }
+                  } else {
+                    intents.push({
+                      type: TransactionIntentType.OFFER_FILL,
+                      sequence: finalFields.Sequence as number,
+                      tx: transaction,
+                      node: affnode,
+                    });
+                    consumedNodeCount++;
+                  }
+                }
+              }
+            } else if (isCreatedNode(affnode)) {
+              if (affnode.CreatedNode.LedgerEntryType == 'Offer') {
+                if (affnode.CreatedNode.NewFields === undefined) {
+                  intents.push({
+                    type: TransactionIntentType.UNKNOWN,
+                    sequence: transaction.transaction.Sequence,
+                    tx: transaction,
+                    node: affnode,
+                  });
+                } else {
+                  const newFields = affnode.CreatedNode.NewFields as any;
+                  if (consumedNodeCount > 0) {
+                    intents.push({
+                      type: TransactionIntentType.OFFER_PARTIAL_FILL,
+                      sequence: newFields.Sequence,
+                      tx: transaction,
+                      node: affnode,
+                    });
+                  } else {
+                    intents.push({
+                      type: TransactionIntentType.OFFER_CREATE_FINALIZED,
+                      sequence: newFields.Sequence,
+                      tx: transaction,
+                      node: affnode,
+                    });
+                  }
+                  createNodeCount++;
+                }
+              }
+            }
+          }
+
+          if (createNodeCount === 0) {
+            if (consumedNodeCount > 0) {
+              intents.push({
+                type: TransactionIntentType.OFFER_FILL,
+                sequence: transaction.transaction.Sequence,
+                tx: transaction,
+              });
+            } else {
+              intents.push({
+                type: TransactionIntentType.UNKNOWN,
+                sequence: transaction.transaction.Sequence,
+                tx: transaction,
+              });
+            }
+          }
+          break;
+
+        case 'OfferCancel':
+          for (const affnode of transaction.meta.AffectedNodes) {
+            if (isDeletedNode(affnode)) {
+              if (affnode.DeletedNode.LedgerEntryType == 'Offer') {
+                if (affnode.DeletedNode.FinalFields === undefined) {
+                  intents.push({
+                    type: TransactionIntentType.UNKNOWN,
+                    sequence: transaction.transaction.OfferSequence,
+                    tx: transaction,
+                    node: affnode,
+                  });
+                } else {
+                  const finalFields = affnode.DeletedNode.FinalFields as any;
+
+                  if (finalFields.Account === walletAddress) {
+                    intents.push({
+                      type: TransactionIntentType.OFFER_CANCEL_FINALIZED,
+                      sequence: finalFields.Sequence as number,
+                      tx: transaction,
+                      node: affnode,
+                    });
+                    deleteNodeCount++;
+                  }
+                }
+              }
+            }
+          }
+
+          if (deleteNodeCount === 0) {
+            intents.push({
+              type: TransactionIntentType.UNKNOWN,
+              sequence: transaction.transaction.OfferSequence,
+              tx: transaction,
+            });
+          }
+          break;
+      }
     }
 
-    return { type: TransactionIntentType.UNKNOWN };
+    return intents;
   }
-
   async getTransaction(
     client: Client,
     txHash: string

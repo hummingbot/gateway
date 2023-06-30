@@ -1,6 +1,10 @@
 import { Map as ImmutableMap, Set as ImmutableSet } from 'immutable';
-import { BookOffer } from 'xrpl';
-import { TransactionMetadata, Transaction } from 'xrpl';
+import {
+  BookOffer,
+  TransactionStream,
+  TransactionMetadata,
+  Transaction,
+} from 'xrpl';
 
 export type IMap<K, V> = ImmutableMap<K, V>;
 export const IMap = ImmutableMap;
@@ -21,6 +25,7 @@ export enum OrderStatus {
   PENDING_OPEN = 'PENDING_OPEN',
   PENDING_CANCEL = 'PENDING_CANCEL',
   FAILED = 'FAILED',
+  OFFER_EXPIRED_OR_UNFUNDED = 'OFFER_EXPIRED_OR_UNFUNDED',
   UNKNOWN = 'UNKNOWN',
 }
 
@@ -37,6 +42,7 @@ export enum TransactionIntentType {
   OFFER_CANCEL_FINALIZED = 'OfferCancelFinalized',
   OFFER_PARTIAL_FILL = 'OfferPartialFill',
   OFFER_FILL = 'OfferFill',
+  OFFER_EXPIRED_OR_UNFUNDED = 'OfferExpiredOrUnfunded',
   UNKNOWN = 'UNKNOWN',
 }
 
@@ -266,4 +272,42 @@ export interface ResponseOnlyTxInfo {
 export interface TransactionIntent {
   type: TransactionIntentType;
   sequence?: number;
+  tx: TransactionStream | TransaformedAccountTransaction;
+  filledAmount?: string;
+  node?: Node;
+}
+
+type Node = CreatedNode | ModifiedNode | DeletedNode;
+
+export interface CreatedNode {
+  CreatedNode: {
+    LedgerEntryType: string;
+    LedgerIndex: string;
+    NewFields: {
+      [field: string]: unknown;
+    };
+  };
+}
+export interface ModifiedNode {
+  ModifiedNode: {
+    LedgerEntryType: string;
+    LedgerIndex: string;
+    FinalFields?: {
+      [field: string]: unknown;
+    };
+    PreviousFields?: {
+      [field: string]: unknown;
+    };
+    PreviousTxnID?: string;
+    PreviousTxnLgrSeq?: number;
+  };
+}
+export interface DeletedNode {
+  DeletedNode: {
+    LedgerEntryType: string;
+    LedgerIndex: string;
+    FinalFields: {
+      [field: string]: unknown;
+    };
+  };
 }

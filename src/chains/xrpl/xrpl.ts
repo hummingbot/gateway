@@ -414,6 +414,7 @@ export class XRPL implements XRPLish {
   }
 
   public async getCurrentBlockNumber(): Promise<number> {
+    await this.ensureConnection();
     const currentIndex = await this.getCurrentLedgerIndex();
     return currentIndex;
   }
