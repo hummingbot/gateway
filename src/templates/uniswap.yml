@@ -13,10 +13,10 @@ ttl: 600
 # Note: More hops will increase latency of the algorithm.
 maximumHops: 4
 
-# Use Uniswap Router or Quoter for quoting prices.
-# true - use Uniswap Router.
-# false - use Uniswap Quoter.
-useRouter: true
+# Use Uniswap Router or Quoter to quote prices.
+# true - use Smart Order Router
+# false - use QuoterV2 Contract
+useRouter: false
 
 # Fee tier to use for the Uniswap Quoter.
 # Required if `useRouter` is false.
