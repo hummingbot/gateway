@@ -28,7 +28,7 @@ export namespace BalancerConfig {
           chain +
           '.' +
           network +
-          '.balancerRouterAddress'
+          '.balancerV2VaultAddress'
       ),
     tradingTypes: ['AMM'],
     chainType: 'EVM',

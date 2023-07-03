@@ -1,6 +1,5 @@
 import {
   BalancerSDK,
-  Network,
   parseFixed,
   SwapInfo,
   subSlippage,
@@ -46,9 +45,10 @@ export class Balancer implements Uniswapish {
     this._ttl = BalancerConfig.config.ttl;
     this._maximumHops = BalancerConfig.config.maximumHops;
     this._balancerRouter = new BalancerSDK({
-      network: this.chainId as Network,
+      network: this.chainId,
       rpcUrl: this.chain.rpcUrl,
     });
+
     this._routerAbi = routerAbi.abi;
     this._gasLimitEstimate = BalancerConfig.config.gasLimitEstimate;
     this._allowedSlippage = BigNumber.from(
@@ -148,7 +148,7 @@ export class Balancer implements Uniswapish {
   }
 
   async fetchData() {
-    const result = await this._balancerRouter.swaps.fetchPools();
+    const result = await this._balancerRouter.sor.fetchPools();
     if (!result) {
       throw new UniswapishPriceError(`fetchData: Couldn't update vault data`);
     }
@@ -172,107 +172,60 @@ export class Balancer implements Uniswapish {
   ): Promise<ExpectedTrade> {
     if (amount.isZero()) {
       throw new UniswapishPriceError(
-        `estimateSellTrade: Can't process ${baseToken} to ${quoteToken} with amount 0.`
+        `estimateSellTrade: Can't process ${baseToken.address} to ${quoteToken.address} with amount 0.`
       );
     }
 
     await this.fetchData();
+    const gasPrice = await this.chain.getGasPrice();
 
     const swapInfo: SwapInfo =
       await this._balancerRouter.swaps.findRouteGivenIn({
         tokenIn: baseToken.address,
         tokenOut: quoteToken.address,
-        amount: parseFixed(`${amount}`, 18),
-        gasPrice: parseFixed('1', 18),
+        amount: amount,
+        gasPrice: parseFixed(gasPrice!.toString(), 9),
         maxPools: this._maximumHops,
       });
 
-    if (swapInfo.swaps.length === 0 || swapInfo.returnAmount.isZero()) {
+    if (swapInfo.returnAmount.isZero()) {
       throw new UniswapishPriceError(
-        `findRouteGivenIn: No route found for ${baseToken} to ${quoteToken}.`
+        `findRouteGivenIn: No route found for ${baseToken.symbol} to ${quoteToken.symbol}.`
       );
     }
 
-    const inputCurrencyAmount = CurrencyAmount.fromRawAmount(
+    const inputAmount = CurrencyAmount.fromRawAmount(
       baseToken,
-      amount.toString()
+      swapInfo.swapAmountForSwaps.toString()
     );
-    const outputCurrentAmount = CurrencyAmount.fromRawAmount(
+    const outputAmount = CurrencyAmount.fromRawAmount(
       quoteToken,
-      swapInfo.returnAmount.toString()
+      swapInfo.returnAmountFromSwaps.toString()
     );
 
     const executionPrice = new Price({
-      baseAmount: inputCurrencyAmount,
-      quoteAmount: outputCurrentAmount,
+      baseAmount: inputAmount,
+      quoteAmount: outputAmount,
     });
 
     logger.info(
-      `Best sell price for ${baseToken.address}-${quoteToken.address}: ` +
-        `${executionPrice.quote}` +
+      `Best sell price for ${baseToken.symbol}-${quoteToken.symbol}: ` +
+        `${executionPrice.toFixed(6)} ` +
         `${quoteToken.symbol}.`
     );
 
     const expectedAmount = CurrencyAmount.fromRawAmount(
       quoteToken,
-      subSlippage(swapInfo.returnAmount, this._allowedSlippage).toString()
+      subSlippage(
+        swapInfo.returnAmountFromSwaps,
+        this._allowedSlippage
+      ).toString()
     );
 
     return {
       trade: new Trade(swapInfo, executionPrice, SwapType.SwapExactIn),
       expectedAmount,
     };
-
-    // const pairs = await Promise.all(
-    //   swapInfo.swaps.map(async (pair: SwapV2): Promise<Pair> => {
-    //     const pool = await this._balancerRouter.pools.find(pair.poolId);
-    //     if (!pool)
-    //       throw new UniswapishPriceError(
-    //         `BalancerPool: can't find pool for id ${pair.poolId}`
-    //       );
-
-    //     const swapInToken: Token = new Token(
-    //       this.chainId,
-    //       pool.tokens[pair.assetInIndex].address,
-    //       pool.tokens[pair.assetInIndex].decimals ?? 18,
-    //       pool.tokens[pair.assetInIndex].symbol,
-    //       pool.tokens[pair.assetInIndex].symbol
-    //     );
-
-    //     const swapOutToken: Token = new Token(
-    //       this.chainId,
-    //       pool.tokens[pair.assetOutIndex].address,
-    //       pool.tokens[pair.assetOutIndex].decimals ?? 18,
-    //       pool.tokens[pair.assetOutIndex].symbol,
-    //       pool.tokens[pair.assetOutIndex].symbol
-    //     );
-
-    //     return new Pair(
-    //       CurrencyAmount.fromRawAmount(
-    //         swapInToken,
-    //         pool.tokens[pair.assetInIndex].balance
-    //       ),
-    //       CurrencyAmount.fromRawAmount(
-    //         swapOutToken,
-    //         pool.tokens[pair.assetOutIndex].balance
-    //       )
-    //     );
-    //   })
-    // );
-
-    // const route: Route<Token, Token> = new Route(pairs, baseToken, quoteToken);
-
-    // const trade: Trade<Token, Token, TradeType.EXACT_INPUT> = Trade.exactIn(
-    //   route,
-    //   CurrencyAmount.fromRawAmount(baseToken, amount.toString())
-    // );
-
-    // const expectedAmount = CurrencyAmount.fromRawAmount(
-    //   quoteToken,
-    //   subSlippage(swapInfo.returnAmount, this._allowedSlippage).toString()
-    // );
-
-    // return { trade, expectedAmount };
   }
 
   /**
@@ -297,109 +250,55 @@ export class Balancer implements Uniswapish {
       );
     }
     await this.fetchData();
+    const gasPrice = await this.chain.getGasPrice();
 
     const swapInfo: SwapInfo =
       await this._balancerRouter.swaps.findRouteGivenOut({
         tokenIn: quoteToken.address,
         tokenOut: baseToken.address,
-        amount: parseFixed(`${amount}`, 18),
-        gasPrice: parseFixed('1', 18),
+        amount: amount,
+        gasPrice: parseFixed(gasPrice!.toString(), 9),
         maxPools: this._maximumHops,
       });
 
-    if (swapInfo.swaps.length === 0 || swapInfo.swapAmount.isZero()) {
+    if (swapInfo.swapAmount.isZero()) {
       throw new UniswapishPriceError(
-        `findRouteGivenIn: No route found for ${quoteToken} to ${baseToken}.`
+        `findRouteGivenIn: No route found for ${quoteToken.address} to ${baseToken.address}.`
       );
     }
 
-    const inputCurrencyAmount = CurrencyAmount.fromRawAmount(
-      baseToken,
-      swapInfo.returnAmount.toString()
-    );
-    const outputCurrentAmount = CurrencyAmount.fromRawAmount(
+    const inputAmount = CurrencyAmount.fromRawAmount(
       quoteToken,
-      amount.toString()
+      swapInfo.returnAmountFromSwaps.toString()
+    );
+    const outputAmount = CurrencyAmount.fromRawAmount(
+      baseToken,
+      swapInfo.swapAmountForSwaps.toString()
     );
 
     const executionPrice = new Price({
-      baseAmount: inputCurrencyAmount,
-      quoteAmount: outputCurrentAmount,
+      baseAmount: outputAmount,
+      quoteAmount: inputAmount,
     });
 
     logger.info(
-      `Best buy price for ${baseToken.address}-${quoteToken.address}: ` +
-        `${executionPrice.quote}` +
-        `${quoteToken.symbol}.`
+      `Best buy price for ${baseToken.symbol}-${quoteToken.symbol}: ` +
+        `${executionPrice.invert().toFixed(6)} ` +
+        `${quoteToken.symbol}`
     );
 
     const expectedAmount = CurrencyAmount.fromRawAmount(
       quoteToken,
-      addSlippage(swapInfo.returnAmount, this._allowedSlippage).toString()
+      addSlippage(
+        swapInfo.returnAmountFromSwaps,
+        this._allowedSlippage
+      ).toString()
     );
 
     return {
       trade: new Trade(swapInfo, executionPrice, SwapType.SwapExactOut),
       expectedAmount,
     };
-
-    // const executionPrice = swapInfo.swapAmount.div(swapInfo.returnAmount);
-
-    // logger.info(
-    //   `Best buy price for ${quoteToken.address}-${baseToken.address}: ` +
-    //     `${formatFixed(executionPrice, 18)}` +
-    //     `${baseToken.symbol}.`
-    // );
-    // const pairs = await Promise.all(
-    //   swapInfo.swaps.map(async (pair: SwapV2): Promise<Pair> => {
-    //     const pool = await this._balancerRouter.pools.find(pair.poolId);
-    //     if (!pool)
-    //       throw new UniswapishPriceError(
-    //         `BalancerPool: can't find pool for id ${pair.poolId}`
-    //       );
-
-    //     const swapInToken: Token = new Token(
-    //       this.chainId,
-    //       pool.tokens[pair.assetInIndex].address,
-    //       pool.tokens[pair.assetInIndex].decimals ?? 18,
-    //       pool.tokens[pair.assetInIndex].symbol,
-    //       pool.tokens[pair.assetInIndex].symbol
-    //     );
-
-    //     const swapOutToken: Token = new Token(
-    //       this.chainId,
-    //       pool.tokens[pair.assetOutIndex].address,
-    //       pool.tokens[pair.assetOutIndex].decimals ?? 18,
-    //       pool.tokens[pair.assetOutIndex].symbol,
-    //       pool.tokens[pair.assetOutIndex].symbol
-    //     );
-
-    //     return new Pair(
-    //       CurrencyAmount.fromRawAmount(
-    //         swapInToken,
-    //         pool.tokens[pair.assetInIndex].balance
-    //       ),
-    //       CurrencyAmount.fromRawAmount(
-    //         swapOutToken,
-    //         pool.tokens[pair.assetOutIndex].balance
-    //       )
-    //     );
-    //   })
-    // );
-
-    // const route: Route<Token, Token> = new Route(pairs, quoteToken, baseToken);
-
-    // const trade: Trade<Token, Token, TradeType.EXACT_OUTPUT> = Trade.exactOut(
-    //   route,
-    //   CurrencyAmount.fromRawAmount(baseToken, amount.toString())
-    // );
-
-    // const expectedAmount = CurrencyAmount.fromRawAmount(
-    //   quoteToken,
-    //   addSlippage(swapInfo.swapAmount, this._allowedSlippage).toString()
-    // );
-
-    // return { trade, expectedAmount };
   }
 
   /**
