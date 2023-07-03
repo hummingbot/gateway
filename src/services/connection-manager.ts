@@ -175,7 +175,10 @@ export async function getConnector<T>(
     connector === 'uniswapLP'
   ) {
     connectorInstance = UniswapLP.getInstance(chain, network);
-  } else if (chain === 'ethereum' && connector == 'balancer') {
+  } else if (
+    (chain === 'ethereum' || chain === 'polygon') &&
+    connector === 'balancer'
+  ) {
     connectorInstance = Balancer.getInstance(chain, network);
   } else if (chain === 'ethereum' && connector === 'perp') {
     connectorInstance = Perp.getInstance(chain, network, address);
