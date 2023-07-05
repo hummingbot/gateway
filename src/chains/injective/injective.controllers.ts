@@ -4,45 +4,51 @@ import {
   BalancesResponse,
   PollRequest,
   PollResponse,
-  TransferToSubAccountRequest,
-  TransferToSubAccountResponse,
-  TransferToBankAccountRequest,
-  TransferToBankAccountResponse,
+  TransferRequest,
+  TransferResponse,
 } from './injective.requests';
+import {
+  validateBalanceRequest,
+  validatePollRequest,
+  validateTransferRequest,
+} from './injective.validators';
 
-export async function currentBlockNumber(
-  injective: Injective
-): Promise<number> {
-  return injective.currentBlockNumber();
-}
+export class InjectiveController {
+  static async currentBlockNumber(injective: Injective): Promise<number> {
+    return injective.currentBlockNumber();
+  }
 
-export async function transferToSubAccount(
-  injective: Injective,
-  req: TransferToSubAccountRequest
-): Promise<TransferToSubAccountResponse> {
-  const wallet = await injective.getWallet(req.address);
-  return injective.transferToSubAccount(wallet, req.amount, req.token);
-}
+  static async transfer(
+    injective: Injective,
+    req: TransferRequest
+  ): Promise<TransferResponse> {
+    validateTransferRequest(req);
 
-export async function transferToBankAccount(
-  injective: Injective,
-  req: TransferToBankAccountRequest
-): Promise<TransferToBankAccountResponse> {
-  const wallet = await injective.getWallet(req.address);
-  return injective.transferToBankAccount(wallet, req.amount, req.token);
-}
+    if (req.from.length > req.to.length) {
+      const wallet = await injective.getWallet(req.from);
+      return injective.transferToBankAccount(wallet, req.amount, req.token);
+    } else {
+      const wallet = await injective.getWallet(req.to);
+      return injective.transferToSubAccount(wallet, req.amount, req.token);
+    }
+  }
 
-export async function balances(
-  injective: Injective,
-  req: BalancesRequest
-): Promise<BalancesResponse> {
-  const wallet = await injective.getWallet(req.address);
-  return injective.balances(wallet);
-}
+  static async balances(
+    injective: Injective,
+    req: BalancesRequest
+  ): Promise<BalancesResponse> {
+    validateBalanceRequest(req);
 
-export async function poll(
-  injective: Injective,
-  req: PollRequest
-): Promise<PollResponse> {
-  return injective.poll(req.txHash);
+    const wallet = await injective.getWallet(req.address);
+    return injective.balances(wallet);
+  }
+
+  static async poll(
+    injective: Injective,
+    req: PollRequest
+  ): Promise<PollResponse> {
+    validatePollRequest(req);
+
+    return injective.poll(req.txHash);
+  }
 }
