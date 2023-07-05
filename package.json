@@ -1,6 +1,6 @@
 {
   "name": "hummingbot-gateway",
-  "version": "1.15.0",
+  "version": "1.17.0",
   "description": "Middleware that helps Hummingbot clients access standardized DEX API endpoints on different blockchain networks",
   "main": "index.js",
   "license": "Apache-2.0",
@@ -9,13 +9,13 @@
     "prebuild": "rimraf dist && mkdir dist",
     "build": "tsc --skipLibCheck --project ./ && yarn copy-files",
     "clean": "rm -rf ./node_modules && rm -rf ./coverage && rm -rf ./logs && yarn run clean:config",
-    "clean:config": "find ./conf -maxdepth 1 -regextype posix-extended -regex '.*\\.yml' -delete",
+    "clean:config": "find ./conf -maxdepth 1 -regextype posix-extended -regex '.*.*' -delete",
     "format": "prettier . --write",
     "lint": "eslint src test test-scripts --format table --fix",
     "dev": "nodemon src/index.ts",
     "dev:debug": "NODE_ENV=dev DEBUG=* nodemon src/index.ts",
     "start": "/bin/bash ./startup.sh",
-    "copy-files": "copyfiles -a 'src/**/schema/*.json' 'src/templates/*.yml' 'test/services/data/**/*.*' dist",
+    "copy-files": "copyfiles -a 'src/**/schema/*.json' 'src/templates/*.yml' 'src/templates/lists/*.json' 'test/services/data/**/*.*' dist",
     "test": "jest --verbose",
     "test:debug": "node --inspect node_modules/.bin/jest --watch --runInBand",
     "test:unit": "NODE_OPTIONS=--max_old_space_size=10240 jest --runInBand --verbose ./test/",
@@ -45,7 +45,7 @@
     "@sushiswap/sdk": "^5.0.0-canary.116",
     "@switchboard-xyz/defikingdoms-sdk": "^1.0.7",
     "@tinymanorg/tinyman-js-sdk": "^3.0.0",
-    "@traderjoe-xyz/sdk": "^1.6.1",
+    "@traderjoe-xyz/sdk-v2": "^2.0.5",
     "@types/fs-extra": "^9.0.13",
     "@types/lodash": "^4.14.178",
     "@types/minimist": "^1.2.2",
@@ -146,7 +146,8 @@
     "supertest": "^6.1.6",
     "ts-jest": "^27.0.5",
     "ts-node": "^10.0.0",
-    "typescript": "^4.3.2"
+    "typescript": "^4.3.2",
+    "viem": "^0.3.x"
   },
   "resolutions": {
     "web3-utils": "1.7.3"

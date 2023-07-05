@@ -6,15 +6,13 @@ Hummingbot Gateway is a REST API that exposes connections to various blockchains
 
 Gateway may be used alongside the main [Hummingbot client](https://github.com/hummingbot/hummingbot) to enable trading on DEXs, or as a standalone module by external developers.
 
-## Installation
+## Installation via Docker
 
-### Generate certificates
+If you are installing Gateway alongside Hummingbot, check out the [Deploy Examples](https://github.com/hummingbot/deploy-examples) repository that helps you deploy various types of Hummingbot and Gateway configurations. For most new users, we recommend following the [Hummingbot Gateway Compose](https://github.com/hummingbot/deploy-examples/tree/main/hummingbot_gateway_compose) deployment.
 
-To run Gateway in `https` (default):
-* **CERTS_PATH**: path to folder where Hummingbot generated and saved self-signed SSL certificates
-* **PASSPHRASE**: passphrase used to generate the certificates above
+The repo also contains [Bash Scripts](https://github.com/hummingbot/deploy-examples/tree/main/bash_scripts#gateway) that help you install the Gateway Docker image on a standalone basis.
 
-### Run Gateway from source
+## Installation from source
 
 Dependencies:
 * NodeJS (16.0.0 or higher)
@@ -35,18 +33,7 @@ $ ./gateway-setup.sh
 $ yarn start --passphrase=<PASSPHRASE>
 ```
 
-### Run Gateway using Docker
-
-Dependencies:
-* [Docker](https://docker.com)
-
-See the [`/docker`](./docker) folder for Docker installation scripts and instructions on how to use them.
-
-
-### Build Gateway Docker Image locally
-
-Dependencies:
-* [Docker](https://docker.com)
+### Build Docker image
 
 To build the gateway docker image locally execute the below make command:
 
@@ -84,29 +71,31 @@ There are a number of ways to contribute to gateway.
 
 ### Configuration
 
-- Edit `certs_path` in [conf/server.yml](./conf/server.yml) and enter the absolute path to the folder where Hummingbot stored the certificates it created with `gateway generate-certs`. You can also edit this config inside the Hummingbot client by running the command: `gateway config server.certs_path`.
-
 - If you want to turn off `https`, set `unsafeDevModeWithHTTP` to `true` in [conf/server.yml](./conf/server.yml). 
 
 - If you want Gateway to log to standard out, set `logToStdOut` to `true` in [conf/server.yml](./conf/server.yml).
 
 - The format of configuration files are dictated by [src/services/config-manager-v2.ts](./src/services/config-manager-v2.ts) and the corresponding schema files in [src/services/schema](./src/services/schema).
 
+- If you want to turn off `https`, set `unsafeDevModeWithHTTP` to `true` in [conf/server.yml](./conf/server.yml). 
+
+- For each supported chain, token lists that translate address to symbols for each chain are stored in `/conf/lists`. You can add tokens here to make them available to Gateway.
+
 
 ### Architecture
 
 Here are some files we recommend you look at in order to get familiar with the Gateway codebase:
 
-- [src/services/ethereum-base.ts](./src/services/ethereum-base.ts): base class for EVM chains.
+- [src/services/ethereum-base.ts](./src/chains/ethereum/ethereum-base.ts): base class for EVM chains.
 
 - [src/connectors/uniswap/uniswap.ts](./src/connectors/uniswap/uniswap.ts): functionality for interacting with Uniswap.
 
-- [src/services/validator.ts](./src/services/validator.ts): defines functions for validating request payloads.
+- [src/services/validators.ts](./src/services/validators.ts): defines functions for validating request payloads.
 
 
 ### Testing
 
-For a pull request merged into the codebase, it has to pass unit test coverage requirements. Take a look at [Workflow](../.github/workflows/workflow.yml) for more details.
+For a pull request merged into the codebase, it has to pass unit test coverage requirements. Take a look at [Workflow](./.github/workflows/workflow.yml) for more details.
 
 #### Unit tests
 
@@ -126,7 +115,7 @@ yarn jest test/<folder>/<file>
 
 #### Manual tests
 
-We have found it is useful to test individual endpoints with `curl` commands. We have a collection of prepared curl calls. POST bodies are stored in JSON files. Take a look at the [curl calls for gateway](./manual-tests/curl.sh). Note that some environment variables are expected.
+We have found it is useful to test individual endpoints with `curl` commands. We have a collection of prepared curl calls. POST bodies are stored in JSON files. Take a look at the [curl calls for gateway](./test-helpers/curl/curl.sh). Note that some environment variables are expected.
 
 ## Linting
 

@@ -11,6 +11,6 @@ ttl: 300
 
 contractAddresses:
   fuji:
-      routerAddress: '0x60aE616a2155Ee3d9A68541Ba4544862310933d4'
+      routerAddress: '0xb4315e873dBcf96Ffd0acd8EA43f689D8c20fB30'
   avalanche:
-      routerAddress: '0x60aE616a2155Ee3d9A68541Ba4544862310933d4'
+      routerAddress: '0xb4315e873dBcf96Ffd0acd8EA43f689D8c20fB30'

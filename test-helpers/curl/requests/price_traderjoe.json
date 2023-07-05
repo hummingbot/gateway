@@ -3,7 +3,7 @@
   "chain": "avalanche",
   "network": "avalanche",
   "quote": "USDC",
-  "base": "WAVAX",
+  "base": "EUROC",
   "amount": "1",
-  "side": "SELL"
+  "side": "BUY"
 }
