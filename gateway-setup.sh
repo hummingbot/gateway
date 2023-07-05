@@ -25,8 +25,10 @@ copy_configs () {
   echo
   # Make destination folder if needed
   mkdir $HOST_CONF_PATH
+  mdkir $HOST_CONF_PATH/lists
   # Copy all files in the source folder to the destination folder
   cp $TEMPLATE_DIR/**.yml $HOST_CONF_PATH
+  cp $TEMPLATE_DIR/lists/**.json $HOST_CONF_PATH
   # Confirm that the files were copied
   if [ $? -eq 0 ]; then
     echo "Files successfully copied from $TEMPLATE_DIR to $HOST_CONF_PATH"
