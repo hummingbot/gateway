@@ -51,8 +51,9 @@ import {
 import { MsgBroadcasterLocal } from './injective.message';
 import LRUCache from 'lru-cache';
 import { TokenInfo } from '../../services/base';
-import { EVMNonceManager } from '../../evm/evm.nonce';
+import { EVMNonceManager } from '../ethereum/evm.nonce';
 import { AccountDetails } from '@injectivelabs/sdk-ts/dist/cjs/types/auth';
+import { InjectiveController } from './injective.controllers';
 
 export interface InjectiveWallet {
   ethereumAddress: string;
@@ -88,6 +89,7 @@ export class Injective {
   public maxCacheSize: number;
   private _blockUpdateIntervalID: number | undefined;
   private _walletMap: LRUCache<string, InjectiveWallet>;
+  public controller: typeof InjectiveController;
 
   private constructor(network: Network, chainId: ChainId) {
     this._network = network;
@@ -120,6 +122,7 @@ export class Injective {
     this._walletMap = new LRUCache<string, InjectiveWallet>({
       max: this.maxCacheSize,
     });
+    this.controller = InjectiveController;
   }
 
   public static getInstance(networkStr: string): Injective {
