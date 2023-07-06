@@ -5,6 +5,7 @@ import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { NearBase } from './near.base';
 import { ContractMethods } from 'near-api-js/lib/contract';
 import { getNearConfig } from './near.config';
+import { NearController } from './near.controllers';
 
 export class Near extends NearBase {
   private static _instances: { [name: string]: Near };
@@ -12,6 +13,7 @@ export class Near extends NearBase {
   private _gasPriceRefreshInterval: number | null;
   private _nativeTokenSymbol: string;
   private _chain: string;
+  public controller;
 
   private constructor(network: string) {
     const config = getNearConfig('near', network);
@@ -34,6 +36,7 @@ export class Near extends NearBase {
         : null;
 
     this.updateGasPrice();
+    this.controller = NearController;
   }
 
   public static getInstance(network: string): Near {

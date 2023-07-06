@@ -3,7 +3,7 @@ import fsp from 'fs/promises';
 import fse from 'fs-extra';
 import os from 'os';
 import path from 'path';
-import { EvmTxStorage } from '../../src/evm/evm.tx-storage';
+import { EvmTxStorage } from '../../src/chains/ethereum/evm.tx-storage';
 import 'jest-extended';
 import { ReferenceCountingCloseable } from '../../src/services/refcounting-closeable';
 

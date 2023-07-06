@@ -9,7 +9,7 @@ import {
   EVMNonceManager,
   // NonceInfo,
   // NonceLocalStorage,
-} from '../../src/evm/evm.nonce';
+} from '../../src/chains/ethereum/evm.nonce';
 // import { ReferenceCountingCloseable } from '../../src/services/refcounting-closeable';
 import { patch } from './patch';
 
