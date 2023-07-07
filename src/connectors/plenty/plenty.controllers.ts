@@ -40,9 +40,21 @@ async function estimateTradeGasCost(
   plentyTrade: PlentyTrade,
   caller?: string
 ) {
-  const wallet = await tezosish.getWallet(caller, undefined, true);
-  const address = await wallet.signer.publicKeyHash();
+  let wallet: TezosToolkit;
+  try {
+    process.env.LOG_PLENTY && logger.info('\tgetWallet')
+    wallet = await tezosish.getWallet(caller, undefined, true);
+  } catch (err) {
+    logger.error(`Tezos: wallet ${caller} not available.`);
+    throw new HttpException(
+      500,
+      LOAD_WALLET_ERROR_MESSAGE + err,
+      LOAD_WALLET_ERROR_CODE
+    );
+  }
 
+  const address = await wallet.signer.publicKeyHash();
+  process.env.LOG_PLENTY && logger.info(`\trouterSwap`)
   const swapParams = await routerSwap(
     tezosish,
     plenty,
@@ -52,6 +64,7 @@ async function estimateTradeGasCost(
     address,
     plentyTrade.amountIn
   )
+  process.env.LOG_PLENTY && logger.info(`\twallet.estimate.batch`)
   const batchEstimate = await wallet.estimate.batch(swapParams);
 
   let gasCost = 0, gasLimitTransaction = 0;
@@ -61,39 +74,6 @@ async function estimateTradeGasCost(
   });
   const gasPrice = tezosish.gasPrice / 10 ** 6;
   return { gasCost, gasLimitTransaction, gasPrice };
-}
-
-export async function txWriteData(
-  tezosish: Tezosish,
-  address: string,
-  maxFeePerGas?: string,
-  maxPriorityFeePerGas?: string
-): Promise<{
-  wallet: TezosToolkit;
-  maxFeePerGasBigNumber: BigNumber | undefined;
-  maxPriorityFeePerGasBigNumber: BigNumber | undefined;
-}> {
-  let maxFeePerGasBigNumber: BigNumber | undefined;
-  if (maxFeePerGas) {
-    maxFeePerGasBigNumber = new BigNumber(maxFeePerGas);
-  }
-  let maxPriorityFeePerGasBigNumber: BigNumber | undefined;
-  if (maxPriorityFeePerGas) {
-    maxPriorityFeePerGasBigNumber = new BigNumber(maxPriorityFeePerGas);
-  }
-
-  let wallet: TezosToolkit;
-  try {
-    wallet = await tezosish.getWallet(address);
-  } catch (err) {
-    logger.error(`Tezos: wallet ${address} not available.`);
-    throw new HttpException(
-      500,
-      LOAD_WALLET_ERROR_MESSAGE + err,
-      LOAD_WALLET_ERROR_CODE
-    );
-  }
-  return { wallet, maxFeePerGasBigNumber, maxPriorityFeePerGasBigNumber };
 }
 
 export async function getPlentyTrade(
@@ -119,6 +99,7 @@ export async function getPlentyTrade(
 
   let expectedTrade: ExpectedTrade;
   if (tradeSide === 'BUY') {
+    process.env.LOG_PLENTY && logger.info('\testimateBuyTrade');
     expectedTrade = await plenty.estimateBuyTrade(
       tezosish,
       quoteToken,
@@ -127,6 +108,7 @@ export async function getPlentyTrade(
       allowedSlippage
     );
   } else {
+    process.env.LOG_PLENTY && logger.info('\testimateSellTrade');
     expectedTrade = await plenty.estimateSellTrade(
       tezosish,
       baseToken,
@@ -146,6 +128,7 @@ export async function price(
 ): Promise<PriceResponse> {
   const startTimestamp: number = Date.now();
   let expectedTrade: ExpectedTrade;
+  process.env.LOG_PLENTY && logger.info('getPlentyTrade')
   try {
     expectedTrade = await getPlentyTrade(
       tezosish,
@@ -172,6 +155,7 @@ export async function price(
     }
   }
 
+  process.env.LOG_PLENTY && logger.info('estimateTradeGasCost')
   const { gasCost, gasLimitTransaction, gasPrice } = await estimateTradeGasCost(
     tezosish,
     plenty,
@@ -181,6 +165,7 @@ export async function price(
   const baseToken: IConfigToken = getFullTokenFromSymbol(plenty, req.base);
   const quoteToken: IConfigToken = getFullTokenFromSymbol(plenty, req.quote);
 
+  process.env.LOG_PLENTY && logger.info('return price')
   return {
     network: tezosish.chain,
     timestamp: startTimestamp,
@@ -208,6 +193,7 @@ export async function trade(
 
   let expectedTrade: ExpectedTrade;
   try {
+    process.env.LOG_PLENTY && logger.info('getPlentyTrade');
     expectedTrade = await getPlentyTrade(
       tezosish,
       plenty,
@@ -235,6 +221,7 @@ export async function trade(
     }
   }
 
+  process.env.LOG_PLENTY && logger.info('estimateTradeGasCost');
   const { gasCost, gasLimitTransaction, gasPrice } = await estimateTradeGasCost(
     tezosish,
     plenty,
@@ -266,12 +253,14 @@ export async function trade(
       );
     }
 
+    process.env.LOG_PLENTY && logger.info('executeTrade');
     const tx = await plenty.executeTrade(tezosish, expectedTrade.trade);
 
     logger.info(
       `Trade has been executed, txHash is ${tx.hash}, gasPrice is ${gasPrice}.`
     );
 
+    process.env.LOG_PLENTY && logger.info('return trade');
     return {
       network: tezosish.chain,
       timestamp: startTimestamp,
@@ -310,12 +299,14 @@ export async function trade(
       );
     }
 
+    process.env.LOG_PLENTY && logger.info('executeTrade');
     const tx = await plenty.executeTrade(tezosish, expectedTrade.trade);
 
     logger.info(
       `Trade has been executed, txHash is ${tx.hash}, gasPrice is ${gasPrice}.`
     );
 
+    process.env.LOG_PLENTY && logger.info('return trade');
     return {
       network: tezosish.chain,
       timestamp: startTimestamp,

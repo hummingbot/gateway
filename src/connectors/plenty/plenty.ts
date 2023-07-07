@@ -7,6 +7,7 @@ import { computeAllPathsWrapper, computeReverseCalculationWrapper } from './util
 import { allPaths } from './utils/paths';
 import { routerSwap } from './utils/router';
 import { Tezosish } from '../../services/common-interfaces';
+import { logger } from "../../services/logger";
 
 
 export class Plenty {
@@ -165,6 +166,7 @@ export class Plenty {
     amount: BigNumber,
     allowedSlippage?: string
   ): Promise<ExpectedTrade> {
+    process.env.LOG_PLENTY && logger.info('\t\tallPaths');
     const paths = await allPaths(
       tezos,
       this,
@@ -211,6 +213,7 @@ export class Plenty {
     amount: BigNumber,
     allowedSlippage?: string
   ): Promise<ExpectedTrade> {
+    process.env.LOG_PLENTY && logger.info('\t\tallPaths')
     const paths = await allPaths(
       tezos,
       this,
@@ -218,6 +221,7 @@ export class Plenty {
       baseToken.symbol,
       true
     );
+    process.env.LOG_PLENTY && logger.info('\t\tallPathsRev')
     const pathsRev = await allPaths(
       tezos,
       this,
@@ -259,6 +263,7 @@ export class Plenty {
   ): Promise<ExecutedTrade> {
 
     const address = await tezos.provider.signer.publicKeyHash();
+    process.env.LOG_PLENTY && logger.info('\t\trouterSwap')
     const swapParams = await routerSwap(
       tezos,
       this,
@@ -270,6 +275,7 @@ export class Plenty {
     )
 
     const batch = tezos.provider.contract.batch(swapParams);
+    process.env.LOG_PLENTY && logger.info('\t\tbatchSend')
     const batchOp = await batch.send();
     const status = batchOp.status;
     if (status === "applied") {
