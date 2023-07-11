@@ -12,10 +12,10 @@ afterAll(async () => {
 });
 
 
-describe('POST /tezos/nextNonce', () => {
+describe('POST /chain/nextNonce', () => {
     it('should get a nonce value for a succesful query', async () => {
         const res = await request(gatewayApp)
-            .post('/tezos/nextNonce')
+            .post('/chain/nextNonce')
             .send({
                 chain: 'tezos',
                 network: 'mainnet',
@@ -26,10 +26,10 @@ describe('POST /tezos/nextNonce', () => {
     });
 });
 
-describe('POST /tezos/nonce', () => {
+describe('POST /chain/nonce', () => {
     it('should get a nonce value for a succesful query', async () => {
         const res = await request(gatewayApp)
-            .post('/tezos/nonce')
+            .post('/chain/nonce')
             .send({
                 chain: 'tezos',
                 network: 'mainnet',
@@ -40,10 +40,10 @@ describe('POST /tezos/nonce', () => {
     });
 });
 
-describe('POST /tezos/balances', () => {
+describe('POST /chain/balances', () => {
     it('should return a json response', async () => {
         const res = await request(gatewayApp)
-            .post(`/tezos/balances`)
+            .post(`/chain/balances`)
             .send({
                 chain: 'tezos',
                 network: 'mainnet',
@@ -55,10 +55,10 @@ describe('POST /tezos/balances', () => {
     });
 });
 
-describe('POST /tezos/poll', () => {
+describe('POST /chain/poll', () => {
     it('should get a txStatus value for a succesful query', async () => {
         const res = await request(gatewayApp)
-            .post('/tezos/poll')
+            .post('/chain/poll')
             .send({
                 chain: 'tezos',
                 network: 'mainnet',
@@ -70,10 +70,10 @@ describe('POST /tezos/poll', () => {
     });
 });
 
-describe('POST /tezos/allowances', () => {
+describe('POST /chain/allowances', () => {
     it('should get a approvals value for a succesful query', async () => {
         const res = await request(gatewayApp)
-            .post('/tezos/allowances')
+            .post('/chain/allowances')
             .send({
                 chain: 'tezos',
                 network: 'mainnet',

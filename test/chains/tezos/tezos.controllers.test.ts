@@ -1,6 +1,6 @@
 import { BalanceRequest, PollRequest } from '../../../src/chains/tezos/tezos.request';
 import { NonceRequest } from '../../../src/chains/chain.requests';
-import { allowances, approve, balances, getTokenSymbolsToTokens, nonce, poll } from '../../../src/chains/tezos/tezos.controllers';
+import { getTokenSymbolsToTokens, TezosController } from '../../../src/chains/tezos/tezos.controllers';
 import { BigNumber } from 'ethers';
 
 
@@ -15,7 +15,7 @@ describe('Tezos API', () => {
         network: 'mainnet',
         address: 'tz1TGu6TN5GSez2ndXXeDX6LgUDvLzPLqgYV'
       };
-      const res = await nonce(tezos as any, req);
+      const res = await TezosController.nonce(tezos as any, req);
       expect(res).toHaveProperty('nonce', '1');
       expect(tezos.getNonce).toHaveBeenCalledWith('tz1TGu6TN5GSez2ndXXeDX6LgUDvLzPLqgYV');
     });
@@ -76,7 +76,7 @@ describe('Tezos API', () => {
         address: 'testAddress',
         tokenSymbols: ['XTZ', 'CTEZ']
       };
-      const res: any = await balances(tezos as any, req);
+      const res: any = await TezosController.balances(tezos as any, req);
       expect(res.network).toBeDefined();
       expect(res.timestamp).toBeDefined();
       expect(res.latency).toBeDefined();
@@ -125,7 +125,7 @@ describe('Tezos API', () => {
         }),
       };
 
-      const res = await poll(tezosish as any, req);
+      const res = await TezosController.poll(tezosish as any, req);
       expect(res.network).toEqual('tezos');
       expect(res.currentBlock).toEqual(500);
       expect(res.timestamp).toBeDefined();
@@ -162,7 +162,7 @@ describe('Tezos API', () => {
         }),
       };
 
-      const res = await poll(tezosish as any, req);
+      const res = await TezosController.poll(tezosish as any, req);
       expect(res.network).toEqual('tezos');
       expect(res.currentBlock).toEqual(500);
       expect(res.timestamp).toBeDefined();
@@ -188,7 +188,7 @@ describe('Tezos API', () => {
         }),
       };
 
-      const res = await poll(tezosish as any, req);
+      const res = await TezosController.poll(tezosish as any, req);
       expect(res.network).toEqual('tezos');
       expect(res.currentBlock).toEqual(500);
       expect(res.timestamp).toBeDefined();
@@ -214,7 +214,7 @@ describe('Tezos API', () => {
         }),
       };
 
-      const res = await poll(tezosish as any, req);
+      const res = await TezosController.poll(tezosish as any, req);
       expect(res.network).toEqual('tezos');
       expect(res.currentBlock).toEqual(500);
       expect(res.timestamp).toBeDefined();
@@ -240,7 +240,7 @@ describe('Tezos API', () => {
         }),
       };
 
-      const res = await poll(tezosish as any, req);
+      const res = await TezosController.poll(tezosish as any, req);
       expect(res.network).toEqual('tezos');
       expect(res.currentBlock).toEqual(500);
       expect(res.timestamp).toBeDefined();
@@ -285,7 +285,7 @@ describe('Tezos API', () => {
     };
 
     it('should return the expected response for both FA1.2 and FA2 token standards', async () => {
-      const res = await allowances(tezosish as any, req);
+      const res = await TezosController.allowances(tezosish as any, req);
       expect(tezosish.getTokenAllowance).toHaveBeenCalledTimes(1);
       expect(res).toEqual({
         network: 'tezos',
@@ -353,7 +353,7 @@ describe('Tezos API', () => {
 
       tezosish.getWallet.mockResolvedValue(wallet);
 
-      const res = await approve(tezosish as any, req);
+      const res = await TezosController.approve(tezosish as any, req);
       expect(tezosish.getWallet).toHaveBeenCalledTimes(1);
       expect(tezosish.getWallet).toHaveBeenCalledWith(req.address);
       expect(tezosish.getTokenForSymbol).toHaveBeenCalledTimes(1);

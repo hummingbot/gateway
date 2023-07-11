@@ -45,247 +45,257 @@ export const getTokenSymbolsToTokens = (
   return tokens;
 };
 
-export async function nonce(
-  tezos: Tezosish,
-  req: NonceRequest
-): Promise<NonceResponse> {
-  const nonce = await tezos.getNonce(req.address);
-  return { nonce };
-}
-
-export async function balances(
-  tezos: Tezosish,
-  req: BalanceRequest
-): Promise<BalanceResponse | string> {
-  const initTime = Date.now();
-
-  const tokens = getTokenSymbolsToTokens(tezos, req.tokenSymbols);
-  const balances: Record<string, string> = {};
-  if (req.tokenSymbols.includes(tezos.nativeTokenSymbol)) {
-    balances[tezos.nativeTokenSymbol] = tokenValueToString(
-      await tezos.getNativeBalance(req.address)
-    );
-  }
-  await Promise.all(
-    Object.keys(tokens).map(async (symbol) => {
-      if (tokens[symbol] !== undefined && symbol !== tezos.nativeTokenSymbol) {
-        const contractAddress = tokens[symbol].address;
-        const tokenId = tokens[symbol].tokenId;
-        const decimals = tokens[symbol].decimals;
-        if (tokenId !== undefined) {
-          const balance = await tezos.getTokenBalance(
-            contractAddress,
-            req.address,
-            tokenId,
-            decimals
-          );
-          balances[symbol] = tokenValueToString(balance);
-        }
-      }
-    })
-  );
-
-  if (!Object.keys(balances).length) {
-    throw new HttpException(
-      500,
-      TOKEN_NOT_SUPPORTED_ERROR_MESSAGE,
-      TOKEN_NOT_SUPPORTED_ERROR_CODE
-    );
+export class TezosController {
+  static async nonce(
+    tezos: Tezosish,
+    req: NonceRequest
+  ): Promise<NonceResponse> {
+    const nonce = await tezos.getNonce(req.address);
+    return { nonce };
   }
 
-  return {
-    network: tezos.chainName,
-    timestamp: initTime,
-    latency: latency(initTime, Date.now()),
-    balances: balances,
-  };
-}
+  static async nextNonce(
+    tezos: Tezosish,
+    req: NonceRequest
+  ): Promise<NonceResponse> {
+    const nonce = (await tezos.getNonce(req.address)) + 1;
+    return { nonce };
+  }
 
-// txStatus
-// -1: not in the mempool or failed
-// 1: applied
-// 2: branch_delayed
-// 3: branch_refused or refused
-// 0: unprocessed
-export async function poll(
-  tezosish: Tezosish,
-  req: PollRequest
-): Promise<PollResponse> {
-  const initTime = Date.now();
+  static async balances(
+    tezos: Tezosish,
+    req: BalanceRequest
+  ): Promise<BalanceResponse | string> {
+    const initTime = Date.now();
 
-  let txStatus = -1;
-  let txData = null;
-  let txReceipt = null;
-  const pendingTxs = await tezosish.getPendingTransactions();
-  const appliedTx = pendingTxs.applied.find((tx) => tx.hash === req.txHash);
-  if (appliedTx) {
-    txStatus = 1;
-    txData = appliedTx.contents;
-    const tx = await tezosish.getTransaction(req.txHash);
-    txReceipt = {
-      status: txStatus,
-      gasUsed: tx.reduce((acc, tx) => acc + tx.gasUsed, 0),
-    };
-  } else if (pendingTxs.branch_delayed.find((tx) => tx.hash === req.txHash)) {
-    txStatus = 2;
-  } else if (pendingTxs.branch_refused.find((tx) => tx.hash === req.txHash)) {
-    txStatus = 3;
-  } else if (pendingTxs.refused.find((tx) => tx.hash === req.txHash)) {
-    txStatus = 3;
-  } else if (pendingTxs.unprocessed.find((tx) => tx.hash === req.txHash)) {
-    txStatus = 0;
-  } else {
-    const tx = await tezosish.getTransaction(req.txHash);
-    if (tx) {
-      txStatus = 1;
-      txData = tx;
-      txReceipt = {
-        status: txStatus,
-        gasUsed: tx.reduce((acc, tx) => acc + tx.gasUsed, 0),
-      }
+    const tokens = getTokenSymbolsToTokens(tezos, req.tokenSymbols);
+    const balances: Record<string, string> = {};
+    if (req.tokenSymbols.includes(tezos.nativeTokenSymbol)) {
+      balances[tezos.nativeTokenSymbol] = tokenValueToString(
+        await tezos.getNativeBalance(req.address)
+      );
     }
-  }
-
-  const currentBlock = await tezosish.getCurrentBlockNumber();
-  return {
-    network: tezosish.chain,
-    currentBlock,
-    timestamp: initTime,
-    txHash: req.txHash,
-    txStatus,
-    txData,
-    txReceipt,
-  };
-}
-
-export async function allowances(
-  tezos: Tezosish,
-  req: AllowancesRequest
-): Promise<AllowancesResponse | string> {
-  const initTime = Date.now();
-  const tokens = getTokenSymbolsToTokens(tezos, req.tokenSymbols);
-  const spender = req.spender;
-
-  const approvals: Record<string, string> = {};
-  await Promise.all(
-    Object.keys(tokens).map(async (symbol) => {
-      if (tokens[symbol].standard === 'TEZ') {
-        const balance = await tezos.getNativeBalance(req.address);
-        approvals[symbol] = balance.value.toString();
-      } else if (tokens[symbol].standard === 'FA1.2') {
-        approvals[symbol] = new BigNumber(2).pow(256).minus(1).toString();
-      } else {
-        approvals[symbol] = tokenValueToString(
-          await tezos.getTokenAllowance(
-            tokens[symbol].address,
-            req.address,
-            spender,
-            'FA2',
-            tokens[symbol].tokenId,
-            tokens[symbol].decimals
-          )
-        );
-      }
-    })
-  );
-
-  if (!Object.keys(approvals).length) {
-    throw new HttpException(
-      500,
-      TOKEN_NOT_SUPPORTED_ERROR_MESSAGE,
-      TOKEN_NOT_SUPPORTED_ERROR_CODE
+    await Promise.all(
+      Object.keys(tokens).map(async (symbol) => {
+        if (tokens[symbol] !== undefined && symbol !== tezos.nativeTokenSymbol) {
+          const contractAddress = tokens[symbol].address;
+          const tokenId = tokens[symbol].tokenId;
+          const decimals = tokens[symbol].decimals;
+          if (tokenId !== undefined) {
+            const balance = await tezos.getTokenBalance(
+              contractAddress,
+              req.address,
+              tokenId,
+              decimals
+            );
+            balances[symbol] = tokenValueToString(balance);
+          }
+        }
+      })
     );
-  }
 
-  return {
-    network: tezos.chainName,
-    timestamp: initTime,
-    latency: latency(initTime, Date.now()),
-    spender: spender,
-    approvals: approvals,
-  };
-}
+    if (!Object.keys(balances).length) {
+      throw new HttpException(
+        500,
+        TOKEN_NOT_SUPPORTED_ERROR_MESSAGE,
+        TOKEN_NOT_SUPPORTED_ERROR_CODE
+      );
+    }
 
-export async function approve(
-  tezos: Tezosish,
-  req: ApproveRequest
-): Promise<ApproveResponse | string> {
-  const initTime = Date.now();
-  const { amount, address, token } = req;
-
-  let spender = req.spender;
-  let wallet: TezosToolkit;
-  try {
-    wallet = await tezos.getWallet(address);
-  } catch (err) {
-    throw new HttpException(
-      500,
-      LOAD_WALLET_ERROR_MESSAGE + err,
-      LOAD_WALLET_ERROR_CODE
-    );
-  }
-  const fullToken = tezos.getTokenForSymbol(token);
-  if (!fullToken) {
-    throw new HttpException(
-      500,
-      TOKEN_NOT_SUPPORTED_ERROR_MESSAGE + token,
-      TOKEN_NOT_SUPPORTED_ERROR_CODE
-    );
-  }
-  const amountBigNumber = amount
-    ? new BigNumber(amount)
-    : new BigNumber(2).pow(256).minus(1);
-
-  // instantiate a contract and pass in wallet, which act on behalf of that signer
-  const contract = await wallet.contract.at(fullToken.address);
-
-  // convert strings to BigNumber
-  // call approve function
-  let approvalOperation: TransactionOperation | null = null;
-  if (fullToken.standard == 'FA1.2') {
-    approvalOperation = await contract.methods
-      .approve(spender, amountBigNumber)
-      .send();
-  } else if (fullToken.standard == 'FA2') {
-    approvalOperation = await contract.methods
-      .update_operators([{
-        add_operator: {
-          owner: address,
-          operator: spender,
-          token_id: fullToken.tokenId,
-        },
-      }])
-      .send();
-  } else {
-    throw new HttpException(
-      500,
-      TOKEN_NOT_SUPPORTED_ERROR_MESSAGE,
-      TOKEN_NOT_SUPPORTED_ERROR_CODE
-    );
-  }
-
-  if (
-    approvalOperation !== null &&
-    approvalOperation.operationResults.length > 0
-  ) {
-    const op = approvalOperation.operationResults[0];
-    const chainId = await wallet.rpc.getChainId();
     return {
       network: tezos.chainName,
       timestamp: initTime,
       latency: latency(initTime, Date.now()),
-      tokenAddress: fullToken.address,
-      spender: spender,
-      amount: amountBigNumber.toFixed(fullToken.decimals),
-      nonce: parseInt(op.counter),
-      approval: toTezosTransaction(approvalOperation.hash, op, chainId),
+      balances: balances,
     };
-  } else {
-    throw new HttpException(
-      500,
-      TOKEN_NOT_SUPPORTED_ERROR_MESSAGE,
-      TOKEN_NOT_SUPPORTED_ERROR_CODE
+  }
+
+  // txStatus
+  // -1: not in the mempool or failed
+  // 1: applied
+  // 2: branch_delayed
+  // 3: branch_refused or refused
+  // 0: unprocessed
+  static async poll(
+    tezosish: Tezosish,
+    req: PollRequest
+  ): Promise<PollResponse> {
+    const initTime = Date.now();
+
+    let txStatus = -1;
+    let txData = null;
+    let txReceipt = null;
+    const pendingTxs = await tezosish.getPendingTransactions();
+    const appliedTx = pendingTxs.applied.find((tx) => tx.hash === req.txHash);
+    if (appliedTx) {
+      txStatus = 1;
+      txData = appliedTx.contents;
+      const tx = await tezosish.getTransaction(req.txHash);
+      txReceipt = {
+        status: txStatus,
+        gasUsed: tx.reduce((acc, tx) => acc + tx.gasUsed, 0),
+      };
+    } else if (pendingTxs.branch_delayed.find((tx) => tx.hash === req.txHash)) {
+      txStatus = 2;
+    } else if (pendingTxs.branch_refused.find((tx) => tx.hash === req.txHash)) {
+      txStatus = 3;
+    } else if (pendingTxs.refused.find((tx) => tx.hash === req.txHash)) {
+      txStatus = 3;
+    } else if (pendingTxs.unprocessed.find((tx) => tx.hash === req.txHash)) {
+      txStatus = 0;
+    } else {
+      const tx = await tezosish.getTransaction(req.txHash);
+      if (tx) {
+        txStatus = 1;
+        txData = tx;
+        txReceipt = {
+          status: txStatus,
+          gasUsed: tx.reduce((acc, tx) => acc + tx.gasUsed, 0),
+        }
+      }
+    }
+
+    const currentBlock = await tezosish.getCurrentBlockNumber();
+    return {
+      network: tezosish.chain,
+      currentBlock,
+      timestamp: initTime,
+      txHash: req.txHash,
+      txStatus,
+      txData,
+      txReceipt,
+    };
+  }
+
+  static async allowances(
+    tezos: Tezosish,
+    req: AllowancesRequest
+  ): Promise<AllowancesResponse | string> {
+    const initTime = Date.now();
+    const tokens = getTokenSymbolsToTokens(tezos, req.tokenSymbols);
+    const spender = req.spender;
+
+    const approvals: Record<string, string> = {};
+    await Promise.all(
+      Object.keys(tokens).map(async (symbol) => {
+        if (tokens[symbol].standard === 'TEZ') {
+          const balance = await tezos.getNativeBalance(req.address);
+          approvals[symbol] = balance.value.toString();
+        } else if (tokens[symbol].standard === 'FA1.2') {
+          approvals[symbol] = new BigNumber(2).pow(256).minus(1).toString();
+        } else {
+          approvals[symbol] = tokenValueToString(
+            await tezos.getTokenAllowance(
+              tokens[symbol].address,
+              req.address,
+              spender,
+              'FA2',
+              tokens[symbol].tokenId,
+              tokens[symbol].decimals
+            )
+          );
+        }
+      })
     );
+
+    if (!Object.keys(approvals).length) {
+      throw new HttpException(
+        500,
+        TOKEN_NOT_SUPPORTED_ERROR_MESSAGE,
+        TOKEN_NOT_SUPPORTED_ERROR_CODE
+      );
+    }
+
+    return {
+      network: tezos.chainName,
+      timestamp: initTime,
+      latency: latency(initTime, Date.now()),
+      spender: spender,
+      approvals: approvals,
+    };
+  }
+
+  static async approve(
+    tezos: Tezosish,
+    req: ApproveRequest
+  ): Promise<ApproveResponse | string> {
+    const initTime = Date.now();
+    const { amount, address, token } = req;
+
+    let spender = req.spender;
+    let wallet: TezosToolkit;
+    try {
+      wallet = await tezos.getWallet(address);
+    } catch (err) {
+      throw new HttpException(
+        500,
+        LOAD_WALLET_ERROR_MESSAGE + err,
+        LOAD_WALLET_ERROR_CODE
+      );
+    }
+    const fullToken = tezos.getTokenForSymbol(token);
+    if (!fullToken) {
+      throw new HttpException(
+        500,
+        TOKEN_NOT_SUPPORTED_ERROR_MESSAGE + token,
+        TOKEN_NOT_SUPPORTED_ERROR_CODE
+      );
+    }
+    const amountBigNumber = amount
+      ? new BigNumber(amount)
+      : new BigNumber(2).pow(256).minus(1);
+
+    // instantiate a contract and pass in wallet, which act on behalf of that signer
+    const contract = await wallet.contract.at(fullToken.address);
+
+    // convert strings to BigNumber
+    // call approve function
+    let approvalOperation: TransactionOperation | null = null;
+    if (fullToken.standard == 'FA1.2') {
+      approvalOperation = await contract.methods
+        .approve(spender, amountBigNumber)
+        .send();
+    } else if (fullToken.standard == 'FA2') {
+      approvalOperation = await contract.methods
+        .update_operators([{
+          add_operator: {
+            owner: address,
+            operator: spender,
+            token_id: fullToken.tokenId,
+          },
+        }])
+        .send();
+    } else {
+      throw new HttpException(
+        500,
+        TOKEN_NOT_SUPPORTED_ERROR_MESSAGE,
+        TOKEN_NOT_SUPPORTED_ERROR_CODE
+      );
+    }
+
+    if (
+      approvalOperation !== null &&
+      approvalOperation.operationResults.length > 0
+    ) {
+      const op = approvalOperation.operationResults[0];
+      const chainId = await wallet.rpc.getChainId();
+      return {
+        network: tezos.chainName,
+        timestamp: initTime,
+        latency: latency(initTime, Date.now()),
+        tokenAddress: fullToken.address,
+        spender: spender,
+        amount: amountBigNumber.toFixed(fullToken.decimals),
+        nonce: parseInt(op.counter),
+        approval: toTezosTransaction(approvalOperation.hash, op, chainId),
+      };
+    } else {
+      throw new HttpException(
+        500,
+        TOKEN_NOT_SUPPORTED_ERROR_MESSAGE,
+        TOKEN_NOT_SUPPORTED_ERROR_CODE
+      );
+    }
   }
 }
 

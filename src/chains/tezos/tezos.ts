@@ -2,6 +2,7 @@ import { Tezosish } from '../../services/common-interfaces';
 import { TezosBase } from './tezos.base';
 import { getTezosConfig } from './tezos.config';
 import { logger } from '../../services/logger';
+import { TezosController } from './tezos.controllers';
 
 
 export class Tezos extends TezosBase implements Tezosish {
@@ -13,6 +14,7 @@ export class Tezos extends TezosBase implements Tezosish {
   private _requestCount: number;
   private _metricsLogInterval: number;
   private _metricTimer;
+  public controller: any;
 
   constructor(network: string) {
     super(network);
@@ -30,6 +32,7 @@ export class Tezos extends TezosBase implements Tezosish {
       this.metricLogger.bind(this),
       this.metricsLogInterval
     );
+    this.controller = TezosController;
   }
 
   public static getInstance(network: string): Tezos {
