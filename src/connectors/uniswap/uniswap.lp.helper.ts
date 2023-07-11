@@ -7,7 +7,7 @@ import { UniswapConfig } from './uniswap.config';
 import { Contract, ContractInterface } from '@ethersproject/contracts';
 import {
   Token,
-  Fraction,
+  // Fraction,
   CurrencyAmount,
   Percent,
   Price,
@@ -15,8 +15,8 @@ import {
 import * as uniV3 from '@uniswap/v3-sdk';
 import {
   AlphaRouter,
-  SwapToRatioResponse,
-  SwapToRatioStatus,
+  // SwapToRatioResponse,
+  // SwapToRatioStatus,
 } from '@uniswap/smart-order-router';
 import { providers, Wallet, Signer, utils } from 'ethers';
 import { percentRegexp } from '../../services/config-manager-v2';
@@ -384,44 +384,47 @@ export class UniswapLPHelper {
       useFullPrecision: true,
     });
 
-    const autorouterRoute: SwapToRatioResponse =
-      await this.alphaRouter.routeToRatio(
-        CurrencyAmount.fromRawAmount(
-          token0,
-          utils.parseUnits(amount0, token0.decimals).toString()
-        ),
-        CurrencyAmount.fromRawAmount(
-          token1,
-          utils.parseUnits(amount1, token1.decimals).toString()
-        ),
-        position,
-        {
-          ratioErrorTolerance: new Fraction(1, 100),
-          maxIterations: 6,
-        },
-        {
-          swapOptions: swapOptions,
-          addLiquidityOptions: addLiquidityOptions,
-        }
-      );
-
-    let methodParameters: uniV3.MethodParameters;
-    let swapReq = false;
-    if (autorouterRoute.status === SwapToRatioStatus.SUCCESS) {
-      swapReq = true;
-      methodParameters = autorouterRoute.result
-        .methodParameters as uniV3.MethodParameters;
-    } else if (autorouterRoute.status === SwapToRatioStatus.NO_SWAP_NEEDED) {
-      methodParameters = uniV3.NonfungiblePositionManager.addCallParameters(
-        position,
-        { ...swapOptions, ...addLiquidityOptions }
-      );
-    } else {
-      throw new Error(
-        `Unable to add liquidity - ${SwapToRatioStatus[autorouterRoute.status]}`
-      );
-    }
-    return { ...methodParameters, swapRequired: swapReq };
+    // const autorouterRoute: SwapToRatioResponse =
+    //   await this.alphaRouter.routeToRatio(
+    //     CurrencyAmount.fromRawAmount(
+    //       token0,
+    //       utils.parseUnits(amount0, token0.decimals).toString()
+    //     ),
+    //     CurrencyAmount.fromRawAmount(
+    //       token1,
+    //       utils.parseUnits(amount1, token1.decimals).toString()
+    //     ),
+    //     position,
+    //     {
+    //       ratioErrorTolerance: new Fraction(1, 100),
+    //       maxIterations: 6,
+    //     },
+    //     {
+    //       swapOptions: swapOptions,
+    //       addLiquidityOptions: addLiquidityOptions,
+    //     }
+    //   );
+    // let methodParameters: uniV3.MethodParameters;
+    // let swapReq = false;
+    // if (autorouterRoute.status === SwapToRatioStatus.SUCCESS) {
+    //   swapReq = true;
+    //   methodParameters = autorouterRoute.result
+    //     .methodParameters as uniV3.MethodParameters;
+    // } else if (autorouterRoute.status === SwapToRatioStatus.NO_SWAP_NEEDED) {
+    //   methodParameters = uniV3.NonfungiblePositionManager.addCallParameters(
+    //     position,
+    //     { ...swapOptions, ...addLiquidityOptions }
+    //   );
+    // } else {
+    //   throw new Error(
+    //     `Unable to add liquidity - ${SwapToRatioStatus[autorouterRoute.status]}`
+    //   );
+    // }
+    const methodParameters = uniV3.NonfungiblePositionManager.addCallParameters(
+      position,
+      { ...swapOptions, ...addLiquidityOptions }
+    );
+    return { ...methodParameters, swapRequired: false };
   }
 
   async reducePositionHelper(
