@@ -149,7 +149,7 @@ export class TezosController {
       const tx = await tezosish.getTransaction(req.txHash);
       txReceipt = {
         status: txStatus,
-        gasUsed: tx.reduce((acc, tx) => acc + tx.gasUsed, 0),
+        gasUsed: tx.reduce((acc, tx) => acc + tx.gasUsed, 0) * 1e3, // multiplying my 1e3 because in hummingbot it's divided by 1e9 instead of 1e6
       };
     } else if (pendingTxs.branch_delayed.find((tx) => tx.hash === req.txHash)) {
       txStatus = 2;
@@ -166,7 +166,7 @@ export class TezosController {
         txData = tx;
         txReceipt = {
           status: txStatus,
-          gasUsed: tx.reduce((acc, tx) => acc + tx.gasUsed, 0),
+          gasUsed: tx.reduce((acc, tx) => acc + tx.gasUsed, 0) * 1e3,
         }
       }
     }
