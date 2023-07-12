@@ -29,6 +29,8 @@ import {
   AllowancesResponse,
 } from '../../chains/chain.requests';
 import { Tezosish, CustomTransaction } from '../../services/common-interfaces';
+import { TokensRequest } from '../../network/network.requests';
+import { validateTezosTokenRequest } from './tezos.validators';
 
 export const getTokenSymbolsToTokens = (
   tezos: Tezosish,
@@ -60,6 +62,20 @@ export class TezosController {
   ): Promise<NonceResponse> {
     const nonce = (await tezos.getNonce(req.address)) + 1;
     return { nonce };
+  }
+
+  static async getTokens(connection: Tezosish, req: TokensRequest) {
+    validateTezosTokenRequest(req);
+    let tokens: TokenInfo[] = [];
+    if (!req.tokenSymbols) {
+      tokens = connection.storedTokenList;
+    } else {
+      for (const t of req.tokenSymbols as []) {
+        tokens.push(connection.getTokenForSymbol(t) as TokenInfo);
+      }
+    }
+
+    return { tokens };
   }
 
   static async balances(

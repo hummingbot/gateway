@@ -63,7 +63,7 @@ describe('POST /chain/poll', () => {
                 chain: 'tezos',
                 network: 'mainnet',
                 txHash:
-                    'onwcPGmSxHwRwT1AikSTYepMRzHKonQAqGnr3JUgKoztNH2onmj',
+                    'onuDjdkN3dX1nfhn3LXyr7cgFbsn2G2WE5D5zVphkzBy5yWRGXw',
             });
         expect(res.statusCode).toEqual(200);
         expect(res.body.txStatus).toBeDefined();
