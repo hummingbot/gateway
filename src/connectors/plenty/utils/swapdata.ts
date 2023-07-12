@@ -23,7 +23,6 @@ export const loadSwapDataTezPairs = async (
 
     const token1Pool = new BigNumber(storageResponse.token1_pool);
     const token2Pool = new BigNumber(storageResponse.token2_pool);
-    let lpTokenSupply = new BigNumber(storageResponse.totalSupply);
     const lpFee = new BigNumber(storageResponse.lpFee);
 
     const lpToken = AMM.lpToken;
@@ -40,7 +39,6 @@ export const loadSwapDataTezPairs = async (
 
     tokenInSupply = tokenInSupply.dividedBy(new BigNumber(10).pow(tokenIn.decimals));
     tokenOutSupply = tokenOutSupply.dividedBy(new BigNumber(10).pow(tokenOut.decimals));
-    lpTokenSupply = lpTokenSupply.dividedBy(new BigNumber(10).pow(lpToken.decimals));
 
     const exchangeFee = new BigNumber(1).dividedBy(lpFee);
 
@@ -51,7 +49,6 @@ export const loadSwapDataTezPairs = async (
       tokenOut: tokenOut.symbol,
       tokenOutSupply,
       exchangeFee,
-      lpTokenSupply,
       lpToken,
     };
   } catch (error) {
@@ -63,7 +60,6 @@ export const loadSwapDataTezPairs = async (
       tokenOut: tokenOut.symbol,
       tokenOutSupply: new BigNumber(0),
       exchangeFee: new BigNumber(0),
-      lpTokenSupply: new BigNumber(0),
       lpToken: undefined,
     };
   }
@@ -87,7 +83,6 @@ export const loadSwapDataVolatile = async (
 
     const token1Pool = new BigNumber(storageResponse.token1_pool);
     const token2Pool = new BigNumber(storageResponse.token2_pool);
-    let lpTokenSupply = new BigNumber(storageResponse.totalSupply);
     const lpFee = new BigNumber(storageResponse.lpFee);
 
     const lpToken = AMM.lpToken;
@@ -104,7 +99,6 @@ export const loadSwapDataVolatile = async (
 
     tokenInSupply = tokenInSupply.dividedBy(new BigNumber(10).pow(tokenIn.decimals));
     tokenOutSupply = tokenOutSupply.dividedBy(new BigNumber(10).pow(tokenOut.decimals));
-    lpTokenSupply = lpTokenSupply.dividedBy(new BigNumber(10).pow(lpToken.decimals));
     const exchangeFee = new BigNumber(1).dividedBy(lpFee);
     return {
       success: true,
@@ -113,7 +107,6 @@ export const loadSwapDataVolatile = async (
       tokenOut: tokenOut.symbol,
       tokenOutSupply,
       exchangeFee,
-      lpTokenSupply,
       lpToken,
     };
   } catch (error) {
@@ -125,7 +118,6 @@ export const loadSwapDataVolatile = async (
       tokenOut: tokenOut.symbol,
       tokenOutSupply: new BigNumber(0),
       exchangeFee: new BigNumber(0),
-      lpTokenSupply: new BigNumber(0),
       lpToken: undefined,
     };
   }
@@ -144,7 +136,6 @@ export const loadSwapDataTezCtez = async (
 
     let tezSupply: BigNumber = new BigNumber(storageResponse.tezPool);
     let ctezSupply: BigNumber = new BigNumber(storageResponse.ctezPool);
-    let lpTokenSupply: BigNumber = new BigNumber(storageResponse.lqtTotal);
     const exchangeFee = new BigNumber(storageResponse.lpFee);
     const lpToken = AMM.lpToken;
     const ctezStorage = await ctez.storage() as any;
@@ -152,7 +143,6 @@ export const loadSwapDataTezCtez = async (
 
     tezSupply = tezSupply.dividedBy(new BigNumber(10).pow(6));
     ctezSupply = ctezSupply.dividedBy(new BigNumber(10).pow(6));
-    lpTokenSupply = lpTokenSupply.dividedBy(new BigNumber(10).pow(6));
 
     let tokenInSupply = new BigNumber(0);
     let tokenOutSupply = new BigNumber(0);
@@ -171,7 +161,6 @@ export const loadSwapDataTezCtez = async (
       tokenIn,
       tokenOut,
       exchangeFee,
-      lpTokenSupply,
       lpToken,
       target,
     };
@@ -184,7 +173,6 @@ export const loadSwapDataTezCtez = async (
       tokenIn,
       tokenOut,
       exchangeFee: new BigNumber(0),
-      lpTokenSupply: new BigNumber(0),
       lpToken: undefined,
       target: new BigNumber(0),
     };
@@ -222,12 +210,10 @@ export const loadSwapDataGeneralStable = async (
       tokenInPrecision = token2Precision;
     }
     const exchangeFee = new BigNumber(storageResponse.lpFee);
-    let lpTokenSupply = new BigNumber(storageResponse.lqtTotal);
     const lpToken = AMM.lpToken;
 
     tokenInSupply = tokenInSupply.dividedBy(new BigNumber(10).pow(tokenIn.decimals));
     tokenOutSupply = tokenOutSupply.dividedBy(new BigNumber(10).pow(tokenOut.decimals));
-    lpTokenSupply = lpTokenSupply.dividedBy(new BigNumber(10).pow(lpToken.decimals));
 
     return {
       success: true,
@@ -236,7 +222,6 @@ export const loadSwapDataGeneralStable = async (
       tokenOut: tokenOut.symbol,
       tokenOutSupply,
       exchangeFee,
-      lpTokenSupply,
       lpToken,
       tokenInPrecision,
       tokenOutPrecision,
@@ -250,7 +235,6 @@ export const loadSwapDataGeneralStable = async (
       tokenOut: tokenOut.symbol,
       tokenOutSupply: new BigNumber(0),
       exchangeFee: new BigNumber(0),
-      lpTokenSupply: new BigNumber(0),
       lpToken: undefined,
       tokenInPrecision: new BigNumber(0),
       tokenOutPrecision: new BigNumber(0),

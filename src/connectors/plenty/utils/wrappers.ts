@@ -424,7 +424,6 @@ export const loadSwapDataWrapper = async (
       tokenInSupply: new BigNumber(0),
       tokenOutSupply: new BigNumber(0),
       exchangeFee: new BigNumber(0),
-      lpTokenSupply: new BigNumber(0),
       lpToken: undefined,
     };
   }

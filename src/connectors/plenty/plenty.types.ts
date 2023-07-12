@@ -70,7 +70,6 @@ export interface ISwapDataResponse {
     tokenIn: string;
     tokenOut: string;
     exchangeFee: BigNumber;
-    lpTokenSupply: BigNumber;
     lpToken: IConfigLPToken | undefined;
     tokenInPrecision?: BigNumber;
     tokenOutPrecision?: BigNumber;
