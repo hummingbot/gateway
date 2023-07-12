@@ -1,7 +1,7 @@
 import BigNumber from "bignumber.js";
 import { isFractionString } from '../../services/validators';
 import { PlentyConfig } from './plenty.config';
-import { ExecutedTrade, ExpectedTrade, IConfigPool, IConfigToken, IPoolData, PlentyTrade } from './plenty.types';
+import { ExecutedTrade, ExpectedTrade, IConfigPool, IConfigToken, PlentyTrade } from './plenty.types';
 import { UniswapishPriceError } from '../../services/error-handler';
 import { computeAllPathsWrapper, computeReverseCalculationWrapper } from './utils/wrappers';
 import { allPaths } from './utils/paths';
@@ -96,16 +96,6 @@ export class Plenty {
       );
     }
     return pool;
-  }
-
-  public async poolFromPair(
-    token1: string,
-    token2: string,
-    tezos: Tezosish
-  ): Promise<IPoolData> {
-    const pool = this.getPool(token1, token2);
-    const poolContract = await tezos.getContract(pool.address);
-    return { config: pool, contract: poolContract };
   }
 
   public async ctezContract(tezos: Tezosish): Promise<any> {

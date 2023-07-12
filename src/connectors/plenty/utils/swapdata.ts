@@ -1,5 +1,5 @@
 import BigNumber from "bignumber.js";
-import { IConfigToken, IPoolData, ISwapDataResponse } from "../plenty.types";
+import { IConfigToken, IConfigPool, ISwapDataResponse } from "../plenty.types";
 import { logger } from "../../../services/logger";
 import { ContractAbstraction } from "@taquito/taquito";
 import { Tezosish } from "../../../services/common-interfaces";
@@ -7,13 +7,11 @@ import { Tezosish } from "../../../services/common-interfaces";
 
 export const loadSwapDataTezPairs = async (
   tezos: Tezosish,
-  dex: IPoolData,
+  AMM: IConfigPool,
   tokenIn: IConfigToken,
   tokenOut: IConfigToken
 ): Promise<ISwapDataResponse> => {
   try {
-    const AMM = dex.config;
-
     const dexContractAddress = AMM.address;
     if (dexContractAddress === "false") {
       throw new Error("No dex found");
@@ -67,13 +65,11 @@ export const loadSwapDataTezPairs = async (
 
 export const loadSwapDataVolatile = async (
   tezos: Tezosish,
-  dex: IPoolData,
+  AMM: IConfigPool,
   tokenIn: IConfigToken,
   tokenOut: IConfigToken
 ): Promise<ISwapDataResponse> => {
   try {
-    const AMM = dex.config;
-
     const dexContractAddress = AMM.address;
     if (dexContractAddress === "false") {
       throw new Error("No dex found");
@@ -125,13 +121,12 @@ export const loadSwapDataVolatile = async (
 
 export const loadSwapDataTezCtez = async (
   tezos: Tezosish,
-  dex: IPoolData,
+  AMM: IConfigPool,
   ctez: ContractAbstraction<any>,
   tokenIn: string,
   tokenOut: string
 ): Promise<ISwapDataResponse> => {
   try {
-    const AMM = dex.config;
     const storageResponse = await tezos.getContractStorage(AMM.address);
 
     let tezSupply: BigNumber = new BigNumber(storageResponse.tezPool);
@@ -181,12 +176,11 @@ export const loadSwapDataTezCtez = async (
 
 export const loadSwapDataGeneralStable = async (
   tezos: Tezosish,
-  dex: IPoolData,
+  AMM: IConfigPool,
   tokenIn: IConfigToken,
   tokenOut: IConfigToken
 ): Promise<ISwapDataResponse> => {
   try {
-    const AMM = dex.config;
     const storageResponse = await tezos.getContractStorage(AMM.address);
 
     const token1Pool = new BigNumber(storageResponse.token1Pool);

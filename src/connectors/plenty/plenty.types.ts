@@ -118,8 +118,3 @@ export interface IBestPathResponse {
     feePerc: BigNumber[];
     priceImpact: BigNumber[];
 }
-
-export interface IPoolData {
-    config: IConfigPool;
-    contract: any
-}

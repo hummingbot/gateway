@@ -392,8 +392,8 @@ export const loadSwapDataWrapper = async (
   tokenOut: string
 ): Promise<ISwapDataResponse> => {
   try {
-    const dex = await plenty.poolFromPair(tokenIn, tokenOut, tezos);
-    const dexType = dex.config.type;
+    const dex = plenty.getPool(tokenIn, tokenOut);
+    const dexType = dex.type;
 
     let fullTokenIn = plenty.getTokenBySymbol(tokenIn);
     let fullTokenOut = plenty.getTokenBySymbol(tokenOut);
