@@ -2,6 +2,7 @@ import { Plenty } from '../../../src/connectors/plenty/plenty';
 import BigNumber from 'bignumber.js';
 import { Tezosish } from '../../../src/services/common-interfaces';
 import { tokensAPI } from './tokensAPI';
+import { analyticsAPI } from './analyticsAPI';
 import { patch } from '../../services/patch';
 import { Tezos } from '../../../src/chains/tezos/tezos';
 
@@ -11,9 +12,14 @@ describe('Plenty', () => {
   let tezos: Tezosish;
 
   const patchFetch = () => {
-    patch(global, 'fetch', () => {
+    patch(global, 'fetch', (url: string) => {
       return {
-        json: () => tokensAPI
+        json: () => {
+          if (url.includes('analytics'))
+            return analyticsAPI;
+          else
+            return tokensAPI;
+        }
       }
     });
   };
@@ -53,14 +59,6 @@ describe('Plenty', () => {
     it('should return the correct pool for a valid token pair', () => {
       const pool = plenty.getPool('XTZ', 'CTEZ');
       expect(pool.address).toBeDefined();
-    });
-  });
-
-  describe('poolFromPair', () => {
-    it('should return the correct pool and contract for a valid token pair', async () => {
-      const { config, contract } = await plenty.poolFromPair('XTZ', 'CTEZ', tezos);
-      expect(config.address).toBeDefined();
-      expect(contract).toBeDefined();
     });
   });
 

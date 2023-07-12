@@ -6,6 +6,7 @@ export namespace PlentyConfig {
     allowedSlippage: string;
     gasLimitEstimate: number;
     poolsApi: (network: string) => string;
+    analyticsApi: (network: string) => string;
     routerAddress: (network: string) => string;
     ctezAdminAddress: (network: string) => string;
     tradingTypes: Array<string>;
@@ -23,6 +24,10 @@ export namespace PlentyConfig {
     poolsApi: (network: string) =>
       ConfigManagerV2.getInstance().get(
         'plenty.contractAddresses.' + network + '.poolsApi'
+      ),
+    analyticsApi: (network: string) =>
+      ConfigManagerV2.getInstance().get(
+        'plenty.contractAddresses.' + network + '.analyticsApi'
       ),
     routerAddress: (network: string) =>
       ConfigManagerV2.getInstance().get(

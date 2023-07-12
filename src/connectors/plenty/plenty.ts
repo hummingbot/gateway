@@ -12,21 +12,23 @@ import { logger } from "../../services/logger";
 
 export class Plenty {
   private static _instances: { [name: string]: Plenty };
-  private _ctezAdminAddress: string;
   private _router: string;
   private _poolsApi: string;
+  private _analyticsApi: string;
   private _gasLimitEstimate: number;
   private _tokenList: Record<string, IConfigToken> = {};
   private _pools: Record<string, IConfigPool> = {};
   private _ready: boolean = false;
   private _skipTokens: string[] = ['SEB', 'PEPE'];
+  public ctezAdminAddress: string;
   public isPlenty = true;
 
   constructor(network: string) {
     const config = PlentyConfig.config;
     this._router = config.routerAddress(network);
     this._poolsApi = config.poolsApi(network);
-    this._ctezAdminAddress = config.ctezAdminAddress(network);
+    this._analyticsApi = config.analyticsApi(network);
+    this.ctezAdminAddress = config.ctezAdminAddress(network);
     this._gasLimitEstimate = config.gasLimitEstimate;
   }
 
@@ -98,8 +100,13 @@ export class Plenty {
     return pool;
   }
 
+  public async getAnalytics(): Promise<any> {
+    const apiResponse = await fetch(this._analyticsApi);
+    return await apiResponse.json();
+  }
+
   public async ctezContract(tezos: Tezosish): Promise<any> {
-    return await tezos.getContract(this._ctezAdminAddress);
+    return await tezos.getContract(this.ctezAdminAddress);
   }
 
   public get tokenList(): Record<string, IConfigToken> {
@@ -143,10 +150,10 @@ export class Plenty {
    *
    * This is typically used for calculating token sell prices.
    *
+   * @param tezos Instance of Tezos class
    * @param baseToken Token input for the transaction
    * @param quoteToken Output from the transaction
    * @param amount Amount of `baseToken` to put into the transaction
-   * @param recipient (Optional) address to receive the output of the transaction
    * @param allowedSlippage (Optional) should be of the form '1/10'.
    */
   async estimateSellTrade(
@@ -190,10 +197,10 @@ export class Plenty {
    *
    * This is typically used for calculating token buy prices.
    *
+   * @param tezos Instance of Tezos class
    * @param quoteToken Token input for the transaction
    * @param baseToken Token output from the transaction
    * @param amount Amount of `baseToken` desired from the transaction
-   * @param recipient (Optional) address to receive the output of the transaction
    * @param allowedSlippage (Optional) should be of the form '1/10'.
    */
   async estimateBuyTrade(

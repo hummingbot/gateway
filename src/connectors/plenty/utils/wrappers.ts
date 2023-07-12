@@ -1,5 +1,5 @@
 import BigNumber from "bignumber.js";
-import { ICalculateTokenResponse, IRouterResponse, ISwapDataResponse, PoolType } from "../plenty.types";
+import { IAnalytics, ICalculateTokenResponse, IRouterResponse, ISwapDataResponse, PoolType } from "../plenty.types";
 import { UniswapishPriceError } from "../../../services/error-handler";
 import { logger } from "../../../services/logger";
 import {
@@ -388,30 +388,33 @@ export const swapWrapper = async (
 export const loadSwapDataWrapper = async (
   tezos: Tezosish,
   plenty: Plenty,
+  analytics: IAnalytics[],
   tokenIn: string,
   tokenOut: string
 ): Promise<ISwapDataResponse> => {
   try {
     const dex = plenty.getPool(tokenIn, tokenOut);
     const dexType = dex.type;
+    const poolAnalytics = analytics.find(analytic => analytic.pool === dex.address)!;
 
     let fullTokenIn = plenty.getTokenBySymbol(tokenIn);
     let fullTokenOut = plenty.getTokenBySymbol(tokenOut);
 
     let swapData: ISwapDataResponse;
     if (dexType === PoolType.TEZ) {
-      swapData = await loadSwapDataTezPairs(tezos, dex, fullTokenIn, fullTokenOut);
+      swapData = loadSwapDataTezPairs(dex, poolAnalytics, fullTokenIn, fullTokenOut);
     } else if (dexType === PoolType.VOLATILE) {
-      swapData = await loadSwapDataVolatile(tezos, dex, fullTokenIn, fullTokenOut);
+      swapData = loadSwapDataVolatile(dex, poolAnalytics, fullTokenIn, fullTokenOut);
     } else {
       if (
         (tokenIn === "XTZ" && tokenOut === "CTEZ") ||
         (tokenIn === "CTEZ" && tokenOut === "XTZ")
       ) {
-        const ctez = await plenty.ctezContract(tezos);
-        swapData = await loadSwapDataTezCtez(tezos, dex, ctez, tokenIn, tokenOut);
+        const ctezAdmin = await tezos.getContractStorage(plenty.ctezAdminAddress);
+        swapData = loadSwapDataTezCtez(dex, poolAnalytics, tokenIn, tokenOut);
+        swapData.target = ctezAdmin.target;
       } else {
-        swapData = await loadSwapDataGeneralStable(tezos, dex, fullTokenIn, fullTokenOut);
+        swapData = loadSwapDataGeneralStable(dex, poolAnalytics, fullTokenIn, fullTokenOut);
       }
     }
     return swapData;

@@ -17,6 +17,9 @@
                         "poolsApi": {
                             "type": "string"
                         },
+                        "analyticsApi": {
+                            "type": "string"
+                        },
                         "router": {
                             "type": "string"
                         },

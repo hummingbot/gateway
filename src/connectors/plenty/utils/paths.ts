@@ -46,12 +46,13 @@ export const allPaths = async (
 
     let swapData: ISwapDataResponse[][] = [];
     const promises: Promise<ISwapDataResponse>[] = [];
+    const analytics = await plenty.getAnalytics();
 
     for (const path of paths) {
       const pathArray = path.split(' ');
       swapData.push([]);
       for (let j = 0; j < pathArray.length - 1; j++) {
-        promises.push(loadSwapDataWrapper(tezos, plenty, pathArray[j], pathArray[j + 1]));
+        promises.push(loadSwapDataWrapper(tezos, plenty, analytics, pathArray[j], pathArray[j + 1]));
       }
     }
 

@@ -93,8 +93,30 @@ export interface IConfigPool {
     token2Precision?: string;
     gauge?: string;
     bribe?: string;
-    fees?: number;
+    fees: number;
 }
+
+export interface IAnalytics {
+    pool: string,
+    symbol: string,
+    type: string,
+    volume: {
+        value24H: string,
+        change24H: string,
+        value7D: string
+    },
+    fees: {
+        value24H: string,
+        change24H: string,
+        value7D: string
+    },
+    tvl: {
+        token1Amount: string,
+        token2Amount: string,
+        value: string,
+        change24H: string
+    }
+};
 
 export interface IRouterResponse {
     path: string[];
