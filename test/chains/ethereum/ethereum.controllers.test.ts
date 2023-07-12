@@ -3,16 +3,6 @@ import { Ethereum } from '../../../src/chains/ethereum/ethereum';
 import { patch, unpatch } from '../../services/patch';
 import { TokenInfo } from '../../../src/chains/ethereum/ethereum-base';
 import {
-  nonce,
-  nextNonce,
-  getTokenSymbolsToTokens,
-  allowances,
-  approve,
-  balances,
-  cancel,
-  willTxSucceed,
-} from '../../../src/chains/ethereum/ethereum.controllers';
-import {
   HttpException,
   LOAD_WALLET_ERROR_CODE,
   LOAD_WALLET_ERROR_MESSAGE,
@@ -20,6 +10,10 @@ import {
   TOKEN_NOT_SUPPORTED_ERROR_CODE,
 } from '../../../src/services/error-handler';
 import { patchEVMNonceManager } from '../../evm.nonce.mock';
+import {
+  EVMController,
+  willTxSucceed,
+} from '../../../src/chains/ethereum/evm.controllers';
 let eth: Ethereum;
 
 beforeAll(async () => {
@@ -53,7 +47,7 @@ describe('nonce', () => {
       };
     });
     patch(eth.nonceManager, 'getNonce', () => 2);
-    const n = await nonce(eth, {
+    const n = await EVMController.nonce(eth, {
       chain: 'ethereum',
       network: 'goerli',
       address: zeroAddress,
@@ -68,7 +62,7 @@ describe('nonce', () => {
       };
     });
     patch(eth.nonceManager, 'getNextNonce', () => 3);
-    const n = await nextNonce(eth, {
+    const n = await EVMController.nextNonce(eth, {
       chain: 'ethereum',
       network: 'goerli',
       address: zeroAddress,
@@ -89,7 +83,9 @@ describe('getTokenSymbolsToTokens', () => {
     patch(eth, 'getTokenBySymbol', () => {
       return weth;
     });
-    expect(getTokenSymbolsToTokens(eth, ['WETH'])).toEqual({ WETH: weth });
+    expect(EVMController.getTokenSymbolsToTokens(eth, ['WETH'])).toEqual({
+      WETH: weth,
+    });
   });
 });
 
@@ -118,7 +114,7 @@ describe('allowances', () => {
       };
     });
 
-    const result = await allowances(eth, {
+    const result = await EVMController.allowances(eth, {
       chain: 'ethereum',
       network: 'goerli',
       address: zeroAddress,
@@ -159,7 +155,7 @@ describe('approve', () => {
       };
     });
 
-    const result = await approve(eth, {
+    const result = await EVMController.approve(eth, {
       chain: 'ethereum',
       network: 'goerli',
       address: zeroAddress,
@@ -180,7 +176,7 @@ describe('approve', () => {
     });
 
     await expect(
-      approve(eth, {
+      EVMController.approve(eth, {
         chain: 'ethereum',
         network: 'goerli',
         address: zeroAddress,
@@ -212,7 +208,7 @@ describe('approve', () => {
     });
 
     await expect(
-      approve(eth, {
+      EVMController.approve(eth, {
         chain: 'ethereum',
         network: 'goerli',
         address: zeroAddress,
@@ -237,7 +233,7 @@ describe('balances', () => {
     });
 
     await expect(
-      balances(eth, {
+      EVMController.balances(eth, {
         chain: 'ethereum',
         network: 'goerli',
         address: zeroAddress,
@@ -261,7 +257,7 @@ describe('cancel', () => {
     });
 
     await expect(
-      cancel(eth, {
+      EVMController.cancel(eth, {
         chain: 'ethereum',
         network: 'goerli',
         nonce: 123,

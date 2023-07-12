@@ -1,8 +1,8 @@
 paths:
-  /evm/nonce:
+  /chain/nonce:
     post:
       tags:
-        - 'evm'
+        - 'chain'
       summary: 'Get the current nonce for the provided private key'
       operationId: 'nonce'
       consumes:
@@ -20,10 +20,10 @@ paths:
           schema:
             $ref: '#/definitions/NonceResponse'
 
-  /evm/nextNonce:
+  /chain/nextNonce:
     post:
       tags:
-        - 'evm'
+        - 'chain'
       summary: 'Get the next nonce for the provided private key'
       operationId: 'nonce'
       consumes:
@@ -41,10 +41,10 @@ paths:
           schema:
             $ref: '#/definitions/NonceResponse'
             
-  /evm/allowances:
+  /chain/allowances:
     post:
       tags:
-        - 'evm'
+        - 'chain'
       summary: 'Get the ERC20 allowances for a spender on a given private key'
       operationId: 'allowances'
       consumes:
@@ -61,10 +61,10 @@ paths:
         '200':
           schema:
             $ref: '#/definitions/AllowancesResponse'
-  /evm/approve:
+  /chain/approve:
     post:
       tags:
-        - 'evm'
+        - 'chain'
       summary: 'Create an ERC20 approval for a spender on an private key'
       operationId: 'approve'
       consumes:
@@ -82,10 +82,10 @@ paths:
           schema:
             $ref: '#/definitions/ApproveResponse'
 
-  /evm/cancel:
+  /chain/cancel:
     post:
       tags:
-        - 'evm'
+        - 'chain'
       summary: 'Cancel transaction'
       operationId: 'cancel'
       consumes:
@@ -102,3 +102,19 @@ paths:
         '200':
           schema:
             $ref: '#/definitions/CancelResponse'
+
+  /chain/transfer:
+    post:
+      tags:
+        - 'chain'
+      summary: 'Transfer balance'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          required: true
+          schema:
+            $ref: '#/definitions/TransferRequest'
+      produces:
+        - 'application/json'          
+      responses:
+        '200'

@@ -5,10 +5,10 @@ import {
   INVALID_NONCE_ERROR_MESSAGE,
   SERVICE_UNITIALIZED_ERROR_CODE,
   SERVICE_UNITIALIZED_ERROR_MESSAGE,
-} from '../services/error-handler';
-import { LocalStorage } from '../services/local-storage';
-import { logger } from '../services/logger';
-import { ReferenceCountingCloseable } from '../services/refcounting-closeable';
+} from '../../services/error-handler';
+import { LocalStorage } from '../../services/local-storage';
+import { logger } from '../../services/logger';
+import { ReferenceCountingCloseable } from '../../services/refcounting-closeable';
 
 export class NonceInfo {
   constructor(readonly nonce: number, public expiry: number) {}
