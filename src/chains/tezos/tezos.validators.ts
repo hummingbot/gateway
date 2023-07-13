@@ -7,6 +7,7 @@ import {
   Validator,
   validateToken,
   validateAmount,
+  invalidTokenSymbolsError,
 } from '../../services/validators';
 
 // invalid parameter errors
@@ -15,7 +16,7 @@ export const invalidAddressError: string =
   'The address param is not a valid Tezos address.';
 
 export const invalidSpenderError: string =
-  'The spender param is not a valid Tezos address.';
+  'The spender param is not a valid Tezos address or connector name.';
 
 export const invalidNonceError: string =
   'If nonce is included it must be a non-negative integer.';
@@ -55,7 +56,11 @@ export const validateTezosSpender: Validator = mkValidator(
   'spender',
   invalidSpenderError,
   (val) =>
-    typeof val === 'string' && isAddress(val)
+    typeof val === 'string' &&
+    (
+      val === 'plenty' ||
+      isAddress(val)
+    )
 );
 
 // test if a nonce is a non-negative integer
@@ -89,6 +94,23 @@ export const validateTezosNetwork: Validator = mkValidator(
   (val) => typeof val === 'string'
 );
 
+// confirm that tokenSymbols is an array of strings (if it exists)
+export const validateTezosTokenSymbols: Validator = (req: any) => {
+  const errors: Array<string> = [];
+  if (req.tokenSymbols) {
+    if (Array.isArray(req.tokenSymbols)) {
+      req.tokenSymbols.forEach((symbol: any) => {
+        if (typeof symbol !== 'string') {
+          errors.push(invalidTokenSymbolsError);
+        }
+      });
+    } else {
+      errors.push(invalidTokenSymbolsError);
+    }
+  }
+  return errors;
+};
+
 // request types and corresponding validators
 export const validateTezosNonceRequest: RequestValidator = mkRequestValidator([
   validateTezosAddress,
@@ -107,7 +129,7 @@ export const validateTezosBalanceRequest: RequestValidator = mkRequestValidator(
 
 export const validateTezosTokenRequest: RequestValidator = mkRequestValidator([
   validateTezosChain,
-  validateTokenSymbols,
+  validateTezosTokenSymbols,
   validateTezosNetwork
 ]);
 
