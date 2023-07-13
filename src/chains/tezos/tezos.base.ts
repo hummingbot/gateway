@@ -236,13 +236,11 @@ export class TezosBase {
   // returns wallet for a given private key
   async getWalletFromPrivateKey(privateKey: string, setAsSigner: boolean = false): Promise<TezosToolkit> {
     let wallet: TezosToolkit;
+    wallet = new TezosToolkit(this.rpcUrl);
+    wallet.setRpcProvider(this.rpcUrl);
+    wallet.setSignerProvider(await InMemorySigner.fromSecretKey(privateKey));
     if (setAsSigner) {
-      this.provider.setSignerProvider(await InMemorySigner.fromSecretKey(privateKey));
-      wallet = this.provider;
-    } else {
-      wallet = new TezosToolkit(this.rpcUrl);
-      wallet.setSignerProvider(await InMemorySigner.fromSecretKey(privateKey));
-      wallet.setRpcProvider(this.rpcUrl);
+      this._provider = wallet;
     }
     return wallet;
   }
