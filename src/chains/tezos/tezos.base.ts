@@ -197,14 +197,12 @@ export class TezosBase {
     tokenId: number,
     tokenDecimals: number
   ): Promise<TokenValue> {
-    const contract = await this._provider.contract.at(contractAddress);
-
     let value = BigNumber.from(0);
     if (tokenStandard === 'FA2' && tokenId !== null) {
       // TODO: add better support.
       let isOperator;
       try {
-        const storage = await contract.storage<any>();
+        const storage = await this.getContractStorage(contractAddress);
         isOperator = await storage.operators.get({
           0: ownerAddress,
           1: spender,
