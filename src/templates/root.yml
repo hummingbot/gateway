@@ -72,10 +72,6 @@ configurations:
     configurationPath: openocean.yml
     schemaPath: openocean-schema.json
 
-  $namespace defikingdoms:
-    configurationPath: defikingdoms.yml
-    schemaPath: defikingdoms-schema.json
-
   $namespace cosmos:
     configurationPath: cosmos.yml
     schemaPath: cosmos-schema.json

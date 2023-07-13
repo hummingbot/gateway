@@ -27,13 +27,6 @@ import {
   Fraction as UniswapFraction,
 } from '@uniswap/sdk-core';
 import {
-  Token as TokenDefikingdoms,
-  CurrencyAmount as CurrencyAmountDefikingdoms,
-  Trade as TradeDefikingdoms,
-  Fraction as DefikingdomsFraction,
-  // } from '@defikingdoms/sdk';
-} from '@switchboard-xyz/defikingdoms-sdk';
-import {
   Token as TokenPangolin,
   CurrencyAmount as CurrencyAmountPangolin,
   Trade as TradePangolin,
@@ -127,7 +120,6 @@ export type Tokenish =
   | TokenTraderjoe
   | UniswapCoreToken
   | SushiToken
-  | TokenDefikingdoms
   | PancakeSwapToken
   | MMFToken
   | VVSToken
@@ -149,7 +141,6 @@ export type UniswapishTrade =
   | TradeTraderjoe
   | SushiswapTrade<SushiToken, SushiToken, SushiTradeType>
   | TradeUniswap
-  | TradeDefikingdoms
   | DefiraTrade<UniswapCoreToken, UniswapCoreToken, TradeType>
   | PancakeSwapTrade
   | MMFTrade
@@ -172,7 +163,6 @@ export type UniswapishAmount =
   | UniswapCoreCurrencyAmount<Currency>
   | CurrencyAmountTraderjoe
   | SushiCurrencyAmount<SushiCurrency | SushiToken>
-  | CurrencyAmountDefikingdoms
   | PancakeSwapCurrencyAmount
   | CurrencyAmountMMF
   | CurrencyAmountVVS
@@ -184,7 +174,6 @@ export type Fractionish =
   | QuickswapFraction
   | TraderjoeFraction
   | SushiFraction
-  | DefikingdomsFraction
   | PancakeSwapFraction
   | FractionMMF
   | FractionVVS

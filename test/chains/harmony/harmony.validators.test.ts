@@ -74,14 +74,6 @@ describe('validateSpender', () => {
     ).toEqual([]);
   });
 
-  it("valid when req.spender is 'defikingdoms'", () => {
-    expect(
-      validateSpender({
-        spender: 'defikingdoms',
-      })
-    ).toEqual([]);
-  });
-
   it("valid when req.spender is 'defira'", () => {
     expect(
       validateSpender({

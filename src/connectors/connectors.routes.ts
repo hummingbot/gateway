@@ -3,7 +3,6 @@
 import { Router, Response } from 'express';
 import { asyncHandler } from '../services/error-handler';
 import { DefiraConfig } from './defira/defira.config';
-import { DefikingdomsConfig } from './defikingdoms/defikingdoms.config';
 import { MadMeerkatConfig } from './mad_meerkat/mad_meerkat.config';
 import { OpenoceanConfig } from './openocean/openocean.config';
 import { PangolinConfig } from './pangolin/pangolin.config';
@@ -80,12 +79,6 @@ export namespace ConnectorsRoutes {
             trading_type: TraderjoeConfig.config.tradingTypes,
             chain_type: TraderjoeConfig.config.chainType,
             available_networks: TraderjoeConfig.config.availableNetworks,
-          },
-          {
-            name: 'defikingdoms',
-            trading_type: DefikingdomsConfig.config.tradingTypes,
-            chain_type: DefikingdomsConfig.config.chainType,
-            available_networks: DefikingdomsConfig.config.availableNetworks,
           },
           {
             name: 'defira',
