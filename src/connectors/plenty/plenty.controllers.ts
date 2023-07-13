@@ -242,7 +242,7 @@ export async function trade(
       limitPrice &&
       price.gt(new BigNumber(limitPrice))
     ) {
-      logger.error('Plenty: swap price exceeded limit price');
+      logger.error('Plenty: swap price exceeded limit price for buy trade');
       throw new HttpException(
         500,
         SWAP_PRICE_EXCEEDS_LIMIT_PRICE_ERROR_MESSAGE(
@@ -288,7 +288,7 @@ export async function trade(
       limitPrice &&
       price.lt(new BigNumber(limitPrice))
     ) {
-      logger.error('Plenty: swap price lower than limit price');
+      logger.error('Plenty: swap price lower than limit price for sell trade');
       throw new HttpException(
         500,
         SWAP_PRICE_LOWER_THAN_LIMIT_PRICE_ERROR_MESSAGE(

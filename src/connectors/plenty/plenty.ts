@@ -211,7 +211,7 @@ export class Plenty {
     allowedSlippage?: string
   ): Promise<ExpectedTrade> {
     process.env.LOG_PLENTY && logger.info('\t\tallPaths')
-    const paths = await allPaths(
+    const paths = allPaths(
       tezos,
       this,
       quoteToken.symbol,
@@ -219,7 +219,7 @@ export class Plenty {
       true
     );
     process.env.LOG_PLENTY && logger.info('\t\tallPathsRev')
-    const pathsRev = await allPaths(
+    const pathsRev = allPaths(
       tezos,
       this,
       baseToken.symbol,
@@ -227,15 +227,19 @@ export class Plenty {
       true
     );
 
+    const bothPaths = await Promise.all([paths, pathsRev]);
+    const pathsResolved = bothPaths[0];
+    const pathsRevResolved = bothPaths[1];
+
     const swapAmount = amount.dividedBy(new BigNumber(10).pow(baseToken.decimals));
     const path = computeReverseCalculationWrapper(
       this,
-      pathsRev.paths,
+      pathsRevResolved.paths,
       swapAmount,
       this.getAllowedSlippage(allowedSlippage),
-      pathsRev.swapData,
-      paths.paths,
-      paths.swapData,
+      pathsRevResolved.swapData,
+      pathsResolved.paths,
+      pathsResolved.swapData,
     );
 
     return {

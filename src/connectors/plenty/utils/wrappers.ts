@@ -193,7 +193,7 @@ export const computeAllPathsWrapper = (
   plenty: Plenty,
   paths: string[],
   tokenInAmount: BigNumber,
-  slippage: string = '1/100',
+  slippage: string = '1/200',
   swapData: ISwapDataResponse[][],
 ): IRouterResponse => {
   try {
@@ -256,7 +256,7 @@ export const computeReverseCalculationWrapper = (
   plenty: Plenty,
   paths: string[],
   tokenInAmount: BigNumber,
-  slippage: string = '1/100',
+  slippage: string = '1/200',
   swapData: ISwapDataResponse[][],
   paths2: string[],
   swapData2: ISwapDataResponse[][]
