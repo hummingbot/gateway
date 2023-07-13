@@ -40,7 +40,7 @@ export namespace PlentyConfig {
     tradingTypes: ['EVM_AMM'],
     chainType: 'TEZOS',
     availableNetworks: [
-      { chain: 'tezos', networks: ['mainnet', 'ghostnet'] },
+      { chain: 'tezos', networks: ['mainnet'] },
     ],
   };
 }
