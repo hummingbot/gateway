@@ -8,7 +8,17 @@ import {
 } from '@ethersproject/contracts';
 import { AlphaRouter } from '@uniswap/smart-order-router';
 import { Trade, SwapRouter } from '@uniswap/router-sdk';
-import { MethodParameters } from '@uniswap/v3-sdk';
+import {
+  FeeAmount,
+  MethodParameters,
+  Pool,
+  SwapQuoter,
+  Trade as UniswapV3Trade,
+  Route,
+  FACTORY_ADDRESS,
+} from '@uniswap/v3-sdk';
+import { abi as IUniswapV3PoolABI } from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
+import { abi as IUniswapV3FactoryABI } from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Factory.sol/IUniswapV3Factory.json';
 import {
   Token,
   CurrencyAmount,
@@ -16,7 +26,14 @@ import {
   TradeType,
   Currency,
 } from '@uniswap/sdk-core';
-import { BigNumber, Transaction, Wallet } from 'ethers';
+import {
+  BigNumber,
+  Transaction,
+  Wallet,
+  Contract,
+  utils,
+  constants,
+} from 'ethers';
 import { logger } from '../../services/logger';
 import { percentRegexp } from '../../services/config-manager-v2';
 import { Ethereum } from '../../chains/ethereum/ethereum';
@@ -35,6 +52,9 @@ export class Uniswap implements Uniswapish {
   private chainId;
   private tokenList: Record<string, Token> = {};
   private _ready: boolean = false;
+  private readonly _useRouter: boolean;
+  private readonly _feeTier: FeeAmount;
+  private readonly _quoterContractAddress: string;
 
   private constructor(chain: string, network: string) {
     const config = UniswapConfig.config;
@@ -53,6 +73,20 @@ export class Uniswap implements Uniswapish {
     this._routerAbi = routerAbi.abi;
     this._gasLimitEstimate = UniswapConfig.config.gasLimitEstimate;
     this._router = config.uniswapV3SmartOrderRouterAddress(network);
+
+    if (config.useRouter === false && config.feeTier == null) {
+      throw new Error('Must specify fee tier if not using router');
+    }
+    if (config.useRouter === false && config.quoterContractAddress == null) {
+      throw new Error(
+        'Must specify quoter contract address if not using router'
+      );
+    }
+    this._useRouter = config.useRouter ?? true;
+    this._feeTier = config.feeTier
+      ? FeeAmount[config.feeTier as keyof typeof FeeAmount]
+      : FeeAmount.MEDIUM;
+    this._quoterContractAddress = config.quoterContractAddress(network);
   }
 
   public static getInstance(chain: string, network: string): Uniswap {
@@ -181,30 +215,61 @@ export class Uniswap implements Uniswapish {
       `Fetching trade data for ${baseToken.address}-${quoteToken.address}.`
     );
 
-    const route = await this._alphaRouter.route(
-      nativeTokenAmount,
-      quoteToken,
-      TradeType.EXACT_INPUT,
-      undefined,
-      {
-        maxSwapsPerPath: this.maximumHops,
-      }
-    );
-
-    if (!route) {
-      throw new UniswapishPriceError(
-        `priceSwapIn: no trade pair found for ${baseToken} to ${quoteToken}.`
+    if (this._useRouter) {
+      const route = await this._alphaRouter.route(
+        nativeTokenAmount,
+        quoteToken,
+        TradeType.EXACT_INPUT,
+        undefined,
+        {
+          maxSwapsPerPath: this.maximumHops,
+        }
       );
+
+      if (!route) {
+        throw new UniswapishPriceError(
+          `priceSwapIn: no trade pair found for ${baseToken.address} to ${quoteToken.address}.`
+        );
+      }
+      logger.info(
+        `Best trade for ${baseToken.address}-${quoteToken.address}: ` +
+          `${route.trade.executionPrice.toFixed(6)}` +
+          `${baseToken.symbol}.`
+      );
+      const expectedAmount = route.trade.minimumAmountOut(
+        this.getAllowedSlippage(allowedSlippage)
+      );
+      return { trade: route.trade, expectedAmount };
+    } else {
+      const pool = await this.getPool(baseToken, quoteToken, this._feeTier);
+      if (!pool) {
+        throw new UniswapishPriceError(
+          `priceSwapIn: no trade pair found for ${baseToken.address} to ${quoteToken.address}.`
+        );
+      }
+      const swapRoute = new Route([pool], baseToken, quoteToken);
+      const quotedAmount = await this.getQuote(
+        swapRoute,
+        quoteToken,
+        nativeTokenAmount,
+        TradeType.EXACT_INPUT
+      );
+      const trade = UniswapV3Trade.createUncheckedTrade({
+        route: swapRoute,
+        inputAmount: nativeTokenAmount,
+        outputAmount: quotedAmount,
+        tradeType: TradeType.EXACT_INPUT,
+      });
+      logger.info(
+        `Best trade for ${baseToken.address}-${quoteToken.address}: ` +
+          `${trade.executionPrice.toFixed(6)}` +
+          `${baseToken.symbol}.`
+      );
+      const expectedAmount = trade.minimumAmountOut(
+        this.getAllowedSlippage(allowedSlippage)
+      );
+      return { trade, expectedAmount };
     }
-    logger.info(
-      `Best trade for ${baseToken.address}-${quoteToken.address}: ` +
-        `${route.trade.executionPrice.toFixed(6)}` +
-        `${baseToken.symbol}.`
-    );
-    const expectedAmount = route.trade.minimumAmountOut(
-      this.getAllowedSlippage(allowedSlippage)
-    );
-    return { trade: route.trade, expectedAmount };
   }
 
   /**
@@ -228,30 +293,62 @@ export class Uniswap implements Uniswapish {
     logger.info(
       `Fetching pair data for ${quoteToken.address}-${baseToken.address}.`
     );
-    const route = await this._alphaRouter.route(
-      nativeTokenAmount,
-      quoteToken,
-      TradeType.EXACT_OUTPUT,
-      undefined,
-      {
-        maxSwapsPerPath: this.maximumHops,
-      }
-    );
-    if (!route) {
-      throw new UniswapishPriceError(
-        `priceSwapOut: no trade pair found for ${quoteToken.address} to ${baseToken.address}.`
-      );
-    }
-    logger.info(
-      `Best trade for ${quoteToken.address}-${baseToken.address}: ` +
-        `${route.trade.executionPrice.invert().toFixed(6)} ` +
-        `${baseToken.symbol}.`
-    );
 
-    const expectedAmount = route.trade.maximumAmountIn(
-      this.getAllowedSlippage(allowedSlippage)
-    );
-    return { trade: route.trade, expectedAmount };
+    if (this._useRouter) {
+      const route = await this._alphaRouter.route(
+        nativeTokenAmount,
+        quoteToken,
+        TradeType.EXACT_OUTPUT,
+        undefined,
+        {
+          maxSwapsPerPath: this.maximumHops,
+        }
+      );
+      if (!route) {
+        throw new UniswapishPriceError(
+          `priceSwapOut: no trade pair found for ${quoteToken.address} to ${baseToken.address}.`
+        );
+      }
+      logger.info(
+        `Best trade for ${quoteToken.address}-${baseToken.address}: ` +
+          `${route.trade.executionPrice.invert().toFixed(6)} ` +
+          `${baseToken.symbol}.`
+      );
+
+      const expectedAmount = route.trade.maximumAmountIn(
+        this.getAllowedSlippage(allowedSlippage)
+      );
+      return { trade: route.trade, expectedAmount };
+    } else {
+      const pool = await this.getPool(quoteToken, baseToken, this._feeTier);
+      if (!pool) {
+        throw new UniswapishPriceError(
+          `priceSwapOut: no trade pair found for ${quoteToken.address} to ${baseToken.address}.`
+        );
+      }
+      const swapRoute = new Route([pool], quoteToken, baseToken);
+      const quotedAmount = await this.getQuote(
+        swapRoute,
+        quoteToken,
+        nativeTokenAmount,
+        TradeType.EXACT_OUTPUT
+      );
+      const trade = UniswapV3Trade.createUncheckedTrade({
+        route: swapRoute,
+        inputAmount: quotedAmount,
+        outputAmount: nativeTokenAmount,
+        tradeType: TradeType.EXACT_OUTPUT,
+      });
+      logger.info(
+        `Best trade for ${baseToken.address}-${quoteToken.address}: ` +
+          `${trade.executionPrice.invert().toFixed(6)}` +
+          `${baseToken.symbol}.`
+      );
+      const expectedAmount = trade.maximumAmountIn(
+        this.getAllowedSlippage(allowedSlippage)
+      );
+      return { trade, expectedAmount };
+    }
   }
 
   /**
@@ -308,7 +405,7 @@ export class Uniswap implements Uniswapish {
         } else {
           tx = await wallet.sendTransaction({
             data: methodParameters.calldata,
-            to: this.router,
+            to: uniswapRouter,
             gasPrice: (gasPrice * 1e9).toFixed(0),
             gasLimit: gasLimit.toFixed(0),
             value: methodParameters.value,
@@ -319,5 +416,75 @@ export class Uniswap implements Uniswapish {
         return tx;
       }
     );
+  }
+
+  private async getPool(
+    tokenA: Token,
+    tokenB: Token,
+    feeTier: FeeAmount
+  ): Promise<Pool | null> {
+    const uniswapFactory = new Contract(
+      FACTORY_ADDRESS,
+      IUniswapV3FactoryABI,
+      this.chain.provider
+    );
+    // Use Uniswap V3 factory to get pool address instead of `Pool.getAddress` to check if pool exists.
+    const poolAddress = await uniswapFactory.getPool(
+      tokenA.address,
+      tokenB.address,
+      feeTier
+    );
+    if (poolAddress === constants.AddressZero) {
+      return null;
+    }
+    const poolContract = new Contract(
+      poolAddress,
+      IUniswapV3PoolABI,
+      this.chain.provider
+    );
+
+    const [liquidity, slot0] = await Promise.all([
+      poolContract.liquidity(),
+      poolContract.slot0(),
+    ]);
+    const [sqrtPriceX96, tick] = slot0;
+
+    const pool = new Pool(
+      tokenA,
+      tokenB,
+      this._feeTier,
+      sqrtPriceX96,
+      liquidity,
+      tick
+    );
+
+    return pool;
+  }
+
+  private async getQuote(
+    swapRoute: Route<Token, Token>,
+    quoteToken: Token,
+    amount: CurrencyAmount<Token>,
+    tradeType: TradeType
+  ) {
+    const { calldata } = await SwapQuoter.quoteCallParameters(
+      swapRoute,
+      amount,
+      tradeType,
+      { useQuoterV2: true }
+    );
+    const quoteCallReturnData = await this.chain.provider.call({
+      to: this._quoterContractAddress,
+      data: calldata,
+    });
+    const quoteTokenRawAmount = utils.defaultAbiCoder.decode(
+      ['uint256'],
+      quoteCallReturnData
+    );
+    const qouteTokenAmount = CurrencyAmount.fromRawAmount(
+      quoteToken,
+      quoteTokenRawAmount.toString()
+    );
+    return qouteTokenAmount;
   }
 }

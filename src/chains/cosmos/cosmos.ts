@@ -2,6 +2,7 @@ import { Cosmosish } from '../../services/common-interfaces';
 import { CosmosBase } from './cosmos-base';
 import { getCosmosConfig } from './cosmos.config';
 import { logger } from '../../services/logger';
+import { CosmosController } from './cosmos.controllers';
 
 export class Cosmos extends CosmosBase implements Cosmosish {
   private static _instances: { [name: string]: Cosmos };
@@ -11,6 +12,7 @@ export class Cosmos extends CosmosBase implements Cosmosish {
   private _requestCount: number;
   private _metricsLogInterval: number;
   private _metricTimer;
+  public controller;
 
   private constructor(network: string) {
     const config = getCosmosConfig('cosmos');
@@ -33,6 +35,7 @@ export class Cosmos extends CosmosBase implements Cosmosish {
       this.metricLogger.bind(this),
       this.metricsLogInterval
     );
+    this.controller = CosmosController;
   }
 
   public static getInstance(network: string): Cosmos {

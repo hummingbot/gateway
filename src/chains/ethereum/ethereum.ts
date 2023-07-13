@@ -6,7 +6,8 @@ import { getEthereumConfig } from './ethereum.config';
 import { Provider } from '@ethersproject/abstract-provider';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 // import { throttleRetryWrapper } from '../../services/retry';
-import { Ethereumish } from '../../services/common-interfaces';
+import { Chain as Ethereumish } from '../../services/common-interfaces';
+import { EVMController } from './evm.controllers';
 
 import { UniswapConfig } from '../../connectors/uniswap/uniswap.config';
 import { Perp } from '../../connectors/perp/perp';
@@ -33,6 +34,7 @@ export class Ethereum extends EthereumBase implements Ethereumish {
   private _requestCount: number;
   private _metricsLogInterval: number;
   private _metricTimer;
+  public controller;
 
   private constructor(network: string) {
     const config = getEthereumConfig('ethereum', network);
@@ -65,6 +67,7 @@ export class Ethereum extends EthereumBase implements Ethereumish {
       this.metricLogger.bind(this),
       this.metricsLogInterval
     );
+    this.controller = EVMController;
   }
 
   public static getInstance(network: string): Ethereum {
@@ -115,6 +118,11 @@ export class Ethereum extends EthereumBase implements Ethereumish {
 
   public get metricsLogInterval(): number {
     return this._metricsLogInterval;
+  }
+
+  // in place for mocking
+  public get provider() {
+    return super.provider;
   }
 
   /**

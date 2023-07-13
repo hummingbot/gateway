@@ -27,16 +27,8 @@ tags:
     description: 'Interact with CLOB perpetual decentralized exchanges'
   - name: 'amm/liquidity'
     description: 'Interact with AMM LP contracts'
-  - name: 'evm'
-    description: 'Interact with EVM based blockchains'
-  - name: 'algorand'
-    description: 'Interact with the Algorand blockchain'
-  - name: 'cosmos'
-    description: 'Interact with the Cosmos blockchain'
-  - name: 'near'
-    description: 'Interact with the Near blockchain'
-  - name: 'injective'
-    description: 'Interact with the Injective blockchain'
+  - name: 'chain'
+    description: 'Interact with primary chain properties'
 
 schemes:
   - 'http'

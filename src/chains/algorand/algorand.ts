@@ -14,6 +14,7 @@ import fse from 'fs-extra';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import axios from 'axios';
 import { promises as fs } from 'fs';
+import { AlgorandController } from './algorand.controller';
 
 type AssetListType = TokenListType;
 
@@ -31,6 +32,7 @@ export class Algorand {
   public gasPrice: number;
   public gasLimit: number;
   public gasCost: number;
+  public controller: typeof AlgorandController;
 
   constructor(
     network: string,
@@ -49,6 +51,7 @@ export class Algorand {
     this.gasPrice = 0;
     this.gasLimit = 0;
     this.gasCost = 0.001;
+    this.controller = AlgorandController;
   }
 
   public get algod(): Algodv2 {
@@ -289,5 +292,9 @@ export class Algorand {
       assetData = data.results;
     }
     return assetData;
+  }
+
+  public get storedTokenList() {
+    return this._assetMap;
   }
 }

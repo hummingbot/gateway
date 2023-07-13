@@ -10,6 +10,7 @@ import { OpenoceanConfig } from '../../connectors/openocean/openocean.config';
 import { Ethereumish } from '../../services/common-interfaces';
 import { SushiswapConfig } from '../../connectors/sushiswap/sushiswap.config';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
+import { EVMController } from '../ethereum/evm.controllers';
 
 export class Avalanche extends EthereumBase implements Ethereumish {
   private static _instances: { [name: string]: Avalanche };
@@ -17,6 +18,7 @@ export class Avalanche extends EthereumBase implements Ethereumish {
   private _gasPriceRefreshInterval: number | null;
   private _nativeTokenSymbol: string;
   private _chain: string;
+  public controller;
 
   private constructor(network: string) {
     const config = getAvalancheConfig('avalanche', network);
@@ -42,6 +44,7 @@ export class Avalanche extends EthereumBase implements Ethereumish {
         : null;
 
     this.updateGasPrice();
+    this.controller = EVMController;
   }
 
   public static getInstance(network: string): Avalanche {

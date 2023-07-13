@@ -148,7 +148,6 @@ export type UniswapishTrade =
   | TradeQuickswap
   | TradeTraderjoe
   | SushiswapTrade<SushiToken, SushiToken, SushiTradeType>
-  | UniswapV3Trade<Currency, UniswapCoreToken, TradeType>
   | TradeUniswap
   | TradeDefikingdoms
   | DefiraTrade<UniswapCoreToken, UniswapCoreToken, TradeType>
@@ -676,13 +675,16 @@ export interface BasicChainMethods {
   chain: string;
 }
 
-export interface Ethereumish extends BasicChainMethods, EthereumBase {
+export interface Chain extends BasicChainMethods, EthereumBase {
+  controller: any;
   cancelTx(wallet: Wallet, nonce: number): Promise<Transaction>;
   getContract(
     tokenAddress: string,
     signerOrProvider?: Wallet | Provider
   ): Contract;
 }
+
+export type Ethereumish = Chain;
 
 export interface Xdcish extends BasicChainMethods, XdcBase {
   cancelTx(wallet: XdcWallet, nonce: number): Promise<XdcTransaction>;

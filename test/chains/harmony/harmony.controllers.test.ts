@@ -3,15 +3,6 @@ import { Harmony } from '../../../src/chains/harmony/harmony';
 import { patch, unpatch } from '../../services/patch';
 import { TokenInfo } from '../../../src/chains/ethereum/ethereum-base';
 import {
-  nonce,
-  getTokenSymbolsToTokens,
-  allowances,
-  approve,
-  balances,
-  cancel,
-  willTxSucceed,
-} from '../../../src/chains/ethereum/ethereum.controllers';
-import {
   HttpException,
   LOAD_WALLET_ERROR_CODE,
   LOAD_WALLET_ERROR_MESSAGE,
@@ -19,6 +10,10 @@ import {
   TOKEN_NOT_SUPPORTED_ERROR_CODE,
 } from '../../../src/services/error-handler';
 import { patchEVMNonceManager } from '../../evm.nonce.mock';
+import {
+  EVMController,
+  willTxSucceed,
+} from '../../../src/chains/ethereum/evm.controllers';
 
 jest.useFakeTimers();
 let harmony: Harmony;
@@ -52,7 +47,7 @@ describe('nonce', () => {
       };
     });
     patch(harmony.nonceManager, 'getNonce', () => 2);
-    const n = await nonce(harmony, {
+    const n = await EVMController.nonce(harmony, {
       chain: 'harmony',
       network: 'testnet',
       address: zeroAddress,
@@ -73,7 +68,9 @@ describe('getTokenSymbolsToTokens', () => {
     patch(harmony, 'getTokenBySymbol', () => {
       return wone;
     });
-    expect(getTokenSymbolsToTokens(harmony, ['WONE'])).toEqual({ WONE: wone });
+    expect(EVMController.getTokenSymbolsToTokens(harmony, ['WONE'])).toEqual({
+      WONE: wone,
+    });
   });
 });
 
@@ -102,7 +99,7 @@ describe('allowances', () => {
       };
     });
 
-    const result = await allowances(harmony, {
+    const result = await EVMController.allowances(harmony, {
       chain: 'harmony',
       network: 'testnet',
       address: zeroAddress,
@@ -143,7 +140,7 @@ describe('approve', () => {
       };
     });
 
-    const result = await approve(harmony, {
+    const result = await EVMController.approve(harmony, {
       chain: 'harmony',
       network: 'testnet',
       address: zeroAddress,
@@ -164,7 +161,7 @@ describe('approve', () => {
     });
 
     await expect(
-      approve(harmony, {
+      EVMController.approve(harmony, {
         chain: 'harmony',
         network: 'testnet',
         address: zeroAddress,
@@ -196,7 +193,7 @@ describe('approve', () => {
     });
 
     await expect(
-      approve(harmony, {
+      EVMController.approve(harmony, {
         chain: 'harmony',
         network: 'testnet',
         address: zeroAddress,
@@ -221,7 +218,7 @@ describe('balances', () => {
     });
 
     await expect(
-      balances(harmony, {
+      EVMController.balances(harmony, {
         chain: 'harmony',
         network: 'testnet',
         address: zeroAddress,
@@ -245,7 +242,7 @@ describe('cancel', () => {
     });
 
     await expect(
-      cancel(harmony, {
+      EVMController.cancel(harmony, {
         chain: 'harmony',
         network: 'testnet',
         nonce: 123,
