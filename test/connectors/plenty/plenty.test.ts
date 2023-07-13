@@ -94,7 +94,7 @@ describe('Plenty', () => {
   describe('getAllowedSlippage', () => {
     it('should return the allowed slippage from the configuration', () => {
       const allowedSlippage = plenty.getAllowedSlippage();
-      expect(allowedSlippage).toEqual('1/100');
+      expect(allowedSlippage).toEqual('1/200');
     });
 
     it('should return the allowed slippage from the parameter', () => {
@@ -104,7 +104,7 @@ describe('Plenty', () => {
 
     it('should return the allowed slippage from the configuration if the parameter is invalid', () => {
       const allowedSlippage = plenty.getAllowedSlippage('invalid');
-      expect(allowedSlippage).toEqual('1/100');
+      expect(allowedSlippage).toEqual('1/200');
     });
   });
 
