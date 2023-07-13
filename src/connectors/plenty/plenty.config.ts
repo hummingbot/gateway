@@ -37,7 +37,7 @@ export namespace PlentyConfig {
       ConfigManagerV2.getInstance().get(
         'plenty.contractAddresses.' + network + '.ctezAdmin'
       ),
-    tradingTypes: ['EVM_AMM'],
+    tradingTypes: ['AMM'],
     chainType: 'TEZOS',
     availableNetworks: [
       { chain: 'tezos', networks: ['mainnet'] },

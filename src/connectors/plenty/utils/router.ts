@@ -38,6 +38,8 @@ export const routerSwap = async (
 		};
 	}
 
+	process.env.LOG_PLENTY && console.log('Path: ', path);
+	process.env.LOG_PLENTY && console.log('DataLiteral: ', DataLiteral);
 	const DataMap = MichelsonMap.fromLiteral(DataLiteral);
 	let swapAmount = amount
 		.decimalPlaces(0, 1)
