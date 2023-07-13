@@ -55,6 +55,31 @@ describe('POST /chain/balances', () => {
     });
 });
 
+describe('GET /chain/tokens', () => {
+    it('should return all the tokens', async () => {
+        const res = await request(gatewayApp)
+            .get(`/chain/tokens`)
+            .query({
+                chain: 'tezos',
+                network: 'mainnet',
+            })
+            .set('Accept', 'application/json')
+        expect(res.body.tokens).toBeDefined();
+    });
+
+    it('should return specific tokens', async () => {
+        const res = await request(gatewayApp)
+            .get(`/chain/tokens`)
+            .query({
+                chain: 'tezos',
+                network: 'mainnet',
+                tokenSymbols: ['CTEZ', 'USDT', 'XTZ'],
+            })
+            .set('Accept', 'application/json')
+        expect(res.body.tokens).toBeDefined();
+    });
+});
+
 describe('POST /chain/poll', () => {
     it('should get a txStatus value for a succesful query', async () => {
         const res = await request(gatewayApp)
