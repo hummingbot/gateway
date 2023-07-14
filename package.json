@@ -16,7 +16,7 @@
     "dev:debug": "NODE_ENV=dev DEBUG=* nodemon src/index.ts",
     "start": "/bin/bash ./startup.sh",
     "copy-files": "copyfiles -a 'src/**/schema/*.json' 'src/templates/*.yml' 'src/templates/lists/*.json' 'test/services/data/**/*.*' dist",
-    "copy-files:token-list": "mkdir -p conf/lists && copyfiles -u 'src/templates/lists/*.json' conf/lists",
+    "copy-files:token-list": "mkdir -p conf/lists && copyfiles -f 'src/templates/lists/*.json' conf/lists",
     "test": "jest --verbose",
     "test:debug": "node --inspect node_modules/.bin/jest --watch --runInBand",
     "test:unit": "NODE_OPTIONS=--max_old_space_size=10240 jest --runInBand --verbose ./test/",
