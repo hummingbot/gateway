@@ -226,11 +226,6 @@ export class OrderTracker {
       // Mark isProcessing as false
       this._isProcessing = false;
 
-      // console.log(
-      //   '🪧 -> file: xrpl.order-tracker.ts:241 -> OrderTracker -> startTracking -> _inflightOrders:',
-      //   this._inflightOrders
-      // );
-
       // Wait for next interval
       await new Promise((resolve) =>
         setTimeout(resolve, this._orderTrackingInterval)
@@ -293,10 +288,6 @@ export class OrderTracker {
     // 3. Process the transactions stack
     // 4. Update the inflightOrders
     const ordersToCheck: InflightOrders = openOrders;
-    console.log(
-      '🪧 -> file: xrpl.order-tracker.ts:296 -> OrderTracker -> BEFORE ordersToCheck:',
-      ordersToCheck
-    );
 
     // 1. Get the minLedgerIndex from the inflightOrders
     const hashes = Object.keys(ordersToCheck);
@@ -344,11 +335,6 @@ export class OrderTracker {
         ordersToCheck[parseInt(hash)] = updatedOrders[parseInt(hash)];
       });
     }
-
-    console.log(
-      '🪧 -> file: xrpl.order-tracker.ts:296 -> OrderTracker -> AFTER ordersToCheck:',
-      ordersToCheck
-    );
 
     return ordersToCheck;
   }

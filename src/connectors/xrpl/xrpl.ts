@@ -555,6 +555,5 @@ export class XRPLCLOB implements CLOBish {
     );
 
     await orderTracker.addOrder(order);
-    // orderTracker.startTracking();
   }
 }

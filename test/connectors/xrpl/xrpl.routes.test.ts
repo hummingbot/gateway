@@ -2,6 +2,7 @@ import request from 'supertest';
 import { gatewayApp } from '../../../src/app';
 import { XRPL } from '../../../src/chains/xrpl/xrpl';
 import { XRPLCLOB } from '../../../src/connectors/xrpl/xrpl';
+import {} from '../../../src/chains/xrpl/xrpl.order-tracker';
 import { Order } from '../../../src/connectors/xrpl/xrpl.types';
 import { patch, unpatch } from '../../services/patch';
 
@@ -330,6 +331,12 @@ const patchOrderTracking = () => {
   });
 };
 
+const patchGetOrder = () => {
+  patch(xrplCLOB, 'getOrder', () => {
+    return undefined;
+  });
+};
+
 const patchCurrentBlockNumber = (withError: boolean = false) => {
   patch(xrplCLOB, 'getCurrentBlockNumber', () => {
     return withError ? -1 : 100;
@@ -558,6 +565,7 @@ describe('DELETE /clob/orders', () => {
   it('should return 200 with proper request', async () => {
     patchSubmitTxn();
     patchGetWallet();
+    patchGetOrder();
     await request(gatewayApp)
       .delete(`/clob/orders`)
       .send({
@@ -585,6 +593,7 @@ describe('DELETE /clob/orders', () => {
 describe('GET /clob/estimateGas', () => {
   it('should return 200 with proper request', async () => {
     patchGasPrices();
+    patchGetOrder();
     await request(gatewayApp)
       .get(`/clob/estimateGas`)
       .query({
