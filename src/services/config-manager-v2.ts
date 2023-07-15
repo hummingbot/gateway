@@ -269,6 +269,13 @@ export class ConfigManagerV2 {
         // copy from template
         fs.copyFileSync(path.join(ConfigTemplatesDir, 'root.yml'), rootPath);
       }
+
+      const listsPath = path.join(ConfigDir, 'lists');
+      if (!fs.existsSync(listsPath)) {
+        // copy from template
+        fse.copySync(path.join(ConfigTemplatesDir, 'lists'), listsPath);
+      }
+
       ConfigManagerV2._instance = new ConfigManagerV2(rootPath);
     }
     return ConfigManagerV2._instance;
