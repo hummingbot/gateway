@@ -140,7 +140,7 @@ describe('Tezos API', () => {
         storage_limit: '1000',
       });
       expect(res.txReceipt).toEqual({
-        gasUsed: 3000,
+        gasUsed: 3000 * 1e3,
         status: 1,
       });
     });
