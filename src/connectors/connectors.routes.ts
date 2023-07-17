@@ -18,7 +18,6 @@ import { InjectiveCLOBConfig } from './injective/injective.clob.config';
 import { XsswapConfig } from './xsswap/xsswap.config';
 import { ConnectorsResponse } from './connectors.request';
 import { DexalotCLOBConfig } from './dexalot/dexalot.clob.config';
-import { ZigZagConfig } from './zigzag/zigzag.config';
 import { TinymanConfig } from './tinyman/tinyman.config';
 
 export namespace ConnectorsRoutes {
