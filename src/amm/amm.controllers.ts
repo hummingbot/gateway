@@ -78,12 +78,9 @@ export async function price(req: PriceRequest): Promise<PriceResponse> {
     req.chain,
     req.network
   );
-  const connector: Uniswapish | RefAMMish | Tinyman =
-    await getConnector<Uniswapish | RefAMMish | Tinyman>(
-      req.chain,
-      req.network,
-      req.connector
-    );
+  const connector: Uniswapish | RefAMMish | Tinyman | Plenty = await getConnector<
+    Uniswapish | RefAMMish | Tinyman | Plenty
+  >(req.chain, req.network, req.connector);
 
   if (connector instanceof Plenty) {
     return plentyPrice(<Tezosish>chain, connector, req);
@@ -102,12 +99,9 @@ export async function trade(req: TradeRequest): Promise<TradeResponse> {
     req.chain,
     req.network
   );
-  const connector: Uniswapish | RefAMMish | Tinyman =
-    await getConnector<Uniswapish | RefAMMish | Tinyman>(
-      req.chain,
-      req.network,
-      req.connector
-    );
+  const connector: Uniswapish | RefAMMish | Tinyman | Plenty = await getConnector<
+    Uniswapish | RefAMMish | Tinyman | Plenty
+  >(req.chain, req.network, req.connector);
 
   if (connector instanceof Plenty) {
     return plentyTrade(<Tezosish>chain, connector, req);
