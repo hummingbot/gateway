@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { asyncHandler } from '../../services/error-handler';
 
-import * as tezosControllers from './tezos.controllers';
+import { TezosController } from './tezos.controllers';
 
 import {
   validateTezosAllowancesRequest,
@@ -38,7 +38,7 @@ export namespace TezosRoutes {
       ) => {
         validateTezosNonceRequest(req.body);
         const chain = await getInitializedChain(req.body.chain, req.body.network);
-        res.status(200).json(await tezosControllers.nonce(chain as Tezosish, req.body));
+        res.status(200).json(await TezosController.nonce(chain as Tezosish, req.body));
       }
     )
   );
@@ -52,7 +52,7 @@ export namespace TezosRoutes {
       ) => {
         validateTezosBalanceRequest(req.body);
         const chain = await getInitializedChain('tezos', req.body.network);
-        res.status(200).json((await tezosControllers.balances(chain as Tezosish, req.body)));
+        res.status(200).json((await TezosController.balances(chain as Tezosish, req.body)));
       }
     )
   );
@@ -68,7 +68,7 @@ export namespace TezosRoutes {
         res
           .status(200)
           .json(
-            await tezosControllers.poll(
+            await TezosController.poll(
               chain as Tezosish,
               {
                 chain: req.body.chain,
@@ -90,7 +90,7 @@ export namespace TezosRoutes {
       ) => {
         validateTezosAllowancesRequest(req.body);
         const chain = await getInitializedChain(req.body.chain, req.body.network);
-        res.status(200).json(await tezosControllers.allowances(chain as Tezosish, req.body));
+        res.status(200).json(await TezosController.allowances(chain as Tezosish, req.body));
       }
     )
   );
@@ -104,7 +104,7 @@ export namespace TezosRoutes {
       ) => {
         validateTezosApproveRequest(req.body);
         const chain = await getInitializedChain(req.body.chain, req.body.network);
-        res.status(200).json(await tezosControllers.approve(chain as Tezosish, req.body));
+        res.status(200).json(await TezosController.approve(chain as Tezosish, req.body));
       }
     )
   );
