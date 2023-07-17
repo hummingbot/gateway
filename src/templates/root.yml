@@ -72,10 +72,6 @@ configurations:
     configurationPath: openocean.yml
     schemaPath: openocean-schema.json
 
-  $namespace defikingdoms:
-    configurationPath: defikingdoms.yml
-    schemaPath: defikingdoms-schema.json
-
   $namespace cosmos:
     configurationPath: cosmos.yml
     schemaPath: cosmos-schema.json
@@ -111,7 +107,3 @@ configurations:
   $namespace xsswap:
     configurationPath: xsswap.yml
     schemaPath: xsswap-schema.json
-
-  $namespace zigzag:
-    configurationPath: zigzag.yml
-    schemaPath: zigzag-schema.json
