@@ -3,7 +3,6 @@
 import { Router, Response } from 'express';
 import { asyncHandler } from '../services/error-handler';
 import { DefiraConfig } from './defira/defira.config';
-import { DefikingdomsConfig } from './defikingdoms/defikingdoms.config';
 import { MadMeerkatConfig } from './mad_meerkat/mad_meerkat.config';
 import { OpenoceanConfig } from './openocean/openocean.config';
 import { PangolinConfig } from './pangolin/pangolin.config';
@@ -82,12 +81,6 @@ export namespace ConnectorsRoutes {
             available_networks: TraderjoeConfig.config.availableNetworks,
           },
           {
-            name: 'defikingdoms',
-            trading_type: DefikingdomsConfig.config.tradingTypes,
-            chain_type: DefikingdomsConfig.config.chainType,
-            available_networks: DefikingdomsConfig.config.availableNetworks,
-          },
-          {
             name: 'defira',
             trading_type: DefiraConfig.config.tradingTypes,
             chain_type: DefiraConfig.config.chainType,
@@ -152,12 +145,6 @@ export namespace ConnectorsRoutes {
               api_key:
                 'Enter a Dexalot API Key if you have one, otherwise hit return >>> ',
             },
-          },
-          {
-            name: 'zigzag',
-            trading_type: ZigZagConfig.config.tradingTypes,
-            chain_type: ZigZagConfig.config.chainType,
-            available_networks: ZigZagConfig.config.availableNetworks,
           },
           {
             name: 'tinyman',

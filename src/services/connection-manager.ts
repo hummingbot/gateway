@@ -17,7 +17,6 @@ import { VVSConnector } from '../connectors/vvs/vvs';
 import { InjectiveCLOB } from '../connectors/injective/injective';
 import { InjectiveClobPerp } from '../connectors/injective_perpetual/injective.perp';
 import { Injective } from '../chains/injective/injective';
-import { ZigZag } from '../connectors/zigzag/zigzag';
 import {
   CLOBish,
   Ethereumish,
@@ -30,7 +29,6 @@ import {
 } from './common-interfaces';
 import { Traderjoe } from '../connectors/traderjoe/traderjoe';
 import { Sushiswap } from '../connectors/sushiswap/sushiswap';
-import { Defikingdoms } from '../connectors/defikingdoms/defikingdoms';
 import { Defira } from '../connectors/defira/defira';
 import { Near } from '../chains/near/near';
 import { Ref } from '../connectors/ref/ref';
@@ -182,8 +180,6 @@ export async function getConnector<T>(
     connectorInstance = Openocean.getInstance(chain, network);
   } else if (chain === 'avalanche' && connector === 'traderjoe') {
     connectorInstance = Traderjoe.getInstance(chain, network);
-  } else if (chain === 'harmony' && connector === 'defikingdoms') {
-    connectorInstance = Defikingdoms.getInstance(chain, network);
   } else if (chain === 'harmony' && connector === 'defira') {
     connectorInstance = Defira.getInstance(chain, network);
   } else if (chain === 'cronos' && connector === 'mad_meerkat') {
@@ -204,8 +200,6 @@ export async function getConnector<T>(
     connectorInstance = InjectiveCLOB.getInstance(chain, network);
   } else if (chain === 'avalanche' && connector === 'dexalot') {
     connectorInstance = DexalotCLOB.getInstance(network);
-  } else if (chain === 'ethereum' && connector === 'zigzag') {
-    connectorInstance = ZigZag.getInstance(network);
   } else if (chain == 'algorand' && connector == 'tinyman') {
     connectorInstance = Tinyman.getInstance(network);
   } else {
