@@ -130,7 +130,6 @@ export type ConnectorUnion =
   | Perpish
   | RefAMMish
   | CLOBish
-  | ZigZag
   | InjectiveClobPerp
   | Tinyman;
 
@@ -144,8 +143,6 @@ export type Connector<T> = T extends Uniswapish
   ? RefAMMish
   : T extends CLOBish
   ? CLOBish
-  : T extends ZigZag
-  ? ZigZag
   : T extends InjectiveClobPerp
   ? InjectiveClobPerp
   : T extends Tinyman
