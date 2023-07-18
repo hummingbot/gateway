@@ -4,11 +4,12 @@ import { Contract, Transaction, Wallet } from 'ethers';
 import { EthereumBase } from '../ethereum/ethereum-base';
 import { getEthereumConfig as getBinanceSmartChainConfig } from '../ethereum/ethereum.config';
 import { Provider } from '@ethersproject/abstract-provider';
-import { Ethereumish } from '../../services/common-interfaces';
+import { Chain as Ethereumish } from '../../services/common-interfaces';
 import { PancakeSwapConfig } from '../../connectors/pancakeswap/pancakeswap.config';
 import { SushiswapConfig } from '../../connectors/sushiswap/sushiswap.config';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { OpenoceanConfig } from '../../connectors/openocean/openocean.config';
+import { EVMController } from '../ethereum/evm.controllers';
 
 export class BinanceSmartChain extends EthereumBase implements Ethereumish {
   private static _instances: { [name: string]: BinanceSmartChain };
@@ -16,6 +17,7 @@ export class BinanceSmartChain extends EthereumBase implements Ethereumish {
   private _gasPrice: number;
   private _gasPriceRefreshInterval: number | null;
   private _nativeTokenSymbol: string;
+  public controller;
 
   private constructor(network: string) {
     const config = getBinanceSmartChainConfig('binance-smart-chain', network);
@@ -39,6 +41,7 @@ export class BinanceSmartChain extends EthereumBase implements Ethereumish {
         : null;
 
     this.updateGasPrice();
+    this.controller = EVMController;
   }
 
   public static getInstance(network: string): BinanceSmartChain {
@@ -102,7 +105,10 @@ export class BinanceSmartChain extends EthereumBase implements Ethereumish {
         this._chain
       );
     } else if (reqSpender === 'openocean') {
-      spender = OpenoceanConfig.config.routerAddress('binance-smart-chain', this._chain);
+      spender = OpenoceanConfig.config.routerAddress(
+        'binance-smart-chain',
+        this._chain
+      );
     } else {
       spender = reqSpender;
     }

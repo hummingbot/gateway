@@ -6,13 +6,13 @@ import { getEthereumConfig } from './ethereum.config';
 import { Provider } from '@ethersproject/abstract-provider';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 // import { throttleRetryWrapper } from '../../services/retry';
-import { Ethereumish } from '../../services/common-interfaces';
+import { Chain as Ethereumish } from '../../services/common-interfaces';
+import { EVMController } from './evm.controllers';
 
 import { UniswapConfig } from '../../connectors/uniswap/uniswap.config';
 import { Perp } from '../../connectors/perp/perp';
 import { SushiswapConfig } from '../../connectors/sushiswap/sushiswap.config';
 import { OpenoceanConfig } from '../../connectors/openocean/openocean.config';
-import { ZigZagConfig } from '../../connectors/zigzag/zigzag.config';
 
 // MKR does not match the ERC20 perfectly so we need to use a separate ABI.
 const MKR_ADDRESS = '0x9f8f72aa9304c8b593d555f12ef6589cc3a579a2';
@@ -33,6 +33,7 @@ export class Ethereum extends EthereumBase implements Ethereumish {
   private _requestCount: number;
   private _metricsLogInterval: number;
   private _metricTimer;
+  public controller;
 
   private constructor(network: string) {
     const config = getEthereumConfig('ethereum', network);
@@ -65,6 +66,7 @@ export class Ethereum extends EthereumBase implements Ethereumish {
       this.metricLogger.bind(this),
       this.metricsLogInterval
     );
+    this.controller = EVMController;
   }
 
   public static getInstance(network: string): Ethereum {
@@ -115,6 +117,11 @@ export class Ethereum extends EthereumBase implements Ethereumish {
 
   public get metricsLogInterval(): number {
     return this._metricsLogInterval;
+  }
+
+  // in place for mocking
+  public get provider() {
+    return super.provider;
   }
 
   /**
@@ -189,8 +196,6 @@ export class Ethereum extends EthereumBase implements Ethereumish {
       spender = perp.perp.contracts.vault.address;
     } else if (reqSpender === 'openocean') {
       spender = OpenoceanConfig.config.routerAddress('ethereum', this._chain);
-    } else if (reqSpender === 'zigzag') {
-      spender = ZigZagConfig.config.contractAddress(this._chain);
     } else {
       spender = reqSpender;
     }

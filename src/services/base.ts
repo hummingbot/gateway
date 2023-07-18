@@ -71,8 +71,10 @@ export interface TokenValue {
 }
 
 // we should turn Token into a string when we return as a value in an API call
-export const tokenValueToString = (t: TokenValue): string => {
-  return bigNumberWithDecimalToStr(t.value, t.decimals);
+export const tokenValueToString = (t: TokenValue | string): string => {
+  return typeof t === 'string'
+    ? t
+    : bigNumberWithDecimalToStr(t.value, t.decimals);
 };
 
 // safely parse a JSON from a string to a type.

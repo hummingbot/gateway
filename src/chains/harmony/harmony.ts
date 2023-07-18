@@ -9,6 +9,7 @@ import { Ethereumish } from '../../services/common-interfaces';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { OpenoceanConfig } from '../../connectors/openocean/openocean.config';
 import { SushiswapConfig } from '../../connectors/sushiswap/sushiswap.config';
+import { EVMController } from '../ethereum/evm.controllers';
 
 export class Harmony extends EthereumBase implements Ethereumish {
   private static _instances: { [name: string]: Harmony };
@@ -19,6 +20,7 @@ export class Harmony extends EthereumBase implements Ethereumish {
   private _requestCount: number;
   private _metricsLogInterval: number;
   private _metricTimer;
+  public controller;
 
   private constructor(network: string) {
     const config = getHarmonyConfig('harmony', network);
@@ -48,6 +50,7 @@ export class Harmony extends EthereumBase implements Ethereumish {
       this.metricLogger.bind(this),
       this.metricsLogInterval
     );
+    this.controller = EVMController;
   }
 
   public static getInstance(network: string): Harmony {
@@ -143,9 +146,7 @@ export class Harmony extends EthereumBase implements Ethereumish {
 
   getSpender(reqSpender: string): string {
     let spender: string;
-    if (reqSpender === 'defikingdoms') {
-      spender = '0x24ad62502d1C652Cc7684081169D04896aC20f30';
-    } else if (reqSpender === 'defira') {
+    if (reqSpender === 'defira') {
       spender = '0x3C8BF7e25EbfAaFb863256A4380A8a93490d8065';
     } else if (reqSpender === 'openocean') {
       spender = OpenoceanConfig.config.routerAddress('ethereum', this._chain);

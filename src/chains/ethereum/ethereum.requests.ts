@@ -1,4 +1,5 @@
 import ethers, { Transaction } from 'ethers';
+import { NetworkSelectionRequest } from '../../services/common-interfaces';
 
 // gasUsed and cumulativeGasUsed are BigNumbers
 // then need to be converted to strings before being
@@ -89,7 +90,7 @@ export interface EthereumApproveResponse {
   approval: CustomTransaction;
 }
 
-export interface PollRequest {
+export interface PollRequest extends NetworkSelectionRequest {
   txHash: string;
 }
 

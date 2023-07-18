@@ -73,10 +73,11 @@ jobs:
       - name: Build project
         run: yarn build
 
-      - name: Replace testnet nodeURL for local hardhat node
+      - name: Replace testnet nodeURL and lists path
         run: |
           mkdir conf db
-          cp -r src/templates/* conf
+          cp -rf src/templates/* conf
+          sed -i 's|/home/gateway/conf/lists/|conf/lists/|g' ./conf/*.yml
           sed -i 's/https:\/\/rpc.ankr.com\/eth_goerli/http:\/\/127.0.0.1:8545\//g' ./conf/ethereum.yml
           sed -i 's/https:\/\/arbitrum-rinkeby.infura.io\/v3/http:\/\/127.0.0.1:8545\//g' ./conf/ethereum.yml
           sed -i 's/https:\/\/rpc.ankr.com\/optimism/http:\/\/127.0.0.1:8545\//g' ./conf/ethereum.yml

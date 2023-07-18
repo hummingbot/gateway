@@ -1,5 +1,5 @@
-import { LocalStorage } from '../services/local-storage';
-import { ReferenceCountingCloseable } from '../services/refcounting-closeable';
+import { LocalStorage } from '../../services/local-storage';
+import { ReferenceCountingCloseable } from '../../services/refcounting-closeable';
 
 // store the timestamp for when a transaction was initiated
 // this will be used to calculate a heuristic of the likelihood

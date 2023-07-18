@@ -27,13 +27,6 @@ import {
   Fraction as UniswapFraction,
 } from '@uniswap/sdk-core';
 import {
-  Token as TokenDefikingdoms,
-  CurrencyAmount as CurrencyAmountDefikingdoms,
-  Trade as TradeDefikingdoms,
-  Fraction as DefikingdomsFraction,
-  // } from '@defikingdoms/sdk';
-} from '@switchboard-xyz/defikingdoms-sdk';
-import {
   Token as TokenPangolin,
   CurrencyAmount as CurrencyAmountPangolin,
   Trade as TradePangolin,
@@ -114,7 +107,6 @@ import {
   ClobTickerRequest,
 } from '../clob/clob.requests';
 import { BalanceRequest } from '../network/network.requests';
-import { RouteMarket, ZigZagOrder } from '../connectors/zigzag/zigzag';
 import { TradeV2 } from '@traderjoe-xyz/sdk-v2';
 
 // TODO Check the possibility to have clob/solana/serum equivalents here
@@ -127,7 +119,6 @@ export type Tokenish =
   | TokenTraderjoe
   | UniswapCoreToken
   | SushiToken
-  | TokenDefikingdoms
   | PancakeSwapToken
   | MMFToken
   | VVSToken
@@ -148,9 +139,7 @@ export type UniswapishTrade =
   | TradeQuickswap
   | TradeTraderjoe
   | SushiswapTrade<SushiToken, SushiToken, SushiTradeType>
-  | UniswapV3Trade<Currency, UniswapCoreToken, TradeType>
   | TradeUniswap
-  | TradeDefikingdoms
   | DefiraTrade<UniswapCoreToken, UniswapCoreToken, TradeType>
   | PancakeSwapTrade
   | MMFTrade
@@ -173,7 +162,6 @@ export type UniswapishAmount =
   | UniswapCoreCurrencyAmount<Currency>
   | CurrencyAmountTraderjoe
   | SushiCurrencyAmount<SushiCurrency | SushiToken>
-  | CurrencyAmountDefikingdoms
   | PancakeSwapCurrencyAmount
   | CurrencyAmountMMF
   | CurrencyAmountVVS
@@ -185,7 +173,6 @@ export type Fractionish =
   | QuickswapFraction
   | TraderjoeFraction
   | SushiFraction
-  | DefikingdomsFraction
   | PancakeSwapFraction
   | FractionMMF
   | FractionVVS
@@ -308,34 +295,6 @@ export interface Uniswapish {
     maxFeePerGas?: BigNumber,
     maxPriorityFeePerGas?: BigNumber,
     allowedSlippage?: string
-  ): Promise<Transaction>;
-}
-
-export interface ZigZagTrade {
-  newSwapPrice: number;
-  bestSwapRoute: RouteMarket[];
-  newQuoteOrderArray: ZigZagOrder[];
-}
-
-export interface ZigZagish {
-  init(): Promise<void>;
-
-  ready(): boolean;
-
-  getTokenByAddress(address: string): Tokenish;
-
-  estimate(
-    sellToken: Tokenish,
-    buyToken: Tokenish,
-    buyAmount: BigNumber,
-    side: string
-  ): Promise<ZigZagTrade>;
-
-  executeTrade(
-    walletAddress: string,
-    trade: ZigZagTrade,
-    rawAmount: BigNumber,
-    is_buy: boolean
   ): Promise<Transaction>;
 }
 
@@ -676,13 +635,16 @@ export interface BasicChainMethods {
   chain: string;
 }
 
-export interface Ethereumish extends BasicChainMethods, EthereumBase {
+export interface Chain extends BasicChainMethods, EthereumBase {
+  controller: any;
   cancelTx(wallet: Wallet, nonce: number): Promise<Transaction>;
   getContract(
     tokenAddress: string,
     signerOrProvider?: Wallet | Provider
   ): Contract;
 }
+
+export type Ethereumish = Chain;
 
 export interface Xdcish extends BasicChainMethods, XdcBase {
   cancelTx(wallet: XdcWallet, nonce: number): Promise<XdcTransaction>;

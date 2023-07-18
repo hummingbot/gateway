@@ -9,6 +9,7 @@ import { MadMeerkatConfig } from '../../connectors/mad_meerkat/mad_meerkat.confi
 import { VVSConfig } from '../../connectors/vvs/vvs.config';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { OpenoceanConfig } from '../../connectors/openocean/openocean.config';
+import { EVMController } from '../ethereum/evm.controllers';
 
 export class Cronos extends EthereumBase implements Ethereumish {
   private static _instances: { [name: string]: Cronos };
@@ -16,6 +17,7 @@ export class Cronos extends EthereumBase implements Ethereumish {
   private _gasPriceRefreshInterval: number | null;
   private _nativeTokenSymbol: string;
   private _chain: string;
+  public controller;
 
   private constructor(network: string) {
     const config = getCronosConfig('cronos', network);
@@ -40,6 +42,7 @@ export class Cronos extends EthereumBase implements Ethereumish {
         : null;
 
     this.updateGasPrice();
+    this.controller = EVMController;
   }
 
   public static getInstance(network: string): Cronos {
