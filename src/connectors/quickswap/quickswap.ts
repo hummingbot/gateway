@@ -22,6 +22,7 @@ import {
 import { logger } from '../../services/logger';
 import { Polygon } from '../../chains/polygon/polygon';
 import { ExpectedTrade, Uniswapish } from '../../services/common-interfaces';
+import { getAddress } from 'ethers/lib/utils';
 
 export class Quickswap implements Uniswapish {
   private static _instances: { [name: string]: Quickswap };
@@ -62,7 +63,7 @@ export class Quickswap implements Uniswapish {
    * @param address Token address
    */
   public getTokenByAddress(address: string): Token {
-    return this.tokenList[address];
+    return this.tokenList[getAddress(address)];
   }
 
   public async init() {

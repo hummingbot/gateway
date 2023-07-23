@@ -10,6 +10,7 @@ import { ZigZagish } from '../../services/common-interfaces';
 import { logger } from '../../services/logger';
 import { EVMTxBroadcaster } from '../../chains/ethereum/evm.broadcaster';
 import { abi } from './zigzag.exchange.abi.json';
+import { getAddress } from 'ethers/lib/utils';
 
 // https://api.arbitrum.zigzag.exchange/v1/info
 
@@ -121,7 +122,7 @@ export class ZigZag implements ZigZagish {
   // }
 
   public getTokenByAddress(address: string): Token {
-    return this.tokenList[address.toLowerCase()];
+    return this.tokenList[getAddress(address)];
   }
 
   public async init() {
@@ -132,21 +133,19 @@ export class ZigZag implements ZigZagish {
     if (response.status === 200) {
       const zigZagData: ZigZagInfo = response.data;
       for (const token of zigZagData.verifiedTokens) {
-        this.tokenList[token.address.toLowerCase()] = new Token(
+        this.tokenList[getAddress(token.address)] = new Token(
           this._chain.chainId,
-          token.address.toLowerCase(),
+          getAddress(token.address),
           token.decimals,
           token.symbol,
           token.name
         );
       }
       for (const market of zigZagData.markets) {
-        const base = this.tokenList[market.buyToken];
-        const quote = this.tokenList[market.sellToken];
+        const base = this.getTokenByAddress(market.buyToken);
+        const quote = this.getTokenByAddress(market.sellToken);
         // this.markets.push(base.symbol + '-' + quote.symbol);
-        this.markets.push(
-          base.address.toLowerCase() + '-' + quote.address.toLowerCase()
-        );
+        this.markets.push(base.address + '-' + quote.address);
       }
     }
 
@@ -284,8 +283,8 @@ export class ZigZag implements ZigZagish {
           const quoteBuyAmount = ethers.BigNumber.from(order.buyAmount);
           if (side === 'buy' && quoteSellAmount.lt(stepBuyAmount)) return;
 
-          const quoteSellToken = this.tokenList[order.sellToken];
-          const quoteBuyToken = this.tokenList[order.buyToken];
+          const quoteSellToken = this.getTokenByAddress(order.sellToken);
+          const quoteBuyToken = this.getTokenByAddress(order.buyToken);
           if (!quoteSellToken || !quoteBuyToken) return;
 
           const quoteSellAmountFormated = Number(

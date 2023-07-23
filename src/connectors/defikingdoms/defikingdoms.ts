@@ -24,6 +24,7 @@ import { percentRegexp } from '../../services/config-manager-v2';
 // import { Ethereum } from '../../chains/ethereum/ethereum';
 import { ExpectedTrade, Uniswapish } from '../../services/common-interfaces';
 import { Harmony } from '../../chains/harmony/harmony';
+import { getAddress } from 'ethers/lib/utils';
 
 export class Defikingdoms implements Uniswapish {
   private static _instances: { [name: string]: Defikingdoms };
@@ -65,7 +66,7 @@ export class Defikingdoms implements Uniswapish {
    * @param address Token address
    */
   public getTokenByAddress(address: string): Token {
-    return this.tokenList[address];
+    return this.tokenList[getAddress(address)];
   }
 
   public async init() {

@@ -29,6 +29,7 @@ import { logger } from '../../services/logger';
 import { isFractionString } from '../../services/validators';
 import { PancakeSwapConfig } from './pancakeswap.config';
 import routerAbi from './pancakeswap_router_abi.json';
+import { getAddress } from 'ethers/lib/utils';
 
 export class PancakeSwap implements Uniswapish {
   private static _instances: { [name: string]: PancakeSwap };
@@ -91,7 +92,7 @@ export class PancakeSwap implements Uniswapish {
    * @param address Token address
    */
   public getTokenByAddress(address: string): Token {
-    return this.tokenList[address];
+    return this.tokenList[getAddress(address)];
   }
 
   /**
