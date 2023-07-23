@@ -96,7 +96,7 @@ export class UniswapLPHelper {
    * @param address Token address
    */
   public getTokenByAddress(address: string): Token {
-    return this.tokenList[address];
+    return this.tokenList[address.toLowerCase()];
   }
 
   public async init() {
