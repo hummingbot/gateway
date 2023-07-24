@@ -39,14 +39,11 @@ export type BalancesResponse = {
   subaccounts: Array<SubaccountBalancesWithId>;
 };
 
-export interface TransferToSubAccountRequest extends NetworkSelectionRequest {
-  address: string;
+export interface TransferRequest extends NetworkSelectionRequest {
+  to: string;
+  from: string;
   amount: string;
   token: string;
 }
 
-export type TransferToSubAccountResponse = string;
-
-export type TransferToBankAccountRequest = TransferToSubAccountRequest;
-
-export type TransferToBankAccountResponse = TransferToSubAccountResponse;
+export type TransferResponse = string;

@@ -154,70 +154,6 @@ definitions:
             type: 'string'
         example: '{"ETH": "1.5", "WETH": "100","DAI": "300"}'
 
-  InjectiveBankBalance:
-    type: 'object'
-    required:
-      - 'token'
-      - 'amount'
-    properties:
-      token:
-        type: 'string'
-        example: 'inj'
-      amount:
-        type: 'string'
-        example: '1.25'
-
-  InjectiveSubaccountBalanceSub:
-    type: 'object'
-    required:
-      - 'token'
-      - 'totalBalance'
-      - 'availableBalance'
-    properties:
-      token:
-        type: 'string'
-        example: 'inj'
-      totalBalance:
-        type: 'string'
-        example: '100.0'
-      availableBalance:
-        type: 'string'
-        example: '15.0'
-
-  InjectiveSubaccountBalancesWithId:
-    type: 'object'
-    required:
-      - 'subaccountId'
-      - 'balances'
-    properties:
-      subaccountId:
-        type: 'string'
-        example: '0'
-      balances:
-        type: 'array'
-        item:
-          $ref: '#/definitions/InjectiveSubaccountBalanceSub'
-        example: '{"token": "inj", "tokenBalance": "100.0", "availableBalance": "15.0"}'
-
-  InjectiveBalancesResponse:
-    type: 'object'
-    required:
-      - 'injectiveAddress'
-      - 'balances'
-      - 'subaccounts'
-    properties:
-      injectiveAddress:
-        type: 'string'
-        example: 'inj1l2sjl5gzl6rz8jffn3etq0j9zpljwu44ed7zuc'
-      balances:
-        type: 'array'
-        item:
-          $ref: '#/definitions/InjectiveBankBalance'
-      subaccoutns:
-        type: 'array'
-        item:
-          $ref: '#/definitions/InjectiveSubaccountBalancesWithId'
-
   ApproveRequest:
     type: 'object'
     required:
@@ -291,53 +227,6 @@ definitions:
       approval:
         type: 'object'
         example: '{"type": 2,"chainId": 42,"nonce": 129,"maxPriorityFeePerGas": "94000000000","maxFeePerGas": "94000000000","gasPrice": null,"gasLimit": "100000","to": "0xd0A1E359811322d97991E03f863a0C30C2cF029C","value": "0","data": "0x095ea7b30000000000000000000000007a250d5630b4cf539739df2c5dacb4c659f2488dffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff","accessList": [],"hash": "0xa321bbe8888c3bc88ecb1ad4f03f22a71e6f5715dfcb19e0a2dca9036c981b6d","v": 1,"r": "0x47c517271885b7041d81bcd65cd050a5d6be3fbd67a8f1660ac8d7e68fc8221f","s": "0x7c62e114b2cb0eae6236b597fb4aacb01c51e56afd7f734e6039d83aa400ba82","from": "0xFaA12FD102FE8623C9299c72B03E45107F2772B5","confirmations": 0}'  # noqa: documentation
-
-  InjectivePollResponse:
-    type: 'object'
-    required:
-      - 'blockNumber'
-      - 'hash'
-      - 'gasWanted'
-      - 'gasLimit'
-      - 'gasUsed'
-      - 'sequences'
-    properties:
-      blockNumber:
-        type: 'number'
-        example: 123456
-      hash:
-        type: 'string'
-        example: '0xaaaaaaaaaabbbb'
-      gasWanted:
-        type: 'number'
-        example: 1000000
-      gasLimit:
-        type: 'number'
-        example: 2000000
-      gasUsed:
-        type: 'number'
-        example: 1000000
-      sequences:
-        type: 'array'
-        items: 'number'
-        example: [ 1,2 ]
-
-  InjectivePollRequest:
-    type: 'object'
-    required:
-      - 'txHash'
-      - 'chain'
-      - 'network'
-    properties:
-      txHash:
-        type: 'string'
-        example: '0xa321bbe8888c3bc88ecb1ad4f03f22a71e6f5715dfcb19e0a2dca9036c981b6d'  # noqa: documentation
-      chain:
-        type: 'string'
-        example: 'injective'
-      network:
-        type: 'string'
-        example: 'mainnet'
 
   PollRequest:
     type: 'object'
@@ -710,86 +599,6 @@ definitions:
         OneOf:
           - type: 'boolean'
           - type: 'number'
-
-  CosmosConfigResponse:
-    type: 'object'
-    required:
-      - 'network'
-      - 'rpcUrl'
-      - 'connection'
-      - 'timestamp'
-    properties:
-      network:
-        type: 'string'
-        example: 'mainnet'
-      rpcUrl:
-        type: 'string'
-        example: 'https://rpc.cosmos.network/'
-      connection:
-        type: 'boolean'
-        example: true
-      timestamp:
-        type: 'integer'
-        example: 1641889489132
-
-  CosmosBalanceRequest:
-    type: 'object'
-    required:
-      - 'address'
-      - 'tokenSymbols'
-    properties:
-      address:
-        type: 'string'
-        example: 'cosmos1pc8m5m7n0z8xe7sx2tawkvc0v6qkjql83js0dr'
-      tokenSymbols:
-        type: 'array'
-        items: 'string'
-        example: [ 'ATOM', 'NETA' ]
-
-  CosmosPollRequest:
-    type: 'object'
-    required:
-      - 'txHash'
-    properties:
-      txHash:
-        type: 'string'
-        example: 'E0E02A6C27A75F4442B0746676BDAF5F66AFF1E71928C54624A35B48D5A4B3AF'
-
-  CosmosPollResponse:
-    type: 'object'
-    required:
-      - 'network'
-      - 'timestamp'
-      - 'txHash'
-      - 'currentBlock'
-      - 'txBlock'
-      - 'gasUsed'
-      - 'gasWanted'
-      - 'txData'
-    properties:
-      network:
-        type: 'string'
-        example: 'mainnet'
-      timestamp:
-        type: 'integer'
-        example: 1636368085740
-      currentBlock:
-        type: 'integer'
-        example: 112646487
-      txHash:
-        type: 'string'
-        example: 'oaMWkrYr1g9JBcDUPRqz21cJBxowM4CEbDy2FsCgNK569CjZSr4wa51d4k9DpTRJU8GUHfp3e9YX2pGXaBS5Tta'
-      txBlock:
-        type: 'number'
-        example: 11581899
-      gasUsed:
-        type: 'number'
-        example: 89054
-      gasWanted:
-        type: 'number'
-        example: 130000
-      txData:
-        $ref: '#/definitions/CosmosTransaction'
 
   TokensResponse:
     type: 'object'
@@ -2055,12 +1864,13 @@ definitions:
         type: 'array'
         example: []
         
-  TransferToSubAccountRequest:
+  TransferRequest:
     type: 'object'
     required:
       - 'chain'
       - 'network'
-      - 'address'
+      - 'from'
+      - 'to'
       - 'subaccountId'
       - 'amount'
       - 'token'
@@ -2071,7 +1881,10 @@ definitions:
       network:
         type: 'string'
         example: 'mainnet'
-      address:
+      from:
+        type: 'string'
+        example: '0x...'
+      to:
         type: 'string'
         example: '0x...'
       amount:
@@ -2080,103 +1893,6 @@ definitions:
       token:
         type: 'string'
         example: 'inj'
-
-  NearBalancesRequest:
-    type: 'object'
-    required:
-      - 'address'
-      - 'tokenSymbols'
-      - 'chain'
-      - 'network'
-    properties:
-      privateKey:
-        type: 'string'
-        example: 'hummingbot.near'
-      tokenSymbols:
-        type: 'array'
-        items: 'string'
-        example: [ "NEAR", "ETH", "AURORA" ]
-      chain:
-        type: 'string'
-        example: 'near'
-      network:
-        type: 'string'
-        example: 'testnet'
-
-  NearBalancesResponse:
-    type: 'object'
-    required:
-      - 'network'
-      - 'timestamp'
-      - 'latency'
-      - 'balances'
-    properties:
-      network:
-        type: 'string'
-        example: 'testnet'
-      timestamp:
-        type: 'integer'
-        example: 1636368085740
-      latency:
-        type: 'number'
-        example: 0.5
-      balances:
-        type: 'object'
-        properties:
-          id:
-            type: 'string'
-          name:
-            type: 'string'
-        example: '{"NEAR": "1.5", "ETH": "100", "AURORA": "300"}'
-
-  NearPollRequest:
-    type: 'object'
-    required:
-      - 'address'
-      - 'txHash'
-      - 'chain'
-      - 'network'
-    properties:
-      address:
-        type: 'string'
-        example: 'hummingbot.near'
-      txHash:
-        type: 'string'
-        example: 'HnpRwb8PjrtLjExxz4YxdiyJ2AwuRFhZHKa9WUASwyxk'
-      chain:
-        type: 'string'
-        example: 'near'
-      network:
-        type: 'string'
-        example: 'testnet'
-
-  NearPollResponse:
-    type: 'object'
-    required:
-      - 'network'
-      - 'timestamp'
-      - 'currentBlock'
-      - 'txHash'
-      - 'txStatus'
-      - 'txReceipt'
-    properties:
-      network:
-        type: 'string'
-        example: 'testnet'
-      timestamp:
-        type: 'integer'
-        example: 1636368085740
-      currentBlock:
-        type: 'integer'
-        example: 28243911
-      txHash:
-        type: 'string'
-        example: 'HnpRwb8PjrtLjExxz4YxdiyJ2AwuRFhZHKa9WUASwyxk'
-      txStatus:
-        type: 'number'
-        example: 1
-      txReceipt:
-        type: 'object'
 
   PerpClobPostOrderRequest:
     type: 'object'
@@ -2322,102 +2038,6 @@ definitions:
       lastTradePrice:
         type: 'string'
         example: '1.234'
-
-  AlgorandPollRequest:
-    type: 'object'
-    required:
-      - 'network'
-      - 'txHash'
-    properties:
-      network:
-        type: 'string'
-        example: 'testnet'
-      txHash:
-        type: 'string'
-        example: 'T3ZUYEJ5Y7KEDKITIXO4B5OWU4SBVGOFCPOYGZQHF2XZGENZUBQA'
-
-  AlgorandPollResponse:
-    type: 'object'
-    required:
-      - 'currentBlock'
-      - 'txBlock'
-      - 'txHash'
-      - 'fee'
-    properties:
-      currentBlock:
-        type: 'integer'
-        example: 28243911
-      txBlock:
-        type: 'integer'
-        example: 28243910
-      txHash:
-        type: 'string'
-        example: 'T3ZUYEJ5Y7KEDKITIXO4B5OWU4SBVGOFCPOYGZQHF2XZGENZUBQA'
-      fee:
-        type: 'integer'
-        example: 1000
-
-  AlgorandAssetsRequest:
-    type: 'object'
-    properties:
-      network:
-        type: 'string'
-        example: 'testnet'
-      assetSymbols:
-        type: 'array'
-        items: 'string'
-        example: [ 'ALGO', 'USDC' ]
-
-  AlgorandAssetsResponse:
-    type: 'object'
-    required:
-      - 'assets'
-    properties:
-      assets:
-        type: 'array'
-        items: 'object'
-        example: [ { symbol: 'ALGO', assetId: 0, decimal: 6 } ]
-
-  AlgorandOptInRequest:
-    type: 'object'
-    required:
-      - 'network'
-      - 'address'
-      - 'assetSymbol'
-    properties:
-      network:
-        type: 'string'
-        example: 'testnet'
-      address:
-        type: 'string'
-        example: 'T3ZUYEJ5Y7KEDKITIXO4B5OWU4SBVGOFCPOYGZQHF2XZGENZUBQA'
-      assetSymbol:
-        type: 'string'
-        example: 'USDC'
-
-  AlgorandOptInResponse:
-    type: 'object'
-    required:
-      - 'network'
-      - 'timestamp'
-      - 'latency'
-      - 'assetId'
-      - 'transactionResponse'
-    properties:
-      network:
-        type: 'string'
-        example: 'testnet'
-      timestamp:
-        type: 'integer'
-        example: 163636808574
-      latency:
-        type: 'number'
-        example: 0.5
-      assetId:
-        type: 'string'
-        example: 'USDC'
-      transactionResponse:
-        type: 'object'
 
   ClobBatchOrdersRequest:
     type: 'object'

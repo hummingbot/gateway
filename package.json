@@ -1,6 +1,6 @@
 {
   "name": "hummingbot-gateway",
-  "version": "1.17.0",
+  "version": "1.18.0",
   "description": "Middleware that helps Hummingbot clients access standardized DEX API endpoints on different blockchain networks",
   "main": "index.js",
   "license": "Apache-2.0",
@@ -43,7 +43,6 @@
     "@pangolindex/sdk": "^1.1.0",
     "@perp/sdk-curie": "^1.16.0",
     "@sushiswap/sdk": "^5.0.0-canary.116",
-    "@switchboard-xyz/defikingdoms-sdk": "^1.0.7",
     "@tinymanorg/tinyman-js-sdk": "^3.0.0",
     "@traderjoe-xyz/sdk-v2": "^2.0.5",
     "@types/fs-extra": "^9.0.13",

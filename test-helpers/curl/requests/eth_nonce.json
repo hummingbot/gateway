@@ -1,5 +1,5 @@
 {
   "chain": "ethereum",
-  "network": "goerli",
-  "address": "$ETH_ADDRESS"
+  "network": "mainnet",
+  "address": "0x010216bB52E46807a07d0101Bb828bA547534F37"
 }
