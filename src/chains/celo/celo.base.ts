@@ -173,6 +173,9 @@ export class CeloBase {
     } else {
       ({ tokens } = JSON.parse(await fs.readFile(tokenListSource, 'utf8')));
     }
+    tokens.forEach(
+      (token: TokenInfo) => (token.symbol = token.symbol.toUpperCase())
+    );
     return tokens;
   }
 
@@ -343,16 +346,16 @@ export class CeloBase {
     tokenName: string
   ): Promise<StableTokenWrapper | GoldTokenWrapper | undefined> {
     const wrappers = await this.kit.celoTokens.getWrappers();
-    const converted = tokenName.toLowerCase();
+    const converted = tokenName.toUpperCase();
     let token;
     if (wrappers) {
-      if (converted === 'celo') {
+      if (converted === 'CELO') {
         token = await wrappers.CELO;
       }
-      if (converted === 'cusd') {
+      if (converted === 'CUSD') {
         token = await wrappers.cUSD;
       }
-      if (converted === 'ceur') {
+      if (converted === 'CEUR') {
         token = await wrappers.cEUR;
       }
     }
@@ -362,8 +365,7 @@ export class CeloBase {
   public getTokenBySymbol(tokenSymbol: string): TokenInfo | undefined {
     return this.tokenList.find(
       (token: TokenInfo) =>
-        token.symbol.toUpperCase() === tokenSymbol.toUpperCase() &&
-        token.chainId === this.chainId
+        token.symbol === tokenSymbol && token.chainId === this.chainId
     );
   }
 
