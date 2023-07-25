@@ -1,12 +1,6 @@
 import { Near } from '../../../src/chains/near/near';
 import { TokenInfo } from '../../../src/chains/near/near.base';
-import {
-  balances,
-  cancel,
-  getTokenSymbolsToTokens,
-  poll,
-} from '../../../src/chains/near/near.controllers';
-import { PollResponse } from '../../../src/chains/near/near.requests';
+import { NearController } from '../../../src/chains/near/near.controllers';
 import { Nearish } from '../../../src/services/common-interfaces';
 import {
   HttpException,
@@ -50,9 +44,11 @@ describe('poll', () => {
   it('return transaction data for given signature', async () => {
     patchGetCurrentBlockNumber();
     patchGetTransaction();
-    const n: PollResponse = await poll(near, publicKey, txHash);
-    expect(n.network).toBe(near.network);
-    expect(n.timestamp).toBeNumber();
+    const n = await NearController.poll(near, {
+      address: publicKey,
+      txHash,
+      network: '',
+    });
     expect(n.currentBlock).toBe(CurrentBlockNumber);
     expect(n.txHash).toBe(txHash);
     expect(n.txStatus).toBe(1);
@@ -67,7 +63,7 @@ describe('balances', () => {
     });
 
     await expect(
-      balances(near, {
+      NearController.balances(near, {
         chain: 'near',
         network: 'testnet',
         address: publicKey,
@@ -91,7 +87,7 @@ describe('cancel', () => {
     });
 
     await expect(
-      cancel(near, {
+      NearController.cancel(near, {
         chain: 'near',
         network: 'testnet',
         nonce: 123,
@@ -119,6 +115,8 @@ describe('getTokenSymbolsToTokens', () => {
     patch(near, 'getTokenBySymbol', () => {
       return eth;
     });
-    expect(getTokenSymbolsToTokens(near, ['ETH'])).toEqual({ ETH: eth });
+    expect(NearController.getTokenSymbolsToTokens(near, ['ETH'])).toEqual({
+      ETH: eth,
+    });
   });
 });

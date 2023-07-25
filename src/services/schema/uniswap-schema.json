@@ -6,6 +6,10 @@
     "gasLimitEstimate": { "type": "integer" },
     "ttl": { "type": "integer" },
     "maximumHops": { "type": "integer" },
+    "useRouter": { "type": "boolean" },
+    "feeTier": {
+      "enum": ["LOWEST", "LOW", "MEDIUM", "HIGH"]
+    },
     "contractAddresses": {
       "type": "object",
       "patternProperties": {
@@ -13,7 +17,8 @@
           "type": "object",
           "properties": {
             "uniswapV3SmartOrderRouterAddress": { "type": "string" },
-            "uniswapV3NftManagerAddress": { "type": "string" }
+            "uniswapV3NftManagerAddress": { "type": "string" },
+            "uniswapV3QuoterV2ContractAddress": { "type": "string" }
           },
           "required": [
             "uniswapV3SmartOrderRouterAddress",

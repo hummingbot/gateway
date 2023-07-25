@@ -11,6 +11,9 @@ export namespace UniswapConfig {
     tradingTypes: (type: string) => Array<string>;
     chainType: string;
     availableNetworks: Array<AvailableNetworks>;
+    useRouter?: boolean;
+    feeTier?: string;
+    quoterContractAddress: (network: string) => string;
   }
 
   export const config: NetworkConfig = {
@@ -56,5 +59,11 @@ export namespace UniswapConfig {
         ),
       },
     ],
+    useRouter: ConfigManagerV2.getInstance().get(`uniswap.useRouter`),
+    feeTier: ConfigManagerV2.getInstance().get(`uniswap.feeTier`),
+    quoterContractAddress: (network: string) =>
+      ConfigManagerV2.getInstance().get(
+        `uniswap.contractAddresses.${network}.uniswapV3QuoterV2ContractAddress`
+      ),
   };
 }
