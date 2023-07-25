@@ -10,6 +10,7 @@ import { UniswapConfig } from '../../connectors/uniswap/uniswap.config';
 import { Ethereumish } from '../../services/common-interfaces';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { OpenoceanConfig } from '../../connectors/openocean/openocean.config';
+import { BalancerConfig } from '../../connectors/balancer/balancer.config';
 import { EVMController } from '../ethereum/evm.controllers';
 import { Curve } from '../../connectors/curve/curve';
 
