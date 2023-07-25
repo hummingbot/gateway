@@ -28,6 +28,18 @@ export const validateAddress: Validator = mkValidator(
   (val) => typeof val === 'string'
 );
 
+export const validateFrom: Validator = mkValidator(
+  'from',
+  invalidAddressError,
+  (val) => typeof val === 'string'
+);
+
+export const validateTo: Validator = mkValidator(
+  'to',
+  invalidAddressError,
+  (val) => typeof val === 'string'
+);
+
 export const validateBalanceRequest: RequestValidator = mkRequestValidator([
   validateNetwork,
   validateAddress,
@@ -50,12 +62,10 @@ export const validateToken: Validator = mkValidator(
   (val) => typeof val === 'string'
 );
 
-export const validateTransferToSubAccountRequest = mkRequestValidator([
+export const validateTransferRequest = mkRequestValidator([
   validateNetwork,
-  validateAddress,
+  validateFrom,
+  validateTo,
   validateAmount,
   validateToken,
 ]);
-
-export const validateTransferToBankAccountRequest =
-  validateTransferToSubAccountRequest;

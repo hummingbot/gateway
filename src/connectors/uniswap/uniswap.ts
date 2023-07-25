@@ -39,6 +39,7 @@ import { percentRegexp } from '../../services/config-manager-v2';
 import { Ethereum } from '../../chains/ethereum/ethereum';
 import { Polygon } from '../../chains/polygon/polygon';
 import { ExpectedTrade, Uniswapish } from '../../services/common-interfaces';
+import { getAddress } from 'ethers/lib/utils';
 
 export class Uniswap implements Uniswapish {
   private static _instances: { [name: string]: Uniswap };
@@ -107,7 +108,7 @@ export class Uniswap implements Uniswapish {
    * @param address Token address
    */
   public getTokenByAddress(address: string): Token {
-    return this.tokenList[address];
+    return this.tokenList[getAddress(address)];
   }
 
   public async init() {

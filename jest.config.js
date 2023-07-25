@@ -21,7 +21,6 @@ module.exports = {
     'src/connectors/uniswap/uniswap.config.ts',
     'src/connectors/uniswap/uniswap.ts',
     'src/connectors/uniswap/uniswap.lp.helper.ts',
-    'src/connectors/defikingdoms/defikingdoms.ts',
     'src/connectors/defira/defira.ts',
     'src/connectors/openocean/openocean.ts',
     'src/connectors/pangolin/pangolin.ts',

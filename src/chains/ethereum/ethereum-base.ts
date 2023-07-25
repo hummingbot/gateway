@@ -11,13 +11,14 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { rootPath } from '../../paths';
 import { TokenListType, TokenValue, walletPath } from '../../services/base';
-import { EVMNonceManager } from '../../evm/evm.nonce';
+import { EVMNonceManager } from './evm.nonce';
 import NodeCache from 'node-cache';
-import { EvmTxStorage } from '../../evm/evm.tx-storage';
+import { EvmTxStorage } from './evm.tx-storage';
 import fse from 'fs-extra';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { logger } from '../../services/logger';
 import { ReferenceCountingCloseable } from '../../services/refcounting-closeable';
+import { getAddress } from 'ethers/lib/utils';
 
 // information about an Ethereum token
 export interface TokenInfo {
@@ -153,7 +154,7 @@ export class EthereumBase {
     tokenListSource: string,
     tokenListType: TokenListType
   ): Promise<TokenInfo[]> {
-    let tokens;
+    let tokens: TokenInfo[];
     if (tokenListType === 'URL') {
       ({
         data: { tokens },
@@ -161,7 +162,11 @@ export class EthereumBase {
     } else {
       ({ tokens } = JSON.parse(await fs.readFile(tokenListSource, 'utf8')));
     }
-    return tokens;
+    const mappedTokens: TokenInfo[] = tokens.map((token) => {
+      token.address = getAddress(token.address);
+      return token;
+    });
+    return mappedTokens;
   }
 
   public get nonceManager() {

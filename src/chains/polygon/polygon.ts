@@ -11,12 +11,14 @@ import { Ethereumish } from '../../services/common-interfaces';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { OpenoceanConfig } from '../../connectors/openocean/openocean.config';
 import { BalancerConfig } from '../../connectors/balancer/balancer.config';
+import { EVMController } from '../ethereum/evm.controllers';
 
 export class Polygon extends EthereumBase implements Ethereumish {
   private static _instances: { [name: string]: Polygon };
   private _gasPrice: number;
   private _nativeTokenSymbol: string;
   private _chain: string;
+  public controller;
 
   private constructor(network: string) {
     const config = getPolygonConfig('polygon', network);
@@ -34,6 +36,7 @@ export class Polygon extends EthereumBase implements Ethereumish {
     this._chain = config.network.name;
     this._nativeTokenSymbol = config.nativeCurrencySymbol;
     this._gasPrice = config.manualGasPrice;
+    this.controller = EVMController;
   }
 
   public static getInstance(network: string): Polygon {

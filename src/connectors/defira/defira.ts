@@ -21,6 +21,7 @@ import { logger } from '../../services/logger';
 import { percentRegexp } from '../../services/config-manager-v2';
 import { Harmony } from '../../chains/harmony/harmony';
 import { ExpectedTrade, Uniswapish } from '../../services/common-interfaces';
+import { getAddress } from 'ethers/lib/utils';
 
 export class Defira implements Uniswapish {
   private static _instances: { [name: string]: Defira };
@@ -65,7 +66,7 @@ export class Defira implements Uniswapish {
    * @param address Token address
    */
   public getTokenByAddress(address: string): Token {
-    return this.tokenList[address];
+    return this.tokenList[getAddress(address)];
   }
 
   public async init() {

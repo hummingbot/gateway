@@ -58,19 +58,14 @@ import {
   getConnector,
 } from '../services/connection-manager';
 import {
-  Ethereumish,
+  Chain as Ethereumish,
   Nearish,
   NetworkSelectionRequest,
   Perpish,
   RefAMMish,
   Uniswapish,
   UniswapLPish,
-  ZigZagish,
 } from '../services/common-interfaces';
-import {
-  price as zigzagPrice,
-  trade as zigzagTrade,
-} from '../connectors/zigzag/zigzag.controllers';
 import { Algorand } from '../chains/algorand/algorand';
 import { Tinyman } from '../connectors/tinyman/tinyman';
 
@@ -79,15 +74,16 @@ export async function price(req: PriceRequest): Promise<PriceResponse> {
     req.chain,
     req.network
   );
-  const connector: Uniswapish | RefAMMish | Tinyman | ZigZagish= await getConnector<
-    Uniswapish | RefAMMish | Tinyman | ZigZagish 
-  >(req.chain, req.network, req.connector);
+  const connector: Uniswapish | RefAMMish | Tinyman  =
+    await getConnector<Uniswapish | RefAMMish | Tinyman>(
+      req.chain,
+      req.network,
+      req.connector
+    );
 
   // we currently use the presence of routerAbi to distinguish Uniswapish from RefAMMish
   if ('routerAbi' in connector) {
     return uniswapPrice(<Ethereumish>chain, connector, req);
-  } else if ('estimate' in connector) {
-    return zigzagPrice(<Ethereumish>chain, connector as any, req);
   } else if (connector instanceof Tinyman) {
     return tinymanPrice(chain as unknown as Algorand, connector, req);
   } else {
@@ -100,15 +96,16 @@ export async function trade(req: TradeRequest): Promise<TradeResponse> {
     req.chain,
     req.network
   );
-  const connector: Uniswapish | RefAMMish | Tinyman | ZigZagish = await getConnector<
-    Uniswapish | RefAMMish | Tinyman | ZigZagish 
-  >(req.chain, req.network, req.connector);
+  const connector: Uniswapish | RefAMMish | Tinyman =
+    await getConnector<Uniswapish | RefAMMish | Tinyman >(
+      req.chain,
+      req.network,
+      req.connector
+    );
 
   // we currently use the presence of routerAbi to distinguish Uniswapish from RefAMMish
   if ('routerAbi' in connector) {
     return uniswapTrade(<Ethereumish>chain, connector, req);
-  } else if ('estimate' in connector) {
-    return zigzagTrade(<Ethereumish>chain, connector as any, req);
   } else if (connector instanceof Tinyman) {
     return tinymanTrade(chain as unknown as Algorand, connector, req);
   } else {
