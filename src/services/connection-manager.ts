@@ -37,6 +37,7 @@ import { DexalotCLOB } from '../connectors/dexalot/dexalot';
 import { Algorand } from '../chains/algorand/algorand';
 import { Cosmos } from '../chains/cosmos/cosmos';
 import { Tinyman } from '../connectors/tinyman/tinyman';
+import { Balancer } from '../connectors/balancer/balancer';
 
 export type ChainUnion =
   | Algorand
@@ -175,6 +176,11 @@ export async function getConnector<T>(
     connectorInstance = Pangolin.getInstance(chain, network);
   } else if (connector === 'openocean') {
     connectorInstance = Openocean.getInstance(chain, network);
+  } else if (
+    (chain === 'ethereum' || chain === 'polygon') &&
+    connector === 'balancer'
+  ) {
+    connectorInstance = Balancer.getInstance(chain, network);
   } else if (chain === 'avalanche' && connector === 'traderjoe') {
     connectorInstance = Traderjoe.getInstance(chain, network);
   } else if (chain === 'harmony' && connector === 'defira') {

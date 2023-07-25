@@ -10,6 +10,7 @@ import { UniswapConfig } from '../../connectors/uniswap/uniswap.config';
 import { Ethereumish } from '../../services/common-interfaces';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { OpenoceanConfig } from '../../connectors/openocean/openocean.config';
+import { BalancerConfig } from '../../connectors/balancer/balancer.config';
 import { EVMController } from '../ethereum/evm.controllers';
 
 export class Polygon extends EthereumBase implements Ethereumish {
@@ -86,6 +87,11 @@ export class Polygon extends EthereumBase implements Ethereumish {
       );
     } else if (reqSpender === 'openocean') {
       spender = OpenoceanConfig.config.routerAddress('polygon', this._chain);
+    } else if (reqSpender === 'balancer') {
+      spender = BalancerConfig.config.balancerV2VaultAddress(
+        'polygon',
+        this._chain
+      );
     } else {
       spender = reqSpender;
     }

@@ -108,6 +108,7 @@ import {
 } from '../clob/clob.requests';
 import { BalanceRequest } from '../network/network.requests';
 import { TradeV2 } from '@traderjoe-xyz/sdk-v2';
+import { Trade as BalancerTrade } from '../connectors/balancer/types';
 
 // TODO Check the possibility to have clob/solana/serum equivalents here
 //  Check this link https://hummingbot.org/developers/gateway/building-gateway-connectors/#5-add-sdk-classes-to-uniswapish-interface
@@ -145,7 +146,8 @@ export type UniswapishTrade =
   | MMFTrade
   | VVSTrade
   | TradeXsswap
-  | TradeV2;
+  | TradeV2
+  | BalancerTrade;
 
 export type UniswapishTradeOptions =
   | MMFTradeOptions

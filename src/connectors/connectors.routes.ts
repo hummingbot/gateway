@@ -19,6 +19,7 @@ import { XsswapConfig } from './xsswap/xsswap.config';
 import { ConnectorsResponse } from './connectors.request';
 import { DexalotCLOBConfig } from './dexalot/dexalot.clob.config';
 import { TinymanConfig } from './tinyman/tinyman.config';
+import { BalancerConfig } from './balancer/balancer.config';
 
 export namespace ConnectorsRoutes {
   export const router = Router();
@@ -150,6 +151,12 @@ export namespace ConnectorsRoutes {
             trading_type: TinymanConfig.config.tradingTypes,
             chain_type: TinymanConfig.config.chainType,
             available_networks: TinymanConfig.config.availableNetworks,
+          },
+          {
+            name: 'balancer',
+            trading_type: BalancerConfig.config.tradingTypes,
+            chain_type: BalancerConfig.config.chainType,
+            available_networks: BalancerConfig.config.availableNetworks,
           },
         ],
       });
