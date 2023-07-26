@@ -430,6 +430,7 @@ export class XRPLCLOB implements CLOBish {
       updatedAt: currentTime,
       updatedAtLedgerIndex: currentLedgerIndex,
       associatedTxns: [signed.hash],
+      associatedFills: [],
     };
 
     await this.trackOrder(wallet, order);
@@ -471,6 +472,7 @@ export class XRPLCLOB implements CLOBish {
         updatedAt: Date.now(),
         updatedAtLedgerIndex: await this.getCurrentBlockNumber(),
         associatedTxns: [signed.hash],
+        associatedFills: [],
       };
     }
 

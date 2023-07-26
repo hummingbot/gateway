@@ -236,6 +236,7 @@ export interface Order {
   updatedAt: number;
   updatedAtLedgerIndex: number;
   associatedTxns: string[];
+  associatedFills: FillData[];
 }
 
 export interface InflightOrders {
@@ -277,6 +278,16 @@ export interface TransactionIntent {
   node?: Node;
 }
 
+export interface FillData {
+  id: string;
+  price: string;
+  quantity: string;
+  fee_token: string;
+  fee: string;
+  timestamp: number;
+  type: string;
+}
+
 type Node = CreatedNode | ModifiedNode | DeletedNode;
 
 export interface CreatedNode {
@@ -307,6 +318,9 @@ export interface DeletedNode {
     LedgerEntryType: string;
     LedgerIndex: string;
     FinalFields: {
+      [field: string]: unknown;
+    };
+    PreviousFields?: {
       [field: string]: unknown;
     };
   };

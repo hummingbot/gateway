@@ -22,6 +22,8 @@ import {
   ResponseOnlyTxInfo,
   CreatedNode,
   ModifiedNode,
+  DeletedNode,
+  FillData,
 } from '../../connectors/xrpl/xrpl.types';
 import { OrderMutexManager } from '../../connectors/xrpl/xrpl.utils';
 import {
@@ -397,8 +399,10 @@ export class OrderTracker {
       }
 
       let filledAmount = 0.0;
-      let node: CreatedNode | ModifiedNode;
+      let node: CreatedNode | ModifiedNode | DeletedNode | undefined;
       let fields: any;
+      let foundTradeIndex = 0;
+      let fillData: FillData;
 
       switch (intent.type) {
         case TransactionIntentType.OFFER_CREATE_FINALIZED:
@@ -455,6 +459,42 @@ export class OrderTracker {
             }
           }
 
+          // add intent as trade date
+          foundTradeIndex = matchOrder.associatedFills.findIndex((fill) => {
+            if (node === undefined) {
+              return (
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                fill.id === `${intent.type}-${transaction.transaction.hash!}`
+              );
+            }
+
+            if (isCreatedNode(node)) {
+              return (
+                fill.id === `${intent.type}-${node.CreatedNode.LedgerIndex}`
+              );
+            }
+
+            if (isModifiedNode(node)) {
+              return (
+                fill.id === `${intent.type}-${node.ModifiedNode.LedgerIndex}`
+              );
+            }
+
+            return false;
+          });
+
+          if (foundTradeIndex === -1) {
+            fillData = this.buildFillData(
+              intent,
+              node,
+              matchOrder,
+              transaction
+            );
+            matchOrder.associatedFills.push(fillData);
+          } else {
+            // console.log('FillData already found!');
+          }
+
           // console.log('Filled amount: ', filledAmount);
           matchOrder.filledAmount = filledAmount.toString();
           break;
@@ -462,6 +502,45 @@ export class OrderTracker {
         case TransactionIntentType.OFFER_FILL:
           matchOrder.state = OrderStatus.FILLED;
           matchOrder.filledAmount = matchOrder.amount;
+
+          // add intent as trade date
+          node = intent.node as CreatedNode | DeletedNode | undefined;
+
+          foundTradeIndex = matchOrder.associatedFills.findIndex((fill) => {
+            if (node === undefined) {
+              return (
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                fill.id === `${intent.type}-${transaction.transaction.hash!}`
+              );
+            }
+
+            if (isCreatedNode(node)) {
+              return (
+                fill.id === `${intent.type}-${node.CreatedNode.LedgerIndex}`
+              );
+            }
+
+            if (isDeletedNode(node)) {
+              return (
+                fill.id === `${intent.type}-${node.DeletedNode.LedgerIndex}`
+              );
+            }
+
+            return false;
+          });
+
+          if (foundTradeIndex === -1) {
+            fillData = this.buildFillData(
+              intent,
+              node,
+              matchOrder,
+              transaction
+            );
+
+            matchOrder.associatedFills.push(fillData);
+          } else {
+            // console.log('FillData already found!');
+          }
           break;
 
         case TransactionIntentType.OFFER_EXPIRED_OR_UNFUNDED:
@@ -614,7 +693,10 @@ export class OrderTracker {
                 } else {
                   const finalFields = affnode.DeletedNode.FinalFields as any;
 
-                  if (finalFields.Account === walletAddress) {
+                  if (
+                    transaction.transaction.Account === walletAddress &&
+                    finalFields.Account === walletAddress
+                  ) {
                     const replacingOfferSequnce =
                       transaction.transaction.OfferSequence;
 
@@ -794,5 +876,184 @@ export class OrderTracker {
     };
 
     return transformedTx;
+  }
+
+  buildFillData(
+    intent: TransactionIntent,
+    node: CreatedNode | ModifiedNode | DeletedNode | undefined,
+    order: Order,
+    transaction: TransactionStream | TransaformedAccountTransaction
+  ): FillData {
+    let id: string;
+
+    if (node === undefined) {
+      return {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        id: `${intent.type}-${transaction.transaction.hash!}`,
+        price: order.price,
+        quantity: order.amount,
+        fee_token: 'XRP',
+        fee: this.getFeeFromTransaction(transaction).toString(),
+        timestamp: transaction.transaction.date
+          ? rippleTimeToUnixTime(transaction.transaction.date)
+          : 0,
+        type: 'Taker',
+      };
+    }
+
+    if (isModifiedNode(node)) {
+      id = `${intent.type}-${node.ModifiedNode.LedgerIndex}`;
+    } else if (isDeletedNode(node)) {
+      id = `${intent.type}-${node.DeletedNode.LedgerIndex}`;
+    } else {
+      id = `${intent.type}-${node.CreatedNode.LedgerIndex}`;
+    }
+
+    const price = order.price;
+    const quantity = this.getFilledAmountFromNode(
+      order,
+      node,
+      order.tradeType
+    ).toString();
+    const fee_token = 'XRP';
+    const fee = this.getFeeFromTransaction(transaction).toString();
+    const timestamp = transaction.transaction.date
+      ? rippleTimeToUnixTime(transaction.transaction.date)
+      : 0;
+    const type = 'Maker';
+
+    return {
+      id,
+      price,
+      quantity,
+      fee_token,
+      fee,
+      timestamp,
+      type,
+    };
+  }
+
+  getFeeFromTransaction(
+    transaction: TransactionStream | TransaformedAccountTransaction
+  ): string {
+    let fee = '0';
+
+    if (transaction.meta === undefined) {
+      return fee;
+    }
+
+    transaction.meta.AffectedNodes.forEach((node) => {
+      if (isModifiedNode(node)) {
+        if (node.ModifiedNode.LedgerEntryType === 'AccountRoot') {
+          try {
+            const previousFields = node.ModifiedNode.PreviousFields as any;
+            const finalFields = node.ModifiedNode.FinalFields as any;
+
+            if (
+              previousFields.Balance !== undefined &&
+              finalFields.Balance !== undefined
+            ) {
+              fee = dropsToXrp(
+                parseInt(previousFields.Balance) - parseInt(finalFields.Balance)
+              );
+            }
+          } catch (error) {
+            throw new Error(
+              'Error parsing fee from transaction: ' + transaction
+            );
+          }
+        }
+      }
+    });
+
+    return fee;
+  }
+
+  getFilledAmountFromNode(
+    order: Order,
+    node: CreatedNode | ModifiedNode | DeletedNode,
+    tradeType: string
+  ): number {
+    let filledAmount = 0;
+    let ledgerEntryType = '';
+    let previousFields: any, finalFields: any;
+
+    try {
+      if (isModifiedNode(node)) {
+        ledgerEntryType = node.ModifiedNode.LedgerEntryType;
+        previousFields = node.ModifiedNode.PreviousFields;
+        finalFields = node.ModifiedNode.FinalFields;
+      } else if (isDeletedNode(node)) {
+        ledgerEntryType = node.DeletedNode.LedgerEntryType;
+        previousFields = node.DeletedNode.PreviousFields;
+        finalFields = node.DeletedNode.FinalFields;
+      } else {
+        ledgerEntryType = node.CreatedNode.LedgerEntryType;
+        previousFields = undefined;
+        finalFields = node.CreatedNode.NewFields;
+      }
+    } catch (error) {
+      throw new Error('Error parsing node: ' + error);
+    }
+
+    if (ledgerEntryType === 'Offer' && isCreatedNode(node)) {
+      if (finalFields === undefined) throw new Error('Final fields undefined');
+
+      if (tradeType === 'SELL') {
+        if (typeof finalFields.TakerGets === 'string') {
+          filledAmount =
+            parseFloat(order.amount) -
+            parseFloat(dropsToXrp(finalFields.TakerGets as string));
+        } else {
+          filledAmount =
+            parseFloat(order.amount) -
+            parseFloat(finalFields.TakerGets.value as string);
+        }
+      }
+
+      if (tradeType === 'BUY') {
+        if (typeof finalFields.TakerPays === 'string') {
+          filledAmount =
+            parseFloat(order.amount) -
+            parseFloat(dropsToXrp(finalFields.TakerPays as string));
+        } else {
+          filledAmount =
+            parseFloat(order.amount) -
+            parseFloat(finalFields.TakerPays.value as string);
+        }
+      }
+    } else if (ledgerEntryType === 'Offer') {
+      if (previousFields === undefined)
+        throw new Error('Previous fields undefined');
+      if (finalFields === undefined) throw new Error('Final fields undefined');
+
+      if (tradeType === 'SELL') {
+        if (typeof finalFields.TakerGets === 'string') {
+          filledAmount =
+            parseFloat(dropsToXrp(previousFields.TakerGets as string)) -
+            parseFloat(dropsToXrp(finalFields.TakerGets as string));
+        } else {
+          filledAmount =
+            parseFloat(previousFields.TakerGets.value as string) -
+            parseFloat(finalFields.TakerGets.value as string);
+        }
+      }
+
+      if (tradeType === 'BUY') {
+        if (typeof finalFields.TakerPays === 'string') {
+          filledAmount =
+            parseFloat(dropsToXrp(previousFields.TakerPays as string)) -
+            parseFloat(dropsToXrp(finalFields.TakerPays as string));
+        } else {
+          filledAmount =
+            parseFloat(previousFields.TakerPays.value as string) -
+            parseFloat(finalFields.TakerPays.value as string);
+        }
+      }
+    } else {
+      throw new Error('Invalid ledgerEntryType type');
+    }
+
+    return filledAmount;
   }
 }
