@@ -279,10 +279,12 @@ export interface TransactionIntent {
 }
 
 export interface FillData {
-  id: string;
+  tradeId: string;
+  orderHash: number;
   price: string;
   quantity: string;
-  fee_token: string;
+  feeToken: string;
+  side: string;
   fee: string;
   timestamp: number;
   type: string;

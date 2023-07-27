@@ -463,20 +463,23 @@ export class OrderTracker {
           foundTradeIndex = matchOrder.associatedFills.findIndex((fill) => {
             if (node === undefined) {
               return (
+                fill.tradeId ===
                 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                fill.id === `${intent.type}-${transaction.transaction.hash!}`
+                `${intent.type}-${transaction.transaction.hash!}`
               );
             }
 
             if (isCreatedNode(node)) {
               return (
-                fill.id === `${intent.type}-${node.CreatedNode.LedgerIndex}`
+                fill.tradeId ===
+                `${intent.type}-${node.CreatedNode.LedgerIndex}`
               );
             }
 
             if (isModifiedNode(node)) {
               return (
-                fill.id === `${intent.type}-${node.ModifiedNode.LedgerIndex}`
+                fill.tradeId ===
+                `${intent.type}-${node.ModifiedNode.LedgerIndex}`
               );
             }
 
@@ -509,20 +512,23 @@ export class OrderTracker {
           foundTradeIndex = matchOrder.associatedFills.findIndex((fill) => {
             if (node === undefined) {
               return (
+                fill.tradeId ===
                 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                fill.id === `${intent.type}-${transaction.transaction.hash!}`
+                `${intent.type}-${transaction.transaction.hash!}`
               );
             }
 
             if (isCreatedNode(node)) {
               return (
-                fill.id === `${intent.type}-${node.CreatedNode.LedgerIndex}`
+                fill.tradeId ===
+                `${intent.type}-${node.CreatedNode.LedgerIndex}`
               );
             }
 
             if (isDeletedNode(node)) {
               return (
-                fill.id === `${intent.type}-${node.DeletedNode.LedgerIndex}`
+                fill.tradeId ===
+                `${intent.type}-${node.DeletedNode.LedgerIndex}`
               );
             }
 
@@ -884,15 +890,18 @@ export class OrderTracker {
     order: Order,
     transaction: TransactionStream | TransaformedAccountTransaction
   ): FillData {
-    let id: string;
+    let tradeId: string;
+    const orderHash: number = order.hash;
 
     if (node === undefined) {
       return {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        id: `${intent.type}-${transaction.transaction.hash!}`,
+        tradeId: `${intent.type}-${transaction.transaction.hash!}`,
+        orderHash: order.hash,
         price: order.price,
         quantity: order.amount,
-        fee_token: 'XRP',
+        feeToken: 'XRP',
+        side: order.tradeType,
         fee: this.getFeeFromTransaction(transaction).toString(),
         timestamp: transaction.transaction.date
           ? rippleTimeToUnixTime(transaction.transaction.date)
@@ -902,11 +911,11 @@ export class OrderTracker {
     }
 
     if (isModifiedNode(node)) {
-      id = `${intent.type}-${node.ModifiedNode.LedgerIndex}`;
+      tradeId = `${intent.type}-${node.ModifiedNode.LedgerIndex}`;
     } else if (isDeletedNode(node)) {
-      id = `${intent.type}-${node.DeletedNode.LedgerIndex}`;
+      tradeId = `${intent.type}-${node.DeletedNode.LedgerIndex}`;
     } else {
-      id = `${intent.type}-${node.CreatedNode.LedgerIndex}`;
+      tradeId = `${intent.type}-${node.CreatedNode.LedgerIndex}`;
     }
 
     const price = order.price;
@@ -915,7 +924,8 @@ export class OrderTracker {
       node,
       order.tradeType
     ).toString();
-    const fee_token = 'XRP';
+    const feeToken = 'XRP';
+    const side = order.tradeType;
     const fee = this.getFeeFromTransaction(transaction).toString();
     const timestamp = transaction.transaction.date
       ? rippleTimeToUnixTime(transaction.transaction.date)
@@ -923,10 +933,12 @@ export class OrderTracker {
     const type = 'Maker';
 
     return {
-      id,
+      tradeId,
+      orderHash,
       price,
       quantity,
-      fee_token,
+      feeToken,
+      side,
       fee,
       timestamp,
       type,
