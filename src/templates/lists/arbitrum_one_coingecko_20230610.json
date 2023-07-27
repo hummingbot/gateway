@@ -1424,7 +1424,7 @@
          "chainId":42161,
          "address":"0xff970a61a04b1ca14834a43f5de4533ebddb5cc8",
          "name":"USD Coin Ethereum Bridgsed",
-         "symbol":"e",
+         "symbol":"USDC.e",
          "decimals":6,
          "logoURI":"https://assets.coingecko.com/coins/images/30691/thumb/usdc.png?1686280970"
       },
