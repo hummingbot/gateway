@@ -11,8 +11,14 @@ export interface XRPLBalanceResponse {
   timestamp: number;
   latency: number;
   address: string;
-  balances: Record<string, string>;
+  balances: Array<TokenBalance>;
 }
+
+export type TokenBalance = {
+  currency: string;
+  issuer?: string;
+  value: string;
+};
 
 export interface XRPLTokenRequest extends NetworkSelectionRequest {
   address: string; // the user's Solana address as Base58

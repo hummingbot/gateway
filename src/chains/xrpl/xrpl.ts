@@ -20,7 +20,7 @@ import { TokenListType, walletPath, MarketListType } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { getXRPLConfig } from './xrpl.config';
 // import { logger } from '../../services/logger';
-import { TransactionResponseStatusCode } from './xrpl.requests';
+import { TransactionResponseStatusCode, TokenBalance } from './xrpl.requests';
 import { XRPLOrderStorage } from './xrpl.order-storage';
 import { OrderTracker } from './xrpl.order-tracker';
 import { ReferenceCountingCloseable } from '../../services/refcounting-closeable';
@@ -42,12 +42,6 @@ export type MarketInfo = {
   quoteIssuer: string;
   baseTokenID: number;
   quoteTokenID: number;
-};
-
-export type TokenBalance = {
-  currency: string;
-  issuer?: string;
-  value: string;
 };
 
 export type Fee = {
@@ -276,8 +270,8 @@ export class XRPL implements XRPLish {
     return this.marketList;
   }
 
-  public getTokenForSymbol(code: string): TokenInfo[] | null {
-    return this._tokenMap[code] ? this._tokenMap[code] : null;
+  public getTokenForSymbol(code: string): TokenInfo[] | undefined {
+    return this._tokenMap[code] ? this._tokenMap[code] : undefined;
   }
 
   public getWalletFromSeed(seed: string): Wallet {
@@ -346,17 +340,23 @@ export class XRPL implements XRPLish {
     return balance;
   }
 
-  async getAllBalance(wallet: Wallet): Promise<Record<string, string>> {
+  async getAllBalance(wallet: Wallet): Promise<Array<TokenBalance>> {
     await this.ensureConnection();
-    const balances: Record<string, string> = {};
+    const balances: Array<TokenBalance> = [];
     const respBalances = await this._client.getBalances(wallet.address);
 
     respBalances.forEach((token) => {
       if (token.currency === 'XRP') {
-        balances[token.currency] = token.value;
+        balances.push({
+          currency: token.currency,
+          value: token.value,
+        });
       } else {
-        const symbol = token.currency + '.' + token.issuer;
-        balances[symbol] = token.value;
+        balances.push({
+          currency: token.currency,
+          issuer: token.issuer,
+          value: token.value,
+        });
       }
     });
 

@@ -1,11 +1,11 @@
 import {
+  validateTokenSymbols,
   mkValidator,
   mkRequestValidator,
   RequestValidator,
   Validator,
   isBase58,
   validateTxHash,
-  validateToken,
 } from '../../services/validators';
 
 // invalid parameter errors
@@ -43,8 +43,5 @@ export const validateXRPLPollRequest: RequestValidator = mkRequestValidator([
 ]);
 
 export const validateXRPLGetTokenRequest: RequestValidator = mkRequestValidator(
-  [validateToken, validateXRPLAddress]
+  [validateTokenSymbols, validateXRPLAddress]
 );
-
-export const validateXRPLPostTokenRequest: RequestValidator =
-  mkRequestValidator([validateToken, validateXRPLAddress]);

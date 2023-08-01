@@ -1,5 +1,5 @@
 import { Wallet, TxResponse } from 'xrpl';
-import { XRPLish } from './xrpl';
+import { TokenInfo, XRPLish } from './xrpl';
 import { latency } from '../../services/base';
 import {
   HttpException,
@@ -18,7 +18,9 @@ import {
 import {
   validateXRPLBalanceRequest,
   validateXRPLPollRequest,
+  validateXRPLGetTokenRequest,
 } from './xrpl.validators';
+import { TokensRequest } from '../../network/network.requests';
 
 export class XRPLController {
   static async currentBlockNumber(xrplish: XRPLish): Promise<number> {
@@ -77,5 +79,24 @@ export class XRPLController {
       txLedgerIndex: txData.result.ledger_index,
       txData: getNotNullOrThrowError<TxResponse>(txData),
     };
+  }
+
+  static async getTokens(xrplish: XRPLish, req: TokensRequest) {
+    validateXRPLGetTokenRequest(req);
+    let tokens: TokenInfo[] = [];
+    if (req.tokenSymbols?.length === 0) {
+      tokens = xrplish.storedTokenList;
+    } else {
+      for (const t of req.tokenSymbols as []) {
+        const arr = xrplish.getTokenForSymbol(t);
+        if (arr !== undefined) {
+          arr.forEach((token) => {
+            tokens.push(token);
+          });
+        }
+      }
+    }
+
+    return { tokens };
   }
 }
