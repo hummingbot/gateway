@@ -10,6 +10,7 @@ export interface XRPLBalanceResponse {
   network: string;
   timestamp: number;
   latency: number;
+  address: string;
   balances: Record<string, string>;
 }
 

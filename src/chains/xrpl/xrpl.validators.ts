@@ -1,5 +1,4 @@
 import {
-  validateTokenSymbols,
   mkValidator,
   mkRequestValidator,
   RequestValidator,
@@ -37,7 +36,6 @@ export const validateXRPLAddress: Validator = mkValidator(
 
 export const validateXRPLBalanceRequest: RequestValidator = mkRequestValidator([
   validateXRPLAddress,
-  validateTokenSymbols,
 ]);
 
 export const validateXRPLPollRequest: RequestValidator = mkRequestValidator([

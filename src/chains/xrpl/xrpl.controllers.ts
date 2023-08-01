@@ -15,51 +15,67 @@ import {
   XRPLPollResponse,
 } from './xrpl.requests';
 
-export async function balances(
-  xrplish: XRPLish,
-  req: XRPLBalanceRequest
-): Promise<XRPLBalanceResponse> {
-  const initTime = Date.now();
-  let wallet: Wallet;
+import {
+  validateXRPLBalanceRequest,
+  validateXRPLPollRequest,
+} from './xrpl.validators';
 
-  try {
-    wallet = await xrplish.getWallet(req.address);
-  } catch (err) {
-    throw new HttpException(
-      500,
-      LOAD_WALLET_ERROR_MESSAGE + err,
-      LOAD_WALLET_ERROR_CODE
-    );
+export class XRPLController {
+  static async currentBlockNumber(xrplish: XRPLish): Promise<number> {
+    return xrplish.getCurrentLedgerIndex();
   }
 
-  const balances = await xrplish.getAllBalance(wallet);
+  static async balances(
+    xrplish: XRPLish,
+    req: XRPLBalanceRequest
+  ): Promise<XRPLBalanceResponse> {
+    const initTime = Date.now();
+    let wallet: Wallet;
 
-  return {
-    network: xrplish.network,
-    timestamp: initTime,
-    latency: latency(initTime, Date.now()),
-    balances,
-  };
-}
+    validateXRPLBalanceRequest(req);
 
-export async function poll(
-  xrplish: XRPLish,
-  req: XRPLPollRequest
-): Promise<XRPLPollResponse> {
-  const initTime = Date.now();
-  const currentLedgerIndex = await xrplish.getCurrentLedgerIndex();
-  const txData = getNotNullOrThrowError<TxResponse>(
-    await xrplish.getTransaction(req.txHash)
-  );
-  const txStatus = await xrplish.getTransactionStatusCode(txData);
+    try {
+      wallet = await xrplish.getWallet(req.address);
+    } catch (err) {
+      throw new HttpException(
+        500,
+        LOAD_WALLET_ERROR_MESSAGE + err,
+        LOAD_WALLET_ERROR_CODE
+      );
+    }
 
-  return {
-    network: xrplish.network,
-    timestamp: initTime,
-    currentLedgerIndex: currentLedgerIndex,
-    txHash: req.txHash,
-    txStatus: txStatus,
-    txLedgerIndex: txData.result.ledger_index,
-    txData: getNotNullOrThrowError<TxResponse>(txData),
-  };
+    const balances = await xrplish.getAllBalance(wallet);
+
+    return {
+      network: xrplish.network,
+      timestamp: initTime,
+      latency: latency(initTime, Date.now()),
+      address: req.address,
+      balances,
+    };
+  }
+
+  static async poll(
+    xrplish: XRPLish,
+    req: XRPLPollRequest
+  ): Promise<XRPLPollResponse> {
+    validateXRPLPollRequest(req);
+
+    const initTime = Date.now();
+    const currentLedgerIndex = await xrplish.getCurrentLedgerIndex();
+    const txData = getNotNullOrThrowError<TxResponse>(
+      await xrplish.getTransaction(req.txHash)
+    );
+    const txStatus = await xrplish.getTransactionStatusCode(txData);
+
+    return {
+      network: xrplish.network,
+      timestamp: initTime,
+      currentLedgerIndex: currentLedgerIndex,
+      txHash: req.txHash,
+      txStatus: txStatus,
+      txLedgerIndex: txData.result.ledger_index,
+      txData: getNotNullOrThrowError<TxResponse>(txData),
+    };
+  }
 }

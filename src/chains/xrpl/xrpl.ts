@@ -24,6 +24,7 @@ import { TransactionResponseStatusCode } from './xrpl.requests';
 import { XRPLOrderStorage } from './xrpl.order-storage';
 import { OrderTracker } from './xrpl.order-tracker';
 import { ReferenceCountingCloseable } from '../../services/refcounting-closeable';
+import { XRPLController } from './xrpl.controllers';
 
 export type TokenInfo = {
   id: number;
@@ -83,6 +84,8 @@ export class XRPL implements XRPLish {
   private readonly _refCountingHandle: string;
   private readonly _orderStorage: XRPLOrderStorage;
 
+  public controller: typeof XRPLController;
+
   private constructor(network: string) {
     const config = getXRPLConfig('xrpl', network);
 
@@ -121,6 +124,7 @@ export class XRPL implements XRPLish {
       this._refCountingHandle
     );
     this._orderStorage.declareOwnership(this._refCountingHandle);
+    this.controller = XRPLController;
   }
 
   public static getInstance(network: string): XRPL {
