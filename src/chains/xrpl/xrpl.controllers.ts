@@ -1,12 +1,15 @@
 import { Wallet, TxResponse } from 'xrpl';
-import { TokenInfo, XRPLish } from './xrpl';
-import { latency } from '../../services/base';
+import { XRPTokenInfo, XRPLish } from './xrpl';
+import { TokenInfo, latency } from '../../services/base';
 import {
   HttpException,
   LOAD_WALLET_ERROR_CODE,
   LOAD_WALLET_ERROR_MESSAGE,
 } from '../../services/error-handler';
-import { getNotNullOrThrowError } from '../../chains/xrpl/xrpl.helpers';
+import {
+  getNetworkId,
+  getNotNullOrThrowError,
+} from '../../chains/xrpl/xrpl.helpers';
 
 import {
   XRPLBalanceRequest,
@@ -81,21 +84,38 @@ export class XRPLController {
     };
   }
 
-  static async getTokens(xrplish: XRPLish, req: TokensRequest) {
+  static async getTokens(
+    xrplish: XRPLish,
+    req: TokensRequest
+  ): Promise<{ tokens: TokenInfo[] }> {
     validateXRPLGetTokenRequest(req);
-    let tokens: TokenInfo[] = [];
+    let xrpTokens: XRPTokenInfo[] = [];
     if (req.tokenSymbols?.length === 0) {
-      tokens = xrplish.storedTokenList;
+      xrpTokens = xrplish.storedTokenList;
     } else {
       for (const t of req.tokenSymbols as []) {
         const arr = xrplish.getTokenForSymbol(t);
         if (arr !== undefined) {
           arr.forEach((token) => {
-            tokens.push(token);
+            xrpTokens.push(token);
           });
         }
       }
     }
+
+    const tokens: TokenInfo[] = [];
+
+    // Convert xrpTokens into tokens
+    xrpTokens.map((xrpToken) => {
+      const token: TokenInfo = {
+        address: xrpToken.issuer,
+        chainId: getNetworkId(req.network),
+        decimals: 15,
+        name: xrpToken.title,
+        symbol: xrpToken.code,
+      };
+      tokens.push(token);
+    });
 
     return { tokens };
   }

@@ -26,7 +26,7 @@ import { OrderTracker } from './xrpl.order-tracker';
 import { ReferenceCountingCloseable } from '../../services/refcounting-closeable';
 import { XRPLController } from './xrpl.controllers';
 
-export type TokenInfo = {
+export type XRPTokenInfo = {
   id: number;
   code: string;
   issuer: string;
@@ -56,9 +56,9 @@ export class XRPL implements XRPLish {
   public rpcUrl;
   public fee: Fee;
 
-  protected tokenList: TokenInfo[] = [];
+  protected tokenList: XRPTokenInfo[] = [];
   protected marketList: MarketInfo[] = [];
-  private _tokenMap: Record<string, TokenInfo[]> = {};
+  private _tokenMap: Record<string, XRPTokenInfo[]> = {};
   private _marketMap: Record<string, MarketInfo[]> = {};
 
   private _client: Client;
@@ -204,7 +204,7 @@ export class XRPL implements XRPLish {
   ): Promise<void> {
     this.tokenList = await this.getTokenList(tokenListSource, tokenListType);
     if (this.tokenList) {
-      this.tokenList.forEach((token: TokenInfo) => {
+      this.tokenList.forEach((token: XRPTokenInfo) => {
         if (!this._tokenMap[token.code]) {
           this._tokenMap[token.code] = [];
         }
@@ -236,14 +236,13 @@ export class XRPL implements XRPLish {
   async getTokenList(
     tokenListSource: string,
     tokenListType: TokenListType
-  ): Promise<TokenInfo[]> {
+  ): Promise<XRPTokenInfo[]> {
     let tokens;
     if (tokenListType === 'URL') {
-      ({
-        data: { tokens },
-      } = await axios.get(tokenListSource));
+      const resp = await axios.get(tokenListSource);
+      tokens = resp.data.tokens;
     } else {
-      ({ tokens } = JSON.parse(await fs.readFile(tokenListSource, 'utf8')));
+      tokens = JSON.parse(await fs.readFile(tokenListSource, 'utf8'));
     }
     return tokens;
   }
@@ -252,17 +251,17 @@ export class XRPL implements XRPLish {
     marketListSource: string,
     marketListType: TokenListType
   ): Promise<MarketInfo[]> {
-    let tokens;
+    let markets;
     if (marketListType === 'URL') {
       const resp = await axios.get(marketListSource);
-      tokens = resp.data.tokens;
+      markets = resp.data.tokens;
     } else {
-      tokens = JSON.parse(await fs.readFile(marketListSource, 'utf8'));
+      markets = JSON.parse(await fs.readFile(marketListSource, 'utf8'));
     }
-    return tokens;
+    return markets;
   }
 
-  public get storedTokenList(): TokenInfo[] {
+  public get storedTokenList(): XRPTokenInfo[] {
     return this.tokenList;
   }
 
@@ -270,7 +269,7 @@ export class XRPL implements XRPLish {
     return this.marketList;
   }
 
-  public getTokenForSymbol(code: string): TokenInfo[] | undefined {
+  public getTokenForSymbol(code: string): XRPTokenInfo[] | undefined {
     return this._tokenMap[code] ? this._tokenMap[code] : undefined;
   }
 

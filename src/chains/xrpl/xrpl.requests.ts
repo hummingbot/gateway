@@ -52,3 +52,9 @@ export interface XRPLPollResponse {
   txLedgerIndex?: number;
   txData: TxResponse | null;
 }
+
+export enum XRPLNetworkID {
+  MAINNET = 1000,
+  TESTNET = 2000,
+  DEVNET = 3000,
+}

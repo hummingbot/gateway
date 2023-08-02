@@ -77,3 +77,25 @@ describe('POST /chain/poll', () => {
     expect(res.statusCode).toEqual(404);
   });
 });
+
+describe('GET /chain/tokens', () => {
+  it('should return 200 with correct parameters', async () => {
+    const res = await request(gatewayApp)
+      .get('/chain/tokens')
+      .send({
+        chain: 'xrpl',
+        network: 'testnet',
+        tokenSymbols: ['XRP'],
+      });
+    expect(res.statusCode).toEqual(200);
+  });
+
+  it('should get unknown error with invalid tokenSymbols', async () => {
+    const res = await request(gatewayApp).get('/chain/tokens').send({
+      chain: 'xrpl',
+      network: 'testnet',
+      tokenSymbols: 123,
+    });
+    expect(res.statusCode).toEqual(404);
+  });
+});

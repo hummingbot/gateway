@@ -43,5 +43,5 @@ export const validateXRPLPollRequest: RequestValidator = mkRequestValidator([
 ]);
 
 export const validateXRPLGetTokenRequest: RequestValidator = mkRequestValidator(
-  [validateTokenSymbols, validateXRPLAddress]
+  [validateTokenSymbols]
 );

@@ -1,5 +1,6 @@
 import web3 from 'web3';
 import { default as constants } from './../../chains/xrpl/xrpl.constants';
+import { XRPLNetworkID } from './xrpl.requests';
 
 /**
  *
@@ -120,3 +121,19 @@ export const runWithRetryAndTimeout = async <R>(
 
   throw Error('Unknown error.');
 };
+
+export function getNetworkId(network: string = ''): number {
+  switch (network) {
+    case 'mainnet':
+      return XRPLNetworkID.MAINNET;
+
+    case 'testnet':
+      return XRPLNetworkID.TESTNET;
+
+    case 'devnet':
+      return XRPLNetworkID.DEVNET;
+
+    default:
+      return 0;
+  }
+}

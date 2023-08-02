@@ -112,9 +112,7 @@ describe('validateXRPLGetTokenRequest', () => {
       });
     } catch (error) {
       expect((error as HttpException).message).toEqual(
-        [missingParameter('tokenSymbols'), missingParameter('address')].join(
-          ', '
-        )
+        missingParameter('tokenSymbols')
       );
     }
   });
