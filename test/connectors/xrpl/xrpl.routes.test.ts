@@ -52,6 +52,7 @@ const ORDER = {
   updatedAt: 1234567,
   updatedAtLedgerIndex: 1234567,
   associatedTxns: [TX_HASH],
+  associatedFills: [],
 };
 
 const ORDER_BOOK_1 = {
@@ -347,6 +348,12 @@ const patchMarkets = () => {
   patch(xrplCLOB, 'parsedMarkets', MARKETS);
 };
 
+const patchGetMidPriceForMarket = () => {
+  patch(xrplCLOB, 'getMidPriceForMarket', () => {
+    return 1.0;
+  });
+};
+
 const patchGetOrderBookFromXRPL = (orderbook: any) => {
   patch(xrplCLOB, 'getOrderBookFromXRPL', () => {
     return orderbook;
@@ -407,7 +414,7 @@ describe('GET /clob/markets', () => {
       .expect('Content-Type', /json/)
       .expect(200)
       .expect((res) => {
-        expect(res.body.markets.length).toEqual(2);
+        expect(Object.values(res.body.markets).length).toEqual(2);
       });
   });
 
@@ -435,10 +442,6 @@ describe('GET /clob/orderBook', () => {
       .expect('Content-Type', /json/)
       .expect(200)
       .expect((res) => {
-        console.log(
-          '🪧 -> file: xrpl.routes.test.ts:429 -> it -> res.body.buys:',
-          res.body.buys
-        );
         expect(res.body.buys[0].price).toEqual('0.5161287658690241');
       })
       .expect((res) => expect(res.body.buys[0].quantity).toEqual('9.687505'))
@@ -478,6 +481,7 @@ describe('GET /clob/orderBook', () => {
 describe('GET /clob/ticker', () => {
   it('should return 200 with proper request', async () => {
     patchMarkets();
+    patchGetMidPriceForMarket();
     await request(gatewayApp)
       .get(`/clob/ticker`)
       .query({
@@ -489,8 +493,13 @@ describe('GET /clob/ticker', () => {
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(200)
-      .expect((res) => expect(res.body.markets.baseCurrency).toEqual('USD'))
-      .expect((res) => expect(res.body.markets.quoteCurrency).toEqual('XRP'));
+      .expect((res) => {
+        expect(res.body.markets['USD-XRP'].baseCurrency).toEqual('USD');
+      })
+      .expect((res) =>
+        expect(res.body.markets['USD-XRP'].quoteCurrency).toEqual('XRP')
+      )
+      .expect((res) => expect(res.body.markets['USD-XRP'].midprice).toEqual(1));
   });
 
   it('should return 404 when parameters are invalid', async () => {

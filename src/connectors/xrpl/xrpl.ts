@@ -112,9 +112,12 @@ export class XRPLCLOB implements CLOBish {
   public async markets(
     req: ClobMarketsRequest
   ): Promise<{ markets: CLOBMarkets }> {
-    if (req.market && req.market in this.parsedMarkets)
-      return { markets: this.parsedMarkets[req.market] };
-    return { markets: Object.values(this.parsedMarkets) };
+    if (req.market && req.market.split('-').length === 2) {
+      const resp: CLOBMarkets = {};
+      resp[req.market] = this.parsedMarkets[req.market];
+      return { markets: resp };
+    }
+    return { markets: this.parsedMarkets };
   }
 
   public async orderBook(req: ClobOrderbookRequest): Promise<Orderbook> {
@@ -207,7 +210,10 @@ export class XRPLCLOB implements CLOBish {
     return result;
   }
 
-  async getOrderBook(market: MarketInfo): Promise<Orderbook> {
+  async getOrderBook(
+    market: MarketInfo,
+    limit: number = ORDERBOOK_LIMIT
+  ): Promise<Orderbook> {
     const [baseCurrency, quoteCurrency] = market.marketId.split('-');
     const baseIssuer = market.baseIssuer;
     const quoteIssuer = market.quoteIssuer;
@@ -229,7 +235,8 @@ export class XRPLCLOB implements CLOBish {
 
     const { bids, asks } = await this.getOrderBookFromXRPL(
       baseRequest,
-      quoteRequest
+      quoteRequest,
+      limit
     );
 
     const buys: PriceLevel[] = [];
@@ -310,7 +317,15 @@ export class XRPLCLOB implements CLOBish {
   public async ticker(
     req: ClobTickerRequest
   ): Promise<{ markets: CLOBMarkets }> {
-    return await this.markets(req);
+    const getMarkets = await this.markets(req);
+    const markets: MarketInfo[] = Object.values(getMarkets.markets);
+
+    for (const market of markets) {
+      getMarkets.markets[market.marketId]['midprice'] =
+        await this.getMidPriceForMarket(market);
+    }
+
+    return getMarkets;
   }
 
   public async orders(
@@ -502,13 +517,17 @@ export class XRPLCLOB implements CLOBish {
     return wallet;
   }
 
-  private async getOrderBookFromXRPL(baseRequest: any, quoteRequest: any) {
+  private async getOrderBookFromXRPL(
+    baseRequest: any,
+    quoteRequest: any,
+    limit: number
+  ) {
     const orderbook_resp_ask: BookOffersResponse = await this._client.request({
       command: 'book_offers',
       ledger_index: 'validated',
       taker_gets: baseRequest,
       taker_pays: quoteRequest,
-      limit: ORDERBOOK_LIMIT,
+      limit,
     });
 
     const orderbook_resp_bid: BookOffersResponse = await this._client.request({
@@ -516,7 +535,7 @@ export class XRPLCLOB implements CLOBish {
       ledger_index: 'validated',
       taker_gets: quoteRequest,
       taker_pays: baseRequest,
-      limit: ORDERBOOK_LIMIT,
+      limit,
     });
 
     const asks = orderbook_resp_ask.result.offers;
@@ -557,5 +576,20 @@ export class XRPLCLOB implements CLOBish {
     );
 
     await orderTracker.addOrder(order);
+  }
+
+  private async getMidPriceForMarket(market: MarketInfo) {
+    const orderbook = await this.getOrderBook(market, 1);
+    try {
+      const bestAsk = orderbook.sells[0];
+      const bestBid = orderbook.buys[0];
+      const midPrice =
+        (parseFloat(bestAsk.price) + parseFloat(bestBid.price)) / 2;
+      return midPrice;
+    } catch (error) {
+      // TODO: report this error
+
+      return 0;
+    }
   }
 }
