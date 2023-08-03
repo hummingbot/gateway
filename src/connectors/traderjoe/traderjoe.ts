@@ -22,6 +22,7 @@ import {
 import { EVMTxBroadcaster } from '../../chains/ethereum/evm.broadcaster';
 import { createPublicClient, http } from 'viem';
 import { avalanche, avalancheFuji } from 'viem/chains';
+import { getAddress } from 'ethers/lib/utils';
 
 const MAX_HOPS = 2;
 const BASES = ['USDT', 'USDC', 'WAVAX'];
@@ -71,7 +72,7 @@ export class Traderjoe implements Uniswapish {
    * @param address Token address
    */
   public getTokenByAddress(address: string): Token {
-    return this.tokenList[address];
+    return this.tokenList[getAddress(address)];
   }
 
   public async init() {

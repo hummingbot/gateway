@@ -23,6 +23,7 @@ import { logger } from '../../services/logger';
 import { percentRegexp } from '../../services/config-manager-v2';
 import { Ethereum } from '../../chains/ethereum/ethereum';
 import { Perpish } from '../../services/common-interfaces';
+import { getAddress } from 'ethers/lib/utils';
 
 export interface PerpPosition {
   positionAmt: string;
@@ -88,7 +89,7 @@ export class Perp implements Perpish {
    * @param address Token address
    */
   public getTokenByAddress(address: string): Token {
-    return this.tokenList[address];
+    return this.tokenList[getAddress(address)];
   }
 
   public async init() {
