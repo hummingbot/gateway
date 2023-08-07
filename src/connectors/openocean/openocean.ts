@@ -165,7 +165,7 @@ export class Openocean implements Uniswapish {
   public get chainName(): string {
     if (this._chain === 'ethereum' && this._network === 'mainnet') {
       return 'eth';
-    } else if (this._chain === 'ethereum' && this._network === 'arbitrum_one') {
+    } else if (this._chain === 'ethereum' && this._network === 'arbitrum') {
       return 'arbitrum';
     } else if (this._chain === 'ethereum' && this._network === 'optimism') {
       return 'optimism';
