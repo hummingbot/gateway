@@ -1,4 +1,4 @@
-import { Wallet, TxResponse } from 'xrpl';
+import { Wallet } from 'xrpl';
 import { XRPTokenInfo, XRPLish } from './xrpl';
 import { TokenInfo, latency } from '../../services/base';
 import {
@@ -6,10 +6,7 @@ import {
   LOAD_WALLET_ERROR_CODE,
   LOAD_WALLET_ERROR_MESSAGE,
 } from '../../services/error-handler';
-import {
-  getNetworkId,
-  getNotNullOrThrowError,
-} from '../../chains/xrpl/xrpl.helpers';
+import { getNetworkId } from '../../chains/xrpl/xrpl.helpers';
 
 import {
   XRPLBalanceRequest,
@@ -49,7 +46,12 @@ export class XRPLController {
       );
     }
 
-    const balances = await xrplish.getAllBalance(wallet);
+    const xrplBalances = await xrplish.getAllBalance(wallet);
+
+    const balances: Record<string, string> = {};
+    xrplBalances.forEach((balance) => {
+      balances[balance.currency] = balance.value;
+    });
 
     return {
       network: xrplish.network,
@@ -68,19 +70,20 @@ export class XRPLController {
 
     const initTime = Date.now();
     const currentLedgerIndex = await xrplish.getCurrentLedgerIndex();
-    const txData = getNotNullOrThrowError<TxResponse>(
-      await xrplish.getTransaction(req.txHash)
-    );
+    const txData = await xrplish.getTransaction(req.txHash);
     const txStatus = await xrplish.getTransactionStatusCode(txData);
+    const sequence = txData ? txData.result.Sequence : undefined;
+    const txLedgerIndex = txData ? txData.result.ledger_index : undefined;
 
     return {
       network: xrplish.network,
       timestamp: initTime,
       currentLedgerIndex: currentLedgerIndex,
+      sequence: sequence,
       txHash: req.txHash,
       txStatus: txStatus,
-      txLedgerIndex: txData.result.ledger_index,
-      txData: getNotNullOrThrowError<TxResponse>(txData),
+      txLedgerIndex: txLedgerIndex,
+      txData: txData,
     };
   }
 

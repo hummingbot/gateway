@@ -11,7 +11,7 @@ export interface XRPLBalanceResponse {
   timestamp: number;
   latency: number;
   address: string;
-  balances: Array<TokenBalance>;
+  balances: Record<string, string>;
 }
 
 export type TokenBalance = {
@@ -40,6 +40,7 @@ export interface XRPLPollRequest extends NetworkSelectionRequest {
 
 export enum TransactionResponseStatusCode {
   FAILED = -1,
+  PENDING = 0,
   CONFIRMED = 1,
 }
 
@@ -47,10 +48,11 @@ export interface XRPLPollResponse {
   network: string;
   timestamp: number;
   currentLedgerIndex: number;
+  sequence?: number;
   txHash: string;
   txStatus: number;
   txLedgerIndex?: number;
-  txData: TxResponse | null;
+  txData?: TxResponse;
 }
 
 export enum XRPLNetworkID {

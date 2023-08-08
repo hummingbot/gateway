@@ -45,7 +45,7 @@ import { isUndefined } from 'mathjs';
 
 // const XRP_FACTOR = 1000000;
 const ORDERBOOK_LIMIT = 100;
-
+const TXN_SUBMIT_DELAY = 100;
 export class XRPLCLOB implements CLOBish {
   private static _instances: LRUCache<string, XRPLCLOB>;
   private readonly _client: Client;
@@ -53,6 +53,7 @@ export class XRPLCLOB implements CLOBish {
   private readonly _orderStorage: XRPLOrderStorage;
 
   private _ready: boolean = false;
+  private _isSubmittingTxn: boolean = false;
 
   public parsedMarkets: CLOBMarkets = {};
   public chain: string;
@@ -111,13 +112,19 @@ export class XRPLCLOB implements CLOBish {
   // TODO: Find and correct the required market info in client
   public async markets(
     req: ClobMarketsRequest
-  ): Promise<{ markets: CLOBMarkets }> {
+  ): Promise<{ markets: Array<Market> }> {
     if (req.market && req.market.split('-').length === 2) {
-      const resp: CLOBMarkets = {};
-      resp[req.market] = this.parsedMarkets[req.market];
-      return { markets: resp };
+      const marketsAsArray: Array<Market> = [];
+      marketsAsArray.push(this.parsedMarkets[req.market]);
+      return { markets: marketsAsArray };
     }
-    return { markets: this.parsedMarkets };
+
+    const marketsAsArray: Array<Market> = [];
+    for (const market in this.parsedMarkets) {
+      marketsAsArray.push(this.parsedMarkets[market]);
+    }
+
+    return { markets: marketsAsArray };
   }
 
   public async orderBook(req: ClobOrderbookRequest): Promise<Orderbook> {
@@ -139,6 +146,10 @@ export class XRPLCLOB implements CLOBish {
   }
 
   async getMarket(market: MarketInfo): Promise<Market> {
+    console.log(
+      '🪧 -> file: xrpl.ts:148 -> XRPLCLOB -> getMarket -> market:',
+      market
+    );
     if (!market) throw new MarketNotFoundError(`No market informed.`);
     let baseTickSize,
       baseTransferRate,
@@ -198,7 +209,9 @@ export class XRPLCLOB implements CLOBish {
     const result = {
       marketId: market.marketId,
       minimumOrderSize: minimumOrderSize,
-      tickSize: smallestTickSize,
+      smallestTickSize: smallestTickSize,
+      baseTickSize,
+      quoteTickSize,
       baseTransferRate: baseTransferRate,
       quoteTransferRate: quoteTransferRate,
       baseIssuer: baseIssuer,
@@ -316,16 +329,20 @@ export class XRPLCLOB implements CLOBish {
 
   public async ticker(
     req: ClobTickerRequest
-  ): Promise<{ markets: CLOBMarkets }> {
+  ): Promise<{ markets: Array<Market> }> {
     const getMarkets = await this.markets(req);
-    const markets: MarketInfo[] = Object.values(getMarkets.markets);
+    const markets = getMarkets.markets;
 
-    for (const market of markets) {
-      getMarkets.markets[market.marketId]['midprice'] =
-        await this.getMidPriceForMarket(market);
-    }
+    const marketsWithMidprice = await Promise.all(
+      markets.map(async (market) => {
+        const midprice = await this.getMidPriceForMarket(
+          this.parsedMarkets[market.marketId]
+        );
+        return { ...market, midprice };
+      })
+    );
 
-    return getMarkets;
+    return { markets: marketsWithMidprice };
   }
 
   public async orders(
@@ -388,25 +405,25 @@ export class XRPLCLOB implements CLOBish {
         currency: baseCurrency,
         issuer: baseIssuer,
         value: Number(
-          parseFloat(req.amount).toPrecision(market.tickSize)
+          parseFloat(req.amount).toPrecision(market.smallestTickSize)
         ).toString(),
       };
       we_get = {
         currency: quoteCurrency,
         issuer: quoteIssuer,
-        value: Number(total.toPrecision(market.tickSize)).toString(),
+        value: Number(total.toPrecision(market.smallestTickSize)).toString(),
       };
     } else {
       we_pay = {
         currency: quoteCurrency,
         issuer: quoteIssuer,
-        value: Number(total.toPrecision(market.tickSize)).toString(),
+        value: Number(total.toPrecision(market.smallestTickSize)).toString(),
       };
       we_get = {
         currency: baseCurrency,
         issuer: baseIssuer,
         value: Number(
-          parseFloat(req.amount).toPrecision(market.tickSize)
+          parseFloat(req.amount).toPrecision(market.smallestTickSize)
         ).toString(),
       };
     }
@@ -506,9 +523,15 @@ export class XRPLCLOB implements CLOBish {
   }
 
   private async submitTxn(offer: Transaction, wallet: Wallet) {
+    while (this._isSubmittingTxn) {
+      await new Promise((resolve) => setTimeout(resolve, TXN_SUBMIT_DELAY));
+    }
+
+    this._isSubmittingTxn = true;
     const prepared = await this._client.autofill(offer);
     const signed = wallet.sign(prepared);
     await this._client.submit(signed.tx_blob);
+    this._isSubmittingTxn = false;
     return { prepared, signed };
   }
 

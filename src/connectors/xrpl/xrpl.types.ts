@@ -68,7 +68,9 @@ export interface GetMarketResponse {
 export interface Market {
   marketId: string;
   minimumOrderSize: number;
-  tickSize: number;
+  smallestTickSize: number;
+  baseTickSize: number;
+  quoteTickSize: number;
   baseTransferRate: number;
   quoteTransferRate: number;
   baseIssuer: string;

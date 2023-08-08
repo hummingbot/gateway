@@ -351,6 +351,13 @@ export class XRPL implements XRPLish {
           value: token.value,
         });
       } else {
+        const filtered = this.getTokenForSymbol(token.currency);
+
+        // TODO: this is for filtering out tokens that are not in token list
+        if (filtered === undefined) {
+          return;
+        }
+
         balances.push({
           currency: token.currency,
           issuer: token.issuer,
@@ -429,21 +436,25 @@ export class XRPL implements XRPLish {
     if (!txData) {
       txStatus = TransactionResponseStatusCode.FAILED;
     } else {
-      if ((<TransactionMetadata>txData.result.meta).TransactionResult) {
-        const result = (<TransactionMetadata>txData.result.meta)
-          .TransactionResult;
-        txStatus =
-          result == 'tesSUCCESS'
-            ? TransactionResponseStatusCode.CONFIRMED
-            : TransactionResponseStatusCode.FAILED;
+      if (txData.result.validated === false) {
+        txStatus = TransactionResponseStatusCode.PENDING;
       } else {
-        txStatus = TransactionResponseStatusCode.FAILED;
+        if ((<TransactionMetadata>txData.result.meta).TransactionResult) {
+          const result = (<TransactionMetadata>txData.result.meta)
+            .TransactionResult;
+          txStatus =
+            result == 'tesSUCCESS'
+              ? TransactionResponseStatusCode.CONFIRMED
+              : TransactionResponseStatusCode.FAILED;
+        } else {
+          txStatus = TransactionResponseStatusCode.FAILED;
+        }
       }
     }
     return txStatus;
   }
 
-  async getTransaction(txHash: string): Promise<TxResponse | null> {
+  async getTransaction(txHash: string): Promise<TxResponse> {
     await this.ensureConnection();
     const tx_resp = await this._client.request({
       command: 'tx',
