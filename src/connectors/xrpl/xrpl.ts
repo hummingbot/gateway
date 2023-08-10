@@ -204,7 +204,7 @@ export class XRPLCLOB implements CLOBish {
     }
 
     const smallestTickSize = Math.min(baseTickSize, quoteTickSize);
-    const minimumOrderSize = smallestTickSize;
+    const minimumOrderSize = Math.pow(10, -smallestTickSize);
 
     const result = {
       marketId: market.marketId,
@@ -348,7 +348,6 @@ export class XRPLCLOB implements CLOBish {
   public async orders(
     req: ClobGetOrderRequest
   ): Promise<{ orders: ClobGetOrderResponse['orders'] }> {
-    if (!req.market) return { orders: [] };
     if (!req.address) return { orders: [] };
     if (!req.orderId) return { orders: [] };
 
@@ -366,12 +365,10 @@ export class XRPLCLOB implements CLOBish {
 
       return { orders: ordersArray } as ClobGetOrderResponse;
     } else {
-      const marketId = this.parsedMarkets[req.market].marketId;
-      const orders = await this._orderStorage.getOrderByMarketAndHash(
+      const orders = await this._orderStorage.getOrdersByHash(
         this.chain,
         this.network,
         req.address,
-        marketId,
         req.orderId
       );
 

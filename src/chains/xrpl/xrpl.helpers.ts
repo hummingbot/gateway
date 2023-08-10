@@ -137,3 +137,11 @@ export function getNetworkId(network: string = ''): number {
       return 0;
   }
 }
+
+export function getBaseTokenFromMarketId(marketId: string): string {
+  return marketId.split('-')[0];
+}
+
+export function getQuoteTokenFromMarketId(marketId: string): string {
+  return marketId.split('-')[1];
+}

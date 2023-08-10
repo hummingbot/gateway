@@ -10,6 +10,7 @@ import {
   dropsToXrp,
 } from 'xrpl';
 import { XRPL } from './xrpl';
+import { XRPLCLOB } from '../../../src/connectors/xrpl/xrpl';
 import { getXRPLConfig } from './xrpl.config';
 import {
   OrderStatus,
@@ -24,8 +25,13 @@ import {
   ModifiedNode,
   DeletedNode,
   FillData,
+  Market,
 } from '../../connectors/xrpl/xrpl.types';
 import { OrderMutexManager } from '../../connectors/xrpl/xrpl.utils';
+import {
+  getBaseTokenFromMarketId,
+  getQuoteTokenFromMarketId,
+} from './xrpl.helpers';
 import {
   isModifiedNode,
   isDeletedNode,
@@ -44,6 +50,7 @@ import { XRPLOrderStorage } from './xrpl.order-storage';
 export class OrderTracker {
   private static _instances: LRUCache<string, OrderTracker>;
   private readonly _xrpl: XRPL;
+  private readonly _xrplClob: XRPLCLOB;
   private readonly _orderStorage: XRPLOrderStorage;
   private _wallet: Wallet;
   private _orderMutexManager: OrderMutexManager;
@@ -60,6 +67,7 @@ export class OrderTracker {
     this.network = network;
 
     this._xrpl = XRPL.getInstance(network);
+    this._xrplClob = XRPLCLOB.getInstance(chain, network);
     this._orderStorage = this._xrpl.orderStorage;
     this._wallet = wallet;
     this._inflightOrders = {};
@@ -894,18 +902,28 @@ export class OrderTracker {
     const orderHash: number = order.hash;
 
     if (node === undefined) {
+      const feeToken =
+        order.tradeType === 'BUY'
+          ? getQuoteTokenFromMarketId(order.marketId)
+          : getBaseTokenFromMarketId(order.marketId);
+      const fee = this.calculateFee(
+        order.marketId,
+        order.tradeType,
+        order.amount
+      );
+      const timestamp = transaction.transaction.date
+        ? rippleTimeToUnixTime(transaction.transaction.date)
+        : 0;
       return {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         tradeId: `${intent.type}-${transaction.transaction.hash!}`,
         orderHash: order.hash,
         price: order.price,
         quantity: order.amount,
-        feeToken: 'XRP',
+        feeToken: feeToken,
         side: order.tradeType,
-        fee: this.getFeeFromTransaction(transaction).toString(),
-        timestamp: transaction.transaction.date
-          ? rippleTimeToUnixTime(transaction.transaction.date)
-          : 0,
+        fee: fee,
+        timestamp: timestamp,
         type: 'Taker',
       };
     }
@@ -924,9 +942,12 @@ export class OrderTracker {
       node,
       order.tradeType
     ).toString();
-    const feeToken = 'XRP';
+    const feeToken =
+      order.tradeType === 'BUY'
+        ? getQuoteTokenFromMarketId(order.marketId)
+        : getBaseTokenFromMarketId(order.marketId);
     const side = order.tradeType;
-    const fee = this.getFeeFromTransaction(transaction).toString();
+    const fee = this.calculateFee(order.marketId, order.tradeType, quantity);
     const timestamp = transaction.transaction.date
       ? rippleTimeToUnixTime(transaction.transaction.date)
       : 0;
@@ -945,38 +966,19 @@ export class OrderTracker {
     };
   }
 
-  getFeeFromTransaction(
-    transaction: TransactionStream | TransaformedAccountTransaction
-  ): string {
+  calculateFee(marketId: string, tradeType: string, quantity: string): string {
     let fee = '0';
+    const market = this._xrplClob.parsedMarkets[marketId] as Market;
 
-    if (transaction.meta === undefined) {
-      return fee;
+    if (market === undefined) {
+      return '0';
     }
 
-    transaction.meta.AffectedNodes.forEach((node) => {
-      if (isModifiedNode(node)) {
-        if (node.ModifiedNode.LedgerEntryType === 'AccountRoot') {
-          try {
-            const previousFields = node.ModifiedNode.PreviousFields as any;
-            const finalFields = node.ModifiedNode.FinalFields as any;
-
-            if (
-              previousFields.Balance !== undefined &&
-              finalFields.Balance !== undefined
-            ) {
-              fee = dropsToXrp(
-                parseInt(previousFields.Balance) - parseInt(finalFields.Balance)
-              );
-            }
-          } catch (error) {
-            throw new Error(
-              'Error parsing fee from transaction: ' + transaction
-            );
-          }
-        }
-      }
-    });
+    if (tradeType === 'BUY') {
+      fee = (parseFloat(quantity) * market.quoteTransferRate).toString();
+    } else {
+      fee = (parseFloat(quantity) * market.baseTransferRate).toString();
+    }
 
     return fee;
   }
