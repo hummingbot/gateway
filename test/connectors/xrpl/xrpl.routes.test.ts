@@ -301,12 +301,13 @@ beforeEach(() => {
   patchMarkets();
 });
 
-afterEach(() => {
-  unpatch();
-});
+// afterEach(() => {
+//   unpatch();
+// });
 
 afterAll(async () => {
   await xrpl.close();
+  unpatch();
 });
 
 const patchConnect = () => {
@@ -527,8 +528,9 @@ describe('GET /clob/orders', () => {
         chain: 'xrpl',
         network: 'testnet',
         connector: 'xrpl',
+        market: MARKET,
         address: 'rh8LssQyeBdEXk7Zv86HxHrx8k2R2DBUrx', // noqa: mock
-        orderId: 1234567,
+        orderId: '1234567',
       })
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)

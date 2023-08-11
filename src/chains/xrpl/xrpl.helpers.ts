@@ -1,4 +1,4 @@
-import web3 from 'web3';
+// import web3 from 'web3';
 import { default as constants } from './../../chains/xrpl/xrpl.constants';
 import { XRPLNetworkID } from './xrpl.requests';
 
@@ -69,9 +69,9 @@ export const promiseAllInBatches = async <I, O>(
 /**
  *
  */
-export const getRandonBN = () => {
-  return web3.utils.toBN(web3.utils.randomHex(32));
-};
+// export const getRandonBN = () => {
+//   return web3.utils.toBN(web3.utils.randomHex(32));
+// };
 
 /**
  * @param targetObject
@@ -82,45 +82,45 @@ export const getRandonBN = () => {
  * @param timeout 0 means no timeout (milliseconds)
  * @param timeoutMessage
  */
-export const runWithRetryAndTimeout = async <R>(
-  targetObject: any,
-  targetFunction: (...args: any[]) => R,
-  targetParameters: any,
-  maxNumberOfRetries: number = constants.retry.all.maxNumberOfRetries,
-  delayBetweenRetries: number = constants.retry.all.delayBetweenRetries,
-  timeout: number = constants.timeout.all,
-  timeoutMessage: string = 'Timeout exceeded.'
-): Promise<R> => {
-  let retryCount = 0;
-  let timer: any;
+// export const runWithRetryAndTimeout = async <R>(
+//   targetObject: any,
+//   targetFunction: (...args: any[]) => R,
+//   targetParameters: any,
+//   maxNumberOfRetries: number = constants.retry.all.maxNumberOfRetries,
+//   delayBetweenRetries: number = constants.retry.all.delayBetweenRetries,
+//   timeout: number = constants.timeout.all,
+//   timeoutMessage: string = 'Timeout exceeded.'
+// ): Promise<R> => {
+//   let retryCount = 0;
+//   let timer: any;
 
-  if (timeout > 0) {
-    timer = setTimeout(() => new Error(timeoutMessage), timeout);
-  }
+//   if (timeout > 0) {
+//     timer = setTimeout(() => new Error(timeoutMessage), timeout);
+//   }
 
-  do {
-    try {
-      const result = await targetFunction.apply(targetObject, targetParameters);
+//   do {
+//     try {
+//       const result = await targetFunction.apply(targetObject, targetParameters);
 
-      if (timeout > 0) {
-        clearTimeout(timer);
-      }
+//       if (timeout > 0) {
+//         clearTimeout(timer);
+//       }
 
-      return result as R;
-    } catch (error) {
-      retryCount++;
-      if (retryCount < maxNumberOfRetries) {
-        if (delayBetweenRetries > 0) {
-          await sleep(delayBetweenRetries);
-        }
-      } else {
-        throw error;
-      }
-    }
-  } while (retryCount < maxNumberOfRetries);
+//       return result as R;
+//     } catch (error) {
+//       retryCount++;
+//       if (retryCount < maxNumberOfRetries) {
+//         if (delayBetweenRetries > 0) {
+//           await sleep(delayBetweenRetries);
+//         }
+//       } else {
+//         throw error;
+//       }
+//     }
+//   } while (retryCount < maxNumberOfRetries);
 
-  throw Error('Unknown error.');
-};
+//   throw Error('Unknown error.');
+// };
 
 export function getNetworkId(network: string = ''): number {
   switch (network) {

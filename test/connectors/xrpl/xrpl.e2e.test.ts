@@ -14,12 +14,12 @@ const wallet2 = Wallet.fromSecret('sEd7oiMn5napJBthB2z4CtN5nVi56Bd'); // r3z4R6K
 const MARKET = 'USD-VND';
 let postedOrderTxn: string;
 
-// const INVALID_REQUEST = {
-//   chain: 'unknown',
-//   network: 'testnet',
-// };
+const INVALID_REQUEST = {
+  chain: 'unknown',
+  network: 'testnet',
+};
 
-const patchWallet1 = () => {
+const patchWalletXRPL = () => {
   patch(xrpl, 'getWallet', (walletAddress: string) => {
     if (walletAddress === 'r9wmQfStbNfPJ2XqAN7KH4iP8NJKmqPe16') return wallet1;
 
@@ -32,11 +32,14 @@ beforeAll(async () => {
   await xrpl.init();
   xrplCLOB = XRPLCLOB.getInstance('xrpl', 'testnet');
   await xrplCLOB.init();
-  patchWallet1();
+  patchWalletXRPL();
+});
+
+beforeEach(() => {
+  patchWalletXRPL();
 });
 
 afterAll(async () => {
-  unpatch();
   await xrpl.close();
 });
 
@@ -49,215 +52,215 @@ afterAll(async () => {
 // 6. Get posted order details
 // 7. Cancel the posted order
 
-// describe('Get estimated gas price', () => {
-//   it('should return 200 with proper request', async () => {
-//     await request(gatewayApp)
-//       .get(`/clob/estimateGas`)
-//       .query({
-//         chain: 'xrpl',
-//         network: 'testnet',
-//         connector: 'xrpl',
-//       })
-//       .set('Accept', 'application/json')
-//       .expect('Content-Type', /json/)
-//       .expect(200)
-//       .expect((res) => expect(res.body.gasPrice).toBeDefined());
-//   });
+describe('Get estimated gas price', () => {
+  it('should return 200 with proper request', async () => {
+    await request(gatewayApp)
+      .get(`/clob/estimateGas`)
+      .query({
+        chain: 'xrpl',
+        network: 'testnet',
+        connector: 'xrpl',
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .expect((res) => expect(res.body.gasPrice).toBeDefined());
+  });
 
-//   it('should return 404 when parameters are invalid', async () => {
-//     await request(gatewayApp)
-//       .get(`/clob/estimateGas`)
-//       .query(INVALID_REQUEST)
-//       .expect(404);
-//   });
-// });
+  it('should return 404 when parameters are invalid', async () => {
+    await request(gatewayApp)
+      .get(`/clob/estimateGas`)
+      .query(INVALID_REQUEST)
+      .expect(404);
+  });
+});
 
-// describe('Get Markets List', () => {
-//   it('should return a list of markets', async () => {
-//     await request(gatewayApp)
-//       .get(`/clob/markets`)
-//       .query({
-//         chain: 'xrpl',
-//         network: 'testnet',
-//         connector: 'xrpl',
-//       })
-//       .set('Accept', 'application/json')
-//       .expect('Content-Type', /json/)
-//       .expect(200)
-//       .expect((res) => {
-//         expect(res.body.markets.length).toBeGreaterThan(0);
-//       });
-//   });
-// });
+describe('Get Markets List', () => {
+  it('should return a list of markets', async () => {
+    await request(gatewayApp)
+      .get(`/clob/markets`)
+      .query({
+        chain: 'xrpl',
+        network: 'testnet',
+        connector: 'xrpl',
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.markets.length).toBeGreaterThan(0);
+      });
+  });
+});
 
-// describe(`Get ticker info for ${MARKET}`, () => {
-//   it('should return 200 with proper request', async () => {
-//     await request(gatewayApp)
-//       .get(`/clob/ticker`)
-//       .query({
-//         chain: 'xrpl',
-//         network: 'testnet',
-//         connector: 'xrpl',
-//         market: MARKET,
-//       })
-//       .set('Accept', 'application/json')
-//       .expect('Content-Type', /json/)
-//       .expect(200)
-//       .expect((res) => expect(res.body.markets[0].baseCurrency).toEqual('USD'))
-//       .expect((res) =>
-//         expect(res.body.markets[0].quoteCurrency).toEqual('VND')
-//       );
-//   });
+describe(`Get ticker info for ${MARKET}`, () => {
+  it('should return 200 with proper request', async () => {
+    await request(gatewayApp)
+      .get(`/clob/ticker`)
+      .query({
+        chain: 'xrpl',
+        network: 'testnet',
+        connector: 'xrpl',
+        market: MARKET,
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .expect((res) => expect(res.body.markets[0].baseCurrency).toEqual('USD'))
+      .expect((res) =>
+        expect(res.body.markets[0].quoteCurrency).toEqual('VND')
+      );
+  });
 
-//   it('should return 404 when parameters are invalid', async () => {
-//     await request(gatewayApp)
-//       .get(`/clob/ticker`)
-//       .query(INVALID_REQUEST)
-//       .expect(404);
-//   });
-// });
+  it('should return 404 when parameters are invalid', async () => {
+    await request(gatewayApp)
+      .get(`/clob/ticker`)
+      .query(INVALID_REQUEST)
+      .expect(404);
+  });
+});
 
-// describe('Post order', () => {
-//   it('should return 200 with proper request', async () => {
-//     await request(gatewayApp)
-//       .post(`/clob/orders`)
-//       .send({
-//         chain: 'xrpl',
-//         network: 'testnet',
-//         connector: 'xrpl',
-//         address: 'r9wmQfStbNfPJ2XqAN7KH4iP8NJKmqPe16', // noqa: mock
-//         market: MARKET,
-//         price: '20000',
-//         amount: '0.1',
-//         side: 'BUY',
-//         orderType: 'LIMIT',
-//       })
-//       .set('Accept', 'application/json')
-//       .expect('Content-Type', /json/)
-//       .expect(200)
-//       .expect((res) => {
-//         expect(res.body.txHash).toBeDefined();
-//         postedOrderTxn = res.body.txHash;
-//       });
-//   });
+describe('Post order', () => {
+  it('should return 200 with proper request', async () => {
+    await request(gatewayApp)
+      .post(`/clob/orders`)
+      .send({
+        chain: 'xrpl',
+        network: 'testnet',
+        connector: 'xrpl',
+        address: 'r9wmQfStbNfPJ2XqAN7KH4iP8NJKmqPe16', // noqa: mock
+        market: MARKET,
+        price: '20000',
+        amount: '0.1',
+        side: 'BUY',
+        orderType: 'LIMIT',
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.txHash).toBeDefined();
+        postedOrderTxn = res.body.txHash;
+      });
+  });
 
-//   it('should return PENDING_OPEN with proper request', async () => {
-//     await checkOrderStatus(
-//       postedOrderTxn,
-//       10,
-//       'PENDING_OPEN',
-//       500,
-//       wallet1.address,
-//       true
-//     );
-//   });
+  it('should return PENDING_OPEN with proper request', async () => {
+    await checkOrderStatus(
+      postedOrderTxn,
+      10,
+      'PENDING_OPEN',
+      500,
+      wallet1.address,
+      true
+    );
+  });
 
-//   it('should return OPEN with proper request', async () => {
-//     await checkOrderStatus(
-//       postedOrderTxn,
-//       9,
-//       'OPEN',
-//       1000,
-//       wallet1.address,
-//       true
-//     );
-//   });
+  it('should return OPEN with proper request', async () => {
+    await checkOrderStatus(
+      postedOrderTxn,
+      9,
+      'OPEN',
+      1000,
+      wallet1.address,
+      true
+    );
+  });
 
-//   it('should return 404 when parameters are invalid', async () => {
-//     await request(gatewayApp)
-//       .post(`/clob/orders`)
-//       .send(INVALID_REQUEST)
-//       .expect(404);
-//   });
+  it('should return 404 when parameters are invalid', async () => {
+    await request(gatewayApp)
+      .post(`/clob/orders`)
+      .send(INVALID_REQUEST)
+      .expect(404);
+  });
 
-//   it('should return 404 when parameters are invalid', async () => {
-//     await request(gatewayApp)
-//       .get(`/clob/orders`)
-//       .query(INVALID_REQUEST)
-//       .expect(404);
-//   });
-// });
+  it('should return 404 when parameters are invalid', async () => {
+    await request(gatewayApp)
+      .get(`/clob/orders`)
+      .query(INVALID_REQUEST)
+      .expect(404);
+  });
+});
 
-// describe('Get orderbook details', () => {
-//   it('should return 200 with proper request with USD-VND', async () => {
-//     await request(gatewayApp)
-//       .get(`/clob/orderBook`)
-//       .query({
-//         chain: 'xrpl',
-//         network: 'testnet',
-//         connector: 'xrpl',
-//         market: MARKET,
-//       })
-//       .set('Accept', 'application/json')
-//       .expect('Content-Type', /json/)
-//       .expect(200)
-//       .expect((res) => {
-//         expect(res.body.buys.length).toBeGreaterThan(0);
-//       });
-//   });
+describe('Get orderbook details', () => {
+  it('should return 200 with proper request with USD-VND', async () => {
+    await request(gatewayApp)
+      .get(`/clob/orderBook`)
+      .query({
+        chain: 'xrpl',
+        network: 'testnet',
+        connector: 'xrpl',
+        market: MARKET,
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.buys.length).toBeGreaterThan(0);
+      });
+  });
 
-//   it('should return 404 when parameters are invalid', async () => {
-//     await request(gatewayApp)
-//       .get(`/clob/orderBook`)
-//       .query(INVALID_REQUEST)
-//       .expect(404);
-//   });
-// });
+  it('should return 404 when parameters are invalid', async () => {
+    await request(gatewayApp)
+      .get(`/clob/orderBook`)
+      .query(INVALID_REQUEST)
+      .expect(404);
+  });
+});
 
-// describe('Delete order', () => {
-//   it('should return 200 with proper request', async () => {
-//     const postedOrderSequence = await getsSequenceNumberFromTxn(
-//       'testnet',
-//       postedOrderTxn
-//     );
+describe('Delete order', () => {
+  it('should return 200 with proper request', async () => {
+    const postedOrderSequence = await getsSequenceNumberFromTxn(
+      'testnet',
+      postedOrderTxn
+    );
 
-//     expect(postedOrderSequence).toBeDefined();
+    expect(postedOrderSequence).toBeDefined();
 
-//     await request(gatewayApp)
-//       .delete(`/clob/orders`)
-//       .send({
-//         chain: 'xrpl',
-//         network: 'testnet',
-//         connector: 'xrpl',
-//         address: 'r9wmQfStbNfPJ2XqAN7KH4iP8NJKmqPe16', // noqa: mock
-//         market: MARKET,
-//         orderId: postedOrderSequence?.toString(),
-//       })
-//       .set('Accept', 'application/json')
-//       .expect('Content-Type', /json/)
-//       .expect(200)
-//       .expect((res) => expect(res.body.txHash).toBeDefined());
-//   });
+    await request(gatewayApp)
+      .delete(`/clob/orders`)
+      .send({
+        chain: 'xrpl',
+        network: 'testnet',
+        connector: 'xrpl',
+        address: 'r9wmQfStbNfPJ2XqAN7KH4iP8NJKmqPe16', // noqa: mock
+        market: MARKET,
+        orderId: postedOrderSequence?.toString(),
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .expect((res) => expect(res.body.txHash).toBeDefined());
+  });
 
-//   it('should return PENDING_CANCEL with proper request', async () => {
-//     await checkOrderStatus(
-//       postedOrderTxn,
-//       10,
-//       'PENDING_CANCEL',
-//       500,
-//       wallet1.address,
-//       true
-//     );
-//   });
+  it('should return PENDING_CANCEL with proper request', async () => {
+    await checkOrderStatus(
+      postedOrderTxn,
+      10,
+      'PENDING_CANCEL',
+      500,
+      wallet1.address,
+      true
+    );
+  });
 
-//   it('should return CANCELED with proper request', async () => {
-//     await checkOrderStatus(
-//       postedOrderTxn,
-//       9,
-//       'CANCELED',
-//       1000,
-//       wallet1.address,
-//       true
-//     );
-//   });
+  it('should return CANCELED with proper request', async () => {
+    await checkOrderStatus(
+      postedOrderTxn,
+      9,
+      'CANCELED',
+      1000,
+      wallet1.address,
+      true
+    );
+  });
 
-//   it('should return 404 when parameters are invalid', async () => {
-//     await request(gatewayApp)
-//       .delete(`/clob/orders`)
-//       .send(INVALID_REQUEST)
-//       .expect(404);
-//   });
-// });
+  it('should return 404 when parameters are invalid', async () => {
+    await request(gatewayApp)
+      .delete(`/clob/orders`)
+      .send(INVALID_REQUEST)
+      .expect(404);
+  });
+});
 
 // 2nd Senario:
 // 1. Post an order
@@ -356,7 +359,7 @@ describe('Post order to be consumed', () => {
           chain: 'xrpl',
           network: 'testnet',
           connector: 'xrpl',
-          address: wallet1.address, // noqa: mock
+          address: wallet1.classicAddress, // noqa: mock
           market: MARKET,
           price: '19999',
           amount: '0.051',
@@ -383,10 +386,8 @@ describe('Post order to be consumed', () => {
     });
 
     it('should cancel outstanding orders', async () => {
-      // const outstandingOrders: string[] = [];
-
-      // wait for 5 seconds to let the order be posted
-      await new Promise((resolve) => setTimeout(resolve, 5000));
+      let wallet1OutstandingOrders: Order[] = [];
+      let wallet2OutstandingOrders: Order[] = [];
 
       await request(gatewayApp)
         .get(`/clob/orders`)
@@ -402,10 +403,9 @@ describe('Post order to be consumed', () => {
         .expect('Content-Type', /json/)
         .expect(200)
         .then((res) => {
-          console.log(
-            '🪧 -> file: xrpl.e2e.test.ts:403 -> .then -> res.body.orders:',
-            res.body.orders
-          );
+          wallet1OutstandingOrders = res.body.orders.filter((order: Order) => {
+            return order.state !== 'FILLED' && order.state !== 'CANCELED';
+          });
         });
 
       await request(gatewayApp)
@@ -422,11 +422,51 @@ describe('Post order to be consumed', () => {
         .expect('Content-Type', /json/)
         .expect(200)
         .then((res) => {
-          console.log(
-            '🪧 -> file: xrpl.e2e.test.ts:423 -> .then -> res.body.orders:',
-            res.body.orders
-          );
+          wallet2OutstandingOrders = res.body.orders.filter((order: Order) => {
+            return order.state !== 'FILLED' && order.state !== 'CANCELED';
+          });
         });
+
+      if (wallet1OutstandingOrders.length > 0) {
+        wallet1OutstandingOrders.forEach(async (order) => {
+          await request(gatewayApp)
+            .delete(`/clob/orders`)
+            .send({
+              chain: 'xrpl',
+              network: 'testnet',
+              connector: 'xrpl',
+              address: wallet1.classicAddress, // noqa: mock
+              market: MARKET,
+              orderId: order.hash.toString(),
+            })
+            .set('Accept', 'application/json')
+            .expect('Content-Type', /json/)
+            .expect(200)
+            .expect((res) => expect(res.body.txHash).toBeDefined());
+        });
+      }
+
+      if (wallet2OutstandingOrders.length > 0) {
+        wallet2OutstandingOrders.forEach(async (order) => {
+          await request(gatewayApp)
+            .delete(`/clob/orders`)
+            .send({
+              chain: 'xrpl',
+              network: 'testnet',
+              connector: 'xrpl',
+              address: wallet2.classicAddress, // noqa: mock
+              market: MARKET,
+              orderId: order.hash.toString(),
+            })
+            .set('Accept', 'application/json')
+            .expect('Content-Type', /json/)
+            .expect(200)
+            .expect((res) => expect(res.body.txHash).toBeDefined());
+        });
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+      unpatch();
     });
   });
 });

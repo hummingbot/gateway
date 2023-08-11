@@ -368,10 +368,11 @@ export class XRPLCLOB implements CLOBish {
 
       return { orders: ordersArray } as ClobGetOrderResponse;
     } else {
-      const orders = await this._orderStorage.getOrdersByHash(
+      const orders = await this._orderStorage.getOrderByMarketAndHash(
         this.chain,
         this.network,
         req.address,
+        req.market,
         req.orderId
       );
 
