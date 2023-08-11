@@ -348,6 +348,9 @@ export class XRPLCLOB implements CLOBish {
   public async orders(
     req: ClobGetOrderRequest
   ): Promise<{ orders: ClobGetOrderResponse['orders'] }> {
+    // TODO: Check this on client why it give zero orders
+    console.log('🪧 -> file: xrpl.ts:351 -> XRPLCLOB -> req:', req);
+    if (!req.market) return { orders: [] };
     if (!req.address) return { orders: [] };
     if (!req.orderId) return { orders: [] };
 

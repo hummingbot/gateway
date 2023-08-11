@@ -362,6 +362,10 @@ const patchGetOrderBookFromXRPL = (orderbook: any) => {
 
 const patchOrders = () => {
   patch(xrplCLOB, '_orderStorage', {
+    async getOrdersByHash() {
+      const orders: Record<string, Order> = { [ORDER.hash]: ORDER };
+      return orders;
+    },
     async getOrderByMarketAndHash() {
       const orders: Record<string, Order> = { [ORDER.hash]: ORDER };
       return orders;
@@ -494,12 +498,15 @@ describe('GET /clob/ticker', () => {
       .expect('Content-Type', /json/)
       .expect(200)
       .expect((res) => {
-        expect(res.body.markets['USD-XRP'].baseCurrency).toEqual('USD');
+        console.log(
+          '🪧 -> file: xrpl.routes.test.ts:497 -> .expect -> res:',
+          res.body
+        );
+
+        expect(res.body.markets[0].baseCurrency).toEqual('USD');
       })
-      .expect((res) =>
-        expect(res.body.markets['USD-XRP'].quoteCurrency).toEqual('XRP')
-      )
-      .expect((res) => expect(res.body.markets['USD-XRP'].midprice).toEqual(1));
+      .expect((res) => expect(res.body.markets[0].quoteCurrency).toEqual('XRP'))
+      .expect((res) => expect(res.body.markets[0].midprice).toEqual(1));
   });
 
   it('should return 404 when parameters are invalid', async () => {
@@ -521,13 +528,18 @@ describe('GET /clob/orders', () => {
         network: 'testnet',
         connector: 'xrpl',
         address: 'rh8LssQyeBdEXk7Zv86HxHrx8k2R2DBUrx', // noqa: mock
-        market: MARKET,
         orderId: 1234567,
       })
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(200)
-      .expect((res) => expect(res.body.orders.length).toEqual(1));
+      .expect((res) => {
+        console.log(
+          '🪧 -> file: xrpl.routes.test.ts:535 -> .expect -> res:',
+          res.body
+        );
+        expect(res.body.orders.length).toEqual(1);
+      });
   });
 
   it('should return 404 when parameters are invalid', async () => {
