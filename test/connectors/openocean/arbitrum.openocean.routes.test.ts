@@ -15,11 +15,11 @@ beforeAll(async () => {
   app = express();
   app.use(express.json());
 
-  ethereum = Ethereum.getInstance('arbitrum_one');
+  ethereum = Ethereum.getInstance('arbitrum');
   patchEVMNonceManager(ethereum.nonceManager);
   await ethereum.init();
 
-  openocean = Openocean.getInstance('ethereum', 'arbitrum_one');
+  openocean = Openocean.getInstance('ethereum', 'arbitrum');
   await openocean.init();
 
   app.use('/amm', AmmRoutes.router);
@@ -170,7 +170,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'ethereum',
-        network: 'arbitrum_one',
+        network: 'arbitrum',
         connector: 'openocean',
         quote: 'BUSD',
         base: 'USDC',
@@ -198,7 +198,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'ethereum',
-        network: 'arbitrum_one',
+        network: 'arbitrum',
         connector: 'openocean',
         quote: 'USDC',
         base: 'BUSD',
@@ -234,7 +234,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'ethereum',
-        network: 'arbitrum_one',
+        network: 'arbitrum',
         connector: 'openocean',
         quote: 'USDC',
         base: 'bDAI',
@@ -266,7 +266,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'ethereum',
-        network: 'arbitrum_one',
+        network: 'arbitrum',
         connector: 'openocean',
         quote: 'USDC',
         base: 'bDAI',
@@ -288,7 +288,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'ethereum',
-        network: 'arbitrum_one',
+        network: 'arbitrum',
         connector: 'openocean',
         quote: 'USDC',
         base: 'bDAI',
@@ -310,7 +310,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'ethereum',
-        network: 'arbitrum_one',
+        network: 'arbitrum',
         connector: 'openocean',
         quote: 'USDC',
         base: 'bDAI',
@@ -335,7 +335,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'ethereum',
-        network: 'arbitrum_one',
+        network: 'arbitrum',
         connector: 'openocean',
         quote: 'USDC',
         base: 'bDAI',
@@ -360,7 +360,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'ethereum',
-        network: 'arbitrum_one',
+        network: 'arbitrum',
         connector: 'openocean',
         quote: 'USDC',
         base: 'bDAI',
@@ -389,7 +389,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'arbitrum_one',
+        network: 'arbitrum',
         connector: 'openocean',
         quote: 'BUSD',
         base: 'USDC',
@@ -411,7 +411,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'arbitrum_one',
+        network: 'arbitrum',
         connector: 'openocean',
         quote: 'BUSD',
         base: 'USDC',
@@ -429,7 +429,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'arbitrum_one',
+        network: 'arbitrum',
         connector: 'openocean',
         quote: 'BUSD',
         base: 'USDC',
@@ -460,7 +460,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'arbitrum_one',
+        network: 'arbitrum',
         connector: 'openocean',
         quote: 'USDC',
         base: 'BUSD',
@@ -482,7 +482,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'arbitrum_one',
+        network: 'arbitrum',
         connector: 'openocean',
         quote: 'USDC',
         base: 'BUSD',
@@ -502,7 +502,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'arbitrum_one',
+        network: 'arbitrum',
         connector: 'openocean',
         quote: 'USDC',
         base: 'BUSD',
@@ -534,7 +534,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'arbitrum_one',
+        network: 'arbitrum',
         connector: 'openocean',
         quote: 'USDC',
         base: 'BITCOIN',
@@ -569,7 +569,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'arbitrum_one',
+        network: 'arbitrum',
         connector: 'openocean',
         quote: 'BITCOIN',
         base: 'USDC',
@@ -590,7 +590,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'arbitrum_one',
+        network: 'arbitrum',
         connector: 'openocean',
         quote: 'USDC',
         base: 'BUSD',
@@ -610,7 +610,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'arbitrum_one',
+        network: 'arbitrum',
         connector: 'openocean',
         quote: 'BUSD',
         base: 'USDC',
@@ -630,7 +630,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'arbitrum_one',
+        network: 'arbitrum',
         connector: 'openocean',
         quote: 'USDC',
         base: 'BUSD',
@@ -650,7 +650,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'ethereum',
-        network: 'arbitrum_one',
+        network: 'arbitrum',
         connector: 'openocean',
         quote: 'BUSD',
         base: 'USDC',
@@ -674,13 +674,13 @@ describe('POST /amm/estimateGas', () => {
       .post('/amm/estimateGas')
       .send({
         chain: 'ethereum',
-        network: 'arbitrum_one',
+        network: 'arbitrum',
         connector: 'openocean',
       })
       .set('Accept', 'application/json')
       .expect(200)
       .then((res: any) => {
-        expect(res.body.network).toEqual('arbitrum_one');
+        expect(res.body.network).toEqual('arbitrum');
         expect(res.body.gasPrice).toEqual(100);
         expect(res.body.gasCost).toEqual(
           gasCostInEthString(100, openocean.gasLimitEstimate)
@@ -696,7 +696,7 @@ describe('POST /amm/estimateGas', () => {
       .post('/amm/estimateGas')
       .send({
         chain: 'ethereum',
-        network: 'arbitrum_one',
+        network: 'arbitrum',
         connector: 'pangolin',
       })
       .set('Accept', 'application/json')
