@@ -114,34 +114,12 @@ export class XRPLOrderStorage extends ReferenceCountingCloseable {
     });
   }
 
-  public async getOrderByMarketAndHash(
-    chain: string,
-    network: string,
-    walletAddress: string,
-    marketId: string,
-    hash: string
-  ): Promise<Record<string, Order>> {
-    return this.localStorage.get((key: string, value: string) => {
-      const splitKey = key.split('/');
-      if (
-        splitKey.length === 4 &&
-        splitKey[0] === chain &&
-        splitKey[1] === network &&
-        splitKey[2] === walletAddress
-      ) {
-        const order: Order = JSON.parse(value);
-        if (order.marketId === marketId && order.hash === parseInt(hash)) {
-          return [splitKey[3], order];
-        }
-      }
-      return;
-    });
-  }
-
-  // public async getOrdersByHash(
+  // TODO: Investigate why this method is giving empty results, considering removeing it
+  // public async getOrderByMarketAndHash(
   //   chain: string,
   //   network: string,
   //   walletAddress: string,
+  //   marketId: string,
   //   hash: string
   // ): Promise<Record<string, Order>> {
   //   return this.localStorage.get((key: string, value: string) => {
@@ -150,15 +128,38 @@ export class XRPLOrderStorage extends ReferenceCountingCloseable {
   //       splitKey.length === 4 &&
   //       splitKey[0] === chain &&
   //       splitKey[1] === network &&
-  //       splitKey[2] === walletAddress &&
-  //       splitKey[3] === hash
+  //       splitKey[2] === walletAddress
   //     ) {
   //       const order: Order = JSON.parse(value);
-  //       return [splitKey[3], order];
+  //       if (order.marketId === marketId && order.hash === parseInt(hash)) {
+  //         return [splitKey[3], order];
+  //       }
   //     }
   //     return;
   //   });
   // }
+
+  public async getOrdersByHash(
+    chain: string,
+    network: string,
+    walletAddress: string,
+    hash: string
+  ): Promise<Record<string, Order>> {
+    return this.localStorage.get((key: string, value: string) => {
+      const splitKey = key.split('/');
+      if (
+        splitKey.length === 4 &&
+        splitKey[0] === chain &&
+        splitKey[1] === network &&
+        splitKey[2] === walletAddress &&
+        splitKey[3] === hash
+      ) {
+        const order: Order = JSON.parse(value);
+        return [splitKey[3], order];
+      }
+      return;
+    });
+  }
 
   public async getInflightOrders(
     chain: string,

@@ -367,10 +367,10 @@ const patchOrders = () => {
       const orders: Record<string, Order> = { [ORDER.hash]: ORDER };
       return orders;
     },
-    async getOrderByMarketAndHash() {
-      const orders: Record<string, Order> = { [ORDER.hash]: ORDER };
-      return orders;
-    },
+    // async getOrderByMarketAndHash() {
+    //   const orders: Record<string, Order> = { [ORDER.hash]: ORDER };
+    //   return orders;
+    // },
     async getOrdersByMarket() {
       const orders: Record<string, Order> = { [ORDER.hash]: ORDER };
       return orders;

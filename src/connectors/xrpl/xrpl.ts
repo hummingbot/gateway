@@ -348,13 +348,11 @@ export class XRPLCLOB implements CLOBish {
   public async orders(
     req: ClobGetOrderRequest
   ): Promise<{ orders: ClobGetOrderResponse['orders'] }> {
-    // TODO: Check this on client why it give zero orders
-    console.log('🪧 -> file: xrpl.ts:351 -> XRPLCLOB -> req:', req);
-    if (!req.market) return { orders: [] };
     if (!req.address) return { orders: [] };
     if (!req.orderId) return { orders: [] };
 
     if (req.orderId === 'all') {
+      if (!req.market) return { orders: [] };
       const marketId = this.parsedMarkets[req.market].marketId;
       const orders = await this._orderStorage.getOrdersByMarket(
         this.chain,
@@ -368,11 +366,10 @@ export class XRPLCLOB implements CLOBish {
 
       return { orders: ordersArray } as ClobGetOrderResponse;
     } else {
-      const orders = await this._orderStorage.getOrderByMarketAndHash(
+      const orders = await this._orderStorage.getOrdersByHash(
         this.chain,
         this.network,
         req.address,
-        req.market,
         req.orderId
       );
 
