@@ -20,6 +20,9 @@ export const invalidNearPrivateKeyError: string =
 export const invalidCosmosPrivateKeyError: string =
   'The privateKey param is not a valid Cosmos private key.';
 
+export const invalidTezosPrivateKeyError: string =
+  'The privateKey param is not a valid Tezos private key.';
+
 export const isAlgorandPrivateKeyOrMnemonic = (str: string): boolean => {
   const parts = str.split(' ');
   return parts.length === 25;
@@ -121,7 +124,7 @@ export const validatePrivateKey: Validator = mkSelectingValidator(
     ),
     tezos: mkValidator(
       'privateKey',
-      invalidEthPrivateKeyError,
+      invalidTezosPrivateKeyError,
       (val) => typeof val === 'string' && isTezosPrivateKey(val)
     )
   }
