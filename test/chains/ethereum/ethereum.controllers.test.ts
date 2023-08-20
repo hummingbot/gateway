@@ -1,6 +1,6 @@
 import { BigNumber } from 'ethers';
 import { Ethereum } from '../../../src/chains/ethereum/ethereum';
-import { patch, unpatch } from '../../services/patch';
+import { patch, unpatch } from '../../../test/services/patch';
 import { TokenInfo } from '../../../src/chains/ethereum/ethereum-base';
 import {
   HttpException,

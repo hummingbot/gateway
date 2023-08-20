@@ -3,7 +3,7 @@ import express from 'express';
 import { Express } from 'express-serve-static-core';
 import request from 'supertest';
 import { AmmRoutes } from '../../../src/amm/amm.routes';
-import { patch, unpatch } from '../../services/patch';
+import { patch, unpatch } from '../../../test/services/patch';
 import { Tezos } from '../../../src/chains/tezos/tezos';
 import { Plenty } from '../../../src/connectors/plenty/plenty';
 import * as plentyUtils from '../../../src/connectors/plenty/utils/router';

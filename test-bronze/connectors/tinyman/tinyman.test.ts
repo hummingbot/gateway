@@ -1,6 +1,6 @@
 jest.useFakeTimers();
 import { Tinyman } from '../../../src/connectors/tinyman/tinyman';
-import { patch, unpatch } from '../../services/patch';
+import { patch, unpatch } from '../../../test/services/patch';
 import { Algorand } from '../../../src/chains/algorand/algorand';
 import { poolUtils, SwapQuoteType, } from '@tinymanorg/tinyman-js-sdk';
 import { getAlgorandConfig } from '../../../src/chains/algorand/algorand.config';

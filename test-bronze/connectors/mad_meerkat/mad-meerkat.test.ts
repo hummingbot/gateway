@@ -1,6 +1,6 @@
 jest.useFakeTimers();
 import { MadMeerkat } from '../../../src/connectors/mad_meerkat/mad_meerkat';
-import { patch, unpatch } from '../../services/patch';
+import { patch, unpatch } from '../../../test/services/patch';
 import { UniswapishPriceError } from '../../../src/services/error-handler';
 import {
   ChainId,
@@ -15,7 +15,7 @@ import {
 } from '@crocswap/sdk';
 import { BigNumber } from 'ethers';
 import { Cronos } from '../../../src/chains/cronos/cronos';
-import { patchEVMNonceManager } from '../../evm.nonce.mock';
+import { patchEVMNonceManager } from '../../../test/evm.nonce.mock';
 
 let cronos: Cronos;
 let madMeerkat: MadMeerkat;

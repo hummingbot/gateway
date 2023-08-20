@@ -4,7 +4,7 @@ import request from 'supertest';
 import { Harmony } from '../../../src/chains/harmony/harmony';
 import { Defira } from '../../../src/connectors/defira/defira';
 import { AmmRoutes } from '../../../src/amm/amm.routes';
-import { patch, unpatch } from '../../services/patch';
+import { patch, unpatch } from '../../../test/services/patch';
 import { gasCostInEthString } from '../../../src/services/base';
 let app: Express;
 let harmony: Harmony;

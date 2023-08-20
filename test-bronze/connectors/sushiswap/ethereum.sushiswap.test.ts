@@ -1,6 +1,6 @@
 jest.useFakeTimers();
 import { Sushiswap } from '../../../src/connectors/sushiswap/sushiswap';
-import { patch, unpatch } from '../../services/patch';
+import { patch, unpatch } from '../../../test/services/patch';
 import { UniswapishPriceError as SushiswapishPriceError } from '../../../src/services/error-handler';
 import {
   Token,
@@ -12,7 +12,7 @@ import {
 } from '@sushiswap/sdk';
 import { BigNumber } from 'ethers';
 import { Ethereum } from '../../../src/chains/ethereum/ethereum';
-import { patchEVMNonceManager } from '../../evm.nonce.mock';
+import { patchEVMNonceManager } from '../../../test/evm.nonce.mock';
 
 let ethereum: Ethereum;
 let sushiswap: Sushiswap;

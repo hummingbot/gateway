@@ -1,9 +1,9 @@
 import request from 'supertest';
-import { patch, unpatch } from '../../services/patch';
+import { patch, unpatch } from '../../../test/services/patch';
 import { gatewayApp } from '../../../src/app';
 import { Cronos } from '../../../src/chains/cronos/cronos';
 import { MadMeerkat } from '../../../src/connectors/mad_meerkat/mad_meerkat';
-import { patchEVMNonceManager } from '../../evm.nonce.mock';
+import { patchEVMNonceManager } from '../../../test/evm.nonce.mock';
 let cronos: Cronos;
 let madMeerkat: MadMeerkat;
 

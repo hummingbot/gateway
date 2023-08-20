@@ -1,8 +1,8 @@
 import request from 'supertest';
 import { BinanceSmartChain } from '../../../src/chains/binance-smart-chain/binance-smart-chain';
 import { Openocean } from '../../../src/connectors/openocean/openocean';
-import { patchEVMNonceManager } from '../../evm.nonce.mock';
-import { patch, unpatch } from '../../services/patch';
+import { patchEVMNonceManager } from '../../../test/evm.nonce.mock';
+import { patch, unpatch } from '../../../test/services/patch';
 import { gasCostInEthString } from '../../../src/services/base';
 import { AmmRoutes } from '../../../src/amm/amm.routes';
 import express from 'express';

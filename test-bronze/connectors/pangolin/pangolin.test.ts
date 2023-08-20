@@ -1,6 +1,6 @@
 jest.useFakeTimers();
 import { Pangolin } from '../../../src/connectors/pangolin/pangolin';
-import { patch, unpatch } from '../../services/patch';
+import { patch, unpatch } from '../../../test/services/patch';
 import { UniswapishPriceError } from '../../../src/services/error-handler';
 import {
   Fetcher,
@@ -14,7 +14,7 @@ import {
 } from '@pangolindex/sdk';
 import { BigNumber } from 'ethers';
 import { Avalanche } from '../../../src/chains/avalanche/avalanche';
-import { patchEVMNonceManager } from '../../evm.nonce.mock';
+import { patchEVMNonceManager } from '../../../test/evm.nonce.mock';
 let avalanche: Avalanche;
 let pangolin: Pangolin;
 

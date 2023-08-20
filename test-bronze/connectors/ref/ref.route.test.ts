@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { patch, unpatch } from '../../services/patch';
+import { patch, unpatch } from '../../../test/services/patch';
 import { gatewayApp } from '../../../src/app';
 import { Near } from '../../../src/chains/near/near';
 import { Ref } from '../../../src/connectors/ref/ref';

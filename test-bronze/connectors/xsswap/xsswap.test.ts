@@ -1,6 +1,6 @@
 jest.useFakeTimers();
 import { Xsswap } from '../../../src/connectors/xsswap/xsswap';
-import { patch, unpatch } from '../../services/patch';
+import { patch, unpatch } from '../../../test/services/patch';
 import { UniswapishPriceError } from '../../../src/services/error-handler';
 import {
   ChainId,
@@ -15,7 +15,7 @@ import {
 } from 'xsswap-sdk';
 import { BigNumber } from 'ethers';
 import { Xdc } from '../../../src/chains/xdc/xdc';
-import { patchEVMNonceManager } from '../../evm.nonce.mock';
+import { patchEVMNonceManager } from '../../../test/evm.nonce.mock';
 
 let xdc: Xdc;
 let xsswap: Xsswap;

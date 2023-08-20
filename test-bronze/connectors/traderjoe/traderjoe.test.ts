@@ -1,6 +1,6 @@
 jest.useFakeTimers();
 import { Traderjoe } from '../../../src/connectors/traderjoe/traderjoe';
-import { patch, unpatch } from '../../services/patch';
+import { patch, unpatch } from '../../../test/services/patch';
 import { UniswapishPriceError } from '../../../src/services/error-handler';
 import {
   Pair,
@@ -13,7 +13,7 @@ import {
 } from '@traderjoe-xyz/sdk';
 import { BigNumber } from 'ethers';
 import { Avalanche } from '../../../src/chains/avalanche/avalanche';
-import { patchEVMNonceManager } from '../../evm.nonce.mock';
+import { patchEVMNonceManager } from '../../../test/evm.nonce.mock';
 import { JSBI, TradeV2 } from '@traderjoe-xyz/sdk-v2';
 let avalanche: Avalanche;
 let traderjoe: Traderjoe;

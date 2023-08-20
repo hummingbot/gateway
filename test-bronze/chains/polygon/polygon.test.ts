@@ -1,6 +1,6 @@
 import { Polygon } from '../../../src/chains/polygon/polygon';
-import { unpatch } from '../../services/patch';
-import { patchEVMNonceManager } from '../../evm.nonce.mock';
+import { unpatch } from '../../../test/services/patch';
+import { patchEVMNonceManager } from '../../../test/evm.nonce.mock';
 let polygon: Polygon;
 
 beforeAll(async () => {

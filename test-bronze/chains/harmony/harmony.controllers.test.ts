@@ -1,6 +1,6 @@
 import { BigNumber } from 'ethers';
 import { Harmony } from '../../../src/chains/harmony/harmony';
-import { patch, unpatch } from '../../services/patch';
+import { patch, unpatch } from '../../../test/services/patch';
 import { TokenInfo } from '../../../src/chains/ethereum/ethereum-base';
 import {
   HttpException,
@@ -9,7 +9,7 @@ import {
   TOKEN_NOT_SUPPORTED_ERROR_MESSAGE,
   TOKEN_NOT_SUPPORTED_ERROR_CODE,
 } from '../../../src/services/error-handler';
-import { patchEVMNonceManager } from '../../evm.nonce.mock';
+import { patchEVMNonceManager } from '../../../test/evm.nonce.mock';
 import {
   EVMController,
   willTxSucceed,

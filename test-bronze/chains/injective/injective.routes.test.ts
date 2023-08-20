@@ -1,8 +1,8 @@
 import request from 'supertest';
 import { Injective } from '../../../src/chains/injective/injective';
-import { patch, unpatch } from '../../services/patch';
+import { patch, unpatch } from '../../../test/services/patch';
 import { gatewayApp } from '../../../src/app';
-import { patchEVMNonceManager } from '../../evm.nonce.mock';
+import { patchEVMNonceManager } from '../../../test/evm.nonce.mock';
 
 const TX_HASH =
   'CC6BF44223B4BD05396F83D55A0ABC0F16CE80836C0E34B08F4558CF72944299'; // noqa: mock

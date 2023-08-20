@@ -1,5 +1,5 @@
 import { Harmony } from '../../../src/chains/harmony/harmony';
-import { patchEVMNonceManager } from '../../evm.nonce.mock';
+import { patchEVMNonceManager } from '../../../test/evm.nonce.mock';
 import { DefiraConfig } from '../../../src/connectors/defira/defira.config';
 
 let harmony: Harmony;

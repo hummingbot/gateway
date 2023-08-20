@@ -7,7 +7,7 @@ import {
   LOAD_WALLET_ERROR_CODE,
   LOAD_WALLET_ERROR_MESSAGE,
 } from '../../../src/services/error-handler';
-import { patch, unpatch } from '../../services/patch';
+import { patch, unpatch } from '../../../test/services/patch';
 import * as getTokenListData from './fixtures/getTokenList.json';
 import * as getTransactionData from './fixtures/getTransaction.json';
 import { publicKey } from './near.validators.test';

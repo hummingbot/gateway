@@ -1,6 +1,6 @@
 jest.useFakeTimers();
 import { Quickswap } from '../../../src/connectors/quickswap/quickswap';
-import { patch, unpatch } from '../../services/patch';
+import { patch, unpatch } from '../../../test/services/patch';
 import { UniswapishPriceError } from '../../../src/services/error-handler';
 import {
   Fetcher,
@@ -14,7 +14,7 @@ import {
 } from 'quickswap-sdk';
 import { BigNumber } from 'ethers';
 import { Polygon } from '../../../src/chains/polygon/polygon';
-import { patchEVMNonceManager } from '../../evm.nonce.mock';
+import { patchEVMNonceManager } from '../../../test/evm.nonce.mock';
 
 let polygon: Polygon;
 let quickswap: Quickswap;

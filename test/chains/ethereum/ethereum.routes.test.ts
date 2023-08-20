@@ -1,6 +1,6 @@
 import request from 'supertest';
 import { Ethereum } from '../../../src/chains/ethereum/ethereum';
-import { patch, unpatch } from '../../services/patch';
+import { patch, unpatch } from '../../../test/services/patch';
 import { gatewayApp } from '../../../src/app';
 import {
   NETWORK_ERROR_CODE,

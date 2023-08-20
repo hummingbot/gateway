@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { patch, unpatch } from '../../services/patch';
+import { patch, unpatch } from '../../../test/services/patch';
 import { gatewayApp } from '../../../src/app';
 import {
   NETWORK_ERROR_CODE,
@@ -7,11 +7,11 @@ import {
   UNKNOWN_ERROR_ERROR_CODE,
   UNKNOWN_ERROR_MESSAGE,
 } from '../../../src/services/error-handler';
-import * as transactionSuccesful from '../ethereum/fixtures/transaction-succesful.json';
-import * as transactionSuccesfulReceipt from '../ethereum/fixtures/transaction-succesful-receipt.json';
-import * as transactionOutOfGas from '../ethereum/fixtures/transaction-out-of-gas.json';
+import * as transactionSuccesful from '../../../test/chains/ethereum/fixtures/transaction-succesful.json';
+import * as transactionSuccesfulReceipt from '../../../test/chains/ethereum/fixtures/transaction-succesful-receipt.json';
+import * as transactionOutOfGas from '../../../test/chains/ethereum/fixtures/transaction-out-of-gas.json';
 import { Cronos } from '../../../src/chains/cronos/cronos';
-import { patchEVMNonceManager } from '../../evm.nonce.mock';
+import { patchEVMNonceManager } from '../../../test/evm.nonce.mock';
 
 let cronos: Cronos;
 const address: string = '0x242532ebDfcc760f2Ddfe8378eB51f5F847CE5bD'; // noqa: mock

@@ -3,7 +3,7 @@ import BigNumber from 'bignumber.js';
 import { Tezosish } from '../../../src/services/common-interfaces';
 import { tokensAPI } from './tokensAPI';
 import { analyticsAPI } from './analyticsAPI';
-import { patch } from '../../services/patch';
+import { patch } from '../../../test/services/patch';
 import { Tezos } from '../../../src/chains/tezos/tezos';
 
 

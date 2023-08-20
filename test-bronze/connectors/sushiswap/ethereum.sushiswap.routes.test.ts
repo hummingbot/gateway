@@ -4,7 +4,7 @@ import request from 'supertest';
 import { Ethereum } from '../../../src/chains/ethereum/ethereum';
 import { Sushiswap } from '../../../src/connectors/sushiswap/sushiswap';
 import { AmmRoutes } from '../../../src/amm/amm.routes';
-import { patch, unpatch } from '../../services/patch';
+import { patch, unpatch } from '../../../test/services/patch';
 import { gasCostInEthString } from '../../../src/services/base';
 
 let app: Express;

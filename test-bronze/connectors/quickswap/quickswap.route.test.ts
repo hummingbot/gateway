@@ -1,9 +1,9 @@
 import request from 'supertest';
-import { patch, unpatch } from '../../services/patch';
+import { patch, unpatch } from '../../../test/services/patch';
 import { gatewayApp } from '../../../src/app';
 import { Polygon } from '../../../src/chains/polygon/polygon';
 import { Quickswap } from '../../../src/connectors/quickswap/quickswap';
-import { patchEVMNonceManager } from '../../evm.nonce.mock';
+import { patchEVMNonceManager } from '../../../test/evm.nonce.mock';
 let polygon: Polygon;
 let quickswap: Quickswap;
 

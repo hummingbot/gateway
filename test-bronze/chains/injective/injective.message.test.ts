@@ -1,6 +1,6 @@
 import { MsgBroadcasterLocal } from '../../../src/chains/injective/injective.message';
 import { Network } from '@injectivelabs/networks';
-import { patch, unpatch } from '../../services/patch';
+import { patch, unpatch } from '../../../test/services/patch';
 import {
   MsgBid,
   PrivateKey,
@@ -8,7 +8,7 @@ import {
   TxRaw,
 } from '@injectivelabs/sdk-ts';
 import { Injective } from '../../../src/chains/injective/injective';
-import { patchEVMNonceManager } from '../../evm.nonce.mock';
+import { patchEVMNonceManager } from '../../../test/evm.nonce.mock';
 import { AccountDetails } from '@injectivelabs/sdk-ts/dist/cjs/types/auth';
 
 const TX_HASH =
