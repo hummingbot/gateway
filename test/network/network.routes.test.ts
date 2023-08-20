@@ -59,7 +59,7 @@ afterAll(async () => {
   await cronos.close();
 });
 
-describe('GET /network/status', () => {
+describe('GET /chain/status', () => {
   it('should return 200 when asking for harmony network status', async () => {
     patch(harmony, 'chain', () => {
       return 'testnet';
@@ -71,7 +71,7 @@ describe('GET /network/status', () => {
     });
 
     await request(gatewayApp)
-      .get(`/network/status`)
+      .get(`/chain/status`)
       .query({
         chain: 'harmony',
         network: 'testnet',
@@ -95,7 +95,7 @@ describe('GET /network/status', () => {
     });
 
     await request(gatewayApp)
-      .get(`/network/status`)
+      .get(`/chain/status`)
       .query({
         chain: 'ethereum',
         network: 'goerli',
@@ -119,7 +119,7 @@ describe('GET /network/status', () => {
     });
 
     await request(gatewayApp)
-      .get(`/network/status`)
+      .get(`/chain/status`)
       .query({
         chain: 'ethereum',
         network: 'goerli',
@@ -143,7 +143,7 @@ describe('GET /network/status', () => {
     });
 
     await request(gatewayApp)
-      .get(`/network/status`)
+      .get(`/chain/status`)
       .query({
         chain: 'avalanche',
         network: 'fuji',
@@ -167,7 +167,7 @@ describe('GET /network/status', () => {
     });
 
     await request(gatewayApp)
-      .get(`/network/status`)
+      .get(`/chain/status`)
       .query({
         chain: 'polygon',
         network: 'mumbai',
@@ -191,7 +191,7 @@ describe('GET /network/status', () => {
     });
 
     await request(gatewayApp)
-      .get(`/network/status`)
+      .get(`/chain/status`)
       .query({
         chain: 'cronos',
         network: 'testnet',
@@ -217,7 +217,7 @@ describe('GET /network/status', () => {
     });
 
     await request(gatewayApp)
-      .get(`/network/status`)
+      .get(`/chain/status`)
       .expect('Content-Type', /json/)
       .expect(200)
       .expect((res) => expect(Array.isArray(res.body)).toEqual(true));
@@ -225,7 +225,7 @@ describe('GET /network/status', () => {
 
   it('should return 500 when asking for invalid network', async () => {
     await request(gatewayApp)
-      .get(`/network/status`)
+      .get(`/chain/status`)
       .query({
         chain: 'hello',
       })
@@ -236,16 +236,16 @@ describe('GET /network/status', () => {
 describe('GET /network/config', () => {
   it('should return 200 when asking for config', async () => {
     request(gatewayApp)
-      .get(`/network/config`)
+      .get(`/chain/config`)
       .expect('Content-Type', /json/)
       .expect(200);
   });
 });
 
-describe('GET /network/tokens', () => {
+describe('GET /chain/tokens', () => {
   it('should return 200 when retrieving ethereum-goerli tokens, tokenSymbols parameter not provided', async () => {
     await request(gatewayApp)
-      .get(`/network/tokens`)
+      .get(`/chain/tokens`)
       .query({
         chain: 'ethereum',
         network: 'goerli',
@@ -256,7 +256,7 @@ describe('GET /network/tokens', () => {
 
   it('should return 200 when retrieving ethereum-goerli tokens, s parameter provided', async () => {
     await request(gatewayApp)
-      .get(`/network/tokens`)
+      .get(`/chain/tokens`)
       .query({
         chain: 'ethereum',
         network: 'goerli',
@@ -268,7 +268,7 @@ describe('GET /network/tokens', () => {
 
   it('should return 200 when retrieving ethereum-goerli tokens, tokenSymbols parameter not provided', async () => {
     await request(gatewayApp)
-      .get(`/network/tokens`)
+      .get(`/chain/tokens`)
       .query({
         chain: 'ethereum',
         network: 'goerli',
@@ -279,7 +279,7 @@ describe('GET /network/tokens', () => {
 
   it('should return 200 when retrieving ethereum-goerli tokens, tokenSymbols parameter provided', async () => {
     await request(gatewayApp)
-      .get(`/network/tokens`)
+      .get(`/chain/tokens`)
       .query({
         chain: 'ethereum',
         network: 'goerli',
@@ -291,7 +291,7 @@ describe('GET /network/tokens', () => {
 
   it('should return 200 when retrieving polygon-mumbai tokens, tokenSymbols parameter not provided', async () => {
     await request(gatewayApp)
-      .get(`/network/tokens`)
+      .get(`/chain/tokens`)
       .query({
         chain: 'polygon',
         network: 'mumbai',
@@ -302,7 +302,7 @@ describe('GET /network/tokens', () => {
 
   it('should return 200 when retrieving polygon-mumbai tokens, tokenSymbols parameter provided', async () => {
     await request(gatewayApp)
-      .get(`/network/tokens`)
+      .get(`/chain/tokens`)
       .query({
         chain: 'polygon',
         network: 'mumbai',
@@ -314,7 +314,7 @@ describe('GET /network/tokens', () => {
 
   it('should return 200 when retrieving cronos-testnet tokens, tokenSymbols parameter not provided', async () => {
     await request(gatewayApp)
-      .get(`/network/tokens`)
+      .get(`/chain/tokens`)
       .query({
         chain: 'cronos',
         network: 'testnet',
@@ -325,7 +325,7 @@ describe('GET /network/tokens', () => {
 
   it('should return 200 when retrieving cronos-testnet tokens, tokenSymbols parameter provided', async () => {
     await request(gatewayApp)
-      .get(`/network/tokens`)
+      .get(`/chain/tokens`)
       .query({
         chain: 'cronos',
         network: 'testnet',
@@ -337,7 +337,7 @@ describe('GET /network/tokens', () => {
 
   it('should return 500 when retrieving tokens for invalid chain', async () => {
     await request(gatewayApp)
-      .get(`/network/tokens`)
+      .get(`/chain/tokens`)
       .query({
         chain: 'unknown',
         network: 'goerli',

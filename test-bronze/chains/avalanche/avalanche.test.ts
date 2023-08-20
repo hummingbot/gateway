@@ -1,7 +1,7 @@
 jest.useFakeTimers();
-import { patch, unpatch } from '../../services/patch';
+import { patch, unpatch } from '../../../test/services/patch';
 import { Avalanche } from '../../../src/chains/avalanche/avalanche';
-import { patchEVMNonceManager } from '../../evm.nonce.mock';
+import { patchEVMNonceManager } from '../../../test/evm.nonce.mock';
 let avalanche: Avalanche;
 
 // Fake data for for testing

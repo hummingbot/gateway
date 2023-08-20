@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { patch, unpatch } from '../../services/patch';
+import { patch, unpatch } from '../../../test/services/patch';
 import { gatewayApp } from '../../../src/app';
 import {
   NETWORK_ERROR_CODE,
@@ -7,11 +7,11 @@ import {
   UNKNOWN_ERROR_ERROR_CODE,
   UNKNOWN_ERROR_MESSAGE,
 } from '../../../src/services/error-handler';
-import * as transactionSuccesful from '../ethereum/fixtures/transaction-succesful.json';
-import * as transactionSuccesfulReceipt from '../ethereum//fixtures/transaction-succesful-receipt.json';
-import * as transactionOutOfGas from '../ethereum//fixtures/transaction-out-of-gas.json';
+import * as transactionSuccesful from '../../../test/chains/ethereum/fixtures/transaction-succesful.json';
+import * as transactionSuccesfulReceipt from '../../../test/chains/ethereum//fixtures/transaction-succesful-receipt.json';
+import * as transactionOutOfGas from '../../../test/chains/ethereum//fixtures/transaction-out-of-gas.json';
 import { BinanceSmartChain } from '../../../src/chains/binance-smart-chain/binance-smart-chain';
-import { patchEVMNonceManager } from '../../evm.nonce.mock';
+import { patchEVMNonceManager } from '../../../test/evm.nonce.mock';
 
 let bsc: BinanceSmartChain;
 
@@ -99,7 +99,7 @@ const patchGetERC20Balance = () => {
   patch(bsc, 'getERC20Balance', () => ({ value: 1, decimals: 3 }));
 };
 
-describe('POST /evm/approve', () => {
+describe('POST /chain/approve', () => {
   it('should return 200', async () => {
     patchGetWallet();
     bsc.getContract = jest.fn().mockReturnValue({
@@ -110,7 +110,7 @@ describe('POST /evm/approve', () => {
     patchApproveERC20();
 
     await request(gatewayApp)
-      .post(`/evm/approve`)
+      .post(`/chain/approve`)
       .send({
         chain: 'binance-smart-chain',
         network: 'testnet',
@@ -128,7 +128,7 @@ describe('POST /evm/approve', () => {
 
   it('should return 404 when parameters are invalid', async () => {
     await request(gatewayApp)
-      .post(`/evm/approve`)
+      .post(`/chain/approve`)
       .send({
         chain: 'binance-smart-chain',
         network: 'testnet',
@@ -141,13 +141,13 @@ describe('POST /evm/approve', () => {
   });
 });
 
-describe('POST /evm/nonce', () => {
+describe('POST /chain/nonce', () => {
   it('should return 200', async () => {
     patchGetWallet();
     patchGetNonce();
 
     await request(gatewayApp)
-      .post(`/evm/nonce`)
+      .post(`/chain/nonce`)
       .send({
         chain: 'binance-smart-chain',
         network: 'testnet',
@@ -160,7 +160,7 @@ describe('POST /evm/nonce', () => {
   });
 });
 
-describe('POST /evm/allowances', () => {
+describe('POST /chain/allowances', () => {
   it('should return 200 asking for allowances', async () => {
     patchGetWallet();
     patchGetTokenBySymbol();
@@ -172,7 +172,7 @@ describe('POST /evm/allowances', () => {
     patchGetERC20Allowance();
 
     await request(gatewayApp)
-      .post(`/evm/allowances`)
+      .post(`/chain/allowances`)
       .send({
         chain: 'binance-smart-chain',
         network: 'testnet',
@@ -189,7 +189,7 @@ describe('POST /evm/allowances', () => {
   });
 });
 
-describe('POST /network/balances', () => {
+describe('POST /chain/balances', () => {
   it('should return 200 asking for supported tokens', async () => {
     patchGetWallet();
     patchGetTokenBySymbol();
@@ -200,7 +200,7 @@ describe('POST /network/balances', () => {
     });
 
     await request(gatewayApp)
-      .post(`/network/balances`)
+      .post(`/chain/balances`)
       .send({
         chain: 'binance-smart-chain',
         network: 'testnet',
@@ -215,7 +215,7 @@ describe('POST /network/balances', () => {
   });
 });
 
-describe('POST /evm/cancel', () => {
+describe('POST /chain/cancel', () => {
   it('should return 200', async () => {
     // override getWallet (network call)
     bsc.getWallet = jest.fn().mockReturnValue({
@@ -227,7 +227,7 @@ describe('POST /evm/cancel', () => {
     });
 
     await request(gatewayApp)
-      .post(`/evm/cancel`)
+      .post(`/chain/cancel`)
       .send({
         chain: 'binance-smart-chain',
         network: 'testnet',
@@ -246,7 +246,7 @@ describe('POST /evm/cancel', () => {
 
   it('should return 404 when parameters are invalid', async () => {
     await request(gatewayApp)
-      .post(`/evm/cancel`)
+      .post(`/chain/cancel`)
       .send({
         chain: 'binance-smart-chain',
         network: 'testnet',
@@ -257,7 +257,7 @@ describe('POST /evm/cancel', () => {
   });
 });
 
-describe('POST /network/poll', () => {
+describe('POST /chain/poll', () => {
   it('should get a NETWORK_ERROR_CODE when the network is unavailable', async () => {
     patch(bsc, 'getCurrentBlockNumber', () => {
       const error: any = new Error('something went wrong');
@@ -265,7 +265,7 @@ describe('POST /network/poll', () => {
       throw error;
     });
 
-    const res = await request(gatewayApp).post('/network/poll').send({
+    const res = await request(gatewayApp).post('/chain/poll').send({
       chain: 'binance-smart-chain',
       network: 'testnet',
       txHash:
@@ -282,7 +282,7 @@ describe('POST /network/poll', () => {
       throw new Error();
     });
 
-    const res = await request(gatewayApp).post('/network/poll').send({
+    const res = await request(gatewayApp).post('/chain/poll').send({
       chain: 'binance-smart-chain',
       network: 'testnet',
       txHash:
@@ -297,7 +297,7 @@ describe('POST /network/poll', () => {
     patch(bsc, 'getCurrentBlockNumber', () => 1);
     patch(bsc, 'getTransaction', () => transactionOutOfGas);
     patch(bsc, 'getTransactionReceipt', () => null);
-    const res = await request(gatewayApp).post('/network/poll').send({
+    const res = await request(gatewayApp).post('/chain/poll').send({
       chain: 'binance-smart-chain',
       network: 'testnet',
       txHash:
@@ -312,7 +312,7 @@ describe('POST /network/poll', () => {
     patch(bsc, 'getCurrentBlockNumber', () => 1);
     patch(bsc, 'getTransaction', () => null);
     patch(bsc, 'getTransactionReceipt', () => null);
-    const res = await request(gatewayApp).post('/network/poll').send({
+    const res = await request(gatewayApp).post('/chain/poll').send({
       chain: 'binance-smart-chain',
       network: 'testnet',
       txHash:
@@ -327,7 +327,7 @@ describe('POST /network/poll', () => {
     patch(bsc, 'getCurrentBlockNumber', () => 1);
     patch(bsc, 'getTransaction', () => transactionSuccesful);
     patch(bsc, 'getTransactionReceipt', () => transactionSuccesfulReceipt);
-    const res = await request(gatewayApp).post('/network/poll').send({
+    const res = await request(gatewayApp).post('/chain/poll').send({
       chain: 'binance-smart-chain',
       network: 'testnet',
       txHash:
@@ -344,7 +344,7 @@ describe('POST /network/poll', () => {
       error.code = -32006;
       throw error;
     });
-    const res = await request(gatewayApp).post('/network/poll').send({
+    const res = await request(gatewayApp).post('/chain/poll').send({
       chain: 'binance-smart-chain',
       network: 'testnet',
       txHash:

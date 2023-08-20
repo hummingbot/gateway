@@ -6,7 +6,7 @@ import {
   setUpTempDir,
   tearDownTempDir,
   unpatch,
-} from '../../services/patch';
+} from '../../../test/services/patch';
 import { getAlgorandConfig } from '../../../src/chains/algorand/algorand.config';
 import {
   NETWORK_ERROR_CODE,
@@ -100,7 +100,7 @@ const patchGetAssetData = () => {
       {
         id: NATIVE_TOKEN_ID.toString(),
         is_liquidity_token: false,
-        name: 'Algorand',
+        name: CHAIN_NAME,
         unit_name: NATIVE_TOKEN,
         decimals: ALGO_DECIMALS,
         total_amount: null,
@@ -136,10 +136,10 @@ const patchGetAssetData = () => {
   });
 };
 
-describe('GET /network/config', () => {
+describe('GET /chain/config', () => {
   it('should return 200 and the result dictionary should include the algorand config', async () => {
     await request(gatewayApp)
-      .get(`/network/config`)
+      .get(`/chain/config`)
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(200)
@@ -149,10 +149,10 @@ describe('GET /network/config', () => {
   });
 });
 
-describe('GET /network/status', () => {
+describe('GET /chain/status', () => {
   it('should return 200 with network info when chain provided', async () => {
     await request(gatewayApp)
-      .get(`/network/status`)
+      .get(`/chain/status`)
       .query({ chain: CHAIN_NAME, network: NETWORK })
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
@@ -166,7 +166,7 @@ describe('GET /network/status', () => {
 
   it('should return 200 with a status list, if an instance is already instantiated', async () => {
     await request(gatewayApp)
-      .get(`/network/status`)
+      .get(`/chain/status`)
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(200)
@@ -183,7 +183,7 @@ describe('GET /network/status', () => {
     patchCurrentBlockNumber(false, mainnetAlgorandChain, mainnetBlockNumber);
 
     await request(gatewayApp)
-      .get(`/network/status`)
+      .get(`/chain/status`)
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(200)
@@ -202,7 +202,7 @@ describe('GET /network/status', () => {
   });
 });
 
-describe('POST /algorand/poll', () => {
+describe('POST /chain/poll', () => {
   const expectedTransactionHash =
     '0x2faeb1aa55f96c1db55f643a8cf19b0f76bf091d0b7d1b068d2e829414576362'; // noqa: mock
   const expectedTransactionFee = 1000;
@@ -216,8 +216,9 @@ describe('POST /algorand/poll', () => {
     });
 
     await request(gatewayApp)
-      .post('/algorand/poll')
+      .post('/chain/poll')
       .send({
+        chain: CHAIN_NAME,
         network: NETWORK,
         txHash: expectedTransactionHash,
       })
@@ -234,8 +235,9 @@ describe('POST /algorand/poll', () => {
     });
 
     await request(gatewayApp)
-      .post('/algorand/poll')
+      .post('/chain/poll')
       .send({
+        chain: CHAIN_NAME,
         network: NETWORK,
         txHash: expectedTransactionHash,
       })
@@ -260,8 +262,9 @@ describe('POST /algorand/poll', () => {
     });
 
     await request(gatewayApp)
-      .post('/algorand/poll')
+      .post('/chain/poll')
       .send({
+        chain: CHAIN_NAME,
         network: NETWORK,
         txHash: expectedTransactionHash,
       })
@@ -290,8 +293,9 @@ describe('POST /algorand/poll', () => {
     });
 
     await request(gatewayApp)
-      .post('/algorand/poll')
+      .post('/chain/poll')
       .send({
+        chain: CHAIN_NAME,
         network: NETWORK,
         txHash: expectedTransactionHash,
       })
@@ -329,8 +333,9 @@ describe('POST /algorand/poll', () => {
     });
 
     await request(gatewayApp)
-      .post('/algorand/poll')
+      .post('/chain/poll')
       .send({
+        chain: CHAIN_NAME,
         network: NETWORK,
         txHash: expectedTransactionHash,
       })
@@ -396,7 +401,7 @@ describe('test managing Algorand wallets', () => {
   });
 });
 
-describe('POST /algorand/balances', () => {
+describe('POST /chain/balances', () => {
   const expectedBalance = '9';
 
   it('should return 200 with correct balance for native token', async () => {
@@ -418,7 +423,7 @@ describe('POST /algorand/balances', () => {
     });
 
     await request(gatewayApp)
-      .post(`/algorand/balances`)
+      .post(`/chain/balances`)
       .send({
         chain: CHAIN_NAME,
         network: NETWORK,
@@ -458,7 +463,7 @@ describe('POST /algorand/balances', () => {
     });
 
     await request(gatewayApp)
-      .post(`/algorand/balances`)
+      .post(`/chain/balances`)
       .send({
         chain: CHAIN_NAME,
         network: NETWORK,
@@ -490,7 +495,7 @@ describe('POST /algorand/balances', () => {
     });
 
     await request(gatewayApp)
-      .post(`/algorand/balances`)
+      .post(`/chain/balances`)
       .send({
         chain: CHAIN_NAME,
         network: NETWORK,
@@ -510,7 +515,7 @@ describe('POST /algorand/balances', () => {
 
   it('should return 404 when parameters are invalid/incomplete', async () => {
     await request(gatewayApp)
-      .post(`/algorand/balances`)
+      .post(`/chain/balances`)
       .send({
         chain: CHAIN_NAME,
         network: NETWORK,
@@ -519,10 +524,10 @@ describe('POST /algorand/balances', () => {
   });
 });
 
-describe('GET /algorand/assets', () => {
+describe('GET /chain/tokens', () => {
   it('should return 200 with all assets if assetSymbols not provided', async () => {
     await request(gatewayApp)
-      .get(`/algorand/assets`)
+      .get(`/chain/tokens`)
       .query({
         network: NETWORK,
       })
@@ -548,7 +553,7 @@ describe('GET /algorand/assets', () => {
 
   it('should return 200 with the requested asset', async () => {
     await request(gatewayApp)
-      .get(`/algorand/assets`)
+      .get(`/chain/tokens`)
       .query({
         network: NETWORK,
         assetSymbols: [USDC_TOKEN],
@@ -569,8 +574,8 @@ describe('GET /algorand/assets', () => {
   });
 });
 
-describe('POST /algorand/opt-in', () => {
-  it('should return 200 with the opt-in response', async () => {
+describe('POST /chain/approve', () => {
+  it('should return 200 with the approve response', async () => {
     const expectedTransactionId =
       'RVZ24ML6UE3OFXFN5ID3L65EHSRAYYX3FCCTKQP3P3P5K73Y65CQ';
 
@@ -606,7 +611,7 @@ describe('POST /algorand/opt-in', () => {
     });
 
     await request(gatewayApp)
-      .post('/algorand/opt-in')
+      .post('/chain/approve')
       .send({
         network: NETWORK,
         address: ACCOUNT_ADDRESS,
