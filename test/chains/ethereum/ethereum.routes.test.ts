@@ -118,7 +118,7 @@ const patchApproveERC20 = (tx_type?: string) => {
   });
 };
 
-describe('POST /evm/allowances', () => {
+describe('POST /chain/allowances', () => {
   it('should return 200 asking for allowances', async () => {
     patchGetWallet();
     patchGetTokenBySymbol();
@@ -130,7 +130,7 @@ describe('POST /evm/allowances', () => {
     patchGetERC20Allowance();
 
     await request(gatewayApp)
-      .post(`/evm/allowances`)
+      .post(`/chain/allowances`)
       .send({
         chain: 'ethereum',
         network: 'goerli',
@@ -148,7 +148,7 @@ describe('POST /evm/allowances', () => {
 
   it('should return 404 when parameters are invalid', async () => {
     await request(gatewayApp)
-      .post(`/evm/allowances`)
+      .post(`/chain/allowances`)
       .send({
         chain: 'ethereum',
         network: 'goerli',
@@ -160,7 +160,7 @@ describe('POST /evm/allowances', () => {
   });
 });
 
-describe('POST /network/balances', () => {
+describe('POST /chain/balances', () => {
   it('should return 200 asking for supported tokens', async () => {
     patchGetWallet();
     patchGetTokenBySymbol();
@@ -171,7 +171,7 @@ describe('POST /network/balances', () => {
     });
 
     await request(gatewayApp)
-      .post(`/network/balances`)
+      .post(`/chain/balances`)
       .send({
         chain: 'ethereum',
         network: 'goerli',
@@ -195,7 +195,7 @@ describe('POST /network/balances', () => {
     });
 
     await request(gatewayApp)
-      .post(`/network/balances`)
+      .post(`/chain/balances`)
       .send({
         chain: 'ethereum',
         network: 'goerli',
@@ -219,7 +219,7 @@ describe('POST /network/balances', () => {
     });
 
     await request(gatewayApp)
-      .post(`/network/balances`)
+      .post(`/chain/balances`)
       .send({
         chain: 'ethereum',
         network: 'goerli',
@@ -233,7 +233,7 @@ describe('POST /network/balances', () => {
 
   it('should return 404 when parameters are invalid', async () => {
     await request(gatewayApp)
-      .post(`/network/balances`)
+      .post(`/chain/balances`)
       .send({
         chain: 'ethereum',
         network: 'goerli',
@@ -243,13 +243,13 @@ describe('POST /network/balances', () => {
   });
 });
 
-describe('POST /evm/nonce', () => {
+describe('POST /chain/nonce', () => {
   it('should return 200', async () => {
     patchGetWallet();
     patchGetNonce();
 
     await request(gatewayApp)
-      .post(`/evm/nonce`)
+      .post(`/chain/nonce`)
       .send({
         chain: 'ethereum',
         network: 'goerli',
@@ -263,7 +263,7 @@ describe('POST /evm/nonce', () => {
 
   it('should return 404 when parameters are invalid', async () => {
     await request(gatewayApp)
-      .post(`/evm/nonce`)
+      .post(`/chain/nonce`)
       .send({
         chain: 'ethereum',
         network: 'goerli',
@@ -273,13 +273,13 @@ describe('POST /evm/nonce', () => {
   });
 });
 
-describe('POST /evm/nextNonce', () => {
+describe('POST /chain/nextNonce', () => {
   it('should return 200', async () => {
     patchGetWallet();
     patchGetNextNonce();
 
     await request(gatewayApp)
-      .post(`/evm/nextNonce`)
+      .post(`/chain/nextNonce`)
       .send({
         chain: 'ethereum',
         network: 'goerli',
@@ -293,7 +293,7 @@ describe('POST /evm/nextNonce', () => {
 
   it('should return 404 when parameters are invalid', async () => {
     await request(gatewayApp)
-      .post(`/evm/nextNonce`)
+      .post(`/chain/nextNonce`)
       .send({
         chain: 'ethereum',
         network: 'goerli',
@@ -303,7 +303,7 @@ describe('POST /evm/nextNonce', () => {
   });
 });
 
-describe('POST /evm/approve', () => {
+describe('POST /chain/approve', () => {
   it('approve without nonce parameter should return 200', async () => {
     patchGetWallet();
     eth.getContract = jest.fn().mockReturnValue({
@@ -314,7 +314,7 @@ describe('POST /evm/approve', () => {
     patchApproveERC20();
 
     await request(gatewayApp)
-      .post(`/evm/approve`)
+      .post(`/chain/approve`)
       .send({
         chain: 'ethereum',
         network: 'goerli',
@@ -334,7 +334,7 @@ describe('POST /evm/approve', () => {
     patchApproveERC20();
 
     await request(gatewayApp)
-      .post(`/evm/approve`)
+      .post(`/chain/approve`)
       .send({
         chain: 'ethereum',
         network: 'goerli',
@@ -358,7 +358,7 @@ describe('POST /evm/approve', () => {
     patchApproveERC20();
 
     await request(gatewayApp)
-      .post(`/evm/approve`)
+      .post(`/chain/approve`)
       .send({
         chain: 'ethereum',
         network: 'goerli',
@@ -384,7 +384,7 @@ describe('POST /evm/approve', () => {
     patchApproveERC20();
 
     await request(gatewayApp)
-      .post(`/evm/approve`)
+      .post(`/chain/approve`)
       .send({
         chain: 'ethereum',
         network: 'goerli',
@@ -398,7 +398,7 @@ describe('POST /evm/approve', () => {
 
   it('should return 404 when parameters are invalid', async () => {
     await request(gatewayApp)
-      .post(`/evm/approve`)
+      .post(`/chain/approve`)
       .send({
         chain: 'ethereum',
         network: 'goerli',
@@ -411,7 +411,7 @@ describe('POST /evm/approve', () => {
   });
 });
 
-describe('POST /evm/cancel', () => {
+describe('POST /chain/cancel', () => {
   it('should return 200', async () => {
     // override getWallet (network call)
     eth.getWallet = jest.fn().mockReturnValue({
@@ -423,7 +423,7 @@ describe('POST /evm/cancel', () => {
     });
 
     await request(gatewayApp)
-      .post(`/evm/cancel`)
+      .post(`/chain/cancel`)
       .send({
         chain: 'ethereum',
         network: 'goerli',
@@ -442,7 +442,7 @@ describe('POST /evm/cancel', () => {
 
   it('should return 404 when parameters are invalid', async () => {
     await request(gatewayApp)
-      .post(`/evm/cancel`)
+      .post(`/chain/cancel`)
       .send({
         chain: 'ethereum',
         network: 'goerli',
@@ -453,7 +453,7 @@ describe('POST /evm/cancel', () => {
   });
 });
 
-describe('POST /network/poll', () => {
+describe('POST /chain/poll', () => {
   it('should get a NETWORK_ERROR_CODE when the network is unavailable', async () => {
     patch(eth, 'getCurrentBlockNumber', () => {
       const error: any = new Error('something went wrong');
@@ -461,7 +461,7 @@ describe('POST /network/poll', () => {
       throw error;
     });
 
-    const res = await request(gatewayApp).post('/network/poll').send({
+    const res = await request(gatewayApp).post('/chain/poll').send({
       chain: 'ethereum',
       network: 'goerli',
       txHash:
@@ -478,7 +478,7 @@ describe('POST /network/poll', () => {
       throw new Error();
     });
 
-    const res = await request(gatewayApp).post('/network/poll').send({
+    const res = await request(gatewayApp).post('/chain/poll').send({
       txHash:
         '0x2faeb1aa55f96c1db55f643a8cf19b0f76bf091d0b7d1b068d2e829414576362', // noqa: mock
     });
@@ -491,7 +491,7 @@ describe('POST /network/poll', () => {
     patch(eth, 'getCurrentBlockNumber', () => 1);
     patch(eth, 'getTransaction', () => transactionOutOfGas);
     patch(eth, 'getTransactionReceipt', () => null);
-    const res = await request(gatewayApp).post('/network/poll').send({
+    const res = await request(gatewayApp).post('/chain/poll').send({
       chain: 'ethereum',
       network: 'goerli',
       txHash:
@@ -506,7 +506,7 @@ describe('POST /network/poll', () => {
     patch(eth, 'getCurrentBlockNumber', () => 1);
     patch(eth, 'getTransaction', () => null);
     patch(eth, 'getTransactionReceipt', () => null);
-    const res = await request(gatewayApp).post('/network/poll').send({
+    const res = await request(gatewayApp).post('/chain/poll').send({
       chain: 'ethereum',
       network: 'goerli',
       txHash:
@@ -521,7 +521,7 @@ describe('POST /network/poll', () => {
     patch(eth, 'getCurrentBlockNumber', () => 1);
     patch(eth, 'getTransaction', () => transactionSuccesful);
     patch(eth, 'getTransactionReceipt', () => transactionSuccesfulReceipt);
-    const res = await request(gatewayApp).post('/network/poll').send({
+    const res = await request(gatewayApp).post('/chain/poll').send({
       chain: 'ethereum',
       network: 'goerli',
       txHash:
@@ -546,7 +546,7 @@ describe('POST /network/poll', () => {
       };
       throw error;
     });
-    const res = await request(gatewayApp).post('/network/poll').send({
+    const res = await request(gatewayApp).post('/chain/poll').send({
       chain: 'ethereum',
       network: 'goerli',
       txHash:
@@ -563,7 +563,7 @@ describe('POST /network/poll', () => {
       error.code = -32006;
       throw error;
     });
-    const res = await request(gatewayApp).post('/network/poll').send({
+    const res = await request(gatewayApp).post('/chain/poll').send({
       chain: 'ethereum',
       network: 'goerli',
       txHash:
@@ -594,7 +594,7 @@ describe('overwrite existing transaction', () => {
 
     patchApproveERC20('overwritten_tx');
     const tx_1 = await request(gatewayApp)
-      .post(`/evm/approve`)
+      .post(`/chain/approve`)
       .send(requestParam)
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
@@ -603,7 +603,7 @@ describe('overwrite existing transaction', () => {
     patchApproveERC20(); // patch to return different tx_hash
     requestParam.maxPriorityFeePerGas = '8000000000'; // we only increase maxPriorityFeePerGas
     const tx_2 = await request(gatewayApp)
-      .post(`/evm/approve`)
+      .post(`/chain/approve`)
       .send(requestParam)
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
@@ -613,7 +613,7 @@ describe('overwrite existing transaction', () => {
     patch(eth, 'getCurrentBlockNumber', () => 1);
     patch(eth, 'getTransaction', () => null);
     patch(eth, 'getTransactionReceipt', () => null);
-    const res_1 = await request(gatewayApp).post('/network/poll').send({
+    const res_1 = await request(gatewayApp).post('/chain/poll').send({
       chain: 'ethereum',
       network: 'goerli',
       txHash: tx_1.body.approval.hash,
@@ -625,7 +625,7 @@ describe('overwrite existing transaction', () => {
     patch(eth, 'getCurrentBlockNumber', () => 1);
     patch(eth, 'getTransaction', () => transactionSuccesful);
     patch(eth, 'getTransactionReceipt', () => transactionSuccesfulReceipt);
-    const res_2 = await request(gatewayApp).post('/network/poll').send({
+    const res_2 = await request(gatewayApp).post('/chain/poll').send({
       chain: 'ethereum',
       network: 'goerli',
       txHash: tx_2.body.approval.hash,
