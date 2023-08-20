@@ -94,6 +94,7 @@ import {
 import { PerpPosition } from '../connectors/perp/perp';
 import { XdcBase } from '../chains/xdc/xdc.base';
 import { NearBase } from '../chains/near/near.base';
+import { TezosBase } from '../chains/tezos/tezos.base';
 import { Account, Contract as NearContract } from 'near-api-js';
 import { EstimateSwapView, TokenMetadata } from 'coinalpha-ref-sdk';
 import { FinalExecutionOutcome } from 'near-api-js/lib/providers';
@@ -714,6 +715,13 @@ export interface Cosmosish extends CosmosBase {
   chain: string;
 }
 
+export interface Tezosish extends TezosBase {
+  gasPrice: number;
+  gasLimitTransaction: number;
+  nativeTokenSymbol: string;
+  chain: string;
+}
+
 export interface NetworkSelectionRequest {
   chain: string; //the target chain (e.g. ethereum, avalanche, or harmony)
   network: string; // the target network of the chain (e.g. mainnet)
@@ -747,11 +755,12 @@ export interface CustomTransactionReceipt
 export interface CustomTransaction
   extends Omit<
     Transaction,
-    'maxPriorityFeePerGas' | 'maxFeePerGas' | 'gasLimit' | 'value'
+    'maxPriorityFeePerGas' | 'maxFeePerGas' | 'gasLimit' | 'value' | 'chainId'
   > {
   maxPriorityFeePerGas: string | null;
   maxFeePerGas: string | null;
   gasLimit: string | null;
+  chainId: number | string;
   value: string;
 }
 

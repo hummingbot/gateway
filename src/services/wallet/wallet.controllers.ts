@@ -2,6 +2,7 @@ import fse from 'fs-extra';
 import { Xdc } from '../../chains/xdc/xdc';
 import { Cosmos } from '../../chains/cosmos/cosmos';
 import { Injective } from '../../chains/injective/injective';
+import { Tezos } from '../../chains/tezos/tezos';
 
 import {
   AddWalletRequest,
@@ -30,7 +31,7 @@ import {
   getInitializedChain,
   UnsupportedChainException,
 } from '../connection-manager';
-import { Ethereumish } from '../common-interfaces';
+import { Ethereumish, Tezosish } from '../common-interfaces';
 import { Algorand } from '../../chains/algorand/algorand';
 
 export function convertXdcAddressToEthAddress(publicKey: string): string {
@@ -133,6 +134,13 @@ export async function addWallet(
       } else {
         throw new Error('Injective wallet requires a subaccount id');
       }
+    } else if (connection instanceof Tezos) {
+      const tezosWallet = await connection.getWalletFromPrivateKey(req.privateKey);
+      address = await tezosWallet.signer.publicKeyHash();
+      encryptedPrivateKey = connection.encrypt(
+        req.privateKey,
+        passphrase
+      );
     }
 
     if (address === undefined || encryptedPrivateKey === undefined) {
@@ -159,9 +167,15 @@ export async function removeWallet(req: RemoveWalletRequest): Promise<void> {
 export async function signMessage(
   req: WalletSignRequest
 ): Promise<WalletSignResponse> {
-  const chain: Ethereumish = await getInitializedChain(req.chain, req.network);
-  const wallet = await chain.getWallet(req.address);
-  return { signature: await wallet.signMessage(req.message) };
+  if (req.chain === 'tezos') {
+    const chain: Tezosish = await getInitializedChain(req.chain, req.network);
+    const wallet = await chain.getWallet(req.address);
+    return { signature: (await wallet.signer.sign("0x03" + req.message)).sbytes.slice(4) };
+  } else {
+    const chain: Ethereumish = await getInitializedChain(req.chain, req.network);
+    const wallet = await chain.getWallet(req.address);
+    return { signature: await wallet.signMessage(req.message) };
+  }
 }
 
 export async function getDirectories(source: string): Promise<string[]> {
