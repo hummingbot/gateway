@@ -1,30 +1,21 @@
 import { buildConfig, NetworkConfig } from '../../network/network.utils';
-import { ConfigManagerV2 } from '../../services/config-manager-v2';
 
-export namespace CurveSwapConfig {
+export namespace CurveConfig {
   export const config: NetworkConfig = buildConfig(
-    'curveswap',
+    'curve',
     ['AMM'],
     [
       {
+        chain: 'avalanche',
+        networks: ['avalanche'],
+      },
+      {
         chain: 'ethereum',
-        networks: Object.keys(
-          ConfigManagerV2.getInstance().get('curveswap.contractAddresses')
-        ).filter((network) =>
-          Object.keys(
-            ConfigManagerV2.getInstance().get('ethereum.networks')
-          ).includes(network)
-        ),
+        networks: ['mainnet', 'arbitrum_one', 'optimism'],
       },
       {
         chain: 'polygon',
-        networks: Object.keys(
-          ConfigManagerV2.getInstance().get('curveswap.contractAddresses')
-        ).filter((network) =>
-          Object.keys(
-            ConfigManagerV2.getInstance().get('polygon.networks')
-          ).includes(network)
-        ),
+        networks: ['mainnet'],
       },
     ],
     'EVM'

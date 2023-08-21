@@ -1,11 +1,4 @@
-import {
-  BigNumber,
-  ContractInterface,
-  ContractTransaction,
-  Transaction,
-  Wallet,
-} from 'ethers';
-import { ExpectedTrade, Uniswapish } from '../../services/common-interfaces';
+import { BigNumber, ContractTransaction, Transaction, Wallet } from 'ethers';
 import { percentRegexp } from '../../services/config-manager-v2';
 import {
   InitializationError,
@@ -15,7 +8,7 @@ import {
 } from '../../services/error-handler';
 import { logger } from '../../services/logger';
 import { isFractionString } from '../../services/validators';
-import { CurveSwapConfig } from './curveswap.config';
+import { CurveConfig } from './curveswap.config';
 import { getAddress } from 'ethers/lib/utils';
 import { Polygon } from '../../chains/polygon/polygon';
 import { Ethereum } from '../../chains/ethereum/ethereum';
@@ -23,6 +16,7 @@ import curve from 'curvefi';
 import { Token } from '@uniswap/sdk/dist/entities';
 import { IRoute } from 'curvefi/lib/interfaces';
 import { EVMTxBroadcaster } from '../../chains/ethereum/evm.broadcaster';
+import { TransactionRequest } from 'viem';
 
 export type CurveTrade = {
   route: IRoute;
@@ -31,24 +25,26 @@ export type CurveTrade = {
   amount: string;
 };
 
-export class CurveSwap implements Uniswapish {
+export class CurveSwap {
   private static _instances: { [name: string]: CurveSwap };
   private _chain: Ethereum | Polygon;
-  private _config: typeof CurveSwapConfig.config;
+  private _config: typeof CurveConfig.config;
   private tokenList: Record<string, Token> = {};
   private _ready: boolean = false;
   public gasLimitEstimate: any;
   public router: any;
+  public curve: typeof curve;
   public routerAbi: any[] = [];
   public ttl: any;
 
   private constructor(chain: string, network: string) {
-    this._config = CurveSwapConfig.config;
+    this._config = CurveConfig.config;
     if (chain === 'ethereum') {
       this._chain = Ethereum.getInstance(network);
     } else {
       this._chain = Polygon.getInstance(network);
     }
+    this.curve = curve;
   }
 
   public static getInstance(chain: string, network: string): CurveSwap {
@@ -82,7 +78,6 @@ export class CurveSwap implements Uniswapish {
       { url: this._chain.rpcUrl },
       { chainId: this._chain.chainId }
     );
-
     this._ready = true;
   }
 
@@ -149,7 +144,7 @@ export class CurveSwap implements Uniswapish {
     baseToken: Token,
     amount: BigNumber,
     _allowedSlippage?: string
-  ): Promise<ExpectedTrade> {
+  ) {
     logger.info(
       `Fetching pair data for ${quoteToken.address}-${baseToken.address}.`
     );
@@ -191,7 +186,7 @@ export class CurveSwap implements Uniswapish {
     quoteToken: Token,
     amount: BigNumber,
     _allowedSlippage?: string
-  ): Promise<ExpectedTrade> {
+  ) {
     logger.info(
       `Fetching pair data for ${quoteToken.address}-${baseToken.address}.`
     );
@@ -223,9 +218,9 @@ export class CurveSwap implements Uniswapish {
    * @param wallet Wallet
    * @param trade Expected trade
    * @param gasPrice Base gas price, for pre-EIP1559 transactions
-   * @param pancakeswapRouter Router smart contract address
-   * @param ttl How long the swap is valid before expiry, in seconds
-   * @param abi Router contract ABI
+   * @param _router Router smart contract address
+   * @param _ttl How long the swap is valid before expiry, in seconds
+   * @param _abi Router contract ABI
    * @param gasLimit Gas limit
    * @param nonce (Optional) EVM transaction nonce
    * @param maxFeePerGas (Optional) Maximum total fee per gas you want to pay
@@ -236,26 +231,24 @@ export class CurveSwap implements Uniswapish {
     wallet: Wallet,
     trade: CurveTrade,
     gasPrice: number,
-    _router: string,
-    _ttl: number,
-    _abi: ContractInterface,
     gasLimit: number,
     nonce?: number,
     maxFeePerGas?: BigNumber,
     maxPriorityFeePerGas?: BigNumber,
     allowedSlippage?: string
   ): Promise<Transaction> {
-    const result = await curve.router.modifiedSwap(
-      trade.inputCoin,
-      trade.outputCoin,
-      trade.amount,
-      allowedSlippage ? this.getAllowedSlippage(allowedSlippage) : 0
-    );
+    const { contract, methodName, methodParams, value } =
+      await curve.router.modifiedSwap(
+        trade.inputCoin,
+        trade.outputCoin,
+        trade.amount,
+        allowedSlippage ? this.getAllowedSlippage(allowedSlippage) : 0
+      );
     let overrideParams;
     if (maxFeePerGas || maxPriorityFeePerGas) {
       overrideParams = {
         gasLimit: gasLimit,
-        value: result.value,
+        value: value,
         nonce: nonce,
         maxFeePerGas,
         maxPriorityFeePerGas,
@@ -264,13 +257,15 @@ export class CurveSwap implements Uniswapish {
       overrideParams = {
         gasPrice: (gasPrice * 1e9).toFixed(0),
         gasLimit: gasLimit.toFixed(0),
-        value: result.value,
+        value: value,
         nonce: nonce,
       };
     }
-    const txData = await result.contract.populateTransaction[
-      <any>result.methodName
-    ](result.methodParams, { ...overrideParams });
+    const txData: TransactionRequest = <TransactionRequest>await contract[
+      methodName
+    ].populateTransaction(methodParams, {
+      ...overrideParams,
+    });
     const txResponse: ContractTransaction = await EVMTxBroadcaster.getInstance(
       this._chain,
       wallet.address
