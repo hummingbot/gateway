@@ -79,19 +79,6 @@ jobs:
           cp -rf src/templates/* conf
           sed -i 's|/home/gateway/conf/lists/|conf/lists/|g' ./conf/*.yml
           sed -i 's/https:\/\/rpc.ankr.com\/eth_goerli/http:\/\/127.0.0.1:8545\//g' ./conf/ethereum.yml
-          sed -i 's/https:\/\/arbitrum-rinkeby.infura.io\/v3/http:\/\/127.0.0.1:8545\//g' ./conf/ethereum.yml
-          sed -i 's/https:\/\/rpc.ankr.com\/optimism/http:\/\/127.0.0.1:8545\//g' ./conf/ethereum.yml
-          sed -i 's/https:\/\/rpc.ankr.com\/avalanche/http:\/\/127.0.0.1:8545\//g' ./conf/avalanche.yml
-          sed -i 's/https:\/\/rpc.ankr.com\/avalanche_fuji/http:\/\/127.0.0.1:8545\//g' ./conf/avalanche.yml
-          sed -i 's/https:\/\/rpc.ankr.com\/polygon_mumbai/http:\/\/127.0.0.1:8545\//g' ./conf/polygon.yml
-          sed -i 's/https:\/\/rpc.ankr.com\/harmony/http:\/\/127.0.0.1:8545\//g' ./conf/harmony.yml
-          sed -i 's/https:\/\/api.s0.b.hmny.io/http:\/\/127.0.0.1:8545\//g' ./conf/harmony.yml
-          sed -i 's/https:\/\/rpc.ankr.com\/bsc/http:\/\/127.0.0.1:8545\//g' ./conf/binance-smart-chain.yml
-          sed -i 's/https:\/\/rpc.ankr.com\/bsc_testnet_chapel/http:\/\/127.0.0.1:8545\//g' ./conf/binance-smart-chain.yml
-          sed -i 's/https:\/\/cosmos-testnet-rpc.allthatnode.com:26657/http:\/\/127.0.0.1:8545\//g' ./conf/cosmos.yml
-          sed -i 's/https:\/\/cosmos-mainnet-rpc.allthatnode.com:26657/http:\/\/127.0.0.1:8545\//g' ./conf/cosmos.yml
-          sed -i 's/https:\/\/evm-t3.cronos.org/http:\/\/127.0.0.1:8545\//g' ./conf/cosmos.yml
-          sed -i 's/https:\/\/evm.cronos.org/http:\/\/127.0.0.1:8545\//g' ./conf/cosmos.yml
 
       - name: Run unit test coverage
         if: github.event_name == 'pull_request'
@@ -99,9 +86,7 @@ jobs:
         run: |
           git fetch --all -q
           git checkout -b $GITHUB_SHA
-          DIFF_FILES=`git diff --name-only origin/$GITHUB_BASE_REF ./src/`
-          ./node_modules/.bin/jest --listTests  --findRelatedTests ${DIFF_FILES//$'\n'/ }
-          NODE_OPTIONS=--max-old-space-size=10240 node ./node_modules/.bin/jest --runInBand --coverage --findRelatedTests ${DIFF_FILES//$'\n'/ }
+          NODE_OPTIONS=--max-old-space-size=10240 node ./node_modules/.bin/jest --runInBand --coverage ./test/
 #          git diff origin/$GITHUB_BASE_REF | yarn diff-test-coverage -c ./coverage/lcov.info -t lcov -b 50 -l 60
 
   docker_build_and_push:
