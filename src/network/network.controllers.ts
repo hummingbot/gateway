@@ -6,6 +6,7 @@ import { Harmony } from '../chains/harmony/harmony';
 import { Polygon } from '../chains/polygon/polygon';
 import { Injective } from '../chains/injective/injective';
 import { Xdc } from '../chains/xdc/xdc';
+import { Tezos } from '../chains/tezos/tezos';
 import {
   HttpException,
   UNKNOWN_CHAIN_ERROR_CODE,
@@ -71,10 +72,12 @@ export async function getStatus(
     connections = connections.concat(
       polygonConnections ? Object.values(polygonConnections) : []
     );
+
     const xdcConnections = Xdc.getConnectedInstances();
     connections = connections.concat(
       xdcConnections ? Object.values(xdcConnections) : []
     );
+
     const cronosConnections = Cronos.getConnectedInstances();
     connections = connections.concat(
       cronosConnections ? Object.values(cronosConnections) : []
@@ -93,6 +96,11 @@ export async function getStatus(
     const injectiveConnections = Injective.getConnectedInstances();
     connections = connections.concat(
       injectiveConnections ? Object.values(injectiveConnections) : []
+    );
+
+    const tezosConnections = Tezos.getConnectedInstances();
+    connections = connections.concat(
+      tezosConnections ? Object.values(tezosConnections) : []
     );
   }
 

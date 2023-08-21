@@ -20,6 +20,7 @@ import { ConnectorsResponse } from './connectors.request';
 import { DexalotCLOBConfig } from './dexalot/dexalot.clob.config';
 import { TinymanConfig } from './tinyman/tinyman.config';
 import { CurveConfig } from './curve/curveswap.config';
+import { PlentyConfig } from './plenty/plenty.config';
 
 export namespace ConnectorsRoutes {
   export const router = Router();
@@ -157,6 +158,12 @@ export namespace ConnectorsRoutes {
             trading_type: CurveConfig.config.tradingTypes,
             chain_type: CurveConfig.config.chainType,
             available_networks: CurveConfig.config.availableNetworks,
+          },
+          {
+            name: 'plenty',
+            trading_type: PlentyConfig.config.tradingTypes,
+            chain_type: PlentyConfig.config.chainType,
+            available_networks: PlentyConfig.config.availableNetworks,
           },
         ],
       });

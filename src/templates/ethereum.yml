@@ -1,9 +1,9 @@
 networks:
-  arbitrum_one:
+  arbitrum:
     chainID: 42161
     nodeURL: https://rpc.ankr.com/arbitrum
     tokenListType: FILE
-    tokenListSource: /home/gateway/conf/lists/arbitrum_one_coingecko_20230610.json
+    tokenListSource: /home/gateway/conf/lists/arbitrum_coingecko_20230610.json
     nativeCurrencySymbol: ETH
     gasPriceRefreshInterval: 60
   arbitrum_rinkeby:
