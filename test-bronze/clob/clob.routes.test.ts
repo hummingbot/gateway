@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { patch, unpatch } from '../services/patch';
+import { patch, unpatch } from '../../test/services/patch';
 import { gatewayApp } from '../../src/app';
 import { Injective } from '../../src/chains/injective/injective';
 import { InjectiveCLOB } from '../../src/connectors/injective/injective';
