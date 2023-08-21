@@ -241,10 +241,10 @@ const patchMarkets = () => {
 };
 
 const patchOrderBook = () => {
-  patch(injCLOB.spotApi, 'fetchOrderbook', () => {
+  patch(injCLOB.spotApi, 'fetchOrderbookV2', () => {
     return ORDER_BOOK;
   });
-  patch(injClobPerp.derivativeApi, 'fetchOrderbook', () => {
+  patch(injClobPerp.derivativeApi, 'fetchOrderbookV2', () => {
     return ORDER_BOOK;
   });
 };
