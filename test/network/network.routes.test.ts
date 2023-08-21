@@ -335,13 +335,13 @@ describe('GET /chain/tokens', () => {
       .expect(200);
   });
 
-  it('should return 500 when retrieving tokens for invalid chain', async () => {
+  it('should return 503 when retrieving tokens for invalid chain', async () => {
     await request(gatewayApp)
       .get(`/chain/tokens`)
       .query({
         chain: 'unknown',
         network: 'goerli',
       })
-      .expect(500);
+      .expect(503);
   });
 });
