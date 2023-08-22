@@ -17,9 +17,24 @@ const patchWallet = () => {
   });
 };
 
+const patchDatabase = () => {
+  patch(xrplChain, '_orderStorage', {
+    declareOwnership: () => {
+      return;
+    },
+    init: () => {
+      return;
+    },
+    close: () => {
+      return;
+    },
+  });
+};
+
 beforeAll(async () => {
   xrplChain = XRPL.getInstance('testnet');
   await xrplChain.init();
+  patchDatabase();
 });
 
 afterAll(async () => {
@@ -63,7 +78,7 @@ describe('POST /chain/poll', () => {
       chain: 'xrpl',
       network: 'testnet',
       txHash:
-        '61DD63760B94102E929BBC2EF0954E513EC41CCAF57619E1B079E7AA48B4F889', // noqa: mock
+        'EF074CD8C98E639B3560200C5664029E4E7133D4803EF75F6991788E09E04CDB', // noqa: mock
     });
     expect(res.statusCode).toEqual(200);
   });
