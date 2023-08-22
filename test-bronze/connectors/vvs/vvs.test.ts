@@ -1,5 +1,9 @@
 jest.useFakeTimers();
+import { VVSConnector } from '../../../src/connectors/vvs/vvs';
+import { patch, unpatch } from '../../../test/services/patch';
+import { UniswapishPriceError } from '../../../src/services/error-handler';
 import {
+  ChainId,
   Fetcher,
   Pair,
   Percent,
@@ -8,36 +12,37 @@ import {
   TokenAmount,
   Trade,
   TradeType,
-} from '@pancakeswap/sdk';
+} from 'vvs-sdk';
 import { BigNumber } from 'ethers';
-import { BinanceSmartChain } from '../../../src/chains/binance-smart-chain/binance-smart-chain';
-import { PancakeSwap } from '../../../src/connectors/pancakeswap/pancakeswap';
-import { UniswapishPriceError } from '../../../src/services/error-handler';
-import { patchEVMNonceManager } from '../../evm.nonce.mock';
-import { patch, unpatch } from '../../../test/services/patch';
+import { Cronos } from '../../../src/chains/cronos/cronos';
+import { patchEVMNonceManager } from '../../../test/evm.nonce.mock';
 
-let bsc: BinanceSmartChain;
-let pancakeswap: PancakeSwap;
+let cronos: Cronos;
+let vvs: VVSConnector;
 
-const WBNB = new Token(
-  97,
-  '0xae13d989dac2f0debff460ac112a837c89baa7cd',
+const WETH = new Token(
+  ChainId.MAINNET,
+  '0xd0A1E359811322d97991E03f863a0C30C2cF029C',
   18,
-  'WBNB'
+  'WETH'
 );
-const DAI = new Token(
-  97,
-  '0x8a9424745056Eb399FD19a0EC26A14316684e274',
+const WAVAX = new Token(
+  ChainId.MAINNET,
+  '0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7',
   18,
-  'DAI'
+  'WAVAX'
 );
 
 beforeAll(async () => {
-  bsc = BinanceSmartChain.getInstance('testnet');
-  patchEVMNonceManager(bsc.nonceManager);
-  await bsc.init();
-  pancakeswap = PancakeSwap.getInstance('binance-smart-chain', 'testnet');
-  await pancakeswap.init();
+  cronos = Cronos.getInstance('mainnet');
+  patchEVMNonceManager(cronos.nonceManager);
+  await cronos.init();
+  vvs = VVSConnector.getInstance('cronos', 'mainnet') as VVSConnector;
+  await vvs.init();
+});
+
+beforeEach(() => {
+  patchEVMNonceManager(cronos.nonceManager);
 });
 
 afterEach(() => {
@@ -45,14 +50,14 @@ afterEach(() => {
 });
 
 afterAll(async () => {
-  await bsc.close();
+  await cronos.close();
 });
 
 const patchFetchPairData = () => {
   patch(Fetcher, 'fetchPairData', () => {
     return new Pair(
-      new TokenAmount(WBNB, '2000000000000000000'),
-      new TokenAmount(DAI, '1000000000000000000')
+      new TokenAmount(WETH, '2000000000000000000'),
+      new TokenAmount(WAVAX, '1000000000000000000')
     );
   });
 };
@@ -60,29 +65,29 @@ const patchFetchPairData = () => {
 const patchTrade = (key: string, error?: Error) => {
   patch(Trade, key, () => {
     if (error) return [];
-    const WBNB_DAI = new Pair(
-      new TokenAmount(WBNB, '2000000000000000000'),
-      new TokenAmount(DAI, '1000000000000000000')
+    const WETH_WAVAX = new Pair(
+      new TokenAmount(WETH, '2000000000000000000'),
+      new TokenAmount(WAVAX, '1000000000000000000')
     );
-    const DAI_TO_WBNB = new Route([WBNB_DAI], DAI);
+    const WAVAX_TO_WETH = new Route([WETH_WAVAX], WAVAX);
     return [
       new Trade(
-        DAI_TO_WBNB,
-        new TokenAmount(DAI, '1000000000000000'),
+        WAVAX_TO_WETH,
+        new TokenAmount(WAVAX, '1000000000000000'),
         TradeType.EXACT_INPUT
       ),
     ];
   });
 };
 
-describe('verify PancakeSwap estimateSellTrade', () => {
+describe('verify VVS estimateSellTrade', () => {
   it('Should return an ExpectedTrade when available', async () => {
     patchFetchPairData();
     patchTrade('bestTradeExactIn');
 
-    const expectedTrade = await pancakeswap.estimateSellTrade(
-      WBNB,
-      DAI,
+    const expectedTrade = await vvs.estimateSellTrade(
+      WETH,
+      WAVAX,
       BigNumber.from(1)
     );
     expect(expectedTrade).toHaveProperty('trade');
@@ -94,19 +99,19 @@ describe('verify PancakeSwap estimateSellTrade', () => {
     patchTrade('bestTradeExactIn', new Error('error getting trade'));
 
     await expect(async () => {
-      await pancakeswap.estimateSellTrade(WBNB, DAI, BigNumber.from(1));
+      await vvs.estimateSellTrade(WETH, WAVAX, BigNumber.from(1));
     }).rejects.toThrow(UniswapishPriceError);
   });
 });
 
-describe('verify PancakeSwap estimateBuyTrade', () => {
+describe('verify VVS estimateBuyTrade', () => {
   it('Should return an ExpectedTrade when available', async () => {
     patchFetchPairData();
     patchTrade('bestTradeExactOut');
 
-    const expectedTrade = await pancakeswap.estimateBuyTrade(
-      WBNB,
-      DAI,
+    const expectedTrade = await vvs.estimateBuyTrade(
+      WETH,
+      WAVAX,
       BigNumber.from(1)
     );
     expect(expectedTrade).toHaveProperty('trade');
@@ -118,24 +123,24 @@ describe('verify PancakeSwap estimateBuyTrade', () => {
     patchTrade('bestTradeExactOut', new Error('error getting trade'));
 
     await expect(async () => {
-      await pancakeswap.estimateBuyTrade(WBNB, DAI, BigNumber.from(1));
+      await vvs.estimateBuyTrade(WETH, WAVAX, BigNumber.from(1));
     }).rejects.toThrow(UniswapishPriceError);
   });
 });
 
 describe('getAllowedSlippage', () => {
   it('return value of string when not null', () => {
-    const allowedSlippage = pancakeswap.getAllowedSlippage('3/100');
+    const allowedSlippage = vvs.getAllowedSlippage('3/100');
     expect(allowedSlippage).toEqual(new Percent('3', '100'));
   });
 
   it('return value from config when string is null', () => {
-    const allowedSlippage = pancakeswap.getAllowedSlippage();
+    const allowedSlippage = vvs.getAllowedSlippage();
     expect(allowedSlippage).toEqual(new Percent('1', '100'));
   });
 
   it('return value from config when string is malformed', () => {
-    const allowedSlippage = pancakeswap.getAllowedSlippage('yo');
+    const allowedSlippage = vvs.getAllowedSlippage('yo');
     expect(allowedSlippage).toEqual(new Percent('1', '100'));
   });
 });

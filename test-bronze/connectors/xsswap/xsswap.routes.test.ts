@@ -1,23 +1,22 @@
 import request from 'supertest';
-import { gatewayApp } from '../../../src/app';
-import { BinanceSmartChain } from '../../../src/chains/binance-smart-chain/binance-smart-chain';
-import { PancakeSwap } from '../../../src/connectors/pancakeswap/pancakeswap';
 import { patch, unpatch } from '../../../test/services/patch';
-import { patchEVMNonceManager } from '../../evm.nonce.mock';
-
-let bsc: BinanceSmartChain;
-let pancakeswap: PancakeSwap;
+import { gatewayApp } from '../../../src/app';
+import { Xdc } from '../../../src/chains/xdc/xdc';
+import { Xsswap } from '../../../src/connectors/xsswap/xsswap';
+import { patchEVMNonceManager } from '../../../test/evm.nonce.mock';
+let xdc: Xdc;
+let xsswap: Xsswap;
 
 beforeAll(async () => {
-  bsc = BinanceSmartChain.getInstance('testnet');
-  patchEVMNonceManager(bsc.nonceManager);
-  await bsc.init();
-  pancakeswap = PancakeSwap.getInstance('binance-smart-chain', 'testnet');
-  await pancakeswap.init();
+  xdc = Xdc.getInstance('xinfin');
+  patchEVMNonceManager(xdc.nonceManager);
+  await xdc.init();
+  xsswap = Xsswap.getInstance('xdc', 'xinfin');
+  await xsswap.init();
 });
 
 beforeEach(() => {
-  patchEVMNonceManager(bsc.nonceManager);
+  patchEVMNonceManager(xdc.nonceManager);
 });
 
 afterEach(() => {
@@ -25,34 +24,34 @@ afterEach(() => {
 });
 
 afterAll(async () => {
-  await bsc.close();
+  await xdc.close();
 });
 
-const address: string = '0x242532ebDfcc760f2Ddfe8378eB51f5F847CE5bD';
+const address: string = '0x010216bB52E46807a07d0101Bb828bA547534F37';
 
 const patchGetWallet = () => {
-  patch(bsc, 'getWallet', () => {
+  patch(xdc, 'getWallet', () => {
     return {
-      address: address,
+      address: '0x010216bB52E46807a07d0101Bb828bA547534F37',
     };
   });
 };
 
 const patchStoredTokenList = () => {
-  patch(bsc, 'tokenList', () => {
+  patch(xdc, 'tokenList', () => {
     return [
       {
-        chainId: 97,
-        name: 'WBNB',
-        symbol: 'WBNB',
-        address: '0xae13d989dac2f0debff460ac112a837c89baa7cd',
+        chainId: 50,
+        name: 'WXDC',
+        symbol: 'WXDC',
+        address: '0x951857744785E80e2De051c32EE7b25f9c458C42',
         decimals: 18,
       },
       {
-        chainId: 97,
-        name: 'DAI',
-        symbol: 'DAI',
-        address: '0x8a9424745056Eb399FD19a0EC26A14316684e274',
+        chainId: 50,
+        name: 'xUSDT',
+        symbol: 'xUSDT',
+        address: '0xD4B5f10D61916Bd6E0860144a91Ac658dE8a1437',
         decimals: 18,
       },
     ];
@@ -60,21 +59,21 @@ const patchStoredTokenList = () => {
 };
 
 const patchGetTokenBySymbol = () => {
-  patch(bsc, 'getTokenBySymbol', (symbol: string) => {
-    if (symbol === 'WBNB') {
+  patch(xdc, 'getTokenBySymbol', (symbol: string) => {
+    if (symbol === 'WXDC') {
       return {
-        chainId: 97,
-        name: 'WBNB',
-        symbol: 'WBNB',
-        address: '0xae13d989dac2f0debff460ac112a837c89baa7cd',
+        chainId: 50,
+        name: 'WXDC',
+        symbol: 'WXDC',
+        address: '0x951857744785E80e2De051c32EE7b25f9c458C42',
         decimals: 18,
       };
     } else {
       return {
-        chainId: 97,
-        name: 'DAI',
-        symbol: 'DAI',
-        address: '0x8a9424745056Eb399FD19a0EC26A14316684e274',
+        chainId: 51,
+        name: 'xUSDT',
+        symbol: 'xUSDT',
+        address: '0x4f96fe3b7a6cf9725f59d353f723c1bdb64ca6aa',
         decimals: 18,
       };
     }
@@ -82,23 +81,23 @@ const patchGetTokenBySymbol = () => {
 };
 
 const patchGetTokenByAddress = () => {
-  patch(pancakeswap, 'getTokenByAddress', () => {
+  patch(xsswap, 'getTokenByAddress', () => {
     return {
-      chainId: 97,
-      name: 'WBNB',
-      symbol: 'WBNB',
-      address: '0xae13d989dac2f0debff460ac112a837c89baa7cd',
+      chainId: 50,
+      name: 'WXDC',
+      symbol: 'WXDC',
+      address: '0x951857744785E80e2De051c32EE7b25f9c458C42',
       decimals: 18,
     };
   });
 };
 
 const patchGasPrice = () => {
-  patch(bsc, 'gasPrice', () => 100);
+  patch(xdc, 'gasPrice', () => 100);
 };
 
 const patchEstimateBuyTrade = () => {
-  patch(pancakeswap, 'estimateBuyTrade', () => {
+  patch(xsswap, 'estimateBuyTrade', () => {
     return {
       expectedAmount: {
         toSignificant: () => 100,
@@ -116,7 +115,7 @@ const patchEstimateBuyTrade = () => {
 };
 
 const patchEstimateSellTrade = () => {
-  patch(pancakeswap, 'estimateSellTrade', () => {
+  patch(xsswap, 'estimateSellTrade', () => {
     return {
       expectedAmount: {
         toSignificant: () => 100,
@@ -132,11 +131,11 @@ const patchEstimateSellTrade = () => {
 };
 
 const patchGetNonce = () => {
-  patch(bsc.nonceManager, 'getNonce', () => 21);
+  patch(xdc.nonceManager, 'getNonce', () => 21);
 };
 
 const patchExecuteTrade = () => {
-  patch(pancakeswap, 'executeTrade', () => {
+  patch(xsswap, 'executeTrade', () => {
     return { nonce: 21, hash: '000000000000000' };
   });
 };
@@ -155,11 +154,11 @@ describe('POST /amm/price', () => {
     await request(gatewayApp)
       .post(`/amm/price`)
       .send({
-        chain: 'binance-smart-chain',
-        network: 'testnet',
-        connector: 'pancakeswap',
-        quote: 'DAI',
-        base: 'WBNB',
+        chain: 'xdc',
+        network: 'xinfin',
+        connector: 'xsswap',
+        quote: 'xUSDT',
+        base: 'WXDC',
         amount: '10000',
         side: 'BUY',
       })
@@ -184,11 +183,11 @@ describe('POST /amm/price', () => {
     await request(gatewayApp)
       .post(`/amm/price`)
       .send({
-        chain: 'binance-smart-chain',
-        network: 'testnet',
-        connector: 'pancakeswap',
-        quote: 'DAI',
-        base: 'WBNB',
+        chain: 'xdc',
+        network: 'xinfin',
+        connector: 'xsswap',
+        quote: 'xUSDT',
+        base: 'WXDC',
         amount: '10000',
         side: 'SELL',
       })
@@ -203,13 +202,13 @@ describe('POST /amm/price', () => {
   it('should return 500 for unrecognized quote symbol', async () => {
     patchGetWallet();
     patchStoredTokenList();
-    patch(bsc, 'getTokenBySymbol', (symbol: string) => {
-      if (symbol === 'WBNB') {
+    patch(xdc, 'getTokenBySymbol', (symbol: string) => {
+      if (symbol === 'WXDC') {
         return {
-          chainId: 97,
-          name: 'WBNB',
-          symbol: 'WBNB',
-          address: '0xae13d989dac2f0debff460ac112a837c89baa7cd',
+          chainId: 50,
+          name: 'WXDC',
+          symbol: 'WXDC',
+          address: '0x951857744785E80e2De051c32EE7b25f9c458C42',
           decimals: 18,
         };
       } else {
@@ -221,11 +220,11 @@ describe('POST /amm/price', () => {
     await request(gatewayApp)
       .post(`/amm/price`)
       .send({
-        chain: 'binance-smart-chain',
-        network: 'testnet',
-        connector: 'pancakeswap',
+        chain: 'xdc',
+        network: 'xinfin',
+        connector: 'xsswap',
         quote: 'DOGE',
-        base: 'WBNB',
+        base: 'WXDC',
         amount: '10000',
         side: 'SELL',
       })
@@ -236,13 +235,13 @@ describe('POST /amm/price', () => {
   it('should return 500 for unrecognized base symbol', async () => {
     patchGetWallet();
     patchStoredTokenList();
-    patch(bsc, 'getTokenBySymbol', (symbol: string) => {
-      if (symbol === 'WBNB') {
+    patch(xdc, 'getTokenBySymbol', (symbol: string) => {
+      if (symbol === 'WXDC') {
         return {
-          chainId: 97,
-          name: 'WBNB',
-          symbol: 'WBNB',
-          address: '0xae13d989dac2f0debff460ac112a837c89baa7cd',
+          chainId: 50,
+          name: 'WXDC',
+          symbol: 'WXDC',
+          address: '0x951857744785E80e2De051c32EE7b25f9c458C42',
           decimals: 18,
         };
       } else {
@@ -254,10 +253,10 @@ describe('POST /amm/price', () => {
     await request(gatewayApp)
       .post(`/amm/price`)
       .send({
-        chain: 'binance-smart-chain',
-        network: 'testnet',
-        connector: 'pancakeswap',
-        quote: 'DAI',
+        chain: 'xdc',
+        network: 'xinfin',
+        connector: 'xsswap',
+        quote: 'xUSDT',
         base: 'SHIBA',
         amount: '10000',
         side: 'SELL',
@@ -283,11 +282,11 @@ describe('POST /amm/trade', () => {
     await request(gatewayApp)
       .post(`/amm/trade`)
       .send({
-        chain: 'binance-smart-chain',
-        network: 'testnet',
-        connector: 'pancakeswap',
-        quote: 'DAI',
-        base: 'WBNB',
+        chain: 'xdc',
+        network: 'xinfin',
+        connector: 'xsswap',
+        quote: 'xUSDT',
+        base: 'WXDC',
         amount: '10000',
         address,
         side: 'BUY',
@@ -305,11 +304,11 @@ describe('POST /amm/trade', () => {
     await request(gatewayApp)
       .post(`/amm/trade`)
       .send({
-        chain: 'binance-smart-chain',
-        network: 'testnet',
-        connector: 'pancakeswap',
-        quote: 'DAI',
-        base: 'WBNB',
+        chain: 'xdc',
+        network: 'xinfin',
+        connector: 'xsswap',
+        quote: 'xUSDT',
+        base: 'WXDC',
         amount: '10000',
         address,
         side: 'BUY',
@@ -323,11 +322,11 @@ describe('POST /amm/trade', () => {
     await request(gatewayApp)
       .post(`/amm/trade`)
       .send({
-        chain: 'binance-smart-chain',
-        network: 'testnet',
-        connector: 'pancakeswap',
-        quote: 'DAI',
-        base: 'WBNB',
+        chain: 'xdc',
+        network: 'xinfin',
+        connector: 'xsswap',
+        quote: 'xUSDT',
+        base: 'WXDC',
         amount: '10000',
         address,
         side: 'BUY',
@@ -354,11 +353,11 @@ describe('POST /amm/trade', () => {
     await request(gatewayApp)
       .post(`/amm/trade`)
       .send({
-        chain: 'binance-smart-chain',
-        network: 'testnet',
-        connector: 'pancakeswap',
-        quote: 'DAI',
-        base: 'WBNB',
+        chain: 'xdc',
+        network: 'xinfin',
+        connector: 'xsswap',
+        quote: 'xUSDT',
+        base: 'WXDC',
         amount: '10000',
         address,
         side: 'SELL',
@@ -376,11 +375,11 @@ describe('POST /amm/trade', () => {
     await request(gatewayApp)
       .post(`/amm/trade`)
       .send({
-        chain: 'binance-smart-chain',
-        network: 'testnet',
-        connector: 'pancakeswap',
-        quote: 'DAI',
-        base: 'WBNB',
+        chain: 'xdc',
+        network: 'xinfin',
+        connector: 'xsswap',
+        quote: 'xUSDT',
+        base: 'WXDC',
         amount: '10000',
         address,
         side: 'SELL',
@@ -396,11 +395,11 @@ describe('POST /amm/trade', () => {
     await request(gatewayApp)
       .post(`/amm/trade`)
       .send({
-        chain: 'binance-smart-chain',
-        network: 'testnet',
-        connector: 'pancakeswap',
-        quote: 'DAI',
-        base: 'WBNB',
+        chain: 'xdc',
+        network: 'xinfin',
+        connector: 'xsswap',
+        quote: 'xUSDT',
+        base: 'WXDC',
         amount: 10000,
         address: 'da8',
         side: 'comprar',
@@ -411,13 +410,13 @@ describe('POST /amm/trade', () => {
 
   it('should return 500 when base token is unknown', async () => {
     patchForSell();
-    patch(bsc, 'getTokenBySymbol', (symbol: string) => {
-      if (symbol === 'WBNB') {
+    patch(xdc, 'getTokenBySymbol', (symbol: string) => {
+      if (symbol === 'WXDC') {
         return {
-          chainId: 97,
-          name: 'WBNB',
-          symbol: 'WBNB',
-          address: '0xae13d989dac2f0debff460ac112a837c89baa7cd',
+          chainId: 50,
+          name: 'WXDC',
+          symbol: 'WXDC',
+          address: '0x951857744785E80e2De051c32EE7b25f9c458C42',
           decimals: 18,
         };
       } else {
@@ -428,10 +427,10 @@ describe('POST /amm/trade', () => {
     await request(gatewayApp)
       .post(`/amm/trade`)
       .send({
-        chain: 'binance-smart-chain',
-        network: 'testnet',
-        connector: 'pancakeswap',
-        quote: 'WBNB',
+        chain: 'xdc',
+        network: 'xinfin',
+        connector: 'xsswap',
+        quote: 'WXDC',
         base: 'BITCOIN',
         amount: '10000',
         address,
@@ -446,13 +445,13 @@ describe('POST /amm/trade', () => {
 
   it('should return 500 when quote token is unknown', async () => {
     patchForSell();
-    patch(bsc, 'getTokenBySymbol', (symbol: string) => {
-      if (symbol === 'WBNB') {
+    patch(xdc, 'getTokenBySymbol', (symbol: string) => {
+      if (symbol === 'WXDC') {
         return {
-          chainId: 97,
-          name: 'WBNB',
-          symbol: 'WBNB',
-          address: '0xae13d989dac2f0debff460ac112a837c89baa7cd',
+          chainId: 50,
+          name: 'WXDC',
+          symbol: 'WXDC',
+          address: '0x951857744785E80e2De051c32EE7b25f9c458C42',
           decimals: 18,
         };
       } else {
@@ -463,11 +462,11 @@ describe('POST /amm/trade', () => {
     await request(gatewayApp)
       .post(`/amm/trade`)
       .send({
-        chain: 'binance-smart-chain',
-        network: 'testnet',
-        connector: 'pancakeswap',
+        chain: 'xdc',
+        network: 'xinfin',
+        connector: 'xsswap',
         quote: 'BITCOIN',
-        base: 'WBNB',
+        base: 'WXDC',
         amount: '10000',
         address,
         side: 'BUY',
@@ -484,11 +483,11 @@ describe('POST /amm/trade', () => {
     await request(gatewayApp)
       .post(`/amm/trade`)
       .send({
-        chain: 'binance-smart-chain',
-        network: 'testnet',
-        connector: 'pancakeswap',
-        quote: 'DAI',
-        base: 'WBNB',
+        chain: 'xdc',
+        network: 'xinfin',
+        connector: 'xsswap',
+        quote: 'xUSDT',
+        base: 'WXDC',
         amount: '10000',
         address,
         side: 'SELL',
@@ -504,11 +503,11 @@ describe('POST /amm/trade', () => {
     await request(gatewayApp)
       .post(`/amm/trade`)
       .send({
-        chain: 'binance-smart-chain',
-        network: 'testnet',
-        connector: 'pancakeswap',
-        quote: 'DAI',
-        base: 'WBNB',
+        chain: 'xdc',
+        network: 'xinfin',
+        connector: 'xsswap',
+        quote: 'xUSDT',
+        base: 'WXDC',
         amount: '10000',
         address,
         side: 'BUY',
@@ -524,11 +523,11 @@ describe('POST /amm/trade', () => {
     await request(gatewayApp)
       .post(`/amm/trade`)
       .send({
-        chain: 'binance-smart-chain',
-        network: 'testnet',
-        connector: 'pancakeswap',
-        quote: 'DAI',
-        base: 'WBNB',
+        chain: 'xdc',
+        network: 'xinfin',
+        connector: 'xsswap',
+        quote: 'xUSDT',
+        base: 'WXDC',
         amount: '10000',
         address,
         side: 'SELL',
@@ -544,11 +543,11 @@ describe('POST /amm/trade', () => {
     await request(gatewayApp)
       .post(`/amm/trade`)
       .send({
-        chain: 'binance-smart-chain',
-        network: 'testnet',
-        connector: 'pancakeswap',
-        quote: 'DAI',
-        base: 'WBNB',
+        chain: 'xdc',
+        network: 'xinfin',
+        connector: 'xsswap',
+        quote: 'xUSDT',
+        base: 'WXDC',
         amount: '10000',
         address,
         side: 'BUY',

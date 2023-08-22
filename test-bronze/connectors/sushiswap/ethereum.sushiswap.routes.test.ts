@@ -2,31 +2,23 @@ import express from 'express';
 import { Express } from 'express-serve-static-core';
 import request from 'supertest';
 import { Ethereum } from '../../../src/chains/ethereum/ethereum';
-import { Uniswap } from '../../../src/connectors/uniswap/uniswap';
+import { Sushiswap } from '../../../src/connectors/sushiswap/sushiswap';
 import { AmmRoutes } from '../../../src/amm/amm.routes';
 import { patch, unpatch } from '../../../test/services/patch';
 import { gasCostInEthString } from '../../../src/services/base';
-import { patchEVMNonceManager } from '../../evm.nonce.mock';
+
 let app: Express;
 let ethereum: Ethereum;
-let uniswap: Uniswap;
+let sushiswap: Sushiswap;
 
 beforeAll(async () => {
   app = express();
   app.use(express.json());
-
   ethereum = Ethereum.getInstance('goerli');
-  patchEVMNonceManager(ethereum.nonceManager);
   await ethereum.init();
-
-  uniswap = Uniswap.getInstance('ethereum', 'goerli');
-  await uniswap.init();
-
+  sushiswap = Sushiswap.getInstance('ethereum', 'goerli');
+  await sushiswap.init();
   app.use('/amm', AmmRoutes.router);
-});
-
-beforeEach(() => {
-  patchEVMNonceManager(ethereum.nonceManager);
 });
 
 afterEach(() => {
@@ -48,7 +40,7 @@ const patchGetWallet = () => {
 };
 
 const patchInit = () => {
-  patch(uniswap, 'init', async () => {
+  patch(sushiswap, 'init', async () => {
     return;
   });
 };
@@ -67,7 +59,7 @@ const patchStoredTokenList = () => {
         chainId: 42,
         name: 'DAI',
         symbol: 'DAI',
-        address: '0xdc31Ee1784292379Fbb2964b3B9C4124D8F89C60',
+        address: '0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6',
         decimals: 18,
       },
     ];
@@ -97,7 +89,7 @@ const patchGetTokenBySymbol = () => {
 };
 
 const patchGetTokenByAddress = () => {
-  patch(uniswap, 'getTokenByAddress', () => {
+  patch(sushiswap, 'getTokenByAddress', () => {
     return {
       chainId: 42,
       name: 'WETH',
@@ -113,7 +105,7 @@ const patchGasPrice = () => {
 };
 
 const patchEstimateBuyTrade = () => {
-  patch(uniswap, 'estimateBuyTrade', () => {
+  patch(sushiswap, 'estimateBuyTrade', () => {
     return {
       expectedAmount: {
         toSignificant: () => 100,
@@ -131,7 +123,7 @@ const patchEstimateBuyTrade = () => {
 };
 
 const patchEstimateSellTrade = () => {
-  patch(uniswap, 'estimateSellTrade', () => {
+  patch(sushiswap, 'estimateSellTrade', () => {
     return {
       expectedAmount: {
         toSignificant: () => 100,
@@ -151,7 +143,7 @@ const patchGetNonce = () => {
 };
 
 const patchExecuteTrade = () => {
-  patch(uniswap, 'executeTrade', () => {
+  patch(sushiswap, 'executeTrade', () => {
     return { nonce: 21, hash: '000000000000000' };
   });
 };
@@ -173,7 +165,7 @@ describe('POST /amm/price', () => {
       .send({
         chain: 'ethereum',
         network: 'goerli',
-        connector: 'uniswap',
+        connector: 'sushiswap',
         quote: 'DAI',
         base: 'WETH',
         amount: '10000',
@@ -203,7 +195,7 @@ describe('POST /amm/price', () => {
       .send({
         chain: 'ethereum',
         network: 'goerli',
-        connector: 'uniswap',
+        connector: 'sushiswap',
         quote: 'DAI',
         base: 'WETH',
         amount: '10000',
@@ -228,8 +220,8 @@ describe('POST /amm/price', () => {
       .send({
         chain: 'ethereum',
         network: 'goerli',
-        connector: 'uniswap',
-        quote: 'DOGE',
+        connector: 'sushiswap',
+        quote: 'NOTASYMBOL',
         base: 'WETH',
         amount: '10000',
         side: 'SELL',
@@ -250,9 +242,9 @@ describe('POST /amm/price', () => {
       .send({
         chain: 'ethereum',
         network: 'goerli',
-        connector: 'uniswap',
+        connector: 'sushiswap',
         quote: 'DAI',
-        base: 'SHIBA',
+        base: 'NOTASYMBOL',
         amount: '10000',
         side: 'SELL',
       })
@@ -272,9 +264,9 @@ describe('POST /amm/price', () => {
       .send({
         chain: 'ethereum',
         network: 'goerli',
-        connector: 'uniswap',
+        connector: 'sushiswap',
         quote: 'DAI',
-        base: 'SHIBA',
+        base: 'NOTASYMBOL',
         amount: '10.000',
         side: 'SELL',
       })
@@ -294,9 +286,9 @@ describe('POST /amm/price', () => {
       .send({
         chain: 'ethereum',
         network: 'goerli',
-        connector: 'uniswap',
+        connector: 'sushiswap',
         quote: 'DAI',
-        base: 'SHIBA',
+        base: 'NOTASYMBOL',
         amount: '10.000',
         side: 'BUY',
       })
@@ -310,7 +302,7 @@ describe('POST /amm/price', () => {
     patchStoredTokenList();
     patchGetTokenBySymbol();
     patchGetTokenByAddress();
-    patch(uniswap, 'priceSwapIn', () => {
+    patch(sushiswap, 'priceSwapIn', () => {
       return 'error';
     });
 
@@ -319,8 +311,8 @@ describe('POST /amm/price', () => {
       .send({
         chain: 'ethereum',
         network: 'goerli',
-        connector: 'uniswap',
-        quote: 'DOGE',
+        connector: 'sushiswap',
+        quote: 'NOTASYMBOL',
         base: 'WETH',
         amount: '10000',
         side: 'SELL',
@@ -335,7 +327,7 @@ describe('POST /amm/price', () => {
     patchStoredTokenList();
     patchGetTokenBySymbol();
     patchGetTokenByAddress();
-    patch(uniswap, 'priceSwapOut', () => {
+    patch(sushiswap, 'priceSwapOut', () => {
       return 'error';
     });
 
@@ -344,8 +336,8 @@ describe('POST /amm/price', () => {
       .send({
         chain: 'ethereum',
         network: 'goerli',
-        connector: 'uniswap',
-        quote: 'DOGE',
+        connector: 'sushiswap',
+        quote: 'NOTASYMBOL',
         base: 'WETH',
         amount: '10000',
         side: 'BUY',
@@ -374,7 +366,7 @@ describe('POST /amm/trade', () => {
       .send({
         chain: 'ethereum',
         network: 'goerli',
-        connector: 'uniswap',
+        connector: 'sushiswap',
         quote: 'DAI',
         base: 'WETH',
         amount: '10000',
@@ -396,7 +388,7 @@ describe('POST /amm/trade', () => {
       .send({
         chain: 'ethereum',
         network: 'goerli',
-        connector: 'uniswap',
+        connector: 'sushiswap',
         quote: 'DAI',
         base: 'WETH',
         amount: '10000',
@@ -414,7 +406,7 @@ describe('POST /amm/trade', () => {
       .send({
         chain: 'ethereum',
         network: 'goerli',
-        connector: 'uniswap',
+        connector: 'sushiswap',
         quote: 'DAI',
         base: 'WETH',
         amount: '10000',
@@ -446,7 +438,7 @@ describe('POST /amm/trade', () => {
       .send({
         chain: 'ethereum',
         network: 'goerli',
-        connector: 'uniswap',
+        connector: 'sushiswap',
         quote: 'DAI',
         base: 'WETH',
         amount: '10000',
@@ -468,7 +460,7 @@ describe('POST /amm/trade', () => {
       .send({
         chain: 'ethereum',
         network: 'goerli',
-        connector: 'uniswap',
+        connector: 'sushiswap',
         quote: 'DAI',
         base: 'WETH',
         amount: '10000',
@@ -489,7 +481,7 @@ describe('POST /amm/trade', () => {
       .send({
         chain: 'ethereum',
         network: 'goerli',
-        connector: 'uniswap',
+        connector: 'sushiswap',
         quote: 'DAI',
         base: 'WETH',
         amount: '10000',
@@ -509,7 +501,7 @@ describe('POST /amm/trade', () => {
       .send({
         chain: 'ethereum',
         network: 'goerli',
-        connector: 'uniswap',
+        connector: 'sushiswap',
         quote: 'DAI',
         base: 'WETH',
         amount: '10000',
@@ -529,7 +521,7 @@ describe('POST /amm/trade', () => {
       .send({
         chain: 'ethereum',
         network: 'goerli',
-        connector: 'uniswap',
+        connector: 'sushiswap',
         quote: 'DAI',
         base: 'WETH',
         amount: '10000',
@@ -549,7 +541,7 @@ describe('POST /amm/trade', () => {
       .send({
         chain: 'ethereum',
         network: 'goerli',
-        connector: 'uniswap',
+        connector: 'sushiswap',
         quote: 'DAI',
         base: 'WETH',
         amount: '10000',
@@ -569,7 +561,7 @@ describe('POST /amm/trade', () => {
       .send({
         chain: 'ethereum',
         network: 'goerli',
-        connector: 'uniswap',
+        connector: 'sushiswap',
         quote: 'DAI',
         base: 'WETH',
         amount: 10000,
@@ -585,7 +577,7 @@ describe('POST /amm/trade', () => {
     patchStoredTokenList();
     patchGetTokenBySymbol();
     patchGetTokenByAddress();
-    patch(uniswap, 'priceSwapIn', () => {
+    patch(sushiswap, 'priceSwapIn', () => {
       return 'error';
     });
 
@@ -594,7 +586,7 @@ describe('POST /amm/trade', () => {
       .send({
         chain: 'ethereum',
         network: 'goerli',
-        connector: 'uniswap',
+        connector: 'sushiswap',
         quote: 'DAI',
         base: 'WETH',
         amount: '10000',
@@ -614,7 +606,7 @@ describe('POST /amm/trade', () => {
     patchStoredTokenList();
     patchGetTokenBySymbol();
     patchGetTokenByAddress();
-    patch(uniswap, 'priceSwapOut', () => {
+    patch(sushiswap, 'priceSwapOut', () => {
       return 'error';
     });
 
@@ -623,7 +615,7 @@ describe('POST /amm/trade', () => {
       .send({
         chain: 'ethereum',
         network: 'goerli',
-        connector: 'uniswap',
+        connector: 'sushiswap',
         quote: 'DAI',
         base: 'WETH',
         amount: '10000',
@@ -648,7 +640,7 @@ describe('POST /amm/estimateGas', () => {
       .send({
         chain: 'ethereum',
         network: 'goerli',
-        connector: 'uniswap',
+        connector: 'sushiswap',
       })
       .set('Accept', 'application/json')
       .expect(200)
@@ -656,7 +648,7 @@ describe('POST /amm/estimateGas', () => {
         expect(res.body.network).toEqual('goerli');
         expect(res.body.gasPrice).toEqual(100);
         expect(res.body.gasCost).toEqual(
-          gasCostInEthString(100, uniswap.gasLimitEstimate)
+          gasCostInEthString(100, sushiswap.gasLimitEstimate)
         );
       });
   });
