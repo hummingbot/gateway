@@ -2,7 +2,7 @@ import request from 'supertest';
 import { gatewayApp } from '../../../src/app';
 import { BinanceSmartChain } from '../../../src/chains/binance-smart-chain/binance-smart-chain';
 import { PancakeSwap } from '../../../src/connectors/pancakeswap/pancakeswap';
-import { patch, unpatch } from '../../services/patch';
+import { patch, unpatch } from '../../../test/services/patch';
 import { patchEVMNonceManager } from '../../evm.nonce.mock';
 
 let bsc: BinanceSmartChain;

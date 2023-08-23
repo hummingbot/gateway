@@ -18,6 +18,7 @@ import {
   ReduceLiquidityData,
 } from './uniswap.lp.interfaces';
 import * as math from 'mathjs';
+import { getAddress } from 'ethers/lib/utils';
 
 export class UniswapLPHelper {
   protected ethereum: Ethereum;
@@ -96,7 +97,7 @@ export class UniswapLPHelper {
    * @param address Token address
    */
   public getTokenByAddress(address: string): Token {
-    return this.tokenList[address];
+    return this.tokenList[getAddress(address)];
   }
 
   public async init() {

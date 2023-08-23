@@ -1,0 +1,46 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+        "allowedSlippage": {
+            "type": "string"
+        },
+        "gasLimitEstimate": {
+            "type": "integer"
+        },
+        "contractAddresses": {
+            "type": "object",
+            "patternProperties": {
+                "^\\w+$": {
+                    "type": "object",
+                    "properties": {
+                        "poolsApi": {
+                            "type": "string"
+                        },
+                        "analyticsApi": {
+                            "type": "string"
+                        },
+                        "router": {
+                            "type": "string"
+                        },
+                        "ctezAdmin": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "poolsApi",
+                        "router",
+                        "ctezAdmin"
+                    ],
+                    "additionalProperties": false
+                }
+            },
+            "additionalProperties": false
+        }
+    },
+    "additionalProperties": false,
+    "required": [
+        "allowedSlippage",
+        "contractAddresses"
+    ]
+}

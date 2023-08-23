@@ -4,7 +4,7 @@ import * as uniV3 from '@uniswap/v3-sdk';
 import { BigNumber, Transaction, Wallet } from 'ethers';
 import { Ethereum } from '../../../src/chains/ethereum/ethereum';
 import { UniswapLP } from '../../../src/connectors/uniswap/uniswap.lp';
-import { patch, unpatch } from '../../services/patch';
+import { patch, unpatch } from '../../../test/services/patch';
 import { patchEVMNonceManager } from '../../evm.nonce.mock';
 let ethereum: Ethereum;
 let uniswapLP: UniswapLP;

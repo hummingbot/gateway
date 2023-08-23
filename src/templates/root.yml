@@ -107,3 +107,11 @@ configurations:
   $namespace xsswap:
     configurationPath: xsswap.yml
     schemaPath: xsswap-schema.json
+
+  $namespace tezos:
+    configurationPath: tezos.yml
+    schemaPath: tezos-schema.json
+
+  $namespace plenty:
+    configurationPath: plenty.yml
+    schemaPath: plenty-schema.json
