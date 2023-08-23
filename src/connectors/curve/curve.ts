@@ -13,10 +13,10 @@ import { getAddress } from 'ethers/lib/utils';
 import { Polygon } from '../../chains/polygon/polygon';
 import { Ethereum } from '../../chains/ethereum/ethereum';
 import curve from 'curvefi';
-import { Token } from '@uniswap/sdk/dist/entities';
 import { IRoute } from 'curvefi/lib/interfaces';
 import { EVMTxBroadcaster } from '../../chains/ethereum/evm.broadcaster';
 import { TransactionRequest } from 'viem';
+import { Token } from '@uniswap/sdk';
 
 export type CurveTrade = {
   route: IRoute;
@@ -25,15 +25,15 @@ export type CurveTrade = {
   amount: string;
 };
 
-export class CurveSwap {
-  private static _instances: { [name: string]: CurveSwap };
+export class Curve {
+  private static _instances: { [name: string]: Curve };
   private _chain: Ethereum | Polygon;
   private _config: typeof CurveConfig.config;
   private tokenList: Record<string, Token> = {};
   private _ready: boolean = false;
   public gasLimitEstimate: any;
   public router: any;
-  public curve: typeof curve;
+  public curve: any;
   public routerAbi: any[] = [];
   public ttl: any;
 
@@ -44,18 +44,19 @@ export class CurveSwap {
     } else {
       this._chain = Polygon.getInstance(network);
     }
+    // this.curve = require('curvefi');
     this.curve = curve;
   }
 
-  public static getInstance(chain: string, network: string): CurveSwap {
-    if (CurveSwap._instances === undefined) {
-      CurveSwap._instances = {};
+  public static getInstance(chain: string, network: string): Curve {
+    if (Curve._instances === undefined) {
+      Curve._instances = {};
     }
-    if (!(chain + network in CurveSwap._instances)) {
-      CurveSwap._instances[chain + network] = new CurveSwap(chain, network);
+    if (!(chain + network in Curve._instances)) {
+      Curve._instances[chain + network] = new Curve(chain, network);
     }
 
-    return CurveSwap._instances[chain + network];
+    return Curve._instances[chain + network];
   }
 
   public async init() {
@@ -73,7 +74,7 @@ export class CurveSwap {
         token.name
       );
     }
-    await curve.init(
+    await this.curve.init(
       'JsonRpc',
       { url: this._chain.rpcUrl },
       { chainId: this._chain.chainId }
@@ -83,11 +84,11 @@ export class CurveSwap {
 
   public async fetchPools() {
     await Promise.all([
-      curve.factory.fetchPools(),
-      curve.crvUSDFactory.fetchPools(),
-      curve.EYWAFactory.fetchPools(),
-      curve.cryptoFactory.fetchPools(),
-      curve.tricryptoFactory.fetchPools(),
+      this.curve.factory.fetchPools(),
+      this.curve.crvUSDFactory.fetchPools(),
+      this.curve.EYWAFactory.fetchPools(),
+      this.curve.cryptoFactory.fetchPools(),
+      this.curve.tricryptoFactory.fetchPools(),
     ]);
   }
 
@@ -149,7 +150,7 @@ export class CurveSwap {
       `Fetching pair data for ${quoteToken.address}-${baseToken.address}.`
     );
     await this.fetchPools();
-    const { route, output } = await curve.router.getBestRouteAndOutput(
+    const { route, output } = await this.curve.router.getBestRouteAndOutput(
       quoteToken.address,
       baseToken.address,
       amount.toString()
@@ -191,7 +192,7 @@ export class CurveSwap {
       `Fetching pair data for ${quoteToken.address}-${baseToken.address}.`
     );
     await this.fetchPools();
-    const { route, output } = await curve.router.getBestRouteAndOutput(
+    const { route, output } = await this.curve.router.getBestRouteAndOutput(
       baseToken.address,
       quoteToken.address,
       amount.toString()
@@ -238,7 +239,7 @@ export class CurveSwap {
     allowedSlippage?: string
   ): Promise<Transaction> {
     const { contract, methodName, methodParams, value } =
-      await curve.router.modifiedSwap(
+      await this.curve.router.modifiedSwap(
         trade.inputCoin,
         trade.outputCoin,
         trade.amount,

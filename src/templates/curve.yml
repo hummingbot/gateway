@@ -10,3 +10,6 @@ gasLimitEstimate: 300000
 ttl: 600
 
 contractAddresses:
+  mainnet:
+    routerAddress: ''
+

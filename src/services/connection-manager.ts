@@ -40,6 +40,7 @@ import { Algorand } from '../chains/algorand/algorand';
 import { Cosmos } from '../chains/cosmos/cosmos';
 import { Tinyman } from '../connectors/tinyman/tinyman';
 import { Plenty } from '../connectors/plenty/plenty';
+import { Curve } from '../connectors/curve/curve';
 
 export type ChainUnion =
   | Algorand
@@ -140,7 +141,8 @@ export type ConnectorUnion =
   | CLOBish
   | InjectiveClobPerp
   | Tinyman
-  | Plenty;
+  | Plenty
+  | Curve;
 
 export type Connector<T> = T extends Uniswapish
   ? Uniswapish
@@ -212,6 +214,11 @@ export async function getConnector<T>(
     connectorInstance = Tinyman.getInstance(network);
   } else if (chain === 'tezos' && connector === 'plenty') {
     connectorInstance = Plenty.getInstance(network);
+  } else if (
+    (chain === 'ethereum' || chain === 'polygon') &&
+    connector === 'curve'
+  ) {
+    connectorInstance = Curve.getInstance(chain, network);
   } else {
     throw new Error('unsupported chain or connector');
   }

@@ -20,7 +20,7 @@ import {
   TradeResponse,
 } from '../../amm/amm.requests';
 import { Ethereumish, Uniswapish } from '../../services/common-interfaces';
-import { CurveSwap } from './curve';
+import { Curve } from './curve';
 import {
   getFullTokenFromSymbol,
   txWriteData,
@@ -30,7 +30,7 @@ import { BigNumber } from 'ethers';
 
 async function getTradeInfo(
   chain: Ethereumish,
-  curve: CurveSwap,
+  curve: Curve,
   req: PriceRequest | TradeRequest
 ) {
   let trade,
@@ -76,7 +76,7 @@ async function getTradeInfo(
 }
 export async function price(
   chain: Ethereumish,
-  curve: CurveSwap,
+  curve: Curve,
   req: PriceRequest
 ): Promise<PriceResponse> {
   const startTimestamp: number = Date.now();
@@ -100,7 +100,7 @@ export async function price(
 
 export async function trade(
   chain: Ethereumish,
-  curve: CurveSwap,
+  curve: Curve,
   req: TradeRequest
 ): Promise<TradeResponse> {
   const startTimestamp: number = Date.now();
@@ -172,7 +172,7 @@ export async function trade(
 
 export async function estimateGas(
   chain: Ethereumish,
-  _curve: CurveSwap
+  _curve: Curve
 ): Promise<EstimateGasResponse> {
   return {
     network: chain.chainName,
