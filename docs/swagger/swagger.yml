@@ -1,11 +1,9 @@
 swagger: '2.0'
 
 info:
-  description: 'Gateway allows clients to interoperate with blockchains and DeFi protocols via a REST API. This allows for a language agnostic way to use official SDKs for blockchains.'
-  version: '1.0.0'
-  title: 'gateway'
-  contact:
-    email: 'dev@hummingbot.io'
+  description: 'API middleware that lets Hummingbot clients interact with standardized DEX API endpoints on various blockchain networks'
+  version: '1.18.0'
+  title: 'Hummingbot Gateway'
   license:
     name: 'Apache 2.0'
     url: 'http://www.apache.org/licenses/LICENSE-2.0.html'
@@ -14,25 +12,23 @@ host: 'localhost:15888'
 
 tags:
   - name: 'system'
-    description: 'Get information about the currently running Gateway program'
-  - name: 'network'
-    description: 'Get information about specific networks'
+    description: 'System endpoints'
   - name: 'wallet'
-    description: 'Manage private keys available for use in Gateway'
-  - name: 'amm'
-    description: 'Interact with AMM decentralized exchanges'
-  - name: 'clob'
-    description: 'Interact with CLOB spot decentralized exchanges'
-  - name: 'clob/perp'
-    description: 'Interact with CLOB perpetual decentralized exchanges'
-  - name: 'amm/liquidity'
-    description: 'Interact with AMM LP contracts'
+    description: 'Wallet endpoints'
   - name: 'chain'
-    description: 'Interact with primary chain properties'
+    description: 'Blockchain network endpoints'
+  - name: 'amm'
+    description: 'AMM DEX swap endpoints'
+  - name: 'amm/liquidity'
+    description: 'AMM DEX liquidity provision endpoints'
+  - name: 'clob'
+    description: 'CLOB spot DEX endpoints'
+  - name: 'clob/perp'
+    description: 'CLOB perpetual DEX endpoints'
 
 schemes:
   - 'http'
 
 externalDocs:
-  description: 'Find out more about gateway'
-  url: 'https://github.com/hummingbot/hummingbot'
+  description: 'Gateway Docs'
+  url: 'https://hummingbot.org/gateway'

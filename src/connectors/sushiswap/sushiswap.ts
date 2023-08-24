@@ -31,6 +31,7 @@ import {
 } from 'ethers';
 import { percentRegexp } from '../../services/config-manager-v2';
 import { logger } from '../../services/logger';
+import { getAddress } from 'ethers/lib/utils';
 
 export class Sushiswap implements Uniswapish {
   private static _instances: { [name: string]: Sushiswap };
@@ -83,7 +84,7 @@ export class Sushiswap implements Uniswapish {
    * @param address Token address
    */
   public getTokenByAddress(address: string): Token {
-    return this.tokenList[address];
+    return this.tokenList[getAddress(address)];
   }
 
   public async init() {

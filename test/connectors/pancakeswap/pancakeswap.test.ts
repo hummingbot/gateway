@@ -14,7 +14,7 @@ import { BinanceSmartChain } from '../../../src/chains/binance-smart-chain/binan
 import { PancakeSwap } from '../../../src/connectors/pancakeswap/pancakeswap';
 import { UniswapishPriceError } from '../../../src/services/error-handler';
 import { patchEVMNonceManager } from '../../evm.nonce.mock';
-import { patch, unpatch } from '../../services/patch';
+import { patch, unpatch } from '../../../test/services/patch';
 
 let bsc: BinanceSmartChain;
 let pancakeswap: PancakeSwap;

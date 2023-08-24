@@ -13,7 +13,7 @@ import {
   SERVICE_UNITIALIZED_ERROR_MESSAGE,
 } from '../../../src/services/error-handler';
 import { EVMNonceManager } from '../../../src/chains/ethereum/evm.nonce';
-import { patch, unpatch } from '../../services/patch';
+import { patch, unpatch } from '../../../test/services/patch';
 
 import 'jest-extended';
 import { ReferenceCountingCloseable } from '../../../src/services/refcounting-closeable';

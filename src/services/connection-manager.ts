@@ -5,6 +5,7 @@ import { BinanceSmartChain } from '../chains/binance-smart-chain/binance-smart-c
 import { Harmony } from '../chains/harmony/harmony';
 import { Polygon } from '../chains/polygon/polygon';
 import { Xdc } from '../chains/xdc/xdc';
+import { Tezos } from '../chains/tezos/tezos';
 import { MadMeerkat } from '../connectors/mad_meerkat/mad_meerkat';
 import { Openocean } from '../connectors/openocean/openocean';
 import { Pangolin } from '../connectors/pangolin/pangolin';
@@ -26,6 +27,7 @@ import {
   Uniswapish,
   UniswapLPish,
   Xdcish,
+  Tezosish
 } from './common-interfaces';
 import { Traderjoe } from '../connectors/traderjoe/traderjoe';
 import { Sushiswap } from '../connectors/sushiswap/sushiswap';
@@ -37,6 +39,7 @@ import { DexalotCLOB } from '../connectors/dexalot/dexalot';
 import { Algorand } from '../chains/algorand/algorand';
 import { Cosmos } from '../chains/cosmos/cosmos';
 import { Tinyman } from '../connectors/tinyman/tinyman';
+import { Plenty } from '../connectors/plenty/plenty';
 
 export type ChainUnion =
   | Algorand
@@ -44,7 +47,8 @@ export type ChainUnion =
   | Ethereumish
   | Nearish
   | Injective
-  | Xdcish;
+  | Xdcish
+  | Tezosish;
 
 export type Chain<T> = T extends Algorand
   ? Algorand
@@ -58,6 +62,8 @@ export type Chain<T> = T extends Algorand
   ? Xdcish
   : T extends Injective
   ? Injective
+  : T extends Tezosish
+  ? Tezosish
   : never;
 
 export class UnsupportedChainException extends Error {
@@ -117,6 +123,8 @@ export function getChainInstance(
     connection = Xdc.getInstance(network);
   } else if (chain === 'injective') {
     connection = Injective.getInstance(network);
+  } else if (chain === 'tezos') {
+    connection = Tezos.getInstance(network);
   } else {
     connection = undefined;
   }
@@ -131,7 +139,8 @@ export type ConnectorUnion =
   | RefAMMish
   | CLOBish
   | InjectiveClobPerp
-  | Tinyman;
+  | Tinyman
+  | Plenty;
 
 export type Connector<T> = T extends Uniswapish
   ? Uniswapish
@@ -147,6 +156,8 @@ export type Connector<T> = T extends Uniswapish
   ? InjectiveClobPerp
   : T extends Tinyman
   ? Tinyman
+  : T extends Plenty
+  ? Plenty
   : never;
 
 export async function getConnector<T>(
@@ -199,6 +210,8 @@ export async function getConnector<T>(
     connectorInstance = DexalotCLOB.getInstance(network);
   } else if (chain == 'algorand' && connector == 'tinyman') {
     connectorInstance = Tinyman.getInstance(network);
+  } else if (chain === 'tezos' && connector === 'plenty') {
+    connectorInstance = Plenty.getInstance(network);
   } else {
     throw new Error('unsupported chain or connector');
   }
