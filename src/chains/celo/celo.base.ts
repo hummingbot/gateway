@@ -389,7 +389,7 @@ export class CeloBase {
           to: wallet.address,
           value: utils.parseEther('0'),
           nonce: nextNonce,
-          gasPrice: (gasPrice * 1e9).toFixed(0),
+          gasPrice: gasPrice * 1e9,
         };
         const response = await wallet.sendTransaction(tx);
         logger.info(response);
