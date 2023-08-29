@@ -29,10 +29,13 @@ const patchWalletXRPL = () => {
 
 beforeAll(async () => {
   xrpl = XRPL.getInstance('testnet');
-  await xrpl.init();
   xrplCLOB = XRPLCLOB.getInstance('xrpl', 'testnet');
-  await xrplCLOB.init();
   patchWalletXRPL();
+  await xrpl.init();
+  await xrplCLOB.init();
+
+  // wait for 1 second to make sure the database is ready
+  await new Promise((resolve) => setTimeout(resolve, 1000));
 });
 
 beforeEach(() => {

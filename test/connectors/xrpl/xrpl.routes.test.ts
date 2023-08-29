@@ -286,15 +286,12 @@ const INVALID_REQUEST = {
 
 beforeAll(async () => {
   xrpl = XRPL.getInstance('testnet');
-  patchConnect();
-  // await xrpl.init();
   xrplCLOB = XRPLCLOB.getInstance('xrpl', 'testnet');
-  // await xrplCLOB.init();
+  patchConnect();
 });
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 beforeEach(() => {
-  patchConnect();
   patchFee();
   patchOrderTracking();
   patchCurrentBlockNumber();

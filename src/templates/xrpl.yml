@@ -2,30 +2,30 @@ networks:
   mainnet:
     nodeURL: wss://xrplcluster.com/
     tokenListType: "FILE"
-    tokenListSource: "src/chains/xrpl/xrpl_tokens.json"
+    tokenListSource: "/home/gateway/conf/lists/xrpl_tokens.json"
     marketListType: "FILE"
-    marketListSource: "src/chains/xrpl/xrpl_markets.json"
+    marketListSource: "/home/gateway/conf/lists/xrpl_markets.json"
     nativeCurrencySymbol: "XRP"
   testnet:
     nodeURL: wss://s.altnet.rippletest.net/
     tokenListType: "FILE"
-    tokenListSource: "src/chains/xrpl/xrpl_tokens_testnet.json"
+    tokenListSource: "/home/gateway/conf/lists/xrpl_tokens_testnet.json"
     marketListType: "FILE"
-    marketListSource: "src/chains/xrpl/xrpl_markets_testnet.json"
+    marketListSource: "/home/gateway/conf/lists/xrpl_markets_testnet.json"
     nativeCurrencySymbol: "XRP"
   devnet:
     nodeURL: wss://s.devnet.rippletest.net/
     tokenListType: "FILE"
-    tokenListSource: "src/chains/xrpl/xrpl_tokens_devnet.json"
+    tokenListSource: "/home/gateway/conf/lists/xrpl_tokens_devnet.json"
     marketListType: "FILE"
-    marketListSource: "src/chains/xrpl/xrpl_markets_devnet.json"
+    marketListSource: "/home/gateway/conf/lists/xrpl_markets_devnet.json"
     nativeCurrencySymbol: "XRP"
 network: "xrpl"
 requestTimeout: 2000
 connectionTimeout: 2000
 feeCushion: 1.2
 maxFeeXRP: "2"
-orderDbPath: "/db/xrpl.level"
+orderDbPath: "db/xrpl.level"
 maxLRUCacheInstances: 10
 retry:
   all:

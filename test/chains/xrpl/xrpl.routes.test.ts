@@ -33,8 +33,8 @@ const patchDatabase = () => {
 
 beforeAll(async () => {
   xrplChain = XRPL.getInstance('testnet');
-  await xrplChain.init();
   patchDatabase();
+  await xrplChain.init();
 });
 
 afterAll(async () => {
