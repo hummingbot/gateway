@@ -28,6 +28,7 @@ import {
   UNKNOWN_ERROR_ERROR_CODE,
   UNKNOWN_ERROR_MESSAGE,
 } from '../../services/error-handler';
+import { getAddress } from 'ethers/lib/utils';
 
 export function newFakeTrade(
   tokenIn: Token,
@@ -110,7 +111,7 @@ export class Openocean implements Uniswapish {
    * @param address Token address
    */
   public getTokenByAddress(address: string): Token {
-    return this.tokenList[address];
+    return this.tokenList[getAddress(address)];
   }
 
   public async init() {
@@ -164,7 +165,7 @@ export class Openocean implements Uniswapish {
   public get chainName(): string {
     if (this._chain === 'ethereum' && this._network === 'mainnet') {
       return 'eth';
-    } else if (this._chain === 'ethereum' && this._network === 'arbitrum_one') {
+    } else if (this._chain === 'ethereum' && this._network === 'arbitrum') {
       return 'arbitrum';
     } else if (this._chain === 'ethereum' && this._network === 'optimism') {
       return 'optimism';

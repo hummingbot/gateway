@@ -1,7 +1,7 @@
 jest.useFakeTimers();
 const { MockProvider } = require('mock-ethers-provider');
 import { Uniswap } from '../../../src/connectors/uniswap/uniswap';
-import { patch, unpatch } from '../../services/patch';
+import { patch, unpatch } from '../../../test/services/patch';
 import { UniswapishPriceError } from '../../../src/services/error-handler';
 import { CurrencyAmount, Percent, TradeType, Token } from '@uniswap/sdk-core';
 import { Pair, Route } from '@uniswap/v2-sdk';

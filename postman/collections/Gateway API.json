@@ -87,7 +87,7 @@
       "id": "c2a569af-9bf2-4afd-86c6-57b52b4205a8"
     },
     {
-      "name": "network",
+      "name": "chain",
       "item": [
         {
           "name": "status",
@@ -103,11 +103,11 @@
               "urlencoded": []
             },
             "url": {
-              "raw": "https://{{host}}:{{port}}/network/status",
+              "raw": "https://{{host}}:{{port}}/chain/status",
               "protocol": "https",
               "host": ["{{host}}"],
               "port": "{{port}}",
-              "path": ["network", "status"]
+              "path": ["chain", "status"]
             }
           },
           "response": []
@@ -126,11 +126,11 @@
               "urlencoded": []
             },
             "url": {
-              "raw": "https://{{host}}:{{port}}/network/config",
+              "raw": "https://{{host}}:{{port}}/chain/config",
               "protocol": "https",
               "host": ["{{host}}"],
               "port": "{{port}}",
-              "path": ["network", "config"]
+              "path": ["chain", "config"]
             }
           },
           "response": []
@@ -154,11 +154,11 @@
               }
             },
             "url": {
-              "raw": "https://{{host}}:{{port}}/network/balances",
+              "raw": "https://{{host}}:{{port}}/chain/balances",
               "protocol": "https",
               "host": ["{{host}}"],
               "port": "{{port}}",
-              "path": ["network", "balances"]
+              "path": ["chain", "balances"]
             }
           },
           "response": []
@@ -182,11 +182,11 @@
               }
             },
             "url": {
-              "raw": "https://{{host}}:{{port}}/network/poll",
+              "raw": "https://{{host}}:{{port}}/chain/poll",
               "protocol": "https",
               "host": ["{{host}}"],
               "port": "{{port}}",
-              "path": ["network", "poll"]
+              "path": ["chain", "poll"]
             }
           },
           "response": []
@@ -205,19 +205,19 @@
               "raw": ""
             },
             "url": {
-              "raw": "https://{{host}}:{{port}}/network/tokens?chain={{chain}}&network={{network}}&tokenSymbols[]=UNI&tokenSymbols[]=WETH&tokenSymbols[]=LINK",
+              "raw": "https://{{host}}:{{port}}/chain/tokens?chain={{chain}}&network={{network}}&tokenSymbols[]=UNI&tokenSymbols[]=WETH&tokenSymbols[]=LINK",
               "protocol": "https",
               "host": ["{{host}}"],
               "port": "{{port}}",
-              "path": ["network", "tokens"],
+              "path": ["chain", "tokens"],
               "query": [
                 {
                   "key": "chain",
                   "value": "{{chain}}"
                 },
                 {
-                  "key": "network",
-                  "value": "{{network}}"
+                  "key": "chain",
+                  "value": "{{chain}}"
                 },
                 {
                   "key": "tokenSymbols[]",
@@ -357,11 +357,11 @@
               }
             },
             "url": {
-              "raw": "https://{{host}}:{{port}}/evm/nonce",
+              "raw": "https://{{host}}:{{port}}/chain/nonce",
               "protocol": "https",
               "host": ["{{host}}"],
               "port": "{{port}}",
-              "path": ["evm", "nonce"]
+              "path": ["chain", "nonce"]
             }
           },
           "response": []
@@ -385,11 +385,11 @@
               }
             },
             "url": {
-              "raw": "https://{{host}}:{{port}}/evm/nextNonce",
+              "raw": "https://{{host}}:{{port}}/chain/nextNonce",
               "protocol": "https",
               "host": ["{{host}}"],
               "port": "{{port}}",
-              "path": ["evm", "nextNonce"]
+              "path": ["chain", "nextNonce"]
             }
           },
           "response": []
@@ -444,11 +444,11 @@
               }
             },
             "url": {
-              "raw": "https://{{host}}:{{port}}/evm/allowances",
+              "raw": "https://{{host}}:{{port}}/chain/allowances",
               "protocol": "https",
               "host": ["{{host}}"],
               "port": "{{port}}",
-              "path": ["evm", "allowances"]
+              "path": ["chain", "allowances"]
             }
           },
           "response": []
@@ -472,11 +472,11 @@
               }
             },
             "url": {
-              "raw": "https://{{host}}:{{port}}/evm/approve",
+              "raw": "https://{{host}}:{{port}}/chain/approve",
               "protocol": "https",
               "host": ["{{host}}"],
               "port": "{{port}}",
-              "path": ["evm", "approve"]
+              "path": ["chain", "approve"]
             }
           },
           "response": []
@@ -500,11 +500,11 @@
               }
             },
             "url": {
-              "raw": "https://{{host}}:{{port}}/evm/cancel",
+              "raw": "https://{{host}}:{{port}}/chain/cancel",
               "protocol": "https",
               "host": ["{{host}}"],
               "port": "{{port}}",
-              "path": ["evm", "cancel"]
+              "path": ["chain", "cancel"]
             }
           },
           "response": []

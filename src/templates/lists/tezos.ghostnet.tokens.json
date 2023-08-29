@@ -1,0 +1,68 @@
+{
+  "tokens": [
+    {
+      "name": "Kolibri USD",
+      "symbol": "KUSD",
+      "address": "KT1K9gCRgaLRFKTErYt1wVxA3Frb9FjasjTV",
+      "decimals": 18,
+      "standard": "FA1.2",
+      "tokenId": 0
+    },
+    {
+      "name": "USDtez",
+      "symbol": "USDTZ",
+      "address": "KT1LN4LPSqTMS7Sd2CJw4bbDGRkMv2t68Fy9",
+      "decimals": 6,
+      "standard": "FA1.2",
+      "tokenId": 0
+    },
+    {
+      "name": "Ctez",
+      "symbol": "CTEZ",
+      "address": "KT1Ht47XHCYHFYmSpTrHPbQxQaEe3SBYgHaD",
+      "decimals": 6,
+      "standard": "FA1.2",
+      "tokenId": 0
+    },
+    {
+      "name": "Plenty PLY",
+      "symbol": "PLY",
+      "address": "KT1BxKvsSCKTJ9XrmkjQRDQfh5mZBb14ue8D",
+      "decimals": 18,
+      "standard": "FA1.2",
+      "tokenId": 0
+    },
+    {
+      "name": "Ethereum MATIC",
+      "symbol": "MATIC.e",
+      "address": "KT1Uw1oio434UoWFuZTNKFgt5wTM9tfuf7m7",
+      "decimals": 18,
+      "standard": "FA2",
+      "tokenId": 4
+    },
+    {
+      "name": "Ethereum DAI",
+      "symbol": "DAI.e",
+      "address": "KT1Uw1oio434UoWFuZTNKFgt5wTM9tfuf7m7",
+      "decimals": 18,
+      "standard": "FA2",
+      "tokenId": 5
+    },
+    {
+      "name": "Ethereum USDT",
+      "symbol": "USDT.e",
+      "address": "KT1Uw1oio434UoWFuZTNKFgt5wTM9tfuf7m7",
+      "decimals": 6,
+      "standard": "FA2",
+      "tokenId": 3
+    },
+    {
+      "name": "Ethereum USDC",
+      "symbol": "USDC.e",
+      "address": "KT1Uw1oio434UoWFuZTNKFgt5wTM9tfuf7m7",
+      "decimals": 6,
+      "standard": "FA2",
+      "tokenId": 2
+    }
+  ]
+}
