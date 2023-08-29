@@ -471,6 +471,7 @@ export class XRPL implements XRPLish {
     if (this._network in XRPL._instances) {
       await OrderTracker.stopTrackingOnAllInstancesForNetwork(this._network);
       await this._orderStorage.close(this._refCountingHandle);
+      await this._client.disconnect();
       delete XRPL._instances[this._network];
     }
   }

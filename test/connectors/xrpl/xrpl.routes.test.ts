@@ -292,6 +292,7 @@ beforeAll(async () => {
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 beforeEach(() => {
+  patchConnect();
   patchFee();
   patchOrderTracking();
   patchCurrentBlockNumber();
