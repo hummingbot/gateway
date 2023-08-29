@@ -121,14 +121,14 @@ export namespace ChainRoutes {
     '/tokens',
     asyncHandler(
       async (
-        req: Request<{}, {}, TokensRequest>,
+        req: Request<{}, {}, {}, TokensRequest>,
         res: Response<TokensResponse, {}>
       ) => {
         const chain = await getInitializedChain(
-          req.body.chain as string,
-          req.body.network as string
+          req.query.chain as string,
+          req.query.network as string
         );
-        res.status(200).json(await getTokens(chain, req.body));
+        res.status(200).json(await getTokens(chain, req.query));
       }
     )
   );

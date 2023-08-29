@@ -497,11 +497,6 @@ describe('GET /clob/ticker', () => {
       .expect('Content-Type', /json/)
       .expect(200)
       .expect((res) => {
-        console.log(
-          '🪧 -> file: xrpl.routes.test.ts:497 -> .expect -> res:',
-          res.body
-        );
-
         expect(res.body.markets[0].baseCurrency).toEqual('USD');
       })
       .expect((res) => expect(res.body.markets[0].quoteCurrency).toEqual('XRP'))
@@ -534,10 +529,6 @@ describe('GET /clob/orders', () => {
       .expect('Content-Type', /json/)
       .expect(200)
       .expect((res) => {
-        console.log(
-          '🪧 -> file: xrpl.routes.test.ts:535 -> .expect -> res:',
-          res.body
-        );
         expect(res.body.orders.length).toEqual(1);
       });
   });

@@ -93,7 +93,7 @@ export class XRPLController {
   ): Promise<{ tokens: TokenInfo[] }> {
     validateXRPLGetTokenRequest(req);
     let xrpTokens: XRPTokenInfo[] = [];
-    if (req.tokenSymbols?.length === 0) {
+    if (!req.tokenSymbols) {
       xrpTokens = xrplish.storedTokenList;
     } else {
       for (const t of req.tokenSymbols as []) {

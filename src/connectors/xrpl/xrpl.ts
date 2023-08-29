@@ -146,10 +146,6 @@ export class XRPLCLOB implements CLOBish {
   }
 
   async getMarket(market: MarketInfo): Promise<Market> {
-    console.log(
-      '🪧 -> file: xrpl.ts:148 -> XRPLCLOB -> getMarket -> market:',
-      market
-    );
     if (!market) throw new MarketNotFoundError(`No market informed.`);
     let baseTickSize,
       baseTransferRate,

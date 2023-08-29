@@ -16,10 +16,6 @@ export class XRPLOrderStorage extends ReferenceCountingCloseable {
 
   public async init(): Promise<void> {
     try {
-      console.log(
-        '🪧 -> file: xrpl.order-storage.ts:20 -> XRPLOrderStorage -> init -> this.storageStatus();:',
-        this.storageStatus()
-      );
       await this.localStorage.init();
     } catch (error) {
       throw new Error('Failed to initialize local storage: ' + error);
