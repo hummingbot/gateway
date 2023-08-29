@@ -391,10 +391,15 @@ export class CeloBase {
           nonce: nextNonce,
           gasPrice: gasPrice * 1e9,
         };
-        const response = await wallet.sendTransaction(tx);
-        logger.info(response);
-
-        return response;
+        try {
+          const response = await wallet.sendTransaction(tx);
+          logger.info(response);
+          return response;
+        } catch ({ reason, transaction, transactionHash }) {
+          logger.error(`Exception during cancel: ${reason}`);
+          logger.info(`Nonce ${nextNonce} for transaction: ${transactionHash}`);
+          return transaction;
+        }
       }
     );
   }
