@@ -3,6 +3,7 @@ import { Xdc } from '../../chains/xdc/xdc';
 import { Cosmos } from '../../chains/cosmos/cosmos';
 import { Injective } from '../../chains/injective/injective';
 import { Tezos } from '../../chains/tezos/tezos';
+import { Kujira } from '../../chains/kujira/kujira';
 
 import {
   AddWalletRequest,
@@ -135,12 +136,25 @@ export async function addWallet(
         throw new Error('Injective wallet requires a subaccount id');
       }
     } else if (connection instanceof Tezos) {
-      const tezosWallet = await connection.getWalletFromPrivateKey(req.privateKey);
-      address = await tezosWallet.signer.publicKeyHash();
-      encryptedPrivateKey = connection.encrypt(
-        req.privateKey,
-        passphrase
+      const tezosWallet = await connection.getWalletFromPrivateKey(
+        req.privateKey
       );
+      address = await tezosWallet.signer.publicKeyHash();
+      encryptedPrivateKey = connection.encrypt(req.privateKey, passphrase);
+    } else if (connection instanceof Kujira) {
+      const mnemonic = req.privateKey;
+      const accountNumber = Number(req.accountId);
+      address = await connection.getWalletPublicKey(mnemonic, accountNumber);
+
+      if (accountNumber !== undefined) {
+        encryptedPrivateKey = await connection.encrypt(
+          mnemonic,
+          accountNumber,
+          address
+        );
+      } else {
+        throw new Error('Kujira wallet requires an account number.');
+      }
     }
 
     if (address === undefined || encryptedPrivateKey === undefined) {
@@ -172,7 +186,10 @@ export async function signMessage(
     const wallet = await chain.getWallet(req.address);
     return { signature: (await wallet.signer.sign("0x03" + req.message)).sbytes.slice(4) };
   } else {
-    const chain: Ethereumish = await getInitializedChain(req.chain, req.network);
+    const chain: Ethereumish = await getInitializedChain(
+      req.chain,
+      req.network
+    );
     const wallet = await chain.getWallet(req.address);
     return { signature: await wallet.signMessage(req.message) };
   }

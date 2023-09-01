@@ -7,6 +7,7 @@ import { Polygon } from '../chains/polygon/polygon';
 import { Injective } from '../chains/injective/injective';
 import { Xdc } from '../chains/xdc/xdc';
 import { Tezos } from '../chains/tezos/tezos';
+import { Kujira } from '../chains/kujira/kujira';
 import {
   HttpException,
   UNKNOWN_CHAIN_ERROR_CODE,
@@ -101,6 +102,11 @@ export async function getStatus(
     const tezosConnections = Tezos.getConnectedInstances();
     connections = connections.concat(
       tezosConnections ? Object.values(tezosConnections) : []
+    );
+
+    const kujiraConnections = Kujira.getConnectedInstances();
+    connections = connections.concat(
+      kujiraConnections ? Object.values(kujiraConnections) : []
     );
   }
 
