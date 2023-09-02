@@ -65,7 +65,7 @@ export interface InjectiveWallet {
 export class Injective {
   private static _instances: LRUCache<string, Injective>;
   private _ready: boolean = false;
-  private _initializing: boolean = false;
+  private _initialized: Promise<boolean> = Promise.resolve(false);
 
   private _network: Network;
   private _chainId: ChainId;
@@ -152,48 +152,56 @@ export class Injective {
   }
 
   public async init(): Promise<void> {
-    if (!this.ready() && !this._initializing) {
-      this._initializing = true;
-      // initialize nonce manager
-      await this._nonceManager.init(
-        async (address: string) => await this.getTransactionCount(address)
-      );
-      // start updating block number
-      this._blockUpdateIntervalID = setInterval(async () => {
-        await this.updateCurrentBlockNumber();
-      }, 2000) as unknown as number;
+    await this._initialized; // Wait for any previous init() calls to complete
+    if (!this.ready()) {
+      // If we're not ready, this._initialized will be a Promise that resolves after init() completes
+      this._initialized = (async () => {
+        try {
+          // initialize nonce manager
+          await this._nonceManager.init(
+            async (address: string) => await this.getTransactionCount(address)
+          );
+          // start updating block number
+          this._blockUpdateIntervalID = setInterval(async () => {
+            await this.updateCurrentBlockNumber();
+          }, 2000) as unknown as number;
 
-      // get tokens
-      const rawMarkets = await this._spotApi.fetchMarkets();
-      for (const market of rawMarkets) {
-        if (market.baseToken) {
-          const token = {
-            address: '',
-            chainId: chainIdToInt(this._chainId),
-            name: market.baseToken.name,
-            decimals: market.baseToken.decimals,
-            symbol: market.baseToken.symbol,
-            denom: market.baseDenom,
-          };
-          this._symbolToToken[market.baseToken.symbol] = token;
-          this._denomToToken[market.baseDenom] = token;
-        }
+          // get tokens
+          const rawMarkets = await this._spotApi.fetchMarkets();
+          for (const market of rawMarkets) {
+            if (market.baseToken) {
+              const token = {
+                address: '',
+                chainId: chainIdToInt(this._chainId),
+                name: market.baseToken.name,
+                decimals: market.baseToken.decimals,
+                symbol: market.baseToken.symbol,
+                denom: market.baseDenom,
+              };
+              this._symbolToToken[market.baseToken.symbol] = token;
+              this._denomToToken[market.baseDenom] = token;
+            }
 
-        if (market.quoteToken) {
-          const token = {
-            address: '',
-            chainId: chainIdToInt(this._chainId),
-            name: market.quoteToken.name,
-            decimals: market.quoteToken.decimals,
-            symbol: market.quoteToken.symbol,
-            denom: market.quoteDenom,
-          };
-          this._symbolToToken[market.quoteToken.symbol] = token;
-          this._denomToToken[market.quoteDenom] = token;
+            if (market.quoteToken) {
+              const token = {
+                address: '',
+                chainId: chainIdToInt(this._chainId),
+                name: market.quoteToken.name,
+                decimals: market.quoteToken.decimals,
+                symbol: market.quoteToken.symbol,
+                denom: market.quoteDenom,
+              };
+              this._symbolToToken[market.quoteToken.symbol] = token;
+              this._denomToToken[market.quoteDenom] = token;
+            }
+          }
+          return true;
+        } catch (e) {
+          logger.error(`Failed to initialize ${this.chainName} chain: ${e}`);
+          return false;
         }
-        this._ready = true;
-        this._initializing = false;
-      }
+      })();
+      this._ready = await this._initialized; // Wait for the initialization to complete
     }
     return;
   }
