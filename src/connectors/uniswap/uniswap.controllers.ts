@@ -339,6 +339,16 @@ export async function trade(
       maxPriorityFeePerGasBigNumber
     );
 
+    if (tx.hash) {
+      await ethereumish.txStorage.saveTx(
+        ethereumish.chain,
+        ethereumish.chainId,
+        tx.hash,
+        new Date(),
+        ethereumish.gasPrice
+      );
+    }
+
     logger.info(
       `Trade has been executed, txHash is ${tx.hash}, nonce is ${tx.nonce}, gasPrice is ${gasPrice}.`
     );
