@@ -115,3 +115,7 @@ configurations:
   $namespace plenty:
     configurationPath: plenty.yml
     schemaPath: plenty-schema.json
+
+  $namespace kujira:
+    configurationPath: kujira.yml
+    schemaPath: kujira-schema.json

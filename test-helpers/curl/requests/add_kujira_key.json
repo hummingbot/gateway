@@ -1,0 +1,6 @@
+{
+  "privateKey": "$KUJIRA_MNEMONIC",
+  "chain": "kujira",
+  "network": "mainnet",
+  "accountId": "0"
+}

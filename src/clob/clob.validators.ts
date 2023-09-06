@@ -17,6 +17,7 @@ import {
   validateAmount,
   validateSide,
 } from '../amm/amm.validators';
+import { isValidKujiraPublicKey } from '../connectors/kujira/kujira.helpers';
 
 export const invalidMarketError: string =
   'The market param is not a valid market. Market should be in {base}-{quote} format.';
@@ -95,7 +96,10 @@ export const validateWallet: Validator = mkValidator(
   'address',
   invalidWalletError,
   (val) => {
-    return typeof val === 'string' && isAddress(val.slice(0, 42));
+    return (
+      typeof val === 'string' &&
+      (isAddress(val.slice(0, 42)) || isValidKujiraPublicKey(val))
+    );
   }
 );
 
