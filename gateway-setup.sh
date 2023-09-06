@@ -56,19 +56,28 @@ copy_certs () {
   read -p "Enter path to the Hummingbot certs folder >>> " CERTS_FROM_PATH
   if [ ! -d "$CERTS_FROM_PATH" ]; then
     echo "Error: $CERTS_FROM_PATH does not exist or is not a directory"
-    exit
+    exit 1
   fi
- 
+
+  # Check if there are any .pem files in the source directory
+  PEM_COUNT=$(find "$CERTS_FROM_PATH" -maxdepth 1 -name "*.pem" | wc -l)
+  if [ "$PEM_COUNT" -eq 0 ]; then
+    echo "Error: No .pem files found in $CERTS_FROM_PATH"
+    exit 1
+  fi
+
   # Make destination folder if needed
-  mkdir $CERTS_TO_PATH
+  mkdir -p $CERTS_TO_PATH
+  
   # Copy all files in the source folder to the destination folder
   cp -r $CERTS_FROM_PATH/* $CERTS_TO_PATH/
+  
   # Confirm that the files were copied
   if [ $? -eq 0 ]; then
     echo "Files successfully copied from $CERTS_FROM_PATH to $CERTS_TO_PATH"
   else
     echo "Error copying files from $CERTS_FROM_PATH to $CERTS_TO_PATH"
-    exit
+    exit 1
   fi
 }
 
