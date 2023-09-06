@@ -25,7 +25,7 @@ const errorsWithStack = winston.format((einfo) => {
 
 export const getLocalDate = () => {
   const gmtOffset = ConfigManagerV2.getInstance().get('server.GMTOffset');
-  return dayjs().utcOffset(gmtOffset, false).format('YYYY-MM-DD hh:mm:ss');
+  return dayjs().utcOffset(gmtOffset, false).format('YYYY-MM-DD HH:mm:ss');
 };
 
 const logFileFormat = winston.format.combine(
