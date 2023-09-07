@@ -1,0 +1,260 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "prefix": {
+      "type": "string"
+    },
+    "accountNumber": {
+      "type": "integer"
+    },
+    "gasPrice": {
+      "type": "number"
+    },
+    "gasPriceSuffix": {
+      "type": "string"
+    },
+    "gasLimitEstimate": {
+      "type": "number"
+    },
+    "orderBook": {
+      "type": "object",
+      "required": [
+        "offset",
+        "limit"
+      ],
+      "properties": {
+        "offset": {
+          "type": "integer"
+        },
+        "limit": {
+          "type": "integer"
+        }
+      }
+    },
+    "orders": {
+      "type": "object",
+      "required": [
+        "create",
+        "filled",
+        "cancel"
+      ],
+      "properties": {
+        "create": {
+          "type": "object",
+          "required": [
+            "fee",
+            "maxPerTransaction"
+          ],
+          "properties": {
+            "free": {
+              "type": "string"
+            },
+            "maxPerTransaction": {
+              "type": "integer"
+            }
+          }
+        },
+        "open": {
+          "type": "object",
+          "required": [
+            "limit"
+          ],
+          "properties": {
+            "limit": {
+              "type": "integer"
+            }
+          }
+        },
+        "filled": {
+          "type": "object",
+          "required": [
+            "limit"
+          ],
+          "properties": {
+            "limit": {
+              "type": "integer"
+            }
+          }
+        },
+        "cancel": {
+          "type": "object",
+          "required": [
+            "maxPerTransaction"
+          ],
+          "properties": {
+            "maxPerTransaction": {
+              "type": "integer"
+            }
+          }
+        }
+      }
+    },
+    "tokens": {
+      "type": "object",
+      "properties": {
+        "allowed": {
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "disallowed": {
+          "type": [
+            "array",
+            "null"
+          ]
+        }
+      }
+    },
+    "markets": {
+      "type": "object",
+      "properties": {
+        "allowed": {
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "disallowed": {
+          "type": [
+            "array",
+            "null"
+          ]
+        }
+      }
+    },
+    "transactions": {
+      "type": "object",
+      "required": [
+        "merge"
+      ],
+      "properties": {
+        "merge": {
+          "type": "object",
+          "required": [
+            "createOrders",
+            "cancelOrders",
+            "settleFunds"
+          ],
+          "properties": {
+            "createOrders": {
+              "type": "boolean"
+            },
+            "cancelOrders": {
+              "type": "boolean"
+            },
+            "settleFunds": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    },
+    "retry": {
+      "type": "object",
+      "required": [
+        "all"
+      ],
+      "properties": {
+        "all": {
+          "type": "object",
+          "required": [
+            "maxNumberOfRetries",
+            "delayBetweenRetries"
+          ],
+          "properties": {
+            "maxNumberOfRetries": {
+              "type": "integer"
+            },
+            "delayBetweenRetries": {
+              "type": "integer"
+            }
+          }
+        }
+      }
+    },
+    "timeout": {
+      "type": "object",
+      "required": [
+        "all"
+      ],
+      "properties": {
+        "all": {
+          "type": "integer"
+        }
+      }
+    },
+    "parallel": {
+      "type": "object",
+      "required": [
+        "all"
+      ],
+      "properties": {
+        "all": {
+          "type": "object",
+          "required": [
+            "batchSize",
+            "delayBetweenBatches"
+          ],
+          "properties": {
+            "batchSize": {
+              "type": "integer"
+            },
+            "delayBetweenBatches": {
+              "type": "integer"
+            }
+          }
+        }
+      }
+    },
+    "networks": {
+      "type": "object",
+      "patternProperties": {
+        "^\\w+$": {
+          "type": "object",
+          "properties": {
+            "chainId": {
+              "type": "string"
+            },
+            "nodeURL": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "tokenListType": {
+              "type": "string"
+            },
+            "tokenListSource": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "chainId",
+            "nodeURL",
+            "tokenListType",
+            "tokenListSource"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "networks",
+    "prefix",
+    "accountNumber",
+    "gasPrice",
+    "orderBook",
+    "orders",
+    "markets",
+    "tokens",
+    "transactions",
+    "retry",
+    "timeout",
+    "parallel"
+  ],
+  "additionalProperties": false
+}

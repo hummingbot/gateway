@@ -4,6 +4,7 @@ import { Cosmos } from '../../chains/cosmos/cosmos';
 import { Injective } from '../../chains/injective/injective';
 import { Tezos } from '../../chains/tezos/tezos';
 import { XRPL } from '../../chains/xrpl/xrpl';
+import { Kujira } from '../../chains/kujira/kujira';
 
 import {
   AddWalletRequest,
@@ -141,6 +142,20 @@ export async function addWallet(
       );
       address = await tezosWallet.signer.publicKeyHash();
       encryptedPrivateKey = connection.encrypt(req.privateKey, passphrase);
+    } else if (connection instanceof Kujira) {
+      const mnemonic = req.privateKey;
+      const accountNumber = Number(req.accountId);
+      address = await connection.getWalletPublicKey(mnemonic, accountNumber);
+
+      if (accountNumber !== undefined) {
+        encryptedPrivateKey = await connection.encrypt(
+          mnemonic,
+          accountNumber,
+          address
+        );
+      } else {
+        throw new Error('Kujira wallet requires an account number.');
+      }
     } else if (connection instanceof XRPL) {
       address = connection.getWalletFromSeed(req.privateKey).classicAddress;
       encryptedPrivateKey = await connection.encrypt(

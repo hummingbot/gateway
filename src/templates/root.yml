@@ -119,3 +119,7 @@ configurations:
   $namespace xrpl:
     configurationPath: xrpl.yml
     schemaPath: xrpl-schema.json
+
+  $namespace kujira:
+    configurationPath: kujira.yml
+    schemaPath: kujira-schema.json
