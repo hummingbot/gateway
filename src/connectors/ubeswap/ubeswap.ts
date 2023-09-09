@@ -169,7 +169,7 @@ export class Ubeswap implements Uniswapish {
     );
 
     logger.info(
-      `Fetching trade data for ${baseToken.address}-${quoteToken.address}.`
+      `Fetching trade data for ${baseToken.symbol}-${quoteToken.symbol}.`
     );
     const trades: Trade[] = Trade.bestTradeExactIn(
       [pair],
@@ -183,8 +183,11 @@ export class Ubeswap implements Uniswapish {
         `priceSwapIn: no trade pair found for ${baseToken} to ${quoteToken}.`
       );
     }
+
     logger.info(
-      `Best trade for ${baseToken.address}-${quoteToken.address}: ${trades[0]}`
+      `Best trade for ${baseToken.symbol}-${quoteToken.symbol}: ` +
+        `${trades[0].executionPrice.invert().toFixed(6)} ` +
+        `${baseToken.symbol}.`
     );
     const expectedAmount = trades[0].minimumAmountOut(
       this.getAllowedSlippage(allowedSlippage)
@@ -214,14 +217,12 @@ export class Ubeswap implements Uniswapish {
     );
 
     const pair: Pair = await Fetcher.fetchPairData(
-      baseToken,
       quoteToken,
+      baseToken,
       this.chain.provider
     );
 
-    logger.info(
-      `Fetching pair data for ${quoteToken.address}-${baseToken.address}.`
-    );
+    logger.info(`Fetching pair data for ${quoteToken.symbol}-${baseToken.symbol}.`);
     const trades: Trade[] = Trade.bestTradeExactOut(
       [pair],
       quoteToken,
@@ -230,11 +231,11 @@ export class Ubeswap implements Uniswapish {
     );
     if (!trades || trades.length === 0) {
       throw new UniswapishPriceError(
-        `priceSwapOut: no trade pair found for ${quoteToken.address} to ${baseToken.address}.`
+        `priceSwapOut: no trade pair found for ${quoteToken.symbol} to ${baseToken.symbol}.`
       );
     }
     logger.info(
-      `Best trade for ${quoteToken.address}-${baseToken.address}: ` +
+      `Best trade for ${quoteToken.symbol}-${baseToken.symbol}: ` +
         `${trades[0].executionPrice.invert().toFixed(6)} ` +
         `${baseToken.symbol}.`
     );
