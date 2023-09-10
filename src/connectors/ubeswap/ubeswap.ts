@@ -186,7 +186,7 @@ export class Ubeswap implements Uniswapish {
 
     logger.info(
       `Best trade for ${baseToken.symbol}-${quoteToken.symbol}: ` +
-        `${trades[0].executionPrice.invert().toFixed(6)} ` +
+        `${trades[0].executionPrice.toFixed(6)} ` +
         `${baseToken.symbol}.`
     );
     const expectedAmount = trades[0].minimumAmountOut(
