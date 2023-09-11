@@ -21,6 +21,7 @@ import { DexalotCLOBConfig } from './dexalot/dexalot.clob.config';
 import { TinymanConfig } from './tinyman/tinyman.config';
 import { CurveConfig } from './curve/curveswap.config';
 import { PlentyConfig } from './plenty/plenty.config';
+import { KujiraConfig } from './kujira/kujira.config';
 
 export namespace ConnectorsRoutes {
   export const router = Router();
@@ -164,6 +165,16 @@ export namespace ConnectorsRoutes {
             trading_type: PlentyConfig.config.tradingTypes,
             chain_type: PlentyConfig.config.chainType,
             available_networks: PlentyConfig.config.availableNetworks,
+          },
+          {
+            name: 'kujira',
+            trading_type: KujiraConfig.config.tradingTypes,
+            chain_type: KujiraConfig.config.chainType,
+            available_networks: KujiraConfig.config.availableNetworks,
+            additional_add_wallet_prompts: {
+              accountId:
+                'Enter your kujira account number (input 0 if unsure) >>> ',
+            },
           },
         ],
       });

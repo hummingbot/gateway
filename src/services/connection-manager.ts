@@ -27,7 +27,7 @@ import {
   Uniswapish,
   UniswapLPish,
   Xdcish,
-  Tezosish
+  Tezosish,
 } from './common-interfaces';
 import { Traderjoe } from '../connectors/traderjoe/traderjoe';
 import { Sushiswap } from '../connectors/sushiswap/sushiswap';
@@ -41,6 +41,8 @@ import { Cosmos } from '../chains/cosmos/cosmos';
 import { Tinyman } from '../connectors/tinyman/tinyman';
 import { Plenty } from '../connectors/plenty/plenty';
 import { Curve } from '../connectors/curve/curve';
+import { Kujira } from '../chains/kujira/kujira';
+import { KujiraCLOB } from '../connectors/kujira/kujira';
 
 export type ChainUnion =
   | Algorand
@@ -49,7 +51,8 @@ export type ChainUnion =
   | Nearish
   | Injective
   | Xdcish
-  | Tezosish;
+  | Tezosish
+  | Kujira;
 
 export type Chain<T> = T extends Algorand
   ? Algorand
@@ -65,6 +68,8 @@ export type Chain<T> = T extends Algorand
   ? Injective
   : T extends Tezosish
   ? Tezosish
+  : T extends KujiraCLOB
+  ? KujiraCLOB
   : never;
 
 export class UnsupportedChainException extends Error {
@@ -83,7 +88,7 @@ export async function getInitializedChain<T>(
   chain: string,
   network: string
 ): Promise<Chain<T>> {
-  const chainInstance = getChainInstance(chain, network);
+  const chainInstance = await getChainInstance(chain, network);
 
   if (chainInstance === undefined) {
     throw new UnsupportedChainException(`unsupported chain ${chain}`);
@@ -96,10 +101,10 @@ export async function getInitializedChain<T>(
   return chainInstance as Chain<T>;
 }
 
-export function getChainInstance(
+export async function getChainInstance(
   chain: string,
   network: string
-): ChainUnion | undefined {
+): Promise<ChainUnion | undefined> {
   let connection: ChainUnion | undefined;
 
   if (chain === 'algorand') {
@@ -126,6 +131,8 @@ export function getChainInstance(
     connection = Injective.getInstance(network);
   } else if (chain === 'tezos') {
     connection = Tezos.getInstance(network);
+  } else if (chain === 'kujira') {
+    connection = Kujira.getInstance(network);
   } else {
     connection = undefined;
   }
@@ -142,7 +149,8 @@ export type ConnectorUnion =
   | InjectiveClobPerp
   | Tinyman
   | Plenty
-  | Curve;
+  | Curve
+  | KujiraCLOB;
 
 export type Connector<T> = T extends Uniswapish
   ? Uniswapish
@@ -160,6 +168,8 @@ export type Connector<T> = T extends Uniswapish
   ? Tinyman
   : T extends Plenty
   ? Plenty
+  : T extends KujiraCLOB
+  ? KujiraCLOB
   : never;
 
 export async function getConnector<T>(
@@ -214,6 +224,8 @@ export async function getConnector<T>(
     connectorInstance = Tinyman.getInstance(network);
   } else if (chain === 'tezos' && connector === 'plenty') {
     connectorInstance = Plenty.getInstance(network);
+  } else if (chain === 'kujira' && connector === 'kujira') {
+    connectorInstance = KujiraCLOB.getInstance(chain, network);
   } else if (
     (chain === 'ethereum' || chain === 'polygon') &&
     connector === 'curve'
