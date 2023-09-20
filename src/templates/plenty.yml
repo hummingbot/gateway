@@ -12,4 +12,3 @@ contractAddresses:
     poolsApi: 'https://config.mainnet.plenty.network/pools'
     analyticsApi: 'https://api.analytics.plenty.network/analytics/pools'
     router: 'KT1WPctQmrbGDf5Md2xmFGQGUSvQgao18vK4'
-    ctezAdmin: 'KT1GWnsoFZVHGh7roXEER3qeCcgJgrXT3de2'

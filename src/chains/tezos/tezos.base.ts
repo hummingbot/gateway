@@ -54,6 +54,7 @@ export class TezosBase {
 
   private tzktURL: string;
   private _tzktApiClient: TzktApiClient;
+  public ctezAdminAddress: string;
 
   constructor(network: string) {
     const config = getTezosConfig('tezos', network);
@@ -62,6 +63,7 @@ export class TezosBase {
     this.tzktURL = config.network.tzktURL;
     this.tokenListType = config.network.tokenListType;
     this.tokenListSource = config.network.tokenListSource;
+    this.ctezAdminAddress = config.network.ctezAdminAddress;
     this._provider = new TezosToolkit(this.rpcUrl);
     this._rpcClient = new RpcClient(this.rpcUrl);
     this._tzktApiClient = new TzktApiClient(this.tzktURL);

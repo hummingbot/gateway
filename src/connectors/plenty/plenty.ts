@@ -20,7 +20,6 @@ export class Plenty {
   private _pools: Record<string, IConfigPool> = {};
   private _ready: boolean = false;
   private _skipTokens: string[] = ['SEB', 'PEPE'];
-  public ctezAdminAddress: string;
   public isPlenty = true;
 
   constructor(network: string) {
@@ -28,7 +27,6 @@ export class Plenty {
     this._router = config.routerAddress(network);
     this._poolsApi = config.poolsApi(network);
     this._analyticsApi = config.analyticsApi(network);
-    this.ctezAdminAddress = config.ctezAdminAddress(network);
     this._gasLimitEstimate = config.gasLimitEstimate;
   }
 
@@ -103,10 +101,6 @@ export class Plenty {
   public async getAnalytics(): Promise<any> {
     const apiResponse = await fetch(this._analyticsApi);
     return await apiResponse.json();
-  }
-
-  public async ctezContract(tezos: Tezosish): Promise<any> {
-    return await tezos.getContract(this.ctezAdminAddress);
   }
 
   public get tokenList(): Record<string, IConfigToken> {
