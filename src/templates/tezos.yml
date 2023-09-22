@@ -5,7 +5,7 @@ networks:
   mainnet: 
     chainID: 'mainnet'
     nativeCurrencySymbol: 'XTZ'    
-    nodeURL: 'https://rpc.tzbeta.net'
+    nodeURL: 'https://mainnet.tezos.marigold.dev'
     tokenListType: 'FILE'
     tokenListSource: 'conf/lists/tezos.mainnet.tokens.json'
     tzktURL: 'https://api.tzkt.io'
