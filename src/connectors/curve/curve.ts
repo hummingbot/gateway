@@ -12,11 +12,11 @@ import { CurveConfig } from './curveswap.config';
 import { getAddress } from 'ethers/lib/utils';
 import { Polygon } from '../../chains/polygon/polygon';
 import { Ethereum } from '../../chains/ethereum/ethereum';
-import curve from 'curvefi';
 import { IRoute } from 'curvefi/lib/interfaces';
 import { EVMTxBroadcaster } from '../../chains/ethereum/evm.broadcaster';
 import { TransactionRequest } from 'viem';
 import { Token } from '@uniswap/sdk';
+import { curve as curvve } from 'curvefi';
 
 export type CurveTrade = {
   route: IRoute;
@@ -45,7 +45,7 @@ export class Curve {
       this._chain = Polygon.getInstance(network);
     }
     // this.curve = require('curvefi');
-    this.curve = curve;
+    this.curve = curvve;
   }
 
   public static getInstance(chain: string, network: string): Curve {
