@@ -16,7 +16,7 @@ import { IRoute } from 'curvefi/lib/interfaces';
 import { EVMTxBroadcaster } from '../../chains/ethereum/evm.broadcaster';
 import { TransactionRequest } from 'viem';
 import { Token } from '@uniswap/sdk';
-import { curve as curvve } from 'curvefi';
+// import { curve as curvve } from 'curvefi';
 
 export type CurveTrade = {
   route: IRoute;
@@ -44,8 +44,8 @@ export class Curve {
     } else {
       this._chain = Polygon.getInstance(network);
     }
-    // this.curve = require('curvefi');
-    this.curve = curvve;
+    this.curve = require('curvefi');
+    // this.curve = curvve;
   }
 
   public static getInstance(chain: string, network: string): Curve {
