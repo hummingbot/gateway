@@ -19,7 +19,7 @@ export class Plenty {
   private _tokenList: Record<string, IConfigToken> = {};
   private _pools: Record<string, IConfigPool> = {};
   private _ready: boolean = false;
-  private _skipTokens: string[] = ['SEB', 'PEPE'];
+  private _skipTokens: string[] = ['SEB', 'PEPE', 'TKEY-X'];
   public isPlenty = true;
 
   constructor(network: string) {
@@ -48,7 +48,7 @@ export class Plenty {
    * @param address Token address
    */
   public getTokenBySymbol(symbol: string): IConfigToken {
-    return this._tokenList[symbol];
+    return this._tokenList[symbol.toLocaleUpperCase()];
   }
 
   public async init() {
@@ -61,7 +61,7 @@ export class Plenty {
         pool.token2.symbol = pool.token2.symbol.toUpperCase();
         pool.token1.pairs = pool.token1.pairs.map((pair) => pair.toUpperCase());
         pool.token2.pairs = pool.token2.pairs.map((pair) => pair.toUpperCase());
-        if (pool.token1.symbol in this._skipTokens || pool.token2.symbol in this._skipTokens)
+        if (this._skipTokens.includes(pool.token1.symbol) || this._skipTokens.includes(pool.token2.symbol))
           continue;
 
         let tokensKey = pool.token1.symbol + '-' + pool.token2.symbol;
@@ -239,7 +239,7 @@ export class Plenty {
     return {
       expectedAmount: path.tokenOutAmount,
       trade: {
-        executionPrice: path.exchangeRate,
+        executionPrice: BigNumber(1).dividedBy(path.exchangeRate),
         routeParams: path,
         amountIn: path.tokenOutAmount.multipliedBy(10 ** quoteToken.decimals),
       }

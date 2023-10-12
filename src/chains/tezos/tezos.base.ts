@@ -119,10 +119,10 @@ export class TezosBase {
     return this._contractMap[address];
   }
 
-  // returns the contract storage for a given address (cached for 15 seconds)
+  // returns the contract storage for a given address (cached for 12 seconds)
   async getContractStorage(address: string) {
     const timestamp = Date.now();
-    if (!this._contractStorageMap[address] || timestamp - this._contractStorageMap[address].timestamp > 15000) {
+    if (!this._contractStorageMap[address] || timestamp - this._contractStorageMap[address].timestamp > 12000) {
       const contract = await this.getContract(address);
       this._contractStorageMap[address] = {
         storage: await contract.storage(),
