@@ -11,7 +11,7 @@ export namespace CurveConfig {
       },
       {
         chain: 'ethereum',
-        networks: ['mainnet', 'arbitrum_one', 'optimism'],
+        networks: ['mainnet', 'arbitrum', 'optimism'],
       },
       {
         chain: 'polygon',
