@@ -38,7 +38,7 @@ export class XdcBase {
   private _tokenMap: Record<string, TokenInfo> = {};
   // there are async values set in the constructor
   private _ready: boolean = false;
-  private _initializing: boolean = false;
+  private _initialized: Promise<boolean> = Promise.resolve(false);
   public chainName;
   public chainId;
   public rpcUrl;
@@ -120,16 +120,23 @@ export class XdcBase {
   }
 
   async init(): Promise<void> {
-    if (!this.ready() && !this._initializing) {
-      this._initializing = true;
-      await this._nonceManager.init(
-        async (address) =>
-          (await this.provider.getTransactionCount(address)) - 1
-      );
-
-      await this.loadTokens(this.tokenListSource, this.tokenListType);
-      this._ready = true;
-      this._initializing = false;
+    await this._initialized; // Wait for any previous init() calls to complete
+    if (!this.ready()) {
+      // If we're not ready, this._initialized will be a Promise that resolves after init() completes
+      this._initialized = (async () => {
+        try {
+          await this._nonceManager.init(
+            async (address) =>
+              (await this.provider.getTransactionCount(address)) - 1
+          );
+          await this.loadTokens(this.tokenListSource, this.tokenListType);
+          return true;
+        } catch (e) {
+          logger.error(`Failed to initialize ${this.chainName} chain: ${e}`);
+          return false;
+        }
+      })();
+      this._ready = await this._initialized; // Wait for the initialization to complete
     }
     return;
   }
@@ -242,7 +249,7 @@ export class XdcBase {
     const balance: BigNumber = await contract.balanceOf(wallet.address);
     logger.info(
       `Raw balance of ${contract.address} for ` +
-        `${wallet.address}: ${balance.toString()}`
+      `${wallet.address}: ${balance.toString()}`
     );
     return { value: balance, decimals: decimals };
   }
@@ -256,10 +263,10 @@ export class XdcBase {
   ): Promise<TokenValue> {
     logger.info(
       'Requesting spender ' +
-        spender +
-        ' allowance for owner ' +
-        wallet.address +
-        '.'
+      spender +
+      ' allowance for owner ' +
+      wallet.address +
+      '.'
     );
     const allowance = await contract.allowance(wallet.address, spender);
     logger.info(allowance);
@@ -312,12 +319,12 @@ export class XdcBase {
   ): Promise<Transaction> {
     logger.info(
       'Calling approve method called for spender ' +
-        spender +
-        ' requesting allowance ' +
-        amount.toString() +
-        ' from owner ' +
-        wallet.address +
-        '.'
+      spender +
+      ' requesting allowance ' +
+      amount.toString() +
+      ' from owner ' +
+      wallet.address +
+      '.'
     );
     return this.nonceManager.provideNonce(
       nonce,
