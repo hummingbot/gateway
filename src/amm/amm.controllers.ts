@@ -75,14 +75,13 @@ import {
 import { Algorand } from '../chains/algorand/algorand';
 import { Tinyman } from '../connectors/tinyman/tinyman';
 import { Plenty } from '../connectors/plenty/plenty';
-import { Curve } from '../connectors/curve/curve';
 
 export async function price(req: PriceRequest): Promise<PriceResponse> {
   const chain = await getInitializedChain<
     Algorand | Ethereumish | Nearish | Tezosish
   >(req.chain, req.network);
-  const connector: Uniswapish | RefAMMish | Tinyman | Plenty | Curve =
-    await getConnector<Uniswapish | RefAMMish | Tinyman | Plenty | Curve>(
+  const connector: Uniswapish | RefAMMish | Tinyman | Plenty =
+    await getConnector<Uniswapish | RefAMMish | Tinyman | Plenty>(
       req.chain,
       req.network,
       req.connector

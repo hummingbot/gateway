@@ -1,7 +1,7 @@
 {
-  "connector": "curve",
+  "connector": "uniswap",
   "chain": "ethereum",
-  "network": "mainnet",
+  "network": "goerli",
   "quote": "WETH",
   "base": "DAI",
   "amount": "1",
