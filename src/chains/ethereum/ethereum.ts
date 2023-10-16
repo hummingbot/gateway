@@ -203,7 +203,7 @@ export class Ethereum extends EthereumBase implements Ethereumish {
         curve.init();
         throw Error('Curve not ready');
       }
-      spender = curve.curve.registryExchange();
+      spender = curve.router;
     } else {
       spender = reqSpender;
     }

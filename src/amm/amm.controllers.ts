@@ -45,11 +45,6 @@ import {
   estimateGas as tinymanEstimateGas,
 } from '../connectors/tinyman/tinyman.controllers';
 import {
-  price as curvePrice,
-  trade as curveTrade,
-  estimateGas as curveEstimateGas,
-} from '../connectors/curve/curve.controllers';
-import {
   getPriceData as perpPriceData,
   createTakerOrder,
   estimateGas as perpEstimateGas,
@@ -100,8 +95,6 @@ export async function price(req: PriceRequest): Promise<PriceResponse> {
     return uniswapPrice(<Ethereumish>chain, connector, req);
   } else if (connector instanceof Tinyman) {
     return tinymanPrice(chain as unknown as Algorand, connector, req);
-  } else if (connector instanceof Curve) {
-    return curvePrice(<Ethereumish>chain, connector, req);
   } else {
     return refPrice(<Nearish>chain, connector as RefAMMish, req);
   }
@@ -125,8 +118,6 @@ export async function trade(req: TradeRequest): Promise<TradeResponse> {
     return uniswapTrade(<Ethereumish>chain, connector, req);
   } else if (connector instanceof Tinyman) {
     return tinymanTrade(chain as unknown as Algorand, connector, req);
-  } else if (connector instanceof Curve) {
-    return curveTrade(<Ethereumish>chain, connector, req);
   } else {
     return refTrade(<Nearish>chain, connector as RefAMMish, req);
   }
@@ -214,8 +205,6 @@ export async function estimateGas(
     return uniswapEstimateGas(<Ethereumish>chain, connector);
   } else if (connector instanceof Tinyman) {
     return tinymanEstimateGas(chain as unknown as Algorand, connector);
-  } else if (connector instanceof Curve) {
-    return curveEstimateGas(<Ethereumish>chain, connector);
   } else {
     return refEstimateGas(<Nearish>chain, connector as RefAMMish);
   }

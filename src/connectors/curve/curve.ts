@@ -1,4 +1,12 @@
-import { BigNumber, ContractTransaction, Transaction, Wallet } from 'ethers';
+import {
+  BigNumber,
+  ContractTransaction,
+  Transaction,
+  Wallet,
+  Contract,
+  ContractInterface,
+  utils,
+} from 'ethers';
 import { percentRegexp } from '../../services/config-manager-v2';
 import {
   InitializationError,
@@ -12,40 +20,47 @@ import { CurveConfig } from './curveswap.config';
 import { getAddress } from 'ethers/lib/utils';
 import { Polygon } from '../../chains/polygon/polygon';
 import { Ethereum } from '../../chains/ethereum/ethereum';
-import { IRoute } from 'curvefi/lib/interfaces';
 import { EVMTxBroadcaster } from '../../chains/ethereum/evm.broadcaster';
-import { TransactionRequest } from 'viem';
 import { Token } from '@uniswap/sdk';
-// import { curve as curvve } from 'curvefi';
+import { Uniswapish, UniswapishTrade } from '../../services/common-interfaces';
+import { Fraction } from '@uniswap/sdk-core';
+import { abi as routerAbi } from './exchange.contract.abi.json';
+import { abi as registryABI } from './registry.contract.abi.json';
+import { Avalanche } from '../../chains/avalanche/avalanche';
 
-export type CurveTrade = {
-  route: IRoute;
-  inputCoin: string;
-  outputCoin: string;
-  amount: string;
-};
+export interface CurveTrade {
+  from: string;
+  to: string;
+  amount: number;
+  expected: number;
+  executionPrice: Fraction;
+  isBuy: boolean;
+  pool: string;
+}
 
-export class Curve {
+export class Curve implements Uniswapish {
   private static _instances: { [name: string]: Curve };
-  private _chain: Ethereum | Polygon;
+  private _chain: Ethereum | Polygon | Avalanche;
   private _config: typeof CurveConfig.config;
   private tokenList: Record<string, Token> = {};
   private _ready: boolean = false;
   public gasLimitEstimate: any;
   public router: any;
   public curve: any;
-  public routerAbi: any[] = [];
+  public routerAbi: any[];
   public ttl: any;
 
   private constructor(chain: string, network: string) {
     this._config = CurveConfig.config;
     if (chain === 'ethereum') {
       this._chain = Ethereum.getInstance(network);
-    } else {
+    } else if (chain === 'avalanche') {
+      this._chain = Avalanche.getInstance(network);
+    } else if (chain === 'polygon') {
       this._chain = Polygon.getInstance(network);
-    }
-    this.curve = require('curvefi');
-    // this.curve = curvve;
+    } else throw Error('Chain not supported.');
+    this.routerAbi = routerAbi;
+    this.gasLimitEstimate = this._config.gasLimitEstimate;
   }
 
   public static getInstance(chain: string, network: string): Curve {
@@ -74,22 +89,18 @@ export class Curve {
         token.name
       );
     }
-    await this.curve.init(
-      'JsonRpc',
-      { url: this._chain.rpcUrl },
-      { chainId: this._chain.chainId }
+    const registry = new Contract(
+      this._config.routerAddress(this._chain.chain),
+      registryABI,
+      this._chain.provider
+    );
+    this.router = await registry.get_address(2);
+    this.curve = new Contract(
+      this.router,
+      this.routerAbi,
+      this._chain.provider
     );
     this._ready = true;
-  }
-
-  public async fetchPools() {
-    await Promise.all([
-      this.curve.factory.fetchPools(),
-      this.curve.crvUSDFactory.fetchPools(),
-      this.curve.EYWAFactory.fetchPools(),
-      this.curve.cryptoFactory.fetchPools(),
-      this.curve.tricryptoFactory.fetchPools(),
-    ]);
   }
 
   /*
@@ -144,31 +155,17 @@ export class Curve {
     quoteToken: Token,
     baseToken: Token,
     amount: BigNumber,
-    _allowedSlippage?: string
+    allowedSlippage?: string
   ) {
-    logger.info(
-      `Fetching pair data for ${quoteToken.address}-${baseToken.address}.`
+    const tradeInfo = await this.estimateSellTrade(
+      baseToken,
+      quoteToken,
+      amount,
+      allowedSlippage
     );
-    await this.fetchPools();
-    const { route, output } = await this.curve.router.getBestRouteAndOutput(
-      quoteToken.address,
-      baseToken.address,
-      amount.toString()
-    );
-    if (!route) {
-      throw new UniswapishPriceError(
-        `priceSwapOut: no trade pair found for ${quoteToken.address} to ${baseToken.address}.`
-      );
-    }
-    return {
-      trade: {
-        route: route,
-        inputCoin: quoteToken.address,
-        outputCoin: baseToken.address,
-        amount: amount.toString(),
-      },
-      expectedAmount: output,
-    };
+    tradeInfo.trade.isBuy = true;
+    tradeInfo.trade.executionPrice = tradeInfo.trade.executionPrice.invert();
+    return tradeInfo;
   }
 
   /**
@@ -191,25 +188,31 @@ export class Curve {
     logger.info(
       `Fetching pair data for ${quoteToken.address}-${baseToken.address}.`
     );
-    await this.fetchPools();
-    const { route, output } = await this.curve.router.getBestRouteAndOutput(
+    const info = await this.curve.get_best_rate(
       baseToken.address,
       quoteToken.address,
       amount.toString()
     );
-    if (!route) {
+    const pool = info[0];
+    if (!pool) {
       throw new UniswapishPriceError(
         `priceSwapOut: no trade pair found for ${quoteToken.address} to ${baseToken.address}.`
       );
     }
     return {
       trade: {
-        route: route,
-        inputCoin: baseToken.address,
-        outputCoin: quoteToken.address,
-        amount: amount.toString(),
+        from: baseToken.address,
+        to: quoteToken.address,
+        amount: Number(amount.toString()),
+        expected: info[1].toString(),
+        executionPrice: new Fraction(
+          utils.parseUnits(info[1].toString(), baseToken.decimals).toString(),
+          utils.parseUnits(amount.toString(), quoteToken.decimals).toString()
+        ),
+        isBuy: false,
+        pool: pool,
       },
-      expectedAmount: output,
+      expectedAmount: new Fraction(info[1], '1'),
     };
   }
 
@@ -230,26 +233,29 @@ export class Curve {
    */
   async executeTrade(
     wallet: Wallet,
-    trade: CurveTrade,
+    trade: UniswapishTrade,
     gasPrice: number,
+    _uniswapRouter: string,
+    _ttl: number,
+    _abi: ContractInterface,
     gasLimit: number,
     nonce?: number,
     maxFeePerGas?: BigNumber,
-    maxPriorityFeePerGas?: BigNumber,
-    allowedSlippage?: string
+    maxPriorityFeePerGas?: BigNumber
   ): Promise<Transaction> {
-    const { contract, methodName, methodParams, value } =
-      await this.curve.router.modifiedSwap(
-        trade.inputCoin,
-        trade.outputCoin,
-        trade.amount,
-        allowedSlippage ? this.getAllowedSlippage(allowedSlippage) : 0
-      );
-    let overrideParams;
+    const castedTrade = <CurveTrade>trade;
+    let overrideParams: {
+      gasLimit: string | number;
+      value: number;
+      nonce: number | undefined;
+      maxFeePerGas?: BigNumber | undefined;
+      maxPriorityFeePerGas?: BigNumber | undefined;
+      gasPrice?: string;
+    };
     if (maxFeePerGas || maxPriorityFeePerGas) {
       overrideParams = {
         gasLimit: gasLimit,
-        value: value,
+        value: 0,
         nonce: nonce,
         maxFeePerGas,
         maxPriorityFeePerGas,
@@ -258,13 +264,31 @@ export class Curve {
       overrideParams = {
         gasPrice: (gasPrice * 1e9).toFixed(0),
         gasLimit: gasLimit.toFixed(0),
-        value: value,
+        value: 0,
         nonce: nonce,
       };
     }
-    const txData: TransactionRequest = <TransactionRequest>await contract[
-      methodName
-    ].populateTransaction(methodParams, {
+    let tradeParams: { [s: string]: unknown } | ArrayLike<unknown>;
+    if (castedTrade.isBuy) {
+      tradeParams = {
+        pool: castedTrade.pool,
+        from: castedTrade.to,
+        to: castedTrade.from,
+        amount: castedTrade.expected,
+        expected: String(0.9 * Number(castedTrade.amount)),
+      };
+    } else {
+      tradeParams = {
+        pool: castedTrade.pool,
+        from: castedTrade.from,
+        to: castedTrade.to,
+        amount: castedTrade.amount,
+        expected: String(Number(castedTrade.expected.toString()) - 1000000),
+      };
+    }
+    const txData = await this.curve.populateTransaction[
+      'exchange(address,address,address,uint256,uint256)'
+    ](...Object.values(tradeParams), {
       ...overrideParams,
     });
     const txResponse: ContractTransaction = await EVMTxBroadcaster.getInstance(
