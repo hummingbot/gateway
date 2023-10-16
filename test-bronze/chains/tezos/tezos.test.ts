@@ -66,8 +66,14 @@ describe('Tezos', () => {
 
     describe('Tezos Base', () => {
 
-        beforeAll(async () => {
-            await tezos.init();
+        it('should wait for the first init() call to finish in future immediate init() calls', async () => {
+            let firstCallFullfilled = false;
+            tezos.init().then(() => {
+                firstCallFullfilled = true;
+            });
+            await tezos.init().then(() => {
+                expect(firstCallFullfilled).toEqual(true);
+            });
         });
 
         it('should be ready', () => {

@@ -8,6 +8,7 @@ import { BigNumber } from 'ethers';
 import { AccountData, DirectSignResponse } from '@cosmjs/proto-signing';
 
 import { IndexedTx, setupIbcExtension } from '@cosmjs/stargate';
+import { logger } from '../../services/logger';
 
 //Cosmos
 const { DirectSecp256k1Wallet } = require('@cosmjs/proto-signing');
@@ -58,8 +59,7 @@ export class CosmosBase {
   private _tokenMap: Record<string, Token> = {};
 
   private _ready: boolean = false;
-  private _initializing: boolean = false;
-  private _initPromise: Promise<void> = Promise.resolve();
+  private _initialized: Promise<boolean> = Promise.resolve(false);
 
   public chainName;
   public rpcUrl;
@@ -93,17 +93,21 @@ export class CosmosBase {
   }
 
   async init(): Promise<void> {
-    if (!this.ready() && !this._initializing) {
-      this._initializing = true;
-      this._initPromise = this.loadTokens(
-        this.tokenListSource,
-        this.tokenListType
-      ).then(() => {
-        this._ready = true;
-        this._initializing = false;
-      });
+    await this._initialized; // Wait for any previous init() calls to complete
+    if (!this.ready()) {
+      // If we're not ready, this._initialized will be a Promise that resolves after init() completes
+      this._initialized = (async () => {
+        try {
+          await this.loadTokens(this.tokenListSource, this.tokenListType)
+          return true;
+        } catch (e) {
+          logger.error(`Failed to initialize ${this.chainName} chain: ${e}`);
+          return false;
+        }
+      })();
+      this._ready = await this._initialized; // Wait for the initialization to complete
     }
-    return this._initPromise;
+    return;
   }
 
   async loadTokens(
