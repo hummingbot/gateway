@@ -194,9 +194,9 @@ export class Curve implements Uniswapish {
       amount.toString()
     );
     const pool = info[0];
-    if (!pool) {
+    if (!pool || pool === '0x0000000000000000000000000000000000000000') {
       throw new UniswapishPriceError(
-        `priceSwapOut: no trade pair found for ${quoteToken.address} to ${baseToken.address}.`
+        `No pool found for ${quoteToken.address} to ${baseToken.address}.`
       );
     }
     return {
