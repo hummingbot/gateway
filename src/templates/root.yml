@@ -28,10 +28,6 @@ configurations:
     configurationPath: polygon.yml
     schemaPath: ethereum-schema.json
 
-  $namespace defira:
-    configurationPath: defira.yml
-    schemaPath: defira-schema.json
-
   $namespace near:
     configurationPath: near.yml
     schemaPath: ethereum-schema.json

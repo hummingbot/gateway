@@ -45,7 +45,6 @@ describe('Configuration manager v2 tests', () => {
   it('loading a valid configuration root', (done) => {
     expect(configManager.get('server.certificatePath')).toBeDefined();
     expect(configManager.get('ethereum.networks')).toBeDefined();
-    expect(configManager.get('defira.contractAddresses')).toBeDefined();
     done();
   });
 
@@ -80,11 +79,6 @@ describe('Configuration manager v2 tests', () => {
     expect(
       configManager.get('ethereum.networks.goerli.nativeCurrencySymbol')
     ).toEqual('ETH');
-    expect(
-      configManager.get('defira.contractAddresses.testnet.initCodeHash')
-    ).toEqual(
-      '0x7224a10f5f94e12d3973f5ef0f63a558539a93e1eef47935934ffc4d741b4b9f' // noqa: mock
-    );
     done();
   });
 

@@ -2,7 +2,6 @@
 /* eslint-disable @typescript-eslint/ban-types */
 import { Router, Response } from 'express';
 import { asyncHandler } from '../services/error-handler';
-import { DefiraConfig } from './defira/defira.config';
 import { MadMeerkatConfig } from './mad_meerkat/mad_meerkat.config';
 import { OpenoceanConfig } from './openocean/openocean.config';
 import { PangolinConfig } from './pangolin/pangolin.config';
@@ -80,12 +79,6 @@ export namespace ConnectorsRoutes {
             trading_type: TraderjoeConfig.config.tradingTypes,
             chain_type: TraderjoeConfig.config.chainType,
             available_networks: TraderjoeConfig.config.availableNetworks,
-          },
-          {
-            name: 'defira',
-            trading_type: DefiraConfig.config.tradingTypes,
-            chain_type: DefiraConfig.config.chainType,
-            available_networks: DefiraConfig.config.availableNetworks,
           },
           {
             name: 'mad_meerkat',
