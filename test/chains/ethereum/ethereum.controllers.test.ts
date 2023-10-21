@@ -20,8 +20,6 @@ beforeAll(async () => {
   eth = Ethereum.getInstance('goerli');
 
   patchEVMNonceManager(eth.nonceManager);
-
-  await eth.init();
 });
 
 beforeEach(() => {
@@ -40,6 +38,18 @@ afterAll(async () => {
 //   '0000000000000000000000000000000000000000000000000000000000000000'; // noqa: mock
 
 const mockAddress = '0xFaA12FD102FE8623C9299c72B03E45107F2772B5'; // noqa: mock
+
+describe('init', () => {
+  it('should wait for the first init() call to finish in future immediate init() calls', async () => {
+    let firstCallFullfilled = false;
+    eth.init().then(() => {
+      firstCallFullfilled = true;
+    });
+    await eth.init().then(() => {
+      expect(firstCallFullfilled).toEqual(true);
+    });
+  });
+});
 
 describe('nonce', () => {
   it('return a nonce for a wallet', async () => {
