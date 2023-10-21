@@ -112,6 +112,10 @@ configurations:
     configurationPath: plenty.yml
     schemaPath: plenty-schema.json
 
+  $namespace curve:
+    configurationPath: curve.yml
+    schemaPath: cronos-connector-schema.json
+
   $namespace kujira:
     configurationPath: kujira.yml
     schemaPath: kujira-schema.json
