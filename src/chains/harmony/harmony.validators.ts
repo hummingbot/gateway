@@ -42,10 +42,7 @@ export const validateSpender: Validator = mkValidator(
   invalidSpenderError,
   (val) =>
     typeof val === 'string' &&
-    (val === 'sushiswap' ||
-      val === 'defira' ||
-      val === 'openocean' ||
-      isValidAddress(val))
+    (val === 'sushiswap' || val === 'openocean' || isValidAddress(val))
 );
 
 export const validateNonce: Validator = mkValidator(

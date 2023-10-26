@@ -78,7 +78,6 @@ import {
   TradeOptionsDeadline as VVSTradeOptionsDeadline,
   SwapParameters as VVSSwapParameters,
 } from 'vvs-sdk';
-import { Trade as DefiraTrade } from '@zuzu-cat/defira-sdk';
 import {
   Token as PancakeSwapToken,
   CurrencyAmount as PancakeSwapCurrencyAmount,
@@ -141,7 +140,6 @@ export type UniswapishTrade =
   | TradeTraderjoe
   | SushiswapTrade<SushiToken, SushiToken, SushiTradeType>
   | TradeUniswap
-  | DefiraTrade<UniswapCoreToken, UniswapCoreToken, TradeType>
   | PancakeSwapTrade
   | MMFTrade
   | VVSTrade

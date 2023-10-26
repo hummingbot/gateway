@@ -146,9 +146,7 @@ export class Harmony extends EthereumBase implements Ethereumish {
 
   getSpender(reqSpender: string): string {
     let spender: string;
-    if (reqSpender === 'defira') {
-      spender = '0x3C8BF7e25EbfAaFb863256A4380A8a93490d8065';
-    } else if (reqSpender === 'openocean') {
+    if (reqSpender === 'openocean') {
       spender = OpenoceanConfig.config.routerAddress('ethereum', this._chain);
     } else if (reqSpender === 'sushiswap') {
       spender = SushiswapConfig.config.sushiswapRouterAddress(
