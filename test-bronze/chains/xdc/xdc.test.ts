@@ -29,8 +29,6 @@ beforeAll(async () => {
   // Return the mocked token list instead of getting the list from github
   patch(xdc, 'getTokenList', () => TOKENS);
   patchEVMNonceManager(xdc.nonceManager);
-
-  await xdc.init();
 });
 
 beforeEach(() => {
@@ -43,6 +41,18 @@ afterEach(() => {
 
 afterAll(async () => {
   await xdc.close();
+});
+
+describe('init', () => {
+  it('should wait for the first init() call to finish in future immediate init() calls', async () => {
+    let firstCallFullfilled = false;
+    xdc.init().then(() => {
+      firstCallFullfilled = true;
+    });
+    await xdc.init().then(() => {
+      expect(firstCallFullfilled).toEqual(true);
+    });
+  });
 });
 
 describe('verify xdc storedTokenList', () => {

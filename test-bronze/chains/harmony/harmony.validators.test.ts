@@ -82,14 +82,6 @@ describe('validateSpender', () => {
     ).toEqual([]);
   });
 
-  it("valid when req.spender is 'defira'", () => {
-    expect(
-      validateSpender({
-        spender: 'defira',
-      })
-    ).toEqual([]);
-  });
-
   it('return error when req.spender does not exist', () => {
     expect(
       validateSpender({

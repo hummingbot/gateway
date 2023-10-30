@@ -20,7 +20,6 @@ const zeroAddress =
 beforeAll(async () => {
   near = Near.getInstance('testnet');
   near.getTokenList = jest.fn().mockReturnValue(getTokenListData);
-  await near.init();
 });
 
 afterEach(() => {
@@ -39,6 +38,18 @@ const patchGetCurrentBlockNumber = () => {
 const patchGetTransaction = () => {
   patch(near, 'getTransaction', () => getTransactionData);
 };
+
+describe('init', () => {
+  it('should wait for the first init() call to finish in future immediate init() calls', async () => {
+    let firstCallFullfilled = false;
+    near.init().then(() => {
+      firstCallFullfilled = true;
+    });
+    await near.init().then(() => {
+      expect(firstCallFullfilled).toEqual(true);
+    });
+  });
+});
 
 describe('poll', () => {
   it('return transaction data for given signature', async () => {
