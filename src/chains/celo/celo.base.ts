@@ -240,6 +240,14 @@ export class CeloBase {
     return this.getWalletFromPrivateKey(decipher.privateKey);
   }
 
+  convertBigInt(amount: BigNumber | EthersBigNumber): EthersBigNumber {
+    if (amount instanceof BigNumber) {
+      const converted = amount.toFixed();
+      return EthersBigNumber.from(converted);
+    }
+    return amount;
+  }
+
   // returns the Native balance, convert BigNumber to string
   async getNativeBalance(wallet: Wallet): Promise<TokenValue> {
     const balance = await wallet.getBalance();
@@ -254,11 +262,11 @@ export class CeloBase {
   ): Promise<TokenValue> {
     logger.info('Requesting balance for owner ' + wallet.address + '.');
     const balance = await contract.balanceOf(wallet.address);
+    const result = this.convertBigInt(balance);
     logger.info(
       `Raw balance of ${contract.address} for ` +
-        `${wallet.address}: ${balance.toString()}`
+        `${wallet.address}: ${result.toString()}`
     );
-    const result = EthersBigNumber.from(balance.toString());
     return { value: result, decimals: decimals };
   }
 
@@ -273,8 +281,7 @@ export class CeloBase {
       `Requesting spender: ${spender}, allowance for owner: ${wallet.address}`
     );
     const allowance = await contract.allowance(wallet.address, spender);
-    const converted = allowance.toFixed();
-    const result = EthersBigNumber.from(converted);
+    const result = this.convertBigInt(allowance);
     return { value: result, decimals: decimals };
   }
 
@@ -318,7 +325,7 @@ export class CeloBase {
     spender: string,
     amount: BigNumber | EthersBigNumber
   ): Promise<TransactionResult> {
-    const finalAmount = amount.toString();
+    const finalAmount = this.convertBigInt(amount).toString();
     logger.info(
       `Approve for spender: ${spender}, allowance: ${finalAmount} for owner: ${wallet.address}`
     );
@@ -333,7 +340,7 @@ export class CeloBase {
     spender: string,
     amount: BigNumber | EthersBigNumber
   ): Promise<TransactionResult> {
-    const finalAmount = amount.toString();
+    const finalAmount = this.convertBigInt(amount).toString();
     logger.info(
       `Approve for spender: ${spender}, allowance: ${finalAmount} for owner: ${wallet.address}`
     );

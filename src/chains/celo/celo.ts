@@ -8,6 +8,8 @@ import { CeloBase } from './celo.base';
 import { Celoish } from '../../services/common-interfaces';
 import { Ierc20 } from '@celo/contractkit/lib/generated/IERC20';
 import { Erc20Wrapper } from '@celo/contractkit/lib/wrappers/Erc20Wrapper';
+import { BigNumber as EthersBigNumber } from '@ethersproject/bignumber/lib/bignumber';
+import BigNumber from 'bignumber.js';
 
 export class Celo extends CeloBase implements Celoish {
   private static _instances: { [name: string]: Celo };
@@ -58,6 +60,15 @@ export class Celo extends CeloBase implements Celoish {
 
   public get chain(): string {
     return this._chain;
+  }
+
+  convertBigInt(amount: BigNumber | EthersBigNumber): EthersBigNumber {
+    if (amount instanceof BigNumber) {
+      const converted = amount.toFixed();
+      return EthersBigNumber.from(converted);
+    } else {
+      return amount;
+    }
   }
 
   getSpender(reqSpender: string): string {
