@@ -39,6 +39,7 @@ import { Algorand } from '../chains/algorand/algorand';
 import { Cosmos } from '../chains/cosmos/cosmos';
 import { Tinyman } from '../connectors/tinyman/tinyman';
 import { Plenty } from '../connectors/plenty/plenty';
+import { Curve } from '../connectors/curve/curve';
 import { Kujira } from '../chains/kujira/kujira';
 import { KujiraCLOB } from '../connectors/kujira/kujira';
 
@@ -147,6 +148,7 @@ export type ConnectorUnion =
   | InjectiveClobPerp
   | Tinyman
   | Plenty
+  | Curve
   | KujiraCLOB;
 
 export type Connector<T> = T extends Uniswapish
@@ -221,6 +223,11 @@ export async function getConnector<T>(
     connectorInstance = Plenty.getInstance(network);
   } else if (chain === 'kujira' && connector === 'kujira') {
     connectorInstance = KujiraCLOB.getInstance(chain, network);
+  } else if (
+    (chain === 'ethereum' || chain === 'polygon') &&
+    connector === 'curve'
+  ) {
+    connectorInstance = Curve.getInstance(chain, network);
   } else {
     throw new Error('unsupported chain or connector');
   }
