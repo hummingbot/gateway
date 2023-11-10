@@ -1,7 +1,6 @@
 import fse from 'fs-extra';
 import { Xdc } from '../../chains/xdc/xdc';
 import { Cosmos } from '../../chains/cosmos/cosmos';
-import { Injective } from '../../chains/injective/injective';
 import { Tezos } from '../../chains/tezos/tezos';
 import { XRPL } from '../../chains/xrpl/xrpl';
 import { Kujira } from '../../chains/kujira/kujira';
@@ -121,21 +120,6 @@ export async function addWallet(
         )
       ).accountId;
       encryptedPrivateKey = connection.encrypt(req.privateKey, passphrase);
-    } else if (connection instanceof Injective) {
-      const ethereumAddress = connection.getWalletFromPrivateKey(
-        req.privateKey
-      ).address;
-      const subaccountId = req.accountId;
-      if (subaccountId !== undefined) {
-        address = ethereumAddress + subaccountId.toString(16).padStart(24, '0');
-
-        encryptedPrivateKey = await connection.encrypt(
-          req.privateKey,
-          passphrase
-        );
-      } else {
-        throw new Error('Injective wallet requires a subaccount id');
-      }
     } else if (connection instanceof Tezos) {
       const tezosWallet = await connection.getWalletFromPrivateKey(
         req.privateKey

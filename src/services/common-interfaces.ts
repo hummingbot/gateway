@@ -774,3 +774,12 @@ export interface CustomTransactionResponse
   gasLimit: string;
   value: string;
 }
+
+export interface TransferRequest extends NetworkSelectionRequest {
+  to: string;
+  from: string;
+  amount: string;
+  token: string;
+}
+
+export type TransferResponse = string;

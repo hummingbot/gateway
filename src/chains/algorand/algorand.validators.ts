@@ -10,8 +10,15 @@ import {
   invalidAddressError,
   validateNetwork,
 } from '../ethereum/ethereum.validators';
-import { validateTxHash } from '../injective/injective.validators';
 import { invalidChainError } from '../near/near.validators';
+
+const invalidTxHashError: string = 'The txHash param must be a string.';
+
+const validateTxHash: Validator = mkValidator(
+  'txHash',
+  invalidTxHashError,
+  (val) => typeof val === 'string'
+);
 
 const validateAlgorandChain: Validator = mkValidator(
   'chain',
