@@ -52,7 +52,7 @@ import {
 import {
   TransferRequest,
   TransferResponse,
-} from './injective/injective.requests';
+} from '../services/common-interfaces';
 import { validateTezosNonceRequest } from './tezos/tezos.validators';
 
 export const validatePollRequest: RequestValidator = mkRequestValidator([
