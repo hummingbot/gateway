@@ -28,10 +28,6 @@ configurations:
     configurationPath: polygon.yml
     schemaPath: ethereum-schema.json
 
-  $namespace defira:
-    configurationPath: defira.yml
-    schemaPath: defira-schema.json
-
   $namespace near:
     configurationPath: near.yml
     schemaPath: ethereum-schema.json
@@ -119,6 +115,10 @@ configurations:
   $namespace xrpl:
     configurationPath: xrpl.yml
     schemaPath: xrpl-schema.json
+
+  $namespace curve:
+    configurationPath: curve.yml
+    schemaPath: cronos-connector-schema.json
 
   $namespace kujira:
     configurationPath: kujira.yml

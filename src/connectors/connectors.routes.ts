@@ -2,7 +2,6 @@
 /* eslint-disable @typescript-eslint/ban-types */
 import { Router, Response } from 'express';
 import { asyncHandler } from '../services/error-handler';
-import { DefiraConfig } from './defira/defira.config';
 import { MadMeerkatConfig } from './mad_meerkat/mad_meerkat.config';
 import { OpenoceanConfig } from './openocean/openocean.config';
 import { PangolinConfig } from './pangolin/pangolin.config';
@@ -19,6 +18,7 @@ import { XsswapConfig } from './xsswap/xsswap.config';
 import { ConnectorsResponse } from './connectors.request';
 import { DexalotCLOBConfig } from './dexalot/dexalot.clob.config';
 import { TinymanConfig } from './tinyman/tinyman.config';
+import { CurveConfig } from './curve/curveswap.config';
 import { PlentyConfig } from './plenty/plenty.config';
 import { XRPLCLOBConfig } from './xrpl/xrpl.clob.config';
 import { KujiraConfig } from './kujira/kujira.config';
@@ -81,12 +81,6 @@ export namespace ConnectorsRoutes {
             trading_type: TraderjoeConfig.config.tradingTypes,
             chain_type: TraderjoeConfig.config.chainType,
             available_networks: TraderjoeConfig.config.availableNetworks,
-          },
-          {
-            name: 'defira',
-            trading_type: DefiraConfig.config.tradingTypes,
-            chain_type: DefiraConfig.config.chainType,
-            available_networks: DefiraConfig.config.availableNetworks,
           },
           {
             name: 'mad_meerkat',
@@ -153,6 +147,12 @@ export namespace ConnectorsRoutes {
             trading_type: TinymanConfig.config.tradingTypes,
             chain_type: TinymanConfig.config.chainType,
             available_networks: TinymanConfig.config.availableNetworks,
+          },
+          {
+            name: 'curve',
+            trading_type: CurveConfig.config.tradingTypes,
+            chain_type: CurveConfig.config.chainType,
+            available_networks: CurveConfig.config.availableNetworks,
           },
           {
             name: 'plenty',

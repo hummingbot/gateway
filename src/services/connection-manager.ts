@@ -33,7 +33,6 @@ import {
 } from './common-interfaces';
 import { Traderjoe } from '../connectors/traderjoe/traderjoe';
 import { Sushiswap } from '../connectors/sushiswap/sushiswap';
-import { Defira } from '../connectors/defira/defira';
 import { Near } from '../chains/near/near';
 import { Ref } from '../connectors/ref/ref';
 import { Xsswap } from '../connectors/xsswap/xsswap';
@@ -42,6 +41,7 @@ import { Algorand } from '../chains/algorand/algorand';
 import { Cosmos } from '../chains/cosmos/cosmos';
 import { Tinyman } from '../connectors/tinyman/tinyman';
 import { Plenty } from '../connectors/plenty/plenty';
+import { Curve } from '../connectors/curve/curve';
 import { Kujira } from '../chains/kujira/kujira';
 import { KujiraCLOB } from '../connectors/kujira/kujira';
 
@@ -156,6 +156,7 @@ export type ConnectorUnion =
   | Tinyman
   | Plenty
   | XRPLCLOB
+  | Curve
   | KujiraCLOB;
 
 export type Connector<T> = T extends Uniswapish
@@ -208,8 +209,6 @@ export async function getConnector<T>(
     connectorInstance = Openocean.getInstance(chain, network);
   } else if (chain === 'avalanche' && connector === 'traderjoe') {
     connectorInstance = Traderjoe.getInstance(chain, network);
-  } else if (chain === 'harmony' && connector === 'defira') {
-    connectorInstance = Defira.getInstance(chain, network);
   } else if (chain === 'cronos' && connector === 'mad_meerkat') {
     connectorInstance = MadMeerkat.getInstance(chain, network);
   } else if (chain === 'cronos' && connector === 'vvs') {
@@ -236,6 +235,11 @@ export async function getConnector<T>(
     connectorInstance = XRPLCLOB.getInstance(chain, network);
   } else if (chain === 'kujira' && connector === 'kujira') {
     connectorInstance = KujiraCLOB.getInstance(chain, network);
+  } else if (
+    (chain === 'ethereum' || chain === 'polygon') &&
+    connector === 'curve'
+  ) {
+    connectorInstance = Curve.getInstance(chain, network);
   } else {
     throw new Error('unsupported chain or connector');
   }
