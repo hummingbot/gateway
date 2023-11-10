@@ -58,7 +58,10 @@ import {
   trade as plentyTrade,
   estimateGas as plentyEstimateGas,
 } from '../connectors/plenty/plenty.controllers';
-import { getInitializedChain, getConnector } from '../services/connection-manager';
+import {
+  getInitializedChain,
+  getConnector,
+} from '../services/connection-manager';
 import {
   Chain as Ethereumish,
   Nearish,
@@ -74,13 +77,15 @@ import { Tinyman } from '../connectors/tinyman/tinyman';
 import { Plenty } from '../connectors/plenty/plenty';
 
 export async function price(req: PriceRequest): Promise<PriceResponse> {
-  const chain = await getInitializedChain<Algorand | Ethereumish | Nearish | Tezosish>(
-    req.chain,
-    req.network
-  );
-  const connector: Uniswapish | RefAMMish | Tinyman | Plenty = await getConnector<
-    Uniswapish | RefAMMish | Tinyman | Plenty
-  >(req.chain, req.network, req.connector);
+  const chain = await getInitializedChain<
+    Algorand | Ethereumish | Nearish | Tezosish
+  >(req.chain, req.network);
+  const connector: Uniswapish | RefAMMish | Tinyman | Plenty =
+    await getConnector<Uniswapish | RefAMMish | Tinyman | Plenty>(
+      req.chain,
+      req.network,
+      req.connector
+    );
 
   if (connector instanceof Plenty) {
     return plentyPrice(<Tezosish>chain, connector, req);
@@ -95,13 +100,15 @@ export async function price(req: PriceRequest): Promise<PriceResponse> {
 }
 
 export async function trade(req: TradeRequest): Promise<TradeResponse> {
-  const chain = await getInitializedChain<Algorand | Ethereumish | Nearish | Tezosish>(
-    req.chain,
-    req.network
-  );
-  const connector: Uniswapish | RefAMMish | Tinyman | Plenty = await getConnector<
-    Uniswapish | RefAMMish | Tinyman | Plenty
-  >(req.chain, req.network, req.connector);
+  const chain = await getInitializedChain<
+    Algorand | Ethereumish | Nearish | Tezosish
+  >(req.chain, req.network);
+  const connector: Uniswapish | RefAMMish | Tinyman | Plenty =
+    await getConnector<Uniswapish | RefAMMish | Tinyman | Plenty>(
+      req.chain,
+      req.network,
+      req.connector
+    );
 
   if (connector instanceof Plenty) {
     return plentyTrade(<Tezosish>chain, connector, req);
@@ -180,13 +187,15 @@ export async function poolPrice(
 export async function estimateGas(
   req: NetworkSelectionRequest
 ): Promise<EstimateGasResponse> {
-  const chain = await getInitializedChain<Algorand | Ethereumish | Nearish | Tezosish>(
-    req.chain,
-    req.network
-  );
-  const connector: Uniswapish | RefAMMish | Tinyman | Plenty = await getConnector<
-    Uniswapish | RefAMMish | Plenty
-  >(req.chain, req.network, req.connector);
+  const chain = await getInitializedChain<
+    Algorand | Ethereumish | Nearish | Tezosish
+  >(req.chain, req.network);
+  const connector: Uniswapish | RefAMMish | Tinyman | Plenty =
+    await getConnector<Uniswapish | RefAMMish | Plenty>(
+      req.chain,
+      req.network,
+      req.connector
+    );
 
   if (connector instanceof Plenty) {
     return plentyEstimateGas(<Tezosish>chain, connector);

@@ -1,8 +1,0 @@
-{
-  "chain": "injective",
-  "network": "mainnet",
-  "connector": "injective_perpetual",
-  "address": "$INJECTIVE_SUBACCOUNTID",
-  "market": "INJ-USDT",
-  "orderId": "0xed8f1d617b28f99bf083b67429a32115c51ec9ab713f6e838a157eca4ae45845"
-}

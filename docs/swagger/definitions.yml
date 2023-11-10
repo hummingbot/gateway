@@ -1445,13 +1445,13 @@ definitions:
         example: 'AAVE-USDT'
       chain:
         type: 'string'
-        example: 'injective'
+        example: 'dexalot'
       network:
         type: 'string'
         example: 'mainnet'
       connector:
         type: 'string'
-        example: 'injective'
+        example: 'dexalot'
 
   ClobMarketResponse:
     type: 'object'
@@ -1483,16 +1483,16 @@ definitions:
     properties:
       market:
         type: 'string'
-        example: 'AAVE-USDT'
+        example: 'AVAX-USDC'
       chain:
         type: 'string'
-        example: 'injective'
+        example: 'dexalot'
       network:
         type: 'string'
         example: 'mainnet'
       connector:
         type: 'string'
-        example: 'injective'
+        example: 'dexalot'
 
   ClobTickerResponse:
     type: 'object'
@@ -1525,16 +1525,16 @@ definitions:
     properties:
       market:
         type: 'string'
-        example: 'AAVE-USDT'
+        example: 'AVAX-USDC'
       chain:
         type: 'string'
-        example: 'injective'
+        example: 'dexalot'
       network:
         type: 'string'
         example: 'mainnet'
       connector:
         type: 'string'
-        example: 'injective'
+        example: 'dexalot'
       isDerivative:
         type: 'boolean'
         example: false
@@ -1571,19 +1571,19 @@ definitions:
     properties:
       market:
         type: 'string'
-        example: 'AAVE-USDT'
+        example: 'AVAX-USDC'
       orderId:
         type: 'string'
         example: 'Buy-21342453'
       chain:
         type: 'string'
-        example: 'injective'
+        example: 'dexalot'
       network:
         type: 'string'
         example: 'mainnet'
       connector:
         type: 'string'
-        example: 'injective'
+        example: 'dexalot'
       address:
         type: 'string'
         example: '0x...'
@@ -1624,16 +1624,16 @@ definitions:
     properties:
       market:
         type: 'string'
-        example: 'AAVE-USDT'
+        example: 'AVAX-USDC'
       chain:
         type: 'string'
-        example: 'injective'
+        example: 'dexalot'
       network:
         type: 'string'
         example: 'mainnet'
       connector:
         type: 'string'
-        example: 'injective'
+        example: 'dexalot'
       address:
         type: 'string'
         example: '0x...'
@@ -1683,16 +1683,16 @@ definitions:
     properties:
       market:
         type: 'string'
-        example: 'AAVE-USDT'
+        example: 'AVAX-USDT'
       chain:
         type: 'string'
-        example: 'injective'
+        example: 'dexalot'
       network:
         type: 'string'
         example: 'mainnet'
       connector:
         type: 'string'
-        example: 'injective'
+        example: 'dexalot'
       address:
         type: 'string'
         example: '0x...'
@@ -1734,7 +1734,7 @@ definitions:
         example: '0xa508cb32923323679f29a032c70342c147c17d0145625922b0ef22e955c844c0'
       chain:
         type: 'string'
-        example: 'injective'
+        example: 'ethereum'
       network:
         type: 'string'
         example: 'mainnet'
@@ -1786,7 +1786,7 @@ definitions:
         example: '0xa508cb32923323679f29a032c70342c147c17d0145625922b0ef22e955c844c0'
       chain:
         type: 'string'
-        example: 'injective'
+        example: 'ethereum'
       network:
         type: 'string'
         example: 'mainnet'
@@ -1877,7 +1877,7 @@ definitions:
     properties:
       chain:
         type: 'string'
-        example: 'injective'
+        example: 'dexalot'
       network:
         type: 'string'
         example: 'mainnet'
@@ -1912,13 +1912,13 @@ definitions:
         example: 'Buy-21342453'
       chain:
         type: 'string'
-        example: 'injective'
+        example: 'ethereum'
       network:
         type: 'string'
         example: 'mainnet'
       connector:
         type: 'string'
-        example: 'injective'
+        example: 'dexalot'
       address:
         type: 'string'
         example: '0x...'
@@ -1940,13 +1940,13 @@ definitions:
         example: 'Buy-21342453'
       chain:
         type: 'string'
-        example: 'injective'
+        example: 'ethereum'
       network:
         type: 'string'
         example: 'mainnet'
       connector:
         type: 'string'
-        example: 'injective'
+        example: 'dexalot'
       address:
         type: 'string'
         example: '0x...'
@@ -1985,13 +1985,13 @@ definitions:
         example: 'INJ-USDT'
       chain:
         type: 'string'
-        example: 'injective'
+        example: 'ethereum'
       network:
         type: 'string'
         example: 'mainnet'
       connector:
         type: 'string'
-        example: 'injective'
+        example: 'dexalot'
 
   PerpClobFundingInfoResponse:
     type: 'object'
@@ -2051,13 +2051,13 @@ definitions:
     properties:
       chain:
         type: 'string'
-        example: 'injective'
+        example: 'ethereum'
       network:
         type: 'string'
         example: 'mainnet'
       connector:
         type: 'string'
-        example: 'injective'
+        example: 'dexalot'
       address:
         type: 'string'
         example: '0x...'

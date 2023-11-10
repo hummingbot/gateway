@@ -25,7 +25,7 @@ import {
 import {
   TransferRequest,
   TransferResponse,
-} from '../injective/injective.requests';
+} from '../../services/common-interfaces';
 import { BigNumber } from 'bignumber.js';
 
 export class Kujira {
