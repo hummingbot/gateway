@@ -819,7 +819,7 @@ export class OrderTracker {
 
           if (deleteNodeCount === 0) {
             intents.push({
-              type: TransactionIntentType.UNKNOWN,
+              type: TransactionIntentType.OFFER_CANCEL_FINALIZED,
               sequence: transaction.transaction.OfferSequence,
               tx: transaction,
             });
