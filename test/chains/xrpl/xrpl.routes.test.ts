@@ -78,7 +78,7 @@ describe('POST /chain/poll', () => {
       chain: 'xrpl',
       network: 'testnet',
       txHash:
-        'EF074CD8C98E639B3560200C5664029E4E7133D4803EF75F6991788E09E04CDB', // noqa: mock
+        'A4A9E7C76ACA5527AC09A7540F263CA48FF40F5CFE04DD19B7173B05E3685077', // noqa: mock
     });
     expect(res.statusCode).toEqual(200);
   });
