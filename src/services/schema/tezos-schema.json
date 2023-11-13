@@ -28,6 +28,9 @@
             },
             "tzktURL": {
               "type": "string"
+            },
+            "ctezAdmin": {
+              "type": "string"
             }
           },
           "required": [
@@ -36,7 +39,8 @@
             "nodeURL",
             "tokenListType",
             "tokenListSource",
-            "tzktURL"
+            "tzktURL",
+            "ctezAdmin"
           ],
           "additionalProperties": false
         }
