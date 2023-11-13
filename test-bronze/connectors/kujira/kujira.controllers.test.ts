@@ -80,6 +80,7 @@ import {
   Market,
   MarketId,
   MarketName,
+  MarketNotFoundError,
   MarketsWithdrawsFundsResponse,
   MarketsWithdrawsRequest,
   MarketWithdrawRequest,
@@ -290,7 +291,7 @@ beforeAll(async () => {
   // await getPatch(['global', 'fetch'])('beforeAll');
   await getPatch(['kujira', 'getFastestRpc'])('beforeAll');
   await getPatch(['kujira', 'kujiraGetHttpBatchClient'])('beforeAll');
-  await getPatch(['kujira', 'kujiraGetTendermint34Client'])('beforeAll');
+  await getPatch(['kujira', 'kujiraGetTendermint37Client'])('beforeAll');
   await getPatch(['kujira', 'kujiraGetKujiraQueryClient'])('beforeAll');
   await getPatch(['kujira', 'kujiraGetStargateClient'])('beforeAll');
   await getPatch(['kujira', 'kujiraGetBasicMarkets'])('beforeAll');
@@ -4816,6 +4817,102 @@ describe('Kujira', () => {
       for (const publicKey of responseBody) {
         expect(publicKey).toStartWith('kujira');
         expect(publicKey).toHaveLength(45);
+      }
+    });
+  });
+
+  describe('Exceptions', () => {
+    it.skip('Generate TokenNotFound Exception (token)', async () => {
+      const requestBody = {
+        name: 'KUJ',
+      } as GetTokenRequest;
+
+      const request = {
+        ...commonRequestBody,
+        ...requestBody,
+      };
+
+      logRequest(request);
+
+      try {
+        sendRequest<GetTokenResponse>({
+          RESTMethod: RESTfulMethod.GET,
+          RESTRoute: '/token',
+          RESTRequest: request,
+          controllerFunction: KujiraController.getToken,
+        });
+      } catch (e) {
+        expect(true).toBeTrue();
+      }
+    });
+
+    it.skip('Generate MarketNotFoundError Exception', async () => {
+      const requestBody = {
+        ownerAddress: ownerAddress,
+      } as MarketsWithdrawsRequest;
+
+      const request = {
+        ...commonRequestBody,
+        ...requestBody,
+      };
+
+      logRequest(request);
+      try {
+        await sendRequest<MarketsWithdrawsFundsResponse>({
+          RESTMethod: RESTfulMethod.POST,
+          RESTRoute: '/market/withdraws',
+          RESTRequest: request,
+          controllerFunction: KujiraController.withdrawFromMarkets,
+        });
+      } catch (e) {
+        expect(e).toEqual(new MarketNotFoundError('No market informed.'));
+      }
+    });
+
+    it.skip('Generate TokenNotFoundError Exception (tokens)', async () => {
+      const requestBody = {
+        names: ['KUJ', tokensIds[3]],
+      } as GetTokensRequest;
+
+      const request = {
+        ...commonRequestBody,
+        ...requestBody,
+      };
+
+      logRequest(request);
+      try {
+        await sendRequest<GetTokensResponse>({
+          RESTMethod: RESTfulMethod.GET,
+          RESTRoute: '/tokens',
+          RESTRequest: request,
+          controllerFunction: KujiraController.getTokens,
+        });
+      } catch (exception) {
+        expect(true).toBeTrue();
+      }
+    });
+
+    it('Generate Exception in getMarket', async () => {
+      const requestBody = {
+        name: 'KUJX/USK',
+      } as GetMarketRequest;
+
+      const request = {
+        ...commonRequestBody,
+        ...requestBody,
+      };
+
+      logRequest(request);
+
+      try {
+        await sendRequest<GetMarketResponse>({
+          RESTMethod: RESTfulMethod.GET,
+          RESTRoute: '/market',
+          RESTRequest: request,
+          controllerFunction: KujiraController.getMarket,
+        });
+      } catch (exception) {
+        expect(true).toBeTrue();
       }
     });
   });
