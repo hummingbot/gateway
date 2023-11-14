@@ -116,7 +116,9 @@ export const validateOrderId: Validator = mkValidator(
 export const validateOrderType: Validator = mkValidator(
   'orderType',
   invalidOrderTypeError,
-  (val) => typeof val === 'string' && (val === 'LIMIT' || val === 'LIMIT_MAKER')
+  (val) =>
+    typeof val === 'string' &&
+    (val === 'LIMIT' || val === 'LIMIT_MAKER' || val === 'MARKET')
 );
 
 const NETWORK_VALIDATIONS = [validateConnector, validateChain, validateNetwork];
