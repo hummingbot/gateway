@@ -104,6 +104,8 @@ export const ACCOUNT_NOT_SPECIFIED_CODE = 1016;
 export const TRADE_NOT_FOUND_ERROR_CODE = 1017;
 export const UNKNOWN_ERROR_ERROR_CODE = 1099;
 export const AMOUNT_NOT_SUPPORTED_ERROR_CODE = 1016;
+export const INSUFFICIENT_FUNDS_ERROR_CODE = 1018;
+export const COLLECTFEES_ENDPOINT_NOT_SUPPORTED_ERROR_CODE = 1019;
 
 export const NETWORK_ERROR_MESSAGE =
   'Network error. Please check your node URL, API key, and Internet connection.';
@@ -117,6 +119,8 @@ export const INCOMPLETE_REQUEST_PARAM = 'Incomplete request parameters.';
 export const INVALID_NONCE_ERROR_MESSAGE = 'Invalid Nonce provided: ';
 export const AMOUNT_NOT_SUPPORTED_ERROR_MESSAGE =
   'Amount provided in an unexpected format';
+export const INSUFFICIENT_FUNDS_ERROR_MESSAGE = 'Insufficient funds for transaction.'
+export const COLLECTFEES_ENDPOINT_NOT_SUPPORTED_ERROR_MESSAGE = 'Endpoint not supported for current chain. Use reduceLiquidity() instead.';
 
 export const SWAP_PRICE_EXCEEDS_LIMIT_PRICE_ERROR_MESSAGE = (
   price: any,

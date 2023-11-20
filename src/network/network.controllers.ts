@@ -1,6 +1,7 @@
 import { StatusRequest, StatusResponse } from './network.requests';
 import { Avalanche } from '../chains/avalanche/avalanche';
 import { BinanceSmartChain } from '../chains/binance-smart-chain/binance-smart-chain';
+import { Cosmos } from '../chains/cosmos/cosmos';
 import { Ethereum } from '../chains/ethereum/ethereum';
 import { Harmony } from '../chains/harmony/harmony';
 import { Polygon } from '../chains/polygon/polygon';
@@ -20,6 +21,7 @@ import {
   getInitializedChain,
   UnsupportedChainException,
 } from '../services/connection-manager';
+import { Osmosis } from '../chains/osmosis/osmosis';
 
 export async function getStatus(
   req: StatusRequest
@@ -98,6 +100,16 @@ export async function getStatus(
     connections = connections.concat(
       injectiveConnections ? Object.values(injectiveConnections) : []
     );
+
+    const cosmosConnections = Cosmos.getConnectedInstances();
+    connections = connections.concat(
+      cosmosConnections ? Object.values(cosmosConnections) : []
+    );
+
+    const osmosisConnections = Osmosis.getConnectedInstances();
+    connections = connections.concat(
+      osmosisConnections ? Object.values(osmosisConnections) : []
+      );
 
     const tezosConnections = Tezos.getConnectedInstances();
     connections = connections.concat(

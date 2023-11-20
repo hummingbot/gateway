@@ -6,7 +6,7 @@ import fse from 'fs-extra';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { BigNumber } from 'ethers';
 import { AccountData, DirectSignResponse } from '@cosmjs/proto-signing';
-
+import { Asset, AssetDenomUnit, AssetTrace } from '@chain-registry/types/types/assets'
 import { IndexedTx, setupIbcExtension } from '@cosmjs/stargate';
 import { logger } from '../../services/logger';
 
@@ -15,16 +15,71 @@ const { DirectSecp256k1Wallet } = require('@cosmjs/proto-signing');
 const { StargateClient } = require('@cosmjs/stargate');
 const { toBase64, fromBase64, fromHex } = require('@cosmjs/encoding');
 const crypto = require('crypto').webcrypto;
-export interface Token {
-  base: string;
-  address: string;
+
+export class CosmosAsset implements Asset {
+  decimals: number = 0;
+  constructor(asset: Asset){
+    this.decimals = getExponentForAsset(asset);
+    this.description = asset.description;
+    if (asset.address != null){
+      this.address = asset.address;
+    }
+    this.base = asset.base;
+    this.name = asset.name;
+    this.display = asset.display;
+    this.symbol = asset.symbol;
+    this.logo_URIs = asset.logo_URIs;
+    if (asset.denom_units){
+      this.denom_units = asset.denom_units;
+    }
+    if (asset.coingecko_id){
+      this.coingecko_id = asset.coingecko_id;
+    }
+    if (asset.keywords){
+      this.keywords = asset.keywords;
+    }
+    if (asset.traces){
+      this.traces = asset.traces;
+    }
+    if (asset.ibc){
+      this.ibc = asset.ibc;
+    }
+  }
+  description?: string;
+  type_asset?: string;
+  address: string = '';
+  denom_units: AssetDenomUnit[] = [];
+  base: string; // this is denom!!!
   name: string;
+  display: string;
   symbol: string;
-  decimals: number;
+  logo_URIs?: {
+      png?: string;
+      svg?: string;
+      jpeg?: string;
+  };
+  coingecko_id?: string;
+  keywords?: string[];
+  traces?: AssetTrace[];
+  ibc?: {
+      source_channel?: string;
+      source_denom?: string;
+      dst_channel?: string;
+  };
 }
 
+const getExponentForAsset = (asset: Asset): number => {
+  if (asset && asset.denom_units){
+    const unit = asset.denom_units.find(({ denom }) => denom === asset.display);
+    if (unit){
+      return unit.exponent;
+    } 
+  }
+  return 0
+};
+
 export interface CosmosWallet {
-  privKey: Uint8Array;
+  privkey: Uint8Array;
   pubkey: Uint8Array;
   prefix: 'string';
   getAccounts(): [AccountData];
@@ -55,8 +110,8 @@ export type NewDebugMsgHandler = (msg: any) => void;
 
 export class CosmosBase {
   private _provider;
-  protected tokenList: Token[] = [];
-  private _tokenMap: Record<string, Token> = {};
+  protected tokenList: CosmosAsset[] = [];
+  private _tokenMap: Record<string, CosmosAsset> = {};
 
   private _ready: boolean = false;
   private _initialized: Promise<boolean> = Promise.resolve(false);
@@ -118,7 +173,7 @@ export class CosmosBase {
 
     if (this.tokenList) {
       this.tokenList.forEach(
-        (token: Token) => (this._tokenMap[token.symbol] = token)
+        (token: CosmosAsset) => (this._tokenMap[token.symbol] = token)
       );
     }
   }
@@ -127,25 +182,31 @@ export class CosmosBase {
   async getTokenList(
     tokenListSource: string,
     tokenListType: TokenListType
-  ): Promise<Token[]> {
-    let tokens;
+  ): Promise<CosmosAsset[]> {
+    let tokens: CosmosAsset[] = [];
+    let tokensJson = [];
+
     if (tokenListType === 'URL') {
-      ({ data: tokens } = await axios.get(tokenListSource));
+      ({ data: tokensJson } = await axios.get(tokenListSource));
     } else {
-      ({ tokens } = JSON.parse(await fs.readFile(tokenListSource, 'utf8')));
+      ({ tokensJson } = JSON.parse(await fs.readFile(tokenListSource, 'utf8')));
+    }
+    for (var tokenAssetIdx=0; tokenAssetIdx<tokensJson.assets.length; tokenAssetIdx++){
+      var tokenAsset = tokensJson.assets[tokenAssetIdx];
+      tokens.push(new CosmosAsset(tokenAsset))
     }
     return tokens;
   }
 
-  // ethereum token lists are large. instead of reloading each time with
+   // ethereum token lists are large. instead of reloading each time with
   // getTokenList, we can read the stored tokenList value from when the
   // object was initiated.
-  public get storedTokenList(): Token[] {
+  public get storedTokenList(): CosmosAsset[] {
     return this.tokenList;
   }
 
   // return the Token object for a symbol
-  getTokenForSymbol(symbol: string): Token | null {
+  getTokenForSymbol(symbol: string): CosmosAsset | null {
     return this._tokenMap[symbol] ? this._tokenMap[symbol] : null;
   }
 
@@ -297,7 +358,6 @@ export class CosmosBase {
   getTokenDecimals(token: any): number {
     return token ? token.denom_units[token.denom_units.length - 1].exponent : 6; // Last denom unit has the decimal amount we need from our list
   }
-
   async getBalances(wallet: CosmosWallet): Promise<Record<string, TokenValue>> {
     const balances: Record<string, TokenValue> = {};
 
@@ -353,14 +413,14 @@ export class CosmosBase {
     return transaction;
   }
 
-  public getTokenBySymbol(tokenSymbol: string): Token | undefined {
+  public getTokenBySymbol(tokenSymbol: string): CosmosAsset | undefined {
     return this.tokenList.find(
-      (token: Token) => token.symbol.toUpperCase() === tokenSymbol.toUpperCase()
+      (token: CosmosAsset) => token.symbol.toUpperCase() === tokenSymbol.toUpperCase()
     );
   }
 
-  public getTokenByBase(base: string): Token | undefined {
-    return this.tokenList.find((token: Token) => token.base === base);
+  public getTokenByBase(base: string): CosmosAsset | undefined {
+    return this.tokenList.find((token: CosmosAsset) => token.base === base);
   }
 
   async getCurrentBlockNumber(): Promise<number> {

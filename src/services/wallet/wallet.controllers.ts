@@ -1,6 +1,5 @@
 import fse from 'fs-extra';
 import { Xdc } from '../../chains/xdc/xdc';
-import { Cosmos } from '../../chains/cosmos/cosmos';
 import { Injective } from '../../chains/injective/injective';
 import { Tezos } from '../../chains/tezos/tezos';
 import { Kujira } from '../../chains/kujira/kujira';
@@ -34,6 +33,8 @@ import {
 } from '../connection-manager';
 import { Ethereumish, Tezosish } from '../common-interfaces';
 import { Algorand } from '../../chains/algorand/algorand';
+import { Osmosis } from '../../chains/osmosis/osmosis';
+import { Cosmos } from '../../chains/cosmos/cosmos';
 
 export function convertXdcAddressToEthAddress(publicKey: string): string {
   return publicKey.length === 43 && publicKey.slice(0, 3) === 'xdc'
@@ -105,10 +106,20 @@ export async function addWallet(
     } else if (connection instanceof Cosmos) {
       const wallet = await (connection as Cosmos).getAccountsfromPrivateKey(
         req.privateKey,
-        'cosmos'
+        'cosmos' // changed from cosmos - the only dex we connect to currently is osmosis anyway
       );
       address = wallet.address;
       encryptedPrivateKey = await (connection as Cosmos).encrypt(
+        req.privateKey,
+        passphrase
+      );
+    } else if (connection instanceof Osmosis) {
+      const wallet = await (connection as Osmosis).getAccountsfromPrivateKey(
+        req.privateKey,
+        'osmo' // changed from cosmos - the only dex we connect to currently is osmosis anyway
+      );
+      address = wallet.address;
+      encryptedPrivateKey = await (connection as Osmosis).encrypt(
         req.privateKey,
         passphrase
       );

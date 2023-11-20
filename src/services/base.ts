@@ -16,7 +16,7 @@ export interface TokenInfo {
 }
 
 // insert a string into another string at an index
-const stringInsert = (str: string, val: string, index: number) => {
+export const stringInsert = (str: string, val: string, index: number) => {
   if (index > 0) {
     return str.substring(0, index) + val + str.substr(index);
   }

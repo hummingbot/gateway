@@ -124,7 +124,7 @@ export namespace ChainRoutes {
         req: Request<{}, {}, {}, TokensRequest>,
         res: Response<TokensResponse, {}>
       ) => {
-        const chain = await getInitializedChain(
+        const chain = await getInitializedChain<Chain>(
           req.query.chain as string,
           req.query.network as string
         );

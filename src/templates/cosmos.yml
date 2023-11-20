@@ -1,13 +1,14 @@
 networks:
   mainnet:
-    rpcURL: https://cosmos-mainnet-rpc.allthatnode.com:26657
+    rpcURL: https://rpc.osmosis.zone/   # https://cosmos-rpc.publicnode.com:443
     tokenListType: URL
-    tokenListSource: >-
-      https://cosmos-chain-registry-list.vercel.app/list.json
+    tokenListSource: https://raw.githubusercontent.com/osmosis-labs/assetlists/main/osmosis-1/osmosis-1.assetlist.json #https://cosmos-chain-registry-list.vercel.app/list.json
+    nodeURL: https://rpc.osmosis.zone/   # AKA nodeurl sometimes - see xdc ## ALSO CAN USE https://rpc.cosmos.directory/osmosis
   testnet:
-    rpcURL: https://cosmos-testnet-rpc.allthatnode.com:26657
+    rpcURL: https://rpc.testnet.osmosis.zone/ # https://cosmos-testnet-rpc.polkachu.com
     tokenListType: URL
-    tokenListSource: https://cosmos-chain-registry-list.vercel.app/list.json
-network: mainnet
-nativeCurrencySymbol: ATOM
+    tokenListSource: https://raw.githubusercontent.com/osmosis-labs/osmosis/c387e00c6338fa113ccb3abcb129f633670445f6/cmd/osmosisd/cmd/osmo-test-5-assetlist.json
+    nodeURL: https://rpc.testnet.osmosis.zone/
+network: testnet
+nativeCurrencySymbol: OSMO
 manualGasPrice: 110

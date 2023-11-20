@@ -1,0 +1,21 @@
+networks:
+  mainnet:
+    rpcURL: https://rpc.osmosis.zone/   # AKA nodeurl sometimes - see xdc ## ALSO CAN USE https://rpc.cosmos.directory/osmosis
+    nodeURL: https://rpc.osmosis.zone/   # AKA nodeurl sometimes - see xdc ## ALSO CAN USE https://rpc.cosmos.directory/osmosis
+    tokenListType: URL
+    tokenListSource: https://raw.githubusercontent.com/osmosis-labs/assetlists/main/osmosis-1/osmosis-1.assetlist.json
+    chainId: osmosis-1
+  testnet:
+    rpcURL: https://rpc.testnet.osmosis.zone/
+    nodeURL: https://rpc.testnet.osmosis.zone/
+    tokenListType: URL
+    tokenListSource: https://raw.githubusercontent.com/osmosis-labs/osmosis/c387e00c6338fa113ccb3abcb129f633670445f6/cmd/osmosisd/cmd/osmo-test-5-assetlist.json
+    chainId: osmo-test-5
+network: mainnet
+nativeCurrencySymbol: OSMO
+
+feeTier: medium
+gasAdjustment: 1.3
+gasLimitTransaction: 2000000
+manualGasPrice: 0.025uosmo
+allowedSlippage: 2%

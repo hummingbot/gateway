@@ -18,6 +18,11 @@ import {
   poolPrice,
   estimateGas,
   perpBalance,
+  // cosmosPoolPrice,
+  // cosmosPoolPositions,
+  // cosmosAddLiquidity,
+  // cosmosReduceLiquidity,
+  // cosmosPrice
 } from './amm.controllers';
 import {
   EstimateGasResponse,
@@ -44,6 +49,16 @@ import {
   PoolPriceResponse,
   PerpBalanceRequest,
   PerpBalanceResponse,
+  CosmosAddLiquidityRequest,
+  CosmosRemoveLiquidityRequest,
+  CosmosAddLiquidityResponse,
+  CosmosRemoveLiquidityResponse,
+  CosmosPoolPriceRequest,
+  CosmosPoolPriceResponse,
+  CosmosPoolPositionsRequest,
+  CosmosPoolPositionsResponse,
+  CosmosPriceResponse,
+  CosmosTradeResponse
 } from './amm.requests';
 import {
   validateEstimateGasRequest,
@@ -60,31 +75,53 @@ import {
   validatePositionRequest,
   validatePoolPriceRequest,
   validatePerpBalanceRequest,
+  validateCosmosPriceRequest,
+  validateCosmosAddLiquidityRequest,
+  validateCosmosRemoveLiquidityRequest,
+  validateCosmosPoolPositionsRequest,
+  validateCosmosPoolPriceRequest,
 } from './amm.validators';
 import { NetworkSelectionRequest } from '../services/common-interfaces';
 
 export namespace AmmRoutes {
   export const router = Router();
-
+  
   router.post(
     '/price',
     asyncHandler(
       async (
         req: Request<{}, {}, PriceRequest>,
-        res: Response<PriceResponse | string, {}>
+        res: Response<PriceResponse | CosmosPriceResponse | string, {}>
       ) => {
-        validatePriceRequest(req.body);
+        if (req.body.chain == 'osmosis'){
+          validateCosmosPriceRequest(req.body)
+        }else{
+          validatePriceRequest(req.body);
+        }
         res.status(200).json(await price(req.body));
       }
     )
   );
+
+  // router.post(
+  //   '/price_cosmos',
+  //   asyncHandler(
+  //     async (
+  //       req: Request<{}, {}, PriceRequest>,
+  //       res: Response<CosmosPriceResponse | string, {}>
+  //     ) => {
+  //       validateCosmosPriceRequest(req.body);
+  //       res.status(200).json(await cosmosPrice(req.body));
+  //     }
+  //   )
+  // );
 
   router.post(
     '/trade',
     asyncHandler(
       async (
         req: Request<{}, {}, TradeRequest>,
-        res: Response<TradeResponse | string, {}>
+        res: Response<TradeResponse | CosmosTradeResponse | string, {}>
       ) => {
         validateTradeRequest(req.body);
         res.status(200).json(await trade(req.body));
@@ -113,10 +150,14 @@ export namespace AmmLiquidityRoutes {
     '/position',
     asyncHandler(
       async (
-        req: Request<{}, {}, PositionRequest>,
-        res: Response<PositionResponse | string, {}>
+        req: Request<{}, {}, PositionRequest | CosmosPoolPositionsRequest>,
+        res: Response<PositionResponse | CosmosPoolPositionsResponse | string, {}>
       ) => {
-        validatePositionRequest(req.body);
+        if (req.body.chain == 'osmosis'){
+          validateCosmosPoolPositionsRequest(req.body)
+        }else{
+          validatePositionRequest(req.body);
+        }
         res.status(200).json(await positionInfo(req.body));
       }
     )
@@ -126,10 +167,14 @@ export namespace AmmLiquidityRoutes {
     '/add',
     asyncHandler(
       async (
-        req: Request<{}, {}, AddLiquidityRequest>,
-        res: Response<AddLiquidityResponse | string, {}>
+        req: Request<{}, {}, AddLiquidityRequest | CosmosAddLiquidityRequest>,
+        res: Response<AddLiquidityResponse | CosmosAddLiquidityResponse | string, {}>
       ) => {
-        validateAddLiquidityRequest(req.body);
+        if (req.body.chain == 'osmosis'){
+          validateCosmosAddLiquidityRequest(req.body)
+        }else{
+          validateAddLiquidityRequest(req.body);
+        }
         res.status(200).json(await addLiquidity(req.body));
       }
     )
@@ -139,14 +184,44 @@ export namespace AmmLiquidityRoutes {
     '/remove',
     asyncHandler(
       async (
-        req: Request<{}, {}, RemoveLiquidityRequest>,
-        res: Response<RemoveLiquidityResponse | string, {}>
+        req: Request<{}, {}, RemoveLiquidityRequest | CosmosRemoveLiquidityRequest>,
+        res: Response<RemoveLiquidityResponse | CosmosRemoveLiquidityResponse | string, {}>
       ) => {
-        validateRemoveLiquidityRequest(req.body);
+        if (req.body.chain == 'osmosis'){
+          validateCosmosRemoveLiquidityRequest(req.body)
+        }else{
+          validateRemoveLiquidityRequest(req.body);
+        }
         res.status(200).json(await reduceLiquidity(req.body));
       }
     )
   );
+
+  // router.post(
+  //   '/add_cosmos',
+  //   asyncHandler(
+  //     async (
+  //       req: Request<{}, {}, CosmosAddLiquidityRequest>,
+  //       res: Response<CosmosAddLiquidityResponse | string, {}>
+  //     ) => {
+  //       validateCosmosAddLiquidityRequest(req.body);
+  //       res.status(200).json(await cosmosAddLiquidity(req.body));
+  //     }
+  //   )
+  // );
+
+  // router.post(
+  //   '/remove_cosmos',
+  //   asyncHandler(
+  //     async (
+  //       req: Request<{}, {}, CosmosRemoveLiquidityRequest>,
+  //       res: Response<CosmosRemoveLiquidityResponse | string, {}>
+  //     ) => {
+  //       validateCosmosRemoveLiquidityRequest(req.body);
+  //       res.status(200).json(await cosmosReduceLiquidity(req.body));
+  //     }
+  //   )
+  // );
 
   router.post(
     '/collect_fees',
@@ -165,14 +240,44 @@ export namespace AmmLiquidityRoutes {
     '/price',
     asyncHandler(
       async (
-        req: Request<{}, {}, PoolPriceRequest>,
-        res: Response<PoolPriceResponse | string, {}>
+        req: Request<{}, {}, PoolPriceRequest | CosmosPoolPriceRequest>,
+        res: Response<PoolPriceResponse | CosmosPoolPriceResponse | string, {}>
       ) => {
-        validatePoolPriceRequest(req.body);
+        if (req.body.chain == 'osmosis'){
+          validateCosmosPoolPriceRequest(req.body)
+        }else{
+          validatePoolPriceRequest(req.body);
+        }
         res.status(200).json(await poolPrice(req.body));
       }
     )
   );
+
+  // router.post(
+  //   '/price_cosmos',
+  //   asyncHandler(
+  //     async (
+  //       req: Request<{}, {}, CosmosPoolPriceRequest>,
+  //       res: Response<CosmosPoolPriceResponse | string, {}>
+  //     ) => {
+  //       validateCosmosPoolPriceRequest(req.body);
+  //       res.status(200).json(await cosmosPoolPrice(req.body));
+  //     }
+  //   )
+  // );
+
+  // router.post(
+  //   '/positions_cosmos',
+  //   asyncHandler(
+  //     async (
+  //       req: Request<{}, {}, CosmosPoolPositionsRequest>,
+  //       res: Response<CosmosPoolPositionsResponse | string, {}>
+  //     ) => {
+  //       validateCosmosPoolPositionsRequest(req.body);
+  //       res.status(200).json(await cosmosPoolPositions(req.body));
+  //     }
+  //   )
+  // );
 }
 
 export namespace PerpAmmRoutes {
@@ -282,3 +387,4 @@ export namespace PerpAmmRoutes {
     )
   );
 }
+

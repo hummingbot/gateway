@@ -23,6 +23,7 @@
     "test:scripts": "jest -i --verbose ./test-scripts/*.test.ts"
   },
   "dependencies": {
+    "@chasevoorhees/osmonauts-math-decimal": "^1.7.1",
     "@cosmjs/proto-signing": "^0.30.1",
     "@cosmjs/stargate": "^0.30.1",
     "@crocswap/sdk": "^2.4.5",
@@ -87,6 +88,8 @@
     "minimist": "^1.2.6",
     "morgan": "^1.10.0",
     "near-api-js": "1.0.0",
+    "osmo-query": "^16.5.2",
+    "osmojs": "^16.5.1",
     "promise-retry": "^2.0.1",
     "quickswap-sdk": "^3.0.8",
     "swagger-ui-express": "^4.1.6",

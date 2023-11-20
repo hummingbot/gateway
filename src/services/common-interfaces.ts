@@ -7,6 +7,7 @@ import {
   BigNumber,
   ethers,
 } from 'ethers';
+
 import {
   Contract as XdcContract,
   Transaction as XdcTransaction,
@@ -14,7 +15,7 @@ import {
   providers as XdcProviders,
 } from 'ethers-xdc';
 import { EthereumBase } from '../chains/ethereum/ethereum-base';
-import { CosmosBase } from '../chains/cosmos/cosmos-base';
+import { CosmosAsset, CosmosBase } from '../chains/cosmos/cosmos-base';
 import { Provider } from '@ethersproject/abstract-provider';
 import { CurrencyAmount, Token, Trade as TradeUniswap } from '@uniswap/sdk';
 import { Trade } from '@uniswap/router-sdk';
@@ -108,7 +109,6 @@ import {
 } from '../clob/clob.requests';
 import { BalanceRequest } from '../network/network.requests';
 import { TradeV2 } from '@traderjoe-xyz/sdk-v2';
-
 // TODO Check the possibility to have clob/solana/serum equivalents here
 //  Check this link https://hummingbot.org/developers/gateway/building-gateway-connectors/#5-add-sdk-classes-to-uniswapish-interface
 export type Tokenish =
@@ -122,7 +122,8 @@ export type Tokenish =
   | PancakeSwapToken
   | MMFToken
   | VVSToken
-  | TokenXsswap;
+  | TokenXsswap
+  | CosmosAsset;
 
 export type TokenAmountish = MMFTokenAmount | VVSTokenAmount;
 

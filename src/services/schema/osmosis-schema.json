@@ -9,11 +9,12 @@
           "type": "object",
           "properties": {
             "rpcURL": { "type": "string" },
+            "nodeURL": { "type": "string" },
             "tokenListType": { "type": "string" },
             "tokenListSource": { "type": "string" },
-            "nodeURL": { "type": "string" }
+            "chainId": { "type": "string" }
           },
-          "required": ["rpcURL", "tokenListType", "tokenListSource", "nodeURL"],
+          "required": ["rpcURL", "nodeURL", "tokenListType", "tokenListSource", "chainId"],
           "additionalProperties": false
         }
       },
@@ -21,7 +22,13 @@
     },
     "network": { "type": "string" },
     "nativeCurrencySymbol": { "type": "string" },
-    "manualGasPrice": { "type": "integer" }
+    "feeTier": {
+      "enum": ["low", "medium", "high"]
+    },
+    "gasAdjustment": { "type": "number" },
+    "gasLimitTransaction": { "type": "integer" },
+    "manualGasPrice": { "type": "string" },
+    "allowedSlippage": { "type": "string" }
   },
   "additionalProperties": false
 }

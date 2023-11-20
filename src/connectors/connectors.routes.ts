@@ -18,6 +18,7 @@ import { XsswapConfig } from './xsswap/xsswap.config';
 import { ConnectorsResponse } from './connectors.request';
 import { DexalotCLOBConfig } from './dexalot/dexalot.clob.config';
 import { TinymanConfig } from './tinyman/tinyman.config';
+import { OsmosisConfig } from '../chains/osmosis/osmosis.config';
 import { PlentyConfig } from './plenty/plenty.config';
 import { KujiraConfig } from './kujira/kujira.config';
 
@@ -145,6 +146,12 @@ export namespace ConnectorsRoutes {
             trading_type: TinymanConfig.config.tradingTypes,
             chain_type: TinymanConfig.config.chainType,
             available_networks: TinymanConfig.config.availableNetworks,
+          },
+          {
+            name: 'osmosis',
+            trading_type: OsmosisConfig.config.tradingTypes('swap'),
+            chain_type: OsmosisConfig.config.chainType,
+            available_networks: OsmosisConfig.config.availableNetworks,
           },
           {
             name: 'plenty',

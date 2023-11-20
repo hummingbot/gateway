@@ -38,6 +38,7 @@ import { DexalotCLOB } from '../connectors/dexalot/dexalot';
 import { Algorand } from '../chains/algorand/algorand';
 import { Cosmos } from '../chains/cosmos/cosmos';
 import { Tinyman } from '../connectors/tinyman/tinyman';
+import { Osmosis } from '../chains/osmosis/osmosis';
 import { Plenty } from '../connectors/plenty/plenty';
 import { Kujira } from '../chains/kujira/kujira';
 import { KujiraCLOB } from '../connectors/kujira/kujira';
@@ -47,6 +48,7 @@ export type ChainUnion =
   | Cosmos
   | Ethereumish
   | Nearish
+  | Osmosis
   | Injective
   | Xdcish
   | Tezosish
@@ -64,6 +66,8 @@ export type Chain<T> = T extends Algorand
   ? Xdcish
   : T extends Injective
   ? Injective
+  : T extends Osmosis
+  ? Osmosis
   : T extends Tezosish
   ? Tezosish
   : T extends KujiraCLOB
@@ -119,6 +123,8 @@ export async function getChainInstance(
     connection = Cronos.getInstance(network);
   } else if (chain === 'cosmos') {
     connection = Cosmos.getInstance(network);
+  } else if (chain === 'osmosis') {
+    connection = Osmosis.getInstance(network);
   } else if (chain === 'near') {
     connection = Near.getInstance(network);
   } else if (chain === 'binance-smart-chain') {
