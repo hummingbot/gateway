@@ -410,7 +410,7 @@ export const loadSwapDataWrapper = async (
         (tokenIn === "XTZ" && tokenOut === "CTEZ") ||
         (tokenIn === "CTEZ" && tokenOut === "XTZ")
       ) {
-        const ctezAdmin = await tezos.getContractStorage(plenty.ctezAdminAddress);
+        const ctezAdmin = await tezos.getContractStorage(tezos.ctezAdminAddress);
         swapData = loadSwapDataTezCtez(dex, poolAnalytics, tokenIn, tokenOut);
         swapData.target = ctezAdmin.target;
       } else {

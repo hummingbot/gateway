@@ -8,7 +8,6 @@ export namespace PlentyConfig {
     poolsApi: (network: string) => string;
     analyticsApi: (network: string) => string;
     routerAddress: (network: string) => string;
-    ctezAdminAddress: (network: string) => string;
     tradingTypes: Array<string>;
     availableNetworks: Array<AvailableNetworks>;
     chainType: string;
@@ -32,10 +31,6 @@ export namespace PlentyConfig {
     routerAddress: (network: string) =>
       ConfigManagerV2.getInstance().get(
         'plenty.contractAddresses.' + network + '.router'
-      ),
-    ctezAdminAddress: (network: string) =>
-      ConfigManagerV2.getInstance().get(
-        'plenty.contractAddresses.' + network + '.ctezAdmin'
       ),
     tradingTypes: ['AMM'],
     chainType: 'TEZOS',

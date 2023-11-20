@@ -4,7 +4,6 @@ import { BinanceSmartChain } from '../chains/binance-smart-chain/binance-smart-c
 import { Ethereum } from '../chains/ethereum/ethereum';
 import { Harmony } from '../chains/harmony/harmony';
 import { Polygon } from '../chains/polygon/polygon';
-import { Injective } from '../chains/injective/injective';
 import { Xdc } from '../chains/xdc/xdc';
 import { Tezos } from '../chains/tezos/tezos';
 import { Kujira } from '../chains/kujira/kujira';
@@ -92,11 +91,6 @@ export async function getStatus(
     const bscConnections = BinanceSmartChain.getConnectedInstances();
     connections = connections.concat(
       bscConnections ? Object.values(bscConnections) : []
-    );
-
-    const injectiveConnections = Injective.getConnectedInstances();
-    connections = connections.concat(
-      injectiveConnections ? Object.values(injectiveConnections) : []
     );
 
     const tezosConnections = Tezos.getConnectedInstances();

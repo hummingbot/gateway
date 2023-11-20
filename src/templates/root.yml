@@ -92,10 +92,6 @@ configurations:
     configurationPath: pancakeswap.yml
     schemaPath: pangolin-schema.json
 
-  $namespace injective:
-    configurationPath: injective.yml
-    schemaPath: injective-schema.json
-
   $namespace xdc:
     configurationPath: xdc.yml
     schemaPath: ethereum-schema.json
@@ -111,6 +107,10 @@ configurations:
   $namespace plenty:
     configurationPath: plenty.yml
     schemaPath: plenty-schema.json
+
+  $namespace curve:
+    configurationPath: curve.yml
+    schemaPath: cronos-connector-schema.json
 
   $namespace kujira:
     configurationPath: kujira.yml
