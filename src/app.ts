@@ -92,7 +92,9 @@ export const swaggerDocument = SwaggerManager.generateSwaggerJson(
     './docs/swagger/clob-perp-routes.yml',
     './docs/swagger/wallet-routes.yml',
     './docs/swagger/amm-routes.yml',
+    './docs/swagger/amm-routes-cosmos.yml',
     './docs/swagger/amm-liquidity-routes.yml',
+    './docs/swagger/amm-liquidity-routes-cosmos.yml',
     './docs/swagger/chain-routes.yml',
   ]
 );
