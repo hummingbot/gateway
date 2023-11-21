@@ -1,4 +1,4 @@
-@ts-nocheck
+// @ts-nocheck
 // OSMO message composer classes don't quite match up with what the RPC/Go backend actually accepts.
 
 import axios from 'axios';
