@@ -9,12 +9,11 @@
           "type": "object",
           "properties": {
             "rpcURL": { "type": "string" },
-            "nodeURL": { "type": "string" },
             "tokenListType": { "type": "string" },
             "tokenListSource": { "type": "string" },
             "chainId": { "type": "string" }
           },
-          "required": ["rpcURL", "nodeURL", "tokenListType", "tokenListSource", "chainId"],
+          "required": ["rpcURL", "tokenListType", "tokenListSource", "chainId"],
           "additionalProperties": false
         }
       },

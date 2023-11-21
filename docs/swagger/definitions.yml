@@ -902,6 +902,24 @@ definitions:
         type: 'string'
         example: 'uniswapLP'
 
+  CosmosPoolPositionsRequest:
+    type: 'object'
+    required:
+      - 'tokenId'
+    properties:
+      tokenId:
+        type: 'number'
+        example: 12
+      chain:
+        type: 'string'
+        example: 'ethereum'
+      network:
+        type: 'string'
+        example: 'goerli'
+      connector:
+        type: 'string'
+        example: 'uniswapLP'
+
   LiquidityPositionResponse:
     type: 'object'
     required:

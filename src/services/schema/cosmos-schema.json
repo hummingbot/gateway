@@ -10,10 +10,9 @@
           "properties": {
             "rpcURL": { "type": "string" },
             "tokenListType": { "type": "string" },
-            "tokenListSource": { "type": "string" },
-            "nodeURL": { "type": "string" }
+            "tokenListSource": { "type": "string" }
           },
-          "required": ["rpcURL", "tokenListType", "tokenListSource", "nodeURL"],
+          "required": ["rpcURL", "tokenListType", "tokenListSource"],
           "additionalProperties": false
         }
       },
