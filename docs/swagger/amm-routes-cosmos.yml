@@ -38,7 +38,7 @@ paths:
       responses:
         '200':
           schema:
-            $ref: '#/definitions/TradeResponse'
+            $ref: '#/definitions/CosmosTradeResponse'
   /amm/estimateGas:
     post:
       tags:

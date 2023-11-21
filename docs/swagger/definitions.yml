@@ -477,6 +477,69 @@ definitions:
       txHash:
         type: 'string'
 
+  CosmosTradeResponse:
+    type: 'object'
+    required:
+      - 'network'
+      - 'timestamp'
+      - 'latency'
+      - 'base'
+      - 'quote'
+      - 'amount' 
+      - 'rawAmount'
+      - 'expectedAmountReceived'
+      - 'finalAmountReceived'
+      - 'finalAmountReceived_basetoken'
+      - 'expectedPrice'
+      - 'finalPrice'
+      - 'gasPrice'
+      - 'gasLimit'
+      - 'gasUsed'
+      - 'gasWanted'
+      - 'txHash'
+    properties:
+      network:
+        type: 'string'
+        example: 'mainnet'
+      timestamp:
+        type: 'integer'
+        example: 1636368085740
+      latency:
+        type: 'number'
+        example: 0.5
+      base:
+        type: 'string'
+        example: '0x4f96fe3b7a6cf9725f59d353f723c1bdb64ca6aa'
+      quote:
+        type: 'string'
+        example: '0xd0A1E359811322d97991E03f863a0C30C2cF029C'
+      amount:
+        type: 'string'
+        example: '10'
+      rawAmount:
+        type: 'string'
+        example: '10'
+      expectedAmountReceived:
+        type: 'string'
+      finalAmountReceived:
+        type: 'string'
+      finalAmountReceived_basetoken:
+        type: 'string'
+      expectedPrice:
+        type: 'string'
+      finalPrice:
+        type: 'string'
+      gasPrice:
+        type: 'string'
+      gasLimit:
+        type: 'string'
+      gasUsed:
+        type: 'string'
+      gasWanted:
+        type: 'string'
+      txHash:
+        type: 'string'
+
   CancelRequest:
     type: 'object'
     required:
@@ -760,6 +823,89 @@ definitions:
         type: 'string'
         example: '0x0000000000000000000000000000000000000000'
 
+  CosmosAddLiquidityRequest:
+    type: 'object'
+    required:
+      - 'address'
+      - 'token0'
+      - 'token1'
+      - 'amount0'
+      - 'amount1'
+      - 'chain'
+      - 'network'
+    properties:
+      address:
+        type: 'string'
+        example: 'osmo12345'
+      token0:
+        type: 'string'
+      token1:
+        type: 'string'
+      amount0:
+        type: 'string'
+      amount1:
+        type: 'string'
+      poolId:
+        type: 'string'
+      allowedSlippage:
+        type: 'string'
+      chain:
+        type: 'string'
+      network:
+        type: 'string'
+      connector:
+        type: 'string'
+
+  CosmosAddLiquidityResponse:
+    type: 'object'
+    required:
+      - 'poolId'
+      - 'poolAddress'
+      - 'poolShares'
+      - 'token0'
+      - 'token0FinalAmount'
+      - 'token1'
+      - 'token1FinalAmount'
+      - 'network'
+      - 'timestamp'
+      - 'latency'
+      - 'gasPrice'
+      - 'gasLimit'
+      - 'gasUsed'
+      - 'gasWanted'
+      - 'txHash'
+    properties:
+      poolId:
+        type: 'string'
+      poolAddress:
+        type: 'string'
+      poolShares:
+        type: 'string'
+      token0:
+        type: 'string'
+      token0FinalAmount:
+        type: 'string'
+      token1:
+        type: 'string'
+      token1FinalAmount:
+        type: 'string'
+      network: 
+        type: 'string'
+      timestamp:
+        type: 'number'
+      latency:
+        type: 'number'
+      gasPrice:
+        type: 'string'
+      gasLimit:
+        type: 'string'
+      gasUsed:
+        type: 'string'
+      gasWanted:
+        type: 'string'
+      txHash:
+        type: 'string'
+
   LiquidityRemoveRequest:
     type: 'object'
     required:
@@ -821,6 +967,75 @@ definitions:
       txHash:
         type: 'string'
         example: '0x0000000000000000000000000000000000000000'
+
+  CosmosRemoveLiquidityRequest:
+    type: 'object'
+    required:
+      - 'address'
+      - 'decreasePercent'
+      - 'poolId'
+      - 'chain'
+      - 'network'
+    properties:
+      address:
+        type: 'string'
+        example: 'osmo12345'
+      decreasePercent:
+        type: 'number'
+      poolId:
+        type: 'string'
+      allowedSlippage:
+        type: 'string'
+      chain:
+        type: 'string'
+      network:
+        type: 'string'
+      connector:
+        type: 'string'
+
+  CosmosRemoveLiquidityResponse:
+    type: 'object'
+    required:
+      - 'network'
+      - 'timestamp'
+      - 'latency'
+      - 'poolId'
+      - 'gasPrice'
+      - 'gasLimit'
+      - 'gasUsed'
+      - 'gasWanted'
+      - 'txHash'
+      - 'token0'
+      - 'token1'
+      - 'amount0'
+      - 'amount1'
+    properties:
+      network: 
+        type: 'string'
+      timestamp:
+        type: 'number'
+      latency:
+        type: 'number'
+      poolId:
+        type: 'string'
+      gasPrice:
+        type: 'string'
+      gasLimit:
+        type: 'string'
+      gasUsed:
+        type: 'string'
+      gasWanted:
+        type: 'string'
+      txHash:
+        type: 'string'
+      token0:
+        type: 'string'
+      token1:
+        type: 'string'
+      amount0:
+        type: 'string'
+      amount1:
+        type: 'string'
 
   LiquidityCollectRequest:
     type: 'object'
@@ -905,8 +1120,12 @@ definitions:
   CosmosPoolPositionsRequest:
     type: 'object'
     required:
-      - 'tokenId'
+      - 'address'
+      - 'chain'
+      - 'network'
     properties:
+      address:
+        type: 'string'
       tokenId:
         type: 'number'
         example: 12
@@ -919,6 +1138,91 @@ definitions:
       connector:
         type: 'string'
         example: 'uniswapLP'
+
+  CosmosPoolPositionsResponse:
+    type: 'object'
+    required:
+      - 'address'
+      - 'chain'
+      - 'network'
+    properties:
+      pools: 
+        type: 'array'
+        items: 'object'
+        required:
+          - 'address'
+          - 'id'
+        properties:
+          $typeUrl:
+            type: 'string'
+            example: ''
+          address:
+            type: 'string'
+            example: 'osmo23459697'
+          id:
+            type: 'string'
+            example: 'poolid'
+          futurePoolGovernor:
+            type: 'string'
+            example: 'noidea'
+          totalShares:
+            type: 'object'
+            required:
+              - 'amount'
+              - 'denom'
+            properties:
+              amount:
+                type: 'string'
+                example: 'none'
+              denom:
+                type: 'string'
+                example: 'none' 
+          poolAssets:
+            type: 'array'
+            items: 'object'
+            required:
+              - 'amount'
+              - 'denom'
+            properties:
+              amount:
+                type: 'string'
+                example: 'none'
+              denom:
+                type: 'string'
+                example: 'none' 
+          totalWeight:
+            type: 'string'
+            example: 'none'
+          fees_volume24H:
+            type: 'number'
+            example: 1
+          fees_spent_7d:
+            type: 'number'
+            example: 1
+          fees_volume7d:
+            type: 'number'
+            example: 1
+          myLiquidityShares:
+            type: 'number'
+            example: 1
+          myLiquidityDollarValue:
+            type: 'string'
+            example: '20'
+          my_bonded_shares:
+            type: 'string'
+            example: '20'
+          denom:
+            type: 'string'
+            example: 'none' 
+      network:
+        type: 'string'
+        example: 'mainnet'
+      timestamp:
+        type: 'number'
+        example: 123
+      latency:
+        type: 'number'
+        example: 123
 
   LiquidityPositionResponse:
     type: 'object'
@@ -1043,6 +1347,128 @@ definitions:
         type: 'object'
         example: [ '1', '2', '3' ]
 
+  CosmosPoolPriceRequest:
+    type: 'object'
+    required:
+      - 'address'
+      - 'token0'
+      - 'token1'
+      - 'chain'
+      - 'network'
+    properties:
+      address:
+        type: 'string'
+        example: 'osmo123456'
+      token0:
+        type: 'string'
+        example: 'OSMO'
+      token1:
+        type: 'string'
+        example: 'ATOM'
+      chain: 
+        type: 'string'
+        example: 'osmosis'
+      network: 
+        type: 'string'
+        example: 'mainnet' 
+      connector: 
+        type: 'string'
+        example: 'osmosis'
+
+
+  CosmosPoolPriceResponse:
+    type: 'object'
+    required:
+      - 'token0'
+      - 'token1'
+      - 'pools'
+      - 'network'
+      - 'timestamp'
+      - 'latency'
+    properties:
+      token0:
+        type: 'string'
+        example: 'OSMO'
+      token1:
+        type: 'string'
+        example: 'ATOM'
+      pools: 
+        type: 'array'
+        items: 'object'
+        required:
+          - 'address'
+          - 'id'
+        properties:
+          $typeUrl:
+            type: 'string'
+            example: ''
+          address:
+            type: 'string'
+            example: 'osmo23459697'
+          id:
+            type: 'string'
+            example: 'poolid'
+          futurePoolGovernor:
+            type: 'string'
+            example: 'noidea'
+          totalShares:
+            type: 'object'
+            required:
+              - 'amount'
+              - 'denom'
+            properties:
+              amount:
+                type: 'string'
+                example: 'none'
+              denom:
+                type: 'string'
+                example: 'none' 
+          poolAssets:
+            type: 'array'
+            items: 'object'
+            required:
+              - 'amount'
+              - 'denom'
+            properties:
+              amount:
+                type: 'string'
+                example: 'none'
+              denom:
+                type: 'string'
+                example: 'none' 
+          totalWeight:
+            type: 'string'
+            example: 'none'
+          fees_volume24H:
+            type: 'number'
+            example: 1
+          fees_spent_7d:
+            type: 'number'
+            example: 1
+          fees_volume7d:
+            type: 'number'
+            example: 1
+          myLiquidityShares:
+            type: 'number'
+            example: 1
+          myLiquidityDollarValue:
+            type: 'string'
+            example: '20'
+          my_bonded_shares:
+            type: 'string'
+            example: '20'
+          denom:
+            type: 'string'
+            example: 'none' 
+      network:
+        type: 'string'
+        example: 'mainnet'
+      timestamp:
+        type: 'number'
+        example: 123
+      latency:
+        type: 'number'
+        example: 123
 
   PerpPairsRequest:
     type: 'object'
