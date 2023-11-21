@@ -1,6 +1,5 @@
 import { Cosmos } from './cosmos';
 import { CosmosBalanceRequest, CosmosPollRequest } from './cosmos.requests';
-import { TokenValue, tokenValueToString } from '../../services/base';
 import {
   HttpException,
   TOKEN_NOT_SUPPORTED_ERROR_CODE,
@@ -10,11 +9,12 @@ import {
   validateCosmosBalanceRequest,
   validateCosmosPollRequest,
 } from './cosmos.validators';
+import { CosmosTokenValue, tokenValueToString } from './cosmos-base';
 
 const { decodeTxRaw } = require('@cosmjs/proto-signing');
 
 export const toCosmosBalances = (
-  balances: Record<string, TokenValue>,
+  balances: Record<string, CosmosTokenValue>,
   tokenSymbols: Array<string>
 ): Record<string, string> => {
   const walletBalances: Record<string, string> = {};

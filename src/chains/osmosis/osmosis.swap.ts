@@ -1,3 +1,5 @@
+// adapted from osmonauts-math swap.ts to use BigNumber to enable .pow(x<1)
+
 import { Asset } from "@chain-registry/types";
 import { Decimal } from "decimal.js";
 import { BigNumber } from "bignumber.js";

@@ -96,8 +96,8 @@ describe('chain.routes', () => {
   });
 
   it('getTokenBySymbol', async () => {
-    var token = osmosis.getTokenBySymbol('ATOM');
-    var token2 = osmosis.getTokenForSymbol('OSMO');
+    var token = osmosis.getTokenBySymbol('ATOM')!;
+    var token2 = osmosis.getTokenForSymbol('OSMO')!;
     //console.debug(token);
     //console.debug(token2);
     expect(token.decimals).toEqual(6);

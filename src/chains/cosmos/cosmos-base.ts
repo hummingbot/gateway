@@ -1,10 +1,10 @@
 import axios from 'axios';
 import { promises as fs } from 'fs';
-import { TokenListType, TokenValue, walletPath } from '../../services/base';
+import { TokenListType, stringInsert, walletPath } from '../../services/base';
 import NodeCache from 'node-cache';
 import fse from 'fs-extra';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
-import { BigNumber } from 'ethers';
+import { BigNumber } from 'bignumber.js';
 import { AccountData, DirectSignResponse } from '@cosmjs/proto-signing';
 import { Asset, AssetDenomUnit, AssetTrace } from '@chain-registry/types/types/assets'
 import { IndexedTx, setupIbcExtension } from '@cosmjs/stargate';
@@ -15,6 +15,9 @@ const { DirectSecp256k1Wallet } = require('@cosmjs/proto-signing');
 const { StargateClient } = require('@cosmjs/stargate');
 const { toBase64, fromBase64, fromHex } = require('@cosmjs/encoding');
 const crypto = require('crypto').webcrypto;
+
+import { osmosis } from 'osmojs';
+const { createRPCQueryClient } = osmosis.ClientFactory;
 
 export class CosmosAsset implements Asset {
   decimals: number = 0;
@@ -68,6 +71,12 @@ export class CosmosAsset implements Asset {
   };
 }
 
+// a nice way to represent the token value without carrying around as a string
+export interface CosmosTokenValue {
+  value: BigNumber;
+  decimals: number;
+}
+
 const getExponentForAsset = (asset: Asset): number => {
   if (asset && asset.denom_units){
     const unit = asset.denom_units.find(({ denom }) => denom === asset.display);
@@ -108,13 +117,38 @@ export type NewBlockHandler = (bn: number) => void;
 
 export type NewDebugMsgHandler = (msg: any) => void;
 
-export class CosmosBase {
-  private _provider;
-  protected tokenList: CosmosAsset[] = [];
-  private _tokenMap: Record<string, CosmosAsset> = {};
 
-  private _ready: boolean = false;
-  private _initialized: Promise<boolean> = Promise.resolve(false);
+// convert a BigNumber and the number of decimals into a numeric string.
+// this makes it JavaScript compatible while preserving all the data.
+export const bigNumberWithDecimalToStr = (n: BigNumber, d: number): string => {
+  const n_ = n.toString();
+
+  let zeros = '';
+
+  if (n_.length <= d) {
+    zeros = '0'.repeat(d - n_.length + 1);
+  }
+
+  return stringInsert(n_.split('').reverse().join('') + zeros, '.', d)
+    .split('')
+    .reverse()
+    .join('');
+};
+
+// we should turn Token into a string when we return as a value in an API call
+export const tokenValueToString = (t: CosmosTokenValue | string): string => {
+  return typeof t === 'string'
+    ? t
+    : bigNumberWithDecimalToStr(t.value, t.decimals);
+};
+
+export class CosmosBase {
+  public _provider: any = undefined;
+  protected tokenList: CosmosAsset[] = [];
+  protected _tokenMap: Record<string, CosmosAsset> = {};
+
+  public _ready: boolean = false;
+  public _initialized: Promise<boolean> = Promise.resolve(false);
 
   public chainName;
   public rpcUrl;
@@ -130,7 +164,6 @@ export class CosmosBase {
     tokenListType: TokenListType,
     gasPriceConstant: number
   ) {
-    this._provider = StargateClient.connect(rpcUrl);
     this.chainName = chainName;
     this.rpcUrl = rpcUrl;
     this.gasPriceConstant = gasPriceConstant;
@@ -150,6 +183,11 @@ export class CosmosBase {
   async init(): Promise<void> {
     await this._initialized; // Wait for any previous init() calls to complete
     if (!this.ready()) {
+      if (this.chainName == 'osmosis'){
+        this._provider = await createRPCQueryClient({rpcEndpoint: this.rpcUrl});
+      }else{
+        this._provider = StargateClient.connect(this.rpcUrl);
+      }
       // If we're not ready, this._initialized will be a Promise that resolves after init() completes
       this._initialized = (async () => {
         try {
@@ -358,8 +396,9 @@ export class CosmosBase {
   getTokenDecimals(token: any): number {
     return token ? token.denom_units[token.denom_units.length - 1].exponent : 6; // Last denom unit has the decimal amount we need from our list
   }
-  async getBalances(wallet: CosmosWallet): Promise<Record<string, TokenValue>> {
-    const balances: Record<string, TokenValue> = {};
+
+  async getBalances(wallet: CosmosWallet): Promise<Record<string, CosmosTokenValue>> {
+    const balances: Record<string, CosmosTokenValue> = {};
 
     const provider = await this._provider;
 
@@ -392,7 +431,7 @@ export class CosmosBase {
 
         // Not all tokens are added in the registry so we use the denom if the token doesn't exist
         balances[token ? token.symbol : t.denom] = {
-          value: BigNumber.from(parseInt(t.amount, 10)),
+          value: new BigNumber(parseInt(t.amount, 10)),
           decimals: this.getTokenDecimals(token),
         };
       })

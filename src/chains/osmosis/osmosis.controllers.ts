@@ -88,12 +88,12 @@ export class OsmosisController {
       baseAmount: Decimal,
       tradeSide: string,
     ): Promise<TradeInfo> {
-      const gasAdjustment = osmosis.gasAdjustment; // 
+      const gasAdjustment = osmosis.gasPriceConstant; // 
       const feeTier = osmosis.feeTier; // 
       const allowedSlippage = osmosis.allowedSlippage; // 
 
-      const baseToken: Tokenish = osmosis.getTokenBySymbol(baseAsset);
-      const quoteToken: Tokenish = osmosis.getTokenBySymbol(quoteAsset);
+      const baseToken: Tokenish = osmosis.getTokenBySymbol(baseAsset)!;
+      const quoteToken: Tokenish = osmosis.getTokenBySymbol(quoteAsset)!;
 
       const requestAmount: BigNumber = BigNumber(
         baseAmount.toFixed(baseToken.decimals)
@@ -218,7 +218,7 @@ export class OsmosisController {
 
       const gasPrice = osmosis.manualGasPrice;  // GAS PRICE PER UNIT OF WORK  
       const gasLimitTransaction = osmosis.gasLimitEstimate; // MAX uOSMO COST PER TRANSACTION 
-      const gasAdjustment = osmosis.gasAdjustment; // 
+      const gasAdjustment = osmosis.gasPriceConstant; // 
       const feeTier = osmosis.feeTier; // 
 
       if (req.side === 'BUY') {
@@ -344,12 +344,12 @@ export class OsmosisController {
           req.address,
         );
 
-      const token0: TokenishCosmosAsset = osmosis.getTokenBySymbol(req.token0);
-      const token1: TokenishCosmosAsset = osmosis.getTokenBySymbol(req.token1);
+      const token0: TokenishCosmosAsset = osmosis.getTokenBySymbol(req.token0)!;
+      const token1: TokenishCosmosAsset = osmosis.getTokenBySymbol(req.token1)!;
 
       const gasPrice = osmosis.manualGasPrice;  // GAS PRICE PER UNIT OF WORK  
       const gasLimitTransaction = osmosis.gasLimitEstimate; // MAX uOSMO COST PER TRANSACTION 
-      const gasAdjustment = osmosis.gasAdjustment; // 
+      const gasAdjustment = osmosis.gasPriceConstant; // 
       const feeTier = osmosis.feeTier; // 
 
       const tx = await osmosis.addPosition(
@@ -419,7 +419,7 @@ export class OsmosisController {
 
       const gasPrice = osmosis.manualGasPrice;  // GAS PRICE PER UNIT OF WORK  
       const gasLimitTransaction = osmosis.gasLimitEstimate; // MAX uOSMO COST PER TRANSACTION 
-      const gasAdjustment = osmosis.gasAdjustment; // 
+      const gasAdjustment = osmosis.gasPriceConstant; // 
       const feeTier = osmosis.feeTier; // 
 
       const tx = await osmosis.reducePosition(
@@ -460,8 +460,8 @@ export class OsmosisController {
     ): Promise<CosmosPoolPriceResponse> {
       const startTimestamp: number = Date.now();
 
-      const token0: TokenishCosmosAsset = osmosis.getTokenBySymbol(req.token0);
-      const token1: TokenishCosmosAsset = osmosis.getTokenBySymbol(req.token1);
+      const token0: TokenishCosmosAsset = osmosis.getTokenBySymbol(req.token0)!;
+      const token1: TokenishCosmosAsset = osmosis.getTokenBySymbol(req.token1)!;
 
       const pools = await osmosis.findPoolsPrices(
         token0,
@@ -551,20 +551,12 @@ export class OsmosisController {
           req.from,
         );
 
-      const token: TokenishCosmosAsset = osmosis.getTokenBySymbol(req.token);
+      const token: TokenishCosmosAsset = osmosis.getTokenBySymbol(req.token)!;
     
       const tx = await osmosis.transfer(wallet, token, req);
 
       if (tx.code == successfulTransaction){
         return 'Transfer success. To: ' + req.to + ' From: ' + req.from + ' Hash: ' + tx.transactionHash + ' gasUsed: ' + tx.gasUsed + ' gasWanted: ' + tx.gasWanted
-        // return {
-        //   amount: new Decimal(req.amount).toFixed(tradeInfo.baseToken.decimals),
-        //   gasPrice: gasPrice,
-        //   gasLimit: gasLimitTransaction,
-        //   gasUsed: tx.gasUsed,
-        //   gasWanted: tx.gasWanted,
-        //   txHash: tx.transactionHash,
-        // };
       }
       else{
         throw new HttpException(

@@ -1,17 +1,13 @@
 // @ts-nocheck
 // OSMO message composer classes don't quite match up with what the RPC/Go backend actually accepts.
 
-import axios from 'axios';
-import fse from 'fs-extra';
-import { promises as fs } from 'fs';
-import { AccountData } from '@cosmjs/proto-signing';
-import { CosmosWallet, CosmosAsset, EncryptedPrivateKey } from '../../chains/cosmos/cosmos-base'; 
+import { CosmosWallet, CosmosAsset, CosmosTokenValue, CosmosBase } from '../../chains/cosmos/cosmos-base'; 
 import { OsmosisController } from './osmosis.controllers';
 import BigNumber from 'bignumber.js';
 import { logger } from '../../services/logger';
 import { coins, coin, Coin } from '@cosmjs/amino';
 import { FEES, } from 'osmojs/dist/utils/gas/values'
-import { TokenInfo, TokenListType, TokenValue, walletPath } from '../../services/base'; 
+import { TokenInfo, } from '../../services/base'; 
 
 import { osmosis, cosmos, getSigningOsmosisClient } from 'osmojs';
 import {
@@ -47,22 +43,18 @@ import {
 import type {
   PrettyPair,
 } from "@osmonauts/math/dist/types";
-import NodeCache from 'node-cache';
 import { TradeInfo } from './osmosis.controllers';
 import { PoolAsset } from 'osmojs/dist/codegen/osmosis/gamm/pool-models/balancer/balancerPool';
 import { HttpException, TRADE_FAILED_ERROR_CODE, TRADE_FAILED_ERROR_MESSAGE, INSUFFICIENT_FUNDS_ERROR_CODE, INSUFFICIENT_FUNDS_ERROR_MESSAGE } from '../../services/error-handler';
 import { ExtendedPool, extendPool, filterPools as filterPoolsLP } from './osmosis.lp.utils';
 import { fetchFees } from './osmosis.utils';
 import { getCoinGeckoPrices, getImperatorPriceHash } from './osmosis.prices';
-import { GasPrice, IndexedTx, calculateFee, setupIbcExtension } from '@cosmjs/stargate';
+import { GasPrice, calculateFee, setupIbcExtension } from '@cosmjs/stargate';
 import { CosmWasmClient } from "@cosmjs/cosmwasm-stargate";
 import { TokensRequest, TokensResponse } from '../../network/network.requests';
-import { TransferRequest } from '../../services/common-interfaces';
-import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
+import { Cosmosish, TransferRequest } from '../../services/common-interfaces';
 
-const crypto = require('crypto').webcrypto;
 const { DirectSecp256k1Wallet } = require('@cosmjs/proto-signing');
-const { toBase64, fromBase64, fromHex } = require('@cosmjs/encoding');
 const {
   joinPool,
   exitPool,
@@ -73,10 +65,7 @@ const {
 send
 } = cosmos.bank.v1beta1.MessageComposer.fromPartial;
 
-const { createRPCQueryClient } = osmosis.ClientFactory;
-
-export class Osmosis { 
-
+export class Osmosis extends CosmosBase implements Cosmosish{ 
   public controller;
   private static _instances: { [name: string]: Osmosis };
   private _gasPrice: number;
@@ -85,47 +74,31 @@ export class Osmosis {
   private _requestCount: number;
   private _metricsLogInterval: number;
   private _metricTimer;
-
-  private _osmosReady: boolean = false;
-  private _osmosInitializing: boolean = false;
-  private _osmosInitPromise: Promise<void> = Promise.resolve();
-  private rpcClient?: any;
   private signingClient?: any;
   public chainId: string;
-  protected tokenList: CosmosAsset[] = [];
-  protected tokenMap: Record<string, CosmosAsset> = {};
-  public chainName: string;
-  public rpcURL: string;
-
-  public gasAdjustment: number;
   public gasLimitEstimate: string;
   public readonly feeTier: string; // FEE_VALUES.osmosis[_feeTier] low medium high osmojs/src/utils/gas/values.ts
   public manualGasPrice: string;
   public allowedSlippage: string;
   
-  public tokenListSource: string;
-  public tokenListType: TokenListType; //TokenListType = FILE | URL
-  public cache: import("node-cache");
-
   private constructor(network: string) {
     const config = OsmosisConfig.config;
+    super(
+      config.availableNetworks[0].chain,
+      config.rpcURL(network).toString(),
+      config.tokenListSource(network),
+      config.tokenListType(network),
+      config.gasAdjustment
+    )
     this._chain = network;
     this._nativeTokenSymbol = config.nativeCurrencySymbol;
     this.manualGasPrice = config.manualGasPrice;
     this._gasPrice = Number(this.manualGasPrice.replace('uosmo',''))
-    this.tokenMap = {}
     this.feeTier = config.feeTier;
-    this.gasAdjustment = config.gasAdjustment
     this.gasLimitEstimate = config.gasLimitTransaction
     this.allowedSlippage = config.allowedSlippage
 
-    this.tokenListType = config.tokenListType(network)
-    this.tokenListSource = config.tokenListSource(network)
-    this.cache = new NodeCache();
-    this.rpcURL = config.rpcURL(network).toString()
-    this.chainName = config.availableNetworks[0].chain;
     this.chainId = config.chainId(network);
-    this.rpcClient = undefined;
     this.signingClient = undefined;
     this.controller = OsmosisController;
 
@@ -167,6 +140,10 @@ export class Osmosis {
     this._requestCount = 0; // reset
   }
 
+  public get provider() {
+    return this._provider;
+  }
+  
   public get gasPrice(): number {
     return this._gasPrice;
   }
@@ -187,6 +164,10 @@ export class Osmosis {
     return this._metricsLogInterval;
   }
 
+  async getDenomMetadata(provider: any, denom: string): Promise<any> {
+    return await provider.cosmos.bank.denomMetadata(denom);
+  }
+
   async close() {
     clearInterval(this._metricTimer);
     if (this._chain in Osmosis._instances) {
@@ -195,241 +176,9 @@ export class Osmosis {
   }
 
   public ready(): boolean {
-    return this._osmosReady
+    return this._ready
   }
 
-  public async init(): Promise<void> {
-
-    if (!this.ready() && !this._osmosInitializing) {
-      this._osmosInitializing = true;
-
-      this.rpcClient = await createRPCQueryClient({rpcEndpoint: this.rpcURL});
-      this._osmosInitPromise = this.loadTokens(
-        this.tokenListSource,
-        this.tokenListType
-      ).then(() => {
-        this._osmosReady = true;
-        this._osmosInitializing = false;
-      });
-
-
-      for (const token of this.storedTokenList) {
-        if (token.address !== undefined){
-          this.tokenMap[token.address] = token;
-        }
-      }
-    }
-
-    return this._osmosInitPromise;
-  }
-
-  // returns a cosmos tx for a txHash
-  async getTransaction(id: string): Promise<IndexedTx> {
-    const transaction = await this.rpcClient.getTx(id);
-
-    if (!transaction) {
-      throw new Error('Transaction not found');
-    }
-
-    return transaction;
-  }
-  
-  async getWalletFromPrivateKey(
-    privateKey: string,
-    prefix: string
-  ): Promise<CosmosWallet> {
-    const wallet = await DirectSecp256k1Wallet.fromKey(
-      fromHex(privateKey),
-      prefix
-    );
-
-    return wallet;
-  }
-
-  async getAccountsfromPrivateKey(
-    privateKey: string,
-    prefix: string
-  ): Promise<AccountData> {
-    const wallet = await this.getWalletFromPrivateKey(privateKey, prefix);
-
-    const accounts = await wallet.getAccounts();
-
-    return accounts[0];
-  }
-
-  // returns Wallet for an address
-  // TODO: Abstract-away into base.ts
-  async getWallet(address: string, prefix: string): Promise<CosmosWallet> {
-    const path = `${walletPath}/${this.chainName}`;
-
-    const encryptedPrivateKey: EncryptedPrivateKey = JSON.parse(
-      await fse.readFile(`${path}/${address}.json`, 'utf8'),
-      (key, value) => {
-        switch (key) {
-          case 'ciphertext':
-          case 'salt':
-          case 'iv':
-            return fromBase64(value);
-          default:
-            return value;
-        }
-      }
-    );
-
-    const passphrase = ConfigManagerCertPassphrase.readPassphrase();
-    if (!passphrase) {
-      throw new Error('missing passphrase');
-    }
-
-    return await this.decrypt(encryptedPrivateKey, passphrase, prefix);
-  }
-
-  private static async getKeyMaterial(password: string) {
-    const enc = new TextEncoder();
-    return await crypto.subtle.importKey(
-      'raw',
-      enc.encode(password),
-      'PBKDF2',
-      false,
-      ['deriveBits', 'deriveKey']
-    );
-  }
-
-  private static async getKey(
-    keyAlgorithm: {
-      salt: Uint8Array;
-      name: string;
-      iterations: number;
-      hash: string;
-    },
-    keyMaterial: CryptoKey
-  ) {
-    return await crypto.subtle.deriveKey(
-      keyAlgorithm,
-      keyMaterial,
-      { name: 'AES-GCM', length: 256 },
-      true,
-      ['encrypt', 'decrypt']
-    );
-  }
-
-  // from Solana.ts
-  async encrypt(privateKey: string, password: string): Promise<string> {
-    const iv = crypto.getRandomValues(new Uint8Array(16));
-    const salt = crypto.getRandomValues(new Uint8Array(16));
-    const keyMaterial = await Osmosis.getKeyMaterial(password);
-    const keyAlgorithm = {
-      name: 'PBKDF2',
-      salt: salt,
-      iterations: 500000,
-      hash: 'SHA-256',
-    };
-    const key = await Osmosis.getKey(keyAlgorithm, keyMaterial);
-    const cipherAlgorithm = {
-      name: 'AES-GCM',
-      iv: iv,
-    };
-    const enc = new TextEncoder();
-    const ciphertext: Uint8Array = (await crypto.subtle.encrypt(
-      cipherAlgorithm,
-      key,
-      enc.encode(privateKey)
-    )) as Uint8Array;
-    return JSON.stringify(
-      {
-        keyAlgorithm,
-        cipherAlgorithm,
-        ciphertext: new Uint8Array(ciphertext),
-      },
-      (key, value) => {
-        switch (key) {
-          case 'ciphertext':
-          case 'salt':
-          case 'iv':
-            return toBase64(Uint8Array.from(Object.values(value)));
-          default:
-            return value;
-        }
-      }
-    );
-  }
-
-  async decrypt(
-    encryptedPrivateKey: EncryptedPrivateKey,
-    password: string,
-    prefix: string
-  ): Promise<CosmosWallet> {
-    const keyMaterial = await Osmosis.getKeyMaterial(password);
-    const key = await Osmosis.getKey(
-      encryptedPrivateKey.keyAlgorithm,
-      keyMaterial
-    );
-    const decrypted = await crypto.subtle.decrypt(
-      encryptedPrivateKey.cipherAlgorithm,
-      key,
-      encryptedPrivateKey.ciphertext
-    );
-    const dec = new TextDecoder();
-    dec.decode(decrypted);
-
-    return await this.getWalletFromPrivateKey(dec.decode(decrypted), prefix);
-  }
-
-  getTokenDecimals(token: any): number {
-    return token ? token.denom_units[token.denom_units.length - 1].exponent : 6; // Last denom unit has the decimal amount we need from our list
-  }
-
-  // returns a Tokens for a given list source and list type
-  //  chase: kind of unsure about this - just parsing cosmo JSON into native hbot Token[] 
-  async getTokenList(
-    tokenListSource: string,
-    tokenListType: TokenListType
-  ): Promise<CosmosAsset[]> {
-    let tokens: CosmosAsset[] = [];
-    let tokensJson = [];
-
-    if (tokenListType === 'URL') {
-      ({ data: tokensJson } = await axios.get(tokenListSource));
-    } else {
-      ({ tokensJson } = JSON.parse(await fs.readFile(tokenListSource, 'utf8')));
-    }
-    for (var tokenAssetIdx=0; tokenAssetIdx<tokensJson.assets.length; tokenAssetIdx++){
-      var tokenAsset = tokensJson.assets[tokenAssetIdx];
-      tokens.push(new CosmosAsset(tokenAsset))
-    }
-    return tokens;
-  }
-  async loadTokens(
-    tokenListSource: string,
-    tokenListType: TokenListType
-  ): Promise<void> {
-    this.tokenList = await this.getTokenList(tokenListSource, tokenListType);
-  }
-
-  public get storedTokenList(): CosmosAsset[] {
-    return this.tokenList;
-  }
-
-  public getTokenForSymbol(tokenSymbol: string): CosmosAsset {
-    return this.getTokenBySymbol(tokenSymbol);
-  }
-  public getTokenBySymbol(tokenSymbol: string): CosmosAsset {
-    const token = this.tokenList.find(
-      (token: CosmosAsset) => token.symbol.toUpperCase() === tokenSymbol.toUpperCase()
-    );
-    if (!token){
-      throw new Error('Osmosis token not found for symbol: ' + tokenSymbol);
-    }
-    return token; 
-  }
-  public getTokenByBase(base: string): CosmosAsset | undefined {
-    const token = this.tokenList.find((token: CosmosAsset) => token.base === base);
-    if (!token){
-      return undefined
-      // throw new Error('Osmosis token not found for base: ' + base);
-    }
-    return token; 
-  }
   public getTokenByAddress(address: string): CosmosAsset {
     const token = this.tokenList.find((token: CosmosAsset) => token.address === address);
     if (!token){
@@ -511,15 +260,15 @@ export class Osmosis {
 
   public isEmptyArray = (arr: any[]) => arr.length === 0;
  
-  async getBalances(wallet: CosmosWallet): Promise<Record<string, TokenValue>> {
-    const balances: Record<string, TokenValue> = {};
+  async getBalances(wallet: CosmosWallet): Promise<Record<string, CosmosTokenValue>> {
+    const balances: Record<string, CosmosTokenValue> = {};
 
     const accounts = await wallet.getAccounts();
 
     var { address } = accounts[0];
 
     var balancesContainer;
-    balancesContainer = await this.rpcClient.cosmos.bank.v1beta1.allBalances({
+    balancesContainer = await this._provider.cosmos.bank.v1beta1.allBalances({
       address: address,
       pagination: {
         key: new Uint8Array(),
@@ -542,7 +291,7 @@ export class Osmosis {
 
             // Get base denom by IBC hash
             if (ibcHash) {
-              const { denomTrace } = await setupIbcExtension(this.rpcClient).ibc.transfer.denomTrace(ibcHash);
+              const { denomTrace } = await setupIbcExtension(this._provider).ibc.transfer.denomTrace(ibcHash);
               if (denomTrace) {
                 const { baseDenom } = denomTrace;
                 token = this.getTokenByBase(baseDenom);
@@ -597,7 +346,7 @@ export class Osmosis {
     if (feeTier_input){
       feeTier = feeTier_input;
     }
-    var gasAdjustment = this.gasAdjustment;
+    var gasAdjustment = this.gasPriceConstant;
     if (gasAdjustment_input){
       gasAdjustment = gasAdjustment_input;
     }
@@ -612,7 +361,6 @@ export class Osmosis {
     logger.info(
       `Fetching pair data for ${quoteToken.symbol}-${baseToken.symbol}.`
     );
-    //console.debug(`Fetching pair data for ${quoteToken.symbol}-${baseToken.symbol}.`);
 
     var callImperatorWithTokens = undefined
     if (this.chain == 'testnet'){
@@ -621,7 +369,7 @@ export class Osmosis {
     const [prices, { pools: poolsData }] = await Promise.all([
       // getCoinGeckoPrices(this.tokenList),
       getImperatorPriceHash(callImperatorWithTokens),
-      this.rpcClient.osmosis.gamm.v1beta1.pools({
+      this._provider.osmosis.gamm.v1beta1.pools({
         pagination: {
           key: new Uint8Array(),
           offset: BigInt(0),
@@ -859,14 +607,14 @@ export class Osmosis {
     if (feeTier_input){
       feeTier = feeTier_input;
     }
-    var gasAdjustment = this.gasAdjustment;
+    var gasAdjustment = this.gasPriceConstant;
     if (gasAdjustment_input){
       gasAdjustment = gasAdjustment_input;
     }
 
     const keyWallet = await DirectSecp256k1Wallet.fromKey(wallet.privkey, 'osmo')
     this.signingClient = await getSigningOsmosisClient({
-      rpcEndpoint: this.rpcURL,
+      rpcEndpoint: this.rpcUrl,
       signer: keyWallet
     });
     const routes = trade.expectedTrade.routes;
@@ -953,7 +701,7 @@ export class Osmosis {
     if (feeTier_input){
       feeTier = feeTier_input;
     }
-    var gasAdjustment = this.gasAdjustment;
+    var gasAdjustment = this.gasPriceConstant;
     if (gasAdjustment_input){
       gasAdjustment = gasAdjustment_input;
     }
@@ -961,7 +709,7 @@ export class Osmosis {
     try {
       const keyWallet = await DirectSecp256k1Wallet.fromKey(wallet.privkey, 'osmo')
       this.signingClient = await getSigningOsmosisClient({
-        rpcEndpoint: this.rpcURL,
+        rpcEndpoint: this.rpcUrl,
         signer: keyWallet
       });
       
@@ -974,7 +722,7 @@ export class Osmosis {
         );
       }
 
-      const poolsContainer = await this.rpcClient.osmosis.poolmanager.v1beta1.allPools({});
+      const poolsContainer = await this._provider.osmosis.poolmanager.v1beta1.allPools({});
       const pools: ExtendedPool[] = poolsContainer.pools;
       const prices = await getCoinGeckoPrices(this.tokenList);
 
@@ -1127,7 +875,6 @@ export class Osmosis {
         );
 
         if (res?.code !== successfulTransaction) throw res;
-        //console.debug(res?.rawLog);
 
         // RETURNED VALUE DISSECTION
         //  osmo doesnt send back a clear value, we need to discern it from the event logs >.>
@@ -1234,7 +981,7 @@ export class Osmosis {
     if (feeTier_input){
       feeTier = feeTier_input;
     }
-    var gasAdjustment = this.gasAdjustment;
+    var gasAdjustment = this.gasPriceConstant;
     if (gasAdjustment_input){
       gasAdjustment = gasAdjustment_input;
     }
@@ -1242,11 +989,11 @@ export class Osmosis {
     try {
       const keyWallet = await DirectSecp256k1Wallet.fromKey(wallet.privkey, 'osmo')
       this.signingClient = await getSigningOsmosisClient({
-        rpcEndpoint: this.rpcURL,
+        rpcEndpoint: this.rpcUrl,
         signer: keyWallet
       });
       
-      const balancesContainer = await this.rpcClient.cosmos.bank.v1beta1.allBalances({
+      const balancesContainer = await this._provider.cosmos.bank.v1beta1.allBalances({
         address: address,
         pagination: {
           key: new Uint8Array(),
@@ -1257,14 +1004,14 @@ export class Osmosis {
         },
       })
       const balances = balancesContainer.balances
-      const lockedCoinsContainer = await this.rpcClient.osmosis.lockup.accountLockedCoins({
+      const lockedCoinsContainer = await this._provider.osmosis.lockup.accountLockedCoins({
         owner: address,
       });
       const lockedCoins: Coin[] = lockedCoinsContainer.lockedCoins ? lockedCoinsContainer.lockedCoins : []
 
       // RETURN TYPES:
       // concentrated-liquidity/pool || cosmwasmpool/v1beta1/model/pool || gamm/pool-models/balancer/balancerPool || gamm/pool-models/stableswap/stableswap_pool
-      const poolsContainer = await this.rpcClient.osmosis.poolmanager.v1beta1.allPools({});
+      const poolsContainer = await this._provider.osmosis.poolmanager.v1beta1.allPools({});
       const pools: ExtendedPool[] = poolsContainer.pools;
 
       const fees = await fetchFees();
@@ -1361,9 +1108,7 @@ export class Osmosis {
       const res: ReduceLiquidityTransactionResponse = await this.signingClient.signAndBroadcast(address, msgs, fee);
 
       if (res?.code !== successfulTransaction) throw res;
-      //console.debug(res?.rawLog);
       this.signingClient.disconnect();
-
 
       
       var finalAmountReceived_string = '';
@@ -1456,7 +1201,7 @@ export class Osmosis {
   ): Promise<SerializableExtendedPool[]> {
 
     try {
-      const balancesContainer = await this.rpcClient.cosmos.bank.v1beta1.allBalances({
+      const balancesContainer = await this._provider.cosmos.bank.v1beta1.allBalances({
         address: address,
         pagination: {
           key: new Uint8Array(),
@@ -1467,14 +1212,14 @@ export class Osmosis {
         },
       })
       const balances = balancesContainer.balances
-      const lockedCoinsContainer = await this.rpcClient.osmosis.lockup.accountLockedCoins({
+      const lockedCoinsContainer = await this._provider.osmosis.lockup.accountLockedCoins({
         owner: address,
       });
       const lockedCoins: Coin[] = lockedCoinsContainer.lockedCoins ? lockedCoinsContainer.lockedCoins : []
 
       // RETURN TYPES:
       // concentrated-liquidity/pool || cosmwasmpool/v1beta1/model/pool || gamm/pool-models/balancer/balancerPool || gamm/pool-models/stableswap/stableswap_pool
-      const poolsContainer = await this.rpcClient.osmosis.poolmanager.v1beta1.allPools({});
+      const poolsContainer = await this._provider.osmosis.poolmanager.v1beta1.allPools({});
       const pools: ExtendedPool[] = poolsContainer.pools;
       const fees = await fetchFees();
       var callImperatorWithTokens = undefined
@@ -1541,7 +1286,7 @@ export class Osmosis {
   ): Promise<SerializableExtendedPool[]> {
 
     try {
-      const balancesContainer = await this.rpcClient.cosmos.bank.v1beta1.allBalances({
+      const balancesContainer = await this._provider.cosmos.bank.v1beta1.allBalances({
         address: address,
         pagination: {
           key: new Uint8Array(),
@@ -1552,14 +1297,14 @@ export class Osmosis {
         },
       })
       const balances = balancesContainer.balances
-      const lockedCoinsContainer = await this.rpcClient.osmosis.lockup.accountLockedCoins({
+      const lockedCoinsContainer = await this._provider.osmosis.lockup.accountLockedCoins({
         owner: address,
       });
       const lockedCoins: Coin[] = lockedCoinsContainer.lockedCoins ? lockedCoinsContainer.lockedCoins : []
 
       // RETURN TYPES:
       // concentrated-liquidity/pool || cosmwasmpool/v1beta1/model/pool || gamm/pool-models/balancer/balancerPool || gamm/pool-models/stableswap/stableswap_pool
-      const poolsContainer = await this.rpcClient.osmosis.poolmanager.v1beta1.allPools({});
+      const poolsContainer = await this._provider.osmosis.poolmanager.v1beta1.allPools({});
       const pools: ExtendedPool[] = poolsContainer.pools;
 
       const fees = await fetchFees();
@@ -1609,7 +1354,7 @@ export class Osmosis {
   
   async getCurrentBlockNumber(): Promise<number>{
     const client = await CosmWasmClient
-    .connect(this.rpcURL);
+    .connect(this.rpcUrl);
     const getHeight = await client.getHeight()
     return getHeight;
   }
@@ -1629,7 +1374,7 @@ export class Osmosis {
 
     const keyWallet = await DirectSecp256k1Wallet.fromKey(wallet.privkey, 'osmo')
     this.signingClient = await getSigningOsmosisClient({
-      rpcEndpoint: this.rpcURL,
+      rpcEndpoint: this.rpcUrl,
       signer: keyWallet
     });
 
@@ -1653,7 +1398,6 @@ export class Osmosis {
     const fee = FEES.osmosis.swapExactAmountIn(this.feeTier);
 
     const res = await this.signingClient.signAndBroadcast(req.from, [msg], fee);
-    //console.debug(res);
     this.signingClient.disconnect();
     return res;
   }
