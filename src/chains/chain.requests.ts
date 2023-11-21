@@ -12,7 +12,7 @@ export interface NonceResponse {
 
 export interface AllowancesRequest extends NetworkSelectionRequest {
   address: string; // the users public Ethereum key
-  spender: string; // the spender address for whom approvals are checked
+  spender: string; // the spender address for whom approvals are checked - spender string eg. openocean returns routerAddress
   tokenSymbols: string[]; // a list of token symbol
 }
 

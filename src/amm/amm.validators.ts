@@ -16,6 +16,11 @@ import {
   validateMaxPriorityFeePerGas,
 } from '../chains/ethereum/ethereum.validators';
 
+import {
+  validatePublicKey as validatePublicKeyCosmos,
+  validatePrivateKey as validatePrivateKeyCosmos
+} from '../chains/cosmos/cosmos.validators';
+
 import { FeeAmount } from '@uniswap/v3-sdk';
 
 export const invalidConnectorError: string =
@@ -155,6 +160,23 @@ export const validateTokenId: Validator = mkValidator(
   true
 );
 
+export const validatePoolIdRequired: Validator = mkValidator(
+  'poolId',
+  invalidTokenIdError,
+  (val) =>
+    (typeof val === 'string' && BigInt(val) >= 0),
+  true
+);
+
+export const validatePoolIdOptional: Validator = mkValidator(
+  'poolId',
+  invalidTokenIdError,
+  (val) =>
+    typeof val === 'undefined' ||
+    (typeof val === 'string' && BigInt(val) >= 0),
+  true
+);
+
 export const validatePeriod: Validator = mkValidator(
   'period',
   invalidTimeError,
@@ -182,6 +204,13 @@ export const validateAllowedSlippage: Validator = mkValidator(
   'allowedSlippage',
   invalidAllowedSlippageError,
   (val) => typeof val === 'string' && isFractionString(val),
+  true
+);
+
+export const validateAllowedSlippageCosmos: Validator = mkValidator(
+  'allowedSlippage',
+  invalidAllowedSlippageError,
+  (val) => typeof val === 'string' && val.includes('%'),
   true
 );
 
@@ -308,6 +337,66 @@ export const validateRemoveLiquidityRequest: RequestValidator =
     validateMaxFeePerGas,
     validateMaxPriorityFeePerGas,
   ]);
+
+export const validateCosmosPriceRequest: RequestValidator = mkRequestValidator([
+  validateConnector,
+  validateChain,
+  validateNetwork,
+  validateQuote,
+  validateBase,
+  validateAmount,
+  validateSide,
+  validateAllowedSlippageCosmos,
+]);
+
+export const validateCosmosAddLiquidityRequest: RequestValidator = mkRequestValidator(
+  [
+    validateConnector,
+    validateChain,
+    validateNetwork,
+    validatePublicKeyCosmos,
+    validatePrivateKeyCosmos,
+    validateToken0,
+    validateToken1,
+    validateAmount0,
+    validateAmount1,
+    // validateUpperPrice,
+    // validateLowerPrice,
+    validatePoolIdOptional,
+  ]
+);
+
+export const validateCosmosRemoveLiquidityRequest: RequestValidator =
+  mkRequestValidator([
+    validateConnector,
+    validateChain,
+    validateNetwork,
+    validatePublicKeyCosmos,
+    validatePrivateKeyCosmos,
+    validateDecreasePercent,
+    validatePoolIdRequired,
+]);
+  
+export const validateCosmosPoolPriceRequest: RequestValidator =
+  mkRequestValidator([
+    validateConnector,
+    validateChain,
+    validateNetwork,
+    validatePublicKeyCosmos,
+    validatePrivateKeyCosmos,
+    validateToken0,
+    validateToken1,
+]);
+
+export const validateCosmosPoolPositionsRequest: RequestValidator =
+  mkRequestValidator([
+    validateConnector,
+    validateChain,
+    validateNetwork,
+    validatePublicKeyCosmos,
+    validatePrivateKeyCosmos,
+    validatePoolIdOptional,
+]);
 
 export const validateCollectFeeRequest: RequestValidator = mkRequestValidator([
   validateConnector,

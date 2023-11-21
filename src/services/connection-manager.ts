@@ -6,6 +6,7 @@ import { Harmony } from '../chains/harmony/harmony';
 import { Polygon } from '../chains/polygon/polygon';
 import { Xdc } from '../chains/xdc/xdc';
 import { Tezos } from '../chains/tezos/tezos';
+import { Osmosis } from '../chains/osmosis/osmosis';
 import { MadMeerkat } from '../connectors/mad_meerkat/mad_meerkat';
 import { Openocean } from '../connectors/openocean/openocean';
 import { Pangolin } from '../connectors/pangolin/pangolin';
@@ -47,7 +48,8 @@ export type ChainUnion =
   | Nearish
   | Xdcish
   | Tezosish
-  | Kujira;
+  | Kujira
+  | Osmosis;
 
 export type Chain<T> = T extends Algorand
   ? Algorand
@@ -63,6 +65,8 @@ export type Chain<T> = T extends Algorand
   ? Tezosish
   : T extends KujiraCLOB
   ? KujiraCLOB
+  : T extends Osmosis
+  ? Osmosis
   : never;
 
 export class UnsupportedChainException extends Error {
@@ -114,6 +118,8 @@ export async function getChainInstance(
     connection = Cronos.getInstance(network);
   } else if (chain === 'cosmos') {
     connection = Cosmos.getInstance(network);
+  } else if (chain === 'osmosis') {
+    connection = Osmosis.getInstance(network);
   } else if (chain === 'near') {
     connection = Near.getInstance(network);
   } else if (chain === 'binance-smart-chain') {

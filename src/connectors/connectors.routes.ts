@@ -20,6 +20,7 @@ import { TinymanConfig } from './tinyman/tinyman.config';
 import { CurveConfig } from './curve/curveswap.config';
 import { PlentyConfig } from './plenty/plenty.config';
 import { KujiraConfig } from './kujira/kujira.config';
+import { OsmosisConfig } from '../chains/osmosis/osmosis.config';
 
 export namespace ConnectorsRoutes {
   export const router = Router();
@@ -147,6 +148,12 @@ export namespace ConnectorsRoutes {
               accountId:
                 'Enter your kujira account number (input 0 if unsure) >>> ',
             },
+          },
+          {
+            name: 'osmosis',
+            trading_type: OsmosisConfig.config.tradingTypes('swap'),
+            chain_type: OsmosisConfig.config.chainType,
+            available_networks: OsmosisConfig.config.availableNetworks,
           },
         ],
       });
