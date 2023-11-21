@@ -31,7 +31,6 @@ import {
   CosmosPoolPriceResponse,
   CosmosPoolPositionsRequest,
   CosmosPoolPositionsResponse,
-  CosmosPriceResponse,
   CosmosTradeResponse,
 } from './amm.requests';
 import {
@@ -86,7 +85,7 @@ import { Plenty } from '../connectors/plenty/plenty';
 import { Osmosis } from '../chains/osmosis/osmosis';
 import { AMOUNT_NOT_SUPPORTED_ERROR_CODE, ENDPOINT_NOT_SUPPORTED_ERROR_MESSAGE, HttpException } from '../services/error-handler';
 
-export async function price(req: PriceRequest): Promise<PriceResponse | CosmosPriceResponse> {
+export async function price(req: PriceRequest): Promise<PriceResponse> {
   const chain = await getInitializedChain<Algorand | Ethereumish | Nearish | Tezosish | Osmosis>(
     req.chain,
     req.network

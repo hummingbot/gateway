@@ -30,23 +30,8 @@ export interface PriceResponse {
   gasPrice: number;
   gasPriceToken: string;
   gasLimit: number;
-  gasCost: string;
-}
-
-export interface CosmosPriceResponse {
-  base: string;
-  quote: string;
-  amount: string;
-  rawAmount: string;
-  expectedAmount: string;
-  price: string;
-  network: string;
-  timestamp: number;
-  latency: number;
-  gasPrice: string;
-  gasLimit: string;
-  gasUsed: string;
-  gasWanted: string;
+  gasCost: string; // also gasUsed for Cosmos prices
+  gasWanted?: string;
 }
 
 export interface PoolPriceRequest extends NetworkSelectionRequest {

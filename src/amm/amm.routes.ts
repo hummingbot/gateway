@@ -52,7 +52,6 @@ import {
   CosmosPoolPriceResponse,
   CosmosPoolPositionsRequest,
   CosmosPoolPositionsResponse,
-  CosmosPriceResponse,
   CosmosTradeResponse
 } from './amm.requests';
 import {
@@ -86,7 +85,7 @@ export namespace AmmRoutes {
     asyncHandler(
       async (
         req: Request<{}, {}, PriceRequest>,
-        res: Response<PriceResponse | CosmosPriceResponse | string, {}>
+        res: Response<PriceResponse | string, {}>
       ) => {
         if (req.body.chain == 'osmosis'){
           validateCosmosPriceRequest(req.body)

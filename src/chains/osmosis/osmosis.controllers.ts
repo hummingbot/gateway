@@ -34,8 +34,8 @@ import {
   CosmosRemoveLiquidityResponse,
   CosmosPoolPositionsRequest,
   CosmosPoolPositionsResponse,
-  CosmosPriceResponse,
   CosmosTradeResponse,
+  PriceResponse,
 } from '../../amm/amm.requests';
 import { Osmosis } from './osmosis';
 
@@ -121,7 +121,7 @@ export class OsmosisController {
     static async price(
       osmosis: Osmosis,
       req: PriceRequest
-    ): Promise<CosmosPriceResponse> {
+    ): Promise<PriceResponse> {
       const startTimestamp: number = Date.now();
 
       const gasPrice = osmosis.manualGasPrice;  // GAS PRICE PER UNIT OF WORK  
@@ -167,10 +167,11 @@ export class OsmosisController {
         rawAmount: tradeInfo.requestAmount.toString(),
         expectedAmount: expectedAmount.toString(),
         price: tradePrice.toString(),
-        gasPrice: gasPrice,
-        gasLimit: gasLimitTransaction,
-        gasUsed: tradeInfo.expectedTrade.gasUsed,
+        gasPrice: Number(gasPrice),
+        gasLimit: Number(gasLimitTransaction),
+        gasCost: tradeInfo.expectedTrade.gasUsed,
         gasWanted: tradeInfo.expectedTrade.gasWanted,
+        gasPriceToken: 'uosmo'
       };
     }
 
