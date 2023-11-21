@@ -2,7 +2,7 @@ import { Asset } from '@chain-registry/types';
 
 import {
   PriceHash,
-} from '@chasevoorhees/osmonauts-math-decimal/dist/types';
+} from '@osmonauts/math/dist/types';
 import { CosmosAsset } from '../cosmos/cosmos-base';
 
 type CoinGeckoId = string;

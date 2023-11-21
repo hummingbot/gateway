@@ -1,4 +1,4 @@
-// @ts-nocheck
+@ts-nocheck
 // OSMO message composer classes don't quite match up with what the RPC/Go backend actually accepts.
 
 import axios from 'axios';
@@ -33,18 +33,20 @@ import {
 
 import { OsmosisConfig } from './osmosis.config'; 
 import {
-  convertDollarValueToCoins,
-  convertDollarValueToShares,
-  calcShareOutAmount,
-  makePoolPairs,
   getRoutesForTrade,
   calcAmountWithSlippage,
   calcPriceImpactGivenIn,
   calcPriceImpactGivenOut
-} from '@chasevoorhees/osmonauts-math-decimal';
+} from './osmosis.swap';
+import {
+  convertDollarValueToCoins,
+  convertDollarValueToShares,
+  calcShareOutAmount,
+  makePoolPairs,
+} from '@osmonauts/math';
 import type {
   PrettyPair,
-} from "@chasevoorhees/osmonauts-math-decimal/dist/types";
+} from "@osmonauts/math/dist/types";
 import NodeCache from 'node-cache';
 import { TradeInfo } from './osmosis.controllers';
 import { PoolAsset } from 'osmojs/dist/codegen/osmosis/gamm/pool-models/balancer/balancerPool';
@@ -55,7 +57,7 @@ import { getCoinGeckoPrices, getImperatorPriceHash } from './osmosis.prices';
 import { GasPrice, IndexedTx, calculateFee, setupIbcExtension } from '@cosmjs/stargate';
 import { CosmWasmClient } from "@cosmjs/cosmwasm-stargate";
 import { TokensRequest, TokensResponse } from '../../network/network.requests';
-import { TransferRequest } from '../../chains/injective/injective.requests';
+import { TransferRequest } from '../../services/common-interfaces';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 
 const crypto = require('crypto').webcrypto;
@@ -91,7 +93,7 @@ export class Osmosis {
   private signingClient?: any;
   public chainId: string;
   protected tokenList: CosmosAsset[] = [];
-  protected tokenMap: Record<string, CosmosAsset> = {}; // all the other connectors are using this instead of/as tokenMap - so changing in cosmos-base too
+  protected tokenMap: Record<string, CosmosAsset> = {};
   public chainName: string;
   public rpcURL: string;
 
@@ -548,7 +550,7 @@ export class Osmosis {
             }
           }
         } catch (err) {
-          //console.debug(err);
+          //can skip this - will be added by raw denom
         }
 
         // Not all tokens are added in the registry so we use the denom if the token doesn't exist
@@ -700,6 +702,7 @@ export class Osmosis {
 
     // so far we have pools, routes, and token info...
     let route_length_1_pool_swapFee = '';
+    // leaving some unreads in here in case they want to be delivered later
     let priceImpact = '';
 
     if (new BigNumber(tokenIn.amount).isEqualTo(0)) {
@@ -881,7 +884,21 @@ export class Osmosis {
       'tokenOutMinAmount': tokenOutMinAmount.toString(),
     });
 
-    const fee = FEES.osmosis.swapExactAmountIn(this.feeTier);
+    const fee = FEES.osmosis.swapExactAmountIn(feeTier);
+
+    const gasEstimation = await this.signingClient.simulate(
+      address,
+      [msg],
+    );
+    if (!gasEstimation) {
+      throw new Error('estimate gas error');
+    }
+
+    const calcedFee = calculateFee(
+      Math.round(gasEstimation * (gasAdjustment || 1.5)),
+      GasPrice.fromString(this.manualGasPrice)
+    );
+    if (calcedFee){}
 
     try {
       const res = await this.signingClient.signAndBroadcast(address, [msg], fee);

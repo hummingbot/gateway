@@ -8,7 +8,7 @@ import {
   calcPoolLiquidity,
   getPoolByGammName as _getPoolByGammName,
   convertGammTokenToDollarValue,
-} from '@chasevoorhees/osmonauts-math-decimal';
+} from '@osmonauts/math';
 
 import {
   PriceHash,
