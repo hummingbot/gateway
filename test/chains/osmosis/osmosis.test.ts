@@ -176,7 +176,7 @@ describe('controllers - CL Pools + Liquidity', () => {
   // best to join pools using one amount == 0 (so input 1 token type at a time)
   //  adds tend to fail unless amounts input are similar in relative $ value
   it('addLiquidity', async () => {
-    const addLiquidityRequestFunction = {'poolId':'62', 'fee': 'high', 'token0':'ION', 'token1':'OSMO', 'amount0':'0.0005', 'amount1':'0', 'chain':'osmosis', 'network':'testnet', 'address':osmosisAddress, };
+    const addLiquidityRequestFunction = {'poolId':'62', 'fee': 'high', 'token0':'ION', 'token1':'OSMO', 'amount0':'0', 'amount1':'0.0005', 'chain':'osmosis', 'network':'testnet', 'address':osmosisAddress, };
     var addLiquidityResponse = await osmosis.controller.addLiquidity(osmosis, addLiquidityRequestFunction)
     expect(addLiquidityResponse.poolId).toEqual('62')
   });

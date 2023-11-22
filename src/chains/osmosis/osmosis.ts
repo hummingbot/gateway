@@ -48,7 +48,7 @@ import { PoolAsset } from 'osmojs/dist/codegen/osmosis/gamm/pool-models/balancer
 import { HttpException, TRADE_FAILED_ERROR_CODE, TRADE_FAILED_ERROR_MESSAGE, INSUFFICIENT_FUNDS_ERROR_CODE, INSUFFICIENT_FUNDS_ERROR_MESSAGE } from '../../services/error-handler';
 import { ExtendedPool, extendPool, filterPools as filterPoolsLP } from './osmosis.lp.utils';
 import { fetchFees } from './osmosis.utils';
-import { getCoinGeckoPrices, getImperatorPriceHash } from './osmosis.prices';
+import { getImperatorPriceHash } from './osmosis.prices';
 import { GasPrice, calculateFee, setupIbcExtension } from '@cosmjs/stargate';
 import { CosmWasmClient } from "@cosmjs/cosmwasm-stargate";
 import { TokensRequest, TokensResponse } from '../../network/network.requests';
@@ -367,7 +367,6 @@ export class Osmosis extends CosmosBase implements Cosmosish{
       callImperatorWithTokens = this.tokenList;
     }
     const [prices, { pools: poolsData }] = await Promise.all([
-      // getCoinGeckoPrices(this.tokenList),
       getImperatorPriceHash(callImperatorWithTokens),
       this._provider.osmosis.gamm.v1beta1.pools({
         pagination: {
@@ -388,7 +387,6 @@ export class Osmosis extends CosmosBase implements Cosmosish{
         ({ token }) =>
           prices[token!.denom] &&
           this.getTokenByBase(token!.denom)
-          // osmosisAssets.find((asset) => asset.base === token!.denom)
       )
     );
     
@@ -407,7 +405,14 @@ export class Osmosis extends CosmosBase implements Cosmosish{
       prices[baseToken.base]
     );
   
-    const toTokenAmount = tokenInDollarValue.div(prices[quoteToken.base]);
+    const toTokenDollarPrice = prices[quoteToken.base]
+    var toTokenAmount;
+    if (toTokenDollarPrice){
+      toTokenAmount = tokenInDollarValue.div(toTokenDollarPrice);
+    }else{
+      // no price found for quote token - maybe should throw here but let's see if there's a pool route[] for it
+      toTokenAmount = 0;
+    }
 
     const tokenOutAmount = new BigNumber(toTokenAmount)
       .shiftedBy(quoteToken.decimals)
@@ -448,6 +453,17 @@ export class Osmosis extends CosmosBase implements Cosmosish{
       pairs,
     });
 
+    if (!routes | routes.length === 0 | routes.length > 2) {
+      logger.info(
+        `No trade routes found for ${quoteToken.symbol}-${
+          baseToken.symbol} ${quoteToken.symbol}-${
+            baseToken.symbol}`
+      );  
+      throw new Error(`No trade routes found for ${quoteToken.symbol}-${
+        baseToken.symbol} ${quoteToken.symbol}-${
+          baseToken.symbol}`); 
+    }
+
     // so far we have pools, routes, and token info...
     let route_length_1_pool_swapFee = '';
     // leaving some unreads in here in case they want to be delivered later
@@ -460,9 +476,10 @@ export class Osmosis extends CosmosBase implements Cosmosish{
     {
       const route_length_1_pool = pools.find((pool) => pool.id === routes[0].poolId)!;
       priceImpact = calcPriceImpactGivenIn(tokenIn, tokenOut.denom, route_length_1_pool);
-      route_length_1_pool_swapFee = route_length_1_pool.poolParams?.swapFee || '0';
+      route_length_1_pool_swapFee = new BigNumber(route_length_1_pool.poolParams?.swapFee || 0).shiftedBy(-16).toString();  // shift used in CCA
     } 
     else {
+      // THIS ASSUMES length == 2 - per CCA/osmosis guys..
       const tokenInRoute = routes.find(
         (route) => route.tokenOutDenom !== tokenOut.denom
       )!;
@@ -494,17 +511,8 @@ export class Osmosis extends CosmosBase implements Cosmosish{
 
 // routes.length=1 mean there's just 1 hop - we're always just given one potentially route[] for a trade route request
     let swapRoutes: OsmosisExpectedTradeRoute[] = []
-    if (routes.length === 0) {
-      logger.info(
-        `No trade routes found for ${quoteToken.symbol}-${
-          baseToken.symbol} ${quoteToken.symbol}-${
-            baseToken.symbol}`
-      );  
-      throw new Error(`No trade routes found for ${quoteToken.symbol}-${
-        baseToken.symbol} ${quoteToken.symbol}-${
-          baseToken.symbol}`); 
-    }
-    else if (routes.length === 1) {
+
+    if (routes.length === 1) {
       swapRoutes = routes.map((route) => {
         return {
           poolId: route.poolId.toString(),
@@ -533,9 +541,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
             baseAsset = this.getTokenByBase(tokenInDenom)!;
             quoteAsset = quoteToken;
           }
-          const fee = new BigNumber(pool?.poolParams?.swapFee || 0).shiftedBy(
-            -16
-          );
+          const fee = new BigNumber(pool?.poolParams?.swapFee || 0).shiftedBy(-16);  // shift used in CCA
           swapFees.push(fee);
           return {
             poolId: route.poolId.toString(),
@@ -724,7 +730,12 @@ export class Osmosis extends CosmosBase implements Cosmosish{
 
       const poolsContainer = await this._provider.osmosis.poolmanager.v1beta1.allPools({});
       const pools: ExtendedPool[] = poolsContainer.pools;
-      const prices = await getCoinGeckoPrices(this.tokenList);
+      
+      var callImperatorWithTokens = undefined
+      if (this.chain == 'testnet'){
+        callImperatorWithTokens = this.tokenList;
+      }
+      const prices = await getImperatorPriceHash(callImperatorWithTokens);
 
       if (!amount0 && !amount1){
         throw new HttpException(
@@ -1053,18 +1064,14 @@ export class Osmosis extends CosmosBase implements Cosmosish{
       const coinsNeeded = myCoins.map(({ denom, amount }) => {
       
         var amountWithSlippage;
-        if (slippage == 100){
-          amountWithSlippage = new BigNumber(1).toString();
-        }else{
-          amountWithSlippage = new BigNumber(amount)
-          .multipliedBy(new BigNumber(100).minus(slippage))
-          .div(100)
-          .toString();
-        }
+        amountWithSlippage = new BigNumber(amount)
+        .multipliedBy(new BigNumber(100).minus(slippage))
+        .div(100)
+        .toString();
   
         return {
           denom,
-          amount: this.noDecimals(amountWithSlippage),
+          amount: this.noDecimals(0),
         };
       });
   
@@ -1073,16 +1080,20 @@ export class Osmosis extends CosmosBase implements Cosmosish{
         .decimalPlaces(0)
         .toString();
   
-      const tokenOutMins = coinsNeeded.map((c: Coin) => {
+      var tokenOutMins = coinsNeeded.map((c: Coin) => {
         return coin(c.amount, c.denom);
       });
-  
+
+      if (slippage == 100){
+        tokenOutMins = []
+      }
+
       var msgs = []
       const msg = exitPool({
         poolId: currentPool.id.toString(),
         sender: address,
         shareInAmount,
-        tokenOutMins,
+        tokenOutMins: tokenOutMins,
       });
       msgs.push(msg)
   

@@ -1155,7 +1155,6 @@ definitions:
         properties:
           $typeUrl:
             type: 'string'
-            example: ''
           address:
             type: 'string'
             example: 'osmo23459697'
