@@ -59,26 +59,6 @@ paths:
         '200':
           schema:
             $ref: '#/definitions/CosmosRemoveLiquidityResponse'
-  /amm/liquidity/collect_fees:
-    post:
-      tags:
-        - 'amm/liquidity'
-      summary: 'Collect earned fees'
-      operationId: 'collect'
-      consumes:
-        - 'application/json'
-      produces:
-        - 'application/json'
-      parameters:
-        - in: 'body'
-          name: 'body'
-          required: true
-          schema:
-            $ref: '#/definitions/LiquidityCollectRequest'
-      responses:
-        '200':
-          schema:
-            $ref: '#/definitions/LiquidityCollectResponse'
   /amm/liquidity/position:
     post:
       tags:
