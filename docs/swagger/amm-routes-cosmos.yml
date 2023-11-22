@@ -1,29 +1,10 @@
 paths:
-  /amm/price:
+  /amm/trade/:
     post:
       tags:
         - 'amm'
-      summary: 'Get the price for a quote base pair on an AMM'
-      operationId: 'poll'
-      consumes:
-        - 'application/json'
-      produces:
-        - 'application/json'
-      parameters:
-        - in: 'body'
-          name: 'body'
-          required: true
-          schema:
-            $ref: '#/definitions/PriceRequest'
-      responses:
-        '200':
-          schema:
-            $ref: '#/definitions/PriceResponse'
-  /amm/trade:
-    post:
-      tags:
-        - 'amm'
-      summary: 'Perform a trade on an AMM'
+        - 'cosmos'
+      summary: 'Cosmos: Perform a trade on an AMM'
       operationId: 'trade'
       consumes:
         - 'application/json'
@@ -39,23 +20,3 @@ paths:
         '200':
           schema:
             $ref: '#/definitions/CosmosTradeResponse'
-  /amm/perp/market-status:
-    post:
-      tags:
-        - 'amm'
-      summary: 'Get the status for a quote base pair market'
-      operationId: 'marketStatus'
-      consumes:
-        - 'application/json'
-      produces:
-        - 'application/json'
-      parameters:
-        - in: 'body'
-          name: 'body'
-          required: true
-          schema:
-            $ref: '#/definitions/PerpPriceRequest'
-      responses:
-        '200':
-          schema:
-            $ref: '#/definitions/PerpStatusResponse'

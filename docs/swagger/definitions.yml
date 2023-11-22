@@ -378,9 +378,12 @@ definitions:
       gasLimit:
         type: 'number'
         example: 150688
-      gasCost:
+      gasCost: # also gasUsed for Cosmos prices
         type: 'string'
         example: '0.014466048000000000'
+      gasWanted:
+        type: 'number'
+        example: 150688
 
   TradeRequest:
     type: 'object'

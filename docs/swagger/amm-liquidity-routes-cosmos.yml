@@ -1,9 +1,10 @@
 paths:
-  /amm/liquidity/price:
+  /amm/liquidity/price/:
     post:
       tags:
+        - 'cosmos'
         - 'amm/liquidity'
-      summary: 'Get the historical pool prices for a pair'
+      summary: 'Cosmos: Get the historical pool prices for a pair'
       operationId: 'historical'
       consumes:
         - 'application/json'
@@ -19,11 +20,12 @@ paths:
         '200':
           schema:
             $ref: '#/definitions/CosmosPoolPriceResponse'
-  /amm/liquidity/add:
+  /amm/liquidity/add/:
     post:
       tags:
+        - 'cosmos'
         - 'amm/liquidity'
-      summary: 'Add liquidity to pool'
+      summary: 'Cosmos: Add liquidity to pool'
       operationId: 'add'
       consumes:
         - 'application/json'
@@ -39,11 +41,12 @@ paths:
         '200':
           schema:
             $ref: '#/definitions/CosmosAddLiquidityResponse'
-  /amm/liquidity/remove:
+  /amm/liquidity/remove/:
     post:
       tags:
+        - 'cosmos'
         - 'amm/liquidity'
-      summary: 'Remove liquidity to pool'
+      summary: 'Cosmos: Remove liquidity to pool'
       operationId: 'remove'
       consumes:
         - 'application/json'
@@ -62,8 +65,9 @@ paths:
   /amm/liquidity/position:
     post:
       tags:
-        - 'amm/liquidity'
-      summary: 'Get details about position'
+        - 'cosmos'
+        - 'amm/liquidity/'
+      summary: 'Cosmos: Get details about position'
       operationId: 'position'
       consumes:
         - 'application/json'
