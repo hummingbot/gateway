@@ -162,7 +162,7 @@ describe('controllers - price + trade', () => {
   });
 
   it('trade back', async () => {
-    const tradeRequest = {'quote':'OSMO', 'base':'ION', 'amount':'0.0001', 'side':'BUY' as Side, 'allowedSlippage':'100%', 'chain':'osmosis', 'network':'testnet', 'address':osmosisAddress, };
+    const tradeRequest = {'quote':'OSMO', 'base':'ION', 'amount':'0.00001', 'side':'BUY' as Side, 'allowedSlippage':'100%', 'chain':'osmosis', 'network':'testnet', 'address':osmosisAddress, };
     const tradeResponse = await osmosis.controller.trade(osmosis, tradeRequest)
     expect(tradeResponse.base).toEqual('uion')
   });
