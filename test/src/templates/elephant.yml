@@ -1,0 +1,14 @@
+# how much the execution price is allowed to move unfavorably from the trade
+# execution price. It uses a rational number for precision.
+allowedSlippage: '49/100'
+
+# the maximum gas used to estimate cost of an elephant trade.
+gasLimitEstimate: 290688
+
+# how long a trade is valid in seconds. After time passes elephant will not
+# perform the trade, but the gas will still be spent.
+ttl: 600
+
+contractAddresses:
+  mainnet:
+    routerAddress: '0x9B5747c6C7e29Aab9545233D6310FC6db1e11F70'

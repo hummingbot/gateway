@@ -71,6 +71,7 @@
     "coinalpha-ref-sdk": "1.1.0",
     "dayjs": "^1.10.6",
     "decimal.js-light": "^2.5.1",
+    "elephantdexsdk": "2.0.2",
     "ethers": "^5.6.2",
     "ethers-xdc": "file:./vendor/ethers-xdc",
     "express": "^4.17.1",
