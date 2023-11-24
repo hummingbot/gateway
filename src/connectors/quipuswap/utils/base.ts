@@ -55,7 +55,7 @@ export class QuipuBase {
   }
 
 
-  protected ready(): boolean {
+  public ready(): boolean {
     return this._ready;
   }
 
