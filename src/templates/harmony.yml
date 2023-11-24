@@ -2,7 +2,7 @@
 networks:
   mainnet: 
     chainID: 1666600000
-    nodeURL: https://rpc.ankr.com/harmony
+    nodeURL: https://api.harmony.one
     tokenListType: 'FILE'
     tokenListSource: '/home/gateway/conf/lists/harmony_tokens_sushiswap.json'
     nativeCurrencySymbol: 'ONE'
