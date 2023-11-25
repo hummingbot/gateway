@@ -106,6 +106,8 @@ export const UNKNOWN_ERROR_ERROR_CODE = 1099;
 export const AMOUNT_NOT_SUPPORTED_ERROR_CODE = 1016;
 export const ENDPOINT_NOT_SUPPORTED_ERROR_CODE = 1018;
 export const INSUFFICIENT_FUNDS_ERROR_CODE = 1019;
+export const GAS_LIMIT_EXCEEDED_ERROR_CODE = 1020;
+export const AMOUNT_LESS_THAN_MIN_AMOUNT_ERROR_CODE = 1021;
 
 export const NETWORK_ERROR_MESSAGE =
   'Network error. Please check your node URL, API key, and Internet connection.';
@@ -121,6 +123,8 @@ export const AMOUNT_NOT_SUPPORTED_ERROR_MESSAGE =
   'Amount provided in an unexpected format';
 export const ENDPOINT_NOT_SUPPORTED_ERROR_MESSAGE = 'Endpoint not supported by this chain/controller.';
 export const INSUFFICIENT_FUNDS_ERROR_MESSAGE = 'Insufficient funds for transaction.'
+export const GAS_LIMIT_EXCEEDED_ERROR_MESSAGE = 'Gas limit exceeded (gasWanted greater than gasLimitEstimate).';
+export const AMOUNT_LESS_THAN_MIN_AMOUNT_ERROR_MESSAGE = 'Calculated amount less than min amount provided with slippage. Maybe try increasing slippage. ';
 
 export const SWAP_PRICE_EXCEEDS_LIMIT_PRICE_ERROR_MESSAGE = (
   price: any,

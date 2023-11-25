@@ -1,4 +1,4 @@
-import { SerializableExtendedPool as CosmosSerializableExtendedPool } from '../chains/osmosis/osmosis.types';
+import { CoinAndSymbol, SerializableExtendedPool as CosmosSerializableExtendedPool } from '../chains/osmosis/osmosis.types';
 import { PerpPosition } from '../connectors/perp/perp';
 import {
   NetworkSelectionRequest,
@@ -247,10 +247,7 @@ export interface CosmosRemoveLiquidityResponse {
   gasUsed: string;
   gasWanted: string;
   txHash: string;
-  token0: string;
-  token1: string;
-  amount0: string;
-  amount1: string;
+  balances: CoinAndSymbol[];
 }
 
 export interface PositionRequest extends NetworkSelectionRequest {

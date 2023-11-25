@@ -17,6 +17,7 @@ const { toBase64, fromBase64, fromHex } = require('@cosmjs/encoding');
 const crypto = require('crypto').webcrypto;
 
 import { osmosis } from 'osmojs';
+import { getEIP1559DynamicBaseFee } from '../osmosis/osmosis.prices';
 const { createRPCQueryClient } = osmosis.ClientFactory;
 
 export class CosmosAsset implements Asset {
@@ -157,19 +158,29 @@ export class CosmosBase {
   public tokenListType: TokenListType;
   public cache: NodeCache;
 
+  public manualGasPrice: string;
+  public rpcAddressDynamicBaseFee: string;
+  public useEIP1559DynamicBaseFeeInsteadOfManualGasPrice: boolean;
+
   constructor(
     chainName: string,
     rpcUrl: string,
     tokenListSource: string,
     tokenListType: TokenListType,
-    gasPriceConstant: number
+    gasPriceConstant: number, // adjustment
+    useEIP1559DynamicBaseFeeInsteadOfManualGasPrice?: boolean,
+    rpcAddressDynamicBaseFee?: string,
+    manualGasPrice?: string
   ) {
+    this.manualGasPrice = manualGasPrice!;
     this.chainName = chainName;
     this.rpcUrl = rpcUrl;
     this.gasPriceConstant = gasPriceConstant;
     this.tokenListSource = tokenListSource;
     this.tokenListType = tokenListType;
     this.cache = new NodeCache({ stdTTL: 3600 }); // set default cache ttl to 1hr
+    this.useEIP1559DynamicBaseFeeInsteadOfManualGasPrice = useEIP1559DynamicBaseFeeInsteadOfManualGasPrice!
+    this.rpcAddressDynamicBaseFee = rpcAddressDynamicBaseFee!
   }
 
   ready(): boolean {
@@ -185,6 +196,14 @@ export class CosmosBase {
     if (!this.ready()) {
       if (this.chainName == 'osmosis'){
         this._provider = await createRPCQueryClient({rpcEndpoint: this.rpcUrl});
+        
+        if (this.useEIP1559DynamicBaseFeeInsteadOfManualGasPrice){
+          const eipPrice = await getEIP1559DynamicBaseFee(this.rpcAddressDynamicBaseFee);
+          if (eipPrice != ''){
+            this.manualGasPrice = eipPrice;
+          }
+        } 
+      
       }else{
         this._provider = StargateClient.connect(this.rpcUrl);
       }
@@ -201,6 +220,15 @@ export class CosmosBase {
       this._ready = await this._initialized; // Wait for the initialization to complete
     }
     return;
+  }
+
+  async getLatestBasePrice(): Promise<string> {
+    var eipPrice = this.manualGasPrice;
+    if (this.useEIP1559DynamicBaseFeeInsteadOfManualGasPrice){
+      eipPrice = await getEIP1559DynamicBaseFee(this.rpcAddressDynamicBaseFee);
+    } 
+    this.manualGasPrice = eipPrice;
+    return this.manualGasPrice
   }
 
   async loadTokens(

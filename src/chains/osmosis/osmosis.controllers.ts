@@ -12,10 +12,10 @@ import {
   SWAP_PRICE_LOWER_THAN_LIMIT_PRICE_ERROR_CODE,
   SWAP_PRICE_LOWER_THAN_LIMIT_PRICE_ERROR_MESSAGE,
   UNKNOWN_ERROR_ERROR_CODE,
-  UNKNOWN_ERROR_MESSAGE,
+  UNKNOWN_ERROR_MESSAGE
 } from '../../services/error-handler';
 import { CosmosAsset, CosmosWallet } from '../../chains/cosmos/cosmos-base'; 
-import { OsmosisExpectedTrade, TransactionEvent, TransactionEventAttribute, } from './osmosis.types' 
+import { AnyTransactionResponse, OsmosisExpectedTrade, TransactionEvent, TransactionEventAttribute, } from './osmosis.types' 
 import { latency } from '../../services/base';
 import {
   CustomTransaction,
@@ -48,9 +48,12 @@ import { validateCosmosBalanceRequest, validateCosmosPollRequest } from '../cosm
 import { CosmosBalanceRequest, CosmosPollRequest } from '../cosmos/cosmos.requests';
 import { toCosmosBalances } from '../cosmos/cosmos.controllers';
 import { AllowancesRequest, ApproveRequest, CancelRequest, NonceRequest, NonceResponse } from '../chain.requests';
+import { TOKEN_NOT_SUPPORTED_ERROR_MESSAGE, TOKEN_NOT_SUPPORTED_ERROR_CODE, OUT_OF_GAS_ERROR_MESSAGE, OUT_OF_GAS_ERROR_CODE, INSUFFICIENT_FUNDS_ERROR_MESSAGE, INSUFFICIENT_FUNDS_ERROR_CODE } from '../../services/error-handler';
 const { decodeTxRaw } = require('@cosmjs/proto-signing');
 
 const successfulTransaction = 0;
+const insufficientFunds = 5;
+const outOfGas = 11;
 
 export interface TradeInfo {
   baseToken: TokenishCosmosAsset;
@@ -94,6 +97,21 @@ export class OsmosisController {
 
       const baseToken: Tokenish = osmosis.getTokenBySymbol(baseAsset)!;
       const quoteToken: Tokenish = osmosis.getTokenBySymbol(quoteAsset)!;
+
+      if (baseToken == undefined){
+        throw new HttpException(
+          500,
+          TOKEN_NOT_SUPPORTED_ERROR_MESSAGE + ' ' + baseAsset,
+          TOKEN_NOT_SUPPORTED_ERROR_CODE
+        );
+      }
+      if (quoteToken == undefined){
+        throw new HttpException(
+          500,
+          TOKEN_NOT_SUPPORTED_ERROR_MESSAGE + ' ' + quoteAsset,
+          TOKEN_NOT_SUPPORTED_ERROR_CODE
+        );
+      }
 
       const requestAmount: BigNumber = BigNumber(
         baseAmount.toFixed(baseToken.decimals)
@@ -146,7 +164,7 @@ export class OsmosisController {
         } else {
           throw new HttpException(
             500,
-            UNKNOWN_ERROR_MESSAGE,
+            UNKNOWN_ERROR_MESSAGE + ' Failed to retrive trade info.',
             UNKNOWN_ERROR_ERROR_CODE
           );
         }
@@ -202,14 +220,14 @@ export class OsmosisController {
           logger.error(`Could not get trade info. ${e.message}`);
           throw new HttpException(
             500,
-            TRADE_FAILED_ERROR_MESSAGE + e.message,
+            TRADE_FAILED_ERROR_MESSAGE + ' ' + e.message,
             TRADE_FAILED_ERROR_CODE
           );
         } else {
           logger.error('Unknown error trying to get trade info.');
           throw new HttpException(
             500,
-            UNKNOWN_ERROR_MESSAGE,
+            UNKNOWN_ERROR_MESSAGE + ' Failed to retrive trade info.',
             UNKNOWN_ERROR_ERROR_CODE
           );
         }
@@ -269,68 +287,53 @@ export class OsmosisController {
         feeTier,
         gasAdjustment,
       );
-      if (tx.code == successfulTransaction){
-        logger.info(
-          `Trade has been executed, txHash is ${tx.transactionHash}, gasUsed is ${tx.gasUsed}.`
-        );
-      
 
-        var finalAmountReceived_string = '';
-        for (var txEvent_idx=0; txEvent_idx<tx.events.length; txEvent_idx++){
-          var txEvent: TransactionEvent = tx.events[txEvent_idx];
-          if (txEvent.type == 'coin_received'){
-            for (var txEventAttribute_idx=0; txEventAttribute_idx<txEvent.attributes.length; txEventAttribute_idx++){
-              var txEventAttribute: TransactionEventAttribute = txEvent.attributes[txEventAttribute_idx];
-              if (txEventAttribute.key == 'receiver'){
-                if (txEventAttribute.value == req.address){
-                    var next_txEventAttribute: TransactionEventAttribute = txEvent.attributes[txEventAttribute_idx+1];
-                    if (next_txEventAttribute.key == 'amount' && next_txEventAttribute.value){
-                      finalAmountReceived_string = next_txEventAttribute.value;
-                    }
-                } 
-              }
+      const txMessage = 'Trade has been executed. '
+      this.validateTxErrors(tx, txMessage);
+
+      var finalAmountReceived_string = '';
+      for (var txEvent_idx=0; txEvent_idx<tx.events.length; txEvent_idx++){
+        var txEvent: TransactionEvent = tx.events[txEvent_idx];
+        if (txEvent.type == 'coin_received'){
+          for (var txEventAttribute_idx=0; txEventAttribute_idx<txEvent.attributes.length; txEventAttribute_idx++){
+            var txEventAttribute: TransactionEventAttribute = txEvent.attributes[txEventAttribute_idx];
+            if (txEventAttribute.key == 'receiver'){
+              if (txEventAttribute.value == req.address){
+                  var next_txEventAttribute: TransactionEventAttribute = txEvent.attributes[txEventAttribute_idx+1];
+                  if (next_txEventAttribute.key == 'amount' && next_txEventAttribute.value){
+                    finalAmountReceived_string = next_txEventAttribute.value;
+                  }
+              } 
             }
           }
         }
-
-        var finalAmountReceived = new BigNumber(0)
-        if (finalAmountReceived_string != ''){
-          finalAmountReceived = (new BigNumber(finalAmountReceived_string.replace(tradeInfo.quoteToken.base, ''))).shiftedBy(tradeInfo.quoteToken.decimals * -1).decimalPlaces(tradeInfo.quoteToken.decimals);
-        }
-        const finalExecutionPrice = finalAmountReceived.dividedBy(req.amount);
-
-        return {
-          network: osmosis.chainName,
-          timestamp: startTimestamp,
-          latency: latency(startTimestamp, Date.now()),
-          base: tradeInfo.baseToken.base, // this is base denom. might want symbol tho? no address from what i see
-          quote: tradeInfo.quoteToken.base,
-          amount: new Decimal(req.amount).toFixed(tradeInfo.baseToken.decimals),
-          rawAmount: tradeInfo.requestAmount.toString(),
-          expectedAmountReceived: new BigNumber(tradeInfo.expectedTrade.expectedAmount).decimalPlaces(8).toString(),
-          finalAmountReceived: finalAmountReceived.toString(),
-          finalAmountReceived_basetoken: finalAmountReceived_string,
-          expectedPrice: new BigNumber(price).decimalPlaces(8).toString(),
-          finalPrice: finalExecutionPrice.toString(),
-          gasPrice: gasPrice,
-          gasLimit: gasLimitTransaction,
-          gasUsed: tx.gasUsed,
-          gasWanted: tx.gasWanted,
-          txHash: tx.transactionHash,
-        };
-      } else{
-        logger.error(
-          `Failed to execute trade. txHash is ${tx.transactionHash}, gasUsed is ${tx.gasUsed}. Log: ${tx.rawLog}`
-        )
-
-        throw new HttpException(
-          500,
-          TRADE_FAILED_ERROR_MESSAGE,
-          TRADE_FAILED_ERROR_CODE
-        );
-
       }
 
+      var finalAmountReceived = new BigNumber(0)
+      if (finalAmountReceived_string != ''){
+        finalAmountReceived = (new BigNumber(finalAmountReceived_string.replace(tradeInfo.quoteToken.base, ''))).shiftedBy(tradeInfo.quoteToken.decimals * -1).decimalPlaces(tradeInfo.quoteToken.decimals);
+      }
+      const finalExecutionPrice = finalAmountReceived.dividedBy(req.amount);
+
+      return {
+        network: osmosis.chainName,
+        timestamp: startTimestamp,
+        latency: latency(startTimestamp, Date.now()),
+        base: tradeInfo.baseToken.base, // this is base denom. might want symbol tho? no address from what i see
+        quote: tradeInfo.quoteToken.base,
+        amount: new Decimal(req.amount).toFixed(tradeInfo.baseToken.decimals),
+        rawAmount: tradeInfo.requestAmount.toString(),
+        expectedAmountReceived: new BigNumber(tradeInfo.expectedTrade.expectedAmount).decimalPlaces(8).toString(),
+        finalAmountReceived: finalAmountReceived.toString(),
+        finalAmountReceived_basetoken: finalAmountReceived_string,
+        expectedPrice: new BigNumber(price).decimalPlaces(8).toString(),
+        finalPrice: finalExecutionPrice.toString(),
+        gasPrice: gasPrice,
+        gasLimit: gasLimitTransaction,
+        gasUsed: tx.gasUsed,
+        gasWanted: tx.gasWanted,
+        txHash: tx.transactionHash,
+      };
     }
 
     static async addLiquidity(
@@ -366,45 +369,27 @@ export class OsmosisController {
         gasAdjustment,
       );
 
-      logger.info(
-          `Liquidity added, txHash is ${tx.transactionHash}, gasUsed is ${tx.gasUsed}.`
-      );
-
-      if (tx.code == successfulTransaction){
-        logger.info(
-          `Trade has been executed, txHash is ${tx.transactionHash}, gasUsed is ${tx.gasUsed}.`
-        );
-      
-        return {
-          network: osmosis.chainName,
-          timestamp: startTimestamp,
-          latency: latency(startTimestamp, Date.now()),
-          token0: req.token0,
-          token1: req.token1,
-          poolId: tx.poolId,
-          gasPrice: gasPrice,
-          gasLimit: gasLimitTransaction,
-          gasUsed: tx.gasUsed,
-          gasWanted: tx.gasWanted,
-          txHash: tx.transactionHash,
-          poolAddress: tx.poolAddress,
-          poolShares: tx.poolshares,
-          token0FinalAmount: tx.token0_finalamount,
-          token1FinalAmount: tx.token1_finalamount,
-        };
-      }
-      else{
-        logger.error(
-          `Failed to execute trade. txHash is ${tx.transactionHash}, gasUsed is ${tx.gasUsed}. Log: ${tx.rawLog}`
-        )
-
-        throw new HttpException(
-          500,
-          TRADE_FAILED_ERROR_MESSAGE,
-          TRADE_FAILED_ERROR_CODE
-        );
-      }
+      this.validateTxErrors(tx, "Liquidity added. ");
+    
+      return {
+        network: osmosis.chainName,
+        timestamp: startTimestamp,
+        latency: latency(startTimestamp, Date.now()),
+        token0: req.token0,
+        token1: req.token1,
+        poolId: tx.poolId,
+        gasPrice: gasPrice,
+        gasLimit: gasLimitTransaction,
+        gasUsed: tx.gasUsed,
+        gasWanted: tx.gasWanted,
+        txHash: tx.transactionHash,
+        poolAddress: tx.poolAddress,
+        poolShares: tx.poolshares,
+        token0FinalAmount: tx.token0_finalamount,
+        token1FinalAmount: tx.token1_finalamount,
+      };
     }
+
 
     static async removeLiquidity(
       osmosis: Osmosis,
@@ -442,10 +427,7 @@ export class OsmosisController {
         timestamp: startTimestamp,
         latency: latency(startTimestamp, Date.now()),
         poolId: req.poolId,
-        token0: tx.token0,
-        token1: tx.token1,
-        amount0: tx.amount0,
-        amount1: tx.amount1,
+        balances: tx.balances,
         gasPrice: gasPrice,
         gasLimit: gasLimitTransaction,
         gasUsed: tx.gasUsed,
@@ -463,6 +445,21 @@ export class OsmosisController {
 
       const token0: TokenishCosmosAsset = osmosis.getTokenBySymbol(req.token0)!;
       const token1: TokenishCosmosAsset = osmosis.getTokenBySymbol(req.token1)!;
+
+      if (token0 == undefined){
+        throw new HttpException(
+          500,
+          TOKEN_NOT_SUPPORTED_ERROR_MESSAGE + ' ' + req.token0,
+          TOKEN_NOT_SUPPORTED_ERROR_CODE
+        );
+      }
+      if (token1 == undefined){
+        throw new HttpException(
+          500,
+          TOKEN_NOT_SUPPORTED_ERROR_MESSAGE + ' ' + req.token1,
+          TOKEN_NOT_SUPPORTED_ERROR_CODE
+        );
+      }
 
       const pools = await osmosis.findPoolsPrices(
         token0,
@@ -556,13 +553,16 @@ export class OsmosisController {
     
       const tx = await osmosis.transfer(wallet, token, req);
 
+
+      const txMessage = 'Transfer success. To: ' + req.to + ' From: ' + req.from + ' '
+      this.validateTxErrors(tx, txMessage);
       if (tx.code == successfulTransaction){
         return 'Transfer success. To: ' + req.to + ' From: ' + req.from + ' Hash: ' + tx.transactionHash + ' gasUsed: ' + tx.gasUsed + ' gasWanted: ' + tx.gasWanted
       }
       else{
         throw new HttpException(
           500,
-          UNKNOWN_ERROR_MESSAGE,
+          UNKNOWN_ERROR_MESSAGE + ' ' + tx.rawLog,
           UNKNOWN_ERROR_ERROR_CODE
         );
       }
@@ -664,5 +664,43 @@ export class OsmosisController {
       // Not applicable.
       const nonce = 0;
       return { nonce };
+    }
+
+    static validateTxErrors(tx: AnyTransactionResponse, msg: string){
+      if (tx.code != successfulTransaction){
+        if (tx.code == outOfGas){
+        logger.error(
+          `Failed to execute trade: Out of gas. txHash is ${tx.transactionHash}, gasUsed is ${tx.gasUsed} greater than gasWanted ${tx.gasWanted} . Log: ${tx.rawLog}`
+        )
+        throw new HttpException(
+          500,
+          OUT_OF_GAS_ERROR_MESSAGE + " : " + tx.rawLog,
+          OUT_OF_GAS_ERROR_CODE
+        );
+        } else if (tx.code == insufficientFunds){
+          logger.error(
+            `Failed to execute trade. Insufficient funds. txHash is ${tx.transactionHash}, gasUsed is ${tx.gasUsed}. Log: ${tx.rawLog}`
+          )
+          throw new HttpException(
+            500,
+            INSUFFICIENT_FUNDS_ERROR_MESSAGE + " : " + tx.rawLog,
+            INSUFFICIENT_FUNDS_ERROR_CODE
+          );
+
+        } else {
+          logger.error(
+            `Failed to execute trade. txHash is ${tx.transactionHash}, gasUsed is ${tx.gasUsed}. Log: ${tx.rawLog}`
+          )
+
+          throw new HttpException(
+            500,
+            TRADE_FAILED_ERROR_MESSAGE + " : " + tx.rawLog,
+            TRADE_FAILED_ERROR_CODE
+          );
+        }
+      }
+      logger.info(
+        msg + `txHash is ${tx.transactionHash}, gasUsed is ${tx.gasUsed}.`
+      );
     }
 }

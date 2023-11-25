@@ -193,11 +193,16 @@ export function ToLog_OsmosisExpectedTrade(trade: OsmosisExpectedTrade){
   return output
 }
 
+export type AnyTransactionResponse = TransactionResponse | ReduceLiquidityTransactionResponse | AddPositionTransactionResponse
+
+export interface CoinAndSymbol {
+  base: string;
+  amount: string;
+  symbol: string;
+}
+
 export interface ReduceLiquidityTransactionResponse extends TransactionResponse {
-  token0: string;
-  token1: string;
-  amount0: string;
-  amount1: string;
+  balances: CoinAndSymbol[];
 }
 
 export interface TransactionResponse {

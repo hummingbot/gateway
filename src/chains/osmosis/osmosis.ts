@@ -5,7 +5,7 @@ import { CosmosWallet, CosmosAsset, CosmosTokenValue, CosmosBase } from '../../c
 import { OsmosisController } from './osmosis.controllers';
 import BigNumber from 'bignumber.js';
 import { logger } from '../../services/logger';
-import { coins, coin, Coin } from '@cosmjs/amino';
+import { coin, Coin } from '@cosmjs/amino';
 import { FEES, } from 'osmojs/dist/utils/gas/values'
 import { TokenInfo, } from '../../services/base'; 
 
@@ -24,7 +24,8 @@ import {
   OsmosisExpectedTradeRoute, 
   AddPositionTransactionResponse, 
   ReduceLiquidityTransactionResponse, 
-  SerializableExtendedPool
+  SerializableExtendedPool,
+  CoinAndSymbol
 } from './osmosis.types';
 
 import { OsmosisConfig } from './osmosis.config'; 
@@ -45,7 +46,7 @@ import type {
 } from "@osmonauts/math/dist/types";
 import { TradeInfo } from './osmosis.controllers';
 import { PoolAsset } from 'osmojs/dist/codegen/osmosis/gamm/pool-models/balancer/balancerPool';
-import { HttpException, TRADE_FAILED_ERROR_CODE, TRADE_FAILED_ERROR_MESSAGE, INSUFFICIENT_FUNDS_ERROR_CODE, INSUFFICIENT_FUNDS_ERROR_MESSAGE } from '../../services/error-handler';
+import { HttpException, TRADE_FAILED_ERROR_CODE, TRADE_FAILED_ERROR_MESSAGE, GAS_LIMIT_EXCEEDED_ERROR_MESSAGE, GAS_LIMIT_EXCEEDED_ERROR_CODE, AMOUNT_LESS_THAN_MIN_AMOUNT_ERROR_MESSAGE, AMOUNT_LESS_THAN_MIN_AMOUNT_ERROR_CODE } from '../../services/error-handler';
 import { ExtendedPool, extendPool, filterPools as filterPoolsLP } from './osmosis.lp.utils';
 import { fetchFees } from './osmosis.utils';
 import { getImperatorPriceHash } from './osmosis.prices';
@@ -65,6 +66,8 @@ const {
 send
 } = cosmos.bank.v1beta1.MessageComposer.fromPartial;
 
+const successfulTransaction = 0;
+
 export class Osmosis extends CosmosBase implements Cosmosish{ 
   public controller;
   private static _instances: { [name: string]: Osmosis };
@@ -78,7 +81,6 @@ export class Osmosis extends CosmosBase implements Cosmosish{
   public chainId: string;
   public gasLimitEstimate: string;
   public readonly feeTier: string; // FEE_VALUES.osmosis[_feeTier] low medium high osmojs/src/utils/gas/values.ts
-  public manualGasPrice: string;
   public allowedSlippage: string;
   
   private constructor(network: string) {
@@ -88,11 +90,14 @@ export class Osmosis extends CosmosBase implements Cosmosish{
       config.rpcURL(network).toString(),
       config.tokenListSource(network),
       config.tokenListType(network),
-      config.gasAdjustment
+      config.gasAdjustment,
+      config.useEIP1559DynamicBaseFeeInsteadOfManualGasPrice,
+      config.rpcAddressDynamicBaseFee,
+      config.manualGasPrice
     )
     this._chain = network;
     this._nativeTokenSymbol = config.nativeCurrencySymbol;
-    this.manualGasPrice = config.manualGasPrice;
+    
     this._gasPrice = Number(this.manualGasPrice.replace('uosmo',''))
     this.feeTier = config.feeTier;
     this.gasLimitEstimate = config.gasLimitTransaction
@@ -453,7 +458,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
       pairs,
     });
 
-    if (!routes | routes.length === 0 | routes.length > 2) {
+    if (!routes || routes.length === 0 || routes.length > 2) {
       logger.info(
         `No trade routes found for ${quoteToken.symbol}-${
           baseToken.symbol} ${quoteToken.symbol}-${
@@ -476,7 +481,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
     {
       const route_length_1_pool = pools.find((pool) => pool.id === routes[0].poolId)!;
       priceImpact = calcPriceImpactGivenIn(tokenIn, tokenOut.denom, route_length_1_pool);
-      route_length_1_pool_swapFee = new BigNumber(route_length_1_pool.poolParams?.swapFee || 0).shiftedBy(-16).toString();  // shift used in CCA
+      route_length_1_pool_swapFee = new BigNumber(route_length_1_pool.poolParams?.swapFee || 0).toString();  // .shiftedBy(-16) shift used in CCA
     } 
     else {
       // THIS ASSUMES length == 2 - per CCA/osmosis guys..
@@ -541,7 +546,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
             baseAsset = this.getTokenByBase(tokenInDenom)!;
             quoteAsset = quoteToken;
           }
-          const fee = new BigNumber(pool?.poolParams?.swapFee || 0).shiftedBy(-16);  // shift used in CCA
+          const fee = new BigNumber(pool?.poolParams?.swapFee || 0);  // .shiftedBy(-16) shift used in CCA
           swapFees.push(fee);
           return {
             poolId: route.poolId.toString(),
@@ -568,9 +573,18 @@ export class Osmosis extends CosmosBase implements Cosmosish{
     }
 
     let expectedOutput = tokenOutAmountAfterSlippage;
-    let feeObject = FEES.osmosis.swapExactAmountIn(feeTier)
 
+    // can't simulate here without address/signingclient
+    let feeObject = FEES.osmosis.swapExactAmountIn(feeTier)
     const gasLimitEstimate = new BigNumber(feeObject.gas).multipliedBy(gasAdjustment)
+
+    if (gasLimitEstimate.gt(new BigNumber(this.gasLimitEstimate))){
+      throw new HttpException(
+        500,
+        GAS_LIMIT_EXCEEDED_ERROR_MESSAGE + ' Calculated gas: ' + gasLimitEstimate.toString() + ' gasLimitEstimate: ' + this.gasLimitEstimate,
+        GAS_LIMIT_EXCEEDED_ERROR_CODE
+      );
+    }
 
     const expectedAmountNum = new BigNumber(expectedOutput)
     const tokenInAmountNum = new BigNumber(amount).shiftedBy(baseToken.decimals)
@@ -579,9 +593,9 @@ export class Osmosis extends CosmosBase implements Cosmosish{
     logger.info(
       `Best trade for ${quoteToken.address}-${
         baseToken.address
-      }: ${ToLog_OsmosisExpectedTrade({ gasUsed: '', gasWanted: '', routes: swapRoutes, expectedAmount: expectedOutput, executionPrice: executionPrice, gasLimitEstimate: gasLimitEstimate, tokenInDenom:tokenIn.denom, tokenInAmount: tokenInAmount, tokenOutDenom:tokenOut.denom,  })}`
+      }: ${ToLog_OsmosisExpectedTrade({ gasUsed: '', gasWanted: '', routes: swapRoutes, expectedAmount: expectedOutput, executionPrice: executionPrice, gasLimitEstimate: new BigNumber(gasLimitEstimate), tokenInDenom:tokenIn.denom, tokenInAmount: tokenInAmount, tokenOutDenom:tokenOut.denom,  })}`
     );  
-    return { gasUsed: '', gasWanted: '', routes: swapRoutes, expectedAmount: expectedOutput, executionPrice: executionPrice, gasLimitEstimate: gasLimitEstimate, tokenInDenom:tokenIn.denom, tokenInAmount: tokenInAmount, tokenOutDenom:tokenOut.denom }; // == OsmosisExpectedTrade
+    return { gasUsed: '', gasWanted: '', routes: swapRoutes, expectedAmount: expectedOutput, executionPrice: executionPrice, gasLimitEstimate: new BigNumber(gasLimitEstimate), tokenInDenom:tokenIn.denom, tokenInAmount: tokenInAmount, tokenOutDenom:tokenOut.denom }; // == OsmosisExpectedTrade
   }
 
 
@@ -638,24 +652,40 @@ export class Osmosis extends CosmosBase implements Cosmosish{
       'tokenOutMinAmount': tokenOutMinAmount.toString(),
     });
 
-    const fee = FEES.osmosis.swapExactAmountIn(feeTier);
-
-    const gasEstimation = await this.signingClient.simulate(
-      address,
-      [msg],
-    );
-    if (!gasEstimation) {
-      throw new Error('estimate gas error');
+    var enumFee = FEES.osmosis.swapExactAmountIn(feeTier);
+    var gasToUse = enumFee.gas;
+    try{
+      const gasEstimation = await this.signingClient.simulate(
+        address,
+        [msg],
+      );
+      gasToUse = gasEstimation;
+    } catch (error: Error) {
+      if (error.message.inculdes('token is lesser than min amount')){
+        throw new HttpException(
+          500,
+          AMOUNT_LESS_THAN_MIN_AMOUNT_ERROR_MESSAGE + 'tokenOutMinAmount: ' + tokenOutMinAmount.toString(),
+          AMOUNT_LESS_THAN_MIN_AMOUNT_ERROR_CODE
+        );
+      }
     }
 
+    const gasPrice = await this.getLatestBasePrice();
     const calcedFee = calculateFee(
-      Math.round(gasEstimation * (gasAdjustment || 1.5)),
-      GasPrice.fromString(this.manualGasPrice)
+      Math.round(Number(gasToUse) * (gasAdjustment || 1.5)),
+      GasPrice.fromString(gasPrice)
     );
-    if (calcedFee){}
+
+    if (new BigNumber(calcedFee.gas).gt(new BigNumber(this.gasLimitEstimate))){
+      throw new HttpException(
+        500,
+        GAS_LIMIT_EXCEEDED_ERROR_MESSAGE + ' Calculated gas: ' + new BigNumber(calcedFee.gas).toString() + ' gasLimitEstimate: ' + new BigNumber(this.gasLimitEstimate).toString(),
+        GAS_LIMIT_EXCEEDED_ERROR_CODE
+      );
+    }
 
     try {
-      const res = await this.signingClient.signAndBroadcast(address, [msg], fee);
+      const res = await this.signingClient.signAndBroadcast(address, [msg], calcedFee);
       return res;
     } catch (error) {
       console.debug(error);
@@ -800,13 +830,10 @@ export class Osmosis extends CosmosBase implements Cosmosish{
         pool = foundPools.pop(); // this is not selective without poolid input (can be multiple pools per token pair).. though order should cause pool with greatest liquidity to be used
       }
 
+      var calcedFee;
       if (pool){
-        var fee = {
-          amount: coins(0, 'uosmo'),
-          gas: '240000',
-        }; // default, going to overwrite below
-
-        let msg = [];
+        const gasPrice = await this.getLatestBasePrice();
+        let msgs = [];
         if (singleToken_UseWhich) { // in case 1 of the amounts == 0 
           var singleToken_amount = new BigNumber(0);
           var singleToken: CosmosAsset | undefined = undefined;
@@ -842,8 +869,30 @@ export class Osmosis extends CosmosBase implements Cosmosish{
             tokenIn: inputCoin,
             shareOutMinAmount: finalShareOutAmount.toString(),
           });
-          msg.push(joinSwapExternAmountInMsg);
-          fee = FEES.osmosis.joinSwapExternAmountIn(feeTier);
+          msgs.push(joinSwapExternAmountInMsg);
+          
+          var enumFee = FEES.osmosis.joinSwapExternAmountIn(feeTier);
+          var gasToUse = enumFee.gas;
+          try{
+            const gasEstimation = await this.signingClient.simulate(
+              address,
+              msgs,
+            );
+            gasToUse = gasEstimation;
+          } catch (error: Error) {
+            if (error.message.includes('token is lesser than min amount')){
+              throw new HttpException(
+                500,
+                AMOUNT_LESS_THAN_MIN_AMOUNT_ERROR_MESSAGE + 'tokenOutMinAmount: ' + finalShareOutAmount.toString(),
+                AMOUNT_LESS_THAN_MIN_AMOUNT_ERROR_CODE
+              );
+            }
+          }
+          calcedFee = calculateFee(
+            Math.round(Number(gasToUse) * (gasAdjustment || 1.5)),
+            GasPrice.fromString(gasPrice)
+          );
+       
         } 
         else {
           var allCoins = [];
@@ -872,28 +921,61 @@ export class Osmosis extends CosmosBase implements Cosmosish{
             shareOutAmount: finalShareOutAmount.toString(),
             tokenInMaxs,
           });
-          msg.push(joinPoolMsg);
-          fee = FEES.osmosis.joinPool(feeTier);
+          msgs.push(joinPoolMsg);
+
+          var enumFee = FEES.osmosis.joinPool(feeTier);
+          var gasToUse = enumFee.gas;
+          try{
+            const gasEstimation = await this.signingClient.simulate(
+              address,
+              msgs,
+            );
+            gasToUse = gasEstimation;
+          } catch (error: Error) {
+            if (error.message.inculdes('token is lesser than min amount')){
+              throw new HttpException(
+                500,
+                AMOUNT_LESS_THAN_MIN_AMOUNT_ERROR_MESSAGE + 'shareOutAmount: ' + finalShareOutAmount.toString(),
+                AMOUNT_LESS_THAN_MIN_AMOUNT_ERROR_CODE
+              );
+            }
+          }
+
+          calcedFee = calculateFee(
+            Math.round(Number(gasToUse) * (gasAdjustment || 1.5)),
+            GasPrice.fromString(gasPrice)
+          );
         }
 
-        const successfulTransaction = 0;
-        const insufficientFunds = 5;
-        const res: AddPositionTransactionResponse = await this.signingClient.signAndBroadcast(address, msg, fee);
-        if (res?.code == insufficientFunds) throw new HttpException(
-          500,
-          INSUFFICIENT_FUNDS_ERROR_MESSAGE + " : " + res.rawLog,
-          INSUFFICIENT_FUNDS_ERROR_CODE
-        );
+        if (new BigNumber(calcedFee.gas).gt(new BigNumber(this.gasLimitEstimate))){
+          throw new HttpException(
+            500,
+            GAS_LIMIT_EXCEEDED_ERROR_MESSAGE + ' Calculated gas: ' + new BigNumber(calcedFee.gas).toString() + ' gasLimitEstimate: ' + new BigNumber(this.gasLimitEstimate).toString(),
+            GAS_LIMIT_EXCEEDED_ERROR_CODE
+          );
+        }
 
-        if (res?.code !== successfulTransaction) throw res;
+        var res: AddPositionTransactionResponse = await this.signingClient.signAndBroadcast(address, msgs, calcedFee);
+        this.signingClient.disconnect();
 
-        // RETURNED VALUE DISSECTION
-        //  osmo doesnt send back a clear value, we need to discern it from the event logs >.>
         var outbound_coins_string = '' // 990uion,98159uosmo
         var outbound_shares_string = '' // 57568515255656500gamm/pool/62
         var token0_finalamount = '0'
         var token1_finalamount = '0'
         var poolshares = '0'
+
+        if (res?.code !== successfulTransaction){
+          res.token0_finalamount = token0_finalamount
+          res.token1_finalamount = token1_finalamount
+          res.poolshares = poolshares
+          res.poolId = pool.id.toString()
+          res.poolAddress = pool.address
+          return res;
+        } 
+  
+        // RETURNED VALUE DISSECTION
+        //  osmo doesnt send back a clear value, we need to discern it from the event logs >.>
+
         try {
           for (var event_idx=0; event_idx<res.events.length; event_idx++){
             var event = res.events[event_idx];
@@ -946,7 +1028,6 @@ export class Osmosis extends CosmosBase implements Cosmosish{
         res.poolshares = poolshares
         res.poolId = pool.id.toString()
         res.poolAddress = pool.address
-        this.signingClient.disconnect();
         return res; 
       }
 
@@ -1061,20 +1142,20 @@ export class Osmosis extends CosmosBase implements Cosmosish{
         prices
       );
 
-      const coinsNeeded = myCoins.map(({ denom, amount }) => {
-      
+      var coinsNeeded: Coin[] = [];
+      myCoins.forEach(({ denom, amount }) => {
         var amountWithSlippage;
         amountWithSlippage = new BigNumber(amount)
         .multipliedBy(new BigNumber(100).minus(slippage))
         .div(100)
-        .toString();
-  
-        return {
-          denom,
-          amount: this.noDecimals(0),
-        };
+        if (amountWithSlippage.isGreaterThanOrEqualTo(1)){
+          coinsNeeded.push({
+            denom,
+            amount: this.noDecimals(amountWithSlippage.toString()),
+          });
+        }
       });
-  
+
       const shareInAmount = new BigNumber(unbondedShares)
         .shiftedBy(18)
         .decimalPlaces(0)
@@ -1097,40 +1178,53 @@ export class Osmosis extends CosmosBase implements Cosmosish{
       });
       msgs.push(msg)
   
-      const fee = FEES.osmosis.exitPool(feeTier);
-
-      const gasEstimation = await this.signingClient.simulate(
-        address,
-        msgs,
-      );
-      if (!gasEstimation) {
-        throw new Error('estimate gas error');
+      var enumFee = FEES.osmosis.exitPool(feeTier);
+      var gasToUse = enumFee.gas;
+      try{
+        const gasEstimation = await this.signingClient.simulate(
+          address,
+          msgs,
+        );
+        gasToUse = gasEstimation;
+      } catch (error: Error) {
+        if (error.message.includes('token is lesser than min amount')){
+          var composeTokenOutMins = '';
+          for (var idx=0;idx<tokenOutMins.length;idx++){
+            composeTokenOutMins += ' denom: ' + tokenOutMins[idx].denom + ' amount: ' + tokenOutMins[idx].amount;
+          }
+          throw new HttpException(
+            500,
+            AMOUNT_LESS_THAN_MIN_AMOUNT_ERROR_MESSAGE + 'tokenOutMins: ' + composeTokenOutMins,
+            AMOUNT_LESS_THAN_MIN_AMOUNT_ERROR_CODE
+          );
+        }
       }
   
+      const gasPrice = await this.getLatestBasePrice();
       const calcedFee = calculateFee(
-        Math.round(gasEstimation * (gasAdjustment || 1.5)),
-        GasPrice.fromString(this.manualGasPrice)
+        Math.round(Number(gasToUse) * (gasAdjustment || 1.5)),
+        GasPrice.fromString(gasPrice)
       );
-      if (calcedFee){}
+  
+      if (new BigNumber(calcedFee.gas).gt(new BigNumber(this.gasLimitEstimate))){
+        throw new HttpException(
+          500,
+          GAS_LIMIT_EXCEEDED_ERROR_MESSAGE + ' Calculated gas: ' + new BigNumber(calcedFee.gas).toString() + ' gasLimitEstimate: ' + new BigNumber(this.gasLimitEstimate).toString(),
+          GAS_LIMIT_EXCEEDED_ERROR_CODE
+        );
+      }
 
-
-
-      const successfulTransaction = 0;
-      const res: ReduceLiquidityTransactionResponse = await this.signingClient.signAndBroadcast(address, msgs, fee);
-
-      if (res?.code !== successfulTransaction) throw res;
+      var res: ReduceLiquidityTransactionResponse = await this.signingClient.signAndBroadcast(address, msgs, calcedFee);
       this.signingClient.disconnect();
 
-      
-      var finalAmountReceived_string = '';
-      var token0_denom = currentPool.poolAssets[0].token.denom
-      var token1_denom = currentPool.poolAssets[1].token.denom
-      var token0 = this.getTokenByBase(token0_denom)
-      var token1 = this.getTokenByBase(token1_denom)
-      var amount0_base = ''
-      var amount1_base = ''
-      var amount0 = ''
-      var amount1 = ''
+      // apparently pools may have >2 assets...
+      var finalAmountsReceived_string = '';
+      var finalBalancesReceived: CoinAndSymbol[] = [];
+
+      if (res?.code !== successfulTransaction){
+        res.balances = [];
+        return res;
+      }
 
       try {
         for (var txEvent_idx=0; txEvent_idx<res.events.length; txEvent_idx++){
@@ -1142,7 +1236,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
                 if (txEventAttribute.value == address){
                     var next_txEventAttribute: TransactionEventAttribute = txEvent.attributes[txEventAttribute_idx+1];
                     if (next_txEventAttribute.key == 'amount' && next_txEventAttribute.value){
-                      finalAmountReceived_string = next_txEventAttribute.value;
+                      finalAmountsReceived_string = next_txEventAttribute.value;
                     }
                 } 
               }
@@ -1150,40 +1244,44 @@ export class Osmosis extends CosmosBase implements Cosmosish{
           }
         }
 
-        if (finalAmountReceived_string != ''){
-          if (finalAmountReceived_string.includes(',')){
-            var coins_string_list = finalAmountReceived_string.split(',');
+        if (finalAmountsReceived_string != ''){
+          if (finalAmountsReceived_string.includes(',')){
+            var coins_string_list = finalAmountsReceived_string.split(',');
             for (var coin_string_idx=0; coin_string_idx<coins_string_list.length; coin_string_idx++){
               var coin_string = coins_string_list[coin_string_idx];
-              if (coin_string.includes(token0!.base)){
-                amount0_base = coin_string.replace(token0!.base,'');
-              } else if (coin_string.includes(token1!.base)){
-                amount1_base = coin_string.replace(token1!.base,'');
-              }
+              currentPool.poolAssets.forEach((asset) => {
+                if (coin_string.includes(asset.token.denom)){
+                  var token = this.getTokenByBase(asset.token.denom);
+                  var amount = (new BigNumber(coin_string.replace(asset.token.denom,''))).shiftedBy(token!.decimals * -1).decimalPlaces(token!.decimals).toString();
+                  var symbol = token!.symbol;
+                  if (!symbol){
+                    symbol = asset.token.denom
+                  }
+                  finalBalancesReceived.push({base: asset.token.denom, amount:amount, symbol:symbol})
+                }
+              })
             }
           }else{
-            if (finalAmountReceived_string.includes(token0!.base)){
-              amount0_base = finalAmountReceived_string.replace(token0!.base,'');
-            } else if (finalAmountReceived_string.includes(token1!.base)){
-              amount1_base = finalAmountReceived_string.replace(token1!.base,'');
-            }
+            var coin_string = finalAmountsReceived_string;
+            currentPool.poolAssets.forEach((asset) => {
+              if (coin_string.includes(asset.token.denom)){
+                var token = this.getTokenByBase(asset.token.denom);
+                var amount = (new BigNumber(coin_string.replace(asset.token.denom,''))).shiftedBy(token!.decimals * -1).decimalPlaces(token!.decimals).toString();
+                var symbol = token!.symbol;
+                if (!symbol){
+                  symbol = asset.token.denom
+                }
+                finalBalancesReceived.push({base: asset.token.denom, amount:amount, symbol:symbol})
+              }
+            })
           }
         }
 
-        if (amount0_base != ''){
-          amount0 = (new BigNumber(amount0_base)).shiftedBy(token0!.decimals * -1).decimalPlaces(token0!.decimals).toString();
-        }
-        if (amount1_base != ''){
-          amount1 = (new BigNumber(amount1_base)).shiftedBy(token1!.decimals * -1).decimalPlaces(token1!.decimals).toString();
-        }
       } catch (error) {
         console.debug(error);
       } 
 
-      res.amount0 = amount0
-      res.amount1 = amount1
-      res.token0 = token0!.symbol
-      res.token1 = token1!.symbol
+      res.balances = finalBalancesReceived;
       return res;
 
     } catch (error) {
@@ -1406,9 +1504,36 @@ export class Osmosis extends CosmosBase implements Cosmosish{
       amount: coinsList
     });
 
-    const fee = FEES.osmosis.swapExactAmountIn(this.feeTier);
+    var gasAdjustment = this.gasPriceConstant;
+    var feeTier = this.feeTier;
 
-    const res = await this.signingClient.signAndBroadcast(req.from, [msg], fee);
+    var enumFee = FEES.osmosis.swapExactAmountIn(feeTier);
+    var gasToUse = enumFee.gas;
+    try{
+      const gasEstimation = await this.signingClient.simulate(
+        req.from,
+        [msg],
+      );
+      gasToUse = gasEstimation;
+    } catch (error) {
+      console.debug(error);
+    }
+
+    const gasPrice = await this.getLatestBasePrice();
+    const calcedFee = calculateFee(
+      Math.round(Number(gasToUse) * (gasAdjustment || 1.5)),
+      GasPrice.fromString(gasPrice)
+    );
+
+    if (new BigNumber(calcedFee.gas).gt(new BigNumber(this.gasLimitEstimate))){
+      throw new HttpException(
+        500,
+        GAS_LIMIT_EXCEEDED_ERROR_MESSAGE + ' Calculated gas: ' + new BigNumber(calcedFee.gas).toString() + ' gasLimitEstimate: ' + new BigNumber(this.gasLimitEstimate).toString(),
+        GAS_LIMIT_EXCEEDED_ERROR_CODE
+      );
+    }
+
+    const res = await this.signingClient.signAndBroadcast(req.from, [msg], calcedFee);
     this.signingClient.disconnect();
     return res;
   }

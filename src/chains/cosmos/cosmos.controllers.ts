@@ -22,7 +22,7 @@ export const toCosmosBalances = (
   tokenSymbols.forEach((symbol) => {
     let balance = '0.0';
 
-    if (balances[symbol]) {
+    if (balances[symbol]) {// && !balances[symbol].value.eq(0)) { // is check necessary here or filtered in client?
       balance = tokenValueToString(balances[symbol]);
     }
 

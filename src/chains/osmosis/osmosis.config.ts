@@ -18,6 +18,8 @@ export namespace OsmosisConfig {
     gasLimitTransaction: string;
     manualGasPrice: string;
     allowedSlippage: string;
+    rpcAddressDynamicBaseFee: string;
+    useEIP1559DynamicBaseFeeInsteadOfManualGasPrice: boolean;
   }
 
   export const config: NetworkConfig = {
@@ -49,5 +51,7 @@ export namespace OsmosisConfig {
     gasAdjustment: ConfigManagerV2.getInstance().get(`osmosis.gasAdjustment`),
     allowedSlippage: ConfigManagerV2.getInstance().get(`osmosis.allowedSlippage`),
     feeTier: ConfigManagerV2.getInstance().get(`osmosis.feeTier`),
+    useEIP1559DynamicBaseFeeInsteadOfManualGasPrice: ConfigManagerV2.getInstance().get(`osmosis.useEIP1559DynamicBaseFeeInsteadOfManualGasPrice`),
+    rpcAddressDynamicBaseFee: ConfigManagerV2.getInstance().get(`osmosis.rpcAddressDynamicBaseFee`),
   };
 }

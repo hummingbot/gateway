@@ -1008,10 +1008,7 @@ definitions:
       - 'gasUsed'
       - 'gasWanted'
       - 'txHash'
-      - 'token0'
-      - 'token1'
-      - 'amount0'
-      - 'amount1'
+      - 'balances'
     properties:
       network: 
         type: 'string'
@@ -1031,14 +1028,20 @@ definitions:
         type: 'string'
       txHash:
         type: 'string'
-      token0:
-        type: 'string'
-      token1:
-        type: 'string'
-      amount0:
-        type: 'string'
-      amount1:
-        type: 'string'
+      balances:
+        type: 'array'
+        items: 'object'
+        required:
+          - 'amount'
+          - 'denom'
+          - 'symbol'
+        properties:
+          amount:
+            type: 'string'
+          denom:
+            type: 'string'
+          symbol:
+            type: 'string'
 
   LiquidityCollectRequest:
     type: 'object'

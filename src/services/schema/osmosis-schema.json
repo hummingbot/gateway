@@ -27,7 +27,9 @@
     "gasAdjustment": { "type": "number" },
     "gasLimitTransaction": { "type": "integer" },
     "manualGasPrice": { "type": "string" },
-    "allowedSlippage": { "type": "string" }
+    "allowedSlippage": { "type": "string" },
+    "useEIP1559DynamicBaseFeeInsteadOfManualGasPrice": { "type": "boolean" },
+    "rpcAddressDynamicBaseFee": { "type": "string" }
   },
   "additionalProperties": false
 }

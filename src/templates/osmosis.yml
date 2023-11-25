@@ -13,7 +13,10 @@ network: mainnet
 nativeCurrencySymbol: OSMO
 
 feeTier: medium
-gasAdjustment: 1.3
+gasAdjustment: 1.5
 gasLimitTransaction: 2000000
-manualGasPrice: 0.025uosmo
 allowedSlippage: 2%
+
+manualGasPrice: 0.025uosmo
+useEIP1559DynamicBaseFeeInsteadOfManualGasPrice: true
+rpcAddressDynamicBaseFee: https://lcd.osmosis.zone/osmosis/txfees/v1beta1/cur_eip_base_fee

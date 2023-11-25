@@ -57,13 +57,11 @@ const getData = async (
   return undefined;
 };
 
-export const getImperatorPriceHash = async (tokenList?: CosmosAsset[]) => {
+export const getImperatorPriceHash = async (tokenList?: CosmosAsset[], url: string = 'https://api-osmosis.imperator.co/tokens/v2/all') => {
   let prices = [];
 
   try {
-    const response = await fetch(
-      'https://api-osmosis.imperator.co/tokens/v2/all'
-    );
+    const response = await fetch(url);
     if (!response.ok) throw Error('Get price error');
     prices = (await response.json()) as any[];
   } catch (err) {
@@ -97,3 +95,25 @@ export const getImperatorPriceHash = async (tokenList?: CosmosAsset[]) => {
 
   return priceHash;
 };
+
+interface baseFee{
+  base_fee?: string
+}
+
+export const getEIP1559DynamicBaseFee = async (url: string) => {
+  var fee: baseFee | undefined = undefined;
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw Error('Get base fee error');
+    fee = (await response.json()) as baseFee;
+  } catch (err) {
+    console.error(err);
+  }
+
+  if (fee && fee.base_fee){
+    var finalFee = Number(fee!.base_fee!).toString() + 'uosmo';
+    return finalFee;
+  }
+  return '';
+}
