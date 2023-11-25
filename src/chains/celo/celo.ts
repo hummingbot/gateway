@@ -10,6 +10,7 @@ import { Ierc20 } from '@celo/contractkit/lib/generated/IERC20';
 import { Erc20Wrapper } from '@celo/contractkit/lib/wrappers/Erc20Wrapper';
 import { BigNumber as EthersBigNumber } from '@ethersproject/bignumber/lib/bignumber';
 import BigNumber from 'bignumber.js';
+import { UniswapConfig } from '../../connectors/uniswap/uniswap.config';
 
 export class Celo extends CeloBase implements Celoish {
   private static _instances: { [name: string]: Celo };
@@ -75,6 +76,10 @@ export class Celo extends CeloBase implements Celoish {
     let spender: string;
     if (reqSpender === 'ubeswap') {
       spender = UbeswapConfig.config.routerAddress(this._chain);
+    } else if (reqSpender === 'uniswap') {
+      spender = UniswapConfig.config.uniswapV3SmartOrderRouterAddress(
+        this._chain
+      );
     } else {
       spender = reqSpender;
     }

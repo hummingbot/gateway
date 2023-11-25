@@ -55,6 +55,16 @@ export namespace UniswapConfig {
           ).includes(network)
         ),
       },
+      {
+        chain: 'celo',
+        networks: Object.keys(
+          ConfigManagerV2.getInstance().get('uniswap.contractAddresses')
+        ).filter((network) =>
+          Object.keys(
+            ConfigManagerV2.getInstance().get('celo.networks')
+          ).includes(network)
+        ),
+      },
     ],
   };
 }

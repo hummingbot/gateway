@@ -8,7 +8,6 @@ import {
   validateTokenSymbols,
 } from '../../services/validators';
 import {
-  isAddress,
   validateNonce,
   validateAddress,
 } from '../ethereum/ethereum.validators';
@@ -20,7 +19,7 @@ export const invalidSpenderError: string =
 export const validateSpender: Validator = mkValidator(
   'spender',
   invalidSpenderError,
-  (val) => typeof val === 'string' && (val === 'ubeswap' || isAddress(val))
+  (val) => typeof val === 'string'
 );
 
 export const validateCeloApproveRequest: RequestValidator = mkRequestValidator([

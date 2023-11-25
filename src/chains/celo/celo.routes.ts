@@ -24,7 +24,6 @@ import {
   NonceResponse,
 } from '../../evm/evm.requests';
 import {
-  validateBalanceRequest as validateEthereumBalanceRequest,
   validateCancelRequest,
   validateNonceRequest,
 } from '../ethereum/ethereum.validators';
@@ -132,7 +131,6 @@ export namespace CeloRoutes {
         res: Response<BalanceResponse | string, {}>,
         _next: NextFunction
       ) => {
-        validateEthereumBalanceRequest(req.body);
         const chain = await getInitializedChain<Celoish>(
           req.body.chain,
           req.body.network

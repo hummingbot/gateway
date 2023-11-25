@@ -218,6 +218,8 @@ export async function getConnector<T>(
     connectorInstance = Tinyman.getInstance(network);
   } else if (chain === 'celo' && connector === 'ubeswap') {
     connectorInstance = Ubeswap.getInstance(chain, network);
+  } else if (chain === 'celo' && connector === 'uniswap') {
+    connectorInstance = Uniswap.getInstance(chain, network);
   } else {
     throw new Error('unsupported chain or connector');
   }

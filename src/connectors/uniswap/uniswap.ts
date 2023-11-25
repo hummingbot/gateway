@@ -6,7 +6,7 @@ import {
   ContractInterface,
   ContractTransaction,
 } from '@ethersproject/contracts';
-import { AlphaRouter } from '@uniswap/smart-order-router';
+import { AlphaRouter, GasPrice, IGasPriceProvider } from '@uniswap/smart-order-router';
 import { Trade, SwapRouter } from '@uniswap/router-sdk';
 import { MethodParameters } from '@uniswap/v3-sdk';
 import {
@@ -22,10 +22,11 @@ import { percentRegexp } from '../../services/config-manager-v2';
 import { Ethereum } from '../../chains/ethereum/ethereum';
 import { Polygon } from '../../chains/polygon/polygon';
 import { ExpectedTrade, Uniswapish } from '../../services/common-interfaces';
+import { Celo } from '../../chains/celo/celo';
 
 export class Uniswap implements Uniswapish {
   private static _instances: { [name: string]: Uniswap };
-  private chain: Ethereum | Polygon;
+  private chain: Ethereum | Polygon | Celo;
   private _alphaRouter: AlphaRouter;
   private _router: string;
   private _routerAbi: ContractInterface;
@@ -38,8 +39,17 @@ export class Uniswap implements Uniswapish {
 
   private constructor(chain: string, network: string) {
     const config = UniswapConfig.config;
+    let gasProvider = undefined;
     if (chain === 'ethereum') {
       this.chain = Ethereum.getInstance(network);
+    } else if (chain === 'celo') {
+      this.chain = Celo.getInstance(network);
+      const price = this.chain.gasPrice;
+      gasProvider = new (class extends IGasPriceProvider {
+        getGasPrice(): Promise<GasPrice> {
+          return Promise.resolve({ gasPriceWei: BigNumber.from(price) });
+        }
+      })();
     } else {
       this.chain = Polygon.getInstance(network);
     }
@@ -49,6 +59,7 @@ export class Uniswap implements Uniswapish {
     this._alphaRouter = new AlphaRouter({
       chainId: this.chainId,
       provider: this.chain.provider,
+      gasPriceProvider: gasProvider,
     });
     this._routerAbi = routerAbi.abi;
     this._gasLimitEstimate = UniswapConfig.config.gasLimitEstimate;

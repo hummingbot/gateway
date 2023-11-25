@@ -25,6 +25,7 @@ import {
   getInitializedChain,
   UnsupportedChainException,
 } from '../services/connection-manager';
+import { Celo } from '../chains/celo/celo';
 
 export async function getStatus(
   req: StatusRequest
@@ -100,6 +101,11 @@ export async function getStatus(
     const injectiveConnections = Injective.getConnectedInstances();
     connections = connections.concat(
       injectiveConnections ? Object.values(injectiveConnections) : []
+    );
+
+    const celoConnections = Celo.getConnectedInstances();
+    connections = connections.concat(
+      celoConnections ? Object.values(ethereumConnections) : []
     );
   }
 
