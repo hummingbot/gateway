@@ -100,9 +100,16 @@ export namespace ConnectorsRoutes {
           },
           {
             name: 'pancakeswap',
-            trading_type: PancakeSwapConfig.config.tradingTypes,
+            trading_type: PancakeSwapConfig.config.tradingTypes('swap'),
             chain_type: PancakeSwapConfig.config.chainType,
             available_networks: PancakeSwapConfig.config.availableNetworks,
+          },
+          {
+            name: 'pancakeswapLP',
+            trading_type: PancakeSwapConfig.config.tradingTypes('LP'),
+            chain_type: PancakeSwapConfig.config.chainType,
+            available_networks: PancakeSwapConfig.config.availableNetworks,
+            additional_spenders: ['pancakeswap'],
           },
           {
             name: 'xswap',

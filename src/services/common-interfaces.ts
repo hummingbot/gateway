@@ -481,7 +481,7 @@ export interface UniswapLPish {
     token1: UniswapCoreToken,
     amount0: string,
     amount1: string,
-    fee: number,
+    fee: string,
     lowerPrice: number,
     upperPrice: number,
     tokenId: number,
@@ -547,7 +547,7 @@ export interface UniswapLPish {
   poolPrice(
     token0: UniswapCoreToken,
     token1: UniswapCoreToken,
-    fee: number,
+    fee: string,
     period: number,
     interval: number
   ): Promise<string[]>;
