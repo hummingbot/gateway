@@ -20,6 +20,7 @@ import { DexalotCLOBConfig } from './dexalot/dexalot.clob.config';
 import { TinymanConfig } from './tinyman/tinyman.config';
 import { PlentyConfig } from './plenty/plenty.config';
 import { KujiraConfig } from './kujira/kujira.config';
+import { CarbonConfig } from './carbon/carbon.config';
 
 export namespace ConnectorsRoutes {
   export const router = Router();
@@ -161,6 +162,12 @@ export namespace ConnectorsRoutes {
               accountId:
                 'Enter your kujira account number (input 0 if unsure) >>> ',
             },
+          },
+          {
+            name: 'carbon',
+            trading_type: CarbonConfig.config.tradingTypes('spot'),
+            chain_type: CarbonConfig.config.chainType,
+            available_networks: CarbonConfig.config.availableNetworks,
           },
         ],
       });

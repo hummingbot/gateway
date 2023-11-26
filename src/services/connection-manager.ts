@@ -41,6 +41,7 @@ import { Tinyman } from '../connectors/tinyman/tinyman';
 import { Plenty } from '../connectors/plenty/plenty';
 import { Kujira } from '../chains/kujira/kujira';
 import { KujiraCLOB } from '../connectors/kujira/kujira';
+import { CarbonCLOB } from '../connectors/carbon/carbon';
 
 export type ChainUnion =
   | Algorand
@@ -221,6 +222,8 @@ export async function getConnector<T>(
     connectorInstance = Plenty.getInstance(network);
   } else if (chain === 'kujira' && connector === 'kujira') {
     connectorInstance = KujiraCLOB.getInstance(chain, network);
+  } else if (chain === 'ethereum' && connector === 'carbon') {
+    connectorInstance = CarbonCLOB.getInstance(chain, network);
   } else {
     throw new Error('unsupported chain or connector');
   }
