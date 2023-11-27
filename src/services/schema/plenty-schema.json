@@ -22,15 +22,11 @@
                         },
                         "router": {
                             "type": "string"
-                        },
-                        "ctezAdmin": {
-                            "type": "string"
                         }
                     },
                     "required": [
                         "poolsApi",
-                        "router",
-                        "ctezAdmin"
+                        "router"
                     ],
                     "additionalProperties": false
                 }

@@ -9,6 +9,7 @@ export interface NetworkConfig {
   tokenListType: TokenListType;
   tokenListSource: string;
   tzktURL: string;
+  ctezAdminAddress: string;
 }
 
 export interface Config {
@@ -41,6 +42,9 @@ export function getTezosConfig(chainName: string, networkName: string): Config {
       tzktURL: ConfigManagerV2.getInstance().get(
         chainName + '.networks.' + network + '.tzktURL'
       ),
+      ctezAdminAddress: ConfigManagerV2.getInstance().get(
+        chainName + '.networks.' + network + '.ctezAdmin'
+      )
     },
     nativeCurrencySymbol: ConfigManagerV2.getInstance().get(
       chainName + '.networks.' + network + '.nativeCurrencySymbol'

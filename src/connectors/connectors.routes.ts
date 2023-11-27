@@ -13,11 +13,11 @@ import { UniswapConfig } from './uniswap/uniswap.config';
 import { VVSConfig } from './vvs/vvs.config';
 import { RefConfig } from './ref/ref.config';
 import { PancakeSwapConfig } from './pancakeswap/pancakeswap.config';
-import { InjectiveCLOBConfig } from './injective/injective.clob.config';
 import { XsswapConfig } from './xsswap/xsswap.config';
 import { ConnectorsResponse } from './connectors.request';
 import { DexalotCLOBConfig } from './dexalot/dexalot.clob.config';
 import { TinymanConfig } from './tinyman/tinyman.config';
+import { CurveConfig } from './curve/curveswap.config';
 import { PlentyConfig } from './plenty/plenty.config';
 import { KujiraConfig } from './kujira/kujira.config';
 
@@ -105,26 +105,6 @@ export namespace ConnectorsRoutes {
             available_networks: PancakeSwapConfig.config.availableNetworks,
           },
           {
-            name: 'injective',
-            trading_type: InjectiveCLOBConfig.config.tradingTypes('spot'),
-            chain_type: InjectiveCLOBConfig.config.chainType,
-            available_networks: InjectiveCLOBConfig.config.availableNetworks,
-            additional_add_wallet_prompts: {
-              accountId:
-                'Enter your injective sub account id wallet key (input 0 if unsure) >>> ',
-            },
-          },
-          {
-            name: 'injective_perpetual',
-            trading_type: InjectiveCLOBConfig.config.tradingTypes('perp'),
-            chain_type: InjectiveCLOBConfig.config.chainType,
-            available_networks: InjectiveCLOBConfig.config.availableNetworks,
-            additional_add_wallet_prompts: {
-              accountId:
-                'Enter your injective sub account id wallet key (input 0 if unsure) >>> ',
-            },
-          },
-          {
             name: 'xswap',
             trading_type: XsswapConfig.config.tradingTypes,
             chain_type: XsswapConfig.config.chainType,
@@ -145,6 +125,12 @@ export namespace ConnectorsRoutes {
             trading_type: TinymanConfig.config.tradingTypes,
             chain_type: TinymanConfig.config.chainType,
             available_networks: TinymanConfig.config.availableNetworks,
+          },
+          {
+            name: 'curve',
+            trading_type: CurveConfig.config.tradingTypes,
+            chain_type: CurveConfig.config.chainType,
+            available_networks: CurveConfig.config.availableNetworks,
           },
           {
             name: 'plenty',
