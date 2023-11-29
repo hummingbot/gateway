@@ -30,10 +30,6 @@ export class QuipuSwap extends QuipuBase {
     return QuipuSwap._instances[network];
   }
 
-  public async init() {
-    return await super.initialized;
-  }
-
   /**
    * Default gas limit used to estimate gasCost for swap transactions.
    */

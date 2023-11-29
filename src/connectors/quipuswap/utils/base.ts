@@ -20,18 +20,19 @@ export class QuipuBase {
   private _routePairs: RoutePair[] = [];
   private _whitelistedPairs: WhitelistedPair[] = [];
   private _ready: boolean = false;
-  protected initialized: Promise<boolean> = Promise.resolve(false);
+  private initialized: Promise<boolean> = Promise.resolve(false);
 
 
   constructor(apiUrl: string, network: SupportedNetwork) {
     this._network = networkInfo(network);
-    this._api = new ws.WebSocket(apiUrl);
+    this._api = new ws(apiUrl);
 
     this.initialized = new Promise((resolve, reject) => {
       this._api.onmessage = (event: ws.MessageEvent) => {
         this.parseMessage(event.data.toString());
         this._ready = true;
-        resolve(true);
+        if (this._routePairs.length > 0)
+          resolve(true);
       };
       this._api.onerror = (error: ws.ErrorEvent) => {
         this._ready = false;
@@ -45,6 +46,16 @@ export class QuipuBase {
   }
 
 
+  public ready = (): boolean => {
+    return this._ready;
+  }
+
+
+  public init = async () => {
+    return await this.initialized;
+  };
+
+
   public getTokenFromSymbol = (symbol: string) => {
     const tokens = getTokens(this._network);
     const token = tokens.find(token => token.metadata.symbol === symbol);
@@ -52,11 +63,6 @@ export class QuipuBase {
       throw new Error(`Token: ${symbol} not found`);
     }
     return token;
-  }
-
-
-  public ready(): boolean {
-    return this._ready;
   }
 
 
