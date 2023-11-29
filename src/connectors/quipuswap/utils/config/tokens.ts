@@ -31,7 +31,7 @@ const GHOSTNET_QUIPU_TOKEN: Token = {
     contractAddress: 'KT19363aZDTjeRyoDkSLZhCk62pS4xfvxo6c'
 };
 
-export const networksQuipuTokens: Record<SupportedNetwork, Token> = {
+export const networksQuipuTokens = {
     [NetworkType.MAINNET]: MAINNET_QUIPU_TOKEN,
     [NetworkType.GHOSTNET]: GHOSTNET_QUIPU_TOKEN
 };
@@ -54,7 +54,7 @@ export const GHOSTNET_WTEZ_TOKEN: Token = {
     contractAddress: 'KT1L8ujeb25JWKa4yPB61ub4QG2NbaKfdJDK'
 };
 
-export const networksWtezTokens: Record<SupportedNetwork, Token> = {
+export const networksWtezTokens = {
     [NetworkType.MAINNET]: MAINNET_WTEZ_TOKEN,
     [NetworkType.GHOSTNET]: GHOSTNET_WTEZ_TOKEN
 };

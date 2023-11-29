@@ -165,14 +165,14 @@ export async function trade(
     ({ expectedTrade, expectedAmount } = getQuipuTrade(quipuswap, req));
   } catch (e) {
     if (e instanceof Error) {
-      logger.error(`Plenty: could not get trade info - ${e.message}`);
+      logger.error(`QuipuSwap: could not get trade info - ${e.message}`);
       throw new HttpException(
         500,
         TRADE_FAILED_ERROR_MESSAGE + e.message,
         TRADE_FAILED_ERROR_CODE
       );
     } else {
-      logger.error('Plenty: unknown error trying to get trade info');
+      logger.error('QuipuSwap: unknown error trying to get trade info');
       throw new HttpException(
         500,
         UNKNOWN_ERROR_MESSAGE,
@@ -201,7 +201,7 @@ export async function trade(
       limitPrice &&
       price.gt(new BigNumber(limitPrice))
     ) {
-      logger.error('Plenty: swap price exceeded limit price for buy trade');
+      logger.error('QuipuSwap: swap price exceeded limit price for buy trade');
       throw new HttpException(
         500,
         SWAP_PRICE_EXCEEDS_LIMIT_PRICE_ERROR_MESSAGE(
@@ -245,7 +245,7 @@ export async function trade(
       limitPrice &&
       price.lt(new BigNumber(limitPrice))
     ) {
-      logger.error('Plenty: swap price lower than limit price for sell trade');
+      logger.error('QuipuSwap: swap price lower than limit price for sell trade');
       throw new HttpException(
         500,
         SWAP_PRICE_LOWER_THAN_LIMIT_PRICE_ERROR_MESSAGE(

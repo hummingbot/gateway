@@ -1,6 +1,6 @@
+import BigNumber from "bignumber.js";
 import { NetworkType, Nullable, Optional, QSNetwork, Standard, SupportedNetwork, Token, TokenAddress, TokenId, TokenWithQSNetworkType, Undefined } from "./types";
 import { TEZOS_TOKEN, networksQuipuTokens } from "../config/tokens";
-import BigNumber from "bignumber.js";
 import { getSavedTokensApi } from "./local.storage";
 import { mapBackendToken } from "./backend.token.map";
 import { InvalidTokensListError } from "./errors";

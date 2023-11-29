@@ -48,9 +48,9 @@ const GHOSTNET_NETWORK: QSNetwork = {
     type: QSNetworkType.TEST
 };
 
-const networks: Record<SupportedNetwork, QSNetwork> = {
+const networks = {
     [NetworkType.MAINNET]: MAINNET_NETWORK,
-    [NetworkType.GHOSTNET]: GHOSTNET_NETWORK
+    [NetworkType.GHOSTNET]: GHOSTNET_NETWORK,
 };
 
 export const networkInfo = (network: SupportedNetwork) => networks[network];

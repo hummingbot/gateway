@@ -1,24 +1,10 @@
 import BigNumber from 'bignumber.js';
 import { Trade } from 'swap-router-sdk';
 
-export declare enum NetworkType {
-    MAINNET = "mainnet",
-    GHOSTNET = "ghostnet",
-    MONDAYNET = "mondaynet",
-    DAILYNET = "dailynet",
-    DELPHINET = "delphinet",
-    EDONET = "edonet",
-    FLORENCENET = "florencenet",
-    GRANADANET = "granadanet",
-    HANGZHOUNET = "hangzhounet",
-    ITHACANET = "ithacanet",
-    JAKARTANET = "jakartanet",
-    KATHMANDUNET = "kathmandunet",
-    LIMANET = "limanet",
-    MUMBAINET = "mumbainet",
-    NAIROBINET = "nairobinet",
-    OXFORDNET = "oxfordnet",
-    CUSTOM = "custom"
+
+export const NetworkType: Record<string, SupportedNetwork> = {
+    MAINNET: "mainnet",
+    GHOSTNET: "ghostnet"
 }
 
 export type Optional<T> = T | null | undefined;
@@ -59,7 +45,7 @@ export interface Token extends TokenAddress {
 
 export type TokensMap = Map<string, Nullable<Token>>;
 
-export type SupportedNetwork = NetworkType.MAINNET | NetworkType.GHOSTNET;
+export type SupportedNetwork = 'mainnet' | 'ghostnet';
 
 export enum ConnectType {
     DEFAULT = 'DEFAULT',

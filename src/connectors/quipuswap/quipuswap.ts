@@ -12,7 +12,6 @@ import { TezosToolkit } from "@taquito/taquito";
 export class QuipuSwap extends QuipuBase {
   private static _instances: { [name: string]: QuipuSwap };
   private _gasLimitEstimate: number;
-  public isPlenty = true;
 
   constructor(network: SupportedNetwork) {
     const config = QuipuswapConfig.config;
@@ -122,7 +121,7 @@ export class QuipuSwap extends QuipuBase {
         operations: batchOp.results
       };
     } else {
-      throw new UniswapishPriceError('Plenty: trade failed' + status);
+      throw new UniswapishPriceError('QuipuSwap: trade failed' + status);
     }
   }
 }

@@ -1,3 +1,4 @@
+import BigNumber from "bignumber.js";
 import {
     TokenStandardEnum,
     Trade,
@@ -7,7 +8,6 @@ import { RoutePair } from "swap-router-sdk/dist/interface/route-pair.interface";
 import { getTokenIdFromSlug, getTokenSlug, isExist, isTezosToken } from "./shared/helpers";
 import { SwapPair, Token } from "./shared/types";
 import { MAX_HOPS_COUNT } from "./config/constants";
-import BigNumber from "bignumber.js";
 import { calculateTradeExactInput } from "./trade";
 import { WhitelistedPair } from "swap-router-sdk/dist/interface/whitelisted-pair.interface";
 
