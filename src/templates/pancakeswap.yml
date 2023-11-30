@@ -31,6 +31,6 @@ contractAddresses:
     pancakeswapV3QuoterV2ContractAddress: '0xB048Bbc1Ee6b733FFfCFb9e9CeF7375518e25997'
   testnet:
     routerAddress: '0xdc4904b5f716Ff30d8495e35dC99c109bb5eCf81'
-    pancakeswappV3SmartOrderRouterAddress: '0x1b81D678ffb9C0263b24A97847620C99d213eB14'
-    pancakeswappV3NftManagerAddress: '0x427bF5b37357632377eCbEC9de3626C71A5396c1'
-    pancakeswappV3QuoterV2ContractAddress: '0xbC203d7f83677c7ed3F7acEc959963E7F4ECC5C2'
+    pancakeswapV3SmartOrderRouterAddress: '0x1b81D678ffb9C0263b24A97847620C99d213eB14'
+    pancakeswapV3NftManagerAddress: '0x427bF5b37357632377eCbEC9de3626C71A5396c1'
+    pancakeswapV3QuoterV2ContractAddress: '0xbC203d7f83677c7ed3F7acEc959963E7F4ECC5C2'
