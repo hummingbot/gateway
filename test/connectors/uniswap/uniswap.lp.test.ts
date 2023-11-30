@@ -262,7 +262,7 @@ describe('verify UniswapLP Nft functions', () => {
       WETH,
       '10',
       '10',
-      500,
+      'LOWEST',
       1,
       10,
       0,
