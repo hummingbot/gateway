@@ -62,13 +62,6 @@ describe('Plenty', () => {
     });
   });
 
-  describe('ctezContract', () => {
-    it('should return the ctez contract', async () => {
-      const contract = await plenty.ctezContract(tezos);
-      expect(contract).toBeDefined();
-    });
-  });
-
   describe('tokenList', () => {
     it('should return the token list', () => {
       const tokenList = plenty.tokenList;

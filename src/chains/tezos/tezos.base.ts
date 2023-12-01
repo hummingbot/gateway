@@ -54,6 +54,7 @@ export class TezosBase {
 
   private tzktURL: string;
   private _tzktApiClient: TzktApiClient;
+  public ctezAdminAddress: string;
 
   constructor(network: string) {
     const config = getTezosConfig('tezos', network);
@@ -62,6 +63,7 @@ export class TezosBase {
     this.tzktURL = config.network.tzktURL;
     this.tokenListType = config.network.tokenListType;
     this.tokenListSource = config.network.tokenListSource;
+    this.ctezAdminAddress = config.network.ctezAdminAddress;
     this._provider = new TezosToolkit(this.rpcUrl);
     this._rpcClient = new RpcClient(this.rpcUrl);
     this._tzktApiClient = new TzktApiClient(this.tzktURL);
@@ -117,10 +119,10 @@ export class TezosBase {
     return this._contractMap[address];
   }
 
-  // returns the contract storage for a given address (cached for 15 seconds)
+  // returns the contract storage for a given address (cached for 12 seconds)
   async getContractStorage(address: string) {
     const timestamp = Date.now();
-    if (!this._contractStorageMap[address] || timestamp - this._contractStorageMap[address].timestamp > 15000) {
+    if (!this._contractStorageMap[address] || timestamp - this._contractStorageMap[address].timestamp > 12000) {
       const contract = await this.getContract(address);
       this._contractStorageMap[address] = {
         storage: await contract.storage(),

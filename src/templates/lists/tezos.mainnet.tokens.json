@@ -511,6 +511,14 @@
       "decimals": 12,
       "standard": "FA2",
       "tokenId": 0
+    },
+    {
+      "name": "Tezos Domains Governance Token",
+      "symbol": "TED",
+      "decimals": 6,
+      "standard": "FA2",
+      "address": "KT1GY5qCWwmESfTv9dgjYyTYs2T5XGDSvRp1",
+      "tokenId": 0
     }
   ]
 }

@@ -1,8 +1,8 @@
 import fse from 'fs-extra';
 import { Xdc } from '../../chains/xdc/xdc';
 import { Cosmos } from '../../chains/cosmos/cosmos';
-import { Injective } from '../../chains/injective/injective';
 import { Tezos } from '../../chains/tezos/tezos';
+import { XRPL } from '../../chains/xrpl/xrpl';
 import { Kujira } from '../../chains/kujira/kujira';
 
 import {
@@ -120,21 +120,6 @@ export async function addWallet(
         )
       ).accountId;
       encryptedPrivateKey = connection.encrypt(req.privateKey, passphrase);
-    } else if (connection instanceof Injective) {
-      const ethereumAddress = connection.getWalletFromPrivateKey(
-        req.privateKey
-      ).address;
-      const subaccountId = req.accountId;
-      if (subaccountId !== undefined) {
-        address = ethereumAddress + subaccountId.toString(16).padStart(24, '0');
-
-        encryptedPrivateKey = await connection.encrypt(
-          req.privateKey,
-          passphrase
-        );
-      } else {
-        throw new Error('Injective wallet requires a subaccount id');
-      }
     } else if (connection instanceof Tezos) {
       const tezosWallet = await connection.getWalletFromPrivateKey(
         req.privateKey
@@ -155,6 +140,12 @@ export async function addWallet(
       } else {
         throw new Error('Kujira wallet requires an account number.');
       }
+    } else if (connection instanceof XRPL) {
+      address = connection.getWalletFromSeed(req.privateKey).classicAddress;
+      encryptedPrivateKey = await connection.encrypt(
+        req.privateKey,
+        passphrase
+      );
     }
 
     if (address === undefined || encryptedPrivateKey === undefined) {
@@ -184,7 +175,11 @@ export async function signMessage(
   if (req.chain === 'tezos') {
     const chain: Tezosish = await getInitializedChain(req.chain, req.network);
     const wallet = await chain.getWallet(req.address);
-    return { signature: (await wallet.signer.sign("0x03" + req.message)).sbytes.slice(4) };
+    return {
+      signature: (await wallet.signer.sign('0x03' + req.message)).sbytes.slice(
+        4
+      ),
+    };
   } else {
     const chain: Ethereumish = await getInitializedChain(
       req.chain,
