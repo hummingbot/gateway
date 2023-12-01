@@ -119,7 +119,7 @@ export const startGateway = async () => {
       Math.random().toString(16).substr(2, 14)
     );
   }
-  logger.info(`Gateway Version: ${gateway_version}`) // display gateway version
+  logger.info(`Gateway Version: ${gateway_version}`); // display gateway version
   logger.info(`⚡️ Starting Gateway API on port ${port}...`);
   if (ConfigManagerV2.getInstance().get('server.unsafeDevModeWithHTTP')) {
     logger.info('Running in UNSAFE HTTP! This could expose private keys.');
