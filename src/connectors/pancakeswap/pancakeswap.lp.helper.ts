@@ -3,25 +3,30 @@ import {
   SERVICE_UNITIALIZED_ERROR_CODE,
   SERVICE_UNITIALIZED_ERROR_MESSAGE,
 } from '../../services/error-handler';
-import { UniswapConfig } from './uniswap.config';
+import { PancakeSwapConfig } from './pancakeswap.config';
 import { Contract, ContractInterface } from '@ethersproject/contracts';
-import { Token, CurrencyAmount, Percent, Price } from '@uniswap/sdk-core';
-import * as uniV3 from '@uniswap/v3-sdk';
+import {
+  Token,
+  Price,
+  CurrencyAmount,
+  Percent,
+} from '@pancakeswap/swap-sdk-core';
+import * as v3 from '@pancakeswap/v3-sdk';
 import { AlphaRouter } from '@uniswap/smart-order-router';
 import { providers, Wallet, Signer, utils } from 'ethers';
 import { percentRegexp } from '../../services/config-manager-v2';
-import { Ethereum } from '../../chains/ethereum/ethereum';
 import {
   PoolState,
   RawPosition,
   AddPosReturn,
-  ReduceLiquidityData,
-} from './uniswap.lp.interfaces';
+} from './pancakeswap.lp.interfaces';
 import * as math from 'mathjs';
 import { getAddress } from 'ethers/lib/utils';
+import { RemoveLiquidityOptions } from '@pancakeswap/v3-sdk';
+import { BinanceSmartChain } from '../../chains/binance-smart-chain/binance-smart-chain';
 
-export class UniswapLPHelper {
-  protected ethereum: Ethereum;
+export class PancakeswapLPHelper {
+  protected chain: BinanceSmartChain;
   protected chainId;
   private _router: string;
   private _nftManager: string;
@@ -29,30 +34,32 @@ export class UniswapLPHelper {
   private _routerAbi: ContractInterface;
   private _nftAbi: ContractInterface;
   private _poolAbi: ContractInterface;
-  private _alphaRouter: AlphaRouter;
+  private _alphaRouter: AlphaRouter | undefined;
   private tokenList: Record<string, Token> = {};
-  private _chain: string;
+  private _chainName: string;
   private _ready: boolean = false;
   public abiDecoder: any;
 
   constructor(chain: string, network: string) {
-    this.ethereum = Ethereum.getInstance(network);
-    this._chain = chain;
-    this.chainId = this.ethereum.chainId;
-    this._alphaRouter = new AlphaRouter({
-      chainId: this.chainId,
-      provider: this.ethereum.provider,
-    });
+    this.chain = BinanceSmartChain.getInstance(network);
+    this._chainName = chain;
+    this.chainId = this.chain.chainId;
+    // this._alphaRouter = new AlphaRouter({
+    //   chainId: this.chainId,
+    //   provider: this.chain.provider,
+    // });
+    this._alphaRouter = undefined;
     this._router =
-      UniswapConfig.config.uniswapV3SmartOrderRouterAddress(network);
-    this._nftManager = UniswapConfig.config.uniswapV3NftManagerAddress(network);
-    this._ttl = UniswapConfig.config.ttl;
+      PancakeSwapConfig.config.pancakeswapV3SmartOrderRouterAddress(network);
+    this._nftManager =
+      PancakeSwapConfig.config.pancakeswapV3NftManagerAddress(network);
+    this._ttl = PancakeSwapConfig.config.ttl;
     this._routerAbi =
-      require('@uniswap/v3-periphery/artifacts/contracts/SwapRouter.sol/SwapRouter.json').abi;
+      require('@pancakeswap/v3-periphery/artifacts/contracts/SwapRouter.sol/SwapRouter.json').abi;
     this._nftAbi =
-      require('@uniswap/v3-periphery/artifacts/contracts/NonfungiblePositionManager.sol/NonfungiblePositionManager.json').abi;
+      require('@pancakeswap/v3-periphery/artifacts/contracts/NonfungiblePositionManager.sol/NonfungiblePositionManager.json').abi;
     this._poolAbi =
-      require('@uniswap/v3-core/artifacts/contracts/UniswapV3Pool.sol/UniswapV3Pool.json').abi;
+      require('@pancakeswap/v3-core/artifacts/contracts/interfaces/IPancakeV3Pool.sol/IPancakeV3Pool.json').abi;
     this.abiDecoder = require('abi-decoder');
     this.abiDecoder.addABI(this._nftAbi);
     this.abiDecoder.addABI(this._routerAbi);
@@ -62,7 +69,7 @@ export class UniswapLPHelper {
     return this._ready;
   }
 
-  public get alphaRouter(): AlphaRouter {
+  public get alphaRouter(): AlphaRouter | undefined {
     return this._alphaRouter;
   }
 
@@ -101,12 +108,12 @@ export class UniswapLPHelper {
   }
 
   public async init() {
-    if (this._chain == 'ethereum' && !this.ethereum.ready())
+    if (this._chainName == 'binance-smart-chain' && !this.chain.ready())
       throw new InitializationError(
         SERVICE_UNITIALIZED_ERROR_MESSAGE('ETH'),
         SERVICE_UNITIALIZED_ERROR_CODE
       );
-    for (const token of this.ethereum.storedTokenList) {
+    for (const token of this.chain.storedTokenList) {
       this.tokenList[token.address] = new Token(
         this.chainId,
         token.address,
@@ -124,7 +131,7 @@ export class UniswapLPHelper {
   }
 
   getSlippagePercentage(): Percent {
-    const allowedSlippage = UniswapConfig.config.allowedSlippage;
+    const allowedSlippage = PancakeSwapConfig.config.allowedSlippage;
     const nd = allowedSlippage.match(percentRegexp);
     if (nd) return new Percent(nd[1], nd[2]);
     throw new Error(
@@ -152,19 +159,16 @@ export class UniswapLPHelper {
 
   async getPoolState(
     poolAddress: string,
-    fee: uniV3.FeeAmount
+    fee: v3.FeeAmount
   ): Promise<PoolState> {
-    const poolContract = this.getPoolContract(
-      poolAddress,
-      this.ethereum.provider
+    const poolContract = this.getPoolContract(poolAddress, this.chain.provider);
+    const minTick = v3.nearestUsableTick(
+      v3.TickMath.MIN_TICK,
+      v3.TICK_SPACINGS[fee]
     );
-    const minTick = uniV3.nearestUsableTick(
-      uniV3.TickMath.MIN_TICK,
-      uniV3.TICK_SPACINGS[fee]
-    );
-    const maxTick = uniV3.nearestUsableTick(
-      uniV3.TickMath.MAX_TICK,
-      uniV3.TICK_SPACINGS[fee]
+    const maxTick = v3.nearestUsableTick(
+      v3.TickMath.MAX_TICK,
+      v3.TICK_SPACINGS[fee]
     );
     const poolDataReq = await Promise.allSettled([
       poolContract.liquidity(),
@@ -219,11 +223,11 @@ export class UniswapLPHelper {
   ): Promise<string[]> {
     const fetchPriceTime = [];
     const prices = [];
-    const fee = uniV3.FeeAmount[tier as keyof typeof uniV3.FeeAmount];
+    const fee = v3.FeeAmount[tier as keyof typeof v3.FeeAmount];
     const poolContract = new Contract(
-      uniV3.Pool.getAddress(token0, token1, fee),
+      v3.Pool.getAddress(token0, token1, fee),
       this.poolAbi,
-      this.ethereum.provider
+      this.chain.provider
     );
     for (
       let x = Math.ceil(period / interval) * interval;
@@ -236,7 +240,7 @@ export class UniswapLPHelper {
       const response = await poolContract.observe(fetchPriceTime);
       for (let twap = 0; twap < response.tickCumulatives.length - 1; twap++) {
         prices.push(
-          uniV3
+          v3
             .tickToPrice(
               token0,
               token1,
@@ -277,7 +281,8 @@ export class UniswapLPHelper {
     token0: Token,
     token1: Token,
     wallet: Wallet
-  ): ReduceLiquidityData {
+  ): RemoveLiquidityOptions {
+    //   }; //     recipient: string; //     expectedCurrencyOwed1: CurrencyAmount<Token>; //     expectedCurrencyOwed0: CurrencyAmount<Token>; //   collectOptions: { //   burnToken: boolean; //   deadline: number; //   slippageTolerance: Percent; //   liquidityPercentage: Percent; //   tokenId: number; // {
     return {
       tokenId: tokenId,
       liquidityPercentage: this.getPercentage(percent),
@@ -287,7 +292,7 @@ export class UniswapLPHelper {
       collectOptions: {
         expectedCurrencyOwed0: CurrencyAmount.fromRawAmount(token0, '0'),
         expectedCurrencyOwed1: CurrencyAmount.fromRawAmount(token1, '0'),
-        recipient: wallet.address,
+        recipient: <`0x${string}`>wallet.address,
       },
     };
   }
@@ -298,7 +303,7 @@ export class UniswapLPHelper {
     token1: Token,
     amount0: string,
     amount1: string,
-    fee: uniV3.FeeAmount,
+    fee: v3.FeeAmount,
     lowerPrice: number,
     upperPrice: number,
     tokenId: number = 0
@@ -311,10 +316,10 @@ export class UniswapLPHelper {
     const lowerPriceInFraction = math.fraction(lowerPrice) as math.Fraction;
     const upperPriceInFraction = math.fraction(upperPrice) as math.Fraction;
     const poolData = await this.getPoolState(
-      uniV3.Pool.getAddress(token0, token1, fee),
+      v3.Pool.getAddress(token0, token1, fee),
       fee
     );
-    const pool = new uniV3.Pool(
+    const pool = new v3.Pool(
       token0,
       token1,
       poolData.fee,
@@ -323,8 +328,10 @@ export class UniswapLPHelper {
       poolData.tick
     );
 
-    const addLiquidityOptions =
-      tokenId === 0 ? { recipient: wallet.address } : { tokenId: tokenId };
+    const addLiquidityOptions = {
+      recipient: wallet.address,
+      tokenId: tokenId ? tokenId : 0,
+    };
 
     const swapOptions = {
       recipient: wallet.address,
@@ -332,8 +339,8 @@ export class UniswapLPHelper {
       deadline: this.ttl,
     };
 
-    const tickLower = uniV3.nearestUsableTick(
-      uniV3.priceToClosestTick(
+    const tickLower = v3.nearestUsableTick(
+      v3.priceToClosestTick(
         new Price(
           token0,
           token1,
@@ -345,11 +352,11 @@ export class UniswapLPHelper {
             .toString()
         )
       ),
-      uniV3.TICK_SPACINGS[fee]
+      v3.TICK_SPACINGS[fee]
     );
 
-    const tickUpper = uniV3.nearestUsableTick(
-      uniV3.priceToClosestTick(
+    const tickUpper = v3.nearestUsableTick(
+      v3.priceToClosestTick(
         new Price(
           token0,
           token1,
@@ -361,22 +368,20 @@ export class UniswapLPHelper {
             .toString()
         )
       ),
-      uniV3.TICK_SPACINGS[fee]
+      v3.TICK_SPACINGS[fee]
     );
 
-    const position = uniV3.Position.fromAmounts({
+    const position = v3.Position.fromAmounts({
       pool: pool,
       tickLower:
-        tickLower === tickUpper
-          ? tickLower - uniV3.TICK_SPACINGS[fee]
-          : tickLower,
+        tickLower === tickUpper ? tickLower - v3.TICK_SPACINGS[fee] : tickLower,
       tickUpper: tickUpper,
       amount0: utils.parseUnits(amount0, token0.decimals).toString(),
       amount1: utils.parseUnits(amount1, token1.decimals).toString(),
       useFullPrecision: true,
     });
 
-    const methodParameters = uniV3.NonfungiblePositionManager.addCallParameters(
+    const methodParameters = v3.NonfungiblePositionManager.addCallParameters(
       position,
       { ...swapOptions, ...addLiquidityOptions }
     );
@@ -387,7 +392,7 @@ export class UniswapLPHelper {
     wallet: Wallet,
     tokenId: number,
     decreasePercent: number
-  ): Promise<uniV3.MethodParameters> {
+  ): Promise<v3.MethodParameters> {
     // Reduce position and burn
     const positionData = await this.getRawPosition(wallet, tokenId);
     const token0 = this.getTokenByAddress(positionData.token0);
@@ -398,10 +403,10 @@ export class UniswapLPHelper {
         `One of the tokens in this position isn't recognized. $token0: ${token0}, $token1: ${token1}`
       );
     }
-    const poolAddress = uniV3.Pool.getAddress(token0, token1, fee);
+    const poolAddress = v3.Pool.getAddress(token0, token1, fee);
     const poolData = await this.getPoolState(poolAddress, fee);
-    const position = new uniV3.Position({
-      pool: new uniV3.Pool(
+    const position = new v3.Position({
+      pool: new v3.Pool(
         token0,
         token1,
         poolData.fee,
@@ -413,7 +418,7 @@ export class UniswapLPHelper {
       tickUpper: positionData.tickUpper,
       liquidity: positionData.liquidity,
     });
-    return uniV3.NonfungiblePositionManager.removeCallParameters(
+    return v3.NonfungiblePositionManager.removeCallParameters(
       position,
       this.getReduceLiquidityData(
         decreasePercent,

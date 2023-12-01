@@ -41,6 +41,7 @@ import { Curve } from '../connectors/curve/curve';
 import { Kujira } from '../chains/kujira/kujira';
 import { KujiraCLOB } from '../connectors/kujira/kujira';
 import { XRPLCLOB } from '../connectors/xrpl/xrpl';
+import { PancakeswapLP } from '../connectors/pancakeswap/pancakeswap.lp';
 
 export type ChainUnion =
   | Algorand
@@ -206,6 +207,8 @@ export async function getConnector<T>(
     connectorInstance = Ref.getInstance(chain, network);
   } else if (chain === 'binance-smart-chain' && connector === 'pancakeswap') {
     connectorInstance = PancakeSwap.getInstance(chain, network);
+  } else if (chain === 'binance-smart-chain' && connector === 'pancakeswapLP') {
+    connectorInstance = PancakeswapLP.getInstance(chain, network);
   } else if (connector === 'sushiswap') {
     connectorInstance = Sushiswap.getInstance(chain, network);
   } else if (chain === 'xdc' && connector === 'xsswap') {
