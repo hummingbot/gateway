@@ -68,26 +68,21 @@ export function getQuipuTrade(
   quipuswap: QuipuSwap,
   req: PriceRequest
 ) {
-  const baseToken: Token = getFullTokenFromSymbol(
-    quipuswap,
-    req.base
-  );
   const requestAmount = new BigNumber(
-    BigNumber(req.amount).toFixed(baseToken.metadata.decimals).replace('.', '')
+    req.amount
   );
 
   let expectedTrade: TradeInfo;
   let expectedAmount: BigNumber;
   if (req.side === 'BUY') {
     expectedTrade = quipuswap.estimateBuyTrade(
-      req.quote,
       req.base,
+      req.quote,
       requestAmount,
-      req.allowedSlippage
     );
     expectedAmount = expectedTrade.inputAmount;
   } else {
-    expectedTrade = quipuswap.estimateBuyTrade(
+    expectedTrade = quipuswap.estimateSellTrade(
       req.base,
       req.quote,
       requestAmount,

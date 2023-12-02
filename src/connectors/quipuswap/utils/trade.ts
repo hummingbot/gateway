@@ -1,6 +1,6 @@
 import BigNumber from "bignumber.js";
 import { DexTypeEnum, Trade, TradeOperation } from "swap-router-sdk";
-import { findAmmSwapOutput, findFlatCfmmSwapOutput, findPlentyBridgeSwapOutput, findQuipuCurveLikeSwapOutput, findQuipuSwapV3Output, findSpicyWrapOutput } from "./swap.outputs";
+import { findAmmSwapInput, findAmmSwapOutput, findFlatCfmmSwapOutput, findPlentyBridgeSwapOutput, findQuipuCurveLikeSwapOutput, findQuipuSwapV3Output, findSpicyWrapOutput } from "./swap.outputs";
 
 
 const findSwapOutput = (aTokenAmount: BigNumber, pair: TradeOperation) => {
@@ -59,6 +59,59 @@ export const calculateTradeExactInput = (inputAssetAmount: BigNumber, routePairs
 
         trade.push(tradeOperation);
         currentInput = tradeOperation.bTokenAmount;
+    }
+
+    return trade;
+};
+
+const findSwapInput = (bTokenAmount: BigNumber, pair: TradeOperation) => {
+    switch (pair.dexType) {
+        case DexTypeEnum.Youves:
+        case DexTypeEnum.PlentyStableSwap:
+        case DexTypeEnum.PlentyCtez:
+            // return findFlatCfmmSwapInput(bTokenAmount, pair);
+            return BigNumber(Infinity);
+
+        case DexTypeEnum.QuipuSwapCurveLike:
+            // return findQuipuCurveLikeSwapInput(bTokenAmount, pair);
+            return new BigNumber(Infinity);
+
+        case DexTypeEnum.PlentyBridge:
+            return new BigNumber(0);
+
+        case DexTypeEnum.QuipuSwapV3:
+            // return findQuipuSwapV3Input(bTokenAmount, pair);
+            return new BigNumber(Infinity);
+
+        case DexTypeEnum.YupanaWtez:
+            return bTokenAmount;
+
+        default:
+            return findAmmSwapInput(bTokenAmount, pair);
+    }
+};
+
+const getTradeOperationExactOutput = (bTokenAmount: BigNumber, pair: TradeOperation) => ({
+    ...pair,
+    bTokenAmount: bTokenAmount,
+    aTokenAmount: findSwapInput(bTokenAmount, pair)
+});
+
+export const calculateTradeExactOutput = (outputAssetAmount: BigNumber, routePairs: Trade) => {
+    const trade = [];
+
+    if (routePairs.length > 0) {
+        const lastTradeIndex = routePairs.length - 1;
+        const firstTradeOperation = getTradeOperationExactOutput(outputAssetAmount, routePairs[lastTradeIndex]);
+        trade.unshift(firstTradeOperation);
+
+        if (routePairs.length > 1) {
+            for (let i = lastTradeIndex - 1; i >= 0; i--) {
+                const previousTradeInput = trade[0].aTokenAmount;
+                const tradeOperation = getTradeOperationExactOutput(previousTradeInput, routePairs[i]);
+                trade.unshift(tradeOperation);
+            }
+        }
     }
 
     return trade;

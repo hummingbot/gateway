@@ -1,14 +1,11 @@
-import BigNumber from "bignumber.js";
 import {
     TokenStandardEnum,
-    Trade,
     getAllowedRoutePairsCombinations as originalGetAllowedRoutePairsCombinations
 } from "swap-router-sdk";
 import { RoutePair } from "swap-router-sdk/dist/interface/route-pair.interface";
 import { getTokenIdFromSlug, getTokenSlug, isExist, isTezosToken } from "./shared/helpers";
 import { SwapPair, Token } from "./shared/types";
 import { MAX_HOPS_COUNT } from "./config/constants";
-import { calculateTradeExactInput } from "./trade";
 import { WhitelistedPair } from "swap-router-sdk/dist/interface/whitelisted-pair.interface";
 
 const FALLBACK_TOKEN_ID = 0;
@@ -48,19 +45,4 @@ export const getRoutePairsCombinations = (
         whitelistedPairs,
         MAX_HOPS_COUNT
     );
-};
-
-
-export const getTradeWithSlippageTolerance = (
-    inputAmount: BigNumber,
-    bestTrade: Trade,
-    tradingSlippage: BigNumber
-) => {
-    const originalValue = calculateTradeExactInput(
-        inputAmount,
-        bestTrade,
-        tradingSlippage.toNumber()
-    );
-
-    return bestTrade && originalValue;
 };

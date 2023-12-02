@@ -111,3 +111,11 @@ export const findAmmSwapOutput = (aTokenAmount: BigNumber, pair: TradeOperation)
     const denominator = pair.aTokenPool.plus(aTokenAmountWithFee);
     return numerator.idiv(denominator);
 };
+
+export const findAmmSwapInput = (bTokenAmount: BigNumber, pair: TradeOperation) => {
+    const feeRatio = getPairFeeRatio(pair);
+    const numerator = pair.aTokenPool.times(bTokenAmount);
+    const denominator = pair.bTokenPool.minus(bTokenAmount).times(feeRatio);
+    const input = numerator.idiv(denominator).plus(1);
+    return input.isGreaterThan(0) ? input : new BigNumber(Infinity);
+};

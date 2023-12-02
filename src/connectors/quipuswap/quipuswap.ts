@@ -44,14 +44,17 @@ export class QuipuSwap extends QuipuBase {
    * @param allowedSlippageStr (Optional) should be of the form '1/10'.
    */
   public getAllowedSlippage(allowedSlippageStr?: string): BigNumber {
-    if (allowedSlippageStr != null && isFractionString(allowedSlippageStr)) {
+    if (allowedSlippageStr !== undefined && isFractionString(allowedSlippageStr)) {
       const fractionSplit = allowedSlippageStr.split('/');
       const numerator = BigNumber(fractionSplit[0]);
       const denominator = BigNumber(fractionSplit[1]);
       if (fractionSplit[0] !== '0')
         return numerator.multipliedBy(100).dividedBy(denominator);
     }
-    return BigNumber(QuipuswapConfig.config.allowedSlippage);
+    const fractionSplit = QuipuswapConfig.config.allowedSlippage.split('/');
+    const numerator = BigNumber(fractionSplit[0]);
+    const denominator = BigNumber(fractionSplit[1]);
+    return BigNumber(numerator.multipliedBy(100).dividedBy(denominator));
   }
 
   /**
@@ -72,8 +75,7 @@ export class QuipuSwap extends QuipuBase {
     allowedSlippage?: string
   ): TradeInfo {
     const allowedSlippageBig = this.getAllowedSlippage(allowedSlippage);
-    const sellingInfo = this.getSellingInfo(baseToken, quoteToken, amount, allowedSlippageBig);
-    return sellingInfo;
+    return this.getSellingInfo(baseToken, quoteToken, amount, allowedSlippageBig);
   }
 
   /**
@@ -91,11 +93,8 @@ export class QuipuSwap extends QuipuBase {
     baseToken: string,
     quoteToken: string,
     amount: BigNumber,
-    allowedSlippage?: string
   ): TradeInfo {
-    const allowedSlippageBig = this.getAllowedSlippage(allowedSlippage);
-    const buyingInfo = this.getBuyingInfo(baseToken, quoteToken, amount, allowedSlippageBig);
-    return buyingInfo;
+    return this.getBuyingInfo(baseToken, quoteToken, amount);
   }
 
   /**

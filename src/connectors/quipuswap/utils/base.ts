@@ -7,11 +7,12 @@ import { STABLESWAP_REFERRAL, networkInfo } from './config/config';
 import { QUIPUSWAP_REFERRAL_CODE } from './config/constants';
 import { SwapPair } from './shared/types';
 import { getWhitelistedPairs } from './api';
-import { getRoutePairsCombinations, getTradeWithSlippageTolerance } from './swap.router.sdk.adapters';
+import { getRoutePairsCombinations } from './swap.router.sdk.adapters';
 import { Trade, getBestTradeExactInput, getBestTradeExactOutput, getTradeInputAmount, getTradeOpParams, getTradeOutputAmount, parseTransferParamsToParamsWithKind } from 'swap-router-sdk';
 import { ResponseInterface } from 'swap-router-sdk/dist/interface/response.interface';
 import { RoutePair } from 'swap-router-sdk/dist/interface/route-pair.interface';
 import { WhitelistedPair } from 'swap-router-sdk/dist/interface/whitelisted-pair.interface';
+import { calculateTradeExactInput, calculateTradeExactOutput } from './trade';
 
 
 export class QuipuBase {
@@ -111,51 +112,58 @@ export class QuipuBase {
     const swapPair: SwapPair = { inputToken, outputToken };
     const { outputAmount, trade } = this.getOutputTrade(inputAmount, swapPair);
 
-    const bestTradeWithSlippageTolerance = getTradeWithSlippageTolerance(
+    if (!trade) {
+      throw new Error('No trade found');
+    }
+
+    const bestTradeWithSlippageTolerance = calculateTradeExactInput(
       toAtomic(inputAmount, inputToken),
       trade,
-      slippageTolerance
+      slippageTolerance.toNumber()
     );
 
-    if (!bestTradeWithSlippageTolerance) {
-      throw new Error('No best trade found');
-    }
+    const lastBestTrade = bestTradeWithSlippageTolerance[bestTradeWithSlippageTolerance.length - 1];
+    const outputTokenDecimalPower = BigNumber(10).pow(outputToken.metadata.decimals);
+    const outputAmountWithSlippage = BigNumber(lastBestTrade.bTokenAmount).div(outputTokenDecimalPower);
 
     return {
       trade: bestTradeWithSlippageTolerance,
       inputToken: inputToken,
       inputAmount: inputAmount,
       outputToken: outputToken,
-      outputAmount: outputAmount,
+      outputAmount: outputAmountWithSlippage,
       price: outputAmount.div(inputAmount),
     };
   };
 
 
-  protected getBuyingInfo = (outputTokenSymbol: string, inputTokenSymbol: string, outputAmount: BigNumber, slippageTolerance: BigNumber) => {
+  protected getBuyingInfo = (outputTokenSymbol: string, inputTokenSymbol: string, outputAmount: BigNumber) => {
     const inputToken = this.getTokenFromSymbol(inputTokenSymbol);
     const outputToken = this.getTokenFromSymbol(outputTokenSymbol);
 
     const swapPair: SwapPair = { inputToken, outputToken };
     const { inputAmount, trade } = this.getInputTrade(outputAmount, swapPair);
 
-    const bestTradeWithSlippageTolerance = getTradeWithSlippageTolerance(
-      toAtomic(inputAmount, inputToken),
-      trade,
-      slippageTolerance
+    if (!trade) {
+      throw new Error('No trade found');
+    }
+
+    const bestTradeWithSlippageTolerance = calculateTradeExactOutput(
+      toAtomic(outputAmount, outputToken),
+      trade
     );
 
-    if (!bestTradeWithSlippageTolerance) {
-      throw new Error('No best trade found');
-    }
+    const firstBestTrade = bestTradeWithSlippageTolerance[0];
+    const inputTokenDecimalPower = BigNumber(10).pow(inputToken.metadata.decimals);
+    const inputAmountWithSlippage = BigNumber(firstBestTrade.aTokenAmount).div(inputTokenDecimalPower);
 
     return {
       trade: bestTradeWithSlippageTolerance,
       inputToken: inputToken,
-      inputAmount: inputAmount,
+      inputAmount: inputAmountWithSlippage,
       outputToken: outputToken,
       outputAmount: outputAmount,
-      price: outputAmount.div(inputAmount),
+      price: inputAmount.div(outputAmount),
     };
   };
 
