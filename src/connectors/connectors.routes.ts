@@ -19,6 +19,7 @@ import { DexalotCLOBConfig } from './dexalot/dexalot.clob.config';
 import { TinymanConfig } from './tinyman/tinyman.config';
 import { CurveConfig } from './curve/curveswap.config';
 import { PlentyConfig } from './plenty/plenty.config';
+import { XRPLCLOBConfig } from './xrpl/xrpl.clob.config';
 import { KujiraConfig } from './kujira/kujira.config';
 import { OsmosisConfig } from '../chains/osmosis/osmosis.config';
 
@@ -138,6 +139,12 @@ export namespace ConnectorsRoutes {
             trading_type: PlentyConfig.config.tradingTypes,
             chain_type: PlentyConfig.config.chainType,
             available_networks: PlentyConfig.config.availableNetworks,
+          },
+          {
+            name: 'xrpl',
+            trading_type: XRPLCLOBConfig.config.tradingTypes,
+            chain_type: XRPLCLOBConfig.config.chainType,
+            available_networks: XRPLCLOBConfig.config.availableNetworks,
           },
           {
             name: 'kujira',

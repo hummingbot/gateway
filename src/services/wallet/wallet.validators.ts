@@ -12,6 +12,10 @@ import {
 } from '../../chains/cosmos/cosmos.validators'
 
 const { fromBase64 } = require('@cosmjs/encoding');
+import {
+  invalidXRPLPrivateKeyError,
+  isXRPLSeedKey,
+} from '../../chains/xrpl/xrpl.validators';
 
 export const invalidAlgorandPrivateKeyOrMnemonicError: string =
   'The privateKey param is not a valid Algorand private key or mnemonic.';
@@ -66,7 +70,7 @@ export const isTezosPrivateKey = (str: string): boolean => {
   } catch {
     return false;
   }
-}
+};
 
 // given a request, look for a key called privateKey that is an Ethereum private key
 export const validatePrivateKey: Validator = mkSelectingValidator(
@@ -128,6 +132,11 @@ export const validatePrivateKey: Validator = mkSelectingValidator(
       invalidTezosPrivateKeyError,
       (val) => typeof val === 'string' && isTezosPrivateKey(val)
     ),
+    xrpl: mkValidator(
+      'privateKey',
+      invalidXRPLPrivateKeyError,
+      (val) => typeof val === 'string' && isXRPLSeedKey(val)
+    ),
     kujira: mkValidator(
       'privateKey',
       invalidKujiraPrivateKeyError,
@@ -166,6 +175,7 @@ export const validateChain: Validator = mkValidator(
       val === 'osmosis' ||
       val === 'binance-smart-chain' ||
       val === 'tezos' ||
+      val === 'xrpl' ||
       val === 'kujira')
 );
 
