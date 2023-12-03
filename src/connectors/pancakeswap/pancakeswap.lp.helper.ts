@@ -110,7 +110,7 @@ export class PancakeswapLPHelper {
   public async init() {
     if (this._chainName == 'binance-smart-chain' && !this.chain.ready())
       throw new InitializationError(
-        SERVICE_UNITIALIZED_ERROR_MESSAGE('ETH'),
+        SERVICE_UNITIALIZED_ERROR_MESSAGE('BinanceSmartChain'),
         SERVICE_UNITIALIZED_ERROR_CODE
       );
     for (const token of this.chain.storedTokenList) {
