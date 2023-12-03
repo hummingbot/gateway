@@ -373,22 +373,7 @@
   version "7.12.13"
   resolved "https://registry.yarnpkg.com/@babel/plugin-syntax-class-properties/-/plugin-syntax-class-properties-7.12.13.tgz#b5c987274c4a3a82b89714796931a6b53544ae10"
   integrity sha512-fm4idjKla0YahUNgFNLCB0qySdsoPiZP3iQE3rky0mBUtMZ23yDJ9SJdg6dXTSDnulOVqiF3Hgr9nbXvXTQZYA==
-  dependencies:**Before submitting this PR, please make sure**:
-
-- [ ] Your code builds clean without any errors or warnings
-- [ ] You are using approved title ("feat/", "fix/", "docs/", "refactor/")
-
-**A description of the changes proposed in the pull request**:
-
-
-
-**Tests performed by the developer**:
-
-
-
-**Tips for QA testing**:
-
-
+  dependencies:
     "@babel/helper-plugin-utils" "^7.12.13"
 
 "@babel/plugin-syntax-import-meta@^7.8.3":
