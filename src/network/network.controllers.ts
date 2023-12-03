@@ -19,6 +19,7 @@ import {
   getInitializedChain,
   UnsupportedChainException,
 } from '../services/connection-manager';
+import { XRPL } from '../chains/xrpl/xrpl';
 
 export async function getStatus(
   req: StatusRequest
@@ -96,6 +97,11 @@ export async function getStatus(
     const tezosConnections = Tezos.getConnectedInstances();
     connections = connections.concat(
       tezosConnections ? Object.values(tezosConnections) : []
+    );
+
+    const xrplConnections = XRPL.getConnectedInstances();
+    connections = connections.concat(
+      xrplConnections ? Object.values(xrplConnections) : []
     );
 
     const kujiraConnections = Kujira.getConnectedInstances();

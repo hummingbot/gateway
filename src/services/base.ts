@@ -5,6 +5,9 @@ import { isFractionString, isFloatString } from './validators';
 // the type of information source for tokens
 export type TokenListType = 'FILE' | 'URL';
 
+// the type of information source for markets
+export type MarketListType = 'FILE' | 'URL';
+
 // represent a token any chain, it may require some work arounds
 export interface TokenInfo {
   address: string;
