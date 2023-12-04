@@ -111,3 +111,15 @@ export const decodeStrategyId = (strategyIdRaw: string): string[] => {
 
   return [pairId, strategyIndex];
 };
+
+export const encodeStrategyId = (
+  strategyIndexRaw: string,
+  pairIdRaw: string
+): string => {
+  const pairId = BigInt(pairIdRaw);
+  const strategyIndex = BigInt(strategyIndexRaw);
+
+  const strategyID = (pairId << BigInt(128)) | strategyIndex;
+
+  return '0x' + strategyID.toString(16);
+};

@@ -3,6 +3,7 @@ import Decimal from 'decimal.js-light';
 
 import { Ethereum } from '../../chains/ethereum/ethereum';
 import { TokenInfo } from '../../chains/ethereum/ethereum-base';
+import { EVMTxBroadcaster } from '../../chains/ethereum/evm.broadcaster';
 
 import {
   ClobMarketsRequest,
@@ -49,14 +50,12 @@ export class CarbonCLOB implements CLOBish {
   public carbonContractConfig: Required<ContractsConfig>;
   public carbonSDK: Toolkit;
   public sdkCache: ChainCache;
+  public api: ContractsApi;
   private static _instances: { [name: string]: CarbonCLOB };
   private _chain: Ethereum;
   private _ready: boolean = false;
   private _conf: CarbonConfig.NetworkConfig;
-  private _api: ContractsApi;
-  private _decimalsMap: Map<string, number>;
   private _nativeToken: TokenInfo;
-  private _startDataSync: () => Promise<void>;
 
   private constructor(chain: string, network: string) {
     if (chain === 'ethereum') {
@@ -79,23 +78,13 @@ export class CarbonCLOB implements CLOBish {
     this._conf = CarbonConfig.config;
     this.carbonContractConfig = this._conf.carbonContractsConfig(network);
 
-    this._api = new ContractsApi(
+    this.api = new ContractsApi(
       this._chain.provider,
       this.carbonContractConfig
     );
 
-    const { cache, startDataSync } = initSyncedCache(this._api.reader);
-    this.sdkCache = cache;
-    this._startDataSync = startDataSync;
-
-    this._decimalsMap = new Map();
-    this._chain.storedTokenList.forEach((token) => {
-      this._decimalsMap.set(token.address, token.decimals);
-    });
-
-    this.carbonSDK = new Toolkit(this._api, this.sdkCache, (address) =>
-      this._decimalsMap.get(address.toLowerCase())
-    );
+    this.sdkCache = new ChainCache();
+    this.carbonSDK = new Toolkit(this.api, this.sdkCache);
   }
 
   public static getInstance(chain: string, network: string): CarbonCLOB {
@@ -124,7 +113,7 @@ export class CarbonCLOB implements CLOBish {
   }
 
   public async loadMarkets() {
-    const contractPairs = await this._api.reader.pairs();
+    const contractPairs = await this.api.reader.pairs();
 
     await Promise.all(
       contractPairs.map(async (pair) => await this._updateMarkets(pair))
@@ -137,13 +126,27 @@ export class CarbonCLOB implements CLOBish {
       await this._chain.init();
     }
 
-    logger.info('Starting Data Sync...');
-    await this._startDataSync();
+    if (!this._ready) {
+      const { cache, startDataSync } = initSyncedCache(this.api.reader);
+      this.sdkCache = cache;
 
-    logger.info('Loading markets...');
-    await this.loadMarkets();
+      const decimalsMap = new Map();
+      this._chain.storedTokenList.forEach((token) => {
+        decimalsMap.set(token.address, token.decimals);
+      });
 
-    this._ready = true;
+      this.carbonSDK = new Toolkit(this.api, this.sdkCache, (address) =>
+        decimalsMap.get(address.toLowerCase())
+      );
+
+      logger.info('Starting Data Sync...');
+      await startDataSync();
+
+      logger.info('Loading markets...');
+      await this.loadMarkets();
+
+      this._ready = true;
+    }
   }
 
   public ready(): boolean {
@@ -230,9 +233,13 @@ export class CarbonCLOB implements CLOBish {
       );
 
       const wallet = await this._chain.getWallet(req.address);
-      const tx = await wallet.sendTransaction(createTransaction);
 
-      return { txHash: tx.hash };
+      const txResponse = await EVMTxBroadcaster.getInstance(
+        this._chain,
+        wallet.address
+      ).broadcast(createTransaction);
+
+      return { txHash: txResponse.hash };
     }
 
     return { txHash: '' };
@@ -250,9 +257,12 @@ export class CarbonCLOB implements CLOBish {
     );
 
     const wallet = await this._chain.getWallet(req.address);
-    const tx = await wallet.sendTransaction(deleteTransaction);
+    const txResponse = await EVMTxBroadcaster.getInstance(
+      this._chain,
+      wallet.address
+    ).broadcast(deleteTransaction);
 
-    return { txHash: tx.hash };
+    return { txHash: txResponse.hash };
   }
 
   public estimateGas(_req: NetworkSelectionRequest): {

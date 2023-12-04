@@ -1,6 +1,7 @@
 import { ContractsConfig } from '@bancor/carbon-sdk/contracts-api';
 import { AvailableNetworks } from '../../services/config-manager-types';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
+import { MatchType } from './carbon-sdk/src';
 
 export namespace CarbonConfig {
   export interface NetworkConfig {
@@ -9,6 +10,7 @@ export namespace CarbonConfig {
     ttl: number;
     tradingTypes: (type: string) => Array<string>;
     chainType: string;
+    matchType: MatchType;
     availableNetworks: Array<AvailableNetworks>;
     carbonContractsConfig: (network: string) => Required<ContractsConfig>;
   }
@@ -25,6 +27,7 @@ export namespace CarbonConfig {
       return type === 'swap' ? ['AMM'] : ['CLOB_SPOT'];
     },
     chainType: 'EVM',
+    matchType: MatchType.Fast,
     availableNetworks: [
       {
         chain: 'ethereum',
