@@ -1,7 +1,7 @@
 import { ContractsConfig } from '@bancor/carbon-sdk/contracts-api';
 import { AvailableNetworks } from '../../services/config-manager-types';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
-import { MatchType } from './carbon-sdk/src';
+import { MatchType } from '@bancor/carbon-sdk/';
 
 export namespace CarbonConfig {
   export interface NetworkConfig {

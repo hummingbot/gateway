@@ -1,6 +1,8 @@
 import Decimal from 'decimal.js-light';
 import { TokenInfo } from '../../chains/ethereum/ethereum-base';
 
+const ETH_ADDRESS = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE'.toLowerCase();
+
 export type OrderRow = {
   rate: string;
   total: string;
@@ -122,4 +124,8 @@ export const encodeStrategyId = (
   const strategyID = (pairId << BigInt(128)) | strategyIndex;
 
   return '0x' + strategyID.toString(16);
+};
+
+export const isETHAddress = (address: string) => {
+  return address.toLowerCase() === ETH_ADDRESS;
 };

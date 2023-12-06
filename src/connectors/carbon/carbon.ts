@@ -1,19 +1,27 @@
-import { Contract, providers, Signer } from 'ethers';
+import { Contract, Signer, providers } from 'ethers';
 import Decimal from 'decimal.js-light';
+import { ChainCache, initSyncedCache } from '@bancor/carbon-sdk/chain-cache';
+import {
+  ContractsApi,
+  ContractsConfig,
+} from '@bancor/carbon-sdk/contracts-api';
+import { Toolkit } from '@bancor/carbon-sdk/strategy-management';
+import { Strategy, TokenPair } from '@bancor/carbon-sdk/';
+import { parseUnits } from '@bancor/carbon-sdk/utils';
 
 import { Ethereum } from '../../chains/ethereum/ethereum';
 import { TokenInfo } from '../../chains/ethereum/ethereum-base';
 import { EVMTxBroadcaster } from '../../chains/ethereum/evm.broadcaster';
 
 import {
+  CLOBMarkets,
+  ClobDeleteOrderRequest,
+  ClobGetOrderRequest,
+  ClobGetOrderResponse,
   ClobMarketsRequest,
   ClobOrderbookRequest,
-  ClobTickerRequest,
-  ClobGetOrderRequest,
   ClobPostOrderRequest,
-  ClobDeleteOrderRequest,
-  CLOBMarkets,
-  ClobGetOrderResponse,
+  ClobTickerRequest,
 } from '../../clob/clob.requests';
 
 import {
@@ -26,23 +34,17 @@ import { logger } from '../../services/logger';
 
 import { BalanceRequest } from '../../network/network.requests';
 
-import { ChainCache, initSyncedCache } from './carbon-sdk/src/chain-cache';
-import { ContractsConfig, ContractsApi } from './carbon-sdk/src/contracts-api';
-import { Toolkit } from './carbon-sdk/src/strategy-management';
-import { isETHAddress } from './carbon-sdk/src/contracts-api/utils';
-import { Strategy, TokenPair } from './carbon-sdk/src';
-import { parseUnits } from './carbon-sdk/src/utils';
-
+import { isETHAddress } from './carbon.utils';
 import carbonControllerAbi from './carbon_controller_abi.json';
 import { CarbonConfig } from './carbon.config';
 
 import {
   OrderRow,
-  emptyToken,
   buildOrders,
+  decodeStrategyId,
+  emptyToken,
   getMiddleRate,
   getStep,
-  decodeStrategyId,
 } from './carbon.utils';
 
 export class CarbonCLOB implements CLOBish {
@@ -229,7 +231,9 @@ export class CarbonCLOB implements CLOBish {
         quoteAddress,
         req.price,
         req.price,
+        req.price,
         req.amount,
+        '0',
         '0',
         '0',
         '0'

@@ -1,18 +1,17 @@
 import request from 'supertest';
+import { EncodedStrategy, TokenPair } from '@bancor/carbon-sdk';
+import {
+  buildStrategyObject,
+  encodeStrategy,
+} from '@bancor/carbon-sdk/strategy-management';
+import { BigNumber } from '@bancor/carbon-sdk/utils';
 import { gatewayApp } from '../../../src/app';
 import { patch, unpatch } from '../../../test/services/patch';
 import { Ethereum } from '../../../src/chains/ethereum/ethereum';
 import { EVMTxBroadcaster } from '../../../src/chains/ethereum/evm.broadcaster';
 import { CarbonCLOB } from '../../../src/connectors/carbon/carbon';
-import {
-  EncodedStrategy,
-  TokenPair,
-} from '../../../src/connectors/carbon/carbon-sdk/src';
-import { encodeStrategy } from '../../../src/connectors/carbon/carbon-sdk/src/strategy-management/utils';
 import { logger } from '../../../src/services/logger';
-import { BigNumber } from '../../../src/connectors/carbon/carbon-sdk/src/utils';
 import { encodeStrategyId } from '../../../src/connectors/carbon/carbon.utils';
-import { buildStrategyObject } from '../../../src/connectors/carbon/carbon-sdk/src/strategy-management';
 import { patchEVMNonceManager } from '../../../test/evm.nonce.mock';
 
 let ethereum: Ethereum;
@@ -202,8 +201,10 @@ const buildEncodedStrategy = (order: {
     order.quoteDecimals,
     order.buyPriceLow,
     order.buyPriceHigh,
+    order.buyPriceHigh,
     order.buyBudget,
     order.sellPriceLow,
+    order.sellPriceHigh,
     order.sellPriceHigh,
     order.sellBudget
   );

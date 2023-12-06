@@ -1,13 +1,26 @@
 import {
   BigNumber,
-  Wallet,
   ContractInterface,
-  Transaction,
   PopulatedTransaction,
+  Transaction,
+  Wallet,
 } from 'ethers';
 import { getAddress } from 'ethers/lib/utils';
 import { Token } from '@uniswap/sdk';
 import { Fraction } from '@uniswap/sdk-core';
+import { ChainCache, initSyncedCache } from '@bancor/carbon-sdk/chain-cache';
+import {
+  ContractsApi,
+  ContractsConfig,
+} from '@bancor/carbon-sdk/contracts-api';
+import { Toolkit } from '@bancor/carbon-sdk/strategy-management';
+import {
+  Action,
+  MatchActionBNStr,
+  TradeActionBNStr,
+} from '@bancor/carbon-sdk/';
+
+import { Decimal } from '@bancor/carbon-sdk/utils';
 
 import { Ethereum } from '../../chains/ethereum/ethereum';
 import { TokenInfo } from '../../chains/ethereum/ethereum-base';
@@ -18,12 +31,7 @@ import { percentRegexp } from '../../services/config-manager-v2';
 import { Uniswapish, UniswapishTrade } from '../../services/common-interfaces';
 import { logger } from '../../services/logger';
 
-import { ChainCache, initSyncedCache } from './carbon-sdk/src/chain-cache';
-import { ContractsConfig, ContractsApi } from './carbon-sdk/src/contracts-api';
-import { Toolkit } from './carbon-sdk/src/strategy-management';
-import { Action, MatchActionBNStr, TradeActionBNStr } from './carbon-sdk/src';
-import { Decimal } from './carbon-sdk/src/utils';
-import carbonControllerAbi from './carbon-sdk/src/abis/CarbonController.json';
+import carbonControllerAbi from './carbon_controller_abi.json';
 
 import { CarbonConfig } from './carbon.config';
 
