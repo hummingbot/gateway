@@ -76,7 +76,10 @@ export class CarbonCLOB implements CLOBish {
         : emptyToken;
 
     this._conf = CarbonConfig.config;
-    this.carbonContractConfig = this._conf.carbonContractsConfig(network);
+    this.carbonContractConfig = this._conf.carbonContractsConfig(
+      chain,
+      network
+    );
 
     this.api = new ContractsApi(
       this._chain.provider,

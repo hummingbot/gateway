@@ -12,7 +12,10 @@ export namespace CarbonConfig {
     chainType: string;
     matchType: MatchType;
     availableNetworks: Array<AvailableNetworks>;
-    carbonContractsConfig: (network: string) => Required<ContractsConfig>;
+    carbonContractsConfig: (
+      chain: string,
+      network: string
+    ) => Required<ContractsConfig>;
   }
 
   export const config: NetworkConfig = {
@@ -40,16 +43,16 @@ export namespace CarbonConfig {
         ),
       },
     ],
-    carbonContractsConfig: (network: string) => {
+    carbonContractsConfig: (chain: string, network: string) => {
       return {
         carbonControllerAddress: ConfigManagerV2.getInstance().get(
-          `carbon.contractAddresses.${network}.carbonControllerAddress`
+          `carbon.contractAddresses.${chain}.${network}.carbonControllerAddress`
         ),
         multiCallAddress: ConfigManagerV2.getInstance().get(
-          `carbon.contractAddresses.${network}.multiCallAddress`
+          `carbon.contractAddresses.${chain}.${network}.multiCallAddress`
         ),
         voucherAddress: ConfigManagerV2.getInstance().get(
-          `carbon.contractAddresses.${network}.voucherAddress`
+          `carbon.contractAddresses.${chain}.${network}.voucherAddress`
         ),
       };
     },
