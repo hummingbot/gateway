@@ -6,7 +6,7 @@ import {
   ContractsConfig,
 } from '@bancor/carbon-sdk/contracts-api';
 import { Toolkit } from '@bancor/carbon-sdk/strategy-management';
-import { Strategy, TokenPair } from '@bancor/carbon-sdk/';
+import { Strategy, TokenPair } from '@bancor/carbon-sdk';
 import { parseUnits } from '@bancor/carbon-sdk/utils';
 
 import { Ethereum } from '../../chains/ethereum/ethereum';

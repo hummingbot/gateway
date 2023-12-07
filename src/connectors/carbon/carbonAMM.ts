@@ -14,11 +14,7 @@ import {
   ContractsConfig,
 } from '@bancor/carbon-sdk/contracts-api';
 import { Toolkit } from '@bancor/carbon-sdk/strategy-management';
-import {
-  Action,
-  MatchActionBNStr,
-  TradeActionBNStr,
-} from '@bancor/carbon-sdk/';
+import { Action, MatchActionBNStr, TradeActionBNStr } from '@bancor/carbon-sdk';
 
 import { Decimal } from '@bancor/carbon-sdk/utils';
 
