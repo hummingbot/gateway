@@ -125,7 +125,7 @@ const ORDERS = [
     buyPriceHigh: '0.95',
     buyBudget: '2000',
     sellPriceLow: '1.03',
-    sellPriceMarginal: '1.05',
+    sellPriceMarginal: '1.03',
     sellPriceHigh: '1.05',
     sellBudget: '2000',
   },
@@ -142,7 +142,7 @@ const ORDERS = [
     buyPriceHigh: '1900',
     buyBudget: '1000',
     sellPriceLow: '2200',
-    sellPriceMarginal: '2400',
+    sellPriceMarginal: '2300',
     sellPriceHigh: '2400',
     sellBudget: '1000',
   },
@@ -178,9 +178,11 @@ const buildEncodedStrategy = (order: {
   baseDecimals: number;
   quoteDecimals: number;
   buyPriceLow: string;
+  buyPriceMarginal: string;
   buyPriceHigh: string;
   buyBudget: string;
   sellPriceLow: string;
+  sellPriceMarginal: string;
   sellPriceHigh: string;
   sellBudget: string;
 }) => {
@@ -190,11 +192,11 @@ const buildEncodedStrategy = (order: {
     order.baseDecimals,
     order.quoteDecimals,
     order.buyPriceLow,
-    order.buyPriceHigh,
+    order.buyPriceMarginal,
     order.buyPriceHigh,
     order.buyBudget,
     order.sellPriceLow,
-    order.sellPriceHigh,
+    order.sellPriceMarginal,
     order.sellPriceHigh,
     order.sellBudget
   );
