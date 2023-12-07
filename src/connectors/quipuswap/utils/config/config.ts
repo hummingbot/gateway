@@ -14,9 +14,23 @@ export const KNOWN_DEX_TYPES = [
     DexTypeEnum.YupanaWtez
 ];
 
+const tokenStandardiser = (token: typeof MainnetWhitelistTokens.tokens[0]) => {
+    if (token.metadata.symbol === 'TEZ')
+        token.metadata.symbol = 'XTZ';
+    else
+        token.metadata.symbol = token.metadata.symbol.toUpperCase();
+    return token;
+};
+
 const TOKENS_MAP = {
-    [NetworkType.MAINNET]: MainnetWhitelistTokens,
-    [NetworkType.GHOSTNET]: GhostnetWhitelistTokens
+    [NetworkType.MAINNET]: {
+        ...MainnetWhitelistTokens,
+        tokens: MainnetWhitelistTokens.tokens.map(tokenStandardiser)
+    },
+    [NetworkType.GHOSTNET]: {
+        ...GhostnetWhitelistTokens,
+        tokens: GhostnetWhitelistTokens.tokens.map(tokenStandardiser)
+    }
 };
 
 export const networkTokens = (network: SupportedNetwork) => TOKENS_MAP[network];

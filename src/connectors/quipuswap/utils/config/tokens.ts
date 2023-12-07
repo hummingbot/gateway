@@ -8,7 +8,7 @@ export const TEZOS_TOKEN: Token = {
     metadata: {
         decimals: 6,
         name: 'Tezos',
-        symbol: 'TEZ',
+        symbol: 'XTZ',
         thumbnailUri: `${IPFS_GATEWAY}/Qmf3brydfr8c6CKGUUu73Dd7wfBw66Zbzof5E1BWGeU222`
     }
 };

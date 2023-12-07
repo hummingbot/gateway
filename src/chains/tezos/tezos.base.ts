@@ -208,6 +208,9 @@ export class TezosBase {
     if (spender === 'plenty') {
       // plenty doesn't need an allowance
       return { value: constants.MaxUint256, decimals: tokenDecimals };
+    } else if (spender === 'quipuswap') {
+      // quipuswap doesn't need an allowance
+      return { value: constants.MaxUint256, decimals: tokenDecimals };
     }
 
     let value = BigNumber.from(0);
