@@ -20,24 +20,25 @@
     "contractAddresses": {
       "type": "object",
       "patternProperties": {
-        "^\\w+$": {
+        "^[\\w-]+$": {
           "type": "object",
-          "properties": {
-            "carbonControllerAddress": {
-              "type": "string"
-            },
-            "multiCallAddress": {
-              "type": "string"
-            },
-            "voucherAddress": {
-              "type": "string"
+          "patternProperties": {
+            "^\\w+$": {
+              "type": "object",
+              "properties": {
+                "carbonControllerAddress": {
+                  "type": "string"
+                },
+                "multiCallAddress": {
+                  "type": "string"
+                },
+                "voucherAddress": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
             }
           },
-          "required": [
-            "carbonControllerAddress",
-            "multiCallAddress",
-            "voucherAddress"
-          ],
           "additionalProperties": false
         }
       },
