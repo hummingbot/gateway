@@ -158,7 +158,7 @@ export class CosmosBase {
   public tokenListType: TokenListType;
   public cache: NodeCache;
 
-  public manualGasPrice: string;
+  public manualGasPrice: number;
   public rpcAddressDynamicBaseFee: string;
   public useEIP1559DynamicBaseFeeInsteadOfManualGasPrice: boolean;
 
@@ -170,7 +170,7 @@ export class CosmosBase {
     gasPriceConstant: number, // adjustment
     useEIP1559DynamicBaseFeeInsteadOfManualGasPrice?: boolean,
     rpcAddressDynamicBaseFee?: string,
-    manualGasPrice?: string
+    manualGasPrice?: number
   ) {
     this.manualGasPrice = manualGasPrice!;
     this.chainName = chainName;
@@ -196,14 +196,7 @@ export class CosmosBase {
     if (!this.ready()) {
       if (this.chainName == 'osmosis'){
         this._provider = await createRPCQueryClient({rpcEndpoint: this.rpcUrl});
-        
-        if (this.useEIP1559DynamicBaseFeeInsteadOfManualGasPrice){
-          const eipPrice = await getEIP1559DynamicBaseFee(this.rpcAddressDynamicBaseFee);
-          if (eipPrice != ''){
-            this.manualGasPrice = eipPrice;
-          }
-        } 
-      
+        await this.getLatestBasePrice();
       }else{
         this._provider = StargateClient.connect(this.rpcUrl);
       }
@@ -222,10 +215,13 @@ export class CosmosBase {
     return;
   }
 
-  async getLatestBasePrice(): Promise<string> {
+  async getLatestBasePrice(): Promise<number> {
     var eipPrice = this.manualGasPrice;
     if (this.useEIP1559DynamicBaseFeeInsteadOfManualGasPrice){
-      eipPrice = await getEIP1559DynamicBaseFee(this.rpcAddressDynamicBaseFee);
+      const eipPrice = await getEIP1559DynamicBaseFee(this.rpcAddressDynamicBaseFee);
+      if (eipPrice != ''){
+        this.manualGasPrice = Number(eipPrice);
+      }
     } 
     this.manualGasPrice = eipPrice;
     return this.manualGasPrice
@@ -471,7 +467,12 @@ export class CosmosBase {
   // returns a cosmos tx for a txHash
   async getTransaction(id: string): Promise<IndexedTx> {
     const provider = await this._provider;
-    const transaction = await provider.getTx(id);
+    var transaction;
+    if (this.chainName == 'osmosis'){
+      transaction = await provider.cosmos.tx.v1beta1.getTx({hash: id});
+    }else{
+      transaction = await provider.getTx(id);
+    }
 
     if (!transaction) {
       throw new Error('Transaction not found');

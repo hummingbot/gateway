@@ -1,9 +1,14 @@
 import { Coin } from 'osmo-query/dist/codegen/cosmos/base/v1beta1/coin';
 import BigNumber from 'bignumber.js';
 import { ExtendedPool } from './osmosis.lp.utils'
-import { Pool as OsmosisPool, PoolAsset } from 'osmojs/dist/codegen/osmosis/gamm/pool-models/balancer/balancerPool';
-export type Pool = OsmosisPool & ExtraPoolProperties;
+import { Pool as BalancerPool, PoolAsset } from 'osmojs/dist/codegen/osmosis/gamm/pool-models/balancer/balancerPool';
+import { Pool as CLPool } from 'osmo-query/dist/codegen/osmosis/concentrated-liquidity/pool';
+import { CosmWasmPool as CWPool } from 'osmo-query/dist/codegen/osmosis/cosmwasmpool/v1beta1/model/pool';
+import { Pool as SSPool } from 'osmo-query/dist/codegen/osmosis/gamm/pool-models/stableswap/stableswap_pool';
 
+
+export type Pool = BalancerPool & ExtraPoolProperties;
+export type AnyPoolType = CLPool | BalancerPool | CWPool | SSPool;
 
 import type {
   CoinDenom,
@@ -24,6 +29,7 @@ import type {
 } from "@osmonauts/math/dist/types";
 
 type calcPoolAprs = (...args: any) => any
+
 
 export interface Scenario {
   token: CoinBalance;
@@ -203,6 +209,7 @@ export interface CoinAndSymbol {
 
 export interface ReduceLiquidityTransactionResponse extends TransactionResponse {
   balances: CoinAndSymbol[];
+  gasPrice: number;
 }
 
 export interface TransactionResponse {
@@ -211,6 +218,7 @@ export interface TransactionResponse {
   events: TransactionEvent[];
   gasUsed: string;
   gasWanted: string;
+  gasPrice: number;
   height: number;
   rawLog: string;
 }
@@ -222,6 +230,7 @@ export interface AddPositionTransactionResponse extends TransactionResponse {
   token0_finalamount: string;
   token1_finalamount: string;
   poolshares: string;
+  gasPrice: number;
 }
 
 export interface TransactionEvent {

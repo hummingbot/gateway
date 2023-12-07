@@ -8,12 +8,12 @@
         "^\\w+$": {
           "type": "object",
           "properties": {
-            "rpcURL": { "type": "string" },
+            "nodeURL": { "type": "string" },
             "tokenListType": { "type": "string" },
             "tokenListSource": { "type": "string" },
             "chainId": { "type": "string" }
           },
-          "required": ["rpcURL", "tokenListType", "tokenListSource", "chainId"],
+          "required": ["nodeURL", "tokenListType", "tokenListSource", "chainId"],
           "additionalProperties": false
         }
       },
@@ -26,7 +26,8 @@
     },
     "gasAdjustment": { "type": "number" },
     "gasLimitTransaction": { "type": "integer" },
-    "manualGasPrice": { "type": "string" },
+    "manualGasPrice": { "type": "number" },
+    "manualGasPriceToken": { "type": "string" },
     "allowedSlippage": { "type": "string" },
     "useEIP1559DynamicBaseFeeInsteadOfManualGasPrice": { "type": "boolean" },
     "rpcAddressDynamicBaseFee": { "type": "string" }

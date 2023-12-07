@@ -112,7 +112,7 @@ export const getEIP1559DynamicBaseFee = async (url: string) => {
   }
 
   if (fee && fee.base_fee){
-    var finalFee = Number(fee!.base_fee!).toString() + 'uosmo';
+    var finalFee = Number(fee!.base_fee!).toString();
     return finalFee;
   }
   return '';

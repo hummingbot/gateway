@@ -11,6 +11,7 @@ import {
 } from '@osmonauts/math';
 
 import {
+  // AnyPoolType,
   PriceHash,
 } from './osmosis.types';
 import { Fee } from './osmosis.utils';
@@ -19,7 +20,7 @@ export const getPoolByGammName = (pools: Pool[], gammId: string): Pool => {
   return _getPoolByGammName(pools, gammId);
 };
 
-export const filterPools = (assets: Asset[], pools: Pool[], prices: PriceHash) => {
+export const filterPoolsSwap = (assets: Asset[], pools: Pool[], prices: PriceHash) => {
   return pools
     .filter(({ $typeUrl }) => !$typeUrl?.includes('stableswap'))
     .filter(({ poolAssets }) =>
@@ -31,6 +32,12 @@ export const filterPools = (assets: Asset[], pools: Pool[], prices: PriceHash) =
           assets.find(({ base }) => base === token.denom)
       )
     );
+};
+
+export const filterPoolsLP = (assets: Asset[], pools: any[], prices: PriceHash) => {
+  var poolsOut = pools.filter(({ $typeUrl }) => $typeUrl?.includes('concentratedliquidity'))
+  poolsOut = poolsOut.filter((pool) => prices[pool.token0] &&  prices[pool.token1] && assets.find(({ base }) => base === pool.token0) && assets.find(({ base }) => base === pool.token1));
+  return poolsOut;
 };
 
 interface ExtendPoolProps {

@@ -1,4 +1,3 @@
-// @ts-nocheck
 // OSMO message composer classes don't quite match up with what the RPC/Go backend actually accepts.
 
 import { CosmosWallet, CosmosAsset, CosmosTokenValue, CosmosBase } from '../../chains/cosmos/cosmos-base'; 
@@ -25,7 +24,8 @@ import {
   AddPositionTransactionResponse, 
   ReduceLiquidityTransactionResponse, 
   SerializableExtendedPool,
-  CoinAndSymbol
+  CoinAndSymbol,
+  AnyPoolType
 } from './osmosis.types';
 
 import { OsmosisConfig } from './osmosis.config'; 
@@ -44,16 +44,18 @@ import {
 import type {
   PrettyPair,
 } from "@osmonauts/math/dist/types";
+import { Pool as CLPool } from 'osmo-query/dist/codegen/osmosis/concentrated-liquidity/pool';
 import { TradeInfo } from './osmosis.controllers';
 import { PoolAsset } from 'osmojs/dist/codegen/osmosis/gamm/pool-models/balancer/balancerPool';
 import { HttpException, TRADE_FAILED_ERROR_CODE, TRADE_FAILED_ERROR_MESSAGE, GAS_LIMIT_EXCEEDED_ERROR_MESSAGE, GAS_LIMIT_EXCEEDED_ERROR_CODE, AMOUNT_LESS_THAN_MIN_AMOUNT_ERROR_MESSAGE, AMOUNT_LESS_THAN_MIN_AMOUNT_ERROR_CODE } from '../../services/error-handler';
-import { ExtendedPool, extendPool, filterPools as filterPoolsLP } from './osmosis.lp.utils';
-import { fetchFees } from './osmosis.utils';
+import { ExtendedPool, extendPool, filterPoolsSwap, filterPoolsLP } from './osmosis.lp.utils';
+import { fetchFees, findTickForPrice } from './osmosis.utils';
 import { getImperatorPriceHash } from './osmosis.prices';
 import { GasPrice, calculateFee, setupIbcExtension } from '@cosmjs/stargate';
 import { CosmWasmClient } from "@cosmjs/cosmwasm-stargate";
 import { TokensRequest, TokensResponse } from '../../network/network.requests';
 import { Cosmosish, TransferRequest } from '../../services/common-interfaces';
+import { AddLiquidityRequest } from '../../amm/amm.requests';
 
 const { DirectSecp256k1Wallet } = require('@cosmjs/proto-signing');
 const {
@@ -62,6 +64,9 @@ const {
   joinSwapExternAmountIn,
   swapExactAmountIn,
 } = osmosis.gamm.v1beta1.MessageComposer.withTypeUrl;
+const {
+  createPosition
+} = osmosis.concentratedliquidity.v1beta1.MessageComposer.withTypeUrl;
 const {
 send
 } = cosmos.bank.v1beta1.MessageComposer.fromPartial;
@@ -82,7 +87,8 @@ export class Osmosis extends CosmosBase implements Cosmosish{
   public gasLimitEstimate: string;
   public readonly feeTier: string; // FEE_VALUES.osmosis[_feeTier] low medium high osmojs/src/utils/gas/values.ts
   public allowedSlippage: string;
-  
+  public manualGasPriceToken: string;
+
   private constructor(network: string) {
     const config = OsmosisConfig.config;
     super(
@@ -97,8 +103,9 @@ export class Osmosis extends CosmosBase implements Cosmosish{
     )
     this._chain = network;
     this._nativeTokenSymbol = config.nativeCurrencySymbol;
-    
-    this._gasPrice = Number(this.manualGasPrice.replace('uosmo',''))
+    this.manualGasPriceToken = config.manualGasPriceToken;
+
+    this._gasPrice = Number(this.manualGasPrice)
     this.feeTier = config.feeTier;
     this.gasLimitEstimate = config.gasLimitTransaction
     this.allowedSlippage = config.allowedSlippage
@@ -471,7 +478,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
 
     // so far we have pools, routes, and token info...
     let route_length_1_pool_swapFee = '';
-    // leaving some unreads in here in case they want to be delivered later
+    // @ts-ignore: leaving some unreads in here in case they want to be delivered later
     let priceImpact = '';
 
     if (new BigNumber(tokenIn.amount).isEqualTo(0)) {
@@ -647,6 +654,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
     }
     const msg = swapExactAmountIn({
       'sender': address,
+      // @ts-ignore: bad osmojs models
       'routes': routes,
       'tokenIn': coin(trade.expectedTrade.tokenInAmount, trade.expectedTrade.tokenInDenom),
       'tokenOutMinAmount': tokenOutMinAmount.toString(),
@@ -660,8 +668,9 @@ export class Osmosis extends CosmosBase implements Cosmosish{
         [msg],
       );
       gasToUse = gasEstimation;
-    } catch (error: Error) {
-      if (error.message.inculdes('token is lesser than min amount')){
+    } catch (error1) {
+      var error = error1 as Error
+      if (error.message.includes('token is lesser than min amount')){
         throw new HttpException(
           500,
           AMOUNT_LESS_THAN_MIN_AMOUNT_ERROR_MESSAGE + 'tokenOutMinAmount: ' + tokenOutMinAmount.toString(),
@@ -673,7 +682,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
     const gasPrice = await this.getLatestBasePrice();
     const calcedFee = calculateFee(
       Math.round(Number(gasToUse) * (gasAdjustment || 1.5)),
-      GasPrice.fromString(gasPrice)
+      GasPrice.fromString(gasPrice.toString() + this.manualGasPriceToken)
     );
 
     if (new BigNumber(calcedFee.gas).gt(new BigNumber(this.gasLimitEstimate))){
@@ -685,7 +694,8 @@ export class Osmosis extends CosmosBase implements Cosmosish{
     }
 
     try {
-      const res = await this.signingClient.signAndBroadcast(address, [msg], calcedFee);
+      var res = await this.signingClient.signAndBroadcast(address, [msg], calcedFee);
+      res.gasPrice = gasPrice
       return res;
     } catch (error) {
       console.debug(error);
@@ -759,13 +769,15 @@ export class Osmosis extends CosmosBase implements Cosmosish{
       }
 
       const poolsContainer = await this._provider.osmosis.poolmanager.v1beta1.allPools({});
-      const pools: ExtendedPool[] = poolsContainer.pools;
+      const allPoolds: ExtendedPool[] = poolsContainer.pools;
       
       var callImperatorWithTokens = undefined
       if (this.chain == 'testnet'){
         callImperatorWithTokens = this.tokenList;
       }
       const prices = await getImperatorPriceHash(callImperatorWithTokens);
+
+      const pools = filterPoolsSwap(this.tokenList, allPoolds, prices); // removes stableswap, !token.denom.startsWith('gamm/pool'), has price, has osmosisAsset
 
       if (!amount0 && !amount1){
         throw new HttpException(
@@ -801,8 +813,8 @@ export class Osmosis extends CosmosBase implements Cosmosish{
       // NOT CHECKING (local wallet) BALANCES HERE it will bounce back either way
 
       // now find the poolid for this pair
-      var foundPools: ExtendedPool[] = [];
-      pools.forEach(function (cPool: ExtendedPool) {
+      var foundPools: any[] = [];
+      pools.forEach(function (cPool) {
         var foundToken0 = false;
         var foundToken1 = false;
         if (cPool.poolAssets){
@@ -864,6 +876,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
           }
 
           const joinSwapExternAmountInMsg = joinSwapExternAmountIn({
+            // @ts-ignore: bad osmojs models
             poolId: pool.id.toString(),
             sender: address,
             tokenIn: inputCoin,
@@ -879,7 +892,8 @@ export class Osmosis extends CosmosBase implements Cosmosish{
               msgs,
             );
             gasToUse = gasEstimation;
-          } catch (error: Error) {
+          } catch (error1) {
+            var error = error1 as Error
             if (error.message.includes('token is lesser than min amount')){
               throw new HttpException(
                 500,
@@ -890,7 +904,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
           }
           calcedFee = calculateFee(
             Math.round(Number(gasToUse) * (gasAdjustment || 1.5)),
-            GasPrice.fromString(gasPrice)
+            GasPrice.fromString(gasPrice.toString() + this.manualGasPriceToken)
           );
        
         } 
@@ -916,6 +930,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
           }
 
           const joinPoolMsg = joinPool({
+            // @ts-ignore: bad osmojs models
             poolId: pool.id.toString(),
             sender: address,
             shareOutAmount: finalShareOutAmount.toString(),
@@ -931,8 +946,9 @@ export class Osmosis extends CosmosBase implements Cosmosish{
               msgs,
             );
             gasToUse = gasEstimation;
-          } catch (error: Error) {
-            if (error.message.inculdes('token is lesser than min amount')){
+          } catch (error1) {
+            var error = error1 as Error
+            if (error.message.includes('token is lesser than min amount')){
               throw new HttpException(
                 500,
                 AMOUNT_LESS_THAN_MIN_AMOUNT_ERROR_MESSAGE + 'shareOutAmount: ' + finalShareOutAmount.toString(),
@@ -943,7 +959,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
 
           calcedFee = calculateFee(
             Math.round(Number(gasToUse) * (gasAdjustment || 1.5)),
-            GasPrice.fromString(gasPrice)
+            GasPrice.fromString(gasPrice.toString() + this.manualGasPriceToken)
           );
         }
 
@@ -970,6 +986,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
           res.poolshares = poolshares
           res.poolId = pool.id.toString()
           res.poolAddress = pool.address
+          res.gasPrice = gasPrice
           return res;
         } 
   
@@ -1028,6 +1045,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
         res.poolshares = poolshares
         res.poolId = pool.id.toString()
         res.poolAddress = pool.address
+        res.gasPrice = gasPrice
         return res; 
       }
 
@@ -1043,6 +1061,386 @@ export class Osmosis extends CosmosBase implements Cosmosish{
     );
   }
 
+ /**
+   * Given a 2 token symbols and 1-2 amounts, exchange amounts for pool liquidity shares
+   *
+   * @param wallet CosmosWallet
+   * @param address Wallet address
+   * @param token0 CosmosAsset
+   * @param token1 CosmosAsset
+   * @param req AddLiquidityRequest (added poolId? to this model)
+   * @param feeTier_input? low/medium/high, overwrites feeTier specified in .yml
+   * @param gasAdjustment_input? Gas offered multiplier, overwrites gasAdjustment specified in .yml
+  */
+ async addPositionLP(
+  wallet: CosmosWallet,
+  token0: CosmosAsset,
+  token1: CosmosAsset,
+  req: AddLiquidityRequest,
+  feeTier_input?: string,
+  gasAdjustment_input?: number,
+): Promise<AddPositionTransactionResponse> {
+
+  // in case we need to swap these later
+  var amount0 = req.amount0;
+  var amount1 = req.amount1;
+
+  var slippage = 0;
+  if (req.allowedSlippage){
+    slippage = Number(req.allowedSlippage.split('%')[0]);
+  }else{
+    slippage = Number(this.allowedSlippage.split('%')[0]);
+  }
+  var feeTier = this.feeTier;
+  if (feeTier_input){
+    feeTier = feeTier_input;
+  }
+  var gasAdjustment = this.gasPriceConstant;
+  if (gasAdjustment_input){
+    gasAdjustment = gasAdjustment_input;
+  }
+
+  try {
+    const keyWallet = await DirectSecp256k1Wallet.fromKey(wallet.privkey, 'osmo')
+    this.signingClient = await getSigningOsmosisClient({
+      rpcEndpoint: this.rpcUrl,
+      signer: keyWallet
+    });
+    
+    if (!this.signingClient || !req.address) {
+      console.error('stargateClient undefined or address undefined.');
+      throw new HttpException(
+        500,
+        "addPosition failed: Can't instantiate signing client.",
+        TRADE_FAILED_ERROR_CODE
+      );
+    }
+
+    const poolsContainer = await this._provider.osmosis.poolmanager.v1beta1.allPools({});
+    const pools: AnyPoolType[] = poolsContainer.pools;
+    
+    var callImperatorWithTokens = undefined
+    if (this.chain == 'testnet'){
+      callImperatorWithTokens = this.tokenList;
+    }
+    const prices = await getImperatorPriceHash(callImperatorWithTokens);
+
+    const filteredPools: CLPool[] = filterPoolsLP(this.tokenList, pools, prices); // removes stableswap, !token.denom.startsWith('gamm/pool'), has price, has osmosisAsset
+
+    if (!amount0 && !amount1){
+      throw new HttpException(
+        500,
+        "addPosition failed: Both token amounts equal to 0.",
+        TRADE_FAILED_ERROR_CODE
+      );
+    }
+
+    var amount0_bignumber = new BigNumber(0);
+    var amount1_bignumber = new BigNumber(0);
+    if (amount0){
+      amount0_bignumber = new BigNumber(amount0);
+    }
+    if (amount1){
+      amount1_bignumber = new BigNumber(amount1);
+    }
+    if (amount0_bignumber.isEqualTo(0) && amount1_bignumber.isEqualTo(0)){
+      throw new HttpException(
+        500,
+        "addPosition failed: Both token amounts equal to 0.",
+        TRADE_FAILED_ERROR_CODE
+      );
+    }
+    
+    var singleToken_UseWhich: string | null = null;
+    if (!amount0_bignumber.isEqualTo(0) && amount1_bignumber.isEqualTo(0)){ // only token0
+      singleToken_UseWhich = '0';
+    }        
+    if (amount0_bignumber.isEqualTo(0) && !amount1_bignumber.isEqualTo(0)){ // only token1
+      singleToken_UseWhich = '1';
+    }
+    // NOT CHECKING (local wallet) BALANCES HERE it will bounce back either way
+
+    // now find the poolid for this pair
+    var foundPools: any[] = [];
+    filteredPools.forEach(function (cPool) {
+      var foundToken0 = false;
+      var foundToken1 = false;
+      if (cPool.token0 == token0.base || cPool.token1 == token0.base){
+        foundToken0 = true;
+      }
+      if (cPool.token0 == token1.base || cPool.token1 == token1.base){
+        foundToken1 = true;
+      }
+      if (foundToken0 && foundToken1){
+        foundPools.push(cPool);
+      }
+    });
+
+    var pool;
+    if (req.poolId){
+      pool = filteredPools.find(({id}) => id.toString() == req.poolId);
+    }else if (foundPools){
+      pool = foundPools.pop(); // this is not selective without poolid input (can be multiple pools per token pair).. though order should cause pool with greatest liquidity to be used
+    }
+
+    var calcedFee;
+    if (pool){
+
+      // swap token orders to match pool asset orders
+      if (pool.token0 == token1.base && pool.token1 == token0.base){
+        [token0, token1] = [token1, token0];
+        [amount0, amount1] = [amount1, amount0];
+        [amount0_bignumber, amount1_bignumber] = [amount1_bignumber, amount0_bignumber];
+        if (singleToken_UseWhich){
+          if (singleToken_UseWhich == '0'){
+            singleToken_UseWhich = '1'
+          }else{
+            singleToken_UseWhich = '0'
+          }
+        }
+      }
+
+      const gasPrice = await this.getLatestBasePrice();
+      let msgs = [];
+      if (singleToken_UseWhich) { // in case 1 of the amounts == 0 
+        var singleToken_amount = new BigNumber(0);
+        var singleToken: CosmosAsset | undefined = undefined;
+        if (singleToken_UseWhich == '0'){
+          singleToken_amount = amount0_bignumber;
+          singleToken = token0;
+        }else{
+          singleToken_amount = amount1_bignumber;
+          singleToken = token1;
+        }
+        const inputCoin = {'denom':singleToken.base, 'amount':singleToken_amount.shiftedBy(this.getExponentByBase(singleToken.base)).toString()};
+
+        var singleTokenMinAmount;
+        if (slippage == 100){
+          singleTokenMinAmount = '0';
+        }else{
+          singleTokenMinAmount = singleToken_amount.shiftedBy(this.getExponentByBase(singleToken.base)).multipliedBy(100-slippage).dividedBy(100).integerValue(BigNumber.ROUND_CEIL)
+        }
+
+        const lowerTick = findTickForPrice(req.lowerPrice, pool.exponentAtPriceOne, pool.tickSpacing, true)
+        const upperTick = findTickForPrice(req.upperPrice, pool.exponentAtPriceOne, pool.tickSpacing, false)
+
+        var MsgCreatePosition;
+        if (singleToken.base == pool.token0){
+          // @ts-ignore: bad osmojs models
+          MsgCreatePosition = createPosition({
+            poolId: pool.id.toString(),
+            sender: req.address,
+          // @ts-ignore: bad osmojs models
+            lowerTick: lowerTick,
+          // @ts-ignore: bad osmojs models
+            upperTick: upperTick,
+            tokensProvided: [inputCoin],
+            tokenMinAmount0: singleTokenMinAmount.toString(),
+          })
+        }else{
+        // @ts-ignore: bad osmojs models
+        MsgCreatePosition = createPosition({
+          poolId: pool.id.toString(),
+          sender: req.address,
+        // @ts-ignore: bad osmojs models
+          lowerTick: lowerTick,
+        // @ts-ignore: bad osmojs models
+          upperTick: upperTick,
+          tokensProvided: [inputCoin],
+          tokenMinAmount1: singleTokenMinAmount.toString(),
+        })
+        }
+
+        msgs.push(MsgCreatePosition);
+        
+        var enumFee = FEES.osmosis.joinPool(feeTier);
+        var gasToUse = enumFee.gas;
+        try{
+          const gasEstimation = await this.signingClient.simulate(
+            req.address,
+            msgs,
+          );
+          gasToUse = gasEstimation;
+        } catch (error1) {
+          var error = error1 as Error
+          if (error.message.includes('token is lesser than min amount')){
+            throw new HttpException(
+              500,
+              AMOUNT_LESS_THAN_MIN_AMOUNT_ERROR_MESSAGE + 'tokenMinAmount0: ' + singleTokenMinAmount.toString(),
+              AMOUNT_LESS_THAN_MIN_AMOUNT_ERROR_CODE
+            );
+          }
+        }
+        calcedFee = calculateFee(
+          Math.round(Number(gasToUse) * (gasAdjustment || 1.5)),
+          GasPrice.fromString(gasPrice.toString() + this.manualGasPriceToken)
+        );
+     
+      } 
+
+      else {
+        var allCoins = [];
+        allCoins.push({'denom':token0.base, 'amount':new BigNumber(amount0)
+        .shiftedBy(this.getExponentByBase(token0.base))
+        .toString()});
+        allCoins.push({'denom':token1.base, 'amount':new BigNumber(amount1)
+        .shiftedBy(this.getExponentByBase(token1.base))
+        .toString()});
+        
+        
+        const token0_bignumber = new BigNumber(amount0)
+        const token1_bignumber = new BigNumber(amount1)
+
+
+        var tokenMinAmount0;
+        var tokenMinAmount1;
+        if (slippage == 100){
+          tokenMinAmount0 = '0';
+          tokenMinAmount1 = '0';
+        }else{
+          tokenMinAmount0 = token0_bignumber.shiftedBy(this.getExponentByBase(token0.base)).multipliedBy(100-slippage).dividedBy(100).integerValue(BigNumber.ROUND_CEIL)
+          tokenMinAmount1 = token1_bignumber.shiftedBy(this.getExponentByBase(token1.base)).multipliedBy(100-slippage).dividedBy(100).integerValue(BigNumber.ROUND_CEIL)
+        }
+
+        const lowerTick = findTickForPrice(req.lowerPrice, pool.exponentAtPriceOne, pool.tickSpacing, true)
+        const upperTick = findTickForPrice(req.upperPrice, pool.exponentAtPriceOne, pool.tickSpacing, false)
+
+        const MsgCreatePosition = createPosition({
+          poolId: pool.id.toString(),
+          sender: req.address,
+        // @ts-ignore: bad osmojs models
+          lowerTick: lowerTick,
+        // @ts-ignore: bad osmojs models
+          upperTick: upperTick,
+          tokensProvided: allCoins,
+          tokenMinAmount0: tokenMinAmount0.toString(),
+          tokenMinAmount1: tokenMinAmount1.toString(),
+        })
+
+        msgs.push(MsgCreatePosition);
+        
+        var enumFee = FEES.osmosis.joinPool(feeTier);
+        var gasToUse = enumFee.gas;
+        try{
+          const gasEstimation = await this.signingClient.simulate(
+            req.address,
+            msgs,
+          );
+          gasToUse = gasEstimation;
+        } catch (error1) {
+          var error = error1 as Error
+          if (error.message.includes('token is lesser than min amount')){
+            throw new HttpException(
+              500,
+              AMOUNT_LESS_THAN_MIN_AMOUNT_ERROR_MESSAGE + 'Symbol: shareOutAmount ' + token0.symbol + ': ' + tokenMinAmount0.toString() + ' ' + + token1.symbol + ': ' + tokenMinAmount1.toString(),
+              AMOUNT_LESS_THAN_MIN_AMOUNT_ERROR_CODE
+            );
+          }
+        }
+
+        calcedFee = calculateFee(
+          Math.round(Number(gasToUse) * (gasAdjustment || 1.5)),
+          GasPrice.fromString(gasPrice.toString() + this.manualGasPriceToken)
+        );
+      }
+
+      if (new BigNumber(calcedFee.gas).gt(new BigNumber(this.gasLimitEstimate))){
+        throw new HttpException(
+          500,
+          GAS_LIMIT_EXCEEDED_ERROR_MESSAGE + ' Calculated gas: ' + new BigNumber(calcedFee.gas).toString() + ' gasLimitEstimate: ' + new BigNumber(this.gasLimitEstimate).toString(),
+          GAS_LIMIT_EXCEEDED_ERROR_CODE
+        );
+      }
+
+      var res: AddPositionTransactionResponse = await this.signingClient.signAndBroadcast(req.address, msgs, calcedFee);
+      this.signingClient.disconnect();
+
+      var outbound_coins_string = '' // 990uion,98159uosmo
+      var outbound_shares_string = '' // 57568515255656500gamm/pool/62
+      var token0_finalamount = '0'
+      var token1_finalamount = '0'
+      var poolshares = '0'
+
+      if (res?.code !== successfulTransaction){
+        res.token0_finalamount = token0_finalamount
+        res.token1_finalamount = token1_finalamount
+        res.poolshares = poolshares
+        res.poolId = pool.id.toString()
+        res.poolAddress = pool.address
+        res.gasPrice = gasPrice
+        return res;
+      } 
+
+      // RETURNED VALUE DISSECTION
+      //  osmo doesnt send back a clear value, we need to discern it from the event logs >.>
+
+      try {
+        for (var event_idx=0; event_idx<res.events.length; event_idx++){
+          var event = res.events[event_idx];
+          if (event.type == 'coin_received'){
+            
+            for (var attribute_idx=0; attribute_idx<event.attributes.length; attribute_idx++){
+              var attribute = event.attributes[attribute_idx];
+              if (attribute.key == 'receiver' && attribute.value && attribute.value == pool.address){
+                if (event.attributes.length > attribute_idx){
+                  outbound_coins_string = event.attributes[attribute_idx+1].value
+                }
+              }
+              else if (attribute.key == 'amount'){
+                if (pool.totalShares && pool.totalShares.denom && attribute.value.includes(pool.totalShares.denom)){
+                  outbound_shares_string = attribute.value;
+                }
+              }
+            }
+          }
+        }
+        if (outbound_coins_string != ''){
+          if (outbound_coins_string.includes(',')){
+            var coins_string_list = outbound_coins_string.split(',');
+            for (var coin_string_idx=0; coin_string_idx<coins_string_list.length; coin_string_idx++){
+              var coin_string = coins_string_list[coin_string_idx];
+              if (coin_string.includes(token0.base)){
+                token0_finalamount = coin_string.replace(token0.base,'');
+              } else if (coin_string.includes(token1.base)){
+                token1_finalamount = coin_string.replace(token1.base,'');
+              }
+            }
+          }else{
+            if (outbound_coins_string.includes(token0.base)){
+              token0_finalamount = outbound_coins_string.replace(token0.base,'');
+            } else if (outbound_coins_string.includes(token1.base)){
+              token1_finalamount = outbound_coins_string.replace(token1.base,'');
+            }
+          }
+        }
+        
+        if (outbound_shares_string != ''){
+          poolshares = outbound_shares_string.replace(pool.totalShares.denom,'');
+        }
+      } catch (error) {
+        console.debug(error);
+      }
+
+      res.token0_finalamount = token0_finalamount
+      res.token1_finalamount = token1_finalamount
+      res.poolshares = poolshares
+      res.poolId = pool.id.toString()
+      res.poolAddress = pool.address
+      res.gasPrice = gasPrice
+      return res; 
+    }
+
+  } catch (error) {
+    console.debug(error);
+  } finally {
+    this.signingClient.disconnect();
+  }
+  throw new HttpException(
+    500,
+    TRADE_FAILED_ERROR_MESSAGE,
+    TRADE_FAILED_ERROR_CODE
+  );
+}
 
   /**
    * Given a 2 token symbols and 1-2 amounts, exchange amounts for pool liquidity shares
@@ -1114,7 +1512,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
       const prices = await getImperatorPriceHash(callImperatorWithTokens); // need to compare these two.. i think formatting is the same?
 
       // filter for CL
-      const filteredPools = filterPoolsLP(this.tokenList, pools, prices); // removes stableswap, !token.denom.startsWith('gamm/pool'), has price, has osmosisAsset
+      const filteredPools = filterPoolsSwap(this.tokenList, pools, prices); // removes stableswap, !token.denom.startsWith('gamm/pool'), has price, has osmosisAsset
 
       const extendedPools = filteredPools.map((pool) =>
         extendPool(this.tokenList, { pool, fees, balances, lockedCoins, prices:prices })
@@ -1171,6 +1569,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
 
       var msgs = []
       const msg = exitPool({
+            // @ts-ignore: bad osmojs models
         poolId: currentPool.id.toString(),
         sender: address,
         shareInAmount,
@@ -1186,7 +1585,8 @@ export class Osmosis extends CosmosBase implements Cosmosish{
           msgs,
         );
         gasToUse = gasEstimation;
-      } catch (error: Error) {
+      } catch (error1) {
+        var error = error1 as Error
         if (error.message.includes('token is lesser than min amount')){
           var composeTokenOutMins = '';
           for (var idx=0;idx<tokenOutMins.length;idx++){
@@ -1203,7 +1603,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
       const gasPrice = await this.getLatestBasePrice();
       const calcedFee = calculateFee(
         Math.round(Number(gasToUse) * (gasAdjustment || 1.5)),
-        GasPrice.fromString(gasPrice)
+        GasPrice.fromString(gasPrice.toString() + this.manualGasPriceToken)
       );
   
       if (new BigNumber(calcedFee.gas).gt(new BigNumber(this.gasLimitEstimate))){
@@ -1282,6 +1682,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
       } 
 
       res.balances = finalBalancesReceived;
+      res.gasPrice = gasPrice
       return res;
 
     } catch (error) {
@@ -1522,7 +1923,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
     const gasPrice = await this.getLatestBasePrice();
     const calcedFee = calculateFee(
       Math.round(Number(gasToUse) * (gasAdjustment || 1.5)),
-      GasPrice.fromString(gasPrice)
+      GasPrice.fromString(gasPrice.toString() + this.manualGasPriceToken)
     );
 
     if (new BigNumber(calcedFee.gas).gt(new BigNumber(this.gasLimitEstimate))){
@@ -1533,7 +1934,8 @@ export class Osmosis extends CosmosBase implements Cosmosish{
       );
     }
 
-    const res = await this.signingClient.signAndBroadcast(req.from, [msg], calcedFee);
+    var res = await this.signingClient.signAndBroadcast(req.from, [msg], calcedFee);
+    res.gasPrice = gasPrice
     this.signingClient.disconnect();
     return res;
   }

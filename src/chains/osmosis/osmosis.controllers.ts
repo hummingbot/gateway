@@ -36,6 +36,8 @@ import {
   CosmosPoolPositionsResponse,
   CosmosTradeResponse,
   PriceResponse,
+  AddLiquidityRequest,
+  AddLiquidityResponse,
 } from '../../amm/amm.requests';
 import { Osmosis } from './osmosis';
 
@@ -235,7 +237,6 @@ export class OsmosisController {
 
       const price = tradeInfo.expectedTrade.executionPrice;
 
-      const gasPrice = osmosis.manualGasPrice;  // GAS PRICE PER UNIT OF WORK  
       const gasLimitTransaction = osmosis.gasLimitEstimate; // MAX uOSMO COST PER TRANSACTION 
       const gasAdjustment = osmosis.gasPriceConstant; // 
       const feeTier = osmosis.feeTier; // 
@@ -328,7 +329,7 @@ export class OsmosisController {
         finalAmountReceived_basetoken: finalAmountReceived_string,
         expectedPrice: new BigNumber(price).decimalPlaces(8).toString(),
         finalPrice: finalExecutionPrice.toString(),
-        gasPrice: gasPrice,
+        gasPrice: tx.gasPrice.toString(),
         gasLimit: gasLimitTransaction,
         gasUsed: tx.gasUsed,
         gasWanted: tx.gasWanted,
@@ -378,7 +379,7 @@ export class OsmosisController {
         token0: req.token0,
         token1: req.token1,
         poolId: tx.poolId,
-        gasPrice: gasPrice,
+        gasPrice: gasPrice.toString(),
         gasLimit: gasLimitTransaction,
         gasUsed: tx.gasUsed,
         gasWanted: tx.gasWanted,
@@ -390,6 +391,57 @@ export class OsmosisController {
       };
     }
 
+    static async addLiquidityLP(
+      osmosis: Osmosis,
+      req: AddLiquidityRequest 
+    ): Promise<AddLiquidityResponse> {
+      const startTimestamp: number = Date.now();
+
+      const { wallet } =
+        await getOsmoWallet(
+          osmosis,
+          req.address,
+        );
+
+      const token0: TokenishCosmosAsset = osmosis.getTokenBySymbol(req.token0)!;
+      const token1: TokenishCosmosAsset = osmosis.getTokenBySymbol(req.token1)!;
+
+      const gasLimitTransaction = osmosis.gasLimitEstimate; // MAX uOSMO COST PER TRANSACTION 
+      const gasAdjustment = osmosis.gasPriceConstant; // 
+      const feeTier = osmosis.feeTier; // 
+
+      const tx = await osmosis.addPositionLP(
+        wallet,
+        token0,
+        token1,
+        req,
+        feeTier,
+        gasAdjustment,
+      );
+
+      this.validateTxErrors(tx, "Liquidity added. ");
+    
+      return {
+        network: osmosis.chainName,
+        timestamp: startTimestamp,
+        latency: latency(startTimestamp, Date.now()),
+        token0: req.token0,
+        token1: req.token1,
+        fee: feeTier,
+        tokenId: Number(tx.poolId),
+        gasPrice: tx.gasPrice,
+        gasPriceToken: osmosis.manualGasPriceToken,
+        gasLimit: Number(gasLimitTransaction),
+        gasCost: tx.gasUsed,
+        gasWanted: tx.gasWanted,
+        txHash: tx.transactionHash,
+        poolAddress: tx.poolAddress,
+        poolShares: tx.poolshares,
+        token0FinalAmount: tx.token0_finalamount,
+        token1FinalAmount: tx.token1_finalamount,
+        nonce: 0,
+      };
+    }
 
     static async removeLiquidity(
       osmosis: Osmosis,
@@ -428,7 +480,7 @@ export class OsmosisController {
         latency: latency(startTimestamp, Date.now()),
         poolId: req.poolId,
         balances: tx.balances,
-        gasPrice: gasPrice,
+        gasPrice: gasPrice.toString(),
         gasLimit: gasLimitTransaction,
         gasUsed: tx.gasUsed,
         gasWanted: tx.gasWanted,
@@ -517,14 +569,14 @@ export class OsmosisController {
       osmosis: Osmosis,
     ): Promise<EstimateGasResponse> {
       
-      const gasPrice = Number(osmosis.manualGasPrice.replace('uosmo',''));  // GAS PRICE PER UNIT OF WORK  
+      const gasPrice = Number(osmosis.getLatestBasePrice());  // GAS PRICE PER UNIT OF WORK  
       const gasLimitTransaction = osmosis.gasLimitEstimate; // MAX uOSMO COST PER TRANSACTION 
 
       return {
         network: osmosis.chainName,
         timestamp: Date.now(),
         gasPrice,
-        gasPriceToken: 'uosmo',
+        gasPriceToken: osmosis.manualGasPriceToken,
         gasLimit: Number(gasLimitTransaction),
         gasCost: '0',
       };

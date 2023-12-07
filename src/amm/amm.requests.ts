@@ -100,15 +100,15 @@ export interface TradeResponse {
   latency: number;
   base: string;
   quote: string;
-  amount: string;
-  rawAmount: string;
+  amount: string; // finalAmountReceived
+  rawAmount: string; // finalAmountReceived_basetoken
   expectedIn?: string;
-  expectedOut?: string;
-  price: string;
+  expectedOut?: string;  // expectedAmountReceived
+  price: string; // finalPrice
   gasPrice: number;
   gasPriceToken: string;
-  gasLimit: number;
-  gasCost: string;
+  gasLimit: number; // gasWanted
+  gasCost: string; // gasUsed
   nonce?: number;
   txHash: string | any | undefined;
 }
@@ -159,6 +159,8 @@ export interface AddLiquidityRequest extends NetworkSelectionRequest {
   nonce?: number;
   maxFeePerGas?: string;
   maxPriorityFeePerGas?: string;
+  poolId?: string; // COSMOS: will select one for you if not provided
+  allowedSlippage?: string; // COSMOS: TokenMinAmount
 }
 
 export interface CosmosAddLiquidityRequest extends NetworkSelectionRequest {
@@ -178,13 +180,18 @@ export interface AddLiquidityResponse {
   token0: string;
   token1: string;
   fee: string;
-  tokenId: number;
+  tokenId: number; // COSMOS: poolId
   gasPrice: number;
   gasPriceToken: string;
   gasLimit: number;
-  gasCost: string;
+  gasCost: string; // gasUsed for Cosmos
+  gasWanted?: string;
   nonce: number;
   txHash: string | undefined;
+  poolAddress?: string; // Cosmos only
+  poolShares?: string; // Cosmos only
+  token0FinalAmount?: string; // Cosmos only
+  token1FinalAmount?: string; // Cosmos only
 }
 
 export interface CosmosAddLiquidityResponse {

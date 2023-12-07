@@ -16,7 +16,8 @@ export namespace OsmosisConfig {
     feeTier: string;
     gasAdjustment: number;
     gasLimitTransaction: string;
-    manualGasPrice: string;
+    manualGasPrice: number;
+    manualGasPriceToken: string;
     allowedSlippage: string;
     rpcAddressDynamicBaseFee: string;
     useEIP1559DynamicBaseFeeInsteadOfManualGasPrice: boolean;
@@ -27,7 +28,7 @@ export namespace OsmosisConfig {
     chainId: (network: string) =>
       ConfigManagerV2.getInstance().get(`osmosis.networks.${network}.chainId`),
     rpcURL: (network: string) =>
-      ConfigManagerV2.getInstance().get(`osmosis.networks.${network}.rpcURL`),
+      ConfigManagerV2.getInstance().get(`osmosis.networks.${network}.nodeURL`),
     tokenListType: (network: string) =>
       ConfigManagerV2.getInstance().get(
         `osmosis.networks.${network}.tokenListType`
@@ -46,6 +47,7 @@ export namespace OsmosisConfig {
       return type === 'swap' ? ['AMM_LP'] : ['AMM_LP'];
     },
     manualGasPrice: ConfigManagerV2.getInstance().get(`osmosis.manualGasPrice`),
+    manualGasPriceToken: ConfigManagerV2.getInstance().get(`osmosis.manualGasPriceToken`),
     nativeCurrencySymbol: ConfigManagerV2.getInstance().get(`osmosis.nativeCurrencySymbol`),
     gasLimitTransaction: ConfigManagerV2.getInstance().get(`osmosis.gasLimitTransaction`),
     gasAdjustment: ConfigManagerV2.getInstance().get(`osmosis.gasAdjustment`),
