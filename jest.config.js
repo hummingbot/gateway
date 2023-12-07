@@ -36,6 +36,7 @@ module.exports = {
   globalTeardown: '<rootDir>/test/teardown.ts',
   moduleNameMapper: {
     eccrypto: '<rootDir>/test/mock/eccrypto-mock.js',
+    axios: '<rootDir>/node_modules/axios/dist/node/axios.cjs'
   },
   testPathIgnorePatterns: ['/node_modules/', 'test-helpers'],
 };
