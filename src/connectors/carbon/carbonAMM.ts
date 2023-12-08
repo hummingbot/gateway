@@ -19,7 +19,6 @@ import { Action, MatchActionBNStr, TradeActionBNStr } from '@bancor/carbon-sdk';
 import { Decimal } from '@bancor/carbon-sdk/utils';
 
 import { Ethereum } from '../../chains/ethereum/ethereum';
-import { TokenInfo } from '../../chains/ethereum/ethereum-base';
 import { EVMTxBroadcaster } from '../../chains/ethereum/evm.broadcaster';
 
 import { isFractionString } from '../../services/validators';
@@ -30,8 +29,6 @@ import { logger } from '../../services/logger';
 import carbonControllerAbi from './carbon_controller_abi.json';
 
 import { CarbonConfig } from './carbon.config';
-
-import { emptyToken } from './carbon.utils';
 
 type TradeData = {
   tradeActions: TradeActionBNStr[];
@@ -64,8 +61,8 @@ export class CarbonAMM implements Uniswapish {
   private _ready: boolean = false;
   private _conf: CarbonConfig.NetworkConfig;
   private _gasLimitEstimate: number;
+  private _allowedSlippage: string;
   private _ttl: number;
-  private _nativeToken: TokenInfo;
 
   private constructor(chain: string, network: string) {
     if (chain === 'ethereum') {
@@ -74,18 +71,8 @@ export class CarbonAMM implements Uniswapish {
       throw new Error('Unsupported chain');
     }
 
-    this._nativeToken =
-      this._chain.chainName === 'ethereum'
-        ? {
-            chainId: 1,
-            address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
-            name: 'Ethereum',
-            symbol: 'ETH',
-            decimals: 18,
-          }
-        : emptyToken;
-
     this._conf = CarbonConfig.config;
+    this._allowedSlippage = this._conf.allowedSlippage;
     this.carbonContractConfig = this._conf.carbonContractsConfig(
       chain,
       network
@@ -135,17 +122,7 @@ export class CarbonAMM implements Uniswapish {
    * @param address Token address
    */
   public getTokenByAddress(address: string): Token {
-    if (address === this._nativeToken.address) {
-      return new Token(
-        this._nativeToken.chainId,
-        this._nativeToken.address,
-        this._nativeToken.decimals,
-        this._nativeToken.symbol,
-        this._nativeToken.name
-      );
-    } else {
-      return this.tokenList[getAddress(address)];
-    }
+    return this.tokenList[getAddress(address)];
   }
 
   /**
@@ -206,7 +183,8 @@ export class CarbonAMM implements Uniswapish {
       return Number(fractionSplit[0]) / Number(fractionSplit[1]);
     }
 
-    const allowedSlippage = this._conf.allowedSlippage;
+    const allowedSlippage = this._allowedSlippage;
+
     const matches = allowedSlippage.match(percentRegexp);
     if (matches) return Number(matches[1]) / Number(matches[2]);
     throw new Error(
@@ -361,8 +339,6 @@ export class CarbonAMM implements Uniswapish {
     maxPriorityFeePerGas?: BigNumber,
     allowedSlippage?: string
   ): Promise<Transaction> {
-    if (!wallet.address) throw Error('No wallet address specified.');
-
     const carbonTrade = <CarbonTrade>trade;
 
     let overrideParams: {
@@ -391,12 +367,7 @@ export class CarbonAMM implements Uniswapish {
     }
 
     const slippage = this.getAllowedSlippage(allowedSlippage);
-    let deadlineMs: number;
-    if (ttl) {
-      deadlineMs = Math.floor(new Date().getTime()) + this._ttl * 1000;
-    } else {
-      deadlineMs = this.ttl * 1000;
-    }
+    const deadlineMs = ttl * 1000; // in ms
     let tradeTransaction: PopulatedTransaction;
 
     if (carbonTrade.tradeByTarget) {

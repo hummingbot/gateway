@@ -1,4 +1,3 @@
-import { Contract, Signer, providers } from 'ethers';
 import Decimal from 'decimal.js-light';
 import { ChainCache, initSyncedCache } from '@bancor/carbon-sdk/chain-cache';
 import {
@@ -35,7 +34,6 @@ import { logger } from '../../services/logger';
 import { BalanceRequest } from '../../network/network.requests';
 
 import { isETHAddress } from './carbon.utils';
-import carbonControllerAbi from './carbon_controller_abi.json';
 import { CarbonConfig } from './carbon.config';
 
 import {
@@ -67,7 +65,7 @@ export class CarbonCLOB implements CLOBish {
     }
 
     this._nativeToken =
-      this._chain.chainName === 'ethereum'
+      chain === 'ethereum'
         ? {
             chainId: 1,
             address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
@@ -104,19 +102,6 @@ export class CarbonCLOB implements CLOBish {
 
     return CarbonCLOB._instances[key];
   }
-
-  // getters
-
-  /**
-   * Carbon Controller ABI
-   */
-  getContract(
-    contractAddress: string,
-    signer: providers.StaticJsonRpcProvider | Signer
-  ) {
-    return new Contract(contractAddress, carbonControllerAbi.abi, signer);
-  }
-
   public async loadMarkets() {
     const contractPairs = await this.api.reader.pairs();
 
@@ -447,8 +432,8 @@ export class CarbonCLOB implements CLOBish {
         : 0
     );
 
-    const minSellNormalized = ONE.div(maxSell);
-    const maxSellNormalized = ONE.div(minSell);
+    const minSellNormalized = sellHasLiq ? ONE.div(maxSell) : new Decimal(0);
+    const maxSellNormalized = sellHasLiq ? ONE.div(minSell) : new Decimal(0);
 
     const deltaBuy = maxBuy.minus(minBuy);
     const deltaSell = maxSellNormalized.minus(minSellNormalized);
@@ -554,7 +539,7 @@ export class CarbonCLOB implements CLOBish {
   }
 
   private _findTokenByAddress(address: string): TokenInfo {
-    if (this._isNativeAddress(address)) {
+    if (isETHAddress(address)) {
       return this._nativeToken;
     } else {
       return (
@@ -563,12 +548,5 @@ export class CarbonCLOB implements CLOBish {
         ) || emptyToken
       );
     }
-  }
-
-  private _isNativeAddress(address: string) {
-    if (this._chain.chainName === 'ethereum') {
-      return isETHAddress(address);
-    }
-    return false;
   }
 }

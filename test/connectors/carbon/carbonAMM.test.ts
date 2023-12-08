@@ -15,6 +15,7 @@ import { CarbonAMM } from '../../../src/connectors/carbon/carbonAMM';
 import { logger } from '../../../src/services/logger';
 import { encodeStrategyId } from '../../../src/connectors/carbon/carbon.utils';
 import { patchEVMNonceManager } from '../../../test/evm.nonce.mock';
+import { Avalanche } from '../../../src/chains/avalanche/avalanche';
 
 let ethereum: Ethereum;
 let carbon: CarbonAMM;
@@ -82,6 +83,26 @@ const MARKETS = [
       decimals: 18,
       logoURI:
         'https://assets.coingecko.com/coins/images/9956/thumb/4943.png?1636636734',
+    },
+    quoteToken: {
+      chainId: 1,
+      address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
+      name: 'Ethereum',
+      symbol: 'ETH',
+      decimals: 18,
+    },
+    makerFee: 2000,
+  },
+  {
+    ticker: 'USDC-ETH',
+    baseToken: {
+      chainId: 1,
+      address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+      name: 'USD Coin',
+      symbol: 'USDC',
+      decimals: 6,
+      logoURI:
+        'https://assets.coingecko.com/coins/images/6319/thumb/USD_Coin_icon.png?1547042389',
     },
     quoteToken: {
       chainId: 1,
@@ -205,6 +226,10 @@ const buildEncodedStrategy = (order: {
     id: BigNumber.from(encodeStrategyId(order.id, order.pairId)),
     ...encodeStrategy(strategyObject),
   };
+};
+
+const patchAllowedSlippage = (allowedSlippage: string) => {
+  patch(carbon, '_allowedSlippage', allowedSlippage);
 };
 
 const patchReader = () => {
@@ -351,6 +376,14 @@ const patchMsgBroadcaster = () => {
   });
 };
 
+describe('verify Carbon constructor', () => {
+  it('Should return an Error with an unsupported chain', () => {
+    expect(async () => {
+      CarbonAMM.getInstance('avalanche', 'avalanche');
+    }).rejects.toThrow(Error);
+  });
+});
+
 describe('verify Carbon estimateSellTrade', () => {
   const inputAmount = 0.01;
   const inputAmountWei = new Decimal(inputAmount)
@@ -392,7 +425,7 @@ describe('verify Carbon estimateBuyTrade', () => {
 
   it('Should throw an error if no trade actions are possible', async () => {
     await expect(async () => {
-      await carbon.estimateSellTrade(ETH, USDC, BigNumber.from(1));
+      await carbon.estimateBuyTrade(ETH, USDC, BigNumber.from(1));
     }).rejects.toThrow(Error);
   });
 });
@@ -538,10 +571,102 @@ describe('POST /amm/trade BUY', () => {
       .expect((res) => expect(res.body.txHash).toEqual(TX_HASH));
   });
 
+  it('should return 200 with proper request and maxFeePerGas set', async () => {
+    patchGetWallet();
+    patchMsgBroadcaster();
+    await request(gatewayApp)
+      .post(`/amm/trade`)
+      .send({
+        chain: 'ethereum',
+        network: 'mainnet',
+        connector: 'carbonAMM',
+        base: 'DAI',
+        quote: 'USDC',
+        amount: '1',
+        side: 'BUY',
+        maxFeePerGas: '5000000000',
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .expect((res) => expect(res.body.base).toEqual(DAI.address))
+      .expect((res) => expect(res.body.quote).toEqual(USDC.address))
+      .expect((res) => expect(Number(res.body.amount)).toEqual(1))
+      .expect((res) => expect(Number(res.body.expectedIn)).toBeGreaterThan(1))
+      .expect((res) => expect(Number(res.body.price)).toBeGreaterThan(1))
+      .expect((res) => expect(res.body.txHash).toEqual(TX_HASH));
+  });
+
   it('should return 404 when parameters are invalid', async () => {
     await request(gatewayApp)
       .get(`/clob/markets`)
       .send(INVALID_REQUEST)
       .expect(404);
+  });
+});
+
+describe('Requests to the connector', () => {
+  it('should return 503 with unsupported chain', async () => {
+    patchGetWallet();
+    patchMsgBroadcaster();
+    const avalanche = Avalanche.getInstance('avalanche');
+    patchEVMNonceManager(avalanche.nonceManager);
+    avalanche.init();
+    await request(gatewayApp)
+      .post(`/amm/price`)
+      .send({
+        chain: 'avalanche',
+        network: 'avalanche',
+        connector: 'carbonAMM',
+        base: 'DAI',
+        quote: 'USDC',
+        amount: '1',
+        side: 'BUY',
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(503);
+    await avalanche.close();
+  });
+
+  it('should return 404 if there is a malformed percent slippage in the request', async () => {
+    patchGetWallet();
+    patchMsgBroadcaster();
+    await request(gatewayApp)
+      .post(`/amm/trade`)
+      .send({
+        chain: 'ethereum',
+        network: 'mainnet',
+        connector: 'carbonAMM',
+        base: 'DAI',
+        quote: 'USDC',
+        amount: '1',
+        side: 'SELL',
+        allowedSlippage: '0.04',
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(404);
+  });
+
+  it('should return 503 if there is a malformed percent slippage configured', async () => {
+    patchGetWallet();
+    patchMsgBroadcaster();
+    patchAllowedSlippage('0.5');
+
+    await request(gatewayApp)
+      .post(`/amm/trade`)
+      .send({
+        chain: 'ethereum',
+        network: 'mainnet',
+        connector: 'carbonAMM',
+        base: 'DAI',
+        quote: 'USDC',
+        amount: '1',
+        side: 'SELL',
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(503);
   });
 });
