@@ -1,6 +1,5 @@
 import { Coin } from 'osmo-query/dist/codegen/cosmos/base/v1beta1/coin';
 import BigNumber from 'bignumber.js';
-import { ExtendedPool } from './osmosis.lp.utils'
 import { Pool as BalancerPool, PoolAsset } from 'osmojs/dist/codegen/osmosis/gamm/pool-models/balancer/balancerPool';
 import { Pool as CLPool } from 'osmo-query/dist/codegen/osmosis/concentrated-liquidity/pool';
 import { CosmWasmPool as CWPool } from 'osmo-query/dist/codegen/osmosis/cosmwasmpool/v1beta1/model/pool';
@@ -246,9 +245,15 @@ export class SerializableExtendedPool {
   constructor(input: ExtendedPool) {
     this.$typeUrl = input.$typeUrl;
     this.address = input.address;
-    this.id = input.id.toString();
+    if (input.id){
+      this.id = input.id.toString();
+    }else{
+      this.id = input.poolId!.toString();
+    }
     this.futurePoolGovernor = input.futurePoolGovernor;
     this.totalShares = input.totalShares;
+    this.token0 = input.token0;
+    this.token1 = input.token1;
     this.poolAssets = input.poolAssets;
     this.totalWeight = input.totalWeight;
     this.fees_volume24H = input.volume24H;
@@ -263,11 +268,13 @@ export class SerializableExtendedPool {
   address: string;
   id: string;
   // poolParams: PoolParams;
-  futurePoolGovernor: string;
-  totalShares: Coin;
-  poolAssets: PoolAsset[];
-  totalWeight: string;
-
+  futurePoolGovernor?: string;
+  totalShares?: Coin;
+  poolAssets?: PoolAsset[];
+  totalWeight?: string;
+  token0?: string;
+  token1?: string;
+  
   fees_volume24H: number;
   fees_spent_7d: number;
   fees_volume7d: number;
@@ -275,4 +282,31 @@ export class SerializableExtendedPool {
   myLiquidityDollarValue: string;
   my_bonded_shares: string;
   denom: string;
+}
+
+export class ExtendedPool {
+  liquidity: number = 0;
+  volume24H: number = 0;
+  fees7D: number = 0;
+  volume7d: number = 0;
+  myLiquidity: string = "";
+  bonded: string = "";
+  denom: string = "";
+  $typeUrl?: string | undefined;
+  address: string = "";
+  totalWeight: string = "";
+  token0: string = "";
+  token1: string = "";
+  poolAssets: PoolAsset[] = [];
+  id: bigint = BigInt(0);
+  poolId: bigint = BigInt(0);
+  poolParams: PoolParams = new PoolParams();
+  futurePoolGovernor: string = "";
+  totalShares: Coin = {'amount':'', 'denom':''};
+}
+
+class PoolParams{
+  swapFee: string = "";
+  exitFee: string = "";
+  smoothWeightChangeParams: undefined;
 }

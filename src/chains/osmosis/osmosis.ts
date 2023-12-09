@@ -8,7 +8,7 @@ import { coin, Coin } from '@cosmjs/amino';
 import { FEES, } from 'osmojs/dist/utils/gas/values'
 import { TokenInfo, } from '../../services/base'; 
 
-import { osmosis, cosmos, getSigningOsmosisClient } from 'osmojs';
+import { osmosis, cosmos} from 'osmojs'; // getSigningOsmosisClient unused - constructing manually with tendermintclient 37
 import {
   CoinGeckoToken,
   CoinDenom,
@@ -24,6 +24,7 @@ import {
   AddPositionTransactionResponse, 
   ReduceLiquidityTransactionResponse, 
   SerializableExtendedPool,
+  ExtendedPool,
   CoinAndSymbol,
   AnyPoolType
 } from './osmosis.types';
@@ -48,15 +49,27 @@ import { Pool as CLPool } from 'osmo-query/dist/codegen/osmosis/concentrated-liq
 import { TradeInfo } from './osmosis.controllers';
 import { PoolAsset } from 'osmojs/dist/codegen/osmosis/gamm/pool-models/balancer/balancerPool';
 import { HttpException, TRADE_FAILED_ERROR_CODE, TRADE_FAILED_ERROR_MESSAGE, GAS_LIMIT_EXCEEDED_ERROR_MESSAGE, GAS_LIMIT_EXCEEDED_ERROR_CODE, AMOUNT_LESS_THAN_MIN_AMOUNT_ERROR_MESSAGE, AMOUNT_LESS_THAN_MIN_AMOUNT_ERROR_CODE } from '../../services/error-handler';
-import { ExtendedPool, extendPool, filterPoolsSwap, filterPoolsLP } from './osmosis.lp.utils';
+import { extendPool, filterPoolsSwap, filterPoolsLP, filterPoolsSwapAndLP } from './osmosis.lp.utils';
 import { fetchFees, findTickForPrice } from './osmosis.utils';
 import { getImperatorPriceHash } from './osmosis.prices';
-import { GasPrice, calculateFee, setupIbcExtension } from '@cosmjs/stargate';
+import { GasPrice, calculateFee, setupIbcExtension, SigningStargateClient, AminoTypes } from '@cosmjs/stargate';
 import { CosmWasmClient } from "@cosmjs/cosmwasm-stargate";
 import { TokensRequest, TokensResponse } from '../../network/network.requests';
 import { Cosmosish, TransferRequest } from '../../services/common-interfaces';
 import { AddLiquidityRequest } from '../../amm/amm.requests';
+import { HttpBatchClient, Tendermint37Client } from '@cosmjs/tendermint-rpc';
+import { GeneratedType, Registry } from "@cosmjs/proto-signing";
 
+import {
+    cosmosAminoConverters,
+    cosmosProtoRegistry,
+    cosmwasmAminoConverters,
+    cosmwasmProtoRegistry,
+    ibcProtoRegistry,
+    ibcAminoConverters,
+    osmosisAminoConverters,
+    osmosisProtoRegistry
+} from 'osmojs';
 const { DirectSecp256k1Wallet } = require('@cosmjs/proto-signing');
 const {
   joinPool,
@@ -70,6 +83,23 @@ const {
 const {
 send
 } = cosmos.bank.v1beta1.MessageComposer.fromPartial;
+
+const protoRegistry: ReadonlyArray<[string, GeneratedType]> = [
+  ...cosmosProtoRegistry,
+  ...cosmwasmProtoRegistry,
+  ...ibcProtoRegistry,
+  ...osmosisProtoRegistry
+];
+
+const aminoConverters = {
+  ...cosmosAminoConverters,
+  ...cosmwasmAminoConverters,
+  ...ibcAminoConverters,
+  ...osmosisAminoConverters
+};
+
+const registry = new Registry(protoRegistry);
+const aminoTypes = new AminoTypes(aminoConverters);
 
 const successfulTransaction = 0;
 
@@ -88,6 +118,8 @@ export class Osmosis extends CosmosBase implements Cosmosish{
   public readonly feeTier: string; // FEE_VALUES.osmosis[_feeTier] low medium high osmojs/src/utils/gas/values.ts
   public allowedSlippage: string;
   public manualGasPriceToken: string;
+  private tendermint37Client?: Tendermint37Client;
+  private httpBatchClient?: HttpBatchClient;
 
   private constructor(network: string) {
     const config = OsmosisConfig.config;
@@ -189,6 +221,33 @@ export class Osmosis extends CosmosBase implements Cosmosish{
 
   public ready(): boolean {
     return this._ready
+  }
+
+  private async osmosisGetSigningStargateClient(
+    rpcEndpoint: string,
+    signer: any,
+  ){
+    this.osmosisGetHttpBatchClient(rpcEndpoint);
+    await this.osmosisGetTendermint37Client();
+
+    const signingStargateClient = await SigningStargateClient.createWithSigner(this.tendermint37Client!, signer, {
+      registry: registry,
+      aminoTypes: aminoTypes
+    });
+
+    return signingStargateClient;
+  }
+
+  private async osmosisGetTendermint37Client() {
+    this.tendermint37Client = await Tendermint37Client.create(
+      this.httpBatchClient!
+    );
+  }
+
+  private osmosisGetHttpBatchClient(rpcEndpoint: string) {
+    this.httpBatchClient = new HttpBatchClient(rpcEndpoint, {
+      dispatchInterval: 2000,
+    });
   }
 
   public getTokenByAddress(address: string): CosmosAsset {
@@ -391,17 +450,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
       }) as Promise<{ pools: ExtendedPool[] }>, // ExtendedBalancerPool
     ]);
 
-    // filterPoolsSWAP
-    var pools: ExtendedPool[] = poolsData  // ExtendedBalancerPool
-    .filter(({ $typeUrl }) => !$typeUrl?.includes('stableswap'))
-    .filter(({ poolAssets }) =>
-      poolAssets.every(
-        ({ token }) =>
-          prices[token!.denom] &&
-          this.getTokenByBase(token!.denom)
-      )
-    );
-    
+    const pools = filterPoolsSwap(this.tokenList, poolsData, prices); // removes stableswap, !token.denom.startsWith('gamm/pool'), has price, has osmosisAsset
 
     var pairs: PrettyPair[] = [];
     if (!this.isEmptyArray(pools) && !this.isEmptyArray(Object.keys(prices))){
@@ -640,10 +689,8 @@ export class Osmosis extends CosmosBase implements Cosmosish{
     }
 
     const keyWallet = await DirectSecp256k1Wallet.fromKey(wallet.privkey, 'osmo')
-    this.signingClient = await getSigningOsmosisClient({
-      rpcEndpoint: this.rpcUrl,
-      signer: keyWallet
-    });
+    this.signingClient = await this.osmosisGetSigningStargateClient(this.rpcUrl, keyWallet);
+
     const routes = trade.expectedTrade.routes;
 
     var tokenOutMinAmount;
@@ -754,10 +801,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
 
     try {
       const keyWallet = await DirectSecp256k1Wallet.fromKey(wallet.privkey, 'osmo')
-      this.signingClient = await getSigningOsmosisClient({
-        rpcEndpoint: this.rpcUrl,
-        signer: keyWallet
-      });
+      this.signingClient = await this.osmosisGetSigningStargateClient(this.rpcUrl, keyWallet);
       
       if (!this.signingClient || !address) {
         console.error('stargateClient undefined or address undefined.');
@@ -1102,10 +1146,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
 
   try {
     const keyWallet = await DirectSecp256k1Wallet.fromKey(wallet.privkey, 'osmo')
-    this.signingClient = await getSigningOsmosisClient({
-      rpcEndpoint: this.rpcUrl,
-      signer: keyWallet
-    });
+    this.signingClient = await this.osmosisGetSigningStargateClient(this.rpcUrl, keyWallet);
     
     if (!this.signingClient || !req.address) {
       console.error('stargateClient undefined or address undefined.');
@@ -1478,10 +1519,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
 
     try {
       const keyWallet = await DirectSecp256k1Wallet.fromKey(wallet.privkey, 'osmo')
-      this.signingClient = await getSigningOsmosisClient({
-        rpcEndpoint: this.rpcUrl,
-        signer: keyWallet
-      });
+      this.signingClient = await this.osmosisGetSigningStargateClient(this.rpcUrl, keyWallet);
       
       const balancesContainer = await this._provider.cosmos.bank.v1beta1.allBalances({
         address: address,
@@ -1739,7 +1777,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
       const prices = await getImperatorPriceHash(callImperatorWithTokens);
 
       // filter for CL
-      const filteredPools = filterPoolsLP(this.tokenList, pools, prices); // removes stableswap, !token.denom.startsWith('gamm/pool'), has price, has osmosisAsset
+      const filteredPools = filterPoolsSwapAndLP(this.tokenList, pools, prices); // removes stableswap, !token.denom.startsWith('gamm/pool'), has price, has osmosisAsset
 
       const extendedPools = filteredPools.map((pool) =>
         extendPool(this.tokenList, { pool, fees, balances, lockedCoins, prices:prices })
@@ -1749,8 +1787,15 @@ export class Osmosis extends CosmosBase implements Cosmosish{
       extendedPools.forEach(function (cPool) {
         var foundToken0 = false;
         var foundToken1 = false;
-
-        if (cPool.poolAssets){
+        if (cPool.token0){
+          if (cPool.token0 == token0.base || cPool.token1 == token0.base){
+            foundToken0 = true;
+          }
+          if (cPool.token0 == token1.base || cPool.token1 == token1.base){
+            foundToken1 = true;
+          }
+        }
+        else if (cPool.poolAssets){
           for (var poolAsset_idx=0; poolAsset_idx<cPool.poolAssets.length; poolAsset_idx++){
             var poolAsset: PoolAsset = cPool.poolAssets[poolAsset_idx];
             if (poolAsset!.token! && poolAsset!.token!.denom){
@@ -1825,7 +1870,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
       const prices = await getImperatorPriceHash(callImperatorWithTokens); 
 
       // filter for CL
-      const filteredPools = filterPoolsLP(this.tokenList, pools, prices); // removes stableswap, !token.denom.startsWith('gamm/pool'), has price, has osmosisAsset
+      const filteredPools = filterPoolsSwapAndLP(this.tokenList, pools, prices); // removes stableswap, !token.denom.startsWith('gamm/pool'), has price, has osmosisAsset
 
       const extendedPools = filteredPools.map((pool) =>
         extendPool(this.tokenList, { pool, fees, balances, lockedCoins, prices:prices })
@@ -1834,7 +1879,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
       var returnPools: SerializableExtendedPool[] = [];
       extendedPools.forEach(function (cPool) {
         if (poolId){
-          if (cPool.id.toString() == poolId){
+          if (cPool.id.toString() == poolId || cPool.poolId.toString() == poolId){
             returnPools.push(new SerializableExtendedPool(cPool));
           }
         }else{
@@ -1883,10 +1928,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
   ): Promise<TransactionResponse> {
 
     const keyWallet = await DirectSecp256k1Wallet.fromKey(wallet.privkey, 'osmo')
-    this.signingClient = await getSigningOsmosisClient({
-      rpcEndpoint: this.rpcUrl,
-      signer: keyWallet
-    });
+    this.signingClient = await this.osmosisGetSigningStargateClient(this.rpcUrl, keyWallet);
 
     const tokenInAmount = new BigNumber(req.amount)
     .shiftedBy(token.decimals)

@@ -13,6 +13,7 @@ import {
 import {
   // AnyPoolType,
   PriceHash,
+  ExtendedPool
 } from './osmosis.types';
 import { Fee } from './osmosis.utils';
 
@@ -20,9 +21,33 @@ export const getPoolByGammName = (pools: Pool[], gammId: string): Pool => {
   return _getPoolByGammName(pools, gammId);
 };
 
-export const filterPoolsSwap = (assets: Asset[], pools: Pool[], prices: PriceHash) => {
+// '/osmosis.gamm.poolmodels.stableswap.v1beta1.Pool'
+// SS pools are handled by neither filter case (out of spec)
+
+export const filterPoolsSwapAndLP = (assets: Asset[], pools: ExtendedPool[], prices: PriceHash): ExtendedPool[] => {
+  var poolsOut = pools.filter(({ $typeUrl }) => !$typeUrl?.includes('stableswap'))
+  
+  poolsOut = poolsOut.filter((pool) => {
+    if (pool.poolAssets){
+      return pool.poolAssets.every(
+        (pAsset: { token: { denom: string; }; }) =>
+          prices[pAsset.token.denom] &&
+          !pAsset.token.denom.startsWith('gamm/pool') &&
+          assets.find(({ base }) => base === pAsset.token.denom)
+      )
+    }
+    else if (pool.token0){
+      return prices[pool.token0] &&  prices[pool.token1] && assets.find(({ base }) => base === pool.token0) && assets.find(({ base }) => base === pool.token1);
+    }
+    return false;
+  });
+  
+  return poolsOut;
+}
+
+export const filterPoolsSwap = (assets: Asset[], pools: ExtendedPool[], prices: PriceHash): ExtendedPool[] => {
   return pools
-    .filter(({ $typeUrl }) => !$typeUrl?.includes('stableswap'))
+    .filter(({ $typeUrl }) => $typeUrl?.includes('gamm.v1beta1'))
     .filter(({ poolAssets }) =>
       poolAssets != undefined &&
       poolAssets.every(
@@ -41,7 +66,7 @@ export const filterPoolsLP = (assets: Asset[], pools: any[], prices: PriceHash) 
 };
 
 interface ExtendPoolProps {
-  pool: Pool;
+  pool: ExtendedPool;
   fees: Fee[];
   balances: Coin[];
   lockedCoins: Coin[];
@@ -54,17 +79,25 @@ export const extendPool = (assets: Asset[], {
   balances,
   lockedCoins,
   prices,
-}: ExtendPoolProps) => {
-  const liquidity = new BigNumber(calcPoolLiquidity(assets, pool, prices))
+}: ExtendPoolProps): ExtendedPool => {
+  var liquidity = 0;
+  if (pool.poolAssets){
+    // if this is NOT a CL pool
+    liquidity = new BigNumber(calcPoolLiquidity(assets, pool, prices))
     .decimalPlaces(0)
     .toNumber();
+  }
 
   const feeData = fees.find((fee) => fee.pool_id === pool.id.toString());
   const volume24H = Math.round(Number(feeData?.volume_24h || 0));
   const volume7d = Math.round(Number(feeData?.volume_7d || 0));
   const fees7D = Math.round(Number(feeData?.fees_spent_7d || 0));
 
-  const poolDenom = pool.totalShares?.denom;
+  var poolDenom = '';
+  if (pool.totalShares){
+    // also don't exist for CL pools
+    poolDenom = pool.totalShares?.denom;
+  }
 
   const balanceCoin = balances.find(({ denom }) => denom === poolDenom);
   const myLiquidity = balanceCoin
@@ -88,7 +121,7 @@ export const extendPool = (assets: Asset[], {
   };
 };
 
-export type ExtendedPool = ReturnType<typeof extendPool>;
+// export type ExtendedPool = ReturnType<typeof extendPool>;
 
 export const descByLiquidity = (pool1: ExtendedPool, pool2: ExtendedPool) => {
   return new BigNumber(pool1.liquidity).lt(pool2.liquidity) ? 1 : -1;

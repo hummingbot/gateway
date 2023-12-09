@@ -13,7 +13,7 @@ network: mainnet
 nativeCurrencySymbol: OSMO
 
 feeTier: medium
-gasAdjustment: 1.5
+gasAdjustment: 1.7
 gasLimitTransaction: 2000000
 allowedSlippage: 2%
 
