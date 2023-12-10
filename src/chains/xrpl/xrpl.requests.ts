@@ -11,7 +11,12 @@ export interface XRPLBalanceResponse {
   timestamp: number;
   latency: number;
   address: string;
-  balances: Record<string, string>;
+  balances: Record<string, BalanceRecord>;
+}
+
+export interface BalanceRecord {
+  total_balance: string;
+  available_balance: string;
 }
 
 export type TokenBalance = {

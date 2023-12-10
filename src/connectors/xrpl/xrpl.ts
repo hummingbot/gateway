@@ -23,6 +23,7 @@ import {
   getTakerPaysAmount,
   getTakerGetsFundedAmount,
   getTakerPaysFundedAmount,
+  convertHexToString,
 } from './xrpl.utils';
 import {
   ClobMarketsRequest,
@@ -153,7 +154,8 @@ export class XRPLCLOB implements CLOBish {
       quoteTransferRate: number;
     const zeroTransferRate = 1000000000;
 
-    const [baseCurrency, quoteCurrency] = market.marketId.split('-');
+    const baseCurrency = market.baseCode;
+    const quoteCurrency = market.quoteCode;
     const baseIssuer = market.baseIssuer;
     const quoteIssuer = market.quoteIssuer;
 
@@ -220,26 +222,27 @@ export class XRPLCLOB implements CLOBish {
   }
 
   async getOrderBook(
-    market: MarketInfo,
+    market: Market,
     limit: number = ORDERBOOK_LIMIT
   ): Promise<Orderbook> {
-    const [baseCurrency, quoteCurrency] = market.marketId.split('-');
-    const baseIssuer = market.baseIssuer;
-    const quoteIssuer = market.quoteIssuer;
-
     const baseRequest: any = {
-      currency: baseCurrency,
+      currency: market.baseCurrency,
+      issuer: market.baseIssuer,
     };
 
     const quoteRequest: any = {
-      currency: quoteCurrency,
+      currency: market.quoteCurrency,
+      issuer: market.quoteIssuer,
     };
 
-    if (baseIssuer) {
-      baseRequest['issuer'] = baseIssuer;
+    if (market.baseCurrency == 'XRP') {
+      // remove issuer
+      delete baseRequest['issuer'];
     }
-    if (quoteIssuer) {
-      quoteRequest['issuer'] = quoteIssuer;
+
+    if (market.quoteCurrency == 'XRP') {
+      // remove issuer
+      delete quoteRequest['issuer'];
     }
 
     const { bids, asks } = await this.getOrderBookFromXRPL(
@@ -380,7 +383,8 @@ export class XRPLCLOB implements CLOBish {
     req: ClobPostOrderRequest
   ): Promise<{ txHash: string }> {
     const market = this.parsedMarkets[req.market] as Market;
-    const [baseCurrency, quoteCurrency] = market.marketId.split('-');
+    const baseCurrency = market.baseCurrency;
+    const quoteCurrency = market.quoteCurrency;
     const baseIssuer = market.baseIssuer;
     const quoteIssuer = market.quoteIssuer;
 
@@ -444,7 +448,10 @@ export class XRPLCLOB implements CLOBish {
 
     const order: Order = {
       hash: prepared.Sequence ? prepared.Sequence : 0,
-      marketId: baseCurrency + '-' + quoteCurrency,
+      marketId:
+        convertHexToString(baseCurrency) +
+        '-' +
+        convertHexToString(quoteCurrency),
       price: req.price,
       amount: req.amount,
       filledAmount: '0',
@@ -595,7 +602,7 @@ export class XRPLCLOB implements CLOBish {
     await orderTracker.addOrder(order);
   }
 
-  private async getMidPriceForMarket(market: MarketInfo) {
+  private async getMidPriceForMarket(market: Market) {
     const orderbook = await this.getOrderBook(market, 1);
     try {
       const bestAsk = orderbook.sells[0];
