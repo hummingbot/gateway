@@ -45,7 +45,7 @@ import { getXRPLConfig } from '../../chains/xrpl/xrpl.config';
 import { isUndefined } from 'mathjs';
 
 // const XRP_FACTOR = 1000000;
-const ORDERBOOK_LIMIT = 100;
+const ORDERBOOK_LIMIT = 50;
 const TXN_SUBMIT_DELAY = 100;
 export class XRPLCLOB implements CLOBish {
   private static _instances: LRUCache<string, XRPLCLOB>;
@@ -160,6 +160,7 @@ export class XRPLCLOB implements CLOBish {
     const quoteIssuer = market.quoteIssuer;
 
     if (baseCurrency != 'XRP') {
+      await this._xrpl.ensureConnection();
       const baseMarketResp: AccountInfoResponse = await this._client.request({
         command: 'account_info',
         ledger_index: 'validated',
@@ -181,6 +182,7 @@ export class XRPLCLOB implements CLOBish {
     }
 
     if (quoteCurrency != 'XRP') {
+      await this._xrpl.ensureConnection();
       const quoteMarketResp: AccountInfoResponse = await this._client.request({
         command: 'account_info',
         ledger_index: 'validated',
@@ -531,6 +533,7 @@ export class XRPLCLOB implements CLOBish {
     this._isSubmittingTxn = true;
     const prepared = await this._client.autofill(offer);
     const signed = wallet.sign(prepared);
+    await this._xrpl.ensureConnection();
     await this._client.submit(signed.tx_blob);
     this._isSubmittingTxn = false;
     return { prepared, signed };
@@ -546,6 +549,7 @@ export class XRPLCLOB implements CLOBish {
     quoteRequest: any,
     limit: number
   ) {
+    await this._xrpl.ensureConnection();
     const orderbook_resp_ask: BookOffersResponse = await this._client.request({
       command: 'book_offers',
       ledger_index: 'validated',
@@ -554,6 +558,7 @@ export class XRPLCLOB implements CLOBish {
       limit,
     });
 
+    await this._xrpl.ensureConnection();
     const orderbook_resp_bid: BookOffersResponse = await this._client.request({
       command: 'book_offers',
       ledger_index: 'validated',
@@ -568,6 +573,7 @@ export class XRPLCLOB implements CLOBish {
   }
 
   private async getCurrentBlockNumber() {
+    await this._xrpl.ensureConnection();
     return await this._client.getLedgerIndex();
   }
 

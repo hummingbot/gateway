@@ -128,6 +128,10 @@ export class XRPL implements XRPLish {
     );
     this._orderStorage.declareOwnership(this._refCountingHandle);
     this.controller = XRPLController;
+
+    this.onDisconnected(async (_code: number) => {
+      this.ensureConnection();
+    });
   }
 
   public static getInstance(network: string): XRPL {
@@ -546,6 +550,7 @@ export class XRPL implements XRPLish {
     balances: TokenBalance[],
     wallet: Wallet
   ) {
+    await this.ensureConnection();
     const accountOffcersResp: AccountOffersResponse =
       await this._client.request({
         command: 'account_offers',
