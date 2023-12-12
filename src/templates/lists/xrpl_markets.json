@@ -3,7 +3,9 @@
     "id": 1,
     "marketId": "SOLO-XRP",
     "baseIssuer": "rsoLo2S1kiGeCcn6hCUXVrCpGMWLrRrLZz",
+    "baseCode": "534F4C4F00000000000000000000000000000000",
     "quoteIssuer": "",
+    "quoteCode": "XRP",
     "baseTokenID": 31,
     "quoteTokenID": 0
   },
@@ -11,7 +13,9 @@
     "id": 2,
     "marketId": "SOLO-USDC",
     "baseIssuer": "rsoLo2S1kiGeCcn6hCUXVrCpGMWLrRrLZz",
+    "baseCode": "534F4C4F00000000000000000000000000000000",
     "quoteIssuer": "rcEGREd8NmkKRE8GE424sksyt1tJVFZwu",
+    "quoteCode": "USDC",
     "baseTokenID": 31,
     "quoteTokenID": 18465
   },
@@ -19,7 +23,9 @@
     "id": 3,
     "marketId": "USDC-XRP",
     "baseIssuer": "rcEGREd8NmkKRE8GE424sksyt1tJVFZwu",
+    "baseCode": "USDC",
     "quoteIssuer": "",
+    "quoteCode": "XRP",
     "baseTokenID": 18465,
     "quoteTokenID": 0
   },
@@ -27,7 +33,9 @@
     "id": 4,
     "marketId": "USDC-USD",
     "baseIssuer": "rcEGREd8NmkKRE8GE424sksyt1tJVFZwu",
+    "baseCode": "USDC",
     "quoteIssuer": "rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq",
+    "quoteCode": "USD",
     "baseTokenID": 18465,
     "quoteTokenID": 16603
   },
@@ -35,7 +43,9 @@
     "id": 5,
     "marketId": "BTC-XRP",
     "baseIssuer": "rchGBxcD1A1C2tdxF6papQYZ8kjRKMYcL",
+    "baseCode": "BTC",
     "quoteIssuer": "",
+    "quoteCode": "XRP",
     "baseTokenID": 1381,
     "quoteTokenID": 0
   },
@@ -43,8 +53,21 @@
     "id": 6,
     "marketId": "BTC-USD",
     "baseIssuer": "rchGBxcD1A1C2tdxF6papQYZ8kjRKMYcL",
+    "baseCode": "BTC",
     "quoteIssuer": "rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq",
+    "quoteCode": "USD",
     "baseTokenID": 1381,
+    "quoteTokenID": 16603
+  }
+  ,
+  {
+    "id": 7,
+    "marketId": "XRP-USD",
+    "baseIssuer": "",
+    "baseCode": "XRP",
+    "quoteIssuer": "rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq",
+    "quoteCode": "USD",
+    "baseTokenID": 0,
     "quoteTokenID": 16603
   }
 ]
