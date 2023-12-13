@@ -1,39 +1,39 @@
 jest.useFakeTimers();
-import { Token } from '@uniswap/sdk-core';
-import * as uniV3 from '@uniswap/v3-sdk';
+import { Token } from '@pancakeswap/swap-sdk-core';
+import * as v3 from '@pancakeswap/v3-sdk';
 import { BigNumber, Transaction, Wallet } from 'ethers';
-import { Ethereum } from '../../../src/chains/ethereum/ethereum';
-import { UniswapLP } from '../../../src/connectors/uniswap/uniswap.lp';
-import { patch, unpatch } from '../../../test/services/patch';
+import { BinanceSmartChain } from '../../../src/chains/binance-smart-chain/binance-smart-chain';
+import { PancakeswapLP } from '../../../src/connectors/pancakeswap/pancakeswap.lp';
+import { patch, unpatch } from '../../services/patch';
 import { patchEVMNonceManager } from '../../evm.nonce.mock';
-let ethereum: Ethereum;
-let uniswapLP: UniswapLP;
+let bsc: BinanceSmartChain;
+let pancakeswapLP: PancakeswapLP;
 let wallet: Wallet;
 
 const WETH = new Token(
-  5,
-  '0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6',
+  97,
+  '0x8babbb98678facc7342735486c851abd7a0d17ca',
   18,
   'WETH'
 );
 
 const DAI = new Token(
-  5,
-  '0xdc31Ee1784292379Fbb2964b3B9C4124D8F89C60',
+  97,
+  '0x8a9424745056Eb399FD19a0EC26A14316684e274',
   18,
   'DAI'
 );
 
 const USDC = new Token(
-  5,
-  '0xD87Ba7A50B2E7E660f678A895E4B72E7CB4CCd9C',
+  97,
+  '0x7ef95a0fee0dd31b22626fa2e10ee6a223f8a684',
   6,
   'USDC'
 );
 
 const TX = {
   type: 2,
-  chainId: 42,
+  chainId: 97,
   nonce: 115,
   maxPriorityFeePerGas: { toString: () => '106000000000' },
   maxFeePerGas: { toString: () => '106000000000' },
@@ -51,13 +51,13 @@ const TX = {
   confirmations: 0,
 };
 
-const POOL_SQRT_RATIO_START = uniV3.encodeSqrtRatioX96(100e6, 100e18);
+const POOL_SQRT_RATIO_START = v3.encodeSqrtRatioX96(100e6, 100e18);
 
-const POOL_TICK_CURRENT = uniV3.TickMath.getTickAtSqrtRatio(
+const POOL_TICK_CURRENT = v3.TickMath.getTickAtSqrtRatio(
   POOL_SQRT_RATIO_START
 );
 
-const DAI_USDC_POOL = new uniV3.Pool(
+const DAI_USDC_POOL = new v3.Pool(
   DAI,
   USDC,
   500,
@@ -68,20 +68,21 @@ const DAI_USDC_POOL = new uniV3.Pool(
 );
 
 beforeAll(async () => {
-  ethereum = Ethereum.getInstance('goerli');
-  patchEVMNonceManager(ethereum.nonceManager);
-  await ethereum.init();
+  bsc = BinanceSmartChain.getInstance('testnet');
+  
+  patchEVMNonceManager(bsc.nonceManager);
+  await bsc.init();
 
   wallet = new Wallet(
     '0000000000000000000000000000000000000000000000000000000000000002', // noqa: mock
-    ethereum.provider
+    bsc.provider
   );
-  uniswapLP = UniswapLP.getInstance('ethereum', 'goerli');
-  await uniswapLP.init();
+  pancakeswapLP = PancakeswapLP.getInstance('binance-smart-chain', 'testnet');
+  await pancakeswapLP.init();
 });
 
 beforeEach(() => {
-  patchEVMNonceManager(ethereum.nonceManager);
+  patchEVMNonceManager(bsc.nonceManager);
 });
 
 afterEach(() => {
@@ -89,11 +90,11 @@ afterEach(() => {
 });
 
 afterAll(async () => {
-  await ethereum.close();
+  await bsc.close();
 });
 
 const patchPoolState = () => {
-  patch(uniswapLP, 'getPoolContract', () => {
+  patch(pancakeswapLP, 'getPoolContract', () => {
     return {
       liquidity() {
         return DAI_USDC_POOL.liquidity;
@@ -116,14 +117,8 @@ const patchPoolState = () => {
   });
 };
 
-const patchAlphaRouter = () => {
-  patch(uniswapLP.alphaRouter, 'routeToRatio', () => {
-    return { status: 3 };
-  });
-};
-
 const patchContract = () => {
-  patch(uniswapLP, 'getContract', () => {
+  patch(pancakeswapLP, 'getContract', () => {
     return {
       estimateGas: {
         multicall() {
@@ -156,27 +151,26 @@ const patchWallet = () => {
   });
 };
 
-describe('verify UniswapLP Nft functions', () => {
+describe('verify PancakeswapLP Nft functions', () => {
   it('Should return correct contract addresses', async () => {
-    expect(uniswapLP.router).toEqual(
-      '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45'
+    expect(pancakeswapLP.router).toEqual(
+      '0x1b81D678ffb9C0263b24A97847620C99d213eB14'
     );
-    expect(uniswapLP.nftManager).toEqual(
-      '0xC36442b4a4522E871399CD717aBDD847Ab11FE88'
+    expect(pancakeswapLP.nftManager).toEqual(
+      '0x427bF5b37357632377eCbEC9de3626C71A5396c1'
     );
   });
 
   it('Should return correct contract abi', async () => {
-    expect(Array.isArray(uniswapLP.routerAbi)).toEqual(true);
-    expect(Array.isArray(uniswapLP.nftAbi)).toEqual(true);
-    expect(Array.isArray(uniswapLP.poolAbi)).toEqual(true);
+    expect(Array.isArray(pancakeswapLP.routerAbi)).toEqual(true);
+    expect(Array.isArray(pancakeswapLP.nftAbi)).toEqual(true);
+    expect(Array.isArray(pancakeswapLP.poolAbi)).toEqual(true);
   });
 
   it('addPositionHelper returns calldata and value', async () => {
     patchPoolState();
-    patchAlphaRouter();
 
-    const callData = await uniswapLP.addPositionHelper(
+    const callData = await pancakeswapLP.addPositionHelper(
       wallet,
       DAI,
       WETH,
@@ -194,7 +188,7 @@ describe('verify UniswapLP Nft functions', () => {
     patchPoolState();
     patchContract();
 
-    const callData = await uniswapLP.reducePositionHelper(wallet, 1, 100);
+    const callData = await pancakeswapLP.reducePositionHelper(wallet, 1, 100);
     expect(callData).toHaveProperty('calldata');
     expect(callData).toHaveProperty('value');
   });
@@ -203,13 +197,13 @@ describe('verify UniswapLP Nft functions', () => {
     patchContract();
     patchPoolState();
 
-    expect(uniswapLP.ready()).toEqual(true);
-    expect(uniswapLP.gasLimitEstimate).toBeGreaterThan(0);
-    expect(typeof uniswapLP.getContract('nft', ethereum.provider)).toEqual(
+    expect(pancakeswapLP.ready()).toEqual(true);
+    expect(pancakeswapLP.gasLimitEstimate).toBeGreaterThan(0);
+    expect(typeof pancakeswapLP.getContract('nft', bsc.provider)).toEqual(
       'object'
     );
     expect(
-      typeof uniswapLP.getPoolContract(
+      typeof pancakeswapLP.getPoolContract(
         '0x4F96Fe3b7A6Cf9725f59d353F723c1bDb64CA6Aa',
         wallet
       )
@@ -217,7 +211,7 @@ describe('verify UniswapLP Nft functions', () => {
   });
 
   it('generateOverrides returns overrides correctly', async () => {
-    const overrides = uniswapLP.generateOverrides(
+    const overrides = pancakeswapLP.generateOverrides(
       1,
       2,
       3,
@@ -239,7 +233,7 @@ describe('verify UniswapLP Nft functions', () => {
     patchPoolState();
     patchContract();
 
-    const reduceTx = (await uniswapLP.reducePosition(
+    const reduceTx = (await pancakeswapLP.reducePosition(
       wallet,
       1,
       100,
@@ -254,9 +248,8 @@ describe('verify UniswapLP Nft functions', () => {
   it('addPosition should work', async () => {
     patchPoolState();
     patchWallet();
-    patchAlphaRouter();
 
-    const addTx = await uniswapLP.addPosition(
+    const addTx = await pancakeswapLP.addPosition(
       wallet,
       DAI,
       WETH,
@@ -277,7 +270,7 @@ describe('verify UniswapLP Nft functions', () => {
   it('collectFees should work', async () => {
     patchContract();
 
-    const collectTx = (await uniswapLP.collectFees(wallet, 1)) as Transaction;
+    const collectTx = (await pancakeswapLP.collectFees(wallet, 1)) as Transaction;
     expect(collectTx.hash).toEqual(
       '0x75f98675a8f64dcf14927ccde9a1d59b67fa09b72cc2642ad055dae4074853d9' // noqa: mock
     );
