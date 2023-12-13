@@ -1,7 +1,6 @@
 import Decimal from 'decimal.js-light';
 import { BigNumber, Transaction, Wallet } from 'ethers';
 import { Token } from '@uniswap/sdk-core';
-import { FeeAmount } from '@uniswap/v3-sdk';
 import {
   HttpException,
   LOAD_WALLET_ERROR_CODE,
@@ -378,8 +377,6 @@ export async function addLiquidity(
       req.maxPriorityFeePerGas
     );
 
-  const fee = FeeAmount[req.fee.toUpperCase() as keyof typeof FeeAmount];
-
   const token0: Token = getFullTokenFromSymbol(
     ethereumish,
     uniswapish,
@@ -402,7 +399,7 @@ export async function addLiquidity(
     token1,
     req.amount0,
     req.amount1,
-    fee,
+    req.fee.toUpperCase(),
     Number(req.lowerPrice),
     Number(req.upperPrice),
     req.tokenId ? req.tokenId : 0,
@@ -569,12 +566,10 @@ export async function poolPrice(
     req.token1
   ) as Token;
 
-  const fee = FeeAmount[req.fee.toUpperCase() as keyof typeof FeeAmount];
-
   const prices = await uniswapish.poolPrice(
     token0,
     token1,
-    fee,
+    req.fee.toUpperCase(),
     req.period,
     req.interval
   );
