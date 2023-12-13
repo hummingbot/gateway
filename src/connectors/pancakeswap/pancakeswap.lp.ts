@@ -1,8 +1,8 @@
 import { logger } from '../../services/logger';
 import { PositionInfo, UniswapLPish } from '../../services/common-interfaces';
-import { UniswapConfig } from './uniswap.config';
-import { Token } from '@uniswap/sdk-core';
-import * as uniV3 from '@uniswap/v3-sdk';
+import { PancakeSwapConfig } from './pancakeswap.config';
+import { Token } from '@pancakeswap/swap-sdk-core';
+import * as v3 from '@pancakeswap/v3-sdk';
 import {
   BigNumber,
   Transaction,
@@ -11,8 +11,8 @@ import {
   constants,
   providers,
 } from 'ethers';
-import { UniswapLPHelper } from './uniswap.lp.helper';
-import { AddPosReturn } from './uniswap.lp.interfaces';
+import { PancakeswapLPHelper } from './pancakeswap.lp.helper';
+import { AddPosReturn } from './pancakeswap.lp.interfaces';
 
 const MaxUint128 = BigNumber.from(2).pow(128).sub(1);
 
@@ -25,24 +25,27 @@ export type Overrides = {
   maxPriorityFeePerGas?: BigNumber;
 };
 
-export class UniswapLP extends UniswapLPHelper implements UniswapLPish {
-  private static _instances: { [name: string]: UniswapLP };
+export class PancakeswapLP extends PancakeswapLPHelper implements UniswapLPish {
+  private static _instances: { [name: string]: PancakeswapLP };
   private _gasLimitEstimate: number;
 
   private constructor(chain: string, network: string) {
     super(chain, network);
-    this._gasLimitEstimate = UniswapConfig.config.gasLimitEstimate;
+    this._gasLimitEstimate = PancakeSwapConfig.config.gasLimitEstimate;
   }
 
-  public static getInstance(chain: string, network: string): UniswapLP {
-    if (UniswapLP._instances === undefined) {
-      UniswapLP._instances = {};
+  public static getInstance(chain: string, network: string): PancakeswapLP {
+    if (PancakeswapLP._instances === undefined) {
+      PancakeswapLP._instances = {};
     }
-    if (!(chain + network in UniswapLP._instances)) {
-      UniswapLP._instances[chain + network] = new UniswapLP(chain, network);
+    if (!(chain + network in PancakeswapLP._instances)) {
+      PancakeswapLP._instances[chain + network] = new PancakeswapLP(
+        chain,
+        network
+      );
     }
 
-    return UniswapLP._instances[chain + network];
+    return PancakeswapLP._instances[chain + network];
   }
 
   /**
@@ -53,10 +56,10 @@ export class UniswapLP extends UniswapLPHelper implements UniswapLPish {
   }
 
   async getPosition(tokenId: number): Promise<PositionInfo> {
-    const contract = this.getContract('nft', this.ethereum.provider);
+    const contract = this.getContract('nft', this.chain.provider);
     const requests = [
       contract.positions(tokenId),
-      this.collectFees(this.ethereum.provider, tokenId), // static call to calculate earned fees
+      this.collectFees(this.chain.provider, tokenId), // static call to calculate earned fees
     ];
     const positionInfoReq = await Promise.allSettled(requests);
     const rejected = positionInfoReq.filter(
@@ -77,10 +80,10 @@ export class UniswapLP extends UniswapLPHelper implements UniswapLPish {
       throw new Error(`One of the tokens in this position isn't recognized.`);
     }
     const fee = position.fee;
-    const poolAddress = uniV3.Pool.getAddress(token0, token1, fee);
+    const poolAddress = v3.Pool.getAddress(token0, token1, fee);
     const poolData = await this.getPoolState(poolAddress, fee);
-    const positionInst = new uniV3.Position({
-      pool: new uniV3.Pool(
+    const positionInst = new v3.Position({
+      pool: new v3.Pool(
         token0,
         token1,
         poolData.fee,
@@ -95,7 +98,7 @@ export class UniswapLP extends UniswapLPHelper implements UniswapLPish {
     return {
       token0: token0.symbol,
       token1: token1.symbol,
-      fee: uniV3.FeeAmount[position.fee],
+      fee: v3.FeeAmount[position.fee],
       lowerPrice: positionInst.token0PriceLower.toFixed(8),
       upperPrice: positionInst.token0PriceUpper.toFixed(8),
       amount0: positionInst.amount0.toFixed(),
@@ -127,7 +130,7 @@ export class UniswapLP extends UniswapLPHelper implements UniswapLPish {
     maxFeePerGas?: BigNumber,
     maxPriorityFeePerGas?: BigNumber
   ): Promise<Transaction> {
-    const convertedFee = uniV3.FeeAmount[fee as keyof typeof uniV3.FeeAmount];
+    const convertedFee = v3.FeeAmount[fee as keyof typeof v3.FeeAmount];
     const addLiquidityResponse: AddPosReturn = await this.addPositionHelper(
       wallet,
       token0,
@@ -141,7 +144,7 @@ export class UniswapLP extends UniswapLPHelper implements UniswapLPish {
     );
 
     if (nonce === undefined) {
-      nonce = await this.ethereum.nonceManager.getNextNonce(wallet.address);
+      nonce = await this.chain.nonceManager.getNextNonce(wallet.address);
     }
 
     const tx = await wallet.sendTransaction({
@@ -156,7 +159,7 @@ export class UniswapLP extends UniswapLPHelper implements UniswapLPish {
         addLiquidityResponse.value
       ),
     });
-    logger.info(`Uniswap V3 Add position Tx Hash: ${tx.hash}`);
+    logger.info(`Pancakeswap V3 Add position Tx Hash: ${tx.hash}`);
     return tx;
   }
 
@@ -179,7 +182,7 @@ export class UniswapLP extends UniswapLPHelper implements UniswapLPish {
     );
 
     if (nonce === undefined) {
-      nonce = await this.ethereum.nonceManager.getNextNonce(wallet.address);
+      nonce = await this.chain.nonceManager.getNextNonce(wallet.address);
     }
 
     const tx = await contract.multicall(
@@ -193,7 +196,7 @@ export class UniswapLP extends UniswapLPHelper implements UniswapLPish {
         value
       )
     );
-    logger.info(`Uniswap V3 Remove position Tx Hash: ${tx.hash}`);
+    logger.info(`Pancakeswap V3 Remove position Tx Hash: ${tx.hash}`);
     return tx;
   }
 
@@ -219,7 +222,7 @@ export class UniswapLP extends UniswapLPHelper implements UniswapLPish {
     } else {
       collectData.recipient = wallet.address;
       if (nonce === undefined) {
-        nonce = await this.ethereum.nonceManager.getNextNonce(wallet.address);
+        nonce = await this.chain.nonceManager.getNextNonce(wallet.address);
       }
       return await contract.collect(
         collectData,

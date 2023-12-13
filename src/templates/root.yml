@@ -94,7 +94,7 @@ configurations:
 
   $namespace pancakeswap:
     configurationPath: pancakeswap.yml
-    schemaPath: pangolin-schema.json
+    schemaPath: pancakeswap-schema.json
 
   $namespace xdc:
     configurationPath: xdc.yml
