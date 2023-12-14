@@ -23,6 +23,7 @@ import {
   getTakerPaysAmount,
   getTakerGetsFundedAmount,
   getTakerPaysFundedAmount,
+  convertHexToString,
 } from './xrpl.utils';
 import {
   ClobMarketsRequest,
@@ -44,7 +45,7 @@ import { getXRPLConfig } from '../../chains/xrpl/xrpl.config';
 import { isUndefined } from 'mathjs';
 
 // const XRP_FACTOR = 1000000;
-const ORDERBOOK_LIMIT = 100;
+const ORDERBOOK_LIMIT = 50;
 const TXN_SUBMIT_DELAY = 100;
 export class XRPLCLOB implements CLOBish {
   private static _instances: LRUCache<string, XRPLCLOB>;
@@ -153,11 +154,13 @@ export class XRPLCLOB implements CLOBish {
       quoteTransferRate: number;
     const zeroTransferRate = 1000000000;
 
-    const [baseCurrency, quoteCurrency] = market.marketId.split('-');
+    const baseCurrency = market.baseCode;
+    const quoteCurrency = market.quoteCode;
     const baseIssuer = market.baseIssuer;
     const quoteIssuer = market.quoteIssuer;
 
     if (baseCurrency != 'XRP') {
+      await this._xrpl.ensureConnection();
       const baseMarketResp: AccountInfoResponse = await this._client.request({
         command: 'account_info',
         ledger_index: 'validated',
@@ -179,6 +182,7 @@ export class XRPLCLOB implements CLOBish {
     }
 
     if (quoteCurrency != 'XRP') {
+      await this._xrpl.ensureConnection();
       const quoteMarketResp: AccountInfoResponse = await this._client.request({
         command: 'account_info',
         ledger_index: 'validated',
@@ -220,26 +224,27 @@ export class XRPLCLOB implements CLOBish {
   }
 
   async getOrderBook(
-    market: MarketInfo,
+    market: Market,
     limit: number = ORDERBOOK_LIMIT
   ): Promise<Orderbook> {
-    const [baseCurrency, quoteCurrency] = market.marketId.split('-');
-    const baseIssuer = market.baseIssuer;
-    const quoteIssuer = market.quoteIssuer;
-
     const baseRequest: any = {
-      currency: baseCurrency,
+      currency: market.baseCurrency,
+      issuer: market.baseIssuer,
     };
 
     const quoteRequest: any = {
-      currency: quoteCurrency,
+      currency: market.quoteCurrency,
+      issuer: market.quoteIssuer,
     };
 
-    if (baseIssuer) {
-      baseRequest['issuer'] = baseIssuer;
+    if (market.baseCurrency == 'XRP') {
+      // remove issuer
+      delete baseRequest['issuer'];
     }
-    if (quoteIssuer) {
-      quoteRequest['issuer'] = quoteIssuer;
+
+    if (market.quoteCurrency == 'XRP') {
+      // remove issuer
+      delete quoteRequest['issuer'];
     }
 
     const { bids, asks } = await this.getOrderBookFromXRPL(
@@ -380,7 +385,8 @@ export class XRPLCLOB implements CLOBish {
     req: ClobPostOrderRequest
   ): Promise<{ txHash: string }> {
     const market = this.parsedMarkets[req.market] as Market;
-    const [baseCurrency, quoteCurrency] = market.marketId.split('-');
+    const baseCurrency = market.baseCurrency;
+    const quoteCurrency = market.quoteCurrency;
     const baseIssuer = market.baseIssuer;
     const quoteIssuer = market.quoteIssuer;
 
@@ -444,7 +450,10 @@ export class XRPLCLOB implements CLOBish {
 
     const order: Order = {
       hash: prepared.Sequence ? prepared.Sequence : 0,
-      marketId: baseCurrency + '-' + quoteCurrency,
+      marketId:
+        convertHexToString(baseCurrency) +
+        '-' +
+        convertHexToString(quoteCurrency),
       price: req.price,
       amount: req.amount,
       filledAmount: '0',
@@ -524,6 +533,7 @@ export class XRPLCLOB implements CLOBish {
     this._isSubmittingTxn = true;
     const prepared = await this._client.autofill(offer);
     const signed = wallet.sign(prepared);
+    await this._xrpl.ensureConnection();
     await this._client.submit(signed.tx_blob);
     this._isSubmittingTxn = false;
     return { prepared, signed };
@@ -539,6 +549,7 @@ export class XRPLCLOB implements CLOBish {
     quoteRequest: any,
     limit: number
   ) {
+    await this._xrpl.ensureConnection();
     const orderbook_resp_ask: BookOffersResponse = await this._client.request({
       command: 'book_offers',
       ledger_index: 'validated',
@@ -547,6 +558,7 @@ export class XRPLCLOB implements CLOBish {
       limit,
     });
 
+    await this._xrpl.ensureConnection();
     const orderbook_resp_bid: BookOffersResponse = await this._client.request({
       command: 'book_offers',
       ledger_index: 'validated',
@@ -561,6 +573,7 @@ export class XRPLCLOB implements CLOBish {
   }
 
   private async getCurrentBlockNumber() {
+    await this._xrpl.ensureConnection();
     return await this._client.getLedgerIndex();
   }
 
@@ -595,7 +608,7 @@ export class XRPLCLOB implements CLOBish {
     await orderTracker.addOrder(order);
   }
 
-  private async getMidPriceForMarket(market: MarketInfo) {
+  private async getMidPriceForMarket(market: Market) {
     const orderbook = await this.getOrderBook(market, 1);
     try {
       const bestAsk = orderbook.sells[0];

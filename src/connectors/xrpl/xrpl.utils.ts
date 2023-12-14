@@ -112,3 +112,13 @@ export async function getsSequenceNumberFromTxn(
 
   return undefined;
 }
+
+// check if string is 160-bit hexadecimal, if so convert it to string
+export function convertHexToString(hex: string): string {
+  if (hex.length === 40) {
+    const str = Buffer.from(hex, 'hex').toString();
+    return str.replace(/\0/g, '');
+  }
+
+  return hex;
+}
