@@ -3125,10 +3125,10 @@
   resolved "https://registry.yarnpkg.com/@protobufjs/utf8/-/utf8-1.1.0.tgz#a777360b5b39a1a2e5106f8e858f2fd2d060c570"
   integrity sha512-Vvn3zZrhQZkkBE8LSuW3em98c0FwgO4nxzv6OdSxPKJIEKY2bGbHn+mhGIPerzI4twdxaP8/0+06HBpwf345Lw==
 
-"@quipuswap/tokens-whitelist@^1.1.22":
-  version "1.1.22"
-  resolved "https://registry.yarnpkg.com/@quipuswap/tokens-whitelist/-/tokens-whitelist-1.1.22.tgz#95754e90ea29633380a64ae2bb6a1b225e8b68d8"
-  integrity sha512-NWVrNHn1/y0665zvZb/l8kyxwdNfYN67zYrLHXd01BM1bFWxkwheh3CC6YlSzL/9kanIf4doP5qWpeAa+waEKw==
+"@quipuswap/tokens-whitelist@^1.1.24":
+  version "1.1.24"
+  resolved "https://registry.yarnpkg.com/@quipuswap/tokens-whitelist/-/tokens-whitelist-1.1.24.tgz#0a9270727439dc304e739e48f7f2da7e71d68b81"
+  integrity sha512-EtKEcsAJm3v5RYcFndtAWNWU/vT78XDvM2xoGJjQZVk/9zIQiJwMlXdfFNyP2VtWUJqGTYIuSQHutL9TJuxqqw==
 
 "@redux-saga/core@^1.0.0":
   version "1.2.3"

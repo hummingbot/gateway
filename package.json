@@ -45,7 +45,7 @@
     "@pancakeswap/v3-sdk": "^3.7.0",
     "@pangolindex/sdk": "^1.1.0",
     "@perp/sdk-curie": "^1.16.0",
-    "@quipuswap/tokens-whitelist": "^1.1.22",
+    "@quipuswap/tokens-whitelist": "^1.1.24",
     "@sushiswap/sdk": "^5.0.0-canary.116",
     "@taquito/rpc": "^17.0.0",
     "@taquito/signer": "^17.0.0",

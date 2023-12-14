@@ -87,7 +87,6 @@ export class QuipuSwap extends QuipuBase {
    * @param baseToken Token output from the transaction
    * @param quoteToken Token input for the transaction
    * @param amount Amount of `baseToken` desired from the transaction
-   * @param allowedSlippage (Optional) should be of the form '1/10'.
    */
   public estimateBuyTrade(
     baseToken: string,
