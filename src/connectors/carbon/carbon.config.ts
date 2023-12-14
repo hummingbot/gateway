@@ -35,7 +35,7 @@ export namespace CarbonConfig {
       {
         chain: 'ethereum',
         networks: Object.keys(
-          ConfigManagerV2.getInstance().get('carbon.contractAddresses')
+          ConfigManagerV2.getInstance().get('carbon.contractAddresses.ethereum')
         ).filter((network) =>
           Object.keys(
             ConfigManagerV2.getInstance().get('ethereum.networks')

@@ -170,7 +170,7 @@ export namespace ConnectorsRoutes {
             available_networks: CarbonConfig.config.availableNetworks,
           },
           {
-            name: 'carbonAMM',
+            name: 'carbonamm',
             trading_type: CarbonConfig.config.tradingTypes('swap'),
             chain_type: CarbonConfig.config.chainType,
             available_networks: CarbonConfig.config.availableNetworks,

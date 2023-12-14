@@ -48,8 +48,8 @@ export interface CarbonTrade {
   tradeByTarget: boolean;
 }
 
-export class CarbonAMM implements Uniswapish {
-  private static _instances: { [name: string]: CarbonAMM };
+export class Carbonamm implements Uniswapish {
+  private static _instances: { [name: string]: Carbonamm };
   public carbonContractConfig: Required<ContractsConfig>;
   public carbonSDK: Toolkit;
   public sdkCache: ChainCache;
@@ -92,15 +92,15 @@ export class CarbonAMM implements Uniswapish {
     this.routerAbi = carbonControllerAbi;
   }
 
-  public static getInstance(chain: string, network: string): CarbonAMM {
-    if (CarbonAMM._instances === undefined) {
-      CarbonAMM._instances = {};
+  public static getInstance(chain: string, network: string): Carbonamm {
+    if (Carbonamm._instances === undefined) {
+      Carbonamm._instances = {};
     }
-    if (!(chain + network in CarbonAMM._instances)) {
-      CarbonAMM._instances[chain + network] = new CarbonAMM(chain, network);
+    if (!(chain + network in Carbonamm._instances)) {
+      Carbonamm._instances[chain + network] = new Carbonamm(chain, network);
     }
 
-    return CarbonAMM._instances[chain + network];
+    return Carbonamm._instances[chain + network];
   }
 
   public async loadTokens() {

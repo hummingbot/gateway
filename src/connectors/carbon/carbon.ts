@@ -276,7 +276,7 @@ export class CarbonCLOB implements CLOBish {
 
     const userStrategies = await this.carbonSDK.getUserStrategies(req.address);
 
-    const formattedBalances: Record<string, any> = { budget: {} };
+    const formattedBalances: Record<string, any> = { available: {}, total: {} };
 
     await Promise.all(
       tokens.map((token) => {
@@ -293,10 +293,14 @@ export class CarbonCLOB implements CLOBish {
           .add(new Decimal(userStrategySellBudget?.sellBudget || 0))
           .toString();
 
-        formattedBalances.budget[token.symbol] = parseUnits(
+        formattedBalances.available[token.symbol] = parseUnits(
           userTokenBalance,
           token.decimals
-        );
+        ).toString();
+        formattedBalances.total[token.symbol] = parseUnits(
+          userTokenBalance,
+          token.decimals
+        ).toString();
       })
     );
 

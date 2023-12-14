@@ -11,14 +11,14 @@ import { gatewayApp } from '../../../src/app';
 import { patch, unpatch } from '../../../test/services/patch';
 import { Ethereum } from '../../../src/chains/ethereum/ethereum';
 import { EVMTxBroadcaster } from '../../../src/chains/ethereum/evm.broadcaster';
-import { CarbonAMM } from '../../../src/connectors/carbon/carbonAMM';
+import { Carbonamm } from '../../../src/connectors/carbon/carbonAMM';
 import { logger } from '../../../src/services/logger';
 import { encodeStrategyId } from '../../../src/connectors/carbon/carbon.utils';
 import { patchEVMNonceManager } from '../../../test/evm.nonce.mock';
 import { Avalanche } from '../../../src/chains/avalanche/avalanche';
 
 let ethereum: Ethereum;
-let carbon: CarbonAMM;
+let carbon: Carbonamm;
 
 const TX_HASH =
   '0xf6f81a37796bd06a797484467302e4d6f72832409545e2e01feb86dd8b22e4b2'; // noqa: mock
@@ -173,7 +173,7 @@ beforeAll(async () => {
   ethereum = Ethereum.getInstance('mainnet');
   patchEVMNonceManager(ethereum.nonceManager);
   ethereum.init();
-  carbon = CarbonAMM.getInstance('ethereum', 'mainnet');
+  carbon = Carbonamm.getInstance('ethereum', 'mainnet');
   patchReader();
 
   await carbon.init();
@@ -379,7 +379,7 @@ const patchMsgBroadcaster = () => {
 describe('verify Carbon constructor', () => {
   it('Should return an Error with an unsupported chain', () => {
     expect(async () => {
-      CarbonAMM.getInstance('avalanche', 'avalanche');
+      Carbonamm.getInstance('avalanche', 'avalanche');
     }).rejects.toThrow(Error);
   });
 });
