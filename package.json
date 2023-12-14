@@ -36,7 +36,7 @@
     "@harmony-js/core": "^0.1.57",
     "@harmony-js/utils": "^0.1.56",
     "@improbable-eng/grpc-web": "^0.13.0",
-    "@pancakeswap/sdk": "^2.4.5",
+    "@pancakeswap/sdk": "^4.0.0",
     "@pancakeswap/swap-sdk-core": "^1.0.0",
     "@pancakeswap/v3-core": "^1.0.2",
     "@pancakeswap/v3-periphery": "^1.0.2",

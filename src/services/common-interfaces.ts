@@ -81,8 +81,10 @@ import {
 import {
   Token as PancakeSwapToken,
   CurrencyAmount as PancakeSwapCurrencyAmount,
+  TradeType as PancakeSwapTradeType,
   Trade as PancakeSwapTrade,
   Fraction as PancakeSwapFraction,
+  Currency as PancakeSwapCurrency,
 } from '@pancakeswap/sdk';
 import {
   Token as TokenXsswap,
@@ -141,7 +143,11 @@ export type UniswapishTrade =
   | TradeTraderjoe
   | SushiswapTrade<SushiToken, SushiToken, SushiTradeType>
   | TradeUniswap
-  | PancakeSwapTrade
+  | PancakeSwapTrade<
+      PancakeSwapCurrency,
+      PancakeSwapCurrency,
+      PancakeSwapTradeType
+    >
   | MMFTrade
   | VVSTrade
   | TradeXsswap
@@ -163,7 +169,7 @@ export type UniswapishAmount =
   | UniswapCoreCurrencyAmount<Currency>
   | CurrencyAmountTraderjoe
   | SushiCurrencyAmount<SushiCurrency | SushiToken>
-  | PancakeSwapCurrencyAmount
+  | PancakeSwapCurrencyAmount<PancakeSwapCurrency>
   | CurrencyAmountMMF
   | CurrencyAmountVVS
   | CurrencyAmountXsswap

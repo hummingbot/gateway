@@ -1,12 +1,14 @@
 import {
+  Currency,
+  CurrencyAmount,
   Fetcher,
   Pair,
   Percent,
   Router,
   SwapParameters,
   Token,
-  TokenAmount,
   Trade,
+  TradeType,
 } from '@pancakeswap/sdk';
 import {
   BigNumber,
@@ -167,10 +169,8 @@ export class PancakeSwap implements Uniswapish {
     amount: BigNumber,
     allowedSlippage?: string
   ): Promise<ExpectedTrade> {
-    const nativeTokenAmount: TokenAmount = new TokenAmount(
-      baseToken,
-      amount.toString()
-    );
+    const nativeTokenAmount: CurrencyAmount<Token> =
+      CurrencyAmount.fromRawAmount(baseToken, amount.toString());
     logger.info(
       `Fetching pair data for ${quoteToken.address}-${baseToken.address}.`
     );
@@ -179,12 +179,10 @@ export class PancakeSwap implements Uniswapish {
       baseToken,
       this.bsc.provider
     );
-    const trades: Trade[] = Trade.bestTradeExactOut(
-      [pair],
-      quoteToken,
-      nativeTokenAmount,
-      { maxHops: 1 }
-    );
+    const trades: Trade<Currency, Currency, TradeType>[] =
+      Trade.bestTradeExactOut([pair], quoteToken, nativeTokenAmount, {
+        maxHops: 5,
+      });
     if (!trades || trades.length === 0) {
       throw new UniswapishPriceError(
         `priceSwapOut: no trade pair found for ${quoteToken.address} to ${baseToken.address}.`
@@ -219,10 +217,9 @@ export class PancakeSwap implements Uniswapish {
     amount: BigNumber,
     allowedSlippage?: string
   ): Promise<ExpectedTrade> {
-    const nativeTokenAmount: TokenAmount = new TokenAmount(
-      baseToken,
-      amount.toString()
-    );
+    const nativeTokenAmount: CurrencyAmount<Token> =
+      CurrencyAmount.fromRawAmount(baseToken, amount.toString());
+
     logger.info(
       `Fetching pair data for ${baseToken.address}-${quoteToken.address}.`
     );
@@ -232,12 +229,10 @@ export class PancakeSwap implements Uniswapish {
       quoteToken,
       this.bsc.provider
     );
-    const trades: Trade[] = Trade.bestTradeExactIn(
-      [pair],
-      nativeTokenAmount,
-      quoteToken,
-      { maxHops: 1 }
-    );
+    const trades: Trade<Currency, Currency, TradeType>[] =
+      Trade.bestTradeExactIn([pair], nativeTokenAmount, quoteToken, {
+        maxHops: 5,
+      });
     if (!trades || trades.length === 0) {
       throw new UniswapishPriceError(
         `priceSwapIn: no trade pair found for ${baseToken} to ${quoteToken}.`
@@ -271,7 +266,7 @@ export class PancakeSwap implements Uniswapish {
    */
   async executeTrade(
     wallet: Wallet,
-    trade: Trade,
+    trade: Trade<Currency, Currency, TradeType>,
     gasPrice: number,
     pancakeswapRouter: string,
     ttl: number,

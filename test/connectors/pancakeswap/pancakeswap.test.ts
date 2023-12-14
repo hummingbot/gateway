@@ -5,9 +5,10 @@ import {
   Percent,
   Route,
   Token,
-  TokenAmount,
+  CurrencyAmount,
   Trade,
   TradeType,
+  Currency,
 } from '@pancakeswap/sdk';
 import { BigNumber } from 'ethers';
 import { BinanceSmartChain } from '../../../src/chains/binance-smart-chain/binance-smart-chain';
@@ -51,8 +52,8 @@ afterAll(async () => {
 const patchFetchPairData = () => {
   patch(Fetcher, 'fetchPairData', () => {
     return new Pair(
-      new TokenAmount(WBNB, '2000000000000000000'),
-      new TokenAmount(DAI, '1000000000000000000')
+      CurrencyAmount.fromRawAmount(WBNB, '2000000000000000000'),
+      CurrencyAmount.fromRawAmount(DAI, '1000000000000000000')
     );
   });
 };
@@ -61,14 +62,14 @@ const patchTrade = (key: string, error?: Error) => {
   patch(Trade, key, () => {
     if (error) return [];
     const WBNB_DAI = new Pair(
-      new TokenAmount(WBNB, '2000000000000000000'),
-      new TokenAmount(DAI, '1000000000000000000')
+      CurrencyAmount.fromRawAmount(WBNB, '2000000000000000000'),
+      CurrencyAmount.fromRawAmount(DAI, '1000000000000000000')
     );
-    const DAI_TO_WBNB = new Route([WBNB_DAI], DAI);
+    const DAI_TO_WBNB = new Route<Token, Currency>([WBNB_DAI], DAI, WBNB);
     return [
       new Trade(
         DAI_TO_WBNB,
-        new TokenAmount(DAI, '1000000000000000'),
+        CurrencyAmount.fromRawAmount(DAI, '1000000000000000'),
         TradeType.EXACT_INPUT
       ),
     ];
