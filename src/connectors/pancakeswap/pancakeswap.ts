@@ -249,7 +249,6 @@ export class PancakeSwap implements Uniswapish {
         baseToken,
         this.bsc.provider
       );
-      console.log(pair);
       const trades: Trade<Currency, Currency, TradeType>[] =
         Trade.bestTradeExactOut([pair], quoteToken, nativeTokenAmount, {
           maxHops: this._maximumHops,
