@@ -85,7 +85,9 @@ import {
   Trade as PancakeSwapTrade,
   Fraction as PancakeSwapFraction,
   Currency as PancakeSwapCurrency,
+  Price as PancakeSwapPrice,
 } from '@pancakeswap/sdk';
+import { SmartRouterTrade as PancakeSwapSmartRouterTrade } from '@pancakeswap/smart-router';
 import {
   Token as TokenXsswap,
   CurrencyAmount as CurrencyAmountXsswap,
@@ -148,6 +150,12 @@ export type UniswapishTrade =
       PancakeSwapCurrency,
       PancakeSwapTradeType
     >
+  | (PancakeSwapSmartRouterTrade<PancakeSwapTradeType> & {
+      executionPrice: PancakeSwapPrice<
+        PancakeSwapCurrency,
+        PancakeSwapCurrency
+      >;
+    })
   | MMFTrade
   | VVSTrade
   | TradeXsswap
