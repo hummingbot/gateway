@@ -173,11 +173,11 @@ export const createPatches = (
   );
 
   patches.setIn(
-    ['kujira', 'kujiraGetTendermint34Client'],
+    ['kujira', 'kujiraGetTendermint37Client'],
     async (testTitle: string) => {
       if (!usePatches) return;
 
-      patch(kujira, 'kujiraGetTendermint34Client', async (...any: any[]) => {
+      patch(kujira, 'kujiraGetTendermint37Client', async (...any: any[]) => {
         const inputArguments = any;
 
         if (!ordinalMap.has(testTitle)) {
@@ -191,7 +191,7 @@ export const createPatches = (
 
         const dataKey = [
           'kujira',
-          'kujiraGetTendermint34Client',
+          'kujiraGetTendermint37Client',
           testTitle,
           ordinal,
         ];
@@ -202,7 +202,7 @@ export const createPatches = (
           return await inputOutputWrapper<any>(
             dataKey,
             kujira,
-            'kujiraGetTendermint34Client',
+            'kujiraGetTendermint37Client',
             inputArguments
           );
         }

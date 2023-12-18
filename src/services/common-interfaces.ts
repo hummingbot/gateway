@@ -108,6 +108,7 @@ import {
 } from '../clob/clob.requests';
 import { BalanceRequest } from '../network/network.requests';
 import { TradeV2 } from '@traderjoe-xyz/sdk-v2';
+import { CurveTrade } from '../connectors/curve/curve';
 import { CarbonTrade } from '../connectors/carbon/carbonAMM';
 
 // TODO Check the possibility to have clob/solana/serum equivalents here
@@ -146,6 +147,7 @@ export type UniswapishTrade =
   | VVSTrade
   | TradeXsswap
   | TradeV2
+  | CurveTrade
   | CarbonTrade;
 
 export type UniswapishTradeOptions =
@@ -774,3 +776,12 @@ export interface CustomTransactionResponse
   gasLimit: string;
   value: string;
 }
+
+export interface TransferRequest extends NetworkSelectionRequest {
+  to: string;
+  from: string;
+  amount: string;
+  token: string;
+}
+
+export type TransferResponse = string;

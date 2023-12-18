@@ -13,6 +13,7 @@ import { UniswapConfig } from '../../connectors/uniswap/uniswap.config';
 import { Perp } from '../../connectors/perp/perp';
 import { SushiswapConfig } from '../../connectors/sushiswap/sushiswap.config';
 import { OpenoceanConfig } from '../../connectors/openocean/openocean.config';
+import { Curve } from '../../connectors/curve/curve';
 import { CarbonConfig } from '../../connectors/carbon/carbon.config';
 
 // MKR does not match the ERC20 perfectly so we need to use a separate ABI.
@@ -202,6 +203,13 @@ export class Ethereum extends EthereumBase implements Ethereumish {
       spender = perp.perp.contracts.vault.address;
     } else if (reqSpender === 'openocean') {
       spender = OpenoceanConfig.config.routerAddress('ethereum', this._chain);
+    } else if (reqSpender === 'curve') {
+      const curve = Curve.getInstance('ethereum', this._chain);
+      if (!curve.ready()) {
+        curve.init();
+        throw Error('Curve not ready');
+      }
+      spender = curve.router;
     } else {
       spender = reqSpender;
     }
