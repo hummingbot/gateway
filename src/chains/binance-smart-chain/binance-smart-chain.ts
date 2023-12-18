@@ -99,6 +99,10 @@ export class BinanceSmartChain extends EthereumBase implements Ethereumish {
     let spender: string;
     if (reqSpender === 'pancakeswap') {
       spender = PancakeSwapConfig.config.routerAddress(this._chain);
+    } else if (reqSpender === 'pancakeswapLP') {
+      spender = PancakeSwapConfig.config.pancakeswapV3NftManagerAddress(
+        this._chain
+      );
     } else if (reqSpender === 'sushiswap') {
       spender = SushiswapConfig.config.sushiswapRouterAddress(
         'binance-smart-chain',

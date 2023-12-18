@@ -3,6 +3,7 @@
 /dist
 /db
 /.idea
+/*.iml
 package-lock.json
 /certs
 /coverage
@@ -14,3 +15,6 @@ package-lock.json
 # VSCode
 .vscode/
 .history
+
+# Yarn
+yarn-error.log
