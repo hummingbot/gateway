@@ -10,3 +10,5 @@ gasLimitEstimate: 15000
 network:
   mainnet:
     apiUrl: 'wss://dexes-api-mainnet.prod.templewallet.com/'
+  ghostnet:
+    apiUrl: 'wss://dexes-api-ghostnet.prod.templewallet.com/'
