@@ -454,7 +454,7 @@ describe('POST /amm/price SELL', () => {
       .send({
         chain: 'ethereum',
         network: 'mainnet',
-        connector: 'carbonAMM',
+        connector: 'carbonamm',
         base: 'DAI',
         quote: 'USDC',
         amount: '1',
@@ -485,7 +485,7 @@ describe('POST /amm/price BUY', () => {
       .send({
         chain: 'ethereum',
         network: 'mainnet',
-        connector: 'carbonAMM',
+        connector: 'carbonamm',
         base: 'DAI',
         quote: 'USDC',
         amount: '1',
@@ -520,7 +520,7 @@ describe('POST /amm/trade SELL', () => {
       .send({
         chain: 'ethereum',
         network: 'mainnet',
-        connector: 'carbonAMM',
+        connector: 'carbonamm',
         base: 'DAI',
         quote: 'USDC',
         amount: '1',
@@ -554,7 +554,7 @@ describe('POST /amm/trade BUY', () => {
       .send({
         chain: 'ethereum',
         network: 'mainnet',
-        connector: 'carbonAMM',
+        connector: 'carbonamm',
         base: 'DAI',
         quote: 'USDC',
         amount: '1',
@@ -579,7 +579,7 @@ describe('POST /amm/trade BUY', () => {
       .send({
         chain: 'ethereum',
         network: 'mainnet',
-        connector: 'carbonAMM',
+        connector: 'carbonamm',
         base: 'DAI',
         quote: 'USDC',
         amount: '1',
@@ -617,7 +617,7 @@ describe('Requests to the connector', () => {
       .send({
         chain: 'avalanche',
         network: 'avalanche',
-        connector: 'carbonAMM',
+        connector: 'carbonamm',
         base: 'DAI',
         quote: 'USDC',
         amount: '1',
@@ -637,7 +637,7 @@ describe('Requests to the connector', () => {
       .send({
         chain: 'ethereum',
         network: 'mainnet',
-        connector: 'carbonAMM',
+        connector: 'carbonamm',
         base: 'DAI',
         quote: 'USDC',
         amount: '1',
@@ -659,7 +659,7 @@ describe('Requests to the connector', () => {
       .send({
         chain: 'ethereum',
         network: 'mainnet',
-        connector: 'carbonAMM',
+        connector: 'carbonamm',
         base: 'DAI',
         quote: 'USDC',
         amount: '1',
