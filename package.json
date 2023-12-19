@@ -67,7 +67,7 @@
     "ajv": "^8.6.3",
     "algosdk": "^2.2.0",
     "app-root-path": "^3.0.0",
-    "axios": "^0.21.1",
+    "axios": "^1.6.0",
     "big.js": "6.1.1",
     "bn.js": "^5.2.1",
     "body-parser": "^1.19.0",
@@ -103,8 +103,8 @@
     "web3": "^1.7.3",
     "winston": "^3.3.3",
     "winston-daily-rotate-file": "^4.5.5",
-    "xrpl": "^2.7.0",
     "xsswap-sdk": "^1.0.1",
+    "xrpl": "^2.7.0",
     "yarn": "^1.22.17"
   },
   "devDependencies": {
