@@ -12,7 +12,6 @@ import { patch, unpatch } from '../../../test/services/patch';
 import { Ethereum } from '../../../src/chains/ethereum/ethereum';
 import { EVMTxBroadcaster } from '../../../src/chains/ethereum/evm.broadcaster';
 import { Carbonamm } from '../../../src/connectors/carbon/carbonAMM';
-import { logger } from '../../../src/services/logger';
 import { encodeStrategyId } from '../../../src/connectors/carbon/carbon.utils';
 import { patchEVMNonceManager } from '../../../test/evm.nonce.mock';
 import { Avalanche } from '../../../src/chains/avalanche/avalanche';
@@ -307,49 +306,6 @@ const patchReader = () => {
         );
         return [pair[0], pair[1], market?.makerFee || DEFAULT_FEE];
       });
-    }
-  );
-  patch(
-    carbon.api.reader,
-    'getLatestStrategyCreatedStrategies',
-    (fromBlock: number, toBlock: number) => {
-      logger.info(`${fromBlock} ${toBlock}`);
-      return [];
-    }
-  );
-
-  patch(
-    carbon.api.reader,
-    'getLatestStrategyDeletedStrategies',
-    (fromBlock: number, toBlock: number) => {
-      logger.info(`${fromBlock} ${toBlock}`);
-      return [];
-    }
-  );
-
-  patch(
-    carbon.api.reader,
-    'getLatestTokensTradedTrades',
-    (fromBlock: number, toBlock: number) => {
-      logger.info(`${fromBlock} ${toBlock}`);
-      return [];
-    }
-  );
-
-  patch(
-    carbon.api.reader,
-    'getLatestTradingFeeUpdates',
-    (fromBlock: number, toBlock: number) => {
-      logger.info(`${fromBlock} ${toBlock}`);
-      return [];
-    }
-  );
-  patch(
-    carbon.api.reader,
-    'getLatestPairTradingFeeUpdates',
-    (fromBlock: number, toBlock: number) => {
-      logger.info(`${fromBlock} ${toBlock}`);
-      return [];
     }
   );
 };
