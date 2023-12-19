@@ -6,12 +6,15 @@ import {
   Pair,
   Percent,
   Price,
+  Router,
+  SwapParameters,
   Token,
   Trade,
   TradeType,
 } from '@pancakeswap/sdk';
 import {
   BigNumber,
+  Contract,
   ContractInterface,
   ContractTransaction,
   Transaction,
