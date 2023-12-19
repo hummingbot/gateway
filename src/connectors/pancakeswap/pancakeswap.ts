@@ -21,11 +21,7 @@ import {
   Wallet,
 } from 'ethers';
 import { BinanceSmartChain } from '../../chains/binance-smart-chain/binance-smart-chain';
-import {
-  ExpectedTrade,
-  Uniswapish,
-  UniswapishTrade,
-} from '../../services/common-interfaces';
+import { ExpectedTrade, Uniswapish } from '../../services/common-interfaces';
 import { percentRegexp } from '../../services/config-manager-v2';
 import {
   InitializationError,
@@ -39,14 +35,8 @@ import { PancakeSwapConfig } from './pancakeswap.config';
 import routerAbi from './pancakeswap_router_abi.json';
 import { PublicClient, createPublicClient, http, getAddress } from 'viem';
 import { GraphQLClient } from 'graphql-request';
-import {
-  Pool,
-  SmartRouter,
-  SmartRouterTrade,
-  SwapRouter,
-} from '@pancakeswap/smart-router';
+import { Pool, SmartRouter } from '@pancakeswap/smart-router';
 import { bsc, bscTestnet } from '@wagmi/chains';
-import { MethodParameters } from '@pancakeswap/v3-sdk';
 
 export class PancakeSwap implements Uniswapish {
   private static _instances: { [name: string]: PancakeSwap };
