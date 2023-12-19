@@ -6,22 +6,23 @@ import {
   Pair,
   Percent,
   Price,
-  Router,
-  SwapParameters,
   Token,
   Trade,
   TradeType,
 } from '@pancakeswap/sdk';
 import {
   BigNumber,
-  Contract,
   ContractInterface,
   ContractTransaction,
   Transaction,
   Wallet,
 } from 'ethers';
 import { BinanceSmartChain } from '../../chains/binance-smart-chain/binance-smart-chain';
-import { ExpectedTrade, Uniswapish } from '../../services/common-interfaces';
+import {
+  ExpectedTrade,
+  Uniswapish,
+  UniswapishTrade,
+} from '../../services/common-interfaces';
 import { percentRegexp } from '../../services/config-manager-v2';
 import {
   InitializationError,
@@ -33,11 +34,16 @@ import { logger } from '../../services/logger';
 import { isFractionString } from '../../services/validators';
 import { PancakeSwapConfig } from './pancakeswap.config';
 import routerAbi from './pancakeswap_router_abi.json';
-import { getAddress } from 'ethers/lib/utils';
-import { PublicClient, createPublicClient, http } from 'viem';
+import { PublicClient, createPublicClient, http, getAddress } from 'viem';
 import { GraphQLClient } from 'graphql-request';
-import { Pool, SmartRouter } from '@pancakeswap/smart-router';
+import {
+  Pool,
+  SmartRouter,
+  SmartRouterTrade,
+  SwapRouter,
+} from '@pancakeswap/smart-router';
 import { bsc, bscTestnet } from '@wagmi/chains';
+import { MethodParameters } from '@pancakeswap/v3-sdk';
 
 export class PancakeSwap implements Uniswapish {
   private static _instances: { [name: string]: PancakeSwap };
@@ -212,8 +218,8 @@ export class PancakeSwap implements Uniswapish {
         TradeType.EXACT_OUTPUT,
         {
           gasPriceWei: () => this.createPublicClient().getGasPrice(),
-          maxHops: this.maximumHops,
-          maxSplits: 2,
+          maxHops: this._maximumHops,
+          maxSplits: 1,
           poolProvider: SmartRouter.createStaticPoolProvider(pools),
           quoteProvider,
           quoterOptimization: true,
@@ -308,8 +314,8 @@ export class PancakeSwap implements Uniswapish {
         TradeType.EXACT_INPUT,
         {
           gasPriceWei: () => this.createPublicClient().getGasPrice(),
-          maxHops: this.maximumHops,
-          maxSplits: 2,
+          maxHops: this._maximumHops,
+          maxSplits: 1,
           poolProvider: SmartRouter.createStaticPoolProvider(pools),
           quoteProvider,
           quoterOptimization: true,
@@ -347,7 +353,7 @@ export class PancakeSwap implements Uniswapish {
       );
       const trades: Trade<Currency, Currency, TradeType>[] =
         Trade.bestTradeExactIn([pair], nativeTokenAmount, quoteToken, {
-          maxHops: 5,
+          maxHops: this._maximumHops,
         });
       if (!trades || trades.length === 0) {
         throw new UniswapishPriceError(
@@ -437,10 +443,31 @@ export class PancakeSwap implements Uniswapish {
 
     const pairs = SmartRouter.getPairCombinations(currencyA, currencyB);
 
+    // Create v2 candidate pool fetcher with your own on-chain fetcher
+    const getV2PoolsByCommonTokenPrices =
+      SmartRouter.createV2PoolsProviderByCommonTokenPrices(
+        SmartRouter.getCommonTokenPricesBySubgraph
+      );
+    const getV2CandidatePools = SmartRouter.createGetV2CandidatePools(
+      getV2PoolsByCommonTokenPrices
+    );
+
+    // Define v3 pool on-chain fetcher with customized tvl references
+    const getV3CandidatePools = SmartRouter.createGetV3CandidatePools(
+      // Use your customized v3 pool fetcher by default
+      SmartRouter.getV3PoolsWithTvlFromOnChain,
+      {
+        fallbacks: [],
+        // In millisecond
+        // Will try fallback fetcher if the default doesn't respond in 2s
+        fallbackTimeout: 1500,
+      }
+    );
+
     const allPools = await Promise.allSettled([
       // @ts-ignore
       SmartRouter.getStablePoolsOnChain(pairs, () => this.createPublicClient()),
-      SmartRouter.getV2CandidatePools({
+      getV2CandidatePools({
         // @ts-ignore
         onChainProvider: () => this.createPublicClient(),
         // @ts-ignore
@@ -450,14 +477,14 @@ export class PancakeSwap implements Uniswapish {
         currencyA,
         currencyB,
       }),
-      SmartRouter.getV3CandidatePools({
+      getV3CandidatePools({
         // @ts-ignore
         onChainProvider: () => this.createPublicClient(),
         // @ts-ignore
         subgraphProvider: () => v3SubgraphClient,
         currencyA,
         currencyB,
-        subgraphCacheFallback: false,
+        subgraphCacheFallback: true,
       }),
     ]);
 
