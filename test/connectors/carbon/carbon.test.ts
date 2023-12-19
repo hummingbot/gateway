@@ -10,7 +10,6 @@ import { patch, unpatch } from '../../../test/services/patch';
 import { Ethereum } from '../../../src/chains/ethereum/ethereum';
 import { EVMTxBroadcaster } from '../../../src/chains/ethereum/evm.broadcaster';
 import { CarbonCLOB } from '../../../src/connectors/carbon/carbon';
-import { logger } from '../../../src/services/logger';
 import { encodeStrategyId } from '../../../src/connectors/carbon/carbon.utils';
 import { patchEVMNonceManager } from '../../../test/evm.nonce.mock';
 
@@ -496,49 +495,6 @@ const patchReader = () => {
       });
     }
   );
-  patch(
-    carbon.api.reader,
-    'getLatestStrategyCreatedStrategies',
-    (fromBlock: number, toBlock: number) => {
-      logger.info(`${fromBlock} ${toBlock}`);
-      return [];
-    }
-  );
-
-  patch(
-    carbon.api.reader,
-    'getLatestStrategyDeletedStrategies',
-    (fromBlock: number, toBlock: number) => {
-      logger.info(`${fromBlock} ${toBlock}`);
-      return [];
-    }
-  );
-
-  patch(
-    carbon.api.reader,
-    'getLatestTokensTradedTrades',
-    (fromBlock: number, toBlock: number) => {
-      logger.info(`${fromBlock} ${toBlock}`);
-      return [];
-    }
-  );
-
-  patch(
-    carbon.api.reader,
-    'getLatestTradingFeeUpdates',
-    (fromBlock: number, toBlock: number) => {
-      logger.info(`${fromBlock} ${toBlock}`);
-      return [];
-    }
-  );
-  patch(
-    carbon.api.reader,
-    'getLatestPairTradingFeeUpdates',
-    (fromBlock: number, toBlock: number) => {
-      logger.info(`${fromBlock} ${toBlock}`);
-      return [];
-    }
-  );
 };
 
 const patchGasPrices = () => {
@@ -821,6 +777,21 @@ describe('GET /clob/orders', () => {
       .query(INVALID_REQUEST)
       .expect(404);
   });
+
+  it('should return 503 when getting orders but no address provided', async () => {
+    await request(gatewayApp)
+      .get(`/clob/orders`)
+      .query({
+        chain: 'ethereum',
+        network: 'mainnet',
+        connector: 'carbon',
+        orderId: '731',
+        // address: '0x7e57780cf01209a1522b9dCeFa9ff191DDd1c70f'
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(503);
+  });
 });
 
 describe('POST /clob/orders', () => {
@@ -969,21 +940,6 @@ describe('Requests to the connector', () => {
         chain: 'avalanche',
         network: 'mainnet',
         connector: 'carbon',
-      })
-      .set('Accept', 'application/json')
-      .expect('Content-Type', /json/)
-      .expect(503);
-  });
-
-  it('should return 503 when getting orders but no address provided', async () => {
-    await request(gatewayApp)
-      .get(`/clob/orders`)
-      .query({
-        chain: 'ethereum',
-        network: 'mainnet',
-        connector: 'carbon',
-        orderId: '731',
-        // address: '0x7e57780cf01209a1522b9dCeFa9ff191DDd1c70f'
       })
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
