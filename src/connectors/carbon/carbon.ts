@@ -48,8 +48,8 @@ import {
 export class CarbonCLOB implements CLOBish {
   public parsedMarkets: MarketInfo = [];
   public carbonContractConfig: Required<ContractsConfig>;
-  public carbonSDK: Toolkit;
-  public sdkCache: ChainCache;
+  public carbonSDK!: Toolkit; // will be initialized in init()
+  public sdkCache!: ChainCache; // will be initialized in init()
   public api: ContractsApi;
   private static _instances: { [name: string]: CarbonCLOB };
   private _chain: Ethereum;
@@ -85,9 +85,6 @@ export class CarbonCLOB implements CLOBish {
       this._chain.provider,
       this.carbonContractConfig
     );
-
-    this.sdkCache = new ChainCache();
-    this.carbonSDK = new Toolkit(this.api, this.sdkCache);
   }
 
   public static getInstance(chain: string, network: string): CarbonCLOB {

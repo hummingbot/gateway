@@ -51,8 +51,8 @@ export interface CarbonTrade {
 export class Carbonamm implements Uniswapish {
   private static _instances: { [name: string]: Carbonamm };
   public carbonContractConfig: Required<ContractsConfig>;
-  public carbonSDK: Toolkit;
-  public sdkCache: ChainCache;
+  public carbonSDK!: Toolkit; // will be initialized in init()
+  public sdkCache!: ChainCache; // will be initialized in init()
   public api: ContractsApi;
   private tokenList: Record<string, Token> = {};
   public router: any;
@@ -83,8 +83,6 @@ export class Carbonamm implements Uniswapish {
       this.carbonContractConfig
     );
 
-    this.sdkCache = new ChainCache();
-    this.carbonSDK = new Toolkit(this.api, this.sdkCache);
     this._gasLimitEstimate = this._conf.gasLimitEstimate;
     this._ttl = this._conf.ttl;
 
@@ -132,6 +130,13 @@ export class Carbonamm implements Uniswapish {
     return Math.floor(new Date().getTime() / 1000) + this._ttl;
   }
 
+  /**
+   * Default gas limit for swap transactions.
+   */
+  public get gasLimitEstimate(): number {
+    return this._gasLimitEstimate;
+  }
+
   public async init() {
     if (!this._chain.ready()) {
       await this._chain.init();
@@ -162,13 +167,6 @@ export class Carbonamm implements Uniswapish {
 
   public ready(): boolean {
     return this._ready;
-  }
-
-  /**
-   * Default gas limit for swap transactions.
-   */
-  public get gasLimitEstimate(): number {
-    return this._gasLimitEstimate;
   }
 
   /**
