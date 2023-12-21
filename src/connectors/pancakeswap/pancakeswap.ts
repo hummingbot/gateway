@@ -2,26 +2,23 @@
 import {
   Currency,
   CurrencyAmount,
-  Fetcher,
-  Pair,
   Percent,
-  Price,
-  Router,
-  SwapParameters,
   Token,
-  Trade,
   TradeType,
 } from '@pancakeswap/sdk';
 import {
   BigNumber,
-  Contract,
   ContractInterface,
   ContractTransaction,
   Transaction,
   Wallet,
 } from 'ethers';
 import { BinanceSmartChain } from '../../chains/binance-smart-chain/binance-smart-chain';
-import { ExpectedTrade, Uniswapish } from '../../services/common-interfaces';
+import {
+  ExpectedTrade,
+  Uniswapish,
+  UniswapishTrade,
+} from '../../services/common-interfaces';
 import { percentRegexp } from '../../services/config-manager-v2';
 import {
   InitializationError,
@@ -35,8 +32,14 @@ import { PancakeSwapConfig } from './pancakeswap.config';
 import routerAbi from './pancakeswap_router_abi.json';
 import { PublicClient, createPublicClient, http, getAddress } from 'viem';
 import { GraphQLClient } from 'graphql-request';
-import { Pool, SmartRouter } from '@pancakeswap/smart-router';
+import {
+  Pool,
+  SmartRouter,
+  SmartRouterTrade,
+  SwapRouter,
+} from '@pancakeswap/smart-router';
 import { bsc, bscTestnet } from '@wagmi/chains';
+import { MethodParameters } from '@pancakeswap/v3-sdk';
 
 export class PancakeSwap implements Uniswapish {
   private static _instances: { [name: string]: PancakeSwap };
@@ -52,8 +55,6 @@ export class PancakeSwap implements Uniswapish {
   private tokenList: Record<string, Token> = {};
   private _ready: boolean = false;
 
-  private readonly _useRouter: boolean;
-
   private constructor(chain: string, network: string) {
     const config = PancakeSwapConfig.config;
     this.bsc = BinanceSmartChain.getInstance(network);
@@ -65,12 +66,6 @@ export class PancakeSwap implements Uniswapish {
     this._maximumHops = config.maximumHops ?? 1;
     this._routerAbi = routerAbi.abi;
     this._gasLimitEstimate = config.gasLimitEstimate;
-
-    if (config.useRouter === false && config.feeTier == null) {
-      throw new Error('Must specify fee tier if not using router');
-    }
-
-    this._useRouter = config.useRouter ?? true;
   }
 
   public static getInstance(chain: string, network: string): PancakeSwap {
@@ -183,13 +178,13 @@ export class PancakeSwap implements Uniswapish {
    * @param quoteToken Token input for the transaction
    * @param baseToken Token output from the transaction
    * @param amount Amount of `baseToken` desired from the transaction
-   * @param allowedSlippage (Optional) Fraction in string representing the allowed slippage for this transaction
+   * @param _allowedSlippage (Optional) Fraction in string representing the allowed slippage for this transaction
    */
   async estimateBuyTrade(
     quoteToken: Token,
     baseToken: Token,
     amount: BigNumber,
-    allowedSlippage?: string
+    _allowedSlippage?: string
   ): Promise<ExpectedTrade> {
     const nativeTokenAmount: CurrencyAmount<Token> =
       CurrencyAmount.fromRawAmount(baseToken, amount.toString());
@@ -198,76 +193,44 @@ export class PancakeSwap implements Uniswapish {
       `Fetching pair data for ${quoteToken.address}-${baseToken.address}.`
     );
 
-    if (this._useRouter) {
-      const quoteProvider = SmartRouter.createQuoteProvider({
-        // @ts-ignore
-        onChainProvider: () => this.createPublicClient(),
-      });
-      const pools = await this.getPools(baseToken, quoteToken);
+    const quoteProvider = SmartRouter.createQuoteProvider({
+      // @ts-ignore
+      onChainProvider: () => this.createPublicClient(),
+    });
+    const pools = await this.getPools(baseToken, quoteToken);
 
-      const trade = await SmartRouter.getBestTrade(
-        nativeTokenAmount,
-        quoteToken,
-        TradeType.EXACT_OUTPUT,
-        {
-          gasPriceWei: () => this.createPublicClient().getGasPrice(),
-          maxHops: this._maximumHops,
-          maxSplits: 1,
-          poolProvider: SmartRouter.createStaticPoolProvider(pools),
-          quoteProvider,
-          quoterOptimization: true,
-        }
-      );
-
-      if (!trade) {
-        throw new UniswapishPriceError(
-          `priceSwapOut: no trade pair found for ${baseToken.address} to ${quoteToken.address}.`
-        );
+    const trade = await SmartRouter.getBestTrade(
+      nativeTokenAmount,
+      quoteToken,
+      TradeType.EXACT_OUTPUT,
+      {
+        gasPriceWei: () => this.createPublicClient().getGasPrice(),
+        maxHops: this._maximumHops,
+        maxSplits: 1,
+        poolProvider: SmartRouter.createStaticPoolProvider(pools),
+        quoteProvider,
+        quoterOptimization: true,
       }
-      logger.info(
-        `Best trade for ${baseToken.address}-${quoteToken.address}: ` +
-          `${trade.inputAmount.toExact()}` +
-          `${baseToken.symbol}.`
-      );
+    );
 
-      return {
-        trade: {
-          ...trade,
-          executionPrice: new Price(
-            trade.inputAmount.currency,
-            trade.outputAmount.currency,
-            trade.inputAmount.quotient,
-            trade.outputAmount.quotient
-          ),
-        },
-        expectedAmount: trade.inputAmount,
-      };
-    } else {
-      const pair: Pair = await Fetcher.fetchPairData(
-        quoteToken,
-        baseToken,
-        this.bsc.provider
+    if (!trade) {
+      throw new UniswapishPriceError(
+        `priceSwapOut: no trade pair found for ${baseToken.address} to ${quoteToken.address}.`
       );
-      const trades: Trade<Currency, Currency, TradeType>[] =
-        Trade.bestTradeExactOut([pair], quoteToken, nativeTokenAmount, {
-          maxHops: this._maximumHops,
-        });
-      if (!trades || trades.length === 0) {
-        throw new UniswapishPriceError(
-          `priceSwapOut: no trade pair found for ${quoteToken.address} to ${baseToken.address}.`
-        );
-      }
-      logger.info(
-        `Best trade for ${quoteToken.address}-${baseToken.address}: ` +
-          `${trades[0].executionPrice.invert().toFixed(6)} ` +
-          `${baseToken.name}.`
-      );
-
-      const expectedAmount = trades[0].maximumAmountIn(
-        this.getAllowedSlippage(allowedSlippage)
-      );
-      return { trade: trades[0], expectedAmount };
     }
+    logger.info(
+      `Best trade for ${baseToken.address}-${quoteToken.address}: ` +
+        `${trade.inputAmount.toExact()}` +
+        `${baseToken.symbol}.`
+    );
+
+    return {
+      trade: {
+        ...trade,
+        executionPrice: SmartRouter.getExecutionPrice(trade)!,
+      },
+      expectedAmount: trade.inputAmount,
+    };
   }
 
   /**
@@ -279,13 +242,13 @@ export class PancakeSwap implements Uniswapish {
    * @param baseToken Token input for the transaction
    * @param quoteToken Output from the transaction
    * @param amount Amount of `baseToken` to put into the transaction
-   * @param allowedSlippage (Optional) Fraction in string representing the allowed slippage for this transaction
+   * @param _allowedSlippage (Optional) Fraction in string representing the allowed slippage for this transaction
    */
   async estimateSellTrade(
     baseToken: Token,
     quoteToken: Token,
     amount: BigNumber,
-    allowedSlippage?: string
+    _allowedSlippage?: string
   ): Promise<ExpectedTrade> {
     const nativeTokenAmount: CurrencyAmount<Token> =
       CurrencyAmount.fromRawAmount(baseToken, amount.toString());
@@ -294,75 +257,44 @@ export class PancakeSwap implements Uniswapish {
       `Fetching pair data for ${baseToken.address}-${quoteToken.address}.`
     );
 
-    if (this._useRouter) {
-      const quoteProvider = SmartRouter.createQuoteProvider({
-        // @ts-ignore
-        onChainProvider: () => this.createPublicClient(),
-      });
-      const pools = await this.getPools(baseToken, quoteToken);
+    const quoteProvider = SmartRouter.createQuoteProvider({
+      // @ts-ignore
+      onChainProvider: () => this.createPublicClient(),
+    });
+    const pools = await this.getPools(baseToken, quoteToken);
 
-      const trade = await SmartRouter.getBestTrade(
-        nativeTokenAmount,
-        quoteToken,
-        TradeType.EXACT_INPUT,
-        {
-          gasPriceWei: () => this.createPublicClient().getGasPrice(),
-          maxHops: this._maximumHops,
-          maxSplits: 1,
-          poolProvider: SmartRouter.createStaticPoolProvider(pools),
-          quoteProvider,
-          quoterOptimization: true,
-        }
-      );
-
-      if (!trade) {
-        throw new UniswapishPriceError(
-          `priceSwapIn: no trade pair found for ${baseToken.address} to ${quoteToken.address}.`
-        );
+    const trade = await SmartRouter.getBestTrade(
+      nativeTokenAmount,
+      quoteToken,
+      TradeType.EXACT_INPUT,
+      {
+        gasPriceWei: () => this.createPublicClient().getGasPrice(),
+        maxHops: this._maximumHops,
+        maxSplits: 1,
+        poolProvider: SmartRouter.createStaticPoolProvider(pools),
+        quoteProvider,
+        quoterOptimization: true,
       }
-      logger.info(
-        `Best trade for ${baseToken.address}-${quoteToken.address}: ` +
-          `${trade.outputAmount.toExact()}` +
-          `${baseToken.symbol}.`
-      );
+    );
 
-      return {
-        trade: {
-          ...trade,
-          executionPrice: new Price(
-            trade.inputAmount.currency,
-            trade.outputAmount.currency,
-            trade.inputAmount.quotient,
-            trade.outputAmount.quotient
-          ),
-        },
-        expectedAmount: trade.outputAmount,
-      };
-    } else {
-      const pair: Pair = await Fetcher.fetchPairData(
-        baseToken,
-        quoteToken,
-        this.bsc.provider
+    if (!trade) {
+      throw new UniswapishPriceError(
+        `priceSwapIn: no trade pair found for ${baseToken.address} to ${quoteToken.address}.`
       );
-      const trades: Trade<Currency, Currency, TradeType>[] =
-        Trade.bestTradeExactIn([pair], nativeTokenAmount, quoteToken, {
-          maxHops: this._maximumHops,
-        });
-      if (!trades || trades.length === 0) {
-        throw new UniswapishPriceError(
-          `priceSwapIn: no trade pair found for ${baseToken} to ${quoteToken}.`
-        );
-      }
-      logger.info(
-        `Best trade for ${baseToken.address}-${quoteToken.address}: ` +
-          `${trades[0].executionPrice.toFixed(6)}` +
-          `${baseToken.name}.`
-      );
-      const expectedAmount = trades[0].minimumAmountOut(
-        this.getAllowedSlippage(allowedSlippage)
-      );
-      return { trade: trades[0], expectedAmount };
     }
+    logger.info(
+      `Best trade for ${baseToken.address}-${quoteToken.address}: ` +
+        `${trade.outputAmount.toExact()}` +
+        `${baseToken.symbol}.`
+    );
+
+    return {
+      trade: {
+        ...trade,
+        executionPrice: SmartRouter.getExecutionPrice(trade)!,
+      },
+      expectedAmount: trade.outputAmount,
+    };
   }
 
   /**
@@ -371,9 +303,9 @@ export class PancakeSwap implements Uniswapish {
    * @param wallet Wallet
    * @param trade Expected trade
    * @param gasPrice Base gas price, for pre-EIP1559 transactions
-   * @param pancakeswapRouter Router smart contract address
+   * @param pancakeswapRouter Smart Router smart contract address
    * @param ttl How long the swap is valid before expiry, in seconds
-   * @param abi Router contract ABI
+   * @param _abi Router contract ABI
    * @param gasLimit Gas limit
    * @param nonce (Optional) EVM transaction nonce
    * @param maxFeePerGas (Optional) Maximum total fee per gas you want to pay
@@ -382,41 +314,48 @@ export class PancakeSwap implements Uniswapish {
    */
   async executeTrade(
     wallet: Wallet,
-    trade: Trade<Currency, Currency, TradeType>,
+    trade: UniswapishTrade,
     gasPrice: number,
     pancakeswapRouter: string,
     ttl: number,
-    abi: ContractInterface,
+    _abi: ContractInterface,
     gasLimit: number,
     nonce?: number,
     maxFeePerGas?: BigNumber,
     maxPriorityFeePerGas?: BigNumber,
     allowedSlippage?: string
   ): Promise<Transaction> {
-    const result: SwapParameters = Router.swapCallParameters(trade, {
-      ttl,
-      recipient: wallet.address,
-      allowedSlippage: this.getAllowedSlippage(allowedSlippage),
-    });
+    const methodParameters: MethodParameters = SwapRouter.swapCallParameters(
+      trade as SmartRouterTrade<TradeType>,
+      {
+        deadlineOrPreviousBlockhash: Math.floor(Date.now() / 1000 + ttl),
+        recipient: getAddress(wallet.address),
+        slippageTolerance: this.getAllowedSlippage(allowedSlippage),
+      }
+    );
 
-    const contract: Contract = new Contract(pancakeswapRouter, abi, wallet);
     if (nonce === undefined) {
       nonce = await this.bsc.nonceManager.getNextNonce(wallet.address);
     }
+
     let tx: ContractTransaction;
-    if (maxFeePerGas || maxPriorityFeePerGas) {
-      tx = await contract[result.methodName](...result.args, {
-        gasLimit: gasLimit,
-        value: result.value,
+    if (maxFeePerGas !== undefined || maxPriorityFeePerGas !== undefined) {
+      tx = await wallet.sendTransaction({
+        data: methodParameters.calldata,
+        to: pancakeswapRouter,
+        gasLimit: gasLimit.toFixed(0),
+        value: methodParameters.value,
         nonce: nonce,
         maxFeePerGas,
         maxPriorityFeePerGas,
       });
     } else {
-      tx = await contract[result.methodName](...result.args, {
+      tx = await wallet.sendTransaction({
+        data: methodParameters.calldata,
+        to: pancakeswapRouter,
         gasPrice: (gasPrice * 1e9).toFixed(0),
         gasLimit: gasLimit.toFixed(0),
-        value: result.value,
+        value: methodParameters.value,
         nonce: nonce,
       });
     }
