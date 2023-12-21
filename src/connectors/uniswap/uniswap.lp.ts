@@ -55,39 +55,45 @@ export class UniswapLP extends UniswapLPHelper implements UniswapLPish {
   async getPosition(tokenId: number): Promise<PositionInfo> {
     const contract = this.getContract('nft', this.ethereum.provider);
 
-    const positionsPromise = contract.positions(tokenId)
-    .catch((error: any) => {
-      console.error('Error in contract.positions:', error);
+    const positionsPromise = contract.positions(tokenId).catch((error: any) => {
+      console.error(`Error in contract.positions for tokenId ${tokenId}:`, error);
       // Handle or rethrow error
-      logger.error(`Error in contract.positions: ${error}`);
+      logger.error(`Error in contract.positions for tokenId ${tokenId}: ${error}`);
     });
-  
-    const collectFeesPromise = this.collectFees(this.ethereum.provider, tokenId)
+
+    const feeInfoPromise = contract.callStatic
+      .collect(
+        {
+          tokenId: tokenId,
+          recipient: constants.AddressZero,
+          amount0Max: MaxUint128,
+          amount1Max: MaxUint128,
+        },
+        { from: constants.AddressZero }
+      )
       .catch((error: any) => {
-        console.error('Error in collectFees:', error);
+        console.error(`Error in getting fees info for tokenId ${tokenId}:`, error);
         // Handle or rethrow error
-        logger.error(`Error in collectFees: ${error}`);
+        logger.error(`Error in getting fees info for tokenId ${tokenId}: ${error}`);
       });
-    
-    const requests = [positionsPromise, collectFeesPromise];
-    
-    // const requests = [
-    //   contract.positions(tokenId),
-    //   this.collectFees(this.ethereum.provider, tokenId), // static call to calculate earned fees
-    // ];
-    const positionInfoReq = await Promise.allSettled(requests);
-    const rejected = positionInfoReq.filter(
-      (r) => r.status === 'rejected'
-    ) as PromiseRejectedResult[];
-    if (rejected.length > 0)
-      throw new Error(`Unable to fetch position with id ${tokenId}`);
-    const positionInfo = (
-      positionInfoReq.filter(
-        (r) => r.status === 'fulfilled'
-      ) as PromiseFulfilledResult<any>[]
-    ).map((r) => r.value);
+
+    const requests = [positionsPromise, feeInfoPromise];
+
+    // resolve all promiseses in requests sequencially
+    const positionInfo = [];
+    for (const req of requests) {
+      try {
+        const res = await req;
+        positionInfo.push(res);
+      } catch (error) {
+        throw new Error(
+          `Error in getPosition for tokenId ${tokenId}: ${error}`
+        );
+      }
+    }
     const position = positionInfo[0];
     const feeInfo = positionInfo[1];
+
     const token0 = this.getTokenByAddress(position.token0);
     const token1 = this.getTokenByAddress(position.token1);
     if (!token0 || !token1) {
