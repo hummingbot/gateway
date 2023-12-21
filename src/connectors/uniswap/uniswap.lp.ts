@@ -54,10 +54,27 @@ export class UniswapLP extends UniswapLPHelper implements UniswapLPish {
 
   async getPosition(tokenId: number): Promise<PositionInfo> {
     const contract = this.getContract('nft', this.ethereum.provider);
-    const requests = [
-      contract.positions(tokenId),
-      this.collectFees(this.ethereum.provider, tokenId), // static call to calculate earned fees
-    ];
+
+    const positionsPromise = contract.positions(tokenId)
+    .catch((error: any) => {
+      console.error('Error in contract.positions:', error);
+      // Handle or rethrow error
+      logger.error(`Error in contract.positions: ${error}`);
+    });
+  
+    const collectFeesPromise = this.collectFees(this.ethereum.provider, tokenId)
+      .catch((error: any) => {
+        console.error('Error in collectFees:', error);
+        // Handle or rethrow error
+        logger.error(`Error in collectFees: ${error}`);
+      });
+    
+    const requests = [positionsPromise, collectFeesPromise];
+    
+    // const requests = [
+    //   contract.positions(tokenId),
+    //   this.collectFees(this.ethereum.provider, tokenId), // static call to calculate earned fees
+    // ];
     const positionInfoReq = await Promise.allSettled(requests);
     const rejected = positionInfoReq.filter(
       (r) => r.status === 'rejected'
