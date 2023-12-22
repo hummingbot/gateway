@@ -924,6 +924,30 @@ describe('GET /clob/estimateGas', () => {
   });
 });
 
+describe('POST /chain/balances', () => {
+  it('should return 200 with proper request', async () => {
+    patchGetWallet();
+    patchGetTokenBySymbol();
+    patchMsgBroadcaster();
+    await request(gatewayApp)
+      .post(`/chain/balances`)
+      .send({
+        chain: 'ethereum',
+        network: 'mainnet',
+        connector: 'carbon',
+        address: '0x7e57780cf01209a1522b9dCeFa9ff191DDd1c70f', // noqa: mock
+        tokenSymbols: ['ETH', 'DAI', 'USDC', 'USDT'],
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .expect((res) => expect(res.body.balances.total.ETH).toEqual('2000'))
+      .expect((res) => expect(res.body.balances.total.DAI).toEqual('1000'))
+      .expect((res) => expect(res.body.balances.total.USDC).toEqual('1000'))
+      .expect((res) => expect(res.body.balances.total.USDT).toEqual('100'));
+  });
+});
+
 describe('verify Carbon constructor', () => {
   it('Should return an Error with an unsupported chain', () => {
     expect(async () => {
