@@ -277,17 +277,36 @@ export class CarbonCLOB implements CLOBish {
 
     await Promise.all(
       tokens.map((token) => {
-        const userStrategyBuyBudget = userStrategies.find(
+        const userStrategiesBuyBudgetRaw = userStrategies.filter(
           (strategy) => strategy.baseToken === token.address
         );
-        const userStrategySellBudget = userStrategies.find(
-          (strategy) => strategy.quoteToken === token.address
+        const userStrategyBuyBudget = userStrategiesBuyBudgetRaw.reduce(
+          (acc, strategy) => {
+            return acc.add(
+              new Decimal(strategy?.sellBudget || 0).div(
+                new Decimal(10).pow(token.decimals)
+              )
+            );
+          },
+          new Decimal(0)
         );
 
-        const userTokenBalance = new Decimal(
-          userStrategyBuyBudget?.buyBudget || 0
-        )
-          .add(new Decimal(userStrategySellBudget?.sellBudget || 0))
+        const userStrategiesSellBudgetRaw = userStrategies.filter(
+          (strategy) => strategy.quoteToken === token.address
+        );
+        const userStrategySellBudget = userStrategiesSellBudgetRaw.reduce(
+          (acc, strategy) => {
+            return acc.add(
+              new Decimal(strategy?.buyBudget || 0).div(
+                new Decimal(10).pow(token.decimals)
+              )
+            );
+          },
+          new Decimal(0)
+        );
+
+        const userTokenBalance = userStrategyBuyBudget
+          .add(userStrategySellBudget)
           .toString();
 
         formattedBalances.available[token.symbol] = parseUnits(
