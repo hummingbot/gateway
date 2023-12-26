@@ -21,7 +21,7 @@ import { rootPath } from '../../paths';
 import { TokenListType, walletPath, MarketListType } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { getXRPLConfig } from './xrpl.config';
-// import { logger } from '../../services/logger';
+import { logger } from '../../services/logger';
 import { TransactionResponseStatusCode, TokenBalance } from './xrpl.requests';
 import { XRPLOrderStorage } from './xrpl.order-storage';
 import { OrderTracker } from './xrpl.order-tracker';
@@ -80,6 +80,7 @@ export class XRPL implements XRPLish {
   private _reserveIncrementXrp: number;
 
   private _ready: boolean = false;
+  private _hardClosed: boolean = false;
   private initializing: boolean = false;
 
   private readonly _refCountingHandle: string;
@@ -417,8 +418,17 @@ export class XRPL implements XRPLish {
   }
 
   async ensureConnection() {
+    if (this._hardClosed) {
+      logger.info('XRPL instance is hard closed, aborting connection');
+      return;
+    }
+
     if (!this.isConnected()) {
-      await this._client.connect();
+      try {
+        await this._client.connect();
+      } catch (error) {
+        logger.info('Error connecting to XRPL: ' + String(error));
+      }
     }
   }
 
@@ -523,6 +533,7 @@ export class XRPL implements XRPLish {
 
   async close() {
     if (this._network in XRPL._instances) {
+      this._hardClosed = true;
       await OrderTracker.stopTrackingOnAllInstancesForNetwork(this._network);
       await this._orderStorage.close(this._refCountingHandle);
       await this._client.disconnect();
