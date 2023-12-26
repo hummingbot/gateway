@@ -46,12 +46,26 @@ import {
   PoolPriceRequest,
   PoolPriceResponse,
 } from '../../amm/amm.requests';
+import BigNumberCelo from 'bignumber.js';
 
 export interface TradeInfo {
   baseToken: Tokenish;
   quoteToken: Tokenish;
   requestAmount: BigNumber;
   expectedTrade: ExpectedTrade;
+}
+
+export function convertBigInt(
+  amount: BigNumberCelo | BigNumber | string
+): BigNumber {
+  if (amount instanceof BigNumberCelo) {
+    const converted = amount.toFixed();
+    return BigNumber.from(converted);
+  } else if (amount instanceof BigNumber) {
+    return amount;
+  } else {
+    return BigNumber.from(amount);
+  }
 }
 
 export async function txWriteData(
@@ -66,11 +80,11 @@ export async function txWriteData(
 }> {
   let maxFeePerGasBigNumber: BigNumber | undefined;
   if (maxFeePerGas) {
-    maxFeePerGasBigNumber = BigNumber.from(maxFeePerGas);
+    maxFeePerGasBigNumber = convertBigInt(maxFeePerGas);
   }
   let maxPriorityFeePerGasBigNumber: BigNumber | undefined;
   if (maxPriorityFeePerGas) {
-    maxPriorityFeePerGasBigNumber = BigNumber.from(maxPriorityFeePerGas);
+    maxPriorityFeePerGasBigNumber = convertBigInt(maxPriorityFeePerGas);
   }
 
   let wallet: Wallet;

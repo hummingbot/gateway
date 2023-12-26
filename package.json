@@ -8,7 +8,7 @@
   "scripts": {
     "prebuild": "rimraf dist && mkdir dist",
     "build": "tsc --skipLibCheck --project ./ && yarn copy-files",
-    "clean": "rm -rf ./node_modules && rm -rf ./coverage && rm -rf ./logs && yarn run clean:config",
+    "clean": "rm -rf ./node_modules && rm -rf ./coverage && rm -rf ./logs",
     "clean:config": "find ./conf -maxdepth 1 -regextype posix-extended -regex '.*\\.yml' -delete",
     "format": "prettier . --write",
     "lint": "eslint src test test-scripts --format table --fix",
@@ -23,7 +23,7 @@
     "test:scripts": "jest -i --verbose ./test-scripts/*.test.ts"
   },
   "dependencies": {
-    "@celo-tools/celo-ethers-wrapper": "^0.4.0",
+    "@celo-tools/celo-ethers-wrapper": "^1.0.0",
     "@celo/contractkit": "^4.1.0",
     "@celo/wallet-walletconnect-v1": "^4.2.1",
     "@ubeswap/sdk": "^2.1.1",
@@ -60,7 +60,7 @@
     "@uniswap/smart-order-router": "^2.5.26",
     "@uniswap/v3-core": "^1.0.0",
     "@uniswap/v3-periphery": "^1.1.1",
-    "@uniswap/v3-sdk": "^3.8.2",
+    "@uniswap/v3-sdk": "^3.8.3",
     "@zuzu-cat/defira-sdk": "^1.0.0",
     "abi-decoder": "^2.4.0",
     "ajv": "^8.6.3",
@@ -150,9 +150,14 @@
     "supertest": "^6.1.6",
     "ts-jest": "^27.0.5",
     "ts-node": "^10.0.0",
-    "typescript": "^4.3.2"
+    "typescript": "^4.5.2"
+  },
+  "peerDependencies": {
+    "@uniswap/sdk": "3.0.2",
+    "@uniswap/v3-sdk": "3.8.3"
   },
   "resolutions": {
-    "web3-utils": "1.7.3"
+    "web3-utils": "1.7.3",
+    "@uniswap/v3-sdk": "3.8.3"
   }
 }

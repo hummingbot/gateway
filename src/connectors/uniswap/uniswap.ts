@@ -6,7 +6,11 @@ import {
   ContractInterface,
   ContractTransaction,
 } from '@ethersproject/contracts';
-import { AlphaRouter, GasPrice, IGasPriceProvider } from '@uniswap/smart-order-router';
+import {
+  AlphaRouter,
+  GasPrice,
+  IGasPriceProvider,
+} from '@uniswap/smart-order-router';
 import { Trade, SwapRouter } from '@uniswap/router-sdk';
 import { MethodParameters } from '@uniswap/v3-sdk';
 import {
@@ -300,7 +304,8 @@ export class Uniswap implements Uniswapish {
         slippageTolerance: this.getAllowedSlippage(allowedSlippage),
       }
     );
-
+    const gasLimitConverted = gasLimit;
+    const gasPriceConverted = (gasPrice * 1e9);
     return this.chain.nonceManager.provideNonce(
       nonce,
       wallet.address,
@@ -310,7 +315,8 @@ export class Uniswap implements Uniswapish {
           tx = await wallet.sendTransaction({
             data: methodParameters.calldata,
             to: uniswapRouter,
-            gasLimit: gasLimit.toFixed(0),
+            gasPrice: gasPriceConverted,
+            gasLimit: gasLimitConverted,
             value: methodParameters.value,
             nonce: nextNonce,
             maxFeePerGas,
@@ -320,8 +326,8 @@ export class Uniswap implements Uniswapish {
           tx = await wallet.sendTransaction({
             data: methodParameters.calldata,
             to: this.router,
-            gasPrice: (gasPrice * 1e9).toFixed(0),
-            gasLimit: gasLimit.toFixed(0),
+            gasPrice: gasPriceConverted,
+            gasLimit: gasLimitConverted,
             value: methodParameters.value,
             nonce: nextNonce,
           });

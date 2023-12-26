@@ -370,10 +370,12 @@ export class CeloBase {
   }
 
   public getTokenBySymbol(tokenSymbol: string): TokenInfo | undefined {
-    return this.tokenList.find(
+    const token = this.tokenList.find(
       (token: TokenInfo) =>
-        token.symbol === tokenSymbol && token.chainId === this.chainId
+        tokenSymbol.toUpperCase() === token.symbol.toUpperCase() &&
+        token.chainId === this.chainId
     );
+    return token;
   }
 
   // returns the current block number
