@@ -6,6 +6,7 @@ import { Harmony } from '../chains/harmony/harmony';
 import { Polygon } from '../chains/polygon/polygon';
 import { Xdc } from '../chains/xdc/xdc';
 import { Tezos } from '../chains/tezos/tezos';
+import { XRPL, XRPLish } from '../chains/xrpl/xrpl';
 import { MadMeerkat } from '../connectors/mad_meerkat/mad_meerkat';
 import { Openocean } from '../connectors/openocean/openocean';
 import { Pangolin } from '../connectors/pangolin/pangolin';
@@ -39,6 +40,8 @@ import { Plenty } from '../connectors/plenty/plenty';
 import { Curve } from '../connectors/curve/curve';
 import { Kujira } from '../chains/kujira/kujira';
 import { KujiraCLOB } from '../connectors/kujira/kujira';
+import { PancakeswapLP } from '../connectors/pancakeswap/pancakeswap.lp';
+import { XRPLCLOB } from '../connectors/xrpl/xrpl';
 
 export type ChainUnion =
   | Algorand
@@ -47,6 +50,7 @@ export type ChainUnion =
   | Nearish
   | Xdcish
   | Tezosish
+  | XRPLish
   | Kujira;
 
 export type Chain<T> = T extends Algorand
@@ -61,6 +65,8 @@ export type Chain<T> = T extends Algorand
   ? Xdcish
   : T extends Tezosish
   ? Tezosish
+  : T extends XRPLish
+  ? XRPLish
   : T extends KujiraCLOB
   ? KujiraCLOB
   : never;
@@ -122,6 +128,8 @@ export async function getChainInstance(
     connection = Xdc.getInstance(network);
   } else if (chain === 'tezos') {
     connection = Tezos.getInstance(network);
+  } else if (chain === 'xrpl') {
+    connection = XRPL.getInstance(network);
   } else if (chain === 'kujira') {
     connection = Kujira.getInstance(network);
   } else {
@@ -139,6 +147,7 @@ export type ConnectorUnion =
   | CLOBish
   | Tinyman
   | Plenty
+  | XRPLCLOB
   | Curve
   | KujiraCLOB;
 
@@ -156,6 +165,8 @@ export type Connector<T> = T extends Uniswapish
   ? Tinyman
   : T extends Plenty
   ? Plenty
+  : T extends XRPLish
+  ? XRPLCLOB
   : T extends KujiraCLOB
   ? KujiraCLOB
   : never;
@@ -196,6 +207,8 @@ export async function getConnector<T>(
     connectorInstance = Ref.getInstance(chain, network);
   } else if (chain === 'binance-smart-chain' && connector === 'pancakeswap') {
     connectorInstance = PancakeSwap.getInstance(chain, network);
+  } else if (chain === 'binance-smart-chain' && connector === 'pancakeswapLP') {
+    connectorInstance = PancakeswapLP.getInstance(chain, network);
   } else if (connector === 'sushiswap') {
     connectorInstance = Sushiswap.getInstance(chain, network);
   } else if (chain === 'xdc' && connector === 'xsswap') {
@@ -206,6 +219,8 @@ export async function getConnector<T>(
     connectorInstance = Tinyman.getInstance(network);
   } else if (chain === 'tezos' && connector === 'plenty') {
     connectorInstance = Plenty.getInstance(network);
+  } else if (chain === 'xrpl' && connector === 'xrpl') {
+    connectorInstance = XRPLCLOB.getInstance(chain, network);
   } else if (chain === 'kujira' && connector === 'kujira') {
     connectorInstance = KujiraCLOB.getInstance(chain, network);
   } else if (
