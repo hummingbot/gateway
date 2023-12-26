@@ -4,7 +4,7 @@ import { XRPL } from '../../../src/chains/xrpl/xrpl';
 import { XRPLCLOB } from '../../../src/connectors/xrpl/xrpl';
 import {} from '../../../src/chains/xrpl/xrpl.order-tracker';
 import { Order } from '../../../src/connectors/xrpl/xrpl.types';
-import { patch, unpatch } from '../../services/patch';
+import { patch, unpatch } from '../../../test/services/patch';
 
 let xrpl: XRPL;
 let xrplCLOB: XRPLCLOB;
@@ -293,6 +293,7 @@ beforeAll(async () => {
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 beforeEach(() => {
   patchConnect();
+  patchGetReserveInfo();
   patchFee();
   patchOrderTracking();
   patchCurrentBlockNumber();
@@ -400,6 +401,12 @@ const patchGetWallet = () => {
 const patchGasPrices = () => {
   patch(xrplCLOB, 'getFeeEstimate', () => {
     return GAS_PRICES;
+  });
+};
+
+const patchGetReserveInfo = () => {
+  patch(xrpl, 'getReserveInfo', async () => {
+    return Promise.resolve();
   });
 };
 

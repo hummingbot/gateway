@@ -424,13 +424,17 @@ export class XRPL implements XRPLish {
 
   async getReserveInfo() {
     await this.ensureConnection();
-    const reserveInfoResp = await this._client.request({
-      command: 'server_info',
-    });
-    this._reserveBaseXrp =
-      reserveInfoResp.result.info.validated_ledger?.reserve_base_xrp ?? 0;
-    this._reserveIncrementXrp =
-      reserveInfoResp.result.info.validated_ledger?.reserve_inc_xrp ?? 0;
+    try {
+      const reserveInfoResp = await this._client.request({
+        command: 'server_info',
+      });
+      this._reserveBaseXrp =
+        reserveInfoResp.result.info.validated_ledger?.reserve_base_xrp ?? 0;
+      this._reserveIncrementXrp =
+        reserveInfoResp.result.info.validated_ledger?.reserve_inc_xrp ?? 0;
+    } catch (error) {
+      throw new Error("Can't get reserve info: " + String(error));
+    }
   }
 
   public get chain(): string {

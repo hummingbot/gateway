@@ -21,8 +21,8 @@ networks:
     marketListSource: "/home/gateway/conf/lists/xrpl_markets_devnet.json"
     nativeCurrencySymbol: "XRP"
 network: "xrpl"
-requestTimeout: 2000
-connectionTimeout: 2000
+requestTimeout: 5000
+connectionTimeout: 5000
 feeCushion: 1.2
 maxFeeXRP: "2"
 orderDbPath: "db/xrpl.level"

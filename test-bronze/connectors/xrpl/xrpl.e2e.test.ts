@@ -4,7 +4,7 @@ import { Wallet } from 'xrpl';
 import { XRPL } from '../../../src/chains/xrpl/xrpl';
 import { XRPLCLOB } from '../../../src/connectors/xrpl/xrpl';
 import { getsSequenceNumberFromTxn } from '../../../src/connectors/xrpl/xrpl.utils';
-import { patch, unpatch } from '../../services/patch';
+import { patch, unpatch } from '../../../test/services/patch';
 import { Order } from '../../../src/connectors/xrpl/xrpl.types';
 
 let xrpl: XRPL;
