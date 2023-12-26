@@ -7,7 +7,7 @@ networks:
     marketListSource: "/home/gateway/conf/lists/xrpl_markets.json"
     nativeCurrencySymbol: "XRP"
   testnet:
-    nodeURL: wss://s.altnet.rippletest.net:51233/
+    nodeURL: 	wss://testnet.xrpl-labs.com/
     tokenListType: "FILE"
     tokenListSource: "/home/gateway/conf/lists/xrpl_tokens_testnet.json"
     marketListType: "FILE"
