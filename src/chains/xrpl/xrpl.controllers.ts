@@ -85,6 +85,7 @@ export class XRPLController {
     validateXRPLPollRequest(req);
 
     const initTime = Date.now();
+    await xrplish.ensureConnection();
     const currentLedgerIndex = await xrplish.getCurrentLedgerIndex();
     const txData = await xrplish.getTransaction(req.txHash);
     const txStatus = await xrplish.getTransactionStatusCode(txData);
