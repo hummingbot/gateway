@@ -34,6 +34,7 @@ import { PublicClient, createPublicClient, http, getAddress } from 'viem';
 import { GraphQLClient } from 'graphql-request';
 import {
   Pool,
+  PoolType,
   SmartRouter,
   SmartRouterTrade,
   SwapRouter,
@@ -210,6 +211,7 @@ export class PancakeSwap implements Uniswapish {
         poolProvider: SmartRouter.createStaticPoolProvider(pools),
         quoteProvider,
         quoterOptimization: true,
+        allowedPoolTypes: [PoolType.V2, PoolType.V3, PoolType.STABLE],
       }
     );
 
@@ -274,6 +276,7 @@ export class PancakeSwap implements Uniswapish {
         poolProvider: SmartRouter.createStaticPoolProvider(pools),
         quoteProvider,
         quoterOptimization: true,
+        allowedPoolTypes: [PoolType.V2, PoolType.V3, PoolType.STABLE],
       }
     );
 
