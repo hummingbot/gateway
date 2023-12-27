@@ -162,6 +162,16 @@ export namespace ConnectorsRoutes {
                 'Enter your kujira account number (input 0 if unsure) >>> ',
             },
           },
+          {
+            name: 'nftperp', // SHOULD BE UPDATED
+            trading_type: DexalotCLOBConfig.config.tradingTypes('spot'),
+            chain_type: DexalotCLOBConfig.config.chainType,
+            available_networks: DexalotCLOBConfig.config.availableNetworks,
+            additional_add_wallet_prompts: {
+              api_key:
+                'Enter a Dexalot API Key if you have one, otherwise hit return >>> ',
+            },
+          },
         ],
       });
     })
