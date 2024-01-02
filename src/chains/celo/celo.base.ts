@@ -20,7 +20,7 @@ import { logger } from '../../services/logger';
 import { ReferenceCountingCloseable } from '../../services/refcounting-closeable';
 import { newKit } from '@celo/contractkit';
 import { ContractKit } from '@celo/contractkit/lib/kit';
-import { CeloProvider, CeloWallet } from '@celo-tools/celo-ethers-wrapper';
+import { StaticCeloProvider, CeloWallet } from '@celo-tools/celo-ethers-wrapper';
 import { Ierc20 } from '@celo/contractkit/lib/generated/IERC20';
 import { Erc20Wrapper } from '@celo/contractkit/lib/wrappers/Erc20Wrapper';
 import { TransactionResult } from '@celo/connect';
@@ -72,7 +72,6 @@ export class CeloBase {
     nonceDbPath: string,
     transactionDbPath: string
   ) {
-    // this._provider = new providers.StaticJsonRpcProvider(rpcUrl);
     this.chainName = chainName;
     this.chainId = chainId;
     this.rpcUrl = rpcUrl;
@@ -95,7 +94,7 @@ export class CeloBase {
     );
     this._txStorage.declareOwnership(this._refCountingHandle);
     this.kit = newKit(rpcUrl);
-    this._provider = new CeloProvider(rpcUrl);
+    this._provider = new StaticCeloProvider(rpcUrl);
   }
 
   ready(): boolean {
@@ -204,7 +203,7 @@ export class CeloBase {
   }
 
   getWalletFromPrivateKey(privateKey: string): Wallet {
-    const provider = new CeloProvider(this.rpcUrl);
+    const provider = new StaticCeloProvider(this.rpcUrl);
     const account = this.getUserAccount(privateKey);
     this.kit.addAccount(privateKey);
     this.kit.defaultAccount = account.address;

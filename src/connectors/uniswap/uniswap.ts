@@ -305,7 +305,7 @@ export class Uniswap implements Uniswapish {
       }
     );
     const gasLimitConverted = gasLimit;
-    const gasPriceConverted = (gasPrice * 1e9);
+    const gasPriceConverted = gasPrice * 1e9;
     return this.chain.nonceManager.provideNonce(
       nonce,
       wallet.address,
