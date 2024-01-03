@@ -222,8 +222,8 @@ export class PancakeSwap implements Uniswapish {
     }
     logger.info(
       `Best trade for ${baseToken.address}-${quoteToken.address}: ` +
-        `${trade.inputAmount.toExact()}` +
-        `${baseToken.symbol}.`
+      `${trade.inputAmount.toExact()}` +
+      `${baseToken.symbol}.`
     );
 
     return {
@@ -287,8 +287,8 @@ export class PancakeSwap implements Uniswapish {
     }
     logger.info(
       `Best trade for ${baseToken.address}-${quoteToken.address}: ` +
-        `${trade.outputAmount.toExact()}` +
-        `${baseToken.symbol}.`
+      `${trade.outputAmount.toExact()}` +
+      `${baseToken.symbol}.`
     );
 
     return {

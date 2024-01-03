@@ -21,23 +21,23 @@ let bsc: BinanceSmartChain;
 let pancakeswap: PancakeSwap;
 
 const WBNB = new Token(
-  97,
-  '0xae13d989dac2f0debff460ac112a837c89baa7cd',
+  56,
+  '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
   18,
   'WBNB'
 );
 const DAI = new Token(
-  97,
-  '0x8a9424745056Eb399FD19a0EC26A14316684e274',
+  56,
+  '0x1AF3F329e8BE154074D8769D1FFa4eE058B1DBc3',
   18,
   'DAI'
 );
 
 beforeAll(async () => {
-  bsc = BinanceSmartChain.getInstance('testnet');
+  bsc = BinanceSmartChain.getInstance('mainnet');
   patchEVMNonceManager(bsc.nonceManager);
   await bsc.init();
-  pancakeswap = PancakeSwap.getInstance('binance-smart-chain', 'testnet');
+  pancakeswap = PancakeSwap.getInstance('binance-smart-chain', 'mainnet');
   await pancakeswap.init();
 });
 
@@ -86,6 +86,7 @@ describe('verify PancakeSwap estimateSellTrade', () => {
       DAI,
       BigNumber.from(1)
     );
+
     expect(expectedTrade).toHaveProperty('trade');
     expect(expectedTrade).toHaveProperty('expectedAmount');
   });

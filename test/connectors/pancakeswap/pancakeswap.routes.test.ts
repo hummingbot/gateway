@@ -156,7 +156,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'binance-smart-chain',
-        network: 'testnet',
+        network: 'mainnet',
         connector: 'pancakeswap',
         quote: 'DAI',
         base: 'WBNB',
@@ -185,7 +185,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'binance-smart-chain',
-        network: 'testnet',
+        network: 'mainnet',
         connector: 'pancakeswap',
         quote: 'DAI',
         base: 'WBNB',
@@ -222,7 +222,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'binance-smart-chain',
-        network: 'testnet',
+        network: 'mainnet',
         connector: 'pancakeswap',
         quote: 'DOGE',
         base: 'WBNB',
@@ -255,7 +255,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'binance-smart-chain',
-        network: 'testnet',
+        network: 'mainnet',
         connector: 'pancakeswap',
         quote: 'DAI',
         base: 'SHIBA',
@@ -284,7 +284,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'binance-smart-chain',
-        network: 'testnet',
+        network: 'mainnet',
         connector: 'pancakeswap',
         quote: 'DAI',
         base: 'WBNB',
@@ -306,7 +306,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'binance-smart-chain',
-        network: 'testnet',
+        network: 'mainnet',
         connector: 'pancakeswap',
         quote: 'DAI',
         base: 'WBNB',
@@ -324,7 +324,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'binance-smart-chain',
-        network: 'testnet',
+        network: 'mainnet',
         connector: 'pancakeswap',
         quote: 'DAI',
         base: 'WBNB',
@@ -355,7 +355,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'binance-smart-chain',
-        network: 'testnet',
+        network: 'mainnet',
         connector: 'pancakeswap',
         quote: 'DAI',
         base: 'WBNB',
@@ -377,7 +377,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'binance-smart-chain',
-        network: 'testnet',
+        network: 'mainnet',
         connector: 'pancakeswap',
         quote: 'DAI',
         base: 'WBNB',
@@ -397,7 +397,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'binance-smart-chain',
-        network: 'testnet',
+        network: 'mainnet',
         connector: 'pancakeswap',
         quote: 'DAI',
         base: 'WBNB',
@@ -429,7 +429,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'binance-smart-chain',
-        network: 'testnet',
+        network: 'mainnet',
         connector: 'pancakeswap',
         quote: 'WBNB',
         base: 'BITCOIN',
@@ -464,7 +464,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'binance-smart-chain',
-        network: 'testnet',
+        network: 'mainnet',
         connector: 'pancakeswap',
         quote: 'BITCOIN',
         base: 'WBNB',
@@ -485,7 +485,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'binance-smart-chain',
-        network: 'testnet',
+        network: 'mainnet',
         connector: 'pancakeswap',
         quote: 'DAI',
         base: 'WBNB',
@@ -505,7 +505,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'binance-smart-chain',
-        network: 'testnet',
+        network: 'mainnet',
         connector: 'pancakeswap',
         quote: 'DAI',
         base: 'WBNB',
@@ -525,7 +525,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'binance-smart-chain',
-        network: 'testnet',
+        network: 'mainnet',
         connector: 'pancakeswap',
         quote: 'DAI',
         base: 'WBNB',
@@ -545,7 +545,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'binance-smart-chain',
-        network: 'testnet',
+        network: 'mainnet',
         connector: 'pancakeswap',
         quote: 'DAI',
         base: 'WBNB',
