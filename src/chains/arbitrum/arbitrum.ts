@@ -41,8 +41,22 @@ export class Arbitrum extends EthereumBase implements Ethereumish {
         this.controller = EVMController;
     }
 
-    // getters
+    public static getInstance(network: string): Arbitrum {
+        if (Arbitrum._instances === undefined) {
+            Arbitrum._instances = {};
+        }
+        if (!(network in Arbitrum._instances)) {
+            Arbitrum._instances[network] = new Arbitrum(network);
+        }
 
+        return Arbitrum._instances[network];
+    }
+
+    public static getConnectedInstances(): { [name: string]: Arbitrum } {
+        return Arbitrum._instances;
+    }
+
+    // getters
     public get gasPrice(): number {
         return this._gasPrice;
     }
