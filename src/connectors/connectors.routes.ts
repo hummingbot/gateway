@@ -21,6 +21,7 @@ import { CurveConfig } from './curve/curveswap.config';
 import { PlentyConfig } from './plenty/plenty.config';
 import { XRPLCLOBConfig } from './xrpl/xrpl.clob.config';
 import { KujiraConfig } from './kujira/kujira.config';
+import { NftPerpConfig } from './nftperp/nftperp.config';
 
 export namespace ConnectorsRoutes {
   export const router = Router();
@@ -163,14 +164,10 @@ export namespace ConnectorsRoutes {
             },
           },
           {
-            name: 'nftperp', // SHOULD BE UPDATED
-            trading_type: DexalotCLOBConfig.config.tradingTypes('spot'),
-            chain_type: DexalotCLOBConfig.config.chainType,
-            available_networks: DexalotCLOBConfig.config.availableNetworks,
-            additional_add_wallet_prompts: {
-              api_key:
-                'Enter a Dexalot API Key if you have one, otherwise hit return >>> ',
-            },
+            name: 'nftperp',
+            trading_type: NftPerpConfig.config.tradingTypes,
+            chain_type: NftPerpConfig.config.chainType,
+            available_networks: NftPerpConfig.config.availableNetworks
           },
         ],
       });

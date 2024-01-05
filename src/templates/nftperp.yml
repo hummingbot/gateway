@@ -1,5 +1,1 @@
-# Still Todo
-
-# how much the execution price is allowed to move unfavorably from the trade
-# execution price. It uses a rational number for precision.
-allowedSlippage: '2/100'
+# WIP

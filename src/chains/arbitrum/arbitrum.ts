@@ -93,8 +93,7 @@ export class Arbitrum extends EthereumBase implements Ethereumish {
 
     getSpender(reqSpender: string): string {
         // WIP
-        let spender: string = "";
-        return spender;
+        return reqSpender;
     }
 
     // cancel transaction
