@@ -1,14 +1,9 @@
 jest.useFakeTimers();
 import {
-  Fetcher,
-  Pair,
   Percent,
-  Route,
   Token,
   CurrencyAmount,
-  Trade,
   TradeType,
-  Currency,
 } from '@pancakeswap/sdk';
 import { BigNumber } from 'ethers';
 import { BinanceSmartChain } from '../../../src/chains/binance-smart-chain/binance-smart-chain';
@@ -49,51 +44,53 @@ afterAll(async () => {
   await bsc.close();
 });
 
-const patchFetchPairData = () => {
-  patch(Fetcher, 'fetchPairData', () => {
-    return new Pair(
-      CurrencyAmount.fromRawAmount(WBNB, '2000000000000000000'),
-      CurrencyAmount.fromRawAmount(DAI, '1000000000000000000')
-    );
-  });
-};
+// const patchFetchPairData = () => {
+//   patch(Fetcher, 'fetchPairData', () => {
+//     return new Pair(
+//       CurrencyAmount.fromRawAmount(WBNB, '2000000000000000000'),
+//       CurrencyAmount.fromRawAmount(DAI, '1000000000000000000')
+//     );
+//   });
+// };
 
-const patchTrade = (key: string, error?: Error) => {
-  patch(Trade, key, () => {
-    if (error) return [];
-    const WBNB_DAI = new Pair(
-      CurrencyAmount.fromRawAmount(WBNB, '2000000000000000000'),
-      CurrencyAmount.fromRawAmount(DAI, '1000000000000000000')
-    );
-    const DAI_TO_WBNB = new Route<Token, Currency>([WBNB_DAI], DAI, WBNB);
-    return [
-      new Trade(
-        DAI_TO_WBNB,
-        CurrencyAmount.fromRawAmount(DAI, '1000000000000000'),
-        TradeType.EXACT_INPUT
-      ),
-    ];
-  });
-};
+// const patchTrade = (key: string, error?: Error) => {
+//   patch(Trade, key, () => {
+//     if (error) return [];
+//     const WBNB_DAI = new Pair(
+//       CurrencyAmount.fromRawAmount(WBNB, '2000000000000000000'),
+//       CurrencyAmount.fromRawAmount(DAI, '1000000000000000000')
+//     );
+//     const DAI_TO_WBNB = new Route<Token, Currency>([WBNB_DAI], DAI, WBNB);
+//     return [
+//       new Trade(
+//         DAI_TO_WBNB,
+//         CurrencyAmount.fromRawAmount(DAI, '1000000000000000'),
+//         TradeType.EXACT_INPUT
+//       ),
+//     ];
+//   });
+// };
 
 describe('verify PancakeSwap estimateSellTrade', () => {
   it('Should return an ExpectedTrade when available', async () => {
-    patchFetchPairData();
-    patchTrade('bestTradeExactIn');
+    patch(pancakeswap, "getBestTrade", async () => {
+      return { tradeType: TradeType.EXACT_INPUT, inputAmount: CurrencyAmount.fromRawAmount(WBNB, "10000"), outputAmount: CurrencyAmount.fromRawAmount(DAI, "100000"), routes: [] };
+    })
 
     const expectedTrade = await pancakeswap.estimateSellTrade(
       WBNB,
       DAI,
       BigNumber.from(1)
     );
-
     expect(expectedTrade).toHaveProperty('trade');
     expect(expectedTrade).toHaveProperty('expectedAmount');
   });
 
   it('Should throw an error if no pair is available', async () => {
-    patchFetchPairData();
-    patchTrade('bestTradeExactIn', new Error('error getting trade'));
+
+    patch(pancakeswap, "getBestTrade", async () => {
+      return null;
+    })
 
     await expect(async () => {
       await pancakeswap.estimateSellTrade(WBNB, DAI, BigNumber.from(1));
@@ -103,8 +100,9 @@ describe('verify PancakeSwap estimateSellTrade', () => {
 
 describe('verify PancakeSwap estimateBuyTrade', () => {
   it('Should return an ExpectedTrade when available', async () => {
-    patchFetchPairData();
-    patchTrade('bestTradeExactOut');
+    patch(pancakeswap, "getBestTrade", async () => {
+      return { tradeType: TradeType.EXACT_OUTPUT, inputAmount: CurrencyAmount.fromRawAmount(WBNB, "10000"), outputAmount: CurrencyAmount.fromRawAmount(DAI, "100000"), routes: [] };
+    })
 
     const expectedTrade = await pancakeswap.estimateBuyTrade(
       WBNB,
@@ -116,8 +114,9 @@ describe('verify PancakeSwap estimateBuyTrade', () => {
   });
 
   it('Should return an error if no pair is available', async () => {
-    patchFetchPairData();
-    patchTrade('bestTradeExactOut', new Error('error getting trade'));
+    patch(pancakeswap, "getBestTrade", async () => {
+      return null;
+    })
 
     await expect(async () => {
       await pancakeswap.estimateBuyTrade(WBNB, DAI, BigNumber.from(1));
