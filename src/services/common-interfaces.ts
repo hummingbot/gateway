@@ -109,6 +109,7 @@ import {
 import { BalanceRequest } from '../network/network.requests';
 import { TradeV2 } from '@traderjoe-xyz/sdk-v2';
 import { CurveTrade } from '../connectors/curve/curve';
+import { Amm, Side, PositionResponse, TriggerType } from "@nftperp/sdk/types";
 
 // TODO Check the possibility to have clob/solana/serum equivalents here
 //  Check this link https://hummingbot.org/developers/gateway/building-gateway-connectors/#5-add-sdk-classes-to-uniswapish-interface
@@ -628,6 +629,86 @@ export interface Perpish {
     tickerSymbol: string,
     allowedSlippage?: string
   ): Promise<Transaction>;
+}
+
+export interface NftPerpish {
+  init(): Promise<void>;
+
+  ready(): boolean;
+
+  /**
+   * Gets a list of supported amms
+   * @returns A list of supported amm
+   */
+  getSupportedAmms(): string[];
+
+  /**
+   * Gets available Position
+   * @param amm The name of amm
+   * @returns
+   */
+  getPosition(amm: Amm): Promise<PositionResponse>;
+
+  /**
+   * Gets trading price
+   * @param amm The name of amm
+   * @returns The mark price
+   */
+  getMarkPrice(amm: Amm): Promise<string>;
+
+  /**
+   * Gets index price (oracle price - as per marketplaces)
+   * @param amm The name of amm
+   * @returns The index price
+   */
+  getIndexPrice(amm: Amm): Promise<string>;
+
+  /**
+   * Gets funding info
+   * @param amm The name of amm
+   * @returns The funding info
+   */
+  getFundingRate(amm: Amm): Promise<string>;
+
+  /**
+   * Creates a market order
+   * @param amm The name of amm
+   * @param side Side.BUY or Side.SELL
+   * @param margin The margin value
+   * @param leverage The leverage value
+   * @param slippagePercent The slippage value
+   * @returns The transaction instance
+   */
+  openMarketOrder(amm: Amm, side: Side, margin: number, leverage: number, slippagePercent?: number): Promise<Transaction>;
+
+  /**
+   * Creates a limit order
+   * @param amm The name of amm
+   * @param side Side.BUY or Side.SELL
+   * @param price The limit order price
+   * @param margin The margin value
+   * @param leverage The leverage value
+   * @returns The transaction instance
+   */
+  openLimitOrder(amm: Amm, side: Side, price: number, margin: number, leverage: number, reduceOnly?: boolean): Promise<Transaction>;
+
+  /**
+   * Creates a trigger order
+   * @param amm The name of amm
+   * @param price The trigger price
+   * @param size The execution size
+   * @param type SL or TP
+   * @returns The transaction instance
+   */
+  openCreateOrder(amm: Amm, price: number, size: number, type: TriggerType): Promise<Transaction>;
+
+  /**
+   * Closes position for a given amm
+   * @param amm The amm name
+   * @returns The transaction instance
+   */
+  closePosition(amm: Amm, closePercent?: number, slippagePercent?: number): Promise<Transaction>;
+
 }
 
 export interface BasicChainMethods {
