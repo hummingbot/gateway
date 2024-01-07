@@ -5,7 +5,6 @@ import {
   Wallet,
   ContractInterface,
   BigNumber,
-  ethers,
 } from 'ethers';
 import {
   Contract as XdcContract,
@@ -632,7 +631,13 @@ export interface Perpish {
 }
 
 export interface NftPerpish {
-  init(): Promise<void>;
+
+  /**
+   * Initialize a nftperp instance.  
+   * The private key is needed to create a sdk instance. 
+   * @param privateKey The private key string
+   */
+  init(privateKey: string): Promise<void>;
 
   ready(): boolean;
 
@@ -700,7 +705,7 @@ export interface NftPerpish {
    * @param type SL or TP
    * @returns The transaction instance
    */
-  openCreateOrder(amm: Amm, price: number, size: number, type: TriggerType): Promise<Transaction>;
+  openTriggerOrder(amm: Amm, price: number, size: number, type: TriggerType): Promise<Transaction>;
 
   /**
    * Closes position for a given amm
