@@ -1,9 +1,8 @@
-import GhostnetWhitelistTokens from '@quipuswap/tokens-whitelist/tokens/quipuswap-ithacanet.whitelist.json';
-import MainnetWhitelistTokens from '@quipuswap/tokens-whitelist/tokens/quipuswap.whitelist.json';
+import GhostnetTokens from '../../../../templates/lists/tezos.ghostnet.tokens.json';
+import MainnetTokens from '../../../../templates/lists/tezos.mainnet.tokens.json';
 import { DexTypeEnum } from 'swap-router-sdk';
-import { ConnectType, QSNetwork, QSNetworkType, NetworkType, SupportedNetwork } from '../shared/types';
-
-export const IPFS_GATEWAY = 'https://cloudflare-ipfs.com/ipfs';
+import { ConnectType, QSNetwork, QSNetworkType, NetworkType, SupportedNetwork, Token } from '../shared/types';
+import { mapBackendToken } from '../shared/backend.token.map';
 
 export const KNOWN_DEX_TYPES = [
     DexTypeEnum.QuipuSwap,
@@ -14,22 +13,29 @@ export const KNOWN_DEX_TYPES = [
     DexTypeEnum.YupanaWtez
 ];
 
-const tokenStandardiser = (token: typeof MainnetWhitelistTokens.tokens[0]) => {
-    if (token.metadata.symbol === 'TEZ')
-        token.metadata.symbol = 'XTZ';
-    else
-        token.metadata.symbol = token.metadata.symbol.toUpperCase();
-    return token;
+const tokenStandardiser = (token: typeof MainnetTokens.tokens[0]): Token => {
+    // token.symbol = token.symbol.toUpperCase();
+    // return token;
+    return mapBackendToken({
+        contractAddress: token.address ?? 'tez',
+        type: token.standard,
+        fa2TokenId: token.tokenId ?? undefined,
+        metadata: {
+            decimals: token.decimals,
+            name: token.name,
+            symbol: token.symbol.toUpperCase(),
+        }
+    })
 };
 
 const TOKENS_MAP = {
     [NetworkType.MAINNET]: {
-        ...MainnetWhitelistTokens,
-        tokens: MainnetWhitelistTokens.tokens.map(tokenStandardiser)
+        ...MainnetTokens,
+        tokens: MainnetTokens.tokens.map(tokenStandardiser)
     },
     [NetworkType.GHOSTNET]: {
-        ...GhostnetWhitelistTokens,
-        tokens: GhostnetWhitelistTokens.tokens.map(tokenStandardiser)
+        ...GhostnetTokens,
+        tokens: GhostnetTokens.tokens.map(tokenStandardiser)
     }
 };
 

@@ -1,7 +1,6 @@
 import BigNumber from "bignumber.js";
 import { NetworkType, Nullable, Optional, QSNetwork, Standard, SupportedNetwork, Token, TokenAddress, TokenId, TokenWithQSNetworkType, Undefined } from "./types";
 import { TEZOS_TOKEN, networksQuipuTokens } from "../config/tokens";
-import { getSavedTokensApi } from "./local.storage";
 import { mapBackendToken } from "./backend.token.map";
 import { InvalidTokensListError } from "./errors";
 import { networkTokens } from "../config/config";
@@ -57,7 +56,7 @@ export const toAtomic = (real: BigNumber, decimalsOrToken: Optional<number | Tok
     );
 
 
-export const getFallbackTokens = (network: QSNetwork, addTokensFromLocalStorage?: boolean) => {
+export const getFallbackTokens = (network: QSNetwork) => {
     let tokens: Array<TokenWithQSNetworkType> = [
         {
             ...TEZOS_TOKEN,
@@ -65,30 +64,20 @@ export const getFallbackTokens = (network: QSNetwork, addTokensFromLocalStorage?
         },
         networksQuipuTokens[network.id]
     ];
-
-    if (addTokensFromLocalStorage) {
-        tokens = tokens.concat(getSavedTokensApi(network.id));
-    }
-
     return getUniqArray(tokens, getTokenSlug);
 };
 
 export const isTokenEqual = (a: TokenAddress, b: TokenAddress) =>
     a.contractAddress === b.contractAddress && a.fa2TokenId === b.fa2TokenId;
 
-export const getTokens = (network: QSNetwork, addTokensFromLocalStorage?: boolean) => {
-    let tokens = getFallbackTokens(network, addTokensFromLocalStorage);
+export const getTokens = (network: QSNetwork) => {
+    let tokens = getFallbackTokens(network);
 
     const _networkTokens = networkTokens(network.id);
     const arr: Token[] = _networkTokens?.tokens?.length ? _networkTokens.tokens.map(token => mapBackendToken(token)) : [];
 
     if (arr.length) {
-        const Tokens: Token[] = arr.map(token => ({
-            ...token,
-            isWhitelisted: true
-        }));
-
-        tokens = tokens.filter(fallbackToken => !Tokens.some(token => isTokenEqual(fallbackToken, token))).concat(Tokens);
+        tokens = tokens.filter(fallbackToken => !arr.some(token => isTokenEqual(fallbackToken, token))).concat(arr);
     } else {
         throw new InvalidTokensListError(networkTokens);
     }

@@ -11,9 +11,8 @@ export type Optional<T> = T | null | undefined;
 export type Undefined<T> = T | undefined;
 export type Nullable<T> = T | null;
 
-export interface RawToken extends Omit<Token, 'type' | 'isWhitelisted'> {
+export interface RawToken extends Omit<Token, 'type'> {
     type: string;
-    isWhitelisted?: boolean;
 }
 
 export type TokenId = Pick<Token, 'contractAddress' | 'fa2TokenId' | 'type'>;
@@ -33,13 +32,10 @@ export interface TokenMetadata {
     decimals: number;
     symbol: string;
     name: string;
-    thumbnailUri: string;
-    categories?: Array<string>;
 }
 
 export interface Token extends TokenAddress {
     type: Standard;
-    isWhitelisted: Nullable<boolean>;
     metadata: TokenMetadata;
 }
 

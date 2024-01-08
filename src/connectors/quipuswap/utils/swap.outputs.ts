@@ -100,7 +100,7 @@ export const findQuipuSwapV3Output = (aTokenAmount: BigNumber, pair: TradeOperat
 
         return output;
     } catch (e) {
-        return new Nat(-1);
+        return new Nat(0);
     }
 };
 
