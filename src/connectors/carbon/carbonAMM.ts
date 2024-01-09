@@ -29,6 +29,7 @@ import { logger } from '../../services/logger';
 import carbonControllerAbi from './carbon_controller_abi.json';
 
 import { CarbonConfig } from './carbon.config';
+import { isETHAddress } from './carbon.utils';
 
 type TradeData = {
   tradeActions: TradeActionBNStr[];
@@ -63,6 +64,7 @@ export class Carbonamm implements Uniswapish {
   private _gasLimitEstimate: number;
   private _allowedSlippage: string;
   private _ttl: number;
+  private _nativeToken: Token;
 
   private constructor(chain: string, network: string) {
     if (chain === 'ethereum') {
@@ -70,6 +72,17 @@ export class Carbonamm implements Uniswapish {
     } else {
       throw new Error('Unsupported chain');
     }
+
+    this._nativeToken =
+      chain === 'ethereum'
+        ? new Token(
+            1,
+            '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
+            18,
+            'ETH',
+            'Ethereum'
+          )
+        : new Token(1, '', 18);
 
     this._conf = CarbonConfig.config;
     this._allowedSlippage = this._conf.allowedSlippage;
@@ -113,6 +126,11 @@ export class Carbonamm implements Uniswapish {
     }
   }
 
+  private isNativeAddress(address: string) {
+    if (this._chain.chainName === 'ethereum') return isETHAddress(address);
+    return false;
+  }
+
   /**
    * Given a token's address, return the connector's native representation of
    * the token.
@@ -120,7 +138,9 @@ export class Carbonamm implements Uniswapish {
    * @param address Token address
    */
   public getTokenByAddress(address: string): Token {
-    return this.tokenList[getAddress(address)];
+    return this.isNativeAddress(address)
+      ? this._nativeToken
+      : this.tokenList[getAddress(address)];
   }
 
   /**
