@@ -19,6 +19,7 @@ import { DexalotCLOBConfig } from './dexalot/dexalot.clob.config';
 import { TinymanConfig } from './tinyman/tinyman.config';
 import { CurveConfig } from './curve/curveswap.config';
 import { PlentyConfig } from './plenty/plenty.config';
+import { XRPLCLOBConfig } from './xrpl/xrpl.clob.config';
 import { KujiraConfig } from './kujira/kujira.config';
 import { CarbonConfig } from './carbon/carbon.config';
 
@@ -101,9 +102,16 @@ export namespace ConnectorsRoutes {
           },
           {
             name: 'pancakeswap',
-            trading_type: PancakeSwapConfig.config.tradingTypes,
+            trading_type: PancakeSwapConfig.config.tradingTypes('swap'),
             chain_type: PancakeSwapConfig.config.chainType,
             available_networks: PancakeSwapConfig.config.availableNetworks,
+          },
+          {
+            name: 'pancakeswapLP',
+            trading_type: PancakeSwapConfig.config.tradingTypes('LP'),
+            chain_type: PancakeSwapConfig.config.chainType,
+            available_networks: PancakeSwapConfig.config.availableNetworks,
+            additional_spenders: ['pancakeswap'],
           },
           {
             name: 'xswap',
@@ -138,6 +146,12 @@ export namespace ConnectorsRoutes {
             trading_type: PlentyConfig.config.tradingTypes,
             chain_type: PlentyConfig.config.chainType,
             available_networks: PlentyConfig.config.availableNetworks,
+          },
+          {
+            name: 'xrpl',
+            trading_type: XRPLCLOBConfig.config.tradingTypes,
+            chain_type: XRPLCLOBConfig.config.chainType,
+            available_networks: XRPLCLOBConfig.config.availableNetworks,
           },
           {
             name: 'kujira',

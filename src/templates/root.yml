@@ -90,7 +90,7 @@ configurations:
 
   $namespace pancakeswap:
     configurationPath: pancakeswap.yml
-    schemaPath: pangolin-schema.json
+    schemaPath: pancakeswap-schema.json
 
   $namespace xdc:
     configurationPath: xdc.yml
@@ -107,6 +107,10 @@ configurations:
   $namespace plenty:
     configurationPath: plenty.yml
     schemaPath: plenty-schema.json
+
+  $namespace xrpl:
+    configurationPath: xrpl.yml
+    schemaPath: xrpl-schema.json
 
   $namespace curve:
     configurationPath: curve.yml
