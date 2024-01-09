@@ -426,6 +426,30 @@ describe('POST /amm/price SELL', () => {
       .expect((res) => expect(Number(res.body.price)).toBeLessThan(1));
   });
 
+  it('should return 200 with ETH request', async () => {
+    await request(gatewayApp)
+      .post(`/amm/price`)
+      .send({
+        chain: 'ethereum',
+        network: 'mainnet',
+        connector: 'carbonamm',
+        base: 'ETH',
+        quote: 'DAI',
+        amount: '1',
+        side: 'SELL',
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .expect((res) => expect(res.body.base).toEqual(ETH.address))
+      .expect((res) => expect(res.body.quote).toEqual(DAI.address))
+      .expect((res) => expect(Number(res.body.amount)).toEqual(1))
+      .expect((res) =>
+        expect(Number(res.body.expectedAmount)).toBeGreaterThan(1)
+      )
+      .expect((res) => expect(Number(res.body.price)).toBeGreaterThan(1));
+  });
+
   it('should return 404 when parameters are invalid', async () => {
     await request(gatewayApp)
       .get(`/clob/markets`)
@@ -491,6 +515,30 @@ describe('POST /amm/trade SELL', () => {
       .expect((res) => expect(Number(res.body.expectedOut)).toBeLessThan(1))
       .expect((res) => expect(Number(res.body.price)).toBeLessThan(1))
       .expect((res) => expect(res.body.txHash).toEqual(TX_HASH));
+  });
+
+  it('should return 200 with ETH request', async () => {
+    patchGetWallet();
+    patchMsgBroadcaster();
+    await request(gatewayApp)
+      .post(`/amm/trade`)
+      .send({
+        chain: 'ethereum',
+        network: 'mainnet',
+        connector: 'carbonamm',
+        base: 'ETH',
+        quote: 'DAI',
+        amount: '1',
+        side: 'SELL',
+      })
+      .set('Accept', 'application/json')
+      .expect('Content-Type', /json/)
+      .expect(200)
+      .expect((res) => expect(res.body.base).toEqual(ETH.address))
+      .expect((res) => expect(res.body.quote).toEqual(DAI.address))
+      .expect((res) => expect(Number(res.body.amount)).toEqual(1))
+      .expect((res) => expect(Number(res.body.expectedOut)).toBeGreaterThan(1))
+      .expect((res) => expect(Number(res.body.price)).toBeGreaterThan(1));
   });
 
   it('should return 404 when parameters are invalid', async () => {
