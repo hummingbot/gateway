@@ -164,14 +164,8 @@ export namespace ConnectorsRoutes {
             },
           },
           {
-            name: 'carbon',
-            trading_type: CarbonConfig.config.tradingTypes('spot'),
-            chain_type: CarbonConfig.config.chainType,
-            available_networks: CarbonConfig.config.availableNetworks,
-          },
-          {
             name: 'carbonamm',
-            trading_type: CarbonConfig.config.tradingTypes('swap'),
+            trading_type: CarbonConfig.config.tradingTypes,
             chain_type: CarbonConfig.config.chainType,
             available_networks: CarbonConfig.config.availableNetworks,
           },

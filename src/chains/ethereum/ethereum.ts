@@ -189,7 +189,7 @@ export class Ethereum extends EthereumBase implements Ethereumish {
       );
     } else if (reqSpender === 'uniswapLP') {
       spender = UniswapConfig.config.uniswapV3NftManagerAddress(this._chain);
-    } else if (reqSpender === 'carbon' || reqSpender === 'carbonamm') {
+    } else if (reqSpender === 'carbonamm') {
       spender = CarbonConfig.config.carbonContractsConfig(
         'ethereum',
         this._chain

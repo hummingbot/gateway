@@ -43,7 +43,6 @@ import { KujiraCLOB } from '../connectors/kujira/kujira';
 import { PancakeswapLP } from '../connectors/pancakeswap/pancakeswap.lp';
 import { XRPLCLOB } from '../connectors/xrpl/xrpl';
 import { Carbonamm } from '../connectors/carbon/carbonAMM';
-import { CarbonCLOB } from '../connectors/carbon/carbon';
 
 export type ChainUnion =
   | Algorand
@@ -230,8 +229,6 @@ export async function getConnector<T>(
     connector === 'curve'
   ) {
     connectorInstance = Curve.getInstance(chain, network);
-  } else if (chain === 'ethereum' && connector === 'carbon') {
-    connectorInstance = CarbonCLOB.getInstance(chain, network);
   } else if (chain === 'ethereum' && connector === 'carbonamm') {
     connectorInstance = Carbonamm.getInstance(chain, network);
   } else {

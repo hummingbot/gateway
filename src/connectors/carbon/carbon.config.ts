@@ -8,7 +8,7 @@ export namespace CarbonConfig {
     allowedSlippage: string;
     gasLimitEstimate: number;
     ttl: number;
-    tradingTypes: (type: string) => Array<string>;
+    tradingTypes: Array<string>;
     chainType: string;
     matchType: MatchType;
     availableNetworks: Array<AvailableNetworks>;
@@ -26,9 +26,7 @@ export namespace CarbonConfig {
       `carbon.gasLimitEstimate`
     ),
     ttl: ConfigManagerV2.getInstance().get(`carbon.ttl`),
-    tradingTypes: (type: string) => {
-      return type === 'swap' ? ['AMM'] : ['CLOB_SPOT'];
-    },
+    tradingTypes: ['AMM'],
     chainType: 'EVM',
     matchType: MatchType.Fast,
     availableNetworks: [
