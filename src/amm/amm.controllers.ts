@@ -35,6 +35,11 @@ import {
   estimateGas as uniswapEstimateGas,
 } from '../connectors/uniswap/uniswap.controllers';
 import {
+  price as carbonPrice,
+  trade as carbonTrade,
+  estimateGas as carbonEstimateGas,
+} from '../connectors/carbon/carbon.controllers';
+import {
   price as refPrice,
   trade as refTrade,
   estimateGas as refEstimateGas,
@@ -75,6 +80,7 @@ import {
 import { Algorand } from '../chains/algorand/algorand';
 import { Tinyman } from '../connectors/tinyman/tinyman';
 import { Plenty } from '../connectors/plenty/plenty';
+import { Carbonamm } from '../connectors/carbon/carbonAMM';
 
 export async function price(req: PriceRequest): Promise<PriceResponse> {
   const chain = await getInitializedChain<
@@ -89,6 +95,8 @@ export async function price(req: PriceRequest): Promise<PriceResponse> {
 
   if (connector instanceof Plenty) {
     return plentyPrice(<Tezosish>chain, connector, req);
+  } else if (connector instanceof Carbonamm) {
+    return carbonPrice(<Ethereumish>chain, connector, req);
   } else if ('routerAbi' in connector) {
     // we currently use the presence of routerAbi to distinguish Uniswapish from RefAMMish
     return uniswapPrice(<Ethereumish>chain, connector, req);
@@ -112,6 +120,8 @@ export async function trade(req: TradeRequest): Promise<TradeResponse> {
 
   if (connector instanceof Plenty) {
     return plentyTrade(<Tezosish>chain, connector, req);
+  } else if (connector instanceof Carbonamm) {
+    return carbonTrade(<Ethereumish>chain, connector, req);
   } else if ('routerAbi' in connector) {
     // we currently use the presence of routerAbi to distinguish Uniswapish from RefAMMish
     return uniswapTrade(<Ethereumish>chain, connector, req);
@@ -199,6 +209,8 @@ export async function estimateGas(
 
   if (connector instanceof Plenty) {
     return plentyEstimateGas(<Tezosish>chain, connector);
+  } else if (connector instanceof Carbonamm) {
+    return carbonEstimateGas(<Ethereumish>chain, connector);
   } else if ('routerAbi' in connector) {
     // we currently use the presence of routerAbi to distinguish Uniswapish from RefAMMish
     return uniswapEstimateGas(<Ethereumish>chain, connector);
