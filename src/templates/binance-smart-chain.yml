@@ -9,7 +9,7 @@ networks:
     gasPriceRefreshInterval: 60
   testnet: 
     chainID: 97
-    nodeURL: 'https://rpc.ankr.com/bsc_testnet_chapel'
+    nodeURL: 'https://bsc-testnet.publicnode.com'
     tokenListType: 'FILE'
     tokenListSource: '/home/gateway/conf/lists/bep20_tokens_testnet.json'
     nativeCurrencySymbol: 'BNB'
