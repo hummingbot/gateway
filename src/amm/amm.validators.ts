@@ -126,21 +126,21 @@ export const validateFee: Validator = mkValidator(
   'fee',
   invalidFeeTier,
   (val) =>
-    typeof val === 'string' &&
-    Object.keys(FeeAmount).includes(val.toUpperCase())
+  typeof val === 'undefined' || (typeof val === 'string' &&
+    Object.keys(FeeAmount).includes(val.toUpperCase()))
 );
 
 export const validateLowerPrice: Validator = mkValidator(
   'lowerPrice',
   invalidLPPriceError,
-  (val) => typeof val === 'string' && isFloatString(val),
+  (val) => typeof val === 'undefined' || (typeof val === 'string' && isFloatString(val)),
   true
 );
 
 export const validateUpperPrice: Validator = mkValidator(
   'upperPrice',
   invalidLPPriceError,
-  (val) => typeof val === 'string' && isFloatString(val),
+  (val) => typeof val === 'undefined' || (typeof val === 'string' && isFloatString(val)),
   true
 );
 
@@ -203,14 +203,7 @@ export const validateDecreasePercent: Validator = mkValidator(
 export const validateAllowedSlippage: Validator = mkValidator(
   'allowedSlippage',
   invalidAllowedSlippageError,
-  (val) => typeof val === 'string' && isFractionString(val),
-  true
-);
-
-export const validateAllowedSlippageCosmos: Validator = mkValidator(
-  'allowedSlippage',
-  invalidAllowedSlippageError,
-  (val) => typeof val === 'string' && val.includes('%'),
+  (val) => typeof val === 'string' && (isFractionString(val) || val.includes('%')),
   true
 );
 
@@ -310,6 +303,8 @@ export const validateAddLiquidityRequest: RequestValidator = mkRequestValidator(
     validateConnector,
     validateChain,
     validateNetwork,
+    validatePublicKeyCosmos,
+    validatePrivateKeyCosmos, // is this being called?
     validateToken0,
     validateToken1,
     validateAmount0,
@@ -322,8 +317,26 @@ export const validateAddLiquidityRequest: RequestValidator = mkRequestValidator(
     validateNonce,
     validateMaxFeePerGas,
     validateMaxPriorityFeePerGas,
+    validatePoolIdOptional,
   ]
 );
+
+// export const validateCosmosAddLiquidityRequest: RequestValidator = mkRequestValidator(
+//   [
+//     validateConnector,
+//     validateChain,
+//     validateNetwork,
+//     validatePublicKeyCosmos,
+//     validatePrivateKeyCosmos,
+//     validateToken0,
+//     validateToken1,
+//     validateAmount0,
+//     validateAmount1,
+//     // validateUpperPrice,
+//     // validateLowerPrice,
+//     validatePoolIdOptional,
+//   ]
+// );
 
 export const validateRemoveLiquidityRequest: RequestValidator =
   mkRequestValidator([
@@ -337,34 +350,6 @@ export const validateRemoveLiquidityRequest: RequestValidator =
     validateMaxFeePerGas,
     validateMaxPriorityFeePerGas,
   ]);
-
-export const validateCosmosPriceRequest: RequestValidator = mkRequestValidator([
-  validateConnector,
-  validateChain,
-  validateNetwork,
-  validateQuote,
-  validateBase,
-  validateAmount,
-  validateSide,
-  validateAllowedSlippageCosmos,
-]);
-
-export const validateCosmosAddLiquidityRequest: RequestValidator = mkRequestValidator(
-  [
-    validateConnector,
-    validateChain,
-    validateNetwork,
-    validatePublicKeyCosmos,
-    validatePrivateKeyCosmos,
-    validateToken0,
-    validateToken1,
-    validateAmount0,
-    validateAmount1,
-    // validateUpperPrice,
-    // validateLowerPrice,
-    validatePoolIdOptional,
-  ]
-);
 
 export const validateCosmosRemoveLiquidityRequest: RequestValidator =
   mkRequestValidator([
@@ -414,6 +399,8 @@ export const validatePositionRequest: RequestValidator = mkRequestValidator([
   validateChain,
   validateNetwork,
   validateTokenId,
+  validateAddress,
+  validatePoolIdOptional,
 ]);
 
 export const validatePoolPriceRequest: RequestValidator = mkRequestValidator([

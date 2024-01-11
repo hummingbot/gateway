@@ -37,49 +37,39 @@ export interface PriceResponse {
 export interface PoolPriceRequest extends NetworkSelectionRequest {
   token0: string;
   token1: string;
-  fee: string;
-  period: number;
-  interval: number;
+  address?: string
+  fee?: string;
+  period?: number;
+  interval?: number;
 }
 
-export interface CosmosPoolPriceRequest extends NetworkSelectionRequest {
-  address: string;
-  token0: string;
-  token1: string;
-}
+// export interface CosmosPoolPriceRequest extends NetworkSelectionRequest {
+//   address: string;
+//   token0: string;
+//   token1: string;
+// }
 
 export interface PoolPriceResponse {
   token0: string;
   token1: string;
-  fee: string;
-  period: number;
-  interval: number;
-  prices: string[];
+  fee?: string;
+  period?: number;
+  interval?: number;
+  prices?: string[];
+  pools?: CosmosSerializableExtendedPool[];
   network: string;
   timestamp: number;
   latency: number;
 }
 
-export interface CosmosPoolPriceResponse {
-  token0: string;
-  token1: string;
-  pools: CosmosSerializableExtendedPool[];
-  network: string;
-  timestamp: number;
-  latency: number;
-}
-
-export interface CosmosPoolPositionsRequest extends NetworkSelectionRequest {
-  address: string;
-  poolId?: string;
-}
-
-export interface CosmosPoolPositionsResponse {
-  pools: CosmosSerializableExtendedPool[];
-  network: string;
-  timestamp: number;
-  latency: number;
-}
+// export interface CosmosPoolPriceResponse {
+//   token0: string;
+//   token1: string;
+//   pools: CosmosSerializableExtendedPool[];
+//   network: string;
+//   timestamp: number;
+//   latency: number;
+// }
 
 export interface TradeRequest extends NetworkSelectionRequest {
   quote: string;
@@ -100,78 +90,68 @@ export interface TradeResponse {
   latency: number;
   base: string;
   quote: string;
-  amount: string; // finalAmountReceived
-  rawAmount: string; // finalAmountReceived_basetoken
+  amount: string; // traderequest.amount
+  finalAmountReceived?: string; // Cosmos
+  rawAmount: string; // Cosmos: finalAmountReceived_basetoken
   expectedIn?: string;
-  expectedOut?: string;  // expectedAmountReceived
-  price: string; // finalPrice
+  expectedOut?: string;  // Cosmos: expectedAmountReceived
+  expectedPrice?: string;  // Cosmos
+  price: string; // Cosmos: finalPrice
   gasPrice: number;
   gasPriceToken: string;
-  gasLimit: number; // gasWanted
-  gasCost: string; // gasUsed
+  gasLimit: number; // Cosmos: gasWanted
+  gasCost: string; // Cosmos: gasUsed
   nonce?: number;
   txHash: string | any | undefined;
 }
 
-export interface CosmosTradeResponse {
-  network: string;
-  timestamp: number;
-  latency: number;
-  base: string;
-  quote: string;
-  amount: string;
-  rawAmount: string;
-  expectedAmountReceived: string;
-  finalAmountReceived: string;
-  finalAmountReceived_basetoken: string;
-  expectedPrice: string;
-  finalPrice: string;
-  gasPrice: string;
-  gasLimit: string;
-  gasUsed: string;
-  gasWanted: string;
-  txHash: string;
-}
+// export interface CosmosTradeResponse {
+//   network: string;
+//   timestamp: number;
+//   latency: number;
+//   base: string;
+//   quote: string;
+//   amount: string;
+//   rawAmount: string;
+//   expectedAmountReceived: string;
+//   finalAmountReceived: string;
+//   finalAmountReceived_basetoken: string;
+//   expectedPrice: string;
+//   finalPrice: string;
+//   gasPrice: string;
+//   gasLimit: string;
+//   gasUsed: string;
+//   gasWanted: string;
+//   txHash: string;
+// }
 
-export interface CosmosTransferResponse {
-  network: string;
-  timestamp: number;
-  latency: number;
-  amount: string;
-  gasPrice: string;
-  gasLimit: string;
-  gasUsed: string;
-  gasWanted: string;
-  txHash: string;
-}
-
-
-export interface AddLiquidityRequest extends NetworkSelectionRequest {
+export interface AddLiquidityRequest extends NetworkSelectionRequest { // now also cosmos add swap position OR cosmos add LP position
   address: string;
   token0: string;
   token1: string;
   amount0: string;
   amount1: string;
-  fee: string;
-  lowerPrice: string; // integer as string
-  upperPrice: string; // integer as string
+  fee?: string;
+  lowerPrice?: string; // integer as string
+  upperPrice?: string; // integer as string
   tokenId?: number;
   nonce?: number;
   maxFeePerGas?: string;
   maxPriorityFeePerGas?: string;
   poolId?: string; // COSMOS: will select one for you if not provided
-  allowedSlippage?: string; // COSMOS: TokenMinAmount
+  allowedSlippage?: string; // COSMOS: used to calc TokenMinAmount
+  isCLPosition?: boolean; // COSMOS - we call either addposition() or addpositionLP() 
 }
 
-export interface CosmosAddLiquidityRequest extends NetworkSelectionRequest {
-  address: string;
-  token0: string;
-  token1: string;
-  amount0: string;
-  amount1: string;
-  poolId?: string; // will select one for you if not provided
-  allowedSlippage?: string;
-}
+// export interface CosmosAddLiquidityRequest extends NetworkSelectionRequest {  // cosmos add swap position
+//   address: string;
+//   token0: string;
+//   token1: string;
+//   amount0: string;
+//   amount1: string;
+//   poolId?: string; // will select one for you if not provided
+//   allowedSlippage?: string;
+// }
 
 export interface AddLiquidityResponse {
   network: string;
@@ -180,8 +160,9 @@ export interface AddLiquidityResponse {
   token0: string;
   token1: string;
   fee: string;
-  tokenId: number; // COSMOS: poolId
-  gasPrice: number;
+  tokenId?: number;
+  poolId?: string; // COSMOS
+  gasPrice: number | string; // COSMOS: string
   gasPriceToken: string;
   gasLimit: number;
   gasCost: string; // gasUsed for Cosmos
@@ -194,27 +175,27 @@ export interface AddLiquidityResponse {
   token1FinalAmount?: string; // Cosmos only
 }
 
-export interface CosmosAddLiquidityResponse {
-  poolId: string;
-  poolAddress: string;
-  poolShares: string;
-  token0: string;
-  token0FinalAmount: string;
-  token1: string;
-  token1FinalAmount: string;
-  network: string;
-  timestamp: number;
-  latency: number;
-  gasPrice: string;
-  gasLimit: string;
-  gasUsed: string;
-  gasWanted: string;
-  txHash: string;
-}
+// export interface CosmosAddLiquidityResponse {
+//   poolId: string;
+//   poolAddress: string;
+//   poolShares: string;
+//   token0: string;
+//   token0FinalAmount: string;
+//   token1: string;
+//   token1FinalAmount: string;
+//   network: string;
+//   timestamp: number;
+//   latency: number;
+//   gasPrice: string;
+//   gasLimit: string;
+//   gasUsed: string;
+//   gasWanted: string;
+//   txHash: string;
+// }
 
 export interface CollectEarnedFeesRequest extends NetworkSelectionRequest {
   address: string;
-  tokenId: number;
+  tokenId?: number;
   nonce?: number;
   maxFeePerGas?: string;
   maxPriorityFeePerGas?: string;
@@ -222,50 +203,70 @@ export interface CollectEarnedFeesRequest extends NetworkSelectionRequest {
 
 export interface RemoveLiquidityRequest extends CollectEarnedFeesRequest {
   decreasePercent?: number;
-}
-
-export interface CosmosRemoveLiquidityRequest extends NetworkSelectionRequest {
-  address: string;
-  decreasePercent: number;
-  poolId: string; // required
+  poolId?: string; // Cosmos: required
   allowedSlippage?: string;
 }
+
+// export interface CosmosRemoveLiquidityRequest extends NetworkSelectionRequest {
+//   address: string;
+//   decreasePercent: number;
+//   poolId: string; // required
+//   allowedSlippage?: string;
+// }
 
 export interface RemoveLiquidityResponse {
   network: string;
   timestamp: number;
   latency: number;
-  tokenId: number;
-  gasPrice: number;
+  tokenId?: number;
+  gasPrice: number | string; // COSMOS: string
   gasPriceToken: string;
-  gasLimit: number;
-  gasCost: string;
-  nonce: number;
+  gasLimit: number | string;
+  gasCost: string; // gasUsed for Cosmos
+  nonce?: number;
   txHash: string | undefined;
+  gasWanted?: string;
+  balances?: CoinAndSymbol[];
+  poolId?: string; // Cosmos
 }
 
-export interface CosmosRemoveLiquidityResponse {
-  network: string;
-  timestamp: number;
-  latency: number;
-  poolId: string; 
-  gasPrice: string;
-  gasLimit: string;
-  gasUsed: string;
-  gasWanted: string;
-  txHash: string;
-  balances: CoinAndSymbol[];
-}
+// export interface CosmosRemoveLiquidityResponse {
+//   network: string;
+//   timestamp: number;
+//   latency: number;
+//   poolId: string; 
+//   gasPrice: string;
+//   gasLimit: string;
+//   gasUsed: string;
+//   gasWanted: string;
+//   txHash: string;
+//   balances: CoinAndSymbol[];
+// }
 
 export interface PositionRequest extends NetworkSelectionRequest {
-  tokenId: number;
+  tokenId?: number;
+  address?: string;
+  poolId?: string;
 }
 
+// export interface CosmosPoolPositionsRequest extends NetworkSelectionRequest {
+//   address: string;
+//   poolId?: string;
+// }
+
 export interface PositionResponse extends LPPositionInfo {
+  pools?: CosmosSerializableExtendedPool[];
   network: string;
   timestamp: number;
   latency: number;
 }
+
+// export interface CosmosPoolPositionsResponse {
+//   pools: CosmosSerializableExtendedPool[];
+//   network: string;
+//   timestamp: number;
+//   latency: number;
+// }
 
 export interface EstimateGasResponse {
   network: string;

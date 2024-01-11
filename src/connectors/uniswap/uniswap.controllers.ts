@@ -455,7 +455,7 @@ export async function removeLiquidity(
 
   const tx = await uniswapish.reducePosition(
     wallet,
-    req.tokenId,
+    req.tokenId!,
     req.decreasePercent ? req.decreasePercent : 100,
     gasLimitTransaction,
     gasPrice,
@@ -504,7 +504,7 @@ export async function collectEarnedFees(
   const tx: Transaction = <Transaction>(
     await uniswapish.collectFees(
       wallet,
-      req.tokenId,
+      req.tokenId!,
       gasLimitTransaction,
       gasPrice,
       req.nonce,
@@ -538,7 +538,7 @@ export async function positionInfo(
 ): Promise<PositionResponse> {
   const startTimestamp: number = Date.now();
 
-  const posInfo = await uniswapish.getPosition(req.tokenId);
+  const posInfo = await uniswapish.getPosition(req.tokenId!);
 
   logger.info(`Position info for position ${req.tokenId} retrieved.`);
 
@@ -569,14 +569,14 @@ export async function poolPrice(
     req.token1
   ) as Token;
 
-  const fee = FeeAmount[req.fee.toUpperCase() as keyof typeof FeeAmount];
+  const fee = FeeAmount[req.fee!.toUpperCase() as keyof typeof FeeAmount];
 
   const prices = await uniswapish.poolPrice(
     token0,
     token1,
     fee,
-    req.period,
-    req.interval
+    req.period!,
+    req.interval!
   );
 
   return {
@@ -585,9 +585,9 @@ export async function poolPrice(
     latency: latency(startTimestamp, Date.now()),
     token0: token0.address,
     token1: token1.address,
-    fee: req.fee,
-    period: req.period,
-    interval: req.interval,
+    fee: req.fee!,
+    period: req.period!,
+    interval: req.interval!,
     prices: prices,
   };
 }

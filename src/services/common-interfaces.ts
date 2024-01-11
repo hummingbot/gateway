@@ -783,4 +783,16 @@ export interface TransferRequest extends NetworkSelectionRequest {
   token: string;
 }
 
-export type TransferResponse = string;
+export type TransferResponse = string | CosmosTransferResponse;
+
+export interface CosmosTransferResponse {
+  network: string;
+  timestamp: number;
+  latency: number;
+  amount: string;
+  gasPrice: string;
+  gasLimit: string;
+  gasUsed: string;
+  gasWanted: string;
+  txHash: string;
+}

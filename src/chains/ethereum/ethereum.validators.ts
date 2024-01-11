@@ -77,14 +77,14 @@ export const validateNonce: Validator = mkValidator(
 export const validateMaxFeePerGas: Validator = mkValidator(
   'maxFeePerGas',
   invalidMaxFeePerGasError,
-  (val) => typeof val === 'string' && isNaturalNumberString(val),
+  (val) => typeof val === 'undefined' || (typeof val === 'string' && isNaturalNumberString(val)),
   true
 );
 
 export const validateMaxPriorityFeePerGas: Validator = mkValidator(
   'maxPriorityFeePerGas',
   invalidMaxPriorityFeePerGasError,
-  (val) => typeof val === 'string' && isNaturalNumberString(val),
+  (val) => typeof val === 'undefined' || (typeof val === 'string' && isNaturalNumberString(val)),
   true
 );
 

@@ -23,15 +23,6 @@ import {
   PoolPriceResponse,
   PerpBalanceRequest,
   PerpBalanceResponse,
-  CosmosRemoveLiquidityRequest,
-  CosmosAddLiquidityRequest,
-  CosmosAddLiquidityResponse,
-  CosmosRemoveLiquidityResponse,
-  CosmosPoolPriceRequest,
-  CosmosPoolPriceResponse,
-  CosmosPoolPositionsRequest,
-  CosmosPoolPositionsResponse,
-  CosmosTradeResponse,
 } from './amm.requests';
 import {
   price as uniswapPrice,
@@ -110,7 +101,7 @@ export async function price(req: PriceRequest): Promise<PriceResponse> {
   }
 }
 
-export async function trade(req: TradeRequest): Promise<TradeResponse | CosmosTradeResponse> {
+export async function trade(req: TradeRequest): Promise<TradeResponse> {
   const chain = await getInitializedChain<Algorand | Ethereumish | Nearish | Tezosish | Osmosis>(
     req.chain,
     req.network
@@ -138,11 +129,11 @@ export async function trade(req: TradeRequest): Promise<TradeResponse | CosmosTr
 }
 
 export async function addLiquidity(
-  req: AddLiquidityRequest | CosmosAddLiquidityRequest
-): Promise<AddLiquidityResponse | CosmosAddLiquidityResponse> {
+  req: AddLiquidityRequest
+): Promise<AddLiquidityResponse> {
   const chain = await getInitializedChain<Ethereumish | Osmosis>(req.chain, req.network);
   if (chain instanceof Osmosis){
-    return chain.controller.addLiquidity(chain as unknown as Osmosis, req as CosmosAddLiquidityRequest);
+    return chain.controller.addLiquidity(chain as unknown as Osmosis, req);
   }
   const connector: UniswapLPish = await getConnector<UniswapLPish>(
     req.chain,
@@ -153,11 +144,11 @@ export async function addLiquidity(
 }
 
 export async function reduceLiquidity(
-  req: RemoveLiquidityRequest | CosmosRemoveLiquidityRequest
-): Promise<RemoveLiquidityResponse | CosmosRemoveLiquidityResponse> {
+  req: RemoveLiquidityRequest
+): Promise<RemoveLiquidityResponse> {
   const chain = await getInitializedChain<Ethereumish | Osmosis>(req.chain, req.network);
   if (chain instanceof Osmosis){
-    return chain.controller.removeLiquidity(chain as unknown as Osmosis, req as CosmosRemoveLiquidityRequest);
+    return chain.controller.removeLiquidity(chain as unknown as Osmosis, req);
   }
   const connector: UniswapLPish= await getConnector<UniswapLPish>(
     req.chain,
@@ -187,11 +178,11 @@ export async function collectFees(
 }
 
 export async function positionInfo(
-  req: PositionRequest | CosmosPoolPositionsRequest
-): Promise<PositionResponse | CosmosPoolPositionsResponse> {
+  req: PositionRequest
+): Promise<PositionResponse> {
   const chain = await getInitializedChain<Ethereumish | Osmosis>(req.chain, req.network);
   if (chain instanceof Osmosis){
-    return chain.controller.poolPositions(chain as unknown as Osmosis, req as CosmosPoolPositionsRequest);
+    return chain.controller.poolPositions(chain as unknown as Osmosis, req);
   }
   const connector: UniswapLPish = await getConnector<UniswapLPish>(
     req.chain,
@@ -202,11 +193,11 @@ export async function positionInfo(
 }
 
  export async function poolPrice(
-  req: PoolPriceRequest | CosmosPoolPriceRequest
-): Promise<PoolPriceResponse | CosmosPoolPriceResponse> {
+  req: PoolPriceRequest
+): Promise<PoolPriceResponse> {
   const chain = await getInitializedChain<Ethereumish | Osmosis>(req.chain, req.network);
   if (chain instanceof Osmosis){
-    return chain.controller.poolPrice(chain as unknown as Osmosis, req as CosmosPoolPriceRequest);
+    return chain.controller.poolPrice(chain as unknown as Osmosis, req);
   }
   const connector: UniswapLPish = await getConnector<UniswapLPish>(
     req.chain,

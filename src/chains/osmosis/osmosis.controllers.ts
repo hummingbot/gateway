@@ -38,6 +38,8 @@ import {
   PriceResponse,
   AddLiquidityRequest,
   AddLiquidityResponse,
+  PoolPriceRequest,
+  PoolPriceResponse,
 } from '../../amm/amm.requests';
 import { Osmosis } from './osmosis';
 
@@ -410,14 +412,30 @@ export class OsmosisController {
       const gasAdjustment = osmosis.gasPriceConstant; // 
       const feeTier = osmosis.feeTier; // 
 
-      const tx = await osmosis.addPositionLP(
-        wallet,
-        token0,
-        token1,
-        req,
-        feeTier,
-        gasAdjustment,
-      );
+      var tx = undefined;
+      if (req.isCLPosition){
+        tx = await osmosis.addPositionLP(
+          wallet,
+          token0,
+          token1,
+          req,
+          feeTier,
+          gasAdjustment,
+        );
+      } else{
+        tx = await osmosis.addPosition(
+          wallet,
+          req.address,
+          token0,
+          token1,
+          req.amount0,
+          req.amount1,
+          req.poolId,
+          req.allowedSlippage,
+          feeTier,
+          gasAdjustment,
+        );
+      }
 
       this.validateTxErrors(tx, "Liquidity added. ");
     
@@ -440,6 +458,24 @@ export class OsmosisController {
         token0FinalAmount: tx.token0_finalamount,
         token1FinalAmount: tx.token1_finalamount,
         nonce: 0,
+      };
+      
+      return {
+        network: osmosis.chainName,
+        timestamp: startTimestamp,
+        latency: latency(startTimestamp, Date.now()),
+        token0: req.token0,
+        token1: req.token1,
+        poolId: tx.poolId,
+        gasPrice: gasPrice.toString(),
+        gasLimit: gasLimitTransaction,
+        gasUsed: tx.gasUsed,
+        gasWanted: tx.gasWanted,
+        txHash: tx.transactionHash,
+        poolAddress: tx.poolAddress,
+        poolShares: tx.poolshares,
+        token0FinalAmount: tx.token0_finalamount,
+        token1FinalAmount: tx.token1_finalamount,
       };
     }
 
@@ -491,8 +527,8 @@ export class OsmosisController {
     // find pools containing both token0, token1
     static async poolPrice(
       osmosis: Osmosis,
-      req: CosmosPoolPriceRequest
-    ): Promise<CosmosPoolPriceResponse> {
+      req: PoolPriceRequest
+    ): Promise<PoolPriceResponse> {
       const startTimestamp: number = Date.now();
 
       const token0: TokenishCosmosAsset = osmosis.getTokenBySymbol(req.token0)!;
