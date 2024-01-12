@@ -13,6 +13,7 @@ import {
   XRPLBalanceResponse,
   XRPLPollRequest,
   XRPLPollResponse,
+  BalanceRecord,
 } from './xrpl.requests';
 
 import {
@@ -48,9 +49,24 @@ export class XRPLController {
 
     const xrplBalances = await xrplish.getAllBalance(wallet);
 
-    const balances: Record<string, string> = {};
+    const xrplSubtractedBalances = await xrplish.subtractBalancesWithOpenOffers(
+      xrplBalances,
+      wallet
+    );
+
+    const balances: Record<string, BalanceRecord> = {};
     xrplBalances.forEach((balance) => {
-      balances[balance.currency] = balance.value;
+      balances[balance.currency] = {
+        total_balance: balance.value,
+        available_balance: balance.value,
+      };
+    });
+
+    xrplSubtractedBalances.forEach((balance) => {
+      balances[balance.currency] = {
+        ...balances[balance.currency],
+        available_balance: balance.value,
+      };
     });
 
     return {
@@ -69,6 +85,7 @@ export class XRPLController {
     validateXRPLPollRequest(req);
 
     const initTime = Date.now();
+    await xrplish.ensureConnection();
     const currentLedgerIndex = await xrplish.getCurrentLedgerIndex();
     const txData = await xrplish.getTransaction(req.txHash);
     const txStatus = await xrplish.getTransactionStatusCode(txData);
