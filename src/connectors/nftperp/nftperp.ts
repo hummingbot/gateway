@@ -2,30 +2,23 @@ import { SDK } from "@nftperp/sdk";
 import { Arbitrum } from "../../chains/arbitrum/arbitrum";
 import { NftPerpConfig } from "./nftperp.config";
 import { NftPerpish } from "../../services/common-interfaces";
-import { Wallet, Transaction } from "ethers";
+import { Wallet } from "ethers";
 import { Amm, PositionResponse, Side, TriggerType } from "@nftperp/sdk/types";
 
 export class NftPerp implements NftPerpish {
     private static _instances: { [name: string]: NftPerp };
     private _chain: Arbitrum;
-    private _config: typeof NftPerpConfig.config;
     private _ready: boolean = false;
     private _sdk: SDK;
-    public ttl: any;
+    private _ttl: number;
 
     private constructor(chain: string, network: string) {
         if (chain === "arbitrum") {
             this._chain = Arbitrum.getInstance(network);
         } else throw Error("Chain not supported");
-        this._config = NftPerpConfig.config;
-    }
-
-    public async init(privateKey: string) {
-
-        const provider = this._chain.provider;
-        const wallet = new Wallet(privateKey, provider);
-        this._sdk = new SDK({ wallet });
-
+        const config = NftPerpConfig.config;
+        this._sdk = new SDK();
+        this._ttl = config.ttl;
         this._ready = true;
     }
 
@@ -40,8 +33,17 @@ export class NftPerp implements NftPerpish {
         return NftPerp._instances[chain + network];
     }
 
+    public get ttl(): number {
+        return this._ttl;
+    }
+
     public ready(): boolean {
         return this._ready;
+    }
+
+    public async init(): Promise<void> {
+        // TODO: Add methods for an initial setup.
+        this._ready = true;
     }
 
     public getSupportedAmms(): string[] {
@@ -64,32 +66,65 @@ export class NftPerp implements NftPerpish {
         return await this._sdk.getFundingRate(amm);
     }
 
-    public async openMarketOrder(amm: Amm, side: Side, margin: number, leverage: number, slippagePercent?: number): Promise<Transaction> {
-        const marketOrderTx = await this._sdk.createMarketOrder({ amm, side, margin, leverage, slippagePercent });
-
-        // MUST convert ContractTransactionResponse to Transaction instance
-        return marketOrderTx;
+    public async openMarketOrder(wallet: Wallet, amm: Amm, side: Side, margin: number, leverage: number, slippagePercent?: number): Promise<string> {
+        const sdk = new SDK({ rpcUrl: this._chain.rpcUrl, privateKey: wallet.privateKey });
+        const tx = await sdk.createMarketOrder({ amm, side, margin, leverage, slippagePercent });
+        return tx.hash;
     }
 
-    public async openLimitOrder(amm: Amm, side: Side, price: number, margin: number, leverage: number, reduceOnly?: boolean): Promise<Transaction> {
-        const limitOrderTx = await this._sdk.createLimitOrder({ amm, side, price, margin, leverage, reduceOnly });
-
-        // MUST convert ContractTransactionResponse to Transaction instance
-        return limitOrderTx;
+    public async openLimitOrder(wallet: Wallet, amm: Amm, side: Side, price: number, margin: number, leverage: number, reduceOnly?: boolean): Promise<string> {
+        const sdk = new SDK({ rpcUrl: this._chain.rpcUrl, privateKey: wallet.privateKey });
+        const tx = await sdk.createLimitOrder({ amm, side, price, margin, leverage, reduceOnly });
+        return tx.hash;
     }
 
-    public async openTriggerOrder(amm: Amm, price: number, size: number, type: TriggerType): Promise<Transaction> {
-        const triggerOrderTx = await this._sdk.createTriggerOrder({ amm, price, size, type });
-
-        // MUST convert ContractTransactionResponse to Transaction instance
-        return triggerOrderTx;
+    public async updateLimitOrder(wallet: Wallet, id: number, amm: Amm, side: Side, price: number, margin: number, leverage: number, reduceOnly?: boolean): Promise<string> {
+        const sdk = new SDK({ rpcUrl: this._chain.rpcUrl, privateKey: wallet.privateKey });
+        const tx = await sdk.updateLimitOrder(id, { amm, side, price, margin, leverage, reduceOnly });
+        return tx.hash;
     }
 
-    public async closePosition(amm: Amm, closePercent?: number, slippagePercent?: number): Promise<Transaction> {
-        const closePositionTx = await this._sdk.closePosition({ amm, closePercent });
+    public async deleteLimitOrder(wallet: Wallet, id: number): Promise<string> {
+        const sdk = new SDK({ rpcUrl: this._chain.rpcUrl, privateKey: wallet.privateKey });
+        const tx = await sdk.deleteLimitOrder(id);
+        return tx.hash;
+    }
 
-        // MUST convert ContractTransactionResponse to Transaction instance
-        return closePositionTx;
+    public async openLimitOrderBatch(wallet: Wallet, params: { amm: Amm, side: Side, price: number, margin: number, leverage: number, reduceOnly?: boolean }[]): Promise<string> {
+        const sdk = new SDK({ rpcUrl: this._chain.rpcUrl, privateKey: wallet.privateKey });
+        const tx = await sdk.createLimitOrderBatch(params);
+        return tx.hash;
+    }
+
+    public async updateLimitOrderBatch(wallet: Wallet, ids: number[], params: { amm: Amm, side: Side, price: number, margin: number, leverage: number, reduceOnly?: boolean }[]): Promise<string> {
+        const sdk = new SDK({ rpcUrl: this._chain.rpcUrl, privateKey: wallet.privateKey });
+        const tx = await sdk.updateLimitOrderBatch(ids, params);
+        return tx.hash;
+    }
+
+    public async deleteLimitOrderBatch(wallet: Wallet, ids: number[]): Promise<string> {
+        const sdk = new SDK({ rpcUrl: this._chain.rpcUrl, privateKey: wallet.privateKey });
+        const tx = await sdk.deleteLimitOrderBatch(ids);
+        return tx.hash;
+    }
+
+    public async openTriggerOrder(wallet: Wallet, amm: Amm, price: number, size: number, type: TriggerType): Promise<string> {
+        const sdk = new SDK({ rpcUrl: this._chain.rpcUrl, privateKey: wallet.privateKey });
+        const tx = await sdk.createTriggerOrder({ amm, price, size, type });
+        return tx.hash;
+    }
+
+    public async deleteTriggerOrder(wallet: Wallet, id: number): Promise<string> {
+        const sdk = new SDK({ rpcUrl: this._chain.rpcUrl, privateKey: wallet.privateKey });
+        const tx = await sdk.deleteTriggerOrder(id);
+        return tx.hash;
+    }
+
+
+    public async closePosition(wallet: Wallet, amm: Amm, closePercent?: number, slippagePercent?: number): Promise<string> {
+        const sdk = new SDK({ rpcUrl: this._chain.rpcUrl, privateKey: wallet.privateKey });
+        const closePositionTx = await sdk.closePosition({ amm, closePercent, slippagePercent });
+        return closePositionTx.hash;
 
     }
 

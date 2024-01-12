@@ -633,6 +633,11 @@ export interface Perpish {
 export interface NftPerpish {
 
   /**
+   * Default time-to-live for transactions, in seconds.
+   */
+  ttl: number;
+
+  /**
    * Initialize a nftperp instance.  
    * The private key is needed to create a sdk instance. 
    * @param privateKey The private key string
@@ -677,42 +682,99 @@ export interface NftPerpish {
 
   /**
    * Creates a market order
+   * @param wallet The wallet account to execute a tx
    * @param amm The name of amm
    * @param side Side.BUY or Side.SELL
    * @param margin The margin value
    * @param leverage The leverage value
    * @param slippagePercent The slippage value
-   * @returns The transaction instance
+   * @returns The transaction hash
    */
-  openMarketOrder(amm: Amm, side: Side, margin: number, leverage: number, slippagePercent?: number): Promise<Transaction>;
+  openMarketOrder(wallet: Wallet, amm: Amm, side: Side, margin: number, leverage: number, slippagePercent?: number): Promise<string>;
 
   /**
    * Creates a limit order
+   * @param wallet The wallet account to execute a tx
    * @param amm The name of amm
    * @param side Side.BUY or Side.SELL
    * @param price The limit order price
    * @param margin The margin value
    * @param leverage The leverage value
-   * @returns The transaction instance
+   * @returns The transaction hash
    */
-  openLimitOrder(amm: Amm, side: Side, price: number, margin: number, leverage: number, reduceOnly?: boolean): Promise<Transaction>;
+  openLimitOrder(wallet: Wallet, amm: Amm, side: Side, price: number, margin: number, leverage: number, reduceOnly?: boolean): Promise<string>;
+
+  /**
+   * Updates a given limit order
+   * @param wallet The wallet account to execute a tx
+   * @param id The order id
+   * @param amm The name of amm
+   * @param side Side.BUY or Side.SELL
+   * @param price The limit order price
+   * @param margin The margin value
+   * @param leverage The leverage value
+   * @returns The transaction hash
+   */
+  updateLimitOrder(wallet: Wallet, id: number, amm: Amm, side: Side, price: number, margin: number, leverage: number, reduceOnly?: boolean): Promise<string>;
+
+  /**
+   * Deletes a given limit order
+   * @param wallet The wallet account to execute a tx
+   * @param id The order id
+   * @returns The transaction hash
+   * */
+  deleteLimitOrder(wallet: Wallet, id: number): Promise<string>;
+
+  /**
+   * Creates limit orders in batch
+   * @param params The batch param
+   * @returns The transaction hash
+   */
+  openLimitOrderBatch(wallet: Wallet, params: { amm: Amm, side: Side, price: number, margin: number, leverage: number, reduceOnly?: boolean }[]): Promise<string>;
+
+  /**
+   * Update limit orders in batch
+   * @param wallet The wallet account to execute a tx
+   * @param ids - The list of limit order id
+   * @param params - The list of update param
+   * @returns The transaction hash
+   */
+  updateLimitOrderBatch(wallet: Wallet, ids: number[], params: { amm: Amm, side: Side, price: number, margin: number, leverage: number, reduceOnly?: boolean }[]): Promise<string>;
+
+  /**
+   * Delete limit orders in batch
+   * @param wallet The wallet account to execute a tx
+   * @param ids The list of limit order to delete
+   * @returns The transaction hash
+   */
+  deleteLimitOrderBatch(wallet: Wallet, ids: number[]): Promise<string>;
 
   /**
    * Creates a trigger order
+   * @param wallet The wallet account to execute a tx
    * @param amm The name of amm
    * @param price The trigger price
    * @param size The execution size
    * @param type SL or TP
-   * @returns The transaction instance
+   * @returns The transaction hash
    */
-  openTriggerOrder(amm: Amm, price: number, size: number, type: TriggerType): Promise<Transaction>;
+  openTriggerOrder(wallet: Wallet, amm: Amm, price: number, size: number, type: TriggerType): Promise<string>;
+
+  /**
+   * Deletes a trigger order
+   * @param wallet The wallet account to execute a tx
+   * @param id The order id
+   * @return The transaction hash
+   */
+  deleteTriggerOrder(wallet: Wallet, id: number): Promise<string>;
 
   /**
    * Closes position for a given amm
+   * @param wallet The wallet account to execute a tx
    * @param amm The amm name
-   * @returns The transaction instance
+   * @returns The transaction hash
    */
-  closePosition(amm: Amm, closePercent?: number, slippagePercent?: number): Promise<Transaction>;
+  closePosition(wallet: Wallet, amm: Amm, closePercent?: number, slippagePercent?: number): Promise<string>;
 
 }
 
