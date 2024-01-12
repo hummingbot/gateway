@@ -1,0 +1,10 @@
+{
+    "address": "$OSMOSIS_ADDRESS",
+    "quote": "ATOM",
+    "base": "OSMO",
+    "amount": "1",
+    "side": "BUY",
+    "chain": "osmosis",
+    "network": "testnet",
+    "connector": "osmosis"
+}
