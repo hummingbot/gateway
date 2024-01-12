@@ -2,15 +2,35 @@
 # execution price. It uses a rational number for precision.
 allowedSlippage: '1/100'
 
-# the maximum gas used to estimate gasCost for a uniswap trade.
+# the maximum gas used to estimate gasCost for a pancakeswap trade.
 gasLimitEstimate: 150688
 
 # how long a trade is valid in seconds. After time passes pancakeswap will not
 # perform the trade, but the gas will still be spent.
-ttl: 300
+ttl: 86400
+
+# For each swap, the maximum number of hops to consider. 
+# Note: More hops will increase latency of the algorithm.
+maximumHops: 4
+
+# Use pancakeswap Router or Quoter to quote prices.
+# true - use Smart Order Router
+# false - use QuoterV2 Contract
+useRouter: false
+
+# Fee tier to use for the pancakeswap Quoter.
+# Required if `useRouter` is false.
+# Available options: 'LOWEST', 'LOW', 'MEDIUM', 'HIGH'.
+feeTier: 'MEDIUM'
 
 contractAddresses:
   mainnet:
-      routerAddress: '0x10ED43C718714eb63d5aA57B78B54704E256024E'
+    routerAddress: '0x10ED43C718714eb63d5aA57B78B54704E256024E'
+    pancakeswapV3SmartOrderRouterAddress: '0x1b81D678ffb9C0263b24A97847620C99d213eB14'
+    pancakeswapV3NftManagerAddress: '0x46A15B0b27311cedF172AB29E4f4766fbE7F4364'
+    pancakeswapV3QuoterV2ContractAddress: '0xB048Bbc1Ee6b733FFfCFb9e9CeF7375518e25997'
   testnet:
-      routerAddress: '0xdc4904b5f716Ff30d8495e35dC99c109bb5eCf81'
+    routerAddress: '0xdc4904b5f716Ff30d8495e35dC99c109bb5eCf81'
+    pancakeswapV3SmartOrderRouterAddress: '0x1b81D678ffb9C0263b24A97847620C99d213eB14'
+    pancakeswapV3NftManagerAddress: '0x427bF5b37357632377eCbEC9de3626C71A5396c1'
+    pancakeswapV3QuoterV2ContractAddress: '0xbC203d7f83677c7ed3F7acEc959963E7F4ECC5C2'

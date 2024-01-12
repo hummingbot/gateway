@@ -378,7 +378,7 @@ export async function addLiquidity(
       req.maxPriorityFeePerGas
     );
 
-  const fee = FeeAmount[req.fee.toUpperCase() as keyof typeof FeeAmount];
+  const fee = FeeAmount[req.fee!.toUpperCase() as keyof typeof FeeAmount];
 
   const token0: Token = getFullTokenFromSymbol(
     ethereumish,
@@ -423,7 +423,7 @@ export async function addLiquidity(
     latency: latency(startTimestamp, Date.now()),
     token0: token0.address,
     token1: token1.address,
-    fee: req.fee,
+    fee: req.fee!,
     tokenId: req.tokenId ? req.tokenId : 0,
     gasPrice: gasPrice,
     gasPriceToken: ethereumish.nativeTokenSymbol,
@@ -575,8 +575,8 @@ export async function poolPrice(
     token0,
     token1,
     fee,
-    req.period!,
-    req.interval!
+    req.period,
+    req.interval
   );
 
   return {
@@ -585,9 +585,9 @@ export async function poolPrice(
     latency: latency(startTimestamp, Date.now()),
     token0: token0.address,
     token1: token1.address,
-    fee: req.fee!,
-    period: req.period!,
-    interval: req.interval!,
+    fee: req.fee,
+    period: req.period,
+    interval: req.interval,
     prices: prices,
   };
 }
