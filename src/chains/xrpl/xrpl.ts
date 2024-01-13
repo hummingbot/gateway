@@ -9,8 +9,6 @@ import {
   PathFindStream,
   TxResponse,
   TransactionMetadata,
-  AccountOffersResponse,
-  dropsToXrp,
 } from 'xrpl';
 import axios from 'axios';
 import { promises as fs } from 'fs';
@@ -27,7 +25,6 @@ import { XRPLOrderStorage } from './xrpl.order-storage';
 import { OrderTracker } from './xrpl.order-tracker';
 import { ReferenceCountingCloseable } from '../../services/refcounting-closeable';
 import { XRPLController } from './xrpl.controllers';
-import { convertHexToString } from '../../connectors/xrpl/xrpl.utils';
 
 export type XRPTokenInfo = {
   id: number;
@@ -42,9 +39,7 @@ export type MarketInfo = {
   id: number;
   marketId: string;
   baseIssuer: string;
-  baseCode: string;
   quoteIssuer: string;
-  quoteCode: string;
   baseTokenID: number;
   quoteTokenID: number;
 };
@@ -63,7 +58,7 @@ export class XRPL implements XRPLish {
 
   protected tokenList: XRPTokenInfo[] = [];
   protected marketList: MarketInfo[] = [];
-  private _tokenMap: Record<string, XRPTokenInfo[]> = {}; // TODO: tokenMap should be identified by code and issuer to prevent duplicate codes
+  private _tokenMap: Record<string, XRPTokenInfo[]> = {};
   private _marketMap: Record<string, MarketInfo[]> = {};
 
   private _client: Client;
@@ -76,8 +71,6 @@ export class XRPL implements XRPLish {
   private _marketListSource: string;
   private _tokenListType: TokenListType;
   private _marketListType: MarketListType;
-  private _reserveBaseXrp: number;
-  private _reserveIncrementXrp: number;
 
   private _ready: boolean = false;
   private initializing: boolean = false;
@@ -98,8 +91,6 @@ export class XRPL implements XRPLish {
     this._tokenListType = <TokenListType>config.network.tokenListType;
     this._marketListSource = config.network.marketListSource;
     this._marketListType = <MarketListType>config.network.marketListType;
-    this._reserveBaseXrp = 0;
-    this._reserveIncrementXrp = 0;
 
     this._client = new Client(this.rpcUrl, {
       timeout: config.requestTimeout,
@@ -128,10 +119,6 @@ export class XRPL implements XRPLish {
     );
     this._orderStorage.declareOwnership(this._refCountingHandle);
     this.controller = XRPLController;
-
-    this.onDisconnected(async (_code: number) => {
-      this.ensureConnection();
-    });
   }
 
   public static getInstance(network: string): XRPL {
@@ -202,7 +189,6 @@ export class XRPL implements XRPLish {
     if (!this.ready() && !this.initializing) {
       this.initializing = true;
       await this.ensureConnection();
-      await this.getReserveInfo();
       await this.loadTokens(this._tokenListSource, this._tokenListType);
       await this.loadMarkets(this._marketListSource, this._marketListType);
       await this.getFee();
@@ -284,14 +270,7 @@ export class XRPL implements XRPLish {
   }
 
   public getTokenForSymbol(code: string): XRPTokenInfo[] | undefined {
-    let query = code;
-
-    // Special case for SOLO on mainnet
-    if (code === 'SOLO') {
-      query = '534F4C4F00000000000000000000000000000000';
-    }
-
-    return this._tokenMap[query] ? this._tokenMap[query] : undefined;
+    return this._tokenMap[code] ? this._tokenMap[code] : undefined;
   }
 
   public getWalletFromSeed(seed: string): Wallet {
@@ -360,24 +339,6 @@ export class XRPL implements XRPLish {
     return balance;
   }
 
-  async getNativeAvailableBalance(wallet: Wallet): Promise<string> {
-    await this.ensureConnection();
-
-    const AccountInfoResponse = await this._client.request({
-      command: 'account_info',
-      account: wallet.address,
-    });
-
-    const ownerItem = AccountInfoResponse.result.account_data.OwnerCount;
-    const totalReserve =
-      this._reserveBaseXrp + ownerItem * this._reserveIncrementXrp;
-
-    const balance =
-      parseFloat(await this._client.getXrpBalance(wallet.address)) -
-      totalReserve;
-    return balance.toString();
-  }
-
   async getAllBalance(wallet: Wallet): Promise<Array<TokenBalance>> {
     await this.ensureConnection();
     const balances: Array<TokenBalance> = [];
@@ -398,7 +359,7 @@ export class XRPL implements XRPLish {
         }
 
         balances.push({
-          currency: convertHexToString(token.currency),
+          currency: token.currency,
           issuer: token.issuer,
           value: token.value,
         });
@@ -419,21 +380,6 @@ export class XRPL implements XRPLish {
   async ensureConnection() {
     if (!this.isConnected()) {
       await this._client.connect();
-    }
-  }
-
-  async getReserveInfo() {
-    await this.ensureConnection();
-    try {
-      const reserveInfoResp = await this._client.request({
-        command: 'server_info',
-      });
-      this._reserveBaseXrp =
-        reserveInfoResp.result.info.validated_ledger?.reserve_base_xrp ?? 0;
-      this._reserveIncrementXrp =
-        reserveInfoResp.result.info.validated_ledger?.reserve_inc_xrp ?? 0;
-    } catch (error) {
-      throw new Error("Can't get reserve info: " + String(error));
     }
   }
 
@@ -548,67 +494,6 @@ export class XRPL implements XRPLish {
 
   public get orderStorage(): XRPLOrderStorage {
     return this._orderStorage;
-  }
-
-  async subtractBalancesWithOpenOffers(
-    balances: TokenBalance[],
-    wallet: Wallet
-  ) {
-    await this.ensureConnection();
-    const accountOffcersResp: AccountOffersResponse =
-      await this._client.request({
-        command: 'account_offers',
-        account: wallet.address,
-      });
-
-    const offers = accountOffcersResp.result.offers;
-
-    // create new balances array with deepcopy
-    const subtractedBalances: TokenBalance[] = JSON.parse(
-      JSON.stringify(balances)
-    );
-
-    // Subtract XRP balance with reverses
-    const xrpBalance = subtractedBalances.find(
-      (balance) => balance.currency === 'XRP'
-    );
-
-    const currentNativeBalance = await this.getNativeAvailableBalance(wallet);
-    if (xrpBalance) xrpBalance.value = currentNativeBalance;
-
-    // Subtract balances with open offers
-    if (offers !== undefined) {
-      offers.forEach((offer) => {
-        const takerGetsBalance = offer.taker_gets as TokenBalance | string;
-
-        if (typeof takerGetsBalance === 'string') {
-          // XRP open offer, find XRP in balances and subtract it
-          const xrpBalance = subtractedBalances.find(
-            (balance) => balance.currency === 'XRP'
-          );
-          if (xrpBalance) {
-            xrpBalance.value = (
-              parseFloat(xrpBalance.value) -
-              parseFloat(dropsToXrp(takerGetsBalance))
-            ).toString();
-          }
-        } else {
-          // Token open offer, find token in balances and subtract it
-          const tokenBalance = subtractedBalances.find(
-            (balance) =>
-              balance.currency === convertHexToString(takerGetsBalance.currency)
-          );
-          if (tokenBalance) {
-            tokenBalance.value = (
-              parseFloat(tokenBalance.value) -
-              parseFloat(takerGetsBalance.value)
-            ).toString();
-          }
-        }
-      });
-    }
-
-    return subtractedBalances;
   }
 }
 
