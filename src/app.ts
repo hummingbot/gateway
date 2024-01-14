@@ -20,6 +20,7 @@ import { CLOBRoutes, PerpClobRoutes } from './clob/clob.routes';
 import morgan from 'morgan';
 import swaggerUi from 'swagger-ui-express';
 import { ChainRoutes } from './chains/chain.routes';
+import { NftPerpRoutes } from './nftperp/nftperp.routes';
 
 export const gatewayApp = express();
 
@@ -52,7 +53,7 @@ gatewayApp.use('/amm/liquidity', AmmLiquidityRoutes.router);
 gatewayApp.use('/wallet', WalletRoutes.router);
 gatewayApp.use('/clob', CLOBRoutes.router);
 gatewayApp.use('/clob/perp', PerpClobRoutes.router);
-gatewayApp.use('/amm', AmmRoutes.router);
+gatewayApp.use('/nftperp', NftPerpRoutes.router);
 
 // a simple route to test that the server is running
 gatewayApp.get('/', (_req: Request, res: Response) => {
