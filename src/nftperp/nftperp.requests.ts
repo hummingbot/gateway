@@ -45,7 +45,7 @@ export interface ExecuteTxResponse {
     txhash: string;
 }
 
-export interface LimitOrderBaseRequest {
+export interface LimitOrderRequestBase {
     amm: Amm,
     side: Side,
     price: number,
@@ -53,13 +53,13 @@ export interface LimitOrderBaseRequest {
     leverage: number,
     reduceOnly?: boolean
 }
-export interface OpenLimitOrderRequest extends LimitOrderBaseRequest, NetworkSelectionRequest {
+export interface OpenLimitOrderRequest extends LimitOrderRequestBase, NetworkSelectionRequest {
     address: string,
 }
 
 export interface OpenLimitOrderBatchRequest extends NetworkSelectionRequest {
     address: string,
-    params: LimitOrderBaseRequest[]
+    params: LimitOrderRequestBase[]
 }
 
 export interface UpdateLimitOrderRequest extends OpenLimitOrderRequest {
@@ -80,14 +80,14 @@ export interface DeleteOrdersRequest extends NetworkSelectionRequest {
     ids: number[]
 }
 
-export interface TriggerOrderBaseRequest {
+export interface TriggerOrderRequestBase {
     amm: Amm,
     price: number,
     size: number,
     type: TriggerType
 }
 
-export interface OpenTriggerOrderRequest extends NetworkSelectionRequest, TriggerOrderBaseRequest {
+export interface OpenTriggerOrderRequest extends NetworkSelectionRequest, TriggerOrderRequestBase {
     address: string,
 }
 

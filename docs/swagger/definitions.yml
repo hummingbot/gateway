@@ -2104,3 +2104,433 @@ definitions:
       txHash:
         type: 'string'
         example: '0x...'
+  
+  NftPerpSupportedRequest:
+    type: 'object'
+    required:
+      - 'chain'
+      - 'network'
+      - 'connector'
+    properties:
+      chain:
+        type: 'string'
+        example: 'ethereum'
+      network:
+        type: 'string'
+        example: 'arbitrum'
+      connector:
+        type: 'string'
+        example: 'nftperp'
+
+  NftPerpSupportedResponse:
+    type: 'object'
+    required:
+      - 'amms'
+    properties:
+      amms:
+        type: 'array'
+        items: 'string'
+        example: [ 'bayc', 'milady' ]
+
+  NftPerpCommonRequest:
+    type: 'object'
+    required:
+      - 'chain'
+      - 'network'
+      - 'connector'
+      - 'amm'
+    properties:
+      chain:
+        type: 'string'
+        example: 'ethereum'
+      network:
+        type: 'string'
+        example: 'arbitrum'
+      connector:
+        type: 'string'
+        example: 'nftperp'
+      amm:
+        type: 'string'
+        example: 'bayc'
+
+  NftPerpPositionResponse:
+    type: 'object'
+    required:
+      - 'amm'
+      - 'trader'
+      - 'size'
+    properties:
+      amm:
+        type: 'string'
+        example: 'bayc'
+      trader:
+        type: 'string'
+        example: '0xaaa'
+      size:
+        type: 'string'
+        example: '1'
+      side: 
+        type: 'string'
+        example: 'BUY'
+      notional: 
+        type: 'string'
+        example: 'a'
+      margin: 
+        type: 'string'
+        example: 'a'
+      leverage: 
+        type: 'string'
+        example: '1'
+      entryPrice: 
+        type: 'string'
+        example: '1'
+      markPrice:
+        type: 'string'
+        example: '1'
+      liquidationPrice:
+        type: 'string'
+        example: '1'
+      unrealizedPnl:
+        type: 'string'
+        example: '0.1'
+      fundingPayment: 
+        type: 'string'
+        example: '1'
+      lastPremiumFraction:
+        type: 'string'
+        example: '1'        
+
+  NftPerpPriceResponse:
+    type: 'object'
+    required:
+      - 'price'
+    properties:
+      price:
+        type: 'string'
+        example: '1'
+
+  NftPerpExecuteTxResponse:
+    type: 'object'
+    required:
+      - 'txhash'
+    properties:
+      txhash:
+        type: 'string'
+        example: '0xabc'
+
+  NftPerpOpenMarketOrderRequest:
+    type: 'object'
+    required:
+      - 'chain'
+      - 'network'
+      - 'connector'
+      - 'address'
+      - 'amm'
+      - 'side'
+      - 'margin'
+      - 'leverage'
+    properties:
+      chain:
+        type: 'string'
+        example: 'ethereum'
+      network:
+        type: 'string'
+        example: 'arbitrum'
+      connector:
+        type: 'string'
+        example: 'nftperp'   
+      address:
+        type: 'string'
+        example: '0x123'   
+      amm:
+        type: 'string'
+        example: 'bayc'
+      side: 
+        type: 'string'
+        example: 'BUY'
+      margin: 
+        type: 'number'
+        example: 0.1
+      leverage: 
+        type: 'number'
+        example: 0.1
+      slippagePercent: 
+        type: 'number'
+        example: 0.5     
+
+  NftPerpOpenLimitOrderRequest:
+    type: 'object'
+    required:
+      - 'chain'
+      - 'network'
+      - 'connector'
+      - 'address'
+      - 'amm'
+      - 'side'
+      - 'price'
+      - 'margin'
+      - 'leverage'
+    properties:
+      chain:
+        type: 'string'
+        example: 'ethereum'
+      network:
+        type: 'string'
+        example: 'arbitrum'
+      connector:
+        type: 'string'
+        example: 'nftperp'  
+      address:
+        type: 'string'
+        example: '0x123'  
+      amm:
+        type: 'string'
+        example: 'bayc'
+      side: 
+        type: 'string'
+        example: 'BUY'
+      price: 
+        type: 'number'
+        example: 1        
+      margin: 
+        type: 'number'
+        example: 0.1
+      leverage: 
+        type: 'number'
+        example: 0.1
+      reduceOnly: 
+        type: 'boolean'
+        example: false              
+
+  NftPerpUpdateLimitOrderRequest:
+    type: 'object'
+    required:
+      - 'chain'
+      - 'network'
+      - 'connector'
+      - 'address'
+      - 'id'
+      - 'amm'
+      - 'side'
+      - 'price'
+      - 'margin'
+      - 'leverage'
+    properties:
+      chain:
+        type: 'string'
+        example: 'ethereum'
+      network:
+        type: 'string'
+        example: 'arbitrum'
+      connector:
+        type: 'string'
+        example: 'nftperp'  
+      address:
+        type: 'string'
+        example: '0x123'  
+      id:
+        type: 'number'
+        example: 1
+      amm:
+        type: 'string'
+        example: 'bayc'
+      side: 
+        type: 'string'
+        example: 'BUY'
+      price: 
+        type: 'number'
+        example: 1       
+      margin: 
+        type: 'number'
+        example: 1
+      leverage: 
+        type: 'number'
+        example: 1
+      reduceOnly: 
+        type: 'boolean'
+        example: false                      
+
+  NftPerpDeleteOrderRequest:
+    type: 'object'
+    required:
+      - 'chain'
+      - 'network'
+      - 'connector'
+      - 'address'
+      - 'id'
+    properties:
+      chain:
+        type: 'string'
+        example: 'ethereum'
+      network:
+        type: 'string'
+        example: 'arbitrum'
+      connector:
+        type: 'string'
+        example: 'nftperp'  
+      address:
+        type: 'string'
+        example: '0x123'  
+      id:
+        type: 'number'
+        example: 1
+
+  NftPerpDeleteOrdersRequest:
+    type: 'object'
+    required:
+      - 'chain'
+      - 'network'
+      - 'connector'
+      - 'address'
+      - 'ids'
+    properties:
+      chain:
+        type: 'string'
+        example: 'ethereum'
+      network:
+        type: 'string'
+        example: 'arbitrum'
+      connector:
+        type: 'string'
+        example: 'nftperp'  
+      address:
+        type: 'string'
+        example: '0x123'  
+      ids:
+        type: 'array'
+        items: 'number'
+        example: [1,2]
+
+
+  NftPerpOpenLimitOrderBatchRequest:
+    type: 'object'
+    required:
+      - 'chain'
+      - 'network'
+      - 'connector'
+      - 'address'
+      - 'params'
+    properties:
+      chain:
+        type: 'string'
+        example: 'ethereum'
+      network:
+        type: 'string'
+        example: 'arbitrum'
+      connector:
+        type: 'string'
+        example: 'nftperp'  
+      address:
+        type: 'string'
+        example: '0x123'  
+      params:
+        type: 'array'
+        items: 'object'
+        example: [
+          { amm: "bayc", side: "BUY", price: 1, margin: 1, leverage: 1},
+          { amm: "milady", side: "BUY", price: 1, margin: 1, leverage: 1},
+        ]
+
+  NftPerpUpdateLimitOrderBatchRequest:
+    type: 'object'
+    required:
+      - 'chain'
+      - 'network'
+      - 'connector'
+      - 'address'
+      - 'ids'
+      - 'params'
+    properties:
+      chain:
+        type: 'string'
+        example: 'ethereum'
+      network:
+        type: 'string'
+        example: 'arbitrum'
+      connector:
+        type: 'string'
+        example: 'nftperp'  
+      address:
+        type: 'string'
+        example: '0x123'  
+      ids:
+        type: 'array'
+        items: 'number'
+        example: [1,2]
+      params:
+        type: 'array'
+        items: 'object'
+        example: [
+          { amm: "bayc", side: "BUY", price: 1, margin: 1, leverage: 1},
+          { amm: "milady", side: "BUY", price: 1, margin: 1, leverage: 1},
+        ]
+
+  NftPerpOpenTriggerOrderRequest:
+    type: 'object'
+    required:
+      - 'chain'
+      - 'network'
+      - 'connector'
+      - 'address'
+      - 'amm'
+      - 'price'
+      - 'size'
+      - 'type'
+    properties:
+      chain:
+        type: 'string'
+        example: 'ethereum'
+      network:
+        type: 'string'
+        example: 'arbitrum'
+      connector:
+        type: 'string'
+        example: 'nftperp'  
+      address:
+        type: 'string'
+        example: '0x123'  
+      amm:
+        type: 'string'
+        example: 'bayc'
+      price: 
+        type: 'number'
+        example: 1        
+      size: 
+        type: 'number'
+        example: 1        
+      type: 
+        type: 'string'
+        example: 'STOP_LOSS'      
+
+  NftPerpClosePositionRequest:
+    type: 'object'
+    required:
+      - 'chain'
+      - 'network'
+      - 'connector'
+      - 'address'
+      - 'amm'
+      - 'closePercent'
+      - 'slippagePercent'
+    properties:
+      chain:
+        type: 'string'
+        example: 'ethereum'
+      network:
+        type: 'string'
+        example: 'arbitrum'
+      connector:
+        type: 'string'
+        example: 'nftperp'  
+      address:
+        type: 'string'
+        example: '0x123'  
+      amm:
+        type: 'string'
+        example: 'bayc'
+      closePercent: 
+        type: 'number'
+        example: 1        
+      slippagePercent: 
+        type: 'number'
+        example: 1     

@@ -25,6 +25,8 @@ tags:
     description: 'CLOB spot DEX endpoints'
   - name: 'clob/perp'
     description: 'CLOB perpetual DEX endpoints'
+  - name: 'nftperp'
+    description: 'NftPerp endpoints'    
 
 schemes:
   - 'http'

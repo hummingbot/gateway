@@ -1,0 +1,315 @@
+paths:
+  /nftperp/supported:
+    post:
+      tags:
+        - 'nftperp'
+      summary: 'Get the supported amms'
+      operationId: 'poll'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          required: true
+          schema:
+            $ref: '#/definitions/NftPerpSupportedRequest'
+      responses:
+        '200':
+          schema:
+            $ref: '#/definitions/NftPerpSupportedResponse'
+
+  /nftperp/position:
+    post:
+      tags:
+        - 'nftperp'
+      summary: 'Get the position information'
+      operationId: 'poll'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          required: true
+          schema:
+            $ref: '#/definitions/NftPerpCommonRequest'
+      responses:
+        '200':
+          schema:
+            $ref: '#/definitions/NftPerpPositionResponse'    
+
+  /nftperp/markPrice:
+    post:
+      tags:
+        - 'nftperp'
+      summary: 'Get the mark price for a given amm'
+      operationId: 'poll'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          required: true
+          schema:
+            $ref: '#/definitions/NftPerpCommonRequest'
+      responses:
+        '200':
+          schema:
+            $ref: '#/definitions/NftPerpPriceResponse'                    
+
+  /nftperp/indexPrice:
+    post:
+      tags:
+        - 'nftperp'
+      summary: 'Get the index price for a given amm'
+      operationId: 'poll'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          required: true
+          schema:
+            $ref: '#/definitions/NftPerpCommonRequest'
+      responses:
+        '200':
+          schema:
+            $ref: '#/definitions/NftPerpPriceResponse'              
+
+  /nftperp/fundingRate:
+    post:
+      tags:
+        - 'nftperp'
+      summary: 'Get the funding rate for a given amm'
+      operationId: 'poll'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          required: true
+          schema:
+            $ref: '#/definitions/NftPerpCommonRequest'
+      responses:
+        '200':
+          schema:
+            $ref: '#/definitions/NftPerpPriceResponse'
+
+  /nftperp/openMarketOrder:
+    post:
+      tags:
+        - 'nftperp'
+      summary: 'Create a market order'
+      operationId: 'poll'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          required: true
+          schema:
+            $ref: '#/definitions/NftPerpOpenMarketOrderRequest'
+      responses:
+        '200':
+          schema:
+            $ref: '#/definitions/NftPerpExecuteTxResponse'        
+
+  /nftperp/openLimitOrder:
+    post:
+      tags:
+        - 'nftperp'
+      summary: 'Create a limit order'
+      operationId: 'poll'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          required: true
+          schema:
+            $ref: '#/definitions/NftPerpOpenLimitOrderRequest'
+      responses:
+        '200':
+          schema:
+            $ref: '#/definitions/NftPerpExecuteTxResponse'   
+
+  /nftperp/updateLimitOrder:
+    post:
+      tags:
+        - 'nftperp'
+      summary: 'Update a given limit order'
+      operationId: 'poll'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          required: true
+          schema:
+            $ref: '#/definitions/NftPerpUpdateLimitOrderRequest'
+      responses:
+        '200':
+          schema:
+            $ref: '#/definitions/NftPerpExecuteTxResponse'     
+
+  /nftperp/deleteLimitOrder:
+    post:
+      tags:
+        - 'nftperp'
+      summary: 'Delete a given limit order'
+      operationId: 'poll'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          required: true
+          schema:
+            $ref: '#/definitions/NftPerpDeleteOrderRequest'
+      responses:
+        '200':
+          schema:
+            $ref: '#/definitions/NftPerpExecuteTxResponse'                                                   
+
+  /nftperp/openLimitOrderBatch:
+    post:
+      tags:
+        - 'nftperp'
+      summary: 'Create limit orders in batch'
+      operationId: 'poll'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          required: true
+          schema:
+            $ref: '#/definitions/NftPerpOpenLimitOrderBatchRequest'
+      responses:
+        '200':
+          schema:
+            $ref: '#/definitions/NftPerpExecuteTxResponse'     
+
+  /nftperp/updateLimitOrderBatch:
+    post:
+      tags:
+        - 'nftperp'
+      summary: 'Update given limit orders'
+      operationId: 'poll'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          required: true
+          schema:
+            $ref: '#/definitions/NftPerpUpdateLimitOrderBatchRequest'
+      responses:
+        '200':
+          schema:
+            $ref: '#/definitions/NftPerpExecuteTxResponse'
+
+  /nftperp/deleteLimitOrderBatch:
+    post:
+      tags:
+        - 'nftperp'
+      summary: 'Delete given limit orders'
+      operationId: 'poll'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          required: true
+          schema:
+            $ref: '#/definitions/NftPerpDeleteOrdersRequest'
+      responses:
+        '200':
+          schema:
+            $ref: '#/definitions/NftPerpExecuteTxResponse'      
+
+  /nftperp/openTriggerOrder:
+    post:
+      tags:
+        - 'nftperp'
+      summary: 'Create a trigger order'
+      operationId: 'poll'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          required: true
+          schema:
+            $ref: '#/definitions/NftPerpDeleteOrdersRequest'
+      responses:
+        '200':
+          schema:
+            $ref: '#/definitions/NftPerpExecuteTxResponse'    
+
+  /nftperp/deleteTriggerOrder:
+    post:
+      tags:
+        - 'nftperp'
+      summary: 'Delete a given trigger order'
+      operationId: 'poll'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          required: true
+          schema:
+            $ref: '#/definitions/NftPerpDeleteOrderRequest'
+      responses:
+        '200':
+          schema:
+            $ref: '#/definitions/NftPerpExecuteTxResponse' 
+
+  /nftperp/closePosition:
+    post:
+      tags:
+        - 'nftperp'
+      summary: 'Close a given amm position'
+      operationId: 'poll'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: 'body'
+          name: 'body'
+          required: true
+          schema:
+            $ref: '#/definitions/NftPerpClosePositionRequest'
+      responses:
+        '200':
+          schema:
+            $ref: '#/definitions/NftPerpExecuteTxResponse'                         
