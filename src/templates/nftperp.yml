@@ -1,1 +1,3 @@
-# WIP
+# how long a trade is valid in seconds. After time passes openocean will not
+# perform the trade, but the gas will still be spent.
+ttl: 300

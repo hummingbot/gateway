@@ -119,3 +119,7 @@ configurations:
   $namespace kujira:
     configurationPath: kujira.yml
     schemaPath: kujira-schema.json
+
+  $namespace nftperp:
+    configurationPath: nftperp.yml
+    schemaPath: nftperp-schema.json

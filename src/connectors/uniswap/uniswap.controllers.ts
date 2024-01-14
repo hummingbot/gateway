@@ -308,7 +308,7 @@ export async function trade(
     const price: Fractionish = tradeInfo.expectedTrade.trade.executionPrice;
     logger.info(
       `Expected execution price is ${price.toFixed(6)}, ` +
-        `limit price is ${limitPrice}.`
+      `limit price is ${limitPrice}.`
     );
     if (
       limitPrice &&

@@ -42,6 +42,7 @@ import { Kujira } from '../chains/kujira/kujira';
 import { KujiraCLOB } from '../connectors/kujira/kujira';
 import { PancakeswapLP } from '../connectors/pancakeswap/pancakeswap.lp';
 import { XRPLCLOB } from '../connectors/xrpl/xrpl';
+import { NftPerp } from '../connectors/nftperp/nftperp';
 
 export type ChainUnion =
   | Algorand
@@ -149,7 +150,8 @@ export type ConnectorUnion =
   | Plenty
   | XRPLCLOB
   | Curve
-  | KujiraCLOB;
+  | KujiraCLOB
+  | NftPerp;
 
 export type Connector<T> = T extends Uniswapish
   ? Uniswapish
@@ -228,7 +230,10 @@ export async function getConnector<T>(
     connector === 'curve'
   ) {
     connectorInstance = Curve.getInstance(chain, network);
-  } else {
+  } else if (chain === 'ethereum' && network === 'arbitrum' && connector === 'nftperp') {
+    connectorInstance = NftPerp.getInstance(chain, network);
+  }
+  else {
     throw new Error('unsupported chain or connector');
   }
 

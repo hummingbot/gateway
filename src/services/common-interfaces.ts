@@ -5,6 +5,7 @@ import {
   Wallet,
   ContractInterface,
   BigNumber,
+  ethers
 } from 'ethers';
 import {
   Contract as XdcContract,

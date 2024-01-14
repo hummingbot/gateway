@@ -1,20 +1,20 @@
 import { SDK } from "@nftperp/sdk";
-import { Arbitrum } from "../../chains/arbitrum/arbitrum";
 import { NftPerpConfig } from "./nftperp.config";
 import { NftPerpish } from "../../services/common-interfaces";
 import { Wallet } from "ethers";
 import { Amm, PositionResponse, Side, TriggerType } from "@nftperp/sdk/types";
+import { Ethereum } from "../../chains/ethereum/ethereum";
 
 export class NftPerp implements NftPerpish {
     private static _instances: { [name: string]: NftPerp };
-    private _chain: Arbitrum;
+    private _chain: Ethereum;
     private _ready: boolean = false;
     private _sdk: SDK;
     private _ttl: number;
 
     private constructor(chain: string, network: string) {
-        if (chain === "arbitrum") {
-            this._chain = Arbitrum.getInstance(network);
+        if (chain === "ethereum") {
+            this._chain = Ethereum.getInstance(network);
         } else throw Error("Chain not supported");
         const config = NftPerpConfig.config;
         this._sdk = new SDK();
@@ -119,7 +119,6 @@ export class NftPerp implements NftPerpish {
         const tx = await sdk.deleteTriggerOrder(id);
         return tx.hash;
     }
-
 
     public async closePosition(wallet: Wallet, amm: Amm, closePercent?: number, slippagePercent?: number): Promise<string> {
         const sdk = new SDK({ rpcUrl: this._chain.rpcUrl, privateKey: wallet.privateKey });

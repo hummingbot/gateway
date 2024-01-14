@@ -52,6 +52,7 @@ gatewayApp.use('/amm/liquidity', AmmLiquidityRoutes.router);
 gatewayApp.use('/wallet', WalletRoutes.router);
 gatewayApp.use('/clob', CLOBRoutes.router);
 gatewayApp.use('/clob/perp', PerpClobRoutes.router);
+gatewayApp.use('/amm', AmmRoutes.router);
 
 // a simple route to test that the server is running
 gatewayApp.get('/', (_req: Request, res: Response) => {
@@ -112,7 +113,7 @@ export const startSwagger = async () => {
 
 export const startGateway = async () => {
   const port = ConfigManagerV2.getInstance().get('server.port');
-  const gateway_version="1.23.0"; // gateway version
+  const gateway_version = "1.23.0"; // gateway version
   if (!ConfigManagerV2.getInstance().get('server.id')) {
     ConfigManagerV2.getInstance().set(
       'server.id',
