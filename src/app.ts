@@ -16,11 +16,11 @@ import { SwaggerManager } from './services/swagger-manager';
 import { ConnectorsRoutes } from './connectors/connectors.routes';
 import { AmmRoutes, AmmLiquidityRoutes, PerpAmmRoutes } from './amm/amm.routes';
 import { CLOBRoutes, PerpClobRoutes } from './clob/clob.routes';
+import { ChainRoutes } from './chains/chain.routes';
+import { NftPerpRoutes } from './nftperp/nftperp.routes';
 
 import morgan from 'morgan';
 import swaggerUi from 'swagger-ui-express';
-import { ChainRoutes } from './chains/chain.routes';
-import { NftPerpRoutes } from './nftperp/nftperp.routes';
 
 export const gatewayApp = express();
 
@@ -96,6 +96,7 @@ export const swaggerDocument = SwaggerManager.generateSwaggerJson(
     './docs/swagger/amm-routes.yml',
     './docs/swagger/amm-liquidity-routes.yml',
     './docs/swagger/chain-routes.yml',
+    './docs/swagger/nftperp-routes.yml'
   ]
 );
 
