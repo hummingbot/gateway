@@ -43,6 +43,7 @@ import { KujiraCLOB } from '../connectors/kujira/kujira';
 import { PancakeswapLP } from '../connectors/pancakeswap/pancakeswap.lp';
 import { XRPLCLOB } from '../connectors/xrpl/xrpl';
 import { NftPerp } from '../connectors/nftperp/nftperp';
+import { QuipuSwap } from '../connectors/quipuswap/quipuswap';
 
 export type ChainUnion =
   | Algorand
@@ -151,7 +152,8 @@ export type ConnectorUnion =
   | XRPLCLOB
   | Curve
   | KujiraCLOB
-  | NftPerp;
+  | NftPerp
+  | QuipuSwap;
 
 export type Connector<T> = T extends Uniswapish
   ? Uniswapish
@@ -171,6 +173,8 @@ export type Connector<T> = T extends Uniswapish
   ? XRPLCLOB
   : T extends KujiraCLOB
   ? KujiraCLOB
+  : T extends QuipuSwap
+  ? QuipuSwap
   : never;
 
 export async function getConnector<T>(
@@ -232,6 +236,8 @@ export async function getConnector<T>(
     connectorInstance = Curve.getInstance(chain, network);
   } else if (chain === 'ethereum' && network === 'arbitrum' && connector === 'nftperp') {
     connectorInstance = NftPerp.getInstance(chain, network);
+  } else if (chain === 'tezos' && connector === 'quipuswap') {
+    connectorInstance = QuipuSwap.getInstance(network);
   }
   else {
     throw new Error('unsupported chain or connector');

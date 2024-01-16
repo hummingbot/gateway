@@ -22,6 +22,7 @@ import { PlentyConfig } from './plenty/plenty.config';
 import { XRPLCLOBConfig } from './xrpl/xrpl.clob.config';
 import { KujiraConfig } from './kujira/kujira.config';
 import { NftPerpConfig } from './nftperp/nftperp.config';
+import { QuipuswapConfig } from './quipuswap/quipuswap.config';
 
 export namespace ConnectorsRoutes {
   export const router = Router();
@@ -169,6 +170,12 @@ export namespace ConnectorsRoutes {
             chain_type: NftPerpConfig.config.chainType,
             available_networks: NftPerpConfig.config.availableNetworks
           },
+          {
+            name: 'quipuswap',
+            trading_type: QuipuswapConfig.config.tradingTypes,
+            chain_type: QuipuswapConfig.config.chainType,
+            available_networks: QuipuswapConfig.config.availableNetworks,
+          }
         ],
       });
     })
