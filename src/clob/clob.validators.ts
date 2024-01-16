@@ -12,6 +12,8 @@ import {
   validateNetwork,
 } from '../chains/ethereum/ethereum.validators';
 
+import { isXRPLAddress } from '../chains/xrpl/xrpl.validators';
+
 import {
   validateConnector,
   validateAmount,
@@ -98,7 +100,9 @@ export const validateWallet: Validator = mkValidator(
   (val) => {
     return (
       typeof val === 'string' &&
-      (isAddress(val.slice(0, 42)) || isValidKujiraPublicKey(val))
+      (isAddress(val.slice(0, 42)) ||
+        isValidKujiraPublicKey(val) ||
+        isXRPLAddress(val))
     );
   }
 );
@@ -112,7 +116,9 @@ export const validateOrderId: Validator = mkValidator(
 export const validateOrderType: Validator = mkValidator(
   'orderType',
   invalidOrderTypeError,
-  (val) => typeof val === 'string' && (val === 'LIMIT' || val === 'LIMIT_MAKER')
+  (val) =>
+    typeof val === 'string' &&
+    (val === 'LIMIT' || val === 'LIMIT_MAKER' || val === 'MARKET')
 );
 
 const NETWORK_VALIDATIONS = [validateConnector, validateChain, validateNetwork];

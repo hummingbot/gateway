@@ -4,7 +4,6 @@ import { BinanceSmartChain } from '../chains/binance-smart-chain/binance-smart-c
 import { Ethereum } from '../chains/ethereum/ethereum';
 import { Harmony } from '../chains/harmony/harmony';
 import { Polygon } from '../chains/polygon/polygon';
-import { Injective } from '../chains/injective/injective';
 import { Xdc } from '../chains/xdc/xdc';
 import { Tezos } from '../chains/tezos/tezos';
 import { Kujira } from '../chains/kujira/kujira';
@@ -20,6 +19,7 @@ import {
   getInitializedChain,
   UnsupportedChainException,
 } from '../services/connection-manager';
+import { XRPL } from '../chains/xrpl/xrpl';
 
 export async function getStatus(
   req: StatusRequest
@@ -94,14 +94,14 @@ export async function getStatus(
       bscConnections ? Object.values(bscConnections) : []
     );
 
-    const injectiveConnections = Injective.getConnectedInstances();
-    connections = connections.concat(
-      injectiveConnections ? Object.values(injectiveConnections) : []
-    );
-
     const tezosConnections = Tezos.getConnectedInstances();
     connections = connections.concat(
       tezosConnections ? Object.values(tezosConnections) : []
+    );
+
+    const xrplConnections = XRPL.getConnectedInstances();
+    connections = connections.concat(
+      xrplConnections ? Object.values(xrplConnections) : []
     );
 
     const kujiraConnections = Kujira.getConnectedInstances();

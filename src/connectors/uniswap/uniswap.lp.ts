@@ -117,7 +117,7 @@ export class UniswapLP extends UniswapLPHelper implements UniswapLPish {
     token1: Token,
     amount0: string,
     amount1: string,
-    fee: uniV3.FeeAmount,
+    fee: string,
     lowerPrice: number,
     upperPrice: number,
     tokenId: number = 0,
@@ -127,13 +127,14 @@ export class UniswapLP extends UniswapLPHelper implements UniswapLPish {
     maxFeePerGas?: BigNumber,
     maxPriorityFeePerGas?: BigNumber
   ): Promise<Transaction> {
+    const convertedFee = uniV3.FeeAmount[fee as keyof typeof uniV3.FeeAmount];
     const addLiquidityResponse: AddPosReturn = await this.addPositionHelper(
       wallet,
       token0,
       token1,
       amount0,
       amount1,
-      fee,
+      convertedFee,
       lowerPrice,
       upperPrice,
       tokenId

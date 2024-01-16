@@ -187,7 +187,7 @@ export async function trade(
 
   logger.info(
     `Expected execution price is ${estimatedPrice}, ` +
-      `limit price is ${limitPrice}.`
+    `limit price is ${limitPrice}.`
   );
 
   if (req.side === 'BUY') {

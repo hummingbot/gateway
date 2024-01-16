@@ -44,8 +44,7 @@ export class TezosBase {
   private _contractStorageMap: Record<string, any> = {};
 
   private _ready: boolean = false;
-  private _initializing: boolean = false;
-  private _initPromise: Promise<void> = Promise.resolve();
+  private _initialized: Promise<boolean> = Promise.resolve(false);
 
   public chainName: string = 'tezos';
   public rpcUrl: string;
@@ -55,6 +54,7 @@ export class TezosBase {
 
   private tzktURL: string;
   private _tzktApiClient: TzktApiClient;
+  public ctezAdminAddress: string;
 
   constructor(network: string) {
     const config = getTezosConfig('tezos', network);
@@ -63,6 +63,7 @@ export class TezosBase {
     this.tzktURL = config.network.tzktURL;
     this.tokenListType = config.network.tokenListType;
     this.tokenListSource = config.network.tokenListSource;
+    this.ctezAdminAddress = config.network.ctezAdminAddress;
     this._provider = new TezosToolkit(this.rpcUrl);
     this._rpcClient = new RpcClient(this.rpcUrl);
     this._tzktApiClient = new TzktApiClient(this.tzktURL);
@@ -77,18 +78,25 @@ export class TezosBase {
   }
 
   async init(): Promise<void> {
-    if (!this.ready() && !this._initializing) {
-      this._initializing = true;
-      this._initPromise = this.loadTokens(
-        this.tokenListSource,
-        this.tokenListType
-      ).then(() => {
-        this._ready = true;
-        this._initializing = false;
-      });
-      this.provider.setRpcProvider(this.rpcUrl);
+    await this._initialized; // Wait for any previous init() calls to complete
+    if (!this.ready()) {
+      // If we're not ready, this._initialized will be a Promise that resolves after init() completes
+      this._initialized = (async () => {
+        try {
+          await this.loadTokens(
+            this.tokenListSource,
+            this.tokenListType
+          );
+          this.provider.setRpcProvider(this.rpcUrl);
+          return true;
+        } catch (e) {
+          logger.error(`Failed to initialize ${this.chainName} chain: ${e}`);
+          return false;
+        }
+      })();
+      this._ready = await this._initialized; // Wait for the initialization to complete
     }
-    return this._initPromise;
+    return;
   }
 
   private async loadTokens(
@@ -111,10 +119,10 @@ export class TezosBase {
     return this._contractMap[address];
   }
 
-  // returns the contract storage for a given address (cached for 15 seconds)
+  // returns the contract storage for a given address (cached for 12 seconds)
   async getContractStorage(address: string) {
     const timestamp = Date.now();
-    if (!this._contractStorageMap[address] || timestamp - this._contractStorageMap[address].timestamp > 15000) {
+    if (!this._contractStorageMap[address] || timestamp - this._contractStorageMap[address].timestamp > 12000) {
       const contract = await this.getContract(address);
       this._contractStorageMap[address] = {
         storage: await contract.storage(),
@@ -199,6 +207,9 @@ export class TezosBase {
   ): Promise<TokenValue> {
     if (spender === 'plenty') {
       // plenty doesn't need an allowance
+      return { value: constants.MaxUint256, decimals: tokenDecimals };
+    } else if (spender === 'quipuswap') {
+      // quipuswap doesn't need an allowance
       return { value: constants.MaxUint256, decimals: tokenDecimals };
     }
 
