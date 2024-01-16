@@ -50,8 +50,9 @@ export class NftPerp implements NftPerpish {
         return this._sdk.getSupportedAmms();
     }
 
-    public async getPosition(amm: Amm): Promise<PositionResponse> {
-        return await this._sdk.getPosition(amm);
+    public async getPosition(wallet: Wallet, amm: Amm): Promise<PositionResponse> {
+        const sdk = new SDK({ rpcUrl: this._chain.rpcUrl, privateKey: wallet.privateKey });
+        return await sdk.getPosition(amm);
     }
 
     public async getMarkPrice(amm: Amm): Promise<string> {

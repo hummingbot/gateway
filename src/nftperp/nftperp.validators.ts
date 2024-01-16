@@ -48,6 +48,14 @@ export const validateNftPerpCommonRequest: RequestValidator = mkRequestValidator
     validateAmm,
 ]);
 
+export const validateGetPositionRequest: RequestValidator = mkRequestValidator([
+    validateConnector,
+    validateChain,
+    validateNetwork,
+    validateAmm,
+    validateAddress,
+])
+
 export const validateCommonWriteTxRequest: RequestValidator = mkRequestValidator([
     validateConnector,
     validateChain,

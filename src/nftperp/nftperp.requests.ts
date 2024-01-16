@@ -12,6 +12,10 @@ export interface NftPerpCommonRequest extends NetworkSelectionRequest {
     amm: Amm
 }
 
+export interface GetPositionRequest extends NftPerpCommonRequest {
+    address: string;
+}
+
 export interface PositionResponse {
     amm: Amm;
     trader: string;

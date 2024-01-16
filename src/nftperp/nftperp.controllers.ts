@@ -8,7 +8,8 @@ import {
     UpdateLimitOrderBatchRequest,
     DeleteOrdersRequest,
     ClosePositionRequest,
-    OpenTriggerOrderRequest
+    OpenTriggerOrderRequest,
+    GetPositionRequest
 } from "./nftperp.requests";
 import { logger } from '../services/logger';
 import { Wallet } from "ethers";
@@ -26,14 +27,26 @@ export async function supportedAmms(req: NetworkSelectionRequest): Promise<{ amm
     return { amms };
 }
 
-export async function position(req: NftPerpCommonRequest): Promise<PositionResponse> {
+export async function position(req: GetPositionRequest): Promise<PositionResponse> {
     const connector: NftPerp = await getConnector<NftPerp>(
         req.chain,
         req.network,
         req.connector
     );
+    const chain = await getInitializedChain<Ethereumish>(req.chain, req.network);
+    let wallet: Wallet;
+    try {
+        wallet = await chain.getWallet(req.address);
+    } catch (err) {
+        logger.error(`Wallet ${req.address} not available.`);
+        throw new HttpException(
+            500,
+            LOAD_WALLET_ERROR_MESSAGE + err,
+            LOAD_WALLET_ERROR_CODE
+        );
+    }
 
-    const positionInfo = await connector.getPosition(req.amm);
+    const positionInfo = await connector.getPosition(wallet, req.amm);
     return positionInfo;
 }
 

@@ -654,11 +654,12 @@ export interface NftPerpish {
   getSupportedAmms(): string[];
 
   /**
-   * Gets available Position
+   * Gets available position for a given trader
+   * @param wallet The wallet account to get the position for
    * @param amm The name of amm
    * @returns
    */
-  getPosition(amm: Amm): Promise<PositionResponse>;
+  getPosition(wallet: Wallet, amm: Amm): Promise<PositionResponse>;
 
   /**
    * Gets trading price

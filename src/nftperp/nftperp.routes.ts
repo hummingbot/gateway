@@ -21,6 +21,7 @@ import {
     validateNetworkSelectionRequest,
     validateNftPerpCommonRequest,
     validateCommonWriteTxRequest,
+    validateGetPositionRequest,
 } from './nftperp.validators';
 import { NetworkSelectionRequest } from '../services/common-interfaces';
 import {
@@ -38,6 +39,7 @@ import {
     DeleteOrdersRequest,
     ClosePositionRequest,
     OpenTriggerOrderRequest,
+    GetPositionRequest,
 
 } from './nftperp.requests';
 
@@ -61,10 +63,10 @@ export namespace NftPerpRoutes {
         '/position',
         asyncHandler(
             async (
-                req: Request<{}, {}, NftPerpCommonRequest>,
+                req: Request<{}, {}, GetPositionRequest>,
                 res: Response<PositionResponse, {}>
             ) => {
-                validateNftPerpCommonRequest(req.body);
+                validateGetPositionRequest(req.body);
                 res.status(200).json(await position(req.body));
             }
         )
