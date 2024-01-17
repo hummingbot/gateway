@@ -519,6 +519,382 @@
       "standard": "FA2",
       "address": "KT1GY5qCWwmESfTv9dgjYyTYs2T5XGDSvRp1",
       "tokenId": 0
+    },
+    {
+      "name": "Stably USD",
+      "symbol": "USDS",
+      "address": "KT1REEb5VxWRjcHm5GzDMwErMmNFftsE5Gpf",
+      "decimals": 6,
+      "standard": "FA2",
+      "tokenId": 0
+    },
+    {
+      "name": "Staker Governance Token",
+      "symbol": "STKR",
+      "address": "KT1AEfeckNbdEYwaMKkytBwPJPycz7jdSGea",
+      "decimals": 18,
+      "standard": "FA1.2",
+      "tokenId": 0
+    },
+    {
+      "name": "hic et nunc DAO",
+      "symbol": "hDAO",
+      "address": "KT1AFA2mwNUMNd4SsujE1YYp29vd8BZejyKW",
+      "decimals": 6,
+      "standard": "FA2",
+      "tokenId": 0
+    },
+    {
+      "name": "Wrap Governance Token",
+      "symbol": "WRAP",
+      "address": "KT1LRboPna9yQY9BrjtQYDS1DVxhKESK4VVd",
+      "decimals": 8,
+      "standard": "FA2",
+      "tokenId": 0
+    },
+    {
+      "name": "CRUNCH",
+      "symbol": "CRUNCH",
+      "address": "KT1BHCumksALJQJ8q8to2EPigPW6qpyTr7Ng",
+      "decimals": 8,
+      "standard": "FA2",
+      "tokenId": 0
+    },
+    {
+      "name": "Wrapped AAVE",
+      "symbol": "wAAVE",
+      "address": "KT18fp5rcTW7mbWDmzFwjLDUhs5MeJmagDSZ",
+      "decimals": 18,
+      "standard": "FA2",
+      "tokenId": 0
+    },
+    {
+      "name": "Wrapped BUSD",
+      "symbol": "wBUSD",
+      "address": "KT18fp5rcTW7mbWDmzFwjLDUhs5MeJmagDSZ",
+      "decimals": 18,
+      "standard": "FA2",
+      "tokenId": 1
+    },
+    {
+      "name": "Wrapped CEL",
+      "symbol": "wCEL",
+      "address": "KT18fp5rcTW7mbWDmzFwjLDUhs5MeJmagDSZ",
+      "decimals": 4,
+      "standard": "FA2",
+      "tokenId": 2
+    },
+    {
+      "name": "Wrapped COMP",
+      "symbol": "wCOMP",
+      "address": "KT18fp5rcTW7mbWDmzFwjLDUhs5MeJmagDSZ",
+      "decimals": 18,
+      "standard": "FA2",
+      "tokenId": 3
+    },
+    {
+      "name": "Wrapped CRO",
+      "symbol": "wCRO",
+      "address": "KT18fp5rcTW7mbWDmzFwjLDUhs5MeJmagDSZ",
+      "decimals": 8,
+      "standard": "FA2",
+      "tokenId": 4
+    },
+    {
+      "name": "Wrapped DAI",
+      "symbol": "wDAI",
+      "address": "KT18fp5rcTW7mbWDmzFwjLDUhs5MeJmagDSZ",
+      "decimals": 18,
+      "standard": "FA2",
+      "tokenId": 5
+    },
+    {
+      "name": "Wrapped FTT",
+      "symbol": "wFTT",
+      "address": "KT18fp5rcTW7mbWDmzFwjLDUhs5MeJmagDSZ",
+      "decimals": 18,
+      "standard": "FA2",
+      "tokenId": 6
+    },
+    {
+      "name": "Wrapped HT",
+      "symbol": "wHT",
+      "address": "KT18fp5rcTW7mbWDmzFwjLDUhs5MeJmagDSZ",
+      "decimals": 18,
+      "standard": "FA2",
+      "tokenId": 7
+    },
+    {
+      "name": "Wrapped HUSD",
+      "symbol": "wHUSD",
+      "address": "KT18fp5rcTW7mbWDmzFwjLDUhs5MeJmagDSZ",
+      "decimals": 8,
+      "standard": "FA2",
+      "tokenId": 8
+    },
+    {
+      "name": "Wrapped LEO",
+      "symbol": "wLEO",
+      "address": "KT18fp5rcTW7mbWDmzFwjLDUhs5MeJmagDSZ",
+      "decimals": 18,
+      "standard": "FA2",
+      "tokenId": 9
+    },
+    {
+      "name": "Wrapped LINK",
+      "symbol": "wLINK",
+      "address": "KT18fp5rcTW7mbWDmzFwjLDUhs5MeJmagDSZ",
+      "decimals": 18,
+      "standard": "FA2",
+      "tokenId": 10
+    },
+    {
+      "name": "Wrapped MATIC",
+      "symbol": "wMATIC",
+      "address": "KT18fp5rcTW7mbWDmzFwjLDUhs5MeJmagDSZ",
+      "decimals": 18,
+      "standard": "FA2",
+      "tokenId": 11
+    },
+    {
+      "name": "Wrapped MKR",
+      "symbol": "wMKR",
+      "address": "KT18fp5rcTW7mbWDmzFwjLDUhs5MeJmagDSZ",
+      "decimals": 18,
+      "standard": "FA2",
+      "tokenId": 12
+    },
+    {
+      "name": "Wrapped OKB",
+      "symbol": "wOKB",
+      "address": "KT18fp5rcTW7mbWDmzFwjLDUhs5MeJmagDSZ",
+      "decimals": 18,
+      "standard": "FA2",
+      "tokenId": 13
+    },
+    {
+      "name": "Wrapped PAX",
+      "symbol": "wPAX",
+      "address": "KT18fp5rcTW7mbWDmzFwjLDUhs5MeJmagDSZ",
+      "decimals": 18,
+      "standard": "FA2",
+      "tokenId": 14
+    },
+    {
+      "name": "Wrapped SUSHI",
+      "symbol": "wSUSHI",
+      "address": "KT18fp5rcTW7mbWDmzFwjLDUhs5MeJmagDSZ",
+      "decimals": 18,
+      "standard": "FA2",
+      "tokenId": 15
+    },
+    {
+      "name": "Wrapped UNI",
+      "symbol": "wUNI",
+      "address": "KT18fp5rcTW7mbWDmzFwjLDUhs5MeJmagDSZ",
+      "decimals": 18,
+      "standard": "FA2",
+      "tokenId": 16
+    },
+    {
+      "name": "Wrapped USDC",
+      "symbol": "wUSDC",
+      "address": "KT18fp5rcTW7mbWDmzFwjLDUhs5MeJmagDSZ",
+      "decimals": 6,
+      "standard": "FA2",
+      "tokenId": 17
+    },
+    {
+      "name": "Wrapped USDT",
+      "symbol": "wUSDT",
+      "address": "KT18fp5rcTW7mbWDmzFwjLDUhs5MeJmagDSZ",
+      "decimals": 6,
+      "standard": "FA2",
+      "tokenId": 18
+    },
+    {
+      "name": "Wrapped WETH",
+      "symbol": "wWETH",
+      "address": "KT18fp5rcTW7mbWDmzFwjLDUhs5MeJmagDSZ",
+      "decimals": 18,
+      "standard": "FA2",
+      "tokenId": 20
+    },
+    {
+      "name": "Plenty DAO",
+      "symbol": "PLENTY",
+      "address": "KT1GRSvLoikDsXujKgZPsGLX8k8VvR2Tq95b",
+      "decimals": 18,
+      "standard": "FA1.2",
+      "tokenId": 0
+    },
+    {
+      "name": "Crunchy DAO",
+      "symbol": "crDAO",
+      "address": "KT1XPFjZqCULSnqfKaaYy8hJjeY63UNSGwXg",
+      "decimals": 8,
+      "standard": "FA2",
+      "tokenId": 0
+    },
+    {
+      "name": "Bazaar DAO",
+      "symbol": "bDAO",
+      "address": "KT1GUNKmkrgtMQjJp3XxcmCj6HZBhkUmMbge",
+      "decimals": 6,
+      "standard": "FA2",
+      "tokenId": 0
+    },
+    {
+      "name": "Rocket",
+      "symbol": "RCKT",
+      "address": "KT19JYndHaesXpvUfiwgg8BtE41HKkjjGMRC",
+      "decimals": 6,
+      "standard": "FA2",
+      "tokenId": 0
+    },
+    {
+      "name": "Rocket DAO",
+      "symbol": "rkDAO",
+      "address": "KT1MuyJ7gVw74FNJpfb2mHR15aCREdyEbe2e",
+      "decimals": 8,
+      "standard": "FA2",
+      "tokenId": 0
+    },
+    {
+      "name": "TezID",
+      "symbol": "IDZ",
+      "address": "KT1WapdVeFqhCfqwdHWwTzSTX7yXoHgiPRPU",
+      "decimals": 8,
+      "standard": "FA2",
+      "tokenId": 0
+    },
+    {
+      "name": "CryptoEasy",
+      "symbol": "EASY",
+      "address": "KT1QgAtLPu3SNq9c6DPLanwL5bvfX3rgh2CS",
+      "decimals": 6,
+      "standard": "FA2",
+      "tokenId": 0
+    },
+    {
+      "name": "xPLENTY",
+      "symbol": "xPLENTY",
+      "address": "KT1Rpviewjg82JgjGfAKFneSupjAR1kUhbza",
+      "decimals": 18,
+      "standard": "FA1.2",
+      "tokenId": 0
+    },
+    {
+      "name": "Spice Token",
+      "symbol": "SPI",
+      "address": "KT1CS2xKGHNPTauSh5Re4qE3N9PCfG5u4dPx",
+      "decimals": 6,
+      "standard": "FA2",
+      "tokenId": 0
+    },
+    {
+      "name": "Pixel",
+      "symbol": "PXL",
+      "address": "KT1F1mn2jbqQCJcsNgYKVAQjvenecNMY2oPK",
+      "decimals": 6,
+      "standard": "FA2",
+      "tokenId": 0
+    },
+    {
+      "name": "akaSwap DAO",
+      "symbol": "akaDAO",
+      "address": "KT1AM3PV1cwmGRw28DVTgsjjsjHvmL6z4rGh",
+      "decimals": 6,
+      "standard": "FA2",
+      "tokenId": 0
+    },
+    {
+      "name": "Ethereum DAI",
+      "symbol": "DAI.e",
+      "address": "KT1UsSfaXyqcjSVPeiD7U1bWgKy3taYN7NWY",
+      "decimals": 18,
+      "standard": "FA2",
+      "tokenId": 6
+    },
+    {
+      "name": "Allbridge",
+      "symbol": "ABR",
+      "address": "KT1UG6PdaKoJcc3yD6mkFVfxnS1uJeW3cGeX",
+      "decimals": 6,
+      "standard": "FA2",
+      "tokenId": 0
+    },
+    {
+      "name": "Allbridge Wrapped BUSD",
+      "symbol": "abBUSD",
+      "address": "KT1UG6PdaKoJcc3yD6mkFVfxnS1uJeW3cGeX",
+      "decimals": 6,
+      "standard": "FA2",
+      "tokenId": 1
+    },
+    {
+      "name": "Allbridge Wrapped Polygon USDC",
+      "symbol": "apUSDC",
+      "address": "KT1UG6PdaKoJcc3yD6mkFVfxnS1uJeW3cGeX",
+      "decimals": 6,
+      "standard": "FA2",
+      "tokenId": 2
+    },
+    {
+      "name": "Old Temple Key",
+      "symbol": "Old TKEY",
+      "address": "KT1WihWRnmzhfebi6zqQ4tvNGiPeVxiGwTi2",
+      "decimals": 18,
+      "standard": "FA2",
+      "tokenId": 0
+    },
+    {
+      "name": "Temple Key",
+      "symbol": "TKEY",
+      "address": "KT1VaEsVNiBoA56eToEK6n6BcPgh1tdx9eXi",
+      "decimals": 18,
+      "standard": "FA2",
+      "tokenId": 0
+    },
+    {
+      "name": "STARtz",
+      "symbol": "STARtz",
+      "address": "KT1GS3uEWWVkAxVfq66EtUn1g6uGX1J72K5Y",
+      "decimals": 0,
+      "standard": "FA2",
+      "tokenId": 0
+    },
+    {
+      "name": "TCOIN",
+      "symbol": "TCOIN",
+      "address": "KT1GorwGk5WXLUc3sEWrmPLQBSekmYrtz1sn",
+      "decimals": 8,
+      "standard": "FA1.2",
+      "tokenId": 0
+    },
+    {
+      "name": "Teia DAO token",
+      "symbol": "TEIA",
+      "address": "KT1QrtA753MSv8VGxkDrKKyJniG5JtuHHbtV",
+      "decimals": 6,
+      "standard": "FA2",
+      "tokenId": 0
+    },
+    {
+      "name": "Kord.Fi tez deposit",
+      "symbol": "dtez",
+      "address": "KT19qWdPBRtkWrsQnDvVfsqJgJB19keBhhMX",
+      "decimals": 12,
+      "standard": "FA1.2",
+      "tokenId": 0
+    },
+    {
+      "name": "Kord.Fi tzBTC deposit",
+      "symbol": "dtzbtc",
+      "address": "KT1WL6sHt8syFT2ts7NCmb5gPcS2tyfRxSyi",
+      "decimals": 20,
+      "standard": "FA1.2",
+      "tokenId": 0
     }
   ]
 }
