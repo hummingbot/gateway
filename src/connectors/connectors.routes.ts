@@ -22,6 +22,7 @@ import { PlentyConfig } from './plenty/plenty.config';
 import { XRPLCLOBConfig } from './xrpl/xrpl.clob.config';
 import { KujiraConfig } from './kujira/kujira.config';
 import { QuipuswapConfig } from './quipuswap/quipuswap.config';
+import { OsmosisConfig } from '../chains/osmosis/osmosis.config';
 
 export namespace ConnectorsRoutes {
   export const router = Router();
@@ -168,7 +169,13 @@ export namespace ConnectorsRoutes {
             trading_type: QuipuswapConfig.config.tradingTypes,
             chain_type: QuipuswapConfig.config.chainType,
             available_networks: QuipuswapConfig.config.availableNetworks,
-          }
+          },
+          {
+            name: 'osmosis',
+            trading_type: OsmosisConfig.config.tradingTypes('swap'),
+            chain_type: OsmosisConfig.config.chainType,
+            available_networks: OsmosisConfig.config.availableNetworks,
+          },
         ],
       });
     })

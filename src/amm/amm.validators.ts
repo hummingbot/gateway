@@ -11,10 +11,15 @@ import {
   validateChain,
   validateNetwork,
   validateNonce,
-  validateAddress,
   validateMaxFeePerGas,
   validateMaxPriorityFeePerGas,
+  isAddress as isEthereumAddress,
+  invalidAddressError,
 } from '../chains/ethereum/ethereum.validators';
+
+import {
+  isValidCosmosAddress
+} from '../chains/cosmos/cosmos.validators';
 
 import { FeeAmount } from '@uniswap/v3-sdk';
 
@@ -61,6 +66,13 @@ export const validateConnector: Validator = mkValidator(
   'connector',
   invalidConnectorError,
   (val) => typeof val === 'string'
+);
+
+// given a request, look for a key called address that is an Ethereum or Cosmos wallet
+export const validateAddress: Validator = mkValidator(
+  'address',
+  invalidAddressError,
+  (val) => typeof val === 'string' && (isEthereumAddress(val) || isValidCosmosAddress(val))
 );
 
 export const validateQuote: Validator = mkValidator(
@@ -121,8 +133,7 @@ export const validateFee: Validator = mkValidator(
   'fee',
   invalidFeeTier,
   (val) =>
-    typeof val === 'string' &&
-    Object.keys(FeeAmount).includes(val.toUpperCase())
+  typeof val === 'string' && Object.keys(FeeAmount).includes(val.toUpperCase())
 );
 
 export const validateLowerPrice: Validator = mkValidator(
@@ -155,6 +166,14 @@ export const validateTokenId: Validator = mkValidator(
   true
 );
 
+export const validatePoolId: Validator = mkValidator(
+  'poolId',
+  invalidTokenIdError,
+  (val) =>
+    (typeof val === 'string' && BigInt(val) >= 0),
+  true
+);
+
 export const validatePeriod: Validator = mkValidator(
   'period',
   invalidTimeError,
@@ -181,7 +200,7 @@ export const validateDecreasePercent: Validator = mkValidator(
 export const validateAllowedSlippage: Validator = mkValidator(
   'allowedSlippage',
   invalidAllowedSlippageError,
-  (val) => typeof val === 'string' && isFractionString(val),
+  (val) => typeof val === 'string' && (isFractionString(val) || val.includes('%')),
   true
 );
 
@@ -293,6 +312,7 @@ export const validateAddLiquidityRequest: RequestValidator = mkRequestValidator(
     validateNonce,
     validateMaxFeePerGas,
     validateMaxPriorityFeePerGas,
+    validatePoolId,
   ]
 );
 
@@ -325,6 +345,8 @@ export const validatePositionRequest: RequestValidator = mkRequestValidator([
   validateChain,
   validateNetwork,
   validateTokenId,
+  validateAddress,
+  validatePoolId,
 ]);
 
 export const validatePoolPriceRequest: RequestValidator = mkRequestValidator([

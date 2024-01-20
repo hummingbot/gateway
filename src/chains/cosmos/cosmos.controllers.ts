@@ -1,6 +1,5 @@
 import { Cosmos } from './cosmos';
 import { CosmosBalanceRequest, CosmosPollRequest } from './cosmos.requests';
-import { TokenValue, tokenValueToString } from '../../services/base';
 import {
   HttpException,
   TOKEN_NOT_SUPPORTED_ERROR_CODE,
@@ -10,11 +9,12 @@ import {
   validateCosmosBalanceRequest,
   validateCosmosPollRequest,
 } from './cosmos.validators';
+import { CosmosTokenValue, tokenValueToString } from './cosmos-base';
 
 const { decodeTxRaw } = require('@cosmjs/proto-signing');
 
 export const toCosmosBalances = (
-  balances: Record<string, TokenValue>,
+  balances: Record<string, CosmosTokenValue>,
   tokenSymbols: Array<string>
 ): Record<string, string> => {
   const walletBalances: Record<string, string> = {};
@@ -22,7 +22,7 @@ export const toCosmosBalances = (
   tokenSymbols.forEach((symbol) => {
     let balance = '0.0';
 
-    if (balances[symbol]) {
+    if (balances[symbol]) {// && !balances[symbol].value.eq(0)) { // is check necessary here or filtered in client?
       balance = tokenValueToString(balances[symbol]);
     }
 

@@ -23,8 +23,10 @@
     "test:scripts": "jest -i --verbose ./test-scripts/*.test.ts"
   },
   "dependencies": {
+    "@cosmjs/amino": "^0.32.2",
     "@cosmjs/proto-signing": "^0.31.1",
     "@cosmjs/stargate": "^0.31.1",
+    "@cosmjs/tendermint-rpc": "^0.32.2",
     "@crocswap/sdk": "^2.4.5",
     "@ethersproject/abstract-provider": "5.7.0",
     "@ethersproject/address": "5.7.0",
@@ -36,6 +38,7 @@
     "@harmony-js/utils": "^0.1.56",
     "@improbable-eng/grpc-web": "^0.13.0",
     "@injectivelabs/sdk-ts": "^1.10.58",
+    "@osmonauts/math": "^1.11.3",
     "@pancakeswap/sdk": "^4.0.0",
     "@pancakeswap/smart-router": "^4.2.1",
     "@pancakeswap/swap-sdk-core": "^1.0.0",
@@ -91,6 +94,8 @@
     "minimist": "^1.2.6",
     "morgan": "^1.10.0",
     "near-api-js": "1.0.0",
+    "osmo-query": "16.5.2",
+    "osmojs": "16.5.1",
     "promise-retry": "^2.0.1",
     "quickswap-sdk": "^3.0.8",
     "quipuswap-v3-sdk": "^0.0.7",
