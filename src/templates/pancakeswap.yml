@@ -25,12 +25,12 @@ feeTier: 'MEDIUM'
 
 contractAddresses:
   mainnet:
-    routerAddress: '0x10ED43C718714eb63d5aA57B78B54704E256024E'
+    routerAddress: '0x13f4EA83D0bd40E75C8222255bc855a974568Dd4'
     pancakeswapV3SmartOrderRouterAddress: '0x1b81D678ffb9C0263b24A97847620C99d213eB14'
     pancakeswapV3NftManagerAddress: '0x46A15B0b27311cedF172AB29E4f4766fbE7F4364'
     pancakeswapV3QuoterV2ContractAddress: '0xB048Bbc1Ee6b733FFfCFb9e9CeF7375518e25997'
   testnet:
-    routerAddress: '0xdc4904b5f716Ff30d8495e35dC99c109bb5eCf81'
+    routerAddress: '0x9a489505a00cE272eAa5e07Dba6491314CaE3796'
     pancakeswapV3SmartOrderRouterAddress: '0x1b81D678ffb9C0263b24A97847620C99d213eB14'
     pancakeswapV3NftManagerAddress: '0x427bF5b37357632377eCbEC9de3626C71A5396c1'
     pancakeswapV3QuoterV2ContractAddress: '0xbC203d7f83677c7ed3F7acEc959963E7F4ECC5C2'
