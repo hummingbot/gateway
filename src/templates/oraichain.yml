@@ -1,0 +1,22 @@
+networks:
+  mainnet:
+    chainId: mainnet
+    nodeURL: https://rpc.orai.io
+    tokenListType: FILE
+    tokenListSource: /home/gateway/conf/lists/oraichain.json
+  testnet:
+    chainId: testnet
+    nodeURL: https://testnet.rpc.orai.io
+    tokenListType: FILE
+    tokenListSource: /home/gateway/conf/lists/oraichain.json
+  simulate:
+    chainId: simulate
+    nodeURL: simulate
+    tokenListType: FILE
+    tokenListSource: /home/gateway/conf/lists/oraichain.json
+    
+prefix: "orai"
+gasPrice: 0.001
+gasPriceSuffix: 'orai'
+nativeCurrencySymbol: ORAI
+gasLimitEstimate: 500000
