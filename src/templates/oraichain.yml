@@ -20,3 +20,4 @@ gasPrice: 0.001
 gasPriceSuffix: 'orai'
 nativeCurrencySymbol: ORAI
 gasLimitEstimate: 500000
+manualGasPrice: 110
