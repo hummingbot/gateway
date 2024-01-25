@@ -5,6 +5,8 @@ export interface NetworkConfig {
   rpcURL: string;
   tokenListType: TokenListType;
   tokenListSource: string;
+  marketListType: string;
+  marketListSource: string;
 }
 
 export interface Config {
@@ -14,21 +16,31 @@ export interface Config {
 }
 
 export namespace OraichainConfig {
-  export const config: Config = getOraichainConfig('oraichain');
+  export const config: Config = getOraichainConfig('oraichain', 'mainnet');
 }
 
-export function getOraichainConfig(chainName: string): Config {
+export function getOraichainConfig(
+  chainName: string,
+  networkName: string
+): Config {
   const configManager = ConfigManagerV2.getInstance();
-  const network = configManager.get(chainName + '.network');
   return {
     network: {
-      name: network,
-      rpcURL: configManager.get(chainName + '.networks.' + network + '.rpcURL'),
+      name: networkName,
+      rpcURL: configManager.get(
+        chainName + '.networks.' + networkName + '.nodeURL'
+      ),
       tokenListType: configManager.get(
-        chainName + '.networks.' + network + '.tokenListType'
+        chainName + '.networks.' + networkName + '.tokenListType'
       ),
       tokenListSource: configManager.get(
-        chainName + '.networks.' + network + '.tokenListSource'
+        chainName + '.networks.' + networkName + '.tokenListSource'
+      ),
+      marketListType: configManager.get(
+        chainName + '.networks.' + networkName + '.marketListType'
+      ),
+      marketListSource: configManager.get(
+        chainName + '.networks.' + networkName + '.marketListSource'
       ),
     },
     nativeCurrencySymbol: configManager.get(

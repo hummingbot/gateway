@@ -2,7 +2,17 @@ import { Cosmosish } from '../../services/common-interfaces';
 import { CosmosBase } from '../cosmos/cosmos-base';
 import { getOraichainConfig } from './oraichain.config';
 import { logger } from '../../services/logger';
-import { CosmosController } from '../cosmos/cosmos.controllers';
+import { MarketListType, TokenInfo } from '../../services/base';
+import axios from 'axios';
+import { promises as fs } from 'fs';
+import { OraichainController } from './oraichain.controller';
+
+export type MarketInfo = {
+  id: number;
+  marketId: string;
+  base: TokenInfo;
+  quote: TokenInfo;
+};
 
 export class Oraichain extends CosmosBase implements Cosmosish {
   private static _instances: { [name: string]: Oraichain };
@@ -12,12 +22,19 @@ export class Oraichain extends CosmosBase implements Cosmosish {
   private _requestCount: number;
   private _metricsLogInterval: number;
   private _metricTimer;
+  private _marketListSource: string;
+  private _marketListType: MarketListType;
+
   public controller;
 
+  protected marketList: MarketInfo[] = [];
+  private _marketMap: Record<string, MarketInfo[]> = {};
+
   private constructor(network: string) {
-    const config = getOraichainConfig('oraichain');
+    const config = getOraichainConfig('oraichain', network);
+    console.log(config);
     super(
-      'cosmos',
+      'oraichain',
       config.network.rpcURL,
       config.network.tokenListSource,
       config.network.tokenListType,
@@ -25,6 +42,8 @@ export class Oraichain extends CosmosBase implements Cosmosish {
     );
     this._chain = network;
     this._nativeTokenSymbol = config.nativeCurrencySymbol;
+    this._marketListSource = config.network.marketListSource;
+    this._marketListType = <MarketListType>config.network.marketListType;
 
     this._gasPrice = config.manualGasPrice;
 
@@ -35,7 +54,7 @@ export class Oraichain extends CosmosBase implements Cosmosish {
       this.metricLogger.bind(this),
       this.metricsLogInterval
     );
-    this.controller = CosmosController;
+    this.controller = OraichainController;
   }
 
   public static getInstance(network: string): Oraichain {
@@ -46,6 +65,47 @@ export class Oraichain extends CosmosBase implements Cosmosish {
       Oraichain._instances[network] = new Oraichain(network);
     }
     return Oraichain._instances[network];
+  }
+
+  async init(): Promise<void> {
+    if (!this.ready()) {
+      await super.init();
+      await this.loadMarkets(this._marketListSource, this._marketListType);
+    }
+  }
+
+  async loadMarkets(
+    marketListSource: string,
+    marketListType: MarketListType
+  ): Promise<void> {
+    console.log(marketListSource, marketListType);
+    this.marketList = await this.getMarketList(
+      marketListSource,
+      marketListType
+    );
+    if (this.marketList) {
+      this.marketList.forEach((market: MarketInfo) => {
+        if (!this._marketMap[market.marketId]) {
+          this._marketMap[market.marketId] = [];
+        }
+
+        this._marketMap[market.marketId].push(market);
+      });
+    }
+  }
+
+  async getMarketList(
+    marketListSource: string,
+    marketListType: MarketListType
+  ): Promise<MarketInfo[]> {
+    let markets;
+    if (marketListType === 'URL') {
+      const resp = await axios.get(marketListSource);
+      markets = resp.data.tokens;
+    } else {
+      markets = JSON.parse(await fs.readFile(marketListSource, 'utf8'));
+    }
+    return markets;
   }
 
   public static getConnectedInstances(): { [name: string]: Oraichain } {

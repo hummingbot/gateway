@@ -15,6 +15,12 @@
             },
             "tokenListSource": {
               "type": "string"
+            },
+            "marketListType": {
+              "type": "string"
+            },
+            "marketListSource": {
+              "type": "string"
             }
           },
           "required": ["chainId", "nodeURL"],
@@ -27,7 +33,8 @@
     "gasLimitEstimate": { "type": "number" },
     "prefix": { "type": "string" },
     "gasPrice": { "type": "number" },
-    "gasPriceSuffix": { "type": "string" }
+    "gasPriceSuffix": { "type": "string" },
+    "manualGasPrice": { "type": "number" }
   },
   "additionalProperties": false,
   "required": ["nativeCurrencySymbol"]

@@ -1,0 +1,16 @@
+[
+  {
+    "id": "1",
+    "marketId": "ORAI-USDT",
+    "base": {
+      "denom": "orai",
+      "contractAddr": "",
+      "decimals": 6
+    },
+    "quote": {
+      "denom": "",
+      "contractAddr": "orai12hzjxfh77wl572gdzct2fxv2arxcwh6gykc7qh",
+      "decimals": "6"
+    }
+  }
+]

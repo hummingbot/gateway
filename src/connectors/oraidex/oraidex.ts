@@ -13,6 +13,8 @@ import {
   NetworkSelectionRequest,
   Orderbook,
 } from '../../services/common-interfaces';
+import { OraidexModel } from './oraidex.model';
+// import { Market } from './oraidex.types';
 
 export class OraidexCLOB implements CLOBish {
   chain: string;
@@ -21,12 +23,17 @@ export class OraidexCLOB implements CLOBish {
 
   public parsedMarkets: MarketInfo = {};
 
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  private oraidex: OraidexModel;
+
   private _ready: boolean = false;
   private static _instances: { [name: string]: OraidexCLOB };
 
   private constructor(chain: string, network: string) {
     this.chain = chain;
     this.network = network;
+    this.oraidex = OraidexModel.getInstance(chain, network);
   }
 
   public static getInstance(chain: string, network: string): OraidexCLOB {
@@ -48,9 +55,9 @@ export class OraidexCLOB implements CLOBish {
   }
 
   async init() {
-    // this.kujira = await KujiraModel.getInstance(this.chain, this.network);
-    // await this.kujira.init();
-    // await this.loadMarkets();
+    this.oraidex = await OraidexModel.getInstance(this.chain, this.network);
+    await this.oraidex.oraichainNetwork.init();
+    await this.loadMarkets();
     this._ready = true;
   }
 
@@ -68,6 +75,20 @@ export class OraidexCLOB implements CLOBish {
   async markets(_req: ClobMarketsRequest): Promise<{ markets: MarketInfo }> {
     return { markets: this.parsedMarkets };
   }
+
+  //   Utility methods:
+  //   async fetchMarkets(): Promise<Market[]> {
+  //     const loadedMarkets: Market[] = [];
+  //     const markets = this._xrpl.storedMarketList;
+  //     const getMarket = async (market: MarketInfo): Promise<void> => {
+  //       const processedMarket = await this.getMarket(market);
+  //       loadedMarkets.push(processedMarket);
+  //     };
+
+  //     // await promiseAllInBatches(getMarket, markets, 1, 1);
+
+  //     return loadedMarkets;
+  //   }
 
   public async orderBook(_req: ClobOrderbookRequest): Promise<Orderbook> {
     const buys: any = [];

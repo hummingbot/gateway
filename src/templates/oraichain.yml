@@ -1,19 +1,25 @@
 networks:
   mainnet:
-    chainId: mainnet
+    chainId: Oraichain
     nodeURL: https://rpc.orai.io
     tokenListType: FILE
     tokenListSource: /home/gateway/conf/lists/oraichain.json
+    marketListType: FILE
+    marketListSource: /home/gateway/conf/lists/oraidex_markets.json
   testnet:
-    chainId: testnet
+    chainId: Oraichain-testnet
     nodeURL: https://testnet.rpc.orai.io
     tokenListType: FILE
     tokenListSource: /home/gateway/conf/lists/oraichain.json
+    marketListType: FILE
+    marketListSource: /home/gateway/conf/lists/oraidex_markets.json
   simulate:
     chainId: simulate
     nodeURL: simulate
     tokenListType: FILE
     tokenListSource: /home/gateway/conf/lists/oraichain.json
+    marketListType: FILE
+    marketListSource: /home/gateway/conf/lists/oraidex_markets.json
     
 prefix: "orai"
 gasPrice: 0.001
