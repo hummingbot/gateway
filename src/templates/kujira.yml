@@ -37,7 +37,7 @@ networks:
     tokenListSource: /home/gateway/conf/lists/kujira.json
 prefix: 'kujira'
 accountNumber: 0
-gasPrice: 0.00125
+gasPrice: 0.0034
 gasPriceSuffix: 'ukuji'
 gasLimitEstimate: 0.009147
 orderBook:
