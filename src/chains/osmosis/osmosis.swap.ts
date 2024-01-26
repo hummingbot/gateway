@@ -6,7 +6,7 @@ import { BigNumber } from "bignumber.js";
 import { CoinDenom, Trade, PrettyPair } from "@osmonauts/math/dist/types";
 import { symbolToOsmoDenom } from "@osmonauts/math/dist/utils";
 import { SwapAmountInRoute } from "osmojs/dist/codegen/osmosis/poolmanager/v1beta1/swap_route";
-import { Pool } from 'osmojs/dist/codegen/osmosis/gamm/v1beta1/balancerPool';
+import { Pool } from 'osmojs/dist/codegen/osmosis/gamm/pool-models/balancer/balancerPool';
 import { Coin } from "osmojs/dist/codegen/cosmos/base/v1beta1/coin";
 
 export const routesThroughPools = ({
