@@ -15,7 +15,7 @@ jest.setTimeout(300000); // run for 5 mins
 let osmosis: Osmosis;
 
 beforeAll(async () => {
-  patch(ConfigManagerCertPassphrase, 'readPassphrase', () => 'macymo');
+  patch(ConfigManagerCertPassphrase, 'readPassphrase', () => 'a');
   osmosis = Osmosis.getInstance('testnet');
 
   await osmosis.init();
