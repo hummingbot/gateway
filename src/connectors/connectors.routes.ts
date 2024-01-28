@@ -21,6 +21,7 @@ import { CurveConfig } from './curve/curveswap.config';
 import { PlentyConfig } from './plenty/plenty.config';
 import { XRPLCLOBConfig } from './xrpl/xrpl.clob.config';
 import { KujiraConfig } from './kujira/kujira.config';
+import { NftPerpConfig } from './nftperp/nftperp.config';
 import { QuipuswapConfig } from './quipuswap/quipuswap.config';
 
 export namespace ConnectorsRoutes {
@@ -162,6 +163,12 @@ export namespace ConnectorsRoutes {
               accountId:
                 'Enter your kujira account number (input 0 if unsure) >>> ',
             },
+          },
+          {
+            name: 'nftperp',
+            trading_type: NftPerpConfig.config.tradingTypes,
+            chain_type: NftPerpConfig.config.chainType,
+            available_networks: NftPerpConfig.config.availableNetworks
           },
           {
             name: 'quipuswap',

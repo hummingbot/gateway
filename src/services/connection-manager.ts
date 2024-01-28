@@ -42,6 +42,7 @@ import { Kujira } from '../chains/kujira/kujira';
 import { KujiraCLOB } from '../connectors/kujira/kujira';
 import { PancakeswapLP } from '../connectors/pancakeswap/pancakeswap.lp';
 import { XRPLCLOB } from '../connectors/xrpl/xrpl';
+import { NftPerp } from '../connectors/nftperp/nftperp';
 import { QuipuSwap } from '../connectors/quipuswap/quipuswap';
 
 export type ChainUnion =
@@ -151,6 +152,7 @@ export type ConnectorUnion =
   | XRPLCLOB
   | Curve
   | KujiraCLOB
+  | NftPerp
   | QuipuSwap;
 
 export type Connector<T> = T extends Uniswapish
@@ -232,6 +234,8 @@ export async function getConnector<T>(
     connector === 'curve'
   ) {
     connectorInstance = Curve.getInstance(chain, network);
+  } else if (chain === 'ethereum' && network === 'arbitrum' && connector === 'nftperp') {
+    connectorInstance = NftPerp.getInstance(chain, network);
   } else if (chain === 'tezos' && connector === 'quipuswap') {
     connectorInstance = QuipuSwap.getInstance(network);
   }

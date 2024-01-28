@@ -16,10 +16,11 @@ import { SwaggerManager } from './services/swagger-manager';
 import { ConnectorsRoutes } from './connectors/connectors.routes';
 import { AmmRoutes, AmmLiquidityRoutes, PerpAmmRoutes } from './amm/amm.routes';
 import { CLOBRoutes, PerpClobRoutes } from './clob/clob.routes';
+import { ChainRoutes } from './chains/chain.routes';
+import { NftPerpRoutes } from './nftperp/nftperp.routes';
 
 import morgan from 'morgan';
 import swaggerUi from 'swagger-ui-express';
-import { ChainRoutes } from './chains/chain.routes';
 
 export const gatewayApp = express();
 
@@ -52,6 +53,7 @@ gatewayApp.use('/amm/liquidity', AmmLiquidityRoutes.router);
 gatewayApp.use('/wallet', WalletRoutes.router);
 gatewayApp.use('/clob', CLOBRoutes.router);
 gatewayApp.use('/clob/perp', PerpClobRoutes.router);
+gatewayApp.use('/nftperp', NftPerpRoutes.router);
 
 // a simple route to test that the server is running
 gatewayApp.get('/', (_req: Request, res: Response) => {
@@ -94,6 +96,7 @@ export const swaggerDocument = SwaggerManager.generateSwaggerJson(
     './docs/swagger/amm-routes.yml',
     './docs/swagger/amm-liquidity-routes.yml',
     './docs/swagger/chain-routes.yml',
+    './docs/swagger/nftperp-routes.yml'
   ]
 );
 
@@ -112,7 +115,7 @@ export const startSwagger = async () => {
 
 export const startGateway = async () => {
   const port = ConfigManagerV2.getInstance().get('server.port');
-  const gateway_version="dev-1.24.0"; // gateway version
+  const gateway_version = "dev-1.24.0"; // gateway version
   if (!ConfigManagerV2.getInstance().get('server.id')) {
     ConfigManagerV2.getInstance().set(
       'server.id',

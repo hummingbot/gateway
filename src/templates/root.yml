@@ -120,6 +120,9 @@ configurations:
     configurationPath: kujira.yml
     schemaPath: kujira-schema.json
 
+  $namespace nftperp:
+    configurationPath: nftperp.yml
+    schemaPath: nftperp-schema.json
   $namespace quipuswap:
     configurationPath: quipuswap.yml
     schemaPath: quipuswap-schema.json

@@ -5,7 +5,7 @@ import {
   Wallet,
   ContractInterface,
   BigNumber,
-  ethers,
+  ethers
 } from 'ethers';
 import {
   Contract as XdcContract,
@@ -113,6 +113,7 @@ import {
 import { BalanceRequest } from '../network/network.requests';
 import { TradeV2 } from '@traderjoe-xyz/sdk-v2';
 import { CurveTrade } from '../connectors/curve/curve';
+import { Amm, Side, PositionResponse, TriggerType } from "@nftperp/sdk/types";
 
 // TODO Check the possibility to have clob/solana/serum equivalents here
 //  Check this link https://hummingbot.org/developers/gateway/building-gateway-connectors/#5-add-sdk-classes-to-uniswapish-interface
@@ -642,6 +643,155 @@ export interface Perpish {
     tickerSymbol: string,
     allowedSlippage?: string
   ): Promise<Transaction>;
+}
+
+export interface NftPerpish {
+
+  /**
+   * Default time-to-live for transactions, in seconds.
+   */
+  ttl: number;
+
+  /**
+   * Initialize a nftperp instance.  
+   * The private key is needed to create a sdk instance. 
+   * @param privateKey The private key string
+   */
+  init(privateKey: string): Promise<void>;
+
+  ready(): boolean;
+
+  /**
+   * Gets a list of supported amms
+   * @returns A list of supported amm
+   */
+  getSupportedAmms(): string[];
+
+  /**
+   * Gets available position for a given trader
+   * @param wallet The wallet account to get the position for
+   * @param amm The name of amm
+   * @returns
+   */
+  getPosition(wallet: Wallet, amm: Amm): Promise<PositionResponse>;
+
+  /**
+   * Gets trading price
+   * @param amm The name of amm
+   * @returns The mark price
+   */
+  getMarkPrice(amm: Amm): Promise<string>;
+
+  /**
+   * Gets index price (oracle price - as per marketplaces)
+   * @param amm The name of amm
+   * @returns The index price
+   */
+  getIndexPrice(amm: Amm): Promise<string>;
+
+  /**
+   * Gets funding info
+   * @param amm The name of amm
+   * @returns The funding info
+   */
+  getFundingRate(amm: Amm): Promise<string>;
+
+  /**
+   * Creates a market order
+   * @param wallet The wallet account to execute a tx
+   * @param amm The name of amm
+   * @param side Side.BUY or Side.SELL
+   * @param margin The margin value
+   * @param leverage The leverage value
+   * @param slippagePercent The slippage value
+   * @returns The transaction hash
+   */
+  openMarketOrder(wallet: Wallet, amm: Amm, side: Side, margin: number, leverage: number, slippagePercent?: number): Promise<string>;
+
+  /**
+   * Creates a limit order
+   * @param wallet The wallet account to execute a tx
+   * @param amm The name of amm
+   * @param side Side.BUY or Side.SELL
+   * @param price The limit order price
+   * @param margin The margin value
+   * @param leverage The leverage value
+   * @returns The transaction hash
+   */
+  openLimitOrder(wallet: Wallet, amm: Amm, side: Side, price: number, margin: number, leverage: number, reduceOnly?: boolean): Promise<string>;
+
+  /**
+   * Updates a given limit order
+   * @param wallet The wallet account to execute a tx
+   * @param id The order id
+   * @param amm The name of amm
+   * @param side Side.BUY or Side.SELL
+   * @param price The limit order price
+   * @param margin The margin value
+   * @param leverage The leverage value
+   * @returns The transaction hash
+   */
+  updateLimitOrder(wallet: Wallet, id: number, amm: Amm, side: Side, price: number, margin: number, leverage: number, reduceOnly?: boolean): Promise<string>;
+
+  /**
+   * Deletes a given limit order
+   * @param wallet The wallet account to execute a tx
+   * @param id The order id
+   * @returns The transaction hash
+   * */
+  deleteLimitOrder(wallet: Wallet, id: number): Promise<string>;
+
+  /**
+   * Creates limit orders in batch
+   * @param params The batch param
+   * @returns The transaction hash
+   */
+  openLimitOrderBatch(wallet: Wallet, params: { amm: Amm, side: Side, price: number, margin: number, leverage: number, reduceOnly?: boolean }[]): Promise<string>;
+
+  /**
+   * Update limit orders in batch
+   * @param wallet The wallet account to execute a tx
+   * @param ids - The list of limit order id
+   * @param params - The list of update param
+   * @returns The transaction hash
+   */
+  updateLimitOrderBatch(wallet: Wallet, ids: number[], params: { amm: Amm, side: Side, price: number, margin: number, leverage: number, reduceOnly?: boolean }[]): Promise<string>;
+
+  /**
+   * Delete limit orders in batch
+   * @param wallet The wallet account to execute a tx
+   * @param ids The list of limit order to delete
+   * @returns The transaction hash
+   */
+  deleteLimitOrderBatch(wallet: Wallet, ids: number[]): Promise<string>;
+
+  /**
+   * Creates a trigger order
+   * @param wallet The wallet account to execute a tx
+   * @param amm The name of amm
+   * @param price The trigger price
+   * @param size The execution size
+   * @param type SL or TP
+   * @returns The transaction hash
+   */
+  openTriggerOrder(wallet: Wallet, amm: Amm, price: number, size: number, type: TriggerType): Promise<string>;
+
+  /**
+   * Deletes a trigger order
+   * @param wallet The wallet account to execute a tx
+   * @param id The order id
+   * @return The transaction hash
+   */
+  deleteTriggerOrder(wallet: Wallet, id: number): Promise<string>;
+
+  /**
+   * Closes position for a given amm
+   * @param wallet The wallet account to execute a tx
+   * @param amm The amm name
+   * @returns The transaction hash
+   */
+  closePosition(wallet: Wallet, amm: Amm, closePercent?: number, slippagePercent?: number): Promise<string>;
+
 }
 
 export interface BasicChainMethods {
