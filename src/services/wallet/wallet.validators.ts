@@ -108,6 +108,11 @@ export const validatePrivateKey: Validator = mkSelectingValidator(
       invalidCosmosPrivateKeyError,
       (val) => typeof val === 'string' && isCosmosPrivateKey(val)
     ),
+    osmosis: mkValidator(
+      'privateKey',
+      invalidCosmosPrivateKeyError,
+      (val) => typeof val === 'string' && isCosmosPrivateKey(val)
+    ),
     polygon: mkValidator(
       'privateKey',
       invalidEthPrivateKeyError,
