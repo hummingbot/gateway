@@ -251,7 +251,7 @@ export class CosmosBase {
     if (tokenListType === 'URL') {
       ({ data: tokensJson } = await axios.get(tokenListSource));
     } else {
-      ({ tokensJson } = JSON.parse(await fs.readFile(tokenListSource, 'utf8')));
+      (tokensJson = JSON.parse(await fs.readFile(tokenListSource, 'utf8')));
     }
     for (var tokenAssetIdx=0; tokenAssetIdx<tokensJson.assets.length; tokenAssetIdx++){
       var tokenAsset = tokensJson.assets[tokenAssetIdx];
