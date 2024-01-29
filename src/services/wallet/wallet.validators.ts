@@ -182,7 +182,8 @@ export const validateChain: Validator = mkValidator(
       val === 'binance-smart-chain' ||
       val === 'tezos' ||
       val === 'xrpl' ||
-      val === 'kujira')
+      val === 'kujira' ||
+      val === 'oraichain')
 );
 
 export const validateNetwork: Validator = mkValidator(
