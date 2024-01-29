@@ -1,0 +1,6 @@
+contractAddresses:
+  mainnet:
+    swapLimitOrder: 'orai1nt58gcu4e63v7k55phnr3gaym9tvk3q4apqzqccjuwppgjuyjy6sxk8yzp'
+  testnet:
+    swapLimitOrder: 'orai1nt58gcu4e63v7k55phnr3gaym9tvk3q4apqzqccjuwppgjuyjy6sxk8yzp'
+    

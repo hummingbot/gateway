@@ -143,6 +143,11 @@ export const validatePrivateKey: Validator = mkSelectingValidator(
       invalidKujiraPrivateKeyError,
       (val) => typeof val === 'string' && isKujiraPrivateKey(val)
     ),
+    oraichain: mkValidator(
+      'privateKey',
+      invalidCosmosPrivateKeyError,
+      (val) => typeof val === 'string' && isCosmosPrivateKey(val)
+    ),
   }
 );
 

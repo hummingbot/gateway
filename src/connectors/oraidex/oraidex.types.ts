@@ -1,12 +1,20 @@
 import { AssetInfo } from '@oraichain/oraidex-contracts-sdk';
 import { BigNumber } from 'bignumber.js';
+import { Map as ImmutableMap, Set as ImmutableSet } from 'immutable';
 
 //
 //  Types and Constants
 //
 
-export type Fee = BigNumber;
+export type IMap<K, V> = ImmutableMap<K, V>;
+export const IMap = ImmutableMap;
+export type ISet<V> = ImmutableSet<V>;
+export const ISet = ImmutableSet;
 
+export type Address = string;
+export type OwnerAddress = Address;
+export type OrderId = string;
+export type Fee = BigNumber;
 export type FeeMaker = Fee;
 export type FeeTaker = Fee;
 export type FeeServiceProvider = Fee;
@@ -50,5 +58,10 @@ export interface Market {
 export interface MarketFee {
   maker: FeeMaker;
   taker: FeeTaker;
-  serviceProvider: FeeServiceProvider;
 }
+
+//
+//  Errors
+//
+export class CLOBishError extends Error {}
+export class MarketNotFoundError extends CLOBishError {}

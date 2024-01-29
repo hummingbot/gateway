@@ -6,6 +6,12 @@ import { MarketListType, TokenInfo } from '../../services/base';
 import axios from 'axios';
 import { promises as fs } from 'fs';
 import { OraichainController } from './oraichain.controller';
+import {
+  JsonObject,
+  CosmWasmClient,
+  SigningCosmWasmClient,
+} from '@cosmjs/cosmwasm-stargate';
+import * as cosmwasm from '@cosmjs/cosmwasm-stargate';
 
 export type MarketInfo = {
   id: number;
@@ -16,6 +22,7 @@ export type MarketInfo = {
 
 export class Oraichain extends CosmosBase implements Cosmosish {
   private static _instances: { [name: string]: Oraichain };
+  private _rpcUrl: string;
   private _gasPrice: number;
   private _nativeTokenSymbol: string;
   private _chain: string;
@@ -25,6 +32,14 @@ export class Oraichain extends CosmosBase implements Cosmosish {
   private _marketListSource: string;
   private _marketListType: MarketListType;
 
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  private _cosmwasmClient: CosmWasmClient;
+
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  private _signCosmwasmClient: SigningCosmWasmClient;
+
   public controller;
 
   protected marketList: MarketInfo[] = [];
@@ -32,7 +47,7 @@ export class Oraichain extends CosmosBase implements Cosmosish {
 
   private constructor(network: string) {
     const config = getOraichainConfig('oraichain', network);
-    console.log(config);
+
     super(
       'oraichain',
       config.network.rpcURL,
@@ -40,6 +55,7 @@ export class Oraichain extends CosmosBase implements Cosmosish {
       config.network.tokenListType,
       config.manualGasPrice
     );
+    this._rpcUrl = config.network.rpcURL;
     this._chain = network;
     this._nativeTokenSymbol = config.nativeCurrencySymbol;
     this._marketListSource = config.network.marketListSource;
@@ -71,6 +87,10 @@ export class Oraichain extends CosmosBase implements Cosmosish {
     if (!this.ready()) {
       await super.init();
       await this.loadMarkets(this._marketListSource, this._marketListType);
+      //init cosmwasm client
+      this._cosmwasmClient = await cosmwasm.SigningCosmWasmClient.connect(
+        this._rpcUrl
+      );
     }
   }
 
@@ -126,6 +146,13 @@ export class Oraichain extends CosmosBase implements Cosmosish {
     this._requestCount = 0; // reset
   }
 
+  public async queryContractSmart(
+    address: string,
+    query: JsonObject
+  ): Promise<JsonObject> {
+    return await this._cosmwasmClient.queryContractSmart(address, query);
+  }
+
   public get gasPrice(): number {
     return this._gasPrice;
   }
@@ -144,6 +171,17 @@ export class Oraichain extends CosmosBase implements Cosmosish {
 
   public get metricsLogInterval(): number {
     return this._metricsLogInterval;
+  }
+
+  public get storedMarketList(): MarketInfo[] {
+    return this.marketList;
+  }
+
+  public get cosmwasmClient(): CosmWasmClient {
+    return this._cosmwasmClient;
+  }
+  public get signCosmwasmClient(): SigningCosmWasmClient {
+    return this._signCosmwasmClient;
   }
 
   async close() {

@@ -25,5 +25,8 @@ export namespace OraidexConfig {
         networks: Object.keys(configManager.get(`oraichain.networks`)),
       },
     ],
+    swapLimitOrder: configManager.get(
+      'oraidex.contractAddresses.mainnet.swapLimitOrder'
+    ),
   };
 }
