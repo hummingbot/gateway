@@ -85,6 +85,11 @@ export class XRPLCLOB implements CLOBish {
   }
 
   public async loadMarkets() {
+    // Make a while loop and wait for the XRPL to be ready
+    while (!this._xrpl.ready()) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+
     const rawMarkets = await this.fetchMarkets();
     for (const market of rawMarkets) {
       this.parsedMarkets[market.marketId] = market;
@@ -92,11 +97,9 @@ export class XRPLCLOB implements CLOBish {
   }
 
   public async init() {
-    if (!this._xrpl.ready() || Object.keys(this.parsedMarkets).length === 0) {
-      await this._xrpl.init();
-      await this.loadMarkets();
-      this._ready = true;
-    }
+    await this._xrpl.init();
+    await this.loadMarkets();
+    this._ready = true;
   }
 
   public ready(): boolean {
@@ -436,8 +439,25 @@ export class XRPLCLOB implements CLOBish {
       we_get.value = xrpToDrops(we_get.value);
     }
 
+    let flag = 0;
+
+    switch (req.orderType) {
+      case 'LIMIT':
+        flag = 0;
+        break;
+      case 'LIMIT_MAKER':
+        flag = 65536;
+        break;
+      case 'MARKET':
+        flag = 524288;
+        break;
+      default:
+        throw new Error('Order type not supported');
+    }
+
     const offer: Transaction = {
       TransactionType: 'OfferCreate',
+      Flags: flag,
       Account: wallet.classicAddress,
       TakerGets: we_pay.currency == 'XRP' ? we_pay.value : we_pay,
       TakerPays: we_get.currency == 'XRP' ? we_get.value : we_get,
