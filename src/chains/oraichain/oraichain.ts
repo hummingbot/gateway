@@ -12,6 +12,9 @@ import {
   SigningCosmWasmClient,
 } from '@cosmjs/cosmwasm-stargate';
 import * as cosmwasm from '@cosmjs/cosmwasm-stargate';
+import { DirectSecp256k1Wallet } from '@cosmjs/proto-signing';
+import { GasPrice } from '@cosmjs/stargate';
+import { Decimal } from '@cosmjs/math';
 
 export type MarketInfo = {
   id: number;
@@ -151,6 +154,39 @@ export class Oraichain extends CosmosBase implements Cosmosish {
     query: JsonObject
   ): Promise<JsonObject> {
     return await this._cosmwasmClient.queryContractSmart(address, query);
+  }
+
+  public async executeContract(
+    sender: string,
+    contractAddress: string,
+    msg: JsonObject,
+    funds: any
+  ): Promise<JsonObject> {
+    let walletCommon: any = await this.getWallet(sender, 'orai');
+
+    const wallet = await DirectSecp256k1Wallet.fromKey(
+      walletCommon.privkey,
+      'orai'
+    );
+
+    const client = await cosmwasm.SigningCosmWasmClient.connectWithSigner(
+      this._rpcUrl,
+      wallet,
+      {
+        gasPrice: new GasPrice(Decimal.fromUserInput('0.001', 6), 'orai'),
+      }
+    );
+
+    let res = await client.execute(
+      sender,
+      contractAddress,
+      msg,
+      'auto',
+      undefined,
+      funds
+    );
+
+    return res;
   }
 
   public get gasPrice(): number {

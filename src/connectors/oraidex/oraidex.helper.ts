@@ -43,3 +43,7 @@ export const parseToAssetInfo = (address: string): AssetInfo => {
     },
   };
 };
+
+export const isNativeDenom = (token: AssetInfo): boolean => {
+  return 'native_token' in token;
+};

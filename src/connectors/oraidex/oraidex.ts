@@ -14,7 +14,11 @@ import {
   NetworkSelectionRequest,
   Orderbook,
 } from '../../services/common-interfaces';
-import { getNotNullOrThrowError, parseToAssetInfo } from './oraidex.helper';
+import {
+  getNotNullOrThrowError,
+  isNativeDenom,
+  parseToAssetInfo,
+} from './oraidex.helper';
 import { OraidexModel } from './oraidex.model';
 import { Market, MarketNotFoundError } from './oraidex.types';
 import { BigNumber } from 'bignumber.js';
@@ -250,13 +254,110 @@ export class OraidexCLOB implements CLOBish {
   }
 
   async postOrder(
-    _req: ClobPostOrderRequest
+    req: ClobPostOrderRequest
   ): Promise<{ txHash: string; id?: string }> {
-    return { txHash: '' };
+    const market = this.parsedMarkets[req.market] as Market;
+    const baseToken = market.baseToken;
+    const quoteToken = market.quoteToken;
+    const quoteAmount = parseFloat(req.price) * parseFloat(req.amount);
+
+    const assets = [
+      { info: baseToken, amount: req.amount.toString() },
+      { info: quoteToken, amount: quoteAmount.toString() },
+    ];
+
+    const submitOrderMsg = {
+      submit_order: {
+        assets,
+        direction: req.side.toLowerCase(),
+      },
+    };
+
+    let res;
+    if (req.side == 'BUY') {
+      if (isNativeDenom(quoteToken)) {
+        res = await this.oraidex.oraichainNetwork.executeContract(
+          req.address,
+          this._swapLimitOrder,
+          submitOrderMsg,
+          [
+            {
+              denom: getNotNullOrThrowError<string>(
+                (quoteToken as any).native_token.denom
+              ),
+              amount: quoteAmount.toString(),
+            },
+          ]
+        );
+      } else {
+        res = await this.oraidex.oraichainNetwork.executeContract(
+          req.address,
+          (quoteToken as any).token.contract_addr,
+          {
+            send: {
+              contract: this._swapLimitOrder,
+              amount: quoteAmount.toString(),
+              msg: Buffer.from(JSON.stringify(submitOrderMsg)).toString(
+                'base64'
+              ),
+            },
+          },
+          []
+        );
+      }
+    } else {
+      if (isNativeDenom(baseToken)) {
+        res = await this.oraidex.oraichainNetwork.executeContract(
+          req.address,
+          this._swapLimitOrder,
+          submitOrderMsg,
+          [
+            {
+              denom: getNotNullOrThrowError<string>(
+                (baseToken as any).native_token.denom
+              ),
+              amount: req.amount.toString(),
+            },
+          ]
+        );
+      } else {
+        res = await this.oraidex.oraichainNetwork.executeContract(
+          req.address,
+          (baseToken as any).token.contract_addr,
+          {
+            send: {
+              contract: this._swapLimitOrder,
+              amount: req.amount.toString(),
+              msg: Buffer.from(JSON.stringify(submitOrderMsg)).toString(
+                'base64'
+              ),
+            },
+          },
+          []
+        );
+      }
+    }
+
+    return { txHash: res.transactionHash };
   }
 
-  async deleteOrder(_req: ClobDeleteOrderRequest): Promise<{ txHash: string }> {
-    return { txHash: '' };
+  async deleteOrder(req: ClobDeleteOrderRequest): Promise<{ txHash: string }> {
+    const market = this.parsedMarkets[req.market] as Market;
+    const baseToken = market.baseToken;
+    const quoteToken = market.quoteToken;
+
+    let res = await this.oraidex.oraichainNetwork.executeContract(
+      req.address,
+      this._swapLimitOrder,
+      {
+        cancel_order: {
+          asset_infos: [baseToken, quoteToken],
+          order_id: Number(req.orderId),
+        },
+      },
+      []
+    );
+    return { txHash: res.transactionHash };
   }
 
   estimateGas(_req: NetworkSelectionRequest): {
