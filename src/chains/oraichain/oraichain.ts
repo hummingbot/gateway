@@ -101,7 +101,6 @@ export class Oraichain extends CosmosBase implements Cosmosish {
     marketListSource: string,
     marketListType: MarketListType
   ): Promise<void> {
-    console.log(marketListSource, marketListType);
     this.marketList = await this.getMarketList(
       marketListSource,
       marketListType

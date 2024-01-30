@@ -206,7 +206,7 @@ export class CosmosBase {
       // If we're not ready, this._initialized will be a Promise that resolves after init() completes
       this._initialized = (async () => {
         try {
-          await this.loadTokens(this.tokenListSource, this.tokenListType)
+          await this.loadTokens(this.tokenListSource, this.tokenListType);
           return true;
         } catch (e) {
           logger.error(`Failed to initialize ${this.chainName} chain: ${e}`);
@@ -421,7 +421,8 @@ export class CosmosBase {
   }
 
   getTokenDecimals(token: any): number {
-    return token ? token.denom_units[token.denom_units.length - 1].exponent : 6; // Last denom unit has the decimal amount we need from our list
+    return token ? token.decimals : 6;
+    // return token ? token.denom_units[token.denom_units.length - 1].exponent : 6; // Last denom unit has the decimal amount we need from our list
   }
 
   async getBalances(wallet: CosmosWallet): Promise<Record<string, CosmosTokenValue>> {
@@ -447,10 +448,8 @@ export class CosmosBase {
             const { denomTrace } = await setupIbcExtension(
               await provider.queryClient
             ).ibc.transfer.denomTrace(ibcHash);
-
             if (denomTrace) {
               const { baseDenom } = denomTrace;
-
               token = this.getTokenByBase(baseDenom);
             }
           }

@@ -1,9 +1,5 @@
 import { TokensRequest } from '../../network/network.requests';
-import { TokenInfo } from '../../services/base';
-import {
-  // CosmosController,
-  toCosmosBalances,
-} from '../cosmos/cosmos.controllers';
+import { TokenInfo, TokenValue, tokenValueToString } from '../../services/base';
 import { Token } from '../cosmos/cosmos-base';
 import { Oraichain } from './oraichain';
 import { validateGetTokensRequest } from './oraichain.validators';
@@ -21,6 +17,25 @@ import {
   TOKEN_NOT_SUPPORTED_ERROR_MESSAGE,
 } from '../../services/error-handler';
 import { decodeTxRaw } from '@cosmjs/proto-signing';
+import { BigNumber } from 'ethers';
+
+export const toOraichainBalances = (
+  balances: Record<string, TokenValue>,
+  tokenSymbols: Array<string>
+): Record<string, string> => {
+  const walletBalances: Record<string, string> = {};
+
+  tokenSymbols.forEach((symbol) => {
+    let balance = '0.0';
+    if (balances[symbol]) {
+      balance = tokenValueToString(balances[symbol]);
+    }
+
+    walletBalances[symbol] = balance;
+  });
+
+  return walletBalances;
+};
 
 export class OraichainController {
   static async getTokens(
@@ -64,6 +79,8 @@ export class OraichainController {
 
     const { tokenSymbols } = req;
 
+    let cw20Tokens: Token[] = [];
+
     tokenSymbols.forEach((symbol: string) => {
       const token = cosmosish.getTokenForSymbol(symbol);
 
@@ -73,15 +90,58 @@ export class OraichainController {
           TOKEN_NOT_SUPPORTED_ERROR_MESSAGE + symbol,
           TOKEN_NOT_SUPPORTED_ERROR_CODE
         );
+      } else {
+        if (token.address != 'orai' && !token.address.startsWith('ibc/')) {
+          cw20Tokens.push(token);
+        }
       }
     });
 
-    const balances = await cosmosish.getBalances(wallet);
-    const filteredBalances = toCosmosBalances(balances, tokenSymbols);
+    const cw20Balances = await this.getTokensBalance(
+      cosmosish,
+      req.address,
+      cw20Tokens
+    );
+    const denomBalances = await cosmosish.getBalances(wallet);
+    const filteredBalances = toOraichainBalances(
+      { ...denomBalances, ...cw20Balances },
+      tokenSymbols
+    );
 
     return {
       balances: filteredBalances,
     };
+  }
+
+  static async getTokensBalance(
+    cosmosish: Oraichain,
+    address: string,
+    tokens: Token[]
+  ): Promise<Record<string, TokenValue>> {
+    const balances: Record<string, TokenValue> = {};
+
+    await Promise.all(
+      tokens.map(async (token: Token) => {
+        try {
+          let balance = await cosmosish.queryContractSmart(token.address, {
+            balance: {
+              address,
+            },
+          });
+          balances[token.symbol] = {
+            value: BigNumber.from(parseInt(balance.balance, 10)),
+            decimals: cosmosish.getTokenDecimals(token),
+          };
+        } catch (err) {
+          balances[token.symbol] = {
+            value: BigNumber.from(parseInt('0', 10)),
+            decimals: cosmosish.getTokenDecimals(token),
+          };
+        }
+      })
+    );
+
+    return balances;
   }
 
   static async poll(cosmos: Oraichain, req: CosmosPollRequest) {
