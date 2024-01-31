@@ -1,6 +1,7 @@
-import { MarketInfo } from '../../chains/oraichain/oraichain';
+import { MarketInfo, Oraichain } from '../../chains/oraichain/oraichain';
 import {
   CLOBMarkets,
+  ClobBatchUpdateRequest,
   ClobDeleteOrderRequest,
   ClobGetOrderRequest,
   ClobGetOrderResponse,
@@ -19,12 +20,17 @@ import {
   isNativeDenom,
   parseToAssetInfo,
 } from './oraidex.helper';
-import { OraidexModel } from './oraidex.model';
-import { Market, MarketNotFoundError } from './oraidex.types';
+
+import {
+  CancelOrdersRequest,
+  Market,
+  MarketNotFoundError,
+  PlaceOrdersRequest,
+} from './oraidex.types';
 import { BigNumber } from 'bignumber.js';
 import { OraiswapLimitOrderQueryClient } from '@oraichain/oraidex-contracts-sdk';
 import { OraidexConfig } from './oraidex.config';
-import { JsonObject } from '@cosmjs/cosmwasm-stargate';
+import { JsonObject, ExecuteInstruction } from '@cosmjs/cosmwasm-stargate';
 
 const ORDERBOOK_LIMIT = 100;
 export class OraidexCLOB implements CLOBish {
@@ -37,7 +43,7 @@ export class OraidexCLOB implements CLOBish {
   private _swapLimitOrder: string;
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
-  private oraidex: OraidexModel;
+  private oraichainNetwork: Oraichain;
 
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
@@ -52,7 +58,7 @@ export class OraidexCLOB implements CLOBish {
     this._swapLimitOrder = config.swapLimitOrder;
     this.chain = chain;
     this.network = network;
-    this.oraidex = OraidexModel.getInstance(chain, network);
+    this.oraichainNetwork = Oraichain.getInstance(network);
   }
 
   public static getInstance(chain: string, network: string): OraidexCLOB {
@@ -74,11 +80,11 @@ export class OraidexCLOB implements CLOBish {
   }
 
   async init() {
-    this.oraidex = await OraidexModel.getInstance(this.chain, this.network);
-    await this.oraidex.oraichainNetwork.init();
+    this.oraichainNetwork = await Oraichain.getInstance(this.network);
+    await this.oraichainNetwork.init();
     await this.loadMarkets();
     this.orderbookQueryClient = new OraiswapLimitOrderQueryClient(
-      this.oraidex.oraichainNetwork.cosmwasmClient,
+      this.oraichainNetwork.cosmwasmClient,
       this._swapLimitOrder
     );
     this._ready = true;
@@ -101,7 +107,7 @@ export class OraidexCLOB implements CLOBish {
 
   async fetchMarkets(): Promise<Market[]> {
     const loadedMarkets: Market[] = [];
-    const markets = this.oraidex.oraichainNetwork.storedMarketList;
+    const markets = this.oraichainNetwork.storedMarketList;
 
     markets.forEach(async (market) => {
       const processedMarket = await this.getMarket(market);
@@ -256,89 +262,126 @@ export class OraidexCLOB implements CLOBish {
   async postOrder(
     req: ClobPostOrderRequest
   ): Promise<{ txHash: string; id?: string }> {
-    const market = this.parsedMarkets[req.market] as Market;
-    const baseToken = market.baseToken;
-    const quoteToken = market.quoteToken;
-    const quoteAmount = parseFloat(req.price) * parseFloat(req.amount);
-
-    const assets = [
-      { info: baseToken, amount: req.amount.toString() },
-      { info: quoteToken, amount: quoteAmount.toString() },
-    ];
-
-    const submitOrderMsg = {
-      submit_order: {
-        assets,
-        direction: req.side.toLowerCase(),
-      },
+    const convertedReq = {
+      ownerAddress: req.address,
+      orders: [req],
     };
 
-    let res;
-    if (req.side == 'BUY') {
-      if (isNativeDenom(quoteToken)) {
-        res = await this.oraidex.oraichainNetwork.executeContract(
-          req.address,
-          this._swapLimitOrder,
-          submitOrderMsg,
-          [
-            {
-              denom: getNotNullOrThrowError<string>(
-                (quoteToken as any).native_token.denom
-              ),
-              amount: quoteAmount.toString(),
-            },
-          ]
-        );
-      } else {
-        res = await this.oraidex.oraichainNetwork.executeContract(
-          req.address,
-          (quoteToken as any).token.contract_addr,
-          {
-            send: {
-              contract: this._swapLimitOrder,
-              amount: quoteAmount.toString(),
-              msg: Buffer.from(JSON.stringify(submitOrderMsg)).toString(
-                'base64'
-              ),
-            },
-          },
-          []
-        );
+    return { txHash: await this.placeOrders(convertedReq) };
+  }
+
+  public async batchOrders(req: ClobBatchUpdateRequest): Promise<any> {
+    try {
+      if (req.createOrderParams || req.cancelOrderParams) {
+        if (req.createOrderParams) {
+          const convertedReq = {
+            ownerAddress: req.address,
+            orders: req.createOrderParams,
+          };
+          return { txHash: await this.placeOrders(convertedReq) };
+        } else if (req.cancelOrderParams) {
+          const convertedReq = {
+            ownerAddress: req.address,
+            orders: req.cancelOrderParams,
+          };
+          return { txHash: await this.cancelOrders(convertedReq) };
+        }
       }
-    } else {
-      if (isNativeDenom(baseToken)) {
-        res = await this.oraidex.oraichainNetwork.executeContract(
-          req.address,
-          this._swapLimitOrder,
-          submitOrderMsg,
-          [
-            {
-              denom: getNotNullOrThrowError<string>(
-                (baseToken as any).native_token.denom
-              ),
-              amount: req.amount.toString(),
+
+      return {};
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  async placeOrders(options: PlaceOrdersRequest) {
+    const instructions: ExecuteInstruction[] = [];
+    const sender = options.ownerAddress;
+
+    for (const order of options.orders) {
+      const market = this.parsedMarkets[order.market] as Market;
+      const baseToken = market.baseToken;
+      const quoteToken = market.quoteToken;
+      const quoteAmount = parseFloat(order.price) * parseFloat(order.amount);
+
+      const assets = [
+        { info: baseToken, amount: order.amount.toString() },
+        { info: quoteToken, amount: quoteAmount.toString() },
+      ];
+      const submitOrderMsg = {
+        submit_order: {
+          assets,
+          direction: order.side.toLowerCase(),
+        },
+      };
+
+      if (order.side == 'BUY') {
+        if (isNativeDenom(quoteToken)) {
+          instructions.push({
+            contractAddress: this._swapLimitOrder,
+            msg: submitOrderMsg,
+            funds: [
+              {
+                denom: getNotNullOrThrowError<string>(
+                  (quoteToken as any).native_token.denom
+                ),
+                amount: quoteAmount.toString(),
+              },
+            ],
+          });
+        } else {
+          instructions.push({
+            contractAddress: (quoteToken as any).token.contract_addr,
+            msg: {
+              send: {
+                contract: this._swapLimitOrder,
+                amount: quoteAmount.toString(),
+                msg: Buffer.from(JSON.stringify(submitOrderMsg)).toString(
+                  'base64'
+                ),
+              },
             },
-          ]
-        );
+            funds: [],
+          });
+        }
       } else {
-        res = await this.oraidex.oraichainNetwork.executeContract(
-          req.address,
-          (baseToken as any).token.contract_addr,
-          {
-            send: {
-              contract: this._swapLimitOrder,
-              amount: req.amount.toString(),
-              msg: Buffer.from(JSON.stringify(submitOrderMsg)).toString(
-                'base64'
-              ),
+        if (isNativeDenom(baseToken)) {
+          instructions.push({
+            contractAddress: this._swapLimitOrder,
+            msg: submitOrderMsg,
+            funds: [
+              {
+                denom: getNotNullOrThrowError<string>(
+                  (baseToken as any).native_token.denom
+                ),
+                amount: order.amount.toString(),
+              },
+            ],
+          });
+        } else {
+          instructions.push({
+            contractAddress: (baseToken as any).token.contract_addr,
+            msg: {
+              send: {
+                contract: this._swapLimitOrder,
+                amount: order.amount.toString(),
+                msg: Buffer.from(JSON.stringify(submitOrderMsg)).toString(
+                  'base64'
+                ),
+              },
             },
-          },
-          []
-        );
+            funds: [],
+          });
+        }
       }
     }
 
-    return { txHash: res.transactionHash };
+    let res = await this.oraichainNetwork.executeContractMultiple(
+      sender,
+      instructions
+    );
+
+    return res.transactionHash;
   }
 
   async deleteOrder(req: ClobDeleteOrderRequest): Promise<{ txHash: string }> {
@@ -346,7 +389,7 @@ export class OraidexCLOB implements CLOBish {
     const baseToken = market.baseToken;
     const quoteToken = market.quoteToken;
 
-    let res = await this.oraidex.oraichainNetwork.executeContract(
+    let res = await this.oraichainNetwork.executeContract(
       req.address,
       this._swapLimitOrder,
       {
@@ -358,6 +401,35 @@ export class OraidexCLOB implements CLOBish {
       []
     );
     return { txHash: res.transactionHash };
+  }
+
+  async cancelOrders(options: CancelOrdersRequest) {
+    const instructions: ExecuteInstruction[] = [];
+    const sender = options.ownerAddress;
+
+    for (const order of options.orders) {
+      const market = this.parsedMarkets[order.market] as Market;
+      const baseToken = market.baseToken;
+      const quoteToken = market.quoteToken;
+
+      instructions.push({
+        contractAddress: this._swapLimitOrder,
+        msg: {
+          cancel_order: {
+            asset_infos: [baseToken, quoteToken],
+            order_id: Number(order.orderId),
+          },
+        },
+        funds: [],
+      });
+    }
+
+    let res = await this.oraichainNetwork.executeContractMultiple(
+      sender,
+      instructions
+    );
+
+    return res.transactionHash;
   }
 
   estimateGas(_req: NetworkSelectionRequest): {

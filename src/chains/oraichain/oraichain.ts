@@ -10,6 +10,7 @@ import {
   JsonObject,
   CosmWasmClient,
   SigningCosmWasmClient,
+  ExecuteInstruction,
 } from '@cosmjs/cosmwasm-stargate';
 import * as cosmwasm from '@cosmjs/cosmwasm-stargate';
 import { DirectSecp256k1Wallet } from '@cosmjs/proto-signing';
@@ -184,6 +185,29 @@ export class Oraichain extends CosmosBase implements Cosmosish {
       undefined,
       funds
     );
+
+    return res;
+  }
+  public async executeContractMultiple(
+    sender: string,
+    instructions: ExecuteInstruction[]
+  ): Promise<JsonObject> {
+    let walletCommon: any = await this.getWallet(sender, 'orai');
+
+    const wallet = await DirectSecp256k1Wallet.fromKey(
+      walletCommon.privkey,
+      'orai'
+    );
+
+    const client = await cosmwasm.SigningCosmWasmClient.connectWithSigner(
+      this._rpcUrl,
+      wallet,
+      {
+        gasPrice: new GasPrice(Decimal.fromUserInput('0.001', 6), 'orai'),
+      }
+    );
+
+    let res = await client.executeMultiple(sender, instructions, 'auto');
 
     return res;
   }

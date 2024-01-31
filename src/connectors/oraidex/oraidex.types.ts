@@ -1,6 +1,10 @@
 import { AssetInfo } from '@oraichain/oraidex-contracts-sdk';
 import { BigNumber } from 'bignumber.js';
 import { Map as ImmutableMap, Set as ImmutableSet } from 'immutable';
+import {
+  ClobDeleteOrderRequestExtract,
+  CreateOrderParam,
+} from '../../clob/clob.requests';
 
 //
 //  Types and Constants
@@ -58,6 +62,16 @@ export interface Market {
 export interface MarketFee {
   maker: FeeMaker;
   taker: FeeTaker;
+}
+
+export interface PlaceOrdersRequest {
+  ownerAddress: string;
+  orders: CreateOrderParam[];
+}
+
+export interface CancelOrdersRequest {
+  ownerAddress: string;
+  orders: ClobDeleteOrderRequestExtract[];
 }
 
 //
