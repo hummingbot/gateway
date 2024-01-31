@@ -291,6 +291,10 @@ export class XRPL implements XRPLish {
       query = '534F4C4F00000000000000000000000000000000';
     }
 
+    if (code === 'USDC') {
+      query = '5553444300000000000000000000000000000000'
+    }
+
     return this._tokenMap[query] ? this._tokenMap[query] : undefined;
   }
 

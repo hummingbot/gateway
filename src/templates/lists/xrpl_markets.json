@@ -15,7 +15,7 @@
     "baseIssuer": "rsoLo2S1kiGeCcn6hCUXVrCpGMWLrRrLZz",
     "baseCode": "534F4C4F00000000000000000000000000000000",
     "quoteIssuer": "rcEGREd8NmkKRE8GE424sksyt1tJVFZwu",
-    "quoteCode": "USDC",
+    "quoteCode": "5553444300000000000000000000000000000000",
     "baseTokenID": 31,
     "quoteTokenID": 18465
   },
@@ -23,7 +23,7 @@
     "id": 3,
     "marketId": "USDC-XRP",
     "baseIssuer": "rcEGREd8NmkKRE8GE424sksyt1tJVFZwu",
-    "baseCode": "USDC",
+    "baseCode": "5553444300000000000000000000000000000000",
     "quoteIssuer": "",
     "quoteCode": "XRP",
     "baseTokenID": 18465,
@@ -33,7 +33,7 @@
     "id": 4,
     "marketId": "USDC-USD",
     "baseIssuer": "rcEGREd8NmkKRE8GE424sksyt1tJVFZwu",
-    "baseCode": "USDC",
+    "baseCode": "5553444300000000000000000000000000000000",
     "quoteIssuer": "rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq",
     "quoteCode": "USD",
     "baseTokenID": 18465,
@@ -69,5 +69,25 @@
     "quoteCode": "USD",
     "baseTokenID": 0,
     "quoteTokenID": 16603
+  },
+  {
+    "id": 8,
+    "marketId": "SOLO-USD",
+    "baseIssuer": "rsoLo2S1kiGeCcn6hCUXVrCpGMWLrRrLZz",
+    "baseCode": "534F4C4F00000000000000000000000000000000",
+    "quoteIssuer": "rhub8VRN55s94qWKDv6jmDy1pUykJzF3wq",
+    "quoteCode": "USD",
+    "baseTokenID": 31,
+    "quoteTokenID": 16603
+  },
+  {
+    "id": 9,
+    "marketId": "XRP-USDC",
+    "baseIssuer": "",
+    "baseCode": "XRP",
+    "quoteIssuer": "rcEGREd8NmkKRE8GE424sksyt1tJVFZwu",
+    "quoteCode": "5553444300000000000000000000000000000000",
+    "baseTokenID": 0,
+    "quoteTokenID": 18465
   }
 ]

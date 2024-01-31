@@ -392,9 +392,22 @@ export class XRPLCLOB implements CLOBish {
     const quoteCurrency = market.quoteCurrency;
     const baseIssuer = market.baseIssuer;
     const quoteIssuer = market.quoteIssuer;
+    let price = parseFloat(req.price)
+
+    // If it is market order
+    // Increase price by 3% if it is buy order
+    // Decrease price by 3% if it is sell order
+    if (req.orderType == 'MARKET') {
+      const midPrice = await this.getMidPriceForMarket(market);
+      if (req.side == TradeType.BUY) {
+        price = midPrice * 1.03;
+      } else {
+        price = midPrice * 0.97;
+      }
+    }
 
     const wallet = await this.getWallet(req.address);
-    const total = parseFloat(req.price) * parseFloat(req.amount);
+    const total = price * parseFloat(req.amount);
 
     let we_pay: Token = {
       currency: '',
@@ -449,7 +462,7 @@ export class XRPLCLOB implements CLOBish {
         flag = 65536;
         break;
       case 'MARKET':
-        flag = 524288;
+        flag = 131072;
         break;
       default:
         throw new Error('Order type not supported');
@@ -479,7 +492,7 @@ export class XRPLCLOB implements CLOBish {
       filledAmount: '0',
       state: 'PENDING_OPEN',
       tradeType: req.side,
-      orderType: 'LIMIT',
+      orderType: req.orderType,
       createdAt: currentTime,
       createdAtLedgerIndex: currentLedgerIndex,
       updatedAt: currentTime,
