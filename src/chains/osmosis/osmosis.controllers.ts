@@ -320,7 +320,7 @@ export class OsmosisController {
         latency: latency(startTimestamp, Date.now()),
         base: tradeInfo.baseToken.base, // this is base denom. might want symbol tho? no address from what i see
         quote: tradeInfo.quoteToken.base,
-        amount: new Decimal(req.amount).toFixed(tradeInfo.baseToken.decimals),
+        amount: new Decimal(req.amount).toFixed(tradeInfo.baseToken.decimals).toString(),
         rawAmount: tradeInfo.requestAmount.toString(),
         expectedOut: new BigNumber(tradeInfo.expectedTrade.expectedAmount).decimalPlaces(8).toString(),
         finalAmountReceived: finalAmountReceived.toString(),
