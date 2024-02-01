@@ -21,6 +21,7 @@ import { CurveConfig } from './curve/curveswap.config';
 import { PlentyConfig } from './plenty/plenty.config';
 import { XRPLCLOBConfig } from './xrpl/xrpl.clob.config';
 import { KujiraConfig } from './kujira/kujira.config';
+import { QuipuswapConfig } from './quipuswap/quipuswap.config';
 import { CarbonConfig } from './carbon/carbon.config';
 
 export namespace ConnectorsRoutes {
@@ -162,6 +163,12 @@ export namespace ConnectorsRoutes {
               accountId:
                 'Enter your kujira account number (input 0 if unsure) >>> ',
             },
+          },
+          {
+            name: 'quipuswap',
+            trading_type: QuipuswapConfig.config.tradingTypes,
+            chain_type: QuipuswapConfig.config.chainType,
+            available_networks: QuipuswapConfig.config.availableNetworks,
           },
           {
             name: 'carbonamm',

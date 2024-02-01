@@ -120,6 +120,10 @@ configurations:
     configurationPath: kujira.yml
     schemaPath: kujira-schema.json
 
+  $namespace quipuswap:
+    configurationPath: quipuswap.yml
+    schemaPath: quipuswap-schema.json
+
   $namespace carbon:
     configurationPath: carbon.yml
     schemaPath: carbon-schema.json

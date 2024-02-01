@@ -64,6 +64,11 @@ import {
   estimateGas as plentyEstimateGas,
 } from '../connectors/plenty/plenty.controllers';
 import {
+  price as quipuPrice,
+  trade as quipuTrade,
+  estimateGas as quipuEstimateGas,
+} from '../connectors/quipuswap/quipuswap.controllers';
+import {
   getInitializedChain,
   getConnector,
 } from '../services/connection-manager';
@@ -80,14 +85,15 @@ import {
 import { Algorand } from '../chains/algorand/algorand';
 import { Tinyman } from '../connectors/tinyman/tinyman';
 import { Plenty } from '../connectors/plenty/plenty';
+import { QuipuSwap } from '../connectors/quipuswap/quipuswap';
 import { Carbonamm } from '../connectors/carbon/carbonAMM';
 
 export async function price(req: PriceRequest): Promise<PriceResponse> {
   const chain = await getInitializedChain<
     Algorand | Ethereumish | Nearish | Tezosish
   >(req.chain, req.network);
-  const connector: Uniswapish | RefAMMish | Tinyman | Plenty =
-    await getConnector<Uniswapish | RefAMMish | Tinyman | Plenty>(
+  const connector: Uniswapish | RefAMMish | Tinyman | Plenty | QuipuSwap =
+    await getConnector<Uniswapish | RefAMMish | Tinyman | Plenty | QuipuSwap>(
       req.chain,
       req.network,
       req.connector
@@ -95,6 +101,8 @@ export async function price(req: PriceRequest): Promise<PriceResponse> {
 
   if (connector instanceof Plenty) {
     return plentyPrice(<Tezosish>chain, connector, req);
+  } else if (connector instanceof QuipuSwap) {
+    return quipuPrice(<Tezosish>chain, connector, req);
   } else if (connector instanceof Carbonamm) {
     return carbonPrice(<Ethereumish>chain, connector, req);
   } else if ('routerAbi' in connector) {
@@ -111,8 +119,8 @@ export async function trade(req: TradeRequest): Promise<TradeResponse> {
   const chain = await getInitializedChain<
     Algorand | Ethereumish | Nearish | Tezosish
   >(req.chain, req.network);
-  const connector: Uniswapish | RefAMMish | Tinyman | Plenty =
-    await getConnector<Uniswapish | RefAMMish | Tinyman | Plenty>(
+  const connector: Uniswapish | RefAMMish | Tinyman | Plenty | QuipuSwap =
+    await getConnector<Uniswapish | RefAMMish | Tinyman | Plenty | QuipuSwap>(
       req.chain,
       req.network,
       req.connector
@@ -120,6 +128,8 @@ export async function trade(req: TradeRequest): Promise<TradeResponse> {
 
   if (connector instanceof Plenty) {
     return plentyTrade(<Tezosish>chain, connector, req);
+  } else if (connector instanceof QuipuSwap) {
+    return quipuTrade(<Tezosish>chain, connector, req);
   } else if (connector instanceof Carbonamm) {
     return carbonTrade(<Ethereumish>chain, connector, req);
   } else if ('routerAbi' in connector) {
@@ -200,8 +210,8 @@ export async function estimateGas(
   const chain = await getInitializedChain<
     Algorand | Ethereumish | Nearish | Tezosish
   >(req.chain, req.network);
-  const connector: Uniswapish | RefAMMish | Tinyman | Plenty =
-    await getConnector<Uniswapish | RefAMMish | Plenty>(
+  const connector: Uniswapish | RefAMMish | Tinyman | Plenty | QuipuSwap =
+    await getConnector<Uniswapish | RefAMMish | Plenty | QuipuSwap>(
       req.chain,
       req.network,
       req.connector
@@ -209,6 +219,8 @@ export async function estimateGas(
 
   if (connector instanceof Plenty) {
     return plentyEstimateGas(<Tezosish>chain, connector);
+  } else if (connector instanceof QuipuSwap) {
+    return quipuEstimateGas(<Tezosish>chain, connector);
   } else if (connector instanceof Carbonamm) {
     return carbonEstimateGas(<Ethereumish>chain, connector);
   } else if ('routerAbi' in connector) {
