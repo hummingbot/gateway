@@ -181,6 +181,12 @@ describe('controllers - CL Pools + Liquidity', () => {
     expect(addLiquidityResponse.tokenId).toEqual(62)
   });
 
+  it('addLiquidity', async () => {
+    const addLiquidityRequestFunction = {'lowerPrice':'250', 'upperPrice':'400', 'fee': 'high', 'token0':'ION', 'token1':'OSMO', 'amount0':'0', 'amount1':'0.0005', 'chain':'osmosis', 'network':'testnet', 'address':osmosisAddress};
+    var addLiquidityResponse = await osmosis.controller.addLiquidity(osmosis, addLiquidityRequestFunction)
+    expect(addLiquidityResponse.tokenId).toEqual(79)
+  });
+
   it('positionsRequest', async () => {
     const positionsRequest1 = {
       chain:'osmosis', 

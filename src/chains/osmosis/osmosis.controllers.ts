@@ -351,63 +351,6 @@ export class OsmosisController {
       const token0: TokenishCosmosAsset = osmosis.getTokenBySymbol(req.token0)!;
       const token1: TokenishCosmosAsset = osmosis.getTokenBySymbol(req.token1)!;
 
-      const gasPrice = osmosis.manualGasPrice;  // GAS PRICE PER UNIT OF WORK  
-      const gasLimitTransaction = osmosis.gasLimitEstimate; // MAX uOSMO COST PER TRANSACTION 
-      const gasAdjustment = osmosis.gasPriceConstant; // 
-      const feeTier = osmosis.feeTier; // 
-
-      const tx = await osmosis.addPosition(
-        wallet,
-        req.address,
-        token0,
-        token1,
-        req.amount0,
-        req.amount1,
-        req.tokenId,
-        req.allowedSlippage,
-        feeTier,
-        gasAdjustment,
-      );
-
-      this.validateTxErrors(tx, "Liquidity added. ");
-    
-      return {
-        network: osmosis.chainName,
-        timestamp: startTimestamp,
-        latency: latency(startTimestamp, Date.now()),
-        token0: req.token0,
-        token1: req.token1,
-        tokenId: tx.poolId,
-        gasPrice: gasPrice.toString(),
-        gasLimit: Number(gasLimitTransaction),
-        gasCost: tx.gasUsed,
-        gasWanted: tx.gasWanted,
-        txHash: tx.transactionHash,
-        poolAddress: tx.poolAddress,
-        poolShares: tx.poolshares,
-        token0FinalAmount: tx.token0_finalamount,
-        token1FinalAmount: tx.token1_finalamount,
-        nonce: 0,
-        gasPriceToken: osmosis.manualGasPriceToken,
-        fee: feeTier,
-      };
-    }
-
-    static async addLiquidityLP(
-      osmosis: Osmosis,
-      req: AddLiquidityRequest 
-    ): Promise<AddLiquidityResponse> {
-      const startTimestamp: number = Date.now();
-
-      const { wallet } =
-        await getOsmoWallet(
-          osmosis,
-          req.address,
-        );
-
-      const token0: TokenishCosmosAsset = osmosis.getTokenBySymbol(req.token0)!;
-      const token1: TokenishCosmosAsset = osmosis.getTokenBySymbol(req.token1)!;
-
       const gasLimitTransaction = osmosis.gasLimitEstimate; // MAX uOSMO COST PER TRANSACTION 
       const gasAdjustment = osmosis.gasPriceConstant; // 
       const feeTier = osmosis.feeTier; // 
