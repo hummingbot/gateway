@@ -228,7 +228,7 @@ export interface TransactionResponse {
 
 export interface AddPositionTransactionResponse extends TransactionResponse {
   rawLog: string;
-  poolId: string;
+  poolId: number;
   poolAddress: string;
   token0_finalamount: string;
   token1_finalamount: string;

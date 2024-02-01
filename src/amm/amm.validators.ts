@@ -166,14 +166,6 @@ export const validateTokenId: Validator = mkValidator(
   true
 );
 
-export const validatePoolId: Validator = mkValidator(
-  'poolId',
-  invalidTokenIdError,
-  (val) =>
-    (typeof val === 'string' && BigInt(val) >= 0),
-  true
-);
-
 export const validatePeriod: Validator = mkValidator(
   'period',
   invalidTimeError,
@@ -312,7 +304,6 @@ export const validateAddLiquidityRequest: RequestValidator = mkRequestValidator(
     validateNonce,
     validateMaxFeePerGas,
     validateMaxPriorityFeePerGas,
-    validatePoolId,
   ]
 );
 
@@ -346,7 +337,6 @@ export const validatePositionRequest: RequestValidator = mkRequestValidator([
   validateNetwork,
   validateTokenId,
   validateAddress,
-  validatePoolId,
 ]);
 
 export const validatePoolPriceRequest: RequestValidator = mkRequestValidator([

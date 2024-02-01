@@ -101,11 +101,10 @@ export interface AddLiquidityRequest extends NetworkSelectionRequest { // now al
   fee?: string;
   lowerPrice?: string; // integer as string  // COSMOS - using this != undefined then call addpositionLP(), else: addposition() 
   upperPrice?: string; // integer as string
-  tokenId?: number;
+  tokenId?: number; // COSMOS: poolId - will select one for you if not provided
   nonce?: number;
   maxFeePerGas?: string;
   maxPriorityFeePerGas?: string;
-  poolId?: string; // COSMOS: will select one for you if not provided
   allowedSlippage?: string; // COSMOS: used to calc TokenMinAmount
 }
 
@@ -116,8 +115,7 @@ export interface AddLiquidityResponse {
   token0: string;
   token1: string;
   fee: string;
-  tokenId?: number;
-  poolId?: string; // COSMOS
+  tokenId: number; // COSMOS - this is poolId
   gasPrice: number | string; // COSMOS: string
   gasPriceToken: string;
   gasLimit: number;
@@ -133,7 +131,7 @@ export interface AddLiquidityResponse {
 
 export interface CollectEarnedFeesRequest extends NetworkSelectionRequest {
   address: string;
-  tokenId?: number;
+  tokenId: number; // COSMOS - this is poolId
   nonce?: number;
   maxFeePerGas?: string;
   maxPriorityFeePerGas?: string;
@@ -141,7 +139,6 @@ export interface CollectEarnedFeesRequest extends NetworkSelectionRequest {
 
 export interface RemoveLiquidityRequest extends CollectEarnedFeesRequest {
   decreasePercent?: number;
-  poolId?: string; // Cosmos: required
   allowedSlippage?: string;
 }
 
@@ -149,7 +146,7 @@ export interface RemoveLiquidityResponse {
   network: string;
   timestamp: number;
   latency: number;
-  tokenId?: number;
+  tokenId: number; // COSMOS - this is poolId
   gasPrice: number | string; // COSMOS: string
   gasPriceToken: string;
   gasLimit: number | string;
@@ -158,13 +155,11 @@ export interface RemoveLiquidityResponse {
   txHash: string | undefined;
   gasWanted?: string;
   balances?: CoinAndSymbol[];
-  poolId?: string; // Cosmos
 }
 
 export interface PositionRequest extends NetworkSelectionRequest {
-  tokenId?: number;
-  address?: string;
-  poolId?: string;
+  tokenId?: number; // COSMOS - this is poolId, not req. (required for others)
+  address?: string; // COSMOS only/required (no idea how this works without address for others)
 }
 
 export interface PositionResponse extends LPPositionInfo {

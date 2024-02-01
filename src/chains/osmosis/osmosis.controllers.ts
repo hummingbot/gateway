@@ -329,8 +329,8 @@ export class OsmosisController {
         price: finalExecutionPrice.toString(),
         gasPrice: tx.gasPrice,
         gasLimit: Number(gasLimitTransaction),
-        gasCost: tx.gasUsed,
-        gasWanted: tx.gasWanted,
+        gasCost: tx.gasUsed.toString(),
+        gasWanted: tx.gasWanted.toString(),
         txHash: tx.transactionHash,
         gasPriceToken: osmosis.manualGasPriceToken
       };
@@ -363,7 +363,7 @@ export class OsmosisController {
         token1,
         req.amount0,
         req.amount1,
-        req.poolId,
+        req.tokenId,
         req.allowedSlippage,
         feeTier,
         gasAdjustment,
@@ -377,7 +377,7 @@ export class OsmosisController {
         latency: latency(startTimestamp, Date.now()),
         token0: req.token0,
         token1: req.token1,
-        poolId: tx.poolId,
+        tokenId: tx.poolId,
         gasPrice: gasPrice.toString(),
         gasLimit: Number(gasLimitTransaction),
         gasCost: tx.gasUsed,
@@ -430,7 +430,7 @@ export class OsmosisController {
           token1,
           req.amount0,
           req.amount1,
-          req.poolId,
+          req.tokenId,
           req.allowedSlippage,
           feeTier,
           gasAdjustment,
@@ -483,7 +483,7 @@ export class OsmosisController {
         wallet,
         req.decreasePercent,
         req.address,
-        req.poolId!,
+        req.tokenId,
         req.allowedSlippage,
         feeTier,
         gasAdjustment,
@@ -497,7 +497,7 @@ export class OsmosisController {
         network: osmosis.chainName,
         timestamp: startTimestamp,
         latency: latency(startTimestamp, Date.now()),
-        poolId: req.poolId,
+        tokenId: req.tokenId,
         balances: tx.balances,
         gasPrice: gasPrice.toString(),
         gasLimit: Number(gasLimitTransaction),
@@ -562,12 +562,12 @@ export class OsmosisController {
 
       const pools = await osmosis.findPoolsPositions(
         req.address!,
-        req.poolId
+        req.tokenId
       );
       
-      if (req.poolId){
+      if (req.tokenId){
         logger.info(
-          `Found pool positions for ${req.address}, ${req.poolId}`
+          `Found pool positions for ${req.address}, ${req.tokenId!.toString()}`
         );
       }else{
         logger.info(

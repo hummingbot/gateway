@@ -783,7 +783,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
     token1: CosmosAsset,
     amount0: string,
     amount1: string,
-    poolId?: string, 
+    poolId?: number, 
     allowedSlippage?: string,
     feeTier_input?: string,
     gasAdjustment_input?: number,
@@ -886,7 +886,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
 
       var pool;
       if (poolId){
-        pool = pools.find(({id}) => id.toString() == poolId);
+        pool = pools.find(({id}) => id.toString() == poolId.toString());
       }else if (foundPools){
         pool = foundPools.pop(); // this is not selective without poolid input (can be multiple pools per token pair).. though order should cause pool with greatest liquidity to be used
       }
@@ -1033,7 +1033,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
           res.token0_finalamount = token0_finalamount
           res.token1_finalamount = token1_finalamount
           res.poolshares = poolshares
-          res.poolId = pool.id.toString()
+          res.poolId = Number(pool.id.toString())
           res.poolAddress = pool.address
           res.gasPrice = gasPrice
           return res;
@@ -1092,7 +1092,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
         res.token0_finalamount = token0_finalamount
         res.token1_finalamount = token1_finalamount
         res.poolshares = poolshares
-        res.poolId = pool.id.toString()
+        res.poolId = Number(pool.id.toString())
         res.poolAddress = pool.address
         res.gasPrice = gasPrice
         return res; 
@@ -1223,8 +1223,8 @@ export class Osmosis extends CosmosBase implements Cosmosish{
     });
 
     var pool;
-    if (req.poolId){
-      pool = filteredPools.find(({id}) => id.toString() == req.poolId);
+    if (req.tokenId){
+      pool = filteredPools.find(({id}) => id.toString() == req.tokenId!.toString());
     }else if (foundPools){
       pool = foundPools.pop(); // this is not selective without poolid input (can be multiple pools per token pair).. though order should cause pool with greatest liquidity to be used
     }
@@ -1411,7 +1411,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
         res.token0_finalamount = token0_finalamount
         res.token1_finalamount = token1_finalamount
         res.poolshares = poolshares
-        res.poolId = pool.id.toString()
+        res.poolId = Number(pool.id.toString())
         res.poolAddress = pool.address
         res.gasPrice = gasPrice
         return res;
@@ -1470,7 +1470,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
       res.token0_finalamount = token0_finalamount
       res.token1_finalamount = token1_finalamount
       res.poolshares = poolshares
-      res.poolId = pool.id.toString()
+      res.poolId = Number(pool.id.toString())
       res.poolAddress = pool.address
       res.gasPrice = gasPrice
       return res; 
@@ -1489,7 +1489,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
 }
 
   /**
-   * Given a 2 token symbols and 1-2 amounts, exchange amounts for pool liquidity shares
+   * exchange pool liquidity shares for amounts of tokens from a pool
    *
    * @param wallet CosmosWallet
    * @param decreasePercent 
@@ -1503,7 +1503,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
     wallet: CosmosWallet,
     decreasePercent: number = 100,
     address: string,
-    poolId: string, 
+    poolId: number, 
     allowedSlippage?: string,
     feeTier_input?: string,
     gasAdjustment_input?: number,
@@ -1561,7 +1561,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
         extendPool(this.tokenList, { pool, fees, balances, lockedCoins, prices:prices })
       );
 
-      const currentPool = extendedPools.filter((pl) => pl.id.toString() == poolId)[0];
+      const currentPool = extendedPools.filter((pl) => pl.id.toString() == poolId.toString())[0];
       const percent = decreasePercent; // total percent of pool shares
 
       const myLiquidity = new BigNumber(currentPool.myLiquidity || 0)
@@ -1842,7 +1842,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
   */
   async findPoolsPositions(
     address: string,
-    poolId?: string,
+    poolId?: number,
   ): Promise<SerializableExtendedPool[]> {
 
     try {
@@ -1884,7 +1884,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
       var returnPools: SerializableExtendedPool[] = [];
       extendedPools.forEach(function (cPool) {
         if (poolId){
-          if (cPool.id.toString() == poolId || cPool.poolId.toString() == poolId){
+          if (cPool.id.toString() == poolId.toString() || cPool.poolId.toString() == poolId.toString()){
             returnPools.push(new SerializableExtendedPool(cPool));
           }
         }else{
