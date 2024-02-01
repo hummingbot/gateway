@@ -725,8 +725,8 @@ definitions:
         type: 'number'
       maxPriorityFeePerGas:
         type: 'number'
-      poolId: # Cosmos specific
-        type: 'string'
+      tokenId: # Cosmos poolId
+        type: 'number'
       allowedSlippage: # Cosmos specific
         type: 'string'
       chain:
@@ -775,8 +775,8 @@ definitions:
       txHash:
         type: 'string'
         example: '0x0000000000000000000000000000000000000000'
-      poolId: # Cosmos specific
-        type: 'string'
+      tokenId: # Cosmos poolId
+        type: 'number'
       poolAddress: # Cosmos specific
         type: 'string'
       poolShares: # Cosmos specific
@@ -796,6 +796,7 @@ definitions:
     type: 'object'
     required:
       - 'address'
+      - 'tokenId'
       - 'chain'
       - 'network'
       - 'connector'
@@ -803,7 +804,7 @@ definitions:
       address:
         type: 'string'
         example: '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D'
-      tokenId:
+      tokenId: # Cosmos poolId
         type: 'number'
         example: 12
       maxFeePerGas:
@@ -821,8 +822,6 @@ definitions:
         example: 'uniswapLP'
       decreasePercent: # Cosmos specific
         type: 'number'
-      poolId: # Cosmos specific
-        type: 'string'
       allowedSlippage: # Cosmos specific
         type: 'string'
 
