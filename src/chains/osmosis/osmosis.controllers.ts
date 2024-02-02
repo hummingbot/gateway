@@ -503,7 +503,7 @@ export class OsmosisController {
     ): Promise<PositionResponse> {
       const startTimestamp: number = Date.now();
 
-      const pools = await osmosis.findPoolsPositions(
+      const response = await osmosis.findPoolsPositions(
         req.address!,
         req.tokenId
       );
@@ -523,7 +523,8 @@ export class OsmosisController {
         network: osmosis.chainName,
         timestamp: startTimestamp,
         latency: latency(startTimestamp, Date.now()),
-        pools: pools, //CosmosExtendedPool[];
+        //CosmosExtendedPool[];
+        ...response
       };
     }
 

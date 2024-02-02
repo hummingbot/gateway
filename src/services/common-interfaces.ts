@@ -113,6 +113,7 @@ import {
 import { BalanceRequest } from '../network/network.requests';
 import { TradeV2 } from '@traderjoe-xyz/sdk-v2';
 import { CurveTrade } from '../connectors/curve/curve';
+import { SerializableExtendedPool as CosmosSerializableExtendedPool } from '../chains/osmosis/osmosis.types';
 
 // TODO Check the possibility to have clob/solana/serum equivalents here
 //  Check this link https://hummingbot.org/developers/gateway/building-gateway-connectors/#5-add-sdk-classes-to-uniswapish-interface
@@ -203,13 +204,15 @@ export interface ExpectedTrade {
 export interface PositionInfo {
   token0?: string | undefined;
   token1?: string | undefined;
+  poolShares?: string; // COSMOS - GAMM pools only issue poolShares (no amount/unclaimedToken)
   fee?: string | undefined;
   lowerPrice?: string;
   upperPrice?: string;
-  amount0?: string;
-  amount1?: string;
-  unclaimedToken0?: string;
-  unclaimedToken1?: string;
+  amount0?: string; // COSMOS - CL pools only
+  amount1?: string; // COSMOS - CL pools only
+  unclaimedToken0?: string; // COSMOS - CL pools only
+  unclaimedToken1?: string; // COSMOS - CL pools only
+  pools?: CosmosSerializableExtendedPool[];
 }
 
 export interface Uniswapish {

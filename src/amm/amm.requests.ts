@@ -158,12 +158,11 @@ export interface RemoveLiquidityResponse {
 }
 
 export interface PositionRequest extends NetworkSelectionRequest {
-  tokenId?: number; // COSMOS - this is poolId, not req. (required for others)
+  tokenId?: number; // COSMOS - this is poolId. requried for both
   address?: string; // COSMOS only/required (no idea how this works without address for others)
 }
 
 export interface PositionResponse extends LPPositionInfo {
-  pools?: CosmosSerializableExtendedPool[];
   network: string;
   timestamp: number;
   latency: number;
