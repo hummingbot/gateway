@@ -672,6 +672,20 @@
     "@babel/helper-validator-identifier" "^7.22.20"
     to-fast-properties "^2.0.0"
 
+"@bancor/carbon-sdk@^0.0.93-DEV":
+  version "0.0.93-DEV"
+  resolved "https://registry.yarnpkg.com/@bancor/carbon-sdk/-/carbon-sdk-0.0.93-DEV.tgz#2071f1dc03c25c3897fd4cd9133f9345abdeb2db"
+  integrity sha512-qGu/twxhkYRsKKgrRt+2P9LOtJb5qjthR04QaYyDE2/+DFWVuzmvctXOAESFaUVrpHctZab0vB019KWS13upow==
+  dependencies:
+    "@ethersproject/abi" "^5.7.0"
+    "@ethersproject/bignumber" "^5.7.0"
+    "@ethersproject/contracts" "^5.7.0"
+    "@ethersproject/providers" "^5.7.2"
+    "@ethersproject/units" "^5.7.0"
+    decimal.js "^10.4.3"
+    ethers "^5.7.2"
+    events "^3.3.0"
+
 "@bcoe/v8-coverage@^0.2.3":
   version "0.2.3"
   resolved "https://registry.yarnpkg.com/@bcoe/v8-coverage/-/v8-coverage-0.2.3.tgz#75a2e8b51cb758a7553d6804a5932d7aace75c39"
