@@ -35,6 +35,7 @@ export type NewDebugMsgHandler = (msg: any) => void;
 
 export class EthereumBase {
   private _provider;
+  private _secondaryProvider;
   protected tokenList: TokenInfo[] = [];
   private _tokenMap: Record<string, TokenInfo> = {};
   // there are async values set in the constructor
@@ -43,6 +44,7 @@ export class EthereumBase {
   public chainName;
   public chainId;
   public rpcUrl;
+  public sedondaryRpcUrl;
   public gasPriceConstant;
   private _gasLimitTransaction;
   public tokenListSource: string;
@@ -56,6 +58,7 @@ export class EthereumBase {
     chainName: string,
     chainId: number,
     rpcUrl: string,
+    sedondaryRpcUrl: string,
     tokenListSource: string,
     tokenListType: TokenListType,
     gasPriceConstant: number,
@@ -64,9 +67,13 @@ export class EthereumBase {
     transactionDbPath: string
   ) {
     this._provider = new providers.StaticJsonRpcProvider(rpcUrl);
+    this._secondaryProvider = new providers.StaticJsonRpcProvider(
+      sedondaryRpcUrl
+    );
     this.chainName = chainName;
     this.chainId = chainId;
     this.rpcUrl = rpcUrl;
+    this.sedondaryRpcUrl = sedondaryRpcUrl;
     this.gasPriceConstant = gasPriceConstant;
     this.tokenListSource = tokenListSource;
     this.tokenListType = tokenListType;
@@ -93,6 +100,10 @@ export class EthereumBase {
 
   public get provider() {
     return this._provider;
+  }
+
+  public get secondaryProvider() {
+    return this._secondaryProvider;
   }
 
   public get gasLimitTransaction() {
@@ -242,14 +253,46 @@ export class EthereumBase {
   // returns the balance for an ERC-20 token
   async getERC20Balance(
     contract: Contract,
+    secondaryContract: Contract,
     wallet: Wallet,
     decimals: number
   ): Promise<TokenValue> {
     logger.info('Requesting balance for owner ' + wallet.address + '.');
-    const balance: BigNumber = await contract.balanceOf(wallet.address);
+    const maxRetry = 5;
+    let retry = 0;
+    let stopRetry = false;
+    let executingContract = contract;
+    let balance: BigNumber = BigNumber.from('0');
+
+    while (retry < maxRetry && !stopRetry) {
+      try {
+        balance = await executingContract.balanceOf(wallet.address);
+        stopRetry = true;
+      } catch (error) {
+        retry++;
+        logger.info(
+          `Error in getERC20Balance for owner ${wallet.address}:`,
+          error
+        );
+        logger.info(`Retrying...${retry} time`);
+        if (retry >= maxRetry) {
+          throw new Error(
+            `Error in getERC20Balance for owner ${wallet.address}: ${error}`
+          );
+        } else {
+          // if retry is odd set contract with second provider, else set with first provider
+          if (retry % 2 === 1) {
+            executingContract = secondaryContract;
+          } else {
+            executingContract = contract;
+          }
+        }
+      }
+    }
+
     logger.info(
       `Raw balance of ${contract.address} for ` +
-      `${wallet.address}: ${balance.toString()}`
+        `${wallet.address}: ${balance.toString()}`
     );
     return { value: balance, decimals: decimals };
   }
@@ -263,10 +306,10 @@ export class EthereumBase {
   ): Promise<TokenValue> {
     logger.info(
       'Requesting spender ' +
-      spender +
-      ' allowance for owner ' +
-      wallet.address +
-      '.'
+        spender +
+        ' allowance for owner ' +
+        wallet.address +
+        '.'
     );
     const allowance = await contract.allowance(wallet.address, spender);
     logger.info(allowance);
@@ -319,12 +362,12 @@ export class EthereumBase {
   ): Promise<Transaction> {
     logger.info(
       'Calling approve method called for spender ' +
-      spender +
-      ' requesting allowance ' +
-      amount.toString() +
-      ' from owner ' +
-      wallet.address +
-      '.'
+        spender +
+        ' requesting allowance ' +
+        amount.toString() +
+        ' from owner ' +
+        wallet.address +
+        '.'
     );
     return this.nonceManager.provideNonce(
       nonce,

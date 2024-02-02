@@ -4,6 +4,7 @@ export interface NetworkConfig {
   name: string;
   chainID: number;
   nodeURL: string;
+  secondaryNodeURL: string;
   tokenListType: TokenListType;
   tokenListSource: string;
   gasPriceRefreshInterval: number | undefined;
@@ -36,6 +37,9 @@ export function getEthereumConfig(
       ),
       nodeURL: ConfigManagerV2.getInstance().get(
         chainName + '.networks.' + network + '.nodeURL'
+      ),
+      secondaryNodeURL: ConfigManagerV2.getInstance().get(
+        chainName + '.networks.' + network + '.secondaryNodeURL'
       ),
       tokenListType: ConfigManagerV2.getInstance().get(
         chainName + '.networks.' + network + '.tokenListType'

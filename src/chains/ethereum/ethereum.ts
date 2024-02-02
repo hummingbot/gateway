@@ -42,6 +42,7 @@ export class Ethereum extends EthereumBase implements Ethereumish {
       'ethereum',
       config.network.chainID,
       config.network.nodeURL,
+      config.network.secondaryNodeURL,
       config.network.tokenListSource,
       config.network.tokenListType,
       config.manualGasPrice,
@@ -123,6 +124,10 @@ export class Ethereum extends EthereumBase implements Ethereumish {
   // in place for mocking
   public get provider() {
     return super.provider;
+  }
+
+  public get secondaryProvider() {
+    return super.secondaryProvider;
   }
 
   /**

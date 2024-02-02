@@ -10,6 +10,7 @@
           "properties": {
             "chainID": { "type": "integer" },
             "nodeURL": { "type": "string" },
+            "secondaryNodeURL": { "type": "string" },
             "tokenListType": { "type": "string" },
             "tokenListSource": { "type": "string" },
             "nativeCurrencySymbol": { "type": "string" }

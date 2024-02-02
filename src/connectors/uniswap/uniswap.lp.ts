@@ -53,44 +53,67 @@ export class UniswapLP extends UniswapLPHelper implements UniswapLPish {
   }
 
   async getPosition(tokenId: number): Promise<PositionInfo> {
-    const contract = this.getContract('nft', this.ethereum.provider);
+    const maxRetry = 5;
+    let retry = 0;
+    let contract = this.getContract('nft', this.ethereum.provider);
+    let positionsPromise, feeInfoPromise: Promise<any>;
+    let requests: any[] = [];
+    let positionInfo: any[] = [];
+    let stopRetry = false;
 
-    const positionsPromise = contract.positions(tokenId).catch((error: any) => {
-      console.error(`Error in contract.positions for tokenId ${tokenId}:`, error);
-      // Handle or rethrow error
-      logger.error(`Error in contract.positions for tokenId ${tokenId}: ${error}`);
-    });
-
-    const feeInfoPromise = contract.callStatic
-      .collect(
-        {
-          tokenId: tokenId,
-          recipient: constants.AddressZero,
-          amount0Max: MaxUint128,
-          amount1Max: MaxUint128,
-        },
-        { from: constants.AddressZero }
-      )
-      .catch((error: any) => {
-        console.error(`Error in getting fees info for tokenId ${tokenId}:`, error);
-        // Handle or rethrow error
-        logger.error(`Error in getting fees info for tokenId ${tokenId}: ${error}`);
-      });
-
-    const requests = [positionsPromise, feeInfoPromise];
-
-    // resolve all promiseses in requests sequencially
-    const positionInfo = [];
-    for (const req of requests) {
+    while (retry < maxRetry && !stopRetry) {
       try {
-        const res = await req;
-        positionInfo.push(res);
+        positionsPromise = contract.positions(tokenId).catch((error: any) => {
+          throw new Error(
+            `Error in contract.positions: ${error}`
+          );
+        });
+
+        feeInfoPromise = contract.callStatic
+          .collect(
+            {
+              tokenId: tokenId,
+              recipient: constants.AddressZero,
+              amount0Max: MaxUint128,
+              amount1Max: MaxUint128,
+            },
+            { from: constants.AddressZero }
+          )
+          .catch((error: any) => {
+            throw new Error(
+              `Error in getting fees info: ${error}`
+            );
+          });
+
+        requests = [positionsPromise, feeInfoPromise];
+
+        positionInfo = [];
+
+        for (const req of requests) {
+          positionInfo.push(await req);
+        }
+
+        stopRetry = true;
       } catch (error) {
-        throw new Error(
-          `Error in getPosition for tokenId ${tokenId}: ${error}`
-        );
+        retry++;
+        logger.info(`Error in getPosition for tokenId ${tokenId}:`, error)
+        logger.info(`Retrying...${retry} time`);
+        if (retry >= maxRetry) {
+          throw new Error(
+            `Error in getPosition for tokenId ${tokenId}: ${error}`
+          );
+        } else {
+          // if retry is odd set contract with second provider, else set with first provider
+          contract = this.getContract(
+            'nft',
+            retry % 2 === 1
+              ? this.ethereum.secondaryProvider
+              : this.ethereum.provider
+          );
+        }
       }
     }
+
     const position = positionInfo[0];
     const feeInfo = positionInfo[1];
 

@@ -3,6 +3,7 @@ networks:
   fuji:
     chainID: 43113
     nodeURL: https://rpc.ankr.com/avalanche_fuji
+    secondaryNodeURL: https://rpc.ankr.com/avalanche_fuji
     tokenListType: 'FILE'
     tokenListSource: '/home/gateway/conf/lists/avalanche_tokens_fuji.json'
     nativeCurrencySymbol: 'AVAX'
@@ -10,6 +11,7 @@ networks:
   avalanche:
     chainID: 43114
     nodeURL: https://rpc.ankr.com/avalanche
+    secondaryNodeURL: https://rpc.ankr.com/avalanche
     tokenListType: 'FILE'
     tokenListSource: '/home/gateway/conf/lists/avalanche_tokens.json'
     nativeCurrencySymbol: 'AVAX'
@@ -17,6 +19,7 @@ networks:
   dexalot:
     chainID: 432204
     nodeURL: https://subnets.avax.network/dexalot/mainnet/rpc
+    secondaryNodeURL: https://subnets.avax.network/dexalot/mainnet/rpc
     tokenListType: 'FILE'
     tokenListSource: '/home/gateway/conf/lists/dexalot_tokens.json'
     nativeCurrencySymbol: 'ALOT'

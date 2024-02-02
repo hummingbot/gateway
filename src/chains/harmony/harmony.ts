@@ -28,6 +28,7 @@ export class Harmony extends EthereumBase implements Ethereumish {
       'harmony',
       config.network.chainID,
       config.network.nodeURL,
+      config.network.secondaryNodeURL,
       config.network.tokenListSource,
       config.network.tokenListType,
       config.manualGasPrice,

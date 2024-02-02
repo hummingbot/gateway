@@ -25,6 +25,7 @@ export class BinanceSmartChain extends EthereumBase implements Ethereumish {
       'binance-smart-chain',
       config.network.chainID,
       config.network.nodeURL,
+      config.network.secondaryNodeURL,
       config.network.tokenListSource,
       config.network.tokenListType,
       config.manualGasPrice,

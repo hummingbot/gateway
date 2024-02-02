@@ -4,6 +4,7 @@ interface NetworkConfig {
   name: string;
   chainID: number;
   nodeURL: string;
+  secondaryNodeURL: string;
   tokenListType: TokenListType;
   tokenListSource: string;
 }
@@ -30,6 +31,9 @@ export function getHarmonyConfig(
       ),
       nodeURL: ConfigManagerV2.getInstance().get(
         chainName + '.networks.' + network + '.nodeURL'
+      ),
+      secondaryNodeURL: ConfigManagerV2.getInstance().get(
+        chainName + '.networks.' + network + '.secondaryNodeURL'
       ),
       tokenListType: ConfigManagerV2.getInstance().get(
         chainName + '.networks.' + network + '.tokenListType'
