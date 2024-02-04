@@ -31,6 +31,7 @@ import { BigNumber } from 'bignumber.js';
 import { OraiswapLimitOrderQueryClient } from '@oraichain/oraidex-contracts-sdk';
 import { OraidexConfig } from './oraidex.config';
 import { JsonObject, ExecuteInstruction } from '@cosmjs/cosmwasm-stargate';
+// import { convertRawLogEventsToMapOfEvents } from './oraidex.converters';
 
 const ORDERBOOK_LIMIT = 100;
 export class OraidexCLOB implements CLOBish {
@@ -132,6 +133,10 @@ export class OraidexCLOB implements CLOBish {
         maker: new BigNumber('0.1'),
         taker: new BigNumber('0.1'),
       },
+      minimumOrderSize: '0.001',
+      minimumPriceIncrement: '0.001',
+      minimumBaseAmountIncrement: '0.001',
+      minimumQuoteAmountIncrement: '0.001',
     };
   }
 
@@ -157,7 +162,7 @@ export class OraidexCLOB implements CLOBish {
         let price = (
           parseFloat(order.offer_asset.amount) /
           parseFloat(order.ask_asset.amount)
-        ).toString();
+        ).toFixed(4);
         let quantity = (
           Number(order.ask_asset.amount) - Number(order.filled_ask_amount)
         ).toString();
@@ -171,7 +176,7 @@ export class OraidexCLOB implements CLOBish {
         let price = (
           parseFloat(order.ask_asset.amount) /
           parseFloat(order.offer_asset.amount)
-        ).toString();
+        ).toFixed(4);
         let quantity = (
           Number(order.offer_asset.amount) - Number(order.filled_offer_amount)
         ).toString();
@@ -207,7 +212,7 @@ export class OraidexCLOB implements CLOBish {
       assetInfos: [market.baseToken, market.quoteToken],
     });
 
-    return midPrice;
+    return Number(midPrice).toFixed(3);
   }
 
   public async orders(
@@ -298,14 +303,20 @@ export class OraidexCLOB implements CLOBish {
     const instructions: ExecuteInstruction[] = [];
     const sender = options.ownerAddress;
 
+    // hardcode:
+    const decimals = 1000000;
+
     for (const order of options.orders) {
       const market = this.parsedMarkets[order.market] as Market;
+      const baseAmount = Math.round(Number(order.amount) * decimals);
       const baseToken = market.baseToken;
       const quoteToken = market.quoteToken;
-      const quoteAmount = parseFloat(order.price) * parseFloat(order.amount);
+      const quoteAmount = Math.round(
+        decimals * parseFloat(order.price) * parseFloat(order.amount)
+      );
 
       const assets = [
-        { info: baseToken, amount: order.amount.toString() },
+        { info: baseToken, amount: baseAmount.toString() },
         { info: quoteToken, amount: quoteAmount.toString() },
       ];
       const submitOrderMsg = {
@@ -354,7 +365,7 @@ export class OraidexCLOB implements CLOBish {
                 denom: getNotNullOrThrowError<string>(
                   (baseToken as any).native_token.denom
                 ),
-                amount: order.amount.toString(),
+                amount: baseAmount.toString(),
               },
             ],
           });
@@ -364,7 +375,7 @@ export class OraidexCLOB implements CLOBish {
             msg: {
               send: {
                 contract: this._swapLimitOrder,
-                amount: order.amount.toString(),
+                amount: baseAmount.toString(),
                 msg: Buffer.from(JSON.stringify(submitOrderMsg)).toString(
                   'base64'
                 ),
@@ -380,6 +391,8 @@ export class OraidexCLOB implements CLOBish {
       sender,
       instructions
     );
+
+    // let rawLogs = convertRawLogEventsToMapOfEvents(res.logs);
 
     return res.transactionHash;
   }

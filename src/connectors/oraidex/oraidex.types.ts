@@ -57,6 +57,10 @@ export interface Market {
   min_quote_coin_amount: string;
   spread: string; // Also called tickSize
   fees: MarketFee;
+  minimumOrderSize: String;
+  minimumPriceIncrement: String; // Also called tickSize
+  minimumBaseAmountIncrement: String;
+  minimumQuoteAmountIncrement: String;
 }
 
 export interface MarketFee {

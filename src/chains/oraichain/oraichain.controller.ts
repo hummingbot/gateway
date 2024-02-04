@@ -157,6 +157,7 @@ export class OraichainController {
       gasUsed: transaction.gasUsed,
       gasWanted: transaction.gasWanted,
       txData: decodeTxRaw(transaction.tx),
+      events: transaction.events,
     };
   }
 }
