@@ -585,6 +585,7 @@ export class OsmosisController {
     }
 
     static async balances(osmosis: Osmosis, req: CosmosBalanceRequest) {
+      const startTimestamp: number = Date.now();
       validateCosmosBalanceRequest(req);
 
       const wallet = await osmosis.getWallet(req.address, 'osmo');
@@ -604,6 +605,9 @@ export class OsmosisController {
       const filteredBalances = toCosmosBalances(balances, tokenSymbols);
 
       return {
+        network: osmosis.chainName,
+        timestamp: startTimestamp,
+        latency: latency(startTimestamp, Date.now()),
         balances: filteredBalances,
       };
     }

@@ -110,6 +110,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
   private _gasPrice: number;
   private _nativeTokenSymbol: string;
   private _chain: string;
+  private _network: string;
   private _requestCount: number;
   private _metricsLogInterval: number;
   private _metricTimer;
@@ -134,7 +135,8 @@ export class Osmosis extends CosmosBase implements Cosmosish{
       config.rpcAddressDynamicBaseFee,
       config.manualGasPrice
     )
-    this._chain = network;
+    this._network = network;
+    this._chain = 'osmosis';
     this._nativeTokenSymbol = config.nativeCurrencySymbol;
     this.manualGasPriceToken = config.manualGasPriceToken;
 
@@ -196,7 +198,10 @@ export class Osmosis extends CosmosBase implements Cosmosish{
   public get chain(): string {
     return this._chain;
   }
-
+  public get network(): string {
+    return this._network;
+  }
+  
   public get nativeTokenSymbol(): string {
     return this._nativeTokenSymbol;
   }
