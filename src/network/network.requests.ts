@@ -20,7 +20,7 @@ export interface BalanceResponse {
 }
 
 export interface PollRequest extends NetworkSelectionRequest {
-  txHash: string;
+  txHash?: string; // not required for cosmos when coming after approve() 
 }
 
 export interface PollResponse {

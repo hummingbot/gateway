@@ -44,6 +44,7 @@ import { Decimal } from 'decimal.js-light';
 import { CosmosAsset as TokenishCosmosAsset} from '../../chains/cosmos/cosmos-base';
 import { TokensRequest, TokensResponse } from '../../network/network.requests';
 import { TransferRequest, TransferResponse } from '../../services/common-interfaces';
+//@ts-ignore
 import { validateCosmosBalanceRequest, validateCosmosPollRequest } from '../cosmos/cosmos.validators';
 import { CosmosBalanceRequest, CosmosPollRequest } from '../cosmos/cosmos.requests';
 import { toCosmosBalances } from '../cosmos/cosmos.controllers';
@@ -613,18 +614,27 @@ export class OsmosisController {
     }
 
     static async poll(osmosis: Osmosis, req: CosmosPollRequest) {
-      validateCosmosPollRequest(req);
+      // validateCosmosPollRequest(req);
+      if (req.txHash){
+        const transaction = await osmosis.getTransaction(req.txHash);
+        const currentBlock = await osmosis.getCurrentBlockNumber();
 
-      const transaction = await osmosis.getTransaction(req.txHash);
-      const currentBlock = await osmosis.getCurrentBlockNumber();
-
+        return {
+          txHash: req.txHash,
+          currentBlock,
+          txBlock: transaction.height,
+          gasUsed: transaction.gasUsed,
+          gasWanted: transaction.gasWanted,
+          txData: decodeTxRaw(transaction.tx),
+        };
+      }
       return {
-        txHash: req.txHash,
-        currentBlock,
-        txBlock: transaction.height,
-        gasUsed: transaction.gasUsed,
-        gasWanted: transaction.gasWanted,
-        txData: decodeTxRaw(transaction.tx),
+        txHash: '',
+        txStatus: 1,
+        txBlock: 0,
+        gasUsed: 0,
+        gasWanted: 0,
+        txData: '',
       };
     }
 
@@ -634,9 +644,13 @@ export class OsmosisController {
     ){
       if (osmosis || req){}
       // Not applicable.
+      var allowances: Record<string, string> = {}
+      req.tokenSymbols.forEach((sym)=>{
+        allowances[sym] = "1000000000000000000000000000"
+      })
       return {
         spender: undefined as unknown as string,
-        approvals: {} as Record<string, string>,
+        approvals: allowances,
       };
     }
 

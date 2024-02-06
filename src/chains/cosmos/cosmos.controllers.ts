@@ -63,7 +63,7 @@ export class CosmosController {
   static async poll(cosmos: Cosmos, req: CosmosPollRequest) {
     validateCosmosPollRequest(req);
 
-    const transaction = await cosmos.getTransaction(req.txHash);
+    const transaction = await cosmos.getTransaction(req.txHash!);
     const currentBlock = await cosmos.getCurrentBlockNumber();
 
     return {
