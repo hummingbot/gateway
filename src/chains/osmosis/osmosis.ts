@@ -1862,21 +1862,26 @@ export class Osmosis extends CosmosBase implements Cosmosish{
   ): Promise<SerializableExtendedPool[]> {
 
     try {
-      const balancesContainer = await this._provider.cosmos.bank.v1beta1.allBalances({
-        address: address,
-        pagination: {
-          key: new Uint8Array(),
-          offset: BigInt(0),
-          limit: BigInt(10000),
-          countTotal: false,
-          reverse: false,
-        },
-      })
-      const balances = balancesContainer.balances
-      const lockedCoinsContainer = await this._provider.osmosis.lockup.accountLockedCoins({
-        owner: address,
-      });
-      const lockedCoins: Coin[] = lockedCoinsContainer.lockedCoins ? lockedCoinsContainer.lockedCoins : []
+      var balances: Coin[] = []
+      var lockedCoins: Coin[] = []
+      if (address){
+        const balancesContainer = await this._provider.cosmos.bank.v1beta1.allBalances({
+          address: address,
+          pagination: {
+            key: new Uint8Array(),
+            offset: BigInt(0),
+            limit: BigInt(10000),
+            countTotal: false,
+            reverse: false,
+          },
+        })
+        balances = balancesContainer.balances
+
+        const lockedCoinsContainer = await this._provider.osmosis.lockup.accountLockedCoins({
+          owner: address,
+        });
+        lockedCoinsContainer.lockedCoins ? lockedCoinsContainer.lockedCoins : []
+      }
 
       // RETURN TYPES:
       // concentrated-liquidity/pool || cosmwasmpool/v1beta1/model/pool || gamm/pool-models/balancer/balancerPool || gamm/pool-models/stableswap/stableswap_pool
@@ -1952,8 +1957,6 @@ export class Osmosis extends CosmosBase implements Cosmosish{
     address: string,
     poolId?: number,
   ): Promise<PositionInfo> {
-
-    console.debug('')
 
     try {
 
