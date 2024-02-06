@@ -44,6 +44,7 @@ import { KujiraCLOB } from '../connectors/kujira/kujira';
 import { PancakeswapLP } from '../connectors/pancakeswap/pancakeswap.lp';
 import { XRPLCLOB } from '../connectors/xrpl/xrpl';
 import { QuipuSwap } from '../connectors/quipuswap/quipuswap';
+import { Carbonamm } from '../connectors/carbon/carbonAMM';
 
 export type ChainUnion =
   | Algorand
@@ -240,8 +241,9 @@ export async function getConnector<T>(
     connectorInstance = Curve.getInstance(chain, network);
   } else if (chain === 'tezos' && connector === 'quipuswap') {
     connectorInstance = QuipuSwap.getInstance(network);
-  }
-  else {
+  } else if (chain === 'ethereum' && connector === 'carbonamm') {
+    connectorInstance = Carbonamm.getInstance(chain, network);
+  } else {
     throw new Error('unsupported chain or connector');
   }
 

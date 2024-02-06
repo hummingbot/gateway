@@ -35,6 +35,11 @@ import {
   estimateGas as uniswapEstimateGas,
 } from '../connectors/uniswap/uniswap.controllers';
 import {
+  price as carbonPrice,
+  trade as carbonTrade,
+  estimateGas as carbonEstimateGas,
+} from '../connectors/carbon/carbon.controllers';
+import {
   price as refPrice,
   trade as refTrade,
   estimateGas as refEstimateGas,
@@ -83,6 +88,7 @@ import { Plenty } from '../connectors/plenty/plenty';
 import { QuipuSwap } from '../connectors/quipuswap/quipuswap';
 import { Osmosis } from '../chains/osmosis/osmosis';
 import { AMOUNT_NOT_SUPPORTED_ERROR_CODE, ENDPOINT_NOT_SUPPORTED_ERROR_MESSAGE, HttpException } from '../services/error-handler';
+import { Carbonamm } from '../connectors/carbon/carbonAMM';
 
 export async function price(req: PriceRequest): Promise<PriceResponse> {
   const chain = await getInitializedChain<
@@ -103,6 +109,8 @@ export async function price(req: PriceRequest): Promise<PriceResponse> {
     return plentyPrice(<Tezosish>chain, connector, req);
   } else if (connector instanceof QuipuSwap) {
     return quipuPrice(<Tezosish>chain, connector, req);
+  } else if (connector instanceof Carbonamm) {
+    return carbonPrice(<Ethereumish>chain, connector, req);
   } else if ('routerAbi' in connector) {
     // we currently use the presence of routerAbi to distinguish Uniswapish from RefAMMish
     return uniswapPrice(<Ethereumish>chain, connector, req);
@@ -132,6 +140,8 @@ export async function trade(req: TradeRequest): Promise<TradeResponse> {
     return plentyTrade(<Tezosish>chain, connector, req);
   } else if (connector instanceof QuipuSwap) {
     return quipuTrade(<Tezosish>chain, connector, req);
+  } else if (connector instanceof Carbonamm) {
+    return carbonTrade(<Ethereumish>chain, connector, req);
   } else if ('routerAbi' in connector) {
     // we currently use the presence of routerAbi to distinguish Uniswapish from RefAMMish
     return uniswapTrade(<Ethereumish>chain, connector, req);
@@ -244,6 +254,8 @@ export async function estimateGas(
     return plentyEstimateGas(<Tezosish>chain, connector);
   } else if (connector instanceof QuipuSwap) {
     return quipuEstimateGas(<Tezosish>chain, connector);
+  } else if (connector instanceof Carbonamm) {
+    return carbonEstimateGas(<Ethereumish>chain, connector);
   } else if ('routerAbi' in connector) {
     // we currently use the presence of routerAbi to distinguish Uniswapish from RefAMMish
     return uniswapEstimateGas(<Ethereumish>chain, connector);
