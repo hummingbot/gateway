@@ -43,6 +43,7 @@ import {
 import LRUCache from 'lru-cache';
 import { getXRPLConfig } from '../../chains/xrpl/xrpl.config';
 import { isUndefined } from 'mathjs';
+import { convertStringToHex } from './xrpl.utils';
 
 // const XRP_FACTOR = 1000000;
 const ORDERBOOK_LIMIT = 50;
@@ -124,8 +125,8 @@ export class XRPLCLOB implements CLOBish {
     }
 
     const marketsAsArray: Array<Market> = [];
-    for (const market in this.parsedMarkets) {
-      marketsAsArray.push(this.parsedMarkets[market]);
+    for (const marketId in this.parsedMarkets) {
+      marketsAsArray.push(this.parsedMarkets[marketId]);
     }
 
     return { markets: marketsAsArray };
@@ -157,8 +158,8 @@ export class XRPLCLOB implements CLOBish {
       quoteTransferRate: number;
     const zeroTransferRate = 1000000000;
 
-    const baseCurrency = market.baseCode;
-    const quoteCurrency = market.quoteCode;
+    const baseCurrency = convertStringToHex(market.baseCode);
+    const quoteCurrency = convertStringToHex(market.quoteCode);
     const baseIssuer = market.baseIssuer;
     const quoteIssuer = market.quoteIssuer;
 

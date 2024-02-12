@@ -45,8 +45,6 @@ export type MarketInfo = {
   baseCode: string;
   quoteIssuer: string;
   quoteCode: string;
-  baseTokenID: number;
-  quoteTokenID: number;
 };
 
 export type Fee = {
@@ -219,6 +217,8 @@ export class XRPL implements XRPLish {
     this.tokenList = await this.getTokenList(tokenListSource, tokenListType);
     if (this.tokenList) {
       this.tokenList.forEach((token: XRPTokenInfo) => {
+        //TODO: There are duplicate codes with different issuer,
+        //      find way to resolve this.
         if (!this._tokenMap[token.code]) {
           this._tokenMap[token.code] = [];
         }
@@ -284,16 +284,7 @@ export class XRPL implements XRPLish {
   }
 
   public getTokenForSymbol(code: string): XRPTokenInfo[] | undefined {
-    let query = code;
-
-    // Special case for SOLO on mainnet
-    if (code === 'SOLO') {
-      query = '534F4C4F00000000000000000000000000000000';
-    }
-
-    if (code === 'USDC') {
-      query = '5553444300000000000000000000000000000000'
-    }
+    let query = convertHexToString(code);
 
     return this._tokenMap[query] ? this._tokenMap[query] : undefined;
   }

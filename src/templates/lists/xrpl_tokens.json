@@ -9,7 +9,7 @@
   },
   {
     "id": 31,
-    "code": "534F4C4F00000000000000000000000000000000",
+    "code": "SOLO",
     "issuer": "rsoLo2S1kiGeCcn6hCUXVrCpGMWLrRrLZz",
     "title": "Sologenic",
     "trustlines": 288976,
@@ -4225,7 +4225,7 @@
   },
   {
     "id": 18465,
-    "code": "5553444300000000000000000000000000000000",
+    "code": "USDC",
     "issuer": "rcEGREd8NmkKRE8GE424sksyt1tJVFZwu",
     "title": "GateHub USDC",
     "trustlines": 3407,
@@ -12373,6 +12373,27 @@
     "code": "GZX",
     "issuer": "rPK6DvvoF8CVHGURSGNccCxKDXMnRAchHD",
     "trustlines": 443,
+    "placeInTop": null
+  },
+  {
+    "id": 99001,
+    "code": "XAH",
+    "issuer": "rswh1fvyLqHizBS2awu1vs6QcmwTBd9qiv",
+    "trustlines": 0,
+    "placeInTop": null
+  },
+  {
+    "id": 99002,
+    "code": "FURY",
+    "issuer": "rnoKi9s9b6WYaNGWQy4qVdnKo6Lj2eHE1D",
+    "trustlines": 0,
+    "placeInTop": null
+  },
+  {
+    "id": 99003,
+    "code": "XMEME",
+    "issuer": "r4UPddYeGeZgDhSGPkooURsQtmGda4oYQW",
+    "trustlines": 0,
     "placeInTop": null
   }
 ]
