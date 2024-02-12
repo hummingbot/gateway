@@ -114,6 +114,7 @@ import { BalanceRequest } from '../network/network.requests';
 import { TradeV2 } from '@traderjoe-xyz/sdk-v2';
 import { CurveTrade } from '../connectors/curve/curve';
 import { CarbonTrade } from '../connectors/carbon/carbonAMM';
+import { BalancerTrade } from '../connectors/balancer/balancer';
 
 // TODO Check the possibility to have clob/solana/serum equivalents here
 //  Check this link https://hummingbot.org/developers/gateway/building-gateway-connectors/#5-add-sdk-classes-to-uniswapish-interface
@@ -162,7 +163,8 @@ export type UniswapishTrade =
   | TradeXsswap
   | TradeV2
   | CurveTrade
-  | CarbonTrade;
+  | CarbonTrade
+  | BalancerTrade;
 
 export type UniswapishTradeOptions =
   | MMFTradeOptions
