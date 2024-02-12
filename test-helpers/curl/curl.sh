@@ -8,6 +8,7 @@
 # export POLYGON_ADDRESS='<put-your-public-key-here>'
 # export KUJIRA_MNEMONIC='put-your-kujira-mnemonic-here'
 # export OSMOSIS_ADDRESS='<put-your-osmosis-public-key-here>'
+# export OSMOSIS_PRIVATE_KEY='<put-your-osmosis-test-private-key-here>'
 
 # -k is --insecure, this disables certificate verification and should only be
 # used for local development and testing
