@@ -129,7 +129,7 @@ export function convertStringToHex(str: string): string {
     while (hex.length < 40) {
       hex += '00'; // pad with zeros to reach 160 bits (40 hex characters)
     }
-    return hex;
+    return hex.toUpperCase();
   }
 
   return str;
