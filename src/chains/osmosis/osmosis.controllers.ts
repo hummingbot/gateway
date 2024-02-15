@@ -91,10 +91,10 @@ export class OsmosisController {
       quoteAsset: string,
       baseAmount: Decimal,
       tradeSide: string,
+      allowedSlippage?: string,
     ): Promise<TradeInfo> {
       const gasAdjustment = osmosis.gasPriceConstant; // 
       const feeTier = osmosis.feeTier; // 
-      const allowedSlippage = osmosis.allowedSlippage; // 
 
       const baseToken: Tokenish = osmosis.getTokenBySymbol(baseAsset)!;
       const quoteToken: Tokenish = osmosis.getTokenBySymbol(quoteAsset)!;
@@ -214,7 +214,8 @@ export class OsmosisController {
           req.base,
           req.quote,
           new Decimal(req.amount),
-          req.side
+          req.side,
+          req.allowedSlippage
         );
       } catch (e) {
         if (e instanceof Error) {

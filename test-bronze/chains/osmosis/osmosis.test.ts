@@ -1,4 +1,4 @@
-import { patch, unpatch } from '../../services/patch';
+import { patch, unpatch } from '../../../test/services/patch';
 import { Osmosis } from '../../../src/chains/osmosis/osmosis';
 import { ConfigManagerCertPassphrase } from '../../../src/services/config-manager-cert-passphrase';
 import { addWallet, getWallets } from '../../../src/services/wallet/wallet.controllers';
@@ -185,7 +185,7 @@ describe('controllers - CL Pools + Liquidity', () => {
 
   var poolIdCL: number;
   it('addLiquidity LP', async () => {
-    const addLiquidityRequestFunction = {'allowedSlippage':'100%', 'lowerPrice':'5', 'upperPrice':'5.7', 'fee': 'high', 'token0':'ATOM', 'token1':'OSMO', 'amount0':'0.001', 'amount1':'0.006', 'chain':'osmosis', 'network':'testnet', 'address':osmosisAddress};
+    const addLiquidityRequestFunction = {'allowedSlippage':'100%', 'lowerPrice':'100', 'upperPrice':'500', 'fee': 'high', 'token0':'ION', 'token1':'OSMO', 'amount0':'0.0004016', 'amount1':'0.1', 'chain':'osmosis', 'network':'testnet', 'address':osmosisAddress};
     var addLiquidityResponse = await osmosis.controller.addLiquidity(osmosis, addLiquidityRequestFunction)
     poolIdCL = addLiquidityResponse.tokenId;
     expect(addLiquidityResponse.tokenId).toBeDefined();
