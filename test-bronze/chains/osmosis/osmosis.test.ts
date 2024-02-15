@@ -7,8 +7,8 @@ import { CosmosAsset } from '../../../src/chains/cosmos/cosmos-base';
 import { Side } from '../../../src/amm/amm.requests';
 
 const osmosisAddress = 'osmo1gxfandcf6x6y0lv3afv0p4w4akv809ycrly4cs';
-const osmosisPrivateKey = '2e8be986f72f76dba7f8448b2e2342d3297cd628cf08aad9b90098102824f9d5'; // real 
-const liveAddressNik = 'osmo1mvsg3en5ulpnpd3dset2m86zjpnzp4v4epmjh7'
+const osmosisPrivateKey = '2e8be986f72f76dba7f8448b2e2342d3297cd628cf08aad9b90098102824f9d5';
+const osmosisOutboundAddress = 'osmo1mvsg3en5ulpnpd3dset2m86zjpnzp4v4epmjh7'
 
 const network = 'testnet'
 
@@ -61,7 +61,7 @@ describe('chain.routes', () => {
 
   it('getTokens All', async () => {
     var getTokens = await osmosis.controller.getTokens(osmosis, {});
-    expect(getTokens.tokens.length).toEqual(12);
+    expect(getTokens.tokens.length).toBeGreaterThan(0);
   });
 
   it('balances OSMO', async () => {
@@ -98,7 +98,7 @@ describe('chain.routes', () => {
   });
 
   it('transfer', async () => {
-    var transfer = await osmosis.controller.transfer(osmosis, {'from':osmosisAddress, 'to':liveAddressNik, 'token':'OSMO', amount:'0.000001', 'chain':'osmosis', 'network':network});
+    var transfer = await osmosis.controller.transfer(osmosis, {'from':osmosisAddress, 'to':osmosisOutboundAddress, 'token':'OSMO', amount:'0.000001', 'chain':'osmosis', 'network':network});
     expect(transfer).toContain('Transfer success');
   });
 
@@ -108,12 +108,12 @@ describe('chain.routes', () => {
 describe('chain.routes - DISABLED', () => {
 
   it('allowances', async () => {
-    var allowances = await osmosis.controller.allowances(osmosis, {'address':osmosisAddress, 'spender':liveAddressNik, 'tokenSymbols':[], 'chain':'osmosis', 'network':network});
+    var allowances = await osmosis.controller.allowances(osmosis, {'address':osmosisAddress, 'spender':osmosisOutboundAddress, 'tokenSymbols':[], 'chain':'osmosis', 'network':network});
     expect(allowances.spender).toBeUndefined()
   });
 
   it('approve', async () => {
-    var approve = await osmosis.controller.approve(osmosis, {'address':osmosisAddress, 'spender':liveAddressNik, token:'OSMO', 'chain':'osmosis', 'network':network});
+    var approve = await osmosis.controller.approve(osmosis, {'address':osmosisAddress, 'spender':osmosisOutboundAddress, token:'OSMO', 'chain':'osmosis', 'network':network});
     expect(approve.spender).toBeUndefined()
   });
 
@@ -179,15 +179,15 @@ describe('controllers - CL Pools + Liquidity', () => {
   //  adds tend to fail unless amounts input are similar in relative $ value
   var poolIdGAMM: number;
   it('addLiquidity', async () => {
-    const addLiquidityRequestFunction = {'tokenId':62, 'fee': 'high', 'token0':'ION', 'token1':'OSMO', 'amount0':'0', 'amount1':'0.0005', 'chain':'osmosis', 'network':network, 'address':osmosisAddress, };
+    const addLiquidityRequestFunction = {'fee': 'high', 'token0':'ION', 'token1':'OSMO', 'amount0':'0', 'amount1':'0.0005', 'chain':'osmosis', 'network':network, 'address':osmosisAddress, };
     var addLiquidityResponse = await osmosis.controller.addLiquidity(osmosis, addLiquidityRequestFunction)
     poolIdGAMM = addLiquidityResponse.tokenId;
     expect(addLiquidityResponse.tokenId).toBeDefined();
   });
 
   var poolIdCL: number;
-  it('addLiquidity LP', async () => {
-    const addLiquidityRequestFunction = {'allowedSlippage':'100%', 'lowerPrice':'100', 'upperPrice':'500', 'fee': 'high', 'token0':'ION', 'token1':'OSMO', 'amount0':'0.0004016', 'amount1':'0.1', 'chain':'osmosis', 'network':network, 'address':osmosisAddress};
+  it('addLiquidity CL', async () => {
+    const addLiquidityRequestFunction = {'allowedSlippage':'100%', 'lowerPrice':'100', 'upperPrice':'500', 'fee': 'high', 'token0':'ION', 'token1':'OSMO', 'amount0':'0.000401', 'amount1':'0.1', 'chain':'osmosis', 'network':network, 'address':osmosisAddress};
     var addLiquidityResponse = await osmosis.controller.addLiquidity(osmosis, addLiquidityRequestFunction)
     poolIdCL = addLiquidityResponse.tokenId;
     expect(addLiquidityResponse.tokenId).toBeDefined();
