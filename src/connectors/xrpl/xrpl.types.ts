@@ -31,10 +31,10 @@ export enum OrderStatus {
 
 export enum OrderType {
   LIMIT = 'LIMIT',
-  PASSIVE = 'PASSIVE',
+  LIMIT_MAKER = 'LIMIT_MAKER', // Limit Maker or Post Only Order
   IOC = 'IOC', // Immediate or Cancel
   FOK = 'FOK', // Fill or Kill
-  SELL = 'SELL', // Sell
+  MARKET = 'MARKET', // Sell or Market Order
 }
 
 export enum TransactionIntentType {
