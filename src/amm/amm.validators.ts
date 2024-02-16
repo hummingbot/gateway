@@ -160,9 +160,7 @@ export const validateLimitPrice: Validator = mkValidator(
 export const validateTokenId: Validator = mkValidator(
   'tokenId',
   invalidTokenIdError,
-  (val) =>
-    typeof val === 'undefined' ||
-    (typeof val === 'number' && val >= 0 && Number.isInteger(val)),
+  (val) => typeof val === 'number' && val >= 0 && Number.isInteger(val),
   true
 );
 
