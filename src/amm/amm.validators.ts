@@ -334,7 +334,6 @@ export const validatePositionRequest: RequestValidator = mkRequestValidator([
   validateChain,
   validateNetwork,
   validateTokenId,
-  validateAddress,
 ]);
 
 export const validatePoolPriceRequest: RequestValidator = mkRequestValidator([
