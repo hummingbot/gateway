@@ -5,8 +5,10 @@ import {
   PerpetualMarket,
   Position,
 } from '@injectivelabs/sdk-ts';
-import { OrderType, Side } from '../amm/amm.requests';
 import { NetworkSelectionRequest } from '../services/common-interfaces';
+
+export type OrderType = 'LIMIT' | 'LIMIT_MAKER' | 'MARKET';
+export type Side = 'BUY' | 'SELL';
 
 export interface ClobMarketsRequest extends NetworkSelectionRequest {
   market?: string;
