@@ -44,6 +44,7 @@ import LRUCache from 'lru-cache';
 import { getXRPLConfig } from '../../chains/xrpl/xrpl.config';
 import { isUndefined } from 'mathjs';
 import { convertStringToHex } from './xrpl.utils';
+import { logger } from '../../services/logger';
 
 // const XRP_FACTOR = 1000000;
 const ORDERBOOK_LIMIT = 50;
@@ -145,7 +146,9 @@ export class XRPLCLOB implements CLOBish {
       loadedMarkets.push(processedMarket);
     };
 
-    await promiseAllInBatches(getMarket, markets, 1, 1);
+    logger.info(`Fetching markets for ${this.chain} ${this.network}`);
+
+    await promiseAllInBatches(getMarket, markets, 15, 300);
 
     return loadedMarkets;
   }
