@@ -122,3 +122,15 @@ export function convertHexToString(hex: string): string {
 
   return hex;
 }
+
+export function convertStringToHex(str: string): string {
+  if (str.length > 3) {
+    let hex = Buffer.from(str).toString('hex');
+    while (hex.length < 40) {
+      hex += '00'; // pad with zeros to reach 160 bits (40 hex characters)
+    }
+    return hex.toUpperCase();
+  }
+
+  return str;
+}

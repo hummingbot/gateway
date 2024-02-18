@@ -43,6 +43,7 @@ import {
 import LRUCache from 'lru-cache';
 import { getXRPLConfig } from '../../chains/xrpl/xrpl.config';
 import { isUndefined } from 'mathjs';
+import { convertStringToHex } from './xrpl.utils';
 
 // const XRP_FACTOR = 1000000;
 const ORDERBOOK_LIMIT = 50;
@@ -85,6 +86,11 @@ export class XRPLCLOB implements CLOBish {
   }
 
   public async loadMarkets() {
+    // Make a while loop and wait for the XRPL to be ready
+    while (!this._xrpl.ready()) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+
     const rawMarkets = await this.fetchMarkets();
     for (const market of rawMarkets) {
       this.parsedMarkets[market.marketId] = market;
@@ -92,11 +98,9 @@ export class XRPLCLOB implements CLOBish {
   }
 
   public async init() {
-    if (!this._xrpl.ready() || Object.keys(this.parsedMarkets).length === 0) {
-      await this._xrpl.init();
-      await this.loadMarkets();
-      this._ready = true;
-    }
+    await this._xrpl.init();
+    await this.loadMarkets();
+    this._ready = true;
   }
 
   public ready(): boolean {
@@ -121,8 +125,8 @@ export class XRPLCLOB implements CLOBish {
     }
 
     const marketsAsArray: Array<Market> = [];
-    for (const market in this.parsedMarkets) {
-      marketsAsArray.push(this.parsedMarkets[market]);
+    for (const marketId in this.parsedMarkets) {
+      marketsAsArray.push(this.parsedMarkets[marketId]);
     }
 
     return { markets: marketsAsArray };
@@ -154,8 +158,8 @@ export class XRPLCLOB implements CLOBish {
       quoteTransferRate: number;
     const zeroTransferRate = 1000000000;
 
-    const baseCurrency = market.baseCode;
-    const quoteCurrency = market.quoteCode;
+    const baseCurrency = convertStringToHex(market.baseCode);
+    const quoteCurrency = convertStringToHex(market.quoteCode);
     const baseIssuer = market.baseIssuer;
     const quoteIssuer = market.quoteIssuer;
 
@@ -389,9 +393,22 @@ export class XRPLCLOB implements CLOBish {
     const quoteCurrency = market.quoteCurrency;
     const baseIssuer = market.baseIssuer;
     const quoteIssuer = market.quoteIssuer;
+    let price = parseFloat(req.price)
+
+    // If it is market order
+    // Increase price by 3% if it is buy order
+    // Decrease price by 3% if it is sell order
+    if (req.orderType == 'MARKET') {
+      const midPrice = await this.getMidPriceForMarket(market);
+      if (req.side == TradeType.BUY) {
+        price = midPrice * 1.03;
+      } else {
+        price = midPrice * 0.97;
+      }
+    }
 
     const wallet = await this.getWallet(req.address);
-    const total = parseFloat(req.price) * parseFloat(req.amount);
+    const total = price * parseFloat(req.amount);
 
     let we_pay: Token = {
       currency: '',
@@ -436,8 +453,25 @@ export class XRPLCLOB implements CLOBish {
       we_get.value = xrpToDrops(we_get.value);
     }
 
+    let flag = 0;
+
+    switch (req.orderType) {
+      case 'LIMIT':
+        flag = 0;
+        break;
+      case 'LIMIT_MAKER':
+        flag = 65536;
+        break;
+      case 'MARKET':
+        flag = 131072;
+        break;
+      default:
+        throw new Error('Order type not supported');
+    }
+
     const offer: Transaction = {
       TransactionType: 'OfferCreate',
+      Flags: flag,
       Account: wallet.classicAddress,
       TakerGets: we_pay.currency == 'XRP' ? we_pay.value : we_pay,
       TakerPays: we_get.currency == 'XRP' ? we_get.value : we_get,
@@ -459,7 +493,7 @@ export class XRPLCLOB implements CLOBish {
       filledAmount: '0',
       state: 'PENDING_OPEN',
       tradeType: req.side,
-      orderType: 'LIMIT',
+      orderType: req.orderType,
       createdAt: currentTime,
       createdAtLedgerIndex: currentLedgerIndex,
       updatedAt: currentTime,
