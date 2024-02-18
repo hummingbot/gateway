@@ -568,7 +568,7 @@ export class XRPLCLOB implements CLOBish {
     const prepared = await this._client.autofill(offer);
     const signed = wallet.sign(prepared);
     await this._xrpl.ensureConnection();
-    await this._client.submit(signed.tx_blob);
+    await this._client.submitAndWait(signed.tx_blob);
     this._isSubmittingTxn = false;
     return { prepared, signed };
   }
