@@ -21,7 +21,7 @@ import { rootPath } from '../../paths';
 import { TokenListType, walletPath, MarketListType } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { getXRPLConfig } from './xrpl.config';
-// import { logger } from '../../services/logger';
+import { logger } from '../../services/logger';
 import { TransactionResponseStatusCode, TokenBalance } from './xrpl.requests';
 import { XRPLOrderStorage } from './xrpl.order-storage';
 import { OrderTracker } from './xrpl.order-tracker';
@@ -53,6 +53,9 @@ export type Fee = {
   minimum: string;
   openLedger: string;
 };
+
+const MAX_POLL_RETRY = 5;
+const POLL_RETRY_INTERVAL = 300;
 
 export class XRPL implements XRPLish {
   private static _instances: { [name: string]: XRPL };
@@ -505,15 +508,28 @@ export class XRPL implements XRPLish {
 
   async getTransaction(txHash: string): Promise<TxResponse> {
     await this.ensureConnection();
-    const tx_resp = await this._client.request({
-      command: 'tx',
-      transaction: txHash,
-      binary: false,
-    });
+    let retryCount = 0;
+    let result: any = undefined;
+    while (retryCount < MAX_POLL_RETRY && result === undefined) {
+      try {
+        const tx_resp = await this._client.request({
+          command: 'tx',
+          transaction: txHash,
+          binary: false,
+        });
 
-    const result = tx_resp;
+        result = tx_resp;
+      } catch (error) {
+        retryCount++;
+        if (retryCount >= 5) {
+          throw new Error(`Transaction ${txHash} not found, error: ` + String(error));
+        }
+        logger.info(`Transaction ${txHash} not found, retrying ${retryCount}/${MAX_POLL_RETRY}...`);
+        await new Promise(resolve => setTimeout(resolve, POLL_RETRY_INTERVAL)); // Add delay
+      }
+    }
 
-    return result;
+    return result as TxResponse;
   }
 
   async close() {
