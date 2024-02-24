@@ -55,7 +55,7 @@ export type Fee = {
 };
 
 const MAX_POLL_RETRY = 5;
-const POLL_RETRY_INTERVAL = 300;
+const POLL_RETRY_INTERVAL = 1500;
 
 export class XRPL implements XRPLish {
   private static _instances: { [name: string]: XRPL };
