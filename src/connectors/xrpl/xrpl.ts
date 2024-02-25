@@ -154,7 +154,7 @@ export class XRPLCLOB implements CLOBish {
   }
 
   // Utility methods:
-  async fetchMarkets(marketId: String = ''): Promise<Market[]> {
+  async fetchMarkets(marketId: string = ''): Promise<Market[]> {
     const loadedMarkets: Market[] = [];
 
     // If marketId is provided, fetch only that market
