@@ -55,7 +55,7 @@ export type Fee = {
 };
 
 const MAX_POLL_RETRY = 5;
-const POLL_RETRY_INTERVAL = 300;
+const POLL_RETRY_INTERVAL = 1500;
 
 export class XRPL implements XRPLish {
   private static _instances: { [name: string]: XRPL };
@@ -287,7 +287,7 @@ export class XRPL implements XRPLish {
   }
 
   public getTokenForSymbol(code: string): XRPTokenInfo[] | undefined {
-    let query = convertHexToString(code);
+    const query = convertHexToString(code);
 
     return this._tokenMap[query] ? this._tokenMap[query] : undefined;
   }
@@ -522,10 +522,16 @@ export class XRPL implements XRPLish {
       } catch (error) {
         retryCount++;
         if (retryCount >= 5) {
-          throw new Error(`Transaction ${txHash} not found, error: ` + String(error));
+          throw new Error(
+            `Transaction ${txHash} not found, error: ` + String(error)
+          );
         }
-        logger.info(`Transaction ${txHash} not found, retrying ${retryCount}/${MAX_POLL_RETRY}...`);
-        await new Promise(resolve => setTimeout(resolve, POLL_RETRY_INTERVAL)); // Add delay
+        logger.info(
+          `Transaction ${txHash} not found, retrying ${retryCount}/${MAX_POLL_RETRY}...`
+        );
+        await new Promise((resolve) =>
+          setTimeout(resolve, POLL_RETRY_INTERVAL)
+        ); // Add delay
       }
     }
 
