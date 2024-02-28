@@ -44,6 +44,7 @@ import LRUCache from 'lru-cache';
 import { getXRPLConfig } from '../../chains/xrpl/xrpl.config';
 import { isUndefined } from 'mathjs';
 import { convertStringToHex } from './xrpl.utils';
+import { logger } from '../../services/logger';
 
 // const XRP_FACTOR = 1000000;
 const ORDERBOOK_LIMIT = 50;
@@ -85,21 +86,25 @@ export class XRPLCLOB implements CLOBish {
     return XRPLCLOB._instances.get(instanceKey) as XRPLCLOB;
   }
 
-  public async loadMarkets() {
-    // Make a while loop and wait for the XRPL to be ready
+  public async loadMarkets(marketId: string = '') {
     while (!this._xrpl.ready()) {
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
 
-    const rawMarkets = await this.fetchMarkets();
-    for (const market of rawMarkets) {
-      this.parsedMarkets[market.marketId] = market;
+    if (marketId.length > 0) {
+      const market = await this.fetchMarkets(marketId);
+      this.parsedMarkets[market[0].marketId] = market[0];
+    } else {
+      const rawMarkets = await this.fetchMarkets();
+      for (const market of rawMarkets) {
+        this.parsedMarkets[market.marketId] = market;
+      }
     }
   }
 
   public async init() {
     await this._xrpl.init();
-    await this.loadMarkets();
+    // await this.loadMarkets();
     this._ready = true;
   }
 
@@ -119,10 +124,18 @@ export class XRPLCLOB implements CLOBish {
     req: ClobMarketsRequest
   ): Promise<{ markets: Array<Market> }> {
     if (req.market && req.market.split('-').length === 2) {
+      if (!this.parsedMarkets[req.market]) {
+        // const fetchedMarket = await this.fetchMarkets(req.market);
+        await this.loadMarkets(req.market);
+      }
+
       const marketsAsArray: Array<Market> = [];
       marketsAsArray.push(this.parsedMarkets[req.market]);
       return { markets: marketsAsArray };
     }
+
+    // Load all markets
+    await this.loadMarkets();
 
     const marketsAsArray: Array<Market> = [];
     for (const marketId in this.parsedMarkets) {
@@ -133,19 +146,42 @@ export class XRPLCLOB implements CLOBish {
   }
 
   public async orderBook(req: ClobOrderbookRequest): Promise<Orderbook> {
+    if (!this.parsedMarkets[req.market]) {
+      await this.loadMarkets(req.market);
+    }
+
     return await this.getOrderBook(this.parsedMarkets[req.market]);
   }
 
   // Utility methods:
-  async fetchMarkets(): Promise<Market[]> {
+  async fetchMarkets(marketId: string = ''): Promise<Market[]> {
     const loadedMarkets: Market[] = [];
+
+    // If marketId is provided, fetch only that market
+    if (marketId.length > 0) {
+      logger.info(
+        `Fetching 1 market ${marketId} for ${this.chain} ${this.network}`
+      );
+      const market = this._xrpl.storedMarketList.find(
+        (m) => m.marketId === marketId
+      );
+      if (!market)
+        throw new MarketNotFoundError(`Market "${marketId}" not found.`);
+      const processedMarket = await this.getMarket(market);
+      loadedMarkets.push(processedMarket);
+      return loadedMarkets;
+    }
+
+    // Fetch all markets
     const markets = this._xrpl.storedMarketList;
     const getMarket = async (market: MarketInfo): Promise<void> => {
       const processedMarket = await this.getMarket(market);
       loadedMarkets.push(processedMarket);
     };
 
-    await promiseAllInBatches(getMarket, markets, 1, 1);
+    logger.info(`Fetching markets for ${this.chain} ${this.network}`);
+
+    await promiseAllInBatches(getMarket, markets, 6, 100);
 
     return loadedMarkets;
   }
@@ -393,7 +429,7 @@ export class XRPLCLOB implements CLOBish {
     const quoteCurrency = market.quoteCurrency;
     const baseIssuer = market.baseIssuer;
     const quoteIssuer = market.quoteIssuer;
-    let price = parseFloat(req.price)
+    let price = parseFloat(req.price);
 
     // If it is market order
     // Increase price by 3% if it is buy order
@@ -510,6 +546,7 @@ export class XRPLCLOB implements CLOBish {
   public async deleteOrder(
     req: ClobDeleteOrderRequest
   ): Promise<{ txHash: string }> {
+    await this._xrpl.ensureConnection();
     const wallet = await this.getWallet(req.address);
     const offer: Transaction = {
       TransactionType: 'OfferCancel',
