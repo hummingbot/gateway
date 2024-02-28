@@ -88,10 +88,15 @@ export const extendPool = (assets: Asset[], {
     .toNumber();
   }
 
-  const feeData = fees.find((fee) => fee.pool_id === pool.id.toString());
-  const volume24H = Math.round(Number(feeData?.volume_24h || 0));
-  const volume7d = Math.round(Number(feeData?.volume_7d || 0));
-  const fees7D = Math.round(Number(feeData?.fees_spent_7d || 0));
+  var volume24H = 0
+  var volume7d = 0
+  var fees7D = 0
+  if (fees){
+    const feeData = fees.find((fee) => fee.pool_id === pool.id.toString());
+    volume24H = Math.round(Number(feeData?.volume_24h || 0));
+    volume7d = Math.round(Number(feeData?.volume_7d || 0));
+    fees7D = Math.round(Number(feeData?.fees_spent_7d || 0));
+  }
 
   var poolDenom = '';
   if (pool.totalShares){

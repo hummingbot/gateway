@@ -767,7 +767,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
       TRADE_FAILED_ERROR_CODE
     );
   }
-
+  
   /**
    * Given a 2 token symbols and 1-2 amounts, exchange amounts for pool liquidity shares
    *
@@ -935,7 +935,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
             poolId: pool.id.toString(),
             sender: address,
             tokenIn: inputCoin,
-            shareOutMinAmount: finalShareOutAmount.toString(),
+            shareOutMinAmount: this.noDecimals(finalShareOutAmount.toString()),
           });
           msgs.push(joinSwapExternAmountInMsg);
           
@@ -972,6 +972,11 @@ export class Osmosis extends CosmosBase implements Cosmosish{
           .shiftedBy(this.getExponentByBase(token1.base))
           .toString()});
 
+          // alphabetize the coins going in or else invalid coins error
+          if (!(token0.base.toLowerCase() < token1.base.toLowerCase())){
+            allCoins.reverse()
+          }
+
           const shareOutAmount = calcShareOutAmount(pool, allCoins);
           const tokenInMaxs = allCoins.map((c: Coin) => {
             return coin(c.amount, c.denom);
@@ -988,7 +993,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
             // @ts-ignore: bad osmojs models
             poolId: pool.id.toString(),
             sender: address,
-            shareOutAmount: finalShareOutAmount.toString(),
+            shareOutAmount: this.noDecimals(finalShareOutAmount.toString()),
             tokenInMaxs,
           });
           msgs.push(joinPoolMsg);
@@ -1338,12 +1343,10 @@ export class Osmosis extends CosmosBase implements Cosmosish{
         allCoins.push({'denom':token1.base, 'amount':new BigNumber(amount1)
         .shiftedBy(this.getExponentByBase(token1.base))
         .toString()});
-        
-        
-        const token0_bignumber = new BigNumber(amount0)
-        const token1_bignumber = new BigNumber(amount1)
 
-
+        var token0_bignumber = new BigNumber(amount0)
+        var token1_bignumber = new BigNumber(amount1)
+      
         var tokenMinAmount0;
         var tokenMinAmount1;
         if (slippage == 100){
@@ -1353,9 +1356,18 @@ export class Osmosis extends CosmosBase implements Cosmosish{
           tokenMinAmount0 = token0_bignumber.shiftedBy(this.getExponentByBase(token0.base)).multipliedBy(100-slippage).dividedBy(100).integerValue(BigNumber.ROUND_CEIL)
           tokenMinAmount1 = token1_bignumber.shiftedBy(this.getExponentByBase(token1.base)).multipliedBy(100-slippage).dividedBy(100).integerValue(BigNumber.ROUND_CEIL)
         }
-
         const lowerTick = findTickForPrice(req.lowerPrice!, pool.exponentAtPriceOne, pool.tickSpacing, true)
         const upperTick = findTickForPrice(req.upperPrice!, pool.exponentAtPriceOne, pool.tickSpacing, false)
+
+        var tokenMinAmount0_final = tokenMinAmount0.toString()
+        var tokenMinAmount1_final = tokenMinAmount1.toString()
+        
+        // alphabetize the coins going in or else invalid coins error
+        if (!(token0.base.toLowerCase() < token1.base.toLowerCase())){
+          allCoins.reverse()
+          tokenMinAmount0_final = tokenMinAmount1.toString()
+          tokenMinAmount1_final = tokenMinAmount0.toString()
+        }
 
         const MsgCreatePosition = createPosition({
           poolId: pool.id.toString(),
@@ -1365,8 +1377,8 @@ export class Osmosis extends CosmosBase implements Cosmosish{
         // @ts-ignore: bad osmojs models
           upperTick: upperTick,
           tokensProvided: allCoins,
-          tokenMinAmount0: tokenMinAmount0.toString(),
-          tokenMinAmount1: tokenMinAmount1.toString(),
+          tokenMinAmount0: tokenMinAmount0_final,
+          tokenMinAmount1: tokenMinAmount1_final,
         })
 
         msgs.push(MsgCreatePosition);
@@ -1663,7 +1675,14 @@ export class Osmosis extends CosmosBase implements Cosmosish{
           .shiftedBy(18)
           .decimalPlaces(0)
           .toString();
-    
+        
+        // alphabetize the coins going in or else invalid coins error
+        if (coinsNeeded.length>1){
+          if (!(coinsNeeded[0].denom.toLowerCase() < coinsNeeded[1].denom.toLowerCase())){
+            coinsNeeded.reverse()
+          }
+        }
+
         tokenOutMins = coinsNeeded.map((c: Coin) => {
           return coin(c.amount, c.denom);
         });
@@ -1673,14 +1692,13 @@ export class Osmosis extends CosmosBase implements Cosmosish{
         }
 
         const msg = exitPool({
-              // @ts-ignore: bad osmojs models
+          // @ts-ignore: bad osmojs models
           poolId: currentPool.id.toString(),
           sender: address,
           shareInAmount,
           tokenOutMins: tokenOutMins,
         });
         msgs.push(msg)
-
 
       }
       
