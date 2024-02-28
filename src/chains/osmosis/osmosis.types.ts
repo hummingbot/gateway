@@ -245,6 +245,11 @@ export interface TransactionEventAttribute {
   value: string;
 }
 
+export interface PriceAndSerializableExtendedPools{
+  pools: SerializableExtendedPool[];
+  price: string;
+}
+
 export class SerializableExtendedPool {
   constructor(input: ExtendedPool) {
     this.$typeUrl = input.$typeUrl;
@@ -287,16 +292,6 @@ export class SerializableExtendedPool {
   my_bonded_shares: string;
   denom: string;
 }
-
-// token0: string | undefined;
-// token1: string | undefined;
-// fee: string | undefined;
-// lowerPrice: string;
-// upperPrice: string;
-// amount0: string;
-// amount1: string;
-// unclaimedToken0: string;
-// unclaimedToken1: string;
 
 export class ExtendedPool {
   liquidity: number = 0;

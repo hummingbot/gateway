@@ -478,7 +478,7 @@ export class OsmosisController {
         );
       }
 
-      const pools = await osmosis.findPoolsPrices(
+      const priceAndPools = await osmosis.findPoolsPrices(
         token0,
         token1,
         req.address!
@@ -494,7 +494,8 @@ export class OsmosisController {
         latency: latency(startTimestamp, Date.now()),
         token0: req.token0,
         token1: req.token1,
-        pools: pools, //CosmosExtendedPool[];
+        prices: [priceAndPools.price],
+        pools: priceAndPools.pools, //CosmosExtendedPool[];
       };
     }
 

@@ -24,6 +24,7 @@ import {
   AddPositionTransactionResponse, 
   ReduceLiquidityTransactionResponse, 
   SerializableExtendedPool,
+  PriceAndSerializableExtendedPools,
   ExtendedPool,
   CoinAndSymbol,
   AnyPoolType
@@ -1877,7 +1878,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
     token0: CosmosAsset,
     token1: CosmosAsset,
     address: string,
-  ): Promise<SerializableExtendedPool[]> {
+  ): Promise<PriceAndSerializableExtendedPools> {
 
     try {
       var balances: Coin[] = []
@@ -1950,7 +1951,10 @@ export class Osmosis extends CosmosBase implements Cosmosish{
         }
       });
 
-      return returnPools;
+      var price_out = new BigNumber(prices[token0.base]).dividedBy(new BigNumber(prices[token1.base])).toString()
+      var returnPriceAndPools = {'pools':returnPools, 'price':price_out}
+      
+      return returnPriceAndPools;
 
     } catch (error) {
       console.debug(error);

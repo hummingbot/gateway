@@ -126,8 +126,6 @@ export const extendPool = (assets: Asset[], {
   };
 };
 
-// export type ExtendedPool = ReturnType<typeof extendPool>;
-
 export const descByLiquidity = (pool1: ExtendedPool, pool2: ExtendedPool) => {
   return new BigNumber(pool1.liquidity).lt(pool2.liquidity) ? 1 : -1;
 };
