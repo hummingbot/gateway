@@ -172,6 +172,7 @@ describe('controllers - price + trade', () => {
 
 });
 
+// we're not testing poll() since transactions seem to 404 after a week or so
 
 describe('controllers - CL Pools + Liquidity', () => {
 

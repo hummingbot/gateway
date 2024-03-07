@@ -155,6 +155,7 @@ export interface RemoveLiquidityResponse {
   txHash: string | undefined;
   gasWanted?: string;
   balances?: CoinAndSymbol[];
+  isCollectFees?: boolean;
 }
 
 export interface PositionRequest extends NetworkSelectionRequest {

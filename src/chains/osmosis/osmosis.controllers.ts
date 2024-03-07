@@ -49,10 +49,13 @@ import { validateCosmosBalanceRequest, validateCosmosPollRequest } from '../cosm
 import { CosmosBalanceRequest, CosmosPollRequest } from '../cosmos/cosmos.requests';
 import { toCosmosBalances } from '../cosmos/cosmos.controllers';
 import { AllowancesRequest, ApproveRequest, CancelRequest, NonceRequest, NonceResponse } from '../chain.requests';
-import { TOKEN_NOT_SUPPORTED_ERROR_MESSAGE, TOKEN_NOT_SUPPORTED_ERROR_CODE, OUT_OF_GAS_ERROR_MESSAGE, OUT_OF_GAS_ERROR_CODE, INSUFFICIENT_FUNDS_ERROR_MESSAGE, INSUFFICIENT_FUNDS_ERROR_CODE } from '../../services/error-handler';
+import { TOKEN_NOT_SUPPORTED_ERROR_MESSAGE, TOKEN_NOT_SUPPORTED_ERROR_CODE, OUT_OF_GAS_ERROR_MESSAGE, OUT_OF_GAS_ERROR_CODE, INSUFFICIENT_FUNDS_ERROR_MESSAGE, INSUFFICIENT_FUNDS_ERROR_CODE, AMOUNT_LESS_THAN_MIN_AMOUNT_ERROR_CODE, AMOUNT_LESS_THAN_MIN_AMOUNT_ERROR_MESSAGE } from '../../services/error-handler';
 const { decodeTxRaw } = require('@cosmjs/proto-signing');
 
+// Osmosis transaction.code values
 const successfulTransaction = 0;
+const unconfirmedTransaction = 0;
+const lessThanMinAmountSlippage = 7;
 const insufficientFunds = 5;
 const outOfGas = 11;
 
@@ -358,6 +361,7 @@ export class OsmosisController {
       const feeTier = osmosis.feeTier; // 
 
       var tx = undefined;
+      var out_tokenId = 0;
       if (req.lowerPrice){
         tx = await osmosis.addPositionLP(
           wallet,
@@ -367,6 +371,7 @@ export class OsmosisController {
           feeTier,
           gasAdjustment,
         );
+        out_tokenId = tx.positionId!
       } else{
         tx = await osmosis.addPosition(
           wallet,
@@ -380,10 +385,12 @@ export class OsmosisController {
           feeTier,
           gasAdjustment,
         );
+        out_tokenId = tx.poolId
       }
 
       this.validateTxErrors(tx, "Liquidity added. ");
     
+      // Instead of poolId for tokenId, we can return Position_id then filter our current positions to find it later, to get the poolId again.. then we'd support multiple positions for each pool
       return {
         network: osmosis.chainName,
         timestamp: startTimestamp,
@@ -391,7 +398,7 @@ export class OsmosisController {
         token0: req.token0,
         token1: req.token1,
         fee: feeTier,
-        tokenId: Number(tx.poolId),
+        tokenId: out_tokenId,
         gasPrice: tx.gasPrice,
         gasPriceToken: osmosis.manualGasPriceToken,
         gasLimit: Number(gasLimitTransaction),
@@ -428,7 +435,7 @@ export class OsmosisController {
         wallet,
         req.decreasePercent,
         req.address,
-        req.tokenId,
+        req.tokenId, // this is PositionID (CL) or PoolID (GAMM)
         req.allowedSlippage,
         feeTier,
         gasAdjustment,
@@ -450,6 +457,53 @@ export class OsmosisController {
         gasWanted: tx.gasWanted.toString(),
         txHash: tx.transactionHash,
         gasPriceToken: osmosis.manualGasPriceToken,
+        isCollectFees: false, // instead of collect 
+      };
+    } 
+
+
+    static async collectFees(
+      osmosis: Osmosis,
+      req: RemoveLiquidityRequest
+    ): Promise<RemoveLiquidityResponse> {
+      const startTimestamp: number = Date.now();
+
+      const { wallet } =
+        await getOsmoWallet(
+          osmosis,
+          req.address,
+        );
+
+      const gasPrice = osmosis.manualGasPrice;  // GAS PRICE PER UNIT OF WORK  
+      const gasLimitTransaction = osmosis.gasLimitEstimate; // MAX uOSMO COST PER TRANSACTION 
+      const gasAdjustment = osmosis.gasPriceConstant; // 
+      const feeTier = osmosis.feeTier; // 
+
+      const tx = await osmosis.collectRewardsIncentives(
+        wallet,
+        req.address,
+        req.tokenId, // this is PositionID (CL) or PoolID (GAMM)
+        feeTier,
+        gasAdjustment,
+      );
+
+      logger.info(
+        `Collected Fees, txHash is ${tx.transactionHash}, gasUsed is ${tx.gasUsed}.`
+      );
+
+      return {
+        network: osmosis.chainName,
+        timestamp: startTimestamp,
+        latency: latency(startTimestamp, Date.now()),
+        tokenId: req.tokenId,
+        balances: tx.balances,
+        gasPrice: gasPrice.toString(),
+        gasLimit: Number(gasLimitTransaction),
+        gasCost: tx.gasUsed.toString(),
+        gasWanted: tx.gasWanted.toString(),
+        txHash: tx.transactionHash,
+        gasPriceToken: osmosis.manualGasPriceToken,
+        isCollectFees: true, // instead of collect 
       };
     } 
 
@@ -542,10 +596,10 @@ export class OsmosisController {
       return {
         network: osmosis.chainName,
         timestamp: Date.now(),
-        gasPrice,
+        gasPrice: gasPrice,
         gasPriceToken: osmosis.manualGasPriceToken,
         gasLimit: Number(gasLimitTransaction),
-        gasCost: '0',
+        gasCost: gasPrice.toString(),
       };
       
     }
@@ -616,23 +670,64 @@ export class OsmosisController {
     }
 
     static async poll(osmosis: Osmosis, req: CosmosPollRequest) {
-      // validateCosmosPollRequest(req);
       if (req.txHash){
         const transaction = await osmosis.getTransaction(req.txHash);
         const currentBlock = await osmosis.getCurrentBlockNumber();
 
+        //@ts-ignore cosmojs models again
+        var pool_id = undefined;
+        var position_id = undefined;
+        //@ts-ignore cosmojs models again
+        if (transaction.txResponse.logs){
+        //@ts-ignore cosmojs models again
+          transaction.txResponse.logs.forEach((log) => {
+        //@ts-ignore cosmojs models again
+            const create_position_event = log.events.find(({ type }) => type === 'create_position');
+            if (create_position_event){
+        //@ts-ignore cosmojs models again
+              const pool_id_attribute = create_position_event.attributes.find(({ key }) => key === 'pool_id');
+              if (pool_id_attribute){
+                pool_id = pool_id_attribute.value
+              }
+        //@ts-ignore cosmojs models again
+              const position_id_attribute = create_position_event.attributes.find(({ key }) => key === 'position_id');
+              if (position_id_attribute){
+                position_id = position_id_attribute.value
+              }
+            }
+          })
+        }
+        var tokenId = position_id ? position_id!=undefined : pool_id;
+
+        var txStatus = unconfirmedTransaction;
+        //@ts-ignore cosmojs models again
+        if (transaction.txResponse.code == successfulTransaction){
+          txStatus = 1; // clientside this is a successful tx
+        }
+        //@ts-ignore cosmojs models again
+        else if (transaction.txResponse.code != unconfirmedTransaction){
+        //@ts-ignore cosmojs models again
+          txStatus = transaction.txResponse.code; // any other failure
+        }
         return {
+          txStatus: txStatus,
+          txReceipt: null,
+          tokenId: Number(tokenId ? tokenId != undefined : -1),
           txHash: req.txHash,
           currentBlock,
-          txBlock: transaction.height,
-          gasUsed: transaction.gasUsed,
-          gasWanted: transaction.gasWanted,
+        //@ts-ignore cosmojs models again
+          txBlock: Number(transaction.txResponse.height.toString()),
+        //@ts-ignore cosmojs models again
+          gasUsed: Number(transaction.txResponse.gasUsed.toString()),
+        //@ts-ignore cosmojs models again
+          gasWanted: Number(transaction.txResponse.gasWanted.toString()),
           txData: decodeTxRaw(transaction.tx),
         };
+      
       }
       return {
         txHash: '',
-        txStatus: 1,
+        txStatus: 0,
         txBlock: 0,
         gasUsed: 0,
         gasWanted: 0,
@@ -640,6 +735,7 @@ export class OsmosisController {
       };
     }
 
+    // these below shouldn't actually be called
     static async allowances(
       osmosis: Osmosis,
       req: AllowancesRequest
@@ -648,7 +744,7 @@ export class OsmosisController {
       // Not applicable.
       var allowances: Record<string, string> = {}
       req.tokenSymbols.forEach((sym)=>{
-        allowances[sym] = "1000000000000000000000000000"
+        allowances[sym] = "1000000000000000000000000000000000000000000000"
       })
       return {
         spender: undefined as unknown as string,
@@ -713,7 +809,17 @@ export class OsmosisController {
           OUT_OF_GAS_ERROR_MESSAGE + " : " + tx.rawLog,
           OUT_OF_GAS_ERROR_CODE
         );
-        } else if (tx.code == insufficientFunds){
+      } else if (tx.code == lessThanMinAmountSlippage){
+        logger.error(
+          `Failed to execute trade. Token created less than minimum amount; increase slippage. txHash is ${tx.transactionHash}, gasUsed is ${tx.gasUsed}. Log: ${tx.rawLog}`
+        )
+        throw new HttpException(
+          500,
+          AMOUNT_LESS_THAN_MIN_AMOUNT_ERROR_MESSAGE + " : " + tx.rawLog,
+          AMOUNT_LESS_THAN_MIN_AMOUNT_ERROR_CODE
+        );
+        }
+        else if (tx.code == insufficientFunds){
           logger.error(
             `Failed to execute trade. Insufficient funds. txHash is ${tx.transactionHash}, gasUsed is ${tx.gasUsed}. Log: ${tx.rawLog}`
           )

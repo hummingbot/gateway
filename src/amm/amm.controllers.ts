@@ -87,7 +87,6 @@ import { Tinyman } from '../connectors/tinyman/tinyman';
 import { Plenty } from '../connectors/plenty/plenty';
 import { QuipuSwap } from '../connectors/quipuswap/quipuswap';
 import { Osmosis } from '../chains/osmosis/osmosis';
-import { AMOUNT_NOT_SUPPORTED_ERROR_CODE, ENDPOINT_NOT_SUPPORTED_ERROR_MESSAGE, HttpException } from '../services/error-handler';
 import { Carbonamm } from '../connectors/carbon/carbonAMM';
 
 export async function price(req: PriceRequest): Promise<PriceResponse> {
@@ -189,11 +188,7 @@ export async function collectFees(
 ): Promise<RemoveLiquidityResponse> {
   const chain = await getInitializedChain<Ethereumish | Osmosis>(req.chain, req.network);
   if (chain instanceof Osmosis){
-    throw new HttpException(
-      500,
-      ENDPOINT_NOT_SUPPORTED_ERROR_MESSAGE,
-      AMOUNT_NOT_SUPPORTED_ERROR_CODE
-    );
+    return chain.controller.collectFees(chain as unknown as Osmosis, req);
   }
   const connector: UniswapLPish = await getConnector<UniswapLPish>(
     req.chain,

@@ -18,6 +18,9 @@ const crypto = require('crypto').webcrypto;
 
 import { osmosis } from 'osmojs';
 import { getEIP1559DynamicBaseFee } from '../osmosis/osmosis.prices';
+import { isFractionString } from '../../services/validators';
+import { RefConfig } from '../../connectors/ref/ref.config';
+import { percentRegexp } from '../../services/config-manager-v2';
 const { createRPCQueryClient } = osmosis.ClientFactory;
 
 export class CosmosAsset implements Asset {
@@ -495,5 +498,25 @@ export class CosmosBase {
     const provider = await this._provider;
 
     return await provider.getHeight();
+  }
+
+  /**
+   * Gets the allowed slippage percent from the optional parameter or the value
+   * in the configuration.
+   *
+   * @param allowedSlippageStr (Optional) should be of the form '1/10'.
+   */
+  public getAllowedSlippage(allowedSlippageStr?: string): number {
+    if (allowedSlippageStr != null && isFractionString(allowedSlippageStr)) {
+      const fractionSplit = allowedSlippageStr.split('/');
+      return Number(fractionSplit[0]) / Number(fractionSplit[1]);
+    }
+
+    const allowedSlippage = RefConfig.config.allowedSlippage;
+    const nd = allowedSlippage.match(percentRegexp);
+    if (nd) return Number(nd[1]) / Number(nd[2]);
+    throw new Error(
+      'Encountered a malformed percent string in the config for ALLOWED_SLIPPAGE.'
+    );
   }
 }

@@ -80,7 +80,9 @@ const {
 } = osmosis.gamm.v1beta1.MessageComposer.withTypeUrl;
 const {
   createPosition,
-  withdrawPosition
+  withdrawPosition,
+  collectSpreadRewards,
+  collectIncentives
 } = osmosis.concentratedliquidity.v1beta1.MessageComposer.withTypeUrl;
 const {
 send
@@ -418,9 +420,9 @@ export class Osmosis extends CosmosBase implements Cosmosish{
 
     var slippage = 0;
     if (allowedSlippage){
-      slippage = Number(allowedSlippage.split('%')[0]);
+      slippage = this.getAllowedSlippage(allowedSlippage)
     }else{
-      slippage = Number(this.allowedSlippage.split('%')[0]);
+      slippage = this.getAllowedSlippage(this.allowedSlippage)
     }
     var feeTier = this.feeTier;
     if (feeTier_input){
@@ -687,9 +689,9 @@ export class Osmosis extends CosmosBase implements Cosmosish{
   ): Promise<TransactionResponse> { 
     var slippage = 0;
     if (allowedSlippage){
-      slippage = Number(allowedSlippage.split('%')[0]);
+      slippage = this.getAllowedSlippage(allowedSlippage)
     }else{
-      slippage = Number(this.allowedSlippage.split('%')[0]);
+      slippage = this.getAllowedSlippage(this.allowedSlippage)
     }
     var feeTier = this.feeTier;
     if (feeTier_input){
@@ -798,9 +800,9 @@ export class Osmosis extends CosmosBase implements Cosmosish{
 
     var slippage = 0;
     if (allowedSlippage){
-      slippage = Number(allowedSlippage.split('%')[0]);
+      slippage = this.getAllowedSlippage(allowedSlippage)
     }else{
-      slippage = Number(this.allowedSlippage.split('%')[0]);
+      slippage = this.getAllowedSlippage(this.allowedSlippage)
     }
     var feeTier = this.feeTier;
     if (feeTier_input){
@@ -1148,9 +1150,9 @@ export class Osmosis extends CosmosBase implements Cosmosish{
 
   var slippage = 0;
   if (req.allowedSlippage){
-    slippage = Number(req.allowedSlippage.split('%')[0]);
+    slippage = this.getAllowedSlippage(req.allowedSlippage)
   }else{
-    slippage = Number(this.allowedSlippage.split('%')[0]);
+    slippage = this.getAllowedSlippage(this.allowedSlippage)
   }
   var feeTier = this.feeTier;
   if (feeTier_input){
@@ -1345,18 +1347,18 @@ export class Osmosis extends CosmosBase implements Cosmosish{
         .shiftedBy(this.getExponentByBase(token1.base))
         .toString()});
 
-        var token0_bignumber = new BigNumber(amount0)
-        var token1_bignumber = new BigNumber(amount1)
+        // var token0_bignumber = new BigNumber(amount0)
+        // var token1_bignumber = new BigNumber(amount1)
       
         var tokenMinAmount0;
         var tokenMinAmount1;
-        if (slippage == 100){
-          tokenMinAmount0 = '0';
-          tokenMinAmount1 = '0';
-        }else{
-          tokenMinAmount0 = token0_bignumber.shiftedBy(this.getExponentByBase(token0.base)).multipliedBy(100-slippage).dividedBy(100).integerValue(BigNumber.ROUND_CEIL)
-          tokenMinAmount1 = token1_bignumber.shiftedBy(this.getExponentByBase(token1.base)).multipliedBy(100-slippage).dividedBy(100).integerValue(BigNumber.ROUND_CEIL)
-        }
+        // if (slippage == 100){
+        tokenMinAmount0 = '0';
+        tokenMinAmount1 = '0';
+        // }else{
+        //   tokenMinAmount0 = token0_bignumber.shiftedBy(this.getExponentByBase(token0.base)).multipliedBy(100-slippage).dividedBy(100).integerValue(BigNumber.ROUND_CEIL)
+        //   tokenMinAmount1 = token1_bignumber.shiftedBy(this.getExponentByBase(token1.base)).multipliedBy(100-slippage).dividedBy(100).integerValue(BigNumber.ROUND_CEIL)
+        // }
         const lowerTick = findTickForPrice(req.lowerPrice!, pool.exponentAtPriceOne, pool.tickSpacing, true)
         const upperTick = findTickForPrice(req.upperPrice!, pool.exponentAtPriceOne, pool.tickSpacing, false)
 
@@ -1425,6 +1427,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
       var token0_finalamount = '0'
       var token1_finalamount = '0'
       var poolshares = '0'
+      var positionId = '0'
 
       if (res?.code !== successfulTransaction){
         res.token0_finalamount = token0_finalamount
@@ -1467,6 +1470,9 @@ export class Osmosis extends CosmosBase implements Cosmosish{
               if (attribute.key == 'liquidity'){
                 outbound_shares_string = attribute.value;
               }
+              else if (attribute.key == 'position_id'){
+                positionId = attribute.value;
+              }
             }
           }
         }
@@ -1506,6 +1512,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
       res.token1_finalamount = token1_finalamount
       res.poolshares = poolshares
       res.poolId = Number(pool.id.toString())
+      res.positionId = Number(positionId)
       res.poolAddress = pool.address
       res.gasPrice = gasPrice
       return res; 
@@ -1529,7 +1536,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
    * @param wallet CosmosWallet
    * @param decreasePercent 
    * @param address Wallet address
-   * @param poolId? Optional string specify poolId instead of search by tokens
+   * @param tokenId? Optional, can search by tokens if not used but please use. this is tokenId == positionId (CL) or poolId (GAMM) 
    * @param allowedSlippage? Allowed slippage eg "1%"
    * @param feeTier_input? low/medium/high, overwrites feeTier specified in .yml
    * @param gasAdjustment_input? Gas offered multiplier, overwrites gasAdjustment specified in .yml
@@ -1538,15 +1545,17 @@ export class Osmosis extends CosmosBase implements Cosmosish{
     wallet: CosmosWallet,
     decreasePercent: number = 100,
     address: string,
-    poolId: number, 
+    tokenId: number, 
     allowedSlippage?: string,
     feeTier_input?: string,
     gasAdjustment_input?: number,
     ): Promise<ReduceLiquidityTransactionResponse> {
 
-    var slippage = Number(this.allowedSlippage.split('%')[0]);
+    var slippage = 0;
     if (allowedSlippage){
-      slippage = Number(allowedSlippage.split('%')[0]);
+      slippage = this.getAllowedSlippage(allowedSlippage)
+    }else{
+      slippage = this.getAllowedSlippage(this.allowedSlippage)
     }
     var feeTier = this.feeTier;
     if (feeTier_input){
@@ -1596,7 +1605,26 @@ export class Osmosis extends CosmosBase implements Cosmosish{
         extendPool(this.tokenList, { pool, fees, balances, lockedCoins, prices:prices })
       );
 
-      const currentPool = extendedPools.filter((pl) => pl.id.toString() == poolId.toString())[0];
+
+      // find out if this is CL or GAMM (positionId or poolId)
+      var final_poolId = tokenId!
+      if (tokenId){
+        //@ts-ignore
+        var allCLPositions;
+          try{
+            const allCLPositionsContainer = await this._provider.osmosis.concentratedliquidity.v1beta1.positionById({
+              address: address, // doesn't actually check the address
+              positionId: tokenId
+            })
+            if (allCLPositionsContainer.position.position.address == address){ // is this our position?
+              final_poolId = allCLPositionsContainer.position.position.poolId
+            }
+          } catch (error) {
+            console.debug(error);
+          }
+      }
+
+      const currentPool = extendedPools.filter((pl) => pl.id.toString() == final_poolId.toString())[0];
       const percent = decreasePercent; // total percent of pool shares
       
       var tokenOutMins: Coin[] = []
@@ -1604,7 +1632,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
       var myLiquidity;
       if (currentPool.$typeUrl!.includes('concentratedliquidity')){
         var clPositions;
-        if (poolId){
+        if (tokenId){
           try{
             const clPositionsContainer = await this._provider.osmosis.concentratedliquidity.v1beta1.userPositions({
               address: address,
@@ -1615,13 +1643,14 @@ export class Osmosis extends CosmosBase implements Cosmosish{
                 countTotal: false,
                 reverse: false,
               },
-              poolId: poolId!.toString()
+              poolId: final_poolId.toString()
             })
             clPositions = clPositionsContainer.positions
           } catch (error) {
             console.debug(error);
           }
         }
+        // if no clPositions then throws error here
         myLiquidity = new BigNumber(clPositions[0].position.liquidity || 0).multipliedBy(percent)
         .div(100)
         .toString();
@@ -1867,6 +1896,226 @@ export class Osmosis extends CosmosBase implements Cosmosish{
     );
   }
 
+
+
+  /**
+   * Returns all pool positions data including number of user's shares, or for single specified poolId
+   *
+   * @param token0 
+   * @param token1 
+   * @param address Wallet address
+  */
+  async collectRewardsIncentives(
+    wallet: CosmosWallet,
+    address: string,
+    tokenId?: number, // we can collect only for CL here so we need to verify this is a positionID
+    feeTier_input?: string,
+    gasAdjustment_input?: number,
+  ): Promise<ReduceLiquidityTransactionResponse> {
+  
+    var feeTier = this.feeTier;
+    if (feeTier_input){
+      feeTier = feeTier_input;
+    }
+    var gasAdjustment = this.gasPriceConstant;
+    if (gasAdjustment_input){
+      gasAdjustment = gasAdjustment_input;
+    }
+
+    try{
+      const keyWallet = await DirectSecp256k1Wallet.fromKey(wallet.privkey, 'osmo')
+      this.signingClient = await this.osmosisGetSigningStargateClient(this.rpcUrl, keyWallet);
+
+      // find out if this is CL or GAMM (positionId or poolId)
+      var final_positionId = undefined
+      var final_poolId = undefined
+      if (tokenId){
+        //@ts-ignore
+        var allCLPositions;
+          try{
+            const allCLPositionsContainer = await this._provider.osmosis.concentratedliquidity.v1beta1.positionById({
+              address: address, // doesn't actually check the address
+              positionId: tokenId
+            })
+            if (allCLPositionsContainer.position.position.address == address){ // is this our position?
+              final_positionId = tokenId
+              final_poolId = allCLPositionsContainer.position.position.poolId
+            }
+          } catch (error) {
+            console.debug(error);
+          }
+      }
+      
+
+      if (final_positionId != undefined){
+        const poolsContainer = await this._provider.osmosis.poolmanager.v1beta1.allPools({});
+        const pools: ExtendedPool[] = poolsContainer.pools;
+        var callImperatorWithTokens = undefined
+        if (this.chain == 'testnet'){
+          callImperatorWithTokens = this.tokenList;
+        }
+        const prices = await getImperatorPriceHash(callImperatorWithTokens);
+  
+        // filter for CL
+        const filteredPools = filterPoolsSwapAndLP(this.tokenList, pools, prices); // removes stableswap, !token.denom.startsWith('gamm/pool'), has price, has osmosisAsset
+        const currentPool = filteredPools.filter((pl) => pl.id.toString() == final_poolId!.toString())[0];
+
+        var msgs = []
+        var positionIds: string[] = [final_positionId.toString()]
+        const msg1 = collectSpreadRewards({
+          // @ts-ignore: bad osmojs models
+          positionIds: positionIds,
+          sender: address,
+        });
+        const msg2 = collectIncentives({
+          // @ts-ignore: bad osmojs models
+          positionIds: positionIds,
+          sender: address,
+        });
+        msgs.push(msg1)
+        msgs.push(msg2)
+  
+        var enumFee = FEES.osmosis.exitPool(feeTier);
+        var gasToUse = enumFee.gas;
+        const gasPrice = await this.getLatestBasePrice();
+        try{
+          const gasEstimation = await this.signingClient.simulate(
+            address,
+            msgs,
+          );
+          gasToUse = gasEstimation;
+        } catch (error) {
+          console.debug(error);
+        }
+        const calcedFee = calculateFee(
+          Math.round(Number(gasToUse) * (gasAdjustment || 1.5)),
+          GasPrice.fromString(gasPrice.toString() + this.manualGasPriceToken)
+        );
+    
+        var res: ReduceLiquidityTransactionResponse | any = await this.signingClient.signAndBroadcast(address, msgs, calcedFee);
+        this.signingClient.disconnect();
+
+        var finalBalancesReceived: CoinAndSymbol[] = [];
+        var collect_strings: string[] = ['180000uosmo,293400000000000000ibc/0CD3A0285E1341859B5E86B6AB7682F023D03E97607CCC1DC95706411D866DF7'];
+        //@ts-ignore
+        res.events.filter((evt)=>evt.type='total_collect_spread_rewards').forEach((evt)=>{evt.attributes.forEach((atr)=>{
+          if (atr.key=='tokens_out'){
+            collect_strings.push(atr.value)
+          }})})
+        //@ts-ignore
+        res.events.filter((evt)=>evt.type='total_collect_incentives').forEach((evt)=>{evt.attributes.forEach((atr)=>{
+          if (atr.key=='tokens_out'){
+            collect_strings.push(atr.value)
+          }})})
+
+
+        if (res?.code !== successfulTransaction){
+          res.balances = [];
+          return res;
+        }
+
+        try {
+          collect_strings.forEach((cstr)=>{
+            if (cstr.includes(',')){
+              var coins_string_list = cstr.split(',');
+              for (var coin_string_idx=0; coin_string_idx<coins_string_list.length; coin_string_idx++){
+                var coin_string = coins_string_list[coin_string_idx];
+                if (currentPool.poolAssets){
+                  currentPool.poolAssets.forEach((asset) => {
+                    if (coin_string.includes(asset.token.denom)){
+                      var token = this.getTokenByBase(asset.token.denom);
+                      var amount = (new BigNumber(coin_string.replace(asset.token.denom,''))).shiftedBy(token!.decimals * -1).decimalPlaces(token!.decimals).toString();
+                      var symbol = token!.symbol;
+                      if (!symbol){
+                        symbol = asset.token.denom
+                      }
+                      finalBalancesReceived.push({base: asset.token.denom, amount:amount, symbol:symbol})
+                    }
+                  })
+                } else{
+                  if (coin_string.includes(currentPool.token0)){
+                    var token = this.getTokenByBase(currentPool.token0);
+                    var amount = (new BigNumber(coin_string.replace(currentPool.token0,''))).shiftedBy(token!.decimals * -1).decimalPlaces(token!.decimals).toString();
+                    var symbol = token!.symbol;
+                    if (!symbol){
+                      symbol = currentPool.token0
+                    }
+                    finalBalancesReceived.push({base: currentPool.token0, amount:amount, symbol:symbol})
+                  }
+                  if (coin_string.includes(currentPool.token1)){
+                    var token = this.getTokenByBase(currentPool.token1);
+                    var amount = (new BigNumber(coin_string.replace(currentPool.token1,''))).shiftedBy(token!.decimals * -1).decimalPlaces(token!.decimals).toString();
+                    var symbol = token!.symbol;
+                    if (!symbol){
+                      symbol = currentPool.token1
+                    }
+                    finalBalancesReceived.push({base: currentPool.token1, amount:amount, symbol:symbol})
+                  }
+                }
+              }
+            }else{
+              var coin_string = cstr;
+              if (currentPool.poolAssets){
+                currentPool.poolAssets.forEach((asset) => {
+                  if (coin_string.includes(asset.token.denom)){
+                    var token = this.getTokenByBase(asset.token.denom);
+                    var amount = (new BigNumber(coin_string.replace(asset.token.denom,''))).shiftedBy(token!.decimals * -1).decimalPlaces(token!.decimals).toString();
+                    var symbol = token!.symbol;
+                    if (!symbol){
+                      symbol = asset.token.denom
+                    }
+                    finalBalancesReceived.push({base: asset.token.denom, amount:amount, symbol:symbol})
+                  }
+                })
+              } else{
+                if (coin_string.includes(currentPool.token0)){
+                  var token = this.getTokenByBase(currentPool.token0);
+                  var amount = (new BigNumber(coin_string.replace(currentPool.token0,''))).shiftedBy(token!.decimals * -1).decimalPlaces(token!.decimals).toString();
+                  var symbol = token!.symbol;
+                  if (!symbol){
+                    symbol = currentPool.token0
+                  }
+                  finalBalancesReceived.push({base: currentPool.token0, amount:amount, symbol:symbol})
+                }
+                if (coin_string.includes(currentPool.token1)){
+                  var token = this.getTokenByBase(currentPool.token1);
+                  var amount = (new BigNumber(coin_string.replace(currentPool.token1,''))).shiftedBy(token!.decimals * -1).decimalPlaces(token!.decimals).toString();
+                  var symbol = token!.symbol;
+                  if (!symbol){
+                    symbol = currentPool.token1
+                  }
+                  finalBalancesReceived.push({base: currentPool.token1, amount:amount, symbol:symbol})
+                }
+              }
+            }
+  
+          })
+          
+
+        } catch (error) {
+          console.debug(error);
+        } 
+
+        res.balances = finalBalancesReceived;
+        res.gasPrice = gasPrice
+        return res;
+    
+        }}
+        catch (error) {
+          console.debug(error);
+        } 
+      throw new HttpException(
+        500,
+        TRADE_FAILED_ERROR_MESSAGE,
+        TRADE_FAILED_ERROR_CODE
+      );
+
+  }
+
+
+
+
+
   /**
    * Returns all pools and their prices for 2 tokens. Address used for balance query.
    *
@@ -1970,6 +2219,8 @@ export class Osmosis extends CosmosBase implements Cosmosish{
 
   /**
    * Returns all pool positions data including number of user's shares, or for single specified poolId
+   *  we can't currently find CL positions without the pos_id (or pool_id)
+   *  only going to return CL positions now 
    *
    * @param token0 
    * @param token1 
@@ -1977,13 +2228,28 @@ export class Osmosis extends CosmosBase implements Cosmosish{
   */
   async findPoolsPositions(
     address: string,
-    poolId?: number,
+    tokenId?: number,
   ): Promise<PositionInfo> {
 
-    try {
+    // find out if this is CL or GAMM (positionId or poolId)
+    var final_poolId = undefined
+    if (tokenId){
+        try{
+          const allCLPositionsContainer = await this._provider.osmosis.concentratedliquidity.v1beta1.positionById({
+            address: address, // doesn't actually check the address
+            positionId: tokenId
+          })
+          if (allCLPositionsContainer.position.position.address == address){ // is this our position?
+            final_poolId = allCLPositionsContainer.position.position.poolId
+          }
+        } catch (error) {
+          console.debug(error);
+        }
+    }
 
+    try {
       var clPositions;
-      if (poolId){
+      if (final_poolId){
         try{
           const clPositionsContainer = await this._provider.osmosis.concentratedliquidity.v1beta1.userPositions({
             address: address,
@@ -1994,7 +2260,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
               countTotal: false,
               reverse: false,
             },
-            poolId: poolId!.toString()
+            poolId: final_poolId.toString()
           })
           clPositions = clPositionsContainer.positions
         } catch (error) {
@@ -2032,7 +2298,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
       const prices = await getImperatorPriceHash(callImperatorWithTokens); 
 
       // filter for CL
-      const filteredPools = filterPoolsSwapAndLP(this.tokenList, pools, prices); // removes stableswap, !token.denom.startsWith('gamm/pool'), has price, has osmosisAsset
+      const filteredPools = filterPoolsLP(this.tokenList, pools, prices); // removes stableswap, !token.denom.startsWith('gamm/pool'), has price, has osmosisAsset
 
       const extendedPools = filteredPools.map((pool) =>
         extendPool(this.tokenList, { pool, fees, balances, lockedCoins, prices:prices })
@@ -2042,23 +2308,18 @@ export class Osmosis extends CosmosBase implements Cosmosish{
       //  however it's not returning that for CL pool positions (only GAMM).. so we can't match the pool address to anything here
       var returnPools: SerializableExtendedPool[] = [];
       extendedPools.forEach(function (cPool) {
-        if (poolId){
-          if ((cPool.id && cPool.id.toString() == poolId.toString()) || (cPool.poolId && cPool.poolId.toString() == poolId.toString())){
-            returnPools.push(new SerializableExtendedPool(cPool));
-          }
-        }else{
-
-          if ((cPool.myLiquidity && cPool.myLiquidity != '0') || (cPool.bonded && cPool.bonded != '0'))
-          {
+        if ((cPool.myLiquidity && cPool.myLiquidity != '0') || (cPool.bonded && cPool.bonded != '0'))
+        {
+          returnPools.push(new SerializableExtendedPool(cPool));
+        }
+        else if (tokenId){
+          if ((cPool.id && cPool.id.toString() == tokenId.toString()) || (cPool.poolId && cPool.poolId.toString() == tokenId.toString())){
             returnPools.push(new SerializableExtendedPool(cPool));
           }
         }
-
       });
 
-
       var returnObj: PositionInfo = {'pools':returnPools}
-
 
       // if we're passed a poolId (tokenId), we used it to search for CLPositions
       //  so (if we can) let's pretend we match the existing model and just return the first position for that poolId
@@ -2072,23 +2333,21 @@ export class Osmosis extends CosmosBase implements Cosmosish{
         returnObj.lowerPrice = clPosition.position.lowerTick.toString();
         returnObj.upperPrice = clPosition.position.upperTick.toString();
         returnObj.poolShares = clPosition.position.liquidity
-
+        returnObj.unclaimedToken0 = '0'
+        returnObj.unclaimedToken1 = '0'
         const clPositionPool = extendedPools.find((pl) => pl.id.toString() === clPosition.position.poolId.toString());
         returnObj.fee = clPositionPool?.fees7D.toString()
       }
-      else if (poolId && returnPools.length > 0){ // we got a poolId but it was for a GAMM pool - so yes poolShares
-        var firstPool: SerializableExtendedPool = returnPools[0]!;
-
-        returnObj.token0 = firstPool.poolAssets![0].token.denom;
-        returnObj.token1 = firstPool.poolAssets![1].token.denom;
-
-        returnObj.amount0 = firstPool.poolAssets![0].token.amount;
-        returnObj.amount1 = firstPool.poolAssets![1].token.amount;
-
-        returnObj.fee = firstPool.fees_spent_7d.toString()
-
-        returnObj.poolShares = firstPool.myLiquidityShares.toString()
-      }
+      // not returning GAMM positons here; problematic for strat
+      // else if (tokenId && returnPools.length > 0){ // we got a poolId but it was for a GAMM pool - so yes poolShares
+      //   var firstPool: SerializableExtendedPool = returnPools[0]!;
+      //   returnObj.token0 = firstPool.poolAssets![0].token.denom;
+      //   returnObj.token1 = firstPool.poolAssets![1].token.denom;
+      //   returnObj.amount0 = firstPool.poolAssets![0].token.amount;
+      //   returnObj.amount1 = firstPool.poolAssets![1].token.amount;
+      //   returnObj.fee = firstPool.fees_spent_7d.toString()
+      //   returnObj.poolShares = firstPool.myLiquidityShares.toString()
+      // }
 
       return returnObj;
 

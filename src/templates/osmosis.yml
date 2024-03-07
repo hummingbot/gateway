@@ -15,7 +15,7 @@ nativeCurrencySymbol: OSMO
 feeTier: medium
 gasAdjustment: 1.7
 gasLimitTransaction: 2000000
-allowedSlippage: 2%
+allowedSlippage: "20/100"
 
 manualGasPrice: 0.025
 manualGasPriceToken: uosmo

@@ -215,6 +215,7 @@ export interface ReduceLiquidityTransactionResponse extends TransactionResponse 
   gasPrice: number;
 }
 
+// returned from transfer()
 export interface TransactionResponse {
   transactionHash: string;
   code: number;
@@ -226,14 +227,66 @@ export interface TransactionResponse {
   rawLog: string;
 }
 
+
+
+// poll()
+export interface PollTxResponse {
+  code: number;
+  codespace: string;
+  data: string;
+  events: TransactionEvent[];
+  gasUsed: string | bigint;
+  gasWanted: string | bigint;
+  height: string | bigint;
+  info: string;
+  rawLog: string;
+  timestamp: string;
+  txhash: string;
+}
+
+
+// export interface PollResponse {
+//   network: string;
+//   timestamp: number;
+//   currentBlock: number;
+//   txHash: string;
+//   txStatus: number;
+//   txBlock: number;
+//   txData: CustomTransactionResponse | null;
+//   txReceipt: CustomTransactionReceipt | null;
+// }
+
+// export interface CustomTransactionResponse
+//   extends Omit<
+//     ethers.providers.TransactionResponse,
+//     'gasPrice' | 'gasLimit' | 'value'
+//   > {
+//   gasPrice: string | null;
+//   gasLimit: string;
+//   value: string;
+// }
+
+// export interface CustomTransactionReceipt
+//   extends Omit<
+//     ethers.providers.TransactionReceipt,
+//     'gasUsed' | 'cumulativeGasUsed' | 'effectiveGasPrice'
+//   > {
+//   gasUsed: string;
+//   cumulativeGasUsed: string;
+//   effectiveGasPrice: string | null;
+//   status: string;
+// }
+
+
 export interface AddPositionTransactionResponse extends TransactionResponse {
   rawLog: string;
-  poolId: number;
+  poolId: number; // this is GAMM only (sort of, we find it ourselves based on positonId for reducePosition())
   poolAddress: string;
   token0_finalamount: string;
   token1_finalamount: string;
   poolshares: string;
   gasPrice: number;
+  positionId?: number; // this is CL only
 }
 
 export interface TransactionEvent {
