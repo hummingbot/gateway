@@ -548,7 +548,7 @@ export class OsmosisController {
         latency: latency(startTimestamp, Date.now()),
         token0: req.token0,
         token1: req.token1,
-        prices: [priceAndPools.price],
+        prices: priceAndPools.prices,
         pools: priceAndPools.pools, //CosmosExtendedPool[];
       };
     }
@@ -697,7 +697,10 @@ export class OsmosisController {
             }
           })
         }
-        var tokenId = position_id ? position_id!=undefined : pool_id;
+        var tokenId = position_id;
+        if (position_id == undefined){
+          tokenId = pool_id;
+        }
 
         var txStatus = unconfirmedTransaction;
         //@ts-ignore cosmojs models again
@@ -712,7 +715,7 @@ export class OsmosisController {
         return {
           txStatus: txStatus,
           txReceipt: null,
-          tokenId: Number(tokenId ? tokenId != undefined : -1),
+          tokenId: Number(tokenId),
           txHash: req.txHash,
           currentBlock,
         //@ts-ignore cosmojs models again

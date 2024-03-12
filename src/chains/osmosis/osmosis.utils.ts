@@ -39,6 +39,26 @@ export const fetchRewards = async (address: string): Promise<Rewards> => {
     .then((res) => res.json());
 };
 
+export function tickToPrice(exponentToken0: number, exponentToken1: number, currentTickIn: string, exponentAtPriceOne: string): string {
+  const currentTick = new BigNumber(currentTickIn)
+  var exponent = new BigNumber(exponentAtPriceOne); // -6
+
+  var geoExponentIncrementTicks = new BigNumber(9).multipliedBy(new BigNumber(10).exponentiatedBy(exponent.multipliedBy(-1))) // 9e6
+  var geoExponentDelta;
+  geoExponentDelta = currentTick.dividedBy(geoExponentIncrementTicks).integerValue(BigNumber.ROUND_FLOOR)
+
+  var exponentAtCurrentTick = new BigNumber(exponentAtPriceOne).plus(geoExponentDelta)
+  var currentAddIncrementTicks = new BigNumber(10).exponentiatedBy(exponentAtCurrentTick) // 10e-6
+
+  var numAdditiveTicks = currentTick.minus((geoExponentDelta.multipliedBy(geoExponentIncrementTicks)))
+
+  var price = new BigNumber(10).exponentiatedBy(geoExponentDelta).plus((numAdditiveTicks.multipliedBy(currentAddIncrementTicks)))
+
+  price = price.dividedBy((new BigNumber(10).exponentiatedBy(exponentToken1)).dividedBy((new BigNumber(10).exponentiatedBy(exponentToken0))))
+
+  return price.toString()
+}
+
 export function findTickForPrice(desiredPriceString: string, exponentAtPriceOne: number, tickSpacing: number, is_lowerBound: boolean): string{
   var desiredPrice = new BigNumber(desiredPriceString)
   var exponent = new BigNumber(exponentAtPriceOne); // -6
@@ -62,7 +82,7 @@ export function findTickForPrice(desiredPriceString: string, exponentAtPriceOne:
   
   var ticksToBeFulfilledByExponentAtCurrentTick = (desiredPrice.minus(totalPrice)).dividedBy(currentAddIncrementTicks)
   var tickIndex = ticksPassed.plus(ticksToBeFulfilledByExponentAtCurrentTick)
-  
+
   var returnTick
   if (is_lowerBound){
     returnTick = tickIndex.dividedBy(tickSpacing).integerValue(BigNumber.ROUND_DOWN).multipliedBy(tickSpacing)
@@ -70,7 +90,6 @@ export function findTickForPrice(desiredPriceString: string, exponentAtPriceOne:
   else{
     returnTick = tickIndex.dividedBy(tickSpacing).integerValue(BigNumber.ROUND_CEIL).multipliedBy(tickSpacing)
   }
-
   return returnTick.toString()
 }
 

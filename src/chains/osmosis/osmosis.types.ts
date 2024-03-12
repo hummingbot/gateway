@@ -300,7 +300,7 @@ export interface TransactionEventAttribute {
 
 export interface PriceAndSerializableExtendedPools{
   pools: SerializableExtendedPool[];
-  price: string;
+  prices: string[];
 }
 
 export class SerializableExtendedPool {

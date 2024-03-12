@@ -509,12 +509,12 @@ export class CosmosBase {
   public getAllowedSlippage(allowedSlippageStr?: string): number {
     if (allowedSlippageStr != null && isFractionString(allowedSlippageStr)) {
       const fractionSplit = allowedSlippageStr.split('/');
-      return Number(fractionSplit[0]) / Number(fractionSplit[1]);
+      return 100 * (Number(fractionSplit[0]) / Number(fractionSplit[1]));
     }
 
     const allowedSlippage = RefConfig.config.allowedSlippage;
     const nd = allowedSlippage.match(percentRegexp);
-    if (nd) return Number(nd[1]) / Number(nd[2]);
+    if (nd) return 100 * (Number(nd[1]) / Number(nd[2]));
     throw new Error(
       'Encountered a malformed percent string in the config for ALLOWED_SLIPPAGE.'
     );
