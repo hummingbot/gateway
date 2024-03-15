@@ -17,7 +17,7 @@ export interface CosmosTokenRequest {
 }
 
 export interface CosmosPollRequest {
-  txHash: string;
+  txHash?: string;
 }
 
 export enum TransactionResponseStatusCode {

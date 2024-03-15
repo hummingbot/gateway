@@ -20,7 +20,7 @@ export interface BalanceResponse {
 }
 
 export interface PollRequest extends NetworkSelectionRequest {
-  txHash: string;
+  txHash?: string; // not required for cosmos when coming after approve() 
 }
 
 export interface PollResponse {
@@ -32,6 +32,7 @@ export interface PollResponse {
   txBlock: number;
   txData: CustomTransactionResponse | null;
   txReceipt: CustomTransactionReceipt | null;
+  tokenId?: number; // filling for cosmos because we don't have a standard txReceipt, so pulling this from controller
 }
 
 export interface StatusRequest {

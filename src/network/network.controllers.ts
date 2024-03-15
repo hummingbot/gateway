@@ -19,6 +19,7 @@ import {
   getInitializedChain,
   UnsupportedChainException,
 } from '../services/connection-manager';
+import { Osmosis } from '../chains/osmosis/osmosis';
 import { XRPL } from '../chains/xrpl/xrpl';
 
 export async function getStatus(
@@ -107,6 +108,11 @@ export async function getStatus(
     const kujiraConnections = Kujira.getConnectedInstances();
     connections = connections.concat(
       kujiraConnections ? Object.values(kujiraConnections) : []
+    );
+
+    const osmosisConnections = Osmosis.getConnectedInstances();
+    connections = connections.concat(
+      osmosisConnections ? Object.values(osmosisConnections) : []
     );
   }
 

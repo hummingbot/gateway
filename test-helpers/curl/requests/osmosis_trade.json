@@ -1,0 +1,11 @@
+{
+  "address": "$OSMOSIS_ADDRESS",
+  "quote": "ION",
+  "base": "OSMO",
+  "amount": "0.01",
+  "side": "BUY",
+  "fee": "HIGH",
+  "chain": "osmosis",
+  "network": "testnet",
+  "connector": "osmosis"
+}
