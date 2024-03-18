@@ -1,0 +1,5 @@
+{
+    "privateKey": "$OSMOSIS_PRIVATE_KEY",
+    "chain": "osmosis",
+    "network": "testnet"
+}
