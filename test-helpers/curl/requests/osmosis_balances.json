@@ -1,0 +1,8 @@
+{
+    "chain": "osmosis",
+    "network": "testnet",
+    "address": "$OSMOSIS_ADDRESS",
+    "tokenSymbols": [
+    "OSMO"
+    ]
+}

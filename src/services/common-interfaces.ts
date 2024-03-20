@@ -14,7 +14,7 @@ import {
   providers as XdcProviders,
 } from 'ethers-xdc';
 import { EthereumBase } from '../chains/ethereum/ethereum-base';
-import { CosmosBase } from '../chains/cosmos/cosmos-base';
+import { CosmosAsset, CosmosBase } from '../chains/cosmos/cosmos-base';
 import { Provider } from '@ethersproject/abstract-provider';
 import { CurrencyAmount, Token, Trade as TradeUniswap } from '@uniswap/sdk';
 import { Trade } from '@uniswap/router-sdk';
@@ -113,6 +113,7 @@ import {
 import { BalanceRequest } from '../network/network.requests';
 import { TradeV2 } from '@traderjoe-xyz/sdk-v2';
 import { CurveTrade } from '../connectors/curve/curve';
+import { SerializableExtendedPool as CosmosSerializableExtendedPool } from '../chains/osmosis/osmosis.types';
 import { CarbonTrade } from '../connectors/carbon/carbonAMM';
 
 // TODO Check the possibility to have clob/solana/serum equivalents here
@@ -128,7 +129,8 @@ export type Tokenish =
   | PancakeSwapToken
   | MMFToken
   | VVSToken
-  | TokenXsswap;
+  | TokenXsswap
+  | CosmosAsset;
 
 export type TokenAmountish = MMFTokenAmount | VVSTokenAmount;
 
@@ -202,15 +204,17 @@ export interface ExpectedTrade {
 }
 
 export interface PositionInfo {
-  token0: string | undefined;
-  token1: string | undefined;
-  fee: string | undefined;
-  lowerPrice: string;
-  upperPrice: string;
-  amount0: string;
-  amount1: string;
-  unclaimedToken0: string;
-  unclaimedToken1: string;
+  token0?: string | undefined;
+  token1?: string | undefined;
+  poolShares?: string; // COSMOS - GAMM pools only issue poolShares (no amount/unclaimedToken)
+  fee?: string | undefined;
+  lowerPrice?: string;
+  upperPrice?: string;
+  amount0?: string; // COSMOS - CL pools only
+  amount1?: string; // COSMOS - CL pools only
+  unclaimedToken0?: string; // COSMOS - CL pools only
+  unclaimedToken1?: string; // COSMOS - CL pools only
+  pools?: CosmosSerializableExtendedPool[];
 }
 
 export interface Uniswapish {
@@ -798,4 +802,16 @@ export interface TransferRequest extends NetworkSelectionRequest {
   token: string;
 }
 
-export type TransferResponse = string;
+export type TransferResponse = string | FullTransferResponse;
+
+export interface FullTransferResponse {
+  network: string;
+  timestamp: number;
+  latency: number;
+  amount: string;
+  gasPrice: string;
+  gasLimit: string;
+  gasUsed: string;
+  gasWanted: string;
+  txHash: string;
+}

@@ -134,7 +134,7 @@ export class Kujira {
     const currentBlock = await this.kujira.getCurrentBlock({});
 
     const transaction = await this.kujira.getTransaction({
-      hash: req.txHash,
+      hash: req.txHash!,
     });
 
     // noinspection UnnecessaryLocalVariableJS
