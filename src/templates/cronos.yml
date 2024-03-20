@@ -3,6 +3,7 @@ networks:
   mainnet: 
     chainID: 25
     nodeURL: 'https://evm.cronos.org'
+    secondaryNodeURL: 'https://evm.cronos.org'
     tokenListType: 'FILE'
     tokenListSource: '/home/gateway/conf/lists/cronos_mainnet_beta.json'
     nativeCurrencySymbol: 'CRO'
@@ -10,6 +11,7 @@ networks:
   testnet: 
     chainID: 338
     nodeURL: 'https://evm-t3.cronos.org'
+    secondaryNodeURL: 'https://evm-t3.cronos.org'
     tokenListType: 'FILE'
     tokenListSource: '/home/gateway/conf/lists/cronos_testnet.json'
     nativeCurrencySymbol: 'CRO'

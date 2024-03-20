@@ -25,6 +25,7 @@ export class Cronos extends EthereumBase implements Ethereumish {
       'cronos',
       config.network.chainID,
       config.network.nodeURL,
+      config.network.secondaryNodeURL,
       config.network.tokenListSource,
       config.network.tokenListType,
       config.manualGasPrice,

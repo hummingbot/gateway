@@ -2,6 +2,7 @@ networks:
   arbitrum:
     chainID: 42161
     nodeURL: https://rpc.ankr.com/arbitrum
+    secondaryNodeURL: https://rpc.ankr.com/arbitrum
     tokenListType: FILE
     tokenListSource: /home/gateway/conf/lists/arbitrum_coingecko_20230610.json
     nativeCurrencySymbol: ETH
@@ -9,12 +10,14 @@ networks:
   arbitrum_rinkeby:
     chainID: 421611
     nodeURL: https://arbitrum-rinkeby.infura.io/v3
+    secondaryNodeURL: https://arbitrum-rinkeby.infura.io/v3
     tokenListType: FILE
     tokenListSource: /home/gateway/conf/lists/arbitrum_rinkeby_tokens.json
     nativeCurrencySymbol: ETH
   mainnet:
     chainID: 1
     nodeURL: https://rpc.ankr.com/eth
+    secondaryNodeURL: https://rpc.ankr.com/eth
     tokenListType: FILE
     nativeCurrencySymbol: ETH
     tokenListSource: /home/gateway/conf/lists/ethereum_coingecko_20230610.json
@@ -22,6 +25,7 @@ networks:
   optimism:
     chainID: 10
     nodeURL: https://rpc.ankr.com/optimism
+    secondaryNodeURL: https://rpc.ankr.com/optimism
     tokenListType: FILE
     tokenListSource: /home/gateway/conf/lists/optimism_superchain_2023010.json
     nativeCurrencySymbol: OETH
@@ -29,6 +33,7 @@ networks:
   goerli:
     chainID: 5
     nodeURL: https://rpc.ankr.com/eth_goerli
+    secondaryNodeURL: https://rpc.ankr.com/eth_goerli
     tokenListType: FILE
     tokenListSource: /home/gateway/conf/lists/erc20_tokens_goerli.json
     nativeCurrencySymbol: ETH
