@@ -24,9 +24,11 @@ import * as math from 'mathjs';
 import { getAddress } from 'ethers/lib/utils';
 import { RemoveLiquidityOptions } from '@pancakeswap/v3-sdk';
 import { BinanceSmartChain } from '../../chains/binance-smart-chain/binance-smart-chain';
+import { Ethereum } from '../../chains/ethereum/ethereum';
 
 export class PancakeswapLPHelper {
-  protected chain: BinanceSmartChain;
+  protected bscChain: BinanceSmartChain;
+  protected ethChain: Ethereum;
   protected chainId;
   private _router: string;
   private _nftManager: string;
@@ -41,9 +43,10 @@ export class PancakeswapLPHelper {
   public abiDecoder: any;
 
   constructor(chain: string, network: string) {
-    this.chain = BinanceSmartChain.getInstance(network);
+    this.bscChain = BinanceSmartChain.getInstance(network);
+    this.ethChain = Ethereum.getInstance(network);
     this._chainName = chain;
-    this.chainId = this.chain.chainId;
+    this.chainId = this.getChainId(chain, network);
     // this._alphaRouter = new AlphaRouter({
     //   chainId: this.chainId,
     //   provider: this.chain.provider,
@@ -108,12 +111,17 @@ export class PancakeswapLPHelper {
   }
 
   public async init() {
-    if (this._chainName == 'binance-smart-chain' && !this.chain.ready())
+    if (this._chainName == 'binance-smart-chain' && !this.bscChain.ready())
       throw new InitializationError(
         SERVICE_UNITIALIZED_ERROR_MESSAGE('BinanceSmartChain'),
         SERVICE_UNITIALIZED_ERROR_CODE
       );
-    for (const token of this.chain.storedTokenList) {
+    else if (this._chainName == 'ethereum' && !this.ethChain.ready())
+      throw new InitializationError(
+        SERVICE_UNITIALIZED_ERROR_MESSAGE('Ethereum'),
+        SERVICE_UNITIALIZED_ERROR_CODE
+      );
+    for (const token of this.bscChain.storedTokenList ?? this.ethChain.storedTokenList) {
       this.tokenList[token.address] = new Token(
         this.chainId,
         token.address,
@@ -123,6 +131,20 @@ export class PancakeswapLPHelper {
       );
     }
     this._ready = true;
+  }
+
+  public getChain(chain: string){
+    if (chain === 'binance-smart-chain') {
+      return this.bscChain;
+    }
+    return this.ethChain;
+  }
+
+  public getChainId(chain: string, network: string): number {
+    if (chain === 'binance-smart-chain') {
+      return BinanceSmartChain.getInstance(network).chainId;
+    }
+    return Ethereum.getInstance(network).chainId;
   }
 
   getPercentage(rawPercent: number | string): Percent {
@@ -161,7 +183,7 @@ export class PancakeswapLPHelper {
     poolAddress: string,
     fee: v3.FeeAmount
   ): Promise<PoolState> {
-    const poolContract = this.getPoolContract(poolAddress, this.chain.provider);
+    const poolContract = this.getPoolContract(poolAddress, this.ethChain.provider ?? this.bscChain.provider);
     const minTick = v3.nearestUsableTick(
       v3.TickMath.MIN_TICK,
       v3.TICK_SPACINGS[fee]
@@ -227,7 +249,7 @@ export class PancakeswapLPHelper {
     const poolContract = new Contract(
       v3.Pool.getAddress(token0, token1, fee),
       this.poolAbi,
-      this.chain.provider
+      this.ethChain.provider ?? this.bscChain.provider
     );
     for (
       let x = Math.ceil(period / interval) * interval;

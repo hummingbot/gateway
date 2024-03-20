@@ -17,8 +17,11 @@ export namespace PancakeSwapConfig {
   export const v2Config: V2NetworkConfig = buildConfig(
     'pancakeswap',
     ['AMM'],
-    [{ chain: 'binance-smart-chain', networks: ['mainnet', 'testnet'] }],
-    'EVM'
+    [
+      { chain: 'binance-smart-chain', networks: ['mainnet', 'testnet'] },
+      { chain: 'ethereum', networks: ['mainnet'] },
+    ],
+    'EVM',
   );
 
   export const config: NetworkConfig = {
@@ -27,11 +30,11 @@ export namespace PancakeSwapConfig {
       maximumHops: ConfigManagerV2.getInstance().get(`pancakeswap.maximumHops`),
       pancakeswapV3SmartOrderRouterAddress: (network: string) =>
         ConfigManagerV2.getInstance().get(
-          `pancakeswap.contractAddresses.${network}.pancakeswapV3SmartOrderRouterAddress`
+          `pancakeswap.contractAddresses.${network}.pancakeswapV3SmartOrderRouterAddress`,
         ),
       pancakeswapV3NftManagerAddress: (network: string) =>
         ConfigManagerV2.getInstance().get(
-          `pancakeswap.contractAddresses.${network}.pancakeswapV3NftManagerAddress`
+          `pancakeswap.contractAddresses.${network}.pancakeswapV3NftManagerAddress`,
         ),
       tradingTypes: (type: string) => {
         return type === 'swap' ? ['AMM'] : ['AMM_LP'];
