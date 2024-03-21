@@ -100,14 +100,26 @@ export class PancakeSwap implements Uniswapish {
         SERVICE_UNITIALIZED_ERROR_MESSAGE('Ethereum'),
         SERVICE_UNITIALIZED_ERROR_CODE,
       );
-    for (const token of this.bsc.storedTokenList ?? this.eth.storedTokenList) {
-      this.tokenList[token.address] = new Token(
-        this.chainId,
-        token.address,
-        token.decimals,
-        token.symbol,
-        token.name,
-      );
+    if (this._chain === 'ethereum') {
+      for (const token of this.eth.storedTokenList ?? []) {
+        this.tokenList[token.address] = new Token(
+          this.chainId,
+          token.address,
+          token.decimals,
+          token.symbol,
+          token.name,
+        );
+      }
+    } else if (this._chain === 'binance-smart-chain') {
+      for (const token of this.bsc.storedTokenList ?? []) {
+        this.tokenList[token.address] = new Token(
+          this.chainId,
+          token.address,
+          token.decimals,
+          token.symbol,
+          token.name,
+        );
+      }
     }
     this._ready = true;
   }
@@ -358,7 +370,7 @@ export class PancakeSwap implements Uniswapish {
     const v2Bscurl: string =
       'https://proxy-worker-api.pancakeswap.com/bsc-exchange';
     const v3Ethurl: string =
-      'https://thegraph.com/hosted-service/subgraph/pancakeswap/exchange-v3-bsc';
+      'https://thegraph.com/hosted-service/subgraph/pancakeswap/exchange-v3-eth';
     const v2Ethurl: string =
       'https://api.thegraph.com/subgraphs/name/pancakeswap/exhange-eth';
 
@@ -370,7 +382,7 @@ export class PancakeSwap implements Uniswapish {
     let v3SubgraphClient: GraphQLClient;
     let v2SubgraphClient: GraphQLClient;
 
-    if (this._chain === 'ethereum') {
+    if (this._chain == 'ethereum') {
       v3SubgraphClient = v3EthSubgraphClient;
       v2SubgraphClient = v2EthSubgraphClient;
     } else {
@@ -465,7 +477,7 @@ export class PancakeSwap implements Uniswapish {
   private createPublicClient(): PublicClient {
     let transportUrl: string;
 
-    if (this._chain === 'ethereum') {
+    if (this._chain == 'ethereum') {
       transportUrl = this.eth.rpcUrl;
     } else {
       transportUrl = this.bsc.rpcUrl;

@@ -56,16 +56,13 @@ export class PancakeswapLP extends PancakeswapLPHelper implements UniswapLPish {
   }
 
   async getPosition(tokenId: number): Promise<PositionInfo> {
-    const contract = this.getContract(
-      'nft',
-      this.bscChain.provider ?? this.ethChain.provider,
-    );
+    const provider = this.ethChain
+      ? this.ethChain.provider
+      : this.bscChain.provider;
+    const contract = this.getContract('nft', provider);
     const requests = [
       contract.positions(tokenId),
-      this.collectFees(
-        this.bscChain.provider ?? this.ethChain.provider,
-        tokenId,
-      ), // static call to calculate earned fees
+      this.collectFees(provider, tokenId), // static call to calculate earned fees
     ];
     const positionInfoReq = await Promise.allSettled(requests);
     const rejected = positionInfoReq.filter(
