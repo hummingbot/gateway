@@ -370,7 +370,7 @@ export class PancakeSwap implements Uniswapish {
     const v2Bscurl: string =
       'https://proxy-worker-api.pancakeswap.com/bsc-exchange';
     const v3Ethurl: string =
-      'https://thegraph.com/hosted-service/subgraph/pancakeswap/exchange-v3-eth';
+      'https://api.thegraph.com/subgraphs/name/pancakeswap/exchange-v3-eth';
     const v2Ethurl: string =
       'https://api.thegraph.com/subgraphs/name/pancakeswap/exhange-eth';
 
@@ -479,9 +479,7 @@ export class PancakeSwap implements Uniswapish {
 
     if (this._chain == 'ethereum') {
       transportUrl = this.eth.rpcUrl;
-    } else {
-      transportUrl = this.bsc.rpcUrl;
-    }
+    } else transportUrl = this.bsc.rpcUrl;
 
     return createPublicClient({
       chain:
