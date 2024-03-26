@@ -1,0 +1,8 @@
+{
+    "token0": "OSMO",
+    "token1": "ATOM",
+    "fee": "LOW",
+    "chain": "osmosis",
+    "network": "testnet",
+    "connector": "osmosis"
+}
