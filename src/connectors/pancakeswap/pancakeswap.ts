@@ -40,7 +40,7 @@ import {
   SmartRouterTrade,
   SwapRouter,
 } from '@pancakeswap/smart-router';
-import { mainnet, bsc, bscTestnet } from '@wagmi/chains';
+import { mainnet, arbitrum, zkSync, bsc, bscTestnet } from '@wagmi/chains';
 import { MethodParameters } from '@pancakeswap/v3-sdk';
 
 export class PancakeSwap implements Uniswapish {
@@ -483,7 +483,15 @@ export class PancakeSwap implements Uniswapish {
 
     return createPublicClient({
       chain:
-        this.chainId === 56 ? bsc : this.chainId === 1 ? mainnet : bscTestnet,
+        this.chainId === 56
+          ? bsc
+          : this.chainId === 1
+            ? mainnet
+            : this.chainId === 42161
+              ? arbitrum
+              : this.chainId === 324
+                ? zkSync
+                : bscTestnet,
       transport: http(transportUrl),
       batch: {
         multicall: {

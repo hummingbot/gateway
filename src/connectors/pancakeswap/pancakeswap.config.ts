@@ -19,7 +19,7 @@ export namespace PancakeSwapConfig {
     ['AMM'],
     [
       { chain: 'binance-smart-chain', networks: ['mainnet', 'testnet'] },
-      { chain: 'ethereum', networks: ['mainnet'] },
+      { chain: 'ethereum', networks: ['mainnet', 'arbitrum', 'zksync'] },
     ],
     'EVM',
   );
