@@ -67,12 +67,15 @@ export namespace AmmRoutes {
   export const router = Router();
 
   router.post(
-    '/price',
+    '/price/:poolID?',
     asyncHandler(
       async (
-        req: Request<{}, {}, PriceRequest>,
-        res: Response<PriceResponse | string, {}>
+        req: Request<{ [poolID: string]: string }, {}, PriceRequest>,
+        res: Response<PriceResponse | string | {"message": string, "httpErrorCode":Number}, {}>
       ) => {
+        if (!req.params.poolID){
+          res.status(404).json({"message":"Missing a request paramter - poolID", "httpErrorCode":404});
+        }
         validatePriceRequest(req.body);
         res.status(200).json(await price(req.body));
       }
@@ -80,12 +83,15 @@ export namespace AmmRoutes {
   );
 
   router.post(
-    '/trade',
+    '/trade/:poolID?',
     asyncHandler(
       async (
-        req: Request<{}, {}, TradeRequest>,
-        res: Response<TradeResponse | string, {}>
+        req: Request<{ [poolID: string]: string }, {}, TradeRequest>,
+        res: Response<TradeResponse | string | {"message": string, "httpErrorCode":Number}, {}>
       ) => {
+        if (!req.params.poolID){
+          res.status(404).json({"message":"Missing a request paramter - poolID", "httpErrorCode":404});
+        }
         validateTradeRequest(req.body);
         res.status(200).json(await trade(req.body));
       }
@@ -123,12 +129,15 @@ export namespace AmmLiquidityRoutes {
   );
 
   router.post(
-    '/add',
+    '/add/:poolID?',
     asyncHandler(
       async (
-        req: Request<{}, {}, AddLiquidityRequest>,
-        res: Response<AddLiquidityResponse | string, {}>
+        req: Request<{ [poolID: string]: string }, {}, AddLiquidityRequest>,
+        res: Response<AddLiquidityResponse | string | {"message": string, "httpErrorCode":Number}, {}>
       ) => {
+        if (!req.params.poolID){
+          res.status(404).json({"message":"Missing a request paramter - poolID", "httpErrorCode":404});
+        }
         validateAddLiquidityRequest(req.body);
         res.status(200).json(await addLiquidity(req.body));
       }
@@ -162,12 +171,15 @@ export namespace AmmLiquidityRoutes {
   );
 
   router.post(
-    '/price',
+    '/price/:poolID?',
     asyncHandler(
       async (
-        req: Request<{}, {}, PoolPriceRequest>,
-        res: Response<PoolPriceResponse | string, {}>
+        req: Request<{[poolID:string]:string}, {}, PoolPriceRequest>,
+        res: Response<PoolPriceResponse | string | {"message":string, "httpErrorCode":Number}, {}>
       ) => {
+        if (!req.params.poolID){
+          res.status(404).json({"message":"Missing a request paramter - poolID", "httpErrorCode":404});
+        }
         validatePoolPriceRequest(req.body);
         res.status(200).json(await poolPrice(req.body));
       }
