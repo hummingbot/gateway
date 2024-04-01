@@ -23,7 +23,7 @@ networks:
     chainID: 324
     nodeURL: https://rpc.ankr.com/zksync_era
     tokenListType: FILE
-    tokenListSource: conf/lists/zkzync_quiknode_tokens.json
+    tokenListSource: conf/lists/zksync_quiknode_tokens.json
     nativeCurrencySymbol: ETH
     gasPriceRefreshInterval: 60
   optimism:
