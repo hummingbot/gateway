@@ -101,7 +101,7 @@ export class PancakeSwap implements Uniswapish {
         SERVICE_UNITIALIZED_ERROR_CODE,
       );
     if (this._chain === 'ethereum') {
-      for (const token of this.eth.storedTokenList ?? []) {
+      for (const token of this.eth.storedTokenList) {
         this.tokenList[token.address] = new Token(
           this.chainId,
           token.address,
@@ -111,7 +111,7 @@ export class PancakeSwap implements Uniswapish {
         );
       }
     } else if (this._chain === 'binance-smart-chain') {
-      for (const token of this.bsc.storedTokenList ?? []) {
+      for (const token of this.bsc.storedTokenList) {
         this.tokenList[token.address] = new Token(
           this.chainId,
           token.address,
@@ -401,16 +401,23 @@ export class PancakeSwap implements Uniswapish {
 
     const pairs = SmartRouter.getPairCombinations(currencyA, currencyB);
 
-    const getV2CandidatePools = SmartRouter.createGetV2CandidatePools(
+    // Create v2 candidate pool fetcher with your own on-chain fetcher
+    const getV2PoolsByCommonTokenPrices =
       SmartRouter.createV2PoolsProviderByCommonTokenPrices(
         SmartRouter.getCommonTokenPricesBySubgraph,
-      ),
+      );
+    const getV2CandidatePools = SmartRouter.createGetV2CandidatePools(
+      getV2PoolsByCommonTokenPrices,
     );
 
+    // Define v3 pool on-chain fetcher with customized tvl references
     const getV3CandidatePools = SmartRouter.createGetV3CandidatePools(
+      // Use your customized v3 pool fetcher by default
       SmartRouter.getV3PoolsWithTvlFromOnChain,
       {
         fallbacks: [],
+        // In millisecond
+        // Will try fallback fetcher if the default doesn't respond in 2s
         fallbackTimeout: 1500,
       },
     );

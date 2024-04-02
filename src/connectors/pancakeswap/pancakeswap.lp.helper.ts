@@ -122,7 +122,7 @@ export class PancakeswapLPHelper {
         SERVICE_UNITIALIZED_ERROR_CODE,
       );
     if (this._chainName === 'ethereum') {
-      for (const token of this.ethChain.storedTokenList ?? []) {
+      for (const token of this.ethChain.storedTokenList) {
         this.tokenList[token.address] = new Token(
           this.chainId,
           token.address,
@@ -132,7 +132,7 @@ export class PancakeswapLPHelper {
         );
       }
     } else if (this._chainName === 'binance-smart-chain') {
-      for (const token of this.bscChain.storedTokenList ?? []) {
+      for (const token of this.bscChain.storedTokenList) {
         this.tokenList[token.address] = new Token(
           this.chainId,
           token.address,
@@ -148,15 +148,13 @@ export class PancakeswapLPHelper {
   public getChain(chain: string) {
     if (chain === 'binance-smart-chain') {
       return this.bscChain;
-    }
-    return this.ethChain;
+    } else return this.ethChain;
   }
 
   public getChainId(chain: string, network: string): number {
     if (chain === 'binance-smart-chain') {
       return BinanceSmartChain.getInstance(network).chainId;
-    }
-    return Ethereum.getInstance(network).chainId;
+    } else return Ethereum.getInstance(network).chainId;
   }
 
   getPercentage(rawPercent: number | string): Percent {
