@@ -377,6 +377,10 @@ export class PancakeSwap implements Uniswapish {
       'https://api.studio.thegraph.com/query/45376/exchange-v3-zksync/version/latest';
     const v2Zksurl: string =
       'https://api.thegraph.com/subgraphs/name/freakyfractal/uniswap-v3-zksync-era';
+    const v3Arburl: string =
+      'https://api.thegraph.com/subgraphs/name/pancakeswap/exchange-v3-arb';
+    const v2Arburl: string =
+      'https://api.thegraph.com/subgraphs/name/pancakeswap/exchange-v2-arb';
 
     const v3BscSubgraphClient = new GraphQLClient(v3Bscurl);
     const v2BscSubgraphClient = new GraphQLClient(v2Bscurl);
@@ -385,18 +389,24 @@ export class PancakeSwap implements Uniswapish {
     const v3ZksSubgraphClient = new GraphQLClient(v3Zksurl);
     const v2EZksSubgraphClient = new GraphQLClient(v2Zksurl);
 
+    const v3ArbSubgraphClient = new GraphQLClient(v3Arburl);
+    const v2ArbSubgraphClient = new GraphQLClient(v2Arburl);
+
     let v3SubgraphClient: GraphQLClient;
     let v2SubgraphClient: GraphQLClient;
 
-    if (this._chain == 'ethereum' && this.chainId === 324) {
+    if (this._chain === 'ethereum' && this.chainId === 324) {
       v3SubgraphClient = v3ZksSubgraphClient;
       v2SubgraphClient = v2EZksSubgraphClient;
-    } else if (this._chain == 'ethereum') {
-      v3SubgraphClient = v3EthSubgraphClient;
-      v2SubgraphClient = v2EthSubgraphClient;
-    } else {
+    } else if (this._chain === 'ethereum' && this.chainId === 42161) {
+      v3SubgraphClient = v3ArbSubgraphClient;
+      v2SubgraphClient = v2ArbSubgraphClient;
+    } else if (this._chain === 'binance-smart-chain') {
       v3SubgraphClient = v3BscSubgraphClient;
       v2SubgraphClient = v2BscSubgraphClient;
+    } else {
+      v3SubgraphClient = v3EthSubgraphClient;
+      v2SubgraphClient = v2EthSubgraphClient;
     }
 
     const pairs = SmartRouter.getPairCombinations(currencyA, currencyB);
