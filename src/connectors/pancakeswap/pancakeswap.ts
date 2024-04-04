@@ -493,7 +493,7 @@ export class PancakeSwap implements Uniswapish {
   private createPublicClient(): PublicClient {
     let transportUrl: string;
 
-    if (this._chain == 'ethereum') {
+    if (this._chain === 'ethereum') {
       transportUrl = this.eth.rpcUrl;
     } else transportUrl = this.bsc.rpcUrl;
 

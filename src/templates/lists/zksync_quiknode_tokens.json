@@ -59,14 +59,6 @@
     },
     {
       "chainId": 324,
-      "l1Address": "0x0000000000000000000000000000000000000000",
-      "address": "0x0000000000000000000000000000000000000000",
-      "name": "Ether",
-      "symbol": "ETH",
-      "decimals": 18
-    },
-    {
-      "chainId": 324,
       "l1Address": "0xcf0c122c6b73ff809c693db761e7baebe62b6a2e",
       "address": "0xaa610193768223438866ad9e1973447d76e4cf4a",
       "name": "FLOKI",
