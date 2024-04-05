@@ -378,9 +378,9 @@ export class PancakeSwap implements Uniswapish {
     const v2Zksurl: string =
       'https://api.thegraph.com/subgraphs/name/freakyfractal/uniswap-v3-zksync-era';
     const v3Arburl: string =
-      'https://api.thegraph.com/subgraphs/name/pancakeswap/exchange-v3-arb';
+      'https://api.studio.thegraph.com/query/45376/exchange-v3-arbitrum/version/latest';
     const v2Arburl: string =
-      'https://api.thegraph.com/subgraphs/name/pancakeswap/exchange-v2-arb';
+      'https://api.studio.thegraph.com/query/45376/exchange-v2-arbitrum/version/latest';
 
     const v3BscSubgraphClient = new GraphQLClient(v3Bscurl);
     const v2BscSubgraphClient = new GraphQLClient(v2Bscurl);
