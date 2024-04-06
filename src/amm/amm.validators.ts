@@ -57,6 +57,9 @@ export const invalidDecreasePercentError: string =
 export const invalidAllowedSlippageError: string =
   'The allowedSlippage param may be null or a string of a fraction.';
 
+export const invalidPoolIdError: string =
+  'PoolId(if supplied) must be a string.';
+
 export const validateConnector: Validator = mkValidator(
   'connector',
   invalidConnectorError,
@@ -185,6 +188,13 @@ export const validateAllowedSlippage: Validator = mkValidator(
   true
 );
 
+export const validatePoolId: Validator = mkValidator(
+  'poolId',
+  invalidPoolIdError,
+  (val) => typeof val === 'string' && val.length !== 0,
+  true
+);
+
 export const validatePriceRequest: RequestValidator = mkRequestValidator([
   validateConnector,
   validateChain,
@@ -194,6 +204,7 @@ export const validatePriceRequest: RequestValidator = mkRequestValidator([
   validateAmount,
   validateSide,
   validateAllowedSlippage,
+  validatePoolId,
 ]);
 
 export const validateTradeRequest: RequestValidator = mkRequestValidator([
@@ -209,6 +220,7 @@ export const validateTradeRequest: RequestValidator = mkRequestValidator([
   validateMaxFeePerGas,
   validateMaxPriorityFeePerGas,
   validateAllowedSlippage,
+  validatePoolId,
 ]);
 
 export const validatePerpPositionRequest: RequestValidator = mkRequestValidator(
@@ -293,6 +305,7 @@ export const validateAddLiquidityRequest: RequestValidator = mkRequestValidator(
     validateNonce,
     validateMaxFeePerGas,
     validateMaxPriorityFeePerGas,
+    validatePoolId,
   ]
 );
 
@@ -336,4 +349,5 @@ export const validatePoolPriceRequest: RequestValidator = mkRequestValidator([
   validateFee,
   validateInterval,
   validatePeriod,
+  validatePoolId,
 ]);

@@ -251,7 +251,8 @@ export interface Uniswapish {
     baseToken: Tokenish,
     quoteToken: Tokenish,
     amount: BigNumber,
-    allowedSlippage?: string
+    allowedSlippage?: string,
+    poolId?: string,
   ): Promise<ExpectedTrade>;
 
   /**
@@ -268,7 +269,8 @@ export interface Uniswapish {
     quoteToken: Tokenish,
     baseToken: Tokenish,
     amount: BigNumber,
-    allowedSlippage?: string
+    allowedSlippage?: string,
+    poolId?: string,
   ): Promise<ExpectedTrade>;
 
   /**
@@ -296,7 +298,8 @@ export interface Uniswapish {
     nonce?: number,
     maxFeePerGas?: BigNumber,
     maxPriorityFeePerGas?: BigNumber,
-    allowedSlippage?: string
+    allowedSlippage?: string,
+    poolId?: string,
   ): Promise<Transaction>;
 }
 
@@ -489,7 +492,8 @@ export interface UniswapLPish {
     gasPrice: number,
     nonce?: number,
     maxFeePerGas?: BigNumber,
-    maxPriorityFeePerGas?: BigNumber
+    maxPriorityFeePerGas?: BigNumber,
+    poolId?: string,
   ): Promise<Transaction>;
 
   /**
@@ -549,7 +553,8 @@ export interface UniswapLPish {
     token1: UniswapCoreToken,
     fee: number,
     period: number,
-    interval: number
+    interval: number,
+    poolId?: string,
   ): Promise<string[]>;
 }
 
