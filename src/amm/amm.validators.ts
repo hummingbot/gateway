@@ -204,6 +204,13 @@ export const validatePoolId: Validator = mkValidator(
   true
 );
 
+export const validatePoolId: Validator = mkValidator(
+  'poolId',
+  invalidPoolIdError,
+  (val) => typeof val === 'string' && val.length !== 0,
+  true
+);
+
 export const validatePriceRequest: RequestValidator = mkRequestValidator([
   validateConnector,
   validateChain,
