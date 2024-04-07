@@ -1,6 +1,12 @@
 import { latency } from '../services/base';
 
 import { Chain } from '../services/common-interfaces';
+
+import {
+  TransferRequest,
+  TransferResponse,
+} from '../services/common-interfaces';
+
 import {
   BalanceRequest,
   BalanceResponse,
@@ -19,10 +25,6 @@ import {
   CancelRequest,
   CancelResponse,
 } from './chain.requests';
-import {
-  TransferRequest,
-  TransferResponse,
-} from './injective/injective.requests';
 
 export async function poll(
   chain: Chain,

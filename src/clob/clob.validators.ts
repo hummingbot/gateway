@@ -12,11 +12,14 @@ import {
   validateNetwork,
 } from '../chains/ethereum/ethereum.validators';
 
+import { isXRPLAddress } from '../chains/xrpl/xrpl.validators';
+
 import {
   validateConnector,
   validateAmount,
   validateSide,
 } from '../amm/amm.validators';
+import { isValidKujiraPublicKey } from '../connectors/kujira/kujira.helpers';
 
 export const invalidMarketError: string =
   'The market param is not a valid market. Market should be in {base}-{quote} format.';
@@ -95,7 +98,12 @@ export const validateWallet: Validator = mkValidator(
   'address',
   invalidWalletError,
   (val) => {
-    return typeof val === 'string' && isAddress(val.slice(0, 42));
+    return (
+      typeof val === 'string' &&
+      (isAddress(val.slice(0, 42)) ||
+        isValidKujiraPublicKey(val) ||
+        isXRPLAddress(val))
+    );
   }
 );
 
@@ -108,7 +116,9 @@ export const validateOrderId: Validator = mkValidator(
 export const validateOrderType: Validator = mkValidator(
   'orderType',
   invalidOrderTypeError,
-  (val) => typeof val === 'string' && (val === 'LIMIT' || val === 'LIMIT_MAKER')
+  (val) =>
+    typeof val === 'string' &&
+    (val === 'LIMIT' || val === 'LIMIT_MAKER' || val === 'MARKET')
 );
 
 const NETWORK_VALIDATIONS = [validateConnector, validateChain, validateNetwork];

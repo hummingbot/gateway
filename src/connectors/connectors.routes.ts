@@ -2,7 +2,6 @@
 /* eslint-disable @typescript-eslint/ban-types */
 import { Router, Response } from 'express';
 import { asyncHandler } from '../services/error-handler';
-import { DefiraConfig } from './defira/defira.config';
 import { MadMeerkatConfig } from './mad_meerkat/mad_meerkat.config';
 import { OpenoceanConfig } from './openocean/openocean.config';
 import { PangolinConfig } from './pangolin/pangolin.config';
@@ -14,12 +13,18 @@ import { UniswapConfig } from './uniswap/uniswap.config';
 import { VVSConfig } from './vvs/vvs.config';
 import { RefConfig } from './ref/ref.config';
 import { PancakeSwapConfig } from './pancakeswap/pancakeswap.config';
-import { InjectiveCLOBConfig } from './injective/injective.clob.config';
 import { XsswapConfig } from './xsswap/xsswap.config';
 import { ConnectorsResponse } from './connectors.request';
 import { DexalotCLOBConfig } from './dexalot/dexalot.clob.config';
 import { TinymanConfig } from './tinyman/tinyman.config';
 import { BalancerConfig } from './balancer/balancer.config';
+import { CurveConfig } from './curve/curveswap.config';
+import { PlentyConfig } from './plenty/plenty.config';
+import { XRPLCLOBConfig } from './xrpl/xrpl.clob.config';
+import { KujiraConfig } from './kujira/kujira.config';
+import { QuipuswapConfig } from './quipuswap/quipuswap.config';
+import { OsmosisConfig } from '../chains/osmosis/osmosis.config';
+import { CarbonConfig } from './carbon/carbon.config';
 
 export namespace ConnectorsRoutes {
   export const router = Router();
@@ -81,12 +86,6 @@ export namespace ConnectorsRoutes {
             available_networks: TraderjoeConfig.config.availableNetworks,
           },
           {
-            name: 'defira',
-            trading_type: DefiraConfig.config.tradingTypes,
-            chain_type: DefiraConfig.config.chainType,
-            available_networks: DefiraConfig.config.availableNetworks,
-          },
-          {
             name: 'mad_meerkat',
             trading_type: MadMeerkatConfig.config.tradingTypes,
             chain_type: MadMeerkatConfig.config.chainType,
@@ -106,29 +105,16 @@ export namespace ConnectorsRoutes {
           },
           {
             name: 'pancakeswap',
-            trading_type: PancakeSwapConfig.config.tradingTypes,
+            trading_type: PancakeSwapConfig.config.tradingTypes('swap'),
             chain_type: PancakeSwapConfig.config.chainType,
             available_networks: PancakeSwapConfig.config.availableNetworks,
           },
           {
-            name: 'injective',
-            trading_type: InjectiveCLOBConfig.config.tradingTypes('spot'),
-            chain_type: InjectiveCLOBConfig.config.chainType,
-            available_networks: InjectiveCLOBConfig.config.availableNetworks,
-            additional_add_wallet_prompts: {
-              accountId:
-                'Enter your injective sub account id wallet key (input 0 if unsure) >>> ',
-            },
-          },
-          {
-            name: 'injective_perpetual',
-            trading_type: InjectiveCLOBConfig.config.tradingTypes('perp'),
-            chain_type: InjectiveCLOBConfig.config.chainType,
-            available_networks: InjectiveCLOBConfig.config.availableNetworks,
-            additional_add_wallet_prompts: {
-              accountId:
-                'Enter your injective sub account id wallet key (input 0 if unsure) >>> ',
-            },
+            name: 'pancakeswapLP',
+            trading_type: PancakeSwapConfig.config.tradingTypes('LP'),
+            chain_type: PancakeSwapConfig.config.chainType,
+            available_networks: PancakeSwapConfig.config.availableNetworks,
+            additional_spenders: ['pancakeswap'],
           },
           {
             name: 'xswap',
@@ -157,6 +143,52 @@ export namespace ConnectorsRoutes {
             trading_type: BalancerConfig.config.tradingTypes,
             chain_type: BalancerConfig.config.chainType,
             available_networks: BalancerConfig.config.availableNetworks,
+          },
+          {
+            name: 'curve',
+            trading_type: CurveConfig.config.tradingTypes,
+            chain_type: CurveConfig.config.chainType,
+            available_networks: CurveConfig.config.availableNetworks,
+          },
+          {
+            name: 'plenty',
+            trading_type: PlentyConfig.config.tradingTypes,
+            chain_type: PlentyConfig.config.chainType,
+            available_networks: PlentyConfig.config.availableNetworks,
+          },
+          {
+            name: 'xrpl',
+            trading_type: XRPLCLOBConfig.config.tradingTypes,
+            chain_type: XRPLCLOBConfig.config.chainType,
+            available_networks: XRPLCLOBConfig.config.availableNetworks,
+          },
+          {
+            name: 'kujira',
+            trading_type: KujiraConfig.config.tradingTypes,
+            chain_type: KujiraConfig.config.chainType,
+            available_networks: KujiraConfig.config.availableNetworks,
+            additional_add_wallet_prompts: {
+              accountId:
+                'Enter your kujira account number (input 0 if unsure) >>> ',
+            },
+          },
+          {
+            name: 'quipuswap',
+            trading_type: QuipuswapConfig.config.tradingTypes,
+            chain_type: QuipuswapConfig.config.chainType,
+            available_networks: QuipuswapConfig.config.availableNetworks,
+          },
+          {
+            name: 'osmosis',
+            trading_type: OsmosisConfig.config.tradingTypes('swap'),
+            chain_type: OsmosisConfig.config.chainType,
+            available_networks: OsmosisConfig.config.availableNetworks,
+          },
+          {
+            name: 'carbonamm',
+            trading_type: CarbonConfig.config.tradingTypes,
+            chain_type: CarbonConfig.config.chainType,
+            available_networks: CarbonConfig.config.availableNetworks,
           },
         ],
       });

@@ -1,12 +1,8 @@
 jest.useFakeTimers();
 import {
-  Fetcher,
-  Pair,
   Percent,
-  Route,
   Token,
-  TokenAmount,
-  Trade,
+  CurrencyAmount,
   TradeType,
 } from '@pancakeswap/sdk';
 import { BigNumber } from 'ethers';
@@ -14,29 +10,29 @@ import { BinanceSmartChain } from '../../../src/chains/binance-smart-chain/binan
 import { PancakeSwap } from '../../../src/connectors/pancakeswap/pancakeswap';
 import { UniswapishPriceError } from '../../../src/services/error-handler';
 import { patchEVMNonceManager } from '../../evm.nonce.mock';
-import { patch, unpatch } from '../../services/patch';
+import { patch, unpatch } from '../../../test/services/patch';
 
 let bsc: BinanceSmartChain;
 let pancakeswap: PancakeSwap;
 
 const WBNB = new Token(
-  97,
-  '0xae13d989dac2f0debff460ac112a837c89baa7cd',
+  56,
+  '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
   18,
   'WBNB'
 );
 const DAI = new Token(
-  97,
-  '0x8a9424745056Eb399FD19a0EC26A14316684e274',
+  56,
+  '0x1AF3F329e8BE154074D8769D1FFa4eE058B1DBc3',
   18,
   'DAI'
 );
 
 beforeAll(async () => {
-  bsc = BinanceSmartChain.getInstance('testnet');
+  bsc = BinanceSmartChain.getInstance('mainnet');
   patchEVMNonceManager(bsc.nonceManager);
   await bsc.init();
-  pancakeswap = PancakeSwap.getInstance('binance-smart-chain', 'testnet');
+  pancakeswap = PancakeSwap.getInstance('binance-smart-chain', 'mainnet');
   await pancakeswap.init();
 });
 
@@ -48,37 +44,38 @@ afterAll(async () => {
   await bsc.close();
 });
 
-const patchFetchPairData = () => {
-  patch(Fetcher, 'fetchPairData', () => {
-    return new Pair(
-      new TokenAmount(WBNB, '2000000000000000000'),
-      new TokenAmount(DAI, '1000000000000000000')
-    );
-  });
-};
+// const patchFetchPairData = () => {
+//   patch(Fetcher, 'fetchPairData', () => {
+//     return new Pair(
+//       CurrencyAmount.fromRawAmount(WBNB, '2000000000000000000'),
+//       CurrencyAmount.fromRawAmount(DAI, '1000000000000000000')
+//     );
+//   });
+// };
 
-const patchTrade = (key: string, error?: Error) => {
-  patch(Trade, key, () => {
-    if (error) return [];
-    const WBNB_DAI = new Pair(
-      new TokenAmount(WBNB, '2000000000000000000'),
-      new TokenAmount(DAI, '1000000000000000000')
-    );
-    const DAI_TO_WBNB = new Route([WBNB_DAI], DAI);
-    return [
-      new Trade(
-        DAI_TO_WBNB,
-        new TokenAmount(DAI, '1000000000000000'),
-        TradeType.EXACT_INPUT
-      ),
-    ];
-  });
-};
+// const patchTrade = (key: string, error?: Error) => {
+//   patch(Trade, key, () => {
+//     if (error) return [];
+//     const WBNB_DAI = new Pair(
+//       CurrencyAmount.fromRawAmount(WBNB, '2000000000000000000'),
+//       CurrencyAmount.fromRawAmount(DAI, '1000000000000000000')
+//     );
+//     const DAI_TO_WBNB = new Route<Token, Currency>([WBNB_DAI], DAI, WBNB);
+//     return [
+//       new Trade(
+//         DAI_TO_WBNB,
+//         CurrencyAmount.fromRawAmount(DAI, '1000000000000000'),
+//         TradeType.EXACT_INPUT
+//       ),
+//     ];
+//   });
+// };
 
 describe('verify PancakeSwap estimateSellTrade', () => {
   it('Should return an ExpectedTrade when available', async () => {
-    patchFetchPairData();
-    patchTrade('bestTradeExactIn');
+    patch(pancakeswap, "getBestTrade", async () => {
+      return { tradeType: TradeType.EXACT_INPUT, inputAmount: CurrencyAmount.fromRawAmount(WBNB, "10000"), outputAmount: CurrencyAmount.fromRawAmount(DAI, "100000"), routes: [] };
+    })
 
     const expectedTrade = await pancakeswap.estimateSellTrade(
       WBNB,
@@ -90,8 +87,10 @@ describe('verify PancakeSwap estimateSellTrade', () => {
   });
 
   it('Should throw an error if no pair is available', async () => {
-    patchFetchPairData();
-    patchTrade('bestTradeExactIn', new Error('error getting trade'));
+
+    patch(pancakeswap, "getBestTrade", async () => {
+      return null;
+    })
 
     await expect(async () => {
       await pancakeswap.estimateSellTrade(WBNB, DAI, BigNumber.from(1));
@@ -101,8 +100,9 @@ describe('verify PancakeSwap estimateSellTrade', () => {
 
 describe('verify PancakeSwap estimateBuyTrade', () => {
   it('Should return an ExpectedTrade when available', async () => {
-    patchFetchPairData();
-    patchTrade('bestTradeExactOut');
+    patch(pancakeswap, "getBestTrade", async () => {
+      return { tradeType: TradeType.EXACT_OUTPUT, inputAmount: CurrencyAmount.fromRawAmount(WBNB, "10000"), outputAmount: CurrencyAmount.fromRawAmount(DAI, "100000"), routes: [] };
+    })
 
     const expectedTrade = await pancakeswap.estimateBuyTrade(
       WBNB,
@@ -114,8 +114,9 @@ describe('verify PancakeSwap estimateBuyTrade', () => {
   });
 
   it('Should return an error if no pair is available', async () => {
-    patchFetchPairData();
-    patchTrade('bestTradeExactOut', new Error('error getting trade'));
+    patch(pancakeswap, "getBestTrade", async () => {
+      return null;
+    })
 
     await expect(async () => {
       await pancakeswap.estimateBuyTrade(WBNB, DAI, BigNumber.from(1));

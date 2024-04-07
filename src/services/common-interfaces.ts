@@ -14,7 +14,7 @@ import {
   providers as XdcProviders,
 } from 'ethers-xdc';
 import { EthereumBase } from '../chains/ethereum/ethereum-base';
-import { CosmosBase } from '../chains/cosmos/cosmos-base';
+import { CosmosAsset, CosmosBase } from '../chains/cosmos/cosmos-base';
 import { Provider } from '@ethersproject/abstract-provider';
 import { CurrencyAmount, Token, Trade as TradeUniswap } from '@uniswap/sdk';
 import { Trade } from '@uniswap/router-sdk';
@@ -78,13 +78,16 @@ import {
   TradeOptionsDeadline as VVSTradeOptionsDeadline,
   SwapParameters as VVSSwapParameters,
 } from 'vvs-sdk';
-import { Trade as DefiraTrade } from '@zuzu-cat/defira-sdk';
 import {
   Token as PancakeSwapToken,
   CurrencyAmount as PancakeSwapCurrencyAmount,
+  TradeType as PancakeSwapTradeType,
   Trade as PancakeSwapTrade,
   Fraction as PancakeSwapFraction,
+  Currency as PancakeSwapCurrency,
+  Price as PancakeSwapPrice,
 } from '@pancakeswap/sdk';
+import { SmartRouterTrade as PancakeSwapSmartRouterTrade } from '@pancakeswap/smart-router';
 import {
   Token as TokenXsswap,
   CurrencyAmount as CurrencyAmountXsswap,
@@ -94,6 +97,7 @@ import {
 import { PerpPosition } from '../connectors/perp/perp';
 import { XdcBase } from '../chains/xdc/xdc.base';
 import { NearBase } from '../chains/near/near.base';
+import { TezosBase } from '../chains/tezos/tezos.base';
 import { Account, Contract as NearContract } from 'near-api-js';
 import { EstimateSwapView, TokenMetadata } from 'coinalpha-ref-sdk';
 import { FinalExecutionOutcome } from 'near-api-js/lib/providers';
@@ -109,6 +113,9 @@ import {
 import { BalanceRequest } from '../network/network.requests';
 import { TradeV2 } from '@traderjoe-xyz/sdk-v2';
 import { Trade as BalancerTrade } from '../connectors/balancer/types';
+import { CurveTrade } from '../connectors/curve/curve';
+import { SerializableExtendedPool as CosmosSerializableExtendedPool } from '../chains/osmosis/osmosis.types';
+import { CarbonTrade } from '../connectors/carbon/carbonAMM';
 
 // TODO Check the possibility to have clob/solana/serum equivalents here
 //  Check this link https://hummingbot.org/developers/gateway/building-gateway-connectors/#5-add-sdk-classes-to-uniswapish-interface
@@ -123,7 +130,8 @@ export type Tokenish =
   | PancakeSwapToken
   | MMFToken
   | VVSToken
-  | TokenXsswap;
+  | TokenXsswap
+  | CosmosAsset;
 
 export type TokenAmountish = MMFTokenAmount | VVSTokenAmount;
 
@@ -141,13 +149,24 @@ export type UniswapishTrade =
   | TradeTraderjoe
   | SushiswapTrade<SushiToken, SushiToken, SushiTradeType>
   | TradeUniswap
-  | DefiraTrade<UniswapCoreToken, UniswapCoreToken, TradeType>
-  | PancakeSwapTrade
+  | PancakeSwapTrade<
+      PancakeSwapCurrency,
+      PancakeSwapCurrency,
+      PancakeSwapTradeType
+    >
+  | (PancakeSwapSmartRouterTrade<PancakeSwapTradeType> & {
+      executionPrice: PancakeSwapPrice<
+        PancakeSwapCurrency,
+        PancakeSwapCurrency
+      >;
+    })
   | MMFTrade
   | VVSTrade
   | TradeXsswap
   | TradeV2
-  | BalancerTrade;
+  | BalancerTrade
+  | CurveTrade
+  | CarbonTrade;
 
 export type UniswapishTradeOptions =
   | MMFTradeOptions
@@ -164,10 +183,11 @@ export type UniswapishAmount =
   | UniswapCoreCurrencyAmount<Currency>
   | CurrencyAmountTraderjoe
   | SushiCurrencyAmount<SushiCurrency | SushiToken>
-  | PancakeSwapCurrencyAmount
+  | PancakeSwapCurrencyAmount<PancakeSwapCurrency>
   | CurrencyAmountMMF
   | CurrencyAmountVVS
-  | CurrencyAmountXsswap;
+  | CurrencyAmountXsswap
+  | UniswapFraction;
 
 export type Fractionish =
   | UniswapFraction
@@ -186,15 +206,17 @@ export interface ExpectedTrade {
 }
 
 export interface PositionInfo {
-  token0: string | undefined;
-  token1: string | undefined;
-  fee: string | undefined;
-  lowerPrice: string;
-  upperPrice: string;
-  amount0: string;
-  amount1: string;
-  unclaimedToken0: string;
-  unclaimedToken1: string;
+  token0?: string | undefined;
+  token1?: string | undefined;
+  poolShares?: string; // COSMOS - GAMM pools only issue poolShares (no amount/unclaimedToken)
+  fee?: string | undefined;
+  lowerPrice?: string;
+  upperPrice?: string;
+  amount0?: string; // COSMOS - CL pools only
+  amount1?: string; // COSMOS - CL pools only
+  unclaimedToken0?: string; // COSMOS - CL pools only
+  unclaimedToken1?: string; // COSMOS - CL pools only
+  pools?: CosmosSerializableExtendedPool[];
 }
 
 export interface Uniswapish {
@@ -481,7 +503,7 @@ export interface UniswapLPish {
     token1: UniswapCoreToken,
     amount0: string,
     amount1: string,
-    fee: number,
+    fee: string,
     lowerPrice: number,
     upperPrice: number,
     tokenId: number,
@@ -547,7 +569,7 @@ export interface UniswapLPish {
   poolPrice(
     token0: UniswapCoreToken,
     token1: UniswapCoreToken,
-    fee: number,
+    fee: string,
     period: number,
     interval: number
   ): Promise<string[]>;
@@ -716,6 +738,13 @@ export interface Cosmosish extends CosmosBase {
   chain: string;
 }
 
+export interface Tezosish extends TezosBase {
+  gasPrice: number;
+  gasLimitTransaction: number;
+  nativeTokenSymbol: string;
+  chain: string;
+}
+
 export interface NetworkSelectionRequest {
   chain: string; //the target chain (e.g. ethereum, avalanche, or harmony)
   network: string; // the target network of the chain (e.g. mainnet)
@@ -749,11 +778,12 @@ export interface CustomTransactionReceipt
 export interface CustomTransaction
   extends Omit<
     Transaction,
-    'maxPriorityFeePerGas' | 'maxFeePerGas' | 'gasLimit' | 'value'
+    'maxPriorityFeePerGas' | 'maxFeePerGas' | 'gasLimit' | 'value' | 'chainId'
   > {
   maxPriorityFeePerGas: string | null;
   maxFeePerGas: string | null;
   gasLimit: string | null;
+  chainId: number | string;
   value: string;
 }
 
@@ -765,4 +795,25 @@ export interface CustomTransactionResponse
   gasPrice: string | null;
   gasLimit: string;
   value: string;
+}
+
+export interface TransferRequest extends NetworkSelectionRequest {
+  to: string;
+  from: string;
+  amount: string;
+  token: string;
+}
+
+export type TransferResponse = string | FullTransferResponse;
+
+export interface FullTransferResponse {
+  network: string;
+  timestamp: number;
+  latency: number;
+  amount: string;
+  gasPrice: string;
+  gasLimit: string;
+  gasUsed: string;
+  gasWanted: string;
+  txHash: string;
 }

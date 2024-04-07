@@ -213,14 +213,15 @@ export class UniswapLPHelper {
   async poolPrice(
     token0: Token,
     token1: Token,
-    tier: uniV3.FeeAmount,
+    tier: string,
     period: number = 1,
     interval: number = 1
   ): Promise<string[]> {
     const fetchPriceTime = [];
     const prices = [];
+    const fee = uniV3.FeeAmount[tier as keyof typeof uniV3.FeeAmount];
     const poolContract = new Contract(
-      uniV3.Pool.getAddress(token0, token1, tier),
+      uniV3.Pool.getAddress(token0, token1, fee),
       this.poolAbi,
       this.ethereum.provider
     );

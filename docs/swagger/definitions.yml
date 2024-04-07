@@ -378,9 +378,12 @@ definitions:
       gasLimit:
         type: 'number'
         example: 150688
-      gasCost:
+      gasCost: # also gasUsed for Cosmos prices
         type: 'string'
         example: '0.014466048000000000'
+      gasWanted:
+        type: 'number'
+        example: 150688
 
   TradeRequest:
     type: 'object'
@@ -432,12 +435,8 @@ definitions:
       - 'base'
       - 'quote'
       - 'amount'
-      - 'price'
       - 'gasPrice'
-      - 'gasPriceToken'
       - 'gasLimit'
-      - 'gasCost'
-      - 'nonce'
     properties:
       network:
         type: 'string'
@@ -457,6 +456,9 @@ definitions:
       amount:
         type: 'string'
         example: '10'
+      rawAmount: # Cosmos specific
+        type: 'string'
+        example: '10'
       expectedIn:
         type: 'string'
       expectedOut:
@@ -472,7 +474,21 @@ definitions:
         type: 'string'
       gasCost:
         type: 'string'
+      gasUsed: # Cosmos specific
+        type: 'string'
+      gasWanted: # Cosmos specific
+        type: 'string'
       nonce:
+        type: 'string'
+      expectedAmountReceived: # Cosmos specific
+        type: 'string'
+      finalAmountReceived: # Cosmos specific
+        type: 'string'
+      finalAmountReceived_basetoken: # Cosmos specific
+        type: 'string'
+      expectedPrice: # Cosmos specific
+        type: 'string'
+      finalPrice: # Cosmos specific
         type: 'string'
       txHash:
         type: 'string'
@@ -681,9 +697,8 @@ definitions:
       - 'token1'
       - 'amount0'
       - 'amount1'
-      - 'fee'
-      - 'lowerPrice'
-      - 'upperPrice'
+      - 'chain'
+      - 'network'
     properties:
       address:
         type: 'string'
@@ -704,12 +719,16 @@ definitions:
         type: 'number'
         example: 1
       upperPrice:
-        type: number
+        type: 'number'
         example: 5
       maxFeePerGas:
-        type: number
+        type: 'number'
       maxPriorityFeePerGas:
-        type: number
+        type: 'number'
+      tokenId: # Cosmos poolId
+        type: 'number'
+      allowedSlippage: # Cosmos specific
+        type: 'string'
       chain:
         type: 'string'
         example: 'ethereum'
@@ -718,7 +737,6 @@ definitions:
         example: 'goerli'
       connector:
         type: 'string'
-        example: 'uniswapLP'
 
   LiquidityAddResponse:
     type: 'object'
@@ -728,10 +746,8 @@ definitions:
       - 'token0'
       - 'token1'
       - 'gasPrice'
-      - 'gasPriceToken'
       - 'gasLimit'
-      - 'gasCost'
-      - 'nonce'
+      - 'txHash'
     properties:
       network:
         type: 'string'
@@ -759,23 +775,42 @@ definitions:
       txHash:
         type: 'string'
         example: '0x0000000000000000000000000000000000000000'
+      tokenId: # Cosmos poolId
+        type: 'number'
+      poolAddress: # Cosmos specific
+        type: 'string'
+      poolShares: # Cosmos specific
+        type: 'string'
+      token0FinalAmount: # Cosmos specific
+        type: 'string'
+      token1FinalAmount: # Cosmos specific
+        type: 'string'
+      latency: # Cosmos specific
+        type: 'number'
+      gasUsed: # Cosmos specific
+        type: 'string'
+      gasWanted: # Cosmos specific
+        type: 'string'
 
   LiquidityRemoveRequest:
     type: 'object'
     required:
       - 'address'
       - 'tokenId'
+      - 'chain'
+      - 'network'
+      - 'connector'
     properties:
       address:
         type: 'string'
         example: '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D'
-      tokenId:
+      tokenId: # Cosmos poolId
         type: 'number'
         example: 12
       maxFeePerGas:
-        type: number
+        type: 'number'
       maxPriorityFeePerGas:
-        type: number
+        type: 'number'
       chain:
         type: 'string'
         example: 'ethereum'
@@ -785,18 +820,19 @@ definitions:
       connector:
         type: 'string'
         example: 'uniswapLP'
+      decreasePercent: # Cosmos specific
+        type: 'number'
+      allowedSlippage: # Cosmos specific
+        type: 'string'
 
   LiquidityRemoveResponse:
     type: 'object'
     required:
       - 'network'
       - 'timestamp'
-      - 'tokenId'
       - 'gasPrice'
-      - 'gasPriceToken'
       - 'gasLimit'
-      - 'gasCost'
-      - 'nonce'
+      - 'txHash'
     properties:
       network:
         type: 'string'
@@ -821,6 +857,26 @@ definitions:
       txHash:
         type: 'string'
         example: '0x0000000000000000000000000000000000000000'
+      latency: # Cosmos specific
+        type: 'number'
+      gasUsed: # Cosmos specific
+        type: 'string'
+      gasWanted: # Cosmos specific
+        type: 'string'
+      balances: # Cosmos specific
+        type: 'array'
+        items: 'object'
+        required:
+          - 'amount'
+          - 'denom'
+          - 'symbol'
+        properties:
+          amount:
+            type: 'string'
+          denom:
+            type: 'string'
+          symbol:
+            type: 'string'
 
   LiquidityCollectRequest:
     type: 'object'
@@ -887,11 +943,15 @@ definitions:
   LiquidityPositionRequest:
     type: 'object'
     required:
-      - 'tokenId'
+      - 'chain'
+      - 'network'
+      - 'connector'
     properties:
       tokenId:
         type: 'number'
         example: 12
+      address: # Cosmos specific
+        type: 'string'
       chain:
         type: 'string'
         example: 'ethereum'
@@ -907,16 +967,6 @@ definitions:
     required:
       - 'network'
       - 'timestamp'
-      - 'tokenId'
-      - 'token0'
-      - 'token1'
-      - 'fee'
-      - 'lowerPrice'
-      - 'upperPrice'
-      - 'amount0'
-      - 'amount1'
-      - 'unclaimedToken0'
-      - 'unclaimedToken1'
     properties:
       network:
         type: 'string'
@@ -924,6 +974,9 @@ definitions:
       timestamp:
         type: 'integer'
         example: 1636368085740
+      latency: # Cosmos specific
+        type: 'number'
+        example: 123
       tokenId:
         type: 'number'
         example: 12
@@ -954,15 +1007,82 @@ definitions:
       unclaimedToken1:
         type: 'string'
         example: '2'
+      pools: # Cosmos specific
+        type: 'array'
+        items: 'object'
+        required:
+          - 'address'
+          - 'id'
+        properties:
+          $typeUrl:
+            type: 'string'
+          address:
+            type: 'string'
+            example: 'osmo23459697'
+          id:
+            type: 'string'
+            example: 'poolid'
+          futurePoolGovernor:
+            type: 'string'
+            example: 'noidea'
+          totalShares:
+            type: 'object'
+            required:
+              - 'amount'
+              - 'denom'
+            properties:
+              amount:
+                type: 'string'
+                example: 'none'
+              denom:
+                type: 'string'
+                example: 'none' 
+          poolAssets:
+            type: 'array'
+            items: 'object'
+            required:
+              - 'amount'
+              - 'denom'
+            properties:
+              amount:
+                type: 'string'
+                example: 'none'
+              denom:
+                type: 'string'
+                example: 'none' 
+          totalWeight:
+            type: 'string'
+            example: 'none'
+          fees_volume24H:
+            type: 'number'
+            example: 1
+          fees_spent_7d:
+            type: 'number'
+            example: 1
+          fees_volume7d:
+            type: 'number'
+            example: 1
+          myLiquidityShares:
+            type: 'number'
+            example: 1
+          myLiquidityDollarValue:
+            type: 'string'
+            example: '20'
+          my_bonded_shares:
+            type: 'string'
+            example: '20'
+          denom:
+            type: 'string'
+            example: 'none' 
 
   LiquidityPriceRequest:
     type: 'object'
     required:
       - 'token0'
       - 'token1'
-      - 'fee'
-      - 'period'
-      - 'interval'
+      - 'chain'
+      - 'network'
+      - 'connector'
     properties:
       token0:
         type: 'string'
@@ -979,6 +1099,9 @@ definitions:
       interval:
         type: 'number'
         example: 5
+      address: # Cosmos specific
+        type: 'string'
+        example: 'osmo123456'
       chain:
         type: 'string'
         example: 'ethereum'
@@ -996,9 +1119,6 @@ definitions:
       - 'timestamp'
       - 'token0'
       - 'token1'
-      - 'fee'
-      - 'period'
-      - 'interval'
     properties:
       network:
         type: 'string'
@@ -1006,6 +1126,9 @@ definitions:
       timestamp:
         type: 'integer'
         example: 1636368085740
+      latency: # Cosmos specific
+        type: 'number'
+        example: 123
       token0:
         type: 'string'
         example: 'DAI'
@@ -1024,7 +1147,74 @@ definitions:
       prices:
         type: 'object'
         example: [ '1', '2', '3' ]
-
+      pools: # Cosmos specific
+        type: 'array'
+        items: 'object'
+        required:
+          - 'address'
+          - 'id'
+        properties:
+          $typeUrl:
+            type: 'string'
+            example: ''
+          address:
+            type: 'string'
+            example: 'osmo23459697'
+          id:
+            type: 'string'
+            example: 'poolid'
+          futurePoolGovernor:
+            type: 'string'
+            example: 'noidea'
+          totalShares:
+            type: 'object'
+            required:
+              - 'amount'
+              - 'denom'
+            properties:
+              amount:
+                type: 'string'
+                example: 'none'
+              denom:
+                type: 'string'
+                example: 'none' 
+          poolAssets:
+            type: 'array'
+            items: 'object'
+            required:
+              - 'amount'
+              - 'denom'
+            properties:
+              amount:
+                type: 'string'
+                example: 'none'
+              denom:
+                type: 'string'
+                example: 'none' 
+          totalWeight:
+            type: 'string'
+            example: 'none'
+          fees_volume24H:
+            type: 'number'
+            example: 1
+          fees_spent_7d:
+            type: 'number'
+            example: 1
+          fees_volume7d:
+            type: 'number'
+            example: 1
+          myLiquidityShares:
+            type: 'number'
+            example: 1
+          myLiquidityDollarValue:
+            type: 'string'
+            example: '20'
+          my_bonded_shares:
+            type: 'string'
+            example: '20'
+          denom:
+            type: 'string'
+            example: 'none' 
 
   PerpPairsRequest:
     type: 'object'
@@ -1445,13 +1635,13 @@ definitions:
         example: 'AAVE-USDT'
       chain:
         type: 'string'
-        example: 'injective'
+        example: 'dexalot'
       network:
         type: 'string'
         example: 'mainnet'
       connector:
         type: 'string'
-        example: 'injective'
+        example: 'dexalot'
 
   ClobMarketResponse:
     type: 'object'
@@ -1483,16 +1673,16 @@ definitions:
     properties:
       market:
         type: 'string'
-        example: 'AAVE-USDT'
+        example: 'AVAX-USDC'
       chain:
         type: 'string'
-        example: 'injective'
+        example: 'dexalot'
       network:
         type: 'string'
         example: 'mainnet'
       connector:
         type: 'string'
-        example: 'injective'
+        example: 'dexalot'
 
   ClobTickerResponse:
     type: 'object'
@@ -1525,16 +1715,16 @@ definitions:
     properties:
       market:
         type: 'string'
-        example: 'AAVE-USDT'
+        example: 'AVAX-USDC'
       chain:
         type: 'string'
-        example: 'injective'
+        example: 'dexalot'
       network:
         type: 'string'
         example: 'mainnet'
       connector:
         type: 'string'
-        example: 'injective'
+        example: 'dexalot'
       isDerivative:
         type: 'boolean'
         example: false
@@ -1571,19 +1761,19 @@ definitions:
     properties:
       market:
         type: 'string'
-        example: 'AAVE-USDT'
+        example: 'AVAX-USDC'
       orderId:
         type: 'string'
         example: 'Buy-21342453'
       chain:
         type: 'string'
-        example: 'injective'
+        example: 'dexalot'
       network:
         type: 'string'
         example: 'mainnet'
       connector:
         type: 'string'
-        example: 'injective'
+        example: 'dexalot'
       address:
         type: 'string'
         example: '0x...'
@@ -1624,16 +1814,16 @@ definitions:
     properties:
       market:
         type: 'string'
-        example: 'AAVE-USDT'
+        example: 'AVAX-USDC'
       chain:
         type: 'string'
-        example: 'injective'
+        example: 'dexalot'
       network:
         type: 'string'
         example: 'mainnet'
       connector:
         type: 'string'
-        example: 'injective'
+        example: 'dexalot'
       address:
         type: 'string'
         example: '0x...'
@@ -1683,16 +1873,16 @@ definitions:
     properties:
       market:
         type: 'string'
-        example: 'AAVE-USDT'
+        example: 'AVAX-USDT'
       chain:
         type: 'string'
-        example: 'injective'
+        example: 'dexalot'
       network:
         type: 'string'
         example: 'mainnet'
       connector:
         type: 'string'
-        example: 'injective'
+        example: 'dexalot'
       address:
         type: 'string'
         example: '0x...'
@@ -1734,7 +1924,7 @@ definitions:
         example: '0xa508cb32923323679f29a032c70342c147c17d0145625922b0ef22e955c844c0'
       chain:
         type: 'string'
-        example: 'injective'
+        example: 'ethereum'
       network:
         type: 'string'
         example: 'mainnet'
@@ -1786,7 +1976,7 @@ definitions:
         example: '0xa508cb32923323679f29a032c70342c147c17d0145625922b0ef22e955c844c0'
       chain:
         type: 'string'
-        example: 'injective'
+        example: 'ethereum'
       network:
         type: 'string'
         example: 'mainnet'
@@ -1877,7 +2067,7 @@ definitions:
     properties:
       chain:
         type: 'string'
-        example: 'injective'
+        example: 'dexalot'
       network:
         type: 'string'
         example: 'mainnet'
@@ -1912,13 +2102,13 @@ definitions:
         example: 'Buy-21342453'
       chain:
         type: 'string'
-        example: 'injective'
+        example: 'ethereum'
       network:
         type: 'string'
         example: 'mainnet'
       connector:
         type: 'string'
-        example: 'injective'
+        example: 'dexalot'
       address:
         type: 'string'
         example: '0x...'
@@ -1940,13 +2130,13 @@ definitions:
         example: 'Buy-21342453'
       chain:
         type: 'string'
-        example: 'injective'
+        example: 'ethereum'
       network:
         type: 'string'
         example: 'mainnet'
       connector:
         type: 'string'
-        example: 'injective'
+        example: 'dexalot'
       address:
         type: 'string'
         example: '0x...'
@@ -1985,13 +2175,13 @@ definitions:
         example: 'INJ-USDT'
       chain:
         type: 'string'
-        example: 'injective'
+        example: 'ethereum'
       network:
         type: 'string'
         example: 'mainnet'
       connector:
         type: 'string'
-        example: 'injective'
+        example: 'dexalot'
 
   PerpClobFundingInfoResponse:
     type: 'object'
@@ -2051,13 +2241,13 @@ definitions:
     properties:
       chain:
         type: 'string'
-        example: 'injective'
+        example: 'ethereum'
       network:
         type: 'string'
         example: 'mainnet'
       connector:
         type: 'string'
-        example: 'injective'
+        example: 'dexalot'
       address:
         type: 'string'
         example: '0x...'

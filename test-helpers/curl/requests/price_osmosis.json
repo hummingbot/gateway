@@ -1,0 +1,9 @@
+{
+    "connector": "osmosis",
+    "chain": "osmosis",
+    "network": "testnet",
+    "quote": "ATOM",
+    "base": "OSMO",
+    "amount": "1",
+    "side": "BUY"
+}

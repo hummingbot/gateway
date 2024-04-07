@@ -4,7 +4,7 @@ import request from 'supertest';
 import { Ethereum } from '../../../src/chains/ethereum/ethereum';
 import { Uniswap } from '../../../src/connectors/uniswap/uniswap';
 import { AmmRoutes } from '../../../src/amm/amm.routes';
-import { patch, unpatch } from '../../services/patch';
+import { patch, unpatch } from '../../../test/services/patch';
 import { gasCostInEthString } from '../../../src/services/base';
 import { patchEVMNonceManager } from '../../evm.nonce.mock';
 let app: Express;

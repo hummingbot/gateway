@@ -15,16 +15,13 @@ module.exports = {
     'src/chains/avalanche/avalanche.ts',
     'src/chains/avalanche/pangolin/pangolin.ts',
     'src/chains/cosmos/cosmos.ts',
-    'src/chains/injective/injective.ts',
     'src/chains/near/near.ts',
     'src/chains/near/near.base.ts',
     'src/connectors/uniswap/uniswap.config.ts',
     'src/connectors/uniswap/uniswap.ts',
     'src/connectors/uniswap/uniswap.lp.helper.ts',
-    'src/connectors/defira/defira.ts',
     'src/connectors/openocean/openocean.ts',
     'src/connectors/pangolin/pangolin.ts',
-    'src/chains/injective/injective.mappers.ts',
     'src/connectors/quickswap/quickswap.ts',
     'src/connectors/sushiswap/sushiswap.ts',
     'src/connectors/traderjoe/traderjoe.ts',
@@ -39,6 +36,15 @@ module.exports = {
   globalTeardown: '<rootDir>/test/teardown.ts',
   moduleNameMapper: {
     eccrypto: '<rootDir>/test/mock/eccrypto-mock.js',
+    // Add carbon sdk subpath imports that are unsupported until jest v29.4.0
+    '@bancor/carbon-sdk/strategy-management':
+      '<rootDir>/node_modules/@bancor/carbon-sdk/dist/strategy-management/index.cjs',
+    '@bancor/carbon-sdk/utils':
+      '<rootDir>/node_modules/@bancor/carbon-sdk/dist/utils/index.cjs',
+    '@bancor/carbon-sdk/contracts-api':
+      '<rootDir>/node_modules/@bancor/carbon-sdk/dist/contracts-api/index.cjs',
+    '@bancor/carbon-sdk/chain-cache':
+      '<rootDir>/node_modules/@bancor/carbon-sdk/dist/chain-cache/index.cjs',
   },
   testPathIgnorePatterns: ['/node_modules/', 'test-helpers'],
 };

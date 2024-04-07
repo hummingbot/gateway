@@ -52,7 +52,8 @@ import {
 import {
   TransferRequest,
   TransferResponse,
-} from './injective/injective.requests';
+} from '../services/common-interfaces';
+import { validateTezosNonceRequest } from './tezos/tezos.validators';
 
 export const validatePollRequest: RequestValidator = mkRequestValidator([
   validateTxHash,
@@ -155,7 +156,8 @@ export namespace ChainRoutes {
         req: Request<{}, {}, NonceRequest>,
         res: Response<NonceResponse | string, {}>
       ) => {
-        validateNonceRequest(req.body);
+        if (req.body.chain === 'tezos') validateTezosNonceRequest(req.body);
+        else validateNonceRequest(req.body);
         const chain = await getInitializedChain(
           req.body.chain,
           req.body.network

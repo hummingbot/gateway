@@ -2,17 +2,17 @@ import request from 'supertest';
 import { gatewayApp } from '../../../src/app';
 import { BinanceSmartChain } from '../../../src/chains/binance-smart-chain/binance-smart-chain';
 import { PancakeSwap } from '../../../src/connectors/pancakeswap/pancakeswap';
-import { patch, unpatch } from '../../services/patch';
+import { patch, unpatch } from '../../../test/services/patch';
 import { patchEVMNonceManager } from '../../evm.nonce.mock';
 
 let bsc: BinanceSmartChain;
 let pancakeswap: PancakeSwap;
 
 beforeAll(async () => {
-  bsc = BinanceSmartChain.getInstance('testnet');
+  bsc = BinanceSmartChain.getInstance('mainnet');
   patchEVMNonceManager(bsc.nonceManager);
   await bsc.init();
-  pancakeswap = PancakeSwap.getInstance('binance-smart-chain', 'testnet');
+  pancakeswap = PancakeSwap.getInstance('binance-smart-chain', 'mainnet');
   await pancakeswap.init();
 });
 
@@ -42,17 +42,17 @@ const patchStoredTokenList = () => {
   patch(bsc, 'tokenList', () => {
     return [
       {
-        chainId: 97,
+        chainId: 56,
         name: 'WBNB',
         symbol: 'WBNB',
-        address: '0xae13d989dac2f0debff460ac112a837c89baa7cd',
+        address: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
         decimals: 18,
       },
       {
-        chainId: 97,
+        chainId: 56,
         name: 'DAI',
         symbol: 'DAI',
-        address: '0x8a9424745056Eb399FD19a0EC26A14316684e274',
+        address: '0x1AF3F329e8BE154074D8769D1FFa4eE058B1DBc3',
         decimals: 18,
       },
     ];
@@ -63,18 +63,18 @@ const patchGetTokenBySymbol = () => {
   patch(bsc, 'getTokenBySymbol', (symbol: string) => {
     if (symbol === 'WBNB') {
       return {
-        chainId: 97,
+        chainId: 56,
         name: 'WBNB',
         symbol: 'WBNB',
-        address: '0xae13d989dac2f0debff460ac112a837c89baa7cd',
+        address: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
         decimals: 18,
       };
     } else {
       return {
-        chainId: 97,
+        chainId: 56,
         name: 'DAI',
         symbol: 'DAI',
-        address: '0x8a9424745056Eb399FD19a0EC26A14316684e274',
+        address: '0x1AF3F329e8BE154074D8769D1FFa4eE058B1DBc3',
         decimals: 18,
       };
     }
@@ -84,10 +84,10 @@ const patchGetTokenBySymbol = () => {
 const patchGetTokenByAddress = () => {
   patch(pancakeswap, 'getTokenByAddress', () => {
     return {
-      chainId: 97,
+      chainId: 56,
       name: 'WBNB',
       symbol: 'WBNB',
-      address: '0xae13d989dac2f0debff460ac112a837c89baa7cd',
+      address: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
       decimals: 18,
     };
   });
@@ -156,7 +156,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'binance-smart-chain',
-        network: 'testnet',
+        network: 'mainnet',
         connector: 'pancakeswap',
         quote: 'DAI',
         base: 'WBNB',
@@ -185,7 +185,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'binance-smart-chain',
-        network: 'testnet',
+        network: 'mainnet',
         connector: 'pancakeswap',
         quote: 'DAI',
         base: 'WBNB',
@@ -206,10 +206,10 @@ describe('POST /amm/price', () => {
     patch(bsc, 'getTokenBySymbol', (symbol: string) => {
       if (symbol === 'WBNB') {
         return {
-          chainId: 97,
+          chainId: 56,
           name: 'WBNB',
           symbol: 'WBNB',
-          address: '0xae13d989dac2f0debff460ac112a837c89baa7cd',
+          address: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
           decimals: 18,
         };
       } else {
@@ -222,7 +222,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'binance-smart-chain',
-        network: 'testnet',
+        network: 'mainnet',
         connector: 'pancakeswap',
         quote: 'DOGE',
         base: 'WBNB',
@@ -239,10 +239,10 @@ describe('POST /amm/price', () => {
     patch(bsc, 'getTokenBySymbol', (symbol: string) => {
       if (symbol === 'WBNB') {
         return {
-          chainId: 97,
+          chainId: 56,
           name: 'WBNB',
           symbol: 'WBNB',
-          address: '0xae13d989dac2f0debff460ac112a837c89baa7cd',
+          address: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
           decimals: 18,
         };
       } else {
@@ -255,7 +255,7 @@ describe('POST /amm/price', () => {
       .post(`/amm/price`)
       .send({
         chain: 'binance-smart-chain',
-        network: 'testnet',
+        network: 'mainnet',
         connector: 'pancakeswap',
         quote: 'DAI',
         base: 'SHIBA',
@@ -284,7 +284,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'binance-smart-chain',
-        network: 'testnet',
+        network: 'mainnet',
         connector: 'pancakeswap',
         quote: 'DAI',
         base: 'WBNB',
@@ -306,7 +306,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'binance-smart-chain',
-        network: 'testnet',
+        network: 'mainnet',
         connector: 'pancakeswap',
         quote: 'DAI',
         base: 'WBNB',
@@ -324,7 +324,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'binance-smart-chain',
-        network: 'testnet',
+        network: 'mainnet',
         connector: 'pancakeswap',
         quote: 'DAI',
         base: 'WBNB',
@@ -355,7 +355,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'binance-smart-chain',
-        network: 'testnet',
+        network: 'mainnet',
         connector: 'pancakeswap',
         quote: 'DAI',
         base: 'WBNB',
@@ -377,7 +377,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'binance-smart-chain',
-        network: 'testnet',
+        network: 'mainnet',
         connector: 'pancakeswap',
         quote: 'DAI',
         base: 'WBNB',
@@ -397,7 +397,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'binance-smart-chain',
-        network: 'testnet',
+        network: 'mainnet',
         connector: 'pancakeswap',
         quote: 'DAI',
         base: 'WBNB',
@@ -414,10 +414,10 @@ describe('POST /amm/trade', () => {
     patch(bsc, 'getTokenBySymbol', (symbol: string) => {
       if (symbol === 'WBNB') {
         return {
-          chainId: 97,
+          chainId: 56,
           name: 'WBNB',
           symbol: 'WBNB',
-          address: '0xae13d989dac2f0debff460ac112a837c89baa7cd',
+          address: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
           decimals: 18,
         };
       } else {
@@ -429,7 +429,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'binance-smart-chain',
-        network: 'testnet',
+        network: 'mainnet',
         connector: 'pancakeswap',
         quote: 'WBNB',
         base: 'BITCOIN',
@@ -449,10 +449,10 @@ describe('POST /amm/trade', () => {
     patch(bsc, 'getTokenBySymbol', (symbol: string) => {
       if (symbol === 'WBNB') {
         return {
-          chainId: 97,
+          chainId: 56,
           name: 'WBNB',
           symbol: 'WBNB',
-          address: '0xae13d989dac2f0debff460ac112a837c89baa7cd',
+          address: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
           decimals: 18,
         };
       } else {
@@ -464,7 +464,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'binance-smart-chain',
-        network: 'testnet',
+        network: 'mainnet',
         connector: 'pancakeswap',
         quote: 'BITCOIN',
         base: 'WBNB',
@@ -485,7 +485,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'binance-smart-chain',
-        network: 'testnet',
+        network: 'mainnet',
         connector: 'pancakeswap',
         quote: 'DAI',
         base: 'WBNB',
@@ -505,7 +505,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'binance-smart-chain',
-        network: 'testnet',
+        network: 'mainnet',
         connector: 'pancakeswap',
         quote: 'DAI',
         base: 'WBNB',
@@ -525,7 +525,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'binance-smart-chain',
-        network: 'testnet',
+        network: 'mainnet',
         connector: 'pancakeswap',
         quote: 'DAI',
         base: 'WBNB',
@@ -545,7 +545,7 @@ describe('POST /amm/trade', () => {
       .post(`/amm/trade`)
       .send({
         chain: 'binance-smart-chain',
-        network: 'testnet',
+        network: 'mainnet',
         connector: 'pancakeswap',
         quote: 'DAI',
         base: 'WBNB',

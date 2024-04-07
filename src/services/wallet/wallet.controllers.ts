@@ -1,7 +1,9 @@
 import fse from 'fs-extra';
 import { Xdc } from '../../chains/xdc/xdc';
 import { Cosmos } from '../../chains/cosmos/cosmos';
-import { Injective } from '../../chains/injective/injective';
+import { Tezos } from '../../chains/tezos/tezos';
+import { XRPL } from '../../chains/xrpl/xrpl';
+import { Kujira } from '../../chains/kujira/kujira';
 
 import {
   AddWalletRequest,
@@ -30,8 +32,9 @@ import {
   getInitializedChain,
   UnsupportedChainException,
 } from '../connection-manager';
-import { Ethereumish } from '../common-interfaces';
+import { Ethereumish, Tezosish } from '../common-interfaces';
 import { Algorand } from '../../chains/algorand/algorand';
+import { Osmosis } from '../../chains/osmosis/osmosis';
 
 export function convertXdcAddressToEthAddress(publicKey: string): string {
   return publicKey.length === 43 && publicKey.slice(0, 3) === 'xdc'
@@ -110,6 +113,16 @@ export async function addWallet(
         req.privateKey,
         passphrase
       );
+    } else if (connection instanceof Osmosis) {
+      const wallet = await (connection as Osmosis).getAccountsfromPrivateKey(
+        req.privateKey,
+        'osmo'
+      );
+      address = wallet.address;
+      encryptedPrivateKey = await (connection as Osmosis).encrypt(
+        req.privateKey,
+        passphrase
+      );
     } else if (connection instanceof Near) {
       address = (
         await connection.getWalletFromPrivateKey(
@@ -118,21 +131,32 @@ export async function addWallet(
         )
       ).accountId;
       encryptedPrivateKey = connection.encrypt(req.privateKey, passphrase);
-    } else if (connection instanceof Injective) {
-      const ethereumAddress = connection.getWalletFromPrivateKey(
+    } else if (connection instanceof Tezos) {
+      const tezosWallet = await connection.getWalletFromPrivateKey(
         req.privateKey
-      ).address;
-      const subaccountId = req.accountId;
-      if (subaccountId !== undefined) {
-        address = ethereumAddress + subaccountId.toString(16).padStart(24, '0');
+      );
+      address = await tezosWallet.signer.publicKeyHash();
+      encryptedPrivateKey = connection.encrypt(req.privateKey, passphrase);
+    } else if (connection instanceof Kujira) {
+      const mnemonic = req.privateKey;
+      const accountNumber = Number(req.accountId);
+      address = await connection.getWalletPublicKey(mnemonic, accountNumber);
 
+      if (accountNumber !== undefined) {
         encryptedPrivateKey = await connection.encrypt(
-          req.privateKey,
-          passphrase
+          mnemonic,
+          accountNumber,
+          address
         );
       } else {
-        throw new Error('Injective wallet requires a subaccount id');
+        throw new Error('Kujira wallet requires an account number.');
       }
+    } else if (connection instanceof XRPL) {
+      address = connection.getWalletFromSeed(req.privateKey).classicAddress;
+      encryptedPrivateKey = await connection.encrypt(
+        req.privateKey,
+        passphrase
+      );
     }
 
     if (address === undefined || encryptedPrivateKey === undefined) {
@@ -159,9 +183,22 @@ export async function removeWallet(req: RemoveWalletRequest): Promise<void> {
 export async function signMessage(
   req: WalletSignRequest
 ): Promise<WalletSignResponse> {
-  const chain: Ethereumish = await getInitializedChain(req.chain, req.network);
-  const wallet = await chain.getWallet(req.address);
-  return { signature: await wallet.signMessage(req.message) };
+  if (req.chain === 'tezos') {
+    const chain: Tezosish = await getInitializedChain(req.chain, req.network);
+    const wallet = await chain.getWallet(req.address);
+    return {
+      signature: (await wallet.signer.sign('0x03' + req.message)).sbytes.slice(
+        4
+      ),
+    };
+  } else {
+    const chain: Ethereumish = await getInitializedChain(
+      req.chain,
+      req.network
+    );
+    const wallet = await chain.getWallet(req.address);
+    return { signature: await wallet.signMessage(req.message) };
+  }
 }
 
 export async function getDirectories(source: string): Promise<string[]> {

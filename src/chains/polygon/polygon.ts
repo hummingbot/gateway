@@ -12,6 +12,7 @@ import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { OpenoceanConfig } from '../../connectors/openocean/openocean.config';
 import { BalancerConfig } from '../../connectors/balancer/balancer.config';
 import { EVMController } from '../ethereum/evm.controllers';
+import { Curve } from '../../connectors/curve/curve';
 
 export class Polygon extends EthereumBase implements Ethereumish {
   private static _instances: { [name: string]: Polygon };
@@ -92,6 +93,13 @@ export class Polygon extends EthereumBase implements Ethereumish {
         'polygon',
         this._chain
       );
+    } else if (reqSpender === 'curve') {
+      const curve = Curve.getInstance('ethereum', this._chain);
+      if (!curve.ready()) {
+        curve.init();
+        throw Error('Curve not ready');
+      }
+      spender = curve.router;
     } else {
       spender = reqSpender;
     }

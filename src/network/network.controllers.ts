@@ -4,8 +4,9 @@ import { BinanceSmartChain } from '../chains/binance-smart-chain/binance-smart-c
 import { Ethereum } from '../chains/ethereum/ethereum';
 import { Harmony } from '../chains/harmony/harmony';
 import { Polygon } from '../chains/polygon/polygon';
-import { Injective } from '../chains/injective/injective';
 import { Xdc } from '../chains/xdc/xdc';
+import { Tezos } from '../chains/tezos/tezos';
+import { Kujira } from '../chains/kujira/kujira';
 import {
   HttpException,
   UNKNOWN_CHAIN_ERROR_CODE,
@@ -18,6 +19,8 @@ import {
   getInitializedChain,
   UnsupportedChainException,
 } from '../services/connection-manager';
+import { Osmosis } from '../chains/osmosis/osmosis';
+import { XRPL } from '../chains/xrpl/xrpl';
 
 export async function getStatus(
   req: StatusRequest
@@ -71,10 +74,12 @@ export async function getStatus(
     connections = connections.concat(
       polygonConnections ? Object.values(polygonConnections) : []
     );
+
     const xdcConnections = Xdc.getConnectedInstances();
     connections = connections.concat(
       xdcConnections ? Object.values(xdcConnections) : []
     );
+
     const cronosConnections = Cronos.getConnectedInstances();
     connections = connections.concat(
       cronosConnections ? Object.values(cronosConnections) : []
@@ -90,9 +95,24 @@ export async function getStatus(
       bscConnections ? Object.values(bscConnections) : []
     );
 
-    const injectiveConnections = Injective.getConnectedInstances();
+    const tezosConnections = Tezos.getConnectedInstances();
     connections = connections.concat(
-      injectiveConnections ? Object.values(injectiveConnections) : []
+      tezosConnections ? Object.values(tezosConnections) : []
+    );
+
+    const xrplConnections = XRPL.getConnectedInstances();
+    connections = connections.concat(
+      xrplConnections ? Object.values(xrplConnections) : []
+    );
+
+    const kujiraConnections = Kujira.getConnectedInstances();
+    connections = connections.concat(
+      kujiraConnections ? Object.values(kujiraConnections) : []
+    );
+
+    const osmosisConnections = Osmosis.getConnectedInstances();
+    connections = connections.concat(
+      osmosisConnections ? Object.values(osmosisConnections) : []
     );
   }
 
