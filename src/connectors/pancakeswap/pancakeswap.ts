@@ -45,11 +45,9 @@ import { MethodParameters } from '@pancakeswap/v3-sdk';
 
 export class PancakeSwap implements Uniswapish {
   private static _instances: { [name: string]: PancakeSwap };
-  private bsc: BinanceSmartChain;
-  private eth: Ethereum;
   private chainId;
-
   private _chain: string;
+  private chain: Ethereum | BinanceSmartChain;
   private _router: string;
   private _routerAbi: ContractInterface;
   private _gasLimitEstimate: number;
@@ -60,11 +58,14 @@ export class PancakeSwap implements Uniswapish {
 
   private constructor(chain: string, network: string) {
     const config = PancakeSwapConfig.config;
-    this.bsc = BinanceSmartChain.getInstance(network);
-    this.eth = Ethereum.getInstance(network);
+    if (chain === 'ethereum') {
+      this.chain = Ethereum.getInstance(network);
+    } else {
+      this.chain = BinanceSmartChain.getInstance(network);
+    }
 
     this._chain = chain;
-    this.chainId = this.getChainId(chain);
+    this.chainId = this.getChainId(chain, network);
     this._router = config.routerAddress(network);
     this._ttl = config.ttl;
     this._maximumHops = config.maximumHops ?? 1;
@@ -83,43 +84,27 @@ export class PancakeSwap implements Uniswapish {
     return PancakeSwap._instances[chain + network];
   }
 
-  public getChainId(chain: string): number {
+  public getChainId(chain: string, network: string): number {
     if (chain === 'binance-smart-chain') {
-      return this.bsc.chainId;
-    } else return this.eth.chainId;
+      return BinanceSmartChain.getInstance(network).chainId;
+    } else return Ethereum.getInstance(network).chainId;
   }
 
   public async init() {
-    if (this._chain == 'binance-smart-chain' && !this.bsc.ready())
+    const chainName = this.chain.toString();
+    if (!this.chain.ready())
       throw new InitializationError(
-        SERVICE_UNITIALIZED_ERROR_MESSAGE('BinanceSmartChain'),
+        SERVICE_UNITIALIZED_ERROR_MESSAGE(chainName),
         SERVICE_UNITIALIZED_ERROR_CODE,
       );
-    else if (this._chain == 'ethereum' && !this.eth.ready())
-      throw new InitializationError(
-        SERVICE_UNITIALIZED_ERROR_MESSAGE('Ethereum'),
-        SERVICE_UNITIALIZED_ERROR_CODE,
+    for (const token of this.chain.storedTokenList) {
+      this.tokenList[token.address] = new Token(
+        this.chainId,
+        token.address,
+        token.decimals,
+        token.symbol,
+        token.name,
       );
-    if (this._chain === 'ethereum') {
-      for (const token of this.eth.storedTokenList) {
-        this.tokenList[token.address] = new Token(
-          this.chainId,
-          token.address,
-          token.decimals,
-          token.symbol,
-          token.name,
-        );
-      }
-    } else if (this._chain === 'binance-smart-chain') {
-      for (const token of this.bsc.storedTokenList) {
-        this.tokenList[token.address] = new Token(
-          this.chainId,
-          token.address,
-          token.decimals,
-          token.symbol,
-          token.name,
-        );
-      }
     }
     this._ready = true;
   }
@@ -329,11 +314,7 @@ export class PancakeSwap implements Uniswapish {
       },
     );
 
-    if (nonce === undefined) {
-      if (this._chain === 'ethereum') {
-        nonce = await this.eth.nonceManager.getNextNonce(wallet.address);
-      } else nonce = await this.bsc.nonceManager.getNextNonce(wallet.address);
-    }
+    nonce = await this.chain.nonceManager.getNextNonce(wallet.address);
 
     let tx: ContractTransaction;
     if (maxFeePerGas !== undefined || maxPriorityFeePerGas !== undefined) {
@@ -358,13 +339,14 @@ export class PancakeSwap implements Uniswapish {
     }
 
     logger.info(`Transaction Details: ${JSON.stringify(tx)}`);
-    if (this._chain === 'ethereum') {
-      await this.eth.nonceManager.commitNonce(wallet.address, nonce);
-    } else await this.bsc.nonceManager.commitNonce(wallet.address, nonce);
+    nonce = await this.chain.nonceManager.getNextNonce(wallet.address);
     return tx;
   }
 
   async getPools(currencyA: Currency, currencyB: Currency): Promise<Pool[]> {
+    let v3SubgraphClient: GraphQLClient;
+    let v2SubgraphClient: GraphQLClient;
+
     const v3Bscurl: string =
       'https://api.thegraph.com/subgraphs/name/pancakeswap/exchange-v3-bsc';
     const v2Bscurl: string =
@@ -382,31 +364,18 @@ export class PancakeSwap implements Uniswapish {
     const v2Arburl: string =
       'https://api.studio.thegraph.com/query/45376/exchange-v2-arbitrum/version/latest';
 
-    const v3BscSubgraphClient = new GraphQLClient(v3Bscurl);
-    const v2BscSubgraphClient = new GraphQLClient(v2Bscurl);
-    const v3EthSubgraphClient = new GraphQLClient(v3Ethurl);
-    const v2EthSubgraphClient = new GraphQLClient(v2Ethurl);
-    const v3ZksSubgraphClient = new GraphQLClient(v3Zksurl);
-    const v2EZksSubgraphClient = new GraphQLClient(v2Zksurl);
-
-    const v3ArbSubgraphClient = new GraphQLClient(v3Arburl);
-    const v2ArbSubgraphClient = new GraphQLClient(v2Arburl);
-
-    let v3SubgraphClient: GraphQLClient;
-    let v2SubgraphClient: GraphQLClient;
-
     if (this._chain === 'ethereum' && this.chainId === 324) {
-      v3SubgraphClient = v3ZksSubgraphClient;
-      v2SubgraphClient = v2EZksSubgraphClient;
+      v3SubgraphClient = new GraphQLClient(v3Zksurl);
+      v2SubgraphClient = new GraphQLClient(v2Zksurl);
     } else if (this._chain === 'ethereum' && this.chainId === 42161) {
-      v3SubgraphClient = v3ArbSubgraphClient;
-      v2SubgraphClient = v2ArbSubgraphClient;
+      v3SubgraphClient = new GraphQLClient(v3Arburl);
+      v2SubgraphClient = new GraphQLClient(v2Arburl);
     } else if (this._chain === 'binance-smart-chain') {
-      v3SubgraphClient = v3BscSubgraphClient;
-      v2SubgraphClient = v2BscSubgraphClient;
+      v3SubgraphClient = new GraphQLClient(v3Bscurl);
+      v2SubgraphClient = new GraphQLClient(v2Bscurl);
     } else {
-      v3SubgraphClient = v3EthSubgraphClient;
-      v2SubgraphClient = v2EthSubgraphClient;
+      v3SubgraphClient = new GraphQLClient(v3Ethurl);
+      v2SubgraphClient = new GraphQLClient(v2Ethurl);
     }
 
     const pairs = SmartRouter.getPairCombinations(currencyA, currencyB);
@@ -501,11 +470,7 @@ export class PancakeSwap implements Uniswapish {
   }
 
   private createPublicClient(): PublicClient {
-    let transportUrl: string;
-
-    if (this._chain === 'ethereum') {
-      transportUrl = this.eth.rpcUrl;
-    } else transportUrl = this.bsc.rpcUrl;
+    const transportUrl: string = this.chain.rpcUrl;
 
     return createPublicClient({
       chain:

@@ -27,8 +27,7 @@ import { BinanceSmartChain } from '../../chains/binance-smart-chain/binance-smar
 import { Ethereum } from '../../chains/ethereum/ethereum';
 
 export class PancakeswapLPHelper {
-  protected bscChain: BinanceSmartChain;
-  protected ethChain: Ethereum;
+  protected chain: Ethereum | BinanceSmartChain;
   protected chainId;
   private _router: string;
   private _nftManager: string;
@@ -38,14 +37,15 @@ export class PancakeswapLPHelper {
   private _poolAbi: ContractInterface;
   private _alphaRouter: AlphaRouter | undefined;
   private tokenList: Record<string, Token> = {};
-  private _chainName: string;
   private _ready: boolean = false;
   public abiDecoder: any;
 
   constructor(chain: string, network: string) {
-    this.bscChain = BinanceSmartChain.getInstance(network);
-    this.ethChain = Ethereum.getInstance(network);
-    this._chainName = chain;
+    if (chain === 'ethereum') {
+      this.chain = Ethereum.getInstance(network);
+    } else {
+      this.chain = BinanceSmartChain.getInstance(network);
+    }
     this.chainId = this.getChainId(chain, network);
     // this._alphaRouter = new AlphaRouter({
     //   chainId: this.chainId,
@@ -111,44 +111,22 @@ export class PancakeswapLPHelper {
   }
 
   public async init() {
-    if (this._chainName == 'binance-smart-chain' && !this.bscChain.ready())
+    const chainName = this.chain.toString();
+    if (!this.chain.ready())
       throw new InitializationError(
-        SERVICE_UNITIALIZED_ERROR_MESSAGE('BinanceSmartChain'),
+        SERVICE_UNITIALIZED_ERROR_MESSAGE(chainName),
         SERVICE_UNITIALIZED_ERROR_CODE,
       );
-    else if (this._chainName == 'ethereum' && !this.ethChain.ready())
-      throw new InitializationError(
-        SERVICE_UNITIALIZED_ERROR_MESSAGE('Ethereum'),
-        SERVICE_UNITIALIZED_ERROR_CODE,
+    for (const token of this.chain.storedTokenList) {
+      this.tokenList[token.address] = new Token(
+        this.chainId,
+        token.address,
+        token.decimals,
+        token.symbol,
+        token.name,
       );
-    if (this._chainName === 'ethereum') {
-      for (const token of this.ethChain.storedTokenList) {
-        this.tokenList[token.address] = new Token(
-          this.chainId,
-          token.address,
-          token.decimals,
-          token.symbol,
-          token.name,
-        );
-      }
-    } else if (this._chainName === 'binance-smart-chain') {
-      for (const token of this.bscChain.storedTokenList) {
-        this.tokenList[token.address] = new Token(
-          this.chainId,
-          token.address,
-          token.decimals,
-          token.symbol,
-          token.name,
-        );
-      }
     }
     this._ready = true;
-  }
-
-  public getChain(chain: string) {
-    if (chain === 'binance-smart-chain') {
-      return this.bscChain;
-    } else return this.ethChain;
   }
 
   public getChainId(chain: string, network: string): number {
@@ -193,11 +171,7 @@ export class PancakeswapLPHelper {
     poolAddress: string,
     fee: v3.FeeAmount,
   ): Promise<PoolState> {
-    const provider =
-      this._chainName === 'ethereum'
-        ? this.ethChain.provider
-        : this.bscChain.provider;
-    const poolContract = this.getPoolContract(poolAddress, provider);
+    const poolContract = this.getPoolContract(poolAddress, this.chain.provider);
     const minTick = v3.nearestUsableTick(
       v3.TickMath.MIN_TICK,
       v3.TICK_SPACINGS[fee],
@@ -260,14 +234,10 @@ export class PancakeswapLPHelper {
     const fetchPriceTime = [];
     const prices = [];
     const fee = v3.FeeAmount[tier as keyof typeof v3.FeeAmount];
-    const provider =
-      this._chainName === 'ethereum'
-        ? this.ethChain.provider
-        : this.bscChain.provider;
     const poolContract = new Contract(
       v3.Pool.getAddress(token0, token1, fee),
       this.poolAbi,
-      provider,
+      this.chain.provider,
     );
     for (
       let x = Math.ceil(period / interval) * interval;
