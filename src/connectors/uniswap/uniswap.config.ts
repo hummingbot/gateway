@@ -58,6 +58,16 @@ export namespace UniswapConfig {
           ).includes(network)
         ),
       },
+      {
+        chain: 'base',
+        networks: Object.keys(
+          ConfigManagerV2.getInstance().get('uniswap.contractAddresses')
+        ).filter((network) =>
+          Object.keys(
+            ConfigManagerV2.getInstance().get('polygon.networks')
+          ).includes(network)
+        ),
+      },
     ],
     useRouter: ConfigManagerV2.getInstance().get(`uniswap.useRouter`),
     feeTier: ConfigManagerV2.getInstance().get(`uniswap.feeTier`),
