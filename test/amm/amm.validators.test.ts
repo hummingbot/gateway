@@ -9,6 +9,8 @@ import {
   validateLimitPrice,
   invalidAllowedSlippageError,
   validateAllowedSlippage,
+  validatePoolId,
+  invalidPoolIdError,
 } from '../../src/amm/amm.validators';
 
 import { missingParameter } from '../../src/services/validators';
@@ -190,3 +192,36 @@ describe('validateAllowedSlippage', () => {
     ).toEqual([invalidAllowedSlippageError]);
   });
 });
+
+describe('validatePoolId', () => {
+  it('valid when req.poolId is a string', () => {
+    expect(
+      validatePoolId({
+        poolId: '0x123...',
+      })
+    ).toEqual([]);
+
+    expect(
+      validatePoolId({
+        poolId: '0123',
+      })
+    ).toEqual([]);
+  });
+
+  it('pass when req.poolId does not exist', () => {
+    expect(
+      validatePoolId({
+        hello: 'world',
+      })
+    ).toEqual([]);
+  });
+
+  it('return error when req.poolId is a number', () => {
+    expect(
+      validatePoolId({
+        poolId: 100,
+      })
+    ).toEqual([invalidPoolIdError]);
+  });
+});
+

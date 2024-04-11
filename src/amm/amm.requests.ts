@@ -15,6 +15,7 @@ export interface PriceRequest extends NetworkSelectionRequest {
   amount: string;
   side: Side;
   allowedSlippage?: string;
+  poolId?: string;
 }
 
 export interface PriceResponse {
@@ -41,6 +42,7 @@ export interface PoolPriceRequest extends NetworkSelectionRequest {
   fee?: string;
   period?: number;
   interval?: number;
+  poolId?: string;
 }
 
 export interface PoolPriceResponse {
@@ -67,6 +69,7 @@ export interface TradeRequest extends NetworkSelectionRequest {
   maxFeePerGas?: string;
   maxPriorityFeePerGas?: string;
   allowedSlippage?: string;
+  poolId?: string;
 }
 
 export interface TradeResponse {
@@ -106,6 +109,7 @@ export interface AddLiquidityRequest extends NetworkSelectionRequest { // now al
   maxFeePerGas?: string;
   maxPriorityFeePerGas?: string;
   allowedSlippage?: string; // COSMOS: used to calc TokenMinAmount
+  poolId?: string;
 }
 
 export interface AddLiquidityResponse {
