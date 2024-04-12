@@ -1,43 +1,23 @@
-import { ConfigManagerV2 } from '../../services/config-manager-v2';
-import { AvailableNetworks } from '../../services/config-manager-types';
+import { buildConfig, NetworkConfig } from '../../network/network.utils';
 
 export namespace BalancerConfig {
-  export interface NetworkConfig {
-    allowedSlippage: string;
-    gasLimitEstimate: number;
-    ttl: number;
-    maximumHops: number;
-    balancerV2VaultAddress: (chain: string, network: string) => string;
-    tradingTypes: Array<string>;
-    chainType: string;
-    availableNetworks: Array<AvailableNetworks>;
-  }
-
-  export const config: NetworkConfig = {
-    allowedSlippage: ConfigManagerV2.getInstance().get(
-      'balancer.allowedSlippage'
-    ),
-    gasLimitEstimate: ConfigManagerV2.getInstance().get(
-      'balancer.gasLimitEstimate'
-    ),
-    ttl: ConfigManagerV2.getInstance().get('balancer.ttl'),
-    maximumHops: ConfigManagerV2.getInstance().get('balancer.maximumHops'),
-    balancerV2VaultAddress: (chain: string, network: string) =>
-      ConfigManagerV2.getInstance().get(
-        'balancer.contractAddresses.' +
-          chain +
-          '.' +
-          network +
-          '.balancerV2VaultAddress'
-      ),
-    tradingTypes: ['AMM'],
-    chainType: 'EVM',
-    availableNetworks: [
+  export const config: NetworkConfig = buildConfig(
+    'balancer',
+    ['AMM'],
+    [
+      {
+        chain: 'avalanche',
+        networks: ['avalanche'],
+      },
       {
         chain: 'ethereum',
-        networks: ['mainnet', 'goerli', 'arbitrum_one'],
+        networks: ['mainnet', 'arbitrum', 'optimism'],
       },
-      { chain: 'polygon', networks: ['mainnet', 'mumbai'] },
+      {
+        chain: 'polygon',
+        networks: ['mainnet'],
+      },
     ],
-  };
+    'EVM'
+  );
 }

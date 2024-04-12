@@ -23,8 +23,8 @@
     "test:scripts": "jest -i --verbose ./test-scripts/*.test.ts"
   },
   "dependencies": {
-    "@balancer-labs/sdk": "^1.1.2",
     "@cosmjs/amino": "^0.32.2",
+    "@balancer-labs/sdk": "^1.1.5",
     "@bancor/carbon-sdk": "^0.0.93-DEV",
     "@cosmjs/proto-signing": "^0.31.1",
     "@cosmjs/stargate": "^0.31.1",
