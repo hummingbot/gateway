@@ -13,7 +13,6 @@ import { UniswapConfig } from '../../connectors/uniswap/uniswap.config';
 import { Perp } from '../../connectors/perp/perp';
 import { SushiswapConfig } from '../../connectors/sushiswap/sushiswap.config';
 import { OpenoceanConfig } from '../../connectors/openocean/openocean.config';
-import { BalancerConfig } from '../../connectors/balancer/balancer.config';
 import { Curve } from '../../connectors/curve/curve';
 import { CarbonConfig } from '../../connectors/carbon/carbon.config';
 import { BalancerConfig } from '../../connectors/balancer/balancer.config';
@@ -205,11 +204,6 @@ export class Ethereum extends EthereumBase implements Ethereumish {
       spender = perp.perp.contracts.vault.address;
     } else if (reqSpender === 'openocean') {
       spender = OpenoceanConfig.config.routerAddress('ethereum', this._chain);
-    } else if (reqSpender === 'balancer') {
-      spender = BalancerConfig.config.balancerV2VaultAddress(
-        this.chainName,
-        this._chain
-      );
     } else if (reqSpender === 'curve') {
       const curve = Curve.getInstance('ethereum', this._chain);
       if (!curve.ready()) {

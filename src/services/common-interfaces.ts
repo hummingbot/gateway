@@ -112,7 +112,6 @@ import {
 } from '../clob/clob.requests';
 import { BalanceRequest } from '../network/network.requests';
 import { TradeV2 } from '@traderjoe-xyz/sdk-v2';
-import { Trade as BalancerTrade } from '../connectors/balancer/types';
 import { CurveTrade } from '../connectors/curve/curve';
 import { SerializableExtendedPool as CosmosSerializableExtendedPool } from '../chains/osmosis/osmosis.types';
 import { CarbonTrade } from '../connectors/carbon/carbonAMM';
@@ -165,7 +164,6 @@ export type UniswapishTrade =
   | VVSTrade
   | TradeXsswap
   | TradeV2
-  | BalancerTrade
   | CurveTrade
   | CarbonTrade
   | BalancerTrade;

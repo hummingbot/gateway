@@ -104,10 +104,6 @@ configurations:
     configurationPath: xsswap.yml
     schemaPath: xsswap-schema.json
 
-  $namespace balancer:
-    configurationPath: balancer.yml
-    schemaPath: balancer-schema.json
-
   $namespace tezos:
     configurationPath: tezos.yml
     schemaPath: tezos-schema.json
