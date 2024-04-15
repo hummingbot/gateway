@@ -148,42 +148,51 @@ export interface BalancerTrade {
       quoteToken: Token,
       baseToken: Token,
       amount: BigNumber,
-      allowedSlippage?: string
+      allowedSlippage?: string,
+      poolId?: string,
     ) {
         logger.info(
             `Fetching pair data for ${quoteToken.address}-${baseToken.address}.`
           );
-    
-          await this.balancer.swaps.fetchPools();
-    
-          const info = await this.balancer.swaps.findRouteGivenOut(
-            {
-                tokenIn: quoteToken.address,
-                tokenOut: baseToken.address,
-                amount: amount,
-                gasPrice: BigNumber.from(this._chain.gasPrice.toFixed(0)),
-            }
-          );
-          if (info.swaps.length === 0) {
-            throw new UniswapishPriceError(
-              `No pool found for ${quoteToken.address} to ${baseToken.address}.`
-            );
-          }
-          const marketSp = math.fraction(info.marketSp) as math.Fraction;
-          const executionPrice = new Fraction(marketSp.n.toString(), marketSp.d.toString())
-          console.log(this.getAllowedSlippage(allowedSlippage));
-          return {
-            trade: {
-                swap: {
-                    swapInfo: info,
-                    maxSlippage: this.getAllowedSlippage(allowedSlippage),
-                    deadline: '0',  // updated before trade execution
-                    kind: SwapType.SwapExactOut,
-                },
-                executionPrice
+
+          
+        const filter = {
+          where: {
+            id: {
+              eq: poolId,
             },
-            expectedAmount: CurrencyAmount.fromRawAmount(<Currency>quoteToken, info.returnAmount.toString()),
-          };
+          }
+        };
+    
+        await this.balancer.swaps.fetchPools(poolId? filter: undefined);
+  
+        const info = await this.balancer.swaps.findRouteGivenOut(
+          {
+              tokenIn: quoteToken.address,
+              tokenOut: baseToken.address,
+              amount: amount,
+              gasPrice: BigNumber.from(this._chain.gasPrice.toFixed(0)),
+          }
+        );
+        if (info.swaps.length === 0) {
+          throw new UniswapishPriceError(
+            `No pool found for ${quoteToken.address} to ${baseToken.address}.`
+          );
+        }
+        const marketSp = math.fraction(info.marketSp) as math.Fraction;
+        const executionPrice = new Fraction(marketSp.n.toString(), marketSp.d.toString())
+        return {
+          trade: {
+              swap: {
+                  swapInfo: info,
+                  maxSlippage: this.getAllowedSlippage(allowedSlippage),
+                  deadline: '0',  // updated before trade execution
+                  kind: SwapType.SwapExactOut,
+              },
+              executionPrice
+          },
+          expectedAmount: CurrencyAmount.fromRawAmount(<Currency>quoteToken, info.returnAmount.toString()),
+        };
     }
   
     /**
@@ -201,13 +210,22 @@ export interface BalancerTrade {
       baseToken: Token,
       quoteToken: Token,
       amount: BigNumber,
-      allowedSlippage?: string
+      allowedSlippage?: string,
+      poolId?: string
     ) {
       logger.info(
         `Fetching pair data for ${quoteToken.address}-${baseToken.address}.`
       );
+      
+      const filter = {
+        where: {
+          id: {
+            eq: poolId,
+          },
+        }
+      };
 
-      await this.balancer.swaps.fetchPools();
+      await this.balancer.swaps.fetchPools(poolId? filter: undefined);
 
       const info = await this.balancer.swaps.findRouteGivenIn(
         {
@@ -289,7 +307,6 @@ export interface BalancerTrade {
           nonce: nonce,
         };
       }
-      console.log(overrideParams);
       const t: BalancerTrade = <BalancerTrade>trade;
       const txDataRaw = this.balancer.swaps.buildSwap({
         ...t.swap,
