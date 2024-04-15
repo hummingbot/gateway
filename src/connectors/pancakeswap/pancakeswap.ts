@@ -14,6 +14,7 @@ import {
   Wallet,
 } from 'ethers';
 import { BinanceSmartChain } from '../../chains/binance-smart-chain/binance-smart-chain';
+import { Ethereum } from '../../chains/ethereum/ethereum';
 import {
   ExpectedTrade,
   Uniswapish,
@@ -39,15 +40,14 @@ import {
   SmartRouterTrade,
   SwapRouter,
 } from '@pancakeswap/smart-router';
-import { bsc, bscTestnet } from '@wagmi/chains';
+import { mainnet, arbitrum, zkSync, bsc, bscTestnet } from '@wagmi/chains';
 import { MethodParameters } from '@pancakeswap/v3-sdk';
 
 export class PancakeSwap implements Uniswapish {
   private static _instances: { [name: string]: PancakeSwap };
-  private bsc: BinanceSmartChain;
   private chainId;
-
   private _chain: string;
+  private chain: Ethereum | BinanceSmartChain;
   private _router: string;
   private _routerAbi: ContractInterface;
   private _gasLimitEstimate: number;
@@ -58,10 +58,14 @@ export class PancakeSwap implements Uniswapish {
 
   private constructor(chain: string, network: string) {
     const config = PancakeSwapConfig.config;
-    this.bsc = BinanceSmartChain.getInstance(network);
-    this.chainId = this.bsc.chainId;
+    if (chain === 'ethereum') {
+      this.chain = Ethereum.getInstance(network);
+    } else {
+      this.chain = BinanceSmartChain.getInstance(network);
+    }
 
     this._chain = chain;
+    this.chainId = this.getChainId(chain, network);
     this._router = config.routerAddress(network);
     this._ttl = config.ttl;
     this._maximumHops = config.maximumHops ?? 1;
@@ -80,19 +84,26 @@ export class PancakeSwap implements Uniswapish {
     return PancakeSwap._instances[chain + network];
   }
 
+  public getChainId(chain: string, network: string): number {
+    if (chain === 'binance-smart-chain') {
+      return BinanceSmartChain.getInstance(network).chainId;
+    } else return Ethereum.getInstance(network).chainId;
+  }
+
   public async init() {
-    if (this._chain == 'binance-smart-chain' && !this.bsc.ready())
+    const chainName = this.chain.toString();
+    if (!this.chain.ready())
       throw new InitializationError(
-        SERVICE_UNITIALIZED_ERROR_MESSAGE('BinanceSmartChain'),
-        SERVICE_UNITIALIZED_ERROR_CODE
+        SERVICE_UNITIALIZED_ERROR_MESSAGE(chainName),
+        SERVICE_UNITIALIZED_ERROR_CODE,
       );
-    for (const token of this.bsc.storedTokenList) {
+    for (const token of this.chain.storedTokenList) {
       this.tokenList[token.address] = new Token(
         this.chainId,
         token.address,
         token.decimals,
         token.symbol,
-        token.name
+        token.name,
       );
     }
     this._ready = true;
@@ -166,7 +177,7 @@ export class PancakeSwap implements Uniswapish {
     const matches = allowedSlippage.match(percentRegexp);
     if (matches) return new Percent(matches[1], matches[2]);
     throw new Error(
-      'Encountered a malformed percent string in the config for ALLOWED_SLIPPAGE.'
+      'Encountered a malformed percent string in the config for ALLOWED_SLIPPAGE.',
     );
   }
 
@@ -185,23 +196,28 @@ export class PancakeSwap implements Uniswapish {
     quoteToken: Token,
     baseToken: Token,
     amount: BigNumber,
-    _allowedSlippage?: string
+    _allowedSlippage?: string,
   ): Promise<ExpectedTrade> {
     logger.info(
-      `Fetching pair data for ${quoteToken.address}-${baseToken.address}.`
+      `Fetching pair data for ${quoteToken.address}-${baseToken.address}.`,
     );
 
-    const trade = await this.getBestTrade(baseToken, quoteToken, amount, TradeType.EXACT_OUTPUT);
+    const trade = await this.getBestTrade(
+      baseToken,
+      quoteToken,
+      amount,
+      TradeType.EXACT_OUTPUT,
+    );
 
     if (!trade) {
       throw new UniswapishPriceError(
-        `priceSwapOut: no trade pair found for ${baseToken.address} to ${quoteToken.address}.`
+        `priceSwapOut: no trade pair found for ${baseToken.address} to ${quoteToken.address}.`,
       );
     }
     logger.info(
       `Best trade for ${baseToken.address}-${quoteToken.address}: ` +
-      `${trade.inputAmount.toExact()}` +
-      `${baseToken.symbol}.`
+        `${trade.inputAmount.toExact()}` +
+        `${baseToken.symbol}.`,
     );
 
     return {
@@ -228,23 +244,28 @@ export class PancakeSwap implements Uniswapish {
     baseToken: Token,
     quoteToken: Token,
     amount: BigNumber,
-    _allowedSlippage?: string
+    _allowedSlippage?: string,
   ): Promise<ExpectedTrade> {
     logger.info(
-      `Fetching pair data for ${baseToken.address}-${quoteToken.address}.`
+      `Fetching pair data for ${baseToken.address}-${quoteToken.address}.`,
     );
 
-    const trade = await this.getBestTrade(baseToken, quoteToken, amount, TradeType.EXACT_INPUT);
+    const trade = await this.getBestTrade(
+      baseToken,
+      quoteToken,
+      amount,
+      TradeType.EXACT_INPUT,
+    );
 
     if (!trade) {
       throw new UniswapishPriceError(
-        `priceSwapIn: no trade pair found for ${baseToken.address} to ${quoteToken.address}.`
+        `priceSwapIn: no trade pair found for ${baseToken.address} to ${quoteToken.address}.`,
       );
     }
     logger.info(
       `Best trade for ${baseToken.address}-${quoteToken.address}: ` +
-      `${trade.outputAmount.toExact()}` +
-      `${baseToken.symbol}.`
+        `${trade.outputAmount.toExact()}` +
+        `${baseToken.symbol}.`,
     );
 
     return {
@@ -282,7 +303,7 @@ export class PancakeSwap implements Uniswapish {
     nonce?: number,
     maxFeePerGas?: BigNumber,
     maxPriorityFeePerGas?: BigNumber,
-    allowedSlippage?: string
+    allowedSlippage?: string,
   ): Promise<Transaction> {
     const methodParameters: MethodParameters = SwapRouter.swapCallParameters(
       trade as SmartRouterTrade<TradeType>,
@@ -290,12 +311,10 @@ export class PancakeSwap implements Uniswapish {
         deadlineOrPreviousBlockhash: Math.floor(Date.now() / 1000 + ttl),
         recipient: getAddress(wallet.address),
         slippageTolerance: this.getAllowedSlippage(allowedSlippage),
-      }
+      },
     );
 
-    if (nonce === undefined) {
-      nonce = await this.bsc.nonceManager.getNextNonce(wallet.address);
-    }
+    nonce = await this.chain.nonceManager.getNextNonce(wallet.address);
 
     let tx: ContractTransaction;
     if (maxFeePerGas !== undefined || maxPriorityFeePerGas !== undefined) {
@@ -320,27 +339,54 @@ export class PancakeSwap implements Uniswapish {
     }
 
     logger.info(`Transaction Details: ${JSON.stringify(tx)}`);
-    await this.bsc.nonceManager.commitNonce(wallet.address, nonce);
+    nonce = await this.chain.nonceManager.getNextNonce(wallet.address);
     return tx;
   }
 
   async getPools(currencyA: Currency, currencyB: Currency): Promise<Pool[]> {
-    const v3SubgraphClient = new GraphQLClient(
-      'https://api.thegraph.com/subgraphs/name/pancakeswap/exchange-v3-bsc'
-    );
-    const v2SubgraphClient = new GraphQLClient(
-      'https://proxy-worker-api.pancakeswap.com/bsc-exchange'
-    );
+    let v3SubgraphClient: GraphQLClient;
+    let v2SubgraphClient: GraphQLClient;
+
+    const v3Bscurl: string =
+      'https://api.thegraph.com/subgraphs/name/pancakeswap/exchange-v3-bsc';
+    const v2Bscurl: string =
+      'https://proxy-worker-api.pancakeswap.com/bsc-exchange';
+    const v3Ethurl: string =
+      'https://api.thegraph.com/subgraphs/name/pancakeswap/exchange-v3-eth';
+    const v2Ethurl: string =
+      'https://api.thegraph.com/subgraphs/name/pancakeswap/exhange-eth';
+    const v3Zksurl: string =
+      'https://api.studio.thegraph.com/query/45376/exchange-v3-zksync/version/latest';
+    const v2Zksurl: string =
+      'https://api.thegraph.com/subgraphs/name/freakyfractal/uniswap-v3-zksync-era';
+    const v3Arburl: string =
+      'https://api.studio.thegraph.com/query/45376/exchange-v3-arbitrum/version/latest';
+    const v2Arburl: string =
+      'https://api.studio.thegraph.com/query/45376/exchange-v2-arbitrum/version/latest';
+
+    if (this._chain === 'ethereum' && this.chainId === 324) {
+      v3SubgraphClient = new GraphQLClient(v3Zksurl);
+      v2SubgraphClient = new GraphQLClient(v2Zksurl);
+    } else if (this._chain === 'ethereum' && this.chainId === 42161) {
+      v3SubgraphClient = new GraphQLClient(v3Arburl);
+      v2SubgraphClient = new GraphQLClient(v2Arburl);
+    } else if (this._chain === 'binance-smart-chain') {
+      v3SubgraphClient = new GraphQLClient(v3Bscurl);
+      v2SubgraphClient = new GraphQLClient(v2Bscurl);
+    } else {
+      v3SubgraphClient = new GraphQLClient(v3Ethurl);
+      v2SubgraphClient = new GraphQLClient(v2Ethurl);
+    }
 
     const pairs = SmartRouter.getPairCombinations(currencyA, currencyB);
 
     // Create v2 candidate pool fetcher with your own on-chain fetcher
     const getV2PoolsByCommonTokenPrices =
       SmartRouter.createV2PoolsProviderByCommonTokenPrices(
-        SmartRouter.getCommonTokenPricesBySubgraph
+        SmartRouter.getCommonTokenPricesBySubgraph,
       );
     const getV2CandidatePools = SmartRouter.createGetV2CandidatePools(
-      getV2PoolsByCommonTokenPrices
+      getV2PoolsByCommonTokenPrices,
     );
 
     // Define v3 pool on-chain fetcher with customized tvl references
@@ -352,7 +398,7 @@ export class PancakeSwap implements Uniswapish {
         // In millisecond
         // Will try fallback fetcher if the default doesn't respond in 2s
         fallbackTimeout: 1500,
-      }
+      },
     );
 
     const allPools = await Promise.allSettled([
@@ -388,10 +434,16 @@ export class PancakeSwap implements Uniswapish {
 
     return fulfilledPools.flat();
   }
-
-  async getBestTrade(baseToken: Token, quoteToken: Token, amount: BigNumber, tradeType: TradeType): Promise<SmartRouterTrade<TradeType> | null> {
-    const baseTokenAmount: CurrencyAmount<Token> =
-      CurrencyAmount.fromRawAmount(baseToken, amount.toString());
+  async getBestTrade(
+    baseToken: Token,
+    quoteToken: Token,
+    amount: BigNumber,
+    tradeType: TradeType,
+  ): Promise<SmartRouterTrade<TradeType> | null> {
+    const baseTokenAmount: CurrencyAmount<Token> = CurrencyAmount.fromRawAmount(
+      baseToken,
+      amount.toString(),
+    );
 
     const quoteProvider = SmartRouter.createQuoteProvider({
       // @ts-ignore
@@ -411,17 +463,26 @@ export class PancakeSwap implements Uniswapish {
         quoteProvider,
         quoterOptimization: true,
         allowedPoolTypes: [PoolType.V2, PoolType.V3, PoolType.STABLE],
-      }
+      },
     );
 
     return trade;
   }
 
   private createPublicClient(): PublicClient {
-    const transportUrl = this.bsc.rpcUrl;
+    const transportUrl: string = this.chain.rpcUrl;
 
     return createPublicClient({
-      chain: this.chainId === 56 ? bsc : bscTestnet,
+      chain:
+        this.chainId === 56
+          ? bsc
+          : this.chainId === 1
+            ? mainnet
+            : this.chainId === 42161
+              ? arbitrum
+              : this.chainId === 324
+                ? zkSync
+                : bscTestnet,
       transport: http(transportUrl),
       batch: {
         multicall: {
