@@ -1,5 +1,5 @@
 networks:
-  celo_mainnet:
+  celo:
     chainID: 42220
     nodeURL: https://celo-mainnet.infura.io/v3/
     tokenListType: 'FILE'
