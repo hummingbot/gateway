@@ -1,17 +1,17 @@
 networks:
   celo:
     chainID: 42220
-    nodeURL: https://celo-mainnet.infura.io/v3/
+    nodeURL: https://celo-mainnet.infura.io/v3
     tokenListType: 'FILE'
     tokenListSource: '/home/gateway/conf/lists/celo_token.json'
-    nativeCurrencySymbol: 'CELO'
+    nativeCurrencySymbol: CELO
     gasPriceRefreshInterval: 60
   celo_alfajores:
     chainID: 44787
-    nodeURL: https://celo-alfajores.infura.io/v3/
+    nodeURL: https://celo-alfajores.infura.io/v3
     tokenListType: 'FILE'
     tokenListSource: '/home/gateway/conf/lists/celo_token.json'
-    nativeCurrencySymbol: 'CELO'
+    nativeCurrencySymbol: CELO
     gasPriceRefreshInterval: 60
   arbitrum:
     chainID: 42161

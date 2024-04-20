@@ -2,17 +2,17 @@
 networks:
   mainnet:
     chainID: 42220
-    nodeURL: https://celo-mainnet.infura.io/v3/
+    nodeURL: https://celo-mainnet.infura.io/v3
     tokenListType: 'FILE'
     tokenListSource: '/home/gateway/conf/lists/celo_token.json'
-    nativeCurrencySymbol: 'CELO'
+    nativeCurrencySymbol: CELO
     gasPriceRefreshInterval: 60
   alfajores:
     chainID: 44787
-    nodeURL: https://celo-alfajores.infura.io/v3/
+    nodeURL: https://celo-alfajores.infura.io/v3
     tokenListType: 'FILE'
     tokenListSource: '/home/gateway/conf/lists/celo_token.json'
-    nativeCurrencySymbol: 'CELO'
+    nativeCurrencySymbol: CELO
     gasPriceRefreshInterval: 60
 
 # if you use the gas assumptions below, your wallet needs >0.01 AVAX balance for gas
