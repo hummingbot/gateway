@@ -12,6 +12,13 @@ networks:
     tokenListType: FILE
     tokenListSource: /home/gateway/conf/lists/arbitrum_rinkeby_tokens.json
     nativeCurrencySymbol: ETH
+  avalanche:
+    chainID: 43114
+    nodeURL: https://rpc.ankr.com/avalanche
+    tokenListType: FILE
+    tokenListSource: /home/gateway/conf/lists/avalanche_tokens.json
+    nativeCurrencySymbol: AVAX
+    gasPriceRefreshInterval: 60
   mainnet:
     chainID: 1
     nodeURL: https://rpc.ankr.com/eth
@@ -23,7 +30,7 @@ networks:
     chainID: 324
     nodeURL: https://mainnet.era.zksync.io
     tokenListType: FILE
-    tokenListSource: conf/lists/zksync_quiknode_tokens.json
+    tokenListSource: /home/gateway/conf/lists/zksync_quiknode_tokens.json
     nativeCurrencySymbol: ETH
     gasPriceRefreshInterval: 60
   optimism:

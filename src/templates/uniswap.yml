@@ -28,6 +28,10 @@ contractAddresses:
     uniswapV3SmartOrderRouterAddress: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45'
     uniswapV3NftManagerAddress: '0xC36442b4a4522E871399CD717aBDD847Ab11FE88'
     uniswapV3QuoterV2ContractAddress: '0x61fFE014bA17989E743c5F6cB21bF9697530B21e'
+  avalanche:
+    uniswapV3SmartOrderRouterAddress: '0xbb00FF08d01D300023C629E8fFfFcb65A5a578cE'
+    uniswapV3NftManagerAddress: '0x655C406EBFa14EE2006250925e54ec43AD184f8B'
+    uniswapV3QuoterV2ContractAddress: '0xbe0F5544EC67e9B3b2D979aaA43f18Fd87E6257F'
   goerli:
     uniswapV3SmartOrderRouterAddress: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45'
     uniswapV3NftManagerAddress: '0xC36442b4a4522E871399CD717aBDD847Ab11FE88'
