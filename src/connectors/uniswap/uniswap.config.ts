@@ -57,15 +57,6 @@ export namespace UniswapConfig {
             ConfigManagerV2.getInstance().get('polygon.networks')
           ).includes(network)
         ),
-      },{
-        chain: 'celo',
-        networks: Object.keys(
-          ConfigManagerV2.getInstance().get('uniswap.contractAddresses')
-        ).filter((network) =>
-          Object.keys(
-            ConfigManagerV2.getInstance().get('celo.networks')
-          ).includes(network)
-        ),
       },
     ],
     useRouter: ConfigManagerV2.getInstance().get(`uniswap.useRouter`),
