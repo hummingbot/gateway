@@ -1,8 +1,8 @@
 {
   "connector": "uniswap",
   "chain": "ethereum",
-  "network": "avalanche",
-  "quote": "AVAX",
+  "network": "georli",
+  "quote": "WETH",
   "base": "USDT",
   "amount": "1",
   "side": "BUY"
