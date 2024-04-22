@@ -2,16 +2,16 @@
 networks:
   mainnet:
     chainID: 42220
-    nodeURL: https://celo-mainnet.infura.io/v3
-    tokenListType: 'FILE'
-    tokenListSource: '/home/gateway/conf/lists/celo_token.json'
+    nodeURL: https://rpc.ankr.com/celo
+    tokenListType: FILE
+    tokenListSource: /home/gateway/conf/lists/celo_token.json
     nativeCurrencySymbol: CELO
     gasPriceRefreshInterval: 60
-  alfajores:
+  celo_alfajores:
     chainID: 44787
     nodeURL: https://celo-alfajores.infura.io/v3
-    tokenListType: 'FILE'
-    tokenListSource: '/home/gateway/conf/lists/celo_token.json'
+    tokenListType: FILE
+    tokenListSource: /home/gateway/conf/lists/celo_token.json
     nativeCurrencySymbol: CELO
     gasPriceRefreshInterval: 60
 
