@@ -247,7 +247,7 @@ export async function getConnector<T>(
   ) {
     connectorInstance = Curve.getInstance(chain, network);
   } else if (
-    (chain === 'ethereum' || chain === 'polygon') &&
+    (chain === 'ethereum' || chain === 'polygon' || chain === 'avalanche') &&
     connector === 'balancer'
   ) {
     connectorInstance = Balancer.getInstance(chain, network);
