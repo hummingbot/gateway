@@ -1,7 +1,7 @@
 {
   "connector": "uniswap",
   "chain": "ethereum",
-  "network": "georli",
+  "network": "goerli",
   "quote": "WETH",
   "base": "USDT",
   "amount": "1",
