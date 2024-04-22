@@ -3,7 +3,7 @@
   "chain": "ethereum",
   "network": "goerli",
   "quote": "WETH",
-  "base": "USDT",
+  "base": "DAI",
   "amount": "1",
   "side": "BUY"
 }
