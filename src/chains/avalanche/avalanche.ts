@@ -8,6 +8,7 @@ import { TraderjoeConfig } from '../../connectors/traderjoe/traderjoe.config';
 import { PangolinConfig } from '../../connectors/pangolin/pangolin.config';
 import { OpenoceanConfig } from '../../connectors/openocean/openocean.config';
 import { Ethereumish } from '../../services/common-interfaces';
+import { UniswapConfig } from '../../connectors/uniswap/uniswap.config';
 import { SushiswapConfig } from '../../connectors/sushiswap/sushiswap.config';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { EVMController } from '../ethereum/evm.controllers';
@@ -32,7 +33,7 @@ export class Avalanche extends EthereumBase implements Ethereumish {
       config.manualGasPrice,
       config.gasLimitTransaction,
       ConfigManagerV2.getInstance().get('server.nonceDbPath'),
-      ConfigManagerV2.getInstance().get('server.transactionDbPath')
+      ConfigManagerV2.getInstance().get('server.transactionDbPath'),
     );
     this._chain = config.network.name;
     this._nativeTokenSymbol = config.nativeCurrencySymbol;
@@ -83,7 +84,13 @@ export class Avalanche extends EthereumBase implements Ethereumish {
 
   getSpender(reqSpender: string): string {
     let spender: string;
-    if (reqSpender === 'pangolin') {
+    if (reqSpender === 'uniswap') {
+      spender = UniswapConfig.config.uniswapV3SmartOrderRouterAddress(
+        this._chain,
+      );
+    } else if (reqSpender === 'uniswapLP') {
+      spender = UniswapConfig.config.uniswapV3NftManagerAddress(this._chain);
+    } else if (reqSpender === 'pangolin') {
       spender = PangolinConfig.config.routerAddress(this._chain);
     } else if (reqSpender === 'openocean') {
       spender = OpenoceanConfig.config.routerAddress('avalanche', this._chain);
@@ -92,7 +99,7 @@ export class Avalanche extends EthereumBase implements Ethereumish {
     } else if (reqSpender === 'sushiswap') {
       spender = SushiswapConfig.config.sushiswapRouterAddress(
         'avalanche',
-        this._chain
+        this._chain,
       );
     } else if (reqSpender === 'curve') {
       const curve = Curve.getInstance('ethereum', this._chain);
@@ -110,7 +117,7 @@ export class Avalanche extends EthereumBase implements Ethereumish {
   // cancel transaction
   async cancelTx(wallet: Wallet, nonce: number): Promise<Transaction> {
     logger.info(
-      'Canceling any existing transaction(s) with nonce number ' + nonce + '.'
+      'Canceling any existing transaction(s) with nonce number ' + nonce + '.',
     );
     return super.cancelTxWithGasPrice(wallet, nonce, this._gasPrice * 2);
   }
@@ -132,7 +139,7 @@ export class Avalanche extends EthereumBase implements Ethereumish {
 
     setTimeout(
       this.updateGasPrice.bind(this),
-      this._gasPriceRefreshInterval * 1000
+      this._gasPriceRefreshInterval * 1000,
     );
   }
 
