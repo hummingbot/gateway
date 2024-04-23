@@ -11,7 +11,6 @@ import { Ethereum } from '../../../src/chains/ethereum/ethereum';
 import { patchEVMNonceManager } from '../../evm.nonce.mock';
 import { UniswapConfig } from '../../../src/connectors/uniswap/uniswap.config';
 import {
-  FACTORY_ADDRESS,
   TickMath,
   encodeSqrtRatioX96,
   Pool as UniswapV3Pool,
@@ -26,17 +25,18 @@ const WETH = new Token(
   3,
   '0xd0A1E359811322d97991E03f863a0C30C2cF029C',
   18,
-  'WETH'
+  'WETH',
 );
 
 const DAI = new Token(
   3,
   '0x4f96fe3b7a6cf9725f59d353f723c1bdb64ca6aa',
   18,
-  'DAI'
+  'DAI',
 );
 
 const DAI_WETH_POOL_ADDRESS = '0xBEff876AC507446457C2A6bDA9F7021A97A8547f';
+const DEFAULT_FACTORY_ADDRESS = '0x1F98431c8aD98523631AE4a59f267346ea31F984';
 const POOL_SQRT_RATIO_START = encodeSqrtRatioX96(100e6, 100e18);
 const POOL_TICK_CURRENT = TickMath.getTickAtSqrtRatio(POOL_SQRT_RATIO_START);
 const POOL_LIQUIDITY = 0;
@@ -46,7 +46,7 @@ const DAI_WETH_POOL = new UniswapV3Pool(
   FeeAmount.MEDIUM,
   POOL_SQRT_RATIO_START,
   POOL_LIQUIDITY,
-  POOL_TICK_CURRENT
+  POOL_TICK_CURRENT,
 );
 
 beforeAll(async () => {
@@ -72,23 +72,23 @@ const patchTrade = (_key: string, error?: Error) => {
     if (error) return false;
     const WETH_DAI = new Pair(
       CurrencyAmount.fromRawAmount(WETH, '2000000000000000000'),
-      CurrencyAmount.fromRawAmount(DAI, '1000000000000000000')
+      CurrencyAmount.fromRawAmount(DAI, '1000000000000000000'),
     );
     const DAI_TO_WETH = new Route([WETH_DAI], DAI, WETH);
     return {
       quote: CurrencyAmount.fromRawAmount(DAI, '1000000000000000000'),
       quoteGasAdjusted: CurrencyAmount.fromRawAmount(
         DAI,
-        '1000000000000000000'
+        '1000000000000000000',
       ),
       estimatedGasUsed: utils.parseEther('100'),
       estimatedGasUsedQuoteToken: CurrencyAmount.fromRawAmount(
         DAI,
-        '1000000000000000000'
+        '1000000000000000000',
       ),
       estimatedGasUsedUSD: CurrencyAmount.fromRawAmount(
         DAI,
-        '1000000000000000000'
+        '1000000000000000000',
       ),
       gasPriceWei: utils.parseEther('100'),
       trade: new Trade({
@@ -97,11 +97,11 @@ const patchTrade = (_key: string, error?: Error) => {
             routev2: DAI_TO_WETH,
             inputAmount: CurrencyAmount.fromRawAmount(
               DAI,
-              '1000000000000000000'
+              '1000000000000000000',
             ),
             outputAmount: CurrencyAmount.fromRawAmount(
               WETH,
-              '2000000000000000000'
+              '2000000000000000000',
             ),
           },
         ],
@@ -116,16 +116,16 @@ const patchTrade = (_key: string, error?: Error) => {
 
 const patchMockProvider = () => {
   mockProvider.setMockContract(
-    FACTORY_ADDRESS,
+    DEFAULT_FACTORY_ADDRESS,
     require('@uniswap/v3-core/artifacts/contracts/UniswapV3Factory.sol/UniswapV3Factory.json')
-      .abi
+      .abi,
   );
-  mockProvider.stub(FACTORY_ADDRESS, 'getPool', DAI_WETH_POOL_ADDRESS);
+  mockProvider.stub(DEFAULT_FACTORY_ADDRESS, 'getPool', DAI_WETH_POOL_ADDRESS);
 
   mockProvider.setMockContract(
     UniswapConfig.config.quoterContractAddress('goerli'),
     require('@uniswap/swap-router-contracts/artifacts/contracts/lens/QuoterV2.sol/QuoterV2.json')
-      .abi
+      .abi,
   );
   mockProvider.stub(
     UniswapConfig.config.quoterContractAddress('goerli'),
@@ -133,7 +133,7 @@ const patchMockProvider = () => {
     /* amountOut */ 1,
     /* sqrtPriceX96After */ 0,
     /* initializedTicksCrossed */ 0,
-    /* gasEstimate */ 0
+    /* gasEstimate */ 0,
   );
   mockProvider.stub(
     UniswapConfig.config.quoterContractAddress('goerli'),
@@ -141,13 +141,13 @@ const patchMockProvider = () => {
     /* amountIn */ 1,
     /* sqrtPriceX96After */ 0,
     /* initializedTicksCrossed */ 0,
-    /* gasEstimate */ 0
+    /* gasEstimate */ 0,
   );
 
   mockProvider.setMockContract(
     DAI_WETH_POOL_ADDRESS,
     require('@uniswap/v3-core/artifacts/contracts/UniswapV3Pool.sol/UniswapV3Pool.json')
-      .abi
+      .abi,
   );
   mockProvider.stub(
     DAI_WETH_POOL_ADDRESS,
@@ -158,7 +158,7 @@ const patchMockProvider = () => {
     /* observationCardinality */ 1,
     /* observationCardinalityNext */ 1,
     /* feeProtocol */ 0,
-    /* unlocked */ true
+    /* unlocked */ true,
   );
   mockProvider.stub(DAI_WETH_POOL_ADDRESS, 'liquidity', 0);
   patch(ethereum, 'provider', () => {
@@ -168,11 +168,11 @@ const patchMockProvider = () => {
 
 const patchGetPool = (address: string | null) => {
   mockProvider.setMockContract(
-    FACTORY_ADDRESS,
+    DEFAULT_FACTORY_ADDRESS,
     require('@uniswap/v3-core/artifacts/contracts/UniswapV3Factory.sol/UniswapV3Factory.json')
-      .abi
+      .abi,
   );
-  mockProvider.stub(FACTORY_ADDRESS, 'getPool', address);
+  mockProvider.stub(DEFAULT_FACTORY_ADDRESS, 'getPool', address);
 };
 
 const useRouter = async () => {
@@ -209,7 +209,7 @@ describe('verify Uniswap estimateSellTrade', () => {
       const expectedTrade = await uniswap.estimateSellTrade(
         WETH,
         DAI,
-        BigNumber.from(1)
+        BigNumber.from(1),
       );
       expect(expectedTrade).toHaveProperty('trade');
       expect(expectedTrade).toHaveProperty('expectedAmount');
@@ -235,7 +235,7 @@ describe('verify Uniswap estimateSellTrade', () => {
       const expectedTrade = await uniswap.estimateSellTrade(
         WETH,
         DAI,
-        BigNumber.from(1)
+        BigNumber.from(1),
       );
 
       expect(expectedTrade).toHaveProperty('trade');
@@ -264,7 +264,7 @@ describe('verify Uniswap estimateBuyTrade', () => {
       const expectedTrade = await uniswap.estimateBuyTrade(
         WETH,
         DAI,
-        BigNumber.from(1)
+        BigNumber.from(1),
       );
       expect(expectedTrade).toHaveProperty('trade');
       expect(expectedTrade).toHaveProperty('expectedAmount');
@@ -290,7 +290,7 @@ describe('verify Uniswap estimateBuyTrade', () => {
       const expectedTrade = await uniswap.estimateBuyTrade(
         WETH,
         DAI,
-        BigNumber.from(1)
+        BigNumber.from(1),
       );
 
       expect(expectedTrade).toHaveProperty('trade');

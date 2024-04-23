@@ -61,7 +61,7 @@ export class EthereumBase {
     gasPriceConstant: number,
     gasLimitTransaction: number,
     nonceDbPath: string,
-    transactionDbPath: string
+    transactionDbPath: string,
   ) {
     this._provider = new providers.StaticJsonRpcProvider(rpcUrl);
     this.chainName = chainName;
@@ -75,14 +75,14 @@ export class EthereumBase {
     this._nonceManager = new EVMNonceManager(
       chainName,
       chainId,
-      this.resolveDBPath(nonceDbPath)
+      this.resolveDBPath(nonceDbPath),
     );
     this._nonceManager.declareOwnership(this._refCountingHandle);
     this.cache = new NodeCache({ stdTTL: 3600 }); // set default cache ttl to 1hr
     this._gasLimitTransaction = gasLimitTransaction;
     this._txStorage = EvmTxStorage.getInstance(
       this.resolveDBPath(transactionDbPath),
-      this._refCountingHandle
+      this._refCountingHandle,
     );
     this._txStorage.declareOwnership(this._refCountingHandle);
   }
@@ -127,7 +127,7 @@ export class EthereumBase {
       this._initialized = (async () => {
         try {
           await this._nonceManager.init(
-            async (address) => await this.provider.getTransactionCount(address)
+            async (address) => await this.provider.getTransactionCount(address),
           );
           await this.loadTokens(this.tokenListSource, this.tokenListType);
           return true;
@@ -143,16 +143,16 @@ export class EthereumBase {
 
   async loadTokens(
     tokenListSource: string,
-    tokenListType: TokenListType
+    tokenListType: TokenListType,
   ): Promise<void> {
     this.tokenList = await this.getTokenList(tokenListSource, tokenListType);
     // Only keep tokens in the same chain
     this.tokenList = this.tokenList.filter(
-      (token: TokenInfo) => token.chainId === this.chainId
+      (token: TokenInfo) => token.chainId === this.chainId,
     );
     if (this.tokenList) {
       this.tokenList.forEach(
-        (token: TokenInfo) => (this._tokenMap[token.symbol] = token)
+        (token: TokenInfo) => (this._tokenMap[token.symbol] = token),
       );
     }
   }
@@ -160,7 +160,7 @@ export class EthereumBase {
   // returns a Tokens for a given list source and list type
   async getTokenList(
     tokenListSource: string,
-    tokenListType: TokenListType
+    tokenListType: TokenListType,
   ): Promise<TokenInfo[]> {
     let tokens: TokenInfo[];
     if (tokenListType === 'URL') {
@@ -207,7 +207,7 @@ export class EthereumBase {
 
     const encryptedPrivateKey: string = await fse.readFile(
       `${path}/${address}.json`,
-      'utf8'
+      'utf8',
     );
 
     const passphrase = ConfigManagerCertPassphrase.readPassphrase();
@@ -224,11 +224,11 @@ export class EthereumBase {
 
   async decrypt(
     encryptedPrivateKey: string,
-    password: string
+    password: string,
   ): Promise<Wallet> {
     const wallet = await Wallet.fromEncryptedJson(
       encryptedPrivateKey,
-      password
+      password,
     );
     return wallet.connect(this._provider);
   }
@@ -243,13 +243,13 @@ export class EthereumBase {
   async getERC20Balance(
     contract: Contract,
     wallet: Wallet,
-    decimals: number
+    decimals: number,
   ): Promise<TokenValue> {
     logger.info('Requesting balance for owner ' + wallet.address + '.');
     const balance: BigNumber = await contract.balanceOf(wallet.address);
     logger.info(
       `Raw balance of ${contract.address} for ` +
-      `${wallet.address}: ${balance.toString()}`
+        `${wallet.address}: ${balance.toString()}`,
     );
     return { value: balance, decimals: decimals };
   }
@@ -259,14 +259,14 @@ export class EthereumBase {
     contract: Contract,
     wallet: Wallet,
     spender: string,
-    decimals: number
+    decimals: number,
   ): Promise<TokenValue> {
     logger.info(
       'Requesting spender ' +
-      spender +
-      ' allowance for owner ' +
-      wallet.address +
-      '.'
+        spender +
+        ' allowance for owner ' +
+        wallet.address +
+        '.',
     );
     const allowance = await contract.allowance(wallet.address, spender);
     logger.info(allowance);
@@ -285,16 +285,15 @@ export class EthereumBase {
 
   // returns an ethereum TransactionReceipt for a txHash if the transaction has been mined.
   async getTransactionReceipt(
-    txHash: string
+    txHash: string,
   ): Promise<providers.TransactionReceipt | null> {
     if (this.cache.keys().includes(txHash)) {
       // If it's in the cache, return the value in cache, whether it's null or not
       return this.cache.get(txHash) as providers.TransactionReceipt;
     } else {
       // If it's not in the cache,
-      const fetchedTxReceipt = await this._provider.getTransactionReceipt(
-        txHash
-      );
+      const fetchedTxReceipt =
+        await this._provider.getTransactionReceipt(txHash);
 
       this.cache.set(txHash, fetchedTxReceipt); // Cache the fetched receipt, whether it's null or not
 
@@ -315,16 +314,16 @@ export class EthereumBase {
     nonce?: number,
     maxFeePerGas?: BigNumber,
     maxPriorityFeePerGas?: BigNumber,
-    gasPrice?: number
+    gasPrice?: number,
   ): Promise<Transaction> {
     logger.info(
       'Calling approve method called for spender ' +
-      spender +
-      ' requesting allowance ' +
-      amount.toString() +
-      ' from owner ' +
-      wallet.address +
-      '.'
+        spender +
+        ' requesting allowance ' +
+        amount.toString() +
+        ' from owner ' +
+        wallet.address +
+        '.',
     );
     return this.nonceManager.provideNonce(
       nonce,
@@ -341,7 +340,7 @@ export class EthereumBase {
           params.gasPrice = (gasPrice * 1e9).toFixed(0);
         }
         return contract.approve(spender, amount, params);
-      }
+      },
     );
   }
 
@@ -349,7 +348,7 @@ export class EthereumBase {
     return this.tokenList.find(
       (token: TokenInfo) =>
         token.symbol.toUpperCase() === tokenSymbol.toUpperCase() &&
-        token.chainId === this.chainId
+        token.chainId === this.chainId,
     );
   }
 
@@ -362,7 +361,7 @@ export class EthereumBase {
   async cancelTxWithGasPrice(
     wallet: Wallet,
     nonce: number,
-    gasPrice: number
+    gasPrice: number,
   ): Promise<Transaction> {
     return this.nonceManager.provideNonce(
       nonce,
@@ -379,7 +378,7 @@ export class EthereumBase {
         logger.info(response);
 
         return response;
-      }
+      },
     );
   }
 

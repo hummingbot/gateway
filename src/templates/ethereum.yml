@@ -34,7 +34,7 @@ networks:
     nativeCurrencySymbol: OETH
     gasPriceRefreshInterval: 60
   base:
-    chainID: 8435
+    chainID: 8453
     nodeURL:  https://rpc.ankr.com/base
     tokenListType: FILE
     tokenListSource: /home/gateway/conf/lists/base_uniswap_20240411.json

@@ -2,15 +2,15 @@
     "name": "Uniswap Labs Default",
     "timestamp": "2024-04-08T14:06:46.865Z",
     "version": {
-      "major": 11,
-      "minor": 17,
-      "patch": 0
+        "major": 11,
+        "minor": 17,
+        "patch": 0
     },
     "tags": {},
     "logoURI": "ipfs://QmNa8mQkrNKp1WEEeGjFezDmDeodkWRevGFN8JCV7b4Xir",
     "keywords": [
-      "uniswap",
-      "default"
+        "uniswap",
+        "default"
     ],
     "tokens": [
         {
@@ -123,7 +123,7 @@
             "symbol": "LUSD",
             "logoURI": "https://assets.coingecko.com/coins/images/14666/thumb/Group_3.png?1617631327",
             "address": "0x368181499736d0c0CC614DBB145E2EC1AC86b8c6",
-            "decimals": 18,
+            "decimals": 18
         },
         {
             "chainId": 8453,
@@ -238,4 +238,4 @@
             "logoURI": "https://ethereum-optimism.github.io/data/ZRX/logo.png"
         }
     ]
-  }
+}
