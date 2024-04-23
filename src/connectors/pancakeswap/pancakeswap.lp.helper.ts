@@ -24,9 +24,10 @@ import * as math from 'mathjs';
 import { getAddress } from 'ethers/lib/utils';
 import { RemoveLiquidityOptions } from '@pancakeswap/v3-sdk';
 import { BinanceSmartChain } from '../../chains/binance-smart-chain/binance-smart-chain';
+import { Ethereum } from '../../chains/ethereum/ethereum';
 
 export class PancakeswapLPHelper {
-  protected chain: BinanceSmartChain;
+  protected chain: Ethereum | BinanceSmartChain;
   protected chainId;
   private _router: string;
   private _nftManager: string;
@@ -36,14 +37,16 @@ export class PancakeswapLPHelper {
   private _poolAbi: ContractInterface;
   private _alphaRouter: AlphaRouter | undefined;
   private tokenList: Record<string, Token> = {};
-  private _chainName: string;
   private _ready: boolean = false;
   public abiDecoder: any;
 
   constructor(chain: string, network: string) {
-    this.chain = BinanceSmartChain.getInstance(network);
-    this._chainName = chain;
-    this.chainId = this.chain.chainId;
+    if (chain === 'ethereum') {
+      this.chain = Ethereum.getInstance(network);
+    } else {
+      this.chain = BinanceSmartChain.getInstance(network);
+    }
+    this.chainId = this.getChainId(chain, network);
     // this._alphaRouter = new AlphaRouter({
     //   chainId: this.chainId,
     //   provider: this.chain.provider,
@@ -108,10 +111,11 @@ export class PancakeswapLPHelper {
   }
 
   public async init() {
-    if (this._chainName == 'binance-smart-chain' && !this.chain.ready())
+    const chainName = this.chain.toString();
+    if (!this.chain.ready())
       throw new InitializationError(
-        SERVICE_UNITIALIZED_ERROR_MESSAGE('BinanceSmartChain'),
-        SERVICE_UNITIALIZED_ERROR_CODE
+        SERVICE_UNITIALIZED_ERROR_MESSAGE(chainName),
+        SERVICE_UNITIALIZED_ERROR_CODE,
       );
     for (const token of this.chain.storedTokenList) {
       this.tokenList[token.address] = new Token(
@@ -119,10 +123,16 @@ export class PancakeswapLPHelper {
         token.address,
         token.decimals,
         token.symbol,
-        token.name
+        token.name,
       );
     }
     this._ready = true;
+  }
+
+  public getChainId(chain: string, network: string): number {
+    if (chain === 'binance-smart-chain') {
+      return BinanceSmartChain.getInstance(network).chainId;
+    } else return Ethereum.getInstance(network).chainId;
   }
 
   getPercentage(rawPercent: number | string): Percent {
@@ -135,13 +145,13 @@ export class PancakeswapLPHelper {
     const nd = allowedSlippage.match(percentRegexp);
     if (nd) return new Percent(nd[1], nd[2]);
     throw new Error(
-      'Encountered a malformed percent string in the config for ALLOWED_SLIPPAGE.'
+      'Encountered a malformed percent string in the config for ALLOWED_SLIPPAGE.',
     );
   }
 
   getContract(
     contract: string,
-    signer: providers.StaticJsonRpcProvider | Signer
+    signer: providers.StaticJsonRpcProvider | Signer,
   ): Contract {
     if (contract === 'router') {
       return new Contract(this.router, this.routerAbi, signer);
@@ -152,23 +162,23 @@ export class PancakeswapLPHelper {
 
   getPoolContract(
     pool: string,
-    wallet: providers.StaticJsonRpcProvider | Signer
+    wallet: providers.StaticJsonRpcProvider | Signer,
   ): Contract {
     return new Contract(pool, this.poolAbi, wallet);
   }
 
   async getPoolState(
     poolAddress: string,
-    fee: v3.FeeAmount
+    fee: v3.FeeAmount,
   ): Promise<PoolState> {
     const poolContract = this.getPoolContract(poolAddress, this.chain.provider);
     const minTick = v3.nearestUsableTick(
       v3.TickMath.MIN_TICK,
-      v3.TICK_SPACINGS[fee]
+      v3.TICK_SPACINGS[fee],
     );
     const maxTick = v3.nearestUsableTick(
       v3.TickMath.MAX_TICK,
-      v3.TICK_SPACINGS[fee]
+      v3.TICK_SPACINGS[fee],
     );
     const poolDataReq = await Promise.allSettled([
       poolContract.liquidity(),
@@ -178,14 +188,14 @@ export class PancakeswapLPHelper {
     ]);
 
     const rejected = poolDataReq.filter(
-      (r) => r.status === 'rejected'
+      (r) => r.status === 'rejected',
     ) as PromiseRejectedResult[];
 
     if (rejected.length > 0) throw new Error('Unable to fetch pool state');
 
     const poolData = (
       poolDataReq.filter(
-        (r) => r.status === 'fulfilled'
+        (r) => r.status === 'fulfilled',
       ) as PromiseFulfilledResult<any>[]
     ).map((r) => r.value);
 
@@ -219,7 +229,7 @@ export class PancakeswapLPHelper {
     token1: Token,
     tier: string,
     period: number = 1,
-    interval: number = 1
+    interval: number = 1,
   ): Promise<string[]> {
     const fetchPriceTime = [];
     const prices = [];
@@ -227,7 +237,7 @@ export class PancakeswapLPHelper {
     const poolContract = new Contract(
       v3.Pool.getAddress(token0, token1, fee),
       this.poolAbi,
-      this.chain.provider
+      this.chain.provider,
     );
     for (
       let x = Math.ceil(period / interval) * interval;
@@ -246,11 +256,11 @@ export class PancakeswapLPHelper {
               token1,
               Math.ceil(
                 response.tickCumulatives[twap + 1].sub(
-                  response.tickCumulatives[twap].toNumber()
-                ) / interval
-              )
+                  response.tickCumulatives[twap].toNumber(),
+                ) / interval,
+              ),
             )
-            .toFixed(8)
+            .toFixed(8),
         );
       }
     } catch (e) {
@@ -264,12 +274,12 @@ export class PancakeswapLPHelper {
     const requests = [contract.positions(tokenId)];
     const positionInfoReq = await Promise.allSettled(requests);
     const rejected = positionInfoReq.filter(
-      (r) => r.status === 'rejected'
+      (r) => r.status === 'rejected',
     ) as PromiseRejectedResult[];
     if (rejected.length > 0) throw new Error('Unable to fetch position');
     const positionInfo = (
       positionInfoReq.filter(
-        (r) => r.status === 'fulfilled'
+        (r) => r.status === 'fulfilled',
       ) as PromiseFulfilledResult<any>[]
     ).map((r) => r.value);
     return positionInfo[0];
@@ -280,7 +290,7 @@ export class PancakeswapLPHelper {
     tokenId: number,
     token0: Token,
     token1: Token,
-    wallet: Wallet
+    wallet: Wallet,
   ): RemoveLiquidityOptions {
     //   }; //     recipient: string; //     expectedCurrencyOwed1: CurrencyAmount<Token>; //     expectedCurrencyOwed0: CurrencyAmount<Token>; //   collectOptions: { //   burnToken: boolean; //   deadline: number; //   slippageTolerance: Percent; //   liquidityPercentage: Percent; //   tokenId: number; // {
     return {
@@ -306,7 +316,7 @@ export class PancakeswapLPHelper {
     fee: v3.FeeAmount,
     lowerPrice: number,
     upperPrice: number,
-    tokenId: number = 0
+    tokenId: number = 0,
   ): Promise<AddPosReturn> {
     if (token1.sortsBefore(token0)) {
       [token0, token1] = [token1, token0];
@@ -317,7 +327,7 @@ export class PancakeswapLPHelper {
     const upperPriceInFraction = math.fraction(upperPrice) as math.Fraction;
     const poolData = await this.getPoolState(
       v3.Pool.getAddress(token0, token1, fee),
-      fee
+      fee,
     );
     const pool = new v3.Pool(
       token0,
@@ -325,7 +335,7 @@ export class PancakeswapLPHelper {
       poolData.fee,
       poolData.sqrtPriceX96.toString(),
       poolData.liquidity.toString(),
-      poolData.tick
+      poolData.tick,
     );
 
     const addLiquidityOptions = {
@@ -349,10 +359,10 @@ export class PancakeswapLPHelper {
             .toString(),
           utils
             .parseUnits(lowerPriceInFraction.n.toString(), token1.decimals)
-            .toString()
-        )
+            .toString(),
+        ),
       ),
-      v3.TICK_SPACINGS[fee]
+      v3.TICK_SPACINGS[fee],
     );
 
     const tickUpper = v3.nearestUsableTick(
@@ -365,10 +375,10 @@ export class PancakeswapLPHelper {
             .toString(),
           utils
             .parseUnits(upperPriceInFraction.n.toString(), token1.decimals)
-            .toString()
-        )
+            .toString(),
+        ),
       ),
-      v3.TICK_SPACINGS[fee]
+      v3.TICK_SPACINGS[fee],
     );
 
     const position = v3.Position.fromAmounts({
@@ -383,7 +393,7 @@ export class PancakeswapLPHelper {
 
     const methodParameters = v3.NonfungiblePositionManager.addCallParameters(
       position,
-      { ...swapOptions, ...addLiquidityOptions }
+      { ...swapOptions, ...addLiquidityOptions },
     );
     return { ...methodParameters, swapRequired: false };
   }
@@ -391,7 +401,7 @@ export class PancakeswapLPHelper {
   async reducePositionHelper(
     wallet: Wallet,
     tokenId: number,
-    decreasePercent: number
+    decreasePercent: number,
   ): Promise<v3.MethodParameters> {
     // Reduce position and burn
     const positionData = await this.getRawPosition(wallet, tokenId);
@@ -400,7 +410,7 @@ export class PancakeswapLPHelper {
     const fee = positionData.fee;
     if (!token0 || !token1) {
       throw new Error(
-        `One of the tokens in this position isn't recognized. $token0: ${token0}, $token1: ${token1}`
+        `One of the tokens in this position isn't recognized. $token0: ${token0}, $token1: ${token1}`,
       );
     }
     const poolAddress = v3.Pool.getAddress(token0, token1, fee);
@@ -412,7 +422,7 @@ export class PancakeswapLPHelper {
         poolData.fee,
         poolData.sqrtPriceX96.toString(),
         poolData.liquidity.toString(),
-        poolData.tick
+        poolData.tick,
       ),
       tickLower: positionData.tickLower,
       tickUpper: positionData.tickUpper,
@@ -425,8 +435,8 @@ export class PancakeswapLPHelper {
         tokenId,
         token0,
         token1,
-        wallet
-      )
+        wallet,
+      ),
     );
   }
 }
