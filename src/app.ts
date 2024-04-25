@@ -112,7 +112,7 @@ export const startSwagger = async () => {
 
 export const startGateway = async () => {
   const port = ConfigManagerV2.getInstance().get('server.port');
-  const gateway_version="dev-1.27.0"
+  const gateway_version="1.27.0"
   if (!ConfigManagerV2.getInstance().get('server.id')) {
     ConfigManagerV2.getInstance().set(
       'server.id',
