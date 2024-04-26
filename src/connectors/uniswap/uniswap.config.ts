@@ -58,16 +58,6 @@ export namespace UniswapConfig {
           ).includes(network),
         ),
       },
-      {
-        chain: 'avalanche',
-        networks: Object.keys(
-          ConfigManagerV2.getInstance().get('uniswap.contractAddresses'),
-        ).filter((network) =>
-          Object.keys(
-            ConfigManagerV2.getInstance().get('avalanche.networks'),
-          ).includes(network),
-        ),
-      },
     ],
     useRouter: ConfigManagerV2.getInstance().get(`uniswap.useRouter`),
     feeTier: ConfigManagerV2.getInstance().get(`uniswap.feeTier`),
