@@ -1,5 +1,4 @@
 // OSMO message composer classes don't quite match up with what the RPC/Go backend actually accepts.
-
 import { CosmosWallet, CosmosAsset, CosmosTokenValue, CosmosBase } from '../../chains/cosmos/cosmos-base'; 
 import { OsmosisController } from './osmosis.controllers';
 import BigNumber from 'bignumber.js';
@@ -1361,8 +1360,9 @@ export class Osmosis extends CosmosBase implements Cosmosish{
           tokenMinAmount1 = token1_bignumber.shiftedBy(this.getExponentByBase(token1.base)).multipliedBy(100-slippage).dividedBy(100).integerValue(BigNumber.ROUND_CEIL)
         }
 
-        const lowerTick = findTickForPrice(req.lowerPrice!, pool.exponentAtPriceOne, pool.tickSpacing, true) // pool.currentTick, 
-        const upperTick = findTickForPrice(req.upperPrice!, pool.exponentAtPriceOne, pool.tickSpacing, false)
+        // FIXME: ticks are less than 1 exponent, need to check tick calculation
+        const lowerTick = findTickForPrice(req.lowerPrice!, pool.exponentAtPriceOne, pool.tickSpacing, true) + '0' // pool.currentTick, 
+        const upperTick = findTickForPrice(req.upperPrice!, pool.exponentAtPriceOne, pool.tickSpacing, false) + '0'
 
         var tokenMinAmount0_final = tokenMinAmount0.toString()
         var tokenMinAmount1_final = tokenMinAmount1.toString()
@@ -2266,7 +2266,7 @@ export class Osmosis extends CosmosBase implements Cosmosish{
               countTotal: false,
               reverse: false,
             },
-            poolId: final_poolId.toString()
+            poolId: BigInt(final_poolId)
           })
           clPositions = clPositionsContainer.positions
         } catch (error) {
@@ -2290,7 +2290,6 @@ export class Osmosis extends CosmosBase implements Cosmosish{
         owner: address,
       });
       const lockedCoins: Coin[] = lockedCoinsContainer.lockedCoins ? lockedCoinsContainer.lockedCoins : []
-
       // RETURN TYPES:
       // concentrated-liquidity/pool || cosmwasmpool/v1beta1/model/pool || gamm/pool-models/balancer/balancerPool || gamm/pool-models/stableswap/stableswap_pool
       const poolsContainer = await this._provider.osmosis.poolmanager.v1beta1.allPools({});
@@ -2351,17 +2350,23 @@ export class Osmosis extends CosmosBase implements Cosmosish{
             }
           }
         });
+        const clPositionPool = extendedPools.find((pl) => pl.id.toString() === clPosition.position.poolId.toString());
+        const exponentToken0 = this.getExponentByBase(clPosition.asset0.denom)
+        const exponentToken1 = this.getExponentByBase(clPosition.asset1.denom)
+        // @ts-ignore
+        const lowerPrice = tickToPrice(exponentToken0, exponentToken1, clPosition.position.lowerTick.toString(), clPositionPool.exponentAtPriceOne.toString())
+        // @ts-ignore
+        const upperPrice = tickToPrice(exponentToken0, exponentToken1, clPosition.position.upperTick.toString(), clPositionPool.exponentAtPriceOne.toString())
 
         returnObj.token0 = clPosition.asset0.denom;
         returnObj.token1 = clPosition.asset1.denom;
-        returnObj.amount0 = clPosition.asset0.amount;
-        returnObj.amount1 = clPosition.asset1.amount;
-        returnObj.lowerPrice = clPosition.position.lowerTick.toString();
-        returnObj.upperPrice = clPosition.position.upperTick.toString();
+        returnObj.amount0 = (parseFloat(clPosition.asset0.amount) / Math.pow(10, exponentToken0)).toString();
+        returnObj.amount1 = (parseFloat(clPosition.asset1.amount) / Math.pow(10, exponentToken1)).toString();
+        returnObj.lowerPrice = lowerPrice.toString();
+        returnObj.upperPrice = upperPrice.toString();
         returnObj.poolShares = clPosition.position.liquidity
-        returnObj.unclaimedToken0 = unclaimedToken0.toString()
-        returnObj.unclaimedToken1 = unclaimedToken1.toString()
-        const clPositionPool = extendedPools.find((pl) => pl.id.toString() === clPosition.position.poolId.toString());
+        returnObj.unclaimedToken0 = (parseFloat(unclaimedToken0.toString()) / Math.pow(10, exponentToken0)).toString();
+        returnObj.unclaimedToken1 = (parseFloat(unclaimedToken1.toString()) / Math.pow(10, exponentToken1)).toString();
         returnObj.fee = clPositionPool?.fees7D.toString()
       }
       // not returning GAMM positons here; problematic for strat and apparently this is amm-liquidity route only

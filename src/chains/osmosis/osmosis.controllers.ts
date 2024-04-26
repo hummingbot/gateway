@@ -1,6 +1,4 @@
-
-import {
-  HttpException,
+import {  HttpException,
   LOAD_WALLET_ERROR_CODE,
   LOAD_WALLET_ERROR_MESSAGE,
   PRICE_FAILED_ERROR_CODE,
@@ -673,29 +671,31 @@ export class OsmosisController {
       if (req.txHash){
         const transaction = await osmosis.getTransaction(req.txHash);
         const currentBlock = await osmosis.getCurrentBlockNumber();
-
+        const decoder = new TextDecoder();
         //@ts-ignore cosmojs models again
         var pool_id = undefined;
         var position_id = undefined;
         //@ts-ignore cosmojs models again
-        if (transaction.txResponse.logs){
+        if (transaction.txResponse.events){
         //@ts-ignore cosmojs models again
-          transaction.txResponse.logs.forEach((log) => {
-        //@ts-ignore cosmojs models again
-            const create_position_event = log.events.find(({ type }) => type === 'create_position');
+            const create_position_event = transaction.txResponse.events.find(({ type }) => type === 'create_position');
             if (create_position_event){
-        //@ts-ignore cosmojs models again
-              const pool_id_attribute = create_position_event.attributes.find(({ key }) => key === 'pool_id');
-              if (pool_id_attribute){
-                pool_id = pool_id_attribute.value
-              }
-        //@ts-ignore cosmojs models again
-              const position_id_attribute = create_position_event.attributes.find(({ key }) => key === 'position_id');
-              if (position_id_attribute){
-                position_id = position_id_attribute.value
-              }
-            }
-          })
+              //@ts-ignore cosmojs models again
+              create_position_event.attributes.forEach(attribute => {
+                const key = decoder.decode(attribute.key);
+                const value = decoder.decode(attribute.value);
+
+                if (key === 'pool_id'){
+                  pool_id = value;
+                }
+
+                if (key === 'position_id'){
+                  position_id = value;
+                }
+              
+                console.log(`Key: ${key}, Value: ${value}`);
+              });
+          }
         }
         var tokenId = position_id;
         if (position_id == undefined){
