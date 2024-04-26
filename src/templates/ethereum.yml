@@ -19,6 +19,13 @@ networks:
     nativeCurrencySymbol: ETH
     tokenListSource: /home/gateway/conf/lists/ethereum_coingecko_20230610.json
     gasPriceRefreshInterval: 60
+  zksync:
+    chainID: 324
+    nodeURL: https://mainnet.era.zksync.io
+    tokenListType: FILE
+    tokenListSource: conf/lists/zksync_quiknode_tokens.json
+    nativeCurrencySymbol: ETH
+    gasPriceRefreshInterval: 60
   optimism:
     chainID: 10
     nodeURL: https://rpc.ankr.com/optimism
