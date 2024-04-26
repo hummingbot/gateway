@@ -692,8 +692,6 @@ export class OsmosisController {
                 if (key === 'position_id'){
                   position_id = value;
                 }
-              
-                console.log(`Key: ${key}, Value: ${value}`);
               });
           }
         }
