@@ -1360,9 +1360,9 @@ export class Osmosis extends CosmosBase implements Cosmosish{
           tokenMinAmount1 = token1_bignumber.shiftedBy(this.getExponentByBase(token1.base)).multipliedBy(100-slippage).dividedBy(100).integerValue(BigNumber.ROUND_CEIL)
         }
 
-        // FIXME: ticks are less than 1 exponent, need to check tick calculation
-        const lowerTick = findTickForPrice(req.lowerPrice!, pool.exponentAtPriceOne, pool.tickSpacing, true) + '0' // pool.currentTick, 
-        const upperTick = findTickForPrice(req.upperPrice!, pool.exponentAtPriceOne, pool.tickSpacing, false) + '0'
+        // FIXME: The calculation of lowerTick and upperTick is not correct for the case where price is less than 1
+        const lowerTick = findTickForPrice(req.lowerPrice!, pool.exponentAtPriceOne, pool.tickSpacing, true) // pool.currentTick, 
+        const upperTick = findTickForPrice(req.upperPrice!, pool.exponentAtPriceOne, pool.tickSpacing, false)
 
         var tokenMinAmount0_final = tokenMinAmount0.toString()
         var tokenMinAmount1_final = tokenMinAmount1.toString()
