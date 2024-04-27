@@ -50,7 +50,7 @@ import { Pool as CLPool } from 'osmo-query/dist/codegen/osmosis/concentrated-liq
 import { TradeInfo } from './osmosis.controllers';
 import { HttpException, TRADE_FAILED_ERROR_CODE, TRADE_FAILED_ERROR_MESSAGE, GAS_LIMIT_EXCEEDED_ERROR_MESSAGE, GAS_LIMIT_EXCEEDED_ERROR_CODE, AMOUNT_LESS_THAN_MIN_AMOUNT_ERROR_MESSAGE, AMOUNT_LESS_THAN_MIN_AMOUNT_ERROR_CODE } from '../../services/error-handler';
 import { extendPool, filterPoolsSwap, filterPoolsLP, filterPoolsSwapAndLP } from './osmosis.lp.utils';
-import { fetchFees, findTickForPrice, tickToPrice } from './osmosis.utils';
+import { fetchFees, findTickForPrice, tickToPrice, calculatePriceToTick } from './osmosis.utils';
 import { getImperatorPriceHash } from './osmosis.prices';
 import { GasPrice, calculateFee, setupIbcExtension, SigningStargateClient, AminoTypes } from '@cosmjs/stargate';
 import { CosmWasmClient } from "@cosmjs/cosmwasm-stargate";
@@ -1361,8 +1361,11 @@ export class Osmosis extends CosmosBase implements Cosmosish{
         }
 
         // FIXME: The calculation of lowerTick and upperTick is not correct for the case where price is less than 1
-        const lowerTick = findTickForPrice(req.lowerPrice!, pool.exponentAtPriceOne, pool.tickSpacing, true) // pool.currentTick, 
-        const upperTick = findTickForPrice(req.upperPrice!, pool.exponentAtPriceOne, pool.tickSpacing, false)
+        const lowerTick = calculatePriceToTick(req.lowerPrice!, pool.exponentAtPriceOne, pool.tickSpacing, true) // pool.currentTick, 
+        const upperTick = calculatePriceToTick(req.upperPrice!, pool.exponentAtPriceOne, pool.tickSpacing, false)
+
+        console.log('lowerTick', lowerTick)
+        console.log('upperTick', upperTick)
 
         var tokenMinAmount0_final = tokenMinAmount0.toString()
         var tokenMinAmount1_final = tokenMinAmount1.toString()
