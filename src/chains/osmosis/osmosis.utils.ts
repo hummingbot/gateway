@@ -1,4 +1,7 @@
+// Disable eslint for this file because it's a copy of the original file
+/* eslint-disable */
 import BigNumber from 'bignumber.js';
+import Decimal from 'decimal.js-light';
 
 export interface Fee {
   pool_id: string;
@@ -147,4 +150,48 @@ export function calculatePriceToTick(desiredPriceString: string, exponentAtPrice
 
   console.log(`Final calculations: tickIndex=${tickIndex}, returnTick=${BigInt(returnTick.toNumber()).toString()}`);
   return BigInt(returnTick.toNumber()).toString();
+}
+
+function calculatePriceToTickDec(price: Decimal): [number, Error | null] {
+  if (price.isNegative()) {
+      return [0, new Error("price must be greater than zero")];
+  }
+
+  if (price.equals(1)) {
+      return [0, null];
+  }
+
+  // N.B. this exists to maintain backwards compatibility with
+  // the old version of the function that operated on decimal with precision of 18.
+  if (price.gte(types.MinSpotPriceBigDec)) {
+      price.tru(osmomath.DecPrecision);
+  }
+
+  // The approach here is to try determine which "geometric spacing" we are in.
+  let geoSpacing: TickExpIndexData;
+  let index: number;
+
+  if (price.gt(osmomath.BigOneDec)) {
+      index = 0;
+      geoSpacing = tickExpCache[index];
+      while (geoSpacing.maxPrice.lt(price)) {
+          index += 1;
+          geoSpacing = tickExpCache[index];
+      }
+  } else {
+      index = -1;
+      geoSpacing = tickExpCache[index];
+      while (geoSpacing.initialPrice.gt(price)) {
+          index -= 1;
+          geoSpacing = tickExpCache[index];
+      }
+  }
+
+  // Calculate the number of ticks that need to be filled by our current spacing
+  const priceInThisExponent = price.sub(geoSpacing.initialPrice);
+  const ticksFilledByCurrentSpacing = priceInThisExponent.div(geoSpacing.additiveIncrementPerTick).truncate();
+
+  // Calculate the final tick index
+  const tickIndex = ticksFilledByCurrentSpacing + geoSpacing.initialTick;
+  return [tickIndex, null];
 }
