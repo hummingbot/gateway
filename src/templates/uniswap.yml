@@ -24,27 +24,33 @@ useRouter: false
 feeTier: 'MEDIUM'
 
 contractAddresses:
-  celo:
-    uniswapV3SmartOrderRouterAddress: '0x5615CDAb10dc425a742d643d949a7F474C01abc4'
-    uniswapV3NftManagerAddress: '0x3d79EdAaBC0EaB6F08ED885C05Fc0B014290D95A'
-    uniswapV3QuoterV2ContractAddress: '0x82825d0554fA07f7FC52Ab63c961F330fdEFa8E8'
   mainnet:
+    uniswapV3FactoryAddress: '0x1F98431c8aD98523631AE4a59f267346ea31F984'
     uniswapV3SmartOrderRouterAddress: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45'
     uniswapV3NftManagerAddress: '0xC36442b4a4522E871399CD717aBDD847Ab11FE88'
     uniswapV3QuoterV2ContractAddress: '0x61fFE014bA17989E743c5F6cB21bF9697530B21e'
+  celo:
+    uniswapV3FactoryAddress: '0xAfE208a311B21f13EF87E33A90049fC17A7acDEc'
+    uniswapV3SmartOrderRouterAddress: '0x5615CDAb10dc425a742d643d949a7F474C01abc4'
+    uniswapV3NftManagerAddress: '0x3d79EdAaBC0EaB6F08ED885C05Fc0B014290D95A'
+    uniswapV3QuoterV2ContractAddress: '0x82825d0554fA07f7FC52Ab63c961F330fdEFa8E8'
   goerli:
+    uniswapV3FactoryAddress: '0x1F98431c8aD98523631AE4a59f267346ea31F984' 
     uniswapV3SmartOrderRouterAddress: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45'
     uniswapV3NftManagerAddress: '0xC36442b4a4522E871399CD717aBDD847Ab11FE88'
     uniswapV3QuoterV2ContractAddress: '0x61fFE014bA17989E743c5F6cB21bF9697530B21e'
   arbitrum:
+    uniswapV3FactoryAddress: '0x1F98431c8aD98523631AE4a59f267346ea31F984'
     uniswapV3SmartOrderRouterAddress: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45'
     uniswapV3NftManagerAddress: '0xC36442b4a4522E871399CD717aBDD847Ab11FE88'
     uniswapV3QuoterV2ContractAddress: '0x61fFE014bA17989E743c5F6cB21bF9697530B21e'
   optimism:
+    uniswapV3FactoryAddress: '0x1F98431c8aD98523631AE4a59f267346ea31F984'
     uniswapV3SmartOrderRouterAddress: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45'
     uniswapV3NftManagerAddress: '0xC36442b4a4522E871399CD717aBDD847Ab11FE88'
     uniswapV3QuoterV2ContractAddress: '0x61fFE014bA17989E743c5F6cB21bF9697530B21e'
   mumbai:
+    uniswapV3FactoryAddress: '0x1F98431c8aD98523631AE4a59f267346ea31F984' 
     uniswapV3SmartOrderRouterAddress: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45'
     uniswapV3NftManagerAddress: '0xC36442b4a4522E871399CD717aBDD847Ab11FE88'
     uniswapV3QuoterV2ContractAddress: '0x61fFE014bA17989E743c5F6cB21bF9697530B21e'
