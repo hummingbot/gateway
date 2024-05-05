@@ -16,11 +16,13 @@
         "^\\w+$": {
           "type": "object",
           "properties": {
+            "uniswapV3FactoryAddress": { "type": "string" },
             "uniswapV3SmartOrderRouterAddress": { "type": "string" },
             "uniswapV3NftManagerAddress": { "type": "string" },
             "uniswapV3QuoterV2ContractAddress": { "type": "string" }
           },
           "required": [
+            "uniswapV3FactoryAddress",
             "uniswapV3SmartOrderRouterAddress",
             "uniswapV3NftManagerAddress"
           ],
