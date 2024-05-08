@@ -66,14 +66,6 @@
       "logoURI": "https://raw.githubusercontent.com/certusone/wormhole-token-list/main/assets/USDCet_wh_small.png"
     },
     {
-      "name": "DAI Stablecoin (Portal)",
-      "address": "0x97926a82930bb7B33178E3c2f4ED1BFDc91A9FBF",
-      "symbol": "DAI",
-      "decimals": 18,
-      "chainId": 42220,
-      "logoURI": "https://raw.githubusercontent.com/certusone/wormhole-token-list/main/assets/DAI_wh_small.png"
-    },
-    {
       "name": "Portal WETH",
       "address": "0x66803FB87aBd4aaC3cbB3fAd7C3aa01f6F3FB207",
       "symbol": "WETH",
@@ -177,6 +169,22 @@
       "chainId": 42220,
       "logoURI": "https://raw.githubusercontent.com/ubeswap/default-token-list/master/assets/asset_WETH.png"
     },
+{
+      "name": "Optics v2 WBTC",
+      "address": "0xBAAB46E28388d2779e6E31Fd00cF0e5Ad95E327B",
+      "decimals": 8,
+      "symbol": "WBTC",
+      "chainId": 42220,
+      "logoURI": "https://raw.githubusercontent.com/ubeswap/default-token-list/master/assets/asset_WBTC.png"
+    },
+    {
+      "name": "Optics v2 USDC",
+      "address": "0xef4229c8c3250C675F21BCefa42f58EfbfF6002a",
+      "decimals": 6,
+      "symbol": "USDC",
+      "chainId": 42220,
+      "logoURI": "https://raw.githubusercontent.com/ubeswap/default-token-list/master/assets/asset_USDC.png"
+    },
     {
       "name": "Optics v2 USDT",
       "address": "0x88eeC49252c8cbc039DCdB394c0c2BA2f1637EA0",
@@ -184,6 +192,14 @@
       "symbol": "USDT",
       "chainId": 42220,
       "logoURI": "https://raw.githubusercontent.com/ubeswap/default-token-list/master/assets/asset_USDT.png"
+    },
+{
+      "name": "Optics v2 DAI",
+      "address": "0x90Ca507a5D4458a4C6C6249d186b6dCb02a5BCCd",
+      "symbol": "DAI",
+      "decimals": 18,
+      "chainId": 42220,
+      "logoURI": "https://raw.githubusercontent.com/ubeswap/default-token-list/master/assets/asset_DAI.png"
     },
     {
       "name": "Mobius DAO Token",
@@ -474,14 +490,6 @@
       "logoURI": "https://celo-org.github.io/celo-token-list/assets/axelar_wbtc.svg"
     },
     {
-      "name": "Wormhole Wrapped Bitcoin",
-      "address": "0xd71Ffd0940c920786eC4DbB5A12306669b5b81EF",
-      "symbol": "WBTC",
-      "decimals": 18,
-      "chainId": 42220,
-      "logoURI": "https://celo-org.github.io/celo-token-list/assets/wormhole_wbtc.png"
-    },
-    {
       "name": "Good Dollar",
       "address": "0x62B8B11039FcfE5aB0C56E502b1C372A3d2a9c7A",
       "symbol": "G$",
@@ -536,14 +544,6 @@
       "decimals": 6,
       "chainId": 42220,
       "logoURI": "https://raw.githubusercontent.com/wormhole-foundation/wormhole-token-list/main/assets/EURC_wh.png"
-    },
-    {
-      "name": "USD Coin",
-      "address": "0xcebA9300f2b948710d2653dD7B07f33A8B32118C",
-      "symbol": "USDC",
-      "decimals": 6,
-      "chainId": 42220,
-      "logoURI": "https://raw.githubusercontent.com/compound-finance/token-list/master/assets/asset_USDC.svg"
     }
   ]
 }
