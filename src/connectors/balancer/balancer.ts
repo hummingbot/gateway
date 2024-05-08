@@ -180,7 +180,7 @@ export interface BalancerTrade {
           );
         }
         const marketSp = math.fraction(info.marketSp) as math.Fraction;
-        const executionPrice = new Fraction(marketSp.n.toString(), marketSp.d.toString())
+        const executionPrice = new Fraction(marketSp.d.toString(), marketSp.n.toString())
         return {
           trade: {
               swap: {
@@ -241,7 +241,7 @@ export interface BalancerTrade {
         );
       }
       const marketSp = math.fraction(info.marketSp) as math.Fraction;
-      const executionPrice = new Fraction(marketSp.n.toString(), marketSp.d.toString());
+      const executionPrice = new Fraction(marketSp.d.toString(), marketSp.n.toString());
       return {
         trade: {
             swap: {
