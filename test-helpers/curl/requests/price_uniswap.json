@@ -1,9 +1,9 @@
 {
   "connector": "uniswap",
   "chain": "ethereum",
-  "network": "celo",
-  "quote": "CELO",
-  "base": "USDC",
+  "network": "goerli",
+  "quote": "WETH",
+  "base": "DAI",
   "amount": "1",
   "side": "BUY"
 }
