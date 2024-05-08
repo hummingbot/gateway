@@ -178,36 +178,12 @@
       "logoURI": "https://raw.githubusercontent.com/ubeswap/default-token-list/master/assets/asset_WETH.png"
     },
     {
-      "name": "Optics v2 WBTC",
-      "address": "0xBAAB46E28388d2779e6E31Fd00cF0e5Ad95E327B",
-      "decimals": 8,
-      "symbol": "WBTC",
-      "chainId": 42220,
-      "logoURI": "https://raw.githubusercontent.com/ubeswap/default-token-list/master/assets/asset_WBTC.png"
-    },
-    {
-      "name": "Optics v2 USDC",
-      "address": "0xef4229c8c3250C675F21BCefa42f58EfbfF6002a",
-      "decimals": 6,
-      "symbol": "USDC",
-      "chainId": 42220,
-      "logoURI": "https://raw.githubusercontent.com/ubeswap/default-token-list/master/assets/asset_USDC.png"
-    },
-    {
       "name": "Optics v2 USDT",
       "address": "0x88eeC49252c8cbc039DCdB394c0c2BA2f1637EA0",
       "decimals": 6,
       "symbol": "USDT",
       "chainId": 42220,
       "logoURI": "https://raw.githubusercontent.com/ubeswap/default-token-list/master/assets/asset_USDT.png"
-    },
-    {
-      "name": "Optics v2 DAI",
-      "address": "0x90Ca507a5D4458a4C6C6249d186b6dCb02a5BCCd",
-      "symbol": "DAI",
-      "decimals": 18,
-      "chainId": 42220,
-      "logoURI": "https://raw.githubusercontent.com/ubeswap/default-token-list/master/assets/asset_DAI.png"
     },
     {
       "name": "Mobius DAO Token",
@@ -256,14 +232,6 @@
       "decimals": 18,
       "chainId": 42220,
       "logoURI": "https://raw.githubusercontent.com/ubeswap/default-token-list/master/assets/asset_SOL.png"
-    },
-    {
-      "name": "Moola",
-      "address": "0x17700282592D6917F6A73D0bF8AcCf4D578c131e",
-      "symbol": "MOO",
-      "decimals": 18,
-      "chainId": 42220,
-      "logoURI": "https://raw.githubusercontent.com/ubeswap/default-token-list/master/assets/asset_MOO.png"
     },
     {
       "name": "Ariswap",
@@ -466,30 +434,6 @@
       "logoURI": "https://raw.githubusercontent.com/ubeswap/default-token-list/master/assets/asset_pCELO.png"
     },
     {
-      "name": "Poof Governance Token",
-      "address": "0x00400FcbF0816bebB94654259de7273f4A05c762",
-      "symbol": "POOF",
-      "decimals": 18,
-      "chainId": 44787,
-      "logoURI": "https://raw.githubusercontent.com/ubeswap/default-token-list/master/assets/asset_POOF.png"
-    },
-    {
-      "name": "Moola cEUR",
-      "address": "0x0D9B4311657003251d1eFa085e74f761185F271c",
-      "symbol": "mcEUR",
-      "decimals": 18,
-      "chainId": 44787,
-      "logoURI": "https://raw.githubusercontent.com/ubeswap/default-token-list/master/assets/asset_mcEUR.png"
-    },
-    {
-      "name": "Celo Euro",
-      "address": "0x10c892A6EC43a53E45D0B916B4b7D383B1b78C0F",
-      "symbol": "cEUR",
-      "decimals": 18,
-      "chainId": 44787,
-      "logoURI": "https://raw.githubusercontent.com/ubeswap/default-token-list/master/assets/asset_cEUR.png"
-    },
-    {
       "name": "NetM Token",
       "address": "0x123ED050805E0998EBEf43671327139224218e50",
       "symbol": "NTMX",
@@ -506,46 +450,6 @@
       "logoURI": "https://raw.githubusercontent.com/ubeswap/default-token-list/master/assets/asset_MOO.png"
     },
     {
-      "name": "Moola cUSD",
-      "address": "0x3a0EA4e0806805527C750AB9b34382642448468D",
-      "symbol": "mcUSD",
-      "decimals": 18,
-      "chainId": 44787,
-      "logoURI": "https://raw.githubusercontent.com/ubeswap/default-token-list/master/assets/asset_mcUSD.png"
-    },
-    {
-      "name": "Moola cREAL",
-      "address": "0x3D0EDA535ca4b15c739D46761d24E42e37664Ad7",
-      "symbol": "mcREAL",
-      "decimals": 18,
-      "chainId": 44787,
-      "logoURI": "https://raw.githubusercontent.com/ubeswap/default-token-list/master/assets/asset_mcREAL.png"
-    },
-    {
-      "name": "Marzipan Finance",
-      "address": "0x4d8BF8347600f5207bfdad57363fBa802C9C2031",
-      "symbol": "MZPN",
-      "decimals": 18,
-      "chainId": 44787,
-      "logoURI": "https://raw.githubusercontent.com/ubeswap/default-token-list/master/assets/asset_MZPN.png"
-    },
-    {
-      "name": "Moola CELO",
-      "address": "0x653cC2Cc0Be398614BAd5d5328336dc79281e246",
-      "symbol": "mCELO",
-      "decimals": 18,
-      "chainId": 44787,
-      "logoURI": "https://raw.githubusercontent.com/ubeswap/default-token-list/master/assets/asset_mCELO.png"
-    },
-    {
-      "name": "Celo Dollar",
-      "address": "0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1",
-      "symbol": "cUSD",
-      "decimals": 18,
-      "chainId": 44787,
-      "logoURI": "https://raw.githubusercontent.com/ubeswap/default-token-list/master/assets/asset_cUSD.png"
-    },
-    {
       "name": "AtlasX Carbon Credits",
       "address": "0xc3377Ea71F1dc8e55Ba360724eff2d7aD62a8670",
       "symbol": "ATLASX",
@@ -560,14 +464,6 @@
       "decimals": 9,
       "chainId": 42220,
       "logoURI": "https://raw.githubusercontent.com/ubeswap/default-token-list/master/assets/asset_PLASTIK.png"
-    },
-    {
-      "name": "Curve DAO Token",
-      "address": "0x173fd7434B8B50dF08e3298f173487ebDB35FD14",
-      "symbol": "CRV",
-      "decimals": 18,
-      "chainId": 42220,
-      "logoURI": "https://raw.githubusercontent.com/curvefi/curve-assets/main/branding/logo.svg"
     },
     {
       "name": "Axelar Wrapped Bitcoin",
@@ -624,14 +520,6 @@
       "decimals": 18,
       "chainId": 42220,
       "logoURI": "https://raw.githubusercontent.com/curvefi/curve-assets/main/branding/logo.svg"
-    },
-    {
-      "name": "AtlasX Carbon Credits",
-      "address": "0xc3377Ea71F1dc8e55Ba360724eff2d7aD62a8670",
-      "symbol": "ATLASX",
-      "decimals": 18,
-      "chainId": 42220,
-      "logoURI": "https://myterrablobs.blob.core.windows.net/public/token-icon.png"
     },
     {
       "name": "agEUR",
