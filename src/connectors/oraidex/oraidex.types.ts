@@ -23,6 +23,14 @@ export type FeeMaker = Fee;
 export type FeeTaker = Fee;
 export type FeeServiceProvider = Fee;
 
+export type MarketId = Address;
+
+export type Token = AssetInfo & {
+  name: string;
+  symbol: string;
+  decimals: number;
+}
+
 //
 //  Enums
 //
@@ -52,8 +60,8 @@ export enum OrderType {
 //
 export interface Market {
   marketId: string;
-  baseToken: AssetInfo;
-  quoteToken: AssetInfo;
+  baseToken: Token;
+  quoteToken: Token;
   min_quote_coin_amount: string;
   spread: string; // Also called tickSize
   fees: MarketFee;

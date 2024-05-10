@@ -1,4 +1,7 @@
 import { AssetInfo } from '@oraichain/oraidex-contracts-sdk';
+import { Token } from './oraidex.types';
+import { CosmWasmClient, Cw20BaseQueryClient } from '@oraichain/common-contracts-sdk';
+import * as constant from '@oraichain/oraidex-common/build/constant';
 
 /**
  *
@@ -7,7 +10,7 @@ import { AssetInfo } from '@oraichain/oraidex-contracts-sdk';
  */
 export const getNotNullOrThrowError = <R>(
   value?: any,
-  errorMessage: string = 'Value is null or undefined'
+  errorMessage: string = 'Value is null or undefined',
 ): R => {
   if (value === undefined || value === null) throw new Error(errorMessage);
 
@@ -42,6 +45,49 @@ export const parseToAssetInfo = (address: string): AssetInfo => {
       contract_addr: address,
     },
   };
+};
+
+export const parseToToken = async (asset: AssetInfo, client: CosmWasmClient): Promise<Token> => {
+  let token: Token;
+  let cw20BaseQueryClient: Cw20BaseQueryClient;
+
+  // @ts-ignore
+  if (asset.token != undefined) {
+    // @ts-ignore
+    const tokenAddress = asset.token.contract_addr;
+    cw20BaseQueryClient = new Cw20BaseQueryClient(
+      client,
+      tokenAddress,
+    );
+    const info = await cw20BaseQueryClient.tokenInfo();
+    token = {
+      decimals: info.decimals,
+      name: info.name,
+      symbol: info.symbol,
+      token: {
+        contract_addr: tokenAddress,
+      },
+    };
+  } else {
+    // @ts-ignore
+    const tokenDenom = asset.native_token.denom;
+    let symbol = tokenDenom;
+    if (symbol.startsWith('ibc/')) {
+      // @ts-ignore
+      symbol = Object.keys(constant).find((key) => constant[key] === symbol)?.split('_')[0];
+    }
+    token = {
+      // hardcode decinmal of native token
+      decimals: 6,
+      name: symbol.toUpperCase(),
+      symbol: symbol.toUpperCase(),
+      native_token: {
+        denom: tokenDenom,
+      },
+    };
+  }
+
+  return token;
 };
 
 export const isNativeDenom = (token: AssetInfo): boolean => {

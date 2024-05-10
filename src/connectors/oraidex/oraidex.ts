@@ -1,4 +1,4 @@
-import { MarketInfo, Oraichain } from '../../chains/oraichain/oraichain';
+import { Oraichain } from '../../chains/oraichain/oraichain';
 import {
   CLOBMarkets,
   ClobBatchUpdateRequest,
@@ -18,22 +18,20 @@ import {
 import {
   getNotNullOrThrowError,
   isNativeDenom,
-  parseToAssetInfo,
+  parseToToken,
 } from './oraidex.helper';
 
 import {
   CancelOrdersRequest,
   Market,
-  MarketNotFoundError,
   PlaceOrdersRequest,
 } from './oraidex.types';
 import { BigNumber } from 'bignumber.js';
 import { OraiswapLimitOrderQueryClient } from '@oraichain/oraidex-contracts-sdk';
 import { OraidexConfig } from './oraidex.config';
 import { JsonObject, ExecuteInstruction } from '@cosmjs/cosmwasm-stargate';
-// import { convertRawLogEventsToMapOfEvents } from './oraidex.converters';
 
-const ORDERBOOK_LIMIT = 100;
+const ORDERBOOK_LIMIT = 100; //?
 export class OraidexCLOB implements CLOBish {
   chain: string;
 
@@ -80,14 +78,17 @@ export class OraidexCLOB implements CLOBish {
     return OraidexCLOB._instances;
   }
 
+  /**
+   * Initialize Oraidex connector.
+   */
   async init() {
     this.oraichainNetwork = await Oraichain.getInstance(this.network);
     await this.oraichainNetwork.init();
-    await this.loadMarkets();
     this.orderbookQueryClient = new OraiswapLimitOrderQueryClient(
       this.oraichainNetwork.cosmwasmClient,
-      this._swapLimitOrder
+      this._swapLimitOrder,
     );
+    await this.loadMarkets();
     this._ready = true;
   }
 
@@ -96,48 +97,63 @@ export class OraidexCLOB implements CLOBish {
   }
 
   public async loadMarkets() {
-    const rawMarkets = await this.fetchMarkets();
+    const rawMarkets = await this.getAllMarkets();
     for (const market of rawMarkets) {
       this.parsedMarkets[market.marketId] = market;
     }
   }
 
-  async markets(_req: ClobMarketsRequest): Promise<{ markets: CLOBMarkets }> {
+  async markets(req: ClobMarketsRequest): Promise<{ markets: CLOBMarkets }> {
+    if (req.market && req.market.split('-').length === 2) {
+      const resp: CLOBMarkets = {};
+      resp[req.market] = this.parsedMarkets[req.market];
+
+      return { markets: resp };
+    }
     return { markets: this.parsedMarkets };
   }
 
-  async fetchMarkets(): Promise<Market[]> {
-    const loadedMarkets: Market[] = [];
-    const markets = this.oraichainNetwork.storedMarketList;
+  async getAllMarkets(): Promise<Market[]> {
+    const orderBooks = await this.orderbookQueryClient.orderBooks({});
 
-    markets.forEach(async (market) => {
-      const processedMarket = await this.getMarket(market);
+    try {
+      const loadedMarkets: Market[] = await Promise.all(
+        orderBooks.order_books.map(async (pair) => {
+          const baseToken = await parseToToken(
+            pair.base_coin_info,
+            this.oraichainNetwork.cosmwasmClient,
+            // ibcTokens,
+          );
+          const quoteToken = await parseToToken(
+            pair.quote_coin_info,
+            this.oraichainNetwork.cosmwasmClient,
+            // ibcTokens,
+          );
 
-      loadedMarkets.push(processedMarket);
-    });
+          return {
+            marketId: `${baseToken.symbol}-${quoteToken.symbol}`,
+            baseToken: baseToken,
+            quoteToken: quoteToken,
+            min_quote_coin_amount: pair.min_quote_coin_amount,
+            spread: pair.spread ? pair.spread : '0',
+            // hardcode fee cause in contract, fee is hardcoded
+            fees: {
+              maker: new BigNumber('0.1'),
+              taker: new BigNumber('0.1'),
+            },
+            minimumOrderSize: '0.000001',
+            minimumPriceIncrement: '0.000001',
+            minimumBaseAmountIncrement: '0.000001',
+            minimumQuoteAmountIncrement: '0.000001',
+          };
+        }),
+      );
 
-    return loadedMarkets;
-  }
-
-  async getMarket(market: MarketInfo): Promise<Market> {
-    if (!market) throw new MarketNotFoundError(`No market informed.`);
-
-    // hotfix: hardcode market info
-    return {
-      marketId: market.marketId,
-      baseToken: parseToAssetInfo(market.base.address),
-      quoteToken: parseToAssetInfo(market.quote.address),
-      min_quote_coin_amount: '0',
-      spread: '0',
-      fees: {
-        maker: new BigNumber('0.1'),
-        taker: new BigNumber('0.1'),
-      },
-      minimumOrderSize: '0.001',
-      minimumPriceIncrement: '0.001',
-      minimumBaseAmountIncrement: '0.001',
-      minimumQuoteAmountIncrement: '0.001',
-    };
+      return loadedMarkets;
+    } catch (err) {
+      console.error(err);
+      return [];
+    }
   }
 
   public async orderBook(req: ClobOrderbookRequest): Promise<Orderbook> {
@@ -146,7 +162,7 @@ export class OraidexCLOB implements CLOBish {
 
   async getOrderBook(
     market: Market,
-    limit: number = ORDERBOOK_LIMIT
+    limit: number = ORDERBOOK_LIMIT,
   ): Promise<Orderbook> {
     const buys: any = [];
     const sells: any = [];
@@ -192,11 +208,11 @@ export class OraidexCLOB implements CLOBish {
   }
 
   public async ticker(
-    req: ClobTickerRequest
+    req: ClobTickerRequest,
   ): Promise<{ markets: CLOBMarkets }> {
     const requestMarket = getNotNullOrThrowError<string>(req.market);
     const midPrice = await this.getMidPriceForMarket(
-      this.parsedMarkets[requestMarket]
+      this.parsedMarkets[requestMarket],
     );
     return {
       markets: {
@@ -216,7 +232,7 @@ export class OraidexCLOB implements CLOBish {
   }
 
   public async orders(
-    req: ClobGetOrderRequest
+    req: ClobGetOrderRequest,
   ): Promise<{ orders: ClobGetOrderResponse['orders'] }> {
     const requestMarket = getNotNullOrThrowError<string>(req.market);
     const market = this.parsedMarkets[requestMarket];
@@ -226,7 +242,7 @@ export class OraidexCLOB implements CLOBish {
       originalOrders = (
         await this.getAllOrders(
           market,
-          getNotNullOrThrowError<string>(req.address)
+          getNotNullOrThrowError<string>(req.address),
         )
       ).orders;
     } else {
@@ -265,7 +281,7 @@ export class OraidexCLOB implements CLOBish {
   }
 
   async postOrder(
-    req: ClobPostOrderRequest
+    req: ClobPostOrderRequest,
   ): Promise<{ txHash: string; id?: string }> {
     const convertedReq = {
       ownerAddress: req.address,
@@ -303,7 +319,7 @@ export class OraidexCLOB implements CLOBish {
     const instructions: ExecuteInstruction[] = [];
     const sender = options.ownerAddress;
 
-    // hardcode:
+    // TODO: hardcode
     const decimals = 1000000;
 
     for (const order of options.orders) {
@@ -312,7 +328,7 @@ export class OraidexCLOB implements CLOBish {
       const baseToken = market.baseToken;
       const quoteToken = market.quoteToken;
       const quoteAmount = Math.round(
-        decimals * parseFloat(order.price) * parseFloat(order.amount)
+        decimals * parseFloat(order.price) * parseFloat(order.amount),
       );
 
       const assets = [
@@ -334,7 +350,7 @@ export class OraidexCLOB implements CLOBish {
             funds: [
               {
                 denom: getNotNullOrThrowError<string>(
-                  (quoteToken as any).native_token.denom
+                  (quoteToken as any).native_token.denom,
                 ),
                 amount: quoteAmount.toString(),
               },
@@ -348,7 +364,7 @@ export class OraidexCLOB implements CLOBish {
                 contract: this._swapLimitOrder,
                 amount: quoteAmount.toString(),
                 msg: Buffer.from(JSON.stringify(submitOrderMsg)).toString(
-                  'base64'
+                  'base64',
                 ),
               },
             },
@@ -363,7 +379,7 @@ export class OraidexCLOB implements CLOBish {
             funds: [
               {
                 denom: getNotNullOrThrowError<string>(
-                  (baseToken as any).native_token.denom
+                  (baseToken as any).native_token.denom,
                 ),
                 amount: baseAmount.toString(),
               },
@@ -377,7 +393,7 @@ export class OraidexCLOB implements CLOBish {
                 contract: this._swapLimitOrder,
                 amount: baseAmount.toString(),
                 msg: Buffer.from(JSON.stringify(submitOrderMsg)).toString(
-                  'base64'
+                  'base64',
                 ),
               },
             },
@@ -389,7 +405,7 @@ export class OraidexCLOB implements CLOBish {
 
     let res = await this.oraichainNetwork.executeContractMultiple(
       sender,
-      instructions
+      instructions,
     );
 
     // let rawLogs = convertRawLogEventsToMapOfEvents(res.logs);
@@ -411,7 +427,7 @@ export class OraidexCLOB implements CLOBish {
           order_id: Number(req.orderId),
         },
       },
-      []
+      [],
     );
     return { txHash: res.transactionHash };
   }
@@ -439,7 +455,7 @@ export class OraidexCLOB implements CLOBish {
 
     let res = await this.oraichainNetwork.executeContractMultiple(
       sender,
-      instructions
+      instructions,
     );
 
     return res.transactionHash;

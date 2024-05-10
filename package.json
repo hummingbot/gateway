@@ -42,6 +42,8 @@
     "@osmonauts/math": "^1.11.3",
     "@pancakeswap/sdk": "^4.0.0",
     "@pancakeswap/smart-router": "^4.2.1",
+    "@oraichain/common-contracts-sdk": "^1.0.31",
+    "@oraichain/oraidex-common": "^1.0.86",
     "@oraichain/oraidex-contracts-sdk": "^1.0.31",
     "@pancakeswap/swap-sdk-core": "^1.0.0",
     "@pancakeswap/tokens": "^0.1.6",
