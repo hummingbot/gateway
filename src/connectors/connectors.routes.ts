@@ -1,27 +1,28 @@
 /* eslint-disable no-inner-declarations */
 /* eslint-disable @typescript-eslint/ban-types */
-import { Router, Response } from 'express';
-import { asyncHandler } from '../services/error-handler';
-import { DefiraConfig } from './defira/defira.config';
-import { DefikingdomsConfig } from './defikingdoms/defikingdoms.config';
-import { MadMeerkatConfig } from './mad_meerkat/mad_meerkat.config';
-import { OpenoceanConfig } from './openocean/openocean.config';
-import { PangolinConfig } from './pangolin/pangolin.config';
-import { PerpConfig } from './perp/perp.config';
-import { QuickswapConfig } from './quickswap/quickswap.config';
-import { SushiswapConfig } from './sushiswap/sushiswap.config';
-import { TraderjoeConfig } from './traderjoe/traderjoe.config';
-import { UniswapConfig } from './uniswap/uniswap.config';
-import { VVSConfig } from './vvs/vvs.config';
-import { RefConfig } from './ref/ref.config';
-import { PancakeSwapConfig } from './pancakeswap/pancakeswap.config';
-import { InjectiveCLOBConfig } from './injective/injective.clob.config';
-import { XsswapConfig } from './xsswap/xsswap.config';
-import { ConnectorsResponse } from './connectors.request';
-import { DexalotCLOBConfig } from './dexalot/dexalot.clob.config';
-import { ZigZagConfig } from './zigzag/zigzag.config';
-import { TinymanConfig } from './tinyman/tinyman.config';
-import { UbeswapConfig } from './ubeswap/ubeswap.config';
+import {Response, Router} from 'express';
+import {asyncHandler} from '../services/error-handler';
+import {DefiraConfig} from './defira/defira.config';
+import {DefikingdomsConfig} from './defikingdoms/defikingdoms.config';
+import {MadMeerkatConfig} from './mad_meerkat/mad_meerkat.config';
+import {OpenoceanConfig} from './openocean/openocean.config';
+import {PangolinConfig} from './pangolin/pangolin.config';
+import {PerpConfig} from './perp/perp.config';
+import {QuickswapConfig} from './quickswap/quickswap.config';
+import {SushiswapConfig} from './sushiswap/sushiswap.config';
+import {TraderjoeConfig} from './traderjoe/traderjoe.config';
+import {UniswapConfig} from './uniswap/uniswap.config';
+import {VVSConfig} from './vvs/vvs.config';
+import {RefConfig} from './ref/ref.config';
+import {PancakeSwapConfig} from './pancakeswap/pancakeswap.config';
+import {InjectiveCLOBConfig} from './injective/injective.clob.config';
+import {XsswapConfig} from './xsswap/xsswap.config';
+import {ConnectorsResponse} from './connectors.request';
+import {DexalotCLOBConfig} from './dexalot/dexalot.clob.config';
+import {ZigZagConfig} from './zigzag/zigzag.config';
+import {TinymanConfig} from './tinyman/tinyman.config';
+import {UbeswapConfig} from './ubeswap/ubeswap.config';
+import {CurveConfig} from './curve/curve.config';
 
 export namespace ConnectorsRoutes {
   export const router = Router();
@@ -42,7 +43,7 @@ export namespace ConnectorsRoutes {
             trading_type: UniswapConfig.config.tradingTypes('LP'),
             chain_type: UniswapConfig.config.chainType,
             available_networks: JSON.parse(
-              JSON.stringify(UniswapConfig.config.availableNetworks)
+              JSON.stringify(UniswapConfig.config.availableNetworks),
             ),
             additional_spenders: ['uniswap'],
           },
@@ -172,8 +173,14 @@ export namespace ConnectorsRoutes {
             chain_type: UbeswapConfig.config.chainType,
             available_networks: UbeswapConfig.config.availableNetworks,
           },
+          {
+            name: 'curve',
+            trading_type: CurveConfig.config.tradingTypes,
+            chain_type: CurveConfig.config.chainType,
+            available_networks: CurveConfig.config.availableNetworks,
+          },
         ],
       });
-    })
+    }),
   );
 }

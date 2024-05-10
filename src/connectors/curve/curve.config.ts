@@ -16,13 +16,13 @@ export namespace CurveConfig {
   export const config: NetworkConfig = {
     allowedSlippage: ConfigManagerV2.getInstance().get('curve.allowedSlippage'),
     gasLimitEstimate: ConfigManagerV2.getInstance().get(
-      'curve.gasLimitEstimate'
+      'curve.gasLimitEstimate',
     ),
     ttl: ConfigManagerV2.getInstance().get('curve.ttl'),
     maximumHops: ConfigManagerV2.getInstance().get(`curve.maximumHops`),
     routerAddress: (network: string) =>
       ConfigManagerV2.getInstance().get(
-        'curve.contractAddresses.' + network + '.routerAddress'
+        'curve.contractAddresses.' + network + '.routerAddress',
       ),
     tradingTypes: ['AMM'],
     chainType: 'EVM',

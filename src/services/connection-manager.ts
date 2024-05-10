@@ -42,6 +42,7 @@ import { Cosmos } from '../chains/cosmos/cosmos';
 import { Tinyman } from '../connectors/tinyman/tinyman';
 import { Celo } from '../chains/celo/celo';
 import { Ubeswap } from '../connectors/ubeswap/ubeswap';
+import { CurveFi } from '../connectors/curve/curve';
 
 export type ChainUnion =
   | Algorand
@@ -55,18 +56,18 @@ export type ChainUnion =
 export type Chain<T> = T extends Algorand
   ? Algorand
   : T extends Cosmos
-  ? Cosmos
-  : T extends Ethereumish
-  ? Ethereumish
-  : T extends Nearish
-  ? Nearish
-  : T extends Xdcish
-  ? Xdcish
-  : T extends Injective
-  ? Injective
-  : T extends Celoish
-  ? Celoish
-  : never;
+    ? Cosmos
+    : T extends Ethereumish
+      ? Ethereumish
+      : T extends Nearish
+        ? Nearish
+        : T extends Xdcish
+          ? Xdcish
+          : T extends Injective
+            ? Injective
+            : T extends Celoish
+              ? Celoish
+              : never;
 
 export class UnsupportedChainException extends Error {
   constructor(message?: string) {
@@ -82,7 +83,7 @@ export class UnsupportedChainException extends Error {
 
 export async function getInitializedChain<T>(
   chain: string,
-  network: string
+  network: string,
 ): Promise<Chain<T>> {
   const chainInstance = getChainInstance(chain, network);
 
@@ -99,7 +100,7 @@ export async function getInitializedChain<T>(
 
 export function getChainInstance(
   chain: string,
-  network: string
+  network: string,
 ): ChainUnion | undefined {
   let connection: ChainUnion | undefined;
 
@@ -147,26 +148,26 @@ export type ConnectorUnion =
 export type Connector<T> = T extends Uniswapish
   ? Uniswapish
   : T extends UniswapLPish
-  ? UniswapLPish
-  : T extends Perpish
-  ? Perpish
-  : T extends RefAMMish
-  ? RefAMMish
-  : T extends CLOBish
-  ? CLOBish
-  : T extends ZigZag
-  ? ZigZag
-  : T extends InjectiveClobPerp
-  ? InjectiveClobPerp
-  : T extends Tinyman
-  ? Tinyman
-  : never;
+    ? UniswapLPish
+    : T extends Perpish
+      ? Perpish
+      : T extends RefAMMish
+        ? RefAMMish
+        : T extends CLOBish
+          ? CLOBish
+          : T extends ZigZag
+            ? ZigZag
+            : T extends InjectiveClobPerp
+              ? InjectiveClobPerp
+              : T extends Tinyman
+                ? Tinyman
+                : never;
 
 export async function getConnector<T>(
   chain: string,
   network: string,
   connector: string | undefined,
-  address?: string
+  address?: string,
 ): Promise<Connector<T>> {
   let connectorInstance: ConnectorUnion;
 
@@ -220,6 +221,11 @@ export async function getConnector<T>(
     connectorInstance = Ubeswap.getInstance(chain, network);
   } else if (chain === 'celo' && connector === 'uniswap') {
     connectorInstance = Uniswap.getInstance(chain, network);
+  } else if (
+    (chain === 'ethereum' || chain === 'polygon' || chain === 'avalanche') &&
+    connector === 'curve'
+  ) {
+    connectorInstance = CurveFi.getInstance(chain, network);
   } else {
     throw new Error('unsupported chain or connector');
   }

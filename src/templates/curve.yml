@@ -1,0 +1,13 @@
+allowedSlippage: '2/100'
+gasLimitEstimate: 150688
+ttl: 600
+
+contractAddresses:
+  mainnet:
+    routerAddress: '0x9af02523431E9Ec1Cc649c75aB0322fF34cde337'
+  goerli:
+    routerAddress: '0x9af02523431E9Ec1Cc649c75aB0322fF34cde337'
+  arbitrum_one:
+    routerAddress: '0x9af02523431E9Ec1Cc649c75aB0322fF34cde337'
+  optimism:
+    routerAddress: '0x9af02523431E9Ec1Cc649c75aB0322fF34cde337'

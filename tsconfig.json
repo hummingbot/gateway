@@ -1,7 +1,10 @@
 {
   "compilerOptions": {
     "strict": true,
-    "types": ["@types/jest", "jest", "node"],
+    "types": [
+      "jest",
+      "node"
+    ],
     "target": "es6",
     "module": "commonjs",
     "allowJs": true,

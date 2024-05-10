@@ -1,17 +1,17 @@
 import { Big } from 'big.js';
 import {
+  BigNumber,
   Contract,
+  ContractInterface,
+  ethers,
   Transaction,
   Wallet,
-  ContractInterface,
-  BigNumber,
-  ethers,
 } from 'ethers';
 import {
   Contract as XdcContract,
+  providers as XdcProviders,
   Transaction as XdcTransaction,
   Wallet as XdcWallet,
-  providers as XdcProviders,
 } from 'ethers-xdc';
 import { EthereumBase } from '../chains/ethereum/ethereum-base';
 import { CosmosBase } from '../chains/cosmos/cosmos-base';
@@ -20,83 +20,82 @@ import { CurrencyAmount, Token, Trade as TradeUniswap } from '@uniswap/sdk';
 import { Trade } from '@uniswap/router-sdk';
 import { Trade as UniswapV3Trade } from '@uniswap/v3-sdk';
 import {
-  TradeType,
   Currency,
   CurrencyAmount as UniswapCoreCurrencyAmount,
-  Token as UniswapCoreToken,
   Fraction as UniswapFraction,
+  Token as UniswapCoreToken,
+  TradeType,
 } from '@uniswap/sdk-core';
 import {
-  Token as TokenDefikingdoms,
   CurrencyAmount as CurrencyAmountDefikingdoms,
-  Trade as TradeDefikingdoms,
   Fraction as DefikingdomsFraction,
-  // } from '@defikingdoms/sdk';
+  Token as TokenDefikingdoms,
+  Trade as TradeDefikingdoms,
 } from '@switchboard-xyz/defikingdoms-sdk';
 import {
-  Token as TokenPangolin,
   CurrencyAmount as CurrencyAmountPangolin,
-  Trade as TradePangolin,
   Fraction as PangolinFraction,
+  Token as TokenPangolin,
+  Trade as TradePangolin,
 } from '@pangolindex/sdk';
 import {
-  Token as TokenQuickswap,
   CurrencyAmount as CurrencyAmountQuickswap,
-  Trade as TradeQuickswap,
   Fraction as QuickswapFraction,
+  Token as TokenQuickswap,
+  Trade as TradeQuickswap,
 } from 'quickswap-sdk';
 import {
-  Trade as SushiswapTrade,
-  Token as SushiToken,
-  CurrencyAmount as SushiCurrencyAmount,
-  TradeType as SushiTradeType,
   Currency as SushiCurrency,
+  CurrencyAmount as SushiCurrencyAmount,
   Fraction as SushiFraction,
+  Token as SushiToken,
+  Trade as SushiswapTrade,
+  TradeType as SushiTradeType,
 } from '@sushiswap/sdk';
 import {
-  Token as TokenTraderjoe,
   CurrencyAmount as CurrencyAmountTraderjoe,
-  Trade as TradeTraderjoe,
   Fraction as TraderjoeFraction,
+  Token as TokenTraderjoe,
+  Trade as TradeTraderjoe,
 } from '@traderjoe-xyz/sdk';
 import {
+  Currency as MMFCurrency,
+  CurrencyAmount as CurrencyAmountMMF,
+  Fraction as FractionMMF,
+  Pair as MMFPair,
+  Percent as MMFPercent,
+  SwapParameters as MMFSwapParameters,
   Token as MMFToken,
   TokenAmount as MMFTokenAmount,
-  Pair as MMFPair,
-  CurrencyAmount as CurrencyAmountMMF,
   Trade as MMFTrade,
-  Fraction as FractionMMF,
-  Percent as MMFPercent,
-  Currency as MMFCurrency,
   TradeOptions as MMFTradeOptions,
   TradeOptionsDeadline as MMFTradeOptionsDeadline,
-  SwapParameters as MMFSwapParameters,
 } from '@crocswap/sdk';
 import {
+  Currency as VVSCurrency,
+  CurrencyAmount as CurrencyAmountVVS,
+  Fraction as FractionVVS,
+  Pair as VVSPair,
+  Percent as VVSPercent,
+  SwapParameters as VVSSwapParameters,
   Token as VVSToken,
   TokenAmount as VVSTokenAmount,
-  Pair as VVSPair,
-  CurrencyAmount as CurrencyAmountVVS,
   Trade as VVSTrade,
-  Fraction as FractionVVS,
-  Percent as VVSPercent,
-  Currency as VVSCurrency,
   TradeOptions as VVSTradeOptions,
   TradeOptionsDeadline as VVSTradeOptionsDeadline,
-  SwapParameters as VVSSwapParameters,
 } from 'vvs-sdk';
 import { Trade as DefiraTrade } from '@zuzu-cat/defira-sdk';
 import {
-  Token as PancakeSwapToken,
   CurrencyAmount as PancakeSwapCurrencyAmount,
-  Trade as PancakeSwapTrade,
   Fraction as PancakeSwapFraction,
+  Token as PancakeSwapToken,
+  Trade as PancakeSwapTrade,
 } from '@pancakeswap/sdk';
 import {
-  Token as TokenXsswap,
   CurrencyAmount as CurrencyAmountXsswap,
-  Trade as TradeXsswap,
   Fraction as XsswapFraction,
+  Token as TokenXsswap,
+  Trade as TradeXsswap,
 } from 'xsswap-sdk';
 import { PerpPosition } from '../connectors/perp/perp';
 import { XdcBase } from '../chains/xdc/xdc.base';
@@ -119,12 +118,13 @@ import { Ierc20 } from '@celo/contractkit/lib/generated/IERC20';
 import { CeloBase } from '../chains/celo/celo.base';
 import { Erc20Wrapper } from '@celo/contractkit/lib/wrappers/Erc20Wrapper';
 import {
-  Token as UbeToken,
-  Trade as UbeswapTrade,
-  TokenAmount as CurrencyAmountUbeswap,
   Fraction as UbeswapFraction,
   Percent as UbeswapPercent,
+  Token as UbeToken,
+  TokenAmount as CurrencyAmountUbeswap,
+  Trade as UbeswapTrade,
 } from '@ubeswap/sdk';
+import { CurveTrade } from '../connectors/curve/curve';
 
 // TODO Check the possibility to have clob/solana/serum equivalents here
 //  Check this link https://hummingbot.org/developers/gateway/building-gateway-connectors/#5-add-sdk-classes-to-uniswapish-interface
@@ -166,6 +166,7 @@ export type UniswapishTrade =
   | MMFTrade
   | VVSTrade
   | TradeXsswap
+  | CurveTrade
   | UbeswapTrade;
 
 export type UniswapishTradeOptions =
@@ -188,7 +189,8 @@ export type UniswapishAmount =
   | CurrencyAmountMMF
   | CurrencyAmountVVS
   | CurrencyAmountXsswap
-  | CurrencyAmountUbeswap;
+  | CurrencyAmountUbeswap
+  | UniswapFraction;
 
 export type Fractionish =
   | UniswapFraction
@@ -274,7 +276,7 @@ export interface Uniswapish {
     baseToken: Tokenish,
     quoteToken: Tokenish,
     amount: BigNumber,
-    allowedSlippage?: string
+    allowedSlippage?: string,
   ): Promise<ExpectedTrade>;
 
   /**
@@ -291,7 +293,7 @@ export interface Uniswapish {
     quoteToken: Tokenish,
     baseToken: Tokenish,
     amount: BigNumber,
-    allowedSlippage?: string
+    allowedSlippage?: string,
   ): Promise<ExpectedTrade>;
 
   /**
@@ -319,7 +321,7 @@ export interface Uniswapish {
     nonce?: number,
     maxFeePerGas?: BigNumber,
     maxPriorityFeePerGas?: BigNumber,
-    allowedSlippage?: string
+    allowedSlippage?: string,
   ): Promise<Transaction>;
 }
 
@@ -340,14 +342,14 @@ export interface ZigZagish {
     sellToken: Tokenish,
     buyToken: Tokenish,
     buyAmount: BigNumber,
-    side: string
+    side: string,
   ): Promise<ZigZagTrade>;
 
   executeTrade(
     walletAddress: string,
     trade: ZigZagTrade,
     rawAmount: BigNumber,
-    is_buy: boolean
+    is_buy: boolean,
   ): Promise<Transaction>;
 }
 
@@ -387,7 +389,7 @@ export interface RefAMMish {
    */
   parseTrade(
     trades: EstimateSwapView[],
-    side: string
+    side: string,
   ): {
     estimatedPrice: string;
     expectedAmount: string;
@@ -407,7 +409,7 @@ export interface RefAMMish {
     baseToken: TokenMetadata,
     quoteToken: TokenMetadata,
     amount: string,
-    allowedSlippage?: string
+    allowedSlippage?: string,
   ): Promise<{ trade: EstimateSwapView[]; expectedAmount: string }>;
 
   /**
@@ -424,7 +426,7 @@ export interface RefAMMish {
     quoteToken: TokenMetadata,
     baseToken: TokenMetadata,
     amount: string,
-    allowedSlippage?: string
+    allowedSlippage?: string,
   ): Promise<{ trade: EstimateSwapView[]; expectedAmount: string }>;
 
   /**
@@ -443,7 +445,7 @@ export interface RefAMMish {
     amountIn: string,
     tokenIn: TokenMetadata,
     tokenOut: TokenMetadata,
-    allowedSlippage?: string
+    allowedSlippage?: string,
   ): Promise<FinalExecutionOutcome>;
 }
 
@@ -540,7 +542,7 @@ export interface UniswapLPish {
     gasPrice: number,
     nonce?: number,
     maxFeePerGas?: BigNumber,
-    maxPriorityFeePerGas?: BigNumber
+    maxPriorityFeePerGas?: BigNumber,
   ): Promise<Transaction>;
 
   /**
@@ -563,7 +565,7 @@ export interface UniswapLPish {
     gasPrice: number,
     nonce?: number,
     maxFeePerGas?: BigNumber,
-    maxPriorityFeePerGas?: BigNumber
+    maxPriorityFeePerGas?: BigNumber,
   ): Promise<Transaction>;
 
   /**
@@ -583,7 +585,7 @@ export interface UniswapLPish {
     gasPrice: number,
     nonce?: number,
     maxFeePerGas?: BigNumber,
-    maxPriorityFeePerGas?: BigNumber
+    maxPriorityFeePerGas?: BigNumber,
   ): Promise<Transaction | { amount0: BigNumber; amount1: BigNumber }>;
 
   /**
@@ -600,7 +602,7 @@ export interface UniswapLPish {
     token1: UniswapCoreToken,
     fee: number,
     period: number,
-    interval: number
+    interval: number,
   ): Promise<string[]>;
 }
 
@@ -667,7 +669,7 @@ export interface Perpish {
     isLong: boolean,
     tickerSymbol: string,
     minBaseAmount: string,
-    allowedSlippage?: string
+    allowedSlippage?: string,
   ): Promise<Transaction>;
 
   /**
@@ -677,7 +679,7 @@ export interface Perpish {
    */
   closePosition(
     tickerSymbol: string,
-    allowedSlippage?: string
+    allowedSlippage?: string,
   ): Promise<Transaction>;
 }
 
@@ -692,7 +694,7 @@ export interface Ethereumish extends BasicChainMethods, EthereumBase {
   cancelTx(wallet: Wallet, nonce: number): Promise<Transaction>;
   getContract(
     tokenAddress: string,
-    signerOrProvider?: Wallet | Provider
+    signerOrProvider?: Wallet | Provider,
   ): Contract;
 }
 
@@ -700,7 +702,7 @@ export interface Xdcish extends BasicChainMethods, XdcBase {
   cancelTx(wallet: XdcWallet, nonce: number): Promise<XdcTransaction>;
   getContract(
     tokenAddress: string,
-    signerOrProvider?: XdcWallet | XdcProviders.Provider
+    signerOrProvider?: XdcWallet | XdcProviders.Provider,
   ): XdcContract;
 }
 
@@ -736,7 +738,7 @@ export interface CLOBish {
   ticker(req: ClobTickerRequest): Promise<{ markets: MarketInfo }>;
 
   orders(
-    req: ClobGetOrderRequest
+    req: ClobGetOrderRequest,
   ): Promise<{ orders: ClobGetOrderResponse['orders'] }>;
 
   postOrder(req: ClobPostOrderRequest): Promise<{ txHash: string }>;

@@ -1,9 +1,9 @@
 import {
+  BigNumber as EthersBigNumber,
   providers,
   Transaction,
   utils,
   Wallet,
-  BigNumber as EthersBigNumber,
 } from 'ethers';
 import BigNumber from 'bignumber.js';
 import axios from 'axios';
@@ -20,7 +20,10 @@ import { logger } from '../../services/logger';
 import { ReferenceCountingCloseable } from '../../services/refcounting-closeable';
 import { newKit } from '@celo/contractkit';
 import { ContractKit } from '@celo/contractkit/lib/kit';
-import { StaticCeloProvider, CeloWallet } from '@celo-tools/celo-ethers-wrapper';
+import {
+  CeloWallet,
+  StaticCeloProvider,
+} from '@celo-tools/celo-ethers-wrapper';
 import { Ierc20 } from '@celo/contractkit/lib/generated/IERC20';
 import { Erc20Wrapper } from '@celo/contractkit/lib/wrappers/Erc20Wrapper';
 import { TransactionResult } from '@celo/connect';
@@ -70,7 +73,7 @@ export class CeloBase {
     gasPriceConstant: number,
     gasLimitTransaction: number,
     nonceDbPath: string,
-    transactionDbPath: string
+    transactionDbPath: string,
   ) {
     this.chainName = chainName;
     this.chainId = chainId;
@@ -83,14 +86,14 @@ export class CeloBase {
     this._nonceManager = new EVMNonceManager(
       chainName,
       chainId,
-      this.resolveDBPath(nonceDbPath)
+      this.resolveDBPath(nonceDbPath),
     );
     this._nonceManager.declareOwnership(this._refCountingHandle);
     this.cache = new NodeCache({ stdTTL: 3600 }); // set default cache ttl to 1hr
     this._gasLimitTransaction = gasLimitTransaction;
     this._txStorage = EvmTxStorage.getInstance(
       this.resolveDBPath(transactionDbPath),
-      this._refCountingHandle
+      this._refCountingHandle,
     );
     this._txStorage.declareOwnership(this._refCountingHandle);
     this.kit = newKit(rpcUrl);
@@ -134,7 +137,7 @@ export class CeloBase {
     if (!this.ready() && !this._initializing) {
       this._initializing = true;
       await this._nonceManager.init(
-        async (address) => await this.provider.getTransactionCount(address)
+        async (address) => await this.provider.getTransactionCount(address),
       );
       await this.loadTokens(this.tokenListSource, this.tokenListType);
       this._ready = true;
@@ -145,16 +148,16 @@ export class CeloBase {
 
   async loadTokens(
     tokenListSource: string,
-    tokenListType: TokenListType
+    tokenListType: TokenListType,
   ): Promise<void> {
     this.tokenList = await this.getTokenList(tokenListSource, tokenListType);
     // Only keep tokens in the same chain
     this.tokenList = this.tokenList.filter(
-      (token: TokenInfo) => token.chainId === this.chainId
+      (token: TokenInfo) => token.chainId === this.chainId,
     );
     if (this.tokenList) {
       this.tokenList.forEach(
-        (token: TokenInfo) => (this._tokenMap[token.symbol] = token)
+        (token: TokenInfo) => (this._tokenMap[token.symbol] = token),
       );
     }
   }
@@ -162,7 +165,7 @@ export class CeloBase {
   // returns a Tokens for a given list source and list type
   async getTokenList(
     tokenListSource: string,
-    tokenListType: TokenListType
+    tokenListType: TokenListType,
   ): Promise<TokenInfo[]> {
     let tokens;
     if (tokenListType === 'URL') {
@@ -173,7 +176,7 @@ export class CeloBase {
       ({ tokens } = JSON.parse(await fs.readFile(tokenListSource, 'utf8')));
     }
     tokens.forEach(
-      (token: TokenInfo) => (token.symbol = token.symbol.toUpperCase())
+      (token: TokenInfo) => (token.symbol = token.symbol.toUpperCase()),
     );
     return tokens;
   }
@@ -216,7 +219,7 @@ export class CeloBase {
 
     const encryptedPrivateKey: string = await fse.readFile(
       `${path}/${address}.json`,
-      'utf8'
+      'utf8',
     );
 
     const passphrase = ConfigManagerCertPassphrase.readPassphrase();
@@ -233,7 +236,7 @@ export class CeloBase {
 
   async decrypt(
     encryptedPrivateKey: string,
-    password: string
+    password: string,
   ): Promise<Wallet> {
     const decipher = await decryptJsonWallet(encryptedPrivateKey, password);
     return this.getWalletFromPrivateKey(decipher.privateKey);
@@ -257,14 +260,14 @@ export class CeloBase {
   async getERC20Balance(
     contract: Erc20Wrapper<Ierc20>,
     wallet: Wallet,
-    decimals: number
+    decimals: number,
   ): Promise<TokenValue> {
     logger.info('Requesting balance for owner ' + wallet.address + '.');
     const balance = await contract.balanceOf(wallet.address);
     const result = this.convertBigInt(balance);
     logger.info(
       `Raw balance of ${contract.address} for ` +
-        `${wallet.address}: ${result.toString()}`
+        `${wallet.address}: ${result.toString()}`,
     );
     return { value: result, decimals: decimals };
   }
@@ -274,10 +277,10 @@ export class CeloBase {
     contract: Erc20Wrapper<Ierc20>,
     wallet: Wallet,
     spender: string,
-    decimals: number
+    decimals: number,
   ): Promise<TokenValue> {
     logger.info(
-      `Requesting spender: ${spender}, allowance for owner: ${wallet.address}`
+      `Requesting spender: ${spender}, allowance for owner: ${wallet.address}`,
     );
     const allowance = await contract.allowance(wallet.address, spender);
     const result = this.convertBigInt(allowance);
@@ -296,16 +299,15 @@ export class CeloBase {
 
   // returns an ethereum TransactionReceipt for a txHash if the transaction has been mined.
   async getTransactionReceipt(
-    txHash: string
+    txHash: string,
   ): Promise<providers.TransactionReceipt | null> {
     if (this.cache.keys().includes(txHash)) {
       // If it's in the cache, return the value in cache, whether it's null or not
       return this.cache.get(txHash) as providers.TransactionReceipt;
     } else {
       // If it's not in the cache,
-      const fetchedTxReceipt = await this._provider.getTransactionReceipt(
-        txHash
-      );
+      const fetchedTxReceipt =
+        await this._provider.getTransactionReceipt(txHash);
 
       this.cache.set(txHash, fetchedTxReceipt); // Cache the fetched receipt, whether it's null or not
 
@@ -322,11 +324,11 @@ export class CeloBase {
     contract: Erc20Wrapper<Ierc20>,
     wallet: Wallet,
     spender: string,
-    amount: BigNumber | EthersBigNumber
+    amount: BigNumber | EthersBigNumber,
   ): Promise<TransactionResult> {
     const finalAmount = this.convertBigInt(amount).toString();
     logger.info(
-      `Approve for spender: ${spender}, allowance: ${finalAmount} for owner: ${wallet.address}`
+      `Approve for spender: ${spender}, allowance: ${finalAmount} for owner: ${wallet.address}`,
     );
     return contract
       .approve(spender, finalAmount)
@@ -337,11 +339,11 @@ export class CeloBase {
     contract: StableTokenWrapper | GoldTokenWrapper,
     wallet: Wallet,
     spender: string,
-    amount: BigNumber | EthersBigNumber
+    amount: BigNumber | EthersBigNumber,
   ): Promise<TransactionResult> {
     const finalAmount = this.convertBigInt(amount).toString();
     logger.info(
-      `Approve for spender: ${spender}, allowance: ${finalAmount} for owner: ${wallet.address}`
+      `Approve for spender: ${spender}, allowance: ${finalAmount} for owner: ${wallet.address}`,
     );
     return contract
       .approve(spender, finalAmount)
@@ -349,7 +351,7 @@ export class CeloBase {
   }
 
   async getCeloTokenWrapper(
-    tokenName: string
+    tokenName: string,
   ): Promise<StableTokenWrapper | GoldTokenWrapper | undefined> {
     const wrappers = await this.kit.celoTokens.getWrappers();
     const converted = tokenName.toUpperCase();
@@ -372,7 +374,7 @@ export class CeloBase {
     const token = this.tokenList.find(
       (token: TokenInfo) =>
         tokenSymbol.toUpperCase() === token.symbol.toUpperCase() &&
-        token.chainId === this.chainId
+        token.chainId === this.chainId,
     );
     return token;
   }
@@ -386,7 +388,7 @@ export class CeloBase {
   async cancelTxWithGasPrice(
     wallet: Wallet,
     nonce: number,
-    gasPrice: number
+    gasPrice: number,
   ): Promise<Transaction> {
     return this.nonceManager.provideNonce(
       nonce,
@@ -403,12 +405,11 @@ export class CeloBase {
           const response = await wallet.sendTransaction(tx);
           logger.info(response);
           return response;
-        } catch ({ reason, transaction, transactionHash }) {
-          logger.error(`Exception during cancel: ${reason}`);
-          logger.info(`Nonce ${nextNonce} for transaction: ${transactionHash}`);
-          return transaction;
+        } catch (err) {
+          logger.error(`Exception during cancel: ${err}`);
+          return {};
         }
-      }
+      },
     );
   }
 
