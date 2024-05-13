@@ -481,8 +481,8 @@ export class OraidexCLOB implements CLOBish {
   } {
     return {
       gasCost: 0,
-      gasLimit: 0,
-      gasPrice: 0,
+      gasLimit: this.oraichainNetwork.gasLimit,
+      gasPrice: this.oraichainNetwork.gasPrice,
       gasPriceToken: 'orai',
     };
   }

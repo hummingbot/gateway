@@ -28,6 +28,7 @@ export class Oraichain extends CosmosBase implements Cosmosish {
   private static _instances: { [name: string]: Oraichain };
   private _rpcUrl: string;
   private _gasPrice: number;
+  private _gasLimit: number;
   private _nativeTokenSymbol: string;
   private _chain: string;
   private _requestCount: number;
@@ -66,6 +67,7 @@ export class Oraichain extends CosmosBase implements Cosmosish {
     this._marketListType = <MarketListType>config.network.marketListType;
 
     this._gasPrice = config.manualGasPrice;
+    this._gasLimit = config.gasLimit;
 
     this._requestCount = 0;
     this._metricsLogInterval = 300000; // 5 minutes
@@ -214,6 +216,10 @@ export class Oraichain extends CosmosBase implements Cosmosish {
 
   public get gasPrice(): number {
     return this._gasPrice;
+  }
+
+  public get gasLimit(): number {
+    return this._gasLimit;
   }
 
   public get chain(): string {

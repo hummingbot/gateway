@@ -13,6 +13,7 @@ export interface Config {
   network: NetworkConfig;
   nativeCurrencySymbol: string;
   manualGasPrice: number;
+  gasLimit: number;
 }
 
 export namespace OraichainConfig {
@@ -47,5 +48,6 @@ export function getOraichainConfig(
       chainName + '.nativeCurrencySymbol'
     ),
     manualGasPrice: configManager.get(chainName + '.manualGasPrice'),
+    gasLimit: configManager.get(chainName + '.gasLimit'),
   };
 }
