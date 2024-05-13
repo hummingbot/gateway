@@ -168,7 +168,7 @@ export class OraidexCLOB implements CLOBish {
     const sells: any = [];
 
     let res = await this.orderbookQueryClient.orders({
-      assetInfos: [market.baseToken, market.quoteToken],
+      assetInfos: [market.baseToken.assetInfo, market.quoteToken.assetInfo],
       filter: 'none',
       limit,
     });
@@ -225,7 +225,7 @@ export class OraidexCLOB implements CLOBish {
 
   private async getMidPriceForMarket(market: Market) {
     const midPrice = await this.orderbookQueryClient.midPrice({
-      assetInfos: [market.baseToken, market.quoteToken],
+      assetInfos: [market.baseToken.assetInfo, market.quoteToken.assetInfo],
     });
 
     return Number(midPrice).toFixed(3);
@@ -245,10 +245,18 @@ export class OraidexCLOB implements CLOBish {
           getNotNullOrThrowError<string>(req.address),
         )
       ).orders;
+
+      console.log({ originalOrders });
+
+      if (req.orderId != "-1") {
+        originalOrders = originalOrders.filter(
+          (order: any) => order.order_id == req.orderId,
+        );
+      }
     } else {
       const originalOrder = await this.orderbookQueryClient.order({
         orderId: Number(req.orderId),
-        assetInfos: [market.baseToken, market.quoteToken],
+        assetInfos: [market.baseToken.assetInfo, market.quoteToken.assetInfo],
       });
       originalOrders = [originalOrder];
     }
@@ -264,7 +272,7 @@ export class OraidexCLOB implements CLOBish {
       partialResponse.orders.length >= ORDERBOOK_LIMIT
     ) {
       partialResponse = await this.orderbookQueryClient.orders({
-        assetInfos: [market.baseToken, market.quoteToken],
+        assetInfos: [market.baseToken.assetInfo, market.quoteToken.assetInfo],
         filter: {
           bidder: owner,
         },
@@ -319,16 +327,21 @@ export class OraidexCLOB implements CLOBish {
     const instructions: ExecuteInstruction[] = [];
     const sender = options.ownerAddress;
 
-    // TODO: hardcode
-    const decimals = 1000000;
+    let baseDecimal: number;
+    let quoteDecimal: number;
 
     for (const order of options.orders) {
+      
       const market = this.parsedMarkets[order.market] as Market;
-      const baseAmount = Math.round(Number(order.amount) * decimals);
-      const baseToken = market.baseToken;
-      const quoteToken = market.quoteToken;
+      quoteDecimal = 10 ** market.quoteToken.decimals;
+      baseDecimal = 10 ** market.baseToken.decimals;
+
+      console.log({ quoteDecimal, baseDecimal });
+      const baseAmount = Math.round(Number(order.amount) * baseDecimal);
+      const baseToken = market.baseToken.assetInfo;
+      const quoteToken = market.quoteToken.assetInfo;
       const quoteAmount = Math.round(
-        decimals * parseFloat(order.price) * parseFloat(order.amount),
+        quoteDecimal * parseFloat(order.price) * parseFloat(order.amount),
       );
 
       const assets = [
@@ -415,8 +428,8 @@ export class OraidexCLOB implements CLOBish {
 
   async deleteOrder(req: ClobDeleteOrderRequest): Promise<{ txHash: string }> {
     const market = this.parsedMarkets[req.market] as Market;
-    const baseToken = market.baseToken;
-    const quoteToken = market.quoteToken;
+    const baseToken = market.baseToken.assetInfo;
+    const quoteToken = market.quoteToken.assetInfo;
 
     let res = await this.oraichainNetwork.executeContract(
       req.address,
@@ -438,9 +451,8 @@ export class OraidexCLOB implements CLOBish {
 
     for (const order of options.orders) {
       const market = this.parsedMarkets[order.market] as Market;
-      const baseToken = market.baseToken;
-      const quoteToken = market.quoteToken;
-
+      const baseToken = market.baseToken.assetInfo;
+      const quoteToken = market.quoteToken.assetInfo;
       instructions.push({
         contractAddress: this._swapLimitOrder,
         msg: {

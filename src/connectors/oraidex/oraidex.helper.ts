@@ -64,8 +64,10 @@ export const parseToToken = async (asset: AssetInfo, client: CosmWasmClient): Pr
       decimals: info.decimals,
       name: info.name,
       symbol: info.symbol,
-      token: {
-        contract_addr: tokenAddress,
+      assetInfo: {
+        token: {
+          contract_addr: tokenAddress,
+        }
       },
     };
   } else {
@@ -81,8 +83,10 @@ export const parseToToken = async (asset: AssetInfo, client: CosmWasmClient): Pr
       decimals: 6,
       name: symbol.toUpperCase(),
       symbol: symbol.toUpperCase(),
-      native_token: {
-        denom: tokenDenom,
+      assetInfo: {
+        native_token: {
+          denom: tokenDenom,
+        }
       },
     };
   }

@@ -25,10 +25,11 @@ export type FeeServiceProvider = Fee;
 
 export type MarketId = Address;
 
-export type Token = AssetInfo & {
+export type Token = {
   name: string;
   symbol: string;
   decimals: number;
+  assetInfo: AssetInfo;
 }
 
 //
