@@ -3,6 +3,7 @@ import { logger } from '../../services/logger';
 import { BigNumber, Contract, Transaction, Wallet } from 'ethers';
 import { EthereumBase } from './ethereum-base';
 import { getEthereumConfig } from './ethereum.config';
+import { PancakeSwapConfig } from '../../connectors/pancakeswap/pancakeswap.config';
 import { Provider } from '@ethersproject/abstract-provider';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 // import { throttleRetryWrapper } from '../../services/retry';
@@ -49,7 +50,7 @@ export class Ethereum extends EthereumBase implements Ethereumish {
       config.manualGasPrice,
       config.gasLimitTransaction,
       ConfigManagerV2.getInstance().get('server.nonceDbPath'),
-      ConfigManagerV2.getInstance().get('server.transactionDbPath')
+      ConfigManagerV2.getInstance().get('server.transactionDbPath'),
     );
     this._chain = network;
     this._nativeTokenSymbol = config.nativeCurrencySymbol;
@@ -67,7 +68,7 @@ export class Ethereum extends EthereumBase implements Ethereumish {
     this.onDebugMessage(this.requestCounter.bind(this));
     this._metricTimer = setInterval(
       this.metricLogger.bind(this),
-      this.metricsLogInterval
+      this.metricsLogInterval,
     );
     this.controller = EVMController;
   }
@@ -96,7 +97,7 @@ export class Ethereum extends EthereumBase implements Ethereumish {
       this.requestCount +
         ' request(s) sent in last ' +
         this.metricsLogInterval / 1000 +
-        ' seconds.'
+        ' seconds.',
     );
     this._requestCount = 0; // reset
   }
@@ -151,7 +152,7 @@ export class Ethereum extends EthereumBase implements Ethereumish {
 
     setTimeout(
       this.updateGasPrice.bind(this),
-      this._gasPriceRefreshInterval * 1000
+      this._gasPriceRefreshInterval * 1000,
     );
   }
 
@@ -164,7 +165,7 @@ export class Ethereum extends EthereumBase implements Ethereumish {
     let priorityFee: BigNumber = BigNumber.from('0');
     if (this._chain === 'mainnet') {
       priorityFee = BigNumber.from(
-        await this.provider.send('eth_maxPriorityFeePerGas', [])
+        await this.provider.send('eth_maxPriorityFeePerGas', []),
       );
     }
     return baseFee.add(priorityFee).toNumber() * 1e-9;
@@ -172,7 +173,7 @@ export class Ethereum extends EthereumBase implements Ethereumish {
 
   getContract(
     tokenAddress: string,
-    signerOrProvider?: Wallet | Provider
+    signerOrProvider?: Wallet | Provider,
   ): Contract {
     return tokenAddress === MKR_ADDRESS
       ? new Contract(tokenAddress, abi.MKRAbi, signerOrProvider)
@@ -185,19 +186,25 @@ export class Ethereum extends EthereumBase implements Ethereumish {
     let spender: string;
     if (reqSpender === 'uniswap') {
       spender = UniswapConfig.config.uniswapV3SmartOrderRouterAddress(
-        this._chain
+        this._chain,
+      );
+    } else if (reqSpender === 'pancakeswap') {
+      spender = PancakeSwapConfig.config.routerAddress(this._chain);
+    } else if (reqSpender === 'pancakeswapLP') {
+      spender = PancakeSwapConfig.config.pancakeswapV3NftManagerAddress(
+        this._chain,
       );
     } else if (reqSpender === 'sushiswap') {
       spender = SushiswapConfig.config.sushiswapRouterAddress(
         this.chainName,
-        this._chain
+        this._chain,
       );
     } else if (reqSpender === 'uniswapLP') {
       spender = UniswapConfig.config.uniswapV3NftManagerAddress(this._chain);
     } else if (reqSpender === 'carbonamm') {
       spender = CarbonConfig.config.carbonContractsConfig(
         'ethereum',
-        this._chain
+        this._chain,
       ).carbonControllerAddress;
     } else if (reqSpender === 'perp') {
       const perp = Perp.getInstance(this._chain, 'optimism');
@@ -224,7 +231,7 @@ export class Ethereum extends EthereumBase implements Ethereumish {
   // cancel transaction
   async cancelTx(wallet: Wallet, nonce: number): Promise<Transaction> {
     logger.info(
-      'Canceling any existing transaction(s) with nonce number ' + nonce + '.'
+      'Canceling any existing transaction(s) with nonce number ' + nonce + '.',
     );
     return this.cancelTxWithGasPrice(wallet, nonce, this._gasPrice * 2);
   }

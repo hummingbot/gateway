@@ -1,6 +1,6 @@
 {
   "name": "hummingbot-gateway",
-  "version": "dev-1.26.0",
+  "version": "dev-1.28.0",
   "description": "Middleware that helps Hummingbot clients access standardized DEX API endpoints on different blockchain networks",
   "main": "index.js",
   "license": "Apache-2.0",
