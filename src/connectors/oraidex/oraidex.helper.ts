@@ -2,6 +2,7 @@ import { AssetInfo } from '@oraichain/oraidex-contracts-sdk';
 import { Token } from './oraidex.types';
 import { CosmWasmClient, Cw20BaseQueryClient } from '@oraichain/common-contracts-sdk';
 import * as constant from '@oraichain/oraidex-common/build/constant';
+import { IndexedTx } from '@cosmjs/stargate';
 
 /**
  *
@@ -46,6 +47,20 @@ export const parseToAssetInfo = (address: string): AssetInfo => {
     },
   };
 };
+
+export const getOrderIdsFromTxData = (txData: IndexedTx): string[] => {
+  const orderIds: string[] = [];
+  
+  txData.events.forEach((event) => {
+    event.attributes.forEach((attribute) => {
+      if (attribute.key === 'order_id') {
+        orderIds.push(attribute.value);
+      }
+    })
+  })
+
+  return orderIds;
+}
 
 export const parseToToken = async (asset: AssetInfo, client: CosmWasmClient): Promise<Token> => {
   let token: Token;

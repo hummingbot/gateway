@@ -5,6 +5,7 @@ import { logger } from '../../services/logger';
 import { MarketListType, TokenInfo } from '../../services/base';
 import axios from 'axios';
 import { promises as fs } from 'fs';
+import fse from 'fs-extra';
 import { OraichainController } from './oraichain.controller';
 import {
   JsonObject,
@@ -36,6 +37,7 @@ export class Oraichain extends CosmosBase implements Cosmosish {
   private _metricTimer;
   private _marketListSource: string;
   private _marketListType: MarketListType;
+  private _signers: Map<string, SigningCosmWasmClient> = new Map();
 
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
@@ -58,7 +60,7 @@ export class Oraichain extends CosmosBase implements Cosmosish {
       config.network.rpcURL,
       config.network.tokenListSource,
       config.network.tokenListType,
-      config.manualGasPrice
+      config.manualGasPrice,
     );
     this._rpcUrl = config.network.rpcURL;
     this._chain = network;
@@ -74,7 +76,7 @@ export class Oraichain extends CosmosBase implements Cosmosish {
 
     this._metricTimer = setInterval(
       this.metricLogger.bind(this),
-      this.metricsLogInterval
+      this.metricsLogInterval,
     );
     this.controller = OraichainController;
   }
@@ -92,21 +94,22 @@ export class Oraichain extends CosmosBase implements Cosmosish {
   async init(): Promise<void> {
     if (!this.ready()) {
       await super.init();
+      await this.initSigningCosmWasmClient();
       await this.loadMarkets(this._marketListSource, this._marketListType);
       //init cosmwasm client
       this._cosmwasmClient = await cosmwasm.SigningCosmWasmClient.connect(
-        this._rpcUrl
+        this._rpcUrl,
       );
     }
   }
 
   async loadMarkets(
     marketListSource: string,
-    marketListType: MarketListType
+    marketListType: MarketListType,
   ): Promise<void> {
     this.marketList = await this.getMarketList(
       marketListSource,
-      marketListType
+      marketListType,
     );
     if (this.marketList) {
       this.marketList.forEach((market: MarketInfo) => {
@@ -121,7 +124,7 @@ export class Oraichain extends CosmosBase implements Cosmosish {
 
   async getMarketList(
     marketListSource: string,
-    marketListType: MarketListType
+    marketListType: MarketListType,
   ): Promise<MarketInfo[]> {
     let markets;
     if (marketListType === 'URL') {
@@ -146,38 +149,59 @@ export class Oraichain extends CosmosBase implements Cosmosish {
       this.requestCount +
         ' request(s) sent in last ' +
         this.metricsLogInterval / 1000 +
-        ' seconds.'
+        ' seconds.',
     );
     this._requestCount = 0; // reset
   }
 
   public async queryContractSmart(
     address: string,
-    query: JsonObject
+    query: JsonObject,
   ): Promise<JsonObject> {
     return await this._cosmwasmClient.queryContractSmart(address, query);
+  }
+
+  public async initSigningCosmWasmClient(): Promise<void> {
+    fse.readdirSync('conf/wallets/oraichain').forEach(async (file) => {
+      const address = file.split('.')[0];
+      const client = await this.createSigningCosmWasmClient(file.split('.')[0]);
+
+      this._signers.set(address, client);
+    });
+  }
+
+  private async createSigningCosmWasmClient(
+    address: string,
+  ): Promise<SigningCosmWasmClient> {
+    const walletCommon: any = await this.getWallet(address, 'orai');
+
+    const wallet = await DirectSecp256k1Wallet.fromKey(
+      walletCommon.privkey,
+      'orai',
+    );
+
+    return await cosmwasm.SigningCosmWasmClient.connectWithSigner(
+      this._rpcUrl,
+      wallet,
+      {
+        gasPrice: new GasPrice(Decimal.fromUserInput('0.001', 6), 'orai'),
+        broadcastPollIntervalMs: 500,
+      },
+    );
   }
 
   public async executeContract(
     sender: string,
     contractAddress: string,
     msg: JsonObject,
-    funds: any
+    funds: any,
   ): Promise<JsonObject> {
-    let walletCommon: any = await this.getWallet(sender, 'orai');
+    let client = this._signers.get(sender);
 
-    const wallet = await DirectSecp256k1Wallet.fromKey(
-      walletCommon.privkey,
-      'orai'
-    );
-
-    const client = await cosmwasm.SigningCosmWasmClient.connectWithSigner(
-      this._rpcUrl,
-      wallet,
-      {
-        gasPrice: new GasPrice(Decimal.fromUserInput('0.001', 6), 'orai'),
-      }
-    );
+    if (!client) {
+      client = await this.createSigningCosmWasmClient(sender);
+      this._signers.set(sender, client);
+    }
 
     let res = await client.execute(
       sender,
@@ -185,29 +209,21 @@ export class Oraichain extends CosmosBase implements Cosmosish {
       msg,
       'auto',
       undefined,
-      funds
+      funds,
     );
 
     return res;
   }
   public async executeContractMultiple(
     sender: string,
-    instructions: ExecuteInstruction[]
+    instructions: ExecuteInstruction[],
   ): Promise<JsonObject> {
-    let walletCommon: any = await this.getWallet(sender, 'orai');
+    let client = this._signers.get(sender);
 
-    const wallet = await DirectSecp256k1Wallet.fromKey(
-      walletCommon.privkey,
-      'orai'
-    );
-
-    const client = await cosmwasm.SigningCosmWasmClient.connectWithSigner(
-      this._rpcUrl,
-      wallet,
-      {
-        gasPrice: new GasPrice(Decimal.fromUserInput('0.001', 6), 'orai'),
-      }
-    );
+    if (!client) {
+      client = await this.createSigningCosmWasmClient(sender);
+      this._signers.set(sender, client);
+    }
 
     let res = await client.executeMultiple(sender, instructions, 'auto');
 

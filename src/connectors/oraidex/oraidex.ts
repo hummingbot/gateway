@@ -17,6 +17,7 @@ import {
 } from '../../services/common-interfaces';
 import {
   getNotNullOrThrowError,
+  getOrderIdsFromTxData,
   isNativeDenom,
   parseToToken,
 } from './oraidex.helper';
@@ -38,8 +39,6 @@ export class OraidexCLOB implements CLOBish {
   network: string;
 
   public parsedMarkets: CLOBMarkets = {};
-
-  private static _isExecuting: boolean = false;
 
   private _swapLimitOrder: string;
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -172,10 +171,7 @@ export class OraidexCLOB implements CLOBish {
     const res: JsonObject = { orders: [] };
     let partialResponse: JsonObject;
 
-    while (
-      !partialResponse ||
-      partialResponse.orders.length >= limit
-    ) {
+    while (!partialResponse || partialResponse.orders.length >= limit) {
       partialResponse = await this.orderbookQueryClient.orders({
         assetInfos: [market.baseToken.assetInfo, market.quoteToken.assetInfo],
         filter: 'none',
@@ -309,7 +305,9 @@ export class OraidexCLOB implements CLOBish {
       orders: [req],
     };
 
-    return { txHash: await this.placeOrders(convertedReq) };
+    const { txHash, orderIds } = await this.placeOrder(convertedReq);
+
+    return { txHash, id: orderIds[0] };
   }
 
   public async batchOrders(req: ClobBatchUpdateRequest): Promise<any> {
@@ -320,7 +318,8 @@ export class OraidexCLOB implements CLOBish {
             ownerAddress: req.address,
             orders: req.createOrderParams,
           };
-          return { txHash: await this.placeOrders(convertedReq) };
+          const { txHash, orderIds } = await this.placeOrders(convertedReq);
+          return { txHash, orderIds };
         } else if (req.cancelOrderParams) {
           const convertedReq = {
             ownerAddress: req.address,
@@ -334,6 +333,112 @@ export class OraidexCLOB implements CLOBish {
     } catch (err) {
       console.error(err);
     }
+  }
+
+  async placeOrder(options: PlaceOrdersRequest) {
+    const sender = options.ownerAddress;
+
+    let baseDecimal: number;
+    let quoteDecimal: number;
+    
+    const order = options.orders[0];
+
+    const market = this.parsedMarkets[order.market] as Market;
+      quoteDecimal = 10 ** market.quoteToken.decimals;
+      baseDecimal = 10 ** market.baseToken.decimals;
+
+      const baseAmount = Math.round(Number(order.amount) * baseDecimal);
+      const baseToken = market.baseToken.assetInfo;
+      const quoteToken = market.quoteToken.assetInfo;
+      const quoteAmount = Math.round(
+        quoteDecimal * parseFloat(order.price) * parseFloat(order.amount),
+      );
+
+      const assets = [
+        { info: baseToken, amount: baseAmount.toString() },
+        { info: quoteToken, amount: quoteAmount.toString() },
+      ];
+      const submitOrderMsg = {
+        submit_order: {
+          assets,
+          direction: order.side.toLowerCase(),
+        },
+      };
+
+      let instruction: ExecuteInstruction;
+
+      if (order.side == 'BUY') {
+        if (isNativeDenom(quoteToken)) {
+          instruction ={
+            contractAddress: this._swapLimitOrder,
+            msg: submitOrderMsg,
+            funds: [
+              {
+                denom: getNotNullOrThrowError<string>(
+                  (quoteToken as any).native_token.denom,
+                ),
+                amount: quoteAmount.toString(),
+              },
+            ],
+          };
+        } else {
+          instruction = {
+            contractAddress: (quoteToken as any).token.contract_addr,
+            msg: {
+              send: {
+                contract: this._swapLimitOrder,
+                amount: quoteAmount.toString(),
+                msg: Buffer.from(JSON.stringify(submitOrderMsg)).toString(
+                  'base64',
+                ),
+              },
+            },
+            funds: [],
+          };
+        }
+      } else {
+        if (isNativeDenom(baseToken)) {
+          instruction = {
+            contractAddress: this._swapLimitOrder,
+            msg: submitOrderMsg,
+            funds: [
+              {
+                denom: getNotNullOrThrowError<string>(
+                  (baseToken as any).native_token.denom,
+                ),
+                amount: baseAmount.toString(),
+              },
+            ],
+          };
+        } else {
+          instruction = {
+            contractAddress: (baseToken as any).token.contract_addr,
+            msg: {
+              send: {
+                contract: this._swapLimitOrder,
+                amount: baseAmount.toString(),
+                msg: Buffer.from(JSON.stringify(submitOrderMsg)).toString(
+                  'base64',
+                ),
+              },
+            },
+            funds: [],
+          };
+        }
+      }
+
+    const res = await this.oraichainNetwork.executeContract(
+      sender,
+      instruction.contractAddress,
+      instruction.msg,
+      instruction.funds,
+    );
+
+    const txData = await this.oraichainNetwork.cosmwasmClient.getTx(res.transactionHash);
+    if (!txData) throw new Error('Transaction not found');
+    const orderIds = getOrderIdsFromTxData(txData);
+
+    return { txHash: res.transactionHash, orderIds };
   }
 
   async placeOrders(options: PlaceOrdersRequest) {
@@ -427,30 +532,16 @@ export class OraidexCLOB implements CLOBish {
       }
     }
 
-    let res = await this.processingOrders(async () => {
-      return await this.oraichainNetwork.executeContractMultiple(
-        sender,
-        instructions,
-      );
-    });
-    OraidexCLOB._isExecuting = false;
+    const res = await this.oraichainNetwork.executeContractMultiple(
+      sender,
+      instructions,
+    );
 
-    return res.transactionHash;
-  }
+    const txData = await this.oraichainNetwork.cosmwasmClient.getTx(res.transactionHash);
+    if (!txData) throw new Error('Transaction not found');
+    const orderIds = getOrderIdsFromTxData(txData);
 
-  async processingOrders(callback: any) {
-    if (OraidexCLOB._isExecuting) {
-      while (true) {
-        await new Promise((resolve) => setTimeout(resolve, 250));
-        if (!OraidexCLOB._isExecuting) {
-          OraidexCLOB._isExecuting = true;
-          return (await callback());
-        }
-      }
-    } 
-
-    OraidexCLOB._isExecuting = true;
-    return (await callback());
+    return { txHash: res.transactionHash, orderIds };
   }
 
   async deleteOrder(req: ClobDeleteOrderRequest): Promise<{ txHash: string }> {
@@ -458,20 +549,17 @@ export class OraidexCLOB implements CLOBish {
     const baseToken = market.baseToken.assetInfo;
     const quoteToken = market.quoteToken.assetInfo;
 
-    let res = await this.processingOrders(async () => {
-      return await this.oraichainNetwork.executeContract(
-        req.address,
-        this._swapLimitOrder,
-        {
-          cancel_order: {
-            asset_infos: [baseToken, quoteToken],
-            order_id: Number(req.orderId),
-          },
+    const res = await this.oraichainNetwork.executeContract(
+      req.address,
+      this._swapLimitOrder,
+      {
+        cancel_order: {
+          asset_infos: [baseToken, quoteToken],
+          order_id: Number(req.orderId),
         },
-        [],
-      );
-    });
-    OraidexCLOB._isExecuting = false;
+      },
+      [],
+    );
     return { txHash: res.transactionHash };
   }
 
@@ -495,13 +583,10 @@ export class OraidexCLOB implements CLOBish {
       });
     }
 
-    let res = await this.processingOrders(async () => {
-      return await this.oraichainNetwork.executeContractMultiple(
-        sender,
-        instructions,
-      );
-    });
-    OraidexCLOB._isExecuting = false;
+    const res = await this.oraichainNetwork.executeContractMultiple(
+      sender,
+      instructions,
+    );
     return res.transactionHash;
   }
 
