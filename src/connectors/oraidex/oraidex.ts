@@ -31,13 +31,15 @@ import { OraiswapLimitOrderQueryClient } from '@oraichain/oraidex-contracts-sdk'
 import { OraidexConfig } from './oraidex.config';
 import { JsonObject, ExecuteInstruction } from '@cosmjs/cosmwasm-stargate';
 
-const ORDERBOOK_LIMIT = 100; //?
+const ORDERBOOK_LIMIT = 100;
 export class OraidexCLOB implements CLOBish {
   chain: string;
 
   network: string;
 
   public parsedMarkets: CLOBMarkets = {};
+
+  private static _isExecuting: boolean = false;
 
   private _swapLimitOrder: string;
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -167,13 +169,26 @@ export class OraidexCLOB implements CLOBish {
     const buys: any = [];
     const sells: any = [];
 
-    let res = await this.orderbookQueryClient.orders({
-      assetInfos: [market.baseToken.assetInfo, market.quoteToken.assetInfo],
-      filter: 'none',
-      limit,
-    });
+    const res: JsonObject = { orders: [] };
+    let partialResponse: JsonObject;
 
-    res.orders.forEach((order) => {
+    while (
+      !partialResponse ||
+      partialResponse.orders.length >= limit
+    ) {
+      partialResponse = await this.orderbookQueryClient.orders({
+        assetInfos: [market.baseToken.assetInfo, market.quoteToken.assetInfo],
+        filter: 'none',
+        limit: limit,
+        startAfter: partialResponse
+          ? partialResponse.orders[partialResponse.orders.length - 1].order_id
+          : null,
+      });
+
+      res.orders = [...res.orders, ...partialResponse.orders];
+    }
+
+    res.orders.forEach((order: any) => {
       if (order.direction == 'buy') {
         let price = (
           parseFloat(order.offer_asset.amount) /
@@ -246,9 +261,7 @@ export class OraidexCLOB implements CLOBish {
         )
       ).orders;
 
-      console.log({ originalOrders });
-
-      if (req.orderId != "-1") {
+      if (req.orderId != 'None') {
         originalOrders = originalOrders.filter(
           (order: any) => order.order_id == req.orderId,
         );
@@ -290,7 +303,7 @@ export class OraidexCLOB implements CLOBish {
 
   async postOrder(
     req: ClobPostOrderRequest,
-  ): Promise<{ txHash: string; id?: string }> {
+  ): Promise<{ txHash: any; id?: string }> {
     const convertedReq = {
       ownerAddress: req.address,
       orders: [req],
@@ -331,12 +344,10 @@ export class OraidexCLOB implements CLOBish {
     let quoteDecimal: number;
 
     for (const order of options.orders) {
-      
       const market = this.parsedMarkets[order.market] as Market;
       quoteDecimal = 10 ** market.quoteToken.decimals;
       baseDecimal = 10 ** market.baseToken.decimals;
 
-      console.log({ quoteDecimal, baseDecimal });
       const baseAmount = Math.round(Number(order.amount) * baseDecimal);
       const baseToken = market.baseToken.assetInfo;
       const quoteToken = market.quoteToken.assetInfo;
@@ -416,14 +427,30 @@ export class OraidexCLOB implements CLOBish {
       }
     }
 
-    let res = await this.oraichainNetwork.executeContractMultiple(
-      sender,
-      instructions,
-    );
-
-    // let rawLogs = convertRawLogEventsToMapOfEvents(res.logs);
+    let res = await this.processingOrders(async () => {
+      return await this.oraichainNetwork.executeContractMultiple(
+        sender,
+        instructions,
+      );
+    });
+    OraidexCLOB._isExecuting = false;
 
     return res.transactionHash;
+  }
+
+  async processingOrders(callback: any) {
+    if (OraidexCLOB._isExecuting) {
+      while (true) {
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        if (!OraidexCLOB._isExecuting) {
+          OraidexCLOB._isExecuting = true;
+          return (await callback());
+        }
+      }
+    } 
+
+    OraidexCLOB._isExecuting = true;
+    return (await callback());
   }
 
   async deleteOrder(req: ClobDeleteOrderRequest): Promise<{ txHash: string }> {
@@ -431,17 +458,20 @@ export class OraidexCLOB implements CLOBish {
     const baseToken = market.baseToken.assetInfo;
     const quoteToken = market.quoteToken.assetInfo;
 
-    let res = await this.oraichainNetwork.executeContract(
-      req.address,
-      this._swapLimitOrder,
-      {
-        cancel_order: {
-          asset_infos: [baseToken, quoteToken],
-          order_id: Number(req.orderId),
+    let res = await this.processingOrders(async () => {
+      return await this.oraichainNetwork.executeContract(
+        req.address,
+        this._swapLimitOrder,
+        {
+          cancel_order: {
+            asset_infos: [baseToken, quoteToken],
+            order_id: Number(req.orderId),
+          },
         },
-      },
-      [],
-    );
+        [],
+      );
+    });
+    OraidexCLOB._isExecuting = false;
     return { txHash: res.transactionHash };
   }
 
@@ -465,11 +495,13 @@ export class OraidexCLOB implements CLOBish {
       });
     }
 
-    let res = await this.oraichainNetwork.executeContractMultiple(
-      sender,
-      instructions,
-    );
-
+    let res = await this.processingOrders(async () => {
+      return await this.oraichainNetwork.executeContractMultiple(
+        sender,
+        instructions,
+      );
+    });
+    OraidexCLOB._isExecuting = false;
     return res.transactionHash;
   }
 

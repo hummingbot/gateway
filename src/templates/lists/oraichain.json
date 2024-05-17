@@ -17,6 +17,14 @@
       "decimals": 6,
       "chainId": "Oraichain",
       "base": ""
+    },
+    {
+      "name": "xOCH token",
+      "symbol": "xOCH",
+      "address": "orai1lplapmgqnelqn253stz6kmvm3ulgdaytn89a8mz9y85xq8wd684s6xl3lt",
+      "decimals": 6,
+      "chainId": "Oraichain",
+      "base": ""
     }
   ]
 }
