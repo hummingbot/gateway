@@ -24,6 +24,7 @@ export class UniswapLPHelper {
   protected ethereum: Ethereum;
   protected chainId;
   private _router: string;
+  private _v3Factory: string;
   private _nftManager: string;
   private _ttl: number;
   private _routerAbi: ContractInterface;
@@ -45,6 +46,7 @@ export class UniswapLPHelper {
     });
     this._router =
       UniswapConfig.config.uniswapV3SmartOrderRouterAddress(network);
+    this._v3Factory = UniswapConfig.config.uniswapV3FactoryAddress(network);
     this._nftManager = UniswapConfig.config.uniswapV3NftManagerAddress(network);
     this._ttl = UniswapConfig.config.ttl;
     this._routerAbi =
@@ -150,6 +152,18 @@ export class UniswapLPHelper {
     return new Contract(pool, this.poolAbi, wallet);
   }
 
+  getPoolAddress(token0: Token, token1: Token, fee: uniV3.FeeAmount): string {
+    // include the variable v3 factory address in case it is different from the default,
+    // as it is on base.
+    return uniV3.Pool.getAddress(
+      token0,
+      token1,
+      fee,
+      undefined,
+      this._v3Factory,
+    );
+  }
+
   async getPoolState(
     poolAddress: string,
     fee: uniV3.FeeAmount,
@@ -221,7 +235,7 @@ export class UniswapLPHelper {
     const prices = [];
     const fee = uniV3.FeeAmount[tier as keyof typeof uniV3.FeeAmount];
     const poolContract = new Contract(
-      uniV3.Pool.getAddress(token0, token1, fee),
+      this.getPoolAddress(token0, token1, fee),
       this.poolAbi,
       this.ethereum.provider,
     );
@@ -311,7 +325,7 @@ export class UniswapLPHelper {
     const lowerPriceInFraction = math.fraction(lowerPrice) as math.Fraction;
     const upperPriceInFraction = math.fraction(upperPrice) as math.Fraction;
     const poolData = await this.getPoolState(
-      uniV3.Pool.getAddress(token0, token1, fee),
+      this.getPoolAddress(token0, token1, fee),
       fee,
     );
     const pool = new uniV3.Pool(
@@ -342,7 +356,7 @@ export class UniswapLPHelper {
             .toString(),
           utils
             .parseUnits(lowerPriceInFraction.n.toString(), token1.decimals)
-            .toString()
+            .toString(),
         ),
       ),
       uniV3.TICK_SPACINGS[fee],
@@ -398,7 +412,7 @@ export class UniswapLPHelper {
         `One of the tokens in this position isn't recognized. $token0: ${token0}, $token1: ${token1}`,
       );
     }
-    const poolAddress = uniV3.Pool.getAddress(token0, token1, fee);
+    const poolAddress = this.getPoolAddress(token0, token1, fee);
     const poolData = await this.getPoolState(poolAddress, fee);
     const position = new uniV3.Position({
       pool: new uniV3.Pool(

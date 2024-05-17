@@ -297,7 +297,6 @@ export class Uniswap implements Uniswapish {
     );
 
     if (this._useRouter) {
-      console.log('using router');
       const route = await this._alphaRouter.route(
         nativeTokenAmount,
         quoteToken,
