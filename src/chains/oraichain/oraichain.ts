@@ -162,6 +162,10 @@ export class Oraichain extends CosmosBase implements Cosmosish {
   }
 
   public async initSigningCosmWasmClient(): Promise<void> {
+    if (!fse.pathExistsSync('conf/wallets/oraichain')) {
+      return;
+    }
+
     fse.readdirSync('conf/wallets/oraichain').forEach(async (file) => {
       const address = file.split('.')[0];
       const client = await this.createSigningCosmWasmClient(file.split('.')[0]);
