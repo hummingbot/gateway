@@ -60,13 +60,13 @@ export class UniswapLP extends UniswapLPHelper implements UniswapLPish {
     ];
     const positionInfoReq = await Promise.allSettled(requests);
     const rejected = positionInfoReq.filter(
-      (r) => r.status === 'rejected'
+      (r) => r.status === 'rejected',
     ) as PromiseRejectedResult[];
     if (rejected.length > 0)
       throw new Error(`Unable to fetch position with id ${tokenId}`);
     const positionInfo = (
       positionInfoReq.filter(
-        (r) => r.status === 'fulfilled'
+        (r) => r.status === 'fulfilled',
       ) as PromiseFulfilledResult<any>[]
     ).map((r) => r.value);
     const position = positionInfo[0];
@@ -86,7 +86,7 @@ export class UniswapLP extends UniswapLPHelper implements UniswapLPish {
         poolData.fee,
         poolData.sqrtPriceX96.toString(),
         poolData.liquidity.toString(),
-        poolData.tick
+        poolData.tick,
       ),
       tickLower: position.tickLower,
       tickUpper: position.tickUpper,
@@ -102,11 +102,11 @@ export class UniswapLP extends UniswapLPHelper implements UniswapLPish {
       amount1: positionInst.amount1.toFixed(),
       unclaimedToken0: utils.formatUnits(
         feeInfo.amount0.toString(),
-        token0.decimals
+        token0.decimals,
       ),
       unclaimedToken1: utils.formatUnits(
         feeInfo.amount1.toString(),
-        token1.decimals
+        token1.decimals,
       ),
     };
   }
@@ -125,7 +125,7 @@ export class UniswapLP extends UniswapLPHelper implements UniswapLPish {
     gasPrice: number,
     nonce?: number,
     maxFeePerGas?: BigNumber,
-    maxPriorityFeePerGas?: BigNumber
+    maxPriorityFeePerGas?: BigNumber,
   ): Promise<Transaction> {
     const convertedFee = uniV3.FeeAmount[fee as keyof typeof uniV3.FeeAmount];
     const addLiquidityResponse: AddPosReturn = await this.addPositionHelper(
@@ -137,7 +137,7 @@ export class UniswapLP extends UniswapLPHelper implements UniswapLPish {
       convertedFee,
       lowerPrice,
       upperPrice,
-      tokenId
+      tokenId,
     );
 
     if (nonce === undefined) {
@@ -153,7 +153,7 @@ export class UniswapLP extends UniswapLPHelper implements UniswapLPish {
         nonce,
         maxFeePerGas,
         maxPriorityFeePerGas,
-        addLiquidityResponse.value
+        addLiquidityResponse.value,
       ),
     });
     logger.info(`Uniswap V3 Add position Tx Hash: ${tx.hash}`);
@@ -168,14 +168,14 @@ export class UniswapLP extends UniswapLPHelper implements UniswapLPish {
     gasPrice: number,
     nonce?: number,
     maxFeePerGas?: BigNumber,
-    maxPriorityFeePerGas?: BigNumber
+    maxPriorityFeePerGas?: BigNumber,
   ): Promise<Transaction> {
     // Reduce position and burn
     const contract = this.getContract('nft', wallet);
     const { calldata, value } = await this.reducePositionHelper(
       wallet,
       tokenId,
-      decreasePercent
+      decreasePercent,
     );
 
     if (nonce === undefined) {
@@ -190,8 +190,8 @@ export class UniswapLP extends UniswapLPHelper implements UniswapLPish {
         nonce,
         maxFeePerGas,
         maxPriorityFeePerGas,
-        value
-      )
+        value,
+      ),
     );
     logger.info(`Uniswap V3 Remove position Tx Hash: ${tx.hash}`);
     return tx;
@@ -204,7 +204,7 @@ export class UniswapLP extends UniswapLPHelper implements UniswapLPish {
     gasPrice: number = 0,
     nonce?: number,
     maxFeePerGas?: BigNumber,
-    maxPriorityFeePerGas?: BigNumber
+    maxPriorityFeePerGas?: BigNumber,
   ): Promise<Transaction | { amount0: BigNumber; amount1: BigNumber }> {
     const contract = this.getContract('nft', wallet);
     const collectData = {
@@ -228,8 +228,8 @@ export class UniswapLP extends UniswapLPHelper implements UniswapLPish {
           gasPrice,
           nonce,
           maxFeePerGas,
-          maxPriorityFeePerGas
-        )
+          maxPriorityFeePerGas,
+        ),
       );
     }
   }
@@ -240,7 +240,7 @@ export class UniswapLP extends UniswapLPHelper implements UniswapLPish {
     nonce?: number,
     maxFeePerGas?: BigNumber,
     maxPriorityFeePerGas?: BigNumber,
-    value?: string
+    value?: string,
   ): Overrides {
     const overrides: Overrides = {
       gasLimit: BigNumber.from(String(gasLimit.toFixed(0))),
