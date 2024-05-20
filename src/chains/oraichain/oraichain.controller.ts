@@ -49,6 +49,7 @@ export class OraichainController {
       tokens = oraichainLish.storedTokenList;
     } else {
       for (const t of req.tokenSymbols as []) {
+        console.log('t', t);
         const token = oraichainLish.getTokenForSymbol(t);
         if (token != undefined) {
           tokens.push(token);
@@ -75,8 +76,6 @@ export class OraichainController {
   static async balances(cosmosish: Oraichain, req: CosmosBalanceRequest) {
     validateCosmosBalanceRequest(req);
 
-    const wallet = await cosmosish.getWallet(req.address, 'orai');
-
     const { tokenSymbols } = req;
 
     let cw20Tokens: Token[] = [];
@@ -102,7 +101,7 @@ export class OraichainController {
       req.address,
       cw20Tokens
     );
-    const denomBalances = await cosmosish.getBalances(wallet);
+    const denomBalances = await cosmosish.getBalance(req.address);
     const filteredBalances = toOraichainBalances(
       { ...denomBalances, ...cw20Balances },
       tokenSymbols
