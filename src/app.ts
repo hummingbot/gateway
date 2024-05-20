@@ -126,7 +126,7 @@ export const startGateway = async () => {
     await gatewayApp.listen(port);
   } else {
     try {
-      await addHttps(gatewayApp).listen(port);
+      await addHttps(gatewayApp).listen(port, "127.0.0.1");
       logger.info('The gateway server is secured behind HTTPS.');
     } catch (e) {
       logger.error(
