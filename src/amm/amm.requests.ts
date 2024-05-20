@@ -209,6 +209,7 @@ export interface PerpMarketResponse {
 
 export interface PerpBalanceRequest extends NetworkSelectionRequest {
   address: string;
+  quote?: string;
 }
 
 export interface PerpBalanceResponse {

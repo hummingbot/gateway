@@ -30,6 +30,7 @@ import {
   PerpMarketRequest,
   PerpMarketResponse,
   PerpBalanceResponse,
+  PerpBalanceRequest,
 } from '../../amm/amm.requests';
 import { PerpPosition } from '../perp/perp';
 
@@ -236,11 +237,21 @@ export async function estimateGas(
 export async function getAccountValue(
   ethereumish: Ethereumish,
   synfuturesish: SynFuturesish,
+  req: PerpBalanceRequest,
 ): Promise<PerpBalanceResponse> {
+  if (!req.quote) {
+    throw new HttpException(
+      500,
+      INCOMPLETE_REQUEST_PARAM,
+      INCOMPLETE_REQUEST_PARAM_CODE,
+    );
+  }
+
   const startTimestamp: number = Date.now();
+
   let value;
   try {
-    value = await synfuturesish.getAccountValue();
+    value = await synfuturesish.getAccountValue(req.address, req.quote);
   } catch (e) {
     throw new HttpException(
       500,

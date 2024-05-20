@@ -341,7 +341,7 @@ export async function perpBalance(
   if (connector instanceof Perp) {
     return perpGetAccountValue(chain, <Perpish>connector);
   } else {
-    return synfuturesGetAccountValue(chain, <SynFuturesish>connector);
+    return synfuturesGetAccountValue(chain, <SynFuturesish>connector, req);
   }
 }
 

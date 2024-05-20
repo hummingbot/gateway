@@ -683,9 +683,9 @@ export interface SynFuturesish {
    * @param tickerSymbol Market pair
    */
   prices(tickerSymbol: string): Promise<{
-    markPrice: Big;
-    indexPrice: Big;
-    indexTwapPrice: Big;
+    markPrice: BigNumber;
+    indexPrice: BigNumber;
+    indexTwapPrice: BigNumber;
   }>;
 
   /**
@@ -708,7 +708,7 @@ export interface SynFuturesish {
   /**
    * Attempts to return balance of a connected acct
    */
-  getAccountValue(): Promise<Big>;
+  getAccountValue(adderess: string, quote: string): Promise<BigNumber>;
 
   /**
    * Given the necessary parameters, open a position.

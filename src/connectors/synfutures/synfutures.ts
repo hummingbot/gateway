@@ -7,68 +7,29 @@ import { isFractionString } from '../../services/validators';
 import { SynFuturesConfig } from './synfutures.config';
 import {
   SynFuturesV3,
-  PERP_EXPIRY,
   Status as AMMStatus,
   InstrumentCondition,
   Side,
   encodeTradeParam,
   NULL_DDL,
+  PairModel,
 } from '@synfutures/oyster-sdk';
 import { Token } from '@uniswap/sdk';
-import { Big } from 'big.js';
 import { Transaction, Wallet, ethers } from 'ethers';
 import { percentRegexp } from '../../services/config-manager-v2';
 import { Ethereum } from '../../chains/ethereum/ethereum';
 import { SynFuturesish } from '../../services/common-interfaces';
-import { getAddress } from 'ethers/lib/utils';
+import { getAddress, isAddress } from 'ethers/lib/utils';
 import { PerpPosition } from '../perp/perp';
 
-function toTickerSymbol(symbol: string, expiry: number) {
-  let suffix: string;
-
-  if (expiry === PERP_EXPIRY) {
-    suffix = 'PERP';
-  } else {
-    const date = new Date(expiry * 1000);
-    suffix =
-      (date.getMonth() + 1).toString().padStart(2, '0') +
-      date.getDate().toString().padStart(2, '0');
-  }
-
-  return symbol + '-' + suffix;
-}
-
-function fromTickerSymbol(tickerSymbol: string) {
-  const index = tickerSymbol.lastIndexOf('-');
+function toTickerSymbol(symbol: string) {
+  const index = symbol.lastIndexOf('-');
 
   if (index === -1) {
-    throw new Error('invalid ticker symbol: ' + tickerSymbol);
+    throw new Error('invalid symbol: ' + symbol);
   }
 
-  const symbol = tickerSymbol.substring(0, index);
-  const expiry = tickerSymbol.substring(index + 1);
-
-  if (expiry === 'PERP') {
-    return { symbol, expiry: PERP_EXPIRY };
-  }
-
-  const month = Number(expiry.substring(0, 2));
-  const date = Number(expiry.substring(2));
-
-  const expDate = new Date();
-
-  expDate.setMonth(month - 1);
-  expDate.setDate(date);
-  expDate.setHours(16);
-  expDate.setMinutes(0);
-  expDate.setSeconds(0);
-  expDate.setMilliseconds(0);
-
-  if (expDate.getTime() < Date.now()) {
-    expDate.setFullYear(expDate.getFullYear() + 1);
-  }
-
-  return { symbol, expiry: Math.floor(expDate.getTime() / 1000) };
+  return symbol.substring(0, index - 1);
 }
 
 function formatSlippage(slippage: number) {
@@ -82,6 +43,7 @@ export class SynFutures implements SynFuturesish {
   private _chain: string;
   private chainId;
   private tokenList: Record<string, Token> = {};
+  private tokenSymbol: Record<string, Token> = {};
   private _ready: boolean = false;
   public gasLimit = 1500000;
 
@@ -126,13 +88,15 @@ export class SynFutures implements SynFuturesish {
         SERVICE_UNITIALIZED_ERROR_CODE,
       );
     for (const token of this.ethereum.storedTokenList) {
-      this.tokenList[token.address] = new Token(
+      const _token = new Token(
         this.chainId,
         token.address,
         token.decimals,
         token.symbol,
         token.name,
       );
+      this.tokenList[token.address] = _token;
+      this.tokenSymbol[token.symbol] = _token;
     }
     await this._synfutures.init();
     this._ready = true;
@@ -160,31 +124,35 @@ export class SynFutures implements SynFuturesish {
     );
   }
 
-  /**
-   * @returns a list of available marker pairs.
-   */
-  availablePairs(): string[] {
-    return Array.from(this._synfutures.instrumentMap.values())
-      .map((instrument) => {
-        if (instrument.state.condition === InstrumentCondition.NORMAL) {
-          return Array.from(instrument.pairs.entries()).map(
-            ([expiry, pair]) => {
+  private get pairs() {
+    return Object.fromEntries(
+      Array.from(this._synfutures.instrumentMap.values())
+        .map((instrument) => {
+          if (instrument.state.condition === InstrumentCondition.NORMAL) {
+            return Array.from(instrument.pairs.values()).map((pair) => {
               if (
                 pair.amm.status === AMMStatus.TRADING ||
                 pair.amm.status === AMMStatus.SETTLING
               ) {
-                return toTickerSymbol(instrument.info.symbol, expiry);
+                return [toTickerSymbol(instrument.info.symbol), pair];
               } else {
                 return null;
               }
-            },
-          );
-        } else {
-          return null;
-        }
-      })
-      .flat()
-      .filter((p) => p !== null) as string[];
+            });
+          } else {
+            return null;
+          }
+        })
+        .flat()
+        .filter((p) => p !== null) as [string, PairModel][],
+    );
+  }
+
+  /**
+   * @returns a list of available marker pairs.
+   */
+  availablePairs(): string[] {
+    return Array.from(Object.keys(this.pairs));
   }
 
   /**
@@ -192,37 +160,32 @@ export class SynFutures implements SynFuturesish {
    * @param tickerSymbol Market pair
    */
   async prices(tickerSymbol: string): Promise<{
-    markPrice: Big;
-    indexPrice: Big;
-    indexTwapPrice: Big;
+    markPrice: ethers.BigNumber;
+    indexPrice: ethers.BigNumber;
+    indexTwapPrice: ethers.BigNumber;
   }> {
-    void tickerSymbol;
-    // TODO:
-    return {
-      markPrice: new Big(0),
-      indexPrice: new Big(0),
-      indexTwapPrice: new Big(0),
-    };
-  }
-
-  private getPairByTickerSymbol(tickerSymbol: string) {
-    const { symbol, expiry } = fromTickerSymbol(tickerSymbol);
-
-    const instrument = Array.from(this._synfutures.instrumentMap.values()).find(
-      (i) => i.info.symbol === symbol,
-    );
-
-    if (!instrument) {
-      throw new Error('unknown instrument: ' + tickerSymbol);
-    }
-
-    const pair = instrument.pairs.get(expiry);
+    let pair = this.pairs[tickerSymbol];
 
     if (!pair) {
-      throw new Error('unknown pair: ' + tickerSymbol);
+      throw new Error('invalid ticker symbol: ' + tickerSymbol);
     }
 
-    return pair;
+    // update instrument cache
+    const [instrument] = await this.synfutures.updateInstrument([
+      {
+        instrument: pair.rootInstrument.info.addr,
+        expiries: [pair.amm.expiry],
+      },
+    ]);
+
+    pair = instrument.pairs.get(pair.amm.expiry)!;
+
+    return {
+      markPrice: pair.markPrice,
+      indexPrice: ethers.BigNumber.from(0),
+      indexTwapPrice: ethers.BigNumber.from(0),
+      // fairPrice: pair.fairPriceWad,
+    };
   }
 
   /**
@@ -231,9 +194,10 @@ export class SynFutures implements SynFuturesish {
    * @returns true | false
    */
   async isMarketActive(tickerSymbol: string): Promise<boolean> {
-    const pair = this.getPairByTickerSymbol(tickerSymbol);
+    const pair = this.pairs[tickerSymbol];
 
     return (
+      pair &&
       pair.rootInstrument.state.condition === InstrumentCondition.NORMAL &&
       (pair.amm.status === AMMStatus.TRADING ||
         pair.amm.status === AMMStatus.SETTLING)
@@ -242,6 +206,7 @@ export class SynFutures implements SynFuturesish {
 
   /**
    * Gets available Position.
+   * @param address User address.
    * @param tickerSymbol An optional parameter to get specific position.
    * @returns Return all Positions or specific position.
    */
@@ -249,27 +214,39 @@ export class SynFutures implements SynFuturesish {
     address: string,
     tickerSymbol: string,
   ): Promise<PerpPosition | undefined> {
-    // const pair = this.getPairByTickerSymbol(tickerSymbol);
+    const pair = this.pairs[tickerSymbol];
 
-    // const account = await this.synfutures.updatePairLevelAccount(
-    //   address,
-    //   pair.rootInstrument.info.addr,
-    //   pair.amm.expiry,
-    // );
+    if (!pair) {
+      throw new Error('invalid ticker symbol: ' + tickerSymbol);
+    }
 
-    // return account.position;
+    const account = await this.synfutures.updatePairLevelAccount(
+      address,
+      pair.rootInstrument.info.addr,
+      pair.amm.expiry,
+    );
 
-    void address;
-    void tickerSymbol;
+    const position = account.position;
 
-    return undefined;
+    return {
+      positionAmt: position.size.abs().toString(),
+      positionSide: position.size.gt(0) ? 'LONG' : 'SHORT',
+      unrealizedProfit: position.unrealizedPnl.toString(),
+      leverage: ethers.utils.formatUnits(position.leverageWad),
+      entryPrice: position.entryNotional.div(position.size.abs()).toString(),
+      tickerSymbol,
+      pendingFundingPayment: position.unrealizedFundingFee.toString(),
+    };
   }
 
   /**
    * Given the necessary parameters, open a position.
+   * @param wallet User wallet.
    * @param isLong Will create a long position if true, else a short pos will be created.
    * @param tickerSymbol the market to create position on.
    * @param amount the amount for the position to be opened.
+   * @param nonce EVM nonce.
+   * @param allowedSlippage Slippage.
    * @returns An ethers transaction object.
    */
   async openPosition(
@@ -284,7 +261,11 @@ export class SynFutures implements SynFuturesish {
 
     const baseSize = ethers.BigNumber.from(amount);
 
-    const pair = this.getPairByTickerSymbol(tickerSymbol);
+    const pair = this.pairs[tickerSymbol];
+
+    if (!pair) {
+      throw new Error('invalid ticker symbol: ' + tickerSymbol);
+    }
 
     const slippage = formatSlippage(this.getAllowedSlippage(allowedSlippage));
 
@@ -333,7 +314,10 @@ export class SynFutures implements SynFuturesish {
 
   /**
    * Closes an open position on the specified market.
+   * @param wallet User wallet.
    * @param tickerSymbol The market on which we want to close position.
+   * @param nonce EVM nonce.
+   * @param allowedSlippage Slippage.
    * @returns An ethers transaction object.
    */
   async closePosition(
@@ -342,7 +326,11 @@ export class SynFutures implements SynFuturesish {
     nonce?: number,
     allowedSlippage?: string,
   ): Promise<Transaction> {
-    const pair = this.getPairByTickerSymbol(tickerSymbol);
+    const pair = this.pairs[tickerSymbol];
+
+    if (!pair) {
+      throw new Error('invalid ticker symbol: ' + tickerSymbol);
+    }
 
     const account = await this.synfutures.updatePairLevelAccount(
       wallet.address,
@@ -401,10 +389,24 @@ export class SynFutures implements SynFuturesish {
 
   /**
    * Function for getting account value
+   * @param address User address.
+   * @param quote Quote token symbol or address
    * @returns account value
    */
-  async getAccountValue(): Promise<Big> {
-    // TODO
-    return new Big(0);
+  async getAccountValue(
+    address: string,
+    quote: string,
+  ): Promise<ethers.BigNumber> {
+    if (isAddress(quote)) {
+      return this.synfutures.contracts.gate.reserveOf(quote, address);
+    } else {
+      const token = this.tokenSymbol[quote];
+
+      if (!token) {
+        throw new Error('unknown quote: ' + quote);
+      }
+
+      return this.synfutures.contracts.gate.reserveOf(token.address, address);
+    }
   }
 }
