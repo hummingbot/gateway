@@ -51,13 +51,22 @@ import {
 } from '../connectors/tinyman/tinyman.controllers';
 import {
   getPriceData as perpPriceData,
-  createTakerOrder,
+  createTakerOrder as perpCreateTakerOrder,
   estimateGas as perpEstimateGas,
-  getPosition,
-  getAvailablePairs,
-  checkMarketStatus,
-  getAccountValue,
+  getPosition as perpGetPosition,
+  getAvailablePairs as perpGetAvailablePairs,
+  checkMarketStatus as perpCheckMarketStatus,
+  getAccountValue as perpGetAccountValue,
 } from '../connectors/perp/perp.controllers';
+import {
+  getPriceData as synfuturesPriceData,
+  createTakerOrder as synfuturesCreateTakerOrder,
+  estimateGas as synfuturesEstimateGas,
+  getPosition as synfuturesGetPosition,
+  getAvailablePairs as synfuturesGetAvailablePairs,
+  checkMarketStatus as synfuturesCheckMarketStatus,
+  getAccountValue as synfuturesGetAccountValue,
+} from '../connectors/synfutures/synfutures.controllers';
 import {
   price as plentyPrice,
   trade as plentyTrade,
@@ -78,6 +87,7 @@ import {
   NetworkSelectionRequest,
   Perpish,
   RefAMMish,
+  SynFuturesish,
   Tezosish,
   Uniswapish,
   UniswapLPish,
@@ -88,6 +98,7 @@ import { Plenty } from '../connectors/plenty/plenty';
 import { QuipuSwap } from '../connectors/quipuswap/quipuswap';
 import { Osmosis } from '../chains/osmosis/osmosis';
 import { Carbonamm } from '../connectors/carbon/carbonAMM';
+import { Perp } from '../connectors/perp/perp';
 
 export async function price(req: PriceRequest): Promise<PriceResponse> {
   const chain = await getInitializedChain<
@@ -266,12 +277,17 @@ export async function perpMarketPrices(
   req: PriceRequest
 ): Promise<PerpPricesResponse> {
   const chain = await getInitializedChain<Ethereumish>(req.chain, req.network);
-  const connector: Perpish = await getConnector<Perpish>(
+  const connector: Perpish | SynFuturesish = await getConnector<Perpish | SynFuturesish>(
     req.chain,
     req.network,
     req.connector
   );
-  return perpPriceData(chain, connector, req);
+
+  if (connector instanceof Perp) {
+    return perpPriceData(chain, <Perpish>connector, req);
+  } else {
+    return synfuturesPriceData(chain, <SynFuturesish>connector, req);
+  }
 }
 
 export async function perpOrder(
@@ -279,70 +295,103 @@ export async function perpOrder(
   isOpen: boolean
 ): Promise<PerpCreateTakerResponse> {
   const chain = await getInitializedChain<Ethereumish>(req.chain, req.network);
-  const connector: Perpish = await getConnector<Perpish>(
+  const connector: Perpish | SynFuturesish = await getConnector<Perpish | SynFuturesish>(
     req.chain,
     req.network,
     req.connector,
     req.address
   );
-  return createTakerOrder(chain, connector, req, isOpen);
+
+  if (connector instanceof Perp) {
+    return perpCreateTakerOrder(chain, <Perpish>connector, req, isOpen);
+  } else {
+    return synfuturesCreateTakerOrder(chain, <SynFuturesish>connector, req, isOpen);
+  }
 }
 
 export async function perpPosition(
   req: PerpPositionRequest
 ): Promise<PerpPositionResponse> {
   const chain = await getInitializedChain<Ethereumish>(req.chain, req.network);
-  const connector: Perpish = await getConnector<Perpish>(
+  const connector: Perpish | SynFuturesish = await getConnector<Perpish | SynFuturesish>(
     req.chain,
     req.network,
     req.connector,
     req.address
   );
-  return getPosition(chain, connector, req);
+
+  if (connector instanceof Perp) {
+    return perpGetPosition(chain, <Perpish>connector, req);
+  } else {
+    return synfuturesGetPosition(chain, <SynFuturesish>connector, req);
+  }
 }
 
 export async function perpBalance(
   req: PerpBalanceRequest
 ): Promise<PerpBalanceResponse> {
   const chain = await getInitializedChain(req.chain, req.network);
-  const connector: Perpish = <Perpish>(
-    await getConnector(req.chain, req.network, req.connector, req.address)
+  const connector: Perpish | SynFuturesish = await getConnector<Perpish | SynFuturesish>(
+    req.chain,
+    req.network,
+    req.connector,
+    req.address
   );
-  return getAccountValue(chain, connector);
+
+  if (connector instanceof Perp) {
+    return perpGetAccountValue(chain, <Perpish>connector);
+  } else {
+    return synfuturesGetAccountValue(chain, <SynFuturesish>connector);
+  }
 }
 
 export async function perpPairs(
   req: NetworkSelectionRequest
 ): Promise<PerpAvailablePairsResponse> {
   const chain = await getInitializedChain<Ethereumish>(req.chain, req.network);
-  const connector: Perpish = await getConnector<Perpish>(
+  const connector: Perpish | SynFuturesish = await getConnector<Perpish | SynFuturesish>(
     req.chain,
     req.network,
     req.connector
   );
-  return getAvailablePairs(chain, connector);
+
+  if (connector instanceof Perp) {
+    return perpGetAvailablePairs(chain, <Perpish>connector);
+  } else {
+    return synfuturesGetAvailablePairs(chain, <SynFuturesish>connector);
+  }
 }
 
 export async function getMarketStatus(
   req: PerpMarketRequest
 ): Promise<PerpMarketResponse> {
   const chain = await getInitializedChain<Ethereumish>(req.chain, req.network);
-  const connector: Perpish = await getConnector<Perpish>(
+  const connector: Perpish | SynFuturesish = await getConnector<Perpish | SynFuturesish>(
     req.chain,
     req.network,
     req.connector
   );
-  return checkMarketStatus(chain, connector, req);
+
+  if (connector instanceof Perp) {
+    return perpCheckMarketStatus(chain, <Perpish>connector, req);
+  } else {
+    return synfuturesCheckMarketStatus(chain, <SynFuturesish>connector, req);
+  }
 }
 
 export async function estimatePerpGas(
   req: NetworkSelectionRequest
 ): Promise<EstimateGasResponse> {
   const chain = await getInitializedChain<Ethereumish>(req.chain, req.network);
-  const connector: Perpish = await getConnector<Perpish>(
+  const connector: Perpish | SynFuturesish = await getConnector<Perpish | SynFuturesish>(
     req.chain,
     req.network,
     req.connector
   );
-  return perpEstimateGas(chain, connector);
+
+  if (connector instanceof Perp) {
+    return perpEstimateGas(chain, <Perpish>connector);
+  } else {
+    return synfuturesEstimateGas(chain, <SynFuturesish>connector);
+  }
 }
