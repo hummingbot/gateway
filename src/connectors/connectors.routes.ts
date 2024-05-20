@@ -6,6 +6,7 @@ import { MadMeerkatConfig } from './mad_meerkat/mad_meerkat.config';
 import { OpenoceanConfig } from './openocean/openocean.config';
 import { PangolinConfig } from './pangolin/pangolin.config';
 import { PerpConfig } from './perp/perp.config';
+import { SynFuturesConfig } from './synfutures/synfutures.config';
 import { QuickswapConfig } from './quickswap/quickswap.config';
 import { SushiswapConfig } from './sushiswap/sushiswap.config';
 import { TraderjoeConfig } from './traderjoe/traderjoe.config';
@@ -71,6 +72,12 @@ export namespace ConnectorsRoutes {
             trading_type: PerpConfig.config.tradingTypes('perp'),
             chain_type: PerpConfig.config.chainType,
             available_networks: PerpConfig.config.availableNetworks,
+          },
+          {
+            name: 'synfutures',
+            trading_type: SynFuturesConfig.config.tradingTypes,
+            chain_type: SynFuturesConfig.config.chainType,
+            available_networks: SynFuturesConfig.config.availableNetworks,
           },
           {
             name: 'sushiswap',

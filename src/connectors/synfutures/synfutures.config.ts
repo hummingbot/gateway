@@ -4,7 +4,7 @@ export namespace SynFuturesConfig {
   export interface NetworkConfig {
     allowedSlippage: string;
     ttl: number;
-    tradingTypes: (type: string) => Array<string>;
+    tradingTypes: Array<string>;
     chainType: string;
     availableNetworks: Array<AvailableNetworks>;
   }
@@ -12,7 +12,7 @@ export namespace SynFuturesConfig {
   export const config: NetworkConfig = {
     allowedSlippage: ConfigManagerV2.getInstance().get(`synfutures.allowedSlippage`),
     ttl: ConfigManagerV2.getInstance().get(`synfutures.versions.ttl`),
-    tradingTypes: () => ['AMM_Perpetual'],
+    tradingTypes: ['AMM_Perpetual'],
     chainType: 'EVM',
     availableNetworks: [{ chain: 'ethereum', networks: ['blast'] }],
   };
