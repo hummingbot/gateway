@@ -95,6 +95,7 @@ import {
   Fraction as XsswapFraction,
 } from 'xsswap-sdk';
 import { PerpPosition } from '../connectors/perp/perp';
+import { SynFuturesPosition } from "../connectors/synfutures/synfutures";
 import { XdcBase } from '../chains/xdc/xdc.base';
 import { NearBase } from '../chains/near/near.base';
 import { TezosBase } from '../chains/tezos/tezos.base';
@@ -704,7 +705,7 @@ export interface SynFuturesish {
   getPositions(
     address: string,
     tickerSymbol: string,
-  ): Promise<PerpPosition | undefined>;
+  ): Promise<SynFuturesPosition | undefined>;
 
   /**
    * Attempts to return balance of a connected acct

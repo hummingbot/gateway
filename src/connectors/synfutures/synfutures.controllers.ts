@@ -32,7 +32,7 @@ import {
   PerpBalanceResponse,
   PerpBalanceRequest,
 } from '../../amm/amm.requests';
-import { PerpPosition } from '../perp/perp';
+import { SynFuturesPosition } from './synfutures';
 
 async function getWallet(ethereumish: Ethereumish, address: string) {
   let wallet: Wallet;
@@ -127,7 +127,7 @@ export async function getPosition(
     latency: latency(startTimestamp, Date.now()),
     base: req.base,
     quote: req.quote,
-    ...(position as PerpPosition),
+    ...(position as SynFuturesPosition),
   };
 }
 

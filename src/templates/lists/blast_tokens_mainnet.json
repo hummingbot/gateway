@@ -4,386 +4,386 @@
 		{
 			"chainId": 81457,
 			"address": "0x129ed667bf8c065fe5f66c9b44b7cb0126d85cc3",
-			"name": "AI Waifu",
-			"symbol": "$wai",
-			"decimals": 18
-		},
-		{
-			"chainId": 81457,
-			"address": "0x0f8881fc1fca1f5151fa4205d55922ffa15e707a",
-			"name": "Blast Disperse",
-			"symbol": "disp",
-			"decimals": 18
-		},
-		{
-			"chainId": 81457,
-			"address": "0x95b9b27f2eba05433b4a64257f0342285d89a479",
-			"name": "Avolend",
-			"symbol": "avo",
-			"decimals": 18
-		},
-		{
-			"chainId": 81457,
-			"address": "0xb9dfcd4cf589bb8090569cb52fac1b88dbe4981f",
-			"name": "Bag",
-			"symbol": "bag",
-			"decimals": 18
-		},
-		{
-			"chainId": 81457,
-			"address": "0x60701c37cd9fed322dde7c17dc1e356f09a35b88",
-			"name": "BlastDEX",
-			"symbol": "bd",
-			"decimals": 18
-		},
-		{
-			"chainId": 81457,
-			"address": "0x764933fbad8f5d04ccd088602096655c2ed9879f",
-			"name": "Any Inu",
-			"symbol": "ai",
-			"decimals": 18
-		},
-		{
-			"chainId": 81457,
-			"address": "0xd1fedd031b92f50a50c05e2c45af1adb4cea82f4",
-			"name": "BladeSwap",
-			"symbol": "blade",
-			"decimals": 18
-		},
-		{
-			"chainId": 81457,
-			"address": "0x9bd75c164daf830733ac2ea71a0258f95aac7c57",
-			"name": "BlastCat",
-			"symbol": "bcat",
-			"decimals": 18
-		},
-		{
-			"chainId": 81457,
-			"address": "0x336d814f94581bd70898da35feb266163bfc8199",
-			"name": "Blastnet",
-			"symbol": "bnet",
-			"decimals": 18
-		},
-		{
-			"chainId": 81457,
-			"address": "0xd55edfc79c0d14084260d16f38bda75e28abfb6a",
-			"name": "BlastOff",
-			"symbol": "off",
-			"decimals": 18
-		},
-		{
-			"chainId": 81457,
-			"address": "0xb582dc28968c725d2868130752afa0c13ebf9b1a",
-			"name": "Blast Pepe",
-			"symbol": "bepe",
-			"decimals": 18
-		},
-		{
-			"chainId": 81457,
-			"address": "0x33c62f70b14c438075be70defb77626b1ac3b503",
-			"name": "BlastUP",
-			"symbol": "blp",
-			"decimals": 18
-		},
-		{
-			"chainId": 81457,
-			"address": "0xc96a98c8c95a0f64a60d9925220d54d28bfe2441",
-			"name": "ByteonBlast",
-			"symbol": "byte",
-			"decimals": 18
-		},
-		{
-			"chainId": 81457,
-			"address": "0x233b23de890a8c21f6198d03425a2b986ae05536",
-			"name": "Core Markets",
-			"symbol": "core",
-			"decimals": 18
-		},
-		{
-			"chainId": 81457,
-			"address": "0xd43d8adac6a4c7d9aeece7c3151fca8f23752cf8",
-			"name": "AndyBlast",
-			"symbol": "andy",
-			"decimals": 9
-		},
-		{
-			"chainId": 81457,
-			"address": "0x3580ac35bed2981d6bdd671a5982c2467d301241",
-			"name": "Ankr Network",
-			"symbol": "ankr",
+			"name": "AIWAIFU",
+			"symbol": "$WAI",
 			"decimals": 18
 		},
 		{
 			"chainId": 81457,
 			"address": "0x049e6a52e2c9b7814c8178908f3630726c134c92",
 			"name": "Ankr Staked ETH",
-			"symbol": "ankreth",
+			"symbol": "ankrETH",
+			"decimals": 18
+		},
+		{
+			"chainId": 81457,
+			"address": "0x60701c37cd9fed322dde7c17dc1e356f09a35b88",
+			"name": "BlastDEX",
+			"symbol": "BD",
+			"decimals": 18
+		},
+		{
+			"chainId": 81457,
+			"address": "0xb9dfcd4cf589bb8090569cb52fac1b88dbe4981f",
+			"name": "Bag",
+			"symbol": "BAG",
+			"decimals": 18
+		},
+		{
+			"chainId": 81457,
+			"address": "0x95b9b27f2eba05433b4a64257f0342285d89a479",
+			"name": "AVO",
+			"symbol": "AVO",
+			"decimals": 18
+		},
+		{
+			"chainId": 81457,
+			"address": "0x3580ac35bed2981d6bdd671a5982c2467d301241",
+			"name": "Ankr Network",
+			"symbol": "ANKR",
 			"decimals": 18
 		},
 		{
 			"chainId": 81457,
 			"address": "0x34050224f9ea1859790b7cbbbe2264f1204771a6",
 			"name": "Blast Inu",
-			"symbol": "binu",
+			"symbol": "BINU",
 			"decimals": 9
 		},
 		{
 			"chainId": 81457,
-			"address": "0x67fa2887914fa3729e9eed7630294fe124f417a0",
-			"name": "Crypto Valleys YIELD Token",
-			"symbol": "yield",
+			"address": "0x336d814f94581bd70898da35feb266163bfc8199",
+			"name": "BlastNET",
+			"symbol": "BNET",
 			"decimals": 18
 		},
 		{
 			"chainId": 81457,
-			"address": "0x47c337bd5b9344a6f3d6f58c474d9d8cd419d8ca",
-			"name": "DackieSwap",
-			"symbol": "dackie",
+			"address": "0xd1fedd031b92f50a50c05e2c45af1adb4cea82f4",
+			"name": "Blade",
+			"symbol": "BLADE",
 			"decimals": 18
 		},
 		{
 			"chainId": 81457,
-			"address": "0x1ba52a63adf7e9425ddd85b378dda25e3818e596",
-			"name": "Duckie The Meme Token",
-			"symbol": "$duckie",
+			"address": "0xd55edfc79c0d14084260d16f38bda75e28abfb6a",
+			"name": "OFF",
+			"symbol": "OFF",
 			"decimals": 18
 		},
 		{
 			"chainId": 81457,
-			"address": "0x7135b32e9903bdb4e19a8b1d22fc2038964b8451",
-			"name": "EarlyFans",
-			"symbol": "early",
+			"address": "0x33c62f70b14c438075be70defb77626b1ac3b503",
+			"name": "BlastUP Token",
+			"symbol": "BLP",
 			"decimals": 18
 		},
 		{
 			"chainId": 81457,
-			"address": "0x818a92bc81aad0053d72ba753fb5bc3d0c5c0923",
-			"name": "Juice Finance",
-			"symbol": "juice",
+			"address": "0x9bd75c164daf830733ac2ea71a0258f95aac7c57",
+			"name": "BlastCat",
+			"symbol": "BCat",
 			"decimals": 18
 		},
 		{
 			"chainId": 81457,
-			"address": "0x76da31d7c9cbeae102aff34d3398bc450c8374c1",
-			"name": "Magic Internet Money (Blast)",
-			"symbol": "mim",
-			"decimals": 18
-		},
-		{
-			"chainId": 81457,
-			"address": "0x491e6de43b55c8eae702edc263e32339da42f58c",
-			"name": "Eesee",
-			"symbol": "ese",
-			"decimals": 18
-		},
-		{
-			"chainId": 81457,
-			"address": "0x15d24de366f69b835be19f7cf9447e770315dd80",
-			"name": "KAP Games",
-			"symbol": "kap",
-			"decimals": 18
-		},
-		{
-			"chainId": 81457,
-			"address": "0xdb13df2ea134e7df2208d74b96db063837db5b5c",
-			"name": "LAMB by OPNX",
-			"symbol": "lamb",
+			"address": "0x233b23de890a8c21f6198d03425a2b986ae05536",
+			"name": "Core Markets",
+			"symbol": "CORE",
 			"decimals": 18
 		},
 		{
 			"chainId": 81457,
 			"address": "0x963eec23618bbc8e1766661d5f263f18094ae4d5",
-			"name": "CYBRO",
-			"symbol": "cybro",
+			"name": "Cybro Token",
+			"symbol": "CYBRO",
 			"decimals": 18
 		},
 		{
 			"chainId": 81457,
-			"address": "0x9a50953716ba58e3d6719ea5c437452ac578705f",
-			"name": "MetaStreet V2 mwstETH-WPUNKS:20",
-			"symbol": "punketh-20",
+			"address": "0xc96a98c8c95a0f64a60d9925220d54d28bfe2441",
+			"name": "ByteonBlast",
+			"symbol": "BYTE",
 			"decimals": 18
 		},
 		{
 			"chainId": 81457,
-			"address": "0xa4c7aa67189ec5623121c6c94ec757dfed932d4b",
-			"name": "Mia",
-			"symbol": "mia",
+			"address": "0x47c337bd5b9344a6f3d6f58c474d9d8cd419d8ca",
+			"name": "Dackie Token",
+			"symbol": "DACKIE",
 			"decimals": 18
 		},
 		{
 			"chainId": 81457,
-			"address": "0x837fe561e9c5dfa73f607fda679295dbc2be5e40",
-			"name": "MonoSwap USD",
-			"symbol": "musd",
+			"address": "0x67fa2887914fa3729e9eed7630294fe124f417a0",
+			"name": "Yield Token",
+			"symbol": "YIELD",
+			"decimals": 18
+		},
+		{
+			"chainId": 81457,
+			"address": "0x1ba52a63adf7e9425ddd85b378dda25e3818e596",
+			"name": "DUCKIE",
+			"symbol": "DUCKIE",
+			"decimals": 18
+		},
+		{
+			"chainId": 81457,
+			"address": "0x491e6de43b55c8eae702edc263e32339da42f58c",
+			"name": "eesee",
+			"symbol": "ESE",
 			"decimals": 18
 		},
 		{
 			"chainId": 81457,
 			"address": "0x9fe9991daf6b9a5d79280f48cbb6827d46de2ea4",
 			"name": "HyperBlast",
-			"symbol": "hype",
+			"symbol": "HYPE",
 			"decimals": 9
+		},
+		{
+			"chainId": 81457,
+			"address": "0x5a7a183b6b44dc4ec2e3d2ef43f98c5152b1d76d",
+			"name": "InceptionLRT restaked ETH",
+			"symbol": "inETH",
+			"decimals": 18
+		},
+		{
+			"chainId": 81457,
+			"address": "0x0f8881fc1fca1f5151fa4205d55922ffa15e707a",
+			"name": "Blast Disperse",
+			"symbol": "DISP",
+			"decimals": 18
+		},
+		{
+			"chainId": 81457,
+			"address": "0xb582dc28968c725d2868130752afa0c13ebf9b1a",
+			"name": "Blast Pepe",
+			"symbol": "BEPE",
+			"decimals": 18
+		},
+		{
+			"chainId": 81457,
+			"address": "0x818a92bc81aad0053d72ba753fb5bc3d0c5c0923",
+			"name": "Juice",
+			"symbol": "JUICE",
+			"decimals": 18
+		},
+		{
+			"chainId": 81457,
+			"address": "0x15d24de366f69b835be19f7cf9447e770315dd80",
+			"name": "KAP Games",
+			"symbol": "KAP",
+			"decimals": 18
+		},
+		{
+			"chainId": 81457,
+			"address": "0x76da31d7c9cbeae102aff34d3398bc450c8374c1",
+			"name": "Magic Internet Money",
+			"symbol": "MIM",
+			"decimals": 18
+		},
+		{
+			"chainId": 81457,
+			"address": "0x9a50953716ba58e3d6719ea5c437452ac578705f",
+			"name": "MetaStreet V2 Deposit: WPUNKS-wstETH:20",
+			"symbol": "mwstETH-WPUNKS:20",
+			"decimals": 18
+		},
+		{
+			"chainId": 81457,
+			"address": "0xdb13df2ea134e7df2208d74b96db063837db5b5c",
+			"name": "LAMB by OPNX",
+			"symbol": "LAMB",
+			"decimals": 18
+		},
+		{
+			"chainId": 81457,
+			"address": "0x837fe561e9c5dfa73f607fda679295dbc2be5e40",
+			"name": "Monoswap USD",
+			"symbol": "MUSD",
+			"decimals": 18
 		},
 		{
 			"chainId": 81457,
 			"address": "0x75483179a38d21f3608e71bbede5ec1314f0067d",
 			"name": "NeptuneX",
-			"symbol": "nptx",
+			"symbol": "NPTX",
 			"decimals": 18
 		},
 		{
 			"chainId": 81457,
 			"address": "0x000000daa580e54635a043d2773f2c698593836a",
-			"name": "Oh no",
-			"symbol": "ohno",
+			"name": "Oh No",
+			"symbol": "OHNO",
+			"decimals": 18
+		},
+		{
+			"chainId": 81457,
+			"address": "0x7135b32e9903bdb4e19a8b1d22fc2038964b8451",
+			"name": "EARLY Token",
+			"symbol": "EARLY",
 			"decimals": 18
 		},
 		{
 			"chainId": 81457,
 			"address": "0x9e20461bc2c4c980f62f1b279d71734207a6a356",
 			"name": "OmniCat",
-			"symbol": "omni",
-			"decimals": 18
-		},
-		{
-			"chainId": 81457,
-			"address": "0x42e12d42b3d6c4a74a88a61063856756ea2db357",
-			"name": "Orbit Protocol",
-			"symbol": "orbit",
+			"symbol": "OMNI",
 			"decimals": 18
 		},
 		{
 			"chainId": 81457,
 			"address": "0x7217124c626f0b7077be91df939195c9a8184ecc",
 			"name": "Finger Blast",
-			"symbol": "finger",
-			"decimals": 18
-		},
-		{
-			"chainId": 81457,
-			"address": "0xba0dda8762c24da9487f5fa026a9b64b695a07ea",
-			"name": "OX Coin",
-			"symbol": "ox",
-			"decimals": 18
-		},
-		{
-			"chainId": 81457,
-			"address": "0x5ffd9ebd27f2fcab044c0f0a26a45cb62fa29c06",
-			"name": "PacMoon",
-			"symbol": "pac",
-			"decimals": 18
-		},
-		{
-			"chainId": 81457,
-			"address": "0x2416092f143378750bb29b79ed961ab195cceea5",
-			"name": "Renzo Restaked ETH",
-			"symbol": "ezeth",
-			"decimals": 18
-		},
-		{
-			"chainId": 81457,
-			"address": "0x4fee793d435c6d2c10c135983bb9d6d4fc7b9bbd",
-			"name": "Overnight.fi USD+",
-			"symbol": "usd+",
-			"decimals": 18
-		},
-		{
-			"chainId": 81457,
-			"address": "0xe070b87c4d88826d4cd1b85babe186fdb14cd321",
-			"name": "Cyberblast Token",
-			"symbol": "cbr",
-			"decimals": 18
-		},
-		{
-			"chainId": 81457,
-			"address": "0x4300000000000000000000000000000000000003",
-			"name": "USDB",
-			"symbol": "usdb",
-			"decimals": 18
-		},
-		{
-			"chainId": 81457,
-			"address": "0x870a8f46b62b8bdeda4c02530c1750cddf2ed32e",
-			"name": "Overnight.fi USDC+",
-			"symbol": "usdc+",
-			"decimals": 18
-		},
-		{
-			"chainId": 81457,
-			"address": "0x87e154e86fb691ab8a27116e93ed8d54e2b8c18c",
-			"name": "Titan Trading Token",
-			"symbol": "tes",
-			"decimals": 18
-		},
-		{
-			"chainId": 81457,
-			"address": "0x4300000000000000000000000000000000000004",
-			"name": "WETH",
-			"symbol": "weth",
-			"decimals": 18
-		},
-		{
-			"chainId": 81457,
-			"address": "0xd07379a755a8f11b57610154861d694b2a0f615a",
-			"name": "SwapBlast Finance Token",
-			"symbol": "sbf",
-			"decimals": 18
-		},
-		{
-			"chainId": 81457,
-			"address": "0x9b0ae1c1fbe7006697356030d45ab3e17cbcf70f",
-			"name": "XDX",
-			"symbol": "xdx",
-			"decimals": 18
-		},
-		{
-			"chainId": 81457,
-			"address": "0x20fe91f17ec9080e3cac2d688b4ecb48c5ac3a9c",
-			"name": "YES Money",
-			"symbol": "yes",
-			"decimals": 18
-		},
-		{
-			"chainId": 81457,
-			"address": "0x68449870eea84453044bd430822827e21fd8f101",
-			"name": "Zaibot",
-			"symbol": "zai",
-			"decimals": 18
-		},
-		{
-			"chainId": 81457,
-			"address": "0x236bb48fcf61ce996b2c8c196a9258c176100c7d",
-			"name": "RabbitX",
-			"symbol": "rbx",
+			"symbol": "FINGER",
 			"decimals": 18
 		},
 		{
 			"chainId": 81457,
 			"address": "0x216a5a1135a9dab49fa9ad865e0f22fe22b5630a",
 			"name": "Pump",
-			"symbol": "pump",
+			"symbol": "PUMP",
+			"decimals": 18
+		},
+		{
+			"chainId": 81457,
+			"address": "0xba0dda8762c24da9487f5fa026a9b64b695a07ea",
+			"name": "OX Coin",
+			"symbol": "OX",
+			"decimals": 18
+		},
+		{
+			"chainId": 81457,
+			"address": "0x236bb48fcf61ce996b2c8c196a9258c176100c7d",
+			"name": "RabbitX",
+			"symbol": "RBX",
 			"decimals": 18
 		},
 		{
 			"chainId": 81457,
 			"address": "0xd582879453337bd149ae53ec2092b0af5281d1d7",
-			"name": "Sekai Glory",
-			"symbol": "glory",
+			"name": "GLORY",
+			"symbol": "GLORY",
+			"decimals": 18
+		},
+		{
+			"chainId": 81457,
+			"address": "0x2416092f143378750bb29b79ed961ab195cceea5",
+			"name": "Renzo Restaked ETH",
+			"symbol": "ezETH",
+			"decimals": 18
+		},
+		{
+			"chainId": 81457,
+			"address": "0x5ffd9ebd27f2fcab044c0f0a26a45cb62fa29c06",
+			"name": "PacMoon",
+			"symbol": "PAC",
+			"decimals": 18
+		},
+		{
+			"chainId": 81457,
+			"address": "0xd07379a755a8f11b57610154861d694b2a0f615a",
+			"name": "SwapBlast Finance Token",
+			"symbol": "SBF",
+			"decimals": 18
+		},
+		{
+			"chainId": 81457,
+			"address": "0x87e154e86fb691ab8a27116e93ed8d54e2b8c18c",
+			"name": "Titan Trading Token",
+			"symbol": "TES",
+			"decimals": 18
+		},
+		{
+			"chainId": 81457,
+			"address": "0x870a8f46b62b8bdeda4c02530c1750cddf2ed32e",
+			"name": "USDC+",
+			"symbol": "USDC+",
+			"decimals": 18
+		},
+		{
+			"chainId": 81457,
+			"address": "0x4fee793d435c6d2c10c135983bb9d6d4fc7b9bbd",
+			"name": "USD+",
+			"symbol": "USD+",
+			"decimals": 18
+		},
+		{
+			"chainId": 81457,
+			"address": "0x42e12d42b3d6c4a74a88a61063856756ea2db357",
+			"name": "Orbit Protocol",
+			"symbol": "ORBIT",
+			"decimals": 18
+		},
+		{
+			"chainId": 81457,
+			"address": "0x4300000000000000000000000000000000000004",
+			"name": "Wrapped Ether",
+			"symbol": "WETH",
+			"decimals": 18
+		},
+		{
+			"chainId": 81457,
+			"address": "0x9b0ae1c1fbe7006697356030d45ab3e17cbcf70f",
+			"name": "XDX",
+			"symbol": "XDX",
+			"decimals": 18
+		},
+		{
+			"chainId": 81457,
+			"address": "0x764933fbad8f5d04ccd088602096655c2ed9879f",
+			"name": "Any Inu (non-ITS)",
+			"symbol": "AI",
+			"decimals": 18
+		},
+		{
+			"chainId": 81457,
+			"address": "0x20fe91f17ec9080e3cac2d688b4ecb48c5ac3a9c",
+			"name": "YES",
+			"symbol": "YES",
+			"decimals": 18
+		},
+		{
+			"chainId": 81457,
+			"address": "0x68449870eea84453044bd430822827e21fd8f101",
+			"name": "ZAIBOT.io",
+			"symbol": "ZAI",
+			"decimals": 18
+		},
+		{
+			"chainId": 81457,
+			"address": "0xa4c7aa67189ec5623121c6c94ec757dfed932d4b",
+			"name": "Mia",
+			"symbol": "MIA",
 			"decimals": 18
 		},
 		{
 			"chainId": 81457,
 			"address": "0xfd4d19f9fbb9f730c3c88a21755832bd2455144e",
-			"name": "Super Sushi Samurai",
-			"symbol": "sss",
+			"name": "SSS",
+			"symbol": "SSS",
 			"decimals": 18
 		},
 		{
 			"chainId": 81457,
-			"address": "0x5a7a183b6b44dc4ec2e3d2ef43f98c5152b1d76d",
-			"name": "Inception Restaked ETH",
-			"symbol": "ineth",
+			"address": "0x4300000000000000000000000000000000000003",
+			"name": "USDB",
+			"symbol": "USDB",
+			"decimals": 18
+		},
+		{
+			"chainId": 81457,
+			"address": "0xd43d8adac6a4c7d9aeece7c3151fca8f23752cf8",
+			"name": "Andy",
+			"symbol": "ANDY",
+			"decimals": 9
+		},
+		{
+			"chainId": 81457,
+			"address": "0xe070b87c4d88826d4cd1b85babe186fdb14cd321",
+			"name": "Cyberblast Token",
+			"symbol": "CBR",
 			"decimals": 18
 		}
 	]

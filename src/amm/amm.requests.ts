@@ -230,6 +230,8 @@ export interface PerpPositionResponse extends PerpPosition {
   latency: number;
   base: string;
   quote: string;
+  balance?: string;
+  liquidationPrice?: string;
 }
 
 export interface PerpAvailablePairsResponse {

@@ -13,6 +13,7 @@ import {
   encodeTradeParam,
   NULL_DDL,
   PairModel,
+  wdiv,
 } from '@synfutures/oyster-sdk';
 import { Token } from '@uniswap/sdk';
 import { Transaction, Wallet, ethers } from 'ethers';
@@ -29,11 +30,16 @@ function toTickerSymbol(symbol: string) {
     throw new Error('invalid symbol: ' + symbol);
   }
 
-  return symbol.substring(0, index - 1);
+  return symbol.substring(0, index);
 }
 
 function formatSlippage(slippage: number) {
   return Math.floor(slippage * 10000);
+}
+
+export interface SynFuturesPosition extends PerpPosition {
+  balance: string;
+  liquidationPrice: string;
 }
 
 export class SynFutures implements SynFuturesish {
@@ -202,7 +208,7 @@ export class SynFutures implements SynFuturesish {
   async isMarketActive(tickerSymbol: string): Promise<boolean> {
     const pair = this.pairs[tickerSymbol];
 
-    return (
+    return !!(
       pair &&
       pair.rootInstrument.state.condition === InstrumentCondition.NORMAL &&
       (pair.amm.status === AMMStatus.TRADING ||
@@ -219,7 +225,7 @@ export class SynFutures implements SynFuturesish {
   async getPositions(
     address: string,
     tickerSymbol: string,
-  ): Promise<PerpPosition | undefined> {
+  ): Promise<SynFuturesPosition | undefined> {
     const pair = this.pairs[tickerSymbol];
 
     if (!pair) {
@@ -237,11 +243,15 @@ export class SynFutures implements SynFuturesish {
     return {
       positionAmt: position.size.abs().toString(),
       positionSide: position.size.gt(0) ? 'LONG' : 'SHORT',
-      unrealizedProfit: position.unrealizedPnl.toString(),
+      unrealizedProfit: position.unrealizedPnl
+        .sub(position.unrealizedFundingFee)
+        .toString(),
       leverage: ethers.utils.formatUnits(position.leverageWad),
-      entryPrice: position.entryNotional.div(position.size.abs()).toString(),
+      entryPrice: wdiv(position.entryNotional, position.size.abs()).toString(),
       tickerSymbol,
       pendingFundingPayment: position.unrealizedFundingFee.toString(),
+      balance: position.balance.toString(),
+      liquidationPrice: position.liquidationPrice.toString(),
     };
   }
 
@@ -274,6 +284,10 @@ export class SynFutures implements SynFuturesish {
     }
 
     const slippage = formatSlippage(this.getAllowedSlippage(allowedSlippage));
+
+    await this.synfutures.syncVaultCache(wallet.address, [
+      pair.rootInstrument.info.quote.address,
+    ]);
 
     const account = await this.synfutures.updatePairLevelAccount(
       wallet.address,
@@ -337,6 +351,10 @@ export class SynFutures implements SynFuturesish {
     if (!pair) {
       throw new Error('invalid ticker symbol: ' + tickerSymbol);
     }
+
+    await this.synfutures.syncVaultCache(wallet.address, [
+      pair.rootInstrument.info.quote.address,
+    ]);
 
     const account = await this.synfutures.updatePairLevelAccount(
       wallet.address,
