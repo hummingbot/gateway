@@ -191,6 +191,7 @@ export interface PerpPricesResponse {
   markPrice: string;
   indexPrice: string;
   indexTwapPrice: string;
+  fairPrice?: string;
 }
 
 export interface PerpMarketRequest extends NetworkSelectionRequest {

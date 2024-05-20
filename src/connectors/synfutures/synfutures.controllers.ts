@@ -77,6 +77,7 @@ export async function getPriceData(
     markPrice: prices.markPrice.toString(),
     indexPrice: prices.indexPrice.toString(),
     indexTwapPrice: prices.indexTwapPrice.toString(),
+    fairPrice: prices.fairPrice.toString(),
   };
 }
 

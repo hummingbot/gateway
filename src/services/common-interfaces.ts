@@ -686,6 +686,7 @@ export interface SynFuturesish {
     markPrice: BigNumber;
     indexPrice: BigNumber;
     indexTwapPrice: BigNumber;
+    fairPrice: BigNumber;
   }>;
 
   /**

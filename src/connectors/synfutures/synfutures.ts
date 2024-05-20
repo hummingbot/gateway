@@ -163,6 +163,7 @@ export class SynFutures implements SynFuturesish {
     markPrice: ethers.BigNumber;
     indexPrice: ethers.BigNumber;
     indexTwapPrice: ethers.BigNumber;
+    fairPrice: ethers.BigNumber;
   }> {
     let pair = this.pairs[tickerSymbol];
 
@@ -182,9 +183,14 @@ export class SynFutures implements SynFuturesish {
 
     return {
       markPrice: pair.markPrice,
-      indexPrice: ethers.BigNumber.from(0),
-      indexTwapPrice: ethers.BigNumber.from(0),
-      // fairPrice: pair.fairPriceWad,
+      indexPrice: await this.synfutures.getRawSpotPrice({
+        marketType: pair.rootInstrument.marketType,
+        baseSymbol: pair.rootInstrument.info.base,
+        quoteSymbol: pair.rootInstrument.info.quote,
+      }),
+      // NOTE: synfutures does not have indexTwapPrice, so use markPrice instead
+      indexTwapPrice: pair.markPrice,
+      fairPrice: pair.fairPriceWad,
     };
   }
 
