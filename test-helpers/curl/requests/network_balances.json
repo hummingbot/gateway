@@ -1,8 +1,8 @@
 {
-  "chain": "avalanche",
-  "network": "avalanche",
-  "address": "$AVALANCHE_ADDRESS",
+  "chain": "ethereum",
+  "network": "celo",
+  "address": "0x0a0CdC90CC16A0f3E67c296c8C0f7207cbdC0F4E",
   "tokenSymbols": [
-    "USDC"
+    "USDC", "cETH"
   ]
 }
