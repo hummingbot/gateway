@@ -435,6 +435,7 @@ export class OraidexCLOB implements CLOBish {
     );
 
     const txData = await this.oraichainNetwork.cosmwasmClient.getTx(res.transactionHash);
+    console.dir(txData, { depth: null });
     if (!txData) throw new Error('Transaction not found');
     const orderIds = getOrderIdsFromTxData(txData);
 
