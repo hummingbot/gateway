@@ -1,5 +1,5 @@
 # Set the base image
-FROM node:18.18.0
+FROM node:18.10.0
 
 # WORKDIR /usr/src/app/
 WORKDIR /home/gateway
@@ -25,7 +25,6 @@ ENV INSTALLATION_TYPE=docker
 RUN mkdir -p /home/gateway/conf /home/gateway/logs /home/gateway/db /home/gateway/certs
 
 # Install dependencies and compile
-RUN yarn global add node-gyp
 RUN yarn install --frozen-lockfile
 RUN yarn build
 
