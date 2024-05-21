@@ -1,6 +1,5 @@
 import { TokensRequest } from '../../network/network.requests';
 import { TokenInfo, TokenValue, tokenValueToString } from '../../services/base';
-import { Token } from '../cosmos/cosmos-base';
 import { Oraichain } from './oraichain';
 import { validateGetTokensRequest } from './oraichain.validators';
 import {
@@ -18,6 +17,14 @@ import {
 } from '../../services/error-handler';
 import { decodeTxRaw } from '@cosmjs/proto-signing';
 import { BigNumber } from 'ethers';
+
+export interface Token {
+  base: string;
+  address: string;
+  name: string;
+  symbol: string;
+  decimals: number;
+}
 
 export const toOraichainBalances = (
   balances: Record<string, TokenValue>,
@@ -49,7 +56,6 @@ export class OraichainController {
       tokens = oraichainLish.storedTokenList;
     } else {
       for (const t of req.tokenSymbols as []) {
-        console.log('t', t);
         const token = oraichainLish.getTokenForSymbol(t);
         if (token != undefined) {
           tokens.push(token);
@@ -61,7 +67,7 @@ export class OraichainController {
     const tokensInfo: TokenInfo[] = [];
     tokens.map((token) => {
       const tokenInfo: TokenInfo = {
-        address: token.address,
+        address: token.base,
         chainId: 0,
         decimals: token.decimals,
         name: token.name,
@@ -90,7 +96,7 @@ export class OraichainController {
           TOKEN_NOT_SUPPORTED_ERROR_CODE
         );
       } else {
-        if (token.address != 'orai' && !token.address.startsWith('ibc/')) {
+        if (token.base != 'orai' && !token.base.startsWith('ibc/')) {
           cw20Tokens.push(token);
         }
       }
@@ -122,7 +128,7 @@ export class OraichainController {
     await Promise.all(
       tokens.map(async (token: Token) => {
         try {
-          let balance = await cosmosish.queryContractSmart(token.address, {
+          let balance = await cosmosish.queryContractSmart(token.base, {
             balance: {
               address,
             },
@@ -145,6 +151,10 @@ export class OraichainController {
 
   static async poll(cosmos: Oraichain, req: CosmosPollRequest) {
     validateCosmosPollRequest(req);
+
+    if (req.txHash == undefined) {
+      throw new HttpException(500, 'txHash is required');
+    }
 
     const transaction = await cosmos.getTransaction(req.txHash);
     const currentBlock = await cosmos.getCurrentBlockNumber();

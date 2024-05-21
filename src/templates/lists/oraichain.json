@@ -1,6 +1,68 @@
 {
   "name": "Oraichain token list",
   "URI": "",
+  "assets": [
+    {
+      "denom_units": [
+        {
+          "denom": "orai",
+          "exponent": 6
+        }
+      ],
+      "base": "orai",
+      "name": "Oraichain token",
+      "display": "orai",
+      "symbol": "ORAI"
+    },
+    {
+      "denom_units": [
+        {
+          "denom": "usdt",
+          "exponent": 6
+        }
+      ],
+      "base": "orai12hzjxfh77wl572gdzct2fxv2arxcwh6gykc7qh",
+      "name": "USDT token",
+      "display": "usdt",
+      "symbol": "USDT"
+    },
+    {
+      "denom_units": [
+        {
+          "denom": "xoch",
+          "exponent": 6
+        }
+      ],
+      "base": "orai1lplapmgqnelqn253stz6kmvm3ulgdaytn89a8mz9y85xq8wd684s6xl3lt",
+      "name": "xOCH token",
+      "display": "xoch",
+      "symbol": "xOCH"
+    },
+    {
+      "denom_units": [
+        {
+          "denom": "btc",
+          "exponent": 6
+        }
+      ],
+      "base": "orai10g6frpysmdgw5tdqke47als6f97aqmr8s3cljsvjce4n5enjftcqtamzsd",
+      "name": "BTC token",
+      "display": "btc",
+      "symbol": "BTC"
+    },
+    {
+      "denom_units": [
+        {
+          "denom": "atom",
+          "exponent": 6
+        }
+      ],
+      "base": "ibc/A2E2EEC9057A4A1C2C0A6A4C78B0239118DF5F278830F50B4A6BDD7A66506B78",
+      "name": "ATOM token",
+      "display": "atom",
+      "symbol": "ATOM"
+    }
+  ],
   "tokens": [
     {
       "name": "Oraichain token",

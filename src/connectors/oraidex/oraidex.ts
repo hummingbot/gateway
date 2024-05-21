@@ -28,7 +28,7 @@ import {
   PlaceOrdersRequest,
 } from './oraidex.types';
 import { BigNumber } from 'bignumber.js';
-import { OraiswapLimitOrderQueryClient } from '@oraichain/oraidex-contracts-sdk';
+import { OraiswapOrderbookQueryClient } from '@oraichain/oraidex-contracts-sdk';
 import { OraidexConfig } from './oraidex.config';
 import { JsonObject, ExecuteInstruction } from '@cosmjs/cosmwasm-stargate';
 
@@ -85,7 +85,7 @@ export class OraidexCLOB implements CLOBish {
   async init() {
     this.oraichainNetwork = await Oraichain.getInstance(this.network);
     await this.oraichainNetwork.init();
-    this.orderbookQueryClient = new OraiswapLimitOrderQueryClient(
+    this.orderbookQueryClient = new OraiswapOrderbookQueryClient(
       this.oraichainNetwork.cosmwasmClient,
       this._swapLimitOrder,
     );
@@ -119,7 +119,7 @@ export class OraidexCLOB implements CLOBish {
 
     try {
       const loadedMarkets: Market[] = await Promise.all(
-        orderBooks.order_books.map(async (pair) => {
+        orderBooks.order_books.map(async (pair: any) => {
           const baseToken = await parseToToken(
             pair.base_coin_info,
             this.oraichainNetwork.cosmwasmClient,

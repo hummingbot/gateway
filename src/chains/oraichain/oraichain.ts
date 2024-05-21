@@ -14,7 +14,6 @@ import {
 import * as cosmwasm from '@cosmjs/cosmwasm-stargate';
 import { DirectSecp256k1Wallet } from '@cosmjs/proto-signing';
 import { GasPrice, StargateClient, setupIbcExtension } from '@cosmjs/stargate';
-import { Decimal } from '@cosmjs/math';
 import { BigNumber } from 'ethers';
 
 export type MarketInfo = {
@@ -142,13 +141,15 @@ export class Oraichain extends CosmosBase implements Cosmosish {
       this._rpcUrl,
       wallet,
       {
-        gasPrice: new GasPrice(Decimal.fromUserInput('0.001', 6), 'orai'),
+        gasPrice: GasPrice.fromString('0.001orai'),
         broadcastPollIntervalMs: 500,
       },
     );
   }
 
-  public async getSigningClient(address: string): Promise<SigningCosmWasmClient> {
+  public async getSigningClient(
+    address: string,
+  ): Promise<SigningCosmWasmClient> {
     let client = this._signers.get(address);
 
     if (!client) {
@@ -166,7 +167,7 @@ export class Oraichain extends CosmosBase implements Cosmosish {
   ): Promise<JsonObject> {
     const client = await this.getSigningClient(sender);
 
-    let res = await client.execute(
+    const res = await client.execute(
       sender,
       contractAddress,
       msg,
@@ -174,8 +175,6 @@ export class Oraichain extends CosmosBase implements Cosmosish {
       undefined,
       funds,
     );
-    
-    // console.dir(res, { depth: null });
 
     return res;
   }
@@ -186,16 +185,14 @@ export class Oraichain extends CosmosBase implements Cosmosish {
   ): Promise<JsonObject> {
     const client = await this.getSigningClient(sender);
 
-    let res = await client.executeMultiple(sender, instructions, 'auto');
-
-    // console.dir(res, { depth: null });
+    const res = await client.executeMultiple(sender, instructions, 'auto');
 
     return res;
   }
 
   async getBalance(address: string): Promise<Record<string, TokenValue>> {
     const provider = await StargateClient.connect(this._rpcUrl);
-    
+
     const balances: Record<string, TokenValue> = {};
 
     const allTokens = await provider.getAllBalances(address);
@@ -233,7 +230,7 @@ export class Oraichain extends CosmosBase implements Cosmosish {
   public get gasPrice(): number {
     return this._gasPrice;
   }
-  
+
   public get chain(): string {
     return this._chain;
   }

@@ -15,9 +15,10 @@ beforeAll(async () => {
   const mnemonic = new EnglishMnemonic(
     'enlist hip relief stomach skate base shallow young switch frequent cry park',
   );
+  //get me a default hd path
   const hdPath = makeCosmoshubPath(0);
   const seed = await Bip39.mnemonicToSeed(mnemonic);
-  const masterKey = Slip10.derivePath(Slip10Curve.Secp256k1, seed, hdPath);
+  const masterKey = Slip10.derivePath(Slip10Curve.Secp256k1, seed, hdPath as any);
   const privateKeyTest = masterKey.privkey;
 
   const wallet = await oraichain.getWalletFromPrivateKey(

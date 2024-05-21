@@ -200,7 +200,7 @@ export class CosmosBase {
       if (this.chainName == 'osmosis'){
         this._provider = await createRPCQueryClient({rpcEndpoint: this.rpcUrl});
         await this.getLatestBasePrice();
-      }else{
+      } else {
         this._provider = StargateClient.connect(this.rpcUrl);
       }
       // If we're not ready, this._initialized will be a Promise that resolves after init() completes
