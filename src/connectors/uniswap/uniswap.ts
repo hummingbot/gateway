@@ -36,13 +36,14 @@ import {
 import { logger } from '../../services/logger';
 import { percentRegexp } from '../../services/config-manager-v2';
 import { Ethereum } from '../../chains/ethereum/ethereum';
+import { Avalanche } from '../../chains/avalanche/avalanche';
 import { Polygon } from '../../chains/polygon/polygon';
 import { ExpectedTrade, Uniswapish } from '../../services/common-interfaces';
 import { getAddress } from 'ethers/lib/utils';
 
 export class Uniswap implements Uniswapish {
   private static _instances: { [name: string]: Uniswap };
-  private chain: Ethereum | Polygon;
+  private chain: Ethereum | Polygon | Avalanche;
   private _alphaRouter: AlphaRouter;
   private _router: string;
   private _v3Factory: string;
@@ -61,6 +62,8 @@ export class Uniswap implements Uniswapish {
     const config = UniswapConfig.config;
     if (chain === 'ethereum') {
       this.chain = Ethereum.getInstance(network);
+    } else if (chain === 'avalanche') {
+      this.chain = Avalanche.getInstance(network);
     } else {
       this.chain = Polygon.getInstance(network);
     }
