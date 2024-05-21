@@ -39,7 +39,7 @@ export const isAddress = (str: string): boolean => {
 export const validateAddress: Validator = mkValidator(
   'address',
   invalidAddressError,
-  (val) => typeof val === 'string' && isAddress(val)
+  (val) => typeof val === 'string' && isAddress(val),
 );
 
 // given a request, look for a key called spender that is 'uniswap' or an Ethereum address
@@ -50,6 +50,7 @@ export const validateSpender: Validator = mkValidator(
     typeof val === 'string' &&
     (val === 'uniswap' ||
       val === 'perp' ||
+      val === 'synfutures' ||
       val === 'uniswapLP' ||
       val === 'pangolin' ||
       val === 'traderjoe' ||
@@ -64,7 +65,7 @@ export const validateSpender: Validator = mkValidator(
       val === 'xsswap' ||
       val === 'curve' ||
       val === 'carbonamm' ||
-      isAddress(val))
+      isAddress(val)),
 );
 
 export const validateNonce: Validator = mkValidator(
@@ -73,33 +74,33 @@ export const validateNonce: Validator = mkValidator(
   (val) =>
     typeof val === 'undefined' ||
     (typeof val === 'number' && val >= 0 && Number.isInteger(val)),
-  true
+  true,
 );
 
 export const validateMaxFeePerGas: Validator = mkValidator(
   'maxFeePerGas',
   invalidMaxFeePerGasError,
   (val) => typeof val === 'string' && isNaturalNumberString(val),
-  true
+  true,
 );
 
 export const validateMaxPriorityFeePerGas: Validator = mkValidator(
   'maxPriorityFeePerGas',
   invalidMaxPriorityFeePerGasError,
   (val) => typeof val === 'string' && isNaturalNumberString(val),
-  true
+  true,
 );
 
 export const validateChain: Validator = mkValidator(
   'chain',
   invalidChainError,
-  (val) => typeof val === 'string'
+  (val) => typeof val === 'string',
 );
 
 export const validateNetwork: Validator = mkValidator(
   'network',
   invalidNetworkError,
-  (val) => typeof val === 'string'
+  (val) => typeof val === 'string',
 );
 
 // request types and corresponding validators

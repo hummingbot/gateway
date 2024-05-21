@@ -50,6 +50,7 @@
     "@pangolindex/sdk": "^1.1.0",
     "@perp/sdk-curie": "^1.16.0",
     "@sushiswap/sdk": "^5.0.0-canary.116",
+    "@synfutures/oyster-sdk": "^0.1.6",
     "@taquito/rpc": "^17.0.0",
     "@taquito/signer": "^17.0.0",
     "@taquito/taquito": "^17.0.0",

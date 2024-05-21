@@ -12,6 +12,7 @@ import { MadMeerkat } from '../connectors/mad_meerkat/mad_meerkat';
 import { Openocean } from '../connectors/openocean/openocean';
 import { Pangolin } from '../connectors/pangolin/pangolin';
 import { Perp } from '../connectors/perp/perp';
+import { SynFutures } from '../connectors/synfutures/synfutures';
 import { Quickswap } from '../connectors/quickswap/quickswap';
 import { PancakeSwap } from '../connectors/pancakeswap/pancakeswap';
 import { Uniswap } from '../connectors/uniswap/uniswap';
@@ -22,6 +23,7 @@ import {
   Ethereumish,
   Nearish,
   Perpish,
+  SynFuturesish,
   RefAMMish,
   Uniswapish,
   UniswapLPish,
@@ -151,6 +153,7 @@ export type ConnectorUnion =
   | Uniswapish
   | UniswapLPish
   | Perpish
+  | SynFuturesish
   | RefAMMish
   | CLOBish
   | Tinyman
@@ -166,21 +169,23 @@ export type Connector<T> = T extends Uniswapish
     ? UniswapLPish
     : T extends Perpish
       ? Perpish
-      : T extends RefAMMish
-        ? RefAMMish
-        : T extends CLOBish
-          ? CLOBish
-          : T extends Tinyman
-            ? Tinyman
-            : T extends Plenty
-              ? Plenty
-              : T extends XRPLish
-                ? XRPLCLOB
-                : T extends KujiraCLOB
-                  ? KujiraCLOB
-                  : T extends QuipuSwap
-                    ? QuipuSwap
-                    : never;
+      : T extends SynFuturesish
+        ? SynFuturesish
+        : T extends RefAMMish
+          ? RefAMMish
+          : T extends CLOBish
+            ? CLOBish
+            : T extends Tinyman
+              ? Tinyman
+              : T extends Plenty
+                ? Plenty
+                : T extends XRPLish
+                  ? XRPLCLOB
+                  : T extends KujiraCLOB
+                    ? KujiraCLOB
+                    : T extends QuipuSwap
+                      ? QuipuSwap
+                      : never;
 
 export async function getConnector<T>(
   chain: string,
@@ -204,6 +209,8 @@ export async function getConnector<T>(
     connectorInstance = UniswapLP.getInstance(chain, network);
   } else if (chain === 'ethereum' && connector === 'perp') {
     connectorInstance = Perp.getInstance(chain, network, address);
+  } else if (chain === 'ethereum' && connector === 'synfutures') {
+    connectorInstance = SynFutures.getInstance(chain, network);
   } else if (chain === 'avalanche' && connector === 'pangolin') {
     connectorInstance = Pangolin.getInstance(chain, network);
   } else if (connector === 'openocean') {

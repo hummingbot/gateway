@@ -44,6 +44,10 @@ configurations:
     configurationPath: perp.yml
     schemaPath: perp-schema.json
 
+  $namespace synfutures:
+    configurationPath: synfutures.yml
+    schemaPath: synfutures-schema.json
+
   $namespace sushiswap:
     configurationPath: sushiswap.yml
     schemaPath: sushiswap-schema.json

@@ -95,6 +95,7 @@ import {
   Fraction as XsswapFraction,
 } from 'xsswap-sdk';
 import { PerpPosition } from '../connectors/perp/perp';
+import { SynFuturesPosition } from "../connectors/synfutures/synfutures";
 import { XdcBase } from '../chains/xdc/xdc.base';
 import { NearBase } from '../chains/near/near.base';
 import { TezosBase } from '../chains/tezos/tezos.base';
@@ -652,6 +653,91 @@ export interface Perpish {
   closePosition(
     tickerSymbol: string,
     allowedSlippage?: string
+  ): Promise<Transaction>;
+}
+
+export interface SynFuturesish {
+  gasLimit: number;
+
+  init(): Promise<void>;
+
+  ready(): boolean;
+
+  balances?(req: BalanceRequest): Promise<Record<string, string>>;
+
+  /**
+   * Given a token's address, return the connector's native representation of
+   * the token.
+   *
+   * @param address Token address
+   */
+  getTokenByAddress(address: string): Tokenish;
+
+  /**
+   * Function for retrieving token list.
+   * @returns a list of available marker pairs.
+   */
+  availablePairs(): string[];
+
+  /**
+   * Give a market, queries for market, index and indexTwap prices.
+   * @param tickerSymbol Market pair
+   */
+  prices(tickerSymbol: string): Promise<{
+    markPrice: BigNumber;
+    indexPrice: BigNumber;
+    indexTwapPrice: BigNumber;
+    fairPrice: BigNumber;
+  }>;
+
+  /**
+   * Used to know if a market is active/tradable.
+   * @param tickerSymbol Market pair
+   * @returns true | false
+   */
+  isMarketActive(tickerSymbol: string): Promise<boolean>;
+
+  /**
+   * Gets available Positions/Position.
+   * @param tickerSymbol An optional parameter to get specific position.
+   * @returns Return all Positions or specific position.
+   */
+  getPositions(
+    address: string,
+    tickerSymbol: string,
+  ): Promise<SynFuturesPosition | undefined>;
+
+  /**
+   * Attempts to return balance of a connected acct
+   */
+  getAccountValue(adderess: string, quote: string): Promise<BigNumber>;
+
+  /**
+   * Given the necessary parameters, open a position.
+   * @param isLong Will create a long position if true, else a short pos will be created.
+   * @param tickerSymbol the market to create position on.
+   * @param amount the min amount for the position to be opened.
+   * @returns An ethers transaction object.
+   */
+  openPosition(
+    wallet: Wallet,
+    isLong: boolean,
+    tickerSymbol: string,
+    amount: string,
+    nonce?: number,
+    allowedSlippage?: string,
+  ): Promise<Transaction>;
+
+  /**
+   * Closes an open position on the specified market.
+   * @param tickerSymbol The market on which we want to close position.
+   * @returns An ethers transaction object.
+   */
+  closePosition(
+    wallet: Wallet,
+    tickerSymbol: string,
+    nonce?: number,
+    allowedSlippage?: string,
   ): Promise<Transaction>;
 }
 

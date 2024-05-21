@@ -191,6 +191,7 @@ export interface PerpPricesResponse {
   markPrice: string;
   indexPrice: string;
   indexTwapPrice: string;
+  fairPrice?: string;
 }
 
 export interface PerpMarketRequest extends NetworkSelectionRequest {
@@ -209,6 +210,7 @@ export interface PerpMarketResponse {
 
 export interface PerpBalanceRequest extends NetworkSelectionRequest {
   address: string;
+  quote?: string;
 }
 
 export interface PerpBalanceResponse {
@@ -228,6 +230,8 @@ export interface PerpPositionResponse extends PerpPosition {
   latency: number;
   base: string;
   quote: string;
+  balance?: string;
+  liquidationPrice?: string;
 }
 
 export interface PerpAvailablePairsResponse {

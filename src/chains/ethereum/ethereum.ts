@@ -12,6 +12,7 @@ import { EVMController } from './evm.controllers';
 
 import { UniswapConfig } from '../../connectors/uniswap/uniswap.config';
 import { Perp } from '../../connectors/perp/perp';
+import { SynFutures } from '../../connectors/synfutures/synfutures';
 import { SushiswapConfig } from '../../connectors/sushiswap/sushiswap.config';
 import { OpenoceanConfig } from '../../connectors/openocean/openocean.config';
 import { Curve } from '../../connectors/curve/curve';
@@ -208,6 +209,13 @@ export class Ethereum extends EthereumBase implements Ethereumish {
         throw Error('Perp curie not ready');
       }
       spender = perp.perp.contracts.vault.address;
+    } else if (reqSpender === 'synfutures') {
+      const synfutures = SynFutures.getInstance(this.chainName, this._chain);
+      if (!synfutures.ready()) {
+        synfutures.init();
+        throw Error('Synfutures not ready');
+      }
+      spender = synfutures.synfutures.contracts.gate.address;
     } else if (reqSpender === 'openocean') {
       spender = OpenoceanConfig.config.routerAddress('ethereum', this._chain);
     } else if (reqSpender === 'curve') {
