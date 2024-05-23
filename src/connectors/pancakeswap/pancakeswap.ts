@@ -214,6 +214,7 @@ export class PancakeSwap implements Uniswapish {
         `priceSwapOut: no trade pair found for ${baseToken.address} to ${quoteToken.address}.`,
       );
     }
+
     logger.info(
       `Best trade for ${baseToken.address}-${quoteToken.address}: ` +
         `${trade.inputAmount.toExact()}` +

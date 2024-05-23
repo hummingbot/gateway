@@ -255,7 +255,7 @@ export class DexalotCLOB implements CLOBish {
     const clientOrderID =
       req.clientOrderID || (await this.getClientOrderId(req.address));
 
-    const txData = await this.tradePairsContract.populateTransaction.addOrder(
+    const txData = await this.tradePairsContract.populateTransaction.addxOrder(
       req.address,
       clientOrderID,
       this.getDexalotTradingPair(req.market),

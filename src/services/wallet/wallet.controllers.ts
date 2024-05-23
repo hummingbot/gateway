@@ -35,6 +35,7 @@ import {
 import { Ethereumish, Tezosish } from '../common-interfaces';
 import { Algorand } from '../../chains/algorand/algorand';
 import { Osmosis } from '../../chains/osmosis/osmosis';
+import { Oraichain } from '../../chains/oraichain/oraichain';
 
 export function convertXdcAddressToEthAddress(publicKey: string): string {
   return publicKey.length === 43 && publicKey.slice(0, 3) === 'xdc'
@@ -154,6 +155,16 @@ export async function addWallet(
     } else if (connection instanceof XRPL) {
       address = connection.getWalletFromSeed(req.privateKey).classicAddress;
       encryptedPrivateKey = await connection.encrypt(
+        req.privateKey,
+        passphrase
+      );
+    } else if (connection instanceof Oraichain) {
+      const wallet = await (connection as Oraichain).getAccountsfromPrivateKey(
+        req.privateKey,
+        'orai'
+      );
+      address = wallet.address;
+      encryptedPrivateKey = await (connection as Oraichain).encrypt(
         req.privateKey,
         passphrase
       );

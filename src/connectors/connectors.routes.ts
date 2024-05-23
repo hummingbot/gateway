@@ -24,6 +24,7 @@ import { KujiraConfig } from './kujira/kujira.config';
 import { QuipuswapConfig } from './quipuswap/quipuswap.config';
 import { OsmosisConfig } from '../chains/osmosis/osmosis.config';
 import { CarbonConfig } from './carbon/carbon.config';
+import { OraidexConfig } from './oraidex/oraidex.config';
 
 export namespace ConnectorsRoutes {
   export const router = Router();
@@ -182,6 +183,12 @@ export namespace ConnectorsRoutes {
             trading_type: CarbonConfig.config.tradingTypes,
             chain_type: CarbonConfig.config.chainType,
             available_networks: CarbonConfig.config.availableNetworks,
+          },
+          {
+            name: 'oraidex',
+            trading_type: OraidexConfig.config.tradingTypes,
+            chain_type: OraidexConfig.config.chainType,
+            available_networks: OraidexConfig.config.availableNetworks,
           },
         ],
       });

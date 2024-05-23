@@ -1,0 +1,18 @@
+[
+  {
+    "id": "1",
+    "marketId": "ORAI-USDT",
+    "base": {
+      "name": "Oraichain token",
+      "symbol": "ORAI",
+      "address": "orai",
+      "decimals": 6
+    },
+    "quote": {
+      "name": "USDT token",
+      "symbol": "USDT",
+      "address": "orai12hzjxfh77wl572gdzct2fxv2arxcwh6gykc7qh",
+      "decimals": 6
+    }
+  }
+]

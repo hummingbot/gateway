@@ -20,6 +20,7 @@ import {
   validateSide,
 } from '../amm/amm.validators';
 import { isValidKujiraPublicKey } from '../connectors/kujira/kujira.helpers';
+import { isValidCosmosAddress } from '../chains/cosmos/cosmos.validators';
 
 export const invalidMarketError: string =
   'The market param is not a valid market. Market should be in {base}-{quote} format.';
@@ -99,10 +100,11 @@ export const validateWallet: Validator = mkValidator(
   invalidWalletError,
   (val) => {
     return (
-      typeof val === 'string' &&
-      (isAddress(val.slice(0, 42)) ||
-        isValidKujiraPublicKey(val) ||
-        isXRPLAddress(val))
+      (typeof val === 'string' &&
+        (isAddress(val.slice(0, 42)) ||
+          isValidKujiraPublicKey(val) ||
+          isXRPLAddress(val))) ||
+      isValidCosmosAddress(val)
     );
   }
 );

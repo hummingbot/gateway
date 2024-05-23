@@ -143,6 +143,11 @@ export const validatePrivateKey: Validator = mkSelectingValidator(
       invalidKujiraPrivateKeyError,
       (val) => typeof val === 'string' && isKujiraPrivateKey(val)
     ),
+    oraichain: mkValidator(
+      'privateKey',
+      invalidCosmosPrivateKeyError,
+      (val) => typeof val === 'string' && isCosmosPrivateKey(val)
+    ),
   }
 );
 
@@ -177,7 +182,8 @@ export const validateChain: Validator = mkValidator(
       val === 'binance-smart-chain' ||
       val === 'tezos' ||
       val === 'xrpl' ||
-      val === 'kujira')
+      val === 'kujira' ||
+      val === 'oraichain')
 );
 
 export const validateNetwork: Validator = mkValidator(

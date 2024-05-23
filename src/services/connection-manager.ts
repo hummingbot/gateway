@@ -45,6 +45,8 @@ import { PancakeswapLP } from '../connectors/pancakeswap/pancakeswap.lp';
 import { XRPLCLOB } from '../connectors/xrpl/xrpl';
 import { QuipuSwap } from '../connectors/quipuswap/quipuswap';
 import { Carbonamm } from '../connectors/carbon/carbonAMM';
+import { OraidexCLOB } from '../connectors/oraidex/oraidex';
+import { Oraichain } from '../chains/oraichain/oraichain';
 
 export type ChainUnion =
   | Algorand
@@ -55,7 +57,8 @@ export type ChainUnion =
   | Tezosish
   | XRPLish
   | Kujira
-  | Osmosis;
+  | Osmosis
+  | Oraichain;
 
 export type Chain<T> = T extends Algorand
   ? Algorand
@@ -75,7 +78,9 @@ export type Chain<T> = T extends Algorand
                 ? KujiraCLOB
                 : T extends Osmosis
                   ? Osmosis
-                  : never;
+                  : T extends OraidexCLOB
+                    ? OraidexCLOB
+                    : never;
 
 export class UnsupportedChainException extends Error {
   constructor(message?: string) {
@@ -140,6 +145,8 @@ export async function getChainInstance(
     connection = XRPL.getInstance(network);
   } else if (chain === 'kujira') {
     connection = Kujira.getInstance(network);
+  } else if (chain === 'oraichain') {
+    connection = Oraichain.getInstance(network);
   } else {
     connection = undefined;
   }
@@ -249,6 +256,8 @@ export async function getConnector<T>(
     connectorInstance = QuipuSwap.getInstance(network);
   } else if (chain === 'ethereum' && connector === 'carbonamm') {
     connectorInstance = Carbonamm.getInstance(chain, network);
+  } else if (chain === 'oraichain' && connector === 'oraidex') {
+    connectorInstance = OraidexCLOB.getInstance(chain, network);
   } else {
     throw new Error('unsupported chain or connector');
   }
