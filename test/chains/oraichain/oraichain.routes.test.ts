@@ -7,7 +7,7 @@ let oraichain: Oraichain;
 beforeAll(async () => {
   oraichain = Oraichain.getInstance('mainnet');
   oraichain.initSigningCosmWasmClient = jest.fn();
-  
+
   await oraichain.init();
 });
 

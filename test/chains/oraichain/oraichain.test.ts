@@ -18,7 +18,11 @@ beforeAll(async () => {
   //get me a default hd path
   const hdPath = makeCosmoshubPath(0);
   const seed = await Bip39.mnemonicToSeed(mnemonic);
-  const masterKey = Slip10.derivePath(Slip10Curve.Secp256k1, seed, hdPath as any);
+  const masterKey = Slip10.derivePath(
+    Slip10Curve.Secp256k1,
+    seed,
+    hdPath as any,
+  );
   const privateKeyTest = masterKey.privkey;
 
   const wallet = await oraichain.getWalletFromPrivateKey(
@@ -65,7 +69,7 @@ describe('Getter', () => {
     const newRequestCount = oraichain.requestCount;
     expect(requestCount).toEqual(newRequestCount - 1);
     oraichain.metricLogger();
-    expect(requestCount).toEqual(0);    
+    expect(requestCount).toEqual(0);
   });
 
   it('getMetricsLogInterval', async () => {
@@ -91,7 +95,12 @@ describe('Signing client', () => {
   });
 
   it('should execute single transaction', async () => {
-    const res = await oraichain.executeContract(account.address, testContract, {}, {});
+    const res = await oraichain.executeContract(
+      account.address,
+      testContract,
+      {},
+      {},
+    );
     expect(res).toBeDefined();
   });
 
@@ -100,4 +109,3 @@ describe('Signing client', () => {
     expect(res).toBeDefined();
   });
 });
-
