@@ -44,8 +44,8 @@ export class UniswapLPHelper {
       provider: this.ethereum.provider,
     });
     this._router =
-      UniswapConfig.config.uniswapV3SmartOrderRouterAddress(network);
-    this._nftManager = UniswapConfig.config.uniswapV3NftManagerAddress(network);
+      UniswapConfig.config.uniswapV3SmartOrderRouterAddress(chain, network);
+    this._nftManager = UniswapConfig.config.uniswapV3NftManagerAddress(chain, network);
     this._ttl = UniswapConfig.config.ttl;
     this._routerAbi =
       require('@uniswap/v3-periphery/artifacts/contracts/SwapRouter.sol/SwapRouter.json').abi;
