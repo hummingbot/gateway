@@ -147,12 +147,12 @@ const patchEstimateSellTrade = () => {
 };
 
 const patchGetNonce = () => {
-  patch(binanceSmartChain.nonceManager, 'getNonce', () => 100);
+  patch(binanceSmartChain.nonceManager, 'getNonce', () => 21);
 };
 
 const patchExecuteTrade = () => {
   patch(uniswap, 'executeTrade', () => {
-    return { nonce: 100, hash: '000000000000000' };
+    return { nonce: 21, hash: '000000000000000' };
   });
 };
 
