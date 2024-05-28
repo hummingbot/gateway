@@ -123,12 +123,12 @@ const patchMockProvider = () => {
   mockProvider.stub(FACTORY_ADDRESS, 'getPool', DAI_WETH_POOL_ADDRESS);
 
   mockProvider.setMockContract(
-    UniswapConfig.config.quoterContractAddress('goerli'),
+    UniswapConfig.config.quoterContractAddress('ethereum', 'goerli'),
     require('@uniswap/swap-router-contracts/artifacts/contracts/lens/QuoterV2.sol/QuoterV2.json')
       .abi
   );
   mockProvider.stub(
-    UniswapConfig.config.quoterContractAddress('goerli'),
+    UniswapConfig.config.quoterContractAddress('ethereum', 'goerli'),
     'quoteExactInputSingle',
     /* amountOut */ 1,
     /* sqrtPriceX96After */ 0,
@@ -136,7 +136,7 @@ const patchMockProvider = () => {
     /* gasEstimate */ 0
   );
   mockProvider.stub(
-    UniswapConfig.config.quoterContractAddress('goerli'),
+    UniswapConfig.config.quoterContractAddress('ethereum', 'goerli'),
     'quoteExactOutputSingle',
     /* amountIn */ 1,
     /* sqrtPriceX96After */ 0,

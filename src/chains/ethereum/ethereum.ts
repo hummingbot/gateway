@@ -181,6 +181,7 @@ export class Ethereum extends EthereumBase implements Ethereumish {
     let spender: string;
     if (reqSpender === 'uniswap') {
       spender = UniswapConfig.config.uniswapV3SmartOrderRouterAddress(
+        this.chainName,
         this._chain,
       );
     } else if (reqSpender === 'pancakeswap') {
@@ -195,7 +196,9 @@ export class Ethereum extends EthereumBase implements Ethereumish {
         this._chain,
       );
     } else if (reqSpender === 'uniswapLP') {
-      spender = UniswapConfig.config.uniswapV3NftManagerAddress(this._chain);
+      spender = UniswapConfig.config.uniswapV3NftManagerAddress(
+        this.chainName,
+        this._chain);
     } else if (reqSpender === 'carbonamm') {
       spender = CarbonConfig.config.carbonContractsConfig(
         'ethereum',

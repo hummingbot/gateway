@@ -10,6 +10,7 @@ import { SushiswapConfig } from '../../connectors/sushiswap/sushiswap.config';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { OpenoceanConfig } from '../../connectors/openocean/openocean.config';
 import { EVMController } from '../ethereum/evm.controllers';
+import {UniswapConfig} from "../../connectors/uniswap/uniswap.config";
 
 export class BinanceSmartChain extends EthereumBase implements Ethereumish {
   private static _instances: { [name: string]: BinanceSmartChain };
@@ -113,6 +114,13 @@ export class BinanceSmartChain extends EthereumBase implements Ethereumish {
         'binance-smart-chain',
         this._chain
       );
+    } else if (reqSpender === 'uniswap') {
+      spender = UniswapConfig.config.uniswapV3SmartOrderRouterAddress(
+        'binance-smart-chain',
+        this._chain
+      );
+    } else if (reqSpender === 'uniswapLP') {
+      spender = UniswapConfig.config.uniswapV3NftManagerAddress('binance-smart-chain', this._chain);
     } else {
       spender = reqSpender;
     }

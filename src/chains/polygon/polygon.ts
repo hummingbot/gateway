@@ -74,10 +74,11 @@ export class Polygon extends EthereumBase implements Ethereumish {
     let spender: string;
     if (reqSpender === 'uniswap') {
       spender = UniswapConfig.config.uniswapV3SmartOrderRouterAddress(
+        'polygon',
         this._chain
       );
     } else if (reqSpender === 'uniswapLP') {
-      spender = UniswapConfig.config.uniswapV3NftManagerAddress(this._chain);
+      spender = UniswapConfig.config.uniswapV3NftManagerAddress('polygon', this._chain);
     } else if (reqSpender === 'quickswap') {
       spender = QuickswapConfig.config.routerAddress(this._chain);
     } else if (reqSpender === 'sushiswap') {

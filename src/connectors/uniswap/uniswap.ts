@@ -15,7 +15,6 @@ import {
   SwapQuoter,
   Trade as UniswapV3Trade,
   Route,
-  FACTORY_ADDRESS,
 } from '@uniswap/v3-sdk';
 import { abi as IUniswapV3PoolABI } from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
 import { abi as IUniswapV3FactoryABI } from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Factory.sol/IUniswapV3Factory.json';
@@ -38,15 +37,17 @@ import { logger } from '../../services/logger';
 import { percentRegexp } from '../../services/config-manager-v2';
 import { Ethereum } from '../../chains/ethereum/ethereum';
 import { Polygon } from '../../chains/polygon/polygon';
+import { BinanceSmartChain } from "../../chains/binance-smart-chain/binance-smart-chain";
 import { ExpectedTrade, Uniswapish } from '../../services/common-interfaces';
 import { getAddress } from 'ethers/lib/utils';
 
 export class Uniswap implements Uniswapish {
   private static _instances: { [name: string]: Uniswap };
-  private chain: Ethereum | Polygon;
+  private chain: Ethereum | Polygon | BinanceSmartChain;
   private _alphaRouter: AlphaRouter;
   private _router: string;
   private _routerAbi: ContractInterface;
+  private _v3Factory: string;
   private _gasLimitEstimate: number;
   private _ttl: number;
   private _maximumHops: number;
@@ -61,8 +62,10 @@ export class Uniswap implements Uniswapish {
     const config = UniswapConfig.config;
     if (chain === 'ethereum') {
       this.chain = Ethereum.getInstance(network);
-    } else {
+    } else if (chain === 'polygon') {
       this.chain = Polygon.getInstance(network);
+    } else {
+      this.chain = BinanceSmartChain.getInstance(network);
     }
     this.chainId = this.chain.chainId;
     this._ttl = UniswapConfig.config.ttl;
@@ -73,7 +76,8 @@ export class Uniswap implements Uniswapish {
     });
     this._routerAbi = routerAbi.abi;
     this._gasLimitEstimate = UniswapConfig.config.gasLimitEstimate;
-    this._router = config.uniswapV3SmartOrderRouterAddress(network);
+    this._router = config.uniswapV3SmartOrderRouterAddress(chain, network);
+    this._v3Factory = config.uniswapV3FactoryAddress(chain, network);
 
     if (config.useRouter === false && config.feeTier == null) {
       throw new Error('Must specify fee tier if not using router');
@@ -87,7 +91,7 @@ export class Uniswap implements Uniswapish {
     this._feeTier = config.feeTier
       ? FeeAmount[config.feeTier as keyof typeof FeeAmount]
       : FeeAmount.MEDIUM;
-    this._quoterContractAddress = config.quoterContractAddress(network);
+    this._quoterContractAddress = config.quoterContractAddress(chain, network);
   }
 
   public static getInstance(chain: string, network: string): Uniswap {
@@ -425,7 +429,7 @@ export class Uniswap implements Uniswapish {
     feeTier: FeeAmount
   ): Promise<Pool | null> {
     const uniswapFactory = new Contract(
-      FACTORY_ADDRESS,
+      this._v3Factory,
       IUniswapV3FactoryABI,
       this.chain.provider
     );
