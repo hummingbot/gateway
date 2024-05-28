@@ -24,6 +24,10 @@ configurations:
     configurationPath: dexalot.yml
     schemaPath: dexalot-schema.json
 
+  $namespace kuru:
+    configurationPath: kuru.yml
+    schemaPath: kuru-schema.json
+
   $namespace polygon:
     configurationPath: polygon.yml
     schemaPath: ethereum-schema.json

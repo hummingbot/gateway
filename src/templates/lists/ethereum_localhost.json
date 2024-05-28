@@ -1,0 +1,31 @@
+{
+   "name":"CoinGecko",
+   "logoURI":"https://www.coingecko.com/assets/thumbnail-007177f3eca19695592f0b8b0eabbdae282b54154e1be912285c9034ea6cbaf2.png",
+   "keywords":[
+      "defi"
+   ],
+   "timestamp":"2023-06-10T15:06:37.596+00:00",
+   "tokens":[
+      {
+         "chainId":31337,
+         "address":"0x5FbDB2315678afecb367f032d93F642f64180aa3",
+         "name":"SOL",
+         "symbol":"SOL",
+         "decimals":18,
+         "logoURI":"https://assets.coingecko.com/coins/images/28385/thumb/FISH-200px.png?1670060725"
+      },
+      {
+         "chainId":31337,
+         "address":"0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
+         "name":"USDC",
+         "symbol":"USDC",
+         "decimals":18,
+         "logoURI":"https://assets.coingecko.com/coins/images/28725/thumb/ranb.png?1673608442"
+      }
+   ],
+   "version":{
+      "major":40,
+      "minor":0,
+      "patch":17
+   }
+}

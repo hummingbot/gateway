@@ -1,0 +1,15 @@
+# how much the execution price is allowed to move unfavorably from the trade
+# execution price. It uses a rational number for precision.
+allowedSlippage: '2/100'
+
+# the maximum gas used to estimate gasCost for a transaction.
+gasLimitEstimate: 3000000 # block limit
+
+# how long a trade is valid in seconds. After time passes uniswap will not
+# perform the trade, but the gas will still be sent.
+ttl: 600
+
+contractAddresses:
+  localhost:
+    routerAddress: "0x0165878A594ca255338adfa4d48449f69242Eb8F"
+    marginAccountAddress: "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853"

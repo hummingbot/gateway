@@ -34,6 +34,7 @@ import { Near } from '../chains/near/near';
 import { Ref } from '../connectors/ref/ref';
 import { Xsswap } from '../connectors/xsswap/xsswap';
 import { DexalotCLOB } from '../connectors/dexalot/dexalot';
+import { Kuru } from '../connectors/kuru/kuru';
 import { Algorand } from '../chains/algorand/algorand';
 import { Cosmos } from '../chains/cosmos/cosmos';
 import { Tinyman } from '../connectors/tinyman/tinyman';
@@ -232,6 +233,8 @@ export async function getConnector<T>(
     connectorInstance = Xsswap.getInstance(chain, network);
   } else if (chain === 'avalanche' && connector === 'dexalot') {
     connectorInstance = DexalotCLOB.getInstance(network);
+  } else if (chain === 'ethereum' && connector === 'kuru') {
+    connectorInstance = Kuru.getInstance(network);
   } else if (chain == 'algorand' && connector == 'tinyman') {
     connectorInstance = Tinyman.getInstance(network);
   } else if (chain === 'tezos' && connector === 'plenty') {

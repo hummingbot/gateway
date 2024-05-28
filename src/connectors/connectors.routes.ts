@@ -16,6 +16,7 @@ import { PancakeSwapConfig } from './pancakeswap/pancakeswap.config';
 import { XsswapConfig } from './xsswap/xsswap.config';
 import { ConnectorsResponse } from './connectors.request';
 import { DexalotCLOBConfig } from './dexalot/dexalot.clob.config';
+import { KuruConfig } from './kuru/kuru.config';
 import { TinymanConfig } from './tinyman/tinyman.config';
 import { CurveConfig } from './curve/curveswap.config';
 import { PlentyConfig } from './plenty/plenty.config';
@@ -129,6 +130,16 @@ export namespace ConnectorsRoutes {
             additional_add_wallet_prompts: {
               api_key:
                 'Enter a Dexalot API Key if you have one, otherwise hit return >>> ',
+            },
+          },
+          {
+            name: 'kuru',
+            trading_type: KuruConfig.config.tradingTypes,
+            chain_type: KuruConfig.config.chainType,
+            available_networks: KuruConfig.config.availableNetworks,
+            additional_add_wallet_prompts: {
+              api_key:
+                'Kuru LFG!',
             },
           },
           {
