@@ -46,6 +46,7 @@
     "@pancakeswap/tokens": "^0.1.6",
     "@pancakeswap/v3-core": "^1.0.2",
     "@pancakeswap/v3-periphery": "^1.0.2",
+    "ergo-lib-wasm-nodejs": "^0.22.0",
     "@pancakeswap/v3-sdk": "^3.7.0",
     "@pangolindex/sdk": "^1.1.0",
     "@perp/sdk-curie": "^1.16.0",
