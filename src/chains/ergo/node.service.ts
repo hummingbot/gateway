@@ -42,4 +42,8 @@ export class NodeService {
     return info.fullHeight
   }
 
+  async getUnSpentBoxesByAddress(address: string, offset: number, limit: number, sortDirection = 'desc'): Promise<any> {
+    return this.post(`/blockchain/box/unspent/byAddress?offset=${offset}&limit=${limit}&sortDirection=${sortDirection}`, {'Content-Type': 'text/plain'}, `${address}`).then(res => res.data)
+  }
+
 }

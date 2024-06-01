@@ -9,6 +9,7 @@ export interface NetworkConfig {
   networkPrefix: NetworkPrefix;
   minTxFee: number;
   maxLRUCacheInstances: number;
+  utxosLimit: number
 }
 export interface Config {
   network: NetworkConfig;
@@ -27,7 +28,8 @@ export function getErgoConfig(network: string): Config {
       minTxFee: ConfigManagerV2.getInstance().get(
         'algorand.networks.' + network + '.minTxFee'
       ),
-      maxLRUCacheInstances: 10
+      maxLRUCacheInstances: 10,
+      utxosLimit: 100
     },
   };
 }
