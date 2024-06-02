@@ -26,6 +26,7 @@ export class Polygon extends EthereumBase implements Ethereumish {
       'polygon',
       config.network.chainID,
       config.network.nodeURL,
+      config.network.secondaryNodeURL,
       config.network.tokenListSource,
       config.network.tokenListType,
       config.manualGasPrice,
