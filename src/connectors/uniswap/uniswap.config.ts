@@ -8,6 +8,7 @@ export namespace UniswapConfig {
     maximumHops: number;
     uniswapV3SmartOrderRouterAddress: (network: string) => string;
     uniswapV3NftManagerAddress: (network: string) => string;
+    uniswapV3FactoryAddress: (network: string) => string;
     tradingTypes: (type: string) => Array<string>;
     chainType: string;
     availableNetworks: Array<AvailableNetworks>;
@@ -32,6 +33,10 @@ export namespace UniswapConfig {
     uniswapV3NftManagerAddress: (network: string) =>
       ConfigManagerV2.getInstance().get(
         `uniswap.contractAddresses.${network}.uniswapV3NftManagerAddress`
+      ),
+    uniswapV3FactoryAddress: (network: string) =>
+      ConfigManagerV2.getInstance().get(
+        `uniswap.contractAddresses.${network}.uniswapV3FactoryAddress`
       ),
     tradingTypes: (type: string) => {
       return type === 'swap' ? ['AMM'] : ['AMM_LP'];
