@@ -19,9 +19,10 @@ import {
 } from './uniswap.lp.interfaces';
 import * as math from 'mathjs';
 import { getAddress } from 'ethers/lib/utils';
+import { Avalanche } from '../../chains/avalanche/avalanche';
 
 export class UniswapLPHelper {
-  protected ethereum: Ethereum;
+  protected chain: Ethereum | Avalanche;
   protected chainId;
   private _factory: string;
   private _router: string;
@@ -32,17 +33,17 @@ export class UniswapLPHelper {
   private _poolAbi: ContractInterface;
   private _alphaRouter: AlphaRouter;
   private tokenList: Record<string, Token> = {};
-  private _chain: string;
   private _ready: boolean = false;
   public abiDecoder: any;
 
   constructor(chain: string, network: string) {
-    this.ethereum = Ethereum.getInstance(network);
-    this._chain = chain;
-    this.chainId = this.ethereum.chainId;
+    if (chain === 'ethereum') {
+      this.chain = Ethereum.getInstance(network);
+    } else this.chain = Avalanche.getInstance(network);
+    this.chainId = this.chain.chainId;
     this._alphaRouter = new AlphaRouter({
       chainId: this.chainId,
-      provider: this.ethereum.provider,
+      provider: this.chain.provider,
     });
     this._factory = UniswapConfig.config.uniswapV3FactoryAddress(network);
     this._router =
@@ -103,12 +104,13 @@ export class UniswapLPHelper {
   }
 
   public async init() {
-    if (this._chain == 'ethereum' && !this.ethereum.ready())
+    const chainName = this.chain.chainName.toString();
+    if (!this.chain.ready())
       throw new InitializationError(
-        SERVICE_UNITIALIZED_ERROR_MESSAGE('ETH'),
+        SERVICE_UNITIALIZED_ERROR_MESSAGE(chainName),
         SERVICE_UNITIALIZED_ERROR_CODE
       );
-    for (const token of this.ethereum.storedTokenList) {
+    for (const token of this.chain.storedTokenList) {
       this.tokenList[token.address] = new Token(
         this.chainId,
         token.address,
@@ -158,7 +160,7 @@ export class UniswapLPHelper {
   ): Promise<PoolState> {
     const poolContract = this.getPoolContract(
       poolAddress,
-      this.ethereum.provider
+      this.chain.provider
     );
     const minTick = uniV3.nearestUsableTick(
       uniV3.TickMath.MIN_TICK,
@@ -225,7 +227,7 @@ export class UniswapLPHelper {
     const poolContract = new Contract(
       uniV3.Pool.getAddress(token0, token1, fee, undefined, this._factory),
       this.poolAbi,
-      this.ethereum.provider
+      this.chain.provider
     );
     for (
       let x = Math.ceil(period / interval) * interval;
