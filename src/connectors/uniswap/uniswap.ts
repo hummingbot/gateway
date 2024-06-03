@@ -212,6 +212,7 @@ export class Uniswap implements Uniswapish {
     quoteToken: Token,
     amount: BigNumber,
     allowedSlippage?: string,
+    poolId?: string
   ): Promise<ExpectedTrade> {
     const nativeTokenAmount: CurrencyAmount<Token> =
       CurrencyAmount.fromRawAmount(baseToken, amount.toString());
@@ -246,7 +247,7 @@ export class Uniswap implements Uniswapish {
       );
       return { trade: route.trade, expectedAmount };
     } else {
-      const pool = await this.getPool(baseToken, quoteToken, this._feeTier);
+      const pool = await this.getPool(baseToken, quoteToken, this._feeTier, poolId);
       if (!pool) {
         throw new UniswapishPriceError(
           `priceSwapIn: no trade pair found for ${baseToken.address} to ${quoteToken.address}.`,
@@ -292,6 +293,7 @@ export class Uniswap implements Uniswapish {
     baseToken: Token,
     amount: BigNumber,
     allowedSlippage?: string,
+    poolId?: string
   ): Promise<ExpectedTrade> {
     const nativeTokenAmount: CurrencyAmount<Token> =
       CurrencyAmount.fromRawAmount(baseToken, amount.toString());
@@ -326,7 +328,7 @@ export class Uniswap implements Uniswapish {
       );
       return { trade: route.trade, expectedAmount };
     } else {
-      const pool = await this.getPool(quoteToken, baseToken, this._feeTier);
+      const pool = await this.getPool(quoteToken, baseToken, this._feeTier, poolId);
       if (!pool) {
         throw new UniswapishPriceError(
           `priceSwapOut: no trade pair found for ${quoteToken.address} to ${baseToken.address}.`,
@@ -428,6 +430,7 @@ export class Uniswap implements Uniswapish {
     tokenA: Token,
     tokenB: Token,
     feeTier: FeeAmount,
+    poolId?: string
   ): Promise<Pool | null> {
     const uniswapFactory = new Contract(
       this._factory,
@@ -435,12 +438,12 @@ export class Uniswap implements Uniswapish {
       this.chain.provider,
     );
     // Use Uniswap V3 factory to get pool address instead of `Pool.getAddress` to check if pool exists.
-    const poolAddress = await uniswapFactory.getPool(
+    const poolAddress = poolId || await uniswapFactory.getPool(
       tokenA.address,
       tokenB.address,
       feeTier,
     );
-    if (poolAddress === constants.AddressZero) {
+    if (poolAddress === constants.AddressZero || poolAddress === undefined || poolAddress === '') {
       return null;
     }
     const poolContract = new Contract(
@@ -449,16 +452,17 @@ export class Uniswap implements Uniswapish {
       this.chain.provider,
     );
 
-    const [liquidity, slot0] = await Promise.all([
+    const [liquidity, slot0, fee] = await Promise.all([
       poolContract.liquidity(),
       poolContract.slot0(),
+      poolContract.fee(),
     ]);
     const [sqrtPriceX96, tick] = slot0;
 
     const pool = new Pool(
       tokenA,
       tokenB,
-      this._feeTier,
+      fee,
       sqrtPriceX96,
       liquidity,
       tick,
