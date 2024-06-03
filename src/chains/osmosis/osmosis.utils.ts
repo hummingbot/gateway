@@ -93,3 +93,58 @@ export function findTickForPrice(desiredPriceString: string, exponentAtPriceOne:
   return returnTick.toString()
 }
 
+
+export function calculatePriceToTick(desiredPriceString: string, exponentAtPriceOne: number, tickSpacing: number, is_lowerBound: boolean): string {
+  console.log(`Inputs: desiredPriceString=${desiredPriceString}, exponentAtPriceOne=${exponentAtPriceOne}, tickSpacing=${tickSpacing}, is_lowerBound=${is_lowerBound}`);
+
+  const desiredPrice = new BigNumber(desiredPriceString)
+  const exponent = new BigNumber(exponentAtPriceOne);
+  const geometricExponentIncrementDistanceInTicks = new BigNumber(9).multipliedBy(new BigNumber(10).exponentiatedBy(exponent.multipliedBy(-1)))
+
+  console.log(`Initial calculations: desiredPrice=${desiredPrice}, exponent=${exponent}, geometricExponentIncrementDistanceInTicks=${geometricExponentIncrementDistanceInTicks}`);
+
+  let currentPrice = new BigNumber(1);
+  let ticksPassed = new BigNumber(0);
+  let exponentAtCurrentTick = exponent;
+  let currentAdditiveIncrementInTicks = new BigNumber(10).exponentiatedBy(exponent)
+
+  if (desiredPrice.gt(new BigNumber(1))) {
+    while (currentPrice.lt(desiredPrice)) {
+      currentAdditiveIncrementInTicks = new BigNumber(10).exponentiatedBy(exponentAtCurrentTick);
+      const maxPriceForCurrentAdditiveIncrementInTicks = geometricExponentIncrementDistanceInTicks.multipliedBy(currentAdditiveIncrementInTicks);
+      currentPrice = currentPrice.plus(maxPriceForCurrentAdditiveIncrementInTicks);
+      exponentAtCurrentTick = exponentAtCurrentTick.plus(1);
+      ticksPassed = ticksPassed.plus(geometricExponentIncrementDistanceInTicks);
+
+      console.log(`Loop (desiredPrice > 1): currentPrice=${currentPrice}, exponentAtCurrentTick=${exponentAtCurrentTick}, ticksPassed=${ticksPassed}`);
+    }
+  } else {
+    exponentAtCurrentTick = exponent.minus(1);
+    while (currentPrice.gt(desiredPrice)) {
+      currentAdditiveIncrementInTicks = new BigNumber(10).exponentiatedBy(exponentAtCurrentTick);
+      const maxPriceForCurrentAdditiveIncrementInTicks = geometricExponentIncrementDistanceInTicks.multipliedBy(currentAdditiveIncrementInTicks);
+      currentPrice = currentPrice.minus(maxPriceForCurrentAdditiveIncrementInTicks);
+      exponentAtCurrentTick = exponentAtCurrentTick.minus(1);
+      ticksPassed = ticksPassed.minus(geometricExponentIncrementDistanceInTicks);
+
+      console.log(`Loop (desiredPrice <= 1): currentPrice=${currentPrice}, exponentAtCurrentTick=${exponentAtCurrentTick}, ticksPassed=${ticksPassed}`);
+    }
+  }
+
+  const ticksToBeFulfilledByExponentAtCurrentTick = desiredPrice.minus(currentPrice).dividedBy(currentAdditiveIncrementInTicks);
+  console.log(`Ticks to be fulfilled by current exponent: ${ticksToBeFulfilledByExponentAtCurrentTick}`);
+
+  const tickIndex = ticksPassed.plus(ticksToBeFulfilledByExponentAtCurrentTick);
+  console.log(`Tick index: ${tickIndex}`);
+
+  let returnTick = new BigNumber(0);
+  if (is_lowerBound){
+    returnTick = tickIndex.dividedBy(tickSpacing).integerValue(BigNumber.ROUND_DOWN).multipliedBy(tickSpacing)
+  }
+  else{
+    returnTick = tickIndex.dividedBy(tickSpacing).integerValue(BigNumber.ROUND_CEIL).multipliedBy(tickSpacing)
+  }
+
+  console.log(`Final calculations: tickIndex=${tickIndex}, returnTick=${BigInt(returnTick.toNumber()).toString()}`);
+  return BigInt(returnTick.toNumber()).toString();
+}
