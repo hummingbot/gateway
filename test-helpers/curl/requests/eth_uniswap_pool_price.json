@@ -1,10 +1,10 @@
 {
-  "token0": "WAVAX",
-  "token1": "USDT",
+  "token0": "COIN1",
+  "token1": "COIN3",
   "fee": "LOW",
   "period": 120,
   "interval": 60,
-  "chain": "avalanche",
-  "network": "avalanche",
+  "chain": "ethereum",
+  "network": "goerli",
   "connector": "uniswapLP"
 }
