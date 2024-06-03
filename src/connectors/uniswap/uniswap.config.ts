@@ -19,20 +19,20 @@ export namespace UniswapConfig {
 
   export const config: NetworkConfig = {
     allowedSlippage: ConfigManagerV2.getInstance().get(
-      `uniswap.allowedSlippage`,
+      `uniswap.allowedSlippage`
     ),
     gasLimitEstimate: ConfigManagerV2.getInstance().get(
-      `uniswap.gasLimitEstimate`,
+      `uniswap.gasLimitEstimate`
     ),
     ttl: ConfigManagerV2.getInstance().get(`uniswap.ttl`),
     maximumHops: ConfigManagerV2.getInstance().get(`uniswap.maximumHops`),
     uniswapV3SmartOrderRouterAddress: (network: string) =>
       ConfigManagerV2.getInstance().get(
-        `uniswap.contractAddresses.${network}.uniswapV3SmartOrderRouterAddress`,
+        `uniswap.contractAddresses.${network}.uniswapV3SmartOrderRouterAddress`
       ),
     uniswapV3NftManagerAddress: (network: string) =>
       ConfigManagerV2.getInstance().get(
-        `uniswap.contractAddresses.${network}.uniswapV3NftManagerAddress`,
+        `uniswap.contractAddresses.${network}.uniswapV3NftManagerAddress`
       ),
     tradingTypes: (type: string) => {
       return type === 'swap' ? ['AMM'] : ['AMM_LP'];
@@ -60,18 +60,18 @@ export namespace UniswapConfig {
           ConfigManagerV2.getInstance().get('uniswap.contractAddresses'),
         ).filter((network) =>
           Object.keys(
-            ConfigManagerV2.getInstance().get('avalanche.networks'),
-          ).includes(network),
+            ConfigManagerV2.getInstance().get('ethereum.networks')
+          ).includes(network)
         ),
       },
       {
         chain: 'polygon',
         networks: Object.keys(
-          ConfigManagerV2.getInstance().get('uniswap.contractAddresses'),
+          ConfigManagerV2.getInstance().get('uniswap.contractAddresses')
         ).filter((network) =>
           Object.keys(
-            ConfigManagerV2.getInstance().get('polygon.networks'),
-          ).includes(network),
+            ConfigManagerV2.getInstance().get('polygon.networks')
+          ).includes(network)
         ),
       },
     ],
@@ -79,7 +79,7 @@ export namespace UniswapConfig {
     feeTier: ConfigManagerV2.getInstance().get(`uniswap.feeTier`),
     quoterContractAddress: (network: string) =>
       ConfigManagerV2.getInstance().get(
-        `uniswap.contractAddresses.${network}.uniswapV3QuoterV2ContractAddress`,
+        `uniswap.contractAddresses.${network}.uniswapV3QuoterV2ContractAddress`
       ),
   };
 }

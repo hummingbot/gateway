@@ -29,7 +29,7 @@ export const validateSpender: Validator = mkValidator(
       val === 'traderjoe' ||
       val === 'openocean' ||
       val === 'sushiswap' ||
-      isAddress(val)),
+      isAddress(val))
 );
 
 export const validateAvalancheApproveRequest: RequestValidator =

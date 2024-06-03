@@ -33,7 +33,7 @@ export class Avalanche extends EthereumBase implements Ethereumish {
       config.manualGasPrice,
       config.gasLimitTransaction,
       ConfigManagerV2.getInstance().get('server.nonceDbPath'),
-      ConfigManagerV2.getInstance().get('server.transactionDbPath'),
+      ConfigManagerV2.getInstance().get('server.transactionDbPath')
     );
     this._chain = config.network.name;
     this._nativeTokenSymbol = config.nativeCurrencySymbol;
@@ -99,7 +99,7 @@ export class Avalanche extends EthereumBase implements Ethereumish {
     } else if (reqSpender === 'sushiswap') {
       spender = SushiswapConfig.config.sushiswapRouterAddress(
         'avalanche',
-        this._chain,
+        this._chain
       );
     } else if (reqSpender === 'curve') {
       const curve = Curve.getInstance('ethereum', this._chain);
@@ -117,7 +117,7 @@ export class Avalanche extends EthereumBase implements Ethereumish {
   // cancel transaction
   async cancelTx(wallet: Wallet, nonce: number): Promise<Transaction> {
     logger.info(
-      'Canceling any existing transaction(s) with nonce number ' + nonce + '.',
+      'Canceling any existing transaction(s) with nonce number ' + nonce + '.'
     );
     return super.cancelTxWithGasPrice(wallet, nonce, this._gasPrice * 2);
   }
@@ -139,7 +139,7 @@ export class Avalanche extends EthereumBase implements Ethereumish {
 
     setTimeout(
       this.updateGasPrice.bind(this),
-      this._gasPriceRefreshInterval * 1000,
+      this._gasPriceRefreshInterval * 1000
     );
   }
 
