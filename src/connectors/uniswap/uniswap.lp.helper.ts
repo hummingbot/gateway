@@ -23,6 +23,7 @@ import { getAddress } from 'ethers/lib/utils';
 export class UniswapLPHelper {
   protected ethereum: Ethereum;
   protected chainId;
+  private _factory: string;
   private _router: string;
   private _nftManager: string;
   private _ttl: number;
@@ -43,6 +44,7 @@ export class UniswapLPHelper {
       chainId: this.chainId,
       provider: this.ethereum.provider,
     });
+    this._factory = UniswapConfig.config.uniswapV3FactoryAddress(network);
     this._router =
       UniswapConfig.config.uniswapV3SmartOrderRouterAddress(network);
     this._nftManager = UniswapConfig.config.uniswapV3NftManagerAddress(network);
@@ -221,7 +223,7 @@ export class UniswapLPHelper {
     const prices = [];
     const fee = uniV3.FeeAmount[tier as keyof typeof uniV3.FeeAmount];
     const poolContract = new Contract(
-      uniV3.Pool.getAddress(token0, token1, fee),
+      uniV3.Pool.getAddress(token0, token1, fee, undefined, this._factory),
       this.poolAbi,
       this.ethereum.provider
     );
@@ -311,7 +313,7 @@ export class UniswapLPHelper {
     const lowerPriceInFraction = math.fraction(lowerPrice) as math.Fraction;
     const upperPriceInFraction = math.fraction(upperPrice) as math.Fraction;
     const poolData = await this.getPoolState(
-      uniV3.Pool.getAddress(token0, token1, fee),
+      uniV3.Pool.getAddress(token0, token1, fee, undefined, this._factory),
       fee
     );
     const pool = new uniV3.Pool(
@@ -392,13 +394,14 @@ export class UniswapLPHelper {
     const positionData = await this.getRawPosition(wallet, tokenId);
     const token0 = this.getTokenByAddress(positionData.token0);
     const token1 = this.getTokenByAddress(positionData.token1);
+    const factoryAddress = this._factory
     const fee = positionData.fee;
     if (!token0 || !token1) {
       throw new Error(
         `One of the tokens in this position isn't recognized. $token0: ${token0}, $token1: ${token1}`
       );
     }
-    const poolAddress = uniV3.Pool.getAddress(token0, token1, fee);
+    const poolAddress = uniV3.Pool.getAddress(token0, token1, fee, undefined, factoryAddress);
     const poolData = await this.getPoolState(poolAddress, fee);
     const position = new uniV3.Position({
       pool: new uniV3.Pool(
