@@ -544,6 +544,14 @@
       "decimals": 6,
       "chainId": 42220,
       "logoURI": "https://raw.githubusercontent.com/compound-finance/token-list/master/assets/asset_USDC.svg"
+    },
+    {
+      "name": "Celo Kenyan Shilling",
+      "address": "0x456a3D042C0DbD3db53D5489e98dFb038553B0d0",
+      "symbol": "cKES",
+      "decimals": 18,
+      "chainId": 42220,
+      "logoURI": "https://github.com/mento-protocol/mento-web/blob/main/src/images/tokens/cKES.svg"
     }
   ]
 }

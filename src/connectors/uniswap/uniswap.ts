@@ -39,13 +39,14 @@ import { Ethereum } from '../../chains/ethereum/ethereum';
 import { Polygon } from '../../chains/polygon/polygon';
 import { ExpectedTrade, Uniswapish } from '../../services/common-interfaces';
 import { getAddress } from 'ethers/lib/utils';
+import { Celo } from '../../chains/celo/celo';
 
 export class Uniswap implements Uniswapish {
   private static _instances: { [name: string]: Uniswap };
-  private chain: Ethereum | Polygon;
+  private chain: Ethereum | Celo | Polygon;
   private _alphaRouter: AlphaRouter;
   private _router: string;
-  private _v3Factory: string;
+  private _factory: string;
   private _routerAbi: ContractInterface;
   private _gasLimitEstimate: number;
   private _ttl: number;
@@ -61,6 +62,8 @@ export class Uniswap implements Uniswapish {
     const config = UniswapConfig.config;
     if (chain === 'ethereum') {
       this.chain = Ethereum.getInstance(network);
+    } else if (chain === 'celo')  {
+      this.chain = Celo.getInstance(network);
     } else {
       this.chain = Polygon.getInstance(network);
     }
@@ -74,7 +77,7 @@ export class Uniswap implements Uniswapish {
     this._routerAbi = routerAbi.abi;
     this._gasLimitEstimate = UniswapConfig.config.gasLimitEstimate;
     this._router = config.uniswapV3SmartOrderRouterAddress(network);
-    this._v3Factory = config.uniswapV3FactoryAddress(network);
+    this._factory = config.uniswapV3FactoryAddress(network);
 
     if (config.useRouter === false && config.feeTier == null) {
       throw new Error('Must specify fee tier if not using router');
@@ -427,7 +430,7 @@ export class Uniswap implements Uniswapish {
     feeTier: FeeAmount,
   ): Promise<Pool | null> {
     const uniswapFactory = new Contract(
-      this._v3Factory,
+      this._factory,
       IUniswapV3FactoryABI,
       this.chain.provider,
     );

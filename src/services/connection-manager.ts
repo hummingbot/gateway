@@ -1,4 +1,5 @@
 import { Avalanche } from '../chains/avalanche/avalanche';
+import { Celo } from '../chains/celo/celo';
 import { Cronos } from '../chains/cronos/cronos';
 import { Ethereum } from '../chains/ethereum/ethereum';
 import { BinanceSmartChain } from '../chains/binance-smart-chain/binance-smart-chain';
@@ -126,6 +127,8 @@ export async function getChainInstance(
     connection = Cronos.getInstance(network);
   } else if (chain === 'cosmos') {
     connection = Cosmos.getInstance(network);
+  } else if (chain === 'celo') {
+    connection = Celo.getInstance(network);
   } else if (chain === 'osmosis') {
     connection = Osmosis.getInstance(network);
   } else if (chain === 'near') {
@@ -191,14 +194,14 @@ export async function getConnector<T>(
   let connectorInstance: ConnectorUnion;
 
   if (
-    (chain === 'ethereum' || chain === 'polygon') &&
+    (chain === 'ethereum' || chain === 'celo' || chain === 'polygon') &&
     connector === 'uniswap'
   ) {
     connectorInstance = Uniswap.getInstance(chain, network);
   } else if (chain === 'polygon' && connector === 'quickswap') {
     connectorInstance = Quickswap.getInstance(chain, network);
   } else if (
-    (chain === 'ethereum' || chain === 'polygon') &&
+    (chain === 'ethereum' || chain === 'celo' || chain === 'polygon') &&
     connector === 'uniswapLP'
   ) {
     connectorInstance = UniswapLP.getInstance(chain, network);
