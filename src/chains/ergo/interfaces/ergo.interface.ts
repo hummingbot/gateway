@@ -5,11 +5,14 @@ import { Ergo } from '../ergo';
 export interface ErgoNetworkConfig {
   name: string;
   nodeURL: string;
+  explorerURL: string;
+  explorerDEXURL: string;
   timeOut: number;
   networkPrefix: NetworkPrefix;
   minTxFee: number;
   maxLRUCacheInstances: number;
   utxosLimit: number;
+  poolLimit: number;
 }
 export interface ErgoConfig {
   network: ErgoNetworkConfig;

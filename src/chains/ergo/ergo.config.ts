@@ -7,7 +7,13 @@ export function getErgoConfig(network: string): ErgoConfig {
     network: {
       name: network,
       nodeURL: ConfigManagerV2.getInstance().get(
-        'algorand.networks.' + network + '.nodeURL',
+        'ergo.networks.' + network + '.nodeURL',
+      ),
+      explorerURL: ConfigManagerV2.getInstance().get(
+        'ergo.networks.' + network + '.explorerURL',
+      ),
+      explorerDEXURL: ConfigManagerV2.getInstance().get(
+        'ergo.networks.' + network + '.explorerDEXURL',
       ),
       timeOut: ConfigManagerV2.getInstance().get(
         'ergo.networks.' + network + '.timeOut',
@@ -15,10 +21,11 @@ export function getErgoConfig(network: string): ErgoConfig {
       networkPrefix:
         network === 'Mainnet' ? NetworkPrefix.Mainnet : NetworkPrefix.Testnet,
       minTxFee: ConfigManagerV2.getInstance().get(
-        'algorand.networks.' + network + '.minTxFee',
+        'ergo.networks.' + network + '.minTxFee',
       ),
       maxLRUCacheInstances: 10,
       utxosLimit: 100,
+      poolLimit: 100,
     },
   };
 }

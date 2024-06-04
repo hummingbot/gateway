@@ -29,6 +29,7 @@
     "@cosmjs/stargate": "^0.31.1",
     "@cosmjs/tendermint-rpc": "^0.32.2",
     "@crocswap/sdk": "^2.4.5",
+    "@ergolabs/ergo-dex-sdk": "^1.9.67-beta.4",
     "@ethersproject/abstract-provider": "5.7.0",
     "@ethersproject/address": "5.7.0",
     "@ethersproject/contracts": "5.7.0",
