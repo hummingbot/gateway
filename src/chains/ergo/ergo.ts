@@ -1,12 +1,16 @@
-import {NetworkPrefix, SecretKey, SecretKeys, Wallet} from "ergo-lib-wasm-nodejs"
+import {
+  NetworkPrefix,
+  SecretKey,
+  SecretKeys,
+  Wallet,
+} from 'ergo-lib-wasm-nodejs';
 import LRUCache from 'lru-cache';
-import {ErgoController} from "./ergo.controller";
-import {NodeService} from "./node.service";
-import {getErgoConfig} from "./ergo.config";
-import {DexService} from "./dex.service";
-import {Account, BoxType, ErgoAsset} from "./ergo.interface";
-import {createCipheriv, createDecipheriv, randomBytes} from 'crypto';
-
+import { ErgoController } from './ergo.controller';
+import { NodeService } from './node.service';
+import { getErgoConfig } from './ergo.config';
+import { DexService } from './dex.service';
+import { Account, BoxType, ErgoAsset } from './ergo.interface';
+import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 
 export class Ergo {
   private _assetMap: Record<string, ErgoAsset> = {};
@@ -21,21 +25,16 @@ export class Ergo {
   public controller: typeof ErgoController;
   private utxosLimit: number;
 
-  constructor(
-    network: string,
-    nodeUrl: string
-  ) {
-    this._network = network
+  constructor(network: string, nodeUrl: string) {
+    this._network = network;
     const config = getErgoConfig(network);
-    if (network === "Mainnet")
-      this._networkPrefix = NetworkPrefix.Mainnet
-    else
-      this._networkPrefix = NetworkPrefix.Testnet
-    this._node = new NodeService(nodeUrl, config.network.timeOut)
-    this._dex = new DexService(nodeUrl, config.network.timeOut)
+    if (network === 'Mainnet') this._networkPrefix = NetworkPrefix.Mainnet;
+    else this._networkPrefix = NetworkPrefix.Testnet;
+    this._node = new NodeService(nodeUrl, config.network.timeOut);
+    this._dex = new DexService(nodeUrl, config.network.timeOut);
     this.controller = ErgoController;
     this.txFee = config.network.minTxFee;
-    this.utxosLimit = config.network.utxosLimit
+    this.utxosLimit = config.network.utxosLimit;
   }
 
   public get node(): NodeService {
@@ -75,16 +74,10 @@ export class Ergo {
     if (!Ergo._instances.has(config.network.name)) {
       if (network !== null) {
         const nodeUrl = config.network.nodeURL;
-        Ergo._instances.set(
-          config.network.name,
-          new Ergo(
-            network,
-            nodeUrl
-          )
-        );
+        Ergo._instances.set(config.network.name, new Ergo(network, nodeUrl));
       } else {
         throw new Error(
-          `Ergo.getInstance received an unexpected network: ${network}.`
+          `Ergo.getInstance received an unexpected network: ${network}.`,
         );
       }
     }
@@ -98,9 +91,7 @@ export class Ergo {
       const keys = Array.from(this._instances.keys());
       for (const instance of keys) {
         if (instance !== undefined) {
-          connectedInstances[instance] = this._instances.get(
-            instance
-          ) as Ergo;
+          connectedInstances[instance] = this._instances.get(instance) as Ergo;
         }
       }
     }
@@ -108,31 +99,39 @@ export class Ergo {
   }
 
   async getCurrentBlockNumber(): Promise<number> {
-    const status = await this._node.getNetworkHeight()
+    const status = await this._node.getNetworkHeight();
     return status + 1;
   }
 
   async getAddressUnSpentBoxes(address: string) {
-    let utxos: BoxType[] = []
+    let utxos: BoxType[] = [];
     let offset = 0;
-    let nodeBoxes: BoxType[] = await this._node.getUnSpentBoxesByAddress(address, offset, this.utxosLimit)
+    let nodeBoxes: BoxType[] = await this._node.getUnSpentBoxesByAddress(
+      address,
+      offset,
+      this.utxosLimit,
+    );
     while (nodeBoxes.length > 0) {
-      utxos = [...utxos, ...nodeBoxes]
-      offset += this.utxosLimit
-      nodeBoxes = await this._node.getUnSpentBoxesByAddress(address, offset, this.utxosLimit)
+      utxos = [...utxos, ...nodeBoxes];
+      offset += this.utxosLimit;
+      nodeBoxes = await this._node.getUnSpentBoxesByAddress(
+        address,
+        offset,
+        this.utxosLimit,
+      );
     }
-    return utxos
+    return utxos;
   }
   public getAccountFromSecretKey(secret: string): Account {
-    const secretKey = SecretKey.dlog_from_bytes(Buffer.from(secret, 'hex'))
-    const address = secretKey.get_address().to_base58(this._networkPrefix)
+    const secretKey = SecretKey.dlog_from_bytes(Buffer.from(secret, 'hex'));
+    const address = secretKey.get_address().to_base58(this._networkPrefix);
     const sks = new SecretKeys();
     sks.add(secretKey);
     const wallet = Wallet.from_secrets(sks);
     return {
       address,
-      wallet
-    }
+      wallet,
+    };
   }
 
   public encrypt(secret: string, password: string): string {
@@ -155,7 +154,7 @@ export class Ergo {
     const decipher = createDecipheriv(
       'aes-256-cbc',
       key,
-      Buffer.from(iv, 'hex')
+      Buffer.from(iv, 'hex'),
     );
 
     const decrpyted = Buffer.concat([
@@ -168,15 +167,27 @@ export class Ergo {
 
   public async getAssetBalance(
     account: Account,
-    assetName: string
+    assetName: string,
   ): Promise<string> {
     const ergoAsset = this._assetMap[assetName];
-    let balance = 0
+    let balance = 0;
     try {
-      const utxos = await this.getAddressUnSpentBoxes(account.address)
-      balance =  utxos.reduce((total: number, box) => total + box.assets.filter((asset) => asset.tokenId === ergoAsset.tokenId).reduce((total_asset, asset) => total_asset + Number(asset.amount), 0), 0)
+      const utxos = await this.getAddressUnSpentBoxes(account.address);
+      balance = utxos.reduce(
+        (total: number, box) =>
+          total +
+          box.assets
+            .filter((asset) => asset.tokenId === ergoAsset.tokenId)
+            .reduce(
+              (total_asset, asset) => total_asset + Number(asset.amount),
+              0,
+            ),
+        0,
+      );
     } catch (error: any) {
-      throw new Error(`problem during finding account assets ${this._chain} Node!`);
+      throw new Error(
+        `problem during finding account assets ${this._chain} Node!`,
+      );
     }
     const amount = balance;
     return amount.toString();
@@ -189,7 +200,7 @@ export class Ergo {
         tokenId: result.address,
         decimals: result.decimals,
         name: result.name,
-        symbol: result.ticker
+        symbol: result.ticker,
       };
     }
   }
