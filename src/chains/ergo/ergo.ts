@@ -17,8 +17,40 @@ import {
   ErgoConnectedInstance,
 } from './interfaces/ergo.interface';
 import { toNumber } from 'lodash';
-import { makeNativePools } from '@ergolabs/ergo-dex-sdk';
+import { AmmPool, makeNativePools } from '@ergolabs/ergo-dex-sdk';
 import { Explorer } from '@ergolabs/ergo-sdk';
+
+class Pool extends AmmPool {
+  private name: string;
+  constructor(public pool: AmmPool) {
+    super(pool.id, pool.lp, pool.x, pool.y, pool.poolFeeNum);
+
+    this.name = `${this.x.asset.name}/${this.y.asset.name}`;
+  }
+
+  private getName() {
+    return this.name;
+  }
+
+  // calculatePriceImpact(input: any): number {
+  //   const ratio =
+  //     input.asset.id === this.x.asset.id
+  //       ? math.evaluate!(
+  //         `${renderFractions(this.y.amount.valueOf(), this.y.asset.decimals)} / ${renderFractions(this.x.amount.valueOf(), this.x.asset.decimals)}`,
+  //       ).toString()
+  //       : math.evaluate!(
+  //         `${renderFractions(this.x.amount.valueOf(), this.x.asset.decimals)} / ${renderFractions(this.y.amount.valueOf(), this.y.asset.decimals)}`,
+  //       ).toString();
+  //   const outputAmount = calculatePureOutputAmount(input, this);
+  //   const outputRatio = math.evaluate!(
+  //     `${outputAmount} / ${renderFractions(input.amount, input.asset.decimals)}`,
+  //   ).toString();
+  //
+  //   return Math.abs(
+  //     math.evaluate!(`(${outputRatio} * 100 / ${ratio}) - 100`).toFixed(2),
+  //   );
+  // }
+}
 
 export class Ergo {
   private _assetMap: Record<string, ErgoAsset> = {};
