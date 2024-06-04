@@ -1,4 +1,5 @@
-import axios, { AxiosHeaders } from 'axios';
+import axios from 'axios';
+import { DEXTokensResponse } from './interfaces/dex.interface';
 
 export class DexService {
   constructor(
@@ -6,10 +7,10 @@ export class DexService {
     private timeout: number = 5000,
   ) {}
 
-  private async request<ResponseBlock>(
+  private async request<ResponseBlock = any>(
     method: 'POST' | 'GET' | 'HEAD' = 'GET',
     url: string,
-    headers?: AxiosHeaders,
+    headers?: Record<string, string>,
     body?: Record<string, string>,
   ) {
     const response = await axios<ResponseBlock>({
@@ -25,6 +26,6 @@ export class DexService {
   }
 
   async getTokens() {
-    return this.request('GET', '/ergo-token-list.json');
+    return this.request<DEXTokensResponse>('GET', '/ergo-token-list.json');
   }
 }

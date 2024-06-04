@@ -1,19 +1,8 @@
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { NetworkPrefix } from 'ergo-lib-wasm-nodejs';
+import { ErgoConfig } from './interfaces/ergo.interface';
 
-export interface NetworkConfig {
-  name: string;
-  nodeURL: string;
-  timeOut: number;
-  networkPrefix: NetworkPrefix;
-  minTxFee: number;
-  maxLRUCacheInstances: number;
-  utxosLimit: number;
-}
-export interface Config {
-  network: NetworkConfig;
-}
-export function getErgoConfig(network: string): Config {
+export function getErgoConfig(network: string): ErgoConfig {
   return {
     network: {
       name: network,

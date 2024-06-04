@@ -1,62 +1,48 @@
-import axios, { AxiosInstance } from 'axios';
+import axios from 'axios';
+import { NodeInfoResponse } from './interfaces/node.interface';
+import { NodeErgoBoxResponse } from './types/node.type';
 
 export class NodeService {
-  private backend: AxiosInstance;
+  constructor(
+    private nodeURL: string,
+    private timeout: number,
+  ) {}
 
-  constructor(nodeURL: string, timeOut: number) {
-    this.backend = axios.create({
-      baseURL: nodeURL,
-      timeout: timeOut,
-      headers: { 'Content-Type': 'application/json' },
+  private async request<ResponseBlock = any>(
+    method: 'POST' | 'GET' | 'HEAD' = 'GET',
+    url: string,
+    headers?: Record<string, string>,
+    body?: Record<string, string> | string,
+  ) {
+    const response = await axios<ResponseBlock>({
+      baseURL: this.nodeURL,
+      url,
+      method,
+      headers: headers,
+      timeout: this.timeout,
+      ...(method === 'POST' ? { body: body } : null),
     });
-  }
 
-  async get(url: string, headers?: any, params?: any) {
-    return this.backend
-      .get(url, {
-        timeout: 25000,
-        headers: {
-          'Content-Type': 'application/json',
-          ...headers,
-        },
-        params,
-      })
-      .then((res: any) => res.data);
-  }
-
-  async head(url: string) {
-    return this.backend
-      .head(url, {
-        timeout: 1000,
-      })
-      .then((res: any) => res.status)
-      .catch((e: any) => e.response.status);
-  }
-
-  async post(url: string, headers?: any, params?: any) {
-    this.backend.defaults.headers = {
-      'Content-Type': 'application/json',
-      ...headers,
-    };
-    this.backend.defaults.timeout = 25000;
-    return this.backend.post(url, params).then((res: any) => res);
+    return response.data;
   }
 
   async getNetworkHeight(): Promise<number> {
-    const info = await this.get(`/info`);
+    const info = await this.request<NodeInfoResponse>('GET', '/info');
+
     return info.fullHeight;
   }
 
-  async getUnSpentBoxesByAddress(
+  async getUnspentBoxesByAddress(
     address: string,
     offset: number,
     limit: number,
     sortDirection = 'desc',
-  ): Promise<any> {
-    return this.post(
+  ) {
+    return this.request<NodeErgoBoxResponse>(
+      'POST',
       `/blockchain/box/unspent/byAddress?offset=${offset}&limit=${limit}&sortDirection=${sortDirection}`,
       { 'Content-Type': 'text/plain' },
-      `${address}`,
-    ).then((res) => res.data);
+      address,
+    );
   }
 }
