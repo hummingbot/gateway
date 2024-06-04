@@ -4,9 +4,14 @@ import {ErgoController} from "./ergo.controller";
 import {NodeService} from "./node.service";
 import {getErgoConfig} from "./ergo.config";
 import {DexService} from "./dex.service";
-import {Account, BoxType, ErgoAsset} from "./ergo.interface";
+import {Account, BoxType, ErgoAsset, Pool} from "./ergo.interface";
 import {createCipheriv, createDecipheriv, randomBytes} from 'crypto';
-
+import {
+  makeNativePools
+} from '@ergolabs/ergo-dex-sdk';
+import {
+  Explorer,
+} from '@ergolabs/ergo-sdk';
 
 export class Ergo {
   private _assetMap: Record<string, ErgoAsset> = {};
@@ -15,27 +20,31 @@ export class Ergo {
   private _network: string;
   private _networkPrefix: NetworkPrefix;
   private _node: NodeService;
+  private _explorer: Explorer;
   private _dex: DexService;
   private _ready: boolean = false;
   public txFee: number;
   public controller: typeof ErgoController;
   private utxosLimit: number;
+  private poolLimit: number;
+  private ammPools: Array<Pool> = [];
 
   constructor(
     network: string,
-    nodeUrl: string
   ) {
     this._network = network
     const config = getErgoConfig(network);
     if (network === "Mainnet")
-      this._networkPrefix = NetworkPrefix.Mainnet
+      this._networkPrefix = NetworkPrefix.Mainnet;
     else
-      this._networkPrefix = NetworkPrefix.Testnet
-    this._node = new NodeService(nodeUrl, config.network.timeOut)
-    this._dex = new DexService(nodeUrl, config.network.timeOut)
+      this._networkPrefix = NetworkPrefix.Testnet;
+    this._node = new NodeService(config.network.nodeURL, config.network.timeOut);
+    this._explorer = new Explorer(config.network.explorerURL);
+    this._dex = new DexService(config.network.explorerDEXURL, config.network.timeOut);
     this.controller = ErgoController;
     this.txFee = config.network.minTxFee;
-    this.utxosLimit = config.network.utxosLimit
+    this.utxosLimit = config.network.utxosLimit;
+    this.poolLimit = config.network.poolLimit;
   }
 
   public get node(): NodeService {
@@ -56,6 +65,7 @@ export class Ergo {
 
   public async init(): Promise<void> {
     await this.loadAssets();
+    await this.loadPools();
     this._ready = true;
     return;
   }
@@ -74,13 +84,9 @@ export class Ergo {
 
     if (!Ergo._instances.has(config.network.name)) {
       if (network !== null) {
-        const nodeUrl = config.network.nodeURL;
         Ergo._instances.set(
           config.network.name,
-          new Ergo(
-            network,
-            nodeUrl
-          )
+          new Ergo(network)
         );
       } else {
         throw new Error(
@@ -196,6 +202,22 @@ export class Ergo {
 
   private async getAssetData(): Promise<any> {
     return await this._dex.getTokens();
+  }
+
+  private async loadPools(): Promise<void> {
+    let offset = 0;
+    let pools: Pool[] = await this.getPoolData(this.poolLimit, offset)
+    while (pools.length > 0) {
+      for(const pool of pools){
+        if (!this.ammPools.filter((ammPool)=>ammPool.id===pool.id).length)
+          this.ammPools.push(pool)
+      }
+      offset += this.utxosLimit
+      pools = await this.getPoolData(this.poolLimit, offset)
+    }
+  }
+  private async getPoolData(limit: number, offset: number): Promise<any> {
+    return await makeNativePools(this._explorer).getAll({limit, offset})
   }
 
   public get storedTokenList() {

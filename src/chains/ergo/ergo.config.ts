@@ -5,6 +5,9 @@ import {NetworkPrefix} from "ergo-lib-wasm-nodejs";
 export interface NetworkConfig {
   name: string;
   nodeURL: string;
+  explorerURL: string;
+  explorerDEXURL: string;
+  poolLimit: number;
   timeOut: number;
   networkPrefix: NetworkPrefix;
   minTxFee: number;
@@ -19,17 +22,24 @@ export function getErgoConfig(network: string): Config {
     network: {
       name: network,
       nodeURL: ConfigManagerV2.getInstance().get(
-        'algorand.networks.' + network + '.nodeURL'
+        'ergo.networks.' + network + '.nodeURL'
+      ),
+      explorerURL: ConfigManagerV2.getInstance().get(
+        'ergo.networks.' + network + '.explorerURL'
+      ),
+      explorerDEXURL: ConfigManagerV2.getInstance().get(
+        'ergo.networks.' + network + '.explorerDEXURL'
       ),
       timeOut: ConfigManagerV2.getInstance().get(
         'ergo.networks.' + network + '.timeOut'
       ),
       networkPrefix: network === "Mainnet" ? NetworkPrefix.Mainnet : NetworkPrefix.Testnet,
       minTxFee: ConfigManagerV2.getInstance().get(
-        'algorand.networks.' + network + '.minTxFee'
+        'ergo.networks.' + network + '.minTxFee'
       ),
       maxLRUCacheInstances: 10,
-      utxosLimit: 100
+      utxosLimit: 100,
+      poolLimit: 100
     },
   };
 }

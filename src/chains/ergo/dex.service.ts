@@ -1,5 +1,4 @@
 import axios, { AxiosInstance } from 'axios'
-import { BlockHeaders, ErgoStateContext, PreHeader } from 'ergo-lib-wasm-nodejs'
 
 export class DexService {
   private backend: AxiosInstance
