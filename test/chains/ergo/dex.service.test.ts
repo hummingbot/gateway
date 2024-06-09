@@ -12,7 +12,7 @@ describe('DexService', () => {
   // Initialize DexService instance
   let dexService: DexService = new DexService(baseURL, timeout);
 
-  test('should initialize with given baseURL and timeout', () => {
+  it('Should initialize with given baseURL and timeout', () => {
     // Assert that the dexURL and timeout properties are correctly set
     expect(dexService['dexURL']).toBe(baseURL);
     expect(dexService['timeout']).toBe(timeout);
@@ -25,7 +25,7 @@ describe('DexService', () => {
     const headers = { 'Content-Type': 'application/json' };
     const body = { key: 'value' };
 
-    test('should make a GET request with correct parameters', async () => {
+    it('Should make a GET request with correct parameters', async () => {
 
       // Arrange: Mock the axios response
       const mockResponse = { data: { name: 'test' } };
@@ -46,7 +46,7 @@ describe('DexService', () => {
       expect(response).toEqual({ name: 'test' });
     });
 
-    test('should make a POST request with correct parameters', async () => {
+    it('Should make a POST request with correct parameters', async () => {
       
       // Arrange: Change method to POST and mock the axios response
       const method = 'POST';
@@ -71,7 +71,7 @@ describe('DexService', () => {
   });
 
   describe('getTokens', () => {
-    test('should call request method with correct parameters', async () => {
+    it('Should call request method with correct parameters', async () => {
 
       // Arrange: Mock the response of the request method
       const mockResponse: DEXTokensResponse = {
