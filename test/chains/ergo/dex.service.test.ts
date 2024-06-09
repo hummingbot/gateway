@@ -5,19 +5,24 @@ import { DEXTokensResponse } from '../../../src/chains/ergo/interfaces/dex.inter
 // Mocking axios to intercept HTTP requests and return controlled responses
 jest.mock('axios');
 
+// Describe the test suite for the NodeService class
 describe('DexService', () => {
   // Define constants for baseURL and timeout
   const baseURL = 'https://example.com';
   const timeout = 5000;
-  // Initialize DexService instance
-  let dexService: DexService = new DexService(baseURL, timeout);
 
+  // Initialize DexService instance
+  const dexService: DexService = new DexService(baseURL, timeout);
+
+  // Test case to check if DexService is defined and its properties are set correctly
   it('Should initialize with given baseURL and timeout', () => {
-    // Assert that the dexURL and timeout properties are correctly set
+    // Assert: Check if the dexURL and timeout properties are correctly set and instance is defined
+    expect(dexService).toBeDefined();
     expect(dexService['dexURL']).toBe(baseURL);
     expect(dexService['timeout']).toBe(timeout);
   });
 
+  // Describe the test suite for the private request method of NodeService
   describe('request', () => {
     // Define default parameters for the request method
     const method = 'GET';
@@ -25,8 +30,8 @@ describe('DexService', () => {
     const headers = { 'Content-Type': 'application/json' };
     const body = { key: 'value' };
 
+    // Test case for making a GET request with correct parameters
     it('Should make a GET request with correct parameters', async () => {
-
       // Arrange: Mock the axios response
       const mockResponse = { data: { name: 'test' } };
       (axios as any).mockResolvedValue(mockResponse);
@@ -46,8 +51,8 @@ describe('DexService', () => {
       expect(response).toEqual({ name: 'test' });
     });
 
+    // Test case for making a POST request with correct parameters
     it('Should make a POST request with correct parameters', async () => {
-      
       // Arrange: Change method to POST and mock the axios response
       const method = 'POST';
       const mockResponse = { data: { name: 'test' } };
@@ -70,19 +75,23 @@ describe('DexService', () => {
     });
   });
 
+  // Describe the test suite for the getTokens method of NodeService
   describe('getTokens', () => {
+    // Test case to call getTokens method and check return value and function input arguments
     it('Should call request method with correct parameters', async () => {
-
       // Arrange: Mock the response of the request method
       const mockResponse: DEXTokensResponse = {
-        tokens: [{
-          address: '1', name: 'Token1',
-          decimals: 0,
-          ticker: '',
-          logoURI: '',
-          project: '',
-          description: ''
-        }]
+        tokens: [
+          {
+            address: '1',
+            name: 'Token1',
+            decimals: 0,
+            ticker: '',
+            logoURI: '',
+            project: '',
+            description: '',
+          },
+        ],
       };
       jest.spyOn(dexService as any, 'request').mockResolvedValue(mockResponse);
 
@@ -90,7 +99,10 @@ describe('DexService', () => {
       const response = await dexService.getTokens();
 
       // Assert: Check if the request method was called with the correct parameters
-      expect(dexService['request']).toHaveBeenCalledWith('GET', '/ergo-token-list.json');
+      expect(dexService['request']).toHaveBeenCalledWith(
+        'GET',
+        '/ergo-token-list.json',
+      );
       // Assert: Check if the response from getTokens is as expected
       expect(response).toEqual(mockResponse);
     });
