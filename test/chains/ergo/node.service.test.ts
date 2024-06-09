@@ -1,6 +1,6 @@
 import axios from 'axios';
-
 import { NodeService } from '../../../src/chains/ergo/node.service';
+import { NodeInfoResponse } from '../../../src/chains/ergo/interfaces/node.interface';
 
 // Mock axios to avoid making real HTTP requests during tests
 jest.mock('axios');
@@ -13,6 +13,11 @@ describe('NodeService', () => {
 
   // Initialize NodeService instance
   const nodeService: NodeService = new NodeService(baseURL, timeout);
+
+  // After each test, clear all mocks to ensure no interference between tests
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
 
   // Test case to check if NodeService is defined and its properties are set correctly
   it('Should be defined and and set nodeURL & timeout correctly', () => {
@@ -71,6 +76,59 @@ describe('NodeService', () => {
       });
       // Assert: Check if the response is as expected
       expect(response).toEqual({ name: 'test' });
+    });
+  });
+
+  // Describe the test suite for the getNetworkHeight method
+  describe('getNetworkHeight', () => {
+    // Define a test case to check if getNetworkHeight is called with the correct parameters and returns the correct value
+    it('should call getNetworkHeight with correct parameters and returns the correct value', async () => {
+      // Define a mock response with fullHeight property
+      const res: NodeInfoResponse = { fullHeight: 100 };
+      // Mock the private request method of nodeService to resolve with the mock response
+      jest.spyOn(nodeService as any, 'request').mockResolvedValue(res);
+
+      // Call the getNetworkHeight method and store the result
+      const networkHeight = await nodeService.getNetworkHeight();
+
+      // Assert: Check if the returned network height is correct
+      expect(networkHeight).toEqual(100);
+      // Assert: Check if the private request method was called exactly once
+      expect(nodeService['request']).toHaveBeenCalledTimes(1);
+      // Assert: Check if the private request method was called with the correct HTTP method and URL
+      expect(nodeService['request']).toHaveBeenCalledWith('GET', '/info');
+    });
+  });
+
+  // Describe the test suite for the getUnspentBoxesByAddress method
+  describe('getUnspentBoxesByAddress', () => {
+    // Define constants for address, offset, and limit
+    const address = 'box-number-1.com';
+    const offset = 10;
+    const limit = 20;
+
+    // Define a test case to check if getUnspentBoxesByAddress is called with the correct parameters and returns the correct value
+    it('Should call getUnspentBoxesByAddress method with correct parameters and returns the correct value', async () => {
+      // Mock the private request method of nodeService to resolve with an empty data object
+      jest.spyOn(nodeService as any, 'request').mockResolvedValue({ data: {} });
+      // Call the getUnspentBoxesByAddress method with the defined address, offset, and limit, and store the result
+      const unspentBoxesByAddress = await nodeService.getUnspentBoxesByAddress(
+        address,
+        offset,
+        limit,
+      );
+
+      // Assert: Check if the returned value matches the mock response
+      expect(unspentBoxesByAddress).toEqual({ data: {} });
+      // Assert: Check if the private request method was called exactly once
+      expect(nodeService['request']).toHaveBeenCalledTimes(1);
+      // Assert: Check if the private request method was called with the correct HTTP method, URL, headers, and body
+      expect(nodeService['request']).toHaveBeenCalledWith(
+        'POST',
+        `/blockchain/box/unspent/byAddress?offset=10&limit=20&sortDirection=desc`,
+        { 'Content-Type': 'text/plain' },
+        'box-number-1.com',
+      );
     });
   });
 });
