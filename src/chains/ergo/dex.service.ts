@@ -1,6 +1,12 @@
 import axios from 'axios';
 import { DEXTokensResponse } from './interfaces/dex.interface';
 
+/**
+ * This class allows you to access elements of a DEX
+ * @class
+ * @param {string} dexURL - The DEX's base URL
+ * @param {number} [timeout=5000] - Timeout
+ */
 export class DexService {
   constructor(
     private dexURL: string,
@@ -25,6 +31,11 @@ export class DexService {
     return response.data;
   }
 
+  /**
+   *  This function allow you to get Ergo's token list from DEX
+   * @function
+   * @async
+   */
   async getTokens() {
     return this.request<DEXTokensResponse>('GET', '/ergo-token-list.json');
   }
