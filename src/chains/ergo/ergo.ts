@@ -1,17 +1,176 @@
-import {NetworkPrefix, SecretKey, SecretKeys, Wallet} from "ergo-lib-wasm-nodejs"
+import {
+  NetworkPrefix,
+  SecretKey,
+  SecretKeys,
+  Wallet,
+  ErgoBoxes, UnsignedTransaction,
+} from 'ergo-lib-wasm-nodejs';
 import LRUCache from 'lru-cache';
-import {ErgoController} from "./ergo.controller";
-import {NodeService} from "./node.service";
-import {getErgoConfig} from "./ergo.config";
-import {DexService} from "./dex.service";
-import {Account, BoxType, ErgoAsset, Pool} from "./ergo.interface";
+import {ErgoController} from './ergo.controller';
+import {NodeService} from './node.service';
+import {getErgoConfig} from './ergo.config';
+import {DexService} from './dex.service';
 import {createCipheriv, createDecipheriv, randomBytes} from 'crypto';
 import {
-  makeNativePools
+  ErgoAccount,
+  ErgoAsset,
+  ErgoBox,
+  ErgoConnectedInstance,
+} from './interfaces/ergo.interface';
+import {toNumber} from 'lodash';
+import {
+  AmmPool,
+  makeNativePools,
+  makeWrappedNativePoolActionsSelector, minValueForOrder, minValueForSetup,
+  SwapExtremums, SwapParams,
+  swapVars,
 } from '@ergolabs/ergo-dex-sdk';
 import {
   Explorer,
+  Prover,
+  ErgoTx,
+  UnsignedErgoTx,
+  unsignedErgoTxToProxy,
+  DefaultTxAssembler,
+  AssetAmount,
+  MinBoxValue,
+  DefaultBoxSelector,
+  InsufficientInputs,
+  publicKeyFromAddress,
+  TransactionContext,
+  Address,
+  BoxSelection, Input as TxInput,
 } from '@ergolabs/ergo-sdk';
+import {makeTarget} from "@ergolabs/ergo-dex-sdk/build/main/utils/makeTarget";
+import {NativeExFeeType} from "@ergolabs/ergo-dex-sdk/build/main/types";
+import {NetworkContext} from "@ergolabs/ergo-sdk/build/main/entities/networkContext";
+
+class Pool extends AmmPool {
+  private name: string;
+
+  constructor(public pool: AmmPool) {
+    super(pool.id, pool.lp, pool.x, pool.y, pool.poolFeeNum);
+
+    this.name = `${this.x.asset.name}/${this.y.asset.name}`;
+  }
+
+  private getName() {
+    return this.name;
+  }
+
+  // calculatePriceImpact(input: any): number {
+  //   const ratio =
+  //     input.asset.id === this.x.asset.id
+  //       ? math.evaluate!(
+  //         `${renderFractions(this.y.amount.valueOf(), this.y.asset.decimals)} / ${renderFractions(this.x.amount.valueOf(), this.x.asset.decimals)}`,
+  //       ).toString()
+  //       : math.evaluate!(
+  //         `${renderFractions(this.x.amount.valueOf(), this.x.asset.decimals)} / ${renderFractions(this.y.amount.valueOf(), this.y.asset.decimals)}`,
+  //       ).toString();
+  //   const outputAmount = calculatePureOutputAmount(input, this);
+  //   const outputRatio = math.evaluate!(
+  //     `${outputAmount} / ${renderFractions(input.amount, input.asset.decimals)}`,
+  //   ).toString();
+  //
+  //   return Math.abs(
+  //     math.evaluate!(`(${outputRatio} * 100 / ${ratio}) - 100`).toFixed(2),
+  //   );
+  // }
+}
+
+export type BaseInputParameters = {
+  baseInput: AssetAmount;
+  baseInputAmount: bigint;
+  minOutput: AssetAmount;
+};
+export const getBaseInputParameters = (
+  pool: AmmPool,
+  {inputAmount, slippage}: { inputAmount: any; slippage: number },
+): BaseInputParameters => {
+  const baseInputAmount =
+    inputAmount.asset.id === pool.x.asset.id
+      ? pool.x.withAmount(inputAmount.amount)
+      : pool.y.withAmount(inputAmount.amount);
+  const minOutput = pool.outputAmount(baseInputAmount as any, slippage);
+
+  return {
+    baseInput: baseInputAmount as any,
+    baseInputAmount: inputAmount.amount,
+    minOutput: minOutput as any,
+  };
+};
+export const getInputs = (
+  utxos: ErgoBox[],
+  assets: AssetAmount[],
+  fees: { minerFee: bigint; uiFee: bigint; exFee: bigint },
+  minBoxValue: bigint,
+  ignoreMinBoxValue?: boolean,
+  setup?: boolean,
+): BoxSelection => {
+  let minFeeForOrder = minValueForOrder(fees.minerFee, fees.uiFee, fees.exFee);
+  if (setup) {
+    minFeeForOrder = minValueForSetup(fees.minerFee, fees.uiFee);
+  }
+  if (ignoreMinBoxValue) {
+    minFeeForOrder -= MinBoxValue;
+  }
+
+  const target = makeTarget(assets, minFeeForOrder);
+
+  const inputs = DefaultBoxSelector.select(utxos, target, minBoxValue);
+
+  if (inputs instanceof InsufficientInputs) {
+    throw new Error(
+      `Error in getInputs function: InsufficientInputs -> ${inputs}`,
+    );
+  }
+
+  return inputs;
+};
+export const getTxContext = (
+  inputs: BoxSelection,
+  network: NetworkContext,
+  address: Address,
+  minerFee: bigint,
+): TransactionContext => ({
+  inputs,
+  selfAddress: address,
+  changeAddress: address,
+  feeNErgs: minerFee,
+  network,
+});
+
+export class WalletProver implements Prover {
+  readonly wallet: Wallet;
+  readonly nodeService: NodeService;
+
+  constructor(wallet: Wallet, nodeService: NodeService) {
+    this.wallet = wallet;
+    this.nodeService = nodeService;
+  }
+
+  /** Sign the given transaction.
+   */
+  async sign(tx: UnsignedErgoTx): Promise<ErgoTx> {
+    const ctx = await this.nodeService.getCtx()
+    const proxy = unsignedErgoTxToProxy(tx);
+    const wasmtx = UnsignedTransaction.from_json(JSON.stringify(proxy))
+    try {
+      return this.wallet.sign_transaction(ctx, wasmtx, ErgoBoxes.from_boxes_json(proxy.inputs), ErgoBoxes.empty()).to_js_eip12()
+    } catch {
+      throw new Error("not be able to sign!")
+    }
+  }
+
+  async submit(tx: ErgoTx): Promise<ErgoTx> {
+    return await this.nodeService.postTransaction(tx)
+  }
+
+  signInput(tx: UnsignedErgoTx, input: number): Promise<TxInput> {
+    // @ts-ignore
+    return
+  }
+}
 
 export class Ergo {
   private _assetMap: Record<string, ErgoAsset> = {};
@@ -24,23 +183,30 @@ export class Ergo {
   private _dex: DexService;
   private _ready: boolean = false;
   public txFee: number;
-  public controller: typeof ErgoController;
+  public controller: ErgoController;
   private utxosLimit: number;
   private poolLimit: number;
   private ammPools: Array<Pool> = [];
 
-  constructor(
-    network: string,
-  ) {
-    this._network = network
+  constructor(network: string) {
     const config = getErgoConfig(network);
-    if (network === "Mainnet")
+
+    if (network === 'Mainnet') {
       this._networkPrefix = NetworkPrefix.Mainnet;
-    else
+    } else {
       this._networkPrefix = NetworkPrefix.Testnet;
-    this._node = new NodeService(config.network.nodeURL, config.network.timeOut);
+    }
+
+    this._network = network;
+    this._node = new NodeService(
+      config.network.nodeURL,
+      config.network.timeOut,
+    );
     this._explorer = new Explorer(config.network.explorerURL);
-    this._dex = new DexService(config.network.explorerDEXURL, config.network.timeOut);
+    this._dex = new DexService(
+      config.network.explorerDEXURL,
+      config.network.timeOut,
+    );
     this.controller = ErgoController;
     this.txFee = config.network.minTxFee;
     this.utxosLimit = config.network.utxosLimit;
@@ -55,7 +221,7 @@ export class Ergo {
     return this._network;
   }
 
-  public get storedAssetList(): ErgoAsset[] {
+  public get storedAssetList(): Array<ErgoAsset> {
     return Object.values(this._assetMap);
   }
 
@@ -76,21 +242,19 @@ export class Ergo {
 
   public static getInstance(network: string): Ergo {
     const config = getErgoConfig(network);
-    if (Ergo._instances === undefined) {
+
+    if (!Ergo._instances) {
       Ergo._instances = new LRUCache<string, Ergo>({
         max: config.network.maxLRUCacheInstances,
       });
     }
 
     if (!Ergo._instances.has(config.network.name)) {
-      if (network !== null) {
-        Ergo._instances.set(
-          config.network.name,
-          new Ergo(network)
-        );
+      if (network) {
+        Ergo._instances.set(config.network.name, new Ergo(network));
       } else {
         throw new Error(
-          `Ergo.getInstance received an unexpected network: ${network}.`
+          `Ergo.getInstance received an unexpected network: ${network}.`,
         );
       }
     }
@@ -98,56 +262,72 @@ export class Ergo {
     return Ergo._instances.get(config.network.name) as Ergo;
   }
 
-  public static getConnectedInstances(): { [name: string]: Ergo } {
-    const connectedInstances: { [name: string]: Ergo } = {};
-    if (this._instances !== undefined) {
+  public static getConnectedInstances(): ErgoConnectedInstance {
+    const connectedInstances: ErgoConnectedInstance = {};
+
+    if (this._instances) {
       const keys = Array.from(this._instances.keys());
+
       for (const instance of keys) {
-        if (instance !== undefined) {
-          connectedInstances[instance] = this._instances.get(
-            instance
-          ) as Ergo;
+        if (instance) {
+          connectedInstances[instance] = this._instances.get(instance) as Ergo;
         }
       }
     }
+
     return connectedInstances;
   }
 
   async getCurrentBlockNumber(): Promise<number> {
-    const status = await this._node.getNetworkHeight()
+    const status = await this._node.getNetworkHeight();
     return status + 1;
   }
 
-  async getAddressUnSpentBoxes(address: string) {
-    let utxos: BoxType[] = []
+  async getAddressUnspentBoxes(address: string) {
+    let utxos: Array<ErgoBox> = [];
     let offset = 0;
-    let nodeBoxes: BoxType[] = await this._node.getUnSpentBoxesByAddress(address, offset, this.utxosLimit)
+    let nodeBoxes = await this._node.getUnspentBoxesByAddress(
+      address,
+      offset,
+      this.utxosLimit,
+    );
+
     while (nodeBoxes.length > 0) {
-      utxos = [...utxos, ...nodeBoxes]
-      offset += this.utxosLimit
-      nodeBoxes = await this._node.getUnSpentBoxesByAddress(address, offset, this.utxosLimit)
+      utxos = [...utxos, ...nodeBoxes];
+      offset += this.utxosLimit;
+      nodeBoxes = await this._node.getUnspentBoxesByAddress(
+        address,
+        offset,
+        this.utxosLimit,
+      );
     }
-    return utxos
+
+    return utxos;
   }
-  public getAccountFromSecretKey(secret: string): Account {
-    const secretKey = SecretKey.dlog_from_bytes(Buffer.from(secret, 'hex'))
-    const address = secretKey.get_address().to_base58(this._networkPrefix)
+
+  public getAccountFromSecretKey(secret: string): ErgoAccount {
     const sks = new SecretKeys();
+    const secretKey = SecretKey.dlog_from_bytes(Buffer.from(secret, 'hex'));
+    const address = secretKey.get_address().to_base58(this._networkPrefix);
+
     sks.add(secretKey);
+
     const wallet = Wallet.from_secrets(sks);
+
     return {
       address,
-      wallet
-    }
+      wallet,
+      prover: new WalletProver(wallet, this._node)
+    };
   }
 
   public encrypt(secret: string, password: string): string {
     const iv = randomBytes(16);
     const key = Buffer.alloc(32);
+
     key.write(password);
 
     const cipher = createCipheriv('aes-256-cbc', key, iv);
-
     const encrypted = Buffer.concat([cipher.update(secret), cipher.final()]);
 
     return `${iv.toString('hex')}:${encrypted.toString('hex')}`;
@@ -156,71 +336,162 @@ export class Ergo {
   public decrypt(encryptedSecret: string, password: string): string {
     const [iv, encryptedKey] = encryptedSecret.split(':');
     const key = Buffer.alloc(32);
+
     key.write(password);
 
     const decipher = createDecipheriv(
       'aes-256-cbc',
       key,
-      Buffer.from(iv, 'hex')
+      Buffer.from(iv, 'hex'),
     );
-
-    const decrpyted = Buffer.concat([
+    const decrypted = Buffer.concat([
       decipher.update(Buffer.from(encryptedKey, 'hex')),
       decipher.final(),
     ]);
 
-    return decrpyted.toString();
+    return decrypted.toString();
   }
 
   public async getAssetBalance(
-    account: Account,
-    assetName: string
+    account: ErgoAccount,
+    assetName: string,
   ): Promise<string> {
     const ergoAsset = this._assetMap[assetName];
-    let balance = 0
+    let balance = 0;
+
     try {
-      const utxos = await this.getAddressUnSpentBoxes(account.address)
-      balance =  utxos.reduce((total: number, box) => total + box.assets.filter((asset) => asset.tokenId === ergoAsset.tokenId).reduce((total_asset, asset) => total_asset + Number(asset.amount), 0), 0)
+      const utxos = await this.getAddressUnspentBoxes(account.address);
+
+      balance = utxos.reduce(
+        (total: number, box) =>
+          total +
+          box.assets
+            .filter((asset) => asset.tokenId === ergoAsset.tokenId.toString())
+            .reduce(
+              (total_asset, asset) => total_asset + Number(asset.amount),
+              0,
+            ),
+        0,
+      );
     } catch (error: any) {
-      throw new Error(`problem during finding account assets ${this._chain} Node!`);
+      throw new Error(
+        `problem during finding account assets ${this._chain} Node!`,
+      );
     }
-    const amount = balance;
-    return amount.toString();
+
+    return balance.toString();
   }
 
-  private async loadAssets(): Promise<void> {
+  private async loadAssets() {
     const assetData = await this.getAssetData();
+
     for (const result of assetData.tokens) {
       this._assetMap[result.name.toUpperCase()] = {
-        tokenId: result.address,
+        tokenId: toNumber(result.address),
         decimals: result.decimals,
         name: result.name,
-        symbol: result.ticker
+        symbol: result.ticker,
       };
     }
   }
 
-  private async getAssetData(): Promise<any> {
+  private async getAssetData() {
     return await this._dex.getTokens();
   }
 
   private async loadPools(): Promise<void> {
     let offset = 0;
-    let pools: Pool[] = await this.getPoolData(this.poolLimit, offset)
+    let pools: Array<Pool> = await this.getPoolData(this.poolLimit, offset);
+
     while (pools.length > 0) {
-      for(const pool of pools){
-        if (!this.ammPools.filter((ammPool)=>ammPool.id===pool.id).length)
-          this.ammPools.push(pool)
+      for (const pool of pools) {
+        if (!this.ammPools.filter((ammPool) => ammPool.id === pool.id).length) {
+          this.ammPools.push(pool);
+        }
       }
-      offset += this.utxosLimit
-      pools = await this.getPoolData(this.poolLimit, offset)
+
+      offset += this.utxosLimit;
+      pools = await this.getPoolData(this.poolLimit, offset);
     }
   }
+
   private async getPoolData(limit: number, offset: number): Promise<any> {
-    return await makeNativePools(this._explorer).getAll({limit, offset})
+    return await makeNativePools(this._explorer).getAll({limit, offset});
   }
 
   public get storedTokenList() {
     return this._assetMap;
+  }
+
+  private async swap(account: ErgoAccount, pool: Pool, x_amount: bigint, y_amount: bigint, output_address: string, return_address: string): Promise<ErgoTx> {
+    const config = getErgoConfig(this.network);
+    const networkContext = await this._explorer.getNetworkContext()
+    const mainnetTxAssembler = new DefaultTxAssembler(this.network === 'Mainnet');
+    const poolActions = makeWrappedNativePoolActionsSelector(output_address, account.prover, mainnetTxAssembler)
+    let utxos = await this.getAddressUnspentBoxes(account.address)
+    const to = {
+      asset: {
+        id: pool.x.asset.id,
+        decimals: pool.x.asset.decimals
+      },
+      amount: x_amount
+    }
+    const max_to = {
+      asset: {
+        id: pool.x.asset.id
+      },
+      amount: x_amount + x_amount / 10n
+    }
+    const from = {
+      asset: {
+        id: pool.y.asset.id,
+        decimals: pool.y.asset.decimals
+      },
+      amount: pool.outputAmount(max_to as any, config.network.defaultSlippage).amount
+    }
+    const {baseInput, baseInputAmount, minOutput} = getBaseInputParameters(
+      pool,
+      {
+        inputAmount: from,
+        slippage: config.network.defaultSlippage,
+      },
+    );
+    const swapVariables: [number, SwapExtremums] | undefined = swapVars(
+      config.network.defaultMinerFee * 3n,
+      config.network.minNitro,
+      minOutput,
+    );
+    const [exFeePerToken, extremum] = swapVariables;
+    const inputs = getInputs(
+      utxos,
+      [new AssetAmount(from.asset, baseInputAmount)],
+      {
+        minerFee: config.network.defaultMinerFee,
+        uiFee: BigInt(y_amount),
+        exFee: extremum.maxExFee,
+      },
+      config.network.minBoxValue
+    );
+    const swapParams: SwapParams<NativeExFeeType> = {
+      poolId: pool.id,
+      pk: publicKeyFromAddress(output_address),
+      baseInput,
+      minQuoteOutput: extremum.minOutput.amount,
+      exFeePerToken,
+      uiFee: BigInt(y_amount),
+      quoteAsset: to.asset.id,
+      poolFeeNum: pool.poolFeeNum,
+      maxExFee: extremum.maxExFee,
+    };
+    const txContext: TransactionContext = getTxContext(
+      inputs,
+      networkContext as NetworkContext,
+      return_address,
+      config.network.defaultMinerFee,
+    );
+
+    const actions = poolActions(pool);
+    return await actions
+      .swap(swapParams, txContext)
   }
 }

@@ -1,4 +1,1 @@
-
-export class ErgoController{
-
-}
+export class ErgoController {}
