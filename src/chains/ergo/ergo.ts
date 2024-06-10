@@ -3,25 +3,51 @@ import {
   SecretKey,
   SecretKeys,
   Wallet,
+  ErgoBoxes, UnsignedTransaction,
 } from 'ergo-lib-wasm-nodejs';
 import LRUCache from 'lru-cache';
-import { ErgoController } from './ergo.controller';
-import { NodeService } from './node.service';
-import { getErgoConfig } from './ergo.config';
-import { DexService } from './dex.service';
-import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
+import {ErgoController} from './ergo.controller';
+import {NodeService} from './node.service';
+import {getErgoConfig} from './ergo.config';
+import {DexService} from './dex.service';
+import {createCipheriv, createDecipheriv, randomBytes} from 'crypto';
 import {
   ErgoAccount,
   ErgoAsset,
   ErgoBox,
   ErgoConnectedInstance,
 } from './interfaces/ergo.interface';
-import { toNumber } from 'lodash';
-import { AmmPool, makeNativePools } from '@ergolabs/ergo-dex-sdk';
-import { Explorer } from '@ergolabs/ergo-sdk';
+import {toNumber} from 'lodash';
+import {
+  AmmPool,
+  makeNativePools,
+  makeWrappedNativePoolActionsSelector, minValueForOrder, minValueForSetup,
+  SwapExtremums, SwapParams,
+  swapVars,
+} from '@ergolabs/ergo-dex-sdk';
+import {
+  Explorer,
+  Prover,
+  ErgoTx,
+  UnsignedErgoTx,
+  unsignedErgoTxToProxy,
+  DefaultTxAssembler,
+  AssetAmount,
+  MinBoxValue,
+  DefaultBoxSelector,
+  InsufficientInputs,
+  publicKeyFromAddress,
+  TransactionContext,
+  Address,
+  BoxSelection, Input as TxInput,
+} from '@ergolabs/ergo-sdk';
+import {makeTarget} from "@ergolabs/ergo-dex-sdk/build/main/utils/makeTarget";
+import {NativeExFeeType} from "@ergolabs/ergo-dex-sdk/build/main/types";
+import {NetworkContext} from "@ergolabs/ergo-sdk/build/main/entities/networkContext";
 
 class Pool extends AmmPool {
   private name: string;
+
   constructor(public pool: AmmPool) {
     super(pool.id, pool.lp, pool.x, pool.y, pool.poolFeeNum);
 
@@ -50,6 +76,100 @@ class Pool extends AmmPool {
   //     math.evaluate!(`(${outputRatio} * 100 / ${ratio}) - 100`).toFixed(2),
   //   );
   // }
+}
+
+export type BaseInputParameters = {
+  baseInput: AssetAmount;
+  baseInputAmount: bigint;
+  minOutput: AssetAmount;
+};
+export const getBaseInputParameters = (
+  pool: AmmPool,
+  {inputAmount, slippage}: { inputAmount: any; slippage: number },
+): BaseInputParameters => {
+  const baseInputAmount =
+    inputAmount.asset.id === pool.x.asset.id
+      ? pool.x.withAmount(inputAmount.amount)
+      : pool.y.withAmount(inputAmount.amount);
+  const minOutput = pool.outputAmount(baseInputAmount as any, slippage);
+
+  return {
+    baseInput: baseInputAmount as any,
+    baseInputAmount: inputAmount.amount,
+    minOutput: minOutput as any,
+  };
+};
+export const getInputs = (
+  utxos: ErgoBox[],
+  assets: AssetAmount[],
+  fees: { minerFee: bigint; uiFee: bigint; exFee: bigint },
+  minBoxValue: bigint,
+  ignoreMinBoxValue?: boolean,
+  setup?: boolean,
+): BoxSelection => {
+  let minFeeForOrder = minValueForOrder(fees.minerFee, fees.uiFee, fees.exFee);
+  if (setup) {
+    minFeeForOrder = minValueForSetup(fees.minerFee, fees.uiFee);
+  }
+  if (ignoreMinBoxValue) {
+    minFeeForOrder -= MinBoxValue;
+  }
+
+  const target = makeTarget(assets, minFeeForOrder);
+
+  const inputs = DefaultBoxSelector.select(utxos, target, minBoxValue);
+
+  if (inputs instanceof InsufficientInputs) {
+    throw new Error(
+      `Error in getInputs function: InsufficientInputs -> ${inputs}`,
+    );
+  }
+
+  return inputs;
+};
+export const getTxContext = (
+  inputs: BoxSelection,
+  network: NetworkContext,
+  address: Address,
+  minerFee: bigint,
+): TransactionContext => ({
+  inputs,
+  selfAddress: address,
+  changeAddress: address,
+  feeNErgs: minerFee,
+  network,
+});
+
+export class WalletProver implements Prover {
+  readonly wallet: Wallet;
+  readonly nodeService: NodeService;
+
+  constructor(wallet: Wallet, nodeService: NodeService) {
+    this.wallet = wallet;
+    this.nodeService = nodeService;
+  }
+
+  /** Sign the given transaction.
+   */
+  async sign(tx: UnsignedErgoTx): Promise<ErgoTx> {
+    const ctx = await this.nodeService.getCtx()
+    const proxy = unsignedErgoTxToProxy(tx);
+    const wasmtx = UnsignedTransaction.from_json(JSON.stringify(proxy))
+    try {
+      return this.wallet.sign_transaction(ctx, wasmtx, ErgoBoxes.from_boxes_json(proxy.inputs), ErgoBoxes.empty()).to_js_eip12()
+    } catch {
+      throw new Error("not be able to sign!")
+    }
+  }
+
+  async submit(tx: ErgoTx): Promise<ErgoTx> {
+    return await this.nodeService.postTransaction(tx)
+  }
+
+  signInput(tx: UnsignedErgoTx, input: number): Promise<TxInput> {
+    // @ts-ignore
+    return
+  }
 }
 
 export class Ergo {
@@ -197,6 +317,7 @@ export class Ergo {
     return {
       address,
       wallet,
+      prover: new WalletProver(wallet, this._node)
     };
   }
 
@@ -295,10 +416,82 @@ export class Ergo {
   }
 
   private async getPoolData(limit: number, offset: number): Promise<any> {
-    return await makeNativePools(this._explorer).getAll({ limit, offset });
+    return await makeNativePools(this._explorer).getAll({limit, offset});
   }
 
   public get storedTokenList() {
     return this._assetMap;
+  }
+
+  private async swap(account: ErgoAccount, pool: Pool, x_amount: bigint, y_amount: bigint, output_address: string, return_address: string): Promise<ErgoTx> {
+    const config = getErgoConfig(this.network);
+    const networkContext = await this._explorer.getNetworkContext()
+    const mainnetTxAssembler = new DefaultTxAssembler(this.network === 'Mainnet');
+    const poolActions = makeWrappedNativePoolActionsSelector(output_address, account.prover, mainnetTxAssembler)
+    let utxos = await this.getAddressUnspentBoxes(account.address)
+    const to = {
+      asset: {
+        id: pool.x.asset.id,
+        decimals: pool.x.asset.decimals
+      },
+      amount: x_amount
+    }
+    const max_to = {
+      asset: {
+        id: pool.x.asset.id
+      },
+      amount: x_amount + x_amount / 10n
+    }
+    const from = {
+      asset: {
+        id: pool.y.asset.id,
+        decimals: pool.y.asset.decimals
+      },
+      amount: pool.outputAmount(max_to as any, config.network.defaultSlippage).amount
+    }
+    const {baseInput, baseInputAmount, minOutput} = getBaseInputParameters(
+      pool,
+      {
+        inputAmount: from,
+        slippage: config.network.defaultSlippage,
+      },
+    );
+    const swapVariables: [number, SwapExtremums] | undefined = swapVars(
+      config.network.defaultMinerFee * 3n,
+      config.network.minNitro,
+      minOutput,
+    );
+    const [exFeePerToken, extremum] = swapVariables;
+    const inputs = getInputs(
+      utxos,
+      [new AssetAmount(from.asset, baseInputAmount)],
+      {
+        minerFee: config.network.defaultMinerFee,
+        uiFee: BigInt(y_amount),
+        exFee: extremum.maxExFee,
+      },
+      config.network.minBoxValue
+    );
+    const swapParams: SwapParams<NativeExFeeType> = {
+      poolId: pool.id,
+      pk: publicKeyFromAddress(output_address),
+      baseInput,
+      minQuoteOutput: extremum.minOutput.amount,
+      exFeePerToken,
+      uiFee: BigInt(y_amount),
+      quoteAsset: to.asset.id,
+      poolFeeNum: pool.poolFeeNum,
+      maxExFee: extremum.maxExFee,
+    };
+    const txContext: TransactionContext = getTxContext(
+      inputs,
+      networkContext as NetworkContext,
+      return_address,
+      config.network.defaultMinerFee,
+    );
+
+    const actions = poolActions(pool);
+    return await actions
+      .swap(swapParams, txContext)
   }
 }
