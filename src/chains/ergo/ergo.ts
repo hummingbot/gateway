@@ -22,6 +22,7 @@ import { Explorer } from '@ergolabs/ergo-sdk';
 
 class Pool extends AmmPool {
   private name: string;
+
   constructor(public pool: AmmPool) {
     super(pool.id, pool.lp, pool.x, pool.y, pool.poolFeeNum);
 
@@ -52,6 +53,11 @@ class Pool extends AmmPool {
   // }
 }
 
+/**
+ * Ergo chain class
+ * @param {string} network - mainnet or testnet
+ * @class
+ */
 export class Ergo {
   private _assetMap: Record<string, ErgoAsset> = {};
   private static _instances: LRUCache<string, Ergo>;
@@ -105,10 +111,16 @@ export class Ergo {
     return Object.values(this._assetMap);
   }
 
-  public ready(): boolean {
+  public get ready(): boolean {
     return this._ready;
   }
 
+  /**
+   * This function initializes the Ergo class' instance
+   * @returns
+   * @function
+   * @async
+   */
   public async init(): Promise<void> {
     await this.loadAssets();
     await this.loadPools();
@@ -120,6 +132,13 @@ export class Ergo {
     return;
   }
 
+  /**
+   * This static function returns the exists or create new Ergo class' instance based on the network
+   * @param {string} network - mainnet or testnet
+   * @returns Ergo
+   * @function
+   * @static
+   */
   public static getInstance(network: string): Ergo {
     const config = getErgoConfig(network);
 
@@ -142,6 +161,12 @@ export class Ergo {
     return Ergo._instances.get(config.network.name) as Ergo;
   }
 
+  /**
+   * This static function returns the connected instances
+   * @returns ErgoConnectedInstance
+   * @function
+   * @static
+   */
   public static getConnectedInstances(): ErgoConnectedInstance {
     const connectedInstances: ErgoConnectedInstance = {};
 
@@ -158,11 +183,23 @@ export class Ergo {
     return connectedInstances;
   }
 
+  /**
+   * This function returns the current network height(Block number)
+   * @returns number
+   * @function
+   * @async
+   */
   async getCurrentBlockNumber(): Promise<number> {
     const status = await this._node.getNetworkHeight();
     return status + 1;
   }
 
+  /**
+   * This function returns the unspent boxes based on the address from node
+   * @returns ErgoBox[]
+   * @function
+   * @async
+   */
   async getAddressUnspentBoxes(address: string) {
     let utxos: Array<ErgoBox> = [];
     let offset = 0;
@@ -185,6 +222,12 @@ export class Ergo {
     return utxos;
   }
 
+  /**
+   * Retrieves Ergo Account from secret key
+   * @param {string} secret - Secret key
+   * @returns ErgoAccount
+   * @function
+   */
   public getAccountFromSecretKey(secret: string): ErgoAccount {
     const sks = new SecretKeys();
     const secretKey = SecretKey.dlog_from_bytes(Buffer.from(secret, 'hex'));
@@ -200,6 +243,13 @@ export class Ergo {
     };
   }
 
+  /**
+   * Encrypt secret via password
+   * @param {string} secret - Secret key
+   * @param {string} password - password
+   * @returns string
+   * @function
+   */
   public encrypt(secret: string, password: string): string {
     const iv = randomBytes(16);
     const key = Buffer.alloc(32);
@@ -212,6 +262,13 @@ export class Ergo {
     return `${iv.toString('hex')}:${encrypted.toString('hex')}`;
   }
 
+  /**
+   * Decrypt encrypted secret key via password
+   * @param {string} encryptedSecret - Secret key
+   * @param {string} password - password
+   * @returns string
+   * @function
+   */
   public decrypt(encryptedSecret: string, password: string): string {
     const [iv, encryptedKey] = encryptedSecret.split(':');
     const key = Buffer.alloc(32);
@@ -231,6 +288,14 @@ export class Ergo {
     return decrypted.toString();
   }
 
+  /**
+   *  Gets asset balance from unspent boxes
+   * @param {ErgoAccount} account
+   * @param {string} assetName
+   * @returns string
+   * @function
+   * @async
+   */
   public async getAssetBalance(
     account: ErgoAccount,
     assetName: string,
@@ -298,6 +363,10 @@ export class Ergo {
     return await makeNativePools(this._explorer).getAll({ limit, offset });
   }
 
+  /**
+   *  Returns a map of asset name and Ergo Asset
+   * @returns assetMap
+   */
   public get storedTokenList() {
     return this._assetMap;
   }
