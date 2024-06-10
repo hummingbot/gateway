@@ -2,6 +2,12 @@ import axios from 'axios';
 import { NodeInfoResponse } from './interfaces/node.interface';
 import { NodeErgoBoxResponse } from './types/node.type';
 
+/**
+ * This class allows you to access elements of a node
+ * @class
+ * @param {string} nodeURL - The node's base URL
+ * @param {number} timeout - Timeout
+ */
 export class NodeService {
   constructor(
     private nodeURL: string,
@@ -26,12 +32,28 @@ export class NodeService {
     return response.data;
   }
 
+  /**
+   * Gets network full height
+   * @returns number
+   * @function
+   * @async
+   */
   async getNetworkHeight(): Promise<number> {
     const info = await this.request<NodeInfoResponse>('GET', '/info');
 
     return info.fullHeight;
   }
 
+  /**
+   *  Get unspent boxes via wallet address
+   * @param {string} address
+   * @param {string} offset
+   * @param {string} limit
+   * @param {string} sortDirection
+   * @returns NodeErgoBoxResponse
+   * @function
+   * @async
+   */
   async getUnspentBoxesByAddress(
     address: string,
     offset: number,
