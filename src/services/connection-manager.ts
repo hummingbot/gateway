@@ -45,6 +45,7 @@ import { PancakeswapLP } from '../connectors/pancakeswap/pancakeswap.lp';
 import { XRPLCLOB } from '../connectors/xrpl/xrpl';
 import { QuipuSwap } from '../connectors/quipuswap/quipuswap';
 import { Carbonamm } from '../connectors/carbon/carbonAMM';
+import { Balancer } from '../connectors/balancer/balancer';
 
 export type ChainUnion =
   | Algorand
@@ -245,6 +246,11 @@ export async function getConnector<T>(
     connector === 'curve'
   ) {
     connectorInstance = Curve.getInstance(chain, network);
+  } else if (
+    (chain === 'ethereum' || chain === 'polygon' || chain === 'avalanche') &&
+    connector === 'balancer'
+  ) {
+    connectorInstance = Balancer.getInstance(chain, network);
   } else if (chain === 'tezos' && connector === 'quipuswap') {
     connectorInstance = QuipuSwap.getInstance(network);
   } else if (chain === 'ethereum' && connector === 'carbonamm') {
