@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { DexService } from '../../../src/chains/ergo/dex.service';
-// import { DEXTokensResponse } from '../../../src/chains/ergo/interfaces/dex.interface';
+import { DEXTokensResponse } from '../../../src/chains/ergo/interfaces/dex.interface';
 
 // Mocking axios to intercept HTTP requests and return controlled responses
 jest.mock('axios');
@@ -72,6 +72,39 @@ describe('DexService', () => {
       });
       // Assert: Check if the response is as expected
       expect(response).toEqual({ name: 'test' });
+    });
+  });
+
+  // Describe the test suite for the getTokens method of NodeService
+  describe('getTokens', () => {
+    // Test case to call getTokens method and check return value and function input arguments
+    it('Should call request method with correct parameters', async () => {
+      // Arrange: Mock the response of the request method
+      const mockResponse: DEXTokensResponse = {
+        tokens: [
+          {
+            address: '1',
+            name: 'Token1',
+            decimals: 0,
+            ticker: '',
+            logoURI: '',
+            project: '',
+            description: '',
+          },
+        ],
+      };
+      jest.spyOn(dexService as any, 'request').mockResolvedValue(mockResponse);
+
+      // Act: Call the getTokens method
+      const response = await dexService.getTokens();
+
+      // Assert: Check if the request method was called with the correct parameters
+      expect(dexService['request']).toHaveBeenCalledWith(
+        'GET',
+        '/ergo-token-list.json',
+      );
+      // Assert: Check if the response from getTokens is as expected
+      expect(response).toEqual(mockResponse);
     });
   });
 });
