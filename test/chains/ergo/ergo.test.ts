@@ -65,4 +65,27 @@ describe('Ergo', () => {
     expect(ergo['poolLimit']).toEqual(100);
     expect(ergo['ammPools']).toEqual([]);
   });
+
+  // Test case to verify initialization with Testnet configuration
+  it('Should initialize with Mainnet configuration', () => {
+    // Arrange: Mock the return value of getErgoConfig to simulate Testnet configuration
+    pathGetErgoConfi();
+
+    // Act: Create a new instance of Ergo with 'Testnet' configuration
+    const ergo = new Ergo('Testnet');
+
+    // Assert: Validate the initialization state of Ergo instance
+    expect(ergo).toBeDefined();
+    expect(ergo['_assetMap']).toEqual({});
+    expect(ergo['_network']).toEqual('Testnet');
+    expect(ergo['_networkPrefix']).toEqual(NetworkPrefix.Testnet);
+    expect(ergo['_node']).toBeInstanceOf(NodeService);
+    expect(ergo['_explorer']).toBeInstanceOf(Explorer);
+    expect(ergo['_dex']).toBeInstanceOf(DexService);
+    expect(ergo['txFee']).toEqual(2000);
+    expect(ergo['controller']).toEqual(ErgoController);
+    expect(ergo['utxosLimit']).toEqual(100);
+    expect(ergo['poolLimit']).toEqual(100);
+    expect(ergo['ammPools']).toEqual([]);
+  });
 });
