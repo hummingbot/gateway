@@ -7,6 +7,7 @@ import { Explorer } from '@ergolabs/ergo-sdk';
 import { DexService } from '../../../src/chains/ergo/dex.service';
 import { ErgoController } from '../../../src/chains/ergo/ergo.controller';
 import { ErgoAsset } from '../../../src/chains/ergo/interfaces/ergo.interface';
+import LRUCache from 'lru-cache';
 
 // Mocking dependencies for testing purposes using jest
 jest.mock('@ergolabs/ergo-dex-sdk', () => ({
@@ -175,9 +176,127 @@ describe('Ergo', () => {
   //   });
   // });
 
+  // Describe the test suite for the close method
   describe('close', () => {
+    // Test case to verify the close method
     it('should close correctly', async () => {
+      // Act and Assert: Call the close method and expect that the close method resolves without any errors or values
       await expect(ergo.close()).resolves.toBeUndefined();
+    });
+  });
+
+  // Describe the test suite for the getInstance method
+  describe('getInstance', () => {
+    const mockNetwork = 'Testnet';
+
+    // This block runs before each test in this suite
+    beforeEach(() => {
+      // Arrange: Mock the function to get the configuration for the 'Testnet' network
+      pathGetErgoConfig('Testnet');
+      // Arrange: Clear the singleton and mock instances
+      Ergo['_instances'] = undefined as any;
+    });
+
+    // Test that the LRUCache is initialized if it hasn't been already
+    it('should initialize the LRUCache if not already initialized', () => {
+      // Act: Call the getInstance method with the mock network
+      Ergo.getInstance(mockNetwork);
+
+      // Assert: Expect that the _instances property is defined and _instances is an instance of LRUCache
+      expect(Ergo['_instances']).toBeDefined();
+      expect(Ergo['_instances']).toBeInstanceOf(LRUCache);
+    });
+
+    // Test that a new Ergo instance is created and returned if it's not in the cache
+    it('should set and return a new Ergo instance if not in the cache', () => {
+      // Act: Call the getInstance method with the mock network
+      const instance = Ergo.getInstance(mockNetwork);
+
+      // Assert: Expect that the returned instance is an instance of Ergo, the cache contains the mock network key and the instance in the cache matches the returned instance
+      expect(instance).toBeInstanceOf(Ergo);
+      expect(Ergo['_instances'].has(mockNetwork)).toBe(true);
+      expect(Ergo['_instances'].get(mockNetwork)).toBe(instance);
+    });
+
+    // Test that an existing Ergo instance is returned from the cache
+    it('should return an existing Ergo instance from the cache', () => {
+      // Act: Call the getInstance method twice with the mock network
+      const instance1 = Ergo.getInstance(mockNetwork);
+      const instance2 = Ergo.getInstance(mockNetwork);
+
+      // Assert: Expect that both calls return the same instance and the cache contains the mock network key
+      expect(instance1).toBe(instance2);
+      expect(Ergo['_instances'].get(mockNetwork)).toBe(instance1);
+    });
+
+    // Test that an error is thrown if an unexpected network is provided
+    it('should throw an error if an unexpected network is provided', () => {
+      // Act and Assert: Expect that calling getInstance with an empty string throws an error
+      expect(() => Ergo.getInstance('')).toThrow(
+        'Ergo.getInstance received an unexpected network: .',
+      );
+    });
+  });
+
+  // Describe the test suite for the getConnectedInstances method
+  describe('getConnectedInstances', () => {
+    let mockErgoInstance1: Ergo;
+    let mockErgoInstance2: Ergo;
+
+    // This block runs before each test in this suite
+    beforeEach(() => {
+      // Arrange: Create mock Ergo instances
+      mockErgoInstance1 = new Ergo('Testnet1') as any;
+      mockErgoInstance2 = new Ergo('Testnet2') as any;
+
+      // Arrange: Initialize the _instances LRUCache with mock instances
+      Ergo['_instances'] = new LRUCache<string, Ergo>({
+        max: 10,
+      });
+      Ergo['_instances'].set('Testnet1', mockErgoInstance1);
+      Ergo['_instances'].set('Testnet2', mockErgoInstance2);
+    });
+    // Test case to verify that all connected instances are returned
+    it('should return all connected instances', () => {
+      // Act: Call the getConnectedInstances method
+      const connectedInstances = Ergo.getConnectedInstances();
+
+      // Assert: Expect the connected instances to match the mock instances
+      expect(Object.keys(connectedInstances).sort()).toEqual([
+        'Testnet1',
+        'Testnet2',
+      ]);
+      expect(connectedInstances['Testnet1']).toBe(mockErgoInstance1);
+      expect(connectedInstances['Testnet2']).toBe(mockErgoInstance2);
+    });
+
+    // Test case to verify that an empty object is returned if no instances exist
+    it('should return an empty object if there are no instances', () => {
+      // Arrange: Clear the _instances LRUCache
+      Ergo['_instances'] = undefined as any;
+
+      // Act: Call the getConnectedInstances method
+      const connectedInstances = Ergo.getConnectedInstances();
+
+      // Assert: Expect the connected instances to be an empty object
+      expect(connectedInstances).toEqual({});
+    });
+
+    // Test case to verify that only valid instances are returned
+    it('should return only valid instances', () => {
+      // Arrange: Set an invalid (null) instance in the _instances LRUCache
+      Ergo['_instances'].set('', null as any);
+
+      // Act: Call the getConnectedInstances method
+      const connectedInstances = Ergo.getConnectedInstances();
+      // Assert: Expect the valid instances to be returned and invalid instances to be excluded
+      expect(Object.keys(connectedInstances).sort()).toEqual([
+        'Testnet1',
+        'Testnet2',
+      ]);
+      expect(connectedInstances['Testnet1']).toBe(mockErgoInstance1);
+      expect(connectedInstances['Testnet2']).toBe(mockErgoInstance2);
+      expect(connectedInstances['']).toBeUndefined();
     });
   });
 });
