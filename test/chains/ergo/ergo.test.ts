@@ -1,4 +1,9 @@
-import { NetworkPrefix } from 'ergo-lib-wasm-nodejs';
+import {
+  NetworkPrefix,
+  // SecretKey,
+  // SecretKeys,
+  // Wallet,
+} from 'ergo-lib-wasm-nodejs';
 import { Ergo } from '../../../src/chains/ergo/ergo';
 import { patch, unpatch } from '../../../test/services/patch';
 import * as ergo_cofing from '../../../src/chains/ergo/ergo.config';
@@ -6,7 +11,10 @@ import { NodeService } from '../../../src/chains/ergo/node.service';
 import { Explorer } from '@ergolabs/ergo-sdk';
 import { DexService } from '../../../src/chains/ergo/dex.service';
 import { ErgoController } from '../../../src/chains/ergo/ergo.controller';
-import { ErgoAsset } from '../../../src/chains/ergo/interfaces/ergo.interface';
+import {
+  ErgoAsset,
+  ErgoBox,
+} from '../../../src/chains/ergo/interfaces/ergo.interface';
 import LRUCache from 'lru-cache';
 
 // Mocking dependencies for testing purposes using jest
@@ -297,6 +305,79 @@ describe('Ergo', () => {
       expect(connectedInstances['Testnet1']).toBe(mockErgoInstance1);
       expect(connectedInstances['Testnet2']).toBe(mockErgoInstance2);
       expect(connectedInstances['']).toBeUndefined();
+    });
+  });
+
+  // Describe the test suite for the getCurrentBlockNumber method
+  describe('getCurrentBlockNumber', () => {
+    // Test case to verify return block number corectly
+    it('Should return the current block number incremented by one', async () => {
+      // Arrange: Mock the getNetworkHeight method to return a fixed value
+      jest.spyOn(ergo['_node'], 'getNetworkHeight').mockResolvedValue(17);
+
+      // Act: Call the getCurrentBlockNumber method
+      const blockNumber = await ergo.getCurrentBlockNumber();
+
+      // Assert: Validate the returned block number
+      expect(blockNumber).toEqual(18);
+      expect(ergo['_node'].getNetworkHeight).toHaveBeenCalled;
+    });
+  });
+
+  describe('getAddressUnspentBoxes', () => {
+    const mockAddress = '9j2s7d8f4s8s8o8s0q8f5s8d7f8s0d4r5';
+    it('Should return an empty arry when length of nodeBoxes is 0', async () => {
+      jest
+        .spyOn(ergo['_node'], 'getUnspentBoxesByAddress')
+        .mockResolvedValue([]);
+      const utxos = await ergo.getAddressUnspentBoxes(mockAddress);
+      expect(utxos).toEqual([]);
+      expect(ergo['_node'].getUnspentBoxesByAddress).toHaveBeenCalledWith(
+        mockAddress,
+        0,
+        100,
+      );
+    });
+
+    it('Should retrieve all unspent boxes for the given address', async () => {
+      // Arrange
+      const mockUnspentBoxesPage1 = [
+        { boxId: 'box1' },
+        { boxId: 'box2' },
+      ] as Array<ErgoBox>;
+      const mockUnspentBoxesPage2 = [{ boxId: 'box3' }] as Array<ErgoBox>;
+      const mockUnspentBoxesPage3 = [] as Array<ErgoBox>; // Last page, empty
+      jest
+        .spyOn(ergo['_node'], 'getUnspentBoxesByAddress')
+        .mockResolvedValueOnce(mockUnspentBoxesPage1)
+        .mockResolvedValueOnce(mockUnspentBoxesPage2)
+        .mockResolvedValueOnce(mockUnspentBoxesPage3);
+
+      // Act
+      const result = await ergo.getAddressUnspentBoxes(mockAddress);
+
+      // Assert
+      expect(result).toEqual([
+        { boxId: 'box1' },
+        { boxId: 'box2' },
+        { boxId: 'box3' },
+      ]);
+      expect(ergo['_node'].getUnspentBoxesByAddress).toHaveBeenCalledTimes(3);
+      expect(ergo['_node'].getUnspentBoxesByAddress).toHaveBeenCalledWith(
+        mockAddress,
+        0,
+        100,
+      );
+      expect(ergo['_node'].getUnspentBoxesByAddress).toHaveBeenCalledWith(
+        mockAddress,
+        100,
+        100,
+      );
+      expect(ergo['_node'].getUnspentBoxesByAddress).toHaveBeenCalledWith(
+        mockAddress,
+        200,
+        100,
+      );
     });
   });
 });
