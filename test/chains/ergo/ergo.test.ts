@@ -143,13 +143,13 @@ describe('Ergo', () => {
   // Describe the test suite for the get network method
   describe('get network', () => {
     // Test case to verify network value when initialized with Mainnet
-    it('should return the correct network when network is Mainnet', () => {
+    it('Should return the correct network when network is Mainnet', () => {
       // Assert: Validate the return value
       expect(ergo.network).toBe('Mainnet');
     });
 
     // Test case to verify network value when initialized with Testnet
-    it('should return the correct network when network is Testnet', () => {
+    it('Should return the correct network when network is Testnet', () => {
       // Arrange: Mock the return value of getErgoConfig to simulate Testnet configuration
       pathGetErgoConfig('Testnet');
 
@@ -164,7 +164,7 @@ describe('Ergo', () => {
   // Describe the test suite for the get network method
   describe('get storedAssetList', () => {
     // Test case to verify the stored asset list
-    it('should return the stored asset list', () => {
+    it('Should return the stored asset list', () => {
       // Arrange: Create mock assets and populate _assetMap
       const asset1: ErgoAsset = 1 as any;
       const asset2: ErgoAsset = 2 as any;
@@ -184,7 +184,7 @@ describe('Ergo', () => {
   // Describe the test suite for the ready method
   describe('ready', () => {
     // Test case to verify the return value of the ready method
-    it('should return the ready state', () => {
+    it('Should return the ready state', () => {
       // Assert: Initially, the ready state should be false
       expect(ergo.ready()).toBe(false);
 
@@ -210,7 +210,7 @@ describe('Ergo', () => {
   // Describe the test suite for the close method
   describe('close', () => {
     // Test case to verify the close method
-    it('should close correctly', async () => {
+    it('Should close correctly', async () => {
       // Act and Assert: Call the close method and expect that the close method resolves without any errors or values
       await expect(ergo.close()).resolves.toBeUndefined();
     });
@@ -229,7 +229,7 @@ describe('Ergo', () => {
     });
 
     // Test that the LRUCache is initialized if it hasn't been already
-    it('should initialize the LRUCache if not already initialized', () => {
+    it('Should initialize the LRUCache if not already initialized', () => {
       // Act: Call the getInstance method with the mock network
       Ergo.getInstance(mockNetwork);
 
@@ -239,7 +239,7 @@ describe('Ergo', () => {
     });
 
     // Test that a new Ergo instance is created and returned if it's not in the cache
-    it('should set and return a new Ergo instance if not in the cache', () => {
+    it('Should set and return a new Ergo instance if not in the cache', () => {
       // Act: Call the getInstance method with the mock network
       const instance = Ergo.getInstance(mockNetwork);
 
@@ -250,7 +250,7 @@ describe('Ergo', () => {
     });
 
     // Test that an existing Ergo instance is returned from the cache
-    it('should return an existing Ergo instance from the cache', () => {
+    it('Should return an existing Ergo instance from the cache', () => {
       // Act: Call the getInstance method twice with the mock network
       const instance1 = Ergo.getInstance(mockNetwork);
       const instance2 = Ergo.getInstance(mockNetwork);
@@ -261,7 +261,7 @@ describe('Ergo', () => {
     });
 
     // Test that an error is thrown if an unexpected network is provided
-    it('should throw an error if an unexpected network is provided', () => {
+    it('Should throw an error if an unexpected network is provided', () => {
       // Act and Assert: Expect that calling getInstance with an empty string throws an error
       expect(() => Ergo.getInstance('')).toThrow(
         'Ergo.getInstance received an unexpected network: .',
@@ -288,7 +288,7 @@ describe('Ergo', () => {
       Ergo['_instances'].set('Testnet2', mockErgoInstance2);
     });
     // Test case to verify that all connected instances are returned
-    it('should return all connected instances', () => {
+    it('Should return all connected instances', () => {
       // Act: Call the getConnectedInstances method
       const connectedInstances = Ergo.getConnectedInstances();
 
@@ -302,7 +302,7 @@ describe('Ergo', () => {
     });
 
     // Test case to verify that an empty object is returned if no instances exist
-    it('should return an empty object if there are no instances', () => {
+    it('Should return an empty object if there are no instances', () => {
       // Arrange: Clear the _instances LRUCache
       Ergo['_instances'] = undefined as any;
 
@@ -314,7 +314,7 @@ describe('Ergo', () => {
     });
 
     // Test case to verify that only valid instances are returned
-    it('should return only valid instances', () => {
+    it('Should return only valid instances', () => {
       // Arrange: Set an invalid (null) instance in the _instances LRUCache
       Ergo['_instances'].set('', null as any);
 
@@ -433,6 +433,138 @@ describe('Ergo', () => {
       // Assert: Validate the returned address and wallet
       expect(result.address).toBe('testAddress');
       expect(result.wallet).toBe('testWallet');
+    });
+  });
+
+  // Describe the test suite for the encrypt method
+  describe('encrypt', () => {
+    // Test case to verify encryption of a secret with a given password
+    it('Should encrypt a secret with a given password', () => {
+      // Arrange: Set up the secret and password
+      const secret = 'mySecret';
+      const password = 'myPassword';
+
+      // Act: Call the encrypt method
+      const encryptedText = ergo.encrypt(secret, password);
+
+      // Assert: Verify the encrypted text format
+      expect(encryptedText).toMatch(/^[0-9a-fA-F]{32}:[0-9a-fA-F]+$/);
+    });
+
+    // Test case to ensure different encryption outputs for different secrets
+    it('Should produce different encryption outputs for different secrets', () => {
+      // Arrange: Set up the password
+      const password = 'myPassword';
+
+      // Act: Call the encrypt method with two different secrets
+      const encryptedText1 = ergo.encrypt('secret1', password);
+      const encryptedText2 = ergo.encrypt('secret2', password);
+
+      // Assert: Verify that the encrypted texts are different
+      expect(encryptedText1).not.toBe(encryptedText2);
+    });
+
+    // Test case to ensure different encryption outputs for different passwords
+    it('Should produce different encryption outputs for different passwords', () => {
+      // Arrange: Set up the secret
+      const secret = 'mySecret';
+
+      // Act: Call the encrypt method with two different passwords
+      const encryptedText1 = ergo.encrypt(secret, 'password1');
+      const encryptedText2 = ergo.encrypt(secret, 'password2');
+
+      // Assert: Verify that the encrypted texts are different
+      expect(encryptedText1).not.toBe(encryptedText2);
+    });
+
+    // Test case to ensure different IVs for different encryptions
+    it('Should produce different IVs for different encryptions', () => {
+      // Arrange: Set up the secret and password
+      const secret = 'mySecret';
+      const password = 'myPassword';
+
+      // Act: Call the encrypt method twice with the same secret and password
+      const encryptedText1 = ergo.encrypt(secret, password);
+      const encryptedText2 = ergo.encrypt(secret, password);
+
+      // Extract IVs from the encrypted texts
+      const [iv1] = encryptedText1.split(':');
+      const [iv2] = encryptedText2.split(':');
+
+      // Assert: Verify that the IVs are different
+      expect(iv1).not.toBe(iv2);
+    });
+
+    // Test case to handle passwords longer than 32 bytes
+    it('Should handle edge case where password is longer than 32 bytes', () => {
+      // Arrange: Set up the secret and a long password
+      const secret = 'mySecret';
+      const longPassword = 'a'.repeat(50); // 50 bytes password
+
+      // Act: Call the encrypt method
+      const encryptedText = ergo.encrypt(secret, longPassword);
+
+      // Assert: Verify the encrypted text format
+      expect(encryptedText).toMatch(/^[0-9a-fA-F]{32}:[0-9a-fA-F]+$/);
+    });
+  });
+
+  // Describe the test suite for the decrypt method
+  describe('decrypt', () => {
+    // Test case to verify correct decryption of an encrypted secret
+    it('Should decrypt an encrypted secret correctly', () => {
+      // Arrange: Set up the secret and password, and encrypt the secret
+      const secret = 'mySecret';
+      const password = 'myPassword';
+      const encryptedText = ergo.encrypt(secret, password);
+
+      // Act: Call the decrypt method
+      const decryptedText = ergo.decrypt(encryptedText, password);
+
+      // Assert: Verify that the decrypted text matches the original secret
+      expect(decryptedText).toBe(secret);
+    });
+
+    // Test case to ensure decryption fails with wrong password
+    it('Should fail to decrypt with wrong password', () => {
+      // Arrange: Set up the secret, correct password, wrong password, and encrypt the secret
+      const secret = 'mySecret';
+      const correctPassword = 'correctPassword';
+      const wrongPassword = 'wrongPassword';
+      const encryptedText = ergo.encrypt(secret, correctPassword);
+
+      // Act & Assert: Call the decrypt method with the wrong password and expect an error
+      expect(() => {
+        ergo.decrypt(encryptedText, wrongPassword);
+      }).toThrow();
+    });
+
+    // Test case to handle passwords longer than 32 bytes
+    it('Should handle edge case where password is longer than 32 bytes', () => {
+      // Arrange: Set up the secret and a long password, and encrypt the secret
+      const secret = 'mySecret';
+      const longPassword = 'a'.repeat(50); // 50 bytes password
+      const encryptedText = ergo.encrypt(secret, longPassword);
+
+      // Act: Call the decrypt method
+      const decryptedText = ergo.decrypt(encryptedText, longPassword);
+
+      // Assert: Verify that the decrypted text matches the original secret
+      expect(decryptedText).toBe(secret);
+    });
+
+    // Test case to handle passwords exactly 32 bytes long
+    it('Should handle case where password is exactly 32 bytes', () => {
+      // Arrange: Set up the secret and a 32 bytes password, and encrypt the secret
+      const secret = 'mySecret';
+      const exact32BytesPassword = 'a'.repeat(32); // 32 bytes password
+      const encryptedText = ergo.encrypt(secret, exact32BytesPassword);
+
+      // Act: Call the decrypt method
+      const decryptedText = ergo.decrypt(encryptedText, exact32BytesPassword);
+
+      // Assert: Verify that the decrypted text matches the original secret
+      expect(decryptedText).toBe(secret);
     });
   });
 });
