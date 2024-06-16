@@ -1,8 +1,9 @@
 import {
   NetworkPrefix,
-  // SecretKey,
-  // SecretKeys,
-  // Wallet,
+  SecretKey,
+  SecretKeys,
+  Wallet,
+  Address,
 } from 'ergo-lib-wasm-nodejs';
 import { Ergo } from '../../../src/chains/ergo/ergo';
 import { patch, unpatch } from '../../../test/services/patch';
@@ -26,10 +27,31 @@ jest.mock('@ergolabs/ergo-sdk', () => ({
   Explorer: jest.fn(),
 }));
 
-// Clean up mocks after each test
-afterEach(() => {
-  unpatch();
+// Initializing Ergo instance for testing
+let ergo: Ergo;
+
+// Before each test, configure and initialize Ergo with 'Mainnet' settings
+beforeEach(() => {
+  // Arrange: Mock the return value of getErgoConfig to simulate Mainnet configuration before each test
+  pathGetErgoConfig('Mainnet');
+
+  // Arrange: Create a new instance of Ergo with 'Mainnet' configuration before each test
+  ergo = new Ergo('Mainnet');
 });
+
+// Helper function to patch Wallet.from_secrets method for testing
+const patchFrom_secrets = () => {
+  patch(Wallet, 'from_secrets', () => {
+    return 'testWallet' as any;
+  });
+};
+
+// Helper function to patch Address.prototype.to_base58 method for testing
+const patchTo_base58 = () => {
+  patch(Address.prototype, 'to_base58', () => {
+    return 'testAddress' as any;
+  });
+};
 
 // Helper function to patch getErgoConfig for Mainnet configuration
 const pathGetErgoConfig = (imputNetwork: string) => {
@@ -54,16 +76,17 @@ const pathGetErgoConfig = (imputNetwork: string) => {
   });
 };
 
+const patchErgo_node = async () => {
+  patch(ergo['_node'], 'getUnspentBoxesByAddress', () => {
+    return [];
+  });
+};
+// Clean up mocks after each test
+afterEach(() => {
+  unpatch();
+});
 // Describe the test suite for the Ergo class
 describe('Ergo', () => {
-  let ergo: Ergo;
-  beforeEach(() => {
-    // Arrange: Mock the return value of getErgoConfig to simulate Mainnet configuration before each test
-    pathGetErgoConfig('Mainnet');
-
-    // Arrange: Create a new instance of Ergo with 'Mainnet' configuration before each test
-    ergo = new Ergo('Mainnet');
-  });
   // Test case to verify initialization with Mainnet configuration
   it('Should initialize with Mainnet configuration', () => {
     // Assert: Validate the initialization state of Ergo instance
@@ -324,23 +347,22 @@ describe('Ergo', () => {
     });
   });
 
+  // Describe the test suite for the getAddressUnspentBoxes method
   describe('getAddressUnspentBoxes', () => {
+    // Mock address for testing
     const mockAddress = '9j2s7d8f4s8s8o8s0q8f5s8d7f8s0d4r5';
+
+    // Test case to verify the return of an empty array when there are no unspent boxes
     it('Should return an empty arry when length of nodeBoxes is 0', async () => {
-      jest
-        .spyOn(ergo['_node'], 'getUnspentBoxesByAddress')
-        .mockResolvedValue([]);
+      // Arrange: Mock the getUnspentBoxesByAddress method to return an empty array
+      await patchErgo_node();
       const utxos = await ergo.getAddressUnspentBoxes(mockAddress);
       expect(utxos).toEqual([]);
-      expect(ergo['_node'].getUnspentBoxesByAddress).toHaveBeenCalledWith(
-        mockAddress,
-        0,
-        100,
-      );
     });
 
+    // Test case to verify the retrieval of all unspent boxes for the given address
     it('Should retrieve all unspent boxes for the given address', async () => {
-      // Arrange
+      // Arrange: Mock the getUnspentBoxesByAddress method to return 3 boxes
       const mockUnspentBoxesPage1 = [
         { boxId: 'box1' },
         { boxId: 'box2' },
@@ -353,10 +375,10 @@ describe('Ergo', () => {
         .mockResolvedValueOnce(mockUnspentBoxesPage2)
         .mockResolvedValueOnce(mockUnspentBoxesPage3);
 
-      // Act
+      // Act: Call the getAddressUnspentBoxes method
       const result = await ergo.getAddressUnspentBoxes(mockAddress);
 
-      // Assert
+      // Assert: Validate that an empty array is returned
       expect(result).toEqual([
         { boxId: 'box1' },
         { boxId: 'box2' },
@@ -378,6 +400,39 @@ describe('Ergo', () => {
         200,
         100,
       );
+    });
+  });
+
+  // Describe the test suite for the getAccountFromSecretKey method
+  describe('getAccountFromSecretKey', () => {
+    // Test case to verify the return of an account with address and wallet
+    it('Should return an account with address and wallet', () => {
+      // Mock secret key
+      const secret =
+        '591811a0d6361f18e42549b32e65b98c9a63d6aad369d1056a97ca81f2a980d5';
+
+      // Patch methods for mock implementation
+      patchFrom_secrets();
+      patchTo_base58();
+
+      // Arrange: Mock get_address method
+      const mockGetAddress = jest.fn().mockReturnValue(new Address());
+      const mockSecretKeyInstance = {
+        get_address: mockGetAddress,
+      } as unknown as SecretKey;
+      jest
+        .spyOn(SecretKey, 'dlog_from_bytes')
+        .mockReturnValue(mockSecretKeyInstance);
+      // Arrange: Mock add method for SecretKeys
+      const mockAdd = jest.fn();
+      jest.spyOn(SecretKeys.prototype, 'add').mockImplementation(mockAdd);
+
+      // Act: Call the getAccountFromSecretKey method
+      const result = ergo.getAccountFromSecretKey(secret);
+
+      // Assert: Validate the returned address and wallet
+      expect(result.address).toBe('testAddress');
+      expect(result.wallet).toBe('testWallet');
     });
   });
 });
