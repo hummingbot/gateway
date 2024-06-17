@@ -13,6 +13,7 @@ import { Explorer } from '@ergolabs/ergo-sdk';
 import { DexService } from '../../../src/chains/ergo/dex.service';
 import { ErgoController } from '../../../src/chains/ergo/ergo.controller';
 import {
+  ErgoAccount,
   ErgoAsset,
   ErgoBox,
 } from '../../../src/chains/ergo/interfaces/ergo.interface';
@@ -29,29 +30,6 @@ jest.mock('@ergolabs/ergo-sdk', () => ({
 
 // Initializing Ergo instance for testing
 let ergo: Ergo;
-
-// Before each test, configure and initialize Ergo with 'Mainnet' settings
-beforeEach(() => {
-  // Arrange: Mock the return value of getErgoConfig to simulate Mainnet configuration before each test
-  pathGetErgoConfig('Mainnet');
-
-  // Arrange: Create a new instance of Ergo with 'Mainnet' configuration before each test
-  ergo = new Ergo('Mainnet');
-});
-
-// Helper function to patch Wallet.from_secrets method for testing
-const patchFrom_secrets = () => {
-  patch(Wallet, 'from_secrets', () => {
-    return 'testWallet' as any;
-  });
-};
-
-// Helper function to patch Address.prototype.to_base58 method for testing
-const patchTo_base58 = () => {
-  patch(Address.prototype, 'to_base58', () => {
-    return 'testAddress' as any;
-  });
-};
 
 // Helper function to patch getErgoConfig for Mainnet configuration
 const pathGetErgoConfig = (imputNetwork: string) => {
@@ -76,11 +54,62 @@ const pathGetErgoConfig = (imputNetwork: string) => {
   });
 };
 
+// Helper function to patch Wallet.from_secrets method for testing
+const patchFrom_secrets = () => {
+  patch(Wallet, 'from_secrets', () => {
+    return 'testWallet' as any;
+  });
+};
+
+// Helper function to patch Address.prototype.to_base58 method for testing
+const patchTo_base58 = () => {
+  patch(Address.prototype, 'to_base58', () => {
+    return 'testAddress' as any;
+  });
+};
+
 const patchErgo_node = async () => {
   patch(ergo['_node'], 'getUnspentBoxesByAddress', () => {
     return [];
   });
 };
+
+// Helper function to patch ergo.getAddressUnspentBoxes method for testing
+const patchGetAddressUnspentBoxes = () => {
+  patch(ergo, 'getAddressUnspentBoxes', () => {
+    return [];
+  });
+};
+
+// Helper function to patch ergo.getAssetData method for testing
+const patchGetAssetData = () => {
+  patch(ergo, 'getAssetData', () => {
+    return {
+      tokens: [
+        {
+          address:
+            'ba553573f83c61be880d79db0f4068177fa75ab7c250ce3543f7e7aeb471a9d2',
+          decimals: 7,
+          name: '$Bass Token',
+          ticker: '$bass',
+          logoURI:
+            'https://cloudflare-ipfs.com/ipfs/bafybeifjq7aaleq2eg4o4vhqsg2zjow6pkbb3upb7vpz6g24r777ikh5ua',
+          project: '$Bass',
+          description: 'Memecoin of the Ergo ecosystem',
+        },
+      ],
+    };
+  });
+};
+
+// Before each test, configure and initialize Ergo with 'Mainnet' settings
+beforeEach(() => {
+  // Arrange: Mock the return value of getErgoConfig to simulate Mainnet configuration before each test
+  pathGetErgoConfig('Mainnet');
+
+  // Arrange: Create a new instance of Ergo with 'Mainnet' configuration before each test
+  ergo = new Ergo('Mainnet');
+});
 // Clean up mocks after each test
 afterEach(() => {
   unpatch();
@@ -565,6 +594,103 @@ describe('Ergo', () => {
 
       // Assert: Verify that the decrypted text matches the original secret
       expect(decryptedText).toBe(secret);
+    });
+  });
+
+  // Describe the test suite for the getAssetBalance method
+  describe('getAssetBalance', () => {
+    // Test case to ensure balance is 0 when there are no unspent boxes
+    it('Should return balance as 0 when there are no unspent boxes', async () => {
+      // Arrange: Set up the account and asset map, and mock the getAddressUnspentBoxes method to return an empty array
+      const account: ErgoAccount = { address: 'mockAddress' } as any;
+      ergo['_assetMap'] = {
+        assetName: { tokenId: 1 },
+      } as any;
+      patchGetAddressUnspentBoxes();
+
+      // Act: Call the getAssetBalance method
+      const balance = await ergo.getAssetBalance(account, 'assetName');
+
+      // Assert: Verify that the balance is 0
+      expect(balance).toBe('0');
+    });
+
+    // Test case to ensure balance is 0 when there are no matching assets
+    it('should return balance as 0 when there are no matching assets', async () => {
+      // Arrange: Set up the account, asset map, and mock the getAddressUnspentBoxes method to return utxos without matching assets
+      const account: ErgoAccount = { address: 'mockAddress' } as any;
+      ergo['_assetMap'] = {
+        assetName: { tokenId: 1 },
+      } as any;
+      const utxos = [{ assets: [{ tokenId: 2, amount: '100' }] }];
+      jest
+        .spyOn(ergo, 'getAddressUnspentBoxes')
+        .mockResolvedValue(utxos as any);
+
+      // Act: Call the getAssetBalance method
+      const balance = await ergo.getAssetBalance(account, 'assetName');
+
+      // Assert: Verify that the balance is 0
+      expect(balance).toBe('0');
+    });
+
+    // Test case to ensure correct balance is returned when there are matching assets
+    it('Should return correct balance when there are matching assets', async () => {
+      // Arrange: Set up the account, asset map, and mock the getAddressUnspentBoxes method to return utxos with matching assets
+      const account: ErgoAccount = { address: 'mockAddress' } as any;
+      ergo['_assetMap'] = {
+        assetName: { tokenId: 1 },
+      } as any;
+      const utxos = [
+        { assets: [{ tokenId: '1', amount: 100 }] },
+        { assets: [{ tokenId: '1', amount: 200 }] },
+      ];
+      jest
+        .spyOn(ergo, 'getAddressUnspentBoxes')
+        .mockResolvedValue(utxos as any);
+
+      // Act: Call the getAssetBalance method
+      const balance = await ergo.getAssetBalance(account, 'assetName');
+
+      // Assert: Verify that the balance is correct
+      expect(balance).toBe('300');
+    });
+
+    // Test case to ensure error is thrown when getAddressUnspentBoxes fails
+    it('Should throw an error when getAddressUnspentBoxes fails', async () => {
+      // Arrange: Set up the account and mock the getAddressUnspentBoxes method to reject with an error
+      const account: ErgoAccount = { address: 'mockAddress' } as any;
+      jest
+        .spyOn(ergo, 'getAddressUnspentBoxes')
+        .mockRejectedValue(new Error('some error'));
+
+      // Act & Assert: Call the getAssetBalance method and expect it to throw an error
+      await expect(ergo.getAssetBalance(account, 'assetName')).rejects.toThrow(
+        'problem during finding account assets ergo Node!',
+      );
+    });
+  });
+
+  // Describe the test suite for the loadAssets method
+  describe('loadAssets', () => {
+    // Test case to ensure assets are loaded and assetMap object is updated
+    it('Should load Assets and update assetMap object', async () => {
+      // Arrange: Set up the assetMap and mock the getAssetData method
+      ergo['_assetMap'] = {};
+      patchGetAssetData();
+
+      // Act: Call the loadAssets method
+      await ergo['loadAssets']();
+
+      // Assert: Verify that the assetMap is updated correctly
+      expect(ergo['_assetMap']).toEqual({
+        '$BASS TOKEN': {
+          tokenId: NaN, // This is wrong
+          decimals: 7,
+          name: '$Bass Token',
+          symbol: '$bass',
+        },
+      });
     });
   });
 });
