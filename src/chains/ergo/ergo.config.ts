@@ -2,6 +2,12 @@ import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { NetworkPrefix } from 'ergo-lib-wasm-nodejs';
 import { ErgoConfig } from './interfaces/ergo.interface';
 
+/**
+ *  This function return configuration for Ergo
+ * @param {string} network - mainnet or testnet
+ * @returns ErgoConfig
+ * @function
+ */
 export function getErgoConfig(network: string): ErgoConfig {
   return {
     network: {
