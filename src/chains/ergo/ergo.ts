@@ -16,7 +16,6 @@ import {
   ErgoBox,
   ErgoConnectedInstance,
 } from './interfaces/ergo.interface';
-import { toNumber } from 'lodash';
 import { AmmPool, makeNativePools } from '@ergolabs/ergo-dex-sdk';
 import { Explorer } from '@ergolabs/ergo-sdk';
 
@@ -266,7 +265,7 @@ export class Ergo {
 
     for (const result of assetData.tokens) {
       this._assetMap[result.name.toUpperCase()] = {
-        tokenId: toNumber(result.address),
+        tokenId: result.address,
         decimals: result.decimals,
         name: result.name,
         symbol: result.ticker,

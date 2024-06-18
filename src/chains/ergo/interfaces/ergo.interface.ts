@@ -19,7 +19,7 @@ export interface ErgoConfig {
 }
 
 export interface ErgoAsset {
-  tokenId: number;
+  tokenId: string;
   decimals: number;
   name: string;
   symbol: string;
