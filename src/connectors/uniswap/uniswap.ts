@@ -15,7 +15,6 @@ import {
   SwapQuoter,
   Trade as UniswapV3Trade,
   Route,
-  FACTORY_ADDRESS,
 } from '@uniswap/v3-sdk';
 import { abi as IUniswapV3PoolABI } from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
 import { abi as IUniswapV3FactoryABI } from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Factory.sol/IUniswapV3Factory.json';
@@ -37,15 +36,17 @@ import {
 import { logger } from '../../services/logger';
 import { percentRegexp } from '../../services/config-manager-v2';
 import { Ethereum } from '../../chains/ethereum/ethereum';
+import { Avalanche } from '../../chains/avalanche/avalanche';
 import { Polygon } from '../../chains/polygon/polygon';
 import { ExpectedTrade, Uniswapish } from '../../services/common-interfaces';
 import { getAddress } from 'ethers/lib/utils';
 
 export class Uniswap implements Uniswapish {
   private static _instances: { [name: string]: Uniswap };
-  private chain: Ethereum | Polygon;
+  private chain: Ethereum | Polygon | Avalanche;
   private _alphaRouter: AlphaRouter;
   private _router: string;
+  private _factory: string;
   private _routerAbi: ContractInterface;
   private _gasLimitEstimate: number;
   private _ttl: number;
@@ -61,6 +62,8 @@ export class Uniswap implements Uniswapish {
     const config = UniswapConfig.config;
     if (chain === 'ethereum') {
       this.chain = Ethereum.getInstance(network);
+    } else if (chain === 'avalanche') {
+      this.chain = Avalanche.getInstance(network);
     } else {
       this.chain = Polygon.getInstance(network);
     }
@@ -74,6 +77,7 @@ export class Uniswap implements Uniswapish {
     this._routerAbi = routerAbi.abi;
     this._gasLimitEstimate = UniswapConfig.config.gasLimitEstimate;
     this._router = config.uniswapV3SmartOrderRouterAddress(network);
+    this._factory = config.uniswapV3FactoryAddress(network);
 
     if (config.useRouter === false && config.feeTier == null) {
       throw new Error('Must specify fee tier if not using router');
@@ -428,7 +432,7 @@ export class Uniswap implements Uniswapish {
     poolId?: string
   ): Promise<Pool | null> {
     const uniswapFactory = new Contract(
-      FACTORY_ADDRESS,
+      this._factory,
       IUniswapV3FactoryABI,
       this.chain.provider
     );

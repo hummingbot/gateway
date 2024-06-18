@@ -14,6 +14,7 @@ export namespace UniswapConfig {
     useRouter?: boolean;
     feeTier?: string;
     quoterContractAddress: (network: string) => string;
+    uniswapV3FactoryAddress: (network: string) => string;
   }
 
   export const config: NetworkConfig = {
@@ -36,12 +37,27 @@ export namespace UniswapConfig {
     tradingTypes: (type: string) => {
       return type === 'swap' ? ['AMM'] : ['AMM_LP'];
     },
+    uniswapV3FactoryAddress: (network: string) => {
+      return ConfigManagerV2.getInstance().get(
+        `uniswap.contractAddresses.${network}.uniswapV3FactoryAddress`,
+      );
+    },
     chainType: 'EVM',
     availableNetworks: [
       {
         chain: 'ethereum',
         networks: Object.keys(
-          ConfigManagerV2.getInstance().get('uniswap.contractAddresses')
+          ConfigManagerV2.getInstance().get('uniswap.contractAddresses'),
+        ).filter((network) =>
+          Object.keys(
+            ConfigManagerV2.getInstance().get('ethereum.networks'),
+          ).includes(network),
+        ),
+      },
+      {
+        chain: 'avalanche',
+        networks: Object.keys(
+          ConfigManagerV2.getInstance().get('uniswap.contractAddresses'),
         ).filter((network) =>
           Object.keys(
             ConfigManagerV2.getInstance().get('ethereum.networks')
