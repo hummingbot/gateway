@@ -18,6 +18,7 @@ import {
   ErgoBox,
 } from '../../../src/chains/ergo/interfaces/ergo.interface';
 import LRUCache from 'lru-cache';
+import { makeNativePools } from '@ergolabs/ergo-dex-sdk';
 
 // Mocking dependencies for testing purposes using jest
 jest.mock('@ergolabs/ergo-dex-sdk', () => ({
@@ -32,7 +33,7 @@ jest.mock('@ergolabs/ergo-sdk', () => ({
 let ergo: Ergo;
 
 // Helper function to patch getErgoConfig for Mainnet configuration
-const pathGetErgoConfig = (imputNetwork: string) => {
+const patchGetErgoConfig = (imputNetwork: string) => {
   patch(ergo_cofing, 'getErgoConfig', () => {
     return {
       network: {
@@ -102,10 +103,40 @@ const patchGetAssetData = () => {
   });
 };
 
+// Helper function to patch getTokens method for testing
+const patchGetTokens = () => {
+  patch(ergo['_dex'], 'getTokens', () => {
+    return {
+      name: 'Spectrum Finance Ergo Token List',
+      timestamp: '2024-04-02T08:05:42.697Z',
+      version: {
+        major: 2,
+        minor: 0,
+        patch: 0,
+      },
+      tags: {},
+      keywords: ['spectrum finance', 'tokens', 'ergo tokens'],
+      tokens: [
+        {
+          address:
+            'ba553573f83c61be880d79db0f4068177fa75ab7c250ce3543f7e7aeb471a9d2',
+          decimals: 7,
+          name: '$Bass Token',
+          ticker: '$bass',
+          logoURI:
+            'https://cloudflare-ipfs.com/ipfs/bafybeifjq7aaleq2eg4o4vhqsg2zjow6pkbb3upb7vpz6g24r777ikh5ua',
+          project: '$Bass',
+          description: 'Memecoin of the Ergo ecosystem',
+        },
+      ],
+    };
+  });
+};
+
 // Before each test, configure and initialize Ergo with 'Mainnet' settings
 beforeEach(() => {
   // Arrange: Mock the return value of getErgoConfig to simulate Mainnet configuration before each test
-  pathGetErgoConfig('Mainnet');
+  patchGetErgoConfig('Mainnet');
 
   // Arrange: Create a new instance of Ergo with 'Mainnet' configuration before each test
   ergo = new Ergo('Mainnet');
@@ -113,6 +144,7 @@ beforeEach(() => {
 // Clean up mocks after each test
 afterEach(() => {
   unpatch();
+  jest.clearAllMocks();
 });
 // Describe the test suite for the Ergo class
 describe('Ergo', () => {
@@ -136,7 +168,7 @@ describe('Ergo', () => {
   // Test case to verify initialization with Testnet configuration
   it('Should initialize with Mainnet configuration', () => {
     // Arrange: Mock the return value of getErgoConfig to simulate Testnet configuration
-    pathGetErgoConfig('Testnet');
+    patchGetErgoConfig('Testnet');
 
     // Act: Create a new instance of Ergo with 'Testnet' configuration
     const ergo = new Ergo('Testnet');
@@ -180,7 +212,7 @@ describe('Ergo', () => {
     // Test case to verify network value when initialized with Testnet
     it('Should return the correct network when network is Testnet', () => {
       // Arrange: Mock the return value of getErgoConfig to simulate Testnet configuration
-      pathGetErgoConfig('Testnet');
+      patchGetErgoConfig('Testnet');
 
       // Act: Create a new instance of Ergo with 'Testnet' configuration
       ergo = new Ergo('Testnet');
@@ -214,7 +246,7 @@ describe('Ergo', () => {
   describe('ready', () => {
     // Test case to verify the return value of the ready method
     it('Should return the ready state', () => {
-      // Assert: Initially, the ready state should be false
+      // Arrange: Initially, the ready state should be false
       expect(ergo.ready()).toBe(false);
 
       // Act: Manually set the _ready state to true
@@ -225,16 +257,23 @@ describe('Ergo', () => {
     });
   });
 
-  // describe('', () => {
-  //   it('should initialize assets and pools in init method', async () => {
-  //     const loadAssetsSpy = jest.spyOn(ergo as any, 'loadAssets').mockResolvedValue();
-  //     const loadPoolsSpy = jest.spyOn(ergo as any, 'loadPools').mockResolvedValue();
-  //     await ergo.init();
-  //     expect(loadAssetsSpy).toHaveBeenCalled();
-  //     expect(loadPoolsSpy).toHaveBeenCalled();
-  //     expect(ergo.ready()).toBe(true);
-  //   });
-  // });
+  // Describe the test suite for the init method
+  describe('init', () => {
+    // Test case to verify the initialization process in the init method
+    it('Should initialize assets and pools in init method', async () => {
+      // Arrange: Mock the loadAssets & loadPools methods to return a fixed value
+      jest.spyOn(ergo as any, 'loadAssets').mockResolvedValue({});
+      jest.spyOn(ergo as any, 'loadPools').mockResolvedValue({});
+
+      // Act: Call the init method to initialize assets and pools
+      await ergo.init();
+
+      // Assert: Ensure the loadAssets & loadPools methods were called during initialization
+      expect(ergo['loadAssets']).toHaveBeenCalled();
+      expect(ergo['loadPools']).toHaveBeenCalled();
+      expect(ergo.ready()).toBe(true);
+    });
+  });
 
   // Describe the test suite for the close method
   describe('close', () => {
@@ -252,7 +291,7 @@ describe('Ergo', () => {
     // This block runs before each test in this suite
     beforeEach(() => {
       // Arrange: Mock the function to get the configuration for the 'Testnet' network
-      pathGetErgoConfig('Testnet');
+      patchGetErgoConfig('Testnet');
       // Arrange: Clear the singleton and mock instances
       Ergo['_instances'] = undefined as any;
     });
@@ -685,12 +724,182 @@ describe('Ergo', () => {
       // Assert: Verify that the assetMap is updated correctly
       expect(ergo['_assetMap']).toEqual({
         '$BASS TOKEN': {
-          tokenId: NaN, // This is wrong
+          tokenId:
+            'ba553573f83c61be880d79db0f4068177fa75ab7c250ce3543f7e7aeb471a9d2',
           decimals: 7,
           name: '$Bass Token',
           symbol: '$bass',
         },
       });
+    });
+  });
+
+  // Describe the test suite for the getAssetData method
+  describe('getAssetData', () => {
+    // Test case to ensure getAssetData returns all tokens with details
+    it('Should return all token with the details', async () => {
+      // Mock getTokens method to return predefined data
+      patchGetTokens();
+
+      // Act & Assert: Validate the returned data structure
+      expect(await ergo['getAssetData']()).toEqual({
+        name: 'Spectrum Finance Ergo Token List',
+        timestamp: '2024-04-02T08:05:42.697Z',
+        version: {
+          major: 2,
+          minor: 0,
+          patch: 0,
+        },
+        tags: {},
+        keywords: ['spectrum finance', 'tokens', 'ergo tokens'],
+        tokens: [
+          {
+            address:
+              'ba553573f83c61be880d79db0f4068177fa75ab7c250ce3543f7e7aeb471a9d2',
+            decimals: 7,
+            name: '$Bass Token',
+            ticker: '$bass',
+            logoURI:
+              'https://cloudflare-ipfs.com/ipfs/bafybeifjq7aaleq2eg4o4vhqsg2zjow6pkbb3upb7vpz6g24r777ikh5ua',
+            project: '$Bass',
+            description: 'Memecoin of the Ergo ecosystem',
+          },
+        ],
+      });
+    });
+  });
+
+  // Describe the test suite for the loadPools method
+  describe('loadPools', () => {
+    // Test case to ensure ammPools remains empty when no PoolData is provided
+    it('Should push nothing to ammPools when no PoolData is provided', async () => {
+      // Arrange: Mock getPoolData to return an empty array
+      jest.spyOn(ergo as any, 'getPoolData').mockResolvedValue([] as any);
+      ergo['ammPools'] = [];
+
+      // Act: Call the method under test
+      await ergo['loadPools']();
+
+      // Assert: Ensure ammPools remains empty
+      expect(ergo['ammPools']).toEqual([]);
+    });
+
+    // Test case to ensure ammPools contains provided PoolData when available
+    it('Should push nothing to ammPools when no PoolData is provided', async () => {
+      // Arrange: Mock getPoolData to return specific pool data
+      jest
+        .spyOn(ergo as any, 'getPoolData')
+        .mockResolvedValueOnce([{ id: '1' }, { id: 2 }] as any);
+      jest.spyOn(ergo as any, 'getPoolData').mockResolvedValueOnce([] as any);
+
+      // Act: Call the method under test
+      ergo['ammPools'] = [];
+      await ergo['loadPools']();
+
+      // Assert: Verify ammPools contains expected pool data
+      expect(ergo['ammPools']).toEqual([{ id: '1' }, { id: 2 }]);
+    });
+
+    // Test case to ensure ammPools merges new pools without duplicates
+    it('Should not add duplicate pools to ammPools', async () => {
+      // Arrange: Mock getPoolData to simulate incremental pool data loading
+      const initialPools: any = [
+        { id: 1, name: 'Pool 1' },
+        { id: 2, name: 'Pool 2' },
+      ];
+      const newPools: any = [
+        { id: 2, name: 'Pool 2' },
+        { id: 3, name: 'Pool 3' },
+      ];
+
+      jest
+        .spyOn(ergo as any, 'getPoolData')
+        .mockResolvedValueOnce(initialPools)
+        .mockResolvedValueOnce(newPools)
+        .mockResolvedValueOnce([]);
+
+      ergo['ammPools'] = [];
+
+      // Act: Call the method under test
+      await ergo['loadPools']();
+
+      // Assert: Verify ammPools contains merged pool data without duplicates
+      expect(ergo['ammPools']).toEqual([
+        { id: 1, name: 'Pool 1' },
+        { id: 2, name: 'Pool 2' },
+        { id: 3, name: 'Pool 3' },
+      ]);
+    });
+  });
+
+  // Describe the test suite for the getPoolData method
+  describe('getPoolData', () => {
+    // Test case to ensure makeNativePools and getAll are called with correct parameters
+    it('Should call makeNativePools and getAll with correct parameters', async () => {
+      // Arrange: Mock makeNativePools and getAll methods
+      const mockGetAll = jest.fn().mockResolvedValue([]);
+      (makeNativePools as any).mockReturnValue({ getAll: mockGetAll });
+
+      const limit = 10;
+      const offset = 0;
+
+      // Act: Call the method under test
+      await ergo['getPoolData'](limit, offset);
+
+      // Assert: Ensure makeNativePools and getAll were called with correct parameters
+      expect(makeNativePools).toHaveBeenCalledWith(ergo['_explorer']);
+      expect(mockGetAll).toHaveBeenCalledWith({ limit, offset });
+    });
+
+    // Test case to ensure getPoolData returns expected data from getAll method
+    it('Should return the data from getAll method', async () => {
+      // Arrange: Mock getAll method to return specific data
+      const expectedData = [{ id: 1, name: 'Pool 1' }];
+      const mockGetAll = jest.fn().mockResolvedValue(expectedData);
+      (makeNativePools as any).mockReturnValue({ getAll: mockGetAll });
+
+      const limit = 10;
+      const offset = 0;
+
+      // Act: Call the method under test
+      const result = await ergo['getPoolData'](limit, offset);
+
+      // Assert: Verify the method returns expected data
+      expect(result).toEqual(expectedData);
+    });
+
+    // Test case to ensure getPoolData handles errors from getAll method
+    it('Should handle errors from getAll method', async () => {
+      // Arrange: Mock getAll method to simulate error
+      const mockGetAll = jest.fn().mockRejectedValue(new Error('Test error'));
+      (makeNativePools as any).mockReturnValue({ getAll: mockGetAll });
+
+      const limit = 10;
+      const offset = 0;
+
+      // Act & Assert: Ensure the method throws the expected error
+      await expect(ergo['getPoolData'](limit, offset)).rejects.toThrow(
+        'Test error',
+      );
+    });
+  });
+
+  // Describe the test suite for the getPoolData method
+  describe('storedTokenList', () => {
+    it('Should return the stored asset list', () => {
+      // Arrange: Create mock assets and populate _assetMap
+      const asset1: ErgoAsset = 1 as any;
+      const asset2: ErgoAsset = 2 as any;
+      const assetMap = {
+        key1: asset1,
+        key2: asset2,
+      };
+
+      // Act: Set _assetMap directly
+      ergo['_assetMap'] = assetMap;
+
+      // Assert: Validate the stored asset list returned by storedAssetList
+      expect(ergo.storedTokenList).toEqual(assetMap);
     });
   });
 });
