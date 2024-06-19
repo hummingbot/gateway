@@ -1,7 +1,14 @@
 import axios from 'axios';
-import {NodeChainSliceResponse, NodeInfoResponse} from './interfaces/node.interface';
-import { NodeErgoBoxResponse } from './types/node.type';
-import {BlockHeaders, ErgoStateContext, PreHeader} from "ergo-lib-wasm-nodejs";
+import {
+  NodeChainSliceResponse,
+  NodeInfoResponse,
+} from './interfaces/node.interface';
+import { NodeErgoBoxResponse, NodeErgoPostTxResponse } from "./types/node.type";
+import {
+  BlockHeaders,
+  ErgoStateContext,
+  PreHeader,
+} from 'ergo-lib-wasm-nodejs';
 
 export class NodeService {
   constructor(
@@ -46,13 +53,31 @@ export class NodeService {
       address,
     );
   }
+
   async chainSliceInfo(height: number): Promise<any> {
-    return this.request<NodeChainSliceResponse[]>('GET', `/blocks/chainSlice?fromHeight=${height - 10}&toHeight=${height}`)
+    return this.request<NodeChainSliceResponse[]>(
+      'GET',
+      `/blocks/chainSlice?fromHeight=${height - 10}&toHeight=${height}`,
+    );
   }
+
   async getCtx() {
-    const height = await this.getNetworkHeight()
-    const blockHeaders = BlockHeaders.from_json(await this.chainSliceInfo(height))
-    const pre_header = PreHeader.from_block_header(blockHeaders.get(blockHeaders.len() - 1))
+    const height = await this.getNetworkHeight();
+    const blockHeaders = BlockHeaders.from_json(
+      await this.chainSliceInfo(height),
+    );
+    const pre_header = PreHeader.from_block_header(
+      blockHeaders.get(blockHeaders.len() - 1),
+    );
     return new ErgoStateContext(pre_header, blockHeaders);
+  }
+
+  async postTransaction(tx: any): Promise<string> {
+    return this.request<NodeErgoPostTxResponse>(
+      'POST',
+      `/transactions`,
+      { 'Content-Type': 'text/plain' },
+      tx,
+    );
   }
 }
