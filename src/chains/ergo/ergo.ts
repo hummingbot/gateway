@@ -18,7 +18,6 @@ import {
   ErgoBox,
   ErgoConnectedInstance,
 } from './interfaces/ergo.interface';
-import { toNumber } from 'lodash';
 import {
   AmmPool,
   makeNativePools,
@@ -45,11 +44,15 @@ import {
   Address,
   BoxSelection,
   Input as TxInput,
+  RustModule
 } from '@ergolabs/ergo-sdk';
 import { makeTarget } from '@ergolabs/ergo-dex-sdk/build/main/utils/makeTarget';
 import { NativeExFeeType } from '@ergolabs/ergo-dex-sdk/build/main/types';
 import { NetworkContext } from '@ergolabs/ergo-sdk/build/main/entities/networkContext';
-
+async function x() {
+  await RustModule.load(true);
+}
+x();
 class Pool extends AmmPool {
   private name: string;
 
@@ -59,9 +62,7 @@ class Pool extends AmmPool {
     this.name = `${this.x.asset.name}/${this.y.asset.name}`;
   }
 
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-expect-error
-  private getName() {
+  public getName() {
     return this.name;
   }
 
@@ -485,7 +486,6 @@ export class Ergo {
   private async loadPools(): Promise<void> {
     let offset = 0;
     let pools: Array<Pool> = await this.getPoolData(this.poolLimit, offset);
-
     while (pools.length > 0) {
       for (const pool of pools) {
         if (!this.ammPools.filter((ammPool) => ammPool.id === pool.id).length) {
@@ -493,13 +493,17 @@ export class Ergo {
         }
       }
 
-      offset += this.utxosLimit;
+      offset += this.poolLimit;
       pools = await this.getPoolData(this.poolLimit, offset);
     }
   }
 
   private async getPoolData(limit: number, offset: number): Promise<any> {
-    return await makeNativePools(this._explorer).getAll({ limit, offset });
+    const [AmmPool] = await makeNativePools(this._explorer).getAll({
+      limit,
+      offset,
+    });
+    return AmmPool;
   }
 
   /**
