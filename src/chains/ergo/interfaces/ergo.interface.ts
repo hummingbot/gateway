@@ -1,6 +1,6 @@
 import { NetworkPrefix } from 'ergo-lib-wasm-nodejs';
 import { Wallet } from 'ergo-lib-wasm-nodejs';
-import { Ergo } from '../ergo';
+import { Ergo, WalletProver } from '../ergo';
 
 export interface ErgoNetworkConfig {
   name: string;
@@ -13,6 +13,10 @@ export interface ErgoNetworkConfig {
   maxLRUCacheInstances: number;
   utxosLimit: number;
   poolLimit: number;
+  defaultSlippage: number;
+  defaultMinerFee: bigint;
+  minNitro: number;
+  minBoxValue: bigint
 }
 export interface ErgoConfig {
   network: ErgoNetworkConfig;
@@ -28,6 +32,7 @@ export interface ErgoAsset {
 export interface ErgoAccount {
   wallet: Wallet;
   address: string;
+  prover: WalletProver
 }
 
 export interface ErgoConnectedInstance {
