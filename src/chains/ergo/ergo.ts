@@ -16,19 +16,24 @@ import {
   ErgoBox,
   ErgoConnectedInstance,
 } from './interfaces/ergo.interface';
-import { toNumber } from 'lodash';
 import { AmmPool, makeNativePools } from '@ergolabs/ergo-dex-sdk';
-import { Explorer } from '@ergolabs/ergo-sdk';
+import { Explorer, RustModule } from '@ergolabs/ergo-sdk';
+
+async function x() {
+  await RustModule.load(true);
+}
+x();
 
 class Pool extends AmmPool {
   private name: string;
+
   constructor(public pool: AmmPool) {
     super(pool.id, pool.lp, pool.x, pool.y, pool.poolFeeNum);
 
     this.name = `${this.x.asset.name}/${this.y.asset.name}`;
   }
 
-  private getName() {
+  public getName() {
     return this.name;
   }
 
@@ -266,7 +271,7 @@ export class Ergo {
 
     for (const result of assetData.tokens) {
       this._assetMap[result.name.toUpperCase()] = {
-        tokenId: toNumber(result.address),
+        tokenId: result.address,
         decimals: result.decimals,
         name: result.name,
         symbol: result.ticker,
@@ -281,7 +286,6 @@ export class Ergo {
   private async loadPools(): Promise<void> {
     let offset = 0;
     let pools: Array<Pool> = await this.getPoolData(this.poolLimit, offset);
-
     while (pools.length > 0) {
       for (const pool of pools) {
         if (!this.ammPools.filter((ammPool) => ammPool.id === pool.id).length) {
@@ -289,13 +293,17 @@ export class Ergo {
         }
       }
 
-      offset += this.utxosLimit;
+      offset += this.poolLimit;
       pools = await this.getPoolData(this.poolLimit, offset);
     }
   }
 
   private async getPoolData(limit: number, offset: number): Promise<any> {
-    return await makeNativePools(this._explorer).getAll({ limit, offset });
+    const [AmmPool] = await makeNativePools(this._explorer).getAll({
+      limit,
+      offset,
+    });
+    return AmmPool;
   }
 
   public get storedTokenList() {
