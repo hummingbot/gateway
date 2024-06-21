@@ -545,9 +545,7 @@ export class Ergo {
       asset: {
         id: sell ? pool.x.asset.id : pool.y.asset.id,
       },
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-expect-error
-      amount: sell ? x_amount + x_amount / 10n : y_amount + y_amount / 10n,
+      amount: sell ? x_amount : y_amount,
     };
     const from = {
       asset: {
@@ -675,7 +673,7 @@ export class Ergo {
       },
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
-      amount: amount + amount / 10n,
+      amount,
     };
     const from = {
       asset: {
