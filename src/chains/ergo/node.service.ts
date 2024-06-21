@@ -34,7 +34,7 @@ export class NodeService {
       method,
       headers: headers,
       timeout: this.timeout,
-      ...(method === 'POST' ? { body: body } : null),
+      ...(method === 'POST' ? { data: body } : null),
     });
 
     return response.data;
@@ -72,7 +72,7 @@ export class NodeService {
       'POST',
       `/blockchain/box/unspent/byAddress?offset=${offset}&limit=${limit}&sortDirection=${sortDirection}`,
       { 'Content-Type': 'text/plain' },
-      address,
+      `${address}`,
     );
   }
 

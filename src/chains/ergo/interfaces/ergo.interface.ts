@@ -32,7 +32,7 @@ export interface ErgoAsset {
 export interface ErgoAccount {
   wallet: Wallet;
   address: string;
-  prover: WalletProver
+  prover: WalletProver;
 }
 
 export interface ErgoConnectedInstance {

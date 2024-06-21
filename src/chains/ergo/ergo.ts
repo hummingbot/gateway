@@ -44,7 +44,7 @@ import {
   Address,
   BoxSelection,
   Input as TxInput,
-  RustModule
+  RustModule,
 } from '@ergolabs/ergo-sdk';
 import { makeTarget } from '@ergolabs/ergo-dex-sdk/build/main/utils/makeTarget';
 import { NativeExFeeType } from '@ergolabs/ergo-dex-sdk/build/main/types';
@@ -521,6 +521,7 @@ export class Ergo {
     output_address: string,
     return_address: string,
     slippage: number,
+    sell: boolean,
   ): Promise<ErgoTx> {
     const config = getErgoConfig(this.network);
     const networkContext = await this._explorer.getNetworkContext();
@@ -535,23 +536,23 @@ export class Ergo {
     const utxos = await this.getAddressUnspentBoxes(account.address);
     const to = {
       asset: {
-        id: pool.x.asset.id,
-        decimals: pool.x.asset.decimals,
+        id: sell ? pool.x.asset.id : pool.y.asset.id,
+        decimals: sell ? pool.x.asset.decimals : pool.y.asset.decimals,
       },
-      amount: x_amount,
+      amount: sell ? x_amount : y_amount,
     };
     const max_to = {
       asset: {
-        id: pool.x.asset.id,
+        id: sell ? pool.x.asset.id : pool.y.asset.id,
       },
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-expect-error
-      amount: x_amount + x_amount / 10n,
+      amount: sell ? x_amount + x_amount / 10n : y_amount + y_amount / 10n,
     };
     const from = {
       asset: {
-        id: pool.y.asset.id,
-        decimals: pool.y.asset.decimals,
+        id: sell ? pool.y.asset.id : pool.x.asset.id,
+        decimals: sell ? pool.y.asset.decimals : pool.x.asset.decimals,
       },
       amount: pool.outputAmount(
         max_to as any,
@@ -576,11 +577,20 @@ export class Ergo {
     // @ts-expect-error
     const [exFeePerToken, extremum] = swapVariables;
     const inputs = getInputs(
-      utxos,
+      utxos.map((utxo) => {
+        const temp = Object(utxo);
+        temp.value = BigInt(temp.value);
+        temp.assets = temp.assets.map((asset: any) => {
+          const temp2 = Object(asset);
+          temp2.amount = BigInt(temp2.amount);
+          return temp2;
+        });
+        return temp;
+      }),
       [new AssetAmount(from.asset, baseInputAmount)],
       {
         minerFee: config.network.defaultMinerFee,
-        uiFee: BigInt(y_amount),
+        uiFee: BigInt(sell ? y_amount : x_amount),
         exFee: extremum.maxExFee,
       },
       config.network.minBoxValue,
@@ -593,7 +603,7 @@ export class Ergo {
       baseInput,
       minQuoteOutput: extremum.minOutput.amount,
       exFeePerToken,
-      uiFee: BigInt(y_amount),
+      uiFee: BigInt(sell ? y_amount : x_amount),
       quoteAsset: to.asset.id,
       poolFeeNum: pool.poolFeeNum,
       maxExFee: extremum.maxExFee,
@@ -622,11 +632,12 @@ export class Ergo {
     return await this.swap(
       account,
       pool,
-      y_amount,
       x_amount,
+      y_amount,
       output_address,
       return_address,
       slippage,
+      false,
     );
   }
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -648,26 +659,28 @@ export class Ergo {
       output_address,
       return_address,
       slippage,
+      true,
     );
   }
   private async estimate(
     pool: Pool,
-    x_amount: bigint,
+    amount: bigint,
     slippage: number,
+    sell: boolean,
   ): Promise<AssetAmount> {
     const config = getErgoConfig(this.network);
     const max_to = {
       asset: {
-        id: pool.x.asset.id,
+        id: sell ? pool.x.asset.id : pool.y.asset.id,
       },
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
-      amount: x_amount + x_amount / 10n,
+      amount: amount + amount / 10n,
     };
     const from = {
       asset: {
-        id: pool.y.asset.id,
-        decimals: pool.y.asset.decimals,
+        id: sell ? pool.y.asset.id : pool.x.asset.id,
+        decimals: sell ? pool.y.asset.decimals : pool.x.asset.decimals,
       },
       amount: pool.outputAmount(
         max_to as any,
@@ -684,20 +697,21 @@ export class Ergo {
   // @ts-expect-error
   private async estimateBuy(
     pool: Pool,
-    x_amount: bigint,
     y_amount: bigint,
     slippage: number,
   ): Promise<AssetAmount> {
-    return await this.estimate(pool, y_amount, x_amount, slippage);
+    return await this.estimate(pool, y_amount, slippage, false);
   }
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-expect-error
   private async estimateSell(
     pool: Pool,
     x_amount: bigint,
-    y_amount: bigint,
     slippage: number,
   ): Promise<AssetAmount> {
-    return await this.estimate(pool, x_amount, y_amount, slippage);
+    return await this.estimate(pool, x_amount, slippage, true);
+  }
+  public getPool(id: string): Pool {
+    return <Pool>this.ammPools.find((ammPool) => ammPool.id === id);
   }
 }
