@@ -20,7 +20,6 @@ import {
 import LRUCache from 'lru-cache';
 import { makeNativePools } from '@ergolabs/ergo-dex-sdk';
 
-// Mocking dependencies for testing purposes using jest
 jest.mock('@ergolabs/ergo-dex-sdk', () => ({
   AmmPool: jest.fn(),
   makeNativePools: jest.fn(),
@@ -29,10 +28,8 @@ jest.mock('@ergolabs/ergo-sdk', () => ({
   Explorer: jest.fn(),
 }));
 
-// Initializing Ergo instance for testing
 let ergo: Ergo;
 
-// Helper function to patch getErgoConfig for Mainnet configuration
 const patchGetErgoConfig = (imputNetwork: string) => {
   patch(ergo_cofing, 'getErgoConfig', () => {
     return {
@@ -55,14 +52,12 @@ const patchGetErgoConfig = (imputNetwork: string) => {
   });
 };
 
-// Helper function to patch Wallet.from_secrets method for testing
 const patchFrom_secrets = () => {
   patch(Wallet, 'from_secrets', () => {
     return 'testWallet' as any;
   });
 };
 
-// Helper function to patch Address.prototype.to_base58 method for testing
 const patchTo_base58 = () => {
   patch(Address.prototype, 'to_base58', () => {
     return 'testAddress' as any;
@@ -75,14 +70,12 @@ const patchErgo_node = async () => {
   });
 };
 
-// Helper function to patch ergo.getAddressUnspentBoxes method for testing
 const patchGetAddressUnspentBoxes = () => {
   patch(ergo, 'getAddressUnspentBoxes', () => {
     return [];
   });
 };
 
-// Helper function to patch ergo.getAssetData method for testing
 const patchGetAssetData = () => {
   patch(ergo, 'getAssetData', () => {
     return {
@@ -103,7 +96,6 @@ const patchGetAssetData = () => {
   });
 };
 
-// Helper function to patch getTokens method for testing
 const patchGetTokens = () => {
   patch(ergo['_dex'], 'getTokens', () => {
     return {
@@ -133,7 +125,6 @@ const patchGetTokens = () => {
   });
 };
 
-// Before each test, configure and initialize Ergo with 'Mainnet' settings
 beforeEach(() => {
   // Arrange: Mock the return value of getErgoConfig to simulate Mainnet configuration before each test
   patchGetErgoConfig('Mainnet');
@@ -146,9 +137,8 @@ afterEach(() => {
   unpatch();
   jest.clearAllMocks();
 });
-// Describe the test suite for the Ergo class
+
 describe('Ergo', () => {
-  // Test case to verify initialization with Mainnet configuration
   it('Should initialize with Mainnet configuration', () => {
     // Assert: Validate the initialization state of Ergo instance
     expect(ergo).toBeDefined();
@@ -165,7 +155,6 @@ describe('Ergo', () => {
     expect(ergo['ammPools']).toEqual([]);
   });
 
-  // Test case to verify initialization with Testnet configuration
   it('Should initialize with Mainnet configuration', () => {
     // Arrange: Mock the return value of getErgoConfig to simulate Testnet configuration
     patchGetErgoConfig('Testnet');
@@ -188,9 +177,7 @@ describe('Ergo', () => {
     expect(ergo['ammPools']).toEqual([]);
   });
 
-  // Describe the test suite for the get node method
   describe('get node', () => {
-    // Test case to verify initialization of node service
     it('Should initialize node correctly and return the correct node', () => {
       // Assert: Validate the initialization state of node instance and check the returned value
       expect(ergo.node).toBeInstanceOf(NodeService);
@@ -201,15 +188,12 @@ describe('Ergo', () => {
     });
   });
 
-  // Describe the test suite for the get network method
   describe('get network', () => {
-    // Test case to verify network value when initialized with Mainnet
     it('Should return the correct network when network is Mainnet', () => {
       // Assert: Validate the return value
       expect(ergo.network).toBe('Mainnet');
     });
 
-    // Test case to verify network value when initialized with Testnet
     it('Should return the correct network when network is Testnet', () => {
       // Arrange: Mock the return value of getErgoConfig to simulate Testnet configuration
       patchGetErgoConfig('Testnet');
@@ -222,9 +206,7 @@ describe('Ergo', () => {
     });
   });
 
-  // Describe the test suite for the get network method
   describe('get storedAssetList', () => {
-    // Test case to verify the stored asset list
     it('Should return the stored asset list', () => {
       // Arrange: Create mock assets and populate _assetMap
       const asset1: ErgoAsset = 1 as any;
@@ -242,9 +224,7 @@ describe('Ergo', () => {
     });
   });
 
-  // Describe the test suite for the ready method
   describe('ready', () => {
-    // Test case to verify the return value of the ready method
     it('Should return the ready state', () => {
       // Arrange: Initially, the ready state should be false
       expect(ergo.ready()).toBe(false);
@@ -257,9 +237,7 @@ describe('Ergo', () => {
     });
   });
 
-  // Describe the test suite for the init method
   describe('init', () => {
-    // Test case to verify the initialization process in the init method
     it('Should initialize assets and pools in init method', async () => {
       // Arrange: Mock the loadAssets & loadPools methods to return a fixed value
       jest.spyOn(ergo as any, 'loadAssets').mockResolvedValue({});
@@ -275,20 +253,16 @@ describe('Ergo', () => {
     });
   });
 
-  // Describe the test suite for the close method
   describe('close', () => {
-    // Test case to verify the close method
     it('Should close correctly', async () => {
       // Act and Assert: Call the close method and expect that the close method resolves without any errors or values
       await expect(ergo.close()).resolves.toBeUndefined();
     });
   });
 
-  // Describe the test suite for the getInstance method
   describe('getInstance', () => {
     const mockNetwork = 'Testnet';
 
-    // This block runs before each test in this suite
     beforeEach(() => {
       // Arrange: Mock the function to get the configuration for the 'Testnet' network
       patchGetErgoConfig('Testnet');
@@ -296,7 +270,6 @@ describe('Ergo', () => {
       Ergo['_instances'] = undefined as any;
     });
 
-    // Test that the LRUCache is initialized if it hasn't been already
     it('Should initialize the LRUCache if not already initialized', () => {
       // Act: Call the getInstance method with the mock network
       Ergo.getInstance(mockNetwork);
@@ -306,7 +279,6 @@ describe('Ergo', () => {
       expect(Ergo['_instances']).toBeInstanceOf(LRUCache);
     });
 
-    // Test that a new Ergo instance is created and returned if it's not in the cache
     it('Should set and return a new Ergo instance if not in the cache', () => {
       // Act: Call the getInstance method with the mock network
       const instance = Ergo.getInstance(mockNetwork);
@@ -317,7 +289,6 @@ describe('Ergo', () => {
       expect(Ergo['_instances'].get(mockNetwork)).toBe(instance);
     });
 
-    // Test that an existing Ergo instance is returned from the cache
     it('Should return an existing Ergo instance from the cache', () => {
       // Act: Call the getInstance method twice with the mock network
       const instance1 = Ergo.getInstance(mockNetwork);
@@ -328,7 +299,6 @@ describe('Ergo', () => {
       expect(Ergo['_instances'].get(mockNetwork)).toBe(instance1);
     });
 
-    // Test that an error is thrown if an unexpected network is provided
     it('Should throw an error if an unexpected network is provided', () => {
       // Act and Assert: Expect that calling getInstance with an empty string throws an error
       expect(() => Ergo.getInstance('')).toThrow(
@@ -337,12 +307,10 @@ describe('Ergo', () => {
     });
   });
 
-  // Describe the test suite for the getConnectedInstances method
   describe('getConnectedInstances', () => {
     let mockErgoInstance1: Ergo;
     let mockErgoInstance2: Ergo;
 
-    // This block runs before each test in this suite
     beforeEach(() => {
       // Arrange: Create mock Ergo instances
       mockErgoInstance1 = new Ergo('Testnet1') as any;
@@ -355,7 +323,7 @@ describe('Ergo', () => {
       Ergo['_instances'].set('Testnet1', mockErgoInstance1);
       Ergo['_instances'].set('Testnet2', mockErgoInstance2);
     });
-    // Test case to verify that all connected instances are returned
+
     it('Should return all connected instances', () => {
       // Act: Call the getConnectedInstances method
       const connectedInstances = Ergo.getConnectedInstances();
@@ -369,7 +337,6 @@ describe('Ergo', () => {
       expect(connectedInstances['Testnet2']).toBe(mockErgoInstance2);
     });
 
-    // Test case to verify that an empty object is returned if no instances exist
     it('Should return an empty object if there are no instances', () => {
       // Arrange: Clear the _instances LRUCache
       Ergo['_instances'] = undefined as any;
@@ -381,7 +348,6 @@ describe('Ergo', () => {
       expect(connectedInstances).toEqual({});
     });
 
-    // Test case to verify that only valid instances are returned
     it('Should return only valid instances', () => {
       // Arrange: Set an invalid (null) instance in the _instances LRUCache
       Ergo['_instances'].set('', null as any);
@@ -399,9 +365,7 @@ describe('Ergo', () => {
     });
   });
 
-  // Describe the test suite for the getCurrentBlockNumber method
   describe('getCurrentBlockNumber', () => {
-    // Test case to verify return block number corectly
     it('Should return the current block number incremented by one', async () => {
       // Arrange: Mock the getNetworkHeight method to return a fixed value
       jest.spyOn(ergo['_node'], 'getNetworkHeight').mockResolvedValue(17);
@@ -415,12 +379,9 @@ describe('Ergo', () => {
     });
   });
 
-  // Describe the test suite for the getAddressUnspentBoxes method
   describe('getAddressUnspentBoxes', () => {
-    // Mock address for testing
     const mockAddress = '9j2s7d8f4s8s8o8s0q8f5s8d7f8s0d4r5';
 
-    // Test case to verify the return of an empty array when there are no unspent boxes
     it('Should return an empty arry when length of nodeBoxes is 0', async () => {
       // Arrange: Mock the getUnspentBoxesByAddress method to return an empty array
       await patchErgo_node();
@@ -428,7 +389,6 @@ describe('Ergo', () => {
       expect(utxos).toEqual([]);
     });
 
-    // Test case to verify the retrieval of all unspent boxes for the given address
     it('Should retrieve all unspent boxes for the given address', async () => {
       // Arrange: Mock the getUnspentBoxesByAddress method to return 3 boxes
       const mockUnspentBoxesPage1 = [
@@ -471,15 +431,10 @@ describe('Ergo', () => {
     });
   });
 
-  // Describe the test suite for the getAccountFromSecretKey method
   describe('getAccountFromSecretKey', () => {
-    // Test case to verify the return of an account with address and wallet
     it('Should return an account with address and wallet', () => {
-      // Mock secret key
       const secret =
         '591811a0d6361f18e42549b32e65b98c9a63d6aad369d1056a97ca81f2a980d5';
-
-      // Patch methods for mock implementation
       patchFrom_secrets();
       patchTo_base58();
 
@@ -504,9 +459,7 @@ describe('Ergo', () => {
     });
   });
 
-  // Describe the test suite for the encrypt method
   describe('encrypt', () => {
-    // Test case to verify encryption of a secret with a given password
     it('Should encrypt a secret with a given password', () => {
       // Arrange: Set up the secret and password
       const secret = 'mySecret';
@@ -519,7 +472,6 @@ describe('Ergo', () => {
       expect(encryptedText).toMatch(/^[0-9a-fA-F]{32}:[0-9a-fA-F]+$/);
     });
 
-    // Test case to ensure different encryption outputs for different secrets
     it('Should produce different encryption outputs for different secrets', () => {
       // Arrange: Set up the password
       const password = 'myPassword';
@@ -532,7 +484,6 @@ describe('Ergo', () => {
       expect(encryptedText1).not.toBe(encryptedText2);
     });
 
-    // Test case to ensure different encryption outputs for different passwords
     it('Should produce different encryption outputs for different passwords', () => {
       // Arrange: Set up the secret
       const secret = 'mySecret';
@@ -545,7 +496,6 @@ describe('Ergo', () => {
       expect(encryptedText1).not.toBe(encryptedText2);
     });
 
-    // Test case to ensure different IVs for different encryptions
     it('Should produce different IVs for different encryptions', () => {
       // Arrange: Set up the secret and password
       const secret = 'mySecret';
@@ -563,7 +513,6 @@ describe('Ergo', () => {
       expect(iv1).not.toBe(iv2);
     });
 
-    // Test case to handle passwords longer than 32 bytes
     it('Should handle edge case where password is longer than 32 bytes', () => {
       // Arrange: Set up the secret and a long password
       const secret = 'mySecret';
@@ -577,9 +526,7 @@ describe('Ergo', () => {
     });
   });
 
-  // Describe the test suite for the decrypt method
   describe('decrypt', () => {
-    // Test case to verify correct decryption of an encrypted secret
     it('Should decrypt an encrypted secret correctly', () => {
       // Arrange: Set up the secret and password, and encrypt the secret
       const secret = 'mySecret';
@@ -593,7 +540,6 @@ describe('Ergo', () => {
       expect(decryptedText).toBe(secret);
     });
 
-    // Test case to ensure decryption fails with wrong password
     it('Should fail to decrypt with wrong password', () => {
       // Arrange: Set up the secret, correct password, wrong password, and encrypt the secret
       const secret = 'mySecret';
@@ -607,7 +553,6 @@ describe('Ergo', () => {
       }).toThrow();
     });
 
-    // Test case to handle passwords longer than 32 bytes
     it('Should handle edge case where password is longer than 32 bytes', () => {
       // Arrange: Set up the secret and a long password, and encrypt the secret
       const secret = 'mySecret';
@@ -621,7 +566,6 @@ describe('Ergo', () => {
       expect(decryptedText).toBe(secret);
     });
 
-    // Test case to handle passwords exactly 32 bytes long
     it('Should handle case where password is exactly 32 bytes', () => {
       // Arrange: Set up the secret and a 32 bytes password, and encrypt the secret
       const secret = 'mySecret';
@@ -636,9 +580,7 @@ describe('Ergo', () => {
     });
   });
 
-  // Describe the test suite for the getAssetBalance method
   describe('getAssetBalance', () => {
-    // Test case to ensure balance is 0 when there are no unspent boxes
     it('Should return balance as 0 when there are no unspent boxes', async () => {
       // Arrange: Set up the account and asset map, and mock the getAddressUnspentBoxes method to return an empty array
       const account: ErgoAccount = { address: 'mockAddress' } as any;
@@ -654,8 +596,7 @@ describe('Ergo', () => {
       expect(balance).toBe('0');
     });
 
-    // Test case to ensure balance is 0 when there are no matching assets
-    it('should return balance as 0 when there are no matching assets', async () => {
+    it('Should return balance as 0 when there are no matching assets', async () => {
       // Arrange: Set up the account, asset map, and mock the getAddressUnspentBoxes method to return utxos without matching assets
       const account: ErgoAccount = { address: 'mockAddress' } as any;
       ergo['_assetMap'] = {
@@ -673,7 +614,6 @@ describe('Ergo', () => {
       expect(balance).toBe('0');
     });
 
-    // Test case to ensure correct balance is returned when there are matching assets
     it('Should return correct balance when there are matching assets', async () => {
       // Arrange: Set up the account, asset map, and mock the getAddressUnspentBoxes method to return utxos with matching assets
       const account: ErgoAccount = { address: 'mockAddress' } as any;
@@ -695,7 +635,6 @@ describe('Ergo', () => {
       expect(balance).toBe('300');
     });
 
-    // Test case to ensure error is thrown when getAddressUnspentBoxes fails
     it('Should throw an error when getAddressUnspentBoxes fails', async () => {
       // Arrange: Set up the account and mock the getAddressUnspentBoxes method to reject with an error
       const account: ErgoAccount = { address: 'mockAddress' } as any;
@@ -710,9 +649,7 @@ describe('Ergo', () => {
     });
   });
 
-  // Describe the test suite for the loadAssets method
   describe('loadAssets', () => {
-    // Test case to ensure assets are loaded and assetMap object is updated
     it('Should load Assets and update assetMap object', async () => {
       // Arrange: Set up the assetMap and mock the getAssetData method
       ergo['_assetMap'] = {};
@@ -734,9 +671,7 @@ describe('Ergo', () => {
     });
   });
 
-  // Describe the test suite for the getAssetData method
   describe('getAssetData', () => {
-    // Test case to ensure getAssetData returns all tokens with details
     it('Should return all token with the details', async () => {
       // Mock getTokens method to return predefined data
       patchGetTokens();
@@ -769,9 +704,7 @@ describe('Ergo', () => {
     });
   });
 
-  // Describe the test suite for the loadPools method
   describe('loadPools', () => {
-    // Test case to ensure ammPools remains empty when no PoolData is provided
     it('Should push nothing to ammPools when no PoolData is provided', async () => {
       // Arrange: Mock getPoolData to return an empty array
       jest.spyOn(ergo as any, 'getPoolData').mockResolvedValue([] as any);
@@ -784,7 +717,6 @@ describe('Ergo', () => {
       expect(ergo['ammPools']).toEqual([]);
     });
 
-    // Test case to ensure ammPools contains provided PoolData when available
     it('Should push nothing to ammPools when no PoolData is provided', async () => {
       // Arrange: Mock getPoolData to return specific pool data
       jest
@@ -800,7 +732,6 @@ describe('Ergo', () => {
       expect(ergo['ammPools']).toEqual([{ id: '1' }, { id: 2 }]);
     });
 
-    // Test case to ensure ammPools merges new pools without duplicates
     it('Should not add duplicate pools to ammPools', async () => {
       // Arrange: Mock getPoolData to simulate incremental pool data loading
       const initialPools: any = [
@@ -832,9 +763,7 @@ describe('Ergo', () => {
     });
   });
 
-  // Describe the test suite for the getPoolData method
   describe('getPoolData', () => {
-    // Test case to ensure makeNativePools and getAll are called with correct parameters
     it('Should call makeNativePools and getAll with correct parameters', async () => {
       // Arrange: Mock makeNativePools and getAll methods
       const mockGetAll = jest.fn().mockResolvedValue([]);
@@ -851,7 +780,6 @@ describe('Ergo', () => {
       expect(mockGetAll).toHaveBeenCalledWith({ limit, offset });
     });
 
-    // Test case to ensure getPoolData returns expected data from getAll method
     it('Should return the data from getAll method', async () => {
       // Arrange: Mock getAll method to return specific data
       const expectedData = [{ id: 1, name: 'Pool 1' }];
@@ -868,7 +796,6 @@ describe('Ergo', () => {
       expect(result).toEqual(expectedData);
     });
 
-    // Test case to ensure getPoolData handles errors from getAll method
     it('Should handle errors from getAll method', async () => {
       // Arrange: Mock getAll method to simulate error
       const mockGetAll = jest.fn().mockRejectedValue(new Error('Test error'));
@@ -884,7 +811,6 @@ describe('Ergo', () => {
     });
   });
 
-  // Describe the test suite for the getPoolData method
   describe('storedTokenList', () => {
     it('Should return the stored asset list', () => {
       // Arrange: Create mock assets and populate _assetMap

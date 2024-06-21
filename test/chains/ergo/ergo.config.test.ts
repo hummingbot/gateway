@@ -2,14 +2,11 @@ import { getErgoConfig } from '../../../src/chains/ergo/ergo.config';
 import { ConfigManagerV2 } from '../../../src/services/config-manager-v2';
 import { NetworkPrefix } from 'ergo-lib-wasm-nodejs';
 
-// Define the test suite for the getErgoConfig function
 describe('getErgoConfig', () => {
-  // After each test, clear all mocks to ensure no interference between tests
   afterEach(() => {
     jest.clearAllMocks();
   });
 
-  // Test case for verifying the configuration returned for the Mainnet
   it('Should return correct config for Mainnet', () => {
     // Arrange: Mock the get method of ConfigManagerV2 to return specific values for Mainnet
     jest
@@ -60,7 +57,7 @@ describe('getErgoConfig', () => {
       'ergo.networks.Mainnet.minTxFee',
     );
   });
-  // Test case for verifying the configuration returned for the Testnet
+
   it('Should return correct config for Testnet', () => {
     // Arrange: Mock the get method of ConfigManagerV2 to return specific values for Testnet
     jest
