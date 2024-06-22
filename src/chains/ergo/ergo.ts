@@ -3,26 +3,29 @@ import {
   SecretKey,
   SecretKeys,
   Wallet,
-  ErgoBoxes, UnsignedTransaction,
+  ErgoBoxes,
+  UnsignedTransaction,
 } from 'ergo-lib-wasm-nodejs';
 import LRUCache from 'lru-cache';
-import {ErgoController} from './ergo.controller';
-import {NodeService} from './node.service';
-import {getErgoConfig} from './ergo.config';
-import {DexService} from './dex.service';
-import {createCipheriv, createDecipheriv, randomBytes} from 'crypto';
+import { ErgoController } from './ergo.controller';
+import { NodeService } from './node.service';
+import { getErgoConfig } from './ergo.config';
+import { DexService } from './dex.service';
+import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 import {
   ErgoAccount,
   ErgoAsset,
   ErgoBox,
   ErgoConnectedInstance,
 } from './interfaces/ergo.interface';
-import {toNumber} from 'lodash';
 import {
   AmmPool,
   makeNativePools,
-  makeWrappedNativePoolActionsSelector, minValueForOrder, minValueForSetup,
-  SwapExtremums, SwapParams,
+  makeWrappedNativePoolActionsSelector,
+  minValueForOrder,
+  minValueForSetup,
+  SwapExtremums,
+  SwapParams,
   swapVars,
 } from '@ergolabs/ergo-dex-sdk';
 import {
@@ -39,12 +42,17 @@ import {
   publicKeyFromAddress,
   TransactionContext,
   Address,
-  BoxSelection, Input as TxInput,
+  BoxSelection,
+  Input as TxInput,
+  RustModule,
 } from '@ergolabs/ergo-sdk';
-import {makeTarget} from "@ergolabs/ergo-dex-sdk/build/main/utils/makeTarget";
-import {NativeExFeeType} from "@ergolabs/ergo-dex-sdk/build/main/types";
-import {NetworkContext} from "@ergolabs/ergo-sdk/build/main/entities/networkContext";
-
+import { makeTarget } from '@ergolabs/ergo-dex-sdk/build/main/utils/makeTarget';
+import { NativeExFeeType } from '@ergolabs/ergo-dex-sdk/build/main/types';
+import { NetworkContext } from '@ergolabs/ergo-sdk/build/main/entities/networkContext';
+async function x() {
+  await RustModule.load(true);
+}
+x();
 class Pool extends AmmPool {
   private name: string;
 
@@ -54,7 +62,7 @@ class Pool extends AmmPool {
     this.name = `${this.x.asset.name}/${this.y.asset.name}`;
   }
 
-  private getName() {
+  public getName() {
     return this.name;
   }
 
@@ -85,7 +93,7 @@ export type BaseInputParameters = {
 };
 export const getBaseInputParameters = (
   pool: AmmPool,
-  {inputAmount, slippage}: { inputAmount: any; slippage: number },
+  { inputAmount, slippage }: { inputAmount: any; slippage: number },
 ): BaseInputParameters => {
   const baseInputAmount =
     inputAmount.asset.id === pool.x.asset.id
@@ -117,6 +125,8 @@ export const getInputs = (
 
   const target = makeTarget(assets, minFeeForOrder);
 
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-expect-error
   const inputs = DefaultBoxSelector.select(utxos, target, minBoxValue);
 
   if (inputs instanceof InsufficientInputs) {
@@ -152,23 +162,38 @@ export class WalletProver implements Prover {
   /** Sign the given transaction.
    */
   async sign(tx: UnsignedErgoTx): Promise<ErgoTx> {
-    const ctx = await this.nodeService.getCtx()
+    const ctx = await this.nodeService.getCtx();
     const proxy = unsignedErgoTxToProxy(tx);
-    const wasmtx = UnsignedTransaction.from_json(JSON.stringify(proxy))
+    const wasmtx = UnsignedTransaction.from_json(JSON.stringify(proxy));
     try {
-      return this.wallet.sign_transaction(ctx, wasmtx, ErgoBoxes.from_boxes_json(proxy.inputs), ErgoBoxes.empty()).to_js_eip12()
+      return this.wallet
+        .sign_transaction(
+          ctx,
+          wasmtx,
+          ErgoBoxes.from_boxes_json(proxy.inputs),
+          ErgoBoxes.empty(),
+        )
+        .to_js_eip12();
     } catch {
-      throw new Error("not be able to sign!")
+      throw new Error('not be able to sign!');
     }
   }
 
   async submit(tx: ErgoTx): Promise<ErgoTx> {
-    return await this.nodeService.postTransaction(tx)
+    const txId = await this.nodeService.postTransaction(tx);
+    return {
+      ...tx,
+      id: txId,
+    };
   }
 
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-expect-error
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   signInput(tx: UnsignedErgoTx, input: number): Promise<TxInput> {
-    // @ts-ignore
-    return
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-expect-error
+    return;
   }
 }
 
@@ -354,7 +379,7 @@ export class Ergo {
     return {
       address,
       wallet,
-      prover: new WalletProver(wallet, this._node)
+      prover: new WalletProver(wallet, this._node),
     };
   }
 
@@ -461,7 +486,6 @@ export class Ergo {
   private async loadPools(): Promise<void> {
     let offset = 0;
     let pools: Array<Pool> = await this.getPoolData(this.poolLimit, offset);
-
     while (pools.length > 0) {
       for (const pool of pools) {
         if (!this.ammPools.filter((ammPool) => ammPool.id === pool.id).length) {
@@ -469,13 +493,17 @@ export class Ergo {
         }
       }
 
-      offset += this.utxosLimit;
+      offset += this.poolLimit;
       pools = await this.getPoolData(this.poolLimit, offset);
     }
   }
 
   private async getPoolData(limit: number, offset: number): Promise<any> {
-    return await makeNativePools(this._explorer).getAll({limit, offset});
+    const [AmmPool] = await makeNativePools(this._explorer).getAll({
+      limit,
+      offset,
+    });
+    return AmmPool;
   }
 
   /**
@@ -485,63 +513,95 @@ export class Ergo {
   public get storedTokenList() {
     return this._assetMap;
   }
-
-  private async swap(account: ErgoAccount, pool: Pool, x_amount: bigint, y_amount: bigint, output_address: string, return_address: string): Promise<ErgoTx> {
+  private async swap(
+    account: ErgoAccount,
+    pool: Pool,
+    x_amount: bigint,
+    y_amount: bigint,
+    output_address: string,
+    return_address: string,
+    slippage: number,
+    sell: boolean,
+  ): Promise<ErgoTx> {
     const config = getErgoConfig(this.network);
-    const networkContext = await this._explorer.getNetworkContext()
-    const mainnetTxAssembler = new DefaultTxAssembler(this.network === 'Mainnet');
-    const poolActions = makeWrappedNativePoolActionsSelector(output_address, account.prover, mainnetTxAssembler)
-    let utxos = await this.getAddressUnspentBoxes(account.address)
+    const networkContext = await this._explorer.getNetworkContext();
+    const mainnetTxAssembler = new DefaultTxAssembler(
+      this.network === 'Mainnet',
+    );
+    const poolActions = makeWrappedNativePoolActionsSelector(
+      output_address,
+      account.prover,
+      mainnetTxAssembler,
+    );
+    const utxos = await this.getAddressUnspentBoxes(account.address);
     const to = {
       asset: {
-        id: pool.x.asset.id,
-        decimals: pool.x.asset.decimals
+        id: sell ? pool.x.asset.id : pool.y.asset.id,
+        decimals: sell ? pool.x.asset.decimals : pool.y.asset.decimals,
       },
-      amount: x_amount
-    }
+      amount: sell ? x_amount : y_amount,
+    };
     const max_to = {
       asset: {
-        id: pool.x.asset.id
+        id: sell ? pool.x.asset.id : pool.y.asset.id,
       },
-      amount: x_amount + x_amount / 10n
-    }
+      amount: sell ? x_amount : y_amount,
+    };
     const from = {
       asset: {
-        id: pool.y.asset.id,
-        decimals: pool.y.asset.decimals
+        id: sell ? pool.y.asset.id : pool.x.asset.id,
+        decimals: sell ? pool.y.asset.decimals : pool.x.asset.decimals,
       },
-      amount: pool.outputAmount(max_to as any, config.network.defaultSlippage).amount
-    }
-    const {baseInput, baseInputAmount, minOutput} = getBaseInputParameters(
+      amount: pool.outputAmount(
+        max_to as any,
+        slippage || config.network.defaultSlippage,
+      ).amount,
+    };
+    const { baseInput, baseInputAmount, minOutput } = getBaseInputParameters(
       pool,
       {
         inputAmount: from,
-        slippage: config.network.defaultSlippage,
+        slippage: slippage || config.network.defaultSlippage,
       },
     );
     const swapVariables: [number, SwapExtremums] | undefined = swapVars(
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-expect-error
       config.network.defaultMinerFee * 3n,
       config.network.minNitro,
       minOutput,
     );
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-expect-error
     const [exFeePerToken, extremum] = swapVariables;
     const inputs = getInputs(
-      utxos,
+      utxos.map((utxo) => {
+        const temp = Object(utxo);
+        temp.value = BigInt(temp.value);
+        temp.assets = temp.assets.map((asset: any) => {
+          const temp2 = Object(asset);
+          temp2.amount = BigInt(temp2.amount);
+          return temp2;
+        });
+        return temp;
+      }),
       [new AssetAmount(from.asset, baseInputAmount)],
       {
         minerFee: config.network.defaultMinerFee,
-        uiFee: BigInt(y_amount),
+        uiFee: BigInt(sell ? y_amount : x_amount),
         exFee: extremum.maxExFee,
       },
-      config.network.minBoxValue
+      config.network.minBoxValue,
     );
     const swapParams: SwapParams<NativeExFeeType> = {
       poolId: pool.id,
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-expect-error
       pk: publicKeyFromAddress(output_address),
       baseInput,
       minQuoteOutput: extremum.minOutput.amount,
       exFeePerToken,
-      uiFee: BigInt(y_amount),
+      uiFee: BigInt(sell ? y_amount : x_amount),
       quoteAsset: to.asset.id,
       poolFeeNum: pool.poolFeeNum,
       maxExFee: extremum.maxExFee,
@@ -554,7 +614,102 @@ export class Ergo {
     );
 
     const actions = poolActions(pool);
-    return await actions
-      .swap(swapParams, txContext)
+    return await actions.swap(swapParams, txContext);
+  }
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-expect-error
+  private async buy(
+    account: ErgoAccount,
+    pool: Pool,
+    x_amount: bigint,
+    y_amount: bigint,
+    output_address: string,
+    return_address: string,
+    slippage: number,
+  ): Promise<ErgoTx> {
+    return await this.swap(
+      account,
+      pool,
+      x_amount,
+      y_amount,
+      output_address,
+      return_address,
+      slippage,
+      false,
+    );
+  }
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-expect-error
+  private async sell(
+    account: ErgoAccount,
+    pool: Pool,
+    x_amount: bigint,
+    y_amount: bigint,
+    output_address: string,
+    return_address: string,
+    slippage: number,
+  ): Promise<ErgoTx> {
+    return await this.swap(
+      account,
+      pool,
+      x_amount,
+      y_amount,
+      output_address,
+      return_address,
+      slippage,
+      true,
+    );
+  }
+  private async estimate(
+    pool: Pool,
+    amount: bigint,
+    slippage: number,
+    sell: boolean,
+  ): Promise<AssetAmount> {
+    const config = getErgoConfig(this.network);
+    const max_to = {
+      asset: {
+        id: sell ? pool.x.asset.id : pool.y.asset.id,
+      },
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      amount,
+    };
+    const from = {
+      asset: {
+        id: sell ? pool.y.asset.id : pool.x.asset.id,
+        decimals: sell ? pool.y.asset.decimals : pool.x.asset.decimals,
+      },
+      amount: pool.outputAmount(
+        max_to as any,
+        slippage || config.network.defaultSlippage,
+      ).amount,
+    };
+    const { minOutput } = getBaseInputParameters(pool, {
+      inputAmount: from,
+      slippage: slippage || config.network.defaultSlippage,
+    });
+    return minOutput;
+  }
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-expect-error
+  private async estimateBuy(
+    pool: Pool,
+    y_amount: bigint,
+    slippage: number,
+  ): Promise<AssetAmount> {
+    return await this.estimate(pool, y_amount, slippage, false);
+  }
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-expect-error
+  private async estimateSell(
+    pool: Pool,
+    x_amount: bigint,
+    slippage: number,
+  ): Promise<AssetAmount> {
+    return await this.estimate(pool, x_amount, slippage, true);
+  }
+  public getPool(id: string): Pool {
+    return <Pool>this.ammPools.find((ammPool) => ammPool.id === id);
   }
 }

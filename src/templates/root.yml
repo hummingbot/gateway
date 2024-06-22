@@ -4,6 +4,10 @@ configurations:
     configurationPath: server.yml
     schemaPath: server-schema.json
 
+  $namespace ergo:
+    configurationPath: ergo.yml
+    schemaPath: ergo-schema.json
+
   $namespace algorand:
     configurationPath: algorand.yml
     schemaPath: algorand-schema.json
@@ -71,11 +75,11 @@ configurations:
   $namespace cosmos:
     configurationPath: cosmos.yml
     schemaPath: cosmos-schema.json
-  
+
   $namespace osmosis:
     configurationPath: osmosis.yml
     schemaPath: osmosis-schema.json
-    
+
   $namespace cronos:
     configurationPath: cronos.yml
     schemaPath: ethereum-schema.json
