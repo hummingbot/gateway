@@ -27,7 +27,7 @@ import {
   SwapExtremums,
   SwapParams,
   swapVars,
-} from '@ergolabs/ergo-dex-sdk';
+} from '@patternglobal/ergo-dex-sdk';
 import {
   Explorer,
   Prover,
@@ -45,10 +45,10 @@ import {
   BoxSelection,
   Input as TxInput,
   RustModule,
-} from '@ergolabs/ergo-sdk';
-import { makeTarget } from '@ergolabs/ergo-dex-sdk/build/main/utils/makeTarget';
-import { NativeExFeeType } from '@ergolabs/ergo-dex-sdk/build/main/types';
-import { NetworkContext } from '@ergolabs/ergo-sdk/build/main/entities/networkContext';
+} from '@patternglobal/ergo-sdk';
+import { makeTarget } from '@patternglobal/ergo-dex-sdk/build/main/utils/makeTarget';
+import { NativeExFeeType } from '@patternglobal/ergo-dex-sdk/build/main/types';
+import { NetworkContext } from '@patternglobal/ergo-sdk/build/main/entities/networkContext';
 async function x() {
   await RustModule.load(true);
 }
