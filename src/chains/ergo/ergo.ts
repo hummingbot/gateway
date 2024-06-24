@@ -527,11 +527,13 @@ export class Ergo {
 
   public async loadPool(poolId: string): Promise<void> {
     await RustModule.load(true);
-    this.ammPools.push(
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-expect-error
-      new Pool(await makeNativePools(this._explorer).get(poolId)),
-    );
+    const pool = await this.getPool(poolId);
+    if (!pool)
+      this.ammPools.push(
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-expect-error
+        new Pool(await makeNativePools(this._explorer).get(poolId)),
+      );
   }
 
   private async getPoolData(limit: number, offset: number): Promise<any> {
