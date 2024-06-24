@@ -36,6 +36,7 @@
     "@ethersproject/providers": "5.7.0",
     "@ethersproject/solidity": "5.7.0",
     "@fleet-sdk/common": "^0.3.4",
+    "@fleet-sdk/core": "^0.5.0",
     "@harmony-js/core": "^0.1.57",
     "@harmony-js/utils": "^0.1.56",
     "@improbable-eng/grpc-web": "^0.13.0",

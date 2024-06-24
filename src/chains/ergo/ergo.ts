@@ -265,6 +265,10 @@ export class Ergo {
     return this._ready;
   }
 
+  public async getNetworkHeight() {
+    return await this._node.getNetworkHeight();
+  }
+
   /**
    * This function initializes the Ergo class' instance
    * @returns
@@ -452,21 +456,21 @@ export class Ergo {
     assetName: string,
   ): Promise<string> {
     const ergoAsset = this._assetMap[assetName];
-    let balance = 0;
+    let balance = BigInt(0);
 
     try {
       const utxos = await this.getAddressUnspentBoxes(account.address);
 
       balance = utxos.reduce(
-        (total: number, box) =>
+        (total: bigint, box) =>
           total +
           box.assets
             .filter((asset) => asset.tokenId === ergoAsset.tokenId.toString())
             .reduce(
-              (total_asset, asset) => total_asset + Number(asset.amount),
-              0,
+              (total_asset, asset) => total_asset + BigInt(asset.amount),
+              BigInt(0),
             ),
-        0,
+        BigInt(0),
       );
     } catch (error: any) {
       throw new Error(

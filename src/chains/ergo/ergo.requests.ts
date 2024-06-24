@@ -1,6 +1,6 @@
 import { AssetAmount } from '@patternglobal/ergo-sdk';
 import { NetworkSelectionRequest } from '../../services/common-interfaces';
-import { ErgoAsset } from './interfaces/ergo.interface';
+import { ErgoAsset, ErgoBoxAsset } from './interfaces/ergo.interface';
 
 export interface PoolRequest {
   network: string;
@@ -22,4 +22,11 @@ export interface BalanceRequest extends NetworkSelectionRequest {
 
 export type AssetsResponse = {
   assets: ErgoAsset[];
+};
+
+export type transferRequest = {
+  fromAddress: string;
+  toAddress: string;
+  assets: ErgoBoxAsset[];
+  toValue: string;
 };

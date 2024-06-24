@@ -4,7 +4,13 @@ import {
   BalanceRequest,
   PoolRequest,
   PoolResponse,
+  transferRequest,
 } from './ergo.requests';
+import {
+  ErgoUnsignedTransaction,
+  OutputBuilder,
+  TransactionBuilder,
+} from '@fleet-sdk/core';
 
 export class ErgoController {
   static async pool(ergo: Ergo, req: PoolRequest): Promise<PoolResponse> {
@@ -34,5 +40,19 @@ export class ErgoController {
     return {
       assets: ergo.storedAssetList,
     };
+  }
+
+  static async transfer(
+    ergo: Ergo,
+    req: transferRequest,
+  ): Promise<ErgoUnsignedTransaction> {
+    const networkHeight = await ergo.getNetworkHeight();
+    const utxos = await ergo.getAddressUnspentBoxes(req.fromAddress);
+    return new TransactionBuilder(networkHeight)
+      .from(utxos)
+      .to(new OutputBuilder(req.toValue, req.toAddress).addTokens(req.assets))
+      .sendChangeTo(req.fromAddress)
+      .payMinFee()
+      .build();
   }
 }
