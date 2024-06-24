@@ -5,6 +5,9 @@ import {
   Wallet,
   ErgoBoxes,
   UnsignedTransaction,
+  Mnemonic,
+  ExtSecretKey,
+  DerivationPath,
 } from 'ergo-lib-wasm-nodejs';
 import LRUCache from 'lru-cache';
 import { ErgoController } from './ergo.controller';
@@ -49,10 +52,7 @@ import {
 import { makeTarget } from '@patternglobal/ergo-dex-sdk/build/main/utils/makeTarget';
 import { NativeExFeeType } from '@patternglobal/ergo-dex-sdk/build/main/types';
 import { NetworkContext } from '@patternglobal/ergo-sdk/build/main/entities/networkContext';
-async function x() {
-  await RustModule.load(true);
-}
-x();
+
 class Pool extends AmmPool {
   private name: string;
 
@@ -261,6 +261,7 @@ export class Ergo {
    * @async
    */
   public async init(): Promise<void> {
+    await RustModule.load(true);
     await this.loadAssets();
     await this.loadPools();
     this._ready = true;
@@ -370,6 +371,32 @@ export class Ergo {
   public getAccountFromSecretKey(secret: string): ErgoAccount {
     const sks = new SecretKeys();
     const secretKey = SecretKey.dlog_from_bytes(Buffer.from(secret, 'hex'));
+    const address = secretKey.get_address().to_base58(this._networkPrefix);
+
+    sks.add(secretKey);
+
+    const wallet = Wallet.from_secrets(sks);
+
+    return {
+      address,
+      wallet,
+      prover: new WalletProver(wallet, this._node),
+    };
+  }
+
+  /**
+   * Retrieves Ergo Account from mnemonic
+   * @param {string} mnemonic - Mnemonic
+   * @returns ErgoAccount
+   * @function
+   */
+  public getAccountFromMnemonic(mnemonic: string): ErgoAccount {
+    const sks = new SecretKeys();
+    const seed = Mnemonic.to_seed(mnemonic, '');
+    const rootSecret = ExtSecretKey.derive_master(seed);
+    const changePath = DerivationPath.new(0, new Uint32Array([0]));
+    const secretKeyBytes = rootSecret.derive(changePath).secret_key_bytes();
+    const secretKey = SecretKey.dlog_from_bytes(secretKeyBytes);
     const address = secretKey.get_address().to_base58(this._networkPrefix);
 
     sks.add(secretKey);
@@ -498,6 +525,15 @@ export class Ergo {
     }
   }
 
+  public async loadPool(poolId: string): Promise<void> {
+    await RustModule.load(true);
+    this.ammPools.push(
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-expect-error
+      new Pool(await makeNativePools(this._explorer).get(poolId)),
+    );
+  }
+
   private async getPoolData(limit: number, offset: number): Promise<any> {
     const [AmmPool] = await makeNativePools(this._explorer).getAll({
       limit,
@@ -513,6 +549,7 @@ export class Ergo {
   public get storedTokenList() {
     return this._assetMap;
   }
+
   private async swap(
     account: ErgoAccount,
     pool: Pool,
@@ -616,9 +653,8 @@ export class Ergo {
     const actions = poolActions(pool);
     return await actions.swap(swapParams, txContext);
   }
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-expect-error
-  private async buy(
+
+  public async buy(
     account: ErgoAccount,
     pool: Pool,
     x_amount: bigint,
@@ -638,9 +674,8 @@ export class Ergo {
       false,
     );
   }
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-expect-error
-  private async sell(
+
+  public async sell(
     account: ErgoAccount,
     pool: Pool,
     x_amount: bigint,
@@ -660,6 +695,7 @@ export class Ergo {
       true,
     );
   }
+
   private async estimate(
     pool: Pool,
     amount: bigint,
@@ -691,24 +727,23 @@ export class Ergo {
     });
     return minOutput;
   }
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-expect-error
-  private async estimateBuy(
+
+  public async estimateBuy(
     pool: Pool,
     y_amount: bigint,
     slippage: number,
   ): Promise<AssetAmount> {
     return await this.estimate(pool, y_amount, slippage, false);
   }
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-expect-error
-  private async estimateSell(
+
+  public async estimateSell(
     pool: Pool,
     x_amount: bigint,
     slippage: number,
   ): Promise<AssetAmount> {
     return await this.estimate(pool, x_amount, slippage, true);
   }
+
   public getPool(id: string): Pool {
     return <Pool>this.ammPools.find((ammPool) => ammPool.id === id);
   }
