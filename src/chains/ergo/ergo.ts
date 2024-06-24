@@ -62,8 +62,19 @@ class Pool extends AmmPool {
     this.name = `${this.x.asset.name}/${this.y.asset.name}`;
   }
 
-  public getName() {
+  public get getName() {
     return this.name;
+  }
+
+  public get getPoolInfo() {
+    return {
+      id: this.id,
+      lp: this.lp,
+      x: this.x,
+      y: this.y,
+      feeNum: this.feeNum,
+      feeDenom: this.feeDenom,
+    };
   }
 
   // calculatePriceImpact(input: any): number {
@@ -466,6 +477,22 @@ export class Ergo {
     return balance.toString();
   }
 
+  public getBalance(utxos: ErgoBox[]) {
+    const balance = utxos.reduce(
+      (total, box) => total + BigInt(box.value),
+      BigInt(0),
+    );
+    const assets: Record<string, bigint> = {};
+    utxos.forEach((box) => {
+      box.assets.forEach((asset) => {
+        if (Object.keys(assets).includes(asset.tokenId))
+          assets[asset.tokenId] += BigInt(asset.amount);
+        else assets[asset.tokenId] = BigInt(asset.amount);
+      });
+    });
+    return { balance, assets };
+  }
+
   private async loadAssets() {
     const assetData = await this.getAssetData();
 
@@ -513,6 +540,7 @@ export class Ergo {
   public get storedTokenList() {
     return this._assetMap;
   }
+
   private async swap(
     account: ErgoAccount,
     pool: Pool,
@@ -616,6 +644,7 @@ export class Ergo {
     const actions = poolActions(pool);
     return await actions.swap(swapParams, txContext);
   }
+
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-expect-error
   private async buy(
@@ -638,6 +667,7 @@ export class Ergo {
       false,
     );
   }
+
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-expect-error
   private async sell(
@@ -660,6 +690,7 @@ export class Ergo {
       true,
     );
   }
+
   private async estimate(
     pool: Pool,
     amount: bigint,
@@ -691,6 +722,7 @@ export class Ergo {
     });
     return minOutput;
   }
+
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-expect-error
   private async estimateBuy(
@@ -700,6 +732,7 @@ export class Ergo {
   ): Promise<AssetAmount> {
     return await this.estimate(pool, y_amount, slippage, false);
   }
+
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-expect-error
   private async estimateSell(
@@ -709,6 +742,7 @@ export class Ergo {
   ): Promise<AssetAmount> {
     return await this.estimate(pool, x_amount, slippage, true);
   }
+
   public getPool(id: string): Pool {
     return <Pool>this.ammPools.find((ammPool) => ammPool.id === id);
   }
