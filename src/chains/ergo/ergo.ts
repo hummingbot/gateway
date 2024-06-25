@@ -62,8 +62,19 @@ class Pool extends AmmPool {
     this.name = `${this.x.asset.name}/${this.y.asset.name}`;
   }
 
-  public getName() {
+  public get getName() {
     return this.name;
+  }
+
+  public get getPoolInfo() {
+    return {
+      id: this.id,
+      lp: this.lp,
+      x: this.x,
+      y: this.y,
+      feeNum: this.feeNum,
+      feeDenom: this.feeDenom,
+    };
   }
 
   // calculatePriceImpact(input: any): number {
@@ -254,6 +265,10 @@ export class Ergo {
 
   public get ready(): boolean {
     return this._ready;
+  }
+
+  public async getNetworkHeight() {
+    return await this._node.getNetworkHeight();
   }
 
   /**
@@ -477,15 +492,15 @@ export class Ergo {
     try {
       const utxos = await this.getAddressUnspentBoxes(account.address);
       balance = utxos.reduce(
-        (total: number, box) =>
+        (total: bigint, box) =>
           total +
           box.assets
             .filter((asset) => asset.tokenId === ergoAsset.tokenId.toString())
             .reduce(
-              (total_asset, asset) => total_asset + Number(asset.amount),
-              0,
+              (total_asset, asset) => total_asset + BigInt(asset.amount),
+              BigInt(0),
             ),
-        0,
+        BigInt(0),
       );
     } catch (error: any) {
       throw new Error(
@@ -494,6 +509,22 @@ export class Ergo {
     }
 
     return balance.toString();
+  }
+
+  public getBalance(utxos: ErgoBox[]) {
+    const balance = utxos.reduce(
+      (total, box) => total + BigInt(box.value),
+      BigInt(0),
+    );
+    const assets: Record<string, bigint> = {};
+    utxos.forEach((box) => {
+      box.assets.forEach((asset) => {
+        if (Object.keys(assets).includes(asset.tokenId))
+          assets[asset.tokenId] += BigInt(asset.amount);
+        else assets[asset.tokenId] = BigInt(asset.amount);
+      });
+    });
+    return { balance, assets };
   }
 
   private async loadAssets() {
