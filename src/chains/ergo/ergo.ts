@@ -214,6 +214,8 @@ export class Ergo {
   private ammPools: Array<Pool> = [];
 
   constructor(network: string) {
+    if (network !== 'Mainnet' && network !== 'Testnet')
+      throw new Error('network should be `Mainnet` or `Testnet`');
     const config = getErgoConfig(network);
 
     if (network === 'Mainnet') {
@@ -280,6 +282,8 @@ export class Ergo {
    * @static
    */
   public static getInstance(network: string): Ergo {
+    if (network !== 'Mainnet' && network !== 'Testnet')
+      throw new Error('network should be `Mainnet` or `Testnet`');
     const config = getErgoConfig(network);
 
     if (!Ergo._instances) {
