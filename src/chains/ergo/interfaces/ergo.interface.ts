@@ -16,7 +16,7 @@ export interface ErgoNetworkConfig {
   defaultSlippage: number;
   defaultMinerFee: bigint;
   minNitro: number;
-  minBoxValue: bigint
+  minBoxValue: bigint;
 }
 export interface ErgoConfig {
   network: ErgoNetworkConfig;
@@ -41,12 +41,12 @@ export interface ErgoConnectedInstance {
 
 export interface ErgoBoxAsset {
   tokenId: string;
-  amount: number;
+  amount: bigint;
 }
 
 export interface ErgoBox {
   boxId: string;
-  value: number;
+  value: bigint;
   ergoTree: string;
   creationHeight: number;
   assets: Array<ErgoBoxAsset>;
