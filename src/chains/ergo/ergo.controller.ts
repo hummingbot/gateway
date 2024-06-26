@@ -1,16 +1,17 @@
 import { Ergo } from './ergo';
-import {
-  AssetsResponse,
-  BalanceRequest,
-  PoolRequest,
-  PoolResponse,
-  transferRequest,
-} from './ergo.requests';
+
 import {
   ErgoUnsignedTransaction,
   OutputBuilder,
   TransactionBuilder,
 } from '@fleet-sdk/core';
+import {
+  AssetsResponse,
+  BalanceRequest,
+  PoolRequest,
+  PoolResponse,
+  TransferRequest,
+} from './interfaces/requests.interface';
 
 export class ErgoController {
   static async pool(ergo: Ergo, req: PoolRequest): Promise<PoolResponse> {
@@ -44,7 +45,7 @@ export class ErgoController {
 
   static async transfer(
     ergo: Ergo,
-    req: transferRequest,
+    req: TransferRequest,
   ): Promise<ErgoUnsignedTransaction> {
     const networkHeight = await ergo.getNetworkHeight();
     const utxos = await ergo.getAddressUnspentBoxes(req.fromAddress);
