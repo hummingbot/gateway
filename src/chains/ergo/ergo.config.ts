@@ -24,13 +24,21 @@ export function getErgoConfig(network: ErgoNetwork): ErgoConfig {
       networkPrefix:
         network === 'mainnet' ? NetworkPrefix.Mainnet : NetworkPrefix.Testnet,
       minTxFee: configManager.get(`ergo.networks.${network}.minTxFee`),
-      maxLRUCacheInstances: 10,
-      utxosLimit: 100,
-      poolLimit: 100,
-      defaultSlippage: 3,
-      defaultMinerFee: BigInt(2_000_000),
-      minNitro: 1.2,
-      minBoxValue: BigInt(400_000),
+      maxLRUCacheInstances: configManager.get(
+        `ergo.networks.${network}.maxLRUCacheInstances`,
+      ),
+      utxosLimit: configManager.get(`ergo.networks.${network}.utxosLimit`),
+      poolLimit: configManager.get(`ergo.networks.${network}.poolLimit`),
+      defaultSlippage: configManager.get(
+        `ergo.networks.${network}.defaultSlippage`,
+      ),
+      defaultMinerFee: BigInt(
+        configManager.get(`ergo.networks.${network}.defaultMinerFee`),
+      ),
+      minNitro: configManager.get(`ergo.networks.${network}.minNitro`),
+      minBoxValue: BigInt(
+        configManager.get(`ergo.networks.${network}.minBoxValue`),
+      ),
     },
   };
 }
