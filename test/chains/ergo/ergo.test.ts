@@ -9,7 +9,7 @@ import { Ergo } from '../../../src/chains/ergo/ergo';
 import { patch, unpatch } from '../../../test/services/patch';
 import * as ergo_cofing from '../../../src/chains/ergo/ergo.config';
 import { NodeService } from '../../../src/chains/ergo/node.service';
-import { Explorer } from '@ergolabs/ergo-sdk';
+import { Explorer } from '@patternglobal/ergo-sdk';
 import { DexService } from '../../../src/chains/ergo/dex.service';
 import { ErgoController } from '../../../src/chains/ergo/ergo.controller';
 import {
@@ -18,14 +18,17 @@ import {
   ErgoBox,
 } from '../../../src/chains/ergo/interfaces/ergo.interface';
 import LRUCache from 'lru-cache';
-import { makeNativePools } from '@ergolabs/ergo-dex-sdk';
+import { makeNativePools } from '@patternglobal/ergo-dex-sdk';
 
-jest.mock('@ergolabs/ergo-dex-sdk', () => ({
+jest.mock('@patternglobal/ergo-dex-sdk', () => ({
   AmmPool: jest.fn(),
   makeNativePools: jest.fn(),
 }));
-jest.mock('@ergolabs/ergo-sdk', () => ({
+jest.mock('@patternglobal/ergo-sdk', () => ({
   Explorer: jest.fn(),
+  RustModule: {
+    load: jest.fn().mockResolvedValue,
+  },
 }));
 
 let ergo: Ergo;
@@ -227,13 +230,13 @@ describe('Ergo', () => {
   describe('ready', () => {
     it('Should return the ready state', () => {
       // Arrange: Initially, the ready state should be false
-      expect(ergo.ready()).toBe(false);
+      expect(ergo.ready).toBe(false);
 
       // Act: Manually set the _ready state to true
       ergo['_ready'] = true;
 
       // Assert: Now, the ready state should be true
-      expect(ergo.ready()).toBe(true);
+      expect(ergo.ready).toBe(true);
     });
   });
 
@@ -249,7 +252,7 @@ describe('Ergo', () => {
       // Assert: Ensure the loadAssets & loadPools methods were called during initialization
       expect(ergo['loadAssets']).toHaveBeenCalled();
       expect(ergo['loadPools']).toHaveBeenCalled();
-      expect(ergo.ready()).toBe(true);
+      expect(ergo.ready).toBe(true);
     });
   });
 
@@ -300,9 +303,9 @@ describe('Ergo', () => {
     });
 
     it('Should throw an error if an unexpected network is provided', () => {
-      // Act and Assert: Expect that calling getInstance with an empty string throws an error
-      expect(() => Ergo.getInstance('')).toThrow(
-        'Ergo.getInstance received an unexpected network: .',
+      // Act and Assert: Expect that calling getInstance with an invalid network throws an error
+      expect(() => Ergo.getInstance('invalidNetwork')).toThrow(
+        'network should be `Mainnet` or `Testnet`',
       );
     });
   });
@@ -313,15 +316,15 @@ describe('Ergo', () => {
 
     beforeEach(() => {
       // Arrange: Create mock Ergo instances
-      mockErgoInstance1 = new Ergo('Testnet1') as any;
-      mockErgoInstance2 = new Ergo('Testnet2') as any;
+      mockErgoInstance1 = new Ergo('Testnet') as any;
+      mockErgoInstance2 = new Ergo('Mainnet') as any;
 
       // Arrange: Initialize the _instances LRUCache with mock instances
       Ergo['_instances'] = new LRUCache<string, Ergo>({
         max: 10,
       });
-      Ergo['_instances'].set('Testnet1', mockErgoInstance1);
-      Ergo['_instances'].set('Testnet2', mockErgoInstance2);
+      Ergo['_instances'].set('Testnet', mockErgoInstance1);
+      Ergo['_instances'].set('Mainnet', mockErgoInstance2);
     });
 
     it('Should return all connected instances', () => {
@@ -330,11 +333,11 @@ describe('Ergo', () => {
 
       // Assert: Expect the connected instances to match the mock instances
       expect(Object.keys(connectedInstances).sort()).toEqual([
-        'Testnet1',
-        'Testnet2',
+        'Mainnet',
+        'Testnet',
       ]);
-      expect(connectedInstances['Testnet1']).toBe(mockErgoInstance1);
-      expect(connectedInstances['Testnet2']).toBe(mockErgoInstance2);
+      expect(connectedInstances['Testnet']).toBe(mockErgoInstance1);
+      expect(connectedInstances['Mainnet']).toBe(mockErgoInstance2);
     });
 
     it('Should return an empty object if there are no instances', () => {
@@ -356,11 +359,11 @@ describe('Ergo', () => {
       const connectedInstances = Ergo.getConnectedInstances();
       // Assert: Expect the valid instances to be returned and invalid instances to be excluded
       expect(Object.keys(connectedInstances).sort()).toEqual([
-        'Testnet1',
-        'Testnet2',
+        'Mainnet',
+        'Testnet',
       ]);
-      expect(connectedInstances['Testnet1']).toBe(mockErgoInstance1);
-      expect(connectedInstances['Testnet2']).toBe(mockErgoInstance2);
+      expect(connectedInstances['Testnet']).toBe(mockErgoInstance1);
+      expect(connectedInstances['Mainnet']).toBe(mockErgoInstance2);
       expect(connectedInstances['']).toBeUndefined();
     });
   });
@@ -585,7 +588,7 @@ describe('Ergo', () => {
       // Arrange: Set up the account and asset map, and mock the getAddressUnspentBoxes method to return an empty array
       const account: ErgoAccount = { address: 'mockAddress' } as any;
       ergo['_assetMap'] = {
-        assetName: { tokenId: 1 },
+        ASSETNAME: { tokenId: 1 },
       } as any;
       patchGetAddressUnspentBoxes();
 
@@ -600,7 +603,7 @@ describe('Ergo', () => {
       // Arrange: Set up the account, asset map, and mock the getAddressUnspentBoxes method to return utxos without matching assets
       const account: ErgoAccount = { address: 'mockAddress' } as any;
       ergo['_assetMap'] = {
-        assetName: { tokenId: 1 },
+        ASSETNAME: { tokenId: 1 },
       } as any;
       const utxos = [{ assets: [{ tokenId: 2, amount: '100' }] }];
       jest
@@ -618,7 +621,7 @@ describe('Ergo', () => {
       // Arrange: Set up the account, asset map, and mock the getAddressUnspentBoxes method to return utxos with matching assets
       const account: ErgoAccount = { address: 'mockAddress' } as any;
       ergo['_assetMap'] = {
-        assetName: { tokenId: 1 },
+        ASSETNAME: { tokenId: 1 },
       } as any;
       const utxos = [
         { assets: [{ tokenId: '1', amount: 100 }] },
@@ -644,7 +647,7 @@ describe('Ergo', () => {
 
       // Act & Assert: Call the getAssetBalance method and expect it to throw an error
       await expect(ergo.getAssetBalance(account, 'assetName')).rejects.toThrow(
-        'problem during finding account assets ergo Node!',
+        `assetName not found ${ergo['_chain']} Node!`,
       );
     });
   });
@@ -793,7 +796,7 @@ describe('Ergo', () => {
       const result = await ergo['getPoolData'](limit, offset);
 
       // Assert: Verify the method returns expected data
-      expect(result).toEqual(expectedData);
+      expect(result).toEqual(expectedData[0]);
     });
 
     it('Should handle errors from getAll method', async () => {

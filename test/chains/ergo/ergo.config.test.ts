@@ -37,6 +37,10 @@ describe('getErgoConfig', () => {
         maxLRUCacheInstances: 10,
         utxosLimit: 100,
         poolLimit: 100,
+        defaultSlippage: 3,
+        defaultMinerFee: BigInt(2_000_000),
+        minNitro: 1.2,
+        minBoxValue: BigInt(400_000),
       },
     });
     // Assert: Verify that the get method was called exactly five times with the expected arguments
@@ -88,6 +92,10 @@ describe('getErgoConfig', () => {
         maxLRUCacheInstances: 10,
         utxosLimit: 100,
         poolLimit: 100,
+        defaultSlippage: 3,
+        defaultMinerFee: BigInt(2_000_000),
+        minNitro: 1.2,
+        minBoxValue: BigInt(400_000),
       },
     });
     // Assert: Verify that the get method was called exactly five times with the expected arguments

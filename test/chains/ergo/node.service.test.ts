@@ -25,7 +25,7 @@ describe('NodeService', () => {
     const method = 'GET';
     const url = '/test-endpoint';
     const headers = { 'Content-Type': 'application/json' };
-    const body = { key: 'value' };
+    const data = { key: 'value' };
 
     it('Should make a GET request with correct parameters', async () => {
       // Arrange: Mock the axios response
@@ -54,7 +54,7 @@ describe('NodeService', () => {
       (axios as any).mockResolvedValue(mockResponse);
 
       // Act: Call the private request method with POST parameters
-      const response = await nodeService['request'](method, url, headers, body);
+      const response = await nodeService['request'](method, url, headers, data);
 
       // Assert: Check if axios was called with the correct configuration
       expect(axios).toHaveBeenCalledWith({
@@ -63,7 +63,7 @@ describe('NodeService', () => {
         method,
         headers,
         timeout,
-        body,
+        data,
       });
       // Assert: Check if the response is as expected
       expect(response).toEqual({ name: 'test' });
