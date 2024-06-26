@@ -21,9 +21,10 @@ import {
 } from '../services/connection-manager';
 import { Osmosis } from '../chains/osmosis/osmosis';
 import { XRPL } from '../chains/xrpl/xrpl';
+import { Ergo } from '../chains/ergo/ergo';
 
 export async function getStatus(
-  req: StatusRequest
+  req: StatusRequest,
 ): Promise<StatusResponse | StatusResponse[]> {
   const statuses: StatusResponse[] = [];
   let connections: any[] = [];
@@ -37,14 +38,14 @@ export async function getStatus(
   if (req.chain) {
     try {
       connections.push(
-        await getInitializedChain(req.chain, req.network as string)
+        await getInitializedChain(req.chain, req.network as string),
       );
     } catch (e) {
       if (e instanceof UnsupportedChainException) {
         throw new HttpException(
           500,
           UNKNOWN_KNOWN_CHAIN_ERROR_MESSAGE(req.chain),
-          UNKNOWN_CHAIN_ERROR_CODE
+          UNKNOWN_CHAIN_ERROR_CODE,
         );
       }
       throw e;
@@ -52,67 +53,72 @@ export async function getStatus(
   } else {
     const algorandConnections = Algorand.getConnectedInstances();
     connections = connections.concat(
-      algorandConnections ? Object.values(algorandConnections) : []
+      algorandConnections ? Object.values(algorandConnections) : [],
     );
 
     const avalancheConnections = Avalanche.getConnectedInstances();
     connections = connections.concat(
-      avalancheConnections ? Object.values(avalancheConnections) : []
+      avalancheConnections ? Object.values(avalancheConnections) : [],
     );
 
     const harmonyConnections = Harmony.getConnectedInstances();
     connections = connections.concat(
-      harmonyConnections ? Object.values(harmonyConnections) : []
+      harmonyConnections ? Object.values(harmonyConnections) : [],
     );
 
     const ethereumConnections = Ethereum.getConnectedInstances();
     connections = connections.concat(
-      ethereumConnections ? Object.values(ethereumConnections) : []
+      ethereumConnections ? Object.values(ethereumConnections) : [],
     );
 
     const polygonConnections = Polygon.getConnectedInstances();
     connections = connections.concat(
-      polygonConnections ? Object.values(polygonConnections) : []
+      polygonConnections ? Object.values(polygonConnections) : [],
     );
 
     const xdcConnections = Xdc.getConnectedInstances();
     connections = connections.concat(
-      xdcConnections ? Object.values(xdcConnections) : []
+      xdcConnections ? Object.values(xdcConnections) : [],
     );
 
     const cronosConnections = Cronos.getConnectedInstances();
     connections = connections.concat(
-      cronosConnections ? Object.values(cronosConnections) : []
+      cronosConnections ? Object.values(cronosConnections) : [],
     );
 
     const nearConnections = Near.getConnectedInstances();
     connections = connections.concat(
-      nearConnections ? Object.values(nearConnections) : []
+      nearConnections ? Object.values(nearConnections) : [],
     );
 
     const bscConnections = BinanceSmartChain.getConnectedInstances();
     connections = connections.concat(
-      bscConnections ? Object.values(bscConnections) : []
+      bscConnections ? Object.values(bscConnections) : [],
     );
 
     const tezosConnections = Tezos.getConnectedInstances();
     connections = connections.concat(
-      tezosConnections ? Object.values(tezosConnections) : []
+      tezosConnections ? Object.values(tezosConnections) : [],
     );
 
     const xrplConnections = XRPL.getConnectedInstances();
     connections = connections.concat(
-      xrplConnections ? Object.values(xrplConnections) : []
+      xrplConnections ? Object.values(xrplConnections) : [],
     );
 
     const kujiraConnections = Kujira.getConnectedInstances();
     connections = connections.concat(
-      kujiraConnections ? Object.values(kujiraConnections) : []
+      kujiraConnections ? Object.values(kujiraConnections) : [],
     );
 
     const osmosisConnections = Osmosis.getConnectedInstances();
     connections = connections.concat(
-      osmosisConnections ? Object.values(osmosisConnections) : []
+      osmosisConnections ? Object.values(osmosisConnections) : [],
+    );
+
+    const ergoConnections = Ergo.getConnectedInstances();
+    connections = connections.concat(
+      ergoConnections ? Object.values(ergoConnections) : [],
     );
   }
 

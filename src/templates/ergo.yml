@@ -1,7 +1,7 @@
 networks:
   mainnet:
     nodeURL: "http://213.239.193.208:9053/"
-    explorerURL: "https://api.ergoplatform.com/api/v1/"
+    explorerURL: "https://api.ergoplatform.com"
     explorerDEXURL: "https://spectrum.fi/"
     timeOut: 30000
     minTxFee: 1000000

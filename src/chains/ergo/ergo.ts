@@ -116,10 +116,12 @@ export class Ergo {
   }
 
   public get storedAssetList(): Array<ErgoAsset> {
+    console.log(this._assetMap);
+
     return Object.values(this._assetMap);
   }
 
-  public get ready(): boolean {
+  public ready(): boolean {
     return this._ready;
   }
 

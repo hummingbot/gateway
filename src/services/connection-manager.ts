@@ -8,6 +8,7 @@ import { Xdc } from '../chains/xdc/xdc';
 import { Tezos } from '../chains/tezos/tezos';
 import { Osmosis } from '../chains/osmosis/osmosis';
 import { XRPL, XRPLish } from '../chains/xrpl/xrpl';
+import { Ergo } from '../chains/ergo/ergo';
 import { MadMeerkat } from '../connectors/mad_meerkat/mad_meerkat';
 import { Openocean } from '../connectors/openocean/openocean';
 import { Pangolin } from '../connectors/pangolin/pangolin';
@@ -55,7 +56,8 @@ export type ChainUnion =
   | Tezosish
   | XRPLish
   | Kujira
-  | Osmosis;
+  | Osmosis
+  | Ergo;
 
 export type Chain<T> = T extends Algorand
   ? Algorand
@@ -75,7 +77,9 @@ export type Chain<T> = T extends Algorand
                 ? KujiraCLOB
                 : T extends Osmosis
                   ? Osmosis
-                  : never;
+                  : T extends Ergo
+                    ? Ergo
+                    : never;
 
 export class UnsupportedChainException extends Error {
   constructor(message?: string) {
@@ -140,6 +144,8 @@ export async function getChainInstance(
     connection = XRPL.getInstance(network);
   } else if (chain === 'kujira') {
     connection = Kujira.getInstance(network);
+  } else if (chain === 'ergo') {
+    connection = Ergo.getInstance(network);
   } else {
     connection = undefined;
   }

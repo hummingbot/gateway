@@ -3,7 +3,7 @@ import {
   NodeChainSliceResponse,
   NodeInfoResponse,
 } from './interfaces/node.interface';
-import { NodeErgoBoxResponse, NodeErgoPostTxResponse } from "./types/node.type";
+import { NodeErgoBoxResponse, NodeErgoPostTxResponse } from './types/node.type';
 import {
   BlockHeaders,
   ErgoStateContext,

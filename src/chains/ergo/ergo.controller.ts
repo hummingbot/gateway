@@ -12,6 +12,7 @@ import {
   PoolResponse,
   TransferRequest,
 } from './interfaces/requests.interface';
+import { TokensRequest } from '../../network/network.requests';
 
 export class ErgoController {
   static async pool(ergo: Ergo, req: PoolRequest): Promise<PoolResponse> {
@@ -36,7 +37,10 @@ export class ErgoController {
     };
   }
 
-  static async getTokens(ergo: Ergo): Promise<AssetsResponse> {
+  static async getTokens(
+    ergo: Ergo,
+    _req: TokensRequest,
+  ): Promise<AssetsResponse> {
     if (!ergo.ready) {
       await ergo.init();
     }
