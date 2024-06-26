@@ -1,6 +1,8 @@
 import { NetworkPrefix } from 'ergo-lib-wasm-nodejs';
 import { Wallet } from 'ergo-lib-wasm-nodejs';
-import { Ergo, WalletProver } from '../ergo';
+import { Ergo } from '../ergo';
+import { AssetAmount } from '@patternglobal/ergo-sdk';
+import { WalletProver } from '../wallet-prover.service';
 
 export interface ErgoNetworkConfig {
   name: string;
@@ -60,4 +62,10 @@ export interface ErgoBox {
   spendingHeight: number;
   inclusionHeight: number;
   globalIndex: number;
+}
+
+export interface BaseInputParameters {
+  baseInput: AssetAmount;
+  baseInputAmount: bigint;
+  minOutput: AssetAmount;
 }

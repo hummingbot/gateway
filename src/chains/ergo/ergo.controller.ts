@@ -18,13 +18,15 @@ export class ErgoController {
     if (!ergo.ready) {
       await ergo.init();
     }
-    return ergo.getPool(req.poolId).getPoolInfo;
+
+    return ergo.getPool(req.poolId).info;
   }
 
   static async balances(chain: Ergo, request: BalanceRequest) {
     if (!chain.ready) {
       await chain.init();
     }
+
     const utxos = await chain.getAddressUnspentBoxes(request.address);
     const { balance, assets } = chain.getBalance(utxos);
 
@@ -38,6 +40,7 @@ export class ErgoController {
     if (!ergo.ready) {
       await ergo.init();
     }
+
     return {
       assets: ergo.storedAssetList,
     };
@@ -49,6 +52,7 @@ export class ErgoController {
   ): Promise<ErgoUnsignedTransaction> {
     const networkHeight = await ergo.getNetworkHeight();
     const utxos = await ergo.getAddressUnspentBoxes(req.fromAddress);
+
     return new TransactionBuilder(networkHeight)
       .from(utxos)
       .to(new OutputBuilder(req.toValue, req.toAddress).addTokens(req.assets))
