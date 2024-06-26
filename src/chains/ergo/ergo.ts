@@ -52,6 +52,7 @@ import {
 import { makeTarget } from '@patternglobal/ergo-dex-sdk/build/main/utils/makeTarget';
 import { NativeExFeeType } from '@patternglobal/ergo-dex-sdk/build/main/types';
 import { NetworkContext } from '@patternglobal/ergo-sdk/build/main/entities/networkContext';
+import { ErgoNetwork } from './types/ergo.type';
 
 class Pool extends AmmPool {
   private name: string;
@@ -212,7 +213,7 @@ export class Ergo {
   private _assetMap: Record<string, ErgoAsset> = {};
   private static _instances: LRUCache<string, Ergo>;
   private _chain: string = 'ergo';
-  private _network: string;
+  private _network: ErgoNetwork;
   private _networkPrefix: NetworkPrefix;
   private _node: NodeService;
   private _explorer: Explorer;
@@ -224,17 +225,14 @@ export class Ergo {
   private poolLimit: number;
   private ammPools: Array<Pool> = [];
 
-  constructor(network: string) {
-    if (network !== 'Mainnet' && network !== 'Testnet')
-      throw new Error('network should be `Mainnet` or `Testnet`');
-    const config = getErgoConfig(network);
-
-    if (network === 'Mainnet') {
-      this._networkPrefix = NetworkPrefix.Mainnet;
-    } else {
-      this._networkPrefix = NetworkPrefix.Testnet;
+  constructor(network: ErgoNetwork) {
+    if (network !== 'mainnet' && network !== 'testnet') {
+      throw new Error('network should be `mainnet` or `testnet`');
     }
 
+    const config = getErgoConfig(network);
+
+    this._networkPrefix = config.network.networkPrefix;
     this._network = network;
     this._node = new NodeService(
       config.network.nodeURL,
@@ -255,7 +253,7 @@ export class Ergo {
     return this._node;
   }
 
-  public get network(): string {
+  public get network(): ErgoNetwork {
     return this._network;
   }
 
@@ -296,9 +294,11 @@ export class Ergo {
    * @function
    * @static
    */
-  public static getInstance(network: string): Ergo {
-    if (network !== 'Mainnet' && network !== 'Testnet')
-      throw new Error('network should be `Mainnet` or `Testnet`');
+  public static getInstance(network: ErgoNetwork): Ergo {
+    if (network !== 'mainnet' && network !== 'testnet') {
+      throw new Error('network should be `mainnet` or `testnet`');
+    }
+
     const config = getErgoConfig(network);
 
     if (!Ergo._instances) {
@@ -599,7 +599,7 @@ export class Ergo {
     const config = getErgoConfig(this.network);
     const networkContext = await this._explorer.getNetworkContext();
     const mainnetTxAssembler = new DefaultTxAssembler(
-      this.network === 'Mainnet',
+      this.network === 'mainnet',
     );
     const poolActions = makeWrappedNativePoolActionsSelector(
       output_address,

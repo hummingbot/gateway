@@ -19,13 +19,17 @@
             },
             "timeOut": {
               "type": "number"
+            },
+            "minTxFee": {
+              "type": "number"
             }
           },
           "required": [
             "nodeURL",
             "explorerURL",
             "explorerDEXURL",
-            "timeOut"
+            "timeOut",
+            "minTxFee"
           ],
           "additionalProperties": false
         }
