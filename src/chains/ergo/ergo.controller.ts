@@ -8,6 +8,8 @@ import {
 import {
   AssetsResponse,
   BalanceRequest,
+  PollRequest,
+  PollResponse,
   PoolRequest,
   PoolResponse,
   TransferRequest,
@@ -22,7 +24,13 @@ export class ErgoController {
 
     return ergo.getPool(req.poolId).info;
   }
+  static async poll(ergo: Ergo, req: PollRequest): Promise<PollResponse> {
+    if (!ergo.ready) {
+      await ergo.init();
+    }
 
+    return await ergo.getTx(req.txId);
+  }
   static async balances(chain: Ergo, request: BalanceRequest) {
     if (!chain.ready) {
       await chain.init();

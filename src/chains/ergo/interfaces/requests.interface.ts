@@ -1,4 +1,4 @@
-import { AssetAmount } from '@patternglobal/ergo-sdk';
+import { AssetAmount, ErgoTx } from '@patternglobal/ergo-sdk';
 import { NetworkSelectionRequest } from '../../../services/common-interfaces';
 import { ErgoAsset, ErgoBoxAsset } from './ergo.interface';
 
@@ -14,6 +14,11 @@ export interface PoolResponse {
   y: AssetAmount;
   feeNum: bigint;
   feeDenom: bigint;
+}
+
+export interface PollResponse extends ErgoTx {}
+export interface PollRequest {
+  txId: string;
 }
 
 export interface BalanceRequest extends NetworkSelectionRequest {
