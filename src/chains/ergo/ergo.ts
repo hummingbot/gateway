@@ -487,7 +487,7 @@ export class Ergo {
     assetName: string,
   ): Promise<string> {
     const ergoAsset = this._assetMap[assetName.toUpperCase()];
-    let balance = 0;
+    let balance = BigInt(0);
     if (!ergoAsset) throw new Error(`assetName not found ${this._chain} Node!`);
     try {
       const utxos = await this.getAddressUnspentBoxes(account.address);
