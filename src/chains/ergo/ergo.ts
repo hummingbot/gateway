@@ -650,4 +650,8 @@ export class Ergo {
   public getPool(id: string): Pool {
     return <Pool>this.ammPools.find((ammPool) => ammPool.id === id);
   }
+
+  public async getTx(id: string): Promise<ErgoTx> {
+    return await this._node.getTxsById(id);
+  }
 }
