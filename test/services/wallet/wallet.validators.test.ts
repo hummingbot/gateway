@@ -124,6 +124,16 @@ describe('validatePrivateKey', () => {
     ).toEqual([]);
   });
 
+  it('valid when req.privateKey is a celo key', () => {
+    expect(
+      validatePrivateKey({
+        chain: 'celo',
+        privateKey:
+          'da857cbda0ba96757fed842617a40693d06d00001e55aa972955039ae747bac4', // noqa: mock
+      })
+    ).toEqual([]);
+  });
+
   it('valid when req.privateKey is a avalanche key', () => {
     expect(
       validatePrivateKey({

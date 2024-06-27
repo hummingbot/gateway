@@ -4,6 +4,7 @@ import { BinanceSmartChain } from '../chains/binance-smart-chain/binance-smart-c
 import { Ethereum } from '../chains/ethereum/ethereum';
 import { Harmony } from '../chains/harmony/harmony';
 import { Polygon } from '../chains/polygon/polygon';
+import { Celo } from '../chains/celo/celo';
 import { Xdc } from '../chains/xdc/xdc';
 import { Tezos } from '../chains/tezos/tezos';
 import { Kujira } from '../chains/kujira/kujira';
@@ -83,6 +84,11 @@ export async function getStatus(
     const cronosConnections = Cronos.getConnectedInstances();
     connections = connections.concat(
       cronosConnections ? Object.values(cronosConnections) : []
+    );
+
+    const celoConnections = Celo.getConnectedInstances();
+    connections = connections.concat(
+      celoConnections ? Object.values(celoConnections) : []
     );
 
     const nearConnections = Near.getConnectedInstances();

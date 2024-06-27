@@ -53,10 +53,10 @@ export class UniswapLP extends UniswapLPHelper implements UniswapLPish {
   }
 
   async getPosition(tokenId: number): Promise<PositionInfo> {
-    const contract = this.getContract('nft', this.ethereum.provider);
+    const contract = this.getContract('nft', this.chain.provider);
     const requests = [
       contract.positions(tokenId),
-      this.collectFees(this.ethereum.provider, tokenId), // static call to calculate earned fees
+      this.collectFees(this.chain.provider, tokenId), // static call to calculate earned fees
     ];
     const positionInfoReq = await Promise.allSettled(requests);
     const rejected = positionInfoReq.filter(
@@ -141,7 +141,7 @@ export class UniswapLP extends UniswapLPHelper implements UniswapLPish {
     );
 
     if (nonce === undefined) {
-      nonce = await this.ethereum.nonceManager.getNextNonce(wallet.address);
+      nonce = await this.chain.nonceManager.getNextNonce(wallet.address);
     }
 
     const tx = await wallet.sendTransaction({
@@ -179,7 +179,7 @@ export class UniswapLP extends UniswapLPHelper implements UniswapLPish {
     );
 
     if (nonce === undefined) {
-      nonce = await this.ethereum.nonceManager.getNextNonce(wallet.address);
+      nonce = await this.chain.nonceManager.getNextNonce(wallet.address);
     }
 
     const tx = await contract.multicall(
@@ -219,7 +219,7 @@ export class UniswapLP extends UniswapLPHelper implements UniswapLPish {
     } else {
       collectData.recipient = wallet.address;
       if (nonce === undefined) {
-        nonce = await this.ethereum.nonceManager.getNextNonce(wallet.address);
+        nonce = await this.chain.nonceManager.getNextNonce(wallet.address);
       }
       return await contract.collect(
         collectData,
