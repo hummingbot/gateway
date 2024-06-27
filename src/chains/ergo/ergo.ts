@@ -526,7 +526,7 @@ export class Ergo {
       [new AssetAmount(from.asset, baseInputAmount)],
       {
         minerFee: config.network.defaultMinerFee,
-        uiFee: BigInt(0),
+        uiFee: config.network.defaultMinerFee,
         exFee: extremum.maxExFee,
       },
     );
@@ -538,7 +538,7 @@ export class Ergo {
       baseInput,
       minQuoteOutput: extremum.minOutput.amount,
       exFeePerToken,
-      uiFee: BigInt(0),
+      uiFee: config.network.defaultMinerFee,
       quoteAsset: to.asset.id,
       poolFeeNum: pool.poolFeeNum,
       maxExFee: extremum.maxExFee,
