@@ -44,7 +44,7 @@ networks:
     nodeURL: https://rpc.ankr.com/eth_sepolia 
     tokenListType: FILE
     tokenListSource: /home/gateway/conf/lists/erc20_tokens_sepolia.json
-    nativeCurrencySymbol: SepoliaETH
+    nativeCurrencySymbol: ETH
 
 # if you use the gas assumptions below, your wallet needs >0.1 ETH balance for gas
 gasLimitTransaction: 3000000
