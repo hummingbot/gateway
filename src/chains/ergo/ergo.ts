@@ -492,6 +492,8 @@ export class Ergo {
         slippage || config.network.defaultSlippage,
       ).amount,
     };
+    if (from.amount === BigInt(0))
+      throw new Error(`${amount} asset from ${max_to.asset.id} is not enough!`);
     const { baseInput, baseInputAmount, minOutput } = getBaseInputParameters(
       pool,
       {
