@@ -170,14 +170,6 @@
       "logoURI": "https://raw.githubusercontent.com/ubeswap/default-token-list/master/assets/asset_SUSHI.png"
     },
     {
-      "name": "Optics v2 WETH",
-      "address": "0x122013fd7dF1C6F636a5bb8f03108E876548b455",
-      "symbol": "WETH",
-      "decimals": 18,
-      "chainId": 42220,
-      "logoURI": "https://raw.githubusercontent.com/ubeswap/default-token-list/master/assets/asset_WETH.png"
-    },
-    {
       "name": "Optics v2 USDT",
       "address": "0x88eeC49252c8cbc039DCdB394c0c2BA2f1637EA0",
       "decimals": 6,
