@@ -455,8 +455,7 @@ export class Ergo {
   private async swap(
     account: ErgoAccount,
     pool: Pool,
-    x_amount: bigint,
-    y_amount: bigint,
+    amount: bigint,
     output_address: string,
     return_address: string,
     slippage: number,
@@ -478,13 +477,13 @@ export class Ergo {
         id: sell ? pool.x.asset.id : pool.y.asset.id,
         decimals: sell ? pool.x.asset.decimals : pool.y.asset.decimals,
       },
-      amount: sell ? x_amount : y_amount,
+      amount: amount,
     };
     const max_to = {
       asset: {
         id: sell ? pool.x.asset.id : pool.y.asset.id,
       },
-      amount: sell ? x_amount : y_amount,
+      amount: amount,
     };
     const from = {
       asset: {
@@ -527,10 +526,9 @@ export class Ergo {
       [new AssetAmount(from.asset, baseInputAmount)],
       {
         minerFee: config.network.defaultMinerFee,
-        uiFee: BigInt(sell ? y_amount : x_amount),
+        uiFee: BigInt(0),
         exFee: extremum.maxExFee,
       },
-      config.network.minBoxValue,
     );
     const swapParams: SwapParams<NativeExFeeType> = {
       poolId: pool.id,
@@ -540,7 +538,7 @@ export class Ergo {
       baseInput,
       minQuoteOutput: extremum.minOutput.amount,
       exFeePerToken,
-      uiFee: BigInt(sell ? y_amount : x_amount),
+      uiFee: BigInt(0),
       quoteAsset: to.asset.id,
       poolFeeNum: pool.poolFeeNum,
       maxExFee: extremum.maxExFee,
@@ -559,8 +557,7 @@ export class Ergo {
   public async buy(
     account: ErgoAccount,
     pool: Pool,
-    x_amount: bigint,
-    y_amount: bigint,
+    amount: bigint,
     output_address: string,
     return_address: string,
     slippage: number,
@@ -568,8 +565,7 @@ export class Ergo {
     return await this.swap(
       account,
       pool,
-      x_amount,
-      y_amount,
+      amount,
       output_address,
       return_address,
       slippage,
@@ -580,8 +576,7 @@ export class Ergo {
   public async sell(
     account: ErgoAccount,
     pool: Pool,
-    x_amount: bigint,
-    y_amount: bigint,
+    amount: bigint,
     output_address: string,
     return_address: string,
     slippage: number,
@@ -589,8 +584,7 @@ export class Ergo {
     return await this.swap(
       account,
       pool,
-      x_amount,
-      y_amount,
+      amount,
       output_address,
       return_address,
       slippage,
