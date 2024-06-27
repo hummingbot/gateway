@@ -3,8 +3,6 @@ import {
   SecretKey,
   SecretKeys,
   Wallet,
-  ErgoBoxes,
-  UnsignedTransaction,
   Mnemonic,
   ExtSecretKey,
   DerivationPath,
@@ -25,48 +23,39 @@ import {
   AmmPool,
   makeNativePools,
   makeWrappedNativePoolActionsSelector,
-  minValueForOrder,
-  minValueForSetup,
   SwapExtremums,
   SwapParams,
   swapVars,
 } from '@patternglobal/ergo-dex-sdk';
 import {
   Explorer,
-  Prover,
   ErgoTx,
-  UnsignedErgoTx,
-  unsignedErgoTxToProxy,
   DefaultTxAssembler,
   AssetAmount,
-  MinBoxValue,
-  DefaultBoxSelector,
-  InsufficientInputs,
   publicKeyFromAddress,
   TransactionContext,
-  Address,
-  BoxSelection,
-  Input as TxInput,
   RustModule,
 } from '@patternglobal/ergo-sdk';
-import { makeTarget } from '@patternglobal/ergo-dex-sdk/build/main/utils/makeTarget';
 import { NativeExFeeType } from '@patternglobal/ergo-dex-sdk/build/main/types';
 import { NetworkContext } from '@patternglobal/ergo-sdk/build/main/entities/networkContext';
+import { ErgoNetwork } from './types/ergo.type';
+import { getBaseInputParameters, getInputs, getTxContext } from './ergo.util';
+import { WalletProver } from './wallet-prover.service';
 
 class Pool extends AmmPool {
-  private name: string;
+  private _name: string;
 
   constructor(public pool: AmmPool) {
     super(pool.id, pool.lp, pool.x, pool.y, pool.poolFeeNum);
 
-    this.name = `${this.x.asset.name}/${this.y.asset.name}`;
+    this._name = `${this.x.asset.name}/${this.y.asset.name}`;
   }
 
-  public get getName() {
-    return this.name;
+  public get name() {
+    return this._name;
   }
 
-  public get getPoolInfo() {
+  public get info() {
     return {
       id: this.id,
       lp: this.lp,
@@ -76,143 +65,13 @@ class Pool extends AmmPool {
       feeDenom: this.feeDenom,
     };
   }
-
-  // calculatePriceImpact(input: any): number {
-  //   const ratio =
-  //     input.asset.id === this.x.asset.id
-  //       ? math.evaluate!(
-  //         `${renderFractions(this.y.amount.valueOf(), this.y.asset.decimals)} / ${renderFractions(this.x.amount.valueOf(), this.x.asset.decimals)}`,
-  //       ).toString()
-  //       : math.evaluate!(
-  //         `${renderFractions(this.x.amount.valueOf(), this.x.asset.decimals)} / ${renderFractions(this.y.amount.valueOf(), this.y.asset.decimals)}`,
-  //       ).toString();
-  //   const outputAmount = calculatePureOutputAmount(input, this);
-  //   const outputRatio = math.evaluate!(
-  //     `${outputAmount} / ${renderFractions(input.amount, input.asset.decimals)}`,
-  //   ).toString();
-  //
-  //   return Math.abs(
-  //     math.evaluate!(`(${outputRatio} * 100 / ${ratio}) - 100`).toFixed(2),
-  //   );
-  // }
-}
-
-export type BaseInputParameters = {
-  baseInput: AssetAmount;
-  baseInputAmount: bigint;
-  minOutput: AssetAmount;
-};
-export const getBaseInputParameters = (
-  pool: AmmPool,
-  { inputAmount, slippage }: { inputAmount: any; slippage: number },
-): BaseInputParameters => {
-  const baseInputAmount =
-    inputAmount.asset.id === pool.x.asset.id
-      ? pool.x.withAmount(inputAmount.amount)
-      : pool.y.withAmount(inputAmount.amount);
-  const minOutput = pool.outputAmount(baseInputAmount as any, slippage);
-
-  return {
-    baseInput: baseInputAmount as any,
-    baseInputAmount: inputAmount.amount,
-    minOutput: minOutput as any,
-  };
-};
-export const getInputs = (
-  utxos: ErgoBox[],
-  assets: AssetAmount[],
-  fees: { minerFee: bigint; uiFee: bigint; exFee: bigint },
-  minBoxValue: bigint,
-  ignoreMinBoxValue?: boolean,
-  setup?: boolean,
-): BoxSelection => {
-  let minFeeForOrder = minValueForOrder(fees.minerFee, fees.uiFee, fees.exFee);
-  if (setup) {
-    minFeeForOrder = minValueForSetup(fees.minerFee, fees.uiFee);
-  }
-  if (ignoreMinBoxValue) {
-    minFeeForOrder -= MinBoxValue;
-  }
-
-  const target = makeTarget(assets, minFeeForOrder);
-
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-expect-error
-  const inputs = DefaultBoxSelector.select(utxos, target, minBoxValue);
-
-  if (inputs instanceof InsufficientInputs) {
-    throw new Error(
-      `Error in getInputs function: InsufficientInputs -> ${inputs}`,
-    );
-  }
-
-  return inputs;
-};
-export const getTxContext = (
-  inputs: BoxSelection,
-  network: NetworkContext,
-  address: Address,
-  minerFee: bigint,
-): TransactionContext => ({
-  inputs,
-  selfAddress: address,
-  changeAddress: address,
-  feeNErgs: minerFee,
-  network,
-});
-
-export class WalletProver implements Prover {
-  readonly wallet: Wallet;
-  readonly nodeService: NodeService;
-
-  constructor(wallet: Wallet, nodeService: NodeService) {
-    this.wallet = wallet;
-    this.nodeService = nodeService;
-  }
-
-  /** Sign the given transaction.
-   */
-  async sign(tx: UnsignedErgoTx): Promise<ErgoTx> {
-    const ctx = await this.nodeService.getCtx();
-    const proxy = unsignedErgoTxToProxy(tx);
-    const wasmtx = UnsignedTransaction.from_json(JSON.stringify(proxy));
-    try {
-      return this.wallet
-        .sign_transaction(
-          ctx,
-          wasmtx,
-          ErgoBoxes.from_boxes_json(proxy.inputs),
-          ErgoBoxes.empty(),
-        )
-        .to_js_eip12();
-    } catch {
-      throw new Error('not be able to sign!');
-    }
-  }
-
-  async submit(tx: ErgoTx): Promise<ErgoTx> {
-    const txId = await this.nodeService.postTransaction(tx);
-    return {
-      ...tx,
-      id: txId,
-    };
-  }
-
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-expect-error
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  signInput(tx: UnsignedErgoTx, input: number): Promise<TxInput> {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-expect-error
-    return;
-  }
 }
 
 export class Ergo {
   private _assetMap: Record<string, ErgoAsset> = {};
   private static _instances: LRUCache<string, Ergo>;
   private _chain: string = 'ergo';
-  private _network: string;
+  private _network: ErgoNetwork;
   private _networkPrefix: NetworkPrefix;
   private _node: NodeService;
   private _explorer: Explorer;
@@ -224,17 +83,14 @@ export class Ergo {
   private poolLimit: number;
   private ammPools: Array<Pool> = [];
 
-  constructor(network: string) {
-    if (network !== 'Mainnet' && network !== 'Testnet')
-      throw new Error('network should be `Mainnet` or `Testnet`');
-    const config = getErgoConfig(network);
-
-    if (network === 'Mainnet') {
-      this._networkPrefix = NetworkPrefix.Mainnet;
-    } else {
-      this._networkPrefix = NetworkPrefix.Testnet;
+  constructor(network: ErgoNetwork) {
+    if (network !== 'mainnet' && network !== 'testnet') {
+      throw new Error('network should be `mainnet` or `testnet`');
     }
 
+    const config = getErgoConfig(network);
+
+    this._networkPrefix = config.network.networkPrefix;
     this._network = network;
     this._node = new NodeService(
       config.network.nodeURL,
@@ -255,15 +111,17 @@ export class Ergo {
     return this._node;
   }
 
-  public get network(): string {
+  public get network(): ErgoNetwork {
     return this._network;
   }
 
   public get storedAssetList(): Array<ErgoAsset> {
+    console.log(this._assetMap);
+
     return Object.values(this._assetMap);
   }
 
-  public get ready(): boolean {
+  public ready(): boolean {
     return this._ready;
   }
 
@@ -296,9 +154,11 @@ export class Ergo {
    * @function
    * @static
    */
-  public static getInstance(network: string): Ergo {
-    if (network !== 'Mainnet' && network !== 'Testnet')
-      throw new Error('network should be `Mainnet` or `Testnet`');
+  public static getInstance(network: ErgoNetwork): Ergo {
+    if (network !== 'mainnet' && network !== 'testnet') {
+      throw new Error('network should be `mainnet` or `testnet`');
+    }
+
     const config = getErgoConfig(network);
 
     if (!Ergo._instances) {
@@ -517,6 +377,7 @@ export class Ergo {
       BigInt(0),
     );
     const assets: Record<string, bigint> = {};
+
     utxos.forEach((box) => {
       box.assets.forEach((asset) => {
         if (Object.keys(assets).includes(asset.tokenId))
@@ -524,6 +385,7 @@ export class Ergo {
         else assets[asset.tokenId] = BigInt(asset.amount);
       });
     });
+
     return { balance, assets };
   }
 
@@ -547,6 +409,7 @@ export class Ergo {
   private async loadPools(): Promise<void> {
     let offset = 0;
     let pools: Array<Pool> = await this.getPoolData(this.poolLimit, offset);
+
     while (pools.length > 0) {
       for (const pool of pools) {
         if (!this.ammPools.filter((ammPool) => ammPool.id === pool.id).length) {
@@ -562,12 +425,14 @@ export class Ergo {
   public async loadPool(poolId: string): Promise<void> {
     await RustModule.load(true);
     const pool = await this.getPool(poolId);
-    if (!pool)
+
+    if (!pool) {
       this.ammPools.push(
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-expect-error
         new Pool(await makeNativePools(this._explorer).get(poolId)),
       );
+    }
   }
 
   private async getPoolData(limit: number, offset: number): Promise<any> {
@@ -575,6 +440,7 @@ export class Ergo {
       limit,
       offset,
     });
+
     return AmmPool;
   }
 
@@ -599,7 +465,7 @@ export class Ergo {
     const config = getErgoConfig(this.network);
     const networkContext = await this._explorer.getNetworkContext();
     const mainnetTxAssembler = new DefaultTxAssembler(
-      this.network === 'Mainnet',
+      this.network === 'mainnet',
     );
     const poolActions = makeWrappedNativePoolActionsSelector(
       output_address,
@@ -685,8 +551,8 @@ export class Ergo {
       return_address,
       config.network.defaultMinerFee,
     );
-
     const actions = poolActions(pool);
+
     return await actions.swap(swapParams, txContext);
   }
 
@@ -761,6 +627,7 @@ export class Ergo {
       inputAmount: from,
       slippage: slippage || config.network.defaultSlippage,
     });
+
     return minOutput;
   }
 
@@ -782,5 +649,9 @@ export class Ergo {
 
   public getPool(id: string): Pool {
     return <Pool>this.ammPools.find((ammPool) => ammPool.id === id);
+  }
+
+  public async getTx(id: string): Promise<ErgoTx> {
+    return await this._node.getTxsById(id);
   }
 }

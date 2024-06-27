@@ -1,5 +1,7 @@
 import { ErgoTreeHex, NonMandatoryRegisters } from '@fleet-sdk/common';
 
+export type ErgoNetwork = string | 'mainnet' | 'testnet';
+
 export type BoxType = {
   boxId: string;
   ergoTree: ErgoTreeHex;

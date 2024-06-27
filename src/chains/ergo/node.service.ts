@@ -3,12 +3,13 @@ import {
   NodeChainSliceResponse,
   NodeInfoResponse,
 } from './interfaces/node.interface';
-import { NodeErgoBoxResponse, NodeErgoPostTxResponse } from "./types/node.type";
+import { NodeErgoBoxResponse, NodeErgoPostTxResponse } from './types/node.type';
 import {
   BlockHeaders,
   ErgoStateContext,
   PreHeader,
 } from 'ergo-lib-wasm-nodejs';
+import { ErgoTx } from '@patternglobal/ergo-sdk';
 
 /**
  * This class allows you to access elements of a node
@@ -101,5 +102,8 @@ export class NodeService {
       { 'Content-Type': 'text/plain' },
       tx,
     );
+  }
+  async getTxsById(id: string): Promise<ErgoTx> {
+    return this.request<ErgoTx>('GET', `/blockchain/transaction/byId/${id}`);
   }
 }

@@ -1,6 +1,7 @@
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { NetworkPrefix } from 'ergo-lib-wasm-nodejs';
 import { ErgoConfig } from './interfaces/ergo.interface';
+import { ErgoNetwork } from './types/ergo.type';
 
 /**
  *  This function return configuration for Ergo
@@ -8,34 +9,36 @@ import { ErgoConfig } from './interfaces/ergo.interface';
  * @returns ErgoConfig
  * @function
  */
-export function getErgoConfig(network: string): ErgoConfig {
+export function getErgoConfig(network: ErgoNetwork): ErgoConfig {
+  const configManager = ConfigManagerV2.getInstance();
+
   return {
     network: {
       name: network,
-      nodeURL: ConfigManagerV2.getInstance().get(
-        'ergo.networks.' + network + '.nodeURL',
+      nodeURL: configManager.get(`ergo.networks.${network}.nodeURL`),
+      explorerURL: configManager.get(`ergo.networks.${network}.explorerURL`),
+      explorerDEXURL: configManager.get(
+        `ergo.networks.${network}.explorerDEXURL`,
       ),
-      explorerURL: ConfigManagerV2.getInstance().get(
-        'ergo.networks.' + network + '.explorerURL',
-      ),
-      explorerDEXURL: ConfigManagerV2.getInstance().get(
-        'ergo.networks.' + network + '.explorerDEXURL',
-      ),
-      timeOut: ConfigManagerV2.getInstance().get(
-        'ergo.networks.' + network + '.timeOut',
-      ),
+      timeOut: configManager.get(`ergo.networks.${network}.timeOut`),
       networkPrefix:
-        network === 'Mainnet' ? NetworkPrefix.Mainnet : NetworkPrefix.Testnet,
-      minTxFee: ConfigManagerV2.getInstance().get(
-        'ergo.networks.' + network + '.minTxFee',
+        network === 'mainnet' ? NetworkPrefix.Mainnet : NetworkPrefix.Testnet,
+      minTxFee: configManager.get(`ergo.networks.${network}.minTxFee`),
+      maxLRUCacheInstances: configManager.get(
+        `ergo.networks.${network}.maxLRUCacheInstances`,
       ),
-      maxLRUCacheInstances: 10,
-      utxosLimit: 100,
-      poolLimit: 100,
-      defaultSlippage: 3,
-      defaultMinerFee: BigInt(2_000_000),
-      minNitro: 1.2,
-      minBoxValue: BigInt(400_000),
+      utxosLimit: configManager.get(`ergo.networks.${network}.utxosLimit`),
+      poolLimit: configManager.get(`ergo.networks.${network}.poolLimit`),
+      defaultSlippage: configManager.get(
+        `ergo.networks.${network}.defaultSlippage`,
+      ),
+      defaultMinerFee: BigInt(
+        configManager.get(`ergo.networks.${network}.defaultMinerFee`),
+      ),
+      minNitro: configManager.get(`ergo.networks.${network}.minNitro`),
+      minBoxValue: BigInt(
+        configManager.get(`ergo.networks.${network}.minBoxValue`),
+      ),
     },
   };
 }
