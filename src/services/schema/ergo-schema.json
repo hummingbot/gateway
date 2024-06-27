@@ -22,6 +22,27 @@
             },
             "minTxFee": {
               "type": "number"
+            },
+            "maxLRUCacheInstances": {
+              "type": "number"
+            },
+            "utxosLimit": {
+              "type": "number"
+            },
+            "poolLimit": {
+              "type": "number"
+            },
+            "defaultSlippage": {
+              "type": "number"
+            },
+            "defaultMinerFee": {
+              "type": "number"
+            },
+            "minNitro": {
+              "type": "number"
+            },
+            "minBoxValue": {
+              "type": "number"
             }
           },
           "required": [
@@ -29,7 +50,14 @@
             "explorerURL",
             "explorerDEXURL",
             "timeOut",
-            "minTxFee"
+            "minTxFee",
+            "maxLRUCacheInstances",
+            "utxosLimit",
+            "poolLimit",
+            "defaultSlippage",
+            "defaultMinerFee",
+            "minNitro",
+            "minBoxValue"
           ],
           "additionalProperties": false
         }

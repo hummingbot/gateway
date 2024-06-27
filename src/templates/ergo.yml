@@ -5,3 +5,10 @@ networks:
     explorerDEXURL: "https://spectrum.fi/"
     timeOut: 30000
     minTxFee: 1000000
+    maxLRUCacheInstances: 10
+    utxosLimit: 100
+    poolLimit: 100
+    defaultSlippage: 3
+    defaultMinerFee: 2000000
+    minNitro: 1.2
+    minBoxValue: 400000
