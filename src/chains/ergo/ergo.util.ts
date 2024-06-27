@@ -25,7 +25,6 @@ export function getBaseInputParameters(
       ? pool.x.withAmount(inputAmount.amount)
       : pool.y.withAmount(inputAmount.amount);
   const minOutput = pool.outputAmount(baseInputAmount as any, slippage);
-
   return {
     baseInput: baseInputAmount as any,
     baseInputAmount: inputAmount.amount,

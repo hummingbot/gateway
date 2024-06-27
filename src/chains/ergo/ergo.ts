@@ -116,8 +116,6 @@ export class Ergo {
   }
 
   public get storedAssetList(): Array<ErgoAsset> {
-    console.log(this._assetMap);
-
     return Object.values(this._assetMap);
   }
 
@@ -427,11 +425,10 @@ export class Ergo {
     const pool = await this.getPool(poolId);
 
     if (!pool) {
-      this.ammPools.push(
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-expect-error
-        new Pool(await makeNativePools(this._explorer).get(poolId)),
-      );
+      const new_pool = await makeNativePools(this._explorer).get(poolId);
+      if (!new_pool)
+        throw new Error(`can not get pool with this id: ${poolId}`);
+      this.ammPools.push(new Pool(pool));
     }
   }
 
@@ -503,14 +500,11 @@ export class Ergo {
       },
     );
     const swapVariables: [number, SwapExtremums] | undefined = swapVars(
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-expect-error
-      config.network.defaultMinerFee * 3n,
+      config.network.defaultMinerFee * BigInt(3),
       config.network.minNitro,
       minOutput,
     );
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-expect-error
+    if (!swapVariables) throw new Error('error in swap vars!');
     const [exFeePerToken, extremum] = swapVariables;
     const inputs = getInputs(
       utxos.map((utxo) => {
@@ -530,11 +524,11 @@ export class Ergo {
         exFee: extremum.maxExFee,
       },
     );
+    const pk = publicKeyFromAddress(output_address);
+    if (!pk) throw new Error(`output_address is not defined.`);
     const swapParams: SwapParams<NativeExFeeType> = {
       poolId: pool.id,
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-expect-error
-      pk: publicKeyFromAddress(output_address),
+      pk,
       baseInput,
       minQuoteOutput: extremum.minOutput.amount,
       exFeePerToken,
@@ -603,8 +597,6 @@ export class Ergo {
       asset: {
         id: sell ? pool.x.asset.id : pool.y.asset.id,
       },
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
       amount,
     };
     const from = {
