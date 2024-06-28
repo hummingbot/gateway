@@ -25,7 +25,6 @@ export function getBaseInputParameters(
       ? pool.x.withAmount(inputAmount.amount)
       : pool.y.withAmount(inputAmount.amount);
   const minOutput = pool.outputAmount(baseInputAmount as any, slippage);
-
   return {
     baseInput: baseInputAmount as any,
     baseInputAmount: inputAmount.amount,
@@ -37,7 +36,6 @@ export function getInputs(
   utxos: ErgoBox[],
   assets: AssetAmount[],
   fees: { minerFee: bigint; uiFee: bigint; exFee: bigint },
-  minBoxValue: bigint,
   ignoreMinBoxValue?: boolean,
   setup?: boolean,
 ): BoxSelection {
@@ -52,10 +50,7 @@ export function getInputs(
   }
 
   const target = makeTarget(assets, minFeeForOrder);
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-expect-error
-  const inputs = DefaultBoxSelector.select(utxos, target, minBoxValue);
-
+  const inputs = DefaultBoxSelector.select(utxos, target);
   if (inputs instanceof InsufficientInputs) {
     throw new Error(
       `Error in getInputs function: InsufficientInputs -> ${inputs}`,

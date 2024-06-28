@@ -116,8 +116,6 @@ export class Ergo {
   }
 
   public get storedAssetList(): Array<ErgoAsset> {
-    console.log(this._assetMap);
-
     return Object.values(this._assetMap);
   }
 
@@ -427,11 +425,10 @@ export class Ergo {
     const pool = await this.getPool(poolId);
 
     if (!pool) {
-      this.ammPools.push(
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-expect-error
-        new Pool(await makeNativePools(this._explorer).get(poolId)),
-      );
+      const new_pool = await makeNativePools(this._explorer).get(poolId);
+      if (!new_pool)
+        throw new Error(`can not get pool with this id: ${poolId}`);
+      this.ammPools.push(new Pool(pool));
     }
   }
 
@@ -455,8 +452,7 @@ export class Ergo {
   private async swap(
     account: ErgoAccount,
     pool: Pool,
-    x_amount: bigint,
-    y_amount: bigint,
+    amount: bigint,
     output_address: string,
     return_address: string,
     slippage: number,
@@ -478,13 +474,13 @@ export class Ergo {
         id: sell ? pool.x.asset.id : pool.y.asset.id,
         decimals: sell ? pool.x.asset.decimals : pool.y.asset.decimals,
       },
-      amount: sell ? x_amount : y_amount,
+      amount: amount,
     };
     const max_to = {
       asset: {
         id: sell ? pool.x.asset.id : pool.y.asset.id,
       },
-      amount: sell ? x_amount : y_amount,
+      amount: amount,
     };
     const from = {
       asset: {
@@ -496,6 +492,8 @@ export class Ergo {
         slippage || config.network.defaultSlippage,
       ).amount,
     };
+    if (from.amount === BigInt(0))
+      throw new Error(`${amount} asset from ${max_to.asset.id} is not enough!`);
     const { baseInput, baseInputAmount, minOutput } = getBaseInputParameters(
       pool,
       {
@@ -504,14 +502,11 @@ export class Ergo {
       },
     );
     const swapVariables: [number, SwapExtremums] | undefined = swapVars(
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-expect-error
-      config.network.defaultMinerFee * 3n,
+      config.network.defaultMinerFee * BigInt(3),
       config.network.minNitro,
       minOutput,
     );
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-expect-error
+    if (!swapVariables) throw new Error('error in swap vars!');
     const [exFeePerToken, extremum] = swapVariables;
     const inputs = getInputs(
       utxos.map((utxo) => {
@@ -527,20 +522,19 @@ export class Ergo {
       [new AssetAmount(from.asset, baseInputAmount)],
       {
         minerFee: config.network.defaultMinerFee,
-        uiFee: BigInt(sell ? y_amount : x_amount),
+        uiFee: config.network.defaultMinerFee,
         exFee: extremum.maxExFee,
       },
-      config.network.minBoxValue,
     );
+    const pk = publicKeyFromAddress(output_address);
+    if (!pk) throw new Error(`output_address is not defined.`);
     const swapParams: SwapParams<NativeExFeeType> = {
       poolId: pool.id,
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-expect-error
-      pk: publicKeyFromAddress(output_address),
+      pk,
       baseInput,
       minQuoteOutput: extremum.minOutput.amount,
       exFeePerToken,
-      uiFee: BigInt(sell ? y_amount : x_amount),
+      uiFee: config.network.defaultMinerFee,
       quoteAsset: to.asset.id,
       poolFeeNum: pool.poolFeeNum,
       maxExFee: extremum.maxExFee,
@@ -559,8 +553,7 @@ export class Ergo {
   public async buy(
     account: ErgoAccount,
     pool: Pool,
-    x_amount: bigint,
-    y_amount: bigint,
+    amount: bigint,
     output_address: string,
     return_address: string,
     slippage: number,
@@ -568,8 +561,7 @@ export class Ergo {
     return await this.swap(
       account,
       pool,
-      x_amount,
-      y_amount,
+      amount,
       output_address,
       return_address,
       slippage,
@@ -580,8 +572,7 @@ export class Ergo {
   public async sell(
     account: ErgoAccount,
     pool: Pool,
-    x_amount: bigint,
-    y_amount: bigint,
+    amount: bigint,
     output_address: string,
     return_address: string,
     slippage: number,
@@ -589,8 +580,7 @@ export class Ergo {
     return await this.swap(
       account,
       pool,
-      x_amount,
-      y_amount,
+      amount,
       output_address,
       return_address,
       slippage,
@@ -609,8 +599,6 @@ export class Ergo {
       asset: {
         id: sell ? pool.x.asset.id : pool.y.asset.id,
       },
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
       amount,
     };
     const from = {
