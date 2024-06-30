@@ -428,7 +428,7 @@ export class Ergo {
       const new_pool = await makeNativePools(this._explorer).get(poolId);
       if (!new_pool)
         throw new Error(`can not get pool with this id: ${poolId}`);
-      this.ammPools.push(new Pool(pool));
+      this.ammPools.push(new Pool(new_pool));
     }
   }
 
@@ -451,13 +451,17 @@ export class Ergo {
 
   private async swap(
     account: ErgoAccount,
-    pool: Pool,
+    baseToken: string,
+    quoteToken: string,
     amount: bigint,
     output_address: string,
     return_address: string,
     slippage: number,
     sell: boolean,
   ): Promise<ErgoTx> {
+    const pool = this.getPoolByToken(baseToken, quoteToken);
+    if (!pool)
+      throw new Error(`pool not found base on ${baseToken}, ${quoteToken}`);
     const config = getErgoConfig(this.network);
     const networkContext = await this._explorer.getNetworkContext();
     const mainnetTxAssembler = new DefaultTxAssembler(
@@ -552,7 +556,8 @@ export class Ergo {
 
   public async buy(
     account: ErgoAccount,
-    pool: Pool,
+    baseToken: string,
+    quoteToken: string,
     amount: bigint,
     output_address: string,
     return_address: string,
@@ -560,7 +565,8 @@ export class Ergo {
   ): Promise<ErgoTx> {
     return await this.swap(
       account,
-      pool,
+      baseToken,
+      quoteToken,
       amount,
       output_address,
       return_address,
@@ -571,7 +577,8 @@ export class Ergo {
 
   public async sell(
     account: ErgoAccount,
-    pool: Pool,
+    baseToken: string,
+    quoteToken: string,
     amount: bigint,
     output_address: string,
     return_address: string,
@@ -579,7 +586,8 @@ export class Ergo {
   ): Promise<ErgoTx> {
     return await this.swap(
       account,
-      pool,
+      baseToken,
+      quoteToken,
       amount,
       output_address,
       return_address,
@@ -589,11 +597,15 @@ export class Ergo {
   }
 
   private async estimate(
-    pool: Pool,
+    baseToken: string,
+    quoteToken: string,
     amount: bigint,
     slippage: number,
     sell: boolean,
   ): Promise<AssetAmount> {
+    const pool = this.getPoolByToken(baseToken, quoteToken);
+    if (!pool)
+      throw new Error(`pool not found base on ${baseToken}, ${quoteToken}`);
     const config = getErgoConfig(this.network);
     const max_to = {
       asset: {
@@ -620,23 +632,43 @@ export class Ergo {
   }
 
   public async estimateBuy(
-    pool: Pool,
+    baseToken: string,
+    quoteToken: string,
     y_amount: bigint,
     slippage: number,
   ): Promise<AssetAmount> {
-    return await this.estimate(pool, y_amount, slippage, false);
+    return await this.estimate(
+      baseToken,
+      quoteToken,
+      y_amount,
+      slippage,
+      false,
+    );
   }
 
   public async estimateSell(
-    pool: Pool,
+    baseToken: string,
+    quoteToken: string,
     x_amount: bigint,
     slippage: number,
   ): Promise<AssetAmount> {
-    return await this.estimate(pool, x_amount, slippage, true);
+    return await this.estimate(baseToken, quoteToken, x_amount, slippage, true);
   }
 
   public getPool(id: string): Pool {
     return <Pool>this.ammPools.find((ammPool) => ammPool.id === id);
+  }
+
+  public getPoolByToken(baseToken: string, quoteToken: string): Pool {
+    return <Pool>(
+      this.ammPools.find(
+        (ammPool) =>
+          (ammPool.x.asset.id === baseToken &&
+            ammPool.y.asset.id === quoteToken) ||
+          (ammPool.x.asset.id === quoteToken &&
+            ammPool.y.asset.id === baseToken),
+      )
+    );
   }
 
   public async getTx(id: string): Promise<ErgoTx> {
