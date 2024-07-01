@@ -456,8 +456,8 @@ export class Ergo {
     amount: bigint,
     output_address: string,
     return_address: string,
-    slippage: number,
     sell: boolean,
+    slippage?: number,
   ): Promise<ErgoTx> {
     const pool = this.getPoolByToken(baseToken, quoteToken);
     if (!pool)
@@ -561,7 +561,7 @@ export class Ergo {
     amount: bigint,
     output_address: string,
     return_address: string,
-    slippage: number,
+    slippage?: number,
   ): Promise<ErgoTx> {
     return await this.swap(
       account,
@@ -570,8 +570,8 @@ export class Ergo {
       amount,
       output_address,
       return_address,
-      slippage,
       false,
+      slippage,
     );
   }
 
@@ -582,7 +582,7 @@ export class Ergo {
     amount: bigint,
     output_address: string,
     return_address: string,
-    slippage: number,
+    slippage?: number,
   ): Promise<ErgoTx> {
     return await this.swap(
       account,
@@ -591,8 +591,8 @@ export class Ergo {
       amount,
       output_address,
       return_address,
-      slippage,
       true,
+      slippage,
     );
   }
 
@@ -600,8 +600,8 @@ export class Ergo {
     baseToken: string,
     quoteToken: string,
     amount: bigint,
-    slippage: number,
     sell: boolean,
+    slippage?: number,
   ): Promise<AssetAmount> {
     const pool = this.getPoolByToken(baseToken, quoteToken);
     if (!pool)
@@ -635,14 +635,14 @@ export class Ergo {
     baseToken: string,
     quoteToken: string,
     y_amount: bigint,
-    slippage: number,
+    slippage?: number,
   ): Promise<AssetAmount> {
     return await this.estimate(
       baseToken,
       quoteToken,
       y_amount,
-      slippage,
       false,
+      slippage,
     );
   }
 
@@ -650,9 +650,9 @@ export class Ergo {
     baseToken: string,
     quoteToken: string,
     x_amount: bigint,
-    slippage: number,
+    slippage?: number,
   ): Promise<AssetAmount> {
-    return await this.estimate(baseToken, quoteToken, x_amount, slippage, true);
+    return await this.estimate(baseToken, quoteToken, x_amount, true, slippage);
   }
 
   public getPool(id: string): Pool {
