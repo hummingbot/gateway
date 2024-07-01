@@ -24,6 +24,7 @@ import { KujiraConfig } from './kujira/kujira.config';
 import { QuipuswapConfig } from './quipuswap/quipuswap.config';
 import { OsmosisConfig } from '../chains/osmosis/osmosis.config';
 import { CarbonConfig } from './carbon/carbon.config';
+import { SpectrumConfig } from './spectrum/spectrum.config';
 
 export namespace ConnectorsRoutes {
   export const router = Router();
@@ -44,7 +45,7 @@ export namespace ConnectorsRoutes {
             trading_type: UniswapConfig.config.tradingTypes('LP'),
             chain_type: UniswapConfig.config.chainType,
             available_networks: JSON.parse(
-              JSON.stringify(UniswapConfig.config.availableNetworks)
+              JSON.stringify(UniswapConfig.config.availableNetworks),
             ),
             additional_spenders: ['uniswap'],
           },
@@ -183,8 +184,14 @@ export namespace ConnectorsRoutes {
             chain_type: CarbonConfig.config.chainType,
             available_networks: CarbonConfig.config.availableNetworks,
           },
+          {
+            name: 'spectrum',
+            trading_type: SpectrumConfig.config.tradingTypes,
+            chain_type: SpectrumConfig.config.chainType,
+            available_networks: SpectrumConfig.config.availableNetworks,
+          },
         ],
       });
-    })
+    }),
   );
 }
