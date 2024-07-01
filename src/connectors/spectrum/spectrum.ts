@@ -1,6 +1,10 @@
 import { SpectrumConfig } from './spectrum.config';
 import { Ergo } from '../../chains/ergo/ergo';
-import { ErgoAsset } from '../../chains/ergo/interfaces/ergo.interface';
+import {
+  ErgoAccount,
+  ErgoAsset,
+} from '../../chains/ergo/interfaces/ergo.interface';
+import { Trade } from 'swap-router-sdk';
 
 export class Spectrum {
   private static _instances: { [name: string]: Spectrum };
@@ -68,12 +72,19 @@ export class Spectrum {
    * @param quoteToken Output from the transaction
    * @param amount Amount of `baseToken` to put into the transaction
    */
-  // async estimateSellTrade(
-  //   baseToken: Token,
-  //   quoteToken: Token,
-  //   amount: BigNumber,
-  //   allowedSlippage?: string,
-  // ): Promise<ExpectedTrade> {}
+  async estimateSellTrade(
+    baseToken: string,
+    quoteToken: string,
+    amount: bigint,
+    allowedSlippage?: string,
+  ) {
+    return this.ergo.estimateSell(
+      baseToken,
+      quoteToken,
+      amount,
+      Number(allowedSlippage),
+    );
+  }
 
   /**
    * Given the amount of `baseToken` desired to acquire from a transaction,
@@ -85,38 +96,39 @@ export class Spectrum {
    * @param baseToken Token output from the transaction
    * @param amount Amount of `baseToken` desired from the transaction
    */
-  // async estimateBuyTrade(
-  //   quoteToken: Token,
-  //   baseToken: Token,
-  //   amount: BigNumber,
-  //   allowedSlippage?: string,
-  // ): Promise<ExpectedTrade> {}
+  async estimateBuyTrade(
+    baseToken: string,
+    quoteToken: string,
+    amount: bigint,
+    allowedSlippage?: string,
+  ) {
+    return this.ergo.estimateBuy(
+      baseToken,
+      quoteToken,
+      amount,
+      Number(allowedSlippage),
+    );
+  }
 
   /**
-   * Given a wallet and a Uniswap-ish trade, try to execute it on blockchain.
+   * Given a wallet and a Ergo trade, try to execute it on blockchain.
    *
    * @param wallet Wallet
    * @param trade Expected trade
-   * @param gasPrice Base gas price, for pre-EIP1559 transactions
-   * @param pangolinRouter smart contract address
-   * @param ttl How long the swap is valid before expiry, in seconds
-   * @param abi Router contract ABI
-   * @param gasLimit Gas limit
-   * @param nonce (Optional) EVM transaction nonce
-   * @param maxFeePerGas (Optional) Maximum total fee per gas you want to pay
-   * @param maxPriorityFeePerGas (Optional) Maximum tip per gas you want to pay
    */
-  // async executeTrade(
-  //   wallet: Wallet,
-  //   trade: Trade,
-  //   gasPrice: number,
-  //   pangolinRouter: string,
-  //   ttl: number,
-  //   abi: ContractInterface,
-  //   gasLimit: number,
-  //   nonce?: number,
-  //   maxFeePerGas?: BigNumber,
-  //   maxPriorityFeePerGas?: BigNumber,
-  //   allowedSlippage?: string,
-  // ): Promise<Transaction> {}
+  async executeTrade(
+    wallet: ErgoAccount,
+    trade: Trade,
+    allowedSlippage?: string,
+  ) {
+    return this.ergo.buy(
+      wallet,
+      trade[0].aTokenSlug,
+      trade[0].bTokenSlug,
+      BigInt(trade[0].aTokenAmount.toString()),
+      wallet.address,
+      wallet.address,
+      Number(allowedSlippage),
+    );
+  }
 }
