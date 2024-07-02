@@ -44,7 +44,6 @@ export namespace WalletRoutes {
         res: Response<AddWalletResponse, {}>
       ) => {
         validateAddWalletRequest(req.body);
-        console.log('love you');
         res.status(200).json(await addWallet(req.body));
       }
     )
