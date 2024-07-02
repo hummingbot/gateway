@@ -35,6 +35,7 @@ import {
 import { Ethereumish, Tezosish } from '../common-interfaces';
 import { Algorand } from '../../chains/algorand/algorand';
 import { Osmosis } from '../../chains/osmosis/osmosis';
+import { Ergo } from '../../chains/ergo/ergo';
 
 export function convertXdcAddressToEthAddress(publicKey: string): string {
   return publicKey.length === 43 && publicKey.slice(0, 3) === 'xdc'
@@ -157,6 +158,15 @@ export async function addWallet(
         req.privateKey,
         passphrase
       );
+    } else if (connection instanceof Ergo) {
+      const account = connection.getAccountFromMnemonic(req.privateKey);
+      console.log(account)
+      address = account.address;
+      encryptedPrivateKey = await connection.encrypt(
+        req.privateKey,
+        passphrase,
+      );
+      console.log(encryptedPrivateKey);
     }
 
     if (address === undefined || encryptedPrivateKey === undefined) {

@@ -23,6 +23,7 @@ export interface PollRequest {
 
 export interface BalanceRequest extends NetworkSelectionRequest {
   address: string; // the users public key
+  privateKey: string;
 }
 
 export interface AssetsResponse {

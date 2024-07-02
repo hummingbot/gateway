@@ -35,8 +35,8 @@ export class ErgoController {
     if (!chain.ready) {
       await chain.init();
     }
-
-    const utxos = await chain.getAddressUnspentBoxes(request.address);
+    const address = chain.getAccountFromMnemonic(request.privateKey);
+    const utxos = await chain.getAddressUnspentBoxes(address.address);
     const { balance, assets } = chain.getBalance(utxos);
 
     return {
