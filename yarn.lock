@@ -665,6 +665,34 @@
     "@babel/helper-validator-identifier" "^7.22.20"
     to-fast-properties "^2.0.0"
 
+"@balancer-labs/sdk@^1.1.5":
+  version "1.1.5"
+  resolved "https://registry.yarnpkg.com/@balancer-labs/sdk/-/sdk-1.1.5.tgz#29e70d15d7e98899831b18d8b909b6569e062758"
+  integrity sha512-Hxmo1u8qJureQxdbVAMAkN9qceeZxcKx4QjoevTDMrSGY5H9jc1hX18p9TTZXwlGAkw8n4rdErydUgsdWjWuLA==
+  dependencies:
+    "@balancer-labs/sor" "^4.1.1-beta.16"
+    "@ethersproject/abi" "^5.4.0"
+    "@ethersproject/abstract-signer" "^5.4.0"
+    "@ethersproject/address" "^5.4.0"
+    "@ethersproject/base64" "5.5.0"
+    "@ethersproject/bignumber" "^5.4.0"
+    "@ethersproject/bytes" "^5.4.0"
+    "@ethersproject/constants" "^5.4.0"
+    "@ethersproject/contracts" "^5.4.0"
+    "@ethersproject/providers" "^5.4.5"
+    axios "^0.24.0"
+    graphql "^15.6.1"
+    graphql-request "^3.5.0"
+    json-to-graphql-query "^2.2.4"
+    lodash "^4.17.21"
+
+"@balancer-labs/sor@^4.1.1-beta.16":
+  version "4.1.1-beta.17"
+  resolved "https://registry.yarnpkg.com/@balancer-labs/sor/-/sor-4.1.1-beta.17.tgz#8c404a86174003cccf2bb87d49221cfdcf083246"
+  integrity sha512-JcX/HeppyoIs+Sa3Z/pdZhqMOBAGajOwVkBkFA8rehd1K2qaU/k/a3OkbIidXjs4lQI9sJE1WO8RauCLtuLQfg==
+  dependencies:
+    isomorphic-fetch "^2.2.1"
+
 "@bancor/carbon-sdk@^0.0.93-DEV":
   version "0.0.93-DEV"
   resolved "https://registry.yarnpkg.com/@bancor/carbon-sdk/-/carbon-sdk-0.0.93-DEV.tgz#2071f1dc03c25c3897fd4cd9133f9345abdeb2db"
@@ -1430,7 +1458,7 @@
     bufio "^1.0.7"
     chai "^4.3.4"
 
-"@eth-optimism/core-utils@0.13.2":
+"@eth-optimism/core-utils@^0.13.2":
   version "0.13.2"
   resolved "https://registry.yarnpkg.com/@eth-optimism/core-utils/-/core-utils-0.13.2.tgz#c0187c3abf6d86dad039edf04ff81299253214fe"
   integrity sha512-u7TOKm1RxH1V5zw7dHmfy91bOuEAZU68LT/9vJPkuWEjaTl+BgvPDRDTurjzclHzN0GbWdcpOqPZg4ftjkJGaw==
@@ -1451,12 +1479,12 @@
     node-fetch "^2.6.7"
 
 "@eth-optimism/sdk@^3.2.2":
-  version "3.3.1"
-  resolved "https://registry.yarnpkg.com/@eth-optimism/sdk/-/sdk-3.3.1.tgz#f72b6f93b58e2a2943f10aca3be91dfc23d9839f"
-  integrity sha512-zf8qL+KwYWUUwvdcjF1HpBxgKSt5wsKr8oa6jwqUhdPkQHUtVK5SRKtqXqYplnAgKtxDQYwlK512GU16odEl1w==
+  version "3.3.2"
+  resolved "https://registry.yarnpkg.com/@eth-optimism/sdk/-/sdk-3.3.2.tgz#68a5f6e77f9c85f6eeb9db8044b3b69199520eb0"
+  integrity sha512-+zhxT0YkBIEzHsuIayQGjr8g9NawZo6/HYfzg1NSEFsE2Yt0NyCWqVDFTuuak0T6AvIa2kNcl3r0Z8drdb2QmQ==
   dependencies:
     "@eth-optimism/contracts" "0.6.0"
-    "@eth-optimism/core-utils" "0.13.2"
+    "@eth-optimism/core-utils" "^0.13.2"
     lodash "^4.17.21"
     merkletreejs "^0.3.11"
     rlp "^2.2.7"
@@ -1497,137 +1525,137 @@
 "@ethersproject-xdc/abi@file:vendor/@ethersproject-xdc/abi":
   version "5.7.0"
   dependencies:
-    "@ethersproject-xdc/address" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-abi-5.7.0-aa87b390-5969-4aaa-952e-aacafc6a6008-1716742700389/node_modules/@ethersproject-xdc/address"
-    "@ethersproject-xdc/bignumber" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-abi-5.7.0-aa87b390-5969-4aaa-952e-aacafc6a6008-1716742700389/node_modules/@ethersproject-xdc/bignumber"
-    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-abi-5.7.0-aa87b390-5969-4aaa-952e-aacafc6a6008-1716742700389/node_modules/@ethersproject-xdc/bytes"
-    "@ethersproject-xdc/constants" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-abi-5.7.0-aa87b390-5969-4aaa-952e-aacafc6a6008-1716742700389/node_modules/@ethersproject-xdc/constants"
-    "@ethersproject-xdc/hash" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-abi-5.7.0-aa87b390-5969-4aaa-952e-aacafc6a6008-1716742700389/node_modules/@ethersproject-xdc/hash"
-    "@ethersproject-xdc/keccak256" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-abi-5.7.0-aa87b390-5969-4aaa-952e-aacafc6a6008-1716742700389/node_modules/@ethersproject-xdc/keccak256"
-    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-abi-5.7.0-aa87b390-5969-4aaa-952e-aacafc6a6008-1716742700389/node_modules/@ethersproject-xdc/logger"
-    "@ethersproject-xdc/properties" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-abi-5.7.0-aa87b390-5969-4aaa-952e-aacafc6a6008-1716742700389/node_modules/@ethersproject-xdc/properties"
-    "@ethersproject-xdc/strings" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-abi-5.7.0-aa87b390-5969-4aaa-952e-aacafc6a6008-1716742700389/node_modules/@ethersproject-xdc/strings"
+    "@ethersproject-xdc/address" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-abi-5.7.0-9cef3f56-45c7-4a72-ab20-e539401d9881-1720114215927/node_modules/@ethersproject-xdc/address"
+    "@ethersproject-xdc/bignumber" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-abi-5.7.0-9cef3f56-45c7-4a72-ab20-e539401d9881-1720114215927/node_modules/@ethersproject-xdc/bignumber"
+    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-abi-5.7.0-9cef3f56-45c7-4a72-ab20-e539401d9881-1720114215927/node_modules/@ethersproject-xdc/bytes"
+    "@ethersproject-xdc/constants" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-abi-5.7.0-9cef3f56-45c7-4a72-ab20-e539401d9881-1720114215927/node_modules/@ethersproject-xdc/constants"
+    "@ethersproject-xdc/hash" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-abi-5.7.0-9cef3f56-45c7-4a72-ab20-e539401d9881-1720114215927/node_modules/@ethersproject-xdc/hash"
+    "@ethersproject-xdc/keccak256" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-abi-5.7.0-9cef3f56-45c7-4a72-ab20-e539401d9881-1720114215927/node_modules/@ethersproject-xdc/keccak256"
+    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-abi-5.7.0-9cef3f56-45c7-4a72-ab20-e539401d9881-1720114215927/node_modules/@ethersproject-xdc/logger"
+    "@ethersproject-xdc/properties" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-abi-5.7.0-9cef3f56-45c7-4a72-ab20-e539401d9881-1720114215927/node_modules/@ethersproject-xdc/properties"
+    "@ethersproject-xdc/strings" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-abi-5.7.0-9cef3f56-45c7-4a72-ab20-e539401d9881-1720114215927/node_modules/@ethersproject-xdc/strings"
 
 "@ethersproject-xdc/abstract-provider@file:vendor/@ethersproject-xdc/abstract-provider":
   version "5.7.0"
   dependencies:
-    "@ethersproject-xdc/bignumber" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-abstract-provider-5.7.0-3a046c86-92e0-4c28-a4e6-cd227c3465b7-1716742700388/node_modules/@ethersproject-xdc/bignumber"
-    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-abstract-provider-5.7.0-3a046c86-92e0-4c28-a4e6-cd227c3465b7-1716742700388/node_modules/@ethersproject-xdc/bytes"
-    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-abstract-provider-5.7.0-3a046c86-92e0-4c28-a4e6-cd227c3465b7-1716742700388/node_modules/@ethersproject-xdc/logger"
-    "@ethersproject-xdc/networks" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-abstract-provider-5.7.0-3a046c86-92e0-4c28-a4e6-cd227c3465b7-1716742700388/node_modules/@ethersproject-xdc/networks"
-    "@ethersproject-xdc/properties" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-abstract-provider-5.7.0-3a046c86-92e0-4c28-a4e6-cd227c3465b7-1716742700388/node_modules/@ethersproject-xdc/properties"
-    "@ethersproject-xdc/transactions" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-abstract-provider-5.7.0-3a046c86-92e0-4c28-a4e6-cd227c3465b7-1716742700388/node_modules/@ethersproject-xdc/transactions"
-    "@ethersproject-xdc/web" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-abstract-provider-5.7.0-3a046c86-92e0-4c28-a4e6-cd227c3465b7-1716742700388/node_modules/@ethersproject-xdc/web"
+    "@ethersproject-xdc/bignumber" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-abstract-provider-5.7.0-a7ac0c11-43fb-4e10-b557-47d01d59de27-1720114215930/node_modules/@ethersproject-xdc/bignumber"
+    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-abstract-provider-5.7.0-a7ac0c11-43fb-4e10-b557-47d01d59de27-1720114215930/node_modules/@ethersproject-xdc/bytes"
+    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-abstract-provider-5.7.0-a7ac0c11-43fb-4e10-b557-47d01d59de27-1720114215930/node_modules/@ethersproject-xdc/logger"
+    "@ethersproject-xdc/networks" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-abstract-provider-5.7.0-a7ac0c11-43fb-4e10-b557-47d01d59de27-1720114215930/node_modules/@ethersproject-xdc/networks"
+    "@ethersproject-xdc/properties" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-abstract-provider-5.7.0-a7ac0c11-43fb-4e10-b557-47d01d59de27-1720114215930/node_modules/@ethersproject-xdc/properties"
+    "@ethersproject-xdc/transactions" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-abstract-provider-5.7.0-a7ac0c11-43fb-4e10-b557-47d01d59de27-1720114215930/node_modules/@ethersproject-xdc/transactions"
+    "@ethersproject-xdc/web" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-abstract-provider-5.7.0-a7ac0c11-43fb-4e10-b557-47d01d59de27-1720114215930/node_modules/@ethersproject-xdc/web"
 
 "@ethersproject-xdc/abstract-signer@file:vendor/@ethersproject-xdc/abstract-signer":
   version "5.7.0"
   dependencies:
-    "@ethersproject-xdc/abstract-provider" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-abstract-signer-5.7.0-846feb64-dfe3-4a52-8fce-addf602386a6-1716742700390/node_modules/@ethersproject-xdc/abstract-provider"
-    "@ethersproject-xdc/bignumber" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-abstract-signer-5.7.0-846feb64-dfe3-4a52-8fce-addf602386a6-1716742700390/node_modules/@ethersproject-xdc/bignumber"
-    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-abstract-signer-5.7.0-846feb64-dfe3-4a52-8fce-addf602386a6-1716742700390/node_modules/@ethersproject-xdc/bytes"
-    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-abstract-signer-5.7.0-846feb64-dfe3-4a52-8fce-addf602386a6-1716742700390/node_modules/@ethersproject-xdc/logger"
-    "@ethersproject-xdc/properties" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-abstract-signer-5.7.0-846feb64-dfe3-4a52-8fce-addf602386a6-1716742700390/node_modules/@ethersproject-xdc/properties"
+    "@ethersproject-xdc/abstract-provider" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-abstract-signer-5.7.0-7a853334-6c33-4501-a65a-10b6b8ced203-1720114215928/node_modules/@ethersproject-xdc/abstract-provider"
+    "@ethersproject-xdc/bignumber" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-abstract-signer-5.7.0-7a853334-6c33-4501-a65a-10b6b8ced203-1720114215928/node_modules/@ethersproject-xdc/bignumber"
+    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-abstract-signer-5.7.0-7a853334-6c33-4501-a65a-10b6b8ced203-1720114215928/node_modules/@ethersproject-xdc/bytes"
+    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-abstract-signer-5.7.0-7a853334-6c33-4501-a65a-10b6b8ced203-1720114215928/node_modules/@ethersproject-xdc/logger"
+    "@ethersproject-xdc/properties" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-abstract-signer-5.7.0-7a853334-6c33-4501-a65a-10b6b8ced203-1720114215928/node_modules/@ethersproject-xdc/properties"
 
 "@ethersproject-xdc/address@file:vendor/@ethersproject-xdc/address":
   version "5.7.0"
   dependencies:
-    "@ethersproject-xdc/bignumber" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-address-5.7.0-afc8779f-f1ec-4ae4-9ade-ceb87af59fa9-1716742700390/node_modules/@ethersproject-xdc/bignumber"
-    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-address-5.7.0-afc8779f-f1ec-4ae4-9ade-ceb87af59fa9-1716742700390/node_modules/@ethersproject-xdc/bytes"
-    "@ethersproject-xdc/keccak256" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-address-5.7.0-afc8779f-f1ec-4ae4-9ade-ceb87af59fa9-1716742700390/node_modules/@ethersproject-xdc/keccak256"
-    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-address-5.7.0-afc8779f-f1ec-4ae4-9ade-ceb87af59fa9-1716742700390/node_modules/@ethersproject-xdc/logger"
-    "@ethersproject-xdc/rlp" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-address-5.7.0-afc8779f-f1ec-4ae4-9ade-ceb87af59fa9-1716742700390/node_modules/@ethersproject-xdc/rlp"
+    "@ethersproject-xdc/bignumber" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-address-5.7.0-e75ce961-27f7-4b28-b0a6-13dc9e00de88-1720114215929/node_modules/@ethersproject-xdc/bignumber"
+    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-address-5.7.0-e75ce961-27f7-4b28-b0a6-13dc9e00de88-1720114215929/node_modules/@ethersproject-xdc/bytes"
+    "@ethersproject-xdc/keccak256" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-address-5.7.0-e75ce961-27f7-4b28-b0a6-13dc9e00de88-1720114215929/node_modules/@ethersproject-xdc/keccak256"
+    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-address-5.7.0-e75ce961-27f7-4b28-b0a6-13dc9e00de88-1720114215929/node_modules/@ethersproject-xdc/logger"
+    "@ethersproject-xdc/rlp" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-address-5.7.0-e75ce961-27f7-4b28-b0a6-13dc9e00de88-1720114215929/node_modules/@ethersproject-xdc/rlp"
 
 "@ethersproject-xdc/base64@file:vendor/@ethersproject-xdc/base64":
   version "5.7.0"
   dependencies:
-    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-base64-5.7.0-bb3aac40-d37d-456d-b07b-6ead22b17877-1716742700391/node_modules/@ethersproject-xdc/bytes"
+    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-base64-5.7.0-445ad505-ddc9-41d0-8be5-a7abe0f6e04a-1720114215930/node_modules/@ethersproject-xdc/bytes"
 
 "@ethersproject-xdc/basex@file:vendor/@ethersproject-xdc/basex":
   version "5.7.0"
   dependencies:
-    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-basex-5.7.0-7d7962e7-7f1f-4b94-a529-c745ddff1ea7-1716742700391/node_modules/@ethersproject-xdc/bytes"
-    "@ethersproject-xdc/properties" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-basex-5.7.0-7d7962e7-7f1f-4b94-a529-c745ddff1ea7-1716742700391/node_modules/@ethersproject-xdc/properties"
+    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-basex-5.7.0-35e6b7d3-22fd-4303-80c9-bcb225093f6d-1720114215931/node_modules/@ethersproject-xdc/bytes"
+    "@ethersproject-xdc/properties" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-basex-5.7.0-35e6b7d3-22fd-4303-80c9-bcb225093f6d-1720114215931/node_modules/@ethersproject-xdc/properties"
 
 "@ethersproject-xdc/bignumber@file:vendor/@ethersproject-xdc/bignumber":
   version "5.7.0"
   dependencies:
-    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-bignumber-5.7.0-ea305466-528a-4eab-af6c-61364509b627-1716742700392/node_modules/@ethersproject-xdc/bytes"
-    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-bignumber-5.7.0-ea305466-528a-4eab-af6c-61364509b627-1716742700392/node_modules/@ethersproject-xdc/logger"
+    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-bignumber-5.7.0-a12ad59c-88ca-47bb-8001-5b9a09ae7d58-1720114215932/node_modules/@ethersproject-xdc/bytes"
+    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-bignumber-5.7.0-a12ad59c-88ca-47bb-8001-5b9a09ae7d58-1720114215932/node_modules/@ethersproject-xdc/logger"
     bn.js "^5.2.1"
 
 "@ethersproject-xdc/bytes@file:vendor/@ethersproject-xdc/bytes":
   version "5.7.0"
   dependencies:
-    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-bytes-5.7.0-7f142b5d-50ed-4dca-a13b-440e106c6740-1716742700393/node_modules/@ethersproject-xdc/logger"
+    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-bytes-5.7.0-f3539b29-d9ed-4ae9-95db-4272c4689481-1720114215931/node_modules/@ethersproject-xdc/logger"
 
 "@ethersproject-xdc/constants@file:vendor/@ethersproject-xdc/constants":
   version "5.7.0"
   dependencies:
-    "@ethersproject-xdc/bignumber" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-constants-5.7.0-2faa18d5-6876-4ed4-bce7-f4ad6f148f8f-1716742700392/node_modules/@ethersproject-xdc/bignumber"
+    "@ethersproject-xdc/bignumber" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-constants-5.7.0-c969de8d-9e7c-449b-9ecb-463a93ca932a-1720114215934/node_modules/@ethersproject-xdc/bignumber"
 
 "@ethersproject-xdc/contracts@file:vendor/@ethersproject-xdc/contracts":
   version "5.6.0"
   dependencies:
-    "@ethersproject-xdc/abi" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-contracts-5.6.0-6b8dda08-74c6-4361-96b9-532cbe84d8cf-1716742700394/node_modules/@ethersproject-xdc/abi"
-    "@ethersproject-xdc/abstract-provider" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-contracts-5.6.0-6b8dda08-74c6-4361-96b9-532cbe84d8cf-1716742700394/node_modules/@ethersproject-xdc/abstract-provider"
-    "@ethersproject-xdc/abstract-signer" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-contracts-5.6.0-6b8dda08-74c6-4361-96b9-532cbe84d8cf-1716742700394/node_modules/@ethersproject-xdc/abstract-signer"
-    "@ethersproject-xdc/address" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-contracts-5.6.0-6b8dda08-74c6-4361-96b9-532cbe84d8cf-1716742700394/node_modules/@ethersproject-xdc/address"
-    "@ethersproject-xdc/bignumber" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-contracts-5.6.0-6b8dda08-74c6-4361-96b9-532cbe84d8cf-1716742700394/node_modules/@ethersproject-xdc/bignumber"
-    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-contracts-5.6.0-6b8dda08-74c6-4361-96b9-532cbe84d8cf-1716742700394/node_modules/@ethersproject-xdc/bytes"
-    "@ethersproject-xdc/constants" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-contracts-5.6.0-6b8dda08-74c6-4361-96b9-532cbe84d8cf-1716742700394/node_modules/@ethersproject-xdc/constants"
-    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-contracts-5.6.0-6b8dda08-74c6-4361-96b9-532cbe84d8cf-1716742700394/node_modules/@ethersproject-xdc/logger"
-    "@ethersproject-xdc/properties" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-contracts-5.6.0-6b8dda08-74c6-4361-96b9-532cbe84d8cf-1716742700394/node_modules/@ethersproject-xdc/properties"
-    "@ethersproject-xdc/transactions" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-contracts-5.6.0-6b8dda08-74c6-4361-96b9-532cbe84d8cf-1716742700394/node_modules/@ethersproject-xdc/transactions"
+    "@ethersproject-xdc/abi" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-contracts-5.6.0-01340f11-100c-4ca0-96b3-dd6cc5de3446-1720114215932/node_modules/@ethersproject-xdc/abi"
+    "@ethersproject-xdc/abstract-provider" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-contracts-5.6.0-01340f11-100c-4ca0-96b3-dd6cc5de3446-1720114215932/node_modules/@ethersproject-xdc/abstract-provider"
+    "@ethersproject-xdc/abstract-signer" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-contracts-5.6.0-01340f11-100c-4ca0-96b3-dd6cc5de3446-1720114215932/node_modules/@ethersproject-xdc/abstract-signer"
+    "@ethersproject-xdc/address" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-contracts-5.6.0-01340f11-100c-4ca0-96b3-dd6cc5de3446-1720114215932/node_modules/@ethersproject-xdc/address"
+    "@ethersproject-xdc/bignumber" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-contracts-5.6.0-01340f11-100c-4ca0-96b3-dd6cc5de3446-1720114215932/node_modules/@ethersproject-xdc/bignumber"
+    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-contracts-5.6.0-01340f11-100c-4ca0-96b3-dd6cc5de3446-1720114215932/node_modules/@ethersproject-xdc/bytes"
+    "@ethersproject-xdc/constants" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-contracts-5.6.0-01340f11-100c-4ca0-96b3-dd6cc5de3446-1720114215932/node_modules/@ethersproject-xdc/constants"
+    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-contracts-5.6.0-01340f11-100c-4ca0-96b3-dd6cc5de3446-1720114215932/node_modules/@ethersproject-xdc/logger"
+    "@ethersproject-xdc/properties" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-contracts-5.6.0-01340f11-100c-4ca0-96b3-dd6cc5de3446-1720114215932/node_modules/@ethersproject-xdc/properties"
+    "@ethersproject-xdc/transactions" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-contracts-5.6.0-01340f11-100c-4ca0-96b3-dd6cc5de3446-1720114215932/node_modules/@ethersproject-xdc/transactions"
 
 "@ethersproject-xdc/hash@file:vendor/@ethersproject-xdc/hash":
   version "5.7.0"
   dependencies:
-    "@ethersproject-xdc/abstract-signer" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-hash-5.7.0-25e28ca5-1b7a-4365-9d46-c810f989d5c7-1716742700398/node_modules/@ethersproject-xdc/abstract-signer"
-    "@ethersproject-xdc/address" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-hash-5.7.0-25e28ca5-1b7a-4365-9d46-c810f989d5c7-1716742700398/node_modules/@ethersproject-xdc/address"
-    "@ethersproject-xdc/base64" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-hash-5.7.0-25e28ca5-1b7a-4365-9d46-c810f989d5c7-1716742700398/node_modules/@ethersproject-xdc/base64"
-    "@ethersproject-xdc/bignumber" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-hash-5.7.0-25e28ca5-1b7a-4365-9d46-c810f989d5c7-1716742700398/node_modules/@ethersproject-xdc/bignumber"
-    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-hash-5.7.0-25e28ca5-1b7a-4365-9d46-c810f989d5c7-1716742700398/node_modules/@ethersproject-xdc/bytes"
-    "@ethersproject-xdc/keccak256" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-hash-5.7.0-25e28ca5-1b7a-4365-9d46-c810f989d5c7-1716742700398/node_modules/@ethersproject-xdc/keccak256"
-    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-hash-5.7.0-25e28ca5-1b7a-4365-9d46-c810f989d5c7-1716742700398/node_modules/@ethersproject-xdc/logger"
-    "@ethersproject-xdc/properties" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-hash-5.7.0-25e28ca5-1b7a-4365-9d46-c810f989d5c7-1716742700398/node_modules/@ethersproject-xdc/properties"
-    "@ethersproject-xdc/strings" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-hash-5.7.0-25e28ca5-1b7a-4365-9d46-c810f989d5c7-1716742700398/node_modules/@ethersproject-xdc/strings"
+    "@ethersproject-xdc/abstract-signer" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-hash-5.7.0-949278b7-f408-4923-bc4d-198724e03b8c-1720114215934/node_modules/@ethersproject-xdc/abstract-signer"
+    "@ethersproject-xdc/address" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-hash-5.7.0-949278b7-f408-4923-bc4d-198724e03b8c-1720114215934/node_modules/@ethersproject-xdc/address"
+    "@ethersproject-xdc/base64" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-hash-5.7.0-949278b7-f408-4923-bc4d-198724e03b8c-1720114215934/node_modules/@ethersproject-xdc/base64"
+    "@ethersproject-xdc/bignumber" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-hash-5.7.0-949278b7-f408-4923-bc4d-198724e03b8c-1720114215934/node_modules/@ethersproject-xdc/bignumber"
+    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-hash-5.7.0-949278b7-f408-4923-bc4d-198724e03b8c-1720114215934/node_modules/@ethersproject-xdc/bytes"
+    "@ethersproject-xdc/keccak256" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-hash-5.7.0-949278b7-f408-4923-bc4d-198724e03b8c-1720114215934/node_modules/@ethersproject-xdc/keccak256"
+    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-hash-5.7.0-949278b7-f408-4923-bc4d-198724e03b8c-1720114215934/node_modules/@ethersproject-xdc/logger"
+    "@ethersproject-xdc/properties" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-hash-5.7.0-949278b7-f408-4923-bc4d-198724e03b8c-1720114215934/node_modules/@ethersproject-xdc/properties"
+    "@ethersproject-xdc/strings" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-hash-5.7.0-949278b7-f408-4923-bc4d-198724e03b8c-1720114215934/node_modules/@ethersproject-xdc/strings"
 
 "@ethersproject-xdc/hdnode@file:vendor/@ethersproject-xdc/hdnode":
   version "5.7.0"
   dependencies:
-    "@ethersproject-xdc/abstract-signer" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-hdnode-5.7.0-e37d0689-b05d-4333-8919-f10d87fe268f-1716742700396/node_modules/@ethersproject-xdc/abstract-signer"
-    "@ethersproject-xdc/basex" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-hdnode-5.7.0-e37d0689-b05d-4333-8919-f10d87fe268f-1716742700396/node_modules/@ethersproject-xdc/basex"
-    "@ethersproject-xdc/bignumber" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-hdnode-5.7.0-e37d0689-b05d-4333-8919-f10d87fe268f-1716742700396/node_modules/@ethersproject-xdc/bignumber"
-    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-hdnode-5.7.0-e37d0689-b05d-4333-8919-f10d87fe268f-1716742700396/node_modules/@ethersproject-xdc/bytes"
-    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-hdnode-5.7.0-e37d0689-b05d-4333-8919-f10d87fe268f-1716742700396/node_modules/@ethersproject-xdc/logger"
-    "@ethersproject-xdc/pbkdf2" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-hdnode-5.7.0-e37d0689-b05d-4333-8919-f10d87fe268f-1716742700396/node_modules/@ethersproject-xdc/pbkdf2"
-    "@ethersproject-xdc/properties" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-hdnode-5.7.0-e37d0689-b05d-4333-8919-f10d87fe268f-1716742700396/node_modules/@ethersproject-xdc/properties"
-    "@ethersproject-xdc/sha2" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-hdnode-5.7.0-e37d0689-b05d-4333-8919-f10d87fe268f-1716742700396/node_modules/@ethersproject-xdc/sha2"
-    "@ethersproject-xdc/signing-key" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-hdnode-5.7.0-e37d0689-b05d-4333-8919-f10d87fe268f-1716742700396/node_modules/@ethersproject-xdc/signing-key"
-    "@ethersproject-xdc/strings" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-hdnode-5.7.0-e37d0689-b05d-4333-8919-f10d87fe268f-1716742700396/node_modules/@ethersproject-xdc/strings"
-    "@ethersproject-xdc/transactions" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-hdnode-5.7.0-e37d0689-b05d-4333-8919-f10d87fe268f-1716742700396/node_modules/@ethersproject-xdc/transactions"
-    "@ethersproject-xdc/wordlists" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-hdnode-5.7.0-e37d0689-b05d-4333-8919-f10d87fe268f-1716742700396/node_modules/@ethersproject-xdc/wordlists"
+    "@ethersproject-xdc/abstract-signer" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-hdnode-5.7.0-28060c1e-5ecc-4af4-8393-5c487444c4dd-1720114215935/node_modules/@ethersproject-xdc/abstract-signer"
+    "@ethersproject-xdc/basex" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-hdnode-5.7.0-28060c1e-5ecc-4af4-8393-5c487444c4dd-1720114215935/node_modules/@ethersproject-xdc/basex"
+    "@ethersproject-xdc/bignumber" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-hdnode-5.7.0-28060c1e-5ecc-4af4-8393-5c487444c4dd-1720114215935/node_modules/@ethersproject-xdc/bignumber"
+    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-hdnode-5.7.0-28060c1e-5ecc-4af4-8393-5c487444c4dd-1720114215935/node_modules/@ethersproject-xdc/bytes"
+    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-hdnode-5.7.0-28060c1e-5ecc-4af4-8393-5c487444c4dd-1720114215935/node_modules/@ethersproject-xdc/logger"
+    "@ethersproject-xdc/pbkdf2" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-hdnode-5.7.0-28060c1e-5ecc-4af4-8393-5c487444c4dd-1720114215935/node_modules/@ethersproject-xdc/pbkdf2"
+    "@ethersproject-xdc/properties" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-hdnode-5.7.0-28060c1e-5ecc-4af4-8393-5c487444c4dd-1720114215935/node_modules/@ethersproject-xdc/properties"
+    "@ethersproject-xdc/sha2" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-hdnode-5.7.0-28060c1e-5ecc-4af4-8393-5c487444c4dd-1720114215935/node_modules/@ethersproject-xdc/sha2"
+    "@ethersproject-xdc/signing-key" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-hdnode-5.7.0-28060c1e-5ecc-4af4-8393-5c487444c4dd-1720114215935/node_modules/@ethersproject-xdc/signing-key"
+    "@ethersproject-xdc/strings" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-hdnode-5.7.0-28060c1e-5ecc-4af4-8393-5c487444c4dd-1720114215935/node_modules/@ethersproject-xdc/strings"
+    "@ethersproject-xdc/transactions" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-hdnode-5.7.0-28060c1e-5ecc-4af4-8393-5c487444c4dd-1720114215935/node_modules/@ethersproject-xdc/transactions"
+    "@ethersproject-xdc/wordlists" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-hdnode-5.7.0-28060c1e-5ecc-4af4-8393-5c487444c4dd-1720114215935/node_modules/@ethersproject-xdc/wordlists"
 
 "@ethersproject-xdc/json-wallets@file:vendor/@ethersproject-xdc/json-wallets":
   version "5.6.0"
   dependencies:
-    "@ethersproject-xdc/abstract-signer" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-json-wallets-5.6.0-27986897-e101-4b07-8eae-52051ac2bb42-1716742700395/node_modules/@ethersproject-xdc/abstract-signer"
-    "@ethersproject-xdc/address" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-json-wallets-5.6.0-27986897-e101-4b07-8eae-52051ac2bb42-1716742700395/node_modules/@ethersproject-xdc/address"
-    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-json-wallets-5.6.0-27986897-e101-4b07-8eae-52051ac2bb42-1716742700395/node_modules/@ethersproject-xdc/bytes"
-    "@ethersproject-xdc/hdnode" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-json-wallets-5.6.0-27986897-e101-4b07-8eae-52051ac2bb42-1716742700395/node_modules/@ethersproject-xdc/hdnode"
-    "@ethersproject-xdc/keccak256" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-json-wallets-5.6.0-27986897-e101-4b07-8eae-52051ac2bb42-1716742700395/node_modules/@ethersproject-xdc/keccak256"
-    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-json-wallets-5.6.0-27986897-e101-4b07-8eae-52051ac2bb42-1716742700395/node_modules/@ethersproject-xdc/logger"
-    "@ethersproject-xdc/pbkdf2" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-json-wallets-5.6.0-27986897-e101-4b07-8eae-52051ac2bb42-1716742700395/node_modules/@ethersproject-xdc/pbkdf2"
-    "@ethersproject-xdc/properties" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-json-wallets-5.6.0-27986897-e101-4b07-8eae-52051ac2bb42-1716742700395/node_modules/@ethersproject-xdc/properties"
-    "@ethersproject-xdc/random" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-json-wallets-5.6.0-27986897-e101-4b07-8eae-52051ac2bb42-1716742700395/node_modules/@ethersproject-xdc/random"
-    "@ethersproject-xdc/strings" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-json-wallets-5.6.0-27986897-e101-4b07-8eae-52051ac2bb42-1716742700395/node_modules/@ethersproject-xdc/strings"
-    "@ethersproject-xdc/transactions" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-json-wallets-5.6.0-27986897-e101-4b07-8eae-52051ac2bb42-1716742700395/node_modules/@ethersproject-xdc/transactions"
+    "@ethersproject-xdc/abstract-signer" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-json-wallets-5.6.0-800eadb5-6200-4cb4-9dd0-4ff6ff5d327c-1720114215936/node_modules/@ethersproject-xdc/abstract-signer"
+    "@ethersproject-xdc/address" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-json-wallets-5.6.0-800eadb5-6200-4cb4-9dd0-4ff6ff5d327c-1720114215936/node_modules/@ethersproject-xdc/address"
+    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-json-wallets-5.6.0-800eadb5-6200-4cb4-9dd0-4ff6ff5d327c-1720114215936/node_modules/@ethersproject-xdc/bytes"
+    "@ethersproject-xdc/hdnode" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-json-wallets-5.6.0-800eadb5-6200-4cb4-9dd0-4ff6ff5d327c-1720114215936/node_modules/@ethersproject-xdc/hdnode"
+    "@ethersproject-xdc/keccak256" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-json-wallets-5.6.0-800eadb5-6200-4cb4-9dd0-4ff6ff5d327c-1720114215936/node_modules/@ethersproject-xdc/keccak256"
+    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-json-wallets-5.6.0-800eadb5-6200-4cb4-9dd0-4ff6ff5d327c-1720114215936/node_modules/@ethersproject-xdc/logger"
+    "@ethersproject-xdc/pbkdf2" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-json-wallets-5.6.0-800eadb5-6200-4cb4-9dd0-4ff6ff5d327c-1720114215936/node_modules/@ethersproject-xdc/pbkdf2"
+    "@ethersproject-xdc/properties" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-json-wallets-5.6.0-800eadb5-6200-4cb4-9dd0-4ff6ff5d327c-1720114215936/node_modules/@ethersproject-xdc/properties"
+    "@ethersproject-xdc/random" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-json-wallets-5.6.0-800eadb5-6200-4cb4-9dd0-4ff6ff5d327c-1720114215936/node_modules/@ethersproject-xdc/random"
+    "@ethersproject-xdc/strings" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-json-wallets-5.6.0-800eadb5-6200-4cb4-9dd0-4ff6ff5d327c-1720114215936/node_modules/@ethersproject-xdc/strings"
+    "@ethersproject-xdc/transactions" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-json-wallets-5.6.0-800eadb5-6200-4cb4-9dd0-4ff6ff5d327c-1720114215936/node_modules/@ethersproject-xdc/transactions"
     aes-js "3.0.0"
     scrypt-js "3.0.1"
 
 "@ethersproject-xdc/keccak256@file:vendor/@ethersproject-xdc/keccak256":
   version "5.7.0"
   dependencies:
-    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-keccak256-5.7.0-0e07714d-c1f3-4604-bae2-4b1bf13ff6db-1716742700398/node_modules/@ethersproject-xdc/bytes"
+    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-keccak256-5.7.0-36d64821-5c40-4e2e-996a-da3f8ef93882-1720114215937/node_modules/@ethersproject-xdc/bytes"
     js-sha3 "0.8.0"
 
 "@ethersproject-xdc/logger@file:vendor/@ethersproject-xdc/logger":
@@ -1636,67 +1664,67 @@
 "@ethersproject-xdc/networks@file:vendor/@ethersproject-xdc/networks":
   version "5.7.1"
   dependencies:
-    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-networks-5.7.1-df6959e3-85a3-44e6-a243-8c9c24a748e4-1716742700399/node_modules/@ethersproject-xdc/logger"
+    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-networks-5.7.1-362da8b7-c8d6-4eb7-850f-de7f6d92b895-1720114215937/node_modules/@ethersproject-xdc/logger"
 
 "@ethersproject-xdc/pbkdf2@file:vendor/@ethersproject-xdc/pbkdf2":
   version "5.7.0"
   dependencies:
-    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-pbkdf2-5.7.0-6883e77c-2e7d-4024-8157-00b49ac08614-1716742700399/node_modules/@ethersproject-xdc/bytes"
-    "@ethersproject-xdc/sha2" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-pbkdf2-5.7.0-6883e77c-2e7d-4024-8157-00b49ac08614-1716742700399/node_modules/@ethersproject-xdc/sha2"
+    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-pbkdf2-5.7.0-7679311e-6f49-4cb9-b8be-d2871d2865db-1720114215938/node_modules/@ethersproject-xdc/bytes"
+    "@ethersproject-xdc/sha2" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-pbkdf2-5.7.0-7679311e-6f49-4cb9-b8be-d2871d2865db-1720114215938/node_modules/@ethersproject-xdc/sha2"
 
 "@ethersproject-xdc/properties@file:vendor/@ethersproject-xdc/properties":
   version "5.7.0"
   dependencies:
-    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-properties-5.7.0-9f4e6786-46e1-4bdb-8a24-fa23b9e87a06-1716742700402/node_modules/@ethersproject-xdc/logger"
+    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-properties-5.7.0-19e17918-661e-4514-80bf-8ccf86176c83-1720114215938/node_modules/@ethersproject-xdc/logger"
 
 "@ethersproject-xdc/providers@file:vendor/@ethersproject-xdc/providers":
   version "5.6.2"
   dependencies:
-    "@ethersproject-xdc/abstract-provider" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-providers-5.6.2-3832070b-218f-459e-ad7d-9804e11832ea-1716742700400/node_modules/@ethersproject-xdc/abstract-provider"
-    "@ethersproject-xdc/abstract-signer" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-providers-5.6.2-3832070b-218f-459e-ad7d-9804e11832ea-1716742700400/node_modules/@ethersproject-xdc/abstract-signer"
-    "@ethersproject-xdc/address" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-providers-5.6.2-3832070b-218f-459e-ad7d-9804e11832ea-1716742700400/node_modules/@ethersproject-xdc/address"
-    "@ethersproject-xdc/basex" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-providers-5.6.2-3832070b-218f-459e-ad7d-9804e11832ea-1716742700400/node_modules/@ethersproject-xdc/basex"
-    "@ethersproject-xdc/bignumber" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-providers-5.6.2-3832070b-218f-459e-ad7d-9804e11832ea-1716742700400/node_modules/@ethersproject-xdc/bignumber"
-    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-providers-5.6.2-3832070b-218f-459e-ad7d-9804e11832ea-1716742700400/node_modules/@ethersproject-xdc/bytes"
-    "@ethersproject-xdc/constants" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-providers-5.6.2-3832070b-218f-459e-ad7d-9804e11832ea-1716742700400/node_modules/@ethersproject-xdc/constants"
-    "@ethersproject-xdc/hash" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-providers-5.6.2-3832070b-218f-459e-ad7d-9804e11832ea-1716742700400/node_modules/@ethersproject-xdc/hash"
-    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-providers-5.6.2-3832070b-218f-459e-ad7d-9804e11832ea-1716742700400/node_modules/@ethersproject-xdc/logger"
-    "@ethersproject-xdc/networks" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-providers-5.6.2-3832070b-218f-459e-ad7d-9804e11832ea-1716742700400/node_modules/@ethersproject-xdc/networks"
-    "@ethersproject-xdc/properties" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-providers-5.6.2-3832070b-218f-459e-ad7d-9804e11832ea-1716742700400/node_modules/@ethersproject-xdc/properties"
-    "@ethersproject-xdc/random" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-providers-5.6.2-3832070b-218f-459e-ad7d-9804e11832ea-1716742700400/node_modules/@ethersproject-xdc/random"
-    "@ethersproject-xdc/rlp" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-providers-5.6.2-3832070b-218f-459e-ad7d-9804e11832ea-1716742700400/node_modules/@ethersproject-xdc/rlp"
-    "@ethersproject-xdc/sha2" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-providers-5.6.2-3832070b-218f-459e-ad7d-9804e11832ea-1716742700400/node_modules/@ethersproject-xdc/sha2"
-    "@ethersproject-xdc/strings" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-providers-5.6.2-3832070b-218f-459e-ad7d-9804e11832ea-1716742700400/node_modules/@ethersproject-xdc/strings"
-    "@ethersproject-xdc/transactions" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-providers-5.6.2-3832070b-218f-459e-ad7d-9804e11832ea-1716742700400/node_modules/@ethersproject-xdc/transactions"
-    "@ethersproject-xdc/web" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-providers-5.6.2-3832070b-218f-459e-ad7d-9804e11832ea-1716742700400/node_modules/@ethersproject-xdc/web"
+    "@ethersproject-xdc/abstract-provider" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-providers-5.6.2-9ae74ae1-2bf0-46fd-87a5-21faac7927aa-1720114215941/node_modules/@ethersproject-xdc/abstract-provider"
+    "@ethersproject-xdc/abstract-signer" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-providers-5.6.2-9ae74ae1-2bf0-46fd-87a5-21faac7927aa-1720114215941/node_modules/@ethersproject-xdc/abstract-signer"
+    "@ethersproject-xdc/address" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-providers-5.6.2-9ae74ae1-2bf0-46fd-87a5-21faac7927aa-1720114215941/node_modules/@ethersproject-xdc/address"
+    "@ethersproject-xdc/basex" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-providers-5.6.2-9ae74ae1-2bf0-46fd-87a5-21faac7927aa-1720114215941/node_modules/@ethersproject-xdc/basex"
+    "@ethersproject-xdc/bignumber" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-providers-5.6.2-9ae74ae1-2bf0-46fd-87a5-21faac7927aa-1720114215941/node_modules/@ethersproject-xdc/bignumber"
+    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-providers-5.6.2-9ae74ae1-2bf0-46fd-87a5-21faac7927aa-1720114215941/node_modules/@ethersproject-xdc/bytes"
+    "@ethersproject-xdc/constants" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-providers-5.6.2-9ae74ae1-2bf0-46fd-87a5-21faac7927aa-1720114215941/node_modules/@ethersproject-xdc/constants"
+    "@ethersproject-xdc/hash" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-providers-5.6.2-9ae74ae1-2bf0-46fd-87a5-21faac7927aa-1720114215941/node_modules/@ethersproject-xdc/hash"
+    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-providers-5.6.2-9ae74ae1-2bf0-46fd-87a5-21faac7927aa-1720114215941/node_modules/@ethersproject-xdc/logger"
+    "@ethersproject-xdc/networks" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-providers-5.6.2-9ae74ae1-2bf0-46fd-87a5-21faac7927aa-1720114215941/node_modules/@ethersproject-xdc/networks"
+    "@ethersproject-xdc/properties" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-providers-5.6.2-9ae74ae1-2bf0-46fd-87a5-21faac7927aa-1720114215941/node_modules/@ethersproject-xdc/properties"
+    "@ethersproject-xdc/random" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-providers-5.6.2-9ae74ae1-2bf0-46fd-87a5-21faac7927aa-1720114215941/node_modules/@ethersproject-xdc/random"
+    "@ethersproject-xdc/rlp" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-providers-5.6.2-9ae74ae1-2bf0-46fd-87a5-21faac7927aa-1720114215941/node_modules/@ethersproject-xdc/rlp"
+    "@ethersproject-xdc/sha2" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-providers-5.6.2-9ae74ae1-2bf0-46fd-87a5-21faac7927aa-1720114215941/node_modules/@ethersproject-xdc/sha2"
+    "@ethersproject-xdc/strings" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-providers-5.6.2-9ae74ae1-2bf0-46fd-87a5-21faac7927aa-1720114215941/node_modules/@ethersproject-xdc/strings"
+    "@ethersproject-xdc/transactions" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-providers-5.6.2-9ae74ae1-2bf0-46fd-87a5-21faac7927aa-1720114215941/node_modules/@ethersproject-xdc/transactions"
+    "@ethersproject-xdc/web" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-providers-5.6.2-9ae74ae1-2bf0-46fd-87a5-21faac7927aa-1720114215941/node_modules/@ethersproject-xdc/web"
     bech32 "1.1.4"
     ws "7.4.6"
 
 "@ethersproject-xdc/random@file:vendor/@ethersproject-xdc/random":
   version "5.7.0"
   dependencies:
-    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-random-5.7.0-4c522610-045d-4fdf-a8e7-628afe523f29-1716742700405/node_modules/@ethersproject-xdc/bytes"
-    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-random-5.7.0-4c522610-045d-4fdf-a8e7-628afe523f29-1716742700405/node_modules/@ethersproject-xdc/logger"
+    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-random-5.7.0-8cb9fee0-0c29-468d-a9c0-21718cc24826-1720114215939/node_modules/@ethersproject-xdc/bytes"
+    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-random-5.7.0-8cb9fee0-0c29-468d-a9c0-21718cc24826-1720114215939/node_modules/@ethersproject-xdc/logger"
 
 "@ethersproject-xdc/rlp@file:vendor/@ethersproject-xdc/rlp":
   version "5.7.0"
   dependencies:
-    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-rlp-5.7.0-c2b4b3ff-a701-4ad6-a105-eea73c17f2f8-1716742700403/node_modules/@ethersproject-xdc/bytes"
-    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-rlp-5.7.0-c2b4b3ff-a701-4ad6-a105-eea73c17f2f8-1716742700403/node_modules/@ethersproject-xdc/logger"
+    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-rlp-5.7.0-6642a3e6-25bc-4e5b-8aeb-b4c03537fece-1720114215939/node_modules/@ethersproject-xdc/bytes"
+    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-rlp-5.7.0-6642a3e6-25bc-4e5b-8aeb-b4c03537fece-1720114215939/node_modules/@ethersproject-xdc/logger"
 
 "@ethersproject-xdc/sha2@file:vendor/@ethersproject-xdc/sha2":
   version "5.7.0"
   dependencies:
-    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-sha2-5.7.0-86442c00-bb66-455f-8fdf-ae13af157b58-1716742700403/node_modules/@ethersproject-xdc/bytes"
-    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-sha2-5.7.0-86442c00-bb66-455f-8fdf-ae13af157b58-1716742700403/node_modules/@ethersproject-xdc/logger"
+    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-sha2-5.7.0-736f6d21-6700-4a02-96b4-e113b01e4c35-1720114215939/node_modules/@ethersproject-xdc/bytes"
+    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-sha2-5.7.0-736f6d21-6700-4a02-96b4-e113b01e4c35-1720114215939/node_modules/@ethersproject-xdc/logger"
     hash.js "1.1.7"
 
 "@ethersproject-xdc/signing-key@file:vendor/@ethersproject-xdc/signing-key":
   version "5.7.0"
   dependencies:
-    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-signing-key-5.7.0-aeee6412-3492-44f9-a583-3fc75402d32a-1716742700405/node_modules/@ethersproject-xdc/bytes"
-    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-signing-key-5.7.0-aeee6412-3492-44f9-a583-3fc75402d32a-1716742700405/node_modules/@ethersproject-xdc/logger"
-    "@ethersproject-xdc/properties" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-signing-key-5.7.0-aeee6412-3492-44f9-a583-3fc75402d32a-1716742700405/node_modules/@ethersproject-xdc/properties"
+    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-signing-key-5.7.0-cd1851ca-b645-401e-b56f-d18a3ec69af1-1720114215943/node_modules/@ethersproject-xdc/bytes"
+    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-signing-key-5.7.0-cd1851ca-b645-401e-b56f-d18a3ec69af1-1720114215943/node_modules/@ethersproject-xdc/logger"
+    "@ethersproject-xdc/properties" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-signing-key-5.7.0-cd1851ca-b645-401e-b56f-d18a3ec69af1-1720114215943/node_modules/@ethersproject-xdc/properties"
     bn.js "^5.2.1"
     elliptic "6.5.4"
     hash.js "1.1.7"
@@ -1704,76 +1732,76 @@
 "@ethersproject-xdc/solidity@file:vendor/@ethersproject-xdc/solidity":
   version "5.6.0"
   dependencies:
-    "@ethersproject-xdc/bignumber" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-solidity-5.6.0-c0f4de27-1d82-4001-89ba-69340521f10f-1716742700404/node_modules/@ethersproject-xdc/bignumber"
-    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-solidity-5.6.0-c0f4de27-1d82-4001-89ba-69340521f10f-1716742700404/node_modules/@ethersproject-xdc/bytes"
-    "@ethersproject-xdc/keccak256" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-solidity-5.6.0-c0f4de27-1d82-4001-89ba-69340521f10f-1716742700404/node_modules/@ethersproject-xdc/keccak256"
-    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-solidity-5.6.0-c0f4de27-1d82-4001-89ba-69340521f10f-1716742700404/node_modules/@ethersproject-xdc/logger"
-    "@ethersproject-xdc/sha2" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-solidity-5.6.0-c0f4de27-1d82-4001-89ba-69340521f10f-1716742700404/node_modules/@ethersproject-xdc/sha2"
-    "@ethersproject-xdc/strings" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-solidity-5.6.0-c0f4de27-1d82-4001-89ba-69340521f10f-1716742700404/node_modules/@ethersproject-xdc/strings"
+    "@ethersproject-xdc/bignumber" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-solidity-5.6.0-b03a67fe-0c58-4846-8371-3ba83b8c8b41-1720114215940/node_modules/@ethersproject-xdc/bignumber"
+    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-solidity-5.6.0-b03a67fe-0c58-4846-8371-3ba83b8c8b41-1720114215940/node_modules/@ethersproject-xdc/bytes"
+    "@ethersproject-xdc/keccak256" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-solidity-5.6.0-b03a67fe-0c58-4846-8371-3ba83b8c8b41-1720114215940/node_modules/@ethersproject-xdc/keccak256"
+    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-solidity-5.6.0-b03a67fe-0c58-4846-8371-3ba83b8c8b41-1720114215940/node_modules/@ethersproject-xdc/logger"
+    "@ethersproject-xdc/sha2" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-solidity-5.6.0-b03a67fe-0c58-4846-8371-3ba83b8c8b41-1720114215940/node_modules/@ethersproject-xdc/sha2"
+    "@ethersproject-xdc/strings" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-solidity-5.6.0-b03a67fe-0c58-4846-8371-3ba83b8c8b41-1720114215940/node_modules/@ethersproject-xdc/strings"
 
 "@ethersproject-xdc/strings@file:vendor/@ethersproject-xdc/strings":
   version "5.7.0"
   dependencies:
-    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-strings-5.7.0-4ca79fd3-ea20-4596-b2ea-0afe65041040-1716742700406/node_modules/@ethersproject-xdc/bytes"
-    "@ethersproject-xdc/constants" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-strings-5.7.0-4ca79fd3-ea20-4596-b2ea-0afe65041040-1716742700406/node_modules/@ethersproject-xdc/constants"
-    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-strings-5.7.0-4ca79fd3-ea20-4596-b2ea-0afe65041040-1716742700406/node_modules/@ethersproject-xdc/logger"
+    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-strings-5.7.0-55f98f2a-f9d3-428c-9c45-a3273e8333cd-1720114215942/node_modules/@ethersproject-xdc/bytes"
+    "@ethersproject-xdc/constants" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-strings-5.7.0-55f98f2a-f9d3-428c-9c45-a3273e8333cd-1720114215942/node_modules/@ethersproject-xdc/constants"
+    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-strings-5.7.0-55f98f2a-f9d3-428c-9c45-a3273e8333cd-1720114215942/node_modules/@ethersproject-xdc/logger"
 
 "@ethersproject-xdc/transactions@file:vendor/@ethersproject-xdc/transactions":
   version "5.7.0"
   dependencies:
-    "@ethersproject-xdc/address" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-transactions-5.7.0-88dc09b8-e8cf-496e-a203-e3b76642ce56-1716742700411/node_modules/@ethersproject-xdc/address"
-    "@ethersproject-xdc/bignumber" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-transactions-5.7.0-88dc09b8-e8cf-496e-a203-e3b76642ce56-1716742700411/node_modules/@ethersproject-xdc/bignumber"
-    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-transactions-5.7.0-88dc09b8-e8cf-496e-a203-e3b76642ce56-1716742700411/node_modules/@ethersproject-xdc/bytes"
-    "@ethersproject-xdc/constants" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-transactions-5.7.0-88dc09b8-e8cf-496e-a203-e3b76642ce56-1716742700411/node_modules/@ethersproject-xdc/constants"
-    "@ethersproject-xdc/keccak256" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-transactions-5.7.0-88dc09b8-e8cf-496e-a203-e3b76642ce56-1716742700411/node_modules/@ethersproject-xdc/keccak256"
-    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-transactions-5.7.0-88dc09b8-e8cf-496e-a203-e3b76642ce56-1716742700411/node_modules/@ethersproject-xdc/logger"
-    "@ethersproject-xdc/properties" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-transactions-5.7.0-88dc09b8-e8cf-496e-a203-e3b76642ce56-1716742700411/node_modules/@ethersproject-xdc/properties"
-    "@ethersproject-xdc/rlp" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-transactions-5.7.0-88dc09b8-e8cf-496e-a203-e3b76642ce56-1716742700411/node_modules/@ethersproject-xdc/rlp"
-    "@ethersproject-xdc/signing-key" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-transactions-5.7.0-88dc09b8-e8cf-496e-a203-e3b76642ce56-1716742700411/node_modules/@ethersproject-xdc/signing-key"
+    "@ethersproject-xdc/address" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-transactions-5.7.0-ed4420af-a451-4faf-a6e6-16b61c7dedfe-1720114215940/node_modules/@ethersproject-xdc/address"
+    "@ethersproject-xdc/bignumber" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-transactions-5.7.0-ed4420af-a451-4faf-a6e6-16b61c7dedfe-1720114215940/node_modules/@ethersproject-xdc/bignumber"
+    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-transactions-5.7.0-ed4420af-a451-4faf-a6e6-16b61c7dedfe-1720114215940/node_modules/@ethersproject-xdc/bytes"
+    "@ethersproject-xdc/constants" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-transactions-5.7.0-ed4420af-a451-4faf-a6e6-16b61c7dedfe-1720114215940/node_modules/@ethersproject-xdc/constants"
+    "@ethersproject-xdc/keccak256" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-transactions-5.7.0-ed4420af-a451-4faf-a6e6-16b61c7dedfe-1720114215940/node_modules/@ethersproject-xdc/keccak256"
+    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-transactions-5.7.0-ed4420af-a451-4faf-a6e6-16b61c7dedfe-1720114215940/node_modules/@ethersproject-xdc/logger"
+    "@ethersproject-xdc/properties" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-transactions-5.7.0-ed4420af-a451-4faf-a6e6-16b61c7dedfe-1720114215940/node_modules/@ethersproject-xdc/properties"
+    "@ethersproject-xdc/rlp" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-transactions-5.7.0-ed4420af-a451-4faf-a6e6-16b61c7dedfe-1720114215940/node_modules/@ethersproject-xdc/rlp"
+    "@ethersproject-xdc/signing-key" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-transactions-5.7.0-ed4420af-a451-4faf-a6e6-16b61c7dedfe-1720114215940/node_modules/@ethersproject-xdc/signing-key"
 
 "@ethersproject-xdc/units@file:vendor/@ethersproject-xdc/units":
   version "5.6.0"
   dependencies:
-    "@ethersproject-xdc/bignumber" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-units-5.6.0-6acd909c-eab1-4e59-98d0-45b04895a495-1716742700409/node_modules/@ethersproject-xdc/bignumber"
-    "@ethersproject-xdc/constants" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-units-5.6.0-6acd909c-eab1-4e59-98d0-45b04895a495-1716742700409/node_modules/@ethersproject-xdc/constants"
-    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-units-5.6.0-6acd909c-eab1-4e59-98d0-45b04895a495-1716742700409/node_modules/@ethersproject-xdc/logger"
+    "@ethersproject-xdc/bignumber" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-units-5.6.0-e04f98f8-6833-46c5-bfea-aeea8c6154d1-1720114215945/node_modules/@ethersproject-xdc/bignumber"
+    "@ethersproject-xdc/constants" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-units-5.6.0-e04f98f8-6833-46c5-bfea-aeea8c6154d1-1720114215945/node_modules/@ethersproject-xdc/constants"
+    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-units-5.6.0-e04f98f8-6833-46c5-bfea-aeea8c6154d1-1720114215945/node_modules/@ethersproject-xdc/logger"
 
 "@ethersproject-xdc/wallet@file:vendor/@ethersproject-xdc/wallet":
   version "5.6.0"
   dependencies:
-    "@ethersproject-xdc/abstract-provider" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-wallet-5.6.0-cbbce084-a9c9-42c6-8abb-78f4e8934516-1716742700413/node_modules/@ethersproject-xdc/abstract-provider"
-    "@ethersproject-xdc/abstract-signer" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-wallet-5.6.0-cbbce084-a9c9-42c6-8abb-78f4e8934516-1716742700413/node_modules/@ethersproject-xdc/abstract-signer"
-    "@ethersproject-xdc/address" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-wallet-5.6.0-cbbce084-a9c9-42c6-8abb-78f4e8934516-1716742700413/node_modules/@ethersproject-xdc/address"
-    "@ethersproject-xdc/bignumber" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-wallet-5.6.0-cbbce084-a9c9-42c6-8abb-78f4e8934516-1716742700413/node_modules/@ethersproject-xdc/bignumber"
-    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-wallet-5.6.0-cbbce084-a9c9-42c6-8abb-78f4e8934516-1716742700413/node_modules/@ethersproject-xdc/bytes"
-    "@ethersproject-xdc/hash" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-wallet-5.6.0-cbbce084-a9c9-42c6-8abb-78f4e8934516-1716742700413/node_modules/@ethersproject-xdc/hash"
-    "@ethersproject-xdc/hdnode" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-wallet-5.6.0-cbbce084-a9c9-42c6-8abb-78f4e8934516-1716742700413/node_modules/@ethersproject-xdc/hdnode"
-    "@ethersproject-xdc/json-wallets" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-wallet-5.6.0-cbbce084-a9c9-42c6-8abb-78f4e8934516-1716742700413/node_modules/@ethersproject-xdc/json-wallets"
-    "@ethersproject-xdc/keccak256" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-wallet-5.6.0-cbbce084-a9c9-42c6-8abb-78f4e8934516-1716742700413/node_modules/@ethersproject-xdc/keccak256"
-    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-wallet-5.6.0-cbbce084-a9c9-42c6-8abb-78f4e8934516-1716742700413/node_modules/@ethersproject-xdc/logger"
-    "@ethersproject-xdc/properties" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-wallet-5.6.0-cbbce084-a9c9-42c6-8abb-78f4e8934516-1716742700413/node_modules/@ethersproject-xdc/properties"
-    "@ethersproject-xdc/random" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-wallet-5.6.0-cbbce084-a9c9-42c6-8abb-78f4e8934516-1716742700413/node_modules/@ethersproject-xdc/random"
-    "@ethersproject-xdc/signing-key" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-wallet-5.6.0-cbbce084-a9c9-42c6-8abb-78f4e8934516-1716742700413/node_modules/@ethersproject-xdc/signing-key"
-    "@ethersproject-xdc/transactions" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-wallet-5.6.0-cbbce084-a9c9-42c6-8abb-78f4e8934516-1716742700413/node_modules/@ethersproject-xdc/transactions"
-    "@ethersproject-xdc/wordlists" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-wallet-5.6.0-cbbce084-a9c9-42c6-8abb-78f4e8934516-1716742700413/node_modules/@ethersproject-xdc/wordlists"
+    "@ethersproject-xdc/abstract-provider" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-wallet-5.6.0-b3f6fb50-6652-4455-8266-404026061286-1720114215948/node_modules/@ethersproject-xdc/abstract-provider"
+    "@ethersproject-xdc/abstract-signer" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-wallet-5.6.0-b3f6fb50-6652-4455-8266-404026061286-1720114215948/node_modules/@ethersproject-xdc/abstract-signer"
+    "@ethersproject-xdc/address" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-wallet-5.6.0-b3f6fb50-6652-4455-8266-404026061286-1720114215948/node_modules/@ethersproject-xdc/address"
+    "@ethersproject-xdc/bignumber" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-wallet-5.6.0-b3f6fb50-6652-4455-8266-404026061286-1720114215948/node_modules/@ethersproject-xdc/bignumber"
+    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-wallet-5.6.0-b3f6fb50-6652-4455-8266-404026061286-1720114215948/node_modules/@ethersproject-xdc/bytes"
+    "@ethersproject-xdc/hash" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-wallet-5.6.0-b3f6fb50-6652-4455-8266-404026061286-1720114215948/node_modules/@ethersproject-xdc/hash"
+    "@ethersproject-xdc/hdnode" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-wallet-5.6.0-b3f6fb50-6652-4455-8266-404026061286-1720114215948/node_modules/@ethersproject-xdc/hdnode"
+    "@ethersproject-xdc/json-wallets" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-wallet-5.6.0-b3f6fb50-6652-4455-8266-404026061286-1720114215948/node_modules/@ethersproject-xdc/json-wallets"
+    "@ethersproject-xdc/keccak256" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-wallet-5.6.0-b3f6fb50-6652-4455-8266-404026061286-1720114215948/node_modules/@ethersproject-xdc/keccak256"
+    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-wallet-5.6.0-b3f6fb50-6652-4455-8266-404026061286-1720114215948/node_modules/@ethersproject-xdc/logger"
+    "@ethersproject-xdc/properties" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-wallet-5.6.0-b3f6fb50-6652-4455-8266-404026061286-1720114215948/node_modules/@ethersproject-xdc/properties"
+    "@ethersproject-xdc/random" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-wallet-5.6.0-b3f6fb50-6652-4455-8266-404026061286-1720114215948/node_modules/@ethersproject-xdc/random"
+    "@ethersproject-xdc/signing-key" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-wallet-5.6.0-b3f6fb50-6652-4455-8266-404026061286-1720114215948/node_modules/@ethersproject-xdc/signing-key"
+    "@ethersproject-xdc/transactions" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-wallet-5.6.0-b3f6fb50-6652-4455-8266-404026061286-1720114215948/node_modules/@ethersproject-xdc/transactions"
+    "@ethersproject-xdc/wordlists" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-wallet-5.6.0-b3f6fb50-6652-4455-8266-404026061286-1720114215948/node_modules/@ethersproject-xdc/wordlists"
 
 "@ethersproject-xdc/web@file:vendor/@ethersproject-xdc/web":
   version "5.7.1"
   dependencies:
-    "@ethersproject-xdc/base64" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-web-5.7.1-0f981b55-fc20-436b-b55e-1cf47d756b52-1716742700415/node_modules/@ethersproject-xdc/base64"
-    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-web-5.7.1-0f981b55-fc20-436b-b55e-1cf47d756b52-1716742700415/node_modules/@ethersproject-xdc/bytes"
-    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-web-5.7.1-0f981b55-fc20-436b-b55e-1cf47d756b52-1716742700415/node_modules/@ethersproject-xdc/logger"
-    "@ethersproject-xdc/properties" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-web-5.7.1-0f981b55-fc20-436b-b55e-1cf47d756b52-1716742700415/node_modules/@ethersproject-xdc/properties"
-    "@ethersproject-xdc/strings" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-web-5.7.1-0f981b55-fc20-436b-b55e-1cf47d756b52-1716742700415/node_modules/@ethersproject-xdc/strings"
+    "@ethersproject-xdc/base64" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-web-5.7.1-111fff20-6f6c-4e15-b905-14c1d56db416-1720114215946/node_modules/@ethersproject-xdc/base64"
+    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-web-5.7.1-111fff20-6f6c-4e15-b905-14c1d56db416-1720114215946/node_modules/@ethersproject-xdc/bytes"
+    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-web-5.7.1-111fff20-6f6c-4e15-b905-14c1d56db416-1720114215946/node_modules/@ethersproject-xdc/logger"
+    "@ethersproject-xdc/properties" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-web-5.7.1-111fff20-6f6c-4e15-b905-14c1d56db416-1720114215946/node_modules/@ethersproject-xdc/properties"
+    "@ethersproject-xdc/strings" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-web-5.7.1-111fff20-6f6c-4e15-b905-14c1d56db416-1720114215946/node_modules/@ethersproject-xdc/strings"
 
 "@ethersproject-xdc/wordlists@file:vendor/@ethersproject-xdc/wordlists":
   version "5.7.0"
   dependencies:
-    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-wordlists-5.7.0-5522ecff-7eec-4e25-bf67-7763bc735b20-1716742700419/node_modules/@ethersproject-xdc/bytes"
-    "@ethersproject-xdc/hash" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-wordlists-5.7.0-5522ecff-7eec-4e25-bf67-7763bc735b20-1716742700419/node_modules/@ethersproject-xdc/hash"
-    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-wordlists-5.7.0-5522ecff-7eec-4e25-bf67-7763bc735b20-1716742700419/node_modules/@ethersproject-xdc/logger"
-    "@ethersproject-xdc/properties" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-wordlists-5.7.0-5522ecff-7eec-4e25-bf67-7763bc735b20-1716742700419/node_modules/@ethersproject-xdc/properties"
-    "@ethersproject-xdc/strings" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-wordlists-5.7.0-5522ecff-7eec-4e25-bf67-7763bc735b20-1716742700419/node_modules/@ethersproject-xdc/strings"
+    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-wordlists-5.7.0-0ad00c30-041a-41a2-bc43-0482f54644ce-1720114215950/node_modules/@ethersproject-xdc/bytes"
+    "@ethersproject-xdc/hash" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-wordlists-5.7.0-0ad00c30-041a-41a2-bc43-0482f54644ce-1720114215950/node_modules/@ethersproject-xdc/hash"
+    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-wordlists-5.7.0-0ad00c30-041a-41a2-bc43-0482f54644ce-1720114215950/node_modules/@ethersproject-xdc/logger"
+    "@ethersproject-xdc/properties" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-wordlists-5.7.0-0ad00c30-041a-41a2-bc43-0482f54644ce-1720114215950/node_modules/@ethersproject-xdc/properties"
+    "@ethersproject-xdc/strings" "file:../../../Library/Caches/Yarn/v6/npm-@ethersproject-xdc-wordlists-5.7.0-0ad00c30-041a-41a2-bc43-0482f54644ce-1720114215950/node_modules/@ethersproject-xdc/strings"
 
 "@ethersproject/abi@5.7.0", "@ethersproject/abi@^5.0.12", "@ethersproject/abi@^5.1.2", "@ethersproject/abi@^5.4.0", "@ethersproject/abi@^5.5.0", "@ethersproject/abi@^5.6.3", "@ethersproject/abi@^5.7.0":
   version "5.7.0"
@@ -1825,6 +1853,13 @@
     "@ethersproject/logger" "^5.7.0"
     "@ethersproject/rlp" "^5.7.0"
 
+"@ethersproject/base64@5.5.0":
+  version "5.5.0"
+  resolved "https://registry.yarnpkg.com/@ethersproject/base64/-/base64-5.5.0.tgz#881e8544e47ed976930836986e5eb8fab259c090"
+  integrity sha512-tdayUKhU1ljrlHzEWbStXazDpsx4eg1dBXUSI6+mHlYklOXoXF6lZvw8tnD6oVaWfnMxAgRSKROg3cVKtCcppA==
+  dependencies:
+    "@ethersproject/bytes" "^5.5.0"
+
 "@ethersproject/base64@5.7.0", "@ethersproject/base64@^5.7.0":
   version "5.7.0"
   resolved "https://registry.yarnpkg.com/@ethersproject/base64/-/base64-5.7.0.tgz#ac4ee92aa36c1628173e221d0d01f53692059e1c"
@@ -1849,14 +1884,14 @@
     "@ethersproject/logger" "^5.7.0"
     bn.js "^5.2.1"
 
-"@ethersproject/bytes@5.7.0", "@ethersproject/bytes@^5.4.0", "@ethersproject/bytes@^5.7.0":
+"@ethersproject/bytes@5.7.0", "@ethersproject/bytes@^5.4.0", "@ethersproject/bytes@^5.5.0", "@ethersproject/bytes@^5.7.0":
   version "5.7.0"
   resolved "https://registry.yarnpkg.com/@ethersproject/bytes/-/bytes-5.7.0.tgz#a00f6ea8d7e7534d6d87f47188af1148d71f155d"
   integrity sha512-nsbxwgFXWh9NyYWo+U8atvmMsSdKJprTcICAkvbBffT75qDocbuggBU0SJiVK2MuTrp0q+xvLkTnGMPK1+uA9A==
   dependencies:
     "@ethersproject/logger" "^5.7.0"
 
-"@ethersproject/constants@5.7.0", "@ethersproject/constants@^5.7.0":
+"@ethersproject/constants@5.7.0", "@ethersproject/constants@^5.4.0", "@ethersproject/constants@^5.7.0":
   version "5.7.0"
   resolved "https://registry.yarnpkg.com/@ethersproject/constants/-/constants-5.7.0.tgz#df80a9705a7e08984161f09014ea012d1c75295e"
   integrity sha512-DHI+y5dBNvkpYUMiRQyxRBYBefZkJfo70VUkUAsRjcPs47muV9evftfZ0PJVCXYbAiCgght0DtcF9srFQmIgWA==
@@ -2008,7 +2043,7 @@
     bech32 "1.1.4"
     ws "7.4.6"
 
-"@ethersproject/providers@5.7.2", "@ethersproject/providers@^5.0.4", "@ethersproject/providers@^5.4.0", "@ethersproject/providers@^5.7.0", "@ethersproject/providers@^5.7.2":
+"@ethersproject/providers@5.7.2", "@ethersproject/providers@^5.0.4", "@ethersproject/providers@^5.4.0", "@ethersproject/providers@^5.4.5", "@ethersproject/providers@^5.7.0", "@ethersproject/providers@^5.7.2":
   version "5.7.2"
   resolved "https://registry.yarnpkg.com/@ethersproject/providers/-/providers-5.7.2.tgz#f8b1a4f275d7ce58cf0a2eec222269a08beb18cb"
   integrity sha512-g34EWZ1WWAVgr4aptGlVBF8mhl3VWjv+8hoAnzStu8Ah22VHBsuGzP17eb6xDVRzw895G4W7vvx60lFFur/1Rg==
@@ -5039,21 +5074,21 @@
   resolved "https://registry.yarnpkg.com/@uniswap/lib/-/lib-4.0.1-alpha.tgz#2881008e55f075344675b3bca93f020b028fbd02"
   integrity sha512-f6UIliwBbRsgVLxIaBANF6w09tYqc6Y/qXdsrbEmXHyFA7ILiKrIwRFXe1yOg8M3cksgVsO9N7yuL2DdCGQKBA==
 
-"@uniswap/permit2-sdk@^1.2.0", "@uniswap/permit2-sdk@^1.2.1":
-  version "1.2.1"
-  resolved "https://registry.yarnpkg.com/@uniswap/permit2-sdk/-/permit2-sdk-1.2.1.tgz#7f562d96a26de0538508ba9ea2b2f02150572bf2"
-  integrity sha512-3eEVW6d1tepF9L4XLGhrGoVPKFBe/kQYRCvkzMmYu32amEeV2L8sg5TBJhrVZu+cu0srX7rh3nhOucNdMVOGzg==
+"@uniswap/permit2-sdk@^1.3.0":
+  version "1.3.0"
+  resolved "https://registry.yarnpkg.com/@uniswap/permit2-sdk/-/permit2-sdk-1.3.0.tgz#b54124e570f0adbaca9d39b2de3054fd7d3798a1"
+  integrity sha512-LstYQWP47dwpQrgqBJ+ysFstne9LgI5FGiKHc2ewjj91MTY8Mq1reocu6U/VDncdR5ef30TUOcZ7gPExRY8r6Q==
   dependencies:
     ethers "^5.7.0"
     tiny-invariant "^1.1.0"
 
-"@uniswap/router-sdk@^1.9.2":
-  version "1.9.2"
-  resolved "https://registry.yarnpkg.com/@uniswap/router-sdk/-/router-sdk-1.9.2.tgz#cc2411f0849467c2bd71ce34cdca9db2a584367d"
-  integrity sha512-J63Of3HRpV0s3ZtEnhGlyvbBuZFfjK7NtnMwflzFMKzfdm+75APHYqnvHAnVARKuL/hMYHF4hni0o84bHem2Ng==
+"@uniswap/router-sdk@^1.9.2", "@uniswap/router-sdk@^1.9.3":
+  version "1.9.3"
+  resolved "https://registry.yarnpkg.com/@uniswap/router-sdk/-/router-sdk-1.9.3.tgz#0721d1d5eadf220632b062ec34044eadababdd6c"
+  integrity sha512-vKhYDN+Ne8XLFay97pW3FyMJbmbS4eiQfiTVpv7EblDKUYG2Co0OSaH+kPAuXcvHvcflbyBpp94NCyePjlVltw==
   dependencies:
     "@ethersproject/abi" "^5.5.0"
-    "@uniswap/sdk-core" "^5.0.0"
+    "@uniswap/sdk-core" "^5.3.1"
     "@uniswap/swap-router-contracts" "^1.3.0"
     "@uniswap/v2-sdk" "^4.3.2"
     "@uniswap/v3-sdk" "^3.11.2"
@@ -5070,12 +5105,15 @@
     tiny-invariant "^1.1.0"
     toformat "^2.0.0"
 
-"@uniswap/sdk-core@^5.0.0":
-  version "5.0.0"
-  resolved "https://registry.yarnpkg.com/@uniswap/sdk-core/-/sdk-core-5.0.0.tgz#7accd8c7372b14811777cbd1d92133d4de57c683"
-  integrity sha512-m5KmkqvvEz5rurRHdG3zGJappi1Crxet3B2dpgDFgq5MKoKd6qCbeChRkoQjTTJpY1MLGCsXj8ZtZ0/arisvLQ==
+"@uniswap/sdk-core@^5.3.0", "@uniswap/sdk-core@^5.3.1":
+  version "5.3.1"
+  resolved "https://registry.yarnpkg.com/@uniswap/sdk-core/-/sdk-core-5.3.1.tgz#22d753e9ef8666c2f3b4d9a89b9658d169be4ce8"
+  integrity sha512-XLJY8PcMZnKYBGLABJnLXcr3EgWql3mmnmpHyV1/MmEh9pLJLHYz4HLwVHb8pGDCqpOFX0e+Ei44/qhC7Q5Dsg==
   dependencies:
     "@ethersproject/address" "^5.0.2"
+    "@ethersproject/bytes" "^5.7.0"
+    "@ethersproject/keccak256" "5.7.0"
+    "@ethersproject/strings" "5.7.0"
     big.js "^5.2.2"
     decimal.js-light "^2.5.0"
     jsbi "^3.1.4"
@@ -5101,22 +5139,22 @@
     toformat "^2.0.0"
 
 "@uniswap/smart-order-router@^3.28.7":
-  version "3.33.1"
-  resolved "https://registry.yarnpkg.com/@uniswap/smart-order-router/-/smart-order-router-3.33.1.tgz#026143b88e7e9c77904f0179cc456801d431e8dc"
-  integrity sha512-w6LaNgsMdsz3M+DX98M3PzosHg1nn2mIH/1uXVydNhYG9XyIRLS71x/75mx/jfp1MCoqw/OernLE2cMRq5YQUg==
+  version "3.35.12"
+  resolved "https://registry.yarnpkg.com/@uniswap/smart-order-router/-/smart-order-router-3.35.12.tgz#de640b39e6bfd584cb968b8e2fd3e5233807761f"
+  integrity sha512-1Z4zT/uzCMHMDeP+A1CbgvkjhOHPZuw7hQ4986+/yI9rY5ioITd0MUJ2iQrdJjLVaBlpKQQSL3djttiKw8AvTg==
   dependencies:
     "@eth-optimism/sdk" "^3.2.2"
     "@types/brotli" "^1.3.4"
     "@uniswap/default-token-list" "^11.13.0"
-    "@uniswap/permit2-sdk" "^1.2.0"
+    "@uniswap/permit2-sdk" "^1.3.0"
     "@uniswap/router-sdk" "^1.9.2"
-    "@uniswap/sdk-core" "^5.0.0"
+    "@uniswap/sdk-core" "^5.3.0"
     "@uniswap/swap-router-contracts" "^1.3.1"
     "@uniswap/token-lists" "^1.0.0-beta.31"
     "@uniswap/universal-router" "^1.6.0"
-    "@uniswap/universal-router-sdk" "^2.1.0"
+    "@uniswap/universal-router-sdk" "^2.2.0"
     "@uniswap/v2-sdk" "^4.3.2"
-    "@uniswap/v3-sdk" "^3.11.2"
+    "@uniswap/v3-sdk" "^3.13.0"
     async-retry "^1.3.1"
     await-timeout "^1.1.1"
     axios "^0.21.1"
@@ -5160,17 +5198,17 @@
   resolved "https://registry.yarnpkg.com/@uniswap/token-lists/-/token-lists-1.0.0-beta.34.tgz#879461f5d4009327a24259bbab797e0f22db58c8"
   integrity sha512-Hc3TfrFaupg0M84e/Zv7BoF+fmMWDV15mZ5s8ZQt2qZxUcNw2GQW+L6L/2k74who31G+p1m3GRYbJpAo7d1pqA==
 
-"@uniswap/universal-router-sdk@^2.1.0":
-  version "2.1.0"
-  resolved "https://registry.yarnpkg.com/@uniswap/universal-router-sdk/-/universal-router-sdk-2.1.0.tgz#7b4e48af92a6162973d3503bcd6ccf4b52dcba4a"
-  integrity sha512-nLIIr0bZ6AfvwuYC97rM10tyEfqDIdujtG+Ahwqhv1EMWayh6abbqPUwvUQvk6Px4LOyuKtlciryW/MJMusn4w==
+"@uniswap/universal-router-sdk@^2.2.0":
+  version "2.2.2"
+  resolved "https://registry.yarnpkg.com/@uniswap/universal-router-sdk/-/universal-router-sdk-2.2.2.tgz#1199b9bf492f496a17175c7aaadbb92c67845790"
+  integrity sha512-RYW2d+NlAjZJ1ZpJTPTXGgGlyBHnXShNbRkz5ueP3m0CzRAS+1P9Czub1SO8ZgcbZ/y4Po/SW9JXT/j3gnI/XA==
   dependencies:
-    "@uniswap/permit2-sdk" "^1.2.1"
-    "@uniswap/router-sdk" "^1.9.2"
-    "@uniswap/sdk-core" "^5.0.0"
+    "@uniswap/permit2-sdk" "^1.3.0"
+    "@uniswap/router-sdk" "^1.9.3"
+    "@uniswap/sdk-core" "^5.3.1"
     "@uniswap/universal-router" "1.6.0"
-    "@uniswap/v2-sdk" "^4.3.2"
-    "@uniswap/v3-sdk" "^3.11.2"
+    "@uniswap/v2-sdk" "^4.4.1"
+    "@uniswap/v3-sdk" "^3.13.1"
     bignumber.js "^9.0.2"
     ethers "^5.7.0"
 
@@ -5188,14 +5226,14 @@
   resolved "https://registry.yarnpkg.com/@uniswap/v2-core/-/v2-core-1.0.1.tgz#af8f508bf183204779938969e2e54043e147d425"
   integrity sha512-MtybtkUPSyysqLY2U210NBDeCHX+ltHt3oADGdjqoThZaFRDKwM6k1Nb3F0A3hk5hwuQvytFWhrWHOEq6nVJ8Q==
 
-"@uniswap/v2-sdk@^4.3.2":
-  version "4.3.2"
-  resolved "https://registry.yarnpkg.com/@uniswap/v2-sdk/-/v2-sdk-4.3.2.tgz#d8eacdb2ddfeca849ee1cb05377521c4ba0d1542"
-  integrity sha512-yNxfQZuzmQ2xqiKutzyzzoXuiuwFrHWba6GG9gT8JeJ4NT5sTJOeLY1FEdEMVsJQwXfMc+goG/srNBRZXVRtSA==
+"@uniswap/v2-sdk@^4.3.2", "@uniswap/v2-sdk@^4.4.1":
+  version "4.4.1"
+  resolved "https://registry.yarnpkg.com/@uniswap/v2-sdk/-/v2-sdk-4.4.1.tgz#d0859a2d943cfcf66ec3cd48c2019e393af256a1"
+  integrity sha512-mU0YNgpm7Nmh3RSlcltluYVECdBcfQQIIQIDCM49Rog8ZnW4wp5QqEYkVjgAuqdu1mwLkMDMQUhzhtC0Z2Df6g==
   dependencies:
     "@ethersproject/address" "^5.0.2"
     "@ethersproject/solidity" "^5.0.9"
-    "@uniswap/sdk-core" "^5.0.0"
+    "@uniswap/sdk-core" "^5.3.1"
     tiny-invariant "^1.1.0"
     tiny-warning "^1.0.3"
 
@@ -5243,14 +5281,14 @@
     "@uniswap/v3-core" "^1.0.0"
     base64-sol "1.0.1"
 
-"@uniswap/v3-sdk@^3.11.2":
-  version "3.11.2"
-  resolved "https://registry.yarnpkg.com/@uniswap/v3-sdk/-/v3-sdk-3.11.2.tgz#cda523307549548b6b53a1d5d1badeff1627a88b"
-  integrity sha512-TktyuMHVqlhtUxXK3cUaijlvlqiyWfpEYgzd2JD1EcvsVB55zLmtRKb/1fbtLbjRqOapcFsVihD5pVW9nyFlTg==
+"@uniswap/v3-sdk@^3.11.2", "@uniswap/v3-sdk@^3.13.0", "@uniswap/v3-sdk@^3.13.1":
+  version "3.13.1"
+  resolved "https://registry.yarnpkg.com/@uniswap/v3-sdk/-/v3-sdk-3.13.1.tgz#67421727b18bb9c449bdf3c92cf3d01530ff3f8f"
+  integrity sha512-MCc96HrUZy17DINwrGnMtCvr+yXQlWUJJVaIiRRKe1DQzSuv97/G4lzM+zAaSymrxbR2qnHHWL5vMFjmwzCN9Q==
   dependencies:
     "@ethersproject/abi" "^5.5.0"
     "@ethersproject/solidity" "^5.0.9"
-    "@uniswap/sdk-core" "^5.0.0"
+    "@uniswap/sdk-core" "^5.3.1"
     "@uniswap/swap-router-contracts" "^1.3.0"
     "@uniswap/v3-periphery" "^1.1.1"
     "@uniswap/v3-staker" "1.0.0"
@@ -5960,6 +5998,13 @@ axios@^0.21.1, axios@^0.21.2:
   integrity sha512-ut5vewkiu8jjGBdqpM44XxjuCjq9LAKeHVmoVfHVzy8eHgxxq8SbAVQNovDA8mVi05kP0Ea/n/UzcSHcTJQfNg==
   dependencies:
     follow-redirects "^1.14.0"
+
+axios@^0.24.0:
+  version "0.24.0"
+  resolved "https://registry.yarnpkg.com/axios/-/axios-0.24.0.tgz#804e6fa1e4b9c5288501dd9dff56a7a0940d20d6"
+  integrity sha512-Q6cWsys88HoPgAaFAVUb0WpPk0O8iTeisR9IMqy9G8AbO4NlpVknrnQS03zzF9PGAWgO3cgletO3VjV/P7VztA==
+  dependencies:
+    follow-redirects "^1.14.4"
 
 axios@^0.26.0:
   version "0.26.1"
@@ -7487,9 +7532,9 @@ dedent@^1.0.0:
   integrity sha512-+LxW+KLWxu3HW3M2w2ympwtqPrqYRzU8fqi6Fhd18fBALe15blJPI/I4+UHveMVG6lJqB4JNd4UG0S5cnVHwIg==
 
 deep-eql@^4.1.3:
-  version "4.1.3"
-  resolved "https://registry.yarnpkg.com/deep-eql/-/deep-eql-4.1.3.tgz#7c7775513092f7df98d8df9996dd085eb668cc6d"
-  integrity sha512-WaEtAOpRA1MQ0eohqZjpGD8zdI0Ovsm8mmFhaDN8dvDZzyoUMcYDnf5Y6iu7HTXxf8JDS23qWa4a+hKCDyOPzw==
+  version "4.1.4"
+  resolved "https://registry.yarnpkg.com/deep-eql/-/deep-eql-4.1.4.tgz#d0d3912865911bb8fac5afb4e3acfa6a28dc72b7"
+  integrity sha512-SUwdGfqdKOwxCPeVYjwSyRpJ7Z+fhpwIAtmCUdZIWZ/YP5R9WAsyuSgpLVDi9bjWoN2LXHNss/dk3urXtdQxGg==
   dependencies:
     type-detect "^4.0.0"
 
@@ -7826,6 +7871,13 @@ encoding-down@^6.3.0:
     inherits "^2.0.3"
     level-codec "^9.0.0"
     level-errors "^2.0.0"
+
+encoding@^0.1.11:
+  version "0.1.13"
+  resolved "https://registry.yarnpkg.com/encoding/-/encoding-0.1.13.tgz#56574afdd791f54a8e9b2785c0582a2d26210fa9"
+  integrity sha512-ETBauow1T35Y/WZMkio9jiM0Z5xjHHmJ4XmjZOq1l/dXz3lr2sRn87nJy20RupqSh1F2m3HHPSp8ShIPQJrJ3A==
+  dependencies:
+    iconv-lite "^0.6.2"
 
 end-of-stream@^1.0.0, end-of-stream@^1.1.0:
   version "1.4.4"
@@ -8379,36 +8431,36 @@ ethereumjs-util@^6.0.0, ethereumjs-util@^6.2.1:
 "ethers-xdc@file:./vendor/ethers-xdc":
   version "5.7.2"
   dependencies:
-    "@ethersproject-xdc/abi" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-9aa55e33-e68a-42c1-93b6-37a5f0f1de62-1716742700368/node_modules/@ethersproject-xdc/abi"
-    "@ethersproject-xdc/abstract-provider" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-9aa55e33-e68a-42c1-93b6-37a5f0f1de62-1716742700368/node_modules/@ethersproject-xdc/abstract-provider"
-    "@ethersproject-xdc/abstract-signer" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-9aa55e33-e68a-42c1-93b6-37a5f0f1de62-1716742700368/node_modules/@ethersproject-xdc/abstract-signer"
-    "@ethersproject-xdc/address" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-9aa55e33-e68a-42c1-93b6-37a5f0f1de62-1716742700368/node_modules/@ethersproject-xdc/address"
-    "@ethersproject-xdc/base64" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-9aa55e33-e68a-42c1-93b6-37a5f0f1de62-1716742700368/node_modules/@ethersproject-xdc/base64"
-    "@ethersproject-xdc/basex" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-9aa55e33-e68a-42c1-93b6-37a5f0f1de62-1716742700368/node_modules/@ethersproject-xdc/basex"
-    "@ethersproject-xdc/bignumber" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-9aa55e33-e68a-42c1-93b6-37a5f0f1de62-1716742700368/node_modules/@ethersproject-xdc/bignumber"
-    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-9aa55e33-e68a-42c1-93b6-37a5f0f1de62-1716742700368/node_modules/@ethersproject-xdc/bytes"
-    "@ethersproject-xdc/constants" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-9aa55e33-e68a-42c1-93b6-37a5f0f1de62-1716742700368/node_modules/@ethersproject-xdc/constants"
-    "@ethersproject-xdc/contracts" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-9aa55e33-e68a-42c1-93b6-37a5f0f1de62-1716742700368/node_modules/@ethersproject-xdc/contracts"
-    "@ethersproject-xdc/hash" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-9aa55e33-e68a-42c1-93b6-37a5f0f1de62-1716742700368/node_modules/@ethersproject-xdc/hash"
-    "@ethersproject-xdc/hdnode" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-9aa55e33-e68a-42c1-93b6-37a5f0f1de62-1716742700368/node_modules/@ethersproject-xdc/hdnode"
-    "@ethersproject-xdc/json-wallets" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-9aa55e33-e68a-42c1-93b6-37a5f0f1de62-1716742700368/node_modules/@ethersproject-xdc/json-wallets"
-    "@ethersproject-xdc/keccak256" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-9aa55e33-e68a-42c1-93b6-37a5f0f1de62-1716742700368/node_modules/@ethersproject-xdc/keccak256"
-    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-9aa55e33-e68a-42c1-93b6-37a5f0f1de62-1716742700368/node_modules/@ethersproject-xdc/logger"
-    "@ethersproject-xdc/networks" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-9aa55e33-e68a-42c1-93b6-37a5f0f1de62-1716742700368/node_modules/@ethersproject-xdc/networks"
-    "@ethersproject-xdc/pbkdf2" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-9aa55e33-e68a-42c1-93b6-37a5f0f1de62-1716742700368/node_modules/@ethersproject-xdc/pbkdf2"
-    "@ethersproject-xdc/properties" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-9aa55e33-e68a-42c1-93b6-37a5f0f1de62-1716742700368/node_modules/@ethersproject-xdc/properties"
-    "@ethersproject-xdc/providers" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-9aa55e33-e68a-42c1-93b6-37a5f0f1de62-1716742700368/node_modules/@ethersproject-xdc/providers"
-    "@ethersproject-xdc/random" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-9aa55e33-e68a-42c1-93b6-37a5f0f1de62-1716742700368/node_modules/@ethersproject-xdc/random"
-    "@ethersproject-xdc/rlp" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-9aa55e33-e68a-42c1-93b6-37a5f0f1de62-1716742700368/node_modules/@ethersproject-xdc/rlp"
-    "@ethersproject-xdc/sha2" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-9aa55e33-e68a-42c1-93b6-37a5f0f1de62-1716742700368/node_modules/@ethersproject-xdc/sha2"
-    "@ethersproject-xdc/signing-key" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-9aa55e33-e68a-42c1-93b6-37a5f0f1de62-1716742700368/node_modules/@ethersproject-xdc/signing-key"
-    "@ethersproject-xdc/solidity" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-9aa55e33-e68a-42c1-93b6-37a5f0f1de62-1716742700368/node_modules/@ethersproject-xdc/solidity"
-    "@ethersproject-xdc/strings" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-9aa55e33-e68a-42c1-93b6-37a5f0f1de62-1716742700368/node_modules/@ethersproject-xdc/strings"
-    "@ethersproject-xdc/transactions" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-9aa55e33-e68a-42c1-93b6-37a5f0f1de62-1716742700368/node_modules/@ethersproject-xdc/transactions"
-    "@ethersproject-xdc/units" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-9aa55e33-e68a-42c1-93b6-37a5f0f1de62-1716742700368/node_modules/@ethersproject-xdc/units"
-    "@ethersproject-xdc/wallet" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-9aa55e33-e68a-42c1-93b6-37a5f0f1de62-1716742700368/node_modules/@ethersproject-xdc/wallet"
-    "@ethersproject-xdc/web" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-9aa55e33-e68a-42c1-93b6-37a5f0f1de62-1716742700368/node_modules/@ethersproject-xdc/web"
-    "@ethersproject-xdc/wordlists" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-9aa55e33-e68a-42c1-93b6-37a5f0f1de62-1716742700368/node_modules/@ethersproject-xdc/wordlists"
+    "@ethersproject-xdc/abi" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-c06662a7-6bf7-43b6-8812-4acdf83ac269-1720114215910/node_modules/@ethersproject-xdc/abi"
+    "@ethersproject-xdc/abstract-provider" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-c06662a7-6bf7-43b6-8812-4acdf83ac269-1720114215910/node_modules/@ethersproject-xdc/abstract-provider"
+    "@ethersproject-xdc/abstract-signer" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-c06662a7-6bf7-43b6-8812-4acdf83ac269-1720114215910/node_modules/@ethersproject-xdc/abstract-signer"
+    "@ethersproject-xdc/address" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-c06662a7-6bf7-43b6-8812-4acdf83ac269-1720114215910/node_modules/@ethersproject-xdc/address"
+    "@ethersproject-xdc/base64" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-c06662a7-6bf7-43b6-8812-4acdf83ac269-1720114215910/node_modules/@ethersproject-xdc/base64"
+    "@ethersproject-xdc/basex" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-c06662a7-6bf7-43b6-8812-4acdf83ac269-1720114215910/node_modules/@ethersproject-xdc/basex"
+    "@ethersproject-xdc/bignumber" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-c06662a7-6bf7-43b6-8812-4acdf83ac269-1720114215910/node_modules/@ethersproject-xdc/bignumber"
+    "@ethersproject-xdc/bytes" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-c06662a7-6bf7-43b6-8812-4acdf83ac269-1720114215910/node_modules/@ethersproject-xdc/bytes"
+    "@ethersproject-xdc/constants" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-c06662a7-6bf7-43b6-8812-4acdf83ac269-1720114215910/node_modules/@ethersproject-xdc/constants"
+    "@ethersproject-xdc/contracts" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-c06662a7-6bf7-43b6-8812-4acdf83ac269-1720114215910/node_modules/@ethersproject-xdc/contracts"
+    "@ethersproject-xdc/hash" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-c06662a7-6bf7-43b6-8812-4acdf83ac269-1720114215910/node_modules/@ethersproject-xdc/hash"
+    "@ethersproject-xdc/hdnode" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-c06662a7-6bf7-43b6-8812-4acdf83ac269-1720114215910/node_modules/@ethersproject-xdc/hdnode"
+    "@ethersproject-xdc/json-wallets" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-c06662a7-6bf7-43b6-8812-4acdf83ac269-1720114215910/node_modules/@ethersproject-xdc/json-wallets"
+    "@ethersproject-xdc/keccak256" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-c06662a7-6bf7-43b6-8812-4acdf83ac269-1720114215910/node_modules/@ethersproject-xdc/keccak256"
+    "@ethersproject-xdc/logger" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-c06662a7-6bf7-43b6-8812-4acdf83ac269-1720114215910/node_modules/@ethersproject-xdc/logger"
+    "@ethersproject-xdc/networks" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-c06662a7-6bf7-43b6-8812-4acdf83ac269-1720114215910/node_modules/@ethersproject-xdc/networks"
+    "@ethersproject-xdc/pbkdf2" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-c06662a7-6bf7-43b6-8812-4acdf83ac269-1720114215910/node_modules/@ethersproject-xdc/pbkdf2"
+    "@ethersproject-xdc/properties" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-c06662a7-6bf7-43b6-8812-4acdf83ac269-1720114215910/node_modules/@ethersproject-xdc/properties"
+    "@ethersproject-xdc/providers" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-c06662a7-6bf7-43b6-8812-4acdf83ac269-1720114215910/node_modules/@ethersproject-xdc/providers"
+    "@ethersproject-xdc/random" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-c06662a7-6bf7-43b6-8812-4acdf83ac269-1720114215910/node_modules/@ethersproject-xdc/random"
+    "@ethersproject-xdc/rlp" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-c06662a7-6bf7-43b6-8812-4acdf83ac269-1720114215910/node_modules/@ethersproject-xdc/rlp"
+    "@ethersproject-xdc/sha2" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-c06662a7-6bf7-43b6-8812-4acdf83ac269-1720114215910/node_modules/@ethersproject-xdc/sha2"
+    "@ethersproject-xdc/signing-key" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-c06662a7-6bf7-43b6-8812-4acdf83ac269-1720114215910/node_modules/@ethersproject-xdc/signing-key"
+    "@ethersproject-xdc/solidity" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-c06662a7-6bf7-43b6-8812-4acdf83ac269-1720114215910/node_modules/@ethersproject-xdc/solidity"
+    "@ethersproject-xdc/strings" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-c06662a7-6bf7-43b6-8812-4acdf83ac269-1720114215910/node_modules/@ethersproject-xdc/strings"
+    "@ethersproject-xdc/transactions" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-c06662a7-6bf7-43b6-8812-4acdf83ac269-1720114215910/node_modules/@ethersproject-xdc/transactions"
+    "@ethersproject-xdc/units" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-c06662a7-6bf7-43b6-8812-4acdf83ac269-1720114215910/node_modules/@ethersproject-xdc/units"
+    "@ethersproject-xdc/wallet" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-c06662a7-6bf7-43b6-8812-4acdf83ac269-1720114215910/node_modules/@ethersproject-xdc/wallet"
+    "@ethersproject-xdc/web" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-c06662a7-6bf7-43b6-8812-4acdf83ac269-1720114215910/node_modules/@ethersproject-xdc/web"
+    "@ethersproject-xdc/wordlists" "file:../../../Library/Caches/Yarn/v6/npm-ethers-xdc-5.7.2-c06662a7-6bf7-43b6-8812-4acdf83ac269-1720114215910/node_modules/@ethersproject-xdc/wordlists"
 
 ethers@4.0.0-beta.3:
   version "4.0.0-beta.3"
@@ -8920,6 +8972,11 @@ follow-redirects@^1.12.1, follow-redirects@^1.14.0, follow-redirects@^1.14.8, fo
   version "1.15.4"
   resolved "https://registry.yarnpkg.com/follow-redirects/-/follow-redirects-1.15.4.tgz#cdc7d308bf6493126b17ea2191ea0ccf3e535adf"
   integrity sha512-Cr4D/5wlrb0z9dgERpUL3LrmPKVDsETIJhaCMeDfuFYcqa5bldGV6wBsAN6X/vxlXQtFBMrXdXxdL8CbDTGniw==
+
+follow-redirects@^1.14.4:
+  version "1.15.6"
+  resolved "https://registry.yarnpkg.com/follow-redirects/-/follow-redirects-1.15.6.tgz#7f815c0cda4249c74ff09e95ef97c23b5fd0399b"
+  integrity sha512-wWN62YITEaOpSK584EZXJafH1AGpO8RVgElfkuXbTOrPX4fIfOyEpW/CsiNd8JdYrAoOvafRTOEnvsO++qCqFA==
 
 for-each@^0.3.3:
   version "0.3.3"
@@ -9448,7 +9505,7 @@ graphql-request@5.0.0:
     extract-files "^9.0.0"
     form-data "^3.0.0"
 
-graphql-request@^3.4.0:
+graphql-request@^3.4.0, graphql-request@^3.5.0:
   version "3.7.0"
   resolved "https://registry.yarnpkg.com/graphql-request/-/graphql-request-3.7.0.tgz#c7406e537084f8b9788541e3e6704340ca13055b"
   integrity sha512-dw5PxHCgBneN2DDNqpWu8QkbbJ07oOziy8z+bK/TAXufsOLaETuVO4GkXrbs0WjhdKhBMN3BkpN/RIvUHkmNUQ==
@@ -9472,7 +9529,7 @@ graphql-tag@^2.11.0, graphql-tag@^2.12.6:
   dependencies:
     tslib "^2.1.0"
 
-graphql@^15.3.0, graphql@^15.5.0:
+graphql@^15.3.0, graphql@^15.5.0, graphql@^15.6.1:
   version "15.8.0"
   resolved "https://registry.yarnpkg.com/graphql/-/graphql-15.8.0.tgz#33410e96b012fa3bdb1091cc99a94769db212b38"
   integrity sha512-5gghUc24tP9HRznNpV2+FIoq3xKkj5dTQqf4v0CpdPbFVwFkWoxOM+o+2OC9ZSvjEMTjfmG9QT+gcvggTwW1zw==
@@ -9850,6 +9907,13 @@ iconv-lite@0.4.24:
   integrity sha512-v3MXnZAcvnywkTUEZomIActle7RXXeedOR31wwl7VlyoXO4Qi9arvSenNQWne1TcRwhCL1HwLI21bEqdpj8/rA==
   dependencies:
     safer-buffer ">= 2.1.2 < 3"
+
+iconv-lite@^0.6.2:
+  version "0.6.3"
+  resolved "https://registry.yarnpkg.com/iconv-lite/-/iconv-lite-0.6.3.tgz#a52f80bf38da1952eb5c681790719871a1a72501"
+  integrity sha512-4fCk79wshMdzMp2rH06qWrJE4iolqLhCUH+OiuIgU++RB0+94NlDL81atO7GX55uUKueo0txHNtvEyI6D7WdMw==
+  dependencies:
+    safer-buffer ">= 2.1.2 < 3.0.0"
 
 idna-uts46-hx@^2.3.1:
   version "2.3.1"
@@ -10248,7 +10312,7 @@ is-shared-array-buffer@^1.0.2:
   dependencies:
     call-bind "^1.0.2"
 
-is-stream@^1.0.0, is-stream@^1.1.0:
+is-stream@^1.0.0, is-stream@^1.0.1, is-stream@^1.1.0:
   version "1.1.0"
   resolved "https://registry.yarnpkg.com/is-stream/-/is-stream-1.1.0.tgz#12d4a3dd4e68e0b79ceb8dbc84173ae80d91ca44"
   integrity sha512-uQPm8kcs47jx38atAcWTVxyltQYoPT68y9aWYdV6yWXSyW8mzSat0TL6CiWdZeCdF3KrAvpVtnHbTv4RN+rqdQ==
@@ -10343,6 +10407,14 @@ isobject@^3.0.0, isobject@^3.0.1:
   version "3.0.1"
   resolved "https://registry.yarnpkg.com/isobject/-/isobject-3.0.1.tgz#4e431e92b11a9731636aa1f9c8d1ccbcfdab78df"
   integrity sha512-WhB9zCku7EGTj/HQQRz5aUQEUeoQZH2bWcltRErOpymJ4boYE6wL9Tbr23krRPSZ+C5zqNSrSw+Cc7sZZ4b7vg==
+
+isomorphic-fetch@^2.2.1:
+  version "2.2.1"
+  resolved "https://registry.yarnpkg.com/isomorphic-fetch/-/isomorphic-fetch-2.2.1.tgz#611ae1acf14f5e81f729507472819fe9733558a9"
+  integrity sha512-9c4TNAKYXM5PRyVcwUZrF3W09nQ+sO7+jydgs4ZGW9dhsLG2VOlISJABombdQqQRXCwuYG3sYV/puGf5rp0qmA==
+  dependencies:
+    node-fetch "^1.0.1"
+    whatwg-fetch ">=0.10.0"
 
 isomorphic-unfetch@^3.1.0:
   version "3.1.0"
@@ -11020,6 +11092,11 @@ json-stringify-safe@^5.0.1, json-stringify-safe@~5.0.1:
   version "5.0.1"
   resolved "https://registry.yarnpkg.com/json-stringify-safe/-/json-stringify-safe-5.0.1.tgz#1296a2d58fd45f19a0f6ce01d65701e2c735b6eb"
   integrity sha512-ZClg6AaYvamvYEE82d3Iyd3vSSIjQ+odgjaTzRuO3s7toCdFKczob2i0zCh7JE8kWn17yvAWhUVxvqGwUalsRA==
+
+json-to-graphql-query@^2.2.4:
+  version "2.2.5"
+  resolved "https://registry.yarnpkg.com/json-to-graphql-query/-/json-to-graphql-query-2.2.5.tgz#56b072a693b50fd4dc981367b60d52e3dc78f426"
+  integrity sha512-5Nom9inkIMrtY992LMBBG1Zaekrc10JaRhyZgprwHBVMDtRgllTvzl0oBbg13wJsVZoSoFNNMaeIVQs0P04vsA==
 
 json5@^1.0.2:
   version "1.0.2"
@@ -12272,6 +12349,14 @@ node-fetch@2.6.7:
   integrity sha512-ZjMPFEfVx5j+y2yF35Kzx5sF7kDzxuDj6ziH4FFbOp87zKDZNx8yExJIb05OGF4Nlt9IHFIMBkRl41VdvcNdbQ==
   dependencies:
     whatwg-url "^5.0.0"
+
+node-fetch@^1.0.1:
+  version "1.7.3"
+  resolved "https://registry.yarnpkg.com/node-fetch/-/node-fetch-1.7.3.tgz#980f6f72d85211a5347c6b2bc18c5b84c3eb47ef"
+  integrity sha512-NhZ4CsKx7cYm2vSrBAr2PvFOe6sWDf0UYLRqA6svUYg7+/TSfVAu49jYC4BvQ4Sms9SZgdqGBgroqfDhJdTyKQ==
+  dependencies:
+    encoding "^0.1.11"
+    is-stream "^1.0.1"
 
 node-fetch@^2.6.1, node-fetch@^2.6.7:
   version "2.6.9"
@@ -13895,7 +13980,7 @@ safe-stable-stringify@^2.3.1:
   resolved "https://registry.yarnpkg.com/safe-stable-stringify/-/safe-stable-stringify-2.4.3.tgz#138c84b6f6edb3db5f8ef3ef7115b8f55ccbf886"
   integrity sha512-e2bDA2WJT0wxseVd4lsDP4+3ONX6HpMXQa1ZhFQ7SU+GjvORCmShbCMltrtIDfkYhVHrOcPtj+KhmDBdPdZD1g==
 
-"safer-buffer@>= 2.1.2 < 3", safer-buffer@^2.0.2, safer-buffer@^2.1.0, safer-buffer@~2.1.0:
+"safer-buffer@>= 2.1.2 < 3", "safer-buffer@>= 2.1.2 < 3.0.0", safer-buffer@^2.0.2, safer-buffer@^2.1.0, safer-buffer@~2.1.0:
   version "2.1.2"
   resolved "https://registry.yarnpkg.com/safer-buffer/-/safer-buffer-2.1.2.tgz#44fa161b0187b9549dd84bb91802f9bd8385cd6a"
   integrity sha512-YZo3K82SD7Riyi0E1EQPojLz7kpepnSQI9IyPbHHg1XXXevb5dJI7tpyN2ADxGcQbHG7vcyRHk0cbwqcQriUtg==
@@ -16127,6 +16212,11 @@ websocket@^1.0.28, websocket@^1.0.32:
     nan "^2.14.0"
     typedarray-to-buffer "^3.1.5"
     yaeti "^0.0.6"
+
+whatwg-fetch@>=0.10.0:
+  version "3.6.20"
+  resolved "https://registry.yarnpkg.com/whatwg-fetch/-/whatwg-fetch-3.6.20.tgz#580ce6d791facec91d37c72890995a0b48d31c70"
+  integrity sha512-EqhiFU6daOA8kpjOWTL0olhVOF3i7OrFzSYiGsEMB8GcXS+RrzauAERX65xMeNWVqxA6HXH2m69Z9LaKKdisfg==
 
 whatwg-mimetype@^3.0.0:
   version "3.0.0"
