@@ -1,4 +1,4 @@
-ya![Hummingbot](https://i.ibb.co/X5zNkKw/blacklogo-with-text.png)
+![Hummingbot](https://i.ibb.co/X5zNkKw/blacklogo-with-text.png)
 
 # Hummingbot Gateway
 
