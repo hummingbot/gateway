@@ -106,4 +106,9 @@ export class NodeService {
   async getTxsById(id: string): Promise<ErgoTx> {
     return this.request<ErgoTx>('GET', `/blockchain/transaction/byId/${id}`);
   }
+
+  async getBlockInfo(blockHeight: string): Promise<any> {
+    const blockId = (await this.request('GET', `/blocks/at/${blockHeight}`))[0];
+    return await this.request('GET', `/blocks/${blockId}`);
+  }
 }

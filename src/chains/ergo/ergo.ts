@@ -42,6 +42,7 @@ import { ErgoNetwork } from './types/ergo.type';
 import { getBaseInputParameters, getInputs, getTxContext } from './ergo.util';
 import { WalletProver } from './wallet-prover.service';
 import { BigNumber } from 'bignumber.js';
+import { PriceResponse, TradeResponse } from '../../amm/amm.requests';
 
 class Pool extends AmmPool {
   private _name: string;
@@ -452,19 +453,21 @@ export class Ergo {
     return this._assetMap;
   }
 
-  private async swap(
+  public async swap(
     account: ErgoAccount,
     baseToken: string,
     quoteToken: string,
     amount: BigNumber,
     output_address: string,
     return_address: string,
-    sell: boolean,
     slippage?: number,
-  ): Promise<ErgoTx> {
+  ): Promise<TradeResponse> {
+    let sell: boolean;
     const pool = this.getPoolByToken(baseToken, quoteToken);
     if (!pool)
       throw new Error(`pool not found base on ${baseToken}, ${quoteToken}`);
+    if (pool.x.asset.id === baseToken) sell = false;
+    else sell = true;
     const config = getErgoConfig(this.network);
     const networkContext = await this._explorer.getNetworkContext();
     const mainnetTxAssembler = new DefaultTxAssembler(
@@ -553,62 +556,42 @@ export class Ergo {
       BigInt(config.network.defaultMinerFee.toString()),
     );
     const actions = poolActions(pool);
-
-    return await actions.swap(swapParams, txContext);
+    const timestamp = (
+      await this._node.getBlockInfo(networkContext.height.toString())
+    ).header.timestamp;
+    const tx = await actions.swap(swapParams, txContext);
+    return {
+      network: this.network,
+      timestamp,
+      latency: 0,
+      base: baseToken,
+      quote: quoteToken,
+      amount: amount.toString(),
+      rawAmount: amount.toString(),
+      expectedOut: minOutput.amount.toString(),
+      price: sell
+        ? pool.priceX.numerator.toString()
+        : pool.priceY.numerator.toString(), // Cosmos: finalPrice
+      gasPrice: 0,
+      gasPriceToken: '0',
+      gasLimit: 0,
+      gasCost: '0',
+      txHash: tx.id,
+    };
   }
 
-  public async buy(
-    account: ErgoAccount,
+  public async estimate(
     baseToken: string,
     quoteToken: string,
     amount: BigNumber,
-    output_address: string,
-    return_address: string,
     slippage?: number,
-  ): Promise<ErgoTx> {
-    return await this.swap(
-      account,
-      baseToken,
-      quoteToken,
-      amount,
-      output_address,
-      return_address,
-      false,
-      slippage,
-    );
-  }
-
-  public async sell(
-    account: ErgoAccount,
-    baseToken: string,
-    quoteToken: string,
-    amount: BigNumber,
-    output_address: string,
-    return_address: string,
-    slippage?: number,
-  ): Promise<ErgoTx> {
-    return await this.swap(
-      account,
-      baseToken,
-      quoteToken,
-      amount,
-      output_address,
-      return_address,
-      true,
-      slippage,
-    );
-  }
-
-  private async estimate(
-    baseToken: string,
-    quoteToken: string,
-    amount: BigNumber,
-    sell: boolean,
-    slippage?: number,
-  ): Promise<AssetAmount> {
+  ): Promise<PriceResponse> {
+    let sell: boolean;
     const pool = this.getPoolByToken(baseToken, quoteToken);
     if (!pool)
       throw new Error(`pool not found base on ${baseToken}, ${quoteToken}`);
+    if (pool.x.asset.id === baseToken) sell = false;
+    else sell = true;
     const config = getErgoConfig(this.network);
     const max_to = {
       asset: {
@@ -630,32 +613,23 @@ export class Ergo {
       inputAmount: from,
       slippage: slippage || config.network.defaultSlippage,
     });
-
-    return minOutput;
-  }
-
-  public async estimateBuy(
-    baseToken: string,
-    quoteToken: string,
-    y_amount: BigNumber,
-    slippage?: number,
-  ): Promise<AssetAmount> {
-    return await this.estimate(
-      baseToken,
-      quoteToken,
-      y_amount,
-      false,
-      slippage,
-    );
-  }
-
-  public async estimateSell(
-    baseToken: string,
-    quoteToken: string,
-    x_amount: BigNumber,
-    slippage?: number,
-  ): Promise<AssetAmount> {
-    return await this.estimate(baseToken, quoteToken, x_amount, true, slippage);
+    return {
+      base: baseToken,
+      quote: quoteToken,
+      amount: amount.toString(),
+      rawAmount: amount.toString(),
+      expectedAmount: minOutput.amount.toString(),
+      price: sell
+        ? pool.priceX.numerator.toString()
+        : pool.priceY.numerator.toString(),
+      network: this.network,
+      timestamp: Date.now(),
+      latency: 0,
+      gasPrice: 0,
+      gasPriceToken: '0',
+      gasLimit: 0,
+      gasCost: '0',
+    };
   }
 
   public getPool(id: string): Pool {
