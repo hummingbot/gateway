@@ -14,7 +14,7 @@ import {
   PoolResponse,
   TransferRequest,
 } from './interfaces/requests.interface';
-import { TokensRequest } from '../../network/network.requests';
+import { BalanceResponse, TokensRequest } from '../../network/network.requests';
 import { ErgoBoxAsset } from './interfaces/ergo.interface';
 
 export class ErgoController {
@@ -34,17 +34,21 @@ export class ErgoController {
     return await ergo.getTx(req.txId);
   }
 
-  static async balances(chain: Ergo, request: BalanceRequest) {
+  static async balances(
+    chain: Ergo,
+    request: BalanceRequest,
+  ): Promise<BalanceResponse> {
     if (!chain.ready) {
       await chain.init();
     }
     const address = chain.getAccountFromMnemonic(request.privateKey);
     const utxos = await chain.getAddressUnspentBoxes(address.address);
     const { balance, assets } = chain.getBalance(utxos);
-
     return {
-      balance,
-      assets,
+      network: chain.network,
+      timestamp: Date.now(),
+      latency: 0,
+      balances: { ERG: balance.toString(), ...assets },
     };
   }
 
