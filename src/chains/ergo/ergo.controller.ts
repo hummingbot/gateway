@@ -15,6 +15,7 @@ import {
   TransferRequest,
 } from './interfaces/requests.interface';
 import { TokensRequest } from '../../network/network.requests';
+import { ErgoBoxAsset } from './interfaces/ergo.interface';
 
 export class ErgoController {
   static async pool(ergo: Ergo, req: PoolRequest): Promise<PoolResponse> {
@@ -24,6 +25,7 @@ export class ErgoController {
 
     return ergo.getPool(req.poolId).info;
   }
+
   static async poll(ergo: Ergo, req: PollRequest): Promise<PollResponse> {
     if (!ergo.ready) {
       await ergo.init();
@@ -31,6 +33,7 @@ export class ErgoController {
 
     return await ergo.getTx(req.txId);
   }
+
   static async balances(chain: Ergo, request: BalanceRequest) {
     if (!chain.ready) {
       await chain.init();
@@ -66,8 +69,27 @@ export class ErgoController {
     const utxos = await ergo.getAddressUnspentBoxes(req.fromAddress);
 
     return new TransactionBuilder(networkHeight)
-      .from(utxos)
-      .to(new OutputBuilder(req.toValue, req.toAddress).addTokens(req.assets))
+      .from(
+        utxos.map((utxo) => {
+          const temp = Object(utxo);
+          temp.value = temp.value.toString();
+          temp.assets = temp.assets.map((asset: ErgoBoxAsset) => {
+            const temp2 = Object(asset);
+            temp2.amount = temp2.amount.toString();
+            return temp2;
+          });
+          return temp;
+        }),
+      )
+      .to(
+        new OutputBuilder(req.toValue, req.toAddress).addTokens(
+          req.assets.map((asset) => {
+            const temp = Object(asset);
+            temp.amount = temp.amount.toString();
+            return temp;
+          }),
+        ),
+      )
       .sendChangeTo(req.fromAddress)
       .payMinFee()
       .build();

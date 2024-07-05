@@ -5,6 +5,7 @@ import {
   ErgoAsset,
 } from '../../chains/ergo/interfaces/ergo.interface';
 import { Trade } from 'swap-router-sdk';
+import { BigNumber } from 'bignumber.js';
 
 export class Spectrum {
   private static _instances: { [name: string]: Spectrum };
@@ -75,7 +76,7 @@ export class Spectrum {
   async estimateSellTrade(
     baseToken: string,
     quoteToken: string,
-    amount: bigint,
+    amount: BigNumber,
     allowedSlippage?: string,
   ) {
     return this.ergo.estimateSell(
@@ -99,7 +100,7 @@ export class Spectrum {
   async estimateBuyTrade(
     baseToken: string,
     quoteToken: string,
-    amount: bigint,
+    amount: BigNumber,
     allowedSlippage?: string,
   ) {
     return this.ergo.estimateBuy(
@@ -125,7 +126,7 @@ export class Spectrum {
       wallet,
       trade[0].aTokenSlug,
       trade[0].bTokenSlug,
-      BigInt(trade[0].aTokenAmount.toString()),
+      trade[0].aTokenAmount,
       wallet.address,
       wallet.address,
       Number(allowedSlippage),

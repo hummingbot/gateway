@@ -3,6 +3,7 @@ import { Wallet } from 'ergo-lib-wasm-nodejs';
 import { Ergo } from '../ergo';
 import { AssetAmount } from '@patternglobal/ergo-sdk';
 import { WalletProver } from '../wallet-prover.service';
+import { BigNumber } from 'bignumber.js';
 
 export interface ErgoNetworkConfig {
   name: string;
@@ -16,9 +17,9 @@ export interface ErgoNetworkConfig {
   utxosLimit: number;
   poolLimit: number;
   defaultSlippage: number;
-  defaultMinerFee: bigint;
+  defaultMinerFee: BigNumber;
   minNitro: number;
-  minBoxValue: bigint;
+  minBoxValue: BigNumber;
 }
 export interface ErgoConfig {
   network: ErgoNetworkConfig;
@@ -43,12 +44,12 @@ export interface ErgoConnectedInstance {
 
 export interface ErgoBoxAsset {
   tokenId: string;
-  amount: bigint;
+  amount: BigNumber;
 }
 
 export interface ErgoBox {
   boxId: string;
-  value: bigint;
+  value: BigNumber;
   ergoTree: string;
   creationHeight: number;
   assets: Array<ErgoBoxAsset>;
@@ -66,6 +67,6 @@ export interface ErgoBox {
 
 export interface BaseInputParameters {
   baseInput: AssetAmount;
-  baseInputAmount: bigint;
+  baseInputAmount: BigNumber;
   minOutput: AssetAmount;
 }

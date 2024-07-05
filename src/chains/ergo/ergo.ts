@@ -41,6 +41,7 @@ import { NetworkContext } from '@patternglobal/ergo-sdk/build/main/entities/netw
 import { ErgoNetwork } from './types/ergo.type';
 import { getBaseInputParameters, getInputs, getTxContext } from './ergo.util';
 import { WalletProver } from './wallet-prover.service';
+import { BigNumber } from 'bignumber.js';
 
 class Pool extends AmmPool {
   private _name: string;
@@ -345,20 +346,22 @@ export class Ergo {
     assetName: string,
   ): Promise<string> {
     const ergoAsset = this._assetMap[assetName.toUpperCase()];
-    let balance = BigInt(0);
+    let balance = BigNumber(0);
     if (!ergoAsset) throw new Error(`assetName not found ${this._chain} Node!`);
     try {
       const utxos = await this.getAddressUnspentBoxes(account.address);
       balance = utxos.reduce(
-        (total: bigint, box) =>
-          total +
-          box.assets
-            .filter((asset) => asset.tokenId === ergoAsset.tokenId.toString())
-            .reduce(
-              (total_asset, asset) => total_asset + BigInt(asset.amount),
-              BigInt(0),
-            ),
-        BigInt(0),
+        (total: BigNumber, box) =>
+          total.plus(
+            box.assets
+              .filter((asset) => asset.tokenId === ergoAsset.tokenId.toString())
+              .reduce(
+                (total_asset, asset) =>
+                  total_asset.plus(BigNumber(asset.amount)),
+                BigNumber(0),
+              ),
+          ),
+        BigNumber(0),
       );
     } catch (error: any) {
       throw new Error(
@@ -371,16 +374,16 @@ export class Ergo {
 
   public getBalance(utxos: ErgoBox[]) {
     const balance = utxos.reduce(
-      (total, box) => total + BigInt(box.value),
-      BigInt(0),
+      (total, box) => total.plus(BigNumber(box.value)),
+      BigNumber(0),
     );
-    const assets: Record<string, bigint> = {};
+    const assets: Record<string, BigNumber> = {};
 
     utxos.forEach((box) => {
       box.assets.forEach((asset) => {
         if (Object.keys(assets).includes(asset.tokenId))
-          assets[asset.tokenId] += BigInt(asset.amount);
-        else assets[asset.tokenId] = BigInt(asset.amount);
+          assets[asset.tokenId].plus(BigNumber(asset.amount));
+        else assets[asset.tokenId] = BigNumber(asset.amount);
       });
     });
 
@@ -453,7 +456,7 @@ export class Ergo {
     account: ErgoAccount,
     baseToken: string,
     quoteToken: string,
-    amount: bigint,
+    amount: BigNumber,
     output_address: string,
     return_address: string,
     sell: boolean,
@@ -506,7 +509,7 @@ export class Ergo {
       },
     );
     const swapVariables: [number, SwapExtremums] | undefined = swapVars(
-      config.network.defaultMinerFee * BigInt(3),
+      BigInt(config.network.defaultMinerFee.multipliedBy(3).toString()),
       config.network.minNitro,
       minOutput,
     );
@@ -515,19 +518,19 @@ export class Ergo {
     const inputs = getInputs(
       utxos.map((utxo) => {
         const temp = Object(utxo);
-        temp.value = BigInt(temp.value);
+        temp.value = BigNumber(temp.value);
         temp.assets = temp.assets.map((asset: any) => {
           const temp2 = Object(asset);
-          temp2.amount = BigInt(temp2.amount);
+          temp2.amount = BigNumber(temp2.amount);
           return temp2;
         });
         return temp;
       }),
-      [new AssetAmount(from.asset, baseInputAmount)],
+      [new AssetAmount(from.asset, BigInt(baseInputAmount.toString()))],
       {
-        minerFee: config.network.defaultMinerFee,
-        uiFee: config.network.defaultMinerFee,
-        exFee: extremum.maxExFee,
+        minerFee: BigInt(config.network.defaultMinerFee.toString()),
+        uiFee: BigInt(config.network.defaultMinerFee.toString()),
+        exFee: BigInt(extremum.maxExFee.toString()),
       },
     );
     const pk = publicKeyFromAddress(output_address);
@@ -538,7 +541,7 @@ export class Ergo {
       baseInput,
       minQuoteOutput: extremum.minOutput.amount,
       exFeePerToken,
-      uiFee: config.network.defaultMinerFee,
+      uiFee: BigInt(config.network.defaultMinerFee.toString()),
       quoteAsset: to.asset.id,
       poolFeeNum: pool.poolFeeNum,
       maxExFee: extremum.maxExFee,
@@ -547,7 +550,7 @@ export class Ergo {
       inputs,
       networkContext as NetworkContext,
       return_address,
-      config.network.defaultMinerFee,
+      BigInt(config.network.defaultMinerFee.toString()),
     );
     const actions = poolActions(pool);
 
@@ -558,7 +561,7 @@ export class Ergo {
     account: ErgoAccount,
     baseToken: string,
     quoteToken: string,
-    amount: bigint,
+    amount: BigNumber,
     output_address: string,
     return_address: string,
     slippage?: number,
@@ -579,7 +582,7 @@ export class Ergo {
     account: ErgoAccount,
     baseToken: string,
     quoteToken: string,
-    amount: bigint,
+    amount: BigNumber,
     output_address: string,
     return_address: string,
     slippage?: number,
@@ -599,7 +602,7 @@ export class Ergo {
   private async estimate(
     baseToken: string,
     quoteToken: string,
-    amount: bigint,
+    amount: BigNumber,
     sell: boolean,
     slippage?: number,
   ): Promise<AssetAmount> {
@@ -634,7 +637,7 @@ export class Ergo {
   public async estimateBuy(
     baseToken: string,
     quoteToken: string,
-    y_amount: bigint,
+    y_amount: BigNumber,
     slippage?: number,
   ): Promise<AssetAmount> {
     return await this.estimate(
@@ -649,7 +652,7 @@ export class Ergo {
   public async estimateSell(
     baseToken: string,
     quoteToken: string,
-    x_amount: bigint,
+    x_amount: BigNumber,
     slippage?: number,
   ): Promise<AssetAmount> {
     return await this.estimate(baseToken, quoteToken, x_amount, true, slippage);
