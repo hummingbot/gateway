@@ -1,4 +1,8 @@
-import { BaseInputParameters, ErgoBox } from './interfaces/ergo.interface';
+import {
+  BaseInputParameters,
+  ErgoBox,
+  ErgoBoxAsset,
+} from './interfaces/ergo.interface';
 import {
   AmmPool,
   minValueForOrder,
@@ -50,7 +54,19 @@ export function getInputs(
   }
 
   const target = makeTarget(assets, minFeeForOrder);
-  const inputs = DefaultBoxSelector.select(utxos, target);
+  const inputs = DefaultBoxSelector.select(
+    utxos.map((utxo) => {
+      const temp = Object(utxo);
+      temp.value = temp.value.toString();
+      temp.assets = temp.assets.map((asset: ErgoBoxAsset) => {
+        const temp2 = Object(asset);
+        temp2.amount = temp2.amount.toString();
+        return temp2;
+      });
+      return temp;
+    }),
+    target,
+  );
   if (inputs instanceof InsufficientInputs) {
     throw new Error(
       `Error in getInputs function: InsufficientInputs -> ${inputs}`,

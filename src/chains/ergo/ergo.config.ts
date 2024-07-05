@@ -2,6 +2,7 @@ import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { NetworkPrefix } from 'ergo-lib-wasm-nodejs';
 import { ErgoConfig } from './interfaces/ergo.interface';
 import { ErgoNetwork } from './types/ergo.type';
+import { BigNumber } from 'bignumber.js';
 
 /**
  *  This function return configuration for Ergo
@@ -32,11 +33,11 @@ export function getErgoConfig(network: ErgoNetwork): ErgoConfig {
       defaultSlippage: configManager.get(
         `ergo.networks.${network}.defaultSlippage`,
       ),
-      defaultMinerFee: BigInt(
+      defaultMinerFee: BigNumber(
         configManager.get(`ergo.networks.${network}.defaultMinerFee`),
       ),
       minNitro: configManager.get(`ergo.networks.${network}.minNitro`),
-      minBoxValue: BigInt(
+      minBoxValue: BigNumber(
         configManager.get(`ergo.networks.${network}.minBoxValue`),
       ),
     },

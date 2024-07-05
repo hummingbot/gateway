@@ -1,10 +1,8 @@
 import { SpectrumConfig } from './spectrum.config';
 import { Ergo } from '../../chains/ergo/ergo';
-import {
-  ErgoAccount,
-  ErgoAsset,
-} from '../../chains/ergo/interfaces/ergo.interface';
-import { Trade } from 'swap-router-sdk';
+import { ErgoAsset } from '../../chains/ergo/interfaces/ergo.interface';
+import { BigNumber } from 'bignumber.js';
+import { PriceRequest, TradeRequest } from '../../amm/amm.requests';
 
 export class Spectrum {
   private static _instances: { [name: string]: Spectrum };
@@ -63,50 +61,21 @@ export class Spectrum {
   }
 
   /**
-   * Given the amount of `baseToken` to put into a transaction, calculate the
-   * amount of `quoteToken` that can be expected from the transaction.
-   *
-   * This is typically used for calculating token sell prices.
-   *
-   * @param baseToken Token input for the transaction
-   * @param quoteToken Output from the transaction
-   * @param amount Amount of `baseToken` to put into the transaction
-   */
-  async estimateSellTrade(
-    baseToken: string,
-    quoteToken: string,
-    amount: bigint,
-    allowedSlippage?: string,
-  ) {
-    return this.ergo.estimateSell(
-      baseToken,
-      quoteToken,
-      amount,
-      Number(allowedSlippage),
-    );
-  }
-
-  /**
    * Given the amount of `baseToken` desired to acquire from a transaction,
    * calculate the amount of `quoteToken` needed for the transaction.
    *
-   * This is typically used for calculating token buy prices.
+   * This is typically used for calculating token prices.
    *
    * @param quoteToken Token input for the transaction
    * @param baseToken Token output from the transaction
    * @param amount Amount of `baseToken` desired from the transaction
    */
-  async estimateBuyTrade(
-    baseToken: string,
-    quoteToken: string,
-    amount: bigint,
-    allowedSlippage?: string,
-  ) {
-    return this.ergo.estimateBuy(
-      baseToken,
-      quoteToken,
-      amount,
-      Number(allowedSlippage),
+  async estimateTrade(req: PriceRequest) {
+    return this.ergo.estimate(
+      req.base,
+      req.quote,
+      BigNumber(req.amount),
+      Number(req.allowedSlippage),
     );
   }
 
@@ -116,19 +85,18 @@ export class Spectrum {
    * @param wallet Wallet
    * @param trade Expected trade
    */
-  async executeTrade(
-    wallet: ErgoAccount,
-    trade: Trade,
-    allowedSlippage?: string,
-  ) {
-    return this.ergo.buy(
-      wallet,
-      trade[0].aTokenSlug,
-      trade[0].bTokenSlug,
-      BigInt(trade[0].aTokenAmount.toString()),
-      wallet.address,
-      wallet.address,
-      Number(allowedSlippage),
+  async executeTrade(req: TradeRequest) {
+    const account = this.ergo.getAccountFromMnemonic(
+      req.mnemonic as unknown as string,
+    );
+    return this.ergo.swap(
+      account,
+      req.base,
+      req.quote,
+      BigNumber(req.amount),
+      req.address,
+      req.address,
+      Number(req.allowedSlippage),
     );
   }
 }

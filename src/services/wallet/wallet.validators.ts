@@ -143,7 +143,12 @@ export const validatePrivateKey: Validator = mkSelectingValidator(
       invalidKujiraPrivateKeyError,
       (val) => typeof val === 'string' && isKujiraPrivateKey(val)
     ),
-  }
+    ergo: mkValidator(
+      'privateKey',
+      invalidKujiraPrivateKeyError,
+      (val) => typeof val === 'string',
+    ),
+  },
 );
 
 export const invalidChainError: string =
@@ -177,7 +182,8 @@ export const validateChain: Validator = mkValidator(
       val === 'binance-smart-chain' ||
       val === 'tezos' ||
       val === 'xrpl' ||
-      val === 'kujira')
+      val === 'kujira' ||
+      val === 'ergo'),
 );
 
 export const validateNetwork: Validator = mkValidator(
