@@ -383,7 +383,9 @@ export class Ergo {
     utxos.forEach((box) => {
       box.assets.forEach((asset) => {
         if (Object.keys(assets).includes(asset.tokenId))
-          assets[asset.tokenId].plus(BigNumber(asset.amount));
+          assets[asset.tokenId] = assets[asset.tokenId].plus(
+            BigNumber(asset.amount),
+          );
         else assets[asset.tokenId] = BigNumber(asset.amount);
       });
     });
