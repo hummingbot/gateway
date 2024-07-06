@@ -16,6 +16,7 @@ import {
 } from './interfaces/requests.interface';
 import { BalanceResponse, TokensRequest } from '../../network/network.requests';
 import { ErgoBoxAsset } from './interfaces/ergo.interface';
+import { AllowancesRequest, AllowancesResponse } from '../chain.requests';
 
 export class ErgoController {
   static async pool(ergo: Ergo, req: PoolRequest): Promise<PoolResponse> {
@@ -43,11 +44,22 @@ export class ErgoController {
     }
     const utxos = await chain.getAddressUnspentBoxes(request.address);
     const { balance, assets } = chain.getBalance(utxos);
+    const new_assets: Record<string, string> = {};
+    Object.keys(assets).forEach((value) => {
+      const temp = chain.storedAssetList.find(
+        (asset) => asset.tokenId === value,
+      );
+      if (temp) {
+        new_assets[temp.symbol] = assets[value]
+          .div(Math.pow(10, temp.decimals))
+          .toString();
+      }
+    });
     return {
       network: chain.network,
       timestamp: Date.now(),
       latency: 0,
-      balances: { ERG: balance.toString(), ...assets },
+      balances: { ERG: balance.div(Math.pow(10, 9)).toString(), ...new_assets },
     };
   }
 
@@ -96,5 +108,37 @@ export class ErgoController {
       .sendChangeTo(req.fromAddress)
       .payMinFee()
       .build();
+  }
+
+  static async allowances(
+    chain: Ergo,
+    request: AllowancesRequest,
+  ): Promise<AllowancesResponse | string> {
+    if (!chain.ready) {
+      await chain.init();
+    }
+    const utxos = await chain.getAddressUnspentBoxes(request.address);
+    const { balance, assets } = chain.getBalance(utxos);
+    const new_assets: Record<string, string> = {};
+    Object.keys(assets).forEach((value) => {
+      const temp = chain.storedAssetList.find(
+        (asset) => asset.tokenId === value,
+      );
+      if (temp) {
+        new_assets[temp.symbol] = assets[value]
+          .div(Math.pow(10, temp.decimals))
+          .toString();
+      }
+    });
+    return {
+      network: chain.network,
+      timestamp: Date.now(),
+      latency: 0,
+      spender: request.spender,
+      approvals: {
+        ERG: balance.div(Math.pow(10, 9)).toString(),
+        ...new_assets,
+      },
+    };
   }
 }
