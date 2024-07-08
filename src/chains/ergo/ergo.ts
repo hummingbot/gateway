@@ -50,7 +50,7 @@ class Pool extends AmmPool {
   constructor(public pool: AmmPool) {
     super(pool.id, pool.lp, pool.x, pool.y, pool.poolFeeNum);
 
-    this._name = `${this.x.asset.name}/${this.y.asset.name}`;
+    this._name = `${this.pool.x.asset.name}/${this.pool.y.asset.name}`;
   }
 
   public get name() {
