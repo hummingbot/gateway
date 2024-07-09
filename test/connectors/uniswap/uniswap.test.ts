@@ -161,6 +161,7 @@ const patchMockProvider = () => {
     /* unlocked */ true
   );
   mockProvider.stub(DAI_WETH_POOL_ADDRESS, 'liquidity', 0);
+  mockProvider.stub(DAI_WETH_POOL_ADDRESS, 'fee', FeeAmount.LOW);
   patch(ethereum, 'provider', () => {
     return mockProvider;
   });
