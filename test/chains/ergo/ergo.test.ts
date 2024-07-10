@@ -43,7 +43,7 @@ const patchGetErgoConfig = (imputNetwork: string) => {
         explorerDEXURL: 'ergo.networks.' + imputNetwork + '.explorerDEXURL',
         timeOut: 1000,
         networkPrefix:
-          imputNetwork === 'Mainnet'
+          imputNetwork === 'mainnet'
             ? NetworkPrefix.Mainnet
             : NetworkPrefix.Testnet,
         minTxFee: 2000,
@@ -129,11 +129,11 @@ const patchGetTokens = () => {
 };
 
 beforeEach(() => {
-  // Arrange: Mock the return value of getErgoConfig to simulate Mainnet configuration before each test
-  patchGetErgoConfig('Mainnet');
+  // Arrange: Mock the return value of getErgoConfig to simulate mainnet configuration before each test
+  patchGetErgoConfig('mainnet');
 
-  // Arrange: Create a new instance of Ergo with 'Mainnet' configuration before each test
-  ergo = new Ergo('Mainnet');
+  // Arrange: Create a new instance of Ergo with 'mainnet' configuration before each test
+  ergo = new Ergo('mainnet');
 });
 // Clean up mocks after each test
 afterEach(() => {
@@ -142,11 +142,11 @@ afterEach(() => {
 });
 
 describe('Ergo', () => {
-  it('Should initialize with Mainnet configuration', () => {
+  it('Should initialize with mainnet configuration', () => {
     // Assert: Validate the initialization state of Ergo instance
     expect(ergo).toBeDefined();
     expect(ergo['_assetMap']).toEqual({});
-    expect(ergo['_network']).toEqual('Mainnet');
+    expect(ergo['_network']).toEqual('mainnet');
     expect(ergo['_networkPrefix']).toEqual(NetworkPrefix.Mainnet);
     expect(ergo['_node']).toBeInstanceOf(NodeService);
     expect(ergo['_explorer']).toBeInstanceOf(Explorer);
@@ -158,17 +158,17 @@ describe('Ergo', () => {
     expect(ergo['ammPools']).toEqual([]);
   });
 
-  it('Should initialize with Mainnet configuration', () => {
-    // Arrange: Mock the return value of getErgoConfig to simulate Testnet configuration
-    patchGetErgoConfig('Testnet');
+  it('Should initialize with testnet configuration', () => {
+    // Arrange: Mock the return value of getErgoConfig to simulate testnet configuration
+    patchGetErgoConfig('testnet');
 
-    // Act: Create a new instance of Ergo with 'Testnet' configuration
-    const ergo = new Ergo('Testnet');
+    // Act: Create a new instance of Ergo with 'testnet' configuration
+    const ergo = new Ergo('testnet');
 
     // Assert: Validate the initialization state of Ergo instance
     expect(ergo).toBeDefined();
     expect(ergo['_assetMap']).toEqual({});
-    expect(ergo['_network']).toEqual('Testnet');
+    expect(ergo['_network']).toEqual('testnet');
     expect(ergo['_networkPrefix']).toEqual(NetworkPrefix.Testnet);
     expect(ergo['_node']).toBeInstanceOf(NodeService);
     expect(ergo['_explorer']).toBeInstanceOf(Explorer);
@@ -185,27 +185,23 @@ describe('Ergo', () => {
       // Assert: Validate the initialization state of node instance and check the returned value
       expect(ergo.node).toBeInstanceOf(NodeService);
       expect(ergo.node).toEqual({
-        nodeURL: 'ergo.networks.Mainnet.nodeURL',
+        nodeURL: 'ergo.networks.mainnet.nodeURL',
         timeout: 1000,
       });
     });
   });
 
   describe('get network', () => {
-    it('Should return the correct network when network is Mainnet', () => {
-      // Assert: Validate the return value
-      expect(ergo.network).toBe('Mainnet');
+    it('Should return the correct network when network is mainnet', () => {
+      expect(ergo.network).toBe('mainnet');
     });
 
-    it('Should return the correct network when network is Testnet', () => {
-      // Arrange: Mock the return value of getErgoConfig to simulate Testnet configuration
-      patchGetErgoConfig('Testnet');
+    it('Should return the correct network when network is testnet', () => {
+      patchGetErgoConfig('testnet');
 
-      // Act: Create a new instance of Ergo with 'Testnet' configuration
-      ergo = new Ergo('Testnet');
+      ergo = new Ergo('testnet');
 
-      // Assert: Validate the return value
-      expect(ergo.network).toBe('Testnet');
+      expect(ergo.network).toBe('testnet');
     });
   });
 
@@ -229,14 +225,9 @@ describe('Ergo', () => {
 
   describe('ready', () => {
     it('Should return the ready state', () => {
-      // Arrange: Initially, the ready state should be false
-      expect(ergo.ready).toBe(false);
-
-      // Act: Manually set the _ready state to true
+      expect(ergo.ready()).toBe(false);
       ergo['_ready'] = true;
-
-      // Assert: Now, the ready state should be true
-      expect(ergo.ready).toBe(true);
+      expect(ergo.ready()).toBe(true);
     });
   });
 
@@ -252,7 +243,7 @@ describe('Ergo', () => {
       // Assert: Ensure the loadAssets & loadPools methods were called during initialization
       expect(ergo['loadAssets']).toHaveBeenCalled();
       expect(ergo['loadPools']).toHaveBeenCalled();
-      expect(ergo.ready).toBe(true);
+      expect(ergo.ready()).toBe(true);
     });
   });
 
@@ -264,11 +255,11 @@ describe('Ergo', () => {
   });
 
   describe('getInstance', () => {
-    const mockNetwork = 'Testnet';
+    const mockNetwork = 'testnet';
 
     beforeEach(() => {
-      // Arrange: Mock the function to get the configuration for the 'Testnet' network
-      patchGetErgoConfig('Testnet');
+      // Arrange: Mock the function to get the configuration for the 'testnet' network
+      patchGetErgoConfig('testnet');
       // Arrange: Clear the singleton and mock instances
       Ergo['_instances'] = undefined as any;
     });
@@ -305,7 +296,7 @@ describe('Ergo', () => {
     it('Should throw an error if an unexpected network is provided', () => {
       // Act and Assert: Expect that calling getInstance with an invalid network throws an error
       expect(() => Ergo.getInstance('invalidNetwork')).toThrow(
-        'network should be `Mainnet` or `Testnet`',
+        'network should be `mainnet` or `testnet`',
       );
     });
   });
@@ -316,15 +307,15 @@ describe('Ergo', () => {
 
     beforeEach(() => {
       // Arrange: Create mock Ergo instances
-      mockErgoInstance1 = new Ergo('Testnet') as any;
-      mockErgoInstance2 = new Ergo('Mainnet') as any;
+      mockErgoInstance1 = new Ergo('testnet') as any;
+      mockErgoInstance2 = new Ergo('mainnet') as any;
 
       // Arrange: Initialize the _instances LRUCache with mock instances
       Ergo['_instances'] = new LRUCache<string, Ergo>({
         max: 10,
       });
-      Ergo['_instances'].set('Testnet', mockErgoInstance1);
-      Ergo['_instances'].set('Mainnet', mockErgoInstance2);
+      Ergo['_instances'].set('testnet', mockErgoInstance1);
+      Ergo['_instances'].set('mainnet', mockErgoInstance2);
     });
 
     it('Should return all connected instances', () => {
@@ -333,11 +324,11 @@ describe('Ergo', () => {
 
       // Assert: Expect the connected instances to match the mock instances
       expect(Object.keys(connectedInstances).sort()).toEqual([
-        'Mainnet',
-        'Testnet',
+        'mainnet',
+        'testnet',
       ]);
-      expect(connectedInstances['Testnet']).toBe(mockErgoInstance1);
-      expect(connectedInstances['Mainnet']).toBe(mockErgoInstance2);
+      expect(connectedInstances['testnet']).toBe(mockErgoInstance1);
+      expect(connectedInstances['mainnet']).toBe(mockErgoInstance2);
     });
 
     it('Should return an empty object if there are no instances', () => {
@@ -359,11 +350,11 @@ describe('Ergo', () => {
       const connectedInstances = Ergo.getConnectedInstances();
       // Assert: Expect the valid instances to be returned and invalid instances to be excluded
       expect(Object.keys(connectedInstances).sort()).toEqual([
-        'Mainnet',
-        'Testnet',
+        'mainnet',
+        'testnet',
       ]);
-      expect(connectedInstances['Testnet']).toBe(mockErgoInstance1);
-      expect(connectedInstances['Mainnet']).toBe(mockErgoInstance2);
+      expect(connectedInstances['testnet']).toBe(mockErgoInstance1);
+      expect(connectedInstances['mainnet']).toBe(mockErgoInstance2);
       expect(connectedInstances['']).toBeUndefined();
     });
   });
