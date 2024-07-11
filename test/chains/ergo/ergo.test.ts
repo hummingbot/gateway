@@ -4,6 +4,9 @@ import {
   SecretKeys,
   Wallet,
   Address,
+  Mnemonic,
+  ExtSecretKey,
+  DerivationPath,
 } from 'ergo-lib-wasm-nodejs';
 import { Ergo } from '../../../src/chains/ergo/ergo';
 import { patch, unpatch } from '../../../test/services/patch';
@@ -129,10 +132,7 @@ const patchGetTokens = () => {
 };
 
 beforeEach(() => {
-  // Arrange: Mock the return value of getErgoConfig to simulate mainnet configuration before each test
   patchGetErgoConfig('mainnet');
-
-  // Arrange: Create a new instance of Ergo with 'mainnet' configuration before each test
   ergo = new Ergo('mainnet');
 });
 // Clean up mocks after each test
@@ -142,6 +142,14 @@ afterEach(() => {
 });
 
 describe('Ergo', () => {
+  it('Should be defined', () => {
+    expect(ergo).toBeDefined();
+  });
+  it('Should throw new Error if network is not mainnet or testnet', () => {
+    expect(() => new Ergo('invalidNetwork')).toThrow(
+      'network should be `mainnet` or `testnet`',
+    );
+  });
   it('Should initialize with mainnet configuration', () => {
     // Assert: Validate the initialization state of Ergo instance
     expect(ergo).toBeDefined();
@@ -228,6 +236,14 @@ describe('Ergo', () => {
       expect(ergo.ready()).toBe(false);
       ergo['_ready'] = true;
       expect(ergo.ready()).toBe(true);
+    });
+  });
+
+  describe('getNetworkHeight', () => {
+    it('Should call getNetworkHeight method from node', async () => {
+      jest.spyOn(ergo['_node'], 'getNetworkHeight').mockResolvedValue(1);
+      await ergo.getNetworkHeight();
+      expect(ergo['_node'].getNetworkHeight).toHaveBeenCalled();
     });
   });
 
@@ -426,7 +442,7 @@ describe('Ergo', () => {
   });
 
   describe('getAccountFromSecretKey', () => {
-    it('Should return an account with address and wallet', () => {
+    it('Should return an account with address and wallet from secret key', () => {
       const secret =
         '591811a0d6361f18e42549b32e65b98c9a63d6aad369d1056a97ca81f2a980d5';
       patchFrom_secrets();
@@ -450,6 +466,41 @@ describe('Ergo', () => {
       // Assert: Validate the returned address and wallet
       expect(result.address).toBe('testAddress');
       expect(result.wallet).toBe('testWallet');
+    });
+  });
+
+  describe('getAccountFromMnemonic', () => {
+    it('Should return an account with address and wallet from mnemonic', () => {
+      patchFrom_secrets();
+      patchTo_base58();
+      const mockGetAddress = jest.fn().mockReturnValue(new Address());
+      const mockSecretKeyInstance = {
+        get_address: mockGetAddress,
+      } as unknown as SecretKey;
+      jest
+        .spyOn(SecretKey, 'dlog_from_bytes')
+        .mockReturnValue(mockSecretKeyInstance);
+
+      jest.spyOn(DerivationPath, 'new').mockReturnValue({} as any);
+      jest.spyOn(Mnemonic, 'to_seed').mockReturnValue(1 as any);
+      jest.spyOn(ExtSecretKey, 'derive_master').mockReturnValue({
+        derive: jest.fn().mockReturnValue({
+          secret_key_bytes: jest.fn().mockReturnValue('uint*Array' as any),
+        }),
+      } as any);
+      const result = ergo.getAccountFromMnemonic('mnemonic');
+      expect(result.address).toBe('testAddress');
+      expect(result.wallet).toBe('testWallet');
+      expect(result.prover).toEqual({
+        wallet: 'testWallet',
+        nodeService: {
+          nodeURL: 'ergo.networks.mainnet.nodeURL',
+          timeout: 1000,
+        },
+      });
+      expect(DerivationPath.new).toHaveBeenCalledWith(0, new Uint32Array([0]));
+      // 1 as return value from Mnemonic.to_seed function
+      expect(ExtSecretKey.derive_master).toHaveBeenCalledWith(1);
     });
   });
 
