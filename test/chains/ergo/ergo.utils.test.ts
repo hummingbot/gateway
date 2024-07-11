@@ -8,9 +8,10 @@ import {
   minValueForOrder,
   minValueForSetup,
 } from '@patternglobal/ergo-dex-sdk';
+import { makeTarget } from '@patternglobal/ergo-dex-sdk/build/main/utils/makeTarget';
 
 jest.mock('@patternglobal/ergo-dex-sdk', () => ({
-  minValueForOrder: jest.fn().mockReturnValue(BigInt(1)),
+  minValueForOrder: jest.fn().mockReturnValue(BigInt(100000)),
   minValueForSetup: jest.fn(),
 }));
 
@@ -163,6 +164,11 @@ describe('getInputs', () => {
     );
     expect(minValueForSetup).toHaveBeenCalledWith(fees.minerFee, fees.uiFee);
   });
+  it('Should subtract minFeeForOrder with MinBoxValue when ignoreMinBoxValue is true', () => {
+    const ignoreMinBoxValue = true;
+    ergo_utils.getInputs(utxos, assets, fees, ignoreMinBoxValue, setup);
+    expect(makeTarget).toHaveBeenCalledWith(assets, BigInt(40000));
+  });
   it('Should map on utxos and cast the related types to string and return the data correctly', () => {
     jest
       .spyOn(DefaultBoxSelector, 'select')
@@ -182,5 +188,26 @@ describe('getInputs', () => {
     expect(() => ergo_utils.getInputs(utxos, assets, fees)).toThrow(
       `Error in getInputs function: InsufficientInputs -> ${err}`,
     );
+  });
+});
+
+describe('getTxContext', () => {
+  const inputs: any = {};
+  const network: any = {};
+  const address: string = 'address';
+  const minerFee: bigint = BigInt(1);
+  it('Should be defined', () => {
+    expect(ergo_utils.getTxContext).toBeDefined();
+  });
+
+  it('Should return correct data', () => {
+    const result = ergo_utils.getTxContext(inputs, network, address, minerFee);
+    expect(result).toEqual({
+      inputs,
+      selfAddress: address,
+      changeAddress: address,
+      feeNErgs: minerFee,
+      network,
+    });
   });
 });
