@@ -1,4 +1,22 @@
+import {
+  BoxSelection,
+  DefaultBoxSelector,
+  InsufficientInputs,
+} from '@patternglobal/ergo-sdk';
 import * as ergo_utils from '../../../src/chains/ergo/ergo.util';
+import {
+  minValueForOrder,
+  minValueForSetup,
+} from '@patternglobal/ergo-dex-sdk';
+
+jest.mock('@patternglobal/ergo-dex-sdk', () => ({
+  minValueForOrder: jest.fn().mockReturnValue(BigInt(1)),
+  minValueForSetup: jest.fn(),
+}));
+
+jest.mock('@patternglobal/ergo-dex-sdk/build/main/utils/makeTarget', () => ({
+  makeTarget: jest.fn().mockReturnValue({} as any),
+}));
 
 describe('getBaseInputParameters', () => {
   const pool = {
@@ -55,7 +73,6 @@ describe('getBaseInputParameters', () => {
   };
 
   it('Should be defined', () => {
-    console.log(pool.lp.withAmount(''));
     expect(ergo_utils.getBaseInputParameters).toBeDefined();
   });
 
@@ -99,5 +116,71 @@ describe('getBaseInputParameters', () => {
     });
     expect(result.baseInputAmount).toEqual(100);
     expect(result.minOutput).toEqual(1);
+  });
+});
+
+describe('getInputs', () => {
+  const utxos: any = [];
+  const assets: any = [];
+  const fees: any = {
+    minerFee: BigInt(1),
+    uiFee: BigInt(1),
+    exFee: BigInt(1),
+  };
+  const ignoreMinBoxValue = false;
+  const setup = false;
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+  it('Should be defined', () => {
+    expect(ergo_utils.getInputs).toBeDefined();
+  });
+  it('Should not call minValueForSetup method when setup is false', () => {
+    jest
+      .spyOn(DefaultBoxSelector, 'select')
+      .mockReturnValue({} as unknown as BoxSelection);
+    ergo_utils.getInputs(utxos, assets, fees, ignoreMinBoxValue, setup);
+    expect(minValueForOrder).toHaveBeenCalledWith(
+      fees.minerFee,
+      fees.uiFee,
+      fees.exFee,
+    );
+    expect(minValueForSetup).not.toHaveBeenCalledWith(
+      fees.minerFee,
+      fees.uiFee,
+    );
+  });
+  it('Should call minValueForSetup method with correct parameters when setup is true', () => {
+    jest
+      .spyOn(DefaultBoxSelector, 'select')
+      .mockReturnValue({} as unknown as BoxSelection);
+    const setup = true;
+    ergo_utils.getInputs(utxos, assets, fees, ignoreMinBoxValue, setup);
+    expect(minValueForOrder).toHaveBeenCalledWith(
+      fees.minerFee,
+      fees.uiFee,
+      fees.exFee,
+    );
+    expect(minValueForSetup).toHaveBeenCalledWith(fees.minerFee, fees.uiFee);
+  });
+  it('Should map on utxos and cast the related types to string and return the data correctly', () => {
+    jest
+      .spyOn(DefaultBoxSelector, 'select')
+      .mockReturnValue({} as unknown as BoxSelection);
+    const utxos: any = [{ value: 1, assets: [{ amount: 2 }] }];
+    const result = ergo_utils.getInputs(utxos, assets, fees);
+    expect(DefaultBoxSelector.select).toHaveBeenCalledWith(
+      [{ value: '1', assets: [{ amount: '2' }] }],
+      {},
+    );
+    expect(result).toEqual({});
+  });
+  it('Should throw new Error when inputs are instanceof InsufficientInputs', () => {
+    const err: InsufficientInputs = new InsufficientInputs('');
+    jest.spyOn(DefaultBoxSelector, 'select').mockReturnValue(err);
+
+    expect(() => ergo_utils.getInputs(utxos, assets, fees)).toThrow(
+      `Error in getInputs function: InsufficientInputs -> ${err}`,
+    );
   });
 });
