@@ -1,6 +1,6 @@
 {
   "name": "hummingbot-gateway",
-  "version": "dev-1.27.0",
+  "version": "dev-2.0.1",
   "description": "Middleware that helps Hummingbot clients access standardized DEX API endpoints on different blockchain networks",
   "main": "index.js",
   "license": "Apache-2.0",
@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@cosmjs/amino": "^0.32.2",
+    "@balancer-labs/sdk": "^1.1.5",
     "@bancor/carbon-sdk": "^0.0.93-DEV",
     "@cosmjs/proto-signing": "^0.31.1",
     "@cosmjs/stargate": "^0.31.1",
