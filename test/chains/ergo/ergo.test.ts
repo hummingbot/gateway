@@ -12,7 +12,7 @@ import { Ergo } from '../../../src/chains/ergo/ergo';
 import { patch, unpatch } from '../../../test/services/patch';
 import * as ergo_cofing from '../../../src/chains/ergo/ergo.config';
 import { NodeService } from '../../../src/chains/ergo/node.service';
-import { Explorer } from '@patternglobal/ergo-sdk';
+import { Explorer, RustModule } from '@patternglobal/ergo-sdk';
 import { DexService } from '../../../src/chains/ergo/dex.service';
 import { ErgoController } from '../../../src/chains/ergo/ergo.controller';
 import {
@@ -817,15 +817,105 @@ describe('Ergo', () => {
     });
   });
 
+  describe('loadPool', () => {
+    beforeEach(() => {
+      jest.spyOn(RustModule, 'load').mockResolvedValue;
+      jest.spyOn(ergo, 'getPool').mockReturnValue({} as any);
+    });
+    it('Should be defined', () => {
+      expect(ergo.loadPool).toBeDefined();
+    });
+    it('Should not update ammPools if pool with related id is found', async () => {
+      const before = ergo['ammPools'].length;
+      await ergo.loadPool('invalidPoolId');
+      const after = ergo['ammPools'].length;
+
+      expect(before).toEqual(after);
+      expect(ergo.getPool).toHaveBeenCalledWith('invalidPoolId');
+      expect(makeNativePools).not.toHaveBeenCalled();
+    });
+    it('Should add pool to ammPools if pool is not added before', async () => {
+      const pool: any = {
+        id: '1b694b15467c62f0cd4525e368dbdea2329c713aa200b73df4a622e950551b40',
+        lp: {
+          withAmount: (_sth: any) => {
+            return {
+              asset: {
+                id: 'lpId',
+                name: 'lpNmae',
+                decimals: 0,
+              },
+              amount: BigInt(922336941265222),
+            };
+          },
+        },
+        x: {
+          withAmount: (_sth: any) => {
+            return {
+              asset: {
+                id: 'xId',
+                name: 'xNmae',
+                decimals: 9,
+              },
+              amount: BigInt(752313805260857),
+            };
+          },
+          asset: {
+            id: 'xId',
+            name: 'xNmae',
+            decimals: 9,
+          },
+        },
+        y: {
+          withAmount: (_sth: any) => {
+            return {
+              asset: {
+                id: 'yId',
+                name: 'yNmae',
+                decimals: 3,
+              },
+              amount: BigInt(9322283969),
+            };
+          },
+          asset: {
+            id: 'yId',
+            name: 'yNmae',
+            decimals: 3,
+          },
+        },
+        outputAmount: (_sth: any, _slippage: any) => {
+          return 1;
+        },
+      };
+
+      jest.spyOn(ergo, 'getPool').mockReturnValue(null as any);
+      const mockGet = jest.fn().mockResolvedValue(pool);
+      (makeNativePools as any).mockReturnValue({ get: mockGet });
+
+      expect(ergo['ammPools'].length).toEqual(0);
+      await ergo.loadPool('validPoolId');
+      expect(ergo['ammPools'].length).toEqual(1);
+      expect(makeNativePools).toHaveBeenCalledWith(ergo['_explorer']);
+    });
+
+    it('Should throw new Error if no pool is found with the related poolId from makeNativePools', async () => {
+      const mockGet = jest.fn().mockReturnValue(null);
+      (makeNativePools as any).mockReturnValue({ get: mockGet });
+      jest.spyOn(ergo, 'getPool').mockReturnValue(null as any);
+
+      await expect(ergo.loadPool('invalidPoolId')).rejects.toThrow(
+        `can not get pool with this id: invalidPoolId`,
+      );
+    });
+  });
+
   describe('getPoolData', () => {
     it('Should call makeNativePools and getAll with correct parameters', async () => {
-      // Arrange: Mock makeNativePools and getAll methods
       const mockGetAll = jest.fn().mockResolvedValue([]);
       (makeNativePools as any).mockReturnValue({ getAll: mockGetAll });
 
       const limit = 10;
       const offset = 0;
-
       // Act: Call the method under test
       await ergo['getPoolData'](limit, offset);
 
@@ -835,17 +925,13 @@ describe('Ergo', () => {
     });
 
     it('Should return the data from getAll method', async () => {
-      // Arrange: Mock getAll method to return specific data
       const expectedData = [{ id: 1, name: 'Pool 1' }];
       const mockGetAll = jest.fn().mockResolvedValue(expectedData);
       (makeNativePools as any).mockReturnValue({ getAll: mockGetAll });
-
       const limit = 10;
       const offset = 0;
-
       // Act: Call the method under test
       const result = await ergo['getPoolData'](limit, offset);
-
       // Assert: Verify the method returns expected data
       expect(result).toEqual(expectedData[0]);
     });
@@ -858,7 +944,6 @@ describe('Ergo', () => {
       const limit = 10;
       const offset = 0;
 
-      // Act & Assert: Ensure the method throws the expected error
       await expect(ergo['getPoolData'](limit, offset)).rejects.toThrow(
         'Test error',
       );
@@ -877,7 +962,6 @@ describe('Ergo', () => {
 
       // Act: Set _assetMap directly
       ergo['_assetMap'] = assetMap;
-
       // Assert: Validate the stored asset list returned by storedAssetList
       expect(ergo.storedTokenList).toEqual(assetMap);
     });
