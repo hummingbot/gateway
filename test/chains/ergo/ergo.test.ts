@@ -22,6 +22,7 @@ import {
 } from '../../../src/chains/ergo/interfaces/ergo.interface';
 import LRUCache from 'lru-cache';
 import { makeNativePools } from '@patternglobal/ergo-dex-sdk';
+import { BigNumber } from 'bignumber.js';
 
 jest.mock('@patternglobal/ergo-dex-sdk', () => ({
   AmmPool: jest.fn(),
@@ -380,7 +381,6 @@ describe('Ergo', () => {
       // Arrange: Mock the getNetworkHeight method to return a fixed value
       jest.spyOn(ergo['_node'], 'getNetworkHeight').mockResolvedValue(17);
 
-      // Act: Call the getCurrentBlockNumber method
       const blockNumber = await ergo.getCurrentBlockNumber();
 
       // Assert: Validate the returned block number
@@ -412,10 +412,8 @@ describe('Ergo', () => {
         .mockResolvedValueOnce(mockUnspentBoxesPage1)
         .mockResolvedValueOnce(mockUnspentBoxesPage2)
         .mockResolvedValueOnce(mockUnspentBoxesPage3);
-
       // Act: Call the getAddressUnspentBoxes method
       const result = await ergo.getAddressUnspentBoxes(mockAddress);
-
       // Assert: Validate that an empty array is returned
       expect(result).toEqual([
         { boxId: 'box1' },
@@ -447,7 +445,6 @@ describe('Ergo', () => {
         '591811a0d6361f18e42549b32e65b98c9a63d6aad369d1056a97ca81f2a980d5';
       patchFrom_secrets();
       patchTo_base58();
-
       // Arrange: Mock get_address method
       const mockGetAddress = jest.fn().mockReturnValue(new Address());
       const mockSecretKeyInstance = {
@@ -460,9 +457,7 @@ describe('Ergo', () => {
       const mockAdd = jest.fn();
       jest.spyOn(SecretKeys.prototype, 'add').mockImplementation(mockAdd);
 
-      // Act: Call the getAccountFromSecretKey method
       const result = ergo.getAccountFromSecretKey(secret);
-
       // Assert: Validate the returned address and wallet
       expect(result.address).toBe('testAddress');
       expect(result.wallet).toBe('testWallet');
@@ -510,9 +505,7 @@ describe('Ergo', () => {
       const secret = 'mySecret';
       const password = 'myPassword';
 
-      // Act: Call the encrypt method
       const encryptedText = ergo.encrypt(secret, password);
-
       // Assert: Verify the encrypted text format
       expect(encryptedText).toMatch(/^[0-9a-fA-F]{32}:[0-9a-fA-F]+$/);
     });
@@ -577,10 +570,8 @@ describe('Ergo', () => {
       const secret = 'mySecret';
       const password = 'myPassword';
       const encryptedText = ergo.encrypt(secret, password);
-
       // Act: Call the decrypt method
       const decryptedText = ergo.decrypt(encryptedText, password);
-
       // Assert: Verify that the decrypted text matches the original secret
       expect(decryptedText).toBe(secret);
     });
@@ -591,7 +582,6 @@ describe('Ergo', () => {
       const correctPassword = 'correctPassword';
       const wrongPassword = 'wrongPassword';
       const encryptedText = ergo.encrypt(secret, correctPassword);
-
       // Act & Assert: Call the decrypt method with the wrong password and expect an error
       expect(() => {
         ergo.decrypt(encryptedText, wrongPassword);
@@ -603,47 +593,34 @@ describe('Ergo', () => {
       const secret = 'mySecret';
       const longPassword = 'a'.repeat(50); // 50 bytes password
       const encryptedText = ergo.encrypt(secret, longPassword);
-
       // Act: Call the decrypt method
       const decryptedText = ergo.decrypt(encryptedText, longPassword);
-
       // Assert: Verify that the decrypted text matches the original secret
       expect(decryptedText).toBe(secret);
     });
 
     it('Should handle case where password is exactly 32 bytes', () => {
-      // Arrange: Set up the secret and a 32 bytes password, and encrypt the secret
       const secret = 'mySecret';
       const exact32BytesPassword = 'a'.repeat(32); // 32 bytes password
       const encryptedText = ergo.encrypt(secret, exact32BytesPassword);
-
-      // Act: Call the decrypt method
       const decryptedText = ergo.decrypt(encryptedText, exact32BytesPassword);
-
       // Assert: Verify that the decrypted text matches the original secret
       expect(decryptedText).toBe(secret);
     });
   });
 
   describe('getAssetBalance', () => {
+    const account: ErgoAccount = { address: 'mockAddress' } as any;
     it('Should return balance as 0 when there are no unspent boxes', async () => {
-      // Arrange: Set up the account and asset map, and mock the getAddressUnspentBoxes method to return an empty array
-      const account: ErgoAccount = { address: 'mockAddress' } as any;
       ergo['_assetMap'] = {
         ASSETNAME: { tokenId: 1 },
       } as any;
       patchGetAddressUnspentBoxes();
-
-      // Act: Call the getAssetBalance method
       const balance = await ergo.getAssetBalance(account, 'assetName');
-
-      // Assert: Verify that the balance is 0
       expect(balance).toBe('0');
     });
 
     it('Should return balance as 0 when there are no matching assets', async () => {
-      // Arrange: Set up the account, asset map, and mock the getAddressUnspentBoxes method to return utxos without matching assets
-      const account: ErgoAccount = { address: 'mockAddress' } as any;
       ergo['_assetMap'] = {
         ASSETNAME: { tokenId: 1 },
       } as any;
@@ -651,17 +628,11 @@ describe('Ergo', () => {
       jest
         .spyOn(ergo, 'getAddressUnspentBoxes')
         .mockResolvedValue(utxos as any);
-
-      // Act: Call the getAssetBalance method
       const balance = await ergo.getAssetBalance(account, 'assetName');
-
-      // Assert: Verify that the balance is 0
       expect(balance).toBe('0');
     });
 
     it('Should return correct balance when there are matching assets', async () => {
-      // Arrange: Set up the account, asset map, and mock the getAddressUnspentBoxes method to return utxos with matching assets
-      const account: ErgoAccount = { address: 'mockAddress' } as any;
       ergo['_assetMap'] = {
         ASSETNAME: { tokenId: 1 },
       } as any;
@@ -672,24 +643,71 @@ describe('Ergo', () => {
       jest
         .spyOn(ergo, 'getAddressUnspentBoxes')
         .mockResolvedValue(utxos as any);
-
-      // Act: Call the getAssetBalance method
       const balance = await ergo.getAssetBalance(account, 'assetName');
-
-      // Assert: Verify that the balance is correct
       expect(balance).toBe('300');
     });
 
+    it('Should throw an error when no ergo asset is found', async () => {
+      ergo['_assetMap'] = {};
+      await expect(ergo.getAssetBalance(account, 'assetName')).rejects.toThrow(
+        `assetName not found ${ergo['_chain']} Node!`,
+      );
+    });
     it('Should throw an error when getAddressUnspentBoxes fails', async () => {
-      // Arrange: Set up the account and mock the getAddressUnspentBoxes method to reject with an error
-      const account: ErgoAccount = { address: 'mockAddress' } as any;
       jest
         .spyOn(ergo, 'getAddressUnspentBoxes')
         .mockRejectedValue(new Error('some error'));
-
-      // Act & Assert: Call the getAssetBalance method and expect it to throw an error
+      ergo['_assetMap'] = { ASSETNAME: {} } as any;
       await expect(ergo.getAssetBalance(account, 'assetName')).rejects.toThrow(
-        `assetName not found ${ergo['_chain']} Node!`,
+        `problem during finding account assets ${ergo['_chain']} Node!`,
+      );
+    });
+  });
+
+  describe('getBalance', () => {
+    let utxos: any = [];
+    it('Should be defined', () => {
+      expect(ergo.getBalance).toBeDefined();
+    });
+
+    it('Should return balance and assets when utxos is empty', () => {
+      const result = ergo.getBalance(utxos);
+      expect(result).toEqual({ assets: {}, balance: BigNumber(0) });
+    });
+
+    it('Should calculate balance and assets correctly', () => {
+      utxos = [
+        {
+          value: '1000',
+          assets: [
+            { tokenId: 'token1', amount: '10' },
+            { tokenId: 'token2', amount: '20' },
+          ],
+        },
+        {
+          value: '2000',
+          assets: [
+            { tokenId: 'token1', amount: '30' },
+            { tokenId: 'token3', amount: '40' },
+          ],
+        },
+      ];
+      const expectedBalance = BigNumber(3000);
+      const expectedAssets = {
+        token1: BigNumber(40),
+        token2: BigNumber(20),
+        token3: BigNumber(40),
+      };
+      const result = ergo.getBalance(utxos);
+      expect(result.balance.toString()).toBe(expectedBalance.toString());
+      expect(result.assets.token1.toString()).toBe(
+        expectedAssets.token1.toString(),
+      );
+      expect(result.assets.token2.toString()).toBe(
+        expectedAssets.token2.toString(),
+      );
+      expect(result.assets.token3.toString()).toBe(
+        expectedAssets.token3.toString(),
       );
     });
   });
@@ -718,9 +736,7 @@ describe('Ergo', () => {
 
   describe('getAssetData', () => {
     it('Should return all token with the details', async () => {
-      // Mock getTokens method to return predefined data
       patchGetTokens();
-
       // Act & Assert: Validate the returned data structure
       expect(await ergo['getAssetData']()).toEqual({
         name: 'Spectrum Finance Ergo Token List',
@@ -755,10 +771,7 @@ describe('Ergo', () => {
       jest.spyOn(ergo as any, 'getPoolData').mockResolvedValue([] as any);
       ergo['ammPools'] = [];
 
-      // Act: Call the method under test
       await ergo['loadPools']();
-
-      // Assert: Ensure ammPools remains empty
       expect(ergo['ammPools']).toEqual([]);
     });
 
@@ -769,11 +782,9 @@ describe('Ergo', () => {
         .mockResolvedValueOnce([{ id: '1' }, { id: 2 }] as any);
       jest.spyOn(ergo as any, 'getPoolData').mockResolvedValueOnce([] as any);
 
-      // Act: Call the method under test
       ergo['ammPools'] = [];
       await ergo['loadPools']();
 
-      // Assert: Verify ammPools contains expected pool data
       expect(ergo['ammPools']).toEqual([{ id: '1' }, { id: 2 }]);
     });
 
@@ -796,10 +807,8 @@ describe('Ergo', () => {
 
       ergo['ammPools'] = [];
 
-      // Act: Call the method under test
       await ergo['loadPools']();
 
-      // Assert: Verify ammPools contains merged pool data without duplicates
       expect(ergo['ammPools']).toEqual([
         { id: 1, name: 'Pool 1' },
         { id: 2, name: 'Pool 2' },
