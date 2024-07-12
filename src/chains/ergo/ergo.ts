@@ -404,6 +404,14 @@ export class Ergo {
         symbol: result.ticker,
       };
     }
+
+    this._assetMap['ERGO'] = {
+      tokenId:
+        '0000000000000000000000000000000000000000000000000000000000000000',
+      decimals: 9,
+      name: 'ERGO',
+      symbol: 'ERG',
+    };
   }
 
   private async getAssetData() {
@@ -589,6 +597,9 @@ export class Ergo {
     slippage?: number,
   ): Promise<PriceResponse> {
     let sell: boolean;
+
+    console.log(baseToken, quoteToken);
+
     const pool = this.getPoolByToken(baseToken, quoteToken);
     if (!pool)
       throw new Error(`pool not found base on ${baseToken}, ${quoteToken}`);
@@ -639,13 +650,21 @@ export class Ergo {
   }
 
   public getPoolByToken(baseToken: string, quoteToken: string): Pool {
+    const realBaseToken = this.storedAssetList.find(
+      (asset) => asset.symbol === baseToken,
+    );
+    const realQuoteToken = this.storedAssetList.find(
+      (asset) => asset.symbol === quoteToken,
+    );
+    if (!realBaseToken || !realQuoteToken)
+      throw new Error(`${realBaseToken} or ${realQuoteToken} not found!`);
     return <Pool>(
       this.ammPools.find(
         (ammPool) =>
-          (ammPool.x.asset.id === baseToken &&
-            ammPool.y.asset.id === quoteToken) ||
-          (ammPool.x.asset.id === quoteToken &&
-            ammPool.y.asset.id === baseToken),
+          (ammPool.x.asset.id === realBaseToken.tokenId &&
+            ammPool.y.asset.id === realQuoteToken.tokenId) ||
+          (ammPool.x.asset.id === realQuoteToken.tokenId &&
+            ammPool.y.asset.id === realBaseToken.tokenId),
       )
     );
   }
