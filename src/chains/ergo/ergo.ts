@@ -657,7 +657,7 @@ export class Ergo {
       (asset) => asset.symbol === quoteToken,
     );
     if (!realBaseToken || !realQuoteToken)
-      throw new Error(`${realBaseToken} or ${realQuoteToken} not found!`);
+      throw new Error(`${baseToken} or ${quoteToken} not found!`);
     return <Pool>(
       this.ammPools.find(
         (ammPool) =>
