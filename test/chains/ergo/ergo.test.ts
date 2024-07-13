@@ -28,10 +28,26 @@ import * as ergo_utils from '../../../src/chains/ergo/ergo.util';
 jest.mock('@patternglobal/ergo-dex-sdk', () => ({
   AmmPool: jest.fn(),
   makeNativePools: jest.fn(),
-  makeWrappedNativePoolActionsSelector: jest.fn(),
+  makeWrappedNativePoolActionsSelector: jest.fn().mockReturnValue(() => ({
+    swap: jest.fn().mockResolvedValue({ id: 'txId' }),
+  })),
   swapVars: jest
     .fn()
     .mockReturnValueOnce(undefined)
+    .mockReturnValueOnce([
+      1,
+      {
+        minOutput: { amount: BigInt(1) },
+        maxExFee: BigInt(1),
+      },
+    ] as any)
+    .mockReturnValueOnce([
+      1,
+      {
+        minOutput: { amount: BigInt(1) },
+        maxExFee: BigInt(1),
+      },
+    ] as any)
     .mockReturnValueOnce([
       1,
       {
@@ -42,10 +58,14 @@ jest.mock('@patternglobal/ergo-dex-sdk', () => ({
 }));
 jest.mock('@patternglobal/ergo-sdk', () => ({
   Explorer: jest.fn().mockReturnValue({
-    getNetworkContext: jest.fn().mockReturnValue({} as any),
+    getNetworkContext: jest.fn().mockReturnValue({ height: 1 } as any),
   }),
   AssetAmount: jest.fn(),
-  publicKeyFromAddress: jest.fn().mockReturnValueOnce(undefined),
+  publicKeyFromAddress: jest
+    .fn()
+    .mockReturnValueOnce(undefined)
+    .mockReturnValueOnce('publicKey')
+    .mockReturnValueOnce('publicKey'),
   RustModule: {
     load: jest.fn().mockResolvedValue,
   },
@@ -72,6 +92,7 @@ const patchGetErgoConfig = (imputNetwork: string) => {
         utxosLimit: 100,
         poolLimit: 100,
         defaultMinerFee: BigNumber(2),
+        defaultSlippage: 10,
       },
     };
   });
@@ -748,6 +769,13 @@ describe('Ergo', () => {
           name: '$Bass Token',
           symbol: '$bass',
         },
+        ERGO: {
+          tokenId:
+            '0000000000000000000000000000000000000000000000000000000000000000',
+          decimals: 9,
+          name: 'ERGO',
+          symbol: 'ERG',
+        },
       });
     });
   });
@@ -986,13 +1014,13 @@ describe('Ergo', () => {
   });
 
   describe('swap', () => {
-    const account: any = {};
+    const account: any = { address: 'address' };
     const baseToken: string = 'baseToken';
     const quoteToken: string = 'quoteToken';
     const amount: BigNumber = BigNumber(10);
     const output_address: string = 'output_address';
     const return_address: string = 'return_address';
-    // const slippage: number =
+    const slippage: number = 10;
     beforeEach(() => {
       jest.spyOn(ergo, 'getAddressUnspentBoxes').mockResolvedValue([]);
     });
@@ -1098,6 +1126,8 @@ describe('Ergo', () => {
           decimals: 3,
         },
       },
+      priceX: { numerator: BigInt(1) },
+      priceY: { numerator: BigInt(2) },
       outputAmount: (_sth: any, _slippage: any) => {
         return {
           amount: BigInt(1),
@@ -1105,7 +1135,7 @@ describe('Ergo', () => {
       },
     };
 
-    it('Shoukd be defined', () => {
+    it('Should be defined', () => {
       expect(ergo.swap).toBeDefined();
     });
     it('Should throw new Error if pool is not found base on baseToken and quoteToken', async () => {
@@ -1120,6 +1150,7 @@ describe('Ergo', () => {
           return_address,
         ),
       ).rejects.toThrow(`pool not found base on ${baseToken}, ${quoteToken}`);
+      expect(ergo.getPoolByToken).toHaveBeenCalledWith(baseToken, quoteToken);
     });
 
     it(`Should throw new Error if 'from.amount === 0' and sell is 'true'`, async () => {
@@ -1135,6 +1166,7 @@ describe('Ergo', () => {
           return_address,
         ),
       ).rejects.toThrow(`${amount} asset from xId is not enough!`);
+      expect(ergo.getAddressUnspentBoxes).toHaveBeenCalledWith('address');
     });
     it(`Should throw new Error if 'from.amount === 0' and sell is 'false'`, async () => {
       jest.spyOn(ergo, 'getPoolByToken').mockReturnValue(poolWithOutputAmount0);
@@ -1151,6 +1183,7 @@ describe('Ergo', () => {
           return_address,
         ),
       ).rejects.toThrow(`${amount} asset from yId is not enough!`);
+      expect(ergo.getAddressUnspentBoxes).toHaveBeenCalledWith('address');
     });
 
     it('Should throw new Error if swapVariables are undefined', async () => {
@@ -1158,7 +1191,6 @@ describe('Ergo', () => {
       jest
         .spyOn(BigNumber.prototype, 'multipliedBy')
         .mockReturnValue(BigNumber(2));
-      // jest.spyOn(ergo, 'getAddressUnspentBoxes').mockResolvedValue([]);
       patchGetErgoConfig('mainnet');
       jest
         .spyOn(ergo_utils, 'getBaseInputParameters')
@@ -1173,13 +1205,31 @@ describe('Ergo', () => {
           return_address,
         ),
       ).rejects.toThrow('error in swap vars!');
+      expect(ergo.getAddressUnspentBoxes).toHaveBeenCalledWith('address');
+      expect(ergo_utils.getBaseInputParameters).toHaveBeenCalledWith(pool, {
+        inputAmount: {
+          asset: {
+            id: 'yId',
+            decimals: 3,
+          },
+          amount: pool.outputAmount(
+            {
+              asset: {
+                id: 'xId',
+              },
+              amount: amount,
+            },
+            slippage,
+          ).amount,
+        },
+        slippage: slippage || 10,
+      });
     });
     it('Should throw new Error if output_address is not defined', async () => {
       jest.spyOn(ergo, 'getPoolByToken').mockReturnValue(pool);
       jest
         .spyOn(BigNumber.prototype, 'multipliedBy')
         .mockReturnValue(BigNumber(2));
-      // jest.spyOn(ergo, 'getAddressUnspentBoxes').mockResolvedValue([]);
       patchGetErgoConfig('mainnet');
       jest.spyOn(ergo_utils, 'getBaseInputParameters').mockReturnValue({
         baseInput: BigNumber(1),
@@ -1197,6 +1247,118 @@ describe('Ergo', () => {
           return_address,
         ),
       ).rejects.toThrow(`output_address is not defined.`);
+      expect(ergo.getAddressUnspentBoxes).toHaveBeenCalledWith('address');
+    });
+
+    it('Should successfully swap tokens when sell is true', async () => {
+      const mockUtxos = [
+        {
+          value: '1000',
+          assets: [{ amount: '500' }, { amount: '300' }],
+        },
+        {
+          value: '2000',
+          assets: [{ amount: '1500' }, { amount: '1300' }],
+        },
+      ];
+      jest.spyOn(ergo, 'getPoolByToken').mockReturnValue(pool);
+      jest
+        .spyOn(ergo, 'getAddressUnspentBoxes')
+        .mockResolvedValue(mockUtxos as any);
+      // const date = new Date();
+      jest
+        .spyOn(ergo['_node'], 'getBlockInfo')
+        .mockResolvedValue({ header: { timestamp: new Date() } });
+      jest.spyOn(ergo_utils, 'getBaseInputParameters').mockReturnValue({
+        baseInput: BigNumber(1),
+        baseInputAmount: BigNumber(1),
+        minOutput: { amount: BigInt(1) },
+      } as any);
+
+      const result = await ergo.swap(
+        account,
+        baseToken,
+        quoteToken,
+        amount,
+        output_address,
+        return_address,
+        slippage,
+      );
+      expect(result).toMatchObject({
+        network: ergo.network,
+        // timestamp ignored because there was a really small difference between create Date.new() in test file and main file
+        // timestamp: expect.any(Number),
+        latency: 0,
+        base: baseToken,
+        quote: quoteToken,
+        amount: amount.toString(),
+        rawAmount: amount.toString(),
+        expectedOut: BigInt(1).toString(),
+        price: '1',
+        gasPrice: 0,
+        gasPriceToken: '0',
+        gasLimit: 0,
+        gasCost: '0',
+        txHash: 'txId',
+      });
+      // check to see if timestamps are close to each other
+      expect(new Date(result.timestamp).getTime()).toBeCloseTo(Date.now(), -1);
+    });
+
+    it('Should successfully swap tokens when sell is false', async () => {
+      const mockUtxos = [
+        {
+          value: '1000',
+          assets: [{ amount: '500' }, { amount: '300' }],
+        },
+        {
+          value: '2000',
+          assets: [{ amount: '1500' }, { amount: '1300' }],
+        },
+      ];
+      jest.spyOn(ergo, 'getPoolByToken').mockReturnValue(pool);
+      jest
+        .spyOn(ergo, 'getAddressUnspentBoxes')
+        .mockResolvedValue(mockUtxos as any);
+      // const date = new Date();
+      jest
+        .spyOn(ergo['_node'], 'getBlockInfo')
+        .mockResolvedValue({ header: { timestamp: new Date() } });
+      jest.spyOn(ergo_utils, 'getBaseInputParameters').mockReturnValue({
+        baseInput: BigNumber(1),
+        baseInputAmount: BigNumber(1),
+        minOutput: { amount: BigInt(1) },
+      } as any);
+      // to set sell false
+      const baseToken = 'xId';
+      const result = await ergo.swap(
+        account,
+        baseToken,
+        quoteToken,
+        amount,
+        output_address,
+        return_address,
+        slippage,
+      );
+      expect(result).toMatchObject({
+        network: ergo.network,
+        // timestamp ignored because there was a really small difference between create Date.new() in test file and main file
+        // timestamp: expect.any(Number),
+        latency: 0,
+        base: baseToken,
+        quote: quoteToken,
+        amount: amount.toString(),
+        rawAmount: amount.toString(),
+        expectedOut: BigInt(1).toString(),
+        price: '2',
+        gasPrice: 0,
+        gasPriceToken: '0',
+        gasLimit: 0,
+        gasCost: '0',
+        txHash: 'txId',
+      });
+      // check to see if timestamps are close to each other
+      expect(new Date(result.timestamp).getTime()).toBeCloseTo(Date.now(), -1);
     });
   });
 });
