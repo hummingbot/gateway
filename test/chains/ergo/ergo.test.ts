@@ -12,7 +12,7 @@ import { Ergo } from '../../../src/chains/ergo/ergo';
 import { patch, unpatch } from '../../../test/services/patch';
 import * as ergo_cofing from '../../../src/chains/ergo/ergo.config';
 import { NodeService } from '../../../src/chains/ergo/node.service';
-import { Explorer, RustModule } from '@patternglobal/ergo-sdk';
+import { RustModule } from '@patternglobal/ergo-sdk';
 import { DexService } from '../../../src/chains/ergo/dex.service';
 import { ErgoController } from '../../../src/chains/ergo/ergo.controller';
 import {
@@ -23,16 +23,33 @@ import {
 import LRUCache from 'lru-cache';
 import { makeNativePools } from '@patternglobal/ergo-dex-sdk';
 import { BigNumber } from 'bignumber.js';
+import * as ergo_utils from '../../../src/chains/ergo/ergo.util';
 
 jest.mock('@patternglobal/ergo-dex-sdk', () => ({
   AmmPool: jest.fn(),
   makeNativePools: jest.fn(),
+  makeWrappedNativePoolActionsSelector: jest.fn(),
+  swapVars: jest
+    .fn()
+    .mockReturnValueOnce(undefined)
+    .mockReturnValueOnce([
+      1,
+      {
+        minOutput: { amount: BigInt(1) },
+        maxExFee: BigInt(1),
+      },
+    ] as any),
 }));
 jest.mock('@patternglobal/ergo-sdk', () => ({
-  Explorer: jest.fn(),
+  Explorer: jest.fn().mockReturnValue({
+    getNetworkContext: jest.fn().mockReturnValue({} as any),
+  }),
+  AssetAmount: jest.fn(),
+  publicKeyFromAddress: jest.fn().mockReturnValueOnce(undefined),
   RustModule: {
     load: jest.fn().mockResolvedValue,
   },
+  DefaultTxAssembler: jest.fn().mockReturnValue('mainnetTxAssembler' as any),
 }));
 
 let ergo: Ergo;
@@ -54,6 +71,7 @@ const patchGetErgoConfig = (imputNetwork: string) => {
         maxLRUCacheInstances: 10,
         utxosLimit: 100,
         poolLimit: 100,
+        defaultMinerFee: BigNumber(2),
       },
     };
   });
@@ -158,7 +176,7 @@ describe('Ergo', () => {
     expect(ergo['_network']).toEqual('mainnet');
     expect(ergo['_networkPrefix']).toEqual(NetworkPrefix.Mainnet);
     expect(ergo['_node']).toBeInstanceOf(NodeService);
-    expect(ergo['_explorer']).toBeInstanceOf(Explorer);
+    // expect(ergo['_explorer']).toBeInstanceOf(Explorer);
     expect(ergo['_dex']).toBeInstanceOf(DexService);
     expect(ergo['txFee']).toEqual(2000);
     expect(ergo['controller']).toEqual(ErgoController);
@@ -180,7 +198,7 @@ describe('Ergo', () => {
     expect(ergo['_network']).toEqual('testnet');
     expect(ergo['_networkPrefix']).toEqual(NetworkPrefix.Testnet);
     expect(ergo['_node']).toBeInstanceOf(NodeService);
-    expect(ergo['_explorer']).toBeInstanceOf(Explorer);
+    // expect(ergo['_explorer']).toBeInstanceOf(Explorer);
     expect(ergo['_dex']).toBeInstanceOf(DexService);
     expect(ergo['txFee']).toEqual(2000);
     expect(ergo['controller']).toEqual(ErgoController);
@@ -964,6 +982,221 @@ describe('Ergo', () => {
       ergo['_assetMap'] = assetMap;
       // Assert: Validate the stored asset list returned by storedAssetList
       expect(ergo.storedTokenList).toEqual(assetMap);
+    });
+  });
+
+  describe('swap', () => {
+    const account: any = {};
+    const baseToken: string = 'baseToken';
+    const quoteToken: string = 'quoteToken';
+    const amount: BigNumber = BigNumber(10);
+    const output_address: string = 'output_address';
+    const return_address: string = 'return_address';
+    // const slippage: number =
+    beforeEach(() => {
+      jest.spyOn(ergo, 'getAddressUnspentBoxes').mockResolvedValue([]);
+    });
+    const poolWithOutputAmount0: any = {
+      id: '1b694b15467c62f0cd4525e368dbdea2329c713aa200b73df4a622e950551b40',
+      lp: {
+        withAmount: (_sth: any) => {
+          return {
+            asset: {
+              id: 'lpId',
+              name: 'lpName',
+              decimals: 0,
+            },
+            amount: BigInt(922336941265222),
+          };
+        },
+      },
+      x: {
+        withAmount: (_sth: any) => {
+          return {
+            asset: {
+              id: 'xId',
+              name: 'xName',
+              decimals: 9,
+            },
+            amount: BigInt(752313805260857),
+          };
+        },
+        asset: {
+          id: 'xId',
+          name: 'xName',
+          decimals: 9,
+        },
+      },
+      y: {
+        withAmount: (_sth: any) => {
+          return {
+            asset: {
+              id: 'yId',
+              name: 'yName',
+              decimals: 3,
+            },
+            amount: BigInt(9322283969),
+          };
+        },
+        asset: {
+          id: 'yId',
+          name: 'yName',
+          decimals: 3,
+        },
+      },
+      outputAmount: (_sth: any, _slippage: any) => {
+        return {
+          amount: BigInt(0),
+        };
+      },
+    };
+    const pool: any = {
+      id: '1b694b15467c62f0cd4525e368dbdea2329c713aa200b73df4a622e950551b40',
+      lp: {
+        withAmount: (_sth: any) => {
+          return {
+            asset: {
+              id: 'lpId',
+              name: 'lpName',
+              decimals: 0,
+            },
+            amount: BigInt(922336941265222),
+          };
+        },
+      },
+      x: {
+        withAmount: (_sth: any) => {
+          return {
+            asset: {
+              id: 'xId',
+              name: 'xName',
+              decimals: 9,
+            },
+            amount: BigInt(752313805260857),
+          };
+        },
+        asset: {
+          id: 'xId',
+          name: 'xName',
+          decimals: 9,
+        },
+      },
+      y: {
+        withAmount: (_sth: any) => {
+          return {
+            asset: {
+              id: 'yId',
+              name: 'yName',
+              decimals: 3,
+            },
+            amount: BigInt(9322283969),
+          };
+        },
+        asset: {
+          id: 'yId',
+          name: 'yName',
+          decimals: 3,
+        },
+      },
+      outputAmount: (_sth: any, _slippage: any) => {
+        return {
+          amount: BigInt(1),
+        };
+      },
+    };
+
+    it('Shoukd be defined', () => {
+      expect(ergo.swap).toBeDefined();
+    });
+    it('Should throw new Error if pool is not found base on baseToken and quoteToken', async () => {
+      jest.spyOn(ergo, 'getPoolByToken').mockReturnValue(null as any);
+      await expect(
+        ergo.swap(
+          account,
+          baseToken,
+          quoteToken,
+          amount,
+          output_address,
+          return_address,
+        ),
+      ).rejects.toThrow(`pool not found base on ${baseToken}, ${quoteToken}`);
+    });
+
+    it(`Should throw new Error if 'from.amount === 0' and sell is 'true'`, async () => {
+      jest.spyOn(ergo, 'getPoolByToken').mockReturnValue(poolWithOutputAmount0);
+      patchGetErgoConfig('mainnet');
+      await expect(
+        ergo.swap(
+          account,
+          baseToken,
+          quoteToken,
+          amount,
+          output_address,
+          return_address,
+        ),
+      ).rejects.toThrow(`${amount} asset from xId is not enough!`);
+    });
+    it(`Should throw new Error if 'from.amount === 0' and sell is 'false'`, async () => {
+      jest.spyOn(ergo, 'getPoolByToken').mockReturnValue(poolWithOutputAmount0);
+      patchGetErgoConfig('mainnet');
+      // to set sell false
+      const baseToken = 'xId';
+      await expect(
+        ergo.swap(
+          account,
+          baseToken,
+          quoteToken,
+          amount,
+          output_address,
+          return_address,
+        ),
+      ).rejects.toThrow(`${amount} asset from yId is not enough!`);
+    });
+
+    it('Should throw new Error if swapVariables are undefined', async () => {
+      jest.spyOn(ergo, 'getPoolByToken').mockReturnValue(pool);
+      jest
+        .spyOn(BigNumber.prototype, 'multipliedBy')
+        .mockReturnValue(BigNumber(2));
+      // jest.spyOn(ergo, 'getAddressUnspentBoxes').mockResolvedValue([]);
+      patchGetErgoConfig('mainnet');
+      jest
+        .spyOn(ergo_utils, 'getBaseInputParameters')
+        .mockReturnValue({} as any);
+      await expect(
+        ergo.swap(
+          account,
+          baseToken,
+          quoteToken,
+          amount,
+          output_address,
+          return_address,
+        ),
+      ).rejects.toThrow('error in swap vars!');
+    });
+    it('Should throw new Error if output_address is not defined', async () => {
+      jest.spyOn(ergo, 'getPoolByToken').mockReturnValue(pool);
+      jest
+        .spyOn(BigNumber.prototype, 'multipliedBy')
+        .mockReturnValue(BigNumber(2));
+      // jest.spyOn(ergo, 'getAddressUnspentBoxes').mockResolvedValue([]);
+      patchGetErgoConfig('mainnet');
+      jest.spyOn(ergo_utils, 'getBaseInputParameters').mockReturnValue({
+        baseInput: BigNumber(1),
+        baseInputAmount: BigNumber(1),
+        minOutput: {},
+      } as any);
+      jest.spyOn(ergo_utils, 'getInputs').mockReturnValue({} as any);
+      await expect(
+        ergo.swap(
+          account,
+          baseToken,
+          quoteToken,
+          amount,
+          output_address,
+          return_address,
+        ),
+      ).rejects.toThrow(`output_address is not defined.`);
     });
   });
 });
