@@ -1320,7 +1320,6 @@ describe('Ergo', () => {
       jest
         .spyOn(ergo, 'getAddressUnspentBoxes')
         .mockResolvedValue(mockUtxos as any);
-      // const date = new Date();
       jest
         .spyOn(ergo['_node'], 'getBlockInfo')
         .mockResolvedValue({ header: { timestamp: new Date() } });
@@ -1343,7 +1342,7 @@ describe('Ergo', () => {
       expect(result).toMatchObject({
         network: ergo.network,
         // timestamp ignored because there was a really small difference between create Date.new() in test file and main file
-        // timestamp: expect.any(Number),
+        // timestamp: Date.now(),
         latency: 0,
         base: baseToken,
         quote: quoteToken,
@@ -1356,6 +1355,136 @@ describe('Ergo', () => {
         gasLimit: 0,
         gasCost: '0',
         txHash: 'txId',
+      });
+      // check to see if timestamps are close to each other
+      expect(new Date(result.timestamp).getTime()).toBeCloseTo(Date.now(), -1);
+    });
+  });
+
+  describe('estimate', () => {
+    const baseToken: string = 'baseToken';
+    const quoteToken: string = 'quoteToken';
+    const amount: BigNumber = BigNumber(10);
+
+    const pool: any = {
+      id: '1b694b15467c62f0cd4525e368dbdea2329c713aa200b73df4a622e950551b40',
+      lp: {
+        withAmount: (_sth: any) => {
+          return {
+            asset: {
+              id: 'lpId',
+              name: 'lpName',
+              decimals: 0,
+            },
+            amount: BigInt(922336941265222),
+          };
+        },
+      },
+      x: {
+        withAmount: (_sth: any) => {
+          return {
+            asset: {
+              id: 'xId',
+              name: 'xName',
+              decimals: 9,
+            },
+            amount: BigInt(752313805260857),
+          };
+        },
+        asset: {
+          id: 'xId',
+          name: 'xName',
+          decimals: 9,
+        },
+      },
+      y: {
+        withAmount: (_sth: any) => {
+          return {
+            asset: {
+              id: 'yId',
+              name: 'yName',
+              decimals: 3,
+            },
+            amount: BigInt(9322283969),
+          };
+        },
+        asset: {
+          id: 'yId',
+          name: 'yName',
+          decimals: 3,
+        },
+      },
+      priceX: { numerator: BigInt(1) },
+      priceY: { numerator: BigInt(2) },
+      outputAmount: (_sth: any, _slippage: any) => {
+        return {
+          amount: BigInt(1),
+        };
+      },
+    };
+
+    it('Should be defined', () => {
+      expect(ergo.estimate).toBeDefined();
+    });
+    it('Should throw new Error if pool is not found', async () => {
+      jest.spyOn(ergo, 'getPoolByToken').mockReturnValue(null as any);
+      await expect(
+        ergo.estimate(baseToken, quoteToken, amount),
+      ).rejects.toThrow(`pool not found base on ${baseToken}, ${quoteToken}`);
+    });
+
+    it('Should estimate successfully when sell is true', async () => {
+      patchGetErgoConfig('mainnet');
+      jest.spyOn(ergo, 'getPoolByToken').mockReturnValue(null as any);
+      jest
+        .spyOn(ergo_utils, 'getBaseInputParameters')
+        .mockReturnValue({ minOutput: { amount: BigInt(1) } } as any);
+      jest.spyOn(ergo, 'getPoolByToken').mockReturnValue(pool);
+      const result = await ergo.estimate(baseToken, quoteToken, amount);
+      expect(result).toMatchObject({
+        base: baseToken,
+        quote: quoteToken,
+        amount: amount.toString(),
+        rawAmount: amount.toString(),
+        expectedAmount: BigInt(1).toString(),
+        price: BigInt(1).toString(),
+        network: ergo.network,
+        // timestamp ignored because there was a really small difference between create Date.new() in test file and main file
+        // timestamp: Date.now(),
+        latency: 0,
+        gasPrice: 0,
+        gasPriceToken: '0',
+        gasLimit: 0,
+        gasCost: '0',
+      });
+      // check to see if timestamps are close to each other
+      expect(new Date(result.timestamp).getTime()).toBeCloseTo(Date.now(), -1);
+    });
+    it('Should estimate successfully when sell is false', async () => {
+      patchGetErgoConfig('mainnet');
+      jest.spyOn(ergo, 'getPoolByToken').mockReturnValue(null as any);
+      jest
+        .spyOn(ergo_utils, 'getBaseInputParameters')
+        .mockReturnValue({ minOutput: { amount: BigInt(1) } } as any);
+      jest.spyOn(ergo, 'getPoolByToken').mockReturnValue(pool);
+      // to set sell false:
+      const baseToken = 'xId';
+      const result = await ergo.estimate(baseToken, quoteToken, amount);
+      expect(result).toMatchObject({
+        base: baseToken,
+        quote: quoteToken,
+        amount: amount.toString(),
+        rawAmount: amount.toString(),
+        expectedAmount: BigInt(1).toString(),
+        price: BigInt(2).toString(),
+        network: ergo.network,
+        // timestamp ignored because there was a really small difference between create Date.new() in test file and main file
+        // timestamp: Date.now(),
+        latency: 0,
+        gasPrice: 0,
+        gasPriceToken: '0',
+        gasLimit: 0,
+        gasCost: '0',
       });
       // check to see if timestamps are close to each other
       expect(new Date(result.timestamp).getTime()).toBeCloseTo(Date.now(), -1);
