@@ -1,36 +1,52 @@
 import { getErgoConfig } from '../../../src/chains/ergo/ergo.config';
 import { ConfigManagerV2 } from '../../../src/services/config-manager-v2';
 import { NetworkPrefix } from 'ergo-lib-wasm-nodejs';
+import { BigNumber } from 'bignumber.js';
 
 describe('getErgoConfig', () => {
   afterEach(() => {
     jest.clearAllMocks();
   });
-
-  it('Should return correct config for Mainnet', () => {
+  const configManager = ConfigManagerV2.getInstance();
+  it('Should return correct config for mainnet', () => {
     // Arrange: Mock the get method of ConfigManagerV2 to return specific values for Mainnet
     jest
-      .spyOn(ConfigManagerV2.getInstance(), 'get')
-      .mockReturnValueOnce('ergo.networks.Mainnet.nodeURL');
+      .spyOn(configManager, 'get')
+      .mockReturnValueOnce('ergo.networks.mainnet.nodeURL');
     jest
-      .spyOn(ConfigManagerV2.getInstance(), 'get')
-      .mockReturnValueOnce('ergo.networks.Mainnet.explorerURL');
+      .spyOn(configManager, 'get')
+      .mockReturnValueOnce('ergo.networks.mainnet.explorerURL');
     jest
-      .spyOn(ConfigManagerV2.getInstance(), 'get')
-      .mockReturnValueOnce('ergo.networks.Mainnet.explorerDEXURL');
-    jest.spyOn(ConfigManagerV2.getInstance(), 'get').mockReturnValueOnce(1000);
-    jest.spyOn(ConfigManagerV2.getInstance(), 'get').mockReturnValueOnce(2000);
+      .spyOn(configManager, 'get')
+      .mockReturnValueOnce('ergo.networks.mainnet.explorerDEXURL');
+    // timeout
+    jest.spyOn(configManager, 'get').mockReturnValueOnce(1000);
+    // minTxFee
+    jest.spyOn(configManager, 'get').mockReturnValueOnce(2000);
+    // maxLRUCacheInstances
+    jest.spyOn(configManager, 'get').mockReturnValueOnce(10);
+    // utxosLimit
+    jest.spyOn(configManager, 'get').mockReturnValueOnce(100);
+    // poolLimit
+    jest.spyOn(configManager, 'get').mockReturnValueOnce(100);
+    // defaultSlippage
+    jest.spyOn(configManager, 'get').mockReturnValueOnce(3);
+    // defaultMinerFee
+    jest.spyOn(configManager, 'get').mockReturnValueOnce(BigNumber(7000));
+    // minNitro
+    jest.spyOn(configManager, 'get').mockReturnValueOnce(1.2);
+    // minBoxValue
+    jest.spyOn(configManager, 'get').mockReturnValueOnce(BigNumber(8000));
 
-    // Act: Call the function to be tested with 'Mainnet' as the argument
-    const res = getErgoConfig('Mainnet');
+    const res = getErgoConfig('mainnet');
 
     // Assert: Check that the returned configuration matches the expected values for Mainnet
     expect(res).toEqual({
       network: {
-        name: 'Mainnet',
-        nodeURL: 'ergo.networks.Mainnet.nodeURL',
-        explorerURL: 'ergo.networks.Mainnet.explorerURL',
-        explorerDEXURL: 'ergo.networks.Mainnet.explorerDEXURL',
+        name: 'mainnet',
+        nodeURL: 'ergo.networks.mainnet.nodeURL',
+        explorerURL: 'ergo.networks.mainnet.explorerURL',
+        explorerDEXURL: 'ergo.networks.mainnet.explorerDEXURL',
         timeOut: 1000,
         networkPrefix: NetworkPrefix.Mainnet,
         minTxFee: 2000,
@@ -38,54 +54,90 @@ describe('getErgoConfig', () => {
         utxosLimit: 100,
         poolLimit: 100,
         defaultSlippage: 3,
-        defaultMinerFee: BigInt(2_000_000),
+        defaultMinerFee: BigNumber(7000),
         minNitro: 1.2,
-        minBoxValue: BigInt(400_000),
+        minBoxValue: BigNumber(8000),
       },
     });
-    // Assert: Verify that the get method was called exactly five times with the expected arguments
-    expect(ConfigManagerV2.getInstance().get).toHaveBeenCalledTimes(5);
-    expect(ConfigManagerV2.getInstance().get).toHaveBeenCalledWith(
-      'ergo.networks.Mainnet.nodeURL',
+    // Assert: Verify that the get method was called exactly 12 times with the expected arguments
+    expect(configManager.get).toHaveBeenCalledTimes(12);
+    expect(configManager.get).toHaveBeenCalledWith(
+      'ergo.networks.mainnet.nodeURL',
     );
-    expect(ConfigManagerV2.getInstance().get).toHaveBeenCalledWith(
-      'ergo.networks.Mainnet.explorerURL',
+    expect(configManager.get).toHaveBeenCalledWith(
+      'ergo.networks.mainnet.explorerURL',
     );
-    expect(ConfigManagerV2.getInstance().get).toHaveBeenCalledWith(
-      'ergo.networks.Mainnet.explorerDEXURL',
+    expect(configManager.get).toHaveBeenCalledWith(
+      'ergo.networks.mainnet.explorerDEXURL',
     );
-    expect(ConfigManagerV2.getInstance().get).toHaveBeenCalledWith(
-      'ergo.networks.Mainnet.timeOut',
+    expect(configManager.get).toHaveBeenCalledWith(
+      'ergo.networks.mainnet.timeOut',
     );
-    expect(ConfigManagerV2.getInstance().get).toHaveBeenCalledWith(
-      'ergo.networks.Mainnet.minTxFee',
+    expect(configManager.get).toHaveBeenCalledWith(
+      'ergo.networks.mainnet.minTxFee',
+    );
+    expect(configManager.get).toHaveBeenCalledWith(
+      'ergo.networks.mainnet.maxLRUCacheInstances',
+    );
+    expect(configManager.get).toHaveBeenCalledWith(
+      'ergo.networks.mainnet.utxosLimit',
+    );
+    expect(configManager.get).toHaveBeenCalledWith(
+      'ergo.networks.mainnet.poolLimit',
+    );
+    expect(configManager.get).toHaveBeenCalledWith(
+      'ergo.networks.mainnet.defaultSlippage',
+    );
+    expect(configManager.get).toHaveBeenCalledWith(
+      'ergo.networks.mainnet.defaultMinerFee',
+    );
+    expect(configManager.get).toHaveBeenCalledWith(
+      'ergo.networks.mainnet.minNitro',
+    );
+    expect(configManager.get).toHaveBeenCalledWith(
+      'ergo.networks.mainnet.minBoxValue',
     );
   });
 
-  it('Should return correct config for Testnet', () => {
-    // Arrange: Mock the get method of ConfigManagerV2 to return specific values for Testnet
+  it('Should return correct config for testnet', () => {
+    // Arrange: Mock the get method of ConfigManagerV2 to return specific values for testnet
     jest
-      .spyOn(ConfigManagerV2.getInstance(), 'get')
-      .mockReturnValueOnce('ergo.networks.Testnet.nodeURL');
+      .spyOn(configManager, 'get')
+      .mockReturnValueOnce('ergo.networks.testnet.nodeURL');
     jest
-      .spyOn(ConfigManagerV2.getInstance(), 'get')
-      .mockReturnValueOnce('ergo.networks.Testnet.explorerURL');
+      .spyOn(configManager, 'get')
+      .mockReturnValueOnce('ergo.networks.testnet.explorerURL');
     jest
-      .spyOn(ConfigManagerV2.getInstance(), 'get')
-      .mockReturnValueOnce('ergo.networks.Testnet.explorerDEXURL');
-    jest.spyOn(ConfigManagerV2.getInstance(), 'get').mockReturnValueOnce(1000);
-    jest.spyOn(ConfigManagerV2.getInstance(), 'get').mockReturnValueOnce(2000);
+      .spyOn(configManager, 'get')
+      .mockReturnValueOnce('ergo.networks.testnet.explorerDEXURL');
+    // timeout
+    jest.spyOn(configManager, 'get').mockReturnValueOnce(1000);
+    // minTxFee
+    jest.spyOn(configManager, 'get').mockReturnValueOnce(2000);
+    // maxLRUCacheInstances
+    jest.spyOn(configManager, 'get').mockReturnValueOnce(10);
+    // utxosLimit
+    jest.spyOn(configManager, 'get').mockReturnValueOnce(100);
+    // poolLimit
+    jest.spyOn(configManager, 'get').mockReturnValueOnce(100);
+    // defaultSlippage
+    jest.spyOn(configManager, 'get').mockReturnValueOnce(3);
+    // defaultMinerFee
+    jest.spyOn(configManager, 'get').mockReturnValueOnce(BigNumber(7000));
+    // minNitro
+    jest.spyOn(configManager, 'get').mockReturnValueOnce(1.2);
+    // minBoxValue
+    jest.spyOn(configManager, 'get').mockReturnValueOnce(BigNumber(8000));
 
-    // Act: Call the function to be tested with 'Testnet' as the argument
-    const res = getErgoConfig('Testnet');
+    const res = getErgoConfig('testnet');
 
-    // Assert: Check that the returned configuration matches the expected values for Testnet
+    // Assert: Check that the returned configuration matches the expected values for testnet
     expect(res).toEqual({
       network: {
-        name: 'Testnet',
-        nodeURL: 'ergo.networks.Testnet.nodeURL',
-        explorerURL: 'ergo.networks.Testnet.explorerURL',
-        explorerDEXURL: 'ergo.networks.Testnet.explorerDEXURL',
+        name: 'testnet',
+        nodeURL: 'ergo.networks.testnet.nodeURL',
+        explorerURL: 'ergo.networks.testnet.explorerURL',
+        explorerDEXURL: 'ergo.networks.testnet.explorerDEXURL',
         timeOut: 1000,
         networkPrefix: NetworkPrefix.Testnet,
         minTxFee: 2000,
@@ -93,27 +145,48 @@ describe('getErgoConfig', () => {
         utxosLimit: 100,
         poolLimit: 100,
         defaultSlippage: 3,
-        defaultMinerFee: BigInt(2_000_000),
+        defaultMinerFee: BigNumber(7000),
         minNitro: 1.2,
-        minBoxValue: BigInt(400_000),
+        minBoxValue: BigNumber(8000),
       },
     });
-    // Assert: Verify that the get method was called exactly five times with the expected arguments
-    expect(ConfigManagerV2.getInstance().get).toHaveBeenCalledTimes(5);
-    expect(ConfigManagerV2.getInstance().get).toHaveBeenCalledWith(
-      'ergo.networks.Testnet.nodeURL',
+    // Assert: Verify that the get method was called exactly 12 times with the expected arguments
+    expect(configManager.get).toHaveBeenCalledTimes(12);
+    expect(configManager.get).toHaveBeenCalledWith(
+      'ergo.networks.testnet.nodeURL',
     );
-    expect(ConfigManagerV2.getInstance().get).toHaveBeenCalledWith(
-      'ergo.networks.Testnet.explorerURL',
+    expect(configManager.get).toHaveBeenCalledWith(
+      'ergo.networks.testnet.explorerURL',
     );
-    expect(ConfigManagerV2.getInstance().get).toHaveBeenCalledWith(
-      'ergo.networks.Testnet.explorerDEXURL',
+    expect(configManager.get).toHaveBeenCalledWith(
+      'ergo.networks.testnet.explorerDEXURL',
     );
-    expect(ConfigManagerV2.getInstance().get).toHaveBeenCalledWith(
-      'ergo.networks.Testnet.timeOut',
+    expect(configManager.get).toHaveBeenCalledWith(
+      'ergo.networks.testnet.timeOut',
     );
-    expect(ConfigManagerV2.getInstance().get).toHaveBeenCalledWith(
-      'ergo.networks.Testnet.minTxFee',
+    expect(configManager.get).toHaveBeenCalledWith(
+      'ergo.networks.testnet.minTxFee',
+    );
+    expect(configManager.get).toHaveBeenCalledWith(
+      'ergo.networks.testnet.maxLRUCacheInstances',
+    );
+    expect(configManager.get).toHaveBeenCalledWith(
+      'ergo.networks.testnet.utxosLimit',
+    );
+    expect(configManager.get).toHaveBeenCalledWith(
+      'ergo.networks.testnet.poolLimit',
+    );
+    expect(configManager.get).toHaveBeenCalledWith(
+      'ergo.networks.testnet.defaultSlippage',
+    );
+    expect(configManager.get).toHaveBeenCalledWith(
+      'ergo.networks.testnet.defaultMinerFee',
+    );
+    expect(configManager.get).toHaveBeenCalledWith(
+      'ergo.networks.testnet.minNitro',
+    );
+    expect(configManager.get).toHaveBeenCalledWith(
+      'ergo.networks.testnet.minBoxValue',
     );
   });
 });
