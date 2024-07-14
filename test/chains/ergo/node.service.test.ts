@@ -1,8 +1,27 @@
 import axios from 'axios';
 import { NodeService } from '../../../src/chains/ergo/node.service';
 import { NodeInfoResponse } from '../../../src/chains/ergo/interfaces/node.interface';
+import {
+  BlockHeaders,
+  ErgoStateContext,
+  PreHeader,
+} from 'ergo-lib-wasm-nodejs';
 
 jest.mock('axios');
+jest.mock('ergo-lib-wasm-nodejs', () => ({
+  BlockHeaders: {
+    from_json: jest.fn().mockReturnValue({
+      get: jest.fn().mockReturnValue({ headerData: 'mockData' }),
+      len: jest.fn().mockReturnValue(2),
+    }),
+  },
+  PreHeader: {
+    from_block_header: jest.fn().mockReturnValue({ preHeaderData: 'mockData' }),
+  },
+  ErgoStateContext: jest
+    .fn()
+    .mockReturnValue({} as unknown as ErgoStateContext),
+}));
 
 describe('NodeService', () => {
   const baseURL = 'https://example.com';
@@ -107,6 +126,38 @@ describe('NodeService', () => {
         { 'Content-Type': 'text/plain' },
         'box-number-1.com',
       );
+    });
+  });
+
+  describe('chainSliceInfo', () => {
+    it('Should be defined', () => {
+      expect(nodeService.chainSliceInfo).toBeDefined();
+    });
+    it('Should call request method with correct parameters', async () => {
+      jest.spyOn(nodeService as any, 'request').mockResolvedValue({ data: {} });
+      await nodeService.chainSliceInfo(20);
+      expect(nodeService['request']).toHaveBeenCalledWith(
+        'GET',
+        `/blocks/chainSlice?fromHeight=10&toHeight=20`,
+      );
+    });
+  });
+
+  describe('getCtx', () => {
+    it('Should be defined', () => {
+      expect(nodeService.getCtx).toBeDefined();
+    });
+    it('Should return Ergo state context correctly', async () => {
+      jest.spyOn(nodeService, 'getNetworkHeight').mockResolvedValue(100);
+      jest.spyOn(nodeService, 'chainSliceInfo').mockResolvedValue({} as any);
+      const result = await nodeService.getCtx();
+      expect(result).toEqual({});
+      expect(nodeService.chainSliceInfo).toHaveBeenCalledWith(100);
+      expect(nodeService.getNetworkHeight).toHaveBeenCalled();
+      expect(BlockHeaders.from_json).toHaveBeenCalledWith({});
+      expect(PreHeader.from_block_header).toHaveBeenCalledWith({
+        headerData: 'mockData',
+      });
     });
   });
 });
