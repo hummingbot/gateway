@@ -160,4 +160,59 @@ describe('NodeService', () => {
       });
     });
   });
+
+  describe('postTransaction', () => {
+    it('Should be defined', () => {
+      expect(nodeService.postTransaction).toBeDefined();
+    });
+
+    it('Should call request method with the correct parameters', async () => {
+      const tx = 'tx';
+      jest.spyOn(nodeService as any, 'request').mockResolvedValue({ data: {} });
+      await nodeService.postTransaction(tx);
+      expect(nodeService['request']).toHaveBeenCalledWith(
+        'POST',
+        `/transactions`,
+        { 'Content-Type': 'text/plain' },
+        tx,
+      );
+    });
+  });
+
+  describe('getTxsById', () => {
+    it('Should be defined', () => {
+      expect(nodeService.getTxsById).toBeDefined();
+    });
+
+    it('Should call request method with the correct parameters', async () => {
+      const id = 'id';
+      await nodeService.getTxsById(id);
+      expect(nodeService['request']).toHaveBeenCalledWith(
+        'GET',
+        `/blockchain/transaction/byId/id`,
+      );
+    });
+  });
+
+  describe('getBlockInfo', () => {
+    it('Should be defined', () => {
+      expect(nodeService.getBlockInfo).toBeDefined();
+    });
+
+    it('Should call request method with the correct parameters', async () => {
+      jest.spyOn(nodeService as any, 'request').mockResolvedValueOnce([17, 18]);
+      jest
+        .spyOn(nodeService as any, 'request')
+        .mockResolvedValueOnce({ data: 'mockData' });
+
+      const result = await nodeService.getBlockInfo('blockHeight');
+
+      expect(result).toEqual({ data: 'mockData' });
+      expect(nodeService['request']).toHaveBeenCalledWith(
+        'GET',
+        `/blocks/at/blockHeight`,
+      );
+      expect(nodeService['request']).toHaveBeenCalledWith('GET', `/blocks/17`);
+    });
+  });
 });
