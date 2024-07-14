@@ -467,17 +467,26 @@ export class Ergo {
     account: ErgoAccount,
     baseToken: string,
     quoteToken: string,
-    amount: BigNumber,
+    value: BigNumber,
     output_address: string,
     return_address: string,
     slippage?: number,
   ): Promise<TradeResponse> {
     let sell: boolean;
+    let amount: BigNumber;
     const pool = this.getPoolByToken(baseToken, quoteToken);
     if (!pool)
       throw new Error(`pool not found base on ${baseToken}, ${quoteToken}`);
-    if (pool.x.asset.id === baseToken) sell = false;
-    else sell = true;
+    if (pool.x.asset.id === baseToken){sell = false;
+      amount = value.multipliedBy(
+        BigNumber(10).pow(pool.y.asset.decimals as number),
+      );
+    } else {
+      sell = true;
+      amount = value.multipliedBy(
+        BigNumber(10).pow(pool.x.asset.decimals as number),
+      );
+    }
     const config = getErgoConfig(this.network);
     const networkContext = await this._explorer.getNetworkContext();
     const mainnetTxAssembler = new DefaultTxAssembler(
@@ -593,18 +602,26 @@ export class Ergo {
   public async estimate(
     baseToken: string,
     quoteToken: string,
-    amount: BigNumber,
+    value: BigNumber,
     slippage?: number,
   ): Promise<PriceResponse> {
     let sell: boolean;
-
+    let amount: BigNumber;
     console.log(baseToken, quoteToken);
 
     const pool = this.getPoolByToken(baseToken, quoteToken);
     if (!pool)
       throw new Error(`pool not found base on ${baseToken}, ${quoteToken}`);
-    if (pool.x.asset.id === baseToken) sell = false;
-    else sell = true;
+    if (pool.x.asset.id === baseToken){sell = false;
+      amount = value.multipliedBy(
+        BigNumber(10).pow(pool.y.asset.decimals as number),
+      );
+    } else {
+      sell = true;
+      amount = value.multipliedBy(
+        BigNumber(10).pow(pool.x.asset.decimals as number),
+      );
+    }
     const config = getErgoConfig(this.network);
     const max_to = {
       asset: {
@@ -657,7 +674,7 @@ export class Ergo {
       (asset) => asset.symbol === quoteToken,
     );
     if (!realBaseToken || !realQuoteToken)
-      throw new Error(`${realBaseToken} or ${realQuoteToken} not found!`);
+      throw new Error(`${baseToken} or ${quoteToken} not found!`);
     return <Pool>(
       this.ammPools.find(
         (ammPool) =>
