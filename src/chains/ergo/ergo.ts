@@ -607,7 +607,6 @@ export class Ergo {
   ): Promise<PriceResponse> {
     let sell: boolean;
     let amount: BigNumber;
-    console.log(baseToken, quoteToken);
 
     const pool = this.getPoolByToken(baseToken, quoteToken);
     if (!pool)
