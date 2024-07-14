@@ -1490,4 +1490,103 @@ describe('Ergo', () => {
       expect(new Date(result.timestamp).getTime()).toBeCloseTo(Date.now(), -1);
     });
   });
+
+  describe('getPool', () => {
+    it('Should find the pool with related id and return it', () => {
+      // set a mock pool to check the id
+      const poolToCheck: any = {
+        id: '1b694b15467c62f0cd4525e368dbdea2329c713aa200b73df4a622e950551b40',
+        lp: {
+          withAmount: (_sth: any) => {
+            return {
+              asset: {
+                id: 'lpId',
+                name: 'lpName',
+                decimals: 0,
+              },
+              amount: BigInt(922336941265222),
+            };
+          },
+        },
+      };
+      expect(
+        ergo.getPool(
+          '1b694b15467c62f0cd4525e368dbdea2329c713aa200b73df4a622e950551b40',
+        ),
+      ).toEqual(undefined);
+      ergo['ammPools'].push(poolToCheck);
+      const result = ergo.getPool(
+        '1b694b15467c62f0cd4525e368dbdea2329c713aa200b73df4a622e950551b40',
+      );
+      expect(result).toEqual(poolToCheck);
+    });
+  });
+  describe('getPoolByToken', () => {
+    beforeEach(() => {
+      ergo['_assetMap']['ERGO'] = {
+        tokenId:
+          '0000000000000000000000000000000000000000000000000000000000000000',
+        decimals: 9,
+        name: 'ERGO',
+        symbol: 'ERG',
+      };
+    });
+    const baseToken = 'ERG';
+    const quoteToken = 'RSN';
+    it('Should throw new Error if quote token is not found', () => {
+      expect(() => ergo.getPoolByToken(baseToken, quoteToken)).toThrow(
+        `${baseToken} or ${quoteToken} not found!`,
+      );
+    });
+    it('Should throw new Error if base token is not found', () => {
+      // swap baseToken with quoteToken
+      const baseToken = 'RSN';
+      const quoteToken = 'ERG';
+      expect(() => ergo.getPoolByToken(baseToken, quoteToken)).toThrow(
+        `${baseToken} or ${quoteToken} not found!`,
+      );
+    });
+    it('Should find poll when both base token and quote are valid in ammPools array', () => {
+      ergo['_assetMap']['ROSEN'] = {
+        tokenId:
+          '1111111111111111111111111111111111111111111111111111111111111111',
+        decimals: 9,
+        name: 'ROSEN',
+        symbol: 'RSN',
+      };
+      const ergoRnsPool = {
+        id: '1b694b15467c62f0cd4525e368dbdea2329c713aa200b73df4a622e950551b40',
+        x: {
+          asset: {
+            id: '0000000000000000000000000000000000000000000000000000000000000000',
+            name: 'ERGO',
+            decimals: 9,
+          },
+        },
+        y: {
+          asset: {
+            id: '1111111111111111111111111111111111111111111111111111111111111111',
+            name: 'ROSEN',
+            decimals: 3,
+          },
+        },
+      } as any;
+      ergo['ammPools'].push(ergoRnsPool);
+      const result = ergo.getPoolByToken(baseToken, quoteToken);
+      expect(result).toEqual(ergoRnsPool);
+    });
+  });
+
+  describe('getTx', () => {
+    it('Shoyuld be defined', () => {
+      expect(ergo.getTx).toBeDefined();
+    });
+
+    it('Should find and return TX by Id', async () => {
+      jest.spyOn(ergo['_node'], 'getTxsById').mockResolvedValue('TX' as any);
+      const result = await ergo.getTx('id');
+      expect(ergo['_node'].getTxsById).toHaveBeenCalledWith('id');
+      expect(result).toEqual('TX');
+    });
+  });
 });
