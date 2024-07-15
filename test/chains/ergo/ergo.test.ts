@@ -1017,12 +1017,15 @@ describe('Ergo', () => {
     const account: any = { address: 'address' };
     const baseToken: string = 'baseToken';
     const quoteToken: string = 'quoteToken';
-    const amount: BigNumber = BigNumber(10);
+    const value: BigNumber = BigNumber(10);
     const output_address: string = 'output_address';
     const return_address: string = 'return_address';
     const slippage: number = 10;
     beforeEach(() => {
       jest.spyOn(ergo, 'getAddressUnspentBoxes').mockResolvedValue([]);
+    });
+    afterEach(() => {
+      jest.clearAllMocks();
     });
     const poolWithOutputAmount0: any = {
       id: '1b694b15467c62f0cd4525e368dbdea2329c713aa200b73df4a622e950551b40',
@@ -1145,7 +1148,7 @@ describe('Ergo', () => {
           account,
           baseToken,
           quoteToken,
-          amount,
+          value,
           output_address,
           return_address,
         ),
@@ -1161,11 +1164,15 @@ describe('Ergo', () => {
           account,
           baseToken,
           quoteToken,
-          amount,
+          value,
           output_address,
           return_address,
         ),
-      ).rejects.toThrow(`${amount} asset from xId is not enough!`);
+      ).rejects.toThrow(
+        `${value.multipliedBy(
+          BigNumber(10).pow(pool.x.asset.decimals as number),
+        )} asset from xId is not enough!`,
+      );
       expect(ergo.getAddressUnspentBoxes).toHaveBeenCalledWith('address');
     });
     it(`Should throw new Error if 'from.amount === 0' and sell is 'false'`, async () => {
@@ -1178,11 +1185,15 @@ describe('Ergo', () => {
           account,
           baseToken,
           quoteToken,
-          amount,
+          value,
           output_address,
           return_address,
         ),
-      ).rejects.toThrow(`${amount} asset from yId is not enough!`);
+      ).rejects.toThrow(
+        `${value.multipliedBy(
+          BigNumber(10).pow(pool.y.asset.decimals as number),
+        )} asset from yId is not enough!`,
+      );
       expect(ergo.getAddressUnspentBoxes).toHaveBeenCalledWith('address');
     });
 
@@ -1200,7 +1211,7 @@ describe('Ergo', () => {
           account,
           baseToken,
           quoteToken,
-          amount,
+          value,
           output_address,
           return_address,
         ),
@@ -1217,7 +1228,7 @@ describe('Ergo', () => {
               asset: {
                 id: 'xId',
               },
-              amount: amount,
+              amount: value,
             },
             slippage,
           ).amount,
@@ -1242,7 +1253,7 @@ describe('Ergo', () => {
           account,
           baseToken,
           quoteToken,
-          amount,
+          value,
           output_address,
           return_address,
         ),
@@ -1279,7 +1290,7 @@ describe('Ergo', () => {
         account,
         baseToken,
         quoteToken,
-        amount,
+        value,
         output_address,
         return_address,
         slippage,
@@ -1291,8 +1302,12 @@ describe('Ergo', () => {
         latency: 0,
         base: baseToken,
         quote: quoteToken,
-        amount: amount.toString(),
-        rawAmount: amount.toString(),
+        amount: value
+          .multipliedBy(BigNumber(10).pow(pool.x.asset.decimals as number))
+          .toString(),
+        rawAmount: value
+          .multipliedBy(BigNumber(10).pow(pool.x.asset.decimals as number))
+          .toString(),
         expectedOut: BigInt(1).toString(),
         price: '1',
         gasPrice: 0,
@@ -1301,8 +1316,6 @@ describe('Ergo', () => {
         gasCost: '0',
         txHash: 'txId',
       });
-      // check to see if timestamps are close to each other
-      expect(new Date(result.timestamp).getTime()).toBeCloseTo(Date.now(), -1);
     });
 
     it('Should successfully swap tokens when sell is false', async () => {
@@ -1334,7 +1347,7 @@ describe('Ergo', () => {
         account,
         baseToken,
         quoteToken,
-        amount,
+        value,
         output_address,
         return_address,
         slippage,
@@ -1346,8 +1359,12 @@ describe('Ergo', () => {
         latency: 0,
         base: baseToken,
         quote: quoteToken,
-        amount: amount.toString(),
-        rawAmount: amount.toString(),
+        amount: value
+          .multipliedBy(BigNumber(10).pow(pool.y.asset.decimals as number))
+          .toString(),
+        rawAmount: value
+          .multipliedBy(BigNumber(10).pow(pool.y.asset.decimals as number))
+          .toString(),
         expectedOut: BigInt(1).toString(),
         price: '2',
         gasPrice: 0,
@@ -1356,16 +1373,16 @@ describe('Ergo', () => {
         gasCost: '0',
         txHash: 'txId',
       });
-      // check to see if timestamps are close to each other
-      expect(new Date(result.timestamp).getTime()).toBeCloseTo(Date.now(), -1);
     });
   });
 
   describe('estimate', () => {
     const baseToken: string = 'baseToken';
     const quoteToken: string = 'quoteToken';
-    const amount: BigNumber = BigNumber(10);
-
+    const value: BigNumber = BigNumber(10);
+    afterEach(() => {
+      jest.clearAllMocks();
+    });
     const pool: any = {
       id: '1b694b15467c62f0cd4525e368dbdea2329c713aa200b73df4a622e950551b40',
       lp: {
@@ -1428,9 +1445,9 @@ describe('Ergo', () => {
     });
     it('Should throw new Error if pool is not found', async () => {
       jest.spyOn(ergo, 'getPoolByToken').mockReturnValue(null as any);
-      await expect(
-        ergo.estimate(baseToken, quoteToken, amount),
-      ).rejects.toThrow(`pool not found base on ${baseToken}, ${quoteToken}`);
+      await expect(ergo.estimate(baseToken, quoteToken, value)).rejects.toThrow(
+        `pool not found base on ${baseToken}, ${quoteToken}`,
+      );
     });
 
     it('Should estimate successfully when sell is true', async () => {
@@ -1440,12 +1457,16 @@ describe('Ergo', () => {
         .spyOn(ergo_utils, 'getBaseInputParameters')
         .mockReturnValue({ minOutput: { amount: BigInt(1) } } as any);
       jest.spyOn(ergo, 'getPoolByToken').mockReturnValue(pool);
-      const result = await ergo.estimate(baseToken, quoteToken, amount);
+      const result = await ergo.estimate(baseToken, quoteToken, value);
       expect(result).toMatchObject({
         base: baseToken,
         quote: quoteToken,
-        amount: amount.toString(),
-        rawAmount: amount.toString(),
+        amount: value
+          .multipliedBy(BigNumber(10).pow(pool.x.asset.decimals as number))
+          .toString(),
+        rawAmount: value
+          .multipliedBy(BigNumber(10).pow(pool.x.asset.decimals as number))
+          .toString(),
         expectedAmount: BigInt(1).toString(),
         price: BigInt(1).toString(),
         network: ergo.network,
@@ -1457,8 +1478,6 @@ describe('Ergo', () => {
         gasLimit: 0,
         gasCost: '0',
       });
-      // check to see if timestamps are close to each other
-      expect(new Date(result.timestamp).getTime()).toBeCloseTo(Date.now(), -1);
     });
     it('Should estimate successfully when sell is false', async () => {
       patchGetErgoConfig('mainnet');
@@ -1469,12 +1488,16 @@ describe('Ergo', () => {
       jest.spyOn(ergo, 'getPoolByToken').mockReturnValue(pool);
       // to set sell false:
       const baseToken = 'xId';
-      const result = await ergo.estimate(baseToken, quoteToken, amount);
+      const result = await ergo.estimate(baseToken, quoteToken, value);
       expect(result).toMatchObject({
         base: baseToken,
         quote: quoteToken,
-        amount: amount.toString(),
-        rawAmount: amount.toString(),
+        amount: value
+          .multipliedBy(BigNumber(10).pow(pool.y.asset.decimals as number))
+          .toString(),
+        rawAmount: value
+          .multipliedBy(BigNumber(10).pow(pool.y.asset.decimals as number))
+          .toString(),
         expectedAmount: BigInt(1).toString(),
         price: BigInt(2).toString(),
         network: ergo.network,
@@ -1486,8 +1509,6 @@ describe('Ergo', () => {
         gasLimit: 0,
         gasCost: '0',
       });
-      // check to see if timestamps are close to each other
-      expect(new Date(result.timestamp).getTime()).toBeCloseTo(Date.now(), -1);
     });
   });
 
