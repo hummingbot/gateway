@@ -71,12 +71,27 @@ export class Spectrum {
    * @param amount Amount of `baseToken` desired from the transaction
    */
   async estimateTrade(req: PriceRequest) {
-    return this.ergo.estimate(
-      req.base,
-      req.quote,
-      BigNumber(req.amount),
-      Number(req.allowedSlippage),
-    );
+    if (req.side === 'BUY')
+      return this.ergo.estimate(
+        req.base,
+        req.quote,
+        BigNumber(req.amount),
+        Number(req.allowedSlippage),
+      );
+    else if (req.side === 'SELL')
+      return this.ergo.estimate(
+        req.quote,
+        req.base,
+        BigNumber(req.amount),
+        Number(req.allowedSlippage),
+      );
+    else
+      return this.ergo.estimate(
+        req.base,
+        req.quote,
+        BigNumber(req.amount),
+        Number(req.allowedSlippage),
+      );
   }
 
   /**
