@@ -3,7 +3,7 @@ import {
   NodeChainSliceResponse,
   NodeInfoResponse,
 } from './interfaces/node.interface';
-import { NodeErgoBoxResponse, NodeErgoPostTxResponse } from './types/node.type';
+import { NodeErgoBoxResponse } from './types/node.type';
 import {
   BlockHeaders,
   ErgoStateContext,
@@ -96,13 +96,14 @@ export class NodeService {
   }
 
   async postTransaction(tx: any): Promise<string> {
-    return this.request<NodeErgoPostTxResponse>(
+    return this.request<any>(
       'POST',
       `/transactions`,
-      { 'Content-Type': 'text/plain' },
+      { 'Content-Type': 'application/json' },
       tx,
     );
   }
+
   async getTxsById(id: string): Promise<ErgoTxFull> {
     return this.request<ErgoTxFull>(
       'GET',
