@@ -57,10 +57,10 @@ export function getInputs(
   const inputs = DefaultBoxSelector.select(
     utxos.map((utxo) => {
       const temp = Object(utxo);
-      temp.value = temp.value.toString();
+      temp.value = BigInt(temp.value.toString());
       temp.assets = temp.assets.map((asset: ErgoBoxAsset) => {
         const temp2 = Object(asset);
-        temp2.amount = temp2.amount.toString();
+        temp2.amount = BigInt(temp2.amount.toString());
         return temp2;
       });
       return temp;

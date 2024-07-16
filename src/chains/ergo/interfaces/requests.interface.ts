@@ -16,7 +16,12 @@ export interface PoolResponse {
   feeDenom: bigint;
 }
 
-export interface PollResponse extends ErgoTx {}
+export interface PollResponse extends ErgoTx {
+  currentBlock: number;
+  txBlock: number | null;
+  txHash: string;
+  fee: number;
+}
 export interface PollRequest {
   txId: string;
 }

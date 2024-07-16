@@ -9,7 +9,7 @@ import {
   ErgoStateContext,
   PreHeader,
 } from 'ergo-lib-wasm-nodejs';
-import { ErgoTx } from '@patternglobal/ergo-sdk';
+import { ErgoTxFull } from './interfaces/ergo.interface';
 
 /**
  * This class allows you to access elements of a node
@@ -103,8 +103,11 @@ export class NodeService {
       tx,
     );
   }
-  async getTxsById(id: string): Promise<ErgoTx> {
-    return this.request<ErgoTx>('GET', `/blockchain/transaction/byId/${id}`);
+  async getTxsById(id: string): Promise<ErgoTxFull> {
+    return this.request<ErgoTxFull>(
+      'GET',
+      `/blockchain/transaction/byId/${id}`,
+    );
   }
 
   async getBlockInfo(blockHeight: string): Promise<any> {

@@ -18,6 +18,7 @@ import {
   ErgoAsset,
   ErgoBox,
   ErgoConnectedInstance,
+  ErgoTxFull,
 } from './interfaces/ergo.interface';
 import {
   AmmPool,
@@ -29,7 +30,6 @@ import {
 } from '@patternglobal/ergo-dex-sdk';
 import {
   Explorer,
-  ErgoTx,
   DefaultTxAssembler,
   AssetAmount,
   publicKeyFromAddress,
@@ -43,6 +43,9 @@ import { getBaseInputParameters, getInputs, getTxContext } from './ergo.util';
 import { WalletProver } from './wallet-prover.service';
 import { BigNumber } from 'bignumber.js';
 import { PriceResponse, TradeResponse } from '../../amm/amm.requests';
+import { walletPath } from '../../services/base';
+import fse from 'fs-extra';
+import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 
 class Pool extends AmmPool {
   private _name: string;
@@ -308,6 +311,20 @@ export class Ergo {
     return `${iv.toString('hex')}:${encrypted.toString('hex')}`;
   }
 
+  public async getAccountFromAddress(address: string): Promise<ErgoAccount> {
+    const path = `${walletPath}/${this._chain}`;
+    const encryptedMnemonic: string = await fse.readFile(
+      `${path}/${address}.json`,
+      'utf8',
+    );
+    const passphrase = ConfigManagerCertPassphrase.readPassphrase();
+    if (!passphrase) {
+      throw new Error('missing passphrase');
+    }
+    const mnemonic = this.decrypt(encryptedMnemonic, passphrase);
+    return this.getAccountFromMnemonic(mnemonic);
+  }
+
   /**
    * Decrypt encrypted secret key via password
    * @param {string} encryptedSecret - Secret key
@@ -494,7 +511,7 @@ export class Ergo {
     for (const pool of pools) {
       if (!pool)
         throw new Error(`pool not found base on ${baseToken}, ${quoteToken}`);
-      if (pool.x.asset.id === baseToken) {
+      if (pool.x.asset.id === realBaseToken.tokenId) {
         sell = false;
         amount = value.multipliedBy(
           BigNumber(10).pow(pool.y.asset.decimals as number),
@@ -506,16 +523,6 @@ export class Ergo {
         );
       }
       const config = getErgoConfig(this.network);
-      const networkContext = await this._explorer.getNetworkContext();
-      const mainnetTxAssembler = new DefaultTxAssembler(
-        this.network === 'mainnet',
-      );
-      const poolActions = makeWrappedNativePoolActionsSelector(
-        output_address,
-        account.prover,
-        mainnetTxAssembler,
-      );
-      const utxos = await this.getAddressUnspentBoxes(account.address);
       const to = {
         asset: {
           id: sell ? pool.x.asset.id : pool.y.asset.id,
@@ -551,6 +558,16 @@ export class Ergo {
         },
       );
       if (minOutput.amount === BigInt(0)) continue;
+      const networkContext = await this._explorer.getNetworkContext();
+      const mainnetTxAssembler = new DefaultTxAssembler(
+        this.network === 'mainnet',
+      );
+      const poolActions = makeWrappedNativePoolActionsSelector(
+        output_address,
+        account.prover,
+        mainnetTxAssembler,
+      );
+      const utxos = await this.getAddressUnspentBoxes(account.address);
       const swapVariables: [number, SwapExtremums] | undefined = swapVars(
         BigInt(config.network.defaultMinerFee.multipliedBy(3).toString()),
         config.network.minNitro,
@@ -558,6 +575,7 @@ export class Ergo {
       );
       if (!swapVariables) throw new Error('error in swap vars!');
       const [exFeePerToken, extremum] = swapVariables;
+
       const inputs = getInputs(
         utxos.map((utxo) => {
           const temp = Object(utxo);
@@ -600,6 +618,7 @@ export class Ergo {
         await this._node.getBlockInfo(networkContext.height.toString())
       ).header.timestamp;
       const tx = await actions.swap(swapParams, txContext);
+      await account.prover.submit(tx);
       return {
         network: this.network,
         timestamp,
@@ -823,7 +842,7 @@ export class Ergo {
     );
   }
 
-  public async getTx(id: string): Promise<ErgoTx> {
+  public async getTx(id: string): Promise<ErgoTxFull> {
     return await this._node.getTxsById(id);
   }
 }

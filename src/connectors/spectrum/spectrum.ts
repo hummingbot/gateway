@@ -71,24 +71,24 @@ export class Spectrum {
    * @param amount Amount of `baseToken` desired from the transaction
    */
   async estimateTrade(req: PriceRequest) {
-    if (req.side === 'BUY')
+    if (req.side === 'SELL')
       return this.ergo.estimate(
-        req.base,
-        req.quote,
+        req.base.replace("_", ""),
+        req.quote.replace("_", ""),
         BigNumber(req.amount),
         Number(req.allowedSlippage),
       );
-    else if (req.side === 'SELL')
+    else if (req.side === 'BUY')
       return this.ergo.estimate(
-        req.quote,
-        req.base,
+        req.quote.replace("_", ""),
+        req.base.replace("_", ""),
         BigNumber(req.amount),
         Number(req.allowedSlippage),
       );
     else
       return this.ergo.estimate(
-        req.base,
-        req.quote,
+        req.base.replace("_", ""),
+        req.quote.replace("_", ""),
         BigNumber(req.amount),
         Number(req.allowedSlippage),
       );
@@ -101,17 +101,38 @@ export class Spectrum {
    * @param trade Expected trade
    */
   async executeTrade(req: TradeRequest) {
-    const account = this.ergo.getAccountFromMnemonic(
-      req.mnemonic as unknown as string,
+    const account = await this.ergo.getAccountFromAddress(
+      req.address as unknown as string,
     );
-    return this.ergo.swap(
-      account,
-      req.base,
-      req.quote,
-      BigNumber(req.amount),
-      req.address,
-      req.address,
-      Number(req.allowedSlippage),
-    );
+    if (req.side === 'SELL')
+      return this.ergo.swap(
+        account,
+        req.base.replace("_", ""),
+        req.quote.replace("_", ""),
+        BigNumber(req.amount),
+        req.address,
+        req.address,
+        Number(req.allowedSlippage),
+      );
+    else if (req.side === 'BUY')
+      return this.ergo.swap(
+        account,
+        req.quote.replace("_", ""),
+        req.base.replace("_", ""),
+        BigNumber(req.amount),
+        req.address,
+        req.address,
+        Number(req.allowedSlippage),
+      );
+    else
+      return this.ergo.swap(
+        account,
+        req.base.replace("_", ""),
+        req.quote.replace("_", ""),
+        BigNumber(req.amount),
+        req.address,
+        req.address,
+        Number(req.allowedSlippage),
+      );
   }
 }
