@@ -618,7 +618,8 @@ export class Ergo {
         await this._node.getBlockInfo(networkContext.height.toString())
       ).header.timestamp;
       const tx = await actions.swap(swapParams, txContext);
-      await account.prover.submit(tx);
+      const submit_tx = await account.prover.submit(tx);
+      if (!submit_tx.id) throw new Error(`error during submit tx!`);
       return {
         network: this.network,
         timestamp,
