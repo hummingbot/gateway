@@ -101,14 +101,19 @@ export class NodeService {
       `/transactions`,
       { 'Content-Type': 'application/json' },
       tx,
-    ).catch(() => '');
+    ).catch((error) => {
+      return '';
+    });
   }
 
-  async getTxsById(id: string): Promise<ErgoTxFull> {
-    return this.request<ErgoTxFull>(
+  async getTxsById(id: string): Promise<ErgoTxFull | undefined> {
+    const result = await this.request<ErgoTxFull | undefined>(
       'GET',
       `/blockchain/transaction/byId/${id}`,
-    );
+    ).catch((error) => {
+      return undefined;
+    });
+    return result;
   }
 
   async getBlockInfo(blockHeight: string): Promise<any> {

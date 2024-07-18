@@ -843,7 +843,7 @@ export class Ergo {
     );
   }
 
-  public async getTx(id: string): Promise<ErgoTxFull> {
+  public async getTx(id: string): Promise<ErgoTxFull | undefined> {
     return await this._node.getTxsById(id);
   }
 }

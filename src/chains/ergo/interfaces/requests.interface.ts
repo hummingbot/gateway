@@ -23,7 +23,7 @@ export interface PollResponse extends ErgoTx {
   fee: number;
 }
 export interface PollRequest {
-  txId: string;
+  txHash: string;
 }
 
 export interface BalanceRequest extends NetworkSelectionRequest {
