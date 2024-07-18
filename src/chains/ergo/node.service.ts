@@ -101,7 +101,7 @@ export class NodeService {
       `/transactions`,
       { 'Content-Type': 'application/json' },
       tx,
-    ).catch((error) => {
+    ).catch(() => {
       return '';
     });
   }
