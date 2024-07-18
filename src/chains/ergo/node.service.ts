@@ -110,7 +110,7 @@ export class NodeService {
     const result = await this.request<ErgoTxFull | undefined>(
       'GET',
       `/blockchain/transaction/byId/${id}`,
-    ).catch((error) => {
+    ).catch(() => {
       return undefined;
     });
     return result;
