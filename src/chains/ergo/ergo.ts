@@ -414,20 +414,12 @@ export class Ergo {
     const assetData = await this.getAssetData();
 
     for (const result of assetData.tokens) {
-      if (result.ticker === 'SigUSD')
-        this._assetMap['USDT'] = {
-          tokenId: result.address,
-          decimals: result.decimals,
-          name: 'USDT',
-          symbol: 'USDT',
-        };
-      else
-        this._assetMap[result.name.toUpperCase()] = {
-          tokenId: result.address,
-          decimals: result.decimals,
-          name: result.name,
-          symbol: result.ticker,
-        };
+      this._assetMap[result.name.toUpperCase()] = {
+        tokenId: result.address,
+        decimals: result.decimals,
+        name: result.name,
+        symbol: result.ticker,
+      };
     }
 
     this._assetMap['ERGO'] = {
