@@ -20,7 +20,7 @@ import { AllowancesRequest, AllowancesResponse } from '../chain.requests';
 
 export class ErgoController {
   static async pool(ergo: Ergo, req: PoolRequest): Promise<PoolResponse> {
-    if (!ergo.ready) {
+    if (!ergo.ready()) {
       await ergo.init();
     }
 
