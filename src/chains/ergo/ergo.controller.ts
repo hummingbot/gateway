@@ -31,8 +31,26 @@ export class ErgoController {
     if (!ergo.ready) {
       await ergo.init();
     }
-
-    return await ergo.getTx(req.txId);
+    const tx = await ergo.getTx(req.txHash);
+    if (!tx)
+      return {
+        id: '',
+        inputs: [],
+        dataInputs: [],
+        outputs: [],
+        size: 0,
+        currentBlock: 0,
+        txBlock: 0,
+        txHash: '',
+        fee: 0,
+      };
+    return {
+      ...tx,
+      currentBlock: Number(tx?.inclusionHeight),
+      txBlock: Number(tx?.inclusionHeight),
+      txHash: tx?.id,
+      fee: 0,
+    };
   }
 
   static async balances(

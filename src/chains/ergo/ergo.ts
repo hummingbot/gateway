@@ -18,6 +18,7 @@ import {
   ErgoAsset,
   ErgoBox,
   ErgoConnectedInstance,
+  ErgoTxFull,
 } from './interfaces/ergo.interface';
 import {
   AmmPool,
@@ -29,7 +30,6 @@ import {
 } from '@patternglobal/ergo-dex-sdk';
 import {
   Explorer,
-  ErgoTx,
   DefaultTxAssembler,
   AssetAmount,
   publicKeyFromAddress,
@@ -43,6 +43,9 @@ import { getBaseInputParameters, getInputs, getTxContext } from './ergo.util';
 import { WalletProver } from './wallet-prover.service';
 import { BigNumber } from 'bignumber.js';
 import { PriceResponse, TradeResponse } from '../../amm/amm.requests';
+import { walletPath } from '../../services/base';
+import fse from 'fs-extra';
+import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 
 class Pool extends AmmPool {
   private _name: string;
@@ -308,6 +311,20 @@ export class Ergo {
     return `${iv.toString('hex')}:${encrypted.toString('hex')}`;
   }
 
+  public async getAccountFromAddress(address: string): Promise<ErgoAccount> {
+    const path = `${walletPath}/${this._chain}`;
+    const encryptedMnemonic: string = await fse.readFile(
+      `${path}/${address}.json`,
+      'utf8',
+    );
+    const passphrase = ConfigManagerCertPassphrase.readPassphrase();
+    if (!passphrase) {
+      throw new Error('missing passphrase');
+    }
+    const mnemonic = this.decrypt(encryptedMnemonic, passphrase);
+    return this.getAccountFromMnemonic(mnemonic);
+  }
+
   /**
    * Decrypt encrypted secret key via password
    * @param {string} encryptedSecret - Secret key
@@ -474,129 +491,209 @@ export class Ergo {
   ): Promise<TradeResponse> {
     let sell: boolean;
     let amount: BigNumber;
-    const pool = this.getPoolByToken(baseToken, quoteToken);
-    if (!pool)
-      throw new Error(`pool not found base on ${baseToken}, ${quoteToken}`);
-    if (pool.x.asset.id === baseToken){sell = false;
-      amount = value.multipliedBy(
-        BigNumber(10).pow(pool.y.asset.decimals as number),
-      );
-    } else {
-      sell = true;
-      amount = value.multipliedBy(
-        BigNumber(10).pow(pool.x.asset.decimals as number),
-      );
-    }
-    const config = getErgoConfig(this.network);
-    const networkContext = await this._explorer.getNetworkContext();
-    const mainnetTxAssembler = new DefaultTxAssembler(
-      this.network === 'mainnet',
+    const pools = this.getPoolByToken(baseToken, quoteToken);
+    const realBaseToken = this.storedAssetList.find(
+      (asset) => asset.symbol === baseToken,
     );
-    const poolActions = makeWrappedNativePoolActionsSelector(
-      output_address,
-      account.prover,
-      mainnetTxAssembler,
+    const realQuoteToken = this.storedAssetList.find(
+      (asset) => asset.symbol === quoteToken,
     );
-    const utxos = await this.getAddressUnspentBoxes(account.address);
-    const to = {
-      asset: {
-        id: sell ? pool.x.asset.id : pool.y.asset.id,
-        decimals: sell ? pool.x.asset.decimals : pool.y.asset.decimals,
-      },
-      amount: amount,
-    };
-    const max_to = {
-      asset: {
-        id: sell ? pool.x.asset.id : pool.y.asset.id,
-      },
-      amount: amount,
-    };
-    const from = {
-      asset: {
-        id: sell ? pool.y.asset.id : pool.x.asset.id,
-        decimals: sell ? pool.y.asset.decimals : pool.x.asset.decimals,
-      },
-      amount: pool.outputAmount(
-        max_to as any,
-        slippage || config.network.defaultSlippage,
-      ).amount,
-    };
-    if (from.amount === BigInt(0))
-      throw new Error(`${amount} asset from ${max_to.asset.id} is not enough!`);
-    const { baseInput, baseInputAmount, minOutput } = getBaseInputParameters(
-      pool,
-      {
-        inputAmount: from,
-        slippage: slippage || config.network.defaultSlippage,
-      },
-    );
-    const swapVariables: [number, SwapExtremums] | undefined = swapVars(
-      BigInt(config.network.defaultMinerFee.multipliedBy(3).toString()),
-      config.network.minNitro,
-      minOutput,
-    );
-    if (!swapVariables) throw new Error('error in swap vars!');
-    const [exFeePerToken, extremum] = swapVariables;
-    const inputs = getInputs(
-      utxos.map((utxo) => {
-        const temp = Object(utxo);
-        temp.value = BigNumber(temp.value);
-        temp.assets = temp.assets.map((asset: any) => {
-          const temp2 = Object(asset);
-          temp2.amount = BigNumber(temp2.amount);
-          return temp2;
-        });
-        return temp;
-      }),
-      [new AssetAmount(from.asset, BigInt(baseInputAmount.toString()))],
-      {
-        minerFee: BigInt(config.network.defaultMinerFee.toString()),
-        uiFee: BigInt(config.network.defaultMinerFee.toString()),
-        exFee: BigInt(extremum.maxExFee.toString()),
-      },
-    );
-    const pk = publicKeyFromAddress(output_address);
-    if (!pk) throw new Error(`output_address is not defined.`);
-    const swapParams: SwapParams<NativeExFeeType> = {
-      poolId: pool.id,
-      pk,
-      baseInput,
-      minQuoteOutput: extremum.minOutput.amount,
-      exFeePerToken,
-      uiFee: BigInt(config.network.defaultMinerFee.toString()),
-      quoteAsset: to.asset.id,
-      poolFeeNum: pool.poolFeeNum,
-      maxExFee: extremum.maxExFee,
-    };
-    const txContext: TransactionContext = getTxContext(
-      inputs,
-      networkContext as NetworkContext,
-      return_address,
-      BigInt(config.network.defaultMinerFee.toString()),
-    );
-    const actions = poolActions(pool);
-    const timestamp = (
-      await this._node.getBlockInfo(networkContext.height.toString())
-    ).header.timestamp;
-    const tx = await actions.swap(swapParams, txContext);
-    return {
+    if (!realBaseToken || !realQuoteToken)
+      throw new Error(`${baseToken} or ${quoteToken} not found!`);
+    let result = {
       network: this.network,
-      timestamp,
+      timestamp: 0,
       latency: 0,
       base: baseToken,
       quote: quoteToken,
-      amount: amount.toString(),
-      rawAmount: amount.toString(),
-      expectedOut: minOutput.amount.toString(),
-      price: sell
-        ? pool.priceX.numerator.toString()
-        : pool.priceY.numerator.toString(), // Cosmos: finalPrice
+      amount: '0',
+      rawAmount: '0',
+      expectedOut: '0',
+      price: '0',
       gasPrice: 0,
       gasPriceToken: '0',
       gasLimit: 0,
       gasCost: '0',
-      txHash: tx.id,
+      txHash: '',
     };
+    for (const pool of pools) {
+      if (!pool)
+        throw new Error(`pool not found base on ${baseToken}, ${quoteToken}`);
+      if (pool.x.asset.id === realBaseToken.tokenId) {
+        sell = false;
+        amount = value.multipliedBy(
+          BigNumber(10).pow(pool.y.asset.decimals as number),
+        );
+      } else {
+        sell = true;
+        amount = value.multipliedBy(
+          BigNumber(10).pow(pool.x.asset.decimals as number),
+        );
+      }
+      const config = getErgoConfig(this.network);
+      const to = {
+        asset: {
+          id: sell ? pool.x.asset.id : pool.y.asset.id,
+          decimals: sell ? pool.x.asset.decimals : pool.y.asset.decimals,
+        },
+        amount: BigInt(amount.toString()),
+      };
+      const max_to = {
+        asset: {
+          id: sell ? pool.x.asset.id : pool.y.asset.id,
+        },
+        amount: BigInt(amount.toString()),
+      };
+      const from = {
+        asset: {
+          id: sell ? pool.y.asset.id : pool.x.asset.id,
+          decimals: sell ? pool.y.asset.decimals : pool.x.asset.decimals,
+        },
+        amount: pool.outputAmount(
+          max_to as any,
+          slippage || config.network.defaultSlippage,
+        ).amount,
+      };
+      if (from.amount === BigInt(0))
+        throw new Error(
+          `${amount} asset from ${max_to.asset.id} is not enough!`,
+        );
+      const { baseInput, baseInputAmount, minOutput } = getBaseInputParameters(
+        pool,
+        {
+          inputAmount: from,
+          slippage: slippage || config.network.defaultSlippage,
+        },
+      );
+      if (minOutput.amount === BigInt(0)) continue;
+      const expectedOut =
+        sell === false
+          ? BigNumber(minOutput.amount.toString()).div(
+              BigNumber(10).pow(pool.y.asset.decimals as number),
+            )
+          : BigNumber(minOutput.amount.toString()).div(
+              BigNumber(10).pow(pool.x.asset.decimals as number),
+            );
+      if (expectedOut >= BigNumber(result.expectedOut)) {
+        const networkContext = await this._explorer.getNetworkContext();
+        const mainnetTxAssembler = new DefaultTxAssembler(
+          this.network === 'mainnet',
+        );
+        const poolActions = makeWrappedNativePoolActionsSelector(
+          output_address,
+          account.prover,
+          mainnetTxAssembler,
+        );
+        const utxos = await this.getAddressUnspentBoxes(account.address);
+        const swapVariables: [number, SwapExtremums] | undefined = swapVars(
+          BigInt(config.network.defaultMinerFee.multipliedBy(3).toString()),
+          config.network.minNitro,
+          minOutput,
+        );
+        if (!swapVariables) throw new Error('error in swap vars!');
+        const [exFeePerToken, extremum] = swapVariables;
+
+        const inputs = getInputs(
+          utxos.map((utxo) => {
+            const temp = Object(utxo);
+            temp.value = BigNumber(temp.value);
+            temp.assets = temp.assets.map((asset: any) => {
+              const temp2 = Object(asset);
+              temp2.amount = BigNumber(temp2.amount);
+              return temp2;
+            });
+            return temp;
+          }),
+          [new AssetAmount(from.asset, BigInt(baseInputAmount.toString()))],
+          {
+            minerFee: BigInt(config.network.defaultMinerFee.toString()),
+            uiFee: BigInt(config.network.defaultMinerFee.toString()),
+            exFee: BigInt(extremum.maxExFee.toString()),
+          },
+        );
+        const pk = publicKeyFromAddress(output_address);
+        if (!pk) throw new Error(`output_address is not defined.`);
+        const swapParams: SwapParams<NativeExFeeType> = {
+          poolId: pool.id,
+          pk,
+          baseInput,
+          minQuoteOutput: extremum.minOutput.amount,
+          exFeePerToken,
+          uiFee: BigInt(config.network.defaultMinerFee.toString()),
+          quoteAsset: to.asset.id,
+          poolFeeNum: pool.poolFeeNum,
+          maxExFee: extremum.maxExFee,
+        };
+        const txContext: TransactionContext = getTxContext(
+          inputs,
+          networkContext as NetworkContext,
+          return_address,
+          BigInt(config.network.defaultMinerFee.toString()),
+        );
+        const actions = poolActions(pool);
+        const timestamp = (
+          await this._node.getBlockInfo(networkContext.height.toString())
+        ).header.timestamp;
+        const tx = await actions.swap(swapParams, txContext);
+        const submit_tx = await account.prover.submit(tx);
+        if (!submit_tx.id) throw new Error(`error during submit tx!`);
+        result = {
+          network: this.network,
+          timestamp,
+          latency: 0,
+          base: baseToken,
+          quote: quoteToken,
+          amount:
+            sell === false
+              ? amount
+                  .div(BigNumber(10).pow(pool.y.asset.decimals as number))
+                  .toString()
+              : amount
+                  .div(BigNumber(10).pow(pool.x.asset.decimals as number))
+                  .toString(),
+          rawAmount:
+            sell === false
+              ? amount
+                  .div(BigNumber(10).pow(pool.y.asset.decimals as number))
+                  .toString()
+              : amount
+                  .div(BigNumber(10).pow(pool.x.asset.decimals as number))
+                  .toString(),
+          expectedOut:
+            sell === false
+              ? BigNumber(minOutput.amount.toString())
+                  .div(BigNumber(10).pow(pool.y.asset.decimals as number))
+                  .toString()
+              : BigNumber(minOutput.amount.toString())
+                  .div(BigNumber(10).pow(pool.x.asset.decimals as number))
+                  .toString(),
+          price:
+            sell === false
+              ? BigNumber(minOutput.amount.toString())
+                  .div(BigNumber(10).pow(pool.y.asset.decimals as number))
+                  .div(
+                    BigNumber(from.amount.toString()).div(
+                      BigNumber(10).pow(pool.x.asset.decimals as number),
+                    ),
+                  )
+                  .toString()
+              : BigNumber(minOutput.amount.toString())
+                  .div(BigNumber(10).pow(pool.x.asset.decimals as number))
+                  .div(
+                    BigNumber(from.amount.toString()).div(
+                      BigNumber(10).pow(pool.y.asset.decimals as number),
+                    ),
+                  )
+                  .toString(),
+          gasPrice: 0,
+          gasPriceToken: '0',
+          gasLimit: 0,
+          gasCost: '0',
+          txHash: tx.id,
+        };
+      }
+    }
+    return result;
   }
 
   public async estimate(
@@ -607,66 +704,10 @@ export class Ergo {
   ): Promise<PriceResponse> {
     let sell: boolean;
     let amount: BigNumber;
-    console.log(baseToken, quoteToken);
 
-    const pool = this.getPoolByToken(baseToken, quoteToken);
-    if (!pool)
+    const pools = this.getPoolByToken(baseToken, quoteToken);
+    if (!pools.length)
       throw new Error(`pool not found base on ${baseToken}, ${quoteToken}`);
-    if (pool.x.asset.id === baseToken){sell = false;
-      amount = value.multipliedBy(
-        BigNumber(10).pow(pool.y.asset.decimals as number),
-      );
-    } else {
-      sell = true;
-      amount = value.multipliedBy(
-        BigNumber(10).pow(pool.x.asset.decimals as number),
-      );
-    }
-    const config = getErgoConfig(this.network);
-    const max_to = {
-      asset: {
-        id: sell ? pool.x.asset.id : pool.y.asset.id,
-      },
-      amount,
-    };
-    const from = {
-      asset: {
-        id: sell ? pool.y.asset.id : pool.x.asset.id,
-        decimals: sell ? pool.y.asset.decimals : pool.x.asset.decimals,
-      },
-      amount: pool.outputAmount(
-        max_to as any,
-        slippage || config.network.defaultSlippage,
-      ).amount,
-    };
-    const { minOutput } = getBaseInputParameters(pool, {
-      inputAmount: from,
-      slippage: slippage || config.network.defaultSlippage,
-    });
-    return {
-      base: baseToken,
-      quote: quoteToken,
-      amount: amount.toString(),
-      rawAmount: amount.toString(),
-      expectedAmount: minOutput.amount.toString(),
-      price: sell
-        ? pool.priceX.numerator.toString()
-        : pool.priceY.numerator.toString(),
-      network: this.network,
-      timestamp: Date.now(),
-      latency: 0,
-      gasPrice: 0,
-      gasPriceToken: '0',
-      gasLimit: 0,
-      gasCost: '0',
-    };
-  }
-
-  public getPool(id: string): Pool {
-    return <Pool>this.ammPools.find((ammPool) => ammPool.id === id);
-  }
-
-  public getPoolByToken(baseToken: string, quoteToken: string): Pool {
     const realBaseToken = this.storedAssetList.find(
       (asset) => asset.symbol === baseToken,
     );
@@ -675,8 +716,137 @@ export class Ergo {
     );
     if (!realBaseToken || !realQuoteToken)
       throw new Error(`${baseToken} or ${quoteToken} not found!`);
-    return <Pool>(
-      this.ammPools.find(
+    let result = {
+      base: realBaseToken.symbol,
+      quote: realQuoteToken.symbol,
+      amount: '0',
+      rawAmount: '0',
+      expectedAmount: '0',
+      price: '0',
+      network: this.network,
+      timestamp: Date.now(),
+      latency: 0,
+      gasPrice: 0,
+      gasPriceToken: '0',
+      gasLimit: 0,
+      gasCost: '0',
+    };
+    for (const pool of pools) {
+      if (pool.x.asset.id === realBaseToken.tokenId) {
+        sell = false;
+        amount = value.multipliedBy(
+          BigNumber(10).pow(pool.y.asset.decimals as number),
+        );
+      } else {
+        sell = true;
+        amount = value.multipliedBy(
+          BigNumber(10).pow(pool.x.asset.decimals as number),
+        );
+      }
+      const config = getErgoConfig(this.network);
+      const max_to = {
+        asset: {
+          id: sell ? pool.x.asset.id : pool.y.asset.id,
+          decimals: sell ? pool.x.asset.decimals : pool.y.asset.decimals,
+        },
+        amount: BigInt(amount.toString()),
+      };
+      const from = {
+        asset: {
+          id: sell ? pool.y.asset.id : pool.x.asset.id,
+          decimals: sell ? pool.y.asset.decimals : pool.x.asset.decimals,
+        },
+        amount: pool.outputAmount(
+          max_to as any,
+          slippage || config.network.defaultSlippage,
+        ).amount,
+      };
+      const { minOutput } = getBaseInputParameters(pool, {
+        inputAmount: from,
+        slippage: slippage || config.network.defaultSlippage,
+      });
+      if (minOutput.amount === BigInt(0)) continue;
+      const expectedAmount =
+        sell === false
+          ? BigNumber(minOutput.amount.toString()).div(
+              BigNumber(10).pow(pool.y.asset.decimals as number),
+            )
+          : BigNumber(minOutput.amount.toString()).div(
+              BigNumber(10).pow(pool.x.asset.decimals as number),
+            );
+      if (expectedAmount >= BigNumber(result.expectedAmount))
+        result = {
+          base: realBaseToken.symbol,
+          quote: realQuoteToken.symbol,
+          amount:
+            sell === false
+              ? amount
+                  .div(BigNumber(10).pow(pool.y.asset.decimals as number))
+                  .toString()
+              : amount
+                  .div(BigNumber(10).pow(pool.x.asset.decimals as number))
+                  .toString(),
+          rawAmount:
+            sell === false
+              ? amount
+                  .div(BigNumber(10).pow(pool.y.asset.decimals as number))
+                  .toString()
+              : amount
+                  .div(BigNumber(10).pow(pool.x.asset.decimals as number))
+                  .toString(),
+          expectedAmount:
+            sell === false
+              ? BigNumber(minOutput.amount.toString())
+                  .div(BigNumber(10).pow(pool.y.asset.decimals as number))
+                  .toString()
+              : BigNumber(minOutput.amount.toString())
+                  .div(BigNumber(10).pow(pool.x.asset.decimals as number))
+                  .toString(),
+          price:
+            sell === false
+              ? BigNumber(minOutput.amount.toString())
+                  .div(BigNumber(10).pow(pool.y.asset.decimals as number))
+                  .div(
+                    BigNumber(from.amount.toString()).div(
+                      BigNumber(10).pow(pool.x.asset.decimals as number),
+                    ),
+                  )
+                  .toString()
+              : BigNumber(minOutput.amount.toString())
+                  .div(BigNumber(10).pow(pool.x.asset.decimals as number))
+                  .div(
+                    BigNumber(from.amount.toString()).div(
+                      BigNumber(10).pow(pool.y.asset.decimals as number),
+                    ),
+                  )
+                  .toString(),
+          network: this.network,
+          timestamp: Date.now(),
+          latency: 0,
+          gasPrice: 0,
+          gasPriceToken: '0',
+          gasLimit: 0,
+          gasCost: '0',
+        };
+    }
+    return result;
+  }
+
+  public getPool(id: string): Pool {
+    return <Pool>this.ammPools.find((ammPool) => ammPool.id === id);
+  }
+
+  public getPoolByToken(baseToken: string, quoteToken: string): Pool[] {
+    const realBaseToken = this.storedAssetList.find(
+      (asset) => asset.symbol === baseToken,
+    );
+    const realQuoteToken = this.storedAssetList.find(
+      (asset) => asset.symbol === quoteToken,
+    );
+    if (!realBaseToken || !realQuoteToken)
+      throw new Error(`${baseToken} or ${quoteToken} not found!`);
+    return <Pool[]>(
+      this.ammPools.filter(
         (ammPool) =>
           (ammPool.x.asset.id === realBaseToken.tokenId &&
             ammPool.y.asset.id === realQuoteToken.tokenId) ||
@@ -686,7 +856,7 @@ export class Ergo {
     );
   }
 
-  public async getTx(id: string): Promise<ErgoTx> {
+  public async getTx(id: string): Promise<ErgoTxFull | undefined> {
     return await this._node.getTxsById(id);
   }
 }

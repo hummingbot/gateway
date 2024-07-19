@@ -39,8 +39,7 @@ export class WalletProver implements Prover {
   }
 
   async submit(tx: ErgoTx): Promise<ErgoTx> {
-    const txId = await this.nodeService.postTransaction(tx);
-
+    const txId = await this.nodeService.postTransaction(JSON.stringify(tx));
     return {
       ...tx,
       id: txId,
