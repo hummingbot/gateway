@@ -28,7 +28,7 @@ export class ErgoController {
   }
 
   static async poll(ergo: Ergo, req: PollRequest): Promise<PollResponse> {
-    if (!ergo.ready) {
+    if (!ergo.ready()) {
       await ergo.init();
     }
     const tx = await ergo.getTx(req.txHash);
@@ -57,7 +57,7 @@ export class ErgoController {
     chain: Ergo,
     request: BalanceRequest,
   ): Promise<BalanceResponse> {
-    if (!chain.ready) {
+    if (!chain.ready()) {
       await chain.init();
     }
     const utxos = await chain.getAddressUnspentBoxes(request.address);
@@ -85,7 +85,7 @@ export class ErgoController {
     ergo: Ergo,
     _req: TokensRequest,
   ): Promise<AssetsResponse> {
-    if (!ergo.ready) {
+    if (!ergo.ready()) {
       await ergo.init();
     }
 
@@ -132,7 +132,7 @@ export class ErgoController {
     chain: Ergo,
     request: AllowancesRequest,
   ): Promise<AllowancesResponse | string> {
-    if (!chain.ready) {
+    if (!chain.ready()) {
       await chain.init();
     }
     const utxos = await chain.getAddressUnspentBoxes(request.address);
