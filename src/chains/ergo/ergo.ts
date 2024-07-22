@@ -552,7 +552,7 @@ export class Ergo {
           : BigNumber(minOutput.amount.toString()).div(
               BigNumber(10).pow(pool.x.asset.decimals as number),
             );
-      if (expectedOut >= BigNumber(result.expectedOut)) {
+      if (expectedOut > BigNumber(result.expectedOut)) {
         result = {
           pool,
           expectedOut,
@@ -802,7 +802,7 @@ export class Ergo {
           : BigNumber(minOutput.amount.toString()).div(
               BigNumber(10).pow(pool.x.asset.decimals as number),
             );
-      if (expectedAmount >= BigNumber(result.expectedAmount))
+      if (expectedAmount > BigNumber(result.expectedAmount))
         result = {
           base: realBaseToken.symbol,
           quote: realQuoteToken.symbol,
