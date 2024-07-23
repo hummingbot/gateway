@@ -71,14 +71,14 @@ export class Spectrum {
    * @param amount Amount of `baseToken` desired from the transaction
    */
   async estimateTrade(req: PriceRequest) {
-    if (req.side === 'BUY')
+    if (req.side === 'SELL')
       return this.ergo.estimate(
         req.base.replace("_", ""),
         req.quote.replace("_", ""),
         BigNumber(req.amount),
         Number(req.allowedSlippage),
       );
-    else if (req.side === 'SELL')
+    else if (req.side === 'BUY')
       return this.ergo.estimate(
         req.quote.replace("_", ""),
         req.base.replace("_", ""),
@@ -104,7 +104,7 @@ export class Spectrum {
     const account = await this.ergo.getAccountFromAddress(
       req.address as unknown as string,
     );
-    if (req.side === 'BUY')
+    if (req.side === 'SELL')
       return this.ergo.swap(
         account,
         req.base.replace("_", ""),
@@ -114,7 +114,7 @@ export class Spectrum {
         req.address,
         Number(req.allowedSlippage),
       );
-    else if (req.side === 'SELL')
+    else if (req.side === 'BUY')
       return this.ergo.swap(
         account,
         req.quote.replace("_", ""),
