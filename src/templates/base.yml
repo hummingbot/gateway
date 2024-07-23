@@ -5,7 +5,7 @@ networks:
     nodeURL: https://mainnet.base.org
     tokenListType: 'FILE'
     tokenListSource: '/home/gateway/conf/lists/base_tokens_mainnet.json'
-    nativeCurrencySymbol: 'ETH'  
+    nativeCurrencySymbol: 'ETH'
   sepolia:
     chainID: 84532
     nodeURL: https://sepolia.base.org
