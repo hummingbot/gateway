@@ -118,6 +118,11 @@ export const validatePrivateKey: Validator = mkSelectingValidator(
       invalidEthPrivateKeyError,
       (val) => typeof val === 'string' && isEthPrivateKey(val)
     ),
+    base: mkValidator(
+      'privateKey',
+      invalidEthPrivateKeyError,
+      (val) => typeof val === 'string' && isEthPrivateKey(val)
+    ),
     'binance-smart-chain': mkValidator(
       'privateKey',
       invalidEthPrivateKeyError,
