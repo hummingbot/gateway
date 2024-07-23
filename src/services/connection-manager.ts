@@ -1,9 +1,11 @@
+
 import { Avalanche } from '../chains/avalanche/avalanche';
 import { Cronos } from '../chains/cronos/cronos';
 import { Ethereum } from '../chains/ethereum/ethereum';
 import { BinanceSmartChain } from '../chains/binance-smart-chain/binance-smart-chain';
 import { Harmony } from '../chains/harmony/harmony';
 import { Polygon } from '../chains/polygon/polygon';
+import { Base } from '../chains/base/base';
 import { Xdc } from '../chains/xdc/xdc';
 import { Tezos } from '../chains/tezos/tezos';
 import { Osmosis } from '../chains/osmosis/osmosis';
@@ -141,6 +143,8 @@ export async function getChainInstance(
     connection = XRPL.getInstance(network);
   } else if (chain === 'kujira') {
     connection = Kujira.getInstance(network);
+  } else if (chain === 'base') {
+    connection = Base.getInstance(network);
   } else {
     connection = undefined;
   }
@@ -192,14 +196,14 @@ export async function getConnector<T>(
   let connectorInstance: ConnectorUnion;
 
   if (
-    (chain === 'ethereum' || chain === 'polygon') &&
+    (chain === 'ethereum' || chain === 'polygon' || chain === 'base') &&
     connector === 'uniswap'
   ) {
     connectorInstance = Uniswap.getInstance(chain, network);
   } else if (chain === 'polygon' && connector === 'quickswap') {
     connectorInstance = Quickswap.getInstance(chain, network);
   } else if (
-    (chain === 'ethereum' || chain === 'polygon') &&
+    (chain === 'ethereum' || chain === 'polygon' || chain === 'base') &&
     connector === 'uniswapLP'
   ) {
     connectorInstance = UniswapLP.getInstance(chain, network);

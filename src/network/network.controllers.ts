@@ -21,6 +21,7 @@ import {
 } from '../services/connection-manager';
 import { Osmosis } from '../chains/osmosis/osmosis';
 import { XRPL } from '../chains/xrpl/xrpl';
+import { Base } from '../chains/base/base';
 
 export async function getStatus(
   req: StatusRequest
@@ -73,6 +74,11 @@ export async function getStatus(
     const polygonConnections = Polygon.getConnectedInstances();
     connections = connections.concat(
       polygonConnections ? Object.values(polygonConnections) : []
+    );
+
+    const baseConnections = Base.getConnectedInstances();
+    connections = connections.concat(
+      baseConnections ? Object.values(baseConnections) : []
     );
 
     const xdcConnections = Xdc.getConnectedInstances();
