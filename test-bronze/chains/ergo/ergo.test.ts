@@ -21,9 +21,11 @@ import {
   ErgoBox,
 } from '../../../src/chains/ergo/interfaces/ergo.interface';
 import LRUCache from 'lru-cache';
+import fse from 'fs-extra';
 import { makeNativePools } from '@patternglobal/ergo-dex-sdk';
 import { BigNumber } from 'bignumber.js';
 import * as ergo_utils from '../../../src/chains/ergo/ergo.util';
+import { ConfigManagerCertPassphrase } from '../../../src/services/config-manager-cert-passphrase';
 
 jest.mock('@patternglobal/ergo-dex-sdk', () => ({
   AmmPool: jest.fn(),
@@ -610,7 +612,44 @@ describe('Ergo', () => {
       expect(encryptedText).toMatch(/^[0-9a-fA-F]{32}:[0-9a-fA-F]+$/);
     });
   });
-
+  describe('getAccountFromAddress', () => {
+    beforeEach(() => {
+      jest.spyOn(fse, 'readFile').mockResolvedValue('file' as any);
+    });
+    it('Should be defined', () => {
+      expect(ergo.getAccountFromAddress).toBeDefined();
+    });
+    it('Should throw new Error if passphrase is invalid', async () => {
+      jest
+        .spyOn(ConfigManagerCertPassphrase, 'readPassphrase')
+        .mockReturnValue(undefined);
+      await expect(ergo.getAccountFromAddress('address')).rejects.toThrow(
+        'missing passphrase',
+      );
+      expect(fse.readFile).toHaveBeenCalledWith(
+        './conf/wallets/ergo/address.json',
+        'utf8',
+      );
+    });
+    it('Should return account from address given', async () => {
+      jest
+        .spyOn(ConfigManagerCertPassphrase, 'readPassphrase')
+        .mockReturnValue('passphrase');
+      jest.spyOn(ergo, 'decrypt').mockReturnValue('mnemonic');
+      jest
+        .spyOn(ergo, 'getAccountFromMnemonic')
+        .mockReturnValue('Ergo Accont' as any);
+      const result = await ergo.getAccountFromAddress('address');
+      expect(ergo.decrypt).toHaveBeenCalledWith('file', 'passphrase');
+      expect(ConfigManagerCertPassphrase.readPassphrase).toHaveBeenCalled();
+      expect(fse.readFile).toHaveBeenCalledWith(
+        './conf/wallets/ergo/address.json',
+        'utf8',
+      );
+      expect(ergo.getAccountFromMnemonic).toHaveBeenCalledWith('mnemonic');
+      expect(result).toEqual('Ergo Accont');
+    });
+  });
   describe('decrypt', () => {
     it('Should decrypt an encrypted secret correctly', () => {
       // Arrange: Set up the secret and password, and encrypt the secret
