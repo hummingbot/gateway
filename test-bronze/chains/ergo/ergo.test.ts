@@ -1300,41 +1300,6 @@ describe('Ergo', () => {
       });
     });
 
-    // it('Should ignore the rest of loop scope and return the base result if minOutput === BigInt(0)', async () => {
-    //   jest.spyOn(ergo, 'getPoolByToken').mockReturnValue([pool]);
-    //   jest
-    //     .spyOn(BigNumber.prototype, 'multipliedBy')
-    //     .mockReturnValue(BigNumber(2));
-    //   patchGetErgoConfig('mainnet');
-    //   jest.spyOn(ergo_utils, 'getBaseInputParameters').mockReturnValue({
-    //     minOutput: { amount: BigInt(0) },
-    //   } as any);
-    //   expect(
-    //     await ergo.swap(
-    //       account,
-    //       baseToken,
-    //       quoteToken,
-    //       value,
-    //       output_address,
-    //       return_address,
-    //     ),
-    //   ).toEqual({
-    //     network: 'mainnet',
-    //     timestamp: 0,
-    //     latency: 0,
-    //     base: baseToken,
-    //     quote: quoteToken,
-    //     amount: '0',
-    //     rawAmount: '0',
-    //     expectedOut: '0',
-    //     price: '0',
-    //     gasPrice: 0,
-    //     gasPriceToken: '0',
-    //     gasLimit: 0,
-    //     gasCost: '0',
-    //     txHash: '',
-    //   });
-    // });
     it('Should throw new Error if output_address is not defined', async () => {
       jest.spyOn(ergo, 'getPoolByToken').mockReturnValue([pool]);
       jest
@@ -1544,9 +1509,26 @@ describe('Ergo', () => {
   });
 
   describe('estimate', () => {
-    const baseToken: string = 'baseToken';
-    const quoteToken: string = 'quoteToken';
+    const baseToken: string = 'ERG';
+    const quoteToken: string = 'SigUSD';
     const value: BigNumber = BigNumber(10);
+    beforeEach(() => {
+      jest.spyOn(ergo, 'storedAssetList', 'get').mockReturnValue([
+        {
+          tokenId: 'SigUSDId',
+          decimals: 3,
+          name: 'SigUSD',
+          symbol: 'SigUSD',
+        },
+
+        {
+          tokenId: 'ERGId',
+          decimals: 9,
+          name: 'ergo',
+          symbol: 'ERG',
+        },
+      ]);
+    });
     afterEach(() => {
       jest.clearAllMocks();
     });
@@ -1568,16 +1550,16 @@ describe('Ergo', () => {
         withAmount: (_sth: any) => {
           return {
             asset: {
-              id: 'xId',
-              name: 'xName',
+              id: 'ERGId',
+              name: 'ergo',
               decimals: 9,
             },
             amount: BigInt(752313805260857),
           };
         },
         asset: {
-          id: 'xId',
-          name: 'xName',
+          id: 'ERGId',
+          name: 'ergo',
           decimals: 9,
         },
       },
@@ -1585,16 +1567,16 @@ describe('Ergo', () => {
         withAmount: (_sth: any) => {
           return {
             asset: {
-              id: 'yId',
-              name: 'yName',
+              id: 'SigUSDId',
+              name: 'SigUSD',
               decimals: 3,
             },
             amount: BigInt(9322283969),
           };
         },
         asset: {
-          id: 'yId',
-          name: 'yName',
+          id: 'SigUSDId',
+          name: 'SigUSD',
           decimals: 3,
         },
       },
@@ -1611,70 +1593,154 @@ describe('Ergo', () => {
       expect(ergo.estimate).toBeDefined();
     });
     it('Should throw new Error if pool is not found', async () => {
-      jest.spyOn(ergo, 'getPoolByToken').mockReturnValue(null as any);
+      jest.spyOn(ergo, 'getPoolByToken').mockReturnValue([]);
       await expect(ergo.estimate(baseToken, quoteToken, value)).rejects.toThrow(
         `pool not found base on ${baseToken}, ${quoteToken}`,
       );
     });
 
-    it('Should estimate successfully when sell is true', async () => {
-      patchGetErgoConfig('mainnet');
-      jest.spyOn(ergo, 'getPoolByToken').mockReturnValue(null as any);
+    it('Should throw new Error if baseToken is available but quoteToken is not available on storedAssetList', async () => {
+      jest.spyOn(ergo, 'getPoolByToken').mockReturnValue([pool]);
+      // ERG is available but SigUSD is not
+      jest.spyOn(ergo, 'storedAssetList', 'get').mockReturnValue([
+        {
+          tokenId: 'ERGId',
+          decimals: 9,
+          name: 'ergo',
+          symbol: 'ERG',
+        },
+      ]);
+      await expect(ergo.estimate(baseToken, quoteToken, value)).rejects.toThrow(
+        `${baseToken} or ${quoteToken} not found!`,
+      );
+      expect(ergo.getPoolByToken).toHaveBeenCalledWith(baseToken, quoteToken);
+    });
+
+    it('Should throw new Error if quoteToken is available but baseToken is not available on storedAssetList', async () => {
+      jest.spyOn(ergo, 'getPoolByToken').mockReturnValue([pool]);
+      // SigUSD is available but ERG is not
+      jest.spyOn(ergo, 'storedAssetList', 'get').mockReturnValue([
+        {
+          tokenId: 'SigUSDId',
+          decimals: 3,
+          name: 'SigUSD',
+          symbol: 'SigUSD',
+        },
+      ]);
+      await expect(ergo.estimate(baseToken, quoteToken, value)).rejects.toThrow(
+        `${baseToken} or ${quoteToken} not found!`,
+      );
+      expect(ergo.getPoolByToken).toHaveBeenCalledWith(baseToken, quoteToken);
+    });
+
+    it('Should ignore the rest of loop scope and return the base result if minOutput === BigInt(0)', async () => {
+      jest.spyOn(ergo, 'getPoolByToken').mockReturnValue([pool]);
       jest
-        .spyOn(ergo_utils, 'getBaseInputParameters')
-        .mockReturnValue({ minOutput: { amount: BigInt(1) } } as any);
-      jest.spyOn(ergo, 'getPoolByToken').mockReturnValue(pool);
-      const result = await ergo.estimate(baseToken, quoteToken, value);
-      expect(result).toMatchObject({
+        .spyOn(BigNumber.prototype, 'multipliedBy')
+        .mockReturnValue(BigNumber(2));
+      patchGetErgoConfig('mainnet');
+      jest.spyOn(ergo_utils, 'getBaseInputParameters').mockReturnValue({
+        minOutput: { amount: BigInt(0) },
+      } as any);
+      expect(await ergo.estimate(baseToken, quoteToken, value)).toMatchObject({
         base: baseToken,
         quote: quoteToken,
-        amount: value
-          .multipliedBy(BigNumber(10).pow(pool.x.asset.decimals as number))
-          .toString(),
-        rawAmount: value
-          .multipliedBy(BigNumber(10).pow(pool.x.asset.decimals as number))
-          .toString(),
-        expectedAmount: BigInt(1).toString(),
-        price: BigInt(1).toString(),
-        network: ergo.network,
+        amount: '0',
+        rawAmount: '0',
+        expectedAmount: '0',
+        price: '0',
+        network: 'mainnet',
         // timestamp ignored because there was a really small difference between create Date.new() in test file and main file
         // timestamp: Date.now(),
         latency: 0,
-        gasPrice: 0,
-        gasPriceToken: '0',
-        gasLimit: 0,
-        gasCost: '0',
+        gasPrice: BigNumber('2000').div(BigNumber(10).pow(9)).toNumber(),
+        gasPriceToken: BigNumber('2000').div(BigNumber(10).pow(9)).toString(),
+        gasLimit: BigNumber('2000').div(BigNumber(10).pow(9)).toNumber(),
+        gasCost: BigNumber('2000').div(BigNumber(10).pow(9)).toString(),
       });
     });
     it('Should estimate successfully when sell is false', async () => {
       patchGetErgoConfig('mainnet');
-      jest.spyOn(ergo, 'getPoolByToken').mockReturnValue(null as any);
+      jest.spyOn(ergo, 'getPoolByToken').mockReturnValue([pool]);
       jest
         .spyOn(ergo_utils, 'getBaseInputParameters')
         .mockReturnValue({ minOutput: { amount: BigInt(1) } } as any);
-      jest.spyOn(ergo, 'getPoolByToken').mockReturnValue(pool);
-      // to set sell false:
-      const baseToken = 'xId';
       const result = await ergo.estimate(baseToken, quoteToken, value);
       expect(result).toMatchObject({
         base: baseToken,
         quote: quoteToken,
         amount: value
           .multipliedBy(BigNumber(10).pow(pool.y.asset.decimals as number))
+          .div(BigNumber(10).pow(pool.y.asset.decimals as number))
           .toString(),
         rawAmount: value
           .multipliedBy(BigNumber(10).pow(pool.y.asset.decimals as number))
+          .div(BigNumber(10).pow(pool.y.asset.decimals as number))
           .toString(),
-        expectedAmount: BigInt(1).toString(),
-        price: BigInt(2).toString(),
+        expectedAmount: BigNumber(BigInt(1).toString())
+          .div(BigNumber(10).pow(pool.y.asset.decimals as number))
+          .toString(),
+        price: BigNumber(BigInt(1).toString())
+          .div(BigNumber(10).pow(pool.y.asset.decimals as number))
+          .div(
+            BigNumber(pool.outputAmount().amount.toString()).div(
+              BigNumber(10).pow(pool.x.asset.decimals as number),
+            ),
+          )
+          .toString(),
         network: ergo.network,
         // timestamp ignored because there was a really small difference between create Date.new() in test file and main file
         // timestamp: Date.now(),
         latency: 0,
-        gasPrice: 0,
-        gasPriceToken: '0',
-        gasLimit: 0,
-        gasCost: '0',
+        gasPrice: BigNumber('2000').div(BigNumber(10).pow(9)).toNumber(),
+        gasPriceToken: BigNumber('2000').div(BigNumber(10).pow(9)).toString(),
+        gasLimit: BigNumber('2000').div(BigNumber(10).pow(9)).toNumber(),
+        gasCost: BigNumber('2000').div(BigNumber(10).pow(9)).toString(),
+      });
+    });
+    it('Should estimate successfully when sell is true', async () => {
+      patchGetErgoConfig('mainnet');
+      jest
+        .spyOn(ergo_utils, 'getBaseInputParameters')
+        .mockReturnValue({ minOutput: { amount: BigInt(1) } } as any);
+      jest.spyOn(ergo, 'getPoolByToken').mockReturnValue([pool]);
+      // to set sell 'true'
+      const baseToken: string = 'SigUSD';
+      const quoteToken: string = 'ERG';
+      const result = await ergo.estimate(baseToken, quoteToken, value);
+      expect(result).toMatchObject({
+        base: baseToken,
+        quote: quoteToken,
+        amount: value
+          .multipliedBy(BigNumber(10).pow(pool.x.asset.decimals as number))
+          .div(BigNumber(10).pow(pool.x.asset.decimals as number))
+          .toString(),
+        rawAmount: value
+          .multipliedBy(BigNumber(10).pow(pool.x.asset.decimals as number))
+          .div(BigNumber(10).pow(pool.x.asset.decimals as number))
+          .toString(),
+        expectedAmount: BigNumber(BigInt(1).toString())
+          .div(BigNumber(10).pow(pool.x.asset.decimals as number))
+          .toString(),
+        price: BigNumber(1)
+          .div(
+            BigNumber(BigInt(1).toString())
+              .div(BigNumber(10).pow(pool.x.asset.decimals as number))
+              .div(
+                BigNumber(pool.outputAmount().amount.toString()).div(
+                  BigNumber(10).pow(pool.y.asset.decimals as number),
+                ),
+              ),
+          )
+          .toString(),
+        network: ergo.network,
+        // timestamp ignored because there was a really small difference between create Date.new() in test file and main file
+        // timestamp: Date.now(),
+        latency: 0,
+        gasPrice: BigNumber('2000').div(BigNumber(10).pow(9)).toNumber(),
+        gasPriceToken: BigNumber('2000').div(BigNumber(10).pow(9)).toString(),
+        gasLimit: BigNumber('2000').div(BigNumber(10).pow(9)).toNumber(),
+        gasCost: BigNumber('2000').div(BigNumber(10).pow(9)).toString(),
       });
     });
   });
