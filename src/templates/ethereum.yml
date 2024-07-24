@@ -41,9 +41,16 @@ networks:
     nativeCurrencySymbol: ETH
   base:
     chainID: 8453
-    nodeURL:  https://rpc.ankr.com/base
+    nodeURL:  https://mainnet.base.org
     tokenListType: FILE
-    tokenListSource: /home/gateway/conf/lists/base_uniswap_20240411.json
+    tokenListSource: /home/gateway/conf/lists/base_tokens_mainnet.json
+    nativeCurrencySymbol: ETH
+    gasPriceRefreshInterval: 60
+  base-sepolia:
+    chainID: 84532
+    nodeURL:  https://sepolia.base.org
+    tokenListType: FILE
+    tokenListSource: /home/gateway/conf/lists/base_tokens_sepolia.json
     nativeCurrencySymbol: ETH
     gasPriceRefreshInterval: 60
 
