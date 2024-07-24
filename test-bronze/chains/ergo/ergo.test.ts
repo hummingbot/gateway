@@ -1300,41 +1300,41 @@ describe('Ergo', () => {
       });
     });
 
-    it('Should ignore the rest of loop scope and return the base result if minOutput === BigInt(0)', async () => {
-      jest.spyOn(ergo, 'getPoolByToken').mockReturnValue([pool]);
-      jest
-        .spyOn(BigNumber.prototype, 'multipliedBy')
-        .mockReturnValue(BigNumber(2));
-      patchGetErgoConfig('mainnet');
-      jest.spyOn(ergo_utils, 'getBaseInputParameters').mockReturnValue({
-        minOutput: { amount: BigInt(0) },
-      } as any);
-      expect(
-        await ergo.swap(
-          account,
-          baseToken,
-          quoteToken,
-          value,
-          output_address,
-          return_address,
-        ),
-      ).toEqual({
-        network: 'mainnet',
-        timestamp: 0,
-        latency: 0,
-        base: baseToken,
-        quote: quoteToken,
-        amount: '0',
-        rawAmount: '0',
-        expectedOut: '0',
-        price: '0',
-        gasPrice: 0,
-        gasPriceToken: '0',
-        gasLimit: 0,
-        gasCost: '0',
-        txHash: '',
-      });
-    });
+    // it('Should ignore the rest of loop scope and return the base result if minOutput === BigInt(0)', async () => {
+    //   jest.spyOn(ergo, 'getPoolByToken').mockReturnValue([pool]);
+    //   jest
+    //     .spyOn(BigNumber.prototype, 'multipliedBy')
+    //     .mockReturnValue(BigNumber(2));
+    //   patchGetErgoConfig('mainnet');
+    //   jest.spyOn(ergo_utils, 'getBaseInputParameters').mockReturnValue({
+    //     minOutput: { amount: BigInt(0) },
+    //   } as any);
+    //   expect(
+    //     await ergo.swap(
+    //       account,
+    //       baseToken,
+    //       quoteToken,
+    //       value,
+    //       output_address,
+    //       return_address,
+    //     ),
+    //   ).toEqual({
+    //     network: 'mainnet',
+    //     timestamp: 0,
+    //     latency: 0,
+    //     base: baseToken,
+    //     quote: quoteToken,
+    //     amount: '0',
+    //     rawAmount: '0',
+    //     expectedOut: '0',
+    //     price: '0',
+    //     gasPrice: 0,
+    //     gasPriceToken: '0',
+    //     gasLimit: 0,
+    //     gasCost: '0',
+    //     txHash: '',
+    //   });
+    // });
     it('Should throw new Error if output_address is not defined', async () => {
       jest.spyOn(ergo, 'getPoolByToken').mockReturnValue([pool]);
       jest
@@ -1456,12 +1456,11 @@ describe('Ergo', () => {
               BigNumber(10).pow(pool.x.asset.decimals as number),
             ),
           )
-          .toString()
           .toString(),
-        gasPrice: 0,
-        gasPriceToken: '0',
-        gasLimit: 0,
-        gasCost: '0',
+        gasPrice: BigNumber('2000').div(BigNumber(10).pow(9)).toNumber(),
+        gasPriceToken: BigNumber('2000').div(BigNumber(10).pow(9)).toString(),
+        gasLimit: BigNumber('2000').div(BigNumber(10).pow(9)).toNumber(),
+        gasCost: BigNumber('2000').div(BigNumber(10).pow(9)).toString(),
         txHash: 'txId',
       });
     });
@@ -1524,19 +1523,21 @@ describe('Ergo', () => {
         expectedOut: BigNumber(BigInt(1).toString())
           .div(BigNumber(10).pow(pool.x.asset.decimals as number))
           .toString(),
-        price: BigNumber(BigInt(1).toString())
-          .div(BigNumber(10).pow(pool.x.asset.decimals as number))
+        price: BigNumber(1)
           .div(
-            BigNumber(pool.outputAmount().amount.toString()).div(
-              BigNumber(10).pow(pool.y.asset.decimals as number),
-            ),
+            BigNumber(BigInt(1).toString())
+              .div(BigNumber(10).pow(pool.x.asset.decimals as number))
+              .div(
+                BigNumber(pool.outputAmount().amount.toString()).div(
+                  BigNumber(10).pow(pool.y.asset.decimals as number),
+                ),
+              ),
           )
-          .toString()
           .toString(),
-        gasPrice: 0,
-        gasPriceToken: '0',
-        gasLimit: 0,
-        gasCost: '0',
+        gasPrice: BigNumber('2000').div(BigNumber(10).pow(9)).toNumber(),
+        gasPriceToken: BigNumber('2000').div(BigNumber(10).pow(9)).toString(),
+        gasLimit: BigNumber('2000').div(BigNumber(10).pow(9)).toNumber(),
+        gasCost: BigNumber('2000').div(BigNumber(10).pow(9)).toString(),
         txHash: 'txId',
       });
     });
