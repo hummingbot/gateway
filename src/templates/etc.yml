@@ -1,0 +1,11 @@
+networks:
+  mainnet: 
+    chainID: 61
+    nodeURL: 'https://geth-at.etc-network.info'
+    tokenListType: FILE
+    tokenListSource: /home/gateway/conf/lists/etc.json
+    nativeCurrencySymbol: 'ETC'
+    gasPriceRefreshInterval: 60
+
+manualGasPrice: 100
+gasLimitTransaction: 3000000

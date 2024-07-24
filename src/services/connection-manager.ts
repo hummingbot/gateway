@@ -46,6 +46,8 @@ import { XRPLCLOB } from '../connectors/xrpl/xrpl';
 import { QuipuSwap } from '../connectors/quipuswap/quipuswap';
 import { Carbonamm } from '../connectors/carbon/carbonAMM';
 import { Balancer } from '../connectors/balancer/balancer';
+import { ETCSwapLP } from '../connectors/etcswap/etcswap.lp';
+import { ETCChain } from '../chains/etc/etc';
 
 export type ChainUnion =
   | Algorand
@@ -141,6 +143,8 @@ export async function getChainInstance(
     connection = XRPL.getInstance(network);
   } else if (chain === 'kujira') {
     connection = Kujira.getInstance(network);
+  } else if (chain === 'etc') {
+    connection = ETCChain.getInstance(network);
   } else {
     connection = undefined;
   }
@@ -255,6 +259,9 @@ export async function getConnector<T>(
     connectorInstance = QuipuSwap.getInstance(network);
   } else if (chain === 'ethereum' && connector === 'carbonamm') {
     connectorInstance = Carbonamm.getInstance(chain, network);
+  } else if (chain === 'etc' && connector === 'etcswapLP'
+  ) {
+    connectorInstance = ETCSwapLP.getInstance(chain, network)
   } else {
     throw new Error('unsupported chain or connector');
   }
