@@ -672,8 +672,8 @@ export class Ergo {
       network: this.network,
       timestamp,
       latency: 0,
-      base: baseToken,
-      quote: quoteToken,
+      base: realBaseToken.symbol,
+      quote: realQuoteToken.symbol,
       amount:
         sell === false
           ? amount
@@ -708,18 +708,21 @@ export class Ergo {
                 ),
               )
               .toString()
-          : BigNumber(minOutput.amount.toString())
-              .div(BigNumber(10).pow(pool.x.asset.decimals as number))
+          : BigNumber(1)
               .div(
-                BigNumber(from.amount.toString()).div(
-                  BigNumber(10).pow(pool.y.asset.decimals as number),
-                ),
+                BigNumber(minOutput.amount.toString())
+                  .div(BigNumber(10).pow(pool.x.asset.decimals as number))
+                  .div(
+                    BigNumber(from.amount.toString()).div(
+                      BigNumber(10).pow(pool.y.asset.decimals as number),
+                    ),
+                  ),
               )
               .toString(),
-      gasPrice: config.network.minTxFee,
-      gasPriceToken: '0',
-      gasLimit: config.network.minTxFee,
-      gasCost: config.network.minTxFee.toString(),
+      gasPrice: BigNumber(config.network.minTxFee).div(BigNumber(10).pow(9)).toNumber(),
+      gasPriceToken: BigNumber(config.network.minTxFee).div(BigNumber(10).pow(9)).toString(),
+      gasLimit: BigNumber(config.network.minTxFee).div(BigNumber(10).pow(9)).toNumber(),
+      gasCost: BigNumber(config.network.minTxFee).div(BigNumber(10).pow(9)).toString(),
       txHash: tx.id,
     };
   }
@@ -754,10 +757,10 @@ export class Ergo {
       network: this.network,
       timestamp: Date.now(),
       latency: 0,
-      gasPrice: config.network.minTxFee,
-      gasPriceToken: '0',
-      gasLimit: config.network.minTxFee,
-      gasCost: config.network.minTxFee.toString(),
+      gasPrice: BigNumber(config.network.minTxFee).div(BigNumber(10).pow(9)).toNumber(),
+      gasPriceToken: BigNumber(config.network.minTxFee).div(BigNumber(10).pow(9)).toString(),
+      gasLimit: BigNumber(config.network.minTxFee).div(BigNumber(10).pow(9)).toNumber(),
+      gasCost: BigNumber(config.network.minTxFee).div(BigNumber(10).pow(9)).toString(),
     };
     for (const pool of pools) {
       if (pool.x.asset.id === realBaseToken.tokenId) {
@@ -802,7 +805,7 @@ export class Ergo {
           : BigNumber(minOutput.amount.toString()).div(
               BigNumber(10).pow(pool.x.asset.decimals as number),
             );
-      if (expectedAmount > BigNumber(result.expectedAmount))
+      if (expectedAmount > BigNumber(result.expectedAmount)) {
         result = {
           base: realBaseToken.symbol,
           quote: realQuoteToken.symbol,
@@ -832,30 +835,34 @@ export class Ergo {
                   .toString(),
           price:
             sell === false
-              ? BigNumber(minOutput.amount.toString())
-                  .div(BigNumber(10).pow(pool.y.asset.decimals as number))
+              ? (BigNumber(minOutput.amount.toString())
+                  .div(BigNumber(10).pow(pool.y.asset.decimals as number)))
                   .div(
                     BigNumber(from.amount.toString()).div(
                       BigNumber(10).pow(pool.x.asset.decimals as number),
                     ),
                   )
                   .toString()
-              : BigNumber(minOutput.amount.toString())
-                  .div(BigNumber(10).pow(pool.x.asset.decimals as number))
+              : BigNumber(1)
                   .div(
-                    BigNumber(from.amount.toString()).div(
-                      BigNumber(10).pow(pool.y.asset.decimals as number),
-                    ),
+                    (BigNumber(minOutput.amount.toString())
+                      .div(BigNumber(10).pow(pool.x.asset.decimals as number)))
+                      .div(
+                        BigNumber(from.amount.toString()).div(
+                          BigNumber(10).pow(pool.y.asset.decimals as number),
+                        ),
+                      ),
                   )
                   .toString(),
           network: this.network,
           timestamp: Date.now(),
           latency: 0,
-          gasPrice: config.network.minTxFee,
-          gasPriceToken: '0',
-          gasLimit: config.network.minTxFee,
-          gasCost: config.network.minTxFee.toString(),
+          gasPrice: BigNumber(config.network.minTxFee).div(BigNumber(10).pow(9)).toNumber(),
+          gasPriceToken: BigNumber(config.network.minTxFee).div(BigNumber(10).pow(9)).toString(),
+          gasLimit: BigNumber(config.network.minTxFee).div(BigNumber(10).pow(9)).toNumber(),
+          gasCost: BigNumber(config.network.minTxFee).div(BigNumber(10).pow(9)).toString(),
         };
+      }
     }
     return result;
   }
