@@ -1777,57 +1777,75 @@ describe('Ergo', () => {
   });
   describe('getPoolByToken', () => {
     beforeEach(() => {
-      ergo['_assetMap']['ERGO'] = {
-        tokenId:
-          '0000000000000000000000000000000000000000000000000000000000000000',
-        decimals: 9,
-        name: 'ERGO',
-        symbol: 'ERG',
-      };
+      jest.spyOn(ergo, 'storedAssetList', 'get').mockReturnValue([
+        {
+          tokenId: 'SigUSDId',
+          decimals: 3,
+          name: 'SigUSD',
+          symbol: 'SigUSD',
+        },
+        {
+          tokenId: 'ERGId',
+          decimals: 9,
+          name: 'ergo',
+          symbol: 'ERG',
+        },
+      ]);
     });
     const baseToken = 'ERG';
-    const quoteToken = 'RSN';
-    it('Should throw new Error if quote token is not found', () => {
+    const quoteToken = 'SigUSD';
+    it('Should throw new Error if baseToken is available but quoteToken is not available on storedAssetList', () => {
+      // ERG is available but SigUSD is not
+      jest.spyOn(ergo, 'storedAssetList', 'get').mockReturnValue([
+        {
+          tokenId: 'ERGId',
+          decimals: 9,
+          name: 'ergo',
+          symbol: 'ERG',
+        },
+      ]);
       expect(() => ergo.getPoolByToken(baseToken, quoteToken)).toThrow(
         `${baseToken} or ${quoteToken} not found!`,
       );
     });
-    it('Should throw new Error if base token is not found', () => {
-      // swap baseToken with quoteToken
-      const baseToken = 'RSN';
-      const quoteToken = 'ERG';
+    it('Should throw new Error if baseToken is available but quoteToken is not available on storedAssetList', () => {
+      // SigUSD is available but ERG is not
+      jest.spyOn(ergo, 'storedAssetList', 'get').mockReturnValue([
+        {
+          tokenId: 'SigUSDId',
+          decimals: 9,
+          name: 'SigUSD',
+          symbol: 'SigUSD',
+        },
+      ]);
       expect(() => ergo.getPoolByToken(baseToken, quoteToken)).toThrow(
         `${baseToken} or ${quoteToken} not found!`,
       );
     });
     it('Should find poll when both base token and quote are valid in ammPools array', () => {
-      ergo['_assetMap']['ROSEN'] = {
-        tokenId:
-          '1111111111111111111111111111111111111111111111111111111111111111',
-        decimals: 9,
-        name: 'ROSEN',
-        symbol: 'RSN',
-      };
       const ergoRnsPool = {
         id: '1b694b15467c62f0cd4525e368dbdea2329c713aa200b73df4a622e950551b40',
         x: {
           asset: {
-            id: '0000000000000000000000000000000000000000000000000000000000000000',
+            id: 'ERGId',
             name: 'ERGO',
             decimals: 9,
           },
         },
         y: {
           asset: {
-            id: '1111111111111111111111111111111111111111111111111111111111111111',
-            name: 'ROSEN',
+            id: 'SigUSDId',
+            name: 'SigUSD',
             decimals: 3,
           },
         },
       } as any;
       ergo['ammPools'].push(ergoRnsPool);
       const result = ergo.getPoolByToken(baseToken, quoteToken);
-      expect(result).toEqual(ergoRnsPool);
+      expect(result).toEqual([ergoRnsPool]);
+      expect(result[0].id).toEqual(
+        '1b694b15467c62f0cd4525e368dbdea2329c713aa200b73df4a622e950551b40',
+      );
     });
   });
 
