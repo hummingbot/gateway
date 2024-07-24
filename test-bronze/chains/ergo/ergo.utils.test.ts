@@ -176,7 +176,7 @@ describe('getInputs', () => {
     const utxos: any = [{ value: 1, assets: [{ amount: 2 }] }];
     const result = ergo_utils.getInputs(utxos, assets, fees);
     expect(DefaultBoxSelector.select).toHaveBeenCalledWith(
-      [{ value: '1', assets: [{ amount: '2' }] }],
+      [{ value: BigInt('1'), assets: [{ amount: BigInt('2') }] }],
       {},
     );
     expect(result).toEqual({});

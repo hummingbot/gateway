@@ -165,16 +165,21 @@ describe('NodeService', () => {
     it('Should be defined', () => {
       expect(nodeService.postTransaction).toBeDefined();
     });
+    it('Should return an empty string if request method fails', async () => {
+      jest
+        .spyOn(nodeService as any, 'request')
+        .mockRejectedValue('Bad request');
+      expect(await nodeService.postTransaction('tx')).toEqual('');
+    });
 
     it('Should call request method with the correct parameters', async () => {
-      const tx = 'tx';
       jest.spyOn(nodeService as any, 'request').mockResolvedValue({ data: {} });
-      await nodeService.postTransaction(tx);
+      await nodeService.postTransaction('tx');
       expect(nodeService['request']).toHaveBeenCalledWith(
         'POST',
         `/transactions`,
-        { 'Content-Type': 'text/plain' },
-        tx,
+        { 'Content-Type': 'application/json' },
+        'tx',
       );
     });
   });
@@ -182,6 +187,13 @@ describe('NodeService', () => {
   describe('getTxsById', () => {
     it('Should be defined', () => {
       expect(nodeService.getTxsById).toBeDefined();
+    });
+
+    it('Should return undefined if request method fails', async () => {
+      jest
+        .spyOn(nodeService as any, 'request')
+        .mockRejectedValue('Bad request');
+      expect(await nodeService.getTxsById('blockHeight')).toEqual(undefined);
     });
 
     it('Should call request method with the correct parameters', async () => {
