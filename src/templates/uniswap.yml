@@ -72,3 +72,9 @@ contractAddresses:
       uniswapV3NftManagerAddress: '0x7b8A01B39D58278b5DE7e48c8449c9f4F5170613'
       uniswapV3QuoterV2ContractAddress: '0x78D78E420Da98ad378D7799bE8f4AF69033EB077'
       uniswapV3FactoryAddress: '0xdB1d10011AD0Ff90774D0C6Bb92e5C5c8b4461F7'
+  avalanche:
+    avalanche:
+      uniswapV3FactoryAddress: '0x740b1c1de25031C31FF4fC9A62f554A55cdC1baD'
+      uniswapV3SmartOrderRouterAddress: '0xbb00FF08d01D300023C629E8fFfFcb65A5a578cE'
+      uniswapV3NftManagerAddress: '0x655C406EBFa14EE2006250925e54ec43AD184f8B'
+      uniswapV3QuoterV2ContractAddress: '0xbe0F5544EC67e9B3b2D979aaA43f18Fd87E6257F'

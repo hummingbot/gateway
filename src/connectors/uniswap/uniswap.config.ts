@@ -9,12 +9,12 @@ export namespace UniswapConfig {
     uniswapV3SmartOrderRouterAddress: (chain: string, network: string) => string;
     uniswapV3NftManagerAddress: (chain: string, network: string) => string;
     uniswapV3FactoryAddress: (chain: string, network: string) => string;
+    quoterContractAddress: (chain: string, network: string) => string;
     tradingTypes: (type: string) => Array<string>;
     chainType: string;
     availableNetworks: Array<AvailableNetworks>;
     useRouter?: boolean;
     feeTier?: string;
-    quoterContractAddress: (chain: string, network: string) => string;
   }
 
   export const config: NetworkConfig = {
@@ -72,6 +72,9 @@ export namespace UniswapConfig {
       },
       { chain: 'binance-smart-chain',
         networks: ['mainnet']
+      },
+      { chain: 'avalanche',
+        networks: ['avalanche']
       },
     ],
     useRouter: ConfigManagerV2.getInstance().get(`uniswap.useRouter`),

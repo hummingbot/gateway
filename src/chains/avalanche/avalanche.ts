@@ -8,6 +8,7 @@ import { TraderjoeConfig } from '../../connectors/traderjoe/traderjoe.config';
 import { PangolinConfig } from '../../connectors/pangolin/pangolin.config';
 import { OpenoceanConfig } from '../../connectors/openocean/openocean.config';
 import { Ethereumish } from '../../services/common-interfaces';
+import { UniswapConfig } from '../../connectors/uniswap/uniswap.config';
 import { SushiswapConfig } from '../../connectors/sushiswap/sushiswap.config';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { EVMController } from '../ethereum/evm.controllers';
@@ -84,7 +85,14 @@ export class Avalanche extends EthereumBase implements Ethereumish {
 
   getSpender(reqSpender: string): string {
     let spender: string;
-    if (reqSpender === 'pangolin') {
+    if (reqSpender === 'uniswap') {
+      spender = UniswapConfig.config.uniswapV3SmartOrderRouterAddress(
+        'avalanche',
+        this._chain,
+      );
+    } else if (reqSpender === 'uniswapLP') {
+      spender = UniswapConfig.config.uniswapV3NftManagerAddress('avalanche', this._chain);
+    } else if (reqSpender === 'pangolin') {
       spender = PangolinConfig.config.routerAddress(this._chain);
     } else if (reqSpender === 'openocean') {
       spender = OpenoceanConfig.config.routerAddress('avalanche', this._chain);

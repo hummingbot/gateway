@@ -26,7 +26,9 @@
               },
               "required": [
                 "uniswapV3SmartOrderRouterAddress",
-                "uniswapV3NftManagerAddress"
+                "uniswapV3NftManagerAddress",
+                "uniswapV3QuoterV2ContractAddress",
+                "uniswapV3FactoryAddress"
               ],
               "additionalProperties": false
             }

@@ -187,68 +187,50 @@ export async function getConnector<T>(
 ): Promise<Connector<T>> {
   let connectorInstance: ConnectorUnion;
 
-  if (
-    (chain === 'ethereum' || chain === 'polygon' || chain === 'binance-smart-chain') &&
-    connector === 'uniswap'
-  ) {
+  if (connector === 'uniswap') {
     connectorInstance = Uniswap.getInstance(chain, network);
-  } else if (chain === 'polygon' && connector === 'quickswap') {
-    connectorInstance = Quickswap.getInstance(chain, network);
-  } else if (
-    (chain === 'ethereum' || chain === 'polygon' || chain === 'binance-smart-chain') &&
-    connector === 'uniswapLP'
-  ) {
+  } else if (connector === 'uniswapLP') {
     connectorInstance = UniswapLP.getInstance(chain, network);
-  } else if (chain === 'ethereum' && connector === 'perp') {
+  } else if (connector === 'quickswap') {
+    connectorInstance = Quickswap.getInstance(chain, network);
+  } else if (connector === 'perp') {
     connectorInstance = Perp.getInstance(chain, network, address);
-  } else if (chain === 'avalanche' && connector === 'pangolin') {
+  } else if (connector === 'pangolin') {
     connectorInstance = Pangolin.getInstance(chain, network);
   } else if (connector === 'openocean') {
     connectorInstance = Openocean.getInstance(chain, network);
-  } else if (chain === 'avalanche' && connector === 'traderjoe') {
+  } else if (connector === 'traderjoe') {
     connectorInstance = Traderjoe.getInstance(chain, network);
-  } else if (chain === 'cronos' && connector === 'mad_meerkat') {
+  } else if (connector === 'mad_meerkat') {
     connectorInstance = MadMeerkat.getInstance(chain, network);
-  } else if (chain === 'cronos' && connector === 'vvs') {
+  } else if (connector === 'vvs') {
     connectorInstance = VVSConnector.getInstance(chain, network);
-  } else if (chain === 'near' && connector === 'ref') {
+  } else if (connector === 'ref') {
     connectorInstance = Ref.getInstance(chain, network);
-  } else if (
-    (chain === 'binance-smart-chain' || chain === 'ethereum') &&
-    connector === 'pancakeswap'
-  ) {
+  } else if (connector === 'pancakeswap') {
     connectorInstance = PancakeSwap.getInstance(chain, network);
-  } else if (
-    (chain === 'binance-smart-chain' || chain === 'ethereum') &&
-    connector === 'pancakeswapLP'
-  ) {
+  } else if (connector === 'pancakeswapLP') {
     connectorInstance = PancakeswapLP.getInstance(chain, network);
   } else if (connector === 'sushiswap') {
     connectorInstance = Sushiswap.getInstance(chain, network);
-  } else if (chain === 'xdc' && connector === 'xsswap') {
+  } else if (connector === 'xsswap') {
     connectorInstance = Xsswap.getInstance(chain, network);
-  } else if (chain === 'avalanche' && connector === 'dexalot') {
-    connectorInstance = DexalotCLOB.getInstance(network);
-  } else if (chain == 'algorand' && connector == 'tinyman') {
-    connectorInstance = Tinyman.getInstance(network);
-  } else if (chain === 'tezos' && connector === 'plenty') {
-    connectorInstance = Plenty.getInstance(network);
-  } else if (chain === 'xrpl' && connector === 'xrpl') {
+  } else if (connector === 'xrpl') {
     connectorInstance = XRPLCLOB.getInstance(chain, network);
-  } else if (chain === 'kujira' && connector === 'kujira') {
+  } else if (connector === 'kujira') {
     connectorInstance = KujiraCLOB.getInstance(chain, network);
-  } else if (
-    (chain === 'ethereum' || chain === 'polygon') &&
-    connector === 'curve'
-  ) {
+  } else if (connector === 'curve') {
     connectorInstance = Curve.getInstance(chain, network);
-  } else if (
-    (chain === 'ethereum' || chain === 'polygon' || chain === 'avalanche') &&
-    connector === 'balancer'
-  ) {
+  } else if (connector === 'balancer') {
     connectorInstance = Balancer.getInstance(chain, network);
-  } else if (chain === 'ethereum' && connector === 'carbonamm') {
+  } else if (connector === 'carbonamm') {
     connectorInstance = Carbonamm.getInstance(chain, network);
+  } else if (connector === 'dexalot') {
+    connectorInstance = DexalotCLOB.getInstance(network);
+  } else if (connector == 'tinyman') {
+    connectorInstance = Tinyman.getInstance(network);
+  } else if (connector === 'plenty') {
+    connectorInstance = Plenty.getInstance(network);
   } else {
     throw new Error('unsupported chain or connector');
   }
