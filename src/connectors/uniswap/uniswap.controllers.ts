@@ -222,6 +222,7 @@ export async function trade(
       req.quote,
       new Decimal(req.amount),
       req.side,
+      req.allowedSlippage,
       req.poolId,
     );
   } catch (e) {

@@ -12,6 +12,7 @@ import { SushiswapConfig } from '../../connectors/sushiswap/sushiswap.config';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { EVMController } from '../ethereum/evm.controllers';
 import { Curve } from '../../connectors/curve/curve';
+import { BalancerConfig } from '../../connectors/balancer/balancer.config';
 
 export class Avalanche extends EthereumBase implements Ethereumish {
   private static _instances: { [name: string]: Avalanche };
@@ -102,6 +103,8 @@ export class Avalanche extends EthereumBase implements Ethereumish {
         throw Error('Curve not ready');
       }
       spender = curve.router;
+    } else if (reqSpender === 'balancer') {
+      spender = BalancerConfig.config.routerAddress(this._chain);
     } else {
       spender = reqSpender;
     }
