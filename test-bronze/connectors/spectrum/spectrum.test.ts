@@ -1,3 +1,5 @@
+import { BigNumber } from 'bignumber.js';
+import { PriceRequest, TradeRequest } from '../../../src/amm/amm.requests';
 import { Ergo } from '../../../src/chains/ergo/ergo';
 import { ErgoAsset } from '../../../src/chains/ergo/interfaces/ergo.interface';
 import { Spectrum } from '../../../src/connectors/spectrum/spectrum';
@@ -112,6 +114,147 @@ describe('Spectrum', () => {
       expect;
       expect(spectrum['_ready']).toEqual(true);
       expect(spectrum['tokenList']).toEqual(assetMap);
+    });
+  });
+
+  describe('ready', () => {
+    it('Should be defined', () => {
+      expect(spectrum.ready).toBeDefined();
+    });
+    it('Should return the value of ready', () => {
+      expect(spectrum.ready()).toEqual(false);
+    });
+  });
+  describe('gasLimitEstimate', () => {
+    it('Should be defined', () => {
+      expect(spectrum.gasLimitEstimate).toBeDefined();
+    });
+    it('Should retuern gasLimitEstimate correctly', () => {
+      expect(spectrum.gasLimitEstimate).toEqual('100000');
+    });
+  });
+
+  describe('estimateTrade', () => {
+    const req: PriceRequest = {
+      chain: 'ergo',
+      network: 'mainnet',
+      quote: '_ERGO',
+      base: '_SigUSD',
+      amount: '1000',
+      side: 'SELL',
+      allowedSlippage: '50',
+    };
+    jest.spyOn(ergo, 'estimate').mockResolvedValue({} as any);
+    afterEach(() => {
+      jest.clearAllMocks();
+    });
+    it('Should be defined', () => {
+      expect(spectrum.estimateTrade).toBeDefined();
+    });
+    it('Should call estimate from ergo with the correct data if erq.side === "SELL"', async () => {
+      const result = await spectrum.estimateTrade(req);
+      expect(ergo.estimate).toHaveBeenCalledWith(
+        'SigUSD',
+        'ERGO',
+        BigNumber('1000'),
+        Number('50'),
+      );
+      expect(result).toEqual({});
+    });
+
+    it('Should call estimate from ergo with the correct data if erq.side === "BUY"', async () => {
+      req.side = 'BUY';
+      const result = await spectrum.estimateTrade(req);
+      expect(ergo.estimate).toHaveBeenCalledWith(
+        'ERGO',
+        'SigUSD',
+        BigNumber('1000'),
+        Number('50'),
+      );
+      expect(result).toEqual({});
+    });
+    it('Should call estimate from ergo with the correct data if erq.side is not "SELL" nor "BUY"', async () => {
+      req.side = 'someOtherSide' as any;
+      const result = await spectrum.estimateTrade(req);
+      expect(ergo.estimate).toHaveBeenCalledWith(
+        'SigUSD',
+        'ERGO',
+        BigNumber('1000'),
+        Number('50'),
+      );
+      expect(result).toEqual({});
+    });
+  });
+
+  describe('executeTrade', () => {
+    const req: TradeRequest = {
+      chain: 'ergo',
+      network: 'mainnet',
+      quote: '_ERGO',
+      base: '_SigUSD',
+      amount: '1000',
+      address: 'ergAccountAddress',
+      side: 'SELL',
+      allowedSlippage: '50',
+    };
+    jest
+      .spyOn(ergo, 'getAccountFromAddress')
+      .mockResolvedValue('ergoAccount' as any);
+    jest.spyOn(ergo, 'swap').mockResolvedValue({} as any);
+    it('Should be defined', () => {
+      expect(spectrum.executeTrade).toBeDefined();
+    });
+
+    it('Should call swap from ergo with the correct data if erq.side === "SELL"', async () => {
+      const result = await spectrum.executeTrade(req);
+      expect(ergo.swap).toHaveBeenCalledWith(
+        'ergoAccount',
+        'SigUSD',
+        'ERGO',
+        BigNumber('1000'),
+        'ergAccountAddress',
+        'ergAccountAddress',
+        Number('50'),
+      );
+      expect(ergo.getAccountFromAddress).toHaveBeenCalledWith(
+        'ergAccountAddress',
+      );
+      expect(result).toEqual({});
+    });
+
+    it('Should call swap from ergo with the correct data if erq.side === "BUY"', async () => {
+      req.side = 'BUY';
+      const result = await spectrum.executeTrade(req);
+      expect(ergo.swap).toHaveBeenCalledWith(
+        'ergoAccount',
+        'ERGO',
+        'SigUSD',
+        BigNumber('1000'),
+        'ergAccountAddress',
+        'ergAccountAddress',
+        Number('50'),
+      );
+      expect(ergo.getAccountFromAddress).toHaveBeenCalledWith(
+        'ergAccountAddress',
+      );
+      expect(result).toEqual({});
+    });
+    it('Should call swap from ergo with the correct data if erq.side is not "SELL" nor "BUY"', async () => {
+      req.side = 'someOtherSide' as any;
+      const result = await spectrum.executeTrade(req);
+      expect(ergo.swap).toHaveBeenCalledWith(
+        'ergoAccount',
+        'SigUSD',
+        'ERGO',
+        BigNumber('1000'),
+        'ergAccountAddress',
+        'ergAccountAddress',
+        Number('50'),
+      );
+      expect(ergo.getAccountFromAddress).toHaveBeenCalledWith(
+        'ergAccountAddress',
+      );
+      expect(result).toEqual({});
     });
   });
 });
