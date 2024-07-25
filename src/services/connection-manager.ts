@@ -43,7 +43,6 @@ import { Kujira } from '../chains/kujira/kujira';
 import { KujiraCLOB } from '../connectors/kujira/kujira';
 import { PancakeswapLP } from '../connectors/pancakeswap/pancakeswap.lp';
 import { XRPLCLOB } from '../connectors/xrpl/xrpl';
-import { QuipuSwap } from '../connectors/quipuswap/quipuswap';
 import { Carbonamm } from '../connectors/carbon/carbonAMM';
 import { Balancer } from '../connectors/balancer/balancer';
 
@@ -159,7 +158,6 @@ export type ConnectorUnion =
   | XRPLCLOB
   | Curve
   | KujiraCLOB
-  | QuipuSwap;
 
 export type Connector<T> = T extends Uniswapish
   ? Uniswapish
@@ -179,8 +177,6 @@ export type Connector<T> = T extends Uniswapish
                 ? XRPLCLOB
                 : T extends KujiraCLOB
                   ? KujiraCLOB
-                  : T extends QuipuSwap
-                    ? QuipuSwap
                     : never;
 
 export async function getConnector<T>(
@@ -251,8 +247,6 @@ export async function getConnector<T>(
     connector === 'balancer'
   ) {
     connectorInstance = Balancer.getInstance(chain, network);
-  } else if (chain === 'tezos' && connector === 'quipuswap') {
-    connectorInstance = QuipuSwap.getInstance(network);
   } else if (chain === 'ethereum' && connector === 'carbonamm') {
     connectorInstance = Carbonamm.getInstance(chain, network);
   } else {
