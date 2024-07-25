@@ -23,20 +23,20 @@ let uniswap: Uniswap;
 let mockProvider: typeof MockProvider;
 
 const WETH = new Token(
-  3,
-  '0xd0A1E359811322d97991E03f863a0C30C2cF029C',
+  11155111,
+  '0xfff9976782d46cc05630d1f6ebab18b2324d6b14',
   18,
   'WETH'
 );
 
 const DAI = new Token(
-  3,
-  '0x4f96fe3b7a6cf9725f59d353f723c1bdb64ca6aa',
+  11155111,
+  '0xff34b3d4aee8ddcd6f9afffb6fe49bd371b8a357',
   18,
   'DAI'
 );
 
-const DAI_WETH_POOL_ADDRESS = '0xBEff876AC507446457C2A6bDA9F7021A97A8547f';
+const DAI_WETH_POOL_ADDRESS = '0x1c9d93e574be622821398e3fe677e3a279f256f7';
 const POOL_SQRT_RATIO_START = encodeSqrtRatioX96(100e6, 100e18);
 const POOL_TICK_CURRENT = TickMath.getTickAtSqrtRatio(POOL_SQRT_RATIO_START);
 const POOL_LIQUIDITY = 0;
@@ -50,7 +50,7 @@ const DAI_WETH_POOL = new UniswapV3Pool(
 );
 
 beforeAll(async () => {
-  ethereum = Ethereum.getInstance('goerli');
+  ethereum = Ethereum.getInstance('sepolia');
   patchEVMNonceManager(ethereum.nonceManager);
   await ethereum.init();
 });

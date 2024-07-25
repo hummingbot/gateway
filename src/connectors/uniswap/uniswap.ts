@@ -67,8 +67,9 @@ export class Uniswap implements Uniswapish {
     this.chainId = this.chain.chainId;
     this._ttl = UniswapConfig.config.ttl;
     this._maximumHops = UniswapConfig.config.maximumHops;
+
     this._alphaRouter = null;
-    if (this.chainId !== 8453) {
+    if (this.chainId !== 11155111) {
         this._alphaRouter = new AlphaRouter({
         chainId: this.chainId,
         provider: this.chain.provider,
