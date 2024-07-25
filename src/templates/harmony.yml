@@ -3,12 +3,14 @@ networks:
   mainnet: 
     chainID: 1666600000
     nodeURL: https://rpc.ankr.com/harmony
+    secondaryNodeURL: https://rpc.ankr.com/harmony
     tokenListType: 'FILE'
     tokenListSource: '/home/gateway/conf/lists/harmony_tokens_sushiswap.json'
     nativeCurrencySymbol: 'ONE'
   testnet: 
     chainID: 1666700000
     nodeURL: 'https://api.s0.b.hmny.io'
+    secondaryNodeURL: 'https://api.s0.b.hmny.io'
     tokenListType: 'FILE'
     tokenListSource: '/home/gateway/conf/lists/harmony_tokens_sushiswap_testnet.json'
     nativeCurrencySymbol: 'ONE'

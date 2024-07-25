@@ -242,14 +242,46 @@ export class XdcBase {
   // returns the balance for an ERC-20 token
   async getERC20Balance(
     contract: Contract,
+    secondaryContract: Contract,
     wallet: Wallet,
     decimals: number
   ): Promise<TokenValue> {
     logger.info('Requesting balance for owner ' + wallet.address + '.');
-    const balance: BigNumber = await contract.balanceOf(wallet.address);
+    const maxRetry = 5;
+    let retry = 0;
+    let stopRetry = false;
+    let executingContract = contract;
+    let balance: BigNumber = BigNumber.from('0');
+
+    while (retry < maxRetry && !stopRetry) {
+      try {
+        balance = await executingContract.balanceOf(wallet.address);
+        stopRetry = true;
+      } catch (error) {
+        retry++;
+        logger.info(
+          `Error in getERC20Balance for owner ${wallet.address}:`,
+          error
+        );
+        logger.info(`Retrying...${retry} time`);
+        if (retry >= maxRetry) {
+          throw new Error(
+            `Error in getERC20Balance for owner ${wallet.address}: ${error}`
+          );
+        } else {
+          // if retry is odd set contract with second provider, else set with first provider
+          if (retry % 2 === 1) {
+            executingContract = secondaryContract;
+          } else {
+            executingContract = contract;
+          }
+        }
+      }
+    }
+
     logger.info(
       `Raw balance of ${contract.address} for ` +
-      `${wallet.address}: ${balance.toString()}`
+        `${wallet.address}: ${balance.toString()}`
     );
     return { value: balance, decimals: decimals };
   }

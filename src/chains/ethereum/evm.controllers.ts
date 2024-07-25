@@ -334,8 +334,15 @@ export class EVMController {
               address,
               ethereumish.provider
             );
+
+            const secondaryContract = ethereumish.getContract(
+              address,
+              ethereumish.secondaryProvider
+            );
+
             const balance = await ethereumish.getERC20Balance(
               contract,
+              secondaryContract,
               wallet,
               decimals
             );

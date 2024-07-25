@@ -19,6 +19,7 @@ import {
 } from './uniswap.lp.interfaces';
 import * as math from 'mathjs';
 import { getAddress } from 'ethers/lib/utils';
+import { logger } from '../../services/logger';
 
 export class UniswapLPHelper {
   protected ethereum: Ethereum;
@@ -154,10 +155,23 @@ export class UniswapLPHelper {
     poolAddress: string,
     fee: uniV3.FeeAmount
   ): Promise<PoolState> {
+    const maxRetry = 5;
+    let retry = 0;
+    let stopRetry = false;
+    let executingContract: Contract;
+
     const poolContract = this.getPoolContract(
       poolAddress,
       this.ethereum.provider
     );
+
+    const secondaryPoolContract = this.getPoolContract(
+      poolAddress,
+      this.ethereum.secondaryProvider
+    );
+
+    executingContract = poolContract;
+
     const minTick = uniV3.nearestUsableTick(
       uniV3.TickMath.MIN_TICK,
       uniV3.TICK_SPACINGS[fee]
@@ -166,18 +180,46 @@ export class UniswapLPHelper {
       uniV3.TickMath.MAX_TICK,
       uniV3.TICK_SPACINGS[fee]
     );
-    const poolDataReq = await Promise.allSettled([
-      poolContract.liquidity(),
-      poolContract.slot0(),
-      poolContract.ticks(minTick),
-      poolContract.ticks(maxTick),
-    ]);
 
-    const rejected = poolDataReq.filter(
-      (r) => r.status === 'rejected'
-    ) as PromiseRejectedResult[];
+    let poolDataReq: any[] = [];
 
-    if (rejected.length > 0) throw new Error('Unable to fetch pool state');
+    while (retry < maxRetry && !stopRetry) {
+      try {
+        poolDataReq = await Promise.allSettled([
+          executingContract.liquidity(),
+          executingContract.slot0(),
+          executingContract.ticks(minTick),
+          executingContract.ticks(maxTick),
+        ]);
+    
+        const rejected = poolDataReq.filter(
+          (r) => r.status === 'rejected'
+        ) as PromiseRejectedResult[];
+    
+        if (rejected.length > 0) throw new Error('Unable to fetch pool state');
+
+        stopRetry = true;
+      } catch (error) {
+        retry++;
+        logger.info(
+          `Error in fetching pool state for pool ${poolAddress}:`,
+          error
+        );
+        logger.info(`Retrying...${retry} time`);
+        if (retry >= maxRetry) {
+          throw new Error(
+            `Error in fetching pool state for pool ${poolAddress}: ${error}`
+          );
+        } else {
+          // if retry is odd set contract with second provider, else set with first provider
+          if (retry % 2 === 1) {
+            executingContract = secondaryPoolContract;
+          } else {
+            executingContract = poolContract;
+          }
+        }
+      }
+    }
 
     const poolData = (
       poolDataReq.filter(
