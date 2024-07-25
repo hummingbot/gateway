@@ -136,8 +136,8 @@ configurations:
     configurationPath: balancer.yml
     schemaPath: cronos-connector-schema.json
 
-  $namespace etc:
-    configurationPath: etc.yml
+  $namespace ethereum-classic:
+    configurationPath: ethereum-classic.yml
     schemaPath: ethereum-schema.json
 
   $namespace etcswap:

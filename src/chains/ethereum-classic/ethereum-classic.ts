@@ -2,15 +2,15 @@ import abi from '../ethereum/ethereum.abi.json';
 import { logger } from '../../services/logger';
 import { Contract, Transaction, Wallet } from 'ethers';
 import { EthereumBase } from '../ethereum/ethereum-base';
-import { getEthereumConfig as getETCChainConfig } from '../ethereum/ethereum.config';
+import { getEthereumConfig as getEthereumClassicChainConfig } from '../ethereum/ethereum.config';
 import { Provider } from '@ethersproject/abstract-provider';
 import { Chain as Ethereumish } from '../../services/common-interfaces';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { EVMController } from '../ethereum/evm.controllers';
 import { ETCSwapConfig } from '../../connectors/etcswap/etcswap.config';
 
-export class ETCChain extends EthereumBase implements Ethereumish {
-  private static _instances: { [name: string]: ETCChain };
+export class EthereumClassicChain extends EthereumBase implements Ethereumish {
+  private static _instances: { [name: string]: EthereumClassicChain };
   private _chain: string;
   private _gasPrice: number;
   private _gasPriceRefreshInterval: number | null;
@@ -18,9 +18,9 @@ export class ETCChain extends EthereumBase implements Ethereumish {
   public controller;
 
   private constructor(network: string) {
-    const config = getETCChainConfig('etc', network);
+    const config = getEthereumClassicChainConfig('ethereum-classic', network);
     super(
-      'etc',
+      'ethereum-classic',
       config.network.chainID,
       config.network.nodeURL,
       config.network.tokenListSource,
@@ -42,19 +42,19 @@ export class ETCChain extends EthereumBase implements Ethereumish {
     this.controller = EVMController;
   }
 
-  public static getInstance(network: string): ETCChain {
-    if (ETCChain._instances === undefined) {
-      ETCChain._instances = {};
+  public static getInstance(network: string): EthereumClassicChain {
+    if (EthereumClassicChain._instances === undefined) {
+      EthereumClassicChain._instances = {};
     }
-    if (!(network in ETCChain._instances)) {
-      ETCChain._instances[network] = new ETCChain(network);
+    if (!(network in EthereumClassicChain._instances)) {
+      EthereumClassicChain._instances[network] = new EthereumClassicChain(network);
     }
 
-    return ETCChain._instances[network];
+    return EthereumClassicChain._instances[network];
   }
 
-  public static getConnectedInstances(): { [name: string]: ETCChain } {
-    return ETCChain._instances;
+  public static getConnectedInstances(): { [name: string]: EthereumClassicChain } {
+    return EthereumClassicChain._instances;
   }
 
   /**

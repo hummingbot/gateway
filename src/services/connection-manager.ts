@@ -47,7 +47,7 @@ import { QuipuSwap } from '../connectors/quipuswap/quipuswap';
 import { Carbonamm } from '../connectors/carbon/carbonAMM';
 import { Balancer } from '../connectors/balancer/balancer';
 import { ETCSwapLP } from '../connectors/etcswap/etcswap.lp';
-import { ETCChain } from '../chains/etc/etc';
+import { EthereumClassicChain } from '../chains/ethereum-classic/ethereum-classic';
 
 export type ChainUnion =
   | Algorand
@@ -63,22 +63,22 @@ export type ChainUnion =
 export type Chain<T> = T extends Algorand
   ? Algorand
   : T extends Cosmos
-    ? Cosmos
-    : T extends Ethereumish
-      ? Ethereumish
-      : T extends Nearish
-        ? Nearish
-        : T extends Xdcish
-          ? Xdcish
-          : T extends Tezosish
-            ? Tezosish
-            : T extends XRPLish
-              ? XRPLish
-              : T extends KujiraCLOB
-                ? KujiraCLOB
-                : T extends Osmosis
-                  ? Osmosis
-                  : never;
+  ? Cosmos
+  : T extends Ethereumish
+  ? Ethereumish
+  : T extends Nearish
+  ? Nearish
+  : T extends Xdcish
+  ? Xdcish
+  : T extends Tezosish
+  ? Tezosish
+  : T extends XRPLish
+  ? XRPLish
+  : T extends KujiraCLOB
+  ? KujiraCLOB
+  : T extends Osmosis
+  ? Osmosis
+  : never;
 
 export class UnsupportedChainException extends Error {
   constructor(message?: string) {
@@ -143,8 +143,8 @@ export async function getChainInstance(
     connection = XRPL.getInstance(network);
   } else if (chain === 'kujira') {
     connection = Kujira.getInstance(network);
-  } else if (chain === 'etc') {
-    connection = ETCChain.getInstance(network);
+  } else if (chain === 'ethereum-classic') {
+    connection = EthereumClassicChain.getInstance(network);
   } else {
     connection = undefined;
   }
@@ -168,24 +168,24 @@ export type ConnectorUnion =
 export type Connector<T> = T extends Uniswapish
   ? Uniswapish
   : T extends UniswapLPish
-    ? UniswapLPish
-    : T extends Perpish
-      ? Perpish
-      : T extends RefAMMish
-        ? RefAMMish
-        : T extends CLOBish
-          ? CLOBish
-          : T extends Tinyman
-            ? Tinyman
-            : T extends Plenty
-              ? Plenty
-              : T extends XRPLish
-                ? XRPLCLOB
-                : T extends KujiraCLOB
-                  ? KujiraCLOB
-                  : T extends QuipuSwap
-                    ? QuipuSwap
-                    : never;
+  ? UniswapLPish
+  : T extends Perpish
+  ? Perpish
+  : T extends RefAMMish
+  ? RefAMMish
+  : T extends CLOBish
+  ? CLOBish
+  : T extends Tinyman
+  ? Tinyman
+  : T extends Plenty
+  ? Plenty
+  : T extends XRPLish
+  ? XRPLCLOB
+  : T extends KujiraCLOB
+  ? KujiraCLOB
+  : T extends QuipuSwap
+  ? QuipuSwap
+  : never;
 
 export async function getConnector<T>(
   chain: string,
@@ -259,7 +259,7 @@ export async function getConnector<T>(
     connectorInstance = QuipuSwap.getInstance(network);
   } else if (chain === 'ethereum' && connector === 'carbonamm') {
     connectorInstance = Carbonamm.getInstance(chain, network);
-  } else if (chain === 'etc' && connector === 'etcswapLP'
+  } else if (chain === 'ethereum-classic' && connector === 'etcswapLP'
   ) {
     connectorInstance = ETCSwapLP.getInstance(chain, network)
   } else {

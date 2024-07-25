@@ -3,7 +3,7 @@ networks:
     chainID: 61
     nodeURL: 'https://etc.rivet.link'
     tokenListType: FILE
-    tokenListSource: /home/gateway/conf/lists/etc.json
+    tokenListSource: /home/gateway/conf/lists/ethereum-classic.json
     nativeCurrencySymbol: 'ETC'
     gasPriceRefreshInterval: 60
 

@@ -16,13 +16,13 @@ import {
 import * as math from 'mathjs';
 import { getAddress } from 'ethers/lib/utils';
 import { ETCSwapConfig } from './etcswap.config';
-import { ETCChain } from '../../chains/etc/etc';
+import { EthereumClassicChain } from '../../chains/ethereum-classic/ethereum-classic';
 
 export const FACTORY = "0x2624E907BcC04f93C8f29d7C7149a8700Ceb8cDC";
 export const POOL_INIT = "0x7ea2da342810af3c5a9b47258f990aaac829fe1385a1398feb77d0126a85dbef";
 
 export class ETCSwapLPHelper {
-  protected chain: ETCChain;
+  protected chain: EthereumClassicChain;
   protected chainId;
   private _router: string;
   private _nftManager: string;
@@ -35,7 +35,7 @@ export class ETCSwapLPHelper {
   public abiDecoder: any;
 
   constructor(chain: string, network: string) {
-    this.chain = ETCChain.getInstance(network);
+    this.chain = EthereumClassicChain.getInstance(network);
     this.chainId = this.getChainId(chain, network);
     this._router =
       ETCSwapConfig.config.etcswapV3SmartOrderRouterAddress(network);
@@ -111,7 +111,7 @@ export class ETCSwapLPHelper {
   }
 
   public getChainId(_chain: string, network: string): number {
-    return ETCChain.getInstance(network).chainId;
+    return EthereumClassicChain.getInstance(network).chainId;
   }
 
   getPercentage(rawPercent: number | string): Percent {

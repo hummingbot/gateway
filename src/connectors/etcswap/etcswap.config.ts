@@ -18,7 +18,7 @@ export namespace ETCSwapConfig {
     'etcswap',
     ['AMM'],
     [
-      { chain: 'etc', networks: ['mainnet'] },
+      { chain: 'ethereum-classic', networks: ['mainnet'] },
     ],
     'EVM',
   );
