@@ -31,12 +31,12 @@ const WETH = new Token(
 
 const DAI = new Token(
   11155111,
-  '0xff34b3d4aee8ddcd6f9afffb6fe49bd371b8a357',
+  '0x1f9840a85d5af5bf1d1762f925bdaddc4201f984',
   18,
-  'DAI'
+  'UNI'
 );
 
-const DAI_WETH_POOL_ADDRESS = '0x1c9d93e574be622821398e3fe677e3a279f256f7';
+const DAI_WETH_POOL_ADDRESS = '0x287b0e934ed0439e2a7b1d5f0fc25ea2c24b64f7';
 const POOL_SQRT_RATIO_START = encodeSqrtRatioX96(100e6, 100e18);
 const POOL_TICK_CURRENT = TickMath.getTickAtSqrtRatio(POOL_SQRT_RATIO_START);
 const POOL_LIQUIDITY = 0;
