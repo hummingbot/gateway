@@ -43,17 +43,9 @@ networks:
     chainID: 8453
     nodeURL:  https://mainnet.base.org
     tokenListType: FILE
-    tokenListSource: /home/gateway/conf/lists/base_tokens_mainnet.json
+    tokenListSource: /home/gateway/conf/lists/base_uniswap_20240411.json
     nativeCurrencySymbol: ETH
     gasPriceRefreshInterval: 60
-  base-sepolia:
-    chainID: 84532
-    nodeURL:  https://sepolia.base.org
-    tokenListType: FILE
-    tokenListSource: /home/gateway/conf/lists/base_tokens_sepolia.json
-    nativeCurrencySymbol: ETH
-    gasPriceRefreshInterval: 60
-
 
 # if you use the gas assumptions below, your wallet needs >0.1 ETH balance for gas
 gasLimitTransaction: 3000000

@@ -214,6 +214,13 @@
             "decimals": 18
         },
         {
+            "name": "Wrapped liquid staked Ether 2.0",
+            "address": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+            "symbol": "WSTETH",
+            "decimals": 18,
+            "chainId": 8453
+        },
+        {
             "name": "Wrapped Ether",
             "address": "0x4200000000000000000000000000000000000006",
             "symbol": "WETH",

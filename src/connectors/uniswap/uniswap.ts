@@ -43,7 +43,7 @@ import { getAddress } from 'ethers/lib/utils';
 export class Uniswap implements Uniswapish {
   private static _instances: { [name: string]: Uniswap };
   private chain: Ethereum | Polygon;
-  private _alphaRouter: AlphaRouter;
+  private _alphaRouter: AlphaRouter | null;
   private _router: string;
   private _routerAbi: ContractInterface;
   private _gasLimitEstimate: number;
@@ -67,10 +67,13 @@ export class Uniswap implements Uniswapish {
     this.chainId = this.chain.chainId;
     this._ttl = UniswapConfig.config.ttl;
     this._maximumHops = UniswapConfig.config.maximumHops;
-    this._alphaRouter = new AlphaRouter({
-      chainId: this.chainId,
-      provider: this.chain.provider,
-    });
+    this._alphaRouter = null;
+    if (this.chainId !== 8453) {
+        this._alphaRouter = new AlphaRouter({
+        chainId: this.chainId,
+        provider: this.chain.provider,
+      });
+    }
     this._routerAbi = routerAbi.abi;
     this._gasLimitEstimate = UniswapConfig.config.gasLimitEstimate;
     this._router = config.uniswapV3SmartOrderRouterAddress(network);
@@ -143,6 +146,9 @@ export class Uniswap implements Uniswapish {
    * AlphaRouter instance.
    */
   public get alphaRouter(): AlphaRouter {
+    if (this._alphaRouter === null) {
+      throw new Error('AlphaRouter is not initialized');
+    }
     return this._alphaRouter;
   }
 
@@ -219,6 +225,9 @@ export class Uniswap implements Uniswapish {
     );
 
     if (this._useRouter) {
+      if (this._alphaRouter === null) {
+        throw new Error('AlphaRouter is not initialized');
+      }
       const route = await this._alphaRouter.route(
         nativeTokenAmount,
         quoteToken,
@@ -299,6 +308,9 @@ export class Uniswap implements Uniswapish {
     );
 
     if (this._useRouter) {
+      if (this._alphaRouter === null) {
+        throw new Error('AlphaRouter is not initialized');
+      }
       const route = await this._alphaRouter.route(
         nativeTokenAmount,
         quoteToken,
