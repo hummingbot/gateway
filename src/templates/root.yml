@@ -28,6 +28,10 @@ configurations:
     configurationPath: polygon.yml
     schemaPath: ethereum-schema.json
 
+  $namespace celo:
+    configurationPath: celo.yml
+    schemaPath: ethereum-schema.json
+
   $namespace near:
     configurationPath: near.yml
     schemaPath: ethereum-schema.json

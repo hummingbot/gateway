@@ -19,10 +19,10 @@ export namespace UniswapConfig {
 
   export const config: NetworkConfig = {
     allowedSlippage: ConfigManagerV2.getInstance().get(
-      `uniswap.allowedSlippage`
+      `uniswap.allowedSlippage`,
     ),
     gasLimitEstimate: ConfigManagerV2.getInstance().get(
-      `uniswap.gasLimitEstimate`
+      `uniswap.gasLimitEstimate`,
     ),
     ttl: ConfigManagerV2.getInstance().get(`uniswap.ttl`),
     maximumHops: ConfigManagerV2.getInstance().get(`uniswap.maximumHops`),
@@ -75,6 +75,9 @@ export namespace UniswapConfig {
       },
       { chain: 'avalanche',
         networks: ['avalanche']
+      },
+      { chain: 'celo',
+        networks: ['celo']
       },
     ],
     useRouter: ConfigManagerV2.getInstance().get(`uniswap.useRouter`),

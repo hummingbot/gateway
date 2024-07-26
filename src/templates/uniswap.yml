@@ -9,7 +9,7 @@ gasLimitEstimate: 150688
 # perform the trade, but the gas will still be sent.
 ttl: 600
 
-# For each swap, the maximum number of hops to consider. 
+# For each swap, the maximum number of hops to consider.
 # Note: More hops will increase latency of the algorithm.
 maximumHops: 4
 
@@ -78,3 +78,9 @@ contractAddresses:
       uniswapV3SmartOrderRouterAddress: '0xbb00FF08d01D300023C629E8fFfFcb65A5a578cE'
       uniswapV3NftManagerAddress: '0x655C406EBFa14EE2006250925e54ec43AD184f8B'
       uniswapV3QuoterV2ContractAddress: '0xbe0F5544EC67e9B3b2D979aaA43f18Fd87E6257F'
+  celo:
+    celo:
+      uniswapV3FactoryAddress: '0xAfE208a311B21f13EF87E33A90049fC17A7acDEc'
+      uniswapV3SmartOrderRouterAddress: '0x5615CDAb10dc425a742d643d949a7F474C01abc4'
+      uniswapV3NftManagerAddress: '0x3d79EdAaBC0EaB6F08ED885C05Fc0B014290D95A'
+      uniswapV3QuoterV2ContractAddress: '0x82825d0554fA07f7FC52Ab63c961F330fdEFa8E8'

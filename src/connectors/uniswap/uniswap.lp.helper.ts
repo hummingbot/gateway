@@ -23,9 +23,10 @@ import {
 } from './uniswap.lp.interfaces';
 import * as math from 'mathjs';
 import { getAddress } from 'ethers/lib/utils';
+import { Celo } from '../../chains/celo/celo';
 
 export class UniswapLPHelper {
-  protected chain: Ethereum | Polygon | BinanceSmartChain | Avalanche;
+  protected chain: Ethereum | Polygon | BinanceSmartChain | Avalanche | Celo;
   protected chainId;
   private _factory: string;
   private _router: string;
@@ -48,6 +49,8 @@ export class UniswapLPHelper {
       this.chain = BinanceSmartChain.getInstance(network);
     } else if (chain === 'avalanche') { 
       this.chain = Avalanche.getInstance(network);
+    } else if (chain === 'celo') {
+      this.chain = Celo.getInstance(network);
     } else {
       throw new Error('Unsupported chain');
     }
