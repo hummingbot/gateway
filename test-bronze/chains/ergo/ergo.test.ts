@@ -185,7 +185,6 @@ beforeEach(() => {
   patchGetErgoConfig('mainnet');
   ergo = new Ergo('mainnet');
 });
-// Clean up mocks after each test
 afterEach(() => {
   unpatch();
   jest.clearAllMocks();
@@ -207,7 +206,6 @@ describe('Ergo', () => {
     expect(ergo['_network']).toEqual('mainnet');
     expect(ergo['_networkPrefix']).toEqual(NetworkPrefix.Mainnet);
     expect(ergo['_node']).toBeInstanceOf(NodeService);
-    // expect(ergo['_explorer']).toBeInstanceOf(Explorer);
     expect(ergo['_dex']).toBeInstanceOf(DexService);
     expect(ergo['txFee']).toEqual(2000);
     expect(ergo['controller']).toEqual(ErgoController);
@@ -217,19 +215,15 @@ describe('Ergo', () => {
   });
 
   it('Should initialize with testnet configuration', () => {
-    // Arrange: Mock the return value of getErgoConfig to simulate testnet configuration
     patchGetErgoConfig('testnet');
 
-    // Act: Create a new instance of Ergo with 'testnet' configuration
     const ergo = new Ergo('testnet');
-
     // Assert: Validate the initialization state of Ergo instance
     expect(ergo).toBeDefined();
     expect(ergo['_assetMap']).toEqual({});
     expect(ergo['_network']).toEqual('testnet');
     expect(ergo['_networkPrefix']).toEqual(NetworkPrefix.Testnet);
     expect(ergo['_node']).toBeInstanceOf(NodeService);
-    // expect(ergo['_explorer']).toBeInstanceOf(Explorer);
     expect(ergo['_dex']).toBeInstanceOf(DexService);
     expect(ergo['txFee']).toEqual(2000);
     expect(ergo['controller']).toEqual(ErgoController);
@@ -239,8 +233,10 @@ describe('Ergo', () => {
   });
 
   describe('get node', () => {
+    it('Should be defined', () => {
+      expect(ergo.node).toBeDefined();
+    });
     it('Should initialize node correctly and return the correct node', () => {
-      // Assert: Validate the initialization state of node instance and check the returned value
       expect(ergo.node).toBeInstanceOf(NodeService);
       expect(ergo.node).toEqual({
         nodeURL: 'ergo.networks.mainnet.nodeURL',
@@ -250,6 +246,9 @@ describe('Ergo', () => {
   });
 
   describe('get network', () => {
+    it('Should be defined', () => {
+      expect(ergo.network).toBeDefined();
+    });
     it('Should return the correct network when network is mainnet', () => {
       expect(ergo.network).toBe('mainnet');
     });
@@ -264,24 +263,33 @@ describe('Ergo', () => {
   });
 
   describe('get storedAssetList', () => {
+    it('Should be defined', () => {
+      expect(ergo.storedAssetList);
+    });
     it('Should return the stored asset list', () => {
-      // Arrange: Create mock assets and populate _assetMap
-      const asset1: ErgoAsset = 1 as any;
-      const asset2: ErgoAsset = 2 as any;
-      const assetMap = {
-        key1: asset1,
-        key2: asset2,
+      const assetMap: Record<string, ErgoAsset> = {
+        ERGO: {
+          tokenId: 'ERGOId',
+          decimals: 9,
+          name: 'ERGO',
+          symbol: 'ERG',
+        },
+        SigUSD: {
+          tokenId: 'SigUSDId',
+          decimals: 3,
+          name: 'SigUSD',
+          symbol: 'SigUSD',
+        },
       };
-
-      // Act: Set _assetMap directly
       ergo['_assetMap'] = assetMap;
-
-      // Assert: Validate the stored asset list returned by storedAssetList
       expect(ergo.storedAssetList).toEqual(Object.values(assetMap));
     });
   });
 
   describe('ready', () => {
+    it('Should be defined', () => {
+      expect(ergo.ready).toBeDefined();
+    });
     it('Should return the ready state', () => {
       expect(ergo.ready()).toBe(false);
       ergo['_ready'] = true;
@@ -290,6 +298,9 @@ describe('Ergo', () => {
   });
 
   describe('getNetworkHeight', () => {
+    it('Should be defined', () => {
+      expect(ergo.getNetworkHeight).toBeDefined();
+    });
     it('Should call getNetworkHeight method from node', async () => {
       jest.spyOn(ergo['_node'], 'getNetworkHeight').mockResolvedValue(1);
       await ergo.getNetworkHeight();
@@ -298,15 +309,15 @@ describe('Ergo', () => {
   });
 
   describe('init', () => {
+    it('Should be defined', () => {
+      expect(ergo.init).toBeDefined();
+    });
     it('Should initialize assets and pools in init method', async () => {
-      // Arrange: Mock the loadAssets & loadPools methods to return a fixed value
       jest.spyOn(ergo as any, 'loadAssets').mockResolvedValue({});
       jest.spyOn(ergo as any, 'loadPools').mockResolvedValue({});
 
-      // Act: Call the init method to initialize assets and pools
       await ergo.init();
 
-      // Assert: Ensure the loadAssets & loadPools methods were called during initialization
       expect(ergo['loadAssets']).toHaveBeenCalled();
       expect(ergo['loadPools']).toHaveBeenCalled();
       expect(ergo.ready()).toBe(true);
@@ -314,53 +325,48 @@ describe('Ergo', () => {
   });
 
   describe('close', () => {
+    it('Should be defined', () => {
+      expect(ergo.close).toBeDefined();
+    });
     it('Should close correctly', async () => {
-      // Act and Assert: Call the close method and expect that the close method resolves without any errors or values
       await expect(ergo.close()).resolves.toBeUndefined();
     });
   });
 
   describe('getInstance', () => {
+    it('Should be getInstance', () => {
+      expect(ergo.close).toBeDefined();
+    });
     const mockNetwork = 'testnet';
 
     beforeEach(() => {
-      // Arrange: Mock the function to get the configuration for the 'testnet' network
       patchGetErgoConfig('testnet');
-      // Arrange: Clear the singleton and mock instances
       Ergo['_instances'] = undefined as any;
     });
 
     it('Should initialize the LRUCache if not already initialized', () => {
-      // Act: Call the getInstance method with the mock network
       Ergo.getInstance(mockNetwork);
 
-      // Assert: Expect that the _instances property is defined and _instances is an instance of LRUCache
       expect(Ergo['_instances']).toBeDefined();
       expect(Ergo['_instances']).toBeInstanceOf(LRUCache);
     });
 
     it('Should set and return a new Ergo instance if not in the cache', () => {
-      // Act: Call the getInstance method with the mock network
       const instance = Ergo.getInstance(mockNetwork);
 
-      // Assert: Expect that the returned instance is an instance of Ergo, the cache contains the mock network key and the instance in the cache matches the returned instance
       expect(instance).toBeInstanceOf(Ergo);
       expect(Ergo['_instances'].has(mockNetwork)).toBe(true);
       expect(Ergo['_instances'].get(mockNetwork)).toBe(instance);
     });
 
     it('Should return an existing Ergo instance from the cache', () => {
-      // Act: Call the getInstance method twice with the mock network
       const instance1 = Ergo.getInstance(mockNetwork);
       const instance2 = Ergo.getInstance(mockNetwork);
-
-      // Assert: Expect that both calls return the same instance and the cache contains the mock network key
       expect(instance1).toBe(instance2);
       expect(Ergo['_instances'].get(mockNetwork)).toBe(instance1);
     });
 
     it('Should throw an error if an unexpected network is provided', () => {
-      // Act and Assert: Expect that calling getInstance with an invalid network throws an error
       expect(() => Ergo.getInstance('invalidNetwork')).toThrow(
         'network should be `mainnet` or `testnet`',
       );
@@ -372,23 +378,20 @@ describe('Ergo', () => {
     let mockErgoInstance2: Ergo;
 
     beforeEach(() => {
-      // Arrange: Create mock Ergo instances
-      mockErgoInstance1 = new Ergo('testnet') as any;
-      mockErgoInstance2 = new Ergo('mainnet') as any;
+      mockErgoInstance1 = new Ergo('testnet');
+      mockErgoInstance2 = new Ergo('mainnet');
 
-      // Arrange: Initialize the _instances LRUCache with mock instances
       Ergo['_instances'] = new LRUCache<string, Ergo>({
         max: 10,
       });
       Ergo['_instances'].set('testnet', mockErgoInstance1);
       Ergo['_instances'].set('mainnet', mockErgoInstance2);
     });
-
+    it('Should be defined', () => {
+      expect(Ergo.getConnectedInstances).toBeDefined();
+    });
     it('Should return all connected instances', () => {
-      // Act: Call the getConnectedInstances method
       const connectedInstances = Ergo.getConnectedInstances();
-
-      // Assert: Expect the connected instances to match the mock instances
       expect(Object.keys(connectedInstances).sort()).toEqual([
         'mainnet',
         'testnet',
@@ -398,23 +401,14 @@ describe('Ergo', () => {
     });
 
     it('Should return an empty object if there are no instances', () => {
-      // Arrange: Clear the _instances LRUCache
       Ergo['_instances'] = undefined as any;
-
-      // Act: Call the getConnectedInstances method
       const connectedInstances = Ergo.getConnectedInstances();
-
-      // Assert: Expect the connected instances to be an empty object
       expect(connectedInstances).toEqual({});
     });
 
     it('Should return only valid instances', () => {
-      // Arrange: Set an invalid (null) instance in the _instances LRUCache
       Ergo['_instances'].set('', null as any);
-
-      // Act: Call the getConnectedInstances method
       const connectedInstances = Ergo.getConnectedInstances();
-      // Assert: Expect the valid instances to be returned and invalid instances to be excluded
       expect(Object.keys(connectedInstances).sort()).toEqual([
         'mainnet',
         'testnet',
@@ -426,30 +420,31 @@ describe('Ergo', () => {
   });
 
   describe('getCurrentBlockNumber', () => {
+    it('Should be defined', () => {
+      expect(ergo.getCurrentBlockNumber).toBeDefined();
+    });
     it('Should return the current block number incremented by one', async () => {
-      // Arrange: Mock the getNetworkHeight method to return a fixed value
       jest.spyOn(ergo['_node'], 'getNetworkHeight').mockResolvedValue(17);
 
       const blockNumber = await ergo.getCurrentBlockNumber();
-
-      // Assert: Validate the returned block number
       expect(blockNumber).toEqual(18);
       expect(ergo['_node'].getNetworkHeight).toHaveBeenCalled;
     });
   });
 
   describe('getAddressUnspentBoxes', () => {
+    it('Should be defined', () => {
+      expect(ergo.getAddressUnspentBoxes).toBeDefined();
+    });
     const mockAddress = '9j2s7d8f4s8s8o8s0q8f5s8d7f8s0d4r5';
 
     it('Should return an empty arry when length of nodeBoxes is 0', async () => {
-      // Arrange: Mock the getUnspentBoxesByAddress method to return an empty array
       await patchErgo_node();
       const utxos = await ergo.getAddressUnspentBoxes(mockAddress);
       expect(utxos).toEqual([]);
     });
 
     it('Should retrieve all unspent boxes for the given address', async () => {
-      // Arrange: Mock the getUnspentBoxesByAddress method to return 3 boxes
       const mockUnspentBoxesPage1 = [
         { boxId: 'box1' },
         { boxId: 'box2' },
@@ -461,9 +456,7 @@ describe('Ergo', () => {
         .mockResolvedValueOnce(mockUnspentBoxesPage1)
         .mockResolvedValueOnce(mockUnspentBoxesPage2)
         .mockResolvedValueOnce(mockUnspentBoxesPage3);
-      // Act: Call the getAddressUnspentBoxes method
       const result = await ergo.getAddressUnspentBoxes(mockAddress);
-      // Assert: Validate that an empty array is returned
       expect(result).toEqual([
         { boxId: 'box1' },
         { boxId: 'box2' },
@@ -489,12 +482,14 @@ describe('Ergo', () => {
   });
 
   describe('getAccountFromSecretKey', () => {
+    it('Should be defined', () => {
+      expect(ergo.getAccountFromSecretKey).toBeDefined();
+    });
     it('Should return an account with address and wallet from secret key', () => {
       const secret =
         '591811a0d6361f18e42549b32e65b98c9a63d6aad369d1056a97ca81f2a980d5';
       patchFrom_secrets();
       patchTo_base58();
-      // Arrange: Mock get_address method
       const mockGetAddress = jest.fn().mockReturnValue(new Address());
       const mockSecretKeyInstance = {
         get_address: mockGetAddress,
@@ -502,18 +497,19 @@ describe('Ergo', () => {
       jest
         .spyOn(SecretKey, 'dlog_from_bytes')
         .mockReturnValue(mockSecretKeyInstance);
-      // Arrange: Mock add method for SecretKeys
       const mockAdd = jest.fn();
       jest.spyOn(SecretKeys.prototype, 'add').mockImplementation(mockAdd);
 
       const result = ergo.getAccountFromSecretKey(secret);
-      // Assert: Validate the returned address and wallet
       expect(result.address).toBe('testAddress');
       expect(result.wallet).toBe('testWallet');
     });
   });
 
   describe('getAccountFromMnemonic', () => {
+    it('Should be defined', () => {
+      expect(ergo.getAccountFromMnemonic).toBeDefined();
+    });
     it('Should return an account with address and wallet from mnemonic', () => {
       patchFrom_secrets();
       patchTo_base58();
@@ -549,66 +545,40 @@ describe('Ergo', () => {
   });
 
   describe('encrypt', () => {
+    const secret = 'mySecret';
+    const password = 'myPassword';
+    it('Should be defined', () => {
+      expect(ergo.encrypt).toBeDefined();
+    });
     it('Should encrypt a secret with a given password', () => {
-      // Arrange: Set up the secret and password
-      const secret = 'mySecret';
-      const password = 'myPassword';
-
       const encryptedText = ergo.encrypt(secret, password);
-      // Assert: Verify the encrypted text format
       expect(encryptedText).toMatch(/^[0-9a-fA-F]{32}:[0-9a-fA-F]+$/);
     });
 
     it('Should produce different encryption outputs for different secrets', () => {
-      // Arrange: Set up the password
-      const password = 'myPassword';
-
-      // Act: Call the encrypt method with two different secrets
       const encryptedText1 = ergo.encrypt('secret1', password);
       const encryptedText2 = ergo.encrypt('secret2', password);
-
-      // Assert: Verify that the encrypted texts are different
       expect(encryptedText1).not.toBe(encryptedText2);
     });
 
     it('Should produce different encryption outputs for different passwords', () => {
-      // Arrange: Set up the secret
-      const secret = 'mySecret';
-
-      // Act: Call the encrypt method with two different passwords
       const encryptedText1 = ergo.encrypt(secret, 'password1');
       const encryptedText2 = ergo.encrypt(secret, 'password2');
-
-      // Assert: Verify that the encrypted texts are different
       expect(encryptedText1).not.toBe(encryptedText2);
     });
 
     it('Should produce different IVs for different encryptions', () => {
-      // Arrange: Set up the secret and password
-      const secret = 'mySecret';
-      const password = 'myPassword';
-
-      // Act: Call the encrypt method twice with the same secret and password
       const encryptedText1 = ergo.encrypt(secret, password);
       const encryptedText2 = ergo.encrypt(secret, password);
-
       // Extract IVs from the encrypted texts
       const [iv1] = encryptedText1.split(':');
       const [iv2] = encryptedText2.split(':');
-
-      // Assert: Verify that the IVs are different
       expect(iv1).not.toBe(iv2);
     });
 
     it('Should handle edge case where password is longer than 32 bytes', () => {
-      // Arrange: Set up the secret and a long password
-      const secret = 'mySecret';
       const longPassword = 'a'.repeat(50); // 50 bytes password
-
-      // Act: Call the encrypt method
       const encryptedText = ergo.encrypt(secret, longPassword);
-
-      // Assert: Verify the encrypted text format
       expect(encryptedText).toMatch(/^[0-9a-fA-F]{32}:[0-9a-fA-F]+$/);
     });
   });
@@ -650,10 +620,14 @@ describe('Ergo', () => {
       expect(result).toEqual('Ergo Accont');
     });
   });
+
   describe('decrypt', () => {
+    const secret = 'mySecret';
+    it('Should be defined', () => {
+      expect(ergo.decrypt).toBeDefined();
+    });
     it('Should decrypt an encrypted secret correctly', () => {
       // Arrange: Set up the secret and password, and encrypt the secret
-      const secret = 'mySecret';
       const password = 'myPassword';
       const encryptedText = ergo.encrypt(secret, password);
       // Act: Call the decrypt method
@@ -664,7 +638,6 @@ describe('Ergo', () => {
 
     it('Should fail to decrypt with wrong password', () => {
       // Arrange: Set up the secret, correct password, wrong password, and encrypt the secret
-      const secret = 'mySecret';
       const correctPassword = 'correctPassword';
       const wrongPassword = 'wrongPassword';
       const encryptedText = ergo.encrypt(secret, correctPassword);
@@ -676,26 +649,25 @@ describe('Ergo', () => {
 
     it('Should handle edge case where password is longer than 32 bytes', () => {
       // Arrange: Set up the secret and a long password, and encrypt the secret
-      const secret = 'mySecret';
       const longPassword = 'a'.repeat(50); // 50 bytes password
       const encryptedText = ergo.encrypt(secret, longPassword);
-      // Act: Call the decrypt method
       const decryptedText = ergo.decrypt(encryptedText, longPassword);
       // Assert: Verify that the decrypted text matches the original secret
       expect(decryptedText).toBe(secret);
     });
 
     it('Should handle case where password is exactly 32 bytes', () => {
-      const secret = 'mySecret';
       const exact32BytesPassword = 'a'.repeat(32); // 32 bytes password
       const encryptedText = ergo.encrypt(secret, exact32BytesPassword);
       const decryptedText = ergo.decrypt(encryptedText, exact32BytesPassword);
-      // Assert: Verify that the decrypted text matches the original secret
       expect(decryptedText).toBe(secret);
     });
   });
 
   describe('getAssetBalance', () => {
+    it('Should be defined', () => {
+      expect(ergo.getAssetBalance).toBeDefined();
+    });
     const account: ErgoAccount = { address: 'mockAddress' } as any;
     it('Should return balance as 0 when there are no unspent boxes', async () => {
       ergo['_assetMap'] = {
@@ -751,6 +723,9 @@ describe('Ergo', () => {
   });
 
   describe('getBalance', () => {
+    it('Should be defined', () => {
+      expect(ergo.getBalance).toBeDefined();
+    });
     let utxos: any = [];
     it('Should be defined', () => {
       expect(ergo.getBalance).toBeDefined();
@@ -799,15 +774,13 @@ describe('Ergo', () => {
   });
 
   describe('loadAssets', () => {
+    it('Should be defined', () => {
+      expect(ergo['loadAssets']).toBeDefined();
+    });
     it('Should load Assets and update assetMap object', async () => {
-      // Arrange: Set up the assetMap and mock the getAssetData method
       ergo['_assetMap'] = {};
       patchGetAssetData();
-
-      // Act: Call the loadAssets method
       await ergo['loadAssets']();
-
-      // Assert: Verify that the assetMap is updated correctly
       expect(ergo['_assetMap']).toEqual({
         '$BASS TOKEN': {
           tokenId:
@@ -828,9 +801,11 @@ describe('Ergo', () => {
   });
 
   describe('getAssetData', () => {
+    it('Should be defined', () => {
+      expect(ergo['getAssetData']).toBeDefined();
+    });
     it('Should return all token with the details', async () => {
       patchGetTokens();
-      // Act & Assert: Validate the returned data structure
       expect(await ergo['getAssetData']()).toEqual({
         name: 'Spectrum Finance Ergo Token List',
         timestamp: '2024-04-02T08:05:42.697Z',
@@ -859,17 +834,17 @@ describe('Ergo', () => {
   });
 
   describe('loadPools', () => {
+    it('Should be defined', () => {
+      expect(ergo['loadPools']).toBeDefined();
+    });
     it('Should push nothing to ammPools when no PoolData is provided', async () => {
-      // Arrange: Mock getPoolData to return an empty array
       jest.spyOn(ergo as any, 'getPoolData').mockResolvedValue([] as any);
       ergo['ammPools'] = [];
-
       await ergo['loadPools']();
       expect(ergo['ammPools']).toEqual([]);
     });
 
     it('Should push nothing to ammPools when no PoolData is provided', async () => {
-      // Arrange: Mock getPoolData to return specific pool data
       jest
         .spyOn(ergo as any, 'getPoolData')
         .mockResolvedValueOnce([{ id: '1' }, { id: 2 }] as any);
@@ -882,7 +857,6 @@ describe('Ergo', () => {
     });
 
     it('Should not add duplicate pools to ammPools', async () => {
-      // Arrange: Mock getPoolData to simulate incremental pool data loading
       const initialPools: any = [
         { id: 1, name: 'Pool 1' },
         { id: 2, name: 'Pool 2' },
@@ -1003,16 +977,16 @@ describe('Ergo', () => {
   });
 
   describe('getPoolData', () => {
+    it('Should be defined', () => {
+      expect(ergo['getPoolData']).toBeDefined();
+    });
     it('Should call makeNativePools and getAll with correct parameters', async () => {
       const mockGetAll = jest.fn().mockResolvedValue([]);
       (makeNativePools as any).mockReturnValue({ getAll: mockGetAll });
 
       const limit = 10;
       const offset = 0;
-      // Act: Call the method under test
       await ergo['getPoolData'](limit, offset);
-
-      // Assert: Ensure makeNativePools and getAll were called with correct parameters
       expect(makeNativePools).toHaveBeenCalledWith(ergo['_explorer']);
       expect(mockGetAll).toHaveBeenCalledWith({ limit, offset });
     });
@@ -1023,39 +997,32 @@ describe('Ergo', () => {
       (makeNativePools as any).mockReturnValue({ getAll: mockGetAll });
       const limit = 10;
       const offset = 0;
-      // Act: Call the method under test
       const result = await ergo['getPoolData'](limit, offset);
-      // Assert: Verify the method returns expected data
       expect(result).toEqual(expectedData[0]);
     });
 
     it('Should handle errors from getAll method', async () => {
-      // Arrange: Mock getAll method to simulate error
       const mockGetAll = jest.fn().mockRejectedValue(new Error('Test error'));
       (makeNativePools as any).mockReturnValue({ getAll: mockGetAll });
-
       const limit = 10;
       const offset = 0;
-
       await expect(ergo['getPoolData'](limit, offset)).rejects.toThrow(
         'Test error',
       );
     });
   });
-
   describe('storedTokenList', () => {
+    it('Should be defined', () => {
+      expect(ergo.storedTokenList).toBeDefined();
+    });
     it('Should return the stored asset list', () => {
-      // Arrange: Create mock assets and populate _assetMap
       const asset1: ErgoAsset = 1 as any;
       const asset2: ErgoAsset = 2 as any;
       const assetMap = {
         key1: asset1,
         key2: asset2,
       };
-
-      // Act: Set _assetMap directly
       ergo['_assetMap'] = assetMap;
-      // Assert: Validate the stored asset list returned by storedAssetList
       expect(ergo.storedTokenList).toEqual(assetMap);
     });
   });
@@ -1085,10 +1052,29 @@ describe('Ergo', () => {
           symbol: 'ERG',
         },
       ]);
+      jest.spyOn(ergo, 'getPoolByToken').mockReturnValue([pool]);
+      jest
+        .spyOn(NodeService.prototype, 'getBlockInfo')
+        .mockResolvedValue({ header: { timestamp: 123456 } });
+      jest.spyOn(ergo_utils, 'getBaseInputParameters').mockReturnValue({
+        baseInput: BigNumber(1),
+        baseInputAmount: BigNumber(1),
+        minOutput: { amount: BigInt(1) },
+      } as any);
     });
     afterEach(() => {
       jest.clearAllMocks();
     });
+    const mockUtxos = [
+      {
+        value: '1000',
+        assets: [{ amount: '500' }, { amount: '300' }],
+      },
+      {
+        value: '2000',
+        assets: [{ amount: '1500' }, { amount: '1300' }],
+      },
+    ];
     const poolWithOutputAmount0: any = {
       id: '1b694b15467c62f0cd4525e368dbdea2329c713aa200b73df4a622e950551b40',
       lp: {
@@ -1255,7 +1241,6 @@ describe('Ergo', () => {
       jest
         .spyOn(ergo, 'getPoolByToken')
         .mockReturnValue([poolWithOutputAmount0]);
-      patchGetErgoConfig('mainnet');
       await expect(
         ergo.swap(
           account,
@@ -1278,7 +1263,6 @@ describe('Ergo', () => {
       jest
         .spyOn(ergo, 'getPoolByToken')
         .mockReturnValue([poolWithOutputAmount0]);
-      patchGetErgoConfig('mainnet');
       await expect(
         ergo.swap(
           account,
@@ -1296,14 +1280,6 @@ describe('Ergo', () => {
     });
 
     it('Should throw new Error if swapVariables are undefined', async () => {
-      jest.spyOn(ergo, 'getPoolByToken').mockReturnValue([pool]);
-      jest
-        .spyOn(BigNumber.prototype, 'multipliedBy')
-        .mockReturnValue(BigNumber(2));
-      patchGetErgoConfig('mainnet');
-      jest.spyOn(ergo_utils, 'getBaseInputParameters').mockReturnValue({
-        minOutput: { amount: BigInt(1) },
-      } as any);
       await expect(
         ergo.swap(
           account,
@@ -1340,16 +1316,6 @@ describe('Ergo', () => {
     });
 
     it('Should throw new Error if output_address is not defined', async () => {
-      jest.spyOn(ergo, 'getPoolByToken').mockReturnValue([pool]);
-      jest
-        .spyOn(BigNumber.prototype, 'multipliedBy')
-        .mockReturnValue(BigNumber(2));
-      patchGetErgoConfig('mainnet');
-      jest.spyOn(ergo_utils, 'getBaseInputParameters').mockReturnValue({
-        baseInput: BigNumber(1),
-        baseInputAmount: BigNumber(1),
-        minOutput: { amount: BigInt(1) },
-      } as any);
       jest.spyOn(ergo_utils, 'getInputs').mockReturnValue({} as any);
       await expect(
         ergo.swap(
@@ -1365,20 +1331,7 @@ describe('Ergo', () => {
     });
 
     it('Should throw new Error if any error occurs during submitting the tx', async () => {
-      jest.spyOn(ergo, 'getPoolByToken').mockReturnValue([pool]);
-      jest
-        .spyOn(BigNumber.prototype, 'multipliedBy')
-        .mockReturnValue(BigNumber(2));
-      patchGetErgoConfig('mainnet');
-      jest.spyOn(ergo_utils, 'getBaseInputParameters').mockReturnValue({
-        baseInput: BigNumber(1),
-        baseInputAmount: BigNumber(1),
-        minOutput: { amount: BigInt(1) },
-      } as any);
       jest.spyOn(ergo_utils, 'getInputs').mockReturnValue({} as any);
-      jest
-        .spyOn(NodeService.prototype, 'getBlockInfo')
-        .mockResolvedValue({ header: { timestamp: 123456 } });
       const account: any = {
         prover: {
           submit: jest.fn().mockResolvedValue({}),
@@ -1398,28 +1351,9 @@ describe('Ergo', () => {
     });
 
     it('Should successfully swap tokens when sell is false', async () => {
-      const mockUtxos = [
-        {
-          value: '1000',
-          assets: [{ amount: '500' }, { amount: '300' }],
-        },
-        {
-          value: '2000',
-          assets: [{ amount: '1500' }, { amount: '1300' }],
-        },
-      ];
-      jest
-        .spyOn(NodeService.prototype, 'getBlockInfo')
-        .mockResolvedValue({ header: { timestamp: 123456 } });
-      jest.spyOn(ergo, 'getPoolByToken').mockReturnValue([pool]);
       jest
         .spyOn(ergo, 'getAddressUnspentBoxes')
         .mockResolvedValue(mockUtxos as any);
-      jest.spyOn(ergo_utils, 'getBaseInputParameters').mockReturnValue({
-        baseInput: BigNumber(1),
-        baseInputAmount: BigNumber(1),
-        minOutput: { amount: BigInt(1) },
-      } as any);
 
       const account: any = {
         prover: {
@@ -1470,28 +1404,9 @@ describe('Ergo', () => {
     });
 
     it('Should successfully swap tokens when sell is true', async () => {
-      const mockUtxos = [
-        {
-          value: '1000',
-          assets: [{ amount: '500' }, { amount: '300' }],
-        },
-        {
-          value: '2000',
-          assets: [{ amount: '1500' }, { amount: '1300' }],
-        },
-      ];
-      jest
-        .spyOn(NodeService.prototype, 'getBlockInfo')
-        .mockResolvedValue({ header: { timestamp: 123456 } });
-      jest.spyOn(ergo, 'getPoolByToken').mockReturnValue([pool]);
       jest
         .spyOn(ergo, 'getAddressUnspentBoxes')
         .mockResolvedValue(mockUtxos as any);
-      jest.spyOn(ergo_utils, 'getBaseInputParameters').mockReturnValue({
-        baseInput: BigNumber(1),
-        baseInputAmount: BigNumber(1),
-        minOutput: { amount: BigInt(1) },
-      } as any);
 
       const account: any = {
         prover: {
@@ -1567,6 +1482,10 @@ describe('Ergo', () => {
           symbol: 'ERG',
         },
       ]);
+      jest.spyOn(ergo, 'getPoolByToken').mockReturnValue([pool]);
+      jest
+        .spyOn(ergo_utils, 'getBaseInputParameters')
+        .mockReturnValue({ minOutput: { amount: BigInt(1) } } as any);
     });
     afterEach(() => {
       jest.clearAllMocks();
@@ -1639,7 +1558,6 @@ describe('Ergo', () => {
     });
 
     it('Should throw new Error if baseToken is available but quoteToken is not available on storedAssetList', async () => {
-      jest.spyOn(ergo, 'getPoolByToken').mockReturnValue([pool]);
       // ERG is available but SigUSD is not
       jest.spyOn(ergo, 'storedAssetList', 'get').mockReturnValue([
         {
@@ -1656,7 +1574,6 @@ describe('Ergo', () => {
     });
 
     it('Should throw new Error if quoteToken is available but baseToken is not available on storedAssetList', async () => {
-      jest.spyOn(ergo, 'getPoolByToken').mockReturnValue([pool]);
       // SigUSD is available but ERG is not
       jest.spyOn(ergo, 'storedAssetList', 'get').mockReturnValue([
         {
@@ -1673,11 +1590,6 @@ describe('Ergo', () => {
     });
 
     it('Should ignore the rest of loop scope and return the base result if minOutput === BigInt(0)', async () => {
-      jest.spyOn(ergo, 'getPoolByToken').mockReturnValue([pool]);
-      jest
-        .spyOn(BigNumber.prototype, 'multipliedBy')
-        .mockReturnValue(BigNumber(2));
-      patchGetErgoConfig('mainnet');
       jest.spyOn(ergo_utils, 'getBaseInputParameters').mockReturnValue({
         minOutput: { amount: BigInt(0) },
       } as any);
@@ -1699,11 +1611,6 @@ describe('Ergo', () => {
       });
     });
     it('Should estimate successfully when sell is false', async () => {
-      patchGetErgoConfig('mainnet');
-      jest.spyOn(ergo, 'getPoolByToken').mockReturnValue([pool]);
-      jest
-        .spyOn(ergo_utils, 'getBaseInputParameters')
-        .mockReturnValue({ minOutput: { amount: BigInt(1) } } as any);
       const result = await ergo.estimate(baseToken, quoteToken, value);
       expect(result).toMatchObject({
         base: baseToken,
@@ -1738,11 +1645,6 @@ describe('Ergo', () => {
       });
     });
     it('Should estimate successfully when sell is true', async () => {
-      patchGetErgoConfig('mainnet');
-      jest
-        .spyOn(ergo_utils, 'getBaseInputParameters')
-        .mockReturnValue({ minOutput: { amount: BigInt(1) } } as any);
-      jest.spyOn(ergo, 'getPoolByToken').mockReturnValue([pool]);
       // to set sell 'true'
       const baseToken: string = 'SigUSD';
       const quoteToken: string = 'ERG';
@@ -1785,6 +1687,9 @@ describe('Ergo', () => {
   });
 
   describe('getPool', () => {
+    it('Should be defined', () => {
+      expect(ergo.getPool).toBeDefined();
+    });
     it('Should find the pool with related id and return it', () => {
       // set a mock pool to check the id
       const poolToCheck: any = {
@@ -1833,6 +1738,9 @@ describe('Ergo', () => {
     });
     const baseToken = 'ERG';
     const quoteToken = 'SigUSD';
+    it('Should be defined', () => {
+      expect(ergo.getPoolByToken).toBeDefined();
+    });
     it('Should throw new Error if baseToken is available but quoteToken is not available on storedAssetList', () => {
       // ERG is available but SigUSD is not
       jest.spyOn(ergo, 'storedAssetList', 'get').mockReturnValue([
