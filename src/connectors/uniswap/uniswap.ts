@@ -83,10 +83,10 @@ export class Uniswap implements Uniswapish {
     this._alphaRouter = null;
     const excluded_chainIds = [
       11155111, // sepolia
-      8453,     // base
-      56,       // binance-smart-chain
-      42220,    // celo
-      43114,    // avalanche
+      // 8453,     // base
+      // 56,       // binance-smart-chain
+      // 42220,    // celo
+      // 43114,    // avalanche
     ];
     if (this.chainId in excluded_chainIds) {
         this._alphaRouter = new AlphaRouter({
