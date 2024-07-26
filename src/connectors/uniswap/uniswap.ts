@@ -14,7 +14,7 @@ import {
   Pool,
   SwapQuoter,
   Trade as UniswapV3Trade,
-  Route,
+  Route
 } from '@uniswap/v3-sdk';
 import { abi as IUniswapV3PoolABI } from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
 import { abi as IUniswapV3FactoryABI } from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Factory.sol/IUniswapV3Factory.json';
@@ -49,7 +49,6 @@ export class Uniswap implements Uniswapish {
   private _alphaRouter: AlphaRouter | null;
   private _router: string;
   private _routerAbi: ContractInterface;
-  private _v3Factory: string;
   private _gasLimitEstimate: number;
   private _ttl: number;
   private _maximumHops: number;
@@ -59,6 +58,7 @@ export class Uniswap implements Uniswapish {
   private readonly _useRouter: boolean;
   private readonly _feeTier: FeeAmount;
   private readonly _quoterContractAddress: string;
+  private readonly _factoryAddress: string;
 
   private constructor(chain: string, network: string) {
     const config = UniswapConfig.config;
@@ -90,14 +90,13 @@ export class Uniswap implements Uniswapish {
     this._routerAbi = routerAbi.abi;
     this._gasLimitEstimate = UniswapConfig.config.gasLimitEstimate;
     this._router = config.uniswapV3SmartOrderRouterAddress(chain, network);
-    this._v3Factory = config.uniswapV3FactoryAddress(chain, network);
 
     if (config.useRouter === false && config.feeTier == null) {
       throw new Error('Must specify fee tier if not using router');
     }
     if (config.useRouter === false && config.quoterContractAddress == null) {
       throw new Error(
-        'Must specify quoter contract address if not using router',
+        'Must specify quoter contract address if not using router'
       );
     }
     this._useRouter = config.useRouter ?? true;
@@ -105,6 +104,7 @@ export class Uniswap implements Uniswapish {
       ? FeeAmount[config.feeTier as keyof typeof FeeAmount]
       : FeeAmount.MEDIUM;
     this._quoterContractAddress = config.quoterContractAddress(chain, network);
+    this._factoryAddress = config.uniswapV3FactoryAddress(chain, network);
   }
 
   public static getInstance(chain: string, network: string): Uniswap {
@@ -138,7 +138,7 @@ export class Uniswap implements Uniswapish {
         token.address,
         token.decimals,
         token.symbol,
-        token.name,
+        token.name
       );
     }
     this._ready = true;
@@ -209,7 +209,7 @@ export class Uniswap implements Uniswapish {
     const nd = allowedSlippage.match(percentRegexp);
     if (nd) return new Percent(nd[1], nd[2]);
     throw new Error(
-      'Encountered a malformed percent string in the config for ALLOWED_SLIPPAGE.',
+      'Encountered a malformed percent string in the config for ALLOWED_SLIPPAGE.'
     );
   }
 
@@ -248,28 +248,28 @@ export class Uniswap implements Uniswapish {
         undefined,
         {
           maxSwapsPerPath: this.maximumHops,
-        },
+        }
       );
 
       if (!route) {
         throw new UniswapishPriceError(
-          `priceSwapIn: no trade pair found for ${baseToken.address} to ${quoteToken.address}.`,
+          `priceSwapIn: no trade pair found for ${baseToken.address} to ${quoteToken.address}.`
         );
       }
       logger.info(
         `Best trade for ${baseToken.address}-${quoteToken.address}: ` +
           `${route.trade.executionPrice.toFixed(6)}` +
-          `${baseToken.symbol}.`,
+          `${baseToken.symbol}.`
       );
       const expectedAmount = route.trade.minimumAmountOut(
-        this.getAllowedSlippage(allowedSlippage),
+        this.getAllowedSlippage(allowedSlippage)
       );
       return { trade: route.trade, expectedAmount };
     } else {
       const pool = await this.getPool(baseToken, quoteToken, this._feeTier, poolId);
       if (!pool) {
         throw new UniswapishPriceError(
-          `priceSwapIn: no trade pair found for ${baseToken.address} to ${quoteToken.address}.`,
+          `priceSwapIn: no trade pair found for ${baseToken.address} to ${quoteToken.address}.`
         );
       }
       const swapRoute = new Route([pool], baseToken, quoteToken);
@@ -277,7 +277,7 @@ export class Uniswap implements Uniswapish {
         swapRoute,
         quoteToken,
         nativeTokenAmount,
-        TradeType.EXACT_INPUT,
+        TradeType.EXACT_INPUT
       );
       const trade = UniswapV3Trade.createUncheckedTrade({
         route: swapRoute,
@@ -288,7 +288,7 @@ export class Uniswap implements Uniswapish {
       logger.info(
         `Best trade for ${baseToken.address}-${quoteToken.address}: ` +
           `${trade.executionPrice.toFixed(6)}` +
-          `${baseToken.symbol}.`,
+          `${baseToken.symbol}.`
       );
       const expectedAmount = trade.minimumAmountOut(
         this.getAllowedSlippage(allowedSlippage),
@@ -317,7 +317,7 @@ export class Uniswap implements Uniswapish {
     const nativeTokenAmount: CurrencyAmount<Token> =
       CurrencyAmount.fromRawAmount(baseToken, amount.toString());
     logger.info(
-      `Fetching pair data for ${quoteToken.address}-${baseToken.address}.`,
+      `Fetching pair data for ${quoteToken.address}-${baseToken.address}.`
     );
 
     if (this._useRouter) {
@@ -335,7 +335,7 @@ export class Uniswap implements Uniswapish {
       );
       if (!route) {
         throw new UniswapishPriceError(
-          `priceSwapOut: no trade pair found for ${quoteToken.address} to ${baseToken.address}.`,
+          `priceSwapOut: no trade pair found for ${quoteToken.address} to ${baseToken.address}.`
         );
       }
       logger.info(
@@ -360,7 +360,7 @@ export class Uniswap implements Uniswapish {
         swapRoute,
         quoteToken,
         nativeTokenAmount,
-        TradeType.EXACT_OUTPUT,
+        TradeType.EXACT_OUTPUT
       );
       const trade = UniswapV3Trade.createUncheckedTrade({
         route: swapRoute,
@@ -371,7 +371,7 @@ export class Uniswap implements Uniswapish {
       logger.info(
         `Best trade for ${baseToken.address}-${quoteToken.address}: ` +
           `${trade.executionPrice.invert().toFixed(6)}` +
-          `${baseToken.symbol}.`,
+          `${baseToken.symbol}.`
       );
       const expectedAmount = trade.maximumAmountIn(
         this.getAllowedSlippage(allowedSlippage),
@@ -454,15 +454,15 @@ export class Uniswap implements Uniswapish {
     poolId?: string
   ): Promise<Pool | null> {
     const uniswapFactory = new Contract(
-      this._v3Factory,
+      this._factoryAddress,
       IUniswapV3FactoryABI,
-      this.chain.provider,
+      this.chain.provider
     );
     // Use Uniswap V3 factory to get pool address instead of `Pool.getAddress` to check if pool exists.
     const poolAddress = poolId || await uniswapFactory.getPool(
       tokenA.address,
       tokenB.address,
-      feeTier,
+      feeTier
     );
     if (poolAddress === constants.AddressZero || poolAddress === undefined || poolAddress === '') {
       return null;
@@ -470,7 +470,7 @@ export class Uniswap implements Uniswapish {
     const poolContract = new Contract(
       poolAddress,
       IUniswapV3PoolABI,
-      this.chain.provider,
+      this.chain.provider
     );
 
     const [liquidity, slot0, fee] = await Promise.all([
@@ -486,7 +486,7 @@ export class Uniswap implements Uniswapish {
       fee,
       sqrtPriceX96,
       liquidity,
-      tick,
+      tick
     );
 
     return pool;
@@ -496,13 +496,13 @@ export class Uniswap implements Uniswapish {
     swapRoute: Route<Token, Token>,
     quoteToken: Token,
     amount: CurrencyAmount<Token>,
-    tradeType: TradeType,
+    tradeType: TradeType
   ) {
     const { calldata } = await SwapQuoter.quoteCallParameters(
       swapRoute,
       amount,
       tradeType,
-      { useQuoterV2: true },
+      { useQuoterV2: true }
     );
     const quoteCallReturnData = await this.chain.provider.call({
       to: this._quoterContractAddress,
@@ -514,7 +514,7 @@ export class Uniswap implements Uniswapish {
     );
     const qouteTokenAmount = CurrencyAmount.fromRawAmount(
       quoteToken,
-      quoteTokenRawAmount.toString(),
+      quoteTokenRawAmount.toString()
     );
     return qouteTokenAmount;
   }
