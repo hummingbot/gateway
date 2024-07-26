@@ -81,7 +81,14 @@ export class Uniswap implements Uniswapish {
     this._maximumHops = UniswapConfig.config.maximumHops;
 
     this._alphaRouter = null;
-    if (this.chainId !== 11155111 && this.chainId !== 8453) {
+    const excluded_chainIds = [
+      11155111, // sepolia
+      8453,     // base
+      56,       // binance-smart-chain
+      42220,    // celo
+      43114,    // avalanche
+    ];
+    if (this.chainId in excluded_chainIds) {
         this._alphaRouter = new AlphaRouter({
         chainId: this.chainId,
         provider: this.chain.provider,
