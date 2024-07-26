@@ -2,19 +2,19 @@ networks:
   mainnet-beta:
     nodeURL: https://api.mainnet-beta.solana.com
     tokenListType: 'FILE'
-    tokenListSource: '/home/gateway/conf/lists/solana_tokens.json'
+    tokenListSource: '/home/gateway/conf/lists/solflare-tokenlist.json'
     nativeCurrencySymbol: SOL
     maxLRUCacheInstances: 10
   testnet:
     nodeURL: https://api.testnet.solana.com
     tokenListType: 'FILE'
-    tokenListSource: '/home/gateway/conf/lists/solana_tokens.json'
+    tokenListSource: '/home/gateway/conf/lists/solflare-tokenlist.json'
     nativeCurrencySymbol: SOL
     maxLRUCacheInstances: 10
   devnet:
     nodeURL: https://api.devnet.solana.com
     tokenListType: 'FILE'
-    tokenListSource: '/home/gateway/conf/lists/solana_tokens.json'
+    tokenListSource: '/home/gateway/conf/lists/solflare-tokenlist.json'
     nativeCurrencySymbol: SOL
     maxLRUCacheInstances: 10
 
