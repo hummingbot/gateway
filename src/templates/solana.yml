@@ -1,0 +1,24 @@
+networks:
+  mainnet-beta:
+    nodeURL: https://api.mainnet-beta.solana.com
+    tokenListType: 'FILE'
+    tokenListSource: '/home/gateway/conf/lists/solana_tokens.json'
+    nativeCurrencySymbol: SOL
+    maxLRUCacheInstances: 10
+  testnet:
+    nodeURL: https://api.testnet.solana.com
+    tokenListType: 'FILE'
+    tokenListSource: '/home/gateway/conf/lists/solana_tokens.json'
+    nativeCurrencySymbol: SOL
+    maxLRUCacheInstances: 10
+  devnet:
+    nodeURL: https://api.devnet.solana.com
+    tokenListType: 'FILE'
+    tokenListSource: '/home/gateway/conf/lists/solana_tokens.json'
+    nativeCurrencySymbol: SOL
+    maxLRUCacheInstances: 10
+
+tokenProgram: TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA
+transactionLamports: 5000
+lamportsToSol: 0.000000001
+timeToLive: 75

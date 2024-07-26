@@ -22,6 +22,7 @@ import {
 } from '../services/connection-manager';
 import { Osmosis } from '../chains/osmosis/osmosis';
 import { XRPL } from '../chains/xrpl/xrpl';
+import { Solana } from '../chains/solana/solana';
 
 export async function getStatus(
   req: StatusRequest
@@ -119,6 +120,11 @@ export async function getStatus(
     const osmosisConnections = Osmosis.getConnectedInstances();
     connections = connections.concat(
       osmosisConnections ? Object.values(osmosisConnections) : []
+    );
+
+    const solanaConnections = Solana.getConnectedInstances();
+    connections = connections.concat(
+      solanaConnections ? Object.values(solanaConnections) : []
     );
   }
 

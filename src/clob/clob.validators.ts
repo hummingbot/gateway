@@ -21,6 +21,8 @@ import {
 } from '../amm/amm.validators';
 import { isValidKujiraPublicKey } from '../connectors/kujira/kujira.helpers';
 
+import { isPublicKey as isValidSolanaAddress } from '../chains/solana/solana.validators';
+
 export const invalidMarketError: string =
   'The market param is not a valid market. Market should be in {base}-{quote} format.';
 
@@ -102,7 +104,8 @@ export const validateWallet: Validator = mkValidator(
       typeof val === 'string' &&
       (isAddress(val.slice(0, 42)) ||
         isValidKujiraPublicKey(val) ||
-        isXRPLAddress(val))
+        isXRPLAddress(val) ||
+        isValidSolanaAddress(val))
     );
   }
 );

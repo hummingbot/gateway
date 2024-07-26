@@ -9,6 +9,7 @@ import { Xdc } from '../chains/xdc/xdc';
 import { Tezos } from '../chains/tezos/tezos';
 import { Osmosis } from '../chains/osmosis/osmosis';
 import { XRPL, XRPLish } from '../chains/xrpl/xrpl';
+import { Solana } from '../chains/solana/solana';
 import { MadMeerkat } from '../connectors/mad_meerkat/mad_meerkat';
 import { Openocean } from '../connectors/openocean/openocean';
 import { Pangolin } from '../connectors/pangolin/pangolin';
@@ -56,7 +57,8 @@ export type ChainUnion =
   | Tezosish
   | XRPLish
   | Kujira
-  | Osmosis;
+  | Osmosis
+  | Solana;
 
 export type Chain<T> = T extends Algorand
   ? Algorand
@@ -76,7 +78,9 @@ export type Chain<T> = T extends Algorand
                 ? KujiraCLOB
                 : T extends Osmosis
                   ? Osmosis
-                  : never;
+                    : T extends Solana
+                    ? Solana
+                      : never;
 
 export class UnsupportedChainException extends Error {
   constructor(message?: string) {
@@ -117,6 +121,8 @@ export async function getChainInstance(
     connection = Algorand.getInstance(network);
   } else if (chain === 'ethereum') {
     connection = Ethereum.getInstance(network);
+  } else if (chain === 'solana') {
+    connection = Solana.getInstance(network);
   } else if (chain === 'avalanche') {
     connection = Avalanche.getInstance(network);
   } else if (chain === 'harmony') {

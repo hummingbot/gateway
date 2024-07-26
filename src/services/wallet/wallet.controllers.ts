@@ -4,6 +4,7 @@ import { Cosmos } from '../../chains/cosmos/cosmos';
 import { Tezos } from '../../chains/tezos/tezos';
 import { XRPL } from '../../chains/xrpl/xrpl';
 import { Kujira } from '../../chains/kujira/kujira';
+import { Solana } from '../../chains/solana/solana';
 
 import {
   AddWalletRequest,
@@ -153,6 +154,14 @@ export async function addWallet(
       }
     } else if (connection instanceof XRPL) {
       address = connection.getWalletFromSeed(req.privateKey).classicAddress;
+      encryptedPrivateKey = await connection.encrypt(
+        req.privateKey,
+        passphrase
+      );
+    } else if (connection instanceof Solana) {
+      address = connection
+        .getKeypairFromPrivateKey(req.privateKey)
+        .publicKey.toBase58();
       encryptedPrivateKey = await connection.encrypt(
         req.privateKey,
         passphrase
