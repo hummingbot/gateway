@@ -234,7 +234,7 @@ export class Uniswap implements Uniswapish {
       CurrencyAmount.fromRawAmount(baseToken, amount.toString());
 
     logger.info(
-      `Fetching trade data for ${baseToken.address}-${quoteToken.address}.`,
+      `Fetching trade data for ${baseToken.address}-${quoteToken.address}.`
     );
 
     if (this._useRouter) {
@@ -291,7 +291,7 @@ export class Uniswap implements Uniswapish {
           `${baseToken.symbol}.`
       );
       const expectedAmount = trade.minimumAmountOut(
-        this.getAllowedSlippage(allowedSlippage),
+        this.getAllowedSlippage(allowedSlippage)
       );
       return { trade, expectedAmount };
     }
@@ -331,7 +331,7 @@ export class Uniswap implements Uniswapish {
         undefined,
         {
           maxSwapsPerPath: this.maximumHops,
-        },
+        }
       );
       if (!route) {
         throw new UniswapishPriceError(
@@ -341,18 +341,18 @@ export class Uniswap implements Uniswapish {
       logger.info(
         `Best trade for ${quoteToken.address}-${baseToken.address}: ` +
           `${route.trade.executionPrice.invert().toFixed(6)} ` +
-          `${baseToken.symbol}.`,
+          `${baseToken.symbol}.`
       );
 
       const expectedAmount = route.trade.maximumAmountIn(
-        this.getAllowedSlippage(allowedSlippage),
+        this.getAllowedSlippage(allowedSlippage)
       );
       return { trade: route.trade, expectedAmount };
     } else {
       const pool = await this.getPool(quoteToken, baseToken, this._feeTier, poolId);
       if (!pool) {
         throw new UniswapishPriceError(
-          `priceSwapOut: no trade pair found for ${quoteToken.address} to ${baseToken.address}.`,
+          `priceSwapOut: no trade pair found for ${quoteToken.address} to ${baseToken.address}.`
         );
       }
       const swapRoute = new Route([pool], quoteToken, baseToken);
@@ -374,7 +374,7 @@ export class Uniswap implements Uniswapish {
           `${baseToken.symbol}.`
       );
       const expectedAmount = trade.maximumAmountIn(
-        this.getAllowedSlippage(allowedSlippage),
+        this.getAllowedSlippage(allowedSlippage)
       );
       return { trade, expectedAmount };
     }
@@ -405,7 +405,7 @@ export class Uniswap implements Uniswapish {
     nonce?: number,
     maxFeePerGas?: BigNumber,
     maxPriorityFeePerGas?: BigNumber,
-    allowedSlippage?: string,
+    allowedSlippage?: string
   ): Promise<Transaction> {
     const methodParameters: MethodParameters = SwapRouter.swapCallParameters(
       trade,
@@ -413,7 +413,7 @@ export class Uniswap implements Uniswapish {
         deadlineOrPreviousBlockhash: Math.floor(Date.now() / 1000 + ttl),
         recipient: wallet.address,
         slippageTolerance: this.getAllowedSlippage(allowedSlippage),
-      },
+      }
     );
 
     return this.chain.nonceManager.provideNonce(
@@ -443,7 +443,7 @@ export class Uniswap implements Uniswapish {
         }
         logger.info(JSON.stringify(tx));
         return tx;
-      },
+      }
     );
   }
 
@@ -510,7 +510,7 @@ export class Uniswap implements Uniswapish {
     });
     const quoteTokenRawAmount = utils.defaultAbiCoder.decode(
       ['uint256'],
-      quoteCallReturnData,
+      quoteCallReturnData
     );
     const qouteTokenAmount = CurrencyAmount.fromRawAmount(
       quoteToken,
