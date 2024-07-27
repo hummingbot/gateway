@@ -66,7 +66,7 @@ export namespace UniswapConfig {
       {
         chain: 'ethereum',
         networks: Object.keys(
-          ConfigManagerV2.getInstance().get('uniswap.contractAddresses')
+          ConfigManagerV2.getInstance().get('uniswap.contractAddresses.ethereum')
         ).filter((network) =>
           Object.keys(
             ConfigManagerV2.getInstance().get('ethereum.networks')
@@ -75,7 +75,7 @@ export namespace UniswapConfig {
       },
       { chain: 'polygon',
         networks: Object.keys(
-          ConfigManagerV2.getInstance().get('uniswap.contractAddresses')
+          ConfigManagerV2.getInstance().get('uniswap.contractAddresses.polygon')
         ).filter((network) =>
           Object.keys(
             ConfigManagerV2.getInstance().get('polygon.networks')
@@ -84,7 +84,7 @@ export namespace UniswapConfig {
       },
       { chain: 'binance-smart-chain',
         networks: Object.keys(
-          ConfigManagerV2.getInstance().get('uniswap.contractAddresses')
+          ConfigManagerV2.getInstance().get('uniswap.contractAddresses.binance-smart-chain')
         ).filter((network) =>
           Object.keys(
             ConfigManagerV2.getInstance().get('binance-smart-chain.networks')
@@ -93,7 +93,7 @@ export namespace UniswapConfig {
       },
       { chain: 'avalanche',
         networks: Object.keys(
-          ConfigManagerV2.getInstance().get('uniswap.contractAddresses')
+          ConfigManagerV2.getInstance().get('uniswap.contractAddresses.avalanche')
         ).filter((network) =>
           Object.keys(
             ConfigManagerV2.getInstance().get('avalanche.networks')
@@ -102,7 +102,7 @@ export namespace UniswapConfig {
       },
       { chain: 'celo',
         networks: Object.keys(
-          ConfigManagerV2.getInstance().get('uniswap.contractAddresses')
+          ConfigManagerV2.getInstance().get('uniswap.contractAddresses.celo')
         ).filter((network) =>
           Object.keys(
             ConfigManagerV2.getInstance().get('celo.networks')
