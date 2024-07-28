@@ -418,7 +418,7 @@ export class Ergo {
         tokenId: result.address,
         decimals: result.decimals,
         name: result.name,
-        symbol: result.ticker,
+        symbol: result.ticker.toUpperCase(),
       };
     }
 
