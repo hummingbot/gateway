@@ -22,7 +22,6 @@ export class RubiconCLOB implements CLOBish {
   private _chain;
   private _ready: boolean = false;
   public parsedMarkets: MarketInfo = [];
-  public abiDecoder: any = require('abi-decoder');
 
   private constructor(chain: string, network: string) {
     if (chain === 'ethereum') {
@@ -77,14 +76,14 @@ export class RubiconCLOB implements CLOBish {
 
   public async postOrder(
     req: ClobPostOrderRequest
-  ): Promise<{ txHash: string; clientOrderID: string }> {
-    return { txHash: "", clientOrderID: "" };
+  ): Promise<{ txHash: string; id: string }> {
+    return { txHash: "", id: "" };
   }
 
   public async deleteOrder(
     req: ClobDeleteOrderRequest
-  ): Promise<{ txHash: string }> {
-    return { txHash: "" };
+  ): Promise<{ txHash: string, id: string }> {
+    return { txHash: "", id: "" };
   }
 
   public estimateGas(_req: NetworkSelectionRequest): {
