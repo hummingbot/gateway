@@ -19,6 +19,7 @@ import { Polygon } from '../../chains/polygon/polygon';
 import { Harmony } from '../../chains/harmony/harmony';
 import { BinanceSmartChain } from '../../chains/binance-smart-chain/binance-smart-chain';
 import { Cronos } from '../../chains/cronos/cronos';
+import { Telos } from '../../chains/telos/telos';
 import { ExpectedTrade, Uniswapish } from '../../services/common-interfaces';
 import {
   HttpException,
@@ -34,7 +35,7 @@ export function newFakeTrade(
   tokenIn: Token,
   tokenOut: Token,
   tokenInAmount: BigNumber,
-  tokenOutAmount: BigNumber
+  tokenOutAmount: BigNumber,
 ): Trade {
   const baseAmount = new TokenAmount(tokenIn, tokenInAmount.toString());
   const quoteAmount = new TokenAmount(tokenOut, tokenOutAmount.toString());
@@ -47,7 +48,7 @@ export function newFakeTrade(
     tokenIn,
     tokenOut,
     tokenInAmount.toBigInt(),
-    tokenOutAmount.toBigInt()
+    tokenOutAmount.toBigInt(),
   );
   return trade;
 }
@@ -99,6 +100,8 @@ export class Openocean implements Uniswapish {
       return BinanceSmartChain.getInstance(network);
     } else if (this._chain === 'cronos') {
       return Cronos.getInstance(network);
+    } else if (this._chain === 'telos') {
+      return Telos.getInstance(network);
     } else {
       throw new Error('unsupported chain');
     }
@@ -124,7 +127,7 @@ export class Openocean implements Uniswapish {
         token.address,
         token.decimals,
         token.symbol,
-        token.name
+        token.name,
       );
     }
     this._ready = true;
@@ -189,7 +192,7 @@ export class Openocean implements Uniswapish {
     const nd = allowedSlippage.match(percentRegexp);
     if (nd) return Number(nd[1]);
     throw new Error(
-      'Encountered a malformed percent string in the config for ALLOWED_SLIPPAGE.'
+      'Encountered a malformed percent string in the config for ALLOWED_SLIPPAGE.',
     );
   }
 
@@ -206,10 +209,10 @@ export class Openocean implements Uniswapish {
   async estimateSellTrade(
     baseToken: Token,
     quoteToken: Token,
-    amount: BigNumber
+    amount: BigNumber,
   ): Promise<ExpectedTrade> {
     logger.info(
-      `estimateSellTrade getting amounts out baseToken(${baseToken.symbol}): ${baseToken.address} - quoteToken(${quoteToken.symbol}): ${quoteToken.address}.`
+      `estimateSellTrade getting amounts out baseToken(${baseToken.symbol}): ${baseToken.address} - quoteToken(${quoteToken.symbol}): ${quoteToken.address}.`,
     );
 
     const reqAmount = new Decimal(amount.toString())
@@ -228,7 +231,7 @@ export class Openocean implements Uniswapish {
             amount: reqAmount,
             gasPrice: gasPrice,
           },
-        }
+        },
       );
     } catch (e) {
       if (e instanceof Error) {
@@ -236,14 +239,14 @@ export class Openocean implements Uniswapish {
         throw new HttpException(
           500,
           TRADE_FAILED_ERROR_MESSAGE + e.message,
-          TRADE_FAILED_ERROR_CODE
+          TRADE_FAILED_ERROR_CODE,
         );
       } else {
         logger.error('Unknown error trying to get trade info.');
         throw new HttpException(
           500,
           UNKNOWN_ERROR_MESSAGE,
-          UNKNOWN_ERROR_ERROR_CODE
+          UNKNOWN_ERROR_ERROR_CODE,
         );
       }
     }
@@ -255,30 +258,30 @@ export class Openocean implements Uniswapish {
       ) {
         const quoteData = quoteRes.data.data;
         logger.info(
-          `estimateSellTrade quoteData inAmount(${baseToken.symbol}): ${quoteData.inAmount}, outAmount(${quoteToken.symbol}): ${quoteData.outAmount}`
+          `estimateSellTrade quoteData inAmount(${baseToken.symbol}): ${quoteData.inAmount}, outAmount(${quoteToken.symbol}): ${quoteData.outAmount}`,
         );
         const amounts = [quoteData.inAmount, quoteData.outAmount];
         const maximumOutput = new TokenAmount(
           quoteToken,
-          amounts[1].toString()
+          amounts[1].toString(),
         );
         const trade = newFakeTrade(
           baseToken,
           quoteToken,
           BigNumber.from(amounts[0]),
-          BigNumber.from(amounts[1])
+          BigNumber.from(amounts[1]),
         );
         return { trade: trade, expectedAmount: maximumOutput };
       } else {
         throw new UniswapishPriceError(
-          `priceSwapIn: no trade pair found for ${baseToken.address} to ${quoteToken.address}.`
+          `priceSwapIn: no trade pair found for ${baseToken.address} to ${quoteToken.address}.`,
         );
       }
     }
     throw new HttpException(
       quoteRes.status,
       `Could not get trade info. ${quoteRes.statusText}`,
-      TRADE_FAILED_ERROR_CODE
+      TRADE_FAILED_ERROR_CODE,
     );
   }
 
@@ -295,10 +298,10 @@ export class Openocean implements Uniswapish {
   async estimateBuyTrade(
     quoteToken: Token,
     baseToken: Token,
-    amount: BigNumber
+    amount: BigNumber,
   ): Promise<ExpectedTrade> {
     logger.info(
-      `estimateBuyTrade getting amounts in quoteToken(${quoteToken.symbol}): ${quoteToken.address} - baseToken(${baseToken.symbol}): ${baseToken.address}.`
+      `estimateBuyTrade getting amounts in quoteToken(${quoteToken.symbol}): ${quoteToken.address} - baseToken(${baseToken.symbol}): ${baseToken.address}.`,
     );
 
     const reqAmount = new Decimal(amount.toString())
@@ -317,7 +320,7 @@ export class Openocean implements Uniswapish {
             amount: reqAmount,
             gasPrice: gasPrice,
           },
-        }
+        },
       );
     } catch (e) {
       if (e instanceof Error) {
@@ -325,14 +328,14 @@ export class Openocean implements Uniswapish {
         throw new HttpException(
           500,
           TRADE_FAILED_ERROR_MESSAGE + e.message,
-          TRADE_FAILED_ERROR_CODE
+          TRADE_FAILED_ERROR_CODE,
         );
       } else {
         logger.error('Unknown error trying to get trade info.');
         throw new HttpException(
           500,
           UNKNOWN_ERROR_MESSAGE,
-          UNKNOWN_ERROR_ERROR_CODE
+          UNKNOWN_ERROR_ERROR_CODE,
         );
       }
     }
@@ -343,7 +346,7 @@ export class Openocean implements Uniswapish {
       ) {
         const quoteData = quoteRes.data.data;
         logger.info(
-          `estimateBuyTrade reverseData inAmount(${quoteToken.symbol}): ${quoteData.reverseAmount}, outAmount(${baseToken.symbol}): ${quoteData.inAmount}`
+          `estimateBuyTrade reverseData inAmount(${quoteToken.symbol}): ${quoteData.reverseAmount}, outAmount(${baseToken.symbol}): ${quoteData.inAmount}`,
         );
         const amounts = [quoteData.reverseAmount, quoteData.inAmount];
         const minimumInput = new TokenAmount(quoteToken, amounts[0].toString());
@@ -351,19 +354,19 @@ export class Openocean implements Uniswapish {
           quoteToken,
           baseToken,
           BigNumber.from(amounts[0]),
-          BigNumber.from(amounts[1])
+          BigNumber.from(amounts[1]),
         );
         return { trade: trade, expectedAmount: minimumInput };
       } else {
         throw new UniswapishPriceError(
-          `priceSwapIn: no trade pair found for ${baseToken} to ${quoteToken}.`
+          `priceSwapIn: no trade pair found for ${baseToken} to ${quoteToken}.`,
         );
       }
     }
     throw new HttpException(
       quoteRes.status,
       `Could not get trade info. ${quoteRes.statusText}`,
-      TRADE_FAILED_ERROR_CODE
+      TRADE_FAILED_ERROR_CODE,
     );
   }
 
@@ -391,10 +394,10 @@ export class Openocean implements Uniswapish {
     gasLimit: number,
     nonce?: number,
     maxFeePerGas?: BigNumber,
-    maxPriorityFeePerGas?: BigNumber
+    maxPriorityFeePerGas?: BigNumber,
   ): Promise<Transaction> {
     logger.info(
-      `executeTrade ${openoceanRouter}-${ttl}-${abi}-${gasPrice}-${gasLimit}-${nonce}-${maxFeePerGas}-${maxPriorityFeePerGas}.`
+      `executeTrade ${openoceanRouter}-${ttl}-${abi}-${gasPrice}-${gasLimit}-${nonce}-${maxFeePerGas}-${maxPriorityFeePerGas}.`,
     );
     const inToken: any = trade.route.input;
     const outToken: any = trade.route.output;
@@ -412,7 +415,7 @@ export class Openocean implements Uniswapish {
             gasPrice: gasPrice.toString(),
             referrer: '0x3fb06064b88a65ba9b9eb840dbb5f3789f002642',
           },
-        }
+        },
       );
     } catch (e) {
       if (e instanceof Error) {
@@ -420,14 +423,14 @@ export class Openocean implements Uniswapish {
         throw new HttpException(
           500,
           TRADE_FAILED_ERROR_MESSAGE + e.message,
-          TRADE_FAILED_ERROR_CODE
+          TRADE_FAILED_ERROR_CODE,
         );
       } else {
         logger.error('Unknown error trying to get trade info.');
         throw new HttpException(
           500,
           UNKNOWN_ERROR_MESSAGE,
-          UNKNOWN_ERROR_ERROR_CODE
+          UNKNOWN_ERROR_ERROR_CODE,
         );
       }
     }
@@ -451,13 +454,13 @@ export class Openocean implements Uniswapish {
           logger.info(JSON.stringify(tx));
 
           return tx;
-        }
+        },
       );
     }
     throw new HttpException(
       swapRes.status,
       `Could not get trade info. ${swapRes.statusText}`,
-      TRADE_FAILED_ERROR_CODE
+      TRADE_FAILED_ERROR_CODE,
     );
   }
 }
