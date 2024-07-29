@@ -131,3 +131,7 @@ configurations:
   $namespace balancer:
     configurationPath: balancer.yml
     schemaPath: cronos-connector-schema.json
+
+  $namespace telos:
+    configurationPath: telos.yml
+    schemaPath: ethereum-schema.json
