@@ -787,7 +787,7 @@ describe('Ergo', () => {
             'ba553573f83c61be880d79db0f4068177fa75ab7c250ce3543f7e7aeb471a9d2',
           decimals: 7,
           name: '$Bass Token',
-          symbol: '$bass',
+          symbol: '$bass'.toUpperCase(),
         },
         ERGO: {
           tokenId:
@@ -1797,7 +1797,7 @@ describe('Ergo', () => {
   });
 
   describe('getTx', () => {
-    it('Shoyuld be defined', () => {
+    it('Should be defined', () => {
       expect(ergo.getTx).toBeDefined();
     });
 
