@@ -720,7 +720,7 @@ export class Ergo {
               )
               .toString(),
       gasPrice: BigNumber(config.network.minTxFee).div(BigNumber(10).pow(9)).toNumber(),
-      gasPriceToken: BigNumber(config.network.minTxFee).div(BigNumber(10).pow(9)).toString(),
+      gasPriceToken: 'ERG',
       gasLimit: BigNumber(config.network.minTxFee).div(BigNumber(10).pow(9)).toNumber(),
       gasCost: BigNumber(config.network.minTxFee).div(BigNumber(10).pow(9)).toString(),
       txHash: tx.id,
@@ -758,7 +758,7 @@ export class Ergo {
       timestamp: Date.now(),
       latency: 0,
       gasPrice: BigNumber(config.network.minTxFee).div(BigNumber(10).pow(9)).toNumber(),
-      gasPriceToken: BigNumber(config.network.minTxFee).div(BigNumber(10).pow(9)).toString(),
+      gasPriceToken: 'ERG',
       gasLimit: BigNumber(config.network.minTxFee).div(BigNumber(10).pow(9)).toNumber(),
       gasCost: BigNumber(config.network.minTxFee).div(BigNumber(10).pow(9)).toString(),
     };
@@ -858,7 +858,7 @@ export class Ergo {
           timestamp: Date.now(),
           latency: 0,
           gasPrice: BigNumber(config.network.minTxFee).div(BigNumber(10).pow(9)).toNumber(),
-          gasPriceToken: BigNumber(config.network.minTxFee).div(BigNumber(10).pow(9)).toString(),
+          gasPriceToken: 'ERG',
           gasLimit: BigNumber(config.network.minTxFee).div(BigNumber(10).pow(9)).toNumber(),
           gasCost: BigNumber(config.network.minTxFee).div(BigNumber(10).pow(9)).toString(),
         };
