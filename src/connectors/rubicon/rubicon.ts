@@ -18,6 +18,7 @@ export class RubiconCLOB implements CLOBish {
   private _chain;
   private _ready: boolean = false;
   public parsedMarkets: MarketInfo = [];
+  private static _instances: { [name: string]: RubiconCLOB };
 
   private constructor(chain: string, network: string) {
     if (chain === 'ethereum') {
@@ -27,6 +28,20 @@ export class RubiconCLOB implements CLOBish {
 
   public async loadMarkets() {
 
+  }
+
+  public static getInstance(chain: string, network: string): RubiconCLOB {
+    if (RubiconCLOB._instances === undefined) {
+      RubiconCLOB._instances = {};
+    }
+
+    const key = `${chain}:${network}`;
+
+    if (!(key in RubiconCLOB._instances)) {
+      RubiconCLOB._instances[key] = new RubiconCLOB(chain, network);
+    }
+
+    return RubiconCLOB._instances[key];
   }
 
   public async init() {
