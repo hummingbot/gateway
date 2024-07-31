@@ -7,6 +7,8 @@ import {
   mkSelectingValidator,
 } from '../validators';
 
+import { validateSolPrivateKey as isSolPrivateKey } from '../../chains/solana/solana.validators';
+
 const { fromBase64 } = require('@cosmjs/encoding');
 import {
   invalidXRPLPrivateKeyError,
@@ -27,6 +29,9 @@ export const invalidCosmosPrivateKeyError: string =
 
 export const invalidTezosPrivateKeyError: string =
   'The privateKey param is not a valid Tezos private key.';
+
+export const invalidSolPrivateKeyError: string =
+  'The privateKey param is not a valid Solana private key.';
 
 export const isAlgorandPrivateKeyOrMnemonic = (str: string): boolean => {
   const parts = str.split(' ');
@@ -148,6 +153,11 @@ export const validatePrivateKey: Validator = mkSelectingValidator(
       invalidKujiraPrivateKeyError,
       (val) => typeof val === 'string' && isKujiraPrivateKey(val),
     ),
+    solana: mkValidator(
+      'privateKey',
+      invalidSolPrivateKeyError,
+      (val) => typeof val === 'string' && isSolPrivateKey(val)
+    ),
     telos: mkValidator(
       'privateKey',
       invalidEthPrivateKeyError,
@@ -157,7 +167,7 @@ export const validatePrivateKey: Validator = mkSelectingValidator(
 );
 
 export const invalidChainError: string =
-  'chain must be "ethereum", "avalanche", "near", "harmony", "cosmos", "osmosis", "binance-smart-chain", or "kujira"';
+  'chain must be "ethereum", "avalanche", "near", "harmony", "cosmos", "osmosis", "binance-smart-chain", "solana", or "xrpl"';
 
 export const invalidNetworkError: string =
   'expected a string for the network key';
@@ -187,6 +197,7 @@ export const validateChain: Validator = mkValidator(
       val === 'osmosis' ||
       val === 'binance-smart-chain' ||
       val === 'tezos' ||
+      val === 'solana' ||
       val === 'xrpl' ||
       val === 'kujira' ||
       val === 'telos'),
