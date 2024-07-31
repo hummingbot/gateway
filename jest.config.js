@@ -13,6 +13,7 @@ module.exports = {
     'src/chains/binance-smart-chain/binance-smart-chain.ts',
     'src/chains/ethereum/ethereum.ts',
     'src/chains/avalanche/avalanche.ts',
+    'src/chains/celo/celo.ts',
     'src/chains/avalanche/pangolin/pangolin.ts',
     'src/chains/cosmos/cosmos.ts',
     'src/chains/near/near.ts',

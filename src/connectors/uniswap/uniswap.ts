@@ -36,13 +36,16 @@ import {
 import { logger } from '../../services/logger';
 import { percentRegexp } from '../../services/config-manager-v2';
 import { Ethereum } from '../../chains/ethereum/ethereum';
+import { Avalanche } from '../../chains/avalanche/avalanche';
 import { Polygon } from '../../chains/polygon/polygon';
+import { BinanceSmartChain } from "../../chains/binance-smart-chain/binance-smart-chain";
 import { ExpectedTrade, Uniswapish } from '../../services/common-interfaces';
 import { getAddress } from 'ethers/lib/utils';
+import { Celo } from '../../chains/celo/celo';
 
 export class Uniswap implements Uniswapish {
   private static _instances: { [name: string]: Uniswap };
-  private chain: Ethereum | Polygon;
+  private chain: Ethereum | Polygon | BinanceSmartChain | Avalanche | Celo;
   private _alphaRouter: AlphaRouter | null;
   private _router: string;
   private _routerAbi: ContractInterface;
@@ -61,15 +64,31 @@ export class Uniswap implements Uniswapish {
     const config = UniswapConfig.config;
     if (chain === 'ethereum') {
       this.chain = Ethereum.getInstance(network);
-    } else {
+    } else if (chain === 'polygon') {
       this.chain = Polygon.getInstance(network);
+    } else if (chain === 'binance-smart-chain') {
+      this.chain = BinanceSmartChain.getInstance(network);
+    } else if (chain === 'avalanche') { 
+      this.chain = Avalanche.getInstance(network);
+    } else if (chain === 'celo')  {
+      this.chain = Celo.getInstance(network);
+    } else {
+      throw new Error('Unsupported chain');
     }
+  
     this.chainId = this.chain.chainId;
     this._ttl = UniswapConfig.config.ttl;
     this._maximumHops = UniswapConfig.config.maximumHops;
 
     this._alphaRouter = null;
-    if (this.chainId !== 11155111 && this.chainId !== 8453) {
+    const excluded_chainIds = [
+      11155111, // sepolia
+      8453,     // base
+      56,       // binance-smart-chain
+      42220,    // celo
+      43114,    // avalanche
+    ];
+    if (this.chainId in excluded_chainIds) {
         this._alphaRouter = new AlphaRouter({
         chainId: this.chainId,
         provider: this.chain.provider,
@@ -77,7 +96,7 @@ export class Uniswap implements Uniswapish {
     }
     this._routerAbi = routerAbi.abi;
     this._gasLimitEstimate = UniswapConfig.config.gasLimitEstimate;
-    this._router = config.uniswapV3SmartOrderRouterAddress(network);
+    this._router = config.uniswapV3SmartOrderRouterAddress(chain, network);
 
     if (config.useRouter === false && config.feeTier == null) {
       throw new Error('Must specify fee tier if not using router');
@@ -91,8 +110,8 @@ export class Uniswap implements Uniswapish {
     this._feeTier = config.feeTier
       ? FeeAmount[config.feeTier as keyof typeof FeeAmount]
       : FeeAmount.MEDIUM;
-    this._quoterContractAddress = config.quoterContractAddress(network);
-    this._factoryAddress = config.uniswapV3FactoryAddress(network);
+    this._quoterContractAddress = config.quoterContractAddress(chain, network);
+    this._factoryAddress = config.uniswapV3FactoryAddress(chain, network);
   }
 
   public static getInstance(chain: string, network: string): Uniswap {

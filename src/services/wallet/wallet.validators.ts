@@ -108,6 +108,11 @@ export const validatePrivateKey: Validator = mkSelectingValidator(
       invalidCosmosPrivateKeyError,
       (val) => typeof val === 'string' && isCosmosPrivateKey(val),
     ),
+    celo: mkValidator(
+      'privateKey',
+      invalidEthPrivateKeyError,
+      (val) => typeof val === 'string' && isEthPrivateKey(val)
+    ),
     osmosis: mkValidator(
       'privateKey',
       invalidCosmosPrivateKeyError,
@@ -173,6 +178,7 @@ export const validateChain: Validator = mkValidator(
       val === 'ethereum' ||
       val === 'avalanche' ||
       val === 'polygon' ||
+      val === 'celo' ||
       val === 'xdc' ||
       val === 'near' ||
       val === 'harmony' ||
