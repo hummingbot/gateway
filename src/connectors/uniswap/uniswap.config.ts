@@ -19,10 +19,10 @@ export namespace UniswapConfig {
 
   export const config: NetworkConfig = {
     allowedSlippage: ConfigManagerV2.getInstance().get(
-      `uniswap.allowedSlippage`,
+      `uniswap.allowedSlippage`
     ),
     gasLimitEstimate: ConfigManagerV2.getInstance().get(
-      `uniswap.gasLimitEstimate`,
+      `uniswap.gasLimitEstimate`
     ),
     ttl: ConfigManagerV2.getInstance().get(`uniswap.ttl`),
     maximumHops: ConfigManagerV2.getInstance().get(`uniswap.maximumHops`),
@@ -65,19 +65,49 @@ export namespace UniswapConfig {
     availableNetworks: [
       {
         chain: 'ethereum',
-        networks: ['mainnet', 'goerli', 'arbitrum', 'optimism'],
+        networks: Object.keys(
+          ConfigManagerV2.getInstance().get('uniswap.contractAddresses.ethereum')
+        ).filter((network) =>
+          Object.keys(
+            ConfigManagerV2.getInstance().get('ethereum.networks')
+          ).includes(network)
+        ),
       },
       { chain: 'polygon',
-        networks: ['mainnet', 'mumbai']
+        networks: Object.keys(
+          ConfigManagerV2.getInstance().get('uniswap.contractAddresses.polygon')
+        ).filter((network) =>
+          Object.keys(
+            ConfigManagerV2.getInstance().get('polygon.networks')
+          ).includes(network)
+        ),
       },
       { chain: 'binance-smart-chain',
-        networks: ['mainnet']
+        networks: Object.keys(
+          ConfigManagerV2.getInstance().get('uniswap.contractAddresses.binance-smart-chain')
+        ).filter((network) =>
+          Object.keys(
+            ConfigManagerV2.getInstance().get('binance-smart-chain.networks')
+          ).includes(network)
+        ),
       },
       { chain: 'avalanche',
-        networks: ['avalanche']
+        networks: Object.keys(
+          ConfigManagerV2.getInstance().get('uniswap.contractAddresses.avalanche')
+        ).filter((network) =>
+          Object.keys(
+            ConfigManagerV2.getInstance().get('avalanche.networks')
+          ).includes(network)
+        ),
       },
       { chain: 'celo',
-        networks: ['celo']
+        networks: Object.keys(
+          ConfigManagerV2.getInstance().get('uniswap.contractAddresses.celo')
+        ).filter((network) =>
+          Object.keys(
+            ConfigManagerV2.getInstance().get('celo.networks')
+          ).includes(network)
+        ),
       },
     ],
     useRouter: ConfigManagerV2.getInstance().get(`uniswap.useRouter`),

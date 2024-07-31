@@ -55,13 +55,22 @@ export class UniswapLPHelper {
       throw new Error('Unsupported chain');
     }
     this.chainId = this.chain.chainId;
+
     this._alphaRouter = null;
-    if (this.chainId !== 11155111 && this.chainId !== 8453) {
+    const excluded_chainIds = [
+      11155111, // sepolia
+      8453,     // base
+      56,       // binance-smart-chain
+      42220,    // celo
+      43114,    // avalanche
+    ];
+    if (this.chainId in excluded_chainIds) {
         this._alphaRouter = new AlphaRouter({
         chainId: this.chainId,
         provider: this.chain.provider,
       });
     }
+
     this._factory = UniswapConfig.config.uniswapV3FactoryAddress(chain, network);
     this._router =
       UniswapConfig.config.uniswapV3SmartOrderRouterAddress(chain, network);
