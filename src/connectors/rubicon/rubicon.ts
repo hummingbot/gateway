@@ -6,10 +6,6 @@ import {
   ClobGetOrderRequest,
   ClobPostOrderRequest,
   ClobDeleteOrderRequest,
-  ClobGetOrderResponse,
-  ClobBatchUpdateRequest,
-  CreateOrderParam,
-  ClobDeleteOrderRequestExtract,
 } from '../../clob/clob.requests';
 import {
   CLOBish,
@@ -54,6 +50,7 @@ export class RubiconCLOB implements CLOBish {
   }
 
   public async orderBook(req: ClobOrderbookRequest): Promise<Orderbook> {
+    console.log('orderbook', req)
     return {
       buys: [],
       sells: []
@@ -69,6 +66,9 @@ export class RubiconCLOB implements CLOBish {
   public async orders(
     req: ClobGetOrderRequest
   ): Promise<{ orders: [] }> {
+
+    console.log('orders', req)
+
     return {
       orders: []
     }
@@ -77,12 +77,16 @@ export class RubiconCLOB implements CLOBish {
   public async postOrder(
     req: ClobPostOrderRequest
   ): Promise<{ txHash: string; id: string }> {
+    console.log('post order', req)
+
     return { txHash: "", id: "" };
   }
 
   public async deleteOrder(
     req: ClobDeleteOrderRequest
   ): Promise<{ txHash: string, id: string }> {
+    console.log('delete order', req)
+
     return { txHash: "", id: "" };
   }
 

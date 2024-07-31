@@ -4,7 +4,30 @@
   "properties": {
     "allowedSlippage": { "type": "string" },
     "gasLimitEstimate": { "type": "integer" },
-    "ttl": { "type": "integer" }
+    "ttl": { "type": "integer" },
+    "networks": {
+      "type": "object",
+      "patternProperties": {
+        "^\\w+$": {
+          "type": "object",
+          "properties": {
+            "chainID": { "type": "integer" },
+            "nodeURL": { "type": "string" },
+            "tokenListType": { "type": "string" },
+            "tokenListSource": { "type": "string" },
+            "nativeCurrencySymbol": { "type": "string" },
+            "gasPriceRefreshInterval": { "type": "number" }
+          },
+          "required": [
+            "chainID",
+            "nodeURL",
+            "nativeCurrencySymbol"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
   },
   "additionalProperties": false,
   "required": ["allowedSlippage", "gasLimitEstimate", "ttl"]

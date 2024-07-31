@@ -12,6 +12,6 @@ export namespace RubiconCLOBConfig {
     tradingTypes: ['CLOB_SPOT'],
     chainType: 'EVM',
     allowedSlippage: "2/100",
-    availableNetworks: [ { chain: 'ethereum', networks: ['mainnet', 'arbitrum', 'optimism', 'base'] } ],
+    availableNetworks: [ { chain: 'ethereum', networks: ['mainnet', 'arbitrum', 'arbitrum_sepolia', 'optimism', 'base'] } ],
   };
 }
