@@ -277,7 +277,7 @@ describe('Ergo', () => {
         SIGUSD: {
           tokenId: 'SIGUSDId',
           decimals: 3,
-          name: 'SIGUSD',
+          name: 'SigUSD',
           symbol: 'SIGUSD',
         },
       };
@@ -1041,7 +1041,7 @@ describe('Ergo', () => {
         {
           tokenId: 'SIGUSDId',
           decimals: 3,
-          name: 'SIGUSD',
+          name: 'SigUSD',
           symbol: 'SIGUSD',
         },
 
@@ -1220,7 +1220,7 @@ describe('Ergo', () => {
         {
           tokenId: 'SIGUSDId',
           decimals: 3,
-          name: 'SIGUSD',
+          name: 'SigUSD',
           symbol: 'SIGUSD',
         },
       ]);
@@ -1471,7 +1471,7 @@ describe('Ergo', () => {
         {
           tokenId: 'SIGUSDId',
           decimals: 3,
-          name: 'SIGUSD',
+          name: 'SigUSD',
           symbol: 'SIGUSD',
         },
 
@@ -1579,7 +1579,7 @@ describe('Ergo', () => {
         {
           tokenId: 'SIGUSDId',
           decimals: 3,
-          name: 'SIGUSD',
+          name: 'SigUSD',
           symbol: 'SIGUSD',
         },
       ]);
@@ -1712,7 +1712,7 @@ describe('Ergo', () => {
         {
           tokenId: 'SIGUSDId',
           decimals: 3,
-          name: 'SIGUSD',
+          name: 'SigUSD',
           symbol: 'SIGUSD',
         },
         {
