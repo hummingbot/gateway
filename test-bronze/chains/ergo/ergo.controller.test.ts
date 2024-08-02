@@ -288,7 +288,7 @@ describe('ErgoController', () => {
         { tokenId: 'token1', amount: '100' },
         { tokenId: 'token2', amount: '200' },
       ]);
-      expect(TransactionBuilder.prototype.sendChangeTo).toHaveBeenNthCalledWith(
+      expect(TransactionBuilder.prototype.sendChangeTo).toHaveBeenCalledWith(
         '9huCzcjG9bmpKccftEauEYD6YP6qVpnJQXAtwuSpXy3WcMpYgFX',
       );
       expect(TransactionBuilder.prototype.payMinFee).toHaveBeenCalled();
