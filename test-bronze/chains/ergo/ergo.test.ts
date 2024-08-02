@@ -274,11 +274,11 @@ describe('Ergo', () => {
           name: 'ERGO',
           symbol: 'ERG',
         },
-        SigUSD: {
-          tokenId: 'SigUSDId',
+        SIGUSD: {
+          tokenId: 'SIGUSDId',
           decimals: 3,
-          name: 'SigUSD',
-          symbol: 'SigUSD',
+          name: 'SIGUSD',
+          symbol: 'SIGUSD',
         },
       };
       ergo['_assetMap'] = assetMap;
@@ -1030,7 +1030,7 @@ describe('Ergo', () => {
   describe('swap', () => {
     const account: any = { address: 'address' };
     const baseToken: string = 'ERG';
-    const quoteToken: string = 'SigUSD';
+    const quoteToken: string = 'SIGUSD';
     const value: BigNumber = BigNumber(10);
     const output_address: string = 'output_address';
     const return_address: string = 'return_address';
@@ -1039,10 +1039,10 @@ describe('Ergo', () => {
       jest.spyOn(ergo, 'getAddressUnspentBoxes').mockResolvedValue([]);
       jest.spyOn(ergo, 'storedAssetList', 'get').mockReturnValue([
         {
-          tokenId: 'SigUSDId',
+          tokenId: 'SIGUSDId',
           decimals: 3,
-          name: 'SigUSD',
-          symbol: 'SigUSD',
+          name: 'SIGUSD',
+          symbol: 'SIGUSD',
         },
 
         {
@@ -1110,16 +1110,16 @@ describe('Ergo', () => {
         withAmount: (_sth: any) => {
           return {
             asset: {
-              id: 'SigUSDId',
-              name: 'SigUSD',
+              id: 'SIGUSDId',
+              name: 'SIGUSD',
               decimals: 3,
             },
             amount: BigInt(9322283969),
           };
         },
         asset: {
-          id: 'SigUSDId',
-          name: 'SigUSD',
+          id: 'SIGUSDId',
+          name: 'SIGUSD',
           decimals: 3,
         },
       },
@@ -1164,16 +1164,16 @@ describe('Ergo', () => {
         withAmount: (_sth: any) => {
           return {
             asset: {
-              id: 'SigUSDId',
-              name: 'SigUSD',
+              id: 'SIGUSDId',
+              name: 'SIGUSD',
               decimals: 3,
             },
             amount: BigInt(9322283969),
           };
         },
         asset: {
-          id: 'SigUSDId',
-          name: 'SigUSD',
+          id: 'SIGUSDId',
+          name: 'SIGUSD',
           decimals: 3,
         },
       },
@@ -1191,7 +1191,7 @@ describe('Ergo', () => {
     });
     it('Should throw new Error if baseToken is available but quoteToken is not available on storedAssetList', async () => {
       jest.spyOn(ergo, 'getPoolByToken').mockReturnValue([]);
-      // ERG is available but SigUSD is not
+      // ERG is available but SIGUSD is not
       jest.spyOn(ergo, 'storedAssetList', 'get').mockReturnValue([
         {
           tokenId: 'ERGId',
@@ -1209,19 +1209,19 @@ describe('Ergo', () => {
           output_address,
           return_address,
         ),
-      ).rejects.toThrow(`${baseToken} or ${quoteToken} not found!`);
+      ).rejects.toThrow(`Pool not found for ${baseToken} and ${quoteToken}`);
       expect(ergo.getPoolByToken).toHaveBeenCalledWith(baseToken, quoteToken);
     });
 
     it('Should throw new Error if quoteToken is available but baseToken is not available on storedAssetList', async () => {
       jest.spyOn(ergo, 'getPoolByToken').mockReturnValue([]);
-      // SigUSD is available but ERG is not
+      // SIGUSD is available but ERG is not
       jest.spyOn(ergo, 'storedAssetList', 'get').mockReturnValue([
         {
-          tokenId: 'SigUSDId',
+          tokenId: 'SIGUSDId',
           decimals: 3,
-          name: 'SigUSD',
-          symbol: 'SigUSD',
+          name: 'SIGUSD',
+          symbol: 'SIGUSD',
         },
       ]);
       await expect(
@@ -1233,7 +1233,7 @@ describe('Ergo', () => {
           output_address,
           return_address,
         ),
-      ).rejects.toThrow(`${baseToken} or ${quoteToken} not found!`);
+      ).rejects.toThrow(`Pool not found for ${baseToken} and ${quoteToken}`);
       expect(ergo.getPoolByToken).toHaveBeenCalledWith(baseToken, quoteToken);
     });
 
@@ -1253,12 +1253,12 @@ describe('Ergo', () => {
       ).rejects.toThrow(
         `${value.multipliedBy(
           BigNumber(10).pow(pool.y.asset.decimals as number),
-        )} asset from SigUSDId is not enough!`,
+        )} asset from SIGUSDId is not enough!`,
       );
     });
     it(`Should throw new Error if 'from.amount === 0' and sell is 'true'`, async () => {
       // to set sell 'true'
-      const baseToken: string = 'SigUSD';
+      const baseToken: string = 'SIGUSD';
       const quoteToken: string = 'ERG';
       jest
         .spyOn(ergo, 'getPoolByToken')
@@ -1289,7 +1289,7 @@ describe('Ergo', () => {
           output_address,
           return_address,
         ),
-      ).rejects.toThrow('error in swap vars!');
+      ).rejects.toThrow('Error in swap vars!');
       expect(ergo.getAddressUnspentBoxes).toHaveBeenCalledWith('address');
       expect(ergo_utils.getBaseInputParameters).toHaveBeenCalledWith(pool, {
         inputAmount: {
@@ -1300,7 +1300,7 @@ describe('Ergo', () => {
           amount: pool.outputAmount(
             {
               asset: {
-                id: 'SigUSDId',
+                id: 'SIGUSDId',
               },
               amount: value
                 .multipliedBy(
@@ -1347,7 +1347,7 @@ describe('Ergo', () => {
           output_address,
           return_address,
         ),
-      ).rejects.toThrow(`error during submit tx!`);
+      ).rejects.toThrow(`Error during submit tx!`);
     });
 
     it('Should successfully swap tokens when sell is false', async () => {
@@ -1396,7 +1396,7 @@ describe('Ergo', () => {
           )
           .toString(),
         gasPrice: BigNumber('2000').div(BigNumber(10).pow(9)).toNumber(),
-        gasPriceToken: BigNumber('2000').div(BigNumber(10).pow(9)).toString(),
+        gasPriceToken: 'ERG',
         gasLimit: BigNumber('2000').div(BigNumber(10).pow(9)).toNumber(),
         gasCost: BigNumber('2000').div(BigNumber(10).pow(9)).toString(),
         txHash: 'txId',
@@ -1414,7 +1414,7 @@ describe('Ergo', () => {
         },
       };
       // to set sell 'true'
-      const baseToken: string = 'SigUSD';
+      const baseToken: string = 'SIGUSD';
       const quoteToken: string = 'ERG';
       const result = await ergo.swap(
         account,
@@ -1454,7 +1454,7 @@ describe('Ergo', () => {
           )
           .toString(),
         gasPrice: BigNumber('2000').div(BigNumber(10).pow(9)).toNumber(),
-        gasPriceToken: BigNumber('2000').div(BigNumber(10).pow(9)).toString(),
+        gasPriceToken: 'ERG',
         gasLimit: BigNumber('2000').div(BigNumber(10).pow(9)).toNumber(),
         gasCost: BigNumber('2000').div(BigNumber(10).pow(9)).toString(),
         txHash: 'txId',
@@ -1464,15 +1464,15 @@ describe('Ergo', () => {
 
   describe('estimate', () => {
     const baseToken: string = 'ERG';
-    const quoteToken: string = 'SigUSD';
+    const quoteToken: string = 'SIGUSD';
     const value: BigNumber = BigNumber(10);
     beforeEach(() => {
       jest.spyOn(ergo, 'storedAssetList', 'get').mockReturnValue([
         {
-          tokenId: 'SigUSDId',
+          tokenId: 'SIGUSDId',
           decimals: 3,
-          name: 'SigUSD',
-          symbol: 'SigUSD',
+          name: 'SIGUSD',
+          symbol: 'SIGUSD',
         },
 
         {
@@ -1525,16 +1525,16 @@ describe('Ergo', () => {
         withAmount: (_sth: any) => {
           return {
             asset: {
-              id: 'SigUSDId',
-              name: 'SigUSD',
+              id: 'SIGUSDId',
+              name: 'SIGUSD',
               decimals: 3,
             },
             amount: BigInt(9322283969),
           };
         },
         asset: {
-          id: 'SigUSDId',
-          name: 'SigUSD',
+          id: 'SIGUSDId',
+          name: 'SIGUSD',
           decimals: 3,
         },
       },
@@ -1553,12 +1553,12 @@ describe('Ergo', () => {
     it('Should throw new Error if pool is not found', async () => {
       jest.spyOn(ergo, 'getPoolByToken').mockReturnValue([]);
       await expect(ergo.estimate(baseToken, quoteToken, value)).rejects.toThrow(
-        `pool not found base on ${baseToken}, ${quoteToken}`,
+        `Pool not found for ${baseToken} and ${quoteToken}`,
       );
     });
 
     it('Should throw new Error if baseToken is available but quoteToken is not available on storedAssetList', async () => {
-      // ERG is available but SigUSD is not
+      // ERG is available but SIGUSD is not
       jest.spyOn(ergo, 'storedAssetList', 'get').mockReturnValue([
         {
           tokenId: 'ERGId',
@@ -1568,23 +1568,23 @@ describe('Ergo', () => {
         },
       ]);
       await expect(ergo.estimate(baseToken, quoteToken, value)).rejects.toThrow(
-        `${baseToken} or ${quoteToken} not found!`,
+        `Pool not found for ${baseToken} and ${quoteToken}`,
       );
       expect(ergo.getPoolByToken).toHaveBeenCalledWith(baseToken, quoteToken);
     });
 
     it('Should throw new Error if quoteToken is available but baseToken is not available on storedAssetList', async () => {
-      // SigUSD is available but ERG is not
+      // SIGUSD is available but ERG is not
       jest.spyOn(ergo, 'storedAssetList', 'get').mockReturnValue([
         {
-          tokenId: 'SigUSDId',
+          tokenId: 'SIGUSDId',
           decimals: 3,
-          name: 'SigUSD',
-          symbol: 'SigUSD',
+          name: 'SIGUSD',
+          symbol: 'SIGUSD',
         },
       ]);
       await expect(ergo.estimate(baseToken, quoteToken, value)).rejects.toThrow(
-        `${baseToken} or ${quoteToken} not found!`,
+        `Pool not found for ${baseToken} and ${quoteToken}`,
       );
       expect(ergo.getPoolByToken).toHaveBeenCalledWith(baseToken, quoteToken);
     });
@@ -1593,22 +1593,9 @@ describe('Ergo', () => {
       jest.spyOn(ergo_utils, 'getBaseInputParameters').mockReturnValue({
         minOutput: { amount: BigInt(0) },
       } as any);
-      expect(await ergo.estimate(baseToken, quoteToken, value)).toMatchObject({
-        base: baseToken,
-        quote: quoteToken,
-        amount: '0',
-        rawAmount: '0',
-        expectedAmount: '0',
-        price: '0',
-        network: 'mainnet',
-        // timestamp ignored because there was a really small difference between create Date.new() in test file and main file
-        // timestamp: Date.now(),
-        latency: 0,
-        gasPrice: BigNumber('2000').div(BigNumber(10).pow(9)).toNumber(),
-        gasPriceToken: BigNumber('2000').div(BigNumber(10).pow(9)).toString(),
-        gasLimit: BigNumber('2000').div(BigNumber(10).pow(9)).toNumber(),
-        gasCost: BigNumber('2000').div(BigNumber(10).pow(9)).toString(),
-      });
+      await expect(ergo.estimate(baseToken, quoteToken, value)).rejects.toThrow(
+        `No suitable pool found for ${baseToken} and ${quoteToken}`,
+      );
     });
     it('Should estimate successfully when sell is false', async () => {
       const result = await ergo.estimate(baseToken, quoteToken, value);
@@ -1639,14 +1626,14 @@ describe('Ergo', () => {
         // timestamp: Date.now(),
         latency: 0,
         gasPrice: BigNumber('2000').div(BigNumber(10).pow(9)).toNumber(),
-        gasPriceToken: BigNumber('2000').div(BigNumber(10).pow(9)).toString(),
+        gasPriceToken: 'ERG',
         gasLimit: BigNumber('2000').div(BigNumber(10).pow(9)).toNumber(),
         gasCost: BigNumber('2000').div(BigNumber(10).pow(9)).toString(),
       });
     });
     it('Should estimate successfully when sell is true', async () => {
       // to set sell 'true'
-      const baseToken: string = 'SigUSD';
+      const baseToken: string = 'SIGUSD';
       const quoteToken: string = 'ERG';
       const result = await ergo.estimate(baseToken, quoteToken, value);
       expect(result).toMatchObject({
@@ -1679,7 +1666,7 @@ describe('Ergo', () => {
         // timestamp: Date.now(),
         latency: 0,
         gasPrice: BigNumber('2000').div(BigNumber(10).pow(9)).toNumber(),
-        gasPriceToken: BigNumber('2000').div(BigNumber(10).pow(9)).toString(),
+        gasPriceToken: 'ERG',
         gasLimit: BigNumber('2000').div(BigNumber(10).pow(9)).toNumber(),
         gasCost: BigNumber('2000').div(BigNumber(10).pow(9)).toString(),
       });
@@ -1723,10 +1710,10 @@ describe('Ergo', () => {
     beforeEach(() => {
       jest.spyOn(ergo, 'storedAssetList', 'get').mockReturnValue([
         {
-          tokenId: 'SigUSDId',
+          tokenId: 'SIGUSDId',
           decimals: 3,
-          name: 'SigUSD',
-          symbol: 'SigUSD',
+          name: 'SIGUSD',
+          symbol: 'SIGUSD',
         },
         {
           tokenId: 'ERGId',
@@ -1737,12 +1724,12 @@ describe('Ergo', () => {
       ]);
     });
     const baseToken = 'ERG';
-    const quoteToken = 'SigUSD';
+    const quoteToken = 'SIGUSD';
     it('Should be defined', () => {
       expect(ergo.getPoolByToken).toBeDefined();
     });
     it('Should throw new Error if baseToken is available but quoteToken is not available on storedAssetList', () => {
-      // ERG is available but SigUSD is not
+      // ERG is available but SIGUSD is not
       jest.spyOn(ergo, 'storedAssetList', 'get').mockReturnValue([
         {
           tokenId: 'ERGId',
@@ -1752,21 +1739,21 @@ describe('Ergo', () => {
         },
       ]);
       expect(() => ergo.getPoolByToken(baseToken, quoteToken)).toThrow(
-        `${baseToken} or ${quoteToken} not found!`,
+        `Pool not found for ${baseToken} and ${quoteToken}`,
       );
     });
     it('Should throw new Error if baseToken is available but quoteToken is not available on storedAssetList', () => {
-      // SigUSD is available but ERG is not
+      // SIGUSD is available but ERG is not
       jest.spyOn(ergo, 'storedAssetList', 'get').mockReturnValue([
         {
-          tokenId: 'SigUSDId',
+          tokenId: 'SIGUSDId',
           decimals: 9,
-          name: 'SigUSD',
-          symbol: 'SigUSD',
+          name: 'SIGUSD',
+          symbol: 'SIGUSD',
         },
       ]);
       expect(() => ergo.getPoolByToken(baseToken, quoteToken)).toThrow(
-        `${baseToken} or ${quoteToken} not found!`,
+        `Pool not found for ${baseToken} and ${quoteToken}`,
       );
     });
     it('Should find poll when both base token and quote are valid in ammPools array', () => {
@@ -1781,8 +1768,8 @@ describe('Ergo', () => {
         },
         y: {
           asset: {
-            id: 'SigUSDId',
-            name: 'SigUSD',
+            id: 'SIGUSDId',
+            name: 'SIGUSD',
             decimals: 3,
           },
         },
