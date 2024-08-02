@@ -201,13 +201,7 @@ export class Ergo {
     }
 
     if (!Ergo._instances.has(config.network.name)) {
-      if (network) {
-        Ergo._instances.set(config.network.name, new Ergo(network));
-      } else {
-        throw new Error(
-          `Ergo.getInstance received an unexpected network: ${network}.`,
-        );
-      }
+      Ergo._instances.set(config.network.name, new Ergo(network));
     }
 
     return Ergo._instances.get(config.network.name) as Ergo;

@@ -166,7 +166,6 @@ describe('ErgoController', () => {
         },
       });
       const result = await ErgoController.balances(ergo, request);
-      console.log(result);
       expect(result).toMatchObject({
         network: 'mainnet',
         // timestamp ignored because there was a really small difference between create Date.new() in test file and main file
@@ -358,7 +357,6 @@ describe('ErgoController', () => {
         },
       });
       const result = await ErgoController.allowances(ergo, request);
-      console.log(result);
       expect(result).toMatchObject({
         network: 'mainnet',
         // timestamp ignored because there was a really small difference between create Date.new() in test file and main file
