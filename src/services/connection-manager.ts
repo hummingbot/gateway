@@ -8,6 +8,7 @@ import { Xdc } from '../chains/xdc/xdc';
 import { Tezos } from '../chains/tezos/tezos';
 import { Osmosis } from '../chains/osmosis/osmosis';
 import { XRPL, XRPLish } from '../chains/xrpl/xrpl';
+import { Ergo } from '../chains/ergo/ergo';
 import { MadMeerkat } from '../connectors/mad_meerkat/mad_meerkat';
 import { Openocean } from '../connectors/openocean/openocean';
 import { Pangolin } from '../connectors/pangolin/pangolin';
@@ -45,6 +46,7 @@ import { PancakeswapLP } from '../connectors/pancakeswap/pancakeswap.lp';
 import { XRPLCLOB } from '../connectors/xrpl/xrpl';
 import { QuipuSwap } from '../connectors/quipuswap/quipuswap';
 import { Carbonamm } from '../connectors/carbon/carbonAMM';
+import { Spectrum } from '../connectors/spectrum/spectrum';
 import { Balancer } from '../connectors/balancer/balancer';
 
 export type ChainUnion =
@@ -56,7 +58,8 @@ export type ChainUnion =
   | Tezosish
   | XRPLish
   | Kujira
-  | Osmosis;
+  | Osmosis
+  | Ergo;
 
 export type Chain<T> = T extends Algorand
   ? Algorand
@@ -76,7 +79,9 @@ export type Chain<T> = T extends Algorand
                 ? KujiraCLOB
                 : T extends Osmosis
                   ? Osmosis
-                  : never;
+                  : T extends Ergo
+                    ? Ergo
+                    : never;
 
 export class UnsupportedChainException extends Error {
   constructor(message?: string) {
@@ -141,6 +146,8 @@ export async function getChainInstance(
     connection = XRPL.getInstance(network);
   } else if (chain === 'kujira') {
     connection = Kujira.getInstance(network);
+  } else if (chain === 'ergo') {
+    connection = Ergo.getInstance(network);
   } else {
     connection = undefined;
   }
@@ -159,7 +166,8 @@ export type ConnectorUnion =
   | XRPLCLOB
   | Curve
   | KujiraCLOB
-  | QuipuSwap;
+  | QuipuSwap
+  | Spectrum;
 
 export type Connector<T> = T extends Uniswapish
   ? Uniswapish
@@ -181,7 +189,9 @@ export type Connector<T> = T extends Uniswapish
                   ? KujiraCLOB
                   : T extends QuipuSwap
                     ? QuipuSwap
-                    : never;
+                    : T extends Spectrum
+                      ? Spectrum
+                      : never;
 
 export async function getConnector<T>(
   chain: string,
@@ -255,6 +265,8 @@ export async function getConnector<T>(
     connectorInstance = QuipuSwap.getInstance(network);
   } else if (chain === 'ethereum' && connector === 'carbonamm') {
     connectorInstance = Carbonamm.getInstance(chain, network);
+  } else if (chain === 'ergo' && connector === 'spectrum') {
+    connectorInstance = Spectrum.getInstance(chain, network);
   } else {
     throw new Error('unsupported chain or connector');
   }
