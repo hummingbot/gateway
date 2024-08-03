@@ -136,6 +136,10 @@ configurations:
     configurationPath: carbon.yml
     schemaPath: carbon-schema.json
 
+  $namespace balancer:
+    configurationPath: balancer.yml
+    schemaPath: cronos-connector-schema.json
+
   $namespace spectrum:
     configurationPath: spectrum.yml
     schemaPath: spectrum-schema.json
