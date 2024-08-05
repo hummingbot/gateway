@@ -5088,10 +5088,10 @@
     tiny-warning "^1.0.3"
     toformat "^2.0.0"
 
-"@uniswap/smart-order-router@^3.36.1":
-  version "3.36.1"
-  resolved "https://registry.yarnpkg.com/@uniswap/smart-order-router/-/smart-order-router-3.36.1.tgz#ccc18b93beca796399a18540195d63590c03fb1e"
-  integrity sha512-maFS7FW8B8jOKzYg0Htd4GGyRlHWbcM2XwS8rTdKsy9oVAAPdaGzSX+/Ge6YYk6XsTglkPO8g//Lb1LxiTGGpQ==
+"@uniswap/smart-order-router@^3.39.0":
+  version "3.39.0"
+  resolved "https://registry.yarnpkg.com/@uniswap/smart-order-router/-/smart-order-router-3.39.0.tgz#83fe53e66d3bb9442f1e7049100381298655f129"
+  integrity sha512-6PHMeJvXp7lpJvX4rE66ofHIJa/OB0s+TSQ802qu7cljj7E0SRDG/QAi3WBXIX3QlTyn1pp4Yvkqk7crtMRkgw==
   dependencies:
     "@eth-optimism/sdk" "^3.2.2"
     "@types/brotli" "^1.3.4"

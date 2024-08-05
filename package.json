@@ -63,7 +63,7 @@
     "@types/uuid": "^8.3.4",
     "@uniswap/sdk": "3.0.3",
     "@uniswap/sdk-core": "^5.3.1",
-    "@uniswap/smart-order-router": "^3.36.1",
+    "@uniswap/smart-order-router": "^3.39.0",
     "@uniswap/v3-core": "^1.0.1",
     "@uniswap/v3-periphery": "^1.1.1",
     "@uniswap/v3-sdk": "^3.13.1",
