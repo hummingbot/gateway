@@ -11,13 +11,18 @@ export namespace RubiconCLOBConfig {
     pk: string;
   }
 
+  if (!process.env.RUBICON_GATEWAY_WALLET_PK) {
+    console.log("env variable RUBICON_GATEWAY_WALLET_PK not set")
+    process.exit(1)
+  }
+
   export const config: NetworkConfig = {
     tradingTypes: ['CLOB_SPOT'],
     chainType: 'EVM',
     allowedSlippage: "2/100",
     availableNetworks: [ { chain: 'ethereum', networks: ['mainnet', 'arbitrum', 'arbitrum_sepolia', 'optimism', 'base'] } ],
     url: "https://gladius.rubicon.finance",
-    pk: // get config manager to work
+    pk: process.env.RUBICON_GATEWAY_WALLET_PK,
   };
 }
 
