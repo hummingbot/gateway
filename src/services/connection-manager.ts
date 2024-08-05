@@ -1,4 +1,5 @@
 import { Avalanche } from '../chains/avalanche/avalanche';
+import { Celo } from '../chains/celo/celo';
 import { Cronos } from '../chains/cronos/cronos';
 import { Ethereum } from '../chains/ethereum/ethereum';
 import { BinanceSmartChain } from '../chains/binance-smart-chain/binance-smart-chain';
@@ -6,6 +7,7 @@ import { Harmony } from '../chains/harmony/harmony';
 import { Polygon } from '../chains/polygon/polygon';
 import { Xdc } from '../chains/xdc/xdc';
 import { Tezos } from '../chains/tezos/tezos';
+import { Telos } from '../chains/telos/telos';
 import { Osmosis } from '../chains/osmosis/osmosis';
 import { XRPL, XRPLish } from '../chains/xrpl/xrpl';
 import { MadMeerkat } from '../connectors/mad_meerkat/mad_meerkat';
@@ -43,7 +45,6 @@ import { Kujira } from '../chains/kujira/kujira';
 import { KujiraCLOB } from '../connectors/kujira/kujira';
 import { PancakeswapLP } from '../connectors/pancakeswap/pancakeswap.lp';
 import { XRPLCLOB } from '../connectors/xrpl/xrpl';
-import { QuipuSwap } from '../connectors/quipuswap/quipuswap';
 import { Carbonamm } from '../connectors/carbon/carbonAMM';
 import { Balancer } from '../connectors/balancer/balancer';
 import { ETCSwapLP } from '../connectors/etcswap/etcswap.lp';
@@ -129,6 +130,8 @@ export async function getChainInstance(
     connection = Cronos.getInstance(network);
   } else if (chain === 'cosmos') {
     connection = Cosmos.getInstance(network);
+  } else if (chain === 'celo') {
+    connection = Celo.getInstance(network);
   } else if (chain === 'osmosis') {
     connection = Osmosis.getInstance(network);
   } else if (chain === 'near') {
@@ -143,6 +146,8 @@ export async function getChainInstance(
     connection = XRPL.getInstance(network);
   } else if (chain === 'kujira') {
     connection = Kujira.getInstance(network);
+  } else if (chain === 'telos') {
+    connection = Telos.getInstance(network);
   } else if (chain === 'ethereum-classic') {
     connection = EthereumClassicChain.getInstance(network);
   } else {
@@ -163,29 +168,26 @@ export type ConnectorUnion =
   | XRPLCLOB
   | Curve
   | KujiraCLOB
-  | QuipuSwap;
 
 export type Connector<T> = T extends Uniswapish
   ? Uniswapish
   : T extends UniswapLPish
-  ? UniswapLPish
-  : T extends Perpish
-  ? Perpish
-  : T extends RefAMMish
-  ? RefAMMish
-  : T extends CLOBish
-  ? CLOBish
-  : T extends Tinyman
-  ? Tinyman
-  : T extends Plenty
-  ? Plenty
-  : T extends XRPLish
-  ? XRPLCLOB
-  : T extends KujiraCLOB
-  ? KujiraCLOB
-  : T extends QuipuSwap
-  ? QuipuSwap
-  : never;
+    ? UniswapLPish
+    : T extends Perpish
+      ? Perpish
+      : T extends RefAMMish
+        ? RefAMMish
+        : T extends CLOBish
+          ? CLOBish
+          : T extends Tinyman
+            ? Tinyman
+            : T extends Plenty
+              ? Plenty
+              : T extends XRPLish
+                ? XRPLCLOB
+                : T extends KujiraCLOB
+                  ? KujiraCLOB
+                    : never;
 
 export async function getConnector<T>(
   chain: string,
@@ -195,70 +197,50 @@ export async function getConnector<T>(
 ): Promise<Connector<T>> {
   let connectorInstance: ConnectorUnion;
 
-  if (
-    (chain === 'ethereum' || chain === 'polygon') &&
-    connector === 'uniswap'
-  ) {
+  if (connector === 'uniswap') {
     connectorInstance = Uniswap.getInstance(chain, network);
-  } else if (chain === 'polygon' && connector === 'quickswap') {
-    connectorInstance = Quickswap.getInstance(chain, network);
-  } else if (
-    (chain === 'ethereum' || chain === 'polygon') &&
-    connector === 'uniswapLP'
-  ) {
+  } else if (connector === 'uniswapLP') {
     connectorInstance = UniswapLP.getInstance(chain, network);
-  } else if (chain === 'ethereum' && connector === 'perp') {
+  } else if (connector === 'quickswap') {
+    connectorInstance = Quickswap.getInstance(chain, network);
+  } else if (connector === 'perp') {
     connectorInstance = Perp.getInstance(chain, network, address);
-  } else if (chain === 'avalanche' && connector === 'pangolin') {
+  } else if (connector === 'pangolin') {
     connectorInstance = Pangolin.getInstance(chain, network);
   } else if (connector === 'openocean') {
     connectorInstance = Openocean.getInstance(chain, network);
-  } else if (chain === 'avalanche' && connector === 'traderjoe') {
+  } else if (connector === 'traderjoe') {
     connectorInstance = Traderjoe.getInstance(chain, network);
-  } else if (chain === 'cronos' && connector === 'mad_meerkat') {
+  } else if (connector === 'mad_meerkat') {
     connectorInstance = MadMeerkat.getInstance(chain, network);
-  } else if (chain === 'cronos' && connector === 'vvs') {
+  } else if (connector === 'vvs') {
     connectorInstance = VVSConnector.getInstance(chain, network);
-  } else if (chain === 'near' && connector === 'ref') {
+  } else if (connector === 'ref') {
     connectorInstance = Ref.getInstance(chain, network);
-  } else if (
-    (chain === 'binance-smart-chain' || chain === 'ethereum') &&
-    connector === 'pancakeswap'
-  ) {
+  } else if (connector === 'pancakeswap') {
     connectorInstance = PancakeSwap.getInstance(chain, network);
-  } else if (
-    (chain === 'binance-smart-chain' || chain === 'ethereum') &&
-    connector === 'pancakeswapLP'
-  ) {
+  } else if (connector === 'pancakeswapLP') {
     connectorInstance = PancakeswapLP.getInstance(chain, network);
   } else if (connector === 'sushiswap') {
     connectorInstance = Sushiswap.getInstance(chain, network);
-  } else if (chain === 'xdc' && connector === 'xsswap') {
+  } else if (connector === 'xsswap') {
     connectorInstance = Xsswap.getInstance(chain, network);
-  } else if (chain === 'avalanche' && connector === 'dexalot') {
-    connectorInstance = DexalotCLOB.getInstance(network);
-  } else if (chain == 'algorand' && connector == 'tinyman') {
-    connectorInstance = Tinyman.getInstance(network);
-  } else if (chain === 'tezos' && connector === 'plenty') {
-    connectorInstance = Plenty.getInstance(network);
-  } else if (chain === 'xrpl' && connector === 'xrpl') {
+  } else if (connector === 'xrpl') {
     connectorInstance = XRPLCLOB.getInstance(chain, network);
-  } else if (chain === 'kujira' && connector === 'kujira') {
+  } else if (connector === 'kujira') {
     connectorInstance = KujiraCLOB.getInstance(chain, network);
-  } else if (
-    (chain === 'ethereum' || chain === 'polygon') &&
-    connector === 'curve'
-  ) {
+  } else if (connector === 'curve') {
     connectorInstance = Curve.getInstance(chain, network);
-  } else if (
-    (chain === 'ethereum' || chain === 'polygon' || chain === 'avalanche') &&
-    connector === 'balancer'
-  ) {
+  } else if (connector === 'balancer') {
     connectorInstance = Balancer.getInstance(chain, network);
-  } else if (chain === 'tezos' && connector === 'quipuswap') {
-    connectorInstance = QuipuSwap.getInstance(network);
-  } else if (chain === 'ethereum' && connector === 'carbonamm') {
+  } else if (connector === 'carbonamm') {
     connectorInstance = Carbonamm.getInstance(chain, network);
+  } else if (connector === 'dexalot') {
+    connectorInstance = DexalotCLOB.getInstance(network);
+  } else if (connector == 'tinyman') {
+    connectorInstance = Tinyman.getInstance(network);
+  } else if (connector === 'plenty') {
+    connectorInstance = Plenty.getInstance(network);
   } else if (chain === 'ethereum-classic' && connector === 'etcswapLP'
   ) {
     connectorInstance = ETCSwapLP.getInstance(chain, network)
