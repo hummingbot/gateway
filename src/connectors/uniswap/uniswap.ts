@@ -80,20 +80,10 @@ export class Uniswap implements Uniswapish {
     this._ttl = UniswapConfig.config.ttl;
     this._maximumHops = UniswapConfig.config.maximumHops;
 
-    this._alphaRouter = null;
-    const excluded_chainIds = [
-      11155111, // sepolia
-      8453,     // base
-      56,       // binance-smart-chain
-      42220,    // celo
-      43114,    // avalanche
-    ];
-    if (this.chainId in excluded_chainIds) {
-        this._alphaRouter = new AlphaRouter({
-        chainId: this.chainId,
-        provider: this.chain.provider,
-      });
-    }
+      this._alphaRouter = new AlphaRouter({
+      chainId: this.chainId,
+      provider: this.chain.provider,
+    });
     this._routerAbi = routerAbi.abi;
     this._gasLimitEstimate = UniswapConfig.config.gasLimitEstimate;
     this._router = config.uniswapV3SmartOrderRouterAddress(chain, network);
