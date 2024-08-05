@@ -153,6 +153,11 @@ export const validatePrivateKey: Validator = mkSelectingValidator(
       invalidEthPrivateKeyError,
       (val) => typeof val === 'string' && isEthPrivateKey(val),
     ),
+    'ethereum-classic': mkValidator(
+      'privateKey',
+      invalidEthPrivateKeyError,
+      (val) => typeof val === 'string' && isEthPrivateKey(val),
+    ),
   },
 );
 
@@ -189,7 +194,8 @@ export const validateChain: Validator = mkValidator(
       val === 'tezos' ||
       val === 'xrpl' ||
       val === 'kujira' ||
-      val === 'telos'),
+      val === 'telos' ||
+    val === 'ethereum-classic'),
 );
 
 export const validateNetwork: Validator = mkValidator(
