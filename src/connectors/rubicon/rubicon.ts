@@ -245,7 +245,7 @@ export class RubiconCLOB implements CLOBish {
 
     const postResponse = await axios({
       method: 'post',
-      url: `${RubiconCLOBConfig.config.url}dutch-auction/order`,
+      url: `${RubiconCLOBConfig.config.url}/dutch-auction/order`,
       data: payload,
     })
 
@@ -257,7 +257,7 @@ export class RubiconCLOB implements CLOBish {
   ): Promise<{ txHash: string, id: string }> {
 
     axios({
-      url: `${RubiconCLOBConfig.config.url}dutch-auction/cancel`,
+      url: `${RubiconCLOBConfig.config.url}/dutch-auction/cancel`,
       method: 'post',
       data: {
         signature: await this.wallet.signMessage(req.orderId),
