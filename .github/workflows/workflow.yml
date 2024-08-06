@@ -79,7 +79,7 @@ jobs:
           cp -rf src/templates/* conf
           sed -i 's|/home/gateway/conf/lists/|conf/lists/|g' ./conf/*.yml
           sed -i 's/https:\/\/rpc.ankr.com\/eth_goerli/http:\/\/127.0.0.1:8545\//g' ./conf/ethereum.yml
-          sed -i 's/https:\/\/etc.rivet.link\/eth_goerli/http:\/\/127.0.0.1:8545\//g' ./conf/ethereum-classic.yml
+          sed -i 's/https:\/\/etc.rivet.link/http:\/\/127.0.0.1:8545\//g' ./conf/ethereum-classic.yml
 
       - name: Run unit test coverage
         if: github.event_name == 'pull_request'
