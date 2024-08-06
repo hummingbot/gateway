@@ -24,6 +24,7 @@ import { KujiraConfig } from './kujira/kujira.config';
 import { OsmosisConfig } from '../chains/osmosis/osmosis.config';
 import { CarbonConfig } from './carbon/carbon.config';
 import { BalancerConfig } from './balancer/balancer.config';
+import { ETCSwapConfig } from './etcswap/etcswap.config';
 
 export namespace ConnectorsRoutes {
   export const router = Router();
@@ -182,6 +183,14 @@ export namespace ConnectorsRoutes {
             trading_type: BalancerConfig.config.tradingTypes,
             chain_type: BalancerConfig.config.chainType,
             available_networks: BalancerConfig.config.availableNetworks,
+          },
+          {
+            name: 'etcswapLP',
+            trading_type: ETCSwapConfig.config.tradingTypes('LP'),
+            chain_type: ETCSwapConfig.config.chainType,
+            available_networks: ETCSwapConfig.config.availableNetworks,
+            // additional_spenders: ['etcswap'],
+            additional_spenders: [],
           },
         ],
       });

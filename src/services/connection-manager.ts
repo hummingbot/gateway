@@ -47,6 +47,8 @@ import { PancakeswapLP } from '../connectors/pancakeswap/pancakeswap.lp';
 import { XRPLCLOB } from '../connectors/xrpl/xrpl';
 import { Carbonamm } from '../connectors/carbon/carbonAMM';
 import { Balancer } from '../connectors/balancer/balancer';
+import { ETCSwapLP } from '../connectors/etcswap/etcswap.lp';
+import { EthereumClassicChain } from '../chains/ethereum-classic/ethereum-classic';
 
 export type ChainUnion =
   | Algorand
@@ -62,22 +64,22 @@ export type ChainUnion =
 export type Chain<T> = T extends Algorand
   ? Algorand
   : T extends Cosmos
-    ? Cosmos
-    : T extends Ethereumish
-      ? Ethereumish
-      : T extends Nearish
-        ? Nearish
-        : T extends Xdcish
-          ? Xdcish
-          : T extends Tezosish
-            ? Tezosish
-            : T extends XRPLish
-              ? XRPLish
-              : T extends KujiraCLOB
-                ? KujiraCLOB
-                : T extends Osmosis
-                  ? Osmosis
-                  : never;
+  ? Cosmos
+  : T extends Ethereumish
+  ? Ethereumish
+  : T extends Nearish
+  ? Nearish
+  : T extends Xdcish
+  ? Xdcish
+  : T extends Tezosish
+  ? Tezosish
+  : T extends XRPLish
+  ? XRPLish
+  : T extends KujiraCLOB
+  ? KujiraCLOB
+  : T extends Osmosis
+  ? Osmosis
+  : never;
 
 export class UnsupportedChainException extends Error {
   constructor(message?: string) {
@@ -146,6 +148,8 @@ export async function getChainInstance(
     connection = Kujira.getInstance(network);
   } else if (chain === 'telos') {
     connection = Telos.getInstance(network);
+  } else if (chain === 'ethereum-classic') {
+    connection = EthereumClassicChain.getInstance(network);
   } else {
     connection = undefined;
   }
@@ -237,6 +241,9 @@ export async function getConnector<T>(
     connectorInstance = Tinyman.getInstance(network);
   } else if (connector === 'plenty') {
     connectorInstance = Plenty.getInstance(network);
+  } else if (chain === 'ethereum-classic' && connector === 'etcswapLP'
+  ) {
+    connectorInstance = ETCSwapLP.getInstance(chain, network)
   } else {
     throw new Error('unsupported chain or connector');
   }

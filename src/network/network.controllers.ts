@@ -23,6 +23,7 @@ import {
 } from '../services/connection-manager';
 import { Osmosis } from '../chains/osmosis/osmosis';
 import { XRPL } from '../chains/xrpl/xrpl';
+import { EthereumClassicChain } from '../chains/ethereum-classic/ethereum-classic';
 
 export async function getStatus(
   req: StatusRequest,
@@ -125,6 +126,11 @@ export async function getStatus(
     const osmosisConnections = Osmosis.getConnectedInstances();
     connections = connections.concat(
       osmosisConnections ? Object.values(osmosisConnections) : [],
+    );
+
+    const etcConnections = EthereumClassicChain.getConnectedInstances();
+    connections = connections.concat(
+      etcConnections ? Object.values(etcConnections) : []
     );
   }
 

@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "allowedSlippage": { "type": "string" },
+    "gasLimitEstimate": { "type": "integer" },
+    "ttl": { "type": "integer" },
+    "maximumHops": { "type": "integer" },
+    "useRouter": { "type": "boolean" },
+    "feeTier": {
+      "enum": ["LOWEST", "LOW", "MEDIUM", "HIGH"]
+    },
+    "contractAddresses": {
+      "type": "object",
+      "patternProperties": {
+        "^\\w+$": {
+          "type": "object",
+          "properties": {
+            "routerAddress": { "type": "string" },
+            "etcswapV3SmartOrderRouterAddress": { "type": "string" },
+            "etcswapV3NftManagerAddress": { "type": "string" },
+            "etcswapV3QuoterV2ContractAddress": { "type": "string" }
+          },
+          "required": [
+            "routerAddress",
+            "etcswapV3SmartOrderRouterAddress",
+            "etcswapV3NftManagerAddress"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "allowedSlippage",
+    "gasLimitEstimate",
+    "ttl",
+    "maximumHops",
+    "contractAddresses"
+  ]
+}
