@@ -68,49 +68,51 @@ afterAll(async () => {
 });
 
 const patchTrade = (_key: string, error?: Error) => {
-  patch(uniswap.alphaRouter, 'route', () => {
-    if (error) return false;
-    const WETH_DAI = new Pair(
-      CurrencyAmount.fromRawAmount(WETH, '2000000000000000000'),
-      CurrencyAmount.fromRawAmount(DAI, '1000000000000000000')
-    );
-    const DAI_TO_WETH = new Route([WETH_DAI], DAI, WETH);
-    return {
-      quote: CurrencyAmount.fromRawAmount(DAI, '1000000000000000000'),
-      quoteGasAdjusted: CurrencyAmount.fromRawAmount(
-        DAI,
-        '1000000000000000000'
-      ),
-      estimatedGasUsed: utils.parseEther('100'),
-      estimatedGasUsedQuoteToken: CurrencyAmount.fromRawAmount(
-        DAI,
-        '1000000000000000000'
-      ),
-      estimatedGasUsedUSD: CurrencyAmount.fromRawAmount(
-        DAI,
-        '1000000000000000000'
-      ),
-      gasPriceWei: utils.parseEther('100'),
-      trade: new Trade({
-        v2Routes: [
-          {
-            routev2: DAI_TO_WETH,
-            inputAmount: CurrencyAmount.fromRawAmount(
-              DAI,
-              '1000000000000000000'
-            ),
-            outputAmount: CurrencyAmount.fromRawAmount(
-              WETH,
-              '2000000000000000000'
-            ),
-          },
-        ],
-        v3Routes: [],
-        tradeType: TradeType.EXACT_INPUT,
-      }),
-      route: [],
-      blockNumber: BigNumber.from(5000),
-    };
+  patch(uniswap, '_alphaRouter', {
+    route() {
+      if (error) return false;
+      const WETH_DAI = new Pair(
+        CurrencyAmount.fromRawAmount(WETH, '2000000000000000000'),
+        CurrencyAmount.fromRawAmount(DAI, '1000000000000000000')
+      );
+      const DAI_TO_WETH = new Route([WETH_DAI], DAI, WETH);
+      return {
+        quote: CurrencyAmount.fromRawAmount(DAI, '1000000000000000000'),
+        quoteGasAdjusted: CurrencyAmount.fromRawAmount(
+          DAI,
+          '1000000000000000000'
+        ),
+        estimatedGasUsed: utils.parseEther('100'),
+        estimatedGasUsedQuoteToken: CurrencyAmount.fromRawAmount(
+          DAI,
+          '1000000000000000000'
+        ),
+        estimatedGasUsedUSD: CurrencyAmount.fromRawAmount(
+          DAI,
+          '1000000000000000000'
+        ),
+        gasPriceWei: utils.parseEther('100'),
+        trade: new Trade({
+          v2Routes: [
+            {
+              routev2: DAI_TO_WETH,
+              inputAmount: CurrencyAmount.fromRawAmount(
+                DAI,
+                '1000000000000000000'
+              ),
+              outputAmount: CurrencyAmount.fromRawAmount(
+                WETH,
+                '2000000000000000000'
+              ),
+            },
+          ],
+          v3Routes: [],
+          tradeType: TradeType.EXACT_INPUT,
+        }),
+        route: [],
+        blockNumber: BigNumber.from(5000),
+      };
+    }
   });
 };
 
