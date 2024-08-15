@@ -33,7 +33,7 @@ const USDC = new Token(
 
 const TX = {
   type: 2,
-  chainId: 42,
+  chainId: 5,
   nonce: 115,
   maxPriorityFeePerGas: { toString: () => '106000000000' },
   maxFeePerGas: { toString: () => '106000000000' },
@@ -117,8 +117,10 @@ const patchPoolState = () => {
 };
 
 const patchAlphaRouter = () => {
-  patch(uniswapLP.alphaRouter, 'routeToRatio', () => {
-    return { status: 3 };
+  patch(uniswapLP, '_alphaRouter', {
+    routeToRatio() {
+      return { status: 3 };
+    }
   });
 };
 
