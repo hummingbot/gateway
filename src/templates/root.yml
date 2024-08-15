@@ -28,6 +28,10 @@ configurations:
     configurationPath: polygon.yml
     schemaPath: ethereum-schema.json
 
+  $namespace celo:
+    configurationPath: celo.yml
+    schemaPath: ethereum-schema.json
+
   $namespace near:
     configurationPath: near.yml
     schemaPath: ethereum-schema.json
@@ -124,10 +128,6 @@ configurations:
     configurationPath: kujira.yml
     schemaPath: kujira-schema.json
 
-  $namespace quipuswap:
-    configurationPath: quipuswap.yml
-    schemaPath: quipuswap-schema.json
-
   $namespace carbon:
     configurationPath: carbon.yml
     schemaPath: carbon-schema.json
@@ -135,3 +135,7 @@ configurations:
   $namespace balancer:
     configurationPath: balancer.yml
     schemaPath: cronos-connector-schema.json
+
+  $namespace telos:
+    configurationPath: telos.yml
+    schemaPath: ethereum-schema.json

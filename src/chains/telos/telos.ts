@@ -2,21 +2,15 @@ import abi from '../ethereum/ethereum.abi.json';
 import { logger } from '../../services/logger';
 import { Contract, Transaction, Wallet } from 'ethers';
 import { EthereumBase } from '../ethereum/ethereum-base';
-import { getEthereumConfig as getAvalancheConfig } from '../ethereum/ethereum.config';
+import { getEthereumConfig as getTelosConfig } from '../ethereum/ethereum.config';
 import { Provider } from '@ethersproject/abstract-provider';
-import { TraderjoeConfig } from '../../connectors/traderjoe/traderjoe.config';
-import { PangolinConfig } from '../../connectors/pangolin/pangolin.config';
 import { OpenoceanConfig } from '../../connectors/openocean/openocean.config';
 import { Ethereumish } from '../../services/common-interfaces';
-import { UniswapConfig } from '../../connectors/uniswap/uniswap.config';
-import { SushiswapConfig } from '../../connectors/sushiswap/sushiswap.config';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { EVMController } from '../ethereum/evm.controllers';
-import { Curve } from '../../connectors/curve/curve';
-import { BalancerConfig } from '../../connectors/balancer/balancer.config';
 
-export class Avalanche extends EthereumBase implements Ethereumish {
-  private static _instances: { [name: string]: Avalanche };
+export class Telos extends EthereumBase implements Ethereumish {
+  private static _instances: { [name: string]: Telos };
   private _gasPrice: number;
   private _gasPriceRefreshInterval: number | null;
   private _nativeTokenSymbol: string;
@@ -24,9 +18,9 @@ export class Avalanche extends EthereumBase implements Ethereumish {
   public controller;
 
   private constructor(network: string) {
-    const config = getAvalancheConfig('avalanche', network);
+    const config = getTelosConfig('telos', network);
     super(
-      'avalanche',
+      'telos',
       config.network.chainID,
       config.network.nodeURL,
       config.network.tokenListSource,
@@ -34,7 +28,7 @@ export class Avalanche extends EthereumBase implements Ethereumish {
       config.manualGasPrice,
       config.gasLimitTransaction,
       ConfigManagerV2.getInstance().get('server.nonceDbPath'),
-      ConfigManagerV2.getInstance().get('server.transactionDbPath')
+      ConfigManagerV2.getInstance().get('server.transactionDbPath'),
     );
     this._chain = config.network.name;
     this._nativeTokenSymbol = config.nativeCurrencySymbol;
@@ -50,19 +44,19 @@ export class Avalanche extends EthereumBase implements Ethereumish {
     this.controller = EVMController;
   }
 
-  public static getInstance(network: string): Avalanche {
-    if (Avalanche._instances === undefined) {
-      Avalanche._instances = {};
+  public static getInstance(network: string): Telos {
+    if (Telos._instances === undefined) {
+      Telos._instances = {};
     }
-    if (!(network in Avalanche._instances)) {
-      Avalanche._instances[network] = new Avalanche(network);
+    if (!(network in Telos._instances)) {
+      Telos._instances[network] = new Telos(network);
     }
 
-    return Avalanche._instances[network];
+    return Telos._instances[network];
   }
 
-  public static getConnectedInstances(): { [name: string]: Avalanche } {
-    return Avalanche._instances;
+  public static getConnectedInstances(): { [name: string]: Telos } {
+    return Telos._instances;
   }
 
   // getters
@@ -85,33 +79,8 @@ export class Avalanche extends EthereumBase implements Ethereumish {
 
   getSpender(reqSpender: string): string {
     let spender: string;
-    if (reqSpender === 'uniswap') {
-      spender = UniswapConfig.config.uniswapV3SmartOrderRouterAddress(
-        'avalanche',
-        this._chain,
-      );
-    } else if (reqSpender === 'uniswapLP') {
-      spender = UniswapConfig.config.uniswapV3NftManagerAddress('avalanche', this._chain);
-    } else if (reqSpender === 'pangolin') {
-      spender = PangolinConfig.config.routerAddress(this._chain);
-    } else if (reqSpender === 'openocean') {
-      spender = OpenoceanConfig.config.routerAddress('avalanche', this._chain);
-    } else if (reqSpender === 'traderjoe') {
-      spender = TraderjoeConfig.config.routerAddress(this._chain);
-    } else if (reqSpender === 'sushiswap') {
-      spender = SushiswapConfig.config.sushiswapRouterAddress(
-        'avalanche',
-        this._chain
-      );
-    } else if (reqSpender === 'curve') {
-      const curve = Curve.getInstance('ethereum', this._chain);
-      if (!curve.ready()) {
-        curve.init();
-        throw Error('Curve not ready');
-      }
-      spender = curve.router;
-    } else if (reqSpender === 'balancer') {
-      spender = BalancerConfig.config.routerAddress(this._chain);
+    if (reqSpender === 'openocean') {
+      spender = OpenoceanConfig.config.routerAddress('telos', this._chain);
     } else {
       spender = reqSpender;
     }
@@ -121,7 +90,7 @@ export class Avalanche extends EthereumBase implements Ethereumish {
   // cancel transaction
   async cancelTx(wallet: Wallet, nonce: number): Promise<Transaction> {
     logger.info(
-      'Canceling any existing transaction(s) with nonce number ' + nonce + '.'
+      'Canceling any existing transaction(s) with nonce number ' + nonce + '.',
     );
     return super.cancelTxWithGasPrice(wallet, nonce, this._gasPrice * 2);
   }
@@ -143,14 +112,14 @@ export class Avalanche extends EthereumBase implements Ethereumish {
 
     setTimeout(
       this.updateGasPrice.bind(this),
-      this._gasPriceRefreshInterval * 1000
+      this._gasPriceRefreshInterval * 1000,
     );
   }
 
   async close() {
     await super.close();
-    if (this._chain in Avalanche._instances) {
-      delete Avalanche._instances[this._chain];
+    if (this._chain in Telos._instances) {
+      delete Telos._instances[this._chain];
     }
   }
 }
