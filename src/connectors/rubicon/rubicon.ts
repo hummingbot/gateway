@@ -1,4 +1,4 @@
-import { GladiusOrderBuilder, NonceManager, PERMIT2_MAPPING } from '@rubicondefi/gladius-sdk';
+import { GladiusOrder, GladiusOrderBuilder, NonceManager, PERMIT2_MAPPING } from '@rubicondefi/gladius-sdk';
 import { Ethereum } from '../../chains/ethereum/ethereum';
 import {
   ClobMarketsRequest,
@@ -14,10 +14,11 @@ import {
   MarketInfo,
   NetworkSelectionRequest,
   Orderbook,
+  PriceLevel,
 } from '../../services/common-interfaces';
-import { RubiconCLOBConfig, tokenList } from './rubicon.config';
+import { Network, RubiconCLOBConfig, tokenList } from './rubicon.config';
 import { BigNumber, providers, Wallet } from 'ethers';
-import { parseUnits } from 'ethers/lib/utils';
+import { formatUnits, parseUnits } from 'ethers/lib/utils';
 import { StaticJsonRpcProvider } from '@ethersproject/providers';
 import axios from 'axios';
 
@@ -54,6 +55,14 @@ export enum OrderType {
   Dutch = "Dutch"
 }
 
+type Fill = {
+  outputToken: string;
+  inputToken: string;
+  outputAmount: string;
+  inputAmount: string;
+  timestamp: string;
+}
+
 export type OrderEntity = {
   type: OrderType;
   encodedOrder: string;
@@ -74,6 +83,14 @@ export type OrderEntity = {
   txHash?: string;
   // SettledAmount field is defined when the order has been filled and the fill amounts have been recorded.
   settledAmounts?: SettledAmount[];
+};
+
+const NETWORK_INFO: Record<number, any> = {
+  [Network.OPTIMISM_MAINNET]: 'https://graph-v2.rubicon.finance/subgraphs/name/Gladius_Optimism_V2',
+  [Network.ARBITRUM_MAINNET]: 'https://graph-v2.rubicon.finance/subgraphs/name/Gladius_Arbitrum_V2',
+  [Network.MAINNET]: 'https://graph-v2.rubicon.finance/subgraphs/name/Gladius_Ethereum_V2',
+  //Base Mainnet
+  [Network.BASE_MAINNET]: 'https://graph-v2.rubicon.finance/subgraphs/name/Gladius_Base_V2',
 };
 
 export class RubiconCLOB implements CLOBish {
@@ -97,12 +114,22 @@ export class RubiconCLOB implements CLOBish {
   public async loadMarkets() {
     // TODO: get all tokens in the token list
     const tokens = tokenList.tokens.filter(t => t.chainId === this._chain.chainId);
-    const USDC = tokens.find(t => t.symbol.toUpperCase() === "USDC");
-    const WETH = tokens.find(t => t.symbol.toUpperCase() === "WETH");
-    const TEST = tokens.find(t => t.symbol.toUpperCase() === "TEST");
 
-    this.parsedMarkets["WETH-USDC"] = { baseSymbol: "WETH", baseDecimals: WETH?.decimals, baseAddress: WETH?.address, quoteSymbol: "USDC", quoteDecimals: USDC?.decimals, quoteAddress: USDC?.address }
-    this.parsedMarkets["TEST-USDC"] = { baseSymbol: "TEST", baseDecimals: TEST?.decimals, baseAddress: TEST?.address, quoteSymbol: "USDC", quoteDecimals: USDC?.decimals, quoteAddress: USDC?.address }
+    tokens.forEach(base => {
+      const quotes = tokens.filter(t => t.address !== base.address)
+      quotes.forEach(quote => {
+        this.parsedMarkets[`${base.symbol.toUpperCase()}-${quote.symbol.toUpperCase()}`] = {
+          baseSymbol: base.symbol.toUpperCase(),
+          baseDecimals: base.decimals,
+          baseAddress: base.address,
+          quoteSymbol: quote.symbol,
+          quoteDecimals: quote.decimals,
+          quoteAddress: quote.address
+        }
+      })
+    })
+
+    console.log("Markets Loaded")
   }
 
   public static getInstance(chain: string, network: string): RubiconCLOB {
@@ -149,22 +176,211 @@ export class RubiconCLOB implements CLOBish {
     const { orders: asks } = (await asksResp.json()) as { cursor?: string; orders: OrderEntity[] };
     const { orders: bids } = (await bidsResp.json()) as { cursor?: string; orders: OrderEntity[] };
 
-    return {
-      buys: bids.map(b => ({ price: b.price.toString(), quantity: b.outputs[0].startAmount, timestamp: b.createdAt })),
-      sells: asks.map(a => ({ price: a.price.toString(), quantity: a.input.startAmount, timestamp: a.createdAt }))
+    const data = {
+      buys: bids
+        .filter((o) => {
+          const decodedOrder = GladiusOrder.parse(o.encodedOrder, this._chain.chainId);
+          if (o.orderStatus !== ORDER_STATUS.OPEN) {
+            return true;
+          }
+        
+          const now = Math.floor(new Date().getTime() / 1000);
+          if (decodedOrder.info.deadline >= now) {
+            return true;
+          }
+        
+          return false;
+        })
+        .map((element) => {
+          const pay = BigNumber.from(element.input.endAmount);
+          const buy = BigNumber.from(element.outputs[0].endAmount);
+          const formattedBuy = formatUnits(buy, marketInfo.baseDecimals);
+          const formattedPay = formatUnits(pay, marketInfo.quoteDecimals);
+
+          if (pay == undefined || formattedPay == '0.0' || formattedBuy == '0.0') {
+            return undefined;
+          }
+
+          const price = parseFloat(formattedPay) / parseFloat(formattedBuy);
+
+          const parsedOrder = GladiusOrder.parse(element.encodedOrder, this._chain.chainId);
+
+          const startingOutputAmount = BigNumber.from(element.outputs[0].startAmount);
+          const endingOutputAmount = BigNumber.from(element.outputs[0].endAmount);
+          const startTime = parsedOrder.info.decayStartTime;
+          const endTime = parsedOrder.info.decayEndTime;
+          const rawInputAmount = pay;
+
+          let out: PriceLevel = { price: price.toString(), quantity: formattedBuy, timestamp: element.createdAt };
+
+          if (startingOutputAmount && endingOutputAmount && startTime && endTime && rawInputAmount) {
+            out = {
+              ...out,
+              price: this.getOrderPrice(
+                price,
+                false,
+                rawInputAmount,
+                startTime,
+                endTime,
+                startingOutputAmount,
+                endingOutputAmount,
+                Date.now() / 1000,
+                marketInfo.quoteDecimals,
+                marketInfo.baseDecimals,
+              ).toString(),
+            };
+          }
+          return out;
+        })
+        .filter(o => !!o) as PriceLevel[],
+      sells: asks
+        .filter(o => {
+          const decodedOrder = GladiusOrder.parse(o.encodedOrder, this._chain.chainId);
+          if (o.orderStatus !== ORDER_STATUS.OPEN) {
+            return true;
+          }
+        
+          const now = Math.floor(new Date().getTime() / 1000);
+          if (decodedOrder.info.deadline >= now) {
+            return true;
+          }
+        
+          return false;
+        })
+        .map((element) => {
+          const pay = BigNumber.from(element.input.endAmount);
+          const buy = BigNumber.from(element.outputs[0].endAmount);
+          const formattedBuy = formatUnits(buy, marketInfo.quoteDecimals);
+          const formattedPay = formatUnits(pay, marketInfo.baseDecimals);
+          const rawInputAmount = pay;
+
+          if (pay == undefined || formattedPay == '0.0' || formattedBuy == '0.0') {
+            return undefined;
+          }
+
+          const parsedOrder = GladiusOrder.parse(element.encodedOrder, this._chain.chainId);
+
+          const startingOutputAmount = BigNumber.from(element.outputs[0].startAmount);
+          const endingOutputAmount = BigNumber.from(element.outputs[0].endAmount);
+          const startTime = parsedOrder.info.decayStartTime;
+          const endTime = parsedOrder.info.decayEndTime;
+
+          const price = parseFloat(formattedBuy) / parseFloat(formattedPay);
+          let out: PriceLevel = {
+            // quantity: pay,
+            price: price.toString(),
+            quantity: formattedPay,
+            timestamp: element.createdAt
+          };
+
+          if (startingOutputAmount && endingOutputAmount && startTime && endTime && rawInputAmount) {
+            out = {
+              ...out,
+              price: this.getOrderPrice(
+                price,
+                true,
+                rawInputAmount,
+                startTime,
+                endTime,
+                startingOutputAmount,
+                endingOutputAmount,
+                Date.now() / 1000,
+                marketInfo.quoteDecimals,
+                marketInfo.baseDecimals,
+              ).toString(),
+            };
+          }
+          return out;
+        })
+        .filter(o => !!o) as PriceLevel[]
     }
 
-    // return this if gladius order book is empty and hummingbot is using pmm strategy without external price feed
-    // return {
-    //   buys: [{ price: "0.01", quantity: "5", timestamp: Math.floor(Date.now() / 1000)  }],
-    //   sells: [{ price: "0.01", quantity: "5", timestamp: Math.floor(Date.now() / 1000)  }]
-    // }
+    return { ...data, sells: data.buys }
   }
 
   public async ticker(
     req: ClobTickerRequest
   ): Promise<{ markets: MarketInfo }> {
-    return await this.markets(req);
+
+    const marketInfo = this.parsedMarkets[req.market!]
+
+    if (!marketInfo) return { markets: {} }
+
+    const query = `{
+      sells: fills(
+        first: 1, 
+        orderBy: timestamp, 
+        orderDirection: desc, 
+        where: { inputToken: "${marketInfo.baseAddress}", outputToken: "${marketInfo.quoteAddress}"}
+      ){
+        inputToken
+        inputAmount
+        outputToken
+        outputAmount
+        timestamp
+      }
+      buys: fills(
+        first: 1, 
+        orderBy: timestamp, 
+        orderDirection: desc, 
+        where: { inputToken: "${marketInfo.quoteAddress}", outputToken: "${marketInfo.baseAddress}"}
+      ){
+        inputToken
+        inputAmount
+        outputToken
+        outputAmount
+        timestamp
+      }
+    }`
+
+    const response = await fetch(NETWORK_INFO[this._chain.chainId], {
+      method: 'POST',
+    
+      headers: {
+        "Content-Type": "application/json"
+      },
+    
+      body: JSON.stringify({ query })
+    })
+
+    const json: { data: { sells: Fill[], buys: Fill[] } } = await response.json();
+    const trades = [
+      json.data.sells.map(element => { 
+        const pay = BigNumber.from(element.inputAmount);
+        const buy = BigNumber.from(element.outputAmount);
+        const formattedBuy = formatUnits(buy, marketInfo.quoteDecimals);
+        const formattedPay = formatUnits(pay, marketInfo.baseDecimals);
+
+        if (pay == undefined || formattedPay == '0.0' || formattedBuy == '0.0') {
+          return undefined;
+        }
+
+        const price = parseFloat(formattedBuy) / parseFloat(formattedPay);
+        return { price, timestamp: element.timestamp }
+
+      })[0], 
+      json.data.buys.map(element => { 
+        const pay = BigNumber.from(element.inputAmount);
+        const buy = BigNumber.from(element.outputAmount);
+        const formattedBuy = formatUnits(buy, marketInfo.baseDecimals);
+        const formattedPay = formatUnits(pay, marketInfo.quoteDecimals);
+
+        if (pay == undefined || formattedPay == '0.0' || formattedBuy == '0.0') {
+          return undefined;
+        }
+
+        const price = parseFloat(formattedPay) / parseFloat(formattedBuy);
+        return { price, timestamp: element.timestamp }
+      })[0]
+    ];
+
+    const lastTrade = trades.sort((a,b) => {
+      if (!b) return -1;
+      if (!a) return 1;
+      return parseInt(a.timestamp) - parseInt(b.timestamp)
+    })[0]
+
+    return { markets: { price: (lastTrade?.price || 0) + (Math.random() * 10) } };
   }
 
   public async orders(
@@ -281,5 +497,67 @@ export class RubiconCLOB implements CLOBish {
       gasLimit: 0,
       gasCost: 0,
     };
+  }
+
+  private getOrderPrice(
+    givenReferencePrice: number,
+    isAsk: boolean,
+    inputAmount: BigNumber | undefined,
+    startTime?: number,
+    endTime?: number,
+    startingOutputAmount?: BigNumber,
+    endingOutputAmount?: BigNumber,
+    currentTimestamp = Date.now() / 1000,
+    quoteDecimals?: number,
+    tokenDecimals?: number,
+  ): number {
+    if (
+      !startTime ||
+      !endTime ||
+      !startingOutputAmount ||
+      !endingOutputAmount ||
+      !quoteDecimals ||
+      !tokenDecimals ||
+      !inputAmount
+    ) {
+      return givenReferencePrice;
+    }
+  
+    if (startingOutputAmount.eq(endingOutputAmount)) return givenReferencePrice;
+  
+    // TODO: handle case where currentTimestamp is before startTime
+    if (currentTimestamp <= startTime) {
+      return !isAsk
+        ? parseFloat(formatUnits(inputAmount, quoteDecimals)) /
+            parseFloat(formatUnits(startingOutputAmount, tokenDecimals))
+        : parseFloat(formatUnits(startingOutputAmount, tokenDecimals)) /
+            parseFloat(formatUnits(inputAmount, quoteDecimals));
+    }
+    if (currentTimestamp >= endTime) return givenReferencePrice;
+  
+    const totalDuration = endTime - startTime;
+    const elapsedTime = currentTimestamp - startTime;
+  
+    try {
+      const priceChange = endingOutputAmount.sub(startingOutputAmount);
+      const scaleFactor = BigNumber.from('1000000000000000000'); // 1e18 for ether scaling
+      const scaledPriceChange = priceChange.mul(scaleFactor);
+      const currentChange = scaledPriceChange
+        .mul(BigNumber.from(Math.floor(elapsedTime)))
+        .div(BigNumber.from(totalDuration))
+        .div(scaleFactor);
+  
+      const currentOutputAmount = startingOutputAmount.add(currentChange);
+      // return parseFloat(formatUnits(currentPrice, tokenDecimals));
+  
+      return !isAsk
+        ? parseFloat(formatUnits(inputAmount, quoteDecimals)) /
+            parseFloat(formatUnits(currentOutputAmount, tokenDecimals))
+        : parseFloat(formatUnits(currentOutputAmount, quoteDecimals)) /
+            parseFloat(formatUnits(inputAmount, tokenDecimals));
+    } catch (error) {
+      console.log('error in order book dutch math', error);
+      return givenReferencePrice;
+    }
   }
 }

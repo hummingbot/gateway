@@ -20,7 +20,7 @@ export namespace RubiconCLOBConfig {
     tradingTypes: ['CLOB_SPOT'],
     chainType: 'EVM',
     allowedSlippage: "2/100",
-    availableNetworks: [ { chain: 'ethereum', networks: ['mainnet', 'arbitrum', 'arbitrum_sepolia', 'optimism', 'base'] } ],
+    availableNetworks: [ { chain: 'ethereum', networks: ['mainnet', 'arbitrum', 'arbitrumSepolia', 'optimism', 'base'] } ],
     url: "https://gladius.rubicon.finance",
     pk: process.env.RUBICON_GATEWAY_WALLET_PK,
   };
@@ -60,181 +60,11 @@ export const tokenList: TokenList = {
     patch: 0,
   },
   tokens: [
-    // Optimism Kovan v1
     // Note: all tokens need to have their associated underlyingAssetGeckoID so we can query Coin Gecko and get price info
     // *NOTE THE FIRST COIN IN THE LIST WILL BE THE DEFAULT SELECTED TOKEN*
     // ** ERC20s **
     // **** TODO ENFORCE TYPE CAST ON REQUIRED EXTENSIONS ****
-    {
-      name: 'Optimism',
-      symbol: 'OP',
-      chainId: Network.OPTIMISM_KOVAN,
-      address: '0x1891B8e7c129B99860f6D58CEFB41D00650F6249',
-      decimals: 18, //TODO: pools formatting
-      // 
-      extensions: {
-        underlyingAssetGeckoID: 'optimism',
-      },
-    },
 
-    {
-      symbol: 'WETH',
-      name: 'Wrapped Ethereum',
-      decimals: 18,
-      
-      address: '0x4200000000000000000000000000000000000006',
-      chainId: Network.OPTIMISM_KOVAN,
-      extensions: {
-        underlyingAssetGeckoID: 'ethereum',
-      },
-    },
-    {
-      symbol: 'ETH2',
-      name: 'Ethereum 2.0',
-      decimals: 18,
-      address: '0x79265ee50c18C6967A1F0db404DC1dFa2B28a8FA',
-      chainId: Network.OPTIMISM_KOVAN,
-      extensions: {
-        underlyingAssetGeckoID: 'ethereum',
-      },
-    },
-    {
-      symbol: 'WBTC',
-      name: 'Wrapped Bitcoin',
-      decimals: 8,
-      
-      address: '0xaBb0bd8f9BAFa670c8496AF9609BD42D3F75Bd15',
-      chainId: Network.OPTIMISM_KOVAN,
-    },
-    {
-      symbol: 'WETH',
-      name: 'Wrapped Ethereum',
-      decimals: 18,
-      
-      address: '0x4200000000000000000000000000000000000006',
-      chainId: Network.OPTIMISM_KOVAN,
-      extensions: {
-        underlyingAssetGeckoID: 'ethereum',
-      },
-    },
-    {
-      symbol: 'SNX',
-      name: 'Synthetix',
-      decimals: 18,
-      
-      address: '0x4dd40a266588Fa152E14973aBb6531541972aE63',
-      chainId: Network.OPTIMISM_KOVAN,
-      extensions: {
-        unsupportedQuotes: {
-          USDT: true,
-          DAI: true,
-        },
-      },
-    },
-
-    // ** Quotes  **
-    {
-      name: 'USDC Stablecoin',
-      symbol: 'USDC',
-      chainId: Network.OPTIMISM_KOVAN,
-      address: '0x940578F6D9f9ffD9621F69dbB5B24Fd380799772',
-      decimals: 6,
-      
-      extensions: {
-        quote: true,
-        underlyingAssetGeckoID: 'usd-coin',
-      },
-    },
-    {
-      name: 'DAI Stablecoin',
-      symbol: 'DAI',
-      chainId: Network.OPTIMISM_KOVAN,
-      address: '0xEb22F82de678852B8dff065768490B881DD0116a',
-      decimals: 18,
-      
-      extensions: {
-        quote: true,
-        underlyingAssetGeckoID: 'dai',
-      },
-    },
-    {
-      name: 'USDT Stablecoin',
-      symbol: 'USDT',
-      chainId: Network.OPTIMISM_KOVAN,
-      address: '0x655cb52BE3131713638AC812d6cC52256F32a3A5',
-      decimals: 6,
-      
-      extensions: {
-        quote: true,
-      },
-    },
-
-    // ** BathTokens ** TODO: pull dynamically?
-    {
-      name: 'BathToken v1',
-      symbol: 'bathUSDC',
-      chainId: Network.OPTIMISM_KOVAN,
-      address: '0x4853C571552F0AA43D528b7141Ebdfe17Cd1eAd8',
-      decimals: 6, //TODO: pools formatting????
-      
-      extensions: {
-        underlyingTicker: 'USDC',
-        underlyingAssetGeckoID: 'usd-coin',
-      },
-    },
-    // TEST TOKENS
-    {
-      name: 'BathToken v1',
-      symbol: 'bathGR8',
-      chainId: Network.OPTIMISM_KOVAN,
-      address: '0xdb42b8D3863138AA1e40544Cfc5340aAaEFcd169',
-      decimals: 18, //TODO: pools formatting
-      // 
-      extensions: {
-        underlyingTicker: 'GR8',
-        rewardsLive: true,
-        underlyingAssetGeckoID: 'ethereum',
-      },
-    },
-    {
-      name: 'Rubicon Magnus',
-      symbol: 'GR8',
-      chainId: Network.OPTIMISM_KOVAN,
-      address: '0xF234066d9C7e0B296517598098F1DE491656c7bc',
-      decimals: 18, //TODO: pools formatting
-      // 
-      extensions: {
-        underlyingAssetGeckoID: 'ethereum',
-      },
-    },
-    // Kovan OP
-    {
-      name: 'BathToken v1',
-      symbol: 'bathOP',
-      chainId: Network.OPTIMISM_KOVAN,
-      address: '0x2deC1E6919413Ac863C834630EE9F68DF69D4d9B',
-      decimals: 18, //TODO: pools formatting
-      // 
-      extensions: {
-        underlyingTicker: 'OP',
-        // rewardsLive: true,
-        underlyingAssetGeckoID: 'optimism',
-      },
-    },
-    {
-      name: 'BathToken v1',
-      symbol: 'bathETH',
-      chainId: Network.OPTIMISM_KOVAN,
-      address: '0x5790AedddfB25663f7dd58261De8E96274A82BAd',
-      decimals: 18,
-      
-      extensions: {
-        underlyingTicker: 'WETH',
-        underlyingAssetGeckoID: 'ethereum',
-        //NEEDED FOR ANY INTERACTION THAT IS WRAPPER FOR NATIVE ASSET
-        isNativeAssetWrapper: true, // IMPORTANT
-      },
-    },
     // ** V1 MAINNET **
 
     // ** QUOTES **

@@ -46,7 +46,7 @@ networks:
     nodeURL: https://rpc.ankr.com/base
     nativeCurrencySymbol: ETH
     gasPriceRefreshInterval: 60
-  arbitrum_sepolia:
+  arbitrumSepolia:
     chainID: 421614
     tokenListType: FILE
     tokenListSource: /home/gateway/conf/lists/arbitrum_sepolia_tokens.json
