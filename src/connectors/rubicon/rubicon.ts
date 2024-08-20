@@ -93,13 +93,15 @@ const NETWORK_INFO: Record<number, any> = {
   [Network.BASE_MAINNET]: 'https://graph-v2.rubicon.finance/subgraphs/name/Gladius_Base_V2',
 };
 
+// const configManager = ConfigManagerV2.getInstance();
+
 export class RubiconCLOB implements CLOBish {
   private _chain;
   private _ready: boolean = false;
   public parsedMarkets: MarketInfo = [];
   private static _instances: { [name: string]: RubiconCLOB };
-  private wallet: Wallet;
   private provider: StaticJsonRpcProvider;
+  private privateKeys: Record<string, string>;
 
 
   private constructor(chain: string, network: string) {
@@ -108,7 +110,7 @@ export class RubiconCLOB implements CLOBish {
     } else throw Error('Chain not supported.');
 
     this.provider = new providers.StaticJsonRpcProvider(this._chain.rpcUrl, this._chain.chainId);
-    this.wallet = new Wallet(RubiconCLOBConfig.config.pk).connect(this.provider)
+    this.privateKeys = RubiconCLOBConfig.config.privateKeys;
   }
 
   public async loadMarkets() {
@@ -408,6 +410,10 @@ export class RubiconCLOB implements CLOBish {
     req: ClobPostOrderRequest
   ): Promise<{ txHash: string; id: string }> {
 
+    const pk = this.privateKeys[req.address]
+    if (!pk) throw new Error(`Key for ${req.address} not found`)
+
+    const wallet = new Wallet(pk).connect(this.provider)
     const marketInfo = this.parsedMarkets[req.market]
     const tokens = tokenList.tokens.filter(t => t.chainId === this._chain.chainId);
     const quote = tokens.find(t => t.address === marketInfo.quoteAddress)!;
@@ -450,7 +456,7 @@ export class RubiconCLOB implements CLOBish {
       .build()
 
     const { domain, types, values } = order.permitData();
-    const signature = await this.wallet._signTypedData(domain, types, values);
+    const signature = await wallet._signTypedData(domain, types, values);
     const serializedOrder = order.serialize();
 
     const payload = {
@@ -472,13 +478,18 @@ export class RubiconCLOB implements CLOBish {
     req: ClobDeleteOrderRequest
   ): Promise<{ txHash: string, id: string }> {
 
+    const pk = this.privateKeys[req.address]
+    if (!pk) throw new Error(`Key for ${req.address} not found`)
+
+    const wallet = new Wallet(pk).connect(this.provider)
+    
     axios({
       url: `${RubiconCLOBConfig.config.url}/dutch-auction/cancel`,
       method: 'post',
       data: {
-        signature: await this.wallet.signMessage(req.orderId),
+        signature: await wallet.signMessage(req.orderId),
         hash: req.orderId,
-        swapper: this.wallet.address
+        swapper: wallet.address
       }
     })
 

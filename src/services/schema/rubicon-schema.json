@@ -5,30 +5,14 @@
     "allowedSlippage": { "type": "string" },
     "gasLimitEstimate": { "type": "integer" },
     "ttl": { "type": "integer" },
-    "networks": {
+    "privateKeys": {
       "type": "object",
       "patternProperties": {
-        "^\\w+$": {
-          "type": "object",
-          "properties": {
-            "chainID": { "type": "integer" },
-            "nodeURL": { "type": "string" },
-            "tokenListType": { "type": "string" },
-            "tokenListSource": { "type": "string" },
-            "nativeCurrencySymbol": { "type": "string" },
-            "gasPriceRefreshInterval": { "type": "number" }
-          },
-          "required": [
-            "chainID",
-            "nodeURL",
-            "nativeCurrencySymbol"
-          ],
-          "additionalProperties": false
-        }
+        "^0x\\w{0,40}$": { "type": "string" }
       },
       "additionalProperties": false
     }
   },
   "additionalProperties": false,
-  "required": ["allowedSlippage", "gasLimitEstimate", "ttl"]
+  "required": ["allowedSlippage", "gasLimitEstimate", "ttl", "privateKeys"]
 }

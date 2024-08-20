@@ -1,5 +1,8 @@
 import { TokenList } from '@uniswap/token-lists';
 import { AvailableNetworks } from '../../services/config-manager-types';
+import { ConfigManagerV2 } from '../../services/config-manager-v2';
+
+const configManager = ConfigManagerV2.getInstance();
 
 export namespace RubiconCLOBConfig {
   export interface NetworkConfig {
@@ -8,12 +11,7 @@ export namespace RubiconCLOBConfig {
     chainType: string;
     availableNetworks: Array<AvailableNetworks>;
     url: string;
-    pk: string;
-  }
-
-  if (!process.env.RUBICON_GATEWAY_WALLET_PK) {
-    console.log("env variable RUBICON_GATEWAY_WALLET_PK not set")
-    process.exit(1)
+    privateKeys: Record<string, string>;
   }
 
   export const config: NetworkConfig = {
@@ -22,7 +20,7 @@ export namespace RubiconCLOBConfig {
     allowedSlippage: "2/100",
     availableNetworks: [ { chain: 'ethereum', networks: ['mainnet', 'arbitrum', 'arbitrumSepolia', 'optimism', 'base'] } ],
     url: "https://gladius.rubicon.finance",
-    pk: process.env.RUBICON_GATEWAY_WALLET_PK,
+    privateKeys: configManager.get('rubicon.privateKeys')
   };
 }
 
