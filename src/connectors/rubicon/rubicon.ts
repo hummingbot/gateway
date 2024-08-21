@@ -20,7 +20,11 @@ import { Network, RubiconCLOBConfig, tokenList } from './rubicon.config';
 import { BigNumber, providers } from 'ethers';
 import { formatUnits, parseUnits } from 'ethers/lib/utils';
 import { StaticJsonRpcProvider } from '@ethersproject/providers';
+<<<<<<< HEAD
 import axios, { AxiosError } from 'axios';
+=======
+import axios from 'axios';
+>>>>>>> main
 import { isFractionString } from '../../services/validators';
 import { percentRegexp } from '../../services/config-manager-v2';
 
