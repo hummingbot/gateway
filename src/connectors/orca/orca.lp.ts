@@ -58,6 +58,13 @@ export class Orca implements OrcaLPish {
   }
 
   async getPositions(): Promise<PositionInfo> {
+    if (!this.ready()) {
+      throw new InitializationError(
+        SERVICE_UNITIALIZED_ERROR_MESSAGE('Orca'),
+        SERVICE_UNITIALIZED_ERROR_CODE
+      );
+    }
+
     return {
       token0: "SOL",
       token1: "USDC",

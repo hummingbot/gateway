@@ -64,6 +64,9 @@ import {
   estimateGas as plentyEstimateGas,
 } from '../connectors/plenty/plenty.controllers';
 import {
+  positionInfo as orcaPositionInfo,
+} from '../connectors/orca/orca.controllers';
+import {
   getInitializedChain,
   getConnector,
 } from '../services/connection-manager';
@@ -76,11 +79,13 @@ import {
   Tezosish,
   Uniswapish,
   UniswapLPish,
+  OrcaLPish
 } from '../services/common-interfaces';
 import { Algorand } from '../chains/algorand/algorand';
 import { Tinyman } from '../connectors/tinyman/tinyman';
 import { Plenty } from '../connectors/plenty/plenty';
 import { Osmosis } from '../chains/osmosis/osmosis';
+import { Solana } from '../chains/solana/solana';
 import { Carbonamm } from '../connectors/carbon/carbonAMM';
 
 export async function price(req: PriceRequest): Promise<PriceResponse> {
@@ -191,9 +196,17 @@ export async function collectFees(
 export async function positionInfo(
   req: PositionRequest
 ): Promise<PositionResponse> {
-  const chain = await getInitializedChain<Ethereumish | Osmosis>(req.chain, req.network);
+  const chain = await getInitializedChain<Ethereumish | Osmosis | Solana>(req.chain, req.network);
   if (chain instanceof Osmosis){
     return chain.controller.poolPositions(chain as unknown as Osmosis, req);
+  }
+  if (chain instanceof Solana){
+    const connector: OrcaLPish = await getConnector<OrcaLPish>(
+      req.chain,
+      req.network,
+      req.connector
+    );
+    return orcaPositionInfo(connector, req);
   }
   const connector: UniswapLPish = await getConnector<UniswapLPish>(
     req.chain,
