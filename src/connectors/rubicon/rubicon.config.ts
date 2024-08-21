@@ -17,7 +17,7 @@ export namespace RubiconCLOBConfig {
     tradingTypes: ['CLOB_SPOT'],
     chainType: 'EVM',
     allowedSlippage: configManager.get('rubicon.allowedSlippage'),
-    availableNetworks: [ { chain: 'ethereum', networks: ['mainnet', 'arbitrum', 'arbitrumSepolia', 'optimism', 'base'] } ],
+    availableNetworks: [ { chain: 'ethereum', networks: ['mainnet', 'arbitrum', 'arbitrumsepolia', 'optimism', 'base'] } ],
     url: "https://gladius.rubicon.finance",
   };
 }
