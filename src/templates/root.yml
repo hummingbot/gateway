@@ -135,3 +135,7 @@ configurations:
   $namespace balancer:
     configurationPath: balancer.yml
     schemaPath: cronos-connector-schema.json
+
+  $namespace rubicon:
+    configurationPath: rubicon.yml
+    schemaPath: rubicon-schema.json

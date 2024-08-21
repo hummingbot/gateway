@@ -220,6 +220,8 @@ export class Ethereum extends EthereumBase implements Ethereumish {
       spender = curve.router;
     } else if (reqSpender === 'balancer') {
       spender = BalancerConfig.config.routerAddress(this._chain);
+    } else if (reqSpender === 'rubicon') {
+      spender = '0x000000000022d473030f116ddee9f6b43ac78ba3'
     } else {
       spender = reqSpender;
     }
