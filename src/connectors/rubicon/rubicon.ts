@@ -20,7 +20,11 @@ import { Network, RubiconCLOBConfig, tokenList } from './rubicon.config';
 import { BigNumber, providers } from 'ethers';
 import { formatUnits, parseUnits } from 'ethers/lib/utils';
 import { StaticJsonRpcProvider } from '@ethersproject/providers';
+<<<<<<< HEAD
+import axios, { AxiosError } from 'axios';
+=======
 import axios from 'axios';
+>>>>>>> main
 import { isFractionString } from '../../services/validators';
 import { percentRegexp } from '../../services/config-manager-v2';
 
@@ -305,7 +309,7 @@ export class RubiconCLOB implements CLOBish {
 
     const marketInfo = this.parsedMarkets[req.market!]
 
-    if (!marketInfo) return { markets: {} }
+    if (!marketInfo || !NETWORK_INFO[this._chain.chainId]) return { markets: {} }
 
     const query = `{
       sells: fills(
@@ -458,16 +462,25 @@ export class RubiconCLOB implements CLOBish {
     const payload = {
       encodedOrder: serializedOrder,
       signature,
-      chain: this._chain.chainId,
+      chainId: this._chain.chainId,
     };
 
-    const postResponse = await axios({
-      method: 'post',
-      url: `${RubiconCLOBConfig.config.url}/dutch-auction/order`,
-      data: payload,
-    })
+    try {
+      const postResponse = await axios({
+        method: 'post',
+        url: `${RubiconCLOBConfig.config.url}/dutch-auction/order`,
+        data: payload,
+      })
 
-    return { txHash: "", id: postResponse.data.hash };
+      return { txHash: "", id: postResponse.data.hash };
+
+    } catch (error) {
+      if (error instanceof AxiosError) {
+        throw new Error(error.response?.data ? error.response.data.detail : 'Trade failed: Unknown error');
+      } else {
+        throw error;
+      }
+    }
   }
 
   public async deleteOrder(
@@ -476,17 +489,24 @@ export class RubiconCLOB implements CLOBish {
 
     const wallet = await this._chain.getWallet(req.address)
 
-    axios({
-      url: `${RubiconCLOBConfig.config.url}/dutch-auction/cancel`,
-      method: 'post',
-      data: {
-        signature: await wallet.signMessage(req.orderId),
-        hash: req.orderId,
-        swapper: wallet.address
+    try {
+      await axios({
+        url: `${RubiconCLOBConfig.config.url}/dutch-auction/cancel`,
+        method: 'post',
+        data: {
+          signature: await wallet.signMessage(req.orderId),
+          hash: req.orderId,
+          swapper: wallet.address
+        }
+      })
+      return { txHash: "", id: req.orderId };
+    } catch(error) {
+      if (error instanceof AxiosError) {
+        throw new Error(error.response?.data ? error.response.data.detail : 'Trade failed: Unknown error');
+      } else {
+        throw error;
       }
-    })
-
-    return { txHash: "", id: req.orderId };
+    }
   }
 
   public estimateGas(_req: NetworkSelectionRequest): {
