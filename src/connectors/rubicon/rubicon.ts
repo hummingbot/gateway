@@ -17,8 +17,8 @@ import {
   PriceLevel,
 } from '../../services/common-interfaces';
 import { Network, RubiconCLOBConfig, tokenList } from './rubicon.config';
-import { BigNumber, providers, Wallet } from 'ethers';
-import { formatUnits, getAddress, parseUnits } from 'ethers/lib/utils';
+import { BigNumber, providers } from 'ethers';
+import { formatUnits, parseUnits } from 'ethers/lib/utils';
 import { StaticJsonRpcProvider } from '@ethersproject/providers';
 import axios from 'axios';
 import { isFractionString } from '../../services/validators';
@@ -103,20 +103,13 @@ export class RubiconCLOB implements CLOBish {
   public parsedMarkets: MarketInfo = [];
   private static _instances: { [name: string]: RubiconCLOB };
   private provider: StaticJsonRpcProvider;
-  private privateKeys: Record<string, string>;
 
   private constructor(chain: string, network: string) {
     if (chain === 'ethereum') {
       this._chain = Ethereum.getInstance(network);
     } else throw Error('Chain not supported.');
 
-    if (!process.env.HUMMINGBOT_WALLET_ADDRESS) throw Error("Env variable HUMMINGBOT_WALLET_ADDRESS not set")
-    if (!process.env.HUMMINGBOT_WALLET_PK) throw Error("Env variable HUMMINGBOT_WALLET_PK not set")
-
     this.provider = new providers.StaticJsonRpcProvider(this._chain.rpcUrl, this._chain.chainId);
-    this.privateKeys = {
-      [getAddress(process.env.HUMMINGBOT_WALLET_ADDRESS)]: process.env.HUMMINGBOT_WALLET_PK
-    }
   }
 
   public async loadMarkets() {
@@ -416,10 +409,7 @@ export class RubiconCLOB implements CLOBish {
     req: ClobPostOrderRequest
   ): Promise<{ txHash: string; id: string }> {
 
-    const pk = this.privateKeys[getAddress(req.address)]
-    if (!pk) throw new Error(`Key for ${req.address} not found`)
-
-    const wallet = new Wallet(pk).connect(this.provider)
+    const wallet = await this._chain.getWallet(req.address)
     const marketInfo = this.parsedMarkets[req.market]
     const tokens = tokenList.tokens.filter(t => t.chainId === this._chain.chainId);
     const quote = tokens.find(t => t.address === marketInfo.quoteAddress)!;
@@ -491,11 +481,8 @@ export class RubiconCLOB implements CLOBish {
     req: ClobDeleteOrderRequest
   ): Promise<{ txHash: string, id: string }> {
 
-    const pk = this.privateKeys[getAddress(req.address)]
-    if (!pk) throw new Error(`Key for ${req.address} not found`)
+    const wallet = await this._chain.getWallet(req.address)
 
-    const wallet = new Wallet(pk).connect(this.provider)
-    
     axios({
       url: `${RubiconCLOBConfig.config.url}/dutch-auction/cancel`,
       method: 'post',
