@@ -18,9 +18,11 @@ import {
 } from '../../services/common-interfaces';
 import { Network, RubiconCLOBConfig, tokenList } from './rubicon.config';
 import { BigNumber, providers, Wallet } from 'ethers';
-import { formatUnits, parseUnits } from 'ethers/lib/utils';
+import { formatUnits, getAddress, parseUnits } from 'ethers/lib/utils';
 import { StaticJsonRpcProvider } from '@ethersproject/providers';
 import axios from 'axios';
+import { isFractionString } from '../../services/validators';
+import { percentRegexp } from '../../services/config-manager-v2';
 
 export enum ORDER_STATUS {
   OPEN = 'open',
@@ -103,14 +105,18 @@ export class RubiconCLOB implements CLOBish {
   private provider: StaticJsonRpcProvider;
   private privateKeys: Record<string, string>;
 
-
   private constructor(chain: string, network: string) {
     if (chain === 'ethereum') {
       this._chain = Ethereum.getInstance(network);
     } else throw Error('Chain not supported.');
 
+    if (!process.env.HUMMINGBOT_WALLET_ADDRESS) throw Error("Env variable HUMMINGBOT_WALLET_ADDRESS not set")
+    if (!process.env.HUMMINGBOT_WALLET_PK) throw Error("Env variable HUMMINGBOT_WALLET_PK not set")
+
     this.provider = new providers.StaticJsonRpcProvider(this._chain.rpcUrl, this._chain.chainId);
-    this.privateKeys = RubiconCLOBConfig.config.privateKeys;
+    this.privateKeys = {
+      [getAddress(process.env.HUMMINGBOT_WALLET_ADDRESS)]: process.env.HUMMINGBOT_WALLET_PK
+    }
   }
 
   public async loadMarkets() {
@@ -410,7 +416,7 @@ export class RubiconCLOB implements CLOBish {
     req: ClobPostOrderRequest
   ): Promise<{ txHash: string; id: string }> {
 
-    const pk = this.privateKeys[req.address]
+    const pk = this.privateKeys[getAddress(req.address)]
     if (!pk) throw new Error(`Key for ${req.address} not found`)
 
     const wallet = new Wallet(pk).connect(this.provider)
@@ -433,6 +439,13 @@ export class RubiconCLOB implements CLOBish {
       ? parseUnits(parseFloat(req.amount).toFixed(token.decimals), token.decimals)
       : parseUnits((parseFloat(req.amount) * parseFloat(req.price)).toFixed(quote.decimals), quote.decimals);
 
+    let slippageTolerance = this.getAllowedSlippage() / 100;
+
+    const startingOutputFactor = 1;
+    const startingOutputAmount = parseFloat(formatUnits(outputAmount, outputToken.decimals)) * startingOutputFactor;
+    const endingOutputFactor = 1 - slippageTolerance;
+    const endingOutputAmount = parseFloat(formatUnits(outputAmount, outputToken.decimals)) * endingOutputFactor;
+
     const orderBuilder = new GladiusOrderBuilder(this._chain.chainId);
 
     const order = orderBuilder
@@ -448,8 +461,8 @@ export class RubiconCLOB implements CLOBish {
       })
       .output({
         token: outputToken.address,
-        startAmount: outputAmount,
-        endAmount: outputAmount,
+        startAmount: parseUnits(startingOutputAmount.toFixed(outputToken.decimals), outputToken.decimals),
+        endAmount: parseUnits(endingOutputAmount.toFixed(outputToken.decimals), outputToken.decimals),
         recipient: req.address,
       })
       .fillThreshold(inputAmount)
@@ -478,7 +491,7 @@ export class RubiconCLOB implements CLOBish {
     req: ClobDeleteOrderRequest
   ): Promise<{ txHash: string, id: string }> {
 
-    const pk = this.privateKeys[req.address]
+    const pk = this.privateKeys[getAddress(req.address)]
     if (!pk) throw new Error(`Key for ${req.address} not found`)
 
     const wallet = new Wallet(pk).connect(this.provider)
@@ -570,5 +583,19 @@ export class RubiconCLOB implements CLOBish {
       console.log('error in order book dutch math', error);
       return givenReferencePrice;
     }
+  }
+
+  public getAllowedSlippage(allowedSlippageStr?: string): number {
+    if (allowedSlippageStr != null && isFractionString(allowedSlippageStr)) {
+      const fractionSplit = allowedSlippageStr.split('/');
+      return Number((Number(fractionSplit[0]) / Number(fractionSplit[1]) * 100).toFixed(0));
+    }
+
+    const allowedSlippage = RubiconCLOBConfig.config.allowedSlippage;
+    const matches = allowedSlippage.match(percentRegexp);
+    if (matches) return Number((Number(matches[1]) / Number(matches[2]) * 100).toFixed(0));
+    throw new Error(
+      'Encountered a malformed percent string in the config for ALLOWED_SLIPPAGE.'
+    );
   }
 }

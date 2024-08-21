@@ -11,16 +11,14 @@ export namespace RubiconCLOBConfig {
     chainType: string;
     availableNetworks: Array<AvailableNetworks>;
     url: string;
-    privateKeys: Record<string, string>;
   }
 
   export const config: NetworkConfig = {
     tradingTypes: ['CLOB_SPOT'],
     chainType: 'EVM',
-    allowedSlippage: "2/100",
+    allowedSlippage: configManager.get('rubicon.allowedSlippage'),
     availableNetworks: [ { chain: 'ethereum', networks: ['mainnet', 'arbitrum', 'arbitrumSepolia', 'optimism', 'base'] } ],
     url: "https://gladius.rubicon.finance",
-    privateKeys: configManager.get('rubicon.privateKeys')
   };
 }
 
