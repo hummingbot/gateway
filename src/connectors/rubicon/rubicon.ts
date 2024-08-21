@@ -305,7 +305,7 @@ export class RubiconCLOB implements CLOBish {
 
     const marketInfo = this.parsedMarkets[req.market!]
 
-    if (!marketInfo) return { markets: {} }
+    if (!marketInfo || !NETWORK_INFO[this._chain.chainId]) return { markets: {} }
 
     const query = `{
       sells: fills(
