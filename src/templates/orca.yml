@@ -3,7 +3,7 @@
 allowedSlippage: '1/100'  
 
 contractAddresses:
-  mainnet-beta:
-      whirlpoolsConfig: '0xE54Ca86531e17Ef3616d22Ca28b0D458b6C89106'
+  mainnet:
+      routerAddress: '0xE54Ca86531e17Ef3616d22Ca28b0D458b6C89106'
   devnet:
-      whirlpoolsConfig: '0xE54Ca86531e17Ef3616d22Ca28b0D458b6C89106'
+      routerAddress: '0xE54Ca86531e17Ef3616d22Ca28b0D458b6C89106'

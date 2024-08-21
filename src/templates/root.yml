@@ -139,6 +139,11 @@ configurations:
   $namespace solana:
     configurationPath: solana.yml
     schemaPath: solana-schema.json
+
   $namespace telos:
     configurationPath: telos.yml
     schemaPath: ethereum-schema.json
+
+  $namespace orca:
+    configurationPath: orca.yml
+    schemaPath: orca-schema.json

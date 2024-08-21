@@ -30,6 +30,7 @@ import {
   UniswapLPish,
   Xdcish,
   Tezosish,
+  OrcaLPish,
 } from './common-interfaces';
 import { Traderjoe } from '../connectors/traderjoe/traderjoe';
 import { Sushiswap } from '../connectors/sushiswap/sushiswap';
@@ -48,6 +49,7 @@ import { PancakeswapLP } from '../connectors/pancakeswap/pancakeswap.lp';
 import { XRPLCLOB } from '../connectors/xrpl/xrpl';
 import { Carbonamm } from '../connectors/carbon/carbonAMM';
 import { Balancer } from '../connectors/balancer/balancer';
+import { Orca } from '../connectors/orca/orca.lp';
 
 export type ChainUnion =
   | Algorand
@@ -170,6 +172,7 @@ export type ConnectorUnion =
   | XRPLCLOB
   | Curve
   | KujiraCLOB
+  | OrcaLPish
 
 export type Connector<T> = T extends Uniswapish
   ? Uniswapish
@@ -189,7 +192,9 @@ export type Connector<T> = T extends Uniswapish
                 ? XRPLCLOB
                 : T extends KujiraCLOB
                   ? KujiraCLOB
-                    : never;
+                    : T extends OrcaLPish
+                    ? OrcaLPish
+                      : never;
 
 export async function getConnector<T>(
   chain: string,
@@ -243,6 +248,8 @@ export async function getConnector<T>(
     connectorInstance = Tinyman.getInstance(network);
   } else if (connector === 'plenty') {
     connectorInstance = Plenty.getInstance(network);
+  } else if (connector === 'orca') {
+    connectorInstance = Orca.getInstance(chain, network);
   } else {
     throw new Error('unsupported chain or connector');
   }

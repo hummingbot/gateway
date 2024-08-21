@@ -16,7 +16,7 @@ export class Orca implements OrcaLPish {
   // private tokenList: TokenInfo[] = [];
 
   private constructor(chain: string, network: string) {
-    this._whirlpoolsConfig = OrcaConfig.config.whirlpoolsConfig(network);
+    this._whirlpoolsConfig = OrcaConfig.config.routerAddress(network);
     if (chain === 'solana') {
       this.chain = Solana.getInstance(network);
     } else {

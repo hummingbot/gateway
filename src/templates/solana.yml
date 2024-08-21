@@ -1,5 +1,5 @@
 networks:
-  mainnet-beta:
+  mainnet:
     nodeURL: https://api.mainnet-beta.solana.com
     tokenListType: 'FILE'
     tokenListSource: '/home/gateway/conf/lists/solflare-tokenlist.json'
