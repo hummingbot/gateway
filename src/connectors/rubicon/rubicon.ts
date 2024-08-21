@@ -429,13 +429,6 @@ export class RubiconCLOB implements CLOBish {
       ? parseUnits(parseFloat(req.amount).toFixed(token.decimals), token.decimals)
       : parseUnits((parseFloat(req.amount) * parseFloat(req.price)).toFixed(quote.decimals), quote.decimals);
 
-    let slippageTolerance = this.getAllowedSlippage() / 100;
-
-    const startingOutputFactor = 1;
-    const startingOutputAmount = parseFloat(formatUnits(outputAmount, outputToken.decimals)) * startingOutputFactor;
-    const endingOutputFactor = 1 - slippageTolerance;
-    const endingOutputAmount = parseFloat(formatUnits(outputAmount, outputToken.decimals)) * endingOutputFactor;
-
     const orderBuilder = new GladiusOrderBuilder(this._chain.chainId);
 
     const order = orderBuilder
@@ -451,8 +444,8 @@ export class RubiconCLOB implements CLOBish {
       })
       .output({
         token: outputToken.address,
-        startAmount: parseUnits(startingOutputAmount.toFixed(outputToken.decimals), outputToken.decimals),
-        endAmount: parseUnits(endingOutputAmount.toFixed(outputToken.decimals), outputToken.decimals),
+        startAmount: outputAmount,
+        endAmount: outputAmount,
         recipient: req.address,
       })
       .fillThreshold(inputAmount)
