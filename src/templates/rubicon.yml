@@ -12,5 +12,4 @@ ttl: 600
 # privateKeys: a map of addresses used by hummingbot to private key in order to sign trades
 # since there is no authentication required to post to the server
 privateKeys:
-  #address: #key
-  #address2: #key2
+  '0x0000000000000000000000000000000000000000': 000000000000000000fakeprivatekey00000000000000000000000000000000
