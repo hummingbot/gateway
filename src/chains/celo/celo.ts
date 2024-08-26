@@ -2,21 +2,15 @@ import abi from '../ethereum/ethereum.abi.json';
 import { logger } from '../../services/logger';
 import { Contract, Transaction, Wallet } from 'ethers';
 import { EthereumBase } from '../ethereum/ethereum-base';
-import { getEthereumConfig as getAvalancheConfig } from '../ethereum/ethereum.config';
+import { getEthereumConfig as getCeloConfig } from '../ethereum/ethereum.config';
 import { Provider } from '@ethersproject/abstract-provider';
-import { TraderjoeConfig } from '../../connectors/traderjoe/traderjoe.config';
-import { PangolinConfig } from '../../connectors/pangolin/pangolin.config';
-import { OpenoceanConfig } from '../../connectors/openocean/openocean.config';
 import { Ethereumish } from '../../services/common-interfaces';
-import { UniswapConfig } from '../../connectors/uniswap/uniswap.config';
-import { SushiswapConfig } from '../../connectors/sushiswap/sushiswap.config';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { EVMController } from '../ethereum/evm.controllers';
-import { Curve } from '../../connectors/curve/curve';
-import { BalancerConfig } from '../../connectors/balancer/balancer.config';
+import { UniswapConfig } from '../../connectors/uniswap/uniswap.config';
 
-export class Avalanche extends EthereumBase implements Ethereumish {
-  private static _instances: { [name: string]: Avalanche };
+export class Celo extends EthereumBase implements Ethereumish {
+  private static _instances: { [name: string]: Celo };
   private _gasPrice: number;
   private _gasPriceRefreshInterval: number | null;
   private _nativeTokenSymbol: string;
@@ -24,9 +18,9 @@ export class Avalanche extends EthereumBase implements Ethereumish {
   public controller;
 
   private constructor(network: string) {
-    const config = getAvalancheConfig('avalanche', network);
+    const config = getCeloConfig('celo', network);
     super(
-      'avalanche',
+      'celo',
       config.network.chainID,
       config.network.nodeURL,
       config.network.tokenListSource,
@@ -50,19 +44,19 @@ export class Avalanche extends EthereumBase implements Ethereumish {
     this.controller = EVMController;
   }
 
-  public static getInstance(network: string): Avalanche {
-    if (Avalanche._instances === undefined) {
-      Avalanche._instances = {};
+  public static getInstance(network: string): Celo {
+    if (Celo._instances === undefined) {
+      Celo._instances = {};
     }
-    if (!(network in Avalanche._instances)) {
-      Avalanche._instances[network] = new Avalanche(network);
+    if (!(network in Celo._instances)) {
+      Celo._instances[network] = new Celo(network);
     }
 
-    return Avalanche._instances[network];
+    return Celo._instances[network];
   }
 
-  public static getConnectedInstances(): { [name: string]: Avalanche } {
-    return Avalanche._instances;
+  public static getConnectedInstances(): { [name: string]: Celo } {
+    return Celo._instances;
   }
 
   // getters
@@ -87,31 +81,11 @@ export class Avalanche extends EthereumBase implements Ethereumish {
     let spender: string;
     if (reqSpender === 'uniswap') {
       spender = UniswapConfig.config.uniswapV3SmartOrderRouterAddress(
-        'avalanche',
+        'celo',
         this._chain,
       );
     } else if (reqSpender === 'uniswapLP') {
-      spender = UniswapConfig.config.uniswapV3NftManagerAddress('avalanche', this._chain);
-    } else if (reqSpender === 'pangolin') {
-      spender = PangolinConfig.config.routerAddress(this._chain);
-    } else if (reqSpender === 'openocean') {
-      spender = OpenoceanConfig.config.routerAddress('avalanche', this._chain);
-    } else if (reqSpender === 'traderjoe') {
-      spender = TraderjoeConfig.config.routerAddress(this._chain);
-    } else if (reqSpender === 'sushiswap') {
-      spender = SushiswapConfig.config.sushiswapRouterAddress(
-        'avalanche',
-        this._chain
-      );
-    } else if (reqSpender === 'curve') {
-      const curve = Curve.getInstance('ethereum', this._chain);
-      if (!curve.ready()) {
-        curve.init();
-        throw Error('Curve not ready');
-      }
-      spender = curve.router;
-    } else if (reqSpender === 'balancer') {
-      spender = BalancerConfig.config.routerAddress(this._chain);
+      spender = UniswapConfig.config.uniswapV3NftManagerAddress('celo', this._chain);
     } else {
       spender = reqSpender;
     }
@@ -149,8 +123,8 @@ export class Avalanche extends EthereumBase implements Ethereumish {
 
   async close() {
     await super.close();
-    if (this._chain in Avalanche._instances) {
-      delete Avalanche._instances[this._chain];
+    if (this._chain in Celo._instances) {
+      delete Celo._instances[this._chain];
     }
   }
 }
