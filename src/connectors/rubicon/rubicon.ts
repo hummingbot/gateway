@@ -17,14 +17,10 @@ import {
   PriceLevel,
 } from '../../services/common-interfaces';
 import { Network, RubiconCLOBConfig, tokenList } from './rubicon.config';
-import { BigNumber, providers } from 'ethers';
+import { BigNumber, providers, Wallet } from 'ethers';
 import { formatUnits, parseUnits } from 'ethers/lib/utils';
 import { StaticJsonRpcProvider } from '@ethersproject/providers';
-<<<<<<< HEAD
 import axios, { AxiosError } from 'axios';
-=======
-import axios from 'axios';
->>>>>>> main
 import { isFractionString } from '../../services/validators';
 import { percentRegexp } from '../../services/config-manager-v2';
 
@@ -61,7 +57,7 @@ export enum OrderType {
   Dutch = "Dutch"
 }
 
-type Fill = {
+export type Fill = {
   outputToken: string;
   inputToken: string;
   outputAmount: string;
@@ -127,7 +123,7 @@ export class RubiconCLOB implements CLOBish {
           baseSymbol: base.symbol.toUpperCase(),
           baseDecimals: base.decimals,
           baseAddress: base.address,
-          quoteSymbol: quote.symbol,
+          quoteSymbol: quote.symbol.toUpperCase(),
           quoteDecimals: quote.decimals,
           quoteAddress: quote.address
         }
@@ -173,13 +169,8 @@ export class RubiconCLOB implements CLOBish {
 
   public async orderBook(req: ClobOrderbookRequest): Promise<Orderbook> {
     const marketInfo = this.parsedMarkets[req.market];
-    const asksUrl = `${RubiconCLOBConfig.config.url}/dutch-auction/orders?chainId=${this._chain.chainId}&orderStatus=${ORDER_STATUS.OPEN}&buyToken=${marketInfo.quoteAddress}&sellToken=${marketInfo.baseAddress}&limit=50`;
-    const bidsUrl = `${RubiconCLOBConfig.config.url}/dutch-auction/orders?chainId=${this._chain.chainId}&orderStatus=${ORDER_STATUS.OPEN}&buyToken=${marketInfo.baseAddress}&sellToken=${marketInfo.quoteAddress}&limit=50&desc=true&sortKey=price`;
 
-    const [asksResp, bidsResp] = await Promise.all([fetch(asksUrl), fetch(bidsUrl)]);
-
-    const { orders: asks } = (await asksResp.json()) as { cursor?: string; orders: OrderEntity[] };
-    const { orders: bids } = (await bidsResp.json()) as { cursor?: string; orders: OrderEntity[] };
+    const [bids, asks] = await this.getOrderBook(this._chain.chainId, marketInfo);
 
     const data = {
       buys: bids
@@ -300,7 +291,7 @@ export class RubiconCLOB implements CLOBish {
         .filter(o => !!o) as PriceLevel[]
     }
 
-    return { ...data, sells: data.buys }
+    return { ...data }
   }
 
   public async ticker(
@@ -311,50 +302,14 @@ export class RubiconCLOB implements CLOBish {
 
     if (!marketInfo || !NETWORK_INFO[this._chain.chainId]) return { markets: {} }
 
-    const query = `{
-      sells: fills(
-        first: 1, 
-        orderBy: timestamp, 
-        orderDirection: desc, 
-        where: { inputToken: "${marketInfo.baseAddress}", outputToken: "${marketInfo.quoteAddress}"}
-      ){
-        inputToken
-        inputAmount
-        outputToken
-        outputAmount
-        timestamp
-      }
-      buys: fills(
-        first: 1, 
-        orderBy: timestamp, 
-        orderDirection: desc, 
-        where: { inputToken: "${marketInfo.quoteAddress}", outputToken: "${marketInfo.baseAddress}"}
-      ){
-        inputToken
-        inputAmount
-        outputToken
-        outputAmount
-        timestamp
-      }
-    }`
+    const json = await this.getTrades(marketInfo);
 
-    const response = await fetch(NETWORK_INFO[this._chain.chainId], {
-      method: 'POST',
-    
-      headers: {
-        "Content-Type": "application/json"
-      },
-    
-      body: JSON.stringify({ query })
-    })
-
-    const json: { data: { sells: Fill[], buys: Fill[] } } = await response.json();
     const trades = [
       json.data.sells.map(element => { 
         const pay = BigNumber.from(element.inputAmount);
         const buy = BigNumber.from(element.outputAmount);
-        const formattedBuy = formatUnits(buy, marketInfo.quoteDecimals);
         const formattedPay = formatUnits(pay, marketInfo.baseDecimals);
+        const formattedBuy = formatUnits(buy, marketInfo.quoteDecimals);
 
         if (pay == undefined || formattedPay == '0.0' || formattedBuy == '0.0') {
           return undefined;
@@ -367,8 +322,8 @@ export class RubiconCLOB implements CLOBish {
       json.data.buys.map(element => { 
         const pay = BigNumber.from(element.inputAmount);
         const buy = BigNumber.from(element.outputAmount);
-        const formattedBuy = formatUnits(buy, marketInfo.baseDecimals);
         const formattedPay = formatUnits(pay, marketInfo.quoteDecimals);
+        const formattedBuy = formatUnits(buy, marketInfo.baseDecimals);
 
         if (pay == undefined || formattedPay == '0.0' || formattedBuy == '0.0') {
           return undefined;
@@ -413,7 +368,6 @@ export class RubiconCLOB implements CLOBish {
     req: ClobPostOrderRequest
   ): Promise<{ txHash: string; id: string }> {
 
-    const wallet = await this._chain.getWallet(req.address)
     const marketInfo = this.parsedMarkets[req.market]
     const tokens = tokenList.tokens.filter(t => t.chainId === this._chain.chainId);
     const quote = tokens.find(t => t.address === marketInfo.quoteAddress)!;
@@ -455,9 +409,8 @@ export class RubiconCLOB implements CLOBish {
       .fillThreshold(inputAmount)
       .build()
 
-    const { domain, types, values } = order.permitData();
-    const signature = await wallet._signTypedData(domain, types, values);
     const serializedOrder = order.serialize();
+    const signature = this.signOrder(order, req.address)
 
     const payload = {
       encodedOrder: serializedOrder,
@@ -466,14 +419,8 @@ export class RubiconCLOB implements CLOBish {
     };
 
     try {
-      const postResponse = await axios({
-        method: 'post',
-        url: `${RubiconCLOBConfig.config.url}/dutch-auction/order`,
-        data: payload,
-      })
-
+      const postResponse = await this.post(payload);
       return { txHash: "", id: postResponse.data.hash };
-
     } catch (error) {
       if (error instanceof AxiosError) {
         throw new Error(error.response?.data ? error.response.data.detail : 'Trade failed: Unknown error');
@@ -486,19 +433,8 @@ export class RubiconCLOB implements CLOBish {
   public async deleteOrder(
     req: ClobDeleteOrderRequest
   ): Promise<{ txHash: string, id: string }> {
-
-    const wallet = await this._chain.getWallet(req.address)
-
     try {
-      await axios({
-        url: `${RubiconCLOBConfig.config.url}/dutch-auction/cancel`,
-        method: 'post',
-        data: {
-          signature: await wallet.signMessage(req.orderId),
-          hash: req.orderId,
-          swapper: wallet.address
-        }
-      })
+      await this.delete(req.address, req.orderId)
       return { txHash: "", id: req.orderId };
     } catch(error) {
       if (error instanceof AxiosError) {
@@ -597,5 +533,85 @@ export class RubiconCLOB implements CLOBish {
     throw new Error(
       'Encountered a malformed percent string in the config for ALLOWED_SLIPPAGE.'
     );
+  }
+
+  private async getTrades(marketInfo: any) {
+    const query = `{
+      sells: fills(
+        first: 1,
+        orderBy: timestamp,
+        orderDirection: desc,
+        where: { inputToken: "${marketInfo.baseAddress}", outputToken: "${marketInfo.quoteAddress}"}
+      ){
+        inputToken
+        inputAmount
+        outputToken
+        outputAmount
+        timestamp
+      }
+      buys: fills(
+        first: 1,
+        orderBy: timestamp,
+        orderDirection: desc,
+        where: { inputToken: "${marketInfo.quoteAddress}", outputToken: "${marketInfo.baseAddress}"}
+      ){
+        inputToken
+        inputAmount
+        outputToken
+        outputAmount
+        timestamp
+      }
+    }`
+
+    const response = await fetch(NETWORK_INFO[this._chain.chainId], {
+      method: 'POST',
+
+      headers: {
+        "Content-Type": "application/json"
+      },
+
+      body: JSON.stringify({ query })
+    })
+
+    return await response.json() as { data: { sells: Fill[], buys: Fill[] } };
+  }
+
+  private async getOrderBook(chainId: number, marketInfo: any) {
+    const asksUrl = `${RubiconCLOBConfig.config.url}/dutch-auction/orders?chainId=${chainId}&orderStatus=${ORDER_STATUS.OPEN}&buyToken=${marketInfo.quoteAddress}&sellToken=${marketInfo.baseAddress}&limit=50`;
+    const bidsUrl = `${RubiconCLOBConfig.config.url}/dutch-auction/orders?chainId=${chainId}&orderStatus=${ORDER_STATUS.OPEN}&buyToken=${marketInfo.baseAddress}&sellToken=${marketInfo.quoteAddress}&limit=50&desc=true&sortKey=price`;
+
+    const [asksResp, bidsResp] = await Promise.all([fetch(asksUrl), fetch(bidsUrl)]);
+
+    const { orders: asks } = (await asksResp.json()) as { cursor?: string; orders: OrderEntity[] };
+    const { orders: bids } = (await bidsResp.json()) as { cursor?: string; orders: OrderEntity[] };
+
+    return [bids, asks];
+  }
+
+  private async signOrder(order: GladiusOrder, address: string) {
+    const wallet = await this._chain.getWallet(address)
+    const { domain, types, values } = order.permitData();
+    return await wallet._signTypedData(domain, types, values);
+  }
+
+  private async post(payload: any) {
+    return await axios({
+      method: 'post',
+      url: `${RubiconCLOBConfig.config.url}/dutch-auction/order`,
+      data: payload,
+    })
+  }
+
+  private async delete(address: string, orderId: string) {
+    const wallet = await this._chain.getWallet(address)
+    return await axios({
+      url: `${RubiconCLOBConfig.config.url}/dutch-auction/cancel`,
+      method: 'post',
+      data: {
+        signature: await wallet.signMessage(orderId),
+        hash: orderId,
+        swapper: wallet.address
+      }
+    })
   }
 }
