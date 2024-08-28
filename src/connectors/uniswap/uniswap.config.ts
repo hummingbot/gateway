@@ -6,14 +6,15 @@ export namespace UniswapConfig {
     gasLimitEstimate: number;
     ttl: number;
     maximumHops: number;
-    uniswapV3SmartOrderRouterAddress: (network: string) => string;
-    uniswapV3NftManagerAddress: (network: string) => string;
+    uniswapV3SmartOrderRouterAddress: (chain: string, network: string) => string;
+    uniswapV3NftManagerAddress: (chain: string, network: string) => string;
+    uniswapV3FactoryAddress: (chain: string, network: string) => string;
+    quoterContractAddress: (chain: string, network: string) => string;
     tradingTypes: (type: string) => Array<string>;
     chainType: string;
     availableNetworks: Array<AvailableNetworks>;
     useRouter?: boolean;
     feeTier?: string;
-    quoterContractAddress: (network: string) => string;
   }
 
   export const config: NetworkConfig = {
@@ -25,13 +26,37 @@ export namespace UniswapConfig {
     ),
     ttl: ConfigManagerV2.getInstance().get(`uniswap.ttl`),
     maximumHops: ConfigManagerV2.getInstance().get(`uniswap.maximumHops`),
-    uniswapV3SmartOrderRouterAddress: (network: string) =>
+    uniswapV3SmartOrderRouterAddress: (chain: string, network: string) =>
       ConfigManagerV2.getInstance().get(
-        `uniswap.contractAddresses.${network}.uniswapV3SmartOrderRouterAddress`
+          'uniswap.contractAddresses.' +
+          chain +
+          '.' +
+          network +
+          '.uniswapV3SmartOrderRouterAddress'
       ),
-    uniswapV3NftManagerAddress: (network: string) =>
+    uniswapV3NftManagerAddress: (chain: string, network: string) =>
       ConfigManagerV2.getInstance().get(
-        `uniswap.contractAddresses.${network}.uniswapV3NftManagerAddress`
+          'uniswap.contractAddresses.' +
+          chain +
+          '.' +
+          network +
+          '.uniswapV3NftManagerAddress'
+      ),
+    uniswapV3FactoryAddress: (chain: string, network: string) =>
+      ConfigManagerV2.getInstance().get(
+          'uniswap.contractAddresses.' +
+          chain +
+          '.' +
+          network +
+          '.uniswapV3FactoryAddress'
+      ),
+    quoterContractAddress: (chain: string, network: string) =>
+      ConfigManagerV2.getInstance().get(
+          'uniswap.contractAddresses.' +
+          chain +
+          '.' +
+          network +
+          '.uniswapV3QuoterV2ContractAddress'
       ),
     tradingTypes: (type: string) => {
       return type === 'swap' ? ['AMM'] : ['AMM_LP'];
@@ -41,29 +66,51 @@ export namespace UniswapConfig {
       {
         chain: 'ethereum',
         networks: Object.keys(
-          ConfigManagerV2.getInstance().get('uniswap.contractAddresses')
+          ConfigManagerV2.getInstance().get('uniswap.contractAddresses.ethereum')
         ).filter((network) =>
           Object.keys(
             ConfigManagerV2.getInstance().get('ethereum.networks')
           ).includes(network)
         ),
       },
-      {
-        chain: 'polygon',
+      { chain: 'polygon',
         networks: Object.keys(
-          ConfigManagerV2.getInstance().get('uniswap.contractAddresses')
+          ConfigManagerV2.getInstance().get('uniswap.contractAddresses.polygon')
         ).filter((network) =>
           Object.keys(
             ConfigManagerV2.getInstance().get('polygon.networks')
           ).includes(network)
         ),
       },
+      { chain: 'binance-smart-chain',
+        networks: Object.keys(
+          ConfigManagerV2.getInstance().get('uniswap.contractAddresses.binance-smart-chain')
+        ).filter((network) =>
+          Object.keys(
+            ConfigManagerV2.getInstance().get('binance-smart-chain.networks')
+          ).includes(network)
+        ),
+      },
+      { chain: 'avalanche',
+        networks: Object.keys(
+          ConfigManagerV2.getInstance().get('uniswap.contractAddresses.avalanche')
+        ).filter((network) =>
+          Object.keys(
+            ConfigManagerV2.getInstance().get('avalanche.networks')
+          ).includes(network)
+        ),
+      },
+      { chain: 'celo',
+        networks: Object.keys(
+          ConfigManagerV2.getInstance().get('uniswap.contractAddresses.celo')
+        ).filter((network) =>
+          Object.keys(
+            ConfigManagerV2.getInstance().get('celo.networks')
+          ).includes(network)
+        ),
+      },
     ],
     useRouter: ConfigManagerV2.getInstance().get(`uniswap.useRouter`),
     feeTier: ConfigManagerV2.getInstance().get(`uniswap.feeTier`),
-    quoterContractAddress: (network: string) =>
-      ConfigManagerV2.getInstance().get(
-        `uniswap.contractAddresses.${network}.uniswapV3QuoterV2ContractAddress`
-      ),
   };
 }

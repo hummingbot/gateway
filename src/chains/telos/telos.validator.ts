@@ -14,23 +14,13 @@ import {
 } from '../ethereum/ethereum.validators';
 
 export const invalidSpenderError: string =
-  'The spender param is not a valid Avalanche address (0x followed by 40 hexidecimal characters).';
+  'The spender param is not a valid Telos address (0x followed by 40 hexidecimal characters).';
 
 // given a request, look for a key called spender that is 'uniswap' or an Ethereum address
 export const validateSpender: Validator = mkValidator(
   'spender',
   invalidSpenderError,
-
-  (val) =>
-    typeof val === 'string' &&
-    (val === 'uniswap' ||
-      val === 'uniswapLP' ||
-      val === 'pangolin' ||
-      val === 'traderjoe' ||
-      val === 'openocean' ||
-      val === 'sushiswap' ||
-      val === 'balancer' ||
-      isAddress(val))
+  (val) => typeof val === 'string' && (val === 'openocean' || isAddress(val)),
 );
 
 export const validateAvalancheApproveRequest: RequestValidator =
