@@ -185,12 +185,17 @@ export namespace ConnectorsRoutes {
             available_networks: BalancerConfig.config.availableNetworks,
           },
           {
+            name: 'etcswap',
+            trading_type: ETCSwapConfig.config.tradingTypes('swap'),
+            chain_type: ETCSwapConfig.config.chainType,
+            available_networks: ETCSwapConfig.config.availableNetworks,
+          },
+          {
             name: 'etcswapLP',
             trading_type: ETCSwapConfig.config.tradingTypes('LP'),
             chain_type: ETCSwapConfig.config.chainType,
             available_networks: ETCSwapConfig.config.availableNetworks,
-            // additional_spenders: ['etcswap'],
-            additional_spenders: [],
+            additional_spenders: ['etcswap'],
           },
         ],
       });

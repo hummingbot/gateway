@@ -16,7 +16,7 @@ maximumHops: 4
 # Use etcswap Router or Quoter to quote prices.
 # true - use Smart Order Router
 # false - use QuoterV2 Contract
-useRouter: false
+useRouter: true
 
 # Fee tier to use for the etcswap Quoter.
 # Required if `useRouter` is false.
@@ -29,3 +29,4 @@ contractAddresses:
     etcswapV3SmartOrderRouterAddress: '0xEd88EDD995b00956097bF90d39C9341BBde324d1'
     etcswapV3NftManagerAddress: '0x3CEDe6562D6626A04d7502CC35720901999AB699'
     etcswapV3QuoterV2ContractAddress: '0x4d8c163400CB87Cbe1bae76dBf36A09FED85d39B'
+    etcswapV3FactoryAddress: '0x2624E907BcC04f93C8f29d7C7149a8700Ceb8cDC'

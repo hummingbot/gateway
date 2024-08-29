@@ -23,6 +23,8 @@
     "test:scripts": "jest -i --verbose ./test-scripts/*.test.ts"
   },
   "dependencies": {
+    "@_etcswap/v3-sdk": "^3.10.1",
+    "@_etcswap/smart-order-router": "^3.15.0",
     "@cosmjs/amino": "^0.32.2",
     "@balancer-labs/sdk": "^1.1.5",
     "@bancor/carbon-sdk": "^0.0.93-DEV",

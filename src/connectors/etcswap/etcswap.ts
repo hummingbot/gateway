@@ -1,12 +1,12 @@
 import { UniswapishPriceError } from '../../services/error-handler';
 import { isFractionString } from '../../services/validators';
-import { UniswapConfig } from './uniswap.config';
-import routerAbi from './uniswap_v2_router_abi.json';
 import {
   ContractInterface,
   ContractTransaction,
 } from '@ethersproject/contracts';
-import { AlphaRouter } from '@uniswap/smart-order-router';
+// import { AlphaRouter } from '@uniswap/smart-order-router';
+import { AlphaRouter } from '@_etcswap/smart-order-router';
+import routerAbi from '../uniswap/uniswap_v2_router_abi.json';
 import { Trade, SwapRouter } from '@uniswap/router-sdk';
 import {
   FeeAmount,
@@ -35,17 +35,14 @@ import {
 } from 'ethers';
 import { logger } from '../../services/logger';
 import { percentRegexp } from '../../services/config-manager-v2';
-import { Ethereum } from '../../chains/ethereum/ethereum';
-import { Avalanche } from '../../chains/avalanche/avalanche';
-import { Polygon } from '../../chains/polygon/polygon';
-import { BinanceSmartChain } from "../../chains/binance-smart-chain/binance-smart-chain";
-import { ExpectedTrade, Uniswapish, UniswapishTrade } from '../../services/common-interfaces';
+import { ExpectedTrade, Uniswapish } from '../../services/common-interfaces';
 import { getAddress } from 'ethers/lib/utils';
-import { Celo } from '../../chains/celo/celo';
+import { EthereumClassicChain } from '../../chains/ethereum-classic/ethereum-classic';
+import { ETCSwapConfig } from './etcswap.config';
 
-export class Uniswap implements Uniswapish {
-  private static _instances: { [name: string]: Uniswap };
-  private chain: Ethereum | Polygon | BinanceSmartChain | Avalanche | Celo;
+export class ETCSwap implements Uniswapish {
+  private static _instances: { [name: string]: ETCSwap };
+  private chain: EthereumClassicChain;
   private _alphaRouter: AlphaRouter | null;
   private _router: string;
   private _routerAbi: ContractInterface;
@@ -60,33 +57,21 @@ export class Uniswap implements Uniswapish {
   private readonly _quoterContractAddress: string;
   private readonly _factoryAddress: string;
 
-  private constructor(chain: string, network: string) {
-    const config = UniswapConfig.config;
-    if (chain === 'ethereum') {
-      this.chain = Ethereum.getInstance(network);
-    } else if (chain === 'polygon') {
-      this.chain = Polygon.getInstance(network);
-    } else if (chain === 'binance-smart-chain') {
-      this.chain = BinanceSmartChain.getInstance(network);
-    } else if (chain === 'avalanche') { 
-      this.chain = Avalanche.getInstance(network);
-    } else if (chain === 'celo')  {
-      this.chain = Celo.getInstance(network);
-    } else {
-      throw new Error('Unsupported chain');
-    }
-  
-    this.chainId = this.chain.chainId;
-    this._ttl = UniswapConfig.config.ttl;
-    this._maximumHops = UniswapConfig.config.maximumHops;
+  private constructor(_chain: string, network: string) {
+    const config = ETCSwapConfig.config;
+    this.chain = EthereumClassicChain.getInstance(network);
 
-      this._alphaRouter = new AlphaRouter({
+    this.chainId = this.chain.chainId;
+    this._ttl = ETCSwapConfig.config.ttl;
+    this._maximumHops = ETCSwapConfig.config.maximumHops;
+
+    this._alphaRouter = new AlphaRouter({
       chainId: this.chainId,
       provider: this.chain.provider,
     });
     this._routerAbi = routerAbi.abi;
-    this._gasLimitEstimate = UniswapConfig.config.gasLimitEstimate;
-    this._router = config.uniswapV3SmartOrderRouterAddress(chain, network);
+    this._gasLimitEstimate = ETCSwapConfig.config.gasLimitEstimate;
+    this._router = config.etcswapV3SmartOrderRouterAddress(network);
 
     if (config.useRouter === false && config.feeTier == null) {
       throw new Error('Must specify fee tier if not using router');
@@ -100,19 +85,19 @@ export class Uniswap implements Uniswapish {
     this._feeTier = config.feeTier
       ? FeeAmount[config.feeTier as keyof typeof FeeAmount]
       : FeeAmount.MEDIUM;
-    this._quoterContractAddress = config.quoterContractAddress(chain, network);
-    this._factoryAddress = config.uniswapV3FactoryAddress(chain, network);
+    this._quoterContractAddress = config.quoterContractAddress(network);
+    this._factoryAddress = config.etcswapV3FactoryAddress(network);
   }
 
-  public static getInstance(chain: string, network: string): Uniswap {
-    if (Uniswap._instances === undefined) {
-      Uniswap._instances = {};
+  public static getInstance(chain: string, network: string): ETCSwap {
+    if (ETCSwap._instances === undefined) {
+      ETCSwap._instances = {};
     }
-    if (!(chain + network in Uniswap._instances)) {
-      Uniswap._instances[chain + network] = new Uniswap(chain, network);
+    if (!(chain + network in ETCSwap._instances)) {
+      ETCSwap._instances[chain + network] = new ETCSwap(chain, network);
     }
 
-    return Uniswap._instances[chain + network];
+    return ETCSwap._instances[chain + network];
   }
 
   /**
@@ -202,7 +187,7 @@ export class Uniswap implements Uniswapish {
       return new Percent(fractionSplit[0], fractionSplit[1]);
     }
 
-    const allowedSlippage = UniswapConfig.config.allowedSlippage;
+    const allowedSlippage = ETCSwapConfig.config.allowedSlippage;
     const nd = allowedSlippage.match(percentRegexp);
     if (nd) return new Percent(nd[1], nd[2]);
     throw new Error(
@@ -255,13 +240,13 @@ export class Uniswap implements Uniswapish {
       }
       logger.info(
         `Best trade for ${baseToken.address}-${quoteToken.address}: ` +
-          `${route.trade.executionPrice.toFixed(6)}` +
-          `${baseToken.symbol}.`
+        `${route.trade.executionPrice.toFixed(6)}` +
+        `${baseToken.symbol}.`
       );
       const expectedAmount = route.trade.minimumAmountOut(
         this.getAllowedSlippage(allowedSlippage)
       );
-      return { trade: route.trade as unknown as UniswapishTrade, expectedAmount };
+      return { trade: route.trade, expectedAmount };
     } else {
       const pool = await this.getPool(baseToken, quoteToken, this._feeTier, poolId);
       if (!pool) {
@@ -284,8 +269,8 @@ export class Uniswap implements Uniswapish {
       });
       logger.info(
         `Best trade for ${baseToken.address}-${quoteToken.address}: ` +
-          `${trade.executionPrice.toFixed(6)}` +
-          `${baseToken.symbol}.`
+        `${trade.executionPrice.toFixed(6)}` +
+        `${baseToken.symbol}.`
       );
       const expectedAmount = trade.minimumAmountOut(
         this.getAllowedSlippage(allowedSlippage)
@@ -337,14 +322,14 @@ export class Uniswap implements Uniswapish {
       }
       logger.info(
         `Best trade for ${quoteToken.address}-${baseToken.address}: ` +
-          `${route.trade.executionPrice.invert().toFixed(6)} ` +
-          `${baseToken.symbol}.`
+        `${route.trade.executionPrice.invert().toFixed(6)} ` +
+        `${baseToken.symbol}.`
       );
 
       const expectedAmount = route.trade.maximumAmountIn(
         this.getAllowedSlippage(allowedSlippage)
       );
-      return { trade: route.trade as unknown as UniswapishTrade, expectedAmount };
+      return { trade: route.trade, expectedAmount };
     } else {
       const pool = await this.getPool(quoteToken, baseToken, this._feeTier, poolId);
       if (!pool) {
@@ -367,8 +352,8 @@ export class Uniswap implements Uniswapish {
       });
       logger.info(
         `Best trade for ${baseToken.address}-${quoteToken.address}: ` +
-          `${trade.executionPrice.invert().toFixed(6)}` +
-          `${baseToken.symbol}.`
+        `${trade.executionPrice.invert().toFixed(6)}` +
+        `${baseToken.symbol}.`
       );
       const expectedAmount = trade.maximumAmountIn(
         this.getAllowedSlippage(allowedSlippage)
@@ -378,7 +363,7 @@ export class Uniswap implements Uniswapish {
   }
 
   /**
-   * Given a wallet and a Uniswap trade, try to execute it on blockchain.
+   * Given a wallet and a ETCSwap trade, try to execute it on blockchain.
    *
    * @param wallet Wallet
    * @param trade Expected trade
@@ -455,7 +440,7 @@ export class Uniswap implements Uniswapish {
       IUniswapV3FactoryABI,
       this.chain.provider
     );
-    // Use Uniswap V3 factory to get pool address instead of `Pool.getAddress` to check if pool exists.
+    // Use ETCSwap V3 factory to get pool address instead of `Pool.getAddress` to check if pool exists.
     const poolAddress = poolId || await uniswapFactory.getPool(
       tokenA.address,
       tokenB.address,

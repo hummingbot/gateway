@@ -49,6 +49,7 @@ import { Carbonamm } from '../connectors/carbon/carbonAMM';
 import { Balancer } from '../connectors/balancer/balancer';
 import { ETCSwapLP } from '../connectors/etcswap/etcswap.lp';
 import { EthereumClassicChain } from '../chains/ethereum-classic/ethereum-classic';
+import { ETCSwap } from '../connectors/etcswap/etcswap';
 
 export type ChainUnion =
   | Algorand
@@ -241,6 +242,9 @@ export async function getConnector<T>(
     connectorInstance = Tinyman.getInstance(network);
   } else if (connector === 'plenty') {
     connectorInstance = Plenty.getInstance(network);
+  } else if (chain === 'ethereum-classic' && connector === 'etcswap'
+  ) {
+    connectorInstance = ETCSwap.getInstance(chain, network)
   } else if (chain === 'ethereum-classic' && connector === 'etcswapLP'
   ) {
     connectorInstance = ETCSwapLP.getInstance(chain, network)
