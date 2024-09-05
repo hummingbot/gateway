@@ -2,8 +2,8 @@
 import request from 'supertest';
 import { gatewayApp } from '../../../src/app';
 import { Ethereum } from '../../../src/chains/ethereum/ethereum';
-import { Fill, ORDER_STATUS, RubiconCLOB } from '../../../src/connectors/rubicon/rubicon';
-import { patch, unpatch } from '../../../test/services/patch';
+import { Fill, ORDER_STATUS, OrderEntity, RubiconCLOB } from '../../../src/connectors/rubicon/rubicon';
+import { patch } from '../../../test/services/patch';
 import { arbitrum } from 'viem/chains';
 import { GladiusOrderBuilder } from '@rubicondefi/gladius-sdk';
 import { BigNumber } from 'ethers';
@@ -38,26 +38,18 @@ const MOCK_DATA = {
   reactor: '0x0000000000000000000000000000000000000001',
   deadline: Math.floor(Date.now() / 1000) + 100,
   input: {
-    endAmount: '30',
-    startAmount: '30',
-    token: '0x0000000000000000000000000000000000000003',
+    endAmount: '30000000000',
+    startAmount: '30000000000',
+    token: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
   },
   output:
     {
-      endAmount: '50',
-      startAmount: '60',
-      token: '0x0000000000000000000000000000000000000005',
+      endAmount: '6000000000000000000',
+      startAmount: '6000000000000000000',
+      token: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
     },
   recipient: '0x0000000000000000000000000000000000000001'
 }
-
-beforeAll(async () => {
-  ethereum = Ethereum.getInstance('rubicon');
-  patchCurrentBlockNumber();
-  ethereum.init();
-  rubicon = RubiconCLOB.getInstance('rubicon', 'arbitrum');
-  await rubicon.init();
-});
 
 const patchCurrentBlockNumber = (withError: boolean = false) => {
   patch(ethereum, 'getCurrentBlockNumber', () => {
@@ -65,11 +57,23 @@ const patchCurrentBlockNumber = (withError: boolean = false) => {
   });
 };
 
-const patchOrderBook = () => {
-  const builder = new GladiusOrderBuilder(chainId)
+const patchGetWallet = () => {
+  patch(ethereum, 'getWallet', () => {
+    return {
+      privateKey:
+        '83d8fae2444141a142079e9aa6dc1a49962af114d9ace8db9a34ecb8fa3e6cf8', // noqa: mock
+      address: '0x7e57780cf01209a1522b9dCeFa9ff191DDd1c70f',
+    };
+  });
+};
 
-  const buy = builder
+const patchOrderBook = () => {
+  const buyBuilder = new GladiusOrderBuilder(chainId)
+
+  const buy = buyBuilder
     .deadline(MOCK_DATA.deadline)
+    .decayStartTime(MOCK_DATA.deadline)
+    .decayEndTime(MOCK_DATA.deadline)
     .nonce(BigNumber.from(MOCK_DATA.nonce))
     .swapper(MOCK_DATA.offerer)
     .input({
@@ -86,40 +90,62 @@ const patchOrderBook = () => {
     .fillThreshold(BigNumber.from(MOCK_DATA.input.startAmount))
     .build();
 
-  const sell = builder
+  const sellBuilder = new GladiusOrderBuilder(chainId)
+
+  const sell = sellBuilder
     .deadline(MOCK_DATA.deadline)
+    .decayStartTime(MOCK_DATA.deadline)
+    .decayEndTime(MOCK_DATA.deadline)
     .nonce(BigNumber.from(MOCK_DATA.nonce))
     .swapper(MOCK_DATA.offerer)
     .input({
-      token: MOCK_DATA.input.token,
-      startAmount: BigNumber.from(MOCK_DATA.input.startAmount),
-      endAmount: BigNumber.from(MOCK_DATA.input.endAmount),
+      token: MOCK_DATA.output.token,
+      startAmount: BigNumber.from("1000000000000000000"),
+      endAmount: BigNumber.from("1000000000000000000"),
     })
     .output({
-      token: MOCK_DATA.output.token,
-      startAmount: BigNumber.from(MOCK_DATA.output.startAmount),
-      endAmount: BigNumber.from(MOCK_DATA.output.endAmount),
+      token: MOCK_DATA.input.token,
+      startAmount: BigNumber.from("7000000000"),
+      endAmount: BigNumber.from("7000000000"),
       recipient: MOCK_DATA.offerer,
     })
-    .fillThreshold(BigNumber.from(MOCK_DATA.input.startAmount))
+    .fillThreshold(BigNumber.from("1000000000000000000"))
     .build();
 
   patch(rubicon, 'getOrderBook', () => {
-    return [[buy], [sell]]
+    return [
+      [
+        { 
+          encodedOrder: buy.serialize(),
+          createdAt: Date.now(),
+          input: {
+
+            token: "USDC"
+          }
+        } as OrderEntity
+      ], 
+      [
+        {
+        encodedOrder: sell.serialize(),
+        createdAt: Date.now(),
+        input: {
+          token: "WETH"
+        }
+        } as OrderEntity
+      ]
+    ]
   });
 };
 
 const patchMarkets = () => {
-  patch(rubicon, 'parsedMarkets', () => {
-    return {
-      'WETH-USDC': {
-        baseSymbol: 'WETH',
-        baseDecimals: 18,
-        baseAddress: '0x1',
-        quoteSymbol: 'USDC',
-        quoteDecimals: 6,
-        quoteAddress: '0x2'
-      }
+  patch(rubicon, 'parsedMarkets', {
+    'WETH-USDC': {
+      baseSymbol: 'WETH',
+      baseDecimals: 18,
+      baseAddress: MOCK_DATA.input.token,
+      quoteSymbol: 'USDC',
+      quoteDecimals: 6,
+      quoteAddress: MOCK_DATA.output.token
     }
   })
 }
@@ -128,12 +154,32 @@ const patchGetTrades = () => {
   patch(rubicon, 'getTrades', () => {
     return {
       data: {
-        buys: [{ inputToken: '0x2', outputToken: '0x1', inputAmount: "500000", outputAmount: "1", timestamp: Math.floor(Date.now() / 1000).toString() }] as Fill[],
-        sells:  [{ inputToken: '0x1', outputToken: '0x2', inputAmount: "2", outputAmount: "100000", timestamp: Math.floor(Date.now() / 1000).toString() }] as Fill[]
+        buys: [{
+          inputToken: MOCK_DATA.input.token,
+          outputToken: MOCK_DATA.output.token,
+          inputAmount: "30000000000",
+          outputAmount: "3000000000000000000",
+          timestamp: "1725574055" 
+        }] as Fill[],
+        sells:  [{
+          inputToken: MOCK_DATA.output.token,
+          outputToken: MOCK_DATA.input.token,
+          inputAmount: "1000000000000000000",
+          outputAmount: "5000000000",
+          timestamp: "1725574056"
+        }] as Fill[]
       }
     };
   });
 };
+
+const patchGetOrders = () => {
+  patch(rubicon, 'getOrders', () => {
+    return {
+      orders: [{ orderStatus: ORDER_STATUS.OPEN, orderHash: MOCK_DATA.orderHash } as OrderEntity]
+    }
+  })
+}
 
 const patchGasPrices = () => {
   patch(rubicon, 'estimateGas', () => {
@@ -143,7 +189,7 @@ const patchGasPrices = () => {
 
 const patchPost = () => {
   patch(rubicon, 'post', () => {
-    return { data: { hash: "0x3920392039203920392093209329300293"} } // mock
+    return { data: { hash: MOCK_DATA.orderHash } } // mock
   })
 }
 
@@ -159,21 +205,24 @@ const patchSignOrder = () => {
   })
 }
 
-beforeAll(() => {
+beforeAll(async () => {
+  ethereum = Ethereum.getInstance('arbitrum');
+  patchCurrentBlockNumber();
+  ethereum.init();
+  rubicon = RubiconCLOB.getInstance('ethereum', 'arbitrum');
+  await rubicon.init();
   patchGetTrades();
   patchMarkets();
   patchPost();
   patchDelete();
   patchSignOrder();
+  patchGetWallet();
+  patchGetOrders();
 })
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 beforeEach(() => {
   patchCurrentBlockNumber();
-});
-
-afterEach(() => {
-  unpatch();
 });
 
 afterAll(async () => {
@@ -219,8 +268,8 @@ describe('GET /clob/orderBook', () => {
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(200)
-      .expect((res) => expect(res.body.buys[0].price).toEqual('5.0'))
-      .expect((res) => expect(res.body.sells[0].price).toEqual('5.0'));
+      .expect((res) => expect(res.body.buys[0].price).toEqual('5000'))
+      .expect((res) => expect(res.body.sells[0].price).toEqual('7000'));
   });
 
   it('should return 404 when parameters are invalid', async () => {
@@ -244,7 +293,7 @@ describe('GET /clob/ticker', () => {
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(200)
-      .expect((res) => expect(res.body.markets.price).toEqual('WETH'))
+      .expect((res) => expect(res.body.markets.price).toEqual(10000))
   });
 
   it('should return 404 when parameters are invalid', async () => {
@@ -266,12 +315,16 @@ describe('GET /clob/orders', () => {
         address:
           '0x261362dBC1D83705AB03e99792355689A4589b8E000000000000000000000000', // noqa: mock
         market: MARKET,
-        orderId: '0x...',
+        orderId: MOCK_DATA.orderHash,
       })
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(200)
-      .expect((res) => expect(res.body.orders.length).toEqual(1));
+      .expect((res) => expect(res.body.orders.length).toEqual(1))
+      .expect((res) => expect(res.body.orders[0].id).toEqual(MOCK_DATA.orderHash))
+      .expect((res) => expect(res.body.orders[0].status).toEqual(ORDER_STATUS.OPEN))
+      .expect((res) => expect(res.body.orders[0].orderHash).toEqual(MOCK_DATA.orderHash))
+      .expect((res) => expect(res.body.orders[0].clientId).toEqual(MOCK_DATA.orderHash));
   });
 
   it('should return 404 when parameters are invalid', async () => {
@@ -301,7 +354,7 @@ describe('POST /clob/orders', () => {
       .expect('Content-Type', /json/)
       .expect(200)
       .expect((res) => expect(res.body.txHash).toEqual(TX_HASH))
-      .expect((res) => expect(res.body.id).toEqual("0x3920392039203920392093209329300293"));
+      .expect((res) => expect(res.body.id).toEqual(MOCK_DATA.orderHash));
   });
 
   it('should return 404 when parameters are invalid', async () => {
@@ -323,13 +376,13 @@ describe('DELETE /clob/orders', () => {
         address: '0x261362dBC1D83705AB03e99792355689A4589b8E', // noqa: mock
         market: MARKET,
         orderId:
-          '0x8ce222ca5da95aaffd87b3d38a307f25d6e2c09e70a0cb8599bc6c8a0851fda3',
+          MOCK_DATA.orderHash,
       })
       .set('Accept', 'application/json')
       .expect('Content-Type', /json/)
       .expect(200)
       .expect((res) => expect(res.body.txHash).toEqual(TX_HASH))
-      .expect((res) => expect(res.body.id).toEqual('0x8ce222ca5da95aaffd87b3d38a307f25d6e2c09e70a0cb8599bc6c8a0851fda3'));
+      .expect((res) => expect(res.body.id).toEqual(MOCK_DATA.orderHash));
   });
 
   it('should return 404 when parameters are invalid', async () => {

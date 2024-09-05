@@ -17,7 +17,7 @@ import {
   PriceLevel,
 } from '../../services/common-interfaces';
 import { Network, RubiconCLOBConfig, tokenList } from './rubicon.config';
-import { BigNumber, providers, Wallet } from 'ethers';
+import { BigNumber, providers } from 'ethers';
 import { formatUnits, parseUnits } from 'ethers/lib/utils';
 import { StaticJsonRpcProvider } from '@ethersproject/providers';
 import axios, { AxiosError } from 'axios';
@@ -100,7 +100,7 @@ const NETWORK_INFO: Record<number, any> = {
 export class RubiconCLOB implements CLOBish {
   private _chain;
   private _ready: boolean = false;
-  public parsedMarkets: MarketInfo = [];
+  public parsedMarkets: MarketInfo = {};
   private static _instances: { [name: string]: RubiconCLOB };
   private provider: StaticJsonRpcProvider;
 
@@ -129,8 +129,6 @@ export class RubiconCLOB implements CLOBish {
         }
       })
     })
-
-    console.log("Markets Loaded")
   }
 
   public static getInstance(chain: string, network: string): RubiconCLOB {
@@ -174,22 +172,16 @@ export class RubiconCLOB implements CLOBish {
 
     const data = {
       buys: bids
-        .filter((o) => {
-          const decodedOrder = GladiusOrder.parse(o.encodedOrder, this._chain.chainId);
-          if (o.orderStatus !== ORDER_STATUS.OPEN) {
-            return true;
-          }
-        
-          const now = Math.floor(new Date().getTime() / 1000);
-          if (decodedOrder.info.deadline >= now) {
-            return true;
-          }
-        
-          return false;
-        })
         .map((element) => {
-          const pay = BigNumber.from(element.input.endAmount);
-          const buy = BigNumber.from(element.outputs[0].endAmount);
+          const parsedOrder = GladiusOrder.parse(element.encodedOrder, this._chain.chainId);
+
+          const now = Math.floor(new Date().getTime() / 1000);
+          if (parsedOrder.info.deadline <= now) {
+            return;
+          }
+
+          const pay = parsedOrder.info.input.endAmount;
+          const buy = parsedOrder.info.outputs[0].endAmount;
           const formattedBuy = formatUnits(buy, marketInfo.baseDecimals);
           const formattedPay = formatUnits(pay, marketInfo.quoteDecimals);
 
@@ -199,15 +191,17 @@ export class RubiconCLOB implements CLOBish {
 
           const price = parseFloat(formattedPay) / parseFloat(formattedBuy);
 
-          const parsedOrder = GladiusOrder.parse(element.encodedOrder, this._chain.chainId);
-
-          const startingOutputAmount = BigNumber.from(element.outputs[0].startAmount);
-          const endingOutputAmount = BigNumber.from(element.outputs[0].endAmount);
+          const startingOutputAmount = parsedOrder.info.outputs[0].startAmount;
+          const endingOutputAmount = parsedOrder.info.outputs[0].endAmount;
           const startTime = parsedOrder.info.decayStartTime;
           const endTime = parsedOrder.info.decayEndTime;
           const rawInputAmount = pay;
 
-          let out: PriceLevel = { price: price.toString(), quantity: formattedBuy, timestamp: element.createdAt };
+          let out: PriceLevel = { 
+            price: price.toString(),
+            quantity: formattedBuy,
+            timestamp: element.createdAt
+          };
 
           if (startingOutputAmount && endingOutputAmount && startTime && endTime && rawInputAmount) {
             out = {
@@ -230,22 +224,17 @@ export class RubiconCLOB implements CLOBish {
         })
         .filter(o => !!o) as PriceLevel[],
       sells: asks
-        .filter(o => {
-          const decodedOrder = GladiusOrder.parse(o.encodedOrder, this._chain.chainId);
-          if (o.orderStatus !== ORDER_STATUS.OPEN) {
-            return true;
-          }
-        
-          const now = Math.floor(new Date().getTime() / 1000);
-          if (decodedOrder.info.deadline >= now) {
-            return true;
-          }
-        
-          return false;
-        })
         .map((element) => {
-          const pay = BigNumber.from(element.input.endAmount);
-          const buy = BigNumber.from(element.outputs[0].endAmount);
+
+          const parsedOrder = GladiusOrder.parse(element.encodedOrder, this._chain.chainId);
+
+          const now = Math.floor(new Date().getTime() / 1000);
+          if (parsedOrder.info.deadline <= now) {
+            return;
+          }
+
+          const pay = parsedOrder.info.input.endAmount;
+          const buy = parsedOrder.info.outputs[0].endAmount;
           const formattedBuy = formatUnits(buy, marketInfo.quoteDecimals);
           const formattedPay = formatUnits(pay, marketInfo.baseDecimals);
           const rawInputAmount = pay;
@@ -254,10 +243,8 @@ export class RubiconCLOB implements CLOBish {
             return undefined;
           }
 
-          const parsedOrder = GladiusOrder.parse(element.encodedOrder, this._chain.chainId);
-
-          const startingOutputAmount = BigNumber.from(element.outputs[0].startAmount);
-          const endingOutputAmount = BigNumber.from(element.outputs[0].endAmount);
+          const startingOutputAmount = parsedOrder.info.outputs[0].startAmount;
+          const endingOutputAmount = parsedOrder.info.outputs[0].endAmount;
           const startTime = parsedOrder.info.decayStartTime;
           const endTime = parsedOrder.info.decayEndTime;
 
@@ -340,7 +327,7 @@ export class RubiconCLOB implements CLOBish {
       return parseInt(a.timestamp) - parseInt(b.timestamp)
     })[0]
 
-    return { markets: { price: (lastTrade?.price || 0) + (Math.random() * 10) } };
+    return { markets: { price: lastTrade?.price || 0 } };
   }
 
   public async orders(
@@ -349,8 +336,7 @@ export class RubiconCLOB implements CLOBish {
 
     if (!req.orderId) return { orders: [] }
 
-    const url = `${RubiconCLOBConfig.config.url}/dutch-auction/orders?orderHash=${req.orderId}`;
-    const { orders } = (await (await fetch(url)).json()) as { cursor?: string; orders: OrderEntity[] };
+    const { orders } = await this.getOrders(req.orderId)
 
     return { 
       orders: orders.map(o => { 
@@ -613,5 +599,10 @@ export class RubiconCLOB implements CLOBish {
         swapper: wallet.address
       }
     })
+  }
+
+  private async getOrders(orderId: string) {
+    const url = `${RubiconCLOBConfig.config.url}/dutch-auction/orders?orderHash=${orderId}`;
+    return (await (await fetch(url)).json()) as { cursor?: string; orders: OrderEntity[] };
   }
 }
