@@ -112,7 +112,7 @@ const patchTrade = (_key: string, error?: Error) => {
         route: [],
         blockNumber: BigNumber.from(5000),
       };
-    }  
+    }
   });
 };
 
