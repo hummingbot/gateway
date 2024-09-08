@@ -28,7 +28,7 @@ export class EthereumClassicChain extends EthereumBase implements Ethereumish {
       config.manualGasPrice,
       config.gasLimitTransaction,
       ConfigManagerV2.getInstance().get('server.nonceDbPath'),
-      ConfigManagerV2.getInstance().get('server.transactionDbPath')
+      ConfigManagerV2.getInstance().get('server.transactionDbPath'),
     );
     this._chain = config.network.name;
     this._nativeTokenSymbol = config.nativeCurrencySymbol;
@@ -47,13 +47,17 @@ export class EthereumClassicChain extends EthereumBase implements Ethereumish {
       EthereumClassicChain._instances = {};
     }
     if (!(network in EthereumClassicChain._instances)) {
-      EthereumClassicChain._instances[network] = new EthereumClassicChain(network);
+      EthereumClassicChain._instances[network] = new EthereumClassicChain(
+        network,
+      );
     }
 
     return EthereumClassicChain._instances[network];
   }
 
-  public static getConnectedInstances(): { [name: string]: EthereumClassicChain } {
+  public static getConnectedInstances(): {
+    [name: string]: EthereumClassicChain;
+  } {
     return EthereumClassicChain._instances;
   }
 
@@ -71,7 +75,7 @@ export class EthereumClassicChain extends EthereumBase implements Ethereumish {
 
     setTimeout(
       this.updateGasPrice.bind(this),
-      this._gasPriceRefreshInterval * 1000
+      this._gasPriceRefreshInterval * 1000,
     );
   }
 
@@ -89,6 +93,11 @@ export class EthereumClassicChain extends EthereumBase implements Ethereumish {
     return this._chain;
   }
 
+  // in place for mocking
+  public get provider() {
+    return super.provider;
+  }
+
   getContract(tokenAddress: string, signerOrProvider?: Wallet | Provider) {
     return new Contract(tokenAddress, abi.ERC20Abi, signerOrProvider);
   }
@@ -96,8 +105,10 @@ export class EthereumClassicChain extends EthereumBase implements Ethereumish {
   getSpender(reqSpender: string): string {
     let spender: string;
     if (reqSpender === 'etcswapLP') {
-      spender = ETCSwapConfig.config.etcswapV3NftManagerAddress(
-        this._chain
+      spender = ETCSwapConfig.config.etcswapV3NftManagerAddress(this._chain);
+    } else if (reqSpender === 'etcswap') {
+      spender = ETCSwapConfig.config.etcswapV3SmartOrderRouterAddress(
+        this._chain,
       );
     } else {
       spender = reqSpender;
@@ -108,7 +119,7 @@ export class EthereumClassicChain extends EthereumBase implements Ethereumish {
   // cancel transaction
   async cancelTx(wallet: Wallet, nonce: number): Promise<Transaction> {
     logger.info(
-      'Canceling any existing transaction(s) with nonce number ' + nonce + '.'
+      'Canceling any existing transaction(s) with nonce number ' + nonce + '.',
     );
     return super.cancelTxWithGasPrice(wallet, nonce, this._gasPrice * 2);
   }

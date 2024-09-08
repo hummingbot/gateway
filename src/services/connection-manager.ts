@@ -242,12 +242,10 @@ export async function getConnector<T>(
     connectorInstance = Tinyman.getInstance(network);
   } else if (connector === 'plenty') {
     connectorInstance = Plenty.getInstance(network);
-  } else if (chain === 'ethereum-classic' && connector === 'etcswap'
-  ) {
-    connectorInstance = ETCSwap.getInstance(chain, network)
-  } else if (chain === 'ethereum-classic' && connector === 'etcswapLP'
-  ) {
-    connectorInstance = ETCSwapLP.getInstance(chain, network)
+  } else if (chain === 'ethereum-classic' && connector === 'etcswap') {
+    connectorInstance = ETCSwap.getInstance(chain, network);
+  } else if (chain === 'ethereum-classic' && connector === 'etcswapLP') {
+    connectorInstance = ETCSwapLP.getInstance(chain, network);
   } else {
     throw new Error('unsupported chain or connector');
   }
