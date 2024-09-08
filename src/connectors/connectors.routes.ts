@@ -7,6 +7,7 @@ import { OpenoceanConfig } from './openocean/openocean.config';
 import { PangolinConfig } from './pangolin/pangolin.config';
 import { PerpConfig } from './perp/perp.config';
 import { QuickswapConfig } from './quickswap/quickswap.config';
+import { ShibaswapConfig } from './shibaswap/shibaswap.config';
 import { SushiswapConfig } from './sushiswap/sushiswap.config';
 import { TraderjoeConfig } from './traderjoe/traderjoe.config';
 import { UniswapConfig } from './uniswap/uniswap.config';
@@ -71,6 +72,12 @@ export namespace ConnectorsRoutes {
             trading_type: PerpConfig.config.tradingTypes('perp'),
             chain_type: PerpConfig.config.chainType,
             available_networks: PerpConfig.config.availableNetworks,
+          },
+          {
+            name: 'shibaswap',
+            trading_type: ShibaswapConfig.config.tradingTypes,
+            chain_type: ShibaswapConfig.config.chainType,
+            available_networks: ShibaswapConfig.config.availableNetworks,
           },
           {
             name: 'sushiswap',

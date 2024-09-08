@@ -1,0 +1,29 @@
+{
+  "name": "puppynet",
+  "tokens": [
+    {
+      "symbol": "WETH",
+      "chainId": 157,
+      "address": "0x0C477AE2E8E5ce1666468e44b066542Fa46f9F72",
+      "decimals": 18
+    },
+    {
+      "symbol": "WBONE",
+      "chainId": 157,
+      "address": "0x0000000000000000000000000000000000001010",
+      "decimals": 18
+    },
+    {
+      "symbol": "USDT",
+      "chainId": 157,
+      "address": "0x236a6f60B554813486D84d581747217d77Af05ff",
+      "decimals": 18
+    },
+    {
+      "symbol": "USDC",
+      "chainId": 157,
+      "address": "0x63E22542204dA9978218FbB3C10E1c0f6D1DC2a7",
+      "decimals": 18
+    }
+  ]
+}

@@ -14,7 +14,7 @@ import {
   providers as XdcProviders,
 } from 'ethers-xdc';
 import { EthereumBase } from '../chains/ethereum/ethereum-base';
-import { CosmosAsset, CosmosBase } from '../chains/cosmos/cosmos-base';
+import { CosmosBase } from '../chains/cosmos/cosmos-base';
 import { Provider } from '@ethersproject/abstract-provider';
 import { CurrencyAmount, Token, Trade as TradeUniswap } from '@uniswap/sdk';
 import { Trade } from '@uniswap/router-sdk';
@@ -38,6 +38,12 @@ import {
   Trade as TradeQuickswap,
   Fraction as QuickswapFraction,
 } from 'quickswap-sdk';
+import {
+  Trade as ShibaswapTrade,
+  Token as ShibaToken,
+  CurrencyAmount as ShibaCurrencyAmount,
+  Fraction as ShibaFraction,
+} from '@shibaswap/sdk';
 import {
   Trade as SushiswapTrade,
   Token as SushiToken,
@@ -113,9 +119,7 @@ import {
 import { BalanceRequest } from '../network/network.requests';
 import { TradeV2 } from '@traderjoe-xyz/sdk-v2';
 import { CurveTrade } from '../connectors/curve/curve';
-import { SerializableExtendedPool as CosmosSerializableExtendedPool } from '../chains/osmosis/osmosis.types';
 import { CarbonTrade } from '../connectors/carbon/carbonAMM';
-import { BalancerTrade } from '../connectors/balancer/balancer';
 
 // TODO Check the possibility to have clob/solana/serum equivalents here
 //  Check this link https://hummingbot.org/developers/gateway/building-gateway-connectors/#5-add-sdk-classes-to-uniswapish-interface
@@ -127,11 +131,11 @@ export type Tokenish =
   | TokenTraderjoe
   | UniswapCoreToken
   | SushiToken
+  | ShibaToken
   | PancakeSwapToken
   | MMFToken
   | VVSToken
-  | TokenXsswap
-  | CosmosAsset;
+  | TokenXsswap;
 
 export type TokenAmountish = MMFTokenAmount | VVSTokenAmount;
 
@@ -148,6 +152,7 @@ export type UniswapishTrade =
   | TradeQuickswap
   | TradeTraderjoe
   | SushiswapTrade<SushiToken, SushiToken, SushiTradeType>
+  | ShibaswapTrade
   | TradeUniswap
   | PancakeSwapTrade<
       PancakeSwapCurrency,
@@ -165,8 +170,7 @@ export type UniswapishTrade =
   | TradeXsswap
   | TradeV2
   | CurveTrade
-  | CarbonTrade
-  | BalancerTrade;
+  | CarbonTrade;
 
 export type UniswapishTradeOptions =
   | MMFTradeOptions
@@ -183,6 +187,7 @@ export type UniswapishAmount =
   | UniswapCoreCurrencyAmount<Currency>
   | CurrencyAmountTraderjoe
   | SushiCurrencyAmount<SushiCurrency | SushiToken>
+  | ShibaCurrencyAmount
   | PancakeSwapCurrencyAmount<PancakeSwapCurrency>
   | CurrencyAmountMMF
   | CurrencyAmountVVS
@@ -195,6 +200,7 @@ export type Fractionish =
   | QuickswapFraction
   | TraderjoeFraction
   | SushiFraction
+  | ShibaFraction
   | PancakeSwapFraction
   | FractionMMF
   | FractionVVS
@@ -206,17 +212,15 @@ export interface ExpectedTrade {
 }
 
 export interface PositionInfo {
-  token0?: string | undefined;
-  token1?: string | undefined;
-  poolShares?: string; // COSMOS - GAMM pools only issue poolShares (no amount/unclaimedToken)
-  fee?: string | undefined;
-  lowerPrice?: string;
-  upperPrice?: string;
-  amount0?: string; // COSMOS - CL pools only
-  amount1?: string; // COSMOS - CL pools only
-  unclaimedToken0?: string; // COSMOS - CL pools only
-  unclaimedToken1?: string; // COSMOS - CL pools only
-  pools?: CosmosSerializableExtendedPool[];
+  token0: string | undefined;
+  token1: string | undefined;
+  fee: string | undefined;
+  lowerPrice: string;
+  upperPrice: string;
+  amount0: string;
+  amount1: string;
+  unclaimedToken0: string;
+  unclaimedToken1: string;
 }
 
 export interface Uniswapish {
@@ -273,8 +277,7 @@ export interface Uniswapish {
     baseToken: Tokenish,
     quoteToken: Tokenish,
     amount: BigNumber,
-    allowedSlippage?: string,
-    poolId?: string,
+    allowedSlippage?: string
   ): Promise<ExpectedTrade>;
 
   /**
@@ -291,8 +294,7 @@ export interface Uniswapish {
     quoteToken: Tokenish,
     baseToken: Tokenish,
     amount: BigNumber,
-    allowedSlippage?: string,
-    poolId?: string,
+    allowedSlippage?: string
   ): Promise<ExpectedTrade>;
 
   /**
@@ -320,8 +322,7 @@ export interface Uniswapish {
     nonce?: number,
     maxFeePerGas?: BigNumber,
     maxPriorityFeePerGas?: BigNumber,
-    allowedSlippage?: string,
-    poolId?: string,
+    allowedSlippage?: string
   ): Promise<Transaction>;
 }
 
@@ -514,8 +515,7 @@ export interface UniswapLPish {
     gasPrice: number,
     nonce?: number,
     maxFeePerGas?: BigNumber,
-    maxPriorityFeePerGas?: BigNumber,
-    poolId?: string,
+    maxPriorityFeePerGas?: BigNumber
   ): Promise<Transaction>;
 
   /**
@@ -575,8 +575,7 @@ export interface UniswapLPish {
     token1: UniswapCoreToken,
     fee: string,
     period: number,
-    interval: number,
-    poolId?: string,
+    interval: number
   ): Promise<string[]>;
 }
 
@@ -809,16 +808,4 @@ export interface TransferRequest extends NetworkSelectionRequest {
   token: string;
 }
 
-export type TransferResponse = string | FullTransferResponse;
-
-export interface FullTransferResponse {
-  network: string;
-  timestamp: number;
-  latency: number;
-  amount: string;
-  gasPrice: string;
-  gasLimit: string;
-  gasUsed: string;
-  gasWanted: string;
-  txHash: string;
-}
+export type TransferResponse = string;
