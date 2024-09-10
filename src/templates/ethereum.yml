@@ -23,7 +23,7 @@ networks:
     chainID: 324
     nodeURL: https://mainnet.era.zksync.io
     tokenListType: FILE
-    tokenListSource: conf/lists/zksync_quiknode_tokens.json
+    tokenListSource: /home/gateway/conf/lists/zksync_quiknode_tokens.json
     nativeCurrencySymbol: ETH
     gasPriceRefreshInterval: 60
   optimism:
@@ -39,18 +39,23 @@ networks:
     tokenListType: FILE
     tokenListSource: /home/gateway/conf/lists/erc20_tokens_goerli.json
     nativeCurrencySymbol: ETH
-  base:
-    chainID: 8453
-    tokenListType: FILE
-    tokenListSource: /home/gateway/conf/lists/base_tokens.json
-    nodeURL: https://rpc.ankr.com/base
-    nativeCurrencySymbol: ETH
-    gasPriceRefreshInterval: 60
   arbitrumsepolia:
     chainID: 421614
     tokenListType: FILE
     tokenListSource: /home/gateway/conf/lists/arbitrum_sepolia_tokens.json
     nodeURL: https://rpc.ankr.com/arbitrum_sepolia
+  sepolia:
+    chainID: 11155111
+    nodeURL: https://rpc.ankr.com/eth_sepolia 
+    tokenListType: FILE
+    tokenListSource: /home/gateway/conf/lists/erc20_tokens_sepolia.json
+    nativeCurrencySymbol: ETH
+    gasPriceRefreshInterval: 60
+  base:
+    chainID: 8453
+    nodeURL:  https://mainnet.base.org
+    tokenListType: FILE
+    tokenListSource: /home/gateway/conf/lists/base_uniswap_20240411.json
     nativeCurrencySymbol: ETH
     gasPriceRefreshInterval: 60
 

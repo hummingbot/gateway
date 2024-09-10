@@ -11,6 +11,10 @@ import { AlphaRouter } from '@uniswap/smart-order-router';
 import { providers, Wallet, Signer, utils } from 'ethers';
 import { percentRegexp } from '../../services/config-manager-v2';
 import { Ethereum } from '../../chains/ethereum/ethereum';
+import { Avalanche } from '../../chains/avalanche/avalanche';
+import { Polygon } from '../../chains/polygon/polygon';
+import { BinanceSmartChain } from "../../chains/binance-smart-chain/binance-smart-chain";
+
 import {
   PoolState,
   RawPosition,
@@ -19,33 +23,58 @@ import {
 } from './uniswap.lp.interfaces';
 import * as math from 'mathjs';
 import { getAddress } from 'ethers/lib/utils';
+import { Celo } from '../../chains/celo/celo';
 
 export class UniswapLPHelper {
-  protected ethereum: Ethereum;
+  protected chain: Ethereum | Polygon | BinanceSmartChain | Avalanche | Celo;
   protected chainId;
+  private _factory: string;
   private _router: string;
   private _nftManager: string;
   private _ttl: number;
   private _routerAbi: ContractInterface;
   private _nftAbi: ContractInterface;
   private _poolAbi: ContractInterface;
-  private _alphaRouter: AlphaRouter;
+  private _alphaRouter: AlphaRouter | null;
   private tokenList: Record<string, Token> = {};
-  private _chain: string;
   private _ready: boolean = false;
   public abiDecoder: any;
 
   constructor(chain: string, network: string) {
-    this.ethereum = Ethereum.getInstance(network);
-    this._chain = chain;
-    this.chainId = this.ethereum.chainId;
-    this._alphaRouter = new AlphaRouter({
-      chainId: this.chainId,
-      provider: this.ethereum.provider,
-    });
+    if (chain === 'ethereum') {
+      this.chain = Ethereum.getInstance(network);
+    } else if (chain === 'polygon') {
+      this.chain = Polygon.getInstance(network);
+    } else if (chain === 'binance-smart-chain') {
+      this.chain = BinanceSmartChain.getInstance(network);
+    } else if (chain === 'avalanche') { 
+      this.chain = Avalanche.getInstance(network);
+    } else if (chain === 'celo') {
+      this.chain = Celo.getInstance(network);
+    } else {
+      throw new Error('Unsupported chain');
+    }
+    this.chainId = this.chain.chainId;
+
+    this._alphaRouter = null;
+    const excluded_chainIds = [
+      11155111, // sepolia
+      8453,     // base
+      56,       // binance-smart-chain
+      42220,    // celo
+      43114,    // avalanche
+    ];
+    if (this.chainId in excluded_chainIds) {
+        this._alphaRouter = new AlphaRouter({
+        chainId: this.chainId,
+        provider: this.chain.provider,
+      });
+    }
+
+    this._factory = UniswapConfig.config.uniswapV3FactoryAddress(chain, network);
     this._router =
-      UniswapConfig.config.uniswapV3SmartOrderRouterAddress(network);
-    this._nftManager = UniswapConfig.config.uniswapV3NftManagerAddress(network);
+      UniswapConfig.config.uniswapV3SmartOrderRouterAddress(chain, network);
+    this._nftManager = UniswapConfig.config.uniswapV3NftManagerAddress(chain, network);
     this._ttl = UniswapConfig.config.ttl;
     this._routerAbi =
       require('@uniswap/v3-periphery/artifacts/contracts/SwapRouter.sol/SwapRouter.json').abi;
@@ -63,6 +92,9 @@ export class UniswapLPHelper {
   }
 
   public get alphaRouter(): AlphaRouter {
+    if (this._alphaRouter === null) {
+      throw new Error('AlphaRouter is not initialized');
+    }
     return this._alphaRouter;
   }
 
@@ -101,12 +133,13 @@ export class UniswapLPHelper {
   }
 
   public async init() {
-    if (this._chain == 'ethereum' && !this.ethereum.ready())
+    const chainName = this.chain.chainName.toString();
+    if (!this.chain.ready())
       throw new InitializationError(
-        SERVICE_UNITIALIZED_ERROR_MESSAGE('ETH'),
+        SERVICE_UNITIALIZED_ERROR_MESSAGE(chainName),
         SERVICE_UNITIALIZED_ERROR_CODE
       );
-    for (const token of this.ethereum.storedTokenList) {
+    for (const token of this.chain.storedTokenList) {
       this.tokenList[token.address] = new Token(
         this.chainId,
         token.address,
@@ -156,7 +189,7 @@ export class UniswapLPHelper {
   ): Promise<PoolState> {
     const poolContract = this.getPoolContract(
       poolAddress,
-      this.ethereum.provider
+      this.chain.provider
     );
     const minTick = uniV3.nearestUsableTick(
       uniV3.TickMath.MIN_TICK,
@@ -221,9 +254,9 @@ export class UniswapLPHelper {
     const prices = [];
     const fee = uniV3.FeeAmount[tier as keyof typeof uniV3.FeeAmount];
     const poolContract = new Contract(
-      uniV3.Pool.getAddress(token0, token1, fee),
+      uniV3.Pool.getAddress(token0, token1, fee, undefined, this._factory),
       this.poolAbi,
-      this.ethereum.provider
+      this.chain.provider
     );
     for (
       let x = Math.ceil(period / interval) * interval;
@@ -311,7 +344,7 @@ export class UniswapLPHelper {
     const lowerPriceInFraction = math.fraction(lowerPrice) as math.Fraction;
     const upperPriceInFraction = math.fraction(upperPrice) as math.Fraction;
     const poolData = await this.getPoolState(
-      uniV3.Pool.getAddress(token0, token1, fee),
+      uniV3.Pool.getAddress(token0, token1, fee, undefined, this._factory),
       fee
     );
     const pool = new uniV3.Pool(
@@ -392,13 +425,14 @@ export class UniswapLPHelper {
     const positionData = await this.getRawPosition(wallet, tokenId);
     const token0 = this.getTokenByAddress(positionData.token0);
     const token1 = this.getTokenByAddress(positionData.token1);
+    const factoryAddress = this._factory
     const fee = positionData.fee;
     if (!token0 || !token1) {
       throw new Error(
         `One of the tokens in this position isn't recognized. $token0: ${token0}, $token1: ${token1}`
       );
     }
-    const poolAddress = uniV3.Pool.getAddress(token0, token1, fee);
+    const poolAddress = uniV3.Pool.getAddress(token0, token1, fee, undefined, factoryAddress);
     const poolData = await this.getPoolState(poolAddress, fee);
     const position = new uniV3.Position({
       pool: new uniV3.Pool(
