@@ -24,19 +24,19 @@ let mockProvider: typeof MockProvider;
 
 const WETH = new Token(
   3,
-  '0xd0A1E359811322d97991E03f863a0C30C2cF029C',
+  '0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14',
   18,
   'WETH'
 );
 
 const DAI = new Token(
   3,
-  '0x4f96fe3b7a6cf9725f59d353f723c1bdb64ca6aa',
+  '0xFF34B3d4Aee8ddCd6F9AFFFB6Fe49bD371b8a357',
   18,
   'DAI'
 );
 
-const DAI_WETH_POOL_ADDRESS = '0xBEff876AC507446457C2A6bDA9F7021A97A8547f';
+const DAI_WETH_POOL_ADDRESS = '0x122450AE55BD9B74768A128Bda99906351F81827';
 const POOL_SQRT_RATIO_START = encodeSqrtRatioX96(100e6, 100e18);
 const POOL_TICK_CURRENT = TickMath.getTickAtSqrtRatio(POOL_SQRT_RATIO_START);
 const POOL_LIQUIDITY = 0;
@@ -50,7 +50,7 @@ const DAI_WETH_POOL = new UniswapV3Pool(
 );
 
 beforeAll(async () => {
-  ethereum = Ethereum.getInstance('goerli');
+  ethereum = Ethereum.getInstance('sepolia');
   patchEVMNonceManager(ethereum.nonceManager);
   await ethereum.init();
 });
@@ -112,7 +112,7 @@ const patchTrade = (_key: string, error?: Error) => {
         route: [],
         blockNumber: BigNumber.from(5000),
       };
-    }  
+    }
   });
 };
 
@@ -125,12 +125,12 @@ const patchMockProvider = () => {
   mockProvider.stub(FACTORY_ADDRESS, 'getPool', DAI_WETH_POOL_ADDRESS);
 
   mockProvider.setMockContract(
-    UniswapConfig.config.quoterContractAddress('ethereum', 'goerli'),
+    UniswapConfig.config.quoterContractAddress('ethereum', 'sepolia'),
     require('@uniswap/swap-router-contracts/artifacts/contracts/lens/QuoterV2.sol/QuoterV2.json')
       .abi
   );
   mockProvider.stub(
-    UniswapConfig.config.quoterContractAddress('ethereum', 'goerli'),
+    UniswapConfig.config.quoterContractAddress('ethereum', 'sepolia'),
     'quoteExactInputSingle',
     /* amountOut */ 1,
     /* sqrtPriceX96After */ 0,
@@ -138,7 +138,7 @@ const patchMockProvider = () => {
     /* gasEstimate */ 0
   );
   mockProvider.stub(
-    UniswapConfig.config.quoterContractAddress('ethereum', 'goerli'),
+    UniswapConfig.config.quoterContractAddress('ethereum', 'sepolia'),
     'quoteExactOutputSingle',
     /* amountIn */ 1,
     /* sqrtPriceX96After */ 0,
@@ -183,7 +183,7 @@ const useRouter = async () => {
   config.useRouter = true;
 
   patch(Uniswap, '_instances', () => ({}));
-  uniswap = Uniswap.getInstance('ethereum', 'goerli');
+  uniswap = Uniswap.getInstance('ethereum', 'sepolia');
   await uniswap.init();
 };
 
@@ -193,7 +193,7 @@ const useQouter = async () => {
   config.feeTier = 'MEDIUM';
 
   patch(Uniswap, '_instances', () => ({}));
-  uniswap = Uniswap.getInstance('ethereum', 'goerli');
+  uniswap = Uniswap.getInstance('ethereum', 'sepolia');
   await uniswap.init();
 
   mockProvider = new MockProvider();
@@ -232,18 +232,18 @@ describe('verify Uniswap estimateSellTrade', () => {
       await useQouter();
     });
 
-    // it('Should return an ExpectedTrade when available', async () => {
-    //   patchGetPool(DAI_WETH_POOL_ADDRESS);
+    it('Should return an ExpectedTrade when available', async () => {
+      patchGetPool(DAI_WETH_POOL_ADDRESS);
 
-    //   const expectedTrade = await uniswap.estimateSellTrade(
-    //     WETH,
-    //     DAI,
-    //     BigNumber.from(1)
-    //   );
+      const expectedTrade = await uniswap.estimateSellTrade(
+        WETH,
+        DAI,
+        BigNumber.from(1)
+      );
 
-    //   expect(expectedTrade).toHaveProperty('trade');
-    //   expect(expectedTrade).toHaveProperty('expectedAmount');
-    // });
+      expect(expectedTrade).toHaveProperty('trade');
+      expect(expectedTrade).toHaveProperty('expectedAmount');
+    });
 
     it('Should throw an error if no pair is available', async () => {
       patchGetPool(constants.AddressZero);
@@ -287,18 +287,18 @@ describe('verify Uniswap estimateBuyTrade', () => {
       await useQouter();
     });
 
-    // it('Should return an ExpectedTrade when available', async () => {
-    //   patchGetPool(DAI_WETH_POOL_ADDRESS);
+    it('Should return an ExpectedTrade when available', async () => {
+      patchGetPool(DAI_WETH_POOL_ADDRESS);
 
-    //   const expectedTrade = await uniswap.estimateBuyTrade(
-    //     WETH,
-    //     DAI,
-    //     BigNumber.from(1)
-    //   );
+      const expectedTrade = await uniswap.estimateBuyTrade(
+        WETH,
+        DAI,
+        BigNumber.from(1)
+      );
 
-    //   expect(expectedTrade).toHaveProperty('trade');
-    //   expect(expectedTrade).toHaveProperty('expectedAmount');
-    // });
+      expect(expectedTrade).toHaveProperty('trade');
+      expect(expectedTrade).toHaveProperty('expectedAmount');
+    });
 
     it('Should throw an error if no pair is available', async () => {
       patchGetPool(constants.AddressZero);
