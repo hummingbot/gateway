@@ -4,6 +4,7 @@ import { Cronos } from '../chains/cronos/cronos';
 import { Ethereum } from '../chains/ethereum/ethereum';
 import { BinanceSmartChain } from '../chains/binance-smart-chain/binance-smart-chain';
 import { Harmony } from '../chains/harmony/harmony';
+import { Shibarium } from '../chains/shibarium/shibarium';
 import { Polygon } from '../chains/polygon/polygon';
 import { Xdc } from '../chains/xdc/xdc';
 import { Tezos } from '../chains/tezos/tezos';
@@ -19,6 +20,8 @@ import { PancakeSwap } from '../connectors/pancakeswap/pancakeswap';
 import { Uniswap } from '../connectors/uniswap/uniswap';
 import { UniswapLP } from '../connectors/uniswap/uniswap.lp';
 import { VVSConnector } from '../connectors/vvs/vvs';
+import { Shibaswap } from '../connectors/shibaswap/shibaswap';
+
 import {
   CLOBish,
   Ethereumish,
@@ -146,6 +149,8 @@ export async function getChainInstance(
     connection = Kujira.getInstance(network);
   } else if (chain === 'telos') {
     connection = Telos.getInstance(network);
+  } else if (chain === 'shibarium') {
+    connection = Shibarium.getInstance(network);
   } else {
     connection = undefined;
   }
@@ -183,7 +188,9 @@ export type Connector<T> = T extends Uniswapish
                 ? XRPLCLOB
                 : T extends KujiraCLOB
                   ? KujiraCLOB
-                  : never;
+                  : T extends Shibaswap
+                    ? Shibaswap
+                    : never;
 
 export async function getConnector<T>(
   chain: string,
@@ -237,6 +244,8 @@ export async function getConnector<T>(
     connectorInstance = Tinyman.getInstance(network);
   } else if (connector === 'plenty') {
     connectorInstance = Plenty.getInstance(network);
+  } else if (chain === 'shibarium' && connector === 'shibaswap') {
+    connectorInstance = Shibaswap.getInstance(chain, network);
   } else {
     throw new Error('unsupported chain or connector');
   }

@@ -139,3 +139,11 @@ configurations:
   $namespace telos:
     configurationPath: telos.yml
     schemaPath: ethereum-schema.json
+
+  $namespace shibarium:
+    configurationPath: shibarium.yml
+    schemaPath: ethereum-schema.json
+
+  $namespace shibaswap:
+    configurationPath: shibaswap.yml
+    schemaPath: shibaswap-schema.json

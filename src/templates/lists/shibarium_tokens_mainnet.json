@@ -1,0 +1,1055 @@
+{
+  "name": "mainnet",
+  "tokens": [
+    {
+      "decimals": 18,
+      "address": "0xa253fb19cea0d3cde270ab85d1ac9c309fbf8771",
+      "name": "FAT Token",
+      "symbol": "FAT",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x6189aed802e9b64530e8046adbfe4d19f73c445f",
+      "name": "Hoime Token",
+      "symbol": "HOIME",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xc6e3ab305c3d5e17c43fd6125f75f0f066215c2a",
+      "name": "Casual Games",
+      "symbol": "game",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x66df911c3bcbbcb5f24aa9fceb2bc0d93d5b3935",
+      "name": "Samuri Shib",
+      "symbol": "SAMURI",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x33ae26d96af0f6cc78d1a42e2308444ea150f9ec",
+      "name": "Shiba Ape Yacht Token",
+      "symbol": "SAYT",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x55ba2bcf312961d556e21e56277e8948d40494cc",
+      "name": "978X",
+      "symbol": "978X",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x1909bc9a0b6e983370cf3d67c558e4c8f32b9798",
+      "name": "980X",
+      "symbol": "980X",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x166ae4ad9ddca5ce366d499ffb8c98fd7e761d3c",
+      "name": "986X",
+      "symbol": "986X",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xad26b8d4472b39d1e0af53a2b5cf0508e21a2b3b",
+      "name": "973X",
+      "symbol": "973X",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x4556e1f3db44792bfec59ac2498c0689bef9394b",
+      "name": "Uranus",
+      "symbol": "URANUS",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xba9f1a6aa4086b9c7ee6568370e6ba9e0bc6a555",
+      "name": "GhostToken",
+      "symbol": "GTK",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xdd111cd510d3a424e5af498e90edc41b9db7feaf",
+      "name": "975X",
+      "symbol": "975X",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x2c81104f88f55f3cf620564bcf3d1f7e4084069d",
+      "name": "DogOld",
+      "symbol": "DOGO",
+      "chainId": 109
+    },
+    {
+      "decimals": 9,
+      "address": "0x5303c1bc8364c9702ff27a222cf82a91cb016bbf",
+      "name": "SHTest",
+      "symbol": "SHTEST",
+      "chainId": 109
+    },
+    {
+      "decimals": 9,
+      "address": "0x3a93275d7c55a3f079f49d893e947d5330a72eef",
+      "name": "TestContract",
+      "symbol": "TestSh",
+      "chainId": 109
+    },
+    {
+      "decimals": 9,
+      "address": "0xada0fa1f9a4ea8513b3b607efd31792336c09507",
+      "name": "Unification",
+      "symbol": "FUND",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x3d664bbab0b0ac3c4feb261dd8ff85dc64a012f5",
+      "name": "DogOld",
+      "symbol": "DOGO",
+      "chainId": 109
+    },
+    {
+      "decimals": 9,
+      "address": "0x158dc7dcb3252e8a096a161b14f323a5cf175e95",
+      "name": "SHTEST2",
+      "symbol": "SHTEST2",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x1e9fe76c57b67b5c487e681e1bcba2230a6d4b96",
+      "name": "976X",
+      "symbol": "976X",
+      "chainId": 109
+    },
+    {
+      "decimals": 9,
+      "address": "0xadb50b08d195c088f1f67855800d6522d6b3b50c",
+      "name": "Sharbi",
+      "symbol": "SHARBI",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xc9f74b89e48d187221d240cdef3254c8cc6897ca",
+      "name": "972X",
+      "symbol": "972X",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xef99cd3e619c058658043f8775ed9077105d8581",
+      "name": "BAD IDEA AI",
+      "symbol": "BAD",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x3313282478c5482220a3556ca92d0f341ecf3474",
+      "name": "WOOF SWAP BEST TEAM EVER",
+      "symbol": "Wbest",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x1e628d0f43010d51c82851fac766b7be126813c8",
+      "name": "979X",
+      "symbol": "979X",
+      "chainId": 109
+    },
+    {
+      "decimals": 9,
+      "address": "0x0da5aae7f402f4afbbdd045fadcd447835983a91",
+      "name": "Sharbi",
+      "symbol": "SHARBI",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x2ba41273083fe970f4c564ac2b6254d5f2f50e18",
+      "name": "977X",
+      "symbol": "977X",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x9f76c5f8cbdc91aa92ae1dd080c043a4e88a6e64",
+      "name": "974X",
+      "symbol": "974X",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x17bc7d51251e37f526d81a8b0f240ff1dd5eb555",
+      "name": "To The Shib",
+      "symbol": "TTS",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x05446d46121ea0709581140612a1a4c49fc5ae86",
+      "name": "981X",
+      "symbol": "981X",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x4230c6209a4725af63bfc73ccbf99a22b9e85eb4",
+      "name": "982X",
+      "symbol": "982X",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xa6a4a59ec17946bbdf58e837793a48935e3f0cf1",
+      "name": "Yeah Coin",
+      "symbol": "YEAH",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x31d2fa098b70ea688b6e97c09142af2ff39bbdb2",
+      "name": "985X",
+      "symbol": "985X",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xde80496fde552ed677e0f8a8e62669273cc36ac5",
+      "name": "HERO",
+      "symbol": "Krypto",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x3633e5488c2d683dd795e28f9fd943819515ca52",
+      "name": "984X",
+      "symbol": "984X",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x1e7c803b1094d0a7715ab933169e1ca31b4213a9",
+      "name": "JUST A MEME ",
+      "symbol": "JAM",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xd87816d68175b844223afe43cfffcc6e988a89f2",
+      "name": "983X",
+      "symbol": "983X",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x91fbb2503ac69702061f1ac6885759fc853e6eae",
+      "name": "K9 Finance DAO",
+      "symbol": "KNINE",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xe40545f5093556f260c0f2390e19314b6bc93ee5",
+      "name": "Zen-The Inner Peace",
+      "symbol": "Zen",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x1d1deb317850e1b017f49bb23a514d2bd4c5cb2f",
+      "name": "test33333",
+      "symbol": "test3",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xb65e76f2287a820d21d65d9f184db18033843e2f",
+      "name": "SHIB SHARK",
+      "symbol": "S$S",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x9ee1fabe85a5a65c2b17fd17d430fbf72fa895af",
+      "name": "Financial and Educational Freedom ",
+      "symbol": "FEF",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xece898edcc0af91430603175f945d8de75291c70",
+      "name": "Sol Killer",
+      "symbol": "DAMN",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xc76f4c819d820369fb2d7c1531ab3bb18e6fe8d8",
+      "name": "Shibarium Wrapped BONE",
+      "symbol": "WBONE",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x495eea66b0f8b636d441dc6a98d8f5c3d455c4c0",
+      "name": "SHIBA INU",
+      "symbol": "SHIB",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x65218a41fb92637254b4f8c97448d3df343a3064",
+      "name": "DOGE KILLER",
+      "symbol": "LEASH",
+      "chainId": 109
+    },
+    {
+      "decimals": 6,
+      "address": "0xf010f12dca0b96d2d6685bf4db3dbb4ad500b6ad",
+      "name": "USD Coin",
+      "symbol": "USDC",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x8ed7d143ef452316ab1123d28ab302dc3b80d3ce",
+      "name": "Wrapped Ether",
+      "symbol": "WETH",
+      "chainId": 109
+    },
+    {
+      "decimals": 8,
+      "address": "0xe984d89fb00d0b44e798a55dc41ea598b0b0899d",
+      "name": "Wrapped BTC",
+      "symbol": "WBTC",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xa5f49726c4f67fd2e8cb819c6091c7687cf4ea1f",
+      "name": "Dontbuy",
+      "symbol": "Dontbuy",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xee824089e12715c4072d5ec64f4e59e1f041f3db",
+      "name": "SPET",
+      "symbol": "SPET",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x4dcdcd83f480230c58114649418af27d10d1c137",
+      "name": "Chad",
+      "symbol": "CHAD",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x97a81866bb5c68a14153fe37e2ff757fada1d8ff",
+      "name": "TREAT PEPE",
+      "symbol": "TREAT PEPE",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xced59cf7d7219f21575b0717a611dba7525612eb",
+      "name": "FLORA",
+      "symbol": "FLR",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x33ca1d9305d5bb1cbeba0440c1b0fd5e1f8c81b9",
+      "name": "Bone Whale",
+      "symbol": "BONEWHALE",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x5a4810fe3cc3119667e308343391bd38e743b450",
+      "name": "ShibaSwap LP Token",
+      "symbol": "SSLP",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xb196130282958155dc64debdaedeadf13ff9cdb5",
+      "name": "DOG•GO•TO•THE•MOON",
+      "symbol": "$DOG",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x6d6633597093856b360133ceaa7ed4f9e0c0ebe3",
+      "name": "DOG•GO•TO•THE•MOON",
+      "symbol": "DOG",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xa08a2b88e72446187259a9b85bc9e5455139667d",
+      "name": "unknown",
+      "symbol": "unknown",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x7e64bd4198a521416a7989fc34761ec90c41f4b6",
+      "name": "unknown",
+      "symbol": "unknown",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x0d5ea9051d32e176afeecfc253eb17e13333a9f4",
+      "name": "LIVES",
+      "symbol": "LVS",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xda4cda845a8c539b7fcb750e79458bfa3ec2c774",
+      "name": "Shibizens Punk",
+      "symbol": "PUNK",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x40f56856cda7d7f9254fca86503e260e79cdb0c7",
+      "name": "ESTABLISH",
+      "symbol": "EST.",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x5f5b5731648250dd59b2f5de14aa9638418755bf",
+      "name": "ZAZA Chain",
+      "symbol": "ZaZa",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x0b4fd6288b6d32171cc515bffc9340026f56a358",
+      "name": "Pre-sale Killer",
+      "symbol": "PIKA",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xd714294047a60c0af3a5e497b22c81e261b5fe6f",
+      "name": "Turbo",
+      "symbol": "TURBO",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x4944b32adf7e96f7d54ed5abc4152856ce06540e",
+      "name": "MeanEyebrows",
+      "symbol": "BROW",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x3c9b2b930ed1b6040f8539cceb35dd189f4733dd",
+      "name": "1 CENT DREAM",
+      "symbol": "CENT",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x06768790a96d80ee3acfddf35800294bc9bb4680",
+      "name": "Peipei",
+      "symbol": "PEIPEI",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xefa5ff6827ab2f4d633f3fd67e9cc482d8796ef1",
+      "name": "Coyote ",
+      "symbol": "CYO",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x6be8230c1ebd725d74dae5a6b6577f917f64bd6b",
+      "name": "LUCIE SHIB",
+      "symbol": "LUCIE",
+      "chainId": 109
+    },
+    {
+      "decimals": 6,
+      "address": "0xab082b8ad96c7f47ed70ed971ce2116469954cfb",
+      "name": "Tether USD",
+      "symbol": "USDT",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x560d9e3c39798647d41e6f667c232d01643debb1",
+      "name": "988X",
+      "symbol": "988X",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x46a7d94e6ba59e873beb3314671748cf2da84b3b",
+      "name": "WALK Token",
+      "symbol": "WALK",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x9a9cdfa4a78f0f54f312decb030ddfdbd21ad8c5",
+      "name": "995X",
+      "symbol": "995X",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x38c47f03e0bbc88d7cf864414c64cc8b76e2df72",
+      "name": "998X",
+      "symbol": "998X",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xc1f0e746b5aaefbbe2e99ab08897766ae20f6236",
+      "name": "994X",
+      "symbol": "994X",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x93ffe7b31d2e3cae91356b0206db3d338a48ec7e",
+      "name": "990X",
+      "symbol": "990X",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x1be62534f12976d24e5db536c79e5108578f6dea",
+      "name": "989X",
+      "symbol": "989X",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x68abcf81ad1f36316883ac5dcf3ea16105fecc89",
+      "name": "991X",
+      "symbol": "991X",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x2ab554e73e74a6b7e9555bb33aa5c7a57bb17bf3",
+      "name": "993X",
+      "symbol": "993X",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x04dd02ef0334906f01d387b741df81070127ac52",
+      "name": "987X",
+      "symbol": "987X",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x38622ced4a2daea3345153b0a159f6c918bf8ccd",
+      "name": "996X",
+      "symbol": "996X",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xf0e348a0cbf1276e1676b23e05cf97a020b7eeb5",
+      "name": "992X",
+      "symbol": "992X",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x3645ab9dbb7628e688cf11a2b2356afd3b89fc52",
+      "name": "999X",
+      "symbol": "999X",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x896a0487ea41e7aeb5c6d706ddd2830c7f7fd15c",
+      "name": "997X",
+      "symbol": "997X",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x3dab7ed18dbd51bc5ac79013163f1129cff5c62d",
+      "name": "SHIBANA",
+      "symbol": "SHIBANA",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xf464b2a4b4f9d62e7ac26078ccbaa42d57b8c112",
+      "name": "Pomegranate",
+      "symbol": "Pomegranate",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xb9f88b6f9d921d8be8df3f18732917b3a1ede0f1",
+      "name": "test111111",
+      "symbol": "test1",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xed916ccab104362159b787af525328b85ea42825",
+      "name": "AMC",
+      "symbol": "AMC",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x3429153f568ef6e8e1a03c6cc0fa006023ce8b5a",
+      "name": "ERIKINU",
+      "symbol": "ERIK",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xab480e2cbd554db9f83f5ee593890abee14e924d",
+      "name": "989X",
+      "symbol": "989X",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x2d628dcadfb82937d875c6fb7cb92b57842d147d",
+      "name": "Tapir",
+      "symbol": "Tapir",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x7b1a357a03800018e8ae3d6d91cde0d959a283b5",
+      "name": "KUKU",
+      "symbol": "KUKU",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x9228701bfaeb38496815be6d24504696ab587076",
+      "name": "SHIB WIF HAT",
+      "symbol": "SIT",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xa84209a15a53dff28b4c4bf1c042bef0decaf34c",
+      "name": "1Cent+",
+      "symbol": "1Cent+",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x93060bf9540541bc00f6d5f144ba3c0c9ed871f5",
+      "name": "Ryoshis Katana",
+      "symbol": "Ryka",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x911c1b1abe06d95413d8411cc02743853c7805b2",
+      "name": "Penguin",
+      "symbol": "PNG",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xf702dbb2073ea1f329e05e48dd3a93582442dc2f",
+      "name": "X1000",
+      "symbol": "X1000",
+      "chainId": 109
+    },
+    {
+      "decimals": 9,
+      "address": "0xfd722863bc1d8e771f9507a4ccef540416864567",
+      "name": "Beaf Warket",
+      "symbol": "BEAF",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x94f8c01d235aee29e772fb2a370bf3d14d488870",
+      "name": "Tiger",
+      "symbol": "Tiger",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x4fc2281639f9441f0fcb8b6d922038277c4408c1",
+      "name": "BURY",
+      "symbol": "BURY",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x2761723006d3eb0d90b19b75654dbe543dcd974f",
+      "name": "CHEWY",
+      "symbol": "ChewySwap",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xe5dbb0aa123057fadd46cd69c21452134a939dab",
+      "name": "MarSwap LPs",
+      "symbol": "Mars-LP",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xc7055fa6a9ed9ff9695f79fc19787246e4e5e3f9",
+      "name": "SHIBA 7.0",
+      "symbol": "SHIBA7.0",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xd2e9e1a41e97912f3f966a3553e4c9bb6861f0a6",
+      "name": "Bark",
+      "symbol": "Bark",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xdc1f323acd2ad9358b892b5dad99254a4e7732cc",
+      "name": "CLOWN TOKEN BY SATOSHI NAKAMOTO",
+      "symbol": "CLOWN HAHAHA",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xf32dd87d69070377c909680e0ce45f6eda9066df",
+      "name": "Mickey Boat",
+      "symbol": "MICKEY",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x8cc82045e761329fa13c9b0a0a31d76615fec109",
+      "name": "CorruptFun",
+      "symbol": "CFUN",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x2bb0469cc500154a6f2f91af46e739a0cc21bf00",
+      "name": "Ralph",
+      "symbol": "$RALPH",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x5212b42ef96a47af93f3a6c801227b650edeb12f",
+      "name": "Sideshow 404",
+      "symbol": "SKULLZ",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xd73fcda60e66492adbda953d4237082e619b582e",
+      "name": "BONE1000$",
+      "symbol": "BONE1000$",
+      "chainId": 109
+    },
+    {
+      "decimals": 9,
+      "address": "0x3a71e24aec6f1004780450db9bfaf6dcb72965fb",
+      "name": "Sharbi",
+      "symbol": "SHARBI",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x46a9223f5307bf93acf52c66a0c2ad989b75a163",
+      "name": "StrongTeam",
+      "symbol": "ST",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xb7fa48daadb6401349a08eff22cb610f801bc45e",
+      "name": "The 8 Show",
+      "symbol": "SHOW",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x99cddd5a52dd4122b6a75afc0d4dae6355df5d56",
+      "name": "Shibarium of PEPE",
+      "symbol": "PEPE",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x6df1f0250c14131462143166313845a32b83d882",
+      "name": "Thesirion",
+      "symbol": "TSO",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x3751d1a5e0cddd08bf91a8e115e44ba5359e52b1",
+      "name": "Ryoshi's Coin",
+      "symbol": "RYOSHI",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x0726959d22361b79e4d50a5d157b044a83ec870d",
+      "name": "Dai Stablecoin",
+      "symbol": "DAI",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x5b16893c38b517d24b3ed2fa93313fa595867c95",
+      "name": "Mojo",
+      "symbol": "MOJO",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xd0cc6627fb2c2d2f4293abd5e11889d687825f54",
+      "name": "1000X",
+      "symbol": "1000X",
+      "chainId": 109
+    },
+    {
+      "decimals": 9,
+      "address": "0xee70777c4649b7937a86343f5a54718892572859",
+      "name": "Shytoshi&#39;s Coin",
+      "symbol": "SHYTOSHI",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xd0daa7b6ff1b40d3cc6f0b2cf7e85cb993d1c834",
+      "name": "WoofSwap",
+      "symbol": "WOOF",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x165e8b1faeff503963f113dc81afc49cea2baba9",
+      "name": "Shups Token",
+      "symbol": "SHUPS",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x0f21a2a674d495a818394c53db0e9e9e725290ca",
+      "name": "Start",
+      "symbol": "START",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xb27c21ba040f1a6d4f955799d877c22a68a4448f",
+      "name": "Bone One Hundred",
+      "symbol": "HUNDRED",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x4ca05e9066d9bcb9a3bf4ecf7507034a650a7e3e",
+      "name": "All Day",
+      "symbol": "Real G's",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x7ba1dd676e8407b42c3f2721e9d27fa9274f8135",
+      "name": "4:20",
+      "symbol": "420",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x3347743c7db64c3b11856947d743789ee8d5a8d2",
+      "name": "Meme Bank Coin",
+      "symbol": "ABC",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x5373220817432485a9e4fc7ab6c985f0a9a8c5a1",
+      "name": "Trac",
+      "symbol": "Trac",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xf75d777678910f4aa87097c1597d71d635a796c3",
+      "name": "CLOWN",
+      "symbol": "CLOWN",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x7d8f6f29c515ba3db465d681bd44885f3dd29b39",
+      "name": "test333333",
+      "symbol": "test3",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x706c1f9f9215977d69e1eb1bf811d193f7d5bb7b",
+      "name": "Ryoshis Guard ",
+      "symbol": "Anubis ",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xe063dab453125460a158307b748692d9905a19d3",
+      "name": "69",
+      "symbol": "69",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x7e0849246dbc88bf455a5496bd3ab61d16730ba3",
+      "name": "RSIC•GENESIS•RUNE",
+      "symbol": "RUNECOIN",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xc31fd4ad97824d0e6601ff3ea319d1c646451958",
+      "name": " Ordinals",
+      "symbol": "ORDI",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x6b34034fb513221ae064d81e442d5f4a86e089a9",
+      "name": "SATOSHI•NAKAMOTO",
+      "symbol": " SATOSHI",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x18a1ba23d5ec9d13085a0b53058c22d9892ca426",
+      "name": "Bakchodi Token",
+      "symbol": "BAKCHODI",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xc3704797a4d0bcd8173482b161fc36caa75ca416",
+      "name": "D3",
+      "symbol": "D3",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x34bb08ded025196b068dcb3c79f0612f113d70ba",
+      "name": "erc5011",
+      "symbol": "erc50",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x3e07514349f5837fc6ae7a996b4d8e4d79a5f487",
+      "name": "Shibarium of Meme",
+      "symbol": "SOME",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x27851e482690d5dbcfb312f579467b51e74480e3",
+      "name": "TRUMP",
+      "symbol": "TRUMP",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xb9ae1d4e474cc154f48e5c2f0559eb3a78ad1f09",
+      "name": "Shibinals",
+      "symbol": "SHIBS",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x65feca76c0ab1f9af14de4e98d41fbd4d53cc412",
+      "name": "Shibarium Gems Alert",
+      "symbol": "SGA",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x5fb59e18f8ed0e9f867e7d9d12356c05dda8fc79",
+      "name": "StrongTeam",
+      "symbol": "ST",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x1fa31c850e68dab3950b728bf1d7a43248dd1283",
+      "name": "BULL",
+      "symbol": "BULL",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xf90b777203b2f53fe50592d36c5d4fcd62b493e4",
+      "name": "Blue Nile",
+      "symbol": "BLUE ",
+      "chainId": 109
+    },
+    {
+      "decimals": 9,
+      "address": "0x8f40329b95871dd721cf80795cc2ceee09998546",
+      "name": "PePe",
+      "symbol": "PEPE",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0x3b025cb2764a363283761210ee1a2e6be0d5f431",
+      "name": "PESO",
+      "symbol": "PESO",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xfe10f4147567033ca377343b6ed8d4d4ca03bca6",
+      "name": "CATA",
+      "symbol": "CATA",
+      "chainId": 109
+    },
+    {
+      "decimals": 9,
+      "address": "0xcdbe27acb4579b1e2ef2f4efc4c4a6f7e63933b2",
+      "name": "Brick by Brick",
+      "symbol": "BRICK",
+      "chainId": 109
+    }
+  ]
+}
