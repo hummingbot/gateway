@@ -25,6 +25,7 @@ import { KujiraConfig } from './kujira/kujira.config';
 import { OsmosisConfig } from '../chains/osmosis/osmosis.config';
 import { CarbonConfig } from './carbon/carbon.config';
 import { BalancerConfig } from './balancer/balancer.config';
+import { ChewyswapConfig } from './chewyswap/chewyswap.config';
 
 export namespace ConnectorsRoutes {
   export const router = Router();
@@ -72,6 +73,12 @@ export namespace ConnectorsRoutes {
             trading_type: PerpConfig.config.tradingTypes('perp'),
             chain_type: PerpConfig.config.chainType,
             available_networks: PerpConfig.config.availableNetworks,
+          },
+          {
+            name: 'chewyswap',
+            trading_type: ChewyswapConfig.config.tradingTypes,
+            chain_type: ChewyswapConfig.config.chainType,
+            available_networks: ChewyswapConfig.config.availableNetworks,
           },
           {
             name: 'shibaswap',

@@ -50,6 +50,7 @@ import { PancakeswapLP } from '../connectors/pancakeswap/pancakeswap.lp';
 import { XRPLCLOB } from '../connectors/xrpl/xrpl';
 import { Carbonamm } from '../connectors/carbon/carbonAMM';
 import { Balancer } from '../connectors/balancer/balancer';
+import { Chewyswap } from '../connectors/chewyswap/chewyswap';
 
 export type ChainUnion =
   | Algorand
@@ -190,7 +191,9 @@ export type Connector<T> = T extends Uniswapish
                   ? KujiraCLOB
                   : T extends Shibaswap
                     ? Shibaswap
-                    : never;
+                    : T extends Chewyswap
+                      ? Chewyswap
+                      : never;
 
 export async function getConnector<T>(
   chain: string,
@@ -246,6 +249,8 @@ export async function getConnector<T>(
     connectorInstance = Plenty.getInstance(network);
   } else if (chain === 'shibarium' && connector === 'shibaswap') {
     connectorInstance = Shibaswap.getInstance(chain, network);
+  } else if (chain === 'shibarium' && connector === 'chewyswap') {
+    connectorInstance = Chewyswap.getInstance(chain, network);
   } else {
     throw new Error('unsupported chain or connector');
   }

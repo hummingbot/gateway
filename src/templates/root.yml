@@ -147,3 +147,7 @@ configurations:
   $namespace shibaswap:
     configurationPath: shibaswap.yml
     schemaPath: shibaswap-schema.json
+
+  $namespace chewyswap:
+    configurationPath: chewyswap.yml
+    schemaPath: chewyswap-schema.json
