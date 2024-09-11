@@ -39,6 +39,18 @@ import {
   Fraction as QuickswapFraction,
 } from 'quickswap-sdk';
 import {
+  Trade as ChewyswapTrade,
+  Token as ChewyswapToken,
+  CurrencyAmount as ChewyswapCurrencyAmount,
+  Fraction as ChewyswapFraction,
+} from '@chewyswap/sdk';
+import {
+  Trade as ShibaswapTrade,
+  Token as ShibaswapToken,
+  CurrencyAmount as ShibaswapCurrencyAmount,
+  Fraction as ShibaswapFraction,
+} from '@shibaswap/sdk';
+import {
   Trade as SushiswapTrade,
   Token as SushiToken,
   CurrencyAmount as SushiCurrencyAmount,
@@ -126,6 +138,8 @@ export type Tokenish =
   | TokenQuickswap
   | TokenTraderjoe
   | UniswapCoreToken
+  | ShibaswapToken
+  | ChewyswapToken
   | SushiToken
   | PancakeSwapToken
   | MMFToken
@@ -147,6 +161,8 @@ export type UniswapishTrade =
   | UniswapV3Trade<Currency, UniswapCoreToken, TradeType>
   | TradeQuickswap
   | TradeTraderjoe
+  | ShibaswapTrade
+  | ChewyswapTrade
   | SushiswapTrade<SushiToken, SushiToken, SushiTradeType>
   | TradeUniswap
   | PancakeSwapTrade<
@@ -182,6 +198,8 @@ export type UniswapishAmount =
   | CurrencyAmountQuickswap
   | UniswapCoreCurrencyAmount<Currency>
   | CurrencyAmountTraderjoe
+  | ShibaswapCurrencyAmount
+  | ChewyswapCurrencyAmount
   | SushiCurrencyAmount<SushiCurrency | SushiToken>
   | PancakeSwapCurrencyAmount<PancakeSwapCurrency>
   | CurrencyAmountMMF
@@ -194,6 +212,8 @@ export type Fractionish =
   | PangolinFraction
   | QuickswapFraction
   | TraderjoeFraction
+  | ShibaswapFraction
+  | ChewyswapFraction
   | SushiFraction
   | PancakeSwapFraction
   | FractionMMF
@@ -361,7 +381,7 @@ export interface RefAMMish {
    */
   parseTrade(
     trades: EstimateSwapView[],
-    side: string
+    side: string,
   ): {
     estimatedPrice: string;
     expectedAmount: string;
@@ -381,7 +401,7 @@ export interface RefAMMish {
     baseToken: TokenMetadata,
     quoteToken: TokenMetadata,
     amount: string,
-    allowedSlippage?: string
+    allowedSlippage?: string,
   ): Promise<{ trade: EstimateSwapView[]; expectedAmount: string }>;
 
   /**
@@ -398,7 +418,7 @@ export interface RefAMMish {
     quoteToken: TokenMetadata,
     baseToken: TokenMetadata,
     amount: string,
-    allowedSlippage?: string
+    allowedSlippage?: string,
   ): Promise<{ trade: EstimateSwapView[]; expectedAmount: string }>;
 
   /**
@@ -417,7 +437,7 @@ export interface RefAMMish {
     amountIn: string,
     tokenIn: TokenMetadata,
     tokenOut: TokenMetadata,
-    allowedSlippage?: string
+    allowedSlippage?: string,
   ): Promise<FinalExecutionOutcome>;
 }
 
@@ -538,7 +558,7 @@ export interface UniswapLPish {
     gasPrice: number,
     nonce?: number,
     maxFeePerGas?: BigNumber,
-    maxPriorityFeePerGas?: BigNumber
+    maxPriorityFeePerGas?: BigNumber,
   ): Promise<Transaction>;
 
   /**
@@ -558,7 +578,7 @@ export interface UniswapLPish {
     gasPrice: number,
     nonce?: number,
     maxFeePerGas?: BigNumber,
-    maxPriorityFeePerGas?: BigNumber
+    maxPriorityFeePerGas?: BigNumber,
   ): Promise<Transaction | { amount0: BigNumber; amount1: BigNumber }>;
 
   /**
@@ -643,7 +663,7 @@ export interface Perpish {
     isLong: boolean,
     tickerSymbol: string,
     minBaseAmount: string,
-    allowedSlippage?: string
+    allowedSlippage?: string,
   ): Promise<Transaction>;
 
   /**
@@ -653,7 +673,7 @@ export interface Perpish {
    */
   closePosition(
     tickerSymbol: string,
-    allowedSlippage?: string
+    allowedSlippage?: string,
   ): Promise<Transaction>;
 }
 
@@ -669,7 +689,7 @@ export interface Chain extends BasicChainMethods, EthereumBase {
   cancelTx(wallet: Wallet, nonce: number): Promise<Transaction>;
   getContract(
     tokenAddress: string,
-    signerOrProvider?: Wallet | Provider
+    signerOrProvider?: Wallet | Provider,
   ): Contract;
 }
 
@@ -679,7 +699,7 @@ export interface Xdcish extends BasicChainMethods, XdcBase {
   cancelTx(wallet: XdcWallet, nonce: number): Promise<XdcTransaction>;
   getContract(
     tokenAddress: string,
-    signerOrProvider?: XdcWallet | XdcProviders.Provider
+    signerOrProvider?: XdcWallet | XdcProviders.Provider,
   ): XdcContract;
 }
 
@@ -715,7 +735,7 @@ export interface CLOBish {
   ticker(req: ClobTickerRequest): Promise<{ markets: MarketInfo }>;
 
   orders(
-    req: ClobGetOrderRequest
+    req: ClobGetOrderRequest,
   ): Promise<{ orders: ClobGetOrderResponse['orders'] }>;
 
   postOrder(req: ClobPostOrderRequest): Promise<{ txHash: string }>;

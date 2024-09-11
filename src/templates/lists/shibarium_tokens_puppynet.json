@@ -1,0 +1,201 @@
+{
+  "name": "puppynet",
+  "tokens": [
+    {
+      "decimals": 18,
+      "name": "App Shib Club",
+      "symbol": "COIN",
+      "address": "0xedb3d5532090d068e540ac09f361ec8762d6e4ec",
+      "chainId": 157
+    },
+    {
+      "decimals": 18,
+      "name": "K9 Staked BONE",
+      "symbol": "knBONE",
+      "address": "0xc7e29ea23e3dab1e1bc891674dcf631cb8569f00",
+      "chainId": 157
+    },
+    {
+      "decimals": 18,
+      "name": "K9 Finance DAO",
+      "symbol": "KNINE",
+      "address": "0x19d24464203362a60d970df754301407041a7afd",
+      "chainId": 157
+    },
+    {
+      "decimals": 18,
+      "name": "Token 1",
+      "symbol": "T1",
+      "address": "0x94c0c36fa2befb55d939f36cc827f40073b82355",
+      "chainId": 157
+    },
+    {
+      "decimals": 18,
+      "name": "Token 2 (2)",
+      "symbol": "T2",
+      "address": "0xe5233ca22b083ed91fd75437f160a26dd9764d6d",
+      "chainId": 157
+    },
+    {
+      "decimals": 18,
+      "name": "Secret BONUS v2",
+      "symbol": "BONUS",
+      "address": "0xf50e32e480f8488043d0b7f08e349c284b3f48e5",
+      "chainId": 157
+    },
+    {
+      "decimals": 12,
+      "name": "Token 12d",
+      "symbol": "Token 12d",
+      "address": "0xd125dcfda3aae1ccfd4e149a94102a676c45896e",
+      "chainId": 157
+    },
+    {
+      "decimals": 6,
+      "name": "Token 6d",
+      "symbol": "Token 6d",
+      "address": "0xf4589d84f1b1b3b1375f5efd1be7b79b13d205cf",
+      "chainId": 157
+    },
+    {
+      "decimals": 18,
+      "name": "Token 3",
+      "symbol": "T3",
+      "address": "0x9aa70bce440e15d642147e1eaa6f83056d0e8c0e",
+      "chainId": 157
+    },
+    {
+      "decimals": 18,
+      "name": "Token4",
+      "symbol": "T4",
+      "address": "0x86873e69c5dbe4a659741e98a2c9bdfa6b5fbf52",
+      "chainId": 157
+    },
+    {
+      "decimals": 18,
+      "name": "Lion",
+      "symbol": "Lion",
+      "address": "0x729e6350714777b3148ef71701db0dded3a869ba",
+      "chainId": 157
+    },
+    {
+      "decimals": 18,
+      "name": "Elephant",
+      "symbol": "Elephant",
+      "address": "0x805d4ba77a629dbd3014c4b5d2afa2307f393a0f",
+      "chainId": 157
+    },
+    {
+      "decimals": 18,
+      "name": "CLOCK",
+      "symbol": "CLOCK",
+      "address": "0x93f45d9d03d85567ece5fa0dbe606db854a1f342",
+      "chainId": 157
+    },
+    {
+      "decimals": 18,
+      "name": "ILoveShiba",
+      "symbol": "ILS",
+      "address": "0x24ed1864f3778d33db0f0cde6f08b7321569d0b1",
+      "chainId": 157
+    },
+    {
+      "decimals": 18,
+      "name": "DAMN",
+      "symbol": "DAMN",
+      "address": "0xbed5d6474821ed685fed03ae62d93b00eaeb6ae4",
+      "chainId": 157
+    },
+    {
+      "decimals": 18,
+      "name": "WS",
+      "symbol": "WS",
+      "address": "0xdf51baf56d8b15cf43a4d8fcf5b0272ce3759f62",
+      "chainId": 157
+    },
+    {
+      "decimals": 18,
+      "name": "Test",
+      "symbol": "TEST",
+      "address": "0x921de6d2d9c3a023e76ac598f7247764cfc87f8c",
+      "chainId": 157
+    },
+    {
+      "decimals": 9,
+      "name": "BabyFOMO",
+      "symbol": "$BFOMO",
+      "address": "0x418feeaeb456dc46ad617bf1146b2972094f67e7",
+      "chainId": 157
+    },
+    {
+      "decimals": 6,
+      "name": "USD Coin",
+      "symbol": "USDC",
+      "address": "0x63e22542204da9978218fbb3c10e1c0f6d1dc2a7",
+      "chainId": 157
+    },
+    {
+      "decimals": 18,
+      "name": "Token",
+      "symbol": "Token",
+      "address": "0x7d134300fa3178cdee12485e95d1816806d13286",
+      "chainId": 157
+    },
+    {
+      "decimals": 18,
+      "name": "MyToken",
+      "symbol": "MTK",
+      "address": "0x47e92e226af370502f180f9c6fd5fea4ff0b7081",
+      "chainId": 157
+    },
+    {
+      "decimals": 18,
+      "name": "Wrapped Ether",
+      "symbol": "WETH",
+      "address": "0x0c477ae2e8e5ce1666468e44b066542fa46f9f72",
+      "chainId": 157
+    },
+    {
+      "decimals": 18,
+      "name": "SHIBA INU",
+      "symbol": "SHIB",
+      "address": "0xac720702df63fa92416b3deb24dc4a1854f73330",
+      "chainId": 157
+    },
+    {
+      "decimals": 6,
+      "name": "Maker DAO",
+      "symbol": "DAI",
+      "address": "0x6e1c21a5263bc6be0f193ea76e4dd57769484d83",
+      "chainId": 157
+    },
+    {
+      "decimals": 18,
+      "name": "Token pool - 2",
+      "symbol": "Token2",
+      "address": "0xef1079a16cefabfbaa21f9a3cb72daa4215e78f9",
+      "chainId": 157
+    },
+    {
+      "decimals": 18,
+      "name": "Token pool - 1",
+      "symbol": "Token1",
+      "address": "0xf0a89fb40c75501f2d4bc4b3a35d9b521d117416",
+      "chainId": 157
+    },
+    {
+      "decimals": 6,
+      "name": "Tether USD",
+      "symbol": "USDT",
+      "address": "0x236a6f60b554813486d84d581747217d77af05ff",
+      "chainId": 157
+    },
+    {
+      "decimals": 18,
+      "name": "Shibarium Wrapped BONE",
+      "symbol": "WBONE",
+      "address": "0x41c3f37587ebcd46c0f85ef43e38bcfe1e70ab56",
+      "chainId": 157
+    }
+  ]
+}
