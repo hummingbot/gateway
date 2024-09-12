@@ -396,7 +396,7 @@ export class RubiconCLOB implements CLOBish {
       .build()
 
     const serializedOrder = order.serialize();
-    const signature = this.signOrder(order, req.address)
+    const signature = await this.signOrder(order, req.address)
 
     const payload = {
       encodedOrder: serializedOrder,
