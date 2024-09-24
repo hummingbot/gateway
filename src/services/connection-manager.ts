@@ -47,6 +47,7 @@ import { PancakeswapLP } from '../connectors/pancakeswap/pancakeswap.lp';
 import { XRPLCLOB } from '../connectors/xrpl/xrpl';
 import { Carbonamm } from '../connectors/carbon/carbonAMM';
 import { Balancer } from '../connectors/balancer/balancer';
+import { RubiconCLOB } from '../connectors/rubicon/rubicon';
 
 export type ChainUnion =
   | Algorand
@@ -231,6 +232,8 @@ export async function getConnector<T>(
     connectorInstance = Balancer.getInstance(chain, network);
   } else if (connector === 'carbonamm') {
     connectorInstance = Carbonamm.getInstance(chain, network);
+  } else if (chain === 'ethereum' && connector === 'rubicon') {
+    connectorInstance = RubiconCLOB.getInstance(chain, network);
   } else if (connector === 'dexalot') {
     connectorInstance = DexalotCLOB.getInstance(network);
   } else if (connector == 'tinyman') {

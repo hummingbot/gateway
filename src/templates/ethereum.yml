@@ -39,6 +39,11 @@ networks:
     tokenListType: FILE
     tokenListSource: /home/gateway/conf/lists/erc20_tokens_goerli.json
     nativeCurrencySymbol: ETH
+  arbitrumsepolia:
+    chainID: 421614
+    tokenListType: FILE
+    tokenListSource: /home/gateway/conf/lists/arbitrum_sepolia_tokens.json
+    nodeURL: https://rpc.ankr.com/arbitrum_sepolia
   sepolia:
     chainID: 11155111
     nodeURL: https://rpc.ankr.com/eth_sepolia 

@@ -18,5 +18,5 @@ build:
 	yarn build
 
 docker:
-	git clean -xdf && docker build -t hummingbot/gateway${TAG} -f Dockerfile .
+	git clean -xdf && docker build -t hummingbot/gateway:${TAG} -f Dockerfile .
 

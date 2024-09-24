@@ -24,6 +24,7 @@ import { KujiraConfig } from './kujira/kujira.config';
 import { OsmosisConfig } from '../chains/osmosis/osmosis.config';
 import { CarbonConfig } from './carbon/carbon.config';
 import { BalancerConfig } from './balancer/balancer.config';
+import { RubiconCLOBConfig } from './rubicon/rubicon.config';
 
 export namespace ConnectorsRoutes {
   export const router = Router();
@@ -164,6 +165,18 @@ export namespace ConnectorsRoutes {
               accountId:
                 'Enter your kujira account number (input 0 if unsure) >>> ',
             },
+          },
+          {
+            name: 'rubicon',
+            trading_type: RubiconCLOBConfig.config.tradingTypes,
+            chain_type: RubiconCLOBConfig.config.chainType,
+            available_networks: RubiconCLOBConfig.config.availableNetworks,
+          },
+          {
+            name: 'quipuswap',
+            trading_type: QuipuswapConfig.config.tradingTypes,
+            chain_type: QuipuswapConfig.config.chainType,
+            available_networks: QuipuswapConfig.config.availableNetworks,
           },
           {
             name: 'osmosis',
