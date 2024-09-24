@@ -1,0 +1,16 @@
+networks:
+  mainnet:
+    chainID: 109
+    nodeURL: https://www.shibrpc.com
+    tokenListType: 'FILE'
+    tokenListSource: 'conf/lists/shibarium_tokens_mainnet.json'
+    nativeCurrencySymbol: 'BONE'  
+  puppynet:
+    chainID: 157
+    nodeURL: https://puppynet.shibrpc.com
+    tokenListType: 'FILE'
+    tokenListSource: 'conf/lists/shibarium_tokens_puppynet.json'
+    nativeCurrencySymbol: 'BONE'
+
+manualGasPrice: 1
+gasLimitTransaction: 200000
