@@ -16,8 +16,6 @@ module.exports = {
     'src/chains/celo/celo.ts',
     'src/chains/avalanche/pangolin/pangolin.ts',
     'src/chains/cosmos/cosmos.ts',
-    'src/chains/near/near.ts',
-    'src/chains/near/near.base.ts',
     'src/connectors/uniswap/uniswap.config.ts',
     'src/connectors/uniswap/uniswap.ts',
     'src/connectors/uniswap/uniswap.lp.helper.ts',

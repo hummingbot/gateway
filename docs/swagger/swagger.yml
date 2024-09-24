@@ -21,10 +21,6 @@ tags:
     description: 'AMM DEX swap endpoints'
   - name: 'amm/liquidity'
     description: 'AMM DEX liquidity provision endpoints'
-  - name: 'clob'
-    description: 'CLOB spot DEX endpoints'
-  - name: 'clob/perp'
-    description: 'CLOB perpetual DEX endpoints'
 
 schemes:
   - 'http'
