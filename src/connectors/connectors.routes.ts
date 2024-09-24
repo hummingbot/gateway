@@ -13,11 +13,9 @@ import { VVSConfig } from './vvs/vvs.config';
 import { PancakeSwapConfig } from './pancakeswap/pancakeswap.config';
 import { XsswapConfig } from './xsswap/xsswap.config';
 import { ConnectorsResponse } from './connectors.request';
-import { DexalotCLOBConfig } from './dexalot/dexalot.clob.config';
 import { TinymanConfig } from './tinyman/tinyman.config';
 import { CurveConfig } from './curve/curveswap.config';
 import { PlentyConfig } from './plenty/plenty.config';
-import { XRPLCLOBConfig } from './xrpl/xrpl.clob.config';
 import { KujiraConfig } from './kujira/kujira.config';
 import { OsmosisConfig } from '../chains/osmosis/osmosis.config';
 import { CarbonConfig } from './carbon/carbon.config';
@@ -108,16 +106,6 @@ export namespace ConnectorsRoutes {
             available_networks: XsswapConfig.config.availableNetworks,
           },
           {
-            name: 'dexalot',
-            trading_type: DexalotCLOBConfig.config.tradingTypes('spot'),
-            chain_type: DexalotCLOBConfig.config.chainType,
-            available_networks: DexalotCLOBConfig.config.availableNetworks,
-            additional_add_wallet_prompts: {
-              api_key:
-                'Enter a Dexalot API Key if you have one, otherwise hit return >>> ',
-            },
-          },
-          {
             name: 'tinyman',
             trading_type: TinymanConfig.config.tradingTypes,
             chain_type: TinymanConfig.config.chainType,
@@ -134,12 +122,6 @@ export namespace ConnectorsRoutes {
             trading_type: PlentyConfig.config.tradingTypes,
             chain_type: PlentyConfig.config.chainType,
             available_networks: PlentyConfig.config.availableNetworks,
-          },
-          {
-            name: 'xrpl',
-            trading_type: XRPLCLOBConfig.config.tradingTypes,
-            chain_type: XRPLCLOBConfig.config.chainType,
-            available_networks: XRPLCLOBConfig.config.availableNetworks,
           },
           {
             name: 'kujira',

@@ -2,7 +2,6 @@ import fse from 'fs-extra';
 import { Xdc } from '../../chains/xdc/xdc';
 import { Cosmos } from '../../chains/cosmos/cosmos';
 import { Tezos } from '../../chains/tezos/tezos';
-import { XRPL } from '../../chains/xrpl/xrpl';
 import { Kujira } from '../../chains/kujira/kujira';
 
 import {
@@ -130,12 +129,6 @@ export async function addWallet(
       } else {
         throw new Error('Kujira wallet requires an account number.');
       }
-    } else if (connection instanceof XRPL) {
-      address = connection.getWalletFromSeed(req.privateKey).classicAddress;
-      encryptedPrivateKey = await connection.encrypt(
-        req.privateKey,
-        passphrase
-      );
     }
 
     if (address === undefined || encryptedPrivateKey === undefined) {

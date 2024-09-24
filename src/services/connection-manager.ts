@@ -9,7 +9,6 @@ import { Xdc } from '../chains/xdc/xdc';
 import { Tezos } from '../chains/tezos/tezos';
 import { Telos } from '../chains/telos/telos';
 import { Osmosis } from '../chains/osmosis/osmosis';
-import { XRPL, XRPLish } from '../chains/xrpl/xrpl';
 import { MadMeerkat } from '../connectors/mad_meerkat/mad_meerkat';
 import { Openocean } from '../connectors/openocean/openocean';
 import { Pangolin } from '../connectors/pangolin/pangolin';
@@ -29,7 +28,6 @@ import {
 import { Traderjoe } from '../connectors/traderjoe/traderjoe';
 import { Sushiswap } from '../connectors/sushiswap/sushiswap';
 import { Xsswap } from '../connectors/xsswap/xsswap';
-import { DexalotCLOB } from '../connectors/dexalot/dexalot';
 import { Algorand } from '../chains/algorand/algorand';
 import { Cosmos } from '../chains/cosmos/cosmos';
 import { Tinyman } from '../connectors/tinyman/tinyman';
@@ -38,7 +36,6 @@ import { Curve } from '../connectors/curve/curve';
 import { Kujira } from '../chains/kujira/kujira';
 import { KujiraCLOB } from '../connectors/kujira/kujira';
 import { PancakeswapLP } from '../connectors/pancakeswap/pancakeswap.lp';
-import { XRPLCLOB } from '../connectors/xrpl/xrpl';
 import { Carbonamm } from '../connectors/carbon/carbonAMM';
 import { Balancer } from '../connectors/balancer/balancer';
 
@@ -48,7 +45,6 @@ export type ChainUnion =
   | Ethereumish
   | Xdcish
   | Tezosish
-  | XRPLish
   | Kujira
   | Osmosis;
 
@@ -62,8 +58,6 @@ export type Chain<T> = T extends Algorand
           ? Xdcish
           : T extends Tezosish
             ? Tezosish
-            : T extends XRPLish
-              ? XRPLish
               : T extends KujiraCLOB
                 ? KujiraCLOB
                 : T extends Osmosis
@@ -129,8 +123,6 @@ export async function getChainInstance(
     connection = Xdc.getInstance(network);
   } else if (chain === 'tezos') {
     connection = Tezos.getInstance(network);
-  } else if (chain === 'xrpl') {
-    connection = XRPL.getInstance(network);
   } else if (chain === 'kujira') {
     connection = Kujira.getInstance(network);
   } else if (chain === 'telos') {
@@ -148,7 +140,6 @@ export type ConnectorUnion =
   | CLOBish
   | Tinyman
   | Plenty
-  | XRPLCLOB
   | Curve
   | KujiraCLOB
 
@@ -162,8 +153,6 @@ export type Connector<T> = T extends Uniswapish
           ? Tinyman
           : T extends Plenty
             ? Plenty
-            : T extends XRPLish
-              ? XRPLCLOB
               : T extends KujiraCLOB
                 ? KujiraCLOB
                   : never;
@@ -199,8 +188,6 @@ export async function getConnector<T>(
     connectorInstance = Sushiswap.getInstance(chain, network);
   } else if (connector === 'xsswap') {
     connectorInstance = Xsswap.getInstance(chain, network);
-  } else if (connector === 'xrpl') {
-    connectorInstance = XRPLCLOB.getInstance(chain, network);
   } else if (connector === 'kujira') {
     connectorInstance = KujiraCLOB.getInstance(chain, network);
   } else if (connector === 'curve') {
@@ -209,8 +196,6 @@ export async function getConnector<T>(
     connectorInstance = Balancer.getInstance(chain, network);
   } else if (connector === 'carbonamm') {
     connectorInstance = Carbonamm.getInstance(chain, network);
-  } else if (connector === 'dexalot') {
-    connectorInstance = DexalotCLOB.getInstance(network);
   } else if (connector == 'tinyman') {
     connectorInstance = Tinyman.getInstance(network);
   } else if (connector === 'plenty') {

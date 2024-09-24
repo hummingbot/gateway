@@ -87,8 +87,6 @@ export const swaggerDocument = SwaggerManager.generateSwaggerJson(
   [
     './docs/swagger/main-routes.yml',
     './docs/swagger/connectors-routes.yml',
-    './docs/swagger/clob-routes.yml',
-    './docs/swagger/clob-perp-routes.yml',
     './docs/swagger/wallet-routes.yml',
     './docs/swagger/amm-routes.yml',
     './docs/swagger/amm-liquidity-routes.yml',
