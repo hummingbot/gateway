@@ -19,14 +19,11 @@ import { ConfigManagerCertPassphrase } from '../config-manager-cert-passphrase';
 import {
   ERROR_RETRIEVING_WALLET_ADDRESS_ERROR_CODE,
   ERROR_RETRIEVING_WALLET_ADDRESS_ERROR_MESSAGE,
-  ACCOUNT_NOT_SPECIFIED_CODE,
-  ACCOUNT_NOT_SPECIFIED_ERROR_MESSAGE,
   HttpException,
   UNKNOWN_CHAIN_ERROR_CODE,
   UNKNOWN_KNOWN_CHAIN_ERROR_MESSAGE,
 } from '../error-handler';
 import { EthereumBase } from '../../chains/ethereum/ethereum-base';
-import { Near } from '../../chains/near/near';
 import {
   ChainUnion,
   getInitializedChain,
@@ -61,16 +58,6 @@ export async function addWallet(
   let connection: ChainUnion;
   let address: string | undefined;
   let encryptedPrivateKey: string | undefined;
-
-  if (req.chain === 'near') {
-    if (!('address' in req)) {
-      throw new HttpException(
-        500,
-        ACCOUNT_NOT_SPECIFIED_ERROR_MESSAGE(),
-        ACCOUNT_NOT_SPECIFIED_CODE
-      );
-    }
-  }
 
   try {
     connection = await getInitializedChain<ChainUnion>(req.chain, req.network);
@@ -123,14 +110,6 @@ export async function addWallet(
         req.privateKey,
         passphrase
       );
-    } else if (connection instanceof Near) {
-      address = (
-        await connection.getWalletFromPrivateKey(
-          req.privateKey,
-          <string>req.address
-        )
-      ).accountId;
-      encryptedPrivateKey = connection.encrypt(req.privateKey, passphrase);
     } else if (connection instanceof Tezos) {
       const tezosWallet = await connection.getWalletFromPrivateKey(
         req.privateKey

@@ -5,13 +5,11 @@ import { asyncHandler } from '../services/error-handler';
 import { MadMeerkatConfig } from './mad_meerkat/mad_meerkat.config';
 import { OpenoceanConfig } from './openocean/openocean.config';
 import { PangolinConfig } from './pangolin/pangolin.config';
-import { PerpConfig } from './perp/perp.config';
 import { QuickswapConfig } from './quickswap/quickswap.config';
 import { SushiswapConfig } from './sushiswap/sushiswap.config';
 import { TraderjoeConfig } from './traderjoe/traderjoe.config';
 import { UniswapConfig } from './uniswap/uniswap.config';
 import { VVSConfig } from './vvs/vvs.config';
-import { RefConfig } from './ref/ref.config';
 import { PancakeSwapConfig } from './pancakeswap/pancakeswap.config';
 import { XsswapConfig } from './xsswap/xsswap.config';
 import { ConnectorsResponse } from './connectors.request';
@@ -67,12 +65,6 @@ export namespace ConnectorsRoutes {
             available_networks: QuickswapConfig.config.availableNetworks,
           },
           {
-            name: 'perp',
-            trading_type: PerpConfig.config.tradingTypes('perp'),
-            chain_type: PerpConfig.config.chainType,
-            available_networks: PerpConfig.config.availableNetworks,
-          },
-          {
             name: 'sushiswap',
             trading_type: SushiswapConfig.config.tradingTypes,
             chain_type: SushiswapConfig.config.chainType,
@@ -95,12 +87,6 @@ export namespace ConnectorsRoutes {
             trading_type: VVSConfig.config.tradingTypes,
             chain_type: VVSConfig.config.chainType,
             available_networks: VVSConfig.config.availableNetworks,
-          },
-          {
-            name: 'ref',
-            trading_type: RefConfig.config.tradingTypes,
-            chain_type: RefConfig.config.chainType,
-            available_networks: RefConfig.config.availableNetworks,
           },
           {
             name: 'pancakeswap',

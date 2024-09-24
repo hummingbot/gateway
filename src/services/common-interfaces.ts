@@ -1,4 +1,3 @@
-import { Big } from 'big.js';
 import {
   Contract,
   Transaction,
@@ -94,13 +93,8 @@ import {
   Trade as TradeXsswap,
   Fraction as XsswapFraction,
 } from 'xsswap-sdk';
-import { PerpPosition } from '../connectors/perp/perp';
 import { XdcBase } from '../chains/xdc/xdc.base';
-import { NearBase } from '../chains/near/near.base';
 import { TezosBase } from '../chains/tezos/tezos.base';
-import { Account, Contract as NearContract } from 'near-api-js';
-import { EstimateSwapView, TokenMetadata } from 'coinalpha-ref-sdk';
-import { FinalExecutionOutcome } from 'near-api-js/lib/providers';
 import {
   ClobDeleteOrderRequest,
   ClobGetOrderRequest,
@@ -325,102 +319,6 @@ export interface Uniswapish {
   ): Promise<Transaction>;
 }
 
-export interface RefAMMish {
-  /**
-   * Router address.
-   */
-  router: string;
-
-  /**
-   * Default gas estiamte for swap transactions.
-   */
-  gasLimitEstimate: number;
-
-  /**
-   * Default time-to-live for swap transactions, in seconds.
-   */
-  ttl: number;
-
-  init(): Promise<void>;
-
-  ready(): boolean;
-
-  balances?(req: BalanceRequest): Promise<Record<string, string>>;
-
-  /**
-   * Given a token's address, return the connector's native representation of
-   * the token.
-   *
-   * @param address Token address
-   */
-  getTokenByAddress(address: string): TokenMetadata;
-
-  /**
-   * Calculated expected execution price and expected amount in after a swap/trade
-   * @param trades The trade path object
-   */
-  parseTrade(
-    trades: EstimateSwapView[],
-    side: string
-  ): {
-    estimatedPrice: string;
-    expectedAmount: string;
-  };
-
-  /**
-   * Given the amount of `baseToken` to put into a transaction, calculate the
-   * amount of `quoteToken` that can be expected from the transaction.
-   *
-   * This is typically used for calculating token sell prices.
-   *
-   * @param baseToken Token input for the transaction
-   * @param quoteToken Output from the transaction
-   * @param amount Amount of `baseToken` to put into the transaction
-   */
-  estimateSellTrade(
-    baseToken: TokenMetadata,
-    quoteToken: TokenMetadata,
-    amount: string,
-    allowedSlippage?: string
-  ): Promise<{ trade: EstimateSwapView[]; expectedAmount: string }>;
-
-  /**
-   * Given the amount of `baseToken` desired to acquire from a transaction,
-   * calculate the amount of `quoteToken` needed for the transaction.
-   *
-   * This is typically used for calculating token buy prices.
-   *
-   * @param quoteToken Token input for the transaction
-   * @param baseToken Token output from the transaction
-   * @param amount Amount of `baseToken` desired from the transaction
-   */
-  estimateBuyTrade(
-    quoteToken: TokenMetadata,
-    baseToken: TokenMetadata,
-    amount: string,
-    allowedSlippage?: string
-  ): Promise<{ trade: EstimateSwapView[]; expectedAmount: string }>;
-
-  /**
-   * Given an Account and a Ref trade, try to execute it on blockchain.
-   *
-   * @param account Account
-   * @param trade Expected trade
-   * @param amountIn Amount to swap in
-   * @param tokenIn Token to be sent
-   * @param tokenOut Token to be received
-   * @param allowedSlippage Maximum allowable slippage
-   */
-  executeTrade(
-    account: Account,
-    trade: EstimateSwapView[],
-    amountIn: string,
-    tokenIn: TokenMetadata,
-    tokenOut: TokenMetadata,
-    allowedSlippage?: string
-  ): Promise<FinalExecutionOutcome>;
-}
-
 export interface UniswapLPish {
   /**
    * Router address.
@@ -580,83 +478,6 @@ export interface UniswapLPish {
   ): Promise<string[]>;
 }
 
-export interface Perpish {
-  gasLimit: number;
-
-  init(): Promise<void>;
-
-  ready(): boolean;
-
-  balances?(req: BalanceRequest): Promise<Record<string, string>>;
-
-  /**
-   * Given a token's address, return the connector's native representation of
-   * the token.
-   *
-   * @param address Token address
-   */
-  getTokenByAddress(address: string): Tokenish;
-
-  /**
-   * Function for retrieving token list.
-   * @returns a list of available marker pairs.
-   */
-  availablePairs(): string[];
-
-  /**
-   * Give a market, queries for market, index and indexTwap prices.
-   * @param tickerSymbol Market pair
-   */
-  prices(tickerSymbol: string): Promise<{
-    markPrice: Big;
-    indexPrice: Big;
-    indexTwapPrice: Big;
-  }>;
-
-  /**
-   * Used to know if a market is active/tradable.
-   * @param tickerSymbol Market pair
-   * @returns true | false
-   */
-  isMarketActive(tickerSymbol: string): Promise<boolean>;
-
-  /**
-   * Gets available Positions/Position.
-   * @param tickerSymbol An optional parameter to get specific position.
-   * @returns Return all Positions or specific position.
-   */
-  getPositions(tickerSymbol: string): Promise<PerpPosition | undefined>;
-
-  /**
-   * Attempts to return balance of a connected acct
-   */
-  getAccountValue(): Promise<Big>;
-
-  /**
-   * Given the necessary parameters, open a position.
-   * @param isLong Will create a long position if true, else a short pos will be created.
-   * @param tickerSymbol the market to create position on.
-   * @param minBaseAmount the min amount for the position to be opened.
-   * @returns An ethers transaction object.
-   */
-  openPosition(
-    isLong: boolean,
-    tickerSymbol: string,
-    minBaseAmount: string,
-    allowedSlippage?: string
-  ): Promise<Transaction>;
-
-  /**
-   * Closes an open position on the specified market.
-   * @param tickerSymbol The market on which we want to close position.
-   * @returns An ethers transaction object.
-   */
-  closePosition(
-    tickerSymbol: string,
-    allowedSlippage?: string
-  ): Promise<Transaction>;
-}
-
 export interface BasicChainMethods {
   getSpender(reqSpender: string): string;
   gasPrice: number;
@@ -730,11 +551,6 @@ export interface CLOBish {
     gasLimit: number;
     gasCost: number;
   };
-}
-
-export interface Nearish extends BasicChainMethods, NearBase {
-  cancelTx(account: Account, nonce: number): Promise<string>;
-  getContract(tokenAddress: string, account: Account): NearContract;
 }
 
 export interface Cosmosish extends CosmosBase {

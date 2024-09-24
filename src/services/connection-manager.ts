@@ -13,7 +13,6 @@ import { XRPL, XRPLish } from '../chains/xrpl/xrpl';
 import { MadMeerkat } from '../connectors/mad_meerkat/mad_meerkat';
 import { Openocean } from '../connectors/openocean/openocean';
 import { Pangolin } from '../connectors/pangolin/pangolin';
-import { Perp } from '../connectors/perp/perp';
 import { Quickswap } from '../connectors/quickswap/quickswap';
 import { PancakeSwap } from '../connectors/pancakeswap/pancakeswap';
 import { Uniswap } from '../connectors/uniswap/uniswap';
@@ -22,9 +21,6 @@ import { VVSConnector } from '../connectors/vvs/vvs';
 import {
   CLOBish,
   Ethereumish,
-  Nearish,
-  Perpish,
-  RefAMMish,
   Uniswapish,
   UniswapLPish,
   Xdcish,
@@ -32,8 +28,6 @@ import {
 } from './common-interfaces';
 import { Traderjoe } from '../connectors/traderjoe/traderjoe';
 import { Sushiswap } from '../connectors/sushiswap/sushiswap';
-import { Near } from '../chains/near/near';
-import { Ref } from '../connectors/ref/ref';
 import { Xsswap } from '../connectors/xsswap/xsswap';
 import { DexalotCLOB } from '../connectors/dexalot/dexalot';
 import { Algorand } from '../chains/algorand/algorand';
@@ -52,7 +46,6 @@ export type ChainUnion =
   | Algorand
   | Cosmos
   | Ethereumish
-  | Nearish
   | Xdcish
   | Tezosish
   | XRPLish
@@ -65,8 +58,6 @@ export type Chain<T> = T extends Algorand
     ? Cosmos
     : T extends Ethereumish
       ? Ethereumish
-      : T extends Nearish
-        ? Nearish
         : T extends Xdcish
           ? Xdcish
           : T extends Tezosish
@@ -132,8 +123,6 @@ export async function getChainInstance(
     connection = Celo.getInstance(network);
   } else if (chain === 'osmosis') {
     connection = Osmosis.getInstance(network);
-  } else if (chain === 'near') {
-    connection = Near.getInstance(network);
   } else if (chain === 'binance-smart-chain') {
     connection = BinanceSmartChain.getInstance(network);
   } else if (chain === 'xdc') {
@@ -156,8 +145,6 @@ export async function getChainInstance(
 export type ConnectorUnion =
   | Uniswapish
   | UniswapLPish
-  | Perpish
-  | RefAMMish
   | CLOBish
   | Tinyman
   | Plenty
@@ -169,27 +156,22 @@ export type Connector<T> = T extends Uniswapish
   ? Uniswapish
   : T extends UniswapLPish
     ? UniswapLPish
-    : T extends Perpish
-      ? Perpish
-      : T extends RefAMMish
-        ? RefAMMish
-        : T extends CLOBish
-          ? CLOBish
-          : T extends Tinyman
-            ? Tinyman
-            : T extends Plenty
-              ? Plenty
-              : T extends XRPLish
-                ? XRPLCLOB
-                : T extends KujiraCLOB
-                  ? KujiraCLOB
-                    : never;
+      : T extends CLOBish
+        ? CLOBish
+        : T extends Tinyman
+          ? Tinyman
+          : T extends Plenty
+            ? Plenty
+            : T extends XRPLish
+              ? XRPLCLOB
+              : T extends KujiraCLOB
+                ? KujiraCLOB
+                  : never;
 
 export async function getConnector<T>(
   chain: string,
   network: string,
   connector: string | undefined,
-  address?: string,
 ): Promise<Connector<T>> {
   let connectorInstance: ConnectorUnion;
 
@@ -199,8 +181,6 @@ export async function getConnector<T>(
     connectorInstance = UniswapLP.getInstance(chain, network);
   } else if (connector === 'quickswap') {
     connectorInstance = Quickswap.getInstance(chain, network);
-  } else if (connector === 'perp') {
-    connectorInstance = Perp.getInstance(chain, network, address);
   } else if (connector === 'pangolin') {
     connectorInstance = Pangolin.getInstance(chain, network);
   } else if (connector === 'openocean') {
@@ -211,8 +191,6 @@ export async function getConnector<T>(
     connectorInstance = MadMeerkat.getInstance(chain, network);
   } else if (connector === 'vvs') {
     connectorInstance = VVSConnector.getInstance(chain, network);
-  } else if (connector === 'ref') {
-    connectorInstance = Ref.getInstance(chain, network);
   } else if (connector === 'pancakeswap') {
     connectorInstance = PancakeSwap.getInstance(chain, network);
   } else if (connector === 'pancakeswapLP') {

@@ -7,7 +7,6 @@ import {
   validateChain,
   validateAddress,
   validateAccountID,
-  isNearPrivateKey,
   isCosmosPrivateKey,
   invalidCosmosPrivateKeyError,
   invalidAccountIDError,
@@ -59,20 +58,6 @@ describe('isCosmosPrivateKey', () => {
   });
 });
 
-describe('isNearPrivateKey', () => {
-  it('pass against a well formed private key', () => {
-    expect(
-      isNearPrivateKey(
-        'ed25519:5r1MuqBa3L9gpXHqULS3u2B142c5jA8szrEiL8cprvhjJDe6S2xz9Q4uppgaLegmuPpq4ftBpcMw7NNoJHJefiTt'
-      )
-    ).toEqual(true);
-  });
-
-  it('fail against a string that is invalid', () => {
-    expect(isEthPrivateKey('ed25519')).toEqual(false);
-  });
-});
-
 describe('validatePrivateKey', () => {
   it('valid when req.privateKey is an ethereum key', () => {
     expect(
@@ -80,16 +65,6 @@ describe('validatePrivateKey', () => {
         chain: 'ethereum',
         privateKey:
           'da857cbda0ba96757fed842617a40693d06d00001e55aa972955039ae747bac4', // noqa: mock
-      })
-    ).toEqual([]);
-  });
-
-  it('valid when req.privateKey is a near key', () => {
-    expect(
-      validatePrivateKey({
-        chain: 'near',
-        privateKey:
-          'ed25519:5r1MuqBa3L9gpXHqULS3u2B142c5jA8szrEiL8cprvhjJDe6S2xz9Q4uppgaLegmuPpq4ftBpcMw7NNoJHJefiTt',
       })
     ).toEqual([]);
   });

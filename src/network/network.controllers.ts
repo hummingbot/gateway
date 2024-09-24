@@ -15,7 +15,6 @@ import {
   UNKNOWN_KNOWN_CHAIN_ERROR_MESSAGE,
 } from '../services/error-handler';
 import { Cronos } from '../chains/cronos/cronos';
-import { Near } from '../chains/near/near';
 import { Algorand } from '../chains/algorand/algorand';
 import {
   getInitializedChain,
@@ -90,11 +89,6 @@ export async function getStatus(
     const celoConnections = Celo.getConnectedInstances();
     connections = connections.concat(
       celoConnections ? Object.values(celoConnections) : []
-    );
-
-    const nearConnections = Near.getConnectedInstances();
-    connections = connections.concat(
-      nearConnections ? Object.values(nearConnections) : [],
     );
 
     const bscConnections = BinanceSmartChain.getConnectedInstances();

@@ -14,7 +14,7 @@ import {
 import { ConfigManagerV2 } from './services/config-manager-v2';
 import { SwaggerManager } from './services/swagger-manager';
 import { ConnectorsRoutes } from './connectors/connectors.routes';
-import { AmmRoutes, AmmLiquidityRoutes, PerpAmmRoutes } from './amm/amm.routes';
+import { AmmRoutes, AmmLiquidityRoutes } from './amm/amm.routes';
 import { CLOBRoutes, PerpClobRoutes } from './clob/clob.routes';
 
 import morgan from 'morgan';
@@ -47,7 +47,6 @@ gatewayApp.use('/chain', ChainRoutes.router);
 gatewayApp.use('/connectors', ConnectorsRoutes.router);
 
 gatewayApp.use('/amm', AmmRoutes.router);
-gatewayApp.use('/amm/perp', PerpAmmRoutes.router);
 gatewayApp.use('/amm/liquidity', AmmLiquidityRoutes.router);
 gatewayApp.use('/wallet', WalletRoutes.router);
 gatewayApp.use('/clob', CLOBRoutes.router);

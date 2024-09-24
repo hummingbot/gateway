@@ -32,10 +32,6 @@ configurations:
     configurationPath: celo.yml
     schemaPath: ethereum-schema.json
 
-  $namespace near:
-    configurationPath: near.yml
-    schemaPath: ethereum-schema.json
-
   $namespace pangolin:
     configurationPath: pangolin.yml
     schemaPath: pangolin-schema.json
@@ -43,10 +39,6 @@ configurations:
   $namespace quickswap:
     configurationPath: quickswap.yml
     schemaPath: quickswap-schema.json
-
-  $namespace perp:
-    configurationPath: perp.yml
-    schemaPath: perp-schema.json
 
   $namespace sushiswap:
     configurationPath: sushiswap.yml
@@ -63,10 +55,6 @@ configurations:
   $namespace uniswap:
     configurationPath: uniswap.yml
     schemaPath: uniswap-schema.json
-
-  $namespace ref:
-    configurationPath: ref.yml
-    schemaPath: ref-schema.json
 
   $namespace openocean:
     configurationPath: openocean.yml
