@@ -1,4 +1,3 @@
-import { isKujiraPrivateKey } from '../../connectors/kujira/kujira.helpers';
 import {
   mkValidator,
   mkRequestValidator,
@@ -25,8 +24,6 @@ export const isAlgorandPrivateKeyOrMnemonic = (str: string): boolean => {
   const parts = str.split(' ');
   return parts.length === 25;
 };
-
-export const invalidKujiraPrivateKeyError: string = 'Invalid Kujira mnemonic.';
 
 // test if a string matches the shape of an Ethereum private key
 export const isEthPrivateKey = (str: string): boolean => {
@@ -120,11 +117,6 @@ export const validatePrivateKey: Validator = mkSelectingValidator(
       invalidTezosPrivateKeyError,
       (val) => typeof val === 'string' && isTezosPrivateKey(val),
     ),
-    kujira: mkValidator(
-      'privateKey',
-      invalidKujiraPrivateKeyError,
-      (val) => typeof val === 'string' && isKujiraPrivateKey(val),
-    ),
     telos: mkValidator(
       'privateKey',
       invalidEthPrivateKeyError,
@@ -163,7 +155,6 @@ export const validateChain: Validator = mkValidator(
       val === 'osmosis' ||
       val === 'binance-smart-chain' ||
       val === 'tezos' ||
-      val === 'kujira' ||
       val === 'telos'),
 );
 

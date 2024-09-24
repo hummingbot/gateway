@@ -18,7 +18,6 @@ import { Uniswap } from '../connectors/uniswap/uniswap';
 import { UniswapLP } from '../connectors/uniswap/uniswap.lp';
 import { VVSConnector } from '../connectors/vvs/vvs';
 import {
-  CLOBish,
   Ethereumish,
   Uniswapish,
   UniswapLPish,
@@ -33,8 +32,6 @@ import { Cosmos } from '../chains/cosmos/cosmos';
 import { Tinyman } from '../connectors/tinyman/tinyman';
 import { Plenty } from '../connectors/plenty/plenty';
 import { Curve } from '../connectors/curve/curve';
-import { Kujira } from '../chains/kujira/kujira';
-import { KujiraCLOB } from '../connectors/kujira/kujira';
 import { PancakeswapLP } from '../connectors/pancakeswap/pancakeswap.lp';
 import { Carbonamm } from '../connectors/carbon/carbonAMM';
 import { Balancer } from '../connectors/balancer/balancer';
@@ -45,7 +42,6 @@ export type ChainUnion =
   | Ethereumish
   | Xdcish
   | Tezosish
-  | Kujira
   | Osmosis;
 
 export type Chain<T> = T extends Algorand
@@ -56,10 +52,8 @@ export type Chain<T> = T extends Algorand
       ? Ethereumish
         : T extends Xdcish
           ? Xdcish
-          : T extends Tezosish
-            ? Tezosish
-              : T extends KujiraCLOB
-                ? KujiraCLOB
+            : T extends Tezosish
+              ? Tezosish
                 : T extends Osmosis
                   ? Osmosis
                   : never;
@@ -123,8 +117,6 @@ export async function getChainInstance(
     connection = Xdc.getInstance(network);
   } else if (chain === 'tezos') {
     connection = Tezos.getInstance(network);
-  } else if (chain === 'kujira') {
-    connection = Kujira.getInstance(network);
   } else if (chain === 'telos') {
     connection = Telos.getInstance(network);
   } else {
@@ -137,25 +129,19 @@ export async function getChainInstance(
 export type ConnectorUnion =
   | Uniswapish
   | UniswapLPish
-  | CLOBish
   | Tinyman
   | Plenty
   | Curve
-  | KujiraCLOB
 
 export type Connector<T> = T extends Uniswapish
   ? Uniswapish
   : T extends UniswapLPish
     ? UniswapLPish
-      : T extends CLOBish
-        ? CLOBish
-        : T extends Tinyman
-          ? Tinyman
+      : T extends Tinyman
+        ? Tinyman
           : T extends Plenty
             ? Plenty
-              : T extends KujiraCLOB
-                ? KujiraCLOB
-                  : never;
+              : never;
 
 export async function getConnector<T>(
   chain: string,
@@ -188,8 +174,6 @@ export async function getConnector<T>(
     connectorInstance = Sushiswap.getInstance(chain, network);
   } else if (connector === 'xsswap') {
     connectorInstance = Xsswap.getInstance(chain, network);
-  } else if (connector === 'kujira') {
-    connectorInstance = KujiraCLOB.getInstance(chain, network);
   } else if (connector === 'curve') {
     connectorInstance = Curve.getInstance(chain, network);
   } else if (connector === 'balancer') {

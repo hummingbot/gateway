@@ -7,7 +7,6 @@ import { Polygon } from '../chains/polygon/polygon';
 import { Celo } from '../chains/celo/celo';
 import { Xdc } from '../chains/xdc/xdc';
 import { Tezos } from '../chains/tezos/tezos';
-import { Kujira } from '../chains/kujira/kujira';
 import { Telos } from '../chains/telos/telos';
 import {
   HttpException,
@@ -98,11 +97,6 @@ export async function getStatus(
     const tezosConnections = Tezos.getConnectedInstances();
     connections = connections.concat(
       tezosConnections ? Object.values(tezosConnections) : [],
-    );
-
-    const kujiraConnections = Kujira.getConnectedInstances();
-    connections = connections.concat(
-      kujiraConnections ? Object.values(kujiraConnections) : [],
     );
 
     const telosConnections = Telos.getConnectedInstances();

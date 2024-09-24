@@ -95,15 +95,6 @@ import {
 } from 'xsswap-sdk';
 import { XdcBase } from '../chains/xdc/xdc.base';
 import { TezosBase } from '../chains/tezos/tezos.base';
-import {
-  ClobDeleteOrderRequest,
-  ClobGetOrderRequest,
-  ClobGetOrderResponse,
-  ClobMarketsRequest,
-  ClobOrderbookRequest,
-  ClobPostOrderRequest,
-  ClobTickerRequest,
-} from '../clob/clob.requests';
 import { BalanceRequest } from '../network/network.requests';
 import { TradeV2 } from '@traderjoe-xyz/sdk-v2';
 import { CurveTrade } from '../connectors/curve/curve';
@@ -516,41 +507,6 @@ export interface Orderbook {
 
 export interface MarketInfo {
   [key: string]: any;
-}
-
-export interface CLOBish {
-  parsedMarkets: MarketInfo;
-
-  abiDecoder?: any;
-
-  loadMarkets(): Promise<void>;
-
-  init(): Promise<void>;
-
-  ready(): boolean;
-
-  markets(req: ClobMarketsRequest): Promise<{ markets: MarketInfo }>;
-
-  orderBook(req: ClobOrderbookRequest): Promise<Orderbook>;
-
-  ticker(req: ClobTickerRequest): Promise<{ markets: MarketInfo }>;
-
-  orders(
-    req: ClobGetOrderRequest
-  ): Promise<{ orders: ClobGetOrderResponse['orders'] }>;
-
-  postOrder(req: ClobPostOrderRequest): Promise<{ txHash: string }>;
-
-  deleteOrder(req: ClobDeleteOrderRequest): Promise<{ txHash: string }>;
-
-  balances?(req: BalanceRequest): Promise<Record<string, string>>;
-
-  estimateGas(_req: NetworkSelectionRequest): {
-    gasPrice: number;
-    gasPriceToken: string;
-    gasLimit: number;
-    gasCost: number;
-  };
 }
 
 export interface Cosmosish extends CosmosBase {

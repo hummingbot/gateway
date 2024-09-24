@@ -2,7 +2,6 @@ import fse from 'fs-extra';
 import { Xdc } from '../../chains/xdc/xdc';
 import { Cosmos } from '../../chains/cosmos/cosmos';
 import { Tezos } from '../../chains/tezos/tezos';
-import { Kujira } from '../../chains/kujira/kujira';
 
 import {
   AddWalletRequest,
@@ -115,20 +114,6 @@ export async function addWallet(
       );
       address = await tezosWallet.signer.publicKeyHash();
       encryptedPrivateKey = connection.encrypt(req.privateKey, passphrase);
-    } else if (connection instanceof Kujira) {
-      const mnemonic = req.privateKey;
-      const accountNumber = Number(req.accountId);
-      address = await connection.getWalletPublicKey(mnemonic, accountNumber);
-
-      if (accountNumber !== undefined) {
-        encryptedPrivateKey = await connection.encrypt(
-          mnemonic,
-          accountNumber,
-          address
-        );
-      } else {
-        throw new Error('Kujira wallet requires an account number.');
-      }
     }
 
     if (address === undefined || encryptedPrivateKey === undefined) {

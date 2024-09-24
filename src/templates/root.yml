@@ -104,10 +104,6 @@ configurations:
     configurationPath: curve.yml
     schemaPath: cronos-connector-schema.json
 
-  $namespace kujira:
-    configurationPath: kujira.yml
-    schemaPath: kujira-schema.json
-
   $namespace carbon:
     configurationPath: carbon.yml
     schemaPath: carbon-schema.json
