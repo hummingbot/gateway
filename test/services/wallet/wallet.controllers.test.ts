@@ -9,8 +9,6 @@ import {
   removeWallet,
 } from '../../../src/services/wallet/wallet.controllers';
 import {
-  ACCOUNT_NOT_SPECIFIED_CODE,
-  ACCOUNT_NOT_SPECIFIED_ERROR_MESSAGE,
   HttpException,
   UNKNOWN_CHAIN_ERROR_CODE,
   UNKNOWN_KNOWN_CHAIN_ERROR_MESSAGE,
@@ -19,7 +17,6 @@ import {
 import { ConfigManagerCertPassphrase } from '../../../src/services/config-manager-cert-passphrase';
 import { BinanceSmartChain } from '../../../src/chains/binance-smart-chain/binance-smart-chain';
 import { Cronos } from '../../../src/chains/cronos/cronos';
-import { Near } from '../../../src/chains/near/near';
 // import { Cosmos } from '../../../src/chains/cosmos/cosmos';
 
 let avalanche: Avalanche;
@@ -27,7 +24,6 @@ let cronos: Cronos;
 let eth: Ethereum;
 let harmony: Harmony;
 let bsc: BinanceSmartChain;
-let near: Near;
 // let cosmos: Cosmos;
 
 beforeAll(async () => {
@@ -38,7 +34,6 @@ beforeAll(async () => {
   harmony = Harmony.getInstance('testnet');
   bsc = BinanceSmartChain.getInstance('testnet');
   cronos = Cronos.getInstance('testnet');
-  near = Near.getInstance('testnet');
   // cosmos = Cosmos.getInstance('testnet');
 });
 
@@ -52,7 +47,6 @@ afterAll(async () => {
   await harmony.close();
   await bsc.close();
   await cronos.close();
-  await near.close();
   // await cosmos.close();
 });
 
@@ -274,21 +268,6 @@ describe('addWallet and getWallets', () => {
     );
   });
 
-  it('fail to add a wallet if account is not specified when adding near wallet', async () => {
-    await expect(
-      addWallet({
-        privateKey: onePrivateKey,
-        chain: 'near',
-        network: 'testnet',
-      })
-    ).rejects.toThrow(
-      new HttpException(
-        500,
-        ACCOUNT_NOT_SPECIFIED_ERROR_MESSAGE(),
-        ACCOUNT_NOT_SPECIFIED_CODE
-      )
-    );
-  });
 });
 
 describe('addWallet and removeWallets', () => {
