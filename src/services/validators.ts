@@ -1,5 +1,4 @@
 import { HttpException } from './error-handler';
-
 export const invalidAmountError: string =
   'If amount is included it must be a string of a non-negative integer.';
 
@@ -61,7 +60,7 @@ export const mkBranchingValidator = (
   branchingKey: string,
   branchingCondition: (req: any, key: string) => boolean,
   validator1: Validator,
-  validator2: Validator
+  validator2: Validator,
 ): Validator => {
   return (req: any) => {
     let errors: Array<string> = [];
@@ -81,7 +80,7 @@ export const mkBranchingValidator = (
 export const mkSelectingValidator = (
   branchingKey: string,
   branchingCondition: (req: any, key: string) => string,
-  validators: { [id: string]: Validator }
+  validators: { [id: string]: Validator },
 ): Validator => {
   return (req: any) => {
     let errors: Array<string> = [];
@@ -90,11 +89,11 @@ export const mkSelectingValidator = (
         Object.keys(validators).includes(branchingCondition(req, branchingKey))
       ) {
         errors = errors.concat(
-          validators[branchingCondition(req, branchingKey)](req)
+          validators[branchingCondition(req, branchingKey)](req),
         );
       } else {
         errors.push(
-          `No validator exists for ${branchingCondition(req, branchingKey)}.`
+          `No validator exists for ${branchingCondition(req, branchingKey)}.`,
         );
       }
     } else {
@@ -108,7 +107,7 @@ export const mkValidator = (
   key: string,
   errorMsg: string,
   condition: (x: any) => boolean,
-  optional: boolean = false
+  optional: boolean = false,
 ): Validator => {
   return (req: any) => {
     const errors: Array<string> = [];
@@ -127,12 +126,12 @@ export const mkValidator = (
 };
 
 export const mkRequestValidator = (
-  validators: Array<Validator>
+  validators: Array<Validator>,
 ): RequestValidator => {
   return (req: any) => {
     let errors: Array<string> = [];
     validators.forEach(
-      (validator: Validator) => (errors = errors.concat(validator(req)))
+      (validator: Validator) => (errors = errors.concat(validator(req))),
     );
     throwIfErrorsExist(errors);
   };
@@ -164,7 +163,7 @@ export const isBase58 = (value: string): boolean =>
 export const validateToken: Validator = mkValidator(
   'token',
   invalidTokenError,
-  (val) => typeof val === 'string'
+  (val) => typeof val === 'string',
 );
 
 // if amount exists, confirm that it is a string of a natural number
@@ -172,11 +171,11 @@ export const validateAmount: Validator = mkValidator(
   'amount',
   invalidAmountError,
   (val) => typeof val === 'string' && isNaturalNumberString(val),
-  true
+  true,
 );
 
 export const validateTxHash: Validator = mkValidator(
   'txHash',
   invalidTxHashError,
-  (val) => typeof val === 'string'
+  (val) => typeof val === 'string',
 );

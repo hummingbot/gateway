@@ -47,6 +47,7 @@ import { PancakeswapLP } from '../connectors/pancakeswap/pancakeswap.lp';
 import { XRPLCLOB } from '../connectors/xrpl/xrpl';
 import { Carbonamm } from '../connectors/carbon/carbonAMM';
 import { Balancer } from '../connectors/balancer/balancer';
+import { Solana } from '../chains/solana/solana';
 
 export type ChainUnion =
   | Algorand
@@ -57,7 +58,8 @@ export type ChainUnion =
   | Tezosish
   | XRPLish
   | Kujira
-  | Osmosis;
+  | Osmosis
+  | Solana;
 
 export type Chain<T> = T extends Algorand
   ? Algorand
@@ -77,7 +79,9 @@ export type Chain<T> = T extends Algorand
                 ? KujiraCLOB
                 : T extends Osmosis
                   ? Osmosis
-                  : never;
+                  : T extends Solana
+                    ? Solana
+                    : never;
 
 export class UnsupportedChainException extends Error {
   constructor(message?: string) {
@@ -116,6 +120,8 @@ export async function getChainInstance(
 
   if (chain === 'algorand') {
     connection = Algorand.getInstance(network);
+  } else if (chain === 'solana') {
+    connection = Solana.getInstance(network);
   } else if (chain === 'ethereum') {
     connection = Ethereum.getInstance(network);
   } else if (chain === 'avalanche') {
@@ -163,7 +169,7 @@ export type ConnectorUnion =
   | Plenty
   | XRPLCLOB
   | Curve
-  | KujiraCLOB
+  | KujiraCLOB;
 
 export type Connector<T> = T extends Uniswapish
   ? Uniswapish
@@ -183,7 +189,7 @@ export type Connector<T> = T extends Uniswapish
                 ? XRPLCLOB
                 : T extends KujiraCLOB
                   ? KujiraCLOB
-                    : never;
+                  : never;
 
 export async function getConnector<T>(
   chain: string,

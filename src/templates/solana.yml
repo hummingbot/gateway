@@ -1,0 +1,8 @@
+networks:
+  mainnet:
+    nodeURL: https://alien-late-resonance.solana-mainnet.quiknode.pro/148db7e65a5b33b040183b0b0516359d59a0b0e6/
+    tokenListType: 'FILE'
+    tokenListSource: '/home/gateway/conf/lists/avalanche_tokens_fuji.json'
+
+nativeCurrencySymbol: SOL
+gasLimitEstimate: 500000

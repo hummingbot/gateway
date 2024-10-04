@@ -44,7 +44,7 @@ export namespace ConnectorsRoutes {
             trading_type: UniswapConfig.config.tradingTypes('LP'),
             chain_type: UniswapConfig.config.chainType,
             available_networks: JSON.parse(
-              JSON.stringify(UniswapConfig.config.availableNetworks)
+              JSON.stringify(UniswapConfig.config.availableNetworks),
             ),
             additional_spenders: ['uniswap'],
           },
@@ -183,8 +183,14 @@ export namespace ConnectorsRoutes {
             chain_type: BalancerConfig.config.chainType,
             available_networks: BalancerConfig.config.availableNetworks,
           },
+          {
+            name: 'jupiter',
+            trading_type: ['swap'],
+            chain_type: 'solana',
+            available_networks: [{ networks: ['mainnet'], chain: 'solana' }],
+          },
         ],
       });
-    })
+    }),
   );
 }

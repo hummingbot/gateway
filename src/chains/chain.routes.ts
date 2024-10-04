@@ -72,11 +72,11 @@ export namespace ChainRoutes {
     asyncHandler(
       async (
         req: Request<{}, {}, {}, StatusRequest>,
-        res: Response<StatusResponse | StatusResponse[], {}>
+        res: Response<StatusResponse | StatusResponse[], {}>,
       ) => {
         res.status(200).json(await getStatus(req.query));
-      }
-    )
+      },
+    ),
   );
 
   router.get('/config', (_req: Request, res: Response<any, any>) => {
@@ -89,16 +89,17 @@ export namespace ChainRoutes {
       async (
         req: Request<{}, {}, BalanceRequest>,
         res: Response<BalanceResponse | string, {}>,
-        _next: NextFunction
+        _next: NextFunction,
       ) => {
+        console.log('req.body', req.body);
         const chain = await getInitializedChain<Chain>(
           req.body.chain,
-          req.body.network
+          req.body.network,
         );
 
         res.status(200).json(await balances(chain, req.body));
-      }
-    )
+      },
+    ),
   );
 
   router.post(
@@ -106,15 +107,15 @@ export namespace ChainRoutes {
     asyncHandler(
       async (
         req: Request<{}, {}, PollRequest>,
-        res: Response<PollResponse, {}>
+        res: Response<PollResponse, {}>,
       ) => {
         const chain = await getInitializedChain(
           req.body.chain,
-          req.body.network
+          req.body.network,
         );
         res.status(200).json(await poll(chain, req.body));
-      }
-    )
+      },
+    ),
   );
 
   router.get(
@@ -122,15 +123,15 @@ export namespace ChainRoutes {
     asyncHandler(
       async (
         req: Request<{}, {}, {}, TokensRequest>,
-        res: Response<TokensResponse, {}>
+        res: Response<TokensResponse, {}>,
       ) => {
         const chain = await getInitializedChain(
           req.query.chain as string,
-          req.query.network as string
+          req.query.network as string,
         );
         res.status(200).json(await getTokens(chain, req.query));
-      }
-    )
+      },
+    ),
   );
 
   router.post(
@@ -138,15 +139,15 @@ export namespace ChainRoutes {
     asyncHandler(
       async (
         req: Request<{}, {}, NonceRequest>,
-        res: Response<NonceResponse | string, {}>
+        res: Response<NonceResponse | string, {}>,
       ) => {
         const chain = await getInitializedChain(
           req.body.chain,
-          req.body.network
+          req.body.network,
         );
         res.status(200).json(await nextNonce(chain, req.body));
-      }
-    )
+      },
+    ),
   );
 
   router.post(
@@ -154,17 +155,17 @@ export namespace ChainRoutes {
     asyncHandler(
       async (
         req: Request<{}, {}, NonceRequest>,
-        res: Response<NonceResponse | string, {}>
+        res: Response<NonceResponse | string, {}>,
       ) => {
         if (req.body.chain === 'tezos') validateTezosNonceRequest(req.body);
         else validateNonceRequest(req.body);
         const chain = await getInitializedChain(
           req.body.chain,
-          req.body.network
+          req.body.network,
         );
         res.status(200).json(await nonce(chain, req.body));
-      }
-    )
+      },
+    ),
   );
 
   router.post(
@@ -172,15 +173,15 @@ export namespace ChainRoutes {
     asyncHandler(
       async (
         req: Request<{}, {}, AllowancesRequest>,
-        res: Response<AllowancesResponse | string, {}>
+        res: Response<AllowancesResponse | string, {}>,
       ) => {
         const chain = await getInitializedChain(
           req.body.chain,
-          req.body.network
+          req.body.network,
         );
         res.status(200).json(await allowances(chain, req.body));
-      }
-    )
+      },
+    ),
   );
 
   router.post(
@@ -188,15 +189,15 @@ export namespace ChainRoutes {
     asyncHandler(
       async (
         req: Request<{}, {}, ApproveRequest>,
-        res: Response<ApproveResponse | string, {}>
+        res: Response<ApproveResponse | string, {}>,
       ) => {
         const chain = await getInitializedChain(
           req.body.chain,
-          req.body.network
+          req.body.network,
         );
         res.status(200).json(await approve(chain, req.body));
-      }
-    )
+      },
+    ),
   );
 
   router.post(
@@ -204,15 +205,15 @@ export namespace ChainRoutes {
     asyncHandler(
       async (
         req: Request<{}, {}, CancelRequest>,
-        res: Response<CancelResponse, {}>
+        res: Response<CancelResponse, {}>,
       ) => {
         const chain = await getInitializedChain(
           req.body.chain,
-          req.body.network
+          req.body.network,
         );
         res.status(200).json(await cancel(chain, req.body));
-      }
-    )
+      },
+    ),
   );
 
   router.post(
@@ -220,14 +221,14 @@ export namespace ChainRoutes {
     asyncHandler(
       async (
         req: Request<{}, {}, TransferRequest>,
-        res: Response<TransferResponse, {}>
+        res: Response<TransferResponse, {}>,
       ) => {
         const chain = await getInitializedChain(
           req.body.chain,
-          req.body.network
+          req.body.network,
         );
         res.status(200).json(await transfer(chain, req.body));
-      }
-    )
+      },
+    ),
   );
 }

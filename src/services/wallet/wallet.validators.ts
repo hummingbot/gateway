@@ -12,9 +12,11 @@ import {
   invalidXRPLPrivateKeyError,
   isXRPLSeedKey,
 } from '../../chains/xrpl/xrpl.validators';
-
+import * as bip39 from 'bip39';
 export const invalidAlgorandPrivateKeyOrMnemonicError: string =
   'The privateKey param is not a valid Algorand private key or mnemonic.';
+export const invalidSolanaPrivateKeyOrMnemonicError: string =
+  'The privateKey param is not a valid Solana private key or mnemonic.';
 
 export const invalidEthPrivateKeyError: string =
   'The privateKey param is not a valid Ethereum private key (64 hexadecimal characters).';
@@ -111,7 +113,7 @@ export const validatePrivateKey: Validator = mkSelectingValidator(
     celo: mkValidator(
       'privateKey',
       invalidEthPrivateKeyError,
-      (val) => typeof val === 'string' && isEthPrivateKey(val)
+      (val) => typeof val === 'string' && isEthPrivateKey(val),
     ),
     osmosis: mkValidator(
       'privateKey',
@@ -153,6 +155,11 @@ export const validatePrivateKey: Validator = mkSelectingValidator(
       invalidEthPrivateKeyError,
       (val) => typeof val === 'string' && isEthPrivateKey(val),
     ),
+    solana: mkValidator(
+      'privateKey',
+      invalidSolanaPrivateKeyOrMnemonicError,
+      (val) => typeof val === 'string' && bip39.validateMnemonic(val),
+    ),
   },
 );
 
@@ -175,6 +182,7 @@ export const validateChain: Validator = mkValidator(
   (val) =>
     typeof val === 'string' &&
     (val === 'algorand' ||
+      val === 'solana' ||
       val === 'ethereum' ||
       val === 'avalanche' ||
       val === 'polygon' ||
