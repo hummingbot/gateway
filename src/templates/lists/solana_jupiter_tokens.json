@@ -1,0 +1,20 @@
+{
+  "name": "Solana Token List",
+  "logoURI": "https://i.imgur.com/tt0vG2N.png",
+  "version": {
+    "major": 0,
+    "minor": 2,
+    "patch": 0
+  },
+  "keywords": [],
+  "timestamp": "2022-02-21T00:00:00+00:00",
+  "tokens": [
+    {
+      "address": "jtojtomepa8beP8AuQc6eXt5FriJwfFMwQx2v2f9mCL",
+      "name": "Jito",
+      "symbol": "JITO",
+      "decimals": 9,
+      "logoURI": "https://image-cdn.solana.fm/images/?imageUrl=https://metadata.jito.network/token/jto/image"
+    }
+  ]
+}

@@ -179,6 +179,7 @@ export namespace ChainRoutes {
           req.body.chain,
           req.body.network,
         );
+        console.log(chain);
         res.status(200).json(await allowances(chain, req.body));
       },
     ),
