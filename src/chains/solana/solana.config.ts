@@ -10,6 +10,7 @@ export interface NetworkConfig {
 export interface Config {
   network: NetworkConfig;
   nativeCurrencySymbol: string;
+  tradingTypes: Array<string>;
 }
 export function getSolanaConfig(network: string): Config {
   return {
@@ -29,5 +30,6 @@ export function getSolanaConfig(network: string): Config {
     nativeCurrencySymbol: ConfigManagerV2.getInstance().get(
       'solana.nativeCurrencySymbol',
     ),
+    tradingTypes: ['AMM'],
   };
 }

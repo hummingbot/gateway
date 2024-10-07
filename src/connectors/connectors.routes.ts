@@ -24,6 +24,7 @@ import { KujiraConfig } from './kujira/kujira.config';
 import { OsmosisConfig } from '../chains/osmosis/osmosis.config';
 import { CarbonConfig } from './carbon/carbon.config';
 import { BalancerConfig } from './balancer/balancer.config';
+import { JupiterswapConfig } from './jupiterswap/jupiterswap.config';
 
 export namespace ConnectorsRoutes {
   export const router = Router();
@@ -185,8 +186,8 @@ export namespace ConnectorsRoutes {
           },
           {
             name: 'jupiter',
-            trading_type: ['swap'],
-            chain_type: 'solana',
+            trading_type: JupiterswapConfig.config.tradingTypes,
+            chain_type: JupiterswapConfig.config.chainType,
             available_networks: [{ networks: ['mainnet'], chain: 'solana' }],
           },
         ],
