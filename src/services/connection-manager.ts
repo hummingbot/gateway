@@ -48,6 +48,7 @@ import { XRPLCLOB } from '../connectors/xrpl/xrpl';
 import { Carbonamm } from '../connectors/carbon/carbonAMM';
 import { Balancer } from '../connectors/balancer/balancer';
 import { Solana } from '../chains/solana/solana';
+import { Jupiter } from '../connectors/jupiterswap/jupiter';
 
 export type ChainUnion =
   | Algorand
@@ -101,6 +102,7 @@ export async function getInitializedChain<T>(
 ): Promise<Chain<T>> {
   const chainInstance = await getChainInstance(chain, network);
 
+  console.log(chainInstance);
   if (chainInstance === undefined) {
     throw new UnsupportedChainException(`unsupported chain ${chain}`);
   }
@@ -169,7 +171,8 @@ export type ConnectorUnion =
   | Plenty
   | XRPLCLOB
   | Curve
-  | KujiraCLOB;
+  | KujiraCLOB
+  | Jupiter;
 
 export type Connector<T> = T extends Uniswapish
   ? Uniswapish
@@ -189,7 +192,9 @@ export type Connector<T> = T extends Uniswapish
                 ? XRPLCLOB
                 : T extends KujiraCLOB
                   ? KujiraCLOB
-                  : never;
+                  : T extends Jupiter
+                    ? Jupiter
+                    : never;
 
 export async function getConnector<T>(
   chain: string,
@@ -243,6 +248,8 @@ export async function getConnector<T>(
     connectorInstance = Tinyman.getInstance(network);
   } else if (connector === 'plenty') {
     connectorInstance = Plenty.getInstance(network);
+  } else if (connector === 'jupiter') {
+    connectorInstance = Jupiter.getInstance(network);
   } else {
     throw new Error('unsupported chain or connector');
   }

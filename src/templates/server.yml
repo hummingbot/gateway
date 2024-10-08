@@ -18,7 +18,7 @@ GMTOffset: +0800
 logToStdOut: true
 
 # Runs Gateway in unsafe dev mode with HTTP if true
-unsafeDevModeWithHTTP: false
+unsafeDevModeWithHTTP: true
 
 # Collects data about API usage if true
 telemetry_enabled: false

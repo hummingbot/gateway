@@ -71,12 +71,12 @@ export namespace AmmRoutes {
     asyncHandler(
       async (
         req: Request<{}, {}, PriceRequest>,
-        res: Response<PriceResponse | string, {}>
+        res: Response<PriceResponse | string, {}>,
       ) => {
         validatePriceRequest(req.body);
         res.status(200).json(await price(req.body));
-      }
-    )
+      },
+    ),
   );
 
   router.post(
@@ -84,12 +84,12 @@ export namespace AmmRoutes {
     asyncHandler(
       async (
         req: Request<{}, {}, TradeRequest>,
-        res: Response<TradeResponse | string, {}>
+        res: Response<TradeResponse | string, {}>,
       ) => {
         validateTradeRequest(req.body);
         res.status(200).json(await trade(req.body));
-      }
-    )
+      },
+    ),
   );
 
   router.post(
@@ -97,12 +97,12 @@ export namespace AmmRoutes {
     asyncHandler(
       async (
         req: Request<{}, {}, NetworkSelectionRequest>,
-        res: Response<EstimateGasResponse | string, {}>
+        res: Response<EstimateGasResponse | string, {}>,
       ) => {
         validateEstimateGasRequest(req.body);
         res.status(200).json(await estimateGas(req.body));
-      }
-    )
+      },
+    ),
   );
 }
 
@@ -114,12 +114,12 @@ export namespace AmmLiquidityRoutes {
     asyncHandler(
       async (
         req: Request<{}, {}, PositionRequest>,
-        res: Response<PositionResponse | string, {}>
+        res: Response<PositionResponse | string, {}>,
       ) => {
         validatePositionRequest(req.body);
         res.status(200).json(await positionInfo(req.body));
-      }
-    )
+      },
+    ),
   );
 
   router.post(
@@ -127,12 +127,12 @@ export namespace AmmLiquidityRoutes {
     asyncHandler(
       async (
         req: Request<{}, {}, AddLiquidityRequest>,
-        res: Response<AddLiquidityResponse | string, {}>
+        res: Response<AddLiquidityResponse | string, {}>,
       ) => {
         validateAddLiquidityRequest(req.body);
         res.status(200).json(await addLiquidity(req.body));
-      }
-    )
+      },
+    ),
   );
 
   router.post(
@@ -140,12 +140,12 @@ export namespace AmmLiquidityRoutes {
     asyncHandler(
       async (
         req: Request<{}, {}, RemoveLiquidityRequest>,
-        res: Response<RemoveLiquidityResponse | string, {}>
+        res: Response<RemoveLiquidityResponse | string, {}>,
       ) => {
         validateRemoveLiquidityRequest(req.body);
         res.status(200).json(await reduceLiquidity(req.body));
-      }
-    )
+      },
+    ),
   );
 
   router.post(
@@ -153,12 +153,12 @@ export namespace AmmLiquidityRoutes {
     asyncHandler(
       async (
         req: Request<{}, {}, CollectEarnedFeesRequest>,
-        res: Response<RemoveLiquidityResponse | string, {}>
+        res: Response<RemoveLiquidityResponse | string, {}>,
       ) => {
         validateCollectFeeRequest(req.body);
         res.status(200).json(await collectFees(req.body));
-      }
-    )
+      },
+    ),
   );
 
   router.post(
@@ -166,12 +166,12 @@ export namespace AmmLiquidityRoutes {
     asyncHandler(
       async (
         req: Request<{}, {}, PoolPriceRequest>,
-        res: Response<PoolPriceResponse | string, {}>
+        res: Response<PoolPriceResponse | string, {}>,
       ) => {
         validatePoolPriceRequest(req.body);
         res.status(200).json(await poolPrice(req.body));
-      }
-    )
+      },
+    ),
   );
 }
 
@@ -183,12 +183,12 @@ export namespace PerpAmmRoutes {
     asyncHandler(
       async (
         req: Request<{}, {}, PriceRequest>,
-        res: Response<PerpPricesResponse | string, {}>
+        res: Response<PerpPricesResponse | string, {}>,
       ) => {
         validatePerpMarketStatusRequest(req.body);
         res.status(200).json(await perpMarketPrices(req.body));
-      }
-    )
+      },
+    ),
   );
 
   router.post(
@@ -196,12 +196,12 @@ export namespace PerpAmmRoutes {
     asyncHandler(
       async (
         req: Request<{}, {}, PerpMarketRequest>,
-        res: Response<PerpMarketResponse | string, {}>
+        res: Response<PerpMarketResponse | string, {}>,
       ) => {
         validatePerpMarketStatusRequest(req.body);
         res.status(200).json(await getMarketStatus(req.body));
-      }
-    )
+      },
+    ),
   );
 
   router.post(
@@ -209,12 +209,12 @@ export namespace PerpAmmRoutes {
     asyncHandler(
       async (
         req: Request<{}, {}, NetworkSelectionRequest>,
-        res: Response<PerpAvailablePairsResponse | string, {}>
+        res: Response<PerpAvailablePairsResponse | string, {}>,
       ) => {
         validatePerpPairsRequest(req.body);
         res.status(200).json(await perpPairs(req.body));
-      }
-    )
+      },
+    ),
   );
 
   router.post(
@@ -222,12 +222,12 @@ export namespace PerpAmmRoutes {
     asyncHandler(
       async (
         req: Request<{}, {}, PerpPositionRequest>,
-        res: Response<PerpPositionResponse | string, {}>
+        res: Response<PerpPositionResponse | string, {}>,
       ) => {
         validatePerpPositionRequest(req.body);
         res.status(200).json(await perpPosition(req.body));
-      }
-    )
+      },
+    ),
   );
 
   router.post(
@@ -235,12 +235,12 @@ export namespace PerpAmmRoutes {
     asyncHandler(
       async (
         req: Request<{}, {}, PerpBalanceRequest>,
-        res: Response<PerpBalanceResponse | string, {}>
+        res: Response<PerpBalanceResponse | string, {}>,
       ) => {
         validatePerpBalanceRequest(req.body);
         res.status(200).json(await perpBalance(req.body));
-      }
-    )
+      },
+    ),
   );
 
   router.post(
@@ -248,12 +248,12 @@ export namespace PerpAmmRoutes {
     asyncHandler(
       async (
         req: Request<{}, {}, PerpCreateTakerRequest>,
-        res: Response<PerpCreateTakerResponse | string, {}>
+        res: Response<PerpCreateTakerResponse | string, {}>,
       ) => {
         validatePerpOpenTradeRequest(req.body);
         res.status(200).json(await perpOrder(req.body, true));
-      }
-    )
+      },
+    ),
   );
 
   router.post(
@@ -261,12 +261,12 @@ export namespace PerpAmmRoutes {
     asyncHandler(
       async (
         req: Request<{}, {}, PerpCreateTakerRequest>,
-        res: Response<PerpCreateTakerResponse | string, {}>
+        res: Response<PerpCreateTakerResponse | string, {}>,
       ) => {
         validatePerpCloseTradeRequest(req.body);
         res.status(200).json(await perpOrder(req.body, false));
-      }
-    )
+      },
+    ),
   );
 
   router.post(
@@ -274,11 +274,11 @@ export namespace PerpAmmRoutes {
     asyncHandler(
       async (
         req: Request<{}, {}, NetworkSelectionRequest>,
-        res: Response<EstimateGasResponse | string, {}>
+        res: Response<EstimateGasResponse | string, {}>,
       ) => {
         validateEstimateGasRequest(req.body);
         res.status(200).json(await estimatePerpGas(req.body));
-      }
-    )
+      },
+    ),
   );
 }

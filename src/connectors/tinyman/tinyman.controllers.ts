@@ -28,7 +28,7 @@ import { Algorand } from '../../chains/algorand/algorand';
 export async function price(
   algorand: Algorand,
   tinyman: Tinyman,
-  req: PriceRequest
+  req: PriceRequest,
 ): Promise<PriceResponse> {
   const startTimestamp: number = Date.now();
   let trade;
@@ -39,13 +39,13 @@ export async function price(
       throw new HttpException(
         500,
         PRICE_FAILED_ERROR_MESSAGE + e.message,
-        PRICE_FAILED_ERROR_CODE
+        PRICE_FAILED_ERROR_CODE,
       );
     } else {
       throw new HttpException(
         500,
         UNKNOWN_ERROR_MESSAGE,
-        UNKNOWN_ERROR_ERROR_CODE
+        UNKNOWN_ERROR_ERROR_CODE,
       );
     }
   }
@@ -70,7 +70,7 @@ export async function price(
 export async function trade(
   algorand: Algorand,
   tinyman: Tinyman,
-  req: TradeRequest
+  req: TradeRequest,
 ): Promise<TradeResponse> {
   const startTimestamp: number = Date.now();
 
@@ -84,14 +84,14 @@ export async function trade(
     throw new HttpException(
       500,
       TRADE_FAILED_ERROR_MESSAGE,
-      TRADE_FAILED_ERROR_CODE
+      TRADE_FAILED_ERROR_CODE,
     );
   }
 
   const estimatedPrice = trade.expectedPrice;
   logger.info(
     `Expected execution price is ${estimatedPrice}, ` +
-      `limit price is ${limitPrice}.`
+      `limit price is ${limitPrice}.`,
   );
 
   if (req.side === 'BUY') {
@@ -101,9 +101,9 @@ export async function trade(
         500,
         SWAP_PRICE_EXCEEDS_LIMIT_PRICE_ERROR_MESSAGE(
           estimatedPrice,
-          limitPrice
+          limitPrice,
         ),
-        SWAP_PRICE_EXCEEDS_LIMIT_PRICE_ERROR_CODE
+        SWAP_PRICE_EXCEEDS_LIMIT_PRICE_ERROR_CODE,
       );
     }
   } else {
@@ -113,16 +113,16 @@ export async function trade(
         500,
         SWAP_PRICE_LOWER_THAN_LIMIT_PRICE_ERROR_MESSAGE(
           estimatedPrice,
-          limitPrice
+          limitPrice,
         ),
-        SWAP_PRICE_LOWER_THAN_LIMIT_PRICE_ERROR_CODE
+        SWAP_PRICE_LOWER_THAN_LIMIT_PRICE_ERROR_CODE,
       );
     }
   }
   const tx = await tinyman.executeTrade(
     account,
     trade.trade,
-    req.side === 'BUY'
+    req.side === 'BUY',
   );
 
   logger.info(`${req.side} swap has been executed.`);
@@ -147,7 +147,7 @@ export async function trade(
 
 export async function estimateGas(
   algorand: Algorand,
-  _tinyman: Tinyman
+  _tinyman: Tinyman,
 ): Promise<EstimateGasResponse> {
   return {
     network: algorand.network,

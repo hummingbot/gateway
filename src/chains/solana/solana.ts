@@ -22,7 +22,7 @@ export class Solana {
   private _chain: string = 'solana';
   private _network: string;
   // // private _
-  private _ready: boolean = true;
+  private _ready: boolean = false;
   private _assetListSource: string;
   // public gasPrice: number;
   // public gasLimit: number;

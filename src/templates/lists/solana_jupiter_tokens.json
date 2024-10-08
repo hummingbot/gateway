@@ -15,6 +15,20 @@
       "symbol": "JITO",
       "decimals": 9,
       "logoURI": "https://image-cdn.solana.fm/images/?imageUrl=https://metadata.jito.network/token/jto/image"
+    },
+    {
+      "address": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+      "name": "USD Tether",
+      "symbol": "USDT",
+      "decimals": 6,
+      "logoURI": "https://image-cdn.solana.fm/images/?imageUrl=https://metadata.jito.network/token/jto/image"
+    },
+    {
+      "address": "So11111111111111111111111111111111111111112",
+      "name": "Wrapped Solana",
+      "symbol": "SOL",
+      "decimals": 9,
+      "logoURI": "https://image-cdn.solana.fm/images/?imageUrl=https://metadata.jito.network/token/jto/image"
     }
   ]
 }

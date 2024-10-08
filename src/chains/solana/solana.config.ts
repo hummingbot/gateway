@@ -23,7 +23,7 @@ export function getSolanaConfig(network: string): Config {
         'solana.networks.' + network + '.assetListType',
       ),
       assetListSource: ConfigManagerV2.getInstance().get(
-        'solana.networks.' + network + '.assetListSource',
+        'solana.networks.' + network + '.tokenListSource',
       ),
       maxLRUCacheInstances: 10,
     },
