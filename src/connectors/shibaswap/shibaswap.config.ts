@@ -37,6 +37,10 @@ export namespace ShibaswapConfig {
     chainType: 'EVM',
     availableNetworks: [
       {
+        chain: 'ethereum',
+        networks: ['mainnet'],
+      },
+      {
         chain: 'shibarium',
         networks: ['mainnet', 'puppynet'],
       },

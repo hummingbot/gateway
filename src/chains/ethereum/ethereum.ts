@@ -191,6 +191,11 @@ export class Ethereum extends EthereumBase implements Ethereumish {
       spender = PancakeSwapConfig.config.pancakeswapV3NftManagerAddress(
         this._chain,
       );
+    } else if (['shibaswap', 'chewyswap'].includes(reqSpender)) {
+      spender = SushiswapConfig.config.sushiswapRouterAddress(
+        this.chainName,
+        this._chain,
+      );
     } else if (reqSpender === 'sushiswap') {
       spender = SushiswapConfig.config.sushiswapRouterAddress(
         this.chainName,
@@ -199,7 +204,8 @@ export class Ethereum extends EthereumBase implements Ethereumish {
     } else if (reqSpender === 'uniswapLP') {
       spender = UniswapConfig.config.uniswapV3NftManagerAddress(
         this.chainName,
-        this._chain);
+        this._chain,
+      );
     } else if (reqSpender === 'carbonamm') {
       spender = CarbonConfig.config.carbonContractsConfig(
         'ethereum',

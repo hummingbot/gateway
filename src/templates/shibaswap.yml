@@ -10,6 +10,9 @@ gasLimitEstimate: 300000
 ttl: 300
 
 contractAddresses:
+    ethereum:
+        mainnet:
+            routerAddress: '0x03f7724180AA6b939894B5Ca4314783B0b36b329'
     shibarium:
         mainnet:
             routerAddress: '0xEF83bbB63E8A7442E3a4a5d28d9bBf32D7c813c8'
