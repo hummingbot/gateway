@@ -42,7 +42,7 @@ export class Shibaswap implements Uniswapish {
 
   private constructor(chain: string, network: string) {
     const config = ShibaswapConfig.config;
-    if (chain === 'shibarium') {
+    if (['shibarium', 'ethereum'].includes(chain)) {
       this.chain = Shibarium.getInstance(network);
     } else {
       throw new Error('unsupported chain');

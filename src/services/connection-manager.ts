@@ -247,7 +247,10 @@ export async function getConnector<T>(
     connectorInstance = Tinyman.getInstance(network);
   } else if (connector === 'plenty') {
     connectorInstance = Plenty.getInstance(network);
-  } else if (chain === 'shibarium' && connector === 'shibaswap') {
+  } else if (
+    ['shibarium', 'ethereum'].includes(chain) &&
+    connector === 'shibaswap'
+  ) {
     connectorInstance = Shibaswap.getInstance(chain, network);
   } else if (chain === 'shibarium' && connector === 'chewyswap') {
     connectorInstance = Chewyswap.getInstance(chain, network);
