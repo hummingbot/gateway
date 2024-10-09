@@ -140,8 +140,6 @@ export class Solana {
     // Derive seed from mnemonic
     const keypair = await this.getKeypairFromPrivateKey(mnemonic);
     // Display the public and private keys
-    console.log('Public Key:', keypair.publicKey.toBase58());
-    console.log('Private Key:', bs58.encode(keypair.secretKey));
     return {
       address: keypair.publicKey.toBase58().toString(),
       privateKey: bs58.encode(keypair.secretKey).toString(),

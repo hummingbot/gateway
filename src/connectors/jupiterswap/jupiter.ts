@@ -5,10 +5,15 @@ import { getAlgorandConfig } from '../../chains/algorand/algorand.config';
 import { percentRegexp } from '../../services/config-manager-v2';
 import { PriceRequest } from '../../amm/amm.requests';
 import axios from 'axios';
-import { JupiterQuoteResponse } from './jupiter.request';
+import {
+  JupiterQuoteResponse,
+  SwapTransactionBuilderResponse,
+} from './jupiter.request';
 import { latency } from '../../services/base';
 import Decimal from 'decimal.js-light';
 import { getPairData } from './jupiter.controller';
+import { pow } from 'mathjs';
+import { Keypair, VersionedTransaction } from '@solana/web3.js';
 
 export class Jupiter {
   private static _instances: LRUCache<string, Jupiter>;
@@ -71,7 +76,9 @@ export class Jupiter {
     if (!baseToken || !quoteToken) {
       throw new Error('INVALID TOKEN');
     }
-    const baseURL = `https://quote-api.jup.ag/v6/quote?inputMint=${baseToken?.address}&outputMint=${quoteToken?.address}&amount=${req.amount}`;
+
+    const amount = Number(req.amount) * <number>pow(10, baseToken.decimals);
+    const baseURL = `https://quote-api.jup.ag/v6/quote?inputMint=${baseToken?.address}&outputMint=${quoteToken?.address}&amount=${amount}`;
     const price = await getPairData(baseToken?.address, quoteToken?.address);
 
     const basePriceInUSD = price.data[baseToken?.address].price;
@@ -94,7 +101,40 @@ export class Jupiter {
       price: tokenPrice.toString(),
       gasPrice: 0.0001,
       gasLimit: 100000,
+      expectedPrice: tokenPrice,
+      trade: response.data,
     };
   }
-  async trade() {}
+  async trade(quoteResponse: JupiterQuoteResponse, wallet: Keypair) {
+    const url = 'https://quote-api.jup.ag/v6/swap';
+    const response = await axios.post<SwapTransactionBuilderResponse>(url, {
+      quoteResponse,
+      userPublicKey: wallet.publicKey.toString(),
+      wrapAndUnwrapSol: true,
+      prioritizationFeeLamports: {
+        autoMultiplier: 2,
+      },
+    });
+    const swapTransactionBuf = Buffer.from(
+      response.data.swapTransaction,
+      'base64',
+    );
+    const transaction = VersionedTransaction.deserialize(swapTransactionBuf);
+    transaction.sign([wallet]);
+    const latestBlockHash = await this.chain.connection.getLatestBlockhash();
+    const rawTransaction = transaction.serialize();
+    const txid = await this.chain.connection.sendRawTransaction(
+      rawTransaction,
+      {
+        skipPreflight: true,
+        maxRetries: 2,
+      },
+    );
+    await this.chain.connection.confirmTransaction({
+      blockhash: latestBlockHash.blockhash,
+      lastValidBlockHeight: latestBlockHash.lastValidBlockHeight,
+      signature: txid,
+    });
+    return { txid, ...response.data };
+  }
 }

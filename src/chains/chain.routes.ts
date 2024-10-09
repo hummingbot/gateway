@@ -91,7 +91,6 @@ export namespace ChainRoutes {
         res: Response<BalanceResponse | string, {}>,
         _next: NextFunction,
       ) => {
-        console.log('req.body', req.body);
         const chain = await getInitializedChain<Chain>(
           req.body.chain,
           req.body.network,
@@ -179,7 +178,6 @@ export namespace ChainRoutes {
           req.body.chain,
           req.body.network,
         );
-        console.log(chain);
         res.status(200).json(await allowances(chain, req.body));
       },
     ),

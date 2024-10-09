@@ -43,3 +43,22 @@ export interface Price {
   type: string;
   price: string;
 }
+
+export interface SwapTransactionBuilderResponse {
+  swapTransaction: string;
+  lastValidBlockHeight: number;
+  prioritizationFeeLamports: number;
+  computeUnitLimit: number;
+  prioritizationType: PrioritizationType;
+  dynamicSlippageReport: any;
+  simulationError: any;
+}
+
+export interface PrioritizationType {
+  computeBudget: ComputeBudget;
+}
+
+export interface ComputeBudget {
+  microLamports: number;
+  estimatedMicroLamports: number;
+}
