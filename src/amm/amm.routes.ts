@@ -87,7 +87,6 @@ export namespace AmmRoutes {
         res: Response<TradeResponse | string, {}>,
       ) => {
         validateTradeRequest(req.body);
-        console.log('call to this');
         res.status(200).json(await trade(req.body));
       },
     ),
