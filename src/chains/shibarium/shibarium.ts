@@ -68,7 +68,7 @@ export class Shibarium extends EthereumBase implements Ethereumish {
 
   getSpender(reqSpender: string): string {
     let spender: string;
-    if (reqSpender === 'shibaswap') {
+    if (['shibaswap', 'chewyswap'].includes(reqSpender)) {
       spender = ShibaswapConfig.config.routerAddress('shibarium', this._chain);
     } else {
       spender = reqSpender;
