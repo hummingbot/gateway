@@ -70,9 +70,11 @@ export class Jupiter {
   // }
   // async estimateTrade(req: PriceRequest) {}
   async price(req: PriceRequest) {
+    const baseSymbol = req.base.replace('_', '');
+    const quoteSymbol = req.quote.replace('_', '');
     const startTimestamp: number = Date.now();
-    const baseToken = this.chain.getAssetForSymbol(req.base);
-    const quoteToken = this.chain.getAssetForSymbol(req.quote);
+    const baseToken = this.chain.getAssetForSymbol(baseSymbol);
+    const quoteToken = this.chain.getAssetForSymbol(quoteSymbol);
     if (!baseToken || !quoteToken) {
       throw new Error('INVALID TOKEN');
     }

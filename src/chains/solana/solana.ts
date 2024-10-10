@@ -29,12 +29,15 @@ export class Solana {
   // public gasCost: number;
   public connection: Connection;
   public controller: typeof SolanaController;
+  private _chainId: number = 900;
+  private _rpcUrl: string;
 
   constructor(network: string, rpc: string, assetListSource: string) {
     this._network = network;
     this.connection = new Connection(rpc);
     this.controller = SolanaController;
     this._assetListSource = assetListSource;
+    this._rpcUrl = rpc;
   }
   public get network(): string {
     return this._network;
@@ -43,6 +46,13 @@ export class Solana {
     return this._ready;
   }
 
+  public get chainId(): number {
+    return this._chainId;
+  }
+
+  public get rpcUrl(): string {
+    return this._rpcUrl;
+  }
   private async loadAssets(): Promise<void> {
     const assetData = await this.getAssetData();
     for (const result of assetData) {
@@ -112,13 +122,17 @@ export class Solana {
   }
 
   public async getAssetBalance(account: Keypair, tokenAddress: string) {
-    const associatedAccount = await this.getAssociatedTokenAccount(
-      tokenAddress,
-      account.publicKey.toString(),
-    );
-    const assetBalance =
-      await this.connection.getTokenAccountBalance(associatedAccount);
-    return assetBalance?.value?.uiAmountString ?? '0';
+    try {
+      const associatedAccount = await this.getAssociatedTokenAccount(
+        tokenAddress,
+        account.publicKey.toString(),
+      );
+      const assetBalance =
+        await this.connection.getTokenAccountBalance(associatedAccount);
+      return assetBalance?.value?.uiAmountString ?? '0';
+    } catch (e) {
+      return '0';
+    }
   }
 
   public async getKeypairFromPrivateKey(mnemonic: string): Promise<Keypair> {
@@ -203,5 +217,9 @@ export class Solana {
     const mnemonic = this.decrypt(encryptedMnemonic, passphrase);
 
     return this.getKeypairFromPrivateKey(mnemonic);
+  }
+
+  async getCurrentBlockNumber() {
+    return await this.connection.getSlot();
   }
 }

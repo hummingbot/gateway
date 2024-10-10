@@ -1,6 +1,10 @@
 import { Solana } from '../../chains/solana/solana';
 import { Jupiter } from './jupiter';
-import { PriceRequest, TradeRequest } from '../../amm/amm.requests';
+import {
+  PriceRequest,
+  TradeRequest,
+  TradeResponse,
+} from '../../amm/amm.requests';
 import axios from 'axios';
 import { JupiterPriceResponse } from './jupiter.request';
 import { logger } from '../../services/logger';
@@ -13,7 +17,6 @@ import {
   SWAP_PRICE_LOWER_THAN_LIMIT_PRICE_ERROR_MESSAGE,
 } from '../../services/error-handler';
 import { latency } from '../../services/base';
-
 export async function getPairData(base: string, quote: string) {
   const baseURL = `https://api.jup.ag/price/v2?ids=${base},${quote}&showExtraInfo=true`;
   const response = await axios.get<JupiterPriceResponse>(baseURL);
@@ -38,7 +41,7 @@ export async function jupiterTrade(
   solana: Solana,
   jupiter: Jupiter,
   req: TradeRequest,
-): Promise<any> {
+): Promise<TradeResponse> {
   const startTimestamp: number = Date.now();
   const { address } = req;
   const keypair = await solana.getAccountFromAddress(address);
@@ -86,10 +89,10 @@ export async function jupiterTrade(
     rawAmount: req.amount,
     expectedIn: String(trade.expectedAmount),
     price: String(estimatedPrice),
-    // gasPrice: solana.gasPrice,
+    gasPrice: 10,
     gasPriceToken: solana.nativeTokenSymbol,
     gasLimit: tx.computeUnitLimit,
-    // gasCost: String(solana.gasCost),
+    gasCost: String(10),
     txHash: tx.txid,
   };
 }
