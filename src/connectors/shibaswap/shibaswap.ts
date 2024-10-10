@@ -28,10 +28,11 @@ import {
 import { percentRegexp } from '../../services/config-manager-v2';
 import { logger } from '../../services/logger';
 import { getAddress } from 'ethers/lib/utils';
+import { Ethereum } from '../../chains/ethereum/ethereum';
 
 export class Shibaswap implements Uniswapish {
   private static _instances: { [name: string]: Shibaswap };
-  private chain: Shibarium;
+  private chain: Shibarium | Ethereum;
   private _router: string;
   private _routerAbi: ContractInterface;
   private _gasLimitEstimate: number;
@@ -42,8 +43,10 @@ export class Shibaswap implements Uniswapish {
 
   private constructor(chain: string, network: string) {
     const config = ShibaswapConfig.config;
-    if (['shibarium', 'ethereum'].includes(chain)) {
+    if (chain === 'shibarium') {
       this.chain = Shibarium.getInstance(network);
+    } else if (chain === 'ethereum') {
+      this.chain = Ethereum.getInstance(network);
     } else {
       throw new Error('unsupported chain');
     }
