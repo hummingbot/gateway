@@ -17,6 +17,8 @@ import { OpenoceanConfig } from '../../connectors/openocean/openocean.config';
 import { Curve } from '../../connectors/curve/curve';
 import { CarbonConfig } from '../../connectors/carbon/carbon.config';
 import { BalancerConfig } from '../../connectors/balancer/balancer.config';
+import { ShibaswapConfig } from '../../connectors/shibaswap/shibaswap.config';
+import { ChewyswapConfig } from '../../connectors/chewyswap/chewyswap.config';
 
 // MKR does not match the ERC20 perfectly so we need to use a separate ABI.
 const MKR_ADDRESS = '0x9f8f72aa9304c8b593d555f12ef6589cc3a579a2';
@@ -191,8 +193,13 @@ export class Ethereum extends EthereumBase implements Ethereumish {
       spender = PancakeSwapConfig.config.pancakeswapV3NftManagerAddress(
         this._chain,
       );
-    } else if (['shibaswap', 'chewyswap'].includes(reqSpender)) {
-      spender = SushiswapConfig.config.sushiswapRouterAddress(
+    } else if (reqSpender === 'shibaswap') {
+      spender = ShibaswapConfig.config.routerAddress(
+        this.chainName,
+        this._chain,
+      );
+    } else if (reqSpender === 'chewyswap') {
+      spender = ChewyswapConfig.config.routerAddress(
         this.chainName,
         this._chain,
       );
