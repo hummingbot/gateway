@@ -64,6 +64,8 @@ export const validateSpender: Validator = mkValidator(
       val === 'curve' ||
       val === 'carbonamm' ||
       val === 'balancer' ||
+      val === 'etcswapLP' ||
+      val === 'etcswap' ||
       isAddress(val))
 );
 
