@@ -23,7 +23,6 @@ import {
   PollRequest,
 } from './ethereum.requests';
 import {
-  CLOBish,
   Chain as Ethereumish,
   UniswapLPish,
   Uniswapish,
@@ -172,8 +171,8 @@ export class EVMController {
         // decode logs
         if (req.connector) {
           try {
-            const connector: Uniswapish | UniswapLPish | CLOBish =
-              await getConnector<Uniswapish | UniswapLPish | CLOBish>(
+            const connector: Uniswapish | UniswapLPish =
+              await getConnector<Uniswapish | UniswapLPish>(
                 req.chain,
                 req.network,
                 req.connector
@@ -298,8 +297,8 @@ export class EVMController {
     validateBalanceRequest(req);
 
     let wallet: Wallet;
-    const connector: CLOBish | undefined = req.connector
-      ? ((await getConnector(req.chain, req.network, req.connector)) as CLOBish)
+    const connector: Uniswapish | undefined = req.connector
+      ? ((await getConnector(req.chain, req.network, req.connector)) as Uniswapish)
       : undefined;
     const balances: Record<string, string> = {};
     let connectorBalances: { [key: string]: string } | undefined;
@@ -352,7 +351,6 @@ export class EVMController {
         );
       }
     } else {
-      // CLOB connector or any other connector that has the concept of separation of account has to implement a balance function
       connectorBalances = await connector.balances(req);
     }
 

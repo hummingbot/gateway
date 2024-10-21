@@ -19,7 +19,6 @@ const crypto = require('crypto').webcrypto;
 import { osmosis } from 'osmojs';
 import { getEIP1559DynamicBaseFee } from '../osmosis/osmosis.prices';
 import { isFractionString } from '../../services/validators';
-import { RefConfig } from '../../connectors/ref/ref.config';
 import { percentRegexp } from '../../services/config-manager-v2';
 const { createRPCQueryClient } = osmosis.ClientFactory;
 
@@ -512,7 +511,7 @@ export class CosmosBase {
       return 100 * (Number(fractionSplit[0]) / Number(fractionSplit[1]));
     }
 
-    const allowedSlippage = RefConfig.config.allowedSlippage;
+    const allowedSlippage = String('2/100');
     const nd = allowedSlippage.match(percentRegexp);
     if (nd) return 100 * (Number(nd[1]) / Number(nd[2]));
     throw new Error(
