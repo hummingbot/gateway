@@ -10,7 +10,6 @@ import {
   invalidAddressError,
   validateNetwork,
 } from '../ethereum/ethereum.validators';
-import { invalidChainError } from '../near/near.validators';
 
 const invalidTxHashError: string = 'The txHash param must be a string.';
 
@@ -18,12 +17,6 @@ const validateTxHash: Validator = mkValidator(
   'txHash',
   invalidTxHashError,
   (val) => typeof val === 'string'
-);
-
-const validateAlgorandChain: Validator = mkValidator(
-  'chain',
-  invalidChainError,
-  (val) => typeof val === 'string' && val === 'algorand'
 );
 
 const validateAlgorandAddress: Validator = mkValidator(
@@ -38,7 +31,6 @@ export const validateAlgorandPollRequest: RequestValidator = mkRequestValidator(
 
 export const validateAlgorandBalanceRequest: RequestValidator =
   mkRequestValidator([
-    validateAlgorandChain,
     validateNetwork,
     validateAlgorandAddress,
     validateTokenSymbols,
