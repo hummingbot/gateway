@@ -11,7 +11,6 @@ import { Chain as Ethereumish } from '../../services/common-interfaces';
 import { EVMController } from './evm.controllers';
 
 import { UniswapConfig } from '../../connectors/uniswap/uniswap.config';
-import { Perp } from '../../connectors/perp/perp';
 import { SushiswapConfig } from '../../connectors/sushiswap/sushiswap.config';
 import { OpenoceanConfig } from '../../connectors/openocean/openocean.config';
 import { Curve } from '../../connectors/curve/curve';
@@ -205,13 +204,6 @@ export class Ethereum extends EthereumBase implements Ethereumish {
         'ethereum',
         this._chain,
       ).carbonControllerAddress;
-    } else if (reqSpender === 'perp') {
-      const perp = Perp.getInstance(this._chain, 'optimism');
-      if (!perp.ready()) {
-        perp.init();
-        throw Error('Perp curie not ready');
-      }
-      spender = perp.perp.contracts.vault.address;
     } else if (reqSpender === 'openocean') {
       spender = OpenoceanConfig.config.routerAddress('ethereum', this._chain);
     } else if (reqSpender === 'curve') {
