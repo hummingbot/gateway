@@ -12,8 +12,7 @@ import {
   Trade,
   Pair,
   SwapParameters,
-  TokenAmount,
-} from '@chewyswap/sdk';
+} from '@chewyswap/swap-sdk';
 import IUniswapV2Pair from '@uniswap/v2-core/build/IUniswapV2Pair.json';
 import { ExpectedTrade, Uniswapish } from '../../services/common-interfaces';
 import { Shibarium } from '../../chains/shibarium/shibarium';
@@ -156,8 +155,8 @@ export class Chewyswap implements Uniswapish {
       ? [reserves0, reserves1]
       : [reserves1, reserves0];
     const pair = new Pair(
-      new TokenAmount(baseToken, balances[0]),
-      new TokenAmount(quoteToken, balances[1]),
+      CurrencyAmount.fromRawAmount(baseToken, balances[0]),
+      CurrencyAmount.fromRawAmount(quoteToken, balances[1]),
     );
     return pair;
   }
@@ -178,7 +177,7 @@ export class Chewyswap implements Uniswapish {
     quoteToken: Token,
     amount: BigNumber,
   ): Promise<ExpectedTrade> {
-    const nativeTokenAmount: CurrencyAmount = new TokenAmount(
+    const nativeTokenAmount = CurrencyAmount.fromRawAmount(
       baseToken,
       amount.toString(),
     );
@@ -189,7 +188,7 @@ export class Chewyswap implements Uniswapish {
 
     const pair: Pair = await this.fetchData(baseToken, quoteToken);
 
-    const trades: Trade[] = Trade.bestTradeExactIn(
+    const trades = Trade.bestTradeExactIn(
       [pair],
       nativeTokenAmount,
       quoteToken,
@@ -218,14 +217,14 @@ export class Chewyswap implements Uniswapish {
     baseToken: Token,
     amount: BigNumber,
   ): Promise<ExpectedTrade> {
-    const nativeTokenAmount: CurrencyAmount = new TokenAmount(
+    const nativeTokenAmount = CurrencyAmount.fromRawAmount(
       baseToken,
       amount.toString(),
     );
 
     const pair: Pair = await this.fetchData(quoteToken, baseToken);
 
-    const trades: Trade[] = Trade.bestTradeExactOut(
+    const trades = Trade.bestTradeExactOut(
       [pair],
       quoteToken,
       nativeTokenAmount,
@@ -267,7 +266,7 @@ export class Chewyswap implements Uniswapish {
 
   async executeTrade(
     wallet: Wallet,
-    trade: Trade,
+    trade: any,
     gasPrice: number,
     sushswapRouter: string,
     ttl: number,

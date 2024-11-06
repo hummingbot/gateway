@@ -25,6 +25,7 @@
   "dependencies": {
     "@balancer-labs/sdk": "^1.1.5",
     "@bancor/carbon-sdk": "^0.0.93-DEV",
+    "@chewyswap/swap-sdk": "^1.0.1",
     "@cosmjs/amino": "^0.32.2",
     "@cosmjs/proto-signing": "^0.31.1",
     "@cosmjs/stargate": "^0.31.1",
@@ -50,8 +51,7 @@
     "@pancakeswap/v3-sdk": "^3.7.0",
     "@pangolindex/sdk": "^1.1.0",
     "@perp/sdk-curie": "^1.16.0",
-    "@shibaswap/sdk": "^1.1.17",
-    "@chewyswap/sdk": "git+https://github.com/PooDoge/chewyswap-sdk#main",
+    "@shibaswap/sdk": "^1.1.18",
     "@sushiswap/sdk": "^5.0.0-canary.116",
     "@taquito/rpc": "^17.0.0",
     "@taquito/signer": "^17.0.0",

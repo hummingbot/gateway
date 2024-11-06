@@ -41,9 +41,11 @@ import {
 import {
   Trade as ChewyswapTrade,
   Token as ChewyswapToken,
+  TradeType as ChewyswapTradeType,
+  Currency as ChewyswapCurrency,
   CurrencyAmount as ChewyswapCurrencyAmount,
   Fraction as ChewyswapFraction,
-} from '@chewyswap/sdk';
+} from '@chewyswap/swap-sdk';
 import {
   Trade as ShibaswapTrade,
   Token as ShibaswapToken,
@@ -162,7 +164,7 @@ export type UniswapishTrade =
   | TradeQuickswap
   | TradeTraderjoe
   | ShibaswapTrade
-  | ChewyswapTrade
+  | ChewyswapTrade<ChewyswapCurrency, ChewyswapCurrency, ChewyswapTradeType>
   | SushiswapTrade<SushiToken, SushiToken, SushiTradeType>
   | TradeUniswap
   | PancakeSwapTrade<
@@ -199,7 +201,7 @@ export type UniswapishAmount =
   | UniswapCoreCurrencyAmount<Currency>
   | CurrencyAmountTraderjoe
   | ShibaswapCurrencyAmount
-  | ChewyswapCurrencyAmount
+  | ChewyswapCurrencyAmount<ChewyswapCurrency | ChewyswapToken>
   | SushiCurrencyAmount<SushiCurrency | SushiToken>
   | PancakeSwapCurrencyAmount<PancakeSwapCurrency>
   | CurrencyAmountMMF

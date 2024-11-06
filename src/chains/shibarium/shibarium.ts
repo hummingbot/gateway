@@ -8,6 +8,7 @@ import { Ethereumish } from '../../services/common-interfaces';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { EVMController } from '../ethereum/evm.controllers';
 import { ShibaswapConfig } from '../../connectors/shibaswap/shibaswap.config';
+import { ChewyswapConfig } from '../../connectors/chewyswap/chewyswap.config';
 
 export class Shibarium extends EthereumBase implements Ethereumish {
   private static _instances: { [name: string]: Shibarium };
@@ -68,7 +69,9 @@ export class Shibarium extends EthereumBase implements Ethereumish {
 
   getSpender(reqSpender: string): string {
     let spender: string;
-    if (['shibaswap', 'chewyswap'].includes(reqSpender)) {
+    if (reqSpender === 'chewyswap') {
+      spender = ChewyswapConfig.config.routerAddress('shibarium', this._chain);
+    } else if (reqSpender === 'shibaswap') {
       spender = ShibaswapConfig.config.routerAddress('shibarium', this._chain);
     } else {
       spender = reqSpender;

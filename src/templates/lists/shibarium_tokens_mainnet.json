@@ -299,6 +299,13 @@
       "decimals": 18,
       "address": "0xc76f4c819d820369fb2d7c1531ab3bb18e6fe8d8",
       "name": "Shibarium Wrapped BONE",
+      "symbol": "BONE",
+      "chainId": 109
+    },
+    {
+      "decimals": 18,
+      "address": "0xc76f4c819d820369fb2d7c1531ab3bb18e6fe8d8",
+      "name": "Shibarium Wrapped BONE",
       "symbol": "WBONE",
       "chainId": 109
     },

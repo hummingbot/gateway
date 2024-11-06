@@ -24,6 +24,7 @@ import {
   Transaction,
   Contract,
   ContractTransaction,
+  ethers,
 } from 'ethers';
 import { percentRegexp } from '../../services/config-manager-v2';
 import { logger } from '../../services/logger';
@@ -216,6 +217,7 @@ export class Shibaswap implements Uniswapish {
 
     return { trade: trades[0], expectedAmount };
   }
+
   async estimateBuyTrade(
     quoteToken: Token,
     baseToken: Token,
@@ -253,13 +255,40 @@ export class Shibaswap implements Uniswapish {
     return { trade: trades[0], expectedAmount };
   }
 
+  async isFeeOnTransfer(trade: Trade, wallet: Wallet): Promise<boolean> {
+    const token: any = trade.inputAmount.currency;
+
+    // We need request taxes info from the token contract and if the token has a transfer tax, we return true
+    const TOKEN_ABI = [
+      'function taxes() view returns (uint16 buy, uint16 sell, address feeReceiver)',
+    ];
+
+    try {
+      const tokenContract = new ethers.Contract(
+        token.address,
+        TOKEN_ABI,
+        wallet,
+      );
+      const { buy, sell, feeReceiver } = await tokenContract.taxes();
+
+      logger.warn(`Token taxes: Buy ${buy / 100}%, Sell ${sell / 100}%`);
+      logger.warn(`Fee receiver: ${feeReceiver}`);
+
+      return sell > 0 || buy > 0;
+    } catch (error) {
+      // Ignore errors and return false
+    }
+
+    return false;
+  }
+
   /**
    * Given a wallet and a Uniswap trade, try to execute it on blockchain.
    *
    * @param wallet Wallet
    * @param trade Expected trade
    * @param gasPrice Base gas price, for pre-EIP1559 transactions
-   * @param sushswapRouter Router smart contract address
+   * @param routerAddress Router smart contract address
    * @param ttl How long the swap is valid before expiry, in seconds
    * @param abi Router contract ABI
    * @param gasLimit Gas limit
@@ -267,12 +296,11 @@ export class Shibaswap implements Uniswapish {
    * @param maxFeePerGas (Optional) Maximum total fee per gas you want to pay
    * @param maxPriorityFeePerGas (Optional) Maximum tip per gas you want to pay
    */
-
   async executeTrade(
     wallet: Wallet,
     trade: Trade,
     gasPrice: number,
-    sushswapRouter: string,
+    routerAddress: string,
     ttl: number,
     abi: ContractInterface,
     gasLimit: number,
@@ -280,12 +308,14 @@ export class Shibaswap implements Uniswapish {
     maxFeePerGas?: BigNumber,
     maxPriorityFeePerGas?: BigNumber,
   ): Promise<Transaction> {
+    const feeOnTransfer = await this.isFeeOnTransfer(trade, wallet);
     const result: SwapParameters = Router.swapCallParameters(trade, {
+      feeOnTransfer,
       ttl,
       recipient: wallet.address,
       allowedSlippage: this.getSlippagePercentage(),
     });
-    const contract: Contract = new Contract(sushswapRouter, abi, wallet);
+    const contract: Contract = new Contract(routerAddress, abi, wallet);
     return this.chain.nonceManager.provideNonce(
       nonce,
       wallet.address,
@@ -308,7 +338,6 @@ export class Shibaswap implements Uniswapish {
           });
         }
 
-        logger.info(JSON.stringify(tx));
         return tx;
       },
     );
