@@ -378,17 +378,6 @@ export class PancakeSwap implements Uniswapish {
       v2SubgraphClient = new GraphQLClient(v2Ethurl);
     }
 
-    const pairs = SmartRouter.getPairCombinations(currencyA, currencyB);
-
-    // Create v2 candidate pool fetcher with your own on-chain fetcher
-    const getV2PoolsByCommonTokenPrices =
-      SmartRouter.createV2PoolsProviderByCommonTokenPrices(
-        SmartRouter.getCommonTokenPricesBySubgraph,
-      );
-    const getV2CandidatePools = SmartRouter.createGetV2CandidatePools(
-      getV2PoolsByCommonTokenPrices,
-    );
-
     // Define v3 pool on-chain fetcher with customized tvl references
     const getV3CandidatePools = SmartRouter.createGetV3CandidatePools(
       // Use your customized v3 pool fetcher by default
@@ -403,8 +392,7 @@ export class PancakeSwap implements Uniswapish {
 
     const allPools = await Promise.allSettled([
       // @ts-ignore
-      SmartRouter.getStablePoolsOnChain(pairs, () => this.createPublicClient()),
-      getV2CandidatePools({
+      SmartRouter.getV2CandidatePools({
         // @ts-ignore
         onChainProvider: () => this.createPublicClient(),
         // @ts-ignore
@@ -449,7 +437,9 @@ export class PancakeSwap implements Uniswapish {
       // @ts-ignore
       onChainProvider: () => this.createPublicClient(),
     });
+
     const pools = await this.getPools(baseToken, quoteToken);
+    logger.info(`Found ${pools.length} pools for ${baseToken.symbol}-${quoteToken.symbol}`);
 
     const trade = await SmartRouter.getBestTrade(
       baseTokenAmount,
