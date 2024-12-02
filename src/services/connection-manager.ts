@@ -9,6 +9,8 @@ import { Xdc } from '../chains/xdc/xdc';
 import { Tezos } from '../chains/tezos/tezos';
 import { Telos } from '../chains/telos/telos';
 import { Osmosis } from '../chains/osmosis/osmosis';
+// import { XRPL, XRPLish } from '../chains/xrpl/xrpl';
+import { Ergo } from '../chains/ergo/ergo';
 import { MadMeerkat } from '../connectors/mad_meerkat/mad_meerkat';
 import { Openocean } from '../connectors/openocean/openocean';
 import { Pangolin } from '../connectors/pangolin/pangolin';
@@ -34,6 +36,7 @@ import { Plenty } from '../connectors/plenty/plenty';
 import { Curve } from '../connectors/curve/curve';
 import { PancakeswapLP } from '../connectors/pancakeswap/pancakeswap.lp';
 import { Carbonamm } from '../connectors/carbon/carbonAMM';
+import { Spectrum } from '../connectors/spectrum/spectrum';
 import { Balancer } from '../connectors/balancer/balancer';
 import { ETCSwapLP } from '../connectors/etcswap/etcswap.lp';
 import { EthereumClassicChain } from '../chains/ethereum-classic/ethereum-classic';
@@ -45,21 +48,24 @@ export type ChainUnion =
   | Ethereumish
   | Xdcish
   | Tezosish
-  | Osmosis;
+  | Osmosis
+  | Ergo;
 
 export type Chain<T> = T extends Algorand
   ? Algorand
   : T extends Cosmos
-    ? Cosmos
-    : T extends Ethereumish
-      ? Ethereumish
-        : T extends Xdcish
-          ? Xdcish
-            : T extends Tezosish
-              ? Tezosish
-                : T extends Osmosis
-                  ? Osmosis
-                  : never;
+  ? Cosmos
+  : T extends Ethereumish
+  ? Ethereumish
+  : T extends Xdcish
+  ? Xdcish
+  : T extends Tezosish
+  ? Tezosish
+  : T extends Osmosis
+  ? Osmosis
+  : T extends Ergo
+  ? Ergo
+  : never;
 
 export class UnsupportedChainException extends Error {
   constructor(message?: string) {
@@ -124,6 +130,8 @@ export async function getChainInstance(
     connection = Telos.getInstance(network);
   } else if (chain === 'ethereum-classic') {
     connection = EthereumClassicChain.getInstance(network);
+  } else if (chain === 'ergo') {
+    connection = Ergo.getInstance(network);
   } else {
     connection = undefined;
   }
@@ -137,16 +145,19 @@ export type ConnectorUnion =
   | Tinyman
   | Plenty
   | Curve
+  | Spectrum;
 
 export type Connector<T> = T extends Uniswapish
   ? Uniswapish
   : T extends UniswapLPish
-    ? UniswapLPish
-      : T extends Tinyman
-        ? Tinyman
-          : T extends Plenty
-            ? Plenty
-              : never;
+  ? UniswapLPish
+  : T extends Tinyman
+  ? Tinyman
+  : T extends Plenty
+  ? Plenty
+  : T extends Spectrum
+  ? Spectrum
+  : never;
 
 export async function getConnector<T>(
   chain: string,
@@ -193,6 +204,8 @@ export async function getConnector<T>(
     connectorInstance = ETCSwap.getInstance(chain, network);
   } else if (chain === 'ethereum-classic' && connector === 'etcswapLP') {
     connectorInstance = ETCSwapLP.getInstance(chain, network);
+  } else if (chain === 'ergo' && connector === 'spectrum') {
+    connectorInstance = Spectrum.getInstance(chain, network);
   } else {
     throw new Error('unsupported chain or connector');
   }

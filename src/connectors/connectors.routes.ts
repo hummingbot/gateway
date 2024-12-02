@@ -18,6 +18,7 @@ import { CurveConfig } from './curve/curveswap.config';
 import { PlentyConfig } from './plenty/plenty.config';
 import { OsmosisConfig } from '../chains/osmosis/osmosis.config';
 import { CarbonConfig } from './carbon/carbon.config';
+import { SpectrumConfig } from './spectrum/spectrum.config';
 import { BalancerConfig } from './balancer/balancer.config';
 import { ETCSwapConfig } from './etcswap/etcswap.config';
 
@@ -40,7 +41,7 @@ export namespace ConnectorsRoutes {
             trading_type: UniswapConfig.config.tradingTypes('LP'),
             chain_type: UniswapConfig.config.chainType,
             available_networks: JSON.parse(
-              JSON.stringify(UniswapConfig.config.availableNetworks)
+              JSON.stringify(UniswapConfig.config.availableNetworks),
             ),
             additional_spenders: ['uniswap'],
           },
@@ -154,8 +155,14 @@ export namespace ConnectorsRoutes {
             available_networks: ETCSwapConfig.config.availableNetworks,
             additional_spenders: ['etcswap'],
           },
+          {
+            name: 'spectrum',
+            trading_type: SpectrumConfig.config.tradingTypes,
+            chain_type: SpectrumConfig.config.chainType,
+            available_networks: SpectrumConfig.config.availableNetworks,
+          },
         ],
       });
-    })
+    }),
   );
 }

@@ -22,6 +22,7 @@ import {
 import { Osmosis } from '../chains/osmosis/osmosis';
 
 import { EthereumClassicChain } from '../chains/ethereum-classic/ethereum-classic';
+import { Ergo } from '../chains/ergo/ergo';
 
 export async function getStatus(
   req: StatusRequest,
@@ -88,7 +89,7 @@ export async function getStatus(
 
     const celoConnections = Celo.getConnectedInstances();
     connections = connections.concat(
-      celoConnections ? Object.values(celoConnections) : []
+      celoConnections ? Object.values(celoConnections) : [],
     );
 
     const bscConnections = BinanceSmartChain.getConnectedInstances();
@@ -113,7 +114,11 @@ export async function getStatus(
 
     const etcConnections = EthereumClassicChain.getConnectedInstances();
     connections = connections.concat(
-      etcConnections ? Object.values(etcConnections) : []
+      etcConnections ? Object.values(etcConnections) : [],
+    );
+    const ergoConnections = Ergo.getConnectedInstances();
+    connections = connections.concat(
+      ergoConnections ? Object.values(ergoConnections) : [],
     );
   }
 

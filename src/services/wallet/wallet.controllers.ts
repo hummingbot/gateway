@@ -30,6 +30,7 @@ import {
 import { Ethereumish, Tezosish } from '../common-interfaces';
 import { Algorand } from '../../chains/algorand/algorand';
 import { Osmosis } from '../../chains/osmosis/osmosis';
+import { Ergo } from '../../chains/ergo/ergo';
 
 export function convertXdcAddressToEthAddress(publicKey: string): string {
   return publicKey.length === 43 && publicKey.slice(0, 3) === 'xdc'
@@ -47,7 +48,7 @@ export async function mkdirIfDoesNotExist(path: string): Promise<void> {
 }
 
 export async function addWallet(
-  req: AddWalletRequest
+  req: AddWalletRequest,
 ): Promise<AddWalletResponse> {
   const passphrase = ConfigManagerCertPassphrase.readPassphrase();
   if (!passphrase) {
@@ -64,7 +65,7 @@ export async function addWallet(
       throw new HttpException(
         500,
         UNKNOWN_KNOWN_CHAIN_ERROR_MESSAGE(req.chain),
-        UNKNOWN_CHAIN_ERROR_CODE
+        UNKNOWN_CHAIN_ERROR_CODE,
       );
     }
     throw e;
@@ -78,41 +79,45 @@ export async function addWallet(
       address = connection.getWalletFromPrivateKey(req.privateKey).address;
       encryptedPrivateKey = await connection.encrypt(
         req.privateKey,
-        passphrase
+        passphrase,
       );
     } else if (connection instanceof Xdc) {
       address = convertXdcAddressToEthAddress(
-        connection.getWalletFromPrivateKey(req.privateKey).address
+        connection.getWalletFromPrivateKey(req.privateKey).address,
       );
       encryptedPrivateKey = await connection.encrypt(
         req.privateKey,
-        passphrase
+        passphrase,
       );
     } else if (connection instanceof Cosmos) {
       const wallet = await (connection as Cosmos).getAccountsfromPrivateKey(
         req.privateKey,
-        'cosmos'
+        'cosmos',
       );
       address = wallet.address;
       encryptedPrivateKey = await (connection as Cosmos).encrypt(
         req.privateKey,
-        passphrase
+        passphrase,
       );
     } else if (connection instanceof Osmosis) {
       const wallet = await (connection as Osmosis).getAccountsfromPrivateKey(
         req.privateKey,
-        'osmo'
+        'osmo',
       );
       address = wallet.address;
       encryptedPrivateKey = await (connection as Osmosis).encrypt(
         req.privateKey,
-        passphrase
+        passphrase,
       );
     } else if (connection instanceof Tezos) {
       const tezosWallet = await connection.getWalletFromPrivateKey(
-        req.privateKey
+        req.privateKey,
       );
       address = await tezosWallet.signer.publicKeyHash();
+      encryptedPrivateKey = connection.encrypt(req.privateKey, passphrase);
+    } else if (connection instanceof Ergo) {
+      const account = connection.getAccountFromMnemonic(req.privateKey);
+      address = account.address;
       encryptedPrivateKey = connection.encrypt(req.privateKey, passphrase);
     }
 
@@ -123,7 +128,7 @@ export async function addWallet(
     throw new HttpException(
       500,
       ERROR_RETRIEVING_WALLET_ADDRESS_ERROR_MESSAGE(req.privateKey),
-      ERROR_RETRIEVING_WALLET_ADDRESS_ERROR_CODE
+      ERROR_RETRIEVING_WALLET_ADDRESS_ERROR_CODE,
     );
   }
   const path = `${walletPath}/${req.chain}`;
@@ -138,20 +143,20 @@ export async function removeWallet(req: RemoveWalletRequest): Promise<void> {
 }
 
 export async function signMessage(
-  req: WalletSignRequest
+  req: WalletSignRequest,
 ): Promise<WalletSignResponse> {
   if (req.chain === 'tezos') {
     const chain: Tezosish = await getInitializedChain(req.chain, req.network);
     const wallet = await chain.getWallet(req.address);
     return {
       signature: (await wallet.signer.sign('0x03' + req.message)).sbytes.slice(
-        4
+        4,
       ),
     };
   } else {
     const chain: Ethereumish = await getInitializedChain(
       req.chain,
-      req.network
+      req.network,
     );
     const wallet = await chain.getWallet(req.address);
     return { signature: await wallet.signMessage(req.message) };

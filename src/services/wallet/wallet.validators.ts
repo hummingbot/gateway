@@ -14,6 +14,9 @@ export const invalidAlgorandPrivateKeyOrMnemonicError: string =
 export const invalidEthPrivateKeyError: string =
   'The privateKey param is not a valid Ethereum private key (64 hexadecimal characters).';
 
+export const invalidErgoPrivateKeyError: string =
+  'The privateKey param is not a valid Ergo mnemonic.';
+
 export const invalidCosmosPrivateKeyError: string =
   'The privateKey param is not a valid Cosmos private key.';
 
@@ -127,6 +130,11 @@ export const validatePrivateKey: Validator = mkSelectingValidator(
       invalidEthPrivateKeyError,
       (val) => typeof val === 'string' && isEthPrivateKey(val),
     ),
+    ergo: mkValidator(
+      'privateKey',
+      invalidErgoPrivateKeyError,
+      (val) => typeof val === 'string',
+    ),
   },
 );
 
@@ -161,7 +169,8 @@ export const validateChain: Validator = mkValidator(
       val === 'binance-smart-chain' ||
       val === 'tezos' ||
       val === 'telos' ||
-      val === 'ethereum-classic'),
+      val === 'ethereum-classic' ||
+      val === 'ergo'),
 );
 
 export const validateNetwork: Validator = mkValidator(

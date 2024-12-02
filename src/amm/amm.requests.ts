@@ -1,4 +1,8 @@
-import { CoinAndSymbol, SerializableExtendedPool as CosmosSerializableExtendedPool } from '../chains/osmosis/osmosis.types';
+import {
+  CoinAndSymbol,
+  SerializableExtendedPool as CosmosSerializableExtendedPool,
+} from '../chains/osmosis/osmosis.types';
+// import { PerpPosition } from '../connectors/perp/perp';
 import {
   NetworkSelectionRequest,
   PositionInfo as LPPositionInfo,
@@ -36,7 +40,7 @@ export interface PriceResponse {
 export interface PoolPriceRequest extends NetworkSelectionRequest {
   token0: string;
   token1: string;
-  address?: string
+  address?: string;
   fee?: string;
   period?: number;
   interval?: number;
@@ -68,6 +72,7 @@ export interface TradeRequest extends NetworkSelectionRequest {
   maxPriorityFeePerGas?: string;
   allowedSlippage?: string;
   poolId?: string;
+  mnemonic?: string;
 }
 
 export interface TradeResponse {
@@ -81,8 +86,8 @@ export interface TradeResponse {
   rawAmount: string;
   finalAmountReceived_basetoken?: string; // Cosmos
   expectedIn?: string;
-  expectedOut?: string;  // Cosmos: expectedAmountReceived
-  expectedPrice?: string;  // Cosmos
+  expectedOut?: string; // Cosmos: expectedAmountReceived
+  expectedPrice?: string; // Cosmos
   price: string; // Cosmos: finalPrice
   gasPrice: number;
   gasPriceToken: string;
@@ -93,14 +98,15 @@ export interface TradeResponse {
   txHash: string | any | undefined;
 }
 
-export interface AddLiquidityRequest extends NetworkSelectionRequest { // now also cosmos add swap position OR cosmos add LP position
+export interface AddLiquidityRequest extends NetworkSelectionRequest {
+  // now also cosmos add swap position OR cosmos add LP position
   address: string;
   token0: string;
   token1: string;
   amount0: string;
   amount1: string;
   fee?: string;
-  lowerPrice?: string; // integer as string  // COSMOS - using this != undefined then call addpositionLP(), else: addposition() 
+  lowerPrice?: string; // integer as string  // COSMOS - using this != undefined then call addpositionLP(), else: addposition()
   upperPrice?: string; // integer as string
   tokenId?: number; // COSMOS: poolId - will select one for you if not provided
   nonce?: number;
