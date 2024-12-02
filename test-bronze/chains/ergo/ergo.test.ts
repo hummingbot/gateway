@@ -1208,6 +1208,7 @@ describe('Ergo', () => {
           value,
           output_address,
           return_address,
+          '18',
         ),
       ).rejects.toThrow(`Pool not found for ${baseToken} and ${quoteToken}`);
       expect(ergo.getPoolByToken).toHaveBeenCalledWith(baseToken, quoteToken);
@@ -1232,6 +1233,7 @@ describe('Ergo', () => {
           value,
           output_address,
           return_address,
+          '18',
         ),
       ).rejects.toThrow(`Pool not found for ${baseToken} and ${quoteToken}`);
       expect(ergo.getPoolByToken).toHaveBeenCalledWith(baseToken, quoteToken);
@@ -1249,6 +1251,7 @@ describe('Ergo', () => {
           value,
           output_address,
           return_address,
+          '18',
         ),
       ).rejects.toThrow(
         `${value.multipliedBy(
@@ -1271,6 +1274,7 @@ describe('Ergo', () => {
           value,
           output_address,
           return_address,
+          '18',
         ),
       ).rejects.toThrow(
         `${value.multipliedBy(
@@ -1288,6 +1292,7 @@ describe('Ergo', () => {
           value,
           output_address,
           return_address,
+          '18',
         ),
       ).rejects.toThrow('Error in swap vars!');
       expect(ergo.getAddressUnspentBoxes).toHaveBeenCalledWith('address');
@@ -1325,6 +1330,7 @@ describe('Ergo', () => {
           value,
           output_address,
           return_address,
+          '18',
         ),
       ).rejects.toThrow(`output_address is not defined.`);
       expect(ergo.getAddressUnspentBoxes).toHaveBeenCalledWith('address');
@@ -1332,6 +1338,7 @@ describe('Ergo', () => {
 
     it('Should throw new Error if any error occurs during submitting the tx', async () => {
       jest.spyOn(ergo_utils, 'getInputs').mockReturnValue({} as any);
+      jest.spyOn(console, 'error').mockImplementation(() => { });
       const account: any = {
         prover: {
           submit: jest.fn().mockResolvedValue({}),
@@ -1346,8 +1353,9 @@ describe('Ergo', () => {
           value,
           output_address,
           return_address,
+          '18',
         ),
-      ).rejects.toThrow(`Error during submit tx!`);
+      ).rejects.toThrow(`Swap price 1000000 exceeds limitPrice 18`);
     });
 
     it('Should successfully swap tokens when sell is false', async () => {
@@ -1360,7 +1368,6 @@ describe('Ergo', () => {
           submit: jest.fn().mockResolvedValue({ id: 'id' }),
         },
       };
-
       const result = await ergo.swap(
         account,
         baseToken,
@@ -1368,7 +1375,7 @@ describe('Ergo', () => {
         value,
         output_address,
         return_address,
-        slippage,
+        '1800000',
       );
       expect(result).toEqual({
         network: ergo.network,
@@ -1423,7 +1430,7 @@ describe('Ergo', () => {
         value,
         output_address,
         return_address,
-        slippage,
+        '18',
       );
       expect(result).toEqual({
         network: ergo.network,

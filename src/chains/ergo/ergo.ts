@@ -46,6 +46,7 @@ import { PriceResponse, TradeResponse } from '../../amm/amm.requests';
 import { walletPath } from '../../services/base';
 import fse from 'fs-extra';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
+import { HttpException, SWAP_PRICE_EXCEEDS_LIMIT_PRICE_ERROR_CODE, SWAP_PRICE_EXCEEDS_LIMIT_PRICE_ERROR_MESSAGE } from '../../services/error-handler';
 
 /**
  * Extended AmmPool class with additional properties and methods
@@ -547,12 +548,12 @@ export class Ergo {
     value: BigNumber,
     output_address: string,
     return_address: string,
-    slippage?: number,
+    priceLimit: string,
   ): Promise<TradeResponse> {
+    const config = getErgoConfig(this.network);
+    const slippage = config.network.defaultSlippage;
     const { realBaseToken, realQuoteToken, pool } = await this.findBestPool(baseToken, quoteToken, value, slippage);
     const { sell, amount, from, to, minOutput } = this.calculateSwapParameters(pool, realBaseToken, value, slippage);
-
-    const config = getErgoConfig(this.network);
     const { baseInput, baseInputAmount } = getBaseInputParameters(pool, { inputAmount: from, slippage: slippage || config.network.defaultSlippage });
 
     const networkContext = await this._explorer.getNetworkContext();
@@ -569,6 +570,29 @@ export class Ergo {
     const actions = poolActions(pool);
     const timestamp = await this.getBlockTimestamp(networkContext);
     const tx = await actions.swap(swapParams, txContext);
+    const xDecimals = pool.x.asset.decimals as number;
+    const yDecimals = pool.y.asset.decimals as number;
+    const realPrice = this.calculatePrice(
+      minOutput,
+      from,
+      sell,
+      xDecimals,
+      yDecimals,
+    );
+    if (
+      (sell && BigNumber(priceLimit).gt(BigNumber(realPrice))) ||
+      (!sell && BigNumber(priceLimit).lt(BigNumber(realPrice)))
+    ) {
+      console.error('Swap price exceeded limit price.');
+      throw new HttpException(
+        500,
+        SWAP_PRICE_EXCEEDS_LIMIT_PRICE_ERROR_MESSAGE(
+          BigNumber(realPrice).toString(),
+          BigNumber(priceLimit).toString(),
+        ),
+        SWAP_PRICE_EXCEEDS_LIMIT_PRICE_ERROR_CODE,
+      );
+    }
 
     await this.submitTransaction(account, tx);
 
@@ -587,12 +611,12 @@ export class Ergo {
     baseToken: string,
     quoteToken: string,
     value: BigNumber,
-    slippage?: number,
   ): Promise<PriceResponse> {
+    const config = getErgoConfig(this.network);
+    const slippage = config.network.defaultSlippage;
     const { realBaseToken, realQuoteToken, pool } = await this.findBestPool(baseToken, quoteToken, value, slippage);
     const { sell, amount, from, minOutput } = this.calculateSwapParameters(pool, realBaseToken, value, slippage);
 
-    const config = getErgoConfig(this.network);
     const expectedAmount = this.calculateExpectedAmount(minOutput, pool, sell);
 
     return this.createPriceResponse(realBaseToken, realQuoteToken, amount, from, minOutput, pool, sell, config, expectedAmount);
@@ -983,6 +1007,7 @@ export class Ergo {
     const realBaseToken = this.storedAssetList.find(
       (asset) => asset.symbol === baseToken,
     );
+
     const realQuoteToken = this.storedAssetList.find(
       (asset) => asset.symbol === quoteToken,
     );

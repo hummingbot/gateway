@@ -670,7 +670,7 @@ describe('POST /amm/estimateGas', () => {
       .send({
         chain: 'ethereum',
         network: 'goerli',
-        connector: 'pangolin',
+        connector: 'plenty',
       })
       .set('Accept', 'application/json')
       .expect(500);

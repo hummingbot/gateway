@@ -2,8 +2,6 @@ import fse from 'fs-extra';
 import { Xdc } from '../../chains/xdc/xdc';
 import { Cosmos } from '../../chains/cosmos/cosmos';
 import { Tezos } from '../../chains/tezos/tezos';
-import { XRPL } from '../../chains/xrpl/xrpl';
-import { Kujira } from '../../chains/kujira/kujira';
 
 import {
   AddWalletRequest,
@@ -19,14 +17,11 @@ import { ConfigManagerCertPassphrase } from '../config-manager-cert-passphrase';
 import {
   ERROR_RETRIEVING_WALLET_ADDRESS_ERROR_CODE,
   ERROR_RETRIEVING_WALLET_ADDRESS_ERROR_MESSAGE,
-  ACCOUNT_NOT_SPECIFIED_CODE,
-  ACCOUNT_NOT_SPECIFIED_ERROR_MESSAGE,
   HttpException,
   UNKNOWN_CHAIN_ERROR_CODE,
   UNKNOWN_KNOWN_CHAIN_ERROR_MESSAGE,
 } from '../error-handler';
 import { EthereumBase } from '../../chains/ethereum/ethereum-base';
-import { Near } from '../../chains/near/near';
 import {
   ChainUnion,
   getInitializedChain,
@@ -62,16 +57,6 @@ export async function addWallet(
   let connection: ChainUnion;
   let address: string | undefined;
   let encryptedPrivateKey: string | undefined;
-
-  if (req.chain === 'near') {
-    if (!('address' in req)) {
-      throw new HttpException(
-        500,
-        ACCOUNT_NOT_SPECIFIED_ERROR_MESSAGE(),
-        ACCOUNT_NOT_SPECIFIED_CODE,
-      );
-    }
-  }
 
   try {
     connection = await getInitializedChain<ChainUnion>(req.chain, req.network);
@@ -124,46 +109,16 @@ export async function addWallet(
         req.privateKey,
         passphrase,
       );
-    } else if (connection instanceof Near) {
-      address = (
-        await connection.getWalletFromPrivateKey(
-          req.privateKey,
-          <string>req.address,
-        )
-      ).accountId;
-      encryptedPrivateKey = connection.encrypt(req.privateKey, passphrase);
     } else if (connection instanceof Tezos) {
       const tezosWallet = await connection.getWalletFromPrivateKey(
         req.privateKey,
       );
       address = await tezosWallet.signer.publicKeyHash();
       encryptedPrivateKey = connection.encrypt(req.privateKey, passphrase);
-    } else if (connection instanceof Kujira) {
-      const mnemonic = req.privateKey;
-      const accountNumber = Number(req.accountId);
-      address = await connection.getWalletPublicKey(mnemonic, accountNumber);
-
-      if (accountNumber !== undefined) {
-        encryptedPrivateKey = await connection.encrypt(
-          mnemonic,
-          accountNumber,
-          address,
-        );
-      } else {
-        throw new Error('Kujira wallet requires an account number.');
-      }
-    } else if (connection instanceof XRPL) {
-      address = connection.getWalletFromSeed(req.privateKey).classicAddress;
-      encryptedPrivateKey = await connection.encrypt(
-        req.privateKey,
-        passphrase,
-      );
     } else if (connection instanceof Ergo) {
       const account = connection.getAccountFromMnemonic(req.privateKey);
-      console.log(account);
       address = account.address;
       encryptedPrivateKey = connection.encrypt(req.privateKey, passphrase);
-      console.log(encryptedPrivateKey);
     }
 
     if (address === undefined || encryptedPrivateKey === undefined) {

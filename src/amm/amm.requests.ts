@@ -2,7 +2,7 @@ import {
   CoinAndSymbol,
   SerializableExtendedPool as CosmosSerializableExtendedPool,
 } from '../chains/osmosis/osmosis.types';
-import { PerpPosition } from '../connectors/perp/perp';
+// import { PerpPosition } from '../connectors/perp/perp';
 import {
   NetworkSelectionRequest,
   PositionInfo as LPPositionInfo,
@@ -10,7 +10,6 @@ import {
 
 export type OrderType = 'LIMIT' | 'LIMIT_MAKER';
 export type Side = 'BUY' | 'SELL';
-export type PerpSide = 'LONG' | 'SHORT';
 
 export interface PriceRequest extends NetworkSelectionRequest {
   quote: string;
@@ -185,84 +184,4 @@ export interface EstimateGasResponse {
   gasPriceToken: string;
   gasLimit: number;
   gasCost: string;
-}
-
-export interface PerpPricesResponse {
-  base: string;
-  quote: string;
-  network: string;
-  timestamp: number;
-  latency: number;
-  markPrice: string;
-  indexPrice: string;
-  indexTwapPrice: string;
-}
-
-export interface PerpMarketRequest extends NetworkSelectionRequest {
-  quote: string;
-  base: string;
-}
-
-export interface PerpMarketResponse {
-  network: string;
-  timestamp: number;
-  latency: number;
-  base: string;
-  quote: string;
-  isActive: boolean;
-}
-
-export interface PerpBalanceRequest extends NetworkSelectionRequest {
-  address: string;
-}
-
-export interface PerpBalanceResponse {
-  network: string;
-  timestamp: number;
-  latency: number;
-  balance: string;
-}
-
-export interface PerpPositionRequest extends PerpMarketRequest {
-  address: string;
-}
-
-export interface PerpPositionResponse extends PerpPosition {
-  network: string;
-  timestamp: number;
-  latency: number;
-  base: string;
-  quote: string;
-}
-
-export interface PerpAvailablePairsResponse {
-  network: string;
-  timestamp: number;
-  latency: number;
-  pairs: string[];
-}
-
-export interface PerpCreateTakerRequest extends NetworkSelectionRequest {
-  quote: string;
-  base: string;
-  address: string;
-  amount?: string;
-  side?: PerpSide;
-  allowedSlippage?: string;
-  nonce?: number;
-}
-
-export interface PerpCreateTakerResponse {
-  network: string;
-  timestamp: number;
-  latency: number;
-  base: string;
-  quote: string;
-  amount: string;
-  gasPrice: number;
-  gasPriceToken: string;
-  gasLimit: number;
-  gasCost: string;
-  nonce: number;
-  txHash: string | undefined;
 }

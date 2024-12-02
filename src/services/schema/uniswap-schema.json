@@ -13,17 +13,26 @@
     "contractAddresses": {
       "type": "object",
       "patternProperties": {
-        "^\\w+$": {
+        "[\\w-]+$": {
           "type": "object",
-          "properties": {
-            "uniswapV3SmartOrderRouterAddress": { "type": "string" },
-            "uniswapV3NftManagerAddress": { "type": "string" },
-            "uniswapV3QuoterV2ContractAddress": { "type": "string" }
+          "patternProperties": {
+            "^\\w+$": {
+              "type": "object",
+              "properties": {
+                "uniswapV3SmartOrderRouterAddress": { "type": "string" },
+                "uniswapV3NftManagerAddress": { "type": "string" },
+                "uniswapV3QuoterV2ContractAddress": { "type": "string" },
+                "uniswapV3FactoryAddress": { "type": "string" }
+              },
+              "required": [
+                "uniswapV3SmartOrderRouterAddress",
+                "uniswapV3NftManagerAddress",
+                "uniswapV3QuoterV2ContractAddress",
+                "uniswapV3FactoryAddress"
+              ],
+              "additionalProperties": false
+            }
           },
-          "required": [
-            "uniswapV3SmartOrderRouterAddress",
-            "uniswapV3NftManagerAddress"
-          ],
           "additionalProperties": false
         }
       },

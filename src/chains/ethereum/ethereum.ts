@@ -11,7 +11,6 @@ import { Chain as Ethereumish } from '../../services/common-interfaces';
 import { EVMController } from './evm.controllers';
 
 import { UniswapConfig } from '../../connectors/uniswap/uniswap.config';
-import { Perp } from '../../connectors/perp/perp';
 import { SushiswapConfig } from '../../connectors/sushiswap/sushiswap.config';
 import { OpenoceanConfig } from '../../connectors/openocean/openocean.config';
 import { Curve } from '../../connectors/curve/curve';
@@ -182,6 +181,7 @@ export class Ethereum extends EthereumBase implements Ethereumish {
     let spender: string;
     if (reqSpender === 'uniswap') {
       spender = UniswapConfig.config.uniswapV3SmartOrderRouterAddress(
+        this.chainName,
         this._chain,
       );
     } else if (reqSpender === 'pancakeswap') {
@@ -196,19 +196,14 @@ export class Ethereum extends EthereumBase implements Ethereumish {
         this._chain,
       );
     } else if (reqSpender === 'uniswapLP') {
-      spender = UniswapConfig.config.uniswapV3NftManagerAddress(this._chain);
+      spender = UniswapConfig.config.uniswapV3NftManagerAddress(
+        this.chainName,
+        this._chain);
     } else if (reqSpender === 'carbonamm') {
       spender = CarbonConfig.config.carbonContractsConfig(
         'ethereum',
         this._chain,
       ).carbonControllerAddress;
-    } else if (reqSpender === 'perp') {
-      const perp = Perp.getInstance(this._chain, 'optimism');
-      if (!perp.ready()) {
-        perp.init();
-        throw Error('Perp curie not ready');
-      }
-      spender = perp.perp.contracts.vault.address;
     } else if (reqSpender === 'openocean') {
       spender = OpenoceanConfig.config.routerAddress('ethereum', this._chain);
     } else if (reqSpender === 'curve') {

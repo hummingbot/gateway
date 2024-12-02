@@ -4,23 +4,24 @@ import { BinanceSmartChain } from '../chains/binance-smart-chain/binance-smart-c
 import { Ethereum } from '../chains/ethereum/ethereum';
 import { Harmony } from '../chains/harmony/harmony';
 import { Polygon } from '../chains/polygon/polygon';
+import { Celo } from '../chains/celo/celo';
 import { Xdc } from '../chains/xdc/xdc';
 import { Tezos } from '../chains/tezos/tezos';
-import { Kujira } from '../chains/kujira/kujira';
+import { Telos } from '../chains/telos/telos';
 import {
   HttpException,
   UNKNOWN_CHAIN_ERROR_CODE,
   UNKNOWN_KNOWN_CHAIN_ERROR_MESSAGE,
 } from '../services/error-handler';
 import { Cronos } from '../chains/cronos/cronos';
-import { Near } from '../chains/near/near';
 import { Algorand } from '../chains/algorand/algorand';
 import {
   getInitializedChain,
   UnsupportedChainException,
 } from '../services/connection-manager';
 import { Osmosis } from '../chains/osmosis/osmosis';
-import { XRPL } from '../chains/xrpl/xrpl';
+
+import { EthereumClassicChain } from '../chains/ethereum-classic/ethereum-classic';
 import { Ergo } from '../chains/ergo/ergo';
 
 export async function getStatus(
@@ -86,9 +87,9 @@ export async function getStatus(
       cronosConnections ? Object.values(cronosConnections) : [],
     );
 
-    const nearConnections = Near.getConnectedInstances();
+    const celoConnections = Celo.getConnectedInstances();
     connections = connections.concat(
-      nearConnections ? Object.values(nearConnections) : [],
+      celoConnections ? Object.values(celoConnections) : [],
     );
 
     const bscConnections = BinanceSmartChain.getConnectedInstances();
@@ -101,14 +102,9 @@ export async function getStatus(
       tezosConnections ? Object.values(tezosConnections) : [],
     );
 
-    const xrplConnections = XRPL.getConnectedInstances();
+    const telosConnections = Telos.getConnectedInstances();
     connections = connections.concat(
-      xrplConnections ? Object.values(xrplConnections) : [],
-    );
-
-    const kujiraConnections = Kujira.getConnectedInstances();
-    connections = connections.concat(
-      kujiraConnections ? Object.values(kujiraConnections) : [],
+      telosConnections ? Object.values(telosConnections) : [],
     );
 
     const osmosisConnections = Osmosis.getConnectedInstances();
@@ -116,6 +112,10 @@ export async function getStatus(
       osmosisConnections ? Object.values(osmosisConnections) : [],
     );
 
+    const etcConnections = EthereumClassicChain.getConnectedInstances();
+    connections = connections.concat(
+      etcConnections ? Object.values(etcConnections) : [],
+    );
     const ergoConnections = Ergo.getConnectedInstances();
     connections = connections.concat(
       ergoConnections ? Object.values(ergoConnections) : [],

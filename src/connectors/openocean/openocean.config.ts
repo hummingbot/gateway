@@ -14,10 +14,10 @@ export namespace OpenoceanConfig {
 
   export const config: NetworkConfig = {
     allowedSlippage: ConfigManagerV2.getInstance().get(
-      'openocean.allowedSlippage'
+      'openocean.allowedSlippage',
     ),
     gasLimitEstimate: ConfigManagerV2.getInstance().get(
-      `openocean.gasLimitEstimate`
+      `openocean.gasLimitEstimate`,
     ),
     ttl: ConfigManagerV2.getInstance().get('openocean.ttl'),
     routerAddress: (chain: string, network: string) =>
@@ -26,7 +26,7 @@ export namespace OpenoceanConfig {
           chain +
           '.' +
           network +
-          '.routerAddress'
+          '.routerAddress',
       ),
     tradingTypes: ['AMM'],
     chainType: 'EVM',
@@ -37,6 +37,7 @@ export namespace OpenoceanConfig {
       { chain: 'harmony', networks: ['mainnet'] },
       { chain: 'binance-smart-chain', networks: ['mainnet'] },
       { chain: 'cronos', networks: ['mainnet'] },
+      { chain: 'telos', networks: ['evm'] },
     ],
   };
 }

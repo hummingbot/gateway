@@ -24,16 +24,12 @@ configurations:
     configurationPath: avalanche.yml
     schemaPath: ethereum-schema.json
 
-  $namespace dexalot:
-    configurationPath: dexalot.yml
-    schemaPath: dexalot-schema.json
-
   $namespace polygon:
     configurationPath: polygon.yml
     schemaPath: ethereum-schema.json
 
-  $namespace near:
-    configurationPath: near.yml
+  $namespace celo:
+    configurationPath: celo.yml
     schemaPath: ethereum-schema.json
 
   $namespace pangolin:
@@ -43,10 +39,6 @@ configurations:
   $namespace quickswap:
     configurationPath: quickswap.yml
     schemaPath: quickswap-schema.json
-
-  $namespace perp:
-    configurationPath: perp.yml
-    schemaPath: perp-schema.json
 
   $namespace sushiswap:
     configurationPath: sushiswap.yml
@@ -63,10 +55,6 @@ configurations:
   $namespace uniswap:
     configurationPath: uniswap.yml
     schemaPath: uniswap-schema.json
-
-  $namespace ref:
-    configurationPath: ref.yml
-    schemaPath: ref-schema.json
 
   $namespace openocean:
     configurationPath: openocean.yml
@@ -116,21 +104,9 @@ configurations:
     configurationPath: plenty.yml
     schemaPath: plenty-schema.json
 
-  $namespace xrpl:
-    configurationPath: xrpl.yml
-    schemaPath: xrpl-schema.json
-
   $namespace curve:
     configurationPath: curve.yml
     schemaPath: cronos-connector-schema.json
-
-  $namespace kujira:
-    configurationPath: kujira.yml
-    schemaPath: kujira-schema.json
-
-  $namespace quipuswap:
-    configurationPath: quipuswap.yml
-    schemaPath: quipuswap-schema.json
 
   $namespace carbon:
     configurationPath: carbon.yml
@@ -139,6 +115,18 @@ configurations:
   $namespace balancer:
     configurationPath: balancer.yml
     schemaPath: cronos-connector-schema.json
+
+  $namespace ethereum-classic:
+    configurationPath: ethereum-classic.yml
+    schemaPath: ethereum-schema.json
+
+  $namespace etcswap:
+    configurationPath: etcswap.yml
+    schemaPath: etcswap-schema.json
+
+  $namespace telos:
+    configurationPath: telos.yml
+    schemaPath: ethereum-schema.json
 
   $namespace spectrum:
     configurationPath: spectrum.yml

@@ -76,21 +76,18 @@ export class Spectrum {
         req.base.replace("_", ""),
         req.quote.replace("_", ""),
         BigNumber(req.amount),
-        Number(req.allowedSlippage),
       );
     else if (req.side === 'BUY')
       return this.ergo.estimate(
         req.quote.replace("_", ""),
         req.base.replace("_", ""),
         BigNumber(req.amount),
-        Number(req.allowedSlippage),
       );
     else
       return this.ergo.estimate(
         req.base.replace("_", ""),
         req.quote.replace("_", ""),
         BigNumber(req.amount),
-        Number(req.allowedSlippage),
       );
   }
 
@@ -112,7 +109,7 @@ export class Spectrum {
         BigNumber(req.amount),
         req.address,
         req.address,
-        Number(req.allowedSlippage),
+        String(req.limitPrice),
       );
     else if (req.side === 'BUY')
       return this.ergo.swap(
@@ -122,7 +119,7 @@ export class Spectrum {
         BigNumber(req.amount),
         req.address,
         req.address,
-        Number(req.allowedSlippage),
+        String(req.limitPrice),
       );
     else
       return this.ergo.swap(
@@ -132,7 +129,7 @@ export class Spectrum {
         BigNumber(req.amount),
         req.address,
         req.address,
-        Number(req.allowedSlippage),
+        String(req.limitPrice),
       );
   }
 }
