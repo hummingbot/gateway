@@ -379,16 +379,16 @@ export class PancakeSwap implements Uniswapish {
     }
 
     // Define v3 pool on-chain fetcher with customized tvl references
-    const getV3CandidatePools = SmartRouter.createGetV3CandidatePools(
-      // Use your customized v3 pool fetcher by default
-      SmartRouter.getV3PoolsWithTvlFromOnChain,
-      {
-        fallbacks: [],
-        // In millisecond
-        // Will try fallback fetcher if the default doesn't respond in 2s
-        fallbackTimeout: 1500,
-      },
-    );
+    // const getV3CandidatePools = SmartRouter.createGetV3CandidatePools(
+    //   // Use your customized v3 pool fetcher by default
+    //   SmartRouter.getV3PoolsWithTvlFromOnChain,
+    //   {
+    //     fallbacks: [],
+    //     // In millisecond
+    //     // Will try fallback fetcher if the default doesn't respond in 2s
+    //     fallbackTimeout: 1500,
+    //   },
+    // );
 
     const allPools = await Promise.allSettled([
       // @ts-ignore
@@ -402,7 +402,7 @@ export class PancakeSwap implements Uniswapish {
         currencyA,
         currencyB,
       }),
-      getV3CandidatePools({
+      SmartRouter.getV3CandidatePools({
         // @ts-ignore
         onChainProvider: () => this.createPublicClient(),
         // @ts-ignore
