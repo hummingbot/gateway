@@ -7,7 +7,6 @@ import { Polygon } from '../chains/polygon/polygon';
 import { Celo } from '../chains/celo/celo';
 import { Xdc } from '../chains/xdc/xdc';
 import { Tezos } from '../chains/tezos/tezos';
-import { Kujira } from '../chains/kujira/kujira';
 import { Telos } from '../chains/telos/telos';
 import {
   HttpException,
@@ -15,15 +14,14 @@ import {
   UNKNOWN_KNOWN_CHAIN_ERROR_MESSAGE,
 } from '../services/error-handler';
 import { Cronos } from '../chains/cronos/cronos';
-import { Near } from '../chains/near/near';
 import { Algorand } from '../chains/algorand/algorand';
 import {
   getInitializedChain,
   UnsupportedChainException,
 } from '../services/connection-manager';
 import { Osmosis } from '../chains/osmosis/osmosis';
-import { XRPL } from '../chains/xrpl/xrpl';
 import { Solana } from '../chains/solana/solana';
+import { EthereumClassicChain } from '../chains/ethereum-classic/ethereum-classic';
 
 export async function getStatus(
   req: StatusRequest,
@@ -93,11 +91,6 @@ export async function getStatus(
       celoConnections ? Object.values(celoConnections) : []
     );
 
-    const nearConnections = Near.getConnectedInstances();
-    connections = connections.concat(
-      nearConnections ? Object.values(nearConnections) : [],
-    );
-
     const bscConnections = BinanceSmartChain.getConnectedInstances();
     connections = connections.concat(
       bscConnections ? Object.values(bscConnections) : [],
@@ -106,16 +99,6 @@ export async function getStatus(
     const tezosConnections = Tezos.getConnectedInstances();
     connections = connections.concat(
       tezosConnections ? Object.values(tezosConnections) : [],
-    );
-
-    const xrplConnections = XRPL.getConnectedInstances();
-    connections = connections.concat(
-      xrplConnections ? Object.values(xrplConnections) : [],
-    );
-
-    const kujiraConnections = Kujira.getConnectedInstances();
-    connections = connections.concat(
-      kujiraConnections ? Object.values(kujiraConnections) : [],
     );
 
     const telosConnections = Telos.getConnectedInstances();
@@ -131,6 +114,11 @@ export async function getStatus(
     const solanaConnections = Solana.getConnectedInstances();
     connections = connections.concat(
       solanaConnections ? Object.values(solanaConnections) : []
+    );
+
+    const etcConnections = EthereumClassicChain.getConnectedInstances();
+    connections = connections.concat(
+      etcConnections ? Object.values(etcConnections) : []
     );
   }
 

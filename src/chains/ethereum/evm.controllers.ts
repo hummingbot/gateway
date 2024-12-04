@@ -23,7 +23,6 @@ import {
   PollRequest,
 } from './ethereum.requests';
 import {
-  CLOBish,
   Chain as Ethereumish,
   UniswapLPish,
   Uniswapish,
@@ -132,14 +131,30 @@ export class EVMController {
     validatePollRequest(req);
 
     const currentBlock = await ethereumish.getCurrentBlockNumber();
-    const txData = await ethereumish.getTransaction(req.txHash);
+    let txData = await ethereumish.getTransaction(req.txHash);
     let txBlock, txReceipt, txStatus;
     if (!txData) {
-      // tx not found, didn't reach the mempool or it never existed
-      txBlock = -1;
-      txReceipt = null;
-      txStatus = -1;
-    } else {
+      const MAX_RETRIES = 3;
+      const RETRY_DELAY_MS = 1000;
+      let retryCount = 0;
+
+      while (retryCount < MAX_RETRIES) {
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+        txData = await ethereumish.getTransaction(req.txHash);
+        if (txData) break;
+        retryCount++;
+      }
+
+      if (!txData) {
+        // tx not found after retries
+        logger.info(`Transaction ${req.txHash} not found in mempool or does not exist after ${MAX_RETRIES} retries.`);
+        txBlock = -1;
+        txReceipt = null;
+        txStatus = -1;
+      }
+    }
+
+    if (txData) {
       txReceipt = await ethereumish.getTransactionReceipt(req.txHash);
       if (txReceipt === null) {
         // tx is in the mempool
@@ -172,8 +187,8 @@ export class EVMController {
         // decode logs
         if (req.connector) {
           try {
-            const connector: Uniswapish | UniswapLPish | CLOBish =
-              await getConnector<Uniswapish | UniswapLPish | CLOBish>(
+            const connector: Uniswapish | UniswapLPish =
+              await getConnector<Uniswapish | UniswapLPish>(
                 req.chain,
                 req.network,
                 req.connector
@@ -196,7 +211,7 @@ export class EVMController {
       txBlock,
       txStatus,
       txData: toEthereumTransactionResponse(txData),
-      txReceipt: toEthereumTransactionReceipt(txReceipt),
+      txReceipt: toEthereumTransactionReceipt(txReceipt || null),
     };
   }
 
@@ -298,8 +313,8 @@ export class EVMController {
     validateBalanceRequest(req);
 
     let wallet: Wallet;
-    const connector: CLOBish | undefined = req.connector
-      ? ((await getConnector(req.chain, req.network, req.connector)) as CLOBish)
+    const connector: Uniswapish | undefined = req.connector
+      ? ((await getConnector(req.chain, req.network, req.connector)) as Uniswapish)
       : undefined;
     const balances: Record<string, string> = {};
     let connectorBalances: { [key: string]: string } | undefined;
@@ -352,7 +367,6 @@ export class EVMController {
         );
       }
     } else {
-      // CLOB connector or any other connector that has the concept of separation of account has to implement a balance function
       connectorBalances = await connector.balances(req);
     }
 

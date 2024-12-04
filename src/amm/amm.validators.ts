@@ -39,9 +39,6 @@ export const invalidAmountError: string =
 export const invalidSideError: string =
   'The side param must be a string of "BUY" or "SELL".';
 
-export const invalidPerpSideError: string =
-  'The side param must be a string of "LONG" or "SHORT".';
-
 export const invalidFeeTier: string = 'Incorrect fee tier';
 
 export const invalidLimitPriceError: string =
@@ -124,12 +121,6 @@ export const validateSide: Validator = mkValidator(
   'side',
   invalidSideError,
   (val) => typeof val === 'string' && (val === 'BUY' || val === 'SELL')
-);
-
-export const validatePerpSide: Validator = mkValidator(
-  'side',
-  invalidPerpSideError,
-  (val) => typeof val === 'string' && (val === 'LONG' || val === 'SHORT')
 );
 
 export const validateFee: Validator = mkValidator(
@@ -231,65 +222,6 @@ export const validateTradeRequest: RequestValidator = mkRequestValidator([
   validateAllowedSlippage,
   validatePoolId,
 ]);
-
-export const validatePerpPositionRequest: RequestValidator = mkRequestValidator(
-  [
-    validateConnector,
-    validateChain,
-    validateNetwork,
-    validateQuote,
-    validateBase,
-    validateAddress,
-  ]
-);
-
-export const validatePerpBalanceRequest: RequestValidator = mkRequestValidator([
-  validateConnector,
-  validateChain,
-  validateNetwork,
-  validateAddress,
-]);
-
-export const validatePerpMarketStatusRequest: RequestValidator =
-  mkRequestValidator([
-    validateConnector,
-    validateChain,
-    validateNetwork,
-    validateQuote,
-    validateBase,
-  ]);
-
-export const validatePerpPairsRequest: RequestValidator = mkRequestValidator([
-  validateConnector,
-  validateChain,
-  validateNetwork,
-]);
-
-export const validatePerpOpenTradeRequest: RequestValidator =
-  mkRequestValidator([
-    validateConnector,
-    validateChain,
-    validateNetwork,
-    validateQuote,
-    validateBase,
-    validateAmount,
-    validateAddress,
-    validatePerpSide,
-    validateNonce,
-    validateAllowedSlippage,
-  ]);
-
-export const validatePerpCloseTradeRequest: RequestValidator =
-  mkRequestValidator([
-    validateConnector,
-    validateChain,
-    validateNetwork,
-    validateQuote,
-    validateBase,
-    validateAddress,
-    validateNonce,
-    validateAllowedSlippage,
-  ]);
 
 export const validateEstimateGasRequest: RequestValidator = mkRequestValidator([
   validateConnector,
