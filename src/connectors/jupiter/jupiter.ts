@@ -28,7 +28,7 @@ export class Jupiter {
   private chain: Solana;
   private _ready: boolean = false;
   private _config: JupiterConfig.NetworkConfig;
-  protected jupiterQuoteApi: ReturnType<typeof createJupiterApiClient>;
+  protected jupiterQuoteApi!: ReturnType<typeof createJupiterApiClient>;
 
   private constructor(network: string) {
     this._config = JupiterConfig.config;

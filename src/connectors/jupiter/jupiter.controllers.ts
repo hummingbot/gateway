@@ -1,14 +1,10 @@
-import { Solana } from '../../chains/solana/solana';
+import { Solanaish } from '../../chains/solana/solana';
 import { Jupiter } from './jupiter';
 import {
   PriceRequest,
   TradeRequest,
   TradeResponse,
 } from '../../amm/amm.requests';
-import axios from 'axios';
-import { JupiterPriceResponse } from './jupiter.requests';
-import { logger } from '../../services/logger';
-import Decimal from 'decimal.js-light';
 import {
   HttpException,
   SWAP_PRICE_EXCEEDS_LIMIT_PRICE_ERROR_CODE,
@@ -17,51 +13,85 @@ import {
   SWAP_PRICE_LOWER_THAN_LIMIT_PRICE_ERROR_MESSAGE,
 } from '../../services/error-handler';
 import { latency } from '../../services/base';
-export async function getPairData(base: string, quote: string) {
-  const baseURL = `https://api.jup.ag/price/v2?ids=${base},${quote}&showExtraInfo=true`;
-  const response = await axios.get<JupiterPriceResponse>(baseURL);
-  return response.data;
-}
+import { logger } from '../../services/logger';
+import { Wallet } from '@coral-xyz/anchor';
+import Decimal from 'decimal.js-light';
 
 export async function price(
-  solana: Solana,
+  solanaish: Solanaish,
   jupiter: Jupiter,
   req: PriceRequest,
 ) {
-  const data = await jupiter.price(req);
+  const quote = await jupiter.getQuote(
+    req.base,
+    req.quote,
+    Number(req.amount),
+    undefined, // using default slippage
+    false, // not restricting to direct routes
+    false // not using legacy transactions
+  );
+
+  const inputToken = solanaish.getTokenForSymbol(req.base);
+  const outputToken = solanaish.getTokenForSymbol(req.quote);
+  
+  if (!inputToken || !outputToken) {
+    throw new Error(`Invalid tokens: ${req.base} or ${req.quote}`);
+  }
+  
+  const expectedPrice = Number(quote.outAmount) / (Number(quote.inAmount) * (10 ** (outputToken.decimals - inputToken.decimals)));
+
   return {
-    ...data,
-    network: solana.network,
-    gasPriceToken: solana.nativeTokenSymbol,
+    timestamp: Date.now(),
+    latency: 0, // Will be calculated by the calling function
+    base: req.base,
+    quote: req.quote,
+    amount: req.amount,
+    rawAmount: quote.inAmount,
+    expectedAmount: quote.outAmount,
+    price: expectedPrice.toString(),
+    gasPrice: 0.0001,
+    gasLimit: 100000,
+    expectedPrice: expectedPrice,
+    trade: quote,
+    network: solanaish.network,
+    gasPriceToken: solanaish.nativeTokenSymbol,
     gasCost: '0',
   };
 }
 
 export async function trade(
-  solana: Solana,
+  solanaish: Solanaish,
   jupiter: Jupiter,
   req: TradeRequest,
 ): Promise<TradeResponse> {
   const startTimestamp: number = Date.now();
   const { address } = req;
-  const keypair = await solana.getKeypairFromPrivateKey(address);
+  const keypair = await solanaish.getKeypairFromPrivateKey(address);
+  const wallet = new Wallet(keypair as any);
   const limitPrice = req.limitPrice;
-  const trade = await jupiter.price(<PriceRequest>req);
-  const estimatedPrice = trade.expectedPrice;
+  const quote = await jupiter.getQuote(
+    req.base,
+    req.quote,
+    Number(req.amount),
+    undefined, // using default slippage
+    false, // not restricting to direct routes
+    false // not using legacy transactions
+  );
+  
+  const estimatedPrice = Number(quote.outAmount) / (Number(quote.inAmount));
+  
   logger.info(
     `Expected execution price is ${estimatedPrice}, ` +
       `limit price is ${limitPrice}.`,
   );
-  keypair.publicKey;
+
+  // Check limit price conditions
   if (req.side === 'BUY') {
     if (limitPrice && new Decimal(estimatedPrice).gt(new Decimal(limitPrice))) {
       logger.error('Swap price exceeded limit price.');
       throw new HttpException(
         500,
-        SWAP_PRICE_EXCEEDS_LIMIT_PRICE_ERROR_MESSAGE(
-          estimatedPrice,
-          limitPrice,
-        ),
+        SWAP_PRICE_EXCEEDS_LIMIT_PRICE_ERROR_MESSAGE(estimatedPrice, limitPrice),
         SWAP_PRICE_EXCEEDS_LIMIT_PRICE_ERROR_CODE,
       );
     }
@@ -70,29 +100,35 @@ export async function trade(
       logger.error('Swap price lower than limit price.');
       throw new HttpException(
         500,
-        SWAP_PRICE_LOWER_THAN_LIMIT_PRICE_ERROR_MESSAGE(
-          estimatedPrice,
-          limitPrice,
-        ),
+        SWAP_PRICE_LOWER_THAN_LIMIT_PRICE_ERROR_MESSAGE(estimatedPrice, limitPrice),
         SWAP_PRICE_LOWER_THAN_LIMIT_PRICE_ERROR_CODE,
       );
     }
   }
-  const tx = await jupiter.trade(trade.trade, keypair);
+
+  // Execute the swap using the new method
+  const swapResult = await jupiter.executeSwap(
+    wallet,
+    req.base,
+    req.quote,
+    Number(req.amount),
+    jupiter.getSlippage()
+  );
+
   return {
-    network: solana.network,
+    network: solanaish.network,
     timestamp: startTimestamp,
     latency: latency(startTimestamp, Date.now()),
     base: req.base,
     quote: req.quote,
     amount: req.amount,
     rawAmount: req.amount,
-    expectedIn: String(trade.expectedAmount),
+    expectedIn: String(quote.outAmount),
     price: String(estimatedPrice),
-    gasPrice: 10,
-    gasPriceToken: solana.nativeTokenSymbol,
-    gasLimit: tx.computeUnitLimit,
-    gasCost: String(10),
-    txHash: tx.txid,
+    gasPrice: swapResult.fee,
+    gasPriceToken: solanaish.nativeTokenSymbol,
+    gasLimit: 0, // This is now handled dynamically by Jupiter
+    gasCost: String(swapResult.fee),
+    txHash: swapResult.signature,
   };
 }

@@ -54,6 +54,7 @@ import {
   Uniswapish,
   UniswapLPish,
 } from '../services/common-interfaces';
+import { Solanaish } from '../chains/solana/solana';
 import { Algorand } from '../chains/algorand/algorand';
 import { Tinyman } from '../connectors/tinyman/tinyman';
 import { Plenty } from '../connectors/plenty/plenty';
@@ -80,7 +81,7 @@ export async function price(req: PriceRequest): Promise<PriceResponse> {
   if (connector instanceof Plenty) {
     return plentyPrice(<Tezosish>chain, connector, req);
   } else if (connector instanceof Jupiter) {
-    return jupiterPrice(chain, connector, req);
+    return jupiterPrice(<Solanaish>chain, connector, req);
   } else if (connector instanceof Carbonamm) {
     return carbonPrice(<Ethereumish>chain, connector, req);
   } else if ('routerAbi' in connector) {
@@ -92,7 +93,7 @@ export async function price(req: PriceRequest): Promise<PriceResponse> {
 
 export async function trade(req: TradeRequest): Promise<TradeResponse> {
   const chain = await getInitializedChain<
-    Algorand | Ethereumish | Tezosish | Osmosis
+    Algorand | Ethereumish | Tezosish | Osmosis | Solana
   >(req.chain, req.network);
   if (chain instanceof Osmosis){
     return chain.controller.trade(chain as unknown as Osmosis, req);
@@ -108,7 +109,7 @@ export async function trade(req: TradeRequest): Promise<TradeResponse> {
   if (connector instanceof Plenty) {
     return plentyTrade(<Tezosish>chain, connector, req);
   } else if (connector instanceof Jupiter) {
-    return jupiterTrade(chain, connector, req);
+    return jupiterTrade(<Solanaish>chain, connector, req);
   } else if (connector instanceof Carbonamm) {
     return carbonTrade(<Ethereumish>chain, connector, req);
   } else if ('routerAbi' in connector) {
