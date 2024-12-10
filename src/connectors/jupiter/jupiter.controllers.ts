@@ -23,7 +23,7 @@ export async function getPairData(base: string, quote: string) {
   return response.data;
 }
 
-export async function jupiterPrice(
+export async function price(
   solana: Solana,
   jupiter: Jupiter,
   req: PriceRequest,
@@ -37,7 +37,7 @@ export async function jupiterPrice(
   };
 }
 
-export async function jupiterTrade(
+export async function trade(
   solana: Solana,
   jupiter: Jupiter,
   req: TradeRequest,

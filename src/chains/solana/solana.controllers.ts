@@ -82,3 +82,4 @@ export class SolanaController {
 export const balances = SolanaController.balances;
 export const poll = SolanaController.poll;
 export const getTokens = SolanaController.getTokens;
+export let priorityFeeMultiplier: number = 1;

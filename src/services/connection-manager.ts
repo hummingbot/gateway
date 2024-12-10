@@ -39,6 +39,7 @@ import { Balancer } from '../connectors/balancer/balancer';
 import { ETCSwapLP } from '../connectors/etcswap/etcswap.lp';
 import { EthereumClassicChain } from '../chains/ethereum-classic/ethereum-classic';
 import { ETCSwap } from '../connectors/etcswap/etcswap';
+import { Jupiter } from '../connectors/jupiter/jupiter';
 
 export type ChainUnion =
   | Algorand
@@ -143,6 +144,7 @@ export type ConnectorUnion =
   | Tinyman
   | Plenty
   | Curve
+  | Jupiter;
 
 export type Connector<T> = T extends Uniswapish
   ? Uniswapish
@@ -152,6 +154,8 @@ export type Connector<T> = T extends Uniswapish
         ? Tinyman
         : T extends Plenty
           ? Plenty
+          : T extends Jupiter
+            ? Jupiter
               : never;
 
 export async function getConnector<T>(
@@ -165,6 +169,8 @@ export async function getConnector<T>(
     connectorInstance = Uniswap.getInstance(chain, network);
   } else if (connector === 'uniswapLP') {
     connectorInstance = UniswapLP.getInstance(chain, network);
+  } else if (connector === 'jupiter') {
+    connectorInstance = Jupiter.getInstance(chain);
   } else if (connector === 'quickswap') {
     connectorInstance = Quickswap.getInstance(chain, network);
   } else if (connector === 'pangolin') {
