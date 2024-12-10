@@ -123,3 +123,11 @@ configurations:
   $namespace telos:
     configurationPath: telos.yml
     schemaPath: ethereum-schema.json
+  
+  $namespace ton:
+    configurationPath: ton.yml
+    schemaPath: ton-schema.json
+
+  $namespace stonfi:
+    configurationPath: stonfi.yml
+    schemaPath: stonfi-schema.json

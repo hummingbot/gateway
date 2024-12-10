@@ -1,0 +1,23 @@
+@host = "localhost"
+@port = "15888"
+
+GET https://{{host}}:{{port}}/
+Content-Type: application/json
+
+{}
+
+###
+
+GET https://{{host}}:{{port}}/chain
+Content-Type: application/json
+
+{}
+
+###
+
+GET https://{{host}}:{{port}}/amm
+Content-Type: application/json
+
+{}
+
+###

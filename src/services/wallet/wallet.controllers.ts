@@ -30,6 +30,7 @@ import {
 import { Ethereumish, Tezosish } from '../common-interfaces';
 import { Algorand } from '../../chains/algorand/algorand';
 import { Osmosis } from '../../chains/osmosis/osmosis';
+import { Ton } from '../../chains/ton/ton';
 
 export function convertXdcAddressToEthAddress(publicKey: string): string {
   return publicKey.length === 43 && publicKey.slice(0, 3) === 'xdc'
@@ -74,7 +75,12 @@ export async function addWallet(
     if (connection instanceof Algorand) {
       address = connection.getAccountFromPrivateKey(req.privateKey).addr;
       encryptedPrivateKey = connection.encrypt(req.privateKey, passphrase);
-    } else if (connection instanceof EthereumBase) {
+    }
+    else if (connection instanceof Ton) {
+      address = await connection.getAccountFromPrivateKey(req.privateKey);
+      encryptedPrivateKey = connection.encrypt(req.privateKey, passphrase);
+    }
+    else if (connection instanceof EthereumBase) {
       address = connection.getWalletFromPrivateKey(req.privateKey).address;
       encryptedPrivateKey = await connection.encrypt(
         req.privateKey,

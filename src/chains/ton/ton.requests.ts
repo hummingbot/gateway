@@ -17,7 +17,7 @@ export type AssetsRequest = {
 
 export interface TonAsset {
   symbol: string;
-  assetId: number;
+  assetId: string;
   decimals: number;
 }
 

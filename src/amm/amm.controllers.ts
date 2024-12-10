@@ -35,6 +35,9 @@ import {
   estimateGas as tinymanEstimateGas,
 } from '../connectors/tinyman/tinyman.controllers';
 import {
+  price as stonfiPrice,
+} from '../connectors/ston_fi/ston_fi.controllers';
+import {
   price as plentyPrice,
   trade as plentyTrade,
   estimateGas as plentyEstimateGas,
@@ -55,17 +58,21 @@ import { Tinyman } from '../connectors/tinyman/tinyman';
 import { Plenty } from '../connectors/plenty/plenty';
 import { Osmosis } from '../chains/osmosis/osmosis';
 import { Carbonamm } from '../connectors/carbon/carbonAMM';
+import { Ton } from '../chains/ton/ton';
+import { Stonfi } from '../connectors/ston_fi/ston_fi';
 
 export async function price(req: PriceRequest): Promise<PriceResponse> {
   const chain = await getInitializedChain<
-    Algorand | Ethereumish | Tezosish | Osmosis
+    Algorand | Ethereumish | Tezosish | Osmosis | Ton
   >(req.chain, req.network);
+
+
   if (chain instanceof Osmosis){
     return chain.controller.price(chain as unknown as Osmosis, req);
   }
-
-  const connector: Uniswapish | Tinyman | Plenty  =
-    await getConnector<Uniswapish | Tinyman | Plenty>(
+  
+  const connector: Uniswapish | Tinyman | Plenty | Stonfi  =
+    await getConnector<Uniswapish | Tinyman | Plenty | Stonfi>(
       req.chain,
       req.network,
       req.connector
@@ -78,13 +85,15 @@ export async function price(req: PriceRequest): Promise<PriceResponse> {
   } else if ('routerAbi' in connector) {
     // we currently use the presence of routerAbi to distinguish Uniswapish from RefAMMish
     return uniswapPrice(<Ethereumish>chain, connector, req);
+  } else if (connector instanceof Stonfi) {
+    return stonfiPrice(chain as unknown as Ton, connector, req);
   } else return tinymanPrice(chain as unknown as Algorand, connector, req);
 
 }
 
 export async function trade(req: TradeRequest): Promise<TradeResponse> {
   const chain = await getInitializedChain<
-    Algorand | Ethereumish | Tezosish | Osmosis
+    Algorand | Ethereumish | Tezosish | Osmosis | Ton
   >(req.chain, req.network);
   if (chain instanceof Osmosis){
     return chain.controller.trade(chain as unknown as Osmosis, req);

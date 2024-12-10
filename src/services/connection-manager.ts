@@ -38,8 +38,10 @@ import { Balancer } from '../connectors/balancer/balancer';
 import { ETCSwapLP } from '../connectors/etcswap/etcswap.lp';
 import { EthereumClassicChain } from '../chains/ethereum-classic/ethereum-classic';
 import { ETCSwap } from '../connectors/etcswap/etcswap';
+import { Ton } from '../chains/ton/ton';
 
 export type ChainUnion =
+  | Ton
   | Algorand
   | Cosmos
   | Ethereumish
@@ -48,18 +50,20 @@ export type ChainUnion =
   | Osmosis;
 
 export type Chain<T> = T extends Algorand
+  ? Ton
+  : T extends Ton
   ? Algorand
   : T extends Cosmos
-    ? Cosmos
-    : T extends Ethereumish
-      ? Ethereumish
-        : T extends Xdcish
-          ? Xdcish
-            : T extends Tezosish
-              ? Tezosish
-                : T extends Osmosis
-                  ? Osmosis
-                  : never;
+  ? Cosmos
+  : T extends Ethereumish
+  ? Ethereumish
+  : T extends Xdcish
+  ? Xdcish
+  : T extends Tezosish
+  ? Tezosish
+  : T extends Osmosis
+  ? Osmosis
+  : never;
 
 export class UnsupportedChainException extends Error {
   constructor(message?: string) {
@@ -98,6 +102,8 @@ export async function getChainInstance(
 
   if (chain === 'algorand') {
     connection = Algorand.getInstance(network);
+  } else if (chain === 'ton') {
+    connection = Ton.getInstance(network);
   } else if (chain === 'ethereum') {
     connection = Ethereum.getInstance(network);
   } else if (chain === 'avalanche') {
@@ -134,6 +140,7 @@ export async function getChainInstance(
 export type ConnectorUnion =
   | Uniswapish
   | UniswapLPish
+  | Ton
   | Tinyman
   | Plenty
   | Curve
@@ -141,12 +148,14 @@ export type ConnectorUnion =
 export type Connector<T> = T extends Uniswapish
   ? Uniswapish
   : T extends UniswapLPish
-    ? UniswapLPish
-      : T extends Tinyman
-        ? Tinyman
-          : T extends Plenty
-            ? Plenty
-              : never;
+  ? UniswapLPish
+  : T extends Ton
+  ? Ton
+  : T extends Tinyman
+  ? Tinyman
+  : T extends Plenty
+  ? Plenty
+  : never;
 
 export async function getConnector<T>(
   chain: string,
@@ -187,6 +196,8 @@ export async function getConnector<T>(
     connectorInstance = Carbonamm.getInstance(chain, network);
   } else if (connector == 'tinyman') {
     connectorInstance = Tinyman.getInstance(network);
+  } else if (connector == 'ton') {
+    connectorInstance = Ton.getInstance(network);
   } else if (connector === 'plenty') {
     connectorInstance = Plenty.getInstance(network);
   } else if (chain === 'ethereum-classic' && connector === 'etcswap') {
