@@ -112,7 +112,7 @@ export class Stonfi {
             askAddress: isBuy === true ? quoteAsset.id : baseAsset.id,
             offerUnits: amount.toString(),
             offerAddress: isBuy === true ? baseAsset.id : quoteAsset.id,
-            slippageTolerance: "0.001"
+            slippageTolerance: "0.01"
         });
 
         const price = Number(quote.swapRate);

@@ -16,13 +16,13 @@ import { Ton } from '../../chains/ton/ton';
 
 export const price = async (
     ton: Ton,
-    stonfy: Stonfi,
+    stonfi: Stonfi,
     req: PriceRequest
 ): Promise<PriceResponse> => {
     const startTimestamp: number = Date.now();
     let trade;
     try {
-        trade = await stonfy.estimateTrade(req);
+        trade = await stonfi.estimateTrade(req);
     } catch (e) {
         if (e instanceof Error) {
             throw new HttpException(

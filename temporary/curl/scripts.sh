@@ -1,12 +1,24 @@
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-CERTIFICATES_FOLDER=$(readlink -f "$SCRIPT_DIR/../../.."/resources/certificates)
+# SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+# CERTIFICATES_FOLDER=$(readlink -f "$SCRIPT_DIR/../../../certs")
+CERTIFICATES_FOLDER="/Users/alvaroferreira/Dev/funttastic/hb-gateway/certs"
 
 HOST=https://localhost
-PORT=5000
+PORT=15888
 
-STRATEGY="pure_market_making"
-VERSION="1.0.0"
-ID="id"
+amm_price() {
+	send_request \
+	--method "POST" \
+	--url "/amm/price" \
+	--payload "{
+      \"quote\": \"TON\",
+      \"base\": \"USDT\",
+      \"amount\": \"1\",
+      \"chain\": \"ton\",
+      \"network\": \"mainnet\",
+      \"connector\": \"stonfi\",
+      \"side\": \"BUY\"
+	}"
+}
 
 send_request() {
 	local method=""
@@ -41,3 +53,5 @@ send_request() {
 		-d "$payload" \
 		"$host:$port$url"
 }
+
+amm_price

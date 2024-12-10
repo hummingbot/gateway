@@ -39,6 +39,7 @@ import { ETCSwapLP } from '../connectors/etcswap/etcswap.lp';
 import { EthereumClassicChain } from '../chains/ethereum-classic/ethereum-classic';
 import { ETCSwap } from '../connectors/etcswap/etcswap';
 import { Ton } from '../chains/ton/ton';
+import { Stonfi } from '../connectors/ston_fi/ston_fi';
 
 export type ChainUnion =
   | Ton
@@ -140,7 +141,7 @@ export async function getChainInstance(
 export type ConnectorUnion =
   | Uniswapish
   | UniswapLPish
-  | Ton
+  | Stonfi
   | Tinyman
   | Plenty
   | Curve
@@ -149,8 +150,8 @@ export type Connector<T> = T extends Uniswapish
   ? Uniswapish
   : T extends UniswapLPish
   ? UniswapLPish
-  : T extends Ton
-  ? Ton
+  : T extends Stonfi
+  ? Stonfi
   : T extends Tinyman
   ? Tinyman
   : T extends Plenty
@@ -196,8 +197,8 @@ export async function getConnector<T>(
     connectorInstance = Carbonamm.getInstance(chain, network);
   } else if (connector == 'tinyman') {
     connectorInstance = Tinyman.getInstance(network);
-  } else if (connector == 'ton') {
-    connectorInstance = Ton.getInstance(network);
+  } else if (connector == 'stonfi') {
+    connectorInstance = Stonfi.getInstance(network);
   } else if (connector === 'plenty') {
     connectorInstance = Plenty.getInstance(network);
   } else if (chain === 'ethereum-classic' && connector === 'etcswap') {
