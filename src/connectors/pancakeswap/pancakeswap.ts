@@ -461,18 +461,18 @@ export class PancakeSwap implements Uniswapish {
 
   private createPublicClient(): PublicClient {
     const transportUrl: string = this.chain.rpcUrl;
+    const chainConfig = this.chainId === 56
+      ? bsc
+      : this.chainId === 1
+        ? mainnet
+        : this.chainId === 42161
+          ? arbitrum
+          : this.chainId === 324
+            ? zkSync
+            : bscTestnet;
 
     return createPublicClient({
-      chain:
-        this.chainId === 56
-          ? bsc
-          : this.chainId === 1
-            ? mainnet
-            : this.chainId === 42161
-              ? arbitrum
-              : this.chainId === 324
-                ? zkSync
-                : bscTestnet,
+      chain: chainConfig as any,  // Type assertion to bypass strict checking
       transport: http(transportUrl),
       batch: {
         multicall: {

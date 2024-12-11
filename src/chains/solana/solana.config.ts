@@ -2,7 +2,7 @@ import { TokenListType } from '../../services/base';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 interface NetworkConfig {
   name: string;
-  nodeURL: string;
+  nodeURLs: string;
   tokenListType: TokenListType;
   tokenListSource: string;
   nativeCurrencySymbol: string;
@@ -24,8 +24,8 @@ export function getSolanaConfig(
   return {
     network: {
       name: networkName,
-      nodeURL: ConfigManagerV2.getInstance().get(
-        chainName + '.networks.' + networkName + '.nodeURL'
+      nodeURLs: ConfigManagerV2.getInstance().get(
+        chainName + '.networks.' + networkName + '.nodeURLs'
       ),
       tokenListType: ConfigManagerV2.getInstance().get(
         chainName + '.networks.' + networkName + '.tokenListType'

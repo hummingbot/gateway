@@ -1,4 +1,5 @@
 import { Solana } from '../../chains/solana/solana';
+import { VersionedTransaction } from '@solana/web3.js';
 import { 
   QuoteGetRequest, 
   QuoteResponse, 
@@ -48,15 +49,15 @@ export class Jupiter {
     }
   }
 
-  public static getInstance(chain: string, network: string): Jupiter {
+  public static getInstance(network: string): Jupiter {
     if (Jupiter._instances === undefined) {
       Jupiter._instances = {};
     }
-    if (!(chain + network in Jupiter._instances)) {
-      Jupiter._instances[chain + network] = new Jupiter(network);
+    if (!(network in Jupiter._instances)) {
+      Jupiter._instances[network] = new Jupiter(network);
     }
 
-    return Jupiter._instances[chain + network];
+    return Jupiter._instances[network];
   }
 
   public async init() {
@@ -163,7 +164,7 @@ export class Jupiter {
 
     transaction.sign([wallet.payer]);
 
-    const { value: simulatedTransactionResponse } = await this.connectionPool.getNextConnection().simulateTransaction(
+    const { value: simulatedTransactionResponse } = await this.chain.connectionPool.getNextConnection().simulateTransaction(
       transaction,
       {
         replaceRecentBlockhash: true,
@@ -179,7 +180,7 @@ export class Jupiter {
     }
 
     const serializedTransaction = Buffer.from(transaction.serialize());
-    const signature = await this.sendAndConfirmRawTransaction(
+    const signature = await this.chain.sendAndConfirmRawTransaction(
       serializedTransaction,
       wallet.payer.publicKey.toBase58(),
       swapObj.lastValidBlockHeight,
@@ -188,28 +189,28 @@ export class Jupiter {
     let inputBalanceChange: number, outputBalanceChange: number, fee: number;
 
     if (quote.inputMint === 'So11111111111111111111111111111111111111112') {
-      ({ balanceChange: inputBalanceChange, fee } = await this.extractAccountBalanceChangeAndFee(
+      ({ balanceChange: inputBalanceChange, fee } = await this.chain.extractAccountBalanceChangeAndFee(
         signature,
         0,
       ));
     } else {
-      ({ balanceChange: inputBalanceChange, fee } = await this.extractTokenBalanceChangeAndFee(
+      ({ balanceChange: inputBalanceChange, fee } = await this.chain.extractTokenBalanceChangeAndFee(
         signature,
         quote.inputMint,
-        this.keypair.publicKey.toBase58(),
+        wallet.publicKey.toBase58(),
       ));
     }
 
     if (quote.outputMint === 'So11111111111111111111111111111111111111112') {
-      ({ balanceChange: outputBalanceChange } = await this.extractAccountBalanceChangeAndFee(
+      ({ balanceChange: outputBalanceChange } = await this.chain.extractAccountBalanceChangeAndFee(
         signature,
         0,
       ));
     } else {
-      ({ balanceChange: outputBalanceChange } = await this.extractTokenBalanceChangeAndFee(
+      ({ balanceChange: outputBalanceChange } = await this.chain.extractTokenBalanceChangeAndFee(
         signature,
         quote.outputMint,
-        this.keypair.publicKey.toBase58(),
+        wallet.publicKey.toBase58(),
       ));
     }
 

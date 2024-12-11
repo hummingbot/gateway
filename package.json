@@ -55,6 +55,7 @@
     "@solana/web3.js": "^1.95.8",
     "@solana/spl-token": "0.4.8",
     "@solana/spl-token-registry": "^0.2.4574",
+    "@solflare-wallet/utl-sdk": "^1.4.0",
     "@jup-ag/api": "^6.0.29",
     "@sushiswap/sdk": "^5.0.0-canary.116",
     "@taquito/rpc": "^17.0.0",

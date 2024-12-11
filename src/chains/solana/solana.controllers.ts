@@ -21,7 +21,7 @@ export class SolanaController {
   static async balances(solanaish: Solanaish, req: BalanceRequest) {
     let wallet: Keypair;
     try {
-      wallet = await solanaish.getKeypair(req.address);
+      wallet = await solanaish.getWallet(req.address);
     } catch (err) {
       throw new HttpException(
         500,
