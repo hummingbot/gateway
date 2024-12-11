@@ -6,7 +6,6 @@ interface NetworkConfig {
   tokenListType: TokenListType;
   tokenListSource: string;
   nativeCurrencySymbol: string;
-  maxLRUCacheInstances: number;
 }
 
 export interface Config {
@@ -35,9 +34,6 @@ export function getSolanaConfig(
       ),
       nativeCurrencySymbol: ConfigManagerV2.getInstance().get(
         chainName + '.networks.' + networkName + '.nativeCurrencySymbol'
-      ),
-      maxLRUCacheInstances: ConfigManagerV2.getInstance().get(
-        chainName + '.networks.' + networkName + '.maxLRUCacheInstances'
       ),
     },
     tokenProgram: ConfigManagerV2.getInstance().get(

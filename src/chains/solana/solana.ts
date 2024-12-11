@@ -129,9 +129,8 @@ export class Solana implements Solanaish {
 
   constructor(network: string) {
     this.network = network;
-    this.nativeTokenSymbol = 'SOL';
-
     this._config = getSolanaConfig('solana', network);
+    this.nativeTokenSymbol = this._config.network.nativeCurrencySymbol
 
     // Parse comma-separated RPC URLs
     const rpcUrlsString = this._config.network.nodeURLs;

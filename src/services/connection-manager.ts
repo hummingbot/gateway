@@ -170,7 +170,7 @@ export async function getConnector<T>(
   } else if (connector === 'uniswapLP') {
     connectorInstance = UniswapLP.getInstance(chain, network);
   } else if (connector === 'jupiter') {
-    connectorInstance = Jupiter.getInstance(chain);
+    connectorInstance = Jupiter.getInstance(network);
   } else if (connector === 'quickswap') {
     connectorInstance = Quickswap.getInstance(chain, network);
   } else if (connector === 'pangolin') {

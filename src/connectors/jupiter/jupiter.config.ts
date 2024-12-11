@@ -11,7 +11,7 @@ export namespace JupiterConfig {
 
   export const config: NetworkConfig = {
     allowedSlippage: ConfigManagerV2.getInstance().get(
-      'solana.allowedSlippage',
+      'jupiter.allowedSlippage',
     ),
     tradingTypes: ['AMM'],
     chainType: 'SOLANA',

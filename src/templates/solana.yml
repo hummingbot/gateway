@@ -4,13 +4,11 @@ networks:
     tokenListType: 'FILE'
     tokenListSource: '/home/gateway/conf/lists/solflare-tokenlist.json'
     nativeCurrencySymbol: SOL
-    maxLRUCacheInstances: 10
   devnet:
     nodeURLs: 'https://api.devnet.solana.com,'
     tokenListType: 'FILE'
     tokenListSource: '/home/gateway/conf/lists/solflare-tokenlist.json'
     nativeCurrencySymbol: SOL
-    maxLRUCacheInstances: 10
 
 tokenProgram: TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA
 transactionLamports: 5000

@@ -8,18 +8,16 @@
           "^..+$": {
             "type": "object",
             "properties": {
-              "nodeURL": { "type": "string" },
+              "nodeURLs": { "type": "string" },
               "tokenListType": { "type": "string" },
               "tokenListSource": { "type": "string" },
-              "nativeCurrencySymbol": { "type": "string" },
-              "maxLRUCacheInstances": { "type": "number" }
+              "nativeCurrencySymbol": { "type": "string" }
             },
             "required": [
-              "nodeURL",
+              "nodeURLs",
               "tokenListType",
               "tokenListSource",
-              "nativeCurrencySymbol",
-              "maxLRUCacheInstances"
+              "nativeCurrencySymbol"
             ],
             "additionalProperties": false
           }
