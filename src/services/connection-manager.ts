@@ -42,17 +42,15 @@ import { Ton } from '../chains/ton/ton';
 import { Stonfi } from '../connectors/ston_fi/ston_fi';
 
 export type ChainUnion =
-  | Ton
   | Algorand
   | Cosmos
   | Ethereumish
   | Xdcish
   | Tezosish
-  | Osmosis;
+  | Osmosis
+  | Ton;
 
 export type Chain<T> = T extends Algorand
-  ? Ton
-  : T extends Ton
   ? Algorand
   : T extends Cosmos
   ? Cosmos
@@ -64,6 +62,8 @@ export type Chain<T> = T extends Algorand
   ? Tezosish
   : T extends Osmosis
   ? Osmosis
+  : T extends Ton
+  ? Ton
   : never;
 
 export class UnsupportedChainException extends Error {
@@ -103,8 +103,6 @@ export async function getChainInstance(
 
   if (chain === 'algorand') {
     connection = Algorand.getInstance(network);
-  } else if (chain === 'ton') {
-    connection = Ton.getInstance(network);
   } else if (chain === 'ethereum') {
     connection = Ethereum.getInstance(network);
   } else if (chain === 'avalanche') {
@@ -131,6 +129,8 @@ export async function getChainInstance(
     connection = Telos.getInstance(network);
   } else if (chain === 'ethereum-classic') {
     connection = EthereumClassicChain.getInstance(network);
+  } else if (chain === 'ton') {
+    connection = Ton.getInstance(network);
   } else {
     connection = undefined;
   }
@@ -141,21 +141,21 @@ export async function getChainInstance(
 export type ConnectorUnion =
   | Uniswapish
   | UniswapLPish
-  | Stonfi
   | Tinyman
   | Plenty
   | Curve
+  | Stonfi
 
 export type Connector<T> = T extends Uniswapish
   ? Uniswapish
   : T extends UniswapLPish
   ? UniswapLPish
-  : T extends Stonfi
-  ? Stonfi
   : T extends Tinyman
   ? Tinyman
   : T extends Plenty
   ? Plenty
+  : T extends Stonfi
+  ? Stonfi
   : never;
 
 export async function getConnector<T>(
@@ -197,14 +197,14 @@ export async function getConnector<T>(
     connectorInstance = Carbonamm.getInstance(chain, network);
   } else if (connector == 'tinyman') {
     connectorInstance = Tinyman.getInstance(network);
-  } else if (connector == 'stonfi') {
-    connectorInstance = Stonfi.getInstance(network);
   } else if (connector === 'plenty') {
     connectorInstance = Plenty.getInstance(network);
   } else if (chain === 'ethereum-classic' && connector === 'etcswap') {
     connectorInstance = ETCSwap.getInstance(chain, network);
   } else if (chain === 'ethereum-classic' && connector === 'etcswapLP') {
     connectorInstance = ETCSwapLP.getInstance(chain, network);
+  } else if (connector == 'stonfi') {
+    connectorInstance = Stonfi.getInstance(network);
   } else {
     throw new Error('unsupported chain or connector');
   }

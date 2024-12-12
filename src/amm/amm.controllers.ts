@@ -36,6 +36,8 @@ import {
 } from '../connectors/tinyman/tinyman.controllers';
 import {
   price as stonfiPrice,
+  trade as stonfiTrade,
+  estimateGas as stonfiEstimateGas,
 } from '../connectors/ston_fi/ston_fi.controllers';
 import {
   price as plentyPrice,
@@ -70,8 +72,8 @@ export async function price(req: PriceRequest): Promise<PriceResponse> {
   if (chain instanceof Osmosis){
     return chain.controller.price(chain as unknown as Osmosis, req);
   }
-  
-  const connector: Uniswapish | Tinyman | Plenty | Stonfi  =
+
+  const connector: Uniswapish | Tinyman | Plenty | Stonfi =
     await getConnector<Uniswapish | Tinyman | Plenty | Stonfi>(
       req.chain,
       req.network,
@@ -88,7 +90,6 @@ export async function price(req: PriceRequest): Promise<PriceResponse> {
   } else if (connector instanceof Stonfi) {
     return stonfiPrice(chain as unknown as Ton, connector, req);
   } else return tinymanPrice(chain as unknown as Algorand, connector, req);
-
 }
 
 export async function trade(req: TradeRequest): Promise<TradeResponse> {
@@ -99,8 +100,8 @@ export async function trade(req: TradeRequest): Promise<TradeResponse> {
     return chain.controller.trade(chain as unknown as Osmosis, req);
   }
 
-  const connector: Uniswapish | Tinyman | Plenty =
-    await getConnector<Uniswapish | Tinyman | Plenty>(
+  const connector: Uniswapish | Tinyman | Plenty | Stonfi =
+    await getConnector<Uniswapish | Tinyman | Plenty | Stonfi>(
       req.chain,
       req.network,
       req.connector
@@ -112,6 +113,8 @@ export async function trade(req: TradeRequest): Promise<TradeResponse> {
     return carbonTrade(<Ethereumish>chain, connector, req);
   } else if ('routerAbi' in connector) {
     return uniswapTrade(<Ethereumish>chain, connector, req);
+  } else if (connector instanceof Stonfi) {
+    return stonfiTrade(<Ton>chain, connector, req);
   } else {
     return tinymanTrade(chain as unknown as Algorand, connector, req);
   }
@@ -198,14 +201,14 @@ export async function estimateGas(
   req: NetworkSelectionRequest
 ): Promise<EstimateGasResponse> {
   const chain = await getInitializedChain<
-    Algorand | Ethereumish | Tezosish | Osmosis
+    Algorand | Ethereumish | Tezosish | Osmosis | Ton
   >(req.chain, req.network);
   if (chain instanceof Osmosis){
     return chain.controller.estimateGas(chain as unknown as Osmosis);
   }
-  
-  const connector: Uniswapish | Tinyman | Plenty =
-    await getConnector<Uniswapish | Tinyman | Plenty>(
+
+  const connector: Uniswapish | Tinyman | Plenty | Stonfi =
+    await getConnector<Uniswapish | Tinyman | Plenty | Stonfi>(
       req.chain,
       req.network,
       req.connector
@@ -217,6 +220,8 @@ export async function estimateGas(
     return carbonEstimateGas(<Ethereumish>chain, connector);
   } else if ('routerAbi' in connector) {
     return uniswapEstimateGas(<Ethereumish>chain, connector);
+  } else if (connector instanceof Stonfi) {
+    return stonfiEstimateGas(<Ton>chain, connector);
   } else {
     return tinymanEstimateGas(chain as unknown as Algorand, connector);
   }
