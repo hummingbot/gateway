@@ -7,6 +7,7 @@ import {
 } from '../../services/error-handler';
 import { latency } from '../../services/base';
 import {
+    EstimateGasResponse,
     PriceRequest,
     PriceResponse,
 } from '../../amm/amm.requests';
@@ -49,6 +50,22 @@ export const price = async (
         rawAmount: req.amount,
         expectedAmount: String(trade.expectedAmount),
         price: String(trade.expectedPrice),
+        gasPrice: ton.gasPrice,
+        gasPriceToken: ton.nativeTokenSymbol,
+        gasLimit: ton.gasLimit,
+        gasCost: String(ton.gasCost),
+    };
+}
+
+
+
+export async function estimateGas(
+    ton: Ton,
+    _stonfi: Stonfi
+): Promise<EstimateGasResponse> {
+    return {
+        network: ton.network,
+        timestamp: Date.now(),
         gasPrice: ton.gasPrice,
         gasPriceToken: ton.nativeTokenSymbol,
         gasLimit: ton.gasLimit,

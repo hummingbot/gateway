@@ -1,8 +1,8 @@
 import LRUCache from 'lru-cache';
 import { getTonConfig } from './ton.config';
 import { mnemonicToPrivateKey } from "@ton/crypto";
-
-import { Address, TonClient } from "@ton/ton";
+import { TonApiClient } from '@ton-api/client';
+import { Address } from '@ton/core';
 import { TonAsset } from './ton.requests';
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 import { StonApiClient } from '@ston-fi/api';
@@ -11,6 +11,7 @@ import { StonApiClient } from '@ston-fi/api';
 // import fse from 'fs-extra';
 // import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { TonController } from './ton.controller';
+import { WalletContractV4 } from '@ton/ton';
 
 export class Ton {
   public nativeTokenSymbol;
@@ -18,7 +19,7 @@ export class Ton {
   private static _instances: LRUCache<string, Ton>;
   //private _chain: string = 'ton';
   private _network: string;
-  private _ton: TonClient;
+  private _ton: TonApiClient;
   //private _indexer: Indexer;
   private _ready: boolean = false;
   //private _assetListType: AssetListType;
@@ -38,7 +39,11 @@ export class Ton {
     this._network = network;
     const config = getTonConfig(network);
     this.nativeTokenSymbol = config.nativeCurrencySymbol;
-    this._ton = new TonClient({ endpoint: nodeUrl });
+    this._ton = new TonApiClient({ baseUrl: nodeUrl });
+    this.wallet = WalletContractV4.create({
+      workchain: 0,
+      publicKey: keyPair.publicKey,
+  });
 
     // this._indexer = new Indexer('', indexerUrl, 'undefined');
     // this._assetListType = assetListType;
@@ -49,7 +54,7 @@ export class Ton {
     this.controller = TonController;
   }
 
-  public get ton(): TonClient {
+  public get ton(): TonApiClient {
     return this._ton;
   }
 
@@ -230,6 +235,12 @@ export class Ton {
     let balance;
 
     try {
+      const wallet = WalletContractV4.create({
+        workchain,
+        publicKey: keyPair.publicKey,
+    });
+
+
       const response = await this._ton.getBalance(account);
       balance = Number(response);
     } catch (error: any) {
