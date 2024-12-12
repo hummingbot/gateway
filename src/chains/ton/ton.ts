@@ -40,10 +40,7 @@ export class Ton {
     const config = getTonConfig(network);
     this.nativeTokenSymbol = config.nativeCurrencySymbol;
     this._ton = new TonApiClient({ baseUrl: nodeUrl });
-    this.wallet = WalletContractV4.create({
-      workchain: 0,
-      publicKey: keyPair.publicKey,
-  });
+    this.wallet WalletContractV4;
 
     // this._indexer = new Indexer('', indexerUrl, 'undefined');
     // this._assetListType = assetListType;
