@@ -44,7 +44,7 @@ export async function getTradeInfo(
   const quoteToken: TokenInfo = solanaish.getTokenForSymbol(quoteAsset);
   const requestAmount = Math.floor(amount * 10 ** baseToken.decimals);
 
-  const slippage = allowedSlippage ? Number(allowedSlippage) : jupiter.getSlippage();
+  const slippagePct = allowedSlippage ? Number(allowedSlippage) : jupiter.getSlippagePct();
 
   let quote: QuoteResponse;
   if (tradeSide === 'BUY') {
@@ -52,7 +52,7 @@ export async function getTradeInfo(
       quoteToken.symbol,
       baseToken.symbol,
       amount,
-      slippage,
+      slippagePct,
       false, // not restricting to direct routes
       false, // not using legacy transactions
       'ExactOut'
@@ -62,7 +62,7 @@ export async function getTradeInfo(
       baseToken.symbol,
       quoteToken.symbol,
       amount,
-      slippage,
+      slippagePct,
       false, // not restricting to direct routes
       false, // not using legacy transactions
       'ExactIn'
@@ -190,31 +190,34 @@ export async function trade(
   const keypair = await solanaish.getWallet(req.address);
   const wallet = new Wallet(keypair as any);
 
-  const quote = await jupiter.getQuote(
-    req.base,
-    req.quote,
-    Number(req.amount),
-    undefined, // using default slippage
-    false, // not restricting to direct routes
-    false // not using legacy transactions
-  );
-
-  const inputToken = solanaish.getTokenForSymbol(req.base);
-  const outputToken = solanaish.getTokenForSymbol(req.quote);
-
-  if (!inputToken || !outputToken) {
-    throw new Error(`Invalid tokens: ${req.base} or ${req.quote}`);
+  let tradeInfo: TradeInfo;
+  try {
+    tradeInfo = await getTradeInfo(
+      solanaish,
+      jupiter,
+      req.base,
+      req.quote,
+      Number(req.amount),
+      req.side,
+      req.allowedSlippage,
+    );
+  } catch (e) {
+    if (e instanceof Error) {
+      throw new HttpException(
+        500,
+        PRICE_FAILED_ERROR_MESSAGE + e.message,
+        PRICE_FAILED_ERROR_CODE
+      );
+    } else {
+      throw new HttpException(
+        500,
+        UNKNOWN_ERROR_MESSAGE,
+        UNKNOWN_ERROR_ERROR_CODE
+      );
+    }
   }
-  
-  const expectedPrice = req.side === 'BUY'
-    ? Number(quote.inAmount) / (Number(quote.outAmount) * (10 ** (inputToken.decimals - outputToken.decimals)))  // How much quote you pay per base
-    : Number(quote.outAmount) / (Number(quote.inAmount) * (10 ** (outputToken.decimals - inputToken.decimals))); // How much quote you receive per base
-  // const expectedAmount = new Decimal(quote.outAmount).div(new Decimal(10).pow(outputToken.decimals)).toString();
-  
-  logger.info(
-    `Expected execution price is ${expectedPrice}, ` +
-      `limit price is ${limitPrice}.`,
-  );
+  const { baseToken, quoteToken, requestAmount, expectedPrice, expectedAmount } = tradeInfo;
+  const slippagePct = req.allowedSlippage ? Number(req.allowedSlippage) : jupiter.getSlippagePct();
 
   // Check limit price conditions
   if (req.side === 'BUY') {
@@ -237,29 +240,40 @@ export async function trade(
     }
   }
 
-  // Execute the swap using the new method
+  // Execute swap with correct input/output tokens based on trade side
   const swapResult = await jupiter.executeSwap(
     wallet,
-    req.base,
-    req.quote,
-    Number(req.amount),
-    jupiter.getSlippage()
+    req.side === 'BUY' ? quoteToken.symbol : baseToken.symbol, // inputToken
+    req.side === 'BUY' ? baseToken.symbol : quoteToken.symbol,  // outputToken
+    req.side === 'BUY' ? Number(expectedAmount) : Number(req.amount), // amount
+    slippagePct
   );
 
-  return {
+  const response: TradeResponse = {
     network: solanaish.network,
     timestamp: startTimestamp,
     latency: latency(startTimestamp, Date.now()),
-    base: req.base,
-    quote: req.quote,
-    amount: req.amount,
-    rawAmount: req.amount,
-    expectedIn: String(quote.outAmount),
-    price: String(expectedPrice),
-    gasPrice: 0, // Not needed for Solana
+    base: baseToken.address,
+    quote: quoteToken.address,
+    amount: new Decimal(req.amount).toFixed(baseToken.decimals),
+    rawAmount: requestAmount.toString(),
+    gasPrice: 0,
     gasPriceToken: solanaish.nativeTokenSymbol,
-    gasLimit: 0, // Not needed for Solana
+    gasLimit: 0,
     gasCost: String(swapResult.fee),
     txHash: swapResult.signature,
+    price: expectedPrice.toString(),
   };
+
+  if (req.side === 'BUY') {
+    return {
+      ...response,
+      expectedIn: swapResult.totalInputSwapped.toString(),
+    };
+  } else {
+    return {
+      ...response,
+      expectedOut: swapResult.totalOutputSwapped.toString(),
+    };
+  }
 }

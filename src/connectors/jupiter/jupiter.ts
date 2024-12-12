@@ -71,12 +71,21 @@ export class Jupiter {
     return this._ready;
   }
 
-  getSlippage(): number {
+  getSlippagePct(): number {
     const allowedSlippage = this._config.allowedSlippage;
+    console.log('allowedSlippage:', allowedSlippage);
+
     const nd = allowedSlippage.match(percentRegexp);
+    console.log('regex match result:', nd);
+
     let slippage = 0.0;
-    if (nd) slippage = Number(nd[1]) / Number(nd[2]);
-    return slippage;
+    if (nd) {
+        console.log('numerator (nd[1]):', nd[1]);
+        console.log('denominator (nd[2]):', nd[2]);
+        slippage = Number(nd[1]) / Number(nd[2]);
+        console.log('calculated slippage:', slippage);
+    }
+    return slippage * 100;
   }
 
   async getQuote(
@@ -221,74 +230,5 @@ export class Jupiter {
 
     return { signature, totalInputSwapped, totalOutputSwapped, fee };
   }
-
-  // async price(req: PriceRequest) {
-  //   const startTimestamp: number = Date.now();
-  //   const baseToken = this.chain.getTokenForSymbol(req.base);
-  //   const quoteToken = this.chain.getTokenForSymbol(req.quote);
-  //   if (!baseToken || !quoteToken) {
-  //     throw new Error('INVALID TOKEN');
-  //   }
-
-  //   const amount = Number(req.amount) * <number>pow(10, baseToken.decimals);
-  //   const baseURL = `https://quote-api.jup.ag/v6/quote?inputMint=${baseToken?.address}&outputMint=${quoteToken?.address}&amount=${amount}`;
-  //   const price = await getPairData(baseToken?.address, quoteToken?.address);
-
-  //   const basePriceInUSD = price.data[baseToken?.address].price;
-  //   const quotePriceInUSD = price.data[quoteToken?.address].price;
-
-  //   const tokenPrice =
-  //     req.side === 'BUY'
-  //       ? Number(quotePriceInUSD) / Number(basePriceInUSD)
-  //       : Number(basePriceInUSD) / Number(quotePriceInUSD);
-  //   const response = await axios.get<JupiterQuoteResponse>(baseURL);
-
-  //   return {
-  //     timestamp: startTimestamp,
-  //     latency: latency(startTimestamp, Date.now()),
-  //     base: response.data.inputMint,
-  //     quote: response.data.outputMint,
-  //     amount: new Decimal(req.amount).toFixed(6),
-  //     rawAmount: response.data.inAmount,
-  //     expectedAmount: response.data.outAmount,
-  //     price: tokenPrice.toString(),
-  //     gasPrice: 0.0001,
-  //     gasLimit: 100000,
-  //     expectedPrice: tokenPrice,
-  //     trade: response.data,
-  //   };
-  // }
-  // async trade(quoteResponse: JupiterQuoteResponse, wallet: Keypair) {
-  //   const url = 'https://quote-api.jup.ag/v6/swap';
-  //   const response = await axios.post<SwapTransactionBuilderResponse>(url, {
-  //     quoteResponse,
-  //     userPublicKey: wallet.publicKey.toString(),
-  //     wrapAndUnwrapSol: true,
-  //     prioritizationFeeLamports: {
-  //       autoMultiplier: 2,
-  //     },
-  //   });
-  //   const swapTransactionBuf = Buffer.from(
-  //     response.data.swapTransaction,
-  //     'base64',
-  //   );
-  //   const transaction = VersionedTransaction.deserialize(swapTransactionBuf);
-  //   transaction.sign([wallet]);
-  //   const latestBlockHash = await this.chain.connection.getLatestBlockhash();
-  //   const rawTransaction = transaction.serialize();
-  //   const txid = await this.chain.connection.sendRawTransaction(
-  //     rawTransaction,
-  //     {
-  //       skipPreflight: true,
-  //       maxRetries: 2,
-  //     },
-  //   );
-  //   await this.chain.connection.confirmTransaction({
-  //     blockhash: latestBlockHash.blockhash,
-  //     lastValidBlockHeight: latestBlockHash.lastValidBlockHeight,
-  //     signature: txid,
-  //   });
-  //   return { txid, ...response.data };
-  // }
 
 }
