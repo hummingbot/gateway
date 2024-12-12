@@ -86,6 +86,7 @@ export class Jupiter {
     slippagePct?: number,
     onlyDirectRoutes: boolean = false,
     asLegacyTransaction: boolean = false,
+    swapMode: 'ExactIn' | 'ExactOut' = 'ExactIn',
   ): Promise<QuoteResponse> {
     await this.loadJupiter();
 
@@ -98,7 +99,8 @@ export class Jupiter {
     }
 
     const slippageBps = slippagePct ? Math.round(slippagePct * 100) : 50;
-    const quoteAmount = Math.floor(amount * 10 ** inputToken.decimals);
+    const tokenDecimals = swapMode === 'ExactOut' ? outputToken.decimals : inputToken.decimals;
+    const quoteAmount = Math.floor(amount * 10 ** tokenDecimals);
 
     const params: QuoteGetRequest = {
       inputMint: inputToken.address,
@@ -107,7 +109,7 @@ export class Jupiter {
       slippageBps,
       onlyDirectRoutes,
       asLegacyTransaction,
-      swapMode: 'ExactIn',
+      swapMode,
     };
 
     const quote = await this.jupiterQuoteApi.quoteGet(params);
