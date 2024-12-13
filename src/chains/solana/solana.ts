@@ -25,6 +25,7 @@ import {
   VersionedTransactionResponse,
 } from '@solana/web3.js';
 import { Client, UtlConfig, Token } from '@solflare-wallet/utl-sdk';
+import { TOKEN_PROGRAM_ID, unpackAccount } from "@solana/spl-token";
 
 import { countDecimals, TokenValue, walletPath } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
@@ -332,6 +333,49 @@ export class Solana implements Solanaish {
     return decrpyted.toString();
   }
 
+  async getBalance(wallet: Keypair, symbols?: string[]): Promise<Record<string, number>> {
+    // Convert symbols to uppercase for case-insensitive matching
+    const upperCaseSymbols = symbols?.map(s => s.toUpperCase());
+    const publicKey = wallet.publicKey;
+    let balances: Record<string, number> = {};
+
+    // Fetch SOL balance only if symbols is undefined or includes "SOL" (case-insensitive)
+    if (!upperCaseSymbols || upperCaseSymbols.includes("SOL")) {
+      const solBalance = await this.connectionPool.getNextConnection().getBalance(publicKey);
+      const solBalanceInSol = solBalance / Math.pow(10, 9); // Convert lamports to SOL
+      balances["SOL"] = solBalanceInSol;
+    }
+
+    // Get all token accounts for the provided address
+    const accounts = await this.connectionPool.getNextConnection().getTokenAccountsByOwner(
+      publicKey,
+      { programId: TOKEN_PROGRAM_ID }
+    );
+
+    // Fetch the token list and create lookup map
+    const tokenList = await this.getTokenList();
+    const tokenDefs = tokenList.reduce((acc, token) => {
+      if (!upperCaseSymbols || upperCaseSymbols.includes(token.symbol.toUpperCase())) {
+        acc[token.address] = { symbol: token.symbol, decimals: token.decimals };
+      }
+      return acc;
+    }, {});
+
+    // Process token accounts
+    for (const value of accounts.value) {
+      const parsedTokenAccount = unpackAccount(value.pubkey, value.account);
+      const mint = parsedTokenAccount.mint;
+      const tokenDef = tokenDefs[mint.toBase58()];
+      if (tokenDef === undefined) continue;
+
+      const amount = parsedTokenAccount.amount;
+      const uiAmount = Number(amount) / Math.pow(10, tokenDef.decimals);
+      balances[tokenDef.symbol] = uiAmount;
+    }
+
+    return balances;
+  }
+
   async getBalances(wallet: Keypair): Promise<Record<string, TokenValue>> {
     let balances: Record<string, TokenValue> = {};
 
@@ -492,10 +536,13 @@ export class Solana implements Solanaish {
   }
 
   public getTokenBySymbol(tokenSymbol: string): TokenInfo | undefined {
-    return this.tokenList.find(
-      (token: TokenInfo) =>
-        token.symbol.toUpperCase() === tokenSymbol.toUpperCase()
-    );
+    // Start from the end of the list and work backwards
+    for (let i = this.tokenList.length - 1; i >= 0; i--) {
+      if (this.tokenList[i].symbol.toUpperCase() === tokenSymbol.toUpperCase()) {
+        return this.tokenList[i];
+      }
+    }
+    return undefined;
   }
 
   // return the TokenInfo object for a symbol

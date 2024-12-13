@@ -1,4 +1,4 @@
-import { tokenValueToString } from '../../services/base';
+// import { tokenValueToString } from '../../services/base';
 import { 
   BalanceRequest,
   TokensRequest,
@@ -30,22 +30,9 @@ export class SolanaController {
       );
     }
 
-    const balances = await solanaish.getBalances(wallet);
+    const balances = await solanaish.getBalance(wallet, req.tokenSymbols);
 
-    const filteredBalancesKeys = req.tokenSymbols.length
-      ? Object.keys(balances).filter((symbol) => req.tokenSymbols.includes(symbol))
-      : Object.keys(balances);
-
-    const filteredBalances: Record<string, string> = {};
-    filteredBalancesKeys.forEach((symbol) => {
-      filteredBalances[symbol] = balances[symbol] !== undefined
-        ? tokenValueToString(balances[symbol])
-        : '-1';
-    });
-
-    return {
-      balances: filteredBalances,
-    };
+    return { balances };
   }
 
   static async poll(solanaish: Solanaish, req: PollRequest) {
@@ -70,8 +57,11 @@ export class SolanaController {
     if (!req.tokenSymbols) {
       tokens = solanaish.storedTokenList;
     } else {
-      for (const t of req.tokenSymbols as []) {
-        tokens.push(solanaish.getTokenForSymbol(t) as TokenInfo);
+      for (const symbol of req.tokenSymbols as string[]) {
+        const token = solanaish.getTokenBySymbol(symbol);
+        if (token) {
+          tokens.push(token);
+        }
       }
     }
 
