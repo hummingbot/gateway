@@ -25,6 +25,10 @@ import {
   estimateGas as uniswapEstimateGas,
 } from '../connectors/uniswap/uniswap.controllers';
 import {
+  price as jupiterPrice,
+  trade as jupiterTrade,
+} from '../connectors/jupiter/jupiter.controllers';
+import {
   price as carbonPrice,
   trade as carbonTrade,
   estimateGas as carbonEstimateGas,
@@ -50,15 +54,18 @@ import {
   Uniswapish,
   UniswapLPish,
 } from '../services/common-interfaces';
+import { Solanaish } from '../chains/solana/solana';
 import { Algorand } from '../chains/algorand/algorand';
 import { Tinyman } from '../connectors/tinyman/tinyman';
 import { Plenty } from '../connectors/plenty/plenty';
 import { Osmosis } from '../chains/osmosis/osmosis';
+import { Solana } from '../chains/solana/solana';
+import { Jupiter } from '../connectors/jupiter/jupiter';
 import { Carbonamm } from '../connectors/carbon/carbonAMM';
 
 export async function price(req: PriceRequest): Promise<PriceResponse> {
   const chain = await getInitializedChain<
-    Algorand | Ethereumish | Tezosish | Osmosis
+    Algorand | Ethereumish | Tezosish | Osmosis | Solana
   >(req.chain, req.network);
   if (chain instanceof Osmosis){
     return chain.controller.price(chain as unknown as Osmosis, req);
@@ -73,6 +80,8 @@ export async function price(req: PriceRequest): Promise<PriceResponse> {
 
   if (connector instanceof Plenty) {
     return plentyPrice(<Tezosish>chain, connector, req);
+  } else if (connector instanceof Jupiter) {
+    return jupiterPrice(<Solanaish>chain, connector, req);
   } else if (connector instanceof Carbonamm) {
     return carbonPrice(<Ethereumish>chain, connector, req);
   } else if ('routerAbi' in connector) {
@@ -84,7 +93,7 @@ export async function price(req: PriceRequest): Promise<PriceResponse> {
 
 export async function trade(req: TradeRequest): Promise<TradeResponse> {
   const chain = await getInitializedChain<
-    Algorand | Ethereumish | Tezosish | Osmosis
+    Algorand | Ethereumish | Tezosish | Osmosis | Solana
   >(req.chain, req.network);
   if (chain instanceof Osmosis){
     return chain.controller.trade(chain as unknown as Osmosis, req);
@@ -99,6 +108,8 @@ export async function trade(req: TradeRequest): Promise<TradeResponse> {
 
   if (connector instanceof Plenty) {
     return plentyTrade(<Tezosish>chain, connector, req);
+  } else if (connector instanceof Jupiter) {
+    return jupiterTrade(<Solanaish>chain, connector, req);
   } else if (connector instanceof Carbonamm) {
     return carbonTrade(<Ethereumish>chain, connector, req);
   } else if ('routerAbi' in connector) {

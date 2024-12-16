@@ -1,0 +1,9 @@
+# how much the execution price is allowed to move unfavorably from the trade
+# execution price. It uses a rational number for precision.
+allowedSlippage: '1/100'  
+
+contractAddresses:
+  mainnet:
+      routerAddress: '0xE54Ca86531e17Ef3616d22Ca28b0D458b6C89106'
+  devnet:
+      routerAddress: '0xE54Ca86531e17Ef3616d22Ca28b0D458b6C89106'
