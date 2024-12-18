@@ -9,6 +9,8 @@ import { PriceRequest } from "../../amm/amm.requests";
 import { HttpException, TOKEN_NOT_SUPPORTED_ERROR_CODE, TOKEN_NOT_SUPPORTED_ERROR_MESSAGE } from "../../services/error-handler";
 import { pow } from "mathjs";
 import { StonApiClient } from "@ston-fi/api";
+import { toNano, WalletContractV4 } from "@ton/ton";
+import { DEX, pTON } from "@ston-fi/sdk";
 
 
 // RUM: npm run dev GATEWAY_PASSPHRASE=asdf
@@ -19,16 +21,12 @@ export class Stonfi {
     private chain: Ton;
     private _ready: boolean = false;
     private _config: StonfiConfig.NetworkConfig;
-    //private _swap;
-
-    // public get swap() {
-    //     return this._swap;
-    // }
+    private stonfi: StonApiClient;
 
     private constructor(network: string) {
         this._config = StonfiConfig.config;
         this.chain = Ton.getInstance(network);
-        //this._swap = Swap;
+        this.stonfi = new StonApiClient()
     }
 
     public static getInstance(network: string): Stonfi {
@@ -106,9 +104,7 @@ export class Stonfi {
 
         const isBuy: boolean = req.side === 'BUY';
 
-        const client = new StonApiClient();
-
-        const quote = await client.simulateSwap({
+        const quote = await this.stonfi.simulateSwap({
             askAddress: isBuy === true ? quoteAsset.id : baseAsset.id,
             offerUnits: amount.toString(),
             offerAddress: isBuy === true ? baseAsset.id : quoteAsset.id,
@@ -122,7 +118,9 @@ export class Stonfi {
             `${price}` +
             `${baseToken.symbol}.`
         );
+
         const expectedPrice = isBuy === true ? 1 / price : price;
+
         const expectedAmount =
             req.side === 'BUY'
                 ? Number(req.amount)
@@ -130,7 +128,50 @@ export class Stonfi {
 
         return { trade: quote, expectedAmount, expectedPrice };
     }
+
+
+    /**
+  * Given an account and a tinyman trade, try to execute it on blockchain.
+  *
+  * @param account Algorand account
+  * @param quote Expected trade
+  * @param isBuy Used to indicate buy or sell swap
+  */
+
+    async executeTrade(
+        account: any,
+        quote: StonfiConfig.StonfiQuoteRes,
+        isBuy: boolean
+    ): Promise<any> {
+        const keyPar = await this.chain.getAccountFromAddress(account)
+
+        const workchain = 0;
+
+        const bufferPublicKey = Buffer.from(keyPar.publicKey, 'utf8')
+
+        const bufferSecretKey = Buffer.from(keyPar.secretKey, 'utf8')
+
+        const wallet = WalletContractV4.create({
+            workchain,
+            publicKey: bufferPublicKey,
+        });
+
+        const contract = this.chain.tonClient.open(wallet);
+
+        const dex = this.chain.tonClient.open(new DEX.v1.Router());
+
+        const txArgs = {
+            offerAmount: quote.offerUnits,
+            offerJettonAddress: quote.offerAddress,
+            askJettonAddress: quote.askAddress,
+            minAskAmount: toNano("0.1"),
+            proxyTon: new pTON.v1(),
+            userWalletAddress: wallet.address.toString(),
+        };
+
+        const tx = await dex.sendSwapJettonToJetton(contract.sender(bufferSecretKey), txArgs);
+
+        logger.info(`Swap transaction ${isBuy} Id: ${quote}`);
+        return tx;
+    }
 }
-
-
-// return: expectedAmount, expectedPrice

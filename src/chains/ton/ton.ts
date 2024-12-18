@@ -1,63 +1,63 @@
 import LRUCache from 'lru-cache';
 import { getTonConfig } from './ton.config';
 import { mnemonicToPrivateKey } from "@ton/crypto";
-import { TonApiClient } from '@ton-api/client';
-import { Address } from '@ton/core';
-import { TonAsset } from './ton.requests';
+import TonWeb from "tonweb";
+import { OpenedContract, TonClient } from "@ton/ton";
+import { DEX, pTON } from "@ston-fi/sdk";
+import { PollResponse, TonAsset } from './ton.requests';
+import fse from 'fs-extra';
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 import { StonApiClient } from '@ston-fi/api';
-
-// import { walletPath } from '../../services/base';
-// import fse from 'fs-extra';
-// import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { TonController } from './ton.controller';
-import { WalletContractV4 } from '@ton/ton';
+import { walletPath } from '../../services/base';
+import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
+import { RouterV2_1 } from '@ston-fi/sdk/dist/contracts/dex/v2_1/router/RouterV2_1';
+import { PtonV2_1 } from '@ston-fi/sdk/dist/contracts/pTON/v2_1/PtonV2_1';
 
 export class Ton {
   public nativeTokenSymbol;
   private _assetMap: Record<string, TonAsset> = {};
   private static _instances: LRUCache<string, Ton>;
-  //private _chain: string = 'ton';
   private _network: string;
-  private _ton: TonApiClient;
-  //private _indexer: Indexer;
+  public tonweb: TonWeb;
+  public tonClient: TonClient;
+  public tonClientRouter: OpenedContract<RouterV2_1>;
+  public tonClientproxyTon: PtonV2_1;
+  private _chain: string = 'ton';
   private _ready: boolean = false;
-  //private _assetListType: AssetListType;
-  //private _assetListSource: string;
   public gasPrice: number;
   public gasLimit: number;
   public gasCost: number;
+  public workchain: number;
   public controller: typeof TonController;
 
   constructor(
     network: string,
     nodeUrl: string,
-    // indexerUrl: string,
-    // assetListType: AssetListType,
-    // assetListSource: string
   ) {
     this._network = network;
     const config = getTonConfig(network);
     this.nativeTokenSymbol = config.nativeCurrencySymbol;
-    this._ton = new TonApiClient({ baseUrl: nodeUrl });
-    this.wallet WalletContractV4;
-
-    // this._indexer = new Indexer('', indexerUrl, 'undefined');
-    // this._assetListType = assetListType;
-    // this._assetListSource = assetListSource;
+    this.tonweb = new TonWeb(new TonWeb.HttpProvider(nodeUrl));
+    this.tonClient = new TonClient({ endpoint: nodeUrl });
+    this.tonClientRouter = this.tonClient.open(
+      DEX.v2_1.Router.create(
+        "kQALh-JBBIKK7gr0o4AVf9JZnEsFndqO0qTCyT-D-yBsWk0v"
+      )
+    );
+    this.tonClientproxyTon = pTON.v2_1.create(
+      "kQACS30DNoUQ7NfApPvzh7eBmSZ9L4ygJ-lkNWtba8TQT-Px" // pTON v2.1.0
+    );
     this.gasPrice = 0;
     this.gasLimit = 0;
     this.gasCost = 0.001;
+    this.workchain = 0;
     this.controller = TonController;
   }
 
-  public get ton(): TonApiClient {
-    return this._ton;
+  public get ton(): TonWeb {
+    return this.tonweb;
   }
-
-  // public get indexer(): Indexer {
-  //   return this._indexer;
-  // }
 
   public get network(): string {
     return this._network;
@@ -92,17 +92,11 @@ export class Ton {
     if (!Ton._instances.has(config.network.name)) {
       if (network !== null) {
         const nodeUrl = config.network.nodeURL;
-        // const indexerUrl = config.network.indexerURL;
-        // const assetListType = config.network.assetListType as TokenListType;
-        // const assetListSource = config.network.assetListSource;
         Ton._instances.set(
           config.network.name,
           new Ton(
             network,
-            nodeUrl,
-            // indexerUrl,
-            // assetListType,
-            // assetListSource
+            nodeUrl
           )
         );
       } else {
@@ -130,43 +124,35 @@ export class Ton {
     return connectedInstances;
   }
 
-  // async getCurrentBlockNumber(address: string): Promise<number> {
-  //   const status = await this._ton.getContractState(address);
-  //   return status['next-version-round'];
-  // }
 
-  // public async getTransaction(txHash: string): Promise<PollResponse> {
-  //   const transactionId = txHash.startsWith('0x') ? txHash.slice(2) : txHash;
-  //   let currentBlock;
-  //   let transactionData;
-  //   let transactionBlock;
-  //   let fee;
-  //   try {
-  //     transactionData = await this._ton
-  //       .pendingTransactionInformation(transactionId)
-  //       .do();
-  //     transactionBlock = transactionData['confirmed-round']; // will be undefined if not confirmed
-  //     transactionBlock = transactionBlock ? transactionBlock : null;
-  //     fee = transactionData.txn.fee;
-  //     currentBlock = await this.getCurrentBlockNumber();
-  //   } catch (error: any) {
-  //     if (error.status != 404) {
-  //       throw error;
-  //     }
-  //     transactionData = await this._indexer
-  //       .lookupTransactionByID(transactionId)
-  //       .do();
-  //     currentBlock = transactionData['current-round'];
-  //     transactionBlock = transactionData.transaction['confirmed-round'];
-  //     fee = transactionData.transaction.fee;
-  //   }
-  //   return {
-  //     currentBlock,
-  //     txBlock: transactionBlock,
-  //     txHash: '0x' + transactionId,
-  //     fee,
-  //   };
-  // }
+  async getCurrentBlockNumber() {
+    const status = await this.tonweb.provider.getMasterchainInfo();
+    //const initialBlock = status.init;
+    const lastBlock = status.last;
+    return {
+      seqno: lastBlock.seqno,
+      root_hash: lastBlock.root_hash
+    };
+  }
+
+  public async getTransaction(address: string, txHash: string): Promise<PollResponse> {
+    const transactionId = txHash.startsWith('0x') ? txHash.slice(2) : txHash;
+    const { seqno, root_hash } = await this.getCurrentBlockNumber()
+    let transactionData;
+    try {
+      transactionData = await this.tonweb.getTransactions(address, 1, 0, transactionId)
+    } catch (error: any) {
+      if (error.status != 404) {
+        throw error;
+      }
+    }
+    return {
+      currentBlock: seqno,
+      txBlock: root_hash,
+      txHash: '0x' + transactionData.transaction_id.hash,
+      fee: transactionData.fee,
+    };
+  }
 
   public async getAccountFromPrivateKey(mnemonic: string) {
     const mnemonics = Array.from(
@@ -178,20 +164,31 @@ export class Ton {
   }
 
 
-  // async getAccountFromAddress(address: string): Promise<Account> {
-  //   const path = `${walletPath}/${this._chain}`;
-  //   const encryptedMnemonic: string = await fse.readFile(
-  //     `${path}/${address}.json`,
-  //     'utf8'
-  //   );
-  //   const passphrase = ConfigManagerCertPassphrase.readPassphrase();
-  //   if (!passphrase) {
-  //     throw new Error('missing passphrase');
-  //   }
-  //   const mnemonic = this.decrypt(encryptedMnemonic, passphrase);
+  async getAccountFromAddress(address: string) {
+    const path = `${walletPath}/${this._chain}`;
+    const encryptedMnemonic: string = await fse.readFile(
+      `${path}/${address}.json`,
+      'utf8'
+    );
+    const passphrase = ConfigManagerCertPassphrase.readPassphrase();
+    if (!passphrase) {
+      throw new Error('missing passphrase');
+    }
+    const mnemonic = this.decrypt(encryptedMnemonic, passphrase);
 
-  //   return mnemonicToSecretKey(mnemonic);
-  // }
+    const mnemonics = Array.from(
+      { length: 24 },
+      (_, i) => `${mnemonic} ${i + 1}`
+    );
+
+
+    const keys = await mnemonicToPrivateKey(mnemonics);
+
+    return {
+      publicKey: keys.publicKey.toString("utf8"),
+      secretKey: keys.secretKey.toString("utf8")
+    }
+  }
 
   public encrypt(mnemonic: string, password: string): string {
     const iv = randomBytes(16);
@@ -225,20 +222,13 @@ export class Ton {
   }
 
   public async getAssetBalance(
-    account: Address,
+    account: string,
     assetName: string
   ): Promise<string> {
     const tonAsset = this._assetMap[assetName];
     let balance;
-
     try {
-      const wallet = WalletContractV4.create({
-        workchain,
-        publicKey: keyPair.publicKey,
-    });
-
-
-      const response = await this._ton.getBalance(account);
+      const response = await this.tonweb.getBalance(account);
       balance = Number(response);
     } catch (error: any) {
       if (!error.message.includes('account asset info not found')) {
@@ -246,38 +236,36 @@ export class Ton {
       }
       balance = 0;
     }
-
     const amount = balance * parseFloat(`1e-${tonAsset.decimals}`);
     return amount.toString();
   }
 
-  // public async getNativeBalance(account: Account): Promise<string> {
-  //   const accountInfo = await this._ton.accountInformation(account.addr).do();
-  //   const algoAsset = this._assetMap[this.nativeTokenSymbol];
-  //   return (
-  //     accountInfo.amount * parseFloat(`1e-${algoAsset.decimals}`)
-  //   ).toString();
-  // }
+  public async getNativeBalance(account: string): Promise<string> {
+    const tonAsset = await this.tonweb.getBalance(account);
+    return tonAsset.toString();
+  }
 
   public getAssetForSymbol(symbol: string): TonAsset | null {
     return this._assetMap[symbol] ? this._assetMap[symbol] : null;
   }
 
-  // public async optIn(address: string, symbol: string) {
-  //   const account = await this.getAccountFromAddress(address);
-  //   const assetIndex = this._assetMap[symbol].assetId;
-  //   const suggestedParams = await this._ton.getTransactionParams().do();
-  //   const optInTxn = makeAssetTransferTxnWithSuggestedParamsFromObject({
-  //     from: account.addr,
-  //     to: address,
-  //     suggestedParams,
-  //     assetIndex,
-  //     amount: 0,
-  //   });
-  //   const signedOptInTxn = optInTxn.signTxn(account.sk);
-  //   const resp = await this._ton.sendRawTransaction(signedOptInTxn).do();
-  //   return resp;
-  // }
+  // here isnt necessary for ton chain
+  public async optIn(address: string, symbol: string) {
+    const account = await this.getAccountFromAddress(address);
+    const block = await this.getCurrentBlockNumber()
+    const asset = this._assetMap[symbol];
+
+    // const wallet = this.ton.wallet.create({ publicKey: account.publicKey });
+
+    // const result = await wallet.methods.transfer({
+    //   secretKey: account.secretKey,
+    //   toAddress: "EQDjVXa_oltdBP64Nc__p397xLCvGm2IcZ1ba7anSW0NAkeP",
+    //   amount: toNanoNano(0.01),
+    //   seqno: block.seqno,
+    // }).estimateFee()
+
+    return { ...account, block, asset };
+  }
 
   private async loadAssets(): Promise<void> {
     const assetData = await this.getAssetData();

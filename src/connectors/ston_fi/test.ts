@@ -1,43 +1,58 @@
-import { TonClient, WalletContractV4 } from "@ton/ton";
+import { StonApiClient } from "@ston-fi/api";
 import { mnemonicToPrivateKey } from "@ton/crypto";
+import TonWeb, { AddressType } from "tonweb";
+import { WalletV3ContractR1 } from "tonweb/dist/types/contract/wallet/v3/wallet-v3-contract-r1";
 
-const seedPhase = "ramp diet proof curve admit steak gospel jump twelve cigar clean inmate victory asthma change random left model conduct stay real any disease metal"
+import { TonClient, toNano } from "@ton/ton";
+import { DEX, pTON } from "@ston-fi/sdk";
+
+
+
+//RUN TESTS: npx tsx src/connectors/ston_fi/test.ts
+
+const testnetSeedPhase = "ramp diet proof curve admit steak gospel jump twelve cigar clean inmate victory asthma change random left model conduct stay real any disease metal"
+
+//const tonweb = new TonWeb(new TonWeb.HttpProvider('https://testnet.toncenter.com/api/v2/jsonRPC'));
+const tonweb = new TonWeb(new TonWeb.HttpProvider('https://toncenter.com/api/v2/jsonRPC'));
+const stonfi = new StonApiClient()
+const address = 'EQBibkPM-RnqV4OKguNTStuN4MFpR0a91OPmitogqC6SKIqt';
+let publicKey: string
+
 
 async function main() {
     try {
-        const ton = new TonClient({
-            endpoint: "https://testnet.toncenter.com/api/v2/jsonRPC",
-        });
-
         const mnemonics = Array.from(
             { length: 24 },
-            (_, i) => `${seedPhase} ${i + 1}`
+            (_, i) => `${testnetSeedPhase} ${i + 1}`
         );
+        const keys = await mnemonicToPrivateKey(mnemonics);
+        publicKey = keys.publicKey.toString("utf8");
 
-        const keyPair = await mnemonicToPrivateKey(mnemonics);
-
-        const workchain = 0;
-
-        const wallet = WalletContractV4.create({
-            workchain,
-            publicKey: keyPair.publicKey,
-        });
+        //call Ton Methods
+        //await tonMethods();
 
 
-        wallet.getBalance()
-
-        const stonfi = ton.open(new DEX.v1.Router());
-
-        await stonfi.getRouterData()
-
-
+        //call Ston.fi Methods
+        await stonfiMethods();
 
         return ""
-
     } catch (error: any) {
         console.log(error)
         return error
     }
+}
+
+const tonMethods = async () => {
+    // const wallet = tonweb.wallet.create({ address });
+    // const balance = await tonweb.getBalance(address);
+    // const transactions = await tonweb.getTransactions(address, 1);
+    // const block = await tonweb.provider.getMasterchainInfo()
+}
+
+
+
+const stonfiMethods = async () => {
+  const res = stonfi.simulateSwap()
 }
 
 

@@ -108,6 +108,7 @@
     "quickswap-sdk": "^3.0.8",
     "swagger-ui-express": "^4.1.6",
     "swap-router-sdk": "^1.21.1",
+    "tonweb": "^0.0.66",
     "tslib": "^2.3.1",
     "uuid": "^8.3.2",
     "vvs-sdk": "^2.4.0",
