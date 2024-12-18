@@ -508,6 +508,7 @@ export class Solana implements Solanaish {
         payerSignature,
         {
           commitment: 'confirmed',
+          maxSupportedTransactionVersion: 0,
         },
       ]
     );
