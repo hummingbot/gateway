@@ -1,8 +1,8 @@
 import LRUCache from 'lru-cache';
 import { getTonConfig } from './ton.config';
-import { mnemonicToPrivateKey } from "@ton/crypto";
+import { mnemonicNew, mnemonicToPrivateKey } from "@ton/crypto";
 import TonWeb from "tonweb";
-import { OpenedContract, TonClient } from "@ton/ton";
+import { OpenedContract, TonClient, WalletContractV4 } from "@ton/ton";
 import { DEX, pTON } from "@ston-fi/sdk";
 import { PollResponse, TonAsset } from './ton.requests';
 import fse from 'fs-extra';
@@ -164,6 +164,17 @@ export class Ton {
   }
 
 
+  async getAccount(address: string) {
+    let mnemonics = await mnemonicNew(64, address);
+    // const mnemonics = "margin slow boy capable trouble cat strike master detect whip pole cannon cable imitate glad favorite canal shrug peace doll special symptom rule urge".split(" ");
+    let keyPair = await mnemonicToPrivateKey(mnemonics);
+
+    let workchain = 0; // Usually you need a workchain 0
+    let wallet = WalletContractV4.create({ workchain, publicKey: keyPair.publicKey });
+    const contract = this.tonClient.open(wallet);
+    return contract
+  }
+
   async getAccountFromAddress(address: string) {
     const path = `${walletPath}/${this._chain}`;
     const encryptedMnemonic: string = await fse.readFile(
@@ -241,6 +252,7 @@ export class Ton {
   }
 
   public async getNativeBalance(account: string): Promise<string> {
+
     const tonAsset = await this.tonweb.getBalance(account);
     return tonAsset.toString();
   }

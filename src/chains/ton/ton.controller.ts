@@ -10,7 +10,7 @@ import { Ton } from './ton';
 import {
   validateAssetsRequest,
   validateOptInRequest,
-  validateTonBalanceRequest,
+  // validateTonBalanceRequest,
   validateTonPollRequest,
 } from './ton.validators';
 import { BalanceRequest } from '../tezos/tezos.request';
@@ -38,21 +38,22 @@ export class TonController {
   }
 
   static async balances(chain: Ton, request: BalanceRequest) {
-    validateTonBalanceRequest(request);
-  
+    // validateTonBalanceRequest(request);
+
     const balances: Record<string, string> = {};
-  
-    const account = await chain.getAccountFromAddress(request.address);
-  
+
+    const account = await chain.getAccount(request.address);
+    // const balance = await account.getBalance()
+
     if (request.tokenSymbols.includes(chain.nativeTokenSymbol)) {
-      balances[chain.nativeTokenSymbol] = await chain.getNativeBalance(account.publicKey);
+      balances[chain.nativeTokenSymbol] = await chain.getNativeBalance(account.address.toString());
     }
-  
+
     for (const token of request.tokenSymbols) {
       if (token === chain.nativeTokenSymbol) continue;
-      balances[token] = await chain.getAssetBalance(account.publicKey, token);
+      balances[token] = await chain.getAssetBalance(account.publicKey.toString(), token);
     }
-  
+
     return {
       balances: balances,
     };
@@ -87,10 +88,10 @@ export class TonController {
 
   static async approve(request: OptInRequest) {
     validateOptInRequest(request);
-  
+
     const ton = await getInitializedTon(request.network);
     const asset = ton.getAssetForSymbol(request.assetSymbol);
-  
+
     if (asset === undefined) {
       throw new HttpException(
         500,
@@ -98,12 +99,12 @@ export class TonController {
         TOKEN_NOT_SUPPORTED_ERROR_CODE
       );
     }
-  
+
     const transactionResponse = await ton.optIn(
       request.address,
       request.assetSymbol
     );
-  
+
     return {
       assetId: (asset as TonAsset).assetId,
       transactionResponse: transactionResponse,
