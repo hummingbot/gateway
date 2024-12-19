@@ -1,6 +1,6 @@
 import LRUCache from 'lru-cache';
 import { getTonConfig } from './ton.config';
-import { mnemonicToPrivateKey } from "@ton/crypto";
+import { mnemonicNew, mnemonicToPrivateKey } from "@ton/crypto";
 import TonWeb from "tonweb";
 import { OpenedContract, TonClient, WalletContractV4, Address, beginCell, storeMessage } from "@ton/ton";
 import { DEX, pTON } from "@ston-fi/sdk";
