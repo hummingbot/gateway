@@ -51,7 +51,7 @@ export class TonController {
 
     for (const token of request.tokenSymbols) {
       if (token === chain.nativeTokenSymbol) continue;
-      balances[token] = await chain.getAssetBalance(account.publicKey.toString(), token);
+      balances[token] = await chain.getAssetBalance(account.address.toString(), token);
     }
 
     return {

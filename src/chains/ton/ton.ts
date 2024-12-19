@@ -166,9 +166,7 @@ export class Ton {
 
   async getAccount(address: string) {
     let mnemonics = await mnemonicNew(64, address);
-    // const mnemonics = "margin slow boy capable trouble cat strike master detect whip pole cannon cable imitate glad favorite canal shrug peace doll special symptom rule urge".split(" ");
     let keyPair = await mnemonicToPrivateKey(mnemonics);
-
     let workchain = 0; // Usually you need a workchain 0
     let wallet = WalletContractV4.create({ workchain, publicKey: keyPair.publicKey });
     const contract = this.tonClient.open(wallet);
@@ -191,7 +189,6 @@ export class Ton {
       { length: 24 },
       (_, i) => `${mnemonic} ${i + 1}`
     );
-
 
     const keys = await mnemonicToPrivateKey(mnemonics);
 
