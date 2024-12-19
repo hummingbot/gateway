@@ -42,6 +42,8 @@ export class SolanaController {
     );
     const txStatus = await solanaish.getTransactionStatusCode(txData);
 
+    console.log(`Polling for transaction ${req.txHash}, Status: ${txStatus}`);
+
     return {
       currentBlock: currentBlock,
       txHash: req.txHash,
