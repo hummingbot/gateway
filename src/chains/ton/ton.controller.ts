@@ -42,16 +42,16 @@ export class TonController {
 
     const balances: Record<string, string> = {};
 
-    const account = await chain.getAccount(request.address);
+    const account = await chain.getAccountFromAddress(request.address);
     // const balance = await account.getBalance()
 
     if (request.tokenSymbols.includes(chain.nativeTokenSymbol)) {
-      balances[chain.nativeTokenSymbol] = await chain.getNativeBalance(account.address.toString());
+      balances[chain.nativeTokenSymbol] = await chain.getNativeBalance(account.publicKey.toString());
     }
 
     for (const token of request.tokenSymbols) {
       if (token === chain.nativeTokenSymbol) continue;
-      balances[token] = await chain.getAssetBalance(account.address.toString(), token);
+      balances[token] = await chain.getAssetBalance(account.publicKey.toString(), token);
     }
 
     return {
