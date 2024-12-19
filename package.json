@@ -58,6 +58,7 @@
     "@solana/web3.js": "^1.95.8",
     "@solflare-wallet/utl-sdk": "^1.4.0",
     "@ston-fi/api": "^0.14.0",
+    "@ston-fi/omniston-sdk": "^0.3.0",
     "@ston-fi/sdk": "^2.1.0",
     "@sushiswap/sdk": "^5.0.0-canary.116",
     "@taquito/rpc": "^17.0.0",
