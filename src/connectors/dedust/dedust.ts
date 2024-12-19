@@ -13,7 +13,6 @@ import {
 } from '../../services/error-handler';
 import { pow } from 'mathjs';
 import {
-  TonClient4,
   WalletContractV4,
   toNano,
   Address,
@@ -41,18 +40,11 @@ export class Dedust {
   private _ready: boolean = false;
   private _config: DedustConfig.NetworkConfig;
   private factory: OpenedContract<Factory>;
-  private tonClient: TonClient4;
 
   private constructor(network: string) {
     this._config = DedustConfig.config;
     this.chain = Ton.getInstance(network);
-
-    // Initialize TON client and Dedust factory
-    this.tonClient = new TonClient4({
-      endpoint: 'https://mainnet-v4.tonhubapi.com',
-    });
-
-    this.factory = this.tonClient.open(
+    this.factory = this.chain.tonClient.open(
       Factory.createFromAddress(MAINNET_FACTORY_ADDR),
     );
   }
@@ -127,7 +119,7 @@ export class Dedust {
           : Asset.jetton(Address.parse(quoteToken.assetId));
 
       // Get the pool
-      const pool = this.tonClient.open(
+      const pool = this.chain.tonClient.open(
         await this.factory.getPool(PoolType.VOLATILE, [fromAsset, toAsset]),
       ) as OpenedContract<Pool>;
 
@@ -139,10 +131,10 @@ export class Dedust {
       // Get the vault for the input token
       const vault =
         baseToken.assetId === 'TON'
-          ? (this.tonClient.open(
+          ? (this.chain.tonClient.open(
               await this.factory.getNativeVault(),
             ) as OpenedContract<VaultNative>)
-          : (this.tonClient.open(
+          : (this.chain.tonClient.open(
               await this.factory.getJettonVault(
                 Address.parse(baseToken.assetId),
               ),
@@ -194,7 +186,7 @@ export class Dedust {
       publicKey: Buffer.from(keyPar.publicKey, 'utf8'),
     });
 
-    const walletContract = this.tonClient.open(wallet);
+    const walletContract = this.chain.tonClient.open(wallet);
     const sender: Sender = {
       address: walletContract.address,
       async send(args: SenderArguments) {
@@ -244,17 +236,15 @@ export class Dedust {
         if (!quote.fromAsset.address) {
           throw new Error('From asset address is required');
         }
-        const jettonRoot = this.tonClient.open(
+        const jettonRoot = this.chain.tonClient.open(
           JettonRoot.createFromAddress(quote.fromAsset.address),
         );
         if (!sender.address) {
           throw new Error('Sender address is required');
         }
-        const walletAddress = await jettonRoot.getWallet(sender.address);
-        if (!walletAddress) {
-          throw new Error('Failed to get jetton wallet address');
-        }
-        const jettonWallet = this.tonClient.open(walletAddress);
+        const jettonWallet = this.chain.tonClient.open(
+          await jettonRoot.getWallet(sender.address),
+        );
 
         await jettonWallet.sendTransfer(sender, toNano('0.3'), {
           amount: quote.amount,
@@ -263,10 +253,6 @@ export class Dedust {
           forwardAmount: toNano('0.25'),
           forwardPayload: VaultJetton.createSwapPayload({
             poolAddress: quote.pool.address,
-            limit: minExpectedOut,
-            swapParams: {
-              recipientAddress: sender.address,
-            },
           }),
         });
       }
@@ -276,27 +262,20 @@ export class Dedust {
       );
 
       // Wait for the next transaction on the sender's address
-        // TODO: Fix this
-      const state = await this.tonClient.getContractState(sender.address);
-      if (!state || !state.lastTransaction) {
-        throw new Error('Failed to get contract state');
+      if (!sender.address) {
+        throw new Error('Sender address is required');
       }
-
-      const transactions = await this.tonClient.getTransactions(
-        sender.address,
-        {
-          limit: 1,
-          lt: state.lastTransaction.lt,
-          hash: state.lastTransaction.hash,
-        },
+      const transactions = await this.chain.tonweb.getTransactions(
+        sender.address.toString(),
+        1,
       );
 
-      if (transactions.length === 0) {
+      if (!transactions || transactions.length === 0) {
         throw new Error('No transactions found');
       }
 
       return {
-        txId: transactions[0].hash.toString('base64'),
+        txId: transactions[0].transaction_id.hash,
         success: true,
       };
     } catch (error) {
