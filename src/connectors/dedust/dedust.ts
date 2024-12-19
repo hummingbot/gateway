@@ -7,9 +7,18 @@ import { TonAsset } from '../../chains/ton/ton.requests';
 import { logger } from '../../services/logger';
 import { PriceRequest } from '../../amm/amm.requests';
 import {
-  HttpException,
+  UniswapishPriceError,
   TOKEN_NOT_SUPPORTED_ERROR_CODE,
   TOKEN_NOT_SUPPORTED_ERROR_MESSAGE,
+  InitializationError,
+  PRICE_FAILED_ERROR_MESSAGE,
+  AMOUNT_NOT_SUPPORTED_ERROR_MESSAGE,
+  INSUFFICIENT_FUNDS_ERROR_MESSAGE,
+  TRADE_FAILED_ERROR_MESSAGE,
+  NETWORK_ERROR_MESSAGE,
+  SERVICE_UNITIALIZED_ERROR_CODE,
+  SERVICE_UNITIALIZED_ERROR_MESSAGE,
+  AMOUNT_LESS_THAN_MIN_AMOUNT_ERROR_MESSAGE,
 } from '../../services/error-handler';
 import { pow } from 'mathjs';
 import {
@@ -61,8 +70,9 @@ export class Dedust {
       if (network !== null) {
         Dedust._instances.set(network, new Dedust(network));
       } else {
-        throw new Error(
+        throw new InitializationError(
           `Dedust.getInstance received an unexpected network: ${network}.`,
+          TOKEN_NOT_SUPPORTED_ERROR_CODE,
         );
       }
     }
@@ -71,13 +81,26 @@ export class Dedust {
   }
 
   public async init() {
-    if (!this.chain.ready()) {
-      await this.chain.init();
+    try {
+      if (!this.chain.ready()) {
+        await this.chain.init();
+      }
+      this._ready = true;
+    } catch (error) {
+      throw new InitializationError(
+        SERVICE_UNITIALIZED_ERROR_MESSAGE('Dedust'),
+        SERVICE_UNITIALIZED_ERROR_CODE,
+      );
     }
-    this._ready = true;
   }
 
   public ready(): boolean {
+    if (!this._ready) {
+      throw new InitializationError(
+        SERVICE_UNITIALIZED_ERROR_MESSAGE('Dedust'),
+        SERVICE_UNITIALIZED_ERROR_CODE,
+      );
+    }
     return this._ready;
   }
 
@@ -94,15 +117,25 @@ export class Dedust {
     expectedAmount: number;
     expectedPrice: number;
   }> {
+    if (!this._ready) {
+      throw new InitializationError(
+        SERVICE_UNITIALIZED_ERROR_MESSAGE('Dedust'),
+        SERVICE_UNITIALIZED_ERROR_CODE,
+      );
+    }
+
     const baseToken: TonAsset | null = this.chain.getAssetForSymbol(req.base);
     const quoteToken: TonAsset | null = this.chain.getAssetForSymbol(req.quote);
 
-    if (baseToken === null || quoteToken === null)
-      throw new HttpException(
-        500,
-        TOKEN_NOT_SUPPORTED_ERROR_MESSAGE,
-        TOKEN_NOT_SUPPORTED_ERROR_CODE,
+    if (baseToken === null || quoteToken === null) {
+      throw new Error(
+        TOKEN_NOT_SUPPORTED_ERROR_MESSAGE + `${req.base} or ${req.quote}`,
       );
+    }
+
+    if (!Number(req.amount) || Number(req.amount) <= 0) {
+      throw new Error(AMOUNT_NOT_SUPPORTED_ERROR_MESSAGE);
+    }
 
     const amount = Number(req.amount) * <number>pow(10, baseToken.decimals);
 
@@ -119,30 +152,40 @@ export class Dedust {
           : Asset.jetton(Address.parse(quoteToken.assetId));
 
       // Get the pool
-      const pool = this.chain.tonClient.open(
-        await this.factory.getPool(PoolType.VOLATILE, [fromAsset, toAsset]),
-      ) as OpenedContract<Pool>;
+      let pool;
+      try {
+        pool = this.chain.tonClient.open(
+          await this.factory.getPool(PoolType.VOLATILE, [fromAsset, toAsset]),
+        ) as OpenedContract<Pool>;
+      } catch (error) {
+        throw new UniswapishPriceError('Failed to get pool: ' + error);
+      }
 
       // Check if pool exists
       if ((await pool.getReadinessStatus()) !== ReadinessStatus.READY) {
-        throw new Error('Pool does not exist.');
+        throw new UniswapishPriceError('Pool does not exist or is not ready');
       }
 
       // Get the vault for the input token
-      const vault =
-        baseToken.assetId === 'TON'
-          ? (this.chain.tonClient.open(
-              await this.factory.getNativeVault(),
-            ) as OpenedContract<VaultNative>)
-          : (this.chain.tonClient.open(
-              await this.factory.getJettonVault(
-                Address.parse(baseToken.assetId),
-              ),
-            ) as OpenedContract<VaultJetton>);
+      let vault;
+      try {
+        vault =
+          baseToken.assetId === 'TON'
+            ? (this.chain.tonClient.open(
+                await this.factory.getNativeVault(),
+              ) as OpenedContract<VaultNative>)
+            : (this.chain.tonClient.open(
+                await this.factory.getJettonVault(
+                  Address.parse(baseToken.assetId),
+                ),
+              ) as OpenedContract<VaultJetton>);
+      } catch (error) {
+        throw new UniswapishPriceError('Failed to get vault: ' + error);
+      }
 
       // Check if vault exists
       if ((await vault.getReadinessStatus()) !== ReadinessStatus.READY) {
-        throw new Error('Vault does not exist.');
+        throw new UniswapishPriceError('Vault does not exist.');
       }
 
       // Get estimated swap output
@@ -155,6 +198,25 @@ export class Dedust {
         Number(swapEstimate.amountOut) / Math.pow(10, quoteToken.decimals);
       const expectedPrice = expectedAmount / Number(req.amount);
 
+      // Calculate price impact
+      const inputValue = Number(amount);
+      const outputValue = Number(swapEstimate.amountOut);
+      const tradeFeeValue = Number(swapEstimate.tradeFee);
+
+      // Price impact is the percentage of value lost in the trade
+      const priceImpact =
+        ((inputValue - (outputValue + tradeFeeValue)) / inputValue) * 100;
+
+      // Check if price impact is too high
+      if (
+        this._config.maxPriceImpact &&
+        priceImpact > this._config.maxPriceImpact
+      ) {
+        throw new UniswapishPriceError(
+          `Price impact too high: ${priceImpact.toFixed(2)}% > ${this._config.maxPriceImpact}%`,
+        );
+      }
+
       const quote: DedustConfig.DedustQuote = {
         pool,
         vault,
@@ -162,6 +224,8 @@ export class Dedust {
         fromAsset,
         toAsset,
         expectedOut: swapEstimate.amountOut,
+        priceImpact,
+        tradeFee: swapEstimate.tradeFee,
       };
 
       return {
@@ -171,7 +235,19 @@ export class Dedust {
       };
     } catch (error) {
       logger.error(`Failed to get swap quote: ${error}`);
-      throw error;
+      if (error instanceof UniswapishPriceError) {
+        throw error;
+      }
+      if (
+        error instanceof Error &&
+        error.message.includes('insufficient funds')
+      ) {
+        throw new Error(INSUFFICIENT_FUNDS_ERROR_MESSAGE);
+      }
+      if (error instanceof Error && error.message.includes('network')) {
+        throw new Error(NETWORK_ERROR_MESSAGE);
+      }
+      throw new Error(PRICE_FAILED_ERROR_MESSAGE + error);
     }
   }
 
@@ -180,45 +256,60 @@ export class Dedust {
     quote: DedustConfig.DedustQuote,
     isBuy: boolean,
   ): Promise<DedustConfig.DedustTradeResult> {
-    const keyPar = await this.chain.getAccountFromAddress(account);
-    const wallet = WalletContractV4.create({
-      workchain: this.chain.workchain,
-      publicKey: Buffer.from(keyPar.publicKey, 'utf8'),
-    });
-
-    const walletContract = this.chain.tonClient.open(wallet);
-    const sender: Sender = {
-      address: walletContract.address,
-      async send(args: SenderArguments) {
-        return walletContract.sendTransfer({
-          secretKey: Buffer.from(keyPar.secretKey, 'utf8'),
-          messages: [
-            {
-              body: args.body || beginCell().endCell(),
-              info: {
-                type: 'internal',
-                ihrDisabled: true,
-                bounce: true,
-                bounced: false,
-                dest: args.to,
-                value: { coins: args.value },
-                ihrFee: BigInt(0),
-                forwardFee: BigInt(0),
-                createdLt: BigInt(0),
-                createdAt: 0,
-              },
-            },
-          ],
-          seqno: await walletContract.getSeqno(),
-        });
-      },
-    };
+    if (!this._ready) {
+      throw new InitializationError(
+        SERVICE_UNITIALIZED_ERROR_MESSAGE('Dedust'),
+        SERVICE_UNITIALIZED_ERROR_CODE,
+      );
+    }
 
     try {
+      const keyPar = await this.chain.getAccountFromAddress(account);
+      if (!keyPar) {
+        throw new Error('Failed to get account keys');
+      }
+
+      const wallet = WalletContractV4.create({
+        workchain: this.chain.workchain,
+        publicKey: Buffer.from(keyPar.publicKey, 'utf8'),
+      });
+
+      const walletContract = this.chain.tonClient.open(wallet);
+      const sender: Sender = {
+        address: walletContract.address,
+        async send(args: SenderArguments) {
+          return walletContract.sendTransfer({
+            secretKey: Buffer.from(keyPar.secretKey, 'utf8'),
+            messages: [
+              {
+                body: args.body || beginCell().endCell(),
+                info: {
+                  type: 'internal',
+                  ihrDisabled: true,
+                  bounce: true,
+                  bounced: false,
+                  dest: args.to,
+                  value: { coins: args.value },
+                  ihrFee: BigInt(0),
+                  forwardFee: BigInt(0),
+                  createdLt: BigInt(0),
+                  createdAt: 0,
+                },
+              },
+            ],
+            seqno: await walletContract.getSeqno(),
+          });
+        },
+      };
+
       const slippage = this.getSlippage();
       const minExpectedOut = BigInt(
         Math.floor(Number(quote.expectedOut) * (1 - slippage)),
       );
+
+      if (minExpectedOut <= BigInt(0)) {
+        throw new Error(AMOUNT_LESS_THAN_MIN_AMOUNT_ERROR_MESSAGE);
+      }
 
       if (quote.fromAsset.type === AssetType.NATIVE) {
         // Swapping TON to Jetton - use VaultNative directly
@@ -280,11 +371,40 @@ export class Dedust {
       };
     } catch (error) {
       logger.error(`Failed to execute swap: ${error}`);
+
+      if (error instanceof Error) {
+        if (error.message.includes('insufficient funds')) {
+          return {
+            txId: '',
+            success: false,
+            error: INSUFFICIENT_FUNDS_ERROR_MESSAGE,
+          };
+        }
+        if (error.message.includes('network')) {
+          return {
+            txId: '',
+            success: false,
+            error: NETWORK_ERROR_MESSAGE,
+          };
+        }
+        if (error.message.includes('min amount')) {
+          return {
+            txId: '',
+            success: false,
+            error: AMOUNT_LESS_THAN_MIN_AMOUNT_ERROR_MESSAGE,
+          };
+        }
+        return {
+          txId: '',
+          success: false,
+          error: TRADE_FAILED_ERROR_MESSAGE + error.message,
+        };
+      }
+
       return {
         txId: '',
         success: false,
-        error:
-          error instanceof Error ? error.message : 'Unknown error occurred',
+        error: TRADE_FAILED_ERROR_MESSAGE + 'Unknown error occurred',
       };
     }
   }

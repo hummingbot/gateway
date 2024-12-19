@@ -9,6 +9,7 @@ export namespace DedustConfig {
     tradingTypes: Array<string>;
     chainType: string;
     availableNetworks: Array<AvailableNetworks>;
+    maxPriceImpact?: number;
   }
 
   export interface SwapEstimate {
@@ -24,6 +25,8 @@ export namespace DedustConfig {
     fromAsset: Asset;
     toAsset: Asset;
     expectedOut: bigint;
+    priceImpact: number;
+    tradeFee: bigint;
   }
 
   export interface DedustTradeResult {
@@ -41,5 +44,6 @@ export namespace DedustConfig {
     availableNetworks: [
       { chain: 'ton', networks: ['mainnet'] },
     ],
+    maxPriceImpact: 15,
   };
 } 
