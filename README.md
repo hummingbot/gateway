@@ -25,6 +25,9 @@ yarn
 # Complile Typescript into JS
 $ yarn build
 
+# If build ends with errors
+$ yarn copy-files
+
 # Run Gateway setup script, which helps you set configs and CERTS_PATH
 $ chmod a+x gateway-setup.sh
 $ ./gateway-setup.sh
