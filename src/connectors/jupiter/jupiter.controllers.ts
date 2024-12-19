@@ -68,27 +68,6 @@ export async function getTradeInfo(
       'ExactIn'
     );
   }
-
-  logger.info(`Quote details:
-    inAmount: ${quote.inAmount}
-    outAmount: ${quote.outAmount}
-    side: ${tradeSide}
-    priceImpactPct: ${quote.priceImpactPct}
-    slippageBps: ${quote.slippageBps}
-    otherAmountThreshold: ${quote.otherAmountThreshold}
-    swapMode: ${quote.swapMode}
-    contextSlot: ${quote.contextSlot}
-    timeTaken: ${quote.timeTaken}`);
-
-  logger.info(`Token details:
-    Base Token:
-      symbol: ${baseToken.symbol}
-      address: ${baseToken.address}
-      decimals: ${baseToken.decimals}
-    Quote Token:  
-      symbol: ${quoteToken.symbol}
-      address: ${quoteToken.address} 
-      decimals: ${quoteToken.decimals}`);
   
   const baseAmount = tradeSide === 'BUY'
     ? Number(quote.outAmount) / (10 ** baseToken.decimals)
@@ -97,23 +76,6 @@ export async function getTradeInfo(
     ? Number(quote.inAmount) / (10 ** quoteToken.decimals)
     : Number(quote.outAmount) / (10 ** quoteToken.decimals)
 
-  logger.info(`Base amount calculation:
-    tradeSide: ${tradeSide}
-    rawAmount: ${tradeSide === 'BUY' ? quote.outAmount : quote.inAmount}
-    tokenDecimals: ${baseToken.decimals}
-    calculatedBaseAmount: ${baseAmount}`);
-    
-  logger.info(`Quote amount calculation:
-    tradeSide: ${tradeSide}
-    rawAmount: ${tradeSide === 'BUY' ? quote.inAmount : quote.outAmount}
-    tokenDecimals: ${quoteToken.decimals}
-    calculatedQuoteAmount: ${quoteAmount}`);
-
-  logger.info(`Price calculation:
-    numerator: ${quoteAmount}
-    denominator: ${baseAmount}
-    price: ${Number(quoteAmount)} / ${Number(baseAmount)}
-  `);
   const expectedPrice = Number(quoteAmount) / Number(baseAmount);
   const expectedAmount = Number(quoteAmount);
 
@@ -248,6 +210,9 @@ export async function trade(
     req.side === 'BUY' ? Number(expectedAmount) : Number(req.amount), // amount
     slippagePct
   );
+
+  // Simplified logging
+  logger.info(`Swap executed: ${swapResult.signature} - Input: ${swapResult.totalInputSwapped} ${req.side === 'BUY' ? quoteToken.symbol : baseToken.symbol}, Output: ${swapResult.totalOutputSwapped} ${req.side === 'BUY' ? baseToken.symbol : quoteToken.symbol}`);
 
   const response: TradeResponse = {
     network: solanaish.network,

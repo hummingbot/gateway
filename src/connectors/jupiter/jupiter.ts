@@ -73,17 +73,12 @@ export class Jupiter {
 
   getSlippagePct(): number {
     const allowedSlippage = this._config.allowedSlippage;
-    console.log('allowedSlippage:', allowedSlippage);
-
     const nd = allowedSlippage.match(percentRegexp);
-    console.log('regex match result:', nd);
-
     let slippage = 0.0;
     if (nd) {
-        console.log('numerator (nd[1]):', nd[1]);
-        console.log('denominator (nd[2]):', nd[2]);
         slippage = Number(nd[1]) / Number(nd[2]);
-        console.log('calculated slippage:', slippage);
+    } else {
+        console.error('Failed to parse slippage value:', allowedSlippage);
     }
     return slippage * 100;
   }
