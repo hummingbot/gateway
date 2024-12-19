@@ -4,8 +4,8 @@ import fs from 'fs';
 import fse from 'fs-extra';
 import path from 'path';
 import yaml from 'js-yaml';
-import * as migrations from './config-migration/migrations';
-import { rootPath } from '../paths';
+import * as migrations from './services/config-migration/migrations';
+import { rootPath } from './paths';
 
 type Configuration = { [key: string]: any };
 type ConfigurationDefaults = { [namespaceId: string]: Configuration };
