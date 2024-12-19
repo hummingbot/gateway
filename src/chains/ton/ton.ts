@@ -2,7 +2,7 @@ import LRUCache from 'lru-cache';
 import { getTonConfig } from './ton.config';
 import { mnemonicToPrivateKey } from "@ton/crypto";
 import TonWeb from "tonweb";
-import { OpenedContract, TonClient } from "@ton/ton";
+import { OpenedContract, TonClient, WalletContractV4, Address, beginCell, storeMessage } from "@ton/ton";
 import { DEX, pTON } from "@ston-fi/sdk";
 import { PollResponse, TonAsset } from './ton.requests';
 import fse from 'fs-extra';
@@ -14,6 +14,7 @@ import { TokenListType, walletPath } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { RouterV2_1 } from '@ston-fi/sdk/dist/contracts/dex/v2_1/router/RouterV2_1';
 import { PtonV2_1 } from '@ston-fi/sdk/dist/contracts/pTON/v2_1/PtonV2_1';
+import { logger } from '../../services/logger';
 
 
 type AssetListType = TokenListType;
@@ -183,6 +184,15 @@ export class Ton {
   }
 
 
+  async getAccount(address: string) {
+    let mnemonics = await mnemonicNew(64, address);
+    let keyPair = await mnemonicToPrivateKey(mnemonics);
+    let workchain = 0; // Usually you need a workchain 0
+    let wallet = WalletContractV4.create({ workchain, publicKey: keyPair.publicKey });
+    const contract = this.tonClient.open(wallet);
+    return contract
+  }
+
   async getAccountFromAddress(address: string) {
     const path = `${walletPath}/${this._chain}`;
     const encryptedMnemonic: string = await fse.readFile(
@@ -199,7 +209,6 @@ export class Ton {
       { length: 24 },
       (_, i) => `${mnemonic} ${i + 1}`
     );
-
 
     const keys = await mnemonicToPrivateKey(mnemonics);
 
@@ -312,5 +321,48 @@ export class Ton {
 
   public get storedTokenList() {
     return this._assetMap;
+  }
+
+  public async waitForTransactionByMessage(address: Address, messageBase64: string, timeout: number = 30000): Promise<string | null> {
+    return new Promise((resolve) => {
+      const startTime = Date.now();
+      const interval = setInterval(async () => {
+        try {
+          // Check for timeout
+          if (Date.now() - startTime > timeout) {
+            clearInterval(interval);
+            resolve(null);
+            return;
+          }
+
+          const state = await this.tonClient.getContractState(address);
+          if (!state || !state.lastTransaction) {
+            return;
+          }
+
+          const transactions = await this.tonClient.getTransactions(address, {
+            limit: 1,
+            lt: state.lastTransaction.lt,
+            hash: state.lastTransaction.hash
+          });
+
+          if (transactions.length > 0) {
+            const tx = transactions[0];
+            if (tx.inMessage) {
+              const msgCell = beginCell().store(storeMessage(tx.inMessage)).endCell();
+              const inMsgHash = msgCell.hash().toString('base64');
+              
+              if (inMsgHash === messageBase64) {
+                clearInterval(interval);
+                resolve(tx.hash().toString('base64'));
+                return;
+              }
+            }
+          }
+        } catch (error) {
+          logger.error(`Error while waiting for transaction: ${error}`);
+        }
+      }, 1000);
+    });
   }
 }
