@@ -1,5 +1,7 @@
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { AvailableNetworks } from '../../services/config-manager-types';
+import { OpenedContract } from '@ton/core';
+import { Pool, VaultNative, VaultJetton, Asset } from '@dedust/sdk';
 
 export namespace DedustConfig {
   export interface NetworkConfig {
@@ -9,21 +11,25 @@ export namespace DedustConfig {
     availableNetworks: Array<AvailableNetworks>;
   }
 
-  export interface DedustQuoteRes {
-    to: string;
-    value: string;
-    payload: string;
-    fromAmount: string;
-    toAmount: string;
-    priceImpact: string;
-    route: {
-      fromToken: string;
-      toToken: string;
-      pools: Array<{
-        address: string;
-        fee: string;
-      }>;
-    };
+  export interface SwapEstimate {
+    amountOut: bigint;
+    tradeFee: bigint;
+    assetOut: Asset;
+  }
+
+  export interface DedustQuote {
+    pool: OpenedContract<Pool>;
+    vault: OpenedContract<VaultNative | VaultJetton>;
+    amount: bigint;
+    fromAsset: Asset;
+    toAsset: Asset;
+    expectedOut: bigint;
+  }
+
+  export interface DedustTradeResult {
+    txId: string;
+    success: boolean;
+    error?: string;
   }
 
   export const config: NetworkConfig = {
