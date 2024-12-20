@@ -1,60 +1,26 @@
-// import { StonApiClient } from "@ston-fi/api";
-// import { mnemonicToPrivateKey } from "@ton/crypto";
-// import TonWeb, { AddressType } from "tonweb";
-// import { WalletV3ContractR1 } from "tonweb/dist/types/contract/wallet/v3/wallet-v3-contract-r1";
-//
-// import { TonClient, toNano } from "@ton/ton";
-// import { DEX, pTON } from "@ston-fi/sdk";
-//
-//
-//
-// //RUN TESTS: npx tsx src/connectors/ston_fi/test.ts
-//
-// const testnetSeedPhase = "ramp diet proof curve admit steak gospel jump twelve cigar clean inmate victory asthma change random left model conduct stay real any disease metal"
-//
-// //const tonweb = new TonWeb(new TonWeb.HttpProvider('https://testnet.toncenter.com/api/v2/jsonRPC'));
-// const tonweb = new TonWeb(new TonWeb.HttpProvider('https://toncenter.com/api/v2/jsonRPC'));
-// const stonfi = new StonApiClient()
-// const address = 'EQBibkPM-RnqV4OKguNTStuN4MFpR0a91OPmitogqC6SKIqt';
-// let publicKey: string
-//
-//
-// async function main() {
-//     try {
-//         const mnemonics = Array.from(
-//             { length: 24 },
-//             (_, i) => `${testnetSeedPhase} ${i + 1}`
-//         );
-//         const keys = await mnemonicToPrivateKey(mnemonics);
-//         publicKey = keys.publicKey.toString("utf8");
-//
-//         //call Ton Methods
-//         //await tonMethods();
-//
-//
-//         //call Ston.fi Methods
-//         await stonfiMethods();
-//
-//         return ""
-//     } catch (error: any) {
-//         console.log(error)
-//         return error
-//     }
-// }
-//
-// const tonMethods = async () => {
-//     // const wallet = tonweb.wallet.create({ address });
-//     // const balance = await tonweb.getBalance(address);
-//     // const transactions = await tonweb.getTransactions(address, 1);
-//     // const block = await tonweb.provider.getMasterchainInfo()
-// }
-//
-//
-//
-// const stonfiMethods = async () => {
-//   const res = stonfi.simulateSwap()
-// }
-//
-//
-//
-// main().then(e => console.log(e)).catch(err => console.log(err))
+import { mnemonicToPrivateKey, mnemonicToWalletKey } from "@ton/crypto";
+
+const mnemonic = "mammal entry lyrics addict swear sight artefact clog survey oil empower trip skill hospital similar piano slush bright gas depend warm whale marine merit"
+const password = "Xu@O#s$iXC%K00@E0qIAGzEqCL*^HL#iJnrUhU3f@wdrbcZ&cJ!yp65Uo2oln*#44pZl3mU*bnypm2^$JCqGwfJuYmz9^MeYhe3m"
+async function main() {
+    // we also tried with the wallet backup password, and other variations, among other variations like using mnemonicToSeed, etc
+    const keys1 = await mnemonicToPrivateKey(mnemonic.split(" "));
+    const keys2 = await mnemonicToPrivateKey(mnemonic.split(" "), password);
+    const keys3 = await mnemonicToWalletKey(mnemonic.split(" "), password);
+    const keys4 = await mnemonicToWalletKey(mnemonic.split(" "));
+
+    // Criando constantes e logs para cada chave gerada
+    const publicKeyBase64_1 = keys1.publicKey.toString("base64url");
+    console.log("Public Key Base64 (private):", publicKeyBase64_1);
+
+    const publicKeyBase64_2 = keys2.publicKey.toString("base64url");
+    console.log("Public Key Base64 (private + pass):", publicKeyBase64_2);
+
+    const publicKeyBase64_3 = keys3.publicKey.toString("base64url");
+    console.log("Public Key Base64 (Wallet):", publicKeyBase64_3);
+
+    const publicKeyBase64_4 = keys4.publicKey.toString("base64url");
+    console.log("Public Key Base64 (Wallet + pass):", publicKeyBase64_4);
+}
+
+main().then(e => console.log(e)).catch(err => console.log(err))

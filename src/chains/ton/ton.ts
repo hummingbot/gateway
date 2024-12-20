@@ -155,13 +155,13 @@ export class Ton {
     };
   }
 
-  public async getAccountFromPrivateKey(mnemonic: string) {
-    const mnemonics = Array.from(
-      { length: 24 },
-      (_, i) => `${mnemonic} ${i + 1}`
-    );
-    const { publicKey } = await mnemonicToPrivateKey(mnemonics);
-    return publicKey.toString("utf8");
+  public async getAccountFromPrivateKey(mnemonic: string): Promise<{ publicKey: string, secretKey: string }> {
+    let mnemonics = await mnemonicNew(24, mnemonic);
+    const keys = await mnemonicToPrivateKey(mnemonics);
+    const publicKey = keys.publicKey.toString("base64");
+    const secretKey = keys.secretKey.toString("base64");
+
+    return { publicKey, secretKey };
   }
 
 
@@ -186,10 +186,7 @@ export class Ton {
     }
     const mnemonic = this.decrypt(encryptedMnemonic, passphrase);
 
-    const mnemonics = Array.from(
-      { length: 24 },
-      (_, i) => `${mnemonic} ${i + 1}`
-    );
+    let mnemonics = await mnemonicNew(24, mnemonic);
 
     const keys = await mnemonicToPrivateKey(mnemonics);
 
@@ -250,7 +247,6 @@ export class Ton {
   }
 
   public async getNativeBalance(account: string): Promise<string> {
-
     const tonAsset = await this.tonweb.getBalance(account);
     return tonAsset.toString();
   }
@@ -326,7 +322,7 @@ export class Ton {
             if (tx.inMessage) {
               const msgCell = beginCell().store(storeMessage(tx.inMessage)).endCell();
               const inMsgHash = msgCell.hash().toString('base64');
-              
+
               if (inMsgHash === messageBase64) {
                 clearInterval(interval);
                 resolve(tx.hash().toString('base64'));

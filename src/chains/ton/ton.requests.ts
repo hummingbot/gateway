@@ -3,6 +3,7 @@ export interface PollRequest {
   txHash: string;
 }
 
+
 export type PollResponse = {
   currentBlock: number;
   txBlock: number | null;

@@ -115,8 +115,9 @@ export async function addWallet(
       );
       address = await tezosWallet.signer.publicKeyHash();
       encryptedPrivateKey = connection.encrypt(req.privateKey, passphrase);
+
     } else if (connection instanceof Ton) {
-      address = await connection.getAccountFromPrivateKey(req.privateKey);
+      address = (await connection.getAccountFromPrivateKey(req.privateKey)).publicKey;
       encryptedPrivateKey = connection.encrypt(req.privateKey, passphrase);
     }
 

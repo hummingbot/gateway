@@ -28,6 +28,7 @@ export const isAlgorandPrivateKeyOrMnemonic = (str: string): boolean => {
   return parts.length === 25;
 };
 
+
 // test if a string matches the shape of an Ethereum private key
 export const isEthPrivateKey = (str: string): boolean => {
   return /^(0x|xdc)?[a-fA-F0-9]{64}$/.test(str);
@@ -56,9 +57,10 @@ export const isTezosPrivateKey = (str: string): boolean => {
 };
 
 // TODO check!!!
-export const isTonPrivateKeyOrMnemonic = (str: string): boolean => {
-  const parts = str.split(' ');
-  return parts.length === 25;
+export const isTonPrivateKeyOrMnemonic = (_str: string): boolean => {
+  // const parts = str.split(' ');
+  // return parts.length === 24;
+  return true
 };
 
 // given a request, look for a key called privateKey that is an Ethereum private key
@@ -145,7 +147,7 @@ export const validatePrivateKey: Validator = mkSelectingValidator(
 );
 
 export const invalidChainError: string =
-  'chain must be "ethereum", "avalanche", "harmony", "cosmos", "osmosis", "binance-smart-chain", or "kujira"';
+  'chain must be "ethereum", "avalanche", "harmony", "cosmos", "osmosis", "binance-smart-chain", "kujira" , or "ton"';
 
 export const invalidNetworkError: string =
   'expected a string for the network key';
