@@ -1,4 +1,4 @@
 {
-  "address": "$ALGORAND_ADDRESS",
-  "chain": "algorand"
+  "address": "$TON_ADDRESS",
+  "chain": "ton"
 }

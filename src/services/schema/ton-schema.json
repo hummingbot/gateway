@@ -13,11 +13,19 @@
             },
             "nodeURL": {
               "type": "string"
+            },
+            "assetListType": {
+              "type": "string"
+            },
+            "assetListSource": {
+              "type": "string"
             }
           },
           "required": [
             "chainId",
-            "nodeURL"
+            "nodeURL",
+            "assetListType",
+            "assetListSource"
           ],
           "additionalProperties": false
         }

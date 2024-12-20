@@ -7,13 +7,17 @@ import { DEX, pTON } from "@ston-fi/sdk";
 import { PollResponse, TonAsset } from './ton.requests';
 import fse from 'fs-extra';
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
-import { StonApiClient } from '@ston-fi/api';
+import { promises as fs } from 'fs';
+import { Omniston } from "@ston-fi/omniston-sdk";
 import { TonController } from './ton.controller';
-import { walletPath } from '../../services/base';
+import { TokenListType, walletPath } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { RouterV2_1 } from '@ston-fi/sdk/dist/contracts/dex/v2_1/router/RouterV2_1';
 import { PtonV2_1 } from '@ston-fi/sdk/dist/contracts/pTON/v2_1/PtonV2_1';
 import { logger } from '../../services/logger';
+
+
+type AssetListType = TokenListType;
 
 export class Ton {
   public nativeTokenSymbol;
@@ -24,8 +28,11 @@ export class Ton {
   public tonClient: TonClient;
   public tonClientRouter: OpenedContract<RouterV2_1>;
   public tonClientproxyTon: PtonV2_1;
+  public omniston: Omniston;
   private _chain: string = 'ton';
   private _ready: boolean = false;
+  private _assetListType: AssetListType;
+  private _assetListSource: string;
   public gasPrice: number;
   public gasLimit: number;
   public gasCost: number;
@@ -35,6 +42,8 @@ export class Ton {
   constructor(
     network: string,
     nodeUrl: string,
+    assetListType: AssetListType,
+    assetListSource: string
   ) {
     this._network = network;
     const config = getTonConfig(network);
@@ -49,6 +58,11 @@ export class Ton {
     this.tonClientproxyTon = pTON.v2_1.create(
       "kQACS30DNoUQ7NfApPvzh7eBmSZ9L4ygJ-lkNWtba8TQT-Px" // pTON v2.1.0
     );
+    this._assetListType = assetListType;
+    this._assetListSource = assetListSource;
+    this.omniston = new Omniston({
+      apiUrl: this._assetListSource,
+    });
     this.gasPrice = 0;
     this.gasLimit = 0;
     this.gasCost = 0.001;
@@ -93,11 +107,16 @@ export class Ton {
     if (!Ton._instances.has(config.network.name)) {
       if (network !== null) {
         const nodeUrl = config.network.nodeURL;
+        const assetListType = config.network.assetListType as TokenListType;
+        const assetListSource = config.network.assetListSource;
+
         Ton._instances.set(
           config.network.name,
           new Ton(
             network,
-            nodeUrl
+            nodeUrl,
+            assetListType,
+            assetListSource
           )
         );
       } else {
@@ -278,16 +297,23 @@ export class Ton {
     for (const result of assetData) {
       this._assetMap[result.symbol] = {
         symbol: result.symbol,
-        assetId: result.contractAddress,
+        assetId: result.address.address,
         decimals: result.decimals,
       };
     }
   }
 
+
   private async getAssetData(): Promise<any> {
-    const client = new StonApiClient();
-    const assets = await client.getAssets();
-    return assets
+    let assetData;
+    if (this._assetListType === 'URL') {
+      const assets = await this.omniston.assetList();
+      assetData = assets.assets;
+    } else {
+      const data = JSON.parse(await fs.readFile(this._assetListSource, 'utf8'));
+      assetData = data.results;
+    }
+    return assetData;
   }
 
   public get storedTokenList() {
