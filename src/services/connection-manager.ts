@@ -9,6 +9,7 @@ import { Xdc } from '../chains/xdc/xdc';
 import { Tezos } from '../chains/tezos/tezos';
 import { Telos } from '../chains/telos/telos';
 import { Osmosis } from '../chains/osmosis/osmosis';
+import { Solana } from '../chains/solana/solana';
 import { MadMeerkat } from '../connectors/mad_meerkat/mad_meerkat';
 import { Openocean } from '../connectors/openocean/openocean';
 import { Pangolin } from '../connectors/pangolin/pangolin';
@@ -38,8 +39,10 @@ import { Balancer } from '../connectors/balancer/balancer';
 import { ETCSwapLP } from '../connectors/etcswap/etcswap.lp';
 import { EthereumClassicChain } from '../chains/ethereum-classic/ethereum-classic';
 import { ETCSwap } from '../connectors/etcswap/etcswap';
+import { Jupiter } from '../connectors/jupiter/jupiter';
 import { Ton } from '../chains/ton/ton';
 import { Stonfi } from '../connectors/ston_fi/ston_fi';
+import { Dedust } from '../connectors/dedust/dedust';
 
 export type ChainUnion =
   | Algorand
@@ -48,23 +51,26 @@ export type ChainUnion =
   | Xdcish
   | Tezosish
   | Osmosis
-  | Ton;
+  | Solana
+	| Ton;
 
 export type Chain<T> = T extends Algorand
   ? Algorand
   : T extends Cosmos
-  ? Cosmos
-  : T extends Ethereumish
-  ? Ethereumish
-  : T extends Xdcish
-  ? Xdcish
-  : T extends Tezosish
-  ? Tezosish
-  : T extends Osmosis
-  ? Osmosis
-  : T extends Ton
-  ? Ton
-  : never;
+    ? Cosmos
+    : T extends Ethereumish
+      ? Ethereumish
+        : T extends Xdcish
+          ? Xdcish
+            : T extends Tezosish
+              ? Tezosish
+                : T extends Osmosis
+                  ? Osmosis
+                    : T extends Solana
+                    ? Solana
+											: T extends Ton
+											? Ton
+												: never;
 
 export class UnsupportedChainException extends Error {
   constructor(message?: string) {
@@ -105,6 +111,8 @@ export async function getChainInstance(
     connection = Algorand.getInstance(network);
   } else if (chain === 'ethereum') {
     connection = Ethereum.getInstance(network);
+  } else if (chain === 'solana') {
+    connection = Solana.getInstance(network);
   } else if (chain === 'avalanche') {
     connection = Avalanche.getInstance(network);
   } else if (chain === 'harmony') {
@@ -144,19 +152,25 @@ export type ConnectorUnion =
   | Tinyman
   | Plenty
   | Curve
+  | Jupiter
   | Stonfi
+  | Dedust
 
 export type Connector<T> = T extends Uniswapish
   ? Uniswapish
   : T extends UniswapLPish
-  ? UniswapLPish
-  : T extends Tinyman
-  ? Tinyman
-  : T extends Plenty
-  ? Plenty
-  : T extends Stonfi
-  ? Stonfi
-  : never;
+    ? UniswapLPish
+      : T extends Tinyman
+        ? Tinyman
+        : T extends Plenty
+          ? Plenty
+          : T extends Jupiter
+            ? Jupiter
+            : T extends Stonfi
+              ? Stonfi
+                : T extends Dedust
+                    ? Dedust
+								: never;
 
 export async function getConnector<T>(
   chain: string,
@@ -169,6 +183,8 @@ export async function getConnector<T>(
     connectorInstance = Uniswap.getInstance(chain, network);
   } else if (connector === 'uniswapLP') {
     connectorInstance = UniswapLP.getInstance(chain, network);
+  } else if (connector === 'jupiter') {
+    connectorInstance = Jupiter.getInstance(network);
   } else if (connector === 'quickswap') {
     connectorInstance = Quickswap.getInstance(chain, network);
   } else if (connector === 'pangolin') {
@@ -205,6 +221,8 @@ export async function getConnector<T>(
     connectorInstance = ETCSwapLP.getInstance(chain, network);
   } else if (connector == 'stonfi') {
     connectorInstance = Stonfi.getInstance(network);
+  } else if (connector == 'dedust') {
+    connectorInstance = Dedust.getInstance(network)
   } else {
     throw new Error('unsupported chain or connector');
   }

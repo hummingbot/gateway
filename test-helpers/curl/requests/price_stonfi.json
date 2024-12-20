@@ -1,9 +1,9 @@
 {
-  "connector": "tinyman",
-  "chain": "algorand",
+  "connector": "ston_fi",
+  "chain": "ton",
   "network": "mainnet",
   "quote": "USDC",
-  "base": "ALGO",
+  "base": "BTC",
   "amount": "1",
   "side": "BUY"
 }

@@ -43,10 +43,10 @@ export class TonController {
     const balances: Record<string, string> = {};
 
     const account = await chain.getAccountFromAddress(request.address);
-    // const balance = await account.getBalance()
+
 
     if (request.tokenSymbols.includes(chain.nativeTokenSymbol)) {
-      balances[chain.nativeTokenSymbol] = await chain.getNativeBalance(account.publicKey.toString());
+      balances[chain.nativeTokenSymbol] = await chain.getNativeBalance(account.publicKey);
     }
 
     for (const token of request.tokenSymbols) {

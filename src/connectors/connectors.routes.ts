@@ -20,7 +20,9 @@ import { OsmosisConfig } from '../chains/osmosis/osmosis.config';
 import { CarbonConfig } from './carbon/carbon.config';
 import { BalancerConfig } from './balancer/balancer.config';
 import { ETCSwapConfig } from './etcswap/etcswap.config';
+import { JupiterConfig } from './jupiter/jupiter.config';
 import { StonfiConfig } from './ston_fi/ston_fi.config';
+import { DedustConfig } from './dedust/dedust.config';
 
 export namespace ConnectorsRoutes {
   export const router = Router();
@@ -44,6 +46,12 @@ export namespace ConnectorsRoutes {
               JSON.stringify(UniswapConfig.config.availableNetworks)
             ),
             additional_spenders: ['uniswap'],
+          },
+          {
+            name: 'jupiter',
+            trading_type: JupiterConfig.config.tradingTypes,
+            chain_type: JupiterConfig.config.chainType,
+            available_networks: JupiterConfig.config.availableNetworks,
           },
           {
             name: 'pangolin',
@@ -160,6 +168,12 @@ export namespace ConnectorsRoutes {
             trading_type: StonfiConfig.config.tradingTypes,
             chain_type: StonfiConfig.config.chainType,
             available_networks: StonfiConfig.config.availableNetworks,
+          },
+          {
+            name: 'dedust',
+            trading_type: DedustConfig.config.tradingTypes,
+            chain_type: DedustConfig.config.chainType,
+            available_networks: DedustConfig.config.availableNetworks,
           },
         ],
       });

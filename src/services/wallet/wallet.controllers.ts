@@ -2,6 +2,7 @@ import fse from 'fs-extra';
 import { Xdc } from '../../chains/xdc/xdc';
 import { Cosmos } from '../../chains/cosmos/cosmos';
 import { Tezos } from '../../chains/tezos/tezos';
+import { Solana } from '../../chains/solana/solana';
 
 import {
   AddWalletRequest,
@@ -115,8 +116,16 @@ export async function addWallet(
       );
       address = await tezosWallet.signer.publicKeyHash();
       encryptedPrivateKey = connection.encrypt(req.privateKey, passphrase);
+    } else if (connection instanceof Solana) {
+      address = connection
+        .getKeypairFromPrivateKey(req.privateKey)
+        .publicKey.toBase58();
+      encryptedPrivateKey = await connection.encrypt(
+        req.privateKey,
+        passphrase
+      );
     } else if (connection instanceof Ton) {
-      address = await connection.getAccountFromPrivateKey(req.privateKey);
+      address = (await connection.getAccountFromPrivateKey(req.privateKey)).publicKey;
       encryptedPrivateKey = connection.encrypt(req.privateKey, passphrase);
     }
 

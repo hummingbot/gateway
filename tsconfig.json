@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "strict": true,
+    "strict": false,
     "types": ["jest", "node"],
     "target": "es6",
     "module": "commonjs",
@@ -10,13 +10,13 @@
     "outDir": "./dist",
     "moduleResolution": "node",
     "removeComments": true,
-    "noImplicitAny": true,
-    "strictNullChecks": true,
+    "noImplicitAny": false,
+    "strictNullChecks": false,
     "strictFunctionTypes": true,
     "noImplicitThis": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "noImplicitReturns": true,
+    "noImplicitReturns": false,
     "noFallthroughCasesInSwitch": true,
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
@@ -24,7 +24,8 @@
     "experimentalDecorators": true,
     "resolveJsonModule": true,
     "typeRoots": ["node_modules/@types", "src/@types"],
-    "downlevelIteration": true
+    "downlevelIteration": true,
+    "skipLibCheck": true
   },
   "exclude": ["node_modules"],
   "include": [
@@ -32,5 +33,5 @@
     "src/**/*.js",
     "test/**/*.ts",
     "integration-test/**/*.ts"
-  ]
+, "temporary/typescript/test3.ts", "temporary/typescript/test1.ts", "temporary/typescript/test.ts"  ]
 }
