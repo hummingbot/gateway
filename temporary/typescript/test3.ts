@@ -1,30 +1,21 @@
-import { mnemonicNew, mnemonicToPrivateKey } from "@ton/crypto";
-import { TonClient, WalletContractV4, Address } from "@ton/ton";
+import { mnemonicToPrivateKey } from "@ton/crypto";
+import { TonClient, WalletContractV3R2 } from "@ton/ton";
 
-const mnemonic = "mammal entry lyrics addict swear sight artefact clog survey oil empower trip skill hospital similar piano slush bright gas depend warm whale marine merit"
+const mnemonic = "mammal entry lyrics addict swear sight artefact clog survey oil empower trip skill hospital similar piano slush bright gas depend warm whale marine merit".split(" ")
 
 async function main() {
-    const tonClient = new TonClient({ endpoint: "https://testnet.toncenter.com/api/v2/jsonRPC" });
-
-    let mnemonics = await mnemonicNew(24, mnemonic);
-    let keyPair = await mnemonicToPrivateKey(mnemonics);
+    const tonClient = new TonClient({ endpoint: "https://testnet.toncenter.com/api/v2/jsonRPC" }); // testnet
+    // const tonClient = new TonClient({ endpoint: "https://toncenter.com/api/v2/jsonRPC" });
+    console.log(mnemonic)
+    let keyPair = await mnemonicToPrivateKey(mnemonic);
     let workchain = 0;
-    let wallet = WalletContractV4.create({ workchain, publicKey: keyPair.publicKey, });
+    const wallet = WalletContractV3R2.create({ workchain, publicKey: keyPair.publicKey, });
     const contract = tonClient.open(wallet);
 
+    const address = contract.address.toStringBuffer({ bounceable: false, testOnly: true })
+    console.log("Result:", address.toString("base64url"));
+    // console.log("KeyPair:", keyPair.publicKey.toString("base64url"));
 
-    // Criando constantes e logs para cada chave gerada
-    const address = keyPair.publicKey.toString("base64url");
-    console.log("Address:", address.toString());
-
-    // const publicKeyBase64_2 = contract.publicKey;
-    // console.log("Public Key Base64 ():", Address.parseFriendly(publicKeyBase64_2));
-
-    // const publicKeyBase64_3 = contract.walletId.toString();
-    // console.log("Wallet ID ():", publicKeyBase64_3);
-
-    // const publicKeyBase64_4 = contract.publicKey.toString("base64url");
-    // console.log("Public Key Base64 (Wallet + pass):", publicKeyBase64_4);
 }
 
 main().then(e => console.log(e)).catch(err => console.log(err))

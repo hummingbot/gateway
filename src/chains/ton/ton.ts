@@ -1,14 +1,15 @@
 import LRUCache from 'lru-cache';
 import { getTonConfig } from './ton.config';
-import { mnemonicNew, mnemonicToPrivateKey } from "@ton/crypto";
+import { mnemonicToPrivateKey } from "@ton/crypto";
 import TonWeb from "tonweb";
-import { OpenedContract, TonClient, WalletContractV4, Address, beginCell, storeMessage } from "@ton/ton";
+import { OpenedContract, TonClient, Address, beginCell, storeMessage, WalletContractV3R2, address } from "@ton/ton";
 import { DEX, pTON } from "@ston-fi/sdk";
 import { PollResponse, TonAsset } from './ton.requests';
 import fse from 'fs-extra';
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 import { promises as fs } from 'fs';
 import { Omniston } from "@ston-fi/omniston-sdk";
+
 import { TonController } from './ton.controller';
 import { TokenListType, walletPath } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
@@ -175,25 +176,17 @@ export class Ton {
   }
 
   public async getAccountFromPrivateKey(mnemonic: string): Promise<{ publicKey: string, secretKey: string }> {
-    let mnemonics = await mnemonicNew(24, mnemonic);
-    const keys = await mnemonicToPrivateKey(mnemonics);
-    const publicKey = keys.publicKey.toString("base64");
-    const secretKey = keys.secretKey.toString("base64");
-
+    let keyPair = await mnemonicToPrivateKey(mnemonic.split(" "));
+    let workchain = 0;
+    const wallet = WalletContractV3R2.create({ workchain, publicKey: keyPair.publicKey, });
+    const contract = this.tonClient.open(wallet);
+    const address = contract.address.toStringBuffer({ bounceable: false, testOnly: true })
+    const publicKey = address.toString("base64url");
+    const secretKey = keyPair.secretKey.toString("utf8");
     return { publicKey, secretKey };
   }
 
-
-  async getAccount(address: string) {
-    let mnemonics = await mnemonicNew(24, address);
-    let keyPair = await mnemonicToPrivateKey(mnemonics);
-    let workchain = 0; // Usually you need a workchain 0
-    let wallet = WalletContractV4.create({ workchain, publicKey: keyPair.publicKey });
-    const contract = this.tonClient.open(wallet);
-    return contract
-  }
-
-  async getAccountFromAddress(address: string) {
+  async getAccountFromAddress(address: string): Promise<{ publicKey: string, secretKey: string }> {
     const path = `${walletPath}/${this._chain}`;
     const encryptedMnemonic: string = await fse.readFile(
       `${path}/${address}.json`,
@@ -204,14 +197,14 @@ export class Ton {
       throw new Error('missing passphrase');
     }
     const mnemonic = this.decrypt(encryptedMnemonic, passphrase);
-
-    let mnemonics = await mnemonicNew(24, mnemonic);
-
-    const keys = await mnemonicToPrivateKey(mnemonics);
-
+    let keyPair = await mnemonicToPrivateKey(mnemonic.split(" "));
+    let workchain = 0;
+    const wallet = WalletContractV3R2.create({ workchain, publicKey: keyPair.publicKey, });
+    const contract = this.tonClient.open(wallet);
+    const publicKey = contract.address.toStringBuffer({ bounceable: false, testOnly: true })
     return {
-      publicKey: keys.publicKey.toString("utf8"),
-      secretKey: keys.secretKey.toString("utf8")
+      publicKey: publicKey.toString("base64url"),
+      secretKey: wallet.publicKey.toString("utf8")
     }
   }
 
@@ -253,7 +246,7 @@ export class Ton {
     const tonAsset = this._assetMap[assetName];
     let balance;
     try {
-      const response = await this.tonweb.getBalance(account);
+      const response = await this.tonClient.getBalance(address(account));
       balance = Number(response);
     } catch (error: any) {
       if (!error.message.includes('account asset info not found')) {
@@ -266,7 +259,7 @@ export class Ton {
   }
 
   public async getNativeBalance(account: string): Promise<string> {
-    const tonAsset = await this.tonweb.getBalance(account);
+    const tonAsset = await this.tonClient.getBalance(address(account));
     return tonAsset.toString();
   }
 
