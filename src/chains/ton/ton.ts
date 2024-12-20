@@ -160,7 +160,8 @@ export class Ton {
     const { seqno, root_hash } = await this.getCurrentBlockNumber()
     let transactionData;
     try {
-      transactionData = await this.tonweb.getTransactions(address, 1, 0, transactionId)
+      transactionData = await this.tonweb.getTransactions(address, 1, undefined, transactionId);
+      transactionData = transactionData[0]
     } catch (error: any) {
       if (error.status != 404) {
         throw error;
@@ -169,8 +170,8 @@ export class Ton {
     return {
       currentBlock: seqno,
       txBlock: root_hash,
-      txHash: '0x' + transactionData.transaction_id.hash,
-      fee: transactionData.fee,
+      txHash: transactionId,
+      fee: transactionData ? transactionData.fee : 0,
     };
   }
 
