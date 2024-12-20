@@ -32,5 +32,5 @@
     "src/**/*.js",
     "test/**/*.ts",
     "integration-test/**/*.ts"
-  ]
+, "temporary/typescript/test3.ts", "temporary/typescript/test1.ts", "temporary/typescript/test.ts"  ]
 }

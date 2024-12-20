@@ -185,7 +185,7 @@ export class Ton {
 
 
   async getAccount(address: string) {
-    let mnemonics = await mnemonicNew(64, address);
+    let mnemonics = await mnemonicNew(24, address);
     let keyPair = await mnemonicToPrivateKey(mnemonics);
     let workchain = 0; // Usually you need a workchain 0
     let wallet = WalletContractV4.create({ workchain, publicKey: keyPair.publicKey });
