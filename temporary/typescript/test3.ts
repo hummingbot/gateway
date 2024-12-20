@@ -14,8 +14,8 @@ async function main() {
 
 
     // Criando constantes e logs para cada chave gerada
-    const address = contract.address.toString();
-    console.log("Address:", Address.parseFriendly(address));
+    const address = keyPair.publicKey.toString("base64url");
+    console.log("Address:", address.toString());
 
     // const publicKeyBase64_2 = contract.publicKey;
     // console.log("Public Key Base64 ():", Address.parseFriendly(publicKeyBase64_2));
