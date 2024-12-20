@@ -1,12 +1,14 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
+  "description": "Schema for dedust configuration",
   "properties": {
-    "allowedSlippage": { "type": "string" },
-    "maxPriceImpact": { "type": "number" }
+    "allowedSlippage": {
+      "type": "string",
+      "description": "The allowed slippage for trades, expressed as a rational number (e.g. '2/100')",
+      "pattern": "^[0-9]+/[0-9]+$"
+    }
   },
-  "additionalProperties": false,
-  "required": [
-    "allowedSlippage"
-  ]
+  "required": ["allowedSlippage"],
+  "additionalProperties": false
 } 
