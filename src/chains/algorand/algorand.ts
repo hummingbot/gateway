@@ -174,7 +174,6 @@ export class Algorand {
   public getAccountFromPrivateKey(mnemonic: string): Account {
     return mnemonicToSecretKey(mnemonic);
   }
-
   async getAccountFromAddress(address: string): Promise<Account> {
     const path = `${walletPath}/${this._chain}`;
     const encryptedMnemonic: string = await fse.readFile(
@@ -194,8 +193,11 @@ export class Algorand {
     const iv = randomBytes(16);
     const key = Buffer.alloc(32);
     key.write(password);
+
     const cipher = createCipheriv('aes-256-cbc', key, iv);
+
     const encrypted = Buffer.concat([cipher.update(mnemonic), cipher.final()]);
+
     return `${iv.toString('hex')}:${encrypted.toString('hex')}`;
   }
 

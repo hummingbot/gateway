@@ -6,6 +6,8 @@ import {
   mkSelectingValidator,
 } from '../validators';
 
+import { validateSolPrivateKey as isSolPrivateKey } from '../../chains/solana/solana.validators';
+
 const { fromBase64 } = require('@cosmjs/encoding');
 
 export const invalidAlgorandPrivateKeyOrMnemonicError: string =
@@ -20,6 +22,9 @@ export const invalidCosmosPrivateKeyError: string =
 export const invalidTezosPrivateKeyError: string =
   'The privateKey param is not a valid Tezos private key.';
 
+export const invalidSolPrivateKeyError: string =
+  'The privateKey param is not a valid Solana private key.';
+
 export const invalidTonPrivateKeyOrMnemonicError: string =
   'The privateKey param is not a valid Ton private key or mnemonic.';
 
@@ -27,7 +32,6 @@ export const isAlgorandPrivateKeyOrMnemonic = (str: string): boolean => {
   const parts = str.split(' ');
   return parts.length === 25;
 };
-
 
 // test if a string matches the shape of an Ethereum private key
 export const isEthPrivateKey = (str: string): boolean => {
@@ -128,6 +132,11 @@ export const validatePrivateKey: Validator = mkSelectingValidator(
       invalidTezosPrivateKeyError,
       (val) => typeof val === 'string' && isTezosPrivateKey(val),
     ),
+    solana: mkValidator(
+      'privateKey',
+      invalidSolPrivateKeyError,
+      (val) => typeof val === 'string' && isSolPrivateKey(val)
+    ),
     telos: mkValidator(
       'privateKey',
       invalidEthPrivateKeyError,
@@ -147,7 +156,7 @@ export const validatePrivateKey: Validator = mkSelectingValidator(
 );
 
 export const invalidChainError: string =
-  'chain must be "ethereum", "avalanche", "harmony", "cosmos", "osmosis", "binance-smart-chain", "kujira" , or "ton"';
+  'chain connector name is invalid';
 
 export const invalidNetworkError: string =
   'expected a string for the network key';
@@ -176,6 +185,7 @@ export const validateChain: Validator = mkValidator(
       val === 'osmosis' ||
       val === 'binance-smart-chain' ||
       val === 'tezos' ||
+      val === 'solana' ||
       val === 'telos' ||
       val === 'ethereum-classic' ||
       val === 'ton'),

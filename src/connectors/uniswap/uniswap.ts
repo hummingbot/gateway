@@ -68,7 +68,7 @@ export class Uniswap implements Uniswapish {
       this.chain = Polygon.getInstance(network);
     } else if (chain === 'binance-smart-chain') {
       this.chain = BinanceSmartChain.getInstance(network);
-    } else if (chain === 'avalanche') {
+    } else if (chain === 'avalanche') { 
       this.chain = Avalanche.getInstance(network);
     } else if (chain === 'celo')  {
       this.chain = Celo.getInstance(network);

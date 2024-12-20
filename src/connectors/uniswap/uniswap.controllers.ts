@@ -106,6 +106,10 @@ export async function getTradeInfo(
     uniswapish,
     quoteAsset
   );
+  logger.info(
+    `Converting amount for ${baseToken.symbol} (decimals: ${baseToken.decimals}): ` +
+    `${baseAmount} -> ${baseAmount.toFixed(baseToken.decimals)} -> ${baseAmount.toFixed(baseToken.decimals).replace('.', '')}`
+  );
   const requestAmount: BigNumber = BigNumber.from(
     baseAmount.toFixed(baseToken.decimals).replace('.', '')
   );
