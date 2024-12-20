@@ -75,6 +75,7 @@ export class Ton {
     return this.tonweb;
   }
 
+
   public get network(): string {
     return this._network;
   }
