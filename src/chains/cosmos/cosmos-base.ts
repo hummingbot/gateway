@@ -218,15 +218,15 @@ export class CosmosBase {
   }
 
   async getLatestBasePrice(): Promise<number> {
-    var eipPrice = this.manualGasPrice;
-    if (this.useEIP1559DynamicBaseFeeInsteadOfManualGasPrice){
-      const eipPrice = await getEIP1559DynamicBaseFee(this.rpcAddressDynamicBaseFee);
-      if (eipPrice != ''){
-        this.manualGasPrice = Number(eipPrice);
+    let eipPrice = this.manualGasPrice;
+    if (this.useEIP1559DynamicBaseFeeInsteadOfManualGasPrice) {
+      const dynamicPrice = await getEIP1559DynamicBaseFee(this.rpcAddressDynamicBaseFee);
+      if (dynamicPrice != '') {
+        eipPrice = Number(dynamicPrice);
       }
-    } 
+    }
     this.manualGasPrice = eipPrice;
-    return this.manualGasPrice
+    return this.manualGasPrice;
   }
 
   async loadTokens(
@@ -248,12 +248,12 @@ export class CosmosBase {
     tokenListType: TokenListType
   ): Promise<CosmosAsset[]> {
     let tokens: CosmosAsset[] = [];
-    let tokensJson = [];
+    let tokensJson: { assets: any[] };
 
     if (tokenListType === 'URL') {
       ({ data: tokensJson } = await axios.get(tokenListSource));
     } else {
-      (tokensJson = JSON.parse(await fs.readFile(tokenListSource, 'utf8')));
+      tokensJson = JSON.parse(await fs.readFile(tokenListSource, 'utf8'));
     }
     for (var tokenAssetIdx=0; tokenAssetIdx<tokensJson.assets.length; tokenAssetIdx++){
       var tokenAsset = tokensJson.assets[tokenAssetIdx];
