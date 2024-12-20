@@ -9,7 +9,7 @@ import {
 import { Ton } from './ton';
 import {
   validateAssetsRequest,
-  validateOptInRequest,
+  // validateOptInRequest,
   // validateTonBalanceRequest,
   validateTonPollRequest,
 } from './ton.validators';
@@ -34,7 +34,7 @@ export class TonController {
   ): Promise<PollResponse> {
     validateTonPollRequest(req);
 
-    return await ton.getTransaction("address heere", req.txHash);
+    return await ton.getTransaction("UQCbysw8yFP_igkrgMowXI0534eZFP2Afz8TmE8POguS7jt5", req.txHash);
   }
 
   static async balances(chain: Ton, request: BalanceRequest) {
@@ -43,10 +43,10 @@ export class TonController {
     const balances: Record<string, string> = {};
 
     const account = await chain.getAccountFromAddress(request.address);
-    // const balance = await account.getBalance()
+
 
     if (request.tokenSymbols.includes(chain.nativeTokenSymbol)) {
-      balances[chain.nativeTokenSymbol] = await chain.getNativeBalance(account.publicKey.toString());
+      balances[chain.nativeTokenSymbol] = await chain.getNativeBalance(account.publicKey);
     }
 
     for (const token of request.tokenSymbols) {
@@ -87,7 +87,7 @@ export class TonController {
   }
 
   static async approve(request: OptInRequest) {
-    validateOptInRequest(request);
+    //validateOptInRequest(request);
 
     const ton = await getInitializedTon(request.network);
     const asset = ton.getAssetForSymbol(request.assetSymbol);
