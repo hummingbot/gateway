@@ -1,7 +1,7 @@
 /* eslint-disable */
 import { mnemonicToPrivateKey, mnemonicToWalletKey } from '@ton/crypto';
 import { mnemonicToKeyPair } from 'tonweb-mnemonic';
-import { TonClient, WalletContractV4 } from '@ton/ton';
+import { TonClient, WalletContractV3R2 } from '@ton/ton';
 
 // This TON address can be represented in the following forms:
 //   HEX:
@@ -92,7 +92,7 @@ async function test07() {
   const mnemonics = Array.from(mnemonic.split(' '));
   let keyPair = await mnemonicToPrivateKey(mnemonics);
   let workchain = 0;
-  const wallet = WalletContractV4.create({ workchain, publicKey: keyPair.publicKey, });
+  const wallet = WalletContractV3R2.create({ workchain, publicKey: keyPair.publicKey, });
   const contract = tonClient.open(wallet);
 
   console.log('attempt 7 - wallet address', wallet.address);

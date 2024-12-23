@@ -8,9 +8,13 @@ import { logger } from "../../services/logger";
 import { PriceRequest } from "../../amm/amm.requests";
 import { HttpException, TOKEN_NOT_SUPPORTED_ERROR_CODE, TOKEN_NOT_SUPPORTED_ERROR_MESSAGE } from "../../services/error-handler";
 import { pow } from "mathjs";
+import fse from 'fs-extra';
 import { StonApiClient } from "@ston-fi/api";
-import { toNano, WalletContractV4 } from "@ton/ton";
+import { internal, toNano, WalletContractV3R2 } from "@ton/ton";
 import { DEX, pTON } from "@ston-fi/sdk";
+import { walletPath } from "../../services/base";
+import { ConfigManagerCertPassphrase } from "../../services/config-manager-cert-passphrase";
+import { mnemonicToPrivateKey } from "@ton/crypto";
 
 
 // RUM: npm run dev GATEWAY_PASSPHRASE=asdf
@@ -139,39 +143,50 @@ export class Stonfi {
   */
 
     async executeTrade(
-        account: any,
+        account: string,
         quote: StonfiConfig.StonfiQuoteRes,
         isBuy: boolean
     ): Promise<any> {
-        const keyPar = await this.chain.getAccountFromAddress(account)
-
-        const workchain = 0;
-
-        const bufferPublicKey = Buffer.from(keyPar.publicKey, 'utf8')
-
-        const bufferSecretKey = Buffer.from(keyPar.secretKey, 'utf8')
-
-        const wallet = WalletContractV4.create({
-            workchain,
-            publicKey: bufferPublicKey,
-        });
-
+        const path = `${walletPath}/ton`;
+        const encryptedMnemonic: string = await fse.readFile(
+            `${path}/${account}.json`,
+            'utf8'
+        );
+        const passphrase = ConfigManagerCertPassphrase.readPassphrase();
+        if (!passphrase) {
+            throw new Error('missing passphrase');
+        }
+        const mnemonic = this.chain.decrypt(encryptedMnemonic, passphrase);
+        let keyPair = await mnemonicToPrivateKey(mnemonic.split(" "));
+        let workchain = 0;
+        const wallet = WalletContractV3R2.create({ workchain, publicKey: keyPair.publicKey, });
         const contract = this.chain.tonClient.open(wallet);
+        const address = contract.address.toStringBuffer({ bounceable: false, testOnly: true })
+
+        const publicKey = address.toString("base64url")
+        // const secretKey = wallet.publicKey.toString("utf8")
+
 
         const dex = this.chain.tonClient.open(new DEX.v1.Router());
 
         const txArgs = {
-            offerAmount: quote.offerUnits,
+            offerAmount: toNano(quote.offerUnits),
             offerJettonAddress: quote.offerAddress,
             askJettonAddress: quote.askAddress,
             minAskAmount: toNano("0.1"),
-            proxyTon: new pTON.v1(),
-            userWalletAddress: wallet.address.toString(),
+            proxyTon: new pTON.v1(publicKey),
+            userWalletAddress: publicKey,
         };
 
-        const tx = await dex.sendSwapJettonToJetton(contract.sender(bufferSecretKey), txArgs);
+        const txParams = await dex.getSwapTonToJettonTxParams(txArgs);
+        await contract.sendTransfer({
+            seqno: await contract.getSeqno(),
+            secretKey: keyPair.secretKey,
+            messages: [internal(txParams)],
+        });
 
         logger.info(`Swap transaction ${isBuy} Id: ${quote}`);
-        return tx;
+
+        return txParams;
     }
 }
