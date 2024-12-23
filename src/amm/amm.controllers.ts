@@ -27,6 +27,7 @@ import {
 import {
   price as jupiterPrice,
   trade as jupiterTrade,
+  estimateGas as jupiterEstimateGas,
 } from '../connectors/jupiter/jupiter.controllers';
 import {
   price as carbonPrice,
@@ -221,14 +222,14 @@ export async function estimateGas(
   req: NetworkSelectionRequest
 ): Promise<EstimateGasResponse> {
   const chain = await getInitializedChain<
-    Algorand | Ethereumish | Tezosish | Osmosis | Ton
+    Algorand | Ethereumish | Tezosish | Osmosis | Solana | Ton
   >(req.chain, req.network);
   if (chain instanceof Osmosis){
     return chain.controller.estimateGas(chain as unknown as Osmosis);
   }
 
-  const connector: Uniswapish | Tinyman | Plenty | Stonfi | Dedust =
-    await getConnector<Uniswapish | Tinyman | Plenty | Stonfi | Dedust>(
+  const connector: Uniswapish | Tinyman | Plenty | Jupiter | Stonfi | Dedust =
+    await getConnector<Uniswapish | Tinyman | Plenty | Jupiter | Stonfi | Dedust>(
       req.chain,
       req.network,
       req.connector
@@ -236,6 +237,8 @@ export async function estimateGas(
 
   if (connector instanceof Plenty) {
     return plentyEstimateGas(<Tezosish>chain, connector);
+  } else if (connector instanceof Jupiter) {
+    return jupiterEstimateGas(<Solanaish>chain, connector);
   } else if (connector instanceof Carbonamm) {
     return carbonEstimateGas(<Ethereumish>chain, connector);
   } else if ('routerAbi' in connector) {
