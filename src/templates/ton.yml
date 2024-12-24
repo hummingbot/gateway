@@ -3,12 +3,12 @@ networks:
     chainId: mainnet
     nodeURL: https://toncenter.com/api/v2/jsonRPC
     assetListType: FILE
-    assetListSource: '/home/gateway/conf/lists/ton_tokens.json'
+    assetListSource: '/home/gateway/conf/lists/ton_tokens_mainnet.json'
   testnet:
     chainId: testnet
     nodeURL: https://testnet.toncenter.com/api/v2/jsonRPC
     assetListType: FILE
-    assetListSource: '/home/gateway/conf/lists/ton_tokens.json'
+    assetListSource: '/home/gateway/conf/lists/ton_tokens_testnet.json'
 nativeCurrencySymbol: TON
 defaultMaxNumberOfRetries: 3
 defaultDelayBetweenRetries: 5

@@ -5,6 +5,7 @@ export interface NetworkConfig {
   nodeURL: string;
   assetListType: string;
   assetListSource: string;
+  maxLRUCacheInstances: number;
 }
 
 export interface Config {
@@ -24,15 +25,13 @@ export function getTonConfig(network: string): Config {
       nodeURL: ConfigManagerV2.getInstance().get(
         'ton.networks.' + network + '.nodeURL',
       ),
-      // indexerURL: ConfigManagerV2.getInstance().get(
-      //   'ton.networks.' + network + '.indexerURL'
-      // ),
       assetListType: ConfigManagerV2.getInstance().get(
         'ton.networks.' + network + '.assetListType',
       ),
       assetListSource: ConfigManagerV2.getInstance().get(
         'ton.networks.' + network + '.assetListSource',
       ),
+      maxLRUCacheInstances: 10,
     },
     nativeCurrencySymbol: ConfigManagerV2.getInstance().get(
       'ton.nativeCurrencySymbol',
