@@ -1,4 +1,4 @@
-import { Constant } from "./constants";
+import { Constant } from './constants';
 
 /**
  *
@@ -6,13 +6,12 @@ import { Constant } from "./constants";
  * @param errorMessage
  */
 export const getNotNullOrThrowError = <R>(
-    value?: any,
-    errorMessage: string = 'Value is null or undefined'
+  value?: any,
+  errorMessage: string = 'Value is null or undefined',
 ): R => {
-    if (value === undefined || value === null)
-        throw new Error(errorMessage);
+  if (value === undefined || value === null) throw new Error(errorMessage);
 
-    return value as R;
+  return value as R;
 };
 
 /**
@@ -21,9 +20,9 @@ export const getNotNullOrThrowError = <R>(
  * @param defaultValue
  */
 export const getOrDefault = <R>(value: any, defaultValue: R): R => {
-    if (value === undefined || value === null) return defaultValue;
+  if (value === undefined || value === null) return defaultValue;
 
-    return value as R;
+  return value as R;
 };
 
 /**
@@ -31,7 +30,7 @@ export const getOrDefault = <R>(value: any, defaultValue: R): R => {
  * @param milliseconds
  */
 export const sleep = (milliseconds: number) =>
-    new Promise((callback) => setTimeout(callback, milliseconds));
+  new Promise((callback) => setTimeout(callback, milliseconds));
 
 /**
  * Same as Promise.all(items.map(item => task(item))), but it waits for
@@ -46,43 +45,44 @@ export const sleep = (milliseconds: number) =>
  * @returns {B[]}
  */
 export const promiseAllInBatches = async <I, O>(
-    task: (item: I) => Promise<O>,
-    items: any[],
-    batchSize: number = Constant.defaultBatchSize.getValueAs<number>(),
-    delayBetweenBatches: number = Constant.defaultDelayBetweenBatches.getValueAs<number>()
+  task: (item: I) => Promise<O>,
+  items: any[],
+  batchSize: number = Constant.defaultBatchSize.getValueAs<number>(),
+  delayBetweenBatches: number = Constant.defaultDelayBetweenBatches.getValueAs<number>(),
 ): Promise<O[]> => {
-    let position = 0;
-    let results: any[] = [];
+  let position = 0;
+  let results: any[] = [];
 
-    if (!batchSize) {
-        batchSize = items.length;
+  if (!batchSize) {
+    batchSize = items.length;
+  }
+
+  while (position < items.length) {
+    const itemsForBatch = items.slice(position, position + batchSize);
+    results = [
+      ...results,
+      ...(await Promise.all(
+        itemsForBatch.map(async (item) => {
+          try {
+            await task(item);
+          } catch (error) {
+            console.log(error);
+
+            throw error;
+          }
+        }),
+      )),
+    ];
+    position += batchSize;
+
+    if (position < items.length) {
+      if (delayBetweenBatches > 0) {
+        await sleep(delayBetweenBatches);
+      }
     }
+  }
 
-    while (position < items.length) {
-        const itemsForBatch = items.slice(position, position + batchSize);
-        results = [
-            ...results,
-            ...(await Promise.all(itemsForBatch.map(async (item) => {
-                try {
-                    await task(item)
-                } catch (error) {
-                    console.log(error);
-
-                    throw error;
-                }
-            }
-            ))),
-        ];
-        position += batchSize;
-
-        if (position < items.length) {
-            if (delayBetweenBatches > 0) {
-                await sleep(delayBetweenBatches);
-            }
-        }
-    }
-
-    return results;
+  return results;
 };
 
 /**
@@ -95,70 +95,72 @@ export const promiseAllInBatches = async <I, O>(
  * @param timeoutMessage
  */
 export const runWithRetryAndTimeout = async <R>(
-    targetObject: any,
-    targetFunction: (...args: any[]) => R,
-    targetParameters: any,
-    maxNumberOfRetries: number = Constant.defaultMaxNumberOfRetries.getValueAs<number>(),
-    delayBetweenRetries: number = Constant.defaultDelayDelayBetweenRetries.getValueAs<number>(),
-    timeout: number = Constant.defaultTimeout.getValueAs<number>(),
-    timeoutMessage: string = 'Timeout exceeded.'
+  targetObject: any,
+  targetFunction: (...args: any[]) => R,
+  targetParameters: any,
+  maxNumberOfRetries: number = Constant.defaultMaxNumberOfRetries.getValueAs<number>(),
+  delayBetweenRetries: number = Constant.defaultDelayDelayBetweenRetries.getValueAs<number>(),
+  timeout: number = Constant.defaultTimeout.getValueAs<number>(),
+  timeoutMessage: string = 'Timeout exceeded.',
 ): Promise<R> => {
-    const errors = [];
-    let retryCount = 0;
-    let timer: any;
+  const errors = [];
+  let retryCount = 0;
+  let timer: any;
 
-    if (timeout > 0) {
-        timer = setTimeout(() => new Error(timeoutMessage), timeout);
-    }
+  if (timeout > 0) {
+    timer = setTimeout(() => new Error(timeoutMessage), timeout);
+  }
 
-    do {
-        try {
-            const result = await targetFunction.apply(targetObject, targetParameters);
+  do {
+    try {
+      const result = await targetFunction.apply(targetObject, targetParameters);
 
-            if (timeout > 0) {
-                clearTimeout(timer);
-            }
+      if (timeout > 0) {
+        clearTimeout(timer);
+      }
 
-            return result as R;
-        } catch (error: any) {
-            errors.push(error);
+      return result as R;
+    } catch (error: any) {
+      errors.push(error);
 
-            retryCount++;
+      retryCount++;
 
-            console.debug(
-                `${targetObject?.constructor.name || targetObject}:${targetFunction.name
-                } => retry ${retryCount} of ${maxNumberOfRetries}`
-            );
+      console.debug(
+        `${targetObject?.constructor.name || targetObject}:${
+          targetFunction.name
+        } => retry ${retryCount} of ${maxNumberOfRetries}`,
+      );
 
-            if (retryCount < maxNumberOfRetries) {
-                if (delayBetweenRetries > 0) {
-                    await sleep(delayBetweenRetries);
-                }
-            } else {
-                const allErrors = Error(
-                    `Failed to execute "${targetFunction.name
-                    }" with ${maxNumberOfRetries} retries. All error messages were:\n${errors
-                        .map((error: any) => error.message)
-                        .join(';\n')}\n`
-                );
-
-                allErrors.stack = error.stack;
-
-                console.error(allErrors);
-
-                throw allErrors;
-            }
+      if (retryCount < maxNumberOfRetries) {
+        if (delayBetweenRetries > 0) {
+          await sleep(delayBetweenRetries);
         }
-    } while (retryCount < maxNumberOfRetries);
+      } else {
+        const allErrors = Error(
+          `Failed to execute "${
+            targetFunction.name
+          }" with ${maxNumberOfRetries} retries. All error messages were:\n${errors
+            .map((error: any) => error.message)
+            .join(';\n')}\n`,
+        );
 
-    throw Error('Unknown error.');
+        allErrors.stack = error.stack;
+
+        console.error(allErrors);
+
+        throw allErrors;
+      }
+    }
+  } while (retryCount < maxNumberOfRetries);
+
+  throw Error('Unknown error.');
 };
 
 export function* splitInChunks<T>(
-    target: T[],
-    quantity: number
+  target: T[],
+  quantity: number,
 ): Generator<T[], void> {
-    for (let i = 0; i < target.length; i += quantity) {
-        yield target.slice(i, i + quantity);
-    }
+  for (let i = 0; i < target.length; i += quantity) {
+    yield target.slice(i, i + quantity);
+  }
 }
