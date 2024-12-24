@@ -7,8 +7,12 @@
       "type": "string",
       "description": "The allowed slippage for trades, expressed as a rational number (e.g. '2/100')",
       "pattern": "^[0-9]+/[0-9]+$"
+    },
+    "maxPriceImpact": {
+      "type": "number",
+      "description": "maxPriceImpact: maximum allowed price impact in percentage"
     }
   },
-  "required": ["allowedSlippage"],
+  "required": ["allowedSlippage", "maxPriceImpact"],
   "additionalProperties": false
-} 
+}

@@ -1,6 +1,3 @@
-# @host = "localhost"
-# @port = "15888"
-
 GET https://{{host}}:{{port}}/
 Content-Type: application/json
 
@@ -19,55 +16,13 @@ POST https://{{host}}:{{port}}/amm/price
 Content-Type: application/json
 
 {
-  "quote": "TON",
-  "base": "USDT",
+  "quote": "USD₮",
+  "base": "TON",
   "amount": "1",
   "chain": "ton",
   "network": "mainnet",
   "connector": "stonfi",
   "side": "BUY"
 }
-
-###
-
-POST https://api.ston.fi/v1/swap/simulate?ask_address=EQBEucNVvDh5bjaHFCR0ieLvbYdKBOsca8Z_jV9JmdZFYp8c&slippage_tolerance=0.01&units=1000000000&offer_address=EQDkWdcbFLkS8paGJuDe7xXBzPdFWe9RBgdYILAPy8Z3-nZ3
-Content-Type: application/json
-
-###
-
-POST https://api.ston.fi/v1/swap/simulate?ask_address=EQBEucNVvDh5bjaHFCR0ieLvbYdKBOsca8Z_jV9JmdZFYp8c&slippage_tolerance=0.01&units=1000000000&offer_address=EQDkWdcbFLkS8paGJuDe7xXBzPdFWe9RBgdYILAPy8Z3-nZ3
-Content-Type: application/json
-
-{}
-
-###
-POST https://api.ston.fi/v1/swap/simulate?ask_address=EQBEucNVvDh5bjaHFCR0ieLvbYdKBOsca8Z_jV9JmdZFYp8c&slippage_tolerance=0.01&units=1000000000&offer_address=EQD7F-TnEX-CphPylw170k9NuLa4lez_F3-YO6KuSrA9LV8a
-Content-Type: application/json
-
-{}
-
-###
-POST https://api.ston.fi/v1/swap/simulate?ask_address=EQBEucNVvDh5bjaHFCR0ieLvbYdKBOsca8Z_jV9JmdZFYp8c&slippage_tolerance=0.01&units=1000000000&offer_address=EQCScSGtAeFP9EhgkX8zji4XJVj6LMJp5iAtcMWJmPAFVXC_
-Content-Type: application/json
-
-{}
-
-###
-POST https://api.ston.fi/v1/swap/simulate?ask_address=EQBEucNVvDh5bjaHFCR0ieLvbYdKBOsca8Z_jV9JmdZFYp8c&slippage_tolerance=0.01&units=1000000000&offer_address=EQBhxqrC63X0WU8GqlaDdMmeMvg_vK0JiP4VqLJgiHsxXUec
-Content-Type: application/json
-
-{}
-
-###
-POST https://api.ston.fi/v1/swap/simulate?ask_address=EQBEucNVvDh5bjaHFCR0ieLvbYdKBOsca8Z_jV9JmdZFYp8c&slippage_tolerance=0.01&units=1000000000&offer_address=EQBW0vU6nLK-9aMEIHej2ZodkiDlmpN7e-KKS4Gk6OX-wMAt
-Content-Type: application/json
-
-{}
-
-###
-POST https://api.ston.fi/v1/swap/simulate?ask_address=EQBEucNVvDh5bjaHFCR0ieLvbYdKBOsca8Z_jV9JmdZFYp8c&slippage_tolerance=0.01&units=1000000000&offer_address=EQARolzjvdtGg2-1Iczy_9xDKKUVXgouj4vYdSAQjFTwJjCt
-Content-Type: application/json
-
-{}
 
 ###

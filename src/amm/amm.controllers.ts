@@ -76,11 +76,11 @@ import { Carbonamm } from '../connectors/carbon/carbonAMM';
 import { Ton } from '../chains/ton/ton';
 import { Stonfi } from '../connectors/ston_fi/ston_fi';
 import { Dedust } from '../connectors/dedust/dedust';
+
 export async function price(req: PriceRequest): Promise<PriceResponse> {
   const chain = await getInitializedChain<
     Algorand | Ethereumish | Tezosish | Osmosis | Solana | Ton
   >(req.chain, req.network);
-
 
   if (chain instanceof Osmosis){
     return chain.controller.price(chain as unknown as Osmosis, req);

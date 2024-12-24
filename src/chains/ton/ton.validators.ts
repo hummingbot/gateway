@@ -16,25 +16,25 @@ const invalidTxHashError: string = 'The txHash param must be a string.';
 const validateTxHash: Validator = mkValidator(
   'txHash',
   invalidTxHashError,
-  (val) => typeof val === 'string'
+  (val) => typeof val === 'string',
 );
 
 const validateTonAddress: Validator = mkValidator(
   'address',
   invalidAddressError,
-  (val) => typeof val === 'string' && /[A-Z0-9]{58}/.test(val)
+  (val) => typeof val === 'string' && /[A-Z0-9]{58}/.test(val),
 );
 
-export const validateTonPollRequest: RequestValidator = mkRequestValidator(
-  [validateNetwork, validateTxHash]
-);
+export const validateTonPollRequest: RequestValidator = mkRequestValidator([
+  validateNetwork,
+  validateTxHash,
+]);
 
-export const validateTonBalanceRequest: RequestValidator =
-  mkRequestValidator([
-    validateNetwork,
-    validateTonAddress,
-    validateTokenSymbols,
-  ]);
+export const validateTonBalanceRequest: RequestValidator = mkRequestValidator([
+  validateNetwork,
+  validateTonAddress,
+  validateTokenSymbols,
+]);
 
 export const validateAssetSymbols: Validator = (req: any) => {
   const errors: Array<string> = [];
@@ -55,7 +55,7 @@ export const validateAssetSymbols: Validator = (req: any) => {
 export const validateAssetSymbol: Validator = mkValidator(
   'assetSymbol',
   invalidTokenSymbolsError,
-  (val) => typeof val === 'string'
+  (val) => typeof val === 'string',
 );
 
 export const validateAssetsRequest: RequestValidator = mkRequestValidator([
