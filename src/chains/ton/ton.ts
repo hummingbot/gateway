@@ -292,7 +292,7 @@ export class Ton {
     for (const result of assetData) {
       this._assetMap[result.symbol] = {
         symbol: result.symbol,
-        assetId: result.address.address,
+        assetId: result.address,
         decimals: result.decimals,
       };
     }
