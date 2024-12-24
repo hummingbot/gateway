@@ -4,11 +4,15 @@ networks:
     nodeURL: https://toncenter.com/api/v2/jsonRPC
     assetListType: FILE
     assetListSource: '/home/gateway/conf/lists/ton_tokens_mainnet.json'
+#    assetListType: URL
+#    assetListSource: wss://omni-ws.ston.fi
   testnet:
     chainId: testnet
     nodeURL: https://testnet.toncenter.com/api/v2/jsonRPC
     assetListType: FILE
     assetListSource: '/home/gateway/conf/lists/ton_tokens_testnet.json'
+#    assetListType: URL
+#    assetListSource: wss://omni-ws.ston.fi // TODO Which is the correct testnet url?!!!
 nativeCurrencySymbol: TON
 defaultMaxNumberOfRetries: 3
 defaultDelayBetweenRetries: 5
