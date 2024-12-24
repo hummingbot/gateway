@@ -55,6 +55,18 @@
     },
     "defaultMaxPollAttempts": {
       "type": "integer"
+    },
+    "gasPrice": {
+      "type": "number"
+    },
+    "gasLimit": {
+      "type": "number"
+    },
+    "gasCost": {
+      "type": "number"
+    },
+    "workchain": {
+      "type": "integer"
     }
   },
   "additionalProperties": false,
@@ -66,6 +78,10 @@
     "defaultBatchSize",
     "defaultDelayBetweenBatches",
     "defaultPollInterval",
-    "defaultMaxPollAttempts"
+    "defaultMaxPollAttempts",
+    "gasPrice",
+    "gasLimit",
+    "gasCost",
+    "workchain"
   ]
 }
