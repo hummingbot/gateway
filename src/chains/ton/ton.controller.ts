@@ -11,7 +11,7 @@ import {
   validateAssetsRequest,
   // validateOptInRequest,
   // validateTonBalanceRequest,
-  validateTonPollRequest,
+  // validateTonPollRequest,
 } from './ton.validators';
 import { BalanceRequest } from '../tezos/tezos.request';
 import { HttpException, TOKEN_NOT_SUPPORTED_ERROR_CODE, TOKEN_NOT_SUPPORTED_ERROR_MESSAGE } from '../../services/error-handler';
@@ -33,9 +33,9 @@ export class TonController {
     ton: Ton,
     req: PollRequest
   ): Promise<PollResponse> {
-    validateTonPollRequest(req);
+    // validateTonPollRequest(req);
 
-    return await ton.getTransaction("UQCbysw8yFP_igkrgMowXI0534eZFP2Afz8TmE8POguS7jt5", req.txHash);
+    return await ton.getTransaction(req.address, req.txHash);
   }
 
   static async balances(chain: Ton, request: BalanceRequest) {

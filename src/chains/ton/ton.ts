@@ -157,25 +157,73 @@ export class Ton {
     };
   }
 
-  public async getTransaction(address: string, txHash: string): Promise<PollResponse> {
+
+
+
+  async getTransaction(address: string, txHash: string): Promise<PollResponse> {
+    const pollInterval = 2000;
+    const maxPollAttempts = 30;
     const transactionId = txHash.startsWith('0x') ? txHash.slice(2) : txHash;
-    const { seqno, root_hash } = await this.getCurrentBlockNumber()
-    let transactionData;
-    try {
-      transactionData = await this.tonweb.getTransactions(address, 1, undefined, transactionId);
-      transactionData = transactionData[0]
-    } catch (error: any) {
-      if (error.status != 404) {
-        throw error;
+    const { seqno, root_hash } = await this.getCurrentBlockNumber();
+
+    let attempt = 0;
+    // let transactionData = null;
+
+    while (attempt < maxPollAttempts) {
+      try {
+        const transactions = await this.tonweb.provider.getTransactions(address, 10);
+        const found = transactions.find(
+          (tx: any) => tx.transaction_id?.hash === txHash
+        );
+        if (found) {
+          console.log(`TON Explorer: https://tonscan.org/transaction/${txHash}`);
+          return {
+            currentBlock: seqno,
+            txBlock: root_hash,
+            txHash: transactionId,
+            fee: 0,
+          };
+        }
+
+        await new Promise(resolve => setTimeout(resolve, pollInterval));
+        attempt++;
+      } catch (error: any) {
+        console.error('Error fetching TON transaction:', error);
+
+        await new Promise(resolve => setTimeout(resolve, pollInterval));
+        attempt++;
       }
     }
-    return {
-      currentBlock: seqno,
-      txBlock: root_hash,
-      txHash: transactionId,
-      fee: transactionData ? transactionData.fee : 0,
-    };
+
+    console.warn(
+      `Transaction ${txHash} not confirmed after ${maxPollAttempts} attempts.`
+    );
+
+
   }
+
+
+
+  // public async getTransactionx(address: string, txHash: string): Promise<PollResponse> {
+  //   const transactionId = txHash.startsWith('0x') ? txHash.slice(2) : txHash;
+  //   const { seqno, root_hash } = await this.getCurrentBlockNumber()
+  //   let transactionData
+
+  //   try {
+  //     const transactions = await this.tonweb.getTransactions(address, 1, undefined, transactionId);
+  //     transactionData = transactions[0];
+  //   } catch (error: any) {
+  //     if (error.status != 404) {
+  //       throw error;
+  //     }
+  //   }
+  //   return {
+  //     currentBlock: seqno,
+  //     txBlock: root_hash,
+  //     txHash: transactionId,
+  //     fee: transactionData ? transactionData.fee : 0,
+  //   };
+  // }
 
   public async getAccountFromPrivateKey(mnemonic: string): Promise<{ publicKey: string, secretKey: string }> {
     let keyPair = await mnemonicToPrivateKey(mnemonic.split(" "));
