@@ -5,7 +5,7 @@
     {
       "address": {
         "blockchain": 607,
-        "address": ""
+        "address": "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"
       },
       "tags": [
         "native"
@@ -31,23 +31,11 @@
     {
       "address": {
         "blockchain": 607,
-        "address": ""
-      },
-      "tags": [],
-      "symbol": "STON",
-      "name": "STON",
-      "imageUrl": "https://asset.ston.fi/img/EQA2kCVNwVsil2EM2mB0SkXytxCqQjS4mttjDpnXmwG9T6bO/3cdadc9581abb59f8c8ec177c00fbdc6a5aaa39d759758be3d42be51b6435dd5",
-      "decimals": 9,
-      "metadata": {}
-    },
-    {
-      "address": {
-        "blockchain": 607,
         "address": "kQAiboDEv_qRrcEdrYdwbVLNOXBHwShFbtKGbQVJ2OKxY_Di"
       },
       "tags": [],
-      "symbol": "AIOTX ",
-      "name": "AIOTX ",
+      "symbol": "AIOTX",
+      "name": "AIOTX",
       "imageUrl": "https://asset.ston.fi/img/kQAiboDEv_qRrcEdrYdwbVLNOXBHwShFbtKGbQVJ2OKxY_Di/3cdadc9581abb59f8c8ec177c00fbdc6a5aaa39d759758be3d42be51b6435dd5",
       "decimals": 9,
       "metadata": {}
