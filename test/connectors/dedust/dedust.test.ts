@@ -1,4 +1,4 @@
-import { 
+import {
   UniswapishPriceError,
   PRICE_FAILED_ERROR_MESSAGE,
   PRICE_FAILED_ERROR_CODE,
@@ -16,10 +16,10 @@ import { patch, unpatch } from '../../services/patch';
 import { Dedust } from '../../../src/connectors/dedust/dedust';
 import { Ton } from '../../../src/chains/ton/ton';
 import { getTonConfig } from '../../../src/chains/ton/ton.config';
-import { 
-  mockAddress, 
-  MockAsset, 
-  MockPool, 
+import {
+  mockAddress,
+  MockAsset,
+  MockPool,
   MockVault,
 } from './__mocks__/dedust.mocks';
 
@@ -32,19 +32,19 @@ const mockConfig = getTonConfig('mainnet');
 
 beforeAll(async () => {
   ton = new Ton(
-    'mainnet', 
+    'mainnet',
     mockConfig.network.nodeURL,
-    'FILE',           // Add assetListType
-    ''               // Add assetListSource
+    'FILE', // Add assetListType
+    '', // Add assetListSource
   );
   dedust = Dedust.getInstance('mainnet');
-  
+
   // Mock ton client methods
   patch(ton, 'getAccountFromAddress', () => ({
     publicKey: 'mock-public-key',
     secretKey: 'mock-secret-key',
   }));
-  
+
   patch(ton, 'waitForTransactionByMessage', () => 'mock-tx-hash');
 });
 
@@ -65,7 +65,7 @@ describe('dedust', () => {
         amount: '1.0',
         side: 'SELL',
         chain: 'ton',
-        network: 'mainnet'
+        network: 'mainnet',
       });
     }).rejects.toThrow(UniswapishPriceError);
   });
@@ -82,9 +82,15 @@ describe('dedust', () => {
         amount: '1.0',
         side: 'SELL',
         chain: 'ton',
-        network: 'mainnet'
+        network: 'mainnet',
       });
-    }).rejects.toThrow(new HttpException(500, PRICE_FAILED_ERROR_MESSAGE + 'Price query failed', PRICE_FAILED_ERROR_CODE));
+    }).rejects.toThrow(
+      new HttpException(
+        500,
+        PRICE_FAILED_ERROR_MESSAGE + 'Price query failed',
+        PRICE_FAILED_ERROR_CODE,
+      ),
+    );
   });
 
   it('should throw HttpException with INSUFFICIENT_FUNDS_ERROR when insufficient funds', async () => {
@@ -103,11 +109,17 @@ describe('dedust', () => {
           toAsset: new MockAsset(),
           expectedOut: BigInt('1000000000'),
           priceImpact: 1.5,
-          tradeFee: BigInt('1000000')
+          tradeFee: BigInt('1000000'),
         },
-        true
+        true,
       );
-    }).rejects.toThrow(new HttpException(500, INSUFFICIENT_FUNDS_ERROR_MESSAGE, INSUFFICIENT_FUNDS_ERROR_CODE));
+    }).rejects.toThrow(
+      new HttpException(
+        500,
+        INSUFFICIENT_FUNDS_ERROR_MESSAGE,
+        INSUFFICIENT_FUNDS_ERROR_CODE,
+      ),
+    );
   });
 
   it('should throw HttpException with AMOUNT_LESS_THAN_MIN_AMOUNT_ERROR when output amount is too low', async () => {
@@ -126,11 +138,17 @@ describe('dedust', () => {
           toAsset: new MockAsset(),
           expectedOut: BigInt('1000000000'),
           priceImpact: 1.5,
-          tradeFee: BigInt('1000000')
+          tradeFee: BigInt('1000000'),
         },
-        true
+        true,
       );
-    }).rejects.toThrow(new HttpException(500, AMOUNT_LESS_THAN_MIN_AMOUNT_ERROR_MESSAGE, AMOUNT_LESS_THAN_MIN_AMOUNT_ERROR_CODE));
+    }).rejects.toThrow(
+      new HttpException(
+        500,
+        AMOUNT_LESS_THAN_MIN_AMOUNT_ERROR_MESSAGE,
+        AMOUNT_LESS_THAN_MIN_AMOUNT_ERROR_CODE,
+      ),
+    );
   });
 
   it('should throw HttpException with TRADE_FAILED_ERROR when trade fails', async () => {
@@ -149,11 +167,17 @@ describe('dedust', () => {
           toAsset: new MockAsset(),
           expectedOut: BigInt('1000000000'),
           priceImpact: 1.5,
-          tradeFee: BigInt('1000000')
+          tradeFee: BigInt('1000000'),
         },
-        true
+        true,
       );
-    }).rejects.toThrow(new HttpException(500, TRADE_FAILED_ERROR_MESSAGE + 'Trade failed', TRADE_FAILED_ERROR_CODE));
+    }).rejects.toThrow(
+      new HttpException(
+        500,
+        TRADE_FAILED_ERROR_MESSAGE + 'Trade failed',
+        TRADE_FAILED_ERROR_CODE,
+      ),
+    );
   });
 
   it('should throw HttpException with UNKNOWN_ERROR when unknown error occurs', async () => {
@@ -172,10 +196,12 @@ describe('dedust', () => {
           toAsset: new MockAsset(),
           expectedOut: BigInt('1000000000'),
           priceImpact: 1.5,
-          tradeFee: BigInt('1000000')
+          tradeFee: BigInt('1000000'),
         },
-        true
+        true,
       );
-    }).rejects.toThrow(new HttpException(500, UNKNOWN_ERROR_MESSAGE, UNKNOWN_ERROR_ERROR_CODE));
+    }).rejects.toThrow(
+      new HttpException(500, UNKNOWN_ERROR_MESSAGE, UNKNOWN_ERROR_ERROR_CODE),
+    );
   });
-}); 
+});
