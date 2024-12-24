@@ -1,8 +1,8 @@
 export interface PollRequest {
+  address: string
   network: string;
   txHash: string;
 }
-
 
 export type PollResponse = {
   currentBlock: number;

@@ -11,12 +11,15 @@ import {
   validateAssetsRequest,
   // validateOptInRequest,
   // validateTonBalanceRequest,
-  validateTonPollRequest,
+  // validateTonPollRequest,
 } from './ton.validators';
 import { BalanceRequest } from '../tezos/tezos.request';
-import { HttpException, TOKEN_NOT_SUPPORTED_ERROR_CODE, TOKEN_NOT_SUPPORTED_ERROR_MESSAGE } from '../../services/error-handler';
+import {
+  HttpException,
+  TOKEN_NOT_SUPPORTED_ERROR_CODE,
+  TOKEN_NOT_SUPPORTED_ERROR_MESSAGE,
+} from '../../services/error-handler';
 import { promiseAllInBatches } from './ton.utils';
-
 
 async function getInitializedTon(network: string): Promise<Ton> {
   const ton = Ton.getInstance(network);
@@ -33,9 +36,9 @@ export class TonController {
     ton: Ton,
     req: PollRequest
   ): Promise<PollResponse> {
-    validateTonPollRequest(req);
+    // validateTonPollRequest(req);
 
-    return await ton.getTransaction("UQCbysw8yFP_igkrgMowXI0534eZFP2Afz8TmE8POguS7jt5", req.txHash);
+    return await ton.getTransaction(req.address, req.txHash);
   }
 
   static async balances(chain: Ton, request: BalanceRequest) {
@@ -45,10 +48,11 @@ export class TonController {
 
     const account = await chain.getAccountFromAddress(request.address);
 
-
-
     const getTokenBalance = async (token: string): Promise<void> => {
-      const tokenBalance = await chain.getAssetBalance(account.publicKey, token);
+      const tokenBalance = await chain.getAssetBalance(
+        account.publicKey,
+        token,
+      );
       tokenBalances[token] = tokenBalance;
     };
 
@@ -61,7 +65,7 @@ export class TonController {
 
   static async getTokens(
     ton: Ton,
-    request: AssetsRequest
+    request: AssetsRequest,
   ): Promise<AssetsResponse> {
     validateAssetsRequest(request);
 
@@ -96,13 +100,13 @@ export class TonController {
       throw new HttpException(
         500,
         TOKEN_NOT_SUPPORTED_ERROR_MESSAGE + request.assetSymbol,
-        TOKEN_NOT_SUPPORTED_ERROR_CODE
+        TOKEN_NOT_SUPPORTED_ERROR_CODE,
       );
     }
 
     const transactionResponse = await ton.optIn(
       request.address,
-      request.assetSymbol
+      request.assetSymbol,
     );
 
     return {

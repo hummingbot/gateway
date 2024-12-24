@@ -19,7 +19,6 @@
     "test": "jest --verbose",
     "test:debug": "node --inspect node_modules/.bin/jest --watch --runInBand",
     "test:unit": "NODE_OPTIONS=--max_old_space_size=10240 jest --runInBand --verbose ./test/",
-    "test:unit:specific": "NODE_OPTIONS=--max_old_space_size=10240 jest --runInBand --verbose",
     "test:cov": "NODE_OPTIONS=--max_old_space_size=10240 jest --runInBand --coverage ./test/",
     "test:scripts": "jest -i --verbose ./test-scripts/*.test.ts"
   },
@@ -27,7 +26,6 @@
     "@_etcswap/smart-order-router": "^3.15.2",
     "@balancer-labs/sdk": "^1.1.5",
     "@bancor/carbon-sdk": "^0.0.93-DEV",
-    "@coral-xyz/anchor": "^0.29.0",
     "@cosmjs/amino": "^0.32.2",
     "@cosmjs/cosmwasm-stargate": "^0.31.1",
     "@cosmjs/proto-signing": "^0.31.1",
@@ -45,7 +43,6 @@
     "@harmony-js/utils": "^0.1.56",
     "@improbable-eng/grpc-web": "^0.13.0",
     "@injectivelabs/sdk-ts": "^1.10.58",
-    "@jup-ag/api": "^6.0.29",
     "@osmonauts/math": "^1.11.3",
     "@pancakeswap/sdk": "^4.0.0",
     "@pancakeswap/smart-router": "^4.2.1",

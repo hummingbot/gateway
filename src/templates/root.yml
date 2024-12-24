@@ -128,18 +128,18 @@ configurations:
     configurationPath: telos.yml
     schemaPath: ethereum-schema.json
 
-  $namespace ton:
-    configurationPath: ton.yml
-    schemaPath: ton-schema.json
-
   $namespace jupiter:
     configurationPath: jupiter.yml
     schemaPath: jupiter-schema.json
+
+  $namespace ton:
+    configurationPath: ton.yml
+    schemaPath: ton-schema.json
 
   $namespace stonfi:
     configurationPath: stonfi.yml
     schemaPath: stonfi-schema.json
 
-    $namespace dedust:
-      configurationPath: dedust.yml
-      schemaPath: dedust-schema.json
+  $namespace dedust:
+    configurationPath: dedust.yml
+    schemaPath: dedust-schema.json

@@ -52,7 +52,7 @@ export type ChainUnion =
   | Tezosish
   | Osmosis
   | Solana
-	| Ton;
+  | Ton;
 
 export type Chain<T> = T extends Algorand
   ? Algorand
@@ -67,10 +67,10 @@ export type Chain<T> = T extends Algorand
                 : T extends Osmosis
                   ? Osmosis
                     : T extends Solana
-                    ? Solana
-											: T extends Ton
-											? Ton
-												: never;
+                      ? Solana
+                        : T extends Ton
+                          ? Ton
+                            : never;
 
 export class UnsupportedChainException extends Error {
   constructor(message?: string) {
@@ -154,7 +154,7 @@ export type ConnectorUnion =
   | Curve
   | Jupiter
   | Stonfi
-  | Dedust
+  | Dedust;
 
 export type Connector<T> = T extends Uniswapish
   ? Uniswapish
@@ -168,9 +168,9 @@ export type Connector<T> = T extends Uniswapish
             ? Jupiter
             : T extends Stonfi
               ? Stonfi
-                : T extends Dedust
-                    ? Dedust
-								: never;
+              : T extends Dedust
+                ? Dedust
+                : never;
 
 export async function getConnector<T>(
   chain: string,
@@ -222,7 +222,7 @@ export async function getConnector<T>(
   } else if (connector == 'stonfi') {
     connectorInstance = Stonfi.getInstance(network);
   } else if (connector == 'dedust') {
-    connectorInstance = Dedust.getInstance(network)
+    connectorInstance = Dedust.getInstance(network);
   } else {
     throw new Error('unsupported chain or connector');
   }

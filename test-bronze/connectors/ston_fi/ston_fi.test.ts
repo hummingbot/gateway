@@ -163,9 +163,9 @@ describe('verify StonFi executeTrade', () => {
     });
 
     const tradeResult = await ston_fi.executeTrade(
-        'mock-account-address',
-        trade.trade,
-        true
+      'mock-account-address',
+      trade.trade,
+      true,
     );
     expect(tradeResult.txnID).toEqual(TX.txnID);
     expect(tradeResult.round).toEqual(TX.round);
