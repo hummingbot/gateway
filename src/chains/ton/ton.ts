@@ -1,5 +1,5 @@
 import LRUCache from 'lru-cache';
-import { getTonConfig } from './ton.config';
+import { Config, getTonConfig } from './ton.config';
 import { mnemonicToPrivateKey } from '@ton/crypto';
 import TonWeb from 'tonweb';
 import {
@@ -42,6 +42,7 @@ export class Ton {
   private _ready: boolean = false;
   private _assetListType: AssetListType;
   private _assetListSource: string;
+  public config: Config;
   public gasPrice: number;
   public gasLimit: number;
   public gasCost: number;
@@ -55,8 +56,8 @@ export class Ton {
     assetListSource: string,
   ) {
     this._network = network;
-    const config = getTonConfig(network);
-    this.nativeTokenSymbol = config.nativeCurrencySymbol;
+    this.config = getTonConfig(network);
+    this.nativeTokenSymbol = this.config.nativeCurrencySymbol;
     this.tonweb = new TonWeb(new TonWeb.HttpProvider(nodeUrl));
     this.tonClient = new TonClient({ endpoint: nodeUrl });
     this.tonClientRouter = this.tonClient.open(new DEX.v1.Router());
@@ -66,10 +67,10 @@ export class Ton {
     this.omniston = new Omniston({
       apiUrl: this._assetListSource,
     });
-    this.gasPrice = 0;
-    this.gasLimit = 0;
-    this.gasCost = 0.001;
-    this.workchain = 0;
+    this.gasPrice = this.config.gasPrice;
+    this.gasLimit = this.config.gasLimit;
+    this.gasCost = this.config.gasCost;
+    this.workchain = this.config.workchain;
     this.controller = TonController;
   }
 
@@ -151,8 +152,8 @@ export class Ton {
   }
 
   async getTransaction(txHash: string): Promise<PollResponse | null> {
-    const pollInterval = 2000; // Intervalo entre tentativas (em ms)
-    const maxPollAttempts = 30; // Máximo de tentativas permitidas
+    const pollInterval = this.config.defaultPollInterval;
+    const maxPollAttempts = this.config.defaultMaxPollAttempts;
     const transactionId = txHash.startsWith('0x') ? txHash.slice(2) : txHash;
     const { seqno, root_hash } = await this.getCurrentBlockNumber();
 
@@ -160,26 +161,14 @@ export class Ton {
 
     while (attempt < maxPollAttempts) {
       try {
-        // Fazendo a requisição diretamente ao endpoint com Axios
-        this.network;
-        const requestURL =
-          this.network === 'testnet'
-            ? 'https://testnet.toncenter.com'
-            : 'https://toncenter.com';
         const response = await axios.get(
-          `${requestURL}/api/v3/transactions?hash=${encodeURIComponent(txHash)}`,
+          `${this.config.network.scanUrl}/api/v3/transactions?hash=${encodeURIComponent(txHash)}`,
           {
             headers: {
               accept: 'application/json, text/plain, */*',
               'accept-language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
-              origin:
-                this.network === 'testnet'
-                  ? 'https://testnet.tonscan.org'
-                  : 'https://tonscan.org',
-              referer:
-                this.network === 'testnet'
-                  ? 'https://testnet.tonscan.org'
-                  : 'https://tonscan.org',
+              origin: this.config.network.scanUrl,
+              referer: this.config.network.scanUrl,
               'user-agent':
                 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
               'x-api-key':
@@ -206,7 +195,6 @@ export class Ton {
           }
         }
 
-        // Caso não tenha encontrado, espera antes de tentar novamente
         attempt++;
         await new Promise((resolve) => setTimeout(resolve, pollInterval));
       } catch (error: any) {
@@ -224,37 +212,15 @@ export class Ton {
       `Transaction ${txHash} not confirmed after ${maxPollAttempts} attempts.`,
     );
 
-    return null; // Retorna nulo se não encontrar após todas as tentativas
+    return null;
   }
-
-  // public async getTransactionx(address: string, txHash: string): Promise<PollResponse> {
-  //   const transactionId = txHash.startsWith('0x') ? txHash.slice(2) : txHash;
-  //   const { seqno, root_hash } = await this.getCurrentBlockNumber()
-  //   let transactionData
-
-  //   try {
-  //     const transactions = await this.tonweb.getTransactions(address, 1, undefined, transactionId);
-  //     transactionData = transactions[0];
-  //   } catch (error: any) {
-  //     if (error.status != 404) {
-  //       throw error;
-  //     }
-  //   }
-  //   return {
-  //     currentBlock: seqno,
-  //     txBlock: root_hash,
-  //     txHash: transactionId,
-  //     fee: transactionData ? transactionData.fee : 0,
-  //   };
-  // }
 
   public async getAccountFromPrivateKey(
     mnemonic: string,
   ): Promise<{ publicKey: string; secretKey: string }> {
     const keyPair = await mnemonicToPrivateKey(mnemonic.split(' '));
-    const workchain = 0;
     const wallet = WalletContractV3R2.create({
-      workchain,
+      workchain: this.workchain,
       publicKey: keyPair.publicKey,
     });
     const contract = this.tonClient.open(wallet);
@@ -281,9 +247,8 @@ export class Ton {
     }
     const mnemonic = this.decrypt(encryptedMnemonic, passphrase);
     const keyPair = await mnemonicToPrivateKey(mnemonic.split(' '));
-    const workchain = 0;
     const wallet = WalletContractV3R2.create({
-      workchain,
+      workchain: this.workchain,
       publicKey: keyPair.publicKey,
     });
     const contract = this.tonClient.open(wallet);

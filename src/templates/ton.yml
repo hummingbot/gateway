@@ -19,3 +19,9 @@ defaultDelayBetweenRetries: 5
 defaultTimeout: 60
 defaultBatchSize: 100
 defaultDelayBetweenBatches: 5
+defaultPollInterval: 2000
+defaultMaxPollAttempts: 30
+gasPrice: 0
+gasLimit: 0
+gasCost: 1
+workchain: 0

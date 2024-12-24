@@ -49,6 +49,12 @@
     },
     "defaultDelayBetweenBatches": {
       "type": "integer"
+    },
+    "defaultPollInterval": {
+      "type": "integer"
+    },
+    "defaultMaxPollAttempts": {
+      "type": "integer"
     }
   },
   "additionalProperties": false,
@@ -58,6 +64,8 @@
     "defaultDelayBetweenRetries",
     "defaultTimeout",
     "defaultBatchSize",
-    "defaultDelayBetweenBatches"
+    "defaultDelayBetweenBatches",
+    "defaultPollInterval",
+    "defaultMaxPollAttempts"
   ]
 }
