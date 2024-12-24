@@ -301,7 +301,6 @@ export class Ton {
     let balance = 0;
 
     if (assetName === 'TON') {
-
       try {
         const response = await this.tonClient.getBalance(address(account));
         balance = Number(response);
@@ -312,7 +311,6 @@ export class Ton {
         balance = 0;
       }
     }
-
 
     const amount = balance * parseFloat(`1e-${asset.decimals}`);
     return amount.toString();
