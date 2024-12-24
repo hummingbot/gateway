@@ -147,6 +147,7 @@ export class Stonfi {
         quote: StonfiConfig.StonfiQuoteRes,
         isBuy: boolean
     ): Promise<any> {
+        console.log(isBuy);
         const path = `${walletPath}/ton`;
         const encryptedMnemonic: string = await fse.readFile(
             `${path}/${account}.json`,
@@ -160,32 +161,18 @@ export class Stonfi {
         let keyPair = await mnemonicToPrivateKey(mnemonic.split(" "));
         let workchain = 0;
         const wallet = WalletContractV3R2.create({ workchain, publicKey: keyPair.publicKey, });
-        const contract = this.chain.tonClient.open(wallet);
-        const address = contract.address.toStringBuffer({ bounceable: false, testOnly: true })
-
-        const publicKey = address.toString("base64url")
-        // const secretKey = wallet.publicKey.toString("utf8")
+        const router = this.chain.tonClient.open(new DEX.v1.Router());
 
 
-        const dex = this.chain.tonClient.open(new DEX.v1.Router());
-
-        const txArgs = {
+        const txParams = await router.getSwapTonToJettonTxParams({
             offerAmount: toNano(quote.offerUnits),
-            offerJettonAddress: quote.offerAddress,
+            minAskAmount: "1",
             askJettonAddress: quote.askAddress,
-            minAskAmount: toNano("0.1"),
-            proxyTon: new pTON.v1(publicKey),
-            userWalletAddress: publicKey,
-        };
-
-        const txParams = await dex.getSwapTonToJettonTxParams(txArgs);
-        await contract.sendTransfer({
-            seqno: await contract.getSeqno(),
-            secretKey: keyPair.secretKey,
-            messages: [internal(txParams)],
+            proxyTon: new pTON.v1(),
+            userWalletAddress: wallet.address.toString(),
         });
 
-        logger.info(`Swap transaction ${isBuy} Id: ${quote}`);
+        console.log('txParams', txParams)
 
         return txParams;
     }
