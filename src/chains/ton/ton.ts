@@ -24,6 +24,7 @@ import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-
 import { RouterV2_1 } from '@ston-fi/sdk/dist/contracts/dex/v2_1/router/RouterV2_1';
 import { PtonV2_1 } from '@ston-fi/sdk/dist/contracts/pTON/v2_1/PtonV2_1';
 import { logger } from '../../services/logger';
+import axios from 'axios';
 
 type AssetListType = TokenListType;
 
@@ -158,38 +159,62 @@ export class Ton {
 
 
 
-  async getTransaction(address: string, txHash: string): Promise<PollResponse> {
-    const pollInterval = 2000;
-    const maxPollAttempts = 30;
+
+
+
+
+  async getTransaction(txHash: string): Promise<PollResponse | null> {
+    const pollInterval = 2000; // Intervalo entre tentativas (em ms)
+    const maxPollAttempts = 30; // Máximo de tentativas permitidas
     const transactionId = txHash.startsWith('0x') ? txHash.slice(2) : txHash;
     const { seqno, root_hash } = await this.getCurrentBlockNumber();
 
     let attempt = 0;
-    // let transactionData = null;
 
     while (attempt < maxPollAttempts) {
       try {
-        const transactions = await this.tonweb.provider.getTransactions(address, 10);
-        const found = transactions.find(
-          (tx: any) => tx.transaction_id?.hash === txHash
-        );
-        if (found) {
-          console.log(`TON Explorer: https://tonscan.org/transaction/${txHash}`);
-          return {
-            currentBlock: seqno,
-            txBlock: root_hash,
-            txHash: transactionId,
-            fee: 0,
-          };
+        // Fazendo a requisição diretamente ao endpoint com Axios
+        this.network
+        const requestURL = this.network === "testnet" ? "https://testnet.toncenter.com" : "https://toncenter.com"
+        const response = await axios.get(`${requestURL}/api/v3/transactions?hash=${encodeURIComponent(txHash)}`, {
+          headers: {
+            'accept': 'application/json, text/plain, */*',
+            'accept-language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+            'origin': this.network === "testnet" ? 'https://testnet.tonscan.org' : 'https://tonscan.org',
+            'referer': this.network === "testnet" ? 'https://testnet.tonscan.org' : 'https://tonscan.org',
+            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+            'x-api-key': '1b651340a347951cc8b9a102c406ab2a05226d59d6354aa009049d6fbbb17b0b',
+          },
+        });
+
+        if (response.status === 200 && response.data) {
+          const transactions = response.data.transactions || [];
+
+          const found = transactions.find(
+            (tx: any) => tx.hash === txHash
+          );
+
+          if (found) {
+            console.log(`TON Explorer: https://tonscan.org/transaction/${txHash}`);
+            return {
+              currentBlock: seqno,
+              txBlock: root_hash,
+              txHash: transactionId,
+              fee: found.fee || 0, // Fee obtida da resposta, se disponível
+            };
+          }
         }
 
-        await new Promise(resolve => setTimeout(resolve, pollInterval));
+        // Caso não tenha encontrado, espera antes de tentar novamente
         attempt++;
-      } catch (error: any) {
-        console.error('Error fetching TON transaction:', error);
+        await new Promise(resolve => setTimeout(resolve, pollInterval));
 
-        await new Promise(resolve => setTimeout(resolve, pollInterval));
+      } catch (error: any) {
+        console.error('Error fetching TON transaction:', error.response?.data || error.message || error);
+
+        // Incrementa a tentativa mesmo após erro
         attempt++;
+        await new Promise(resolve => setTimeout(resolve, pollInterval));
       }
     }
 
@@ -197,8 +222,11 @@ export class Ton {
       `Transaction ${txHash} not confirmed after ${maxPollAttempts} attempts.`
     );
 
-
+    return null; // Retorna nulo se não encontrar após todas as tentativas
   }
+
+
+
 
 
 
