@@ -90,6 +90,16 @@ Content-Type: application/json
   "connector": "stonfi"
 }
 ###
+POST https://{{host}}:{{port}}/amm/add
+Content-Type: application/json
+
+{
+  "chain": "ton",
+  "network": "testnet",
+  "privateKey": "mammal entry lyrics addict swear sight artefact clog survey oil empower trip skill hospital similar piano slush bright gas depend warm whale marine merit",
+  "address": "",
+  "accountId": ""
+}
 ###
 
 POST https://api.ston.fi/v1/swap/simulate?ask_address=EQBEucNVvDh5bjaHFCR0ieLvbYdKBOsca8Z_jV9JmdZFYp8c&slippage_tolerance=0.01&units=1000000000&offer_address=EQDkWdcbFLkS8paGJuDe7xXBzPdFWe9RBgdYILAPy8Z3-nZ3
