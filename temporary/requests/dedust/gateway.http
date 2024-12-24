@@ -49,26 +49,6 @@ Content-Type: application/json
   "poolId": ""
 }
 ###
-POST https://{{host}}:{{port}}/amm/trade
-Content-Type: application/json
-
-{
-  "quote": "DUST",
-  "base": "USDT",
-  "chain":"ton",
-  "connector":"dedust",
-  "network":"testnet",
-  "amount":"1",
-  "address":"0QDudvj7wHMV-ZPkx4oh4lWLn5eLLBLzfCKNVJtdAguDwD5X",
-  "side": "SELL",
-  "limitPrice": "",
-  "nonce": "",
-  "maxFeePerGas": "",
-  "maxPriorityFeePerGas": "",
-  "allowedSlippage": "",
-  "poolId": ""
-}
-###
 POST https://{{host}}:{{port}}/chain/balances
 Content-Type: application/json
 
@@ -91,7 +71,18 @@ Content-Type: application/json
   "connector": "dedust"
 }
 ###
+POST https://{{host}}:{{port}}/amm/add
+Content-Type: application/json
 
+{
+  "chain": "ton",
+  "network": "testnet",
+  "privateKey": "mammal entry lyrics addict swear sight artefact clog survey oil empower trip skill hospital similar piano slush bright gas depend warm whale marine merit",
+  "address": "",
+  "accountId": ""
+}
+
+###
 POST https://api.ston.fi/v1/swap/simulate?ask_address=EQBEucNVvDh5bjaHFCR0ieLvbYdKBOsca8Z_jV9JmdZFYp8c&slippage_tolerance=0.01&units=1000000000&offer_address=EQDkWdcbFLkS8paGJuDe7xXBzPdFWe9RBgdYILAPy8Z3-nZ3
 Content-Type: application/json
 
