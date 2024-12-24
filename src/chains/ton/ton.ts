@@ -3,13 +3,13 @@ import { getTonConfig } from './ton.config';
 import { mnemonicToPrivateKey } from '@ton/crypto';
 import TonWeb from 'tonweb';
 import {
-  OpenedContract,
-  TonClient,
   Address,
-  beginCell,
-  storeMessage,
-  WalletContractV3R2,
   address,
+  beginCell,
+  OpenedContract,
+  storeMessage,
+  TonClient,
+  WalletContractV3R2,
 } from '@ton/ton';
 import { DEX, pTON } from '@ston-fi/sdk';
 import { PollResponse, TonAsset } from './ton.requests';
@@ -21,9 +21,9 @@ import { Omniston } from '@ston-fi/omniston-sdk';
 import { TonController } from './ton.controller';
 import { TokenListType, walletPath } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
-import { RouterV2_1 } from '@ston-fi/sdk/dist/contracts/dex/v2_1/router/RouterV2_1';
-import { PtonV2_1 } from '@ston-fi/sdk/dist/contracts/pTON/v2_1/PtonV2_1';
 import { logger } from '../../services/logger';
+import { PtonV1 } from '@ston-fi/sdk/dist/contracts/pTON/v1/PtonV1';
+import { RouterV1 } from '@ston-fi/sdk/dist/contracts/dex/v1/RouterV1';
 
 type AssetListType = TokenListType;
 
@@ -34,8 +34,8 @@ export class Ton {
   private _network: string;
   public tonweb: TonWeb;
   public tonClient: TonClient;
-  public tonClientRouter: OpenedContract<RouterV2_1>;
-  public tonClientproxyTon: PtonV2_1;
+  public tonClientRouter: OpenedContract<RouterV1>;
+  public tonClientproxyTon: PtonV1;
   public omniston: Omniston;
   private _chain: string = 'ton';
   private _ready: boolean = false;
@@ -58,14 +58,8 @@ export class Ton {
     this.nativeTokenSymbol = config.nativeCurrencySymbol;
     this.tonweb = new TonWeb(new TonWeb.HttpProvider(nodeUrl));
     this.tonClient = new TonClient({ endpoint: nodeUrl });
-    this.tonClientRouter = this.tonClient.open(
-      DEX.v2_1.Router.create(
-        'kQALh-JBBIKK7gr0o4AVf9JZnEsFndqO0qTCyT-D-yBsWk0v',
-      ),
-    );
-    this.tonClientproxyTon = pTON.v2_1.create(
-      'kQACS30DNoUQ7NfApPvzh7eBmSZ9L4ygJ-lkNWtba8TQT-Px', // pTON v2.1.0
-    );
+    this.tonClientRouter = this.tonClient.open(new DEX.v1.Router());
+    this.tonClientproxyTon = new pTON.v1();
     this._assetListType = assetListType;
     this._assetListSource = assetListSource;
     this.omniston = new Omniston({
@@ -155,9 +149,6 @@ export class Ton {
     };
   }
 
-
-
-
   async getTransaction(address: string, txHash: string): Promise<PollResponse> {
     const pollInterval = 2000;
     const maxPollAttempts = 30;
@@ -169,12 +160,17 @@ export class Ton {
 
     while (attempt < maxPollAttempts) {
       try {
-        const transactions = await this.tonweb.provider.getTransactions(address, 10);
+        const transactions = await this.tonweb.provider.getTransactions(
+          address,
+          10,
+        );
         const found = transactions.find(
-          (tx: any) => tx.transaction_id?.hash === txHash
+          (tx: any) => tx.transaction_id?.hash === txHash,
         );
         if (found) {
-          console.log(`TON Explorer: https://tonscan.org/transaction/${txHash}`);
+          console.log(
+            `TON Explorer: https://tonscan.org/transaction/${txHash}`,
+          );
           return {
             currentBlock: seqno,
             txBlock: root_hash,
@@ -183,24 +179,20 @@ export class Ton {
           };
         }
 
-        await new Promise(resolve => setTimeout(resolve, pollInterval));
+        await new Promise((resolve) => setTimeout(resolve, pollInterval));
         attempt++;
       } catch (error: any) {
         console.error('Error fetching TON transaction:', error);
 
-        await new Promise(resolve => setTimeout(resolve, pollInterval));
+        await new Promise((resolve) => setTimeout(resolve, pollInterval));
         attempt++;
       }
     }
 
     console.warn(
-      `Transaction ${txHash} not confirmed after ${maxPollAttempts} attempts.`
+      `Transaction ${txHash} not confirmed after ${maxPollAttempts} attempts.`,
     );
-
-
   }
-
-
 
   // public async getTransactionx(address: string, txHash: string): Promise<PollResponse> {
   //   const transactionId = txHash.startsWith('0x') ? txHash.slice(2) : txHash;
