@@ -38,7 +38,7 @@ export class TonController {
   ): Promise<PollResponse> {
     // validateTonPollRequest(req);
 
-    return await ton.getTransaction(req.address, req.txHash);
+    return await ton.getTransaction(req.txHash);
   }
 
   static async balances(chain: Ton, request: BalanceRequest) {

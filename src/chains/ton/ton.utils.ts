@@ -1,5 +1,6 @@
-import { Constant } from './constants';
+import { getTonConfig } from './ton.config';
 
+// noinspection JSUnusedGlobalSymbols
 /**
  *
  * @param value
@@ -14,6 +15,7 @@ export const getNotNullOrThrowError = <R>(
   return value as R;
 };
 
+// noinspection JSUnusedGlobalSymbols
 /**
  *
  * @param value
@@ -47,14 +49,20 @@ export const sleep = (milliseconds: number) =>
 export const promiseAllInBatches = async <I, O>(
   task: (item: I) => Promise<O>,
   items: any[],
-  batchSize: number = Constant.defaultBatchSize.getValueAs<number>(),
-  delayBetweenBatches: number = Constant.defaultDelayBetweenBatches.getValueAs<number>(),
+  batchSize: number,
+  delayBetweenBatches: number,
 ): Promise<O[]> => {
   let position = 0;
   let results: any[] = [];
 
+  const config = getTonConfig('mainnet');
+
   if (!batchSize) {
-    batchSize = items.length;
+    batchSize = config.defaultBatchSize || items.length;
+  }
+
+  if (!delayBetweenBatches) {
+    delayBetweenBatches = config.defaultDelayBetweenBatches || 0;
   }
 
   while (position < items.length) {
@@ -85,6 +93,7 @@ export const promiseAllInBatches = async <I, O>(
   return results;
 };
 
+// noinspection JSUnusedGlobalSymbols
 /**
  * @param targetObject
  * @param targetFunction
@@ -98,14 +107,28 @@ export const runWithRetryAndTimeout = async <R>(
   targetObject: any,
   targetFunction: (...args: any[]) => R,
   targetParameters: any,
-  maxNumberOfRetries: number = Constant.defaultMaxNumberOfRetries.getValueAs<number>(),
-  delayBetweenRetries: number = Constant.defaultDelayDelayBetweenRetries.getValueAs<number>(),
-  timeout: number = Constant.defaultTimeout.getValueAs<number>(),
+  maxNumberOfRetries: number,
+  delayBetweenRetries: number,
+  timeout: number,
   timeoutMessage: string = 'Timeout exceeded.',
 ): Promise<R> => {
   const errors = [];
   let retryCount = 0;
   let timer: any;
+
+  const config = getTonConfig('mainnet');
+
+  if (!maxNumberOfRetries) {
+    maxNumberOfRetries = config.defaultMaxNumberOfRetries || 0;
+  }
+
+  if (!delayBetweenRetries) {
+    delayBetweenRetries = config.defaultDelayBetweenRetries || 0;
+  }
+
+  if (!timeout) {
+    timeout = config.defaultTimeout || 0;
+  }
 
   if (timeout > 0) {
     timer = setTimeout(() => new Error(timeoutMessage), timeout);
@@ -156,6 +179,7 @@ export const runWithRetryAndTimeout = async <R>(
   throw Error('Unknown error.');
 };
 
+// noinspection JSUnusedGlobalSymbols
 export function* splitInChunks<T>(
   target: T[],
   quantity: number,

@@ -2,15 +2,26 @@ networks:
   mainnet:
     chainId: mainnet
     nodeURL: https://toncenter.com/api/v2/jsonRPC
-    # indexerURL: https://mainnet-idx.algonode.cloud
-    assetListType: URL
-    assetListSource: 'wss://omni-ws.ston.fi'
+    assetListType: FILE
+    assetListSource: '/home/gateway/conf/lists/ton_tokens_mainnet.json'
+#    assetListType: URL
+#    assetListSource: wss://omni-ws.ston.fi
   testnet:
     chainId: testnet
     nodeURL: https://testnet.toncenter.com/api/v2/jsonRPC
-    # indexerURL: https://testnet-idx.algonode.cloud
-    assetListType: URL
-    assetListSource: 'wss://omni-ws.ston.fi'
-
+    assetListType: FILE
+    assetListSource: '/home/gateway/conf/lists/ton_tokens_testnet.json'
+#    assetListType: URL
+#    assetListSource: wss://omni-ws.ston.fi // TODO Which is the correct testnet url?!!!
 nativeCurrencySymbol: TON
-gasLimitEstimate: 500000
+defaultMaxNumberOfRetries: 3
+defaultDelayBetweenRetries: 5
+defaultTimeout: 60
+defaultBatchSize: 100
+defaultDelayBetweenBatches: 5
+defaultPollInterval: 2000
+defaultMaxPollAttempts: 30
+gasPrice: 0
+gasLimit: 0
+gasCost: 1
+workchain: 0

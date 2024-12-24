@@ -1,5 +1,5 @@
 export interface PollRequest {
-  address: string
+
   network: string;
   txHash: string;
 }
