@@ -86,8 +86,8 @@ async function test05() {
 // }
 
 async function test07() {
-  // const tonClient = new TonClient({ endpoint: "https://testnet.toncenter.com/api/v2/jsonRPC" }); // testnet
-  const tonClient = new TonClient({ endpoint: "https://toncenter.com/api/v2/jsonRPC" });
+  const tonClient = new TonClient({ endpoint: "https://testnet.toncenter.com/api/v2/jsonRPC" }); // testnet
+  // const tonClient = new TonClient({ endpoint: "https://toncenter.com/api/v2/jsonRPC" });
 
   const mnemonics = Array.from(mnemonic.split(' '));
   let keyPair = await mnemonicToPrivateKey(mnemonics);
@@ -95,7 +95,7 @@ async function test07() {
   const wallet = WalletContractV3R2.create({ workchain, publicKey: keyPair.publicKey, });
   const contract = tonClient.open(wallet);
 
-  console.log(contract.address.toString());
+  console.log(await contract.getBalance());
 
   //   console.log('attempt 7 - wallet address', wallet.address);
   // console.log('attempt 7 - wallet publicKey', uint8ArrayToBase64Url(wallet.publicKey));

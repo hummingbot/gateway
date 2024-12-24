@@ -297,18 +297,24 @@ export class Ton {
     account: string,
     assetName: string,
   ): Promise<string> {
-    const tonAsset = this._assetMap[assetName];
-    let balance;
-    try {
-      const response = await this.tonClient.getBalance(address(account));
-      balance = Number(response);
-    } catch (error: any) {
-      if (!error.message.includes('account asset info not found')) {
-        throw error;
+    const asset = this._assetMap[assetName];
+    let balance = 0;
+
+    if (assetName === 'TON') {
+
+      try {
+        const response = await this.tonClient.getBalance(address(account));
+        balance = Number(response);
+      } catch (error: any) {
+        if (!error.message.includes('account asset info not found')) {
+          throw error;
+        }
+        balance = 0;
       }
-      balance = 0;
     }
-    const amount = balance * parseFloat(`1e-${tonAsset.decimals}`);
+
+
+    const amount = balance * parseFloat(`1e-${asset.decimals}`);
     return amount.toString();
   }
 
