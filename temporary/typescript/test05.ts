@@ -95,10 +95,12 @@ async function test07() {
   const wallet = WalletContractV3R2.create({ workchain, publicKey: keyPair.publicKey, });
   const contract = tonClient.open(wallet);
 
-  console.log('attempt 7 - wallet address', wallet.address);
-  console.log('attempt 7 - wallet publicKey', uint8ArrayToBase64Url(wallet.publicKey));
-  console.log('attempt 7 - wallet walletId', wallet.walletId);
-  console.log('attempt 7 - contract', contract.address.toString());
+  console.log(contract.address.toString());
+
+  //   console.log('attempt 7 - wallet address', wallet.address);
+  // console.log('attempt 7 - wallet publicKey', uint8ArrayToBase64Url(wallet.publicKey));
+  // console.log('attempt 7 - wallet walletId', wallet.walletId);
+  // console.log('attempt 7 - contract', contract.address.toString());
 }
 
 function uint8ArrayToBase64Url(array: Uint8Array): string {
