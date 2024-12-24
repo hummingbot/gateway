@@ -150,10 +150,6 @@ export class Ton {
     };
   }
 
-
-
-
-
   async getTransaction(txHash: string): Promise<PollResponse | null> {
     const pollInterval = 2000; // Intervalo entre tentativas (em ms)
     const maxPollAttempts = 30; // Máximo de tentativas permitidas
@@ -165,28 +161,42 @@ export class Ton {
     while (attempt < maxPollAttempts) {
       try {
         // Fazendo a requisição diretamente ao endpoint com Axios
-        this.network
-        const requestURL = this.network === "testnet" ? "https://testnet.toncenter.com" : "https://toncenter.com"
-        const response = await axios.get(`${requestURL}/api/v3/transactions?hash=${encodeURIComponent(txHash)}`, {
-          headers: {
-            'accept': 'application/json, text/plain, */*',
-            'accept-language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
-            'origin': this.network === "testnet" ? 'https://testnet.tonscan.org' : 'https://tonscan.org',
-            'referer': this.network === "testnet" ? 'https://testnet.tonscan.org' : 'https://tonscan.org',
-            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
-            'x-api-key': '1b651340a347951cc8b9a102c406ab2a05226d59d6354aa009049d6fbbb17b0b',
+        this.network;
+        const requestURL =
+          this.network === 'testnet'
+            ? 'https://testnet.toncenter.com'
+            : 'https://toncenter.com';
+        const response = await axios.get(
+          `${requestURL}/api/v3/transactions?hash=${encodeURIComponent(txHash)}`,
+          {
+            headers: {
+              accept: 'application/json, text/plain, */*',
+              'accept-language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+              origin:
+                this.network === 'testnet'
+                  ? 'https://testnet.tonscan.org'
+                  : 'https://tonscan.org',
+              referer:
+                this.network === 'testnet'
+                  ? 'https://testnet.tonscan.org'
+                  : 'https://tonscan.org',
+              'user-agent':
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+              'x-api-key':
+                '1b651340a347951cc8b9a102c406ab2a05226d59d6354aa009049d6fbbb17b0b',
+            },
           },
-        });
+        );
 
         if (response.status === 200 && response.data) {
           const transactions = response.data.transactions || [];
 
-          const found = transactions.find(
-            (tx: any) => tx.hash === txHash
-          );
+          const found = transactions.find((tx: any) => tx.hash === txHash);
 
           if (found) {
-            console.log(`TON Explorer: https://tonscan.org/transaction/${txHash}`);
+            console.log(
+              `TON Explorer: https://tonscan.org/transaction/${txHash}`,
+            );
             return {
               currentBlock: seqno,
               txBlock: root_hash,
@@ -198,12 +208,14 @@ export class Ton {
 
         // Caso não tenha encontrado, espera antes de tentar novamente
         attempt++;
-        await new Promise(resolve => setTimeout(resolve, pollInterval));
-
+        await new Promise((resolve) => setTimeout(resolve, pollInterval));
       } catch (error: any) {
-        console.error('Error fetching TON transaction:', error.response?.data || error.message || error);
+        console.error(
+          'Error fetching TON transaction:',
+          error.response?.data || error.message || error,
+        );
 
-        await new Promise(resolve => setTimeout(resolve, pollInterval));
+        await new Promise((resolve) => setTimeout(resolve, pollInterval));
         attempt++;
       }
     }
@@ -214,8 +226,6 @@ export class Ton {
 
     return null; // Retorna nulo se não encontrar após todas as tentativas
   }
-
-
 
   // public async getTransactionx(address: string, txHash: string): Promise<PollResponse> {
   //   const transactionId = txHash.startsWith('0x') ? txHash.slice(2) : txHash;
