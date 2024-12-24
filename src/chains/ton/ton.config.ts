@@ -3,15 +3,18 @@ import { ConfigManagerV2 } from '../../services/config-manager-v2';
 export interface NetworkConfig {
   name: string;
   nodeURL: string;
-  // indexerURL: string;
   assetListType: string;
   assetListSource: string;
-  maxLRUCacheInstances: number;
 }
 
 export interface Config {
   network: NetworkConfig;
   nativeCurrencySymbol: string;
+  defaultMaxNumberOfRetries: number;
+  defaultDelayBetweenRetries: number;
+  defaultTimeout: number;
+  defaultBatchSize: number;
+  defaultDelayBetweenBatches: number;
 }
 
 export function getTonConfig(network: string): Config {
@@ -30,10 +33,21 @@ export function getTonConfig(network: string): Config {
       assetListSource: ConfigManagerV2.getInstance().get(
         'ton.networks.' + network + '.assetListSource',
       ),
-      maxLRUCacheInstances: 10,
     },
     nativeCurrencySymbol: ConfigManagerV2.getInstance().get(
       'ton.nativeCurrencySymbol',
     ),
+    defaultMaxNumberOfRetries:
+      ConfigManagerV2.getInstance().get('ton.defaultMaxNumberOfRetries') || 3,
+    defaultDelayBetweenRetries:
+      ConfigManagerV2.getInstance().get(
+        'ton.defaultDelayDelayBetweenRetries',
+      ) || 5,
+    defaultTimeout:
+      ConfigManagerV2.getInstance().get('ton.defaultTimeout') || 60,
+    defaultBatchSize:
+      ConfigManagerV2.getInstance().get('ton.defaultBatchSize') || 100,
+    defaultDelayBetweenBatches:
+      ConfigManagerV2.getInstance().get('ton.defaultDelayBetweenBatches') || 5,
   };
 }

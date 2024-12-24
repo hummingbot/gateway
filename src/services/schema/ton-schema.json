@@ -35,12 +35,29 @@
     "nativeCurrencySymbol": {
       "type": "string"
     },
-    "gasLimitEstimate": {
+    "defaultMaxNumberOfRetries": {
+      "type": "integer"
+    },
+    "defaultDelayBetweenRetries": {
+      "type": "integer"
+    },
+    "defaultTimeout": {
+      "type": "integer"
+    },
+    "defaultBatchSize": {
+      "type": "integer"
+    },
+    "defaultDelayBetweenBatches": {
       "type": "integer"
     }
   },
   "additionalProperties": false,
   "required": [
-    "nativeCurrencySymbol"
+    "nativeCurrencySymbol",
+    "defaultMaxNumberOfRetries",
+    "defaultDelayBetweenRetries",
+    "defaultTimeout",
+    "defaultBatchSize",
+    "defaultDelayBetweenBatches"
   ]
 }
