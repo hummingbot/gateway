@@ -97,22 +97,22 @@ export class Stonfi {
                 TOKEN_NOT_SUPPORTED_ERROR_CODE
             );
 
-        const baseAsset = { id: baseToken.assetId, decimals: baseToken.decimals };
+        const baseAsset = { id: baseToken.assetId, decimals: baseToken.decimals } as any;
 
         const quoteAsset = {
             id: quoteToken.assetId,
             decimals: quoteToken.decimals,
-        };
+        } as any;
 
         const amount = Number(req.amount) * <number>pow(10, baseToken.decimals);
 
         const isBuy: boolean = req.side === 'BUY';
 
         const quote = await this.stonfi.simulateSwap({
-            askAddress: isBuy === true ? quoteAsset.id : baseAsset.id,
+            askAddress: isBuy === true ? quoteAsset.id.address : baseAsset.id.address,
             offerUnits: amount.toString(),
-            offerAddress: isBuy === true ? baseAsset.id : quoteAsset.id,
-            slippageTolerance: "0.01"
+            offerAddress: isBuy === true ? baseAsset.id.address : quoteAsset.id.address,
+            slippageTolerance: "0.01" // TODO add this value to the config!!!
         });
 
         const price = Number(quote.swapRate);
