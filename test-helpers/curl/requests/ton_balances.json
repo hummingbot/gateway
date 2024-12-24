@@ -1,8 +1,10 @@
 {
-  "chain": "algorand",
+  "chain": "ton",
   "network": "mainnet",
-  "address": "$ALGORAND_ADDRESS",
+  "address": "$TON_ADDRESS",
   "tokenSymbols": [
-    "ALGO"
+    "TON",
+    "USD₮",
+    "STON"
   ]
 }

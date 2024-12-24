@@ -42,7 +42,11 @@ const setupMocks = () => {
   patch(dedust, 'init', async () => {});
   patch(ton, 'storedTokenList', () => ({
     TON: { symbol: 'TON', assetId: 'TON', decimals: 9 },
-    jUSDT: { symbol: 'jUSDT', assetId: 'EQDjVXa_oltdBP64Nc__p397xLCvGm2IcZ1ba7anSW0NAkeP', decimals: 6 },
+    jUSDT: {
+      symbol: 'jUSDT',
+      assetId: 'EQDjVXa_oltdBP64Nc__p397xLCvGm2IcZ1ba7anSW0NAkeP',
+      decimals: 6,
+    },
   }));
   patch(dedust, 'estimateTrade', () => ({
     trade: {
@@ -151,4 +155,4 @@ describe('Dedust Routes', () => {
         .expect(500);
     });
   });
-}); 
+});
