@@ -15,6 +15,7 @@ import {
 } from './ton.validators';
 import { BalanceRequest } from '../tezos/tezos.request';
 import { HttpException, TOKEN_NOT_SUPPORTED_ERROR_CODE, TOKEN_NOT_SUPPORTED_ERROR_MESSAGE } from '../../services/error-handler';
+import { promiseAllInBatches } from './ton.utils';
 
 
 async function getInitializedTon(network: string): Promise<Ton> {
@@ -40,22 +41,21 @@ export class TonController {
   static async balances(chain: Ton, request: BalanceRequest) {
     // validateTonBalanceRequest(request);
 
-    const balances: Record<string, string> = {};
+    const tokenBalances: Record<string, string> = {};
 
     const account = await chain.getAccountFromAddress(request.address);
 
 
-    if (request.tokenSymbols.includes(chain.nativeTokenSymbol)) {
-      balances[chain.nativeTokenSymbol] = await chain.getNativeBalance(account.publicKey);
-    }
 
-    for (const token of request.tokenSymbols) {
-      if (token === chain.nativeTokenSymbol) continue;
-      balances[token] = await chain.getAssetBalance(account.publicKey.toString(), token);
-    }
+    const getTokenBalance = async (token: string): Promise<void> => {
+      const tokenBalance = await chain.getAssetBalance(account.publicKey, token);
+      tokenBalances[token] = tokenBalance;
+    };
+
+    await promiseAllInBatches(getTokenBalance, request.tokenSymbols, 1, 1000);
 
     return {
-      balances: balances,
+      balances: tokenBalances,
     };
   }
 

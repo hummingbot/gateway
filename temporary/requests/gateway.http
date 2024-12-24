@@ -1,5 +1,5 @@
-# @host = "localhost"
-# @port = "15888"
+@host = "localhost"
+@port = "15888"
 
 GET https://{{host}}:{{port}}/
 Content-Type: application/json
