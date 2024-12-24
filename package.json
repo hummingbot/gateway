@@ -19,7 +19,6 @@
     "test": "jest --verbose",
     "test:debug": "node --inspect node_modules/.bin/jest --watch --runInBand",
     "test:unit": "NODE_OPTIONS=--max_old_space_size=10240 jest --runInBand --verbose ./test/",
-    "test:unit:specific": "NODE_OPTIONS=--max_old_space_size=10240 jest --runInBand --verbose",
     "test:cov": "NODE_OPTIONS=--max_old_space_size=10240 jest --runInBand --coverage ./test/",
     "test:scripts": "jest -i --verbose ./test-scripts/*.test.ts"
   },
