@@ -625,7 +625,7 @@ export class Solana implements Solanaish {
         unsafeMax: Math.max(Math.min(unsafeMax, maxPriorityFee), minPriorityFee),
       };
 
-      console.debug('[PRIORITY FEES] Calculated priority fees:', result);
+      console.log('[PRIORITY FEES] Calculated priority fees:', result);
 
       return result;
     } catch (error: any) {
@@ -985,14 +985,14 @@ export class Solana implements Solanaish {
   }
 
   private increasePriorityFeeMultiplier(): void {
-    priorityFeeMultiplier += 3;
-    console.debug(`[PRIORITY FEE] Increased priorityFeeMultiplier to: ${priorityFeeMultiplier}`);
+    priorityFeeMultiplier += 1;
+    console.log(`[PRIORITY FEE] Increased priorityFeeMultiplier to: ${priorityFeeMultiplier}`);
   }
 
   private decreasePriorityFeeMultiplier(): void {
     if (priorityFeeMultiplier <= 1) {
       priorityFeeMultiplier = 1;
-      console.debug(
+      console.log(
         `[PRIORITY FEE] Set priorityFeeMultiplier to minimum value: ${priorityFeeMultiplier}`,
       );
       return;
@@ -1000,7 +1000,7 @@ export class Solana implements Solanaish {
 
     if (priorityFeeMultiplier > 1) {
       priorityFeeMultiplier -= 1;
-      console.debug(`[PRIORITY FEE] Decreased priorityFeeMultiplier to: ${priorityFeeMultiplier}`);
+      console.log(`[PRIORITY FEE] Decreased priorityFeeMultiplier to: ${priorityFeeMultiplier}`);
     }
   }
 
