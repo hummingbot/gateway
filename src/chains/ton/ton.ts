@@ -57,6 +57,7 @@ export class Ton {
   public gasCost: number;
   public workchain: number;
   public controller: typeof TonController;
+  public wallet: any;
 
   constructor(
     network: string,
@@ -228,12 +229,12 @@ export class Ton {
     mnemonic: string,
   ): Promise<{ publicKey: string; secretKey: string }> {
     const keyPair = await mnemonicToPrivateKey(mnemonic.split(' '));
-    const wallet = this.getWallet(
+    this.wallet = this.getWallet(
       keyPair.publicKey,
       this.workchain,
       this.config.walletVersion,
     );
-    const contract = this.tonClient.open(wallet);
+    const contract = this.tonClient.open(this.wallet);
     const address = contract.address.toStringBuffer({
       bounceable: false,
       testOnly: true,
@@ -257,19 +258,19 @@ export class Ton {
     }
     const mnemonic = this.decrypt(encryptedMnemonic, passphrase);
     const keyPair = await mnemonicToPrivateKey(mnemonic.split(' '));
-    const wallet = this.getWallet(
+    this.wallet = this.getWallet(
       keyPair.publicKey,
       this.workchain,
       this.config.walletVersion,
     );
-    const contract = this.tonClient.open(wallet);
+    const contract = this.tonClient.open(this.wallet);
     const publicKey = contract.address.toStringBuffer({
       bounceable: false,
       testOnly: true,
     });
     return {
       publicKey: publicKey.toString('base64url'),
-      secretKey: wallet.publicKey.toString('utf8'),
+      secretKey: this.wallet.publicKey.toString('utf8'),
     };
   }
 
