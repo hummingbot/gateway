@@ -57,6 +57,7 @@ export class Ton {
   public gasCost: number;
   public workchain: number;
   public controller: typeof TonController;
+  public wallet: Contract;
 
   constructor(
     network: string,
@@ -228,7 +229,7 @@ export class Ton {
     mnemonic: string,
   ): Promise<{ publicKey: string; secretKey: string }> {
     const keyPair = await mnemonicToPrivateKey(mnemonic.split(' '));
-    const wallet = this.getWallet(
+    this.wallet = this.getWallet(
       keyPair.publicKey,
       this.workchain,
       this.config.walletVersion,
@@ -257,7 +258,7 @@ export class Ton {
     }
     const mnemonic = this.decrypt(encryptedMnemonic, passphrase);
     const keyPair = await mnemonicToPrivateKey(mnemonic.split(' '));
-    const wallet = this.getWallet(
+    this.wallet = this.getWallet(
       keyPair.publicKey,
       this.workchain,
       this.config.walletVersion,
