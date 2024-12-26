@@ -69,7 +69,7 @@
       "type": "integer"
     },
     "walletVersion": {
-      "type": "string"
+      "type": ["string", "null"]
     }
   },
   "additionalProperties": false,
