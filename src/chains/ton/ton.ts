@@ -9,7 +9,16 @@ import {
   OpenedContract,
   storeMessage,
   TonClient,
+  WalletContractV1R1,
+  WalletContractV1R2,
+  WalletContractV1R3,
+  WalletContractV2R1,
+  WalletContractV2R2,
+  WalletContractV3R1,
   WalletContractV3R2,
+  WalletContractV4,
+  WalletContractV5Beta,
+  WalletContractV5R1,
 } from '@ton/ton';
 import { DEX, pTON } from '@ston-fi/sdk';
 import { PollResponse, TonAsset } from './ton.requests';
@@ -47,6 +56,7 @@ export class Ton {
   public gasLimit: number;
   public gasCost: number;
   public workchain: number;
+  public walletClass: any;
   public controller: typeof TonController;
 
   constructor(
@@ -72,6 +82,31 @@ export class Ton {
     this.gasCost = this.config.gasCost;
     this.workchain = this.config.workchain;
     this.controller = TonController;
+    if (this.config.walletVersion === 'v1r1') {
+      this.walletClass = WalletContractV1R1;
+    } else if (this.config.walletVersion === 'v1r2') {
+      this.walletClass = WalletContractV1R2;
+    } else if (this.config.walletVersion === 'v1r3') {
+      this.walletClass = WalletContractV1R3;
+    } else if (this.config.walletVersion === 'v2r1') {
+      this.walletClass = WalletContractV2R1;
+    } else if (this.config.walletVersion === 'v2r2') {
+      this.walletClass = WalletContractV2R2;
+    } else if (this.config.walletVersion === 'v3r1') {
+      this.walletClass = WalletContractV3R1;
+    } else if (this.config.walletVersion === 'v3r2') {
+      this.walletClass = WalletContractV3R2;
+    } else if (this.config.walletVersion === 'v4') {
+      this.walletClass = WalletContractV4;
+    } else if (this.config.walletVersion === 'v5R1') {
+      this.walletClass = WalletContractV5R1;
+    } else if (this.config.walletVersion === 'v5Beta') {
+      this.walletClass = WalletContractV5Beta;
+    } else {
+      throw new Error(
+        `Unsupported wallet version: ${this.config.walletVersion}`,
+      );
+    }
   }
 
   public get ton(): TonWeb {
@@ -219,7 +254,7 @@ export class Ton {
     mnemonic: string,
   ): Promise<{ publicKey: string; secretKey: string }> {
     const keyPair = await mnemonicToPrivateKey(mnemonic.split(' '));
-    const wallet = WalletContractV3R2.create({
+    const wallet = this.walletClass.create({
       workchain: this.workchain,
       publicKey: keyPair.publicKey,
     });
@@ -247,7 +282,7 @@ export class Ton {
     }
     const mnemonic = this.decrypt(encryptedMnemonic, passphrase);
     const keyPair = await mnemonicToPrivateKey(mnemonic.split(' '));
-    const wallet = WalletContractV3R2.create({
+    const wallet = this.walletClass.create({
       workchain: this.workchain,
       publicKey: keyPair.publicKey,
     });
