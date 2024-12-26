@@ -373,7 +373,7 @@ export class Ton {
       assetData = assets.assets;
     } else {
       const data = JSON.parse(await fs.readFile(this._assetListSource, 'utf8'));
-      assetData = data.results;
+      assetData = data.tokens;
     }
     return assetData;
   }
