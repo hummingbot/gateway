@@ -1,5 +1,5 @@
 import LRUCache from 'lru-cache';
-import { getTonConfig } from './ton.config';
+import { Config, getTonConfig } from './ton.config';
 import { mnemonicToPrivateKey } from '@ton/crypto';
 import TonWeb from 'tonweb';
 import {
@@ -9,7 +9,16 @@ import {
   OpenedContract,
   storeMessage,
   TonClient,
+  WalletContractV1R1,
+  WalletContractV1R2,
+  WalletContractV1R3,
+  WalletContractV2R1,
+  WalletContractV2R2,
+  WalletContractV3R1,
   WalletContractV3R2,
+  WalletContractV4,
+  WalletContractV5Beta,
+  WalletContractV5R1,
 } from '@ton/ton';
 import { DEX, pTON } from '@ston-fi/sdk';
 import { PollResponse, TonAsset } from './ton.requests';
@@ -24,6 +33,7 @@ import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-
 import { logger } from '../../services/logger';
 import { PtonV1 } from '@ston-fi/sdk/dist/contracts/pTON/v1/PtonV1';
 import { RouterV1 } from '@ston-fi/sdk/dist/contracts/dex/v1/RouterV1';
+import axios from 'axios';
 
 type AssetListType = TokenListType;
 
@@ -41,11 +51,13 @@ export class Ton {
   private _ready: boolean = false;
   private _assetListType: AssetListType;
   private _assetListSource: string;
+  public config: Config;
   public gasPrice: number;
   public gasLimit: number;
   public gasCost: number;
   public workchain: number;
   public controller: typeof TonController;
+  public wallet: any;
 
   constructor(
     network: string,
@@ -54,8 +66,8 @@ export class Ton {
     assetListSource: string,
   ) {
     this._network = network;
-    const config = getTonConfig(network);
-    this.nativeTokenSymbol = config.nativeCurrencySymbol;
+    this.config = getTonConfig(network);
+    this.nativeTokenSymbol = this.config.nativeCurrencySymbol;
     this.tonweb = new TonWeb(new TonWeb.HttpProvider(nodeUrl));
     this.tonClient = new TonClient({ endpoint: nodeUrl });
     this.tonClientRouter = this.tonClient.open(new DEX.v1.Router());
@@ -65,10 +77,10 @@ export class Ton {
     this.omniston = new Omniston({
       apiUrl: this._assetListSource,
     });
-    this.gasPrice = 0;
-    this.gasLimit = 0;
-    this.gasCost = 0.001;
-    this.workchain = 0;
+    this.gasPrice = this.config.gasPrice;
+    this.gasLimit = this.config.gasLimit;
+    this.gasCost = this.config.gasCost;
+    this.workchain = this.config.workchain;
     this.controller = TonController;
   }
 
@@ -149,40 +161,57 @@ export class Ton {
     };
   }
 
-  async getTransaction(address: string, txHash: string): Promise<PollResponse> {
-    const pollInterval = 2000;
-    const maxPollAttempts = 30;
+  async getTransaction(txHash: string): Promise<PollResponse | null> {
+    const pollInterval = this.config.defaultPollInterval;
+    const maxPollAttempts = this.config.defaultMaxPollAttempts;
     const transactionId = txHash.startsWith('0x') ? txHash.slice(2) : txHash;
     const { seqno, root_hash } = await this.getCurrentBlockNumber();
 
     let attempt = 0;
-    // let transactionData = null;
 
     while (attempt < maxPollAttempts) {
       try {
-        const transactions = await this.tonweb.provider.getTransactions(
-          address,
-          10,
+        const response = await axios.get(
+          `${this.config.network.scanUrl}/api/v3/transactions?hash=${encodeURIComponent(txHash)}`,
+          {
+            headers: {
+              accept: 'application/json, text/plain, */*',
+              'accept-language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+              origin: this.config.network.scanUrl,
+              referer: this.config.network.scanUrl,
+              'user-agent':
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+              'x-api-key':
+                '1b651340a347951cc8b9a102c406ab2a05226d59d6354aa009049d6fbbb17b0b',
+            },
+          },
         );
-        const found = transactions.find(
-          (tx: any) => tx.transaction_id?.hash === txHash,
-        );
-        if (found) {
-          console.log(
-            `TON Explorer: https://tonscan.org/transaction/${txHash}`,
-          );
-          return {
-            currentBlock: seqno,
-            txBlock: root_hash,
-            txHash: transactionId,
-            fee: 0,
-          };
+
+        if (response.status === 200 && response.data) {
+          const transactions = response.data.transactions || [];
+
+          const found = transactions.find((tx: any) => tx.hash === txHash);
+
+          if (found) {
+            console.log(
+              `TON Explorer: https://tonscan.org/transaction/${txHash}`,
+            );
+            return {
+              currentBlock: seqno,
+              txBlock: root_hash,
+              txHash: transactionId,
+              fee: found.fee || 0, // Fee obtida da resposta, se disponível
+            };
+          }
         }
 
-        await new Promise((resolve) => setTimeout(resolve, pollInterval));
         attempt++;
+        await new Promise((resolve) => setTimeout(resolve, pollInterval));
       } catch (error: any) {
-        console.error('Error fetching TON transaction:', error);
+        console.error(
+          'Error fetching TON transaction:',
+          error.response?.data || error.message || error,
+        );
 
         await new Promise((resolve) => setTimeout(resolve, pollInterval));
         attempt++;
@@ -192,39 +221,20 @@ export class Ton {
     console.warn(
       `Transaction ${txHash} not confirmed after ${maxPollAttempts} attempts.`,
     );
+
+    return null;
   }
-
-  // public async getTransactionx(address: string, txHash: string): Promise<PollResponse> {
-  //   const transactionId = txHash.startsWith('0x') ? txHash.slice(2) : txHash;
-  //   const { seqno, root_hash } = await this.getCurrentBlockNumber()
-  //   let transactionData
-
-  //   try {
-  //     const transactions = await this.tonweb.getTransactions(address, 1, undefined, transactionId);
-  //     transactionData = transactions[0];
-  //   } catch (error: any) {
-  //     if (error.status != 404) {
-  //       throw error;
-  //     }
-  //   }
-  //   return {
-  //     currentBlock: seqno,
-  //     txBlock: root_hash,
-  //     txHash: transactionId,
-  //     fee: transactionData ? transactionData.fee : 0,
-  //   };
-  // }
 
   public async getAccountFromPrivateKey(
     mnemonic: string,
   ): Promise<{ publicKey: string; secretKey: string }> {
     const keyPair = await mnemonicToPrivateKey(mnemonic.split(' '));
-    const workchain = 0;
-    const wallet = WalletContractV3R2.create({
-      workchain,
-      publicKey: keyPair.publicKey,
-    });
-    const contract = this.tonClient.open(wallet);
+    this.wallet = this.getWallet(
+      keyPair.publicKey,
+      this.workchain,
+      this.config.walletVersion,
+    );
+    const contract = this.tonClient.open(this.wallet);
     const address = contract.address.toStringBuffer({
       bounceable: false,
       testOnly: true,
@@ -248,19 +258,19 @@ export class Ton {
     }
     const mnemonic = this.decrypt(encryptedMnemonic, passphrase);
     const keyPair = await mnemonicToPrivateKey(mnemonic.split(' '));
-    const workchain = 0;
-    const wallet = WalletContractV3R2.create({
-      workchain,
-      publicKey: keyPair.publicKey,
-    });
-    const contract = this.tonClient.open(wallet);
+    this.wallet = this.getWallet(
+      keyPair.publicKey,
+      this.workchain,
+      this.config.walletVersion,
+    );
+    const contract = this.tonClient.open(this.wallet);
     const publicKey = contract.address.toStringBuffer({
       bounceable: false,
       testOnly: true,
     });
     return {
       publicKey: publicKey.toString('base64url'),
-      secretKey: wallet.publicKey.toString('utf8'),
+      secretKey: this.wallet.publicKey.toString('utf8'),
     };
   }
 
@@ -299,18 +309,22 @@ export class Ton {
     account: string,
     assetName: string,
   ): Promise<string> {
-    const tonAsset = this._assetMap[assetName];
-    let balance;
-    try {
-      const response = await this.tonClient.getBalance(address(account));
-      balance = Number(response);
-    } catch (error: any) {
-      if (!error.message.includes('account asset info not found')) {
-        throw error;
+    const asset = this._assetMap[assetName];
+    let balance = 0;
+
+    if (assetName === 'TON') {
+      try {
+        const response = await this.tonClient.getBalance(address(account));
+        balance = Number(response);
+      } catch (error: any) {
+        if (!error.message.includes('account asset info not found')) {
+          throw error;
+        }
+        balance = 0;
       }
-      balance = 0;
     }
-    const amount = balance * parseFloat(`1e-${tonAsset.decimals}`);
+
+    const amount = balance * parseFloat(`1e-${asset.decimals}`);
     return amount.toString();
   }
 
@@ -415,5 +429,86 @@ export class Ton {
         }
       }, 1000);
     });
+  }
+
+  public getWalletContractClassByVersion(
+    version: string,
+  ):
+    | typeof WalletContractV1R1
+    | typeof WalletContractV1R2
+    | typeof WalletContractV1R3
+    | typeof WalletContractV2R1
+    | typeof WalletContractV2R2
+    | typeof WalletContractV3R1
+    | typeof WalletContractV3R2
+    | typeof WalletContractV4
+    | typeof WalletContractV5R1
+    | typeof WalletContractV5Beta
+    | undefined {
+    if (!version) {
+      return undefined;
+    } else if (version === 'v1r1') {
+      return WalletContractV1R1;
+    } else if (version === 'v1r2') {
+      return WalletContractV1R2;
+    } else if (version === 'v1r3') {
+      return WalletContractV1R3;
+    } else if (version === 'v2r1') {
+      return WalletContractV2R1;
+    } else if (version === 'v2r2') {
+      return WalletContractV2R2;
+    } else if (version === 'v3r1') {
+      return WalletContractV3R1;
+    } else if (version === 'v3r2') {
+      return WalletContractV3R2;
+    } else if (version === 'v4') {
+      return WalletContractV4;
+    } else if (version === 'v5R1') {
+      return WalletContractV5R1;
+    } else if (version === 'v5Beta') {
+      return WalletContractV5Beta;
+    } else {
+      throw new Error(`Unknown wallet version: ${version}`);
+    }
+  }
+
+  public async getBestWallet(
+    publicKey: Buffer,
+    workchain: number,
+  ): Promise<string> {
+    const walletVersions = this.config.availableWalletVersions;
+    let maxNativeTokenBalance = 0;
+    let bestWallet = null;
+    for (const walletVersion of walletVersions) {
+      const walletContractClass =
+        this.getWalletContractClassByVersion(walletVersion);
+      const wallet = walletContractClass.create({
+        workchain,
+        publicKey,
+      });
+      const contract = this.tonClient.open(wallet);
+      const rawNativeTokenBalance = await this.tonClient.getBalance(
+        contract.address,
+      );
+      const nativeTokenBalance = Number(rawNativeTokenBalance);
+      if (nativeTokenBalance > maxNativeTokenBalance) {
+        maxNativeTokenBalance = nativeTokenBalance;
+        bestWallet = wallet;
+      }
+    }
+    return bestWallet;
+  }
+
+  public getWallet(publicKey: Buffer, workchain: number, version: string): any {
+    const walletContractClass = this.getWalletContractClassByVersion(version);
+
+    if (walletContractClass) {
+      return walletContractClass.create({
+        workchain,
+        publicKey,
+      });
+    } else {
+      return this.getBestWallet(publicKey, workchain);
+    }
   }
 }

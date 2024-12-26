@@ -35,12 +35,57 @@
     "nativeCurrencySymbol": {
       "type": "string"
     },
-    "gasLimitEstimate": {
+    "defaultMaxNumberOfRetries": {
       "type": "integer"
+    },
+    "defaultDelayBetweenRetries": {
+      "type": "integer"
+    },
+    "defaultTimeout": {
+      "type": "integer"
+    },
+    "defaultBatchSize": {
+      "type": "integer"
+    },
+    "defaultDelayBetweenBatches": {
+      "type": "integer"
+    },
+    "defaultPollInterval": {
+      "type": "integer"
+    },
+    "defaultMaxPollAttempts": {
+      "type": "integer"
+    },
+    "gasPrice": {
+      "type": "number"
+    },
+    "gasLimit": {
+      "type": "number"
+    },
+    "gasCost": {
+      "type": "number"
+    },
+    "workchain": {
+      "type": "integer"
+    },
+    "walletVersion": {
+      "type": ["string", "null"]
     }
   },
   "additionalProperties": false,
   "required": [
-    "nativeCurrencySymbol"
+    "nativeCurrencySymbol",
+    "defaultMaxNumberOfRetries",
+    "defaultDelayBetweenRetries",
+    "defaultTimeout",
+    "defaultBatchSize",
+    "defaultDelayBetweenBatches",
+    "defaultPollInterval",
+    "defaultMaxPollAttempts",
+    "gasPrice",
+    "gasLimit",
+    "gasCost",
+    "workchain",
+    "walletVersion"
   ]
 }

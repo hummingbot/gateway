@@ -1,7 +1,7 @@
 /* eslint-disable */
 import { mnemonicToPrivateKey, mnemonicToWalletKey } from '@ton/crypto';
-import { mnemonicToKeyPair } from 'tonweb-mnemonic';
-import { TonClient, WalletContractV3R2 } from '@ton/ton';
+// import { mnemonicToKeyPair } from 'tonweb-mnemonic';
+import { address, TonClient, WalletContractV3R2, WalletContractV4 } from '@ton/ton';
 
 // This TON address can be represented in the following forms:
 //   HEX:
@@ -17,14 +17,14 @@ import { TonClient, WalletContractV3R2 } from '@ton/ton';
 // Non-bounceable:
 // 0QBSevYG7uExE6wJnWC2adG2SqcjUUqNlmfeTRMFhHT3kdxX
 
-const originalPublicKey = '0QBSevYG7uExE6wJnWC2adG2SqcjUUqNlmfeTRMFhHT3kdxX';
-const publicKeyVariation1 = '0:527af606eee13113ac099d60b669d1b64aa723514a8d9667de4d13058474f791';
-const publicKeyVariation2 = 'EQBSevYG7uExE6wJnWC2adG2SqcjUUqNlmfeTRMFhHT3kToY';
-const publicKeyVariation3 = 'UQBSevYG7uExE6wJnWC2adG2SqcjUUqNlmfeTRMFhHT3kWfd';
-const publicKeyVariation4 = 'kQBSevYG7uExE6wJnWC2adG2SqcjUUqNlmfeTRMFhHT3kYGS';
-const publicKeyVariation5 = '0QBSevYG7uExE6wJnWC2adG2SqcjUUqNlmfeTRMFhHT3kdxX';
+const originalPublicKey = '0QAqjRhhmF6KFJF1HHFC-M_5hqWMlwFrSaFcQHXGw3Nusbb9';
+const publicKeyVariation1 = '';
+const publicKeyVariation2 = '';
+const publicKeyVariation3 = '';
+const publicKeyVariation4 = '';
+const publicKeyVariation5 = '';
 
-const mnemonic = 'sort way burger decrease wild state welcome annual assume mix snack list scorpion improve anxiety fame soap crunch gain foil account knee top soul';
+const mnemonic = 'mammal entry lyrics addict swear sight artefact clog survey oil empower trip skill hospital similar piano slush bright gas depend warm whale marine merit';
 const password = 'j8mwl^yi5gGvz*&ICUhgK45qU26ZnuPc_9M+rQL.1M*1EzM23$KKL)\\5GyRG4=!,6&ET]@027K.gb!~ND5i3?rGX3v7:MfH<WAd%';
 const seed = 'TON default seed';
 
@@ -40,12 +40,12 @@ async function main() {
   console.log('publicKey (variation 4)', publicKeyVariation4);
   console.log('publicKey (variation 5)', publicKeyVariation5);
 
-  await test01();
-  await test02();
-  await test03();
-  await test04();
-  await test05();
-  await test06();
+  // await test01();
+  // await test02();
+  // await test03();
+  // await test04();
+  // await test05();
+  // await test06();
   await test07();
 }
 
@@ -75,15 +75,15 @@ async function test04() {
 
 async function test05() {
   const mnemonics = Array.from(mnemonic.split(' '));
-  const keyPair = await mnemonicToKeyPair(mnemonics);
-  console.log('attempt 5', uint8ArrayToBase64Url(keyPair.publicKey));
+  // const keyPair = await mnemonicToKeyPair(mnemonics);
+  // console.log('attempt 5', uint8ArrayToBase64Url(keyPair.publicKey));
 }
 
-async function test06() {
-  const mnemonics = Array.from(mnemonic.split(' '));
-  const keyPair = await mnemonicToKeyPair(mnemonics, password);
-  console.log('attempt 6', uint8ArrayToBase64Url(keyPair.publicKey));
-}
+// async function test06() {
+//   const mnemonics = Array.from(mnemonic.split(' '));
+//   const keyPair = await mnemonicToKeyPair(mnemonics, password);
+//   console.log('attempt 6', uint8ArrayToBase64Url(keyPair.publicKey));
+// }
 
 async function test07() {
   const tonClient = new TonClient({ endpoint: "https://testnet.toncenter.com/api/v2/jsonRPC" }); // testnet
@@ -94,11 +94,16 @@ async function test07() {
   let workchain = 0;
   const wallet = WalletContractV3R2.create({ workchain, publicKey: keyPair.publicKey, });
   const contract = tonClient.open(wallet);
+  const addressx = contract.address.toStringBuffer({
+    bounceable: false,
+    testOnly: true,
+  });
+  console.log(await tonClient.getContractState(address(addressx.toString('base64url'))));
 
-  console.log('attempt 7 - wallet address', wallet.address);
-  console.log('attempt 7 - wallet publicKey', uint8ArrayToBase64Url(wallet.publicKey));
-  console.log('attempt 7 - wallet walletId', wallet.walletId);
-  console.log('attempt 7 - contract', contract.address.toString());
+  //   console.log('attempt 7 - wallet address', wallet.address);
+  // console.log('attempt 7 - wallet publicKey', uint8ArrayToBase64Url(wallet.publicKey));
+  // console.log('attempt 7 - wallet walletId', wallet.walletId);
+  // console.log('attempt 7 - contract', contract.address.toString());
 }
 
 function uint8ArrayToBase64Url(array: Uint8Array): string {
