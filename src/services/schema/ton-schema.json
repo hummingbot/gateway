@@ -67,6 +67,9 @@
     },
     "workchain": {
       "type": "integer"
+    },
+    "walletVersion": {
+      "type": "string"
     }
   },
   "additionalProperties": false,
@@ -82,6 +85,7 @@
     "gasPrice",
     "gasLimit",
     "gasCost",
-    "workchain"
+    "workchain",
+    "walletVersion"
   ]
 }
