@@ -57,7 +57,7 @@ export class Ton {
   public gasCost: number;
   public workchain: number;
   public controller: typeof TonController;
-  public wallet: Contract;
+  public wallet: any;
 
   constructor(
     network: string,
@@ -234,7 +234,7 @@ export class Ton {
       this.workchain,
       this.config.walletVersion,
     );
-    const contract = this.tonClient.open(wallet);
+    const contract = this.tonClient.open(this.wallet);
     const address = contract.address.toStringBuffer({
       bounceable: false,
       testOnly: true,
@@ -263,14 +263,14 @@ export class Ton {
       this.workchain,
       this.config.walletVersion,
     );
-    const contract = this.tonClient.open(wallet);
+    const contract = this.tonClient.open(this.wallet);
     const publicKey = contract.address.toStringBuffer({
       bounceable: false,
       testOnly: true,
     });
     return {
       publicKey: publicKey.toString('base64url'),
-      secretKey: wallet.publicKey.toString('utf8'),
+      secretKey: this.wallet.publicKey.toString('utf8'),
     };
   }
 
