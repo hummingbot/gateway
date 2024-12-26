@@ -9,6 +9,7 @@ import { Xdc } from '../chains/xdc/xdc';
 import { Tezos } from '../chains/tezos/tezos';
 import { Telos } from '../chains/telos/telos';
 import { Osmosis } from '../chains/osmosis/osmosis';
+import { Solana } from '../chains/solana/solana';
 import { MadMeerkat } from '../connectors/mad_meerkat/mad_meerkat';
 import { Openocean } from '../connectors/openocean/openocean';
 import { Pangolin } from '../connectors/pangolin/pangolin';
@@ -38,6 +39,7 @@ import { Balancer } from '../connectors/balancer/balancer';
 import { ETCSwapLP } from '../connectors/etcswap/etcswap.lp';
 import { EthereumClassicChain } from '../chains/ethereum-classic/ethereum-classic';
 import { ETCSwap } from '../connectors/etcswap/etcswap';
+import { Jupiter } from '../connectors/jupiter/jupiter';
 
 export type ChainUnion =
   | Algorand
@@ -45,7 +47,8 @@ export type ChainUnion =
   | Ethereumish
   | Xdcish
   | Tezosish
-  | Osmosis;
+  | Osmosis
+  | Solana;
 
 export type Chain<T> = T extends Algorand
   ? Algorand
@@ -59,7 +62,9 @@ export type Chain<T> = T extends Algorand
               ? Tezosish
                 : T extends Osmosis
                   ? Osmosis
-                  : never;
+                    : T extends Solana
+                    ? Solana
+                      : never;
 
 export class UnsupportedChainException extends Error {
   constructor(message?: string) {
@@ -100,6 +105,8 @@ export async function getChainInstance(
     connection = Algorand.getInstance(network);
   } else if (chain === 'ethereum') {
     connection = Ethereum.getInstance(network);
+  } else if (chain === 'solana') {
+    connection = Solana.getInstance(network);
   } else if (chain === 'avalanche') {
     connection = Avalanche.getInstance(network);
   } else if (chain === 'harmony') {
@@ -137,6 +144,7 @@ export type ConnectorUnion =
   | Tinyman
   | Plenty
   | Curve
+  | Jupiter;
 
 export type Connector<T> = T extends Uniswapish
   ? Uniswapish
@@ -144,8 +152,10 @@ export type Connector<T> = T extends Uniswapish
     ? UniswapLPish
       : T extends Tinyman
         ? Tinyman
-          : T extends Plenty
-            ? Plenty
+        : T extends Plenty
+          ? Plenty
+          : T extends Jupiter
+            ? Jupiter
               : never;
 
 export async function getConnector<T>(
@@ -159,6 +169,8 @@ export async function getConnector<T>(
     connectorInstance = Uniswap.getInstance(chain, network);
   } else if (connector === 'uniswapLP') {
     connectorInstance = UniswapLP.getInstance(chain, network);
+  } else if (connector === 'jupiter') {
+    connectorInstance = Jupiter.getInstance(network);
   } else if (connector === 'quickswap') {
     connectorInstance = Quickswap.getInstance(chain, network);
   } else if (connector === 'pangolin') {

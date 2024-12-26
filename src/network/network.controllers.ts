@@ -20,7 +20,7 @@ import {
   UnsupportedChainException,
 } from '../services/connection-manager';
 import { Osmosis } from '../chains/osmosis/osmosis';
-
+import { Solana } from '../chains/solana/solana';
 import { EthereumClassicChain } from '../chains/ethereum-classic/ethereum-classic';
 
 export async function getStatus(
@@ -109,6 +109,11 @@ export async function getStatus(
     const osmosisConnections = Osmosis.getConnectedInstances();
     connections = connections.concat(
       osmosisConnections ? Object.values(osmosisConnections) : [],
+    );
+
+    const solanaConnections = Solana.getConnectedInstances();
+    connections = connections.concat(
+      solanaConnections ? Object.values(solanaConnections) : []
     );
 
     const etcConnections = EthereumClassicChain.getConnectedInstances();
