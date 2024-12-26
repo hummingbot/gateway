@@ -9,7 +9,16 @@ import {
   OpenedContract,
   storeMessage,
   TonClient,
+  WalletContractV1R1,
+  WalletContractV1R2,
+  WalletContractV1R3,
+  WalletContractV2R1,
+  WalletContractV2R2,
+  WalletContractV3R1,
   WalletContractV3R2,
+  WalletContractV4,
+  WalletContractV5Beta,
+  WalletContractV5R1,
 } from '@ton/ton';
 import { DEX, pTON } from '@ston-fi/sdk';
 import { PollResponse, TonAsset } from './ton.requests';
@@ -219,10 +228,11 @@ export class Ton {
     mnemonic: string,
   ): Promise<{ publicKey: string; secretKey: string }> {
     const keyPair = await mnemonicToPrivateKey(mnemonic.split(' '));
-    const wallet = WalletContractV3R2.create({
-      workchain: this.workchain,
-      publicKey: keyPair.publicKey,
-    });
+    const wallet = this.getWallet(
+      keyPair.publicKey,
+      this.workchain,
+      this.config.walletVersion,
+    );
     const contract = this.tonClient.open(wallet);
     const address = contract.address.toStringBuffer({
       bounceable: false,
@@ -247,10 +257,11 @@ export class Ton {
     }
     const mnemonic = this.decrypt(encryptedMnemonic, passphrase);
     const keyPair = await mnemonicToPrivateKey(mnemonic.split(' '));
-    const wallet = WalletContractV3R2.create({
-      workchain: this.workchain,
-      publicKey: keyPair.publicKey,
-    });
+    const wallet = this.getWallet(
+      keyPair.publicKey,
+      this.workchain,
+      this.config.walletVersion,
+    );
     const contract = this.tonClient.open(wallet);
     const publicKey = contract.address.toStringBuffer({
       bounceable: false,
@@ -301,7 +312,6 @@ export class Ton {
     let balance = 0;
 
     if (assetName === 'TON') {
-
       try {
         const response = await this.tonClient.getBalance(address(account));
         balance = Number(response);
@@ -312,7 +322,6 @@ export class Ton {
         balance = 0;
       }
     }
-
 
     const amount = balance * parseFloat(`1e-${asset.decimals}`);
     return amount.toString();
@@ -419,5 +428,86 @@ export class Ton {
         }
       }, 1000);
     });
+  }
+
+  public getWalletContractClassByVersion(
+    version: string,
+  ):
+    | typeof WalletContractV1R1
+    | typeof WalletContractV1R2
+    | typeof WalletContractV1R3
+    | typeof WalletContractV2R1
+    | typeof WalletContractV2R2
+    | typeof WalletContractV3R1
+    | typeof WalletContractV3R2
+    | typeof WalletContractV4
+    | typeof WalletContractV5R1
+    | typeof WalletContractV5Beta
+    | undefined {
+    if (!version) {
+      return undefined;
+    } else if (version === 'v1r1') {
+      return WalletContractV1R1;
+    } else if (version === 'v1r2') {
+      return WalletContractV1R2;
+    } else if (version === 'v1r3') {
+      return WalletContractV1R3;
+    } else if (version === 'v2r1') {
+      return WalletContractV2R1;
+    } else if (version === 'v2r2') {
+      return WalletContractV2R2;
+    } else if (version === 'v3r1') {
+      return WalletContractV3R1;
+    } else if (version === 'v3r2') {
+      return WalletContractV3R2;
+    } else if (version === 'v4') {
+      return WalletContractV4;
+    } else if (version === 'v5R1') {
+      return WalletContractV5R1;
+    } else if (version === 'v5Beta') {
+      return WalletContractV5Beta;
+    } else {
+      throw new Error(`Unknown wallet version: ${version}`);
+    }
+  }
+
+  public async getBestWallet(
+    publicKey: Buffer,
+    workchain: number,
+  ): Promise<string> {
+    const walletVersions = this.config.availableWalletVersions;
+    let maxNativeTokenBalance = 0;
+    let bestWallet = null;
+    for (const walletVersion of walletVersions) {
+      const walletContractClass =
+        this.getWalletContractClassByVersion(walletVersion);
+      const wallet = walletContractClass.create({
+        workchain,
+        publicKey,
+      });
+      const contract = this.tonClient.open(wallet);
+      const rawNativeTokenBalance = await this.tonClient.getBalance(
+        contract.address,
+      );
+      const nativeTokenBalance = Number(rawNativeTokenBalance);
+      if (nativeTokenBalance > maxNativeTokenBalance) {
+        maxNativeTokenBalance = nativeTokenBalance;
+        bestWallet = wallet;
+      }
+    }
+    return bestWallet;
+  }
+
+  public getWallet(publicKey: Buffer, workchain: number, version: string): any {
+    const walletContractClass = this.getWalletContractClassByVersion(version);
+
+    if (walletContractClass) {
+      return walletContractClass.create({
+        workchain,
+        publicKey,
+      });
+    } else {
+      return this.getBestWallet(publicKey, workchain);
+    }
   }
 }

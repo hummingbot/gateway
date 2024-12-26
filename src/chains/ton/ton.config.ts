@@ -23,6 +23,8 @@ export interface Config {
   gasLimit: number;
   gasCost: number;
   workchain: number;
+  availableWalletVersions: string[];
+  walletVersion: string;
 }
 
 export function getTonConfig(network: string): Config {
@@ -67,5 +69,19 @@ export function getTonConfig(network: string): Config {
     gasLimit: ConfigManagerV2.getInstance().get('ton.gasLimit') || 0,
     gasCost: ConfigManagerV2.getInstance().get('ton.gasCost') || 1,
     workchain: ConfigManagerV2.getInstance().get('ton.workchain') || 0,
+    availableWalletVersions: [
+      'v1r1',
+      'v1r2',
+      'v1r3',
+      'v2r1',
+      'v2r2',
+      'v3r1',
+      'v3r2',
+      'v4',
+      'v5R1',
+      'v5Beta',
+    ],
+    walletVersion:
+      ConfigManagerV2.getInstance().get('ton.walletVersion') || null,
   };
 }
