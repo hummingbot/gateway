@@ -3,8 +3,8 @@
   "type": "object",
   "properties": {
     "allowedSlippage": { "type": "string" },
-    "gasLimitEstimate": { "type": "integer" }
+    "gasCost": { "type": "number" }
   },
   "additionalProperties": false,
-  "required": ["allowedSlippage", "gasLimitEstimate"]
+  "required": ["allowedSlippage", "gasCost"]
 }

@@ -2,5 +2,5 @@
 # execution price. It uses a rational number for precision.
 allowedSlippage: '5/100'
 
-# the transaction gas amount used to estimate gasCost for a jupiter trade.
-gasLimitEstimate: 1
+# the default transaction gasCost in SOL for a jupiter trade.
+gasCost: 0.0005
