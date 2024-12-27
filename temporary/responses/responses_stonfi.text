@@ -1,0 +1,45 @@
+getPrice(chain: "ton", network: "testnet",)
+{
+  "network": "testnet",
+  "timestamp": 1735067296315,
+  "latency": 0.943,
+  "base": "TON",
+  "quote": "USD₮",
+  "amount": "1",
+  "rawAmount": "1",
+  "expectedAmount": "1",
+  "price": "0.17383718999831205",
+  "gasPrice": 0,
+  "gasPriceToken": "TON",
+  "gasLimit": 0,
+  "gasCost": "0.001"
+}
+
+getTrade() {}
+
+getAdd(chain: "ton", network: "testnet",)
+{
+  "address": "0QDudvj7wHMV-ZPkx4oh4lWLn5eLLBLzfCKNVJtdAguDwD5X"
+}
+
+getBalances(chain: "ton", network: "testnet", connector: "stonfi")
+{
+  "timestamp": 1735073938579,
+  "latency": 3.469,
+  "balances": {
+    "USD₮": "1997.1579929999998",
+    "GEMSTON": "1.997157993",
+    "TON": "1.997157993"
+  }
+}
+
+getEstimatedGas( chain: "ton", network: "testnet", connector: "stonfi")
+{
+  "network": "testnet",
+  "timestamp": 1735074011675,
+  "gasPrice": 0,
+  "gasPriceToken": "TON",
+  "gasLimit": 0,
+  "gasCost": "0.001"
+}
+
