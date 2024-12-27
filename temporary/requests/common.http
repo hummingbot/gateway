@@ -1,0 +1,28 @@
+GET https://{{host}}:{{port}}/
+Content-Type: application/json
+
+{}
+
+###
+
+GET https://{{host}}:{{port}}/chain
+Content-Type: application/json
+
+{}
+
+###
+
+POST https://{{host}}:{{port}}/amm/price
+Content-Type: application/json
+
+{
+  "quote": "USD₮",
+  "base": "TON",
+  "amount": "1",
+  "chain": "ton",
+  "network": "mainnet",
+  "connector": "stonfi",
+  "side": "BUY"
+}
+
+###
