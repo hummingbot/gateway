@@ -63,7 +63,7 @@ Content-Type: application/json
 
 {
   "chain": {{chain}},
-  "network": "testnet",
+  "network": {{network}},
    "connector": {{connector}}
 }
 ###
@@ -72,10 +72,10 @@ Content-Type: application/json
 
 {
   "chain": {{chain}},
-  "network": "testnet",
-  "privateKey": "mammal entry lyrics addict swear sight artefact clog survey oil empower trip skill hospital similar piano slush bright gas depend warm whale marine merit",
+  "network": {{network}},
+  "privateKey": {{privateKey}},
   "address": "",
-  "accountId": ""
+  "accountId": {{accontId}}
 }
 
 ###
