@@ -21,7 +21,7 @@ import {
   WalletContractV5R1,
 } from '@ton/ton';
 import { DEX, pTON } from '@ston-fi/sdk';
-import { PollResponse, TonAsset } from './ton.requests';
+import { AssetBalanceResponse, PollResponse, StonfiWalletAssetResponse, TonAsset } from './ton.requests';
 import fse from 'fs-extra';
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 import { promises as fs } from 'fs';
@@ -34,6 +34,7 @@ import { logger } from '../../services/logger';
 import { PtonV1 } from '@ston-fi/sdk/dist/contracts/pTON/v1/PtonV1';
 import { RouterV1 } from '@ston-fi/sdk/dist/contracts/dex/v1/RouterV1';
 import axios from 'axios';
+import { StonApiClient } from '@ston-fi/api';
 
 type AssetListType = TokenListType;
 
@@ -47,6 +48,7 @@ export class Ton {
   public tonClientRouter: OpenedContract<RouterV1>;
   public tonClientproxyTon: PtonV1;
   public omniston: Omniston;
+  public stonfiClient: StonApiClient
   private _chain: string = 'ton';
   private _ready: boolean = false;
   private _assetListType: AssetListType;
@@ -65,6 +67,7 @@ export class Ton {
     assetListSource: string,
   ) {
     this._network = network;
+    this.stonfiClient = new StonApiClient();
     this.config = getTonConfig(network);
     this.nativeTokenSymbol = this.config.nativeCurrencySymbol;
     this.tonweb = new TonWeb(new TonWeb.HttpProvider(nodeUrl));
@@ -236,7 +239,7 @@ export class Ton {
     const contract = this.tonClient.open(wallet);
     const address = contract.address.toStringBuffer({
       bounceable: false,
-      testOnly: true,
+      testOnly: this.config.network.name === "testnet" ? true : false,
     });
     const publicKey = address.toString('base64url');
     const secretKey = keyPair.secretKey.toString('utf8');
@@ -265,7 +268,7 @@ export class Ton {
     const contract = this.tonClient.open(wallet);
     const publicKey = contract.address.toStringBuffer({
       bounceable: false,
-      testOnly: true,
+      testOnly: this.config.network.name === "testnet" ? true : false,
     });
     return {
       publicKey: publicKey.toString('base64url'),
@@ -304,28 +307,39 @@ export class Ton {
     return decrpyted.toString();
   }
 
+
+  //   interface AssetBalanceResponse {
+  //   [symbol: string]: string; // Cada símbolo de token mapeia para seu saldo
+  // }
+
   public async getAssetBalance(
     account: string,
-    assetName: string,
-  ): Promise<string> {
-    const asset = this._assetMap[assetName];
-    let balance = 0;
+    tokens: string[],
+  ): Promise<AssetBalanceResponse> {
+    const balances = {};
 
-    if (assetName === 'TON') {
-      try {
-        const response = await this.tonClient.getBalance(address(account));
-        balance = Number(response);
-      } catch (error: any) {
-        if (!error.message.includes('account asset info not found')) {
-          throw error;
-        }
-        balance = 0;
+    try {
+      const response = await this.stonfiClient.getWalletAssets(account);
+
+      tokens.forEach((token) => {
+        const assetInfo = response.find(
+          (asset: StonfiWalletAssetResponse) => asset.symbol === token
+        );
+
+        balances[token] = assetInfo?.balance !== undefined
+          ? assetInfo.balance
+          : "0";
+      });
+    } catch (error: any) {
+      if (!error.message.includes('account asset info not found')) {
+        throw error;
       }
     }
 
-    const amount = balance * parseFloat(`1e-${asset.decimals}`);
-    return amount.toString();
+    return balances;
   }
+
+
 
   public async getNativeBalance(account: string): Promise<string> {
     const tonAsset = await this.tonClient.getBalance(address(account));
@@ -372,7 +386,7 @@ export class Ton {
       assetData = assets.assets;
     } else {
       const data = JSON.parse(await fs.readFile(this._assetListSource, 'utf8'));
-      assetData = data.results;
+      assetData = data.tokens;
     }
     return assetData;
   }

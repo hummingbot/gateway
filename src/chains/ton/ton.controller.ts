@@ -19,7 +19,6 @@ import {
   TOKEN_NOT_SUPPORTED_ERROR_CODE,
   TOKEN_NOT_SUPPORTED_ERROR_MESSAGE,
 } from '../../services/error-handler';
-import { promiseAllInBatches } from './ton.utils';
 
 async function getInitializedTon(network: string): Promise<Ton> {
   const ton = Ton.getInstance(network);
@@ -43,23 +42,14 @@ export class TonController {
 
   static async balances(chain: Ton, request: BalanceRequest) {
     // validateTonBalanceRequest(request);
-
-    const tokenBalances: Record<string, string> = {};
-
     const account = await chain.getAccountFromAddress(request.address);
 
-    const getTokenBalance = async (token: string): Promise<void> => {
-      const tokenBalance = await chain.getAssetBalance(
-        account.publicKey,
-        token,
-      );
-      tokenBalances[token] = tokenBalance;
-    };
-
-    await promiseAllInBatches(getTokenBalance, request.tokenSymbols, 1, 1000);
-
+    const tokensBalances = await chain.getAssetBalance(
+      account.publicKey,
+      request.tokenSymbols,
+    )
     return {
-      balances: tokenBalances,
+      balances: tokensBalances,
     };
   }
 
