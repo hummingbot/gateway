@@ -313,11 +313,13 @@ export class Ton {
   //   [symbol: string]: string; // Cada símbolo de token mapeia para seu saldo
   // }
 
+
+
   public async getAssetBalance(
     account: string,
     tokens: string[],
   ): Promise<AssetBalanceResponse> {
-    const balances = {};
+    const balances: AssetBalanceResponse = {};
 
     try {
       const response = await this.stonfiClient.getWalletAssets(account);
@@ -327,9 +329,13 @@ export class Ton {
           (asset: StonfiWalletAssetResponse) => asset.symbol === token
         );
 
-        balances[token] = assetInfo?.balance !== undefined
-          ? assetInfo.balance
-          : "0";
+        if (assetInfo && assetInfo.balance !== undefined) {
+
+          const balanceParsed = Number(assetInfo.balance) / (10 ** assetInfo.decimals);
+          balances[token] = balanceParsed.toString();
+        } else {
+          balances[token] = "0";
+        }
       });
     } catch (error: any) {
       if (!error.message.includes('account asset info not found')) {
@@ -339,6 +345,7 @@ export class Ton {
 
     return balances;
   }
+
 
 
 
