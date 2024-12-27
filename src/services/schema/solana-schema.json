@@ -1,0 +1,35 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+      "networks": {
+        "type": "object",
+        "patternProperties": {
+          "^..+$": {
+            "type": "object",
+            "properties": {
+              "nodeURLs": { "type": "string" },
+              "tokenListType": { "type": "string" },
+              "tokenListSource": { "type": "string" },
+              "nativeCurrencySymbol": { "type": "string" }
+            },
+            "required": [
+              "nodeURLs",
+              "tokenListType",
+              "tokenListSource",
+              "nativeCurrencySymbol"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      "network": { "type": "string" },
+      "tokenProgram": { "type": "string" },
+      "transactionLamports": { "type": "number" },
+      "lamportsToSol": { "type": "number" },
+      "timeToLive": { "type": "number" }
+    },
+    "additionalProperties": false
+  }
+  
