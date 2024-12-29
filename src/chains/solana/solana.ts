@@ -53,9 +53,10 @@ const PRIORITY_FEE_ACCOUNTS = [
 ];
 
 const GET_SIGNATURES_FOR_ADDRESS_LIMIT = 100;
-const MAX_PRIORITY_FEE=400000
-const MIN_PRIORITY_FEE=100000
-const PRIORITY_FEE_LEVEL='high'
+const MAX_PRIORITY_FEE = 400000;
+const MIN_PRIORITY_FEE = 100000;
+const MAX_FEE_MULTIPLIER = 10;
+const PRIORITY_FEE_LEVEL = 'medium';
 // Available levels: min, low, medium, high, veryHigh, unsafeMax
 
 interface PriorityFeeRequestPayload {
@@ -778,7 +779,7 @@ export class Solana implements Solanaish {
       : priorityFeesEstimate.medium;
 
     const priorityFeeInstruction = ComputeBudgetProgram.setComputeUnitPrice({
-      microLamports: selectedPriorityFee * Math.max(priorityFeeMultiplier, 1),
+      microLamports: selectedPriorityFee * Math.min(priorityFeeMultiplier, MAX_FEE_MULTIPLIER),
     });
 
     tx.instructions.push(priorityFeeInstruction);
