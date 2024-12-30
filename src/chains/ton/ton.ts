@@ -43,6 +43,30 @@ import { StonApiClient } from '@ston-fi/api';
 
 type AssetListType = TokenListType;
 
+type WalletUnion =
+  | WalletContractV1R1
+  | WalletContractV1R2
+  | WalletContractV1R3
+  | WalletContractV2R1
+  | WalletContractV2R2
+  | WalletContractV3R1
+  | WalletContractV3R2
+  | WalletContractV4
+  | WalletContractV5R1
+  | WalletContractV5Beta;
+
+type WalletUnionType =
+  | typeof WalletContractV1R1
+  | typeof WalletContractV1R2
+  | typeof WalletContractV1R3
+  | typeof WalletContractV2R1
+  | typeof WalletContractV2R2
+  | typeof WalletContractV3R1
+  | typeof WalletContractV3R2
+  | typeof WalletContractV4
+  | typeof WalletContractV5R1
+  | typeof WalletContractV5Beta;
+
 export class Ton {
   public nativeTokenSymbol;
   private _assetMap: Record<string, TonAsset> = {};
@@ -237,8 +261,8 @@ export class Ton {
     mnemonic: string,
   ): Promise<{ publicKey: string; secretKey: string }> {
     const keyPair = await mnemonicToPrivateKey(mnemonic.split(' '));
-    this.wallet = this.getWallet(
-      keyPair.publicKey.toString(),
+    this.wallet = await this.getWallet(
+      keyPair.publicKey.toString('base64url'),
       this.workchain,
       this.config.walletVersion,
     );
@@ -266,8 +290,8 @@ export class Ton {
     }
     const mnemonic = this.decrypt(encryptedMnemonic, passphrase);
     const keyPair = await mnemonicToPrivateKey(mnemonic.split(' '));
-    this.wallet = this.getWallet(
-      keyPair.publicKey.toString(),
+    this.wallet = await this.getWallet(
+      keyPair.publicKey.toString('base64url'),
       this.workchain,
       this.config.walletVersion,
     );
@@ -453,18 +477,7 @@ export class Ton {
 
   public getWalletContractClassByVersion(
     version: string,
-  ):
-    | typeof WalletContractV1R1
-    | typeof WalletContractV1R2
-    | typeof WalletContractV1R3
-    | typeof WalletContractV2R1
-    | typeof WalletContractV2R2
-    | typeof WalletContractV3R1
-    | typeof WalletContractV3R2
-    | typeof WalletContractV4
-    | typeof WalletContractV5R1
-    | typeof WalletContractV5Beta
-    | undefined {
+  ): WalletUnionType | undefined {
     if (!version) {
       return undefined;
     } else if (version === 'v1r1') {
@@ -495,7 +508,7 @@ export class Ton {
   public async getBestWallet(
     publicKey: Buffer,
     workchain: number,
-  ): Promise<string> {
+  ): Promise<WalletUnion> {
     const walletVersions = this.config.availableWalletVersions;
     let maxNativeTokenBalance = 0;
     let bestWallet = null;
@@ -519,11 +532,11 @@ export class Ton {
     return bestWallet;
   }
 
-  public getWallet(
+  public async getWallet(
     publicKey: string,
     workchain?: number,
     version?: string,
-  ): any {
+  ): Promise<WalletUnion | undefined> {
     if (!workchain) {
       workchain = this.config.workchain;
     }
@@ -533,7 +546,7 @@ export class Ton {
       walletContractClass = this.getWalletContractClassByVersion(version);
     }
 
-    const publicKeyBuffer = Buffer.from(publicKey, 'utf-8');
+    const publicKeyBuffer = Buffer.from(publicKey, 'base64url');
 
     if (walletContractClass) {
       return walletContractClass.create({
@@ -541,7 +554,7 @@ export class Ton {
         publicKeyBuffer,
       });
     } else {
-      return this.getBestWallet(publicKeyBuffer, workchain);
+      return await this.getBestWallet(publicKeyBuffer, workchain);
     }
   }
 }
