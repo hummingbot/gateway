@@ -381,20 +381,11 @@ export class Ton {
     return this._assetMap[symbol] ? this._assetMap[symbol] : null;
   }
 
-  // here isnt necessary for ton chain
+  // TODO is it necessary?!!!
   public async optIn(address: string, symbol: string) {
     const account = await this.getAccountFromAddress(address);
     const block = await this.getCurrentBlockNumber();
     const asset = this._assetMap[symbol];
-
-    // const wallet = this.ton.wallet.create({ publicKey: account.publicKey });
-
-    // const result = await wallet.methods.transfer({
-    //   secretKey: account.secretKey,
-    //   toAddress: "EQDjVXa_oltdBP64Nc__p397xLCvGm2IcZ1ba7anSW0NAkeP",
-    //   amount: toNanoNano(0.01),
-    //   seqno: block.seqno,
-    // }).estimateFee()
 
     return { ...account, block, asset };
   }
@@ -516,8 +507,8 @@ export class Ton {
       const walletContractClass =
         this.getWalletContractClassByVersion(walletVersion);
       const wallet = walletContractClass.create({
-        workchain,
-        publicKey,
+        workchain: workchain,
+        publicKey: publicKey,
       });
       const contract = this.tonClient.open(wallet);
       const rawNativeTokenBalance = await this.tonClient.getBalance(
@@ -550,8 +541,8 @@ export class Ton {
 
     if (walletContractClass) {
       return walletContractClass.create({
-        workchain,
-        publicKeyBuffer,
+        workchain: workchain,
+        publicKey: publicKeyBuffer,
       });
     } else {
       return await this.getBestWallet(publicKeyBuffer, workchain);
