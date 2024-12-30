@@ -279,7 +279,7 @@ export class Dedust {
         address: walletContract.address,
         async send(args: SenderArguments) {
           return walletContract.sendTransfer({
-            secretKey: Buffer.from(keyPar.secretKey, 'utf8'),
+            secretKey: Buffer.from(keyPar.secretKey, 'base64url'),
             messages: [
               {
                 body: args.body || beginCell().endCell(),

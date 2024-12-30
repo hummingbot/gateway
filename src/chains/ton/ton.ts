@@ -272,7 +272,7 @@ export class Ton {
       testOnly: this.config.network.name === 'testnet' ? true : false,
     });
     const publicKey = address.toString('base64url');
-    const secretKey = keyPair.secretKey.toString('utf8');
+    const secretKey = keyPair.secretKey.toString('base64url');
     return { publicKey, secretKey };
   }
 
@@ -302,7 +302,7 @@ export class Ton {
     });
     return {
       publicKey: publicKey.toString('base64url'),
-      secretKey: this.wallet.publicKey.toString('utf8'),
+      secretKey: keyPair.secretKey.toString('base64url'),
     };
   }
 
