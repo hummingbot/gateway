@@ -13,7 +13,7 @@ import {
 } from '../../services/error-handler';
 import { pow } from 'mathjs';
 import { StonApiClient } from '@ston-fi/api';
-import { internal, SenderArguments, toNano } from '@ton/ton';
+import { internal, SenderArguments } from '@ton/ton';
 import { DEX, pTON } from '@ston-fi/sdk';
 
 export class Stonfi {
@@ -154,25 +154,25 @@ export class Stonfi {
       txParams = await dex.getSwapTonToJettonTxParams({
         userWalletAddress: this.chain.wallet.address.toString(),
         proxyTon: new pTON.v1(),
-        offerAmount: toNano('1'),
+        offerAmount: quote.offerUnits,
         askJettonAddress: quote.askAddress,
-        minAskAmount: toNano('0.1'),
+        minAskAmount: quote.minAskUnits,
       });
     } else if (quoteName === 'TON') {
       txParams = await dex.getSwapJettonToTonTxParams({
         userWalletAddress: this.chain.wallet.address.toString(),
         proxyTon: new pTON.v1(),
-        offerAmount: toNano('1'),
+        offerAmount: quote.offerUnits,
         offerJettonAddress: quote.offerAddress,
-        minAskAmount: toNano('0.1'),
+        minAskAmount: quote.minAskUnits,
       });
     } else {
       txParams = await dex.getSwapJettonToJettonTxParams({
         userWalletAddress: this.chain.wallet.address.toString(),
         offerJettonAddress: quote.offerAddress,
         askJettonAddress: quote.askAddress,
-        offerAmount: toNano('1'),
-        minAskAmount: toNano('0.1'),
+        offerAmount: quote.offerUnits,
+        minAskAmount: quote.minAskUnits,
       });
     }
 
@@ -182,7 +182,7 @@ export class Stonfi {
       messages: [internal(txParams)],
     });
 
-    logger.info(`Swap transaction ${isBuy} Id: ${quote}`);
+    logger.info(`Swap transaction ${isBuy} Id: ${txParams}`);
 
     return txParams;
   }
