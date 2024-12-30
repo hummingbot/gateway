@@ -12,15 +12,9 @@ import {
     TOKEN_NOT_SUPPORTED_ERROR_MESSAGE,
 } from '../../services/error-handler';
 import { pow } from 'mathjs';
-import fse from 'fs-extra';
 import { StonApiClient } from '@ston-fi/api';
 import { internal, SenderArguments, toNano, WalletContractV3R2 } from '@ton/ton';
 import { DEX, pTON } from '@ston-fi/sdk';
-import { walletPath } from '../../services/base';
-import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
-import { mnemonicToPrivateKey } from '@ton/crypto';
-
-// RUM: npm run dev GATEWAY_PASSPHRASE=asdf
 
 export class Stonfi {
     private static _instances: LRUCache<string, Stonfi>;
@@ -150,22 +144,9 @@ export class Stonfi {
         quoteName: string,
         isBuy: boolean,
     ): Promise<any> {
-        const path = `${walletPath}/ton`;
-        const encryptedMnemonic: string = await fse.readFile(
-            `${path}/${account}.json`,
-            'utf8',
-        );
-        const passphrase = ConfigManagerCertPassphrase.readPassphrase();
-        if (!passphrase) {
-            throw new Error('missing passphrase');
-        }
-        const mnemonic = this.chain.decrypt(encryptedMnemonic, passphrase);
-        const keyPair = await mnemonicToPrivateKey(mnemonic.split(' '));
-        const workchain = 0;
-        const wallet = WalletContractV3R2.create({
-            workchain,
-            publicKey: keyPair.publicKey,
-        });
+        const keyPair = await this.chain.getAccountFromAddress(account);
+        const wallet = await this.chain.getWallet(keyPair.publicKey) as WalletContractV3R2;
+
         const contract = this.chain.tonClient.open(wallet);
         const dex = this.chain.tonClient.open(new DEX.v1.Router());
 
@@ -200,7 +181,7 @@ export class Stonfi {
 
         await contract.sendTransfer({
             seqno: await contract.getSeqno(),
-            secretKey: keyPair.secretKey,
+            secretKey: Buffer.from(keyPair.secretKey, "utf-8"),
             messages: [internal(txParams)],
         });
 

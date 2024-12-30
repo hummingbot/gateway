@@ -233,7 +233,7 @@ export class Ton {
   ): Promise<{ publicKey: string; secretKey: string }> {
     const keyPair = await mnemonicToPrivateKey(mnemonic.split(' '));
     this.wallet = this.getWallet(
-      keyPair.publicKey,
+      keyPair.publicKey.toString(),
       this.workchain,
       this.config.walletVersion,
     );
@@ -262,7 +262,7 @@ export class Ton {
     const mnemonic = this.decrypt(encryptedMnemonic, passphrase);
     const keyPair = await mnemonicToPrivateKey(mnemonic.split(' '));
     this.wallet = this.getWallet(
-      keyPair.publicKey,
+      keyPair.publicKey.toString(),
       this.workchain,
       this.config.walletVersion,
     );
@@ -520,16 +520,25 @@ export class Ton {
     return bestWallet;
   }
 
-  public getWallet(publicKey: Buffer, workchain: number, version: string): any {
-    const walletContractClass = this.getWalletContractClassByVersion(version);
+  public getWallet(publicKey: string, workchain?: number, version?: string): any {
+    if (!workchain) {
+      workchain = this.config.workchain;
+    }
+
+    let walletContractClass;
+    if (version) {
+      walletContractClass = this.getWalletContractClassByVersion(version);
+    }
+
+    const publicKeyBuffer = Buffer.from(publicKey, "utf-8");
 
     if (walletContractClass) {
       return walletContractClass.create({
         workchain,
-        publicKey,
+        publicKeyBuffer,
       });
     } else {
-      return this.getBestWallet(publicKey, workchain);
+      return this.getBestWallet(publicKeyBuffer, workchain);
     }
   }
 }
