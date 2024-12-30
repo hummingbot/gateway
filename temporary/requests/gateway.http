@@ -12,6 +12,19 @@ Content-Type: application/json
 
 ###
 
+POST https://{{host}}:{{port}}/wallet/add
+Content-Type: application/json
+
+{
+  "chain": "ton",
+  "network": "mainnet",
+  "privateKey": "sort way burger decrease wild state welcome annual assume mix snack list scorpion improve anxiety fame soap crunch gain foil account knee top soul",
+  "address": "",
+  "accountId": ""
+}
+
+###
+
 POST https://{{host}}:{{port}}/amm/price
 Content-Type: application/json
 
@@ -22,6 +35,22 @@ Content-Type: application/json
   "chain": "ton",
   "network": "mainnet",
   "connector": "stonfi",
+  "side": "BUY"
+}
+
+###
+
+POST https://{{host}}:{{port}}/amm/price
+Content-Type: application/json
+
+{
+  "quote": "TON",
+  "base": "AIOTX",
+  "chain":"ton",
+  "connector":"stonfi",
+  "network":"testnet",
+  "amount":"1",
+  "address":"0QBSevYG7uExE6wJnWC2adG2SqcjUUqNlmfeTRMFhHT3kdxX",
   "side": "BUY"
 }
 

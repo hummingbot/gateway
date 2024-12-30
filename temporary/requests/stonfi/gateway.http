@@ -90,13 +90,13 @@ Content-Type: application/json
   "connector": "stonfi"
 }
 ###
-POST https://{{host}}:{{port}}/amm/add
+POST https://{{host}}:{{port}}/wallet/add
 Content-Type: application/json
 
 {
   "chain": "ton",
-  "network": "testnet",
-  "privateKey": "mammal entry lyrics addict swear sight artefact clog survey oil empower trip skill hospital similar piano slush bright gas depend warm whale marine merit",
+  "network": "mainnet",
+  "privateKey": "sort way burger decrease wild state welcome annual assume mix snack list scorpion improve anxiety fame soap crunch gain foil account knee top soul",
   "address": "",
   "accountId": ""
 }
