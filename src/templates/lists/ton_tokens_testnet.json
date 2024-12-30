@@ -19,18 +19,6 @@
     {
       "address": {
         "blockchain": 607,
-        "address": ""
-      },
-      "tags": [],
-      "symbol": "USD₮",
-      "name": "Tether USD",
-      "imageUrl": "https://asset.ston.fi/img/EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs/340f3db98c63ed6329dee340ca55bb9e86f5e407a34538afe4327eb784f96a0f",
-      "decimals": 6,
-      "metadata": {}
-    },
-    {
-      "address": {
-        "blockchain": 607,
         "address": "kQAiboDEv_qRrcEdrYdwbVLNOXBHwShFbtKGbQVJ2OKxY_Di"
       },
       "tags": [],

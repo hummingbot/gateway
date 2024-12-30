@@ -77,6 +77,7 @@ export async function trade(
   const account = await ton.getAccountFromAddress(req.address);
 
   let trade;
+
   try {
     trade = await stonfi.estimateTrade(<PriceRequest>req);
   } catch (e) {
@@ -121,6 +122,8 @@ export async function trade(
   const tx = await stonfi.executeTrade(
     account.publicKey,
     trade.trade,
+    req.base,
+    req.quote,
     req.side === 'BUY',
   );
 

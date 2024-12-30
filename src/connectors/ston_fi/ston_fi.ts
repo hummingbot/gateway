@@ -14,7 +14,7 @@ import {
 import { pow } from 'mathjs';
 import fse from 'fs-extra';
 import { StonApiClient } from '@ston-fi/api';
-import { toNano, WalletContractV3R2 } from '@ton/ton';
+import { internal, SenderArguments, toNano, WalletContractV3R2 } from '@ton/ton';
 import { DEX, pTON } from '@ston-fi/sdk';
 import { walletPath } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
@@ -146,6 +146,8 @@ export class Stonfi {
     async executeTrade(
         account: string,
         quote: StonfiConfig.StonfiQuoteRes,
+        baseName: string,
+        quoteName: string,
         isBuy: boolean,
     ): Promise<any> {
         const path = `${walletPath}/ton`;
@@ -164,36 +166,43 @@ export class Stonfi {
             workchain,
             publicKey: keyPair.publicKey,
         });
-        const router = this.chain.tonClient.open(new DEX.v1.Router());
+        const contract = this.chain.tonClient.open(wallet);
+        const dex = this.chain.tonClient.open(new DEX.v1.Router());
 
-        let txParams
 
-        if (quote.askAddress === "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c") {
-            txParams = await router.getSwapTonToJettonTxParams({
+        let txParams: SenderArguments;
+
+        if (baseName === "TON") {
+            txParams = await dex.getSwapTonToJettonTxParams({
                 userWalletAddress: wallet.address.toString(),
                 proxyTon: new pTON.v1(),
                 offerAmount: toNano("1"),
-                askJettonAddress: quote.offerAddress,
+                askJettonAddress: quote.askAddress,
+                minAskAmount: toNano('0.1'),
+            });
+        } else if (quoteName === "TON") {
+            txParams = await dex.getSwapJettonToTonTxParams({
+                userWalletAddress: wallet.address.toString(),
+                proxyTon: new pTON.v1(),
+                offerAmount: toNano("1"),
+                offerJettonAddress: quote.offerAddress,
+                minAskAmount: toNano('0.1'),
+            });
+        } else {
+            txParams = await dex.getSwapJettonToJettonTxParams({
+                userWalletAddress: wallet.address.toString(),
+                offerJettonAddress: quote.offerAddress,
+                askJettonAddress: quote.askAddress,
+                offerAmount: toNano("1"),
                 minAskAmount: toNano('0.1'),
             });
         }
 
-
-
-        // const txArgs = {
-        //   offerAmount: toNano(quote.offerUnits),
-        //   offerJettonAddress: quote.offerAddress,
-        //   askJettonAddress: quote.askAddress,
-        //   minAskAmount: toNano('0.1'),
-        //   proxyTon: new pTON.v1(publicKey),
-        //   userWalletAddress: publicKey,
-        // };
-        // const txParams = await dex.getSwapTonToJettonTxParams(txArgs);
-        // await contract.sendTransfer({
-        //   seqno: await contract.getSeqno(),
-        //   secretKey: keyPair.secretKey,
-        //   messages: [internal(txParams)],
-        // });
+        await contract.sendTransfer({
+            seqno: await contract.getSeqno(),
+            secretKey: keyPair.secretKey,
+            messages: [internal(txParams)],
+        });
 
         logger.info(`Swap transaction ${isBuy} Id: ${quote}`);
 
