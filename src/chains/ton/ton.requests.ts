@@ -25,6 +25,31 @@ export interface TonAsset {
 export type AssetsResponse = {
   assets: TonAsset[];
 };
+export type StonfiWalletAssetResponse = {
+  balance?: string | undefined;
+  blacklisted: boolean;
+  community: boolean;
+  contractAddress: string;
+  decimals: number;
+  defaultSymbol: boolean;
+  deprecated: boolean;
+  dexPriceUsd?: string | undefined;
+  displayName?: string | undefined;
+  imageUrl?: string | undefined;
+  kind: "Ton" | "Wton" | "Jetton";
+  priority: number;
+  symbol: string;
+  thirdPartyPriceUsd?: string | undefined;
+  walletAddress?: string | undefined;
+  // tags: import('./types/asset').AssetTag[];
+  customPayloadApiUri?: string | undefined;
+  extensions?: string[] | undefined;
+}
+
+
+export type AssetBalanceResponse = {
+  [symbol: string]: string;
+}
 
 export interface OptInRequest {
   network: string;
