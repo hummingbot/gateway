@@ -137,7 +137,7 @@ export class Stonfi {
   /**
    * Given an account and a tinyman trade, try to execute it on blockchain.
    *
-   * @param account Algorand account
+   * @param account Ton account
    * @param quote Expected trade
    * @param isBuy Used to indicate buy or sell swap
    */
