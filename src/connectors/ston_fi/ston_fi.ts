@@ -13,12 +13,7 @@ import {
 } from '../../services/error-handler';
 import { pow } from 'mathjs';
 import { StonApiClient } from '@ston-fi/api';
-import {
-  internal,
-  SenderArguments,
-  toNano,
-  WalletContractV3R2,
-} from '@ton/ton';
+import { internal, SenderArguments, toNano } from '@ton/ton';
 import { DEX, pTON } from '@ston-fi/sdk';
 
 export class Stonfi {
@@ -150,18 +145,14 @@ export class Stonfi {
     isBuy: boolean,
   ): Promise<any> {
     const keyPair = await this.chain.getAccountFromAddress(account);
-    const wallet = (await this.chain.getWallet(
-      keyPair.publicKey,
-    )) as WalletContractV3R2;
-
-    const contract = this.chain.tonClient.open(wallet);
+    const contract = this.chain.tonClient.open(this.chain.wallet);
     const dex = this.chain.tonClient.open(new DEX.v1.Router());
 
     let txParams: SenderArguments;
 
     if (baseName === 'TON') {
       txParams = await dex.getSwapTonToJettonTxParams({
-        userWalletAddress: wallet.address.toString(),
+        userWalletAddress: this.chain.wallet.address.toString(),
         proxyTon: new pTON.v1(),
         offerAmount: toNano('1'),
         askJettonAddress: quote.askAddress,
@@ -169,7 +160,7 @@ export class Stonfi {
       });
     } else if (quoteName === 'TON') {
       txParams = await dex.getSwapJettonToTonTxParams({
-        userWalletAddress: wallet.address.toString(),
+        userWalletAddress: this.chain.wallet.address.toString(),
         proxyTon: new pTON.v1(),
         offerAmount: toNano('1'),
         offerJettonAddress: quote.offerAddress,
@@ -177,7 +168,7 @@ export class Stonfi {
       });
     } else {
       txParams = await dex.getSwapJettonToJettonTxParams({
-        userWalletAddress: wallet.address.toString(),
+        userWalletAddress: this.chain.wallet.address.toString(),
         offerJettonAddress: quote.offerAddress,
         askJettonAddress: quote.askAddress,
         offerAmount: toNano('1'),
@@ -187,7 +178,7 @@ export class Stonfi {
 
     await contract.sendTransfer({
       seqno: await contract.getSeqno(),
-      secretKey: Buffer.from(keyPair.secretKey, 'utf-8'),
+      secretKey: Buffer.from(keyPair.secretKey, 'base64url'),
       messages: [internal(txParams)],
     });
 

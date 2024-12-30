@@ -40,17 +40,17 @@ Content-Type: application/json
 
 ###
 
-POST https://{{host}}:{{port}}/amm/price
+POST https://{{host}}:{{port}}/amm/trade
 Content-Type: application/json
 
 {
-  "quote": "TON",
-  "base": "AIOTX",
+  "quote": "USD₮",
+  "base": "TON",
   "chain":"ton",
   "connector":"stonfi",
-  "network":"testnet",
-  "amount":"1",
-  "address":"0QBSevYG7uExE6wJnWC2adG2SqcjUUqNlmfeTRMFhHT3kdxX",
+  "network":"mainnet",
+  "amount":"0.1",
+  "address":"UQBSevYG7uExE6wJnWC2adG2SqcjUUqNlmfeTRMFhHT3kWfd",
   "side": "BUY"
 }
 
