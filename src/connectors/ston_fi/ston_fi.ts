@@ -182,6 +182,7 @@ export class Stonfi {
       messages: [internal(txParams)],
     });
 
+    // noinspection UnnecessaryLocalVariableJS
     const latestTransactionHash = await this.chain.getLatestTransactionHash(
       this.chain.wallet.address.toString(),
     );
