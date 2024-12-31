@@ -34,7 +34,7 @@ import { TonController } from './ton.controller';
 import { TokenListType, walletPath } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { logger } from '../../services/logger';
-import { getHttpEndpoint } from "@orbs-network/ton-access";
+import { getHttpEndpoint } from '@orbs-network/ton-access';
 import { StonApiClient } from '@ston-fi/api';
 
 type AssetListType = TokenListType;
@@ -129,10 +129,16 @@ export class Ton {
   public async init(): Promise<void> {
     await this.loadAssets();
     this._ready = true;
-    const rpcUrl = this.config.rpcType === "orbs" ? await getHttpEndpoint() : this.nodeUrl;
+    const rpcUrl =
+      this.config.rpcType === 'orbs' ? await getHttpEndpoint() : this.nodeUrl;
     if (this.config.apiKey) {
-      this.tonweb = new TonWeb(new TonWeb.HttpProvider(rpcUrl, { apiKey: this.config.apiKey }));
-      this.tonClient = new TonClient({ endpoint: rpcUrl, apiKey: this.config.apiKey });
+      this.tonweb = new TonWeb(
+        new TonWeb.HttpProvider(rpcUrl, { apiKey: this.config.apiKey }),
+      );
+      this.tonClient = new TonClient({
+        endpoint: rpcUrl,
+        apiKey: this.config.apiKey,
+      });
     } else {
       this.tonweb = new TonWeb(new TonWeb.HttpProvider(rpcUrl));
       this.tonClient = new TonClient({ endpoint: rpcUrl });
@@ -488,5 +494,34 @@ export class Ton {
     } else {
       return await this.getBestWallet(publicKeyBuffer, workchain);
     }
+  }
+
+  public async getLatestTransactionHash(
+    walletAddress: string,
+  ): Promise<string> {
+    const parsedWalletAddress = Address.parse(walletAddress);
+    const contractState =
+      await this.tonClient.getContractState(parsedWalletAddress);
+    const { lt: lastLocationTime, hash: lastHash } =
+      contractState.lastTransaction;
+
+    const lastTransaction = await this.tonClient.getTransaction(
+      parsedWalletAddress,
+      lastLocationTime,
+      lastHash,
+    );
+
+    if (!lastTransaction || !lastTransaction.inMessage) {
+      return null;
+    }
+
+    const msgCell = beginCell()
+      .store(storeMessage(lastTransaction.inMessage))
+      .endCell();
+
+    // noinspection UnnecessaryLocalVariableJS
+    const transactionHash = msgCell.hash().toString('base64url');
+
+    return transactionHash;
   }
 }

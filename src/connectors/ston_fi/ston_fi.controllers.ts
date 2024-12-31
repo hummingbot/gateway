@@ -119,7 +119,7 @@ export async function trade(
       );
     }
   }
-  const tx = await stonfi.executeTrade(
+  const transactionHash = await stonfi.executeTrade(
     account.publicKey,
     trade.trade,
     req.base,
@@ -143,7 +143,7 @@ export async function trade(
     gasPriceToken: ton.nativeTokenSymbol,
     gasLimit: ton.gasLimit,
     gasCost: String(ton.gasCost),
-    txHash: tx.txnID,
+    txHash: transactionHash,
   };
 }
 
