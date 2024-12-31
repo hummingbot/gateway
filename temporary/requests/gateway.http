@@ -5,10 +5,19 @@ Content-Type: application/json
 
 ###
 
-GET https://{{host}}:{{port}}/chain
+POST https://{{host}}:{{port}}/chain/balances
 Content-Type: application/json
 
-{}
+{
+  "address": "UQBSevYG7uExE6wJnWC2adG2SqcjUUqNlmfeTRMFhHT3kWfd",
+  "tokenSymbols": [
+    "TON",
+    "AIOTX"
+  ],
+  "chain": "ton",
+  "network": "testnet",
+  "connector": "stonfi"
+}
 
 ###
 
@@ -49,9 +58,30 @@ Content-Type: application/json
   "chain":"ton",
   "connector":"stonfi",
   "network":"mainnet",
-  "amount":"0.1",
+  "amount":"0.00123",
   "address":"UQBSevYG7uExE6wJnWC2adG2SqcjUUqNlmfeTRMFhHT3kWfd",
   "side": "BUY"
 }
 
 ###
+
+POST https://{{host}}:{{port}}/chain/poll
+Content-Type: application/json
+
+{
+  "txHash": "e3e600ed8f8af27de7294e1fbd471a09f569183875c9ffa35d6bd4556db824df",
+  "chain": "ton",
+  "network": "mainnet"
+}
+
+###
+
+
+POST https://api.ston.fi/v1/swap/simulate?ask_address=EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs&offer_address=EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c&slippage_tolerance=0.01&units=12300000
+Content-Type: application/json
+
+{
+}
+
+###
+
