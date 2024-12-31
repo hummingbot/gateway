@@ -23,6 +23,8 @@ gasPrice: 0
 gasLimit: 0
 gasCost: 1
 workchain: 0
+apiKey: 7e4931f05b6240e0c86f7ffa1003ecda505872f546c2829f560e48ebc3196c66
+rpcType: ton # 'ton' or 'orbs'
 # Leaving it blank make the system to decide automatically, using the wallet version with the biggest TON balance.
 # Possible values are: v1r1, v1r2, v1r3, v2r1, v2r2, v3r1, v3r2, v4, v5R1, v5Beta
 walletVersion: v3r2

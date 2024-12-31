@@ -13,7 +13,7 @@ import {
 } from '../../services/error-handler';
 import { pow } from 'mathjs';
 import { StonApiClient } from '@ston-fi/api';
-import { internal, SenderArguments } from '@ton/ton';
+import { SenderArguments } from '@ton/ton';
 import { DEX, pTON } from '@ston-fi/sdk';
 
 export class Stonfi {
@@ -176,13 +176,16 @@ export class Stonfi {
       });
     }
 
-    await contract.sendTransfer({
-      seqno: await contract.getSeqno(),
-      secretKey: Buffer.from(keyPair.secretKey, 'base64url'),
-      messages: [internal(txParams)],
-    });
+    // await contract.sendTransfer({
+    //   seqno: await contract.getSeqno(),
+    //   secretKey: Buffer.from(keyPair.secretKey, 'base64url'),
+    //   messages: [internal(txParams)],
+    // });
 
-    logger.info(`Swap transaction ${isBuy} Id: ${txParams}`);
+
+    
+
+    logger.info(`Swap transaction ${isBuy} Id: ${txParams}`, keyPair, contract);
 
     return txParams;
   }

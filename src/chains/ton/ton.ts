@@ -6,7 +6,6 @@ import {
   Address,
   address,
   beginCell,
-  OpenedContract,
   storeMessage,
   TonClient,
   WalletContractV1R1,
@@ -20,7 +19,6 @@ import {
   WalletContractV5Beta,
   WalletContractV5R1,
 } from '@ton/ton';
-import { DEX, pTON } from '@ston-fi/sdk';
 import {
   AssetBalanceResponse,
   PollResponse,
@@ -36,9 +34,8 @@ import { TonController } from './ton.controller';
 import { TokenListType, walletPath } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { logger } from '../../services/logger';
-import { PtonV1 } from '@ston-fi/sdk/dist/contracts/pTON/v1/PtonV1';
-import { RouterV1 } from '@ston-fi/sdk/dist/contracts/dex/v1/RouterV1';
 import axios from 'axios';
+import { getHttpEndpoint } from "@orbs-network/ton-access";
 import { StonApiClient } from '@ston-fi/api';
 
 type AssetListType = TokenListType;
@@ -74,8 +71,6 @@ export class Ton {
   private _network: string;
   public tonweb: TonWeb;
   public tonClient: TonClient;
-  public tonClientRouter: OpenedContract<RouterV1>;
-  public tonClientproxyTon: PtonV1;
   public omniston: Omniston;
   public stonfiClient: StonApiClient;
   private _chain: string = 'ton';
@@ -87,6 +82,7 @@ export class Ton {
   public gasLimit: number;
   public gasCost: number;
   public workchain: number;
+  public nodeUrl: string;
   public controller: typeof TonController;
   public wallet: any;
 
@@ -96,14 +92,11 @@ export class Ton {
     assetListType: AssetListType,
     assetListSource: string,
   ) {
+    this.nodeUrl = nodeUrl;
     this._network = network;
     this.stonfiClient = new StonApiClient();
     this.config = getTonConfig(network);
     this.nativeTokenSymbol = this.config.nativeCurrencySymbol;
-    this.tonweb = new TonWeb(new TonWeb.HttpProvider(nodeUrl));
-    this.tonClient = new TonClient({ endpoint: nodeUrl });
-    this.tonClientRouter = this.tonClient.open(new DEX.v1.Router());
-    this.tonClientproxyTon = new pTON.v1();
     this._assetListType = assetListType;
     this._assetListSource = assetListSource;
     this.omniston = new Omniston({
@@ -135,7 +128,14 @@ export class Ton {
   public async init(): Promise<void> {
     await this.loadAssets();
     this._ready = true;
-    return;
+    const rpcUrl = this.config.rpcType === "orbs" ? await getHttpEndpoint() : this.nodeUrl;
+    if (this.config.apiKey) {
+      this.tonweb = new TonWeb(new TonWeb.HttpProvider(rpcUrl, { apiKey: this.config.apiKey }));
+      this.tonClient = new TonClient({ endpoint: rpcUrl, apiKey: this.config.apiKey });
+    } else {
+      this.tonweb = new TonWeb(new TonWeb.HttpProvider(rpcUrl));
+      this.tonClient = new TonClient({ endpoint: rpcUrl });
+    }
   }
 
   async close() {

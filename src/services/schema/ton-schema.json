@@ -68,6 +68,12 @@
     "workchain": {
       "type": "integer"
     },
+    "apiKey": {
+      "type": "string"
+    },
+    "rpcType": {
+      "type": "string"
+    },
     "walletVersion": {
       "type": ["string", "null"]
     }
