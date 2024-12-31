@@ -37,7 +37,20 @@ export class TonController {
   ): Promise<PollResponse> {
     // validateTonPollRequest(req);
 
-    return await ton.getTransaction(req.txHash);
+    const transaction = await ton.getTransaction(req.txHash);
+
+    if (!transaction)
+      throw new Error("No transaction")
+
+    const event = {
+      currentBlock: Number((await ton.getCurrentBlockNumber()).seqno),
+      txBlock: Number(transaction.transaction.block.replace('(', '').replace(')', '').split(',')[2]),
+      txHash: req.txHash,
+      fee: Number(transaction.transaction.totalFees) / 10 ** 9,
+    }
+
+    return event
+
   }
 
   static async balances(chain: Ton, request: BalanceRequest) {

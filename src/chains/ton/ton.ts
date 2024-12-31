@@ -1,6 +1,7 @@
 import LRUCache from 'lru-cache';
 import { Config, getTonConfig } from './ton.config';
 import { mnemonicToPrivateKey } from '@ton/crypto';
+import { TonApiClient, Trace } from '@ton-api/client';
 import TonWeb from 'tonweb';
 import {
   Address,
@@ -21,7 +22,6 @@ import {
 } from '@ton/ton';
 import {
   AssetBalanceResponse,
-  PollResponse,
   StonfiWalletAssetResponse,
   TonAsset,
 } from './ton.requests';
@@ -34,7 +34,6 @@ import { TonController } from './ton.controller';
 import { TokenListType, walletPath } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { logger } from '../../services/logger';
-import axios from 'axios';
 import { getHttpEndpoint } from "@orbs-network/ton-access";
 import { StonApiClient } from '@ston-fi/api';
 
@@ -85,6 +84,7 @@ export class Ton {
   public nodeUrl: string;
   public controller: typeof TonController;
   public wallet: any;
+  public tonApiClient: TonApiClient;
 
   constructor(
     network: string,
@@ -92,6 +92,7 @@ export class Ton {
     assetListType: AssetListType,
     assetListSource: string,
   ) {
+    this.tonApiClient = new TonApiClient();
     this.nodeUrl = nodeUrl;
     this._network = network;
     this.stonfiClient = new StonApiClient();
@@ -193,68 +194,8 @@ export class Ton {
     };
   }
 
-  async getTransaction(txHash: string): Promise<PollResponse | null> {
-    const pollInterval = this.config.defaultPollInterval;
-    const maxPollAttempts = this.config.defaultMaxPollAttempts;
-    const transactionId = txHash.startsWith('0x') ? txHash.slice(2) : txHash;
-    const { seqno, root_hash } = await this.getCurrentBlockNumber();
-
-    let attempt = 0;
-
-    while (attempt < maxPollAttempts) {
-      try {
-        const response = await axios.get(
-          `${this.config.network.scanUrl}/api/v3/transactions?hash=${encodeURIComponent(txHash)}`,
-          {
-            headers: {
-              accept: 'application/json, text/plain, */*',
-              'accept-language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
-              origin: this.config.network.scanUrl,
-              referer: this.config.network.scanUrl,
-              'user-agent':
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
-              'x-api-key':
-                '1b651340a347951cc8b9a102c406ab2a05226d59d6354aa009049d6fbbb17b0b',
-            },
-          },
-        );
-
-        if (response.status === 200 && response.data) {
-          const transactions = response.data.transactions || [];
-
-          const found = transactions.find((tx: any) => tx.hash === txHash);
-
-          if (found) {
-            console.log(
-              `TON Explorer: https://tonscan.org/transaction/${txHash}`,
-            );
-            return {
-              currentBlock: seqno,
-              txBlock: root_hash,
-              txHash: transactionId,
-              fee: found.fee || 0, // Fee obtida da resposta, se disponível
-            };
-          }
-        }
-
-        attempt++;
-        await new Promise((resolve) => setTimeout(resolve, pollInterval));
-      } catch (error: any) {
-        console.error(
-          'Error fetching TON transaction:',
-          error.response?.data || error.message || error,
-        );
-
-        await new Promise((resolve) => setTimeout(resolve, pollInterval));
-        attempt++;
-      }
-    }
-
-    console.warn(
-      `Transaction ${txHash} not confirmed after ${maxPollAttempts} attempts.`,
-    );
-
-    return null;
+  async getTransaction(eventHash: string): Promise<Trace> {
+    return await this.tonApiClient.traces.getTrace(eventHash)
   }
 
   public async getAccountFromPrivateKey(
