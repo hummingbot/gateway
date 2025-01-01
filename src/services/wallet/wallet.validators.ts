@@ -10,25 +10,12 @@ import { validateSolPrivateKey as isSolPrivateKey } from '../../chains/solana/so
 
 const { fromBase64 } = require('@cosmjs/encoding');
 
-export const invalidAlgorandPrivateKeyOrMnemonicError: string =
-  'The privateKey param is not a valid Algorand private key or mnemonic.';
-
 export const invalidEthPrivateKeyError: string =
   'The privateKey param is not a valid Ethereum private key (64 hexadecimal characters).';
-
-export const invalidCosmosPrivateKeyError: string =
-  'The privateKey param is not a valid Cosmos private key.';
-
-export const invalidTezosPrivateKeyError: string =
-  'The privateKey param is not a valid Tezos private key.';
 
 export const invalidSolPrivateKeyError: string =
   'The privateKey param is not a valid Solana private key.';
 
-export const isAlgorandPrivateKeyOrMnemonic = (str: string): boolean => {
-  const parts = str.split(' ');
-  return parts.length === 25;
-};
 
 // test if a string matches the shape of an Ethereum private key
 export const isEthPrivateKey = (str: string): boolean => {
@@ -62,47 +49,7 @@ export const validatePrivateKey: Validator = mkSelectingValidator(
   'chain',
   (req, key) => req[key],
   {
-    algorand: mkValidator(
-      'privateKey',
-      invalidAlgorandPrivateKeyOrMnemonicError,
-      (val) => typeof val === 'string' && isAlgorandPrivateKeyOrMnemonic(val),
-    ),
     ethereum: mkValidator(
-      'privateKey',
-      invalidEthPrivateKeyError,
-      (val) => typeof val === 'string' && isEthPrivateKey(val),
-    ),
-    cronos: mkValidator(
-      'privateKey',
-      invalidEthPrivateKeyError,
-      (val) => typeof val === 'string' && isEthPrivateKey(val),
-    ),
-    avalanche: mkValidator(
-      'privateKey',
-      invalidEthPrivateKeyError,
-      (val) => typeof val === 'string' && isEthPrivateKey(val),
-    ),
-    harmony: mkValidator(
-      'privateKey',
-      invalidEthPrivateKeyError,
-      (val) => typeof val === 'string' && isEthPrivateKey(val),
-    ),
-    cosmos: mkValidator(
-      'privateKey',
-      invalidCosmosPrivateKeyError,
-      (val) => typeof val === 'string' && isCosmosPrivateKey(val),
-    ),
-    celo: mkValidator(
-      'privateKey',
-      invalidEthPrivateKeyError,
-      (val) => typeof val === 'string' && isEthPrivateKey(val)
-    ),
-    osmosis: mkValidator(
-      'privateKey',
-      invalidCosmosPrivateKeyError,
-      (val) => typeof val === 'string' && isCosmosPrivateKey(val),
-    ),
-    polygon: mkValidator(
       'privateKey',
       invalidEthPrivateKeyError,
       (val) => typeof val === 'string' && isEthPrivateKey(val),
@@ -112,30 +59,10 @@ export const validatePrivateKey: Validator = mkSelectingValidator(
       invalidEthPrivateKeyError,
       (val) => typeof val === 'string' && isEthPrivateKey(val),
     ),
-    xdc: mkValidator(
-      'privateKey',
-      invalidEthPrivateKeyError,
-      (val) => typeof val === 'string' && isEthPrivateKey(val),
-    ),
-    tezos: mkValidator(
-      'privateKey',
-      invalidTezosPrivateKeyError,
-      (val) => typeof val === 'string' && isTezosPrivateKey(val),
-    ),
     solana: mkValidator(
       'privateKey',
       invalidSolPrivateKeyError,
       (val) => typeof val === 'string' && isSolPrivateKey(val)
-    ),
-    telos: mkValidator(
-      'privateKey',
-      invalidEthPrivateKeyError,
-      (val) => typeof val === 'string' && isEthPrivateKey(val),
-    ),
-    'ethereum-classic': mkValidator(
-      'privateKey',
-      invalidEthPrivateKeyError,
-      (val) => typeof val === 'string' && isEthPrivateKey(val),
     ),
   },
 );
@@ -158,21 +85,9 @@ export const validateChain: Validator = mkValidator(
   invalidChainError,
   (val) =>
     typeof val === 'string' &&
-    (val === 'algorand' ||
-      val === 'ethereum' ||
-      val === 'avalanche' ||
-      val === 'polygon' ||
-      val === 'celo' ||
-      val === 'xdc' ||
-      val === 'harmony' ||
-      val === 'cronos' ||
-      val === 'cosmos' ||
-      val === 'osmosis' ||
+    (val === 'ethereum' ||
       val === 'binance-smart-chain' ||
-      val === 'tezos' ||
-      val === 'solana' ||
-      val === 'telos' ||
-      val === 'ethereum-classic'),
+      val === 'solana'),
 );
 
 export const validateNetwork: Validator = mkValidator(

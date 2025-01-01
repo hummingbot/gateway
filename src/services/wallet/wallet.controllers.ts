@@ -1,7 +1,4 @@
 import fse from 'fs-extra';
-import { Xdc } from '../../chains/xdc/xdc';
-import { Cosmos } from '../../chains/cosmos/cosmos';
-import { Tezos } from '../../chains/tezos/tezos';
 import { Solana } from '../../chains/solana/solana';
 
 import {
@@ -28,15 +25,7 @@ import {
   getInitializedChain,
   UnsupportedChainException,
 } from '../connection-manager';
-import { Ethereumish, Tezosish } from '../common-interfaces';
-import { Algorand } from '../../chains/algorand/algorand';
-import { Osmosis } from '../../chains/osmosis/osmosis';
-
-export function convertXdcAddressToEthAddress(publicKey: string): string {
-  return publicKey.length === 43 && publicKey.slice(0, 3) === 'xdc'
-    ? '0x' + publicKey.slice(3)
-    : publicKey;
-}
+import { Ethereumish } from '../common-interfaces';
 
 const walletPath = './conf/wallets';
 
@@ -72,49 +61,12 @@ export async function addWallet(
   }
 
   try {
-    if (connection instanceof Algorand) {
-      address = connection.getAccountFromPrivateKey(req.privateKey).addr;
-      encryptedPrivateKey = connection.encrypt(req.privateKey, passphrase);
-    } else if (connection instanceof EthereumBase) {
+    if (connection instanceof EthereumBase) {
       address = connection.getWalletFromPrivateKey(req.privateKey).address;
       encryptedPrivateKey = await connection.encrypt(
         req.privateKey,
         passphrase
       );
-    } else if (connection instanceof Xdc) {
-      address = convertXdcAddressToEthAddress(
-        connection.getWalletFromPrivateKey(req.privateKey).address
-      );
-      encryptedPrivateKey = await connection.encrypt(
-        req.privateKey,
-        passphrase
-      );
-    } else if (connection instanceof Cosmos) {
-      const wallet = await (connection as Cosmos).getAccountsfromPrivateKey(
-        req.privateKey,
-        'cosmos'
-      );
-      address = wallet.address;
-      encryptedPrivateKey = await (connection as Cosmos).encrypt(
-        req.privateKey,
-        passphrase
-      );
-    } else if (connection instanceof Osmosis) {
-      const wallet = await (connection as Osmosis).getAccountsfromPrivateKey(
-        req.privateKey,
-        'osmo'
-      );
-      address = wallet.address;
-      encryptedPrivateKey = await (connection as Osmosis).encrypt(
-        req.privateKey,
-        passphrase
-      );
-    } else if (connection instanceof Tezos) {
-      const tezosWallet = await connection.getWalletFromPrivateKey(
-        req.privateKey
-      );
-      address = await tezosWallet.signer.publicKeyHash();
-      encryptedPrivateKey = connection.encrypt(req.privateKey, passphrase);
     } else if (connection instanceof Solana) {
       address = connection
         .getKeypairFromPrivateKey(req.privateKey)
@@ -148,22 +100,12 @@ export async function removeWallet(req: RemoveWalletRequest): Promise<void> {
 export async function signMessage(
   req: WalletSignRequest
 ): Promise<WalletSignResponse> {
-  if (req.chain === 'tezos') {
-    const chain: Tezosish = await getInitializedChain(req.chain, req.network);
-    const wallet = await chain.getWallet(req.address);
-    return {
-      signature: (await wallet.signer.sign('0x03' + req.message)).sbytes.slice(
-        4
-      ),
-    };
-  } else {
-    const chain: Ethereumish = await getInitializedChain(
-      req.chain,
-      req.network
-    );
-    const wallet = await chain.getWallet(req.address);
-    return { signature: await wallet.signMessage(req.message) };
-  }
+  const chain: Ethereumish = await getInitializedChain(
+    req.chain,
+    req.network
+  );
+  const wallet = await chain.getWallet(req.address);
+  return { signature: await wallet.signMessage(req.message) };
 }
 
 export async function getDirectories(source: string): Promise<string[]> {

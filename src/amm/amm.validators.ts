@@ -17,10 +17,6 @@ import {
   invalidAddressError,
 } from '../chains/ethereum/ethereum.validators';
 
-import {
-  isValidCosmosAddress
-} from '../chains/cosmos/cosmos.validators';
-
 import { FeeAmount } from '@uniswap/v3-sdk';
 
 export const invalidConnectorError: string =
@@ -72,7 +68,7 @@ export const validateConnector: Validator = mkValidator(
 export const validateAddress: Validator = mkValidator(
   'address',
   invalidAddressError,
-  (val) => typeof val === 'string' && (isEthereumAddress(val) || isValidCosmosAddress(val))
+  (val) => typeof val === 'string' && (isEthereumAddress(val))
 );
 
 export const validateQuote: Validator = mkValidator(
@@ -227,68 +223,4 @@ export const validateEstimateGasRequest: RequestValidator = mkRequestValidator([
   validateConnector,
   validateChain,
   validateNetwork,
-]);
-
-export const validateAddLiquidityRequest: RequestValidator = mkRequestValidator(
-  [
-    validateConnector,
-    validateChain,
-    validateNetwork,
-    validateToken0,
-    validateToken1,
-    validateAmount0,
-    validateAmount1,
-    validateAddress,
-    validateFee,
-    validateUpperPrice,
-    validateLowerPrice,
-    validateTokenId,
-    validateNonce,
-    validateMaxFeePerGas,
-    validateMaxPriorityFeePerGas,
-    validatePoolId,
-  ]
-);
-
-export const validateRemoveLiquidityRequest: RequestValidator =
-  mkRequestValidator([
-    validateConnector,
-    validateChain,
-    validateNetwork,
-    validateAddress,
-    validateTokenId,
-    validateDecreasePercent,
-    validateNonce,
-    validateMaxFeePerGas,
-    validateMaxPriorityFeePerGas,
-  ]);
-
-export const validateCollectFeeRequest: RequestValidator = mkRequestValidator([
-  validateConnector,
-  validateChain,
-  validateNetwork,
-  validateAddress,
-  validateTokenId,
-  validateNonce,
-  validateMaxFeePerGas,
-  validateMaxPriorityFeePerGas,
-]);
-
-export const validatePositionRequest: RequestValidator = mkRequestValidator([
-  validateConnector,
-  validateChain,
-  validateNetwork,
-  validateTokenId,
-]);
-
-export const validatePoolPriceRequest: RequestValidator = mkRequestValidator([
-  validateConnector,
-  validateChain,
-  validateNetwork,
-  validateToken0,
-  validateToken1,
-  validateFee,
-  validateInterval,
-  validatePeriod,
-  validatePoolId,
 ]);

@@ -24,7 +24,6 @@ import {
 } from './ethereum.requests';
 import {
   Chain as Ethereumish,
-  UniswapLPish,
   Uniswapish,
 } from '../../services/common-interfaces';
 import {
@@ -187,8 +186,8 @@ export class EVMController {
         // decode logs
         if (req.connector) {
           try {
-            const connector: Uniswapish | UniswapLPish =
-              await getConnector<Uniswapish | UniswapLPish>(
+            const connector: Uniswapish =
+              await getConnector<Uniswapish>(
                 req.chain,
                 req.network,
                 req.connector

@@ -2,20 +2,13 @@ import request from 'supertest';
 import { gatewayApp } from '../../../src/app';
 import { patch, unpatch } from '../patch';
 import { Ethereum } from '../../../src/chains/ethereum/ethereum';
-import { Avalanche } from '../../../src/chains/avalanche/avalanche';
-import { Harmony } from '../../../src/chains/harmony/harmony';
 import { ConfigManagerCertPassphrase } from '../../../src/services/config-manager-cert-passphrase';
 import { GetWalletResponse } from '../../../src/services/wallet/wallet.requests';
-let avalanche: Avalanche;
 let eth: Ethereum;
-let harmony: Harmony;
 
 beforeAll(async () => {
   patch(ConfigManagerCertPassphrase, 'readPassphrase', () => 'a');
-
-  avalanche = Avalanche.getInstance('fuji');
   eth = Ethereum.getInstance('goerli');
-  harmony = Harmony.getInstance('testnet');
 });
 
 beforeEach(() =>
@@ -23,9 +16,7 @@ beforeEach(() =>
 );
 
 afterAll(async () => {
-  await avalanche.close();
   await eth.close();
-  await harmony.close();
 });
 
 afterEach(() => unpatch());
@@ -79,88 +70,6 @@ describe('POST /wallet/add', () => {
       .expect('Content-Type', /json/)
       .expect(200);
   });
-
-  it('return 200 for well formed avalanche request', async () => {
-    patch(avalanche, 'getWalletFromPrivateKey', () => {
-      return {
-        address: twoAddress,
-      };
-    });
-
-    patch(avalanche, 'encrypt', () => {
-      return JSON.stringify(encodedPrivateKey);
-    });
-
-    await request(gatewayApp)
-      .post(`/wallet/add`)
-      .send({
-        privateKey: twoPrivateKey,
-        chain: 'avalanche',
-        network: 'fuji',
-      })
-
-      .expect('Content-Type', /json/)
-      .expect(200);
-  });
-
-  it('return 200 for well formed harmony request', async () => {
-    patch(harmony, 'getWalletFromPrivateKey', () => {
-      return {
-        address: twoAddress,
-      };
-    });
-
-    patch(harmony, 'encrypt', () => {
-      return JSON.stringify(encodedPrivateKey);
-    });
-
-    await request(gatewayApp)
-      .post(`/wallet/add`)
-      .send({
-        privateKey: twoPrivateKey,
-        chain: 'harmony',
-        network: 'testnet',
-      })
-
-      .expect('Content-Type', /json/)
-      .expect(200);
-  });
-
-  it('return 404 for ill-formed avalanche request', async () => {
-    patch(avalanche, 'getWalletFromPrivateKey', () => {
-      return {
-        address: twoAddress,
-      };
-    });
-
-    patch(avalanche, 'encrypt', () => {
-      return JSON.stringify(encodedPrivateKey);
-    });
-
-    await request(gatewayApp)
-      .post(`/wallet/add`)
-      .send({})
-      .expect('Content-Type', /json/)
-      .expect(404);
-  });
-
-  it('return 404 for ill-formed harmony request', async () => {
-    patch(harmony, 'getWalletFromPrivateKey', () => {
-      return {
-        address: twoAddress,
-      };
-    });
-
-    patch(harmony, 'encrypt', () => {
-      return JSON.stringify(encodedPrivateKey);
-    });
-
-    await request(gatewayApp)
-      .post(`/wallet/add`)
-      .send({})
-      .expect('Content-Type', /json/)
-      .expect(404);
-  });
 });
 
 describe('DELETE /wallet/remove', () => {
@@ -191,39 +100,6 @@ describe('DELETE /wallet/remove', () => {
       .send({
         address: twoAddress,
         chain: 'ethereum',
-      })
-
-      .expect('Content-Type', /json/)
-      .expect(200);
-  });
-
-  it('return 200 for well formed harmony request', async () => {
-    patch(harmony, 'getWalletFromPrivateKey', () => {
-      return {
-        address: twoAddress,
-      };
-    });
-
-    patch(harmony, 'encrypt', () => {
-      return JSON.stringify(encodedPrivateKey);
-    });
-
-    await request(gatewayApp)
-      .post(`/wallet/add`)
-      .send({
-        privateKey: twoPrivateKey,
-        chain: 'harmony',
-        network: 'testnet',
-      })
-
-      .expect('Content-Type', /json/)
-      .expect(200);
-
-    await request(gatewayApp)
-      .delete(`/wallet/remove`)
-      .send({
-        address: twoAddress,
-        chain: 'harmony',
       })
 
       .expect('Content-Type', /json/)
@@ -271,38 +147,4 @@ describe('GET /wallet', () => {
       });
   });
 
-  it('return 200 for well formed harmony request', async () => {
-    patch(harmony, 'getWalletFromPrivateKey', () => {
-      return {
-        address: twoAddress,
-      };
-    });
-
-    patch(harmony, 'encrypt', () => {
-      return JSON.stringify(encodedPrivateKey);
-    });
-
-    await request(gatewayApp)
-      .post(`/wallet/add`)
-      .send({
-        privateKey: twoPrivateKey,
-        chain: 'harmony',
-        network: 'testnet',
-      })
-      .expect('Content-Type', /json/)
-      .expect(200);
-
-    await request(gatewayApp)
-      .get(`/wallet`)
-      .expect('Content-Type', /json/)
-      .expect(200)
-      .expect((res) => {
-        const wallets: GetWalletResponse[] = res.body;
-        const addresses: string[][] = wallets
-          .filter((wallet) => wallet.chain === 'harmony')
-          .map((wallet) => wallet.walletAddresses);
-
-        expect(addresses[0]).toContain(twoAddress);
-      });
-  });
 });

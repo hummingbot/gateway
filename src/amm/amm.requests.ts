@@ -1,7 +1,5 @@
-import { CoinAndSymbol, SerializableExtendedPool as CosmosSerializableExtendedPool } from '../chains/osmosis/osmosis.types';
 import {
   NetworkSelectionRequest,
-  PositionInfo as LPPositionInfo,
 } from '../services/common-interfaces';
 
 export type OrderType = 'LIMIT' | 'LIMIT_MAKER';
@@ -31,29 +29,6 @@ export interface PriceResponse {
   gasLimit: number;
   gasCost: string; // also gasUsed for Cosmos prices
   gasWanted?: string;
-}
-
-export interface PoolPriceRequest extends NetworkSelectionRequest {
-  token0: string;
-  token1: string;
-  address?: string
-  fee?: string;
-  period?: number;
-  interval?: number;
-  poolId?: string;
-}
-
-export interface PoolPriceResponse {
-  token0: string;
-  token1: string;
-  fee?: string;
-  period?: number;
-  interval?: number;
-  prices?: string[];
-  pools?: CosmosSerializableExtendedPool[];
-  network: string;
-  timestamp: number;
-  latency: number;
 }
 
 export interface TradeRequest extends NetworkSelectionRequest {
@@ -91,84 +66,6 @@ export interface TradeResponse {
   gasCost: string; // Cosmos: gasUsed
   nonce?: number;
   txHash: string | any | undefined;
-}
-
-export interface AddLiquidityRequest extends NetworkSelectionRequest { // now also cosmos add swap position OR cosmos add LP position
-  address: string;
-  token0: string;
-  token1: string;
-  amount0: string;
-  amount1: string;
-  fee?: string;
-  lowerPrice?: string; // integer as string  // COSMOS - using this != undefined then call addpositionLP(), else: addposition() 
-  upperPrice?: string; // integer as string
-  tokenId?: number; // COSMOS: poolId - will select one for you if not provided
-  nonce?: number;
-  maxFeePerGas?: string;
-  maxPriorityFeePerGas?: string;
-  allowedSlippage?: string; // COSMOS: used to calc TokenMinAmount
-  poolId?: string;
-}
-
-export interface AddLiquidityResponse {
-  network: string;
-  timestamp: number;
-  latency: number;
-  token0: string;
-  token1: string;
-  fee: string;
-  tokenId: number; // COSMOS - this is poolId
-  gasPrice: number | string; // COSMOS: string
-  gasPriceToken: string;
-  gasLimit: number;
-  gasCost: string; // gasUsed for Cosmos
-  gasWanted?: string;
-  nonce: number;
-  txHash: string | undefined;
-  poolAddress?: string; // Cosmos only
-  poolShares?: string; // Cosmos only
-  token0FinalAmount?: string; // Cosmos only
-  token1FinalAmount?: string; // Cosmos only
-}
-
-export interface CollectEarnedFeesRequest extends NetworkSelectionRequest {
-  address: string;
-  tokenId: number; // COSMOS - this is poolId
-  nonce?: number;
-  maxFeePerGas?: string;
-  maxPriorityFeePerGas?: string;
-}
-
-export interface RemoveLiquidityRequest extends CollectEarnedFeesRequest {
-  decreasePercent?: number;
-  allowedSlippage?: string;
-}
-
-export interface RemoveLiquidityResponse {
-  network: string;
-  timestamp: number;
-  latency: number;
-  tokenId: number; // COSMOS - this is poolId
-  gasPrice: number | string; // COSMOS: string
-  gasPriceToken: string;
-  gasLimit: number | string;
-  gasCost: string; // gasUsed for Cosmos
-  nonce?: number;
-  txHash: string | undefined;
-  gasWanted?: string;
-  balances?: CoinAndSymbol[];
-  isCollectFees?: boolean;
-}
-
-export interface PositionRequest extends NetworkSelectionRequest {
-  tokenId?: number; // COSMOS - this is poolId. requried for both
-  address?: string; // COSMOS only/required (no idea how this works without address for others)
-}
-
-export interface PositionResponse extends LPPositionInfo {
-  network: string;
-  timestamp: number;
-  latency: number;
 }
 
 export interface EstimateGasResponse {

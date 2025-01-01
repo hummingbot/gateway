@@ -3,7 +3,6 @@ import { logger } from '../../services/logger';
 import { BigNumber, Contract, Transaction, Wallet } from 'ethers';
 import { EthereumBase } from './ethereum-base';
 import { getEthereumConfig } from './ethereum.config';
-import { PancakeSwapConfig } from '../../connectors/pancakeswap/pancakeswap.config';
 import { Provider } from '@ethersproject/abstract-provider';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 // import { throttleRetryWrapper } from '../../services/retry';
@@ -11,11 +10,6 @@ import { Chain as Ethereumish } from '../../services/common-interfaces';
 import { EVMController } from './evm.controllers';
 
 import { UniswapConfig } from '../../connectors/uniswap/uniswap.config';
-import { SushiswapConfig } from '../../connectors/sushiswap/sushiswap.config';
-import { OpenoceanConfig } from '../../connectors/openocean/openocean.config';
-import { Curve } from '../../connectors/curve/curve';
-import { CarbonConfig } from '../../connectors/carbon/carbon.config';
-import { BalancerConfig } from '../../connectors/balancer/balancer.config';
 
 // MKR does not match the ERC20 perfectly so we need to use a separate ABI.
 const MKR_ADDRESS = '0x9f8f72aa9304c8b593d555f12ef6589cc3a579a2';
@@ -175,8 +169,6 @@ export class Ethereum extends EthereumBase implements Ethereumish {
       : new Contract(tokenAddress, abi.ERC20Abi, signerOrProvider);
   }
 
-  // TODO Check the possibility to use something similar for CLOB/Solana/Serum
-  // Use the following link: https://hummingbot.org/developers/gateway/building-gateway-connectors/#6-add-connector-to-spender-list
   getSpender(reqSpender: string): string {
     let spender: string;
     if (reqSpender === 'uniswap') {
@@ -184,37 +176,6 @@ export class Ethereum extends EthereumBase implements Ethereumish {
         this.chainName,
         this._chain,
       );
-    } else if (reqSpender === 'pancakeswap') {
-      spender = PancakeSwapConfig.config.routerAddress(this._chain);
-    } else if (reqSpender === 'pancakeswapLP') {
-      spender = PancakeSwapConfig.config.pancakeswapV3NftManagerAddress(
-        this._chain,
-      );
-    } else if (reqSpender === 'sushiswap') {
-      spender = SushiswapConfig.config.sushiswapRouterAddress(
-        this.chainName,
-        this._chain,
-      );
-    } else if (reqSpender === 'uniswapLP') {
-      spender = UniswapConfig.config.uniswapV3NftManagerAddress(
-        this.chainName,
-        this._chain);
-    } else if (reqSpender === 'carbonamm') {
-      spender = CarbonConfig.config.carbonContractsConfig(
-        'ethereum',
-        this._chain,
-      ).carbonControllerAddress;
-    } else if (reqSpender === 'openocean') {
-      spender = OpenoceanConfig.config.routerAddress('ethereum', this._chain);
-    } else if (reqSpender === 'curve') {
-      const curve = Curve.getInstance('ethereum', this._chain);
-      if (!curve.ready()) {
-        curve.init();
-        throw Error('Curve not ready');
-      }
-      spender = curve.router;
-    } else if (reqSpender === 'balancer') {
-      spender = BalancerConfig.config.routerAddress(this._chain);
     } else {
       spender = reqSpender;
     }

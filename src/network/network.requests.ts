@@ -5,7 +5,6 @@ import {
 } from '../services/common-interfaces';
 
 import { TokenInfo } from '../chains/ethereum/ethereum-base';
-import { TokenInfo as TezosTokenInfo } from '../chains/tezos/tezos.base';
 
 export interface BalanceRequest extends NetworkSelectionRequest {
   address: string; // the users public Ethereum key
@@ -56,5 +55,5 @@ export interface TokensRequest {
 }
 
 export interface TokensResponse {
-  tokens: (TokenInfo | TezosTokenInfo)[];
+  tokens: (TokenInfo)[];
 }

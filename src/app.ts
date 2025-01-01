@@ -14,7 +14,7 @@ import {
 import { ConfigManagerV2 } from './services/config-manager-v2';
 import { SwaggerManager } from './services/swagger-manager';
 import { ConnectorsRoutes } from './connectors/connectors.routes';
-import { AmmRoutes, AmmLiquidityRoutes } from './amm/amm.routes';
+import { AmmRoutes } from './amm/amm.routes';
 
 import morgan from 'morgan';
 import swaggerUi from 'swagger-ui-express';
@@ -44,9 +44,7 @@ gatewayApp.use(
 gatewayApp.use('/config', ConfigRoutes.router);
 gatewayApp.use('/chain', ChainRoutes.router);
 gatewayApp.use('/connectors', ConnectorsRoutes.router);
-
 gatewayApp.use('/amm', AmmRoutes.router);
-gatewayApp.use('/amm/liquidity', AmmLiquidityRoutes.router);
 gatewayApp.use('/wallet', WalletRoutes.router);
 
 // a simple route to test that the server is running
