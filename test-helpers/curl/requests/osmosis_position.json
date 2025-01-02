@@ -1,7 +1,0 @@
-{
-    "address": "$OSMOSIS_ADDRESS",
-    "tokenId": 2732,
-    "chain": "osmosis",
-    "network": "testnet",
-    "connector": "osmosis"
-}

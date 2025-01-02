@@ -79,7 +79,7 @@ const configureServer = () => {
   return server;
 };
 
-export const startServer = async (): Promise<void> => {
+export const startLarpServer = async (): Promise<void> => {
   const server = configureServer();
   try {
     await server.listen({ port: PORT, host: '0.0.0.0' });
