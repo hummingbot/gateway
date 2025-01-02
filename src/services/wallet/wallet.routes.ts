@@ -1,80 +1,89 @@
-/* eslint-disable @typescript-eslint/ban-types */
-import { Router, Request, Response } from 'express';
-
-import { asyncHandler } from '../error-handler';
-
+import { FastifyPluginAsync } from 'fastify';
+import { Type } from '@sinclair/typebox';
 import {
   addWallet,
   removeWallet,
   getWallets,
   signMessage,
 } from './wallet.controllers';
-
 import {
   AddWalletRequest,
-  AddWalletResponse,
-  RemoveWalletRequest,
-  GetWalletResponse,
   WalletSignRequest,
-  WalletSignResponse,
+  RemoveWalletRequest,
 } from './wallet.requests';
-
 import {
   validateAddWalletRequest,
   validateRemoveWalletRequest,
   validateWalletSignRequest,
 } from './wallet.validators';
 
-export namespace WalletRoutes {
-  export const router = Router();
+const walletSchemas = {
+  add: {
+    body: Type.Object({
+      // Define your AddWalletRequest schema here
+      chain: Type.String(),
+      privateKey: Type.String(),
+    }),
+  },
+  remove: {
+    body: Type.Object({
+      // Define your RemoveWalletRequest schema here
+      chain: Type.String(),
+      address: Type.String(),
+    }),
+  },
+  sign: {
+    querystring: Type.Object({
+      // Define your WalletSignRequest schema here
+      chain: Type.String(),
+      address: Type.String(),
+      message: Type.String(),
+    }),
+  },
+};
 
-  router.get(
-    '/',
-    asyncHandler(async (_req, res: Response<GetWalletResponse[], {}>) => {
-      const response = await getWallets();
-      res.status(200).json(response);
-    })
-  );
+export const walletRoutes: FastifyPluginAsync = async (fastify) => {
+  // GET /
+  fastify.get('/', async () => {
+    return await getWallets();
+  });
 
-  router.post(
+  // POST /add
+  fastify.post<{ Body: AddWalletRequest }>(
     '/add',
-    asyncHandler(
-      async (
-        req: Request<{}, {}, AddWalletRequest>,
-        res: Response<AddWalletResponse, {}>
-      ) => {
-        validateAddWalletRequest(req.body);
-        res.status(200).json(await addWallet(req.body));
-      }
-    )
+    {
+      schema: walletSchemas.add,
+    },
+    async (request) => {
+      validateAddWalletRequest(request.body);
+      return await addWallet(request.body);
+    }
   );
 
-  router.delete(
+  // DELETE /remove
+  fastify.delete<{ Body: RemoveWalletRequest }>(
     '/remove',
-    asyncHandler(
-      async (
-        req: Request<{}, {}, RemoveWalletRequest>,
-        res: Response<void, {}>
-      ) => {
-        validateRemoveWalletRequest(req.body);
-        await removeWallet(req.body);
-        res.status(200).json();
-      }
-    )
+    {
+      schema: walletSchemas.remove,
+    },
+    async (request) => {
+      validateRemoveWalletRequest(request.body);
+      await removeWallet(request.body);
+      return {};
+    }
   );
 
-  router.get(
+  // GET /sign
+  fastify.get<{ Querystring: WalletSignRequest }>(
     '/sign',
-    asyncHandler(
-      async (
-        req: Request<{}, {}, WalletSignRequest>,
-        res: Response<WalletSignResponse, {}>
-      ) => {
-        validateWalletSignRequest(req.query);
-        res
-          .status(200)
-          .json(await signMessage(<WalletSignRequest>(<unknown>req.query)));
-      }
-    )
+    {
+      schema: walletSchemas.sign,
+    },
+    async (request) => {
+      validateWalletSignRequest(request.query);
+      return await signMessage(request.query);
+    }
   );
-}
+};
+
+export default walletRoutes;

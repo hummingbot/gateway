@@ -1,81 +1,22 @@
-/* eslint-disable @typescript-eslint/ban-types */
-import express from 'express';
-import { Request, Response, NextFunction } from 'express';
-import { ConfigRoutes } from './services/config/config.routes';
-import { WalletRoutes } from './services/wallet/wallet.routes';
+import Fastify from 'fastify';
+import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import fastifySwagger from '@fastify/swagger';
+import fastifySwaggerUi from '@fastify/swagger-ui';
+import { Type } from '@sinclair/typebox';
+
 import { logger } from './services/logger';
-import { addHttps } from './https';
-import {
-  asyncHandler,
-  HttpException,
-  NodeError,
-  gatewayErrorMiddleware,
-} from './services/error-handler';
+import { getHttpsOptions } from './https';
+import { gatewayErrorMiddleware, HttpException, NodeError } from './services/error-handler';
 import { ConfigManagerV2 } from './services/config-manager-v2';
 import { SwaggerManager } from './services/swagger-manager';
 import { ConnectorsRoutes } from './connectors/connectors.routes';
 import { AmmRoutes } from './amm/amm.routes';
 
-import morgan from 'morgan';
-import swaggerUi from 'swagger-ui-express';
-import { ChainRoutes } from './chains/chain.routes';
+import { configRoutes } from './services/config/config.routes';
+import { chainRoutes } from './chains/chain.routes';
+import { walletRoutes } from './services/wallet/wallet.routes';
 
-export const gatewayApp = express();
-
-// parse body for application/json
-gatewayApp.use(express.json());
-
-// parse url for application/x-www-form-urlencoded
-gatewayApp.use(express.urlencoded({ extended: true }));
-
-// logging middleware
-// skip logging path '/' or `/network/status`
-gatewayApp.use(
-  morgan('combined', {
-    skip: function (req, _res) {
-      return (
-        req.originalUrl === '/' || req.originalUrl.includes('/network/status')
-      );
-    },
-  })
-);
-
-// mount sub routers
-gatewayApp.use('/config', ConfigRoutes.router);
-gatewayApp.use('/chain', ChainRoutes.router);
-gatewayApp.use('/connectors', ConnectorsRoutes.router);
-gatewayApp.use('/amm', AmmRoutes.router);
-gatewayApp.use('/wallet', WalletRoutes.router);
-
-// a simple route to test that the server is running
-gatewayApp.get('/', (_req: Request, res: Response) => {
-  res.status(200).json({ status: 'ok' });
-});
-
-gatewayApp.post(
-  '/restart',
-  asyncHandler(async (_req, res) => {
-    // kill the current process and trigger the exit event
-    process.exit(1);
-    // this is only to satisfy the compiler, it will never be called.
-    res.status(200).json();
-  })
-);
-
-// handle any error thrown in the gateway api route
-gatewayApp.use(
-  (
-    err: Error | NodeError | HttpException,
-    _req: Request,
-    res: Response,
-    _next: NextFunction
-  ) => {
-    const response = gatewayErrorMiddleware(err);
-    logger.error(err);
-    return res.status(response.httpErrorCode).json(response);
-  }
-);
-
+// Generate swagger document
 export const swaggerDocument = SwaggerManager.generateSwaggerJson(
   './docs/swagger/swagger.yml',
   './docs/swagger/definitions.yml',
@@ -89,44 +30,96 @@ export const swaggerDocument = SwaggerManager.generateSwaggerJson(
   ]
 );
 
-export const startSwagger = async () => {
-  const swaggerApp = express();
-  const swaggerPort = 8080;
+// Create gateway app configuration function
+const configureGatewayServer = () => {
+  const server = Fastify({
+    logger: {
+      level: 'info',
+      transport: {
+        target: 'pino-pretty',
+        options: {
+          translateTime: 'HH:MM:ss Z',
+          ignore: 'pid,hostname',
+        },
+      },
+    },
+    https: ConfigManagerV2.getInstance().get('server.unsafeDevModeWithHTTP') 
+      ? undefined 
+      : getHttpsOptions()
+  }).withTypeProvider<TypeBoxTypeProvider>();
 
-  logger.info(
-    `⚡️ Swagger listening on port ${swaggerPort}. Read the Gateway API documentation at 127.0.0.1:${swaggerPort}`
-  );
+  // Register request body parsers (built into Fastify)
+  server.addContentTypeParser('application/json', { parseAs: 'string' }, server.getDefaultJsonParser('ignore', 'ignore'));
 
-  swaggerApp.use('/', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+  // Register routes
+  server.register(configRoutes, { prefix: '/config' });
+  server.register(chainRoutes, { prefix: '/chain' });
+  // server.register(AmmRoutes.router, { prefix: '/amm' });
+  // server.register(ConnectorsRoutes.router, { prefix: '/connectors' });
+  server.register(walletRoutes, { prefix: '/wallet' });
 
-  await swaggerApp.listen(swaggerPort);
+  // Health check route
+  server.get('/', async () => {
+    return { status: 'ok' };
+  });
+
+  // Restart endpoint
+  server.post('/restart', async () => {
+    process.exit(1);
+  });
+
+  // Global error handler
+  server.setErrorHandler((error: Error | NodeError | HttpException, request, reply) => {
+    logger.error(error);
+    const response = gatewayErrorMiddleware(error);
+    return reply.status(response.httpErrorCode).send(response);
+  });
+
+  // Register Swagger
+  server.register(fastifySwagger, { openapi: swaggerDocument });
+
+  server.register(fastifySwaggerUi, {
+    routePrefix: '/docs',
+    uiConfig: {
+      docExpansion: 'list',
+      deepLinking: false,
+    },
+    staticCSP: false,
+    transformStaticCSP: (header) => header,
+  });
+
+  return server;
 };
 
+// Export the server instance
+export const gatewayApp = configureGatewayServer();
+
 export const startGateway = async () => {
+  const gateway_version = '2.2.0';
   const port = ConfigManagerV2.getInstance().get('server.port');
-  const gateway_version="2.2.0"
+
   if (!ConfigManagerV2.getInstance().get('server.id')) {
     ConfigManagerV2.getInstance().set(
       'server.id',
       Math.random().toString(16).substr(2, 14)
     );
   }
-  logger.info(`Gateway Version: ${gateway_version}`); // display gateway version
-  logger.info(`⚡️ Starting Gateway API on port ${port}...`);
-  if (ConfigManagerV2.getInstance().get('server.unsafeDevModeWithHTTP')) {
-    logger.info('Running in UNSAFE HTTP! This could expose private keys.');
-    await gatewayApp.listen(port);
-  } else {
-    try {
-      await addHttps(gatewayApp).listen(port);
-      logger.info('The gateway server is secured behind HTTPS.');
-    } catch (e) {
-      logger.error(
-        `Failed to start the server with https. Confirm that the SSL certificate files exist and are correct. Error: ${e}`
-      );
-      process.exit();
-    }
-  }
 
-  await startSwagger();
+  logger.info(`Gateway Version: ${gateway_version}`);
+  logger.info(`⚡️ Starting Gateway API on port ${port}...`);
+
+  try {
+    if (ConfigManagerV2.getInstance().get('server.unsafeDevModeWithHTTP')) {
+      logger.info('Running in UNSAFE HTTP! This could expose private keys.');
+      await gatewayApp.listen({ port, host: '0.0.0.0' });
+    } else {
+      await gatewayApp.listen({ port, host: '0.0.0.0' });
+      logger.info('The gateway server is secured behind HTTPS.');
+    }
+  } catch (err) {
+    logger.error(
+      `Failed to start the server: ${err}`
+    );
+    process.exit(1);
+  }
 };

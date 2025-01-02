@@ -1,43 +1,21 @@
-/* eslint-disable no-inner-declarations */
-/* eslint-disable @typescript-eslint/ban-types */
-/* eslint-disable @typescript-eslint/ban-types */
-import { NextFunction, Request, Response, Router } from 'express';
+import { FastifyPluginAsync } from 'fastify';
+import { Type } from '@sinclair/typebox';
 import { Chain } from '../services/common-interfaces';
 import { ConfigManagerV2 } from '../services/config-manager-v2';
-import { asyncHandler } from '../services/error-handler';
-import {
-  mkRequestValidator,
-  RequestValidator,
-  validateTxHash,
-} from '../services/validators';
-import {
-  validateChain as validateEthereumChain,
-  validateNetwork as validateEthereumNetwork,
-} from '../chains/ethereum/ethereum.validators';
-import { validateNonceRequest } from './ethereum/ethereum.validators';
-
 import { getInitializedChain } from '../services/connection-manager';
 import {
   AllowancesRequest,
-  AllowancesResponse,
-  ApproveRequest,
-  ApproveResponse,
-  CancelRequest,
-  CancelResponse,
   NonceRequest,
-  NonceResponse,
+  CancelRequest,
+  ApproveRequest,
 } from './chain.requests';
-import { getStatus } from '../network/network.controllers';
 import {
   StatusRequest,
-  StatusResponse,
   BalanceRequest,
-  BalanceResponse,
   PollRequest,
-  PollResponse,
   TokensRequest,
-  TokensResponse,
 } from '../network/network.requests';
+import { TransferRequest } from '../services/common-interfaces';
 import {
   allowances,
   approve,
@@ -49,10 +27,17 @@ import {
   poll,
   transfer,
 } from './chain.controller';
+import { getStatus } from '../network/network.controllers';
+import { validateNonceRequest } from './ethereum/ethereum.validators';
 import {
-  TransferRequest,
-  TransferResponse,
-} from '../services/common-interfaces';
+  mkRequestValidator,
+  RequestValidator,
+  validateTxHash,
+} from '../services/validators';
+import {
+  validateChain as validateEthereumChain,
+  validateNetwork as validateEthereumNetwork,
+} from '../chains/ethereum/ethereum.validators';
 
 export const validatePollRequest: RequestValidator = mkRequestValidator([
   validateTxHash,
@@ -63,169 +48,136 @@ export const validateTokensRequest: RequestValidator = mkRequestValidator([
   validateEthereumNetwork,
 ]);
 
-export namespace ChainRoutes {
-  export const router = Router();
-
-  router.get(
+export const chainRoutes: FastifyPluginAsync = async (fastify) => {
+  // GET /status
+  fastify.get<{ Querystring: StatusRequest }>(
     '/status',
-    asyncHandler(
-      async (
-        req: Request<{}, {}, {}, StatusRequest>,
-        res: Response<StatusResponse | StatusResponse[], {}>
-      ) => {
-        res.status(200).json(await getStatus(req.query));
-      }
-    )
+    {
+      schema: {
+        querystring: Type.Object({
+          chain: Type.Optional(Type.String()),
+          network: Type.Optional(Type.String()),
+        }),
+      },
+    },
+    async (request) => {
+      return await getStatus(request.query);
+    }
   );
 
-  router.get('/config', (_req: Request, res: Response<any, any>) => {
-    res.status(200).json(ConfigManagerV2.getInstance().allConfigurations);
+  // GET /config
+  fastify.get('/config', async () => {
+    return ConfigManagerV2.getInstance().allConfigurations;
   });
 
-  router.post(
+  // POST /balances
+  fastify.post<{ Body: BalanceRequest }>(
     '/balances',
-    asyncHandler(
-      async (
-        req: Request<{}, {}, BalanceRequest>,
-        res: Response<BalanceResponse | string, {}>,
-        _next: NextFunction
-      ) => {
-        const chain = await getInitializedChain<Chain>(
-          req.body.chain,
-          req.body.network
-        );
-
-        res.status(200).json(await balances(chain, req.body));
-      }
-    )
+    async (request) => {
+      const chain = await getInitializedChain<Chain>(
+        request.body.chain,
+        request.body.network
+      );
+      return await balances(chain, request.body);
+    }
   );
 
-  router.post(
+  // POST /poll
+  fastify.post<{ Body: PollRequest }>(
     '/poll',
-    asyncHandler(
-      async (
-        req: Request<{}, {}, PollRequest>,
-        res: Response<PollResponse, {}>
-      ) => {
-        const chain = await getInitializedChain(
-          req.body.chain,
-          req.body.network
-        );
-        res.status(200).json(await poll(chain, req.body));
-      }
-    )
+    async (request) => {
+      const chain = await getInitializedChain(
+        request.body.chain,
+        request.body.network
+      );
+      return await poll(chain, request.body);
+    }
   );
 
-  router.get(
+  // GET /tokens
+  fastify.get<{ Querystring: TokensRequest }>(
     '/tokens',
-    asyncHandler(
-      async (
-        req: Request<{}, {}, {}, TokensRequest>,
-        res: Response<TokensResponse, {}>
-      ) => {
-        const chain = await getInitializedChain(
-          req.query.chain as string,
-          req.query.network as string
-        );
-        res.status(200).json(await getTokens(chain, req.query));
-      }
-    )
+    async (request) => {
+      const chain = await getInitializedChain(
+        request.query.chain,
+        request.query.network
+      );
+      return await getTokens(chain, request.query);
+    }
   );
 
-  router.post(
+  // POST /nextNonce
+  fastify.post<{ Body: NonceRequest }>(
     '/nextNonce',
-    asyncHandler(
-      async (
-        req: Request<{}, {}, NonceRequest>,
-        res: Response<NonceResponse | string, {}>
-      ) => {
-        const chain = await getInitializedChain(
-          req.body.chain,
-          req.body.network
-        );
-        res.status(200).json(await nextNonce(chain, req.body));
-      }
-    )
+    async (request) => {
+      const chain = await getInitializedChain(
+        request.body.chain,
+        request.body.network
+      );
+      return await nextNonce(chain, request.body);
+    }
   );
 
-  router.post(
+  // POST /nonce
+  fastify.post<{ Body: NonceRequest }>(
     '/nonce',
-    asyncHandler(
-      async (
-        req: Request<{}, {}, NonceRequest>,
-        res: Response<NonceResponse | string, {}>
-      ) => {
-        validateNonceRequest(req.body);
-        const chain = await getInitializedChain(
-          req.body.chain,
-          req.body.network
-        );
-        res.status(200).json(await nonce(chain, req.body));
-      }
-    )
+    async (request) => {
+      validateNonceRequest(request.body);
+      const chain = await getInitializedChain(
+        request.body.chain,
+        request.body.network
+      );
+      return await nonce(chain, request.body);
+    }
   );
 
-  router.post(
+  // POST /allowances
+  fastify.post<{ Body: AllowancesRequest }>(
     '/allowances',
-    asyncHandler(
-      async (
-        req: Request<{}, {}, AllowancesRequest>,
-        res: Response<AllowancesResponse | string, {}>
-      ) => {
-        const chain = await getInitializedChain(
-          req.body.chain,
-          req.body.network
-        );
-        res.status(200).json(await allowances(chain, req.body));
-      }
-    )
+    async (request) => {
+      const chain = await getInitializedChain(
+        request.body.chain,
+        request.body.network
+      );
+      return await allowances(chain, request.body);
+    }
   );
 
-  router.post(
+  // POST /approve
+  fastify.post<{ Body: ApproveRequest }>(
     '/approve',
-    asyncHandler(
-      async (
-        req: Request<{}, {}, ApproveRequest>,
-        res: Response<ApproveResponse | string, {}>
-      ) => {
-        const chain = await getInitializedChain(
-          req.body.chain,
-          req.body.network
-        );
-        res.status(200).json(await approve(chain, req.body));
-      }
-    )
+    async (request) => {
+      const chain = await getInitializedChain(
+        request.body.chain,
+        request.body.network
+      );
+      return await approve(chain, request.body);
+    }
   );
 
-  router.post(
+  // POST /cancel
+  fastify.post<{ Body: CancelRequest }>(
     '/cancel',
-    asyncHandler(
-      async (
-        req: Request<{}, {}, CancelRequest>,
-        res: Response<CancelResponse, {}>
-      ) => {
-        const chain = await getInitializedChain(
-          req.body.chain,
-          req.body.network
-        );
-        res.status(200).json(await cancel(chain, req.body));
-      }
-    )
+    async (request) => {
+      const chain = await getInitializedChain(
+        request.body.chain,
+        request.body.network
+      );
+      return await cancel(chain, request.body);
+    }
   );
 
-  router.post(
+  // POST /transfer
+  fastify.post<{ Body: TransferRequest }>(
     '/transfer',
-    asyncHandler(
-      async (
-        req: Request<{}, {}, TransferRequest>,
-        res: Response<TransferResponse, {}>
-      ) => {
-        const chain = await getInitializedChain(
-          req.body.chain,
-          req.body.network
-        );
-        res.status(200).json(await transfer(chain, req.body));
-      }
-    )
+    async (request) => {
+      const chain = await getInitializedChain(
+        request.body.chain,
+        request.body.network
+      );
+      return await transfer(chain, request.body);
+    }
   );
-}
+};
+
+export default chainRoutes;
