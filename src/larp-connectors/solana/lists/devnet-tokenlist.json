@@ -1,0 +1,39 @@
+{
+  "content": [
+    {
+      "address": "So11111111111111111111111111111111111111112",
+      "chainId": 101,
+      "name": "Wrapped Solana",
+      "symbol": "SOL",
+      "decimals": 9
+    },
+    {
+      "address": "BRjpCHtyQLNCo8gqRUr8jtdAj5AjPYQaoqbvcZiHok1k",
+      "chainId": 103,
+      "name": "devUSDC",
+      "symbol": "devUSDC",
+      "decimals": 6
+    },
+    {
+      "address": "H8UekPGwePSmQ3ttuYGPU1szyFfjZR4N53rymSFwpLPm",
+      "chainId": 103,
+      "name": "devUSDT",
+      "symbol": "devUSDT",
+      "decimals": 6
+    },
+    {
+      "address": "Jd4M8bfJG3sAkd82RsGWyEXoaBXQP7njFzBwEaCTuDa",
+      "chainId": 103,
+      "name": "devSAMO",
+      "symbol": "devSAMO",
+      "decimals": 9
+    },
+    {
+      "address": "Afn8YB1p4NsoZeS5XJBZ18LTfEy5NFPwN46wapZcBQr6",
+      "chainId": 103,
+      "name": "devTMAC",
+      "symbol": "devTMAC",
+      "decimals": 6
+    }
+  ]
+}

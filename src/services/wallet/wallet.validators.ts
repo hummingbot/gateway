@@ -8,8 +8,6 @@ import {
 
 import { validateSolPrivateKey as isSolPrivateKey } from '../../chains/solana/solana.validators';
 
-const { fromBase64 } = require('@cosmjs/encoding');
-
 export const invalidEthPrivateKeyError: string =
   'The privateKey param is not a valid Ethereum private key (64 hexadecimal characters).';
 
@@ -21,29 +19,6 @@ export const invalidSolPrivateKeyError: string =
 export const isEthPrivateKey = (str: string): boolean => {
   return /^(0x|xdc)?[a-fA-F0-9]{64}$/.test(str);
 };
-
-export const isCosmosPrivateKey = (str: string): boolean => {
-  try {
-    fromBase64(str);
-
-    return true;
-  } catch {
-    return false;
-  }
-};
-
-export const isTezosPrivateKey = (str: string): boolean => {
-  try {
-    const prefix = str.substring(0, 4);
-    if (prefix !== 'edsk' && prefix !== 'spsk' && prefix !== 'p2sk') {
-      return false;
-    }
-    return true;
-  } catch {
-    return false;
-  }
-};
-
 // given a request, look for a key called privateKey that is an Ethereum private key
 export const validatePrivateKey: Validator = mkSelectingValidator(
   'chain',

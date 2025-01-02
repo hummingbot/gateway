@@ -32,14 +32,10 @@ export const validatePublicKey: Validator = mkValidator(
 
 export const validateSolPrivateKey = (secretKey: string): boolean => {
   try {
-    // Decode the string into a Uint8Array
     const secretKeyBytes = bs58.decode(secretKey);
-    // Create a Keypair object from the secret key bytes
-    Keypair.fromSecretKey(secretKeyBytes);
-    // If no error is thrown, the string is a valid Solana private key
+    Keypair.fromSecretKey(new Uint8Array(secretKeyBytes));
     return true;
   } catch (error) {
-    // If an error is thrown, the string is not a valid Solana private key
     return false;
   }
 };

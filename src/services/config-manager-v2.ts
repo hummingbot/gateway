@@ -4,18 +4,10 @@ import fs from 'fs';
 import fse from 'fs-extra';
 import path from 'path';
 import yaml from 'js-yaml';
-import * as migrations from './config-migration/migrations';
 import { rootPath } from '../paths';
 
 type Configuration = { [key: string]: any };
 type ConfigurationDefaults = { [namespaceId: string]: Configuration };
-export type Migration = (
-  configRootFullPath: string,
-  configRootTemplateFullPath: string
-) => void;
-type MigrationFunctions = {
-  [key: string]: Migration;
-};
 interface _ConfigurationNamespaceDefinition {
   configurationPath: string;
   schemaPath: string;
@@ -379,34 +371,10 @@ export class ConfigManagerV2 {
   loadConfigRoot(configRootPath: string) {
     // Load the config root file.
     const configRootFullPath: string = fs.realpathSync(configRootPath);
-    const configRootTemplateFullPath: string = path.join(
-      ConfigTemplatesDir,
-      'root.yml'
-    );
     const configRootDir: string = path.dirname(configRootFullPath);
     const configRoot: ConfigurationRoot = yaml.load(
       fs.readFileSync(configRootFullPath, 'utf8')
     ) as ConfigurationRoot;
-    const configRootTemplate: ConfigurationRoot = yaml.load(
-      fs.readFileSync(configRootTemplateFullPath, 'utf8')
-    ) as ConfigurationRoot;
-
-    // version control to only handle upgrades
-    if (configRootTemplate.version > configRoot.version) {
-      // run migration in order if available
-      for (
-        let num = configRoot.version + 1;
-        num <= configRootTemplate.version;
-        num++
-      ) {
-        if ((migrations as MigrationFunctions)[`updateToVersion${num}`]) {
-          (migrations as MigrationFunctions)[`updateToVersion${num}`](
-            configRootFullPath,
-            configRootTemplateFullPath
-          );
-        }
-      }
-    }
 
     // Validate the config root file.
     const validator: ValidateFunction = ajv.compile(

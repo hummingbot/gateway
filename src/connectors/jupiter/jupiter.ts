@@ -156,7 +156,7 @@ export class Jupiter {
     const swapObj = await this.getSwapObj(wallet, quote);
 
     const swapTransactionBuf = Buffer.from(swapObj.swapTransaction, 'base64');
-    const transaction = VersionedTransaction.deserialize(swapTransactionBuf);
+    const transaction = VersionedTransaction.deserialize(new Uint8Array(swapTransactionBuf));
 
     transaction.sign([wallet.payer]);
 
