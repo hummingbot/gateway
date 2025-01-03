@@ -1,7 +1,5 @@
-/* eslint-disable no-inner-declarations */
-/* eslint-disable @typescript-eslint/ban-types */
-import { Router, Request, Response } from 'express';
-import { asyncHandler } from '../services/error-handler';
+import { FastifyPluginAsync } from 'fastify';
+import { Type } from '@sinclair/typebox';
 import {
   price,
   trade,
@@ -21,45 +19,122 @@ import {
 } from './amm.validators';
 import { NetworkSelectionRequest } from '../services/common-interfaces';
 
-export namespace AmmRoutes {
-  export const router = Router();
-
-  router.post(
+export const ammRoutes: FastifyPluginAsync = async (fastify) => {
+  // POST /price
+  fastify.post<{ Body: PriceRequest; Reply: PriceResponse }>(
     '/price',
-    asyncHandler(
-      async (
-        req: Request<{}, {}, PriceRequest>,
-        res: Response<PriceResponse | string, {}>
-      ) => {
-        validatePriceRequest(req.body);
-        res.status(200).json(await price(req.body));
-      }
-    )
+    {
+      schema: {
+        body: Type.Object({
+          chain: Type.String(),
+          network: Type.String(),
+          connector: Type.String(),
+          quote: Type.String(),
+          base: Type.String(),
+          amount: Type.String(),
+          side: Type.String(),
+        }),
+        response: {
+          200: Type.Object({
+            base: Type.String(),
+            quote: Type.String(),
+            amount: Type.String(),
+            rawAmount: Type.String(),
+            expectedAmount: Type.String(),
+            price: Type.String(),
+            network: Type.String(),
+            timestamp: Type.Number(),
+            latency: Type.Number(),
+            gasPrice: Type.Number(),
+            gasPriceToken: Type.String(),
+            gasLimit: Type.Number(),
+            gasCost: Type.String(),
+            gasWanted: Type.Optional(Type.String()),
+          }),
+        },
+      },
+    },
+    async (request) => {
+      validatePriceRequest(request.body);
+      return await price(request.body);
+    }
   );
 
-  router.post(
+  // POST /trade
+  fastify.post<{ Body: TradeRequest; Reply: TradeResponse }>(
     '/trade',
-    asyncHandler(
-      async (
-        req: Request<{}, {}, TradeRequest>,
-        res: Response<TradeResponse | string, {}>
-      ) => {
-        validateTradeRequest(req.body);
-        res.status(200).json(await trade(req.body));
-      }
-    )
+    {
+      schema: {
+        body: Type.Object({
+          chain: Type.String(),
+          network: Type.String(),
+          connector: Type.String(),
+          quote: Type.String(),
+          base: Type.String(),
+          amount: Type.String(),
+          address: Type.String(),
+          side: Type.String(),
+          nonce: Type.Optional(Type.Number()),
+        }),
+        response: {
+          200: Type.Object({
+            network: Type.String(),
+            timestamp: Type.Number(),
+            latency: Type.Number(),
+            base: Type.String(),
+            quote: Type.String(),
+            amount: Type.String(),
+            finalAmountReceived: Type.Optional(Type.String()),
+            rawAmount: Type.String(),
+            finalAmountReceived_basetoken: Type.Optional(Type.String()),
+            expectedIn: Type.Optional(Type.String()),
+            expectedOut: Type.Optional(Type.String()),
+            expectedPrice: Type.Optional(Type.String()),
+            price: Type.String(),
+            gasPrice: Type.Number(),
+            gasPriceToken: Type.String(),
+            gasLimit: Type.Number(),
+            gasWanted: Type.Optional(Type.String()),
+            gasCost: Type.String(),
+            nonce: Type.Optional(Type.Number()),
+            txHash: Type.Union([Type.String(), Type.Null()]),
+          }),
+        },
+      },
+    },
+    async (request) => {
+      validateTradeRequest(request.body);
+      return await trade(request.body);
+    }
   );
 
-  router.post(
+  // POST /estimateGas
+  fastify.post<{ Body: NetworkSelectionRequest; Reply: EstimateGasResponse }>(
     '/estimateGas',
-    asyncHandler(
-      async (
-        req: Request<{}, {}, NetworkSelectionRequest>,
-        res: Response<EstimateGasResponse | string, {}>
-      ) => {
-        validateEstimateGasRequest(req.body);
-        res.status(200).json(await estimateGas(req.body));
-      }
-    )
+    {
+      schema: {
+        body: Type.Object({
+          chain: Type.String(),
+          network: Type.String(),
+          connector: Type.String(),
+        }),
+        response: {
+          200: Type.Object({
+            network: Type.String(),
+            timestamp: Type.Number(),
+            gasPrice: Type.Number(),
+            gasPriceToken: Type.String(),
+            gasLimit: Type.Number(),
+            gasCost: Type.String(),
+          }),
+        },
+      },
+    },
+    async (request) => {
+      validateEstimateGasRequest(request.body);
+      return await estimateGas(request.body);
+    }
   );
-}
+};
+
+export default ammRoutes;

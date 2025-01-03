@@ -1,18 +1,30 @@
-/* eslint-disable no-inner-declarations */
-/* eslint-disable @typescript-eslint/ban-types */
-import { Router, Response } from 'express';
-import { asyncHandler } from '../services/error-handler';
+import { FastifyPluginAsync } from 'fastify';
+import { Type } from '@sinclair/typebox';
 import { UniswapConfig } from './uniswap/uniswap.config';
 import { ConnectorsResponse } from './connectors.request';
 import { JupiterConfig } from './jupiter/jupiter.config';
 
-export namespace ConnectorsRoutes {
-  export const router = Router();
-
-  router.get(
+export const connectorsRoutes: FastifyPluginAsync = async (fastify) => {
+  fastify.get<{ Reply: ConnectorsResponse }>(
     '/',
-    asyncHandler(async (_req, res: Response<ConnectorsResponse, {}>) => {
-      res.status(200).json({
+    {
+      schema: {
+        response: {
+          200: Type.Object({
+            connectors: Type.Array(
+              Type.Object({
+                name: Type.String(),
+                trading_type: Type.Array(Type.String()),
+                chain_type: Type.String(),
+                available_networks: Type.Array(Type.String()),
+              })
+            ),
+          }),
+        },
+      },
+    },
+    async () => {
+      return {
         connectors: [
           {
             name: 'uniswap',
@@ -27,7 +39,9 @@ export namespace ConnectorsRoutes {
             available_networks: JupiterConfig.config.availableNetworks,
           },
         ],
-      });
-    })
+      };
+    }
   );
-}
+};
+
+export default connectorsRoutes;

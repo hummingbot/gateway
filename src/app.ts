@@ -9,8 +9,8 @@ import { getHttpsOptions } from './https';
 import { gatewayErrorMiddleware, HttpException, NodeError } from './services/error-handler';
 import { ConfigManagerV2 } from './services/config-manager-v2';
 import { SwaggerManager } from './services/swagger-manager';
-import { ConnectorsRoutes } from './connectors/connectors.routes';
-import { AmmRoutes } from './amm/amm.routes';
+import ammRoutes from './amm/amm.routes';
+import connectorsRoutes from './amm/amm.routes';
 
 import { configRoutes } from './services/config/config.routes';
 import { chainRoutes } from './chains/chain.routes';
@@ -54,8 +54,8 @@ const configureGatewayServer = () => {
   // Register routes
   server.register(configRoutes, { prefix: '/config' });
   server.register(chainRoutes, { prefix: '/chain' });
-  // server.register(AmmRoutes.router, { prefix: '/amm' });
-  // server.register(ConnectorsRoutes.router, { prefix: '/connectors' });
+  server.register(ammRoutes, { prefix: '/amm' });
+  server.register(connectorsRoutes, { prefix: '/connectors' });
   server.register(walletRoutes, { prefix: '/wallet' });
 
   // Health check route

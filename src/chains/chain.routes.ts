@@ -5,9 +5,13 @@ import { ConfigManagerV2 } from '../services/config-manager-v2';
 import { getInitializedChain } from '../services/connection-manager';
 import {
   AllowancesRequest,
+  AllowancesResponse,
   NonceRequest,
+  NonceResponse,
   CancelRequest,
+  CancelResponse,
   ApproveRequest,
+  ApproveResponse,
 } from './chain.requests';
 import {
   StatusRequest,
@@ -119,7 +123,7 @@ export const chainRoutes: FastifyPluginAsync = async (fastify) => {
   );
 
   // POST /nonce
-  fastify.post<{ Body: NonceRequest }>(
+  fastify.post<{ Body: NonceRequest; Reply: NonceResponse }>(
     '/nonce',
     async (request) => {
       validateNonceRequest(request.body);
@@ -134,6 +138,19 @@ export const chainRoutes: FastifyPluginAsync = async (fastify) => {
   // POST /allowances
   fastify.post<{ Body: AllowancesRequest }>(
     '/allowances',
+    {
+      schema: {
+        response: {
+          200: Type.Object({
+            network: Type.String(),
+            timestamp: Type.Number(),
+            latency: Type.Number(),
+            spender: Type.String(),
+            approvals: Type.Record(Type.String(), Type.String())
+          })
+        }
+      }
+    },
     async (request) => {
       const chain = await getInitializedChain(
         request.body.chain,
@@ -146,6 +163,28 @@ export const chainRoutes: FastifyPluginAsync = async (fastify) => {
   // POST /approve
   fastify.post<{ Body: ApproveRequest }>(
     '/approve',
+    {
+      schema: {
+        response: {
+          200: Type.Object({
+            network: Type.String(),
+            timestamp: Type.Number(),
+            latency: Type.Number(),
+            tokenAddress: Type.String(),
+            spender: Type.String(),
+            amount: Type.String(),
+            nonce: Type.Number(),
+            approval: Type.Object({
+              // Add CustomTransaction properties here
+              // Example:
+              data: Type.String(),
+              to: Type.String(),
+              // ... other properties
+            })
+          })
+        }
+      }
+    },
     async (request) => {
       const chain = await getInitializedChain(
         request.body.chain,
@@ -156,7 +195,7 @@ export const chainRoutes: FastifyPluginAsync = async (fastify) => {
   );
 
   // POST /cancel
-  fastify.post<{ Body: CancelRequest }>(
+  fastify.post<{ Body: CancelRequest; Reply: CancelResponse }>(
     '/cancel',
     async (request) => {
       const chain = await getInitializedChain(

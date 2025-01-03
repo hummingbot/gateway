@@ -10,6 +10,9 @@ import {
   AddWalletRequest,
   WalletSignRequest,
   RemoveWalletRequest,
+  AddWalletResponse,
+  WalletSignResponse,
+  GetWalletResponse,
 } from './wallet.requests';
 import {
   validateAddWalletRequest,
@@ -44,12 +47,25 @@ const walletSchemas = {
 
 export const walletRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /
-  fastify.get('/', async () => {
-    return await getWallets();
-  });
+  fastify.get<{ Reply: GetWalletResponse[] }>(
+    '/',
+    {
+      schema: {
+        response: {
+          200: Type.Array(Type.Object({
+            chain: Type.String(),
+            walletAddresses: Type.Array(Type.String()),
+          })),
+        },
+      },
+    },
+    async () => {
+      return await getWallets();
+    }
+  );
 
   // POST /add
-  fastify.post<{ Body: AddWalletRequest }>(
+  fastify.post<{ Body: AddWalletRequest; Reply: AddWalletResponse }>(
     '/add',
     {
       schema: walletSchemas.add,
@@ -74,7 +90,7 @@ export const walletRoutes: FastifyPluginAsync = async (fastify) => {
   );
 
   // GET /sign
-  fastify.get<{ Querystring: WalletSignRequest }>(
+  fastify.get<{ Querystring: WalletSignRequest; Reply: WalletSignResponse }>(
     '/sign',
     {
       schema: walletSchemas.sign,
