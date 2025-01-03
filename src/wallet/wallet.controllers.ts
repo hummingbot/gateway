@@ -1,5 +1,5 @@
 import fse from 'fs-extra';
-import { Solana } from '../../chains/solana/solana';
+import { Solana } from '../chains/solana/solana';
 
 import {
   AddWalletRequest,
@@ -10,7 +10,7 @@ import {
   WalletSignResponse,
 } from './wallet.requests';
 
-import { ConfigManagerCertPassphrase } from '../config-manager-cert-passphrase';
+import { ConfigManagerCertPassphrase } from '../services/config-manager-cert-passphrase';
 
 import {
   ERROR_RETRIEVING_WALLET_ADDRESS_ERROR_CODE,
@@ -18,14 +18,14 @@ import {
   HttpException,
   UNKNOWN_CHAIN_ERROR_CODE,
   UNKNOWN_KNOWN_CHAIN_ERROR_MESSAGE,
-} from '../error-handler';
-import { EthereumBase } from '../../chains/ethereum/ethereum-base';
+} from '../services/error-handler';
+import { EthereumBase } from '../chains/ethereum/ethereum-base';
 import {
   ChainUnion,
   getInitializedChain,
   UnsupportedChainException,
-} from '../connection-manager';
-import { Ethereumish } from '../common-interfaces';
+} from '../services/connection-manager';
+import { Ethereumish } from '../services/common-interfaces';
 
 const walletPath = './conf/wallets';
 

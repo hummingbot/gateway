@@ -1,18 +1,18 @@
-import { patch, unpatch } from '../patch';
-import { Ethereum } from '../../../src/chains/ethereum/ethereum';
+import { patch, unpatch } from '../services/patch';
+import { Ethereum } from '../../src/chains/ethereum/ethereum';
 
 import {
   addWallet,
   getWallets,
   removeWallet,
-} from '../../../src/services/wallet/wallet.controllers';
+} from '../../src/wallet/wallet.controllers';
 import {
   HttpException,
   UNKNOWN_CHAIN_ERROR_CODE,
   UNKNOWN_KNOWN_CHAIN_ERROR_MESSAGE,
-} from '../../../src/services/error-handler';
+} from '../../src/services/error-handler';
 
-import { ConfigManagerCertPassphrase } from '../../../src/services/config-manager-cert-passphrase';
+import { ConfigManagerCertPassphrase } from '../../src/services/config-manager-cert-passphrase';
 // import { Cosmos } from '../../../src/chains/cosmos/cosmos';
 
 let eth: Ethereum;

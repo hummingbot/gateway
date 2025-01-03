@@ -8,9 +8,9 @@ import {
   validateAddress,
   validateAccountID,
   invalidAccountIDError,
-} from '../../../src/services/wallet/wallet.validators';
+} from '../../src/wallet/wallet.validators';
 
-import { missingParameter } from '../../../src/services/validators';
+import { missingParameter } from '../../src/services/validators';
 
 import 'jest-extended';
 

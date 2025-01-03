@@ -1,5 +1,7 @@
 import { Type, Static } from '@sinclair/typebox';
 import { NetworkSelectionRequest } from '../services/common-interfaces';
+import { CustomTransactionReceipt, CustomTransactionResponse } from '../services/common-interfaces';
+import { TokenInfo } from './ethereum/ethereum-base';
 
 // Base schemas
 export const NetworkSelectionSchema = Type.Object({
@@ -80,6 +82,62 @@ export const CancelResponseSchema = Type.Object({
   latency: Type.Number(),
   txHash: Type.Union([Type.String(), Type.Undefined()]),
 });
+
+// Add network request interfaces
+export interface StatusRequest {
+  chain?: string;
+  network?: string;
+}
+
+export interface StatusResponse {
+  chain: string;
+  chainId: number;
+  network: string;
+  rpcUrl: string;
+  nativeCurrency: string;
+  currentBlockNumber?: number;
+}
+
+export interface BalanceRequest {
+  address: string;
+  tokenSymbols: string[];
+  chain: string;
+  network: string;
+  connector?: string;
+}
+
+export interface BalanceResponse {
+  network: string;
+  timestamp: number;
+  latency: number;
+  balances: Record<string, string | null>;
+}
+
+export interface PollRequest extends NetworkSelectionRequest {
+  txHash?: string;
+}
+
+export interface PollResponse {
+  network: string;
+  timestamp: number;
+  currentBlock: number;
+  txHash: string;
+  txStatus: number;
+  txBlock: number;
+  txData: CustomTransactionResponse | null;
+  txReceipt?: CustomTransactionReceipt | null;
+  tokenId?: number;
+}
+
+export interface TokensRequest {
+  chain?: string;
+  network?: string;
+  tokenSymbols?: string[];
+}
+
+export interface TokensResponse {
+  tokens: TokenInfo[];
+}
 
 // Type definitions using Static
 export type NonceRequest = Static<typeof NonceRequestSchema>;

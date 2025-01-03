@@ -17,9 +17,9 @@ import { ConfigManagerV2 } from './services/config-manager-v2';
 // Routes
 import { configRoutes } from './services/config/config.routes';
 import { chainRoutes } from './chains/chain.routes';
+import { walletRoutes } from './wallet/wallet.routes';
 import { ammRoutes } from './amm/amm.routes';
 import { connectorsRoutes } from './connectors/connectors.routes';
-import { walletRoutes } from './services/wallet/wallet.routes';
 
 // Define swagger options once
 const swaggerOptions = {

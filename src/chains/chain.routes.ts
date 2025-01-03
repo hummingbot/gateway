@@ -18,13 +18,11 @@ import {
   AllowancesResponseSchema,
   ApproveRequestSchema,
   ApproveResponseSchema,
-} from './chain.requests';
-import {
   StatusRequest,
   BalanceRequest,
   PollRequest,
   TokensRequest,
-} from '../network/network.requests';
+} from './chain.requests';
 import { TransferRequest } from '../services/common-interfaces';
 import {
   allowances,
@@ -37,7 +35,7 @@ import {
   poll,
   transfer,
 } from './chain.controller';
-import { getStatus } from '../network/network.controllers';
+import { getStatus } from './chain.controller';
 import { validateNonceRequest } from './ethereum/ethereum.validators';
 import {
   mkRequestValidator,

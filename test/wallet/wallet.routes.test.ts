@@ -1,9 +1,9 @@
 import request from 'supertest';
-import { gatewayApp } from '../../../src/app';
-import { patch, unpatch } from '../patch';
-import { Ethereum } from '../../../src/chains/ethereum/ethereum';
-import { ConfigManagerCertPassphrase } from '../../../src/services/config-manager-cert-passphrase';
-import { GetWalletResponse } from '../../../src/services/wallet/wallet.requests';
+import { gatewayApp } from '../../src/app';
+import { patch, unpatch } from '../services/patch';
+import { Ethereum } from '../../src/chains/ethereum/ethereum';
+import { ConfigManagerCertPassphrase } from '../../src/services/config-manager-cert-passphrase';
+import { GetWalletResponse } from '../../src/wallet/wallet.requests';
 let eth: Ethereum;
 
 beforeAll(async () => {

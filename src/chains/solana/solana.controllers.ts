@@ -3,7 +3,7 @@ import {
   BalanceRequest,
   TokensRequest,
   PollRequest,
-} from '../../network/network.requests';
+} from '../../chains/chain.requests';
 import { CustomTransactionResponse } from '../../services/common-interfaces';
 import {
   HttpException,

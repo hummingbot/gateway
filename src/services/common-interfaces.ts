@@ -18,7 +18,7 @@ import {
   Token as UniswapCoreToken,
   Fraction as UniswapFraction,
 } from '@uniswap/sdk-core';
-import { BalanceRequest } from '../network/network.requests';
+import { BalanceRequest } from '../chains/chain.requests';
 import { Type, Static } from '@sinclair/typebox';
 
 export type Tokenish =

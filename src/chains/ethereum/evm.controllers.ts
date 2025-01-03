@@ -33,7 +33,7 @@ import {
   ApproveRequest,
   CancelRequest,
 } from '../chain.requests';
-import { BalanceRequest, TokensRequest } from '../../network/network.requests';
+import { BalanceRequest, TokensRequest } from '../../chains/chain.requests';
 import { logger } from '../../services/logger';
 import {
   validateAllowancesRequest,

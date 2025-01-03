@@ -4,9 +4,9 @@ import {
   RequestValidator,
   Validator,
   mkSelectingValidator,
-} from '../validators';
+} from '../services/validators';
 
-import { validateSolPrivateKey as isSolPrivateKey } from '../../chains/solana/solana.validators';
+import { validateSolPrivateKey as isSolPrivateKey } from '../chains/solana/solana.validators';
 
 export const invalidEthPrivateKeyError: string =
   'The privateKey param is not a valid Ethereum private key (64 hexadecimal characters).';
