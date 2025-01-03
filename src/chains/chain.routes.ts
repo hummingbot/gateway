@@ -136,7 +136,7 @@ export const chainRoutes: FastifyPluginAsync = async (fastify) => {
   );
 
   // POST /allowances
-  fastify.post<{ Body: AllowancesRequest }>(
+  fastify.post<{ Body: AllowancesRequest; Reply: AllowancesResponse }>(
     '/allowances',
     {
       schema: {
@@ -151,17 +151,17 @@ export const chainRoutes: FastifyPluginAsync = async (fastify) => {
         }
       }
     },
-    async (request) => {
+    async (request): Promise<AllowancesResponse> => {
       const chain = await getInitializedChain(
         request.body.chain,
         request.body.network
       );
-      return await allowances(chain, request.body);
+      return (await allowances(chain, request.body)) as AllowancesResponse;
     }
   );
 
   // POST /approve
-  fastify.post<{ Body: ApproveRequest }>(
+  fastify.post<{ Body: ApproveRequest; Reply: ApproveResponse }>(
     '/approve',
     {
       schema: {
@@ -185,12 +185,12 @@ export const chainRoutes: FastifyPluginAsync = async (fastify) => {
         }
       }
     },
-    async (request) => {
+    async (request): Promise<ApproveResponse> => {
       const chain = await getInitializedChain(
         request.body.chain,
         request.body.network
       );
-      return await approve(chain, request.body);
+      return (await approve(chain, request.body)) as ApproveResponse;
     }
   );
 
