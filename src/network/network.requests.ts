@@ -6,9 +6,12 @@ import {
 
 import { TokenInfo } from '../chains/ethereum/ethereum-base';
 
-export interface BalanceRequest extends NetworkSelectionRequest {
+export interface BalanceRequest {
   address: string; // the users public Ethereum key
-  tokenSymbols: string[]; // a list of token symbol
+  tokenSymbols: string[]; // a list of token symbols
+  chain: string; // chain (e.g. ethereum, avalanche, or harmony)
+  network: string; // network of the chain (e.g. mainnet)
+  connector?: string; // connector (e.g. uniswap, pangolin)
 }
 
 export interface BalanceResponse {

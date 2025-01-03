@@ -1,46 +1,34 @@
 import { FastifyPluginAsync } from 'fastify';
-import { Type } from '@sinclair/typebox';
 import { ConfigManagerV2 } from '../config-manager-v2';
 import {
   validateConfigUpdateRequest,
   updateAllowedSlippageToFraction,
 } from './config.validators';
-import { ConfigUpdateRequest } from './config.requests';
-
-// Define request schema using TypeBox
-const configUpdateSchema = {
-  body: Type.Object({
-    configPath: Type.String(),
-    configValue: Type.Union([
-      Type.String(),
-      Type.Number(),
-      Type.Boolean(),
-      Type.Object({}),
-      Type.Array(Type.Any()),
-    ]),
-  }),
-  response: {
-    200: Type.Object({
-      message: Type.String(),
-    }),
-    400: Type.Object({
-      error: Type.String(),
-    }),
-  },
-};
+import { 
+  ConfigUpdateRequest, 
+  ConfigUpdateResponse,
+  ConfigUpdateRequestSchema,
+  ConfigUpdateResponseSchema 
+} from './config.requests';
 
 export const configRoutes: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{ Body: ConfigUpdateRequest }>(
+  fastify.post<{ Body: ConfigUpdateRequest; Reply: ConfigUpdateResponse }>(
     '/update',
     {
-      schema: configUpdateSchema,
+      schema: {
+        description: 'Update configuration',
+        tags: ['config'],
+        body: ConfigUpdateRequestSchema,
+        response: {
+          200: ConfigUpdateResponseSchema,
+        }
+      }
     },
     async (request) => {
       validateConfigUpdateRequest(request.body);
       
       const config = ConfigManagerV2.getInstance().get(request.body.configPath);
       
-      // Type conversion for string inputs
       if (typeof request.body.configValue === 'string') {
         switch (typeof config) {
           case 'number':

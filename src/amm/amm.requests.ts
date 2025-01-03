@@ -1,78 +1,92 @@
-import {
-  NetworkSelectionRequest,
-} from '../services/common-interfaces';
+import { Type, Static } from '@sinclair/typebox';
+import { NetworkSelectionSchema } from '../services/common-interfaces';
 
-export type OrderType = 'LIMIT' | 'LIMIT_MAKER';
-export type Side = 'BUY' | 'SELL';
+const SideSchema = Type.Union([
+  Type.Literal('BUY'),
+  Type.Literal('SELL')
+]);
 
-export interface PriceRequest extends NetworkSelectionRequest {
-  quote: string;
-  base: string;
-  amount: string;
-  side: Side;
-  allowedSlippage?: string;
-  poolId?: string;
-}
+export const PriceRequestSchema = Type.Intersect([
+  NetworkSelectionSchema,
+  Type.Object({
+    quote: Type.String(),
+    base: Type.String(),
+    amount: Type.String(),
+    side: SideSchema,
+    allowedSlippage: Type.Optional(Type.String()),
+    poolId: Type.Optional(Type.String())
+  })
+]);
 
-export interface PriceResponse {
-  base: string;
-  quote: string;
-  amount: string;
-  rawAmount: string;
-  expectedAmount: string;
-  price: string;
-  network: string;
-  timestamp: number;
-  latency: number;
-  gasPrice: number;
-  gasPriceToken: string;
-  gasLimit: number;
-  gasCost: string; // also gasUsed for Cosmos prices
-  gasWanted?: string;
-}
+export const PriceResponseSchema = Type.Object({
+  base: Type.String(),
+  quote: Type.String(),
+  amount: Type.String(),
+  rawAmount: Type.String(),
+  expectedAmount: Type.String(),
+  price: Type.String(),
+  network: Type.String(),
+  timestamp: Type.Number(),
+  latency: Type.Number(),
+  gasPrice: Type.Number(),
+  gasPriceToken: Type.String(),
+  gasLimit: Type.Number(),
+  gasCost: Type.String(),
+  gasWanted: Type.Optional(Type.String())
+});
 
-export interface TradeRequest extends NetworkSelectionRequest {
-  quote: string;
-  base: string;
-  amount: string;
-  address: string;
-  side: Side;
-  limitPrice?: string; // integer as string
-  nonce?: number;
-  maxFeePerGas?: string;
-  maxPriorityFeePerGas?: string;
-  allowedSlippage?: string;
-  poolId?: string;
-}
+export const TradeRequestSchema = Type.Intersect([
+  NetworkSelectionSchema,
+  Type.Object({
+    quote: Type.String(),
+    base: Type.String(),
+    amount: Type.String(),
+    address: Type.String(),
+    side: SideSchema,
+    limitPrice: Type.Optional(Type.String()),
+    nonce: Type.Optional(Type.Number()),
+    maxFeePerGas: Type.Optional(Type.String()),
+    maxPriorityFeePerGas: Type.Optional(Type.String()),
+    allowedSlippage: Type.Optional(Type.String()),
+    poolId: Type.Optional(Type.String())
+  })
+]);
 
-export interface TradeResponse {
-  network: string;
-  timestamp: number;
-  latency: number;
-  base: string;
-  quote: string;
-  amount: string; // traderequest.amount
-  finalAmountReceived?: string; // Cosmos
-  rawAmount: string;
-  finalAmountReceived_basetoken?: string; // Cosmos
-  expectedIn?: string;
-  expectedOut?: string;  // Cosmos: expectedAmountReceived
-  expectedPrice?: string;  // Cosmos
-  price: string; // Cosmos: finalPrice
-  gasPrice: number;
-  gasPriceToken: string;
-  gasLimit: number;
-  gasWanted?: string; // Cosmos
-  gasCost: string; // Cosmos: gasUsed
-  nonce?: number;
-  txHash: string | any | undefined;
-}
+export const TradeResponseSchema = Type.Object({
+  network: Type.String(),
+  timestamp: Type.Number(),
+  latency: Type.Number(),
+  base: Type.String(),
+  quote: Type.String(),
+  amount: Type.String(),
+  finalAmountReceived: Type.Optional(Type.String()),
+  rawAmount: Type.String(),
+  finalAmountReceived_basetoken: Type.Optional(Type.String()),
+  expectedIn: Type.Optional(Type.String()),
+  expectedOut: Type.Optional(Type.String()),
+  expectedPrice: Type.Optional(Type.String()),
+  price: Type.String(),
+  gasPrice: Type.Number(),
+  gasPriceToken: Type.String(),
+  gasLimit: Type.Number(),
+  gasWanted: Type.Optional(Type.String()),
+  gasCost: Type.String(),
+  nonce: Type.Optional(Type.Number()),
+  txHash: Type.Union([Type.String(), Type.Null()])
+});
 
-export interface EstimateGasResponse {
-  network: string;
-  timestamp: number;
-  gasPrice: number;
-  gasPriceToken: string;
-  gasLimit: number;
-  gasCost: string;
-}
+export const EstimateGasResponseSchema = Type.Object({
+  network: Type.String(),
+  timestamp: Type.Number(),
+  gasPrice: Type.Number(),
+  gasPriceToken: Type.String(),
+  gasLimit: Type.Number(),
+  gasCost: Type.String()
+});
+
+export type Side = Static<typeof SideSchema>;
+export type PriceRequest = Static<typeof PriceRequestSchema>;
+export type PriceResponse = Static<typeof PriceResponseSchema>;
+export type TradeRequest = Static<typeof TradeRequestSchema>;
+export type TradeResponse = Static<typeof TradeResponseSchema>;
+export type EstimateGasResponse = Static<typeof EstimateGasResponseSchema>;

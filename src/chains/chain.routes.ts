@@ -12,6 +12,12 @@ import {
   CancelResponse,
   ApproveRequest,
   ApproveResponse,
+  NonceRequestSchema,
+  NonceResponseSchema,
+  AllowancesRequestSchema,
+  AllowancesResponseSchema,
+  ApproveRequestSchema,
+  ApproveResponseSchema,
 } from './chain.requests';
 import {
   StatusRequest,
@@ -111,7 +117,7 @@ export const chainRoutes: FastifyPluginAsync = async (fastify) => {
   );
 
   // POST /nextNonce
-  fastify.post<{ Body: NonceRequest }>(
+  fastify.post<{ Body: NonceRequest; Reply: NonceResponse }>(
     '/nextNonce',
     async (request) => {
       const chain = await getInitializedChain(
@@ -125,6 +131,16 @@ export const chainRoutes: FastifyPluginAsync = async (fastify) => {
   // POST /nonce
   fastify.post<{ Body: NonceRequest; Reply: NonceResponse }>(
     '/nonce',
+    {
+      schema: {
+        description: 'Get nonce for address',
+        tags: ['chain'],
+        body: NonceRequestSchema,
+        response: {
+          200: NonceResponseSchema
+        }
+      }
+    },
     async (request) => {
       validateNonceRequest(request.body);
       const chain = await getInitializedChain(
@@ -140,23 +156,19 @@ export const chainRoutes: FastifyPluginAsync = async (fastify) => {
     '/allowances',
     {
       schema: {
+        description: 'Get token allowances',
+        body: AllowancesRequestSchema,
         response: {
-          200: Type.Object({
-            network: Type.String(),
-            timestamp: Type.Number(),
-            latency: Type.Number(),
-            spender: Type.String(),
-            approvals: Type.Record(Type.String(), Type.String())
-          })
+          200: AllowancesResponseSchema
         }
       }
     },
-    async (request): Promise<AllowancesResponse> => {
+    async (request) => {
       const chain = await getInitializedChain(
         request.body.chain,
         request.body.network
       );
-      return (await allowances(chain, request.body)) as AllowancesResponse;
+      return await allowances(chain, request.body);
     }
   );
 
@@ -165,32 +177,19 @@ export const chainRoutes: FastifyPluginAsync = async (fastify) => {
     '/approve',
     {
       schema: {
+        description: 'Approve token spending',
+        body: ApproveRequestSchema,
         response: {
-          200: Type.Object({
-            network: Type.String(),
-            timestamp: Type.Number(),
-            latency: Type.Number(),
-            tokenAddress: Type.String(),
-            spender: Type.String(),
-            amount: Type.String(),
-            nonce: Type.Number(),
-            approval: Type.Object({
-              // Add CustomTransaction properties here
-              // Example:
-              data: Type.String(),
-              to: Type.String(),
-              // ... other properties
-            })
-          })
+          200: ApproveResponseSchema
         }
       }
     },
-    async (request): Promise<ApproveResponse> => {
+    async (request) => {
       const chain = await getInitializedChain(
         request.body.chain,
         request.body.network
       );
-      return (await approve(chain, request.body)) as ApproveResponse;
+      return await approve(chain, request.body);
     }
   );
 

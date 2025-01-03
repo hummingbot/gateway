@@ -19,6 +19,7 @@ import {
   Fraction as UniswapFraction,
 } from '@uniswap/sdk-core';
 import { BalanceRequest } from '../network/network.requests';
+import { Type, Static } from '@sinclair/typebox';
 
 export type Tokenish =
   | Token
@@ -180,11 +181,7 @@ export interface MarketInfo {
   [key: string]: any;
 }
 
-export interface NetworkSelectionRequest {
-  chain: string; //the target chain (e.g. ethereum, avalanche, or harmony)
-  network: string; // the target network of the chain (e.g. mainnet)
-  connector?: string; //the target connector (e.g. uniswap or pangolin)
-}
+export type NetworkSelectionRequest = Static<typeof NetworkSelectionSchema>;
 
 export class ResponseWrapper<T> {
   get status(): number {
@@ -252,3 +249,9 @@ export interface FullTransferResponse {
   gasWanted: string;
   txHash: string;
 }
+
+export const NetworkSelectionSchema = Type.Object({
+  chain: Type.String(),
+  network: Type.String(),
+  connector: Type.String()
+});

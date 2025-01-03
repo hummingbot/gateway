@@ -1,23 +1,23 @@
 import { FastifyPluginAsync } from 'fastify';
-import { Type } from '@sinclair/typebox';
+import { price, trade, estimateGas } from './amm.controllers';
 import {
-  price,
-  trade,
-  estimateGas,
-} from './amm.controllers';
-import {
-  EstimateGasResponse,
   PriceRequest,
   PriceResponse,
   TradeRequest,
   TradeResponse,
+  EstimateGasResponse,
+  PriceRequestSchema,
+  PriceResponseSchema,
+  TradeRequestSchema,
+  TradeResponseSchema,
+  EstimateGasResponseSchema
 } from './amm.requests';
 import {
   validateEstimateGasRequest,
   validatePriceRequest,
   validateTradeRequest,
 } from './amm.validators';
-import { NetworkSelectionRequest } from '../services/common-interfaces';
+import { NetworkSelectionSchema, NetworkSelectionRequest } from '../services/common-interfaces';
 
 export const ammRoutes: FastifyPluginAsync = async (fastify) => {
   // POST /price
@@ -25,34 +25,13 @@ export const ammRoutes: FastifyPluginAsync = async (fastify) => {
     '/price',
     {
       schema: {
-        body: Type.Object({
-          chain: Type.String(),
-          network: Type.String(),
-          connector: Type.String(),
-          quote: Type.String(),
-          base: Type.String(),
-          amount: Type.String(),
-          side: Type.String(),
-        }),
+        description: 'Get price quote',
+        tags: ['amm'],
+        body: PriceRequestSchema,
         response: {
-          200: Type.Object({
-            base: Type.String(),
-            quote: Type.String(),
-            amount: Type.String(),
-            rawAmount: Type.String(),
-            expectedAmount: Type.String(),
-            price: Type.String(),
-            network: Type.String(),
-            timestamp: Type.Number(),
-            latency: Type.Number(),
-            gasPrice: Type.Number(),
-            gasPriceToken: Type.String(),
-            gasLimit: Type.Number(),
-            gasCost: Type.String(),
-            gasWanted: Type.Optional(Type.String()),
-          }),
-        },
-      },
+          200: PriceResponseSchema
+        }
+      }
     },
     async (request) => {
       validatePriceRequest(request.body);
@@ -65,42 +44,13 @@ export const ammRoutes: FastifyPluginAsync = async (fastify) => {
     '/trade',
     {
       schema: {
-        body: Type.Object({
-          chain: Type.String(),
-          network: Type.String(),
-          connector: Type.String(),
-          quote: Type.String(),
-          base: Type.String(),
-          amount: Type.String(),
-          address: Type.String(),
-          side: Type.String(),
-          nonce: Type.Optional(Type.Number()),
-        }),
+        description: 'Execute trade',
+        tags: ['amm'],
+        body: TradeRequestSchema,
         response: {
-          200: Type.Object({
-            network: Type.String(),
-            timestamp: Type.Number(),
-            latency: Type.Number(),
-            base: Type.String(),
-            quote: Type.String(),
-            amount: Type.String(),
-            finalAmountReceived: Type.Optional(Type.String()),
-            rawAmount: Type.String(),
-            finalAmountReceived_basetoken: Type.Optional(Type.String()),
-            expectedIn: Type.Optional(Type.String()),
-            expectedOut: Type.Optional(Type.String()),
-            expectedPrice: Type.Optional(Type.String()),
-            price: Type.String(),
-            gasPrice: Type.Number(),
-            gasPriceToken: Type.String(),
-            gasLimit: Type.Number(),
-            gasWanted: Type.Optional(Type.String()),
-            gasCost: Type.String(),
-            nonce: Type.Optional(Type.Number()),
-            txHash: Type.Union([Type.String(), Type.Null()]),
-          }),
-        },
-      },
+          200: TradeResponseSchema
+        }
+      }
     },
     async (request) => {
       validateTradeRequest(request.body);
@@ -113,22 +63,13 @@ export const ammRoutes: FastifyPluginAsync = async (fastify) => {
     '/estimateGas',
     {
       schema: {
-        body: Type.Object({
-          chain: Type.String(),
-          network: Type.String(),
-          connector: Type.String(),
-        }),
+        description: 'Estimate gas',
+        tags: ['amm'],
+        body: NetworkSelectionSchema,
         response: {
-          200: Type.Object({
-            network: Type.String(),
-            timestamp: Type.Number(),
-            gasPrice: Type.Number(),
-            gasPriceToken: Type.String(),
-            gasLimit: Type.Number(),
-            gasCost: Type.String(),
-          }),
-        },
-      },
+          200: EstimateGasResponseSchema
+        }
+      }
     },
     async (request) => {
       validateEstimateGasRequest(request.body);

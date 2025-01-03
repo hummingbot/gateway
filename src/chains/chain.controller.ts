@@ -85,7 +85,7 @@ export async function getTokens(
 export async function allowances(
   chain: Chain,
   req: AllowancesRequest
-): Promise<AllowancesResponse | string> {
+): Promise<AllowancesResponse> {
   const initTime = Date.now();
   const allowances = await chain.controller.allowances(chain, req);
 
@@ -115,7 +115,7 @@ export async function balances(
 export async function approve(
   chain: Chain,
   req: ApproveRequest
-): Promise<ApproveResponse | string> {
+): Promise<ApproveResponse> {
   const initTime = Date.now();
   const approveTx = await chain.controller.approve(chain, req);
 

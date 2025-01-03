@@ -1,34 +1,58 @@
-import Fastify from 'fastify';
+// External dependencies
+import Fastify, { FastifyInstance } from 'fastify';
 import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import fastifySwagger from '@fastify/swagger';
 import fastifySwaggerUi from '@fastify/swagger-ui';
 import { Type } from '@sinclair/typebox';
-
+// Internal services
 import { logger } from './services/logger';
 import { getHttpsOptions } from './https';
-import { gatewayErrorMiddleware, HttpException, NodeError } from './services/error-handler';
+import { 
+  gatewayErrorMiddleware, 
+  HttpException, 
+  NodeError 
+} from './services/error-handler';
 import { ConfigManagerV2 } from './services/config-manager-v2';
-import { SwaggerManager } from './services/swagger-manager';
-import ammRoutes from './amm/amm.routes';
-import connectorsRoutes from './amm/amm.routes';
 
+// Routes
 import { configRoutes } from './services/config/config.routes';
 import { chainRoutes } from './chains/chain.routes';
+import { ammRoutes } from './amm/amm.routes';
+import { connectorsRoutes } from './connectors/connectors.routes';
 import { walletRoutes } from './services/wallet/wallet.routes';
 
-// Generate swagger document
-export const swaggerDocument = SwaggerManager.generateSwaggerJson(
-  './docs/swagger/swagger.yml',
-  './docs/swagger/definitions.yml',
-  [
-    './docs/swagger/main-routes.yml',
-    './docs/swagger/connectors-routes.yml',
-    './docs/swagger/wallet-routes.yml',
-    './docs/swagger/amm-routes.yml',
-    './docs/swagger/amm-liquidity-routes.yml',
-    './docs/swagger/chain-routes.yml',
-  ]
-);
+// Define swagger options once
+const swaggerOptions = {
+  openapi: {
+    info: {
+      title: 'Gateway API',
+      description: 'API documentation for the Gateway service',
+      version: '2.2.0'
+    },
+    servers: [
+      {
+        url: `http://localhost:${ConfigManagerV2.getInstance().get('server.port')}`,
+      },
+    ],
+    tags: [
+      { name: 'config', description: 'Configuration endpoints' },
+      { name: 'chain', description: 'Chain endpoints' },
+      { name: 'amm', description: 'AMM endpoints' },
+      { name: 'connectors', description: 'Connector endpoints' },
+      { name: 'wallet', description: 'Wallet endpoints' },
+    ],
+  },
+  transform: ({ schema, url }) => {
+    try {
+      return {
+        schema: schema ? Type.Strict(schema) : schema,
+        url: url,
+      };
+    } catch (error) {
+      return { schema, url };
+    }
+  },
+};
 
 // Create gateway app configuration function
 const configureGatewayServer = () => {
@@ -46,17 +70,52 @@ const configureGatewayServer = () => {
     https: ConfigManagerV2.getInstance().get('server.unsafeDevModeWithHTTP') 
       ? undefined 
       : getHttpsOptions()
-  }).withTypeProvider<TypeBoxTypeProvider>();
+  });
+  
+  // Create a separate server instance for docs
+  const docsServer = Fastify();
+  
+  // Register TypeBox provider for both servers
+  server.withTypeProvider<TypeBoxTypeProvider>();
+  docsServer.withTypeProvider<TypeBoxTypeProvider>();
 
-  // Register request body parsers (built into Fastify)
+  // Register Swagger with both servers
+  server.register(fastifySwagger, swaggerOptions);
+  docsServer.register(fastifySwagger, swaggerOptions);
+  docsServer.register(fastifySwaggerUi, {
+    routePrefix: '/',
+    uiConfig: {
+      docExpansion: 'list',
+      deepLinking: false,
+      tryItOutEnabled: true,
+    },
+  });
+
+  // Register routes on both servers
+  const registerRoutes = async (app: FastifyInstance) => {
+    app.register(configRoutes, { prefix: '/config' });
+    app.register(chainRoutes, { prefix: '/chain' });
+    app.register(ammRoutes, { prefix: '/amm' });
+    app.register(connectorsRoutes, { prefix: '/connectors' });
+    app.register(walletRoutes, { prefix: '/wallet' });
+  };
+
+  // Register routes on main server
+  registerRoutes(server);
+  // Register routes on docs server (for OpenAPI generation)
+  registerRoutes(docsServer);
+
+  // Start docs server on port 8080
+  docsServer.listen({ port: 8080, host: '0.0.0.0' }, (err) => {
+    if (err) {
+      logger.error('Failed to start docs server:', err);
+    } else {
+      logger.info('Documentation available at http://localhost:8080');
+    }
+  });
+
+  // Register request body parsers
   server.addContentTypeParser('application/json', { parseAs: 'string' }, server.getDefaultJsonParser('ignore', 'ignore'));
-
-  // Register routes
-  server.register(configRoutes, { prefix: '/config' });
-  server.register(chainRoutes, { prefix: '/chain' });
-  server.register(ammRoutes, { prefix: '/amm' });
-  server.register(connectorsRoutes, { prefix: '/connectors' });
-  server.register(walletRoutes, { prefix: '/wallet' });
 
   // Health check route
   server.get('/', async () => {
@@ -73,19 +132,6 @@ const configureGatewayServer = () => {
     logger.error(error);
     const response = gatewayErrorMiddleware(error);
     return reply.status(response.httpErrorCode).send(response);
-  });
-
-  // Register Swagger
-  server.register(fastifySwagger, { openapi: swaggerDocument });
-
-  server.register(fastifySwaggerUi, {
-    routePrefix: '/docs',
-    uiConfig: {
-      docExpansion: 'list',
-      deepLinking: false,
-    },
-    staticCSP: false,
-    transformStaticCSP: (header) => header,
   });
 
   return server;
