@@ -25,8 +25,14 @@ import {
   validateRemoveWalletRequest,
   validateWalletSignRequest,
 } from './wallet.validators';
+import fastifyRateLimit from 'fastify-rate-limit';
 
 export const walletRoutes: FastifyPluginAsync = async (fastify) => {
+  fastify.register(fastifyRateLimit, {
+    max: 100, // maximum number of requests
+    timeWindow: '15 minutes' // time window for rate limiting
+  });
+
   // GET /
   fastify.get<{ Reply: GetWalletResponse[] }>(
     '/',
