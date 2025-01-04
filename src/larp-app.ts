@@ -46,10 +46,8 @@ const configureServer = () => {
       ],
       tags: [
         { name: 'solana', description: 'Solana utility endpoints' },
-        { name: 'orca', description: 'Orca LP endpoints' },
-        { name: 'raydium', description: 'Raydium LP endpoints' },
+        { name: 'jupiter', description: 'Jupiter swap endpoints' },
         { name: 'meteora', description: 'Meteora LP endpoints' },
-        // Add more tags for other connectors as needed
       ],
     },
     transform: ({ schema, url }) => {

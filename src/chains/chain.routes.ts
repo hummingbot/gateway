@@ -62,6 +62,7 @@ export const chainRoutes: FastifyPluginAsync = async (fastify) => {
     '/status',
     {
       schema: {
+        tags: ['chain'],
         querystring: Type.Object({
           chain: Type.Optional(Type.String()),
           network: Type.Optional(Type.String()),
@@ -74,13 +75,22 @@ export const chainRoutes: FastifyPluginAsync = async (fastify) => {
   );
 
   // GET /config
-  fastify.get('/config', async () => {
+  fastify.get('/config', {
+    schema: {
+      tags: ['chain'],
+    },
+  }, async () => {
     return ConfigManagerV2.getInstance().allConfigurations;
   });
 
   // POST /balances
   fastify.post<{ Body: BalanceRequest }>(
     '/balances',
+    {
+      schema: {
+        tags: ['chain'],
+      },
+    },
     async (request) => {
       const chain = await getInitializedChain<Chain>(
         request.body.chain,
@@ -93,6 +103,11 @@ export const chainRoutes: FastifyPluginAsync = async (fastify) => {
   // POST /poll
   fastify.post<{ Body: PollRequest }>(
     '/poll',
+    {
+      schema: {
+        tags: ['chain'],
+      },
+    },
     async (request) => {
       const chain = await getInitializedChain(
         request.body.chain,
@@ -105,6 +120,11 @@ export const chainRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /tokens
   fastify.get<{ Querystring: TokensRequest }>(
     '/tokens',
+    {
+      schema: {
+        tags: ['chain'],
+      },
+    },
     async (request) => {
       const chain = await getInitializedChain(
         request.query.chain,
@@ -117,6 +137,11 @@ export const chainRoutes: FastifyPluginAsync = async (fastify) => {
   // POST /nextNonce
   fastify.post<{ Body: NonceRequest; Reply: NonceResponse }>(
     '/nextNonce',
+    {
+      schema: {
+        tags: ['chain'],
+      },
+    },
     async (request) => {
       const chain = await getInitializedChain(
         request.body.chain,
@@ -154,6 +179,7 @@ export const chainRoutes: FastifyPluginAsync = async (fastify) => {
     '/allowances',
     {
       schema: {
+        tags: ['chain'],
         description: 'Get token allowances',
         body: AllowancesRequestSchema,
         response: {
@@ -175,6 +201,7 @@ export const chainRoutes: FastifyPluginAsync = async (fastify) => {
     '/approve',
     {
       schema: {
+        tags: ['chain'],
         description: 'Approve token spending',
         body: ApproveRequestSchema,
         response: {
@@ -194,6 +221,11 @@ export const chainRoutes: FastifyPluginAsync = async (fastify) => {
   // POST /cancel
   fastify.post<{ Body: CancelRequest; Reply: CancelResponse }>(
     '/cancel',
+    {
+      schema: {
+        tags: ['chain'],
+      },
+    },
     async (request) => {
       const chain = await getInitializedChain(
         request.body.chain,
@@ -206,6 +238,11 @@ export const chainRoutes: FastifyPluginAsync = async (fastify) => {
   // POST /transfer
   fastify.post<{ Body: TransferRequest }>(
     '/transfer',
+    {
+      schema: {
+        tags: ['chain'],
+      },
+    },
     async (request) => {
       const chain = await getInitializedChain(
         request.body.chain,

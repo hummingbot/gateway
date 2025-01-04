@@ -35,11 +35,11 @@ const swaggerOptions = {
       },
     ],
     tags: [
+      { name: 'connectors', description: 'Connector endpoints' },
       { name: 'config', description: 'Configuration endpoints' },
+      { name: 'wallet', description: 'Wallet endpoints' },
       { name: 'chain', description: 'Chain endpoints' },
       { name: 'amm', description: 'AMM endpoints' },
-      { name: 'connectors', description: 'Connector endpoints' },
-      { name: 'wallet', description: 'Wallet endpoints' },
     ],
   },
   transform: ({ schema, url }) => {
@@ -117,21 +117,21 @@ const configureGatewayServer = () => {
   // Register request body parsers
   server.addContentTypeParser('application/json', { parseAs: 'string' }, server.getDefaultJsonParser('ignore', 'ignore'));
 
-  // Health check route
-  server.get('/', async () => {
-    return { status: 'ok' };
-  });
-
-  // Restart endpoint
-  server.post('/restart', async () => {
-    process.exit(1);
-  });
-
   // Global error handler
   server.setErrorHandler((error: Error | NodeError | HttpException, request, reply) => {
     logger.error(error);
     const response = gatewayErrorMiddleware(error);
     return reply.status(response.httpErrorCode).send(response);
+  });
+
+  // Health check route (outside registerRoutes, only on main server)
+  server.get('/', async () => {
+    return { status: 'ok' };
+  });
+
+  // Restart endpoint (outside registerRoutes, only on main server)
+  server.post('/restart', async () => {
+    process.exit(1);
   });
 
   return server;
