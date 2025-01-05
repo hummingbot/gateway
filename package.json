@@ -83,8 +83,7 @@
     "fastify": "^4.28.1",
     "fastify-type-provider-zod": "^2.0.0",
     "pino-pretty": "^11.2.2",
-    "zod": "^3.23.8",
-    "fastify-rate-limit": "^5.9.0"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@babel/core": "^7.0.0-0",
