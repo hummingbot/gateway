@@ -16,6 +16,8 @@ import { StonApiClient } from '@ston-fi/api';
 import { internal, SenderArguments } from '@ton/ton';
 import { DEX, pTON } from '@ston-fi/sdk';
 import { createHash } from 'crypto';
+import { QueryIdType } from '@ston-fi/sdk/dist/types';
+import { runWithRetryAndTimeout } from '../../chains/ton/ton.utils';
 
 export class Stonfi {
   private static _instances: LRUCache<string, Stonfi>;
@@ -116,8 +118,8 @@ export class Stonfi {
 
     logger.info(
       `Best quote for ${baseToken.symbol}-${quoteToken.symbol}: ` +
-      `${price}` +
-      `${baseToken.symbol}.`,
+        `${price}` +
+        `${baseToken.symbol}.`,
     );
 
     const expectedPrice = isBuy === true ? 1 / price : price;
@@ -130,7 +132,6 @@ export class Stonfi {
     return { trade: quote, expectedAmount, expectedPrice };
   }
 
-
   async executeTrade(
     account: string,
     quote: StonfiConfig.StonfiQuoteRes,
@@ -141,7 +142,9 @@ export class Stonfi {
     const keyPair = await this.chain.getAccountFromAddress(account);
     const contract = this.chain.tonClient.open(this.chain.wallet);
     const dex = this.chain.tonClient.open(new DEX.v1.Router());
-    const transactionHash = Stonfi.generateUniqueHash(`hb-ton-stonfi-${new Date().toISOString() + quote.offerUnits}`);
+    const transactionHash = Stonfi.generateUniqueHash(
+      `hb-ton-stonfi-${new Date().toISOString() + quote.offerUnits}`,
+    );
     const queryId = Stonfi.generateQueryId(15, transactionHash);
     let txParams: SenderArguments;
 
@@ -152,8 +155,7 @@ export class Stonfi {
         offerAmount: quote.offerUnits,
         askJettonAddress: quote.askAddress,
         minAskAmount: quote.minAskUnits,
-        queryId: queryId
-
+        queryId: queryId,
       });
     } else if (quoteName === 'TON') {
       txParams = await dex.getSwapJettonToTonTxParams({
@@ -162,8 +164,7 @@ export class Stonfi {
         offerAmount: quote.offerUnits,
         offerJettonAddress: quote.offerAddress,
         minAskAmount: quote.minAskUnits,
-        queryId: queryId
-
+        queryId: queryId,
       });
     } else {
       txParams = await dex.getSwapJettonToJettonTxParams({
@@ -172,45 +173,82 @@ export class Stonfi {
         askJettonAddress: quote.askAddress,
         offerAmount: quote.offerUnits,
         minAskAmount: quote.minAskUnits,
-        queryId: queryId
+        queryId: queryId,
       });
     }
-    //TODO add the correct values to the config !!!
-    const operations = await this.stonfi.getWalletOperations({
-      since: new Date('2024-01-08T08:00:00'),
-      until: new Date('2025-01-08T23:00:00'),
-      walletAddress: this.chain.wallet.address.toString(),
-      opType: 'Swap',
-    });
-
-    const genericOperation = operations[operations.length - 1];
 
     const options = {
       seqno: await contract.getSeqno(),
       secretKey: Buffer.from(keyPair.secretKey, 'base64url'),
       messages: [internal(txParams)],
-    }
+    };
 
     await contract.sendTransfer(options);
 
-    let statusOperation1;
-    do {
-      statusOperation1 = await this.stonfi.getSwapStatus({
-        ownerAddress: genericOperation.operation.walletAddress,
-        routerAddress: genericOperation.operation.routerAddress,
-        queryId: queryId.toString(),
-      });
+    return (await this.waitForConfirmation(quote.routerAddress, queryId))
+      .txHash;
+  }
 
-      if (statusOperation1['@type'] === "Found") {
-        return statusOperation1.txHash;
-      }
+  public waitForConfirmation(routerAddress: string, queryId: QueryIdType) {
+    return runWithRetryAndTimeout<{
+      '@type': 'Found';
+      address: string;
+      balanceDeltas: string;
+      coins: string;
+      exitCode: string;
+      logicalTime: string;
+      queryId: string;
+      txHash: string;
+    }>(
+      this,
+      this.waitForTransactionHash as any,
+      [
+        {
+          routerAddress: routerAddress,
+          queryId: queryId,
+        },
+      ],
+      5, // maxNumberOfRetries
+      1000, // delayBetweenRetries in milliseconds
+      30000, // timeout in milliseconds
+      'Timeout while waiting for confirmation.', // timeoutMessage
+    );
+  }
 
+  public waitForTransactionHash(routerAddress: string, queryId: QueryIdType) {
+    const result = runWithRetryAndTimeout<
+      | { '@type': 'NotFound' }
+      | {
+          '@type': 'Found';
+          address: string;
+          balanceDeltas: string;
+          coins: string;
+          exitCode: string;
+          logicalTime: string;
+          queryId: string;
+          txHash: string;
+        }
+    >(
+      this.stonfi,
+      this.stonfi.getSwapStatus as any,
+      [
+        {
+          ownerAddress: this.chain.wallet.address.toString(),
+          routerAddress: routerAddress,
+          queryId: queryId.toString(),
+        },
+      ],
+      5, // maxNumberOfRetries
+      1000, // delayBetweenRetries in milliseconds
+      30000, // timeout in milliseconds
+      'Timeout while waiting for confirmation.', // timeoutMessage
+    );
 
-      await new Promise(resolve => setTimeout(resolve, 200));
+    if (!result['txHash']) {
+      throw new Error('Transaction not found');
+    }
 
-    } while (statusOperation1['@type'] !== "Found");
-
-    return "Pending";
+    return result;
   }
 
   public static generateUniqueHash(input: string): string {
@@ -220,8 +258,7 @@ export class Stonfi {
     const max = Math.pow(10, length) - 1;
     const min = Math.pow(10, length - 1);
 
-
-    const hashValue = parseInt(hash.slice(0, 5), 16)
+    const hashValue = parseInt(hash.slice(0, 5), 16);
     const randomNumber = (hashValue % (max - min + 1)) + min;
 
     return randomNumber;
