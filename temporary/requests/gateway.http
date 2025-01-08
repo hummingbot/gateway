@@ -58,9 +58,15 @@ Content-Type: application/json
   "chain":"ton",
   "connector":"stonfi",
   "network":"mainnet",
-  "amount":"0.00123",
+  "amount":"0.0104",
   "address":"UQBSevYG7uExE6wJnWC2adG2SqcjUUqNlmfeTRMFhHT3kWfd",
-  "side": "BUY"
+  "side": "BUY",
+  "limitPrice": "",
+  "nonce": "",
+  "maxFeePerGas": "",
+  "maxPriorityFeePerGas": "",
+  "allowedSlippage": "",
+  "poolId": ""
 }
 
 ###

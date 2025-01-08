@@ -184,9 +184,7 @@ export class Stonfi {
 
     await contract.sendTransfer(options);
 
-    return (
-      await this.waitForConfirmation(quote.routerAddress, queryId.toString())
-    ).txHash;
+    return `hb-ton-stonfi-${queryId.toString()}`;
   }
 
   public async waitForConfirmation(routerAddress: string, queryId: string) {
@@ -202,20 +200,17 @@ export class Stonfi {
     }>(
       this,
       this.waitForTransactionHash as any,
-      [
-        {
-          routerAddress: routerAddress,
-          queryId: queryId,
-        },
-      ],
-      5, // maxNumberOfRetries
+      [routerAddress, queryId],
+      90, // maxNumberOfRetries
       1000, // delayBetweenRetries in milliseconds
-      30000, // timeout in milliseconds
+      90000, // timeout in milliseconds
       'Timeout while waiting for confirmation.', // timeoutMessage
     );
   }
 
   public async waitForTransactionHash(routerAddress: string, queryId: string) {
+    const ownerAddress = this.chain.wallet.address.toString();
+
     const result = await runWithRetryAndTimeout<
       | { '@type': 'NotFound' }
       | {
@@ -231,16 +226,10 @@ export class Stonfi {
     >(
       this.stonfi,
       this.stonfi.getSwapStatus as any,
-      [
-        {
-          ownerAddress: this.chain.wallet.address.toString(),
-          routerAddress: routerAddress,
-          queryId: queryId,
-        },
-      ],
-      5, // maxNumberOfRetries
+      [{ ownerAddress, routerAddress, queryId }],
+      3, // maxNumberOfRetries
       1000, // delayBetweenRetries in milliseconds
-      30000, // timeout in milliseconds
+      10000, // timeout in milliseconds
       'Timeout while waiting for confirmation.', // timeoutMessage
     );
 
