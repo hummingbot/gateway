@@ -1,13 +1,13 @@
 // Import necessary modules
 import {
+  internal,
+  SendMode,
+  toNano,
   TonClient,
   WalletContractV3R2,
-  internal,
-  toNano,
-  SendMode,
 } from '@ton/ton';
 import { mnemonicToPrivateKey } from '@ton/crypto';
-import { beginCell, Cell, storeMessage } from '@ton/core';
+import { beginCell } from '@ton/core';
 
 // Buffer polyfill for browser environments
 require('buffer');
@@ -17,7 +17,7 @@ const MNEMONIC_PHRASE =
   'sort way burger decrease wild state welcome annual assume mix snack list scorpion improve anxiety fame soap crunch gain foil account knee top soul'; // Replace with your 24-word mnemonic phrase
 const RECIPIENT_ADDRESS = 'UQBSevYG7uExE6wJnWC2adG2SqcjUUqNlmfeTRMFhHT3kWfd'; // Replace with the recipient's address
 const AMOUNT_TON = '0.00000001'; // Sending 0.01 TON to minimize transaction cost
-const UNIQUE_IDENTIFIER = 'unique-transaction-id'; // Replace with your unique identifier
+const UNIQUE_IDENTIFIER = `unique-transaction-id-${Math.random()}`; // Replace with your unique identifier
 // const TON_ENDPOINT = 'https://toncenter.com/api/v2/jsonRPC'; // TON API endpoint
 const TON_ENDPOINT = 'https://testnet.toncenter.com/api/v2/jsonRPC'; // TON API endpoint
 const API_KEY =
@@ -52,40 +52,59 @@ const API_KEY =
     // Retrieve the current sequence number
     const seqno = await contract.getSeqno();
 
+    console.log('UNIQUE_IDENTIFIER', UNIQUE_IDENTIFIER);
+
     // Create a message body with the unique identifier
     const messageBody = beginCell()
-      .storeBuffer(Buffer.from(UNIQUE_IDENTIFIER, 'base64url'))
+      .storeBuffer(Buffer.from(UNIQUE_IDENTIFIER, 'utf-8'))
       .endCell();
 
+    console.log('message - hash', messageBody.hash().toString('base64url'));
+
+    // const messageBody = UNIQUE_IDENTIFIER;
+
+    const internalMessage = internal({
+      value: toNano(AMOUNT_TON),
+      to: RECIPIENT_ADDRESS,
+      body: messageBody,
+    });
+
+    // eslint-disable-next-line
+    console.log('internal message - hash - base64url', internalMessage.body.hash().toString('base64url'));
+    // eslint-disable-next-line
+    console.log('internal message - hash -  hex', internalMessage.body.hash().toString('hex'));
+
+    let contractState = await client.getContractState(wallet.address);
+    const controlSeqno = contractState.blockId.seqno;
+
+    console.log('contractState', contractState);
+
     // Send the transfer
-    // await contract.sendTransfer({
-    //   seqno,
-    //   secretKey: keyPair.secretKey,
-    //   sendMode: SendMode.PAY_GAS_SEPARATELY, // Ensures the sender pays for the gas
-    //   messages: [
-    //     internal({
-    //       value: toNano(AMOUNT_TON),
-    //       to: RECIPIENT_ADDRESS,
-    //       body: messageBody,
-    //     }),
-    //   ],
-    // });
-    // console.log(
-    //   `Transaction of ${AMOUNT_TON} TON to ${RECIPIENT_ADDRESS} sent with identifier: ${UNIQUE_IDENTIFIER}.`,
-    // );
+    await contract.sendTransfer({
+      seqno,
+      secretKey: keyPair.secretKey,
+      sendMode: SendMode.PAY_GAS_SEPARATELY, // Ensures the sender pays for the gas
+      messages: [internalMessage],
+    });
+    console.log(
+      `Transaction of ${AMOUNT_TON} TON to ${RECIPIENT_ADDRESS} sent with identifier: ${UNIQUE_IDENTIFIER}.`,
+    );
 
     // Function to wait for transaction confirmation
     const waitForConfirmation = async () => {
       // eslint-disable-next-line
       while (true) {
-        const contractState = await client.getContractState(wallet.address);
-        const { lt: lt, hash: hash } = contractState.lastTransaction;
+        contractState = await client.getContractState(wallet.address);
+
+        if (controlSeqno == contractState.blockId.seqno) {
+          continue;
+        }
 
         // Fetch recent transactions for the wallet
         const transactions = await client.getTransactions(wallet.address, {
           limit: 1,
-          lt: lt,
-          hash: hash,
+          lt: contractState.lastTransaction.lt,
+          hash: contractState.lastTransaction.hash,
         });
 
         // Check if any transaction contains the unique identifier in its payload
@@ -104,10 +123,11 @@ const API_KEY =
             //   .toString('base64url');
             // const receivedIdentifier = tx.inMessage?.body?.toString();
             // const receivedIdentifier = tx.inMessage?.body?.beginParse().loadBuffer(tx.inMessage.body.bits.length / 8).toString('base64url');
+            // const receivedIdentifier = beginCell().store(storeMessage(tx.inMessage?.body?.beginParse().loadRef().beginParse().loadStringTail())).endCell();
             // eslint-disable-next-line
-            const receivedIdentifier = beginCell().store(storeMessage(tx.inMessage?.body?.beginParse().loadRef().beginParse().loadStringTail())).endCell();
-            console.log('Received identifier:', receivedIdentifier);
-            return receivedIdentifier === UNIQUE_IDENTIFIER;
+            const id = tx.inMessage?.body?.beginParse().loadRef().beginParse().loadStringTail();
+            console.log('ID:', id);
+            return id === UNIQUE_IDENTIFIER;
           }
           return false;
         });
