@@ -16,7 +16,6 @@ import { StonApiClient } from '@ston-fi/api';
 import { internal, SenderArguments } from '@ton/ton';
 import { DEX, pTON } from '@ston-fi/sdk';
 import { createHash } from 'crypto';
-import { QueryIdType } from '@ston-fi/sdk/dist/types';
 import { runWithRetryAndTimeout } from '../../chains/ton/ton.utils';
 
 export class Stonfi {
@@ -118,8 +117,8 @@ export class Stonfi {
 
     logger.info(
       `Best quote for ${baseToken.symbol}-${quoteToken.symbol}: ` +
-        `${price}` +
-        `${baseToken.symbol}.`,
+      `${price}` +
+      `${baseToken.symbol}.`,
     );
 
     const expectedPrice = isBuy === true ? 1 / price : price;
@@ -185,12 +184,12 @@ export class Stonfi {
 
     await contract.sendTransfer(options);
 
-    return (await this.waitForConfirmation(quote.routerAddress, queryId))
+    return (await this.waitForConfirmation(quote.routerAddress, queryId.toString()))
       .txHash;
   }
 
-  public waitForConfirmation(routerAddress: string, queryId: QueryIdType) {
-    return runWithRetryAndTimeout<{
+  public async waitForConfirmation(routerAddress: string, queryId: string) {
+    return await runWithRetryAndTimeout<{
       '@type': 'Found';
       address: string;
       balanceDeltas: string;
@@ -215,19 +214,19 @@ export class Stonfi {
     );
   }
 
-  public waitForTransactionHash(routerAddress: string, queryId: QueryIdType) {
-    const result = runWithRetryAndTimeout<
+  public async waitForTransactionHash(routerAddress: string, queryId: string) {
+    const result = await runWithRetryAndTimeout<
       | { '@type': 'NotFound' }
       | {
-          '@type': 'Found';
-          address: string;
-          balanceDeltas: string;
-          coins: string;
-          exitCode: string;
-          logicalTime: string;
-          queryId: string;
-          txHash: string;
-        }
+        '@type': 'Found';
+        address: string;
+        balanceDeltas: string;
+        coins: string;
+        exitCode: string;
+        logicalTime: string;
+        queryId: string;
+        txHash: string;
+      }
     >(
       this.stonfi,
       this.stonfi.getSwapStatus as any,
@@ -235,7 +234,7 @@ export class Stonfi {
         {
           ownerAddress: this.chain.wallet.address.toString(),
           routerAddress: routerAddress,
-          queryId: queryId.toString(),
+          queryId: queryId,
         },
       ],
       5, // maxNumberOfRetries
