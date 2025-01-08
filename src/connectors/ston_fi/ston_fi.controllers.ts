@@ -81,6 +81,7 @@ export async function trade(
   try {
     trade = await stonfi.estimateTrade(<PriceRequest>req);
   } catch (e) {
+    console.error(e);
     throw new HttpException(
       500,
       TRADE_FAILED_ERROR_MESSAGE,
@@ -91,7 +92,7 @@ export async function trade(
   const estimatedPrice = trade.expectedPrice;
   logger.info(
     `Expected execution price is ${estimatedPrice}, ` +
-      `limit price is ${limitPrice}.`,
+    `limit price is ${limitPrice}.`,
   );
 
   if (req.side === 'BUY') {
