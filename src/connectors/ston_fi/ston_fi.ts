@@ -142,7 +142,7 @@ export class Stonfi {
     const contract = this.chain.tonClient.open(this.chain.wallet);
     const dex = this.chain.tonClient.open(new DEX.v1.Router());
     const transactionHash = Stonfi.generateUniqueHash(
-      `hb-ton-stonfi-${new Date().toISOString() + quote.offerUnits}`,
+      `${new Date().toISOString() + quote.offerUnits}`,
     );
     const queryId = Stonfi.generateQueryId(15, transactionHash);
     let txParams: SenderArguments;
@@ -187,14 +187,16 @@ export class Stonfi {
     const hashObj = {
       walletAddress: this.chain.wallet.address.toString(),
       queryId: queryId,
-    }
+    };
 
-    const hashBase64 = Buffer.from(JSON.stringify(hashObj)).toString("base64url");
+    const hashBase64 = Buffer.from(JSON.stringify(hashObj)).toString(
+      'base64url',
+    );
 
     return `hb-ton-stonfi-${hashBase64}`;
   }
 
-  public async waitForConfirmation(walletAddress: string, routerAddress: string, queryId: string) {
+  public async waitForConfirmation(walletAddress: string, queryId: string) {
     return await runWithRetryAndTimeout<{
       '@type': 'Found';
       address: string;
@@ -207,7 +209,7 @@ export class Stonfi {
     }>(
       this,
       this.waitForTransactionHash as any,
-      [walletAddress, routerAddress, queryId],
+      [walletAddress, queryId],
       90, // maxNumberOfRetries
       1000, // delayBetweenRetries in milliseconds
       90000, // timeout in milliseconds
@@ -215,7 +217,27 @@ export class Stonfi {
     );
   }
 
-  public async waitForTransactionHash(ownerAddress: string, routerAddress: string, queryId: string) {
+  public async waitForTransactionHash(ownerAddress: string, queryId: string) {
+    const today = new Date();
+    today.setHours(23, 0, 0, 0);
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    yesterday.setHours(8, 0, 0, 0);
+
+    const operations = await this.stonfi.getWalletOperations({
+      since: yesterday,
+      until: today,
+      walletAddress: ownerAddress,
+      opType: 'Swap',
+    });
+
+    if (!operations) {
+      throw new Error('No operations found');
+    }
+
+    const routerAddress =
+      operations[operations.length - 1].operation.routerAddress;
+
     const result = await runWithRetryAndTimeout<
       | { '@type': 'NotFound' }
       | {
