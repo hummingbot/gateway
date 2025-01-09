@@ -36,6 +36,7 @@ import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-
 import { logger } from '../../services/logger';
 import { getHttpEndpoint } from '@orbs-network/ton-access';
 import { StonApiClient } from '@ston-fi/api';
+import { Stonfi } from '../../connectors/ston_fi/ston_fi';
 
 type AssetListType = TokenListType;
 
@@ -201,6 +202,34 @@ export class Ton {
   }
 
   async getTransaction(eventHash: string): Promise<Trace> {
+    if (eventHash.includes('hb-ton-stonfi-')) {
+      const queryId = eventHash.replace('hb-ton-stonfi-', '')
+      const decodedString = Buffer.from(queryId, 'base64url').toString('utf-8');
+      const obj = JSON.parse(decodedString);
+      obj.queryId = String(obj.queryId)
+      const stonfi = Stonfi.getInstance(this._network)
+
+
+      const today = new Date();
+      today.setHours(23, 0, 0, 0);
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      yesterday.setHours(8, 0, 0, 0);
+
+      // TODO: WHAT`S routerAddress?
+      const operations = await this.stonfiClient.getWalletOperations({
+        since: yesterday,
+        until: today,
+        walletAddress: obj.walletAddress,
+        opType: 'Swap',
+      });
+
+      const { txHash } = await stonfi.waitForConfirmation(obj.walletAddress, operations[0].operation.routerAddress, obj.queryId)
+
+      eventHash = txHash
+    }
+
+
     return await this.tonApiClient.traces.getTrace(eventHash)
   }
 

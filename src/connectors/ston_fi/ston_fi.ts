@@ -15,6 +15,8 @@ import { pow } from 'mathjs';
 import { StonApiClient } from '@ston-fi/api';
 import { internal, SenderArguments } from '@ton/ton';
 import { DEX, pTON } from '@ston-fi/sdk';
+import { createHash } from 'crypto';
+import { runWithRetryAndTimeout } from '../../chains/ton/ton.utils';
 
 export class Stonfi {
   private static _instances: LRUCache<string, Stonfi>;
@@ -129,14 +131,6 @@ export class Stonfi {
     return { trade: quote, expectedAmount, expectedPrice };
   }
 
-  /**
-   * Given an account and a tinyman trade, try to execute it on blockchain.
-   *
-   * @param account Ton account
-   * @param quote Expected trade
-   * @param isBuy Used to indicate buy or sell swap
-   */
-
   async executeTrade(
     account: string,
     quote: StonfiConfig.StonfiQuoteRes,
@@ -147,7 +141,10 @@ export class Stonfi {
     const keyPair = await this.chain.getAccountFromAddress(account);
     const contract = this.chain.tonClient.open(this.chain.wallet);
     const dex = this.chain.tonClient.open(new DEX.v1.Router());
-
+    const transactionHash = Stonfi.generateUniqueHash(
+      `hb-ton-stonfi-${new Date().toISOString() + quote.offerUnits}`,
+    );
+    const queryId = Stonfi.generateQueryId(15, transactionHash);
     let txParams: SenderArguments;
 
     if (baseName === 'TON') {
@@ -157,6 +154,7 @@ export class Stonfi {
         offerAmount: quote.offerUnits,
         askJettonAddress: quote.askAddress,
         minAskAmount: quote.minAskUnits,
+        queryId: queryId,
       });
     } else if (quoteName === 'TON') {
       txParams = await dex.getSwapJettonToTonTxParams({
@@ -165,6 +163,7 @@ export class Stonfi {
         offerAmount: quote.offerUnits,
         offerJettonAddress: quote.offerAddress,
         minAskAmount: quote.minAskUnits,
+        queryId: queryId,
       });
     } else {
       txParams = await dex.getSwapJettonToJettonTxParams({
@@ -173,20 +172,89 @@ export class Stonfi {
         askJettonAddress: quote.askAddress,
         offerAmount: quote.offerUnits,
         minAskAmount: quote.minAskUnits,
+        queryId: queryId,
       });
     }
 
-    await contract.sendTransfer({
+    const options = {
       seqno: await contract.getSeqno(),
       secretKey: Buffer.from(keyPair.secretKey, 'base64url'),
       messages: [internal(txParams)],
-    });
+    };
 
-    // noinspection UnnecessaryLocalVariableJS
-    const latestTransactionHash = await this.chain.getLatestTransactionHash(
-      this.chain.wallet.address.toString(),
+    await contract.sendTransfer(options);
+
+    const hashObj = {
+      walletAddress: this.chain.wallet.address.toString(),
+      queryId: queryId,
+    }
+
+    const hashBase64 = Buffer.from(JSON.stringify(hashObj)).toString("base64url");
+
+    return `hb-ton-stonfi-${hashBase64}`;
+  }
+
+  public async waitForConfirmation(walletAddress: string, routerAddress: string, queryId: string) {
+    return await runWithRetryAndTimeout<{
+      '@type': 'Found';
+      address: string;
+      balanceDeltas: string;
+      coins: string;
+      exitCode: string;
+      logicalTime: string;
+      queryId: string;
+      txHash: string;
+    }>(
+      this,
+      this.waitForTransactionHash as any,
+      [walletAddress, routerAddress, queryId],
+      90, // maxNumberOfRetries
+      1000, // delayBetweenRetries in milliseconds
+      90000, // timeout in milliseconds
+      'Timeout while waiting for confirmation.', // timeoutMessage
+    );
+  }
+
+  public async waitForTransactionHash(ownerAddress: string, routerAddress: string, queryId: string) {
+    const result = await runWithRetryAndTimeout<
+      | { '@type': 'NotFound' }
+      | {
+          '@type': 'Found';
+          address: string;
+          balanceDeltas: string;
+          coins: string;
+          exitCode: string;
+          logicalTime: string;
+          queryId: string;
+          txHash: string;
+        }
+    >(
+      this.stonfi,
+      this.stonfi.getSwapStatus as any,
+      [{ ownerAddress, routerAddress, queryId }],
+      3, // maxNumberOfRetries
+      1000, // delayBetweenRetries in milliseconds
+      10000, // timeout in milliseconds
+      'Timeout while waiting for confirmation.', // timeoutMessage
     );
 
-    return latestTransactionHash;
+    if (!result['txHash']) {
+      throw new Error('Transaction not found');
+    }
+
+    return result;
+  }
+
+  public static generateUniqueHash(input: string): string {
+    return createHash('sha256').update(input).digest('hex');
+  }
+  public static generateQueryId(length: number, hash: string): number {
+    const max = Math.pow(10, length) - 1;
+    const min = Math.pow(10, length - 1);
+
+    const hashValue = parseInt(hash.slice(0, 5), 16);
+    const randomNumber = (hashValue % (max - min + 1)) + min;
+
+    return randomNumber;
   }
 }
