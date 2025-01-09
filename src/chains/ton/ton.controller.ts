@@ -45,7 +45,7 @@ export class TonController {
     const event = {
       currentBlock: Number((await ton.getCurrentBlockNumber()).seqno),
       txBlock: Number(transaction.transaction.block.replace('(', '').replace(')', '').split(',')[2]),
-      txHash: req.txHash,
+      txHash: transaction.transaction.hash,
       fee: Number(transaction.transaction.totalFees) / 10 ** 9,
     }
 

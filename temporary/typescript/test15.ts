@@ -7,23 +7,25 @@ async function main() {
         // Cria o cliente
 
         const client = new StonApiClient();
-        // Chama o método get
+        //Chama o método get
         const operations = await client.getWalletOperations({
             since: new Date('2025-01-07T08:00:00'),
             until: new Date('2025-01-08T23:00:00'),
             walletAddress: 'UQBSevYG7uExE6wJnWC2adG2SqcjUUqNlmfeTRMFhHT3kWfd',
             opType: 'Swap',
         });
+
+
         const operation1 = operations[0];
 
-        // console.log(operations)
+        console.log(operation1.operation.routerAddress)
 
 
 
         const statusOperation1 = await client.getSwapStatus({
-            ownerAddress: operation1.operation.walletAddress,
-            routerAddress: operation1.operation.routerAddress,
-            queryId: "100000000561710",
+            ownerAddress: 'EQBSevYG7uExE6wJnWC2adG2SqcjUUqNlmfeTRMFhHT3kToY',
+            routerAddress: operation1.operation.routerAddress || 'EQCS4UEa5UaJLzOyyKieqQOQ2P9M-7kXpkO5HnP3Bv250cN3',
+            queryId: "100000000076957",
         });
 
         console.log(":", statusOperation1);

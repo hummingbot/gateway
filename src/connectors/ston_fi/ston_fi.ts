@@ -184,10 +184,17 @@ export class Stonfi {
 
     await contract.sendTransfer(options);
 
-    return `hb-ton-stonfi-${queryId.toString()}`;
+    const hashObj = {
+      walletAddress: this.chain.wallet.address.toString(),
+      queryId: queryId,
+    }
+
+    const hashBase64 = Buffer.from(JSON.stringify(hashObj)).toString("base64url");
+
+    return `hb-ton-stonfi-${hashBase64}`;
   }
 
-  public async waitForConfirmation(routerAddress: string, queryId: string) {
+  public async waitForConfirmation(walletAddress: string, routerAddress: string, queryId: string) {
     return await runWithRetryAndTimeout<{
       '@type': 'Found';
       address: string;
@@ -200,7 +207,7 @@ export class Stonfi {
     }>(
       this,
       this.waitForTransactionHash as any,
-      [routerAddress, queryId],
+      [walletAddress, routerAddress, queryId],
       90, // maxNumberOfRetries
       1000, // delayBetweenRetries in milliseconds
       90000, // timeout in milliseconds
@@ -208,9 +215,7 @@ export class Stonfi {
     );
   }
 
-  public async waitForTransactionHash(routerAddress: string, queryId: string) {
-    const ownerAddress = this.chain.wallet.address.toString();
-
+  public async waitForTransactionHash(ownerAddress: string, routerAddress: string, queryId: string) {
     const result = await runWithRetryAndTimeout<
       | { '@type': 'NotFound' }
       | {
