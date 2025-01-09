@@ -670,6 +670,9 @@ export class Solana implements Solanaish {
           body: JSON.stringify(payload),
         });
 
+        // Log the response
+        console.log('[CONFIRM TX] Response:', await response.clone().json());
+
         if (!response.ok) {
           reject(new Error(`HTTP error! status: ${response.status}`));
           return;
@@ -730,6 +733,9 @@ export class Solana implements Solanaish {
           },
           body: JSON.stringify(payload),
         });
+
+        // Log the response
+        console.log('[CONFIRM TX BY ADDRESS] Response:', await response.clone().json());
 
         if (!response.ok) {
           reject(new Error(`HTTP error! status: ${response.status}`));
@@ -795,6 +801,10 @@ export class Solana implements Solanaish {
     const blockhashAndContext = await this.connectionPool
       .getNextConnection()
       .getLatestBlockhashAndContext('confirmed');
+    
+    // Log entire blockhashAndContext object
+    console.log('[BLOCKHASH] blockhashAndContext:', JSON.stringify(blockhashAndContext, null, 2));
+
     const lastValidBlockHeight = blockhashAndContext.value.lastValidBlockHeight;
     const blockhash = blockhashAndContext.value.blockhash;
 
@@ -827,7 +837,22 @@ export class Solana implements Solanaish {
     let signatures: string[];
     let confirmations: boolean[];
 
-    while (blockheight <= lastValidBlockHeight + 50) {
+    // Add max retry counter
+    let retryCount = 0;
+    const MAX_RETRIES = 3;
+
+    while (blockheight <= lastValidBlockHeight + 50 && retryCount < MAX_RETRIES) {
+      console.log(`[SEND TX] Attempt ${retryCount} of ${MAX_RETRIES}`);
+      retryCount++;
+      
+      // Log connection details
+      console.log('[SEND TX] Attempting transaction on connections:', 
+        this.connectionPool.getAllConnections().map(conn => ({
+          endpoint: conn.rpcEndpoint,
+          commitment: conn.commitment
+        }))
+      );
+
       const sendRawTransactionResults = await Promise.allSettled(
         this.connectionPool.getAllConnections().map((conn) =>
           conn.sendRawTransaction(rawTx, {
@@ -836,6 +861,14 @@ export class Solana implements Solanaish {
             maxRetries: 0,
           }),
         ),
+      );
+
+      // Add detailed logging of results with connection mapping
+      console.log('[SEND TX] Raw transaction results:', 
+        sendRawTransactionResults.map((result, index) => ({
+          connection: this.connectionPool.getAllConnections()[index].rpcEndpoint,
+          result: result
+        }))
       );
 
       const successfulResults = sendRawTransactionResults.filter(
@@ -860,7 +893,7 @@ export class Solana implements Solanaish {
 
       signature = signatures[0];
 
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 1000 * retryCount));
 
       // Check confirmation across all connections
       const confirmTransactionResults = await Promise.allSettled(
@@ -868,9 +901,12 @@ export class Solana implements Solanaish {
           .getAllConnections()
           .flatMap((conn) => [
             this.confirmTransaction(signature, conn),
-            this.confirmTransactionByAddress(payerAddress, signature, conn),
+            // this.confirmTransactionByAddress(payerAddress, signature, conn),
           ]),
       );
+
+      // Simple logging of raw results
+      console.log('[CONFIRM TX] Results:', confirmTransactionResults);
 
       const successfulConfirmations = confirmTransactionResults.filter(
         (result) => result.status === 'fulfilled',
@@ -897,10 +933,14 @@ export class Solana implements Solanaish {
         throw new Error('All connections failed to confirm the transaction.');
       }
 
+      // After getting confirmations, add immediate return if confirmed
       if (confirmations.some((confirmed) => confirmed)) {
+        console.log('[SEND TX] Transaction confirmed successfully');
         return signature;
       }
 
+      // Only continue to next iteration if not confirmed
+      console.log('[SEND TX] Transaction not yet confirmed, retrying...');
       blockheight = await this.connectionPool
         .getNextConnection()
         .getBlockHeight({ commitment: 'confirmed' });
