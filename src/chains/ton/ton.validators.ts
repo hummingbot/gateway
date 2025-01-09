@@ -40,7 +40,7 @@ export const validateAssetSymbols: Validator = (req: any) => {
   const errors: Array<string> = [];
   if (req.assetSymbols) {
     if (Array.isArray(req.assetSymbols)) {
-      req.tokenSymbols.forEach((symbol: any) => {
+      req.assetSymbols.forEach((symbol: any) => {
         if (typeof symbol !== 'string') {
           errors.push(invalidTokenSymbolsError);
         }
