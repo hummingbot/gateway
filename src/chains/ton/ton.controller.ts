@@ -93,28 +93,7 @@ export class TonController {
     };
   }
 
-  static async approve(request: OptInRequest) {
-    validateOptInRequest(request);
-
-    const ton = await getInitializedTon(request.network);
-    const asset = ton.getAssetForSymbol(request.assetSymbol);
-
-    if (asset === undefined) {
-      throw new HttpException(
-        500,
-        TOKEN_NOT_SUPPORTED_ERROR_MESSAGE + request.assetSymbol,
-        TOKEN_NOT_SUPPORTED_ERROR_CODE,
-      );
-    }
-
-    const transactionResponse = await ton.optIn(
-      request.address,
-      request.assetSymbol,
-    );
-
-    return {
-      assetId: (asset as TonAsset).assetId,
-      transactionResponse: transactionResponse,
-    };
+  static async approve() {
+    throw new Error('The approve method is not implemented because its unnecessary.')
   }
 }
