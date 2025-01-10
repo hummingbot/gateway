@@ -32,7 +32,7 @@ export class TonController {
       txHash: transaction.transaction.hash,
       fee: Number(transaction.transaction.totalFees) / 10 ** 9,
     };
-
+    console.log(event)
     return event;
   }
 
@@ -67,7 +67,11 @@ export class TonController {
         assetSymbols = request.assetSymbols;
       }
       for (const a of assetSymbols as []) {
-        assets.push(ton.getAssetForSymbol(a) as TonAsset);
+        const asset = ton.getAssetForSymbol(a);
+        if (!asset) {
+          throw new Error(`Unsupported symbol: ${a}`);
+        }
+        assets.push(asset as TonAsset);
       }
     }
 
