@@ -4,31 +4,17 @@ import {
   AssetsResponse,
   PollResponse,
   PollRequest,
-  OptInRequest,
 } from './ton.requests';
 import { Ton } from './ton';
 import {
   validateAssetsRequest,
-  validateOptInRequest,
   validateTonBalanceRequest,
   validateTonPollRequest,
 } from './ton.validators';
 import { BalanceRequest } from '../tezos/tezos.request';
-import {
-  HttpException,
-  TOKEN_NOT_SUPPORTED_ERROR_CODE,
-  TOKEN_NOT_SUPPORTED_ERROR_MESSAGE,
-} from '../../services/error-handler';
 
-async function getInitializedTon(network: string): Promise<Ton> {
-  const ton = Ton.getInstance(network);
 
-  if (!ton.ready()) {
-    await ton.init();
-  }
 
-  return ton;
-}
 
 export class TonController {
   static async poll(ton: Ton, req: PollRequest): Promise<PollResponse> {
