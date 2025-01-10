@@ -106,14 +106,56 @@ export const chainRoutes: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         tags: ['chain'],
+        body: {
+          type: 'object',
+          required: ['chain', 'network', 'txHash'],
+          properties: {
+            chain: { type: 'string' },
+            network: { type: 'string' },
+            txHash: { type: 'string' }
+          }
+        }
       },
     },
-    async (request) => {
-      const chain = await getInitializedChain(
-        request.body.chain,
-        request.body.network
-      );
-      return await poll(chain, request.body);
+    async (request, reply) => {
+      try {
+        console.log('POST /poll request body:', JSON.stringify(request.body, null, 2));
+        
+        if (!request.body) {
+          return reply.status(400).send({
+            error: 'ValidationError',
+            message: 'Request body is required'
+          });
+        }
+
+        const { chain, network, txHash } = request.body;
+        
+        if (!chain || !network || !txHash) {
+          return reply.status(400).send({
+            error: 'ValidationError',
+            message: 'chain, network, and txHash are required fields'
+          });
+        }
+
+        const chainInstance = await getInitializedChain(chain, network);
+        
+        if (!chainInstance) {
+          return reply.status(503).send({
+            error: 'ChainError',
+            message: 'Failed to initialize chain'
+          });
+        }
+
+        const result = await poll(chainInstance, request.body);
+        console.log('POST /poll response:', JSON.stringify(result, null, 2));
+        return result;
+      } catch (error) {
+        console.error('Error in POST /poll:', error);
+        return reply.status(503).send({
+          error: 'PollError',
+          message: error instanceof Error ? error.message : 'Unknown error occurred'
+        });
+      }
     }
   );
 

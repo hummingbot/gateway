@@ -14,7 +14,6 @@ import { TokenInfo } from '../ethereum/ethereum-base';
 
 import { Keypair, TransactionResponse } from '@solana/web3.js';
 import { Solanaish } from './solana';
-import { getNotNullOrThrowError } from './solana.helpers';
 
 export class SolanaController {
   
@@ -37,19 +36,28 @@ export class SolanaController {
 
   static async poll(solanaish: Solanaish, req: PollRequest) {
     const currentBlock = await solanaish.getCurrentBlockNumber();
-    const txData = getNotNullOrThrowError<TransactionResponse>(
-      await solanaish.getTransaction(req.txHash as any)
-    );
-    const txStatus = await solanaish.getTransactionStatusCode(txData);
+    const txData = await solanaish.getTransaction(req.txHash as any);
+    
+    if (!txData) {
+      return {
+        currentBlock,
+        txHash: req.txHash,
+        txBlock: null,
+        txStatus: 0,
+        txData: null,
+      };
+    }
+
+    const txStatus = await solanaish.getTransactionStatusCode(txData as any);
 
     console.log(`Polling for transaction ${req.txHash}, Status: ${txStatus}`);
 
     return {
-      currentBlock: currentBlock,
+      currentBlock,
       txHash: req.txHash,
       txBlock: txData.slot,
-      txStatus: txStatus,
-      txData: txData as unknown as CustomTransactionResponse | null,
+      txStatus,
+      txData: txData as any,
     };
   }
 

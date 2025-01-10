@@ -31,7 +31,6 @@ import { countDecimals, TokenValue, walletPath } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 
 import {
-  getNotNullOrThrowError,
   runWithRetryAndTimeout,
 } from './solana.helpers';
 import { Config, getSolanaConfig } from './solana.config';
@@ -406,7 +405,7 @@ export class Solana implements Solanaish {
     );
 
     let allSolBalance = BigNumber.from(0);
-    let allSolDecimals;
+    let allSolDecimals = 9; // Solana's default decimals
 
     if (balances['UNWRAPPED_SOL'] && balances['UNWRAPPED_SOL'].value) {
       allSolBalance = allSolBalance.add(balances['UNWRAPPED_SOL'].value);
@@ -419,13 +418,13 @@ export class Solana implements Solanaish {
     } else {
       balances['SOL'] = {
         value: allSolBalance,
-        decimals: getNotNullOrThrowError<number>(allSolDecimals),
+        decimals: allSolDecimals,
       };
     }
 
     balances['ALL_SOL'] = {
       value: allSolBalance,
-      decimals: getNotNullOrThrowError<number>(allSolDecimals),
+      decimals: allSolDecimals,
     };
 
     balances = Object.keys(balances)
@@ -434,7 +433,6 @@ export class Solana implements Solanaish {
       )
       .reduce((target: Record<string, TokenValue>, key) => {
         target[key] = balances[key];
-
         return target;
       }, {});
 
