@@ -13,9 +13,6 @@ import {
 } from './ton.validators';
 import { BalanceRequest } from '../tezos/tezos.request';
 
-
-
-
 export class TonController {
   static async poll(ton: Ton, req: PollRequest): Promise<PollResponse> {
     validateTonPollRequest(req);
