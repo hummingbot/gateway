@@ -22,7 +22,7 @@ const validateTxHash: Validator = mkValidator(
 const validateTonAddress: Validator = mkValidator(
   'address',
   invalidAddressError,
-  (val) => typeof val === 'string' && /[A-Z0-9]{58}/.test(val),
+  (val) => typeof val === 'string',
 );
 
 export const validateTonPollRequest: RequestValidator = mkRequestValidator([

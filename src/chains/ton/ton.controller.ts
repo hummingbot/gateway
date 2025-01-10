@@ -9,9 +9,9 @@ import {
 import { Ton } from './ton';
 import {
   validateAssetsRequest,
-  // validateOptInRequest,
-  // validateTonBalanceRequest,
-  // validateTonPollRequest,
+  validateOptInRequest,
+  validateTonBalanceRequest,
+  validateTonPollRequest,
 } from './ton.validators';
 import { BalanceRequest } from '../tezos/tezos.request';
 import {
@@ -32,7 +32,7 @@ async function getInitializedTon(network: string): Promise<Ton> {
 
 export class TonController {
   static async poll(ton: Ton, req: PollRequest): Promise<PollResponse> {
-    // validateTonPollRequest(req);
+    validateTonPollRequest(req);
 
     const transaction = await ton.getTransaction(req.txHash);
 
@@ -54,7 +54,7 @@ export class TonController {
   }
 
   static async balances(chain: Ton, request: BalanceRequest) {
-    // validateTonBalanceRequest(request);
+    validateTonBalanceRequest(request);
     const account = await chain.getAccountFromAddress(request.address);
 
     const tokensBalances = await chain.getAssetBalance(
@@ -94,7 +94,7 @@ export class TonController {
   }
 
   static async approve(request: OptInRequest) {
-    //validateOptInRequest(request);
+    validateOptInRequest(request);
 
     const ton = await getInitializedTon(request.network);
     const asset = ton.getAssetForSymbol(request.assetSymbol);
