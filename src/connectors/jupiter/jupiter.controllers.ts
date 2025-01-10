@@ -204,7 +204,7 @@ export async function trade(
   }
 
   // Execute swap with correct input/output tokens based on trade side
-  const swapResult = await jupiter.executeSwap(
+  const signature = await jupiter.executeSwap(
     wallet,
     req.side === 'BUY' ? quoteToken.symbol : baseToken.symbol, // inputToken
     req.side === 'BUY' ? baseToken.symbol : quoteToken.symbol,  // outputToken
@@ -212,8 +212,8 @@ export async function trade(
     slippagePct
   );
 
-  // Simplified logging
-  logger.info(`Swap executed: ${swapResult.signature} - Input: ${swapResult.totalInputSwapped} ${req.side === 'BUY' ? quoteToken.symbol : baseToken.symbol}, Output: ${swapResult.totalOutputSwapped} ${req.side === 'BUY' ? baseToken.symbol : quoteToken.symbol}`);
+  // Updated logging using request parameters
+  logger.info(`Swap fulfilled: ${signature} - ${req.side} ${req.amount} ${baseToken.symbol} at ${expectedPrice} ${quoteToken.symbol}/${baseToken.symbol}`);
 
   const response: TradeResponse = {
     network: solanaish.network,
@@ -226,35 +226,58 @@ export async function trade(
     gasPrice: 0,
     gasPriceToken: solanaish.nativeTokenSymbol,
     gasLimit: 0,
-    gasCost: String(swapResult.fee),
-    txHash: swapResult.signature,
+    gasCost: '0',
+    txHash: signature,
     price: expectedPrice.toString(),
   };
 
-  if (req.side === 'BUY') {
-    return {
-      ...response,
-      expectedIn: swapResult.totalInputSwapped.toString(),
-    };
-  } else {
-    return {
-      ...response,
-      expectedOut: swapResult.totalOutputSwapped.toString(),
-    };
-  }
+  // if (req.side === 'BUY') {
+  //   return {
+  //     ...response,
+  //     expectedIn: swapResult.totalInputSwapped.toString(),
+  //   };
+  // } else {
+  //   return {
+  //     ...response,
+  //     expectedOut: swapResult.totalOutputSwapped.toString(),
+  //   };
+  // }
+  return response
 }
 
 export async function estimateGas(
   solanaish: Solanaish,
   jupiter: Jupiter,
 ): Promise<EstimateGasResponse> {
-  // TODO: get gas price from the network
+  const priorityFeeInMicroLamports = await solanaish.estimatePriorityFees(
+    solanaish.connectionPool.getNextConnection().rpcEndpoint
+  );
+  
+  // Constants
+  const MICRO_LAMPORTS_PER_LAMPORT = Math.pow(10, 6);
+  const LAMPORTS_PER_SOL = Math.pow(10, 9);
+  const BASE_FEE_LAMPORTS = 5000; // Base transaction fee in lamports
+  
+  // Apply multiplier to priority fee (keeping in microLamports)
+  console.log(`[PRIORITY FEE MULTIPLIER] Using ${jupiter.priorityFeeMultiplier}: ${priorityFeeInMicroLamports * jupiter.priorityFeeMultiplier}`);
+  const adjustedPriorityFeeInMicroLamports = priorityFeeInMicroLamports * jupiter.priorityFeeMultiplier;
+  
+  // Convert to SOL only for gasCost calculation
+  const priorityFeeInSol = adjustedPriorityFeeInMicroLamports / (MICRO_LAMPORTS_PER_LAMPORT * LAMPORTS_PER_SOL);
+  const baseFeeInSol = BASE_FEE_LAMPORTS / LAMPORTS_PER_SOL;
+  
+  // Use defaultComputeUnits from solanaish
+  const gasLimit = solanaish.defaultComputeUnits;
+  
+  // Calculate total gas cost (priorityFee * computeUnits + baseFee)
+  const gasCost = ((priorityFeeInSol * gasLimit) + baseFeeInSol).toString();
+  
   return {
     network: solanaish.network,
     timestamp: Date.now(),
-    gasPrice: 0,
+    gasPrice: adjustedPriorityFeeInMicroLamports,  // Return in microLamports
     gasPriceToken: solanaish.nativeTokenSymbol,
-    gasLimit: 0,
-    gasCost: jupiter.gasCost.toString(),
+    gasLimit: gasLimit,
+    gasCost: gasCost,
   };
 }

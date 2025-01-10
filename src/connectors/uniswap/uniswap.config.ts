@@ -1,7 +1,7 @@
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { AvailableNetworks } from '../../services/config-manager-types';
 export namespace UniswapConfig {
-  export interface NetworkConfig {
+  export interface Config {
     allowedSlippage: string;
     gasLimitEstimate: number;
     ttl: number;
@@ -17,7 +17,7 @@ export namespace UniswapConfig {
     feeTier?: string;
   }
 
-  export const config: NetworkConfig = {
+  export const config: Config = {
     allowedSlippage: ConfigManagerV2.getInstance().get(
       `uniswap.allowedSlippage`
     ),

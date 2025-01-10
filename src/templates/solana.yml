@@ -8,9 +8,10 @@ networks:
     nodeURLs: 'https://api.devnet.solana.com,'
     tokenListType: 'FILE'
     tokenListSource: '/home/gateway/conf/lists/solflare-tokenlist.json'
-    nativeCurrencySymbol: SOL
+    nativeCurrencySymbol: SOL    
 
-tokenProgram: TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA
-transactionLamports: 5000
-lamportsToSol: 0.000000001
-timeToLive: 75
+# default compute units for a transaction
+defaultComputeUnits: 200000
+
+# Percentile of recent priotity fee samples used to estimate gasPrice for a transaction
+priorityFeePercentile: 0.75

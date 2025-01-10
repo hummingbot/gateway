@@ -10,10 +10,8 @@ interface NetworkConfig {
 
 export interface Config {
   network: NetworkConfig;
-  tokenProgram: string;
-  transactionLamports: number;
-  lamportsToSol: number;
-  timeToLive: number;
+  defaultComputeUnits: number;
+  priorityFeePercentile: number;
 }
 
 export function getSolanaConfig(
@@ -36,15 +34,11 @@ export function getSolanaConfig(
         chainName + '.networks.' + networkName + '.nativeCurrencySymbol'
       ),
     },
-    tokenProgram: ConfigManagerV2.getInstance().get(
-      chainName + '.tokenProgram'
+    defaultComputeUnits: ConfigManagerV2.getInstance().get(
+      chainName + '.defaultComputeUnits'
     ),
-    transactionLamports: ConfigManagerV2.getInstance().get(
-      chainName + '.transactionLamports'
+    priorityFeePercentile: ConfigManagerV2.getInstance().get(
+      chainName + '.priorityFeePercentile'
     ),
-    lamportsToSol: ConfigManagerV2.getInstance().get(
-      chainName + '.lamportsToSol'
-    ),
-    timeToLive: ConfigManagerV2.getInstance().get(chainName + '.timeToLive'),
   };
 }

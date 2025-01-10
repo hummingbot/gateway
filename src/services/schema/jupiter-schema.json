@@ -3,8 +3,9 @@
   "type": "object",
   "properties": {
     "allowedSlippage": { "type": "string" },
-    "gasCost": { "type": "number" }
+    "gasCost": { "type": "number" },
+    "priorityFeeMultiplier": { "type": "number" }
   },
   "additionalProperties": false,
-  "required": ["allowedSlippage", "gasCost"]
+  "required": ["allowedSlippage", "priorityFeeMultiplier"]
 }

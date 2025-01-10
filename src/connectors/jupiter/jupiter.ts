@@ -1,15 +1,14 @@
 import { Solana } from '../../chains/solana/solana';
-import { VersionedTransaction } from '@solana/web3.js';
+import { VersionedTransaction, Transaction } from '@solana/web3.js';
 import { 
   QuoteGetRequest, 
   QuoteResponse, 
   SwapResponse, 
-  createJupiterApiClient 
+  createJupiterApiClient,
 } from '@jup-ag/api';
 import { JupiterConfig } from './jupiter.config';
 import { percentRegexp } from '../../services/config-manager-v2';
 import { Wallet } from '@coral-xyz/anchor';
-import { priorityFeeMultiplier } from '../../chains/solana/solana.controllers';
 
 
 export class Jupiter {
@@ -18,12 +17,14 @@ export class Jupiter {
   private _ready: boolean = false;
   private _config: JupiterConfig.NetworkConfig;
   protected jupiterQuoteApi!: ReturnType<typeof createJupiterApiClient>;
-  public gasCost: number = 0;
+  public gasCost: number;
+  public priorityFeeMultiplier: number;
 
   private constructor(network: string) {
     this._config = JupiterConfig.config;
     this.chain = Solana.getInstance(network);
-    this.gasCost = JupiterConfig.config.gasCost;
+    this.gasCost = JupiterConfig.config.gasCost ?? 0;;
+    this.priorityFeeMultiplier = JupiterConfig.config.priorityFeeMultiplier ?? 1;
     this.loadJupiter();
   }
 
@@ -123,11 +124,26 @@ export class Jupiter {
         userPublicKey: wallet.publicKey.toBase58(),
         dynamicComputeUnitLimit: true,
         prioritizationFeeLamports: {
-          autoMultiplier: Math.min(priorityFeeMultiplier, 3),
+          autoMultiplier: this.priorityFeeMultiplier,
         },
       },
     });
     return swapObj;
+  }
+
+  async simulateTransaction(transaction: VersionedTransaction) {
+    const { value: simulatedTransactionResponse } = await this.chain.connectionPool.getNextConnection().simulateTransaction(
+      transaction,
+      {
+        replaceRecentBlockhash: true,
+        commitment: 'confirmed',
+      },
+    );
+    
+    if (simulatedTransactionResponse.err) {
+      console.error('Simulation Error:', simulatedTransactionResponse);
+      throw new Error('Transaction simulation failed');
+    }
   }
 
   async executeSwap(
@@ -136,12 +152,7 @@ export class Jupiter {
     outputTokenSymbol: string,
     amount: number,
     slippagePct?: number,
-  ): Promise<{
-    signature: string;
-    totalInputSwapped: number;
-    totalOutputSwapped: number;
-    fee: number;
-  }> {
+  ): Promise<string> {
     await this.loadJupiter();
 
     const quote = await this.getQuote(
@@ -151,8 +162,6 @@ export class Jupiter {
       slippagePct,
     );
 
-    console.log('Wallet:', wallet.publicKey.toBase58());
-
     const swapObj = await this.getSwapObj(wallet, quote);
 
     const swapTransactionBuf = Buffer.from(swapObj.swapTransaction, 'base64');
@@ -160,60 +169,67 @@ export class Jupiter {
 
     transaction.sign([wallet.payer]);
 
-    const { value: simulatedTransactionResponse } = await this.chain.connectionPool.getNextConnection().simulateTransaction(
-      transaction,
-      {
-        replaceRecentBlockhash: true,
-        commitment: 'confirmed',
-      },
-    );
-    const { err, logs } = simulatedTransactionResponse;
-
-    if (err) {
-      console.error('Simulation Error:');
-      console.error({ err, logs });
-      throw new Error('Transaction simulation failed');
-    }
+    await this.simulateTransaction(transaction);
 
     const serializedTransaction = Buffer.from(transaction.serialize());
-    const signature = await this.chain.sendAndConfirmRawTransaction(
+    const signature = await this.chain.sendRawTransaction(
       serializedTransaction,
       wallet.payer.publicKey.toBase58(),
       swapObj.lastValidBlockHeight,
     );
 
+    return signature;
+  }
+
+  async extractSwapBalances(
+    signature: string,
+    inputMint: string,
+    outputMint: string,
+  ): Promise<{
+    totalInputSwapped: number;
+    totalOutputSwapped: number;
+    fee: number;
+  }> {
     let inputBalanceChange: number, outputBalanceChange: number, fee: number;
 
-    if (quote.inputMint === 'So11111111111111111111111111111111111111112') {
-      ({ balanceChange: inputBalanceChange, fee } = await this.chain.extractAccountBalanceChangeAndFee(
-        signature,
-        0,
-      ));
+    // Get transaction info to extract the 'from' address
+    const txInfo = await this.chain.connectionPool.getNextConnection().getTransaction(signature);
+    if (!txInfo) {
+        throw new Error('Transaction not found');
+    }
+    const fromAddress = txInfo.transaction.message.accountKeys[0].toBase58();
+
+    if (inputMint === 'So11111111111111111111111111111111111111112') {
+        ({ balanceChange: inputBalanceChange, fee } = await this.chain.extractAccountBalanceChangeAndFee(
+            signature,
+            0,
+        ));
     } else {
-      ({ balanceChange: inputBalanceChange, fee } = await this.chain.extractTokenBalanceChangeAndFee(
-        signature,
-        quote.inputMint,
-        wallet.publicKey.toBase58(),
-      ));
+        ({ balanceChange: inputBalanceChange, fee } = await this.chain.extractTokenBalanceChangeAndFee(
+            signature,
+            inputMint,
+            fromAddress,
+        ));
     }
 
-    if (quote.outputMint === 'So11111111111111111111111111111111111111112') {
-      ({ balanceChange: outputBalanceChange } = await this.chain.extractAccountBalanceChangeAndFee(
-        signature,
-        0,
-      ));
+    if (outputMint === 'So11111111111111111111111111111111111111112') {
+        ({ balanceChange: outputBalanceChange } = await this.chain.extractAccountBalanceChangeAndFee(
+            signature,
+            0,
+        ));
     } else {
-      ({ balanceChange: outputBalanceChange } = await this.chain.extractTokenBalanceChangeAndFee(
-        signature,
-        quote.outputMint,
-        wallet.publicKey.toBase58(),
-      ));
+        ({ balanceChange: outputBalanceChange } = await this.chain.extractTokenBalanceChangeAndFee(
+            signature,
+            outputMint,
+            fromAddress,
+        ));
     }
 
-    const totalInputSwapped = Math.abs(inputBalanceChange);
-    const totalOutputSwapped = Math.abs(outputBalanceChange);
-
-    return { signature, totalInputSwapped, totalOutputSwapped, fee };
+    return {
+        totalInputSwapped: Math.abs(inputBalanceChange),
+        totalOutputSwapped: Math.abs(outputBalanceChange),
+        fee,
+    };
   }
 
 }

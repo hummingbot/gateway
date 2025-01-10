@@ -8,6 +8,7 @@ export namespace JupiterConfig {
     chainType: string;
     availableNetworks: Array<AvailableNetworks>;
     gasCost: number;
+    priorityFeeMultiplier: number;
   }
 
   export const config: NetworkConfig = {
@@ -16,6 +17,9 @@ export namespace JupiterConfig {
     ),
     gasCost: ConfigManagerV2.getInstance().get(
       'jupiter.gasCost',
+    ),
+    priorityFeeMultiplier: ConfigManagerV2.getInstance().get(
+      'jupiter.priorityFeeMultiplier',
     ),
     tradingTypes: ['AMM'],
     chainType: 'SOLANA',

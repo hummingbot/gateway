@@ -4,3 +4,6 @@ allowedSlippage: '5/100'
 
 # the default transaction gasCost in SOL for a jupiter trade.
 gasCost: 0.0005
+
+# value of prioritizationFeeLamports.autoMultiplier reqest sent to jupiterQuoteApi.swapPost API endpoint
+priorityFeeMultiplier: 3
