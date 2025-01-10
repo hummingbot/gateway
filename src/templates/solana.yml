@@ -13,5 +13,5 @@ networks:
 # default compute units for a transaction
 defaultComputeUnits: 200000
 
-# Percentile of recent priotity fee samples used to estimate gasPrice for a transaction
+# Percentile of recent priority fee samples used to estimate gasPrice for a transaction
 priorityFeePercentile: 0.75

@@ -174,7 +174,6 @@ export class Jupiter {
     const serializedTransaction = Buffer.from(transaction.serialize());
     const signature = await this.chain.sendRawTransaction(
       serializedTransaction,
-      wallet.payer.publicKey.toBase58(),
       swapObj.lastValidBlockHeight,
     );
 

@@ -95,6 +95,9 @@ export async function price(
   req: PriceRequest,
 ) {
   const startTimestamp: number = Date.now();
+  
+  // Add gas estimation
+  const gasEstimate = await estimateGas(solanaish, jupiter);
 
   let tradeInfo: TradeInfo;
   try {
@@ -135,10 +138,10 @@ export async function price(
     rawAmount: requestAmount.toString(),
     expectedAmount: expectedAmount.toString(),
     price: expectedPrice.toString(),
-    gasPrice: 0,
-    gasPriceToken: solanaish.nativeTokenSymbol,
-    gasLimit: 0,
-    gasCost: '0',
+    gasPrice: gasEstimate.gasPrice,
+    gasPriceToken: gasEstimate.gasPriceToken,
+    gasLimit: gasEstimate.gasLimit,
+    gasCost: gasEstimate.gasCost,
   };
 }
 
@@ -148,6 +151,9 @@ export async function trade(
   req: TradeRequest,
 ): Promise<TradeResponse> {
   const startTimestamp: number = Date.now();
+  
+  // Add gas estimation
+  const gasEstimate = await estimateGas(solanaish, jupiter);
 
   const limitPrice = req.limitPrice;
   const keypair = await solanaish.getWallet(req.address);
@@ -223,26 +229,25 @@ export async function trade(
     quote: quoteToken.address,
     amount: new Decimal(req.amount).toFixed(baseToken.decimals),
     rawAmount: requestAmount.toString(),
-    gasPrice: 0,
-    gasPriceToken: solanaish.nativeTokenSymbol,
-    gasLimit: 0,
-    gasCost: '0',
+    gasPrice: gasEstimate.gasPrice,
+    gasPriceToken: gasEstimate.gasPriceToken,
+    gasLimit: gasEstimate.gasLimit,
+    gasCost: gasEstimate.gasCost,
     txHash: signature,
     price: expectedPrice.toString(),
   };
 
-  // if (req.side === 'BUY') {
-  //   return {
-  //     ...response,
-  //     expectedIn: swapResult.totalInputSwapped.toString(),
-  //   };
-  // } else {
-  //   return {
-  //     ...response,
-  //     expectedOut: swapResult.totalOutputSwapped.toString(),
-  //   };
-  // }
-  return response
+  if (req.side === 'BUY') {
+    return {
+      ...response,
+      expectedIn: expectedAmount.toString(),
+    };
+  } else {
+    return {
+      ...response,
+      expectedOut: expectedAmount.toString(),
+    };
+  }
 }
 
 export async function estimateGas(

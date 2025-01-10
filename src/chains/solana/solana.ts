@@ -30,12 +30,18 @@ import { TOKEN_PROGRAM_ID, unpackAccount } from "@solana/spl-token";
 import { countDecimals, TokenValue, walletPath } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 
-import {
-  runWithRetryAndTimeout,
-} from './solana.helpers';
 import { Config, getSolanaConfig } from './solana.config';
 import { TransactionResponseStatusCode } from './solana.requests';
 import { SolanaController } from './solana.controllers';
+
+const GET_SIGNATURES_FOR_ADDRESS_LIMIT = 100;
+const TOKEN_PROGRAM_ADDRESS = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
+const LAMPORT_TO_SOL = 1 / Math.pow(10, 9);
+const MIN_PRIORITY_FEE = 100000;
+
+// Send transaction retry interval and count
+const RETRY_INTERVAL_MS = 500;
+const RETRY_COUNT = 3;
 
 // Add accounts from https://triton.one/solana-prioritization-fees/ to track general fees
 const PRIORITY_FEE_ACCOUNTS = [
@@ -50,31 +56,6 @@ const PRIORITY_FEE_ACCOUNTS = [
   '4po3YMfioHkNP4mL4N46UWJvBoQDS2HFjzGm1ifrUWuZ',
   '5veMSa4ks66zydSaKSPMhV7H2eF88HvuKDArScNH9jaG',
 ];
-
-const GET_SIGNATURES_FOR_ADDRESS_LIMIT = 100;
-
-// Add this line:
-const TOKEN_PROGRAM_ADDRESS = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
-
-// Compute unit limits
-const DEFAULT_COMPUTE_UNIT_LIMIT = 200_000;  // Default compute units per tx
-const MAX_COMPUTE_UNIT_LIMIT = 1_400_000;    // Maximum compute units per tx
-const LAMPORT_TO_SOL = 1 / Math.pow(10, 9);
-
-// Max and min priority fees in micro-lamports
-const MAX_PRIORITY_FEE = 100000000;
-const MIN_PRIORITY_FEE = 100000;
-
-// Send transaction retry interval and count
-const RETRY_INTERVAL_MS = 500;
-const RETRY_COUNT = 3;
-
-interface PriorityFeeRequestPayload {
-  method: string;
-  params: string[][];
-  id: number;
-  jsonrpc: string;
-}
 
 interface PriorityFeeResponse {
   jsonrpc: string;
@@ -378,16 +359,11 @@ export class Solana implements Solanaish {
   async getBalances(wallet: Keypair): Promise<Record<string, TokenValue>> {
     let balances: Record<string, TokenValue> = {};
 
-    balances['UNWRAPPED_SOL'] = await runWithRetryAndTimeout(
-      this,
-      this.getSolBalance,
-      [wallet]
-    );
+    balances['UNWRAPPED_SOL'] = await this.getSolBalance(wallet);
 
-    const allSplTokens = await runWithRetryAndTimeout(
-      this.connection,
-      this.connection.getParsedTokenAccountsByOwner,
-      [wallet.publicKey, { programId: TOKEN_PROGRAM_ADDRESS }]
+    const allSplTokens = await this.connection.getParsedTokenAccountsByOwner(
+      wallet.publicKey, 
+      { programId: TOKEN_PROGRAM_ADDRESS }
     );
 
     allSplTokens.value.forEach(
@@ -441,11 +417,7 @@ export class Solana implements Solanaish {
 
   // returns the SOL balance, convert BigNumber to string
   async getSolBalance(wallet: Keypair): Promise<TokenValue> {
-    const lamports = await runWithRetryAndTimeout(
-      this.connection,
-      this.connection.getBalance,
-      [wallet.publicKey]
-    );
+    const lamports = await this.connection.getBalance(wallet.publicKey);
     return { value: BigNumber.from(lamports), decimals: this.lamportDecimals };
   }
 
@@ -461,10 +433,9 @@ export class Solana implements Solanaish {
     walletAddress: PublicKey,
     mintAddress: PublicKey
   ): Promise<TokenValue> {
-    const response = await runWithRetryAndTimeout(
-      this.connection,
-      this.connection.getParsedTokenAccountsByOwner,
-      [walletAddress, { mint: mintAddress }]
+    const response = await this.connection.getParsedTokenAccountsByOwner(
+      walletAddress,
+      { mint: mintAddress }
     );
     if (response['value'].length == 0) {
       throw new Error(`Token account not initialized`);
@@ -479,10 +450,9 @@ export class Solana implements Solanaish {
     walletAddress: PublicKey,
     mintAddress: PublicKey
   ): Promise<boolean> {
-    const response = await runWithRetryAndTimeout(
-      this.connection,
-      this.connection.getParsedTokenAccountsByOwner,
-      [walletAddress, { programId: TOKEN_PROGRAM_ADDRESS }]
+    const response = await this.connection.getParsedTokenAccountsByOwner(
+      walletAddress,
+      { programId: TOKEN_PROGRAM_ADDRESS }
     );
     for (const accountInfo of response.value) {
       if (
@@ -495,26 +465,22 @@ export class Solana implements Solanaish {
   }
 
 
-  // returns an ethereum TransactionResponse for a txHash.
+  // returns a Solana TransactionResponse for a txHash.
   async getTransaction(
     payerSignature: string
   ): Promise<VersionedTransactionResponse | null> {
-    const fetchedTx = runWithRetryAndTimeout(
-      this._connection,
-      this._connection.getTransaction,
-      [
-        payerSignature,
-        {
-          commitment: 'confirmed',
-          maxSupportedTransactionVersion: 0,
-        },
-      ]
+    const fetchedTx = this._connection.getTransaction(
+      payerSignature,
+      {
+        commitment: 'confirmed',
+        maxSupportedTransactionVersion: 0,
+      }
     );
 
     return fetchedTx;
   }
 
-  // returns an ethereum TransactionResponseStatusCode for a txData.
+  // returns a Solana TransactionResponseStatusCode for a txData.
   public async getTransactionStatusCode(
     txData: TransactionResponse | null
   ): Promise<TransactionResponseStatusCode> {
@@ -551,11 +517,7 @@ export class Solana implements Solanaish {
 
   // returns the current block number
   async getCurrentBlockNumber(): Promise<number> {
-    return await runWithRetryAndTimeout(
-      this.connection,
-      this.connection.getSlot,
-      ['processed']
-    );
+    return await this.connection.getSlot('processed');
   }
 
   async close() {
@@ -584,7 +546,6 @@ export class Solana implements Solanaish {
       });
 
       if (!response.ok) {
-        console.error(`HTTP error! status: ${response.status}`);
         throw new Error(`Failed to fetch fees: ${response.status}`);
       }
 
@@ -609,25 +570,16 @@ export class Solana implements Solanaish {
           fees.reduce((sum, fee) => sum + fee, 0) / fees.length
         );
 
+        console.log(`[PRIORITY FEES] Range: ${minFee} - ${maxFee} microLamports (avg: ${averageFee})`);
+
         // Calculate index for percentile
         const percentileIndex = Math.ceil(fees.length * this.priorityFeePercentile);
         const percentileFee = fees[percentileIndex - 1];  // -1 because array is 0-based
+        console.log(`[PRIORITY FEES] ${this.priorityFeePercentile * 100}th percentile: ${percentileFee} microLamports`);
 
-        // Log the distribution with percentile information
-        console.log('[PRIORITY FEES] Distribution:', {
-          min: minFee,
-          max: maxFee,
-          average: averageFee,
-          percentile: `${this.priorityFeePercentile * 100}th`,
-          percentileValue: percentileFee,
-          samples: fees.length
-        });
-
-        console.log(`[PRIORITY FEES] Using ${this.priorityFeePercentile * 100}th percentile fee: ${percentileFee}`);
         return percentileFee;
 
     } catch (error: any) {
-      console.error(`Failed to fetch priority fees: ${error.message}`);
       throw new Error(`Failed to fetch priority fees: ${error.message}`);
     }
   }
@@ -659,10 +611,6 @@ export class Solana implements Solanaish {
           body: JSON.stringify(payload),
         });
 
-        // Log detailed response information
-        const responseData = await response.clone().json();
-        console.log('[CONFIRM TX] Full response:', JSON.stringify(responseData, null, 2));
-
         if (!response.ok) {
           reject(new Error(`HTTP error! status: ${response.status}`));
           return;
@@ -673,14 +621,6 @@ export class Solana implements Solanaish {
         if (data.result && data.result.value && data.result.value[0]) {
           const status = data.result.value[0];
           
-          // Log detailed status information
-          console.log('[CONFIRM TX] Transaction status:', {
-            confirmationStatus: status.confirmationStatus,
-            confirmations: status.confirmations,
-            error: status.err,
-            slot: status.slot,
-          });
-
           if (status.err !== null) {
             reject(new Error(`Transaction failed with error: ${JSON.stringify(status.err)}`));
             return;
@@ -691,7 +631,6 @@ export class Solana implements Solanaish {
             status.confirmationStatus === 'finalized';
           resolve(isConfirmed);
         } else {
-          console.log('[CONFIRM TX] No transaction status found');
           resolve(false);
         }
       });
@@ -702,7 +641,6 @@ export class Solana implements Solanaish {
 
       return await Promise.race([confirmationPromise, timeoutPromise]);
     } catch (error: any) {
-      console.error('Error confirming transaction:', error.message);
       throw new Error(`Failed to confirm transaction: ${error.message}`);
     }
   }
@@ -735,9 +673,6 @@ export class Solana implements Solanaish {
           },
           body: JSON.stringify(payload),
         });
-
-        // Log the response
-        console.log('[CONFIRM TX BY ADDRESS] Response:', await response.clone().json());
 
         if (!response.ok) {
           reject(new Error(`HTTP error! status: ${response.status}`));
@@ -776,36 +711,29 @@ export class Solana implements Solanaish {
 
       return await Promise.race([confirmationPromise, timeoutPromise]);
     } catch (error: any) {
-      console.error('Error confirming transaction using signatures:', error.message);
       throw new Error(`Failed to confirm transaction using signatures: ${error.message}`);
     }
   }
 
-  async sendAndConfirmTransaction(tx: Transaction, signers: Signer[] = []): Promise<string> {
-    // const priorityFeesEstimate = await this.fetchEstimatePriorityFees(
-    //   this.connectionPool.getNextConnection().rpcEndpoint,
-    // );
+  async sendAndConfirmTransaction(
+    tx: Transaction, 
+    signers: Signer[] = [], 
+    priorityFee?: number
+  ): Promise<string> {
+    // Add priority fee to the transaction if not provided
+    const fee = priorityFee ?? await this.estimatePriorityFees(
+      this.connectionPool.getNextConnection().rpcEndpoint,
+    );
 
-    // const validFeeLevels = ['min', 'low', 'medium', 'high', 'veryHigh', 'unsafeMax'];
-    // const priorityFeeLevel = PRIORITY_FEE_LEVEL || 'medium';
-
-    // const selectedPriorityFee = validFeeLevels.includes(priorityFeeLevel)
-    //   ? priorityFeesEstimate[priorityFeeLevel]
-    //   : priorityFeesEstimate.medium;
-
-    // const priorityFeeInstruction = ComputeBudgetProgram.setComputeUnitPrice({
-    //   microLamports: selectedPriorityFee,
-    // });
-
-    // tx.instructions.push(priorityFeeInstruction);
+    const priorityFeeInstruction = ComputeBudgetProgram.setComputeUnitPrice({
+      microLamports: fee,
+    });
+    tx.instructions.push(priorityFeeInstruction);
 
     const blockhashAndContext = await this.connectionPool
       .getNextConnection()
       .getLatestBlockhashAndContext('confirmed');
     
-    // Log entire blockhashAndContext object
-    console.log('[BLOCKHASH] blockhashAndContext:', JSON.stringify(blockhashAndContext, null, 2));
-
     const lastValidBlockHeight = blockhashAndContext.value.lastValidBlockHeight;
     const blockhash = blockhashAndContext.value.blockhash;
 
@@ -815,7 +743,6 @@ export class Solana implements Solanaish {
 
     const signature = await this.sendAndConfirmRawTransaction(
       tx.serialize(),
-      signers[0].publicKey.toBase58(),
       lastValidBlockHeight,
     );
 
@@ -824,7 +751,6 @@ export class Solana implements Solanaish {
 
   async sendRawTransaction(
     rawTx: Buffer | Uint8Array | Array<number>,
-    payerAddress: string,
     lastValidBlockHeight: number,
   ): Promise<string> {
     let blockheight = await this.connectionPool
@@ -836,39 +762,14 @@ export class Solana implements Solanaish {
     let retryCount = 0;
 
     while (blockheight <= lastValidBlockHeight + 50 && retryCount < RETRY_COUNT) {
-      console.log(`[SEND TX] Attempt ${retryCount + 1}/${RETRY_COUNT} - Blockheight: ${blockheight} vs lastValidBlockHeight: ${lastValidBlockHeight}`);
-      
       const sendRawTransactionResults = await Promise.allSettled(
         this.connectionPool.getAllConnections().map(async (conn) => {
-          try {
-            // First try with preflight to get detailed error information
-            return await conn.sendRawTransaction(rawTx, {
-              skipPreflight: false, // Enable preflight checks
-              preflightCommitment: 'confirmed',
-              maxRetries: 1,
-            });
-          } catch (error: any) {
-            console.error('[SEND TX] Preflight error:', error);
-            
-            // If preflight fails, try again without preflight
-            if (error.message.includes('preflight')) {
-              return await conn.sendRawTransaction(rawTx, {
-                skipPreflight: true,
-                preflightCommitment: 'confirmed',
-                maxRetries: 0,
-              });
-            }
-            throw error;
-          }
+          return await conn.sendRawTransaction(rawTx, {
+            skipPreflight: true,
+            preflightCommitment: 'confirmed',
+            maxRetries: 0,
+          });
         }),
-      );
-
-      // Add detailed logging of results with connection mapping
-      console.log('[SEND TX] Raw transaction results:', 
-        sendRawTransactionResults.map((result, index) => ({
-          connection: this.connectionPool.getAllConnections()[index].rpcEndpoint,
-          result: result
-        }))
       );
 
       const successfulResults = sendRawTransactionResults.filter(
@@ -883,7 +784,6 @@ export class Solana implements Solanaish {
 
         // Verify all signatures match
         if (!signatures.every((sig) => sig === signatures[0])) {
-          console.error('Signatures do not match across connections.');
           retryCount++;
           await new Promise((resolve) => setTimeout(resolve, RETRY_INTERVAL_MS));
           continue;
@@ -893,27 +793,16 @@ export class Solana implements Solanaish {
         return signature;
       }
 
-      // If we reach here, no successful results were found
-      console.log('[SEND TX] Transaction not sent, retrying...');
       retryCount++;
-      
-      // Update blockheight before next attempt
-      blockheight = await this.connectionPool
-        .getNextConnection()
-        .getBlockHeight({ commitment: 'confirmed' });
-
-      // Wait before retrying
       await new Promise((resolve) => setTimeout(resolve, RETRY_INTERVAL_MS));
     }
 
     // If we exit the while loop without returning, we've exceeded retries or block height
-    console.error(`Transaction could not be sent after ${RETRY_COUNT} attempts or exceeded valid block height range.`);
     throw new Error('Failed to send transaction after maximum retries');
   }
 
   async sendAndConfirmRawTransaction(
     rawTx: Buffer | Uint8Array | Array<number>,
-    payerAddress: string,
     lastValidBlockHeight: number,
   ): Promise<string> {
     let blockheight = await this.connectionPool
@@ -925,7 +814,7 @@ export class Solana implements Solanaish {
     while (blockheight <= lastValidBlockHeight + 50 && retryCount < RETRY_COUNT) {
       try {
         // Reuse sendRawTransaction to get the signature
-        signature = await this.sendRawTransaction(rawTx, payerAddress, lastValidBlockHeight);
+        signature = await this.sendRawTransaction(rawTx, lastValidBlockHeight);
 
         await new Promise((resolve) => setTimeout(resolve, RETRY_INTERVAL_MS));
 
@@ -939,9 +828,6 @@ export class Solana implements Solanaish {
             ]),
         );
 
-        // Simple logging of raw results
-        console.log('[CONFIRM TX] Results:', confirmTransactionResults);
-
         const successfulConfirmations = confirmTransactionResults.filter(
           (result) => result.status === 'fulfilled',
         );
@@ -952,7 +838,6 @@ export class Solana implements Solanaish {
 
         rejectedConfirmations.forEach((result) => {
           if (result.status === 'rejected' && result.reason.message.includes('InstructionError')) {
-            console.error(result.reason.message);
             throw new Error(result.reason.message);
           }
         });
@@ -963,26 +848,22 @@ export class Solana implements Solanaish {
 
           // Return immediately if any confirmation is successful
           if (confirmations.some((confirmed) => confirmed)) {
-            console.log('[SEND TX] Transaction confirmed successfully');
             return signature;
           }
         }
 
         // Only continue to next iteration if not confirmed
-        console.log('[SEND TX] Transaction not yet confirmed, retrying...');
         blockheight = await this.connectionPool
           .getNextConnection()
           .getBlockHeight({ commitment: 'confirmed' });
         
         retryCount++;
       } catch (error) {
-        console.error('[SEND TX] Error:', error);
         retryCount++;
         await new Promise((resolve) => setTimeout(resolve, RETRY_INTERVAL_MS));
       }
     }
 
-    console.error(`Transaction could not be confirmed after ${RETRY_COUNT} attempts or exceeded valid block height range.`);
     throw new TransactionExpiredBlockheightExceededError(signature);
   }
 
@@ -1008,7 +889,6 @@ export class Solana implements Solanaish {
           await new Promise((resolve) => setTimeout(resolve, 1000));
         } else {
           // Return default values after 10 attempts
-          console.error(`Error fetching transaction details: ${error.message}`);
           return { balanceChange: 0, fee: 0 };
         }
       }
@@ -1052,7 +932,6 @@ export class Solana implements Solanaish {
           await new Promise((resolve) => setTimeout(resolve, 1000));
         } else {
           // Return default values after 10 attempts
-          console.error(`Error fetching transaction details: ${error.message}`);
           return { balanceChange: 0, fee: 0 };
         }
       }
@@ -1078,8 +957,8 @@ class CustomStaticTokenListResolutionStrategy {
       if (type === 'FILE') {
         return JSON.parse(await fs.readFile(url, 'utf8'))['tokens'];
       } else {
-        return (await runWithRetryAndTimeout<any>(axios, axios.get, [url]))
-          .data['tokens'];
+        const response = await axios.get(url);
+        return response.data['tokens'];
       }
     };
   }
