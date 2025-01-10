@@ -1,16 +1,10 @@
 import {
-  validateTokenSymbols,
   mkValidator,
-  mkRequestValidator,
-  RequestValidator,
   Validator,
   isBase58,
-  validateTxHash,
-  validateToken,
 } from '../../services/validators';
 import bs58 from 'bs58';
 import { Keypair } from '@solana/web3.js';
-// invalid parameter errors
 
 export const invalidPrivateKeyError: string =
   'The privateKey param is not a valid Solana private key (base58 string worth 64 bytes).';
@@ -39,18 +33,3 @@ export const validateSolPrivateKey = (secretKey: string): boolean => {
     return false;
   }
 };
-
-// request types and corresponding validators
-
-export const validateSolanaBalanceRequest: RequestValidator =
-  mkRequestValidator([validatePublicKey, validateTokenSymbols]);
-
-export const validateSolanaPollRequest: RequestValidator = mkRequestValidator([
-  validateTxHash,
-]);
-
-export const validateSolanaGetTokenRequest: RequestValidator =
-  mkRequestValidator([validateToken, validatePublicKey]);
-
-export const validateSolanaPostTokenRequest: RequestValidator =
-  mkRequestValidator([validateToken, validatePublicKey]);

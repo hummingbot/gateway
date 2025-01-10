@@ -1,18 +1,15 @@
-// import { tokenValueToString } from '../../services/base';
 import { 
   BalanceRequest,
   TokensRequest,
   PollRequest,
 } from '../../chains/chain.requests';
-import { CustomTransactionResponse } from '../../services/common-interfaces';
 import {
   HttpException,
   LOAD_WALLET_ERROR_CODE,
   LOAD_WALLET_ERROR_MESSAGE,
 } from '../../services/error-handler';
 import { TokenInfo } from '../ethereum/ethereum-base';
-
-import { Keypair, TransactionResponse } from '@solana/web3.js';
+import { Keypair } from '@solana/web3.js';
 import { Solanaish } from './solana';
 
 export class SolanaController {
