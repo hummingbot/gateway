@@ -4,11 +4,7 @@ import { patch } from '../../../test/services/patch';
 import {
     AssetsRequest,
     PollRequest,
-    OptInRequest,
 } from '../../../src/chains/ton/ton.requests';
-import {
-    TOKEN_NOT_SUPPORTED_ERROR_MESSAGE,
-} from '../../../src/services/error-handler';
 
 export interface BalanceRequest {
     chain: string;
@@ -77,19 +73,18 @@ beforeAll(async () => {
 // });
 
 describe('TonController - poll', () => {
-    // TXHASH UNDEFINED
-    // it('Should return poll response for a valid transaction', async () => {
-    //     const req: PollRequest = {
-    //         txHash: MOCK_TX_HASH,
-    //         network: NETWORK,
-    //     };
-    //
-    //     const response = await TonController.poll(ton, req);
-    //     expect(response).toHaveProperty('currentBlock', 100);
-    //     expect(response).toHaveProperty('txBlock', 200);
-    //     expect(response).toHaveProperty('txHash', MOCK_TX_HASH);
-    //     expect(response).toHaveProperty('fee', 1);
-    // });
+    it('Should return poll response for a valid transaction', async () => {
+        const req: PollRequest = {
+            txHash: MOCK_TX_HASH,
+            network: NETWORK,
+        };
+
+        const response = await TonController.poll(ton, req);
+        expect(response).toHaveProperty('currentBlock', 100);
+        expect(response).toHaveProperty('txBlock', 200);
+        expect(response).toHaveProperty('txHash', MOCK_TX_HASH);
+        expect(response).toHaveProperty('fee', 1);
+    });
 
     it('Should throw an error if transaction is not found', async () => {
         patch(ton, 'getTransaction', async () => null);
@@ -159,45 +154,27 @@ describe('TonController - getTokens', () => {
     });
 
     it('Should throw an error for unsupported symbols', async () => {
-        patch(ton, 'getAssetForSymbol', (symbol: string) => {
+        patch(ton, 'getAssetForSymbol', () => {
             return null;
         });
 
         const req: AssetsRequest = {
             network: NETWORK,
-            assetSymbols: ['INVALID'],
+            assetSymbols: ['INVALID'], // Unsupported symbol
         };
 
-        await expect(TonController.getTokens(ton, req)).rejects.toThrow('Unsupported symbol: INVALID');
+        await expect(TonController.getTokens(ton, req)).rejects.toThrow(
+            'Unsupported symbol: INVALID'
+        );
     });
+
 });
 
 describe('TonController - approve', () => {
-    it('Should return transaction response for a valid opt-in request', async () => {
-        const req: OptInRequest = {
-            network: NETWORK,
-            address: MOCK_ADDRESS,
-            assetSymbol: MOCK_ASSET_SYMBOL,
-        };
-
-        const response = await TonController.approve(req);
-        expect(response).toHaveProperty('assetId');
-        expect(response.assetId).toEqual({ address: 'mock-asset-address' });
-        expect(response).toHaveProperty('transactionResponse');
-        expect(response.transactionResponse).toHaveProperty('txnID', 'mock-txn-id');
-    });
-
-    it('Should throw an error if the asset is not supported', async () => {
-        patch(ton, 'getAssetForSymbol', () => undefined);
-
-        const req: OptInRequest = {
-            network: NETWORK,
-            address: MOCK_ADDRESS,
-            assetSymbol: 'INVALID',
-        };
-
-        await expect(TonController.approve(req)).rejects.toThrow(
-            TOKEN_NOT_SUPPORTED_ERROR_MESSAGE + 'INVALID'
+    it('Should throw an error because the method is not implemented', async () => {
+        await expect(TonController.approve()).rejects.toThrow(
+            'The approve method is not implemented because its unnecessary.'
         );
     });
 });
+
