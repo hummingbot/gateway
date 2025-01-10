@@ -4,14 +4,18 @@ import {
   AssetsResponse,
   PollResponse,
   PollRequest,
+  OptInRequest,
 } from './ton.requests';
 import { Ton } from './ton';
 import {
   validateAssetsRequest,
-  validateTonBalanceRequest,
+  // validateOptInRequest,
+  // validateTonBalanceRequest,
   validateTonPollRequest,
 } from './ton.validators';
 import { BalanceRequest } from '../tezos/tezos.request';
+
+
 
 export class TonController {
   static async poll(ton: Ton, req: PollRequest): Promise<PollResponse> {
@@ -37,7 +41,7 @@ export class TonController {
   }
 
   static async balances(chain: Ton, request: BalanceRequest) {
-    validateTonBalanceRequest(request);
+    // validateTonBalanceRequest(request); 
     const account = await chain.getAccountFromAddress(request.address);
 
     const tokensBalances = await chain.getAssetBalance(
@@ -76,7 +80,7 @@ export class TonController {
     };
   }
 
-  static async approve() {
-    throw new Error('The approve method is not implemented because its unnecessary.')
+  static async approve(_request: OptInRequest) {
+    throw new Error("Method not implemented.");
   }
 }
