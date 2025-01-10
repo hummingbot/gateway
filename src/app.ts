@@ -141,9 +141,8 @@ const configureGatewayServer = () => {
 export const gatewayApp = configureGatewayServer();
 
 export const startGateway = async () => {
-  const gateway_version = '2.2.0';
+  const gateway_version = 'dev-2.3.0';
   const port = ConfigManagerV2.getInstance().get('server.port');
-
   if (!ConfigManagerV2.getInstance().get('server.id')) {
     ConfigManagerV2.getInstance().set(
       'server.id',
