@@ -9,6 +9,12 @@ import {
 import { JupiterConfig } from './jupiter.config';
 import { percentRegexp } from '../../services/config-manager-v2';
 import { Wallet } from '@coral-xyz/anchor';
+import { 
+  PRIORITY_FEE_MULTIPLIER, 
+  MAX_PRIORITY_FEE, 
+  RETRY_COUNT, 
+  RETRY_INTERVAL_MS 
+} from '../../chains/solana/solana';
 
 
 export class Jupiter {
@@ -117,15 +123,19 @@ export class Jupiter {
     return quote;
   }
 
-  async getSwapObj(wallet: Wallet, quote: QuoteResponse): Promise<SwapResponse> {
+  async getSwapObj(wallet: Wallet, quote: QuoteResponse, priorityFee?: number): Promise<SwapResponse> {
+    const prioritizationFeeLamports = priorityFee 
+      ? priorityFee * 1e9  // Convert SOL to lamports
+      : 100000;  // Default minimum priority fee in lamports
+
+    console.log(`Priority Fee: ${priorityFee ?? 'default'} SOL (${prioritizationFeeLamports} lamports)`);
+
     const swapObj = await this.jupiterQuoteApi.swapPost({
       swapRequest: {
         quoteResponse: quote,
         userPublicKey: wallet.publicKey.toBase58(),
         dynamicComputeUnitLimit: true,
-        prioritizationFeeLamports: {
-          autoMultiplier: this.priorityFeeMultiplier,
-        },
+        prioritizationFeeLamports,
       },
     });
     return swapObj;
@@ -154,30 +164,57 @@ export class Jupiter {
     slippagePct?: number,
   ): Promise<string> {
     await this.loadJupiter();
+    let currentPriorityFee = await this.chain.getGasPrice();
 
-    const quote = await this.getQuote(
-      inputTokenSymbol,
-      outputTokenSymbol,
-      amount,
-      slippagePct,
-    );
+    while (currentPriorityFee <= MAX_PRIORITY_FEE) {
+      const quote = await this.getQuote(
+        inputTokenSymbol,
+        outputTokenSymbol,
+        amount,
+        slippagePct,
+      );
 
-    const swapObj = await this.getSwapObj(wallet, quote);
+      const swapObj = await this.getSwapObj(wallet, quote, currentPriorityFee);
+      const swapTransactionBuf = Buffer.from(swapObj.swapTransaction, 'base64');
+      const transaction = VersionedTransaction.deserialize(new Uint8Array(swapTransactionBuf));
+      transaction.sign([wallet.payer]);
 
-    const swapTransactionBuf = Buffer.from(swapObj.swapTransaction, 'base64');
-    const transaction = VersionedTransaction.deserialize(new Uint8Array(swapTransactionBuf));
+      let retryCount = 0;
+      while (retryCount < RETRY_COUNT) {
+        try {
+          const signature = await this.chain.sendRawTransaction(
+            Buffer.from(transaction.serialize()),
+            swapObj.lastValidBlockHeight,
+          );
 
-    transaction.sign([wallet.payer]);
+          // Wait for confirmation
+          for (const connection of this.chain.connectionPool.getAllConnections()) {
+            try {
+              const confirmed = await this.chain.confirmTransaction(signature, connection);
+              if (confirmed) {
+                console.log(`Swap confirmed with priority fee: ${currentPriorityFee} microLamports`);
+                return signature;
+              }
+            } catch (error) {
+              console.warn(`Swap confirmation attempt failed: ${error.message}`);
+            }
+          }
 
-    await this.simulateTransaction(transaction);
+          retryCount++;
+          await new Promise(resolve => setTimeout(resolve, RETRY_INTERVAL_MS));
+        } catch (error) {
+          retryCount++;
+          await new Promise(resolve => setTimeout(resolve, RETRY_INTERVAL_MS));
+        }
+      }
 
-    const serializedTransaction = Buffer.from(transaction.serialize());
-    const signature = await this.chain.sendRawTransaction(
-      serializedTransaction,
-      swapObj.lastValidBlockHeight,
-    );
+      // If we get here, swap wasn't confirmed after RETRY_COUNT attempts
+      // Increase the priority fee and try again
+      currentPriorityFee = Math.floor(currentPriorityFee * PRIORITY_FEE_MULTIPLIER);
+      console.log(`Increasing swap priority fee to ${currentPriorityFee} microLamports`);
+    }
 
-    return signature;
+    throw new Error(`Swap failed after reaching maximum priority fee of ${MAX_PRIORITY_FEE} microLamports`);
   }
 
   async extractSwapBalances(

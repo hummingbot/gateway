@@ -39,9 +39,6 @@ const TOKEN_PROGRAM_ADDRESS = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss
 const LAMPORT_TO_SOL = 1 / Math.pow(10, 9);
 const MIN_PRIORITY_FEE = 100000;
 
-// Send transaction retry interval and count
-const RETRY_INTERVAL_MS = 500;
-const RETRY_COUNT = 3;
 
 // Add accounts from https://triton.one/solana-prioritization-fees/ to track general fees
 const PRIORITY_FEE_ACCOUNTS = [
@@ -56,6 +53,12 @@ const PRIORITY_FEE_ACCOUNTS = [
   '4po3YMfioHkNP4mL4N46UWJvBoQDS2HFjzGm1ifrUWuZ',
   '5veMSa4ks66zydSaKSPMhV7H2eF88HvuKDArScNH9jaG',
 ];
+
+// Send transaction retry interval and count
+export const PRIORITY_FEE_MULTIPLIER = 1.2;
+export const MAX_PRIORITY_FEE = 1000000;
+export const RETRY_INTERVAL_MS = 500;
+export const RETRY_COUNT = 3;
 
 interface PriorityFeeResponse {
   jsonrpc: string;
@@ -149,10 +152,6 @@ export class Solana implements Solanaish {
     });
     this._utl = new Client(config);
 
-  }
-
-  public async getGasPrice(): Promise<number> {
-    return this.estimatePriorityFees(this.connectionPool.getNextConnection().rpcEndpoint);
   }
 
   public static getInstance(network: string): Solana {
@@ -526,6 +525,25 @@ export class Solana implements Solanaish {
     }
   }
 
+  public async getGasPrice(): Promise<number> {
+    const priorityFeeInMicroLamports = await this.estimatePriorityFees(
+      this.connectionPool.getNextConnection().rpcEndpoint
+    );
+    
+    const BASE_FEE_LAMPORTS = 5000;
+    const LAMPORTS_PER_SOL = Math.pow(10, 9);
+    
+    // Calculate priority fee in lamports
+    const priorityFeeLamports = Math.floor(
+      (this.defaultComputeUnits * priorityFeeInMicroLamports) / 1_000_000
+    );
+    
+    // Add base fee and convert to SOL
+    const gasCost = (BASE_FEE_LAMPORTS + priorityFeeLamports) / LAMPORTS_PER_SOL;
+
+    return gasCost;
+  }
+  
   async estimatePriorityFees(rcpURL: string): Promise<number> {
     try {
       const params: string[][] = [];
@@ -645,108 +663,74 @@ export class Solana implements Solanaish {
     }
   }
 
-  public async confirmTransactionByAddress(
-    address: string,
-    signature: string,
-    connection: Connection,
-    timeout: number = 3000,
-  ): Promise<boolean> {
-    try {
-      const confirmationPromise = new Promise<boolean>(async (resolve, reject) => {
-        const payload = {
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'getSignaturesForAddress',
-          params: [
-            address,
-            {
-              limit: GET_SIGNATURES_FOR_ADDRESS_LIMIT, // Adjust the limit as needed
-              until: signature,
-            },
-          ],
-        };
-
-        const response = await fetch(connection.rpcEndpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload),
-        });
-
-        if (!response.ok) {
-          reject(new Error(`HTTP error! status: ${response.status}`));
-          return;
-        }
-
-        const data = await response.json();
-
-        if (data.result) {
-          const transactionInfo = data.result.find((entry: any) => entry.signature === signature);
-
-          if (!transactionInfo) {
-            resolve(false);
-            return;
-          }
-
-          if (transactionInfo.err !== null) {
-            reject(
-              new Error(`Transaction failed with error: ${JSON.stringify(transactionInfo.err)}`),
-            );
-            return;
-          }
-
-          const isConfirmed =
-            transactionInfo.confirmationStatus === 'confirmed' ||
-            transactionInfo.confirmationStatus === 'finalized';
-          resolve(isConfirmed);
-        } else {
-          resolve(false);
-        }
-      });
-
-      const timeoutPromise = new Promise<boolean>((_, reject) =>
-        setTimeout(() => reject(new Error('Confirmation timed out')), timeout),
-      );
-
-      return await Promise.race([confirmationPromise, timeoutPromise]);
-    } catch (error: any) {
-      throw new Error(`Failed to confirm transaction using signatures: ${error.message}`);
-    }
-  }
-
   async sendAndConfirmTransaction(
     tx: Transaction, 
-    signers: Signer[] = [], 
-    priorityFee?: number
+    signers: Signer[] = []
   ): Promise<string> {
-    // Add priority fee to the transaction if not provided
-    const fee = priorityFee ?? await this.estimatePriorityFees(
+    let currentPriorityFee = await this.estimatePriorityFees(
       this.connectionPool.getNextConnection().rpcEndpoint,
     );
-
-    const priorityFeeInstruction = ComputeBudgetProgram.setComputeUnitPrice({
-      microLamports: fee,
-    });
-    tx.instructions.push(priorityFeeInstruction);
-
-    const blockhashAndContext = await this.connectionPool
-      .getNextConnection()
-      .getLatestBlockhashAndContext('confirmed');
     
-    const lastValidBlockHeight = blockhashAndContext.value.lastValidBlockHeight;
-    const blockhash = blockhashAndContext.value.blockhash;
+    while (currentPriorityFee <= MAX_PRIORITY_FEE) {
+      // Update or add priority fee instruction
+      const priorityFeeInstruction = ComputeBudgetProgram.setComputeUnitPrice({
+        microLamports: Math.floor(currentPriorityFee),
+      });
+      
+      // Remove any existing priority fee instructions and add the new one
+      tx.instructions = [
+        ...tx.instructions.filter(inst => !inst.programId.equals(ComputeBudgetProgram.programId)),
+        priorityFeeInstruction
+      ];
 
-    tx.lastValidBlockHeight = lastValidBlockHeight;
-    tx.recentBlockhash = blockhash;
-    tx.sign(...signers);
+      // Get latest blockhash
+      const blockhashAndContext = await this.connectionPool
+        .getNextConnection()
+        .getLatestBlockhashAndContext('confirmed');
+      
+      const lastValidBlockHeight = blockhashAndContext.value.lastValidBlockHeight;
+      const blockhash = blockhashAndContext.value.blockhash;
 
-    const signature = await this.sendAndConfirmRawTransaction(
-      tx.serialize(),
-      lastValidBlockHeight,
-    );
+      tx.lastValidBlockHeight = lastValidBlockHeight;
+      tx.recentBlockhash = blockhash;
+      tx.sign(...signers);
 
-    return signature;
+      let retryCount = 0;
+      while (retryCount < RETRY_COUNT) {
+        try {
+          const signature = await this.sendRawTransaction(
+            tx.serialize(),
+            lastValidBlockHeight,
+          );
+
+          // Wait for confirmation
+          for (const connection of this.connectionPool.getAllConnections()) {
+            try {
+              const confirmed = await this.confirmTransaction(signature, connection);
+              if (confirmed) {
+                console.log(`Transaction confirmed with priority fee: ${currentPriorityFee} microLamports`);
+                return signature;
+              }
+            } catch (error) {
+              console.warn(`Confirmation attempt failed on connection: ${error.message}`);
+            }
+          }
+
+          retryCount++;
+          await new Promise(resolve => setTimeout(resolve, RETRY_INTERVAL_MS));
+        } catch (error) {
+          retryCount++;
+          await new Promise(resolve => setTimeout(resolve, RETRY_INTERVAL_MS));
+        }
+      }
+
+      // If we get here, transaction wasn't confirmed after RETRY_COUNT attempts
+      // Increase the priority fee and try again
+      currentPriorityFee = Math.floor(currentPriorityFee * PRIORITY_FEE_MULTIPLIER);
+      console.log(`Increasing priority fee to ${currentPriorityFee} microLamports`);
+    }
+
+    throw new Error(`Transaction failed after reaching maximum priority fee of ${MAX_PRIORITY_FEE} microLamports`);
   }
 
   async sendRawTransaction(
@@ -966,3 +950,4 @@ class CustomStaticTokenListResolutionStrategy {
 
 export type Solanaish = Solana;
 export const Solanaish = Solana;
+

@@ -12,6 +12,12 @@ import { TokenInfo } from '../ethereum/ethereum-base';
 import { Keypair } from '@solana/web3.js';
 import { Solanaish } from './solana';
 
+interface FeeInfo {
+  baseFee: number;
+  priorityFee: number;
+  totalFee: number;
+}
+
 export class SolanaController {
   
   static async balances(solanaish: Solanaish, req: BalanceRequest) {
@@ -42,19 +48,24 @@ export class SolanaController {
         txBlock: null,
         txStatus: 0,
         txData: null,
+        fee: null,
       };
     }
 
     const txStatus = await solanaish.getTransactionStatusCode(txData as any);
+    
+    // Get both balanceChange and fee for account index 0 (transaction signer)
+    const { balanceChange, fee } = await solanaish.extractAccountBalanceChangeAndFee(req.txHash, 0);
 
-    console.log(`Polling for transaction ${req.txHash}, Status: ${txStatus}`);
+    console.log(`Polling for transaction ${req.txHash}, Status: ${txStatus}, Balance Change: ${balanceChange} SOL, Fee: ${fee} SOL`);
 
     return {
       currentBlock,
       txHash: req.txHash,
       txBlock: txData.slot,
       txStatus,
-      txData: txData as any,
+      fee: fee,
+      txData,
     };
   }
 

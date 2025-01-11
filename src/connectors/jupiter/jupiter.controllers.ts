@@ -258,31 +258,14 @@ export async function estimateGas(
     solanaish.connectionPool.getNextConnection().rpcEndpoint
   );
   
-  // Constants
-  const MICRO_LAMPORTS_PER_LAMPORT = Math.pow(10, 6);
-  const LAMPORTS_PER_SOL = Math.pow(10, 9);
-  const BASE_FEE_LAMPORTS = 5000; // Base transaction fee in lamports
-  
-  // Apply multiplier to priority fee (keeping in microLamports)
-  console.log(`[PRIORITY FEE MULTIPLIER] Using ${jupiter.priorityFeeMultiplier}: ${priorityFeeInMicroLamports * jupiter.priorityFeeMultiplier}`);
-  const adjustedPriorityFeeInMicroLamports = priorityFeeInMicroLamports * jupiter.priorityFeeMultiplier;
-  
-  // Convert to SOL only for gasCost calculation
-  const priorityFeeInSol = adjustedPriorityFeeInMicroLamports / (MICRO_LAMPORTS_PER_LAMPORT * LAMPORTS_PER_SOL);
-  const baseFeeInSol = BASE_FEE_LAMPORTS / LAMPORTS_PER_SOL;
-  
-  // Use defaultComputeUnits from solanaish
-  const gasLimit = solanaish.defaultComputeUnits;
-  
-  // Calculate total gas cost (priorityFee * computeUnits + baseFee)
-  const gasCost = ((priorityFeeInSol * gasLimit) + baseFeeInSol).toString();
-  
+  const gasCost = await solanaish.getGasPrice();
+
   return {
     network: solanaish.network,
     timestamp: Date.now(),
-    gasPrice: adjustedPriorityFeeInMicroLamports,  // Return in microLamports
+    gasPrice: priorityFeeInMicroLamports,  // in microLamports
     gasPriceToken: solanaish.nativeTokenSymbol,
-    gasLimit: gasLimit,
-    gasCost: gasCost,
+    gasLimit: solanaish.defaultComputeUnits,
+    gasCost: gasCost.toString(),
   };
 }
