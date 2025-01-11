@@ -12,6 +12,8 @@ import { Wallet } from '@coral-xyz/anchor';
 import { logger } from '../../services/logger';
 import { BASE_FEE } from '../../chains/solana/solana';
 
+const JUPITER_API_RETRY_COUNT = 10;
+const JUPITER_API_RETRY_INTERVAL_MS = 500;
 
 export class Jupiter {
   private static _instances: { [name: string]: Jupiter };
@@ -122,15 +124,34 @@ export class Jupiter {
 
     logger.info(`Sending swap with priority fee: ${priorityFee / 1e9} SOL`);
 
-    const swapObj = await this.jupiterQuoteApi.swapPost({
-      swapRequest: {
-        quoteResponse: quote,
-        userPublicKey: wallet.publicKey.toBase58(),
-        dynamicComputeUnitLimit: true,
-        prioritizationFeeLamports,
-      },
-    });
-    return swapObj;
+    let lastError: Error | null = null;
+    for (let attempt = 1; attempt <= JUPITER_API_RETRY_COUNT; attempt++) {
+      try {
+        const swapObj = await this.jupiterQuoteApi.swapPost({
+          swapRequest: {
+            quoteResponse: quote,
+            userPublicKey: wallet.publicKey.toBase58(),
+            dynamicComputeUnitLimit: true,
+            prioritizationFeeLamports,
+          },
+        });
+        return swapObj;
+      } catch (error) {
+        lastError = error;
+        logger.error(`Jupiter API swapPost attempt ${attempt}/${JUPITER_API_RETRY_COUNT} failed:`, {
+          error: error.message,
+          status: error.response?.status,
+          data: error.response?.data,
+        });
+
+        if (attempt < JUPITER_API_RETRY_COUNT) {
+          logger.info(`Waiting ${JUPITER_API_RETRY_INTERVAL_MS}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, JUPITER_API_RETRY_INTERVAL_MS));
+        }
+      }
+    }
+
+    throw new Error(`Jupiter swap failed after ${JUPITER_API_RETRY_COUNT} attempts. Last error: ${lastError?.message}`);
   }
 
   async simulateTransaction(transaction: VersionedTransaction) {
