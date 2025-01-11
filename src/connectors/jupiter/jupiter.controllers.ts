@@ -233,7 +233,12 @@ export async function trade(
   }
 
   // Execute swap with correct input/output tokens based on trade side
-  const { signature, feeInLamports } = await jupiter.executeSwap(
+  const { 
+    signature, 
+    feeInLamports, 
+    computeUnitLimit,
+    priorityFeePrice 
+  } = await jupiter.executeSwap(
     wallet,
     req.side === 'BUY' ? quoteToken.symbol : baseToken.symbol,
     req.side === 'BUY' ? baseToken.symbol : quoteToken.symbol,
@@ -241,7 +246,6 @@ export async function trade(
     slippagePct
   );
 
-  // Updated logging using request parameters
   logger.info(`Swap confirmed: ${signature} - ${req.side} ${req.amount} ${baseToken.symbol} at ${expectedPrice} ${quoteToken.symbol}/${baseToken.symbol}`);
 
   const response: TradeResponse = {
@@ -252,9 +256,9 @@ export async function trade(
     quote: quoteToken.address,
     amount: new Decimal(req.amount).toFixed(baseToken.decimals),
     rawAmount: requestAmount.toString(),
-    gasPrice: feeInLamports / gasEstimate.gasLimit,
+    gasPrice: priorityFeePrice,
     gasPriceToken: gasEstimate.gasPriceToken,
-    gasLimit: gasEstimate.gasLimit,
+    gasLimit: computeUnitLimit,
     gasCost: (feeInLamports / 1e9).toString(),
     txHash: signature,
     price: expectedPrice.toString(),

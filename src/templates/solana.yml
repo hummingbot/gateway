@@ -10,10 +10,10 @@ networks:
     tokenListSource: '/home/gateway/conf/lists/solflare-tokenlist.json'
     nativeCurrencySymbol: SOL    
 
-# default compute units for a transaction
+# Default compute units for a transaction used to estimate gasPrice
 defaultComputeUnits: 200000
 
-# Percentile of recent priority fee samples used to estimate gasPrice for a transaction
+# Floor percentile of recent priority fee samples used to estimate gasPrice for a transaction
 priorityFeePercentile: 0.75
 
 # Multiplier for increasing priority fee on retry

@@ -11,6 +11,9 @@ import { percentRegexp } from '../../services/config-manager-v2';
 import { Wallet } from '@coral-xyz/anchor';
 import { logger } from '../../services/logger';
 import { BASE_FEE } from '../../chains/solana/solana';
+import { ComputeBudgetProgram } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
+import { ComputeBudgetInstruction } from '@solana/web3.js';
 
 const JUPITER_API_RETRY_COUNT = 10;
 const JUPITER_API_RETRY_INTERVAL_MS = 500;
@@ -93,7 +96,7 @@ export class Jupiter {
       throw new Error('Invalid token symbols');
     }
 
-    const slippageBps = slippagePct ? Math.round(slippagePct * 100) : 50;
+    const slippageBps = slippagePct ? Math.round(slippagePct * 100) : 0;
     const tokenDecimals = swapMode === 'ExactOut' ? outputToken.decimals : inputToken.decimals;
     const quoteAmount = Math.floor(amount * 10 ** tokenDecimals);
 
@@ -175,7 +178,12 @@ export class Jupiter {
     outputTokenSymbol: string,
     amount: number,
     slippagePct?: number,
-  ): Promise<{ signature: string; feeInLamports: number }> {
+  ): Promise<{ 
+    signature: string; 
+    feeInLamports: number;
+    computeUnitLimit: number;
+    priorityFeePrice: number;
+  }> {
     await this.loadJupiter();
     let currentPriorityFee = (await this.chain.getGasPrice() * 1e9) - BASE_FEE;
 
@@ -204,11 +212,18 @@ export class Jupiter {
 
           for (const connection of this.chain.connectionPool.getAllConnections()) {
             try {
-              const confirmed = await this.chain.confirmTransaction(signature, connection);
-              if (confirmed) {
+              const { confirmed, txData } = await this.chain.confirmTransaction(signature, connection);
+              if (confirmed && txData) {
+                const computeUnitsUsed = txData.meta.computeUnitsConsumed;
+                const totalFee = txData.meta.fee;
+                const priorityFee = totalFee - BASE_FEE;
+                const priorityFeePrice = (priorityFee / computeUnitsUsed) * 1e6; // microlamports per CU
+
                 return {
                   signature,
-                  feeInLamports: currentPriorityFee + BASE_FEE
+                  feeInLamports: totalFee,
+                  computeUnitLimit: computeUnitsUsed,
+                  priorityFeePrice,
                 };
               }
             } catch (error) {

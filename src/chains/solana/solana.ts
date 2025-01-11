@@ -639,9 +639,9 @@ export class Solana implements Solanaish {
     signature: string,
     connection: Connection,
     timeout: number = 3000,
-  ): Promise<boolean> {
+  ): Promise<{ confirmed: boolean; txData?: any }> {
     try {
-      const confirmationPromise = new Promise<boolean>(async (resolve, reject) => {
+      const confirmationPromise = new Promise<{ confirmed: boolean; txData?: any }>(async (resolve, reject) => {
         const payload = {
           jsonrpc: '2.0',
           id: 1,
@@ -680,13 +680,22 @@ export class Solana implements Solanaish {
           const isConfirmed =
             status.confirmationStatus === 'confirmed' || 
             status.confirmationStatus === 'finalized';
-          resolve(isConfirmed);
+
+          if (isConfirmed) {
+            // Fetch transaction data if confirmed
+            const txData = await connection.getParsedTransaction(signature, {
+              maxSupportedTransactionVersion: 0,
+            });
+            resolve({ confirmed: true, txData });
+          } else {
+            resolve({ confirmed: false });
+          }
         } else {
-          resolve(false);
+          resolve({ confirmed: false });
         }
       });
 
-      const timeoutPromise = new Promise<boolean>((_, reject) =>
+      const timeoutPromise = new Promise<{ confirmed: boolean }>((_, reject) =>
         setTimeout(() => reject(new Error('Confirmation timed out')), timeout),
       );
 
