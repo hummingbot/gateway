@@ -34,10 +34,8 @@ import { Config, getSolanaConfig } from './solana.config';
 import { TransactionResponseStatusCode } from './solana.requests';
 import { SolanaController } from './solana.controllers';
 
-const GET_SIGNATURES_FOR_ADDRESS_LIMIT = 100;
 const TOKEN_PROGRAM_ADDRESS = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
 const LAMPORT_TO_SOL = 1 / Math.pow(10, 9);
-const MIN_PRIORITY_FEE = 100000;
 
 
 // Add accounts from https://triton.one/solana-prioritization-fees/ to track general fees
@@ -54,11 +52,13 @@ const PRIORITY_FEE_ACCOUNTS = [
   '5veMSa4ks66zydSaKSPMhV7H2eF88HvuKDArScNH9jaG',
 ];
 
-// Send transaction retry interval and count
-export const PRIORITY_FEE_MULTIPLIER = 1.2;
-export const MAX_PRIORITY_FEE = 1000000;
+// Constants used for fee calculations
+export const BASE_FEE = 5000;
+export const PRIORITY_FEE_MULTIPLIER = 2;
+export const MAX_PRIORITY_FEE = 2000000;
+export const MIN_PRIORITY_FEE = 100000;
 export const RETRY_INTERVAL_MS = 500;
-export const RETRY_COUNT = 3;
+export const RETRY_COUNT = 4;
 
 interface PriorityFeeResponse {
   jsonrpc: string;
@@ -110,6 +110,12 @@ export class Solana implements Solanaish {
   private _ready: boolean = false;
   private initializing: boolean = false;
   public controller: typeof SolanaController;
+
+  private static lastPriorityFeeEstimate: {
+    timestamp: number;
+    fee: number;
+  } | null = null;
+  private static PRIORITY_FEE_CACHE_MS = 10000; // 10 second cache
 
   constructor(network: string) {
     this.network = network;
@@ -545,6 +551,14 @@ export class Solana implements Solanaish {
   }
   
   async estimatePriorityFees(rcpURL: string): Promise<number> {
+    // Check cache first
+    if (
+      Solana.lastPriorityFeeEstimate && 
+      Date.now() - Solana.lastPriorityFeeEstimate.timestamp < Solana.PRIORITY_FEE_CACHE_MS
+    ) {
+      return Solana.lastPriorityFeeEstimate.fee;
+    }
+
     try {
       const params: string[][] = [];
       params.push(PRIORITY_FEE_ACCOUNTS);
@@ -578,24 +592,34 @@ export class Solana implements Solanaish {
         return MIN_PRIORITY_FEE;
       }
 
-        // Sort fees in ascending order for percentile calculation
-        fees.sort((a, b) => a - b);
-        
-        // Calculate statistics
-        const minFee = Math.min(...fees);
-        const maxFee = Math.max(...fees);
-        const averageFee = Math.floor(
-          fees.reduce((sum, fee) => sum + fee, 0) / fees.length
-        );
+      // Sort fees in ascending order for percentile calculation
+      fees.sort((a, b) => a - b);
+      
+      // Calculate statistics
+      const minFee = Math.min(...fees);
+      const maxFee = Math.max(...fees);
+      const averageFee = Math.floor(
+        fees.reduce((sum, fee) => sum + fee, 0) / fees.length
+      );
 
-        console.log(`[PRIORITY FEES] Range: ${minFee} - ${maxFee} microLamports (avg: ${averageFee})`);
+      console.log(`[PRIORITY FEES] Range: ${minFee} - ${maxFee} microLamports (avg: ${averageFee})`);
 
-        // Calculate index for percentile
-        const percentileIndex = Math.ceil(fees.length * this.priorityFeePercentile);
-        const percentileFee = fees[percentileIndex - 1];  // -1 because array is 0-based
-        console.log(`[PRIORITY FEES] ${this.priorityFeePercentile * 100}th percentile: ${percentileFee} microLamports`);
+      // Calculate index for percentile
+      const percentileIndex = Math.ceil(fees.length * this.priorityFeePercentile);
+      let percentileFee = fees[percentileIndex - 1];  // -1 because array is 0-based
+      
+      // Ensure fee is not below minimum
+      percentileFee = Math.max(percentileFee, MIN_PRIORITY_FEE);
+      
+      console.log(`[PRIORITY FEES] ${this.priorityFeePercentile * 100}th percentile: ${percentileFee} microLamports`);
 
-        return percentileFee;
+      // Cache the result
+      Solana.lastPriorityFeeEstimate = {
+        timestamp: Date.now(),
+        fee: percentileFee,
+      };
+
+      return percentileFee;
 
     } catch (error: any) {
       throw new Error(`Failed to fetch priority fees: ${error.message}`);
@@ -745,7 +769,7 @@ export class Solana implements Solanaish {
     let signatures: string[];
     let retryCount = 0;
 
-    while (blockheight <= lastValidBlockHeight + 50 && retryCount < RETRY_COUNT) {
+    while (blockheight <= lastValidBlockHeight + 50) {
       const sendRawTransactionResults = await Promise.allSettled(
         this.connectionPool.getAllConnections().map(async (conn) => {
           return await conn.sendRawTransaction(rawTx, {
@@ -781,74 +805,8 @@ export class Solana implements Solanaish {
       await new Promise((resolve) => setTimeout(resolve, RETRY_INTERVAL_MS));
     }
 
-    // If we exit the while loop without returning, we've exceeded retries or block height
-    throw new Error('Failed to send transaction after maximum retries');
-  }
-
-  async sendAndConfirmRawTransaction(
-    rawTx: Buffer | Uint8Array | Array<number>,
-    lastValidBlockHeight: number,
-  ): Promise<string> {
-    let blockheight = await this.connectionPool
-      .getNextConnection()
-      .getBlockHeight({ commitment: 'confirmed' });
-    let retryCount = 0;
-    let signature: string;
-
-    while (blockheight <= lastValidBlockHeight + 50 && retryCount < RETRY_COUNT) {
-      try {
-        // Reuse sendRawTransaction to get the signature
-        signature = await this.sendRawTransaction(rawTx, lastValidBlockHeight);
-
-        await new Promise((resolve) => setTimeout(resolve, RETRY_INTERVAL_MS));
-
-        // Check confirmation across all connections
-        const confirmTransactionResults = await Promise.allSettled(
-          this.connectionPool
-            .getAllConnections()
-            .flatMap((conn) => [
-              this.confirmTransaction(signature, conn),
-              // this.confirmTransactionByAddress(payerAddress, signature, conn),
-            ]),
-        );
-
-        const successfulConfirmations = confirmTransactionResults.filter(
-          (result) => result.status === 'fulfilled',
-        );
-
-        const rejectedConfirmations = confirmTransactionResults.filter(
-          (result) => result.status === 'rejected',
-        );
-
-        rejectedConfirmations.forEach((result) => {
-          if (result.status === 'rejected' && result.reason.message.includes('InstructionError')) {
-            throw new Error(result.reason.message);
-          }
-        });
-
-        if (successfulConfirmations.length > 0) {
-          const confirmations = successfulConfirmations
-            .map((result) => (result.status === 'fulfilled' ? result.value : false));
-
-          // Return immediately if any confirmation is successful
-          if (confirmations.some((confirmed) => confirmed)) {
-            return signature;
-          }
-        }
-
-        // Only continue to next iteration if not confirmed
-        blockheight = await this.connectionPool
-          .getNextConnection()
-          .getBlockHeight({ commitment: 'confirmed' });
-        
-        retryCount++;
-      } catch (error) {
-        retryCount++;
-        await new Promise((resolve) => setTimeout(resolve, RETRY_INTERVAL_MS));
-      }
-    }
-
-    throw new TransactionExpiredBlockheightExceededError(signature);
+    // If we exit the while loop without returning, we've exceeded block height
+    throw new Error('Maximum blockheight exceeded');
   }
 
   async extractTokenBalanceChangeAndFee(

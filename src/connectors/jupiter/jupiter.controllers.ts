@@ -30,6 +30,7 @@ export interface TradeInfo {
   requestAmount: number;
   expectedPrice: number;
   expectedAmount: number;
+  gasEstimate: EstimateGasResponse;
 }
 
 export async function getTradeInfo(
@@ -80,12 +81,15 @@ export async function getTradeInfo(
   const expectedPrice = Number(quoteAmount) / Number(baseAmount);
   const expectedAmount = Number(quoteAmount);
 
+  const gasEstimate = await estimateGas(solanaish, jupiter);
+
   return {
     baseToken,
     quoteToken,
     requestAmount,
     expectedPrice,
     expectedAmount,
+    gasEstimate,
   };
 }
 
@@ -96,9 +100,6 @@ export async function price(
 ) {
   const startTimestamp: number = Date.now();
   
-  // Add gas estimation
-  const gasEstimate = await estimateGas(solanaish, jupiter);
-
   let tradeInfo: TradeInfo;
   try {
     tradeInfo = await getTradeInfo(
@@ -126,7 +127,7 @@ export async function price(
     }
   }
 
-  const { baseToken, quoteToken, requestAmount, expectedPrice, expectedAmount } = tradeInfo;
+  const { baseToken, quoteToken, requestAmount, expectedPrice, expectedAmount, gasEstimate } = tradeInfo;
 
   return {
     network: solanaish.network,
@@ -152,10 +153,6 @@ export async function trade(
 ): Promise<TradeResponse> {
   const startTimestamp: number = Date.now();
   
-  // Add gas estimation
-  const gasEstimate = await estimateGas(solanaish, jupiter);
-
-  const limitPrice = req.limitPrice;
   const keypair = await solanaish.getWallet(req.address);
   const wallet = new Wallet(keypair as any);
 
@@ -185,25 +182,26 @@ export async function trade(
       );
     }
   }
-  const { baseToken, quoteToken, requestAmount, expectedPrice, expectedAmount } = tradeInfo;
+  
+  const { baseToken, quoteToken, requestAmount, expectedPrice, expectedAmount, gasEstimate } = tradeInfo;
   const slippagePct = req.allowedSlippage ? Number(req.allowedSlippage) : jupiter.getSlippagePct();
 
   // Check limit price conditions
   if (req.side === 'BUY') {
-    if (limitPrice && new Decimal(expectedPrice).gt(new Decimal(limitPrice))) {
+    if (req.limitPrice && new Decimal(expectedPrice).gt(new Decimal(req.limitPrice))) {
       logger.error('Swap price exceeded limit price.');
       throw new HttpException(
         500,
-        SWAP_PRICE_EXCEEDS_LIMIT_PRICE_ERROR_MESSAGE(expectedPrice, limitPrice),
+        SWAP_PRICE_EXCEEDS_LIMIT_PRICE_ERROR_MESSAGE(expectedPrice, req.limitPrice),
         SWAP_PRICE_EXCEEDS_LIMIT_PRICE_ERROR_CODE,
       );
     }
   } else {
-    if (limitPrice && new Decimal(expectedPrice).lt(new Decimal(limitPrice))) {
+    if (req.limitPrice && new Decimal(expectedPrice).lt(new Decimal(req.limitPrice))) {
       logger.error('Swap price lower than limit price.');
       throw new HttpException(
         500,
-        SWAP_PRICE_LOWER_THAN_LIMIT_PRICE_ERROR_MESSAGE(expectedPrice, limitPrice),
+        SWAP_PRICE_LOWER_THAN_LIMIT_PRICE_ERROR_MESSAGE(expectedPrice, req.limitPrice),
         SWAP_PRICE_LOWER_THAN_LIMIT_PRICE_ERROR_CODE,
       );
     }
@@ -219,7 +217,7 @@ export async function trade(
   );
 
   // Updated logging using request parameters
-  logger.info(`Swap fulfilled: ${signature} - ${req.side} ${req.amount} ${baseToken.symbol} at ${expectedPrice} ${quoteToken.symbol}/${baseToken.symbol}`);
+  logger.info(`Swap confirmed: ${signature} - ${req.side} ${req.amount} ${baseToken.symbol} at ${expectedPrice} ${quoteToken.symbol}/${baseToken.symbol}`);
 
   const response: TradeResponse = {
     network: solanaish.network,

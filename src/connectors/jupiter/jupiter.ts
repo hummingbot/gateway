@@ -13,7 +13,9 @@ import {
   PRIORITY_FEE_MULTIPLIER, 
   MAX_PRIORITY_FEE, 
   RETRY_COUNT, 
-  RETRY_INTERVAL_MS 
+  RETRY_INTERVAL_MS,
+  BASE_FEE,
+  MIN_PRIORITY_FEE 
 } from '../../chains/solana/solana';
 
 
@@ -125,10 +127,10 @@ export class Jupiter {
 
   async getSwapObj(wallet: Wallet, quote: QuoteResponse, priorityFee?: number): Promise<SwapResponse> {
     const prioritizationFeeLamports = priorityFee 
-      ? priorityFee * 1e9  // Convert SOL to lamports
-      : 100000;  // Default minimum priority fee in lamports
+      ? priorityFee  // Use provided priority fee in lamports
+      : MIN_PRIORITY_FEE;  // Use MIN_PRIORITY_FEE constant from solana.ts
 
-    console.log(`Priority Fee: ${priorityFee ?? 'default'} SOL (${prioritizationFeeLamports} lamports)`);
+    console.log(`Priority Fee: ${priorityFee / 1e9} SOL`);
 
     const swapObj = await this.jupiterQuoteApi.swapPost({
       swapRequest: {
@@ -164,7 +166,7 @@ export class Jupiter {
     slippagePct?: number,
   ): Promise<string> {
     await this.loadJupiter();
-    let currentPriorityFee = await this.chain.getGasPrice();
+    let currentPriorityFee = (await this.chain.getGasPrice() * 1e9) - BASE_FEE;
 
     while (currentPriorityFee <= MAX_PRIORITY_FEE) {
       const quote = await this.getQuote(
