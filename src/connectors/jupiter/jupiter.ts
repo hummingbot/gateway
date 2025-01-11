@@ -19,14 +19,10 @@ export class Jupiter {
   private _ready: boolean = false;
   private _config: JupiterConfig.NetworkConfig;
   protected jupiterQuoteApi!: ReturnType<typeof createJupiterApiClient>;
-  public gasCost: number;
-  public priorityFeeMultiplier: number;
 
   private constructor(network: string) {
     this._config = JupiterConfig.config;
     this.chain = Solana.getInstance(network);
-    this.gasCost = JupiterConfig.config.gasCost ?? 0;;
-    this.priorityFeeMultiplier = JupiterConfig.config.priorityFeeMultiplier ?? 1;
     this.loadJupiter();
   }
 

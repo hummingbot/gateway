@@ -2,10 +2,8 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "properties": {
-    "allowedSlippage": { "type": "string" },
-    "gasCost": { "type": "number" },
-    "priorityFeeMultiplier": { "type": "number" }
+    "allowedSlippage": { "type": "string" }
   },
   "additionalProperties": false,
-  "required": ["allowedSlippage", "priorityFeeMultiplier"]
+  "required": ["allowedSlippage"]
 }

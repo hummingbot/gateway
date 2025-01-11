@@ -594,8 +594,11 @@ export class Solana implements Solanaish {
         .map((item) => item.prioritizationFee)
         .filter((fee) => fee > 0);
 
+      // minimum fee is the minimum fee per compute unit
+      const minimumFee = this.minPriorityFee / this.defaultComputeUnits * 1_000_000;
+
       if (fees.length === 0) {
-        return this.minPriorityFee;
+        return minimumFee;
       }
 
       // Sort fees in ascending order for percentile calculation
@@ -615,9 +618,9 @@ export class Solana implements Solanaish {
       let percentileFee = fees[percentileIndex - 1];  // -1 because array is 0-based
       
       // Ensure fee is not below minimum
-      percentileFee = Math.max(percentileFee, this.minPriorityFee);
+      percentileFee = Math.max(percentileFee, minimumFee);
       
-      logger.info(`[PRIORITY FEES] ${this.priorityFeePercentile * 100}th percentile: ${percentileFee} microLamports`);
+      logger.info(`[PRIORITY FEES] Used: ${percentileFee} microLamports`);
 
       // Cache the result
       Solana.lastPriorityFeeEstimate = {

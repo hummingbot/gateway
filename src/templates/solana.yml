@@ -19,11 +19,11 @@ priorityFeePercentile: 0.75
 # Multiplier for increasing priority fee on retry
 priorityFeeMultiplier: 2
 
-# Maximum priority fee in microLamports
+# Maximum priority fee in lamports
 maxPriorityFee: 2000000
 
-# Minimum priority fee in microLamports
-minPriorityFee: 1000
+# Minimum priority fee in lamports
+minPriorityFee: 10000
 
 # Retry interval in milliseconds
 retryIntervalMs: 500
