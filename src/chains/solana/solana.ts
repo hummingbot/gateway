@@ -35,6 +35,9 @@ import { TransactionResponseStatusCode } from './solana.requests';
 import { SolanaController } from './solana.controllers';
 import { logger } from '../../services/logger';
 
+
+// Constants used for fee calculations
+export const BASE_FEE = 5000;
 const TOKEN_PROGRAM_ADDRESS = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
 const LAMPORT_TO_SOL = 1 / Math.pow(10, 9);
 
@@ -52,14 +55,6 @@ const PRIORITY_FEE_ACCOUNTS = [
   '4po3YMfioHkNP4mL4N46UWJvBoQDS2HFjzGm1ifrUWuZ',
   '5veMSa4ks66zydSaKSPMhV7H2eF88HvuKDArScNH9jaG',
 ];
-
-// Constants used for fee calculations
-export const BASE_FEE = 5000;
-export const PRIORITY_FEE_MULTIPLIER = 2;
-export const MAX_PRIORITY_FEE = 2000000;
-export const MIN_PRIORITY_FEE = 100000;
-export const RETRY_INTERVAL_MS = 1000;
-export const RETRY_COUNT = 10;
 
 interface PriorityFeeResponse {
   jsonrpc: string;
@@ -92,6 +87,11 @@ class ConnectionPool {
 export class Solana implements Solanaish {
   public defaultComputeUnits;
   public priorityFeePercentile;
+  public priorityFeeMultiplier;
+  public maxPriorityFee;
+  public minPriorityFee;
+  public retryIntervalMs;
+  public retryCount;
   public connectionPool: ConnectionPool;
   public network: string;
   public nativeTokenSymbol: string;
@@ -124,6 +124,11 @@ export class Solana implements Solanaish {
     this.nativeTokenSymbol = this._config.network.nativeCurrencySymbol
     this.defaultComputeUnits = this._config.defaultComputeUnits;
     this.priorityFeePercentile = this._config.priorityFeePercentile;
+    this.priorityFeeMultiplier = this._config.priorityFeeMultiplier;
+    this.maxPriorityFee = this._config.maxPriorityFee;
+    this.minPriorityFee = this._config.minPriorityFee;
+    this.retryIntervalMs = this._config.retryIntervalMs;
+    this.retryCount = this._config.retryCount;
 
     // Parse comma-separated RPC URLs
     const rpcUrlsString = this._config.network.nodeURLs;
@@ -590,7 +595,7 @@ export class Solana implements Solanaish {
         .filter((fee) => fee > 0);
 
       if (fees.length === 0) {
-        return MIN_PRIORITY_FEE;
+        return this.minPriorityFee;
       }
 
       // Sort fees in ascending order for percentile calculation
@@ -610,7 +615,7 @@ export class Solana implements Solanaish {
       let percentileFee = fees[percentileIndex - 1];  // -1 because array is 0-based
       
       // Ensure fee is not below minimum
-      percentileFee = Math.max(percentileFee, MIN_PRIORITY_FEE);
+      percentileFee = Math.max(percentileFee, this.minPriorityFee);
       
       logger.info(`[PRIORITY FEES] ${this.priorityFeePercentile * 100}th percentile: ${percentileFee} microLamports`);
 
@@ -696,7 +701,7 @@ export class Solana implements Solanaish {
       this.connectionPool.getNextConnection().rpcEndpoint,
     );
     
-    while (currentPriorityFee <= MAX_PRIORITY_FEE) {
+    while (currentPriorityFee <= this.maxPriorityFee) {
       // Update or add priority fee instruction
       const priorityFeeInstruction = ComputeBudgetProgram.setComputeUnitPrice({
         microLamports: Math.floor(currentPriorityFee),
@@ -721,7 +726,7 @@ export class Solana implements Solanaish {
       tx.sign(...signers);
 
       let retryCount = 0;
-      while (retryCount < RETRY_COUNT) {
+      while (retryCount < this.retryCount) {
         try {
           const signature = await this.sendRawTransaction(
             tx.serialize(),
@@ -742,20 +747,20 @@ export class Solana implements Solanaish {
           }
 
           retryCount++;
-          await new Promise(resolve => setTimeout(resolve, RETRY_INTERVAL_MS));
+          await new Promise(resolve => setTimeout(resolve, this.retryIntervalMs));
         } catch (error) {
           retryCount++;
-          await new Promise(resolve => setTimeout(resolve, RETRY_INTERVAL_MS));
+          await new Promise(resolve => setTimeout(resolve, this.retryIntervalMs));
         }
       }
 
       // If we get here, transaction wasn't confirmed after RETRY_COUNT attempts
       // Increase the priority fee and try again
-      currentPriorityFee = Math.floor(currentPriorityFee * PRIORITY_FEE_MULTIPLIER);
+      currentPriorityFee = Math.floor(currentPriorityFee * this.priorityFeeMultiplier);
       logger.info(`Increasing priority fee to ${currentPriorityFee} microLamports`);
     }
 
-    throw new Error(`Transaction failed after reaching maximum priority fee of ${MAX_PRIORITY_FEE} microLamports`);
+    throw new Error(`Transaction failed after reaching maximum priority fee of ${this.maxPriorityFee} microLamports`);
   }
 
   async sendRawTransaction(
@@ -794,7 +799,7 @@ export class Solana implements Solanaish {
         // Verify all signatures match
         if (!signatures.every((sig) => sig === signatures[0])) {
           retryCount++;
-          await new Promise((resolve) => setTimeout(resolve, RETRY_INTERVAL_MS));
+          await new Promise((resolve) => setTimeout(resolve, this.retryIntervalMs));
           continue;
         }
 
@@ -803,7 +808,7 @@ export class Solana implements Solanaish {
       }
 
       retryCount++;
-      await new Promise((resolve) => setTimeout(resolve, RETRY_INTERVAL_MS));
+      await new Promise((resolve) => setTimeout(resolve, this.retryIntervalMs));
     }
 
     // If we exit the while loop without returning, we've exceeded block height

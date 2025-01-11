@@ -15,3 +15,18 @@ defaultComputeUnits: 200000
 
 # Percentile of recent priority fee samples used to estimate gasPrice for a transaction
 priorityFeePercentile: 0.75
+
+# Multiplier for increasing priority fee on retry
+priorityFeeMultiplier: 2
+
+# Maximum priority fee in microLamports
+maxPriorityFee: 2000000
+
+# Minimum priority fee in microLamports
+minPriorityFee: 1000
+
+# Retry interval in milliseconds
+retryIntervalMs: 500
+
+# Number of retry attempts
+retryCount: 10

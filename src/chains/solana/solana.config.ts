@@ -12,6 +12,11 @@ export interface Config {
   network: NetworkConfig;
   defaultComputeUnits: number;
   priorityFeePercentile: number;
+  priorityFeeMultiplier: number;
+  maxPriorityFee: number;
+  minPriorityFee: number;
+  retryIntervalMs: number;
+  retryCount: number;
 }
 
 export function getSolanaConfig(
@@ -39,6 +44,21 @@ export function getSolanaConfig(
     ),
     priorityFeePercentile: ConfigManagerV2.getInstance().get(
       chainName + '.priorityFeePercentile'
+    ),
+    priorityFeeMultiplier: ConfigManagerV2.getInstance().get(
+      chainName + '.priorityFeeMultiplier'
+    ),
+    maxPriorityFee: ConfigManagerV2.getInstance().get(
+      chainName + '.maxPriorityFee'
+    ),
+    minPriorityFee: ConfigManagerV2.getInstance().get(
+      chainName + '.minPriorityFee'
+    ),
+    retryIntervalMs: ConfigManagerV2.getInstance().get(
+      chainName + '.retryIntervalMs'
+    ),
+    retryCount: ConfigManagerV2.getInstance().get(
+      chainName + '.retryCount'
     ),
   };
 }

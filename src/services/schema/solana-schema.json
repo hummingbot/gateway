@@ -26,7 +26,12 @@
       },
       "network": { "type": "string" },
       "defaultComputeUnits": { "type": "number" },
-      "priorityFeePercentile": { "type": "number" }
+      "priorityFeePercentile": { "type": "number" },
+      "priorityFeeMultiplier": { "type": "number" },
+      "maxPriorityFee": { "type": "number" },
+      "minPriorityFee": { "type": "number" },
+      "retryIntervalMs": { "type": "number" },
+      "retryCount": { "type": "number" }
     },
     "additionalProperties": false
   }

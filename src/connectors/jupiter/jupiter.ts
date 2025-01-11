@@ -9,15 +9,8 @@ import {
 import { JupiterConfig } from './jupiter.config';
 import { percentRegexp } from '../../services/config-manager-v2';
 import { Wallet } from '@coral-xyz/anchor';
-import { 
-  PRIORITY_FEE_MULTIPLIER, 
-  MAX_PRIORITY_FEE, 
-  RETRY_COUNT, 
-  RETRY_INTERVAL_MS,
-  BASE_FEE,
-  MIN_PRIORITY_FEE 
-} from '../../chains/solana/solana';
 import { logger } from '../../services/logger';
+import { BASE_FEE } from '../../chains/solana/solana';
 
 
 export class Jupiter {
@@ -128,10 +121,10 @@ export class Jupiter {
 
   async getSwapObj(wallet: Wallet, quote: QuoteResponse, priorityFee?: number): Promise<SwapResponse> {
     const prioritizationFeeLamports = priorityFee 
-      ? priorityFee  // Use provided priority fee in lamports
-      : MIN_PRIORITY_FEE;  // Use MIN_PRIORITY_FEE constant from solana.ts
+      ? priorityFee  
+      : this.chain.minPriorityFee;
 
-      logger.info(`Sending swap with priority fee: ${priorityFee / 1e9} SOL`);
+    logger.info(`Sending swap with priority fee: ${priorityFee / 1e9} SOL`);
 
     const swapObj = await this.jupiterQuoteApi.swapPost({
       swapRequest: {
@@ -165,11 +158,11 @@ export class Jupiter {
     outputTokenSymbol: string,
     amount: number,
     slippagePct?: number,
-  ): Promise<string> {
+  ): Promise<{ signature: string; feeInLamports: number }> {
     await this.loadJupiter();
     let currentPriorityFee = (await this.chain.getGasPrice() * 1e9) - BASE_FEE;
 
-    while (currentPriorityFee <= MAX_PRIORITY_FEE) {
+    while (currentPriorityFee <= this.chain.maxPriorityFee) {
       const quote = await this.getQuote(
         inputTokenSymbol,
         outputTokenSymbol,
@@ -183,19 +176,21 @@ export class Jupiter {
       transaction.sign([wallet.payer]);
 
       let retryCount = 0;
-      while (retryCount < RETRY_COUNT) {
+      while (retryCount < this.chain.retryCount) {
         try {
           const signature = await this.chain.sendRawTransaction(
             Buffer.from(transaction.serialize()),
             swapObj.lastValidBlockHeight,
           );
 
-          // Wait for confirmation
           for (const connection of this.chain.connectionPool.getAllConnections()) {
             try {
               const confirmed = await this.chain.confirmTransaction(signature, connection);
               if (confirmed) {
-                return signature;
+                return {
+                  signature,
+                  feeInLamports: currentPriorityFee + BASE_FEE
+                };
               }
             } catch (error) {
               logger.error(`Swap confirmation attempt failed: ${error.message}`);
@@ -203,20 +198,20 @@ export class Jupiter {
           }
 
           retryCount++;
-          await new Promise(resolve => setTimeout(resolve, RETRY_INTERVAL_MS));
+          await new Promise(resolve => setTimeout(resolve, this.chain.retryIntervalMs));
         } catch (error) {
           retryCount++;
-          await new Promise(resolve => setTimeout(resolve, RETRY_INTERVAL_MS));
+          await new Promise(resolve => setTimeout(resolve, this.chain.retryIntervalMs));
         }
       }
 
-      // If we get here, swap wasn't confirmed after RETRY_COUNT attempts
+      // If we get here, swap wasn't confirmed after retryCount attempts
       // Increase the priority fee and try again
-      currentPriorityFee = Math.floor(currentPriorityFee * PRIORITY_FEE_MULTIPLIER);
+      currentPriorityFee = Math.floor(currentPriorityFee * this.chain.priorityFeeMultiplier);
       logger.info(`Increasing priority fee to ${currentPriorityFee / 1e9} SOL`);
     }
 
-    throw new Error(`Swap failed after reaching maximum priority fee of ${MAX_PRIORITY_FEE / 1e9 } SOL`);
+    throw new Error(`Swap failed after reaching maximum priority fee of ${this.chain.maxPriorityFee / 1e9} SOL`);
   }
 
   async extractSwapBalances(
