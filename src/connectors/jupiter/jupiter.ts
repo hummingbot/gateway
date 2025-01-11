@@ -167,8 +167,10 @@ export class Jupiter {
       );
 
       const swapObj = await this.getSwapObj(wallet, quote, currentPriorityFee);
+
       const swapTransactionBuf = Buffer.from(swapObj.swapTransaction, 'base64');
       const transaction = VersionedTransaction.deserialize(new Uint8Array(swapTransactionBuf));
+      await this.simulateTransaction(transaction);
       transaction.sign([wallet.payer]);
 
       let retryCount = 0;
