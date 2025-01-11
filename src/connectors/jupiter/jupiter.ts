@@ -17,6 +17,7 @@ import {
   BASE_FEE,
   MIN_PRIORITY_FEE 
 } from '../../chains/solana/solana';
+import { logger } from '../../services/logger';
 
 
 export class Jupiter {
@@ -43,7 +44,7 @@ export class Jupiter {
         
       }
     } catch (error) {
-      console.error("Failed to initialize Jupiter:", error);
+      logger.error("Failed to initialize Jupiter:", error);
       throw error;
     }
   }
@@ -77,7 +78,7 @@ export class Jupiter {
     if (nd) {
         slippage = Number(nd[1]) / Number(nd[2]);
     } else {
-        console.error('Failed to parse slippage value:', allowedSlippage);
+        logger.error('Failed to parse slippage value:', allowedSlippage);
     }
     return slippage * 100;
   }
@@ -97,7 +98,7 @@ export class Jupiter {
     const outputToken = this.chain.getTokenForSymbol(outputTokenSymbol);
 
     if (!inputToken || !outputToken) {
-      console.error('Invalid token symbols');
+      logger.error('Invalid token symbols');
       throw new Error('Invalid token symbols');
     }
 
@@ -118,7 +119,7 @@ export class Jupiter {
     const quote = await this.jupiterQuoteApi.quoteGet(params);
 
     if (!quote) {
-      console.error('Unable to get quote');
+      logger.error('Unable to get quote');
       throw new Error('Unable to get quote');
     }
 
@@ -130,7 +131,7 @@ export class Jupiter {
       ? priorityFee  // Use provided priority fee in lamports
       : MIN_PRIORITY_FEE;  // Use MIN_PRIORITY_FEE constant from solana.ts
 
-    console.log(`Priority Fee: ${priorityFee / 1e9} SOL`);
+      logger.info(`Sending swap with priority fee: ${priorityFee / 1e9} SOL`);
 
     const swapObj = await this.jupiterQuoteApi.swapPost({
       swapRequest: {
@@ -153,7 +154,7 @@ export class Jupiter {
     );
     
     if (simulatedTransactionResponse.err) {
-      console.error('Simulation Error:', simulatedTransactionResponse);
+      logger.error('Simulation Error:', simulatedTransactionResponse);
       throw new Error('Transaction simulation failed');
     }
   }
@@ -194,11 +195,10 @@ export class Jupiter {
             try {
               const confirmed = await this.chain.confirmTransaction(signature, connection);
               if (confirmed) {
-                console.log(`Swap confirmed with priority fee: ${currentPriorityFee} microLamports`);
                 return signature;
               }
             } catch (error) {
-              console.warn(`Swap confirmation attempt failed: ${error.message}`);
+              logger.error(`Swap confirmation attempt failed: ${error.message}`);
             }
           }
 
@@ -213,10 +213,10 @@ export class Jupiter {
       // If we get here, swap wasn't confirmed after RETRY_COUNT attempts
       // Increase the priority fee and try again
       currentPriorityFee = Math.floor(currentPriorityFee * PRIORITY_FEE_MULTIPLIER);
-      console.log(`Increasing swap priority fee to ${currentPriorityFee} microLamports`);
+      logger.info(`Increasing priority fee to ${currentPriorityFee / 1e9} SOL`);
     }
 
-    throw new Error(`Swap failed after reaching maximum priority fee of ${MAX_PRIORITY_FEE} microLamports`);
+    throw new Error(`Swap failed after reaching maximum priority fee of ${MAX_PRIORITY_FEE / 1e9 } SOL`);
   }
 
   async extractSwapBalances(

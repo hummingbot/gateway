@@ -11,6 +11,7 @@ import {
 import { TokenInfo } from '../ethereum/ethereum-base';
 import { Keypair } from '@solana/web3.js';
 import { Solanaish } from './solana';
+import { logger } from '../../services/logger';
 
 interface FeeInfo {
   baseFee: number;
@@ -57,7 +58,7 @@ export class SolanaController {
     // Get both balanceChange and fee for account index 0 (transaction signer)
     const { balanceChange, fee } = await solanaish.extractAccountBalanceChangeAndFee(req.txHash, 0);
 
-    console.log(`Polling for transaction ${req.txHash}, Status: ${txStatus}, Balance Change: ${balanceChange} SOL, Fee: ${fee} SOL`);
+    logger.info(`Polling for transaction ${req.txHash}, Status: ${txStatus}, Balance Change: ${balanceChange} SOL, Fee: ${fee} SOL`);
 
     return {
       currentBlock,

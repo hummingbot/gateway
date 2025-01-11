@@ -33,6 +33,7 @@ import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-
 import { Config, getSolanaConfig } from './solana.config';
 import { TransactionResponseStatusCode } from './solana.requests';
 import { SolanaController } from './solana.controllers';
+import { logger } from '../../services/logger';
 
 const TOKEN_PROGRAM_ADDRESS = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
 const LAMPORT_TO_SOL = 1 / Math.pow(10, 9);
@@ -57,8 +58,8 @@ export const BASE_FEE = 5000;
 export const PRIORITY_FEE_MULTIPLIER = 2;
 export const MAX_PRIORITY_FEE = 2000000;
 export const MIN_PRIORITY_FEE = 100000;
-export const RETRY_INTERVAL_MS = 500;
-export const RETRY_COUNT = 4;
+export const RETRY_INTERVAL_MS = 1000;
+export const RETRY_COUNT = 10;
 
 interface PriorityFeeResponse {
   jsonrpc: string;
@@ -602,7 +603,7 @@ export class Solana implements Solanaish {
         fees.reduce((sum, fee) => sum + fee, 0) / fees.length
       );
 
-      console.log(`[PRIORITY FEES] Range: ${minFee} - ${maxFee} microLamports (avg: ${averageFee})`);
+      logger.info(`[PRIORITY FEES] Range: ${minFee} - ${maxFee} microLamports (avg: ${averageFee})`);
 
       // Calculate index for percentile
       const percentileIndex = Math.ceil(fees.length * this.priorityFeePercentile);
@@ -611,7 +612,7 @@ export class Solana implements Solanaish {
       // Ensure fee is not below minimum
       percentileFee = Math.max(percentileFee, MIN_PRIORITY_FEE);
       
-      console.log(`[PRIORITY FEES] ${this.priorityFeePercentile * 100}th percentile: ${percentileFee} microLamports`);
+      logger.info(`[PRIORITY FEES] ${this.priorityFeePercentile * 100}th percentile: ${percentileFee} microLamports`);
 
       // Cache the result
       Solana.lastPriorityFeeEstimate = {
@@ -732,11 +733,11 @@ export class Solana implements Solanaish {
             try {
               const confirmed = await this.confirmTransaction(signature, connection);
               if (confirmed) {
-                console.log(`Transaction confirmed with priority fee: ${currentPriorityFee} microLamports`);
+                logger.info(`Transaction confirmed with priority fee: ${currentPriorityFee} microLamports`);
                 return signature;
               }
             } catch (error) {
-              console.warn(`Confirmation attempt failed on connection: ${error.message}`);
+              logger.warn(`Confirmation attempt failed on connection: ${error.message}`);
             }
           }
 
@@ -751,7 +752,7 @@ export class Solana implements Solanaish {
       // If we get here, transaction wasn't confirmed after RETRY_COUNT attempts
       // Increase the priority fee and try again
       currentPriorityFee = Math.floor(currentPriorityFee * PRIORITY_FEE_MULTIPLIER);
-      console.log(`Increasing priority fee to ${currentPriorityFee} microLamports`);
+      logger.info(`Increasing priority fee to ${currentPriorityFee} microLamports`);
     }
 
     throw new Error(`Transaction failed after reaching maximum priority fee of ${MAX_PRIORITY_FEE} microLamports`);
