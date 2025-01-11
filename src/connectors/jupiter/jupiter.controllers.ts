@@ -17,6 +17,10 @@ import {
   PRICE_FAILED_ERROR_MESSAGE,
   UNKNOWN_ERROR_ERROR_CODE,
   UNKNOWN_ERROR_MESSAGE,
+  INSUFFICIENT_BASE_TOKEN_BALANCE_ERROR_CODE,
+  INSUFFICIENT_BASE_TOKEN_BALANCE_ERROR_MESSAGE,
+  INSUFFICIENT_QUOTE_TOKEN_BALANCE_ERROR_CODE,
+  INSUFFICIENT_QUOTE_TOKEN_BALANCE_ERROR_MESSAGE,
 } from '../../services/error-handler';
 import { latency } from '../../services/base';
 import { logger } from '../../services/logger';
@@ -203,6 +207,27 @@ export async function trade(
         500,
         SWAP_PRICE_LOWER_THAN_LIMIT_PRICE_ERROR_MESSAGE(expectedPrice, req.limitPrice),
         SWAP_PRICE_LOWER_THAN_LIMIT_PRICE_ERROR_CODE,
+      );
+    }
+  }
+
+  // Add balance check
+  if (req.side === 'SELL') {
+    const balance = await solanaish.getBalance(keypair, [baseToken.symbol]);
+    if (new Decimal(balance[baseToken.symbol]).lt(new Decimal(req.amount))) {
+      throw new HttpException(
+        500,
+        INSUFFICIENT_BASE_TOKEN_BALANCE_ERROR_MESSAGE,
+        INSUFFICIENT_BASE_TOKEN_BALANCE_ERROR_CODE
+      );
+    }
+  } else {
+    const balance = await solanaish.getBalance(keypair, [quoteToken.symbol]);
+    if (new Decimal(balance[quoteToken.symbol]).lt(new Decimal(expectedAmount))) {
+      throw new HttpException(
+        500,
+        INSUFFICIENT_QUOTE_TOKEN_BALANCE_ERROR_MESSAGE,
+        INSUFFICIENT_QUOTE_TOKEN_BALANCE_ERROR_CODE
       );
     }
   }

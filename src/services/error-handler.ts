@@ -108,6 +108,8 @@ export const ENDPOINT_NOT_SUPPORTED_ERROR_CODE = 1018;
 export const INSUFFICIENT_FUNDS_ERROR_CODE = 1019;
 export const GAS_LIMIT_EXCEEDED_ERROR_CODE = 1020;
 export const AMOUNT_LESS_THAN_MIN_AMOUNT_ERROR_CODE = 1021;
+export const INSUFFICIENT_BASE_TOKEN_BALANCE_ERROR_CODE = 1022;
+export const INSUFFICIENT_QUOTE_TOKEN_BALANCE_ERROR_CODE = 1023;
 
 export const NETWORK_ERROR_MESSAGE =
   'Network error. Please check your node URL, API key, and Internet connection.';
@@ -125,6 +127,8 @@ export const ENDPOINT_NOT_SUPPORTED_ERROR_MESSAGE = 'Endpoint not supported by t
 export const INSUFFICIENT_FUNDS_ERROR_MESSAGE = 'Insufficient funds for transaction.'
 export const GAS_LIMIT_EXCEEDED_ERROR_MESSAGE = 'Gas limit exceeded (gasWanted greater than gasLimitEstimate).';
 export const AMOUNT_LESS_THAN_MIN_AMOUNT_ERROR_MESSAGE = 'Calculated amount less than min amount provided with slippage. Maybe try increasing slippage. ';
+export const INSUFFICIENT_BASE_TOKEN_BALANCE_ERROR_MESSAGE = 'Insufficient balance of base token for the requested trade amount.';
+export const INSUFFICIENT_QUOTE_TOKEN_BALANCE_ERROR_MESSAGE = 'Insufficient balance of quote token for the requested trade amount.';
 
 export const SWAP_PRICE_EXCEEDS_LIMIT_PRICE_ERROR_MESSAGE = (
   price: any,
