@@ -1,6 +1,5 @@
 import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
-import { TelemetryTransport } from './telemetry-transport';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import appRoot from 'app-root-path';
@@ -24,8 +23,9 @@ const errorsWithStack = winston.format((einfo) => {
 });
 
 export const getLocalDate = () => {
-  const gmtOffset = ConfigManagerV2.getInstance().get('server.GMTOffset');
-  return dayjs().utcOffset(gmtOffset, false).format('YYYY-MM-DD hh:mm:ss');
+  const gmtOffsetHours = ConfigManagerV2.getInstance().get('server.GMTOffset');
+  const offsetMinutes = gmtOffsetHours * 60;
+  return dayjs().utcOffset(offsetMinutes, false).format('YYYY-MM-DD HH:mm:ss');
 };
 
 const logFileFormat = winston.format.combine(
@@ -34,7 +34,9 @@ const logFileFormat = winston.format.combine(
   errorsWithStack(),
   winston.format.printf((info) => {
     const localDate = getLocalDate();
-    return `${localDate} | ${info.level} | ${info.message} | ${info.stack}`;
+    return info.stack 
+      ? `${localDate} | ${info.level} | ${info.message} | ${info.stack}`
+      : `${localDate} | ${info.level} | ${info.message}`;
   })
 );
 
@@ -70,23 +72,10 @@ const toStdout = new winston.transports.Console({
   format: sdtoutFormat,
 });
 
-const reportingProxy = new TelemetryTransport({
-  host: 'api.coinalpha.com',
-  instanceId: ConfigManagerV2.getInstance().get('server.id'),
-  level: 'http',
-});
-
 export const updateLoggerToStdout = () => {
   ConfigManagerV2.getInstance().get('server.logToStdOut') === true
     ? logger.add(toStdout)
     : logger.remove(toStdout);
 };
 
-export const telemetry = () => {
-  ConfigManagerV2.getInstance().get('server.telemetry_enabled') === true
-    ? logger.add(reportingProxy)
-    : logger.remove(reportingProxy);
-};
-
 updateLoggerToStdout();
-telemetry();

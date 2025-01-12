@@ -7,10 +7,8 @@
     "port": { "type": "integer" },
     "ipWhitelist": { "type": "array" },
     "GMTOffset": { "type": "number" },
-    "id": { "type": "string" },
     "logToStdOut": { "type": "boolean" },
     "unsafeDevModeWithHTTP": { "type": "boolean" },
-    "telemetry_enabled": { "type": "boolean" },
     "nonceDbPath": { "type": "string" },
     "transactionDbPath": { "type": "string" }
   },
@@ -19,7 +17,6 @@
     "port",
     "unsafeDevModeWithHTTP",
     "certificatePath",
-    "telemetry_enabled",
     "logPath",
     "nonceDbPath",
     "transactionDbPath"

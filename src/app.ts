@@ -143,12 +143,6 @@ export const gatewayApp = configureGatewayServer();
 export const startGateway = async () => {
   const gateway_version = 'dev-2.3.0';
   const port = ConfigManagerV2.getInstance().get('server.port');
-  if (!ConfigManagerV2.getInstance().get('server.id')) {
-    ConfigManagerV2.getInstance().set(
-      'server.id',
-      Math.random().toString(16).substr(2, 14)
-    );
-  }
 
   logger.info(`Gateway Version: ${gateway_version}`);
   logger.info(`⚡️ Starting Gateway API on port ${port}...`);

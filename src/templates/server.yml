@@ -10,8 +10,8 @@ port: 15888
 # IPs allowed to access gateway. localhost is allowed by default.
 ipWhitelist: []
 
-# GMT Offset
-GMTOffset: +0800
+# GMT Offset in hours (e.g. -8 for Pacific Time, -5 for Eastern Time)
+GMTOffset: -8
 
 # If true, logs will be stored in logPath and printed to stdout. If false, they
 # will only be stored in logPath and not printed to stdout.
@@ -19,9 +19,6 @@ logToStdOut: true
 
 # Runs Gateway in unsafe dev mode with HTTP if true
 unsafeDevModeWithHTTP: false
-
-# Collects data about API usage if true
-telemetry_enabled: false
 
 # Nonce database
 nonceDbPath: 'nonce.level'
