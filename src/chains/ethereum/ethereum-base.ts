@@ -6,8 +6,6 @@ import {
   utils,
   Wallet,
 } from 'ethers';
-import axios from 'axios';
-import { promises as fs } from 'fs';
 import path from 'path';
 import { rootPath } from '../../paths';
 import { TokenListType, TokenValue, walletPath } from '../../services/base';

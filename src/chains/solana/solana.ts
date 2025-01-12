@@ -1,5 +1,3 @@
-import { promises as fs } from 'fs';
-import axios from 'axios';
 import crypto from 'crypto';
 import bs58 from 'bs58';
 import { BigNumber } from 'ethers';
@@ -16,10 +14,8 @@ import {
   ParsedAccountData,
   PublicKey,
   ComputeBudgetProgram,
-  SignatureStatus,
   Signer,
   Transaction,
-  TransactionExpiredBlockheightExceededError,
   TokenAmount,
   TransactionResponse,
   VersionedTransactionResponse,
@@ -29,19 +25,16 @@ import { TOKEN_PROGRAM_ID, unpackAccount } from "@solana/spl-token";
 
 import { countDecimals, TokenValue, walletPath } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
-
+import { logger } from '../../services/logger';
+import { TokenListResolutionStrategy } from '../../services/token-list-resolution';
 import { Config, getSolanaConfig } from './solana.config';
 import { TransactionResponseStatusCode } from './solana.requests';
 import { SolanaController } from './solana.controllers';
-import { logger } from '../../services/logger';
-import { TokenListResolutionStrategy } from '../../services/token-list-resolution';
-
 
 // Constants used for fee calculations
 export const BASE_FEE = 5000;
 const TOKEN_PROGRAM_ADDRESS = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
 const LAMPORT_TO_SOL = 1 / Math.pow(10, 9);
-
 
 // Add accounts from https://triton.one/solana-prioritization-fees/ to track general fees
 const PRIORITY_FEE_ACCOUNTS = [
