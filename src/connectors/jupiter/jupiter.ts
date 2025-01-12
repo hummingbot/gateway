@@ -1,5 +1,5 @@
 import { Solana } from '../../chains/solana/solana';
-import { VersionedTransaction, Transaction } from '@solana/web3.js';
+import { VersionedTransaction } from '@solana/web3.js';
 import { 
   QuoteGetRequest, 
   QuoteResponse, 
@@ -11,12 +11,10 @@ import { percentRegexp } from '../../services/config-manager-v2';
 import { Wallet } from '@coral-xyz/anchor';
 import { logger } from '../../services/logger';
 import { BASE_FEE } from '../../chains/solana/solana';
-import { ComputeBudgetProgram } from '@solana/web3.js';
-import { PublicKey } from '@solana/web3.js';
-import { ComputeBudgetInstruction } from '@solana/web3.js';
 
 const JUPITER_API_RETRY_COUNT = 10;
 const JUPITER_API_RETRY_INTERVAL_MS = 500;
+export const DECIMAL_MULTIPLIER = 10;
 
 export class Jupiter {
   private static _instances: { [name: string]: Jupiter };
@@ -297,6 +295,10 @@ export class Jupiter {
         totalOutputSwapped: Math.abs(outputBalanceChange),
         fee,
     };
+  }
+
+  public static getRequestAmount(amount: number, decimals: number): number {
+    return Math.floor(amount * DECIMAL_MULTIPLIER ** decimals);
   }
 
 }

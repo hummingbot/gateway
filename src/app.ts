@@ -20,6 +20,10 @@ import { chainRoutes } from './chains/chain.routes';
 import { walletRoutes } from './wallet/wallet.routes';
 import { ammRoutes } from './amm/amm.routes';
 import { connectorsRoutes } from './connectors/connectors.routes';
+import { jupiterRoutes } from './connectors/jupiter/jupiter.routes';
+import { uniswapRoutes } from './connectors/uniswap/uniswap.routes';
+import { solanaRoutes } from './chains/solana/solana.routes';
+import { ethereumRoutes } from './chains/ethereum/ethereum.routes';
 
 // Define swagger options once
 const swaggerOptions = {
@@ -40,6 +44,10 @@ const swaggerOptions = {
       { name: 'wallet', description: 'Wallet endpoints' },
       { name: 'chain', description: 'Chain endpoints' },
       { name: 'amm', description: 'AMM endpoints' },
+      { name: 'jupiter', description: 'Jupiter endpoints' },
+      { name: 'uniswap', description: 'Uniswap endpoints' },
+      { name: 'solana', description: 'Solana chain endpoints' },
+      { name: 'ethereum', description: 'Ethereum chain endpoints' },
     ],
   },
   transform: ({ schema, url }) => {
@@ -98,6 +106,10 @@ const configureGatewayServer = () => {
     app.register(ammRoutes, { prefix: '/amm' });
     app.register(connectorsRoutes, { prefix: '/connectors' });
     app.register(walletRoutes, { prefix: '/wallet' });
+    app.register(jupiterRoutes, { prefix: '/jupiter' });
+    app.register(uniswapRoutes, { prefix: '/uniswap' });
+    app.register(solanaRoutes, { prefix: '/solana' });
+    app.register(ethereumRoutes, { prefix: '/ethereum' });
   };
 
   // Register routes on main server

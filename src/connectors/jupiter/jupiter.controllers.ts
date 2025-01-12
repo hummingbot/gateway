@@ -22,11 +22,12 @@ import {
   INSUFFICIENT_QUOTE_TOKEN_BALANCE_ERROR_CODE,
   INSUFFICIENT_QUOTE_TOKEN_BALANCE_ERROR_MESSAGE,
 } from '../../services/error-handler';
-import { latency } from '../../services/base';
 import { logger } from '../../services/logger';
 import { Wallet } from '@coral-xyz/anchor';
 import Decimal from 'decimal.js-light';
 import { QuoteResponse } from '@jup-ag/api';
+import { wrapResponse } from '../../services/response-wrapper';
+import { DECIMAL_MULTIPLIER } from './jupiter';
 
 export interface TradeInfo {
   baseToken: TokenInfo;
@@ -48,7 +49,7 @@ export async function getTradeInfo(
 ): Promise<TradeInfo> {
   const baseToken: TokenInfo = solanaish.getTokenForSymbol(baseAsset);
   const quoteToken: TokenInfo = solanaish.getTokenForSymbol(quoteAsset);
-  const requestAmount = Math.floor(amount * 10 ** baseToken.decimals);
+  const requestAmount = Math.floor(amount * DECIMAL_MULTIPLIER ** baseToken.decimals);
 
   const slippagePct = allowedSlippage ? Number(allowedSlippage) : jupiter.getSlippagePct();
 
@@ -102,7 +103,7 @@ export async function price(
   jupiter: Jupiter,
   req: PriceRequest,
 ) {
-  const startTimestamp: number = Date.now();
+  const initTime = Date.now();
   
   let tradeInfo: TradeInfo;
   try {
@@ -133,10 +134,8 @@ export async function price(
 
   const { baseToken, quoteToken, requestAmount, expectedPrice, expectedAmount, gasEstimate } = tradeInfo;
 
-  return {
+  return wrapResponse({
     network: solanaish.network,
-    timestamp: startTimestamp,
-    latency: latency(startTimestamp, Date.now()),
     base: baseToken.address,
     quote: quoteToken.address,
     amount: new Decimal(req.amount).toFixed(baseToken.decimals),
@@ -147,7 +146,7 @@ export async function price(
     gasPriceToken: gasEstimate.gasPriceToken,
     gasLimit: gasEstimate.gasLimit,
     gasCost: gasEstimate.gasCost,
-  };
+  }, initTime);
 }
 
 export async function trade(
@@ -155,7 +154,7 @@ export async function trade(
   jupiter: Jupiter,
   req: TradeRequest,
 ): Promise<TradeResponse> {
-  const startTimestamp: number = Date.now();
+  const initTime = Date.now();
   
   const keypair = await solanaish.getWallet(req.address);
   const wallet = new Wallet(keypair as any);
@@ -248,10 +247,8 @@ export async function trade(
 
   logger.info(`Swap confirmed: ${signature} - ${req.side} ${req.amount} ${baseToken.symbol} at ${expectedPrice} ${quoteToken.symbol}/${baseToken.symbol}`);
 
-  const response: TradeResponse = {
+  const response = {
     network: solanaish.network,
-    timestamp: startTimestamp,
-    latency: latency(startTimestamp, Date.now()),
     base: baseToken.address,
     quote: quoteToken.address,
     amount: new Decimal(req.amount).toFixed(baseToken.decimals),
@@ -265,15 +262,15 @@ export async function trade(
   };
 
   if (req.side === 'BUY') {
-    return {
+    return wrapResponse({
       ...response,
       expectedIn: expectedAmount.toString(),
-    };
+    }, initTime);
   } else {
-    return {
+    return wrapResponse({
       ...response,
       expectedOut: expectedAmount.toString(),
-    };
+    }, initTime);
   }
 }
 
@@ -281,18 +278,19 @@ export async function estimateGas(
   solanaish: Solanaish,
   jupiter: Jupiter,
 ): Promise<EstimateGasResponse> {
+  const initTime = Date.now();
+  
   const priorityFeeInMicroLamports = await solanaish.estimatePriorityFees(
     solanaish.connectionPool.getNextConnection().rpcEndpoint
   );
   
   const gasCost = await solanaish.getGasPrice();
 
-  return {
+  return wrapResponse({
     network: solanaish.network,
-    timestamp: Date.now(),
-    gasPrice: priorityFeeInMicroLamports,  // in microLamports
+    gasPrice: priorityFeeInMicroLamports,
     gasPriceToken: solanaish.nativeTokenSymbol,
     gasLimit: solanaish.defaultComputeUnits,
     gasCost: gasCost.toString(),
-  };
+  }, initTime);
 }

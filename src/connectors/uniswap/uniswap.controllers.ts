@@ -19,7 +19,7 @@ import {
   UNKNOWN_ERROR_MESSAGE,
 } from '../../services/error-handler';
 import { TokenInfo } from '../../chains/ethereum/ethereum-base';
-import { latency, gasCostInEthString } from '../../services/base';
+import { gasCostInEthString } from '../../services/base';
 import {
   Ethereumish,
   ExpectedTrade,
@@ -34,6 +34,7 @@ import {
   TradeRequest,
   TradeResponse,
 } from '../../amm/amm.requests';
+import { wrapResponse } from '../../services/response-wrapper';
 
 export interface TradeInfo {
   baseToken: Tokenish;
@@ -135,7 +136,7 @@ export async function price(
   uniswapish: Uniswapish,
   req: PriceRequest
 ): Promise<PriceResponse> {
-  const startTimestamp: number = Date.now();
+  const initTime = Date.now();
   let tradeInfo: TradeInfo;
   try {
     tradeInfo = await getTradeInfo(
@@ -173,10 +174,8 @@ export async function price(
   const gasLimitTransaction = ethereumish.gasLimitTransaction;
   const gasPrice = ethereumish.gasPrice;
   const gasLimitEstimate = uniswapish.gasLimitEstimate;
-  return {
+  return wrapResponse({
     network: ethereumish.chain,
-    timestamp: startTimestamp,
-    latency: latency(startTimestamp, Date.now()),
     base: tradeInfo.baseToken.address,
     quote: tradeInfo.quoteToken.address,
     amount: new Decimal(req.amount).toFixed(tradeInfo.baseToken.decimals),
@@ -187,7 +186,7 @@ export async function price(
     gasPriceToken: ethereumish.nativeTokenSymbol,
     gasLimit: gasLimitTransaction,
     gasCost: gasCostInEthString(gasPrice, gasLimitEstimate),
-  };
+  }, initTime);
 }
 
 export async function trade(
@@ -195,7 +194,7 @@ export async function trade(
   uniswapish: Uniswapish,
   req: TradeRequest
 ): Promise<TradeResponse> {
-  const startTimestamp: number = Date.now();
+  const initTime = Date.now();
 
   const limitPrice = req.limitPrice;
   const { wallet, maxFeePerGasBigNumber, maxPriorityFeePerGasBigNumber } =
@@ -286,10 +285,8 @@ export async function trade(
       `Trade has been executed, txHash is ${tx.hash}, nonce is ${tx.nonce}, gasPrice is ${gasPrice}.`
     );
 
-    return {
+    return wrapResponse({
       network: ethereumish.chain,
-      timestamp: startTimestamp,
-      latency: latency(startTimestamp, Date.now()),
       base: tradeInfo.baseToken.address,
       quote: tradeInfo.quoteToken.address,
       amount: new Decimal(req.amount).toFixed(tradeInfo.baseToken.decimals),
@@ -302,7 +299,7 @@ export async function trade(
       gasCost: gasCostInEthString(gasPrice, gasLimitEstimate),
       nonce: tx.nonce,
       txHash: tx.hash,
-    };
+    }, initTime);
   } else {
     const price = tradeInfo.expectedTrade.trade.executionPrice;
     logger.info(
@@ -342,10 +339,8 @@ export async function trade(
       `Trade has been executed, txHash is ${tx.hash}, nonce is ${tx.nonce}, gasPrice is ${gasPrice}.`
     );
 
-    return {
+    return wrapResponse({
       network: ethereumish.chain,
-      timestamp: startTimestamp,
-      latency: latency(startTimestamp, Date.now()),
       base: tradeInfo.baseToken.address,
       quote: tradeInfo.quoteToken.address,
       amount: new Decimal(req.amount).toFixed(tradeInfo.baseToken.decimals),
@@ -358,7 +353,7 @@ export async function trade(
       gasCost: gasCostInEthString(gasPrice, gasLimitEstimate),
       nonce: tx.nonce,
       txHash: tx.hash,
-    };
+    }, initTime);
   }
 }
 
@@ -386,15 +381,16 @@ export async function estimateGas(
   ethereumish: Ethereumish,
   uniswapish: Uniswapish
 ): Promise<EstimateGasResponse> {
+  const initTime = Date.now();
   const gasPrice: number = ethereumish.gasPrice;
   const gasLimitTransaction: number = ethereumish.gasLimitTransaction;
   const gasLimitEstimate: number = uniswapish.gasLimitEstimate;
-  return {
+  
+  return wrapResponse({
     network: ethereumish.chain,
-    timestamp: Date.now(),
     gasPrice,
     gasPriceToken: ethereumish.nativeTokenSymbol,
     gasLimit: gasLimitTransaction,
     gasCost: gasCostInEthString(gasPrice, gasLimitEstimate),
-  };
+  }, initTime);
 }

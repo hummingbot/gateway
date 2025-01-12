@@ -16,6 +16,7 @@ import {
 import { tokenValueToString } from '../../services/base';
 import { TokenInfo } from './ethereum-base';
 import { getConnector } from '../../services/connection-manager';
+import { wrapResponse } from '../../services/response-wrapper';
 
 import {
   CustomTransactionReceipt,
@@ -127,6 +128,7 @@ export class EVMController {
   // 3: in the mempool and likely to fail
   // 0: in the mempool but we dont have data to guess its status
   static async poll(ethereumish: Ethereumish, req: PollRequest) {
+    const initTime = Date.now();
     validatePollRequest(req);
 
     const currentBlock = await ethereumish.getCurrentBlockNumber();
@@ -204,38 +206,40 @@ export class EVMController {
     logger.info(
       `Poll ${ethereumish.chain}, txHash ${req.txHash}, status ${txStatus}.`
     );
-    return {
+    return wrapResponse({
       currentBlock,
       txHash: req.txHash,
       txBlock,
       txStatus,
       txData: toEthereumTransactionResponse(txData),
       txReceipt: toEthereumTransactionReceipt(txReceipt || null),
-    };
+    }, initTime);
   }
 
   static async nonce(
     ethereum: Ethereumish,
     req: NonceRequest
   ): Promise<NonceResponse> {
+    const initTime = Date.now();
     validateNonceRequest(req);
     // get the address via the public key since we generally use the public
     // key to interact with gateway and the address is not part of the user config
     const wallet = await ethereum.getWallet(req.address);
     const nonce = await ethereum.nonceManager.getNonce(wallet.address);
-    return { nonce };
+    return wrapResponse({ nonce }, initTime);
   }
 
   static async nextNonce(
     ethereum: Ethereumish,
     req: NonceRequest
   ): Promise<NonceResponse> {
+    const initTime = Date.now();
     validateNonceRequest(req);
     // get the address via the public key since we generally use the public
     // key to interact with gateway and the address is not part of the user config
     const wallet = await ethereum.getWallet(req.address);
     const nonce = await ethereum.nonceManager.getNextNonce(wallet.address);
-    return { nonce };
+    return wrapResponse({ nonce }, initTime);
   }
 
   static getTokenSymbolsToTokens = (
@@ -254,6 +258,7 @@ export class EVMController {
   };
 
   static async getTokens(connection: Ethereumish, req: TokensRequest) {
+    const initTime = Date.now();
     validateTokensRequest(req);
     let tokens: TokenInfo[] = [];
     if (!req.tokenSymbols) {
@@ -263,8 +268,7 @@ export class EVMController {
         tokens.push(connection.getTokenForSymbol(t) as TokenInfo);
       }
     }
-
-    return { tokens };
+    return wrapResponse({ tokens }, initTime);
   }
 
   static async allowances(ethereumish: Ethereumish, req: AllowancesRequest) {
@@ -276,6 +280,7 @@ export class EVMController {
     ethereumish: Ethereumish,
     req: AllowancesRequest
   ) {
+    const initTime = Date.now();
     const wallet = await ethereumish.getWallet(req.address);
     const tokens = EVMController.getTokenSymbolsToTokens(
       ethereumish,
@@ -302,13 +307,14 @@ export class EVMController {
       })
     );
 
-    return {
+    return wrapResponse({
       spender: spender,
       approvals: approvals,
-    };
+    }, initTime);
   }
 
   static async balances(ethereumish: Ethereumish, req: BalanceRequest) {
+    const initTime = Date.now();
     validateBalanceRequest(req);
 
     let wallet: Wallet;
@@ -369,9 +375,9 @@ export class EVMController {
       connectorBalances = await connector.balances(req);
     }
 
-    return {
+    return wrapResponse({
       balances: connectorBalances || balances,
-    };
+    }, initTime);
   }
 
   static async approve(ethereumish: Ethereumish, req: ApproveRequest) {
@@ -459,6 +465,7 @@ export class EVMController {
   }
 
   static async cancel(ethereumish: Ethereumish, req: CancelRequest) {
+    const initTime = Date.now();
     validateCancelRequest(req);
     let wallet: Wallet;
     try {
@@ -478,8 +485,8 @@ export class EVMController {
       `Cancelled transaction at nonce ${req.nonce}, cancel txHash ${cancelTx.hash}.`
     );
 
-    return {
+    return wrapResponse({
       txHash: cancelTx.hash,
-    };
+    }, initTime);
   }
 }
