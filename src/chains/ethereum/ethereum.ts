@@ -5,7 +5,6 @@ import { EthereumBase } from './ethereum-base';
 import { getEthereumConfig } from './ethereum.config';
 import { Provider } from '@ethersproject/abstract-provider';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
-// import { throttleRetryWrapper } from '../../services/retry';
 import { Chain as Ethereumish } from '../../services/common-interfaces';
 import { EVMController } from './evm.controllers';
 
