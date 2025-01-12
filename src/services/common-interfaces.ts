@@ -163,6 +163,7 @@ export interface Chain extends BasicChainMethods, EthereumBase {
     tokenAddress: string,
     signerOrProvider?: Wallet | Provider
   ): Contract;
+  network?: string;
 }
 
 export type Ethereumish = Chain;

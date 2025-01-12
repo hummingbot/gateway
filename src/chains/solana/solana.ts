@@ -95,6 +95,7 @@ export class Solana implements Solanaish {
   public connectionPool: ConnectionPool;
   public network: string;
   public nativeTokenSymbol: string;
+  public rpcUrl: string;
 
   protected tokenList: TokenInfo[] = [];
   private _config: Config;
@@ -142,6 +143,7 @@ export class Solana implements Solanaish {
         .filter((url) => url !== '');
       rpcUrls.push(...urls);
     }
+    this.rpcUrl = rpcUrls[0];
 
     // Add default cluster URL if no URLs provided
     if (rpcUrls.length === 0) {

@@ -2,6 +2,8 @@ import {
   BalanceRequest,
   TokensRequest,
   PollRequest,
+  StatusRequest,
+  StatusResponse,
 } from '../../chains/chain.requests';
 import {
   HttpException,
@@ -86,5 +88,25 @@ export class SolanaController {
     }
 
     return wrapResponse({ tokens }, initTime);
+  }
+
+  static async getStatus(solanaish: Solanaish, req: StatusRequest): Promise<StatusResponse> {
+    const initTime = Date.now();
+    const chain = 'solana';
+    const network = solanaish.network;
+    const rpcUrl = solanaish.rpcUrl;
+    const nativeCurrency = solanaish.nativeTokenSymbol;
+    const currentBlockNumber = await solanaish.getCurrentBlockNumber();
+
+    return wrapResponse({
+      chain,
+      chainId: undefined,
+      network,
+      rpcUrl,
+      currentBlockNumber,
+      nativeCurrency,
+      timestamp: initTime,
+      latency: Date.now() - initTime,
+    }, initTime);
   }
 }

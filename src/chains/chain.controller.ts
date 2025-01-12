@@ -166,47 +166,40 @@ export async function getStatus(
 ): Promise<StatusResponse | StatusResponse[]> {
   const statuses: StatusResponse[] = [];
   let connections: any[] = [];
-  let chain: string;
-  let chainId: number;
-  let network: string;
-  let rpcUrl: string;
-  let currentBlockNumber: number | undefined;
-  let nativeCurrency: string;
 
-  if (req.chain) {
-    try {
-      connections.push(
-        await getInitializedChain(req.chain, req.network as string),
-      );
-    } catch (e) {
-      if (e instanceof UnsupportedChainException) {
-        throw new HttpException(
-          500,
-          UNKNOWN_KNOWN_CHAIN_ERROR_MESSAGE(req.chain),
-          UNKNOWN_CHAIN_ERROR_CODE,
-        );
-      }
-      throw e;
-    }
-  } else {
-    const ethereumConnections = Ethereum.getConnectedInstances();
-    connections = connections.concat(
-      ethereumConnections ? Object.values(ethereumConnections) : [],
-    );
-    const solanaConnections = Solana.getConnectedInstances();
-    connections = connections.concat(
-      solanaConnections ? Object.values(solanaConnections) : []
+  // Get chain from request URL (e.g., /solana/status -> solana)
+  const chainName = req.url?.split('/')[1];
+  if (!chainName) {
+    throw new HttpException(
+      500,
+      UNKNOWN_KNOWN_CHAIN_ERROR_MESSAGE('undefined'),
+      UNKNOWN_CHAIN_ERROR_CODE,
     );
   }
 
-  for (const connection of connections) {
-    chain = connection.chain;
-    chainId = connection.chainId;
-    network = connection.network;
-    rpcUrl = connection.rpcUrl;
-    nativeCurrency = connection.nativeTokenSymbol;
+  try {
+    connections.push(
+      await getInitializedChain(chainName, req.network),
+    );
+  } catch (e) {
+    if (e instanceof UnsupportedChainException) {
+      throw new HttpException(
+        500,
+        UNKNOWN_KNOWN_CHAIN_ERROR_MESSAGE(chainName),
+        UNKNOWN_CHAIN_ERROR_CODE,
+      );
+    }
+    throw e;
+  }
 
-    currentBlockNumber = await connection.getCurrentBlockNumber();
+  for (const connection of connections) {
+    const chain = connection.chain;
+    const chainId = connection.chainId;
+    const network = connection.network;
+    const rpcUrl = connection.rpcUrl;
+    const nativeCurrency = connection.nativeTokenSymbol;
+
+    const currentBlockNumber = await connection.getCurrentBlockNumber();
     statuses.push({
       chain,
       chainId,
@@ -217,5 +210,5 @@ export async function getStatus(
     });
   }
 
-  return req.chain ? statuses[0] : statuses;
+  return statuses[0];
 }

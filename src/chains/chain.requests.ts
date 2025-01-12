@@ -85,23 +85,23 @@ export const CancelResponseSchema = Type.Object({
 
 // Add network request interfaces
 export interface StatusRequest {
-  chain?: string;
-  network?: string;
+  network: string;
+  url?: string;
 }
 
 export interface StatusResponse {
   chain: string;
-  chainId: number;
+  chainId?: number;
   network: string;
   rpcUrl: string;
   nativeCurrency: string;
-  currentBlockNumber?: number;
+  currentBlockNumber: number;
 }
 
 export interface BalanceRequest {
   address: string;
   tokenSymbols: string[];
-  chain: string;
+  chain?: string;
   network: string;
   connector?: string;
 }

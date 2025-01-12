@@ -10,7 +10,6 @@ import {
 import { SolanaController } from './solana.controllers';
 import { Solanaish } from './solana';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
-import { getStatus } from '../chain.controller';
 
 export const solanaRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /solana/config
@@ -31,11 +30,18 @@ export const solanaRoutes: FastifyPluginAsync = async (fastify) => {
       schema: {
         tags: ['solana'],
         description: 'Get Solana balances',
+        body: {
+          type: 'object',
+          required: ['network'],
+          properties: {
+            network: { type: 'string' }
+          }
+        }
       },
     },
     async (request) => {
       const chain = await getInitializedChain<Solanaish>(
-        request.body.chain,
+        'solana',
         request.body.network
       );
       return await SolanaController.balances(chain, request.body);
@@ -51,9 +57,8 @@ export const solanaRoutes: FastifyPluginAsync = async (fastify) => {
         description: 'Poll Solana transaction status',
         body: {
           type: 'object',
-          required: ['chain', 'network', 'txHash'],
+          required: ['network', 'txHash'],
           properties: {
-            chain: { type: 'string' },
             network: { type: 'string' },
             txHash: { type: 'string' }
           }
@@ -62,7 +67,7 @@ export const solanaRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       const chain = await getInitializedChain<Solanaish>(
-        request.body.chain,
+        'solana',
         request.body.network
       );
       return await SolanaController.poll(chain, request.body);
@@ -80,7 +85,7 @@ export const solanaRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       const chain = await getInitializedChain<Solanaish>(
-        request.query.chain,
+        'solana',
         request.query.network
       );
       return await SolanaController.getTokens(chain, request.query);
@@ -95,13 +100,16 @@ export const solanaRoutes: FastifyPluginAsync = async (fastify) => {
         tags: ['solana'],
         description: 'Get Solana chain status',
         querystring: Type.Object({
-          chain: Type.Optional(Type.String()),
           network: Type.String(),
         }),
       },
     },
     async (request) => {
-      return await getStatus(request.query);
+      const chain = await getInitializedChain<Solanaish>(
+        'solana',
+        request.query.network
+      );
+      return await SolanaController.getStatus(chain, request.query);
     }
   );
 };

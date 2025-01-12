@@ -17,6 +17,7 @@ import { tokenValueToString } from '../../services/base';
 import { TokenInfo } from './ethereum-base';
 import { getConnector } from '../../services/connection-manager';
 import { wrapResponse } from '../../services/response-wrapper';
+import { StatusRequest, StatusResponse } from '../chain.requests';
 
 import {
   CustomTransactionReceipt,
@@ -487,6 +488,27 @@ export class EVMController {
 
     return wrapResponse({
       txHash: cancelTx.hash,
+    }, initTime);
+  }
+
+  static async getStatus(ethereumish: Ethereumish, req: StatusRequest): Promise<StatusResponse> {
+    const initTime = Date.now();
+    const chain = ethereumish.chain;
+    const chainId = ethereumish.chainId;
+    const network = ethereumish.network;
+    const rpcUrl = ethereumish.rpcUrl;
+    const nativeCurrency = ethereumish.nativeTokenSymbol;
+    const currentBlockNumber = await ethereumish.getCurrentBlockNumber();
+
+    return wrapResponse({
+      chain,
+      chainId,
+      network,
+      rpcUrl,
+      currentBlockNumber,
+      nativeCurrency,
+      timestamp: initTime,
+      latency: Date.now() - initTime,
     }, initTime);
   }
 }

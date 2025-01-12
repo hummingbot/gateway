@@ -15,7 +15,6 @@ import {
 import { PollRequest } from './ethereum.requests';
 import { EVMController } from './evm.controllers';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
-import { getStatus } from '../chain.controller';
 
 export const ethereumRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /ethereum/config
@@ -36,11 +35,19 @@ export const ethereumRoutes: FastifyPluginAsync = async (fastify) => {
       schema: {
         tags: ['ethereum'],
         description: 'Poll Ethereum transaction status',
+        body: {
+          type: 'object',
+          required: ['network', 'txHash'],
+          properties: {
+            network: { type: 'string' },
+            txHash: { type: 'string' }
+          }
+        }
       },
     },
     async (request) => {
       const chain = await getInitializedChain<Ethereumish>(
-        request.body.chain,
+        'ethereum',
         request.body.network
       );
       return await EVMController.poll(chain, request.body);
@@ -54,11 +61,19 @@ export const ethereumRoutes: FastifyPluginAsync = async (fastify) => {
       schema: {
         tags: ['ethereum'],
         description: 'Get nonce for address',
+        body: {
+          type: 'object',
+          required: ['network', 'address'],
+          properties: {
+            network: { type: 'string' },
+            address: { type: 'string' }
+          }
+        }
       },
     },
     async (request) => {
       const chain = await getInitializedChain<Ethereumish>(
-        request.body.chain,
+        'ethereum',
         request.body.network
       );
       return await EVMController.nonce(chain, request.body);
@@ -94,7 +109,7 @@ export const ethereumRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       const chain = await getInitializedChain<Ethereumish>(
-        request.query.chain,
+        'ethereum',
         request.query.network
       );
       return await EVMController.getTokens(chain, request.query);
@@ -108,11 +123,21 @@ export const ethereumRoutes: FastifyPluginAsync = async (fastify) => {
       schema: {
         tags: ['ethereum'],
         description: 'Get token allowances',
+        body: {
+          type: 'object',
+          required: ['network', 'address', 'spender', 'tokenSymbols'],
+          properties: {
+            network: { type: 'string' },
+            address: { type: 'string' },
+            spender: { type: 'string' },
+            tokenSymbols: { type: 'array', items: { type: 'string' } }
+          }
+        }
       },
     },
     async (request) => {
       const chain = await getInitializedChain<Ethereumish>(
-        request.body.chain,
+        'ethereum',
         request.body.network
       );
       return await EVMController.allowances(chain, request.body);
@@ -126,11 +151,18 @@ export const ethereumRoutes: FastifyPluginAsync = async (fastify) => {
       schema: {
         tags: ['ethereum'],
         description: 'Get Ethereum balances',
-      },
+        body: {
+            type: 'object',
+            required: ['network'],
+            properties: {
+              network: { type: 'string' }
+            }
+          }
+        },
     },
     async (request) => {
       const chain = await getInitializedChain<Ethereumish>(
-        request.body.chain,
+        'ethereum',
         request.body.network
       );
       return await EVMController.balances(chain, request.body);
@@ -144,11 +176,21 @@ export const ethereumRoutes: FastifyPluginAsync = async (fastify) => {
       schema: {
         tags: ['ethereum'],
         description: 'Approve token spending',
+        body: {
+          type: 'object',
+          required: ['network', 'address', 'spender', 'token'],
+          properties: {
+            network: { type: 'string' },
+            address: { type: 'string' },
+            spender: { type: 'string' },
+            token: { type: 'string' }
+          }
+        }
       },
     },
     async (request) => {
       const chain = await getInitializedChain<Ethereumish>(
-        request.body.chain,
+        'ethereum',
         request.body.network
       );
       return await EVMController.approve(chain, request.body);
@@ -162,11 +204,19 @@ export const ethereumRoutes: FastifyPluginAsync = async (fastify) => {
       schema: {
         tags: ['ethereum'],
         description: 'Cancel transaction',
+        body: {
+          type: 'object',
+          required: ['network', 'nonce'],
+          properties: {
+            network: { type: 'string' },
+            nonce: { type: 'number' }
+          }
+        }
       },
     },
     async (request) => {
       const chain = await getInitializedChain<Ethereumish>(
-        request.body.chain,
+        'ethereum',
         request.body.network
       );
       return await EVMController.cancel(chain, request.body);
@@ -181,13 +231,16 @@ export const ethereumRoutes: FastifyPluginAsync = async (fastify) => {
         tags: ['ethereum'],
         description: 'Get Ethereum chain status',
         querystring: Type.Object({
-          chain: Type.Optional(Type.String()),
           network: Type.String(),
         }),
       },
     },
     async (request) => {
-      return await getStatus(request.query);
+      const chain = await getInitializedChain<Ethereumish>(
+        'ethereum',
+        request.query.network
+      );
+      return await EVMController.getStatus(chain, request.query);
     }
   );
 };
