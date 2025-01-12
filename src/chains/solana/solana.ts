@@ -34,6 +34,7 @@ import { Config, getSolanaConfig } from './solana.config';
 import { TransactionResponseStatusCode } from './solana.requests';
 import { SolanaController } from './solana.controllers';
 import { logger } from '../../services/logger';
+import { TokenListResolutionStrategy } from '../../services/token-list-resolution';
 
 
 // Constants used for fee calculations
@@ -156,16 +157,19 @@ export class Solana implements Solanaish {
 
     this.controller = SolanaController;
 
-    // initialize UTL client
+    // Initialize UTL client
     const config = new UtlConfig({
       chainId: this.network === 'devnet' ? 103 : 101,
       timeout: 2000,
-      connection: this.connectionPool.getNextConnection(), // Use connection from pool
+      connection: this.connectionPool.getNextConnection(),
       apiUrl: 'https://token-list-api.solana.cloud',
       cdnUrl: 'https://cdn.jsdelivr.net/gh/solflare-wallet/token-list/solana-tokenlist.json',
     });
     this._utl = new Client(config);
 
+    // Initialize but don't load tokens yet
+    this._ready = false;
+    this.initializing = false;
   }
 
   public static getInstance(network: string): Solana {
@@ -189,10 +193,20 @@ export class Solana implements Solanaish {
 
   async init(): Promise<void> {
     if (!this.ready() && !this.initializing) {
-      this.initializing = true;
-      await this.loadTokens();
-      this._ready = true;
-      this.initializing = false;
+      try {
+        this.initializing = true;
+        
+        // Load tokens
+        await this.loadTokens();
+        
+        // Set ready state
+        this._ready = true;
+      } catch (error) {
+        logger.error(`Failed to initialize Solana instance: ${error.message}`);
+        throw error;
+      } finally {
+        this.initializing = false;
+      }
     }
   }
 
@@ -234,13 +248,12 @@ export class Solana implements Solanaish {
   // returns a Tokens for a given list source and list type
   async getTokenList(): Promise<TokenInfo[]> {
     const tokens: TokenInfo[] =
-      await new CustomStaticTokenListResolutionStrategy(
+      await new TokenListResolutionStrategy(
         this._config.network.tokenListSource,
         this._config.network.tokenListType
       ).resolve();
 
     const tokenListContainer = new TokenListContainer(tokens);
-
     return tokenListContainer.filterByClusterSlug(this.network).getList();
   }
 
@@ -909,21 +922,6 @@ export class Solana implements Solanaish {
     return { balanceChange, fee };
   }
 
-}
-
-class CustomStaticTokenListResolutionStrategy {
-  resolve: () => Promise<any>;
-
-  constructor(url: string, type: string) {
-    this.resolve = async () => {
-      if (type === 'FILE') {
-        return JSON.parse(await fs.readFile(url, 'utf8'))['tokens'];
-      } else {
-        const response = await axios.get(url);
-        return response.data['tokens'];
-      }
-    };
-  }
 }
 
 export type Solanaish = Solana;

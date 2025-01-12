@@ -19,6 +19,7 @@ import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-
 import { logger } from '../../services/logger';
 import { ReferenceCountingCloseable } from '../../services/refcounting-closeable';
 import { getAddress } from 'ethers/lib/utils';
+import { TokenListResolutionStrategy } from '../../services/token-list-resolution';
 
 // information about an Ethereum token
 export interface TokenInfo {
@@ -162,14 +163,11 @@ export class EthereumBase {
     tokenListSource: string,
     tokenListType: TokenListType
   ): Promise<TokenInfo[]> {
-    let tokens: TokenInfo[];
-    if (tokenListType === 'URL') {
-      ({
-        data: { tokens },
-      } = await axios.get(tokenListSource));
-    } else {
-      ({ tokens } = JSON.parse(await fs.readFile(tokenListSource, 'utf8')));
-    }
+    const tokens = await new TokenListResolutionStrategy(
+      tokenListSource,
+      tokenListType
+    ).resolve();
+    
     const mappedTokens: TokenInfo[] = tokens.map((token) => {
       token.address = getAddress(token.address);
       return token;

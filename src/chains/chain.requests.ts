@@ -131,7 +131,7 @@ export interface PollResponse {
 
 export interface TokensRequest {
   chain?: string;
-  network?: string;
+  network: string;
   tokenSymbols?: string[];
 }
 

@@ -52,7 +52,7 @@ export const validatePollRequest: RequestValidator = mkRequestValidator([
 ]);
 
 export const validateTokensRequest: RequestValidator = mkRequestValidator([
-  validateEthereumChain,
+  // validateEthereumChain,
   validateEthereumNetwork,
 ]);
 

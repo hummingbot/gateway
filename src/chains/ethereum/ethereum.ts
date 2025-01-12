@@ -63,6 +63,14 @@ export class Ethereum extends EthereumBase implements Ethereumish {
       this.metricsLogInterval,
     );
     this.controller = EVMController;
+    
+    // Load tokens immediately
+    this.loadTokens(
+      config.network.tokenListSource,
+      config.network.tokenListType
+    ).catch(error => {
+      logger.error(`Failed to load tokens in constructor: ${error.message}`);
+    });
   }
 
   public static getInstance(network: string): Ethereum {
