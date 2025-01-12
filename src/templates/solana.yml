@@ -2,12 +2,12 @@ networks:
   mainnet-beta:
     nodeURLs: 'https://api.mainnet-beta.solana.com,'
     tokenListType: 'FILE'
-    tokenListSource: '/home/gateway/conf/lists/solflare-tokenlist.json'
+    tokenListSource: '/home/gateway/conf/lists/solana.json'
     nativeCurrencySymbol: SOL
   devnet:
     nodeURLs: 'https://api.devnet.solana.com,'
     tokenListType: 'FILE'
-    tokenListSource: '/home/gateway/conf/lists/solflare-tokenlist.json'
+    tokenListSource: '/home/gateway/conf/lists/solana-devnet.json'
     nativeCurrencySymbol: SOL    
 
 # Default compute units for a transaction used to estimate gasPrice
