@@ -110,6 +110,8 @@ export const GAS_LIMIT_EXCEEDED_ERROR_CODE = 1020;
 export const AMOUNT_LESS_THAN_MIN_AMOUNT_ERROR_CODE = 1021;
 export const INSUFFICIENT_BASE_TOKEN_BALANCE_ERROR_CODE = 1022;
 export const INSUFFICIENT_QUOTE_TOKEN_BALANCE_ERROR_CODE = 1023;
+export const SIMULATION_ERROR_CODE = 1024;
+export const SWAP_ROUTE_FETCH_ERROR_CODE = 1025;
 
 export const NETWORK_ERROR_MESSAGE =
   'Network error. Please check your node URL, API key, and Internet connection.';
@@ -129,6 +131,8 @@ export const GAS_LIMIT_EXCEEDED_ERROR_MESSAGE = 'Gas limit exceeded (gasWanted g
 export const AMOUNT_LESS_THAN_MIN_AMOUNT_ERROR_MESSAGE = 'Calculated amount less than min amount provided with slippage. Maybe try increasing slippage. ';
 export const INSUFFICIENT_BASE_TOKEN_BALANCE_ERROR_MESSAGE = 'Insufficient balance of base token for the requested trade amount.';
 export const INSUFFICIENT_QUOTE_TOKEN_BALANCE_ERROR_MESSAGE = 'Insufficient balance of quote token for the requested trade amount.';
+export const SIMULATION_ERROR_MESSAGE = 'Transaction simulation failed: ';
+export const SWAP_ROUTE_FETCH_ERROR_MESSAGE = 'Failed to fetch swap route: ';
 
 export const SWAP_PRICE_EXCEEDS_LIMIT_PRICE_ERROR_MESSAGE = (
   price: any,

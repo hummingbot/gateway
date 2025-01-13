@@ -46,7 +46,7 @@ export async function getTradeInfo(
   amount: number,
   tradeSide: string,
   allowedSlippage?: string,
-): Promise<TradeInfo> {
+): Promise<{ tradeInfo: TradeInfo; quote: QuoteResponse }> {
   const baseToken: TokenInfo = solanaish.getTokenForSymbol(baseAsset);
   const quoteToken: TokenInfo = solanaish.getTokenForSymbol(quoteAsset);
   const requestAmount = Math.floor(amount * DECIMAL_MULTIPLIER ** baseToken.decimals);
@@ -63,7 +63,7 @@ export async function getTradeInfo(
       false, // not restricting to direct routes
       false, // not using legacy transactions
       'ExactOut'
-      );
+    );
   } else {
     quote = await jupiter.getQuote(
       baseToken.symbol,
@@ -89,12 +89,15 @@ export async function getTradeInfo(
   const gasEstimate = await estimateGas(solanaish, jupiter);
 
   return {
-    baseToken,
-    quoteToken,
-    requestAmount,
-    expectedPrice,
-    expectedAmount,
-    gasEstimate,
+    tradeInfo: {
+      baseToken,
+      quoteToken,
+      requestAmount,
+      expectedPrice,
+      expectedAmount,
+      gasEstimate,
+    },
+    quote,
   };
 }
 
@@ -106,8 +109,9 @@ export async function price(
   const initTime = Date.now();
   
   let tradeInfo: TradeInfo;
+  let quote: QuoteResponse;
   try {
-    tradeInfo = await getTradeInfo(
+    const result = await getTradeInfo(
       solanaish,
       jupiter,
       req.base,
@@ -116,6 +120,8 @@ export async function price(
       req.side,
       req.allowedSlippage,
     );
+    tradeInfo = result.tradeInfo;
+    quote = result.quote;
   } catch (e) {
     if (e instanceof Error) {
       throw new HttpException(
@@ -160,8 +166,9 @@ export async function trade(
   const wallet = new Wallet(keypair as any);
 
   let tradeInfo: TradeInfo;
+  let quote: QuoteResponse;
   try {
-    tradeInfo = await getTradeInfo(
+    const result = await getTradeInfo(
       solanaish,
       jupiter,
       req.base,
@@ -170,6 +177,8 @@ export async function trade(
       req.side,
       req.allowedSlippage,
     );
+    tradeInfo = result.tradeInfo;
+    quote = result.quote;
   } catch (e) {
     if (e instanceof Error) {
       throw new HttpException(
@@ -187,7 +196,6 @@ export async function trade(
   }
   
   const { baseToken, quoteToken, requestAmount, expectedPrice, expectedAmount, gasEstimate } = tradeInfo;
-  const slippagePct = req.allowedSlippage ? Number(req.allowedSlippage) : jupiter.getSlippagePct();
 
   // Check limit price conditions
   if (req.side === 'BUY') {
@@ -239,10 +247,7 @@ export async function trade(
     priorityFeePrice 
   } = await jupiter.executeSwap(
     wallet,
-    req.side === 'BUY' ? quoteToken.symbol : baseToken.symbol,
-    req.side === 'BUY' ? baseToken.symbol : quoteToken.symbol,
-    req.side === 'BUY' ? Number(expectedAmount) : Number(req.amount),
-    slippagePct
+    quote,
   );
 
   logger.info(`Swap confirmed: ${signature} - ${req.side} ${req.amount} ${baseToken.symbol} at ${expectedPrice} ${quoteToken.symbol}/${baseToken.symbol}`);
