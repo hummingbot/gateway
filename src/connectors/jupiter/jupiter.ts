@@ -12,8 +12,8 @@ import { Wallet } from '@coral-xyz/anchor';
 import { logger } from '../../services/logger';
 import { BASE_FEE } from '../../chains/solana/solana';
 
-const JUPITER_API_RETRY_COUNT = 10;
-const JUPITER_API_RETRY_INTERVAL_MS = 500;
+const JUPITER_API_RETRY_COUNT = 5;
+const JUPITER_API_RETRY_INTERVAL_MS = 1000;
 export const DECIMAL_MULTIPLIER = 10;
 
 export class Jupiter {
@@ -139,11 +139,13 @@ export class Jupiter {
         return swapObj;
       } catch (error) {
         lastError = error;
-        logger.error(`Jupiter API swapPost attempt ${attempt}/${JUPITER_API_RETRY_COUNT} failed:`, {
-          error: error.message,
-          status: error.response?.status,
-          data: error.response?.data,
-        });
+        logger.error(`Jupiter API swapPost attempt ${attempt}/${JUPITER_API_RETRY_COUNT} failed:`, 
+          error.response?.status ? {
+            error: error.message,
+            status: error.response.status,
+            data: error.response.data
+          } : error
+        );
 
         if (attempt < JUPITER_API_RETRY_COUNT) {
           logger.info(`Waiting ${JUPITER_API_RETRY_INTERVAL_MS}ms before retry...`);
@@ -166,7 +168,7 @@ export class Jupiter {
     
     if (simulatedTransactionResponse.err) {
       logger.error('Simulation Error:', simulatedTransactionResponse);
-      throw new Error('Transaction simulation failed');
+      throw new Error(`Transaction simulation failed: ${JSON.stringify(simulatedTransactionResponse.err)}`);
     }
   }
 
