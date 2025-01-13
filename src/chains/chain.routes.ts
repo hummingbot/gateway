@@ -93,7 +93,7 @@ export const chainRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       const chain = await getInitializedChain<Chain>(
-        request.body.chain,
+        'ethereum',
         request.body.network
       );
       return await balances(chain, request.body);

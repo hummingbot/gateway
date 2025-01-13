@@ -246,7 +246,6 @@ describe('balances', () => {
 
     await expect(
       EVMController.balances(eth, {
-        chain: 'ethereum',
         network: 'goerli',
         address: mockAddress,
         tokenSymbols: ['WETH', 'DAI'],

@@ -101,7 +101,6 @@ export interface StatusResponse {
 export interface BalanceRequest {
   address: string;
   tokenSymbols: string[];
-  chain?: string;
   network: string;
   connector?: string;
 }

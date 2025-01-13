@@ -320,7 +320,7 @@ export class EVMController {
 
     let wallet: Wallet;
     const connector: Uniswapish | undefined = req.connector
-      ? ((await getConnector(req.chain, req.network, req.connector)) as Uniswapish)
+      ? ((await getConnector('ethereum', req.network, req.connector)) as Uniswapish)
       : undefined;
     const balances: Record<string, string> = {};
     let connectorBalances: { [key: string]: string } | undefined;
