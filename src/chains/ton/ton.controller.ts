@@ -11,28 +11,15 @@ import {
   validateAssetsRequest,
   // validateOptInRequest,
   // validateTonBalanceRequest,
-  // validateTonPollRequest,
+  validateTonPollRequest,
 } from './ton.validators';
 import { BalanceRequest } from '../tezos/tezos.request';
-import {
-  HttpException,
-  TOKEN_NOT_SUPPORTED_ERROR_CODE,
-  TOKEN_NOT_SUPPORTED_ERROR_MESSAGE,
-} from '../../services/error-handler';
 
-async function getInitializedTon(network: string): Promise<Ton> {
-  const ton = Ton.getInstance(network);
 
-  if (!ton.ready()) {
-    await ton.init();
-  }
-
-  return ton;
-}
 
 export class TonController {
   static async poll(ton: Ton, req: PollRequest): Promise<PollResponse> {
-    // validateTonPollRequest(req);
+    validateTonPollRequest(req);
 
     const transaction = await ton.getTransaction(req.txHash);
 
@@ -49,12 +36,12 @@ export class TonController {
       txHash: transaction.transaction.hash,
       fee: Number(transaction.transaction.totalFees) / 10 ** 9,
     };
-
+    console.log(event)
     return event;
   }
 
   static async balances(chain: Ton, request: BalanceRequest) {
-    // validateTonBalanceRequest(request);
+    // validateTonBalanceRequest(request); 
     const account = await chain.getAccountFromAddress(request.address);
 
     const tokensBalances = await chain.getAssetBalance(
@@ -84,7 +71,11 @@ export class TonController {
         assetSymbols = request.assetSymbols;
       }
       for (const a of assetSymbols as []) {
-        assets.push(ton.getAssetForSymbol(a) as TonAsset);
+        const asset = ton.getAssetForSymbol(a);
+        if (!asset) {
+          throw new Error(`Unsupported symbol: ${a}`);
+        }
+        assets.push(asset as TonAsset);
       }
     }
 
@@ -93,28 +84,7 @@ export class TonController {
     };
   }
 
-  static async approve(request: OptInRequest) {
-    //validateOptInRequest(request);
-
-    const ton = await getInitializedTon(request.network);
-    const asset = ton.getAssetForSymbol(request.assetSymbol);
-
-    if (asset === undefined) {
-      throw new HttpException(
-        500,
-        TOKEN_NOT_SUPPORTED_ERROR_MESSAGE + request.assetSymbol,
-        TOKEN_NOT_SUPPORTED_ERROR_CODE,
-      );
-    }
-
-    const transactionResponse = await ton.optIn(
-      request.address,
-      request.assetSymbol,
-    );
-
-    return {
-      assetId: (asset as TonAsset).assetId,
-      transactionResponse: transactionResponse,
-    };
+  static async approve(_request: OptInRequest) {
+    throw new Error("Method not implemented.");
   }
 }

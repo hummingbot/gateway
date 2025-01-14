@@ -58,7 +58,7 @@ Content-Type: application/json
   "chain":"ton",
   "connector":"stonfi",
   "network":"mainnet",
-  "amount":"0.0104",
+  "amount":"0.0105",
   "address":"UQBSevYG7uExE6wJnWC2adG2SqcjUUqNlmfeTRMFhHT3kWfd",
   "side": "BUY",
   "limitPrice": "",
@@ -75,7 +75,7 @@ POST https://{{host}}:{{port}}/chain/poll
 Content-Type: application/json
 
 {
-  "txHash": "e3e600ed8f8af27de7294e1fbd471a09f569183875c9ffa35d6bd4556db824df",
+  "txHash": "hb-ton-stonfi-eyJ3YWxsZXRBZGRyZXNzIjoiRVFCU2V2WUc3dUV4RTZ3Sm5XQzJhZEcyU3FjalVVcU5sbWZlVFJNRmhIVDNrVG9ZIiwicXVlcnlJZCI6MTAwMDAwMDAwMzc0MzUxfQ",
   "chain": "ton",
   "network": "mainnet"
 }

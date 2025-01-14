@@ -249,15 +249,12 @@ export async function estimateGas(
   jupiter: Jupiter,
 ): Promise<EstimateGasResponse> {
   // TODO: get gas price from the network
-  const gasPrice: number = 0.00001
-  const gasLimit: number = jupiter.gasLimit;
-  const gasCost: string = (gasPrice * gasLimit).toString()
   return {
     network: solanaish.network,
     timestamp: Date.now(),
-    gasPrice,
+    gasPrice: 0,
     gasPriceToken: solanaish.nativeTokenSymbol,
-    gasLimit: gasLimit,
-    gasCost: gasCost,
+    gasLimit: 0,
+    gasCost: jupiter.gasCost.toString(),
   };
 }

@@ -209,23 +209,8 @@ export class Ton {
       obj.queryId = String(obj.queryId);
       const stonfi = Stonfi.getInstance(this._network);
 
-      const today = new Date();
-      today.setHours(23, 0, 0, 0);
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      yesterday.setHours(8, 0, 0, 0);
-
-      // TODO: WHAT`S routerAddress?
-      const operations = await this.stonfiClient.getWalletOperations({
-        since: yesterday,
-        until: today,
-        walletAddress: obj.walletAddress,
-        opType: 'Swap',
-      });
-
       const { txHash } = await stonfi.waitForConfirmation(
         obj.walletAddress,
-        operations[0].operation.routerAddress,
         obj.queryId,
       );
 

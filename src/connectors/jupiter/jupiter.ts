@@ -18,12 +18,12 @@ export class Jupiter {
   private _ready: boolean = false;
   private _config: JupiterConfig.NetworkConfig;
   protected jupiterQuoteApi!: ReturnType<typeof createJupiterApiClient>;
-  public gasLimit: number = 0;
+  public gasCost: number = 0;
 
   private constructor(network: string) {
     this._config = JupiterConfig.config;
     this.chain = Solana.getInstance(network);
-    this.gasLimit = JupiterConfig.config.gasLimitEstimate;
+    this.gasCost = JupiterConfig.config.gasCost;
     this.loadJupiter();
   }
 
@@ -123,7 +123,7 @@ export class Jupiter {
         userPublicKey: wallet.publicKey.toBase58(),
         dynamicComputeUnitLimit: true,
         prioritizationFeeLamports: {
-          autoMultiplier: Math.max(priorityFeeMultiplier, 3),
+          autoMultiplier: Math.min(priorityFeeMultiplier, 3),
         },
       },
     });
