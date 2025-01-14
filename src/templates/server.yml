@@ -4,8 +4,13 @@ certificatePath: ./certs/
 # Path to folder where logs will be stored.
 logPath: './logs'
 
-# Port to expose the gateway server on
+# Port on which to run the Gateway API server
 port: 15888
+
+# Port on which to run the Swagger documentation UI. 
+# Set to 0 to serve docs at http://0.0.0.0:{port}/docs (same port as Gateway API)
+# Set to a specific port (e.g. 8080) to serve docs separately at http://0.0.0.0:{docPort}
+docsPort: 0
 
 # IPs allowed to access gateway. localhost is allowed by default.
 ipWhitelist: []
@@ -17,8 +22,8 @@ GMTOffset: -8
 # will only be stored in logPath and not printed to stdout.
 logToStdOut: true
 
-# Runs Gateway in unsafe dev mode with HTTP if true
-unsafeDevModeWithHTTP: false
+# Runs Gateway in development mode with HTTP if true
+devHTTPMode: false
 
 # Nonce database
 nonceDbPath: 'nonce.level'

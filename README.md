@@ -71,7 +71,7 @@ There are a number of ways to contribute to gateway.
 
 ### Configuration
 
-- If you want to turn off `https`, set `unsafeDevModeWithHTTP` to `true` in [conf/server.yml](./conf/server.yml). 
+- If you want to turn off `https`, set `devHTTPMode` to `true` in [conf/server.yml](./conf/server.yml). 
 
 - If you want Gateway to log to standard out, set `logToStdOut` to `true` in [conf/server.yml](./conf/server.yml).
 

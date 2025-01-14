@@ -71,35 +71,52 @@ const configureGatewayServer = () => {
         },
       },
     },
-    https: ConfigManagerV2.getInstance().get('server.unsafeDevModeWithHTTP') 
+    https: ConfigManagerV2.getInstance().get('server.devHTTPMode') 
       ? undefined 
       : getHttpsOptions()
   });
   
-  // Create a separate server instance for docs
-  const docsServer = Fastify();
+  const docsPort = ConfigManagerV2.getInstance().get('server.docsPort');
   
-  // Register TypeBox provider for both servers
+  // Only create separate docs server if docsPort is specified and non-zero
+  const docsServer = docsPort ? Fastify() : null;
+  
+  // Register TypeBox provider
   server.withTypeProvider<TypeBoxTypeProvider>();
-  docsServer.withTypeProvider<TypeBoxTypeProvider>();
+  if (docsServer) {
+    docsServer.withTypeProvider<TypeBoxTypeProvider>();
+  }
 
-  // Register Swagger with both servers
+  // Register Swagger
   server.register(fastifySwagger, swaggerOptions);
-  docsServer.register(fastifySwagger, swaggerOptions);
-  docsServer.register(fastifySwaggerUi, {
-    routePrefix: '/',
-    uiConfig: {
-      docExpansion: 'list',
-      deepLinking: false,
-      tryItOutEnabled: true,
-    },
-  });
+  
+  // Register Swagger UI based on configuration
+  if (!docsPort) {
+    // If no docs port, serve docs on main server at /docs
+    server.register(fastifySwaggerUi, {
+      routePrefix: '/docs',
+      uiConfig: {
+        docExpansion: 'list',
+        deepLinking: false,
+        tryItOutEnabled: true,
+      },
+    });
+  } else {
+    // Otherwise set up separate docs server
+    docsServer?.register(fastifySwagger, swaggerOptions);
+    docsServer?.register(fastifySwaggerUi, {
+      routePrefix: '/',
+      uiConfig: {
+        docExpansion: 'list',
+        deepLinking: false,
+        tryItOutEnabled: true,
+      },
+    });
+  }
 
   // Register routes on both servers
   const registerRoutes = async (app: FastifyInstance) => {
     app.register(configRoutes, { prefix: '/config' });
-    // app.register(chainRoutes, { prefix: '/chain' });
-    // app.register(ammRoutes, { prefix: '/amm' });
     app.register(connectorsRoutes, { prefix: '/connectors' });
     app.register(walletRoutes, { prefix: '/wallet' });
     app.register(jupiterRoutes, { prefix: '/jupiter' });
@@ -110,17 +127,24 @@ const configureGatewayServer = () => {
 
   // Register routes on main server
   registerRoutes(server);
-  // Register routes on docs server (for OpenAPI generation)
-  registerRoutes(docsServer);
+  // Register routes on docs server (for OpenAPI generation) only if it exists
+  if (docsServer) {
+    registerRoutes(docsServer);
+  }
 
-  // Start docs server on port 8080
-  docsServer.listen({ port: 8080, host: '0.0.0.0' }, (err) => {
-    if (err) {
-      logger.error('Failed to start docs server:', err);
-    } else {
-      logger.info('Documentation available at http://localhost:8080');
-    }
-  });
+  // Start docs server only if docsPort is specified
+  if (docsServer && docsPort) {
+    docsServer.listen({ port: docsPort, host: '0.0.0.0' }, (err) => {
+      if (err) {
+        logger.error('Failed to start docs server:', err);
+      } else {
+        logger.info(`Documentation available at http://localhost:${docsPort}`);
+      }
+    });
+  } else {
+    const protocol = ConfigManagerV2.getInstance().get('server.devHTTPMode') ? 'http' : 'https';
+    logger.info(`Documentation available at ${protocol}://localhost:${ConfigManagerV2.getInstance().get('server.port')}/docs`);
+  }
 
   // Register request body parsers
   server.addContentTypeParser('application/json', { parseAs: 'string' }, server.getDefaultJsonParser('ignore', 'ignore'));
@@ -156,12 +180,12 @@ export const startGateway = async () => {
   logger.info(`⚡️ Starting Gateway API on port ${port}...`);
 
   try {
-    if (ConfigManagerV2.getInstance().get('server.unsafeDevModeWithHTTP')) {
-      logger.info('Running in UNSAFE HTTP! This could expose private keys.');
+    if (ConfigManagerV2.getInstance().get('server.devHTTPMode')) {
+      logger.info('Running in development mode with HTTP - note that this may expose private keys!');
       await gatewayApp.listen({ port, host: '0.0.0.0' });
     } else {
       await gatewayApp.listen({ port, host: '0.0.0.0' });
-      logger.info('The gateway server is secured behind HTTPS.');
+      logger.info('Running in secured HTTPS mode.');
     }
   } catch (err) {
     logger.error(
