@@ -117,8 +117,8 @@ export class Stonfi {
 
     logger.info(
       `Best quote for ${baseToken.symbol}-${quoteToken.symbol}: ` +
-        `${price}` +
-        `${baseToken.symbol}.`,
+      `${price}` +
+      `${baseToken.symbol}.`,
     );
 
     const expectedPrice = isBuy === true ? 1 / price : price;
@@ -149,7 +149,7 @@ export class Stonfi {
 
     if (baseName === 'TON') {
       txParams = await dex.getSwapTonToJettonTxParams({
-        userWalletAddress: this.chain.wallet.address.toString(),
+        userWalletAddress: this.chain.wallet.address.toString() || account,
         proxyTon: new pTON.v1(),
         offerAmount: quote.offerUnits,
         askJettonAddress: quote.askAddress,
@@ -158,7 +158,7 @@ export class Stonfi {
       });
     } else if (quoteName === 'TON') {
       txParams = await dex.getSwapJettonToTonTxParams({
-        userWalletAddress: this.chain.wallet.address.toString(),
+        userWalletAddress: this.chain.wallet.address.toString() || account,
         proxyTon: new pTON.v1(),
         offerAmount: quote.offerUnits,
         offerJettonAddress: quote.offerAddress,
@@ -167,7 +167,7 @@ export class Stonfi {
       });
     } else {
       txParams = await dex.getSwapJettonToJettonTxParams({
-        userWalletAddress: this.chain.wallet.address.toString(),
+        userWalletAddress: this.chain.wallet.address.toString() || account,
         offerJettonAddress: quote.offerAddress,
         askJettonAddress: quote.askAddress,
         offerAmount: quote.offerUnits,
@@ -185,7 +185,7 @@ export class Stonfi {
     await contract.sendTransfer(options);
 
     const hashObj = {
-      walletAddress: this.chain.wallet.address.toString(),
+      walletAddress: this.chain.wallet.address.toString() || account,
       queryId: queryId,
     };
 
@@ -241,15 +241,15 @@ export class Stonfi {
     const result = await runWithRetryAndTimeout<
       | { '@type': 'NotFound' }
       | {
-          '@type': 'Found';
-          address: string;
-          balanceDeltas: string;
-          coins: string;
-          exitCode: string;
-          logicalTime: string;
-          queryId: string;
-          txHash: string;
-        }
+        '@type': 'Found';
+        address: string;
+        balanceDeltas: string;
+        coins: string;
+        exitCode: string;
+        logicalTime: string;
+        queryId: string;
+        txHash: string;
+      }
     >(
       this.stonfi,
       this.stonfi.getSwapStatus as any,
