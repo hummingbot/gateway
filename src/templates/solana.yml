@@ -1,14 +1,14 @@
 networks:
   mainnet-beta:
-    nodeURLs: 'https://api.mainnet-beta.solana.com,'
-    tokenListType: 'FILE'
-    tokenListSource: '/home/gateway/conf/lists/solana.json'
+    nodeURL: https://api.mainnet-beta.solana.com
+    tokenListType: FILE
+    tokenListSource: /home/gateway/conf/lists/solana.json
     nativeCurrencySymbol: SOL
   devnet:
-    nodeURLs: 'https://api.devnet.solana.com,'
-    tokenListType: 'FILE'
-    tokenListSource: '/home/gateway/conf/lists/solana-devnet.json'
-    nativeCurrencySymbol: SOL    
+    nodeURL: https://api.devnet.solana.com
+    tokenListType: FILE
+    tokenListSource: /home/gateway/conf/lists/solana-devnet.json
+    nativeCurrencySymbol: SOL
 
 # Default compute units for a transaction used to estimate gasPrice
 defaultComputeUnits: 200000
@@ -23,7 +23,7 @@ priorityFeeMultiplier: 2
 maxPriorityFee: 2000000
 
 # Minimum priority fee in lamports
-minPriorityFee: 10000
+minPriorityFee: 100000
 
 # Retry interval in milliseconds
 retryIntervalMs: 500

@@ -8,13 +8,13 @@
           "^..+$": {
             "type": "object",
             "properties": {
-              "nodeURLs": { "type": "string" },
+              "nodeURL": { "type": "string" },
               "tokenListType": { "type": "string" },
               "tokenListSource": { "type": "string" },
               "nativeCurrencySymbol": { "type": "string" }
             },
             "required": [
-              "nodeURLs",
+              "nodeURL",
               "tokenListType",
               "tokenListSource",
               "nativeCurrencySymbol"

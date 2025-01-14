@@ -6,9 +6,6 @@ import fse from 'fs-extra';
 import { TokenInfo, TokenListContainer } from '@solana/spl-token-registry';
 import {
   AccountInfo,
-  clusterApiUrl,
-  Cluster,
-  Commitment,
   Connection,
   Keypair,
   ParsedAccountData,
@@ -99,7 +96,6 @@ export class Solana implements Solanaish {
 
   private static _instances: { [name: string]: Solana };
 
-  private readonly _connection: Connection;
   public readonly lamportDecimals: number;
 
   // there are async values set in the constructor
@@ -126,26 +122,9 @@ export class Solana implements Solanaish {
     this.retryCount = this._config.retryCount;
 
     // Parse comma-separated RPC URLs
-    const rpcUrlsString = this._config.network.nodeURLs;
-    const rpcUrls: string[] = [];
-
-    if (rpcUrlsString) {
-      // Split and trim URLs, filter out empty strings
-      const urls = rpcUrlsString
-        .split(',')
-        .map((url) => url.trim())
-        .filter((url) => url !== '');
-      rpcUrls.push(...urls);
-    }
-    this.rpcUrl = rpcUrls[0];
-
-    // Add default cluster URL if no URLs provided
-    if (rpcUrls.length === 0) {
-      rpcUrls.push(clusterApiUrl(this.network as Cluster));
-    }
+    this.rpcUrl = this._config.network.nodeURL;
     
-    this._connection = new Connection(rpcUrls[0], 'processed' as Commitment);
-    this.connectionPool = new ConnectionPool(rpcUrls);
+    this.connectionPool = new ConnectionPool([this.rpcUrl]);
     this.lamportDecimals = countDecimals(LAMPORT_TO_SOL);
 
     this.controller = SolanaController;
@@ -178,10 +157,6 @@ export class Solana implements Solanaish {
 
   public static getConnectedInstances(): { [name: string]: Solana } {
     return this._instances;
-  }
-
-  public get connection() {
-    return this._connection;
   }
 
   async init(): Promise<void> {
@@ -380,7 +355,7 @@ export class Solana implements Solanaish {
 
     balances['UNWRAPPED_SOL'] = await this.getSolBalance(wallet);
 
-    const allSplTokens = await this.connection.getParsedTokenAccountsByOwner(
+    const allSplTokens = await this.connectionPool.getNextConnection().getParsedTokenAccountsByOwner(
       wallet.publicKey, 
       { programId: TOKEN_PROGRAM_ADDRESS }
     );
@@ -436,7 +411,7 @@ export class Solana implements Solanaish {
 
   // returns the SOL balance, convert BigNumber to string
   async getSolBalance(wallet: Keypair): Promise<TokenValue> {
-    const lamports = await this.connection.getBalance(wallet.publicKey);
+    const lamports = await this.connectionPool.getNextConnection().getBalance(wallet.publicKey);
     return { value: BigNumber.from(lamports), decimals: this.lamportDecimals };
   }
 
@@ -452,7 +427,7 @@ export class Solana implements Solanaish {
     walletAddress: PublicKey,
     mintAddress: PublicKey
   ): Promise<TokenValue> {
-    const response = await this.connection.getParsedTokenAccountsByOwner(
+    const response = await this.connectionPool.getNextConnection().getParsedTokenAccountsByOwner(
       walletAddress,
       { mint: mintAddress }
     );
@@ -469,7 +444,7 @@ export class Solana implements Solanaish {
     walletAddress: PublicKey,
     mintAddress: PublicKey
   ): Promise<boolean> {
-    const response = await this.connection.getParsedTokenAccountsByOwner(
+    const response = await this.connectionPool.getNextConnection().getParsedTokenAccountsByOwner(
       walletAddress,
       { programId: TOKEN_PROGRAM_ADDRESS }
     );
@@ -488,7 +463,7 @@ export class Solana implements Solanaish {
   async getTransaction(
     payerSignature: string
   ): Promise<VersionedTransactionResponse | null> {
-    const fetchedTx = this._connection.getTransaction(
+    const fetchedTx = this.connectionPool.getNextConnection().getTransaction(
       payerSignature,
       {
         commitment: 'confirmed',
@@ -536,7 +511,7 @@ export class Solana implements Solanaish {
 
   // returns the current block number
   async getCurrentBlockNumber(): Promise<number> {
-    return await this.connection.getSlot('processed');
+    return await this.connectionPool.getNextConnection().getSlot('processed');
   }
 
   async close() {
