@@ -393,14 +393,13 @@ export async function estimateGas(
 ): Promise<EstimateGasResponse> {
   const initTime = Date.now();
   const gasPrice: number = await ethereumish.estimateGasPrice();
-  const gasLimitTransaction: number = ethereumish.gasLimitTransaction;
-  const gasLimitEstimate: number = uniswapish.gasLimitEstimate;
+  const uniswapGasLimit: number = uniswapish.gasLimitEstimate;
   
   return wrapResponse({
     network: ethereumish.chain,
     gasPrice,
     gasPriceToken: ethereumish.nativeTokenSymbol,
-    gasLimit: gasLimitTransaction,
-    gasCost: gasCostInEthString(gasPrice, gasLimitEstimate),
+    gasLimit: uniswapGasLimit,
+    gasCost: gasCostInEthString(gasPrice, uniswapGasLimit),
   }, initTime);
 }

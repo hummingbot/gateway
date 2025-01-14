@@ -50,3 +50,23 @@ contractAddresses:
       uniswapV3NftManagerAddress: '0xC36442b4a4522E871399CD717aBDD847Ab11FE88'
       uniswapV3QuoterV2ContractAddress: '0x61fFE014bA17989E743c5F6cB21bF9697530B21e'
       uniswapV3FactoryAddress: '0x1F98431c8aD98523631AE4a59f267346ea31F984'
+    avalanche:
+      uniswapV3FactoryAddress: '0x740b1c1de25031C31FF4fC9A62f554A55cdC1baD'
+      uniswapV3SmartOrderRouterAddress: '0xbb00FF08d01D300023C629E8fFfFcb65A5a578cE'
+      uniswapV3NftManagerAddress: '0x655C406EBFa14EE2006250925e54ec43AD184f8B'
+      uniswapV3QuoterV2ContractAddress: '0xbe0F5544EC67e9B3b2D979aaA43f18Fd87E6257F'
+    binance-smart-chain:
+      uniswapV3SmartOrderRouterAddress: '0xB971eF87ede563556b2ED4b1C0b0019111Dd85d2'
+      uniswapV3NftManagerAddress: '0x7b8A01B39D58278b5DE7e48c8449c9f4F5170613'
+      uniswapV3QuoterV2ContractAddress: '0x78D78E420Da98ad378D7799bE8f4AF69033EB077'
+      uniswapV3FactoryAddress: '0xdB1d10011AD0Ff90774D0C6Bb92e5C5c8b4461F7'
+    celo:
+      uniswapV3FactoryAddress: '0xAfE208a311B21f13EF87E33A90049fC17A7acDEc'
+      uniswapV3SmartOrderRouterAddress: '0x5615CDAb10dc425a742d643d949a7F474C01abc4'
+      uniswapV3NftManagerAddress: '0x3d79EdAaBC0EaB6F08ED885C05Fc0B014290D95A'
+      uniswapV3QuoterV2ContractAddress: '0x82825d0554fA07f7FC52Ab63c961F330fdEFa8E8'
+    polygon:
+      uniswapV3SmartOrderRouterAddress: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45'
+      uniswapV3NftManagerAddress: '0xC36442b4a4522E871399CD717aBDD847Ab11FE88'
+      uniswapV3QuoterV2ContractAddress: '0x61fFE014bA17989E743c5F6cB21bF9697530B21e'
+      uniswapV3FactoryAddress: '0x1F98431c8aD98523631AE4a59f267346ea31F984'

@@ -16,14 +16,12 @@ import { ConfigManagerV2 } from './services/config-manager-v2';
 
 // Routes
 import { configRoutes } from './services/config/config.routes';
-// import { chainRoutes } from './chains/chain.routes';
 import { walletRoutes } from './wallet/wallet.routes';
-// import { ammRoutes } from './amm/amm.routes';
 import { connectorsRoutes } from './connectors/connector.routes';
-import { jupiterRoutes } from './connectors/jupiter/jupiter.routes';
-import { uniswapRoutes } from './connectors/uniswap/uniswap.routes';
 import { solanaRoutes } from './chains/solana/solana.routes';
 import { ethereumRoutes } from './chains/ethereum/ethereum.routes';
+import { jupiterRoutes } from './connectors/jupiter/jupiter.routes';
+import { uniswapRoutes } from './connectors/uniswap/uniswap.routes';
 
 // Define swagger options once
 const swaggerOptions = {
@@ -42,12 +40,10 @@ const swaggerOptions = {
       { name: 'connectors', description: 'Connector endpoints' },
       { name: 'config', description: 'Configuration endpoints' },
       { name: 'wallet', description: 'Wallet endpoints' },
-      { name: 'chain', description: 'Chain endpoints' },
-      { name: 'amm', description: 'AMM endpoints' },
-      { name: 'jupiter', description: 'Jupiter endpoints' },
-      { name: 'uniswap', description: 'Uniswap endpoints' },
       { name: 'solana', description: 'Solana chain endpoints' },
       { name: 'ethereum', description: 'Ethereum chain endpoints' },
+      { name: 'jupiter', description: 'Jupiter endpoints' },
+      { name: 'uniswap', description: 'Uniswap endpoints' },
     ],
   },
   transform: ({ schema, url }) => {
