@@ -187,14 +187,20 @@ export class Stonfi {
     const hashObj = {
       walletAddress: this.chain.wallet.address.toString(),
       queryId: queryId,
-    }
+    };
 
-    const hashBase64 = Buffer.from(JSON.stringify(hashObj)).toString("base64url");
+    const hashBase64 = Buffer.from(JSON.stringify(hashObj)).toString(
+      'base64url',
+    );
 
     return `hb-ton-stonfi-${hashBase64}`;
   }
 
-  public async waitForConfirmation(walletAddress: string, routerAddress: string, queryId: string) {
+  public async waitForConfirmation(
+    walletAddress: string,
+    routerAddress: string,
+    queryId: string,
+  ) {
     return await runWithRetryAndTimeout<{
       '@type': 'Found';
       address: string;
@@ -215,7 +221,11 @@ export class Stonfi {
     );
   }
 
-  public async waitForTransactionHash(ownerAddress: string, routerAddress: string, queryId: string) {
+  public async waitForTransactionHash(
+    ownerAddress: string,
+    routerAddress: string,
+    queryId: string,
+  ) {
     const result = await runWithRetryAndTimeout<
       | { '@type': 'NotFound' }
       | {

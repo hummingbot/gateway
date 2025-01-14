@@ -31,26 +31,26 @@ async function getInitializedTon(network: string): Promise<Ton> {
 }
 
 export class TonController {
-  static async poll(
-    ton: Ton,
-    req: PollRequest
-  ): Promise<PollResponse> {
+  static async poll(ton: Ton, req: PollRequest): Promise<PollResponse> {
     // validateTonPollRequest(req);
 
     const transaction = await ton.getTransaction(req.txHash);
 
-    if (!transaction)
-      throw new Error("No transaction")
+    if (!transaction) throw new Error('No transaction');
 
     const event = {
       currentBlock: Number((await ton.getCurrentBlockNumber()).seqno),
-      txBlock: Number(transaction.transaction.block.replace('(', '').replace(')', '').split(',')[2]),
+      txBlock: Number(
+        transaction.transaction.block
+          .replace('(', '')
+          .replace(')', '')
+          .split(',')[2],
+      ),
       txHash: transaction.transaction.hash,
       fee: Number(transaction.transaction.totalFees) / 10 ** 9,
-    }
+    };
 
-    return event
-
+    return event;
   }
 
   static async balances(chain: Ton, request: BalanceRequest) {
@@ -60,7 +60,7 @@ export class TonController {
     const tokensBalances = await chain.getAssetBalance(
       account.publicKey,
       request.tokenSymbols,
-    )
+    );
     return {
       balances: tokensBalances,
     };

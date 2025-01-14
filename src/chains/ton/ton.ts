@@ -203,12 +203,11 @@ export class Ton {
 
   async getTransaction(eventHash: string): Promise<Trace> {
     if (eventHash.includes('hb-ton-stonfi-')) {
-      const queryId = eventHash.replace('hb-ton-stonfi-', '')
+      const queryId = eventHash.replace('hb-ton-stonfi-', '');
       const decodedString = Buffer.from(queryId, 'base64url').toString('utf-8');
       const obj = JSON.parse(decodedString);
-      obj.queryId = String(obj.queryId)
-      const stonfi = Stonfi.getInstance(this._network)
-
+      obj.queryId = String(obj.queryId);
+      const stonfi = Stonfi.getInstance(this._network);
 
       const today = new Date();
       today.setHours(23, 0, 0, 0);
@@ -224,13 +223,16 @@ export class Ton {
         opType: 'Swap',
       });
 
-      const { txHash } = await stonfi.waitForConfirmation(obj.walletAddress, operations[0].operation.routerAddress, obj.queryId)
+      const { txHash } = await stonfi.waitForConfirmation(
+        obj.walletAddress,
+        operations[0].operation.routerAddress,
+        obj.queryId,
+      );
 
-      eventHash = txHash
+      eventHash = txHash;
     }
 
-
-    return await this.tonApiClient.traces.getTrace(eventHash)
+    return await this.tonApiClient.traces.getTrace(eventHash);
   }
 
   public async getAccountFromPrivateKey(

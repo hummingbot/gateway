@@ -1,5 +1,4 @@
 export interface PollRequest {
-
   network: string;
   txHash: string;
 }
@@ -36,7 +35,7 @@ export type StonfiWalletAssetResponse = {
   dexPriceUsd?: string | undefined;
   displayName?: string | undefined;
   imageUrl?: string | undefined;
-  kind: "Ton" | "Wton" | "Jetton";
+  kind: 'Ton' | 'Wton' | 'Jetton';
   priority: number;
   symbol: string;
   thirdPartyPriceUsd?: string | undefined;
@@ -44,12 +43,11 @@ export type StonfiWalletAssetResponse = {
   // tags: import('./types/asset').AssetTag[];
   customPayloadApiUri?: string | undefined;
   extensions?: string[] | undefined;
-}
-
+};
 
 export type AssetBalanceResponse = {
   [symbol: string]: string;
-}
+};
 
 export interface OptInRequest {
   network: string;
