@@ -392,7 +392,7 @@ export async function estimateGas(
   uniswapish: Uniswapish
 ): Promise<EstimateGasResponse> {
   const initTime = Date.now();
-  const gasPrice: number = ethereumish.gasPrice;
+  const gasPrice: number = await ethereumish.estimateGasPrice();
   const gasLimitTransaction: number = ethereumish.gasLimitTransaction;
   const gasLimitEstimate: number = uniswapish.gasLimitEstimate;
   

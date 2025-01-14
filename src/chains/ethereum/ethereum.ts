@@ -31,6 +31,12 @@ export class Ethereum extends EthereumBase implements Ethereumish {
   private _metricTimer;
   public controller;
 
+  private static lastGasPriceEstimate: {
+    timestamp: number;
+    price: number;
+  } | null = null;
+  private static GAS_PRICE_CACHE_MS = 10000; // 10 second cache
+
   private constructor(network: string) {
     const config = getEthereumConfig('ethereum', network);
     super(
@@ -129,17 +135,58 @@ export class Ethereum extends EthereumBase implements Ethereumish {
   }
 
   /**
+   * Estimates the current gas price with caching
+   * Returns the gas price in GWEI
+   */
+  public async estimateGasPrice(): Promise<number> {
+    // Check cache first
+    if (
+      Ethereum.lastGasPriceEstimate && 
+      Date.now() - Ethereum.lastGasPriceEstimate.timestamp < Ethereum.GAS_PRICE_CACHE_MS
+    ) {
+      return Ethereum.lastGasPriceEstimate.price;
+    }
+
+    try {
+      const baseFee: BigNumber = await this.provider.getGasPrice();
+      let priorityFee: BigNumber = BigNumber.from('0');
+
+      // Only get priority fee for mainnet
+      if (this._chain === 'mainnet') {
+        priorityFee = BigNumber.from(
+          await this.provider.send('eth_maxPriorityFeePerGas', [])
+        );
+      }
+
+      const totalFeeGwei = baseFee.add(priorityFee).toNumber() * 1e-9;
+      
+      // Update both cache and instance gas price
+      Ethereum.lastGasPriceEstimate = {
+        timestamp: Date.now(),
+        price: totalFeeGwei
+      };
+      this._gasPrice = totalFeeGwei;
+
+      logger.info(`[GAS PRICE] Estimated: ${totalFeeGwei} GWEI`);
+
+      return totalFeeGwei;
+
+    } catch (error: any) {
+      logger.error(`Failed to estimate gas price: ${error.message}`);
+      return this._gasPrice; // Return existing gas price as fallback
+    }
+  }
+
+  /**
    * Automatically update the prevailing gas price on the network.
-   *
-   * Otherwise, it'll obtain the prevailing gas price from the connected
-   * ETH node.
    */
   async updateGasPrice(): Promise<void> {
     if (this._gasPriceRefreshInterval === null) {
       return;
     }
 
-    const gasPrice = await this.getGasPriceFromEthereumNode();
+    // Use estimateGasPrice instead of getGasPriceFromEthereumNode
+    const gasPrice = await this.estimateGasPrice();
     if (gasPrice !== null) {
       this._gasPrice = gasPrice;
     } else {
@@ -150,21 +197,6 @@ export class Ethereum extends EthereumBase implements Ethereumish {
       this.updateGasPrice.bind(this),
       this._gasPriceRefreshInterval * 1000,
     );
-  }
-
-  /**
-   * Get the base gas fee from and the current max priority fee from the Ethereum
-   * node, and add them together.
-   */
-  async getGasPriceFromEthereumNode(): Promise<number> {
-    const baseFee: BigNumber = await this.provider.getGasPrice();
-    let priorityFee: BigNumber = BigNumber.from('0');
-    if (this._chain === 'mainnet') {
-      priorityFee = BigNumber.from(
-        await this.provider.send('eth_maxPriorityFeePerGas', []),
-      );
-    }
-    return baseFee.add(priorityFee).toNumber() * 1e-9;
   }
 
   getContract(

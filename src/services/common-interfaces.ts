@@ -164,6 +164,8 @@ export interface Chain extends BasicChainMethods, EthereumBase {
     signerOrProvider?: Wallet | Provider
   ): Contract;
   network?: string;
+  gasPrice: number;
+  estimateGasPrice(): Promise<number>;
 }
 
 export type Ethereumish = Chain;

@@ -16,12 +16,6 @@ import { Solanaish } from './solana';
 import { logger } from '../../services/logger';
 import { wrapResponse } from '../../services/response-wrapper';
 
-interface FeeInfo {
-  baseFee: number;
-  priorityFee: number;
-  totalFee: number;
-}
-
 export class SolanaController {
   
   static async balances(solanaish: Solanaish, req: BalanceRequest) {
