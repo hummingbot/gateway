@@ -4,7 +4,7 @@ import { JupiterConfig } from './jupiter/jupiter.config';
 import { 
   ConnectorsResponse,
   ConnectorsResponseSchema 
-} from './connectors.request';
+} from './connector.requests';
 
 export const connectorsResponseSchema = {
   type: 'object',

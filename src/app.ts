@@ -16,10 +16,10 @@ import { ConfigManagerV2 } from './services/config-manager-v2';
 
 // Routes
 import { configRoutes } from './services/config/config.routes';
-import { chainRoutes } from './chains/chain.routes';
+// import { chainRoutes } from './chains/chain.routes';
 import { walletRoutes } from './wallet/wallet.routes';
-import { ammRoutes } from './amm/amm.routes';
-import { connectorsRoutes } from './connectors/connectors.routes';
+// import { ammRoutes } from './amm/amm.routes';
+import { connectorsRoutes } from './connectors/connector.routes';
 import { jupiterRoutes } from './connectors/jupiter/jupiter.routes';
 import { uniswapRoutes } from './connectors/uniswap/uniswap.routes';
 import { solanaRoutes } from './chains/solana/solana.routes';
@@ -102,8 +102,8 @@ const configureGatewayServer = () => {
   // Register routes on both servers
   const registerRoutes = async (app: FastifyInstance) => {
     app.register(configRoutes, { prefix: '/config' });
-    app.register(chainRoutes, { prefix: '/chain' });
-    app.register(ammRoutes, { prefix: '/amm' });
+    // app.register(chainRoutes, { prefix: '/chain' });
+    // app.register(ammRoutes, { prefix: '/amm' });
     app.register(connectorsRoutes, { prefix: '/connectors' });
     app.register(walletRoutes, { prefix: '/wallet' });
     app.register(jupiterRoutes, { prefix: '/jupiter' });

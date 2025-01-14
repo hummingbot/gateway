@@ -6,7 +6,7 @@ import {
   TradeRequest,
   TradeResponse,
   EstimateGasResponse,
-} from '../../amm/amm.requests';
+} from '../connector.requests';
 import {
   HttpException,
   SWAP_PRICE_EXCEEDS_LIMIT_PRICE_ERROR_CODE,

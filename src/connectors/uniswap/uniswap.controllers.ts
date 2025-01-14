@@ -33,7 +33,7 @@ import {
   PriceResponse,
   TradeRequest,
   TradeResponse,
-} from '../../amm/amm.requests';
+} from '../connector.requests';
 import { wrapResponse } from '../../services/response-wrapper';
 
 export interface TradeInfo {
@@ -86,12 +86,12 @@ export async function getTradeInfo(
   allowedSlippage?: string,
   poolId?: string,
 ): Promise<TradeInfo> {
-  const baseToken: Tokenish = getFullTokenFromSymbol(
+  const baseToken: Tokenish = await getFullTokenFromSymbol(
     ethereumish,
     uniswapish,
     baseAsset
   );
-  const quoteToken: Tokenish = getFullTokenFromSymbol(
+  const quoteToken: Tokenish = await getFullTokenFromSymbol(
     ethereumish,
     uniswapish,
     quoteAsset
@@ -357,24 +357,34 @@ export async function trade(
   }
 }
 
-export function getFullTokenFromSymbol(
+export async function getFullTokenFromSymbol(
   ethereumish: Ethereumish,
   uniswapish: Uniswapish,
   tokenSymbol: string
-): Tokenish | Token {
-  const tokenInfo: TokenInfo | undefined =
-    ethereumish.getTokenBySymbol(tokenSymbol);
-  let fullToken: Tokenish | Token | undefined;
-  if (tokenInfo) {
-    fullToken = uniswapish.getTokenByAddress(tokenInfo.address);
+): Promise<Token> {
+  
+  if (!ethereumish.ready()) {
+    await ethereumish.init();
   }
-  if (!fullToken)
+  
+  const tokenInfo: TokenInfo =
+    ethereumish.getTokenBySymbol(tokenSymbol);
+  
+  const uniswapToken = new Token(
+    tokenInfo.chainId,
+    tokenInfo.address,
+    tokenInfo.decimals,
+    tokenInfo.symbol,
+    tokenInfo.name
+  );
+  
+  if (!uniswapToken)
     throw new HttpException(
       500,
       TOKEN_NOT_SUPPORTED_ERROR_MESSAGE + tokenSymbol,
       TOKEN_NOT_SUPPORTED_ERROR_CODE
     );
-  return fullToken;
+  return uniswapToken;
 }
 
 export async function estimateGas(

@@ -79,11 +79,15 @@ export class SolanaController {
     if (!req.tokenSymbols) {
       tokens = solanaish.storedTokenList;
     } else {
-      for (const symbol of req.tokenSymbols as string[]) {
-        const token = solanaish.getTokenBySymbol(symbol);
-        if (token) {
-          tokens.push(token);
-        }
+      const symbolsArray = Array.isArray(req.tokenSymbols) 
+        ? req.tokenSymbols 
+        : typeof req.tokenSymbols === 'string'
+          ? (req.tokenSymbols as string).replace(/[\[\]]/g, '').split(',')
+          : [];
+          
+      for (const symbol of symbolsArray) {
+        const token = solanaish.getTokenBySymbol(symbol.trim());
+        if (token) tokens.push(token);
       }
     }
 

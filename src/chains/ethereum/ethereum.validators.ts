@@ -7,7 +7,11 @@ import {
   Validator,
   validateToken,
   validateAmount,
+  validateTxHash,
 } from '../../services/validators';
+
+// import {
+// } from '../services/validators';
 
 // invalid parameter errors
 
@@ -119,4 +123,12 @@ export const validateApproveRequest: RequestValidator = mkRequestValidator([
 export const validateCancelRequest: RequestValidator = mkRequestValidator([
   validateNonce,
   validateAddress,
+]);
+
+export const validatePollRequest: RequestValidator = mkRequestValidator([
+  validateTxHash,
+]);
+
+export const validateTokensRequest: RequestValidator = mkRequestValidator([
+  validateNetwork,
 ]);

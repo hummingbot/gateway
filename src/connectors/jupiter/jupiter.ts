@@ -174,14 +174,25 @@ export class Jupiter {
       {
         replaceRecentBlockhash: true,
         commitment: 'confirmed',
+        accounts: { encoding: 'base64', addresses: [] },
+        sigVerify: false,
       },
     );
     
     if (simulatedTransactionResponse.err) {
-      logger.error('Simulation Error:', simulatedTransactionResponse);
+      const logs = simulatedTransactionResponse.logs || [];
+      logger.error('Simulation Error Details:', {
+        error: simulatedTransactionResponse.err,
+        programLogs: logs,
+        accounts: simulatedTransactionResponse.accounts,
+        unitsConsumed: simulatedTransactionResponse.unitsConsumed,
+      });
+
+      const errorMessage = `${SIMULATION_ERROR_MESSAGE}\nError: ${JSON.stringify(simulatedTransactionResponse.err)}\nProgram Logs: ${logs.join('\n')}`;
+      
       throw new HttpException(
         503,
-        SIMULATION_ERROR_MESSAGE + JSON.stringify(simulatedTransactionResponse.err),
+        errorMessage,
         SIMULATION_ERROR_CODE
       );
     }

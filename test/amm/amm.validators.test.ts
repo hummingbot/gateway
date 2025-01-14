@@ -11,7 +11,7 @@ import {
   validateAllowedSlippage,
   validatePoolId,
   invalidPoolIdError,
-} from '../../src/amm/amm.validators';
+} from '../../src/connectors/connector.validators';
 
 import { missingParameter } from '../../src/services/validators';
 

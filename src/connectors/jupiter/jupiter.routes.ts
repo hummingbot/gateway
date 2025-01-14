@@ -1,5 +1,7 @@
 import { FastifyPluginAsync } from 'fastify';
-import { price, trade, estimateGas } from '../../amm/amm.controllers';
+import { Solana } from '../../chains/solana/solana';
+import { Jupiter } from './jupiter';
+import { price, trade, estimateGas } from './jupiter.controllers';
 import {
   PriceRequest,
   PriceResponse,
@@ -11,12 +13,12 @@ import {
   TradeRequestSchema,
   TradeResponseSchema,
   EstimateGasResponseSchema
-} from '../../amm/amm.requests';
+} from '../connector.requests';
 import {
   validateEstimateGasRequest,
   validatePriceRequest,
   validateTradeRequest,
-} from '../../amm/amm.validators';
+} from '../connector.validators';
 import { NetworkSelectionSchema, NetworkSelectionRequest } from '../../services/common-interfaces';
 
 export const jupiterRoutes: FastifyPluginAsync = async (fastify) => {
@@ -35,7 +37,9 @@ export const jupiterRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       validatePriceRequest(request.body);
-      return await price(request.body);
+      const solanaish = Solana.getInstance(request.body.network);
+      const jupiterish = Jupiter.getInstance(request.body.network);
+      return await price(solanaish, jupiterish, request.body);
     }
   );
 
@@ -54,7 +58,9 @@ export const jupiterRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       validateTradeRequest(request.body);
-      return await trade(request.body);
+      const solanaish = Solana.getInstance(request.body.network);
+      const jupiterish = Jupiter.getInstance(request.body.network);
+      return await trade(solanaish, jupiterish, request.body);
     }
   );
 
@@ -73,7 +79,9 @@ export const jupiterRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       validateEstimateGasRequest(request.body);
-      return await estimateGas(request.body);
+      const solanaish = Solana.getInstance(request.body.network);
+      const jupiterish = Jupiter.getInstance(request.body.network);
+      return await estimateGas(solanaish, jupiterish);
     }
   );
 };

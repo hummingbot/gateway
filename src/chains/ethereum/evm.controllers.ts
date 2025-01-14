@@ -5,7 +5,7 @@ import ethers, {
   BigNumber,
   Transaction,
 } from 'ethers';
-import { bigNumberWithDecimalToStr } from '../../services/base';
+import { bigNumberWithDecimalToStr, tokenValueToString } from '../../services/base';
 import {
   HttpException,
   LOAD_WALLET_ERROR_CODE,
@@ -13,11 +13,9 @@ import {
   TOKEN_NOT_SUPPORTED_ERROR_CODE,
   TOKEN_NOT_SUPPORTED_ERROR_MESSAGE,
 } from '../../services/error-handler';
-import { tokenValueToString } from '../../services/base';
 import { TokenInfo } from './ethereum-base';
 import { getConnector } from '../../services/connection-manager';
 import { wrapResponse } from '../../services/response-wrapper';
-import { StatusRequest, StatusResponse } from '../chain.requests';
 
 import {
   CustomTransactionReceipt,
@@ -34,8 +32,11 @@ import {
   AllowancesRequest,
   ApproveRequest,
   CancelRequest,
-} from '../chain.requests';
-import { BalanceRequest, TokensRequest } from '../../chains/chain.requests';
+  BalanceRequest,
+  TokensRequest,
+  StatusRequest,
+  StatusResponse
+} from '../../chains/chain.requests';
 import { logger } from '../../services/logger';
 import {
   validateAllowancesRequest,
@@ -43,8 +44,9 @@ import {
   validateBalanceRequest,
   validateCancelRequest,
   validateNonceRequest,
+  validatePollRequest,
+  validateTokensRequest
 } from './ethereum.validators';
-import { validatePollRequest, validateTokensRequest } from '../chain.routes';
 
 // TransactionReceipt from ethers uses BigNumber which is not easy to interpret directly from JSON.
 // Transform those BigNumbers to string and pass the rest of the data without changes.
@@ -122,6 +124,13 @@ export const willTxSucceed = (
 };
 
 export class EVMController {
+  // Helper method to ensure initialization
+  private static async ensureInitialized(ethereumish: Ethereumish) {
+    if (!ethereumish.ready()) {
+      await ethereumish.init();
+    }
+  }
+
   // txStatus
   // -1: not in the mempool or failed
   // 1: succeeded
@@ -130,6 +139,7 @@ export class EVMController {
   // 0: in the mempool but we dont have data to guess its status
   static async poll(ethereumish: Ethereumish, req: PollRequest) {
     const initTime = Date.now();
+    await this.ensureInitialized(ethereumish);
     validatePollRequest(req);
 
     const currentBlock = await ethereumish.getCurrentBlockNumber();
@@ -222,6 +232,7 @@ export class EVMController {
     req: NonceRequest
   ): Promise<NonceResponse> {
     const initTime = Date.now();
+    await this.ensureInitialized(ethereum);
     validateNonceRequest(req);
     // get the address via the public key since we generally use the public
     // key to interact with gateway and the address is not part of the user config
@@ -235,6 +246,7 @@ export class EVMController {
     req: NonceRequest
   ): Promise<NonceResponse> {
     const initTime = Date.now();
+    await this.ensureInitialized(ethereum);
     validateNonceRequest(req);
     // get the address via the public key since we generally use the public
     // key to interact with gateway and the address is not part of the user config
@@ -243,30 +255,40 @@ export class EVMController {
     return wrapResponse({ nonce }, initTime);
   }
 
-  static getTokenSymbolsToTokens = (
-    ethereum: Ethereumish,
+  static async getTokenSymbolsToTokens(
+    ethereumish: Ethereumish,
     tokenSymbols: Array<string>
-  ): Record<string, TokenInfo> => {
+  ): Promise<Record<string, TokenInfo>> {
+    await this.ensureInitialized(ethereumish);
     const tokens: Record<string, TokenInfo> = {};
 
     for (let i = 0; i < tokenSymbols.length; i++) {
       const symbol = tokenSymbols[i];
-      const token = ethereum.getTokenBySymbol(symbol);
+      const token = ethereumish.getTokenBySymbol(symbol);
       if (token) tokens[symbol] = token;
     }
 
     return tokens;
-  };
+  }
 
   static async getTokens(connection: Ethereumish, req: TokensRequest) {
     const initTime = Date.now();
     validateTokensRequest(req);
+    await this.ensureInitialized(connection);
+    
     let tokens: TokenInfo[] = [];
     if (!req.tokenSymbols) {
       tokens = connection.storedTokenList;
     } else {
-      for (const t of req.tokenSymbols as []) {
-        tokens.push(connection.getTokenForSymbol(t) as TokenInfo);
+      const symbolsArray = Array.isArray(req.tokenSymbols) 
+        ? req.tokenSymbols 
+        : typeof req.tokenSymbols === 'string'
+          ? (req.tokenSymbols as string).replace(/[\[\]]/g, '').split(',')
+          : [];
+          
+      for (const symbol of symbolsArray) {
+        const token = connection.getTokenForSymbol(symbol.trim());
+        if (token) tokens.push(token);
       }
     }
     return wrapResponse({ tokens }, initTime);
@@ -282,8 +304,10 @@ export class EVMController {
     req: AllowancesRequest
   ) {
     const initTime = Date.now();
+    await this.ensureInitialized(ethereumish);
+    
     const wallet = await ethereumish.getWallet(req.address);
-    const tokens = EVMController.getTokenSymbolsToTokens(
+    const tokens = await this.getTokenSymbolsToTokens(
       ethereumish,
       req.tokenSymbols
     );
@@ -292,7 +316,6 @@ export class EVMController {
     const approvals: Record<string, string> = {};
     await Promise.all(
       Object.keys(tokens).map(async (symbol) => {
-        // instantiate a contract and pass in provider for read-only access
         const contract = ethereumish.getContract(
           tokens[symbol].address,
           ethereumish.provider
@@ -319,65 +342,54 @@ export class EVMController {
     validateBalanceRequest(req);
 
     let wallet: Wallet;
-    const connector: Uniswapish | undefined = req.connector
-      ? ((await getConnector('ethereum', req.network, req.connector)) as Uniswapish)
-      : undefined;
     const balances: Record<string, string> = {};
-    let connectorBalances: { [key: string]: string } | undefined;
 
-    if (!connector?.balances) {
-      try {
-        wallet = await ethereumish.getWallet(req.address);
-      } catch (err) {
-        throw new HttpException(
-          500,
-          LOAD_WALLET_ERROR_MESSAGE + err,
-          LOAD_WALLET_ERROR_CODE
-        );
-      }
-
-      const tokens = EVMController.getTokenSymbolsToTokens(
-        ethereumish,
-        req.tokenSymbols
+    try {
+      wallet = await ethereumish.getWallet(req.address);
+    } catch (err) {
+      throw new HttpException(
+        500,
+        LOAD_WALLET_ERROR_MESSAGE + err,
+        LOAD_WALLET_ERROR_CODE
       );
-      if (req.tokenSymbols.includes(ethereumish.nativeTokenSymbol)) {
-        balances[ethereumish.nativeTokenSymbol] = tokenValueToString(
-          await ethereumish.getNativeBalance(wallet)
-        );
-      }
-      await Promise.all(
-        Object.keys(tokens).map(async (symbol) => {
-          if (tokens[symbol] !== undefined) {
-            const address = tokens[symbol].address;
-            const decimals = tokens[symbol].decimals;
-            // instantiate a contract and pass in provider for read-only access
-            const contract = ethereumish.getContract(
-              address,
-              ethereumish.provider
-            );
-            const balance = await ethereumish.getERC20Balance(
-              contract,
-              wallet,
-              decimals
-            );
-            balances[symbol] = tokenValueToString(balance);
-          }
-        })
-      );
+    }
 
-      if (!Object.keys(balances).length) {
-        throw new HttpException(
-          500,
-          TOKEN_NOT_SUPPORTED_ERROR_MESSAGE,
-          TOKEN_NOT_SUPPORTED_ERROR_CODE
-        );
-      }
-    } else {
-      connectorBalances = await connector.balances(req);
+    // Get native token balance if requested
+    if (req.tokenSymbols.includes(ethereumish.nativeTokenSymbol)) {
+      balances[ethereumish.nativeTokenSymbol] = tokenValueToString(
+        await ethereumish.getNativeBalance(wallet)
+      );
+    }
+
+    // Get ERC20 token balances
+    await Promise.all(
+      req.tokenSymbols.map(async (symbol) => {
+        const token = ethereumish.getTokenBySymbol(symbol);
+        if (token) {
+          const contract = ethereumish.getContract(
+            token.address,
+            ethereumish.provider
+          );
+          const balance = await ethereumish.getERC20Balance(
+            contract,
+            wallet,
+            token.decimals
+          );
+          balances[symbol] = tokenValueToString(balance);
+        }
+      })
+    );
+
+    if (!Object.keys(balances).length) {
+      throw new HttpException(
+        500,
+        TOKEN_NOT_SUPPORTED_ERROR_MESSAGE,
+        TOKEN_NOT_SUPPORTED_ERROR_CODE
+      );
     }
 
     return wrapResponse({
-      balances: connectorBalances || balances,
+      balances: balances,
     }, initTime);
   }
 
@@ -390,6 +402,8 @@ export class EVMController {
     ethereumish: Ethereumish,
     req: ApproveRequest
   ) {
+    await this.ensureInitialized(ethereumish);
+    
     const {
       amount,
       nonce,
@@ -467,7 +481,9 @@ export class EVMController {
 
   static async cancel(ethereumish: Ethereumish, req: CancelRequest) {
     const initTime = Date.now();
+    await this.ensureInitialized(ethereumish);
     validateCancelRequest(req);
+    
     let wallet: Wallet;
     try {
       wallet = await ethereumish.getWallet(req.address);
@@ -493,6 +509,8 @@ export class EVMController {
 
   static async getStatus(ethereumish: Ethereumish, req: StatusRequest): Promise<StatusResponse> {
     const initTime = Date.now();
+    await this.ensureInitialized(ethereumish);
+    
     const chain = ethereumish.chain;
     const chainId = ethereumish.chainId;
     const network = ethereumish.network;
