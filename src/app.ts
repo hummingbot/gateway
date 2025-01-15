@@ -138,12 +138,12 @@ const configureGatewayServer = () => {
       if (err) {
         logger.error('Failed to start docs server:', err);
       } else {
-        logger.info(`Documentation available at http://localhost:${docsPort}`);
+        logger.info(`📓 Documentation available at http://localhost:${docsPort}`);
       }
     });
   } else {
     const protocol = ConfigManagerV2.getInstance().get('server.devHTTPMode') ? 'http' : 'https';
-    logger.info(`Documentation available at ${protocol}://localhost:${ConfigManagerV2.getInstance().get('server.port')}/docs`);
+    logger.info(`📓 Documentation available at ${protocol}://localhost:${ConfigManagerV2.getInstance().get('server.port')}/docs`);
   }
 
   // Register request body parsers
@@ -176,16 +176,16 @@ export const startGateway = async () => {
   const gateway_version = 'dev-2.3.0';
   const port = ConfigManagerV2.getInstance().get('server.port');
 
-  logger.info(`Gateway Version: ${gateway_version}`);
-  logger.info(`⚡️ Starting Gateway API on port ${port}...`);
+  const protocol = ConfigManagerV2.getInstance().get('server.devHTTPMode') ? 'http' : 'https';
+  logger.info(`⚡️ Gateway version ${gateway_version} starting at ${protocol}://localhost:${port}`);
 
   try {
     if (ConfigManagerV2.getInstance().get('server.devHTTPMode')) {
-      logger.info('Running in development mode with HTTP - note that this may expose private keys!');
+      logger.info('🔴 Running in development mode with HTTP endpoints');
       await gatewayApp.listen({ port, host: '0.0.0.0' });
     } else {
+      logger.info('🟢 Running in production mode with HTTPS endpoints');
       await gatewayApp.listen({ port, host: '0.0.0.0' });
-      logger.info('Running in secured HTTPS mode.');
     }
   } catch (err) {
     logger.error(

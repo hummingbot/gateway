@@ -4,7 +4,6 @@ import { NetworkSelectionSchema } from '../services/common-interfaces';
 export const ConnectorSchema = Type.Object({
   name: Type.String({ description: 'Connector name' }),
   trading_type: Type.Array(Type.String()),
-  chain_type: Type.String(),
   available_networks: Type.Array(Type.String()),
   additional_spenders: Type.Optional(Type.Array(Type.String())),
   additional_add_wallet_prompts: Type.Optional(Type.Record(Type.String(), Type.String()))

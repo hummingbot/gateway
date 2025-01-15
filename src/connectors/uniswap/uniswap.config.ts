@@ -11,7 +11,6 @@ export namespace UniswapConfig {
     uniswapV3FactoryAddress: (chain: string, network: string) => string;
     quoterContractAddress: (chain: string, network: string) => string;
     tradingTypes: (type: string) => Array<string>;
-    chainType: string;
     availableNetworks: Array<AvailableNetworks>;
     useRouter?: boolean;
     feeTier?: string;
@@ -61,7 +60,6 @@ export namespace UniswapConfig {
     tradingTypes: (type: string) => {
       return type === 'swap' ? ['AMM'] : ['AMM_LP'];
     },
-    chainType: 'EVM',
     availableNetworks: [
       {
         chain: 'ethereum',

@@ -16,7 +16,6 @@ export const connectorsResponseSchema = {
         properties: {
           name: { type: 'string' },
           trading_type: { type: 'array', items: { type: 'string' } },
-          chain_type: { type: 'string' },
           available_networks: {
             type: 'array',
             items: {
@@ -54,13 +53,11 @@ export const connectorsRoutes: FastifyPluginAsync = async (fastify) => {
           {
             name: 'uniswap',
             trading_type: UniswapConfig.config.tradingTypes('swap'),
-            chain_type: UniswapConfig.config.chainType,
             available_networks: UniswapConfig.config.availableNetworks,
           },
           {
             name: 'jupiter',
             trading_type: JupiterConfig.config.tradingTypes,
-            chain_type: JupiterConfig.config.chainType,
             available_networks: JupiterConfig.config.availableNetworks,
           },
         ],

@@ -5,7 +5,6 @@ export namespace JupiterConfig {
   export interface NetworkConfig {
     allowedSlippage: string;
     tradingTypes: Array<string>;
-    chainType: string;
     availableNetworks: Array<AvailableNetworks>;
   }
 
@@ -14,7 +13,6 @@ export namespace JupiterConfig {
       'jupiter.allowedSlippage',
     ),
     tradingTypes: ['AMM'],
-    chainType: 'SOLANA',
     availableNetworks: [{ chain: 'solana', networks: ['mainnet-beta', 'devnet'] }],
   };
 }
