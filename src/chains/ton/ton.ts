@@ -200,7 +200,7 @@ export class Ton {
       root_hash: lastBlock.root_hash,
     };
   }
-
+// TODO !!!
   async getTransaction(eventHash: string): Promise<Trace> {
     if (eventHash.includes('hb-ton-stonfi-')) {
       const queryId = eventHash.replace('hb-ton-stonfi-', '');
@@ -238,7 +238,7 @@ export class Ton {
     const secretKey = keyPair.secretKey.toString('base64url');
     return { publicKey, secretKey };
   }
-
+// TODO !!!
   async getAccountFromAddress(
     address: string,
   ): Promise<{ publicKey: string; secretKey: string }> {
@@ -337,7 +337,7 @@ export class Ton {
 
     return balances;
   }
-
+// TODO HUDSON !!!
   public async getNativeBalance(account: string): Promise<string> {
     const tonAsset = await this.tonClient.getBalance(address(account));
     return tonAsset.toString();
@@ -461,7 +461,7 @@ export class Ton {
       throw new Error(`Unknown wallet version: ${version}`);
     }
   }
-
+// TODO GREG !!!
   public async getBestWallet(
     publicKey: Buffer,
     workchain: number,
@@ -488,7 +488,7 @@ export class Ton {
     }
     return bestWallet;
   }
-
+// TODO !!!
   public async getWallet(
     publicKey: string,
     workchain?: number,
@@ -515,32 +515,5 @@ export class Ton {
     }
   }
 
-  public async getLatestTransactionHash(
-    walletAddress: string,
-  ): Promise<string> {
-    const parsedWalletAddress = Address.parse(walletAddress);
-    const contractState =
-      await this.tonClient.getContractState(parsedWalletAddress);
-    const { lt: lastLocationTime, hash: lastHash } =
-      contractState.lastTransaction;
 
-    const lastTransaction = await this.tonClient.getTransaction(
-      parsedWalletAddress,
-      lastLocationTime,
-      lastHash,
-    );
-
-    if (!lastTransaction || !lastTransaction.inMessage) {
-      return null;
-    }
-
-    const msgCell = beginCell()
-      .store(storeMessage(lastTransaction.inMessage))
-      .endCell();
-
-    // noinspection UnnecessaryLocalVariableJS
-    const transactionHash = msgCell.hash().toString('base64url');
-
-    return transactionHash;
-  }
 }

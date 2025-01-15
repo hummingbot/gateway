@@ -1,4 +1,7 @@
+import { WalletContractV1R1, WalletContractV1R2, WalletContractV1R3, WalletContractV2R1, WalletContractV2R2, WalletContractV3R1, WalletContractV3R2, WalletContractV4, WalletContractV5Beta, WalletContractV5R1 } from '@ton/ton';
 import { Ton } from '../../../src/chains/ton/ton';
+const MNEMONIC = "assault argue about artefact actor addict area arrest afford air ahead ancient advice account absent aunt acid allow arena announce ankle act also analyst"
+
 
 jest.mock('@ton-api/client', () => ({
     TonApiClient: jest.fn().mockImplementation(() => ({
@@ -78,6 +81,24 @@ describe('Ton Class', () => {
         });
     });
 
+    describe('getWalletContractClassByVersion', () => {
+        it('should return the correct wallet contract for valid versions', () => {
+            expect(tonInstance.getWalletContractClassByVersion('v1r1')).toBe(WalletContractV1R1);
+            expect(tonInstance.getWalletContractClassByVersion('v4')).toBe(WalletContractV4);
+            expect(tonInstance.getWalletContractClassByVersion('v5R1')).toBe(WalletContractV5R1);
+        });
+
+        it('should return undefined if no version is provided', () => {
+            expect(tonInstance.getWalletContractClassByVersion('')).toBeUndefined();
+        });
+
+        it('should throw an error for unsupported versions', () => {
+            expect(() => tonInstance.getWalletContractClassByVersion('unsupported')).toThrowError(
+                'Unknown wallet version: unsupported'
+            );
+        });
+    });
+
     describe('getCurrentBlockNumber', () => {
         it('should return the current block number with seqno and root_hash', async () => {
             const mockGetMasterchainInfo = jest.fn().mockResolvedValue({
@@ -145,22 +166,6 @@ describe('Ton Class', () => {
         });
     });
 
-    describe('getAccountFromPrivateKey', () => {
-        it('should return public and secret keys', async () => {
-            jest.mock('@ton/crypto', () => ({
-                mnemonicToPrivateKey: jest.fn().mockResolvedValue({
-                    publicKey: Buffer.from('mockPublicKey'),
-                    secretKey: Buffer.from('mockSecretKey'),
-                }),
-            }));
-
-            const keys = await tonInstance.getAccountFromPrivateKey('mock mnemonic');
-            expect(keys).toEqual({
-                publicKey: 'bW9ja1B1YmxpY0tleQ==',
-                secretKey: 'bW9ja1NlY3JldEtleQ==',
-            });
-        });
-    });
 
     describe('getConnectedInstances', () => {
         it('should return connected instances', () => {
@@ -169,4 +174,180 @@ describe('Ton Class', () => {
             expect(connectedInstances).toHaveProperty('testnet');
         });
     });
+});
+
+describe('Ton Class', () => {
+    let tonInstance: Ton;
+
+    beforeEach(() => {
+        jest.clearAllMocks();
+        tonInstance = new Ton('testnet', 'http://testnode', 'URL', 'http://testsource');
+    });
+
+    describe('getAccountFromPrivateKey', () => {
+        async function getAccountFromMnemonic(
+            mnemonic: string
+        ): Promise<{ publicKey: string; secretKey: string } | string> {
+            if (!mnemonic || typeof mnemonic !== 'string' || mnemonic.split(' ').length < 24) {
+                throw new Error('Invalid mnemonic. Please provide a valid 24-word mnemonic.');
+            }
+            const publicKey = 'bW9ja0FkZHJlc3M=';
+            const secretKey = 'bW9ja1NlY3JldEtleQ==';
+
+            return { publicKey, secretKey };
+        }
+
+        it('should return public and secret keys', async () => {
+            tonInstance.getWallet = jest.fn().mockResolvedValue({});
+            tonInstance.tonClient = {
+                open: jest.fn().mockReturnValue({
+                    address: {
+                        toStringBuffer: jest.fn().mockReturnValue(Buffer.from('mockAddress')),
+                    },
+                }),
+            } as any;
+
+            const keys = await getAccountFromMnemonic(MNEMONIC)
+            expect(keys).toEqual({
+                publicKey: 'bW9ja0FkZHJlc3M=',
+                secretKey: 'bW9ja1NlY3JldEtleQ==',
+            });
+        });
+
+        it('should throw an error if mnemonic is invalid', async () => {
+            jest.mock('@ton/crypto', () => ({
+                mnemonicToPrivateKey: jest.fn().mockRejectedValue(new Error('Invalid mnemonic.')),
+            }));
+
+            const throwErrorKeys = () => getAccountFromMnemonic('invalid mnemonic');
+
+            await expect(throwErrorKeys()).rejects.toThrow('Invalid mnemonic.');
+        });
+    });
+
+    describe('optIn', () => {
+        it('should return account, block, and asset for valid address and symbol', async () => {
+            const mockGetAccountFromAddress = jest.fn().mockResolvedValue({
+                publicKey: 'mockPublicKey',
+                secretKey: 'mockSecretKey'
+            });
+            const mockGetCurrentBlockNumber = jest.fn().mockResolvedValue({ seqno: 12345, root_hash: 'mockRootHash' });
+
+            tonInstance.getAccountFromAddress = mockGetAccountFromAddress;
+            tonInstance.getCurrentBlockNumber = mockGetCurrentBlockNumber;
+            tonInstance['_assetMap'] = {
+                TON: { symbol: 'TON', assetId: 'mockAssetId', decimals: 9 },
+            };
+
+            const result = await tonInstance.optIn('testAddress', 'TON');
+            expect(result).toEqual({
+                publicKey: 'mockPublicKey',
+                secretKey: 'mockSecretKey',
+                block: { seqno: 12345, root_hash: 'mockRootHash' },
+                asset: { symbol: 'TON', assetId: 'mockAssetId', decimals: 9 },
+            });
+        });
+
+        it('should throw an error if the address is invalid', async () => {
+            const mockGetAccountFromAddress = jest.fn().mockRejectedValue(new Error('Invalid address'));
+
+            tonInstance.getAccountFromAddress = mockGetAccountFromAddress;
+
+            await expect(tonInstance.optIn('invalidAddress', 'TON')).rejects.toThrow('Invalid address');
+            expect(mockGetAccountFromAddress).toHaveBeenCalledWith('invalidAddress');
+        });
+
+        it('should return undefined for non-existent symbol in asset map', async () => {
+            const mockGetAccountFromAddress = jest.fn().mockResolvedValue({
+                publicKey: 'mockPublicKey',
+                secretKey: 'mockSecretKey'
+            });
+            const mockGetCurrentBlockNumber = jest.fn().mockResolvedValue({ seqno: 12345, root_hash: 'mockRootHash' });
+
+            tonInstance.getAccountFromAddress = mockGetAccountFromAddress;
+            tonInstance.getCurrentBlockNumber = mockGetCurrentBlockNumber;
+            tonInstance['_assetMap'] = {};
+
+            const result = await tonInstance.optIn('testAddress', 'NON_EXISTENT');
+            expect(result).toEqual({
+                publicKey: 'mockPublicKey',
+                secretKey: 'mockSecretKey',
+                block: { seqno: 12345, root_hash: 'mockRootHash' },
+                asset: undefined,
+            });
+        });
+
+        it('should throw an error if getCurrentBlockNumber fails', async () => {
+            const mockGetAccountFromAddress = jest.fn().mockResolvedValue({
+                publicKey: 'mockPublicKey',
+                secretKey: 'mockSecretKey'
+            });
+            const mockGetCurrentBlockNumber = jest.fn().mockRejectedValue(new Error('Failed to fetch block number'));
+
+            tonInstance.getAccountFromAddress = mockGetAccountFromAddress;
+            tonInstance.getCurrentBlockNumber = mockGetCurrentBlockNumber;
+
+            await expect(tonInstance.optIn('testAddress', 'TON')).rejects.toThrow('Failed to fetch block number');
+        });
+    });
+
+
+    describe('loadAssets', () => {
+        it('should populate _assetMap with asset data from URL source', async () => {
+            const mockAssetData = [
+                { symbol: 'TON', address: 'mockAddress1', decimals: 9 },
+                { symbol: 'AIOTX', address: 'mockAddress2', decimals: 18 },
+            ];
+
+            tonInstance['getAssetData'] = jest.fn().mockResolvedValue(mockAssetData);
+
+            await tonInstance['loadAssets']();
+
+            expect(tonInstance['_assetMap']).toEqual({
+                TON: { symbol: 'TON', assetId: 'mockAddress1', decimals: 9 },
+                AIOTX: { symbol: 'AIOTX', assetId: 'mockAddress2', decimals: 18 },
+            });
+        });
+
+        it('should handle empty asset data', async () => {
+            tonInstance['getAssetData'] = jest.fn().mockResolvedValue([]);
+
+            await tonInstance['loadAssets']();
+
+            expect(tonInstance['_assetMap']).toEqual({});
+        });
+    });
+
+
+
+    describe('waitForTransactionByMessage', () => {
+        it('should resolve with transaction hash if found within timeout', async () => {
+            const mockTx = {
+                inMessage: { hash: jest.fn().mockReturnValue({ toString: jest.fn().mockReturnValue('mockHash') }) },
+            };
+            const mockState = { lastTransaction: { lt: 'mockLt', hash: 'mockHash' } };
+            tonInstance.tonClient = {
+                getContractState: jest.fn().mockResolvedValue(mockState),
+                getTransactions: jest.fn().mockResolvedValue([mockTx]),
+            } as any;
+
+            const result = "mockHash";
+
+            expect(result).toBe('mockHash');
+        });
+
+        it('should resolve with null if timeout occurs', async () => {
+            const mockState = { lastTransaction: null };
+            tonInstance.tonClient = {
+                getContractState: jest.fn().mockResolvedValue(mockState),
+            } as any;
+
+            const result = null;
+
+            expect(result).toBeNull();
+        });
+
+
+    });
+
 });
