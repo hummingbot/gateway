@@ -1,4 +1,4 @@
-import { WalletContractV1R1, WalletContractV1R2, WalletContractV1R3, WalletContractV2R1, WalletContractV2R2, WalletContractV3R1, WalletContractV3R2, WalletContractV4, WalletContractV5Beta, WalletContractV5R1 } from '@ton/ton';
+import { WalletContractV1R1, WalletContractV4, WalletContractV5R1 } from '@ton/ton';
 import { Ton } from '../../../src/chains/ton/ton';
 const MNEMONIC = "assault argue about artefact actor addict area arrest afford air ahead ancient advice account absent aunt acid allow arena announce ankle act also analyst"
 
@@ -70,7 +70,7 @@ describe('Ton Class', () => {
         tonInstance = new Ton('testnet', 'http://testnode', 'URL', 'http://testsource');
     });
 
-    describe('Initialization', () => {
+    describe('init', () => {
         it('should initialize with correct properties', () => {
             expect(tonInstance.nativeTokenSymbol).toBe('TON');
             expect(tonInstance.gasPrice).toBe(0.1);
