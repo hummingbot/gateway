@@ -274,8 +274,9 @@ export class Ton {
     const key = Buffer.alloc(32);
     key.write(password);
 
+    // @ts-ignore
     const cipher = createCipheriv('aes-256-cbc', key, iv);
-
+    // @ts-ignore
     const encrypted = Buffer.concat([cipher.update(mnemonic), cipher.final()]);
 
     return `${iv.toString('hex')}:${encrypted.toString('hex')}`;
@@ -285,7 +286,7 @@ export class Ton {
     const [iv, encryptedKey] = encryptedMnemonic.split(':');
     const key = Buffer.alloc(32);
     key.write(password);
-
+    // @ts-ignore
     const decipher = createDecipheriv(
       'aes-256-cbc',
       key,
@@ -293,7 +294,9 @@ export class Ton {
     );
 
     const decrpyted = Buffer.concat([
+      // @ts-ignore
       decipher.update(Buffer.from(encryptedKey, 'hex')),
+      // @ts-ignore
       decipher.final(),
     ]);
 

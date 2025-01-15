@@ -13,6 +13,7 @@ import {
     runWithRetryAndTimeout,
     sleep,
 } from '../../../src/chains/ton/ton.utils';
+import { getHttpEndpoint } from '@orbs-network/ton-access';
 
 export interface BalanceRequest {
     chain: string;
@@ -198,14 +199,13 @@ describe('TonController - getTokens', () => {
 
         const req: AssetsRequest = {
             network: NETWORK,
-            assetSymbols: ['INVALID'], // Unsupported symbol
+            assetSymbols: ['INVALID'],
         };
 
         await expect(TonController.getTokens(ton, req)).rejects.toThrow(
             'Unsupported symbol: INVALID'
         );
     });
-
 });
 
 describe('TonController - approve', () => {
@@ -256,7 +256,7 @@ describe('Ton Utils - Unit Tests', () => {
 
     it('promiseAllInBatches should process items in batches with delay', async () => {
         const mockTask = jest.fn(async (item) => {
-            return item; // Ensure mockTask returns the item
+            return item;
         });
         const items = [1, 2, 3, 4, 5];
         const batchSize = 2;
@@ -265,8 +265,12 @@ describe('Ton Utils - Unit Tests', () => {
         const startTime = Date.now();
         const result = await promiseAllInBatches(mockTask, items, batchSize, delayBetweenBatches);
 
-        expect(mockTask).toHaveBeenCalledTimes(5); // Ensure task ran for each item
-        expect(result).toEqual(items); // Verify the output matches input
+        // Garantimos que o resultado não tenha valores `undefined`
+        expect(result).not.toContain(undefined);
+        expect(result.length).toBe(items.length);
+
+        expect(mockTask).toHaveBeenCalledTimes(5); // Verifica se a função foi chamada para cada item
+        expect(result).toEqual(items); // Certifica que o resultado corresponde exatamente ao esperado
 
         const endTime = Date.now();
         expect(endTime - startTime).toBeGreaterThanOrEqual(delayBetweenBatches);
@@ -308,12 +312,51 @@ describe('Ton Utils - Unit Tests', () => {
             runWithRetryAndTimeout(
                 null,
                 mockFunction,
-                [], // No parameters
-                1, // 1 retry
-                0, // No delay between retries
-                100, // Timeout of 100ms (shorter than function execution time)
+                [],
+                1,
+                0,
+                100,
                 'Custom timeout error'
             )
         ).rejects.toThrow('Custom timeout error');
+    });
+});
+
+describe('Ton - init', () => {
+    it('should initialize TonWeb and TonClient correctly', async () => {
+        const mockLoadAssets = jest.spyOn(ton as any, 'loadAssets').mockResolvedValue(undefined);
+        const mockRpcUrl = 'mock-rpc-url';
+
+        patch(ton.config, 'rpcType', 'orbs');
+        patch(ton.config, 'apiKey', 'mock-api-key');
+        patch(getHttpEndpoint, 'mockImplementation', async () => mockRpcUrl);
+
+        await ton.init();
+
+        expect(ton.tonweb).toBeDefined();
+        expect(ton.tonClient).toBeDefined();
+        expect(mockLoadAssets).toHaveBeenCalled();
+    });
+});
+
+describe('Ton - encrypt and decrypt', () => {
+    it('should correctly encrypt and decrypt mnemonic', () => {
+        const password = 'test-password';
+        const mnemonic = 'test-mnemonic';
+
+        const encrypted = ton.encrypt(mnemonic, password);
+        const decrypted = ton.decrypt(encrypted, password);
+
+        expect(decrypted).toBe(mnemonic);
+    });
+
+    it('should throw an error when decrypting with the wrong password', () => {
+        const password = 'test-password';
+        const wrongPassword = 'wrong-password';
+        const mnemonic = 'test-mnemonic';
+
+        const encrypted = ton.encrypt(mnemonic, password);
+
+        expect(() => ton.decrypt(encrypted, wrongPassword)).toThrow();
     });
 });
