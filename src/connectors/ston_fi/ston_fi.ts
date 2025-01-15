@@ -1,22 +1,22 @@
 import LRUCache from 'lru-cache';
-import { percentRegexp } from '../../services/config-manager-v2';
-import { Ton } from '../../chains/ton/ton';
-import { StonfiConfig } from './ston_fi.config';
-import { getTonConfig } from '../../chains/ton/ton.config';
-import { TonAsset } from '../../chains/ton/ton.requests';
-import { logger } from '../../services/logger';
-import { PriceRequest } from '../../amm/amm.requests';
+import {percentRegexp} from '../../services/config-manager-v2';
+import {Ton} from '../../chains/ton/ton';
+import {StonfiConfig} from './ston_fi.config';
+import {getTonConfig} from '../../chains/ton/ton.config';
+import {TonAsset} from '../../chains/ton/ton.requests';
+import {logger} from '../../services/logger';
+import {PriceRequest} from '../../amm/amm.requests';
 import {
   HttpException,
   TOKEN_NOT_SUPPORTED_ERROR_CODE,
   TOKEN_NOT_SUPPORTED_ERROR_MESSAGE,
 } from '../../services/error-handler';
-import { pow } from 'mathjs';
-import { StonApiClient } from '@ston-fi/api';
-import { internal, SenderArguments } from '@ton/ton';
-import { DEX, pTON } from '@ston-fi/sdk';
-import { createHash } from 'crypto';
-import { runWithRetryAndTimeout } from '../../chains/ton/ton.utils';
+import {pow} from 'mathjs';
+import {StonApiClient} from '@ston-fi/api';
+import {internal, SenderArguments} from '@ton/ton';
+import {DEX, pTON} from '@ston-fi/sdk';
+import {createHash} from 'crypto';
+import {runWithRetryAndTimeout} from '../../chains/ton/ton.utils';
 
 export class Stonfi {
   private static _instances: LRUCache<string, Stonfi>;
@@ -275,8 +275,6 @@ export class Stonfi {
     const min = Math.pow(10, length - 1);
 
     const hashValue = parseInt(hash.slice(0, 5), 16);
-    const randomNumber = (hashValue % (max - min + 1)) + min;
-
-    return randomNumber;
+    return (hashValue % (max - min + 1)) + min;
   }
 }
