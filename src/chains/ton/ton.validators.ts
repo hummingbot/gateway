@@ -6,20 +6,25 @@ import {
   validateTokenSymbols,
   Validator,
 } from '../../services/validators';
-import {
-  invalidAddressError,
-  validateNetwork,
-} from '../ethereum/ethereum.validators';
+
 
 const invalidTxHashError: string = 'The txHash param must be a string.';
+export const invalidAddressError: string =
+  'The address param is not a valid Ton private key (string mnemonic).';
+export const invalidNetworkError: string = 'The network param is not a string.';
 
-const validateTxHash: Validator = mkValidator(
+export const validateNetwork: Validator = mkValidator(
+  'network',
+  invalidNetworkError,
+  (val) => typeof val === 'string'
+);
+export const validateTxHash: Validator = mkValidator(
   'txHash',
   invalidTxHashError,
   (val) => typeof val === 'string',
 );
 
-const validateTonAddress: Validator = mkValidator(
+export const validateTonAddress: Validator = mkValidator(
   'address',
   invalidAddressError,
   (val) => typeof val === 'string',
@@ -63,8 +68,8 @@ export const validateAssetsRequest: RequestValidator = mkRequestValidator([
   validateAssetSymbols,
 ]);
 
-export const validateOptInRequest: RequestValidator = mkRequestValidator([
-  validateNetwork,
-  validateTonAddress,
-  validateAssetSymbol,
-]);
+// export const validateOptInRequest: RequestValidator = mkRequestValidator([
+//   validateNetwork,
+//   validateTonAddress,
+//   validateAssetSymbol,
+// ]);
