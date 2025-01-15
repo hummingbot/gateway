@@ -15,7 +15,7 @@ import {
 import { ConfigManagerV2 } from './services/config-manager-v2';
 
 // Routes
-import { configRoutes } from './services/config/config.routes';
+import { configRoutes } from './config/config.routes';
 import { walletRoutes } from './wallet/wallet.routes';
 import { connectorsRoutes } from './connectors/connector.routes';
 import { solanaRoutes } from './chains/solana/solana.routes';
@@ -181,10 +181,10 @@ export const startGateway = async () => {
 
   try {
     if (ConfigManagerV2.getInstance().get('server.devHTTPMode')) {
-      logger.info('🔴 Running in development mode with HTTP endpoints');
+      logger.info('🔴 Running in development mode with (unsafe!) HTTP endpoints');
       await gatewayApp.listen({ port, host: '0.0.0.0' });
     } else {
-      logger.info('🟢 Running in production mode with HTTPS endpoints');
+      logger.info('🟢 Running in secured mode with behind HTTPS endpoints');
       await gatewayApp.listen({ port, host: '0.0.0.0' });
     }
   } catch (err) {

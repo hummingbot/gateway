@@ -71,10 +71,18 @@ describe('GET /chain/status', () => {
   });
 });
 
-describe('GET /network/config', () => {
+describe('GET /config', () => {
   it('should return 200 when asking for config', async () => {
-    request(gatewayApp)
-      .get(`/chain/config`)
+    await request(gatewayApp)
+      .get(`/config`)
+      .expect('Content-Type', /json/)
+      .expect(200);
+  });
+
+  it('should return 200 when asking for chain specific config', async () => {
+    await request(gatewayApp)
+      .get(`/config`)
+      .query({ chain: 'ethereum' })
       .expect('Content-Type', /json/)
       .expect(200);
   });

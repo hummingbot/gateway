@@ -15,5 +15,10 @@ export const ConfigUpdateResponseSchema = Type.Object({
   message: Type.String({ description: 'Status message' })
 });
 
+export const ConfigResponseSchema = Type.Object({
+  config: Type.Record(Type.String(), Type.Any(), { description: 'Configuration object' })
+});
+
 export type ConfigUpdateRequest = Static<typeof ConfigUpdateRequestSchema>;
 export type ConfigUpdateResponse = Static<typeof ConfigUpdateResponseSchema>;
+export type ConfigResponse = Static<typeof ConfigResponseSchema>;

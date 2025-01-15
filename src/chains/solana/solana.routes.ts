@@ -9,19 +9,46 @@ import {
 } from '../chain.requests';
 import { SolanaController } from './solana.controllers';
 import { Solanaish } from './solana';
-import { ConfigManagerV2 } from '../../services/config-manager-v2';
 
 export const solanaRoutes: FastifyPluginAsync = async (fastify) => {
-  // GET /solana/config
-  fastify.get('/config', {
-    schema: {
-      tags: ['solana'],
-      description: 'Get Solana configuration',
+  // GET /solana/status
+  fastify.get<{ Querystring: StatusRequest }>(
+    '/status',
+    {
+      schema: {
+        tags: ['solana'],
+        description: 'Get Solana chain status',
+        querystring: Type.Object({
+          network: Type.String(),
+        }),
+      },
     },
-  }, async () => {
-    const solanaNamespace = ConfigManagerV2.getInstance().getNamespace('solana');
-    return solanaNamespace ? solanaNamespace.configuration : {};
-  });
+    async (request) => {
+      const chain = await getInitializedChain<Solanaish>(
+        'solana',
+        request.query.network
+      );
+      return await SolanaController.getStatus(chain, request.query);
+    }
+  );
+
+  // GET /solana/tokens
+  fastify.get<{ Querystring: TokensRequest }>(
+    '/tokens',
+    {
+      schema: {
+        tags: ['solana'],
+        description: 'Get Solana tokens',
+      },
+    },
+    async (request) => {
+      const chain = await getInitializedChain<Solanaish>(
+        'solana',
+        request.query.network
+      );
+      return await SolanaController.getTokens(chain, request.query);
+    }
+  );
 
   // POST /solana/balances
   fastify.post<{ Body: BalanceRequest }>(
@@ -74,44 +101,6 @@ export const solanaRoutes: FastifyPluginAsync = async (fastify) => {
     }
   );
 
-  // GET /solana/tokens
-  fastify.get<{ Querystring: TokensRequest }>(
-    '/tokens',
-    {
-      schema: {
-        tags: ['solana'],
-        description: 'Get Solana tokens',
-      },
-    },
-    async (request) => {
-      const chain = await getInitializedChain<Solanaish>(
-        'solana',
-        request.query.network
-      );
-      return await SolanaController.getTokens(chain, request.query);
-    }
-  );
-
-  // GET /solana/status
-  fastify.get<{ Querystring: StatusRequest }>(
-    '/status',
-    {
-      schema: {
-        tags: ['solana'],
-        description: 'Get Solana chain status',
-        querystring: Type.Object({
-          network: Type.String(),
-        }),
-      },
-    },
-    async (request) => {
-      const chain = await getInitializedChain<Solanaish>(
-        'solana',
-        request.query.network
-      );
-      return await SolanaController.getStatus(chain, request.query);
-    }
-  );
 };
 
 export default solanaRoutes;

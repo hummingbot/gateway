@@ -14,19 +14,71 @@ import {
 } from '../chain.requests';
 import { PollRequest } from './ethereum.requests';
 import { EVMController } from './evm.controllers';
-import { ConfigManagerV2 } from '../../services/config-manager-v2';
 
 export const ethereumRoutes: FastifyPluginAsync = async (fastify) => {
-  // GET /ethereum/config
-  fastify.get('/config', {
-    schema: {
-      tags: ['ethereum'],
-      description: 'Get Ethereum configuration',
+  // GET /ethereum/status
+  fastify.get<{ Querystring: StatusRequest }>(
+    '/status',
+    {
+      schema: {
+        tags: ['ethereum'],
+        description: 'Get Ethereum chain status',
+        querystring: Type.Object({
+          network: Type.String(),
+        }),
+      },
     },
-  }, async () => {
-    const ethereumNamespace = ConfigManagerV2.getInstance().getNamespace('ethereum');
-    return ethereumNamespace ? ethereumNamespace.configuration : {};
-  });
+    async (request) => {
+      const chain = await getInitializedChain<Ethereumish>(
+        'ethereum',
+        request.query.network
+      );
+      return await EVMController.getStatus(chain, request.query);
+    }
+  );
+  
+  // GET /ethereum/tokens
+  fastify.get<{ Querystring: TokensRequest }>(
+    '/tokens',
+    {
+      schema: {
+        tags: ['ethereum'],
+        description: 'Get Ethereum tokens',
+      },
+    },
+    async (request) => {
+      const chain = await getInitializedChain<Ethereumish>(
+        'ethereum',
+        request.query.network
+      );
+      return await EVMController.getTokens(chain, request.query);
+    }
+  );
+
+  // POST /ethereum/balances
+  fastify.post<{ Body: BalanceRequest }>(
+    '/balances',
+    {
+      schema: {
+        tags: ['ethereum'],
+        description: 'Get Ethereum balances',
+        body: {
+            type: 'object',
+            required: ['network'],
+            properties: {
+              network: { type: 'string' }
+            }
+          }
+        },
+    },
+    async (request) => {
+      const chain = await getInitializedChain<Ethereumish>(
+        'ethereum',
+        request.body.network
+      );
+      return await EVMController.balances(chain, request.body);
+    }
+  );
 
   // POST /ethereum/poll
   fastify.post<{ Body: PollRequest }>(
@@ -98,24 +150,6 @@ export const ethereumRoutes: FastifyPluginAsync = async (fastify) => {
     }
   );
 
-  // GET /ethereum/tokens
-  fastify.get<{ Querystring: TokensRequest }>(
-    '/tokens',
-    {
-      schema: {
-        tags: ['ethereum'],
-        description: 'Get Ethereum tokens',
-      },
-    },
-    async (request) => {
-      const chain = await getInitializedChain<Ethereumish>(
-        'ethereum',
-        request.query.network
-      );
-      return await EVMController.getTokens(chain, request.query);
-    }
-  );
-
   // POST /ethereum/allowances
   fastify.post<{ Body: AllowancesRequest }>(
     '/allowances',
@@ -141,31 +175,6 @@ export const ethereumRoutes: FastifyPluginAsync = async (fastify) => {
         request.body.network
       );
       return await EVMController.allowances(chain, request.body);
-    }
-  );
-
-  // POST /ethereum/balances
-  fastify.post<{ Body: BalanceRequest }>(
-    '/balances',
-    {
-      schema: {
-        tags: ['ethereum'],
-        description: 'Get Ethereum balances',
-        body: {
-            type: 'object',
-            required: ['network'],
-            properties: {
-              network: { type: 'string' }
-            }
-          }
-        },
-    },
-    async (request) => {
-      const chain = await getInitializedChain<Ethereumish>(
-        'ethereum',
-        request.body.network
-      );
-      return await EVMController.balances(chain, request.body);
     }
   );
 
@@ -223,26 +232,6 @@ export const ethereumRoutes: FastifyPluginAsync = async (fastify) => {
     }
   );
 
-  // GET /ethereum/status
-  fastify.get<{ Querystring: StatusRequest }>(
-    '/status',
-    {
-      schema: {
-        tags: ['ethereum'],
-        description: 'Get Ethereum chain status',
-        querystring: Type.Object({
-          network: Type.String(),
-        }),
-      },
-    },
-    async (request) => {
-      const chain = await getInitializedChain<Ethereumish>(
-        'ethereum',
-        request.query.network
-      );
-      return await EVMController.getStatus(chain, request.query);
-    }
-  );
 };
 
 export default ethereumRoutes;

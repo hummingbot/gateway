@@ -4,8 +4,8 @@ import {
   isFloatString,
   isFractionString,
   mkRequestValidator,
-} from '../validators';
-import { fromFractionString, toFractionString } from '../base';
+} from '../services/validators';
+import { fromFractionString, toFractionString } from '../services/base';
 import { ConfigUpdateRequest } from './config.requests';
 
 export const invalidAllowedSlippage: string =

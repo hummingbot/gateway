@@ -1,5 +1,5 @@
 import { FastifyPluginAsync } from 'fastify';
-import { ConfigManagerV2 } from '../config-manager-v2';
+import { ConfigManagerV2 } from '../services/config-manager-v2';
 import {
   validateConfigUpdateRequest,
   updateAllowedSlippageToFraction,
@@ -10,8 +10,30 @@ import {
   ConfigUpdateRequestSchema,
   ConfigUpdateResponseSchema 
 } from './config.requests';
+import { Type } from '@sinclair/typebox';
 
 export const configRoutes: FastifyPluginAsync = async (fastify) => {
+  // GET /config - Get general or chain-specific configuration
+  fastify.get('/', {
+    schema: {
+      description: 'Get configuration',
+      tags: ['config'],
+      querystring: Type.Object({
+        chainOrConnector: Type.Optional(Type.String()),
+      }),
+    },
+  }, async (request) => {
+    const { chainOrConnector } = request.query as { chainOrConnector?: string };
+    
+    if (chainOrConnector) {
+      const namespace = ConfigManagerV2.getInstance().getNamespace(chainOrConnector);
+      return namespace ? namespace.configuration : {};
+    }
+    
+    return ConfigManagerV2.getInstance().allConfigurations;
+  });
+
+  // POST /config/update - Update configuration
   fastify.post<{ Body: ConfigUpdateRequest; Reply: ConfigUpdateResponse }>(
     '/update',
     {
