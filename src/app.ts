@@ -23,13 +23,16 @@ import { ethereumRoutes } from './chains/ethereum/ethereum.routes';
 import { jupiterRoutes } from './connectors/jupiter/jupiter.routes';
 import { uniswapRoutes } from './connectors/uniswap/uniswap.routes';
 
+// Add version constant at the top level
+const GATEWAY_VERSION = 'dev-2.3.0';
+
 // Define swagger options once
 const swaggerOptions = {
   openapi: {
     info: {
-      title: 'Gateway API',
-      description: 'API documentation for the Gateway service',
-      version: '2.2.0'
+      title: 'Hummingbot Gateway',
+      description: 'API endpoints for interacting with DEX connectors on various blockchain networks',
+      version: GATEWAY_VERSION
     },
     servers: [
       {
@@ -37,13 +40,13 @@ const swaggerOptions = {
       },
     ],
     tags: [
-      { name: 'connectors', description: 'Connector endpoints' },
+      { name: 'connectors', description: 'Avaiable connectors' },
       { name: 'config', description: 'Configuration endpoints' },
       { name: 'wallet', description: 'Wallet endpoints' },
       { name: 'solana', description: 'Solana chain endpoints' },
       { name: 'ethereum', description: 'Ethereum chain endpoints' },
-      { name: 'jupiter', description: 'Jupiter endpoints' },
-      { name: 'uniswap', description: 'Uniswap endpoints' },
+      { name: 'jupiter', description: 'Jupiter connector endpoints' },
+      { name: 'uniswap', description: 'Uniswap connector endpoints' },
     ],
   },
   transform: ({ schema, url }) => {
@@ -173,11 +176,10 @@ const configureGatewayServer = () => {
 export const gatewayApp = configureGatewayServer();
 
 export const startGateway = async () => {
-  const gateway_version = 'dev-2.3.0';
   const port = ConfigManagerV2.getInstance().get('server.port');
-
   const protocol = ConfigManagerV2.getInstance().get('server.devHTTPMode') ? 'http' : 'https';
-  logger.info(`⚡️ Gateway version ${gateway_version} starting at ${protocol}://localhost:${port}`);
+  
+  logger.info(`⚡️ Gateway version ${GATEWAY_VERSION} starting at ${protocol}://localhost:${port}`);
 
   try {
     if (ConfigManagerV2.getInstance().get('server.devHTTPMode')) {
