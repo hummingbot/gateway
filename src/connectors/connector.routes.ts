@@ -1,36 +1,26 @@
 import { FastifyPluginAsync } from 'fastify';
+import { Type, Static } from '@sinclair/typebox';
 import { UniswapConfig } from './uniswap/uniswap.config';
 import { JupiterConfig } from './jupiter/jupiter.config';
-import { 
-  ConnectorsResponse,
-  ConnectorsResponseSchema 
-} from './connector.requests';
 
-export const connectorsResponseSchema = {
-  type: 'object',
-  properties: {
-    connectors: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          name: { type: 'string' },
-          trading_type: { type: 'array', items: { type: 'string' } },
-          available_networks: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                chain: { type: 'string' },
-                networks: { type: 'array', items: { type: 'string' } }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-} as const;
+// Define the schema using Typebox
+const NetworkSchema = Type.Object({
+  chain: Type.String(),
+  networks: Type.Array(Type.String())
+});
+
+const ConnectorSchema = Type.Object({
+  name: Type.String(),
+  trading_type: Type.Array(Type.String()),
+  available_networks: Type.Array(NetworkSchema)
+});
+
+const ConnectorsResponseSchema = Type.Object({
+  connectors: Type.Array(ConnectorSchema)
+});
+
+// Type for TypeScript
+type ConnectorsResponse = Static<typeof ConnectorsResponseSchema>;
 
 export const connectorsRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get<{ Reply: ConnectorsResponse }>(
@@ -40,19 +30,16 @@ export const connectorsRoutes: FastifyPluginAsync = async (fastify) => {
         description: 'Get available connectors',
         tags: ['connectors'],
         response: {
-          200: connectorsResponseSchema
+          200: ConnectorsResponseSchema
         }
       }
     },
     async () => {
-      console.log('Uniswap networks:', JSON.stringify(UniswapConfig.config.availableNetworks));
-      console.log('Jupiter networks:', JSON.stringify(JupiterConfig.config.availableNetworks));
-
       return {
         connectors: [
           {
             name: 'uniswap',
-            trading_type: UniswapConfig.config.tradingTypes('swap'),
+            trading_type: UniswapConfig.config.tradingTypes,
             available_networks: UniswapConfig.config.availableNetworks,
           },
           {

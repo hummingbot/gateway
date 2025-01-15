@@ -1,4 +1,4 @@
-import { AvailableNetworks } from '../../services/config-manager-types';
+import { AvailableNetworks } from '../connector.requests';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 
 export namespace JupiterConfig {

@@ -1,19 +1,10 @@
 import { Type, Static } from '@sinclair/typebox';
 import { NetworkSelectionSchema } from '../services/common-interfaces';
 
-export const ConnectorSchema = Type.Object({
-  name: Type.String({ description: 'Connector name' }),
-  trading_type: Type.Array(Type.String()),
-  available_networks: Type.Array(Type.String()),
-  additional_spenders: Type.Optional(Type.Array(Type.String())),
-  additional_add_wallet_prompts: Type.Optional(Type.Record(Type.String(), Type.String()))
-});
-
-export const ConnectorsResponseSchema = Type.Object({
-  connectors: Type.Array(ConnectorSchema)
-});
-
-export type ConnectorsResponse = Static<typeof ConnectorsResponseSchema>;
+export interface AvailableNetworks {
+  chain: string;
+  networks: Array<string>;
+}
 
 const SideSchema = Type.Union([
   Type.Literal('BUY'),
