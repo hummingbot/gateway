@@ -265,8 +265,12 @@ describe('Ton Utils - Unit Tests', () => {
         const startTime = Date.now();
         const result = await promiseAllInBatches(mockTask, items, batchSize, delayBetweenBatches);
 
-        expect(mockTask).toHaveBeenCalledTimes(5);
-        expect(result).toEqual(items);
+        // Garantimos que o resultado não tenha valores `undefined`
+        expect(result).not.toContain(undefined);
+        expect(result.length).toBe(items.length);
+
+        expect(mockTask).toHaveBeenCalledTimes(5); // Verifica se a função foi chamada para cada item
+        expect(result).toEqual(items); // Certifica que o resultado corresponde exatamente ao esperado
 
         const endTime = Date.now();
         expect(endTime - startTime).toBeGreaterThanOrEqual(delayBetweenBatches);
