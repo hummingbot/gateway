@@ -4,13 +4,27 @@ import {
   validateConfigUpdateRequest,
   updateAllowedSlippageToFraction,
 } from './config.validators';
-import { 
-  ConfigUpdateRequest, 
-  ConfigUpdateResponse,
-  ConfigUpdateRequestSchema,
-  ConfigUpdateResponseSchema 
-} from './config.requests';
-import { Type } from '@sinclair/typebox';
+import { Type, Static } from '@sinclair/typebox';
+
+// Define schemas inline
+export const ConfigUpdateRequestSchema = Type.Object({
+  configPath: Type.String({ description: 'Configuration path' }),
+  configValue: Type.Union([
+    Type.String(),
+    Type.Number(),
+    Type.Boolean(),
+    Type.Object({}),
+    Type.Array(Type.Any())
+  ], { description: 'Configuration value' })
+});
+
+const ConfigUpdateResponseSchema = Type.Object({
+  message: Type.String({ description: 'Status message' })
+});
+
+// TypeScript types
+type ConfigUpdateRequest = Static<typeof ConfigUpdateRequestSchema>;
+type ConfigUpdateResponse = Static<typeof ConfigUpdateResponseSchema>;
 
 export const configRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /config - Get general or chain-specific configuration

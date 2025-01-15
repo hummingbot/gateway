@@ -6,7 +6,10 @@ import {
   mkRequestValidator,
 } from '../services/validators';
 import { fromFractionString, toFractionString } from '../services/base';
-import { ConfigUpdateRequest } from './config.requests';
+import { Static } from '@sinclair/typebox';
+import { ConfigUpdateRequestSchema } from './config.routes';
+
+type ConfigUpdateRequest = Static<typeof ConfigUpdateRequestSchema>;
 
 export const invalidAllowedSlippage: string =
   'allowedSlippage should be a number between 0.0 and 1.0 or a string of a fraction.';
