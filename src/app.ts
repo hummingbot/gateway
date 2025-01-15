@@ -23,7 +23,7 @@ import { ethereumRoutes } from './chains/ethereum/ethereum.routes';
 import { jupiterRoutes } from './connectors/jupiter/jupiter.routes';
 import { uniswapRoutes } from './connectors/uniswap/uniswap.routes';
 
-// Add version constant at the top level
+// Change version for each release
 const GATEWAY_VERSION = 'dev-2.3.0';
 
 // Define swagger options once
@@ -40,7 +40,7 @@ const swaggerOptions = {
       },
     ],
     tags: [
-      { name: 'connectors', description: 'Avaiable connectors' },
+      { name: 'connectors', description: 'Available connectors' },
       { name: 'config', description: 'Configuration endpoints' },
       { name: 'wallet', description: 'Wallet endpoints' },
       { name: 'solana', description: 'Solana chain endpoints' },
@@ -64,7 +64,7 @@ const swaggerOptions = {
 // Create gateway app configuration function
 const configureGatewayServer = () => {
   const server = Fastify({
-    logger: {
+    logger: ConfigManagerV2.getInstance().get('server.fastifyLogs') ? {
       level: 'info',
       transport: {
         target: 'pino-pretty',
@@ -73,7 +73,7 @@ const configureGatewayServer = () => {
           ignore: 'pid,hostname',
         },
       },
-    },
+    } : false,
     https: ConfigManagerV2.getInstance().get('server.devHTTPMode') 
       ? undefined 
       : getHttpsOptions()

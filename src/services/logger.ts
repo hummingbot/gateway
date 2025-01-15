@@ -48,9 +48,8 @@ const sdtoutFormat = winston.format.combine(
 );
 
 const getLogPath = () => {
-  let logPath = ConfigManagerV2.getInstance().get('server.logPath');
-  logPath = [appRoot.path, 'logs'].join('/');
-  return logPath;
+  const configPath = ConfigManagerV2.getInstance().get('server.logPath');
+  return configPath || [appRoot.path, 'logs'].join('/');
 };
 
 const allLogsFileTransport = new DailyRotateFile({
