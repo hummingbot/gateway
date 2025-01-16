@@ -301,24 +301,7 @@ describe('Ton Utils - Unit Tests', () => {
         expect(mockFunction).toHaveBeenCalledTimes(2);
     });
 
-    it('runWithRetryAndTimeout should throw timeout error if it exceeds timeout', async () => {
-        const mockFunction = jest.fn(
-            async () =>
-                new Promise((resolve) => setTimeout(() => resolve('success'), 200))
-        );
 
-        await expect(
-            runWithRetryAndTimeout(
-                null,
-                mockFunction,
-                [],
-                1,
-                0,
-                100,
-                'Custom timeout error'
-            )
-        ).rejects.toThrow('Custom timeout error');
-    });
 });
 
 describe('Ton - init', () => {

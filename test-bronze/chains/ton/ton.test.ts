@@ -90,7 +90,7 @@ describe('Ton Class', () => {
         return { publicKey, secretKey };
     }
 
-    describe('Initialization', () => {
+    describe('init', () => {
         it('should initialize with correct properties', () => {
             expect(tonInstance.nativeTokenSymbol).toBe('TON');
             expect(tonInstance.gasPrice).toBe(0.1);
@@ -139,6 +139,22 @@ describe('Ton Class', () => {
             expect(mockGetMasterchainInfo).toHaveBeenCalledTimes(0);
         });
 
+        it('should return the current block number', async () => {
+            const mockGetMasterchainInfo = jest.fn().mockResolvedValue({
+                last: { seqno: 12345, root_hash: 'mockRootHash' },
+            });
+            tonInstance.tonweb = {
+                provider: { getMasterchainInfo: mockGetMasterchainInfo },
+            } as any;
+
+            const result = await tonInstance.getCurrentBlockNumber();
+            expect(result).toEqual({
+                seqno: 12345,
+                root_hash: 'mockRootHash',
+            });
+        });
+
+
         it('should handle errors and throw an exception', async () => {
             const mockGetMasterchainInfo = jest.fn().mockRejectedValue(new Error('Mock error'));
             tonInstance.tonweb = {
@@ -170,6 +186,13 @@ describe('Ton Class', () => {
             expect(balances).toEqual({ TON: '0', AIOTX: '0' });
         });
 
+        it('should handle errors other than "account asset info not found"', async () => {
+            const mockGetWalletAssets = jest.fn().mockRejectedValue(new Error('Some other error'));
+            (tonInstance.stonfiClient.getWalletAssets as jest.Mock).mockImplementation(mockGetWalletAssets);
+
+            await expect(tonInstance.getAssetBalance('testAddress', ['TON'])).rejects.toThrow('Some other error');
+        });
+
         it('should handle empty array of token symbols', async () => {
             const balances = await tonInstance.getAssetBalance('testAddress', []);
             expect(balances).toEqual({});
@@ -186,6 +209,17 @@ describe('Ton Class', () => {
 
             expect(decrypted).toBe(mnemonic);
         });
+
+        it('should encrypt and decrypt with different passwords', () => {
+            const mnemonic = 'test mnemonic';
+            const password = 'differentPassword';
+
+            const encrypted = tonInstance.encrypt(mnemonic, password);
+            const decrypted = tonInstance.decrypt(encrypted, password);
+
+            expect(decrypted).toBe(mnemonic);
+        });
+
     });
 
     describe('getConnectedInstances', () => {
@@ -509,6 +543,20 @@ describe('Ton Class', () => {
             expect(result).toEqual(mockTrace);
         });
 
+        it('should handle eventHash without "hb-ton-stonfi-" prefix', async () => {
+            const mockTrace = { some: 'traceData' };
+            const mockGetTrace = jest.fn().mockResolvedValue(mockTrace);
+            tonInstance.tonApiClient = {
+                traces: { getTrace: mockGetTrace },
+            } as any;
+
+            const eventHash = 'validEventHash';
+            const result = await tonInstance.getTransaction(eventHash);
+
+            expect(mockGetTrace).toHaveBeenCalledWith(eventHash);
+            expect(result).toEqual(mockTrace);
+        });
+
         it('should handle eventHash with "hb-ton-stonfi-" prefix', async () => {
             const mockTrace = { txHash: 'resolvedTxHash' };
             const mockGetTrace = jest.fn().mockResolvedValue(mockTrace);
@@ -536,7 +584,26 @@ describe('Ton Class', () => {
         });
     });
 
+    describe('getInstance', () => {
+        it('should create a new instance if not cached', () => {
+            const instance = Ton.getInstance('testnet');
+            expect(instance).toBeInstanceOf(Ton);
+            expect(instance.network).toBe('testnet');
+        });
+
+        it('should return the cached instance if already created', () => {
+            const firstInstance = Ton.getInstance('testnet');
+            const secondInstance = Ton.getInstance('testnet');
+            expect(secondInstance).toBe(firstInstance);
+        });
+
+    });
+
 });
+
+
+
+
 
 
 

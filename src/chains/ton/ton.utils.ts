@@ -72,7 +72,7 @@ export const promiseAllInBatches = async <I, O>(
       ...(await Promise.all(
         itemsForBatch.map(async (item) => {
           try {
-            await task(item);
+            return await task(item);
           } catch (error) {
             console.log(error);
 
@@ -149,8 +149,7 @@ export const runWithRetryAndTimeout = async <R>(
       retryCount++;
 
       console.debug(
-        `${targetObject?.constructor.name || targetObject}:${
-          targetFunction.name
+        `${targetObject?.constructor.name || targetObject}:${targetFunction.name
         } => retry ${retryCount} of ${maxNumberOfRetries}`,
       );
 
@@ -160,8 +159,7 @@ export const runWithRetryAndTimeout = async <R>(
         }
       } else {
         const allErrors = Error(
-          `Failed to execute "${
-            targetFunction.name
+          `Failed to execute "${targetFunction.name
           }" with ${maxNumberOfRetries} retries. All error messages were:\n${errors
             .map((error: any) => error.message)
             .join(';\n')}\n`,
