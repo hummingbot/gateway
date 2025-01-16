@@ -1,11 +1,15 @@
-import { WalletContractV1R1, WalletContractV4, WalletContractV5R1 } from '@ton/ton';
+import { address, WalletContractV1R1, WalletContractV4, WalletContractV5R1 } from '@ton/ton';
 import { Ton } from '../../../src/chains/ton/ton';
 import fse from 'fs-extra';
+import { promises as fs } from 'fs';
 import { TonAsset } from "../../../src/chains/ton/ton.requests";
 import { Stonfi } from '../../../src/connectors/ston_fi/ston_fi';
 const MNEMONIC = "assault argue about artefact actor addict area arrest afford air ahead ancient advice account absent aunt acid allow arena announce ankle act also analyst"
 const mockPublicKey = 'mockPublicKey';
 const mockSecretKey = 'mockSecretKey';
+
+
+
 jest.mock('@ton/ton', () => ({
     Address: jest.fn().mockImplementation(() => ({
         toString: jest.fn().mockReturnValue('mockAddress'),
@@ -117,6 +121,12 @@ describe('Ton Class', () => {
                 'Unknown wallet version: unsupported'
             );
         });
+
+        it('should throw an error for unknown wallet version', () => {
+            expect(() => tonInstance.getWalletContractClassByVersion('unknown')).toThrowError(
+                'Unknown wallet version: unknown'
+            );
+        });
     });
 
     describe('getCurrentBlockNumber', () => {
@@ -220,6 +230,24 @@ describe('Ton Class', () => {
             expect(decrypted).toBe(mnemonic);
         });
 
+        it('should fail to decrypt with incorrect password', () => {
+            const mnemonic = 'test mnemonic';
+            const password = 'correctPassword';
+            const wrongPassword = 'wrongPassword';
+
+            const encrypted = tonInstance.encrypt(mnemonic, password);
+            expect(() => tonInstance.decrypt(encrypted, wrongPassword)).toThrow();
+        });
+
+        it('should encrypt and decrypt an empty string', () => {
+            const mnemonic = '';
+            const password = 'testpassword';
+
+            const encrypted = tonInstance.encrypt(mnemonic, password);
+            const decrypted = tonInstance.decrypt(encrypted, password);
+
+            expect(decrypted).toBe(mnemonic);
+        });
     });
 
     describe('getConnectedInstances', () => {
@@ -413,7 +441,15 @@ describe('Ton Class', () => {
             expect(tonInstance.getWalletContractClassByVersion).toHaveBeenCalledWith('v4');
             expect(tonInstance.getWalletContractClassByVersion).toHaveBeenCalledWith('v5R1');
         });
+
+        it('should handle empty availableWalletVersions', async () => {
+            tonInstance.config.availableWalletVersions = [];
+            const publicKey = Buffer.from('mockPublicKey');
+            const bestWallet = await tonInstance.getBestWallet(publicKey, 0);
+            expect(bestWallet).toBeNull();
+        });
     });
+
     describe('getAssetForSymbol', () => {
         it('should return the asset for a valid symbol', () => {
             const mockSymbol = 'TON';
@@ -437,6 +473,11 @@ describe('Ton Class', () => {
             tonInstance['_assetMap'] = {};
 
             const result = tonInstance.getAssetForSymbol(mockSymbol);
+            expect(result).toBeNull();
+        });
+
+        it('should return null for a symbol not in _assetMap', () => {
+            const result = tonInstance.getAssetForSymbol('NON_EXISTENT');
             expect(result).toBeNull();
         });
     });
@@ -598,6 +639,70 @@ describe('Ton Class', () => {
         });
 
     });
+
+});
+
+describe('Ton Class Additional Tests', () => {
+    let tonInstance: Ton;
+
+    beforeEach(() => {
+        jest.clearAllMocks();
+        tonInstance = new Ton('testnet', 'http://testnode', 'URL', 'http://testsource');
+    });
+
+    describe('close', () => {
+        it('should not throw an error when called', async () => {
+            await expect(tonInstance.close()).resolves.not.toThrow();
+        });
+    });
+
+
+    describe('getAssetData', () => {
+        it('should return data from URL if assetListType is URL', async () => {
+            tonInstance['_assetListType'] = 'URL';
+            const mockAssetList = { assets: [{ symbol: 'TON', decimals: 9 }] };
+            (tonInstance.omniston.assetList as jest.Mock).mockResolvedValue(mockAssetList);
+
+            const data = await tonInstance['getAssetData']();
+            expect(data).toEqual(mockAssetList.assets);
+        });
+
+        it('should return data from file if assetListType is FILE', async () => {
+            tonInstance['_assetListType'] = 'FILE';
+            jest.spyOn(fs, 'readFile').mockResolvedValueOnce(JSON.stringify({ tokens: [{ symbol: 'TON' }] }));
+
+            const data = await tonInstance['getAssetData']();
+            expect(data).toEqual([{ symbol: 'TON' }]);
+        });
+
+        it('should handle JSON parse errors gracefully', async () => {
+            jest.spyOn(fs, 'readFile').mockResolvedValueOnce('invalidJSON');
+            tonInstance['_assetListType'] = 'FILE';
+
+            await expect(tonInstance['getAssetData']()).rejects.toThrow(SyntaxError);
+        });
+    });
+
+    describe('waitForTransactionByMessage', () => {
+        it('should handle invalid state responses gracefully', async () => {
+            tonInstance.tonClient = {
+                getContractState: jest.fn().mockResolvedValue(null),
+            } as any;
+
+            const result = await tonInstance.waitForTransactionByMessage(address('mockAddress'), 'mockMessage', 5000);
+            expect(result).toBeNull();
+        });
+    });
+
+    describe('getWalletContractClassByVersion', () => {
+        it('should throw meaningful error for unsupported wallet versions', () => {
+            const unsupportedVersion = 'v6Beta';
+            expect(() => tonInstance.getWalletContractClassByVersion(unsupportedVersion)).toThrow(
+                `Unknown wallet version: ${unsupportedVersion}`
+            );
+        });
+    });
+
 
 });
 
