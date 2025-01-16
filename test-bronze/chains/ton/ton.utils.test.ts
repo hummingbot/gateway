@@ -1,6 +1,5 @@
 import { getNotNullOrThrowError, getOrDefault, promiseAllInBatches, runWithRetryAndTimeout, sleep, splitInChunks } from "../../../src/chains/ton/ton.utils";
 
-
 describe('ton.utils', () => {
     describe('getNotNullOrThrowError', () => {
         it('should return the value if it is not null or undefined', () => {

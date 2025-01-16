@@ -300,8 +300,6 @@ describe('Ton Utils - Unit Tests', () => {
         ).rejects.toThrow();
         expect(mockFunction).toHaveBeenCalledTimes(2);
     });
-
-
 });
 
 describe('Ton - init', () => {

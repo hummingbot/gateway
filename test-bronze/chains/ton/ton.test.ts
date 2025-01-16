@@ -8,8 +8,6 @@ const MNEMONIC = "assault argue about artefact actor addict area arrest afford a
 const mockPublicKey = 'mockPublicKey';
 const mockSecretKey = 'mockSecretKey';
 
-
-
 jest.mock('@ton/ton', () => ({
     Address: jest.fn().mockImplementation(() => ({
         toString: jest.fn().mockReturnValue('mockAddress'),
@@ -185,7 +183,6 @@ describe('Ton Class', () => {
             });
         });
 
-
         it('should handle errors and throw an exception', async () => {
             const mockGetMasterchainInfo = jest.fn().mockRejectedValue(new Error('Mock error'));
             tonInstance.tonweb = {
@@ -280,8 +277,6 @@ describe('Ton Class', () => {
     });
 
     describe('getAccountFromPrivateKey', () => {
-
-
         it('should return public and secret keys', async () => {
             tonInstance.getWallet = jest.fn().mockResolvedValue({});
             tonInstance.tonClient = {
@@ -376,7 +371,6 @@ describe('Ton Class', () => {
         });
     });
 
-
     describe('loadAssets', () => {
         it('should populate _assetMap with asset data from URL source', async () => {
             const mockAssetData = [
@@ -438,8 +432,6 @@ describe('Ton Class', () => {
 
             expect(result).toBeNull();
         });
-
-
     });
 
     describe('getNativeBalance Method', () => {
@@ -461,7 +453,6 @@ describe('Ton Class', () => {
             expect(parseFloat(result)).toBeCloseTo(1000000000);
         });
     });
-
 
     describe('getBestWallet', () => {
         it('should return the wallet with the highest native token balance', async () => {
@@ -557,10 +548,7 @@ describe('Ton Class', () => {
             expect(tonInstance.getBestWallet).toHaveBeenCalledWith(Buffer.from('mockPublicKey', 'base64url'), 0);
             expect(result).toBe(mockBestWallet);
         });
-
-
     });
-
 
     describe('getAccountFromAddress', () => {
         it('should return public and secret keys for a valid address', async () => {
@@ -637,7 +625,6 @@ describe('Ton Class', () => {
             const eventHash = 'hb-ton-stonfi-someEncodedQueryId';
             const result = await getTransactionMock(eventHash);
 
-
             expect(result).toEqual(mockTrace);
         });
     });
@@ -656,6 +643,7 @@ describe('Ton Class', () => {
         });
 
     });
+
     describe('getAssetData', () => {
         it('should return data from URL if assetListType is URL', async () => {
             tonInstance['_assetListType'] = 'URL';
@@ -681,16 +669,4 @@ describe('Ton Class', () => {
             await expect(tonInstance['getAssetData']()).rejects.toThrow(SyntaxError);
         });
     });
-
-
 });
-
-
-
-
-
-
-
-
-
-
