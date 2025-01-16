@@ -1,30 +1,49 @@
 import { FastifyPluginAsync } from 'fastify';
-import { Type } from '@sinclair/typebox';
-import {
-  AddWalletRequest,
-  AddWalletResponse,
-  RemoveWalletRequest,
-  WalletSignRequest,
-  WalletSignResponse,
-  GetWalletResponse,
-  AddWalletRequestSchema,
-  AddWalletResponseSchema,
-  RemoveWalletRequestSchema,
-  WalletSignRequestSchema,
-  WalletSignResponseSchema,
-  GetWalletResponseSchema,
-} from './wallet.requests';
-import {
-  addWallet,
-  removeWallet,
-  getWallets,
-  signMessage,
-} from './wallet.controllers';
-import {
-  validateAddWalletRequest,
-  validateRemoveWalletRequest,
-  validateWalletSignRequest,
-} from './wallet.validators';
+import { Type, Static } from '@sinclair/typebox';
+import { addWallet, removeWallet, getWallets, signMessage } from './wallet.controllers';
+import { logger } from '../services/logger';
+
+// Define schemas inline and export types
+export const WalletAddressSchema = Type.String();
+
+export const AddWalletRequestSchema = Type.Object({
+  chain: Type.String(),
+  network: Type.String(),
+  privateKey: Type.String()
+});
+
+export const AddWalletResponseSchema = Type.Object({
+  address: WalletAddressSchema
+});
+
+export const GetWalletResponseSchema = Type.Object({
+  chain: Type.String(),
+  walletAddresses: Type.Array(WalletAddressSchema)
+});
+
+export const RemoveWalletRequestSchema = Type.Object({
+  chain: Type.String(),
+  address: WalletAddressSchema
+});
+
+export const SignMessageRequestSchema = Type.Object({
+  chain: Type.String(),
+  network: Type.String(),
+  address: WalletAddressSchema,
+  message: Type.String()
+});
+
+export const SignMessageResponseSchema = Type.Object({
+  signature: Type.String()
+});
+
+// Export TypeScript types
+export type AddWalletRequest = Static<typeof AddWalletRequestSchema>;
+export type AddWalletResponse = Static<typeof AddWalletResponseSchema>;
+export type RemoveWalletRequest = Static<typeof RemoveWalletRequestSchema>;
+export type SignMessageRequest = Static<typeof SignMessageRequestSchema>;
+export type SignMessageResponse = Static<typeof SignMessageResponseSchema>;
+export type GetWalletResponse = Static<typeof GetWalletResponseSchema>;
 
 export const walletRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /
@@ -32,14 +51,18 @@ export const walletRoutes: FastifyPluginAsync = async (fastify) => {
     '/',
     {
       schema: {
-        description: 'Get all wallets',
+        description: 'Get all wallets across different chains',
         tags: ['wallet'],
         response: {
-          200: Type.Array(GetWalletResponseSchema)
+          200: {
+            type: 'array',
+            items: GetWalletResponseSchema
+          }
         }
       }
     },
     async () => {
+      logger.info('Getting all wallets');
       return await getWallets();
     }
   );
@@ -49,16 +72,23 @@ export const walletRoutes: FastifyPluginAsync = async (fastify) => {
     '/add',
     {
       schema: {
-        description: 'Add a new wallet',
+        description: 'Add a new wallet using a private key',
         tags: ['wallet'],
-        body: AddWalletRequestSchema,
+        body: {
+          ...AddWalletRequestSchema,
+          examples: [{
+            chain: 'solana',
+            network: 'mainnet-beta',
+            privateKey: '<your-private-key>'
+          }]
+        },
         response: {
           200: AddWalletResponseSchema
         }
       }
     },
     async (request) => {
-      validateAddWalletRequest(request.body);
+      logger.info(`Adding new wallet for chain: ${request.body.chain}`);
       return await addWallet(request.body);
     }
   );
@@ -68,37 +98,52 @@ export const walletRoutes: FastifyPluginAsync = async (fastify) => {
     '/remove',
     {
       schema: {
-        description: 'Remove a wallet',
+        description: 'Remove a wallet by its address',
         tags: ['wallet'],
-        body: RemoveWalletRequestSchema,
+        body: {
+          ...RemoveWalletRequestSchema,
+          examples: [{
+            chain: 'solana',
+            address: '<address>'
+          }]
+        },
         response: {
-          200: Type.Object({})
+          200: {
+            type: 'null'
+          }
         }
       }
     },
     async (request) => {
-      validateRemoveWalletRequest(request.body);
+      logger.info(`Removing wallet: ${request.body.address} from chain: ${request.body.chain}`);
       await removeWallet(request.body);
-      return {};
+      return null;
     }
   );
 
-  // GET /sign
-  fastify.get<{ Querystring: WalletSignRequest; Reply: WalletSignResponse }>(
-    '/sign',
+  // POST /sign-message
+  fastify.post<{ Body: SignMessageRequest; Reply: SignMessageResponse }>(
+    '/sign-message',
     {
       schema: {
-        description: 'Sign a message',
+        description: 'Sign a message with a specific wallet',
         tags: ['wallet'],
-        querystring: WalletSignRequestSchema,
+        body: {
+          ...SignMessageRequestSchema,
+          examples: [{
+            chain: 'solana',
+            address: '<address>',
+            message: 'Hello, World!'
+          }]
+        },
         response: {
-          200: WalletSignResponseSchema
+          200: SignMessageResponseSchema
         }
       }
     },
     async (request) => {
-      validateWalletSignRequest(request.query);
-      return await signMessage(request.query);
+      logger.info(`Signing message for wallet: ${request.body.address} on chain: ${request.body.chain}`);
+      return await signMessage(request.body);
     }
   );
 };

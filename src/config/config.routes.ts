@@ -41,7 +41,6 @@ export const configRoutes: FastifyPluginAsync = async (fastify) => {
       }),
       response: {
         200: {
-          description: 'Configuration object containing settings',
           type: 'object',
           additionalProperties: true
         }
@@ -75,13 +74,7 @@ export const configRoutes: FastifyPluginAsync = async (fastify) => {
           }]
         },
         response: {
-          200: {
-            description: 'Success response when config is updated',
-            ...ConfigUpdateResponseSchema,
-            examples: [{
-              message: 'The config has been updated'
-            }]
-          }
+          200: ConfigUpdateResponseSchema
         }
       }
     },

@@ -3,7 +3,7 @@ import { gatewayApp } from '../../src/app';
 import { patch, unpatch } from '../services/patch';
 import { Ethereum } from '../../src/chains/ethereum/ethereum';
 import { ConfigManagerCertPassphrase } from '../../src/services/config-manager-cert-passphrase';
-import { GetWalletResponse } from '../../src/wallet/wallet.requests';
+import { GetWalletResponse } from '../../src/wallet/wallet.routes';
 let eth: Ethereum;
 
 beforeAll(async () => {

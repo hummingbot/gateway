@@ -144,15 +144,22 @@ export class EthereumBase {
     tokenListSource: string,
     tokenListType: TokenListType
   ): Promise<void> {
-    this.tokenList = await this.getTokenList(tokenListSource, tokenListType);
-    // Only keep tokens in the same chain
-    this.tokenList = this.tokenList.filter(
-      (token: TokenInfo) => token.chainId === this.chainId
-    );
-    if (this.tokenList) {
-      this.tokenList.forEach(
-        (token: TokenInfo) => (this._tokenMap[token.symbol] = token)
+    logger.info(`Loading tokens for ${this.chainName} (${this.chainId}) from ${tokenListType} source: ${tokenListSource}`);
+    try {
+      this.tokenList = await this.getTokenList(tokenListSource, tokenListType);
+      // Only keep tokens in the same chain
+      this.tokenList = this.tokenList.filter(
+        (token: TokenInfo) => token.chainId === this.chainId
       );
+      if (this.tokenList) {
+        logger.info(`Loaded ${this.tokenList.length} tokens for ${this.chainName}`);
+        this.tokenList.forEach(
+          (token: TokenInfo) => (this._tokenMap[token.symbol] = token)
+        );
+      }
+    } catch (error) {
+      logger.error(`Failed to load token list for ${this.chainName}: ${error.message}`);
+      throw error;
     }
   }
 

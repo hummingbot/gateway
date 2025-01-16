@@ -38,6 +38,7 @@ export class Ethereum extends EthereumBase implements Ethereumish {
   private static GAS_PRICE_CACHE_MS = 10000; // 10 second cache
 
   private constructor(network: string) {
+    logger.info(`Initializing Ethereum connector for network: ${network}`);
     const config = getEthereumConfig('ethereum', network);
     super(
       'ethereum',

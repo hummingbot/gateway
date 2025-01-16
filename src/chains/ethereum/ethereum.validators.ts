@@ -34,6 +34,8 @@ export const invalidChainError: string = 'The chain param is not a string.';
 
 export const invalidNetworkError: string = 'The network param is not a string.';
 
+export const invalidEthPrivateKeyError = 'Invalid Ethereum private key';
+
 // test if a string matches the shape of an Ethereum address
 export const isAddress = (str: string): boolean => {
   return /^0x[a-fA-F0-9]{40}$/.test(str);
@@ -132,3 +134,7 @@ export const validatePollRequest: RequestValidator = mkRequestValidator([
 export const validateTokensRequest: RequestValidator = mkRequestValidator([
   validateNetwork,
 ]);
+
+export const validateEthPrivateKey = (privateKey: string): boolean => {
+  return /^(0x)?[a-fA-F0-9]{64}$/.test(privateKey);
+};

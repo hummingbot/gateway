@@ -150,9 +150,6 @@ export const SERVICE_UNITIALIZED_ERROR_MESSAGE = (service: any) =>
 export const UNKNOWN_KNOWN_CHAIN_ERROR_MESSAGE = (chainName: any) =>
   `Unrecognized chain name ${chainName}.`;
 
-export const ACCOUNT_NOT_SPECIFIED_ERROR_MESSAGE = () =>
-  `AccountID or address not specified.`;
-
 export const ERROR_RETRIEVING_WALLET_ADDRESS_ERROR_MESSAGE = (
   privKey: string
 ) =>
