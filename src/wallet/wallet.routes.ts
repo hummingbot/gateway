@@ -123,7 +123,7 @@ export const walletRoutes: FastifyPluginAsync = async (fastify) => {
 
   // POST /sign-message
   fastify.post<{ Body: SignMessageRequest; Reply: SignMessageResponse }>(
-    '/sign-message',
+    '/sign',
     {
       schema: {
         description: 'Sign a message with a specific wallet',
