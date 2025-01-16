@@ -1,5 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { ConfigManagerV2 } from '../services/config-manager-v2';
+import { logger } from '../services/logger';
 import {
   validateConfigUpdateRequest,
   updateAllowedSlippageToFraction,
@@ -27,40 +28,66 @@ type ConfigUpdateRequest = Static<typeof ConfigUpdateRequestSchema>;
 type ConfigUpdateResponse = Static<typeof ConfigUpdateResponseSchema>;
 
 export const configRoutes: FastifyPluginAsync = async (fastify) => {
-  // GET /config - Get general or chain-specific configuration
+  // GET /config
   fastify.get('/', {
     schema: {
-      description: 'Get configuration',
+      description: 'Get configuration settings. Returns all configurations if no chain/connector is specified.',
       tags: ['config'],
       querystring: Type.Object({
-        chainOrConnector: Type.Optional(Type.String()),
+        chainOrConnector: Type.Optional(Type.String({
+          description: 'Optional chain or connector name (e.g., "solana", "ethereum", "uniswap")',
+          examples: ['solana']
+        })),
       }),
+      response: {
+        200: {
+          description: 'Configuration object containing settings',
+          type: 'object',
+          additionalProperties: true
+        }
+      }
     },
   }, async (request) => {
     const { chainOrConnector } = request.query as { chainOrConnector?: string };
     
     if (chainOrConnector) {
+      logger.info(`Getting configuration for chain/connector: ${chainOrConnector}`);
       const namespace = ConfigManagerV2.getInstance().getNamespace(chainOrConnector);
       return namespace ? namespace.configuration : {};
     }
     
+    logger.info('Getting all configurations');
     return ConfigManagerV2.getInstance().allConfigurations;
   });
 
-  // POST /config/update - Update configuration
+  // POST /config/update
   fastify.post<{ Body: ConfigUpdateRequest; Reply: ConfigUpdateResponse }>(
     '/update',
     {
       schema: {
-        description: 'Update configuration',
+        description: 'Update a specific configuration value by its path',
         tags: ['config'],
-        body: ConfigUpdateRequestSchema,
+        body: {
+          ...ConfigUpdateRequestSchema,
+          examples: [{
+            configPath: 'solana.priorityFeeMultiplier',
+            configValue: 3
+          }]
+        },
         response: {
-          200: ConfigUpdateResponseSchema,
+          200: {
+            description: 'Success response when config is updated',
+            ...ConfigUpdateResponseSchema,
+            examples: [{
+              message: 'The config has been updated'
+            }]
+          }
         }
       }
     },
     async (request) => {
+      logger.info(`Updating config path: ${request.body.configPath} with value: ${JSON.stringify(request.body.configValue)}`);
+      
       validateConfigUpdateRequest(request.body);
       
       const config = ConfigManagerV2.getInstance().get(request.body.configPath);
@@ -86,6 +113,7 @@ export const configRoutes: FastifyPluginAsync = async (fastify) => {
         request.body.configValue
       );
 
+      logger.info(`Successfully updated configuration: ${request.body.configPath}`);
       return { message: 'The config has been updated' };
     }
   );

@@ -2,6 +2,7 @@ import { FastifyPluginAsync } from 'fastify';
 import { Type, Static } from '@sinclair/typebox';
 import { UniswapConfig } from './uniswap/uniswap.config';
 import { JupiterConfig } from './jupiter/jupiter.config';
+import { logger } from '../services/logger';
 
 // Define the schema using Typebox
 const NetworkSchema = Type.Object({
@@ -27,28 +28,35 @@ export const connectorsRoutes: FastifyPluginAsync = async (fastify) => {
     '/',
     {
       schema: {
-        description: 'Get available connectors',
+        description: 'Returns a list of available DEX connectors and their supported blockchain networks.',
         tags: ['connectors'],
         response: {
-          200: ConnectorsResponseSchema
+          200: {
+            description: 'Successful response with connector details',
+            ...ConnectorsResponseSchema
+          }
         }
       }
     },
     async () => {
-      return {
-        connectors: [
-          {
-            name: 'uniswap',
-            trading_type: UniswapConfig.config.tradingTypes,
-            available_networks: UniswapConfig.config.availableNetworks,
-          },
-          {
-            name: 'jupiter',
-            trading_type: JupiterConfig.config.tradingTypes,
-            available_networks: JupiterConfig.config.availableNetworks,
-          },
-        ],
-      } as any;
+      logger.info('Getting available DEX connectors and networks');
+      
+      const connectors = [
+        {
+          name: 'uniswap',
+          trading_type: UniswapConfig.config.tradingTypes,
+          available_networks: UniswapConfig.config.availableNetworks,
+        },
+        {
+          name: 'jupiter',
+          trading_type: JupiterConfig.config.tradingTypes,
+          available_networks: JupiterConfig.config.availableNetworks,
+        },
+      ];
+
+      logger.info('Available connectors: ' + connectors.map(c => c.name).join(', '));
+
+      return { connectors } as any;
     }
   );
 };

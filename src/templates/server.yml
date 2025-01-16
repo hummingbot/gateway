@@ -1,14 +1,14 @@
 # Runs Gateway in development mode with HTTP if true
 devHTTPMode: false
 
-# GMT Offset in hours (e.g. -8 for Pacific Time, -5 for Eastern Time)
+# GMT Offset in hours (e.g. -8 for Pacific US Time, -5 for Eastern US Time)
 GMTOffset: -8
 
-# Port on which to run the Gateway API server
+# Port on which to run the Gateway server
 port: 15888
 
 # Port on which to run the Swagger documentation UI. 
-# Set to 0 to serve docs at http://0.0.0.0:{port}/docs (same port as Gateway API)
+# Set to 0 to serve docs at http://0.0.0.0:{port}/docs (same port as Gateway server)
 # Set to a specific port (e.g. 8080) to serve docs separately at http://0.0.0.0:{docPort}
 docsPort: 0
 
