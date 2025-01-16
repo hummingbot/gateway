@@ -386,7 +386,7 @@ describe('Ton Class', () => {
         });
     });
 });
-});
+
 
 describe('Ton Class Methods', () => {
     let tonInstance: Ton;
@@ -454,6 +454,6 @@ describe('getNativeBalance Method', () => {
     it('should return correct balance with precision', async () => {
         const result = await tonInstance.getNativeBalance('mockAddress');
         expect(result).toEqual(expect.any(String));
-        expect(parseFloat(result)).toBeCloseTo(1000000000); // 9 decimal precision
+        expect(parseFloat(result)).toBeCloseTo(1000000000);
     });
 });
