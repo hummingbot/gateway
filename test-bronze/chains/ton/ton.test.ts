@@ -350,4 +350,34 @@ describe('Ton Class', () => {
 
     });
 
+    describe('getBestWallet', () => {
+        it('should return the wallet with the highest native token balance', async () => {
+            const mockWalletV4 = {
+                create: jest.fn().mockReturnValue({ address: 'mockAddressV4' }),
+            };
+            const mockWalletV5R1 = {
+                create: jest.fn().mockReturnValue({ address: 'mockAddressV5R1' }),
+            };
+
+            tonInstance.getWalletContractClassByVersion = jest.fn()
+                .mockImplementationOnce(() => mockWalletV4)
+                .mockImplementationOnce(() => mockWalletV5R1);
+
+            tonInstance.tonClient = {
+                open: jest.fn().mockImplementation((wallet) => ({
+                    address: wallet.address,
+                })),
+                getBalance: jest.fn()
+                    .mockImplementationOnce(() => Promise.resolve('1000')) // Balance for V4
+                    .mockImplementationOnce(() => Promise.resolve('2000')), // Balance for V5R1
+            } as any;
+
+            const publicKey = Buffer.from('mockPublicKey');
+            const bestWallet = await tonInstance.getBestWallet(publicKey, 0);
+
+            expect(bestWallet).toEqual({ address: 'mockAddressV5R1' });
+            expect(tonInstance.getWalletContractClassByVersion).toHaveBeenCalledWith('v4');
+            expect(tonInstance.getWalletContractClassByVersion).toHaveBeenCalledWith('v5R1');
+        });
+    });
 });
