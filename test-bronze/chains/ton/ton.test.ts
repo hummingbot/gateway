@@ -1,23 +1,29 @@
 import { WalletContractV1R1, WalletContractV4, WalletContractV5R1 } from '@ton/ton';
 import { Ton } from '../../../src/chains/ton/ton';
+import { TonAsset } from "../../../src/chains/ton/ton.requests";
 const MNEMONIC = "assault argue about artefact actor addict area arrest afford air ahead ancient advice account absent aunt acid allow arena announce ankle act also analyst"
 
+jest.mock('@ton/ton', () => ({
+    Address: jest.fn().mockImplementation(() => ({
+        toString: jest.fn().mockReturnValue('mockAddress'),
+    })),
+    address: jest.fn().mockReturnValue('mockAddress'),
+    TonClient: jest.fn().mockImplementation(() => ({
+        getBalance: jest.fn().mockResolvedValue(BigInt(1000000000)),
+    })),
+}));
+
+jest.mock('@ston-fi/sdk', () => ({
+    FarmNftItemV1: jest.fn().mockImplementation(() => ({
+        method: jest.fn(),
+    })),
+}));
 
 jest.mock('@ton-api/client', () => ({
     TonApiClient: jest.fn().mockImplementation(() => ({
         traces: { getTrace: jest.fn() },
     })),
 }));
-
-jest.mock('tonweb', () => {
-    return {
-        HttpProvider: jest.fn(),
-        TonWeb: jest.fn().mockImplementation(() => ({
-            provider: { getMasterchainInfo: jest.fn() },
-        })),
-    };
-});
-
 
 jest.mock('tonweb', () => {
     return {
@@ -70,7 +76,7 @@ describe('Ton Class', () => {
         tonInstance = new Ton('testnet', 'http://testnode', 'URL', 'http://testsource');
     });
 
-    describe('init', () => {
+    describe('Initialization', () => {
         it('should initialize with correct properties', () => {
             expect(tonInstance.nativeTokenSymbol).toBe('TON');
             expect(tonInstance.gasPrice).toBe(0.1);
@@ -149,10 +155,12 @@ describe('Ton Class', () => {
             const balances = await tonInstance.getAssetBalance('testAddress', ['TON', 'AIOTX']);
             expect(balances).toEqual({ TON: '0', AIOTX: '0' });
         });
+
+        it('should handle empty array of token symbols', async () => {
+            const balances = await tonInstance.getAssetBalance('testAddress', []);
+            expect(balances).toEqual({});
+        });
     });
-
-
-
 
     describe('encrypt and decrypt', () => {
         it('should encrypt and decrypt the mnemonic', () => {
@@ -165,7 +173,6 @@ describe('Ton Class', () => {
             expect(decrypted).toBe(mnemonic);
         });
     });
-
 
     describe('getConnectedInstances', () => {
         it('should return connected instances', () => {
@@ -318,8 +325,6 @@ describe('Ton Class', () => {
         });
     });
 
-
-
     describe('waitForTransactionByMessage', () => {
         it('should resolve with transaction hash if found within timeout', async () => {
             const mockTx = {
@@ -379,5 +384,76 @@ describe('Ton Class', () => {
             expect(tonInstance.getWalletContractClassByVersion).toHaveBeenCalledWith('v4');
             expect(tonInstance.getWalletContractClassByVersion).toHaveBeenCalledWith('v5R1');
         });
+    });
+});
+});
+
+describe('Ton Class Methods', () => {
+    let tonInstance: Ton;
+
+    beforeEach(() => {
+        jest.clearAllMocks();
+        tonInstance = new Ton('testnet', 'http://testnode', 'URL', 'http://testsource');
+    });
+
+    describe('getAssetForSymbol', () => {
+        it('should return the asset for a valid symbol', () => {
+            const mockSymbol = 'TON';
+            const mockAsset: TonAsset = {
+                symbol: 'TON',
+                assetId: 'mockAssetId',
+                decimals: 9,
+            };
+
+            tonInstance['_assetMap'] = {
+                [mockSymbol]: mockAsset,
+            };
+
+            const result = tonInstance.getAssetForSymbol(mockSymbol);
+            expect(result).toEqual(mockAsset);
+        });
+
+        it('should return null for an invalid symbol', () => {
+            const mockSymbol = 'INVALID';
+
+            tonInstance['_assetMap'] = {};
+
+            const result = tonInstance.getAssetForSymbol(mockSymbol);
+            expect(result).toBeNull();
+        });
+    });
+});
+
+describe('getNativeBalance Method', () => {
+    let tonInstance: Ton;
+
+    beforeEach(() => {
+        jest.clearAllMocks();
+        tonInstance = new Ton('testnet', 'http://testnode', 'URL', 'http://testsource');
+        tonInstance.tonClient = {
+            getBalance: jest.fn().mockImplementation((address: string) => {
+                if (address === 'mockAddress') {
+                    return BigInt(1000000000);
+                }
+                throw new Error('Invalid address!');
+            }),
+        } as any;
+    });
+
+    it('should return the native balance for a valid address', async () => {
+        const result = await tonInstance.getNativeBalance('mockAddress');
+        expect(tonInstance.tonClient.getBalance).toHaveBeenCalledWith('mockAddress');
+        expect(result).toBe('1000000000');
+    });
+
+    it('should throw a meaningful error if getBalance fails', async () => {
+        (tonInstance.tonClient.getBalance as jest.Mock).mockRejectedValueOnce(new Error('Balance fetch failed'));
+        await expect(tonInstance.getNativeBalance('mockAddress')).rejects.toThrow('Balance fetch failed');
+    });
+
+    it('should return correct balance with precision', async () => {
+        const result = await tonInstance.getNativeBalance('mockAddress');
+        expect(result).toEqual(expect.any(String));
+        expect(parseFloat(result)).toBeCloseTo(1000000000); // 9 decimal precision
     });
 });

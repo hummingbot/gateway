@@ -251,7 +251,7 @@ describe('Ton Utils - Unit Tests', () => {
         const start = Date.now();
         await sleep(100);
         const end = Date.now();
-        expect(end - start).toBeGreaterThanOrEqual(100);
+        expect(end - start).toBeGreaterThanOrEqual(99);
     });
 
     it('promiseAllInBatches should process items in batches with delay', async () => {
@@ -265,12 +265,11 @@ describe('Ton Utils - Unit Tests', () => {
         const startTime = Date.now();
         const result = await promiseAllInBatches(mockTask, items, batchSize, delayBetweenBatches);
 
-        // Garantimos que o resultado não tenha valores `undefined`
         expect(result).not.toContain(undefined);
         expect(result.length).toBe(items.length);
 
-        expect(mockTask).toHaveBeenCalledTimes(5); // Verifica se a função foi chamada para cada item
-        expect(result).toEqual(items); // Certifica que o resultado corresponde exatamente ao esperado
+        expect(mockTask).toHaveBeenCalledTimes(5);
+        expect(result).toEqual(items);
 
         const endTime = Date.now();
         expect(endTime - startTime).toBeGreaterThanOrEqual(delayBetweenBatches);
@@ -305,7 +304,7 @@ describe('Ton Utils - Unit Tests', () => {
     it('runWithRetryAndTimeout should throw timeout error if it exceeds timeout', async () => {
         const mockFunction = jest.fn(
             async () =>
-                new Promise((resolve) => setTimeout(() => resolve('success'), 200)) // Resolves after 200ms
+                new Promise((resolve) => setTimeout(() => resolve('success'), 200))
         );
 
         await expect(

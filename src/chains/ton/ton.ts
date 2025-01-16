@@ -337,12 +337,12 @@ export class Ton {
 
     return balances;
   }
-  // TODO HUDSON !!!
+
   public async getNativeBalance(account: string): Promise<string> {
     const tonAsset = await this.tonClient.getBalance(address(account));
     return tonAsset.toString();
   }
-  // TODO !!!
+
   public getAssetForSymbol(symbol: string): TonAsset | null {
     return this._assetMap[symbol] ? this._assetMap[symbol] : null;
   }
