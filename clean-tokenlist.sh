@@ -19,9 +19,10 @@ prompt_proceed () {
 
 clean_token_list () {
   INPUT_PATH=$1
+  CHAIN_ID=$2
   
-  # Create output path with _CLEANED suffix
-  OUTPUT_PATH="${INPUT_PATH%.*}_CLEANED.json"
+  # Create output path with _CLEANED suffix and chainId
+  OUTPUT_PATH="${INPUT_PATH%.*}_CLEANED${CHAIN_ID:+_$CHAIN_ID}.json"
 
   # Check if input file exists
   if [ ! -f "$INPUT_PATH" ]; then
@@ -34,7 +35,7 @@ clean_token_list () {
   mkdir -p "$OUTPUT_DIR"
 
   # Use jq to clean the token list and remove duplicates
-  jq '
+  jq --arg chainid "$CHAIN_ID" '
     (if type == "object" then .tokens else . end) |
     map({
       chainId: .chainId,
@@ -44,6 +45,7 @@ clean_token_list () {
       decimals: .decimals
     } | select(
       .chainId != null and
+      ($chainid == "" or .chainId == ($chainid|tonumber)) and
       .name != null and
       .symbol != null and
       .address != null and
@@ -104,8 +106,9 @@ echo "===============  CLEAN TOKEN LIST ==============="
 echo
 echo
 
-# Get input path only
+# Get input path and chainId
 read -p "Enter path to the raw token list file >>> " INPUT_PATH
+read -p "Enter chainId to filter (leave blank for all chains) >>> " CHAIN_ID
 
 # Set output path using TEMPLATE_DIR
 OUTPUT_PATH="$TEMPLATE_DIR/lists/token_list.json"
@@ -115,13 +118,14 @@ echo
 echo "ℹ️ Confirm if this is correct:"
 echo
 printf "%30s %5s\n" "Clean token list FROM:" "$INPUT_PATH"
+printf "%30s %5s\n" "Filter for chainId:" "$CHAIN_ID"
 printf "%30s %5s\n" "Save cleaned list TO:" "${INPUT_PATH%.*}_CLEANED.json"
 echo
 
 prompt_proceed
 if [[ "$PROCEED" == "Y" || "$PROCEED" == "y" ]]
 then
-  clean_token_list "$INPUT_PATH" "$OUTPUT_PATH"
+  clean_token_list "$INPUT_PATH" "$CHAIN_ID"
 else
   echo "Exiting..."
   exit
