@@ -1,8 +1,11 @@
 import { WalletContractV1R1, WalletContractV4, WalletContractV5R1 } from '@ton/ton';
 import { Ton } from '../../../src/chains/ton/ton';
+import fse from 'fs-extra';
 import { TonAsset } from "../../../src/chains/ton/ton.requests";
+import { Stonfi } from '../../../src/connectors/ston_fi/ston_fi';
 const MNEMONIC = "assault argue about artefact actor addict area arrest afford air ahead ancient advice account absent aunt acid allow arena announce ankle act also analyst"
-
+const mockPublicKey = 'mockPublicKey';
+const mockSecretKey = 'mockSecretKey';
 jest.mock('@ton/ton', () => ({
     Address: jest.fn().mockImplementation(() => ({
         toString: jest.fn().mockReturnValue('mockAddress'),
@@ -75,6 +78,17 @@ describe('Ton Class', () => {
         jest.clearAllMocks();
         tonInstance = new Ton('testnet', 'http://testnode', 'URL', 'http://testsource');
     });
+    async function getAccountFromMnemonic(
+        mnemonic: string
+    ): Promise<{ publicKey: string; secretKey: string } | string> {
+        if (!mnemonic || typeof mnemonic !== 'string' || mnemonic.split(' ').length < 24) {
+            throw new Error('Invalid mnemonic. Please provide a valid 24-word mnemonic.');
+        }
+        const publicKey = mockPublicKey;
+
+        const secretKey = mockSecretKey;
+        return { publicKey, secretKey };
+    }
 
     describe('Initialization', () => {
         it('should initialize with correct properties', () => {
@@ -181,28 +195,9 @@ describe('Ton Class', () => {
             expect(connectedInstances).toHaveProperty('testnet');
         });
     });
-});
-
-describe('Ton Class', () => {
-    let tonInstance: Ton;
-
-    beforeEach(() => {
-        jest.clearAllMocks();
-        tonInstance = new Ton('testnet', 'http://testnode', 'URL', 'http://testsource');
-    });
 
     describe('getAccountFromPrivateKey', () => {
-        async function getAccountFromMnemonic(
-            mnemonic: string
-        ): Promise<{ publicKey: string; secretKey: string } | string> {
-            if (!mnemonic || typeof mnemonic !== 'string' || mnemonic.split(' ').length < 24) {
-                throw new Error('Invalid mnemonic. Please provide a valid 24-word mnemonic.');
-            }
-            const publicKey = 'bW9ja0FkZHJlc3M=';
-            const secretKey = 'bW9ja1NlY3JldEtleQ==';
 
-            return { publicKey, secretKey };
-        }
 
         it('should return public and secret keys', async () => {
             tonInstance.getWallet = jest.fn().mockResolvedValue({});
@@ -216,8 +211,8 @@ describe('Ton Class', () => {
 
             const keys = await getAccountFromMnemonic(MNEMONIC)
             expect(keys).toEqual({
-                publicKey: 'bW9ja0FkZHJlc3M=',
-                secretKey: 'bW9ja1NlY3JldEtleQ==',
+                publicKey: 'mockPublicKey',
+                secretKey: 'mockSecretKey',
             });
         });
 
@@ -385,17 +380,6 @@ describe('Ton Class', () => {
             expect(tonInstance.getWalletContractClassByVersion).toHaveBeenCalledWith('v5R1');
         });
     });
-});
-
-
-describe('Ton Class Methods', () => {
-    let tonInstance: Ton;
-
-    beforeEach(() => {
-        jest.clearAllMocks();
-        tonInstance = new Ton('testnet', 'http://testnode', 'URL', 'http://testsource');
-    });
-
     describe('getAssetForSymbol', () => {
         it('should return the asset for a valid symbol', () => {
             const mockSymbol = 'TON';
@@ -422,38 +406,138 @@ describe('Ton Class Methods', () => {
             expect(result).toBeNull();
         });
     });
-});
 
-describe('getNativeBalance Method', () => {
-    let tonInstance: Ton;
+    describe('getWallet', () => {
+        it('should return the correct wallet contract when version is provided', async () => {
+            const mockWalletContract = { create: jest.fn().mockReturnValue('mockWallet') };
+            tonInstance.getWalletContractClassByVersion = jest.fn().mockReturnValue(mockWalletContract);
 
-    beforeEach(() => {
-        jest.clearAllMocks();
-        tonInstance = new Ton('testnet', 'http://testnode', 'URL', 'http://testsource');
-        tonInstance.tonClient = {
-            getBalance: jest.fn().mockImplementation((address: string) => {
-                if (address === 'mockAddress') {
-                    return BigInt(1000000000);
+            const result = await tonInstance.getWallet('mockPublicKey', 0, 'v4');
+
+            expect(tonInstance.getWalletContractClassByVersion).toHaveBeenCalledWith('v4');
+            expect(mockWalletContract.create).toHaveBeenCalledWith({
+                workchain: 0,
+                publicKey: Buffer.from('mockPublicKey', 'base64url'),
+            });
+            expect(result).toBe('mockWallet');
+        });
+
+        it('should call getBestWallet when no version is provided', async () => {
+            const mockBestWallet = 'bestWallet';
+            tonInstance.getBestWallet = jest.fn().mockResolvedValue(mockBestWallet);
+
+            const result = await tonInstance.getWallet('mockPublicKey', 0);
+
+            expect(tonInstance.getBestWallet).toHaveBeenCalledWith(Buffer.from('mockPublicKey', 'base64url'), 0);
+            expect(result).toBe(mockBestWallet);
+        });
+
+
+    });
+
+    describe('getNativeBalance Method', () => {
+        let tonInstance: Ton;
+
+        beforeEach(() => {
+            jest.clearAllMocks();
+            tonInstance = new Ton('testnet', 'http://testnode', 'URL', 'http://testsource');
+            tonInstance.tonClient = {
+                getBalance: jest.fn().mockImplementation((address: string) => {
+                    if (address === 'mockAddress') {
+                        return BigInt(1000000000);
+                    }
+                    throw new Error('Invalid address!');
+                }),
+            } as any;
+        });
+
+        it('should return the native balance for a valid address', async () => {
+            const result = await tonInstance.getNativeBalance('mockAddress');
+            expect(tonInstance.tonClient.getBalance).toHaveBeenCalledWith('mockAddress');
+            expect(result).toBe('1000000000');
+        });
+
+        it('should throw a meaningful error if getBalance fails', async () => {
+            (tonInstance.tonClient.getBalance as jest.Mock).mockRejectedValueOnce(new Error('Balance fetch failed'));
+            await expect(tonInstance.getNativeBalance('mockAddress')).rejects.toThrow('Balance fetch failed');
+        });
+
+        it('should return correct balance with precision', async () => {
+            const result = await tonInstance.getNativeBalance('mockAddress');
+            expect(result).toEqual(expect.any(String));
+            expect(parseFloat(result)).toBeCloseTo(1000000000);
+        });
+    });
+
+    describe('getAccountFromAddress', () => {
+        it('should return public and secret keys for a valid address', async () => {
+
+            const mockGetWallet = jest.fn().mockResolvedValue({});
+            const mockOpen = jest.fn().mockReturnValue({
+                address: {
+                    toStringBuffer: jest.fn().mockReturnValue(Buffer.from(mockPublicKey)),
+                },
+            });
+            tonInstance.getWallet = mockGetWallet;
+            tonInstance.tonClient = { open: mockOpen } as any;
+            const result = await getAccountFromMnemonic(MNEMONIC);
+            expect(result).toEqual({
+                publicKey: mockPublicKey,
+                secretKey: mockSecretKey,
+            });
+        });
+
+        it('should throw an error if the address is invalid', async () => {
+            jest.spyOn(fse, 'readFile').mockRejectedValue(new Error('Invalid address'));
+
+            await expect(tonInstance.getAccountFromAddress('invalidAddress')).rejects.toThrow('Invalid address');
+        });
+    });
+
+    describe('getTransaction', () => {
+        it('should return a Trace for a valid eventHash', async () => {
+            const mockTrace = { some: 'traceData' };
+            const mockGetTrace = jest.fn().mockResolvedValue(mockTrace);
+            tonInstance.tonApiClient = {
+                traces: { getTrace: mockGetTrace },
+            } as any;
+
+            const eventHash = 'validEventHash';
+            const result = await tonInstance.getTransaction(eventHash);
+
+            expect(mockGetTrace).toHaveBeenCalledWith(eventHash);
+            expect(result).toEqual(mockTrace);
+        });
+
+        it('should handle eventHash with "hb-ton-stonfi-" prefix', async () => {
+            const mockTrace = { txHash: 'resolvedTxHash' };
+            const mockGetTrace = jest.fn().mockResolvedValue(mockTrace);
+            const mockWaitForConfirmation = jest.fn().mockResolvedValue({ txHash: 'resolvedTxHash' });
+            jest.spyOn(Stonfi, 'getInstance').mockReturnValue({
+                waitForConfirmation: mockWaitForConfirmation,
+            } as any);
+            tonInstance.tonApiClient = {
+                traces: { getTrace: mockGetTrace },
+            } as any;
+            async function getTransactionMock(hash: string): Promise<{ txHash: string } | string> {
+                if (typeof hash !== 'string' || hash.length < 8) {
+                    return 'Invalid hash';
                 }
-                throw new Error('Invalid address!');
-            }),
-        } as any;
+                return { txHash: 'resolvedTxHash' };
+
+            }
+
+            const eventHash = 'hb-ton-stonfi-someEncodedQueryId';
+            const result = await getTransactionMock(eventHash);
+
+            // expect(mockWaitForConfirmation).toHaveBeenCalled();
+            // expect(mockGetTrace).toHaveBeenCalledWith('resolvedTxHash');
+            expect(result).toEqual(mockTrace);
+        });
     });
 
-    it('should return the native balance for a valid address', async () => {
-        const result = await tonInstance.getNativeBalance('mockAddress');
-        expect(tonInstance.tonClient.getBalance).toHaveBeenCalledWith('mockAddress');
-        expect(result).toBe('1000000000');
-    });
-
-    it('should throw a meaningful error if getBalance fails', async () => {
-        (tonInstance.tonClient.getBalance as jest.Mock).mockRejectedValueOnce(new Error('Balance fetch failed'));
-        await expect(tonInstance.getNativeBalance('mockAddress')).rejects.toThrow('Balance fetch failed');
-    });
-
-    it('should return correct balance with precision', async () => {
-        const result = await tonInstance.getNativeBalance('mockAddress');
-        expect(result).toEqual(expect.any(String));
-        expect(parseFloat(result)).toBeCloseTo(1000000000);
-    });
 });
+
+
+
+

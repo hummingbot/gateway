@@ -200,7 +200,7 @@ export class Ton {
       root_hash: lastBlock.root_hash,
     };
   }
-  // TODO !!!
+
   async getTransaction(eventHash: string): Promise<Trace> {
     if (eventHash.includes('hb-ton-stonfi-')) {
       const queryId = eventHash.replace('hb-ton-stonfi-', '');
@@ -238,7 +238,7 @@ export class Ton {
     const secretKey = keyPair.secretKey.toString('base64url');
     return { publicKey, secretKey };
   }
-  // TODO !!!
+
   async getAccountFromAddress(
     address: string,
   ): Promise<{ publicKey: string; secretKey: string }> {
@@ -461,7 +461,7 @@ export class Ton {
       throw new Error(`Unknown wallet version: ${version}`);
     }
   }
-  // TODO GREG !!!
+
   public async getBestWallet(
     publicKey: Buffer,
     workchain: number,
@@ -488,7 +488,7 @@ export class Ton {
     }
     return bestWallet;
   }
-  // TODO !!!
+
   public async getWallet(
     publicKey: string,
     workchain?: number,
