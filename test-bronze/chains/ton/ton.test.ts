@@ -430,8 +430,8 @@ describe('Ton Class', () => {
                     address: wallet.address,
                 })),
                 getBalance: jest.fn()
-                    .mockImplementationOnce(() => Promise.resolve('1000')) // Balance for V4
-                    .mockImplementationOnce(() => Promise.resolve('2000')), // Balance for V5R1
+                    .mockImplementationOnce(() => Promise.resolve('1000'))
+                    .mockImplementationOnce(() => Promise.resolve('2000')),
             } as any;
 
             const publicKey = Buffer.from('mockPublicKey');
