@@ -81,6 +81,14 @@ describe('Ton Class', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         tonInstance = new Ton('testnet', 'http://testnode', 'URL', 'http://testsource');
+        tonInstance.tonClient = {
+            getBalance: jest.fn().mockImplementation((address: string) => {
+                if (address === 'mockAddress') {
+                    return BigInt(1000000000);
+                }
+                throw new Error('Invalid address!');
+            }),
+        } as any;
     });
     async function getAccountFromMnemonic(
         mnemonic: string
@@ -105,11 +113,24 @@ describe('Ton Class', () => {
         });
     });
 
+    describe('close', () => {
+        it('should not throw an error when called', async () => {
+            await expect(tonInstance.close()).resolves.not.toThrow();
+        });
+    });
+
     describe('getWalletContractClassByVersion', () => {
         it('should return the correct wallet contract for valid versions', () => {
             expect(tonInstance.getWalletContractClassByVersion('v1r1')).toBe(WalletContractV1R1);
             expect(tonInstance.getWalletContractClassByVersion('v4')).toBe(WalletContractV4);
             expect(tonInstance.getWalletContractClassByVersion('v5R1')).toBe(WalletContractV5R1);
+        });
+
+        it('should throw meaningful error for unsupported wallet versions', () => {
+            const unsupportedVersion = 'v6Beta';
+            expect(() => tonInstance.getWalletContractClassByVersion(unsupportedVersion)).toThrow(
+                `Unknown wallet version: ${unsupportedVersion}`
+            );
         });
 
         it('should return undefined if no version is provided', () => {
@@ -398,6 +419,15 @@ describe('Ton Class', () => {
             expect(result).toBe('mockHash');
         });
 
+        it('should handle invalid state responses gracefully', async () => {
+            tonInstance.tonClient = {
+                getContractState: jest.fn().mockResolvedValue(null),
+            } as any;
+
+            const result = await tonInstance.waitForTransactionByMessage(address('mockAddress'), 'mockMessage', 5000);
+            expect(result).toBeNull();
+        });
+
         it('should resolve with null if timeout occurs', async () => {
             const mockState = { lastTransaction: null };
             tonInstance.tonClient = {
@@ -411,6 +441,27 @@ describe('Ton Class', () => {
 
 
     });
+
+    describe('getNativeBalance Method', () => {
+
+        it('should return the native balance for a valid address', async () => {
+            const result = await tonInstance.getNativeBalance('mockAddress');
+            expect(tonInstance.tonClient.getBalance).toHaveBeenCalledWith('mockAddress');
+            expect(result).toBe('1000000000');
+        });
+
+        it('should throw a meaningful error if getBalance fails', async () => {
+            (tonInstance.tonClient.getBalance as jest.Mock).mockRejectedValueOnce(new Error('Balance fetch failed'));
+            await expect(tonInstance.getNativeBalance('mockAddress')).rejects.toThrow('Balance fetch failed');
+        });
+
+        it('should return correct balance with precision', async () => {
+            const result = await tonInstance.getNativeBalance('mockAddress');
+            expect(result).toEqual(expect.any(String));
+            expect(parseFloat(result)).toBeCloseTo(1000000000);
+        });
+    });
+
 
     describe('getBestWallet', () => {
         it('should return the wallet with the highest native token balance', async () => {
@@ -510,39 +561,6 @@ describe('Ton Class', () => {
 
     });
 
-    describe('getNativeBalance Method', () => {
-        let tonInstance: Ton;
-
-        beforeEach(() => {
-            jest.clearAllMocks();
-            tonInstance = new Ton('testnet', 'http://testnode', 'URL', 'http://testsource');
-            tonInstance.tonClient = {
-                getBalance: jest.fn().mockImplementation((address: string) => {
-                    if (address === 'mockAddress') {
-                        return BigInt(1000000000);
-                    }
-                    throw new Error('Invalid address!');
-                }),
-            } as any;
-        });
-
-        it('should return the native balance for a valid address', async () => {
-            const result = await tonInstance.getNativeBalance('mockAddress');
-            expect(tonInstance.tonClient.getBalance).toHaveBeenCalledWith('mockAddress');
-            expect(result).toBe('1000000000');
-        });
-
-        it('should throw a meaningful error if getBalance fails', async () => {
-            (tonInstance.tonClient.getBalance as jest.Mock).mockRejectedValueOnce(new Error('Balance fetch failed'));
-            await expect(tonInstance.getNativeBalance('mockAddress')).rejects.toThrow('Balance fetch failed');
-        });
-
-        it('should return correct balance with precision', async () => {
-            const result = await tonInstance.getNativeBalance('mockAddress');
-            expect(result).toEqual(expect.any(String));
-            expect(parseFloat(result)).toBeCloseTo(1000000000);
-        });
-    });
 
     describe('getAccountFromAddress', () => {
         it('should return public and secret keys for a valid address', async () => {
@@ -619,8 +637,7 @@ describe('Ton Class', () => {
             const eventHash = 'hb-ton-stonfi-someEncodedQueryId';
             const result = await getTransactionMock(eventHash);
 
-            // expect(mockWaitForConfirmation).toHaveBeenCalled();
-            // expect(mockGetTrace).toHaveBeenCalledWith('resolvedTxHash');
+
             expect(result).toEqual(mockTrace);
         });
     });
@@ -639,24 +656,6 @@ describe('Ton Class', () => {
         });
 
     });
-
-});
-
-describe('Ton Class Additional Tests', () => {
-    let tonInstance: Ton;
-
-    beforeEach(() => {
-        jest.clearAllMocks();
-        tonInstance = new Ton('testnet', 'http://testnode', 'URL', 'http://testsource');
-    });
-
-    describe('close', () => {
-        it('should not throw an error when called', async () => {
-            await expect(tonInstance.close()).resolves.not.toThrow();
-        });
-    });
-
-
     describe('getAssetData', () => {
         it('should return data from URL if assetListType is URL', async () => {
             tonInstance['_assetListType'] = 'URL';
@@ -683,28 +682,10 @@ describe('Ton Class Additional Tests', () => {
         });
     });
 
-    describe('waitForTransactionByMessage', () => {
-        it('should handle invalid state responses gracefully', async () => {
-            tonInstance.tonClient = {
-                getContractState: jest.fn().mockResolvedValue(null),
-            } as any;
-
-            const result = await tonInstance.waitForTransactionByMessage(address('mockAddress'), 'mockMessage', 5000);
-            expect(result).toBeNull();
-        });
-    });
-
-    describe('getWalletContractClassByVersion', () => {
-        it('should throw meaningful error for unsupported wallet versions', () => {
-            const unsupportedVersion = 'v6Beta';
-            expect(() => tonInstance.getWalletContractClassByVersion(unsupportedVersion)).toThrow(
-                `Unknown wallet version: ${unsupportedVersion}`
-            );
-        });
-    });
-
 
 });
+
+
 
 
 
