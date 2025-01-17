@@ -70,7 +70,7 @@ export class SolanaController {
     let tokens: TokenInfo[] = [];
 
     if (!req.tokenSymbols) {
-      tokens = solana.storedTokenList;
+      tokens = solana.tokenList;
     } else {
       const symbolsArray = Array.isArray(req.tokenSymbols) 
         ? req.tokenSymbols 

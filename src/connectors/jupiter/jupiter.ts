@@ -93,8 +93,8 @@ export class Jupiter {
   ): Promise<QuoteResponse> {
     await this.loadJupiter();
 
-    const inputToken = this.solana.getTokenForSymbol(inputTokenSymbol);
-    const outputToken = this.solana.getTokenForSymbol(outputTokenSymbol);
+    const inputToken = this.solana.getTokenBySymbol(inputTokenSymbol);
+    const outputToken = this.solana.getTokenBySymbol(outputTokenSymbol);
 
     if (!inputToken || !outputToken) {
       logger.error('Invalid token symbols');

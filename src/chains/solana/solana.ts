@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import bs58 from 'bs58';
 import { BigNumber } from 'ethers';
 import fse from 'fs-extra';
+import { TokenListType } from '../../services/base';
 
 import { TokenInfo, TokenListContainer } from '@solana/spl-token-registry';
 import {
@@ -85,10 +86,9 @@ export class Solana {
   public network: string;
   public nativeTokenSymbol: string;
 
-  protected tokenList: TokenInfo[] = [];
+  public tokenList: TokenInfo[] = [];
   public config: Config;
   private _tokenMap: Record<string, TokenInfo> = {};
-  private _tokenAddressMap: Record<string, TokenInfo> = {};
   private _utl: Client;
 
   private static _instances: { [name: string]: Solana };
@@ -146,7 +146,7 @@ export class Solana {
       // If we're not ready, this._initialized will be a Promise that resolves after init() completes
       this._initialized = (async () => {
         try {
-          await this.loadTokens();
+          await this.loadTokens(this.config.network.tokenListSource, this.config.network.tokenListType);
           return true;
         } catch (e) {
           logger.error(`Failed to initialize ${this.network}: ${e}`);
@@ -173,7 +173,7 @@ export class Solana {
     if (useApi) {
       token = await this._utl.fetchMint(publicKey);
     } else {
-      const tokenList = await this.getTokenList();
+      const tokenList = await this.getTokenList(this.config.network.tokenListSource, this.config.network.tokenListType);
       const foundToken = tokenList.find((t) => t.address === tokenAddress);
       if (!foundToken) {
         throw new Error('Token not found in the token list');
@@ -184,37 +184,35 @@ export class Solana {
     return token;
   }
 
-
-  async loadTokens(): Promise<void> {
-    this.tokenList = await this.getTokenList();
-    this.tokenList.forEach((token: TokenInfo) => {
-      this._tokenMap[token.symbol] = token;
-      this._tokenAddressMap[token.address] = token;
-    });
-  }
-
-  // returns a Tokens for a given list source and list type
-  async getTokenList(): Promise<TokenInfo[]> {
-    const tokens: TokenInfo[] =
-      await new TokenListResolutionStrategy(
-        this.config.network.tokenListSource,
-        this.config.network.tokenListType
+  async loadTokens(
+    tokenListSource: string,
+    tokenListType: TokenListType
+  ): Promise<void> {
+    try {
+      // Get tokens from source
+      const tokens = await new TokenListResolutionStrategy(
+        tokenListSource,
+        tokenListType
       ).resolve();
 
-    const tokenListContainer = new TokenListContainer(tokens);
-    return tokenListContainer.filterByClusterSlug(this.network).getList();
+      this.tokenList = tokens;
+      
+      // Create symbol -> token mapping
+      tokens.forEach((token: TokenInfo) => {
+        this._tokenMap[token.symbol] = token;
+      });
+
+      logger.info(`Loaded ${tokens.length} tokens for ${this.network}`);
+    } catch (error) {
+      logger.error(`Failed to load token list for ${this.network}: ${error.message}`);
+      throw error;
+    }
   }
 
-  // solana token lists are large. instead of reloading each time with
-  // getTokenList, we can read the stored tokenList value from when the
-  // object was initiated.
-  public get storedTokenList(): TokenInfo[] {
-    return Object.values(this._tokenMap);
-  }
-
-  // return the TokenInfo object for a symbol
-  getTokenForSymbol(symbol: string): TokenInfo | null {
-    return this._tokenMap[symbol] ?? null;
+  public getTokenBySymbol(tokenSymbol: string): TokenInfo | undefined {
+    return this.tokenList.find(
+      (token: TokenInfo) => token.symbol.toUpperCase() === tokenSymbol.toUpperCase()
+    );
   }
 
   // returns Keypair for a private key, which should be encoded in Base58
@@ -340,19 +338,14 @@ export class Solana {
       { programId: TOKEN_PROGRAM_ADDRESS }
     );
 
-    allSplTokens.value.forEach(
-      (tokenAccount: {
-        pubkey: PublicKey;
-        account: AccountInfo<ParsedAccountData>;
-      }) => {
-        const tokenInfo = tokenAccount.account.data.parsed['info'];
-        const symbol = this.getTokenForMintAddress(tokenInfo['mint'])?.symbol;
-        if (symbol != null)
-          balances[symbol] = this.tokenResponseToTokenValue(
-            tokenInfo['tokenAmount']
-          );
-      }
-    );
+    for (const tokenAccount of allSplTokens.value) {
+      const tokenInfo = tokenAccount.account.data.parsed['info'];
+      const symbol = (await this.getTokenByAddress(tokenInfo['mint']))?.symbol;
+      if (symbol != null)
+        balances[symbol] = this.tokenResponseToTokenValue(
+          tokenInfo['tokenAmount']
+        );
+    }
 
     let allSolBalance = BigNumber.from(0);
     let allSolDecimals = 9; // Solana's default decimals
@@ -470,23 +463,6 @@ export class Solana {
                 : TransactionResponseStatusCode.FAILED;
     }
     return txStatus;
-  }
-
-  public getTokenBySymbol(tokenSymbol: string): TokenInfo | undefined {
-    // Start from the end of the list and work backwards
-    for (let i = this.tokenList.length - 1; i >= 0; i--) {
-      if (this.tokenList[i].symbol.toUpperCase() === tokenSymbol.toUpperCase()) {
-        return this.tokenList[i];
-      }
-    }
-    return undefined;
-  }
-
-  // return the TokenInfo object for a symbol
-  private getTokenForMintAddress(mintAddress: PublicKey): TokenInfo | null {
-    return this._tokenAddressMap[mintAddress.toString()]
-      ? this._tokenAddressMap[mintAddress.toString()]
-      : null;
   }
 
   // returns the current block number
@@ -876,6 +852,23 @@ export class Solana {
     } catch (error) {
       return false;
     }
+  }
+
+  async getTokenList(
+    tokenListSource?: string,
+    tokenListType?: TokenListType
+  ): Promise<TokenInfo[]> {
+    // If no source/type provided, return stored list
+    if (!tokenListSource || !tokenListType) {
+      return this.tokenList;
+    }
+    
+    // Otherwise fetch new list
+    const tokens = await new TokenListResolutionStrategy(
+      tokenListSource,
+      tokenListType
+    ).resolve();
+    return tokens;
   }
 
 }
