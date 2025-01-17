@@ -3,8 +3,7 @@ import {
   TokensRequest,
   PollRequest,
   StatusRequest,
-  StatusResponse,
-} from '../../chains/chain.requests';
+} from './solana.routes';
 import {
   HttpException,
   LOAD_WALLET_ERROR_CODE,
@@ -12,17 +11,17 @@ import {
 } from '../../services/error-handler';
 import { TokenInfo } from '../ethereum/ethereum-base';
 import { Keypair } from '@solana/web3.js';
-import { Solanaish } from './solana';
+import { Solana } from './solana';
 import { logger } from '../../services/logger';
 import { wrapResponse } from '../../services/response-wrapper';
 
 export class SolanaController {
   
-  static async balances(solanaish: Solanaish, req: BalanceRequest) {
+  static async balances(solana: Solana, req: BalanceRequest) {
     const initTime = Date.now();
     let wallet: Keypair;
     try {
-      wallet = await solanaish.getWallet(req.address);
+      wallet = await solana.getWallet(req.address);
     } catch (err) {
       throw new HttpException(
         500,
@@ -31,14 +30,14 @@ export class SolanaController {
       );
     }
 
-    const balances = await solanaish.getBalance(wallet, req.tokenSymbols);
+    const balances = await solana.getBalance(wallet, req.tokenSymbols);
     return wrapResponse({ balances }, initTime);
   }
 
-  static async poll(solanaish: Solanaish, req: PollRequest) {
+  static async poll(solana: Solana, req: PollRequest) {
     const initTime = Date.now();
-    const currentBlock = await solanaish.getCurrentBlockNumber();
-    const txData = await solanaish.getTransaction(req.txHash as any);
+    const currentBlock = await solana.getCurrentBlockNumber();
+    const txData = await solana.getTransaction(req.txHash as any);
     
     if (!txData) {
       return wrapResponse({
@@ -51,8 +50,8 @@ export class SolanaController {
       }, initTime);
     }
 
-    const txStatus = await solanaish.getTransactionStatusCode(txData as any);
-    const { balanceChange, fee } = await solanaish.extractAccountBalanceChangeAndFee(req.txHash, 0);
+    const txStatus = await solana.getTransactionStatusCode(txData as any);
+    const { balanceChange, fee } = await solana.extractAccountBalanceChangeAndFee(req.txHash, 0);
 
     logger.info(`Polling for transaction ${req.txHash}, Status: ${txStatus}, Balance Change: ${balanceChange} SOL, Fee: ${fee} SOL`);
 
@@ -66,12 +65,12 @@ export class SolanaController {
     }, initTime);
   }
 
-  static async getTokens(solanaish: Solanaish, req: TokensRequest) {
+  static async getTokens(solana: Solana, req: TokensRequest) {
     const initTime = Date.now();
     let tokens: TokenInfo[] = [];
 
     if (!req.tokenSymbols) {
-      tokens = solanaish.storedTokenList;
+      tokens = solana.storedTokenList;
     } else {
       const symbolsArray = Array.isArray(req.tokenSymbols) 
         ? req.tokenSymbols 
@@ -80,25 +79,24 @@ export class SolanaController {
           : [];
           
       for (const symbol of symbolsArray) {
-        const token = solanaish.getTokenBySymbol(symbol.trim());
+        const token = solana.getTokenBySymbol(symbol.trim());
         if (token) tokens.push(token);
       }
     }
 
-    return wrapResponse({ tokens }, initTime);
+    return wrapResponse({ tokens: tokens }, initTime);
   }
 
-  static async getStatus(solanaish: Solanaish, req: StatusRequest): Promise<StatusResponse> {
+  static async getStatus(solana: Solana, req: StatusRequest) {
     const initTime = Date.now();
     const chain = 'solana';
-    const network = solanaish.network;
-    const rpcUrl = solanaish.rpcUrl;
-    const nativeCurrency = solanaish.nativeTokenSymbol;
-    const currentBlockNumber = await solanaish.getCurrentBlockNumber();
+    const network = solana.network;
+    const rpcUrl = solana.config.network.nodeURL;
+    const nativeCurrency = solana.config.network.nativeCurrencySymbol;
+    const currentBlockNumber = await solana.getCurrentBlockNumber();
 
     return wrapResponse({
       chain,
-      chainId: undefined,
       network,
       rpcUrl,
       currentBlockNumber,

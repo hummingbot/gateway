@@ -25,14 +25,14 @@ export const DECIMAL_MULTIPLIER = 10;
 
 export class Jupiter {
   private static _instances: { [name: string]: Jupiter };
-  private chain: Solana;
+  private solana: Solana;
   private _ready: boolean = false;
-  private _config: JupiterConfig.NetworkConfig;
+  public config: JupiterConfig.NetworkConfig;
   protected jupiterQuoteApi!: ReturnType<typeof createJupiterApiClient>;
 
   private constructor(network: string) {
-    this._config = JupiterConfig.config;
-    this.chain = Solana.getInstance(network);
+    this.config = JupiterConfig.config;
+    this.solana = Solana.getInstance(network);
     this.loadJupiter();
   }
 
@@ -60,8 +60,8 @@ export class Jupiter {
   }
 
   public async init() {
-    if (!this.chain.ready()) {
-      await this.chain.init();
+    if (!this.solana.ready()) {
+      await this.solana.init();
     }
     this._ready = true;
   }
@@ -71,7 +71,7 @@ export class Jupiter {
   }
 
   getSlippagePct(): number {
-    const allowedSlippage = this._config.allowedSlippage;
+    const allowedSlippage = this.config.allowedSlippage;
     const nd = allowedSlippage.match(percentRegexp);
     let slippage = 0.0;
     if (nd) {
@@ -93,8 +93,8 @@ export class Jupiter {
   ): Promise<QuoteResponse> {
     await this.loadJupiter();
 
-    const inputToken = this.chain.getTokenForSymbol(inputTokenSymbol);
-    const outputToken = this.chain.getTokenForSymbol(outputTokenSymbol);
+    const inputToken = this.solana.getTokenForSymbol(inputTokenSymbol);
+    const outputToken = this.solana.getTokenForSymbol(outputTokenSymbol);
 
     if (!inputToken || !outputToken) {
       logger.error('Invalid token symbols');
@@ -128,7 +128,7 @@ export class Jupiter {
   async getSwapObj(wallet: Wallet, quote: QuoteResponse, priorityFee?: number): Promise<SwapResponse> {
     const prioritizationFeeLamports = priorityFee 
       ? priorityFee  
-      : this.chain.minPriorityFee;
+      : this.solana.config.minPriorityFee;
 
     logger.info(`Sending swap with priority fee: ${priorityFee / 1e9} SOL`);
 
@@ -169,7 +169,7 @@ export class Jupiter {
   }
 
   async simulateTransaction(transaction: VersionedTransaction) {
-    const { value: simulatedTransactionResponse } = await this.chain.connectionPool.getNextConnection().simulateTransaction(
+    const { value: simulatedTransactionResponse } = await this.solana.connectionPool.getNextConnection().simulateTransaction(
       transaction,
       {
         replaceRecentBlockhash: true,
@@ -208,9 +208,9 @@ export class Jupiter {
     priorityFeePrice: number;
   }> {
     await this.loadJupiter();
-    let currentPriorityFee = (await this.chain.getGasPrice() * 1e9) - BASE_FEE;
+    let currentPriorityFee = (await this.solana.getGasPrice() * 1e9) - BASE_FEE;
 
-    while (currentPriorityFee <= this.chain.maxPriorityFee) {
+    while (currentPriorityFee <= this.solana.config.maxPriorityFee) {
       const swapObj = await this.getSwapObj(wallet, quote, currentPriorityFee);
 
       const swapTransactionBuf = Buffer.from(swapObj.swapTransaction, 'base64');
@@ -219,16 +219,16 @@ export class Jupiter {
       transaction.sign([wallet.payer]);
 
       let retryCount = 0;
-      while (retryCount < this.chain.retryCount) {
+      while (retryCount < this.solana.config.retryCount) {
         try {
-          const signature = await this.chain.sendRawTransaction(
+          const signature = await this.solana.sendRawTransaction(
             Buffer.from(transaction.serialize()),
             swapObj.lastValidBlockHeight,
           );
 
-          for (const connection of this.chain.connectionPool.getAllConnections()) {
+          for (const connection of this.solana.connectionPool.getAllConnections()) {
             try {
-              const { confirmed, txData } = await this.chain.confirmTransaction(signature, connection);
+              const { confirmed, txData } = await this.solana.confirmTransaction(signature, connection);
               if (confirmed && txData) {
                 const computeUnitsUsed = txData.meta.computeUnitsConsumed;
                 const totalFee = txData.meta.fee;
@@ -248,20 +248,20 @@ export class Jupiter {
           }
 
           retryCount++;
-          await new Promise(resolve => setTimeout(resolve, this.chain.retryIntervalMs));
+          await new Promise(resolve => setTimeout(resolve, this.solana.config.retryIntervalMs));
         } catch (error) {
           retryCount++;
-          await new Promise(resolve => setTimeout(resolve, this.chain.retryIntervalMs));
+          await new Promise(resolve => setTimeout(resolve, this.solana.config.retryIntervalMs));
         }
       }
 
       // If we get here, swap wasn't confirmed after retryCount attempts
       // Increase the priority fee and try again
-      currentPriorityFee = Math.floor(currentPriorityFee * this.chain.priorityFeeMultiplier);
+      currentPriorityFee = Math.floor(currentPriorityFee * this.solana.config.priorityFeeMultiplier);
       logger.info(`Increasing priority fee to ${currentPriorityFee / 1e9} SOL`);
     }
 
-    throw new Error(`Swap failed after reaching maximum priority fee of ${this.chain.maxPriorityFee / 1e9} SOL`);
+    throw new Error(`Swap failed after reaching maximum priority fee of ${this.solana.config.maxPriorityFee / 1e9} SOL`);
   }
 
   async extractSwapBalances(
@@ -276,19 +276,19 @@ export class Jupiter {
     let inputBalanceChange: number, outputBalanceChange: number, fee: number;
 
     // Get transaction info to extract the 'from' address
-    const txInfo = await this.chain.connectionPool.getNextConnection().getTransaction(signature);
+    const txInfo = await this.solana.connectionPool.getNextConnection().getTransaction(signature);
     if (!txInfo) {
         throw new Error('Transaction not found');
     }
     const fromAddress = txInfo.transaction.message.accountKeys[0].toBase58();
 
     if (inputMint === 'So11111111111111111111111111111111111111112') {
-        ({ balanceChange: inputBalanceChange, fee } = await this.chain.extractAccountBalanceChangeAndFee(
+        ({ balanceChange: inputBalanceChange, fee } = await this.solana.extractAccountBalanceChangeAndFee(
             signature,
             0,
         ));
     } else {
-        ({ balanceChange: inputBalanceChange, fee } = await this.chain.extractTokenBalanceChangeAndFee(
+        ({ balanceChange: inputBalanceChange, fee } = await this.solana.extractTokenBalanceChangeAndFee(
             signature,
             inputMint,
             fromAddress,
@@ -296,12 +296,12 @@ export class Jupiter {
     }
 
     if (outputMint === 'So11111111111111111111111111111111111111112') {
-        ({ balanceChange: outputBalanceChange } = await this.chain.extractAccountBalanceChangeAndFee(
+        ({ balanceChange: outputBalanceChange } = await this.solana.extractAccountBalanceChangeAndFee(
             signature,
             0,
         ));
     } else {
-        ({ balanceChange: outputBalanceChange } = await this.chain.extractTokenBalanceChangeAndFee(
+        ({ balanceChange: outputBalanceChange } = await this.solana.extractTokenBalanceChangeAndFee(
             signature,
             outputMint,
             fromAddress,

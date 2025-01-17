@@ -1,21 +1,16 @@
 import { Ethereum } from '../chains/ethereum/ethereum';
 import { Solana } from '../chains/solana/solana';
 import { Uniswap } from '../connectors/uniswap/uniswap';
-import {
-  Ethereumish,
-  Uniswapish,
-} from './common-interfaces';
+import { Ethereumish } from './common-interfaces';
 import { Jupiter } from '../connectors/jupiter/jupiter';
 
-export type ChainUnion =
-  | Ethereumish
-  | Solana;
+export type ChainUnion = Ethereumish | Solana;
 
 export type Chain<T> = T extends Ethereumish
   ? Ethereumish
-    : T extends Solana
-      ? Solana
-        : never;
+  : T extends Solana
+    ? Solana
+    : never;
 
 export class UnsupportedChainException extends Error {
   constructor(message?: string) {
@@ -63,12 +58,10 @@ export async function getChainInstance(
   return connection;
 }
 
-export type ConnectorUnion =
-  | Uniswapish
-  | Jupiter;
+export type ConnectorUnion = Uniswap | Jupiter;
 
-export type Connector<T> = T extends Uniswapish
-  ? Uniswapish
+export type Connector<T> = T extends Uniswap
+  ? Uniswap
     : T extends Jupiter
       ? Jupiter
         : never;

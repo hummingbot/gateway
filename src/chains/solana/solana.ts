@@ -20,18 +20,23 @@ import {
 import { Client, UtlConfig, Token } from '@solflare-wallet/utl-sdk';
 import { TOKEN_PROGRAM_ID, unpackAccount } from "@solana/spl-token";
 
-import { countDecimals, TokenValue, walletPath } from '../../services/base';
+import { TokenValue, walletPath } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { logger } from '../../services/logger';
 import { TokenListResolutionStrategy } from '../../services/token-list-resolution';
 import { Config, getSolanaConfig } from './solana.config';
-import { TransactionResponseStatusCode } from './solana.requests';
 import { SolanaController } from './solana.controllers';
 
 // Constants used for fee calculations
 export const BASE_FEE = 5000;
 const TOKEN_PROGRAM_ADDRESS = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
 const LAMPORT_TO_SOL = 1 / Math.pow(10, 9);
+
+enum TransactionResponseStatusCode {
+  FAILED = -1,
+  UNCONFIRMED = 0,
+  CONFIRMED = 1,  
+}
 
 // Add accounts from https://triton.one/solana-prioritization-fees/ to track general fees
 const PRIORITY_FEE_ACCOUNTS = [
@@ -75,32 +80,22 @@ class ConnectionPool {
   }
 }
 
-export class Solana implements Solanaish {
-  public defaultComputeUnits;
-  public priorityFeePercentile;
-  public priorityFeeMultiplier;
-  public maxPriorityFee;
-  public minPriorityFee;
-  public retryIntervalMs;
-  public retryCount;
+export class Solana {
   public connectionPool: ConnectionPool;
   public network: string;
   public nativeTokenSymbol: string;
-  public rpcUrl: string;
 
   protected tokenList: TokenInfo[] = [];
-  private _config: Config;
+  public config: Config;
   private _tokenMap: Record<string, TokenInfo> = {};
   private _tokenAddressMap: Record<string, TokenInfo> = {};
   private _utl: Client;
 
   private static _instances: { [name: string]: Solana };
 
-  public readonly lamportDecimals: number;
-
   // there are async values set in the constructor
   private _ready: boolean = false;
-  private initializing: boolean = false;
+  private _initialized: Promise<boolean> = Promise.resolve(false);
   public controller: typeof SolanaController;
 
   private static lastPriorityFeeEstimate: {
@@ -111,25 +106,15 @@ export class Solana implements Solanaish {
 
   constructor(network: string) {
     this.network = network;
-    this._config = getSolanaConfig('solana', network);
-    this.nativeTokenSymbol = this._config.network.nativeCurrencySymbol
-    this.defaultComputeUnits = this._config.defaultComputeUnits;
-    this.priorityFeePercentile = this._config.priorityFeePercentile;
-    this.priorityFeeMultiplier = this._config.priorityFeeMultiplier;
-    this.maxPriorityFee = this._config.maxPriorityFee;
-    this.minPriorityFee = this._config.minPriorityFee;
-    this.retryIntervalMs = this._config.retryIntervalMs;
-    this.retryCount = this._config.retryCount;
-
-    // Parse comma-separated RPC URLs
-    this.rpcUrl = this._config.network.nodeURL;
-    
-    this.connectionPool = new ConnectionPool([this.rpcUrl]);
-    this.lamportDecimals = countDecimals(LAMPORT_TO_SOL);
-
+    this.config = getSolanaConfig('solana', network);
+    this.nativeTokenSymbol = this.config.network.nativeCurrencySymbol;
     this.controller = SolanaController;
+    this.initializeConnections();
+  }
 
-    // Initialize UTL client
+  private initializeConnections() {
+    this.connectionPool = new ConnectionPool([this.config.network.nodeURL]);
+    
     const config = new UtlConfig({
       chainId: this.network === 'devnet' ? 103 : 101,
       timeout: 2000,
@@ -138,10 +123,6 @@ export class Solana implements Solanaish {
       cdnUrl: 'https://cdn.jsdelivr.net/gh/solflare-wallet/token-list/solana-tokenlist.json',
     });
     this._utl = new Client(config);
-
-    // Initialize but don't load tokens yet
-    this._ready = false;
-    this.initializing = false;
   }
 
   public static getInstance(network: string): Solana {
@@ -160,22 +141,21 @@ export class Solana implements Solanaish {
   }
 
   async init(): Promise<void> {
-    if (!this.ready() && !this.initializing) {
-      try {
-        this.initializing = true;
-        
-        // Load tokens
-        await this.loadTokens();
-        
-        // Set ready state
-        this._ready = true;
-      } catch (error) {
-        logger.error(`Failed to initialize Solana instance: ${error.message}`);
-        throw error;
-      } finally {
-        this.initializing = false;
-      }
+    await this._initialized; // Wait for any previous init() calls to complete
+    if (!this.ready()) {
+      // If we're not ready, this._initialized will be a Promise that resolves after init() completes
+      this._initialized = (async () => {
+        try {
+          await this.loadTokens();
+          return true;
+        } catch (e) {
+          logger.error(`Failed to initialize ${this.network}: ${e}`);
+          return false;
+        }
+      })();
+      this._ready = await this._initialized; // Wait for the initialization to complete
     }
+    return;
   }
 
   ready(): boolean {
@@ -217,8 +197,8 @@ export class Solana implements Solanaish {
   async getTokenList(): Promise<TokenInfo[]> {
     const tokens: TokenInfo[] =
       await new TokenListResolutionStrategy(
-        this._config.network.tokenListSource,
-        this._config.network.tokenListType
+        this.config.network.tokenListSource,
+        this.config.network.tokenListType
       ).resolve();
 
     const tokenListContainer = new TokenListContainer(tokens);
@@ -316,7 +296,7 @@ export class Solana implements Solanaish {
     // Fetch SOL balance only if symbols is undefined or includes "SOL" (case-insensitive)
     if (!upperCaseSymbols || upperCaseSymbols.includes("SOL")) {
       const solBalance = await this.connectionPool.getNextConnection().getBalance(publicKey);
-      const solBalanceInSol = solBalance / Math.pow(10, 9); // Convert lamports to SOL
+      const solBalanceInSol = solBalance * LAMPORT_TO_SOL;
       balances["SOL"] = solBalanceInSol;
     }
 
@@ -412,7 +392,7 @@ export class Solana implements Solanaish {
   // returns the SOL balance, convert BigNumber to string
   async getSolBalance(wallet: Keypair): Promise<TokenValue> {
     const lamports = await this.connectionPool.getNextConnection().getBalance(wallet.publicKey);
-    return { value: BigNumber.from(lamports), decimals: this.lamportDecimals };
+    return { value: BigNumber.from(lamports), decimals: 9 };
   }
 
   tokenResponseToTokenValue(account: TokenAmount): TokenValue {
@@ -522,19 +502,16 @@ export class Solana implements Solanaish {
 
   public async getGasPrice(): Promise<number> {
     const priorityFeeInMicroLamports = await this.estimatePriorityFees(
-      this.connectionPool.getNextConnection().rpcEndpoint
+      this.connectionPool.getNextConnection().rpcEndpoint,
     );
-    
-    const BASE_FEE_LAMPORTS = 5000;
-    const LAMPORTS_PER_SOL = Math.pow(10, 9);
     
     // Calculate priority fee in lamports
     const priorityFeeLamports = Math.floor(
-      (this.defaultComputeUnits * priorityFeeInMicroLamports) / 1_000_000
+      (this.config.defaultComputeUnits * priorityFeeInMicroLamports) / 1_000_000
     );
     
-    // Add base fee and convert to SOL
-    const gasCost = (BASE_FEE_LAMPORTS + priorityFeeLamports) / LAMPORTS_PER_SOL;
+    // Add base fee and convert to SOL using LAMPORT_TO_SOL constant
+    const gasCost = (BASE_FEE + priorityFeeLamports) * LAMPORT_TO_SOL;
 
     return gasCost;
   }
@@ -578,7 +555,7 @@ export class Solana implements Solanaish {
         .filter((fee) => fee > 0);
 
       // minimum fee is the minimum fee per compute unit
-      const minimumFee = this.minPriorityFee / this.defaultComputeUnits * 1_000_000;
+      const minimumFee = this.config.minPriorityFee / this.config.defaultComputeUnits * 1_000_000;
 
       if (fees.length === 0) {
         return minimumFee;
@@ -597,7 +574,7 @@ export class Solana implements Solanaish {
       logger.info(`[PRIORITY FEES] Range: ${minFee} - ${maxFee} microLamports (avg: ${averageFee})`);
 
       // Calculate index for percentile
-      const percentileIndex = Math.ceil(fees.length * this.priorityFeePercentile);
+      const percentileIndex = Math.ceil(fees.length * this.config.priorityFeePercentile);
       let percentileFee = fees[percentileIndex - 1];  // -1 because array is 0-based
       
       // Ensure fee is not below minimum
@@ -696,7 +673,7 @@ export class Solana implements Solanaish {
       this.connectionPool.getNextConnection().rpcEndpoint,
     );
     
-    while (currentPriorityFee <= this.maxPriorityFee) {
+    while (currentPriorityFee <= this.config.maxPriorityFee) {
       // Update or add priority fee instruction
       const priorityFeeInstruction = ComputeBudgetProgram.setComputeUnitPrice({
         microLamports: Math.floor(currentPriorityFee),
@@ -721,7 +698,7 @@ export class Solana implements Solanaish {
       tx.sign(...signers);
 
       let retryCount = 0;
-      while (retryCount < this.retryCount) {
+      while (retryCount < this.config.retryCount) {
         try {
           const signature = await this.sendRawTransaction(
             tx.serialize(),
@@ -742,20 +719,20 @@ export class Solana implements Solanaish {
           }
 
           retryCount++;
-          await new Promise(resolve => setTimeout(resolve, this.retryIntervalMs));
+          await new Promise(resolve => setTimeout(resolve, this.config.retryIntervalMs));
         } catch (error) {
           retryCount++;
-          await new Promise(resolve => setTimeout(resolve, this.retryIntervalMs));
+          await new Promise(resolve => setTimeout(resolve, this.config.retryIntervalMs));
         }
       }
 
       // If we get here, transaction wasn't confirmed after RETRY_COUNT attempts
       // Increase the priority fee and try again
-      currentPriorityFee = Math.floor(currentPriorityFee * this.priorityFeeMultiplier);
+      currentPriorityFee = Math.floor(currentPriorityFee * this.config.priorityFeeMultiplier);
       logger.info(`Increasing priority fee to ${currentPriorityFee} microLamports`);
     }
 
-    throw new Error(`Transaction failed after reaching maximum priority fee of ${this.maxPriorityFee} microLamports`);
+    throw new Error(`Transaction failed after reaching maximum priority fee of ${this.config.maxPriorityFee} microLamports`);
   }
 
   async sendRawTransaction(
@@ -794,7 +771,7 @@ export class Solana implements Solanaish {
         // Verify all signatures match
         if (!signatures.every((sig) => sig === signatures[0])) {
           retryCount++;
-          await new Promise((resolve) => setTimeout(resolve, this.retryIntervalMs));
+          await new Promise((resolve) => setTimeout(resolve, this.config.retryIntervalMs));
           continue;
         }
 
@@ -803,7 +780,7 @@ export class Solana implements Solanaish {
       }
 
       retryCount++;
-      await new Promise((resolve) => setTimeout(resolve, this.retryIntervalMs));
+      await new Promise((resolve) => setTimeout(resolve, this.config.retryIntervalMs));
     }
 
     // If we exit the while loop without returning, we've exceeded block height
@@ -884,14 +861,21 @@ export class Solana implements Solanaish {
     const postBalances = txDetails.meta?.postBalances || [];
 
     const balanceChange =
-      Math.abs(postBalances[accountIndex] - preBalances[accountIndex]) / 1_000_000_000;
-    const fee = (txDetails.meta?.fee || 0) / 1_000_000_000; // Convert lamports to SOL
+      Math.abs(postBalances[accountIndex] - preBalances[accountIndex]) * LAMPORT_TO_SOL;
+    const fee = (txDetails.meta?.fee || 0) * LAMPORT_TO_SOL;
 
     return { balanceChange, fee };
   }
 
+  // Validate if a string is a valid Solana private key
+  public static validateSolPrivateKey(secretKey: string): boolean {
+    try {
+      const secretKeyBytes = bs58.decode(secretKey);
+      Keypair.fromSecretKey(new Uint8Array(secretKeyBytes));
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
 }
-
-export type Solanaish = Solana;
-export const Solanaish = Solana;
-
