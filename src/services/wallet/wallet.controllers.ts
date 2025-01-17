@@ -125,7 +125,7 @@ export async function addWallet(
         passphrase
       );
     } else if (connection instanceof Ton) {
-      address = (await connection.getAccountFromPrivateKey(req.privateKey)).publicKey;
+      address = ((await connection.getAccountFromPrivateKey(req.privateKey)).publicKey);
       encryptedPrivateKey = connection.encrypt(req.privateKey, passphrase);
     }
 

@@ -2,8 +2,9 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "properties": {
-    "allowedSlippage": { "type": "string" }
+    "allowedSlippage": { "type": "string" },
+    "gasCost": { "type": "number" }
   },
   "additionalProperties": false,
-  "required": ["allowedSlippage"]
+  "required": ["allowedSlippage", "gasCost"]
 }

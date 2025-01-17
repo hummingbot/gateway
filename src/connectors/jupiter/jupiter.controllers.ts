@@ -5,6 +5,7 @@ import {
   PriceRequest,
   TradeRequest,
   TradeResponse,
+  EstimateGasResponse,
 } from '../../amm/amm.requests';
 import {
   HttpException,
@@ -241,4 +242,19 @@ export async function trade(
       expectedOut: swapResult.totalOutputSwapped.toString(),
     };
   }
+}
+
+export async function estimateGas(
+  solanaish: Solanaish,
+  jupiter: Jupiter,
+): Promise<EstimateGasResponse> {
+  // TODO: get gas price from the network
+  return {
+    network: solanaish.network,
+    timestamp: Date.now(),
+    gasPrice: 0,
+    gasPriceToken: solanaish.nativeTokenSymbol,
+    gasLimit: 0,
+    gasCost: jupiter.gasCost.toString(),
+  };
 }

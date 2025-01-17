@@ -279,7 +279,7 @@ export class Dedust {
         address: walletContract.address,
         async send(args: SenderArguments) {
           return walletContract.sendTransfer({
-            secretKey: Buffer.from(keyPar.secretKey, 'utf8'),
+            secretKey: Buffer.from(keyPar.secretKey, 'base64url'),
             messages: [
               {
                 body: args.body || beginCell().endCell(),
@@ -356,6 +356,10 @@ export class Dedust {
       if (!sender.address) {
         throw new Error('Sender address is required');
       }
+      // TODO: This is a temporary solution, we need to find a better way to get the transaction id
+      // Best would be to get the transaction id from the response of the sendTransfer method
+      // But the SDK does not return the transaction id
+      // Either we need to modify the SDK to return the transaction id or reimplment the sendTransfer method
       const transactions = await this.chain.tonweb.getTransactions(
         sender.address.toString(),
         1,

@@ -1,9 +1,9 @@
 {
-  "connector": "ston_fi",
+  "connector": "dedust",
   "chain": "ton",
   "network": "mainnet",
-  "quote": "USD₮",
-  "base": "TON",
+  "quote": "USDC",
+  "base": "BTC",
   "amount": "1",
   "side": "BUY"
 }

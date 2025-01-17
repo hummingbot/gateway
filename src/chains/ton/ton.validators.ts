@@ -6,41 +6,46 @@ import {
   validateTokenSymbols,
   Validator,
 } from '../../services/validators';
-import {
-  invalidAddressError,
-  validateNetwork,
-} from '../ethereum/ethereum.validators';
+
 
 const invalidTxHashError: string = 'The txHash param must be a string.';
+export const invalidAddressError: string =
+  'The address param is not a valid Ton private key (string mnemonic).';
+export const invalidNetworkError: string = 'The network param is not a string.';
 
-const validateTxHash: Validator = mkValidator(
-  'txHash',
-  invalidTxHashError,
+export const validateNetwork: Validator = mkValidator(
+  'network',
+  invalidNetworkError,
   (val) => typeof val === 'string'
 );
+export const validateTxHash: Validator = mkValidator(
+  'txHash',
+  invalidTxHashError,
+  (val) => typeof val === 'string',
+);
 
-const validateTonAddress: Validator = mkValidator(
+export const validateTonAddress: Validator = mkValidator(
   'address',
   invalidAddressError,
-  (val) => typeof val === 'string' && /[A-Z0-9]{58}/.test(val)
+  (val) => typeof val === 'string',
 );
 
-export const validateTonPollRequest: RequestValidator = mkRequestValidator(
-  [validateNetwork, validateTxHash]
-);
+export const validateTonPollRequest: RequestValidator = mkRequestValidator([
+  validateNetwork,
+  validateTxHash,
+]);
 
-export const validateTonBalanceRequest: RequestValidator =
-  mkRequestValidator([
-    validateNetwork,
-    validateTonAddress,
-    validateTokenSymbols,
-  ]);
+export const validateTonBalanceRequest: RequestValidator = mkRequestValidator([
+  validateNetwork,
+  validateTonAddress,
+  validateTokenSymbols,
+]);
 
 export const validateAssetSymbols: Validator = (req: any) => {
   const errors: Array<string> = [];
   if (req.assetSymbols) {
     if (Array.isArray(req.assetSymbols)) {
-      req.tokenSymbols.forEach((symbol: any) => {
+      req.assetSymbols.forEach((symbol: any) => {
         if (typeof symbol !== 'string') {
           errors.push(invalidTokenSymbolsError);
         }
@@ -55,7 +60,7 @@ export const validateAssetSymbols: Validator = (req: any) => {
 export const validateAssetSymbol: Validator = mkValidator(
   'assetSymbol',
   invalidTokenSymbolsError,
-  (val) => typeof val === 'string'
+  (val) => typeof val === 'string',
 );
 
 export const validateAssetsRequest: RequestValidator = mkRequestValidator([
@@ -63,8 +68,8 @@ export const validateAssetsRequest: RequestValidator = mkRequestValidator([
   validateAssetSymbols,
 ]);
 
-export const validateOptInRequest: RequestValidator = mkRequestValidator([
-  validateNetwork,
-  validateTonAddress,
-  validateAssetSymbol,
-]);
+// export const validateOptInRequest: RequestValidator = mkRequestValidator([
+//   validateNetwork,
+//   validateTonAddress,
+//   validateAssetSymbol,
+// ]);

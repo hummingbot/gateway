@@ -7,11 +7,15 @@ export namespace JupiterConfig {
     tradingTypes: Array<string>;
     chainType: string;
     availableNetworks: Array<AvailableNetworks>;
+    gasCost: number;
   }
 
   export const config: NetworkConfig = {
     allowedSlippage: ConfigManagerV2.getInstance().get(
       'jupiter.allowedSlippage',
+    ),
+    gasCost: ConfigManagerV2.getInstance().get(
+      'jupiter.gasCost',
     ),
     tradingTypes: ['AMM'],
     chainType: 'SOLANA',

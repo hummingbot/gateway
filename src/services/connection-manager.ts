@@ -42,6 +42,7 @@ import { ETCSwap } from '../connectors/etcswap/etcswap';
 import { Jupiter } from '../connectors/jupiter/jupiter';
 import { Ton } from '../chains/ton/ton';
 import { Stonfi } from '../connectors/ston_fi/ston_fi';
+import { Dedust } from '../connectors/dedust/dedust';
 
 export type ChainUnion =
   | Algorand
@@ -51,7 +52,7 @@ export type ChainUnion =
   | Tezosish
   | Osmosis
   | Solana
-	| Ton;
+  | Ton;
 
 export type Chain<T> = T extends Algorand
   ? Algorand
@@ -66,10 +67,10 @@ export type Chain<T> = T extends Algorand
                 : T extends Osmosis
                   ? Osmosis
                     : T extends Solana
-                    ? Solana
-											: T extends Ton
-											? Ton
-												: never;
+                      ? Solana
+                        : T extends Ton
+                          ? Ton
+                            : never;
 
 export class UnsupportedChainException extends Error {
   constructor(message?: string) {
@@ -152,7 +153,8 @@ export type ConnectorUnion =
   | Plenty
   | Curve
   | Jupiter
-  | Stonfi;
+  | Stonfi
+  | Dedust;
 
 export type Connector<T> = T extends Uniswapish
   ? Uniswapish
@@ -164,9 +166,11 @@ export type Connector<T> = T extends Uniswapish
           ? Plenty
           : T extends Jupiter
             ? Jupiter
-							: T extends Stonfi
-							? Stonfi
-								: never;
+            : T extends Stonfi
+              ? Stonfi
+              : T extends Dedust
+                ? Dedust
+                : never;
 
 export async function getConnector<T>(
   chain: string,
@@ -217,6 +221,8 @@ export async function getConnector<T>(
     connectorInstance = ETCSwapLP.getInstance(chain, network);
   } else if (connector == 'stonfi') {
     connectorInstance = Stonfi.getInstance(network);
+  } else if (connector == 'dedust') {
+    connectorInstance = Dedust.getInstance(network);
   } else {
     throw new Error('unsupported chain or connector');
   }

@@ -8,21 +8,9 @@ import {
 } from '@jup-ag/api';
 import { JupiterConfig } from './jupiter.config';
 import { percentRegexp } from '../../services/config-manager-v2';
-// import { PriceRequest } from '../../amm/amm.requests';
 import { Wallet } from '@coral-xyz/anchor';
 import { priorityFeeMultiplier } from '../../chains/solana/solana.controllers';
 
-
-// import axios from 'axios';
-// import {
-//   JupiterQuoteResponse,
-//   SwapTransactionBuilderResponse,
-// } from './jupiter.requests';
-// import { latency } from '../../services/base';
-// import Decimal from 'decimal.js-light';
-// import { getPairData } from './jupiter.controllers';
-// import { pow } from 'mathjs';
-// import { Keypair, VersionedTransaction } from '@solana/web3.js';
 
 export class Jupiter {
   private static _instances: { [name: string]: Jupiter };
@@ -30,10 +18,12 @@ export class Jupiter {
   private _ready: boolean = false;
   private _config: JupiterConfig.NetworkConfig;
   protected jupiterQuoteApi!: ReturnType<typeof createJupiterApiClient>;
+  public gasCost: number = 0;
 
   private constructor(network: string) {
     this._config = JupiterConfig.config;
     this.chain = Solana.getInstance(network);
+    this.gasCost = JupiterConfig.config.gasCost;
     this.loadJupiter();
   }
 
@@ -133,7 +123,7 @@ export class Jupiter {
         userPublicKey: wallet.publicKey.toBase58(),
         dynamicComputeUnitLimit: true,
         prioritizationFeeLamports: {
-          autoMultiplier: Math.max(priorityFeeMultiplier, 3),
+          autoMultiplier: Math.min(priorityFeeMultiplier, 3),
         },
       },
     });
