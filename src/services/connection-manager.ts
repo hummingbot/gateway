@@ -40,6 +40,8 @@ import { ETCSwapLP } from '../connectors/etcswap/etcswap.lp';
 import { EthereumClassicChain } from '../chains/ethereum-classic/ethereum-classic';
 import { ETCSwap } from '../connectors/etcswap/etcswap';
 import { Jupiter } from '../connectors/jupiter/jupiter';
+import { Ton } from '../chains/ton/ton';
+import { Stonfi } from '../connectors/ston_fi/ston_fi';
 
 export type ChainUnion =
   | Algorand
@@ -48,7 +50,8 @@ export type ChainUnion =
   | Xdcish
   | Tezosish
   | Osmosis
-  | Solana;
+  | Solana
+  | Ton;
 
 export type Chain<T> = T extends Algorand
   ? Algorand
@@ -63,8 +66,10 @@ export type Chain<T> = T extends Algorand
                 : T extends Osmosis
                   ? Osmosis
                     : T extends Solana
-                    ? Solana
-                      : never;
+                      ? Solana
+                        : T extends Ton
+                          ? Ton
+                            : never;
 
 export class UnsupportedChainException extends Error {
   constructor(message?: string) {
@@ -131,6 +136,8 @@ export async function getChainInstance(
     connection = Telos.getInstance(network);
   } else if (chain === 'ethereum-classic') {
     connection = EthereumClassicChain.getInstance(network);
+  } else if (chain === 'ton') {
+    connection = Ton.getInstance(network);
   } else {
     connection = undefined;
   }
@@ -144,7 +151,8 @@ export type ConnectorUnion =
   | Tinyman
   | Plenty
   | Curve
-  | Jupiter;
+  | Jupiter
+  | Stonfi;
 
 export type Connector<T> = T extends Uniswapish
   ? Uniswapish
@@ -156,7 +164,9 @@ export type Connector<T> = T extends Uniswapish
           ? Plenty
           : T extends Jupiter
             ? Jupiter
-              : never;
+            : T extends Stonfi
+              ? Stonfi
+                : never;
 
 export async function getConnector<T>(
   chain: string,
@@ -205,6 +215,8 @@ export async function getConnector<T>(
     connectorInstance = ETCSwap.getInstance(chain, network);
   } else if (chain === 'ethereum-classic' && connector === 'etcswapLP') {
     connectorInstance = ETCSwapLP.getInstance(chain, network);
+  } else if (connector == 'stonfi') {
+    connectorInstance = Stonfi.getInstance(network);
   } else {
     throw new Error('unsupported chain or connector');
   }
