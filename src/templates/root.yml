@@ -59,11 +59,11 @@ configurations:
   $namespace cosmos:
     configurationPath: cosmos.yml
     schemaPath: cosmos-schema.json
-  
+
   $namespace osmosis:
     configurationPath: osmosis.yml
     schemaPath: osmosis-schema.json
-    
+
   $namespace cronos:
     configurationPath: cronos.yml
     schemaPath: ethereum-schema.json
@@ -131,3 +131,11 @@ configurations:
   $namespace jupiter:
     configurationPath: jupiter.yml
     schemaPath: jupiter-schema.json
+
+  $namespace ton:
+    configurationPath: ton.yml
+    schemaPath: ton-schema.json
+
+  $namespace stonfi:
+    configurationPath: stonfi.yml
+    schemaPath: stonfi-schema.json

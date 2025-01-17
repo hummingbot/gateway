@@ -1,0 +1,30 @@
+networks:
+  mainnet:
+    chainId: mainnet
+    nodeURL: https://toncenter.com/api/v2/jsonRPC
+    assetListType: FILE
+    assetListSource: '/home/gateway/conf/lists/ton_tokens_mainnet.json'
+#    assetListType: URL
+#    assetListSource: wss://omni-ws.ston.fi
+  testnet:
+    chainId: testnet
+    nodeURL: https://testnet.toncenter.com/api/v2/jsonRPC
+    assetListType: FILE
+    assetListSource: '/home/gateway/conf/lists/ton_tokens_testnet.json'
+nativeCurrencySymbol: TON
+defaultMaxNumberOfRetries: 3
+defaultDelayBetweenRetries: 5
+defaultTimeout: 60
+defaultBatchSize: 100
+defaultDelayBetweenBatches: 5
+defaultPollInterval: 2000
+defaultMaxPollAttempts: 30
+gasPrice: 0
+gasLimit: 0
+gasCost: 1
+workchain: 0
+apiKey: 
+rpcType: ton # 'ton' or 'orbs'
+# Leaving it blank make the system to decide automatically, using the wallet version with the biggest TON balance.
+# Possible values are: v1r1, v1r2, v1r3, v2r1, v2r2, v3r1, v3r2, v4, v5R1, v5Beta
+walletVersion: v3r2
