@@ -4,12 +4,10 @@ import { BigNumber } from 'ethers';
 import fse from 'fs-extra';
 import { TokenListType } from '../../services/base';
 
-import { TokenInfo, TokenListContainer } from '@solana/spl-token-registry';
+import { TokenInfo } from '@solana/spl-token-registry';
 import {
-  AccountInfo,
   Connection,
   Keypair,
-  ParsedAccountData,
   PublicKey,
   ComputeBudgetProgram,
   Signer,
@@ -18,7 +16,7 @@ import {
   TransactionResponse,
   VersionedTransactionResponse,
 } from '@solana/web3.js';
-import { Client, UtlConfig, Token } from '@solflare-wallet/utl-sdk';
+import { Client, UtlConfig } from '@solflare-wallet/utl-sdk';
 import { TOKEN_PROGRAM_ID, unpackAccount } from "@solana/spl-token";
 
 import { TokenValue, walletPath } from '../../services/base';
@@ -162,26 +160,21 @@ export class Solana {
     return this._ready;
   }
 
-  public async getTokenByAddress(tokenAddress: string, useApi: boolean = false): Promise<Token> {
-    if (useApi && this.network !== 'mainnet-beta') {
-      throw new Error('API usage is only allowed on mainnet-beta');
+  async getTokenList(
+    tokenListSource?: string,
+    tokenListType?: TokenListType
+  ): Promise<TokenInfo[]> {
+    // If no source/type provided, return stored list
+    if (!tokenListSource || !tokenListType) {
+      return this.tokenList;
     }
-
-    const publicKey = new PublicKey(tokenAddress);
-    let token: Token;
-
-    if (useApi) {
-      token = await this._utl.fetchMint(publicKey);
-    } else {
-      const tokenList = await this.getTokenList(this.config.network.tokenListSource, this.config.network.tokenListType);
-      const foundToken = tokenList.find((t) => t.address === tokenAddress);
-      if (!foundToken) {
-        throw new Error('Token not found in the token list');
-      }
-      token = foundToken as unknown as Token;
-    }
-
-    return token;
+    
+    // Otherwise fetch new list
+    const tokens = await new TokenListResolutionStrategy(
+      tokenListSource,
+      tokenListType
+    ).resolve();
+    return tokens;
   }
 
   async loadTokens(
@@ -210,8 +203,10 @@ export class Solana {
   }
 
   public getTokenBySymbol(tokenSymbol: string): TokenInfo | undefined {
+    // Normalize both strings by converting to uppercase and removing any spaces
+    const normalizedSearch = tokenSymbol.toUpperCase().trim();
     return this.tokenList.find(
-      (token: TokenInfo) => token.symbol.toUpperCase() === tokenSymbol.toUpperCase()
+      (token: TokenInfo) => token.symbol.toUpperCase().trim() === normalizedSearch
     );
   }
 
@@ -340,11 +335,13 @@ export class Solana {
 
     for (const tokenAccount of allSplTokens.value) {
       const tokenInfo = tokenAccount.account.data.parsed['info'];
-      const symbol = (await this.getTokenByAddress(tokenInfo['mint']))?.symbol;
-      if (symbol != null)
-        balances[symbol] = this.tokenResponseToTokenValue(
+      const mintAddress = tokenInfo['mint'];
+      const token = this.tokenList.find(t => t.address === mintAddress);
+      if (token?.symbol) {
+        balances[token.symbol] = this.tokenResponseToTokenValue(
           tokenInfo['tokenAmount']
         );
+      }
     }
 
     let allSolBalance = BigNumber.from(0);
@@ -411,26 +408,6 @@ export class Solana {
       response.value[0].account.data.parsed['info']['tokenAmount']
     );
   }
-
-  // returns whether the token account is initialized, given its mint address
-  async isTokenAccountInitialized(
-    walletAddress: PublicKey,
-    mintAddress: PublicKey
-  ): Promise<boolean> {
-    const response = await this.connectionPool.getNextConnection().getParsedTokenAccountsByOwner(
-      walletAddress,
-      { programId: TOKEN_PROGRAM_ADDRESS }
-    );
-    for (const accountInfo of response.value) {
-      if (
-        accountInfo.account.data.parsed['info']['mint'] ==
-        mintAddress.toBase58()
-      )
-        return true;
-    }
-    return false;
-  }
-
 
   // returns a Solana TransactionResponse for a txHash.
   async getTransaction(
@@ -852,23 +829,6 @@ export class Solana {
     } catch (error) {
       return false;
     }
-  }
-
-  async getTokenList(
-    tokenListSource?: string,
-    tokenListType?: TokenListType
-  ): Promise<TokenInfo[]> {
-    // If no source/type provided, return stored list
-    if (!tokenListSource || !tokenListType) {
-      return this.tokenList;
-    }
-    
-    // Otherwise fetch new list
-    const tokens = await new TokenListResolutionStrategy(
-      tokenListSource,
-      tokenListType
-    ).resolve();
-    return tokens;
   }
 
 }
