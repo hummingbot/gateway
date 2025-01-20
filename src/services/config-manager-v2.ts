@@ -221,7 +221,7 @@ export class ConfigurationNamespace {
     if (!this.#validator(configClone)) {
       throw new Error(
         `Cannot set ${this.id}.${configPath} to ${value}: ` +
-          'JSON schema violation.'
+        'JSON schema violation.'
       );
     }
 

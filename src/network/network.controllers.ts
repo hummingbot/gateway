@@ -15,6 +15,7 @@ import {
 } from '../services/error-handler';
 import { Cronos } from '../chains/cronos/cronos';
 import { Algorand } from '../chains/algorand/algorand';
+import { Ton } from '../chains/ton/ton';
 import {
   getInitializedChain,
   UnsupportedChainException,
@@ -119,6 +120,11 @@ export async function getStatus(
     const etcConnections = EthereumClassicChain.getConnectedInstances();
     connections = connections.concat(
       etcConnections ? Object.values(etcConnections) : []
+    );
+
+    const tonConnections = Ton.getConnectedInstances();
+    connections = connections.concat(
+      tonConnections ? Object.values(tonConnections) : [],
     );
   }
 
