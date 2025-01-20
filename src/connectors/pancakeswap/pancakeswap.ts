@@ -216,13 +216,14 @@ export class PancakeSwap implements Uniswapish {
     }
     logger.info(
       `Best trade for ${baseToken.address}-${quoteToken.address}: ` +
-        `${trade.inputAmount.toExact()}` +
-        `${baseToken.symbol}.`,
+      `${trade.inputAmount.toExact()}` +
+      `${baseToken.symbol}.`,
     );
 
     return {
       trade: {
         ...trade,
+        // @ts-ignore
         executionPrice: SmartRouter.getExecutionPrice(trade)!,
       },
       expectedAmount: trade.inputAmount,
@@ -264,13 +265,14 @@ export class PancakeSwap implements Uniswapish {
     }
     logger.info(
       `Best trade for ${baseToken.address}-${quoteToken.address}: ` +
-        `${trade.outputAmount.toExact()}` +
-        `${baseToken.symbol}.`,
+      `${trade.outputAmount.toExact()}` +
+      `${baseToken.symbol}.`,
     );
 
     return {
       trade: {
         ...trade,
+        // @ts-ignore
         executionPrice: SmartRouter.getExecutionPrice(trade)!,
       },
       expectedAmount: trade.outputAmount,
@@ -399,7 +401,9 @@ export class PancakeSwap implements Uniswapish {
         v2SubgraphProvider: () => v2SubgraphClient,
         // @ts-ignore
         v3SubgraphProvider: () => v3SubgraphClient,
+        // @ts-ignore
         currencyA,
+        // @ts-ignore
         currencyB,
       }),
       getV3CandidatePools({
@@ -442,6 +446,7 @@ export class PancakeSwap implements Uniswapish {
     logger.info(`Found ${pools.length} pools for ${baseToken.symbol}-${quoteToken.symbol}`);
 
     const trade = await SmartRouter.getBestTrade(
+      // @ts-ignore
       baseTokenAmount,
       quoteToken,
       tradeType,
