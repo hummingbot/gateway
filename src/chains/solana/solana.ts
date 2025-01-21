@@ -60,27 +60,8 @@ interface PriorityFeeResponse {
   id: number;
 }
 
-class ConnectionPool {
-  private connections: Connection[] = [];
-  private currentIndex: number = 0;
-
-  constructor(urls: string[]) {
-    this.connections = urls.map((url) => new Connection(url, { commitment: 'confirmed' }));
-  }
-
-  public getNextConnection(): Connection {
-    const connection = this.connections[this.currentIndex];
-    this.currentIndex = (this.currentIndex + 1) % this.connections.length;
-    return connection;
-  }
-
-  public getAllConnections(): Connection[] {
-    return this.connections;
-  }
-}
-
 export class Solana {
-  public connectionPool: ConnectionPool;
+  public connection: Connection;
   public network: string;
   public nativeTokenSymbol: string;
 
@@ -111,12 +92,12 @@ export class Solana {
   }
 
   private initializeConnections() {
-    this.connectionPool = new ConnectionPool([this.config.network.nodeURL]);
+    this.connection = new Connection(this.config.network.nodeURL, { commitment: 'confirmed' });
     
     const config = new UtlConfig({
       chainId: this.network === 'devnet' ? 103 : 101,
       timeout: 2000,
-      connection: this.connectionPool.getNextConnection(),
+      connection: this.connection,
       apiUrl: 'https://token-list-api.solana.cloud',
       cdnUrl: 'https://cdn.jsdelivr.net/gh/solflare-wallet/token-list/solana-tokenlist.json',
     });
@@ -288,13 +269,13 @@ export class Solana {
 
     // Fetch SOL balance only if symbols is undefined or includes "SOL" (case-insensitive)
     if (!upperCaseSymbols || upperCaseSymbols.includes("SOL")) {
-      const solBalance = await this.connectionPool.getNextConnection().getBalance(publicKey);
+      const solBalance = await this.connection.getBalance(publicKey);
       const solBalanceInSol = solBalance * LAMPORT_TO_SOL;
       balances["SOL"] = solBalanceInSol;
     }
 
     // Get all token accounts for the provided address
-    const accounts = await this.connectionPool.getNextConnection().getTokenAccountsByOwner(
+    const accounts = await this.connection.getTokenAccountsByOwner(
       publicKey,
       { programId: TOKEN_PROGRAM_ID }
     );
@@ -328,7 +309,7 @@ export class Solana {
 
     balances['UNWRAPPED_SOL'] = await this.getSolBalance(wallet);
 
-    const allSplTokens = await this.connectionPool.getNextConnection().getParsedTokenAccountsByOwner(
+    const allSplTokens = await this.connection.getParsedTokenAccountsByOwner(
       wallet.publicKey, 
       { programId: TOKEN_PROGRAM_ADDRESS }
     );
@@ -381,7 +362,7 @@ export class Solana {
 
   // returns the SOL balance, convert BigNumber to string
   async getSolBalance(wallet: Keypair): Promise<TokenValue> {
-    const lamports = await this.connectionPool.getNextConnection().getBalance(wallet.publicKey);
+    const lamports = await this.connection.getBalance(wallet.publicKey);
     return { value: BigNumber.from(lamports), decimals: 9 };
   }
 
@@ -397,7 +378,7 @@ export class Solana {
     walletAddress: PublicKey,
     mintAddress: PublicKey
   ): Promise<TokenValue> {
-    const response = await this.connectionPool.getNextConnection().getParsedTokenAccountsByOwner(
+    const response = await this.connection.getParsedTokenAccountsByOwner(
       walletAddress,
       { mint: mintAddress }
     );
@@ -413,15 +394,13 @@ export class Solana {
   async getTransaction(
     payerSignature: string
   ): Promise<VersionedTransactionResponse | null> {
-    const fetchedTx = this.connectionPool.getNextConnection().getTransaction(
+    return this.connection.getTransaction(
       payerSignature,
       {
         commitment: 'confirmed',
         maxSupportedTransactionVersion: 0,
       }
     );
-
-    return fetchedTx;
   }
 
   // returns a Solana TransactionResponseStatusCode for a txData.
@@ -444,7 +423,7 @@ export class Solana {
 
   // returns the current block number
   async getCurrentBlockNumber(): Promise<number> {
-    return await this.connectionPool.getNextConnection().getSlot('processed');
+    return await this.connection.getSlot('processed');
   }
 
   async close() {
@@ -454,9 +433,7 @@ export class Solana {
   }
 
   public async getGasPrice(): Promise<number> {
-    const priorityFeeInMicroLamports = await this.estimatePriorityFees(
-      this.connectionPool.getNextConnection().rpcEndpoint,
-    );
+    const priorityFeeInMicroLamports = await this.estimatePriorityFees();
     
     // Calculate priority fee in lamports
     const priorityFeeLamports = Math.floor(
@@ -469,7 +446,7 @@ export class Solana {
     return gasCost;
   }
   
-  async estimatePriorityFees(rcpURL: string): Promise<number> {
+  async estimatePriorityFees(): Promise<number> {
     // Check cache first
     if (
       Solana.lastPriorityFeeEstimate && 
@@ -488,7 +465,7 @@ export class Solana {
         jsonrpc: '2.0',
       };
 
-      const response = await fetch(rcpURL, {
+      const response = await fetch(this.connection.rpcEndpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -550,7 +527,6 @@ export class Solana {
 
   public async confirmTransaction(
     signature: string,
-    connection: Connection,
     timeout: number = 3000,
   ): Promise<{ confirmed: boolean; txData?: any }> {
     try {
@@ -567,7 +543,7 @@ export class Solana {
           ],
         };
 
-        const response = await fetch(connection.rpcEndpoint, {
+        const response = await fetch(this.connection.rpcEndpoint, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -596,7 +572,7 @@ export class Solana {
 
           if (isConfirmed) {
             // Fetch transaction data if confirmed
-            const txData = await connection.getParsedTransaction(signature, {
+            const txData = await this.connection.getParsedTransaction(signature, {
               maxSupportedTransactionVersion: 0,
             });
             resolve({ confirmed: true, txData });
@@ -622,9 +598,7 @@ export class Solana {
     tx: Transaction, 
     signers: Signer[] = []
   ): Promise<string> {
-    let currentPriorityFee = await this.estimatePriorityFees(
-      this.connectionPool.getNextConnection().rpcEndpoint,
-    );
+    let currentPriorityFee = await this.estimatePriorityFees();
     
     while (currentPriorityFee <= this.config.maxPriorityFee) {
       // Update or add priority fee instruction
@@ -639,8 +613,7 @@ export class Solana {
       ];
 
       // Get latest blockhash
-      const blockhashAndContext = await this.connectionPool
-        .getNextConnection()
+      const blockhashAndContext = await this.connection
         .getLatestBlockhashAndContext('confirmed');
       
       const lastValidBlockHeight = blockhashAndContext.value.lastValidBlockHeight;
@@ -659,16 +632,10 @@ export class Solana {
           );
 
           // Wait for confirmation
-          for (const connection of this.connectionPool.getAllConnections()) {
-            try {
-              const confirmed = await this.confirmTransaction(signature, connection);
-              if (confirmed) {
-                logger.info(`Transaction confirmed with priority fee: ${currentPriorityFee} microLamports`);
-                return signature;
-              }
-            } catch (error) {
-              logger.warn(`Confirmation attempt failed on connection: ${error.message}`);
-            }
+          const confirmed = await this.confirmTransaction(signature);
+          if (confirmed) {
+            logger.info(`Transaction confirmed with priority fee: ${currentPriorityFee} microLamports`);
+            return signature;
           }
 
           retryCount++;
@@ -692,24 +659,21 @@ export class Solana {
     rawTx: Buffer | Uint8Array | Array<number>,
     lastValidBlockHeight: number,
   ): Promise<string> {
-    let blockheight = await this.connectionPool
-      .getNextConnection()
+    let blockheight = await this.connection
       .getBlockHeight({ commitment: 'confirmed' });
 
-    let signature: string;
     let signatures: string[];
     let retryCount = 0;
 
     while (blockheight <= lastValidBlockHeight + 50) {
-      const sendRawTransactionResults = await Promise.allSettled(
-        this.connectionPool.getAllConnections().map(async (conn) => {
-          return await conn.sendRawTransaction(rawTx, {
+      try {
+        const sendRawTransactionResults = await Promise.allSettled([
+          this.connection.sendRawTransaction(rawTx, {
             skipPreflight: true,
             preflightCommitment: 'confirmed',
             maxRetries: 0,
-          });
-        }),
-      );
+          })
+        ]);
 
       const successfulResults = sendRawTransactionResults.filter(
         (result) => result.status === 'fulfilled',
@@ -721,19 +685,22 @@ export class Solana {
           .map((result) => (result.status === 'fulfilled' ? result.value : ''))
           .filter(sig => sig !== ''); // Filter out empty strings
 
-        // Verify all signatures match
-        if (!signatures.every((sig) => sig === signatures[0])) {
-          retryCount++;
-          await new Promise((resolve) => setTimeout(resolve, this.config.retryIntervalMs));
-          continue;
+          // Verify all signatures match
+          if (!signatures.every((sig) => sig === signatures[0])) {
+            retryCount++;
+            await new Promise((resolve) => setTimeout(resolve, this.config.retryIntervalMs));
+            continue;
+          }
+
+          return signatures[0];
         }
 
-        signature = signatures[0];
-        return signature;
+        retryCount++;
+        await new Promise((resolve) => setTimeout(resolve, this.config.retryIntervalMs));
+      } catch (error) {
+        retryCount++;
+        await new Promise((resolve) => setTimeout(resolve, this.config.retryIntervalMs));
       }
-
-      retryCount++;
-      await new Promise((resolve) => setTimeout(resolve, this.config.retryIntervalMs));
     }
 
     // If we exit the while loop without returning, we've exceeded block height
@@ -748,7 +715,7 @@ export class Solana {
     let txDetails;
     for (let attempt = 0; attempt < 20; attempt++) {
       try {
-        txDetails = await this.connectionPool.getNextConnection().getParsedTransaction(signature, {
+        txDetails = await this.connection.getParsedTransaction(signature, {
           maxSupportedTransactionVersion: 0,
         });
 
@@ -791,7 +758,7 @@ export class Solana {
     let txDetails;
     for (let attempt = 0; attempt < 20; attempt++) {
       try {
-        txDetails = await this.connectionPool.getNextConnection().getParsedTransaction(signature, {
+        txDetails = await this.connection.getParsedTransaction(signature, {
           maxSupportedTransactionVersion: 0,
         });
 

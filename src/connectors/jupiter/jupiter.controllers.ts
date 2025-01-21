@@ -285,9 +285,7 @@ export async function estimateGas(
 ): Promise<EstimateGasResponse> {
   const initTime = Date.now();
   
-  const priorityFeeInMicroLamports = await solana.estimatePriorityFees(
-    solana.connectionPool.getNextConnection().rpcEndpoint
-  );
+  const priorityFeeInMicroLamports = await solana.estimatePriorityFees();
   
   const gasCost = await solana.getGasPrice();
 

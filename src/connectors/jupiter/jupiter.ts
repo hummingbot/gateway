@@ -169,7 +169,7 @@ export class Jupiter {
   }
 
   async simulateTransaction(transaction: VersionedTransaction) {
-    const { value: simulatedTransactionResponse } = await this.solana.connectionPool.getNextConnection().simulateTransaction(
+    const { value: simulatedTransactionResponse } = await this.solana.connection.simulateTransaction(
       transaction,
       {
         replaceRecentBlockhash: true,
@@ -221,30 +221,28 @@ export class Jupiter {
       let retryCount = 0;
       while (retryCount < this.solana.config.retryCount) {
         try {
-          const signature = await this.solana.sendRawTransaction(
+          const signature = await this.solana.connection.sendRawTransaction(
             Buffer.from(transaction.serialize()),
-            swapObj.lastValidBlockHeight,
+            { skipPreflight: true }
           );
 
-          for (const connection of this.solana.connectionPool.getAllConnections()) {
-            try {
-              const { confirmed, txData } = await this.solana.confirmTransaction(signature, connection);
-              if (confirmed && txData) {
-                const computeUnitsUsed = txData.meta.computeUnitsConsumed;
-                const totalFee = txData.meta.fee;
-                const priorityFee = totalFee - BASE_FEE;
-                const priorityFeePrice = (priorityFee / computeUnitsUsed) * 1e6; // microlamports per CU
+          try {
+            const { confirmed, txData } = await this.solana.confirmTransaction(signature);
+            if (confirmed && txData) {
+              const computeUnitsUsed = txData.meta.computeUnitsConsumed;
+              const totalFee = txData.meta.fee;
+              const priorityFee = totalFee - BASE_FEE;
+              const priorityFeePrice = (priorityFee / computeUnitsUsed) * 1e6;
 
-                return {
-                  signature,
-                  feeInLamports: totalFee,
-                  computeUnitLimit: computeUnitsUsed,
-                  priorityFeePrice,
-                };
-              }
-            } catch (error) {
-              logger.error(`Swap confirmation attempt failed: ${error.message}`);
+              return {
+                signature,
+                feeInLamports: totalFee,
+                computeUnitLimit: computeUnitsUsed,
+                priorityFeePrice,
+              };
             }
+          } catch (error) {
+            logger.error(`Swap confirmation attempt failed: ${error.message}`);
           }
 
           retryCount++;
@@ -276,7 +274,7 @@ export class Jupiter {
     let inputBalanceChange: number, outputBalanceChange: number, fee: number;
 
     // Get transaction info to extract the 'from' address
-    const txInfo = await this.solana.connectionPool.getNextConnection().getTransaction(signature);
+    const txInfo = await this.solana.connection.getTransaction(signature);
     if (!txInfo) {
         throw new Error('Transaction not found');
     }
