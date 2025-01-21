@@ -21,6 +21,7 @@ import { CarbonConfig } from './carbon/carbon.config';
 import { BalancerConfig } from './balancer/balancer.config';
 import { ETCSwapConfig } from './etcswap/etcswap.config';
 import { JupiterConfig } from './jupiter/jupiter.config';
+import { StonfiConfig } from './ston_fi/ston_fi.config';
 
 export namespace ConnectorsRoutes {
   export const router = Router();
@@ -160,6 +161,12 @@ export namespace ConnectorsRoutes {
             chain_type: ETCSwapConfig.config.chainType,
             available_networks: ETCSwapConfig.config.availableNetworks,
             additional_spenders: ['etcswap'],
+          },
+          {
+            name: 'stonfi',
+            trading_type: StonfiConfig.config.tradingTypes,
+            chain_type: StonfiConfig.config.chainType,
+            available_networks: StonfiConfig.config.availableNetworks,
           },
         ],
       });
