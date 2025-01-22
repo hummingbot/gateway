@@ -15,6 +15,13 @@ import {
 import { PollRequest } from './ethereum.requests';
 import { EVMController } from './evm.controllers';
 
+declare module 'fastify' {
+  interface FastifySchema {
+    tags?: readonly string[];
+    description?: string;
+  }
+}
+
 export const ethereumRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /ethereum/status
   fastify.get<{ Querystring: StatusRequest }>(
