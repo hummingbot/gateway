@@ -34,6 +34,13 @@ networks:
     tokenListSource: /home/gateway/conf/lists/sepolia.json
     nativeCurrencySymbol: ETH
     gasPriceRefreshInterval: 60
+  bsc:
+    chainID: 56
+    nodeURL: https://binance.llamarpc.com
+    tokenListType: FILE
+    tokenListSource: /home/gateway/conf/lists/bsc.json
+    nativeCurrencySymbol: BNB
+    gasPriceRefreshInterval: 60
 
 # if you use the gas assumptions below, your wallet needs >0.1 ETH balance for gas
 gasLimitTransaction: 3000000
