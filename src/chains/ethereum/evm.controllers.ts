@@ -23,7 +23,6 @@ import {
   PollRequest,
 } from './ethereum.requests';
 import {
-  Chain as Ethereumish,
   Uniswapish,
 } from '../../services/common-interfaces';
 import {
@@ -47,6 +46,7 @@ import {
   validatePollRequest,
   validateTokensRequest
 } from './ethereum.validators';
+import { Ethereum } from './ethereum';
 
 // TransactionReceipt from ethers uses BigNumber which is not easy to interpret directly from JSON.
 // Transform those BigNumbers to string and pass the rest of the data without changes.
@@ -125,9 +125,9 @@ export const willTxSucceed = (
 
 export class EVMController {
   // Helper method to ensure initialization
-  private static async ensureInitialized(ethereumish: Ethereumish) {
-    if (!ethereumish.ready()) {
-      await ethereumish.init();
+  private static async ensureInitialized(ethereum: Ethereum) {
+    if (!ethereum.ready()) {
+      await ethereum.init();
     }
   }
 
@@ -137,13 +137,13 @@ export class EVMController {
   // 2: in the mempool and likely to succeed
   // 3: in the mempool and likely to fail
   // 0: in the mempool but we dont have data to guess its status
-  static async poll(ethereumish: Ethereumish, req: PollRequest) {
+  static async poll(ethereum: Ethereum, req: PollRequest) {
     const initTime = Date.now();
-    await this.ensureInitialized(ethereumish);
+    await this.ensureInitialized(ethereum);
     validatePollRequest(req);
 
-    const currentBlock = await ethereumish.getCurrentBlockNumber();
-    let txData = await ethereumish.getTransaction(req.txHash);
+    const currentBlock = await ethereum.getCurrentBlockNumber();
+    let txData = await ethereum.getTransaction(req.txHash);
     let txBlock, txReceipt, txStatus;
     if (!txData) {
       const MAX_RETRIES = 3;
@@ -152,7 +152,7 @@ export class EVMController {
 
       while (retryCount < MAX_RETRIES) {
         await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
-        txData = await ethereumish.getTransaction(req.txHash);
+        txData = await ethereum.getTransaction(req.txHash);
         if (txData) break;
         retryCount++;
       }
@@ -167,16 +167,16 @@ export class EVMController {
     }
 
     if (txData) {
-      txReceipt = await ethereumish.getTransactionReceipt(req.txHash);
+      txReceipt = await ethereum.getTransactionReceipt(req.txHash);
       if (txReceipt === null) {
         // tx is in the mempool
         txBlock = -1;
         txReceipt = null;
         txStatus = 0;
 
-        const transactions = await ethereumish.txStorage.getTxs(
-          ethereumish.chain,
-          ethereumish.chainId
+        const transactions = await ethereum.txStorage.getTxs(
+          ethereum.chain,
+          ethereum.chainId
         );
 
         if (transactions[txData.hash]) {
@@ -184,7 +184,7 @@ export class EVMController {
           const now = new Date();
           const txDuration = Math.abs(now.getTime() - data[0].getTime());
           if (
-            willTxSucceed(txDuration, 60000 * 3, data[1], ethereumish.gasPrice)
+            willTxSucceed(txDuration, 60000 * 3, data[1], ethereum.gasPrice)
           ) {
             txStatus = 2;
           } else {
@@ -215,7 +215,7 @@ export class EVMController {
     }
 
     logger.info(
-      `Poll ${ethereumish.chain}, txHash ${req.txHash}, status ${txStatus}.`
+      `Poll ${ethereum.chain}, txHash ${req.txHash}, status ${txStatus}.`
     );
     return wrapResponse({
       currentBlock,
@@ -228,7 +228,7 @@ export class EVMController {
   }
 
   static async nonce(
-    ethereum: Ethereumish,
+    ethereum: Ethereum,
     req: NonceRequest
   ): Promise<NonceResponse> {
     const initTime = Date.now();
@@ -242,7 +242,7 @@ export class EVMController {
   }
 
   static async nextNonce(
-    ethereum: Ethereumish,
+    ethereum: Ethereum,
     req: NonceRequest
   ): Promise<NonceResponse> {
     const initTime = Date.now();
@@ -256,22 +256,22 @@ export class EVMController {
   }
 
   static async getTokenSymbolsToTokens(
-    ethereumish: Ethereumish,
+    ethereum: Ethereum,
     tokenSymbols: Array<string>
   ): Promise<Record<string, TokenInfo>> {
-    await this.ensureInitialized(ethereumish);
+    await this.ensureInitialized(ethereum);
     const tokens: Record<string, TokenInfo> = {};
 
     for (let i = 0; i < tokenSymbols.length; i++) {
       const symbol = tokenSymbols[i];
-      const token = ethereumish.getTokenBySymbol(symbol);
+      const token = ethereum.getTokenBySymbol(symbol);
       if (token) tokens[symbol] = token;
     }
 
     return tokens;
   }
 
-  static async getTokens(connection: Ethereumish, req: TokensRequest) {
+  static async getTokens(connection: Ethereum, req: TokensRequest) {
     const initTime = Date.now();
     validateTokensRequest(req);
     await this.ensureInitialized(connection);
@@ -294,34 +294,34 @@ export class EVMController {
     return wrapResponse({ tokens }, initTime);
   }
 
-  static async allowances(ethereumish: Ethereumish, req: AllowancesRequest) {
+  static async allowances(ethereum: Ethereum, req: AllowancesRequest) {
     validateAllowancesRequest(req);
-    return EVMController.allowancesWithoutValidation(ethereumish, req);
+    return EVMController.allowancesWithoutValidation(ethereum, req);
   }
 
   static async allowancesWithoutValidation(
-    ethereumish: Ethereumish,
+    ethereum: Ethereum,
     req: AllowancesRequest
   ) {
     const initTime = Date.now();
-    await this.ensureInitialized(ethereumish);
+    await this.ensureInitialized(ethereum);
     
-    const wallet = await ethereumish.getWallet(req.address);
+    const wallet = await ethereum.getWallet(req.address);
     const tokens = await this.getTokenSymbolsToTokens(
-      ethereumish,
+      ethereum,
       req.tokenSymbols
     );
-    const spender = ethereumish.getSpender(req.spender);
+    const spender = ethereum.getSpender(req.spender);
 
     const approvals: Record<string, string> = {};
     await Promise.all(
       Object.keys(tokens).map(async (symbol) => {
-        const contract = ethereumish.getContract(
+        const contract = ethereum.getContract(
           tokens[symbol].address,
-          ethereumish.provider
+          ethereum.provider
         );
         approvals[symbol] = tokenValueToString(
-          await ethereumish.getERC20Allowance(
+          await ethereum.getERC20Allowance(
             contract,
             wallet,
             spender,
@@ -337,7 +337,7 @@ export class EVMController {
     }, initTime);
   }
 
-  static async balances(ethereumish: Ethereumish, req: BalanceRequest) {
+  static async balances(ethereum: Ethereum, req: BalanceRequest) {
     const initTime = Date.now();
     validateBalanceRequest(req);
 
@@ -345,7 +345,7 @@ export class EVMController {
     const balances: Record<string, string> = {};
 
     try {
-      wallet = await ethereumish.getWallet(req.address);
+      wallet = await ethereum.getWallet(req.address);
     } catch (err) {
       throw new HttpException(
         500,
@@ -355,22 +355,22 @@ export class EVMController {
     }
 
     // Get native token balance if requested
-    if (req.tokenSymbols.includes(ethereumish.nativeTokenSymbol)) {
-      balances[ethereumish.nativeTokenSymbol] = tokenValueToString(
-        await ethereumish.getNativeBalance(wallet)
+    if (req.tokenSymbols.includes(ethereum.nativeTokenSymbol)) {
+      balances[ethereum.nativeTokenSymbol] = tokenValueToString(
+        await ethereum.getNativeBalance(wallet)
       );
     }
 
     // Get ERC20 token balances
     await Promise.all(
       req.tokenSymbols.map(async (symbol) => {
-        const token = ethereumish.getTokenBySymbol(symbol);
+        const token = ethereum.getTokenBySymbol(symbol);
         if (token) {
-          const contract = ethereumish.getContract(
+          const contract = ethereum.getContract(
             token.address,
-            ethereumish.provider
+            ethereum.provider
           );
-          const balance = await ethereumish.getERC20Balance(
+          const balance = await ethereum.getERC20Balance(
             contract,
             wallet,
             token.decimals
@@ -393,16 +393,16 @@ export class EVMController {
     }, initTime);
   }
 
-  static async approve(ethereumish: Ethereumish, req: ApproveRequest) {
+  static async approve(ethereum: Ethereum, req: ApproveRequest) {
     validateApproveRequest(req);
-    return await EVMController.approveWithoutValidation(ethereumish, req);
+    return await EVMController.approveWithoutValidation(ethereum, req);
   }
 
   static async approveWithoutValidation(
-    ethereumish: Ethereumish,
+    ethereum: Ethereum,
     req: ApproveRequest
   ) {
-    await this.ensureInitialized(ethereumish);
+    await this.ensureInitialized(ethereum);
     
     const {
       amount,
@@ -413,10 +413,10 @@ export class EVMController {
       maxPriorityFeePerGas,
     } = req;
 
-    const spender = ethereumish.getSpender(req.spender);
+    const spender = ethereum.getSpender(req.spender);
     let wallet: Wallet;
     try {
-      wallet = await ethereumish.getWallet(address);
+      wallet = await ethereum.getWallet(address);
     } catch (err) {
       throw new HttpException(
         500,
@@ -424,7 +424,7 @@ export class EVMController {
         LOAD_WALLET_ERROR_CODE
       );
     }
-    const fullToken = ethereumish.getTokenBySymbol(token);
+    const fullToken = ethereum.getTokenBySymbol(token);
     if (!fullToken) {
       throw new HttpException(
         500,
@@ -445,11 +445,11 @@ export class EVMController {
       maxPriorityFeePerGasBigNumber = BigNumber.from(maxPriorityFeePerGas);
     }
     // instantiate a contract and pass in wallet, which act on behalf of that signer
-    const contract = ethereumish.getContract(fullToken.address, wallet);
+    const contract = ethereum.getContract(fullToken.address, wallet);
 
     // convert strings to BigNumber
     // call approve function
-    const approval = await ethereumish.approveERC20(
+    const approval = await ethereum.approveERC20(
       contract,
       wallet,
       spender,
@@ -457,16 +457,16 @@ export class EVMController {
       nonce,
       maxFeePerGasBigNumber,
       maxPriorityFeePerGasBigNumber,
-      ethereumish.gasPrice
+      ethereum.gasPrice
     );
 
     if (approval.hash) {
-      await ethereumish.txStorage.saveTx(
-        ethereumish.chain,
-        ethereumish.chainId,
+      await ethereum.txStorage.saveTx(
+        ethereum.chain,
+        ethereum.chainId,
         approval.hash,
         new Date(),
-        ethereumish.gasPrice
+        ethereum.gasPrice
       );
     }
 
@@ -479,14 +479,14 @@ export class EVMController {
     };
   }
 
-  static async cancel(ethereumish: Ethereumish, req: CancelRequest) {
+  static async cancel(ethereum: Ethereum, req: CancelRequest) {
     const initTime = Date.now();
-    await this.ensureInitialized(ethereumish);
+    await this.ensureInitialized(ethereum);
     validateCancelRequest(req);
     
     let wallet: Wallet;
     try {
-      wallet = await ethereumish.getWallet(req.address);
+      wallet = await ethereum.getWallet(req.address);
     } catch (err) {
       throw new HttpException(
         500,
@@ -496,7 +496,7 @@ export class EVMController {
     }
 
     // call cancelTx function
-    const cancelTx = await ethereumish.cancelTx(wallet, req.nonce);
+    const cancelTx = await ethereum.cancelTx(wallet, req.nonce);
 
     logger.info(
       `Cancelled transaction at nonce ${req.nonce}, cancel txHash ${cancelTx.hash}.`
@@ -507,16 +507,16 @@ export class EVMController {
     }, initTime);
   }
 
-  static async getStatus(ethereumish: Ethereumish, req: StatusRequest): Promise<StatusResponse> {
+  static async getStatus(ethereum: Ethereum, req: StatusRequest): Promise<StatusResponse> {
     const initTime = Date.now();
-    await this.ensureInitialized(ethereumish);
+    await this.ensureInitialized(ethereum);
     
-    const chain = ethereumish.chain;
-    const chainId = ethereumish.chainId;
-    const network = ethereumish.network;
-    const rpcUrl = ethereumish.rpcUrl;
-    const nativeCurrency = ethereumish.nativeTokenSymbol;
-    const currentBlockNumber = await ethereumish.getCurrentBlockNumber();
+    const chain = 'ethereum';
+    const chainId = ethereum.chainId;
+    const network = ethereum.chain;
+    const rpcUrl = ethereum.rpcUrl;
+    const nativeCurrency = ethereum.nativeTokenSymbol;
+    const currentBlockNumber = await ethereum.getCurrentBlockNumber();
 
     return wrapResponse({
       chain,

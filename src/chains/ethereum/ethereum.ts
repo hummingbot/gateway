@@ -5,9 +5,7 @@ import { EthereumBase } from './ethereum-base';
 import { getEthereumConfig } from './ethereum.config';
 import { Provider } from '@ethersproject/abstract-provider';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
-import { Chain as Ethereumish } from '../../services/common-interfaces';
 import { EVMController } from './evm.controllers';
-
 import { UniswapConfig } from '../../connectors/uniswap/uniswap.config';
 
 // MKR does not match the ERC20 perfectly so we need to use a separate ABI.
@@ -20,7 +18,7 @@ const MKR_ADDRESS = '0x9f8f72aa9304c8b593d555f12ef6589cc3a579a2';
 //   oldestBlock: string;
 // }
 
-export class Ethereum extends EthereumBase implements Ethereumish {
+export class Ethereum extends EthereumBase {
   private static _instances: { [name: string]: Ethereum };
   private _gasPrice: number;
   private _gasPriceRefreshInterval: number | null;

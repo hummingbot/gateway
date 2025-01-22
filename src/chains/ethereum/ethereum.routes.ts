@@ -1,7 +1,7 @@
 import { FastifyPluginAsync } from 'fastify';
 import { Type } from '@sinclair/typebox';
 import { getInitializedChain } from '../../services/connection-manager';
-import { Chain as Ethereumish } from '../../services/common-interfaces';
+import { Ethereum } from './ethereum';
 import {
   NonceRequest,
   NonceResponse,
@@ -29,11 +29,11 @@ export const ethereumRoutes: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request) => {
-      const chain = await getInitializedChain<Ethereumish>(
+      const chain = await getInitializedChain<Ethereum>(
         'ethereum',
         request.query.network
       );
-      return await EVMController.getStatus(chain, request.query);
+      return await EVMController.getStatus(chain as Ethereum, request.query);
     }
   );
   
@@ -47,11 +47,11 @@ export const ethereumRoutes: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request) => {
-      const chain = await getInitializedChain<Ethereumish>(
+      const chain = await getInitializedChain<Ethereum>(
         'ethereum',
         request.query.network
       );
-      return await EVMController.getTokens(chain, request.query);
+      return await EVMController.getTokens(chain as Ethereum, request.query);
     }
   );
 
@@ -72,11 +72,11 @@ export const ethereumRoutes: FastifyPluginAsync = async (fastify) => {
         },
     },
     async (request) => {
-      const chain = await getInitializedChain<Ethereumish>(
+      const chain = await getInitializedChain<Ethereum>(
         'ethereum',
         request.body.network
       );
-      return await EVMController.balances(chain, request.body);
+      return await EVMController.balances(chain as Ethereum, request.body);
     }
   );
 
@@ -98,11 +98,11 @@ export const ethereumRoutes: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request) => {
-      const chain = await getInitializedChain<Ethereumish>(
+      const chain = await getInitializedChain<Ethereum>(
         'ethereum',
         request.body.network
       );
-      return await EVMController.poll(chain, request.body);
+      return await EVMController.poll(chain as Ethereum, request.body);
     }
   );
 
@@ -124,11 +124,11 @@ export const ethereumRoutes: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request) => {
-      const chain = await getInitializedChain<Ethereumish>(
+      const chain = await getInitializedChain<Ethereum>(
         'ethereum',
         request.body.network
       );
-      return await EVMController.nonce(chain, request.body);
+      return await EVMController.nonce(chain as Ethereum, request.body);
     }
   );
 
@@ -142,11 +142,11 @@ export const ethereumRoutes: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request) => {
-      const chain = await getInitializedChain<Ethereumish>(
+      const chain = await getInitializedChain<Ethereum>(
         request.body.chain,
         request.body.network
       );
-      return await EVMController.nextNonce(chain, request.body);
+      return await EVMController.nextNonce(chain as Ethereum, request.body);
     }
   );
 
@@ -170,11 +170,11 @@ export const ethereumRoutes: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request) => {
-      const chain = await getInitializedChain<Ethereumish>(
+      const chain = await getInitializedChain<Ethereum>(
         'ethereum',
         request.body.network
       );
-      return await EVMController.allowances(chain, request.body);
+      return await EVMController.allowances(chain as Ethereum, request.body);
     }
   );
 
@@ -198,11 +198,11 @@ export const ethereumRoutes: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request) => {
-      const chain = await getInitializedChain<Ethereumish>(
+      const chain = await getInitializedChain<Ethereum>(
         'ethereum',
         request.body.network
       );
-      return await EVMController.approve(chain, request.body);
+      return await EVMController.approve(chain as Ethereum, request.body);
     }
   );
 
@@ -224,11 +224,11 @@ export const ethereumRoutes: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request) => {
-      const chain = await getInitializedChain<Ethereumish>(
+      const chain = await getInitializedChain<Ethereum>(
         'ethereum',
         request.body.network
       );
-      return await EVMController.cancel(chain, request.body);
+      return await EVMController.cancel(chain as Ethereum, request.body);
     }
   );
 

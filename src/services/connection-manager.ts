@@ -1,16 +1,9 @@
 import { Ethereum } from '../chains/ethereum/ethereum';
 import { Solana } from '../chains/solana/solana';
 import { Uniswap } from '../connectors/uniswap/uniswap';
-import { Ethereumish } from './common-interfaces';
 import { Jupiter } from '../connectors/jupiter/jupiter';
 
-export type ChainUnion = Ethereumish | Solana;
-
-export type Chain<T> = T extends Ethereumish
-  ? Ethereumish
-  : T extends Solana
-    ? Solana
-    : never;
+export type Chain = Ethereum | Solana;
 
 export class UnsupportedChainException extends Error {
   constructor(message?: string) {
@@ -27,7 +20,7 @@ export class UnsupportedChainException extends Error {
 export async function getInitializedChain<T>(
   chain: string,
   network: string,
-): Promise<Chain<T>> {
+): Promise<Chain> {
   const chainInstance = await getChainInstance(chain, network);
 
   if (chainInstance === undefined) {
@@ -38,14 +31,14 @@ export async function getInitializedChain<T>(
     await chainInstance.init();
   }
 
-  return chainInstance as Chain<T>;
+  return chainInstance;
 }
 
 export async function getChainInstance(
   chain: string,
   network: string,
-): Promise<ChainUnion | undefined> {
-  let connection: ChainUnion | undefined;
+): Promise<Chain | undefined> {
+  let connection: Chain | undefined;
 
   if (chain === 'ethereum') {
     connection = Ethereum.getInstance(network);

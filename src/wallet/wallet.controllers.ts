@@ -10,9 +10,9 @@ import {
   GetWalletResponse,
 } from './wallet.routes';
 import {
-  ChainUnion,
   getInitializedChain,
   UnsupportedChainException,
+  Chain,
 } from '../services/connection-manager';
 import {
   ERROR_RETRIEVING_WALLET_ADDRESS_ERROR_CODE,
@@ -40,12 +40,12 @@ export async function addWallet(
   if (!passphrase) {
     throw new Error('There is no passphrase');
   }
-  let connection: ChainUnion;
+  let connection: Chain;
   let address: string | undefined;
   let encryptedPrivateKey: string | undefined;
 
   try {
-    connection = await getInitializedChain<ChainUnion>(req.chain, req.network);
+    connection = await getInitializedChain<Chain>(req.chain, req.network);
   } catch (e) {
     if (e instanceof UnsupportedChainException) {
       throw new HttpException(

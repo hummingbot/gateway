@@ -149,27 +149,6 @@ export interface Uniswapish {
   ): Promise<Transaction>;
 }
 
-export interface BasicChainMethods {
-  getSpender(reqSpender: string): string;
-  gasPrice: number;
-  nativeTokenSymbol: string;
-  chain: string;
-}
-
-export interface Chain extends BasicChainMethods, EthereumBase {
-  controller: any;
-  cancelTx(wallet: Wallet, nonce: number): Promise<Transaction>;
-  getContract(
-    tokenAddress: string,
-    signerOrProvider?: Wallet | Provider
-  ): Contract;
-  network?: string;
-  gasPrice: number;
-  estimateGasPrice(): Promise<number>;
-}
-
-export type Ethereumish = Chain;
-
 export interface PriceLevel {
   price: string;
   quantity: string;

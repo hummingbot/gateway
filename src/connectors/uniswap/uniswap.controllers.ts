@@ -21,11 +21,11 @@ import {
 import { TokenInfo } from '../../chains/ethereum/ethereum-base';
 import { gasCostInEthString } from '../../services/base';
 import {
-  Ethereumish,
   ExpectedTrade,
   Uniswapish,
   Tokenish,
 } from '../../services/common-interfaces';
+import { Ethereum } from '../../chains/ethereum/ethereum';
 import { logger } from '../../services/logger';
 import {
   EstimateGasResponse,
@@ -44,7 +44,7 @@ export interface TradeInfo {
 }
 
 export async function txWriteData(
-  ethereumish: Ethereumish,
+  ethereum: Ethereum,
   address: string,
   maxFeePerGas?: string,
   maxPriorityFeePerGas?: string
@@ -64,7 +64,7 @@ export async function txWriteData(
 
   let wallet: Wallet;
   try {
-    wallet = await ethereumish.getWallet(address);
+    wallet = await ethereum.getWallet(address);
   } catch (err) {
     logger.error(`Wallet ${address} not available.`);
     throw new HttpException(
@@ -77,7 +77,7 @@ export async function txWriteData(
 }
 
 export async function getTradeInfo(
-  ethereumish: Ethereumish,
+  ethereum: Ethereum,
   uniswapish: Uniswapish,
   baseAsset: string,
   quoteAsset: string,
@@ -87,12 +87,12 @@ export async function getTradeInfo(
   poolId?: string,
 ): Promise<TradeInfo> {
   const baseToken: Tokenish = await getFullTokenFromSymbol(
-    ethereumish,
+    ethereum,
     uniswapish,
     baseAsset
   );
   const quoteToken: Tokenish = await getFullTokenFromSymbol(
-    ethereumish,
+    ethereum,
     uniswapish,
     quoteAsset
   );
@@ -132,7 +132,7 @@ export async function getTradeInfo(
 }
 
 export async function price(
-  ethereumish: Ethereumish,
+  ethereum: Ethereum,
   uniswapish: Uniswapish,
   req: PriceRequest
 ): Promise<PriceResponse> {
@@ -140,7 +140,7 @@ export async function price(
   let tradeInfo: TradeInfo;
   try {
     tradeInfo = await getTradeInfo(
-      ethereumish,
+      ethereum,
       uniswapish,
       req.base,
       req.quote,
@@ -171,11 +171,11 @@ export async function price(
   const tradePrice =
     req.side === 'BUY' ? trade.executionPrice.invert() : trade.executionPrice;
 
-  const gasLimitTransaction = ethereumish.gasLimitTransaction;
-  const gasPrice = ethereumish.gasPrice;
+  const gasLimitTransaction = ethereum.gasLimitTransaction;
+  const gasPrice = ethereum.gasPrice;
   const gasLimitEstimate = uniswapish.gasLimitEstimate;
   return wrapResponse({
-    network: ethereumish.chain,
+    network: ethereum.chain,
     base: tradeInfo.baseToken.address,
     quote: tradeInfo.quoteToken.address,
     amount: new Decimal(req.amount).toFixed(tradeInfo.baseToken.decimals),
@@ -183,14 +183,14 @@ export async function price(
     expectedAmount: expectedAmount.toSignificant(8),
     price: tradePrice.toSignificant(8),
     gasPrice: gasPrice,
-    gasPriceToken: ethereumish.nativeTokenSymbol,
+    gasPriceToken: ethereum.nativeTokenSymbol,
     gasLimit: gasLimitTransaction,
     gasCost: gasCostInEthString(gasPrice, gasLimitEstimate),
   }, initTime);
 }
 
 export async function trade(
-  ethereumish: Ethereumish,
+  ethereum: Ethereum,
   uniswapish: Uniswapish,
   req: TradeRequest
 ): Promise<TradeResponse> {
@@ -199,7 +199,7 @@ export async function trade(
   const limitPrice = req.limitPrice;
   const { wallet, maxFeePerGasBigNumber, maxPriorityFeePerGasBigNumber } =
     await txWriteData(
-      ethereumish,
+      ethereum,
       req.address,
       req.maxFeePerGas,
       req.maxPriorityFeePerGas
@@ -208,7 +208,7 @@ export async function trade(
   let tradeInfo: TradeInfo;
   try {
     tradeInfo = await getTradeInfo(
-      ethereumish,
+      ethereum,
       uniswapish,
       req.base,
       req.quote,
@@ -235,8 +235,8 @@ export async function trade(
     }
   }
 
-  const gasPrice: number = ethereumish.gasPrice;
-  const gasLimitTransaction: number = ethereumish.gasLimitTransaction;
+  const gasPrice: number = ethereum.gasPrice;
+  const gasLimitTransaction: number = ethereum.gasLimitTransaction;
   const gasLimitEstimate: number = uniswapish.gasLimitEstimate;
 
   if (req.side === 'BUY') {
@@ -272,12 +272,12 @@ export async function trade(
     );
 
     if (tx.hash) {
-      await ethereumish.txStorage.saveTx(
-        ethereumish.chain,
-        ethereumish.chainId,
+      await ethereum.txStorage.saveTx(
+        ethereum.chain,
+        ethereum.chainId,
         tx.hash,
         new Date(),
-        ethereumish.gasPrice
+        ethereum.gasPrice
       );
     }
 
@@ -286,7 +286,7 @@ export async function trade(
     );
 
     return wrapResponse({
-      network: ethereumish.chain,
+      network: ethereum.chain,
       base: tradeInfo.baseToken.address,
       quote: tradeInfo.quoteToken.address,
       amount: new Decimal(req.amount).toFixed(tradeInfo.baseToken.decimals),
@@ -294,7 +294,7 @@ export async function trade(
       expectedIn: tradeInfo.expectedTrade.expectedAmount.toSignificant(8),
       price: price.toSignificant(8),
       gasPrice: gasPrice,
-      gasPriceToken: ethereumish.nativeTokenSymbol,
+      gasPriceToken: ethereum.nativeTokenSymbol,
       gasLimit: gasLimitTransaction,
       gasCost: gasCostInEthString(gasPrice, gasLimitEstimate),
       nonce: tx.nonce,
@@ -340,7 +340,7 @@ export async function trade(
     );
 
     return wrapResponse({
-      network: ethereumish.chain,
+      network: ethereum.chain,
       base: tradeInfo.baseToken.address,
       quote: tradeInfo.quoteToken.address,
       amount: new Decimal(req.amount).toFixed(tradeInfo.baseToken.decimals),
@@ -348,7 +348,7 @@ export async function trade(
       expectedOut: tradeInfo.expectedTrade.expectedAmount.toSignificant(8),
       price: price.toSignificant(8),
       gasPrice: gasPrice,
-      gasPriceToken: ethereumish.nativeTokenSymbol,
+      gasPriceToken: ethereum.nativeTokenSymbol,
       gasLimit: gasLimitTransaction,
       gasCost: gasCostInEthString(gasPrice, gasLimitEstimate),
       nonce: tx.nonce,
@@ -358,17 +358,17 @@ export async function trade(
 }
 
 export async function getFullTokenFromSymbol(
-  ethereumish: Ethereumish,
+  ethereum: Ethereum,
   uniswapish: Uniswapish,
   tokenSymbol: string
 ): Promise<Token> {
   
-  if (!ethereumish.ready()) {
-    await ethereumish.init();
+  if (!ethereum.ready()) {
+    await ethereum.init();
   }
   
   const tokenInfo: TokenInfo =
-    ethereumish.getTokenBySymbol(tokenSymbol);
+    ethereum.getTokenBySymbol(tokenSymbol);
   
   const uniswapToken = new Token(
     tokenInfo.chainId,
@@ -388,17 +388,17 @@ export async function getFullTokenFromSymbol(
 }
 
 export async function estimateGas(
-  ethereumish: Ethereumish,
+  ethereum: Ethereum,
   uniswapish: Uniswapish
 ): Promise<EstimateGasResponse> {
   const initTime = Date.now();
-  const gasPrice: number = await ethereumish.estimateGasPrice();
+  const gasPrice: number = await ethereum.estimateGasPrice();
   const uniswapGasLimit: number = uniswapish.gasLimitEstimate;
   
   return wrapResponse({
-    network: ethereumish.chain,
+    network: ethereum.chain,
     gasPrice,
-    gasPriceToken: ethereumish.nativeTokenSymbol,
+    gasPriceToken: ethereum.nativeTokenSymbol,
     gasLimit: uniswapGasLimit,
     gasCost: gasCostInEthString(gasPrice, uniswapGasLimit),
   }, initTime);

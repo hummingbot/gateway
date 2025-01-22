@@ -102,7 +102,7 @@ export const solanaRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request, reply) => {
       const chain = await getInitializedChain<Solana>('solana', request.query.network);
-      const status = await SolanaController.getStatus(chain, request.query);
+      const status = await SolanaController.getStatus(chain as Solana, request.query);
       return reply.send(status);
     }
   );
@@ -122,7 +122,7 @@ export const solanaRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request, reply) => {
       const chain = await getInitializedChain<Solana>('solana', request.query.network);
-      const response = await SolanaController.getTokens(chain, request.query);
+      const response = await SolanaController.getTokens(chain as Solana, request.query);
       return reply.send(response);
     }
   );
@@ -151,7 +151,7 @@ export const solanaRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request, reply) => {
       const chain = await getInitializedChain<Solana>('solana', request.body.network);
-      const response = await SolanaController.balances(chain, request.body);
+      const response = await SolanaController.balances(chain as Solana, request.body);
       return reply.send(response);
     }
   );
@@ -179,7 +179,7 @@ export const solanaRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request, reply) => {
       const chain = await getInitializedChain<Solana>('solana', request.body.network);
-      const response = await SolanaController.poll(chain, request.body);
+      const response = await SolanaController.poll(chain as Solana, request.body);
       return reply.send(response);
     }
   );
