@@ -1,5 +1,6 @@
-import { Solana } from '../../chains/solana/solana';
 import { Meteora } from './meteora';
+import { Keypair } from '@solana/web3.js';
+import { Solana } from '../../chains/solana/solana';
 import { wrapResponse } from '../../services/response-wrapper';
 import {
   HttpException,
@@ -7,19 +8,31 @@ import {
   UNKNOWN_ERROR_MESSAGE,
   TRADE_NOT_FOUND_ERROR_CODE,
   TRADE_NOT_FOUND_ERROR_MESSAGE,
+  LOAD_WALLET_ERROR_CODE,
+  LOAD_WALLET_ERROR_MESSAGE,
 } from '../../services/error-handler';
 import { logger } from '../../services/logger';
 
 export async function getPositionsOwnedBy(
-  _solana: Solana,
+  solana: Solana,
   meteora: Meteora,
   poolAddress: string,
-  walletAddress?: string,
+  walletAddress: string,
 ) {
   const initTime = Date.now();
+  let wallet: Keypair;
+  try {
+    wallet = await solana.getWallet(walletAddress);
+  } catch (err) {
+    throw new HttpException(
+      500,
+      LOAD_WALLET_ERROR_MESSAGE + err,
+      LOAD_WALLET_ERROR_CODE
+    );
+  }
 
   try {
-    const result = await meteora.getPositionsOwnedBy(poolAddress, walletAddress);
+    const result = await meteora.getPositionsOwnedBy(poolAddress, wallet);
     return wrapResponse(result, initTime);
   } catch (e) {
     if (e instanceof Error) {

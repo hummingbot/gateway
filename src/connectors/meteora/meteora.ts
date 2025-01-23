@@ -1,8 +1,9 @@
 import { Solana } from '../../chains/solana/solana';
-import { PublicKey } from '@solana/web3.js';
+import { PublicKey, Keypair } from '@solana/web3.js';
 import DLMM, { BinLiquidity } from '@meteora-ag/dlmm';
 import { MeteoraConfig } from './meteora.config';
 import { DecimalUtil } from '@orca-so/common-sdk';
+import Decimal from 'decimal.js';
 import { logger } from '../../services/logger';
 
 export class Meteora {
@@ -15,6 +16,10 @@ export class Meteora {
     this.config = MeteoraConfig.config;
     this.solana = Solana.getInstance(network);
     this.loadMeteora();
+  }
+
+  private convertDecimals(value: any, decimals: number): string {
+    return DecimalUtil.adjustDecimals(new Decimal(value.toString()), decimals).toString();
   }
 
   protected async loadMeteora(): Promise<void> {
@@ -60,29 +65,49 @@ export class Meteora {
 
   async getPositionsOwnedBy(
     poolAddress: string,
-    walletAddress?: string
+    wallet: Keypair
   ) {
     const dlmmPool = await this.getDlmmPool(poolAddress);
-    const owner = walletAddress 
-      ? new PublicKey(walletAddress)
-      : (await this.solana.getWallet(walletAddress)).publicKey;
+    await dlmmPool.refetchStates();
 
+    const owner = wallet.publicKey;
     const { activeBin, userPositions } = await dlmmPool.getPositionsByUserAndLbPair(owner);
 
+    const adjustedActiveBin = {
+      ...activeBin,
+      xAmount: this.convertDecimals(activeBin.xAmount, dlmmPool.tokenX.decimal) as any,
+      yAmount: this.convertDecimals(activeBin.yAmount, dlmmPool.tokenY.decimal) as any,
+    };
+    const adjustedUserPositions = userPositions.map((position) => {
+      const { positionData } = position;
+      const tokenXDecimals = dlmmPool.tokenX.decimal;
+      const tokenYDecimals = dlmmPool.tokenY.decimal;
+
+      return {
+        ...position,
+        positionData: {
+        ...positionData,
+        positionBinData: positionData.positionBinData.map((binData) => ({
+          ...binData,
+          binXAmount: this.convertDecimals(binData.binXAmount, tokenXDecimals),
+          binYAmount: this.convertDecimals(binData.binYAmount, tokenYDecimals),
+          positionXAmount: this.convertDecimals(binData.positionXAmount, tokenXDecimals),
+          positionYAmount: this.convertDecimals(binData.positionYAmount, tokenYDecimals),
+        })),
+        totalXAmount: this.convertDecimals(positionData.totalXAmount, tokenXDecimals),
+        totalYAmount: this.convertDecimals(positionData.totalYAmount, tokenYDecimals),
+        feeX: this.convertDecimals(positionData.feeX, tokenXDecimals),
+        feeY: this.convertDecimals(positionData.feeY, tokenYDecimals),
+        rewardOne: this.convertDecimals(positionData.rewardOne, tokenXDecimals),
+        rewardTwo: this.convertDecimals(positionData.rewardTwo, tokenYDecimals),
+        lastUpdatedAt: DecimalUtil.fromBN(positionData.lastUpdatedAt).toString(),
+        },
+      };
+    });
+
     return {
-      activeBin: {
-        binId: activeBin.binId,
-        price: activeBin.price,
-        pricePerToken: activeBin.pricePerToken,
-        liquiditySupply: activeBin.supply.toString(),
-      },
-      userPositions: userPositions.map(position => ({
-        positionAddress: position.publicKey.toString(),
-        lowerBinId: position.positionData.lowerBinId,
-        upperBinId: position.positionData.upperBinId,
-        liquidityShares: position.positionData.positionBinData[0].positionLiquidity.toString(),
-        rewardInfos: [],
-      })),
+      activeBin: adjustedActiveBin,
+      userPositions: adjustedUserPositions,
     };
   }
 

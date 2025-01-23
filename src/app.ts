@@ -45,11 +45,22 @@ const swaggerOptions = {
       { name: 'config', description: 'Configuration endpoints' },
       { name: 'wallet', description: 'Wallet endpoints' },
       { name: 'solana', description: 'Solana chain endpoints' },
-      { name: 'ethereum', description: 'Ethereum chain endpoints' },
-      { name: 'jupiter', description: 'Jupiter connector endpoints' },
       { name: 'meteora', description: 'Meteora connector endpoints' },
+      { name: 'jupiter', description: 'Jupiter connector endpoints' },
+      { name: 'ethereum', description: 'Ethereum chain endpoints' },
       { name: 'uniswap', description: 'Uniswap connector endpoints' },
     ],
+    components: {
+      parameters: {
+        queryExample: {
+          in: 'query',
+          name: 'example',
+          schema: {
+            type: 'object' as const
+          }
+        }
+      }
+    }
   },
   transform: ({ schema, url }) => {
     try {
@@ -61,6 +72,8 @@ const swaggerOptions = {
       return { schema, url };
     }
   },
+  hideUntagged: true,
+  exposeRoute: true
 };
 
 // Create gateway app configuration function
@@ -104,7 +117,14 @@ const configureGatewayServer = () => {
         docExpansion: 'list',
         deepLinking: false,
         tryItOutEnabled: true,
+        displayRequestDuration: true,
+        persistAuthorization: true,
+        filter: true,
+        defaultModelExpandDepth: 3,
+        defaultModelsExpandDepth: 3
       },
+      staticCSP: true,
+      transformStaticCSP: (header) => header
     });
   } else {
     // Otherwise set up separate docs server

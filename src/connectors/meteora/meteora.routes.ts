@@ -4,26 +4,47 @@ import { Solana } from '../../chains/solana/solana';
 import { Meteora } from './meteora';
 import { getPositionsOwnedBy, getActiveBin } from './meteora.controllers';
 
+declare module 'fastify' {
+  interface FastifySchema {
+    swaggerQueryExample?: Record<string, unknown>;
+    'x-examples'?: Record<string, unknown>;
+  }
+}
+
 // Request/Response Schemas
 export const GetPositionsOwnedRequestSchema = Type.Object({
   network: Type.String(),
   poolAddress: Type.String(),
-  address: Type.Optional(Type.String()),
+  address: Type.String(),
 });
 
 export const GetPositionsOwnedResponseSchema = Type.Object({
   activeBin: Type.Object({
     binId: Type.Number(),
+    xAmount: Type.Any(),
+    yAmount: Type.Any(),
     price: Type.String(),
     pricePerToken: Type.String(),
-    liquiditySupply: Type.String(),
+    supply: Type.Any(),
+    version: Type.Number(),
   }),
   userPositions: Type.Array(Type.Object({
-    positionAddress: Type.String(),
-    lowerBinId: Type.Number(),
-    upperBinId: Type.Number(),
-    liquidityShares: Type.String(),
-    rewardInfos: Type.Array(Type.Any()),
+    positionData: Type.Object({
+      positionBinData: Type.Array(Type.Object({
+        binXAmount: Type.String(),
+        binYAmount: Type.String(),
+        positionXAmount: Type.String(),
+        positionYAmount: Type.String(),
+        binId: Type.Number(),
+        price: Type.String(),
+        pricePerToken: Type.String(),
+        binLiquidity: Type.String(),
+        positionLiquidity: Type.String(),
+      })),
+      totalClaimedFeeYAmount: Type.Any(),
+    }),
+    publicKey: Type.Any(),
+    version: Type.Any(),
   })),
 });
 
@@ -57,6 +78,11 @@ export const meteoraRoutes: FastifyPluginAsync = async (fastify) => {
         querystring: GetPositionsOwnedRequestSchema,
         response: {
           200: GetPositionsOwnedResponseSchema
+        },
+        swaggerQueryExample: {
+          network: 'mainnet-beta',
+          poolAddress: 'FtFUzuXbbw6oBbU53SDUGspEka1D5Xyc4cwnkxer6xKz',
+          address: '82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5'
         }
       }
     },
@@ -78,6 +104,10 @@ export const meteoraRoutes: FastifyPluginAsync = async (fastify) => {
         querystring: GetActiveBinRequestSchema,
         response: {
           200: GetActiveBinResponseSchema
+        },
+        swaggerQueryExample: {
+          network: 'mainnet-beta',
+          poolAddress: 'FtFUzuXbbw6oBbU53SDUGspEka1D5Xyc4cwnkxer6xKz'
         }
       }
     },
