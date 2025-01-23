@@ -41,7 +41,7 @@ export namespace UniswapConfig {
     tradingTypes: ['AMM'],
     availableNetworks: [{
       chain: 'ethereum',
-      networks: ['mainnet', 'arbitrum', 'optimism', 'base', 'sepolia', 'bsc']
+      networks: ['mainnet', 'arbitrum', 'optimism', 'base', 'sepolia', 'bsc', 'avalanche', 'celo', 'polygon']
     }],
     contractAddresses: ConfigManagerV2.getInstance().get('uniswap.contractAddresses'),
 

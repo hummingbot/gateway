@@ -41,6 +41,27 @@ networks:
     tokenListSource: /home/gateway/conf/lists/bsc.json
     nativeCurrencySymbol: BNB
     gasPriceRefreshInterval: 60
+  avalanche:
+    chainID: 43114
+    nodeURL: https://rpc.ankr.com/avalanche
+    tokenListType: FILE
+    tokenListSource: conf/lists/avalanche.json
+    nativeCurrencySymbol: AVAX
+    gasPriceRefreshInterval: 60
+  celo:
+    chainID: 42220
+    nodeURL: https://rpc.ankr.com/celo
+    tokenListType: FILE
+    tokenListSource: /home/gateway/conf/lists/celo.json
+    nativeCurrencySymbol: CELO
+    gasPriceRefreshInterval: 60
+  polygon:
+    chainID: 137
+    nodeURL: https://rpc.ankr.com/polygon
+    tokenListType: FILE
+    tokenListSource: conf/lists/polygon.json
+    nativeCurrencySymbol: POL
+    gasPriceRefreshInterval: 60
 
 # if you use the gas assumptions below, your wallet needs >0.1 ETH balance for gas
 gasLimitTransaction: 3000000
