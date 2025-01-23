@@ -1,7 +1,6 @@
 import { promises as fs } from 'fs';
 import axios from 'axios';
 import { logger } from './logger';
-import { TokenInfo } from '@solana/spl-token-registry';
 
 export class TokenListResolutionStrategy {
   resolve: () => Promise<any>;

@@ -359,7 +359,7 @@ export async function trade(
 
 export async function getFullTokenFromSymbol(
   ethereum: Ethereum,
-  uniswapish: Uniswapish,
+  _uniswapish: Uniswapish,
   tokenSymbol: string
 ): Promise<Token> {
   

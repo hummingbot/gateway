@@ -507,7 +507,7 @@ export class EVMController {
     }, initTime);
   }
 
-  static async getStatus(ethereum: Ethereum, req: StatusRequest): Promise<StatusResponse> {
+  static async getStatus(ethereum: Ethereum, _req: StatusRequest): Promise<StatusResponse> {
     const initTime = Date.now();
     await this.ensureInitialized(ethereum);
     

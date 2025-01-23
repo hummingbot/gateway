@@ -16,7 +16,6 @@ import {
   TransactionResponse,
   VersionedTransactionResponse,
 } from '@solana/web3.js';
-import { Client, UtlConfig } from '@solflare-wallet/utl-sdk';
 import { TOKEN_PROGRAM_ID, unpackAccount } from "@solana/spl-token";
 
 import { TokenValue, walletPath } from '../../services/base';
@@ -68,7 +67,6 @@ export class Solana {
   public tokenList: TokenInfo[] = [];
   public config: Config;
   private _tokenMap: Record<string, TokenInfo> = {};
-  private _utl: Client;
 
   private static _instances: { [name: string]: Solana };
 
@@ -87,21 +85,8 @@ export class Solana {
     this.network = network;
     this.config = getSolanaConfig('solana', network);
     this.nativeTokenSymbol = this.config.network.nativeCurrencySymbol;
-    this.controller = SolanaController;
-    this.initializeConnections();
-  }
-
-  private initializeConnections() {
     this.connection = new Connection(this.config.network.nodeURL, { commitment: 'confirmed' });
-    
-    const config = new UtlConfig({
-      chainId: this.network === 'devnet' ? 103 : 101,
-      timeout: 2000,
-      connection: this.connection,
-      apiUrl: 'https://token-list-api.solana.cloud',
-      cdnUrl: 'https://cdn.jsdelivr.net/gh/solflare-wallet/token-list/solana-tokenlist.json',
-    });
-    this._utl = new Client(config);
+    this.controller = SolanaController;
   }
 
   public static getInstance(network: string): Solana {

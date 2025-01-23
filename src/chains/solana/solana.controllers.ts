@@ -87,7 +87,7 @@ export class SolanaController {
     return wrapResponse({ tokens: tokens }, initTime);
   }
 
-  static async getStatus(solana: Solana, req: StatusRequest) {
+  static async getStatus(solana: Solana, _req: StatusRequest) {
     const initTime = Date.now();
     const chain = 'solana';
     const network = solana.network;

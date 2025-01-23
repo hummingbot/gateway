@@ -1,13 +1,10 @@
 import {
-  Contract,
   Transaction,
   Wallet,
   ContractInterface,
   BigNumber,
   ethers,
 } from 'ethers';
-import { EthereumBase } from '../chains/ethereum/ethereum-base';
-import { Provider } from '@ethersproject/abstract-provider';
 import { CurrencyAmount, Token, Trade as TradeUniswap } from '@uniswap/sdk';
 import { Trade } from '@uniswap/router-sdk';
 import { Trade as UniswapV3Trade } from '@uniswap/v3-sdk';

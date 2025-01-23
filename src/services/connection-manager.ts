@@ -17,7 +17,7 @@ export class UnsupportedChainException extends Error {
   }
 }
 
-export async function getInitializedChain<T>(
+export async function getInitializedChain<_T>(
   chain: string,
   network: string,
 ): Promise<Chain> {

@@ -80,8 +80,8 @@ export const jupiterRoutes: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       validateEstimateGasRequest(request.body);
       const solana = Solana.getInstance(request.body.network);
-      const jupiterish = Jupiter.getInstance(request.body.network);
-      return await estimateGas(solana, jupiterish);
+      const jupiter = Jupiter.getInstance(request.body.network);
+      return await estimateGas(solana, jupiter);
     }
   );
 };

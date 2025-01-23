@@ -153,7 +153,7 @@ const configureGatewayServer = () => {
   server.addContentTypeParser('application/json', { parseAs: 'string' }, server.getDefaultJsonParser('ignore', 'ignore'));
 
   // Global error handler
-  server.setErrorHandler((error: Error | NodeError | HttpException, request, reply) => {
+  server.setErrorHandler((error: Error | NodeError | HttpException, _request, reply) => {
     logger.error(error);
     const response = gatewayErrorMiddleware(error);
     return reply.status(response.httpErrorCode).send(response);

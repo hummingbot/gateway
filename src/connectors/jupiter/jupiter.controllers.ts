@@ -27,7 +27,6 @@ import { Wallet } from '@coral-xyz/anchor';
 import Decimal from 'decimal.js-light';
 import { QuoteResponse } from '@jup-ag/api';
 import { wrapResponse } from '../../services/response-wrapper';
-import { DECIMAL_MULTIPLIER } from './jupiter';
 
 export interface TradeInfo {
   baseToken: TokenInfo;
@@ -49,7 +48,7 @@ export async function getTradeInfo(
 ): Promise<{ tradeInfo: TradeInfo; quote: QuoteResponse }> {
   const baseToken: TokenInfo = solana.getTokenBySymbol(baseAsset);
   const quoteToken: TokenInfo = solana.getTokenBySymbol(quoteAsset);
-  const requestAmount = Math.floor(amount * DECIMAL_MULTIPLIER ** baseToken.decimals);
+  const requestAmount = Math.floor(amount * Math.pow(10, baseToken.decimals));
 
   const slippagePct = allowedSlippage ? Number(allowedSlippage) : jupiter.getSlippagePct();
 
@@ -109,7 +108,6 @@ export async function price(
   const initTime = Date.now();
   
   let tradeInfo: TradeInfo;
-  let quote: QuoteResponse;
   try {
     const result = await getTradeInfo(
       solana,
@@ -121,7 +119,6 @@ export async function price(
       req.allowedSlippage,
     );
     tradeInfo = result.tradeInfo;
-    quote = result.quote;
   } catch (e) {
     if (e instanceof Error) {
       throw new HttpException(
@@ -281,7 +278,7 @@ export async function trade(
 
 export async function estimateGas(
   solana: Solana,
-  jupiter: Jupiter,
+  _jupiter: Jupiter,  // TODO: apply Jupiter-specific compute units estimation
 ): Promise<EstimateGasResponse> {
   const initTime = Date.now();
   

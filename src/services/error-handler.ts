@@ -129,8 +129,8 @@ export const ENDPOINT_NOT_SUPPORTED_ERROR_MESSAGE = 'Endpoint not supported by t
 export const INSUFFICIENT_FUNDS_ERROR_MESSAGE = 'Insufficient funds for transaction.'
 export const GAS_LIMIT_EXCEEDED_ERROR_MESSAGE = 'Gas limit exceeded (gasWanted greater than gasLimitEstimate).';
 export const AMOUNT_LESS_THAN_MIN_AMOUNT_ERROR_MESSAGE = 'Calculated amount less than min amount provided with slippage. Maybe try increasing slippage. ';
-export const INSUFFICIENT_BASE_TOKEN_BALANCE_ERROR_MESSAGE = 'Insufficient balance of base token for the requested trade amount.';
-export const INSUFFICIENT_QUOTE_TOKEN_BALANCE_ERROR_MESSAGE = 'Insufficient balance of quote token for the requested trade amount.';
+export const INSUFFICIENT_BASE_TOKEN_BALANCE_ERROR_MESSAGE = 'Insufficient base token balance to perform trade.';
+export const INSUFFICIENT_QUOTE_TOKEN_BALANCE_ERROR_MESSAGE = 'Insufficient quote token balance to perform trade.';
 export const SIMULATION_ERROR_MESSAGE = 'Transaction simulation failed: ';
 export const SWAP_ROUTE_FETCH_ERROR_MESSAGE = 'Failed to fetch swap route: ';
 
