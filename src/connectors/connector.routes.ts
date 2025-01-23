@@ -2,6 +2,7 @@ import { FastifyPluginAsync } from 'fastify';
 import { Type, Static } from '@sinclair/typebox';
 import { UniswapConfig } from './uniswap/uniswap.config';
 import { JupiterConfig } from './jupiter/jupiter.config';
+import { MeteoraConfig } from './meteora/meteora.config';
 import { logger } from '../services/logger';
 
 // Define the schema using Typebox
@@ -49,11 +50,16 @@ export const connectorsRoutes: FastifyPluginAsync = async (fastify) => {
           trading_type: JupiterConfig.config.tradingTypes,
           available_networks: JupiterConfig.config.availableNetworks,
         },
+        {
+          name: 'meteora',
+          trading_type: MeteoraConfig.config.tradingTypes,
+          available_networks: MeteoraConfig.config.availableNetworks,
+        },
       ];
 
       logger.info('Available connectors: ' + connectors.map(c => c.name).join(', '));
 
-      return { connectors } as any;
+      return { connectors };
     }
   );
 };

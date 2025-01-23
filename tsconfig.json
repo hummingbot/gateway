@@ -27,7 +27,11 @@
     "downlevelIteration": true,
     "skipLibCheck": true
   },
-  "exclude": ["node_modules"],
+  "exclude": [
+    "node_modules",
+    "src/connectors/meteora/routes/**/*",
+    // ... any other existing excludes ...
+  ],
   "include": [
     "src/**/*.ts",
     "src/**/*.js",

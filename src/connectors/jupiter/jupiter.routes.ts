@@ -38,8 +38,8 @@ export const jupiterRoutes: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       validatePriceRequest(request.body);
       const solana = Solana.getInstance(request.body.network);
-      const jupiterish = Jupiter.getInstance(request.body.network);
-      return await price(solana, jupiterish, request.body);
+      const jupiter = Jupiter.getInstance(request.body.network);
+      return await price(solana, jupiter, request.body);
     }
   );
 
@@ -59,8 +59,8 @@ export const jupiterRoutes: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       validateTradeRequest(request.body);
       const solana = Solana.getInstance(request.body.network);
-      const jupiterish = Jupiter.getInstance(request.body.network);
-      return await trade(solana, jupiterish, request.body);
+      const jupiter = Jupiter.getInstance(request.body.network);
+      return await trade(solana, jupiter, request.body);
     }
   );
 

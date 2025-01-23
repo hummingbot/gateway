@@ -1,4 +1,4 @@
-version: 1
+version: 2
 configurations:
   $namespace server:
     configurationPath: server.yml
@@ -19,3 +19,7 @@ configurations:
   $namespace jupiter:
     configurationPath: jupiter.yml
     schemaPath: jupiter-schema.json
+
+  $namespace meteora:
+    configurationPath: meteora.yml
+    schemaPath: meteora-schema.json

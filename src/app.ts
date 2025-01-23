@@ -21,6 +21,7 @@ import { connectorsRoutes } from './connectors/connector.routes';
 import { solanaRoutes } from './chains/solana/solana.routes';
 import { ethereumRoutes } from './chains/ethereum/ethereum.routes';
 import { jupiterRoutes } from './connectors/jupiter/jupiter.routes';
+import { meteoraRoutes } from './connectors/meteora/meteora.routes';
 import { uniswapRoutes } from './connectors/uniswap/uniswap.routes';
 
 // Change version for each release
@@ -46,6 +47,7 @@ const swaggerOptions = {
       { name: 'solana', description: 'Solana chain endpoints' },
       { name: 'ethereum', description: 'Ethereum chain endpoints' },
       { name: 'jupiter', description: 'Jupiter connector endpoints' },
+      { name: 'meteora', description: 'Meteora connector endpoints' },
       { name: 'uniswap', description: 'Uniswap connector endpoints' },
     ],
   },
@@ -123,6 +125,7 @@ const configureGatewayServer = () => {
     app.register(connectorsRoutes, { prefix: '/connectors' });
     app.register(walletRoutes, { prefix: '/wallet' });
     app.register(jupiterRoutes, { prefix: '/jupiter' });
+    app.register(meteoraRoutes, { prefix: '/meteora' });
     app.register(uniswapRoutes, { prefix: '/uniswap' });
     app.register(solanaRoutes, { prefix: '/solana' });
     app.register(ethereumRoutes, { prefix: '/ethereum' });
