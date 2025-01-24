@@ -29,7 +29,7 @@
   },
   "exclude": [
     "node_modules",
-    "src/connectors/meteora/routes/**/*",
+    "src/connectors/meteora/larp-routes/**/*",
     // ... any other existing excludes ...
   ],
   "include": [

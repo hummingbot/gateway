@@ -1,8 +1,26 @@
-import { FastifyPluginAsync } from 'fastify';
-import { Type, Static } from '@sinclair/typebox';
+import type { FastifyPluginAsync } from 'fastify';
+import { Type } from '@sinclair/typebox';
 import { Solana } from '../../chains/solana/solana';
 import { Meteora } from './meteora';
-import { getPositionsOwnedBy, getActiveBin } from './meteora.controllers';
+import { wrapResponse } from '../../services/response-wrapper';
+import { positionsOwnedRoute } from './routes/positionsOwned';
+import { activeBinRoute } from './routes/activeBin';
+import {
+  GetSwapQuoteRequestSchema,
+  GetSwapQuoteResponseSchema,
+  GetFeesQuoteRequestSchema,
+  GetFeesQuoteResponseSchema,
+  GetLbPairsRequestSchema,
+  GetLbPairsResponseSchema,
+  // Types
+  GetSwapQuoteRequest,
+  GetSwapQuoteResponse,
+  GetFeesQuoteRequest,
+  GetFeesQuoteResponse,
+  GetLbPairsRequest,
+  GetLbPairsResponse,
+} from './meteora.schemas';
+import { PublicKey } from '@solana/web3.js';
 
 declare module 'fastify' {
   interface FastifySchema {
@@ -11,111 +29,87 @@ declare module 'fastify' {
   }
 }
 
-// Request/Response Schemas
-export const GetPositionsOwnedRequestSchema = Type.Object({
-  network: Type.String(),
-  poolAddress: Type.String(),
-  address: Type.String(),
-});
-
-export const GetPositionsOwnedResponseSchema = Type.Object({
-  activeBin: Type.Object({
-    binId: Type.Number(),
-    xAmount: Type.Any(),
-    yAmount: Type.Any(),
-    price: Type.String(),
-    pricePerToken: Type.String(),
-    supply: Type.Any(),
-    version: Type.Number(),
-  }),
-  userPositions: Type.Array(Type.Object({
-    positionData: Type.Object({
-      positionBinData: Type.Array(Type.Object({
-        binXAmount: Type.String(),
-        binYAmount: Type.String(),
-        positionXAmount: Type.String(),
-        positionYAmount: Type.String(),
-        binId: Type.Number(),
-        price: Type.String(),
-        pricePerToken: Type.String(),
-        binLiquidity: Type.String(),
-        positionLiquidity: Type.String(),
-      })),
-      totalClaimedFeeYAmount: Type.Any(),
-    }),
-    publicKey: Type.Any(),
-    version: Type.Any(),
-  })),
-});
-
-export const GetActiveBinRequestSchema = Type.Object({
-  network: Type.String(),
-  poolAddress: Type.String(),
-});
-
-export const GetActiveBinResponseSchema = Type.Object({
-  binId: Type.Number(),
-  xAmount: Type.Number(),
-  yAmount: Type.Number(),
-  price: Type.String(),
-  pricePerToken: Type.String(),
-});
-
-// TypeScript types
-export type GetPositionsOwnedRequest = Static<typeof GetPositionsOwnedRequestSchema>;
-export type GetPositionsOwnedResponse = Static<typeof GetPositionsOwnedResponseSchema>;
-export type GetActiveBinRequest = Static<typeof GetActiveBinRequestSchema>;
-export type GetActiveBinResponse = Static<typeof GetActiveBinResponseSchema>;
-
 export const meteoraRoutes: FastifyPluginAsync = async (fastify) => {
-  // GET /meteora/positions-owned
-  fastify.get<{ Querystring: GetPositionsOwnedRequest; Reply: GetPositionsOwnedResponse }>(
-    '/positions-owned',
+  // Register the positions owned route
+  await fastify.register(positionsOwnedRoute);
+  
+  // Register the active bin route
+  await fastify.register(activeBinRoute);
+
+  // GET /meteora/lb-pairs
+  fastify.get<{ Querystring: GetLbPairsRequest; Reply: GetLbPairsResponse[] }>(
+    '/lb-pairs',
     {
       schema: {
-        description: "Retrieve a list of Meteora positions owned by the user's wallet",
+        description: 'Get all Meteora LB pairs',
         tags: ['meteora'],
-        querystring: GetPositionsOwnedRequestSchema,
+        querystring: GetLbPairsRequestSchema,
         response: {
-          200: GetPositionsOwnedResponseSchema
+          200: Type.Array(GetLbPairsResponseSchema)
         },
         swaggerQueryExample: {
-          network: 'mainnet-beta',
-          poolAddress: 'FtFUzuXbbw6oBbU53SDUGspEka1D5Xyc4cwnkxer6xKz',
-          address: '82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5'
+          network: 'mainnet-beta'
         }
       }
     },
     async (request) => {
-      const { network, address, poolAddress } = request.query;
-      const solana = Solana.getInstance(network);
+      const { network } = request.query;
       const meteora = Meteora.getInstance(network);
-      return await getPositionsOwnedBy(solana, meteora, poolAddress, address);
+      const initTime = Date.now();
+      const pairs = await meteora.getLbPairs();
+      return wrapResponse(pairs, initTime);
     }
   );
 
-  // GET /meteora/active-bin
-  fastify.get<{ Querystring: GetActiveBinRequest; Reply: GetActiveBinResponse }>(
-    '/active-bin',
+  // GET /meteora/quote-swap
+  fastify.get<{ Querystring: GetSwapQuoteRequest; Reply: GetSwapQuoteResponse }>(
+    '/quote-swap',
     {
       schema: {
-        description: 'Get active bin for a Meteora pool',
+        description: 'Get a swap quote for Meteora',
         tags: ['meteora'],
-        querystring: GetActiveBinRequestSchema,
+        querystring: GetSwapQuoteRequestSchema,
         response: {
-          200: GetActiveBinResponseSchema
+          200: GetSwapQuoteResponseSchema
         },
         swaggerQueryExample: {
           network: 'mainnet-beta',
+          inputTokenSymbol: 'SOL',
+          outputTokenSymbol: 'USDC',
+          amount: 1,
           poolAddress: 'FtFUzuXbbw6oBbU53SDUGspEka1D5Xyc4cwnkxer6xKz'
         }
       }
     },
     async (request) => {
-      const { network, poolAddress } = request.query;
+      const { network, inputTokenSymbol, outputTokenSymbol, amount, poolAddress, slippagePct } = request.query;
       const solana = Solana.getInstance(network);
       const meteora = Meteora.getInstance(network);
-      return await getActiveBin(solana, meteora, poolAddress);
+      return await meteora.getSwapQuote(solana, inputTokenSymbol, outputTokenSymbol, amount, poolAddress, slippagePct);
+    }
+  );
+
+  // GET /meteora/quote-fees/:positionAddress
+  fastify.get<{ Params: { positionAddress: string }; Querystring: GetFeesQuoteRequest; Reply: GetFeesQuoteResponse }>(
+    '/quote-fees/:positionAddress',
+    {
+      schema: {
+        description: 'Get the fees quote for a Meteora position',
+        tags: ['meteora'],
+        querystring: GetFeesQuoteRequestSchema,
+        response: {
+          200: GetFeesQuoteResponseSchema
+        },
+        swaggerQueryExample: {
+          network: 'mainnet-beta'
+        }
+      }
+    },
+    async (request) => {
+      const { network } = request.query;
+      const { positionAddress } = request.params;
+      const meteora = Meteora.getInstance(network);
+      return await meteora.getFeesQuote(network, new PublicKey(positionAddress));
     }
   );
 };

@@ -1,5 +1,4 @@
 import { Meteora } from './meteora';
-import { Keypair } from '@solana/web3.js';
 import { Solana } from '../../chains/solana/solana';
 import { wrapResponse } from '../../services/response-wrapper';
 import {
@@ -8,31 +7,29 @@ import {
   UNKNOWN_ERROR_MESSAGE,
   TRADE_NOT_FOUND_ERROR_CODE,
   TRADE_NOT_FOUND_ERROR_MESSAGE,
-  LOAD_WALLET_ERROR_CODE,
-  LOAD_WALLET_ERROR_MESSAGE,
 } from '../../services/error-handler';
 import { logger } from '../../services/logger';
+import { PublicKey } from '@solana/web3.js';
 
-export async function getPositionsOwnedBy(
+export async function getSwapQuote(
   solana: Solana,
   meteora: Meteora,
+  inputTokenSymbol: string,
+  outputTokenSymbol: string,
+  amount: number,
   poolAddress: string,
-  walletAddress: string,
+  slippagePct?: number
 ) {
   const initTime = Date.now();
-  let wallet: Keypair;
   try {
-    wallet = await solana.getWallet(walletAddress);
-  } catch (err) {
-    throw new HttpException(
-      500,
-      LOAD_WALLET_ERROR_MESSAGE + err,
-      LOAD_WALLET_ERROR_CODE
+    const result = await meteora.getSwapQuote(
+      solana,
+      inputTokenSymbol,
+      outputTokenSymbol,
+      amount,
+      poolAddress,
+      slippagePct
     );
-  }
-
-  try {
-    const result = await meteora.getPositionsOwnedBy(poolAddress, wallet);
     return wrapResponse(result, initTime);
   } catch (e) {
     if (e instanceof Error) {
@@ -58,26 +55,18 @@ export async function getPositionsOwnedBy(
   }
 }
 
-export async function getActiveBin(
-  _solana: Solana,
+export async function getFeesQuote(
   meteora: Meteora,
-  poolAddress: string,
+  positionAddress: string,
+  walletAddress: string
 ) {
   const initTime = Date.now();
-
   try {
-    const result = await meteora.getActiveBin(poolAddress);
+    const result = await meteora.getFeesQuote(positionAddress, new PublicKey(walletAddress));
     return wrapResponse(result, initTime);
   } catch (e) {
     if (e instanceof Error) {
-      if (e.message.includes('Pool not found')) {
-        throw new HttpException(
-          404,
-          TRADE_NOT_FOUND_ERROR_MESSAGE,
-          TRADE_NOT_FOUND_ERROR_CODE
-        );
-      }
-      if (e.message.includes('Bin array not found')) {
+      if (e.message.includes('Position not found')) {
         throw new HttpException(
           404,
           TRADE_NOT_FOUND_ERROR_MESSAGE,

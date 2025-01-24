@@ -1,10 +1,12 @@
 import { Solana } from '../../chains/solana/solana';
-import { PublicKey, Keypair } from '@solana/web3.js';
-import DLMM, { BinLiquidity } from '@meteora-ag/dlmm';
+import { PublicKey } from '@solana/web3.js';
+import DLMM, { LbPairAccount } from '@meteora-ag/dlmm';
 import { MeteoraConfig } from './meteora.config';
 import { DecimalUtil } from '@orca-so/common-sdk';
 import Decimal from 'decimal.js';
 import { logger } from '../../services/logger';
+import { convertDecimals } from '../../services/base';
+import { BN } from 'bn.js';
 
 export class Meteora {
   private static _instances: { [name: string]: Meteora };
@@ -16,10 +18,6 @@ export class Meteora {
     this.config = MeteoraConfig.config;
     this.solana = Solana.getInstance(network);
     this.loadMeteora();
-  }
-
-  private convertDecimals(value: any, decimals: number): string {
-    return DecimalUtil.adjustDecimals(new Decimal(value.toString()), decimals).toString();
   }
 
   protected async loadMeteora(): Promise<void> {
@@ -63,64 +61,86 @@ export class Meteora {
     return pool;
   }
 
-  async getPositionsOwnedBy(
-    poolAddress: string,
-    wallet: Keypair
-  ) {
-    const dlmmPool = await this.getDlmmPool(poolAddress);
+  async getLbPairs() {
+    const lbPairs = await DLMM.getLbPairs(this.solana.connection);
+    return lbPairs.map((pair: LbPairAccount) => ({
+      publicKey: pair.publicKey.toString(),
+      account: {
+        parameters: pair.account.parameters,
+        vParameters: pair.account.vParameters,
+        binArrayBitmap: pair.account.binArrayBitmap.map(bn => bn.toNumber())
+      }
+    }));
+  }
+
+  async getFeesQuote(positionAddress: string, wallet: PublicKey) {
+    const allPositions = await DLMM.getAllLbPairPositionsByUser(
+      this.solana.connection,
+      wallet
+    );
+
+    const [matchingPosition] = Array.from(allPositions.values())
+      .map(position => ({
+        position: position.lbPairPositionsData.find(
+          lbPosition => lbPosition.publicKey.toBase58() === positionAddress
+        ),
+        info: position
+      }))
+      .filter(x => x.position);
+
+    if (!matchingPosition) {
+      logger.error('Position not found');
+    }
+
+    const dlmmPool = await this.getDlmmPool(matchingPosition.info.publicKey.toBase58());
     await dlmmPool.refetchStates();
 
-    const owner = wallet.publicKey;
-    const { activeBin, userPositions } = await dlmmPool.getPositionsByUserAndLbPair(owner);
+    const positionsState = await dlmmPool.getPositionsByUserAndLbPair(wallet);
+    const updatedPosition = positionsState.userPositions.find(
+      position => position.publicKey.equals(matchingPosition.position.publicKey)
+    );
 
-    const adjustedActiveBin = {
-      ...activeBin,
-      xAmount: this.convertDecimals(activeBin.xAmount, dlmmPool.tokenX.decimal) as any,
-      yAmount: this.convertDecimals(activeBin.yAmount, dlmmPool.tokenY.decimal) as any,
-    };
-    const adjustedUserPositions = userPositions.map((position) => {
-      const { positionData } = position;
-      const tokenXDecimals = dlmmPool.tokenX.decimal;
-      const tokenYDecimals = dlmmPool.tokenY.decimal;
-
-      return {
-        ...position,
-        positionData: {
-        ...positionData,
-        positionBinData: positionData.positionBinData.map((binData) => ({
-          ...binData,
-          binXAmount: this.convertDecimals(binData.binXAmount, tokenXDecimals),
-          binYAmount: this.convertDecimals(binData.binYAmount, tokenYDecimals),
-          positionXAmount: this.convertDecimals(binData.positionXAmount, tokenXDecimals),
-          positionYAmount: this.convertDecimals(binData.positionYAmount, tokenYDecimals),
-        })),
-        totalXAmount: this.convertDecimals(positionData.totalXAmount, tokenXDecimals),
-        totalYAmount: this.convertDecimals(positionData.totalYAmount, tokenYDecimals),
-        feeX: this.convertDecimals(positionData.feeX, tokenXDecimals),
-        feeY: this.convertDecimals(positionData.feeY, tokenYDecimals),
-        rewardOne: this.convertDecimals(positionData.rewardOne, tokenXDecimals),
-        rewardTwo: this.convertDecimals(positionData.rewardTwo, tokenYDecimals),
-        lastUpdatedAt: DecimalUtil.fromBN(positionData.lastUpdatedAt).toString(),
-        },
-      };
-    });
+    if (!updatedPosition) {
+      logger.error('Updated position not found');
+    }
 
     return {
-      activeBin: adjustedActiveBin,
-      userPositions: adjustedUserPositions,
+      tokenX: {
+        address: matchingPosition.info.tokenX.publicKey.toBase58(),
+        amount: convertDecimals(updatedPosition.positionData.feeX, matchingPosition.info.tokenX.decimal)
+      },
+      tokenY: {
+        address: matchingPosition.info.tokenY.publicKey.toBase58(),
+        amount: convertDecimals(updatedPosition.positionData.feeY, matchingPosition.info.tokenY.decimal)
+      }
     };
   }
 
-  async getActiveBin(poolAddress: string) {
+  async getSwapQuote(
+    solana: Solana,
+    inputTokenSymbol: string,
+    outputTokenSymbol: string,
+    amount: number,
+    poolAddress: string,
+    slippagePct: number = 1
+  ) {
+    const inputToken = await solana.getTokenBySymbol(inputTokenSymbol);
+    const outputToken = await solana.getTokenBySymbol(outputTokenSymbol);
+
     const dlmmPool = await this.getDlmmPool(poolAddress);
-    const activeBin: BinLiquidity = await dlmmPool.getActiveBin();
+    await dlmmPool.refetchStates();
+
+    const swapAmount = DecimalUtil.toBN(new Decimal(amount), inputToken.decimals);
+    const swapForY = inputToken.address === dlmmPool.tokenX.publicKey.toBase58();
+    const binArrays = await dlmmPool.getBinArrayForSwap(swapForY);
+    const slippage = new BN(slippagePct * 100);
+
+    const quote = dlmmPool.swapQuote(swapAmount, swapForY, slippage, binArrays);
 
     return {
-      binId: activeBin.binId,
-      xAmount: DecimalUtil.fromBN(activeBin.xAmount, dlmmPool.tokenX.decimal).toNumber(),
-      yAmount: DecimalUtil.fromBN(activeBin.yAmount, dlmmPool.tokenY.decimal).toNumber(),
-      price: activeBin.price,
-      pricePerToken: activeBin.pricePerToken,
+      estimatedAmountIn: DecimalUtil.fromBN(quote.consumedInAmount, inputToken.decimals).toString(),
+      estimatedAmountOut: DecimalUtil.fromBN(quote.outAmount, outputToken.decimals).toString(),
+      minOutAmount: DecimalUtil.fromBN(quote.minOutAmount, outputToken.decimals).toString()
     };
   }
 } 
