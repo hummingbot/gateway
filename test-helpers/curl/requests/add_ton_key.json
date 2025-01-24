@@ -1,0 +1,5 @@
+{
+  "privateKey": "$TON_MNEMONIC",
+  "chain": "ton",
+  "network": "mainnet"
+}

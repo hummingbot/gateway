@@ -25,6 +25,9 @@ export const invalidTezosPrivateKeyError: string =
 export const invalidSolPrivateKeyError: string =
   'The privateKey param is not a valid Solana private key.';
 
+export const invalidTonPrivateKeyOrMnemonicError: string =
+  'The privateKey param is not a valid Ton private key or mnemonic.';
+
 export const isAlgorandPrivateKeyOrMnemonic = (str: string): boolean => {
   const parts = str.split(' ');
   return parts.length === 25;
@@ -55,6 +58,13 @@ export const isTezosPrivateKey = (str: string): boolean => {
   } catch {
     return false;
   }
+};
+
+// TODO check!!!
+export const isTonPrivateKeyOrMnemonic = (_str: string): boolean => {
+  // const parts = str.split(' ');
+  // return parts.length === 24;
+  return true
 };
 
 // given a request, look for a key called privateKey that is an Ethereum private key
@@ -137,6 +147,11 @@ export const validatePrivateKey: Validator = mkSelectingValidator(
       invalidEthPrivateKeyError,
       (val) => typeof val === 'string' && isEthPrivateKey(val),
     ),
+    ton: mkValidator(
+      'privateKey',
+      invalidTonPrivateKeyOrMnemonicError,
+      (val) => typeof val === 'string' && isTonPrivateKeyOrMnemonic(val),
+    ),
   },
 );
 
@@ -172,7 +187,8 @@ export const validateChain: Validator = mkValidator(
       val === 'tezos' ||
       val === 'solana' ||
       val === 'telos' ||
-      val === 'ethereum-classic'),
+      val === 'ethereum-classic' ||
+      val === 'ton'),
 );
 
 export const validateNetwork: Validator = mkValidator(
