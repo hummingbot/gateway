@@ -6,7 +6,7 @@
   "license": "Apache-2.0",
   "repository": "https://github.com/hummingbot/gateway",
   "scripts": {
-    "prebuild": "rimraf dist && mkdir dist",
+    "prebuild": "rimraf dist && mkdir dist && rimraf conf && mkdir conf",
     "build": "tsc --skipLibCheck --noEmitOnError false --project ./ && yarn copy-files",
     "clean": "rm -rf ./node_modules && rm -rf ./coverage && rm -rf ./logs && yarn run clean:config",
     "clean:config": "find ./conf -maxdepth 1 -regextype posix-extended -regex '.*.*' -delete",

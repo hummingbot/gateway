@@ -3,14 +3,14 @@ networks:
     chainId: mainnet
     nodeURL: https://toncenter.com/api/v2/jsonRPC
     assetListType: FILE
-    assetListSource: '/home/gateway/conf/lists/ton_tokens_mainnet.json'
+    assetListSource: 'conf/lists/ton_tokens_mainnet.json'
 #    assetListType: URL
 #    assetListSource: wss://omni-ws.ston.fi
   testnet:
     chainId: testnet
     nodeURL: https://testnet.toncenter.com/api/v2/jsonRPC
     assetListType: FILE
-    assetListSource: '/home/gateway/conf/lists/ton_tokens_testnet.json'
+    assetListSource: 'conf/lists/ton_tokens_testnet.json'
 nativeCurrencySymbol: TON
 defaultMaxNumberOfRetries: 3
 defaultDelayBetweenRetries: 5
