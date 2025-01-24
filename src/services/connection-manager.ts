@@ -2,8 +2,14 @@ import { Ethereum } from '../chains/ethereum/ethereum';
 import { Solana } from '../chains/solana/solana';
 import { Uniswap } from '../connectors/uniswap/uniswap';
 import { Jupiter } from '../connectors/jupiter/jupiter';
+import { Meteora } from '../connectors/meteora/meteora';
 
-export type Chain = Ethereum | Solana;
+
+export interface Chain {
+  // TODO: Add shared chain properties (e.g., network, chainId, etc.)
+}
+
+export type ChainInstance = Ethereum | Solana;
 
 export class UnsupportedChainException extends Error {
   constructor(message?: string) {
@@ -20,15 +26,11 @@ export class UnsupportedChainException extends Error {
 export async function getInitializedChain<_T>(
   chain: string,
   network: string,
-): Promise<Chain> {
-  const chainInstance = await getChainInstance(chain, network);
+): Promise<ChainInstance> {
+  const chainInstance = await getChainInstance(chain, network) as ChainInstance;
 
   if (chainInstance === undefined) {
     throw new UnsupportedChainException(`unsupported chain ${chain}`);
-  }
-
-  if (!chainInstance.ready()) {
-    await chainInstance.init();
   }
 
   return chainInstance;
@@ -37,13 +39,13 @@ export async function getInitializedChain<_T>(
 export async function getChainInstance(
   chain: string,
   network: string,
-): Promise<Chain | undefined> {
-  let connection: Chain | undefined;
+): Promise<ChainInstance | undefined> {
+  let connection: ChainInstance | undefined;
 
   if (chain === 'ethereum') {
     connection = Ethereum.getInstance(network);
   } else if (chain === 'solana') {
-    connection = Solana.getInstance(network);
+    connection = await Solana.getInstance(network);
   } else {
     connection = undefined;
   }
@@ -51,32 +53,22 @@ export async function getChainInstance(
   return connection;
 }
 
-export type ConnectorUnion = Uniswap | Jupiter;
+export interface Connector {
+  // TODO: Add shared connector properties (e.g., config, getQuote, etc.)
+}
 
-export type Connector<T> = T extends Uniswap
-  ? Uniswap
-    : T extends Jupiter
-      ? Jupiter
-        : never;
-
-export async function getConnector<T>(
+export async function getConnector(
   chain: string,
   network: string,
   connector: string | undefined,
-): Promise<Connector<T>> {
-  let connectorInstance: ConnectorUnion;
-
+): Promise<Connector> {
   if (connector === 'uniswap') {
-    connectorInstance = Uniswap.getInstance(chain, network);
+    return Uniswap.getInstance(chain, network);
   } else if (connector === 'jupiter') {
-    connectorInstance = Jupiter.getInstance(network);
+    return await Jupiter.getInstance(network);
+  } else if (connector === 'meteora') {
+    return await Meteora.getInstance(network);
   } else {
     throw new Error('unsupported chain or connector');
   }
-
-  if (!connectorInstance.ready()) {
-    await connectorInstance.init();
-  }
-
-  return connectorInstance as Connector<T>;
 }

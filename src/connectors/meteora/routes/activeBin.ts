@@ -1,7 +1,8 @@
 import { FastifyPluginAsync } from 'fastify';
-import { Type } from '@sinclair/typebox';
+import { Type, Static } from '@sinclair/typebox';
 import { Meteora } from '../meteora';
 import { convertDecimals } from '../../../services/base';
+import { logger } from '../../../services/logger';
 
 // Schema definitions
 const GetActiveBinRequest = Type.Object({
@@ -17,10 +18,10 @@ const GetActiveBinResponse = Type.Object({
   pricePerToken: Type.Number(),
 });
 
-type GetActiveBinRequestType = typeof GetActiveBinRequest['static'];
-type GetActiveBinResponseType = typeof GetActiveBinResponse['static'];
+type GetActiveBinRequestType = Static<typeof GetActiveBinRequest>;
+type GetActiveBinResponseType = Static<typeof GetActiveBinResponse>;
 
-const transformActiveBinResponse = (dlmmPool: any, activeBin: any) => {
+const transformActiveBinResponse = (dlmmPool: any, activeBin: any): GetActiveBinResponseType => {
   const { tokenX, tokenY } = dlmmPool;
   
   return {
@@ -53,13 +54,22 @@ export const activeBinRoute: FastifyPluginAsync = async (fastify) => {
       }
     },
     async (request) => {
-      const { network, poolAddress } = request.query;
-      const meteora = Meteora.getInstance(network);
-      
-      const dlmmPool = await meteora.getDlmmPool(poolAddress);
-      const activeBin = await dlmmPool.getActiveBin();
+      try {
+        const { network, poolAddress } = request.query;
+        const meteora = await Meteora.getInstance(network);
+        
+        const dlmmPool = await meteora.getDlmmPool(poolAddress);
+        if (!dlmmPool) {
+          throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
+        }
 
-      return transformActiveBinResponse(dlmmPool, activeBin);
+        const activeBin = dlmmPool.getActiveBin();
+        return transformActiveBinResponse(dlmmPool, activeBin);
+      } catch (e) {
+        if (e.statusCode) return e; // Return Fastify formatted errors
+        logger.error(e);
+        throw fastify.httpErrors.internalServerError('Internal server error');
+      }
     }
   );
 };

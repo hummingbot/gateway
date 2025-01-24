@@ -102,10 +102,11 @@ export async function getTradeInfo(
 
 export async function price(
   solana: Solana,
-  jupiter: Jupiter,
   req: PriceRequest,
 ) {
   const initTime = Date.now();
+  
+  const jupiter = await Jupiter.getInstance(solana.network);
   
   let tradeInfo: TradeInfo;
   try {
@@ -154,10 +155,11 @@ export async function price(
 
 export async function trade(
   solana: Solana,
-  jupiter: Jupiter,
   req: TradeRequest,
 ): Promise<TradeResponse> {
   const initTime = Date.now();
+  
+  const jupiter = await Jupiter.getInstance(solana.network);
   
   const keypair = await solana.getWallet(req.address);
   const wallet = new Wallet(keypair as any);
@@ -281,9 +283,7 @@ export async function estimateGas(
   _jupiter: Jupiter,  // TODO: apply Jupiter-specific compute units estimation
 ): Promise<EstimateGasResponse> {
   const initTime = Date.now();
-  
   const priorityFeeInMicroLamports = await solana.estimatePriorityFees();
-  
   const gasCost = await solana.getGasPrice();
 
   return wrapResponse({

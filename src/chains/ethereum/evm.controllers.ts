@@ -23,9 +23,6 @@ import {
   PollRequest,
 } from './ethereum.requests';
 import {
-  Uniswapish,
-} from '../../services/common-interfaces';
-import {
   NonceRequest,
   NonceResponse,
   AllowancesRequest,
@@ -199,12 +196,11 @@ export class EVMController {
         // decode logs
         if (req.connector) {
           try {
-            const connector: Uniswapish =
-              await getConnector<Uniswapish>(
-                req.chain,
-                req.network,
-                req.connector
-              );
+            const connector: any = await getConnector(
+              req.chain,
+              req.network,
+              req.connector
+            );
 
             txReceipt.logs = connector.abiDecoder?.decodeLogs(txReceipt.logs);
           } catch (e) {

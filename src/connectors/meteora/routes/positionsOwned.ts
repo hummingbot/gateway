@@ -1,9 +1,10 @@
 import { FastifyPluginAsync } from 'fastify';
-import { Type } from '@sinclair/typebox';
+import { Type, Static } from '@sinclair/typebox';
 import { Meteora } from '../meteora';
 import { PublicKey } from '@solana/web3.js';
 import { DecimalUtil } from '@orca-so/common-sdk';
 import { convertDecimals } from '../../../services/base';
+import { logger } from '../../../services/logger';
 
 // Schema definitions
 const GetPositionsOwnedRequest = Type.Object({
@@ -41,10 +42,10 @@ const GetPositionsOwnedResponse = Type.Object({
   })),
 });
 
-type GetPositionsOwnedRequestType = typeof GetPositionsOwnedRequest['static'];
-type GetPositionsOwnedResponseType = typeof GetPositionsOwnedResponse['static'];
+type GetPositionsOwnedRequestType = Static<typeof GetPositionsOwnedRequest>;
+type GetPositionsOwnedResponseType = Static<typeof GetPositionsOwnedResponse>;
 
-const transformPositionsResponse = (dlmmPool: any, activeBin: any, userPositions: any[]) => {
+const transformPositionsResponse = (dlmmPool: any, activeBin: any, userPositions: any[]): GetPositionsOwnedResponseType => {
   const { tokenX, tokenY } = dlmmPool;
   
   return {
@@ -99,15 +100,31 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
       }
     },
     async (request) => {
-      const { network, address, poolAddress } = request.query;
-      const meteora = Meteora.getInstance(network);
-      
-      const dlmmPool = await meteora.getDlmmPool(poolAddress);
-      const { activeBin, userPositions } = await dlmmPool.getPositionsByUserAndLbPair(
-        new PublicKey(address)
-      );
+      try {
+        const { network, address, poolAddress } = request.query;
+        const meteora = await Meteora.getInstance(network);
+        
+        const dlmmPool = await meteora.getDlmmPool(poolAddress);
+        if (!dlmmPool) {
+          throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
+        }
 
-      return transformPositionsResponse(dlmmPool, activeBin, userPositions);
+        try {
+          new PublicKey(address); // Validate address format
+        } catch (error) {
+          throw fastify.httpErrors.badRequest(`Invalid wallet address: ${address}`);
+        }
+
+        const { activeBin, userPositions } = await dlmmPool.getPositionsByUserAndLbPair(
+          new PublicKey(address)
+        );
+
+        return transformPositionsResponse(dlmmPool, activeBin, userPositions);
+      } catch (e) {
+        if (e.statusCode) return e; // Return Fastify formatted errors
+        logger.error(e);
+        throw fastify.httpErrors.internalServerError('Internal server error');
+      }
     }
   );
 };

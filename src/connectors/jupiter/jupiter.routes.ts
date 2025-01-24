@@ -37,9 +37,8 @@ export const jupiterRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       validatePriceRequest(request.body);
-      const solana = Solana.getInstance(request.body.network);
-      const jupiter = Jupiter.getInstance(request.body.network);
-      return await price(solana, jupiter, request.body);
+      const network = await Solana.getInstance(request.body.network);
+      return await price(network, request.body);
     }
   );
 
@@ -58,9 +57,8 @@ export const jupiterRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       validateTradeRequest(request.body);
-      const solana = Solana.getInstance(request.body.network);
-      const jupiter = Jupiter.getInstance(request.body.network);
-      return await trade(solana, jupiter, request.body);
+      const network = await Solana.getInstance(request.body.network);
+      return await trade(network, request.body);
     }
   );
 
@@ -79,8 +77,8 @@ export const jupiterRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       validateEstimateGasRequest(request.body);
-      const solana = Solana.getInstance(request.body.network);
-      const jupiter = Jupiter.getInstance(request.body.network);
+      const solana = await Solana.getInstance(request.body.network);
+      const jupiter = await Jupiter.getInstance(request.body.network);
       return await estimateGas(solana, jupiter);
     }
   );

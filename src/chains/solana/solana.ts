@@ -69,10 +69,6 @@ export class Solana {
   private _tokenMap: Record<string, TokenInfo> = {};
 
   private static _instances: { [name: string]: Solana };
-
-  // there are async values set in the constructor
-  private _ready: boolean = false;
-  private _initialized: Promise<boolean> = Promise.resolve(false);
   public controller: typeof SolanaController;
 
   private static lastPriorityFeeEstimate: {
@@ -81,7 +77,7 @@ export class Solana {
   } | null = null;
   private static PRIORITY_FEE_CACHE_MS = 10000; // 10 second cache
 
-  constructor(network: string) {
+  private constructor(network: string) {
     this.network = network;
     this.config = getSolanaConfig('solana', network);
     this.nativeTokenSymbol = this.config.network.nativeCurrencySymbol;
@@ -89,41 +85,28 @@ export class Solana {
     this.controller = SolanaController;
   }
 
-  public static getInstance(network: string): Solana {
-    if (Solana._instances === undefined) {
+  public static async getInstance(network: string): Promise<Solana> {
+    if (!Solana._instances) {
       Solana._instances = {};
     }
-    if (!(network in Solana._instances)) {
-      Solana._instances[network] = new Solana(network);
+    if (!Solana._instances[network]) {
+      const instance = new Solana(network);
+      await instance.init();
+      Solana._instances[network] = instance;
     }
-
     return Solana._instances[network];
   }
 
-  public static getConnectedInstances(): { [name: string]: Solana } {
-    return this._instances;
-  }
-
-  async init(): Promise<void> {
-    await this._initialized; // Wait for any previous init() calls to complete
-    if (!this.ready()) {
-      // If we're not ready, this._initialized will be a Promise that resolves after init() completes
-      this._initialized = (async () => {
-        try {
-          await this.loadTokens(this.config.network.tokenListSource, this.config.network.tokenListType);
-          return true;
-        } catch (e) {
-          logger.error(`Failed to initialize ${this.network}: ${e}`);
-          return false;
-        }
-      })();
-      this._ready = await this._initialized; // Wait for the initialization to complete
+  private async init(): Promise<void> {
+    try {
+      await this.loadTokens(
+        this.config.network.tokenListSource, 
+        this.config.network.tokenListType
+      );
+    } catch (e) {
+      logger.error(`Failed to initialize ${this.network}: ${e}`);
+      throw e;
     }
-    return;
-  }
-
-  ready(): boolean {
-    return this._ready;
   }
 
   async getTokenList(

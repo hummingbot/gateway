@@ -2,27 +2,39 @@ import { Solana } from '../../chains/solana/solana';
 import { PublicKey } from '@solana/web3.js';
 import DLMM, { LbPairAccount } from '@meteora-ag/dlmm';
 import { MeteoraConfig } from './meteora.config';
-import { DecimalUtil } from '@orca-so/common-sdk';
-import Decimal from 'decimal.js';
 import { logger } from '../../services/logger';
 import { convertDecimals } from '../../services/base';
-import { BN } from 'bn.js';
+import { percentRegexp } from '../../services/config-manager-v2';
 
 export class Meteora {
   private static _instances: { [name: string]: Meteora };
   private solana: Solana;
-  private _ready: boolean = false;
   public config: MeteoraConfig.NetworkConfig;
+  private dlmmPools: Map<string, DLMM> = new Map();
+  private dlmmPoolPromises: Map<string, Promise<DLMM>> = new Map();
 
-  private constructor(network: string) {
+  private constructor() {
     this.config = MeteoraConfig.config;
-    this.solana = Solana.getInstance(network);
-    this.loadMeteora();
+    this.solana = null; // Initialize as null since we need to await getInstance
   }
 
-  protected async loadMeteora(): Promise<void> {
+  public static async getInstance(network: string): Promise<Meteora> {
+    if (!Meteora._instances) {
+      Meteora._instances = {};
+    }
+    if (!Meteora._instances[network]) {
+      const instance = new Meteora();
+      await instance.init(network);
+      Meteora._instances[network] = instance;
+    }
+    return Meteora._instances[network];
+  }
+
+  private async init(network: string) {
     try {
-      // Initialize any Meteora-specific setup here
+      this.solana = await Solana.getInstance(network); // Get initialized Solana instance
+      this.dlmmPools = new Map();
+      this.dlmmPoolPromises = new Map();
       logger.info("Initializing Meteora");
     } catch (error) {
       logger.error("Failed to initialize Meteora:", error);
@@ -30,35 +42,31 @@ export class Meteora {
     }
   }
 
-  public static getInstance(network: string): Meteora {
-    if (!Meteora._instances) {
-      Meteora._instances = {};
-    }
-    if (!Meteora._instances[network]) {
-      Meteora._instances[network] = new Meteora(network);
-    }
-    return Meteora._instances[network];
-  }
-
-  public async init() {
-    if (!this.solana.ready()) {
-      await this.solana.init();
-    }
-    this._ready = true;
-  }
-
-  public ready(): boolean {
-    return this._ready;
-  }
-
   async getDlmmPool(poolAddress: string): Promise<DLMM> {
-    const pool = await DLMM.create(
+    // Check if we already have the pool instance
+    if (this.dlmmPools.has(poolAddress)) {
+      return this.dlmmPools.get(poolAddress);
+    }
+
+    // Check if we have a pending promise for this pool
+    if (this.dlmmPoolPromises.has(poolAddress)) {
+      return this.dlmmPoolPromises.get(poolAddress);
+    }
+
+    // Create a promise for the DLMM instance
+    const dlmmPoolPromise = DLMM.create(
       this.solana.connection,
       new PublicKey(poolAddress),
       { cluster: this.solana.network as any }
-    );
-    await pool.refetchStates();
-    return pool;
+    ).then(async (dlmmPool) => {
+      await dlmmPool.refetchStates();
+      this.dlmmPools.set(poolAddress, dlmmPool);
+      this.dlmmPoolPromises.delete(poolAddress);
+      return dlmmPool;
+    });
+
+    this.dlmmPoolPromises.set(poolAddress, dlmmPoolPromise);
+    return dlmmPoolPromise;
   }
 
   async getLbPairs() {
@@ -116,31 +124,16 @@ export class Meteora {
     };
   }
 
-  async getSwapQuote(
-    solana: Solana,
-    inputTokenSymbol: string,
-    outputTokenSymbol: string,
-    amount: number,
-    poolAddress: string,
-    slippagePct: number = 1
-  ) {
-    const inputToken = await solana.getTokenBySymbol(inputTokenSymbol);
-    const outputToken = await solana.getTokenBySymbol(outputTokenSymbol);
-
-    const dlmmPool = await this.getDlmmPool(poolAddress);
-    await dlmmPool.refetchStates();
-
-    const swapAmount = DecimalUtil.toBN(new Decimal(amount), inputToken.decimals);
-    const swapForY = inputToken.address === dlmmPool.tokenX.publicKey.toBase58();
-    const binArrays = await dlmmPool.getBinArrayForSwap(swapForY);
-    const slippage = new BN(slippagePct * 100);
-
-    const quote = dlmmPool.swapQuote(swapAmount, swapForY, slippage, binArrays);
-
-    return {
-      estimatedAmountIn: DecimalUtil.fromBN(quote.consumedInAmount, inputToken.decimals).toString(),
-      estimatedAmountOut: DecimalUtil.fromBN(quote.outAmount, outputToken.decimals).toString(),
-      minOutAmount: DecimalUtil.fromBN(quote.minOutAmount, outputToken.decimals).toString()
-    };
+  getSlippagePct(): number {
+    const allowedSlippage = this.config.allowedSlippage;
+    const nd = allowedSlippage.match(percentRegexp);
+    let slippage = 0.0;
+    if (nd) {
+        slippage = Number(nd[1]) / Number(nd[2]);
+    } else {
+        logger.error('Failed to parse slippage value:', allowedSlippage);
+    }
+    return slippage * 100;
   }
+
 } 

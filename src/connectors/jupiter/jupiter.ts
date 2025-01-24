@@ -26,48 +26,37 @@ export const DECIMAL_MULTIPLIER = 10;
 export class Jupiter {
   private static _instances: { [name: string]: Jupiter };
   private solana: Solana;
-  private _ready: boolean = false;
   public config: JupiterConfig.NetworkConfig;
   protected jupiterQuoteApi!: ReturnType<typeof createJupiterApiClient>;
 
-  private constructor(network: string) {
+  private constructor() {
     this.config = JupiterConfig.config;
-    this.solana = Solana.getInstance(network);
-    this.loadJupiter();
+    this.solana = null;
   }
 
-  protected async loadJupiter(): Promise<void> {
+  public static async getInstance(network: string): Promise<Jupiter> {
+    if (!Jupiter._instances) {
+      Jupiter._instances = {};
+    }
+    if (!Jupiter._instances[network]) {
+      const instance = new Jupiter();
+      await instance.init(network);
+      Jupiter._instances[network] = instance;
+    }
+    return Jupiter._instances[network];
+  }
+
+  private async init(network: string): Promise<void> {
     try {
+      this.solana = await Solana.getInstance(network);
       if (!this.jupiterQuoteApi) {
         this.jupiterQuoteApi = createJupiterApiClient();
-        
       }
+      logger.info("Initializing Jupiter");
     } catch (error) {
       logger.error("Failed to initialize Jupiter:", error);
       throw error;
     }
-  }
-
-  public static getInstance(network: string): Jupiter {
-    if (Jupiter._instances === undefined) {
-      Jupiter._instances = {};
-    }
-    if (!(network in Jupiter._instances)) {
-      Jupiter._instances[network] = new Jupiter(network);
-    }
-
-    return Jupiter._instances[network];
-  }
-
-  public async init() {
-    if (!this.solana.ready()) {
-      await this.solana.init();
-    }
-    this._ready = true;
-  }
-
-  public ready(): boolean {
-    return this._ready;
   }
 
   getSlippagePct(): number {
@@ -91,8 +80,6 @@ export class Jupiter {
     asLegacyTransaction: boolean = false,
     swapMode: 'ExactIn' | 'ExactOut' = 'ExactIn',
   ): Promise<QuoteResponse> {
-    await this.loadJupiter();
-
     const inputToken = this.solana.getTokenBySymbol(inputTokenSymbol);
     const outputToken = this.solana.getTokenBySymbol(outputTokenSymbol);
 
@@ -207,7 +194,6 @@ export class Jupiter {
     computeUnitLimit: number;
     priorityFeePrice: number;
   }> {
-    await this.loadJupiter();
     let currentPriorityFee = (await this.solana.getGasPrice() * 1e9) - BASE_FEE;
 
     while (currentPriorityFee <= this.solana.config.maxPriorityFee) {
@@ -242,7 +228,7 @@ export class Jupiter {
               };
             }
           } catch (error) {
-            logger.error(`Swap confirmation attempt failed: ${error.message}`);
+            logger.debug(`Swap confirmation attempt ${retryCount + 1}/${this.solana.config.retryCount} failed with priority fee ${currentPriorityFee / 1e9} SOL: ${error.message}`);
           }
 
           retryCount++;
