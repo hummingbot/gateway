@@ -3,13 +3,6 @@ import { Type } from '@sinclair/typebox';
 import { Meteora } from '../meteora';
 import { convertDecimals } from '../../../services/base';
 
-declare module 'fastify' {
-  interface FastifySchema {
-    swaggerQueryExample?: Record<string, unknown>;
-    'x-examples'?: Record<string, unknown>;
-  }
-}
-
 // Schema definitions
 const GetActiveBinRequest = Type.Object({
   network: Type.String(),

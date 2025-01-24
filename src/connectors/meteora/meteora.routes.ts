@@ -30,10 +30,7 @@ declare module 'fastify' {
 }
 
 export const meteoraRoutes: FastifyPluginAsync = async (fastify) => {
-  // Register the positions owned route
   await fastify.register(positionsOwnedRoute);
-  
-  // Register the active bin route
   await fastify.register(activeBinRoute);
 
   // GET /meteora/lb-pairs
