@@ -8,8 +8,8 @@ import { logger } from '../../../services/logger';
 
 // Schema definitions
 const GetPositionsOwnedRequest = Type.Object({
-  network: Type.String(),
-  poolAddress: Type.String(),
+  network: Type.String({ default: 'mainnet-beta' }),
+  poolAddress: Type.String({ default: 'FtFUzuXbbw6oBbU53SDUGspEka1D5Xyc4cwnkxer6xKz' }),
   address: Type.String(),
 });
 
@@ -92,11 +92,6 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
         response: {
           200: GetPositionsOwnedResponse
         },
-        swaggerQueryExample: {
-          network: 'mainnet-beta',
-          poolAddress: 'FtFUzuXbbw6oBbU53SDUGspEka1D5Xyc4cwnkxer6xKz',
-          address: '82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5'
-        }
       }
     },
     async (request) => {

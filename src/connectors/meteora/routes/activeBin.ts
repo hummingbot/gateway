@@ -6,8 +6,8 @@ import { logger } from '../../../services/logger';
 
 // Schema definitions
 const GetActiveBinRequest = Type.Object({
-  network: Type.String(),
-  poolAddress: Type.String(),
+  network: Type.String({ default: 'mainnet-beta' }),
+  poolAddress: Type.String({ default: 'FtFUzuXbbw6oBbU53SDUGspEka1D5Xyc4cwnkxer6xKz' }),
 });
 
 const GetActiveBinResponse = Type.Object({
@@ -47,10 +47,6 @@ export const activeBinRoute: FastifyPluginAsync = async (fastify) => {
         response: {
           200: GetActiveBinResponse
         },
-        swaggerQueryExample: {
-          network: 'mainnet-beta',
-          poolAddress: 'FtFUzuXbbw6oBbU53SDUGspEka1D5Xyc4cwnkxer6xKz'
-        }
       }
     },
     async (request) => {

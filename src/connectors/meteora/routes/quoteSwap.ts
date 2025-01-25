@@ -9,19 +9,18 @@ import { logger } from '../../../services/logger';
 
 // Schema definitions
 const GetSwapQuoteRequest = Type.Object({
-  network: Type.String(),
-  inputTokenSymbol: Type.String(),
-  outputTokenSymbol: Type.String(),
-  amount: Type.Number(),
-  poolAddress: Type.String(),
+  network: Type.String({ default: 'mainnet-beta' }),
+  inputTokenSymbol: Type.String({ default: 'M3M3' }),
+  outputTokenSymbol: Type.String({ default: 'USDC' }),
+  amount: Type.Number({ default: 10 }),
+  poolAddress: Type.String({ default: 'FtFUzuXbbw6oBbU53SDUGspEka1D5Xyc4cwnkxer6xKz' }),
   slippagePct: Type.Optional(Type.Number()),
 });
 
 const GetSwapQuoteResponse = Type.Object({
-  inputAmount: Type.Number(),
-  outputAmount: Type.Number(),
-  fee: Type.Number(),
-  priceImpact: Type.Number(),
+  estimatedAmountIn: Type.String(),
+  estimatedAmountOut: Type.String(),
+  minOutAmount: Type.String(),
 });
 
 type GetSwapQuoteRequestType = Static<typeof GetSwapQuoteRequest>;
@@ -62,10 +61,9 @@ async function getSwapQuote(
   const quote = dlmmPool.swapQuote(swapAmount, swapForY, effectiveSlippage, binArrays);
 
   return {
-    inputAmount: Number(DecimalUtil.fromBN(quote.consumedInAmount, inputToken.decimals)),
-    outputAmount: Number(DecimalUtil.fromBN(quote.outAmount, outputToken.decimals)),
-    fee: Number(DecimalUtil.fromBN(quote.fee, outputToken.decimals)),
-    priceImpact: Number(quote.priceImpact.toFixed(4))
+    estimatedAmountIn: DecimalUtil.fromBN(quote.consumedInAmount, inputToken.decimals).toString(),
+    estimatedAmountOut: DecimalUtil.fromBN(quote.outAmount, outputToken.decimals).toString(),
+    minOutAmount: DecimalUtil.fromBN(quote.minOutAmount, outputToken.decimals).toString(),
   };
 }
 
@@ -83,13 +81,6 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         response: {
           200: GetSwapQuoteResponse
         },
-        swaggerQueryExample: {
-          network: 'mainnet-beta',
-          inputTokenSymbol: 'SOL',
-          outputTokenSymbol: 'USDC',
-          amount: 1,
-          poolAddress: 'FtFUzuXbbw6oBbU53SDUGspEka1D5Xyc4cwnkxer6xKz'
-        }
       }
     },
     async (request) => {

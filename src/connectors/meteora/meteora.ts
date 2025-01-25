@@ -1,6 +1,6 @@
 import { Solana } from '../../chains/solana/solana';
 import { PublicKey } from '@solana/web3.js';
-import DLMM, { LbPairAccount } from '@meteora-ag/dlmm';
+import DLMM from '@meteora-ag/dlmm';
 import { MeteoraConfig } from './meteora.config';
 import { logger } from '../../services/logger';
 import { convertDecimals } from '../../services/base';
@@ -69,16 +69,46 @@ export class Meteora {
     return dlmmPoolPromise;
   }
 
-  async getLbPairs() {
-    const lbPairs = await DLMM.getLbPairs(this.solana.connection);
-    return lbPairs.map((pair: LbPairAccount) => ({
-      publicKey: pair.publicKey.toString(),
-      account: {
-        parameters: pair.account.parameters,
-        vParameters: pair.account.vParameters,
-        binArrayBitmap: pair.account.binArrayBitmap.map(bn => bn.toNumber())
-      }
-    }));
+  async getLbPairs(limit: number = 100) {
+    const timeoutMs = 10000;
+    try {
+      logger.info('Fetching Meteora LB pairs...');
+      const lbPairsPromise = DLMM.getLbPairs(this.solana.connection);
+      
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('getLbPairs timed out')), timeoutMs);
+      });
+
+      const lbPairs = (await Promise.race([lbPairsPromise, timeoutPromise])) as any[];
+      logger.info(`Found ${lbPairs.length} Meteora LB pairs, returning first ${limit}`);
+      
+      return lbPairs.slice(0, limit);
+    } catch (error) {
+      logger.error('Failed to fetch Meteora LB pairs:', error);
+      throw error;
+    }
+  }
+
+  async getPosition(positionAddress: string, wallet: PublicKey) {
+    const allPositions = await DLMM.getAllLbPairPositionsByUser(
+      this.solana.connection,
+      wallet
+    );
+
+    const [matchingPosition] = Array.from(allPositions.values())
+      .map(position => ({
+        position: position.lbPairPositionsData.find(
+          lbPosition => lbPosition.publicKey.toBase58() === positionAddress
+        ),
+        info: position
+      }))
+      .filter(x => x.position);
+
+    if (!matchingPosition) {
+      throw new Error('Position not found');
+    }
+
+    return matchingPosition;
   }
 
   async getFeesQuote(positionAddress: string, wallet: PublicKey) {
