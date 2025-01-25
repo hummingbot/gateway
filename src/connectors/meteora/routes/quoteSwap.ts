@@ -9,12 +9,12 @@ import { logger } from '../../../services/logger';
 
 // Schema definitions
 const GetSwapQuoteRequest = Type.Object({
-  network: Type.String({ default: 'mainnet-beta' }),
+  network: Type.Optional(Type.String({ default: 'mainnet-beta' })),
   inputTokenSymbol: Type.String({ default: 'M3M3' }),
   outputTokenSymbol: Type.String({ default: 'USDC' }),
   amount: Type.Number({ default: 10 }),
   poolAddress: Type.String({ default: 'FtFUzuXbbw6oBbU53SDUGspEka1D5Xyc4cwnkxer6xKz' }),
-  slippagePct: Type.Optional(Type.Number()),
+  slippagePct: Type.Optional(Type.Number({ default: 1 })),
 });
 
 const GetSwapQuoteResponse = Type.Object({
@@ -86,10 +86,11 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       try {
         const { network, inputTokenSymbol, outputTokenSymbol, amount, poolAddress, slippagePct } = request.query;
+        const networkToUse = network || 'mainnet-beta';
 
         return await getSwapQuote(
           fastify,
-          network,
+          networkToUse,
           inputTokenSymbol,
           outputTokenSymbol,
           amount,

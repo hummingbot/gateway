@@ -7,8 +7,11 @@ import { logger } from '../../../services/logger';
 
 // Schema definitions
 const RemoveLiquidityRequest = Type.Object({
-  network: Type.String({ default: 'mainnet-beta' }),
-  address: Type.String({ default: '<your-wallet-address>' }),
+  network: Type.Optional(Type.String({ default: 'mainnet-beta' })),
+  address: Type.String({ 
+    description: 'Will use first available wallet if not specified',
+    examples: [] // Will be populated during route registration
+  }),
   positionAddress: Type.String({ default: '' }),
   percentageToRemove: Type.Number({ minimum: 0, maximum: 100, default: 50 }),
 });
@@ -87,6 +90,19 @@ async function removeLiquidity(
 }
 
 export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
+  // Get first wallet address for example
+  const solana = await Solana.getInstance('mainnet-beta');
+  let firstWalletAddress = '<solana-wallet-address>';
+  
+  try {
+    firstWalletAddress = await solana.getFirstWalletAddress();
+  } catch (error) {
+    logger.warn('No wallets found for examples in schema');
+  }
+  
+  // Update schema example
+  RemoveLiquidityRequest.properties.address.examples = [firstWalletAddress];
+
   fastify.post<{
     Body: RemoveLiquidityRequestType;
     Reply: RemoveLiquidityResponseType;
@@ -106,9 +122,11 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
       try {
         const { network, address, positionAddress, percentageToRemove } = request.body;
         
+        const networkToUse = network || 'mainnet-beta';
+        
         return await removeLiquidity(
           fastify,
-          network,
+          networkToUse,
           address,
           positionAddress,
           percentageToRemove

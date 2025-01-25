@@ -7,7 +7,7 @@ import { convertDecimals } from '../../../services/base';
 
 // Schema definitions
 const GetFeesQuoteRequest = Type.Object({
-  network: Type.String({ default: 'mainnet-beta' }),
+  network: Type.Optional(Type.String({ default: 'mainnet-beta' })),
   positionAddress: Type.String(),
   address: Type.String({ default: '<your-wallet-address>' }),
 });
@@ -85,7 +85,8 @@ export const quoteFeesRoute: FastifyPluginAsync = async (fastify) => {
       }
     },
     async (request) => {
-      const { network, positionAddress, address } = request.query;
+      const { positionAddress, address } = request.query;
+      const network = request.query.network || 'mainnet-beta';
       
       try {
         new PublicKey(positionAddress);

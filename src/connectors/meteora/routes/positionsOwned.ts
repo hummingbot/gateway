@@ -8,7 +8,7 @@ import { logger } from '../../../services/logger';
 
 // Schema definitions
 const GetPositionsOwnedRequest = Type.Object({
-  network: Type.String({ default: 'mainnet-beta' }),
+  network: Type.Optional(Type.String({ default: 'mainnet-beta' })),
   poolAddress: Type.String({ default: 'FtFUzuXbbw6oBbU53SDUGspEka1D5Xyc4cwnkxer6xKz' }),
   address: Type.String({ default: '<your-wallet-address>' }),
 });
@@ -96,7 +96,8 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network, address, poolAddress } = request.query;
+        const { poolAddress, address } = request.query;
+        const network = request.query.network || 'mainnet-beta';
         const meteora = await Meteora.getInstance(network);
         
         const dlmmPool = await meteora.getDlmmPool(poolAddress);

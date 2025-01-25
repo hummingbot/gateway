@@ -7,8 +7,11 @@ import { logger } from '../../../services/logger';
 
 // Schema definitions
 const OpenPositionRequest = Type.Object({
-  network: Type.String({ default: 'mainnet-beta' }),
-  address: Type.String({ default: '<your-wallet-address>' }),
+  network: Type.Optional(Type.String({ default: 'mainnet-beta' })),
+  address: Type.String({ 
+    description: 'Will use first available wallet if not specified',
+    examples: [] // Will be populated during route registration
+  }),
   lowerPrice: Type.Number({ default: 0.05 }),
   upperPrice: Type.Number({ default: 0.10 }),
   poolAddress: Type.String({ default: 'FtFUzuXbbw6oBbU53SDUGspEka1D5Xyc4cwnkxer6xKz' }),
@@ -88,6 +91,19 @@ async function openPosition(
 }
 
 export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
+  // Get first wallet address for example
+  const solana = await Solana.getInstance('mainnet-beta');
+  let firstWalletAddress = '<solana-wallet-address>';
+  
+  try {
+    firstWalletAddress = await solana.getFirstWalletAddress();
+  } catch (error) {
+    logger.warn('No wallets found for examples in schema');
+  }
+  
+  // Update schema example
+  OpenPositionRequest.properties.address.examples = [firstWalletAddress];
+
   fastify.post<{
     Body: OpenPositionRequestType;
     Reply: OpenPositionResponseType;
@@ -106,10 +122,11 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       try {
         const { network, address, lowerPrice, upperPrice, poolAddress } = request.body;
+        const networkToUse = network || 'mainnet-beta';
         
         return await openPosition(
           fastify,
-          network,
+          networkToUse,
           address,
           lowerPrice,
           upperPrice,

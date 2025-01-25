@@ -786,4 +786,27 @@ export class Solana {
     }
   }
 
+  // Add new method to get first wallet address
+  public async getFirstWalletAddress(): Promise<string> {
+    const path = `${walletPath}/solana`;
+    try {
+      // Create directory if it doesn't exist
+      await fse.ensureDir(path);
+      
+      // Get all .json files in the directory
+      const files = await fse.readdir(path);
+      const walletFiles = files.filter(f => f.endsWith('.json'));
+      
+      if (walletFiles.length === 0) {
+        throw new Error('No Solana wallets found');
+      }
+      
+      // Return first wallet address (without .json extension)
+      return walletFiles[0].slice(0, -5);
+    } catch (error) {
+      logger.error(`Failed to get first wallet address: ${error.message}`);
+      throw error;
+    }
+  }
+
 }

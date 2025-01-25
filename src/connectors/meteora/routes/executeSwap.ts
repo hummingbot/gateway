@@ -8,13 +8,16 @@ import { logger } from '../../../services/logger';
 
 // Schema definitions
 const ExecuteSwapRequest = Type.Object({
-  network: Type.String({ default: 'mainnet-beta' }),
-  address: Type.String({ default: '<your-wallet-address>' }),
+  network: Type.Optional(Type.String({ default: 'mainnet-beta' })),
+  address: Type.String({ 
+    description: 'Will use first available wallet if not specified',
+    examples: [] // Will be populated during route registration
+  }),
   inputTokenSymbol: Type.String({ default: 'M3M3' }),
   outputTokenSymbol: Type.String({ default: 'USDC' }),
   amount: Type.Number({ default: 10 }),
   poolAddress: Type.String({ default: 'FtFUzuXbbw6oBbU53SDUGspEka1D5Xyc4cwnkxer6xKz' }),
-  slippagePct: Type.Optional(Type.Number()),
+  slippagePct: Type.Optional(Type.Number({ default: 1 })),
 });
 
 const ExecuteSwapResponse = Type.Object({
@@ -106,6 +109,19 @@ async function executeSwap(
 }
 
 export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
+  // Get first wallet address for example
+  const solana = await Solana.getInstance('mainnet-beta');
+  let firstWalletAddress = '<solana-wallet-address>';
+  
+  try {
+    firstWalletAddress = await solana.getFirstWalletAddress();
+  } catch (error) {
+    logger.warn('No wallets found for examples in schema');
+  }
+  
+  // Update schema example
+  ExecuteSwapRequest.properties.address.examples = [firstWalletAddress];
+
   fastify.post<{
     Body: ExecuteSwapRequestType;
     Reply: ExecuteSwapResponseType;
@@ -113,7 +129,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
     '/execute-swap',
     {
       schema: {
-        description: 'Execute a swap on Meteora',
+        description: 'Execute a token swap on Meteora',
         tags: ['meteora'],
         body: ExecuteSwapRequest,
         response: {
@@ -123,7 +139,8 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network, address, inputTokenSymbol, outputTokenSymbol, amount, poolAddress, slippagePct } = request.body;
+        const { address, inputTokenSymbol, outputTokenSymbol, amount, poolAddress, slippagePct } = request.body;
+        const network = request.body.network || 'mainnet-beta';
         
         return await executeSwap(
           fastify,

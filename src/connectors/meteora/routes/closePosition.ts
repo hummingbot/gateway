@@ -6,8 +6,11 @@ import { logger } from '../../../services/logger';
 
 // Schema definitions
 const ClosePositionRequest = Type.Object({
-  network: Type.String({ default: 'mainnet-beta' }),
-  address: Type.String({ default: '<your-wallet-address>' }),
+  network: Type.Optional(Type.String({ default: 'mainnet-beta' })),
+  address: Type.String({ 
+    description: 'Will use first available wallet if not specified',
+    examples: [] // Will be populated during route registration
+  }),
   positionAddress: Type.String({ default: '' }),
 });
 
@@ -64,6 +67,19 @@ async function closePosition(
 }
 
 export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
+  // Get first wallet address for example
+  const solana = await Solana.getInstance('mainnet-beta');
+  let firstWalletAddress = '<solana-wallet-address>';
+  
+  try {
+    firstWalletAddress = await solana.getFirstWalletAddress();
+  } catch (error) {
+    logger.warn('No wallets found for examples in schema');
+  }
+  
+  // Update schema example
+  ClosePositionRequest.properties.address.examples = [firstWalletAddress];
+
   fastify.post<{
     Body: ClosePositionRequestType;
     Reply: ClosePositionResponseType;
@@ -82,10 +98,11 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       try {
         const { network, address, positionAddress } = request.body;
+        const networkToUse = network || 'mainnet-beta';
         
         return await closePosition(
           fastify,
-          network,
+          networkToUse,
           address,
           positionAddress
         );

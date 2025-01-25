@@ -6,7 +6,7 @@ import { DecimalUtil } from '@orca-so/common-sdk';
 
 // Schema definitions
 const GetActiveBinRequest = Type.Object({
-  network: Type.String({ default: 'mainnet-beta' }),
+  network: Type.Optional(Type.String({ default: 'mainnet-beta' })),
   poolAddress: Type.String({ default: 'FtFUzuXbbw6oBbU53SDUGspEka1D5Xyc4cwnkxer6xKz' }),
 });
 
@@ -53,7 +53,8 @@ export const activeBinRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network, poolAddress } = request.query;
+        const { poolAddress } = request.query;
+        const network = request.query.network || 'mainnet-beta';
         
         const meteora = await Meteora.getInstance(network);
         if (!meteora) {

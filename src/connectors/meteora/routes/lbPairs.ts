@@ -5,7 +5,7 @@ import { logger } from '../../../services/logger';
 
 // Schema definitions
 const GetLbPairsRequest = Type.Object({
-  network: Type.String({ default: 'mainnet-beta' }),
+  network: Type.Optional(Type.String({ default: 'mainnet-beta' })),
   limit: Type.Optional(Type.Number({ minimum: 1, default: 100 })),
 });
 
@@ -50,7 +50,8 @@ export const lbPairsRoute: FastifyPluginAsync = async (fastify) => {
     },
     handler: async (request, _reply) => {
       try {
-        const { network, limit } = request.query;
+        const { limit } = request.query;
+        const network = request.query.network || 'mainnet-beta';
         const meteora = await Meteora.getInstance(network);
         const pairs = await meteora.getLbPairs(limit);
         return pairs.map(transformLbPair);

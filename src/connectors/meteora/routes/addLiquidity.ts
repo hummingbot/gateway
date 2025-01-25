@@ -10,8 +10,11 @@ import { logger } from '../../../services/logger';
 
 // Schema definitions
 const AddLiquidityRequest = Type.Object({
-  network: Type.String({ default: 'mainnet-beta' }),
-  address: Type.String({ default: '<your-wallet-address>' }),
+  network: Type.Optional(Type.String({ default: 'mainnet-beta' })),
+  address: Type.String({ 
+    description: 'Will use first available wallet if not specified',
+    examples: [] // Will be populated during route registration
+  }),
   positionAddress: Type.String({ default: '' }),
   baseTokenAmount: Type.Number({ default: 1 }),
   quoteTokenAmount: Type.Number({ default: 1 }),
@@ -108,6 +111,19 @@ async function addLiquidity(
 }
 
 export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
+  // Get first wallet address for example
+  const solana = await Solana.getInstance('mainnet-beta');
+  let firstWalletAddress = '<solana-wallet-address>';
+  
+  try {
+    firstWalletAddress = await solana.getFirstWalletAddress();
+  } catch (error) {
+    logger.warn('No wallets found for examples in schema');
+  }
+  
+  // Update schema example
+  AddLiquidityRequest.properties.address.examples = [firstWalletAddress];
+
   fastify.post<{
     Body: AddLiquidityRequestType;
     Reply: AddLiquidityResponseType;
@@ -125,7 +141,8 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network, address, positionAddress, baseTokenAmount, quoteTokenAmount, slippagePct, strategy } = request.body;
+        const { address, positionAddress, baseTokenAmount, quoteTokenAmount, slippagePct, strategy } = request.body;
+        const network = request.body.network || 'mainnet-beta';
         
         return await addLiquidity(
           fastify,
