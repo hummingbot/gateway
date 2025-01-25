@@ -38,33 +38,33 @@ async function getSwapQuote(
     const solana = await Solana.getInstance(network);
     const meteora = await Meteora.getInstance(network);
     const inputToken = await solana.getTokenBySymbol(inputTokenSymbol);
-  const outputToken = await solana.getTokenBySymbol(outputTokenSymbol);
+    const outputToken = await solana.getTokenBySymbol(outputTokenSymbol);
 
-  if (!inputToken || !outputToken) {
-    throw fastify.httpErrors.notFound(
-      `Token not found: ${!inputToken ? inputTokenSymbol : outputTokenSymbol}`
-    );
-  }
+    if (!inputToken || !outputToken) {
+      throw fastify.httpErrors.notFound(
+        `Token not found: ${!inputToken ? inputTokenSymbol : outputTokenSymbol}`
+      );
+    }
 
-  const dlmmPool = await meteora.getDlmmPool(poolAddress);
-  if (!dlmmPool) {
-    throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
-  }
+    const dlmmPool = await meteora.getDlmmPool(poolAddress);
+    if (!dlmmPool) {
+      throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
+    }
 
-  await dlmmPool.refetchStates();
+    await dlmmPool.refetchStates();
 
-  const swapAmount = DecimalUtil.toBN(new Decimal(amount), inputToken.decimals);
-  const swapForY = inputToken.address === dlmmPool.tokenX.publicKey.toBase58();
-  const binArrays = await dlmmPool.getBinArrayForSwap(swapForY);
-  const effectiveSlippage = new BN((slippagePct ?? meteora.getSlippagePct()) * 100);
+    const swapAmount = DecimalUtil.toBN(new Decimal(amount), inputToken.decimals);
+    const swapForY = inputToken.address === dlmmPool.tokenX.publicKey.toBase58();
+    const binArrays = await dlmmPool.getBinArrayForSwap(swapForY);
+    const effectiveSlippage = new BN((slippagePct ?? meteora.getSlippagePct()) * 100);
 
-  const quote = dlmmPool.swapQuote(swapAmount, swapForY, effectiveSlippage, binArrays);
+    const quote = dlmmPool.swapQuote(swapAmount, swapForY, effectiveSlippage, binArrays);
 
-  return {
-    estimatedAmountIn: DecimalUtil.fromBN(quote.consumedInAmount, inputToken.decimals).toString(),
-    estimatedAmountOut: DecimalUtil.fromBN(quote.outAmount, outputToken.decimals).toString(),
-    minOutAmount: DecimalUtil.fromBN(quote.minOutAmount, outputToken.decimals).toString(),
-  };
+    return {
+      estimatedAmountIn: DecimalUtil.fromBN(quote.consumedInAmount, inputToken.decimals).toString(),
+      estimatedAmountOut: DecimalUtil.fromBN(quote.outAmount, outputToken.decimals).toString(),
+      minOutAmount: DecimalUtil.fromBN(quote.minOutAmount, outputToken.decimals).toString(),
+    };
 }
 
 export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
@@ -97,8 +97,8 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           slippagePct
         );
       } catch (e) {
-        if (e.statusCode) return e; // Return Fastify formatted errors
         logger.error(e);
+        if (e.statusCode) return e; // Return Fastify formatted errors
         throw fastify.httpErrors.internalServerError('Internal server error');
       }
     }

@@ -10,7 +10,7 @@ import { logger } from '../../../services/logger';
 const GetPositionsOwnedRequest = Type.Object({
   network: Type.String({ default: 'mainnet-beta' }),
   poolAddress: Type.String({ default: 'FtFUzuXbbw6oBbU53SDUGspEka1D5Xyc4cwnkxer6xKz' }),
-  address: Type.String(),
+  address: Type.String({ default: '<your-wallet-address>' }),
 });
 
 const GetPositionsOwnedResponse = Type.Object({
