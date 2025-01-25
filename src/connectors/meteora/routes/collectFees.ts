@@ -52,7 +52,7 @@ async function collectFees(
     position: matchingLbPosition,
   });
 
-  const signature = await solana.sendAndConfirmTransaction(claimSwapFeeTx, [wallet]);
+  const signature = await solana.sendAndConfirmTransaction(claimSwapFeeTx, [wallet], 300_000);
 
   const { balanceChange: collectedFeeX, fee } = await solana.extractTokenBalanceChangeAndFee(
     signature,

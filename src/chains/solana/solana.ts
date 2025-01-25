@@ -11,6 +11,7 @@ import {
   PublicKey,
   ComputeBudgetProgram,
   Signer,
+  SignatureStatus,
   Transaction,
   TokenAmount,
   TransactionResponse,
@@ -478,7 +479,7 @@ export class Solana {
       // Ensure fee is not below minimum
       percentileFee = Math.max(percentileFee, minimumFee);
       
-      logger.info(`[PRIORITY FEES] Used: ${percentileFee} microLamports`);
+      logger.info(`[PRIORITY FEES] Used: ${percentileFee} microLamports (${percentileFee === minimumFee ? 'minimum' : `${this.config.priorityFeePercentile * 100}th percentile`})`);
 
       // Cache the result
       Solana.lastPriorityFeeEstimate = {
@@ -527,7 +528,7 @@ export class Solana {
         const data = await response.json();
 
         if (data.result && data.result.value && data.result.value[0]) {
-          const status = data.result.value[0];
+          const status: SignatureStatus = data.result.value[0];
           
           if (status.err !== null) {
             reject(new Error(`Transaction failed with error: ${JSON.stringify(status.err)}`));
@@ -568,21 +569,36 @@ export class Solana {
     computeUnits?: number
   ): Promise<string> {
     let currentPriorityFee = await this.estimatePriorityFees();
+    const computeUnitsToUse = computeUnits || this.config.defaultComputeUnits;
     
-    while (currentPriorityFee <= this.config.maxPriorityFee) {
-      // Only add compute unit limit instruction if explicitly provided
-      if (computeUnits) {
-        const computeUnitLimitInstruction = ComputeBudgetProgram.setComputeUnitLimit({
-          units: computeUnits,
-        });
-        tx.add(computeUnitLimitInstruction);
+    // Keep trying with increasing priority fees until we hit the max
+    while (true) {
+      // Calculate total priority fee in lamports (not SOL)
+      const totalPriorityFeeLamports = Math.floor(
+        (currentPriorityFee * computeUnitsToUse) / 1_000_000
+      );
+      
+      logger.info(`Attempting transaction with: Priority Fee: ${currentPriorityFee} microLamports/CU, Compute Units: ${computeUnitsToUse}, Total Fee: ${totalPriorityFeeLamports} lamports`);
+      
+      // Check if we've exceeded max fee (in lamports)
+      if (totalPriorityFeeLamports > this.config.maxPriorityFee) {
+        throw new Error(
+          `Transaction failed after reaching maximum priority fee of ${
+            this.config.maxPriorityFee
+          } lamports`
+        );
       }
 
-      // Set priority fee instruction
+      // Set compute unit limit
+      const computeUnitInstruction = ComputeBudgetProgram.setComputeUnitLimit({
+        units: computeUnitsToUse
+      });
+      tx.instructions.push(computeUnitInstruction);
+
+      // currentPriorityFee is already in microLamports per compute unit
       const priorityFeeInstruction = ComputeBudgetProgram.setComputeUnitPrice({
         microLamports: Math.floor(currentPriorityFee),
       });
-
       tx.instructions.push(priorityFeeInstruction);      
 
       // Get latest blockhash
@@ -606,8 +622,9 @@ export class Solana {
 
           // Wait for confirmation
           const confirmed = await this.confirmTransaction(signature);
-          if (confirmed) {
-            logger.info(`Transaction confirmed with priority fee: ${currentPriorityFee} microLamports`);
+          if (confirmed.confirmed) {
+            logger.info(`Transaction ${signature} confirmed with priority fee: ${currentPriorityFee} microLamports (${(currentPriorityFee * computeUnitsToUse / 1_000_000 * LAMPORT_TO_SOL).toFixed(6)} SOL)`);
+            logger.info(`Transaction data: ${JSON.stringify(confirmed.txData, null, 2)}`);
             return signature;
           }
 
@@ -622,10 +639,8 @@ export class Solana {
       // If we get here, transaction wasn't confirmed after RETRY_COUNT attempts
       // Increase the priority fee and try again
       currentPriorityFee = Math.floor(currentPriorityFee * this.config.priorityFeeMultiplier);
-      logger.info(`Increasing priority fee to ${currentPriorityFee} microLamports`);
+      logger.info(`Increasing priority fee to ${currentPriorityFee} microLamports (${(currentPriorityFee * computeUnitsToUse / 1_000_000 * LAMPORT_TO_SOL).toFixed(4)} SOL)`);
     }
-
-    throw new Error(`Transaction failed after reaching maximum priority fee of ${this.config.maxPriorityFee} microLamports`);
   }
 
   async sendRawTransaction(

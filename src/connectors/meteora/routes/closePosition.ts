@@ -51,7 +51,7 @@ async function closePosition(
     position: matchingLbPosition,
   });
 
-  const signature = await solana.sendAndConfirmTransaction(closePositionTx, [wallet]);
+  const signature = await solana.sendAndConfirmTransaction(closePositionTx, [wallet], 200_000);
 
   const { balanceChange, fee } = await solana.extractAccountBalanceChangeAndFee(signature, 0);
   const returnedSOL = Math.abs(balanceChange);

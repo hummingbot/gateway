@@ -8,7 +8,7 @@ import { convertDecimals } from '../../../services/base';
 // Schema definitions
 const GetFeesQuoteRequest = Type.Object({
   network: Type.String({ default: 'mainnet-beta' }),
-  positionAddress: Type.String({ default: '7YttLkHDoNj9wyDur5pM1ejNaAvT9X4eqaYcHQqtXchr' }),
+  positionAddress: Type.String(),
   address: Type.String({ default: '<your-wallet-address>' }),
 });
 

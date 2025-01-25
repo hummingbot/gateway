@@ -64,7 +64,7 @@ async function removeLiquidity(
   if (Array.isArray(removeLiquidityTx)) {
     throw fastify.httpErrors.internalServerError('Unexpected array of transactions');
   }
-  const signature = await solana.sendAndConfirmTransaction(removeLiquidityTx, [wallet]);
+  const signature = await solana.sendAndConfirmTransaction(removeLiquidityTx, [wallet], 1_000_000);
 
   const { balanceChange: tokenXRemovedAmount, fee } = await solana.extractTokenBalanceChangeAndFee(
     signature,

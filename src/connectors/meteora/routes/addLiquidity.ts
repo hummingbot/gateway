@@ -85,7 +85,7 @@ async function addLiquidity(
     slippage: slippagePct ?? meteora.getSlippagePct(),
   });
 
-  const signature = await solana.sendAndConfirmTransaction(addLiquidityTx, [wallet]);
+  const signature = await solana.sendAndConfirmTransaction(addLiquidityTx, [wallet], 800_000);
 
   const { balanceChange: tokenXAddedAmount, fee } = await solana.extractTokenBalanceChangeAndFee(
     signature,

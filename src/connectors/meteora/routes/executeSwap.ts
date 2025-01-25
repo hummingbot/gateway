@@ -73,7 +73,7 @@ async function executeSwap(
     binArraysPubkey: swapQuote.binArraysPubkey,
   });
 
-  const signature = await solana.sendAndConfirmTransaction(swapTx, [wallet]);
+  const signature = await solana.sendAndConfirmTransaction(swapTx, [wallet], 150_000);
 
   let inputBalanceChange: number, outputBalanceChange: number, fee: number;
 

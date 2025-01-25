@@ -74,7 +74,7 @@ async function openPosition(
   const signature = await solana.sendAndConfirmTransaction(createPositionTx, [
     wallet,
     newImbalancePosition,
-  ]);
+  ], 100_000);
 
   const { balanceChange, fee } = await solana.extractAccountBalanceChangeAndFee(signature, 0);
   const sentSOL = Math.abs(balanceChange - fee);
