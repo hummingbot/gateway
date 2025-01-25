@@ -589,17 +589,21 @@ export class Solana {
         );
       }
 
-      // Set compute unit limit
-      const computeUnitInstruction = ComputeBudgetProgram.setComputeUnitLimit({
-        units: computeUnitsToUse
-      });
-      tx.instructions.push(computeUnitInstruction);
-
       // currentPriorityFee is already in microLamports per compute unit
       const priorityFeeInstruction = ComputeBudgetProgram.setComputeUnitPrice({
         microLamports: Math.floor(currentPriorityFee),
       });
-      tx.instructions.push(priorityFeeInstruction);      
+      // Remove any existing priority fee instructions and add the new one
+      tx.instructions = [
+        ...tx.instructions.filter(inst => !inst.programId.equals(ComputeBudgetProgram.programId)),
+        priorityFeeInstruction
+      ];
+
+      // Set compute unit limit
+      const computeUnitInstruction = ComputeBudgetProgram.setComputeUnitLimit({
+        units: computeUnitsToUse
+      });
+      tx.add(computeUnitInstruction);
 
       // Get latest blockhash
       const blockhashAndContext = await this.connection
