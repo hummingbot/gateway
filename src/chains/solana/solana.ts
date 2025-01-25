@@ -564,21 +564,26 @@ export class Solana {
 
   async sendAndConfirmTransaction(
     tx: Transaction, 
-    signers: Signer[] = []
+    signers: Signer[] = [],
+    computeUnits?: number
   ): Promise<string> {
     let currentPriorityFee = await this.estimatePriorityFees();
     
     while (currentPriorityFee <= this.config.maxPriorityFee) {
-      // Update or add priority fee instruction
+      // Only add compute unit limit instruction if explicitly provided
+      if (computeUnits) {
+        const computeUnitLimitInstruction = ComputeBudgetProgram.setComputeUnitLimit({
+          units: computeUnits,
+        });
+        tx.add(computeUnitLimitInstruction);
+      }
+
+      // Set priority fee instruction
       const priorityFeeInstruction = ComputeBudgetProgram.setComputeUnitPrice({
         microLamports: Math.floor(currentPriorityFee),
       });
-      
-      // Remove any existing priority fee instructions and add the new one
-      tx.instructions = [
-        ...tx.instructions.filter(inst => !inst.programId.equals(ComputeBudgetProgram.programId)),
-        priorityFeeInstruction
-      ];
+
+      tx.instructions.push(priorityFeeInstruction);      
 
       // Get latest blockhash
       const blockhashAndContext = await this.connection
