@@ -4,12 +4,16 @@ import { Meteora } from '../meteora';
 import { PublicKey } from '@solana/web3.js';
 import { logger } from '../../../services/logger';
 import { convertDecimals } from '../../../services/base';
+import { Solana } from '../../../chains/solana/solana';
 
 // Schema definitions
 const GetFeesQuoteRequest = Type.Object({
   network: Type.Optional(Type.String({ default: 'mainnet-beta' })),
   positionAddress: Type.String(),
-  address: Type.String({ default: '<your-wallet-address>' }),
+  address: Type.String({ 
+    description: 'Will use first available wallet if not specified',
+    examples: [] // Will be populated during route registration
+  }),
 });
 
 const GetFeesQuoteResponse = Type.Object({
@@ -69,6 +73,19 @@ async function getPositionFees(
 }
 
 export const quoteFeesRoute: FastifyPluginAsync = async (fastify) => {
+  // Get first wallet address for example
+  const solana = await Solana.getInstance('mainnet-beta');
+  let firstWalletAddress = '<solana-wallet-address>';
+  
+  try {
+    firstWalletAddress = await solana.getFirstWalletAddress();
+  } catch (error) {
+    logger.warn('No wallets found for examples in schema');
+  }
+  
+  // Update schema example
+  GetFeesQuoteRequest.properties.address.examples = [firstWalletAddress];
+
   fastify.get<{
     Querystring: GetFeesQuoteRequestType;
     Reply: GetFeesQuoteResponseType;
