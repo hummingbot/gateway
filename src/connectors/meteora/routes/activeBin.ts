@@ -1,8 +1,8 @@
 import { FastifyPluginAsync } from 'fastify';
 import { Type, Static } from '@sinclair/typebox';
 import { Meteora } from '../meteora';
-import { convertDecimals } from '../../../services/base';
 import { logger } from '../../../services/logger';
+import { DecimalUtil } from '@orca-so/common-sdk';
 
 // Schema definitions
 const GetActiveBinRequest = Type.Object({
@@ -22,12 +22,14 @@ type GetActiveBinRequestType = Static<typeof GetActiveBinRequest>;
 type GetActiveBinResponseType = Static<typeof GetActiveBinResponse>;
 
 const transformActiveBinResponse = (dlmmPool: any, activeBin: any): GetActiveBinResponseType => {
-  const { tokenX, tokenY } = dlmmPool;
-  
+  if (!dlmmPool?.tokenX || !dlmmPool?.tokenY) {
+    throw new Error('Invalid DLMM pool structure: missing token information');
+  }
+
   return {
     binId: activeBin.binId,
-    xAmount: convertDecimals(activeBin.xAmount, tokenX.decimal),
-    yAmount: convertDecimals(activeBin.yAmount, tokenY.decimal),
+    xAmount: DecimalUtil.fromBN(activeBin.xAmount, dlmmPool.tokenX.decimal).toString(),
+    yAmount: DecimalUtil.fromBN(activeBin.yAmount, dlmmPool.tokenY.decimal).toString(),
     price: Number(activeBin.price),
     pricePerToken: Number(activeBin.pricePerToken),
   };
@@ -52,19 +54,28 @@ export const activeBinRoute: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       try {
         const { network, poolAddress } = request.query;
+        
         const meteora = await Meteora.getInstance(network);
+        if (!meteora) {
+          throw fastify.httpErrors.serviceUnavailable('Meteora service unavailable');
+        }
         
         const dlmmPool = await meteora.getDlmmPool(poolAddress);
         if (!dlmmPool) {
           throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
         }
+        
+        await dlmmPool.refetchStates();
+        const activeBin = await dlmmPool.getActiveBin();
+        if (!activeBin) {
+          throw fastify.httpErrors.notFound('Active bin not found');
+        }
 
-        const activeBin = dlmmPool.getActiveBin();
         return transformActiveBinResponse(dlmmPool, activeBin);
       } catch (e) {
-        if (e.statusCode) return e; // Return Fastify formatted errors
         logger.error(e);
-        throw fastify.httpErrors.internalServerError('Internal server error');
+        if (e.statusCode) throw e;
+        throw fastify.httpErrors.internalServerError();
       }
     }
   );
