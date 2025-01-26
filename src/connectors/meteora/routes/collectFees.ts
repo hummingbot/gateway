@@ -24,7 +24,7 @@ const CollectFeesResponse = Type.Object({
 type CollectFeesRequestType = Static<typeof CollectFeesRequest>;
 type CollectFeesResponseType = Static<typeof CollectFeesResponse>;
 
-async function collectFees(
+export async function collectFees(
   fastify: FastifyInstance,
   network: string,
   address: string,
@@ -126,4 +126,4 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
   );
 };
 
-export default collectFeesRoute; 
+export default collectFeesRoute;

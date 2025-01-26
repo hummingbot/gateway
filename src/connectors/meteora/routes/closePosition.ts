@@ -3,6 +3,8 @@ import { Type, Static } from '@sinclair/typebox';
 import { Meteora } from '../meteora';
 import { Solana } from '../../../chains/solana/solana';
 import { logger } from '../../../services/logger';
+import { removeLiquidity } from './removeLiquidity';
+import { collectFees } from './collectFees';
 
 // Schema definitions
 const ClosePositionRequest = Type.Object({
@@ -49,6 +51,11 @@ async function closePosition(
 
   await dlmmPool.refetchStates();
 
+  // Always attempt to remove liquidity and collect fees
+  await removeLiquidity(fastify, network, address, positionAddress, 100);
+  await collectFees(fastify, network, address, positionAddress);
+
+  // Now close the position
   const closePositionTx = await dlmmPool.closePosition({
     owner: wallet.publicKey,
     position: matchingLbPosition,

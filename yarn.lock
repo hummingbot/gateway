@@ -2147,10 +2147,10 @@
     bn.js "^5.2.0"
     debug "^4.3.4"
 
-"@meteora-ag/dlmm@^1.2.2":
-  version "1.3.6"
-  resolved "https://registry.yarnpkg.com/@meteora-ag/dlmm/-/dlmm-1.3.6.tgz#d3fe9241a554e2dcbcf6d9df86537efa7c86a7af"
-  integrity sha512-6g4CxKsfH1arDq2ncim/pAFvDk829/r6KAYJy4iWoFvlyoM638eGnNBnWVjYrPfHxkmm/OoqZNzH9A8w5BXxtw==
+"@meteora-ag/dlmm@^1.3.9":
+  version "1.3.9"
+  resolved "https://registry.yarnpkg.com/@meteora-ag/dlmm/-/dlmm-1.3.9.tgz#7d0feaff4e44e56a5acca9603f09ca73407463ef"
+  integrity sha512-8UlaSJYJtTEIkIf7PjgWC8anmmfSCsjtv9a3dbsO5MHf88tGcAmh4rYqcRU3LJNHhWotIPLbfjlybx/rucqX7g==
   dependencies:
     "@coral-xyz/anchor" "^0.28.0"
     "@coral-xyz/borsh" "^0.28.0"

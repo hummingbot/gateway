@@ -26,7 +26,7 @@ const RemoveLiquidityResponse = Type.Object({
 type RemoveLiquidityRequestType = Static<typeof RemoveLiquidityRequest>;
 type RemoveLiquidityResponseType = Static<typeof RemoveLiquidityResponse>;
 
-async function removeLiquidity(
+export async function removeLiquidity(
   fastify: FastifyInstance,
   network: string,
   address: string,
@@ -140,4 +140,4 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   );
 };
 
-export default removeLiquidityRoute; 
+export default removeLiquidityRoute;

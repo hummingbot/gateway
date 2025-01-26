@@ -4,6 +4,10 @@ import { Meteora } from '../meteora';
 import { Solana } from '../../../chains/solana/solana';
 import { Keypair } from '@solana/web3.js';
 import { logger } from '../../../services/logger';
+import { DecimalUtil } from '@orca-so/common-sdk';
+import { Decimal } from 'decimal.js';
+import { BN } from 'bn.js';
+import { StrategyType } from '@meteora-ag/dlmm';
 
 // Schema definitions
 const OpenPositionRequest = Type.Object({
@@ -15,6 +19,9 @@ const OpenPositionRequest = Type.Object({
   lowerPrice: Type.Number({ default: 0.05 }),
   upperPrice: Type.Number({ default: 0.10 }),
   poolAddress: Type.String({ default: 'FtFUzuXbbw6oBbU53SDUGspEka1D5Xyc4cwnkxer6xKz' }),
+  baseTokenAmount: Type.Number({ default: 1 }),
+  quoteTokenAmount: Type.Number({ default: 1 }),
+  slippagePct: Type.Optional(Type.Number({ default: 1 })),
 });
 
 const OpenPositionResponse = Type.Object({
@@ -33,7 +40,10 @@ async function openPosition(
   address: string,
   lowerPrice: number,
   upperPrice: number,
-  poolAddress: string
+  poolAddress: string,
+  baseTokenAmount: number,
+  quoteTokenAmount: number,
+  slippagePct?: number
 ): Promise<OpenPositionResponseType> {
   const solana = await Solana.getInstance(network);
   const meteora = await Meteora.getInstance(network);
@@ -67,17 +77,30 @@ async function openPosition(
     );
   }
 
-  const createPositionTx = await dlmmPool.createEmptyPosition({
+  const totalXAmount = new BN(
+    DecimalUtil.toBN(new Decimal(baseTokenAmount), dlmmPool.tokenX.decimal)
+  );
+  const totalYAmount = new BN(
+    DecimalUtil.toBN(new Decimal(quoteTokenAmount), dlmmPool.tokenY.decimal)
+  );
+
+  const createPositionTx = await dlmmPool.initializePositionAndAddLiquidityByStrategy({
     positionPubKey: newImbalancePosition.publicKey,
     user: wallet.publicKey,
-    maxBinId,
-    minBinId,
+    strategy: {
+      maxBinId,
+      minBinId,
+      strategyType: StrategyType.SpotImBalanced,
+    },
+    totalXAmount,
+    totalYAmount,
+    slippage: slippagePct ?? meteora.getSlippagePct(),
   });
 
   const signature = await solana.sendAndConfirmTransaction(createPositionTx, [
     wallet,
     newImbalancePosition,
-  ], 100_000);
+  ], 1_000_000);
 
   const { balanceChange, fee } = await solana.extractAccountBalanceChangeAndFee(signature, 0);
   const sentSOL = Math.abs(balanceChange - fee);
@@ -121,7 +144,16 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network, address, lowerPrice, upperPrice, poolAddress } = request.body;
+        const { 
+          network, 
+          address, 
+          lowerPrice, 
+          upperPrice, 
+          poolAddress,
+          baseTokenAmount,
+          quoteTokenAmount,
+          slippagePct 
+        } = request.body;
         const networkToUse = network || 'mainnet-beta';
         
         return await openPosition(
@@ -130,7 +162,10 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           address,
           lowerPrice,
           upperPrice,
-          poolAddress
+          poolAddress,
+          baseTokenAmount,
+          quoteTokenAmount,
+          slippagePct
         );
       } catch (e) {
         if (e.statusCode) return e;

@@ -628,7 +628,7 @@ export class Solana {
           const confirmed = await this.confirmTransaction(signature);
           if (confirmed.confirmed) {
             logger.info(`Transaction ${signature} confirmed with priority fee: ${currentPriorityFee} microLamports (${(currentPriorityFee * computeUnitsToUse / 1_000_000 * LAMPORT_TO_SOL).toFixed(6)} SOL)`);
-            logger.info(`Transaction data: ${JSON.stringify(confirmed.txData, null, 2)}`);
+            logger.debug(`Transaction data: ${JSON.stringify(confirmed.txData, null, 2)}`);
             return signature;
           }
 
