@@ -17,9 +17,9 @@ const OpenPositionRequest = Type.Object({
     examples: [] // Will be populated during route registration
   }),
   lowerPrice: Type.Number({ default: 0.05 }),
-  upperPrice: Type.Number({ default: 0.10 }),
+  upperPrice: Type.Number({ default: 0.15 }),
   poolAddress: Type.String({ default: 'FtFUzuXbbw6oBbU53SDUGspEka1D5Xyc4cwnkxer6xKz' }),
-  baseTokenAmount: Type.Number({ default: 1 }),
+  baseTokenAmount: Type.Number({ default: 10 }),
   quoteTokenAmount: Type.Number({ default: 1 }),
   slippagePct: Type.Optional(Type.Number({ default: 1 })),
 });

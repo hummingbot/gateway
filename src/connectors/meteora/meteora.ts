@@ -112,23 +112,7 @@ export class Meteora {
   }
 
   async getFeesQuote(positionAddress: string, wallet: PublicKey) {
-    const allPositions = await DLMM.getAllLbPairPositionsByUser(
-      this.solana.connection,
-      wallet
-    );
-
-    const [matchingPosition] = Array.from(allPositions.values())
-      .map(position => ({
-        position: position.lbPairPositionsData.find(
-          lbPosition => lbPosition.publicKey.toBase58() === positionAddress
-        ),
-        info: position
-      }))
-      .filter(x => x.position);
-
-    if (!matchingPosition) {
-      logger.error('Position not found');
-    }
+    const matchingPosition = await this.getPosition(positionAddress, wallet);
 
     const dlmmPool = await this.getDlmmPool(matchingPosition.info.publicKey.toBase58());
     await dlmmPool.refetchStates();
@@ -140,6 +124,7 @@ export class Meteora {
 
     if (!updatedPosition) {
       logger.error('Updated position not found');
+      throw new Error('Updated position not found');
     }
 
     return {
@@ -164,6 +149,19 @@ export class Meteora {
         logger.error('Failed to parse slippage value:', allowedSlippage);
     }
     return slippage * 100;
+  }
+
+  async getPositionsForPool(poolAddress: string, wallet: PublicKey) {
+    const dlmmPool = await this.getDlmmPool(poolAddress);
+    if (!dlmmPool) {
+      throw new Error(`Pool not found: ${poolAddress}`);
+    }
+
+    const { userPositions } = await dlmmPool.getPositionsByUserAndLbPair(
+      wallet
+    );
+
+    return userPositions;
   }
 
 } 
