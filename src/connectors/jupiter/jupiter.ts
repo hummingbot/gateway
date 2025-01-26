@@ -114,10 +114,8 @@ export class Jupiter {
 
   async getSwapObj(wallet: Wallet, quote: QuoteResponse, priorityFee?: number): Promise<SwapResponse> {
     const prioritizationFeeLamports = priorityFee 
-      ? priorityFee  
+      ? Math.floor(priorityFee)
       : Math.floor(this.solana.config.minPriorityFee * 1e9);
-
-    logger.info(`Sending swap with priority fee: ${prioritizationFeeLamports / 1e9} SOL`);
 
     let lastError: Error | null = null;
     for (let attempt = 1; attempt <= JUPITER_API_RETRY_COUNT; attempt++) {
@@ -133,7 +131,7 @@ export class Jupiter {
         return swapObj;
       } catch (error) {
         lastError = error;
-        logger.error(`Jupiter API swapPost attempt ${attempt}/${JUPITER_API_RETRY_COUNT} failed:`, 
+        logger.error(`[JUPITER] Fetching swap object attempt ${attempt}/${JUPITER_API_RETRY_COUNT} failed:`, 
           error.response?.status ? {
             error: error.message,
             status: error.response.status,
@@ -142,7 +140,7 @@ export class Jupiter {
         );
 
         if (attempt < JUPITER_API_RETRY_COUNT) {
-          logger.info(`Waiting ${JUPITER_API_RETRY_INTERVAL_MS}ms before retry...`);
+          logger.info(`[JUPITER] Waiting ${JUPITER_API_RETRY_INTERVAL_MS}ms before retry...`);
           await new Promise(resolve => setTimeout(resolve, JUPITER_API_RETRY_INTERVAL_MS));
         }
       }
@@ -168,7 +166,7 @@ export class Jupiter {
     
     if (simulatedTransactionResponse.err) {
       const logs = simulatedTransactionResponse.logs || [];
-      logger.error('Simulation Error Details:', {
+      logger.error('[JUPITER] Simulation Error Details:', {
         error: simulatedTransactionResponse.err,
         programLogs: logs,
         accounts: simulatedTransactionResponse.accounts,
@@ -195,6 +193,8 @@ export class Jupiter {
     priorityFeePrice: number;
   }> {
     let currentPriorityFee = (await this.solana.getGasPrice() * 1e9) - BASE_FEE;
+
+    logger.info(`[JUPITER] Sending swap with max priority fee of ${(currentPriorityFee / 1e9).toFixed(6)} SOL`);
 
     // Convert maxPriorityFee from SOL to lamports for comparison
     while (currentPriorityFee <= this.solana.config.maxPriorityFee * 1e9) {
@@ -229,7 +229,7 @@ export class Jupiter {
               };
             }
           } catch (error) {
-            logger.debug(`Swap confirmation attempt ${retryCount + 1}/${this.solana.config.retryCount} failed with priority fee ${currentPriorityFee / 1e9} SOL: ${error.message}`);
+            logger.debug(`[JUPITER] Swap confirmation attempt ${retryCount + 1}/${this.solana.config.retryCount} failed with priority fee ${(currentPriorityFee / 1e9).toFixed(6)} SOL: ${error.message}`);
           }
 
           retryCount++;
@@ -242,11 +242,11 @@ export class Jupiter {
 
       // If we get here, swap wasn't confirmed after retryCount attempts
       // Increase the priority fee and try again
-      currentPriorityFee = Math.floor(currentPriorityFee * this.solana.config.priorityFeeMultiplier);
-      logger.info(`Increasing priority fee to ${currentPriorityFee / 1e9} SOL`);
+      currentPriorityFee = currentPriorityFee * this.solana.config.priorityFeeMultiplier;
+      logger.info(`[JUPITER] Increasing max priority fee to ${(currentPriorityFee / 1e9).toFixed(6)} SOL`);
     }
 
-    throw new Error(`Swap failed after reaching maximum priority fee of ${this.solana.config.maxPriorityFee / 1e9} SOL`);
+    throw new Error(`[JUPITER] Swap failed after reaching max priority fee of ${(this.solana.config.maxPriorityFee / 1e9).toFixed(6)} SOL`);
   }
 
   async extractSwapBalances(

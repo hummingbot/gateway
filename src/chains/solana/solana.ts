@@ -402,15 +402,14 @@ export class Solana {
   }
 
   public async getGasPrice(): Promise<number> {
-    const priorityFeeInMicroLamports = await this.estimatePriorityFees();
+    const priorityFeePerCU = await this.estimatePriorityFees();
     
-    // Calculate priority fee in lamports
-    const priorityFeeLamports = Math.floor(
-      (this.config.defaultComputeUnits * priorityFeeInMicroLamports) / 1_000_000
-    );
+    // Calculate total priority fee in lamports (priorityFeePerCU is already in lamports/CU)
+    const priorityFee = this.config.defaultComputeUnits * priorityFeePerCU;
     
-    // Add base fee and convert to SOL using LAMPORT_TO_SOL constant
-    const gasCost = (BASE_FEE + priorityFeeLamports) * LAMPORT_TO_SOL;
+    // Add base fee (in lamports) and convert total to SOL
+    const totalLamports = BASE_FEE + priorityFee;
+    const gasCost = totalLamports * LAMPORT_TO_SOL;
 
     return gasCost;
   }
@@ -467,10 +466,7 @@ export class Solana {
       // Calculate statistics
       const minFee = Math.min(...fees) / 1_000_000; // Convert to lamports
       const maxFee = Math.max(...fees) / 1_000_000; // Convert to lamports
-      const averageFee = Math.floor(
-        fees.reduce((sum, fee) => sum + fee, 0) / fees.length / 1_000_000 // Convert to lamports
-      );
-
+      const averageFee = fees.reduce((sum, fee) => sum + fee, 0) / fees.length / 1_000_000 // Convert to lamports
       logger.info(`[SOLANA] Recent priority fees paid: ${minFee.toFixed(4)} - ${maxFee.toFixed(4)} lamports/CU (avg: ${averageFee.toFixed(4)})`);
 
       // Calculate index for percentile
@@ -583,7 +579,7 @@ export class Solana {
     
     // Keep trying with increasing priority fees until we hit the max
     while (true) {
-      const basePriorityFeeLamports = Math.floor(currentPriorityFee * computeUnitsToUse);
+      const basePriorityFeeLamports = currentPriorityFee * computeUnitsToUse;
       
       logger.info(`Sending transaction with: Priority Fee: ${currentPriorityFee.toFixed(4)} lamports/CU, Compute Unit Limit: ${computeUnitsToUse}, Max Fee: ${(basePriorityFeeLamports * LAMPORT_TO_SOL).toFixed(6)} SOL`);
       
@@ -598,7 +594,7 @@ export class Solana {
 
       // convert currentPriorityFee to microLamports for ComputeBudgetProgram
       const priorityFeeInstruction = ComputeBudgetProgram.setComputeUnitPrice({
-        microLamports: Math.floor(currentPriorityFee * 1_000_000),
+        microLamports: currentPriorityFee * 1_000_000,
       });
       // Remove any existing priority fee instructions and add the new one
       tx.instructions = [

@@ -20,7 +20,7 @@ priorityFeePercentile: 0.75
 priorityFeeMultiplier: 2
 
 # Maximum priority fee in SOL
-maxPriorityFee: 0.001
+maxPriorityFee: 0.01
 
 # Minimum priority fee in SOL
 minPriorityFee: 0.00005
