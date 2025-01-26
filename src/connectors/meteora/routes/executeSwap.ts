@@ -13,8 +13,14 @@ const ExecuteSwapRequest = Type.Object({
     description: 'Will use first available wallet if not specified',
     examples: [] // Will be populated during route registration
   }),
-  inputTokenSymbol: Type.String({ default: 'M3M3' }),
-  outputTokenSymbol: Type.String({ default: 'USDC' }),
+  inputTokenSymbol: Type.String({ 
+    default: 'M3M3',
+    description: 'Token symbol or address'
+  }),
+  outputTokenSymbol: Type.String({ 
+    default: 'USDC',
+    description: 'Token symbol or address'
+  }),
   amount: Type.Number({ default: 10 }),
   poolAddress: Type.String({ default: 'FtFUzuXbbw6oBbU53SDUGspEka1D5Xyc4cwnkxer6xKz' }),
   slippagePct: Type.Optional(Type.Number({ default: 1 })),
@@ -34,8 +40,8 @@ async function executeSwap(
   fastify: FastifyInstance,
   network: string,
   address: string,
-  inputTokenSymbol: string,
-  outputTokenSymbol: string,
+  inputTokenIdentifier: string,
+  outputTokenIdentifier: string,
   amount: number,
   poolAddress: string,
   slippagePct?: number
@@ -43,12 +49,13 @@ async function executeSwap(
   const solana = await Solana.getInstance(network);
   const meteora = await Meteora.getInstance(network);
   const wallet = await solana.getWallet(address);
-  const inputToken = await solana.getTokenBySymbol(inputTokenSymbol);
-  const outputToken = await solana.getTokenBySymbol(outputTokenSymbol);
+  
+  const inToken = solana.getToken(inputTokenIdentifier);
+  const outToken = solana.getToken(outputTokenIdentifier);
 
-  if (!inputToken || !outputToken) {
-    throw fastify.httpErrors.notFound(
-      `Token not found: ${!inputToken ? inputTokenSymbol : outputTokenSymbol}`
+  if (!inToken || !outToken) {
+    throw fastify.httpErrors.badRequest(
+      `Token not found: ${!inToken ? inputTokenIdentifier : outputTokenIdentifier}`
     );
   }
 
@@ -59,16 +66,16 @@ async function executeSwap(
 
   await dlmmPool.refetchStates();
 
-  const swapAmount = new BN(amount * 10 ** inputToken.decimals);
-  const swapForY = inputToken.address === dlmmPool.tokenX.publicKey.toBase58();
+  const swapAmount = new BN(amount * 10 ** inToken.decimals);
+  const swapForY = inToken.address === dlmmPool.tokenX.publicKey.toBase58();
 
   const binArrays = await dlmmPool.getBinArrayForSwap(swapForY);
   const effectiveSlippage = new BN((slippagePct ?? meteora.getSlippagePct()) * 100);
   const swapQuote = dlmmPool.swapQuote(swapAmount, swapForY, effectiveSlippage, binArrays);
 
   const swapTx = await dlmmPool.swap({
-    inToken: new PublicKey(inputToken.address),
-    outToken: new PublicKey(outputToken.address),
+    inToken: new PublicKey(inToken.address),
+    outToken: new PublicKey(outToken.address),
     inAmount: swapAmount,
     minOutAmount: swapQuote.minOutAmount,
     lbPair: dlmmPool.pubkey,
@@ -80,22 +87,22 @@ async function executeSwap(
 
   let inputBalanceChange: number, outputBalanceChange: number, fee: number;
 
-  if (inputToken.symbol === 'SOL') {
+  if (inToken.symbol === 'SOL') {
     ({ balanceChange: inputBalanceChange, fee } = await solana.extractAccountBalanceChangeAndFee(signature, 0));
   } else {
     ({ balanceChange: inputBalanceChange, fee } = await solana.extractTokenBalanceChangeAndFee(
       signature,
-      inputToken.address,
+      inToken.address,
       wallet.publicKey.toBase58()
     ));
   }
 
-  if (outputToken.symbol === 'SOL') {
+  if (outToken.symbol === 'SOL') {
     ({ balanceChange: outputBalanceChange } = await solana.extractAccountBalanceChangeAndFee(signature, 0));
   } else {
     ({ balanceChange: outputBalanceChange } = await solana.extractTokenBalanceChangeAndFee(
       signature,
-      outputToken.address,
+      outToken.address,
       wallet.publicKey.toBase58()
     ));
   }

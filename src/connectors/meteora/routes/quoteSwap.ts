@@ -37,8 +37,8 @@ async function getSwapQuote(
 ): Promise<GetSwapQuoteResponseType> {
     const solana = await Solana.getInstance(network);
     const meteora = await Meteora.getInstance(network);
-    const inputToken = await solana.getTokenBySymbol(inputTokenSymbol);
-    const outputToken = await solana.getTokenBySymbol(outputTokenSymbol);
+    const inputToken = solana.getToken(inputTokenSymbol);
+    const outputToken = solana.getToken(outputTokenSymbol);
 
     if (!inputToken || !outputToken) {
       throw fastify.httpErrors.notFound(

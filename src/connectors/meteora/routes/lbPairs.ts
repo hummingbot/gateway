@@ -1,32 +1,39 @@
 import { FastifyPluginAsync } from 'fastify';
 import { Type, Static } from '@sinclair/typebox';
 import { Meteora } from '../meteora';
+import { Solana } from '../../../chains/solana/solana';
 import { logger } from '../../../services/logger';
 
 // Schema definitions
-const GetLbPairsRequest = Type.Object({
+const GetPoolsRequest = Type.Object({
   network: Type.Optional(Type.String({ default: 'mainnet-beta' })),
   limit: Type.Optional(Type.Number({ minimum: 1, default: 100 })),
+  tokenA: Type.Optional(Type.String({
+    description: 'Token symbol or address for first token'
+  })),
+  tokenB: Type.Optional(Type.String({
+    description: 'Token symbol or address for second token'
+  })),
 });
 
-const GetLbPairsResponse = Type.Array(
+const GetPoolsResponse = Type.Array(
   Type.Object({
-    publicKey: Type.String(),
-    tokenXMint: Type.String(),
-    tokenYMint: Type.String(),
+    address: Type.String(),
+    baseTokenAddress: Type.String(),
+    quoteTokenAddress: Type.String(),
     binStep: Type.Number(),
   })
 );
 
-type GetLbPairsRequestType = Static<typeof GetLbPairsRequest>;
-type GetLbPairsResponseType = Static<typeof GetLbPairsResponse>;
+type GetPoolsRequestType = Static<typeof GetPoolsRequest>;
+type GetPoolsResponseType = Static<typeof GetPoolsResponse>;
 
 const transformLbPair = (pair: any) => {
   try {
     return {
-      publicKey: pair.publicKey.toString(),
-      tokenXMint: pair.account.tokenXMint,
-      tokenYMint: pair.account.tokenYMint,
+      address: pair.publicKey.toString(),
+      baseTokenAddress: pair.account.tokenXMint,
+      quoteTokenAddress: pair.account.tokenYMint,
       binStep: pair.account.binStep,
     };
   } catch (error) {
@@ -37,26 +44,39 @@ const transformLbPair = (pair: any) => {
 
 export const lbPairsRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
-    Querystring: GetLbPairsRequestType;
-    Reply: GetLbPairsResponseType;
-  }>('/lb-pairs', {
+    Querystring: GetPoolsRequestType;
+    Reply: GetPoolsResponseType;
+  }>('/pools', {
     schema: {
-      querystring: GetLbPairsRequest,
+      querystring: GetPoolsRequest,
       response: {
-        200: GetLbPairsResponse
+        200: GetPoolsResponse
       },
       tags: ['meteora'],
-      description: 'Get Meteora LB pairs information'
+      description: 'Fetch info about Meteora pools'
     },
     handler: async (request, _reply) => {
       try {
-        const { limit } = request.query;
+        const { limit, tokenA, tokenB } = request.query;
         const network = request.query.network || 'mainnet-beta';
         const meteora = await Meteora.getInstance(network);
-        const pairs = await meteora.getLbPairs(limit);
+        const solana = await Solana.getInstance(network);
+
+        // Convert token symbols/addresses to addresses using getToken
+        const addressA = tokenA ? solana.getToken(tokenA)?.address : undefined;
+        const addressB = tokenB ? solana.getToken(tokenB)?.address : undefined;
+
+        if ((tokenA && !addressA) || (tokenB && !addressB)) {
+          throw fastify.httpErrors.badRequest(
+            `Token not found: ${!addressA ? tokenA : tokenB}`
+          );
+        }
+
+        const pairs = await meteora.getLbPairs(limit, addressA, addressB);
         return pairs.map(transformLbPair);
       } catch (e) {
         logger.error(e);
+        if (e.statusCode) return e;
         throw fastify.httpErrors.internalServerError('Internal server error');
       }
     }

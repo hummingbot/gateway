@@ -152,12 +152,42 @@ export class Solana {
     }
   }
 
-  public getTokenBySymbol(tokenSymbol: string): TokenInfo | undefined {
-    // Normalize both strings by converting to uppercase and removing any spaces
-    const normalizedSearch = tokenSymbol.toUpperCase().trim();
-    return this.tokenList.find(
+  public getToken(addressOrSymbol: string): TokenInfo | null {
+    // First try to find by symbol (case-insensitive)
+    const normalizedSearch = addressOrSymbol.toUpperCase().trim();
+    let token = this.tokenList.find(
       (token: TokenInfo) => token.symbol.toUpperCase().trim() === normalizedSearch
     );
+
+    // If not found by symbol, try to find by address
+    if (!token) {
+      token = this.tokenList.find(
+        (token: TokenInfo) => token.address.toLowerCase() === addressOrSymbol.toLowerCase()
+      );
+    }
+
+    // If still not found, try to create a new token assuming addressOrSymbol is an address
+    if (!token) {
+      try {
+        // Validate if it's a valid public key
+        new PublicKey(addressOrSymbol);
+        
+        // TODO: Incorporate on-chain token metadata API to fetch actual token info
+        // For now, create a basic token object with default values
+        token = {
+          address: addressOrSymbol,
+          symbol: `DUMMY_${addressOrSymbol.slice(0, 4)}`,
+          name: `Dummy Token (${addressOrSymbol.slice(0, 8)}...)`,
+          decimals: 6,
+          chainId: 101,
+        };
+      } catch (e) {
+        // Not a valid public key, return null
+        return null;
+      }
+    }
+
+    return token;
   }
 
   // returns Keypair for a private key, which should be encoded in Base58
@@ -231,13 +261,11 @@ export class Solana {
   }
 
   async getBalance(wallet: Keypair, symbols?: string[]): Promise<Record<string, number>> {
-    // Convert symbols to uppercase for case-insensitive matching
-    const upperCaseSymbols = symbols?.map(s => s.toUpperCase());
     const publicKey = wallet.publicKey;
     let balances: Record<string, number> = {};
 
     // Fetch SOL balance only if symbols is undefined or includes "SOL" (case-insensitive)
-    if (!upperCaseSymbols || upperCaseSymbols.includes("SOL")) {
+    if (!symbols || symbols.some(s => s.toUpperCase() === "SOL")) {
       const solBalance = await this.connection.getBalance(publicKey);
       const solBalanceInSol = solBalance * LAMPORT_TO_SOL;
       balances["SOL"] = solBalanceInSol;
@@ -249,25 +277,20 @@ export class Solana {
       { programId: TOKEN_PROGRAM_ID }
     );
 
-    // Fetch the token list and create lookup map
-    const tokenList = await this.getTokenList();
-    const tokenDefs = tokenList.reduce((acc, token) => {
-      if (!upperCaseSymbols || upperCaseSymbols.includes(token.symbol.toUpperCase())) {
-        acc[token.address] = { symbol: token.symbol, decimals: token.decimals };
-      }
-      return acc;
-    }, {});
-
     // Process token accounts
     for (const value of accounts.value) {
       const parsedTokenAccount = unpackAccount(value.pubkey, value.account);
-      const mint = parsedTokenAccount.mint;
-      const tokenDef = tokenDefs[mint.toBase58()];
-      if (tokenDef === undefined) continue;
-
-      const amount = parsedTokenAccount.amount;
-      const uiAmount = Number(amount) / Math.pow(10, tokenDef.decimals);
-      balances[tokenDef.symbol] = uiAmount;
+      const mintAddress = parsedTokenAccount.mint.toBase58();
+      const token = this.getToken(mintAddress);
+      
+      if (token && (!symbols || symbols.some(s => 
+        s.toUpperCase() === token.symbol.toUpperCase() || 
+        s.toLowerCase() === mintAddress.toLowerCase()
+      ))) {
+        const amount = parsedTokenAccount.amount;
+        const uiAmount = Number(amount) / Math.pow(10, token.decimals);
+        balances[token.symbol] = uiAmount;
+      }
     }
 
     return balances;
@@ -286,7 +309,8 @@ export class Solana {
     for (const tokenAccount of allSplTokens.value) {
       const tokenInfo = tokenAccount.account.data.parsed['info'];
       const mintAddress = tokenInfo['mint'];
-      const token = this.tokenList.find(t => t.address === mintAddress);
+      const token = this.getToken(mintAddress);
+      
       if (token?.symbol) {
         balances[token.symbol] = this.tokenResponseToTokenValue(
           tokenInfo['tokenAmount']
@@ -815,6 +839,11 @@ export class Solana {
       logger.error(`Failed to get first wallet address: ${error.message}`);
       throw error;
     }
+  }
+
+  // Update getTokenBySymbol to use new getToken method
+  public getTokenBySymbol(tokenSymbol: string): TokenInfo | undefined {
+    return this.getToken(tokenSymbol) || undefined;
   }
 
 }
