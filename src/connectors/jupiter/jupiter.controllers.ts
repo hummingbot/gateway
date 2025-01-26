@@ -46,8 +46,8 @@ export async function getTradeInfo(
   tradeSide: string,
   allowedSlippage?: string,
 ): Promise<{ tradeInfo: TradeInfo; quote: QuoteResponse }> {
-  const baseToken: TokenInfo = solana.getTokenBySymbol(baseAsset);
-  const quoteToken: TokenInfo = solana.getTokenBySymbol(quoteAsset);
+  const baseToken: TokenInfo = await solana.getToken(baseAsset);
+  const quoteToken: TokenInfo = await solana.getToken(quoteAsset);
   const requestAmount = Math.floor(amount * Math.pow(10, baseToken.decimals));
 
   const slippagePct = allowedSlippage ? Number(allowedSlippage) : jupiter.getSlippagePct();

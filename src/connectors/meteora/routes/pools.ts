@@ -63,8 +63,10 @@ export const poolsRoute: FastifyPluginAsync = async (fastify) => {
         const solana = await Solana.getInstance(network);
 
         // Convert token symbols/addresses to addresses using getToken
-        const addressA = tokenA ? solana.getToken(tokenA)?.address : undefined;
-        const addressB = tokenB ? solana.getToken(tokenB)?.address : undefined;
+        const tokenInfoA = tokenA ? await solana.getToken(tokenA) : undefined;
+        const tokenInfoB = tokenB ? await solana.getToken(tokenB) : undefined;
+        const addressA = tokenInfoA?.address;
+        const addressB = tokenInfoB?.address;
 
         if ((tokenA && !addressA) || (tokenB && !addressB)) {
           throw fastify.httpErrors.badRequest(

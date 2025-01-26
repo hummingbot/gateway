@@ -17,7 +17,7 @@ import {
   TransactionResponse,
   VersionedTransactionResponse,
 } from '@solana/web3.js';
-import { TOKEN_PROGRAM_ID, unpackAccount } from "@solana/spl-token";
+import { TOKEN_PROGRAM_ID, unpackAccount, getMint } from "@solana/spl-token";
 
 import { TokenValue, walletPath } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
@@ -152,7 +152,7 @@ export class Solana {
     }
   }
 
-  public getToken(addressOrSymbol: string): TokenInfo | null {
+  async getToken(addressOrSymbol: string): Promise<TokenInfo | null> {
     // First try to find by symbol (case-insensitive)
     const normalizedSearch = addressOrSymbol.toUpperCase().trim();
     let token = this.tokenList.find(
@@ -170,19 +170,21 @@ export class Solana {
     if (!token) {
       try {
         // Validate if it's a valid public key
-        new PublicKey(addressOrSymbol);
+        const mintPubkey = new PublicKey(addressOrSymbol);
         
-        // TODO: Incorporate on-chain token metadata API to fetch actual token info
-        // For now, create a basic token object with default values
+        // Fetch mint info to get decimals
+        const mintInfo = await getMint(this.connection, mintPubkey);
+        
+        // Create a basic token object with fetched decimals
         token = {
           address: addressOrSymbol,
           symbol: `DUMMY_${addressOrSymbol.slice(0, 4)}`,
           name: `Dummy Token (${addressOrSymbol.slice(0, 8)}...)`,
-          decimals: 6,
+          decimals: mintInfo.decimals,
           chainId: 101,
         };
       } catch (e) {
-        // Not a valid public key, return null
+        // Not a valid public key or couldn't fetch mint info, return null
         return null;
       }
     }
@@ -281,7 +283,7 @@ export class Solana {
     for (const value of accounts.value) {
       const parsedTokenAccount = unpackAccount(value.pubkey, value.account);
       const mintAddress = parsedTokenAccount.mint.toBase58();
-      const token = this.getToken(mintAddress);
+      const token = await this.getToken(mintAddress);
       
       if (token && (!symbols || symbols.some(s => 
         s.toUpperCase() === token.symbol.toUpperCase() || 
@@ -309,7 +311,7 @@ export class Solana {
     for (const tokenAccount of allSplTokens.value) {
       const tokenInfo = tokenAccount.account.data.parsed['info'];
       const mintAddress = tokenInfo['mint'];
-      const token = this.getToken(mintAddress);
+      const token = await this.getToken(mintAddress);
       
       if (token?.symbol) {
         balances[token.symbol] = this.tokenResponseToTokenValue(
@@ -371,6 +373,11 @@ export class Solana {
     walletAddress: PublicKey,
     mintAddress: PublicKey
   ): Promise<TokenValue> {
+    const token = await this.getToken(mintAddress.toBase58());
+    if (!token) {
+      throw new Error('Token not found');
+    }
+    
     const response = await this.connection.getParsedTokenAccountsByOwner(
       walletAddress,
       { mint: mintAddress }
@@ -842,8 +849,8 @@ export class Solana {
   }
 
   // Update getTokenBySymbol to use new getToken method
-  public getTokenBySymbol(tokenSymbol: string): TokenInfo | undefined {
-    return this.getToken(tokenSymbol) || undefined;
+  public async getTokenBySymbol(tokenSymbol: string): Promise<TokenInfo | undefined> {
+    return (await this.getToken(tokenSymbol)) || undefined;
   }
 
 }

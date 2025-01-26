@@ -80,8 +80,8 @@ export class Jupiter {
     asLegacyTransaction: boolean = false,
     swapMode: 'ExactIn' | 'ExactOut' = 'ExactIn',
   ): Promise<QuoteResponse> {
-    const inputToken = this.solana.getToken(inputTokenIdentifier);
-    const outputToken = this.solana.getToken(outputTokenIdentifier);
+    const inputToken = await this.solana.getToken(inputTokenIdentifier);
+    const outputToken = await this.solana.getToken(outputTokenIdentifier);
 
     if (!inputToken || !outputToken) {
       throw new Error(`Token not found: ${!inputToken ? inputTokenIdentifier : outputTokenIdentifier}`);

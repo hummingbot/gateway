@@ -50,8 +50,8 @@ async function executeSwap(
   const meteora = await Meteora.getInstance(network);
   const wallet = await solana.getWallet(address);
   
-  const inToken = solana.getToken(inputTokenIdentifier);
-  const outToken = solana.getToken(outputTokenIdentifier);
+  const inToken = await solana.getToken(inputTokenIdentifier);
+  const outToken = await solana.getToken(outputTokenIdentifier);
 
   if (!inToken || !outToken) {
     throw fastify.httpErrors.badRequest(
