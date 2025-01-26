@@ -11,7 +11,7 @@ interface NetworkConfig {
 export interface Config {
   network: NetworkConfig;
   defaultComputeUnits: number;
-  priorityFeePercentile: number;
+  basePriorityFeePct: number;
   priorityFeeMultiplier: number;
   maxPriorityFee: number;
   minPriorityFee: number;
@@ -42,8 +42,8 @@ export function getSolanaConfig(
     defaultComputeUnits: ConfigManagerV2.getInstance().get(
       chainName + '.defaultComputeUnits'
     ),
-    priorityFeePercentile: ConfigManagerV2.getInstance().get(
-      chainName + '.priorityFeePercentile'
+    basePriorityFeePct: ConfigManagerV2.getInstance().get(
+      chainName + '.basePriorityFeePct'
     ),
     priorityFeeMultiplier: ConfigManagerV2.getInstance().get(
       chainName + '.priorityFeeMultiplier'

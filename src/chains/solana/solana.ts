@@ -470,14 +470,14 @@ export class Solana {
       logger.info(`[SOLANA] Recent priority fees paid: ${minFee.toFixed(4)} - ${maxFee.toFixed(4)} lamports/CU (avg: ${averageFee.toFixed(4)})`);
 
       // Calculate index for percentile
-      const percentileIndex = Math.ceil(fees.length * this.config.priorityFeePercentile);
+      const percentileIndex = Math.ceil(fees.length * this.config.basePriorityFeePct / 100);
       let basePriorityFee = fees[percentileIndex - 1] / 1_000_000;  // Convert to lamports
       
       // Ensure fee is not below minimum (convert SOL to lamports)
       const minimumFeeLamports = Math.floor(this.config.minPriorityFee * 1e9 / this.config.defaultComputeUnits);
       basePriorityFee = Math.max(basePriorityFee, minimumFeeLamports);
       
-      logger.info(`[SOLANA] Base priority fee: ${basePriorityFee.toFixed(4)} lamports/CU (${basePriorityFee === minimumFeeLamports ? 'minimum' : `${this.config.priorityFeePercentile * 100}th percentile`})`);
+      logger.info(`[SOLANA] Base priority fee: ${basePriorityFee.toFixed(4)} lamports/CU (${basePriorityFee === minimumFeeLamports ? 'minimum' : `${this.config.basePriorityFeePct}th percentile`})`);
 
       // Cache the result
       Solana.lastPriorityFeeEstimate = {

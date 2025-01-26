@@ -14,7 +14,7 @@ networks:
 defaultComputeUnits: 200000
 
 # Floor percentile of recent priority fee samples used to estimate gasPrice for a transaction
-priorityFeePercentile: 0.75
+basePriorityFeePct: 75
 
 # Multiplier for increasing priority fee on retry
 priorityFeeMultiplier: 2
