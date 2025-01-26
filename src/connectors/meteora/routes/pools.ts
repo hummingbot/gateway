@@ -9,10 +9,10 @@ const GetPoolsRequest = Type.Object({
   network: Type.Optional(Type.String({ default: 'mainnet-beta' })),
   limit: Type.Optional(Type.Number({ minimum: 1, default: 100 })),
   tokenA: Type.Optional(Type.String({
-    description: 'Token symbol or address for first token'
+    description: 'First token symbol or address'
   })),
   tokenB: Type.Optional(Type.String({
-    description: 'Token symbol or address for second token'
+    description: 'Second token symbol or address'
   })),
 });
 
@@ -42,7 +42,7 @@ const transformLbPair = (pair: any) => {
   }
 };
 
-export const lbPairsRoute: FastifyPluginAsync = async (fastify) => {
+export const poolsRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
     Querystring: GetPoolsRequestType;
     Reply: GetPoolsResponseType;
@@ -83,4 +83,4 @@ export const lbPairsRoute: FastifyPluginAsync = async (fastify) => {
   });
 };
 
-export default lbPairsRoute; 
+export default poolsRoute; 

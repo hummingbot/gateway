@@ -4,7 +4,7 @@ import sensible from '@fastify/sensible';
 import { positionsOwnedRoute } from './routes/positionsOwned';
 import { activeBinRoute } from './routes/activeBin';
 import { quoteSwapRoute } from './routes/quoteSwap';
-import { lbPairsRoute } from './routes/lbPairs';
+import { poolsRoute } from './routes/pools';
 import { quoteFeesRoute } from './routes/quoteFees';
 import { executeSwapRoute } from './routes/executeSwap';
 import { openPositionRoute } from './routes/openPosition';
@@ -19,7 +19,7 @@ export const meteoraRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(positionsOwnedRoute);
   await fastify.register(activeBinRoute);
   await fastify.register(quoteSwapRoute);
-  await fastify.register(lbPairsRoute);
+  await fastify.register(poolsRoute);
   await fastify.register(quoteFeesRoute);
   await fastify.register(executeSwapRoute);
   await fastify.register(openPositionRoute);
