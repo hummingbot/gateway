@@ -443,7 +443,8 @@ export class Solana {
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch fees: ${response.status}`);
+        logger.error(`[SOLANA] Failed to fetch priority fees, using minimum fee: ${response.status}`);
+        return this.config.minPriorityFee * 1_000_000 / this.config.defaultComputeUnits;
       }
 
       const data: PriorityFeeResponse = await response.json();
@@ -464,30 +465,31 @@ export class Solana {
       fees.sort((a, b) => a - b);
       
       // Calculate statistics
-      const minFee = Math.min(...fees);
-      const maxFee = Math.max(...fees);
+      const minFee = Math.min(...fees) / 1_000_000; // Convert to lamports
+      const maxFee = Math.max(...fees) / 1_000_000; // Convert to lamports
       const averageFee = Math.floor(
-        fees.reduce((sum, fee) => sum + fee, 0) / fees.length
+        fees.reduce((sum, fee) => sum + fee, 0) / fees.length / 1_000_000 // Convert to lamports
       );
 
-      logger.info(`[PRIORITY FEES] Range: ${minFee} - ${maxFee} microLamports (avg: ${averageFee})`);
+      logger.info(`[SOLANA] Recent priority fees paid: ${minFee.toFixed(4)} - ${maxFee.toFixed(4)} lamports (avg: ${averageFee.toFixed(4)})`);
 
       // Calculate index for percentile
       const percentileIndex = Math.ceil(fees.length * this.config.priorityFeePercentile);
-      let percentileFee = fees[percentileIndex - 1];  // -1 because array is 0-based
+      let basePriorityFee = fees[percentileIndex - 1] / 1_000_000;  // Convert to lamports
       
-      // Ensure fee is not below minimum
-      percentileFee = Math.max(percentileFee, minimumFee);
+      // Ensure fee is not below minimum (convert SOL to lamports)
+      const minimumFeeLamports = Math.floor(this.config.minPriorityFee * 1e9 / this.config.defaultComputeUnits);
+      basePriorityFee = Math.max(basePriorityFee, minimumFeeLamports);
       
-      logger.info(`[PRIORITY FEES] Used: ${percentileFee} microLamports (${percentileFee === minimumFee ? 'minimum' : `${this.config.priorityFeePercentile * 100}th percentile`})`);
+      logger.info(`[SOLANA] Base priority fee: ${basePriorityFee.toFixed(4)} lamports (${basePriorityFee === minimumFeeLamports ? 'minimum' : `${this.config.priorityFeePercentile * 100}th percentile`})`);
 
       // Cache the result
       Solana.lastPriorityFeeEstimate = {
         timestamp: Date.now(),
-        fee: percentileFee,
+        fee: basePriorityFee,
       };
 
-      return percentileFee;
+      return basePriorityFee;
 
     } catch (error: any) {
       throw new Error(`Failed to fetch priority fees: ${error.message}`);
@@ -580,18 +582,18 @@ export class Solana {
       
       logger.info(`Attempting transaction with: Priority Fee: ${currentPriorityFee} microLamports/CU, Compute Units: ${computeUnitsToUse}, Total Fee: ${totalPriorityFeeLamports} lamports`);
       
-      // Check if we've exceeded max fee (in lamports)
-      if (totalPriorityFeeLamports > this.config.maxPriorityFee) {
+      // Check if we've exceeded max fee (convert maxPriorityFee from SOL to lamports)
+      if (totalPriorityFeeLamports > this.config.maxPriorityFee * 1e9) {
         throw new Error(
           `Transaction failed after reaching maximum priority fee of ${
             this.config.maxPriorityFee
-          } lamports`
+          } SOL`
         );
       }
 
       // currentPriorityFee is already in microLamports per compute unit
       const priorityFeeInstruction = ComputeBudgetProgram.setComputeUnitPrice({
-        microLamports: Math.floor(currentPriorityFee),
+        microLamports: Math.floor(currentPriorityFee * 1_000_000),
       });
       // Remove any existing priority fee instructions and add the new one
       tx.instructions = [

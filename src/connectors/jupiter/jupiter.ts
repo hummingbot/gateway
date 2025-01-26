@@ -115,9 +115,9 @@ export class Jupiter {
   async getSwapObj(wallet: Wallet, quote: QuoteResponse, priorityFee?: number): Promise<SwapResponse> {
     const prioritizationFeeLamports = priorityFee 
       ? priorityFee  
-      : this.solana.config.minPriorityFee;
+      : Math.floor(this.solana.config.minPriorityFee * 1e9);
 
-    logger.info(`Sending swap with priority fee: ${priorityFee / 1e9} SOL`);
+    logger.info(`Sending swap with priority fee: ${prioritizationFeeLamports / 1e9} SOL`);
 
     let lastError: Error | null = null;
     for (let attempt = 1; attempt <= JUPITER_API_RETRY_COUNT; attempt++) {
@@ -196,7 +196,8 @@ export class Jupiter {
   }> {
     let currentPriorityFee = (await this.solana.getGasPrice() * 1e9) - BASE_FEE;
 
-    while (currentPriorityFee <= this.solana.config.maxPriorityFee) {
+    // Convert maxPriorityFee from SOL to lamports for comparison
+    while (currentPriorityFee <= this.solana.config.maxPriorityFee * 1e9) {
       const swapObj = await this.getSwapObj(wallet, quote, currentPriorityFee);
 
       const swapTransactionBuf = Buffer.from(swapObj.swapTransaction, 'base64');

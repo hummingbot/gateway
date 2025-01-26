@@ -19,11 +19,11 @@ priorityFeePercentile: 0.75
 # Multiplier for increasing priority fee on retry
 priorityFeeMultiplier: 2
 
-# Maximum priority fee in lamports
-maxPriorityFee: 2000000
+# Maximum priority fee in SOL
+maxPriorityFee: 0.001
 
-# Minimum priority fee in lamports
-minPriorityFee: 100000
+# Minimum priority fee in SOL
+minPriorityFee: 0.00005
 
 # Retry interval in milliseconds
 retryIntervalMs: 500
