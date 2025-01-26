@@ -13,11 +13,11 @@ const ExecuteSwapRequest = Type.Object({
     description: 'Will use first available wallet if not specified',
     examples: [] // Will be populated during route registration
   }),
-  inputTokenSymbol: Type.String({ 
+  inputToken: Type.String({ 
     default: 'M3M3',
     description: 'Token symbol or address'
   }),
-  outputTokenSymbol: Type.String({ 
+  outputToken: Type.String({ 
     default: 'USDC',
     description: 'Token symbol or address'
   }),
@@ -146,15 +146,15 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { address, inputTokenSymbol, outputTokenSymbol, amount, poolAddress, slippagePct } = request.body;
+        const { address, inputToken, outputToken, amount, poolAddress, slippagePct } = request.body;
         const network = request.body.network || 'mainnet-beta';
         
         return await executeSwap(
           fastify,
           network,
           address,
-          inputTokenSymbol,
-          outputTokenSymbol,
+          inputToken,
+          outputToken,
           amount,
           poolAddress,
           slippagePct

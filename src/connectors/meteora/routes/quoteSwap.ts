@@ -10,8 +10,8 @@ import { logger } from '../../../services/logger';
 // Schema definitions
 const GetSwapQuoteRequest = Type.Object({
   network: Type.Optional(Type.String({ default: 'mainnet-beta' })),
-  inputTokenSymbol: Type.String({ default: 'M3M3' }),
-  outputTokenSymbol: Type.String({ default: 'USDC' }),
+  inputToken: Type.String({ default: 'M3M3' }),
+  outputToken: Type.String({ default: 'USDC' }),
   amount: Type.Number({ default: 10 }),
   poolAddress: Type.String({ default: 'FtFUzuXbbw6oBbU53SDUGspEka1D5Xyc4cwnkxer6xKz' }),
   slippagePct: Type.Optional(Type.Number({ default: 1 })),
@@ -85,14 +85,14 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network, inputTokenSymbol, outputTokenSymbol, amount, poolAddress, slippagePct } = request.query;
+        const { network, inputToken, outputToken, amount, poolAddress, slippagePct } = request.query;
         const networkToUse = network || 'mainnet-beta';
 
         return await getSwapQuote(
           fastify,
           networkToUse,
-          inputTokenSymbol,
-          outputTokenSymbol,
+          inputToken,
+          outputToken,
           amount,
           poolAddress,
           slippagePct
