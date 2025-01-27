@@ -1,7 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify';
 import sensible from '@fastify/sensible';
 
-import { poolsRoute } from './routes/pools';
+import { fetchPoolsRoute } from './routes/fetchPools';
 import { poolInfoRoute } from './routes/poolInfo';
 import { positionsOwnedRoute } from './routes/positionsOwned';
 import { quoteSwapRoute } from './routes/quoteSwap';
@@ -16,7 +16,7 @@ import { closePositionRoute } from './routes/closePosition';
 export const meteoraRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(sensible);
   
-  await fastify.register(poolsRoute);
+  await fastify.register(fetchPoolsRoute);
   await fastify.register(poolInfoRoute);
   await fastify.register(positionsOwnedRoute);
   await fastify.register(quoteSwapRoute);

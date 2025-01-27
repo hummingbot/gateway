@@ -234,3 +234,16 @@ export const NetworkSelectionSchema = Type.Object({
   network: Type.String(),
   connector: Type.String()
 });
+
+export const PoolInfoSchema = Type.Object({
+  address: Type.String(),
+  baseToken: Type.String(),
+  quoteToken: Type.String(),
+  binStep: Type.Number(),
+  feePct: Type.Number(),
+  price: Type.Number(),
+  baseAmount: Type.Number(),
+  quoteAmount: Type.Number(),
+}, { $id: 'PoolInfo' });
+
+export type PoolInfo = Static<typeof PoolInfoSchema>;

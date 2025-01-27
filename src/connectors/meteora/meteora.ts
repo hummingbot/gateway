@@ -5,7 +5,8 @@ import { MeteoraConfig } from './meteora.config';
 import { logger } from '../../services/logger';
 import { convertDecimals } from '../../services/base';
 import { percentRegexp } from '../../services/config-manager-v2';
-import { FeeInfo } from '@meteora-ag/dlmm';
+import { PoolInfo } from '../../services/common-interfaces';
+import { LbPair } from '@meteora-ag/dlmm';
 
 export class Meteora {
   private static _instances: { [name: string]: Meteora };
@@ -73,12 +74,12 @@ export class Meteora {
     return dlmmPoolPromise;
   }
 
-  /** Gets LB pairs with optional token filtering */
-  async getLbPairs(
+  /** Gets Meteora pools with optional token filtering */
+  async getPools(
     limit: number = 100,
     tokenMintA?: string,
     tokenMintB?: string
-  ): Promise<any[]> {
+  ): Promise<{ publicKey: PublicKey; account: LbPair }[]> {
     const timeoutMs = 10000;
     try {
       logger.info('Fetching Meteora LB pairs...');
@@ -90,26 +91,34 @@ export class Meteora {
         setTimeout(() => reject(new Error('getLbPairs timed out')), timeoutMs);
       });
 
-      let lbPairs = (await Promise.race([lbPairsPromise, timeoutPromise])) as any[];
+      let lbPairs = (await Promise.race([lbPairsPromise, timeoutPromise])) as { 
+        publicKey: PublicKey; 
+        account: LbPair 
+      }[];
       
-      // Filter by tokens if provided
+      // Only apply token filtering if tokens are provided
       if (tokenMintA && tokenMintB) {
-        lbPairs = lbPairs.filter(pair => 
-          (pair.account.tokenXMint.toBase58() === tokenMintA && pair.account.tokenYMint.toBase58() === tokenMintB) ||
-          (pair.account.tokenXMint.toBase58() === tokenMintB && pair.account.tokenYMint.toBase58() === tokenMintA)
-        );
+        lbPairs = lbPairs.filter(pair => {
+          const tokenXMint = pair.account.tokenXMint.toBase58();
+          const tokenYMint = pair.account.tokenYMint.toBase58();
+          return (tokenXMint === tokenMintA && tokenYMint === tokenMintB) ||
+                (tokenXMint === tokenMintB && tokenYMint === tokenMintA);
+        });
       } else if (tokenMintA) {
-        lbPairs = lbPairs.filter(pair => 
-          pair.account.tokenXMint.toBase58() === tokenMintA || 
-          pair.account.tokenYMint.toBase58() === tokenMintA
-        );
+        lbPairs = lbPairs.filter(pair => {
+          const tokenXMint = pair.account.tokenXMint.toBase58();
+          const tokenYMint = pair.account.tokenYMint.toBase58();
+          return tokenXMint === tokenMintA || tokenYMint === tokenMintA;
+        });
       }
 
       logger.info(`Found ${lbPairs.length} Meteora LB pairs, returning first ${limit}`);
+      // console.log(JSON.stringify(lbPairs[0], null, 2));
+       
       return lbPairs.slice(0, limit);
     } catch (error) {
       logger.error('Failed to fetch Meteora LB pairs:', error);
-      throw error;
+      return []; // Return empty array instead of throwing
     }
   }
 
@@ -203,9 +212,6 @@ export class Meteora {
     if (!dlmmPool) {
       throw new Error(`Pool not found: ${poolAddress}`);
     }
-
-    await dlmmPool.refetchStates();
-
     const lowerPricePerLamport = dlmmPool.toPricePerLamport(lowerPrice);
     const upperPricePerLamport = dlmmPool.toPricePerLamport(upperPrice);
 
@@ -215,15 +221,47 @@ export class Meteora {
     return { minBinId, maxBinId };
   }
 
-  /** Gets fee information for a pool */
-  async getPoolFeeInfo(poolAddress: string): Promise<FeeInfo> {
-    const dlmmPool = await this.getDlmmPool(poolAddress);
-    if (!dlmmPool) {
-      throw new Error(`Pool not found: ${poolAddress}`);
+  /** Gets comprehensive pool information */
+  async getPoolInfo(poolAddress: string): Promise<PoolInfo | null> {
+    try {
+      const dlmmPool = await this.getDlmmPool(poolAddress);
+      if (!dlmmPool) {
+        logger.warn(`Pool not found: ${poolAddress}`);
+        return null;
+      }
+      
+      // Get reserve amounts
+      const [reserveXBalance, reserveYBalance] = await Promise.all([
+        this.solana.connection.getTokenAccountBalance(dlmmPool.lbPair.reserveX),
+        this.solana.connection.getTokenAccountBalance(dlmmPool.lbPair.reserveY)
+      ]);
+
+      console.log(`Pool ${poolAddress} reserves:`, {
+        reserveX: reserveXBalance.value.uiAmount,
+        reserveY: reserveYBalance.value.uiAmount
+      });
+      
+      const feeInfo = await dlmmPool.getFeeInfo();
+      const activeBin = await dlmmPool.getActiveBin();
+
+      if (!activeBin || !activeBin.price || !activeBin.pricePerToken) {
+        logger.warn(`Invalid active bin data for pool: ${poolAddress}`);
+        return null;
+      }
+
+      return {
+        address: poolAddress,
+        baseToken: dlmmPool.tokenX.publicKey.toBase58(),
+        quoteToken: dlmmPool.tokenY.publicKey.toBase58(),
+        binStep: dlmmPool.lbPair.binStep,
+        feePct: Number(feeInfo.baseFeeRatePercentage),
+        price: Number(activeBin.pricePerToken),
+        baseAmount: reserveXBalance.value.uiAmount,
+        quoteAmount: reserveYBalance.value.uiAmount,
+      };
+    } catch (error) {
+      logger.error(`Error getting pool info for ${poolAddress}:`, error);
+      return null;
     }
-
-    await dlmmPool.refetchStates();
-    return dlmmPool.getFeeInfo();
   }
-
-} 
+}
