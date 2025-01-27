@@ -46,7 +46,7 @@ export const poolsRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
     Querystring: GetPoolsRequestType;
     Reply: GetPoolsResponseType;
-  }>('/pools', {
+  }>('/fetch-pools', {
     schema: {
       querystring: GetPoolsRequest,
       response: {

@@ -5,12 +5,12 @@ import { logger } from '../../../services/logger';
 import { DecimalUtil } from '@orca-so/common-sdk';
 
 // Schema definitions
-const GetActiveBinRequest = Type.Object({
+const GetPoolInfoRequest = Type.Object({
   network: Type.Optional(Type.String({ default: 'mainnet-beta' })),
   poolAddress: Type.String({ default: 'FtFUzuXbbw6oBbU53SDUGspEka1D5Xyc4cwnkxer6xKz' }),
 });
 
-const GetActiveBinResponse = Type.Object({
+const GetPoolInfoResponse = Type.Object({
   binId: Type.Number(),
   xAmount: Type.String(),
   yAmount: Type.String(),
@@ -18,10 +18,10 @@ const GetActiveBinResponse = Type.Object({
   pricePerToken: Type.Number(),
 });
 
-type GetActiveBinRequestType = Static<typeof GetActiveBinRequest>;
-type GetActiveBinResponseType = Static<typeof GetActiveBinResponse>;
+type GetPoolInfoRequestType = Static<typeof GetPoolInfoRequest>;
+type GetPoolInfoResponseType = Static<typeof GetPoolInfoResponse>;
 
-const transformActiveBinResponse = (dlmmPool: any, activeBin: any): GetActiveBinResponseType => {
+const transformPoolInfoResponse = (dlmmPool: any, activeBin: any): GetPoolInfoResponseType => {
   if (!dlmmPool?.tokenX || !dlmmPool?.tokenY) {
     throw new Error('Invalid DLMM pool structure: missing token information');
   }
@@ -35,19 +35,19 @@ const transformActiveBinResponse = (dlmmPool: any, activeBin: any): GetActiveBin
   };
 };
 
-export const activeBinRoute: FastifyPluginAsync = async (fastify) => {
+export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
-    Querystring: GetActiveBinRequestType;
-    Reply: GetActiveBinResponseType;
+    Querystring: GetPoolInfoRequestType;
+    Reply: GetPoolInfoResponseType;
   }>(
-    '/active-bin',
+    '/pool-info',
     {
       schema: {
-        description: 'Get active bin for a Meteora pool',
+        description: 'Get pool information for a Meteora pool',
         tags: ['meteora'],
-        querystring: GetActiveBinRequest,
+        querystring: GetPoolInfoRequest,
         response: {
-          200: GetActiveBinResponse
+          200: GetPoolInfoResponse
         },
       }
     },
@@ -72,7 +72,7 @@ export const activeBinRoute: FastifyPluginAsync = async (fastify) => {
           throw fastify.httpErrors.notFound('Active bin not found');
         }
 
-        return transformActiveBinResponse(dlmmPool, activeBin);
+        return transformPoolInfoResponse(dlmmPool, activeBin);
       } catch (e) {
         logger.error(e);
         if (e.statusCode) throw e;
@@ -82,4 +82,4 @@ export const activeBinRoute: FastifyPluginAsync = async (fastify) => {
   );
 };
 
-export default activeBinRoute; 
+export default poolInfoRoute; 
