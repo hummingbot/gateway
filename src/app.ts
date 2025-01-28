@@ -25,7 +25,7 @@ import { meteoraRoutes } from './connectors/meteora/meteora.routes';
 import { uniswapRoutes } from './connectors/uniswap/uniswap.routes';
 
 // Change version for each release
-const GATEWAY_VERSION = 'dev-2.3.0';
+const GATEWAY_VERSION = '2.3.0';
 
 // Define swagger options once
 const swaggerOptions = {
