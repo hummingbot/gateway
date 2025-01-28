@@ -8,7 +8,7 @@ Gateway may be used alongside the main [Hummingbot client](https://github.com/hu
 
 ## Installation via Docker
 
-If you are installing Gateway alongside Hummingbot, check out the [Deploy Examples](https://github.com/hummingbot/deploy-examples) repository that helps you deploy various types of Hummingbot and Gateway configurations. For most new users, we recommend following the [Hummingbot Gateway Compose](https://github.com/hummingbot/deploy-examples/tree/main/hummingbot_gateway_compose) deployment.
+If you are installing Gateway alongside Hummingbot, check out the [Deploy Examples](https://github.com/hummingbot/deploy-examples) repository that helps you deploy various types of Hummingbot and Gateway configurations. For most new users, we recommend following the [Hummingbot Gateway Compose](https://hummingbot.org/gateway/installation/) deployment.
 
 The repo also contains [Bash Scripts](https://github.com/hummingbot/deploy-examples/tree/main/bash_scripts#gateway) that help you install the Gateway Docker image on a standalone basis.
 
