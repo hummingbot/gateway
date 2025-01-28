@@ -1,0 +1,97 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "networks": {
+      "type": "object",
+      "patternProperties": {
+        "^\\w+$": {
+          "type": "object",
+          "properties": {
+            "chainId": {
+              "type": "string"
+            },
+            "nodeURL": {
+              "type": "string"
+            },
+            "assetListType": {
+              "type": "string"
+            },
+            "assetListSource": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "chainId",
+            "nodeURL",
+            "assetListType",
+            "assetListSource"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "nativeCurrencySymbol": {
+      "type": "string"
+    },
+    "defaultMaxNumberOfRetries": {
+      "type": "integer"
+    },
+    "defaultDelayBetweenRetries": {
+      "type": "integer"
+    },
+    "defaultTimeout": {
+      "type": "integer"
+    },
+    "defaultBatchSize": {
+      "type": "integer"
+    },
+    "defaultDelayBetweenBatches": {
+      "type": "integer"
+    },
+    "defaultPollInterval": {
+      "type": "integer"
+    },
+    "defaultMaxPollAttempts": {
+      "type": "integer"
+    },
+    "gasPrice": {
+      "type": "number"
+    },
+    "gasLimit": {
+      "type": "number"
+    },
+    "gasCost": {
+      "type": "number"
+    },
+    "workchain": {
+      "type": "integer"
+    },
+    "apiKey": {
+      "type": "string"
+    },
+    "rpcType": {
+      "type": "string"
+    },
+    "walletVersion": {
+      "type": ["string", "null"]
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "nativeCurrencySymbol",
+    "defaultMaxNumberOfRetries",
+    "defaultDelayBetweenRetries",
+    "defaultTimeout",
+    "defaultBatchSize",
+    "defaultDelayBetweenBatches",
+    "defaultPollInterval",
+    "defaultMaxPollAttempts",
+    "gasPrice",
+    "gasLimit",
+    "gasCost",
+    "workchain",
+    "walletVersion"
+  ]
+}

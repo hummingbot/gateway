@@ -1,0 +1,32 @@
+{
+  "name": "Ton Token List",
+  "timestamp": "2022-05-25T20:37:00.000+00:00",
+  "tokens": [
+    {
+      "address": {
+        "blockchain": 607,
+        "address": "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"
+      },
+      "tags": [
+        "native"
+      ],
+      "symbol": "TON",
+      "name": "TON",
+      "imageUrl": "https://asset.ston.fi/img/EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c/4ecd4687e0b5b8ff21a7fbe03f9d281c26a2dc13eac7b7d16048cc693fe0ec39",
+      "decimals": 9,
+      "metadata": {}
+    },
+    {
+      "address": {
+        "blockchain": 607,
+        "address": "kQAiboDEv_qRrcEdrYdwbVLNOXBHwShFbtKGbQVJ2OKxY_Di"
+      },
+      "tags": [],
+      "symbol": "AIOTX",
+      "name": "AIOTX",
+      "imageUrl": "https://asset.ston.fi/img/kQAiboDEv_qRrcEdrYdwbVLNOXBHwShFbtKGbQVJ2OKxY_Di/3cdadc9581abb59f8c8ec177c00fbdc6a5aaa39d759758be3d42be51b6435dd5",
+      "decimals": 9,
+      "metadata": {}
+    }
+  ]
+}

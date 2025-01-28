@@ -1,0 +1,10 @@
+{
+  "chain": "ton",
+  "network": "mainnet",
+  "address": "$TON_ADDRESS",
+  "tokenSymbols": [
+    "TON",
+    "USD₮",
+    "STON"
+  ]
+}

@@ -7,7 +7,7 @@
   "repository": "https://github.com/hummingbot/gateway",
   "scripts": {
     "prebuild": "rimraf dist && mkdir dist",
-    "build": "tsc --skipLibCheck --project ./ && yarn copy-files",
+    "build": "tsc --skipLibCheck --noEmitOnError false --project ./ && yarn copy-files",
     "clean": "rm -rf ./node_modules && rm -rf ./coverage && rm -rf ./logs && yarn run clean:config",
     "clean:config": "find ./conf -maxdepth 1 -regextype posix-extended -regex '.*.*' -delete",
     "format": "prettier . --write",
@@ -26,6 +26,7 @@
     "@_etcswap/smart-order-router": "^3.15.2",
     "@balancer-labs/sdk": "^1.1.5",
     "@bancor/carbon-sdk": "^0.0.93-DEV",
+    "@coral-xyz/anchor": "^0.29.0",
     "@cosmjs/amino": "^0.32.2",
     "@cosmjs/cosmwasm-stargate": "^0.31.1",
     "@cosmjs/proto-signing": "^0.31.1",
@@ -42,6 +43,8 @@
     "@harmony-js/utils": "^0.1.56",
     "@improbable-eng/grpc-web": "^0.13.0",
     "@injectivelabs/sdk-ts": "^1.10.58",
+    "@jup-ag/api": "^6.0.29",
+    "@orbs-network/ton-access": "^2.3.3",
     "@osmonauts/math": "^1.11.3",
     "@pancakeswap/sdk": "^4.0.0",
     "@pancakeswap/smart-router": "^4.2.1",
@@ -51,17 +54,22 @@
     "@pancakeswap/v3-periphery": "^1.0.2",
     "@pancakeswap/v3-sdk": "^3.7.0",
     "@pangolindex/sdk": "^1.1.0",
-    "@coral-xyz/anchor": "^0.29.0",
-    "@solana/web3.js": "^1.95.8",
     "@solana/spl-token": "0.4.8",
     "@solana/spl-token-registry": "^0.2.4574",
+    "@solana/web3.js": "^1.95.8",
     "@solflare-wallet/utl-sdk": "^1.4.0",
-    "@jup-ag/api": "^6.0.29",
+    "@ston-fi/api": "^0.14.0",
+    "@ston-fi/omniston-sdk": "^0.3.0",
+    "@ston-fi/sdk": "^2.1.0",
     "@sushiswap/sdk": "^5.0.0-canary.116",
     "@taquito/rpc": "^17.0.0",
     "@taquito/signer": "^17.0.0",
     "@taquito/taquito": "^17.0.0",
     "@tinymanorg/tinyman-js-sdk": "^3.0.0",
+    "@ton-api/client": "^0.3.0",
+    "@ton/core": "^0.59.0",
+    "@ton/crypto": "^3.3.0",
+    "@ton/ton": "^15.1.0",
     "@traderjoe-xyz/sdk-v2": "^2.0.5",
     "@types/fs-extra": "^9.0.13",
     "@types/lodash": "^4.14.178",
@@ -107,6 +115,7 @@
     "quickswap-sdk": "^3.0.8",
     "swagger-ui-express": "^4.1.6",
     "swap-router-sdk": "^1.21.1",
+    "tonweb": "^0.0.66",
     "tslib": "^2.3.1",
     "uuid": "^8.3.2",
     "vvs-sdk": "^2.4.0",
@@ -170,6 +179,7 @@
     "viem": "^0.3.x"
   },
   "resolutions": {
-    "web3-utils": "1.7.3"
+    "web3-utils": "1.7.3",
+    "@ston-fi/api/web3-utils": "1.8.2"
   }
 }

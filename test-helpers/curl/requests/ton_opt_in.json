@@ -1,0 +1,5 @@
+{
+  "network": "testnet",
+  "address": "$TON_ADDRESS",
+  "assetSymbol": "USD₮"
+}

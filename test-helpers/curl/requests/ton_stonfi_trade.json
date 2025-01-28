@@ -1,0 +1,10 @@
+{
+  "address": "$TON_ADDRESS",
+  "quote": "USD₮",
+  "base": "TON",
+  "amount": "1",
+  "side": "BUY",
+  "chain": "ton",
+  "network": "mainnet",
+  "connector": "ston_fi"
+}
