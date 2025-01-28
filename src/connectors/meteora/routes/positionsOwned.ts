@@ -10,7 +10,7 @@ import { PositionInfoSchema } from '../../../services/common-interfaces';
 const GetPositionsOwnedRequest = Type.Object({
   network: Type.Optional(Type.String({ default: 'mainnet-beta' })),
   poolAddress: Type.String({ default: 'FtFUzuXbbw6oBbU53SDUGspEka1D5Xyc4cwnkxer6xKz' }),
-  address: Type.String({ 
+  walletAddress: Type.String({ 
     description: 'Will use first available wallet if not specified',
     examples: [] // Will be populated during route registration
   }),
@@ -33,7 +33,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
   }
   
   // Update schema example
-  GetPositionsOwnedRequest.properties.address.examples = [firstWalletAddress];
+  GetPositionsOwnedRequest.properties.walletAddress.examples = [firstWalletAddress];
 
   fastify.get<{
     Querystring: GetPositionsOwnedRequestType;
@@ -52,19 +52,19 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { poolAddress, address } = request.query;
+        const { poolAddress, walletAddress } = request.query;
         const network = request.query.network || 'mainnet-beta';
         const meteora = await Meteora.getInstance(network);
         
         try {
-          new PublicKey(address);
+          new PublicKey(walletAddress);
         } catch (error) {
-          throw fastify.httpErrors.badRequest(`Invalid wallet address: ${address}`);
+          throw fastify.httpErrors.badRequest(`Invalid wallet address: ${walletAddress}`);
         }
 
-        const positions = await meteora.getPositions(
+        const positions = await meteora.getPositionsInPool(
           poolAddress,
-          new PublicKey(address)
+          new PublicKey(walletAddress)
         );
 
         return positions;

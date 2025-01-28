@@ -9,7 +9,7 @@ import { collectFees } from './collectFees';
 // Schema definitions
 const ClosePositionRequest = Type.Object({
   network: Type.Optional(Type.String({ default: 'mainnet-beta' })),
-  address: Type.String({ 
+  walletAddress: Type.String({ 
     description: 'Will use first available wallet if not specified',
     examples: [] // Will be populated during route registration
   }),
@@ -35,21 +35,8 @@ async function closePosition(
   const meteora = await Meteora.getInstance(network);
   const wallet = await solana.getWallet(address);
 
-  const { position, info } = await meteora.getRawPosition(
-    positionAddress,
-    wallet.publicKey
-  );
-
-  if (!position) {
-    throw fastify.httpErrors.notFound(`Position not found: ${positionAddress}`);
-  }
-
+  const { position, info } = await meteora.getRawPosition(positionAddress, wallet.publicKey);
   const dlmmPool = await meteora.getDlmmPool(info.publicKey.toBase58());
-  if (!dlmmPool) {
-    throw fastify.httpErrors.notFound(`Pool not found for position: ${positionAddress}`);
-  }
-
-  await dlmmPool.refetchStates();
 
   // Always attempt to remove liquidity and collect fees
   await removeLiquidity(fastify, network, address, positionAddress, 100);
@@ -85,7 +72,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
   }
   
   // Update schema example
-  ClosePositionRequest.properties.address.examples = [firstWalletAddress];
+  ClosePositionRequest.properties.walletAddress.examples = [firstWalletAddress];
 
   fastify.post<{
     Body: ClosePositionRequestType;
@@ -104,13 +91,13 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network, address, positionAddress } = request.body;
+        const { network, walletAddress, positionAddress } = request.body;
         const networkToUse = network || 'mainnet-beta';
         
         return await closePosition(
           fastify,
           networkToUse,
-          address,
+          walletAddress,
           positionAddress
         );
       } catch (e) {

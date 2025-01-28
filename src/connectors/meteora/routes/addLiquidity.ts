@@ -6,14 +6,13 @@ import { DecimalUtil } from '@orca-so/common-sdk';
 import { BN } from 'bn.js';
 import { Decimal } from 'decimal.js';
 import { StrategyType } from '@meteora-ag/dlmm';
-import { PositionInfo } from '../../../services/common-interfaces';
 import { logger } from '../../../services/logger';
 import { PublicKey } from '@solana/web3.js';
 
 // Schema definitions
 const AddLiquidityRequest = Type.Object({
   network: Type.Optional(Type.String({ default: 'mainnet-beta' })),
-  address: Type.String({ 
+  walletAddress: Type.String({ 
     description: 'Will use first available wallet if not specified',
     examples: [] // Will be populated during route registration
   }),
@@ -48,7 +47,7 @@ async function addLiquidity(
   const meteora = await Meteora.getInstance(network);
   const wallet = await solana.getWallet(address);
 
-  const position: PositionInfo = await meteora.getPosition(positionAddress, wallet.publicKey);
+  const position = await meteora.getPositionInfo(positionAddress, wallet.publicKey);
   const dlmmPool = await meteora.getDlmmPool(position.address);
   const maxBinId = position.upperBinId;
   const minBinId = position.lowerBinId;
@@ -107,7 +106,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   }
   
   // Update schema example
-  AddLiquidityRequest.properties.address.examples = [firstWalletAddress];
+  AddLiquidityRequest.properties.walletAddress.examples = [firstWalletAddress];
 
   fastify.post<{
     Body: AddLiquidityRequestType;
@@ -126,13 +125,13 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { address, positionAddress, baseTokenAmount, quoteTokenAmount, slippagePct, strategy } = request.body;
+        const { walletAddress, positionAddress, baseTokenAmount, quoteTokenAmount, slippagePct, strategy } = request.body;
         const network = request.body.network || 'mainnet-beta';
         
         return await addLiquidity(
           fastify,
           network,
-          address,
+          walletAddress,
           positionAddress,
           baseTokenAmount,
           quoteTokenAmount,

@@ -7,7 +7,7 @@ import { logger } from '../../../services/logger';
 // Schema definitions
 const CollectFeesRequest = Type.Object({
   network: Type.Optional(Type.String({ default: 'mainnet-beta' })),
-  address: Type.String({ 
+  walletAddress: Type.String({ 
     description: 'Will use first available wallet if not specified',
     examples: [] // Will be populated during route registration
   }),
@@ -89,7 +89,7 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
   }
   
   // Update schema example
-  CollectFeesRequest.properties.address.examples = [firstWalletAddress];
+  CollectFeesRequest.properties.walletAddress.examples = [firstWalletAddress];
 
   fastify.post<{
     Body: CollectFeesRequestType;
@@ -108,13 +108,13 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network, address, positionAddress } = request.body;
+        const { network, walletAddress, positionAddress } = request.body;
         const networkToUse = network || 'mainnet-beta';
         
         return await collectFees(
           fastify,
           networkToUse,
-          address,
+          walletAddress,
           positionAddress
         );
       } catch (e) {

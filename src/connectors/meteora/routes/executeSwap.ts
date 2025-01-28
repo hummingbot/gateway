@@ -9,7 +9,7 @@ import { logger } from '../../../services/logger';
 // Schema definitions
 const ExecuteSwapRequest = Type.Object({
   network: Type.Optional(Type.String({ default: 'mainnet-beta' })),
-  address: Type.String({ 
+  walletAddress: Type.String({ 
     description: 'Will use first available wallet if not specified',
     examples: [] // Will be populated during route registration
   }),
@@ -127,7 +127,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
   }
   
   // Update schema example
-  ExecuteSwapRequest.properties.address.examples = [firstWalletAddress];
+  ExecuteSwapRequest.properties.walletAddress.examples = [firstWalletAddress];
 
   fastify.post<{
     Body: ExecuteSwapRequestType;
@@ -146,13 +146,13 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { address, inputToken, outputToken, amount, poolAddress, slippagePct } = request.body;
+        const { walletAddress, inputToken, outputToken, amount, poolAddress, slippagePct } = request.body;
         const network = request.body.network || 'mainnet-beta';
         
         return await executeSwap(
           fastify,
           network,
-          address,
+          walletAddress,
           inputToken,
           outputToken,
           amount,

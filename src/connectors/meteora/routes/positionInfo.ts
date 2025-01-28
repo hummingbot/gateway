@@ -4,11 +4,12 @@ import { Meteora } from '../meteora';
 import { Solana } from '../../../chains/solana/solana';
 import { logger } from '../../../services/logger';
 import { PositionInfoSchema } from '../../../services/common-interfaces';
+import { PublicKey } from '@solana/web3.js';
 
 const PositionInfoRequest = Type.Object({
   network: Type.Optional(Type.String({ default: 'mainnet-beta' })),
   positionAddress: Type.String(),
-  address: Type.String({ 
+  walletAddress: Type.String({ 
     description: 'Wallet address that owns the position',
     examples: [] // Will be populated during route registration
   }),
@@ -31,7 +32,7 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
   }
   
   // Update schema example
-  PositionInfoRequest.properties.address.examples = [firstWalletAddress];
+  PositionInfoRequest.properties.walletAddress.examples = [firstWalletAddress];
 
   fastify.get<{
     Querystring: PositionInfoRequestType;
@@ -50,13 +51,21 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { positionAddress, address } = request.query;
+        const { positionAddress, walletAddress } = request.query;
         const network = request.query.network || 'mainnet-beta';
-
         const meteora = await Meteora.getInstance(network);
-        const solana = await Solana.getInstance(network);
-        const wallet = await solana.getWallet(address);
-        const position = await meteora.getPosition(positionAddress, wallet.publicKey);
+
+        try {
+          new PublicKey(walletAddress);
+        } catch (error) {
+          throw fastify.httpErrors.badRequest(`Invalid wallet address: ${walletAddress}`);
+        }
+
+        const position = await meteora.getPositionInfo(
+          positionAddress,
+          new PublicKey(walletAddress)
+        );
+
         return position;
       } catch (e) {
         if (e.statusCode) return e;

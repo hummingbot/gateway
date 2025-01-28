@@ -122,47 +122,45 @@ export class Meteora {
     }
   }
 
-  /** Gets position information */
-  async getPosition(positionAddress: string, wallet: PublicKey): Promise<PositionInfo> {
-    const { position, info } = await this.getRawPosition(positionAddress, wallet);
-    if (!position) {
-      throw new Error('Position not found');
+  /** Gets comprehensive pool information */
+  async getPoolInfo(poolAddress: string): Promise<PoolInfo | null> {
+    try {
+      const dlmmPool = await this.getDlmmPool(poolAddress);
+      if (!dlmmPool) {
+        logger.error(`Pool not found: ${poolAddress}`);
+        return null;
+      }
+      
+      const [reserveXBalance, reserveYBalance] = await Promise.all([
+        this.solana.connection.getTokenAccountBalance(dlmmPool.lbPair.reserveX),
+        this.solana.connection.getTokenAccountBalance(dlmmPool.lbPair.reserveY)
+      ]);
+      const feeInfo = await dlmmPool.getFeeInfo();
+      const activeBin = await dlmmPool.getActiveBin();
+
+      if (!activeBin || !activeBin.price || !activeBin.pricePerToken) {
+        logger.error(`Invalid active bin data for pool: ${poolAddress}`);
+        return null;
+      }
+
+      return {
+        address: poolAddress,
+        baseToken: dlmmPool.tokenX.publicKey.toBase58(),
+        quoteToken: dlmmPool.tokenY.publicKey.toBase58(),
+        binStep: dlmmPool.lbPair.binStep,
+        feePct: Number(feeInfo.baseFeeRatePercentage),
+        price: Number(activeBin.pricePerToken),
+        baseTokenAmount: reserveXBalance.value.uiAmount,
+        quoteTokenAmount: reserveYBalance.value.uiAmount,
+      };
+    } catch (error) {
+      logger.error(`Error getting pool info for ${poolAddress}:`, error);
+      return null;
     }
-
-    console.log(JSON.stringify(position, null, 2));
-
-    // Get the DLMM pool for the position
-    const dlmmPool = await this.getDlmmPool(info.publicKey.toBase58());
-
-    // Get prices from bin IDs
-    const lowerPrice = getPriceOfBinByBinId(position.positionData.lowerBinId, dlmmPool.lbPair.binStep);
-    const upperPrice = getPriceOfBinByBinId(position.positionData.upperBinId, dlmmPool.lbPair.binStep);
-
-    // Adjust for decimal difference (tokenX.decimal - tokenY.decimal)
-    const decimalDiff = dlmmPool.tokenX.decimal - dlmmPool.tokenY.decimal;
-    const adjustmentFactor = Math.pow(10, decimalDiff);
-
-    const adjustedLowerPrice = Number(lowerPrice) * adjustmentFactor;
-    const adjustedUpperPrice = Number(upperPrice) * adjustmentFactor;
-
-    return {
-      address: positionAddress,
-      poolAddress: info.publicKey.toString(),
-      baseToken: dlmmPool.tokenX.publicKey.toBase58(),
-      quoteToken: dlmmPool.tokenY.publicKey.toBase58(),
-      baseAmount: convertDecimals(position.positionData.totalXAmount, dlmmPool.tokenX.decimal),
-      quoteAmount: convertDecimals(position.positionData.totalYAmount, dlmmPool.tokenY.decimal),
-      baseFeeAmount: convertDecimals(position.positionData.feeX, dlmmPool.tokenX.decimal),
-      quoteFeeAmount: convertDecimals(position.positionData.feeY, dlmmPool.tokenY.decimal),
-      lowerBinId: position.positionData.lowerBinId,
-      upperBinId: position.positionData.upperBinId,
-      lowerPrice: adjustedLowerPrice,
-      upperPrice: adjustedUpperPrice,
-    };
   }
 
   /** Gets all positions for a pool */
-  async getPositions(poolAddress: string, wallet: PublicKey): Promise<PositionInfo[]> {
+  async getPositionsInPool(poolAddress: string, wallet: PublicKey): Promise<PositionInfo[]> {
     const dlmmPool = await this.getDlmmPool(poolAddress);
     if (!dlmmPool) {
       throw new Error(`Pool not found: ${poolAddress}`);
@@ -187,8 +185,8 @@ export class Meteora {
         poolAddress,
         baseToken: dlmmPool.tokenX.publicKey.toBase58(),
         quoteToken: dlmmPool.tokenY.publicKey.toBase58(),
-        baseAmount: convertDecimals(positionData.totalXAmount, dlmmPool.tokenX.decimal),
-        quoteAmount: convertDecimals(positionData.totalYAmount, dlmmPool.tokenY.decimal),
+        baseTokenAmount: convertDecimals(positionData.totalXAmount, dlmmPool.tokenX.decimal),
+        quoteTokenAmount: convertDecimals(positionData.totalYAmount, dlmmPool.tokenY.decimal),
         baseFeeAmount: convertDecimals(positionData.feeX, dlmmPool.tokenX.decimal),
         quoteFeeAmount: convertDecimals(positionData.feeY, dlmmPool.tokenY.decimal),
         lowerBinId: positionData.lowerBinId,
@@ -197,70 +195,6 @@ export class Meteora {
         upperPrice: adjustedUpperPrice,
       };
     });
-  }
-
-  /** Converts price range to bin IDs */
-  async getPriceToBinIds(
-    poolAddress: string,
-    lowerPrice: number,
-    upperPrice: number,
-    padBins: number = 1
-  ): Promise<{minBinId: number, maxBinId: number}> {
-    const dlmmPool = await this.getDlmmPool(poolAddress);
-    if (!dlmmPool) {
-      throw new Error(`Pool not found: ${poolAddress}`);
-    }
-    const lowerPricePerLamport = dlmmPool.toPricePerLamport(lowerPrice);
-    const upperPricePerLamport = dlmmPool.toPricePerLamport(upperPrice);
-
-    const minBinId = dlmmPool.getBinIdFromPrice(Number(lowerPricePerLamport), true) - padBins;
-    const maxBinId = dlmmPool.getBinIdFromPrice(Number(upperPricePerLamport), false) + padBins;
-
-    return { minBinId, maxBinId };
-  }
-
-  /** Gets comprehensive pool information */
-  async getPoolInfo(poolAddress: string): Promise<PoolInfo | null> {
-    try {
-      const dlmmPool = await this.getDlmmPool(poolAddress);
-      if (!dlmmPool) {
-        logger.warn(`Pool not found: ${poolAddress}`);
-        return null;
-      }
-      
-      // Get reserve amounts
-      const [reserveXBalance, reserveYBalance] = await Promise.all([
-        this.solana.connection.getTokenAccountBalance(dlmmPool.lbPair.reserveX),
-        this.solana.connection.getTokenAccountBalance(dlmmPool.lbPair.reserveY)
-      ]);
-
-      console.log(`Pool ${poolAddress} reserves:`, {
-        reserveX: reserveXBalance.value.uiAmount,
-        reserveY: reserveYBalance.value.uiAmount
-      });
-      
-      const feeInfo = await dlmmPool.getFeeInfo();
-      const activeBin = await dlmmPool.getActiveBin();
-
-      if (!activeBin || !activeBin.price || !activeBin.pricePerToken) {
-        logger.warn(`Invalid active bin data for pool: ${poolAddress}`);
-        return null;
-      }
-
-      return {
-        address: poolAddress,
-        baseToken: dlmmPool.tokenX.publicKey.toBase58(),
-        quoteToken: dlmmPool.tokenY.publicKey.toBase58(),
-        binStep: dlmmPool.lbPair.binStep,
-        feePct: Number(feeInfo.baseFeeRatePercentage),
-        price: Number(activeBin.pricePerToken),
-        baseAmount: reserveXBalance.value.uiAmount,
-        quoteAmount: reserveYBalance.value.uiAmount,
-      };
-    } catch (error) {
-      logger.error(`Error getting pool info for ${poolAddress}:`, error);
-      return null;
-    }
   }
 
   /** Gets raw position data without parsing */
@@ -284,6 +218,63 @@ export class Meteora {
     }
 
     return matchingPosition;
+  }
+  
+  /** Gets position information */
+  async getPositionInfo(positionAddress: string, wallet: PublicKey): Promise<PositionInfo> {
+    const { position, info } = await this.getRawPosition(positionAddress, wallet);
+    if (!position) {
+      throw new Error('Position not found');
+    }
+
+    // Get the DLMM pool for the position
+    const dlmmPool = await this.getDlmmPool(info.publicKey.toBase58());
+
+    // Get prices from bin IDs
+    const lowerPrice = getPriceOfBinByBinId(position.positionData.lowerBinId, dlmmPool.lbPair.binStep);
+    const upperPrice = getPriceOfBinByBinId(position.positionData.upperBinId, dlmmPool.lbPair.binStep);
+
+    // Adjust for decimal difference (tokenX.decimal - tokenY.decimal)
+    const decimalDiff = dlmmPool.tokenX.decimal - dlmmPool.tokenY.decimal;
+    const adjustmentFactor = Math.pow(10, decimalDiff);
+
+    const adjustedLowerPrice = Number(lowerPrice) * adjustmentFactor;
+    const adjustedUpperPrice = Number(upperPrice) * adjustmentFactor;
+
+    return {
+      address: positionAddress,
+      poolAddress: info.publicKey.toString(),
+      baseToken: dlmmPool.tokenX.publicKey.toBase58(),
+      quoteToken: dlmmPool.tokenY.publicKey.toBase58(),
+      baseTokenAmount: convertDecimals(position.positionData.totalXAmount, dlmmPool.tokenX.decimal),
+      quoteTokenAmount: convertDecimals(position.positionData.totalYAmount, dlmmPool.tokenY.decimal),
+      baseFeeAmount: convertDecimals(position.positionData.feeX, dlmmPool.tokenX.decimal),
+      quoteFeeAmount: convertDecimals(position.positionData.feeY, dlmmPool.tokenY.decimal),
+      lowerBinId: position.positionData.lowerBinId,
+      upperBinId: position.positionData.upperBinId,
+      lowerPrice: adjustedLowerPrice,
+      upperPrice: adjustedUpperPrice,
+    };
+  }
+
+  /** Converts price range to bin IDs */
+  async getPriceToBinIds(
+    poolAddress: string,
+    lowerPrice: number,
+    upperPrice: number,
+    padBins: number = 1
+  ): Promise<{minBinId: number, maxBinId: number}> {
+    const dlmmPool = await this.getDlmmPool(poolAddress);
+    if (!dlmmPool) {
+      throw new Error(`Pool not found: ${poolAddress}`);
+    }
+    const lowerPricePerLamport = dlmmPool.toPricePerLamport(lowerPrice);
+    const upperPricePerLamport = dlmmPool.toPricePerLamport(upperPrice);
+
+    const minBinId = dlmmPool.getBinIdFromPrice(Number(lowerPricePerLamport), true) - padBins;
+    const maxBinId = dlmmPool.getBinIdFromPrice(Number(upperPricePerLamport), false) + padBins;
+
+    return { minBinId, maxBinId };
   }
 
   /** Gets slippage percentage from config */

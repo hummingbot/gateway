@@ -8,7 +8,7 @@ import { logger } from '../../../services/logger';
 // Schema definitions
 const RemoveLiquidityRequest = Type.Object({
   network: Type.Optional(Type.String({ default: 'mainnet-beta' })),
-  address: Type.String({ 
+  walletAddress: Type.String({ 
     description: 'Will use first available wallet if not specified',
     examples: [] // Will be populated during route registration
   }),
@@ -37,21 +37,8 @@ export async function removeLiquidity(
   const meteora = await Meteora.getInstance(network);
   const wallet = await solana.getWallet(address);
 
-  const { position } = await meteora.getRawPosition(
-    positionAddress,
-    wallet.publicKey
-  );
-
-  if (!position) {
-    throw fastify.httpErrors.notFound(`Position not found: ${positionAddress}`);
-  }
-
-  const dlmmPool = await meteora.getDlmmPool(position.publicKey.toBase58());
-  if (!dlmmPool) {
-    throw fastify.httpErrors.notFound(`Pool not found for position: ${positionAddress}`);
-  }
-
-  await dlmmPool.refetchStates();
+  const { position, info } = await meteora.getRawPosition(positionAddress, wallet.publicKey);
+  const dlmmPool = await meteora.getDlmmPool(info.publicKey.toBase58());
 
   const binIdsToRemove = position.positionData.positionBinData.map((bin) => bin.binId);
   const bps = new BN(percentageToRemove * 100);
@@ -101,7 +88,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   }
   
   // Update schema example
-  RemoveLiquidityRequest.properties.address.examples = [firstWalletAddress];
+  RemoveLiquidityRequest.properties.walletAddress.examples = [firstWalletAddress];
 
   fastify.post<{
     Body: RemoveLiquidityRequestType;
@@ -120,14 +107,14 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network, address, positionAddress, percentageToRemove } = request.body;
+        const { network, walletAddress, positionAddress, percentageToRemove } = request.body;
         
         const networkToUse = network || 'mainnet-beta';
         
         return await removeLiquidity(
           fastify,
           networkToUse,
-          address,
+          walletAddress,
           positionAddress,
           percentageToRemove
         );

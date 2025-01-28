@@ -12,7 +12,7 @@ import { StrategyType } from '@meteora-ag/dlmm';
 // Schema definitions
 const OpenPositionRequest = Type.Object({
   network: Type.Optional(Type.String({ default: 'mainnet-beta' })),
-  address: Type.String({ 
+  walletAddress: Type.String({ 
     description: 'Will use first available wallet if not specified',
     examples: [] // Will be populated during route registration
   }),
@@ -125,7 +125,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
   }
   
   // Update schema example
-  OpenPositionRequest.properties.address.examples = [firstWalletAddress];
+  OpenPositionRequest.properties.walletAddress.examples = [firstWalletAddress];
 
   fastify.post<{
     Body: OpenPositionRequestType;
@@ -146,7 +146,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
       try {
         const { 
           network, 
-          address, 
+          walletAddress, 
           lowerPrice, 
           upperPrice, 
           poolAddress,
@@ -159,7 +159,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         return await openPosition(
           fastify,
           networkToUse,
-          address,
+          walletAddress,
           lowerPrice,
           upperPrice,
           poolAddress,
