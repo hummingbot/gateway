@@ -35,7 +35,7 @@ async function closePosition(
   const meteora = await Meteora.getInstance(network);
   const wallet = await solana.getWallet(address);
 
-  const position = await meteora.getRawPosition(
+  const { position, info } = await meteora.getRawPosition(
     positionAddress,
     wallet.publicKey
   );
@@ -44,7 +44,7 @@ async function closePosition(
     throw fastify.httpErrors.notFound(`Position not found: ${positionAddress}`);
   }
 
-  const dlmmPool = await meteora.getDlmmPool(position.publicKey.toBase58());
+  const dlmmPool = await meteora.getDlmmPool(info.publicKey.toBase58());
   if (!dlmmPool) {
     throw fastify.httpErrors.notFound(`Pool not found for position: ${positionAddress}`);
   }

@@ -124,19 +124,19 @@ export class Meteora {
 
   /** Gets position information */
   async getPosition(positionAddress: string, wallet: PublicKey): Promise<PositionInfo> {
-    const matchingPosition: any = await this.getRawPosition(positionAddress, wallet);
-    if (!matchingPosition) {
+    const { position, info } = await this.getRawPosition(positionAddress, wallet);
+    if (!position) {
       throw new Error('Position not found');
     }
 
-    console.log(JSON.stringify(matchingPosition, null, 2));
+    console.log(JSON.stringify(position, null, 2));
 
     // Get the DLMM pool for the position
-    const dlmmPool = await this.getDlmmPool(matchingPosition.info.publicKey.toBase58());
+    const dlmmPool = await this.getDlmmPool(info.publicKey.toBase58());
 
     // Get prices from bin IDs
-    const lowerPrice = getPriceOfBinByBinId(dlmmPool.lbPair.binStep, matchingPosition.positionData.lowerBinId);
-    const upperPrice = getPriceOfBinByBinId(dlmmPool.lbPair.binStep, matchingPosition.positionData.upperBinId);
+    const lowerPrice = getPriceOfBinByBinId(dlmmPool.lbPair.binStep, position.positionData.lowerBinId);
+    const upperPrice = getPriceOfBinByBinId(dlmmPool.lbPair.binStep, position.positionData.upperBinId);
 
     // Adjust for decimal difference (tokenX.decimal - tokenY.decimal)
     const decimalDiff = dlmmPool.tokenX.decimal - dlmmPool.tokenY.decimal;
@@ -147,15 +147,15 @@ export class Meteora {
 
     return {
       address: positionAddress,
-      poolAddress: matchingPosition.info.publicKey.toString(),
+      poolAddress: info.publicKey.toString(),
       baseToken: dlmmPool.tokenX.publicKey.toBase58(),
       quoteToken: dlmmPool.tokenY.publicKey.toBase58(),
-      baseAmount: convertDecimals(matchingPosition.positionData.totalXAmount, dlmmPool.tokenX.decimal),
-      quoteAmount: convertDecimals(matchingPosition.positionData.totalYAmount, dlmmPool.tokenY.decimal),
-      baseFeeAmount: convertDecimals(matchingPosition.positionData.feeX, dlmmPool.tokenX.decimal),
-      quoteFeeAmount: convertDecimals(matchingPosition.positionData.feeY, dlmmPool.tokenY.decimal),
-      lowerBinId: matchingPosition.positionData.lowerBinId,
-      upperBinId: matchingPosition.positionData.upperBinId,
+      baseAmount: convertDecimals(position.positionData.totalXAmount, dlmmPool.tokenX.decimal),
+      quoteAmount: convertDecimals(position.positionData.totalYAmount, dlmmPool.tokenY.decimal),
+      baseFeeAmount: convertDecimals(position.positionData.feeX, dlmmPool.tokenX.decimal),
+      quoteFeeAmount: convertDecimals(position.positionData.feeY, dlmmPool.tokenY.decimal),
+      lowerBinId: position.positionData.lowerBinId,
+      upperBinId: position.positionData.upperBinId,
       lowerPrice: adjustedLowerPrice,
       upperPrice: adjustedUpperPrice,
     };
@@ -283,7 +283,7 @@ export class Meteora {
       return null;
     }
 
-    return matchingPosition.position;
+    return matchingPosition;
   }
 
   /** Gets slippage percentage from config */

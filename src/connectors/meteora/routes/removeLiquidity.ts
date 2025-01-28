@@ -37,7 +37,7 @@ export async function removeLiquidity(
   const meteora = await Meteora.getInstance(network);
   const wallet = await solana.getWallet(address);
 
-  const position = await meteora.getRawPosition(
+  const { position } = await meteora.getRawPosition(
     positionAddress,
     wallet.publicKey
   );
