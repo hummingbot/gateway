@@ -18,8 +18,8 @@ const ClosePositionRequest = Type.Object({
 
 const ClosePositionResponse = Type.Object({
   signature: Type.String(),
-  returnedSOL: Type.Number(),
-  fee: Type.Number(),
+  positionRentRefunded: Type.Number(),
+  transactionFee: Type.Number(),
 });
 
 type ClosePositionRequestType = Static<typeof ClosePositionRequest>;
@@ -35,14 +35,21 @@ async function closePosition(
   const meteora = await Meteora.getInstance(network);
   const wallet = await solana.getWallet(address);
 
-  const { position, info } = await meteora.getRawPosition(positionAddress, wallet.publicKey);
-  const dlmmPool = await meteora.getDlmmPool(info.publicKey.toBase58());
+  const positionInfo = await meteora.getPositionInfo(positionAddress, wallet.publicKey);
+  const dlmmPool = await meteora.getDlmmPool(positionInfo.poolAddress);
 
-  // Always attempt to remove liquidity and collect fees
-  await removeLiquidity(fastify, network, address, positionAddress, 100);
-  await collectFees(fastify, network, address, positionAddress);
+  // Remove liquidity if baseTokenAmount or quoteTokenAmount is greater than 0
+  if (positionInfo.baseTokenAmount > 0 || positionInfo.quoteTokenAmount > 0) {
+    await removeLiquidity(fastify, network, address, positionAddress, 100);
+  }
+
+  // Remove liquidity if baseTokenFees or quoteTokenFees is greater than 0
+  if (positionInfo.baseFeeAmount > 0 || positionInfo.quoteFeeAmount > 0) {
+    await collectFees(fastify, network, address, positionAddress);
+  }
 
   // Now close the position
+  const { position } = await meteora.getRawPosition(positionAddress, wallet.publicKey);
   const closePositionTx = await dlmmPool.closePosition({
     owner: wallet.publicKey,
     position: position,
@@ -55,8 +62,8 @@ async function closePosition(
 
   return {
     signature,
-    returnedSOL,
-    fee,
+    positionRentRefunded: returnedSOL,
+    transactionFee: fee,
   };
 }
 

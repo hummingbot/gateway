@@ -42,7 +42,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
     '/positions-owned',
     {
       schema: {
-        description: "Retrieve a list of Meteora positions owned by the user's wallet",
+        description: "Retrieve a list of positions owned by a user's wallet in a specific Meteora pool",
         tags: ['meteora'],
         querystring: GetPositionsOwnedRequest,
         response: {

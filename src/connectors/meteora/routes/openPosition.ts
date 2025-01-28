@@ -19,16 +19,22 @@ const OpenPositionRequest = Type.Object({
   lowerPrice: Type.Number({ default: 0.05 }),
   upperPrice: Type.Number({ default: 0.15 }),
   poolAddress: Type.String({ default: 'FtFUzuXbbw6oBbU53SDUGspEka1D5Xyc4cwnkxer6xKz' }),
-  baseTokenAmount: Type.Number({ default: 10 }),
-  quoteTokenAmount: Type.Number({ default: 1 }),
+  baseTokenAmount: Type.Optional(Type.Number()),
+  quoteTokenAmount: Type.Optional(Type.Number()),
   slippagePct: Type.Optional(Type.Number({ default: 1 })),
+  strategyType: Type.Optional(Type.Number({ 
+    default: StrategyType.SpotBalanced,
+    enum: Object.values(StrategyType).filter(x => typeof x === 'number')
+  })),
 });
 
 const OpenPositionResponse = Type.Object({
   signature: Type.String(),
   positionAddress: Type.String(),
-  sentSOL: Type.Number(),
-  fee: Type.Number(),
+  positionRent: Type.Number(),
+  transactionFee: Type.Number(),
+  baseTokenBalanceChange: Type.Number(),
+  quoteTokenBalanceChange: Type.Number(),
 });
 
 type OpenPositionRequestType = Static<typeof OpenPositionRequest>;
@@ -41,9 +47,10 @@ async function openPosition(
   lowerPrice: number,
   upperPrice: number,
   poolAddress: string,
-  baseTokenAmount: number,
-  quoteTokenAmount: number,
-  slippagePct?: number
+  baseTokenAmount: number | undefined,
+  quoteTokenAmount: number | undefined,
+  slippagePct?: number,
+  strategyType: number = 3
 ): Promise<OpenPositionResponseType> {
   const solana = await Solana.getInstance(network);
   const meteora = await Meteora.getInstance(network);
@@ -55,11 +62,14 @@ async function openPosition(
     throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
   }
 
-  await dlmmPool.refetchStates();
+  // Validate that at least one token amount is provided
+  if ((baseTokenAmount === undefined || baseTokenAmount === 0) && 
+      (quoteTokenAmount === undefined || quoteTokenAmount === 0)) {
+    throw fastify.httpErrors.badRequest('Must provide either baseTokenAmount or quoteTokenAmount');
+  }
 
   const lowerPricePerLamport = dlmmPool.toPricePerLamport(lowerPrice);
   const upperPricePerLamport = dlmmPool.toPricePerLamport(upperPrice);
-
   const minBinId = dlmmPool.getBinIdFromPrice(Number(lowerPricePerLamport), true) - 1;
   const maxBinId = dlmmPool.getBinIdFromPrice(Number(upperPricePerLamport), false) + 1;
 
@@ -78,10 +88,10 @@ async function openPosition(
   }
 
   const totalXAmount = new BN(
-    DecimalUtil.toBN(new Decimal(baseTokenAmount), dlmmPool.tokenX.decimal)
+    DecimalUtil.toBN(new Decimal(baseTokenAmount || 0), dlmmPool.tokenX.decimal)
   );
   const totalYAmount = new BN(
-    DecimalUtil.toBN(new Decimal(quoteTokenAmount), dlmmPool.tokenY.decimal)
+    DecimalUtil.toBN(new Decimal(quoteTokenAmount || 0), dlmmPool.tokenY.decimal)
   );
 
   const createPositionTx = await dlmmPool.initializePositionAndAddLiquidityByStrategy({
@@ -90,7 +100,7 @@ async function openPosition(
     strategy: {
       maxBinId,
       minBinId,
-      strategyType: StrategyType.SpotImBalanced,
+      strategyType,
     },
     totalXAmount,
     totalYAmount,
@@ -105,11 +115,26 @@ async function openPosition(
   const { balanceChange, fee } = await solana.extractAccountBalanceChangeAndFee(signature, 0);
   const sentSOL = Math.abs(balanceChange - fee);
 
+  // Get token balance changes
+  const { balanceChange: baseTokenBalanceChange } = await solana.extractTokenBalanceChangeAndFee(
+    signature,
+    dlmmPool.tokenX.publicKey.toBase58(),
+    dlmmPool.pubkey.toBase58()
+  );
+
+  const { balanceChange: quoteTokenBalanceChange } = await solana.extractTokenBalanceChangeAndFee(
+    signature,
+    dlmmPool.tokenY.publicKey.toBase58(),
+    dlmmPool.pubkey.toBase58()
+  );
+
   return {
     signature,
     positionAddress: newImbalancePosition.publicKey.toBase58(),
-    sentSOL,
-    fee,
+    positionRent: sentSOL,
+    transactionFee: fee,
+    baseTokenBalanceChange: Math.abs(baseTokenBalanceChange),
+    quoteTokenBalanceChange: Math.abs(quoteTokenBalanceChange),
   };
 }
 
@@ -152,7 +177,8 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           poolAddress,
           baseTokenAmount,
           quoteTokenAmount,
-          slippagePct 
+          slippagePct,
+          strategyType 
         } = request.body;
         const networkToUse = network || 'mainnet-beta';
         
@@ -165,7 +191,8 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           poolAddress,
           baseTokenAmount,
           quoteTokenAmount,
-          slippagePct
+          slippagePct,
+          strategyType
         );
       } catch (e) {
         if (e.statusCode) return e;
