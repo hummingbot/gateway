@@ -5,7 +5,7 @@ import { fetchPoolsRoute } from './routes/fetchPools';
 import { poolInfoRoute } from './routes/poolInfo';
 import { positionsOwnedRoute } from './routes/positionsOwned';
 import { quoteSwapRoute } from './routes/quoteSwap';
-import { quoteFeesRoute } from './routes/quoteFees';
+import { positionInfoRoute } from './routes/positionInfo';
 import { executeSwapRoute } from './routes/executeSwap';
 import { openPositionRoute } from './routes/openPosition';
 import { addLiquidityRoute } from './routes/addLiquidity';
@@ -19,8 +19,8 @@ export const meteoraRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(fetchPoolsRoute);
   await fastify.register(poolInfoRoute);
   await fastify.register(positionsOwnedRoute);
+  await fastify.register(positionInfoRoute);
   await fastify.register(quoteSwapRoute);
-  await fastify.register(quoteFeesRoute);
   await fastify.register(executeSwapRoute);
   await fastify.register(openPositionRoute);
   await fastify.register(addLiquidityRoute);

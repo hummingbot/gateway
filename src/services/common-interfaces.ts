@@ -247,3 +247,20 @@ export const PoolInfoSchema = Type.Object({
 }, { $id: 'PoolInfo' });
 
 export type PoolInfo = Static<typeof PoolInfoSchema>;
+
+export const PositionInfoSchema = Type.Object({
+  address: Type.String(),
+  poolAddress: Type.String(),
+  baseToken: Type.String(),
+  quoteToken: Type.String(),
+  baseAmount: Type.String(),
+  quoteAmount: Type.String(),
+  baseFeeAmount: Type.String(),
+  quoteFeeAmount: Type.String(),
+  lowerBinId: Type.Number(),
+  upperBinId: Type.Number(),
+  lowerPrice: Type.Number(),
+  upperPrice: Type.Number(),
+}, { $id: 'PositionInfo' });
+
+export type PositionInfo = Static<typeof PositionInfoSchema>;

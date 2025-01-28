@@ -37,27 +37,27 @@ export async function removeLiquidity(
   const meteora = await Meteora.getInstance(network);
   const wallet = await solana.getWallet(address);
 
-  const { position: matchingLbPosition, info: matchingPositionInfo } = await meteora.getPosition(
+  const position = await meteora.getRawPosition(
     positionAddress,
     wallet.publicKey
   );
 
-  if (!matchingLbPosition || !matchingPositionInfo) {
+  if (!position) {
     throw fastify.httpErrors.notFound(`Position not found: ${positionAddress}`);
   }
 
-  const dlmmPool = await meteora.getDlmmPool(matchingPositionInfo.publicKey.toBase58());
+  const dlmmPool = await meteora.getDlmmPool(position.publicKey.toBase58());
   if (!dlmmPool) {
     throw fastify.httpErrors.notFound(`Pool not found for position: ${positionAddress}`);
   }
 
   await dlmmPool.refetchStates();
 
-  const binIdsToRemove = matchingLbPosition.positionData.positionBinData.map((bin) => bin.binId);
+  const binIdsToRemove = position.positionData.positionBinData.map((bin) => bin.binId);
   const bps = new BN(percentageToRemove * 100);
 
   const removeLiquidityTx = await dlmmPool.removeLiquidity({
-    position: matchingLbPosition.publicKey,
+    position: position.publicKey,
     user: wallet.publicKey,
     binIds: binIdsToRemove,
     bps: bps,

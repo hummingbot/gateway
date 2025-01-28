@@ -34,16 +34,16 @@ export async function collectFees(
   const meteora = await Meteora.getInstance(network);
   const wallet = await solana.getWallet(address);
 
-  const { position: matchingLbPosition, info: matchingPositionInfo } = await meteora.getPosition(
+  const position = await meteora.getRawPosition(
     positionAddress,
     wallet.publicKey
   );
 
-  if (!matchingLbPosition || !matchingPositionInfo) {
+  if (!position) {
     throw fastify.httpErrors.notFound(`Position not found: ${positionAddress}`);
   }
 
-  const dlmmPool = await meteora.getDlmmPool(matchingPositionInfo.publicKey.toBase58());
+  const dlmmPool = await meteora.getDlmmPool(position.publicKey.toBase58());
   if (!dlmmPool) {
     throw fastify.httpErrors.notFound(`Pool not found for position: ${positionAddress}`);
   }
@@ -52,7 +52,7 @@ export async function collectFees(
 
   const claimSwapFeeTx = await dlmmPool.claimSwapFee({
     owner: wallet.publicKey,
-    position: matchingLbPosition,
+    position: position,
   });
 
   const signature = await solana.sendAndConfirmTransaction(claimSwapFeeTx, [wallet], 300_000);

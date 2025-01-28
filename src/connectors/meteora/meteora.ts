@@ -1,12 +1,12 @@
 import { Solana } from '../../chains/solana/solana';
 import { PublicKey } from '@solana/web3.js';
-import DLMM from '@meteora-ag/dlmm';
+import DLMM, { getPriceOfBinByBinId } from '@meteora-ag/dlmm';
 import { MeteoraConfig } from './meteora.config';
 import { logger } from '../../services/logger';
 import { convertDecimals } from '../../services/base';
-import { percentRegexp } from '../../services/config-manager-v2';
-import { PoolInfo } from '../../services/common-interfaces';
+import { PoolInfo, PositionInfo } from '../../services/common-interfaces';
 import { LbPair } from '@meteora-ag/dlmm';
+import { percentRegexp } from '../../services/config-manager-v2';
 
 export class Meteora {
   private static _instances: { [name: string]: Meteora };
@@ -96,18 +96,18 @@ export class Meteora {
         account: LbPair 
       }[];
       
-      // Only apply token filtering if tokens are provided
+      // Filter by tokens if provided
       if (tokenMintA && tokenMintB) {
         lbPairs = lbPairs.filter(pair => {
-          const tokenXMint = pair.account.tokenXMint.toBase58();
-          const tokenYMint = pair.account.tokenYMint.toBase58();
+          const tokenXMint = (pair.account.parameters as any).tokenX;
+          const tokenYMint = (pair.account.parameters as any).tokenY;
           return (tokenXMint === tokenMintA && tokenYMint === tokenMintB) ||
-                (tokenXMint === tokenMintB && tokenYMint === tokenMintA);
+                 (tokenXMint === tokenMintB && tokenYMint === tokenMintA);
         });
       } else if (tokenMintA) {
         lbPairs = lbPairs.filter(pair => {
-          const tokenXMint = pair.account.tokenXMint.toBase58();
-          const tokenYMint = pair.account.tokenYMint.toBase58();
+          const tokenXMint = (pair.account.parameters as any).tokenX;
+          const tokenYMint = (pair.account.parameters as any).tokenY;
           return tokenXMint === tokenMintA || tokenYMint === tokenMintA;
         });
       }
@@ -123,12 +123,11 @@ export class Meteora {
   }
 
   /** Gets position information */
-  async getPosition(positionAddress: string, wallet: PublicKey): Promise<any> {
-    const allPositions = await DLMM.getAllLbPairPositionsByUser(
-      this.solana.connection,
-      wallet
-    );
-
+  async getPosition(positionAddress: string): Promise<PositionInfo> {
+    // First get all positions and find the one we want
+    const positionPubKey = new PublicKey(positionAddress);
+    const allPositions = await DLMM.getAllLbPairPositionsByUser(this.solana.connection, positionPubKey);
+    
     const [matchingPosition] = Array.from(allPositions.values())
       .map(position => ({
         position: position.lbPairPositionsData.find(
@@ -142,63 +141,78 @@ export class Meteora {
       throw new Error('Position not found');
     }
 
-    return matchingPosition;
-  }
+    console.log('Position:', JSON.stringify(matchingPosition, null, 2));
 
-  /** Gets fees quote for a position */
-  async getFeesQuote(positionAddress: string, wallet: PublicKey): Promise<any> {
-    const matchingPosition = await this.getPosition(positionAddress, wallet);
+    // Get the DLMM pool for the position
+    const dlmmPool = await this.getDlmmPool(matchingPosition.info.lbPair.toString());
 
-    const dlmmPool = await this.getDlmmPool(matchingPosition.info.publicKey.toBase58());
-    await dlmmPool.refetchStates();
+    // Get prices from bin IDs and convert to price per token
+    const lowerPricePerLamport = getPriceOfBinByBinId(dlmmPool.lbPair.binStep, matchingPosition.position.positionData.lowerBinId);
+    const upperPricePerLamport = getPriceOfBinByBinId(dlmmPool.lbPair.binStep, matchingPosition.position.positionData.upperBinId);
 
-    const positionsState = await dlmmPool.getPositionsByUserAndLbPair(wallet);
-    const updatedPosition = positionsState.userPositions.find(
-      position => position.publicKey.equals(matchingPosition.position.publicKey)
-    );
+    // Convert to price per token using the same conversion as DLMM SDK
+    const lowerPrice = dlmmPool.fromPricePerLamport(Number(lowerPricePerLamport));
+    const upperPrice = dlmmPool.fromPricePerLamport(Number(upperPricePerLamport));
 
-    if (!updatedPosition) {
-      logger.error('Updated position not found');
-      throw new Error('Updated position not found');
-    }
+    // Adjust for decimal difference (tokenX.decimal - tokenY.decimal)
+    const decimalDiff = dlmmPool.tokenX.decimal - dlmmPool.tokenY.decimal;
+    const adjustmentFactor = Math.pow(10, decimalDiff);
+
+    const adjustedLowerPrice = Number(lowerPrice) * adjustmentFactor;
+    const adjustedUpperPrice = Number(upperPrice) * adjustmentFactor;
 
     return {
-      tokenX: {
-        address: matchingPosition.info.tokenX.publicKey.toBase58(),
-        amount: convertDecimals(updatedPosition.positionData.feeX, matchingPosition.info.tokenX.decimal)
-      },
-      tokenY: {
-        address: matchingPosition.info.tokenY.publicKey.toBase58(),
-        amount: convertDecimals(updatedPosition.positionData.feeY, matchingPosition.info.tokenY.decimal)
-      }
+      address: positionAddress,
+      poolAddress: matchingPosition.info.lbPair.toString(),
+      baseToken: dlmmPool.tokenX.publicKey.toBase58(),
+      quoteToken: dlmmPool.tokenY.publicKey.toBase58(),
+      baseAmount: convertDecimals(matchingPosition.position.positionData.totalXAmount, dlmmPool.tokenX.decimal),
+      quoteAmount: convertDecimals(matchingPosition.position.positionData.totalYAmount, dlmmPool.tokenY.decimal),
+      baseFeeAmount: convertDecimals(matchingPosition.position.positionData.feeX, dlmmPool.tokenX.decimal),
+      quoteFeeAmount: convertDecimals(matchingPosition.position.positionData.feeY, dlmmPool.tokenY.decimal),
+      lowerBinId: matchingPosition.position.positionData.lowerBinId,
+      upperBinId: matchingPosition.position.positionData.upperBinId,
+      lowerPrice: adjustedLowerPrice,
+      upperPrice: adjustedUpperPrice,
     };
   }
 
-  /** Gets slippage percentage from config */
-  getSlippagePct(): number {
-    const allowedSlippage = this.config.allowedSlippage;
-    const nd = allowedSlippage.match(percentRegexp);
-    let slippage = 0.0;
-    if (nd) {
-        slippage = Number(nd[1]) / Number(nd[2]);
-    } else {
-        logger.error('Failed to parse slippage value:', allowedSlippage);
-    }
-    return slippage * 100;
-  }
-
   /** Gets all positions for a pool */
-  async getPositionsForPool(poolAddress: string, wallet: PublicKey): Promise<any[]> {
+  async getPositions(poolAddress: string, wallet: PublicKey): Promise<PositionInfo[]> {
     const dlmmPool = await this.getDlmmPool(poolAddress);
     if (!dlmmPool) {
       throw new Error(`Pool not found: ${poolAddress}`);
     }
 
-    const { userPositions } = await dlmmPool.getPositionsByUserAndLbPair(
-      wallet
-    );
+    const { userPositions } = await dlmmPool.getPositionsByUserAndLbPair(wallet);
 
-    return userPositions;
+    return userPositions.map(({ publicKey, positionData }) => {
+      // Get prices from bin IDs
+      const lowerPrice = getPriceOfBinByBinId(dlmmPool.lbPair.binStep, positionData.lowerBinId);
+      const upperPrice = getPriceOfBinByBinId(dlmmPool.lbPair.binStep, positionData.upperBinId);
+
+      // Adjust for decimal difference (tokenX.decimal - tokenY.decimal)
+      const decimalDiff = dlmmPool.tokenX.decimal - dlmmPool.tokenY.decimal; // 9 - 6 = 3
+      const adjustmentFactor = Math.pow(10, decimalDiff);
+
+      const adjustedLowerPrice = Number(lowerPrice) * adjustmentFactor;
+      const adjustedUpperPrice = Number(upperPrice) * adjustmentFactor;
+
+      return {
+        address: publicKey.toString(),
+        poolAddress,
+        baseToken: dlmmPool.tokenX.publicKey.toBase58(),
+        quoteToken: dlmmPool.tokenY.publicKey.toBase58(),
+        baseAmount: convertDecimals(positionData.totalXAmount, dlmmPool.tokenX.decimal),
+        quoteAmount: convertDecimals(positionData.totalYAmount, dlmmPool.tokenY.decimal),
+        baseFeeAmount: convertDecimals(positionData.feeX, dlmmPool.tokenX.decimal),
+        quoteFeeAmount: convertDecimals(positionData.feeY, dlmmPool.tokenY.decimal),
+        lowerBinId: positionData.lowerBinId,
+        upperBinId: positionData.upperBinId,
+        lowerPrice: adjustedLowerPrice,
+        upperPrice: adjustedUpperPrice,
+      };
+    });
   }
 
   /** Converts price range to bin IDs */
@@ -263,5 +277,41 @@ export class Meteora {
       logger.error(`Error getting pool info for ${poolAddress}:`, error);
       return null;
     }
+  }
+
+  /** Gets raw position data without parsing */
+  async getRawPosition(positionAddress: string, wallet: PublicKey) {
+    const allPositions = await DLMM.getAllLbPairPositionsByUser(
+      this.solana.connection,
+      wallet
+    );
+
+    const [matchingPosition] = Array.from(allPositions.values())
+      .map(position => ({
+        position: position.lbPairPositionsData.find(
+          lbPosition => lbPosition.publicKey.toBase58() === positionAddress
+        ),
+        info: position
+      }))
+      .filter(x => x.position);
+
+    if (!matchingPosition) {
+      return null;
+    }
+
+    return matchingPosition.position;
+  }
+
+  /** Gets slippage percentage from config */
+  getSlippagePct(): number {
+    const allowedSlippage = this.config.allowedSlippage;
+    const nd = allowedSlippage.match(percentRegexp);
+    let slippage = 0.0;
+    if (nd) {
+      slippage = Number(nd[1]) / Number(nd[2]);
+    } else {
+      logger.error('Failed to parse slippage value:', allowedSlippage);
+    }
+    return slippage * 100;
   }
 }

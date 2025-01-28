@@ -6,7 +6,9 @@ import { DecimalUtil } from '@orca-so/common-sdk';
 import { BN } from 'bn.js';
 import { Decimal } from 'decimal.js';
 import { StrategyType } from '@meteora-ag/dlmm';
+import { PositionInfo } from '../../../services/common-interfaces';
 import { logger } from '../../../services/logger';
+import { PublicKey } from '@solana/web3.js';
 
 // Schema definitions
 const AddLiquidityRequest = Type.Object({
@@ -33,7 +35,7 @@ type AddLiquidityRequestType = Static<typeof AddLiquidityRequest>;
 type AddLiquidityResponseType = Static<typeof AddLiquidityResponse>;
 
 async function addLiquidity(
-  fastify: FastifyInstance,
+  _fastify: FastifyInstance,
   network: string,
   address: string,
   positionAddress: string,
@@ -46,37 +48,20 @@ async function addLiquidity(
   const meteora = await Meteora.getInstance(network);
   const wallet = await solana.getWallet(address);
 
-  // Find the matching position info
-  const { position: matchingLbPosition, info: matchingPositionInfo } = await meteora.getPosition(
-    positionAddress,
-    wallet.publicKey
-  );
-
-  if (!matchingLbPosition || !matchingPositionInfo) {
-    throw fastify.httpErrors.notFound(`Position not found: ${positionAddress}`);
-  }
-
-  // Get requirement data
-  const maxBinId = matchingLbPosition.positionData.upperBinId;
-  const minBinId = matchingLbPosition.positionData.lowerBinId;
+  const position: PositionInfo = await meteora.getPosition(positionAddress);
+  const dlmmPool = await meteora.getDlmmPool(position.address);
+  const maxBinId = position.upperBinId;
+  const minBinId = position.lowerBinId;
 
   const totalXAmount = new BN(
-    DecimalUtil.toBN(new Decimal(baseTokenAmount), matchingPositionInfo.tokenX.decimal)
+    DecimalUtil.toBN(new Decimal(baseTokenAmount), dlmmPool.tokenX.decimal)
   );
   const totalYAmount = new BN(
-    DecimalUtil.toBN(new Decimal(quoteTokenAmount), matchingPositionInfo.tokenY.decimal)
+    DecimalUtil.toBN(new Decimal(quoteTokenAmount), dlmmPool.tokenY.decimal)
   );
 
-  // Initialize DLMM pool
-  const dlmmPool = await meteora.getDlmmPool(matchingPositionInfo.publicKey.toBase58());
-  if (!dlmmPool) {
-    throw fastify.httpErrors.notFound(`Pool not found for position: ${positionAddress}`);
-  }
-
-  await dlmmPool.refetchStates();
-
   const addLiquidityTx = await dlmmPool.addLiquidityByStrategy({
-    positionPubKey: matchingLbPosition.publicKey,
+    positionPubKey: new PublicKey(position.address),
     user: wallet.publicKey,
     totalXAmount,
     totalYAmount,
