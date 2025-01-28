@@ -123,36 +123,20 @@ export class Meteora {
   }
 
   /** Gets position information */
-  async getPosition(positionAddress: string): Promise<PositionInfo> {
-    // First get all positions and find the one we want
-    const positionPubKey = new PublicKey(positionAddress);
-    const allPositions = await DLMM.getAllLbPairPositionsByUser(this.solana.connection, positionPubKey);
-    
-    const [matchingPosition] = Array.from(allPositions.values())
-      .map(position => ({
-        position: position.lbPairPositionsData.find(
-          lbPosition => lbPosition.publicKey.toBase58() === positionAddress
-        ),
-        info: position
-      }))
-      .filter(x => x.position);
-
+  async getPosition(positionAddress: string, wallet: PublicKey): Promise<PositionInfo> {
+    const matchingPosition: any = await this.getRawPosition(positionAddress, wallet);
     if (!matchingPosition) {
       throw new Error('Position not found');
     }
 
-    console.log('Position:', JSON.stringify(matchingPosition, null, 2));
+    console.log(JSON.stringify(matchingPosition, null, 2));
 
     // Get the DLMM pool for the position
-    const dlmmPool = await this.getDlmmPool(matchingPosition.info.lbPair.toString());
+    const dlmmPool = await this.getDlmmPool(matchingPosition.info.publicKey.toBase58());
 
-    // Get prices from bin IDs and convert to price per token
-    const lowerPricePerLamport = getPriceOfBinByBinId(dlmmPool.lbPair.binStep, matchingPosition.position.positionData.lowerBinId);
-    const upperPricePerLamport = getPriceOfBinByBinId(dlmmPool.lbPair.binStep, matchingPosition.position.positionData.upperBinId);
-
-    // Convert to price per token using the same conversion as DLMM SDK
-    const lowerPrice = dlmmPool.fromPricePerLamport(Number(lowerPricePerLamport));
-    const upperPrice = dlmmPool.fromPricePerLamport(Number(upperPricePerLamport));
+    // Get prices from bin IDs
+    const lowerPrice = getPriceOfBinByBinId(dlmmPool.lbPair.binStep, matchingPosition.positionData.lowerBinId);
+    const upperPrice = getPriceOfBinByBinId(dlmmPool.lbPair.binStep, matchingPosition.positionData.upperBinId);
 
     // Adjust for decimal difference (tokenX.decimal - tokenY.decimal)
     const decimalDiff = dlmmPool.tokenX.decimal - dlmmPool.tokenY.decimal;
@@ -163,15 +147,15 @@ export class Meteora {
 
     return {
       address: positionAddress,
-      poolAddress: matchingPosition.info.lbPair.toString(),
+      poolAddress: matchingPosition.info.publicKey.toString(),
       baseToken: dlmmPool.tokenX.publicKey.toBase58(),
       quoteToken: dlmmPool.tokenY.publicKey.toBase58(),
-      baseAmount: convertDecimals(matchingPosition.position.positionData.totalXAmount, dlmmPool.tokenX.decimal),
-      quoteAmount: convertDecimals(matchingPosition.position.positionData.totalYAmount, dlmmPool.tokenY.decimal),
-      baseFeeAmount: convertDecimals(matchingPosition.position.positionData.feeX, dlmmPool.tokenX.decimal),
-      quoteFeeAmount: convertDecimals(matchingPosition.position.positionData.feeY, dlmmPool.tokenY.decimal),
-      lowerBinId: matchingPosition.position.positionData.lowerBinId,
-      upperBinId: matchingPosition.position.positionData.upperBinId,
+      baseAmount: convertDecimals(matchingPosition.positionData.totalXAmount, dlmmPool.tokenX.decimal),
+      quoteAmount: convertDecimals(matchingPosition.positionData.totalYAmount, dlmmPool.tokenY.decimal),
+      baseFeeAmount: convertDecimals(matchingPosition.positionData.feeX, dlmmPool.tokenX.decimal),
+      quoteFeeAmount: convertDecimals(matchingPosition.positionData.feeY, dlmmPool.tokenY.decimal),
+      lowerBinId: matchingPosition.positionData.lowerBinId,
+      upperBinId: matchingPosition.positionData.upperBinId,
       lowerPrice: adjustedLowerPrice,
       upperPrice: adjustedUpperPrice,
     };

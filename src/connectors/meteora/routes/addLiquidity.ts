@@ -48,7 +48,7 @@ async function addLiquidity(
   const meteora = await Meteora.getInstance(network);
   const wallet = await solana.getWallet(address);
 
-  const position: PositionInfo = await meteora.getPosition(positionAddress);
+  const position: PositionInfo = await meteora.getPosition(positionAddress, wallet.publicKey);
   const dlmmPool = await meteora.getDlmmPool(position.address);
   const maxBinId = position.upperBinId;
   const minBinId = position.lowerBinId;
