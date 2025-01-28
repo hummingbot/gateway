@@ -28,7 +28,7 @@ import {
 
 export async function poll(
   chain: Chain,
-  req: PollRequest
+  req: PollRequest,
 ): Promise<PollResponse> {
   const initTime = Date.now();
   const poll = await chain.controller.poll(chain, req);
@@ -42,7 +42,7 @@ export async function poll(
 
 export async function nonce(
   chain: Chain,
-  req: NonceRequest
+  req: NonceRequest,
 ): Promise<NonceResponse> {
   const initTime = Date.now();
   const nonce = await chain.controller.nonce(chain, req);
@@ -56,7 +56,7 @@ export async function nonce(
 
 export async function nextNonce(
   chain: Chain,
-  req: NonceRequest
+  req: NonceRequest,
 ): Promise<NonceResponse> {
   const initTime = Date.now();
   const nextNonce = await chain.controller.nextNonce(chain, req);
@@ -70,7 +70,7 @@ export async function nextNonce(
 
 export async function getTokens(
   chain: Chain,
-  req: TokensRequest
+  req: TokensRequest,
 ): Promise<TokensResponse> {
   const initTime = Date.now();
   const tokens = await chain.controller.getTokens(chain, req);
@@ -84,7 +84,7 @@ export async function getTokens(
 
 export async function allowances(
   chain: Chain,
-  req: AllowancesRequest
+  req: AllowancesRequest,
 ): Promise<AllowancesResponse | string> {
   const initTime = Date.now();
   const allowances = await chain.controller.allowances(chain, req);
@@ -99,7 +99,7 @@ export async function allowances(
 
 export async function balances(
   chain: Chain,
-  req: BalanceRequest
+  req: BalanceRequest,
 ): Promise<BalanceResponse | string> {
   const initTime = Date.now();
   const balances = await chain.controller.balances(chain, req);
@@ -114,7 +114,7 @@ export async function balances(
 
 export async function approve(
   chain: Chain,
-  req: ApproveRequest
+  req: ApproveRequest,
 ): Promise<ApproveResponse | string> {
   const initTime = Date.now();
   const approveTx = await chain.controller.approve(chain, req);
@@ -129,7 +129,7 @@ export async function approve(
 
 export async function cancel(
   chain: Chain,
-  req: CancelRequest
+  req: CancelRequest,
 ): Promise<CancelResponse> {
   const initTime = Date.now();
   const cancelTx = await chain.controller.cancel(chain, req);
@@ -144,7 +144,7 @@ export async function cancel(
 
 export async function transfer(
   chain: Chain,
-  req: TransferRequest
+  req: TransferRequest,
 ): Promise<TransferResponse> {
   const initTime = Date.now();
   const transfer = await chain.controller.transfer(chain, req);

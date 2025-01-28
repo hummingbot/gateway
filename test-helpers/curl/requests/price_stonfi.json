@@ -1,0 +1,9 @@
+{
+  "connector": "ston_fi",
+  "chain": "ton",
+  "network": "mainnet",
+  "quote": "USD₮",
+  "base": "TON",
+  "amount": "1",
+  "side": "BUY"
+}
