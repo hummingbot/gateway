@@ -1,4 +1,7 @@
+// Disable eslint for this file because it's a copy of the original file
+/* eslint-disable */
 import BigNumber from 'bignumber.js';
+import Decimal from 'decimal.js-light';
 
 export interface Fee {
   pool_id: string;
@@ -93,3 +96,102 @@ export function findTickForPrice(desiredPriceString: string, exponentAtPriceOne:
   return returnTick.toString()
 }
 
+
+export function calculatePriceToTick(desiredPriceString: string, exponentAtPriceOne: number, tickSpacing: number, is_lowerBound: boolean): string {
+  console.log(`Inputs: desiredPriceString=${desiredPriceString}, exponentAtPriceOne=${exponentAtPriceOne}, tickSpacing=${tickSpacing}, is_lowerBound=${is_lowerBound}`);
+
+  const desiredPrice = new BigNumber(desiredPriceString)
+  const exponent = new BigNumber(exponentAtPriceOne);
+  const geometricExponentIncrementDistanceInTicks = new BigNumber(9).multipliedBy(new BigNumber(10).exponentiatedBy(exponent.multipliedBy(-1)))
+
+  console.log(`Initial calculations: desiredPrice=${desiredPrice}, exponent=${exponent}, geometricExponentIncrementDistanceInTicks=${geometricExponentIncrementDistanceInTicks}`);
+
+  let currentPrice = new BigNumber(1);
+  let ticksPassed = new BigNumber(0);
+  let exponentAtCurrentTick = exponent;
+  let currentAdditiveIncrementInTicks = new BigNumber(10).exponentiatedBy(exponent)
+
+  if (desiredPrice.gt(new BigNumber(1))) {
+    while (currentPrice.lt(desiredPrice)) {
+      currentAdditiveIncrementInTicks = new BigNumber(10).exponentiatedBy(exponentAtCurrentTick);
+      const maxPriceForCurrentAdditiveIncrementInTicks = geometricExponentIncrementDistanceInTicks.multipliedBy(currentAdditiveIncrementInTicks);
+      currentPrice = currentPrice.plus(maxPriceForCurrentAdditiveIncrementInTicks);
+      exponentAtCurrentTick = exponentAtCurrentTick.plus(1);
+      ticksPassed = ticksPassed.plus(geometricExponentIncrementDistanceInTicks);
+
+      console.log(`Loop (desiredPrice > 1): currentPrice=${currentPrice}, exponentAtCurrentTick=${exponentAtCurrentTick}, ticksPassed=${ticksPassed}`);
+    }
+  } else {
+    exponentAtCurrentTick = exponent.minus(1);
+    while (currentPrice.gt(desiredPrice)) {
+      currentAdditiveIncrementInTicks = new BigNumber(10).exponentiatedBy(exponentAtCurrentTick);
+      const maxPriceForCurrentAdditiveIncrementInTicks = geometricExponentIncrementDistanceInTicks.multipliedBy(currentAdditiveIncrementInTicks);
+      currentPrice = currentPrice.minus(maxPriceForCurrentAdditiveIncrementInTicks);
+      exponentAtCurrentTick = exponentAtCurrentTick.minus(1);
+      ticksPassed = ticksPassed.minus(geometricExponentIncrementDistanceInTicks);
+
+      console.log(`Loop (desiredPrice <= 1): currentPrice=${currentPrice}, exponentAtCurrentTick=${exponentAtCurrentTick}, ticksPassed=${ticksPassed}`);
+    }
+  }
+
+  const ticksToBeFulfilledByExponentAtCurrentTick = desiredPrice.minus(currentPrice).dividedBy(currentAdditiveIncrementInTicks);
+  console.log(`Ticks to be fulfilled by current exponent: ${ticksToBeFulfilledByExponentAtCurrentTick}`);
+
+  const tickIndex = ticksPassed.plus(ticksToBeFulfilledByExponentAtCurrentTick);
+  console.log(`Tick index: ${tickIndex}`);
+
+  let returnTick = new BigNumber(0);
+  if (is_lowerBound){
+    returnTick = tickIndex.dividedBy(tickSpacing).integerValue(BigNumber.ROUND_DOWN).multipliedBy(tickSpacing)
+  }
+  else{
+    returnTick = tickIndex.dividedBy(tickSpacing).integerValue(BigNumber.ROUND_CEIL).multipliedBy(tickSpacing)
+  }
+
+  console.log(`Final calculations: tickIndex=${tickIndex}, returnTick=${BigInt(returnTick.toNumber()).toString()}`);
+  return BigInt(returnTick.toNumber()).toString();
+}
+
+function calculatePriceToTickDec(price: Decimal): [number, Error | null] {
+  if (price.isNegative()) {
+      return [0, new Error("price must be greater than zero")];
+  }
+
+  if (price.equals(1)) {
+      return [0, null];
+  }
+
+  // N.B. this exists to maintain backwards compatibility with
+  // the old version of the function that operated on decimal with precision of 18.
+  if (price.gte(types.MinSpotPriceBigDec)) {
+      price.tru(osmomath.DecPrecision);
+  }
+
+  // The approach here is to try determine which "geometric spacing" we are in.
+  let geoSpacing: TickExpIndexData;
+  let index: number;
+
+  if (price.gt(osmomath.BigOneDec)) {
+      index = 0;
+      geoSpacing = tickExpCache[index];
+      while (geoSpacing.maxPrice.lt(price)) {
+          index += 1;
+          geoSpacing = tickExpCache[index];
+      }
+  } else {
+      index = -1;
+      geoSpacing = tickExpCache[index];
+      while (geoSpacing.initialPrice.gt(price)) {
+          index -= 1;
+          geoSpacing = tickExpCache[index];
+      }
+  }
+
+  // Calculate the number of ticks that need to be filled by our current spacing
+  const priceInThisExponent = price.sub(geoSpacing.initialPrice);
+  const ticksFilledByCurrentSpacing = priceInThisExponent.div(geoSpacing.additiveIncrementPerTick).truncate();
+
+  // Calculate the final tick index
+  const tickIndex = ticksFilledByCurrentSpacing + geoSpacing.initialTick;
+  return [tickIndex, null];
+}
