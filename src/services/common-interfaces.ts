@@ -261,6 +261,7 @@ export const PositionInfoSchema = Type.Object({
   upperBinId: Type.Number(),
   lowerPrice: Type.Number(),
   upperPrice: Type.Number(),
+  price: Type.Number(),
 }, { $id: 'PositionInfo' });
 
 export type PositionInfo = Static<typeof PositionInfoSchema>;

@@ -9,11 +9,11 @@ import { PositionInfoSchema } from '../../../services/common-interfaces';
 // Schema definitions
 const GetPositionsOwnedRequest = Type.Object({
   network: Type.Optional(Type.String({ default: 'mainnet-beta' })),
-  poolAddress: Type.String({ default: 'FtFUzuXbbw6oBbU53SDUGspEka1D5Xyc4cwnkxer6xKz' }),
   walletAddress: Type.String({ 
     description: 'Will use first available wallet if not specified',
     examples: [] // Will be populated during route registration
   }),
+  poolAddress: Type.String({ default: 'FtFUzuXbbw6oBbU53SDUGspEka1D5Xyc4cwnkxer6xKz' }),
 });
 
 const GetPositionsOwnedResponse = Type.Array(PositionInfoSchema);
@@ -52,7 +52,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { poolAddress, walletAddress } = request.query;
+        const { walletAddress, poolAddress } = request.query;
         const network = request.query.network || 'mainnet-beta';
         const meteora = await Meteora.getInstance(network);
         

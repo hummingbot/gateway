@@ -30,9 +30,9 @@ const OpenPositionRequest = Type.Object({
 
 const OpenPositionResponse = Type.Object({
   signature: Type.String(),
+  transactionFee: Type.Number(),
   positionAddress: Type.String(),
   positionRent: Type.Number(),
-  transactionFee: Type.Number(),
   baseTokenBalanceChange: Type.Number(),
   quoteTokenBalanceChange: Type.Number(),
 });
@@ -130,9 +130,9 @@ async function openPosition(
 
   return {
     signature,
+    transactionFee: fee,
     positionAddress: newImbalancePosition.publicKey.toBase58(),
     positionRent: sentSOL,
-    transactionFee: fee,
     baseTokenBalanceChange: Math.abs(baseTokenBalanceChange),
     quoteTokenBalanceChange: Math.abs(quoteTokenBalanceChange),
   };

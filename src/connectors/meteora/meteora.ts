@@ -167,6 +167,11 @@ export class Meteora {
     }
 
     const { userPositions } = await dlmmPool.getPositionsByUserAndLbPair(wallet);
+    const activeBin = await dlmmPool.getActiveBin();
+
+    if (!activeBin || !activeBin.price || !activeBin.pricePerToken) {
+      throw new Error(`Invalid active bin data for pool: ${poolAddress}`);
+    }
 
     return userPositions.map(({ publicKey, positionData }) => {
       // Get prices from bin IDs
@@ -193,6 +198,7 @@ export class Meteora {
         upperBinId: positionData.upperBinId,
         lowerPrice: adjustedLowerPrice,
         upperPrice: adjustedUpperPrice,
+        price: Number(activeBin.pricePerToken),
       };
     });
   }
@@ -216,6 +222,7 @@ export class Meteora {
     if (!matchingPosition) {
       return null;
     }
+    // console.log(matchingPosition);
 
     return matchingPosition;
   }
@@ -227,8 +234,12 @@ export class Meteora {
       throw new Error('Position not found');
     }
 
-    // Get the DLMM pool for the position
     const dlmmPool = await this.getDlmmPool(info.publicKey.toBase58());
+    const activeBin = await dlmmPool.getActiveBin();
+
+    if (!activeBin || !activeBin.price || !activeBin.pricePerToken) {
+      throw new Error(`Invalid active bin data for pool: ${info.publicKey.toBase58()}`);
+    }
 
     // Get prices from bin IDs
     const lowerPrice = getPriceOfBinByBinId(position.positionData.lowerBinId, dlmmPool.lbPair.binStep);
@@ -254,6 +265,7 @@ export class Meteora {
       upperBinId: position.positionData.upperBinId,
       lowerPrice: adjustedLowerPrice,
       upperPrice: adjustedUpperPrice,
+      price: Number(activeBin.pricePerToken),
     };
   }
 
