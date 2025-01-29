@@ -1,6 +1,8 @@
 import { BigNumber } from 'ethers';
 import { format, fraction, number } from 'mathjs';
 import { isFractionString, isFloatString } from './validators';
+import { DecimalUtil } from '@orca-so/common-sdk';
+import { Decimal } from 'decimal.js';
 
 // the type of information source for tokens
 export type TokenListType = 'FILE' | 'URL';
@@ -170,4 +172,14 @@ export const floatStringWithDecimalToFixed = (
   } catch (_e) {
     return null;
   }
+};
+
+/**
+ * Converts a value to a decimal string with the specified number of decimal places
+ * @param value The value to convert (can be any type that can be converted to string)
+ * @param decimals The number of decimal places
+ * @returns The decimal string representation
+ */
+export const convertDecimals = (value: any, decimals: number): string => {
+  return DecimalUtil.adjustDecimals(new Decimal(value.toString()), decimals).toString();
 };

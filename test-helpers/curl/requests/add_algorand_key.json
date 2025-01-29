@@ -1,5 +1,0 @@
-{
-  "privateKey": "$ALGORAND_MNEMONIC",
-  "chain": "algorand",
-  "network": "mainnet"
-}

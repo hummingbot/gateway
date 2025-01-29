@@ -75,15 +75,15 @@ describe('Configuration manager v2 tests', () => {
 
   it('reading from config file', (done) => {
     expect(configManager.get('server.certificatePath')).toEqual('gateway.crt');
-    expect(configManager.get('ethereum.networks.goerli.chainID')).toEqual(42);
+    expect(configManager.get('ethereum.networks.mainnet.chainID')).toEqual(1);
     expect(
-      configManager.get('ethereum.networks.goerli.nativeCurrencySymbol')
+      configManager.get('ethereum.networks.mainnet.nativeCurrencySymbol')
     ).toEqual('ETH');
     done();
   });
 
   it('reading a non-existent config entry', (done) => {
-    expect(configManager.get('ethereum.goerli.chainID')).toBeUndefined();
+    expect(configManager.get('ethereum.sepolia.chainID')).toBeUndefined();
     expect(configManager.get('server.keyPath.keyPath')).toBeUndefined();
     done();
   });
@@ -101,7 +101,7 @@ describe('Configuration manager v2 tests', () => {
   it('writing a valid configuration', (done) => {
     const newKeyPath: string = 'new-gateway.crt';
     configManager.set('server.certificatePath', newKeyPath);
-    configManager.set('ethereum.networks.goerli.chainID', 970);
+    configManager.set('ethereum.networks.sepolia.chainID', 970);
     configManager.set('ethereum.networks.mainnet', {
       chainID: 61,
       nodeURL: 'http://localhost:8561',
@@ -118,7 +118,7 @@ describe('Configuration manager v2 tests', () => {
     expect(verifyConfigManager.get('server.certificatePath')).toEqual(
       newKeyPath
     );
-    expect(verifyConfigManager.get('ethereum.networks.goerli.chainID')).toEqual(
+    expect(verifyConfigManager.get('ethereum.networks.sepolia.chainID')).toEqual(
       970
     );
     expect(
@@ -168,7 +168,6 @@ describe('Configuration manager v2 tests', () => {
 
   it('Test upgradability', () => {
     expect(configManager.get('server.logPath')).toEqual('./logs');
-    expect(configManager.get('server.telemetry_enabled')).toEqual(false);
   });
 
   it('Dummy test to attempt migration', () => {
@@ -213,19 +212,16 @@ describe('Configuration manager v2 tests', () => {
   it('Get all configuration', (done) => {
     const allConfigs = configManager.allConfigurations;
     expect(allConfigs.server.certificatePath).toEqual('gateway.crt');
-    expect(allConfigs.ethereum.networks.goerli.chainID).toEqual(42);
+    expect(allConfigs.ethereum.networks.mainnet.chainID).toEqual(1);
     done();
   });
 
   it('Get instance', (done) => {
     let configManager = ConfigManagerV2.getInstance();
-    expect(configManager.allConfigurations.server.telemetry_enabled).toEqual(
-      false
+    expect(configManager.allConfigurations.server.logToStdOut).toEqual(
+      true
     );
     configManager = ConfigManagerV2.getInstance();
-    expect(configManager.allConfigurations.server.telemetry_enabled).toEqual(
-      false
-    );
     done();
   });
 });

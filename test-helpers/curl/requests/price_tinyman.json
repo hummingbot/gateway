@@ -1,9 +1,0 @@
-{
-  "connector": "tinyman",
-  "chain": "algorand",
-  "network": "mainnet",
-  "quote": "USDC",
-  "base": "ALGO",
-  "amount": "1",
-  "side": "BUY"
-}

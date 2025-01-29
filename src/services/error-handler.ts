@@ -108,6 +108,10 @@ export const ENDPOINT_NOT_SUPPORTED_ERROR_CODE = 1018;
 export const INSUFFICIENT_FUNDS_ERROR_CODE = 1019;
 export const GAS_LIMIT_EXCEEDED_ERROR_CODE = 1020;
 export const AMOUNT_LESS_THAN_MIN_AMOUNT_ERROR_CODE = 1021;
+export const INSUFFICIENT_BASE_TOKEN_BALANCE_ERROR_CODE = 1022;
+export const INSUFFICIENT_QUOTE_TOKEN_BALANCE_ERROR_CODE = 1023;
+export const SIMULATION_ERROR_CODE = 1024;
+export const SWAP_ROUTE_FETCH_ERROR_CODE = 1025;
 
 export const NETWORK_ERROR_MESSAGE =
   'Network error. Please check your node URL, API key, and Internet connection.';
@@ -125,6 +129,10 @@ export const ENDPOINT_NOT_SUPPORTED_ERROR_MESSAGE = 'Endpoint not supported by t
 export const INSUFFICIENT_FUNDS_ERROR_MESSAGE = 'Insufficient funds for transaction.'
 export const GAS_LIMIT_EXCEEDED_ERROR_MESSAGE = 'Gas limit exceeded (gasWanted greater than gasLimitEstimate).';
 export const AMOUNT_LESS_THAN_MIN_AMOUNT_ERROR_MESSAGE = 'Calculated amount less than min amount provided with slippage. Maybe try increasing slippage. ';
+export const INSUFFICIENT_BASE_TOKEN_BALANCE_ERROR_MESSAGE = 'Insufficient base token balance to perform trade.';
+export const INSUFFICIENT_QUOTE_TOKEN_BALANCE_ERROR_MESSAGE = 'Insufficient quote token balance to perform trade.';
+export const SIMULATION_ERROR_MESSAGE = 'Transaction simulation failed: ';
+export const SWAP_ROUTE_FETCH_ERROR_MESSAGE = 'Failed to fetch swap route: ';
 
 export const SWAP_PRICE_EXCEEDS_LIMIT_PRICE_ERROR_MESSAGE = (
   price: any,
@@ -141,9 +149,6 @@ export const SERVICE_UNITIALIZED_ERROR_MESSAGE = (service: any) =>
 
 export const UNKNOWN_KNOWN_CHAIN_ERROR_MESSAGE = (chainName: any) =>
   `Unrecognized chain name ${chainName}.`;
-
-export const ACCOUNT_NOT_SPECIFIED_ERROR_MESSAGE = () =>
-  `AccountID or address not specified.`;
 
 export const ERROR_RETRIEVING_WALLET_ADDRESS_ERROR_MESSAGE = (
   privKey: string

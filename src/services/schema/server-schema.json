@@ -5,21 +5,18 @@
     "certificatePath": { "type": "string" },
     "logPath": { "type": "string" },
     "port": { "type": "integer" },
+    "docsPort": { "type": "integer" },
     "ipWhitelist": { "type": "array" },
     "GMTOffset": { "type": "number" },
-    "id": { "type": "string" },
     "logToStdOut": { "type": "boolean" },
-    "unsafeDevModeWithHTTP": { "type": "boolean" },
-    "telemetry_enabled": { "type": "boolean" },
+    "fastifyLogs": { "type": "boolean" },
     "nonceDbPath": { "type": "string" },
     "transactionDbPath": { "type": "string" }
   },
   "additionalProperties": false,
   "required": [
     "port",
-    "unsafeDevModeWithHTTP",
     "certificatePath",
-    "telemetry_enabled",
     "logPath",
     "nonceDbPath",
     "transactionDbPath"

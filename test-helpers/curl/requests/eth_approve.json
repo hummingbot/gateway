@@ -1,7 +1,0 @@
-{
-  "chain": "ethereum",
-  "network": "goerli",
-  "address": "$ETH_ADDRESS",
-  "spender": "uniswap",
-  "token": "DAI"
-}
