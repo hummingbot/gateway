@@ -14,11 +14,15 @@ import {
   EVMController,
   willTxSucceed,
 } from '../../../src/chains/ethereum/evm.controllers';
+import { ConfigManagerV2 } from '../../../src/services/config-manager-v2';
 let eth: Ethereum;
 
 beforeAll(async () => {
-  eth = Ethereum.getInstance('goerli');
-
+  eth = Ethereum.getInstance('sepolia');
+  patch(ConfigManagerV2.getInstance(), 'get', (param: string) => {
+    if (param === 'server.devHTTPMode') return true;
+    return ConfigManagerV2.getInstance().get(param);
+  });
   patchEVMNonceManager(eth.nonceManager);
 });
 
@@ -61,7 +65,7 @@ describe('nonce', () => {
     patch(eth.nonceManager, 'getNonce', () => 2);
     const n = await EVMController.nonce(eth, {
       chain: 'ethereum',
-      network: 'goerli',
+      network: 'sepolia',
       address: mockAddress,
     });
     expect(n).toEqual({ nonce: 2 });
@@ -76,7 +80,7 @@ describe('nonce', () => {
     patch(eth.nonceManager, 'getNextNonce', () => 3);
     const n = await EVMController.nextNonce(eth, {
       chain: 'ethereum',
-      network: 'goerli',
+      network: 'sepolia',
       address: mockAddress,
     });
     expect(n).toEqual({ nonce: 3 });

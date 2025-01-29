@@ -20,7 +20,8 @@ let eth: Ethereum;
 
 beforeAll(async () => {
   patch(ConfigManagerCertPassphrase, 'readPassphrase', () => 'a');
-  eth = Ethereum.getInstance('goerli');
+  eth = Ethereum.getInstance('sepolia');
+  await eth.init();
 });
 
 beforeEach(() =>
@@ -91,7 +92,7 @@ describe('addWallet and getWallets', () => {
     await addWallet({
       privateKey: onePrivateKey,
       chain: 'ethereum',
-      network: 'goerli',
+      network: 'sepolia',
     });
 
     const wallets = await getWallets();
@@ -142,7 +143,7 @@ describe('addWallet and removeWallets', () => {
     await addWallet({
       privateKey: onePrivateKey,
       chain: 'ethereum',
-      network: 'goerli',
+      network: 'sepolia',
     });
 
     await removeWallet({ chain: 'ethereum', address: oneAddress });

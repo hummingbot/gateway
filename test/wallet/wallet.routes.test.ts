@@ -1,14 +1,15 @@
-import request from 'supertest';
 import { gatewayApp } from '../../src/app';
 import { patch, unpatch } from '../services/patch';
 import { Ethereum } from '../../src/chains/ethereum/ethereum';
 import { ConfigManagerCertPassphrase } from '../../src/services/config-manager-cert-passphrase';
 import { GetWalletResponse } from '../../src/wallet/wallet.routes';
+
 let eth: Ethereum;
 
 beforeAll(async () => {
   patch(ConfigManagerCertPassphrase, 'readPassphrase', () => 'a');
-  eth = Ethereum.getInstance('goerli');
+  eth = Ethereum.getInstance('sepolia');
+  await gatewayApp.ready();
 });
 
 beforeEach(() =>
@@ -17,6 +18,7 @@ beforeEach(() =>
 
 afterAll(async () => {
   await eth.close();
+  await gatewayApp.close();
 });
 
 afterEach(() => unpatch());
@@ -60,15 +62,18 @@ describe('POST /wallet/add', () => {
       return JSON.stringify(encodedPrivateKey);
     });
 
-    await request(gatewayApp)
-      .post(`/wallet/add`)
-      .send({
+    const response = await gatewayApp.inject({
+      method: 'POST',
+      url: '/wallet/add',
+      payload: {
         privateKey: twoPrivateKey,
         chain: 'ethereum',
-        network: 'goerli',
-      })
-      .expect('Content-Type', /json/)
-      .expect(200);
+        network: 'sepolia',
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['content-type']).toMatch(/json/);
   });
 });
 
@@ -84,30 +89,39 @@ describe('DELETE /wallet/remove', () => {
       return JSON.stringify(encodedPrivateKey);
     });
 
-    await request(gatewayApp)
-      .post(`/wallet/add`)
-      .send({
+    // Add wallet first
+    await gatewayApp.inject({
+      method: 'POST',
+      url: '/wallet/add',
+      payload: {
         privateKey: twoPrivateKey,
         chain: 'ethereum',
-        network: 'goerli',
-      })
+        network: 'sepolia',
+      }
+    });
 
-      .expect('Content-Type', /json/)
-      .expect(200);
-
-    await request(gatewayApp)
-      .delete(`/wallet/remove`)
-      .send({
+    // Then delete it
+    const response = await gatewayApp.inject({
+      method: 'DELETE',
+      url: '/wallet/remove',
+      payload: {
         address: twoAddress,
         chain: 'ethereum',
-      })
+      }
+    });
 
-      .expect('Content-Type', /json/)
-      .expect(200);
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['content-type']).toMatch(/json/);
   });
 
   it('return 404 for ill-formed request', async () => {
-    await request(gatewayApp).delete(`/wallet/delete`).send({}).expect(404);
+    const response = await gatewayApp.inject({
+      method: 'DELETE',
+      url: '/wallet/delete',
+      payload: {}
+    });
+    
+    expect(response.statusCode).toBe(404);
   });
 });
 
@@ -123,28 +137,31 @@ describe('GET /wallet', () => {
       return JSON.stringify(encodedPrivateKey);
     });
 
-    await request(gatewayApp)
-      .post(`/wallet/add`)
-      .send({
+    // Add wallet first
+    await gatewayApp.inject({
+      method: 'POST',
+      url: '/wallet/add',
+      payload: {
         privateKey: twoPrivateKey,
         chain: 'ethereum',
-        network: 'goerli',
-      })
-      .expect('Content-Type', /json/)
-      .expect(200);
+        network: 'sepolia',
+      }
+    });
 
-    await request(gatewayApp)
-      .get(`/wallet`)
-      .expect('Content-Type', /json/)
-      .expect(200)
-      .expect((res) => {
-        const wallets: GetWalletResponse[] = res.body;
-        const addresses: string[][] = wallets
-          .filter((wallet) => wallet.chain === 'ethereum')
-          .map((wallet) => wallet.walletAddresses);
+    // Then get wallets
+    const response = await gatewayApp.inject({
+      method: 'GET',
+      url: '/wallet'
+    });
 
-        expect(addresses[0]).toContain(twoAddress);
-      });
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['content-type']).toMatch(/json/);
+
+    const wallets: GetWalletResponse[] = JSON.parse(response.payload);
+    const addresses: string[][] = wallets
+      .filter((wallet) => wallet.chain === 'ethereum')
+      .map((wallet) => wallet.walletAddresses);
+
+    expect(addresses[0]).toContain(twoAddress);
   });
-
 });

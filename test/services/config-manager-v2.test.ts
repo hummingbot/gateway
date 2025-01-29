@@ -168,7 +168,6 @@ describe('Configuration manager v2 tests', () => {
 
   it('Test upgradability', () => {
     expect(configManager.get('server.logPath')).toEqual('./logs');
-    expect(configManager.get('server.telemetry_enabled')).toEqual(false);
   });
 
   it('Dummy test to attempt migration', () => {
@@ -213,19 +212,16 @@ describe('Configuration manager v2 tests', () => {
   it('Get all configuration', (done) => {
     const allConfigs = configManager.allConfigurations;
     expect(allConfigs.server.certificatePath).toEqual('gateway.crt');
-    expect(allConfigs.ethereum.networks.goerli.chainID).toEqual(42);
+    expect(allConfigs.ethereum.networks.mainnet.chainID).toEqual(1);
     done();
   });
 
   it('Get instance', (done) => {
     let configManager = ConfigManagerV2.getInstance();
-    expect(configManager.allConfigurations.server.telemetry_enabled).toEqual(
+    expect(configManager.allConfigurations.server.devHTTPMode).toEqual(
       false
     );
     configManager = ConfigManagerV2.getInstance();
-    expect(configManager.allConfigurations.server.telemetry_enabled).toEqual(
-      false
-    );
     done();
   });
 });
