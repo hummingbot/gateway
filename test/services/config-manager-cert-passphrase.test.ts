@@ -17,8 +17,17 @@ describe('ConfigManagerCertPassphrase.readPassphrase', () => {
   });
 
   it('should get an error if there is no cert phrase', async () => {
+    // Clear any existing passphrase from environment variables
+    const originalPassphrase = process.env['GATEWAY_PASSPHRASE'];
+    delete process.env['GATEWAY_PASSPHRASE'];
+    
     ConfigManagerCertPassphrase.readPassphrase();
     expect(witnessFailure).toEqual(true);
+    
+    // Restore the original passphrase if it existed
+    if (originalPassphrase !== undefined) {
+      process.env['GATEWAY_PASSPHRASE'] = originalPassphrase;
+    }
   });
 
   it('should get the cert phrase from the process args', async () => {

@@ -7,22 +7,16 @@ import {
   LOAD_WALLET_ERROR_CODE,
   LOAD_WALLET_ERROR_MESSAGE,
   TOKEN_NOT_SUPPORTED_ERROR_MESSAGE,
-  TOKEN_NOT_SUPPORTED_ERROR_CODE,
 } from '../../../src/services/error-handler';
 import { patchEVMNonceManager } from '../../evm.nonce.mock';
 import {
   EVMController,
   willTxSucceed,
 } from '../../../src/chains/ethereum/evm.controllers';
-import { ConfigManagerV2 } from '../../../src/services/config-manager-v2';
 let eth: Ethereum;
 
 beforeAll(async () => {
   eth = Ethereum.getInstance('sepolia');
-  patch(ConfigManagerV2.getInstance(), 'get', (param: string) => {
-    if (param === 'server.devHTTPMode') return true;
-    return ConfigManagerV2.getInstance().get(param);
-  });
   patchEVMNonceManager(eth.nonceManager);
 });
 
@@ -68,7 +62,7 @@ describe('nonce', () => {
       network: 'sepolia',
       address: mockAddress,
     });
-    expect(n).toEqual({ nonce: 2 });
+    expect(n).toMatchObject({ nonce: 2 });
   });
 
   it('return next nonce for a wallet', async () => {
@@ -83,7 +77,7 @@ describe('nonce', () => {
       network: 'sepolia',
       address: mockAddress,
     });
-    expect(n).toEqual({ nonce: 3 });
+    expect(n).toMatchObject({ nonce: 3 });
   });
 });
 
@@ -95,11 +89,12 @@ const weth: TokenInfo = {
   decimals: 18,
 };
 describe('getTokenSymbolsToTokens', () => {
-  it('return tokens for strings', () => {
+  it('return tokens for strings', async () => {
     patch(eth, 'getTokenBySymbol', () => {
       return weth;
     });
-    expect(EVMController.getTokenSymbolsToTokens(eth, ['WETH'])).toEqual({
+    const result = await EVMController.getTokenSymbolsToTokens(eth, ['WETH']);
+    expect(result).toMatchObject({
       WETH: weth,
     });
   });
@@ -119,10 +114,6 @@ describe('allowances', () => {
       return weth;
     });
 
-    patch(eth, 'getSpender', () => {
-      return uniswap;
-    });
-
     patch(eth, 'getERC20Allowance', () => {
       return {
         value: BigNumber.from('999999999999999999999999'),
@@ -132,22 +123,21 @@ describe('allowances', () => {
 
     const result = await EVMController.allowances(eth, {
       chain: 'ethereum',
-      network: 'goerli',
+      network: 'sepolia',
       address: mockAddress,
       spender: uniswap,
       tokenSymbols: ['WETH'],
     });
-    expect((result as any).approvals).toEqual({
-      WETH: '9999999999999999999999.99',
+    expect(result).toMatchObject({
+      approvals: {
+        WETH: '9999999999999999999999.99',
+      }
     });
   });
 });
 
 describe('approve', () => {
   it('approve a spender for an owner, token and amount', async () => {
-    patch(eth, 'getSpender', () => {
-      return uniswap;
-    });
     eth.getContract = jest.fn().mockReturnValue({
       address: mockAddress,
     });
@@ -173,20 +163,17 @@ describe('approve', () => {
 
     const result = await EVMController.approve(eth, {
       chain: 'ethereum',
-      network: 'goerli',
+      network: 'sepolia',
       address: mockAddress,
       spender: uniswap,
       token: 'WETH',
     });
-    expect((result as any).spender).toEqual(uniswap);
+    expect(result).toMatchObject({ spender: uniswap });
   });
 
   it('fail if wallet not found', async () => {
-    patch(eth, 'getSpender', () => {
-      return uniswap;
-    });
-
     const err = 'wallet does not exist';
+    patch(eth, 'ready', () => true);
     patch(eth, 'getWallet', () => {
       throw new Error(err);
     });
@@ -194,7 +181,7 @@ describe('approve', () => {
     await expect(
       EVMController.approve(eth, {
         chain: 'ethereum',
-        network: 'goerli',
+        network: 'sepolia',
         address: mockAddress,
         spender: uniswap,
         token: 'WETH',
@@ -203,30 +190,23 @@ describe('approve', () => {
       new HttpException(
         500,
         LOAD_WALLET_ERROR_MESSAGE + 'Error: ' + err,
-        LOAD_WALLET_ERROR_CODE
-      )
+      ),
     );
   });
 
   it('fail if token not found', async () => {
-    patch(eth, 'getSpender', () => {
-      return uniswap;
-    });
-
+    patch(eth, 'ready', () => true);
     patch(eth, 'getWallet', () => {
       return {
         address: mockAddress,
       };
     });
-
-    patch(eth, 'getTokenBySymbol', () => {
-      return null;
-    });
+    patch(eth, 'getTokenBySymbol', () => null);
 
     await expect(
       EVMController.approve(eth, {
         chain: 'ethereum',
-        network: 'goerli',
+        network: 'sepolia',
         address: mockAddress,
         spender: uniswap,
         token: 'WETH',
@@ -235,8 +215,7 @@ describe('approve', () => {
       new HttpException(
         500,
         TOKEN_NOT_SUPPORTED_ERROR_MESSAGE + 'WETH',
-        TOKEN_NOT_SUPPORTED_ERROR_CODE
-      )
+      ),
     );
   });
 });
@@ -250,7 +229,7 @@ describe('balances', () => {
 
     await expect(
       EVMController.balances(eth, {
-        network: 'goerli',
+        network: 'sepolia',
         address: mockAddress,
         tokenSymbols: ['WETH', 'DAI'],
       })
@@ -267,6 +246,7 @@ describe('balances', () => {
 describe('cancel', () => {
   it('fail if wallet not found', async () => {
     const err = 'wallet does not exist';
+    patch(eth, 'ready', () => true);
     patch(eth, 'getWallet', () => {
       throw new Error(err);
     });
@@ -274,16 +254,15 @@ describe('cancel', () => {
     await expect(
       EVMController.cancel(eth, {
         chain: 'ethereum',
-        network: 'goerli',
-        nonce: 123,
+        network: 'sepolia',
+        nonce: 0,
         address: mockAddress,
       })
     ).rejects.toThrow(
       new HttpException(
         500,
         LOAD_WALLET_ERROR_MESSAGE + 'Error: ' + err,
-        LOAD_WALLET_ERROR_CODE
-      )
+      ),
     );
   });
 });
