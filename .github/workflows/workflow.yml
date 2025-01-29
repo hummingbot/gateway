@@ -86,7 +86,7 @@ jobs:
         run: |
           git fetch --all -q
           git checkout -b $GITHUB_SHA
-          GATEWAY_TEST_MODE=dev jest --runInBand --coverage ./test/
+          GATEWAY_TEST_MODE=dev ./node_modules/.bin/jest --runInBand --coverage ./test/
 
   docker_build_and_push:
     runs-on: ubuntu-latest
