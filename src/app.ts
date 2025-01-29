@@ -27,7 +27,13 @@ import { uniswapRoutes } from './connectors/uniswap/uniswap.routes';
 // Change version for each release
 const GATEWAY_VERSION = '2.4.0';
 
-// Define swagger options once
+// At the top level, define devMode once
+// When true, runs server in HTTP mode (less secure but useful for development)
+// When false, runs server in HTTPS mode (secure, default for production)
+// Use --dev flag to enable HTTP mode, e.g.: yarn start --dev
+// Tests automatically run in dev mode via GATEWAY_TEST_MODE=dev
+const devMode = process.argv.includes('--dev') || process.env.GATEWAY_TEST_MODE === 'dev';
+
 const swaggerOptions = {
   openapi: {
     info: {
@@ -89,9 +95,7 @@ const configureGatewayServer = () => {
         },
       },
     } : false,
-    https: ConfigManagerV2.getInstance().get('server.devHTTPMode') 
-      ? undefined 
-      : getHttpsOptions()
+    https: devMode ? undefined : getHttpsOptions()
   });
   
   const docsPort = ConfigManagerV2.getInstance().get('server.docsPort');
@@ -168,7 +172,7 @@ const configureGatewayServer = () => {
       }
     });
   } else {
-    const protocol = ConfigManagerV2.getInstance().get('server.devHTTPMode') ? 'http' : 'https';
+    const protocol = devMode ? 'http' : 'https';
     logger.info(`📓 Documentation available at ${protocol}://localhost:${ConfigManagerV2.getInstance().get('server.port')}/docs`);
   }
 
@@ -200,12 +204,12 @@ export const gatewayApp = configureGatewayServer();
 
 export const startGateway = async () => {
   const port = ConfigManagerV2.getInstance().get('server.port');
-  const protocol = ConfigManagerV2.getInstance().get('server.devHTTPMode') ? 'http' : 'https';
+  const protocol = devMode ? 'http' : 'https';
   
   logger.info(`⚡️ Gateway version ${GATEWAY_VERSION} starting at ${protocol}://localhost:${port}`);
 
   try {
-    if (ConfigManagerV2.getInstance().get('server.devHTTPMode')) {
+    if (devMode) {
       logger.info('🔴 Running in development mode with (unsafe!) HTTP endpoints');
       await gatewayApp.listen({ port, host: '0.0.0.0' });
     } else {

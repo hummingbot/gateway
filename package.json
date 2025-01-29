@@ -12,15 +12,13 @@
     "clean:config": "find ./conf -maxdepth 1 -type f -delete",
     "format": "prettier . --write",
     "lint": "eslint src test test-scripts --format table --fix",
-    "dev": "nodemon src/index.ts",
-    "dev:debug": "NODE_ENV=dev DEBUG=* nodemon src/index.ts",
     "start": "/bin/bash ./startup.sh",
     "copy-files": "copyfiles -a 'src/**/schema/*.json' 'src/templates/*.yml' 'src/templates/lists/*.json' 'test/services/data/**/*.*' dist",
-    "test": "jest --verbose",
-    "test:debug": "node --inspect node_modules/.bin/jest --watch --runInBand",
-    "test:unit": "NODE_OPTIONS=--max_old_space_size=10240 jest --runInBand --verbose ./test/",
-    "test:cov": "NODE_OPTIONS=--max_old_space_size=10240 jest --runInBand --coverage ./test/",
-    "test:scripts": "jest -i --verbose ./test-scripts/*.test.ts"
+    "test": "GATEWAY_TEST_MODE=dev jest --verbose",
+    "test:debug": "GATEWAY_TEST_MODE=dev jest --watch --runInBand",
+    "test:unit": "GATEWAY_TEST_MODE=dev jest --runInBand ./test/",
+    "test:cov": "GATEWAY_TEST_MODE=dev jest --runInBand --coverage ./test/",
+    "test:scripts": "GATEWAY_TEST_MODE=dev jest --runInBand ./test-scripts/*.test.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.29.0",

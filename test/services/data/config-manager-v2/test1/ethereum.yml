@@ -5,11 +5,11 @@ networks:
     tokenListType: URL
     tokenListSource: https://wispy-bird-88a7.uniswap.workers.dev/?url=http://tokens.1inch.eth.link
     nativeCurrencySymbol: ETH
-  goerli:
-    chainID: 42
-    nodeURL: https://goerli.infura.io/v3/
+  sepolia:
+    chainID: 11155111
+    nodeURL: https://rpc.ankr.com/eth_sepolia 
     tokenListType: FILE
-    tokenListSource: src/chains/ethereum/erc20_tokens_kovan.json
+    tokenListSource: src/templates/lists/sepolia.json
     nativeCurrencySymbol: ETH
 
 manualGasPrice: 110

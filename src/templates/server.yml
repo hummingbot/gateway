@@ -1,6 +1,3 @@
-# Runs Gateway in development mode with HTTP if true
-devHTTPMode: false
-
 # GMT Offset in hours (e.g. -8 for Pacific US Time, -5 for Eastern US Time)
 GMTOffset: -8
 
