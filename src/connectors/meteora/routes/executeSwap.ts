@@ -1,10 +1,10 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { Type, Static } from '@sinclair/typebox';
-import { Meteora } from '../meteora';
 import { Solana } from '../../../chains/solana/solana';
 import { PublicKey } from '@solana/web3.js';
-import { BN } from 'bn.js';
 import { logger } from '../../../services/logger';
+import { getMeteoraSwapQuote } from './quoteSwap';
+import { SwapQuoteExactOut, SwapQuote } from '@meteora-ag/dlmm';
 
 // Schema definitions
 const ExecuteSwapRequest = Type.Object({
@@ -13,15 +13,20 @@ const ExecuteSwapRequest = Type.Object({
     description: 'Will use first available wallet if not specified',
     examples: [] // Will be populated during route registration
   }),
-  inputToken: Type.String({ 
+  baseToken: Type.String({ 
     default: 'M3M3',
     description: 'Token symbol or address'
   }),
-  outputToken: Type.String({ 
+  quoteToken: Type.String({ 
     default: 'USDC',
     description: 'Token symbol or address'
   }),
   amount: Type.Number({ default: 10 }),
+  side: Type.String({ 
+    enum: ['buy', 'sell'],
+    default: 'buy',
+    description: 'Trade direction'
+  }),
   poolAddress: Type.String({ default: 'FtFUzuXbbw6oBbU53SDUGspEka1D5Xyc4cwnkxer6xKz' }),
   slippagePct: Type.Optional(Type.Number({ default: 1 })),
 });
@@ -42,54 +47,54 @@ async function executeSwap(
   fastify: FastifyInstance,
   network: string,
   address: string,
-  inputTokenIdentifier: string,
-  outputTokenIdentifier: string,
+  baseTokenIdentifier: string,
+  quoteTokenIdentifier: string,
   amount: number,
+  side: 'buy' | 'sell',
   poolAddress: string,
   slippagePct?: number
 ): Promise<ExecuteSwapResponseType> {
   const solana = await Solana.getInstance(network);
-  const meteora = await Meteora.getInstance(network);
   const wallet = await solana.getWallet(address);
-  
-  const inToken = await solana.getToken(inputTokenIdentifier);
-  const outToken = await solana.getToken(outputTokenIdentifier);
-  const inTokenSymbol = inToken?.symbol || 'UNKNOWN';
-  const outTokenSymbol = outToken?.symbol || 'UNKNOWN';
 
-  logger.info(`Executing swap: ${amount.toFixed(4)} ${inTokenSymbol} -> ${outTokenSymbol} in pool ${poolAddress}`);
+  const { 
+    inputToken: inToken, 
+    outputToken: outToken, 
+    swapAmount, 
+    quote: swapQuote, 
+    dlmmPool 
+  } = await getMeteoraSwapQuote(
+    fastify,
+    network,
+    baseTokenIdentifier,
+    quoteTokenIdentifier,
+    amount,
+    side,
+    poolAddress,
+    slippagePct
+  );
 
-  if (!inToken || !outToken) {
-    logger.error(`Token not found: ${!inToken ? inputTokenIdentifier : outputTokenIdentifier}`);
-    throw fastify.httpErrors.badRequest(
-      `Token not found: ${!inToken ? inputTokenIdentifier : outputTokenIdentifier}`
-    );
-  }
+  logger.info(`Executing ${side} swap: ${amount.toFixed(4)} ${inToken.symbol} -> ${outToken.symbol} in pool ${poolAddress}`);
 
-  const dlmmPool = await meteora.getDlmmPool(poolAddress);
-  if (!dlmmPool) {
-    logger.error(`Pool not found: ${poolAddress}`);
-    throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
-  }
-
-  await dlmmPool.refetchStates();
-
-  const swapAmount = new BN(amount * 10 ** inToken.decimals);
-  const swapForY = inToken.address === dlmmPool.tokenX.publicKey.toBase58();
-
-  const binArrays = await dlmmPool.getBinArrayForSwap(swapForY);
-  const effectiveSlippage = new BN((slippagePct ?? meteora.getSlippagePct()) * 100);
-  const swapQuote = dlmmPool.swapQuote(swapAmount, swapForY, effectiveSlippage, binArrays);
-
-  const swapTx = await dlmmPool.swap({
-    inToken: new PublicKey(inToken.address),
-    outToken: new PublicKey(outToken.address),
-    inAmount: swapAmount,
-    minOutAmount: swapQuote.minOutAmount,
-    lbPair: dlmmPool.pubkey,
-    user: wallet.publicKey,
-    binArraysPubkey: swapQuote.binArraysPubkey,
-  });
+  const swapTx = side === 'buy'
+    ? await dlmmPool.swapExactOut({
+        inToken: new PublicKey(inToken.address),
+        outToken: new PublicKey(outToken.address),
+        outAmount: (swapQuote as SwapQuoteExactOut).outAmount,
+        maxInAmount: (swapQuote as SwapQuoteExactOut).maxInAmount,
+        lbPair: dlmmPool.pubkey,
+        user: wallet.publicKey,
+        binArraysPubkey: (swapQuote as SwapQuoteExactOut).binArraysPubkey,
+      })
+    : await dlmmPool.swap({
+        inToken: new PublicKey(inToken.address),
+        outToken: new PublicKey(outToken.address),
+        inAmount: swapAmount,
+        minOutAmount: (swapQuote as SwapQuote).minOutAmount,
+        lbPair: dlmmPool.pubkey,
+        user: wallet.publicKey,
+        binArraysPubkey: (swapQuote as SwapQuote).binArraysPubkey,
+      });
 
   const { signature, fee } = await solana.sendAndConfirmTransaction(swapTx, [wallet], 150_000);
 
@@ -101,7 +106,7 @@ async function executeSwap(
       wallet.publicKey.toBase58()
     );
 
-  logger.info(`Swap executed successfully: ${Math.abs(baseTokenBalanceChange).toFixed(4)} ${inTokenSymbol} -> ${Math.abs(quoteTokenBalanceChange).toFixed(4)} ${outTokenSymbol}`);
+  logger.info(`Swap executed successfully: ${Math.abs(baseTokenBalanceChange).toFixed(4)} ${inToken.symbol} -> ${Math.abs(quoteTokenBalanceChange).toFixed(4)} ${outToken.symbol}`);
 
   return {
     signature,
@@ -144,18 +149,19 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { walletAddress, inputToken, outputToken, amount, poolAddress, slippagePct } = request.body;
+        const { walletAddress, baseToken, quoteToken, amount, side, poolAddress, slippagePct } = request.body;
         const network = request.body.network || 'mainnet-beta';
         
-        logger.info(`Received swap request: ${amount} ${inputToken} -> ${outputToken} in pool ${poolAddress}`);
+        logger.info(`Received swap request: ${amount} ${baseToken} -> ${quoteToken} in pool ${poolAddress}`);
         
         return await executeSwap(
           fastify,
           network,
           walletAddress,
-          inputToken,
-          outputToken,
+          baseToken,
+          quoteToken,
           amount,
+          side as 'buy' | 'sell',
           poolAddress,
           slippagePct
         );
