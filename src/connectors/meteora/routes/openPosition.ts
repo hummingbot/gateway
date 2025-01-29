@@ -58,6 +58,11 @@ async function openPosition(
   const newImbalancePosition = new Keypair();
 
   const dlmmPool = await meteora.getDlmmPool(poolAddress);
+  const tokenX = await solana.getToken(dlmmPool.tokenX.publicKey.toBase58());
+  const tokenY = await solana.getToken(dlmmPool.tokenY.publicKey.toBase58());
+  const tokenXSymbol = tokenX?.symbol || 'UNKNOWN';
+  const tokenYSymbol = tokenY?.symbol || 'UNKNOWN';
+
   if (!dlmmPool) {
     throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
   }
@@ -107,10 +112,8 @@ async function openPosition(
     slippage: slippagePct ?? meteora.getSlippagePct(),
   });
 
-  const signature = await solana.sendAndConfirmTransaction(createPositionTx, [
-    wallet,
-    newImbalancePosition,
-  ], 1_000_000);
+  logger.info(`Opening position in pool ${poolAddress} with price range ${lowerPrice.toFixed(4)} - ${upperPrice.toFixed(4)} ${tokenYSymbol}/${tokenXSymbol}`);
+  const { signature } = await solana.sendAndConfirmTransaction(createPositionTx, [wallet, newImbalancePosition], 1_000_000);
 
   const { balanceChange, fee } = await solana.extractAccountBalanceChangeAndFee(signature, 0);
   const sentSOL = Math.abs(balanceChange - fee);
@@ -127,6 +130,8 @@ async function openPosition(
     dlmmPool.tokenY.publicKey.toBase58(),
     dlmmPool.pubkey.toBase58()
   );
+
+  logger.info(`Position opened at ${newImbalancePosition.publicKey.toBase58()}: ${Math.abs(baseTokenBalanceChange).toFixed(4)} ${tokenXSymbol}, ${Math.abs(quoteTokenBalanceChange).toFixed(4)} ${tokenYSymbol}`);
 
   return {
     signature,

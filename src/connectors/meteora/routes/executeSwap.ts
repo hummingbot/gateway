@@ -52,6 +52,10 @@ async function executeSwap(
   
   const inToken = await solana.getToken(inputTokenIdentifier);
   const outToken = await solana.getToken(outputTokenIdentifier);
+  const inTokenSymbol = inToken?.symbol || 'UNKNOWN';
+  const outTokenSymbol = outToken?.symbol || 'UNKNOWN';
+
+  logger.info(`Executing swap: ${amount.toFixed(4)} ${inTokenSymbol} -> ${outTokenSymbol}`);
 
   if (!inToken || !outToken) {
     throw fastify.httpErrors.badRequest(
@@ -83,14 +87,13 @@ async function executeSwap(
     binArraysPubkey: swapQuote.binArraysPubkey,
   });
 
-  const signature = await solana.sendAndConfirmTransaction(swapTx, [wallet], 150_000);
+  const { signature, fee } = await solana.sendAndConfirmTransaction(swapTx, [wallet], 150_000);
 
-  let inputBalanceChange: number, outputBalanceChange: number, fee: number;
-
+  let inputBalanceChange: number, outputBalanceChange: number;
   if (inToken.symbol === 'SOL') {
-    ({ balanceChange: inputBalanceChange, fee } = await solana.extractAccountBalanceChangeAndFee(signature, 0));
+    ({ balanceChange: inputBalanceChange } = await solana.extractAccountBalanceChangeAndFee(signature, 0));
   } else {
-    ({ balanceChange: inputBalanceChange, fee } = await solana.extractTokenBalanceChangeAndFee(
+    ({ balanceChange: inputBalanceChange } = await solana.extractTokenBalanceChangeAndFee(
       signature,
       inToken.address,
       wallet.publicKey.toBase58()
@@ -107,11 +110,13 @@ async function executeSwap(
     ));
   }
 
+  logger.info(`Swap executed successfully: ${Math.abs(inputBalanceChange).toFixed(4)} ${inTokenSymbol} -> ${Math.abs(outputBalanceChange).toFixed(4)} ${outTokenSymbol}`);
+
   return {
     signature,
     totalInputSwapped: Math.abs(inputBalanceChange),
     totalOutputSwapped: Math.abs(outputBalanceChange),
-    fee,
+    fee: fee,
   };
 }
 

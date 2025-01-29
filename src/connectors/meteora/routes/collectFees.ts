@@ -48,16 +48,19 @@ export async function collectFees(
     throw fastify.httpErrors.notFound(`Pool not found for position: ${positionAddress}`);
   }
 
-  await dlmmPool.refetchStates();
+  const tokenX = await solana.getToken(dlmmPool.tokenX.publicKey.toBase58());
+  const tokenY = await solana.getToken(dlmmPool.tokenY.publicKey.toBase58());
+  const tokenXSymbol = tokenX?.symbol || 'UNKNOWN';
+  const tokenYSymbol = tokenY?.symbol || 'UNKNOWN';
 
   const claimSwapFeeTx = await dlmmPool.claimSwapFee({
     owner: wallet.publicKey,
     position: position,
   });
 
-  const signature = await solana.sendAndConfirmTransaction(claimSwapFeeTx, [wallet], 300_000);
+  const { signature, fee } = await solana.sendAndConfirmTransaction(claimSwapFeeTx, [wallet], 300_000);
 
-  const { balanceChange: collectedFeeX, fee } = await solana.extractTokenBalanceChangeAndFee(
+  const { balanceChange: collectedFeeX } = await solana.extractTokenBalanceChangeAndFee(
     signature,
     dlmmPool.tokenX.publicKey.toBase58(),
     dlmmPool.pubkey.toBase58()
@@ -68,6 +71,8 @@ export async function collectFees(
     dlmmPool.tokenY.publicKey.toBase58(),
     dlmmPool.pubkey.toBase58()
   );
+
+  logger.info(`Fees collected from position ${positionAddress}: ${Math.abs(collectedFeeX).toFixed(4)} ${tokenXSymbol}, ${Math.abs(collectedFeeY).toFixed(4)} ${tokenYSymbol}`);
 
   return {
     signature,

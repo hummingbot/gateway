@@ -39,7 +39,12 @@ export async function removeLiquidity(
 
   const { position, info } = await meteora.getRawPosition(positionAddress, wallet.publicKey);
   const dlmmPool = await meteora.getDlmmPool(info.publicKey.toBase58());
+  const tokenX = await solana.getToken(dlmmPool.tokenX.publicKey.toBase58());
+  const tokenY = await solana.getToken(dlmmPool.tokenY.publicKey.toBase58());
+  const tokenXSymbol = tokenX?.symbol || 'UNKNOWN';
+  const tokenYSymbol = tokenY?.symbol || 'UNKNOWN';
 
+  logger.info(`Removing ${percentageToRemove.toFixed(4)}% liquidity from position ${positionAddress}`);
   const binIdsToRemove = position.positionData.positionBinData.map((bin) => bin.binId);
   const bps = new BN(percentageToRemove * 100);
 
@@ -54,9 +59,9 @@ export async function removeLiquidity(
   if (Array.isArray(removeLiquidityTx)) {
     throw fastify.httpErrors.internalServerError('Unexpected array of transactions');
   }
-  const signature = await solana.sendAndConfirmTransaction(removeLiquidityTx, [wallet], 1_000_000);
+  const { signature, fee } = await solana.sendAndConfirmTransaction(removeLiquidityTx, [wallet], 1_000_000);
 
-  const { balanceChange: tokenXRemovedAmount, fee } = await solana.extractTokenBalanceChangeAndFee(
+  const { balanceChange: tokenXRemovedAmount } = await solana.extractTokenBalanceChangeAndFee(
     signature,
     dlmmPool.tokenX.publicKey.toBase58(),
     dlmmPool.pubkey.toBase58()
@@ -67,6 +72,8 @@ export async function removeLiquidity(
     dlmmPool.tokenY.publicKey.toBase58(),
     dlmmPool.pubkey.toBase58()
   );
+
+  logger.info(`Liquidity removed from position ${positionAddress}: ${Math.abs(tokenXRemovedAmount).toFixed(4)} ${tokenXSymbol}, ${Math.abs(tokenYRemovedAmount).toFixed(4)} ${tokenYSymbol}`);
 
   return {
     signature,

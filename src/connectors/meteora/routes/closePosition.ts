@@ -37,27 +37,35 @@ async function closePosition(
 
   const positionInfo = await meteora.getPositionInfo(positionAddress, wallet.publicKey);
   const dlmmPool = await meteora.getDlmmPool(positionInfo.poolAddress);
+  const tokenX = await solana.getToken(dlmmPool.tokenX.publicKey.toBase58());
+  const tokenY = await solana.getToken(dlmmPool.tokenY.publicKey.toBase58());
+  const tokenXSymbol = tokenX?.symbol || 'UNKNOWN';
+  const tokenYSymbol = tokenY?.symbol || 'UNKNOWN';
 
   // Remove liquidity if baseTokenAmount or quoteTokenAmount is greater than 0
   if (positionInfo.baseTokenAmount > 0 || positionInfo.quoteTokenAmount > 0) {
+    logger.info(`Removing liquidity from position ${positionAddress}: ${positionInfo.baseTokenAmount.toFixed(4)} ${tokenXSymbol}, ${positionInfo.quoteTokenAmount.toFixed(4)} ${tokenYSymbol}`);
     await removeLiquidity(fastify, network, address, positionAddress, 100);
   }
 
   // Remove liquidity if baseTokenFees or quoteTokenFees is greater than 0
   if (positionInfo.baseFeeAmount > 0 || positionInfo.quoteFeeAmount > 0) {
+    logger.info(`Collecting fees from position ${positionAddress}: ${positionInfo.baseFeeAmount.toFixed(4)} ${tokenXSymbol}, ${positionInfo.quoteFeeAmount.toFixed(4)} ${tokenYSymbol}`);
     await collectFees(fastify, network, address, positionAddress);
   }
 
   // Now close the position
+  logger.info(`Closing position ${positionAddress}`);
   const { position } = await meteora.getRawPosition(positionAddress, wallet.publicKey);
   const closePositionTx = await dlmmPool.closePosition({
     owner: wallet.publicKey,
     position: position,
   });
 
-  const signature = await solana.sendAndConfirmTransaction(closePositionTx, [wallet], 200_000);
+  const { signature, fee } = await solana.sendAndConfirmTransaction(closePositionTx, [wallet], 200_000);
+  logger.info(`Position ${positionAddress} closed successfully. Signature: ${signature}`);
 
-  const { balanceChange, fee } = await solana.extractAccountBalanceChangeAndFee(signature, 0);
+  const { balanceChange } = await solana.extractAccountBalanceChangeAndFee(signature, 0);
   const returnedSOL = Math.abs(balanceChange);
 
   return {

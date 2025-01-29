@@ -604,7 +604,7 @@ export class Solana {
     tx: Transaction, 
     signers: Signer[] = [],
     computeUnits?: number
-  ): Promise<string> {
+  ): Promise<{ signature: string; fee: number }> {
     let currentPriorityFee = await this.estimatePriorityFees();
     const computeUnitsToUse = computeUnits || this.config.defaultComputeUnits;
     
@@ -664,7 +664,7 @@ export class Solana {
             const actualFee = this.getFee(confirmed.txData);
             logger.info(`[SOLANA] Transaction ${signature} confirmed with actual fee: ${actualFee.toFixed(6)} SOL`);
             logger.debug(`[SOLANA] Transaction data: ${JSON.stringify(confirmed.txData, null, 2)}`);
-            return signature;
+            return { signature, fee: actualFee };
           }
 
           retryCount++;

@@ -49,6 +49,12 @@ async function addLiquidity(
 
   const position = await meteora.getPositionInfo(positionAddress, wallet.publicKey);
   const dlmmPool = await meteora.getDlmmPool(position.address);
+  const tokenX = await solana.getToken(dlmmPool.tokenX.publicKey.toBase58());
+  const tokenY = await solana.getToken(dlmmPool.tokenY.publicKey.toBase58());
+  const tokenXSymbol = tokenX?.symbol || 'UNKNOWN';
+  const tokenYSymbol = tokenY?.symbol || 'UNKNOWN';
+
+  logger.info(`Adding liquidity to position ${positionAddress}: ${baseTokenAmount.toFixed(4)} ${tokenXSymbol}, ${quoteTokenAmount.toFixed(4)} ${tokenYSymbol}`);
   const maxBinId = position.upperBinId;
   const minBinId = position.lowerBinId;
 
@@ -72,9 +78,9 @@ async function addLiquidity(
     slippage: slippagePct ?? meteora.getSlippagePct(),
   });
 
-  const signature = await solana.sendAndConfirmTransaction(addLiquidityTx, [wallet], 800_000);
+  const { signature, fee } = await solana.sendAndConfirmTransaction(addLiquidityTx, [wallet], 800_000);
 
-  const { balanceChange: tokenXAddedAmount, fee } = await solana.extractTokenBalanceChangeAndFee(
+  const { balanceChange: tokenXAddedAmount } = await solana.extractTokenBalanceChangeAndFee(
     signature,
     dlmmPool.tokenX.publicKey.toBase58(),
     dlmmPool.pubkey.toBase58()
@@ -85,6 +91,8 @@ async function addLiquidity(
     dlmmPool.tokenY.publicKey.toBase58(),
     dlmmPool.pubkey.toBase58()
   );
+
+  logger.info(`Liquidity added to position ${positionAddress}: ${Math.abs(tokenXAddedAmount).toFixed(4)} ${tokenXSymbol}, ${Math.abs(tokenYAddedAmount).toFixed(4)} ${tokenYSymbol}`);
 
   return {
     signature,
