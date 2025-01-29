@@ -20,10 +20,12 @@ const ClosePositionRequest = Type.Object({
 
 const ClosePositionResponse = Type.Object({
   signature: Type.String(),
-  positionRentRefunded: Type.Number(),
   fee: Type.Number(),
-  baseTokenBalanceChange: Type.Number(),
-  quoteTokenBalanceChange: Type.Number(),
+  positionRentRefunded: Type.Number(),
+  baseTokenAmountRemoved: Type.Number(),
+  quoteTokenAmountRemoved: Type.Number(),
+  baseFeeAmountCollected: Type.Number(),
+  quoteFeeAmountCollected: Type.Number(),
 });
 
 type ClosePositionRequestType = Static<typeof ClosePositionRequest>;
@@ -41,29 +43,16 @@ async function closePosition(
 
   const positionInfo = await meteora.getPositionInfo(positionAddress, wallet.publicKey);
   const dlmmPool = await meteora.getDlmmPool(positionInfo.poolAddress);
-  const tokenX = await solana.getToken(dlmmPool.tokenX.publicKey.toBase58());
-  const tokenY = await solana.getToken(dlmmPool.tokenY.publicKey.toBase58());
-  const tokenXSymbol = tokenX?.symbol || 'UNKNOWN';
-  const tokenYSymbol = tokenY?.symbol || 'UNKNOWN';
-
-  let baseTokenBalanceChange = 0;
-  let quoteTokenBalanceChange = 0;
 
   // Remove liquidity if baseTokenAmount or quoteTokenAmount is greater than 0
-  if (positionInfo.baseTokenAmount > 0 || positionInfo.quoteTokenAmount > 0) {
-    logger.info(`Removing liquidity from position ${positionAddress}: ${positionInfo.baseTokenAmount.toFixed(4)} ${tokenXSymbol}, ${positionInfo.quoteTokenAmount.toFixed(4)} ${tokenYSymbol}`);
-    const removeLiquidityResult = await removeLiquidity(fastify, network, address, positionAddress, 100) as RemoveLiquidityResponseType;
-    baseTokenBalanceChange += removeLiquidityResult.baseTokenAmountRemoved;
-    quoteTokenBalanceChange += removeLiquidityResult.quoteTokenAmountRemoved;
-  }
+  const removeLiquidityResult = (positionInfo.baseTokenAmount > 0 || positionInfo.quoteTokenAmount > 0)
+    ? await removeLiquidity(fastify, network, address, positionAddress, 100) as RemoveLiquidityResponseType
+    : { baseTokenAmountRemoved: 0, quoteTokenAmountRemoved: 0 };
 
   // Remove liquidity if baseTokenFees or quoteTokenFees is greater than 0
-  if (positionInfo.baseFeeAmount > 0 || positionInfo.quoteFeeAmount > 0) {
-    logger.info(`Collecting fees from position ${positionAddress}: ${positionInfo.baseFeeAmount.toFixed(4)} ${tokenXSymbol}, ${positionInfo.quoteFeeAmount.toFixed(4)} ${tokenYSymbol}`);
-    const collectFeesResult = await collectFees(fastify, network, address, positionAddress) as CollectFeesResponseType;
-    baseTokenBalanceChange += collectFeesResult.baseFeeAmountCollected;
-    quoteTokenBalanceChange += collectFeesResult.quoteFeeAmountCollected;
-  }
+  const collectFeesResult = (positionInfo.baseFeeAmount > 0 || positionInfo.quoteFeeAmount > 0)
+    ? await collectFees(fastify, network, address, positionAddress) as CollectFeesResponseType
+    : { baseFeeAmountCollected: 0, quoteFeeAmountCollected: 0 };
 
   // Now close the position
   logger.info(`Closing position ${positionAddress}`);
@@ -81,10 +70,12 @@ async function closePosition(
 
   return {
     signature,
+    fee,
     positionRentRefunded: returnedSOL,
-    fee: fee,
-    baseTokenBalanceChange,
-    quoteTokenBalanceChange,
+    baseTokenAmountRemoved: removeLiquidityResult.baseTokenAmountRemoved,
+    quoteTokenAmountRemoved: removeLiquidityResult.quoteTokenAmountRemoved,
+    baseFeeAmountCollected: collectFeesResult.baseFeeAmountCollected,
+    quoteFeeAmountCollected: collectFeesResult.quoteFeeAmountCollected,
   };
 }
 

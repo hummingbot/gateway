@@ -20,14 +20,14 @@ const AddLiquidityRequest = Type.Object({
   baseTokenAmount: Type.Number({ default: 1 }),
   quoteTokenAmount: Type.Number({ default: 1 }),
   slippagePct: Type.Optional(Type.Number({ default: 1 })),
-  strategy: Type.Optional(Type.Number({ default: StrategyType.SpotImBalanced })),
+  strategyType: Type.Optional(Type.Number({ default: StrategyType.SpotImBalanced })),
 });
 
 const AddLiquidityResponse = Type.Object({
   signature: Type.String(),
-  tokenXAddedAmount: Type.Number(),
-  tokenYAddedAmount: Type.Number(),
   fee: Type.Number(),
+  baseTokenAmountAdded: Type.Number(),
+  quoteTokenAmountAdded: Type.Number(),
 });
 
 type AddLiquidityRequestType = Static<typeof AddLiquidityRequest>;
@@ -41,7 +41,7 @@ async function addLiquidity(
   baseTokenAmount: number,
   quoteTokenAmount: number,
   slippagePct?: number,
-  strategy: StrategyType = StrategyType.SpotImBalanced
+  strategyType: StrategyType = StrategyType.SpotBalanced
 ): Promise<AddLiquidityResponseType> {
   const solana = await Solana.getInstance(network);
   const meteora = await Meteora.getInstance(network);
@@ -73,7 +73,7 @@ async function addLiquidity(
     strategy: {
       maxBinId,
       minBinId,
-      strategyType: strategy,
+      strategyType,
     },
     slippage: slippagePct ?? meteora.getSlippagePct(),
   });
@@ -96,8 +96,8 @@ async function addLiquidity(
 
   return {
     signature,
-    tokenXAddedAmount: Math.abs(tokenXAddedAmount),
-    tokenYAddedAmount: Math.abs(tokenYAddedAmount),
+    baseTokenAmountAdded: Math.abs(tokenXAddedAmount),
+    quoteTokenAmountAdded: Math.abs(tokenYAddedAmount),
     fee,
   };
 }
@@ -133,7 +133,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { walletAddress, positionAddress, baseTokenAmount, quoteTokenAmount, slippagePct, strategy } = request.body;
+        const { walletAddress, positionAddress, baseTokenAmount, quoteTokenAmount, slippagePct, strategyType } = request.body;
         const network = request.body.network || 'mainnet-beta';
         
         return await addLiquidity(
@@ -144,7 +144,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           baseTokenAmount,
           quoteTokenAmount,
           slippagePct,
-          strategy
+          strategyType
         );
       } catch (e) {
         if (e.statusCode) return e;

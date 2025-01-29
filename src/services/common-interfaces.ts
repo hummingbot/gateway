@@ -237,8 +237,8 @@ export const NetworkSelectionSchema = Type.Object({
 
 export const PoolInfoSchema = Type.Object({
   address: Type.String(),
-  baseToken: Type.String(),
-  quoteToken: Type.String(),
+  baseTokenAddress: Type.String(),
+  quoteTokenAddress: Type.String(),
   binStep: Type.Number(),
   feePct: Type.Number(),
   price: Type.Number(),
@@ -251,8 +251,8 @@ export type PoolInfo = Static<typeof PoolInfoSchema>;
 export const PositionInfoSchema = Type.Object({
   address: Type.String(),
   poolAddress: Type.String(),
-  baseToken: Type.String(),
-  quoteToken: Type.String(),
+  baseTokenAddress: Type.String(),
+  quoteTokenAddress: Type.String(),
   baseTokenAmount: Type.Number(),
   quoteTokenAmount: Type.Number(),
   baseFeeAmount: Type.Number(),

@@ -146,8 +146,8 @@ export class Meteora {
 
       return {
         address: poolAddress,
-        baseToken: dlmmPool.tokenX.publicKey.toBase58(),
-        quoteToken: dlmmPool.tokenY.publicKey.toBase58(),
+        baseTokenAddress: dlmmPool.tokenX.publicKey.toBase58(),
+        quoteTokenAddress: dlmmPool.tokenY.publicKey.toBase58(),
         binStep: dlmmPool.lbPair.binStep,
         feePct: Number(feeInfo.baseFeeRatePercentage),
         price: Number(activeBin.pricePerToken),
@@ -189,8 +189,8 @@ export class Meteora {
       return {
         address: publicKey.toString(),
         poolAddress,
-        baseToken: dlmmPool.tokenX.publicKey.toBase58(),
-        quoteToken: dlmmPool.tokenY.publicKey.toBase58(),
+        baseTokenAddress: dlmmPool.tokenX.publicKey.toBase58(),
+        quoteTokenAddress: dlmmPool.tokenY.publicKey.toBase58(),
         baseTokenAmount: Number(convertDecimals(positionData.totalXAmount, dlmmPool.tokenX.decimal)),
         quoteTokenAmount: Number(convertDecimals(positionData.totalYAmount, dlmmPool.tokenY.decimal)),
         baseFeeAmount: Number(convertDecimals(positionData.feeX, dlmmPool.tokenX.decimal)),
@@ -256,8 +256,8 @@ export class Meteora {
     return {
       address: positionAddress,
       poolAddress: info.publicKey.toString(),
-      baseToken: dlmmPool.tokenX.publicKey.toBase58(),
-      quoteToken: dlmmPool.tokenY.publicKey.toBase58(),
+      baseTokenAddress: dlmmPool.tokenX.publicKey.toBase58(),
+      quoteTokenAddress: dlmmPool.tokenY.publicKey.toBase58(),
       baseTokenAmount: Number(convertDecimals(position.positionData.totalXAmount, dlmmPool.tokenX.decimal)),
       quoteTokenAmount: Number(convertDecimals(position.positionData.totalYAmount, dlmmPool.tokenY.decimal)),
       baseFeeAmount: Number(convertDecimals(position.positionData.feeX, dlmmPool.tokenX.decimal)),

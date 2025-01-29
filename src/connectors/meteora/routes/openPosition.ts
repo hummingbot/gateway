@@ -33,8 +33,8 @@ const OpenPositionResponse = Type.Object({
   fee: Type.Number(),
   positionAddress: Type.String(),
   positionRent: Type.Number(),
-  baseTokenBalanceChange: Type.Number(),
-  quoteTokenBalanceChange: Type.Number(),
+  baseTokenAmountAdded: Type.Number(),
+  quoteTokenAmountAdded: Type.Number(),
 });
 
 type OpenPositionRequestType = Static<typeof OpenPositionRequest>;
@@ -132,8 +132,8 @@ async function openPosition(
     fee: fee,
     positionAddress: newImbalancePosition.publicKey.toBase58(),
     positionRent: sentSOL,
-    baseTokenBalanceChange,
-    quoteTokenBalanceChange,
+    baseTokenAmountAdded: baseTokenBalanceChange,
+    quoteTokenAmountAdded: quoteTokenBalanceChange,
   };
 }
 
