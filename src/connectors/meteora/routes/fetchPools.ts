@@ -8,14 +8,12 @@ import { PoolInfo, PoolInfoSchema } from '../../../services/common-interfaces';
 // Schema definitions
 const FetchPoolsRequest = Type.Object({
   network: Type.Optional(Type.String({ default: 'mainnet-beta' })),
-  limit: Type.Optional(Type.Number({ minimum: 1, default: 100 })),
+  limit: Type.Optional(Type.Number({ minimum: 1, default: 10 })),
   tokenA: Type.Optional(Type.String({
     description: 'First token symbol or address',
-    default: 'M3M3'
   })),
   tokenB: Type.Optional(Type.String({
     description: 'Second token symbol or address',
-    default: 'USDC'
   })),
 });
 
@@ -50,15 +48,25 @@ export const fetchPoolsRoute: FastifyPluginAsync = async (fastify) => {
           throw fastify.httpErrors.serviceUnavailable('Solana service unavailable');
         }
 
-        const tokenInfoA = await solana.getToken(tokenA);
-        const tokenInfoB = await solana.getToken(tokenB);
-        if (!tokenInfoA || !tokenInfoB) {
-          throw fastify.httpErrors.notFound(
-            `Token not found: ${!tokenInfoA ? tokenInfoA : tokenInfoB}`
-          );
+        let tokenMintA, tokenMintB;
+        
+        if (tokenA) {
+          const tokenInfoA = await solana.getToken(tokenA);
+          if (!tokenInfoA) {
+            throw fastify.httpErrors.notFound(`Token not found: ${tokenA}`);
+          }
+          tokenMintA = tokenInfoA.address;
+        }
+        
+        if (tokenB) {
+          const tokenInfoB = await solana.getToken(tokenB);
+          if (!tokenInfoB) {
+            throw fastify.httpErrors.notFound(`Token not found: ${tokenB}`);
+          }
+          tokenMintB = tokenInfoB.address;
         }
     
-        const pairs = await meteora.getPools(limit, tokenInfoA?.address, tokenInfoB?.address);
+        const pairs = await meteora.getPools(limit, tokenMintA, tokenMintB);
         if (!Array.isArray(pairs)) {
           logger.error('Invalid pairs response from Meteora');
           return [];

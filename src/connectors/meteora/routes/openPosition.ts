@@ -30,7 +30,7 @@ const OpenPositionRequest = Type.Object({
 
 const OpenPositionResponse = Type.Object({
   signature: Type.String(),
-  transactionFee: Type.Number(),
+  fee: Type.Number(),
   positionAddress: Type.String(),
   positionRent: Type.Number(),
   baseTokenBalanceChange: Type.Number(),
@@ -115,31 +115,25 @@ async function openPosition(
   logger.info(`Opening position in pool ${poolAddress} with price range ${lowerPrice.toFixed(4)} - ${upperPrice.toFixed(4)} ${tokenYSymbol}/${tokenXSymbol}`);
   const { signature } = await solana.sendAndConfirmTransaction(createPositionTx, [wallet, newImbalancePosition], 1_000_000);
 
-  const { balanceChange, fee } = await solana.extractAccountBalanceChangeAndFee(signature, 0);
-  const sentSOL = Math.abs(balanceChange - fee);
+  const { baseTokenBalanceChange, quoteTokenBalanceChange, fee } = 
+    await solana.extractPairBalanceChangesAndFee(
+      signature,
+      tokenX,
+      tokenY,
+      wallet.publicKey.toBase58()
+    );
 
-  // Get token balance changes
-  const { balanceChange: baseTokenBalanceChange } = await solana.extractTokenBalanceChangeAndFee(
-    signature,
-    dlmmPool.tokenX.publicKey.toBase58(),
-    dlmmPool.pubkey.toBase58()
-  );
-
-  const { balanceChange: quoteTokenBalanceChange } = await solana.extractTokenBalanceChangeAndFee(
-    signature,
-    dlmmPool.tokenY.publicKey.toBase58(),
-    dlmmPool.pubkey.toBase58()
-  );
+  const sentSOL = Math.abs(baseTokenBalanceChange - fee);
 
   logger.info(`Position opened at ${newImbalancePosition.publicKey.toBase58()}: ${Math.abs(baseTokenBalanceChange).toFixed(4)} ${tokenXSymbol}, ${Math.abs(quoteTokenBalanceChange).toFixed(4)} ${tokenYSymbol}`);
 
   return {
     signature,
-    transactionFee: fee,
+    fee: fee,
     positionAddress: newImbalancePosition.publicKey.toBase58(),
     positionRent: sentSOL,
-    baseTokenBalanceChange: Math.abs(baseTokenBalanceChange),
-    quoteTokenBalanceChange: Math.abs(quoteTokenBalanceChange),
+    baseTokenBalanceChange,
+    quoteTokenBalanceChange,
   };
 }
 

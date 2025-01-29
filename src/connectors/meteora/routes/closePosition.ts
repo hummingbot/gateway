@@ -5,6 +5,8 @@ import { Solana } from '../../../chains/solana/solana';
 import { logger } from '../../../services/logger';
 import { removeLiquidity } from './removeLiquidity';
 import { collectFees } from './collectFees';
+import { CollectFeesResponseType } from './collectFees';
+import { RemoveLiquidityResponseType } from './removeLiquidity';
 
 // Schema definitions
 const ClosePositionRequest = Type.Object({
@@ -19,7 +21,9 @@ const ClosePositionRequest = Type.Object({
 const ClosePositionResponse = Type.Object({
   signature: Type.String(),
   positionRentRefunded: Type.Number(),
-  transactionFee: Type.Number(),
+  fee: Type.Number(),
+  baseTokenBalanceChange: Type.Number(),
+  quoteTokenBalanceChange: Type.Number(),
 });
 
 type ClosePositionRequestType = Static<typeof ClosePositionRequest>;
@@ -42,16 +46,23 @@ async function closePosition(
   const tokenXSymbol = tokenX?.symbol || 'UNKNOWN';
   const tokenYSymbol = tokenY?.symbol || 'UNKNOWN';
 
+  let baseTokenBalanceChange = 0;
+  let quoteTokenBalanceChange = 0;
+
   // Remove liquidity if baseTokenAmount or quoteTokenAmount is greater than 0
   if (positionInfo.baseTokenAmount > 0 || positionInfo.quoteTokenAmount > 0) {
     logger.info(`Removing liquidity from position ${positionAddress}: ${positionInfo.baseTokenAmount.toFixed(4)} ${tokenXSymbol}, ${positionInfo.quoteTokenAmount.toFixed(4)} ${tokenYSymbol}`);
-    await removeLiquidity(fastify, network, address, positionAddress, 100);
+    const removeLiquidityResult = await removeLiquidity(fastify, network, address, positionAddress, 100) as RemoveLiquidityResponseType;
+    baseTokenBalanceChange += removeLiquidityResult.baseTokenAmountRemoved;
+    quoteTokenBalanceChange += removeLiquidityResult.quoteTokenAmountRemoved;
   }
 
   // Remove liquidity if baseTokenFees or quoteTokenFees is greater than 0
   if (positionInfo.baseFeeAmount > 0 || positionInfo.quoteFeeAmount > 0) {
     logger.info(`Collecting fees from position ${positionAddress}: ${positionInfo.baseFeeAmount.toFixed(4)} ${tokenXSymbol}, ${positionInfo.quoteFeeAmount.toFixed(4)} ${tokenYSymbol}`);
-    await collectFees(fastify, network, address, positionAddress);
+    const collectFeesResult = await collectFees(fastify, network, address, positionAddress) as CollectFeesResponseType;
+    baseTokenBalanceChange += collectFeesResult.baseFeeAmountCollected;
+    quoteTokenBalanceChange += collectFeesResult.quoteFeeAmountCollected;
   }
 
   // Now close the position
@@ -63,7 +74,7 @@ async function closePosition(
   });
 
   const { signature, fee } = await solana.sendAndConfirmTransaction(closePositionTx, [wallet], 200_000);
-  logger.info(`Position ${positionAddress} closed successfully. Signature: ${signature}`);
+  logger.info(`Position ${positionAddress} closed successfully.`);
 
   const { balanceChange } = await solana.extractAccountBalanceChangeAndFee(signature, 0);
   const returnedSOL = Math.abs(balanceChange);
@@ -71,7 +82,9 @@ async function closePosition(
   return {
     signature,
     positionRentRefunded: returnedSOL,
-    transactionFee: fee,
+    fee: fee,
+    baseTokenBalanceChange,
+    quoteTokenBalanceChange,
   };
 }
 

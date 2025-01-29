@@ -18,13 +18,13 @@ const RemoveLiquidityRequest = Type.Object({
 
 const RemoveLiquidityResponse = Type.Object({
   signature: Type.String(),
-  tokenXRemovedAmount: Type.Number(),
-  tokenYRemovedAmount: Type.Number(),
   fee: Type.Number(),
+  baseTokenAmountRemoved: Type.Number(),
+  quoteTokenAmountRemoved: Type.Number(),
 });
 
 type RemoveLiquidityRequestType = Static<typeof RemoveLiquidityRequest>;
-type RemoveLiquidityResponseType = Static<typeof RemoveLiquidityResponse>;
+export type RemoveLiquidityResponseType = Static<typeof RemoveLiquidityResponse>;
 
 export async function removeLiquidity(
   fastify: FastifyInstance,
@@ -77,9 +77,9 @@ export async function removeLiquidity(
 
   return {
     signature,
-    tokenXRemovedAmount: Math.abs(tokenXRemovedAmount),
-    tokenYRemovedAmount: Math.abs(tokenYRemovedAmount),
     fee,
+    baseTokenAmountRemoved: Math.abs(tokenXRemovedAmount),
+    quoteTokenAmountRemoved: Math.abs(tokenYRemovedAmount),
   };
 }
 

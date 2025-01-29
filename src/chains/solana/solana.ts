@@ -853,4 +853,53 @@ export class Solana {
     return (await this.getToken(tokenSymbol)) || undefined;
   }
 
+  /**
+   * Helper function to get balance changes for both tokens in a pair
+   * @param signature Transaction signature
+   * @param tokenX First token (can be SOL)
+   * @param tokenY Second token (can be SOL)
+   * @param walletAddress Wallet address to check balances for
+   * @returns Balance changes and transaction fee
+   */
+  async extractPairBalanceChangesAndFee(
+    signature: string,
+    tokenX: TokenInfo,
+    tokenY: TokenInfo,
+    walletAddress: string,
+  ): Promise<{ 
+    baseTokenBalanceChange: number; 
+    quoteTokenBalanceChange: number;
+    fee: number;
+  }> {
+    let baseTokenBalanceChange: number, quoteTokenBalanceChange: number;
+
+    if (tokenX.symbol === 'SOL') {
+      ({ balanceChange: baseTokenBalanceChange } = await this.extractAccountBalanceChangeAndFee(signature, 0));
+    } else {
+      ({ balanceChange: baseTokenBalanceChange } = await this.extractTokenBalanceChangeAndFee(
+        signature,
+        tokenX.address,
+        walletAddress
+      ));
+    }
+
+    if (tokenY.symbol === 'SOL') {
+      ({ balanceChange: quoteTokenBalanceChange } = await this.extractAccountBalanceChangeAndFee(signature, 0));
+    } else {
+      ({ balanceChange: quoteTokenBalanceChange } = await this.extractTokenBalanceChangeAndFee(
+        signature,
+        tokenY.address,
+        walletAddress
+      ));
+    }
+
+    const { fee } = await this.extractAccountBalanceChangeAndFee(signature, 0);
+
+    return {
+      baseTokenBalanceChange: Math.abs(baseTokenBalanceChange),
+      quoteTokenBalanceChange: Math.abs(quoteTokenBalanceChange),
+      fee,
+    };
+  }
+
 }

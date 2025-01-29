@@ -16,13 +16,13 @@ const CollectFeesRequest = Type.Object({
 
 const CollectFeesResponse = Type.Object({
   signature: Type.String(),
-  collectedFeeX: Type.Number(),
-  collectedFeeY: Type.Number(),
   fee: Type.Number(),
+  baseFeeAmountCollected: Type.Number(),
+  quoteFeeAmountCollected: Type.Number(),
 });
 
 type CollectFeesRequestType = Static<typeof CollectFeesRequest>;
-type CollectFeesResponseType = Static<typeof CollectFeesResponse>;
+export type CollectFeesResponseType = Static<typeof CollectFeesResponse>;
 
 export async function collectFees(
   fastify: FastifyInstance,
@@ -76,9 +76,9 @@ export async function collectFees(
 
   return {
     signature,
-    collectedFeeX: Math.abs(collectedFeeX),
-    collectedFeeY: Math.abs(collectedFeeY),
     fee,
+    baseFeeAmountCollected: Math.abs(collectedFeeX),
+    quoteFeeAmountCollected: Math.abs(collectedFeeY),
   };
 }
 

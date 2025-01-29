@@ -82,42 +82,43 @@ export class Meteora {
   ): Promise<{ publicKey: PublicKey; account: LbPair }[]> {
     const timeoutMs = 10000;
     try {
-      logger.info('Fetching Meteora LB pairs...');
+      logger.info('Fetching Meteora pools...');
       const lbPairsPromise = DLMM.getLbPairs(this.solana.connection, {
         cluster: this.solana.network as any
       });
       
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('getLbPairs timed out')), timeoutMs);
+        setTimeout(() => reject(new Error('getPools timed out')), timeoutMs);
       });
 
       let lbPairs = (await Promise.race([lbPairsPromise, timeoutPromise])) as { 
         publicKey: PublicKey; 
         account: LbPair 
       }[];
-      
-      // Filter by tokens if provided
+
+      // Only apply token filtering if tokens are provided
       if (tokenMintA && tokenMintB) {
         lbPairs = lbPairs.filter(pair => {
-          const tokenXMint = (pair.account.parameters as any).tokenX;
-          const tokenYMint = (pair.account.parameters as any).tokenY;
+          const tokenXMint = pair.account.tokenXMint.toBase58();
+          const tokenYMint = pair.account.tokenYMint.toBase58();
           return (tokenXMint === tokenMintA && tokenYMint === tokenMintB) ||
-                 (tokenXMint === tokenMintB && tokenYMint === tokenMintA);
+                (tokenXMint === tokenMintB && tokenYMint === tokenMintA);
         });
       } else if (tokenMintA) {
         lbPairs = lbPairs.filter(pair => {
-          const tokenXMint = (pair.account.parameters as any).tokenX;
-          const tokenYMint = (pair.account.parameters as any).tokenY;
+          const tokenXMint = pair.account.tokenXMint.toBase58();
+          const tokenYMint = pair.account.tokenYMint.toBase58();
           return tokenXMint === tokenMintA || tokenYMint === tokenMintA;
         });
       }
 
-      logger.info(`Found ${lbPairs.length} Meteora LB pairs, returning first ${limit}`);
+      const returnLength = Math.min(lbPairs.length, limit);
+      logger.info(`Found ${lbPairs.length} matching Meteora pools, returning first ${returnLength}`);
       // console.log(JSON.stringify(lbPairs[0], null, 2));
        
-      return lbPairs.slice(0, limit);
+      return lbPairs.slice(0, returnLength);
     } catch (error) {
-      logger.error('Failed to fetch Meteora LB pairs:', error);
+      logger.error('Failed to fetch Meteora pools:', error);
       return []; // Return empty array instead of throwing
     }
   }

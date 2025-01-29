@@ -31,6 +31,8 @@ const ExecuteSwapResponse = Type.Object({
   totalInputSwapped: Type.Number(),
   totalOutputSwapped: Type.Number(),
   fee: Type.Number(),
+  baseTokenBalanceChange: Type.Number(),
+  quoteTokenBalanceChange: Type.Number(),
 });
 
 type ExecuteSwapRequestType = Static<typeof ExecuteSwapRequest>;
@@ -55,9 +57,10 @@ async function executeSwap(
   const inTokenSymbol = inToken?.symbol || 'UNKNOWN';
   const outTokenSymbol = outToken?.symbol || 'UNKNOWN';
 
-  logger.info(`Executing swap: ${amount.toFixed(4)} ${inTokenSymbol} -> ${outTokenSymbol}`);
+  logger.info(`Executing swap: ${amount.toFixed(4)} ${inTokenSymbol} -> ${outTokenSymbol} in pool ${poolAddress}`);
 
   if (!inToken || !outToken) {
+    logger.error(`Token not found: ${!inToken ? inputTokenIdentifier : outputTokenIdentifier}`);
     throw fastify.httpErrors.badRequest(
       `Token not found: ${!inToken ? inputTokenIdentifier : outputTokenIdentifier}`
     );
@@ -65,6 +68,7 @@ async function executeSwap(
 
   const dlmmPool = await meteora.getDlmmPool(poolAddress);
   if (!dlmmPool) {
+    logger.error(`Pool not found: ${poolAddress}`);
     throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
   }
 
@@ -89,34 +93,23 @@ async function executeSwap(
 
   const { signature, fee } = await solana.sendAndConfirmTransaction(swapTx, [wallet], 150_000);
 
-  let inputBalanceChange: number, outputBalanceChange: number;
-  if (inToken.symbol === 'SOL') {
-    ({ balanceChange: inputBalanceChange } = await solana.extractAccountBalanceChangeAndFee(signature, 0));
-  } else {
-    ({ balanceChange: inputBalanceChange } = await solana.extractTokenBalanceChangeAndFee(
+  const { baseTokenBalanceChange, quoteTokenBalanceChange } = 
+    await solana.extractPairBalanceChangesAndFee(
       signature,
-      inToken.address,
+      await solana.getToken(dlmmPool.tokenX.publicKey.toBase58()),
+      await solana.getToken(dlmmPool.tokenY.publicKey.toBase58()),
       wallet.publicKey.toBase58()
-    ));
-  }
+    );
 
-  if (outToken.symbol === 'SOL') {
-    ({ balanceChange: outputBalanceChange } = await solana.extractAccountBalanceChangeAndFee(signature, 0));
-  } else {
-    ({ balanceChange: outputBalanceChange } = await solana.extractTokenBalanceChangeAndFee(
-      signature,
-      outToken.address,
-      wallet.publicKey.toBase58()
-    ));
-  }
-
-  logger.info(`Swap executed successfully: ${Math.abs(inputBalanceChange).toFixed(4)} ${inTokenSymbol} -> ${Math.abs(outputBalanceChange).toFixed(4)} ${outTokenSymbol}`);
+  logger.info(`Swap executed successfully: ${Math.abs(baseTokenBalanceChange).toFixed(4)} ${inTokenSymbol} -> ${Math.abs(quoteTokenBalanceChange).toFixed(4)} ${outTokenSymbol}`);
 
   return {
     signature,
-    totalInputSwapped: Math.abs(inputBalanceChange),
-    totalOutputSwapped: Math.abs(outputBalanceChange),
-    fee: fee,
+    totalInputSwapped: Math.abs(baseTokenBalanceChange),
+    totalOutputSwapped: Math.abs(quoteTokenBalanceChange),
+    fee,
+    baseTokenBalanceChange,
+    quoteTokenBalanceChange,
   };
 }
 
@@ -154,6 +147,8 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         const { walletAddress, inputToken, outputToken, amount, poolAddress, slippagePct } = request.body;
         const network = request.body.network || 'mainnet-beta';
         
+        logger.info(`Received swap request: ${amount} ${inputToken} -> ${outputToken} in pool ${poolAddress}`);
+        
         return await executeSwap(
           fastify,
           network,
@@ -166,7 +161,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         );
       } catch (e) {
         if (e.statusCode) return e;
-        logger.error(e);
+        logger.error('Error executing swap:', e);
         throw fastify.httpErrors.internalServerError('Internal server error');
       }
     }
