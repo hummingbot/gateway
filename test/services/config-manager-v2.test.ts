@@ -218,8 +218,8 @@ describe('Configuration manager v2 tests', () => {
 
   it('Get instance', (done) => {
     let configManager = ConfigManagerV2.getInstance();
-    expect(configManager.allConfigurations.server.devHTTPMode).toEqual(
-      false
+    expect(configManager.allConfigurations.server.logToStdOut).toEqual(
+      true
     );
     configManager = ConfigManagerV2.getInstance();
     done();

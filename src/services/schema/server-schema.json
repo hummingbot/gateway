@@ -9,7 +9,6 @@
     "ipWhitelist": { "type": "array" },
     "GMTOffset": { "type": "number" },
     "logToStdOut": { "type": "boolean" },
-    "devHTTPMode": { "type": "boolean" },
     "fastifyLogs": { "type": "boolean" },
     "nonceDbPath": { "type": "string" },
     "transactionDbPath": { "type": "string" }
@@ -17,7 +16,6 @@
   "additionalProperties": false,
   "required": [
     "port",
-    "devHTTPMode",
     "certificatePath",
     "logPath",
     "nonceDbPath",

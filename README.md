@@ -71,7 +71,7 @@ There are a number of ways to contribute to gateway.
 
 ### Configuration
 
-- If you want to turn off `https`, set `devHTTPMode` to `true` in [conf/server.yml](./conf/server.yml). 
+- To run in HTTP mode (for development), use `yarn start --dev`. By default, Gateway runs in secure HTTPS mode.
 
 - If you want Gateway to log to standard out, set `logToStdOut` to `true` in [conf/server.yml](./conf/server.yml).
 
@@ -130,4 +130,5 @@ You can run the prettifier before committing with:
 ```bash
 yarn run prettier
 ```
+
 
