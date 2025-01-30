@@ -64,7 +64,9 @@ export async function getMeteoraSwapQuote(
     ? [quoteToken, baseToken]
     : [baseToken, quoteToken];
 
-  const amount_bn = DecimalUtil.toBN(new Decimal(amount), inputToken.decimals);
+  const amount_bn = side === 'buy'
+    ? DecimalUtil.toBN(new Decimal(amount), outputToken.decimals)
+    : DecimalUtil.toBN(new Decimal(amount), inputToken.decimals);
   const swapForY = inputToken.address === dlmmPool.tokenX.publicKey.toBase58();
   const binArrays = await dlmmPool.getBinArrayForSwap(swapForY);
   const effectiveSlippage = new BN((slippagePct ?? meteora.getSlippagePct()) * 100);
