@@ -1,30 +1,14 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
-import { Type, Static } from '@sinclair/typebox';
 import { Meteora } from '../meteora';
 import { Solana } from '../../../chains/solana/solana';
 import { BN } from '@coral-xyz/anchor';
 import { logger } from '../../../services/logger';
-
-// Schema definitions
-const RemoveLiquidityRequest = Type.Object({
-  network: Type.Optional(Type.String({ default: 'mainnet-beta' })),
-  walletAddress: Type.String({ 
-    description: 'Will use first available wallet if not specified',
-    examples: [] // Will be populated during route registration
-  }),
-  positionAddress: Type.String({ default: '' }),
-  percentageToRemove: Type.Number({ minimum: 0, maximum: 100, default: 50 }),
-});
-
-const RemoveLiquidityResponse = Type.Object({
-  signature: Type.String(),
-  fee: Type.Number(),
-  baseTokenAmountRemoved: Type.Number(),
-  quoteTokenAmountRemoved: Type.Number(),
-});
-
-type RemoveLiquidityRequestType = Static<typeof RemoveLiquidityRequest>;
-export type RemoveLiquidityResponseType = Static<typeof RemoveLiquidityResponse>;
+import { 
+  RemoveLiquidityRequest, 
+  RemoveLiquidityResponse, 
+  RemoveLiquidityRequestType, 
+  RemoveLiquidityResponseType 
+} from '../../../services/clmm-interfaces';
 
 export async function removeLiquidity(
   fastify: FastifyInstance,
@@ -106,7 +90,14 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Remove liquidity from a Meteora position',
         tags: ['meteora'],
-        body: RemoveLiquidityRequest,
+        body: {
+          ...RemoveLiquidityRequest,
+          properties: {
+            ...RemoveLiquidityRequest.properties,
+            network: { type: 'string', default: 'mainnet-beta' },
+            percentageToRemove: { type: 'number', examples: [100] }
+          }
+        },
         response: {
           200: RemoveLiquidityResponse
         },

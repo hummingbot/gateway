@@ -1,5 +1,4 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
-import { Type, Static } from '@sinclair/typebox';
 import { Meteora } from '../meteora';
 import { Solana } from '../../../chains/solana/solana';
 import { DecimalUtil } from '@orca-so/common-sdk';
@@ -7,32 +6,14 @@ import { Decimal } from 'decimal.js';
 import { BN } from 'bn.js';
 import { logger } from '../../../services/logger';
 import { SwapQuoteExactOut, SwapQuote } from '@meteora-ag/dlmm';
+import { 
+  GetSwapQuoteRequestType,
+  GetSwapQuoteResponseType,
+  GetSwapQuoteRequest,
+  GetSwapQuoteResponse
+} from '../../../services/swap-interfaces';
 
-// Schema definitions
-const GetSwapQuoteRequest = Type.Object({
-  network: Type.Optional(Type.String({ default: 'mainnet-beta' })),
-  baseToken: Type.String({ default: 'M3M3' }),
-  quoteToken: Type.String({ default: 'USDC' }),
-  amount: Type.Number({ default: 10 }),
-  side: Type.String({ 
-    enum: ['buy', 'sell'],
-    default: 'buy',
-    description: 'Trade direction'
-  }),
-  poolAddress: Type.String({ default: 'FtFUzuXbbw6oBbU53SDUGspEka1D5Xyc4cwnkxer6xKz' }),
-  slippagePct: Type.Optional(Type.Number({ default: 1 })),
-});
-
-const GetSwapQuoteResponse = Type.Object({
-  estimatedAmountIn: Type.String(),
-  estimatedAmountOut: Type.String(),
-  minOutAmount: Type.String(),
-});
-
-type GetSwapQuoteRequestType = Static<typeof GetSwapQuoteRequest>;
-type GetSwapQuoteResponseType = Static<typeof GetSwapQuoteResponse>;
-
-export async function getMeteoraSwapQuote(
+export async function getRawSwapQuote(
   fastify: FastifyInstance,
   network: string,
   baseTokenSymbol: string,
@@ -95,7 +76,7 @@ export async function getMeteoraSwapQuote(
   };
 }
 
-async function getSwapQuote(
+async function formatSwapQuote(
   fastify: FastifyInstance,
   network: string,
   baseTokenSymbol: string,
@@ -105,7 +86,7 @@ async function getSwapQuote(
   poolAddress: string,
   slippagePct?: number
 ): Promise<GetSwapQuoteResponseType> {
-  const { inputToken, outputToken, quote } = await getMeteoraSwapQuote(
+  const { inputToken, outputToken, quote } = await getRawSwapQuote(
     fastify,
     network,
     baseTokenSymbol,
@@ -143,7 +124,19 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Get a swap quote for Meteora',
         tags: ['meteora'],
-        querystring: GetSwapQuoteRequest,
+        querystring: {
+          ...GetSwapQuoteRequest,
+          properties: {
+            ...GetSwapQuoteRequest.properties,
+            network: { type: 'string', default: 'mainnet-beta' },
+            baseToken: { type: 'string', examples: ['M3M3'] },
+            quoteToken: { type: 'string', examples: ['USDC'] },
+            amount: { type: 'number', examples: [10] },
+            side: { type: 'string', examples: ['buy'] },
+            poolAddress: { type: 'string', examples: ['FtFUzuXbbw6oBbU53SDUGspEka1D5Xyc4cwnkxer6xKz'] },
+            slippagePct: { type: 'number', examples: [1] }
+          }
+        },
         response: {
           200: GetSwapQuoteResponse
         },
@@ -154,7 +147,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         const { network, baseToken, quoteToken, amount, side, poolAddress, slippagePct } = request.query;
         const networkToUse = network || 'mainnet-beta';
 
-        return await getSwapQuote(
+        return await formatSwapQuote(
           fastify,
           networkToUse,
           baseToken,

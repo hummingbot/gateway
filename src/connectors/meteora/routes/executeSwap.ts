@@ -1,47 +1,15 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
-import { Type, Static } from '@sinclair/typebox';
 import { Solana } from '../../../chains/solana/solana';
 import { PublicKey } from '@solana/web3.js';
 import { logger } from '../../../services/logger';
-import { getMeteoraSwapQuote } from './quoteSwap';
+import { getRawSwapQuote } from './quoteSwap';
 import { SwapQuoteExactOut, SwapQuote } from '@meteora-ag/dlmm';
-
-// Schema definitions
-const ExecuteSwapRequest = Type.Object({
-  network: Type.Optional(Type.String({ default: 'mainnet-beta' })),
-  walletAddress: Type.String({ 
-    description: 'Will use first available wallet if not specified',
-    examples: [] // Will be populated during route registration
-  }),
-  baseToken: Type.String({ 
-    default: 'M3M3',
-    description: 'Token symbol or address'
-  }),
-  quoteToken: Type.String({ 
-    default: 'USDC',
-    description: 'Token symbol or address'
-  }),
-  amount: Type.Number({ default: 10 }),
-  side: Type.String({ 
-    enum: ['buy', 'sell'],
-    default: 'buy',
-    description: 'Trade direction'
-  }),
-  poolAddress: Type.String({ default: 'FtFUzuXbbw6oBbU53SDUGspEka1D5Xyc4cwnkxer6xKz' }),
-  slippagePct: Type.Optional(Type.Number({ default: 1 })),
-});
-
-const ExecuteSwapResponse = Type.Object({
-  signature: Type.String(),
-  totalInputSwapped: Type.Number(),
-  totalOutputSwapped: Type.Number(),
-  fee: Type.Number(),
-  baseTokenBalanceChange: Type.Number(),
-  quoteTokenBalanceChange: Type.Number(),
-});
-
-type ExecuteSwapRequestType = Static<typeof ExecuteSwapRequest>;
-type ExecuteSwapResponseType = Static<typeof ExecuteSwapResponse>;
+import { 
+  ExecuteSwapRequestType,
+  ExecuteSwapResponseType,
+  ExecuteSwapRequest,
+  ExecuteSwapResponse
+} from '../../../services/swap-interfaces';
 
 async function executeSwap(
   fastify: FastifyInstance,
@@ -63,7 +31,7 @@ async function executeSwap(
     swapAmount, 
     quote: swapQuote, 
     dlmmPool 
-  } = await getMeteoraSwapQuote(
+  } = await getRawSwapQuote(
     fastify,
     network,
     baseTokenIdentifier,
@@ -141,7 +109,19 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Execute a token swap on Meteora',
         tags: ['meteora'],
-        body: ExecuteSwapRequest,
+        body: {
+          ...ExecuteSwapRequest,
+          properties: {
+            ...ExecuteSwapRequest.properties,
+            network: { type: 'string', default: 'mainnet-beta' },
+            baseToken: { type: 'string', examples: ['M3M3'] },
+            quoteToken: { type: 'string', examples: ['USDC'] },
+            amount: { type: 'number', examples: [10] },
+            side: { type: 'string', examples: ['buy'] },
+            poolAddress: { type: 'string', examples: ['FtFUzuXbbw6oBbU53SDUGspEka1D5Xyc4cwnkxer6xKz'] },
+            slippagePct: { type: 'number', examples: [1] }
+          }
+        },
         response: {
           200: ExecuteSwapResponse
         },

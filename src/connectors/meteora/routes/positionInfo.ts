@@ -1,24 +1,14 @@
 import { FastifyPluginAsync } from 'fastify';
-import { Type, Static } from '@sinclair/typebox';
 import { Meteora } from '../meteora';
 import { Solana } from '../../../chains/solana/solana';
 import { logger } from '../../../services/logger';
-import { PositionInfoSchema } from '../../../services/common-interfaces';
+import { 
+  PositionInfo, 
+  PositionInfoSchema, 
+  GetPositionInfoRequestType, 
+  GetPositionInfoRequest 
+} from '../../../services/clmm-interfaces'
 import { PublicKey } from '@solana/web3.js';
-
-const PositionInfoRequest = Type.Object({
-  network: Type.Optional(Type.String({ default: 'mainnet-beta' })),
-  positionAddress: Type.String(),
-  walletAddress: Type.String({ 
-    description: 'Wallet address that owns the position',
-    examples: [] // Will be populated during route registration
-  }),
-});
-
-const PositionInfoResponse = PositionInfoSchema;
-
-type PositionInfoRequestType = Static<typeof PositionInfoRequest>;
-type PositionInfoResponseType = Static<typeof PositionInfoResponse>;
 
 export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
   // Get first wallet address for example
@@ -32,20 +22,20 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
   }
   
   // Update schema example
-  PositionInfoRequest.properties.walletAddress.examples = [firstWalletAddress];
+  GetPositionInfoRequest.properties.walletAddress.examples = [firstWalletAddress];
 
   fastify.get<{
-    Querystring: PositionInfoRequestType;
-    Reply: PositionInfoResponseType;
+    Querystring: GetPositionInfoRequestType;
+    Reply: PositionInfo;
   }>(
     '/position-info',
     {
       schema: {
         description: 'Get details for a specific Meteora position',
         tags: ['meteora'],
-        querystring: PositionInfoRequest,
+        querystring: GetPositionInfoRequest,
         response: {
-          200: PositionInfoResponse
+          200: PositionInfoSchema
         },
       }
     },

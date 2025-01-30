@@ -1,5 +1,4 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
-import { Type, Static } from '@sinclair/typebox';
 import { Meteora } from '../meteora';
 import { Solana } from '../../../chains/solana/solana';
 import { DecimalUtil } from '@orca-so/common-sdk';
@@ -8,30 +7,12 @@ import { Decimal } from 'decimal.js';
 import { StrategyType } from '@meteora-ag/dlmm';
 import { logger } from '../../../services/logger';
 import { PublicKey } from '@solana/web3.js';
-
-// Schema definitions
-const AddLiquidityRequest = Type.Object({
-  network: Type.Optional(Type.String({ default: 'mainnet-beta' })),
-  walletAddress: Type.String({ 
-    description: 'Will use first available wallet if not specified',
-    examples: [] // Will be populated during route registration
-  }),
-  positionAddress: Type.String({ default: '' }),
-  baseTokenAmount: Type.Number({ default: 1 }),
-  quoteTokenAmount: Type.Number({ default: 1 }),
-  slippagePct: Type.Optional(Type.Number({ default: 1 })),
-  strategyType: Type.Optional(Type.Number({ default: StrategyType.SpotImBalanced })),
-});
-
-const AddLiquidityResponse = Type.Object({
-  signature: Type.String(),
-  fee: Type.Number(),
-  baseTokenAmountAdded: Type.Number(),
-  quoteTokenAmountAdded: Type.Number(),
-});
-
-type AddLiquidityRequestType = Static<typeof AddLiquidityRequest>;
-type AddLiquidityResponseType = Static<typeof AddLiquidityResponse>;
+import { 
+  AddLiquidityRequest, 
+  AddLiquidityResponse, 
+  AddLiquidityRequestType, 
+  AddLiquidityResponseType 
+} from '../../../services/clmm-interfaces';
 
 async function addLiquidity(
   _fastify: FastifyInstance,
@@ -125,7 +106,18 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Add liquidity to a Meteora position',
         tags: ['meteora'],
-        body: AddLiquidityRequest,
+        body: {
+          ...AddLiquidityRequest,
+          properties: {
+            ...AddLiquidityRequest.properties,
+            network: { type: 'string', default: 'mainnet-beta' },
+            strategyType: { 
+              type: 'number', 
+              examples: [StrategyType.SpotBalanced],
+              enum: Object.values(StrategyType).filter(x => typeof x === 'number')
+            }
+          }
+        },
         response: {
           200: AddLiquidityResponse
         },

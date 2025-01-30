@@ -235,33 +235,3 @@ export const NetworkSelectionSchema = Type.Object({
   connector: Type.String()
 });
 
-export const PoolInfoSchema = Type.Object({
-  address: Type.String(),
-  baseTokenAddress: Type.String(),
-  quoteTokenAddress: Type.String(),
-  binStep: Type.Number(),
-  feePct: Type.Number(),
-  price: Type.Number(),
-  baseTokenAmount: Type.Number(),
-  quoteTokenAmount: Type.Number(),
-}, { $id: 'PoolInfo' });
-
-export type PoolInfo = Static<typeof PoolInfoSchema>;
-
-export const PositionInfoSchema = Type.Object({
-  address: Type.String(),
-  poolAddress: Type.String(),
-  baseTokenAddress: Type.String(),
-  quoteTokenAddress: Type.String(),
-  baseTokenAmount: Type.Number(),
-  quoteTokenAmount: Type.Number(),
-  baseFeeAmount: Type.Number(),
-  quoteFeeAmount: Type.Number(),
-  lowerBinId: Type.Number(),
-  upperBinId: Type.Number(),
-  lowerPrice: Type.Number(),
-  upperPrice: Type.Number(),
-  price: Type.Number(),
-}, { $id: 'PositionInfo' });
-
-export type PositionInfo = Static<typeof PositionInfoSchema>;

@@ -1,29 +1,19 @@
 import { FastifyPluginAsync } from 'fastify';
-import { Type, Static } from '@sinclair/typebox';
+import { Type } from '@sinclair/typebox';
 import { Meteora } from '../meteora';
 import { Solana } from '../../../chains/solana/solana';
 import { logger } from '../../../services/logger';
-import { PoolInfo, PoolInfoSchema } from '../../../services/common-interfaces';
-
-// Schema definitions
-const FetchPoolsRequest = Type.Object({
-  network: Type.Optional(Type.String({ default: 'mainnet-beta' })),
-  limit: Type.Optional(Type.Number({ minimum: 1, default: 10 })),
-  tokenA: Type.Optional(Type.String({
-    description: 'First token symbol or address',
-  })),
-  tokenB: Type.Optional(Type.String({
-    description: 'Second token symbol or address',
-  })),
-});
-
-type FetchPoolsRequestType = Static<typeof FetchPoolsRequest>;
-type FetchPoolsResponseType = PoolInfo[];
+import { 
+  PoolInfo, 
+  PoolInfoSchema, 
+  FetchPoolsRequest, 
+  FetchPoolsRequestType 
+} from '../../../services/clmm-interfaces';
 
 export const fetchPoolsRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
     Querystring: FetchPoolsRequestType,
-    Reply: FetchPoolsResponseType
+    Reply: PoolInfo[]
   }>('/fetch-pools', {
     schema: {
       querystring: FetchPoolsRequest,

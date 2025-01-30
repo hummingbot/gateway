@@ -4,7 +4,7 @@ import { Meteora } from '../meteora';
 import { PublicKey } from '@solana/web3.js';
 import { logger } from '../../../services/logger';
 import { Solana } from '../../../chains/solana/solana';
-import { PositionInfoSchema } from '../../../services/common-interfaces';
+import { PositionInfoSchema } from '../../../services/clmm-interfaces';
 
 // Schema definitions
 const GetPositionsOwnedRequest = Type.Object({
@@ -13,7 +13,9 @@ const GetPositionsOwnedRequest = Type.Object({
     description: 'Will use first available wallet if not specified',
     examples: [] // Will be populated during route registration
   }),
-  poolAddress: Type.String({ default: 'FtFUzuXbbw6oBbU53SDUGspEka1D5Xyc4cwnkxer6xKz' }),
+  poolAddress: Type.String({ 
+    examples: ['FtFUzuXbbw6oBbU53SDUGspEka1D5Xyc4cwnkxer6xKz'] 
+  }),
 });
 
 const GetPositionsOwnedResponse = Type.Array(PositionInfoSchema);

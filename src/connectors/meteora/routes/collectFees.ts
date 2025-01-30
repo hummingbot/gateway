@@ -1,28 +1,13 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
-import { Type, Static } from '@sinclair/typebox';
 import { Meteora } from '../meteora';
 import { Solana } from '../../../chains/solana/solana';
 import { logger } from '../../../services/logger';
-
-// Schema definitions
-const CollectFeesRequest = Type.Object({
-  network: Type.Optional(Type.String({ default: 'mainnet-beta' })),
-  walletAddress: Type.String({ 
-    description: 'Will use first available wallet if not specified',
-    examples: [] // Will be populated during route registration
-  }),
-  positionAddress: Type.String({ default: '' }),
-});
-
-const CollectFeesResponse = Type.Object({
-  signature: Type.String(),
-  fee: Type.Number(),
-  baseFeeAmountCollected: Type.Number(),
-  quoteFeeAmountCollected: Type.Number(),
-});
-
-type CollectFeesRequestType = Static<typeof CollectFeesRequest>;
-export type CollectFeesResponseType = Static<typeof CollectFeesResponse>;
+import { 
+  CollectFeesRequest, 
+  CollectFeesResponse, 
+  CollectFeesRequestType, 
+  CollectFeesResponseType 
+} from '../../../services/clmm-interfaces';
 
 export async function collectFees(
   fastify: FastifyInstance,

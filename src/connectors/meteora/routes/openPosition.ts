@@ -1,44 +1,18 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
-import { Type, Static } from '@sinclair/typebox';
 import { Meteora } from '../meteora';
+import { StrategyType } from '@meteora-ag/dlmm';
 import { Solana } from '../../../chains/solana/solana';
 import { Keypair } from '@solana/web3.js';
 import { logger } from '../../../services/logger';
 import { DecimalUtil } from '@orca-so/common-sdk';
 import { Decimal } from 'decimal.js';
 import { BN } from 'bn.js';
-import { StrategyType } from '@meteora-ag/dlmm';
-
-// Schema definitions
-const OpenPositionRequest = Type.Object({
-  network: Type.Optional(Type.String({ default: 'mainnet-beta' })),
-  walletAddress: Type.String({ 
-    description: 'Will use first available wallet if not specified',
-    examples: [] // Will be populated during route registration
-  }),
-  lowerPrice: Type.Number({ default: 0.05 }),
-  upperPrice: Type.Number({ default: 0.15 }),
-  poolAddress: Type.String({ default: 'FtFUzuXbbw6oBbU53SDUGspEka1D5Xyc4cwnkxer6xKz' }),
-  baseTokenAmount: Type.Optional(Type.Number()),
-  quoteTokenAmount: Type.Optional(Type.Number()),
-  slippagePct: Type.Optional(Type.Number({ default: 1 })),
-  strategyType: Type.Optional(Type.Number({ 
-    default: StrategyType.SpotBalanced,
-    enum: Object.values(StrategyType).filter(x => typeof x === 'number')
-  })),
-});
-
-const OpenPositionResponse = Type.Object({
-  signature: Type.String(),
-  fee: Type.Number(),
-  positionAddress: Type.String(),
-  positionRent: Type.Number(),
-  baseTokenAmountAdded: Type.Number(),
-  quoteTokenAmountAdded: Type.Number(),
-});
-
-type OpenPositionRequestType = Static<typeof OpenPositionRequest>;
-type OpenPositionResponseType = Static<typeof OpenPositionResponse>;
+import { 
+  OpenPositionRequest, 
+  OpenPositionResponse, 
+  OpenPositionRequestType, 
+  OpenPositionResponseType,
+} from '../../../services/clmm-interfaces';
 
 async function openPosition(
   fastify: FastifyInstance,
@@ -160,7 +134,22 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Open a new Meteora position',
         tags: ['meteora'],
-        body: OpenPositionRequest,
+        body: {
+          ...OpenPositionRequest,
+          properties: {
+            ...OpenPositionRequest.properties,
+            network: { type: 'string', default: 'mainnet-beta' },
+            lowerPrice: { type: 'number', examples: [0.05] },
+            upperPrice: { type: 'number', examples: [0.15] },
+            poolAddress: { type: 'string', examples: ['FtFUzuXbbw6oBbU53SDUGspEka1D5Xyc4cwnkxer6xKz'] },
+            slippagePct: { type: 'number', examples: [1] },
+            strategyType: { 
+              type: 'number', 
+              examples: [StrategyType.SpotBalanced],
+              enum: Object.values(StrategyType).filter(x => typeof x === 'number')
+            }
+          }
+        },
         response: {
           200: OpenPositionResponse
         },

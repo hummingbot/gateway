@@ -1,16 +1,12 @@
 import { FastifyPluginAsync } from 'fastify';
-import { Type, Static } from '@sinclair/typebox';
 import { Meteora } from '../meteora';
 import { logger } from '../../../services/logger';
-import { PoolInfo, PoolInfoSchema } from '../../../services/common-interfaces';
-
-// Schema definitions
-const GetPoolInfoRequest = Type.Object({
-  network: Type.Optional(Type.String({ default: 'mainnet-beta' })),
-  poolAddress: Type.String({ default: 'FtFUzuXbbw6oBbU53SDUGspEka1D5Xyc4cwnkxer6xKz' }),
-});
-
-type GetPoolInfoRequestType = Static<typeof GetPoolInfoRequest>;
+import { 
+  PoolInfo, 
+  PoolInfoSchema, 
+  GetPoolInfoRequestType, 
+  GetPoolInfoRequest 
+} from '../../../services/clmm-interfaces';
 
 export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
@@ -22,7 +18,13 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Get pool information for a Meteora pool',
         tags: ['meteora'],
-        querystring: GetPoolInfoRequest,
+        querystring: {
+          ...GetPoolInfoRequest,
+          properties: {
+            network: { type: 'string', default: 'mainnet-beta' },
+            poolAddress: { type: 'string', default: 'FtFUzuXbbw6oBbU53SDUGspEka1D5Xyc4cwnkxer6xKz' }
+          }
+        },
         response: {
           200: PoolInfoSchema
         },

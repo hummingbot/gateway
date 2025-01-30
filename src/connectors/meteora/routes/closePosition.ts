@@ -1,35 +1,17 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
-import { Type, Static } from '@sinclair/typebox';
 import { Meteora } from '../meteora';
 import { Solana } from '../../../chains/solana/solana';
 import { logger } from '../../../services/logger';
 import { removeLiquidity } from './removeLiquidity';
 import { collectFees } from './collectFees';
-import { CollectFeesResponseType } from './collectFees';
-import { RemoveLiquidityResponseType } from './removeLiquidity';
-
-// Schema definitions
-const ClosePositionRequest = Type.Object({
-  network: Type.Optional(Type.String({ default: 'mainnet-beta' })),
-  walletAddress: Type.String({ 
-    description: 'Will use first available wallet if not specified',
-    examples: [] // Will be populated during route registration
-  }),
-  positionAddress: Type.String({ default: '' }),
-});
-
-const ClosePositionResponse = Type.Object({
-  signature: Type.String(),
-  fee: Type.Number(),
-  positionRentRefunded: Type.Number(),
-  baseTokenAmountRemoved: Type.Number(),
-  quoteTokenAmountRemoved: Type.Number(),
-  baseFeeAmountCollected: Type.Number(),
-  quoteFeeAmountCollected: Type.Number(),
-});
-
-type ClosePositionRequestType = Static<typeof ClosePositionRequest>;
-type ClosePositionResponseType = Static<typeof ClosePositionResponse>;
+import { 
+  ClosePositionRequest, 
+  ClosePositionResponse, 
+  ClosePositionRequestType, 
+  ClosePositionResponseType,
+  CollectFeesResponseType,
+  RemoveLiquidityResponseType
+} from '../../../services/clmm-interfaces';
 
 async function closePosition(
   fastify: FastifyInstance,
