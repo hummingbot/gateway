@@ -36,16 +36,12 @@ import {
 import { logger } from '../../services/logger';
 import { percentRegexp } from '../../services/config-manager-v2';
 import { Ethereum } from '../../chains/ethereum/ethereum';
-import { Avalanche } from '../../chains/avalanche/avalanche';
-import { Polygon } from '../../chains/polygon/polygon';
-import { BinanceSmartChain } from "../../chains/binance-smart-chain/binance-smart-chain";
 import { ExpectedTrade, Uniswapish, UniswapishTrade } from '../../services/common-interfaces';
 import { getAddress } from 'ethers/lib/utils';
-import { Celo } from '../../chains/celo/celo';
 
 export class Uniswap implements Uniswapish {
   private static _instances: { [name: string]: Uniswap };
-  private chain: Ethereum | Polygon | BinanceSmartChain | Avalanche | Celo;
+  private chain: Ethereum;
   private _alphaRouter: AlphaRouter | null;
   private _router: string;
   private _routerAbi: ContractInterface;
@@ -64,14 +60,6 @@ export class Uniswap implements Uniswapish {
     const config = UniswapConfig.config;
     if (chain === 'ethereum') {
       this.chain = Ethereum.getInstance(network);
-    } else if (chain === 'polygon') {
-      this.chain = Polygon.getInstance(network);
-    } else if (chain === 'binance-smart-chain') {
-      this.chain = BinanceSmartChain.getInstance(network);
-    } else if (chain === 'avalanche') { 
-      this.chain = Avalanche.getInstance(network);
-    } else if (chain === 'celo')  {
-      this.chain = Celo.getInstance(network);
     } else {
       throw new Error('Unsupported chain');
     }
@@ -80,7 +68,7 @@ export class Uniswap implements Uniswapish {
     this._ttl = UniswapConfig.config.ttl;
     this._maximumHops = UniswapConfig.config.maximumHops;
 
-      this._alphaRouter = new AlphaRouter({
+    this._alphaRouter = new AlphaRouter({
       chainId: this.chainId,
       provider: this.chain.provider,
     });

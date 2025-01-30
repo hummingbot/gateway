@@ -78,8 +78,7 @@ jobs:
           mkdir conf db
           cp -rf src/templates/* conf
           sed -i 's|/home/gateway/conf/lists/|conf/lists/|g' ./conf/*.yml
-          sed -i 's/https:\/\/rpc.ankr.com\/eth_goerli/http:\/\/127.0.0.1:8545\//g' ./conf/ethereum.yml
-          sed -i 's/https:\/\/etc.rivet.link/http:\/\/127.0.0.1:8545\//g' ./conf/ethereum-classic.yml
+          sed -i 's/https:\/\/rpc.ankr.com\/eth_sepolia/http:\/\/127.0.0.1:8545\//g' ./conf/ethereum.yml
 
       - name: Run unit test coverage
         if: github.event_name == 'pull_request'
@@ -87,8 +86,7 @@ jobs:
         run: |
           git fetch --all -q
           git checkout -b $GITHUB_SHA
-          NODE_OPTIONS=--max-old-space-size=10240 node ./node_modules/.bin/jest --runInBand --coverage ./test/
-#          git diff origin/$GITHUB_BASE_REF | yarn diff-test-coverage -c ./coverage/lcov.info -t lcov -b 50 -l 60
+          GATEWAY_TEST_MODE=dev ./node_modules/.bin/jest --runInBand --coverage ./test/
 
   docker_build_and_push:
     runs-on: ubuntu-latest

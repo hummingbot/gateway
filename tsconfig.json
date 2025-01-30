@@ -1,17 +1,17 @@
 {
   "compilerOptions": {
     "strict": false,
-    "types": ["jest", "node"],
-    "target": "es6",
-    "module": "commonjs",
+    // "types": ["jest", "node"],
+    "target": "ESNext",
+    "module": "CommonJS",
     "allowJs": true,
-    "lib": ["es6", "es2020", "esnext.asynciterable", "dom"],
-    "sourceMap": true,
+    // "lib": ["es6", "es2020", "esnext.asynciterable", "dom"],
+    // "sourceMap": true,
     "outDir": "./dist",
-    "moduleResolution": "node",
+    // "moduleResolution": "node",
     "removeComments": true,
     "noImplicitAny": false,
-    "strictNullChecks": false,
+    // "strictNullChecks": false,
     "strictFunctionTypes": true,
     "noImplicitThis": true,
     "noUnusedLocals": true,
@@ -27,11 +27,13 @@
     "downlevelIteration": true,
     "skipLibCheck": true
   },
-  "exclude": ["node_modules"],
+  "exclude": [
+    "node_modules",
+    // ... any other existing excludes ...
+  ],
   "include": [
     "src/**/*.ts",
     "src/**/*.js",
     "test/**/*.ts",
-    "integration-test/**/*.ts"
   ]
 }

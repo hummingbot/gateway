@@ -1,9 +1,0 @@
-{
-  "connector": "traderjoe",
-  "chain": "avalanche",
-  "network": "avalanche",
-  "quote": "USDC",
-  "base": "EUROC",
-  "amount": "1",
-  "side": "BUY"
-}

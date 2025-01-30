@@ -4,18 +4,10 @@ import fs from 'fs';
 import fse from 'fs-extra';
 import path from 'path';
 import yaml from 'js-yaml';
-import * as migrations from './config-migration/migrations';
 import { rootPath } from '../paths';
 
 type Configuration = { [key: string]: any };
 type ConfigurationDefaults = { [namespaceId: string]: Configuration };
-export type Migration = (
-  configRootFullPath: string,
-  configRootTemplateFullPath: string
-) => void;
-type MigrationFunctions = {
-  [key: string]: Migration;
-};
 interface _ConfigurationNamespaceDefinition {
   configurationPath: string;
   schemaPath: string;
@@ -91,8 +83,8 @@ export class ConfigurationNamespace {
    *
    * Note that configuration paths may have multiple levels. What it implies
    * is those configurations are stored in nested dictionaries - aka. a tree.
-   * e.g. if the config path is "ethereum.networks.goerli.networkID", then,
-   * what it means you're accessing ["networks"]["goerli"]["networkID"] under
+   * e.g. if the config path is "ethereum.networks.mainnet.networkID", then,
+   * what it means you're accessing ["networks"]["mainnet"]["networkID"] under
    * the "ethereum" namespace.
    */
   readonly #namespaceId: string;
@@ -244,10 +236,10 @@ export class ConfigManagerV2 {
    * initiation, the get() and set() functions will map configuration keys and
    * values to the appropriate namespaces.
    *
-   * e.g. get('ethereum.networks.goerli.networkID') will be mapped to
-   *      ethereumNamespace.get('networks.goerli.networkID')
-   * e.g. set('ethereum.networks.goerli.networkID', 42) will be mapped to
-   *      ethereumNamespace.set('networks.goerli.networkID', 42)
+   * e.g. get('ethereum.networks.mainnet.networkID') will be mapped to
+   *      ethereumNamespace.get('networks.mainnet.networkID')
+   * e.g. set('ethereum.networks.mainnet.networkID', 1) will be mapped to
+   *      ethereumNamespace.set('networks.mainnet.networkID', 1)
    *
    * File paths in the root configuration file may be defined as absolute paths
    * or relative paths. Any relative paths would be rebased to the root
@@ -379,34 +371,10 @@ export class ConfigManagerV2 {
   loadConfigRoot(configRootPath: string) {
     // Load the config root file.
     const configRootFullPath: string = fs.realpathSync(configRootPath);
-    const configRootTemplateFullPath: string = path.join(
-      ConfigTemplatesDir,
-      'root.yml'
-    );
     const configRootDir: string = path.dirname(configRootFullPath);
     const configRoot: ConfigurationRoot = yaml.load(
       fs.readFileSync(configRootFullPath, 'utf8')
     ) as ConfigurationRoot;
-    const configRootTemplate: ConfigurationRoot = yaml.load(
-      fs.readFileSync(configRootTemplateFullPath, 'utf8')
-    ) as ConfigurationRoot;
-
-    // version control to only handle upgrades
-    if (configRootTemplate.version > configRoot.version) {
-      // run migration in order if available
-      for (
-        let num = configRoot.version + 1;
-        num <= configRootTemplate.version;
-        num++
-      ) {
-        if ((migrations as MigrationFunctions)[`updateToVersion${num}`]) {
-          (migrations as MigrationFunctions)[`updateToVersion${num}`](
-            configRootFullPath,
-            configRootTemplateFullPath
-          );
-        }
-      }
-    }
 
     // Validate the config root file.
     const validator: ValidateFunction = ajv.compile(

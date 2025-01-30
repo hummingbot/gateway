@@ -1,7 +1,0 @@
-{
-  "chain": "xdc",
-  "network": "apothem",
-  "address": "$XDC_ADDRESS",
-  "spender": "xsswap",
-  "token": "WXDC"
-}

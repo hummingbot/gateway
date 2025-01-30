@@ -1,42 +1,41 @@
-import { promises as fs } from 'fs';
-import axios from 'axios';
 import crypto from 'crypto';
 import bs58 from 'bs58';
 import { BigNumber } from 'ethers';
 import fse from 'fs-extra';
+import { TokenListType } from '../../services/base';
 
-import { TokenInfo, TokenListContainer } from '@solana/spl-token-registry';
+import { TokenInfo } from '@solana/spl-token-registry';
 import {
-  AccountInfo,
-  clusterApiUrl,
-  Cluster,
-  Commitment,
   Connection,
   Keypair,
-  ParsedAccountData,
   PublicKey,
   ComputeBudgetProgram,
-  SignatureStatus,
   Signer,
+  SignatureStatus,
   Transaction,
-  TransactionExpiredBlockheightExceededError,
   TokenAmount,
   TransactionResponse,
   VersionedTransactionResponse,
 } from '@solana/web3.js';
-import { Client, UtlConfig, Token } from '@solflare-wallet/utl-sdk';
 import { TOKEN_PROGRAM_ID, unpackAccount } from "@solana/spl-token";
 
-import { countDecimals, TokenValue, walletPath } from '../../services/base';
+import { TokenValue, walletPath } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
-
-import {
-  getNotNullOrThrowError,
-  runWithRetryAndTimeout,
-} from './solana.helpers';
+import { logger } from '../../services/logger';
+import { TokenListResolutionStrategy } from '../../services/token-list-resolution';
 import { Config, getSolanaConfig } from './solana.config';
-import { TransactionResponseStatusCode } from './solana.requests';
 import { SolanaController } from './solana.controllers';
+
+// Constants used for fee calculations
+export const BASE_FEE = 5000;
+const TOKEN_PROGRAM_ADDRESS = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
+const LAMPORT_TO_SOL = 1 / Math.pow(10, 9);
+
+enum TransactionResponseStatusCode {
+  FAILED = -1,
+  UNCONFIRMED = 0,
+  CONFIRMED = 1,  
+}
 
 // Add accounts from https://triton.one/solana-prioritization-fees/ to track general fees
 const PRIORITY_FEE_ACCOUNTS = [
@@ -52,19 +51,6 @@ const PRIORITY_FEE_ACCOUNTS = [
   '5veMSa4ks66zydSaKSPMhV7H2eF88HvuKDArScNH9jaG',
 ];
 
-const GET_SIGNATURES_FOR_ADDRESS_LIMIT = 100;
-const MAX_PRIORITY_FEE=400000
-const MIN_PRIORITY_FEE=100000
-const PRIORITY_FEE_LEVEL='high'
-// Available levels: min, low, medium, high, veryHigh, unsafeMax
-
-interface PriorityFeeRequestPayload {
-  method: string;
-  params: string[][];
-  id: number;
-  jsonrpc: string;
-}
-
 interface PriorityFeeResponse {
   jsonrpc: string;
   result: Array<{
@@ -74,209 +60,110 @@ interface PriorityFeeResponse {
   id: number;
 }
 
-interface PriorityFeeEstimates {
-  min: number;
-  low: number;
-  medium: number;
-  high: number;
-  veryHigh: number;
-  unsafeMax: number;
-}
-
-class ConnectionPool {
-  private connections: Connection[] = [];
-  private currentIndex: number = 0;
-
-  constructor(urls: string[]) {
-    this.connections = urls.map((url) => new Connection(url, { commitment: 'confirmed' }));
-  }
-
-  public getNextConnection(): Connection {
-    const connection = this.connections[this.currentIndex];
-    this.currentIndex = (this.currentIndex + 1) % this.connections.length;
-    return connection;
-  }
-
-  public getAllConnections(): Connection[] {
-    return this.connections;
-  }
-}
-
-export let priorityFeeMultiplier: number = 1;
-
-export class Solana implements Solanaish {
-  public transactionLamports;
-  public connectionPool: ConnectionPool;
+export class Solana {
+  public connection: Connection;
   public network: string;
   public nativeTokenSymbol: string;
 
-  protected tokenList: TokenInfo[] = [];
-  private _config: Config;
+  public tokenList: TokenInfo[] = [];
+  public config: Config;
   private _tokenMap: Record<string, TokenInfo> = {};
-  private _tokenAddressMap: Record<string, TokenInfo> = {};
-  private _utl: Client;
 
   private static _instances: { [name: string]: Solana };
-
-  private readonly _connection: Connection;
-  private readonly _lamportPrice: number;
-  private readonly _lamportDecimals: number;
-  private readonly _tokenProgramAddress: PublicKey;
-
-  // there are async values set in the constructor
-  private _ready: boolean = false;
-  private initializing: boolean = false;
   public controller: typeof SolanaController;
 
-  constructor(network: string) {
+  private static lastPriorityFeeEstimate: {
+    timestamp: number;
+    fee: number;
+  } | null = null;
+  private static PRIORITY_FEE_CACHE_MS = 10000; // 10 second cache
+
+  private constructor(network: string) {
     this.network = network;
-    this._config = getSolanaConfig('solana', network);
-    this.nativeTokenSymbol = this._config.network.nativeCurrencySymbol
-
-    // Parse comma-separated RPC URLs
-    const rpcUrlsString = this._config.network.nodeURLs;
-    const rpcUrls: string[] = [];
-
-    if (rpcUrlsString) {
-      // Split and trim URLs, filter out empty strings
-      const urls = rpcUrlsString
-        .split(',')
-        .map((url) => url.trim())
-        .filter((url) => url !== '');
-      rpcUrls.push(...urls);
-    }
-
-    // Add default cluster URL if no URLs provided
-    if (rpcUrls.length === 0) {
-      rpcUrls.push(clusterApiUrl(this.network as Cluster));
-    }
-    
-    this._connection = new Connection(rpcUrls[0], 'processed' as Commitment);
-    this.connectionPool = new ConnectionPool(rpcUrls);
-
-    this._tokenProgramAddress = new PublicKey(this._config.tokenProgram);
-
-    this.transactionLamports = this._config.transactionLamports;
-    this._lamportPrice = this._config.lamportsToSol;
-    this._lamportDecimals = countDecimals(this._lamportPrice);
-
+    this.config = getSolanaConfig('solana', network);
+    this.nativeTokenSymbol = this.config.network.nativeCurrencySymbol;
+    this.connection = new Connection(this.config.network.nodeURL, { commitment: 'confirmed' });
     this.controller = SolanaController;
-
-    // initialize UTL client
-    const config = new UtlConfig({
-      chainId: this.network === 'devnet' ? 103 : 101,
-      timeout: 2000,
-      connection: this.connectionPool.getNextConnection(), // Use connection from pool
-      apiUrl: 'https://token-list-api.solana.cloud',
-      cdnUrl: 'https://cdn.jsdelivr.net/gh/solflare-wallet/token-list/solana-tokenlist.json',
-    });
-    this._utl = new Client(config);
-
   }
 
-  public get gasPrice(): number {
-    return this._lamportPrice;
-  }
-
-  public static getInstance(network: string): Solana {
-    if (Solana._instances === undefined) {
+  public static async getInstance(network: string): Promise<Solana> {
+    if (!Solana._instances) {
       Solana._instances = {};
     }
-    if (!(network in Solana._instances)) {
-      Solana._instances[network] = new Solana(network);
+    if (!Solana._instances[network]) {
+      const instance = new Solana(network);
+      await instance.init();
+      Solana._instances[network] = instance;
     }
-
     return Solana._instances[network];
   }
 
-  public static getConnectedInstances(): { [name: string]: Solana } {
-    return this._instances;
-  }
-
-  public get connection() {
-    return this._connection;
-  }
-
-  async init(): Promise<void> {
-    if (!this.ready() && !this.initializing) {
-      this.initializing = true;
-      await this.loadTokens();
-      this._ready = true;
-      this.initializing = false;
+  private async init(): Promise<void> {
+    try {
+      await this.loadTokens(
+        this.config.network.tokenListSource, 
+        this.config.network.tokenListType
+      );
+    } catch (e) {
+      logger.error(`Failed to initialize ${this.network}: ${e}`);
+      throw e;
     }
   }
 
-  ready(): boolean {
-    return this._ready;
-  }
-
-  public async getTokenByAddress(tokenAddress: string, useApi: boolean = false): Promise<Token> {
-    if (useApi && this.network !== 'mainnet-beta') {
-      throw new Error('API usage is only allowed on mainnet-beta');
+  async getTokenList(
+    tokenListSource?: string,
+    tokenListType?: TokenListType
+  ): Promise<TokenInfo[]> {
+    // If no source/type provided, return stored list
+    if (!tokenListSource || !tokenListType) {
+      return this.tokenList;
     }
-
-    const publicKey = new PublicKey(tokenAddress);
-    let token: Token;
-
-    if (useApi) {
-      token = await this._utl.fetchMint(publicKey);
-    } else {
-      const tokenList = await this.getTokenList();
-      const foundToken = tokenList.find((t) => t.address === tokenAddress);
-      if (!foundToken) {
-        throw new Error('Token not found in the token list');
-      }
-      token = foundToken as unknown as Token;
-    }
-
-    return token;
+    
+    // Otherwise fetch new list
+    const tokens = await new TokenListResolutionStrategy(
+      tokenListSource,
+      tokenListType
+    ).resolve();
+    return tokens;
   }
 
-
-  async loadTokens(): Promise<void> {
-    this.tokenList = await this.getTokenList();
-    this.tokenList.forEach((token: TokenInfo) => {
-      this._tokenMap[token.symbol] = token;
-      this._tokenAddressMap[token.address] = token;
-    });
-  }
-
-  // returns a Tokens for a given list source and list type
-  async getTokenList(): Promise<TokenInfo[]> {
-    const tokens: TokenInfo[] =
-      await new CustomStaticTokenListResolutionStrategy(
-        this._config.network.tokenListSource,
-        this._config.network.tokenListType
+  async loadTokens(
+    tokenListSource: string,
+    tokenListType: TokenListType
+  ): Promise<void> {
+    try {
+      // Get tokens from source
+      const tokens = await new TokenListResolutionStrategy(
+        tokenListSource,
+        tokenListType
       ).resolve();
 
-    const tokenListContainer = new TokenListContainer(tokens);
+      this.tokenList = tokens;
+      
+      // Create symbol -> token mapping
+      tokens.forEach((token: TokenInfo) => {
+        this._tokenMap[token.symbol] = token;
+      });
 
-    return tokenListContainer.filterByClusterSlug(this.network).getList();
+      logger.info(`Loaded ${tokens.length} tokens for ${this.network}`);
+    } catch (error) {
+      logger.error(`Failed to load token list for ${this.network}: ${error.message}`);
+      throw error;
+    }
   }
 
-
-  // returns the price of 1 lamport in SOL
-  public get lamportPrice(): number {
-    return this._lamportPrice;
-  }
-
-  // solana token lists are large. instead of reloading each time with
-  // getTokenList, we can read the stored tokenList value from when the
-  // object was initiated.
-  public get storedTokenList(): TokenInfo[] {
-    return Object.values(this._tokenMap);
-  }
-
-  // return the TokenInfo object for a symbol
-  getTokenForSymbol(symbol: string): TokenInfo | null {
-    return this._tokenMap[symbol] ?? null;
+  public getTokenBySymbol(tokenSymbol: string): TokenInfo | undefined {
+    // Normalize both strings by converting to uppercase and removing any spaces
+    const normalizedSearch = tokenSymbol.toUpperCase().trim();
+    return this.tokenList.find(
+      (token: TokenInfo) => token.symbol.toUpperCase().trim() === normalizedSearch
+    );
   }
 
   // returns Keypair for a private key, which should be encoded in Base58
   getKeypairFromPrivateKey(privateKey: string): Keypair {
     const decoded = bs58.decode(privateKey);
-
-    return Keypair.fromSecretKey(decoded);
+    return Keypair.fromSecretKey(new Uint8Array(decoded));
   }
 
   async getWallet(address: string): Promise<Keypair> {
@@ -293,16 +180,21 @@ export class Solana implements Solanaish {
     }
     const decrypted = await this.decrypt(encryptedPrivateKey, passphrase);
 
-    return Keypair.fromSecretKey(bs58.decode(decrypted));
+    return Keypair.fromSecretKey(new Uint8Array(bs58.decode(decrypted)));
   }
 
   async encrypt(secret: string, password: string): Promise<string> {
     const algorithm = 'aes-256-ctr';
     const iv = crypto.randomBytes(16);
     const salt = crypto.randomBytes(32);
-    const key = crypto.pbkdf2Sync(password, salt, 5000, 32, 'sha512');
-    const cipher = crypto.createCipheriv(algorithm, key, iv);
-    const encrypted = Buffer.concat([cipher.update(secret), cipher.final()]);
+    const key = crypto.pbkdf2Sync(password, new Uint8Array(salt), 5000, 32, 'sha512');
+    const cipher = crypto.createCipheriv(algorithm, new Uint8Array(key), new Uint8Array(iv));
+    
+    const encryptedBuffers = [
+      new Uint8Array(cipher.update(new Uint8Array(Buffer.from(secret)))),
+      new Uint8Array(cipher.final())
+    ];
+    const encrypted = Buffer.concat(encryptedBuffers);
 
     const ivJSON = iv.toJSON();
     const saltJSON = salt.toJSON();
@@ -318,19 +210,24 @@ export class Solana implements Solanaish {
 
   async decrypt(encryptedSecret: string, password: string): Promise<string> {
     const hash = JSON.parse(encryptedSecret);
-    const salt = Buffer.from(hash.salt, 'utf8');
-    const iv = Buffer.from(hash.iv, 'utf8');
+    const salt = new Uint8Array(Buffer.from(hash.salt, 'utf8'));
+    const iv = new Uint8Array(Buffer.from(hash.iv, 'utf8'));
 
     const key = crypto.pbkdf2Sync(password, salt, 5000, 32, 'sha512');
 
-    const decipher = crypto.createDecipheriv(hash.algorithm, key, iv);
+    const decipher = crypto.createDecipheriv(
+      hash.algorithm, 
+      new Uint8Array(key), 
+      iv
+    );
 
-    const decrpyted = Buffer.concat([
-      decipher.update(Buffer.from(hash.encrypted, 'hex')),
-      decipher.final(),
-    ]);
+    const decryptedBuffers = [
+      new Uint8Array(decipher.update(new Uint8Array(Buffer.from(hash.encrypted, 'hex')))),
+      new Uint8Array(decipher.final())
+    ];
+    const decrypted = Buffer.concat(decryptedBuffers);
 
-    return decrpyted.toString();
+    return decrypted.toString();
   }
 
   async getBalance(wallet: Keypair, symbols?: string[]): Promise<Record<string, number>> {
@@ -341,13 +238,13 @@ export class Solana implements Solanaish {
 
     // Fetch SOL balance only if symbols is undefined or includes "SOL" (case-insensitive)
     if (!upperCaseSymbols || upperCaseSymbols.includes("SOL")) {
-      const solBalance = await this.connectionPool.getNextConnection().getBalance(publicKey);
-      const solBalanceInSol = solBalance / Math.pow(10, 9); // Convert lamports to SOL
+      const solBalance = await this.connection.getBalance(publicKey);
+      const solBalanceInSol = solBalance * LAMPORT_TO_SOL;
       balances["SOL"] = solBalanceInSol;
     }
 
     // Get all token accounts for the provided address
-    const accounts = await this.connectionPool.getNextConnection().getTokenAccountsByOwner(
+    const accounts = await this.connection.getTokenAccountsByOwner(
       publicKey,
       { programId: TOKEN_PROGRAM_ID }
     );
@@ -379,34 +276,26 @@ export class Solana implements Solanaish {
   async getBalances(wallet: Keypair): Promise<Record<string, TokenValue>> {
     let balances: Record<string, TokenValue> = {};
 
-    balances['UNWRAPPED_SOL'] = await runWithRetryAndTimeout(
-      this,
-      this.getSolBalance,
-      [wallet]
+    balances['UNWRAPPED_SOL'] = await this.getSolBalance(wallet);
+
+    const allSplTokens = await this.connection.getParsedTokenAccountsByOwner(
+      wallet.publicKey, 
+      { programId: TOKEN_PROGRAM_ADDRESS }
     );
 
-    const allSplTokens = await runWithRetryAndTimeout(
-      this.connection,
-      this.connection.getParsedTokenAccountsByOwner,
-      [wallet.publicKey, { programId: this._tokenProgramAddress }]
-    );
-
-    allSplTokens.value.forEach(
-      (tokenAccount: {
-        pubkey: PublicKey;
-        account: AccountInfo<ParsedAccountData>;
-      }) => {
-        const tokenInfo = tokenAccount.account.data.parsed['info'];
-        const symbol = this.getTokenForMintAddress(tokenInfo['mint'])?.symbol;
-        if (symbol != null)
-          balances[symbol] = this.tokenResponseToTokenValue(
-            tokenInfo['tokenAmount']
-          );
+    for (const tokenAccount of allSplTokens.value) {
+      const tokenInfo = tokenAccount.account.data.parsed['info'];
+      const mintAddress = tokenInfo['mint'];
+      const token = this.tokenList.find(t => t.address === mintAddress);
+      if (token?.symbol) {
+        balances[token.symbol] = this.tokenResponseToTokenValue(
+          tokenInfo['tokenAmount']
+        );
       }
-    );
+    }
 
     let allSolBalance = BigNumber.from(0);
-    let allSolDecimals;
+    let allSolDecimals = 9; // Solana's default decimals
 
     if (balances['UNWRAPPED_SOL'] && balances['UNWRAPPED_SOL'].value) {
       allSolBalance = allSolBalance.add(balances['UNWRAPPED_SOL'].value);
@@ -419,13 +308,13 @@ export class Solana implements Solanaish {
     } else {
       balances['SOL'] = {
         value: allSolBalance,
-        decimals: getNotNullOrThrowError<number>(allSolDecimals),
+        decimals: allSolDecimals,
       };
     }
 
     balances['ALL_SOL'] = {
       value: allSolBalance,
-      decimals: getNotNullOrThrowError<number>(allSolDecimals),
+      decimals: allSolDecimals,
     };
 
     balances = Object.keys(balances)
@@ -434,7 +323,6 @@ export class Solana implements Solanaish {
       )
       .reduce((target: Record<string, TokenValue>, key) => {
         target[key] = balances[key];
-
         return target;
       }, {});
 
@@ -443,12 +331,8 @@ export class Solana implements Solanaish {
 
   // returns the SOL balance, convert BigNumber to string
   async getSolBalance(wallet: Keypair): Promise<TokenValue> {
-    const lamports = await runWithRetryAndTimeout(
-      this.connection,
-      this.connection.getBalance,
-      [wallet.publicKey]
-    );
-    return { value: BigNumber.from(lamports), decimals: this._lamportDecimals };
+    const lamports = await this.connection.getBalance(wallet.publicKey);
+    return { value: BigNumber.from(lamports), decimals: 9 };
   }
 
   tokenResponseToTokenValue(account: TokenAmount): TokenValue {
@@ -463,10 +347,9 @@ export class Solana implements Solanaish {
     walletAddress: PublicKey,
     mintAddress: PublicKey
   ): Promise<TokenValue> {
-    const response = await runWithRetryAndTimeout(
-      this.connection,
-      this.connection.getParsedTokenAccountsByOwner,
-      [walletAddress, { mint: mintAddress }]
+    const response = await this.connection.getParsedTokenAccountsByOwner(
+      walletAddress,
+      { mint: mintAddress }
     );
     if (response['value'].length == 0) {
       throw new Error(`Token account not initialized`);
@@ -476,90 +359,40 @@ export class Solana implements Solanaish {
     );
   }
 
-  // returns whether the token account is initialized, given its mint address
-  async isTokenAccountInitialized(
-    walletAddress: PublicKey,
-    mintAddress: PublicKey
-  ): Promise<boolean> {
-    const response = await runWithRetryAndTimeout(
-      this.connection,
-      this.connection.getParsedTokenAccountsByOwner,
-      [walletAddress, { programId: this._tokenProgramAddress }]
-    );
-    for (const accountInfo of response.value) {
-      if (
-        accountInfo.account.data.parsed['info']['mint'] ==
-        mintAddress.toBase58()
-      )
-        return true;
-    }
-    return false;
-  }
-
-
-  // returns an ethereum TransactionResponse for a txHash.
+  // returns a Solana TransactionResponse for a txHash.
   async getTransaction(
     payerSignature: string
   ): Promise<VersionedTransactionResponse | null> {
-    const fetchedTx = runWithRetryAndTimeout(
-      this._connection,
-      this._connection.getTransaction,
-      [
-        payerSignature,
-        {
-          commitment: 'confirmed',
-          maxSupportedTransactionVersion: 0,
-        },
-      ]
+    return this.connection.getTransaction(
+      payerSignature,
+      {
+        commitment: 'confirmed',
+        maxSupportedTransactionVersion: 0,
+      }
     );
-
-    return fetchedTx;
   }
 
-  // returns an ethereum TransactionResponseStatusCode for a txData.
+  // returns a Solana TransactionResponseStatusCode for a txData.
   public async getTransactionStatusCode(
     txData: TransactionResponse | null
   ): Promise<TransactionResponseStatusCode> {
     let txStatus;
     if (!txData) {
-      // tx not found, didn't reach the mempool or it never existed
-      txStatus = TransactionResponseStatusCode.FAILED;
+        // tx not yet confirmed by validator
+        txStatus = TransactionResponseStatusCode.UNCONFIRMED;
     } else {
-      txStatus =
-        txData.meta?.err == null
-          ? TransactionResponseStatusCode.CONFIRMED
-          : TransactionResponseStatusCode.FAILED;
-
-      // TODO implement TransactionResponseStatusCode PROCESSED, FINALISED,
-      //  based on how many blocks ago the Transaction was
+        // If txData exists, check if there's an error in the metadata
+        txStatus =
+            txData.meta?.err == null
+                ? TransactionResponseStatusCode.CONFIRMED
+                : TransactionResponseStatusCode.FAILED;
     }
     return txStatus;
   }
 
-  public getTokenBySymbol(tokenSymbol: string): TokenInfo | undefined {
-    // Start from the end of the list and work backwards
-    for (let i = this.tokenList.length - 1; i >= 0; i--) {
-      if (this.tokenList[i].symbol.toUpperCase() === tokenSymbol.toUpperCase()) {
-        return this.tokenList[i];
-      }
-    }
-    return undefined;
-  }
-
-  // return the TokenInfo object for a symbol
-  private getTokenForMintAddress(mintAddress: PublicKey): TokenInfo | null {
-    return this._tokenAddressMap[mintAddress.toString()]
-      ? this._tokenAddressMap[mintAddress.toString()]
-      : null;
-  }
-
   // returns the current block number
   async getCurrentBlockNumber(): Promise<number> {
-    return await runWithRetryAndTimeout(
-      this.connection,
-      this.connection.getSlot,
-      ['processed']
-    );
+    return await this.connection.getSlot('processed');
   }
 
   async close() {
@@ -568,22 +401,39 @@ export class Solana implements Solanaish {
     }
   }
 
-  async fetchEstimatePriorityFees(rcpURL: string): Promise<PriorityFeeEstimates> {
-    try {
-      const maxPriorityFee = MAX_PRIORITY_FEE;
-      const minPriorityFee = MIN_PRIORITY_FEE;
+  public async getGasPrice(): Promise<number> {
+    const priorityFeePerCU = await this.estimatePriorityFees();
+    
+    // Calculate total priority fee in lamports (priorityFeePerCU is already in lamports/CU)
+    const priorityFee = this.config.defaultComputeUnits * priorityFeePerCU;
+    
+    // Add base fee (in lamports) and convert total to SOL
+    const totalLamports = BASE_FEE + priorityFee;
+    const gasCost = totalLamports * LAMPORT_TO_SOL;
 
-      // Only include params that are defined
+    return gasCost;
+  }
+  
+  async estimatePriorityFees(): Promise<number> {
+    // Check cache first
+    if (
+      Solana.lastPriorityFeeEstimate && 
+      Date.now() - Solana.lastPriorityFeeEstimate.timestamp < Solana.PRIORITY_FEE_CACHE_MS
+    ) {
+      return Solana.lastPriorityFeeEstimate.fee;
+    }
+
+    try {
       const params: string[][] = [];
       params.push(PRIORITY_FEE_ACCOUNTS);
-      const payload: PriorityFeeRequestPayload = {
+      const payload = {
         method: 'getRecentPrioritizationFees',
         params: params,
         id: 1,
         jsonrpc: '2.0',
       };
 
-      const response = await fetch(rcpURL, {
+      const response = await fetch(this.connection.rpcEndpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -592,55 +442,62 @@ export class Solana implements Solanaish {
       });
 
       if (!response.ok) {
-        console.error(`HTTP error! status: ${response.status}`);
-        throw new Error(`Failed to fetch fees: ${response.status}`);
+        logger.error(`[SOLANA] Failed to fetch priority fees, using minimum fee: ${response.status}`);
+        return this.config.minPriorityFee * 1_000_000 / this.config.defaultComputeUnits;
       }
 
       const data: PriorityFeeResponse = await response.json();
 
-      // Process the response to categorize fees
-      const fees = data.result.map((item) => item.prioritizationFee);
+      // Extract fees and filter out zeros
+      const fees = data.result
+        .map((item) => item.prioritizationFee)
+        .filter((fee) => fee > 0);
 
-      // Filter out fees lower than the minimum fee for calculations
-      const nonZeroFees = fees.filter((fee) => fee >= minPriorityFee);
-      nonZeroFees.sort((a, b) => a - b); // Sort non-zero fees in ascending order
+      // minimum fee is the minimum fee per compute unit
+      const minimumFee = this.config.minPriorityFee / this.config.defaultComputeUnits * 1_000_000;
 
-      if (nonZeroFees.length === 0) {
-        nonZeroFees.push(minPriorityFee); // Add one entry of min fee if no fees are available
+      if (fees.length === 0) {
+        return minimumFee;
       }
 
-      const min = Math.min(...nonZeroFees);
-      const low = nonZeroFees[Math.floor(nonZeroFees.length * 0.2)];
-      const medium = nonZeroFees[Math.floor(nonZeroFees.length * 0.4)];
-      const high = nonZeroFees[Math.floor(nonZeroFees.length * 0.6)];
-      const veryHigh = nonZeroFees[Math.floor(nonZeroFees.length * 0.8)];
-      const unsafeMax = Math.max(...nonZeroFees);
+      // Sort fees in ascending order for percentile calculation
+      fees.sort((a, b) => a - b);
+      
+      // Calculate statistics
+      const minFee = Math.min(...fees) / 1_000_000; // Convert to lamports
+      const maxFee = Math.max(...fees) / 1_000_000; // Convert to lamports
+      const averageFee = fees.reduce((sum, fee) => sum + fee, 0) / fees.length / 1_000_000 // Convert to lamports
+      logger.info(`[SOLANA] Recent priority fees paid: ${minFee.toFixed(4)} - ${maxFee.toFixed(4)} lamports/CU (avg: ${averageFee.toFixed(4)})`);
 
-      const result = {
-        min: Math.max(min, minPriorityFee),
-        low: Math.max(Math.min(low, maxPriorityFee), minPriorityFee),
-        medium: Math.max(Math.min(medium, maxPriorityFee), minPriorityFee),
-        high: Math.max(Math.min(high, maxPriorityFee), minPriorityFee),
-        veryHigh: Math.max(Math.min(veryHigh, maxPriorityFee), minPriorityFee),
-        unsafeMax: Math.max(Math.min(unsafeMax, maxPriorityFee), minPriorityFee),
+      // Calculate index for percentile
+      const percentileIndex = Math.ceil(fees.length * this.config.basePriorityFeePct / 100);
+      let basePriorityFee = fees[percentileIndex - 1] / 1_000_000;  // Convert to lamports
+      
+      // Ensure fee is not below minimum (convert SOL to lamports)
+      const minimumFeeLamports = Math.floor(this.config.minPriorityFee * 1e9 / this.config.defaultComputeUnits);
+      basePriorityFee = Math.max(basePriorityFee, minimumFeeLamports);
+      
+      logger.info(`[SOLANA] Base priority fee: ${basePriorityFee.toFixed(4)} lamports/CU (${basePriorityFee === minimumFeeLamports ? 'minimum' : `${this.config.basePriorityFeePct}th percentile`})`);
+
+      // Cache the result
+      Solana.lastPriorityFeeEstimate = {
+        timestamp: Date.now(),
+        fee: basePriorityFee,
       };
 
-      console.log('[PRIORITY FEES] Calculated priority fees:', result);
+      return basePriorityFee;
 
-      return result;
     } catch (error: any) {
-      console.error(`Failed to fetch estimate priority fees: ${error.message}`);
-      throw new Error(`Failed to fetch estimate priority fees: ${error.message}`);
+      throw new Error(`Failed to fetch priority fees: ${error.message}`);
     }
   }
 
   public async confirmTransaction(
     signature: string,
-    connection: Connection,
     timeout: number = 3000,
-  ): Promise<boolean> {
+  ): Promise<{ confirmed: boolean; txData?: any }> {
     try {
-      const confirmationPromise = new Promise<boolean>(async (resolve, reject) => {
+      const confirmationPromise = new Promise<{ confirmed: boolean; txData?: any }>(async (resolve, reject) => {
         const payload = {
           jsonrpc: '2.0',
           id: 1,
@@ -653,7 +510,7 @@ export class Solana implements Solanaish {
           ],
         };
 
-        const response = await fetch(connection.rpcEndpoint, {
+        const response = await fetch(this.connection.rpcEndpoint, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -670,164 +527,149 @@ export class Solana implements Solanaish {
 
         if (data.result && data.result.value && data.result.value[0]) {
           const status: SignatureStatus = data.result.value[0];
+          
           if (status.err !== null) {
             reject(new Error(`Transaction failed with error: ${JSON.stringify(status.err)}`));
             return;
           }
+          
           const isConfirmed =
-            status.confirmationStatus === 'confirmed' || status.confirmationStatus === 'finalized';
-          resolve(isConfirmed);
+            status.confirmationStatus === 'confirmed' || 
+            status.confirmationStatus === 'finalized';
+
+          if (isConfirmed) {
+            // Fetch transaction data if confirmed
+            const txData = await this.connection.getParsedTransaction(signature, {
+              maxSupportedTransactionVersion: 0,
+            });
+            resolve({ confirmed: true, txData });
+          } else {
+            resolve({ confirmed: false });
+          }
         } else {
-          resolve(false);
+          resolve({ confirmed: false });
         }
       });
 
-      const timeoutPromise = new Promise<boolean>((_, reject) =>
+      const timeoutPromise = new Promise<{ confirmed: boolean }>((_, reject) =>
         setTimeout(() => reject(new Error('Confirmation timed out')), timeout),
       );
 
       return await Promise.race([confirmationPromise, timeoutPromise]);
     } catch (error: any) {
-      console.error('Error confirming transaction:', error.message);
-      throw new Error(`Failed to confirm transaction: ${error.message}`);
+      throw new Error(`[SOLANA] Failed to confirm transaction: ${error.message}`);
     }
   }
 
-  public async confirmTransactionByAddress(
-    address: string,
-    signature: string,
-    connection: Connection,
-    timeout: number = 3000,
-  ): Promise<boolean> {
-    try {
-      const confirmationPromise = new Promise<boolean>(async (resolve, reject) => {
-        const payload = {
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'getSignaturesForAddress',
-          params: [
-            address,
-            {
-              limit: GET_SIGNATURES_FOR_ADDRESS_LIMIT, // Adjust the limit as needed
-              until: signature,
-            },
-          ],
-        };
+  private getFee(txData: any): number {
+    if (!txData?.meta) {
+      return 0;
+    }
+    // Convert fee from lamports to SOL
+    return (txData.meta.fee || 0) * LAMPORT_TO_SOL;
+  }
 
-        const response = await fetch(connection.rpcEndpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload),
-        });
+  public async sendAndConfirmTransaction(
+    tx: Transaction, 
+    signers: Signer[] = [],
+    computeUnits?: number
+  ): Promise<string> {
+    let currentPriorityFee = await this.estimatePriorityFees();
+    const computeUnitsToUse = computeUnits || this.config.defaultComputeUnits;
+    
+    // Keep trying with increasing priority fees until we hit the max
+    while (true) {
+      const basePriorityFeeLamports = currentPriorityFee * computeUnitsToUse;
+      
+      logger.info(`[SOLANA] Sending transaction with max priority fee of ${(basePriorityFeeLamports * LAMPORT_TO_SOL).toFixed(6)} SOL`);
+      
+      // Check if we've exceeded max fee (convert maxPriorityFee from SOL to lamports)
+      if (basePriorityFeeLamports > this.config.maxPriorityFee * 1e9) {
+        throw new Error(
+          `[SOLANA] Transaction failed after reaching maximum priority fee of ${
+            this.config.maxPriorityFee
+          } SOL`
+        );
+      }
 
-        if (!response.ok) {
-          reject(new Error(`HTTP error! status: ${response.status}`));
-          return;
-        }
-
-        const data = await response.json();
-
-        if (data.result) {
-          const transactionInfo = data.result.find((entry: any) => entry.signature === signature);
-
-          if (!transactionInfo) {
-            resolve(false);
-            return;
-          }
-
-          if (transactionInfo.err !== null) {
-            reject(
-              new Error(`Transaction failed with error: ${JSON.stringify(transactionInfo.err)}`),
-            );
-            return;
-          }
-
-          const isConfirmed =
-            transactionInfo.confirmationStatus === 'confirmed' ||
-            transactionInfo.confirmationStatus === 'finalized';
-          resolve(isConfirmed);
-        } else {
-          resolve(false);
-        }
+      // convert currentPriorityFee to microLamports for ComputeBudgetProgram
+      const priorityFeeInstruction = ComputeBudgetProgram.setComputeUnitPrice({
+        microLamports: currentPriorityFee * 1_000_000,
       });
+      // Remove any existing priority fee instructions and add the new one
+      tx.instructions = [
+        ...tx.instructions.filter(inst => !inst.programId.equals(ComputeBudgetProgram.programId)),
+        priorityFeeInstruction
+      ];
 
-      const timeoutPromise = new Promise<boolean>((_, reject) =>
-        setTimeout(() => reject(new Error('Confirmation timed out')), timeout),
-      );
+      // Set compute unit limit
+      const computeUnitInstruction = ComputeBudgetProgram.setComputeUnitLimit({
+        units: computeUnitsToUse
+      });
+      tx.add(computeUnitInstruction);
 
-      return await Promise.race([confirmationPromise, timeoutPromise]);
-    } catch (error: any) {
-      console.error('Error confirming transaction using signatures:', error.message);
-      throw new Error(`Failed to confirm transaction using signatures: ${error.message}`);
+      // Get latest blockhash
+      const blockhashAndContext = await this.connection
+        .getLatestBlockhashAndContext('confirmed');
+      
+      const lastValidBlockHeight = blockhashAndContext.value.lastValidBlockHeight;
+      const blockhash = blockhashAndContext.value.blockhash;
+
+      tx.lastValidBlockHeight = lastValidBlockHeight;
+      tx.recentBlockhash = blockhash;
+      tx.sign(...signers);
+
+      let retryCount = 0;
+      while (retryCount < this.config.retryCount) {
+        try {
+          const signature = await this.sendRawTransaction(
+            tx.serialize(),
+            lastValidBlockHeight,
+          );
+
+          // Wait for confirmation
+          const confirmed = await this.confirmTransaction(signature);
+          if (confirmed.confirmed) {
+            const actualFee = this.getFee(confirmed.txData);
+            logger.info(`[SOLANA] Transaction ${signature} confirmed with actual fee: ${actualFee.toFixed(6)} SOL`);
+            logger.debug(`[SOLANA] Transaction data: ${JSON.stringify(confirmed.txData, null, 2)}`);
+            return signature;
+          }
+
+          retryCount++;
+          await new Promise(resolve => setTimeout(resolve, this.config.retryIntervalMs));
+        } catch (error) {
+          retryCount++;
+          await new Promise(resolve => setTimeout(resolve, this.config.retryIntervalMs));
+        }
+      }
+
+      // If we get here, transaction wasn't confirmed after RETRY_COUNT attempts
+      // Increase the priority fee and try again
+      currentPriorityFee = currentPriorityFee * this.config.priorityFeeMultiplier;
+      logger.info(`[SOLANA] Increasing max priority fee to ${(currentPriorityFee * computeUnitsToUse * LAMPORT_TO_SOL).toFixed(6)} SOL`);
     }
   }
 
-  async sendAndConfirmTransaction(tx: Transaction, signers: Signer[] = []): Promise<string> {
-    const priorityFeesEstimate = await this.fetchEstimatePriorityFees(
-      this.connectionPool.getNextConnection().rpcEndpoint,
-    );
-
-    const validFeeLevels = ['min', 'low', 'medium', 'high', 'veryHigh', 'unsafeMax'];
-    const priorityFeeLevel = PRIORITY_FEE_LEVEL || 'medium';
-
-    // Ensure the priorityFeeLevel is valid, otherwise default to 'high'
-    const selectedPriorityFee = validFeeLevels.includes(priorityFeeLevel)
-      ? priorityFeesEstimate[priorityFeeLevel]
-      : priorityFeesEstimate.medium;
-
-    const priorityFeeInstruction = ComputeBudgetProgram.setComputeUnitPrice({
-      microLamports: selectedPriorityFee * Math.max(priorityFeeMultiplier, 1),
-    });
-
-    tx.instructions.push(priorityFeeInstruction);
-
-    const blockhashAndContext = await this.connectionPool
-      .getNextConnection()
-      .getLatestBlockhashAndContext('confirmed');
-    const lastValidBlockHeight = blockhashAndContext.value.lastValidBlockHeight;
-    const blockhash = blockhashAndContext.value.blockhash;
-
-    tx.lastValidBlockHeight = lastValidBlockHeight;
-    tx.recentBlockhash = blockhash;
-    tx.sign(...signers);
-
-    const signature = await this.sendAndConfirmRawTransaction(
-      tx.serialize(),
-      signers[0].publicKey.toBase58(),
-      lastValidBlockHeight,
-    );
-
-    // Decrease priority fee multiplier if transaction is successful
-    this.decreasePriorityFeeMultiplier();
-
-    return signature;
-  }
-
-  async sendAndConfirmRawTransaction(
+  async sendRawTransaction(
     rawTx: Buffer | Uint8Array | Array<number>,
-    payerAddress: string,
     lastValidBlockHeight: number,
   ): Promise<string> {
-    let blockheight = await this.connectionPool
-      .getNextConnection()
+    let blockheight = await this.connection
       .getBlockHeight({ commitment: 'confirmed' });
 
-    let signature: string;
     let signatures: string[];
-    let confirmations: boolean[];
+    let retryCount = 0;
 
     while (blockheight <= lastValidBlockHeight + 50) {
-      const sendRawTransactionResults = await Promise.allSettled(
-        this.connectionPool.getAllConnections().map((conn) =>
-          conn.sendRawTransaction(rawTx, {
+      try {
+        const sendRawTransactionResults = await Promise.allSettled([
+          this.connection.sendRawTransaction(rawTx, {
             skipPreflight: true,
             preflightCommitment: 'confirmed',
             maxRetries: 0,
-          }),
-        ),
-      );
+          })
+        ]);
 
       const successfulResults = sendRawTransactionResults.filter(
         (result) => result.status === 'fulfilled',
@@ -836,70 +678,29 @@ export class Solana implements Solanaish {
       if (successfulResults.length > 0) {
         // Map all successful results to get their values (signatures)
         signatures = successfulResults
-          .map((result) => (result.status === 'fulfilled' ? result.value : ''));
-      } else {
-        // All promises failed
-        console.error('All connections failed to send the transaction.');
-        throw new Error('All connections failed to send the transaction.');
-      }
+          .map((result) => (result.status === 'fulfilled' ? result.value : ''))
+          .filter(sig => sig !== ''); // Filter out empty strings
 
-      // Verify all signatures match
-      if (!signatures.every((sig) => sig === signatures[0])) {
-        console.error('Signatures do not match across connections.');
-        throw new Error('Signature mismatch between connections.');
-      }
+          // Verify all signatures match
+          if (!signatures.every((sig) => sig === signatures[0])) {
+            retryCount++;
+            await new Promise((resolve) => setTimeout(resolve, this.config.retryIntervalMs));
+            continue;
+          }
 
-      signature = signatures[0];
-
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      // Check confirmation across all connections
-      const confirmTransactionResults = await Promise.allSettled(
-        this.connectionPool
-          .getAllConnections()
-          .flatMap((conn) => [
-            this.confirmTransaction(signature, conn),
-            this.confirmTransactionByAddress(payerAddress, signature, conn),
-          ]),
-      );
-
-      const successfulConfirmations = confirmTransactionResults.filter(
-        (result) => result.status === 'fulfilled',
-      );
-
-      const rejectedConfirmations = confirmTransactionResults.filter(
-        (result) => result.status === 'rejected',
-      );
-
-      rejectedConfirmations.forEach((result) => {
-        if (result.status === 'rejected' && result.reason.message.includes('InstructionError')) {
-          console.error(result.reason.message);
-          throw new Error(result.reason.message);
+          return signatures[0];
         }
-      });
 
-      if (successfulConfirmations.length > 0) {
-        // Map all successful results to get their values (signatures)
-        confirmations = successfulConfirmations
-          .map((result) => (result.status === 'fulfilled' ? result.value : false));
-      } else {
-        // All promises failed
-        console.error('All connections failed to confirm the transaction.');
-        throw new Error('All connections failed to confirm the transaction.');
+        retryCount++;
+        await new Promise((resolve) => setTimeout(resolve, this.config.retryIntervalMs));
+      } catch (error) {
+        retryCount++;
+        await new Promise((resolve) => setTimeout(resolve, this.config.retryIntervalMs));
       }
-
-      if (confirmations.some((confirmed) => confirmed)) {
-        return signature;
-      }
-
-      blockheight = await this.connectionPool
-        .getNextConnection()
-        .getBlockHeight({ commitment: 'confirmed' });
     }
 
-    console.error('Transaction could not be confirmed within the valid block height range.');
-    this.increasePriorityFeeMultiplier();
-    throw new TransactionExpiredBlockheightExceededError(signature);
+    // If we exit the while loop without returning, we've exceeded block height
+    throw new Error('Maximum blockheight exceeded');
   }
 
   async extractTokenBalanceChangeAndFee(
@@ -910,7 +711,7 @@ export class Solana implements Solanaish {
     let txDetails;
     for (let attempt = 0; attempt < 20; attempt++) {
       try {
-        txDetails = await this.connectionPool.getNextConnection().getParsedTransaction(signature, {
+        txDetails = await this.connection.getParsedTransaction(signature, {
           maxSupportedTransactionVersion: 0,
         });
 
@@ -924,7 +725,6 @@ export class Solana implements Solanaish {
           await new Promise((resolve) => setTimeout(resolve, 1000));
         } else {
           // Return default values after 10 attempts
-          console.error(`Error fetching transaction details: ${error.message}`);
           return { balanceChange: 0, fee: 0 };
         }
       }
@@ -954,7 +754,7 @@ export class Solana implements Solanaish {
     let txDetails;
     for (let attempt = 0; attempt < 20; attempt++) {
       try {
-        txDetails = await this.connectionPool.getNextConnection().getParsedTransaction(signature, {
+        txDetails = await this.connection.getParsedTransaction(signature, {
           maxSupportedTransactionVersion: 0,
         });
 
@@ -968,7 +768,6 @@ export class Solana implements Solanaish {
           await new Promise((resolve) => setTimeout(resolve, 1000));
         } else {
           // Return default values after 10 attempts
-          console.error(`Error fetching transaction details: ${error.message}`);
           return { balanceChange: 0, fee: 0 };
         }
       }
@@ -978,48 +777,44 @@ export class Solana implements Solanaish {
     const postBalances = txDetails.meta?.postBalances || [];
 
     const balanceChange =
-      Math.abs(postBalances[accountIndex] - preBalances[accountIndex]) / 1_000_000_000;
-    const fee = (txDetails.meta?.fee || 0) / 1_000_000_000; // Convert lamports to SOL
+      Math.abs(postBalances[accountIndex] - preBalances[accountIndex]) * LAMPORT_TO_SOL;
+    const fee = (txDetails.meta?.fee || 0) * LAMPORT_TO_SOL;
 
     return { balanceChange, fee };
   }
 
-  private increasePriorityFeeMultiplier(): void {
-    priorityFeeMultiplier += 1;
-    console.log(`[PRIORITY FEE] Increased priorityFeeMultiplier to: ${priorityFeeMultiplier}`);
-  }
-
-  private decreasePriorityFeeMultiplier(): void {
-    if (priorityFeeMultiplier <= 1) {
-      priorityFeeMultiplier = 1;
-      console.log(
-        `[PRIORITY FEE] Set priorityFeeMultiplier to minimum value: ${priorityFeeMultiplier}`,
-      );
-      return;
-    }
-
-    if (priorityFeeMultiplier > 1) {
-      priorityFeeMultiplier -= 1;
-      console.log(`[PRIORITY FEE] Decreased priorityFeeMultiplier to: ${priorityFeeMultiplier}`);
+  // Validate if a string is a valid Solana private key
+  public static validateSolPrivateKey(secretKey: string): boolean {
+    try {
+      const secretKeyBytes = bs58.decode(secretKey);
+      Keypair.fromSecretKey(new Uint8Array(secretKeyBytes));
+      return true;
+    } catch (error) {
+      return false;
     }
   }
 
-}
-
-class CustomStaticTokenListResolutionStrategy {
-  resolve: () => Promise<any>;
-
-  constructor(url: string, type: string) {
-    this.resolve = async () => {
-      if (type === 'FILE') {
-        return JSON.parse(await fs.readFile(url, 'utf8'))['tokens'];
-      } else {
-        return (await runWithRetryAndTimeout<any>(axios, axios.get, [url]))
-          .data['tokens'];
+  // Add new method to get first wallet address
+  public async getFirstWalletAddress(): Promise<string> {
+    const path = `${walletPath}/solana`;
+    try {
+      // Create directory if it doesn't exist
+      await fse.ensureDir(path);
+      
+      // Get all .json files in the directory
+      const files = await fse.readdir(path);
+      const walletFiles = files.filter(f => f.endsWith('.json'));
+      
+      if (walletFiles.length === 0) {
+        throw new Error('No Solana wallets found');
       }
-    };
+      
+      // Return first wallet address (without .json extension)
+      return walletFiles[0].slice(0, -5);
+    } catch (error) {
+      logger.error(`Failed to get first wallet address: ${error.message}`);
+      throw error;
+    }
   }
-}
 
-export type Solanaish = Solana;
-export const Solanaish = Solana;
+}

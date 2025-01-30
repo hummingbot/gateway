@@ -1,16 +1,32 @@
 networks:
   mainnet-beta:
-    nodeURLs: 'https://api.mainnet-beta.solana.com,'
-    tokenListType: 'FILE'
-    tokenListSource: '/home/gateway/conf/lists/solflare-tokenlist.json'
+    nodeURL: https://api.mainnet-beta.solana.com
+    tokenListType: FILE
+    tokenListSource: /home/gateway/conf/lists/solana.json
     nativeCurrencySymbol: SOL
   devnet:
-    nodeURLs: 'https://api.devnet.solana.com,'
-    tokenListType: 'FILE'
-    tokenListSource: '/home/gateway/conf/lists/solflare-tokenlist.json'
+    nodeURL: https://api.devnet.solana.com
+    tokenListType: FILE
+    tokenListSource: /home/gateway/conf/lists/solana-devnet.json
     nativeCurrencySymbol: SOL
 
-tokenProgram: TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA
-transactionLamports: 5000
-lamportsToSol: 0.000000001
-timeToLive: 75
+# Default compute units for a transaction used to estimate gasPrice
+defaultComputeUnits: 200000
+
+# Floor percentile of recent priority fee samples used to estimate gasPrice for a transaction
+basePriorityFeePct: 75
+
+# Multiplier for increasing priority fee on retry
+priorityFeeMultiplier: 2
+
+# Maximum priority fee in SOL
+maxPriorityFee: 0.01
+
+# Minimum priority fee in SOL
+minPriorityFee: 0.00005
+
+# Retry interval in milliseconds
+retryIntervalMs: 500
+
+# Number of retry attempts
+retryCount: 10

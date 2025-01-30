@@ -2,7 +2,7 @@ import { TokenListType } from '../../services/base';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 interface NetworkConfig {
   name: string;
-  nodeURLs: string;
+  nodeURL: string;
   tokenListType: TokenListType;
   tokenListSource: string;
   nativeCurrencySymbol: string;
@@ -10,10 +10,13 @@ interface NetworkConfig {
 
 export interface Config {
   network: NetworkConfig;
-  tokenProgram: string;
-  transactionLamports: number;
-  lamportsToSol: number;
-  timeToLive: number;
+  defaultComputeUnits: number;
+  basePriorityFeePct: number;
+  priorityFeeMultiplier: number;
+  maxPriorityFee: number;
+  minPriorityFee: number;
+  retryIntervalMs: number;
+  retryCount: number;
 }
 
 export function getSolanaConfig(
@@ -23,8 +26,8 @@ export function getSolanaConfig(
   return {
     network: {
       name: networkName,
-      nodeURLs: ConfigManagerV2.getInstance().get(
-        chainName + '.networks.' + networkName + '.nodeURLs'
+      nodeURL: ConfigManagerV2.getInstance().get(
+        chainName + '.networks.' + networkName + '.nodeURL'
       ),
       tokenListType: ConfigManagerV2.getInstance().get(
         chainName + '.networks.' + networkName + '.tokenListType'
@@ -36,15 +39,26 @@ export function getSolanaConfig(
         chainName + '.networks.' + networkName + '.nativeCurrencySymbol'
       ),
     },
-    tokenProgram: ConfigManagerV2.getInstance().get(
-      chainName + '.tokenProgram'
+    defaultComputeUnits: ConfigManagerV2.getInstance().get(
+      chainName + '.defaultComputeUnits'
     ),
-    transactionLamports: ConfigManagerV2.getInstance().get(
-      chainName + '.transactionLamports'
+    basePriorityFeePct: ConfigManagerV2.getInstance().get(
+      chainName + '.basePriorityFeePct'
     ),
-    lamportsToSol: ConfigManagerV2.getInstance().get(
-      chainName + '.lamportsToSol'
+    priorityFeeMultiplier: ConfigManagerV2.getInstance().get(
+      chainName + '.priorityFeeMultiplier'
     ),
-    timeToLive: ConfigManagerV2.getInstance().get(chainName + '.timeToLive'),
+    maxPriorityFee: ConfigManagerV2.getInstance().get(
+      chainName + '.maxPriorityFee'
+    ),
+    minPriorityFee: ConfigManagerV2.getInstance().get(
+      chainName + '.minPriorityFee'
+    ),
+    retryIntervalMs: ConfigManagerV2.getInstance().get(
+      chainName + '.retryIntervalMs'
+    ),
+    retryCount: ConfigManagerV2.getInstance().get(
+      chainName + '.retryCount'
+    ),
   };
 }

@@ -8,13 +8,13 @@
           "^..+$": {
             "type": "object",
             "properties": {
-              "nodeURLs": { "type": "string" },
+              "nodeURL": { "type": "string" },
               "tokenListType": { "type": "string" },
               "tokenListSource": { "type": "string" },
               "nativeCurrencySymbol": { "type": "string" }
             },
             "required": [
-              "nodeURLs",
+              "nodeURL",
               "tokenListType",
               "tokenListSource",
               "nativeCurrencySymbol"
@@ -25,10 +25,13 @@
         "additionalProperties": false
       },
       "network": { "type": "string" },
-      "tokenProgram": { "type": "string" },
-      "transactionLamports": { "type": "number" },
-      "lamportsToSol": { "type": "number" },
-      "timeToLive": { "type": "number" }
+      "defaultComputeUnits": { "type": "number" },
+      "basePriorityFeePct": { "type": "number" },
+      "priorityFeeMultiplier": { "type": "number" },
+      "maxPriorityFee": { "type": "number" },
+      "minPriorityFee": { "type": "number" },
+      "retryIntervalMs": { "type": "number" },
+      "retryCount": { "type": "number" }
     },
     "additionalProperties": false
   }
