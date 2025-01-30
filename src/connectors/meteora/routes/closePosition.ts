@@ -84,7 +84,14 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Close a Meteora position',
         tags: ['meteora'],
-        body: ClosePositionRequest,
+        body: {
+          ...ClosePositionRequest,
+          properties: {
+            ...ClosePositionRequest.properties,
+            network: { type: 'string', default: 'mainnet-beta' },
+            positionAddress: { type: 'string' }
+          }
+        },
         response: {
           200: ClosePositionResponse
         },

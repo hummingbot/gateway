@@ -11,7 +11,6 @@ import {
   PublicKey,
   ComputeBudgetProgram,
   Signer,
-  SignatureStatus,
   Transaction,
   TokenAmount,
   TransactionResponse,
@@ -529,57 +528,27 @@ export class Solana {
   ): Promise<{ confirmed: boolean; txData?: any }> {
     try {
       const confirmationPromise = new Promise<{ confirmed: boolean; txData?: any }>(async (resolve, reject) => {
-        const payload = {
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'getSignatureStatuses',
-          params: [
-            [signature],
-            {
-              searchTransactionHistory: true,
-            },
-          ],
-        };
-
-        const response = await fetch(this.connection.rpcEndpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload),
+        // Use getTransaction instead of getSignatureStatuses for more reliability
+        const txData = await this.connection.getTransaction(signature, {
+          commitment: 'confirmed',
+          maxSupportedTransactionVersion: 0,
         });
 
-        if (!response.ok) {
-          reject(new Error(`HTTP error! status: ${response.status}`));
-          return;
+        if (!txData) {
+          return resolve({ confirmed: false });
         }
 
-        const data = await response.json();
-
-        if (data.result && data.result.value && data.result.value[0]) {
-          const status: SignatureStatus = data.result.value[0];
-          
-          if (status.err !== null) {
-            reject(new Error(`Transaction failed with error: ${JSON.stringify(status.err)}`));
-            return;
-          }
-          
-          const isConfirmed =
-            status.confirmationStatus === 'confirmed' || 
-            status.confirmationStatus === 'finalized';
-
-          if (isConfirmed) {
-            // Fetch transaction data if confirmed
-            const txData = await this.connection.getParsedTransaction(signature, {
-              maxSupportedTransactionVersion: 0,
-            });
-            resolve({ confirmed: true, txData });
-          } else {
-            resolve({ confirmed: false });
-          }
-        } else {
-          resolve({ confirmed: false });
+        // Check if transaction is already confirmed but had an error
+        if (txData.meta?.err) {
+          return reject(new Error(`Transaction failed with error: ${JSON.stringify(txData.meta.err)}`));
         }
+
+        // More definitive check using slot confirmation
+        const status = await this.connection.getSignatureStatus(signature);
+        const isConfirmed = status.value?.confirmationStatus === 'confirmed' || 
+                          status.value?.confirmationStatus === 'finalized';
+
+        resolve({ confirmed: !!isConfirmed, txData });
       });
 
       const timeoutPromise = new Promise<{ confirmed: boolean }>((_, reject) =>
@@ -608,7 +577,6 @@ export class Solana {
     let currentPriorityFee = await this.estimatePriorityFees();
     const computeUnitsToUse = computeUnits || this.config.defaultComputeUnits;
     
-    // Keep trying with increasing priority fees until we hit the max
     while (true) {
       const basePriorityFeeLamports = currentPriorityFee * computeUnitsToUse;
       
@@ -658,18 +626,29 @@ export class Solana {
             lastValidBlockHeight,
           );
 
-          // Wait for confirmation
-          const confirmed = await this.confirmTransaction(signature);
-          if (confirmed.confirmed) {
-            const actualFee = this.getFee(confirmed.txData);
-            logger.info(`[SOLANA] Transaction ${signature} confirmed with actual fee: ${actualFee.toFixed(6)} SOL`);
-            logger.debug(`[SOLANA] Transaction data: ${JSON.stringify(confirmed.txData, null, 2)}`);
-            return { signature, fee: actualFee };
+          // Modified confirmation handling
+          try {
+            const confirmed = await this.confirmTransaction(signature);
+            if (confirmed.confirmed) {
+              const actualFee = this.getFee(confirmed.txData);
+              logger.info(`[SOLANA] Transaction ${signature} confirmed with actual fee: ${actualFee.toFixed(6)} SOL`);
+              return { signature, fee: actualFee };
+            }
+          } catch (error) {
+            // If transaction failed, break out of retry loop immediately
+            if (error.message.includes('Transaction failed')) {
+              throw error;
+            }
+            // Otherwise continue to retry
           }
 
           retryCount++;
           await new Promise(resolve => setTimeout(resolve, this.config.retryIntervalMs));
         } catch (error) {
+          // Only retry if error is not a definitive failure
+          if (error.message.includes('Transaction failed')) {
+            throw error;
+          }
           retryCount++;
           await new Promise(resolve => setTimeout(resolve, this.config.retryIntervalMs));
         }

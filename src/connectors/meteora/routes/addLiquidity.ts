@@ -10,9 +10,9 @@ import { PublicKey } from '@solana/web3.js';
 import { 
   AddLiquidityRequest, 
   AddLiquidityResponse, 
-  AddLiquidityRequestType, 
   AddLiquidityResponseType 
 } from '../../../services/clmm-interfaces';
+import { Type, Static } from '@sinclair/typebox';
 
 async function addLiquidity(
   fastify: FastifyInstance,
@@ -95,6 +95,17 @@ async function addLiquidity(
   };
 }
 
+export const MeteoraAddLiquidityRequest = Type.Intersect([
+  AddLiquidityRequest,
+  Type.Object({
+    strategyType: Type.Optional(Type.Number({ 
+      enum: Object.values(StrategyType).filter(x => typeof x === 'number')
+    }))
+  })
+], { $id: 'MeteoraAddLiquidityRequest' });
+
+export type MeteoraAddLiquidityRequestType = Static<typeof MeteoraAddLiquidityRequest>;
+
 export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   // Get first wallet address for example
   const solana = await Solana.getInstance('mainnet-beta');
@@ -110,7 +121,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   AddLiquidityRequest.properties.walletAddress.examples = [firstWalletAddress];
 
   fastify.post<{
-    Body: AddLiquidityRequestType;
+    Body: MeteoraAddLiquidityRequestType;
     Reply: AddLiquidityResponseType;
   }>(
     '/add-liquidity',
@@ -125,7 +136,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
             network: { type: 'string', default: 'mainnet-beta' },
             strategyType: { 
               type: 'number', 
-              examples: [StrategyType.SpotBalanced],
+              examples: [StrategyType.SpotImBalanced],
               enum: Object.values(StrategyType).filter(x => typeof x === 'number')
             }
           }

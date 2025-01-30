@@ -38,6 +38,8 @@ export async function collectFees(
   const tokenXSymbol = tokenX?.symbol || 'UNKNOWN';
   const tokenYSymbol = tokenY?.symbol || 'UNKNOWN';
 
+  logger.info(`Collecting fees from position ${positionAddress}`);
+
   const claimSwapFeeTx = await dlmmPool.claimSwapFee({
     owner: wallet.publicKey,
     position: position,

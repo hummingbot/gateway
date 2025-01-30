@@ -10,9 +10,12 @@ import { BN } from 'bn.js';
 import { 
   OpenPositionRequest, 
   OpenPositionResponse, 
-  OpenPositionRequestType, 
   OpenPositionResponseType,
 } from '../../../services/clmm-interfaces';
+import { Type, Static } from '@sinclair/typebox';
+
+const SOL_POSITION_RENT = 0.05; // SOL amount required for position rent
+const SOL_TRANSACTION_BUFFER = 0.01; // Additional SOL buffer for transaction costs
 
 async function openPosition(
   fastify: FastifyInstance,
@@ -47,6 +50,25 @@ async function openPosition(
     throw fastify.httpErrors.badRequest('Must provide either baseTokenAmount or quoteTokenAmount');
   }
 
+  // Check balances with SOL buffer
+  const balances = await solana.getBalance(wallet);
+  const requiredBaseAmount = (baseTokenAmount || 0) + 
+    (tokenXSymbol === 'SOL' ? SOL_POSITION_RENT + SOL_TRANSACTION_BUFFER : 0);
+  const requiredQuoteAmount = (quoteTokenAmount || 0) + 
+    (tokenYSymbol === 'SOL' ? SOL_POSITION_RENT + SOL_TRANSACTION_BUFFER : 0);
+
+  if (tokenXSymbol && balances[tokenXSymbol] < requiredBaseAmount) {
+    throw fastify.httpErrors.badRequest(
+      `Insufficient ${tokenXSymbol} balance. Required: ${requiredBaseAmount}, Available: ${balances[tokenXSymbol]}`
+    );
+  }
+
+  if (tokenYSymbol && balances[tokenYSymbol] < requiredQuoteAmount) {
+    throw fastify.httpErrors.badRequest(
+      `Insufficient ${tokenYSymbol} balance. Required: ${requiredQuoteAmount}, Available: ${balances[tokenYSymbol]}`
+    );
+  }
+
   const lowerPricePerLamport = dlmmPool.toPricePerLamport(lowerPrice);
   const upperPricePerLamport = dlmmPool.toPricePerLamport(upperPrice);
   const minBinId = dlmmPool.getBinIdFromPrice(Number(lowerPricePerLamport), true) - 1;
@@ -67,10 +89,22 @@ async function openPosition(
   }
 
   const totalXAmount = new BN(
-    DecimalUtil.toBN(new Decimal(baseTokenAmount || 0), dlmmPool.tokenX.decimal)
+    DecimalUtil.toBN(
+      new Decimal(
+        baseTokenAmount || 0 + 
+        (tokenXSymbol === 'SOL' ? SOL_POSITION_RENT : 0)
+      ), 
+      dlmmPool.tokenX.decimal
+    )
   );
   const totalYAmount = new BN(
-    DecimalUtil.toBN(new Decimal(quoteTokenAmount || 0), dlmmPool.tokenY.decimal)
+    DecimalUtil.toBN(
+      new Decimal(
+        quoteTokenAmount || 0 + 
+        (tokenYSymbol === 'SOL' ? SOL_POSITION_RENT : 0)
+      ), 
+      dlmmPool.tokenY.decimal
+    )
   );
 
   const createPositionTx = await dlmmPool.initializePositionAndAddLiquidityByStrategy({
@@ -97,7 +131,12 @@ async function openPosition(
       wallet.publicKey.toBase58()
     );
 
-  const sentSOL = Math.abs(baseTokenBalanceChange - fee);
+  // Calculate sentSOL based on which token is SOL
+  const sentSOL = tokenXSymbol === 'SOL' 
+    ? Math.abs(baseTokenBalanceChange - fee)
+    : tokenYSymbol === 'SOL'
+    ? Math.abs(quoteTokenBalanceChange - fee)
+    : fee;
 
   logger.info(`Position opened at ${newImbalancePosition.publicKey.toBase58()}: ${Math.abs(baseTokenBalanceChange).toFixed(4)} ${tokenXSymbol}, ${Math.abs(quoteTokenBalanceChange).toFixed(4)} ${tokenYSymbol}`);
 
@@ -110,6 +149,17 @@ async function openPosition(
     quoteTokenAmountAdded: quoteTokenBalanceChange,
   };
 }
+
+export const MeteoraOpenPositionRequest = Type.Intersect([
+  OpenPositionRequest,
+  Type.Object({
+    strategyType: Type.Optional(Type.Number({ 
+      enum: Object.values(StrategyType).filter(x => typeof x === 'number')
+    }))
+  })
+], { $id: 'MeteoraOpenPositionRequest' });
+
+export type MeteoraOpenPositionRequestType = Static<typeof MeteoraOpenPositionRequest>;
 
 export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
   // Get first wallet address for example
@@ -126,7 +176,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
   OpenPositionRequest.properties.walletAddress.examples = [firstWalletAddress];
 
   fastify.post<{
-    Body: OpenPositionRequestType;
+    Body: MeteoraOpenPositionRequestType;
     Reply: OpenPositionResponseType;
   }>(
     '/open-position',
@@ -145,7 +195,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
             slippagePct: { type: 'number', examples: [1] },
             strategyType: { 
               type: 'number', 
-              examples: [StrategyType.SpotBalanced],
+              examples: [StrategyType.SpotImBalanced],
               enum: Object.values(StrategyType).filter(x => typeof x === 'number')
             }
           }

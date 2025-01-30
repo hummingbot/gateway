@@ -1,34 +1,24 @@
-import { StrategyType } from '@meteora-ag/dlmm';
 import { Type, Static } from '@sinclair/typebox';
 
 export const FetchPoolsRequest = Type.Object({
-  network: Type.Optional(Type.String({
-    description: 'Network (defaults to mainnet)'
-  })),
-  limit: Type.Optional(Type.Number({ 
-    minimum: 1,
-    description: 'Maximum number of pools to return'
-  })),
-  tokenA: Type.Optional(Type.String({
-    description: 'First token symbol or address'
-  })),
-  tokenB: Type.Optional(Type.String({
-    description: 'Second token symbol or address'
-  })),
+  network: Type.Optional(Type.String()), // Network (defaults to mainnet)
+  limit: Type.Optional(Type.Number({ minimum: 1 })), // Maximum number of pools to return
+  tokenA: Type.Optional(Type.String()), // First token symbol or address
+  tokenB: Type.Optional(Type.String()), // Second token symbol or address
 }, { $id: 'FetchPoolsRequest' });
 
 export type FetchPoolsRequestType = Static<typeof FetchPoolsRequest>;
 
 export const PoolInfoSchema = Type.Object({
-    address: Type.String(),
-    baseTokenAddress: Type.String(),
-    quoteTokenAddress: Type.String(),
-    binStep: Type.Number(),
-    feePct: Type.Number(),
-    price: Type.Number(),
-    baseTokenAmount: Type.Number(),
-    quoteTokenAmount: Type.Number(),
-  }, { $id: 'PoolInfo' });
+  address: Type.String(),
+  baseTokenAddress: Type.String(),
+  quoteTokenAddress: Type.String(),
+  binStep: Type.Number(),
+  feePct: Type.Number(),
+  price: Type.Number(),
+  baseTokenAmount: Type.Number(),
+  quoteTokenAmount: Type.Number(),
+}, { $id: 'PoolInfo' });
 export type PoolInfo = Static<typeof PoolInfoSchema>;
 
 export const GetPoolInfoRequest = Type.Object({
@@ -68,9 +58,6 @@ export const OpenPositionRequest = Type.Object({
   baseTokenAmount: Type.Optional(Type.Number()),
   quoteTokenAmount: Type.Optional(Type.Number()),
   slippagePct: Type.Optional(Type.Number()),
-  strategyType: Type.Optional(Type.Number({ 
-    enum: Object.values(StrategyType).filter(x => typeof x === 'number')
-  })),
 }, { $id: 'OpenPositionRequest' });
 export type OpenPositionRequestType = Static<typeof OpenPositionRequest>;
 
@@ -91,9 +78,6 @@ export const AddLiquidityRequest = Type.Object({
   baseTokenAmount: Type.Number(),
   quoteTokenAmount: Type.Number(),
   slippagePct: Type.Optional(Type.Number()),
-  strategyType: Type.Optional(Type.Number({ 
-    enum: Object.values(StrategyType).filter(x => typeof x === 'number')
-  })),
 }, { $id: 'AddLiquidityRequest' });
 export type AddLiquidityRequestType = Static<typeof AddLiquidityRequest>;
   
