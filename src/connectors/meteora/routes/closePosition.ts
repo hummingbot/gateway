@@ -29,12 +29,12 @@ async function closePosition(
   // Remove liquidity if baseTokenAmount or quoteTokenAmount is greater than 0
   const removeLiquidityResult = (positionInfo.baseTokenAmount > 0 || positionInfo.quoteTokenAmount > 0)
     ? await removeLiquidity(fastify, network, address, positionAddress, 100) as RemoveLiquidityResponseType
-    : { baseTokenAmountRemoved: 0, quoteTokenAmountRemoved: 0 };
+    : { baseTokenAmountRemoved: 0, quoteTokenAmountRemoved: 0, fee: 0 };
 
   // Remove liquidity if baseTokenFees or quoteTokenFees is greater than 0
   const collectFeesResult = (positionInfo.baseFeeAmount > 0 || positionInfo.quoteFeeAmount > 0)
     ? await collectFees(fastify, network, address, positionAddress) as CollectFeesResponseType
-    : { baseFeeAmountCollected: 0, quoteFeeAmountCollected: 0 };
+    : { baseFeeAmountCollected: 0, quoteFeeAmountCollected: 0, fee: 0 };
 
   // Now close the position
   logger.info(`Closing position ${positionAddress}`);
@@ -52,7 +52,7 @@ async function closePosition(
 
   return {
     signature,
-    fee,
+    fee: fee + removeLiquidityResult.fee + collectFeesResult.fee,
     positionRentRefunded: returnedSOL,
     baseTokenAmountRemoved: removeLiquidityResult.baseTokenAmountRemoved,
     quoteTokenAmountRemoved: removeLiquidityResult.quoteTokenAmountRemoved,
