@@ -86,7 +86,7 @@ async function formatSwapQuote(
   poolAddress: string,
   slippagePct?: number
 ): Promise<GetSwapQuoteResponseType> {
-  const { inputToken, outputToken, quote } = await getRawSwapQuote(
+  const { inputToken, outputToken, quote, dlmmPool } = await getRawSwapQuote(
     fastify,
     network,
     baseTokenSymbol,
@@ -97,19 +97,48 @@ async function formatSwapQuote(
     slippagePct
   );
 
+  // Get tokens in pool order (X, Y) for consistent balance change calculation
+  const solana = await Solana.getInstance(network);
+  const tokenX = await solana.getToken(dlmmPool.tokenX.publicKey.toBase58());
+  const tokenY = await solana.getToken(dlmmPool.tokenY.publicKey.toBase58());
+
+  if (!tokenX || !tokenY) {
+    throw new Error('Failed to get pool tokens');
+  }
+
   if (side === 'buy') {
     const exactOutQuote = quote as SwapQuoteExactOut;
+    const estimatedAmountIn = DecimalUtil.fromBN(exactOutQuote.inAmount, inputToken.decimals).toNumber();
+    const maxAmountIn = DecimalUtil.fromBN(exactOutQuote.maxInAmount, inputToken.decimals).toNumber();
+    const amountOut = DecimalUtil.fromBN(exactOutQuote.outAmount, outputToken.decimals).toNumber();
+
     return {
-      estimatedAmountIn: DecimalUtil.fromBN(exactOutQuote.maxInAmount, inputToken.decimals).toString(),
-      estimatedAmountOut: DecimalUtil.fromBN(exactOutQuote.outAmount, outputToken.decimals).toString(),
-      minOutAmount: DecimalUtil.fromBN(exactOutQuote.outAmount, outputToken.decimals).toString(),
+      estimatedAmountIn,
+      estimatedAmountOut: amountOut,
+      maxAmountIn,
+      minAmountOut: amountOut,
+      baseTokenBalanceChange: amountOut,
+      quoteTokenBalanceChange: -estimatedAmountIn,
     };
   } else {
     const exactInQuote = quote as SwapQuote;
+    const estimatedAmountIn = DecimalUtil.fromBN(exactInQuote.consumedInAmount, inputToken.decimals).toNumber();
+    const estimatedAmountOut = DecimalUtil.fromBN(exactInQuote.outAmount, outputToken.decimals).toNumber();
+    const minAmountOut = DecimalUtil.fromBN(exactInQuote.minOutAmount, outputToken.decimals).toNumber();
+
+    // For sell orders:
+    // - Base token (input) decreases (negative)
+    // - Quote token (output) increases (positive)
+    const baseTokenChange = -estimatedAmountIn;
+    const quoteTokenChange = estimatedAmountOut;
+
     return {
-      estimatedAmountIn: DecimalUtil.fromBN(exactInQuote.consumedInAmount, inputToken.decimals).toString(),
-      estimatedAmountOut: DecimalUtil.fromBN(exactInQuote.outAmount, outputToken.decimals).toString(),
-      minOutAmount: DecimalUtil.fromBN(exactInQuote.minOutAmount, outputToken.decimals).toString(),
+      estimatedAmountIn,
+      estimatedAmountOut,
+      minAmountOut,
+      maxAmountIn: estimatedAmountIn,
+      baseTokenBalanceChange: baseTokenChange,
+      quoteTokenBalanceChange: quoteTokenChange,
     };
   }
 }

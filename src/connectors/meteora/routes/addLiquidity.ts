@@ -15,7 +15,7 @@ import {
 } from '../../../services/clmm-interfaces';
 
 async function addLiquidity(
-  _fastify: FastifyInstance,
+  fastify: FastifyInstance,
   network: string,
   address: string,
   positionAddress: string,
@@ -28,16 +28,28 @@ async function addLiquidity(
   const meteora = await Meteora.getInstance(network);
   const wallet = await solana.getWallet(address);
 
-  const position = await meteora.getPositionInfo(positionAddress, wallet.publicKey);
-  const dlmmPool = await meteora.getDlmmPool(position.address);
+  const { position, info } = await meteora.getRawPosition(
+    positionAddress, 
+    wallet.publicKey
+  );
+
+  if (!position) {
+    throw fastify.httpErrors.notFound(`Position not found: ${positionAddress}`);
+  }
+
+  const dlmmPool = await meteora.getDlmmPool(info.publicKey.toBase58());
+  if (!dlmmPool) {
+    throw fastify.httpErrors.notFound(`Pool not found for position: ${positionAddress}`);
+  }
+
   const tokenX = await solana.getToken(dlmmPool.tokenX.publicKey.toBase58());
   const tokenY = await solana.getToken(dlmmPool.tokenY.publicKey.toBase58());
   const tokenXSymbol = tokenX?.symbol || 'UNKNOWN';
   const tokenYSymbol = tokenY?.symbol || 'UNKNOWN';
 
   logger.info(`Adding liquidity to position ${positionAddress}: ${baseTokenAmount.toFixed(4)} ${tokenXSymbol}, ${quoteTokenAmount.toFixed(4)} ${tokenYSymbol}`);
-  const maxBinId = position.upperBinId;
-  const minBinId = position.lowerBinId;
+  const maxBinId = position.positionData.upperBinId;
+  const minBinId = position.positionData.lowerBinId;
 
   const totalXAmount = new BN(
     DecimalUtil.toBN(new Decimal(baseTokenAmount), dlmmPool.tokenX.decimal)
@@ -47,7 +59,7 @@ async function addLiquidity(
   );
 
   const addLiquidityTx = await dlmmPool.addLiquidityByStrategy({
-    positionPubKey: new PublicKey(position.address),
+    positionPubKey: new PublicKey(position.publicKey),
     user: wallet.publicKey,
     totalXAmount,
     totalYAmount,

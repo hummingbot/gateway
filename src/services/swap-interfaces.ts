@@ -15,9 +15,12 @@ export const GetSwapQuoteRequest = Type.Object({
 export type GetSwapQuoteRequestType = Static<typeof GetSwapQuoteRequest>;
 
 export const GetSwapQuoteResponse = Type.Object({
-  estimatedAmountIn: Type.String(),
-  estimatedAmountOut: Type.String(),
-  minOutAmount: Type.String(),
+  estimatedAmountIn: Type.Number(),
+  estimatedAmountOut: Type.Number(),
+  minAmountOut: Type.Number(),
+  maxAmountIn: Type.Number(),
+  baseTokenBalanceChange: Type.Number(),
+  quoteTokenBalanceChange: Type.Number(),
 }, { $id: 'GetSwapQuoteResponse' });
 export type GetSwapQuoteResponseType = Static<typeof GetSwapQuoteResponse>;
 

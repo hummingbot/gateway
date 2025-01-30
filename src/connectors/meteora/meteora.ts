@@ -262,8 +262,6 @@ export class Meteora {
       quoteTokenAmount: Number(convertDecimals(position.positionData.totalYAmount, dlmmPool.tokenY.decimal)),
       baseFeeAmount: Number(convertDecimals(position.positionData.feeX, dlmmPool.tokenX.decimal)),
       quoteFeeAmount: Number(convertDecimals(position.positionData.feeY, dlmmPool.tokenY.decimal)),
-      lowerBinId: position.positionData.lowerBinId,
-      upperBinId: position.positionData.upperBinId,
       lowerPrice: adjustedLowerPrice,
       upperPrice: adjustedUpperPrice,
       price: Number(activeBin.pricePerToken),

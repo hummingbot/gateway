@@ -1,22 +1,22 @@
 import { StrategyType } from '@meteora-ag/dlmm';
 import { Type, Static } from '@sinclair/typebox';
 
-// Schema definitions
 export const FetchPoolsRequest = Type.Object({
-  network: Type.Optional(Type.String({ default: 'mainnet-beta' })),
+  network: Type.Optional(Type.String({
+    description: 'Network (defaults to mainnet)'
+  })),
   limit: Type.Optional(Type.Number({ 
-    minimum: 1, 
-    examples: [10]
+    minimum: 1,
+    description: 'Maximum number of pools to return'
   })),
   tokenA: Type.Optional(Type.String({
-    description: 'First token symbol or address',
-    examples: ['M3M3']
+    description: 'First token symbol or address'
   })),
   tokenB: Type.Optional(Type.String({
-    description: 'Second token symbol or address',
-    examples: ['USDC']
+    description: 'Second token symbol or address'
   })),
-});
+}, { $id: 'FetchPoolsRequest' });
+
 export type FetchPoolsRequestType = Static<typeof FetchPoolsRequest>;
 
 export const PoolInfoSchema = Type.Object({
@@ -46,8 +46,6 @@ export const PositionInfoSchema = Type.Object({
   quoteTokenAmount: Type.Number(),
   baseFeeAmount: Type.Number(),
   quoteFeeAmount: Type.Number(),
-  lowerBinId: Type.Number(),
-  upperBinId: Type.Number(),
   lowerPrice: Type.Number(),
   upperPrice: Type.Number(),
   price: Type.Number(),
@@ -55,12 +53,9 @@ export const PositionInfoSchema = Type.Object({
 export type PositionInfo = Static<typeof PositionInfoSchema>;
 
 export const GetPositionInfoRequest = Type.Object({
-  network: Type.Optional(Type.String({ default: 'mainnet-beta' })),
+  network: Type.Optional(Type.String()),
   positionAddress: Type.String(),
-  walletAddress: Type.String({ 
-    description: 'Wallet address that owns the position',
-    examples: []
-  }),
+  walletAddress: Type.String(),
 }, { $id: 'GetPositionInfoRequest' });
 export type GetPositionInfoRequestType = Static<typeof GetPositionInfoRequest>;
 

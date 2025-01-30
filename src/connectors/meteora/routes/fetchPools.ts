@@ -16,12 +16,20 @@ export const fetchPoolsRoute: FastifyPluginAsync = async (fastify) => {
     Reply: PoolInfo[]
   }>('/fetch-pools', {
     schema: {
-      querystring: FetchPoolsRequest,
+      description: 'Fetch info about Meteora pools',
+      tags: ['meteora'],
+      querystring: {
+        ...FetchPoolsRequest,
+        properties: {
+          network: { type: 'string', default: 'mainnet-beta' },
+          limit: { type: 'number', minimum: 1, default: 10 },
+          tokenA: { type: 'string', examples: ['M3M3'] },
+          tokenB: { type: 'string', examples: ['USDC'] }
+        }
+      },
       response: {
         200: Type.Array(PoolInfoSchema)
-      },
-      tags: ['meteora'],
-      description: 'Fetch info about Meteora pools'
+      }
     },
     handler: async (request, _reply) => {
       try {
@@ -83,6 +91,7 @@ export const fetchPoolsRoute: FastifyPluginAsync = async (fastify) => {
       }
     }
   });
+
 };
 
 export default fetchPoolsRoute; 
