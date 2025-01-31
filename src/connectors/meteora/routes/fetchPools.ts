@@ -66,7 +66,7 @@ export const fetchPoolsRoute: FastifyPluginAsync = async (fastify) => {
     
         const pairs = await meteora.getPools(limit, tokenMintA, tokenMintB);
         if (!Array.isArray(pairs)) {
-          logger.error('Invalid pairs response from Meteora');
+          logger.error('No matching Meteora pools found');
           return [];
         }
 
@@ -77,7 +77,7 @@ export const fetchPoolsRoute: FastifyPluginAsync = async (fastify) => {
               try {
                 return await meteora.getPoolInfo(pair.publicKey.toString());
               } catch (error) {
-                logger.warn(`Failed to get pool info for ${pair.publicKey.toString()}: ${error.message}`);
+                logger.error(`Failed to get pool info for ${pair.publicKey.toString()}: ${error.message}`);
                 return null;
               }
             })

@@ -1,4 +1,6 @@
 import { Request, RequestHandler, Response, NextFunction } from 'express';
+import { FastifyError, FastifyReply, FastifyRequest } from 'fastify';
+import { logger } from './logger';
 
 // error origination from ethers library when interracting with node
 export interface NodeError extends Error {
@@ -224,4 +226,95 @@ export const gatewayErrorMiddleware = (
     }
   }
   return response;
+};
+
+// Simplified HttpError class
+export class HttpError extends Error {
+  constructor(
+    public readonly statusCode: number,
+    message: string
+  ) {
+    super(message);
+    this.name = 'HttpError';
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, HttpError);
+    }
+  }
+
+  toJSON() {
+    return {
+      statusCode: this.statusCode,
+      error: this.name,
+      message: this.message
+    };
+  }
+}
+
+// Global error handler
+export const errorHandler = (
+  error: FastifyError | HttpError,
+  request: FastifyRequest,
+  reply: FastifyReply
+) => {
+  // Handle validation errors
+  if ('validation' in error && error.validation) {
+    return reply.status(400).send({
+      statusCode: 400,
+      error: 'Validation Error',
+      message: error.message,
+      validation: error.validation
+    });
+  }
+
+  // Handle our HttpErrors
+  if (error instanceof HttpError) {
+    return reply.status(error.statusCode).send(error);
+  }
+
+  // Handle Fastify's native errors
+  if (error.statusCode && error.statusCode >= 400) {
+    return reply.status(error.statusCode).send({
+      statusCode: error.statusCode,
+      error: error.name,
+      message: error.message
+    });
+  }
+
+  // Log and handle unexpected errors
+  logger.error('Unhandled error:', {
+    error: error.message,
+    stack: error.stack,
+    url: request.url,
+    params: request.params
+  });
+
+  reply.status(500).send({
+    statusCode: 500,
+    error: 'Internal Server Error',
+    message: 'An unexpected error occurred'
+  });
+};
+
+// Helper functions for common errors
+export const httpNotFound = (message: string) => new HttpError(404, message);
+export const httpBadRequest = (message: string) => new HttpError(400, message);
+export const httpInternalServerError = (message: string = 'Internal Server Error') =>
+  new HttpError(500, message);
+export const httpUnauthorized = (message: string = 'Unauthorized') =>
+  new HttpError(401, message);
+export const httpForbidden = (message: string = 'Forbidden') =>
+  new HttpError(403, message);
+
+export const ERROR_MESSAGES = {
+  POOL_NOT_FOUND: (poolAddress: string) => `Pool not found: ${poolAddress}`,
+  MISSING_AMOUNTS: 'Must provide either baseTokenAmount or quoteTokenAmount',
+  INSUFFICIENT_BALANCE: (token: string, required: number, available: number) =>
+    `Insufficient ${token} balance. Required: ${required}, Available: ${available}`,
+  INVALID_PRICE_RANGE: 'Upper price must be greater than lower price',
+  MAX_BIN_WIDTH_EXCEEDED: (current: number, max: number) =>
+    `Position width (${current} bins) exceeds ${max} bins limit`,
+  TRANSACTION_FAILED: (reason: string) => `Transaction failed: ${reason}`,
+  POSITION_CREATION_FAILED: 'Failed to create position',
+  INVALID_SOLANA_ADDRESS: (address: string) => 
+    `Invalid Solana address: ${address}. Address must be a base58-encoded public key`,
 };

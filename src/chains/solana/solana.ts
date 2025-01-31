@@ -472,7 +472,7 @@ export class Solana {
       });
 
       if (!response.ok) {
-        logger.error(`[SOLANA] Failed to fetch priority fees, using minimum fee: ${response.status}`);
+        logger.error(`Failed to fetch priority fees, using minimum fee: ${response.status}`);
         return this.config.minPriorityFee * 1_000_000 / this.config.defaultComputeUnits;
       }
 
@@ -497,7 +497,7 @@ export class Solana {
       const minFee = Math.min(...fees) / 1_000_000; // Convert to lamports
       const maxFee = Math.max(...fees) / 1_000_000; // Convert to lamports
       const averageFee = fees.reduce((sum, fee) => sum + fee, 0) / fees.length / 1_000_000 // Convert to lamports
-      logger.info(`[SOLANA] Recent priority fees paid: ${minFee.toFixed(4)} - ${maxFee.toFixed(4)} lamports/CU (avg: ${averageFee.toFixed(4)})`);
+      logger.info(`Recent priority fees paid: ${minFee.toFixed(4)} - ${maxFee.toFixed(4)} lamports/CU (avg: ${averageFee.toFixed(4)})`);
 
       // Calculate index for percentile
       const percentileIndex = Math.ceil(fees.length * this.config.basePriorityFeePct / 100);
@@ -507,7 +507,7 @@ export class Solana {
       const minimumFeeLamports = Math.floor(this.config.minPriorityFee * 1e9 / this.config.defaultComputeUnits);
       basePriorityFee = Math.max(basePriorityFee, minimumFeeLamports);
       
-      logger.info(`[SOLANA] Base priority fee: ${basePriorityFee.toFixed(4)} lamports/CU (${basePriorityFee === minimumFeeLamports ? 'minimum' : `${this.config.basePriorityFeePct}th percentile`})`);
+      logger.info(`Base priority fee: ${basePriorityFee.toFixed(4)} lamports/CU (${basePriorityFee === minimumFeeLamports ? 'minimum' : `${this.config.basePriorityFeePct}th percentile`})`);
 
       // Cache the result
       Solana.lastPriorityFeeEstimate = {
@@ -540,7 +540,9 @@ export class Solana {
 
         // Check if transaction is already confirmed but had an error
         if (txData.meta?.err) {
-          return reject(new Error(`Transaction failed with error: ${JSON.stringify(txData.meta.err)}`));
+          return reject(new Error(
+            `Transaction failed with error: ${JSON.stringify(txData.meta.err)}`
+          ));
         }
 
         // More definitive check using slot confirmation
@@ -557,7 +559,7 @@ export class Solana {
 
       return await Promise.race([confirmationPromise, timeoutPromise]);
     } catch (error: any) {
-      throw new Error(`[SOLANA] Failed to confirm transaction: ${error.message}`);
+      throw new Error(`Failed to confirm transaction: ${error.message}`);
     }
   }
 
@@ -580,15 +582,11 @@ export class Solana {
     while (true) {
       const basePriorityFeeLamports = currentPriorityFee * computeUnitsToUse;
       
-      logger.info(`[SOLANA] Sending transaction with max priority fee of ${(basePriorityFeeLamports * LAMPORT_TO_SOL).toFixed(6)} SOL`);
+      logger.info(`Sending transaction with max priority fee of ${(basePriorityFeeLamports * LAMPORT_TO_SOL).toFixed(6)} SOL`);
       
       // Check if we've exceeded max fee (convert maxPriorityFee from SOL to lamports)
       if (basePriorityFeeLamports > this.config.maxPriorityFee * 1e9) {
-        throw new Error(
-          `[SOLANA] Transaction failed after reaching maximum priority fee of ${
-            this.config.maxPriorityFee
-          } SOL`
-        );
+        throw new Error(`Exceeded maximum priority fee of ${this.config.maxPriorityFee} SOL`);
       }
 
       // convert currentPriorityFee to microLamports for ComputeBudgetProgram
@@ -631,7 +629,7 @@ export class Solana {
             const confirmed = await this.confirmTransaction(signature);
             if (confirmed.confirmed) {
               const actualFee = this.getFee(confirmed.txData);
-              logger.info(`[SOLANA] Transaction ${signature} confirmed with actual fee: ${actualFee.toFixed(6)} SOL`);
+              logger.info(`Transaction ${signature} confirmed with total fee: ${actualFee.toFixed(6)} SOL`);
               return { signature, fee: actualFee };
             }
           } catch (error) {
@@ -657,7 +655,7 @@ export class Solana {
       // If we get here, transaction wasn't confirmed after RETRY_COUNT attempts
       // Increase the priority fee and try again
       currentPriorityFee = currentPriorityFee * this.config.priorityFeeMultiplier;
-      logger.info(`[SOLANA] Increasing max priority fee to ${(currentPriorityFee * computeUnitsToUse * LAMPORT_TO_SOL).toFixed(6)} SOL`);
+      logger.info(`Increasing max priority fee to ${(currentPriorityFee * computeUnitsToUse * LAMPORT_TO_SOL).toFixed(6)} SOL`);
     }
   }
 

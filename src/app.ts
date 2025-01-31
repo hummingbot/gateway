@@ -7,11 +7,7 @@ import { Type } from '@sinclair/typebox';
 // Internal services
 import { logger } from './services/logger';
 import { getHttpsOptions } from './https';
-import { 
-  gatewayErrorMiddleware, 
-  HttpException, 
-  NodeError 
-} from './services/error-handler';
+import { errorHandler } from './services/error-handler';
 import { ConfigManagerV2 } from './services/config-manager-v2';
 
 // Routes
@@ -180,11 +176,7 @@ const configureGatewayServer = () => {
   server.addContentTypeParser('application/json', { parseAs: 'string' }, server.getDefaultJsonParser('ignore', 'ignore'));
 
   // Global error handler
-  server.setErrorHandler((error: Error | NodeError | HttpException, _request, reply) => {
-    logger.error(error);
-    const response = gatewayErrorMiddleware(error);
-    return reply.status(response.httpErrorCode).send(response);
-  });
+  server.setErrorHandler(errorHandler);
 
   // Health check route (outside registerRoutes, only on main server)
   server.get('/', async () => {

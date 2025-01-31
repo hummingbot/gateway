@@ -2,7 +2,7 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { Meteora } from '../meteora';
 import { StrategyType } from '@meteora-ag/dlmm';
 import { Solana } from '../../../chains/solana/solana';
-import { Keypair } from '@solana/web3.js';
+import { Keypair, PublicKey } from '@solana/web3.js';
 import { logger } from '../../../services/logger';
 import { DecimalUtil } from '@orca-so/common-sdk';
 import { Decimal } from 'decimal.js';
@@ -13,6 +13,7 @@ import {
   OpenPositionResponseType,
 } from '../../../services/clmm-interfaces';
 import { Type, Static } from '@sinclair/typebox';
+import { httpBadRequest, httpNotFound, ERROR_MESSAGES } from '../../../services/error-handler';
 
 const SOL_POSITION_RENT = 0.05; // SOL amount required for position rent
 const SOL_TRANSACTION_BUFFER = 0.01; // Additional SOL buffer for transaction costs
@@ -31,23 +32,38 @@ async function openPosition(
 ): Promise<OpenPositionResponseType> {
   const solana = await Solana.getInstance(network);
   const meteora = await Meteora.getInstance(network);
+
+  // Validate ALL Solana addresses first
+  try {
+    new PublicKey(poolAddress);
+    new PublicKey(address); // Validate wallet address too
+  } catch (error) {
+    throw httpBadRequest(ERROR_MESSAGES.INVALID_SOLANA_ADDRESS(poolAddress));
+  }
+
   const wallet = await solana.getWallet(address);
   const newImbalancePosition = new Keypair();
 
-  const dlmmPool = await meteora.getDlmmPool(poolAddress);
+  let dlmmPool;
+  try {
+    dlmmPool = await meteora.getDlmmPool(poolAddress);
+    if (!dlmmPool) {
+      throw httpNotFound(ERROR_MESSAGES.POOL_NOT_FOUND(poolAddress));
+    }
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('Invalid account discriminator')) {
+      throw httpNotFound(ERROR_MESSAGES.POOL_NOT_FOUND(poolAddress));
+    }
+    throw error; // Re-throw unexpected errors
+  }
+
   const tokenX = await solana.getToken(dlmmPool.tokenX.publicKey.toBase58());
   const tokenY = await solana.getToken(dlmmPool.tokenY.publicKey.toBase58());
   const tokenXSymbol = tokenX?.symbol || 'UNKNOWN';
   const tokenYSymbol = tokenY?.symbol || 'UNKNOWN';
 
-  if (!dlmmPool) {
-    throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
-  }
-
-  // Validate that at least one token amount is provided
-  if ((baseTokenAmount === undefined || baseTokenAmount === 0) && 
-      (quoteTokenAmount === undefined || quoteTokenAmount === 0)) {
-    throw fastify.httpErrors.badRequest('Must provide either baseTokenAmount or quoteTokenAmount');
+  if (!baseTokenAmount && !quoteTokenAmount) {
+    throw httpBadRequest(ERROR_MESSAGES.MISSING_AMOUNTS);
   }
 
   // Check balances with SOL buffer
@@ -57,9 +73,13 @@ async function openPosition(
   const requiredQuoteAmount = (quoteTokenAmount || 0) + 
     (tokenYSymbol === 'SOL' ? SOL_POSITION_RENT + SOL_TRANSACTION_BUFFER : 0);
 
-  if (tokenXSymbol && balances[tokenXSymbol] < requiredBaseAmount) {
-    throw fastify.httpErrors.badRequest(
-      `Insufficient ${tokenXSymbol} balance. Required: ${requiredBaseAmount}, Available: ${balances[tokenXSymbol]}`
+  if (balances[tokenXSymbol] < requiredBaseAmount) {
+    throw httpBadRequest(
+      ERROR_MESSAGES.INSUFFICIENT_BALANCE(
+        tokenXSymbol,
+        requiredBaseAmount,
+        balances[tokenXSymbol]
+      )
     );
   }
 
@@ -77,14 +97,14 @@ async function openPosition(
   // Add validation for bin width
   const binWidth = maxBinId - minBinId;
   if (binWidth <= 0) {
-    throw fastify.httpErrors.badRequest('Upper price must be greater than lower price');
+    throw httpBadRequest(ERROR_MESSAGES.INVALID_PRICE_RANGE);
   }
   
   // Only set a single bin array
   const MAX_BIN_WIDTH = 69;
   if (binWidth > MAX_BIN_WIDTH) {
-    throw fastify.httpErrors.badRequest(
-      `Position width (${binWidth} bins) exceeds ${MAX_BIN_WIDTH} bins for a single bin array.`
+    throw httpBadRequest(
+      ERROR_MESSAGES.MAX_BIN_WIDTH_EXCEEDED(binWidth, MAX_BIN_WIDTH)
     );
   }
 
@@ -234,6 +254,9 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         );
       } catch (e) {
         if (e.statusCode) return e;
+        if (e instanceof Error && e.message.includes('Transaction failed')) {
+          throw httpBadRequest(ERROR_MESSAGES.TRANSACTION_FAILED(e.message));
+        }
         logger.error(e);
         throw fastify.httpErrors.internalServerError('Internal server error');
       }
