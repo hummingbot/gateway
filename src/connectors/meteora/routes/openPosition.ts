@@ -265,11 +265,10 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           strategyType
         );
       } catch (e) {
-        if (e.statusCode) return e;
-        if (e instanceof Error && e.message.includes('Transaction failed')) {
-          throw httpBadRequest(ERROR_MESSAGES.TRANSACTION_FAILED(e.message));
-        }
         logger.error(e);
+        if (e.statusCode) {
+          throw fastify.httpErrors.createError(e.statusCode, 'Request failed');
+        }
         throw fastify.httpErrors.internalServerError('Internal server error');
       }
     }

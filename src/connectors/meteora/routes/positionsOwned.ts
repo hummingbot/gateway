@@ -75,8 +75,10 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
 
         return positions;
       } catch (e) {
-        if (e.statusCode) return e;
         logger.error(e);
+        if (e.statusCode) {
+          throw fastify.httpErrors.createError(e.statusCode, 'Request failed');
+        }
         throw fastify.httpErrors.internalServerError('Internal server error');
       }
     }

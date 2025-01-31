@@ -188,7 +188,9 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         );
       } catch (e) {
         logger.error(e);
-        if (e.statusCode) return e;
+        if (e.statusCode) {
+          throw fastify.httpErrors.createError(e.statusCode, 'Request failed');
+        }
         throw fastify.httpErrors.internalServerError('Internal server error');
       }
     }

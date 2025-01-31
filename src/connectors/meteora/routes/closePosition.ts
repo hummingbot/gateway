@@ -109,8 +109,10 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
           positionAddress
         );
       } catch (e) {
-        if (e.statusCode) return e;
         logger.error(e);
+        if (e.statusCode) {
+          throw fastify.httpErrors.createError(e.statusCode, 'Request failed');
+        }
         throw fastify.httpErrors.internalServerError('Internal server error');
       }
     }

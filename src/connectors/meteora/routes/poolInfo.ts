@@ -43,8 +43,10 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
         return await meteora.getPoolInfo(poolAddress);
       } catch (e) {
         logger.error(e);
-        if (e.statusCode) throw e;
-        throw fastify.httpErrors.internalServerError();
+        if (e.statusCode) {
+          throw fastify.httpErrors.createError(e.statusCode, 'Request failed');
+        }
+        throw fastify.httpErrors.internalServerError('Internal server error');
       }
     }
   );
