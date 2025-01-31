@@ -15,9 +15,12 @@ export const PoolInfoSchema = Type.Object({
   quoteTokenAddress: Type.String(),
   binStep: Type.Number(),
   feePct: Type.Number(),
+  dynamicFeePct: Type.Number(),
   price: Type.Number(),
   baseTokenAmount: Type.Number(),
   quoteTokenAmount: Type.Number(),
+  minBinId: Type.Number(),
+  maxBinId: Type.Number(),
 }, { $id: 'PoolInfo' });
 export type PoolInfo = Static<typeof PoolInfoSchema>;
 
@@ -36,6 +39,8 @@ export const PositionInfoSchema = Type.Object({
   quoteTokenAmount: Type.Number(),
   baseFeeAmount: Type.Number(),
   quoteFeeAmount: Type.Number(),
+  lowerBinId: Type.Number(),
+  upperBinId: Type.Number(),
   lowerPrice: Type.Number(),
   upperPrice: Type.Number(),
   price: Type.Number(),
