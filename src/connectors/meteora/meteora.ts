@@ -4,12 +4,13 @@ import DLMM, { getPriceOfBinByBinId } from '@meteora-ag/dlmm';
 import { MeteoraConfig } from './meteora.config';
 import { logger } from '../../services/logger';
 import { convertDecimals } from '../../services/base';
-import { PoolInfo, PositionInfo } from '../../services/clmm-interfaces';
+import { PoolInfo, PositionInfo, BinLiquidity } from '../../services/clmm-interfaces';
 import { LbPair } from '@meteora-ag/dlmm';
 import { percentRegexp } from '../../services/config-manager-v2';
 
 export class Meteora {
   private static _instances: { [name: string]: Meteora };
+  private static readonly MAX_BINS = 70;
   private solana: Solana;
   public config: MeteoraConfig.NetworkConfig;
   private dlmmPools: Map<string, DLMM> = new Map();
@@ -155,13 +156,33 @@ export class Meteora {
         price: Number(activeBin.pricePerToken),
         baseTokenAmount: reserveXBalance.value.uiAmount,
         quoteTokenAmount: reserveYBalance.value.uiAmount,
+        activeBinId: activeBin.binId,
         minBinId: dlmmPool.lbPair.parameters.minBinId,
         maxBinId: dlmmPool.lbPair.parameters.maxBinId,
+        bins: await this.getPoolLiquidity(poolAddress),
       };
     } catch (error) {
       logger.error(`Error getting pool info for ${poolAddress}:`, error);
       return null;
     }
+  }
+
+  async getPoolLiquidity(poolAddress: string): Promise<BinLiquidity[]> {
+    const dlmmPool = await this.getDlmmPool(poolAddress);
+    if (!dlmmPool) {
+      throw new Error(`Pool not found: ${poolAddress}`);
+    }
+    const binData = await dlmmPool.getBinsAroundActiveBin(
+      Meteora.MAX_BINS - 1,
+      Meteora.MAX_BINS - 1
+    );
+    
+    return binData.bins.map(bin => ({
+      binId: bin.binId,
+      price: Number(bin.pricePerToken),
+      baseTokenAmount: Number(convertDecimals(bin.xAmount, dlmmPool.tokenX.decimal)),
+      quoteTokenAmount: Number(convertDecimals(bin.yAmount, dlmmPool.tokenY.decimal))
+    }));
   }
 
   /** Gets all positions for a pool */
@@ -298,6 +319,10 @@ export class Meteora {
 
     const minBinId = dlmmPool.getBinIdFromPrice(Number(lowerPricePerLamport), true) - padBins;
     const maxBinId = dlmmPool.getBinIdFromPrice(Number(upperPricePerLamport), false) + padBins;
+
+    if (maxBinId - minBinId > Meteora.MAX_BINS) {
+      throw new Error(`Position range too wide. Maximum ${Meteora.MAX_BINS} bins allowed`);
+    }
 
     return { minBinId, maxBinId };
   }

@@ -9,6 +9,14 @@ export const FetchPoolsRequest = Type.Object({
 
 export type FetchPoolsRequestType = Static<typeof FetchPoolsRequest>;
 
+export const BinLiquiditySchema = Type.Object({
+  binId: Type.Number(),
+  price: Type.Number(),
+  baseTokenAmount: Type.Number(),
+  quoteTokenAmount: Type.Number(),
+}, { $id: 'BinLiquidity' });
+export type BinLiquidity = Static<typeof BinLiquiditySchema>;
+
 export const PoolInfoSchema = Type.Object({
   address: Type.String(),
   baseTokenAddress: Type.String(),
@@ -19,8 +27,10 @@ export const PoolInfoSchema = Type.Object({
   price: Type.Number(),
   baseTokenAmount: Type.Number(),
   quoteTokenAmount: Type.Number(),
+  activeBinId: Type.Number(),
   minBinId: Type.Number(),
   maxBinId: Type.Number(),
+  bins: Type.Array(BinLiquiditySchema),
 }, { $id: 'PoolInfo' });
 export type PoolInfo = Static<typeof PoolInfoSchema>;
 
