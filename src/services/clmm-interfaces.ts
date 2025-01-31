@@ -57,7 +57,7 @@ export const OpenPositionRequest = Type.Object({
   poolAddress: Type.String(),
   baseTokenAmount: Type.Optional(Type.Number()),
   quoteTokenAmount: Type.Optional(Type.Number()),
-  slippagePct: Type.Optional(Type.Number()),
+  slippagePct: Type.Optional(Type.Number({ minimum: 0, maximum: 100 })),
 }, { $id: 'OpenPositionRequest' });
 export type OpenPositionRequestType = Static<typeof OpenPositionRequest>;
 
@@ -77,7 +77,7 @@ export const AddLiquidityRequest = Type.Object({
   positionAddress: Type.String(),
   baseTokenAmount: Type.Number(),
   quoteTokenAmount: Type.Number(),
-  slippagePct: Type.Optional(Type.Number()),
+  slippagePct: Type.Optional(Type.Number({ minimum: 0, maximum: 100 })),
 }, { $id: 'AddLiquidityRequest' });
 export type AddLiquidityRequestType = Static<typeof AddLiquidityRequest>;
   

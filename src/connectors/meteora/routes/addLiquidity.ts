@@ -40,7 +40,7 @@ async function addLiquidity(
   const wallet = await solana.getWallet(address);
 
   // Validate amounts
-  if (baseTokenAmount <= 0 || quoteTokenAmount <= 0) {
+  if (baseTokenAmount <= 0 && quoteTokenAmount <= 0) {
     throw httpBadRequest(ERROR_MESSAGES.MISSING_AMOUNTS);
   }
 
@@ -175,11 +175,12 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             ...AddLiquidityRequest.properties,
             network: { type: 'string', default: 'mainnet-beta' },
+            slippagePct: { type: 'number', examples: [1] },
             strategyType: { 
               type: 'number', 
               examples: [StrategyType.SpotImBalanced],
               enum: Object.values(StrategyType).filter(x => typeof x === 'number')
-            }
+            },
           }
         },
         response: {
