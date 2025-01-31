@@ -176,8 +176,8 @@ export class Meteora {
 
     return userPositions.map(({ publicKey, positionData }) => {
       // Get prices from bin IDs
-      const lowerPrice = getPriceOfBinByBinId(dlmmPool.lbPair.binStep, positionData.lowerBinId);
-      const upperPrice = getPriceOfBinByBinId(dlmmPool.lbPair.binStep, positionData.upperBinId);
+      const lowerPrice = getPriceOfBinByBinId(positionData.lowerBinId, dlmmPool.lbPair.binStep);
+      const upperPrice = getPriceOfBinByBinId(positionData.upperBinId, dlmmPool.lbPair.binStep);
 
       // Adjust for decimal difference (tokenX.decimal - tokenY.decimal)
       const decimalDiff = dlmmPool.tokenX.decimal - dlmmPool.tokenY.decimal; // 9 - 6 = 3

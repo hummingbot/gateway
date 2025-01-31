@@ -36,7 +36,16 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
         querystring: {
           ...GetPositionInfoRequest,
           properties: {
-            network: { type: 'string', examples: ['mainnet-beta'] }
+            network: { type: 'string', examples: ['mainnet-beta'] },
+            walletAddress: {
+              type: 'string',
+              description: 'Will use first available wallet if not specified',
+              examples: [firstWalletAddress]
+            },
+            positionAddress: {
+              type: 'string',
+              description: 'Meteora position'
+            }
           }
         },
         response: {

@@ -21,7 +21,7 @@ const SOL_TRANSACTION_BUFFER = 0.01; // Additional SOL buffer for transaction co
 async function openPosition(
   fastify: FastifyInstance,
   network: string,
-  address: string,
+  walletAddress: string,
   lowerPrice: number,
   upperPrice: number,
   poolAddress: string,
@@ -36,14 +36,13 @@ async function openPosition(
   // Validate addresses first
   try {
     new PublicKey(poolAddress);
-    new PublicKey(address);
+    new PublicKey(walletAddress);
   } catch (error) {
-    throw httpBadRequest(ERROR_MESSAGES.INVALID_SOLANA_ADDRESS(
-      error.message.includes(address) ? address : poolAddress
-    ));
+    const invalidAddress = error.message.includes(poolAddress) ? 'pool' : 'wallet';
+    throw httpBadRequest(ERROR_MESSAGES.INVALID_SOLANA_ADDRESS(invalidAddress));
   }
 
-  const wallet = await solana.getWallet(address);
+  const wallet = await solana.getWallet(walletAddress);
   const newImbalancePosition = new Keypair();
 
   let dlmmPool;

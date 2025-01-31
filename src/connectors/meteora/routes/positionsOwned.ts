@@ -61,13 +61,12 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
         
         // Validate addresses first
         try {
-          new PublicKey(walletAddress);
           new PublicKey(poolAddress);
+          new PublicKey(walletAddress);
         } catch (error) {
-          throw httpBadRequest(ERROR_MESSAGES.INVALID_SOLANA_ADDRESS(
-            error.message.includes(walletAddress) ? walletAddress : poolAddress
-          ));
-        }
+          const invalidAddress = error.message.includes(poolAddress) ? 'pool' : 'wallet';
+          throw httpBadRequest(ERROR_MESSAGES.INVALID_SOLANA_ADDRESS(invalidAddress));
+              }
 
         const positions = await meteora.getPositionsInPool(
           poolAddress,

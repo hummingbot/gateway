@@ -9,17 +9,27 @@ import {
   RemoveLiquidityRequestType, 
   RemoveLiquidityResponseType 
 } from '../../../services/clmm-interfaces';
+import { httpBadRequest, ERROR_MESSAGES } from '../../../services/error-handler';
+import { PublicKey } from '@solana/web3.js';
 
 export async function removeLiquidity(
   fastify: FastifyInstance,
   network: string,
-  address: string,
+  walletAddress: string,
   positionAddress: string,
   percentageToRemove: number
 ): Promise<RemoveLiquidityResponseType> {
   const solana = await Solana.getInstance(network);
   const meteora = await Meteora.getInstance(network);
-  const wallet = await solana.getWallet(address);
+  const wallet = await solana.getWallet(walletAddress);
+
+  try {
+    new PublicKey(positionAddress);
+    new PublicKey(walletAddress);
+  } catch (error) {
+    const invalidAddress = error.message.includes(positionAddress) ? 'position' : 'wallet';
+    throw httpBadRequest(ERROR_MESSAGES.INVALID_SOLANA_ADDRESS(invalidAddress));
+  }
 
   const { position, info } = await meteora.getRawPosition(positionAddress, wallet.publicKey);
   const dlmmPool = await meteora.getDlmmPool(info.publicKey.toBase58());
