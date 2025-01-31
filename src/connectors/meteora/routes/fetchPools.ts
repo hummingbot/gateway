@@ -9,6 +9,7 @@ import {
   FetchPoolsRequest, 
   FetchPoolsRequestType 
 } from '../../../services/clmm-interfaces';
+import { httpNotFound, httpInternalServerError, ERROR_MESSAGES } from '../../../services/error-handler';
 
 export const fetchPoolsRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
@@ -37,21 +38,14 @@ export const fetchPoolsRoute: FastifyPluginAsync = async (fastify) => {
         const network = request.query.network || 'mainnet-beta';
         
         const meteora = await Meteora.getInstance(network);
-        if (!meteora) {
-          throw fastify.httpErrors.serviceUnavailable('Meteora service unavailable');
-        }
-        
         const solana = await Solana.getInstance(network);
-        if (!solana) {
-          throw fastify.httpErrors.serviceUnavailable('Solana service unavailable');
-        }
 
         let tokenMintA, tokenMintB;
         
         if (tokenA) {
           const tokenInfoA = await solana.getToken(tokenA);
           if (!tokenInfoA) {
-            throw fastify.httpErrors.notFound(`Token not found: ${tokenA}`);
+            throw httpNotFound(ERROR_MESSAGES.TOKEN_NOT_FOUND(tokenA));
           }
           tokenMintA = tokenInfoA.address;
         }
@@ -59,7 +53,7 @@ export const fetchPoolsRoute: FastifyPluginAsync = async (fastify) => {
         if (tokenB) {
           const tokenInfoB = await solana.getToken(tokenB);
           if (!tokenInfoB) {
-            throw fastify.httpErrors.notFound(`Token not found: ${tokenB}`);
+            throw httpNotFound(ERROR_MESSAGES.TOKEN_NOT_FOUND(tokenB));
           }
           tokenMintB = tokenInfoB.address;
         }
@@ -78,7 +72,7 @@ export const fetchPoolsRoute: FastifyPluginAsync = async (fastify) => {
                 return await meteora.getPoolInfo(pair.publicKey.toString());
               } catch (error) {
                 logger.error(`Failed to get pool info for ${pair.publicKey.toString()}: ${error.message}`);
-                return null;
+                throw httpNotFound(ERROR_MESSAGES.POOL_NOT_FOUND(pair.publicKey.toString()));
               }
             })
         );
@@ -87,7 +81,7 @@ export const fetchPoolsRoute: FastifyPluginAsync = async (fastify) => {
       } catch (e) {
         logger.error('Error in fetch-pools:', e);
         if (e.statusCode) throw e;
-        throw fastify.httpErrors.internalServerError();
+        throw httpInternalServerError();
       }
     }
   });

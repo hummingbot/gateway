@@ -317,4 +317,6 @@ export const ERROR_MESSAGES = {
   POSITION_CREATION_FAILED: 'Failed to create position',
   INVALID_SOLANA_ADDRESS: (address: string) => 
     `Invalid Solana address: ${address}. Address must be a base58-encoded public key`,
+  OPEN_POSITION_ERROR: (message: string) => `Open position error: ${message}`,
+  TOKEN_NOT_FOUND: (token: string) => `Token not found: ${token}`,
 };

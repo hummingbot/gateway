@@ -5,6 +5,7 @@ import { PublicKey } from '@solana/web3.js';
 import { logger } from '../../../services/logger';
 import { Solana } from '../../../chains/solana/solana';
 import { PositionInfoSchema } from '../../../services/clmm-interfaces';
+import { httpBadRequest, ERROR_MESSAGES } from '../../../services/error-handler';
 
 // Schema definitions
 const GetPositionsOwnedRequest = Type.Object({
@@ -58,10 +59,14 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
         const network = request.query.network || 'mainnet-beta';
         const meteora = await Meteora.getInstance(network);
         
+        // Validate addresses first
         try {
           new PublicKey(walletAddress);
+          new PublicKey(poolAddress);
         } catch (error) {
-          throw fastify.httpErrors.badRequest(`Invalid wallet address: ${walletAddress}`);
+          throw httpBadRequest(ERROR_MESSAGES.INVALID_SOLANA_ADDRESS(
+            error.message.includes(walletAddress) ? walletAddress : poolAddress
+          ));
         }
 
         const positions = await meteora.getPositionsInPool(

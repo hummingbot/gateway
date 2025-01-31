@@ -33,12 +33,14 @@ async function openPosition(
   const solana = await Solana.getInstance(network);
   const meteora = await Meteora.getInstance(network);
 
-  // Validate ALL Solana addresses first
+  // Validate addresses first
   try {
     new PublicKey(poolAddress);
-    new PublicKey(address); // Validate wallet address too
+    new PublicKey(address);
   } catch (error) {
-    throw httpBadRequest(ERROR_MESSAGES.INVALID_SOLANA_ADDRESS(poolAddress));
+    throw httpBadRequest(ERROR_MESSAGES.INVALID_SOLANA_ADDRESS(
+      error.message.includes(address) ? address : poolAddress
+    ));
   }
 
   const wallet = await solana.getWallet(address);
@@ -89,24 +91,35 @@ async function openPosition(
     );
   }
 
+  // Get current pool price from active bin
+  const activeBin = await dlmmPool.getActiveBin();
+  const currentPrice = Number(activeBin.pricePerToken);
+
+  // Validate price position requirements
+  if (currentPrice < lowerPrice) {
+    if (!baseTokenAmount || baseTokenAmount <= 0 || (quoteTokenAmount !== undefined && quoteTokenAmount !== 0)) {
+      throw httpBadRequest(
+        ERROR_MESSAGES.OPEN_POSITION_ERROR(
+          `Current price ${currentPrice.toFixed(4)} is below lower price ${lowerPrice.toFixed(4)}. ` +
+          `Requires positive ${tokenXSymbol} amount and zero ${tokenYSymbol} amount.`
+        )
+      );
+    }
+  } else if (currentPrice > upperPrice) {
+    if (!quoteTokenAmount || quoteTokenAmount <= 0 || (baseTokenAmount !== undefined && baseTokenAmount !== 0)) {
+      throw httpBadRequest(
+        ERROR_MESSAGES.OPEN_POSITION_ERROR(
+          `Current price ${currentPrice.toFixed(4)} is above upper price ${upperPrice.toFixed(4)}. ` +
+          `Requires positive ${tokenYSymbol} amount and zero ${tokenXSymbol} amount.`
+        )
+      );
+    }
+  }
+
   const lowerPricePerLamport = dlmmPool.toPricePerLamport(lowerPrice);
   const upperPricePerLamport = dlmmPool.toPricePerLamport(upperPrice);
-  const minBinId = dlmmPool.getBinIdFromPrice(Number(lowerPricePerLamport), true) - 1;
-  const maxBinId = dlmmPool.getBinIdFromPrice(Number(upperPricePerLamport), false) + 1;
-
-  // Add validation for bin width
-  const binWidth = maxBinId - minBinId;
-  if (binWidth <= 0) {
-    throw httpBadRequest(ERROR_MESSAGES.INVALID_PRICE_RANGE);
-  }
-  
-  // Only set a single bin array
-  const MAX_BIN_WIDTH = 69;
-  if (binWidth > MAX_BIN_WIDTH) {
-    throw httpBadRequest(
-      ERROR_MESSAGES.MAX_BIN_WIDTH_EXCEEDED(binWidth, MAX_BIN_WIDTH)
-    );
-  }
+  const minBinId = dlmmPool.getBinIdFromPrice(Number(lowerPricePerLamport), true);
+  const maxBinId = dlmmPool.getBinIdFromPrice(Number(upperPricePerLamport), false);
 
   const totalXAmount = new BN(
     DecimalUtil.toBN(

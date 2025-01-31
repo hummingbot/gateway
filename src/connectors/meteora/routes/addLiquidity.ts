@@ -13,9 +13,12 @@ import {
   AddLiquidityResponseType 
 } from '../../../services/clmm-interfaces';
 import { Type, Static } from '@sinclair/typebox';
+import { httpBadRequest, httpNotFound, ERROR_MESSAGES } from '../../../services/error-handler';
+
+const SOL_TRANSACTION_BUFFER = 0.01; // SOL buffer for transaction costs
 
 async function addLiquidity(
-  fastify: FastifyInstance,
+  _fastify: FastifyInstance,
   network: string,
   address: string,
   positionAddress: string,
@@ -24,9 +27,22 @@ async function addLiquidity(
   slippagePct?: number,
   strategyType: StrategyType = StrategyType.SpotBalanced
 ): Promise<AddLiquidityResponseType> {
+  // Validate addresses first
+  try {
+    new PublicKey(positionAddress);
+    new PublicKey(address);
+  } catch (error) {
+    throw httpBadRequest(ERROR_MESSAGES.INVALID_SOLANA_ADDRESS(positionAddress));
+  }
+
   const solana = await Solana.getInstance(network);
   const meteora = await Meteora.getInstance(network);
   const wallet = await solana.getWallet(address);
+
+  // Validate amounts
+  if (baseTokenAmount <= 0 || quoteTokenAmount <= 0) {
+    throw httpBadRequest(ERROR_MESSAGES.MISSING_AMOUNTS);
+  }
 
   const { position, info } = await meteora.getRawPosition(
     positionAddress, 
@@ -34,18 +50,43 @@ async function addLiquidity(
   );
 
   if (!position) {
-    throw fastify.httpErrors.notFound(`Position not found: ${positionAddress}`);
+    throw httpNotFound(`Position not found: ${positionAddress}`);
   }
 
   const dlmmPool = await meteora.getDlmmPool(info.publicKey.toBase58());
   if (!dlmmPool) {
-    throw fastify.httpErrors.notFound(`Pool not found for position: ${positionAddress}`);
+    throw httpNotFound(`Pool not found for position: ${positionAddress}`);
   }
 
   const tokenX = await solana.getToken(dlmmPool.tokenX.publicKey.toBase58());
   const tokenY = await solana.getToken(dlmmPool.tokenY.publicKey.toBase58());
   const tokenXSymbol = tokenX?.symbol || 'UNKNOWN';
   const tokenYSymbol = tokenY?.symbol || 'UNKNOWN';
+
+  // Check balances with transaction buffer
+  const balances = await solana.getBalance(wallet);
+  const requiredBase = baseTokenAmount + (tokenXSymbol === 'SOL' ? SOL_TRANSACTION_BUFFER : 0);
+  const requiredQuote = quoteTokenAmount + (tokenYSymbol === 'SOL' ? SOL_TRANSACTION_BUFFER : 0);
+
+  if (balances[tokenXSymbol] < requiredBase) {
+    throw httpBadRequest(
+      ERROR_MESSAGES.INSUFFICIENT_BALANCE(
+        tokenXSymbol,
+        requiredBase,
+        balances[tokenXSymbol]
+      )
+    );
+  }
+
+  if (balances[tokenYSymbol] < requiredQuote) {
+    throw httpBadRequest(
+      ERROR_MESSAGES.INSUFFICIENT_BALANCE(
+        tokenYSymbol,
+        requiredQuote,
+        balances[tokenYSymbol]
+      )
+    );
+  }
 
   logger.info(`Adding liquidity to position ${positionAddress}: ${baseTokenAmount.toFixed(4)} ${tokenXSymbol}, ${quoteTokenAmount.toFixed(4)} ${tokenYSymbol}`);
   const maxBinId = position.positionData.upperBinId;
