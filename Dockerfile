@@ -1,5 +1,5 @@
 # Set the base image
-FROM node:18.10.0
+FROM node:20.11
 
 # WORKDIR /usr/src/app/
 WORKDIR /home/gateway
