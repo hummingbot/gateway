@@ -39,6 +39,7 @@
     "@oclif/plugin-help": "^6.2.12",
     "@oclif/plugin-plugins": "^5.4.9",
     "@orca-so/common-sdk": "^0.6.3",
+    "@raydium-io/raydium-sdk-v2": "^0.1.111-alpha",
     "@sinclair/typebox": "^0.33.7",
     "@solana/spl-token": "0.4.8",
     "@solana/spl-token-registry": "^0.2.4574",

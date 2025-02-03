@@ -19,6 +19,7 @@ import { ethereumRoutes } from './chains/ethereum/ethereum.routes';
 import { jupiterRoutes } from './connectors/jupiter/jupiter.routes';
 import { meteoraRoutes } from './connectors/meteora/meteora.routes';
 import { uniswapRoutes } from './connectors/uniswap/uniswap.routes';
+import { raydiumClmmRoutes } from './connectors/raydium-clmm/raydium-clmm.routes';
 
 // Change version for each release
 const GATEWAY_VERSION = '2.4.0';
@@ -48,6 +49,7 @@ const swaggerOptions = {
       { name: 'wallet', description: 'Wallet endpoints' },
       { name: 'solana', description: 'Solana chain endpoints' },
       { name: 'meteora', description: 'Meteora connector endpoints' },
+      { name: 'raydium-clmm', description: 'Raydium CLMM connector endpoints' },
       { name: 'jupiter', description: 'Jupiter connector endpoints' },
       { name: 'ethereum', description: 'Ethereum chain endpoints' },
       { name: 'uniswap', description: 'Uniswap connector endpoints' },
@@ -146,6 +148,7 @@ const configureGatewayServer = () => {
     app.register(walletRoutes, { prefix: '/wallet' });
     app.register(jupiterRoutes, { prefix: '/jupiter' });
     app.register(meteoraRoutes, { prefix: '/meteora' });
+    app.register(raydiumClmmRoutes, { prefix: '/raydium-clmm' });
     app.register(uniswapRoutes, { prefix: '/uniswap' });
     app.register(solanaRoutes, { prefix: '/solana' });
     app.register(ethereumRoutes, { prefix: '/ethereum' });
