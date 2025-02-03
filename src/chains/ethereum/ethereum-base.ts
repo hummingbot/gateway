@@ -6,8 +6,6 @@ import {
   utils,
   Wallet,
 } from 'ethers';
-import axios from 'axios';
-import { promises as fs } from 'fs';
 import path from 'path';
 import { rootPath } from '../../paths';
 import { TokenListType, TokenValue, walletPath } from '../../services/base';
@@ -19,6 +17,7 @@ import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-
 import { logger } from '../../services/logger';
 import { ReferenceCountingCloseable } from '../../services/refcounting-closeable';
 import { getAddress } from 'ethers/lib/utils';
+import { TokenListResolutionStrategy } from '../../services/token-list-resolution';
 
 // information about an Ethereum token
 export interface TokenInfo {
@@ -145,15 +144,22 @@ export class EthereumBase {
     tokenListSource: string,
     tokenListType: TokenListType
   ): Promise<void> {
-    this.tokenList = await this.getTokenList(tokenListSource, tokenListType);
-    // Only keep tokens in the same chain
-    this.tokenList = this.tokenList.filter(
-      (token: TokenInfo) => token.chainId === this.chainId
-    );
-    if (this.tokenList) {
-      this.tokenList.forEach(
-        (token: TokenInfo) => (this._tokenMap[token.symbol] = token)
+    logger.info(`Loading tokens for ${this.chainName} (${this.chainId}) from ${tokenListType} source: ${tokenListSource}`);
+    try {
+      this.tokenList = await this.getTokenList(tokenListSource, tokenListType);
+      // Only keep tokens in the same chain
+      this.tokenList = this.tokenList.filter(
+        (token: TokenInfo) => token.chainId === this.chainId
       );
+      if (this.tokenList) {
+        logger.info(`Loaded ${this.tokenList.length} tokens for ${this.chainName}`);
+        this.tokenList.forEach(
+          (token: TokenInfo) => (this._tokenMap[token.symbol] = token)
+        );
+      }
+    } catch (error) {
+      logger.error(`Failed to load token list for ${this.chainName}: ${error.message}`);
+      throw error;
     }
   }
 
@@ -162,14 +168,11 @@ export class EthereumBase {
     tokenListSource: string,
     tokenListType: TokenListType
   ): Promise<TokenInfo[]> {
-    let tokens: TokenInfo[];
-    if (tokenListType === 'URL') {
-      ({
-        data: { tokens },
-      } = await axios.get(tokenListSource));
-    } else {
-      ({ tokens } = JSON.parse(await fs.readFile(tokenListSource, 'utf8')));
-    }
+    const tokens = await new TokenListResolutionStrategy(
+      tokenListSource,
+      tokenListType
+    ).resolve();
+    
     const mappedTokens: TokenInfo[] = tokens.map((token) => {
       token.address = getAddress(token.address);
       return token;

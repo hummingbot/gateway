@@ -3,19 +3,10 @@ import { logger } from '../../services/logger';
 import { BigNumber, Contract, Transaction, Wallet } from 'ethers';
 import { EthereumBase } from './ethereum-base';
 import { getEthereumConfig } from './ethereum.config';
-import { PancakeSwapConfig } from '../../connectors/pancakeswap/pancakeswap.config';
 import { Provider } from '@ethersproject/abstract-provider';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
-// import { throttleRetryWrapper } from '../../services/retry';
-import { Chain as Ethereumish } from '../../services/common-interfaces';
 import { EVMController } from './evm.controllers';
-
 import { UniswapConfig } from '../../connectors/uniswap/uniswap.config';
-import { SushiswapConfig } from '../../connectors/sushiswap/sushiswap.config';
-import { OpenoceanConfig } from '../../connectors/openocean/openocean.config';
-import { Curve } from '../../connectors/curve/curve';
-import { CarbonConfig } from '../../connectors/carbon/carbon.config';
-import { BalancerConfig } from '../../connectors/balancer/balancer.config';
 
 // MKR does not match the ERC20 perfectly so we need to use a separate ABI.
 const MKR_ADDRESS = '0x9f8f72aa9304c8b593d555f12ef6589cc3a579a2';
@@ -27,7 +18,7 @@ const MKR_ADDRESS = '0x9f8f72aa9304c8b593d555f12ef6589cc3a579a2';
 //   oldestBlock: string;
 // }
 
-export class Ethereum extends EthereumBase implements Ethereumish {
+export class Ethereum extends EthereumBase {
   private static _instances: { [name: string]: Ethereum };
   private _gasPrice: number;
   private _gasPriceRefreshInterval: number | null;
@@ -38,7 +29,14 @@ export class Ethereum extends EthereumBase implements Ethereumish {
   private _metricTimer;
   public controller;
 
+  private static lastGasPriceEstimate: {
+    timestamp: number;
+    price: number;
+  } | null = null;
+  private static GAS_PRICE_CACHE_MS = 10000; // 10 second cache
+
   private constructor(network: string) {
+    logger.info(`Initializing Ethereum connector for network: ${network}`);
     const config = getEthereumConfig('ethereum', network);
     super(
       'ethereum',
@@ -70,6 +68,14 @@ export class Ethereum extends EthereumBase implements Ethereumish {
       this.metricsLogInterval,
     );
     this.controller = EVMController;
+    
+    // Load tokens immediately
+    this.loadTokens(
+      config.network.tokenListSource,
+      config.network.tokenListType
+    ).catch(error => {
+      logger.error(`Failed to load tokens in constructor: ${error.message}`);
+    });
   }
 
   public static getInstance(network: string): Ethereum {
@@ -128,17 +134,58 @@ export class Ethereum extends EthereumBase implements Ethereumish {
   }
 
   /**
+   * Estimates the current gas price with caching
+   * Returns the gas price in GWEI
+   */
+  public async estimateGasPrice(): Promise<number> {
+    // Check cache first
+    if (
+      Ethereum.lastGasPriceEstimate && 
+      Date.now() - Ethereum.lastGasPriceEstimate.timestamp < Ethereum.GAS_PRICE_CACHE_MS
+    ) {
+      return Ethereum.lastGasPriceEstimate.price;
+    }
+
+    try {
+      const baseFee: BigNumber = await this.provider.getGasPrice();
+      let priorityFee: BigNumber = BigNumber.from('0');
+
+      // Only get priority fee for mainnet
+      if (this._chain === 'mainnet') {
+        priorityFee = BigNumber.from(
+          await this.provider.send('eth_maxPriorityFeePerGas', [])
+        );
+      }
+
+      const totalFeeGwei = baseFee.add(priorityFee).toNumber() * 1e-9;
+      
+      // Update both cache and instance gas price
+      Ethereum.lastGasPriceEstimate = {
+        timestamp: Date.now(),
+        price: totalFeeGwei
+      };
+      this._gasPrice = totalFeeGwei;
+
+      logger.info(`[GAS PRICE] Estimated: ${totalFeeGwei} GWEI`);
+
+      return totalFeeGwei;
+
+    } catch (error: any) {
+      logger.error(`Failed to estimate gas price: ${error.message}`);
+      return this._gasPrice; // Return existing gas price as fallback
+    }
+  }
+
+  /**
    * Automatically update the prevailing gas price on the network.
-   *
-   * Otherwise, it'll obtain the prevailing gas price from the connected
-   * ETH node.
    */
   async updateGasPrice(): Promise<void> {
     if (this._gasPriceRefreshInterval === null) {
       return;
     }
 
-    const gasPrice = await this.getGasPriceFromEthereumNode();
+    // Use estimateGasPrice instead of getGasPriceFromEthereumNode
+    const gasPrice = await this.estimateGasPrice();
     if (gasPrice !== null) {
       this._gasPrice = gasPrice;
     } else {
@@ -151,21 +198,6 @@ export class Ethereum extends EthereumBase implements Ethereumish {
     );
   }
 
-  /**
-   * Get the base gas fee from and the current max priority fee from the Ethereum
-   * node, and add them together.
-   */
-  async getGasPriceFromEthereumNode(): Promise<number> {
-    const baseFee: BigNumber = await this.provider.getGasPrice();
-    let priorityFee: BigNumber = BigNumber.from('0');
-    if (this._chain === 'mainnet') {
-      priorityFee = BigNumber.from(
-        await this.provider.send('eth_maxPriorityFeePerGas', []),
-      );
-    }
-    return baseFee.add(priorityFee).toNumber() * 1e-9;
-  }
-
   getContract(
     tokenAddress: string,
     signerOrProvider?: Wallet | Provider,
@@ -175,8 +207,6 @@ export class Ethereum extends EthereumBase implements Ethereumish {
       : new Contract(tokenAddress, abi.ERC20Abi, signerOrProvider);
   }
 
-  // TODO Check the possibility to use something similar for CLOB/Solana/Serum
-  // Use the following link: https://hummingbot.org/developers/gateway/building-gateway-connectors/#6-add-connector-to-spender-list
   getSpender(reqSpender: string): string {
     let spender: string;
     if (reqSpender === 'uniswap') {
@@ -184,37 +214,6 @@ export class Ethereum extends EthereumBase implements Ethereumish {
         this.chainName,
         this._chain,
       );
-    } else if (reqSpender === 'pancakeswap') {
-      spender = PancakeSwapConfig.config.routerAddress(this._chain);
-    } else if (reqSpender === 'pancakeswapLP') {
-      spender = PancakeSwapConfig.config.pancakeswapV3NftManagerAddress(
-        this._chain,
-      );
-    } else if (reqSpender === 'sushiswap') {
-      spender = SushiswapConfig.config.sushiswapRouterAddress(
-        this.chainName,
-        this._chain,
-      );
-    } else if (reqSpender === 'uniswapLP') {
-      spender = UniswapConfig.config.uniswapV3NftManagerAddress(
-        this.chainName,
-        this._chain);
-    } else if (reqSpender === 'carbonamm') {
-      spender = CarbonConfig.config.carbonContractsConfig(
-        'ethereum',
-        this._chain,
-      ).carbonControllerAddress;
-    } else if (reqSpender === 'openocean') {
-      spender = OpenoceanConfig.config.routerAddress('ethereum', this._chain);
-    } else if (reqSpender === 'curve') {
-      const curve = Curve.getInstance('ethereum', this._chain);
-      if (!curve.ready()) {
-        curve.init();
-        throw Error('Curve not ready');
-      }
-      spender = curve.router;
-    } else if (reqSpender === 'balancer') {
-      spender = BalancerConfig.config.routerAddress(this._chain);
     } else {
       spender = reqSpender;
     }

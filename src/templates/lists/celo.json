@@ -1,0 +1,457 @@
+[
+  {
+    "chainId": 42220,
+    "name": "Allbridge",
+    "symbol": "ABR",
+    "address": "0x6e512BFC33be36F2666754E996ff103AD1680Cc9",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Ariswap",
+    "symbol": "ARI",
+    "address": "0x20677d4f3d0F08e735aB512393524A3CfCEb250C",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "AtlasX Carbon Credits",
+    "symbol": "ATLASX",
+    "address": "0xc3377Ea71F1dc8e55Ba360724eff2d7aD62a8670",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Allbridge AVAX",
+    "symbol": "AVAX",
+    "address": "0x8E3670FD7B0935d3FE832711deBFE13BB689b690",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Beefy Finance",
+    "symbol": "BIFI",
+    "address": "0x639A647fbe20b6c8ac19E48E2de44ea792c62c5C",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Anyswap BNB",
+    "symbol": "BNB",
+    "address": "0xA649325Aa7C5093d12D6F98EB4378deAe68CE23F",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Celo",
+    "symbol": "CELO",
+    "address": "0x471EcE3750Da237f93B8E339c536989b8978a438",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Biochar",
+    "symbol": "CHAR",
+    "address": "0x50E85c754929840B58614F48e29C64BC78C58345",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Curve DAO Token",
+    "symbol": "CRV",
+    "address": "0x173fd7434B8B50dF08e3298f173487ebDB35FD14",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "DAI Stablecoin (Portal)",
+    "symbol": "DAI",
+    "address": "0x97926a82930bb7B33178E3c2f4ED1BFDc91A9FBF",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "EURC (Wormhole)",
+    "symbol": "EURC",
+    "address": "0xBddC3554269053544bE0d6d027a73271225E9859",
+    "decimals": 6
+  },
+  {
+    "chainId": 42220,
+    "name": "Anyswap FTM",
+    "symbol": "FTM",
+    "address": "0x218c3c3D49d0E7B37aff0D8bB079de36Ae61A4c0",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Good Dollar",
+    "symbol": "G$",
+    "address": "0x62B8B11039FcfE5aB0C56E502b1C372A3d2a9c7A",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Immortal",
+    "symbol": "IMMO",
+    "address": "0xE685d21b7B0FC7A248a6A8E03b8Db22d013Aa2eE",
+    "decimals": 9
+  },
+  {
+    "chainId": 42220,
+    "name": "JumpToken",
+    "symbol": "JMPT",
+    "address": "0x1d18d0386f51ab03e7e84e71bda1681eba865f1f",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "KnoxEdge",
+    "symbol": "KNX",
+    "address": "0xa81D9a2d29373777E4082d588958678a6Df5645c",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Mobius DAO Token",
+    "symbol": "MOBI",
+    "address": "0x73a210637f6F6B7005512677Ba6B3C96bb4AA44B",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Marzipan Finance",
+    "symbol": "MZPN",
+    "address": "0x9Ee153D4Fdf0E3222eFD092c442ebB21DFd346AC",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Nature Carbon Tonne",
+    "symbol": "NCT",
+    "address": "0x02de4766c272abc10bc88c220d214a26960a7e92",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "impactMarket",
+    "symbol": "PACT",
+    "address": "0x46c9757C5497c5B1f2eb73aE79b6B67D119B0B58",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "PLASTIK Token",
+    "symbol": "PLASTIK",
+    "address": "0x27cd006548dF7C8c8e9fdc4A67fa05C2E3CA5CF9",
+    "decimals": 9
+  },
+  {
+    "chainId": 42220,
+    "name": "Poof",
+    "symbol": "POOF",
+    "address": "0x00400FcbF0816bebB94654259de7273f4A05c762",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Premio",
+    "symbol": "PREMIO",
+    "address": "0x94140c2eA9D208D8476cA4E3045254169791C59e",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Allbridge SBR",
+    "symbol": "SBR",
+    "address": "0x47264aE1Fc0c8e6418ebe78630718E11a07346A8",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Allbridge SOL",
+    "symbol": "SOL",
+    "address": "0x173234922eB27d5138c5e481be9dF5261fAeD450",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Source",
+    "symbol": "SOURCE",
+    "address": "0x74c0C58B99b68cF16A717279AC2d056A34ba2bFe",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Optics v2 SUSHI",
+    "symbol": "SUSHI",
+    "address": "0x29dFce9c22003A4999930382Fd00f9Fd6133Acd1",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Symmetric",
+    "symbol": "SYMM",
+    "address": "0x8427bD503dd3169cCC9aFF7326c15258Bc305478",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "TrueFeedBack New",
+    "symbol": "TFBX",
+    "address": "0xbDd31EFfb9E9f7509fEaAc5B4091b31645A47e4b",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Ubeswap",
+    "symbol": "UBE",
+    "address": "0x00Be915B9dCf56a3CBE739D9B9c202ca692409EC",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "USD Coin",
+    "symbol": "USDC",
+    "address": "0xcebA9300f2b948710d2653dD7B07f33A8B32118C",
+    "decimals": 6
+  },
+  {
+    "chainId": 42220,
+    "name": "USDC (Portal from Ethereum)",
+    "symbol": "USDCet",
+    "address": "0x37f750B7cC259A2f741AF45294f6a16572CF5cAd",
+    "decimals": 6
+  },
+  {
+    "chainId": 42220,
+    "name": "Glo Dollar",
+    "symbol": "USDGLO",
+    "address": "0x4f604735c1cf31399c6e711d5962b2b3e0225ad3",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Optics v2 USDT",
+    "symbol": "USDT",
+    "address": "0x88eeC49252c8cbc039DCdB394c0c2BA2f1637EA0",
+    "decimals": 6
+  },
+  {
+    "chainId": 42220,
+    "name": "Wormhole Wrapped Bitcoin",
+    "symbol": "WBTC",
+    "address": "0xd71Ffd0940c920786eC4DbB5A12306669b5b81EF",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Portal WETH",
+    "symbol": "WETH",
+    "address": "0x66803FB87aBd4aaC3cbB3fAd7C3aa01f6F3FB207",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Optics v2 WMATIC via Polygon",
+    "symbol": "WMATIC",
+    "address": "0x2E3487F967DF2Ebc2f236E16f8fCAeac7091324D",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "agEUR",
+    "symbol": "agEUR",
+    "address": "0xC16B81Af351BA9e64C1a069E3Ab18c244A1E3049",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Axelar WETH",
+    "symbol": "axlEth",
+    "address": "0xb829b68f57cc546da7e5806a929e53be32a4625d",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Axelar Wrapped Bitcoin",
+    "symbol": "axlWBTC",
+    "address": "0x1a35EE4640b0A3B87705B0A4B45D227Ba60Ca2ad",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "wrapped.com Bitcoin",
+    "symbol": "cBTC",
+    "address": "0xD629eb00dEced2a080B7EC630eF6aC117e614f1b",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "wrapped.com ETH",
+    "symbol": "cETH",
+    "address": "0x2DEf4285787d58a2f811AF24755A8150622f4361",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Celo Euro",
+    "symbol": "cEUR",
+    "address": "0xD8763CBa276a3738E6DE85b4b3bF5FDed6D6cA73",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Celo Kenyan Shilling",
+    "symbol": "cKES",
+    "address": "0x456a3D042C0DbD3db53D5489e98dFb038553B0d0",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Celo Moss Carbon Credit",
+    "symbol": "cMCO2",
+    "address": "0x32A9FE697a32135BFd313a6Ac28792DaE4D9979d",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Celo Real",
+    "symbol": "cREAL",
+    "address": "0xe8537a3d056DA446677B9E9d6c5dB704EaAb4787",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "cRecy",
+    "symbol": "cRecy",
+    "address": "0x34C11A932853Ae24E845Ad4B633E3cEf91afE583",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "CeloStarter",
+    "symbol": "cStar",
+    "address": "0x452EF5a4bD00796e62E5e5758548e0dA6e8CCDF3",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Celo Dollar",
+    "symbol": "cUSD",
+    "address": "0x765DE816845861e75A25fCA122bb6898B8B1282a",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Duniapay West African CFA franc",
+    "symbol": "cXOF",
+    "address": "0x832F03bCeE999a577cb592948983E35C048B5Aa4",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Duino-Coin on Celo",
+    "symbol": "celoDUCO",
+    "address": "0xDB452CC669D3Ae454226AbF232Fe211bAfF2a1F9",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Green CELO",
+    "symbol": "gCELO",
+    "address": "0x8a1639098644a229d08f441ea45a63ae050ee018",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Green cUSD",
+    "symbol": "gcUSD",
+    "address": "0xFB42E2e90fc79CfA6A6B4EBa4877d5Faf4e29287",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Moola CELO",
+    "symbol": "mCELO",
+    "address": "0x7D00cd74FF385c955EA3d79e47BF06bD7386387D",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Moola cEUR",
+    "symbol": "mcEUR",
+    "address": "0xE273Ad7ee11dCfAA87383aD5977EE1504aC07568",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Moola cREAL",
+    "symbol": "mcREAL",
+    "address": "0x9802d866fdE4563d088a6619F7CeF82C0B991A55",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Moola cUSD",
+    "symbol": "mcUSD",
+    "address": "0x918146359264C492BD6934071c6Bd31C854EDBc3",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Poof CELO",
+    "symbol": "pCELO",
+    "address": "0x301a61D01A63c8D670c2B8a43f37d12eF181F997",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Poof v1 CELO",
+    "symbol": "pCELOxV1",
+    "address": "0xE74AbF23E1Fdf7ACbec2F3a30a772eF77f1601E1",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Poof v1 EUR",
+    "symbol": "pEURxV1",
+    "address": "0x56072D4832642dB29225dA12d6Fd1290E4744682",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Poof USD",
+    "symbol": "pUSD",
+    "address": "0xEadf4A7168A82D30Ba0619e64d5BCf5B30B45226",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Poof v1 USD",
+    "symbol": "pUSDxV1",
+    "address": "0xB4aa2986622249B1F45eb93F28Cfca2b2606d809",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Staked Celo",
+    "symbol": "stCelo",
+    "address": "0xC668583dcbDc9ae6FA3CE46462758188adfdfC24",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Stabilite USD",
+    "symbol": "stabilUSD",
+    "address": "0x0a60c25Ef6021fC3B479914E6bcA7C03c18A97f1",
+    "decimals": 18
+  },
+  {
+    "chainId": 42220,
+    "name": "Staked Allbridge",
+    "symbol": "xABR",
+    "address": "0x788BA01f8E2b87c08B142DB46F82094e0bdCad4F",
+    "decimals": 18
+  }
+]

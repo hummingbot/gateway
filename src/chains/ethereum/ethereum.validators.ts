@@ -7,7 +7,11 @@ import {
   Validator,
   validateToken,
   validateAmount,
+  validateTxHash,
 } from '../../services/validators';
+
+// import {
+// } from '../services/validators';
 
 // invalid parameter errors
 
@@ -30,6 +34,8 @@ export const invalidChainError: string = 'The chain param is not a string.';
 
 export const invalidNetworkError: string = 'The network param is not a string.';
 
+export const invalidEthPrivateKeyError = 'Invalid Ethereum private key';
+
 // test if a string matches the shape of an Ethereum address
 export const isAddress = (str: string): boolean => {
   return /^0x[a-fA-F0-9]{40}$/.test(str);
@@ -49,23 +55,8 @@ export const validateSpender: Validator = mkValidator(
   (val) =>
     typeof val === 'string' &&
     (val === 'uniswap' ||
-      val === 'uniswapLP' ||
-      val === 'pangolin' ||
       val === 'traderjoe' ||
-      val === 'sushiswap' ||
-      val === 'viperswap' ||
-      val === 'openocean' ||
-      val === 'quickswap' ||
-      val === 'mad_meerkat' ||
-      val === 'vvs' ||
       val === 'pancakeswap' ||
-      val === 'pancakeswapLP' ||
-      val === 'xsswap' ||
-      val === 'curve' ||
-      val === 'carbonamm' ||
-      val === 'balancer' ||
-      val === 'etcswapLP' ||
-      val === 'etcswap' ||
       isAddress(val))
 );
 
@@ -135,3 +126,15 @@ export const validateCancelRequest: RequestValidator = mkRequestValidator([
   validateNonce,
   validateAddress,
 ]);
+
+export const validatePollRequest: RequestValidator = mkRequestValidator([
+  validateTxHash,
+]);
+
+export const validateTokensRequest: RequestValidator = mkRequestValidator([
+  validateNetwork,
+]);
+
+export const validateEthPrivateKey = (privateKey: string): boolean => {
+  return /^(0x)?[a-fA-F0-9]{64}$/.test(privateKey);
+};

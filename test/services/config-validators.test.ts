@@ -2,7 +2,7 @@ import {
   invalidAllowedSlippage,
   validateAllowedSlippage,
   updateAllowedSlippageToFraction,
-} from '../../src/services/config/config.validators';
+} from '../../src/config/config.validators';
 import 'jest-extended';
 
 describe('validateAllowedSlippage', () => {
