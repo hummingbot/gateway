@@ -803,7 +803,7 @@ export class Solana {
   }
 
   // Add new method to get first wallet address
-  public async getFirstWalletAddress(): Promise<string> {
+  public async getFirstWalletAddress(): Promise<string | null> {
     const path = `${walletPath}/solana`;
     try {
       // Create directory if it doesn't exist
@@ -814,14 +814,13 @@ export class Solana {
       const walletFiles = files.filter(f => f.endsWith('.json'));
       
       if (walletFiles.length === 0) {
-        throw new Error('No Solana wallets found');
+        return null;
       }
       
       // Return first wallet address (without .json extension)
       return walletFiles[0].slice(0, -5);
     } catch (error) {
-      logger.error(`Failed to get first wallet address: ${error.message}`);
-      throw error;
+      return null;
     }
   }
 

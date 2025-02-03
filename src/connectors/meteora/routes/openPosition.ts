@@ -194,14 +194,14 @@ export const MeteoraOpenPositionRequest = Type.Intersect([
 export type MeteoraOpenPositionRequestType = Static<typeof MeteoraOpenPositionRequest>;
 
 export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
-  // Get first wallet address for example
   const solana = await Solana.getInstance('mainnet-beta');
   let firstWalletAddress = '<solana-wallet-address>';
   
-  try {
-    firstWalletAddress = await solana.getFirstWalletAddress();
-  } catch (error) {
-    logger.warn('No wallets found for examples in schema');
+  const foundWallet = await solana.getFirstWalletAddress();
+  if (foundWallet) {
+    firstWalletAddress = foundWallet;
+  } else {
+    logger.debug('No wallets found for examples in schema');
   }
   
   // Update schema example
