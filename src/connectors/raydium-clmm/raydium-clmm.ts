@@ -6,8 +6,7 @@ import {
   getPdaPersonalPositionAddress,
   PositionUtils,
   TickUtils,
-  // TickArrayLayout,
-  // U64_IGNORE_RANGE 
+  ClmmKeys,
 } from '@raydium-io/raydium-sdk-v2'
 import { logger } from '../../services/logger'
 import { RaydiumClmmConfig } from './raydium-clmm.config'
@@ -56,12 +55,12 @@ export class RaydiumCLMM {
       const walletAddress = await this.solana.getFirstWalletAddress();
       if (!walletAddress) throw new Error('No Solana wallet configured');
       this.owner = await this.solana.getWallet(walletAddress);
-      const CLUSTER = this.solana.network == `mainnet-beta` ? 'mainnet' : 'devnet';
+      const raydiumCluster = this.solana.network == `mainnet-beta` ? 'mainnet' : 'devnet';
 
       // Initialize Raydium SDK with proper types
       this.raydium = await Raydium.load({
         connection: this.solana.connection,
-        cluster: CLUSTER,
+        cluster: raydiumCluster,
         owner: this.owner,
         disableFeatureCheck: true,
         blockhashCommitment: 'finalized'
@@ -76,7 +75,7 @@ export class RaydiumCLMM {
     }
   }
 
-  async getClmmPool(poolAddress: string): Promise<any> {
+  async getClmmPoolfromRPC(poolAddress: string): Promise<any> {
     if (this.clmmPools.has(poolAddress)) return this.clmmPools.get(poolAddress)
     if (this.clmmPoolPromises.has(poolAddress)) return this.clmmPoolPromises.get(poolAddress)
 
@@ -91,9 +90,29 @@ export class RaydiumCLMM {
     return poolPromise
   }
 
+  async getClmmPoolfromAPI(poolAddress: string): Promise<any> {
+    const poolInfoResponse = await this.raydium.api.fetchPoolById({ ids: poolAddress })
+    let poolInfo: ApiV3PoolInfoConcentratedItem
+    let poolKeys: ClmmKeys | undefined
+
+    if (this.solana.network === 'mainnet-beta') {
+      const data = await this.raydium.api.fetchPoolById({ ids: poolAddress })
+      poolInfo = data[0] as ApiV3PoolInfoConcentratedItem
+    } else {
+      const data = await this.raydium.clmm.getPoolInfoFromRpc(poolAddress)
+      poolInfo = data.poolInfo
+      poolKeys = data.poolKeys
+    }
+    if (!poolInfoResponse || !poolInfoResponse[0]) {
+      logger.error('Pool info not found for position')
+      return null
+    }
+    return [poolInfo, poolKeys]
+  }
+
   async getPoolInfo(poolAddress: string): Promise<PoolInfo | null> {
     try {
-      const rawPool = await this.getClmmPool(poolAddress)
+      const rawPool = await this.getClmmPoolfromRPC(poolAddress)
       if (!rawPool) {
         logger.warn(`Pool not found: ${poolAddress}`)
         return null
@@ -155,130 +174,39 @@ export class RaydiumCLMM {
   async getPositionInfo(positionAddress: string): Promise<PositionInfo | null> {
     try {
       const position = await this.getClmmPosition(positionAddress)
-      if (!position) {
-        logger.warn(`Position not found: ${positionAddress}`)
-        return null
-      }
-
-      // Validate poolId exists and is valid
-      if (!position.poolId) {
-        logger.error('Invalid position: missing poolId')
-        return null
-      }
       const poolIdString = position.poolId.toBase58()
-      logger.info('poolId')
-      console.log('poolId:', poolIdString)
+      const [poolInfo, _poolKeys] = await this.getClmmPoolfromAPI(poolIdString)
+      const epochInfo = await this.solana.connection.getEpochInfo()
 
-      // Fetch and validate pool info
-      let poolInfoResponse;
-      try {
-        poolInfoResponse = await this.raydium.api.fetchPoolById({ ids: poolIdString })
-        if (!poolInfoResponse || !poolInfoResponse[0]) {
-          logger.error('Pool info not found for position')
-          return null
-        }
-      } catch (error) {
-        logger.error('Failed to fetch pool info:')
-        console.log('Fetch pool info error:', error)
-        return null
-      }
+      const priceLower = TickUtils.getTickPrice({
+        poolInfo,
+        tick: position.tickLower,
+        baseIn: true,
+      })
+      const priceUpper = TickUtils.getTickPrice({
+        poolInfo,
+        tick: position.tickUpper,
+        baseIn: true,
+      })
 
-      const poolInfo = poolInfoResponse[0] as ApiV3PoolInfoConcentratedItem
-      logger.info('poolInfo')
-      console.log('poolInfo:', poolInfo)
-
-      // Validate required position data
-      if (position.tickLower === undefined || position.tickUpper === undefined) {
-        logger.error('Invalid position: missing tick data')
-        console.log('Tick data:', { 
-          tickLower: position.tickLower, 
-          tickUpper: position.tickUpper 
-        })
-        return null
-      }
-
-      if (!position.liquidity || position.liquidity.isZero()) {
-        logger.error('Invalid position: missing or zero liquidity')
-        console.log('Liquidity:', position.liquidity?.toString())
-        return null
-      }
-
-      let epochInfo;
-      try {
-        epochInfo = await this.solana.connection.getEpochInfo()
-        console.log('Epoch info:', epochInfo)
-      } catch (error) {
-        logger.error('Failed to fetch epoch info:')
-        console.log('Epoch info error:', error)
-        return null
-      }
-
-      let priceLower, priceUpper;
-      try {
-        priceLower = TickUtils.getTickPrice({
-          poolInfo,
-          tick: position.tickLower,
-          baseIn: true,
-        })
-        priceUpper = TickUtils.getTickPrice({
-          poolInfo,
-          tick: position.tickUpper,
-          baseIn: true,
-        })
-        console.log('Price calculations:', { priceLower, priceUpper })
-      } catch (error) {
-        logger.error('Failed to calculate position prices:')
-        console.log('Price calculation error:', error)
-        console.log('Price calculation context:', {
-          tickLower: position.tickLower,
-          tickUpper: position.tickUpper,
-          poolInfo
-        })
-        return null
-      }
-
-      let amounts;
-      try {
-        amounts = PositionUtils.getAmountsFromLiquidity({
-          poolInfo: poolInfo,
-          ownerPosition: position,
-          liquidity: position.liquidity,
-          slippage: 0,
-          add: false,
-          epochInfo
-        })
-        console.log('Amount calculations:', amounts)
-      } catch (error) {
-        logger.error('Failed to calculate position amounts:')
-        console.log('Amount calculation error:', error)
-        console.log('Amount calculation context:', {
-          liquidity: position.liquidity.toString(),
-          position,
-          poolInfo
-        })
-        return null
-      }
-
+      const amounts = PositionUtils.getAmountsFromLiquidity({
+        poolInfo: poolInfo,
+        ownerPosition: position,
+        liquidity: position.liquidity,
+        slippage: 0,
+        add: false,
+        epochInfo
+      })
       const { amountA, amountB } = amounts
 
-      // Validate final data before returning
-      if (!poolInfo.mintA || !poolInfo.mintB) {
-        logger.error('Invalid pool info: missing mint addresses')
-        console.log('Mint addresses:', {
-          mintA: poolInfo.mintA,
-          mintB: poolInfo.mintB
-        })
-        return null
-      }
-
-      const positionInfo: PositionInfo = {
+      return {
         address: positionAddress,
         poolAddress: poolIdString,
         baseTokenAddress: poolInfo.mintA.address,
         quoteTokenAddress: poolInfo.mintB.address,
-        lowerPrice: priceLower.price,
-        upperPrice: priceUpper.price,
-        price: poolInfo.price,
+        lowerPrice: Number(priceLower.price),
+        upperPrice: Number(priceUpper.price),
+        price: Number(poolInfo.price),
         baseTokenAmount: Number(amountA.amount),
         quoteTokenAmount: Number(amountB.amount),
         baseFeeAmount: Number(position.tokenFeesOwedA?.toString() || '0'),
@@ -286,15 +214,12 @@ export class RaydiumCLMM {
         lowerBinId: position.tickLower,
         upperBinId: position.tickUpper
       }
-      
-      console.log('Final position info:', positionInfo)
-      return positionInfo
     } catch (error) {
-      logger.error(`Error getting position info for ${positionAddress}:`)
-      console.log('Error:', error)
+      logger.error('Error in getPositionInfo:', error)
       return null
     }
   }
+  
 
   // Helper function to convert tick index to price
   // private tickIndexToPrice(tickIndex: number, decimalsA: number, decimalsB: number): number {
