@@ -2,16 +2,16 @@ import { FastifyPluginAsync } from 'fastify';
 import { Meteora } from '../meteora';
 import { logger } from '../../../services/logger';
 import { 
-  PoolInfo, 
-  PoolInfoSchema, 
-  GetPoolInfoRequestType, 
+  MeteoraPoolInfo,
+  MeteoraPoolInfoSchema,
+  GetPoolInfoRequestType,
   GetPoolInfoRequest 
 } from '../../../services/clmm-interfaces';
 
 export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
     Querystring: GetPoolInfoRequestType;
-    Reply: PoolInfo;
+    Reply: MeteoraPoolInfo;
   }>(
     '/pool-info',
     {
@@ -26,7 +26,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
           }
         },
         response: {
-          200: PoolInfoSchema
+          200: MeteoraPoolInfoSchema
         },
       }
     },
@@ -40,7 +40,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
           throw fastify.httpErrors.serviceUnavailable('Meteora service unavailable');
         }
         
-        return await meteora.getPoolInfo(poolAddress);
+        return await meteora.getPoolInfo(poolAddress) as MeteoraPoolInfo;
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {

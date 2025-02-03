@@ -4,7 +4,7 @@ import DLMM, { getPriceOfBinByBinId } from '@meteora-ag/dlmm';
 import { MeteoraConfig } from './meteora.config';
 import { logger } from '../../services/logger';
 import { convertDecimals } from '../../services/base';
-import { PoolInfo, PositionInfo, BinLiquidity } from '../../services/clmm-interfaces';
+import { MeteoraPoolInfo, PositionInfo, BinLiquidity } from '../../services/clmm-interfaces';
 import { LbPair } from '@meteora-ag/dlmm';
 import { percentRegexp } from '../../services/config-manager-v2';
 
@@ -125,7 +125,7 @@ export class Meteora {
   }
 
   /** Gets comprehensive pool information */
-  async getPoolInfo(poolAddress: string): Promise<PoolInfo | null> {
+  async getPoolInfo(poolAddress: string): Promise<MeteoraPoolInfo | null> {
     try {
       const dlmmPool = await this.getDlmmPool(poolAddress);
       if (!dlmmPool) {

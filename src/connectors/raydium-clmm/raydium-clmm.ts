@@ -1,10 +1,21 @@
-import { Raydium } from '@raydium-io/raydium-sdk-v2'
+import { 
+  Raydium, 
+  ApiV3PoolInfoConcentratedItem, 
+  PositionInfoLayout, 
+  CLMM_PROGRAM_ID,
+  getPdaPersonalPositionAddress,
+  PositionUtils,
+  TickUtils,
+  // TickArrayLayout,
+  // U64_IGNORE_RANGE 
+} from '@raydium-io/raydium-sdk-v2'
 import { logger } from '../../services/logger'
-import { convertDecimals } from '../../services/base'
 import { RaydiumClmmConfig } from './raydium-clmm.config'
 import { Solana } from '../../chains/solana/solana'
 import { Keypair } from '@solana/web3.js'
-import { PoolInfo } from '../../services/clmm-interfaces'
+import { PoolInfo, PositionInfo } from '../../services/clmm-interfaces'
+import { PublicKey } from '@solana/web3.js'
+// import BN from 'bn.js'
 
 export class RaydiumCLMM {
   private static _instances: { [name: string]: RaydiumCLMM }
@@ -83,8 +94,10 @@ export class RaydiumCLMM {
   async getPoolInfo(poolAddress: string): Promise<PoolInfo | null> {
     try {
       const rawPool = await this.getClmmPool(poolAddress)
-      console.log(rawPool)
-      if (!rawPool) return null
+      if (!rawPool) {
+        logger.warn(`Pool not found: ${poolAddress}`)
+        return null
+      }
 
       // Fetch AMM config account data
       let ammConfigData;
@@ -94,8 +107,8 @@ export class RaydiumCLMM {
           if (configAccount) {
             const dataBuffer = configAccount.data;
             ammConfigData = {
-            //   protocolFeeRate: dataBuffer.readUInt32LE(43) / 10000,  // 120000 → 12.0000%
-              tradeFeeRate: dataBuffer.readUInt32LE(47) / 10000      // 2500 → 0.2500%
+              // 47 is the offset for tradeFeeRate in the dataBuffer
+              tradeFeeRate: dataBuffer.readUInt32LE(47) / 10000
             };
           }
         } catch (e) {
@@ -103,21 +116,19 @@ export class RaydiumCLMM {
         }
       }
 
-      // Safe extraction with fallbacks
+      const vaultABalance = (await this.solana.connection.getTokenAccountBalance(rawPool.vaultA)).value.uiAmount;
+      const vaultBBalance = (await this.solana.connection.getTokenAccountBalance(rawPool.vaultB)).value.uiAmount;
+
       const poolInfo: PoolInfo = {
         address: poolAddress,
-        baseTokenAddress: rawPool.mintA || '',
-        quoteTokenAddress: rawPool.mintB || '',
-        binStep: Number(rawPool.tickSpacing) || 0,
-        feePct: ammConfigData?.tradeFeeRate ?? 0,
-        dynamicFeePct: ammConfigData?.tradeFeeRate ?? 0,
-        price: Number(rawPool.currentPrice) || 0,
-        baseTokenAmount: Number(convertDecimals(rawPool.vaultA?.amount || 0, rawPool.mintDecimalsA)),
-        quoteTokenAmount: Number(convertDecimals(rawPool.vaultB?.amount || 0, rawPool.mintDecimalsB)),
-        activeBinId: Number(rawPool.tickCurrent) || 0,
-        minBinId: rawPool.tickArrayBitmap?.[0] || 0,
-        maxBinId: rawPool.tickArrayBitmap?.[rawPool.tickArrayBitmap.length - 1] || 0,
-        bins: []
+        baseTokenAddress: rawPool.mintA.toString(),
+        quoteTokenAddress: rawPool.mintB.toString(),
+        binStep: Number(rawPool.tickSpacing),
+        feePct: ammConfigData?.tradeFeeRate,
+        price: Number(rawPool.currentPrice),
+        baseTokenAmount: Number(vaultABalance),
+        quoteTokenAmount: Number(vaultBBalance),
+        activeBinId: Number(rawPool.tickCurrent),
       }
       return poolInfo
     } catch (error) {
@@ -126,83 +137,263 @@ export class RaydiumCLMM {
     }
   }
 
-//   /** Gets position information */
-//   async getPositionInfo(positionAddress: string, wallet: PublicKey): Promise<PositionInfo> {
-//     try {
-//       const positionNftMint = new PublicKey(positionAddress)
-//       const programId = this.config.programId
+  async getClmmPosition(positionAddress: string): Promise<any> {
+    const positionNftMint = new PublicKey(positionAddress)
+    const positionPubKey = getPdaPersonalPositionAddress(CLMM_PROGRAM_ID, positionNftMint).publicKey
+    const positionAccount = await this.solana.connection.getAccountInfo(new PublicKey(positionPubKey))
+    
+    if (!positionAccount) {
+      logger.warn(`Position account not found: ${positionAddress}`)
+      return null
+    }
+
+    const position = PositionInfoLayout.decode(positionAccount.data)
+    console.log('position', position)
+    return position
+  }
+
+  async getPositionInfo(positionAddress: string): Promise<PositionInfo | null> {
+    try {
+      const position = await this.getClmmPosition(positionAddress)
+      if (!position) {
+        logger.warn(`Position not found: ${positionAddress}`)
+        return null
+      }
+
+      // Validate poolId exists and is valid
+      if (!position.poolId) {
+        logger.error('Invalid position: missing poolId')
+        return null
+      }
+      const poolIdString = position.poolId.toBase58()
+      logger.info('poolId')
+      console.log('poolId:', poolIdString)
+
+      // Fetch and validate pool info
+      let poolInfoResponse;
+      try {
+        poolInfoResponse = await this.raydium.api.fetchPoolById({ ids: poolIdString })
+        if (!poolInfoResponse || !poolInfoResponse[0]) {
+          logger.error('Pool info not found for position')
+          return null
+        }
+      } catch (error) {
+        logger.error('Failed to fetch pool info:')
+        console.log('Fetch pool info error:', error)
+        return null
+      }
+
+      const poolInfo = poolInfoResponse[0] as ApiV3PoolInfoConcentratedItem
+      logger.info('poolInfo')
+      console.log('poolInfo:', poolInfo)
+
+      // Validate required position data
+      if (position.tickLower === undefined || position.tickUpper === undefined) {
+        logger.error('Invalid position: missing tick data')
+        console.log('Tick data:', { 
+          tickLower: position.tickLower, 
+          tickUpper: position.tickUpper 
+        })
+        return null
+      }
+
+      if (!position.liquidity || position.liquidity.isZero()) {
+        logger.error('Invalid position: missing or zero liquidity')
+        console.log('Liquidity:', position.liquidity?.toString())
+        return null
+      }
+
+      let epochInfo;
+      try {
+        epochInfo = await this.solana.connection.getEpochInfo()
+        console.log('Epoch info:', epochInfo)
+      } catch (error) {
+        logger.error('Failed to fetch epoch info:')
+        console.log('Epoch info error:', error)
+        return null
+      }
+
+      let priceLower, priceUpper;
+      try {
+        priceLower = TickUtils.getTickPrice({
+          poolInfo,
+          tick: position.tickLower,
+          baseIn: true,
+        })
+        priceUpper = TickUtils.getTickPrice({
+          poolInfo,
+          tick: position.tickUpper,
+          baseIn: true,
+        })
+        console.log('Price calculations:', { priceLower, priceUpper })
+      } catch (error) {
+        logger.error('Failed to calculate position prices:')
+        console.log('Price calculation error:', error)
+        console.log('Price calculation context:', {
+          tickLower: position.tickLower,
+          tickUpper: position.tickUpper,
+          poolInfo
+        })
+        return null
+      }
+
+      let amounts;
+      try {
+        amounts = PositionUtils.getAmountsFromLiquidity({
+          poolInfo: poolInfo,
+          ownerPosition: position,
+          liquidity: position.liquidity,
+          slippage: 0,
+          add: false,
+          epochInfo
+        })
+        console.log('Amount calculations:', amounts)
+      } catch (error) {
+        logger.error('Failed to calculate position amounts:')
+        console.log('Amount calculation error:', error)
+        console.log('Amount calculation context:', {
+          liquidity: position.liquidity.toString(),
+          position,
+          poolInfo
+        })
+        return null
+      }
+
+      const { amountA, amountB } = amounts
+
+      // Validate final data before returning
+      if (!poolInfo.mintA || !poolInfo.mintB) {
+        logger.error('Invalid pool info: missing mint addresses')
+        console.log('Mint addresses:', {
+          mintA: poolInfo.mintA,
+          mintB: poolInfo.mintB
+        })
+        return null
+      }
+
+      const positionInfo: PositionInfo = {
+        address: positionAddress,
+        poolAddress: poolIdString,
+        baseTokenAddress: poolInfo.mintA.address,
+        quoteTokenAddress: poolInfo.mintB.address,
+        lowerPrice: priceLower.price,
+        upperPrice: priceUpper.price,
+        price: poolInfo.price,
+        baseTokenAmount: Number(amountA.amount),
+        quoteTokenAmount: Number(amountB.amount),
+        baseFeeAmount: Number(position.tokenFeesOwedA?.toString() || '0'),
+        quoteFeeAmount: Number(position.tokenFeesOwedB?.toString() || '0'),
+        lowerBinId: position.tickLower,
+        upperBinId: position.tickUpper
+      }
       
-//       const positionPubKey = getPdaPersonalPositionAddress(programId, positionNftMint).publicKey
-//       const pos = await this.connection.getAccountInfo(positionPubKey)
-//       if (!pos) throw new Error('Position not found')
+      console.log('Final position info:', positionInfo)
+      return positionInfo
+    } catch (error) {
+      logger.error(`Error getting position info for ${positionAddress}:`)
+      console.log('Error:', error)
+      return null
+    }
+  }
+
+  // Helper function to convert tick index to price
+  // private tickIndexToPrice(tickIndex: number, decimalsA: number, decimalsB: number): number {
+  //   const tick = tickIndex;
+  //   const sqrtPrice = Math.pow(1.0001, tick / 2);
+  //   const price = Math.pow(sqrtPrice, 2);
+    
+  //   // Adjust for decimals
+  //   const decimalAdjustment = Math.pow(10, decimalsA - decimalsB);
+  //   return price * decimalAdjustment;
+  // }
+
+  // private async processPoolTickData(
+  //   poolAddress: string,
+  //   rawPool: any
+  // ) {
+  //   try {
+  //     // Get pool tick data
+  //     const poolDataResponse = await this.raydium.clmm.getPoolInfoFromRpc(poolAddress);
+  //     logger.info(`Processing pool data for ${poolAddress}`);
+  //     console.log('Pool data response:', poolDataResponse);
       
-//       const position = PositionInfoLayout.decode(pos.data)
-//       const poolInfo = await this.raydium.getPoolInfo(position.poolId)
+  //     if (!poolDataResponse?.tickData?.[poolAddress]) {
+  //       logger.warn(`No tick data found for pool: ${poolAddress}`)
+  //       return null;
+  //     }
+  //     const tickArrays = poolDataResponse.tickData[poolAddress];
+  //     if (!tickArrays || typeof tickArrays !== 'object') {
+  //       logger.warn(`Invalid tick data structure for pool: ${poolAddress}`);
+  //       return null;
+  //     }
+  //     logger.info(`Processing tick arrays for ${poolAddress}`);
+  //     console.log('Tick arrays:', tickArrays);
 
-//       // Get tick arrays for price calculation
-//       const [tickLowerArrayAddress, tickUpperArrayAddress] = [
-//         TickUtils.getTickArrayAddressByTick(
-//           programId,
-//           new PublicKey(poolInfo.id),
-//           position.tickLower,
-//           poolInfo.config.tickSpacing
-//         ),
-//         TickUtils.getTickArrayAddressByTick(
-//           programId,
-//           new PublicKey(poolInfo.id),
-//           position.tickUpper,
-//           poolInfo.config.tickSpacing
-//         ),
-//       ]
+  //     // DEBUG: Inspect first tick array entry
+  //     const firstArrayKey = Object.keys(tickArrays)[0];
+  //     const firstArray = tickArrays[firstArrayKey];
+  //     logger.debug('First tick array structure:', {
+  //       key: firstArrayKey,
+  //       startTickIndex: firstArray.startTickIndex,
+  //       ticksLength: firstArray.ticks?.length,
+  //       initializedTickCount: firstArray.initializedTickCount,
+  //       address: firstArray.address?.toString(),
+  //       tickSpacing: rawPool.tickSpacing,
+  //       rawTickSample: firstArray.ticks?.[0] // First tick in array
+  //     });
 
-//       const tickArrayRes = await this.connection.getMultipleAccountsInfo([
-//         tickLowerArrayAddress, 
-//         tickUpperArrayAddress
-//       ])
+  //     // Process tick arrays into bins
+  //     const bins = [];
+      
+  //     // Process each tick array
+  //     for (const [arrayStartTick, tickArray] of Object.entries(tickArrays)) {
+  //       const startTickIndex = Number(arrayStartTick);
+  //       const tickSpacing = rawPool.tickSpacing;
+        
+  //       logger.debug(`Processing tick array starting at ${startTickIndex}`);
+        
+  //       if (!tickArray?.ticks || !Array.isArray(tickArray.ticks)) {
+  //         logger.warn(`No valid ticks array found at index ${startTickIndex}`);
+  //         continue;
+  //       }
 
-//       if (!tickArrayRes[0] || !tickArrayRes[1]) {
-//         throw new Error('Tick data not found')
-//       }
+  //       // Get address safely
+  //       const arrayAddress = tickArray?.address?.toString() || 'unknown';
+        
+  //       try {
+  //         // Process each tick in the array with its offset
+  //         tickArray.ticks.forEach((tick, i) => {
+  //           if (!tick?.liquidityNet) return;
+            
+  //           const tickIndex = startTickIndex + (i * tickSpacing);
+  //           const bin = {
+  //             binId: tickIndex,
+  //             price: this.tickIndexToPrice(
+  //               tickIndex,
+  //               rawPool.mintDecimalsA,
+  //               rawPool.mintDecimalsB
+  //             ),
+  //             liquidity: tick.liquidityNet.toString(),
+  //             reserveA: 0,
+  //             reserveB: 0,
+  //             address: arrayAddress
+  //           };
+  //           bins.push(bin);
+  //         });
+  //       } catch (error) {
+  //         logger.error(`Error processing ticks in array ${startTickIndex}:`, error);
+  //       }
+  //     }
 
-//       const tickArrayLower = TickArrayLayout.decode(tickArrayRes[0].data)
-//       const tickArrayUpper = TickArrayLayout.decode(tickArrayRes[1].data)
-
-//       const tickLowerState = tickArrayLower.ticks[
-//         TickUtils.getTickOffsetInArray(position.tickLower, poolInfo.config.tickSpacing)
-//       ]
-//       const tickUpperState = tickArrayUpper.ticks[
-//         TickUtils.getTickOffsetInArray(position.tickUpper, poolInfo.config.tickSpacing)
-//       ]
-
-//       // Get fees and rewards
-//       const rpcPoolData = await this.raydium.clmm.getRpcClmmPoolInfo({ poolId: position.poolId })
-//       const tokenFees = PositionUtils.GetPositionFeesV2(
-//         rpcPoolData, 
-//         position, 
-//         tickLowerState, 
-//         tickUpperState
-//       )
-
-//       return {
-//         positionAddress: positionAddress,
-//         poolAddress: poolInfo.id,
-//         baseTokenAddress: poolInfo.mintA.address,
-//         quoteTokenAddress: poolInfo.mintB.address,
-//         baseTokenAmount: Number(convertDecimals(position.liquidity, poolInfo.mintA.decimals)),
-//         quoteTokenAmount: Number(convertDecimals(position.liquidity, poolInfo.mintB.decimals)),
-//         baseFeeAmount: Number(convertDecimals(tokenFees.tokenFeeAmountA, poolInfo.mintA.decimals)),
-//         quoteFeeAmount: Number(convertDecimals(tokenFees.tokenFeeAmountB, poolInfo.mintB.decimals)),
-//         lowerBinId: position.tickLower,
-//         upperBinId: position.tickUpper,
-//         lowerPrice: tickLowerState.price,
-//         upperPrice: tickUpperState.price,
-//         price: rpcPoolData.currentPrice,
-//       }
-//     } catch (error) {
-//       logger.error('Error getting position info:', error)
-//       throw error
-//     }
-//   }
+  //     logger.info(`Final bins array for ${poolAddress} (length: ${bins.length}):`, bins);
+  //     // Sort bins by binId
+  //     return bins.sort((a, b) => a.binId - b.binId);
+  //   } catch (error) {
+  //     logger.error(`Error in processPoolTickData for ${poolAddress}:`, error);
+  //     console.error('Full error:', error);
+  //     throw error; // Re-throw to maintain error propagation
+  //   }
+  // }
 
   // Add other methods similar to Meteora class...
 }

@@ -17,22 +17,31 @@ export const BinLiquiditySchema = Type.Object({
 }, { $id: 'BinLiquidity' });
 export type BinLiquidity = Static<typeof BinLiquiditySchema>;
 
+// Base PoolInfo without Meteora-specific fields
 export const PoolInfoSchema = Type.Object({
   address: Type.String(),
   baseTokenAddress: Type.String(),
   quoteTokenAddress: Type.String(),
   binStep: Type.Number(),
   feePct: Type.Number(),
-  dynamicFeePct: Type.Number(),
   price: Type.Number(),
   baseTokenAmount: Type.Number(),
   quoteTokenAmount: Type.Number(),
   activeBinId: Type.Number(),
-  minBinId: Type.Number(),
-  maxBinId: Type.Number(),
-  bins: Type.Array(BinLiquiditySchema),
 }, { $id: 'PoolInfo' });
 export type PoolInfo = Static<typeof PoolInfoSchema>;
+
+// Meteora-specific extension
+export const MeteoraPoolInfoSchema = Type.Composite([
+  PoolInfoSchema,
+  Type.Object({
+    dynamicFeePct: Type.Number(),
+    minBinId: Type.Number(),
+    maxBinId: Type.Number(),
+    bins: Type.Array(BinLiquiditySchema),
+  })
+], { $id: 'MeteoraPoolInfo' });
+export type MeteoraPoolInfo = Static<typeof MeteoraPoolInfoSchema>;
 
 export const GetPoolInfoRequest = Type.Object({
   network: Type.Optional(Type.String()),
