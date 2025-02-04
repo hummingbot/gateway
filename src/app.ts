@@ -7,11 +7,7 @@ import { Type } from '@sinclair/typebox';
 // Internal services
 import { logger } from './services/logger';
 import { getHttpsOptions } from './https';
-import { 
-  gatewayErrorMiddleware, 
-  HttpException, 
-  NodeError 
-} from './services/error-handler';
+import { errorHandler } from './services/error-handler';
 import { ConfigManagerV2 } from './services/config-manager-v2';
 
 // Routes
@@ -23,9 +19,10 @@ import { ethereumRoutes } from './chains/ethereum/ethereum.routes';
 import { jupiterRoutes } from './connectors/jupiter/jupiter.routes';
 import { meteoraRoutes } from './connectors/meteora/meteora.routes';
 import { uniswapRoutes } from './connectors/uniswap/uniswap.routes';
+import { raydiumClmmRoutes } from './connectors/raydium-clmm/raydium-clmm.routes';
 
 // Change version for each release
-const GATEWAY_VERSION = '2.3.0';
+const GATEWAY_VERSION = '2.4.0';
 
 // At the top level, define devMode once
 // When true, runs server in HTTP mode (less secure but useful for development)
@@ -52,6 +49,7 @@ const swaggerOptions = {
       { name: 'wallet', description: 'Wallet endpoints' },
       { name: 'solana', description: 'Solana chain endpoints' },
       { name: 'meteora', description: 'Meteora connector endpoints' },
+      { name: 'raydium-clmm', description: 'Raydium CLMM connector endpoints' },
       { name: 'jupiter', description: 'Jupiter connector endpoints' },
       { name: 'ethereum', description: 'Ethereum chain endpoints' },
       { name: 'uniswap', description: 'Uniswap connector endpoints' },
@@ -150,6 +148,7 @@ const configureGatewayServer = () => {
     app.register(walletRoutes, { prefix: '/wallet' });
     app.register(jupiterRoutes, { prefix: '/jupiter' });
     app.register(meteoraRoutes, { prefix: '/meteora' });
+    app.register(raydiumClmmRoutes, { prefix: '/raydium-clmm' });
     app.register(uniswapRoutes, { prefix: '/uniswap' });
     app.register(solanaRoutes, { prefix: '/solana' });
     app.register(ethereumRoutes, { prefix: '/ethereum' });
@@ -180,11 +179,7 @@ const configureGatewayServer = () => {
   server.addContentTypeParser('application/json', { parseAs: 'string' }, server.getDefaultJsonParser('ignore', 'ignore'));
 
   // Global error handler
-  server.setErrorHandler((error: Error | NodeError | HttpException, _request, reply) => {
-    logger.error(error);
-    const response = gatewayErrorMiddleware(error);
-    return reply.status(response.httpErrorCode).send(response);
-  });
+  server.setErrorHandler(errorHandler);
 
   // Health check route (outside registerRoutes, only on main server)
   server.get('/', async () => {

@@ -11,13 +11,12 @@ import {
   PublicKey,
   ComputeBudgetProgram,
   Signer,
-  SignatureStatus,
   Transaction,
   TokenAmount,
   TransactionResponse,
   VersionedTransactionResponse,
 } from '@solana/web3.js';
-import { TOKEN_PROGRAM_ID, unpackAccount } from "@solana/spl-token";
+import { TOKEN_PROGRAM_ID, unpackAccount, getMint } from "@solana/spl-token";
 
 import { TokenValue, walletPath } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
@@ -152,12 +151,44 @@ export class Solana {
     }
   }
 
-  public getTokenBySymbol(tokenSymbol: string): TokenInfo | undefined {
-    // Normalize both strings by converting to uppercase and removing any spaces
-    const normalizedSearch = tokenSymbol.toUpperCase().trim();
-    return this.tokenList.find(
+  async getToken(addressOrSymbol: string): Promise<TokenInfo | null> {
+    // First try to find by symbol (case-insensitive)
+    const normalizedSearch = addressOrSymbol.toUpperCase().trim();
+    let token = this.tokenList.find(
       (token: TokenInfo) => token.symbol.toUpperCase().trim() === normalizedSearch
     );
+
+    // If not found by symbol, try to find by address
+    if (!token) {
+      token = this.tokenList.find(
+        (token: TokenInfo) => token.address.toLowerCase() === addressOrSymbol.toLowerCase()
+      );
+    }
+
+    // If still not found, try to create a new token assuming addressOrSymbol is an address
+    if (!token) {
+      try {
+        // Validate if it's a valid public key
+        const mintPubkey = new PublicKey(addressOrSymbol);
+        
+        // Fetch mint info to get decimals
+        const mintInfo = await getMint(this.connection, mintPubkey);
+        
+        // Create a basic token object with fetched decimals
+        token = {
+          address: addressOrSymbol,
+          symbol: `DUMMY_${addressOrSymbol.slice(0, 4)}`,
+          name: `Dummy Token (${addressOrSymbol.slice(0, 8)}...)`,
+          decimals: mintInfo.decimals,
+          chainId: 101,
+        };
+      } catch (e) {
+        // Not a valid public key or couldn't fetch mint info, return null
+        return null;
+      }
+    }
+
+    return token;
   }
 
   // returns Keypair for a private key, which should be encoded in Base58
@@ -231,13 +262,11 @@ export class Solana {
   }
 
   async getBalance(wallet: Keypair, symbols?: string[]): Promise<Record<string, number>> {
-    // Convert symbols to uppercase for case-insensitive matching
-    const upperCaseSymbols = symbols?.map(s => s.toUpperCase());
     const publicKey = wallet.publicKey;
     let balances: Record<string, number> = {};
 
     // Fetch SOL balance only if symbols is undefined or includes "SOL" (case-insensitive)
-    if (!upperCaseSymbols || upperCaseSymbols.includes("SOL")) {
+    if (!symbols || symbols.some(s => s.toUpperCase() === "SOL")) {
       const solBalance = await this.connection.getBalance(publicKey);
       const solBalanceInSol = solBalance * LAMPORT_TO_SOL;
       balances["SOL"] = solBalanceInSol;
@@ -249,25 +278,20 @@ export class Solana {
       { programId: TOKEN_PROGRAM_ID }
     );
 
-    // Fetch the token list and create lookup map
-    const tokenList = await this.getTokenList();
-    const tokenDefs = tokenList.reduce((acc, token) => {
-      if (!upperCaseSymbols || upperCaseSymbols.includes(token.symbol.toUpperCase())) {
-        acc[token.address] = { symbol: token.symbol, decimals: token.decimals };
-      }
-      return acc;
-    }, {});
-
     // Process token accounts
     for (const value of accounts.value) {
       const parsedTokenAccount = unpackAccount(value.pubkey, value.account);
-      const mint = parsedTokenAccount.mint;
-      const tokenDef = tokenDefs[mint.toBase58()];
-      if (tokenDef === undefined) continue;
-
-      const amount = parsedTokenAccount.amount;
-      const uiAmount = Number(amount) / Math.pow(10, tokenDef.decimals);
-      balances[tokenDef.symbol] = uiAmount;
+      const mintAddress = parsedTokenAccount.mint.toBase58();
+      const token = await this.getToken(mintAddress);
+      
+      if (token && (!symbols || symbols.some(s => 
+        s.toUpperCase() === token.symbol.toUpperCase() || 
+        s.toLowerCase() === mintAddress.toLowerCase()
+      ))) {
+        const amount = parsedTokenAccount.amount;
+        const uiAmount = Number(amount) / Math.pow(10, token.decimals);
+        balances[token.symbol] = uiAmount;
+      }
     }
 
     return balances;
@@ -286,7 +310,8 @@ export class Solana {
     for (const tokenAccount of allSplTokens.value) {
       const tokenInfo = tokenAccount.account.data.parsed['info'];
       const mintAddress = tokenInfo['mint'];
-      const token = this.tokenList.find(t => t.address === mintAddress);
+      const token = await this.getToken(mintAddress);
+      
       if (token?.symbol) {
         balances[token.symbol] = this.tokenResponseToTokenValue(
           tokenInfo['tokenAmount']
@@ -347,6 +372,11 @@ export class Solana {
     walletAddress: PublicKey,
     mintAddress: PublicKey
   ): Promise<TokenValue> {
+    const token = await this.getToken(mintAddress.toBase58());
+    if (!token) {
+      throw new Error('Token not found');
+    }
+    
     const response = await this.connection.getParsedTokenAccountsByOwner(
       walletAddress,
       { mint: mintAddress }
@@ -442,7 +472,7 @@ export class Solana {
       });
 
       if (!response.ok) {
-        logger.error(`[SOLANA] Failed to fetch priority fees, using minimum fee: ${response.status}`);
+        logger.error(`Failed to fetch priority fees, using minimum fee: ${response.status}`);
         return this.config.minPriorityFee * 1_000_000 / this.config.defaultComputeUnits;
       }
 
@@ -467,7 +497,7 @@ export class Solana {
       const minFee = Math.min(...fees) / 1_000_000; // Convert to lamports
       const maxFee = Math.max(...fees) / 1_000_000; // Convert to lamports
       const averageFee = fees.reduce((sum, fee) => sum + fee, 0) / fees.length / 1_000_000 // Convert to lamports
-      logger.info(`[SOLANA] Recent priority fees paid: ${minFee.toFixed(4)} - ${maxFee.toFixed(4)} lamports/CU (avg: ${averageFee.toFixed(4)})`);
+      logger.info(`Recent priority fees paid: ${minFee.toFixed(4)} - ${maxFee.toFixed(4)} lamports/CU (avg: ${averageFee.toFixed(4)})`);
 
       // Calculate index for percentile
       const percentileIndex = Math.ceil(fees.length * this.config.basePriorityFeePct / 100);
@@ -477,7 +507,7 @@ export class Solana {
       const minimumFeeLamports = Math.floor(this.config.minPriorityFee * 1e9 / this.config.defaultComputeUnits);
       basePriorityFee = Math.max(basePriorityFee, minimumFeeLamports);
       
-      logger.info(`[SOLANA] Base priority fee: ${basePriorityFee.toFixed(4)} lamports/CU (${basePriorityFee === minimumFeeLamports ? 'minimum' : `${this.config.basePriorityFeePct}th percentile`})`);
+      logger.info(`Base priority fee: ${basePriorityFee.toFixed(4)} lamports/CU (${basePriorityFee === minimumFeeLamports ? 'minimum' : `${this.config.basePriorityFeePct}th percentile`})`);
 
       // Cache the result
       Solana.lastPriorityFeeEstimate = {
@@ -498,57 +528,29 @@ export class Solana {
   ): Promise<{ confirmed: boolean; txData?: any }> {
     try {
       const confirmationPromise = new Promise<{ confirmed: boolean; txData?: any }>(async (resolve, reject) => {
-        const payload = {
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'getSignatureStatuses',
-          params: [
-            [signature],
-            {
-              searchTransactionHistory: true,
-            },
-          ],
-        };
-
-        const response = await fetch(this.connection.rpcEndpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload),
+        // Use getTransaction instead of getSignatureStatuses for more reliability
+        const txData = await this.connection.getTransaction(signature, {
+          commitment: 'confirmed',
+          maxSupportedTransactionVersion: 0,
         });
 
-        if (!response.ok) {
-          reject(new Error(`HTTP error! status: ${response.status}`));
-          return;
+        if (!txData) {
+          return resolve({ confirmed: false });
         }
 
-        const data = await response.json();
-
-        if (data.result && data.result.value && data.result.value[0]) {
-          const status: SignatureStatus = data.result.value[0];
-          
-          if (status.err !== null) {
-            reject(new Error(`Transaction failed with error: ${JSON.stringify(status.err)}`));
-            return;
-          }
-          
-          const isConfirmed =
-            status.confirmationStatus === 'confirmed' || 
-            status.confirmationStatus === 'finalized';
-
-          if (isConfirmed) {
-            // Fetch transaction data if confirmed
-            const txData = await this.connection.getParsedTransaction(signature, {
-              maxSupportedTransactionVersion: 0,
-            });
-            resolve({ confirmed: true, txData });
-          } else {
-            resolve({ confirmed: false });
-          }
-        } else {
-          resolve({ confirmed: false });
+        // Check if transaction is already confirmed but had an error
+        if (txData.meta?.err) {
+          return reject(new Error(
+            `Transaction failed with error: ${JSON.stringify(txData.meta.err)}`
+          ));
         }
+
+        // More definitive check using slot confirmation
+        const status = await this.connection.getSignatureStatus(signature);
+        const isConfirmed = status.value?.confirmationStatus === 'confirmed' || 
+                          status.value?.confirmationStatus === 'finalized';
+
+        resolve({ confirmed: !!isConfirmed, txData });
       });
 
       const timeoutPromise = new Promise<{ confirmed: boolean }>((_, reject) =>
@@ -557,7 +559,7 @@ export class Solana {
 
       return await Promise.race([confirmationPromise, timeoutPromise]);
     } catch (error: any) {
-      throw new Error(`[SOLANA] Failed to confirm transaction: ${error.message}`);
+      throw new Error(`Failed to confirm transaction: ${error.message}`);
     }
   }
 
@@ -573,23 +575,18 @@ export class Solana {
     tx: Transaction, 
     signers: Signer[] = [],
     computeUnits?: number
-  ): Promise<string> {
+  ): Promise<{ signature: string; fee: number }> {
     let currentPriorityFee = await this.estimatePriorityFees();
     const computeUnitsToUse = computeUnits || this.config.defaultComputeUnits;
     
-    // Keep trying with increasing priority fees until we hit the max
     while (true) {
       const basePriorityFeeLamports = currentPriorityFee * computeUnitsToUse;
       
-      logger.info(`[SOLANA] Sending transaction with max priority fee of ${(basePriorityFeeLamports * LAMPORT_TO_SOL).toFixed(6)} SOL`);
+      logger.info(`Sending transaction with max priority fee of ${(basePriorityFeeLamports * LAMPORT_TO_SOL).toFixed(6)} SOL`);
       
       // Check if we've exceeded max fee (convert maxPriorityFee from SOL to lamports)
       if (basePriorityFeeLamports > this.config.maxPriorityFee * 1e9) {
-        throw new Error(
-          `[SOLANA] Transaction failed after reaching maximum priority fee of ${
-            this.config.maxPriorityFee
-          } SOL`
-        );
+        throw new Error(`Exceeded maximum priority fee of ${this.config.maxPriorityFee} SOL`);
       }
 
       // convert currentPriorityFee to microLamports for ComputeBudgetProgram
@@ -627,18 +624,29 @@ export class Solana {
             lastValidBlockHeight,
           );
 
-          // Wait for confirmation
-          const confirmed = await this.confirmTransaction(signature);
-          if (confirmed.confirmed) {
-            const actualFee = this.getFee(confirmed.txData);
-            logger.info(`[SOLANA] Transaction ${signature} confirmed with actual fee: ${actualFee.toFixed(6)} SOL`);
-            logger.debug(`[SOLANA] Transaction data: ${JSON.stringify(confirmed.txData, null, 2)}`);
-            return signature;
+          // Modified confirmation handling
+          try {
+            const confirmed = await this.confirmTransaction(signature);
+            if (confirmed.confirmed) {
+              const actualFee = this.getFee(confirmed.txData);
+              logger.info(`Transaction ${signature} confirmed with total fee: ${actualFee.toFixed(6)} SOL`);
+              return { signature, fee: actualFee };
+            }
+          } catch (error) {
+            // If transaction failed, break out of retry loop immediately
+            if (error.message.includes('Transaction failed')) {
+              throw error;
+            }
+            // Otherwise continue to retry
           }
 
           retryCount++;
           await new Promise(resolve => setTimeout(resolve, this.config.retryIntervalMs));
         } catch (error) {
+          // Only retry if error is not a definitive failure
+          if (error.message.includes('Transaction failed')) {
+            throw error;
+          }
           retryCount++;
           await new Promise(resolve => setTimeout(resolve, this.config.retryIntervalMs));
         }
@@ -647,7 +655,7 @@ export class Solana {
       // If we get here, transaction wasn't confirmed after RETRY_COUNT attempts
       // Increase the priority fee and try again
       currentPriorityFee = currentPriorityFee * this.config.priorityFeeMultiplier;
-      logger.info(`[SOLANA] Increasing max priority fee to ${(currentPriorityFee * computeUnitsToUse * LAMPORT_TO_SOL).toFixed(6)} SOL`);
+      logger.info(`Increasing max priority fee to ${(currentPriorityFee * computeUnitsToUse * LAMPORT_TO_SOL).toFixed(6)} SOL`);
     }
   }
 
@@ -795,7 +803,7 @@ export class Solana {
   }
 
   // Add new method to get first wallet address
-  public async getFirstWalletAddress(): Promise<string> {
+  public async getFirstWalletAddress(): Promise<string | null> {
     const path = `${walletPath}/solana`;
     try {
       // Create directory if it doesn't exist
@@ -806,15 +814,68 @@ export class Solana {
       const walletFiles = files.filter(f => f.endsWith('.json'));
       
       if (walletFiles.length === 0) {
-        throw new Error('No Solana wallets found');
+        return null;
       }
       
       // Return first wallet address (without .json extension)
       return walletFiles[0].slice(0, -5);
     } catch (error) {
-      logger.error(`Failed to get first wallet address: ${error.message}`);
-      throw error;
+      return null;
     }
+  }
+
+  // Update getTokenBySymbol to use new getToken method
+  public async getTokenBySymbol(tokenSymbol: string): Promise<TokenInfo | undefined> {
+    return (await this.getToken(tokenSymbol)) || undefined;
+  }
+
+  /**
+   * Helper function to get balance changes for both tokens in a pair
+   * @param signature Transaction signature
+   * @param tokenX First token (can be SOL)
+   * @param tokenY Second token (can be SOL)
+   * @param walletAddress Wallet address to check balances for
+   * @returns Balance changes and transaction fee
+   */
+  async extractPairBalanceChangesAndFee(
+    signature: string,
+    tokenX: TokenInfo,
+    tokenY: TokenInfo,
+    walletAddress: string,
+  ): Promise<{ 
+    baseTokenBalanceChange: number; 
+    quoteTokenBalanceChange: number;
+    fee: number;
+  }> {
+    let baseTokenBalanceChange: number, quoteTokenBalanceChange: number;
+
+    if (tokenX.symbol === 'SOL') {
+      ({ balanceChange: baseTokenBalanceChange } = await this.extractAccountBalanceChangeAndFee(signature, 0));
+    } else {
+      ({ balanceChange: baseTokenBalanceChange } = await this.extractTokenBalanceChangeAndFee(
+        signature,
+        tokenX.address,
+        walletAddress
+      ));
+    }
+
+    if (tokenY.symbol === 'SOL') {
+      ({ balanceChange: quoteTokenBalanceChange } = await this.extractAccountBalanceChangeAndFee(signature, 0));
+    } else {
+      ({ balanceChange: quoteTokenBalanceChange } = await this.extractTokenBalanceChangeAndFee(
+        signature,
+        tokenY.address,
+        walletAddress
+      ));
+    }
+
+    const { fee } = await this.extractAccountBalanceChangeAndFee(signature, 0);
+
+    return {
+      baseTokenBalanceChange: Math.abs(baseTokenBalanceChange),
+      quoteTokenBalanceChange: Math.abs(quoteTokenBalanceChange),
+      fee,
+    };
   }
 
 }

@@ -79,7 +79,7 @@ export class SolanaController {
           : [];
           
       for (const symbol of symbolsArray) {
-        const token = solana.getTokenBySymbol(symbol.trim());
+        const token = await solana.getToken(symbol.trim());
         if (token) tokens.push(token);
       }
     }
