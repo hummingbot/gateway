@@ -11,13 +11,14 @@ import {
   PublicKey,
   ComputeBudgetProgram,
   MessageV0,
-  MessageCompiledInstruction,
+  // MessageCompiledInstruction,
   Signer,
   Transaction,
   TokenAmount,
   TransactionResponse,
   VersionedTransaction,
   VersionedTransactionResponse,
+  SystemProgram,
 } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID, unpackAccount, getMint } from "@solana/spl-token";
 
@@ -27,6 +28,7 @@ import { logger } from '../../services/logger';
 import { TokenListResolutionStrategy } from '../../services/token-list-resolution';
 import { Config, getSolanaConfig } from './solana.config';
 import { SolanaController } from './solana.controllers';
+import { Jupiter } from '../../connectors/jupiter/jupiter';
 
 // Constants used for fee calculations
 export const BASE_FEE = 5000;
@@ -671,22 +673,16 @@ export class Solana {
     const computeUnitsToUse = computeUnits || this.config.defaultComputeUnits;
     
     while (true) {
-      const priorityFeeLamports = currentPriorityFee * computeUnitsToUse;
-      const totalFeeLamports = BASE_FEE + priorityFeeLamports;
-      const totalFeeSOL = totalFeeLamports * LAMPORT_TO_SOL;
-
-      logger.info(`Sending versioned transaction with:
-        - Priority fee per CU: ${currentPriorityFee} lamports
-        - Compute units: ${computeUnitsToUse}
-        - Total priority fee: ${priorityFeeLamports} lamports
-        - Total fee: ${totalFeeSOL.toFixed(6)} SOL`
-      );
-
-      if (priorityFeeLamports > this.config.maxPriorityFee * 1e9) {
+      const basePriorityFeeLamports = Math.floor(currentPriorityFee * computeUnitsToUse);
+      
+      logger.info(`Sending transaction with max priority fee of ${(basePriorityFeeLamports * LAMPORT_TO_SOL).toFixed(6)} SOL`);
+      
+      // Check if we've exceeded max fee (convert maxPriorityFee from SOL to lamports)
+      if (basePriorityFeeLamports > this.config.maxPriorityFee * 1e9) {
         throw new Error(`Exceeded maximum priority fee of ${this.config.maxPriorityFee} SOL`);
       }
 
-      // Clone and modify transaction
+      // Prepare transaction with compute budget instructions
       const modifiedTx = await this.prepareVersionedTx(
         tx,
         currentPriorityFee,
@@ -694,47 +690,49 @@ export class Solana {
         signers
       );
 
-      logger.info('Modified transaction details:', {
-        instructions: modifiedTx.message.compiledInstructions.map(ix => ({
-          programId: ix.programIdIndex,
-          data: Buffer.from(ix.data).toString('hex')
-        })),
-        signers: signers.map(s => s.publicKey.toBase58())
-      });
+      // Simulate transaction using Jupiter's simulation
+      const jupiter = await Jupiter.getInstance(this.network);
+      await jupiter.simulateTransaction(modifiedTx);
 
       let retryCount = 0;
       while (retryCount < this.config.retryCount) {
         try {
           const signature = await this.connection.sendRawTransaction(
-            modifiedTx.serialize(),
+            Buffer.from(modifiedTx.serialize()),
             { skipPreflight: true }
           );
 
-          logger.info(`Transaction sent with signature: ${signature}`);
-          
-          const confirmed = await this.confirmTransaction(signature);
-          if (confirmed.confirmed && confirmed.txData) {
-            const actualFee = this.getFee(confirmed.txData);
-            logger.info(`Versioned transaction ${signature} confirmed with fee: ${actualFee.toFixed(6)} SOL`);
-            return { signature, fee: actualFee };
+          try {
+            const confirmed = await this.confirmTransaction(signature);
+            if (confirmed.confirmed && confirmed.txData) {
+              const actualFee = this.getFee(confirmed.txData);
+              logger.info(`Transaction ${signature} confirmed with total fee: ${actualFee.toFixed(6)} SOL`);
+              return { signature, fee: actualFee };
+            }
+          } catch (error) {
+            // If transaction failed, break out of retry loop immediately
+            if (error.message.includes('Transaction failed')) {
+              throw error;
+            }
+            // Otherwise continue to retry
           }
+
+          retryCount++;
+          await new Promise(resolve => setTimeout(resolve, this.config.retryIntervalMs));
         } catch (error) {
-          logger.error(`Transaction failed: ${error.message}`);
-          logger.error('Error details:', {
-            error,
-            currentPriorityFee,
-            computeUnitsToUse,
-            microLamports: currentPriorityFee * 1_000_000
-          });
-          if (error.message.includes('Transaction failed')) throw error;
+          // Only retry if error is not a definitive failure
+          if (error.message.includes('Transaction failed')) {
+            throw error;
+          }
+          retryCount++;
+          await new Promise(resolve => setTimeout(resolve, this.config.retryIntervalMs));
         }
-        
-        retryCount++;
-        await new Promise(resolve => setTimeout(resolve, this.config.retryIntervalMs));
       }
 
+      // If we get here, transaction wasn't confirmed after RETRY_COUNT attempts
+      // Increase the priority fee and try again
       currentPriorityFee = currentPriorityFee * this.config.priorityFeeMultiplier;
-      logger.info(`Increasing priority fee to ${(currentPriorityFee * computeUnitsToUse * LAMPORT_TO_SOL).toFixed(6)} SOL`);
+      logger.info(`Increasing max priority fee to ${(currentPriorityFee * computeUnitsToUse * LAMPORT_TO_SOL).toFixed(6)} SOL`);
     }
   }
 
@@ -744,42 +742,63 @@ export class Solana {
     computeUnits: number,
     signers: Signer[]
   ): Promise<VersionedTransaction> {
-    // Add compute budget instructions
-    const microLamports = Math.max(0, Math.round(priorityFeePerCU * 1_000_000));
-
-    const instructions = [
-      ComputeBudgetProgram.setComputeUnitPrice({ microLamports }),
-      ComputeBudgetProgram.setComputeUnitLimit({ units: computeUnits })
+    const computeBudgetInstructions = [
+      ComputeBudgetProgram.setComputeUnitLimit({ units: computeUnits }),
+      ComputeBudgetProgram.setComputeUnitPrice({ microLamports: priorityFeePerCU * 1_000_000 })
     ];
 
-    // Implementation from previous steps to modify versioned transaction
-    const message = tx.message;
+    // Improved deduplication with proper key comparison
+    const staticKeys = [
+      ...signers.map(s => s.publicKey.toBase58()),
+      ...tx.message.staticAccountKeys.map(k => k.toBase58()),
+      ComputeBudgetProgram.programId.toBase58(),
+      SystemProgram.programId.toBase58()
+    ]
+    // Deduplicate using string comparison
+    .filter((value, index, self) => self.indexOf(value) === index)
+    // Convert back to PublicKey
+    .map(k => new PublicKey(k));
+
+    const compiledInstructions = [
+      ...computeBudgetInstructions.map(ix => ({
+        programIdIndex: 5,
+        accountKeyIndexes: [],
+        data: new Uint8Array(ix.data)
+      })),
+    ];
+
     const newMessage = new MessageV0({
-      header: message.header,
-      staticAccountKeys: [
-        ...message.staticAccountKeys,
-        ...instructions.map(ix => ix.programId).filter(pid => 
-          !message.staticAccountKeys.some(k => k.equals(pid))
-        )
-      ],
-      recentBlockhash: message.recentBlockhash,
-      compiledInstructions: [
-        ...message.compiledInstructions,
-        ...instructions.map(ix => ({
-          programIdIndex: message.staticAccountKeys.findIndex(k => 
-            k.equals(ix.programId)
-          ),
-          accountKeyIndexes: ix.keys.map(key => 
-            message.staticAccountKeys.findIndex(k => k.equals(key.pubkey))
-          ),
-          data: new Uint8Array(ix.data)
-        } as unknown as MessageCompiledInstruction))
-      ],
-      addressTableLookups: message.addressTableLookups || []
+      header: {
+        numRequiredSignatures: signers.length,
+        numReadonlySignedAccounts: 0,
+        numReadonlyUnsignedAccounts: staticKeys.length - signers.length
+      },
+      staticAccountKeys: staticKeys,
+      recentBlockhash: tx.message.recentBlockhash,
+      compiledInstructions,
+      addressTableLookups: [],
     });
 
     const modifiedTx = new VersionedTransaction(newMessage);
     modifiedTx.sign(signers);
+    console.log('Modified transaction:', JSON.stringify({
+      signatures: modifiedTx.signatures.map(sig => bs58.encode(sig)),
+      message: {
+        header: modifiedTx.message.header,
+        staticAccountKeys: modifiedTx.message.staticAccountKeys.map(k => k.toBase58()),
+        recentBlockhash: modifiedTx.message.recentBlockhash,
+        compiledInstructions: modifiedTx.message.compiledInstructions.map(ix => ({
+          programIdIndex: ix.programIdIndex,
+          accountKeyIndexes: ix.accountKeyIndexes,
+          data: bs58.encode(ix.data)
+        })),
+        addressTableLookups: modifiedTx.message.addressTableLookups.map(lookup => ({
+          accountKey: lookup.accountKey.toBase58(),
+          writableIndexes: lookup.writableIndexes,
+          readonlyIndexes: lookup.readonlyIndexes
+        }))
+      }
+    }, null, 2));
     return modifiedTx;
   }
 

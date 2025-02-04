@@ -152,7 +152,7 @@ export class Jupiter {
     );
   }
 
-  async simulateTransaction(transaction: VersionedTransaction) {
+  public async simulateTransaction(transaction: VersionedTransaction) {
     const { value: simulatedTransactionResponse } = await this.solana.connection.simulateTransaction(
       transaction,
       {
@@ -163,9 +163,15 @@ export class Jupiter {
       },
     );
     
+    console.log('[JUPITER] Simulation Result:', {
+      logs: simulatedTransactionResponse.logs,
+      unitsConsumed: simulatedTransactionResponse.unitsConsumed,
+      status: simulatedTransactionResponse.err ? 'FAILED' : 'SUCCESS'
+    });
+
     if (simulatedTransactionResponse.err) {
       const logs = simulatedTransactionResponse.logs || [];
-      logger.error('[JUPITER] Simulation Error Details:', {
+      console.log('Simulation Error Details:', {
         error: simulatedTransactionResponse.err,
         programLogs: logs,
         accounts: simulatedTransactionResponse.accounts,
