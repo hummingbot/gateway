@@ -10,10 +10,13 @@ import {
   Keypair,
   PublicKey,
   ComputeBudgetProgram,
+  MessageV0,
+  MessageCompiledInstruction,
   Signer,
   Transaction,
   TokenAmount,
   TransactionResponse,
+  VersionedTransaction,
   VersionedTransactionResponse,
 } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID, unpackAccount, getMint } from "@solana/spl-token";
@@ -657,6 +660,127 @@ export class Solana {
       currentPriorityFee = currentPriorityFee * this.config.priorityFeeMultiplier;
       logger.info(`Increasing max priority fee to ${(currentPriorityFee * computeUnitsToUse * LAMPORT_TO_SOL).toFixed(6)} SOL`);
     }
+  }
+
+  public async sendAndConfirmVersionedTransaction(
+    tx: VersionedTransaction, 
+    signers: Signer[] = [],
+    computeUnits?: number
+  ): Promise<{ signature: string; fee: number }> {
+    let currentPriorityFee = await this.estimatePriorityFees();
+    const computeUnitsToUse = computeUnits || this.config.defaultComputeUnits;
+    
+    while (true) {
+      const priorityFeeLamports = currentPriorityFee * computeUnitsToUse;
+      const totalFeeLamports = BASE_FEE + priorityFeeLamports;
+      const totalFeeSOL = totalFeeLamports * LAMPORT_TO_SOL;
+
+      logger.info(`Sending versioned transaction with:
+        - Priority fee per CU: ${currentPriorityFee} lamports
+        - Compute units: ${computeUnitsToUse}
+        - Total priority fee: ${priorityFeeLamports} lamports
+        - Total fee: ${totalFeeSOL.toFixed(6)} SOL`
+      );
+
+      if (priorityFeeLamports > this.config.maxPriorityFee * 1e9) {
+        throw new Error(`Exceeded maximum priority fee of ${this.config.maxPriorityFee} SOL`);
+      }
+
+      // Clone and modify transaction
+      const modifiedTx = await this.prepareVersionedTx(
+        tx,
+        currentPriorityFee,
+        computeUnitsToUse,
+        signers
+      );
+
+      logger.info('Modified transaction details:', {
+        instructions: modifiedTx.message.compiledInstructions.map(ix => ({
+          programId: ix.programIdIndex,
+          data: Buffer.from(ix.data).toString('hex')
+        })),
+        signers: signers.map(s => s.publicKey.toBase58())
+      });
+
+      let retryCount = 0;
+      while (retryCount < this.config.retryCount) {
+        try {
+          const signature = await this.connection.sendRawTransaction(
+            modifiedTx.serialize(),
+            { skipPreflight: true }
+          );
+
+          logger.info(`Transaction sent with signature: ${signature}`);
+          
+          const confirmed = await this.confirmTransaction(signature);
+          if (confirmed.confirmed && confirmed.txData) {
+            const actualFee = this.getFee(confirmed.txData);
+            logger.info(`Versioned transaction ${signature} confirmed with fee: ${actualFee.toFixed(6)} SOL`);
+            return { signature, fee: actualFee };
+          }
+        } catch (error) {
+          logger.error(`Transaction failed: ${error.message}`);
+          logger.error('Error details:', {
+            error,
+            currentPriorityFee,
+            computeUnitsToUse,
+            microLamports: currentPriorityFee * 1_000_000
+          });
+          if (error.message.includes('Transaction failed')) throw error;
+        }
+        
+        retryCount++;
+        await new Promise(resolve => setTimeout(resolve, this.config.retryIntervalMs));
+      }
+
+      currentPriorityFee = currentPriorityFee * this.config.priorityFeeMultiplier;
+      logger.info(`Increasing priority fee to ${(currentPriorityFee * computeUnitsToUse * LAMPORT_TO_SOL).toFixed(6)} SOL`);
+    }
+  }
+
+  private async prepareVersionedTx(
+    tx: VersionedTransaction,
+    priorityFeePerCU: number,
+    computeUnits: number,
+    signers: Signer[]
+  ): Promise<VersionedTransaction> {
+    // Add compute budget instructions
+    const microLamports = Math.max(0, Math.round(priorityFeePerCU * 1_000_000));
+
+    const instructions = [
+      ComputeBudgetProgram.setComputeUnitPrice({ microLamports }),
+      ComputeBudgetProgram.setComputeUnitLimit({ units: computeUnits })
+    ];
+
+    // Implementation from previous steps to modify versioned transaction
+    const message = tx.message;
+    const newMessage = new MessageV0({
+      header: message.header,
+      staticAccountKeys: [
+        ...message.staticAccountKeys,
+        ...instructions.map(ix => ix.programId).filter(pid => 
+          !message.staticAccountKeys.some(k => k.equals(pid))
+        )
+      ],
+      recentBlockhash: message.recentBlockhash,
+      compiledInstructions: [
+        ...message.compiledInstructions,
+        ...instructions.map(ix => ({
+          programIdIndex: message.staticAccountKeys.findIndex(k => 
+            k.equals(ix.programId)
+          ),
+          accountKeyIndexes: ix.keys.map(key => 
+            message.staticAccountKeys.findIndex(k => k.equals(key.pubkey))
+          ),
+          data: new Uint8Array(ix.data)
+        } as unknown as MessageCompiledInstruction))
+      ],
+      addressTableLookups: message.addressTableLookups || []
+    });
+
+    const modifiedTx = new VersionedTransaction(newMessage);
+    modifiedTx.sign(signers);
+    return modifiedTx;
   }
 
   async sendRawTransaction(

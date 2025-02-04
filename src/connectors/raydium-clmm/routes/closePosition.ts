@@ -9,7 +9,7 @@ import {
   ClosePositionRequestType, 
   ClosePositionResponseType,
 } from '../../../services/clmm-interfaces';
-import { ComputeBudgetProgram, VersionedTransaction, MessageV0, MessageCompiledInstruction } from '@solana/web3.js';
+import { VersionedTransaction } from '@solana/web3.js';
 
 async function closePosition(
   _fastify: FastifyInstance,
@@ -21,7 +21,6 @@ async function closePosition(
     const solana = await Solana.getInstance(network);
     const raydium = await RaydiumCLMM.getInstance(network);
     const wallet = await solana.getWallet(_address);
-    const txVersion = TxVersion.V0;
 
     const position = await raydium.getClmmPosition(positionAddress);
     if (!position) throw new Error(`Position ${positionAddress} not found`);
@@ -30,96 +29,36 @@ async function closePosition(
     const [poolInfo, poolKeys] = await raydium.getClmmPoolfromAPI(poolId);
     if (!poolInfo) throw new Error(`Pool ${poolId} not found`);
 
-    const { execute } = await raydium.raydium.clmm.closePosition({
+    const result = await raydium.raydium.clmm.closePosition({
       poolInfo,
       poolKeys,
       ownerPosition: position,
-      txVersion,
+      txVersion: TxVersion.V0,
     });
 
-    let { signedTx: transaction } = await execute();
-    // console.log("signedTx", signedTx)
-    // let transaction = VersionedTransaction.deserialize(signedTx.serialize());
-    console.log("transaction", transaction)
-    
-    let currentPriorityFee = solana.config.minPriorityFee * 1e9;
-    const maxPriorityFee = solana.config.maxPriorityFee * 1e9;
-    const priorityFeeMultiplier = solana.config.priorityFeeMultiplier;
-    const retryCount = solana.config.retryCount;
+    // Type-safe check for V0 transaction structure
+    const transactions = 'tx' in result ? [result.tx] : [result.transaction];
+    console.log(transactions[0]);
 
-    while (currentPriorityFee <= maxPriorityFee) {
-      const modifyComputeBudget = ComputeBudgetProgram.setComputeUnitPrice({
-        microLamports: currentPriorityFee,
-      });
+    // const { signedTx } = await execute({ sendAndConfirm: false });
+    const { signature, fee } = await solana.sendAndConfirmVersionedTransaction(
+      transactions[0] as VersionedTransaction,
+      [wallet],
+      200_000
+    );
 
-      // Create new message with proper instruction handling
-      const newMessage = new MessageV0({
-        header: transaction.message.header,
-        staticAccountKeys: [
-          ...transaction.message.staticAccountKeys,
-          modifyComputeBudget.programId
-        ],
-        recentBlockhash: transaction.message.recentBlockhash,
-        compiledInstructions: [
-          ...transaction.message.compiledInstructions,
-          {
-            programIdIndex: transaction.message.staticAccountKeys.length, // Index of the newly added program ID
-            accountKeyIndexes: modifyComputeBudget.keys.map(key => 
-              transaction.message.staticAccountKeys.indexOf(key.pubkey)
-            ),
-            data: modifyComputeBudget.data as Buffer
-          } as unknown as MessageCompiledInstruction
-        ],
-        addressTableLookups: transaction.message.addressTableLookups || [],
-      });
+    const { balanceChange } = await solana.extractAccountBalanceChangeAndFee(signature, 0);
+    const rentRefunded = Math.abs(balanceChange);
 
-      transaction = new VersionedTransaction(newMessage);
-      transaction.sign([wallet]);
-
-      let attempt = 0;
-      while (attempt < retryCount) {
-        console.log("sending transaction")
-        try {
-          const signature = await solana.connection.sendRawTransaction(
-            Buffer.from(transaction.serialize()),
-            { skipPreflight: true }
-          );
-
-          try {
-            const { confirmed, txData } = await solana.confirmTransaction(signature);
-            console.log('confirmed', confirmed);
-            console.log('txData', txData);
-            if (confirmed && txData) {
-              const { balanceChange } = await solana.extractAccountBalanceChangeAndFee(signature, 0);
-              const rentRefunded = Math.abs(balanceChange);
-
-              return {
-                signature,
-                fee: txData.meta.fee,
-                positionRentRefunded: rentRefunded,
-                baseTokenAmountRemoved: 0,
-                quoteTokenAmountRemoved: 0,
-                baseFeeAmountCollected: 0,
-                quoteFeeAmountCollected: 0,
-              };
-            }
-          } catch (error) {
-            logger.info(`Close position confirmation attempt ${attempt + 1}/10 failed with priority fee ${currentPriorityFee/1e9} SOL: ${error.message}`);
-          }
-
-          attempt++;
-          await new Promise(resolve => setTimeout(resolve, solana.config.retryIntervalMs));
-        } catch (error) {
-          attempt++;
-          await new Promise(resolve => setTimeout(resolve, solana.config.retryIntervalMs));
-        }
-      }
-
-      currentPriorityFee = Math.ceil(currentPriorityFee * priorityFeeMultiplier);
-      logger.info(`Increasing priority fee to ${currentPriorityFee/1e9} SOL`);
-    }
-
-    throw new Error(`Failed to confirm transaction after reaching max priority fee of ${maxPriorityFee/1e9} SOL`);
+    return {
+      signature,
+      fee,
+      positionRentRefunded: rentRefunded,
+      baseTokenAmountRemoved: 0,
+      quoteTokenAmountRemoved: 0,
+      baseFeeAmountCollected: 0,
+      quoteFeeAmountCollected: 0,
+    };
   } catch (error) {
     logger.error(error);
     throw error;
