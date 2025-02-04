@@ -25,7 +25,7 @@ import { meteoraRoutes } from './connectors/meteora/meteora.routes';
 import { uniswapRoutes } from './connectors/uniswap/uniswap.routes';
 
 // Change version for each release
-const GATEWAY_VERSION = '2.3.0';
+const GATEWAY_VERSION = 'dev-2.4.0';
 
 // At the top level, define devMode once
 // When true, runs server in HTTP mode (less secure but useful for development)
