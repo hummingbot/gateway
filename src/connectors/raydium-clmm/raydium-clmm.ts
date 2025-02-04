@@ -18,7 +18,7 @@ import { PublicKey } from '@solana/web3.js'
 
 export class RaydiumCLMM {
   private static _instances: { [name: string]: RaydiumCLMM }
-  private raydium: Raydium
+  public raydium: Raydium
   public config: RaydiumClmmConfig.NetworkConfig
   private solana: Solana
   private clmmPools: Map<string, any> = new Map()
@@ -219,7 +219,7 @@ export class RaydiumCLMM {
       return null
     }
   }
-  
+
 
   // Helper function to convert tick index to price
   // private tickIndexToPrice(tickIndex: number, decimalsA: number, decimalsB: number): number {

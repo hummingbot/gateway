@@ -19,46 +19,68 @@ async function closePosition(
   address: string,
   positionAddress: string
 ): Promise<ClosePositionResponseType> {
-  const solana = await Solana.getInstance(network);
-  const meteora = await Meteora.getInstance(network);
-  const wallet = await solana.getWallet(address);
+  try {
+    const solana = await Solana.getInstance(network);
+    const meteora = await Meteora.getInstance(network);
+    const wallet = await solana.getWallet(address);
 
-  const positionInfo = await meteora.getPositionInfo(positionAddress, wallet.publicKey);
-  const dlmmPool = await meteora.getDlmmPool(positionInfo.poolAddress);
+    const positionInfo = await meteora.getPositionInfo(positionAddress, wallet.publicKey);
+    logger.debug('Position Info:', positionInfo);
 
-  // Remove liquidity if baseTokenAmount or quoteTokenAmount is greater than 0
-  const removeLiquidityResult = (positionInfo.baseTokenAmount > 0 || positionInfo.quoteTokenAmount > 0)
-    ? await removeLiquidity(fastify, network, address, positionAddress, 100) as RemoveLiquidityResponseType
-    : { baseTokenAmountRemoved: 0, quoteTokenAmountRemoved: 0, fee: 0 };
+    const dlmmPool = await meteora.getDlmmPool(positionInfo.poolAddress);
+    logger.debug('DLMM Pool:', dlmmPool);
 
-  // Remove liquidity if baseTokenFees or quoteTokenFees is greater than 0
-  const collectFeesResult = (positionInfo.baseFeeAmount > 0 || positionInfo.quoteFeeAmount > 0)
-    ? await collectFees(fastify, network, address, positionAddress) as CollectFeesResponseType
-    : { baseFeeAmountCollected: 0, quoteFeeAmountCollected: 0, fee: 0 };
+    // Remove liquidity if baseTokenAmount or quoteTokenAmount is greater than 0
+    const removeLiquidityResult = (positionInfo.baseTokenAmount > 0 || positionInfo.quoteTokenAmount > 0)
+      ? await removeLiquidity(fastify, network, address, positionAddress, 100) as RemoveLiquidityResponseType
+      : { baseTokenAmountRemoved: 0, quoteTokenAmountRemoved: 0, fee: 0 };
 
-  // Now close the position
-  logger.info(`Closing position ${positionAddress}`);
-  const { position } = await meteora.getRawPosition(positionAddress, wallet.publicKey);
-  const closePositionTx = await dlmmPool.closePosition({
-    owner: wallet.publicKey,
-    position: position,
-  });
+    // Remove liquidity if baseTokenFees or quoteTokenFees is greater than 0
+    const collectFeesResult = (positionInfo.baseFeeAmount > 0 || positionInfo.quoteFeeAmount > 0)
+      ? await collectFees(fastify, network, address, positionAddress) as CollectFeesResponseType
+      : { baseFeeAmountCollected: 0, quoteFeeAmountCollected: 0, fee: 0 };
 
-  const { signature, fee } = await solana.sendAndConfirmTransaction(closePositionTx, [wallet], 200_000);
-  logger.info(`Position ${positionAddress} closed successfully.`);
+    // Now close the position
+    logger.info(`Closing position ${positionAddress}`);
+    const { position } = await meteora.getRawPosition(positionAddress, wallet.publicKey);
+    logger.debug('Raw position data:', position);
+    logger.debug('Creating close position transaction with params:', {
+      owner: wallet.publicKey.toString(),
+      position: position
+    });
 
-  const { balanceChange } = await solana.extractAccountBalanceChangeAndFee(signature, 0);
-  const returnedSOL = Math.abs(balanceChange);
+    const closePositionTx = await dlmmPool.closePosition({
+      owner: wallet.publicKey,
+      position: position,
+    });
 
-  return {
-    signature,
-    fee: fee + removeLiquidityResult.fee + collectFeesResult.fee,
-    positionRentRefunded: returnedSOL,
-    baseTokenAmountRemoved: removeLiquidityResult.baseTokenAmountRemoved,
-    quoteTokenAmountRemoved: removeLiquidityResult.quoteTokenAmountRemoved,
-    baseFeeAmountCollected: collectFeesResult.baseFeeAmountCollected,
-    quoteFeeAmountCollected: collectFeesResult.quoteFeeAmountCollected,
-  };
+    logger.debug('Close position transaction created:', closePositionTx);
+
+    const { signature, fee } = await solana.sendAndConfirmTransaction(closePositionTx, [wallet], 200_000);
+    logger.info(`Position ${positionAddress} closed successfully.`);
+
+    const { balanceChange } = await solana.extractAccountBalanceChangeAndFee(signature, 0);
+    const returnedSOL = Math.abs(balanceChange);
+
+    return {
+      signature,
+      fee: fee + removeLiquidityResult.fee + collectFeesResult.fee,
+      positionRentRefunded: returnedSOL,
+      baseTokenAmountRemoved: removeLiquidityResult.baseTokenAmountRemoved,
+      quoteTokenAmountRemoved: removeLiquidityResult.quoteTokenAmountRemoved,
+      baseFeeAmountCollected: collectFeesResult.baseFeeAmountCollected,
+      quoteFeeAmountCollected: collectFeesResult.quoteFeeAmountCollected,
+    };
+  } catch (error) {
+    logger.error('Close position error:', {
+      error,
+      stack: error.stack,
+      positionAddress,
+      network,
+      address
+    });
+    throw error;
+  }
 }
 
 export const closePositionRoute: FastifyPluginAsync = async (fastify) => {

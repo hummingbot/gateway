@@ -193,7 +193,7 @@ export class Jupiter {
   }> {
     let currentPriorityFee = (await this.solana.getGasPrice() * 1e9) - BASE_FEE;
 
-    logger.info(`[JUPITER] Sending swap with max priority fee of ${(currentPriorityFee / 1e9).toFixed(6)} SOL`);
+    logger.info(`Sending swap with max priority fee of ${(currentPriorityFee / 1e9).toFixed(6)} SOL`);
 
     // Convert maxPriorityFee from SOL to lamports for comparison
     while (currentPriorityFee <= this.solana.config.maxPriorityFee * 1e9) {
