@@ -12,6 +12,9 @@ import {
 import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
 import { TickUtils, PoolUtils } from '@raydium-io/raydium-sdk-v2';
+import { Jupiter } from '../../../connectors/jupiter/jupiter';
+import { BASE_FEE } from '../../../chains/solana/solana';
+
 
 async function openPosition(
   _fastify: FastifyInstance,
@@ -23,31 +26,21 @@ async function openPosition(
   baseTokenAmount?: number,
   _quoteTokenAmount?: number,
   slippagePct?: number
-): Promise<OpenPositionResponseType> {
+): Promise<any> {
   try {
     const solana = await Solana.getInstance(network);
     const raydium = await RaydiumCLMM.getInstance(network);
-    const wallet = await solana.getWallet(walletAddress);
+    const jupiter = await Jupiter.getInstance(network);
 
     const [poolInfo, poolKeys] = await raydium.getClmmPoolfromAPI(poolAddress);
-    console.log('poolInfo:', poolInfo);
-
     const baseToken = await solana.getToken(poolInfo.mintA.address);
-    if (!baseToken) {
-      throw new Error('Could not find token info');
-    }
-
     const quoteToken = await solana.getToken(poolInfo.mintB.address);
-    if (!quoteToken) {
-      throw new Error('Could not find quote token info');
-    }
 
     const { tick: lowerTick } = TickUtils.getPriceAndTick({
       poolInfo,
       price: new Decimal(lowerPrice),
       baseIn: true,
-    })
-    
+    })    
     const { tick: upperTick } = TickUtils.getPriceAndTick({
       poolInfo,
       price: new Decimal(upperPrice),
@@ -59,9 +52,7 @@ async function openPosition(
     }
     const amount = new Decimal(baseTokenAmount).mul(10 ** baseToken.decimals).toFixed(0);
     const amountBN = new BN(amount);
-
     const epochInfo = await solana.connection.getEpochInfo()
-
     const res = await PoolUtils.getLiquidityAmountOutFromAmountIn({
       poolInfo,
       slippage: (slippagePct / 100) || raydium.getSlippagePct(),
@@ -74,7 +65,6 @@ async function openPosition(
       epochInfo: epochInfo,
     })
 
-    console.log('getLiquidityAmountOutFromAmountIn:', res);
     const { 
       liquidity,
       amountA,
@@ -92,44 +82,69 @@ async function openPosition(
       expirationTime
     });
   
-    const { execute: _execute, transaction: _transaction, extInfo } = await raydium.raydium.clmm.openPositionFromBase({
-      poolInfo,
-      poolKeys,
-      tickUpper: Math.max(lowerTick, upperTick),
-      tickLower: Math.min(lowerTick, upperTick),
-      base: 'MintA',
-      ownerInfo: {
-        useSOLBalance: true,
-      },
-      baseAmount: res.amountA.amount,
-      otherAmountMax: res.amountSlippageB.amount,
-      txVersion: TxVersion.V0,
-      computeBudgetConfig: {
-        units: 300000,
-        microLamports: 1000000,
-      },
-    });
-    console.log('original tx:', _transaction);
+    logger.info('Opening Raydium CLMM position...');    
+    const COMPUTE_UNITS = 300000;
+    let currentPriorityFee = (await solana.getGasPrice() * 1e9) - BASE_FEE;
+    while (currentPriorityFee <= solana.config.maxPriorityFee * 1e9) {
+      const priorityFeePerCU = Math.floor(currentPriorityFee * 1e6 / COMPUTE_UNITS);
+      const { transaction, extInfo } = await raydium.raydium.clmm.openPositionFromBase({
+        poolInfo,
+        poolKeys,
+        tickUpper: Math.max(lowerTick, upperTick),
+        tickLower: Math.min(lowerTick, upperTick),
+        base: 'MintA',
+        ownerInfo: {
+          useSOLBalance: true,
+        },
+        baseAmount: res.amountA.amount,
+        otherAmountMax: res.amountSlippageB.amount,
+        txVersion: TxVersion.V0,
+        computeBudgetConfig: {
+          units: COMPUTE_UNITS,
+          microLamports: priorityFeePerCU,
+        },
+      });
+      // console.log('original tx:', _transaction);
+      await jupiter.simulateTransaction(transaction);
+      const wallet = await solana.getWallet(walletAddress);
+      transaction.sign([wallet]);
 
-    logger.info('Opening Raydium CLMM position...');
-    // const { txId: signature } = await _execute({ sendAndConfirm: true })
-    const { signature, fee: _fee } = await solana.sendAndConfirmVersionedTransaction(
-      _transaction,
-      [wallet],
-      300_000
-    );
+      let retryCount = 0;
+      while (retryCount < solana.config.retryCount) {
+        const signature = await solana.connection.sendRawTransaction(
+          Buffer.from(transaction.serialize()),
+          { skipPreflight: true }
+        );
+        console.log('signature', signature);
+        const { confirmed, txData } = await solana.confirmTransaction(signature);
+        console.log('confirmed', confirmed);
 
-    const { balanceChange } = await solana.extractAccountBalanceChangeAndFee(signature, 0);
-    const positionRent = Math.abs(balanceChange);
+        if (confirmed && txData) {
+          const totalFee = txData.meta.fee;
+          const { balanceChange } = await solana.extractAccountBalanceChangeAndFee(signature, 0);
+          const positionRent = Math.abs(balanceChange);
+      
+          return {
+            signature,
+            fee: totalFee / 1e9,
+            positionAddress: extInfo.nftMint.toBase58(),
+            positionRent,
+            baseTokenAmountAdded: Number(amountA.amount.toString()) / (10 ** baseToken.decimals),
+            quoteTokenAmountAdded: Number(amountB.amount.toString()) / (10 ** quoteToken.decimals),
+          };
+        }
 
-    return {
-      signature: signature,
-      fee: 0,
-      positionAddress: extInfo.nftMint.toBase58(),
-      positionRent,
-      baseTokenAmountAdded: 0,
-      quoteTokenAmountAdded: 0,
-    };
+        logger.info(`Open position attempt ${retryCount + 1}/${solana.config.retryCount} failed with priority fee ${(currentPriorityFee / 1e9).toFixed(6)} SOL`);
+        retryCount++;
+        await new Promise(resolve => setTimeout(resolve, solana.config.retryIntervalMs));
+      }
+
+      // If we get here, swap wasn't confirmed after retryCount attempts
+      // Increase the priority fee and try again
+      currentPriorityFee = currentPriorityFee * solana.config.priorityFeeMultiplier;
+      logger.info(`Increasing max priority fee to ${(currentPriorityFee / 1e9).toFixed(6)} SOL`);
+    }
+    throw new Error(`Open position failed after reaching max priority fee of ${(solana.config.maxPriorityFee / 1e9).toFixed(6)} SOL`);
   } catch (error) {
     logger.error(error);
     throw error;

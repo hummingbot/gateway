@@ -163,11 +163,11 @@ export class Jupiter {
       },
     );
     
-    console.log('Simulation Result:', {
-      logs: simulatedTransactionResponse.logs,
-      unitsConsumed: simulatedTransactionResponse.unitsConsumed,
-      status: simulatedTransactionResponse.err ? 'FAILED' : 'SUCCESS'
-    });
+    // console.log('Simulation Result:', {
+    //   logs: simulatedTransactionResponse.logs,
+    //   unitsConsumed: simulatedTransactionResponse.unitsConsumed,
+    //   status: simulatedTransactionResponse.err ? 'FAILED' : 'SUCCESS'
+    // });
 
     if (simulatedTransactionResponse.err) {
       const logs = simulatedTransactionResponse.logs || [];

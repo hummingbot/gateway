@@ -1,6 +1,6 @@
 import { Request, RequestHandler, Response, NextFunction } from 'express';
 import { FastifyError, FastifyReply, FastifyRequest } from 'fastify';
-import { logger } from './logger';
+// import { logger } from './logger';
 
 // error origination from ethers library when interracting with node
 export interface NodeError extends Error {
@@ -281,7 +281,7 @@ export const errorHandler = (
   }
 
   // Log and handle unexpected errors
-  logger.error('Unhandled error:', {
+  console.log('Unhandled error:', {
     error: error.message,
     stack: error.stack,
     url: request.url,
