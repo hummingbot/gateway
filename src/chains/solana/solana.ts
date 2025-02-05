@@ -1,6 +1,5 @@
 import crypto from 'crypto';
 import bs58 from 'bs58';
-import { BigNumber } from 'ethers';
 import fse from 'fs-extra';
 import { TokenListType } from '../../services/base';
 
@@ -13,14 +12,13 @@ import {
   MessageV0,
   Signer,
   Transaction,
-  TokenAmount,
   TransactionResponse,
   VersionedTransaction,
   VersionedTransactionResponse,
 } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID, unpackAccount, getMint } from "@solana/spl-token";
 
-import { TokenValue, walletPath } from '../../services/base';
+import { walletPath } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { logger } from '../../services/logger';
 import { TokenListResolutionStrategy } from '../../services/token-list-resolution';
@@ -30,7 +28,6 @@ import { Jupiter } from '../../connectors/jupiter/jupiter';
 
 // Constants used for fee calculations
 export const BASE_FEE = 5000;
-const TOKEN_PROGRAM_ADDRESS = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
 const LAMPORT_TO_SOL = 1 / Math.pow(10, 9);
 
 enum TransactionResponseStatusCode {
@@ -298,98 +295,6 @@ export class Solana {
     }
 
     return balances;
-  }
-
-  async getBalances(wallet: Keypair): Promise<Record<string, TokenValue>> {
-    let balances: Record<string, TokenValue> = {};
-
-    balances['UNWRAPPED_SOL'] = await this.getSolBalance(wallet);
-
-    const allSplTokens = await this.connection.getParsedTokenAccountsByOwner(
-      wallet.publicKey, 
-      { programId: TOKEN_PROGRAM_ADDRESS }
-    );
-
-    for (const tokenAccount of allSplTokens.value) {
-      const tokenInfo = tokenAccount.account.data.parsed['info'];
-      const mintAddress = tokenInfo['mint'];
-      const token = await this.getToken(mintAddress);
-      
-      if (token?.symbol) {
-        balances[token.symbol] = this.tokenResponseToTokenValue(
-          tokenInfo['tokenAmount']
-        );
-      }
-    }
-
-    let allSolBalance = BigNumber.from(0);
-    let allSolDecimals = 9; // Solana's default decimals
-
-    if (balances['UNWRAPPED_SOL'] && balances['UNWRAPPED_SOL'].value) {
-      allSolBalance = allSolBalance.add(balances['UNWRAPPED_SOL'].value);
-      allSolDecimals = balances['UNWRAPPED_SOL'].decimals;
-    }
-
-    if (balances['SOL'] && balances['SOL'].value) {
-      allSolBalance = allSolBalance.add(balances['SOL'].value);
-      allSolDecimals = balances['SOL'].decimals;
-    } else {
-      balances['SOL'] = {
-        value: allSolBalance,
-        decimals: allSolDecimals,
-      };
-    }
-
-    balances['ALL_SOL'] = {
-      value: allSolBalance,
-      decimals: allSolDecimals,
-    };
-
-    balances = Object.keys(balances)
-      .sort((key1: string, key2: string) =>
-        key1.toUpperCase().localeCompare(key2.toUpperCase())
-      )
-      .reduce((target: Record<string, TokenValue>, key) => {
-        target[key] = balances[key];
-        return target;
-      }, {});
-
-    return balances;
-  }
-
-  // returns the SOL balance, convert BigNumber to string
-  async getSolBalance(wallet: Keypair): Promise<TokenValue> {
-    const lamports = await this.connection.getBalance(wallet.publicKey);
-    return { value: BigNumber.from(lamports), decimals: 9 };
-  }
-
-  tokenResponseToTokenValue(account: TokenAmount): TokenValue {
-    return {
-      value: BigNumber.from(account.amount),
-      decimals: account.decimals,
-    };
-  }
-
-  // returns the balance for an SPL token
-  public async getSplBalance(
-    walletAddress: PublicKey,
-    mintAddress: PublicKey
-  ): Promise<TokenValue> {
-    const token = await this.getToken(mintAddress.toBase58());
-    if (!token) {
-      throw new Error('Token not found');
-    }
-    
-    const response = await this.connection.getParsedTokenAccountsByOwner(
-      walletAddress,
-      { mint: mintAddress }
-    );
-    if (response['value'].length == 0) {
-      throw new Error(`Token account not initialized`);
-    }
-    return this.tokenResponseToTokenValue(
-      response.value[0].account.data.parsed['info']['tokenAmount']
-    );
   }
 
   // returns a Solana TransactionResponse for a txHash.
