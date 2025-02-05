@@ -7,6 +7,7 @@ import {
   PositionUtils,
   TickUtils,
   ClmmKeys,
+  ClmmRpcData
 } from '@raydium-io/raydium-sdk-v2'
 import { logger } from '../../services/logger'
 import { RaydiumClmmConfig } from './raydium-clmm.config'
@@ -14,7 +15,7 @@ import { Solana } from '../../chains/solana/solana'
 import { Keypair } from '@solana/web3.js'
 import { PoolInfo, PositionInfo } from '../../services/clmm-interfaces'
 import { PublicKey } from '@solana/web3.js'
-// import BN from 'bn.js'
+import { percentRegexp } from '../../services/config-manager-v2';
 
 export class RaydiumCLMM {
   private static _instances: { [name: string]: RaydiumCLMM }
@@ -51,31 +52,32 @@ export class RaydiumCLMM {
     try {
       this.solana = await Solana.getInstance(network);
       
-      // Load first wallet from Solana instance
+      // Load first wallet if available
       const walletAddress = await this.solana.getFirstWalletAddress();
-      if (!walletAddress) throw new Error('No Solana wallet configured');
-      this.owner = await this.solana.getWallet(walletAddress);
+      if (walletAddress) {
+        this.owner = await this.solana.getWallet(walletAddress);
+      }
       const raydiumCluster = this.solana.network == `mainnet-beta` ? 'mainnet' : 'devnet';
 
-      // Initialize Raydium SDK with proper types
+      // Initialize Raydium SDK with optional owner
       this.raydium = await Raydium.load({
         connection: this.solana.connection,
         cluster: raydiumCluster,
-        owner: this.owner,
+        owner: this.owner,  // undefined if no wallet present
         disableFeatureCheck: true,
-        blockhashCommitment: 'finalized'
+        blockhashCommitment: 'confirmed'
       });
 
       this.clmmPools = new Map();
       this.clmmPoolPromises = new Map();
-      logger.info("Raydium CLMM initialized with wallet: " + walletAddress);
+      logger.info("Raydium initialized" + (walletAddress ? ` with wallet: ${walletAddress}` : "with no wallet"));
     } catch (error) {
-      logger.error("Raydium CLMM initialization failed:", error);
+      logger.error("Raydium initialization failed:", error);
       throw error;
     }
   }
 
-  async getClmmPoolfromRPC(poolAddress: string): Promise<any> {
+  async getClmmPoolfromRPC(poolAddress: string): Promise<ClmmRpcData | null> {
     if (this.clmmPools.has(poolAddress)) return this.clmmPools.get(poolAddress)
     if (this.clmmPoolPromises.has(poolAddress)) return this.clmmPoolPromises.get(poolAddress)
 
@@ -90,7 +92,7 @@ export class RaydiumCLMM {
     return poolPromise
   }
 
-  async getClmmPoolfromAPI(poolAddress: string): Promise<any> {
+  async getClmmPoolfromAPI(poolAddress: string): Promise<[ApiV3PoolInfoConcentratedItem, ClmmKeys] | null> {
     const poolInfoResponse = await this.raydium.api.fetchPoolById({ ids: poolAddress })
     let poolInfo: ApiV3PoolInfoConcentratedItem
     let poolKeys: ClmmKeys | undefined
@@ -220,6 +222,18 @@ export class RaydiumCLMM {
     }
   }
 
+  /** Gets slippage percentage from config */
+  getSlippagePct(): number {
+    const allowedSlippage = this.config.allowedSlippage;
+    const nd = allowedSlippage.match(percentRegexp);
+    let slippage = 0.0;
+    if (nd) {
+      slippage = Number(nd[1]) / Number(nd[2]);
+    } else {
+      logger.error('Failed to parse slippage value:', allowedSlippage);
+    }
+    return slippage * 100;
+  }
 
   // Helper function to convert tick index to price
   // private tickIndexToPrice(tickIndex: number, decimalsA: number, decimalsB: number): number {

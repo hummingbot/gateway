@@ -16,13 +16,13 @@ import {
 async function closePosition(
   fastify: FastifyInstance,
   network: string,
-  address: string,
+  walletAddress: string,
   positionAddress: string
 ): Promise<ClosePositionResponseType> {
   try {
     const solana = await Solana.getInstance(network);
     const meteora = await Meteora.getInstance(network);
-    const wallet = await solana.getWallet(address);
+    const wallet = await solana.getWallet(walletAddress);
 
     const positionInfo = await meteora.getPositionInfo(positionAddress, wallet.publicKey);
     logger.debug('Position Info:', positionInfo);
@@ -32,12 +32,12 @@ async function closePosition(
 
     // Remove liquidity if baseTokenAmount or quoteTokenAmount is greater than 0
     const removeLiquidityResult = (positionInfo.baseTokenAmount > 0 || positionInfo.quoteTokenAmount > 0)
-      ? await removeLiquidity(fastify, network, address, positionAddress, 100) as RemoveLiquidityResponseType
+      ? await removeLiquidity(fastify, network, walletAddress, positionAddress, 100) as RemoveLiquidityResponseType
       : { baseTokenAmountRemoved: 0, quoteTokenAmountRemoved: 0, fee: 0 };
 
     // Remove liquidity if baseTokenFees or quoteTokenFees is greater than 0
     const collectFeesResult = (positionInfo.baseFeeAmount > 0 || positionInfo.quoteFeeAmount > 0)
-      ? await collectFees(fastify, network, address, positionAddress) as CollectFeesResponseType
+      ? await collectFees(fastify, network, walletAddress, positionAddress) as CollectFeesResponseType
       : { baseFeeAmountCollected: 0, quoteFeeAmountCollected: 0, fee: 0 };
 
     // Now close the position
@@ -77,7 +77,7 @@ async function closePosition(
       stack: error.stack,
       positionAddress,
       network,
-      address
+      walletAddress
     });
     throw error;
   }

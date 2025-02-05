@@ -668,43 +668,56 @@ export class Solana {
     tx: VersionedTransaction,
     currentPriorityFee: number,
     computeUnits: number,
-    signers: Signer[]
+    _signers: Signer[]
   ): Promise<VersionedTransaction> {
     const originalMessage = tx.message;
     const originalStaticCount = originalMessage.staticAccountKeys.length;
+    const originalSignatures = tx.signatures; // Clone original signatures array
 
-    // Create compute budget instructions
+    let modifiedTx: VersionedTransaction;
+
+    // Create new compute budget instructions
     const computeBudgetInstructions = [
       ComputeBudgetProgram.setComputeUnitLimit({ units: computeUnits }),
       ComputeBudgetProgram.setComputeUnitPrice({ microLamports: currentPriorityFee * 1_000_000 })
     ];
 
-    // Add ComputeBudget program to static keys
-    const newStaticKeys = [
-      ...originalMessage.staticAccountKeys,
-      ComputeBudgetProgram.programId,
-    ];
+    console.log('priority fee in lamports:', currentPriorityFee);
 
-    // Process original instructions with index adjustment
-    const originalInstructions = originalMessage.compiledInstructions.map(ix => ({
-      ...ix,
-      accountKeyIndexes: ix.accountKeyIndexes.map(index => 
-        index >= originalStaticCount ? index + 1 : index
-      )
-    }));
+    // Check if ComputeBudgetProgram is in static keys
+    const computeBudgetProgramIndex = originalMessage.staticAccountKeys.findIndex(
+      key => key.equals(ComputeBudgetProgram.programId)
+    );
 
-    // Create modified instructions
-    const modifiedInstructions = [
-      ...computeBudgetInstructions.map(ix => ({
-        programIdIndex: newStaticKeys.indexOf(ComputeBudgetProgram.programId),
-        accountKeyIndexes: [],
-        data: ix.data instanceof Buffer ? new Uint8Array(ix.data) : ix.data
-      })),
-      ...originalInstructions
-    ];
+    // Add ComputeBudget program to static keys, adjust indexes, and create modified instructions
+    if (computeBudgetProgramIndex === -1) {
 
-    // Build new transaction
-    const modifiedTx = new VersionedTransaction(
+      // Add ComputeBudget program to static keys
+      const newStaticKeys = [
+        ...originalMessage.staticAccountKeys,
+        ComputeBudgetProgram.programId,
+      ];
+
+      // Process original instructions with index adjustment
+      const originalInstructions = originalMessage.compiledInstructions.map(ix => ({
+        ...ix,
+        accountKeyIndexes: ix.accountKeyIndexes.map(index => 
+          index >= originalStaticCount ? index + 1 : index
+        )
+      }));
+
+      // Create modified instructions
+      const modifiedInstructions = [
+        ...computeBudgetInstructions.map(ix => ({
+          programIdIndex: newStaticKeys.indexOf(ComputeBudgetProgram.programId), // Use new index
+          accountKeyIndexes: [],
+          data: ix.data instanceof Buffer ? new Uint8Array(ix.data) : ix.data
+        })),
+        ...originalInstructions
+      ];
+
+      // Build new transaction
+      modifiedTx = new VersionedTransaction(
       new MessageV0({
         header: originalMessage.header,
         staticAccountKeys: newStaticKeys,
@@ -718,35 +731,68 @@ export class Solana {
       })
     );
 
-    console.log('Original message:', JSON.stringify({
-      message: {
-        header: originalMessage.header,
-        staticAccountKeys: originalMessage.staticAccountKeys.map(k => k.toBase58()),
-        recentBlockhash: originalMessage.recentBlockhash,
-        compiledInstructions: originalMessage.compiledInstructions.map(ix => ({
-          programIdIndex: ix.programIdIndex,
-          accountKeyIndexes: ix.accountKeyIndexes,
-          data: bs58.encode(ix.data)
-        })),
-        addressTableLookups: originalMessage.addressTableLookups
-      }
-    }, null, 2));
-    
-    console.log('Modified transaction:', JSON.stringify({
-      message: {
-        header: modifiedTx.message.header,
-        staticAccountKeys: modifiedTx.message.staticAccountKeys.map(k => k.toBase58()),
-        recentBlockhash: modifiedTx.message.recentBlockhash,
-        compiledInstructions: modifiedTx.message.compiledInstructions.map(ix => ({
-          programIdIndex: ix.programIdIndex,
-          accountKeyIndexes: ix.accountKeyIndexes,
-          data: bs58.encode(ix.data)
-        })),
-        addressTableLookups: modifiedTx.message.addressTableLookups
-      }
-    }, null, 2));
+    } else {
+      // Remove compute budget instructions from original instructions
+      const nonComputeBudgetInstructions = originalMessage.compiledInstructions.filter(ix => 
+        !originalMessage.staticAccountKeys[ix.programIdIndex].equals(ComputeBudgetProgram.programId)
+      );
 
-    modifiedTx.sign([...signers]);
+      // Create modified instructions
+      const modifiedInstructions = [
+        ...computeBudgetInstructions.map(ix => ({
+          programIdIndex: computeBudgetProgramIndex, // Use existing index if already present
+          accountKeyIndexes: [],
+          data: ix.data instanceof Buffer ? new Uint8Array(ix.data) : ix.data
+        })),
+        ...nonComputeBudgetInstructions
+      ];
+      // Build new transaction with same keys but modified instructions
+      modifiedTx = new VersionedTransaction(
+        new MessageV0({
+          header: originalMessage.header,
+          staticAccountKeys: originalMessage.staticAccountKeys,
+          recentBlockhash: originalMessage.recentBlockhash,
+          compiledInstructions: modifiedInstructions.map(ix => ({
+            programIdIndex: ix.programIdIndex,
+            accountKeyIndexes: ix.accountKeyIndexes,
+            data: ix.data instanceof Buffer ? new Uint8Array(ix.data) : ix.data
+          })),
+          addressTableLookups: originalMessage.addressTableLookups
+        })
+      );
+    }
+    // DON'T DELETE COMMENTS BELOW
+    // console.log('Original message:', JSON.stringify({
+    //   message: {
+    //     header: originalMessage.header,
+    //     staticAccountKeys: originalMessage.staticAccountKeys.map(k => k.toBase58()),
+    //     recentBlockhash: originalMessage.recentBlockhash,
+    //     compiledInstructions: originalMessage.compiledInstructions.map(ix => ({
+    //       programIdIndex: ix.programIdIndex,
+    //       accountKeyIndexes: ix.accountKeyIndexes,
+    //       data: bs58.encode(ix.data)
+    //     })),
+    //     addressTableLookups: originalMessage.addressTableLookups
+    //   }
+    // }, null, 2));    
+    // console.log('Modified transaction:', JSON.stringify({
+    //   message: {
+    //     header: modifiedTx.message.header,
+    //     staticAccountKeys: modifiedTx.message.staticAccountKeys.map(k => k.toBase58()),
+    //     recentBlockhash: modifiedTx.message.recentBlockhash,
+    //     compiledInstructions: modifiedTx.message.compiledInstructions.map(ix => ({
+    //       programIdIndex: ix.programIdIndex,
+    //       accountKeyIndexes: ix.accountKeyIndexes,
+    //       data: bs58.encode(ix.data)
+    //     })),
+    //     addressTableLookups: modifiedTx.message.addressTableLookups
+    //   }
+    // }, null, 2));
+
+    modifiedTx.signatures = originalSignatures;
+    modifiedTx.sign([..._signers]);
+    console.log('modifiedTx:', modifiedTx);
+    
     return modifiedTx;
   }
 

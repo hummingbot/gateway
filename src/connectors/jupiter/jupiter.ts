@@ -163,7 +163,7 @@ export class Jupiter {
       },
     );
     
-    console.log('[JUPITER] Simulation Result:', {
+    console.log('Simulation Result:', {
       logs: simulatedTransactionResponse.logs,
       unitsConsumed: simulatedTransactionResponse.unitsConsumed,
       status: simulatedTransactionResponse.err ? 'FAILED' : 'SUCCESS'
@@ -171,12 +171,12 @@ export class Jupiter {
 
     if (simulatedTransactionResponse.err) {
       const logs = simulatedTransactionResponse.logs || [];
-      console.log('Simulation Error Details:', {
-        error: simulatedTransactionResponse.err,
-        programLogs: logs,
-        accounts: simulatedTransactionResponse.accounts,
-        unitsConsumed: simulatedTransactionResponse.unitsConsumed,
-      });
+      // console.log('Simulation Error Details:', {
+      //   error: simulatedTransactionResponse.err,
+      //   programLogs: logs,
+      //   accounts: simulatedTransactionResponse.accounts,
+      //   unitsConsumed: simulatedTransactionResponse.unitsConsumed,
+      // });
 
       const errorMessage = `${SIMULATION_ERROR_MESSAGE}\nError: ${JSON.stringify(simulatedTransactionResponse.err)}\nProgram Logs: ${logs.join('\n')}`;
       
