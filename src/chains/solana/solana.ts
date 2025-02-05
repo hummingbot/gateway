@@ -761,35 +761,44 @@ export class Solana {
 
   private async prepareVersionedTx(
     tx: VersionedTransaction,
-    _currentPriorityFee: number,
-    _computeUnits: number,
+    currentPriorityFee: number,
+    computeUnits: number,
     signers: Signer[]
   ): Promise<VersionedTransaction> {
     const originalMessage = tx.message;
-    
-    // Create compute budget instructions
-    // const computeBudgetInstructions = [
-    //   ComputeBudgetProgram.setComputeUnitLimit({ units: computeUnits }),
-    //   ComputeBudgetProgram.setComputeUnitPrice({ microLamports: currentPriorityFee * 1_000_000 })
-    // ];
+    const originalStaticCount = originalMessage.staticAccountKeys.length;
 
-    // Create new static keys array
+    // Create compute budget instructions
+    const computeBudgetInstructions = [
+      ComputeBudgetProgram.setComputeUnitLimit({ units: computeUnits }),
+      ComputeBudgetProgram.setComputeUnitPrice({ microLamports: currentPriorityFee * 1_000_000 })
+    ];
+
+    // Add ComputeBudget program to static keys
     const newStaticKeys = [
       ...originalMessage.staticAccountKeys,
-      // ComputeBudgetProgram.programId,
+      ComputeBudgetProgram.programId,
     ];
 
-    // Create modified instructions array
+    // Process original instructions with index adjustment
+    const originalInstructions = originalMessage.compiledInstructions.map(ix => ({
+      ...ix,
+      accountKeyIndexes: ix.accountKeyIndexes.map(index => 
+        index >= originalStaticCount ? index + 1 : index
+      )
+    }));
+
+    // Create modified instructions
     const modifiedInstructions = [
-      ...originalMessage.compiledInstructions,
-      // ...computeBudgetInstructions.map(ix => ({
-      //   programIdIndex: 5, // TO-DO increment from originalMessage.compiledInstructions.length
-      //   accountKeyIndexes: [],
-      //   data: ix.data
-      // }))
+      ...computeBudgetInstructions.map(ix => ({
+        programIdIndex: newStaticKeys.indexOf(ComputeBudgetProgram.programId),
+        accountKeyIndexes: [],
+        data: ix.data instanceof Buffer ? new Uint8Array(ix.data) : ix.data
+      })),
+      ...originalInstructions
     ];
 
-    // Build the new transaction
+    // Build new transaction
     const modifiedTx = new VersionedTransaction(
       new MessageV0({
         header: originalMessage.header,
