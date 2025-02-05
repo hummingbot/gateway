@@ -12,7 +12,6 @@ import {
 import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
 import { TickUtils, PoolUtils } from '@raydium-io/raydium-sdk-v2';
-import { Jupiter } from '../../../connectors/jupiter/jupiter';
 import { BASE_FEE } from '../../../chains/solana/solana';
 
 
@@ -30,7 +29,6 @@ async function openPosition(
   try {
     const solana = await Solana.getInstance(network);
     const raydium = await RaydiumCLMM.getInstance(network);
-    const jupiter = await Jupiter.getInstance(network);
 
     const [poolInfo, poolKeys] = await raydium.getClmmPoolfromAPI(poolAddress);
     const baseToken = await solana.getToken(poolInfo.mintA.address);
@@ -82,7 +80,7 @@ async function openPosition(
       expirationTime
     });
   
-    logger.info('Opening Raydium CLMM position...');    
+    logger.info('Opening Raydium CLMM position...');
     const COMPUTE_UNITS = 300000;
     let currentPriorityFee = (await solana.getGasPrice() * 1e9) - BASE_FEE;
     while (currentPriorityFee <= solana.config.maxPriorityFee * 1e9) {
@@ -105,41 +103,26 @@ async function openPosition(
         },
       });
       // console.log('original tx:', _transaction);
-      await jupiter.simulateTransaction(transaction);
+      await solana.simulateTransaction(transaction);
       const wallet = await solana.getWallet(walletAddress);
       transaction.sign([wallet]);
 
-      let retryCount = 0;
-      while (retryCount < solana.config.retryCount) {
-        const signature = await solana.connection.sendRawTransaction(
-          Buffer.from(transaction.serialize()),
-          { skipPreflight: true }
-        );
-        console.log('signature', signature);
-        const { confirmed, txData } = await solana.confirmTransaction(signature);
-        console.log('confirmed', confirmed);
-
-        if (confirmed && txData) {
-          const totalFee = txData.meta.fee;
-          const { balanceChange } = await solana.extractAccountBalanceChangeAndFee(signature, 0);
-          const positionRent = Math.abs(balanceChange);
-      
-          return {
-            signature,
-            fee: totalFee / 1e9,
-            positionAddress: extInfo.nftMint.toBase58(),
-            positionRent,
-            baseTokenAmountAdded: Number(amountA.amount.toString()) / (10 ** baseToken.decimals),
-            quoteTokenAmountAdded: Number(amountB.amount.toString()) / (10 ** quoteToken.decimals),
-          };
-        }
-
-        logger.info(`Open position attempt ${retryCount + 1}/${solana.config.retryCount} failed with priority fee ${(currentPriorityFee / 1e9).toFixed(6)} SOL`);
-        retryCount++;
-        await new Promise(resolve => setTimeout(resolve, solana.config.retryIntervalMs));
+      const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
+      if (confirmed && txData) {
+        const totalFee = txData.meta.fee;
+        const { balanceChange } = await solana.extractAccountBalanceChangeAndFee(signature, 0);
+        const positionRent = Math.abs(balanceChange);
+    
+        return {
+          signature,
+          fee: totalFee / 1e9,
+          positionAddress: extInfo.nftMint.toBase58(),
+          positionRent,
+          baseTokenAmountAdded: Number(amountA.amount.toString()) / (10 ** baseToken.decimals),
+          quoteTokenAmountAdded: Number(amountB.amount.toString()) / (10 ** quoteToken.decimals),
+        };
       }
-
-      // If we get here, swap wasn't confirmed after retryCount attempts
+      // If we get here, t wasn't confirmed after retryCount attempts
       // Increase the priority fee and try again
       currentPriorityFee = currentPriorityFee * solana.config.priorityFeeMultiplier;
       logger.info(`Increasing max priority fee to ${(currentPriorityFee / 1e9).toFixed(6)} SOL`);

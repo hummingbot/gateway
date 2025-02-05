@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import bs58 from 'bs58';
 import fse from 'fs-extra';
 import { TokenListType } from '../../services/base';
-
+import { HttpException, SIMULATION_ERROR_MESSAGE, SIMULATION_ERROR_CODE } from '../../services/error-handler';
 import { TokenInfo } from '@solana/spl-token-registry';
 import {
   Connection,
@@ -24,7 +24,6 @@ import { logger } from '../../services/logger';
 import { TokenListResolutionStrategy } from '../../services/token-list-resolution';
 import { Config, getSolanaConfig } from './solana.config';
 import { SolanaController } from './solana.controllers';
-import { Jupiter } from '../../connectors/jupiter/jupiter';
 
 // Constants used for fee calculations
 export const BASE_FEE = 5000;
@@ -524,6 +523,7 @@ export class Solana {
           // Modified confirmation handling
           try {
             const confirmed = await this.confirmTransaction(signature);
+            logger.info(`[${retryCount + 1}/${this.config.retryCount}] Transaction ${signature} confirmation status: `, confirmed);
             if (confirmed.confirmed) {
               const actualFee = this.getFee(confirmed.txData);
               logger.info(`Transaction ${signature} confirmed with total fee: ${actualFee.toFixed(6)} SOL`);
@@ -583,8 +583,7 @@ export class Solana {
       );
 
       // Simulate transaction
-      const jupiter = await Jupiter.getInstance(this.network);
-      await jupiter.simulateTransaction(modifiedTx);
+      await this.simulateTransaction(modifiedTx);
 
       let retryCount = 0;
       while (retryCount < this.config.retryCount) {
@@ -596,8 +595,8 @@ export class Solana {
 
           try {
             const confirmed = await this.confirmTransaction(signature);
-            console.log(confirmed);
-            if (confirmed.confirmed && confirmed.txData) {
+            logger.info(`[${retryCount + 1}/${this.config.retryCount}] Transaction ${signature} status: ${confirmed ? 'confirmed' : 'unconfirmed'}`);
+            if (confirmed && confirmed.txData) {
               const actualFee = this.getFee(confirmed.txData);
               logger.info(`Transaction ${signature} confirmed with total fee: ${actualFee.toFixed(6)} SOL`);
               return { signature, fee: actualFee };
@@ -796,6 +795,26 @@ export class Solana {
     return modifiedTx;
   }
 
+  async sendAndConfirmRawTransaction(
+    transaction: VersionedTransaction
+  ): Promise<{ confirmed: boolean, signature?: string, txData?: any }> {
+    let retryCount = 0;
+    while (retryCount < this.config.retryCount) {
+      const signature = await this.connection.sendRawTransaction(
+        Buffer.from(transaction.serialize()),
+        { skipPreflight: true }
+      );
+      const { confirmed, txData } = await this.confirmTransaction(signature);
+      logger.info(`[${retryCount + 1}/${this.config.retryCount}] Transaction ${signature} status: ${confirmed ? 'confirmed' : 'unconfirmed'}`);
+      if (confirmed && txData) {
+        return { confirmed, signature, txData };  
+      }
+      retryCount++;
+      await new Promise((resolve) => setTimeout(resolve, this.config.retryIntervalMs));
+    }
+    return { confirmed: false };
+  }
+  
   async sendRawTransaction(
     rawTx: Buffer | Uint8Array | Array<number>,
     lastValidBlockHeight: number,
@@ -1015,4 +1034,39 @@ export class Solana {
     };
   }
 
+  public async simulateTransaction(transaction: VersionedTransaction) {
+    const { value: simulatedTransactionResponse } = await this.connection.simulateTransaction(
+      transaction,
+      {
+        replaceRecentBlockhash: true,
+        commitment: 'confirmed',
+        accounts: { encoding: 'base64', addresses: [] },
+        sigVerify: false,
+      },
+    );
+    
+    // console.log('Simulation Result:', {
+    //   logs: simulatedTransactionResponse.logs,
+    //   unitsConsumed: simulatedTransactionResponse.unitsConsumed,
+    //   status: simulatedTransactionResponse.err ? 'FAILED' : 'SUCCESS'
+    // });
+
+    if (simulatedTransactionResponse.err) {
+      const logs = simulatedTransactionResponse.logs || [];
+      // console.log('Simulation Error Details:', {
+      //   error: simulatedTransactionResponse.err,
+      //   programLogs: logs,
+      //   accounts: simulatedTransactionResponse.accounts,
+      //   unitsConsumed: simulatedTransactionResponse.unitsConsumed,
+      // });
+
+      const errorMessage = `${SIMULATION_ERROR_MESSAGE}\nError: ${JSON.stringify(simulatedTransactionResponse.err)}\nProgram Logs: ${logs.join('\n')}`;
+      
+      throw new HttpException(
+        503,
+        errorMessage,
+        SIMULATION_ERROR_CODE
+      );
+    }
+  }
 }
