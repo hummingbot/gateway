@@ -1,7 +1,7 @@
 {
   "name": "gateway",
   "version": "2.4.0",
-  "description": "Gateway is a CLI/API client that helps you interact with DEXs on various blockchains.",
+  "description": "Hummingbot Gateway is a CLI/API client that helps you interact with DEXs on various blockchains.",
   "main": "index.js",
   "license": "Apache-2.0",
   "repository": "https://github.com/hummingbot/gateway",
@@ -175,7 +175,7 @@
         "description": "Start the Gateway API server"
       },
       "build": {
-        "description": "Build Gateway by compiling Typescript into JS in /dist"
+        "description": "Build Gateway by compiling Typescript into Javascript"
       }
     }
   },

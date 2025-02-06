@@ -4,11 +4,11 @@
 
 ## Introduction
 
-Hummingbot Gateway is an API server that exposes standardized REST endponts to perform actions and fetch data from **blockchain networks** (wallet, node & chain interaction) and their **decentralized exchanges** (pricing, trading & liquidity provision). 
+Hummingbot Gateway is an API/CLI client that exposes standardized REST endponts to perform actions and fetch data from **blockchain networks** (wallet, node & chain interaction) and their **decentralized exchanges (DEX)** (pricing, trading & liquidity provision).
 
-Gateway is written in Typescript and uses of existing blockchain and DEX SDKs. The advantage of using Gateway is it provides a standardizedm, language-agnostic approach to interacting with blockchains and DEXs.
+Gateway is written in Typescript in order to use Javascript-based SDKs provided by blockchains and DEX protocols. The advantage of using Gateway is it provides a standardizedm, language-agnostic approach to interacting with these protocols.
 
-Gateway may be used alongside the main [Hummingbot client](https://github.com/hummingbot/hummingbot) to enable trading and market making on DEXs, or as a standalone module by external developers.
+Gateway may be used alongside the main [Hummingbot client](https://github.com/hummingbot/hummingbot) to enable trading and market making on DEXs, or as a standalone command line interface (CLI).
 
 Gateway uses [Swagger](https://swagger.io/) for API documentation. When Gateway is started in HTTP mode, it automatically generates interactive Swagger API docs at: <http://localhost:15888/docs>
 
@@ -18,13 +18,14 @@ For an overview of Gateway setup and how to use it with Hummingbot, see the [Gat
 
 ### Installation from Source
 
-Install Dependencies:
+First, install these dependencies:
 
-* Node (20.11.0 or higher): Install from [NodeJS official site](https://nodejs.org/en/download/)
+* NodeJS (20.11.0 or higher): Install from the [NodeJS official site](https://nodejs.org/en/download/)
 * PNPM: Run `npm install -g pnpm` after installing NodeJS
 
+Then, follow these steps to install Gateway:
 ```bash
-# Install dependencies
+# Install JS libraries
 pnpm install
 
 # Complile Typescript into JS
@@ -67,9 +68,9 @@ Start a container in HTTPS mode using this `development` Docker image. Make sure
 ```bash
 docker run --name gateway \
   -p 15888:15888 \
-  -v "$(pwd)/gateway_files/conf:/home/gateway/conf" \
-  -v "$(pwd)/gateway_files/logs:/home/gateway/logs" \
-  -v "$(pwd)/gateway_files/db:/home/gateway/db" \
+  -v "$(pwd)/conf:/home/gateway/conf" \
+  -v "$(pwd)/logs:/home/gateway/logs" \
+  -v "$(pwd)/db:/home/gateway/db" \
   -v "$(pwd)/certs:/home/gateway/certs" \
   -e GATEWAY_PASSPHRASE=<PASSPHRASE> \
   hummingbot/gateway:development
@@ -81,9 +82,9 @@ You may also start the container in HTTP mode by setting the `DEV` environment v
 ```bash
 docker run --name gateway \
   -p 15888:15888 \
-  -v "$(pwd)/gateway_files/conf:/home/gateway/conf" \
-  -v "$(pwd)/gateway_files/logs:/home/gateway/logs" \
-  -v "$(pwd)/gateway_files/db:/home/gateway/db" \
+  -v "$(pwd)/conf:/home/gateway/conf" \
+  -v "$(pwd)/logs:/home/gateway/logs" \
+  -v "$(pwd)/db:/home/gateway/db" \
   -v "$(pwd)/certs:/home/gateway/certs" \
   -e DEV=true \
   hummingbot/gateway:development
@@ -91,6 +92,38 @@ docker run --name gateway \
 
 Afterwards, client may connect to Gateway at: <http://localhost:15888> and you can access the Swagger documentation UI at: <http://localhost:15888/docs>
 
+
+## CLI Commands
+
+When running Gateway from source, it provides a CLI interface for interacting with chains and DEXs. After installing from source, you can enable the `gateway` command by linking the CLI globally:
+```bash
+pnpm link --global
+```
+
+Afterwards, you can use the `gateway` command to see available commands:
+```bash
+gateway
+```
+
+Sample commands:
+```bash
+# Check wallet balances (requires running server)
+gateway balance --chain solana --wallet <WALLET_ADDRESS>
+
+# Build project from source (same as pnpm build)
+gateway build
+
+# Start the API server (same as pnpm start)
+gateway start --passphrase=<PASSPHRASE> [--dev]
+
+# Get command help
+gateway help [COMMAND]
+```
+
+**Note:** Similar to the server, CLI commands require a `passphrase` argument used to encrypt and decrypt wallets used in executing transactions. Set the passphrase using the `--passphrase` argument when starting the server or by setting the `GATEWAY_PASSPHRASE` environment variable:
+```bash
+export GATEWAY_PASSPHRASE=<PASSPHRASE>
+```
 
 ## Contribution
 
