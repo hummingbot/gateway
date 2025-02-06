@@ -31,8 +31,7 @@ pnpm install
 pnpm build
 
 # Run Gateway setup script, which helps you set configs and CERTS_PATH
-chmod a+x gateway-setup.sh
-./gateway-setup.sh
+pnpm run setup
 ```
 
 ### Start Gateway from Source
