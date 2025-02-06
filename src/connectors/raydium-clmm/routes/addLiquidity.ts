@@ -1,6 +1,6 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify'
 import { RaydiumCLMM } from '../raydium-clmm'
-import { Solana } from '../../../chains/solana/solana'
+import { Solana, BASE_FEE } from '../../../chains/solana/solana'
 import { logger } from '../../../services/logger'
 import { 
   AddLiquidityRequest,
@@ -11,7 +11,7 @@ import {
 import { PoolUtils, TxVersion } from '@raydium-io/raydium-sdk-v2'
 import BN from 'bn.js'
 import Decimal from 'decimal.js'
-import { BASE_FEE } from '../../../chains/solana/solana'
+
 
 async function addLiquidity(
   _fastify: FastifyInstance,
@@ -21,7 +21,7 @@ async function addLiquidity(
   baseTokenAmount: number,
   _quoteTokenAmount: number,
   slippagePct?: number
-): Promise<any> {
+): Promise<AddLiquidityResponseType> {
   try {
     const solana = await Solana.getInstance(network)
     const raydium = await RaydiumCLMM.getInstance(network)
@@ -102,8 +102,9 @@ async function addLiquidity(
         }
       }
       currentPriorityFee = currentPriorityFee * solana.config.priorityFeeMultiplier
+      logger.info(`Increasing max priority fee to ${(currentPriorityFee / 1e9).toFixed(6)} SOL`);
     }
-    throw new Error(`Increase liquidity failed after reaching max priority fee`)
+    throw new Error(`Add liquidity failed after reaching max priority fee of ${(solana.config.maxPriorityFee / 1e9).toFixed(6)} SOL`);
   } catch (error) {
     logger.error(error)
     throw error

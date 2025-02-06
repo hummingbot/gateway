@@ -1,6 +1,6 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { RaydiumCLMM } from '../raydium-clmm';
-import { Solana } from '../../../chains/solana/solana';
+import { Solana, BASE_FEE } from '../../../chains/solana/solana';
 import { logger } from '../../../services/logger';
 import { TxVersion } from '@raydium-io/raydium-sdk-v2';
 import { 
@@ -12,7 +12,6 @@ import {
 import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
 import { TickUtils, PoolUtils } from '@raydium-io/raydium-sdk-v2';
-import { BASE_FEE } from '../../../chains/solana/solana';
 
 
 async function openPosition(
@@ -25,7 +24,7 @@ async function openPosition(
   baseTokenAmount?: number,
   _quoteTokenAmount?: number,
   slippagePct?: number
-): Promise<any> {
+): Promise<OpenPositionResponseType> {
   try {
     const solana = await Solana.getInstance(network);
     const raydium = await RaydiumCLMM.getInstance(network);
@@ -122,8 +121,6 @@ async function openPosition(
           quoteTokenAmountAdded: Number(amountB.amount.toString()) / (10 ** quoteToken.decimals),
         };
       }
-      // If we get here, t wasn't confirmed after retryCount attempts
-      // Increase the priority fee and try again
       currentPriorityFee = currentPriorityFee * solana.config.priorityFeeMultiplier;
       logger.info(`Increasing max priority fee to ${(currentPriorityFee / 1e9).toFixed(6)} SOL`);
     }

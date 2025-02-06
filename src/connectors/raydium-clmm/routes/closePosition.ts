@@ -3,6 +3,7 @@ import { RaydiumCLMM } from '../raydium-clmm';
 import { Solana } from '../../../chains/solana/solana';
 import { logger } from '../../../services/logger';
 import { TxVersion } from '@raydium-io/raydium-sdk-v2';
+import { removeLiquidity } from './removeLiquidity';
 import { 
   ClosePositionRequest, 
   ClosePositionResponse, 
@@ -24,6 +25,32 @@ async function closePosition(
     const position = await raydium.getClmmPosition(positionAddress);
     logger.debug('Position Info:', position);
 
+    // Handle positions with remaining liquidity first
+    if (!position.liquidity.isZero()) {
+      const removeLiquidityResponse = await removeLiquidity(
+        _fastify,
+        network,
+        walletAddress,
+        positionAddress,
+        100,
+        true
+      );
+      
+      const { balanceChange } = await solana.extractAccountBalanceChangeAndFee(removeLiquidityResponse.signature, 0);
+      const rentRefunded = Math.abs(balanceChange);
+
+      return {
+        signature: removeLiquidityResponse.signature,
+        fee: removeLiquidityResponse.fee,
+        positionRentRefunded: rentRefunded,
+        baseTokenAmountRemoved: removeLiquidityResponse.baseTokenAmountRemoved,
+        quoteTokenAmountRemoved: removeLiquidityResponse.quoteTokenAmountRemoved,
+        baseFeeAmountCollected: 0,
+        quoteFeeAmountCollected: 0,
+      };
+    }
+
+    // Original close position logic for empty positions
     const [poolInfo, poolKeys] = await raydium.getClmmPoolfromAPI(position.poolId.toBase58());
     logger.debug('Pool Info:', poolInfo);
 
