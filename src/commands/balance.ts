@@ -13,7 +13,7 @@ import { logger } from '../services/logger';
  *  - Query the provider (via ethers) for the "ethereum" chain.
  */
 export default class Balance extends Command {
-  static description = 'Retrieve balance for a wallet on the specified chain';
+  static description = 'Retrieve token balances for a wallet on the specified chain';
 
   static flags = {
     // Specify the chain ("solana" or "ethereum")

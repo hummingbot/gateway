@@ -3,7 +3,7 @@ import { execSync } from 'child_process';
 import { logger } from '../services/logger';
 
 export default class Build extends Command {
-  static description = 'Build the Gateway project';
+  static description = 'Build Gateway by compiling Typescript into JS in /dist';
 
   static examples = ['$ gateway build'];
 

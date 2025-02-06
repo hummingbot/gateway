@@ -1,7 +1,7 @@
 {
   "name": "gateway",
   "version": "2.4.0",
-  "description": "Middleware that helps Hummingbot clients access standardized DEX API endpoints on different blockchain networks",
+  "description": "Gateway is a CLI/API client that helps you interact with DEXs on various blockchains.",
   "main": "index.js",
   "license": "Apache-2.0",
   "repository": "https://github.com/hummingbot/gateway",
@@ -161,20 +161,17 @@
     "bin": "gateway",
     "dirname": "gateway",
     "commands": "./dist/src/commands",
-    "plugins": [
-      "@oclif/plugin-help",
-      "@oclif/plugin-plugins"
-    ],
+    "plugins": [],
     "topicSeparator": " ",
     "topics": {
       "balance": {
-        "description": "Get token balances for a wallet on Solana or Ethereum"
+        "description": "Retrieve token balances for a wallet on the specified chain"
       },
       "start": {
-        "description": "Start the Gateway server"
+        "description": "Start the Gateway API server"
       },
       "build": {
-        "description": "Build the Gateway project"
+        "description": "Build Gateway by compiling Typescript into JS in /dist"
       }
     }
   },

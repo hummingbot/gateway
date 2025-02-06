@@ -10,8 +10,6 @@ export const asciiLogo = `
 ██║   ██║██╔══██║   ██║   ██╔══╝  ██║███╗██║██╔══██║  ╚██╔╝  
 ╚██████╔╝██║  ██║   ██║   ███████╗╚███╔███╔╝██║  ██║   ██║   
  ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚══╝╚══╝ ╚═╝  ╚═╝   ╚═╝   
-                                                             
-Gateway is a CLI/API client that helps you interact with DEXs on various blockchains.
 `;
 
 if (process.env.START_SERVER === 'true') {
