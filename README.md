@@ -149,14 +149,18 @@ Here are some ways that you can contribute to Gateway:
 
 ## Architecture
 
-Here are some files we recommend you look at in order to get familiar with the Gateway codebase:
+Gateway is currently undergoing a large-scale refactor to improve codebase architecture and modularity. The Meteora connector serves as the reference implementation for this new architecture:
 
-- [src/services/ethereum-base.ts](./src/chains/ethereum/ethereum-base.ts): base class for EVM chains.
+- [src/connectors/meteora/meteora.ts](./src/connectors/meteora/meteora.ts): Core DEX connector class that implements the standard interface
+- [src/connectors/meteora/meteora.config.ts](./src/connectors/meteora/meteora.config.ts): Configuration for the DEX connector
+- [src/connectors/meteora/meteora.routes.ts](./src/connectors/meteora/meteora.routes.ts): Route definitions and handlers
+- [src/connectors/meteora/routes/](./src/connectors/meteora/routes/): Individual route implementations for each DEX operation
 
-- [src/connectors/uniswap/uniswap.ts](./src/connectors/uniswap/uniswap.ts): functionality for interacting with Uniswap.
+Other key files:
 
-- [src/services/validators.ts](./src/services/validators.ts): defines functions for validating request payloads.
-
+- [src/services/clmm-interface.ts](./src/services/clmm-interface.ts): Standard request and response interfaces for Concentrated Liquidity Market Maker (CLMM) DEXs
+- [src/chains/solana/solana.ts](./src/chains/solana/solana.ts): Base class for Solana chain operations
+- [src/chains/solana/solana.routes.ts](./src/chains/solana/solana.routes.ts): Solana route definitions and handlers
 
 ## Testing
 
