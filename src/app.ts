@@ -27,7 +27,7 @@ const GATEWAY_VERSION = '2.4.0';
 // At the top level, define devMode once
 // When true, runs server in HTTP mode (less secure but useful for development)
 // When false, runs server in HTTPS mode (secure, default for production)
-// Use --dev flag to enable HTTP mode, e.g.: yarn start --dev
+// Use --dev flag to enable HTTP mode, e.g.: pnpm start --dev
 // Tests automatically run in dev mode via GATEWAY_TEST_MODE=dev
 const devMode = process.argv.includes('--dev') || process.env.GATEWAY_TEST_MODE === 'dev';
 
