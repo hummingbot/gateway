@@ -556,79 +556,6 @@ export class Solana {
     }
   }
 
-  public async sendAndConfirmVersionedTransaction(
-    tx: VersionedTransaction, 
-    signers: Signer[] = [],
-    computeUnits?: number
-  ): Promise<{ signature: string; fee: number }> {
-    let currentPriorityFee = await this.estimatePriorityFees();
-    const computeUnitsToUse = computeUnits || this.config.defaultComputeUnits;
-    
-    while (true) {
-      const basePriorityFeeLamports = Math.floor(currentPriorityFee * computeUnitsToUse);
-      
-      logger.info(`Sending transaction with max priority fee of ${(basePriorityFeeLamports * LAMPORT_TO_SOL).toFixed(6)} SOL`);
-      
-      // Check if we've exceeded max fee (convert maxPriorityFee from SOL to lamports)
-      if (basePriorityFeeLamports > this.config.maxPriorityFee * 1e9) {
-        throw new Error(`Exceeded maximum priority fee of ${this.config.maxPriorityFee} SOL`);
-      }
-
-      // Prepare transaction with compute budget instructions
-      const modifiedTx = await this.prepareVersionedTx(
-        tx,
-        currentPriorityFee,
-        computeUnitsToUse,
-        signers
-      );
-
-      // Simulate transaction
-      await this.simulateTransaction(modifiedTx);
-
-      let retryCount = 0;
-      while (retryCount < this.config.retryCount) {
-        try {
-          const signature = await this.connection.sendRawTransaction(
-            Buffer.from(modifiedTx.serialize()),
-            { skipPreflight: true }
-          );
-
-          try {
-            const confirmed = await this.confirmTransaction(signature);
-            logger.info(`[${retryCount + 1}/${this.config.retryCount}] Transaction ${signature} status: ${confirmed ? 'confirmed' : 'unconfirmed'}`);
-            if (confirmed && confirmed.txData) {
-              const actualFee = this.getFee(confirmed.txData);
-              logger.info(`Transaction ${signature} confirmed with total fee: ${actualFee.toFixed(6)} SOL`);
-              return { signature, fee: actualFee };
-            }
-          } catch (error) {
-            // If transaction failed, break out of retry loop immediately
-            if (error.message.includes('Transaction failed')) {
-              throw error;
-            }
-            // Otherwise continue to retry
-          }
-
-          retryCount++;
-          await new Promise(resolve => setTimeout(resolve, this.config.retryIntervalMs));
-        } catch (error) {
-          // Only retry if error is not a definitive failure
-          if (error.message.includes('Transaction failed')) {
-            throw error;
-          }
-          retryCount++;
-          await new Promise(resolve => setTimeout(resolve, this.config.retryIntervalMs));
-        }
-      }
-
-      // If we get here, transaction wasn't confirmed after RETRY_COUNT attempts
-      // Increase the priority fee and try again
-      currentPriorityFee = currentPriorityFee * this.config.priorityFeeMultiplier;
-      logger.info(`Increasing max priority fee to ${(currentPriorityFee * computeUnitsToUse * LAMPORT_TO_SOL).toFixed(6)} SOL`);
-    }
-  }
-
-
   private async prepareTx(
     tx: Transaction,
     currentPriorityFee: number,
@@ -1045,21 +972,14 @@ export class Solana {
       },
     );
     
-    // console.log('Simulation Result:', {
-    //   logs: simulatedTransactionResponse.logs,
-    //   unitsConsumed: simulatedTransactionResponse.unitsConsumed,
-    //   status: simulatedTransactionResponse.err ? 'FAILED' : 'SUCCESS'
-    // });
+    logger.info('Simulation Result:', {
+      // logs: simulatedTransactionResponse.logs,
+      unitsConsumed: simulatedTransactionResponse.unitsConsumed,
+      status: simulatedTransactionResponse.err ? 'FAILED' : 'SUCCESS'
+    });
 
     if (simulatedTransactionResponse.err) {
       const logs = simulatedTransactionResponse.logs || [];
-      // console.log('Simulation Error Details:', {
-      //   error: simulatedTransactionResponse.err,
-      //   programLogs: logs,
-      //   accounts: simulatedTransactionResponse.accounts,
-      //   unitsConsumed: simulatedTransactionResponse.unitsConsumed,
-      // });
-
       const errorMessage = `${SIMULATION_ERROR_MESSAGE}\nError: ${JSON.stringify(simulatedTransactionResponse.err)}\nProgram Logs: ${logs.join('\n')}`;
       
       throw new HttpException(
@@ -1069,4 +989,77 @@ export class Solana {
       );
     }
   }
+
+  public async sendAndConfirmVersionedTransaction(
+    tx: VersionedTransaction, 
+    signers: Signer[] = [],
+    computeUnits?: number
+  ): Promise<{ signature: string; fee: number }> {
+    let currentPriorityFee = await this.estimatePriorityFees();
+    const computeUnitsToUse = computeUnits || this.config.defaultComputeUnits;
+    
+    while (true) {
+      const basePriorityFeeLamports = Math.floor(currentPriorityFee * computeUnitsToUse);
+      
+      logger.info(`Sending transaction with max priority fee of ${(basePriorityFeeLamports * LAMPORT_TO_SOL).toFixed(6)} SOL`);
+      
+      // Check if we've exceeded max fee (convert maxPriorityFee from SOL to lamports)
+      if (basePriorityFeeLamports > this.config.maxPriorityFee * 1e9) {
+        throw new Error(`Exceeded maximum priority fee of ${this.config.maxPriorityFee} SOL`);
+      }
+
+      // Prepare transaction with compute budget instructions
+      const modifiedTx = await this.prepareVersionedTx(
+        tx,
+        currentPriorityFee,
+        computeUnitsToUse,
+        signers
+      );
+
+      // Simulate transaction
+      await this.simulateTransaction(modifiedTx);
+
+      let retryCount = 0;
+      while (retryCount < this.config.retryCount) {
+        try {
+          const signature = await this.connection.sendRawTransaction(
+            Buffer.from(modifiedTx.serialize()),
+            { skipPreflight: true }
+          );
+
+          try {
+            const confirmed = await this.confirmTransaction(signature);
+            logger.info(`[${retryCount + 1}/${this.config.retryCount}] Transaction ${signature} status: ${confirmed ? 'confirmed' : 'unconfirmed'}`);
+            if (confirmed && confirmed.txData) {
+              const actualFee = this.getFee(confirmed.txData);
+              logger.info(`Transaction ${signature} confirmed with total fee: ${actualFee.toFixed(6)} SOL`);
+              return { signature, fee: actualFee };
+            }
+          } catch (error) {
+            // If transaction failed, break out of retry loop immediately
+            if (error.message.includes('Transaction failed')) {
+              throw error;
+            }
+            // Otherwise continue to retry
+          }
+
+          retryCount++;
+          await new Promise(resolve => setTimeout(resolve, this.config.retryIntervalMs));
+        } catch (error) {
+          // Only retry if error is not a definitive failure
+          if (error.message.includes('Transaction failed')) {
+            throw error;
+          }
+          retryCount++;
+          await new Promise(resolve => setTimeout(resolve, this.config.retryIntervalMs));
+        }
+      }
+
+      // If we get here, transaction wasn't confirmed after RETRY_COUNT attempts
+      // Increase the priority fee and try again
+      currentPriorityFee = currentPriorityFee * this.config.priorityFeeMultiplier;
+      logger.info(`Increasing max priority fee to ${(currentPriorityFee * computeUnitsToUse * LAMPORT_TO_SOL).toFixed(6)} SOL`);
+    }
+  }
+
 }

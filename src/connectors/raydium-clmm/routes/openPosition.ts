@@ -44,10 +44,8 @@ async function openPosition(
       baseIn: true,
     })
 
-    if (!baseTokenAmount) {
-      throw new Error('Base token amount is required');
-    }
-    const amount = new Decimal(baseTokenAmount).mul(10 ** baseToken.decimals).toFixed(0);
+    // Allow opening position with 0 base token amount
+    const amount = new Decimal(baseTokenAmount || '0').mul(10 ** baseToken.decimals).toFixed(0);
     const amountBN = new BN(amount);
     const epochInfo = await solana.connection.getEpochInfo()
     const res = await PoolUtils.getLiquidityAmountOutFromAmountIn({
@@ -93,7 +91,7 @@ async function openPosition(
         ownerInfo: {
           useSOLBalance: true,
         },
-        baseAmount: res.amountA.amount,
+        baseAmount: amountBN,
         otherAmountMax: res.amountSlippageB.amount,
         txVersion: TxVersion.V0,
         computeBudgetConfig: {
