@@ -4,11 +4,14 @@ import { run } from '@oclif/core';
 import { startGateway } from './app';
 
 export const asciiLogo = `
- _      __    ___   ___  
-| |    / /\\  | |_) | |_) 
-|_|__ /_/--\\ |_| \\ |_| 
-
-larp is a CLI/API client for on-chain liquidity providers
+ ██████╗  █████╗ ████████╗███████╗██╗    ██╗ █████╗ ██╗   ██╗
+██╔════╝ ██╔══██╗╚══██╔══╝██╔════╝██║    ██║██╔══██╗╚██╗ ██╔╝
+██║  ███╗███████║   ██║   █████╗  ██║ █╗ ██║███████║ ╚████╔╝ 
+██║   ██║██╔══██║   ██║   ██╔══╝  ██║███╗██║██╔══██║  ╚██╔╝  
+╚██████╔╝██║  ██║   ██║   ███████╗╚███╔███╔╝██║  ██║   ██║   
+ ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚══╝╚══╝ ╚═╝  ╚═╝   ╚═╝   
+                                                             
+Gateway is a CLI/API client that helps you interact with DEXs on various blockchains.
 `;
 
 if (process.env.START_SERVER === 'true') {
@@ -18,6 +21,12 @@ if (process.env.START_SERVER === 'true') {
     process.exit(1);
   });
 } else {
+  // Show logo for base command or help command
+  const args = process.argv.slice(2);
+  if (args.length === 0 || args[0] === 'help') {
+    console.log(asciiLogo);
+  }
+  
   run()
     .then(require('@oclif/core/flush'))
     .catch(require('@oclif/core/handle'));

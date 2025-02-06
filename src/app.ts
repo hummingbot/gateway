@@ -9,6 +9,7 @@ import { logger } from './services/logger';
 import { getHttpsOptions } from './https';
 import { errorHandler } from './services/error-handler';
 import { ConfigManagerV2 } from './services/config-manager-v2';
+import { asciiLogo } from './index';
 
 // Routes
 import { configRoutes } from './config/config.routes';
@@ -190,6 +191,8 @@ export const startGateway = async () => {
   const docsPort = ConfigManagerV2.getInstance().get('server.docsPort');
   const protocol = devMode ? 'http' : 'https';
   
+  // Display ASCII logo
+  console.log(`\n${asciiLogo.trim()}`);
   logger.info(`⚡️ Gateway version ${GATEWAY_VERSION} starting at ${protocol}://localhost:${port}`);
 
   try {

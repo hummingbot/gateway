@@ -281,7 +281,9 @@ export class Solana {
     for (const value of accounts.value) {
       const parsedTokenAccount = unpackAccount(value.pubkey, value.account);
       const mintAddress = parsedTokenAccount.mint.toBase58();
-      const token = await this.getToken(mintAddress);
+      
+      // Only check tokens from our token list when no symbols are specified
+      const token = this.tokenList.find(t => t.address === mintAddress);
       
       if (token && (!symbols || symbols.some(s => 
         s.toUpperCase() === token.symbol.toUpperCase() || 
