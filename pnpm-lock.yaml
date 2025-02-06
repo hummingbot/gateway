@@ -65,6 +65,9 @@ importers:
       '@oclif/help':
         specifier: ^1.0.15
         version: 1.0.15
+      '@oclif/plugin-autocomplete':
+        specifier: ^3.2.20
+        version: 3.2.20
       '@oclif/plugin-help':
         specifier: ^6.2.23
         version: 6.2.23
@@ -1340,6 +1343,10 @@ packages:
     resolution: {integrity: sha512-l04iSd0xoh/16TGVpXb81Gg3z7tlQGrEup16BrVLsZBK6SEYpYHRJZnM32BwZrHI97ZSFfuSwVlzoo6HdsaK8A==}
     engines: {node: '>=8.0.0'}
     deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
+
+  '@oclif/plugin-autocomplete@3.2.20':
+    resolution: {integrity: sha512-QuZHEJNsxen7BGww7Sc8N8yhnkjd3xYs0X7sDgT/xr4R5SCNMS3KQ7cXag9XCy/ZV502lERXM3Rcwz24NLLHhQ==}
+    engines: {node: '>=18.0.0'}
 
   '@oclif/plugin-help@6.2.23':
     resolution: {integrity: sha512-BA0h1fbheN74cdrITKIwqfsRtnw/G+oysHbn+IsqWcsecgy5HZwI37/cCRLXZSZQndsgoYAhqvVpyleXv3g83A==}
@@ -9294,6 +9301,15 @@ snapshots:
       '@oclif/linewrap': 1.0.0
       chalk: 4.1.2
       tslib: 2.8.1
+
+  '@oclif/plugin-autocomplete@3.2.20':
+    dependencies:
+      '@oclif/core': 4.2.5
+      ansis: 3.10.0
+      debug: 4.4.0(supports-color@8.1.1)
+      ejs: 3.1.10
+    transitivePeerDependencies:
+      - supports-color
 
   '@oclif/plugin-help@6.2.23':
     dependencies:
