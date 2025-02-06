@@ -7,7 +7,7 @@ port: 15888
 # Port on which to run the Swagger documentation UI. 
 # Set to 0 to serve docs at http://0.0.0.0:{port}/docs (same port as Gateway server)
 # Set to a specific port (e.g. 8080) to serve docs separately at http://0.0.0.0:{docPort}
-docsPort: 0
+docsPort: 8080
 
 # Path to folder where Hummingbot generates self-signed certificates
 certificatePath: ./certs/

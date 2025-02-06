@@ -80,6 +80,9 @@ const swaggerOptions = {
   exposeRoute: true
 };
 
+// Make docsServer accessible to startGateway
+let docsServer: FastifyInstance | null = null;
+
 // Create gateway app configuration function
 const configureGatewayServer = () => {
   const server = Fastify({
@@ -98,8 +101,7 @@ const configureGatewayServer = () => {
   
   const docsPort = ConfigManagerV2.getInstance().get('server.docsPort');
   
-  // Only create separate docs server if docsPort is specified and non-zero
-  const docsServer = docsPort ? Fastify() : null;
+  docsServer = docsPort ? Fastify() : null;
   
   // Register TypeBox provider
   server.withTypeProvider<TypeBoxTypeProvider>();
@@ -161,20 +163,6 @@ const configureGatewayServer = () => {
     registerRoutes(docsServer);
   }
 
-  // Start docs server only if docsPort is specified
-  if (docsServer && docsPort) {
-    docsServer.listen({ port: docsPort, host: '0.0.0.0' }, (err) => {
-      if (err) {
-        logger.error('Failed to start docs server:', err);
-      } else {
-        logger.info(`📓 Documentation available at http://localhost:${docsPort}`);
-      }
-    });
-  } else {
-    const protocol = devMode ? 'http' : 'https';
-    logger.info(`📓 Documentation available at ${protocol}://localhost:${ConfigManagerV2.getInstance().get('server.port')}/docs`);
-  }
-
   // Register request body parsers
   server.addContentTypeParser('application/json', { parseAs: 'string' }, server.getDefaultJsonParser('ignore', 'ignore'));
 
@@ -199,6 +187,7 @@ export const gatewayApp = configureGatewayServer();
 
 export const startGateway = async () => {
   const port = ConfigManagerV2.getInstance().get('server.port');
+  const docsPort = ConfigManagerV2.getInstance().get('server.docsPort');
   const protocol = devMode ? 'http' : 'https';
   
   logger.info(`⚡️ Gateway version ${GATEWAY_VERSION} starting at ${protocol}://localhost:${port}`);
@@ -211,10 +200,16 @@ export const startGateway = async () => {
       logger.info('🟢 Running in secured mode with behind HTTPS endpoints');
       await gatewayApp.listen({ port, host: '0.0.0.0' });
     }
+
+    // Single documentation log after server starts
+    const docsUrl = docsPort 
+      ? `http://localhost:${docsPort}`
+      : `${protocol}://localhost:${port}/docs`;
+      
+    logger.info(`📓 Documentation available at ${docsUrl}`);
+
   } catch (err) {
-    logger.error(
-      `Failed to start the server: ${err}`
-    );
+    logger.error(`Failed to start the server: ${err}`);
     process.exit(1);
   }
 };
