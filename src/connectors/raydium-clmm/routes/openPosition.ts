@@ -1,6 +1,6 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { RaydiumCLMM } from '../raydium-clmm';
-import { Solana, BASE_FEE } from '../../../chains/solana/solana';
+import { Solana } from '../../../chains/solana/solana';
 import { logger } from '../../../services/logger';
 import { TxVersion } from '@raydium-io/raydium-sdk-v2';
 import { 
@@ -30,6 +30,11 @@ async function openPosition(
     const raydium = await RaydiumCLMM.getInstance(network);
 
     const [poolInfo, poolKeys] = await raydium.getClmmPoolfromAPI(poolAddress);
+    console.log('poolInfoAPI Price', poolInfo.price);
+    const rpcData = await raydium.getClmmPoolfromRPC(poolAddress);
+    poolInfo.price = rpcData.currentPrice
+    console.log('poolInfoRPC Price', poolInfo.price);
+
     const baseToken = await solana.getToken(poolInfo.mintA.address);
     const quoteToken = await solana.getToken(poolInfo.mintB.address);
 
@@ -68,7 +73,7 @@ async function openPosition(
       amountSlippageB,
       expirationTime 
     } = res;
-    console.log({
+    console.log('getLiquidityAmountOutFromAmountIn', {
       liquidity: liquidity.toString(),
       amountA: Number(amountA.amount.toString()) / (10 ** baseToken.decimals),
       amountB: Number(amountB.amount.toString()) / (10 ** quoteToken.decimals),
@@ -78,51 +83,38 @@ async function openPosition(
     });
   
     logger.info('Opening Raydium CLMM position...');
-    const COMPUTE_UNITS = 300000;
-    let currentPriorityFee = (await solana.getGasPrice() * 1e9) - BASE_FEE;
-    while (currentPriorityFee <= solana.config.maxPriorityFee * 1e9) {
-      const priorityFeePerCU = Math.floor(currentPriorityFee * 1e6 / COMPUTE_UNITS);
-      const { transaction, extInfo } = await raydium.raydium.clmm.openPositionFromBase({
-        poolInfo,
-        poolKeys,
-        tickUpper: Math.max(lowerTick, upperTick),
-        tickLower: Math.min(lowerTick, upperTick),
-        base: 'MintA',
-        ownerInfo: {
-          useSOLBalance: true,
-        },
-        baseAmount: amountBN,
-        otherAmountMax: res.amountSlippageB.amount,
-        txVersion: TxVersion.V0,
-        computeBudgetConfig: {
-          units: COMPUTE_UNITS,
-          microLamports: priorityFeePerCU,
-        },
-      });
-      // console.log('original tx:', _transaction);
-      await solana.simulateTransaction(transaction);
-      const wallet = await solana.getWallet(walletAddress);
-      transaction.sign([wallet]);
-
-      const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
-      if (confirmed && txData) {
-        const totalFee = txData.meta.fee;
-        const { balanceChange } = await solana.extractAccountBalanceChangeAndFee(signature, 0);
-        const positionRent = Math.abs(balanceChange);
-    
-        return {
-          signature,
-          fee: totalFee / 1e9,
-          positionAddress: extInfo.nftMint.toBase58(),
-          positionRent,
-          baseTokenAmountAdded: Number(amountA.amount.toString()) / (10 ** baseToken.decimals),
-          quoteTokenAmountAdded: Number(amountB.amount.toString()) / (10 ** quoteToken.decimals),
-        };
-      }
-      currentPriorityFee = currentPriorityFee * solana.config.priorityFeeMultiplier;
-      logger.info(`Increasing max priority fee to ${(currentPriorityFee / 1e9).toFixed(6)} SOL`);
-    }
-    throw new Error(`Open position failed after reaching max priority fee of ${(solana.config.maxPriorityFee / 1e9).toFixed(6)} SOL`);
+    const { transaction, extInfo } = await raydium.raydium.clmm.openPositionFromLiquidity({
+      poolInfo,
+      poolKeys,
+      ownerInfo: { useSOLBalance: true },
+      amountMaxA: res.amountSlippageA.amount,
+      amountMaxB: res.amountSlippageB.amount,
+      tickLower: Math.min(lowerTick, upperTick),
+      tickUpper: Math.max(lowerTick, upperTick),
+      liquidity,
+      txVersion: TxVersion.V0,
+    });
+    const wallet = await solana.getWallet(walletAddress);
+    const { signature, fee } = await solana.sendAndConfirmVersionedTransaction(
+      transaction,
+      [wallet],
+      300_000
+    );
+    const { baseTokenBalanceChange, quoteTokenBalanceChange } = 
+      await solana.extractPairBalanceChangesAndFee(
+        signature,
+        baseToken,
+        quoteToken,
+        wallet.publicKey.toBase58()
+      );
+    return {
+      signature,
+      fee: fee / 1e9,
+      positionAddress: extInfo.address.nftMint.toBase58(),
+      positionRent: 0,
+      baseTokenAmountAdded: baseTokenBalanceChange,
+      quoteTokenAmountAdded: quoteTokenBalanceChange,
+    };
   } catch (error) {
     logger.error(error);
     throw error;
