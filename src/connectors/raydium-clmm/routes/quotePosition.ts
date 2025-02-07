@@ -12,7 +12,7 @@ import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
 import { TickUtils, PoolUtils } from '@raydium-io/raydium-sdk-v2';
 
-async function quotePosition(
+export async function quotePosition(
   _fastify: FastifyInstance,
   network: string,
   lowerPrice: number,
@@ -30,16 +30,20 @@ async function quotePosition(
     const baseToken = await solana.getToken(poolInfo.mintA.address);
     const quoteToken = await solana.getToken(poolInfo.mintB.address);
 
-    const { tick: lowerTick } = TickUtils.getPriceAndTick({
+    const { tick: lowerTick, price: tickLowerPrice } = TickUtils.getPriceAndTick({
       poolInfo,
       price: new Decimal(lowerPrice),
       baseIn: true,
     });    
-    const { tick: upperTick } = TickUtils.getPriceAndTick({
+    const { tick: upperTick, price: tickUpperPrice } = TickUtils.getPriceAndTick({
       poolInfo,
       price: new Decimal(upperPrice),
       baseIn: true,
     });
+    console.log('lowerTick', lowerTick);
+    console.log('upperTick', upperTick);
+    console.log('tickLowerPrice', tickLowerPrice);
+    console.log('tickUpperPrice', tickUpperPrice);
 
     const amountBN = baseTokenAmount ?
       new BN(new Decimal(baseTokenAmount).mul(10 ** baseToken.decimals).toFixed(0)) :
