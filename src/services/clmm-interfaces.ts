@@ -161,3 +161,18 @@ export const ClosePositionResponse = Type.Object({
   quoteFeeAmountCollected: Type.Number(),
 }, { $id: 'ClosePositionResponse' });
 export type ClosePositionResponseType = Static<typeof ClosePositionResponse>;
+
+export const QuotePositionRequest = Type.Omit(
+  OpenPositionRequest,
+  ['walletAddress'],
+  { $id: 'QuotePositionRequest' }
+);
+export type QuotePositionRequestType = Static<typeof QuotePositionRequest>;
+
+export const QuotePositionResponse = Type.Object({
+  baseTokenAmount: Type.Number(),
+  quoteTokenAmount: Type.Number(),
+  baseTokenAmountMax: Type.Number(),
+  quoteTokenAmountMax: Type.Number(),
+}, { $id: 'QuotePositionResponse' });
+export type QuotePositionResponseType = Static<typeof QuotePositionResponse>;
