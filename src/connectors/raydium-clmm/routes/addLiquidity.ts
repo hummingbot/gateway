@@ -27,6 +27,10 @@ async function addLiquidity(
     const raydium = await RaydiumCLMM.getInstance(network)
     const positionInfo = await raydium.getClmmPosition(positionAddress);
     const [poolInfo, poolKeys] = await raydium.getClmmPoolfromAPI(positionInfo.poolId.toBase58())
+    const rpcData = await raydium.getClmmPoolfromRPC(positionInfo.poolId.toBase58())
+    poolInfo.price = rpcData.currentPrice
+    console.log('current price', poolInfo.price);
+
     const baseToken = await solana.getToken(poolInfo.mintA.address)
     const quoteToken = await solana.getToken(poolInfo.mintB.address)
 

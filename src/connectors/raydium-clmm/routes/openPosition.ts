@@ -30,6 +30,10 @@ async function openPosition(
     const raydium = await RaydiumCLMM.getInstance(network);
 
     const [poolInfo, poolKeys] = await raydium.getClmmPoolfromAPI(poolAddress);
+    const rpcData = await raydium.getClmmPoolfromRPC(poolAddress)
+    poolInfo.price = rpcData.currentPrice
+    console.log('current price', poolInfo.price);
+
     const baseToken = await solana.getToken(poolInfo.mintA.address);
     const quoteToken = await solana.getToken(poolInfo.mintB.address);
 
@@ -57,7 +61,7 @@ async function openPosition(
       amount: amountBN,
       add: true,
       amountHasFee: true,
-      epochInfo: epochInfo,
+      epochInfo,
     })
 
     const { 
@@ -91,7 +95,7 @@ async function openPosition(
         ownerInfo: {
           useSOLBalance: true,
         },
-        baseAmount: amountBN,
+        baseAmount: amountA.amount,
         otherAmountMax: res.amountSlippageB.amount,
         txVersion: TxVersion.V0,
         computeBudgetConfig: {

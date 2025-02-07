@@ -27,6 +27,10 @@ export async function quotePosition(
     const raydium = await RaydiumCLMM.getInstance(network);
 
     const [poolInfo] = await raydium.getClmmPoolfromAPI(poolAddress);
+    const rpcData = await raydium.getClmmPoolfromRPC(poolAddress)
+    poolInfo.price = rpcData.currentPrice
+    console.log('current price', poolInfo.price);
+
     const baseToken = await solana.getToken(poolInfo.mintA.address);
     const quoteToken = await solana.getToken(poolInfo.mintB.address);
 
