@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import sensible from '@fastify/sensible';
 
 import { poolInfoRoute } from './routes/poolInfo';
+import { positionsOwnedRoute } from './routes/positionsOwned';
 import { positionInfoRoute } from './routes/positionInfo';
 import { quotePositionRoute } from './routes/quotePosition';
 import { openPositionRoute } from './routes/openPosition';
@@ -14,6 +15,7 @@ export const raydiumClmmRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(sensible);
 
   await fastify.register(poolInfoRoute);
+  await fastify.register(positionsOwnedRoute);
   await fastify.register(positionInfoRoute);
   await fastify.register(quotePositionRoute);
   await fastify.register(openPositionRoute);

@@ -170,6 +170,7 @@ export const QuotePositionRequest = Type.Omit(
 export type QuotePositionRequestType = Static<typeof QuotePositionRequest>;
 
 export const QuotePositionResponse = Type.Object({
+  inputBase: Type.Boolean(),
   baseTokenAmount: Type.Number(),
   quoteTokenAmount: Type.Number(),
   baseTokenAmountMax: Type.Number(),

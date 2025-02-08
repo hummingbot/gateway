@@ -119,6 +119,7 @@ export class RaydiumCLMM {
         logger.warn(`Pool not found: ${poolAddress}`)
         return null
       }
+      console.log('rawPool', rawPool)
 
       // Fetch AMM config account data
       let ammConfigData;
