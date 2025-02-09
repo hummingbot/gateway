@@ -1,21 +1,16 @@
 import { FastifyPluginAsync } from 'fastify';
 import { Type, Static } from '@sinclair/typebox';
-import { Meteora } from '../meteora';
+import { RaydiumCLMM } from '../raydium-clmm';
 import { PublicKey } from '@solana/web3.js';
 import { logger } from '../../../services/logger';
-import { Solana } from '../../../chains/solana/solana';
 import { PositionInfoSchema } from '../../../services/clmm-interfaces';
 import { httpBadRequest, ERROR_MESSAGES } from '../../../services/error-handler';
 
 // Schema definitions
 const GetPositionsOwnedRequest = Type.Object({
   network: Type.Optional(Type.String({ default: 'mainnet-beta' })),
-  walletAddress: Type.String({ 
-    description: 'Will use first available wallet if not specified',
-    examples: [] // Will be populated during route registration
-  }),
   poolAddress: Type.String({ 
-    examples: ['FtFUzuXbbw6oBbU53SDUGspEka1D5Xyc4cwnkxer6xKz'] 
+    examples: ['61JtCktQq2ci8c6oJfCghZgZv5VWgQeZ6kUwpjVWQ6e9'] 
   }),
 });
 
@@ -25,20 +20,8 @@ type GetPositionsOwnedRequestType = Static<typeof GetPositionsOwnedRequest>;
 type GetPositionsOwnedResponseType = Static<typeof GetPositionsOwnedResponse>;
 
 export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
-  // Get first wallet address for example
-  const solana = await Solana.getInstance('mainnet-beta');
-  let firstWalletAddress = '<solana-wallet-address>';
+  // Remove wallet address example population code
   
-  const foundWallet = await solana.getFirstWalletAddress();
-  if (foundWallet) {
-    firstWalletAddress = foundWallet;
-  } else {
-    logger.debug('No wallets found for examples in schema');
-  }
-  
-  // Update schema example
-  GetPositionsOwnedRequest.properties.walletAddress.examples = [firstWalletAddress];
-
   fastify.get<{
     Querystring: GetPositionsOwnedRequestType;
     Reply: GetPositionsOwnedResponseType;
@@ -46,8 +29,8 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
     '/positions-owned',
     {
       schema: {
-        description: "Retrieve a list of positions owned by a user's wallet in a specific Meteora pool",
-        tags: ['meteora'],
+        description: "Retrieve a list of positions owned by a user's wallet in a specific Raydium CLMM pool",
+        tags: ['raydium-clmm'],
         querystring: GetPositionsOwnedRequest,
         response: {
           200: GetPositionsOwnedResponse
@@ -56,25 +39,37 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { walletAddress, poolAddress } = request.query;
+        const { poolAddress } = request.query;
         const network = request.query.network || 'mainnet-beta';
-        const meteora = await Meteora.getInstance(network);
+        const raydium = await RaydiumCLMM.getInstance(network);
         
-        // Validate addresses first
+        // Validate pool address only
         try {
           new PublicKey(poolAddress);
-          new PublicKey(walletAddress);
         } catch (error) {
-          const invalidAddress = error.message.includes(poolAddress) ? 'pool' : 'wallet';
-          throw httpBadRequest(ERROR_MESSAGES.INVALID_SOLANA_ADDRESS(invalidAddress));
-              }
+          throw httpBadRequest(ERROR_MESSAGES.INVALID_SOLANA_ADDRESS('pool'));
+        }
+        console.log('poolAddress', poolAddress)
 
-        const positions = await meteora.getPositionsInPool(
-          poolAddress,
-          new PublicKey(walletAddress)
-        );
+        // Get pool info to extract program ID
+        const apiResponse = await raydium.getClmmPoolfromAPI(poolAddress);
 
-        return positions;
+        if (apiResponse !== null) {
+          const poolInfo = apiResponse[0];  // Direct array access instead of destructuring
+          console.log('poolInfo', poolInfo, 'Program ID:', poolInfo.programId);
+          
+          const positions = await raydium.raydium.clmm.getOwnerPositionInfo({
+            programId: poolInfo.programId
+          });
+          console.log('positions', positions);
+          const positionsInfo = await Promise.all(
+            positions.map(pos => raydium.getPositionInfo(pos.nftMint.toString()))
+          );
+          return positionsInfo;
+        }
+        console.log('No positions found in pool', poolAddress);
+        return [];
+
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {

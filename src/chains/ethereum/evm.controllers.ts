@@ -205,6 +205,10 @@ export class EVMController {
             txReceipt.logs = connector.abiDecoder?.decodeLogs(txReceipt.logs);
           } catch (e) {
             logger.error(e);
+            if (e.statusCode) {
+              throw new HttpException(e.statusCode, 'Request failed', e.statusCode);
+            }
+            throw new HttpException(500, 'Internal server error', 500);
           }
         }
       }

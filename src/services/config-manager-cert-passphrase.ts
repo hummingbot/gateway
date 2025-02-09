@@ -20,7 +20,7 @@ export namespace ConfigManagerCertPassphrase {
     // the compiler does not know that bindings._exit() will end the function
     // so we need a return to satisfy the compiler checks
     logger.error(
-      `The passphrase has to be provided by argument (--${PASSPHRASE_ARGUMENT}=XXX) or in an env variable (${PASSPHRASE_ENV}=XXX)`
+      `The passphrase has to be provided by argument (--${PASSPHRASE_ARGUMENT}=XXX) or in an env variable (export ${PASSPHRASE_ENV}=XXX)`
     );
     bindings._exit();
     return;

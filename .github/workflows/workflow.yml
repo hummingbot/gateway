@@ -48,30 +48,37 @@ jobs:
         with:
           node-version: 18
 
-      - name: Get yarn cache directory path
-        id: yarn-cache-dir-path
-        run: echo "::set-output name=dir::$(yarn cache dir)"
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
 
       - uses: actions/cache@v3
-        id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
+        name: Setup pnpm cache
         with:
-          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
-            ${{ runner.os }}-yarn-
+            ${{ runner.os }}-pnpm-store-
 
-      - name: Install hardhat and start node.
+      - name: Install hardhat and start node
         run: |
             mkdir hardhat && cd hardhat && npm init -y
             touch hardhat.config.js
-            yarn add --dev hardhat
-            yarn hardhat node &
+            pnpm add --save-dev hardhat
+            pnpm hardhat node &
 
       - name: Install Dependencies
-        run: yarn
+        run: pnpm install
 
       - name: Build project
-        run: yarn build
+        run: pnpm build
 
       - name: Replace testnet nodeURL and lists path
         run: |

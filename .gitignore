@@ -15,9 +15,3 @@ package-lock.json
 # VSCode
 .vscode/
 .history
-
-# Yarn
-yarn-error.log
-
-# Larp
-.env

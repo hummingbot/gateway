@@ -34,16 +34,44 @@ const logFileFormat = winston.format.combine(
   errorsWithStack(),
   winston.format.printf((info) => {
     const localDate = getLocalDate();
+    let output = info.message;
+    
+    // Handle metadata (additional arguments)
+    if (Object.keys(info).length > 2) {  // more than just 'message' and 'level'
+      const metaData = {...info};
+      delete metaData.message;
+      delete metaData.level;
+      delete metaData.stack;
+      delete metaData[LEVEL];
+      delete metaData[MESSAGE];
+      
+      output += ' ' + JSON.stringify(metaData, null, 2);
+    }
+    
     return info.stack 
-      ? `${localDate} | ${info.level} | ${info.message} | ${info.stack}`
-      : `${localDate} | ${info.level} | ${info.message}`;
+      ? `${localDate} | ${info.level} | ${output} | ${info.stack}`
+      : `${localDate} | ${info.level} | ${output}`;
   })
 );
 
 const sdtoutFormat = winston.format.combine(
   winston.format.printf((info) => {
     const localDate = getLocalDate();
-    return `${localDate} | ${info.level} | ${info.message}`;
+    let output = info.message;
+    
+    // Handle metadata (additional arguments)
+    if (Object.keys(info).length > 2) {  // more than just 'message' and 'level'
+      const metaData = {...info};
+      delete metaData.message;
+      delete metaData.level;
+      delete metaData.stack;
+      delete metaData[LEVEL];
+      delete metaData[MESSAGE];
+      
+      output += ' ' + JSON.stringify(metaData, null, 2);
+    }
+    
+    return `${localDate} | ${info.level} | ${output}`;
   })
 );
 
