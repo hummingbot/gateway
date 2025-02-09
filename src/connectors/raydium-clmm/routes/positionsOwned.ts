@@ -52,21 +52,24 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
         console.log('poolAddress', poolAddress)
 
         // Get pool info to extract program ID
-        const [poolInfo] = await raydium.getClmmPoolfromAPI(poolAddress);
-        console.log('poolInfo', poolInfo)
-        const positions = await raydium.raydium.clmm.getOwnerPositionInfo({
-          programId: poolInfo.programId
-        });
-        console.log('positions', positions)
+        const apiResponse = await raydium.getClmmPoolfromAPI(poolAddress);
 
-        if (!positions.length) {
-          throw httpBadRequest('User does not have any positions in this pool');
+        if (apiResponse !== null) {
+          const poolInfo = apiResponse[0];  // Direct array access instead of destructuring
+          console.log('poolInfo', poolInfo, 'Program ID:', poolInfo.programId);
+          
+          const positions = await raydium.raydium.clmm.getOwnerPositionInfo({
+            programId: poolInfo.programId
+          });
+          console.log('positions', positions);
+          const positionsInfo = await Promise.all(
+            positions.map(pos => raydium.getPositionInfo(pos.nftMint.toString()))
+          );
+          return positionsInfo;
         }
+        console.log('No positions found in pool', poolAddress);
+        return [];
 
-        const positionsInfo = await Promise.all(
-          positions.map(pos => raydium.getPositionInfo(pos.nftMint.toString()))
-        );
-        return positionsInfo;
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {
