@@ -7,7 +7,8 @@ import {
   PositionUtils,
   TickUtils,
   ClmmKeys,
-  ClmmRpcData
+  ClmmRpcData,
+  TxVersion
 } from '@raydium-io/raydium-sdk-v2'
 import { logger } from '../../services/logger'
 import { RaydiumClmmConfig } from './raydium-clmm.config'
@@ -21,6 +22,7 @@ export class RaydiumCLMM {
   private static _instances: { [name: string]: RaydiumCLMM }
   public raydium: Raydium
   public config: RaydiumClmmConfig.NetworkConfig
+  public txVersion: TxVersion
   private solana: Solana
   private clmmPools: Map<string, any> = new Map()
   private clmmPoolPromises: Map<string, Promise<any>> = new Map()
@@ -30,6 +32,7 @@ export class RaydiumCLMM {
     this.config = RaydiumClmmConfig.config
     this.raydium = null
     this.solana = null
+    this.txVersion = TxVersion.V0
   }
 
   /** Gets singleton instance of RaydiumCLMM */
