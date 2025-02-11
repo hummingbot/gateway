@@ -544,7 +544,7 @@ export class Solana {
       // If we get here, transaction wasn't confirmed after RETRY_COUNT attempts
       // Increase the priority fee and try again
       currentPriorityFee = Math.floor(currentPriorityFee * this.config.priorityFeeMultiplier);
-      logger.info(`Increasing max priority fee to ${currentPriorityFee} lamports/CU priority fee and max priority fee of ${(currentPriorityFee * computeUnitsToUse * LAMPORT_TO_SOL).toFixed(6)} SOL`);
+      logger.info(`Increasing priority fee to ${currentPriorityFee} lamports/CU (max fee of ${(currentPriorityFee * computeUnitsToUse * LAMPORT_TO_SOL).toFixed(6)} SOL`);
     }
   }
 
@@ -1042,7 +1042,7 @@ export class Solana {
       // If we get here, transaction wasn't confirmed after RETRY_COUNT attempts
       // Increase the priority fee and try again
       currentPriorityFee = Math.floor(currentPriorityFee * this.config.priorityFeeMultiplier);
-      logger.info(`Increasing max priority fee to ${currentPriorityFee} lamports/CU priority fee and max priority fee of ${(currentPriorityFee * computeUnitsToUse * LAMPORT_TO_SOL).toFixed(6)} SOL`);
+      logger.info(`Increasing priority fee to ${currentPriorityFee} lamports/CU (max fee of ${(currentPriorityFee * computeUnitsToUse * LAMPORT_TO_SOL).toFixed(6)} SOL`);
     }
   }
 

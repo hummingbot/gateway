@@ -113,7 +113,7 @@ async function openPosition(
       };
     }
     currentPriorityFee = currentPriorityFee * solana.config.priorityFeeMultiplier;
-    logger.info(`Increasing max priority fee to ${(currentPriorityFee / 1e9).toFixed(6)} SOL`);
+    logger.info(`Increasing priority fee to ${currentPriorityFee} lamports/CU (max fee of ${(currentPriorityFee / 1e9).toFixed(6)} SOL)`);
   }
   throw new Error(`Open position failed after reaching max priority fee of ${(solana.config.maxPriorityFee / 1e9).toFixed(6)} SOL`);
 }
