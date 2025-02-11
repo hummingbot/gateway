@@ -39,7 +39,7 @@ async function executeSwap(
   console.log('poolInfo', poolInfo)
   console.log('poolKeys', poolKeys)
 
-  const { inputToken, outputToken, response, clmmPoolInfo, baseIn } = await getSwapQuote(
+  const { inputToken, outputToken, response, clmmPoolInfo } = await getSwapQuote(
     fastify,
     network,
     baseToken,
@@ -62,12 +62,12 @@ async function executeSwap(
       ({ transaction } = await raydium.raydium.clmm.swapBaseOut({
         poolInfo,
         poolKeys,
-        outputMint: poolInfo[baseIn ? 'mintB' : 'mintA'].address,
+        outputMint: outputToken.address,
         amountInMax: exactOutResponse.maxAmountIn.amount,
         amountOut: exactOutResponse.realAmountOut.amount,
         observationId: clmmPoolInfo.observationId,
         ownerInfo: {
-          useSOLBalance: true, // if wish to use existed wsol token account, pass false
+          useSOLBalance: true,
         },
         txVersion: raydium.txVersion,
         remainingAccounts: exactOutResponse.remainingAccounts,
@@ -81,12 +81,12 @@ async function executeSwap(
       ({ transaction } = await raydium.raydium.clmm.swap({
         poolInfo,
         poolKeys,
-        inputMint: poolInfo[baseIn ? 'mintA' : 'mintB'].address,
+        inputMint: inputToken.address,
         amountIn: exactInResponse.realAmountIn.amount.raw,
         amountOutMin: exactInResponse.minAmountOut.amount.raw,
         observationId: clmmPoolInfo.observationId,
         ownerInfo: {
-          useSOLBalance: true, // if wish to use existed wsol token account, pass false
+          useSOLBalance: true,
         },
         remainingAccounts: exactInResponse.remainingAccounts,
         txVersion: raydium.txVersion,

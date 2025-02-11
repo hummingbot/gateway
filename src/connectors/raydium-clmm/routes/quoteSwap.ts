@@ -53,7 +53,6 @@ export async function getSwapQuote(
   const amount_bn = side === 'buy'
     ? DecimalUtil.toBN(new Decimal(amount), outputToken.decimals)
     : DecimalUtil.toBN(new Decimal(amount), inputToken.decimals);
-  const baseIn = poolInfo.mintA.address === baseToken.address ? true : false
   const clmmPoolInfo = await PoolUtils.fetchComputeClmmInfo({
     connection: solana.connection,
     poolInfo,
@@ -71,14 +70,14 @@ export async function getSwapQuote(
     tickArrayCache: tickCache[poolAddress],
     amountOut: amount_bn,
     epochInfo: await raydium.raydium.fetchEpochInfo(),
-    baseMint: new PublicKey(poolInfo[baseIn ? 'mintB' : 'mintA'].address),
+    baseMint: new PublicKey(poolInfo['mintB'].address),
     slippage: effectiveSlippage,
   })
   : await PoolUtils.computeAmountOutFormat({
       poolInfo: clmmPoolInfo,
       tickArrayCache: tickCache[poolAddress],
       amountIn: amount_bn,
-      tokenOut: poolInfo[baseIn ? 'mintA' : 'mintB'],
+      tokenOut: poolInfo['mintB'],
       slippage: effectiveSlippage,
       epochInfo: await raydium.raydium.fetchEpochInfo(),
       catchLiquidityInsufficient: true,
@@ -90,7 +89,6 @@ export async function getSwapQuote(
     outputToken,
     response,
     clmmPoolInfo,
-    baseIn,
     tickArrayCache: tickCache[poolAddress]
   };
 }

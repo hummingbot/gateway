@@ -26,8 +26,8 @@ async function executeSwap(
   const wallet = await solana.getWallet(address);
 
   const { 
-    inputToken: inToken, 
-    outputToken: outToken, 
+    inputToken, 
+    outputToken, 
     swapAmount, 
     quote: swapQuote, 
     dlmmPool 
@@ -46,8 +46,8 @@ async function executeSwap(
 
   const swapTx = side === 'buy'
     ? await dlmmPool.swapExactOut({
-        inToken: new PublicKey(inToken.address),
-        outToken: new PublicKey(outToken.address),
+        inToken: new PublicKey(inputToken.address),
+        outToken: new PublicKey(outputToken.address),
         outAmount: (swapQuote as SwapQuoteExactOut).outAmount,
         maxInAmount: (swapQuote as SwapQuoteExactOut).maxInAmount,
         lbPair: dlmmPool.pubkey,
@@ -55,8 +55,8 @@ async function executeSwap(
         binArraysPubkey: (swapQuote as SwapQuoteExactOut).binArraysPubkey,
       })
     : await dlmmPool.swap({
-        inToken: new PublicKey(inToken.address),
-        outToken: new PublicKey(outToken.address),
+        inToken: new PublicKey(inputToken.address),
+        outToken: new PublicKey(outputToken.address),
         inAmount: swapAmount,
         minOutAmount: (swapQuote as SwapQuote).minOutAmount,
         lbPair: dlmmPool.pubkey,
@@ -74,7 +74,7 @@ async function executeSwap(
       wallet.publicKey.toBase58()
     );
 
-  logger.info(`Swap executed successfully: ${Math.abs(baseTokenBalanceChange).toFixed(4)} ${inToken.symbol} -> ${Math.abs(quoteTokenBalanceChange).toFixed(4)} ${outToken.symbol}`);
+  logger.info(`Swap executed successfully: ${Math.abs(baseTokenBalanceChange).toFixed(4)} ${inputToken.symbol} -> ${Math.abs(quoteTokenBalanceChange).toFixed(4)} ${outputToken.symbol}`);
 
   return {
     signature,

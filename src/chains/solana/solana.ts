@@ -392,11 +392,10 @@ export class Solana {
         .map((item) => item.prioritizationFee)
         .filter((fee) => fee > 0);
 
-      // minimum fee is the minimum fee per compute unit
-      const minimumFee = this.config.minPriorityFee / this.config.defaultComputeUnits * 1_000_000;
-
+      const minimumFeeLamports = this.config.minPriorityFee * 1e9 / this.config.defaultComputeUnits;
+      console.log('minimumFeeLamports', minimumFeeLamports);
       if (fees.length === 0) {
-        return minimumFee;
+        return minimumFeeLamports;
       }
 
       // Sort fees in ascending order for percentile calculation
@@ -413,7 +412,6 @@ export class Solana {
       let basePriorityFee = fees[percentileIndex - 1] / 1_000_000;  // Convert to lamports
       
       // Ensure fee is not below minimum (convert SOL to lamports)
-      const minimumFeeLamports = Math.floor(this.config.minPriorityFee * 1e9 / this.config.defaultComputeUnits);
       basePriorityFee = Math.max(basePriorityFee, minimumFeeLamports);
       
       logger.info(`Base priority fee: ${basePriorityFee.toFixed(4)} lamports/CU (${basePriorityFee === minimumFeeLamports ? 'minimum' : `${this.config.basePriorityFeePct}th percentile`})`);
