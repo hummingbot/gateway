@@ -553,9 +553,9 @@ export class Solana {
     computeUnitsToUse: number,
     signers: Signer[]
   ): Promise<Transaction> {
-    // Add priority fee instruction (converting to microLamports)
+    const priorityFeeMicroLamports = Math.floor(currentPriorityFee * 1_000_000);
     const priorityFeeInstruction = ComputeBudgetProgram.setComputeUnitPrice({
-      microLamports: currentPriorityFee * 1_000_000,
+      microLamports: priorityFeeMicroLamports,
     });
   
     // Remove any existing priority fee instructions and add the new one
@@ -594,12 +594,11 @@ export class Solana {
     let modifiedTx: VersionedTransaction;
 
     // Create new compute budget instructions
+    const priorityFeeMicroLamports = Math.floor(currentPriorityFee * 1_000_000);
     const computeBudgetInstructions = [
       ComputeBudgetProgram.setComputeUnitLimit({ units: computeUnits }),
-      ComputeBudgetProgram.setComputeUnitPrice({ microLamports: currentPriorityFee * 1_000_000 })
+      ComputeBudgetProgram.setComputeUnitPrice({ microLamports: priorityFeeMicroLamports })
     ];
-
-    console.log('Priority fee in lamports/CU:', currentPriorityFee);
 
     // Check if ComputeBudgetProgram is in static keys
     const computeBudgetProgramIndex = originalMessage.staticAccountKeys.findIndex(
