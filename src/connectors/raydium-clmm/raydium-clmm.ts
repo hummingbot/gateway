@@ -181,7 +181,10 @@ export class RaydiumCLMM {
     try {
       const position = await this.getClmmPosition(positionAddress)
       const poolIdString = position.poolId.toBase58()
-      const [poolInfo, _poolKeys] = await this.getClmmPoolfromAPI(poolIdString)
+      const [poolInfo, poolKeys] = await this.getClmmPoolfromAPI(poolIdString)
+      console.log('poolInfo', poolInfo)
+      console.log('poolKeys', poolKeys)
+    
       const epochInfo = await this.solana.connection.getEpochInfo()
 
       const priceLower = TickUtils.getTickPrice({

@@ -10,7 +10,7 @@ import { httpBadRequest, ERROR_MESSAGES } from '../../../services/error-handler'
 const GetPositionsOwnedRequest = Type.Object({
   network: Type.Optional(Type.String({ default: 'mainnet-beta' })),
   poolAddress: Type.String({ 
-    examples: ['61JtCktQq2ci8c6oJfCghZgZv5VWgQeZ6kUwpjVWQ6e9'] 
+    examples: ['61R1ndXxvsWXXkWSyNkCxnzwd3zUNB8Q2ibmkiLPC8ht'] 
   }),
 });
 

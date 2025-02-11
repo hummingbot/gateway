@@ -11,7 +11,12 @@ import {
   GetSwapQuoteRequest,
   GetSwapQuoteResponse
 } from '../../../services/swap-interfaces';
-import { PoolUtils } from '@raydium-io/raydium-sdk-v2';
+import {
+  PoolUtils,
+  ReturnTypeComputeAmountOutFormat,
+  ReturnTypeComputeAmountOutBaseOut
+} from '@raydium-io/raydium-sdk-v2';
+import { PublicKey } from '@solana/web3.js';
 
 export async function getSwapQuote(
   fastify: FastifyInstance,
@@ -22,7 +27,7 @@ export async function getSwapQuote(
   side: 'buy' | 'sell',
   poolAddress: string,
   slippagePct?: number
-): Promise<GetSwapQuoteResponseType> {
+) {
   const solana = await Solana.getInstance(network);
   const raydium = await RaydiumCLMM.getInstance(network);
   const baseToken = await solana.getToken(baseTokenSymbol);
@@ -34,6 +39,11 @@ export async function getSwapQuote(
     );
   }
 
+  const [poolInfo] = await raydium.getClmmPoolfromAPI(poolAddress);
+  if (!poolInfo) {
+    throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
+  }
+
   // For buy orders, we're swapping quote token for base token (ExactOut)
   // For sell orders, we're swapping base token for quote token (ExactIn)
   const [inputToken, outputToken] = side === 'buy' 
@@ -43,10 +53,7 @@ export async function getSwapQuote(
   const amount_bn = side === 'buy'
     ? DecimalUtil.toBN(new Decimal(amount), outputToken.decimals)
     : DecimalUtil.toBN(new Decimal(amount), inputToken.decimals);
-
-  const [poolInfo] = await raydium.getClmmPoolfromAPI(poolAddress);
   const baseIn = poolInfo.mintA.address === baseToken.address ? true : false
-
   const clmmPoolInfo = await PoolUtils.fetchComputeClmmInfo({
     connection: solana.connection,
     poolInfo,
@@ -58,25 +65,91 @@ export async function getSwapQuote(
   const effectiveSlippage = new BN((slippagePct ?? raydium.getSlippagePct()) / 100);
 
   
-  const { minAmountOut } = await PoolUtils.computeAmountOutFormat({
-    poolInfo: clmmPoolInfo,
-    tickArrayCache: tickCache[poolAddress],
-    amountIn: amount_bn,
-    tokenOut: poolInfo[baseIn ? 'mintB' : 'mintA'],
-    slippage: effectiveSlippage,
-    epochInfo: await raydium.raydium.fetchEpochInfo(),
-  })
-
-  const amountOut = minAmountOut.amount.raw.toNumber() / 10 ** outputToken.decimals;
+  const response : ReturnTypeComputeAmountOutFormat | ReturnTypeComputeAmountOutBaseOut = side === 'sell' 
+  ? await PoolUtils.computeAmountOutFormat({
+      poolInfo: clmmPoolInfo,
+      tickArrayCache: tickCache[poolAddress],
+      amountIn: amount_bn,
+      tokenOut: poolInfo[baseIn ? 'mintA' : 'mintB'],
+      slippage: effectiveSlippage,
+      epochInfo: await raydium.raydium.fetchEpochInfo(),
+      catchLiquidityInsufficient: true,
+    })
+  : await PoolUtils.computeAmountIn({
+      poolInfo: clmmPoolInfo,
+      tickArrayCache: tickCache[poolAddress],
+      amountOut: amount_bn,
+      epochInfo: await raydium.raydium.fetchEpochInfo(),
+      baseMint: new PublicKey(poolInfo[baseIn ? 'mintB' : 'mintA'].address),
+      slippage: effectiveSlippage,
+    })
 
   return {
-    estimatedAmountIn: amount,
-    estimatedAmountOut: amountOut,
-    minAmountOut: amountOut,
-    maxAmountIn: amount,
-    baseTokenBalanceChange: side === 'buy' ? amountOut : -amount,
-    quoteTokenBalanceChange: side === 'buy' ? -amount : amountOut,
+    inputToken,
+    outputToken,
+    response,
+    clmmPoolInfo,
+    baseIn,
+    tickArrayCache: tickCache[poolAddress]
   };
+}
+
+async function formatSwapQuote(
+  fastify: FastifyInstance,
+  network: string,
+  baseTokenSymbol: string,
+  quoteTokenSymbol: string,
+  amount: number,
+  side: 'buy' | 'sell',
+  poolAddress: string,
+  slippagePct?: number
+): Promise<GetSwapQuoteResponseType> {
+  const { inputToken, outputToken, response } = await getSwapQuote(
+    fastify,
+    network,
+    baseTokenSymbol,
+    quoteTokenSymbol,
+    amount,
+    side,
+    poolAddress,
+    slippagePct
+  );
+
+  if (side === 'buy') {
+    const exactOutResponse = response as ReturnTypeComputeAmountOutBaseOut;
+    const estimatedAmountIn = exactOutResponse.amountIn.amount.toNumber() / 10 ** inputToken.decimals;
+    const maxAmountIn = exactOutResponse.maxAmountIn.amount.toNumber() / 10 ** inputToken.decimals;
+    const amountOut = exactOutResponse.realAmountOut.amount.toNumber() / 10 ** outputToken.decimals;
+
+    return {
+      estimatedAmountIn,
+      estimatedAmountOut: amountOut,
+      maxAmountIn,
+      minAmountOut: amountOut,
+      baseTokenBalanceChange: amountOut,
+      quoteTokenBalanceChange: -estimatedAmountIn,
+    };
+  } else {
+    const exactInResponse = response as ReturnTypeComputeAmountOutFormat;
+    const estimatedAmountIn = exactInResponse.realAmountIn.amount.raw.toNumber() / 10 ** inputToken.decimals;
+    const estimatedAmountOut = exactInResponse.amountOut.amount.raw.toNumber() / 10 ** outputToken.decimals;
+    const minAmountOut = exactInResponse.minAmountOut.amount.raw.toNumber() / 10 ** outputToken.decimals;
+
+    // For sell orders:
+    // - Base token (input) decreases (negative)
+    // - Quote token (output) increases (positive)
+    const baseTokenChange = -estimatedAmountIn;
+    const quoteTokenChange = estimatedAmountOut;
+
+    return {
+      estimatedAmountIn,
+      estimatedAmountOut,
+      minAmountOut,
+      maxAmountIn: estimatedAmountIn,
+      baseTokenBalanceChange: baseTokenChange,
+      quoteTokenBalanceChange: quoteTokenChange,
+    };
+  }
 }
 
 export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
@@ -112,7 +185,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         const { network, baseToken, quoteToken, amount, side, poolAddress, slippagePct } = request.query;
         const networkToUse = network || 'mainnet-beta';
 
-        return await getSwapQuote(
+        return await formatSwapQuote(
           fastify,
           networkToUse,
           baseToken,
@@ -121,7 +194,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           side as 'buy' | 'sell',
           poolAddress,
           slippagePct
-      );
+        );
       } catch (e) {
         logger.error(e);
         throw fastify.httpErrors.internalServerError('Failed to get swap quote');
