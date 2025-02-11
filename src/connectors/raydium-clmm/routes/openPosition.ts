@@ -146,7 +146,11 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           ...OpenPositionRequest,
           properties: {
             ...OpenPositionRequest.properties,
-            network: { type: 'string', default: 'mainnet-beta' }
+            network: { type: 'string', default: 'mainnet-beta' },
+            lowerPrice: { type: 'number', examples: [0.3] },
+            upperPrice: { type: 'number', examples: [1] },
+            poolAddress: { type: 'string', examples: ['BqBMwCcPXu6ZMKQBX2hYGGN4PNkEb15vLjigt8DKtuLp'] },
+            slippagePct: { type: 'number', examples: [1] },
           }
         },
         response: {
