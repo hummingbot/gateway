@@ -5,11 +5,11 @@ import { poolInfoRoute } from './routes/poolInfo';
 import { positionsOwnedRoute } from './routes/positionsOwned';
 import { positionInfoRoute } from './routes/positionInfo';
 import { quotePositionRoute } from './routes/quotePosition';
+import { quoteSwapRoute } from './routes/quoteSwap';
 import { openPositionRoute } from './routes/openPosition';
 import { addLiquidityRoute } from './routes/addLiquidity';
 import { removeLiquidityRoute } from './routes/removeLiquidity';
 import { closePositionRoute } from './routes/closePosition';
-
 
 export const raydiumClmmRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(sensible);
@@ -18,6 +18,7 @@ export const raydiumClmmRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(positionsOwnedRoute);
   await fastify.register(positionInfoRoute);
   await fastify.register(quotePositionRoute);
+  await fastify.register(quoteSwapRoute);
   await fastify.register(openPositionRoute);
   await fastify.register(addLiquidityRoute);
   await fastify.register(removeLiquidityRoute);

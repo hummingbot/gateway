@@ -1,6 +1,9 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { RaydiumCLMM } from '../raydium-clmm';
 import { Solana } from '../../../chains/solana/solana';
+import { DecimalUtil } from '@orca-so/common-sdk';
+import { Decimal } from 'decimal.js';
+import { BN } from 'bn.js';
 import { logger } from '../../../services/logger';
 import { 
   GetSwapQuoteRequestType,
@@ -8,35 +11,71 @@ import {
   GetSwapQuoteRequest,
   GetSwapQuoteResponse
 } from '../../../services/swap-interfaces';
-import BN from 'bn.js';
 import { PoolUtils } from '@raydium-io/raydium-sdk-v2';
 
-async function getSwapQuote(
+export async function getSwapQuote(
   fastify: FastifyInstance,
   network: string,
-  inputMint: string,
+  baseTokenSymbol: string,
+  quoteTokenSymbol: string,
   amount: number,
-  slippagePct: number
+  side: 'buy' | 'sell',
+  poolAddress: string,
+  slippagePct?: number
 ): Promise<GetSwapQuoteResponseType> {
   const solana = await Solana.getInstance(network);
   const raydium = await RaydiumCLMM.getInstance(network);
+  const baseToken = await solana.getToken(baseTokenSymbol);
+  const quoteToken = await solana.getToken(quoteTokenSymbol);
   
-  const poolInfo = await raydium.findBestPoolForSwap(inputMint);
-  const decimals = await solana.getTokenDecimals(inputMint);
-  const amountBN = new BN(amount * 10 ** decimals);
+  if (!baseToken || !quoteToken) {
+    throw fastify.httpErrors.notFound(
+      `Token not found: ${!baseToken ? baseTokenSymbol : quoteTokenSymbol}`
+    );
+  }
 
-  const { minAmountOut } = await PoolUtils.computeAmountOutFormat({
+  // For buy orders, we're swapping quote token for base token (ExactOut)
+  // For sell orders, we're swapping base token for quote token (ExactIn)
+  const [inputToken, outputToken] = side === 'buy' 
+    ? [quoteToken, baseToken]
+    : [baseToken, quoteToken];
+
+  const amount_bn = side === 'buy'
+    ? DecimalUtil.toBN(new Decimal(amount), outputToken.decimals)
+    : DecimalUtil.toBN(new Decimal(amount), inputToken.decimals);
+
+  const [poolInfo] = await raydium.getClmmPoolfromAPI(poolAddress);
+  const baseIn = poolInfo.mintA.address === baseToken.address ? true : false
+
+  const clmmPoolInfo = await PoolUtils.fetchComputeClmmInfo({
+    connection: solana.connection,
     poolInfo,
-    amountIn: amountBN,
-    slippage: slippagePct / 100,
-    tokenOut: inputMint === poolInfo.mintA.address ? poolInfo.mintB : poolInfo.mintA
-  });
+  })
+  const tickCache = await PoolUtils.fetchMultiplePoolTickArrays({
+    connection: solana.connection,
+    poolKeys: [clmmPoolInfo],
+  })
+  const effectiveSlippage = new BN((slippagePct ?? raydium.getSlippagePct()) / 100);
+
+  
+  const { minAmountOut } = await PoolUtils.computeAmountOutFormat({
+    poolInfo: clmmPoolInfo,
+    tickArrayCache: tickCache[poolAddress],
+    amountIn: amount_bn,
+    tokenOut: poolInfo[baseIn ? 'mintB' : 'mintA'],
+    slippage: effectiveSlippage,
+    epochInfo: await raydium.raydium.fetchEpochInfo(),
+  })
+
+  const amountOut = minAmountOut.amount.raw.toNumber() / 10 ** outputToken.decimals;
 
   return {
     estimatedAmountIn: amount,
-    estimatedAmountOut: minAmountOut.amount.raw.toNumber() / 10 ** (await solana.getTokenDecimals(minAmountOut.token)),
-    minAmountOut: minAmountOut.amount.raw.toNumber() / 10 ** (await solana.getTokenDecimals(minAmountOut.token)),
-    priceImpact: 0 // Can be calculated based on pool liquidity
+    estimatedAmountOut: amountOut,
+    minAmountOut: amountOut,
+    maxAmountIn: amount,
+    baseTokenBalanceChange: side === 'buy' ? amountOut : -amount,
+    quoteTokenBalanceChange: side === 'buy' ? -amount : amountOut,
   };
 }
 
@@ -50,22 +89,39 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Get swap quote for Raydium CLMM',
         tags: ['raydium-clmm'],
-        querystring: GetSwapQuoteRequest,
-        response: {
+        querystring: {
+          ...GetSwapQuoteRequest,
+          properties: {
+            ...GetSwapQuoteRequest.properties,
+            network: { type: 'string', default: 'mainnet-beta' },
+            baseToken: { type: 'string', examples: ['RAY'] },
+            quoteToken: { type: 'string', examples: ['USDC'] },
+            amount: { type: 'number', examples: [1] },
+            side: { type: 'string', examples: ['buy'] },
+            poolAddress: { type: 'string', examples: ['61R1ndXxvsWXXkWSyNkCxnzwd3zUNB8Q2ibmkiLPC8ht'] },
+            slippagePct: { type: 'number', examples: [1] }
+          }
+        },
+          response: {
           200: GetSwapQuoteResponse
         },
       }
     },
     async (request) => {
       try {
-        const { network, inputMint, amount, slippagePct } = request.query;
+        const { network, baseToken, quoteToken, amount, side, poolAddress, slippagePct } = request.query;
+        const networkToUse = network || 'mainnet-beta';
+
         return await getSwapQuote(
           fastify,
-          network || 'mainnet-beta',
-          inputMint,
+          networkToUse,
+          baseToken,
+          quoteToken,
           amount,
+          side as 'buy' | 'sell',
+          poolAddress,
           slippagePct
-        );
+      );
       } catch (e) {
         logger.error(e);
         throw fastify.httpErrors.internalServerError('Failed to get swap quote');
