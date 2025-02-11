@@ -42,7 +42,7 @@ async function executeSwap(
     slippagePct
   );
 
-  logger.info(`Executing ${side} swap: ${amount.toFixed(4)} ${inToken.symbol} -> ${outToken.symbol} in pool ${poolAddress}`);
+  logger.info(`Executing ${amount.toFixed(4)} ${side} swap in pool ${poolAddress}`);
 
   const swapTx = side === 'buy'
     ? await dlmmPool.swapExactOut({

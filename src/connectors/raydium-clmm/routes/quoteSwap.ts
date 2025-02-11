@@ -64,9 +64,17 @@ export async function getSwapQuote(
   })
   const effectiveSlippage = new BN((slippagePct ?? raydium.getSlippagePct()) / 100);
 
-  
-  const response : ReturnTypeComputeAmountOutFormat | ReturnTypeComputeAmountOutBaseOut = side === 'sell' 
-  ? await PoolUtils.computeAmountOutFormat({
+  // AmountOut = swapQuote, AmountOutBaseOut = swapQuoteExactOut
+  const response : ReturnTypeComputeAmountOutFormat | ReturnTypeComputeAmountOutBaseOut = side === 'buy' 
+  ? await PoolUtils.computeAmountIn({
+    poolInfo: clmmPoolInfo,
+    tickArrayCache: tickCache[poolAddress],
+    amountOut: amount_bn,
+    epochInfo: await raydium.raydium.fetchEpochInfo(),
+    baseMint: new PublicKey(poolInfo[baseIn ? 'mintB' : 'mintA'].address),
+    slippage: effectiveSlippage,
+  })
+  : await PoolUtils.computeAmountOutFormat({
       poolInfo: clmmPoolInfo,
       tickArrayCache: tickCache[poolAddress],
       amountIn: amount_bn,
@@ -75,14 +83,7 @@ export async function getSwapQuote(
       epochInfo: await raydium.raydium.fetchEpochInfo(),
       catchLiquidityInsufficient: true,
     })
-  : await PoolUtils.computeAmountIn({
-      poolInfo: clmmPoolInfo,
-      tickArrayCache: tickCache[poolAddress],
-      amountOut: amount_bn,
-      epochInfo: await raydium.raydium.fetchEpochInfo(),
-      baseMint: new PublicKey(poolInfo[baseIn ? 'mintB' : 'mintA'].address),
-      slippage: effectiveSlippage,
-    })
+
 
   return {
     inputToken,

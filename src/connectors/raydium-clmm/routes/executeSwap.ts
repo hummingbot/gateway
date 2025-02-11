@@ -50,7 +50,8 @@ async function executeSwap(
     slippagePct
   );
 
-  logger.info(`Executing ${side} swap: ${amount.toFixed(4)} ${inputToken.symbol} -> ${outputToken.symbol} in pool ${poolAddress}`);
+  logger.info(`Executing ${amount.toFixed(4)} ${side} swap in pool ${poolAddress}`);
+
   const COMPUTE_UNITS = 600000;
   let currentPriorityFee = (await solana.getGasPrice() * 1e9) - BASE_FEE;
   while (currentPriorityFee <= solana.config.maxPriorityFee * 1e9) {
@@ -58,12 +59,12 @@ async function executeSwap(
     let transaction : VersionedTransaction;
     if (side === 'buy') {
       const exactOutResponse = response as ReturnTypeComputeAmountOutBaseOut;    
-      ({ transaction } = await raydium.raydium.clmm.swap({
+      ({ transaction } = await raydium.raydium.clmm.swapBaseOut({
         poolInfo,
         poolKeys,
-        inputMint: poolInfo[baseIn ? 'mintA' : 'mintB'].address,
-        amountIn: exactOutResponse.amountIn.amount,
-        amountOutMin: exactOutResponse.realAmountOut.amount,
+        outputMint: poolInfo[baseIn ? 'mintB' : 'mintA'].address,
+        amountInMax: exactOutResponse.maxAmountIn.amount,
+        amountOut: exactOutResponse.realAmountOut.amount,
         observationId: clmmPoolInfo.observationId,
         ownerInfo: {
           useSOLBalance: true, // if wish to use existed wsol token account, pass false
@@ -77,12 +78,12 @@ async function executeSwap(
       }) as { transaction: VersionedTransaction });
     } else {
       const exactInResponse = response as ReturnTypeComputeAmountOutFormat;
-      ({ transaction } = await raydium.raydium.clmm.swapBaseOut({
+      ({ transaction } = await raydium.raydium.clmm.swap({
         poolInfo,
         poolKeys,
-        outputMint: poolInfo[baseIn ? 'mintB' : 'mintA'].address,
-        amountInMax: exactInResponse.realAmountIn.amount.raw,
-        amountOut: exactInResponse.amountOut.amount.raw,
+        inputMint: poolInfo[baseIn ? 'mintA' : 'mintB'].address,
+        amountIn: exactInResponse.realAmountIn.amount.raw,
+        amountOutMin: exactInResponse.minAmountOut.amount.raw,
         observationId: clmmPoolInfo.observationId,
         ownerInfo: {
           useSOLBalance: true, // if wish to use existed wsol token account, pass false
