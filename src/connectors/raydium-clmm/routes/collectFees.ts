@@ -35,13 +35,26 @@ export async function collectFees(
 
   logger.info(`Collecting fees from CLMM position ${positionAddress}`)
 
+  const { rewardDefaultInfos } = poolInfo
+  const validRewards = rewardDefaultInfos.filter(info => 
+    Number(info.perSecond) > 0 && info.mint?.address
+  )
+  
+  if (validRewards.length === 0) {
+    logger.warn(`No active rewards found for position ${positionAddress}`)
+  }
+
   const { transaction } = await raydium.raydium.clmm.collectRewards({
     poolInfo: poolInfo as ApiV3PoolInfoConcentratedItem,
     ownerInfo: {
       useSOLBalance: true,
     },
-    rewardMints: [new PublicKey(position.address)],
+    rewardMints: validRewards.map(info => 
+      new PublicKey(info.mint.address)  // Use direct address access
+    ),
+    associatedOnly: true,
   })
+  console.log('transaction', transaction)
 
   const { signature, fee } = await solana.sendAndConfirmTransaction(transaction, [wallet])
   
@@ -90,7 +103,13 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Collect fees from a Raydium CLMM position',
         tags: ['raydium-clmm'],
-        body: CollectFeesRequest,
+        body: {
+          ...CollectFeesRequest,
+          properties: {
+            ...CollectFeesRequest.properties,
+            network: { type: 'string', default: 'mainnet-beta' },
+          }
+        },
         response: { 200: CollectFeesResponse },
       }
     },

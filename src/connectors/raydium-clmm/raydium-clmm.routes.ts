@@ -10,6 +10,7 @@ import { executeSwapRoute } from './routes/executeSwap';
 import { openPositionRoute } from './routes/openPosition';
 import { addLiquidityRoute } from './routes/addLiquidity';
 import { removeLiquidityRoute } from './routes/removeLiquidity';
+import { collectFeesRoute } from './routes/collectFees';
 import { closePositionRoute } from './routes/closePosition';
 
 export const raydiumClmmRoutes: FastifyPluginAsync = async (fastify) => {
@@ -24,6 +25,7 @@ export const raydiumClmmRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(openPositionRoute);
   await fastify.register(addLiquidityRoute);
   await fastify.register(removeLiquidityRoute);
+  await fastify.register(collectFeesRoute);
   await fastify.register(closePositionRoute);
 };
 

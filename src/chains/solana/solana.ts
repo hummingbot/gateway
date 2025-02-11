@@ -483,12 +483,11 @@ export class Solana {
     signers: Signer[] = [],
     computeUnits?: number
   ): Promise<{ signature: string; fee: number }> {
-    let currentPriorityFee = Math.floor(await this.estimatePriorityFees());
+    let currentPriorityFee = await this.estimatePriorityFees();
     const computeUnitsToUse = computeUnits || this.config.defaultComputeUnits;
     
     while (true) {
       const basePriorityFeeLamports = currentPriorityFee * computeUnitsToUse;
-      
       logger.info(`Sending transaction with ${currentPriorityFee} lamports/CU priority fee and max priority fee of ${(basePriorityFeeLamports * LAMPORT_TO_SOL).toFixed(6)} SOL`);
       
       // Check if we've exceeded max fee (convert maxPriorityFee from SOL to lamports)
