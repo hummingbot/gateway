@@ -13,7 +13,6 @@ export const asciiLogo = `
 `;
 
 if (process.env.START_SERVER === 'true') {
-  console.log(asciiLogo);
   startGateway().catch((error) => {
     console.error('Failed to start server:', error);
     process.exit(1);
