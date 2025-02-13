@@ -51,7 +51,10 @@ async function closePosition(
 
     const closePositionTx = await dlmmPool.closePosition({
       owner: wallet.publicKey,
-      position: position,
+      position: {
+        ...position,
+        version: 0
+      },
     });
 
     logger.debug('Close position transaction created:', closePositionTx);

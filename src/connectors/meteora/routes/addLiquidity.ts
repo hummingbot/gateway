@@ -53,7 +53,7 @@ async function addLiquidity(
     throw httpNotFound(`Position not found: ${positionAddress}`);
   }
 
-  const dlmmPool = await meteora.getDlmmPool(info.publicKey.toBase58());
+  const dlmmPool = await meteora.getDlmmPool(info.toBase58());
   if (!dlmmPool) {
     throw httpNotFound(`Pool not found for position: ${positionAddress}`);
   }
