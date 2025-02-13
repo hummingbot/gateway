@@ -1,5 +1,5 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
-import { RaydiumCLMM } from '../raydium-clmm';
+import { Raydium } from '../raydium';
 import { Solana } from '../../../chains/solana/solana';
 import { logger } from '../../../services/logger';
 import { TxVersion } from '@raydium-io/raydium-sdk-v2';
@@ -19,7 +19,7 @@ async function closePosition(
 ): Promise<ClosePositionResponseType> {
   try {
     const solana = await Solana.getInstance(network);
-    const raydium = await RaydiumCLMM.getInstance(network);
+    const raydium = await Raydium.getInstance(network);
     const wallet = await solana.getWallet(walletAddress);
 
     const position = await raydium.getClmmPosition(positionAddress);
@@ -54,7 +54,7 @@ async function closePosition(
     const [poolInfo, poolKeys] = await raydium.getClmmPoolfromAPI(position.poolId.toBase58());
     logger.debug('Pool Info:', poolInfo);
 
-    const result = await raydium.raydium.clmm.closePosition({
+    const result = await raydium.raydiumSDK.clmm.closePosition({
       poolInfo,
       poolKeys,
       ownerPosition: position,

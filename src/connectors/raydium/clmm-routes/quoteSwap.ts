@@ -1,5 +1,5 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
-import { RaydiumCLMM } from '../raydium-clmm';
+import { Raydium } from '../raydium';
 import { Solana } from '../../../chains/solana/solana';
 import { DecimalUtil } from '@orca-so/common-sdk';
 import { Decimal } from 'decimal.js';
@@ -29,7 +29,7 @@ export async function getSwapQuote(
   slippagePct?: number
 ) {
   const solana = await Solana.getInstance(network);
-  const raydium = await RaydiumCLMM.getInstance(network);
+  const raydium = await Raydium.getInstance(network);
   const baseToken = await solana.getToken(baseTokenSymbol);
   const quoteToken = await solana.getToken(quoteTokenSymbol);
   
@@ -72,7 +72,7 @@ export async function getSwapQuote(
     poolInfo: clmmPoolInfo,
     tickArrayCache: tickCache[poolAddress],
     amountOut: amount_bn,
-    epochInfo: await raydium.raydium.fetchEpochInfo(),
+    epochInfo: await raydium.raydiumSDK.fetchEpochInfo(),
     baseMint: new PublicKey(poolInfo['mintB'].address),
     slippage: effectiveSlippageNumber,
   })
@@ -82,7 +82,7 @@ export async function getSwapQuote(
       amountIn: amount_bn,
       tokenOut: poolInfo['mintB'],
       slippage: effectiveSlippageNumber,
-      epochInfo: await raydium.raydium.fetchEpochInfo(),
+      epochInfo: await raydium.raydiumSDK.fetchEpochInfo(),
       catchLiquidityInsufficient: true,
     })
 

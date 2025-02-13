@@ -1,5 +1,5 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
-import { RaydiumCLMM } from '../raydium-clmm';
+import { Raydium } from '../raydium';
 import { Solana } from '../../../chains/solana/solana';
 import { logger } from '../../../services/logger';
 import { 
@@ -24,7 +24,7 @@ export async function quotePosition(
 ): Promise<QuotePositionResponseType> {
   try {
     const solana = await Solana.getInstance(network);
-    const raydium = await RaydiumCLMM.getInstance(network);
+    const raydium = await Raydium.getInstance(network);
 
     const [poolInfo] = await raydium.getClmmPoolfromAPI(poolAddress);
     const rpcData = await raydium.getClmmPoolfromRPC(poolAddress)

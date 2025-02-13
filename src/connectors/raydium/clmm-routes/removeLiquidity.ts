@@ -1,5 +1,5 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify'
-import { RaydiumCLMM } from '../raydium-clmm'
+import { Raydium } from '../raydium'
 import { Solana, BASE_FEE } from '../../../chains/solana/solana'
 import { logger } from '../../../services/logger'
 import { 
@@ -22,7 +22,7 @@ percentageToRemove: number,
 closePosition: boolean = false
 ): Promise<RemoveLiquidityResponseType> {
   const solana = await Solana.getInstance(network)
-  const raydium = await RaydiumCLMM.getInstance(network)
+  const raydium = await Raydium.getInstance(network)
   const wallet = await solana.getWallet(walletAddress)
 
   const positionInfo = await raydium.getClmmPosition(positionAddress)
@@ -46,7 +46,7 @@ closePosition: boolean = false
   let currentPriorityFee = (await solana.getGasPrice() * 1e9) - BASE_FEE
   while (currentPriorityFee <= solana.config.maxPriorityFee * 1e9) {
     const priorityFeePerCU = Math.floor(currentPriorityFee * 1e6 / COMPUTE_UNITS)
-    const { transaction } = await raydium.raydium.clmm.decreaseLiquidity({
+    const { transaction } = await raydium.raydiumSDK.clmm.decreaseLiquidity({
       poolInfo,
       poolKeys,
       ownerPosition: positionInfo,

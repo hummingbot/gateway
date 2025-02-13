@@ -24,6 +24,6 @@ configurations:
     configurationPath: meteora.yml
     schemaPath: meteora-schema.json
 
-  $namespace raydiumClmm:
-    configurationPath: raydium-clmm.yml
-    schemaPath: raydium-clmm-schema.json
+  $namespace raydium:
+    configurationPath: raydium.yml
+    schemaPath: raydium-schema.json

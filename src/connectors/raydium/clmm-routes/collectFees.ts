@@ -1,5 +1,5 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify'
-import { RaydiumCLMM } from '../raydium-clmm'
+import { Raydium } from '../raydium'
 import { ApiV3PoolInfoConcentratedItem } from '@raydium-io/raydium-sdk-v2'
 import { Solana } from '../../../chains/solana/solana'
 import { PublicKey } from '@solana/web3.js'
@@ -18,7 +18,7 @@ export async function collectFees(
   positionAddress: string
 ): Promise<CollectFeesResponseType> {
   const solana = await Solana.getInstance(network)
-  const raydium = await RaydiumCLMM.getInstance(network)
+  const raydium = await Raydium.getInstance(network)
   const wallet = await solana.getWallet(walletAddress)
 
   const position = await raydium.getClmmPosition(positionAddress)
@@ -44,7 +44,7 @@ export async function collectFees(
     logger.warn(`No active rewards found for position ${positionAddress}`)
   }
 
-  const { transaction } = await raydium.raydium.clmm.collectRewards({
+  const { transaction } = await raydium.raydiumSDK.clmm.collectRewards({
     poolInfo: poolInfo as ApiV3PoolInfoConcentratedItem,
     ownerInfo: {
       useSOLBalance: true,

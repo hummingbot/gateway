@@ -1,7 +1,7 @@
 import { AvailableNetworks } from '../connector.requests';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 
-export namespace RaydiumClmmConfig {
+export namespace RaydiumConfig {
   export interface NetworkConfig {
     allowedSlippage: string;
     tradingTypes: Array<string>;
@@ -10,7 +10,7 @@ export namespace RaydiumClmmConfig {
 
   export const config: NetworkConfig = {
     allowedSlippage: ConfigManagerV2.getInstance().get(
-      'raydiumClmm.allowedSlippage',
+      'raydium.allowedSlippage',
     ),
     tradingTypes: ['CLMM', 'AMM'],
     availableNetworks: [{ chain: 'solana', networks: ['mainnet-beta', 'devnet'] }],

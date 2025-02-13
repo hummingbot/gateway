@@ -1,5 +1,5 @@
 import { 
-  Raydium, 
+  Raydium as RaydiumSDK, 
   ApiV3PoolInfoConcentratedItem, 
   PositionInfoLayout, 
   CLMM_PROGRAM_ID,
@@ -11,46 +11,43 @@ import {
   TxVersion
 } from '@raydium-io/raydium-sdk-v2'
 import { logger } from '../../services/logger'
-import { RaydiumClmmConfig } from './raydium-clmm.config'
+import { RaydiumConfig } from './raydium.config'
 import { Solana } from '../../chains/solana/solana'
 import { Keypair } from '@solana/web3.js'
 import { PoolInfo, PositionInfo } from '../../services/clmm-interfaces'
 import { PublicKey } from '@solana/web3.js'
 import { percentRegexp } from '../../services/config-manager-v2';
 
-export class RaydiumCLMM {
-  private static _instances: { [name: string]: RaydiumCLMM }
-  public raydium: Raydium
-  public config: RaydiumClmmConfig.NetworkConfig
-  public txVersion: TxVersion
+export class Raydium {
+  private static _instances: { [name: string]: Raydium }
   private solana: Solana
-  private clmmPools: Map<string, any> = new Map()
-  private clmmPoolPromises: Map<string, Promise<any>> = new Map()
+  public raydiumSDK: RaydiumSDK
+  public config: RaydiumConfig.NetworkConfig
+  public txVersion: TxVersion
   private owner?: Keypair
 
   private constructor() {
-    this.config = RaydiumClmmConfig.config
-    this.raydium = null
+    this.config = RaydiumConfig.config
     this.solana = null
     this.txVersion = TxVersion.V0
   }
 
-  /** Gets singleton instance of RaydiumCLMM */
-  public static async getInstance(network: string): Promise<RaydiumCLMM> {
-    if (!RaydiumCLMM._instances) {
-      RaydiumCLMM._instances = {}
+  /** Gets singleton instance of Raydium */
+  public static async getInstance(network: string): Promise<Raydium> {
+    if (!Raydium._instances) {
+      Raydium._instances = {}
     }
 
-    if (!RaydiumCLMM._instances[network]) {
-      const instance = new RaydiumCLMM()
+    if (!Raydium._instances[network]) {
+      const instance = new Raydium()
       await instance.init(network)
-      RaydiumCLMM._instances[network] = instance
+      Raydium._instances[network] = instance
     }
 
-    return RaydiumCLMM._instances[network]
+    return Raydium._instances[network]
   }
 
-  /** Initializes RaydiumCLMM instance */
+  /** Initializes Raydium instance */
   private async init(network: string) {
     try {
       this.solana = await Solana.getInstance(network);
@@ -63,7 +60,7 @@ export class RaydiumCLMM {
       const raydiumCluster = this.solana.network == `mainnet-beta` ? 'mainnet' : 'devnet';
 
       // Initialize Raydium SDK with optional owner
-      this.raydium = await Raydium.load({
+      this.raydiumSDK = await RaydiumSDK.load({
         connection: this.solana.connection,
         cluster: raydiumCluster,
         owner: this.owner,  // undefined if no wallet present
@@ -71,8 +68,6 @@ export class RaydiumCLMM {
         blockhashCommitment: 'confirmed'
       });
 
-      this.clmmPools = new Map();
-      this.clmmPoolPromises = new Map();
       logger.info("Raydium initialized" + (walletAddress ? ` with wallet: ${walletAddress}` : "with no wallet"));
     } catch (error) {
       logger.error("Raydium initialization failed:", error);
@@ -81,30 +76,20 @@ export class RaydiumCLMM {
   }
 
   async getClmmPoolfromRPC(poolAddress: string): Promise<ClmmRpcData | null> {
-    if (this.clmmPools.has(poolAddress)) return this.clmmPools.get(poolAddress)
-    if (this.clmmPoolPromises.has(poolAddress)) return this.clmmPoolPromises.get(poolAddress)
-
-    const poolPromise = this.raydium.clmm.getRpcClmmPoolInfo({ poolId: poolAddress })
-      .then(poolInfo => {
-        this.clmmPools.set(poolAddress, poolInfo)
-        this.clmmPoolPromises.delete(poolAddress)
-        return poolInfo
-      })
-
-    this.clmmPoolPromises.set(poolAddress, poolPromise)
-    return poolPromise
+    const poolInfoResponse: ClmmRpcData = await this.raydiumSDK.clmm.getRpcClmmPoolInfo({ poolId: poolAddress })
+    return poolInfoResponse
   }
 
   async getClmmPoolfromAPI(poolAddress: string): Promise<[ApiV3PoolInfoConcentratedItem, ClmmKeys] | null> {
-    const poolInfoResponse = await this.raydium.api.fetchPoolById({ ids: poolAddress })
+    const poolInfoResponse = await this.raydiumSDK.api.fetchPoolById({ ids: poolAddress })
     let poolInfo: ApiV3PoolInfoConcentratedItem
     let poolKeys: ClmmKeys | undefined
 
     if (this.solana.network === 'mainnet-beta') {
-      const data = await this.raydium.api.fetchPoolById({ ids: poolAddress })
+      const data = await this.raydiumSDK.api.fetchPoolById({ ids: poolAddress })
       poolInfo = data[0] as ApiV3PoolInfoConcentratedItem
     } else {
-      const data = await this.raydium.clmm.getPoolInfoFromRpc(poolAddress)
+      const data = await this.raydiumSDK.clmm.getPoolInfoFromRpc(poolAddress)
       poolInfo = data.poolInfo
       poolKeys = data.poolKeys
     }

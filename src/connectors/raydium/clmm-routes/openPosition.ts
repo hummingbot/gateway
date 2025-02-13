@@ -1,5 +1,5 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
-import { RaydiumCLMM } from '../raydium-clmm';
+import { Raydium } from '../raydium';
 import { Solana, BASE_FEE } from '../../../chains/solana/solana';
 import { logger } from '../../../services/logger';
 import { TxVersion } from '@raydium-io/raydium-sdk-v2';
@@ -27,7 +27,7 @@ async function openPosition(
   slippagePct?: number
 ): Promise<OpenPositionResponseType> {
   const solana = await Solana.getInstance(network);
-  const raydium = await RaydiumCLMM.getInstance(network);
+  const raydium = await Raydium.getInstance(network);
   const wallet = await solana.getWallet(walletAddress);
 
   const [poolInfo, poolKeys] = await raydium.getClmmPoolfromAPI(poolAddress);
@@ -68,7 +68,7 @@ async function openPosition(
   let currentPriorityFee = (await solana.getGasPrice() * 1e9) - BASE_FEE;
   while (currentPriorityFee <= solana.config.maxPriorityFee * 1e9) {
     const priorityFeePerCU = Math.floor(currentPriorityFee * 1e6 / COMPUTE_UNITS);
-    const { transaction, extInfo } = await raydium.raydium.clmm.openPositionFromBase({
+    const { transaction, extInfo } = await raydium.raydiumSDK.clmm.openPositionFromBase({
       poolInfo,
       poolKeys,
       tickUpper: Math.max(lowerTick, upperTick),

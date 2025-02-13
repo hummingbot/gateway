@@ -1,6 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { Type, Static } from '@sinclair/typebox';
-import { RaydiumCLMM } from '../raydium-clmm';
+import { Raydium } from '../raydium';
 import { PublicKey } from '@solana/web3.js';
 import { logger } from '../../../services/logger';
 import { PositionInfoSchema } from '../../../services/clmm-interfaces';
@@ -41,7 +41,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
       try {
         const { poolAddress } = request.query;
         const network = request.query.network || 'mainnet-beta';
-        const raydium = await RaydiumCLMM.getInstance(network);
+        const raydium = await Raydium.getInstance(network);
         
         // Validate pool address only
         try {
@@ -58,7 +58,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
           const poolInfo = apiResponse[0];  // Direct array access instead of destructuring
           console.log('poolInfo', poolInfo, 'Program ID:', poolInfo.programId);
           
-          const positions = await raydium.raydium.clmm.getOwnerPositionInfo({
+          const positions = await raydium.raydiumSDK.clmm.getOwnerPositionInfo({
             programId: poolInfo.programId
           });
           console.log('positions', positions);

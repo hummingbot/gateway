@@ -1,5 +1,5 @@
 import { FastifyPluginAsync } from 'fastify'
-import { RaydiumCLMM } from '../raydium-clmm'
+import { Raydium } from '../raydium'
 import { 
   PositionInfo, 
   PositionInfoSchema, 
@@ -33,7 +33,7 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       const { network = 'mainnet-beta', positionAddress } = request.query
-      const raydium = await RaydiumCLMM.getInstance(network)
+      const raydium = await Raydium.getInstance(network)
       return raydium.getPositionInfo(positionAddress)
     }
   )

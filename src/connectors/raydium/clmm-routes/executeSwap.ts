@@ -1,6 +1,6 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify'
 import { Solana, BASE_FEE } from '../../../chains/solana/solana'
-import { RaydiumCLMM } from '../raydium-clmm'
+import { Raydium } from '../raydium'
 import { logger } from '../../../services/logger'
 import {
   ExecuteSwapRequestType,
@@ -28,7 +28,7 @@ async function executeSwap(
   slippagePct: number
 ): Promise<ExecuteSwapResponseType> {
   const solana = await Solana.getInstance(network)
-  const raydium = await RaydiumCLMM.getInstance(network)
+  const raydium = await Raydium.getInstance(network)
   const wallet = await solana.getWallet(walletAddress)
 
   // Get pool info from address
@@ -59,7 +59,7 @@ async function executeSwap(
     let transaction : VersionedTransaction;
     if (side === 'buy') {
       const exactOutResponse = response as ReturnTypeComputeAmountOutBaseOut;    
-      ({ transaction } = await raydium.raydium.clmm.swapBaseOut({
+      ({ transaction } = await raydium.raydiumSDK.clmm.swapBaseOut({
         poolInfo,
         poolKeys,
         outputMint: outputToken.address,
@@ -78,7 +78,7 @@ async function executeSwap(
       }) as { transaction: VersionedTransaction });
     } else {
       const exactInResponse = response as ReturnTypeComputeAmountOutFormat;
-      ({ transaction } = await raydium.raydium.clmm.swap({
+      ({ transaction } = await raydium.raydiumSDK.clmm.swap({
         poolInfo,
         poolKeys,
         inputMint: inputToken.address,

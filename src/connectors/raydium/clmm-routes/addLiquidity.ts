@@ -1,5 +1,5 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify'
-import { RaydiumCLMM } from '../raydium-clmm'
+import { Raydium } from '../raydium'
 import { Solana, BASE_FEE } from '../../../chains/solana/solana'
 import { logger } from '../../../services/logger'
 import { 
@@ -23,7 +23,7 @@ async function addLiquidity(
   slippagePct?: number
 ): Promise<AddLiquidityResponseType> {
   const solana = await Solana.getInstance(network)
-  const raydium = await RaydiumCLMM.getInstance(network)
+  const raydium = await Raydium.getInstance(network)
   const wallet = await solana.getWallet(walletAddress);
 
   const positionInfo = await raydium.getClmmPosition(positionAddress);
@@ -77,7 +77,7 @@ async function addLiquidity(
   let currentPriorityFee = (await solana.getGasPrice() * 1e9) - BASE_FEE
   while (currentPriorityFee <= solana.config.maxPriorityFee * 1e9) {
     const priorityFeePerCU = Math.floor(currentPriorityFee * 1e6 / COMPUTE_UNITS)
-    const { transaction } = await raydium.raydium.clmm.increasePositionFromLiquidity({
+    const { transaction } = await raydium.raydiumSDK.clmm.increasePositionFromLiquidity({
       poolInfo,
       poolKeys,
       ownerPosition: positionInfo,
@@ -120,7 +120,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Add liquidity to existing Raydium CLMM position',
-        tags: ['raydium-clmm'],
+        tags: ['raydium'],
         body: {
           ...AddLiquidityRequest,
           properties: {
