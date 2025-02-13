@@ -1,6 +1,5 @@
 import { Type, Static } from '@sinclair/typebox';
 
-// Base PoolInfo without Meteora-specific fields
 export const PoolInfoSchema = Type.Object({
     address: Type.String(),
     baseTokenAddress: Type.String(),
@@ -9,6 +8,7 @@ export const PoolInfoSchema = Type.Object({
     price: Type.Number(),
     baseTokenAmount: Type.Number(),
     quoteTokenAmount: Type.Number(),
+    poolType: Type.Optional(Type.String()),
   }, { $id: 'PoolInfo' });
   export type PoolInfo = Static<typeof PoolInfoSchema>;
 
@@ -18,3 +18,37 @@ export const PoolInfoSchema = Type.Object({
   }, { $id: 'GetPoolInfoRequest' });
   export type GetPoolInfoRequestType = Static<typeof GetPoolInfoRequest>;
   
+  export const AddLiquidityRequest = Type.Object({
+    network: Type.Optional(Type.String()),
+    walletAddress: Type.String(),
+    poolAddress: Type.String(),
+    baseTokenAmount: Type.Number(),
+    quoteTokenAmount: Type.Number(),
+    slippagePct: Type.Optional(Type.Number({ minimum: 0, maximum: 100 })),
+  }, { $id: 'AddLiquidityRequest' });
+  export type AddLiquidityRequestType = Static<typeof AddLiquidityRequest>;
+    
+  export const AddLiquidityResponse = Type.Object({
+    signature: Type.String(),
+    fee: Type.Number(),
+    baseTokenAmountAdded: Type.Number(),
+    quoteTokenAmountAdded: Type.Number(),
+  }, { $id: 'AddLiquidityResponse' });
+  export type AddLiquidityResponseType = Static<typeof AddLiquidityResponse>;
+
+  export const QuoteLiquidityRequest = Type.Omit(
+    AddLiquidityRequest,
+    ['walletAddress'],
+    { $id: 'QuoteLiquidityRequest' }
+  );
+  export type QuoteLiquidityRequestType = Static<typeof QuoteLiquidityRequest>;
+  
+  export const QuoteLiquidityResponse = Type.Object({
+    inputBase: Type.Boolean(),
+    baseTokenAmount: Type.Number(),
+    quoteTokenAmount: Type.Number(),
+    baseTokenAmountMax: Type.Number(),
+    quoteTokenAmountMax: Type.Number(),
+  }, { $id: 'QuoteLiquidityResponse' });
+  export type QuoteLiquidityResponseType = Static<typeof QuoteLiquidityResponse>;
+

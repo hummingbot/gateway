@@ -1,6 +1,8 @@
 import { 
   Raydium as RaydiumSDK, 
-  ApiV3PoolInfoConcentratedItem, 
+  ApiV3PoolInfoConcentratedItem,
+  ApiV3PoolInfoStandardItem,
+  ApiV3PoolInfoStandardItemCpmm,
   PositionInfoLayout, 
   CLMM_PROGRAM_ID,
   getPdaPersonalPositionAddress,
@@ -8,8 +10,11 @@ import {
   TickUtils,
   ClmmKeys,
   ClmmRpcData,
-  TxVersion
+  TxVersion,
+  AmmV4Keys,
+  AmmV5Keys
 } from '@raydium-io/raydium-sdk-v2'
+import { isValidClmm, isValidAmm, isValidCpmm } from './raydium.utils'
 import { logger } from '../../services/logger'
 import { RaydiumConfig } from './raydium.config'
 import { Solana } from '../../chains/solana/solana'
@@ -101,38 +106,9 @@ export class Raydium {
     return [poolInfo, poolKeys]
   }
 
-  async getAmmPoolInfo(poolAddress: string): Promise<AmmPoolInfo | null> {
-    try {
-      const rawPool = await this.raydiumSDK.liquidity.getRpcPoolInfos([poolAddress])
-      if (!rawPool) {
-        logger.warn(`Pool not found: ${poolAddress}`)
-        return null
-      }
-      console.log('rawPool', rawPool)
-
-      const poolInfo: AmmPoolInfo = {
-        address: poolAddress,
-        baseTokenAddress: rawPool[poolAddress].baseMint.toString(),
-        quoteTokenAddress: rawPool[poolAddress].quoteMint.toString(),
-        feePct: Number(rawPool[poolAddress].tradeFeeNumerator) / Number(rawPool[poolAddress].tradeFeeDenominator),
-        price: Number(rawPool[poolAddress].poolPrice),
-        baseTokenAmount: Number(rawPool[poolAddress].mintAAmount) / 10 ** Number(rawPool[poolAddress].baseDecimal),
-        quoteTokenAmount: Number(rawPool[poolAddress].mintBAmount) / 10 ** Number(rawPool[poolAddress].quoteDecimal),
-      }
-      return poolInfo
-    } catch (error) {
-      logger.error(`Error getting AMM pool info for ${poolAddress}:`, error)
-      return null
-    }
-  }  
-
   async getClmmPoolInfo(poolAddress: string): Promise<ClmmPoolInfo | null> {
     try {
       const rawPool = await this.getClmmPoolfromRPC(poolAddress)
-      if (!rawPool) {
-        logger.warn(`Pool not found: ${poolAddress}`)
-        return null
-      }
       console.log('rawPool', rawPool)
 
       // Fetch AMM config account data
@@ -148,7 +124,7 @@ export class Raydium {
             };
           }
         } catch (e) {
-          logger.error(`Error fetching AMM config: ${e}`);
+          logger.error(`Error fetching CLMM pool info for ${poolAddress}: ${e}`);
         }
       }
 
@@ -240,7 +216,89 @@ export class Raydium {
     }
   }
 
-  /** Gets slippage percentage from config */
+  // General Pool Methods
+  async getPoolfromAPI(poolAddress: string): Promise<[ApiV3PoolInfoStandardItem | ApiV3PoolInfoStandardItemCpmm, AmmV4Keys | AmmV5Keys] | null> {
+    try {
+      let poolInfo: ApiV3PoolInfoStandardItem | ApiV3PoolInfoStandardItemCpmm;
+      let poolKeys: AmmV4Keys | AmmV5Keys;
+
+      if (this.solana.network === 'mainnet-beta') {
+        const data = await this.raydiumSDK.api.fetchPoolById({ ids: poolAddress });
+        poolInfo = data[0] as ApiV3PoolInfoStandardItem | ApiV3PoolInfoStandardItemCpmm;
+      } else {
+        const data = await this.raydiumSDK.liquidity.getPoolInfoFromRpc({ poolId: poolAddress });
+        poolInfo = data.poolInfo as ApiV3PoolInfoStandardItem | ApiV3PoolInfoStandardItemCpmm;
+        poolKeys = data.poolKeys as AmmV4Keys | AmmV5Keys;
+      }
+      console.log('poolInfo', poolInfo)
+
+      if (!poolInfo) {
+        logger.error('Pool not found for address: ' + poolAddress);
+        return null;
+      }
+
+      return [poolInfo, poolKeys];
+    } catch (error) {
+      logger.error(`Error getting AMM pool info from API for ${poolAddress}:`, error);
+      return null;
+    }
+  }
+
+  async getPoolType(poolAddress: string): Promise<string> {
+    const [poolInfo] = await this.getPoolfromAPI(poolAddress)
+    if (isValidClmm(poolInfo.programId)) {
+      return 'clmm'
+    } else if (isValidAmm(poolInfo.programId)) {
+      return 'amm'
+    } else if (isValidCpmm(poolInfo.programId)) {
+      return 'cpmm'
+    }
+    return null
+  }
+
+  // AMM Pool Methods
+  async getAmmPoolInfo(poolAddress: string): Promise<AmmPoolInfo | null> {
+    try {
+      const poolType = await this.getPoolType(poolAddress)
+      let poolInfo: AmmPoolInfo
+      if (poolType === 'amm') {
+        const rawPool = await this.raydiumSDK.liquidity.getRpcPoolInfos([poolAddress])
+        console.log('ammPoolInfo', rawPool)
+
+        poolInfo = {
+          address: poolAddress,
+          baseTokenAddress: rawPool[poolAddress].baseMint.toString(),
+          quoteTokenAddress: rawPool[poolAddress].quoteMint.toString(),
+          feePct: Number(rawPool[poolAddress].tradeFeeNumerator) / Number(rawPool[poolAddress].tradeFeeDenominator),
+          price: Number(rawPool[poolAddress].poolPrice),
+          baseTokenAmount: Number(rawPool[poolAddress].mintAAmount) / 10 ** Number(rawPool[poolAddress].baseDecimal),
+          quoteTokenAmount: Number(rawPool[poolAddress].mintBAmount) / 10 ** Number(rawPool[poolAddress].quoteDecimal),
+          poolType: poolType,
+        }
+        return poolInfo
+      } else if (poolType === 'cpmm') {
+        const rawPool = await this.raydiumSDK.cpmm.getRpcPoolInfos([poolAddress])
+        console.log('cpmmPoolInfo', rawPool)
+
+        poolInfo = {
+          address: poolAddress,
+          baseTokenAddress: rawPool[poolAddress].mintA.toString(),
+          quoteTokenAddress: rawPool[poolAddress].mintB.toString(),
+          feePct: Number(rawPool[poolAddress].configInfo?.tradeFeeRate || 0),
+          price: Number(rawPool[poolAddress].poolPrice),
+          baseTokenAmount: Number(rawPool[poolAddress].baseReserve) / 10 ** Number(rawPool[poolAddress].mintDecimalA),
+          quoteTokenAmount: Number(rawPool[poolAddress].quoteReserve) / 10 ** Number(rawPool[poolAddress].mintDecimalB),
+          poolType: poolType,
+        }
+        return poolInfo
+      }
+    } catch (error) {
+      logger.error(`Error getting AMM pool info for ${poolAddress}:`, error)
+      return null
+    }
+  }  
+
+  // General Slippage Settings
   getSlippagePct(): number {
     const allowedSlippage = this.config.allowedSlippage;
     const nd = allowedSlippage.match(percentRegexp);
@@ -253,104 +311,4 @@ export class Raydium {
     return slippage * 100;
   }
 
-  // Helper function to convert tick index to price
-  // private tickIndexToPrice(tickIndex: number, decimalsA: number, decimalsB: number): number {
-  //   const tick = tickIndex;
-  //   const sqrtPrice = Math.pow(1.0001, tick / 2);
-  //   const price = Math.pow(sqrtPrice, 2);
-    
-  //   // Adjust for decimals
-  //   const decimalAdjustment = Math.pow(10, decimalsA - decimalsB);
-  //   return price * decimalAdjustment;
-  // }
-
-  // private async processPoolTickData(
-  //   poolAddress: string,
-  //   rawPool: any
-  // ) {
-  //   try {
-  //     // Get pool tick data
-  //     const poolDataResponse = await this.raydium.clmm.getPoolInfoFromRpc(poolAddress);
-  //     logger.info(`Processing pool data for ${poolAddress}`);
-  //     console.log('Pool data response:', poolDataResponse);
-      
-  //     if (!poolDataResponse?.tickData?.[poolAddress]) {
-  //       logger.warn(`No tick data found for pool: ${poolAddress}`)
-  //       return null;
-  //     }
-  //     const tickArrays = poolDataResponse.tickData[poolAddress];
-  //     if (!tickArrays || typeof tickArrays !== 'object') {
-  //       logger.warn(`Invalid tick data structure for pool: ${poolAddress}`);
-  //       return null;
-  //     }
-  //     logger.info(`Processing tick arrays for ${poolAddress}`);
-  //     console.log('Tick arrays:', tickArrays);
-
-  //     // DEBUG: Inspect first tick array entry
-  //     const firstArrayKey = Object.keys(tickArrays)[0];
-  //     const firstArray = tickArrays[firstArrayKey];
-  //     logger.debug('First tick array structure:', {
-  //       key: firstArrayKey,
-  //       startTickIndex: firstArray.startTickIndex,
-  //       ticksLength: firstArray.ticks?.length,
-  //       initializedTickCount: firstArray.initializedTickCount,
-  //       address: firstArray.address?.toString(),
-  //       tickSpacing: rawPool.tickSpacing,
-  //       rawTickSample: firstArray.ticks?.[0] // First tick in array
-  //     });
-
-  //     // Process tick arrays into bins
-  //     const bins = [];
-      
-  //     // Process each tick array
-  //     for (const [arrayStartTick, tickArray] of Object.entries(tickArrays)) {
-  //       const startTickIndex = Number(arrayStartTick);
-  //       const tickSpacing = rawPool.tickSpacing;
-        
-  //       logger.debug(`Processing tick array starting at ${startTickIndex}`);
-        
-  //       if (!tickArray?.ticks || !Array.isArray(tickArray.ticks)) {
-  //         logger.warn(`No valid ticks array found at index ${startTickIndex}`);
-  //         continue;
-  //       }
-
-  //       // Get address safely
-  //       const arrayAddress = tickArray?.address?.toString() || 'unknown';
-        
-  //       try {
-  //         // Process each tick in the array with its offset
-  //         tickArray.ticks.forEach((tick, i) => {
-  //           if (!tick?.liquidityNet) return;
-            
-  //           const tickIndex = startTickIndex + (i * tickSpacing);
-  //           const bin = {
-  //             binId: tickIndex,
-  //             price: this.tickIndexToPrice(
-  //               tickIndex,
-  //               rawPool.mintDecimalsA,
-  //               rawPool.mintDecimalsB
-  //             ),
-  //             liquidity: tick.liquidityNet.toString(),
-  //             reserveA: 0,
-  //             reserveB: 0,
-  //             address: arrayAddress
-  //           };
-  //           bins.push(bin);
-  //         });
-  //       } catch (error) {
-  //         logger.error(`Error processing ticks in array ${startTickIndex}:`, error);
-  //       }
-  //     }
-
-  //     logger.info(`Final bins array for ${poolAddress} (length: ${bins.length}):`, bins);
-  //     // Sort bins by binId
-  //     return bins.sort((a, b) => a.binId - b.binId);
-  //   } catch (error) {
-  //     logger.error(`Error in processPoolTickData for ${poolAddress}:`, error);
-  //     console.error('Full error:', error);
-  //     throw error; // Re-throw to maintain error propagation
-  //   }
-  // }
-
-  // Add other methods similar to Meteora class...
 }
