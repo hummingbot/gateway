@@ -6,7 +6,7 @@ import {
   GetPoolInfoRequest,
   PoolInfo,
   PoolInfoSchema
-} from '../../../services/clmm-interfaces';
+} from '../../../services/amm-interfaces';
 
 export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
@@ -16,15 +16,15 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
     '/pool-info',
     {
       schema: {
-        description: 'Get CLMM pool information from Raydium',
-        tags: ['raydium-clmm'],
+        description: 'Get AMM pool information from Raydium',
+        tags: ['raydium-amm'],
         querystring: {
           ...GetPoolInfoRequest,
           properties: {
             network: { type: 'string', examples: ['mainnet-beta'] },
             poolAddress: { 
               type: 'string', 
-              examples: ['61R1ndXxvsWXXkWSyNkCxnzwd3zUNB8Q2ibmkiLPC8ht'] 
+              examples: ['AVs9TA4nWDzfPJE9gGVNJMVhcQy3V9PGazuz33BfG2RA'] 
             }
           }
         },
@@ -39,7 +39,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
         const network = request.query.network || 'mainnet-beta';
         
         const raydium = await Raydium.getInstance(network);
-        const poolInfo = await raydium.getClmmPoolInfo(poolAddress);
+        const poolInfo = await raydium.getAmmPoolInfo(poolAddress);
         if (!poolInfo) throw fastify.httpErrors.notFound('Pool not found');
         return poolInfo;
       } catch (e) {
@@ -49,5 +49,3 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
     }
   );
 };
-
-export default poolInfoRoute;

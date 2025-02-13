@@ -52,7 +52,7 @@ const swaggerOptions = {
       { name: 'solana', description: 'Solana chain endpoints' },
       { name: 'meteora', description: 'Meteora CLMM endpoints' },
       { name: 'raydium-clmm', description: 'Raydium CLMM endpoints' },
-      { name: 'raydium-cpmm', description: 'Raydium CPMM endpoints' },
+      { name: 'raydium-amm', description: 'Raydium AMM and CPMM endpoints' },
       { name: 'jupiter', description: 'Jupiter swap endpoints' },
       { name: 'ethereum', description: 'Ethereum chain endpoints' },
       { name: 'uniswap', description: 'Uniswap swap endpoints' },
@@ -154,7 +154,7 @@ const configureGatewayServer = () => {
     app.register(jupiterRoutes, { prefix: '/jupiter' });
     app.register(meteoraRoutes, { prefix: '/meteora' });
     app.register(raydiumRoutes.clmm, { prefix: '/raydium/clmm' });
-    app.register(raydiumRoutes.cpmm, { prefix: '/raydium/cpmm' });
+    app.register(raydiumRoutes.amm, { prefix: '/raydium/amm' });
     app.register(uniswapRoutes, { prefix: '/uniswap' });
     app.register(solanaRoutes, { prefix: '/solana' });
     app.register(ethereumRoutes, { prefix: '/ethereum' });

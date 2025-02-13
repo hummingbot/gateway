@@ -14,7 +14,8 @@ import { logger } from '../../services/logger'
 import { RaydiumConfig } from './raydium.config'
 import { Solana } from '../../chains/solana/solana'
 import { Keypair } from '@solana/web3.js'
-import { PoolInfo, PositionInfo } from '../../services/clmm-interfaces'
+import { PoolInfo as ClmmPoolInfo, PositionInfo } from '../../services/clmm-interfaces'
+import { PoolInfo as AmmPoolInfo } from '../../services/amm-interfaces'
 import { PublicKey } from '@solana/web3.js'
 import { percentRegexp } from '../../services/config-manager-v2';
 
@@ -94,13 +95,38 @@ export class Raydium {
       poolKeys = data.poolKeys
     }
     if (!poolInfoResponse || !poolInfoResponse[0]) {
-      logger.error('Pool info not found for position')
+      logger.error('Pool not found for address: ' + poolAddress)
       return null
     }
     return [poolInfo, poolKeys]
   }
 
-  async getPoolInfo(poolAddress: string): Promise<PoolInfo | null> {
+  async getAmmPoolInfo(poolAddress: string): Promise<AmmPoolInfo | null> {
+    try {
+      const rawPool = await this.raydiumSDK.liquidity.getRpcPoolInfos([poolAddress])
+      if (!rawPool) {
+        logger.warn(`Pool not found: ${poolAddress}`)
+        return null
+      }
+      console.log('rawPool', rawPool)
+
+      const poolInfo: AmmPoolInfo = {
+        address: poolAddress,
+        baseTokenAddress: rawPool[poolAddress].baseMint.toString(),
+        quoteTokenAddress: rawPool[poolAddress].quoteMint.toString(),
+        feePct: Number(rawPool[poolAddress].tradeFeeNumerator) / Number(rawPool[poolAddress].tradeFeeDenominator),
+        price: Number(rawPool[poolAddress].poolPrice),
+        baseTokenAmount: Number(rawPool[poolAddress].mintAAmount) / 10 ** Number(rawPool[poolAddress].baseDecimal),
+        quoteTokenAmount: Number(rawPool[poolAddress].mintBAmount) / 10 ** Number(rawPool[poolAddress].quoteDecimal),
+      }
+      return poolInfo
+    } catch (error) {
+      logger.error(`Error getting AMM pool info for ${poolAddress}:`, error)
+      return null
+    }
+  }  
+
+  async getClmmPoolInfo(poolAddress: string): Promise<ClmmPoolInfo | null> {
     try {
       const rawPool = await this.getClmmPoolfromRPC(poolAddress)
       if (!rawPool) {
@@ -129,7 +155,7 @@ export class Raydium {
       const vaultABalance = (await this.solana.connection.getTokenAccountBalance(rawPool.vaultA)).value.uiAmount;
       const vaultBBalance = (await this.solana.connection.getTokenAccountBalance(rawPool.vaultB)).value.uiAmount;
 
-      const poolInfo: PoolInfo = {
+      const poolInfo: ClmmPoolInfo = {
         address: poolAddress,
         baseTokenAddress: rawPool.mintA.toString(),
         quoteTokenAddress: rawPool.mintB.toString(),
@@ -142,7 +168,7 @@ export class Raydium {
       }
       return poolInfo
     } catch (error) {
-      logger.error(`Error getting pool info for ${poolAddress}:`, error)
+      logger.error(`Error getting CLMM pool info for ${poolAddress}:`, error)
       return null
     }
   }

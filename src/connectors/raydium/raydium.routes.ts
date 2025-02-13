@@ -1,7 +1,8 @@
 import type { FastifyPluginAsync } from 'fastify';
 import sensible from '@fastify/sensible';
 
-import { poolInfoRoute } from './clmm-routes/poolInfo';
+// CLMM routes
+import { poolInfoRoute as clmmPoolInfoRoute } from './clmm-routes/poolInfo';
 import { positionsOwnedRoute } from './clmm-routes/positionsOwned';
 import { positionInfoRoute } from './clmm-routes/positionInfo';
 import { quoteSwapRoute } from './clmm-routes/quoteSwap';
@@ -13,10 +14,14 @@ import { removeLiquidityRoute } from './clmm-routes/removeLiquidity';
 import { collectFeesRoute } from './clmm-routes/collectFees';
 import { closePositionRoute } from './clmm-routes/closePosition';
 
+// AMM routes
+import { poolInfoRoute as ammPoolInfoRoute } from './amm-routes/poolInfo';
+
+
 const raydiumClmmRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(sensible);
   
-  await fastify.register(poolInfoRoute);
+  await fastify.register(clmmPoolInfoRoute);
   await fastify.register(positionsOwnedRoute);
   await fastify.register(positionInfoRoute);
   await fastify.register(quoteSwapRoute);
@@ -29,13 +34,13 @@ const raydiumClmmRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(closePositionRoute);
 };
 
-const raydiumCpmmRoutes: FastifyPluginAsync = async (fastify) => {
-  await fastify.register(sensible);
-  // Future CPMM routes here
+const raydiumAmmRoutes: FastifyPluginAsync = async (fastify) => {
+  await fastify.register(sensible); 
+  await fastify.register(ammPoolInfoRoute);
 };
 
 // Main export that combines both
 export const raydiumRoutes = {
   clmm: raydiumClmmRoutes,
-  cpmm: raydiumCpmmRoutes
+  amm: raydiumAmmRoutes
 };
