@@ -97,6 +97,12 @@ export class Meteora {
         account: LbPair 
       }[];
 
+      // Sanitize the response to avoid circular references
+      lbPairs = lbPairs.map(pair => ({
+        publicKey: pair.publicKey,
+        account: pair.account // Keep the original account object intact
+      }));
+
       // Only apply token filtering if tokens are provided
       if (tokenMintA && tokenMintB) {
         lbPairs = lbPairs.filter(pair => {
@@ -119,8 +125,8 @@ export class Meteora {
        
       return lbPairs.slice(0, returnLength);
     } catch (error) {
-      logger.error('Failed to fetch Meteora pools:', error);
-      return []; // Return empty array instead of throwing
+      logger.error('Error in fetch-pools:', error);
+      return [];
     }
   }
 
@@ -236,14 +242,18 @@ export class Meteora {
       wallet
     );
 
-    const [matchingPosition] = Array.from(allPositions.values())
-      .map(position => ({
+    type PositionData = {
+      lbPairPositionsData: { publicKey: PublicKey; positionData: any }[];
+    };
+
+    const [matchingPosition] = Array.from(allPositions.values() as Iterable<PositionData>)
+      .map((position: PositionData) => ({
         position: position.lbPairPositionsData.find(
           lbPosition => lbPosition.publicKey.toBase58() === positionAddress
         ),
-        info: position
+        info: position.lbPairPositionsData[0]?.publicKey
       }))
-      .filter(x => x.position);
+      .filter((x): x is { position: { publicKey: PublicKey; positionData: any }; info: PublicKey } => !!x.position);
 
     if (!matchingPosition) {
       return null;
@@ -255,16 +265,17 @@ export class Meteora {
   
   /** Gets position information */
   async getPositionInfo(positionAddress: string, wallet: PublicKey): Promise<PositionInfo> {
-    const { position, info } = await this.getRawPosition(positionAddress, wallet);
-    if (!position) {
+    const result = await this.getRawPosition(positionAddress, wallet);
+    if (!result || !result.position) {
       throw new Error('Position not found');
     }
-
-    const dlmmPool = await this.getDlmmPool(info.publicKey.toBase58());
+    const { position, info: poolPublicKey } = result as { position: any, info: PublicKey };
+    
+    const dlmmPool = await this.getDlmmPool(poolPublicKey.toBase58());
     const activeBin = await dlmmPool.getActiveBin();
 
     if (!activeBin || !activeBin.price || !activeBin.pricePerToken) {
-      throw new Error(`Invalid active bin data for pool: ${info.publicKey.toBase58()}`);
+      throw new Error(`Invalid active bin data for pool: ${poolPublicKey.toBase58()}`);
     }
 
     // Get prices from bin IDs
@@ -280,7 +291,7 @@ export class Meteora {
 
     return {
       address: positionAddress,
-      poolAddress: info.publicKey.toString(),
+      poolAddress: poolPublicKey.toString(),
       baseTokenAddress: dlmmPool.tokenX.publicKey.toBase58(),
       quoteTokenAddress: dlmmPool.tokenY.publicKey.toBase58(),
       baseTokenAmount: Number(convertDecimals(position.positionData.totalXAmount, dlmmPool.tokenX.decimal)),
