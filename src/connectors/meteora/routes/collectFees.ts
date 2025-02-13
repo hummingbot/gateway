@@ -28,7 +28,7 @@ export async function collectFees(
     throw fastify.httpErrors.notFound(`Position not found: ${positionAddress}`);
   }
 
-  const dlmmPool = await meteora.getDlmmPool(info.toBase58());
+  const dlmmPool = await meteora.getDlmmPool(info.publicKey.toBase58());
   if (!dlmmPool) {
     throw fastify.httpErrors.notFound(`Pool not found for position: ${positionAddress}`);
   }
@@ -42,10 +42,7 @@ export async function collectFees(
 
   const claimSwapFeeTx = await dlmmPool.claimSwapFee({
     owner: wallet.publicKey,
-    position: {
-      ...position,
-      version: 0
-    },
+    position: position,
   });
 
   const { signature, fee } = await solana.sendAndConfirmTransaction(claimSwapFeeTx, [wallet], 300_000);

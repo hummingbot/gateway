@@ -32,7 +32,7 @@ export async function removeLiquidity(
   }
 
   const { position, info } = await meteora.getRawPosition(positionAddress, wallet.publicKey);
-  const dlmmPool = await meteora.getDlmmPool(info.toBase58());
+  const dlmmPool = await meteora.getDlmmPool(info.publicKey.toBase58());
   const tokenX = await solana.getToken(dlmmPool.tokenX.publicKey.toBase58());
   const tokenY = await solana.getToken(dlmmPool.tokenY.publicKey.toBase58());
   const tokenXSymbol = tokenX?.symbol || 'UNKNOWN';
