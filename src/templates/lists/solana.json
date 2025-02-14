@@ -1,6 +1,27 @@
 [
   {
     "chainId": 101,
+    "name": "ai16z",
+    "symbol": "AI16Z",
+    "address": "HeLp6NuQkmYB4pYWo2zYs22mESHXPQYzXbB8n4V98jwC",
+    "decimals": 9
+  },
+  {
+    "chainId": 101,
+    "name": "OFFICIAL TRUMP",
+    "symbol": "TRUMP",
+    "address": "6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN",
+    "decimals": 6
+  },
+  {
+    "chainId": 101,
+    "name": "Fartcoin",
+    "symbol": "FARTCOIN",
+    "address": "9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump",
+    "decimals": 9
+  },
+  {
+    "chainId": 101,
     "name": "gulp",
     "symbol": "$",
     "address": "8gsccGREpFttkH813odWMfHGtDRu8MjjyKvTN782WFaP",

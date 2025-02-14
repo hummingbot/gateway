@@ -151,6 +151,8 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
             upperPrice: { type: 'number', examples: [1] },
             poolAddress: { type: 'string', examples: ['BqBMwCcPXu6ZMKQBX2hYGGN4PNkEb15vLjigt8DKtuLp'] },
             slippagePct: { type: 'number', examples: [1] },
+            baseTokenAmount: { type: 'number', examples: [2] },
+            quoteTokenAmount: { type: 'number', examples: [10] },
           }
         },
         response: {

@@ -16,7 +16,7 @@ import {
   VersionedTransaction,
   VersionedTransactionResponse,
 } from '@solana/web3.js';
-import { TOKEN_PROGRAM_ID, unpackAccount, getMint } from "@solana/spl-token";
+import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID, unpackAccount, getMint, programSupportsExtensions } from "@solana/spl-token";
 
 import { walletPath } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
@@ -272,15 +272,22 @@ export class Solana {
     }
 
     // Get all token accounts for the provided address
-    const accounts = await this.connection.getTokenAccountsByOwner(
-      publicKey,
-      { programId: TOKEN_PROGRAM_ID }
-    );
+    const [legacyAccounts, token2022Accounts] = await Promise.all([
+      this.connection.getTokenAccountsByOwner(publicKey, { programId: TOKEN_PROGRAM_ID }),
+      this.connection.getTokenAccountsByOwner(publicKey, { programId: TOKEN_2022_PROGRAM_ID })
+    ]);
+
+    const allAccounts = [...legacyAccounts.value, ...token2022Accounts.value];
 
     // Process token accounts
-    for (const value of accounts.value) {
-      const parsedTokenAccount = unpackAccount(value.pubkey, value.account);
-      const mintAddress = parsedTokenAccount.mint.toBase58();
+    for (const value of allAccounts) {
+      const programId = value.account.owner;
+      const parsedAccount = unpackAccount(
+        value.pubkey, 
+        value.account,
+        programId,
+      );
+      const mintAddress = parsedAccount.mint.toBase58();
       
       // Only check tokens from our token list when no symbols are specified
       const token = this.tokenList.find(t => t.address === mintAddress);
@@ -289,9 +296,15 @@ export class Solana {
         s.toUpperCase() === token.symbol.toUpperCase() || 
         s.toLowerCase() === mintAddress.toLowerCase()
       ))) {
-        const amount = parsedTokenAccount.amount;
+        const amount = parsedAccount.amount;
         const uiAmount = Number(amount) / Math.pow(10, token.decimals);
         balances[token.symbol] = uiAmount;
+      }
+
+      if (!token) {
+        console.log('token not found for address:', mintAddress);
+      } else {
+        console.log('token', token.symbol, 'balance:', parsedAccount.amount.toString());
       }
     }
 
