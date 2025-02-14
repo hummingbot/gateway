@@ -27,9 +27,9 @@ export async function quotePosition(
     const raydium = await Raydium.getInstance(network);
 
     const [poolInfo] = await raydium.getClmmPoolfromAPI(poolAddress);
-    const rpcData = await raydium.getClmmPoolfromRPC(poolAddress)
-    poolInfo.price = rpcData.currentPrice
-    console.log('current price', poolInfo.price);
+    // const rpcData = await raydium.getClmmPoolfromRPC(poolAddress)
+    // poolInfo.price = rpcData.currentPrice
+    // console.log('current price', poolInfo.price);
 
     const baseToken = await solana.getToken(poolInfo.mintA.address);
     const quoteToken = await solana.getToken(poolInfo.mintB.address);
@@ -44,10 +44,10 @@ export async function quotePosition(
       price: new Decimal(upperPrice),
       baseIn: true,
     });
-    console.log('lowerTick', lowerTick);
-    console.log('upperTick', upperTick);
-    console.log('tickLowerPrice', tickLowerPrice);
-    console.log('tickUpperPrice', tickUpperPrice);
+    // console.log('lowerTick', lowerTick);
+    // console.log('upperTick', upperTick);
+    // console.log('tickLowerPrice', tickLowerPrice);
+    // console.log('tickUpperPrice', tickUpperPrice);
 
     const baseAmountBN = new BN(new Decimal(baseTokenAmount).mul(10 ** baseToken.decimals).toFixed(0));
     const quoteAmountBN = new BN(new Decimal(quoteTokenAmount).mul(10 ** quoteToken.decimals).toFixed(0));
@@ -57,9 +57,10 @@ export async function quotePosition(
     }
 
     const epochInfo = await solana.connection.getEpochInfo();
+    const slippage = slippagePct || raydium.getSlippagePct() / 100;
     const resBase = await PoolUtils.getLiquidityAmountOutFromAmountIn({
       poolInfo,
-      slippage: (slippagePct || raydium.getSlippagePct()) / 100,
+      slippage: slippage,
       inputA: true,
       tickUpper: Math.max(lowerTick, upperTick),
       tickLower: Math.min(lowerTick, upperTick),
@@ -81,7 +82,7 @@ export async function quotePosition(
 
     const resQuote = await PoolUtils.getLiquidityAmountOutFromAmountIn({
       poolInfo,
-      slippage: (slippagePct || raydium.getSlippagePct()) / 100,
+      slippage: slippage,
       inputA: false,
       tickUpper: Math.max(lowerTick, upperTick),
       tickLower: Math.min(lowerTick, upperTick),
