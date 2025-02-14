@@ -44,7 +44,7 @@ export const PoolInfoSchema = Type.Object({
   export type QuoteLiquidityRequestType = Static<typeof QuoteLiquidityRequest>;
   
   export const QuoteLiquidityResponse = Type.Object({
-    inputBase: Type.Boolean(),
+    baseLimited: Type.Boolean(),
     baseTokenAmount: Type.Number(),
     quoteTokenAmount: Type.Number(),
     baseTokenAmountMax: Type.Number(),
