@@ -57,7 +57,7 @@ export async function quotePosition(
     }
 
     const epochInfo = await solana.connection.getEpochInfo();
-    const slippage = slippagePct || raydium.getSlippagePct() / 100;
+    const slippage = (slippagePct === 0 ? 0 : (slippagePct || raydium.getSlippagePct())) / 100;
     const resBase = await PoolUtils.getLiquidityAmountOutFromAmountIn({
       poolInfo,
       slippage: slippage,
@@ -72,11 +72,11 @@ export async function quotePosition(
     console.log('resBase', {
       liquidity: resBase.liquidity.toString(),
       amountA: Number(resBase.amountA.amount.toString()) / (10 ** baseToken.decimals),
-      amountB: Number(resBase.amountB.amount.toString()) / (10 ** quoteToken.decimals),
+      amountB: Number(resBase.amountB.amount.toString()) / (10 ** baseToken.decimals),
       amountSlippageA: Number(resBase.amountSlippageA.amount.toString()) / (10 ** baseToken.decimals),
-      amountSlippageB: Number(resBase.amountSlippageB.amount.toString()) / (10 ** quoteToken.decimals),
-      price: (Number(resBase.amountB.amount.toString()) / (10 ** quoteToken.decimals)) / (Number(resBase.amountA.amount.toString()) / (10 ** baseToken.decimals)),
-      priceWithSlippage: (Number(resBase.amountSlippageB.amount.toString()) / (10 ** quoteToken.decimals)) / (Number(resBase.amountSlippageA.amount.toString()) / (10 ** baseToken.decimals)),
+      amountSlippageB: Number(resBase.amountSlippageB.amount.toString()) / (10 ** baseToken.decimals),
+      price: (Number(resBase.amountB.amount.toString()) / (10 ** baseToken.decimals)) / (Number(resBase.amountA.amount.toString()) / (10 ** baseToken.decimals)),
+      priceWithSlippage: (Number(resBase.amountSlippageB.amount.toString()) / (10 ** baseToken.decimals)) / (Number(resBase.amountSlippageA.amount.toString()) / (10 ** baseToken.decimals)),
       expirationTime: resBase.expirationTime
     });
 
@@ -93,35 +93,34 @@ export async function quotePosition(
     });
     console.log('resQuote', {
       liquidity: resQuote.liquidity.toString(),
-      amountA: Number(resQuote.amountA.amount.toString()) / (10 ** baseToken.decimals),
+      amountA: Number(resQuote.amountA.amount.toString()) / (10 ** quoteToken.decimals),
       amountB: Number(resQuote.amountB.amount.toString()) / (10 ** quoteToken.decimals),
-      amountSlippageA: Number(resQuote.amountSlippageA.amount.toString()) / (10 ** baseToken.decimals),
+      amountSlippageA: Number(resQuote.amountSlippageA.amount.toString()) / (10 ** quoteToken.decimals),
       amountSlippageB: Number(resQuote.amountSlippageB.amount.toString()) / (10 ** quoteToken.decimals),
-      price: (Number(resQuote.amountB.amount.toString()) / (10 ** quoteToken.decimals)) / (Number(resQuote.amountA.amount.toString()) / (10 ** baseToken.decimals)),
-      priceWithSlippage: (Number(resQuote.amountSlippageB.amount.toString()) / (10 ** quoteToken.decimals)) / (Number(resQuote.amountSlippageA.amount.toString()) / (10 ** baseToken.decimals)),
+      price: (Number(resQuote.amountB.amount.toString()) / (10 ** quoteToken.decimals)) / (Number(resQuote.amountA.amount.toString()) / (10 ** quoteToken.decimals)),
+      priceWithSlippage: (Number(resQuote.amountSlippageB.amount.toString()) / (10 ** quoteToken.decimals)) / (Number(resQuote.amountSlippageA.amount.toString()) / (10 ** quoteToken.decimals)),
       expirationTime: resQuote.expirationTime
     });
 
-    const res = resBase.liquidity.lte(resQuote.liquidity) ? resBase : resQuote;
+    const res = resBase.liquidity.gte(resQuote.liquidity) ? resBase : resQuote;
 
-    console.log('Quote returned', {
-      liquidity: res.liquidity.toString(),
-      amountA: Number(res.amountA.amount.toString()) / (10 ** baseToken.decimals),
-      amountB: Number(res.amountB.amount.toString()) / (10 ** quoteToken.decimals),
-      amountSlippageA: Number(res.amountSlippageA.amount.toString()) / (10 ** baseToken.decimals),
-      amountSlippageB: Number(res.amountSlippageB.amount.toString()) / (10 ** quoteToken.decimals),
-      price: (Number(res.amountB.amount.toString()) / (10 ** quoteToken.decimals)) / (Number(res.amountA.amount.toString()) / (10 ** baseToken.decimals)),
-      priceWithSlippage: (Number(res.amountSlippageB.amount.toString()) / (10 ** quoteToken.decimals)) / (Number(res.amountSlippageA.amount.toString()) / (10 ** baseToken.decimals)),
-      expirationTime: res.expirationTime
-    });
-
-    return {
-      inputBase: res === resBase,
-      baseTokenAmount: Number(res.amountA.amount.toString()) / (10 ** baseToken.decimals),
-      quoteTokenAmount: Number(res.amountB.amount.toString()) / (10 ** quoteToken.decimals),
-      baseTokenAmountMax: Number(res.amountSlippageA.amount.toString()) / (10 ** baseToken.decimals),
-      quoteTokenAmountMax: Number(res.amountSlippageB.amount.toString()) / (10 ** quoteToken.decimals),
-    };
+    if (res === resBase) {
+      return {
+        baseLimited: true,
+        baseTokenAmount: baseTokenAmount,
+        quoteTokenAmount: Number(res.amountB.amount.toString()) / (10 ** baseToken.decimals),
+        baseTokenAmountMax: baseTokenAmount,
+        quoteTokenAmountMax: Number(res.amountSlippageB.amount.toString()) / (10 ** baseToken.decimals),
+      };
+    } else {
+      return {
+        baseLimited: false,
+        baseTokenAmount: Number(res.amountA.amount.toString()) / (10 ** quoteToken.decimals),
+        quoteTokenAmount: quoteTokenAmount,
+        baseTokenAmountMax: Number(res.amountSlippageA.amount.toString()) / (10 ** quoteToken.decimals),
+        quoteTokenAmountMax: quoteTokenAmount,
+      };
+    }
   } catch (error) {
     logger.error(error);
     throw error;

@@ -123,10 +123,13 @@ async function addLiquidity(
           microLamports: priorityFeePerCU,
         }
       )
+      console.log('transaction', transaction);
 
       transaction.sign([wallet]);
       await solana.simulateTransaction(transaction);
   
+      console.log('signed transaction', transaction);
+
       const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
       if (confirmed && txData) {
         const { baseTokenBalanceChange, quoteTokenBalanceChange } = 

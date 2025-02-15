@@ -1,6 +1,6 @@
 networks:
   mainnet-beta:
-    nodeURL: https://api.mainnet-beta.solana.com
+    nodeURL: https://dry-dawn-hill.solana-mainnet.quiknode.pro/41bbd7ad405c552f91cc928e044e5e04c66341d2
     tokenListType: FILE
     tokenListSource: /home/gateway/conf/lists/solana.json
     nativeCurrencySymbol: SOL

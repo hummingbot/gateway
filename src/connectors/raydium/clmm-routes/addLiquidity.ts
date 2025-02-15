@@ -40,7 +40,6 @@ async function addLiquidity(
   }
   const amount = new Decimal(baseTokenAmount).mul(10 ** baseToken.decimals).toFixed(0);
   const amountBN = new BN(amount);
-
   const epochInfo = await solana.connection.getEpochInfo()
   const res = await PoolUtils.getLiquidityAmountOutFromAmountIn({
     poolInfo,
@@ -53,7 +52,6 @@ async function addLiquidity(
     amountHasFee: true,
     epochInfo,
   })
-
   const { 
     liquidity,
     amountA,
@@ -73,7 +71,7 @@ async function addLiquidity(
 
   logger.info('Adding liquidity to Raydium CLMM position...');
   const COMPUTE_UNITS = 300000
-  const slippage = slippagePct / 100 || raydium.getSlippagePct()
+  const slippage = (slippagePct === 0 ? 0 : (slippagePct || raydium.getSlippagePct())) / 100;
   let currentPriorityFee = (await solana.getGasPrice() * 1e9) - BASE_FEE
   while (currentPriorityFee <= solana.config.maxPriorityFee * 1e9) {
     const priorityFeePerCU = Math.floor(currentPriorityFee * 1e6 / COMPUTE_UNITS)
