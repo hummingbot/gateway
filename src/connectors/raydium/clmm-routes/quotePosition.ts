@@ -27,9 +27,9 @@ export async function quotePosition(
     const raydium = await Raydium.getInstance(network);
 
     const [poolInfo] = await raydium.getClmmPoolfromAPI(poolAddress);
-    // const rpcData = await raydium.getClmmPoolfromRPC(poolAddress)
-    // poolInfo.price = rpcData.currentPrice
-    // console.log('current price', poolInfo.price);
+    const rpcData = await raydium.getClmmPoolfromRPC(poolAddress)
+    poolInfo.price = rpcData.currentPrice
+    console.log('current price', poolInfo.price);
 
     const baseToken = await solana.getToken(poolInfo.mintA.address);
     const quoteToken = await solana.getToken(poolInfo.mintB.address);
@@ -44,10 +44,10 @@ export async function quotePosition(
       price: new Decimal(upperPrice),
       baseIn: true,
     });
-    // console.log('lowerTick', lowerTick);
-    // console.log('upperTick', upperTick);
-    // console.log('tickLowerPrice', tickLowerPrice);
-    // console.log('tickUpperPrice', tickUpperPrice);
+    console.log('lowerTick', lowerTick);
+    console.log('upperTick', upperTick);
+    console.log('tickLowerPrice', tickLowerPrice);
+    console.log('tickUpperPrice', tickUpperPrice);
 
     const baseAmountBN = new BN(new Decimal(baseTokenAmount).mul(10 ** baseToken.decimals).toFixed(0));
     const quoteAmountBN = new BN(new Decimal(quoteTokenAmount).mul(10 ** quoteToken.decimals).toFixed(0));
@@ -69,8 +69,9 @@ export async function quotePosition(
       amountHasFee: true,
       epochInfo,
     });
+    const baseLiquidity = Number(resBase.liquidity.toString()) / (10 ** baseToken.decimals);
     console.log('resBase', {
-      liquidity: resBase.liquidity.toString(),
+      liquidity: baseLiquidity,
       amountA: Number(resBase.amountA.amount.toString()) / (10 ** baseToken.decimals),
       amountB: Number(resBase.amountB.amount.toString()) / (10 ** baseToken.decimals),
       amountSlippageA: Number(resBase.amountSlippageA.amount.toString()) / (10 ** baseToken.decimals),
@@ -91,8 +92,9 @@ export async function quotePosition(
       amountHasFee: true,
       epochInfo,
     });
+    const quoteLiquidity = Number(resQuote.liquidity.toString()) / (10 ** quoteToken.decimals);
     console.log('resQuote', {
-      liquidity: resQuote.liquidity.toString(),
+      liquidity: quoteLiquidity,
       amountA: Number(resQuote.amountA.amount.toString()) / (10 ** quoteToken.decimals),
       amountB: Number(resQuote.amountB.amount.toString()) / (10 ** quoteToken.decimals),
       amountSlippageA: Number(resQuote.amountSlippageA.amount.toString()) / (10 ** quoteToken.decimals),
@@ -102,7 +104,7 @@ export async function quotePosition(
       expirationTime: resQuote.expirationTime
     });
 
-    const res = resBase.liquidity.gte(resQuote.liquidity) ? resBase : resQuote;
+    const res = baseLiquidity < quoteLiquidity ? resBase : resQuote;
 
     if (res === resBase) {
       return {
