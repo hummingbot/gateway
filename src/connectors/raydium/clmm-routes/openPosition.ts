@@ -31,12 +31,8 @@ async function openPosition(
   const wallet = await solana.getWallet(walletAddress);
 
   const [poolInfo, poolKeys] = await raydium.getClmmPoolfromAPI(poolAddress);
-  console.log('poolInfo', poolInfo)
-  console.log('poolKeys', poolKeys)
-
   const rpcData = await raydium.getClmmPoolfromRPC(poolAddress)
   poolInfo.price = rpcData.currentPrice
-  console.log('current price', poolInfo.price);
 
   const baseToken = await solana.getToken(poolInfo.mintA.address);
   const quoteToken = await solana.getToken(poolInfo.mintB.address);
@@ -74,9 +70,7 @@ async function openPosition(
       tickUpper: Math.max(lowerTick, upperTick),
       tickLower: Math.min(lowerTick, upperTick),
       base: quotePositionResponse.baseLimited ? 'MintA' : 'MintB',
-      ownerInfo: {
-        useSOLBalance: true,
-      },
+      ownerInfo: {  useSOLBalance: true },
       baseAmount: quotePositionResponse.baseLimited ? new BN(quotePositionResponse.baseTokenAmount * (10 ** baseToken.decimals)) : new BN(quotePositionResponse.quoteTokenAmount * (10 ** quoteToken.decimals)),
       otherAmountMax: quotePositionResponse.baseLimited ? new BN(quotePositionResponse.quoteTokenAmountMax * (10 ** quoteToken.decimals)) : new BN(quotePositionResponse.baseTokenAmountMax * (10 ** baseToken.decimals)),
       txVersion: TxVersion.V0,

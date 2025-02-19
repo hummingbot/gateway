@@ -113,6 +113,7 @@ export async function quotePosition(
         quoteTokenAmount: Number(res.amountB.amount.toString()) / (10 ** baseToken.decimals),
         baseTokenAmountMax: baseTokenAmount,
         quoteTokenAmountMax: Number(res.amountSlippageB.amount.toString()) / (10 ** baseToken.decimals),
+        liquidity: res.liquidity,
       };
     } else {
       return {
@@ -121,6 +122,7 @@ export async function quotePosition(
         quoteTokenAmount: quoteTokenAmount,
         baseTokenAmountMax: Number(res.amountSlippageA.amount.toString()) / (10 ** quoteToken.decimals),
         quoteTokenAmountMax: quoteTokenAmount,
+        liquidity: res.liquidity,
       };
     }
   } catch (error) {

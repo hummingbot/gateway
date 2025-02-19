@@ -63,7 +63,7 @@ async function closePosition(
 
     logger.info('Close position transaction created:', result.transaction);
 
-    const { signature, fee } = await solana.sendAndConfirmTransaction(
+    const { signature, fee } = await solana.sendAndConfirmVersionedTransaction(
       result.transaction,
       [wallet],
       200_000

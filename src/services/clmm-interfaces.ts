@@ -175,5 +175,6 @@ export const QuotePositionResponse = Type.Object({
   quoteTokenAmount: Type.Number(),
   baseTokenAmountMax: Type.Number(),
   quoteTokenAmountMax: Type.Number(),
+  liquidity: Type.Optional(Type.Any()),
 }, { $id: 'QuotePositionResponse' });
 export type QuotePositionResponseType = Static<typeof QuotePositionResponse>;
