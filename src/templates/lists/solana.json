@@ -25,7 +25,7 @@
     "name": "Fartcoin",
     "symbol": "FARTCOIN",
     "address": "9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump",
-    "decimals": 9
+    "decimals": 6
   },
   {
     "chainId": 101,
