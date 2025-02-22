@@ -4,6 +4,7 @@ import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import fastifySwagger from '@fastify/swagger';
 import fastifySwaggerUi from '@fastify/swagger-ui';
 import { Type } from '@sinclair/typebox';
+import { spawn } from 'child_process';
 // Internal services
 import { logger } from './services/logger';
 import { getHttpsOptions } from './https';
@@ -179,8 +180,14 @@ const configureGatewayServer = () => {
   });
 
   // Restart endpoint (outside registerRoutes, only on main server)
-  server.post('/restart', async () => {
-    process.exit(1);
+  server.post('/restart', async (_req, reply) => {
+    await reply.status(200).send();
+    // Spawn a new instance before exiting
+    spawn(process.argv[0], process.argv.slice(1), {
+      detached: true,
+      stdio: 'inherit'
+    });
+    process.exit(0);
   });
 
   return server;
