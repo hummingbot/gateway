@@ -252,7 +252,7 @@ export class HttpError extends Error {
 
 // Global error handler
 export const errorHandler = (
-  error: FastifyError | HttpError,
+  error: FastifyError | HttpError | HttpException,
   request: FastifyRequest,
   reply: FastifyReply
 ) => {
@@ -269,6 +269,15 @@ export const errorHandler = (
   // Handle our HttpErrors
   if (error instanceof HttpError) {
     return reply.status(error.statusCode).send(error);
+  }
+  
+  // Handle our HttpException (this is what we're using in Jupiter controllers)
+  if (error instanceof HttpException) {
+    return reply.status(error.status).send({
+      statusCode: error.status,
+      error: error.errorCode.toString(),
+      message: error.message
+    });
   }
 
   // Handle Fastify's native errors

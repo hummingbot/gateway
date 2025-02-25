@@ -53,26 +53,39 @@ export async function getTradeInfo(
   const slippagePct = allowedSlippage ? Number(allowedSlippage) : jupiter.getSlippagePct();
 
   let quote: QuoteResponse;
-  if (tradeSide === 'BUY') {
-    quote = await jupiter.getQuote(
-      quoteToken.symbol,
-      baseToken.symbol,
-      amount,
-      slippagePct,
-      false, // not restricting to direct routes
-      false, // not using legacy transactions
-      'ExactOut'
-    );
-  } else {
-    quote = await jupiter.getQuote(
-      baseToken.symbol,
-      quoteToken.symbol,
-      amount,
-      slippagePct,
-      false, // not restricting to direct routes
-      false, // not using legacy transactions
-      'ExactIn'
-    );
+  try {
+    if (tradeSide === 'BUY') {
+      quote = await jupiter.getQuote(
+        quoteToken.symbol,
+        baseToken.symbol,
+        amount,
+        slippagePct,
+        false, // not restricting to direct routes
+        false, // not using legacy transactions
+        'ExactOut'
+      );
+    } else {
+      quote = await jupiter.getQuote(
+        baseToken.symbol,
+        quoteToken.symbol,
+        amount,
+        slippagePct,
+        false, // not restricting to direct routes
+        false, // not using legacy transactions
+        'ExactIn'
+      );
+    }
+  } catch (error) {
+    logger.error(`Failed to get Jupiter quote: ${JSON.stringify({
+      message: error.message,
+      stack: error.stack,
+      response: error.response?.data
+    })}`);
+    
+    if (error.message === "Response returned an error code") {
+      throw new Error(`NO_ROUTE_FOUND: ${baseToken.symbol}-${quoteToken.symbol}`);
+    }
+    throw error;
   }
   
   const baseAmount = tradeSide === 'BUY'
@@ -121,7 +134,18 @@ export async function price(
     );
     tradeInfo = result.tradeInfo;
   } catch (e) {
+    logger.error(`Error in price function: ${JSON.stringify({
+      message: e.message,
+      stack: e.stack
+    })}`);
+    
     if (e instanceof Error) {
+      if (e.message.includes('NO_ROUTE_FOUND')) {
+        throw new HttpException(
+          404,
+          `No swap route found for: ${req.side} ${req.base}-${req.quote}`,
+        );
+      }
       throw new HttpException(
         500,
         PRICE_FAILED_ERROR_MESSAGE + e.message,
@@ -179,6 +203,11 @@ export async function trade(
     tradeInfo = result.tradeInfo;
     quote = result.quote;
   } catch (e) {
+    logger.error(`Error in trade function: ${JSON.stringify({
+      message: e.message,
+      stack: e.stack
+    })}`);
+    
     if (e instanceof Error) {
       throw new HttpException(
         500,
