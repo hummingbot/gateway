@@ -150,7 +150,7 @@ describe('POST /ethereum/allowances', () => {
     expect(body.approvals.DAI).toEqual('0.001');
   });
 
-  it('should return 500 when parameters are invalid', async () => {
+  it('should return 404 when parameters are invalid', async () => {
     const response = await gatewayApp.inject({
       method: 'POST',
       url: '/ethereum/allowances',
@@ -162,7 +162,7 @@ describe('POST /ethereum/allowances', () => {
       }
     });
 
-    expect(response.statusCode).toBe(500);
+    expect(response.statusCode).toBe(404);
   });
 });
 
@@ -241,7 +241,7 @@ describe('POST /ethereum/balances', () => {
     expect(response.statusCode).toBe(500);
   });
 
-  it('should return 500 when parameters are invalid', async () => {
+  it('should return 404 when parameters are invalid', async () => {
     const response = await gatewayApp.inject({
       method: 'POST',
       url: '/ethereum/balances',
@@ -251,7 +251,7 @@ describe('POST /ethereum/balances', () => {
       }
     });
 
-    expect(response.statusCode).toBe(500);
+    expect(response.statusCode).toBe(404);
   });
 });
 
@@ -275,7 +275,7 @@ describe('POST /ethereum/nonce', () => {
     expect(body.nonce).toBe(2);
   });
 
-  it('should return 500 when parameters are invalid', async () => {
+  it('should return 404 when parameters are invalid', async () => {
     const response = await gatewayApp.inject({
       method: 'POST',
       url: '/ethereum/nonce',
@@ -285,7 +285,7 @@ describe('POST /ethereum/nonce', () => {
       }
     });
 
-    expect(response.statusCode).toBe(500);
+    expect(response.statusCode).toBe(404);
   });
 });
 
@@ -350,7 +350,7 @@ describe('POST /ethereum/approve', () => {
   });
 
 
-  it('should return 500 when parameters are invalid', async () => {
+  it('should return 404 when parameters are invalid', async () => {
     const response = await gatewayApp.inject({
       method: 'POST',
       url: '/ethereum/approve',
@@ -363,7 +363,7 @@ describe('POST /ethereum/approve', () => {
       }
     });
 
-    expect(response.statusCode).toBe(500);
+    expect(response.statusCode).toBe(404);
   });
 });
 
