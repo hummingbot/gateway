@@ -5,6 +5,8 @@ import fastifySwagger from '@fastify/swagger';
 import fastifySwaggerUi from '@fastify/swagger-ui';
 import { Type } from '@sinclair/typebox';
 import { spawn } from 'child_process';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 // Internal services
 import { logger } from './services/logger';
 import { getHttpsOptions } from './https';
@@ -33,6 +35,9 @@ const GATEWAY_VERSION = '2.4.0';
 // Use --dev flag to enable HTTP mode, e.g.: pnpm start --dev
 // Tests automatically run in dev mode via GATEWAY_TEST_MODE=dev
 const devMode = process.argv.includes('--dev') || process.env.GATEWAY_TEST_MODE === 'dev';
+
+// Promisify exec for async/await usage
+const execPromise = promisify(exec);
 
 const swaggerOptions = {
   openapi: {
@@ -206,6 +211,51 @@ export const startGateway = async () => {
   logger.info(`⚡️ Gateway version ${GATEWAY_VERSION} starting at ${protocol}://localhost:${port}`);
 
   try {
+    // Kill any process using the gateway port
+    try {
+      logger.info(`Checking for processes using port ${port}...`);
+      
+      // Use more reliable platform-specific commands
+      if (process.platform === 'win32') {
+        try {
+          // Windows command to find and kill process on port
+          const { stdout } = await execPromise(`netstat -ano | findstr :${port}`);
+          if (stdout) {
+            const lines = stdout.trim().split('\n');
+            for (const line of lines) {
+              const parts = line.trim().split(/\s+/);
+              if (parts.length > 4) {
+                const pid = parts[parts.length - 1];
+                logger.info(`Found process ${pid} using port ${port}, killing...`);
+                await execPromise(`taskkill /F /PID ${pid}`);
+              }
+            }
+          }
+        } catch (err) {
+          logger.info(`No process found using port ${port}`);
+        }
+      } else {
+        // macOS/Linux more reliable command
+        try {
+          // Find PID of process using the port
+          const { stdout } = await execPromise(`lsof -i :${port} -t`);
+          if (stdout.trim()) {
+            const pids = stdout.trim().split('\n');
+            for (const pid of pids) {
+              if (pid.trim()) {
+                logger.info(`Found process ${pid} using port ${port}, killing...`);
+                await execPromise(`kill -9 ${pid}`);
+              }
+            }
+          }
+        } catch (err) {
+          logger.info(`No process found using port ${port}`);
+        }
+      }
+    } catch (error) {
+      logger.warn(`Error while checking for processes on port ${port}: ${error}`);
+    }
+
     if (devMode) {
       logger.info('🔴 Running in development mode with (unsafe!) HTTP endpoints');
       await gatewayApp.listen({ port, host: '0.0.0.0' });
