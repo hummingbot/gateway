@@ -93,7 +93,7 @@ jobs:
         run: |
           git fetch --all -q
           git checkout -b $GITHUB_SHA
-          GATEWAY_TEST_MODE=dev NODE_OPTIONS=--trace-warnings ./node_modules/.bin/jest --runInBand --coverage --verbose ./test/ || { echo "Tests failed with exit code $?"; cat $(find ./.jest-coverage -name "*.log" 2>/dev/null) 2>/dev/null || true; exit 1; }
+          GATEWAY_TEST_MODE=dev NODE_OPTIONS=--trace-warnings npx jest --coverage --verbose ./test/ || { echo "Tests failed with exit code $?"; cat $(find ./.jest-coverage -name "*.log" 2>/dev/null) 2>/dev/null || true; exit 1; }
 
   docker_build_and_push:
     runs-on: ubuntu-latest
