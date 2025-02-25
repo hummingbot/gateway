@@ -587,7 +587,7 @@ describe('POST /uniswap/trade', () => {
     expect(response.statusCode).toBe(500);
   });
 
-  it('should return 503 when parameters are incorrect', async () => {
+  it('should return 400 when parameters are incorrect', async () => {
     patchInit();
     const response = await gatewayApp.inject({
       method: 'POST',
@@ -604,7 +604,7 @@ describe('POST /uniswap/trade', () => {
       }
     });
 
-    expect(response.statusCode).toBe(503);
+    expect(response.statusCode).toBe(400);
   });
 
   it('should return 500 when the priceSwapIn operation fails', async () => {
