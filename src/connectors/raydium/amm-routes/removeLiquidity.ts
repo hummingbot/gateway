@@ -57,7 +57,7 @@ async function createRemoveLiquidityTransaction(
   computeBudgetConfig: { units: number; microLamports: number }
 ): Promise<VersionedTransaction | Transaction> {
   if (ammPoolInfo.poolType === 'amm') {
-    const response = await raydium.raydiumSDK.liquidity.removeLiquidity({
+    const response : AMMRemoveLiquiditySDKResponse = await raydium.raydiumSDK.liquidity.removeLiquidity({
       poolInfo: poolInfo as ApiV3PoolInfoStandardItem,
       poolKeys: poolKeys as AmmV4Keys,
       amountIn: lpAmount,
@@ -72,7 +72,7 @@ async function createRemoveLiquidityTransaction(
       10000
     )
     
-    const response = await raydium.raydiumSDK.cpmm.withdrawLiquidity({
+    const response : CPMMWithdrawLiquiditySDKResponse = await raydium.raydiumSDK.cpmm.withdrawLiquidity({
       poolInfo: poolInfo as ApiV3PoolInfoStandardItemCpmm,
       poolKeys: poolKeys as CpmmKeys,
       lpAmount: lpAmount,
@@ -91,21 +91,18 @@ async function createRemoveLiquidityTransaction(
 async function calculateLpAmountToRemove(
   solana: Solana,
   wallet: any,
-  ammPoolInfo: any,
-  poolKeys: any,
+  _ammPoolInfo: any,
+  poolInfo: any,
   poolAddress: string,
   percentageToRemove: number
 ): Promise<BN> {
   let lpMint: string
   
-  if (ammPoolInfo.poolType === 'amm') {
-    // For AMM pools, LP mint is in id.mint
-    lpMint = poolKeys.id.mint.toString()
-  } else if (ammPoolInfo.poolType === 'cpmm') {
-    // For CPMM pools, LP mint is in lpMint
-    lpMint = poolKeys.lpMint.toString() 
+  // Get LP mint from poolInfo instead of poolKeys
+  if (poolInfo.lpMint && poolInfo.lpMint.address) {
+    lpMint = poolInfo.lpMint.address
   } else {
-    throw new Error(`Unsupported pool type: ${ammPoolInfo.poolType}`)
+    throw new Error(`Could not find LP mint for pool ${poolAddress}`)
   }
   
   // Get user's LP token account
@@ -162,7 +159,7 @@ async function removeLiquidity(
     solana,
     wallet,
     ammPoolInfo,
-    poolKeys,
+    poolInfo,
     poolAddress,
     percentageToRemove
   )
@@ -255,7 +252,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
             network: { type: 'string', default: 'mainnet-beta' },
             poolAddress: { type: 'string', examples: ['6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg'] }, // AMM RAY-USDC
             // poolAddress: { type: 'string', examples: ['7JuwJuNU88gurFnyWeiyGKbFmExMWcmRZntn9imEzdny'] }, // CPMM SOL-USDC
-            percentageToRemove: { type: 'number', examples: [50] },
+            percentageToRemove: { type: 'number', examples: [100] },
           }
         },
         response: {
