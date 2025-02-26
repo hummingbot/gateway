@@ -86,7 +86,11 @@ async function addLiquidity(
     const wallet = await solana.getWallet(walletAddress);
 
     const ammPoolInfo = await raydium.getAmmPoolInfo(poolAddress);
-    const { poolInfo, poolKeys, baseLimited, baseTokenAmountMax, quoteTokenAmountMax } = await quoteLiquidity(
+    
+    // Get pool info and keys since they're no longer in quoteLiquidity response
+    const [poolInfo, poolKeys] = await raydium.getPoolfromAPI(poolAddress);
+    
+    const { baseLimited, baseTokenAmountMax, quoteTokenAmountMax } = await quoteLiquidity(
       _fastify,
       network,
       poolAddress,

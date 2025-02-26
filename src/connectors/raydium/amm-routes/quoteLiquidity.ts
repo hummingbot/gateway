@@ -10,33 +10,39 @@ import {
 } from '../../../services/amm-interfaces';
 import { isValidAmm, isValidCpmm } from '../raydium.utils';
 import BN from 'bn.js';
-import { ApiV3PoolInfoStandardItemCpmm, ApiV3PoolInfoStandardItem, Percent } from '@raydium-io/raydium-sdk-v2';
+import { ApiV3PoolInfoStandardItemCpmm, ApiV3PoolInfoStandardItem, Percent, TokenAmount } from '@raydium-io/raydium-sdk-v2';
 
-type AmmResult = {
-  res: {
-    liquidity: BN;
-    anotherAmount: {
-      numerator: BN;
-      denominator: BN;
-      token: { symbol: string };
-    };
-    maxAnotherAmount: {
-      numerator: BN;
-      denominator: BN;
-      token: { symbol: string };
-    };
-  };
-  baseIn: boolean;
-};
+interface AmmComputePairResult {
+  anotherAmount: TokenAmount;
+  maxAnotherAmount: TokenAmount;
+  liquidity: BN;
+}
 
-type CpmmResult = {
-  res: {
-    liquidity: BN;
-    anotherAmount: { amount: number };
-    maxAnotherAmount: { amount: number };
+interface CpmmComputePairResult {
+  anotherAmount: { amount: BN };
+  maxAnotherAmount: { amount: BN };
+  liquidity: BN;
+  inputAmountFee: { amount: BN };
+}
+
+// Add helper function to parse values
+function parseAmmResult(result: AmmComputePairResult) {
+  return {
+    anotherAmount: Number(result.anotherAmount.numerator.toString()) / Number(result.anotherAmount.denominator.toString()),
+    maxAnotherAmount: Number(result.maxAnotherAmount.numerator.toString()) / Number(result.maxAnotherAmount.denominator.toString()),
+    anotherTokenSymbol: result.anotherAmount.token.symbol,
+    liquidity: result.liquidity.toString()
   };
-  baseIn: boolean;
-};
+}
+
+function parseCpmmResult(result: CpmmComputePairResult, tokenDecimals: number) {
+  return {
+    anotherAmount: Number(result.anotherAmount.amount.toString()) / (10 ** tokenDecimals),
+    maxAnotherAmount: Number(result.maxAnotherAmount.amount.toString()) / (10 ** tokenDecimals),
+    inputFee: Number(result.inputAmountFee.amount.toString()) / (10 ** tokenDecimals),
+    liquidity: result.liquidity.toString()
+  };
+}
 
 export async function quoteLiquidity(
   _fastify: FastifyInstance,
@@ -77,7 +83,7 @@ export async function quoteLiquidity(
 
     const ammPoolInfo = await raydium.getAmmPoolInfo(poolAddress);
 
-    let resBase;
+    let resBase: AmmComputePairResult | CpmmComputePairResult;
     if (ammPoolInfo.poolType === 'amm') {
       resBase = raydium.raydiumSDK.liquidity.computePairAmount({
         poolInfo: poolInfo as ApiV3PoolInfoStandardItem,
@@ -85,6 +91,7 @@ export async function quoteLiquidity(
         baseIn: true,
         slippage: slippage, // 1%
       })
+      console.log('resBase parsed:', parseAmmResult(resBase as AmmComputePairResult));
     } else if (ammPoolInfo.poolType === 'cpmm') {
       const rawPool = await raydium.raydiumSDK.cpmm.getRpcPoolInfos([poolAddress])
       resBase = raydium.raydiumSDK.cpmm.computePairAmount({
@@ -96,9 +103,10 @@ export async function quoteLiquidity(
         baseIn: true,
         epochInfo: epochInfo,
       })
+      console.log('resBase:', parseCpmmResult(resBase as CpmmComputePairResult, quoteToken.decimals));
     }
 
-    let resQuote;
+    let resQuote: AmmComputePairResult | CpmmComputePairResult;
     if (ammPoolInfo.poolType === 'amm') {
       resQuote = raydium.raydiumSDK.liquidity.computePairAmount({
         poolInfo: poolInfo as ApiV3PoolInfoStandardItem,
@@ -106,6 +114,7 @@ export async function quoteLiquidity(
         baseIn: false,
         slippage: slippage, // 1%
       })
+      console.log('resQuote parsed:', parseAmmResult(resQuote as AmmComputePairResult));
     } else if (ammPoolInfo.poolType === 'cpmm') {
       const rawPool = await raydium.raydiumSDK.cpmm.getRpcPoolInfos([poolAddress])
       resQuote = raydium.raydiumSDK.cpmm.computePairAmount({
@@ -117,35 +126,35 @@ export async function quoteLiquidity(
         baseIn: false,
         epochInfo: epochInfo,
       })
+      console.log('resQuote:', parseCpmmResult(resQuote as CpmmComputePairResult, baseToken.decimals));
     }
 
-    let res: AmmResult | CpmmResult;
     // Parse the result differently for AMM and CPMM
     if (ammPoolInfo.poolType === 'amm') {
-      res = resBase.liquidity.gte(resQuote.liquidity) 
-        ? { res: resBase, baseIn: true } 
-        : { res: resQuote, baseIn: false } as AmmResult;
-      const ammRes = res as AmmResult;
+      // Handle AMM case separately
+      const useBaseResult = resBase.liquidity.lte(resQuote.liquidity);
+      const ammRes = useBaseResult ? resBase as AmmComputePairResult : resQuote as AmmComputePairResult;
+      const isBaseIn = useBaseResult;
+      
       const resParsed = {
-        anotherAmount: Number(ammRes.res.anotherAmount.numerator.toString()) / Number(ammRes.res.anotherAmount.denominator.toString()),
-        maxAnotherAmount: Number(ammRes.res.maxAnotherAmount.numerator.toString()) / Number(ammRes.res.maxAnotherAmount.denominator.toString()),
-        anotherAmountToken: ammRes.res.anotherAmount.token.symbol,
-        maxAnotherAmountToken: ammRes.res.maxAnotherAmount.token.symbol,
-        liquidity: ammPoolInfo.poolType === 'amm' ? ammRes.res.liquidity.toString() : ammRes.res.liquidity.toString(),
+        anotherAmount: Number(ammRes.anotherAmount.numerator.toString()) / Number(ammRes.anotherAmount.denominator.toString()),
+        maxAnotherAmount: Number(ammRes.maxAnotherAmount.numerator.toString()) / Number(ammRes.maxAnotherAmount.denominator.toString()),
+        anotherAmountToken: ammRes.anotherAmount.token.symbol,
+        maxAnotherAmountToken: ammRes.maxAnotherAmount.token.symbol,
+        liquidity: ammRes.liquidity.toString(),
         poolType: ammPoolInfo.poolType,
-        baseIn: ammRes.baseIn,
+        baseIn: isBaseIn,
       };
+      
       console.log('resParsed:amm', resParsed);
   
-      if (ammRes.baseIn) {
+      if (isBaseIn) {
         return {
           baseLimited: true,
           baseTokenAmount: baseTokenAmount,
           quoteTokenAmount: resParsed.anotherAmount,
           baseTokenAmountMax: baseTokenAmount,
           quoteTokenAmountMax: resParsed.maxAnotherAmount,
-          poolInfo,
-          poolKeys,
         };
       } else {
         return {
@@ -154,46 +163,31 @@ export async function quoteLiquidity(
           quoteTokenAmount: quoteTokenAmount,
           baseTokenAmountMax: resParsed.maxAnotherAmount,
           quoteTokenAmountMax: quoteTokenAmount,
-          poolInfo,
-          poolKeys,
         };
       }
 
     } else if (ammPoolInfo.poolType === 'cpmm') {
-      console.log('resBase', {
-        inputAmountFee: resBase.inputAmountFee.amount.toString(),
-        anotherAmount: resBase.anotherAmount.amount.toString(),
-        maxAnotherAmount: resBase.maxAnotherAmount.amount.toString(),
-        liquidity: resBase.liquidity.toString()
-      });
-      console.log('resQuote', {
-        inputAmountFee: resQuote.inputAmountFee.amount.toString(),
-        anotherAmount: resQuote.anotherAmount.amount.toString(),
-        maxAnotherAmount: resQuote.maxAnotherAmount.amount.toString(),
-        liquidity: resQuote.liquidity.toString()
-      });
-      res = resBase.liquidity.lte(resQuote.liquidity)
-        ? { res: resBase, baseIn: true }
-        : { res: resQuote, baseIn: false } as CpmmResult;
-      const cpmmRes = res as CpmmResult;
+      // Handle CPMM case
+      const useBaseResult = resBase.liquidity.lte(resQuote.liquidity);
+      const cpmmRes = useBaseResult ? resBase as CpmmComputePairResult : resQuote as CpmmComputePairResult;
+      const isBaseIn = useBaseResult;
+      
       const resParsed = { 
-        anotherAmount: Number(cpmmRes.res.anotherAmount.amount),
-        maxAnotherAmount: Number(cpmmRes.res.maxAnotherAmount.amount),
-        anotherAmountToken: cpmmRes.baseIn ? baseToken.symbol : quoteToken.symbol,
-        maxAnotherAmountToken: cpmmRes.baseIn ? baseToken.symbol : quoteToken.symbol,
-        liquidity: cpmmRes.res.liquidity.toString(),
+        anotherAmount: Number(cpmmRes.anotherAmount.amount.toString()),
+        maxAnotherAmount: Number(cpmmRes.maxAnotherAmount.amount.toString()),
+        anotherAmountToken: isBaseIn ? baseToken.symbol : quoteToken.symbol,
+        maxAnotherAmountToken: isBaseIn ? baseToken.symbol : quoteToken.symbol,
+        liquidity: cpmmRes.liquidity.toString(),
       }
       console.log('resParsed:cpmm', resParsed);
 
-      if (cpmmRes.baseIn) {
+      if (isBaseIn) {
         return {
           baseLimited: true,
           baseTokenAmount: baseTokenAmount,
           quoteTokenAmount: resParsed.anotherAmount / 10 ** quoteToken.decimals,
           baseTokenAmountMax: baseTokenAmount,
           quoteTokenAmountMax: resParsed.maxAnotherAmount / 10 ** quoteToken.decimals,
-          poolInfo,
-          poolKeys,
         };
       } else {
         return {
@@ -202,8 +196,6 @@ export async function quoteLiquidity(
           quoteTokenAmount: quoteTokenAmount,
           baseTokenAmountMax: resParsed.maxAnotherAmount / 10 ** baseToken.decimals,
           quoteTokenAmountMax: quoteTokenAmount,
-          poolInfo,
-          poolKeys,
         };
       }
     }
@@ -231,7 +223,7 @@ export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
             network: { type: 'string', default: 'mainnet-beta' },
             poolAddress: { type: 'string', examples: ['6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg'] },
             baseTokenAmount: { type: 'number', examples: [1] },
-            quoteTokenAmount: { type: 'number', examples: [5] },
+            quoteTokenAmount: { type: 'number', examples: [1] },
             slippagePct: { type: 'number', examples: [1] },
           }
         },

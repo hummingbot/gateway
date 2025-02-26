@@ -49,8 +49,6 @@ export const PoolInfoSchema = Type.Object({
     quoteTokenAmount: Type.Number(),
     baseTokenAmountMax: Type.Number(),
     quoteTokenAmountMax: Type.Number(),
-    poolInfo: Type.Optional(Type.Any()),
-    poolKeys: Type.Optional(Type.Any()),
   }, { $id: 'QuoteLiquidityResponse' });
   export type QuoteLiquidityResponseType = Static<typeof QuoteLiquidityResponse>;
 
