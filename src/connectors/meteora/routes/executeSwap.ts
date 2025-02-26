@@ -114,11 +114,11 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             ...ExecuteSwapRequest.properties,
             network: { type: 'string', default: 'mainnet-beta' },
-            baseToken: { type: 'string', examples: ['M3M3'] },
+            baseToken: { type: 'string', examples: ['JUP'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
             amount: { type: 'number', examples: [10] },
-            side: { type: 'string', examples: ['buy'] },
-            poolAddress: { type: 'string', examples: ['FtFUzuXbbw6oBbU53SDUGspEka1D5Xyc4cwnkxer6xKz'] },
+            side: { type: 'string', enum: ['buy', 'sell'], examples: ['sell'] },
+            poolAddress: { type: 'string', examples: ['ERLtN9NufWvg6NgsCnj1n9aA94JMAfckb6pfJNFDEgrh'] },
             slippagePct: { type: 'number', examples: [1] }
           }
         },

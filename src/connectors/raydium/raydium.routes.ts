@@ -17,6 +17,7 @@ import { closePositionRoute } from './clmm-routes/closePosition';
 // AMM routes
 import { poolInfoRoute as ammPoolInfoRoute } from './amm-routes/poolInfo';
 import { quoteLiquidityRoute } from './amm-routes/quoteLiquidity';
+import { quoteSwapRoute as ammQuoteSwapRoute } from './amm-routes/quoteSwap';
 import { addLiquidityRoute as ammAddLiquidityRoute } from './amm-routes/addLiquidity';
 import { removeLiquidityRoute as ammRemoveLiquidityRoute } from './amm-routes/removeLiquidity';
 
@@ -40,6 +41,7 @@ const raydiumAmmRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(sensible); 
   await fastify.register(ammPoolInfoRoute);
   await fastify.register(quoteLiquidityRoute);
+  await fastify.register(ammQuoteSwapRoute);
   await fastify.register(ammAddLiquidityRoute);
   await fastify.register(ammRemoveLiquidityRoute);
 };
