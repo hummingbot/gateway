@@ -112,7 +112,7 @@ export class Jupiter {
   }
 
   async getSwapObj(wallet: Wallet, quote: QuoteResponse, priorityFee?: number): Promise<SwapResponse> {
-    const prioritizationFeeLamports = priorityFee 
+    const feeLamports = priorityFee 
       ? Math.floor(priorityFee)
       : Math.floor(this.solana.config.minPriorityFee * 1e9);
 
@@ -124,7 +124,9 @@ export class Jupiter {
             quoteResponse: quote,
             userPublicKey: wallet.publicKey.toBase58(),
             dynamicComputeUnitLimit: true,
-            prioritizationFeeLamports,
+            prioritizationFeeLamports: {
+              prioritizationFeeLamports: feeLamports
+            },
           },
         });
         return swapObj;
