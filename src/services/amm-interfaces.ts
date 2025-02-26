@@ -52,3 +52,19 @@ export const PoolInfoSchema = Type.Object({
   }, { $id: 'QuoteLiquidityResponse' });
   export type QuoteLiquidityResponseType = Static<typeof QuoteLiquidityResponse>;
 
+  export const RemoveLiquidityRequest = Type.Object({
+    network: Type.Optional(Type.String()),
+    walletAddress: Type.String({ examples: ['<solana-wallet-address>'] }),
+    poolAddress: Type.String(),
+    percentageToRemove: Type.Number({ minimum: 0, maximum: 100 }),
+  }, { $id: 'RemoveLiquidityRequest' });
+  export type RemoveLiquidityRequestType = Static<typeof RemoveLiquidityRequest>;
+  
+  export const RemoveLiquidityResponse = Type.Object({
+    signature: Type.String(),
+    fee: Type.Number(),
+    baseTokenAmountRemoved: Type.Number(),
+    quoteTokenAmountRemoved: Type.Number(),
+  }, { $id: 'RemoveLiquidityResponse' });
+  export type RemoveLiquidityResponseType = Static<typeof RemoveLiquidityResponse>;
+

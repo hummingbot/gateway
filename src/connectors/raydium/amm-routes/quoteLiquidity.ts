@@ -221,7 +221,8 @@ export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             ...QuoteLiquidityRequest.properties,
             network: { type: 'string', default: 'mainnet-beta' },
-            poolAddress: { type: 'string', examples: ['6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg'] },
+            poolAddress: { type: 'string', examples: ['6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg'] }, // AMM RAY-USDC
+            // poolAddress: { type: 'string', examples: ['7JuwJuNU88gurFnyWeiyGKbFmExMWcmRZntn9imEzdny'] }, // CPMM SOL-USDC
             baseTokenAmount: { type: 'number', examples: [1] },
             quoteTokenAmount: { type: 'number', examples: [1] },
             slippagePct: { type: 'number', examples: [1] },

@@ -726,12 +726,34 @@ export class Solana {
   }
 
   async sendAndConfirmRawTransaction(
-    transaction: VersionedTransaction
-  ): Promise<{ confirmed: boolean, signature?: string, txData?: any }> {
+    transaction: VersionedTransaction | Transaction
+  ): Promise<{ confirmed: boolean; signature: string; txData: any }> {
+    // Convert Transaction to VersionedTransaction if necessary
+    if (!(transaction instanceof VersionedTransaction)) {
+      // Ensure transaction is properly prepared
+      const { blockhash } = await this.connection.getLatestBlockhash();
+      transaction.recentBlockhash = transaction.recentBlockhash || blockhash;
+      transaction.feePayer = transaction.feePayer || 
+                            (transaction.signatures[0]?.publicKey || null);
+      
+      // Get serialized transaction bytes
+      const serializedTx = transaction.serialize();
+      return this._sendAndConfirmRawTransaction(serializedTx);
+    }
+    
+    // For VersionedTransaction, use existing logic
+    const serializedTx = transaction.serialize();
+    return this._sendAndConfirmRawTransaction(serializedTx);
+  }
+
+  // Create a private method to handle the actual sending
+  private async _sendAndConfirmRawTransaction(
+    serializedTx: Buffer | Uint8Array
+  ): Promise<{ confirmed: boolean; signature: string; txData: any }> {
     let retryCount = 0;
     while (retryCount < this.config.retryCount) {
       const signature = await this.connection.sendRawTransaction(
-        Buffer.from(transaction.serialize()),
+        serializedTx,
         { skipPreflight: true }
       );
       const { confirmed, txData } = await this.confirmTransaction(signature);
@@ -742,7 +764,7 @@ export class Solana {
       retryCount++;
       await new Promise((resolve) => setTimeout(resolve, this.config.retryIntervalMs));
     }
-    return { confirmed: false };
+    return { confirmed: false, signature: '', txData: null };
   }
   
   async sendRawTransaction(
@@ -964,30 +986,60 @@ export class Solana {
     };
   }
 
-  public async simulateTransaction(transaction: VersionedTransaction) {
-    const { value: simulatedTransactionResponse } = await this.connection.simulateTransaction(
-      transaction,
-      {
-        replaceRecentBlockhash: false,
-        commitment: 'confirmed',
-        accounts: { encoding: 'base64', addresses: [] },
-        sigVerify: true,
-      },
-    );
-    
-    logger.info('Simulation Result:', {
-      // logs: simulatedTransactionResponse.logs,
-      unitsConsumed: simulatedTransactionResponse.unitsConsumed,
-      status: simulatedTransactionResponse.err ? 'FAILED' : 'SUCCESS'
-    });
+  public async simulateTransaction(transaction: VersionedTransaction | Transaction) {
+    try {
+      if (!(transaction instanceof VersionedTransaction)) {
+        // Convert regular Transaction to VersionedTransaction for simulation
+        const { blockhash } = await this.connection.getLatestBlockhash();
+        transaction.recentBlockhash = transaction.recentBlockhash || blockhash;
+        transaction.feePayer = transaction.feePayer || 
+                              (transaction.signatures[0]?.publicKey || null);
 
-    if (simulatedTransactionResponse.err) {
-      const logs = simulatedTransactionResponse.logs || [];
-      const errorMessage = `${SIMULATION_ERROR_MESSAGE}\nError: ${JSON.stringify(simulatedTransactionResponse.err)}\nProgram Logs: ${logs.join('\n')}`;
+        // Convert to VersionedTransaction
+        const messageV0 = new MessageV0({
+          header: transaction.compileMessage().header,
+          staticAccountKeys: transaction.compileMessage().staticAccountKeys,
+          recentBlockhash: transaction.recentBlockhash,
+          compiledInstructions: transaction.compileMessage().compiledInstructions,
+          addressTableLookups: []
+        });
+        
+        transaction = new VersionedTransaction(messageV0);
+      }
       
+      // Now handle all as VersionedTransaction
+      const { value: simulatedTransactionResponse } = await this.connection.simulateTransaction(
+        transaction,
+        {
+          replaceRecentBlockhash: false,
+          commitment: 'confirmed',
+          accounts: { encoding: 'base64', addresses: [] },
+          sigVerify: false,
+        },
+      );
+      
+      logger.info('Simulation Result:', {
+        unitsConsumed: simulatedTransactionResponse.unitsConsumed,
+        status: simulatedTransactionResponse.err ? 'FAILED' : 'SUCCESS'
+      });
+
+      if (simulatedTransactionResponse.err) {
+        const logs = simulatedTransactionResponse.logs || [];
+        const errorMessage = `${SIMULATION_ERROR_MESSAGE}\nError: ${JSON.stringify(simulatedTransactionResponse.err)}\nProgram Logs: ${logs.join('\n')}`;
+        
+        throw new HttpException(
+          503,
+          errorMessage,
+          SIMULATION_ERROR_CODE
+        );
+      }
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
       throw new HttpException(
         503,
-        errorMessage,
+        `Error simulating transaction: ${error.message}`,
         SIMULATION_ERROR_CODE
       );
     }

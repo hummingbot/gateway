@@ -21,7 +21,7 @@ import {
 import { quoteLiquidity } from './quoteLiquidity'
 import Decimal from 'decimal.js'
 import BN from 'bn.js'
-import { VersionedTransaction } from '@solana/web3.js'
+import { VersionedTransaction, Transaction } from '@solana/web3.js'
 
 async function createAddLiquidityTransaction(
   raydium: Raydium,
@@ -33,7 +33,7 @@ async function createAddLiquidityTransaction(
   baseLimited: boolean,
   slippage: Percent,
   computeBudgetConfig: { units: number; microLamports: number }
-): Promise<VersionedTransaction> {
+): Promise<VersionedTransaction | Transaction> {
   if (ammPoolInfo.poolType === 'amm') {
     const response = await raydium.raydiumSDK.liquidity.addLiquidity({
       poolInfo: poolInfo as ApiV3PoolInfoStandardItem,
@@ -50,7 +50,7 @@ async function createAddLiquidityTransaction(
       txVersion: raydium.txVersion,
       computeBudgetConfig,
     })
-    return response.transaction as VersionedTransaction
+    return response.transaction
   } else if (ammPoolInfo.poolType === 'cpmm') {
     const baseIn = baseLimited;
     const inputAmount = new BN(
@@ -67,7 +67,7 @@ async function createAddLiquidityTransaction(
       txVersion: raydium.txVersion,
       computeBudgetConfig,
     })
-    return response.transaction as VersionedTransaction
+    return response.transaction
   }
   throw new Error(`Unsupported pool type: ${ammPoolInfo.poolType}`)
 }
@@ -129,7 +129,17 @@ async function addLiquidity(
       )
       console.log('transaction', transaction);
 
-      transaction.sign([wallet]);
+      if (transaction instanceof VersionedTransaction) {
+        (transaction as VersionedTransaction).sign([wallet]);
+      } else {
+        const txAsTransaction = transaction as Transaction;
+        const { blockhash, lastValidBlockHeight } = await solana.connection.getLatestBlockhash();
+        txAsTransaction.recentBlockhash = blockhash;
+        txAsTransaction.lastValidBlockHeight = lastValidBlockHeight;
+        txAsTransaction.feePayer = wallet.publicKey;
+        txAsTransaction.sign(wallet);
+      }
+
       await solana.simulateTransaction(transaction);
   
       console.log('signed transaction', transaction);
@@ -157,6 +167,20 @@ async function addLiquidity(
   }
 
   export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
+    // Get first wallet address for example
+    const solana = await Solana.getInstance('mainnet-beta');
+    let firstWalletAddress = '<solana-wallet-address>';
+    
+    const foundWallet = await solana.getFirstWalletAddress();
+    if (foundWallet) {
+      firstWalletAddress = foundWallet;
+    } else {
+      logger.debug('No wallets found for examples in schema');
+    }
+    
+    // Update schema example
+    AddLiquidityRequest.properties.walletAddress.examples = [firstWalletAddress];
+
     fastify.post<{
       Body: AddLiquidityRequestType
       Reply: AddLiquidityResponseType
@@ -171,10 +195,11 @@ async function addLiquidity(
             properties: {
               ...AddLiquidityRequest.properties,
               network: { type: 'string', default: 'mainnet-beta' },
-              poolAddress: { type: 'string', examples: ['6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg'] },
+              poolAddress: { type: 'string', examples: ['6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg'] }, // AMM RAY-USDC
+              // poolAddress: { type: 'string', examples: ['7JuwJuNU88gurFnyWeiyGKbFmExMWcmRZntn9imEzdny'] }, // CPMM SOL-USDC
               slippagePct: { type: 'number', examples: [1] },
               baseTokenAmount: { type: 'number', examples: [1] },
-              quoteTokenAmount: { type: 'number', examples: [5] },
+              quoteTokenAmount: { type: 'number', examples: [1] },
               }
           },
           response: {
