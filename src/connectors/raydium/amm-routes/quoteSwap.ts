@@ -174,6 +174,8 @@ async function quoteCpmmSwap(
       maxAmountIn: inputAmount,
       fee: swapResult.tradeFee,
       priceImpact: null, // CPMM doesn't provide price impact
+      inputMint,
+      outputMint,
     }
   } else if (amountOut) {
     // Exact output (swap base out)
@@ -205,6 +207,8 @@ async function quoteCpmmSwap(
       maxAmountIn,
       fee: swapResult.tradeFee,
       priceImpact: null, // CPMM doesn't provide price impact
+      inputMint,
+      outputMint,
     }
   }
 
@@ -224,12 +228,16 @@ async function getRawSwapQuote(
   // Convert side to exactIn
   const exactIn = side === 'sell';
   
+  logger.info(`getRawSwapQuote: poolId=${poolId}, baseToken=${baseToken}, quoteToken=${quoteToken}, amount=${amount}, side=${side}, exactIn=${exactIn}`)
+  
   // Get pool info to determine if it's AMM or CPMM
   const ammPoolInfo = await raydium.getAmmPoolInfo(poolId)
   
   if (!ammPoolInfo) {
     throw new Error(`Pool not found: ${poolId}`)
   }
+  
+  logger.info(`Pool type: ${ammPoolInfo.poolType}`)
 
   // Resolve tokens from symbols or addresses
   const solana = await Solana.getInstance(network)
@@ -240,12 +248,11 @@ async function getRawSwapQuote(
     throw new Error(`Token not found: ${!resolvedBaseToken ? baseToken : quoteToken}`)
   }
   
+  logger.info(`Base token: ${resolvedBaseToken.symbol}, address=${resolvedBaseToken.address}, decimals=${resolvedBaseToken.decimals}`)
+  logger.info(`Quote token: ${resolvedQuoteToken.symbol}, address=${resolvedQuoteToken.address}, decimals=${resolvedQuoteToken.decimals}`)
+  
   const baseTokenAddress = resolvedBaseToken.address
   const quoteTokenAddress = resolvedQuoteToken.address
-  
-  // Determine if we're swapping the base or quote token
-  const isBaseTokenInput = exactIn ? baseToken === ammPoolInfo.baseTokenAddress || resolvedBaseToken.address === ammPoolInfo.baseTokenAddress : 
-                                    quoteToken === ammPoolInfo.baseTokenAddress || resolvedQuoteToken.address === ammPoolInfo.baseTokenAddress
   
   // Verify input and output tokens match pool tokens
   if (baseTokenAddress !== ammPoolInfo.baseTokenAddress && baseTokenAddress !== ammPoolInfo.quoteTokenAddress) {
@@ -261,24 +268,59 @@ async function getRawSwapQuote(
     ? [resolvedBaseToken, resolvedQuoteToken] 
     : [resolvedQuoteToken, resolvedBaseToken]
   
+  logger.info(`Input token: ${inputToken.symbol}, address=${inputToken.address}, decimals=${inputToken.decimals}`)
+  logger.info(`Output token: ${outputToken.symbol}, address=${outputToken.address}, decimals=${outputToken.decimals}`)
+  
   // Convert amount to string with proper decimals based on which token we're using
-  const tokenDecimals = exactIn ? inputToken.decimals : outputToken.decimals
+  const inputDecimals = inputToken.decimals
+  const outputDecimals = outputToken.decimals
   
-  const amountBN = new Decimal(amount)
-    .mul(10 ** tokenDecimals)
-    .toFixed(0)
+  // Create amount with proper decimals for the token being used (input for exactIn, output for exactOut)
+  const amountInWithDecimals = exactIn 
+    ? new Decimal(amount).mul(10 ** inputDecimals).toFixed(0)
+    : undefined
+    
+  const amountOutWithDecimals = !exactIn
+    ? new Decimal(amount).mul(10 ** outputDecimals).toFixed(0)
+    : undefined
   
+  logger.info(`Amount in human readable: ${amount}`)
+  logger.info(`Amount in with decimals: ${amountInWithDecimals}, Amount out with decimals: ${amountOutWithDecimals}`)
+  
+  let result;
   if (ammPoolInfo.poolType === 'amm') {
-    return exactIn 
-      ? quoteAmmSwap(raydium, network, poolId, inputToken.address, outputToken.address, amountBN, undefined, slippagePct)
-      : quoteAmmSwap(raydium, network, poolId, inputToken.address, outputToken.address, undefined, amountBN, slippagePct)
+    result = await quoteAmmSwap(
+      raydium, 
+      network, 
+      poolId, 
+      inputToken.address, 
+      outputToken.address, 
+      amountInWithDecimals, 
+      amountOutWithDecimals, 
+      slippagePct
+    )
   } else if (ammPoolInfo.poolType === 'cpmm') {
-    return exactIn
-      ? quoteCpmmSwap(raydium, network, poolId, inputToken.address, outputToken.address, amountBN, undefined, slippagePct)
-      : quoteCpmmSwap(raydium, network, poolId, inputToken.address, outputToken.address, undefined, amountBN, slippagePct)
+    result = await quoteCpmmSwap(
+      raydium, 
+      network, 
+      poolId, 
+      inputToken.address, 
+      outputToken.address, 
+      amountInWithDecimals, 
+      amountOutWithDecimals, 
+      slippagePct
+    )
+  } else {
+    throw new Error(`Unsupported pool type: ${ammPoolInfo.poolType}`)
   }
-
-  throw new Error(`Unsupported pool type: ${ammPoolInfo.poolType}`)
+  
+  logger.info(`Raw quote result: amountIn=${result.amountIn.toString()}, amountOut=${result.amountOut.toString()}, inputMint=${result.inputMint}, outputMint=${result.outputMint}`)
+  
+  return {
+    ...result,
+    inputToken,
+    outputToken
+  };
 }
 
 async function formatSwapQuote(
@@ -291,8 +333,7 @@ async function formatSwapQuote(
   side: 'buy' | 'sell',
   slippagePct?: number
 ): Promise<GetSwapQuoteResponseType> {
-  // Convert side to exactIn
-  const exactIn = side === 'sell';
+  logger.info(`formatSwapQuote: poolAddress=${poolAddress}, baseToken=${baseToken}, quoteToken=${quoteToken}, amount=${amount}, side=${side}`)
   
   const raydium = await Raydium.getInstance(network)
   const solana = await Solana.getInstance(network)
@@ -304,6 +345,17 @@ async function formatSwapQuote(
   if (!resolvedBaseToken || !resolvedQuoteToken) {
     throw new Error(`Token not found: ${!resolvedBaseToken ? baseToken : quoteToken}`)
   }
+  
+  logger.info(`Resolved base token: ${resolvedBaseToken.symbol}, address=${resolvedBaseToken.address}, decimals=${resolvedBaseToken.decimals}`)
+  logger.info(`Resolved quote token: ${resolvedQuoteToken.symbol}, address=${resolvedQuoteToken.address}, decimals=${resolvedQuoteToken.decimals}`)
+
+  // Get pool info
+  const poolInfo = await raydium.getAmmPoolInfo(poolAddress)
+  if (!poolInfo) {
+    throw new Error(`Pool not found: ${poolAddress}`)
+  }
+  
+  logger.info(`Pool info: type=${poolInfo.poolType}, baseToken=${poolInfo.baseTokenAddress}, quoteToken=${poolInfo.quoteTokenAddress}`)
 
   const quote = await getRawSwapQuote(
     raydium,
@@ -315,33 +367,39 @@ async function formatSwapQuote(
     side as 'buy' | 'sell',
     slippagePct
   )
+  
+  logger.info(`Quote result: amountIn=${quote.amountIn.toString()}, amountOut=${quote.amountOut.toString()}`)
 
-  // Get pool info
-  const poolInfo = await raydium.getAmmPoolInfo(poolAddress)
-  if (!poolInfo) {
-    throw new Error(`Pool not found: ${poolAddress}`)
-  }
+  // Use the token objects returned from getRawSwapQuote
+  const inputToken = quote.inputToken
+  const outputToken = quote.outputToken
+  
+  logger.info(`Using input token decimals: ${inputToken.decimals}, output token decimals: ${outputToken.decimals}`)
 
   // Convert BN values to numbers with correct decimal precision
   const estimatedAmountIn = new Decimal(quote.amountIn.toString())
-    .div(10 ** resolvedBaseToken.decimals)
+    .div(10 ** inputToken.decimals)
     .toNumber()
   
   const estimatedAmountOut = new Decimal(quote.amountOut.toString())
-    .div(10 ** resolvedQuoteToken.decimals)
+    .div(10 ** outputToken.decimals)
     .toNumber()
   
   const minAmountOut = new Decimal(quote.minAmountOut.toString())
-    .div(10 ** resolvedQuoteToken.decimals)
+    .div(10 ** outputToken.decimals)
     .toNumber()
   
   const maxAmountIn = new Decimal(quote.maxAmountIn.toString())
-    .div(10 ** resolvedBaseToken.decimals)
+    .div(10 ** inputToken.decimals)
     .toNumber()
+    
+  logger.info(`Converted amounts: estimatedAmountIn=${estimatedAmountIn}, estimatedAmountOut=${estimatedAmountOut}, minAmountOut=${minAmountOut}, maxAmountIn=${maxAmountIn}`)
 
-  // Calculate balance changes
-  const baseTokenBalanceChange = exactIn ? -estimatedAmountIn : estimatedAmountOut
-  const quoteTokenBalanceChange = exactIn ? estimatedAmountOut : -estimatedAmountIn
+  // Calculate balance changes correctly based on which tokens are being swapped
+  const baseTokenBalanceChange = side === 'buy' ? estimatedAmountOut : -estimatedAmountIn
+  const quoteTokenBalanceChange = side === 'buy' ? -estimatedAmountIn : estimatedAmountOut
+  
+  logger.info(`Balance changes: baseTokenBalanceChange=${baseTokenBalanceChange}, quoteTokenBalanceChange=${quoteTokenBalanceChange}`)
 
   return {
     estimatedAmountIn,
