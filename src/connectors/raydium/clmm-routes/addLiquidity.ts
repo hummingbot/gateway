@@ -123,6 +123,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           ...AddLiquidityRequest,
           properties: {
             ...AddLiquidityRequest.properties,
+            slippagePct: { type: 'number', examples: [1] },
             network: { type: 'string', default: 'mainnet-beta' }
           }
         },

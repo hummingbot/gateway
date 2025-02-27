@@ -24,7 +24,7 @@ export const fetchPoolsRoute: FastifyPluginAsync = async (fastify) => {
         properties: {
           network: { type: 'string', default: 'mainnet-beta' },
           limit: { type: 'number', minimum: 1, default: 10 },
-          tokenA: { type: 'string', examples: ['JUP'] },
+          tokenA: { type: 'string', examples: ['SOL'] },
           tokenB: { type: 'string', examples: ['USDC'] }
         }
       },

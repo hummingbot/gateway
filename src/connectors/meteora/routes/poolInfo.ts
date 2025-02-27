@@ -22,7 +22,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
           ...GetPoolInfoRequest,
           properties: {
             network: { type: 'string', examples: ['mainnet-beta'] },
-            poolAddress: { type: 'string', examples: ['FtFUzuXbbw6oBbU53SDUGspEka1D5Xyc4cwnkxer6xKz'] }
+            poolAddress: { type: 'string', examples: ['2sf5NYcY4zUPXUSmG6f66mskb24t5F8S11pC1Nz5nQT3'] }
           }
         },
         response: {

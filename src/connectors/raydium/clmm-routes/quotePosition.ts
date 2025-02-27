@@ -125,11 +125,11 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             ...QuotePositionRequest.properties,
             network: { type: 'string', default: 'mainnet-beta' },
-            lowerPrice: { type: 'number', examples: [0.5] },
-            upperPrice: { type: 'number', examples: [5.0] },
-            poolAddress: { type: 'string', examples: ['61R1ndXxvsWXXkWSyNkCxnzwd3zUNB8Q2ibmkiLPC8ht'] },
-            baseTokenAmount: { type: 'number', examples: [1] },
-            quoteTokenAmount: { type: 'number', examples: [1] },
+            lowerPrice: { type: 'number', examples: [100] },
+            upperPrice: { type: 'number', examples: [180] },
+            poolAddress: { type: 'string', examples: ['3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv'] },
+            baseTokenAmount: { type: 'number', examples: [0.1] },
+            quoteTokenAmount: { type: 'number', examples: [15] },
             slippagePct: { type: 'number', examples: [1] },
           }
         },

@@ -19,10 +19,18 @@ export async function collectFees(
   const meteora = await Meteora.getInstance(network);
   const wallet = await solana.getWallet(address);
 
-  const { position, info } = await meteora.getRawPosition(
+  // Get position result and check if it's null before destructuring
+  const positionResult = await meteora.getRawPosition(
     positionAddress,
     wallet.publicKey
   );
+
+  if (!positionResult) {
+    throw fastify.httpErrors.notFound(`Position not found: ${positionAddress}`);
+  }
+
+  // Now safely destructure
+  const { position, info } = positionResult;
 
   if (!position) {
     throw fastify.httpErrors.notFound(`Position not found: ${positionAddress}`);
@@ -93,7 +101,13 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Collect fees from a Meteora position',
         tags: ['meteora'],
-        body: CollectFeesRequest,
+        body: {
+          ...CollectFeesRequest,
+          properties: {
+            ...CollectFeesRequest.properties,
+            network: { type: 'string', default: 'mainnet-beta' }
+          }
+        },
         response: {
           200: CollectFeesResponse
         },
