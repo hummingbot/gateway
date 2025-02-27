@@ -36,33 +36,61 @@ export class SolanaController {
 
   static async poll(solana: Solana, req: PollRequest) {
     const initTime = Date.now();
-    const currentBlock = await solana.getCurrentBlockNumber();
-    const txData = await solana.getTransaction(req.txHash as any);
     
-    if (!txData) {
+    try {
+      const currentBlock = await solana.getCurrentBlockNumber();
+      
+      // Validate transaction hash format
+      if (!req.txHash || typeof req.txHash !== 'string' || !req.txHash.match(/^[A-Za-z0-9]{43,88}$/)) {
+        return wrapResponse({
+          currentBlock,
+          txHash: req.txHash,
+          txBlock: null,
+          txStatus: 0,
+          txData: null,
+          fee: null,
+          error: "Invalid transaction hash format"
+        }, initTime);
+      }
+      
+      const txData = await solana.getTransaction(req.txHash as any);
+      
+      if (!txData) {
+        return wrapResponse({
+          currentBlock,
+          txHash: req.txHash,
+          txBlock: null,
+          txStatus: 0,
+          txData: null,
+          fee: null,
+        }, initTime);
+      }
+
+      const txStatus = await solana.getTransactionStatusCode(txData as any);
+      const { balanceChange, fee } = await solana.extractAccountBalanceChangeAndFee(req.txHash, 0);
+
+      logger.info(`Polling for transaction ${req.txHash}, Status: ${txStatus}, Balance Change: ${balanceChange} SOL, Fee: ${fee} SOL`);
+
       return wrapResponse({
         currentBlock,
+        txHash: req.txHash,
+        txBlock: txData.slot,
+        txStatus,
+        fee: fee,
+        txData,
+      }, initTime);
+    } catch (error) {
+      logger.error(`Error polling transaction ${req.txHash}: ${error.message}`);
+      return wrapResponse({
+        currentBlock: await solana.getCurrentBlockNumber(),
         txHash: req.txHash,
         txBlock: null,
         txStatus: 0,
         txData: null,
         fee: null,
+        error: "Transaction not found or invalid"
       }, initTime);
     }
-
-    const txStatus = await solana.getTransactionStatusCode(txData as any);
-    const { balanceChange, fee } = await solana.extractAccountBalanceChangeAndFee(req.txHash, 0);
-
-    logger.info(`Polling for transaction ${req.txHash}, Status: ${txStatus}, Balance Change: ${balanceChange} SOL, Fee: ${fee} SOL`);
-
-    return wrapResponse({
-      currentBlock,
-      txHash: req.txHash,
-      txBlock: txData.slot,
-      txStatus,
-      fee: fee,
-      txData,
-    }, initTime);
   }
 
   static async getTokens(solana: Solana, req: TokensRequest) {
