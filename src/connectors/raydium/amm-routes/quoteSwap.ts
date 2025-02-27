@@ -182,6 +182,16 @@ async function quoteCpmmSwap(
     const outputAmount = new BN(amountOut)
     const outputMintPk = new PublicKey(outputMint)
     
+    // Log inputs to swapBaseOut
+    logger.info(`CurveCalculator.swapBaseOut inputs: 
+      poolMintA=${poolInfo.mintA.address}, 
+      poolMintB=${poolInfo.mintB.address}, 
+      tradeFeeRate=${rpcData.configInfo!.tradeFeeRate.toString()}, 
+      baseReserve=${rpcData.baseReserve.toString()}, 
+      quoteReserve=${rpcData.quoteReserve.toString()}, 
+      outputMint=${outputMintPk.toString()}, 
+      outputAmount=${outputAmount.toString()}`)
+    
     // swap pool mintA for mintB
     const swapResult = CurveCalculator.swapBaseOut({
       poolMintA: poolInfo.mintA,
@@ -215,7 +225,7 @@ async function quoteCpmmSwap(
   throw new Error('Either amountIn or amountOut must be provided')
 }
 
-async function getRawSwapQuote(
+export async function getRawSwapQuote(
   raydium: Raydium,
   network: string,
   poolId: string,
@@ -426,7 +436,8 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             ...GetSwapQuoteRequest.properties,
             network: { type: 'string', default: 'mainnet-beta' },
-            poolAddress: { type: 'string', examples: ['6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg'] },
+            poolAddress: { type: 'string', examples: ['6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg'] }, // AMM
+            // poolAddress: { type: 'string', examples: ['7JuwJuNU88gurFnyWeiyGKbFmExMWcmRZntn9imEzdny'] }, // CPMM
             baseToken: { type: 'string', examples: ['RAY'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
             amount: { type: 'number', examples: [1] },
