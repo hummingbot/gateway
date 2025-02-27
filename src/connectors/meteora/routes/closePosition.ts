@@ -20,15 +20,13 @@ async function closePosition(
   positionAddress: string
 ): Promise<ClosePositionResponseType> {
   try {
-    const solana = await Solana.getInstance(network);
+    const solana = await Solana.getInstance(network);    
     const meteora = await Meteora.getInstance(network);
     const wallet = await solana.getWallet(walletAddress);
-
     const positionInfo = await meteora.getPositionInfo(positionAddress, wallet.publicKey);
-    logger.debug('Position Info:', positionInfo);
+    logger.info('Position Info:', positionInfo);
 
     const dlmmPool = await meteora.getDlmmPool(positionInfo.poolAddress);
-    logger.debug('DLMM Pool:', dlmmPool);
 
     // Remove liquidity if baseTokenAmount or quoteTokenAmount is greater than 0
     const removeLiquidityResult = (positionInfo.baseTokenAmount > 0 || positionInfo.quoteTokenAmount > 0)
@@ -41,39 +39,45 @@ async function closePosition(
       : { baseFeeAmountCollected: 0, quoteFeeAmountCollected: 0, fee: 0 };
 
     // Now close the position
-    logger.info(`Closing position ${positionAddress}`);
-    const { position } = await meteora.getRawPosition(positionAddress, wallet.publicKey);
-    logger.debug('Raw position data:', position);
-    logger.debug('Creating close position transaction with params:', {
-      owner: wallet.publicKey.toString(),
-      position: position
-    });
+    try {
+      const { position } = await meteora.getRawPosition(positionAddress, wallet.publicKey);
+      
+      const closePositionTx = await dlmmPool.closePosition({
+        owner: wallet.publicKey,
+        position: position,
+      });
 
-    const closePositionTx = await dlmmPool.closePosition({
-      owner: wallet.publicKey,
-      position: position,
-    });
+      const { signature, fee } = await solana.sendAndConfirmTransaction(closePositionTx, [wallet], 200_000);
+      logger.info(`Position ${positionAddress} closed successfully with signature: ${signature}`);
 
-    logger.debug('Close position transaction created:', closePositionTx);
+      const { balanceChange } = await solana.extractAccountBalanceChangeAndFee(signature, 0);
+      const returnedSOL = Math.abs(balanceChange);
 
-    const { signature, fee } = await solana.sendAndConfirmTransaction(closePositionTx, [wallet], 200_000);
-    logger.info(`Position ${positionAddress} closed successfully.`);
-
-    const { balanceChange } = await solana.extractAccountBalanceChangeAndFee(signature, 0);
-    const returnedSOL = Math.abs(balanceChange);
-
-    return {
-      signature,
-      fee: fee + removeLiquidityResult.fee + collectFeesResult.fee,
-      positionRentRefunded: returnedSOL,
-      baseTokenAmountRemoved: removeLiquidityResult.baseTokenAmountRemoved,
-      quoteTokenAmountRemoved: removeLiquidityResult.quoteTokenAmountRemoved,
-      baseFeeAmountCollected: collectFeesResult.baseFeeAmountCollected,
-      quoteFeeAmountCollected: collectFeesResult.quoteFeeAmountCollected,
-    };
+      return {
+        signature,
+        fee: fee + removeLiquidityResult.fee + collectFeesResult.fee,
+        positionRentRefunded: returnedSOL,
+        baseTokenAmountRemoved: removeLiquidityResult.baseTokenAmountRemoved,
+        quoteTokenAmountRemoved: removeLiquidityResult.quoteTokenAmountRemoved,
+        baseFeeAmountCollected: collectFeesResult.baseFeeAmountCollected,
+        quoteFeeAmountCollected: collectFeesResult.quoteFeeAmountCollected,
+      };
+    } catch (positionError) {
+      logger.error('Error in position closing workflow:', {
+        message: positionError.message,
+        code: positionError.code,
+        name: positionError.name,
+        step: 'Raw position handling',
+        stack: positionError.stack
+      });
+      throw positionError;
+    }
   } catch (error) {
+    // Don't log the actual error object which may contain circular references
     logger.error('Close position error:', {
-      error,
+      message: error.message || 'Unknown error',
+      name: error.name,
+      code: error.code,
       stack: error.stack,
       positionAddress,
       network,
@@ -92,7 +96,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
   if (foundWallet) {
     firstWalletAddress = foundWallet;
   } else {
-    logger.debug('No wallets found for examples in schema');
+    logger.info('No wallets found for examples in schema');
   }
   
   // Update schema example
@@ -132,7 +136,17 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
           positionAddress
         );
       } catch (e) {
-        logger.error(e);
+        logger.error('Close position route error:', {
+          message: e.message || 'Unknown error',
+          name: e.name,
+          code: e.code,
+          statusCode: e.statusCode,
+          stack: e.stack,
+          positionAddress: request.body.positionAddress,
+          network: request.body.network,
+          walletAddress: request.body.walletAddress
+        });
+        
         if (e.statusCode) {
           throw fastify.httpErrors.createError(e.statusCode, 'Request failed');
         }
