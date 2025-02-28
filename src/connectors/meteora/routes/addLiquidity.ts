@@ -1,5 +1,4 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
-import { Type, Static } from '@sinclair/typebox';
 import { Meteora } from '../meteora';
 import { Solana } from '../../../chains/solana/solana';
 import { DecimalUtil } from '@orca-so/common-sdk';
@@ -7,90 +6,115 @@ import { BN } from 'bn.js';
 import { Decimal } from 'decimal.js';
 import { StrategyType } from '@meteora-ag/dlmm';
 import { logger } from '../../../services/logger';
+import { PublicKey } from '@solana/web3.js';
+import { 
+  AddLiquidityRequest, 
+  AddLiquidityResponse, 
+  AddLiquidityResponseType 
+} from '../../../services/clmm-interfaces';
+import { Type, Static } from '@sinclair/typebox';
+import { httpBadRequest, httpNotFound, ERROR_MESSAGES } from '../../../services/error-handler';
 
-// Schema definitions
-const AddLiquidityRequest = Type.Object({
-  network: Type.Optional(Type.String({ default: 'mainnet-beta' })),
-  address: Type.String({ 
-    description: 'Will use first available wallet if not specified',
-    examples: [] // Will be populated during route registration
-  }),
-  positionAddress: Type.String({ default: '' }),
-  baseTokenAmount: Type.Number({ default: 1 }),
-  quoteTokenAmount: Type.Number({ default: 1 }),
-  slippagePct: Type.Optional(Type.Number({ default: 1 })),
-  strategy: Type.Optional(Type.Number({ default: StrategyType.SpotImBalanced })),
-});
-
-const AddLiquidityResponse = Type.Object({
-  signature: Type.String(),
-  tokenXAddedAmount: Type.Number(),
-  tokenYAddedAmount: Type.Number(),
-  fee: Type.Number(),
-});
-
-type AddLiquidityRequestType = Static<typeof AddLiquidityRequest>;
-type AddLiquidityResponseType = Static<typeof AddLiquidityResponse>;
+const SOL_TRANSACTION_BUFFER = 0.01; // SOL buffer for transaction costs
 
 async function addLiquidity(
-  fastify: FastifyInstance,
+  _fastify: FastifyInstance,
   network: string,
   address: string,
   positionAddress: string,
   baseTokenAmount: number,
   quoteTokenAmount: number,
   slippagePct?: number,
-  strategy: StrategyType = StrategyType.SpotImBalanced
+  strategyType: StrategyType = StrategyType.SpotBalanced
 ): Promise<AddLiquidityResponseType> {
+  // Validate addresses first
+  try {
+    new PublicKey(positionAddress);
+    new PublicKey(address);
+  } catch (error) {
+    throw httpBadRequest(ERROR_MESSAGES.INVALID_SOLANA_ADDRESS(positionAddress));
+  }
+
   const solana = await Solana.getInstance(network);
   const meteora = await Meteora.getInstance(network);
   const wallet = await solana.getWallet(address);
 
-  // Find the matching position info
-  const { position: matchingLbPosition, info: matchingPositionInfo } = await meteora.getPosition(
-    positionAddress,
+  // Validate amounts
+  if (baseTokenAmount <= 0 && quoteTokenAmount <= 0) {
+    throw httpBadRequest(ERROR_MESSAGES.MISSING_AMOUNTS);
+  }
+
+  const { position, info } = await meteora.getRawPosition(
+    positionAddress, 
     wallet.publicKey
   );
 
-  if (!matchingLbPosition || !matchingPositionInfo) {
-    throw fastify.httpErrors.notFound(`Position not found: ${positionAddress}`);
+  if (!position) {
+    throw httpNotFound(`Position not found: ${positionAddress}`);
   }
 
-  // Get requirement data
-  const maxBinId = matchingLbPosition.positionData.upperBinId;
-  const minBinId = matchingLbPosition.positionData.lowerBinId;
+  const dlmmPool = await meteora.getDlmmPool(info.publicKey.toBase58());
+  if (!dlmmPool) {
+    throw httpNotFound(`Pool not found for position: ${positionAddress}`);
+  }
+
+  const tokenX = await solana.getToken(dlmmPool.tokenX.publicKey.toBase58());
+  const tokenY = await solana.getToken(dlmmPool.tokenY.publicKey.toBase58());
+  const tokenXSymbol = tokenX?.symbol || 'UNKNOWN';
+  const tokenYSymbol = tokenY?.symbol || 'UNKNOWN';
+
+  // Check balances with transaction buffer
+  const balances = await solana.getBalance(wallet, [tokenXSymbol, tokenYSymbol, "SOL"]);
+  const requiredBase = baseTokenAmount + (tokenXSymbol === 'SOL' ? SOL_TRANSACTION_BUFFER : 0);
+  const requiredQuote = quoteTokenAmount + (tokenYSymbol === 'SOL' ? SOL_TRANSACTION_BUFFER : 0);
+
+  if (balances[tokenXSymbol] < requiredBase) {
+    throw httpBadRequest(
+      ERROR_MESSAGES.INSUFFICIENT_BALANCE(
+        tokenXSymbol,
+        requiredBase,
+        balances[tokenXSymbol]
+      )
+    );
+  }
+
+  if (balances[tokenYSymbol] < requiredQuote) {
+    throw httpBadRequest(
+      ERROR_MESSAGES.INSUFFICIENT_BALANCE(
+        tokenYSymbol,
+        requiredQuote,
+        balances[tokenYSymbol]
+      )
+    );
+  }
+
+  logger.info(`Adding liquidity to position ${positionAddress}: ${baseTokenAmount.toFixed(4)} ${tokenXSymbol}, ${quoteTokenAmount.toFixed(4)} ${tokenYSymbol}`);
+  const maxBinId = position.positionData.upperBinId;
+  const minBinId = position.positionData.lowerBinId;
 
   const totalXAmount = new BN(
-    DecimalUtil.toBN(new Decimal(baseTokenAmount), matchingPositionInfo.tokenX.decimal)
+    DecimalUtil.toBN(new Decimal(baseTokenAmount), dlmmPool.tokenX.decimal)
   );
   const totalYAmount = new BN(
-    DecimalUtil.toBN(new Decimal(quoteTokenAmount), matchingPositionInfo.tokenY.decimal)
+    DecimalUtil.toBN(new Decimal(quoteTokenAmount), dlmmPool.tokenY.decimal)
   );
 
-  // Initialize DLMM pool
-  const dlmmPool = await meteora.getDlmmPool(matchingPositionInfo.publicKey.toBase58());
-  if (!dlmmPool) {
-    throw fastify.httpErrors.notFound(`Pool not found for position: ${positionAddress}`);
-  }
-
-  await dlmmPool.refetchStates();
-
   const addLiquidityTx = await dlmmPool.addLiquidityByStrategy({
-    positionPubKey: matchingLbPosition.publicKey,
+    positionPubKey: new PublicKey(position.publicKey),
     user: wallet.publicKey,
     totalXAmount,
     totalYAmount,
     strategy: {
       maxBinId,
       minBinId,
-      strategyType: strategy,
+      strategyType,
     },
     slippage: slippagePct ?? meteora.getSlippagePct(),
   });
 
-  const signature = await solana.sendAndConfirmTransaction(addLiquidityTx, [wallet], 800_000);
+  const { signature, fee } = await solana.sendAndConfirmTransaction(addLiquidityTx, [wallet], 800_000);
 
-  const { balanceChange: tokenXAddedAmount, fee } = await solana.extractTokenBalanceChangeAndFee(
+  const { balanceChange: tokenXAddedAmount } = await solana.extractTokenBalanceChangeAndFee(
     signature,
     dlmmPool.tokenX.publicKey.toBase58(),
     dlmmPool.pubkey.toBase58()
@@ -102,30 +126,44 @@ async function addLiquidity(
     dlmmPool.pubkey.toBase58()
   );
 
+  logger.info(`Liquidity added to position ${positionAddress}: ${Math.abs(tokenXAddedAmount).toFixed(4)} ${tokenXSymbol}, ${Math.abs(tokenYAddedAmount).toFixed(4)} ${tokenYSymbol}`);
+
   return {
     signature,
-    tokenXAddedAmount: Math.abs(tokenXAddedAmount),
-    tokenYAddedAmount: Math.abs(tokenYAddedAmount),
+    baseTokenAmountAdded: Math.abs(tokenXAddedAmount),
+    quoteTokenAmountAdded: Math.abs(tokenYAddedAmount),
     fee,
   };
 }
+
+export const MeteoraAddLiquidityRequest = Type.Intersect([
+  AddLiquidityRequest,
+  Type.Object({
+    strategyType: Type.Optional(Type.Number({ 
+      enum: Object.values(StrategyType).filter(x => typeof x === 'number')
+    }))
+  })
+], { $id: 'MeteoraAddLiquidityRequest' });
+
+export type MeteoraAddLiquidityRequestType = Static<typeof MeteoraAddLiquidityRequest>;
 
 export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   // Get first wallet address for example
   const solana = await Solana.getInstance('mainnet-beta');
   let firstWalletAddress = '<solana-wallet-address>';
   
-  try {
-    firstWalletAddress = await solana.getFirstWalletAddress();
-  } catch (error) {
-    logger.warn('No wallets found for examples in schema');
+  const foundWallet = await solana.getFirstWalletAddress();
+  if (foundWallet) {
+    firstWalletAddress = foundWallet;
+  } else {
+    logger.debug('No wallets found for examples in schema');
   }
   
   // Update schema example
-  AddLiquidityRequest.properties.address.examples = [firstWalletAddress];
+  AddLiquidityRequest.properties.walletAddress.examples = [firstWalletAddress];
 
   fastify.post<{
-    Body: AddLiquidityRequestType;
+    Body: MeteoraAddLiquidityRequestType;
     Reply: AddLiquidityResponseType;
   }>(
     '/add-liquidity',
@@ -133,7 +171,19 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Add liquidity to a Meteora position',
         tags: ['meteora'],
-        body: AddLiquidityRequest,
+        body: {
+          ...AddLiquidityRequest,
+          properties: {
+            ...AddLiquidityRequest.properties,
+            network: { type: 'string', default: 'mainnet-beta' },
+            slippagePct: { type: 'number', examples: [1] },
+            strategyType: { 
+              type: 'number', 
+              examples: [StrategyType.SpotImBalanced],
+              enum: Object.values(StrategyType).filter(x => typeof x === 'number')
+            },
+          }
+        },
         response: {
           200: AddLiquidityResponse
         },
@@ -141,22 +191,24 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { address, positionAddress, baseTokenAmount, quoteTokenAmount, slippagePct, strategy } = request.body;
+        const { walletAddress, positionAddress, baseTokenAmount, quoteTokenAmount, slippagePct, strategyType } = request.body;
         const network = request.body.network || 'mainnet-beta';
         
         return await addLiquidity(
           fastify,
           network,
-          address,
+          walletAddress,
           positionAddress,
           baseTokenAmount,
           quoteTokenAmount,
           slippagePct,
-          strategy
+          strategyType
         );
       } catch (e) {
-        if (e.statusCode) return e;
         logger.error(e);
+        if (e.statusCode) {
+          throw fastify.httpErrors.createError(e.statusCode, 'Request failed');
+        }
         throw fastify.httpErrors.internalServerError('Internal server error');
       }
     }

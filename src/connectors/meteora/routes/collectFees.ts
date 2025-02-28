@@ -1,28 +1,13 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
-import { Type, Static } from '@sinclair/typebox';
 import { Meteora } from '../meteora';
 import { Solana } from '../../../chains/solana/solana';
 import { logger } from '../../../services/logger';
-
-// Schema definitions
-const CollectFeesRequest = Type.Object({
-  network: Type.Optional(Type.String({ default: 'mainnet-beta' })),
-  address: Type.String({ 
-    description: 'Will use first available wallet if not specified',
-    examples: [] // Will be populated during route registration
-  }),
-  positionAddress: Type.String({ default: '' }),
-});
-
-const CollectFeesResponse = Type.Object({
-  signature: Type.String(),
-  collectedFeeX: Type.Number(),
-  collectedFeeY: Type.Number(),
-  fee: Type.Number(),
-});
-
-type CollectFeesRequestType = Static<typeof CollectFeesRequest>;
-type CollectFeesResponseType = Static<typeof CollectFeesResponse>;
+import { 
+  CollectFeesRequest, 
+  CollectFeesResponse, 
+  CollectFeesRequestType, 
+  CollectFeesResponseType 
+} from '../../../services/clmm-interfaces';
 
 export async function collectFees(
   fastify: FastifyInstance,
@@ -34,30 +19,43 @@ export async function collectFees(
   const meteora = await Meteora.getInstance(network);
   const wallet = await solana.getWallet(address);
 
-  const { position: matchingLbPosition, info: matchingPositionInfo } = await meteora.getPosition(
+  // Get position result and check if it's null before destructuring
+  const positionResult = await meteora.getRawPosition(
     positionAddress,
     wallet.publicKey
   );
 
-  if (!matchingLbPosition || !matchingPositionInfo) {
+  if (!positionResult) {
     throw fastify.httpErrors.notFound(`Position not found: ${positionAddress}`);
   }
 
-  const dlmmPool = await meteora.getDlmmPool(matchingPositionInfo.publicKey.toBase58());
+  // Now safely destructure
+  const { position, info } = positionResult;
+
+  if (!position) {
+    throw fastify.httpErrors.notFound(`Position not found: ${positionAddress}`);
+  }
+
+  const dlmmPool = await meteora.getDlmmPool(info.publicKey.toBase58());
   if (!dlmmPool) {
     throw fastify.httpErrors.notFound(`Pool not found for position: ${positionAddress}`);
   }
 
-  await dlmmPool.refetchStates();
+  const tokenX = await solana.getToken(dlmmPool.tokenX.publicKey.toBase58());
+  const tokenY = await solana.getToken(dlmmPool.tokenY.publicKey.toBase58());
+  const tokenXSymbol = tokenX?.symbol || 'UNKNOWN';
+  const tokenYSymbol = tokenY?.symbol || 'UNKNOWN';
+
+  logger.info(`Collecting fees from position ${positionAddress}`);
 
   const claimSwapFeeTx = await dlmmPool.claimSwapFee({
     owner: wallet.publicKey,
-    position: matchingLbPosition,
+    position: position,
   });
 
-  const signature = await solana.sendAndConfirmTransaction(claimSwapFeeTx, [wallet], 300_000);
+  const { signature, fee } = await solana.sendAndConfirmTransaction(claimSwapFeeTx, [wallet], 300_000);
 
-  const { balanceChange: collectedFeeX, fee } = await solana.extractTokenBalanceChangeAndFee(
+  const { balanceChange: collectedFeeX } = await solana.extractTokenBalanceChangeAndFee(
     signature,
     dlmmPool.tokenX.publicKey.toBase58(),
     dlmmPool.pubkey.toBase58()
@@ -69,11 +67,13 @@ export async function collectFees(
     dlmmPool.pubkey.toBase58()
   );
 
+  logger.info(`Fees collected from position ${positionAddress}: ${Math.abs(collectedFeeX).toFixed(4)} ${tokenXSymbol}, ${Math.abs(collectedFeeY).toFixed(4)} ${tokenYSymbol}`);
+
   return {
     signature,
-    collectedFeeX: Math.abs(collectedFeeX),
-    collectedFeeY: Math.abs(collectedFeeY),
     fee,
+    baseFeeAmountCollected: Math.abs(collectedFeeX),
+    quoteFeeAmountCollected: Math.abs(collectedFeeY),
   };
 }
 
@@ -82,14 +82,15 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
   const solana = await Solana.getInstance('mainnet-beta');
   let firstWalletAddress = '<solana-wallet-address>';
   
-  try {
-    firstWalletAddress = await solana.getFirstWalletAddress();
-  } catch (error) {
-    logger.warn('No wallets found for examples in schema');
+  const foundWallet = await solana.getFirstWalletAddress();
+  if (foundWallet) {
+    firstWalletAddress = foundWallet;
+  } else {
+    logger.debug('No wallets found for examples in schema');
   }
   
   // Update schema example
-  CollectFeesRequest.properties.address.examples = [firstWalletAddress];
+  CollectFeesRequest.properties.walletAddress.examples = [firstWalletAddress];
 
   fastify.post<{
     Body: CollectFeesRequestType;
@@ -100,7 +101,13 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Collect fees from a Meteora position',
         tags: ['meteora'],
-        body: CollectFeesRequest,
+        body: {
+          ...CollectFeesRequest,
+          properties: {
+            ...CollectFeesRequest.properties,
+            network: { type: 'string', default: 'mainnet-beta' }
+          }
+        },
         response: {
           200: CollectFeesResponse
         },
@@ -108,18 +115,20 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network, address, positionAddress } = request.body;
+        const { network, walletAddress, positionAddress } = request.body;
         const networkToUse = network || 'mainnet-beta';
         
         return await collectFees(
           fastify,
           networkToUse,
-          address,
+          walletAddress,
           positionAddress
         );
       } catch (e) {
-        if (e.statusCode) return e;
         logger.error(e);
+        if (e.statusCode) {
+          throw fastify.httpErrors.createError(e.statusCode, 'Request failed');
+        }
         throw fastify.httpErrors.internalServerError('Internal server error');
       }
     }

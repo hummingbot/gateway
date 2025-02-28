@@ -82,7 +82,7 @@ If the Foundation team requests changes, make more commits to your branch to add
 
 A minimum of 75% unit test coverage is required for all changes included in a pull request. Some components may be excluded from this validation.
 
-To calculate the diff-coverage locally on your computer, run `yarn test:cov`.
+To calculate the diff-coverage locally on your computer, run `pnpm test:cov`.
 
 ## Checklist
 

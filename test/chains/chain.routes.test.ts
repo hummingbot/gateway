@@ -50,7 +50,7 @@ describe('GET /ethereum/status', () => {
     expect(body.currentBlockNumber).toBeDefined();
   });
 
-  it('should return a 503 error when requesting status without specifying a network', async () => {
+  it('should return a 400 error when requesting status without specifying a network', async () => {
     patch(eth, 'getCurrentBlockNumber', () => {
       return 212;
     });
@@ -60,10 +60,10 @@ describe('GET /ethereum/status', () => {
       url: '/ethereum/status'
     });
 
-    expect(response.statusCode).toBe(503);
+    expect(response.statusCode).toBe(400);
   });
 
-  it('should return a 503 error when asking for an invalid network', async () => {
+  it('should return a 500 error when asking for an invalid network', async () => {
     const response = await gatewayApp.inject({
       method: 'GET',
       url: '/ethereum/status',
@@ -72,7 +72,7 @@ describe('GET /ethereum/status', () => {
       }
     });
 
-    expect(response.statusCode).toBe(503);
+    expect(response.statusCode).toBe(500);
   });
 });
 

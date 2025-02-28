@@ -72,20 +72,19 @@ export class Jupiter {
   }
 
   async getQuote(
-    inputTokenSymbol: string,
-    outputTokenSymbol: string,
+    inputTokenIdentifier: string,
+    outputTokenIdentifier: string,
     amount: number,
     slippagePct?: number,
     onlyDirectRoutes: boolean = false,
     asLegacyTransaction: boolean = false,
     swapMode: 'ExactIn' | 'ExactOut' = 'ExactIn',
   ): Promise<QuoteResponse> {
-    const inputToken = this.solana.getTokenBySymbol(inputTokenSymbol);
-    const outputToken = this.solana.getTokenBySymbol(outputTokenSymbol);
+    const inputToken = await this.solana.getToken(inputTokenIdentifier);
+    const outputToken = await this.solana.getToken(outputTokenIdentifier);
 
     if (!inputToken || !outputToken) {
-      logger.error('Invalid token symbols');
-      throw new Error('Invalid token symbols');
+      throw new Error(`Token not found: ${!inputToken ? inputTokenIdentifier : outputTokenIdentifier}`);
     }
 
     const slippageBps = slippagePct ? Math.round(slippagePct * 100) : 0;
@@ -113,7 +112,7 @@ export class Jupiter {
   }
 
   async getSwapObj(wallet: Wallet, quote: QuoteResponse, priorityFee?: number): Promise<SwapResponse> {
-    const prioritizationFeeLamports = priorityFee 
+    const feeLamports = priorityFee 
       ? Math.floor(priorityFee)
       : Math.floor(this.solana.config.minPriorityFee * 1e9);
 
@@ -125,7 +124,7 @@ export class Jupiter {
             quoteResponse: quote,
             userPublicKey: wallet.publicKey.toBase58(),
             dynamicComputeUnitLimit: true,
-            prioritizationFeeLamports,
+            prioritizationFeeLamports: feeLamports as any,
           },
         });
         return swapObj;
@@ -153,7 +152,7 @@ export class Jupiter {
     );
   }
 
-  async simulateTransaction(transaction: VersionedTransaction) {
+  public async simulateTransaction(transaction: VersionedTransaction) {
     const { value: simulatedTransactionResponse } = await this.solana.connection.simulateTransaction(
       transaction,
       {
@@ -164,14 +163,20 @@ export class Jupiter {
       },
     );
     
+    // console.log('Simulation Result:', {
+    //   logs: simulatedTransactionResponse.logs,
+    //   unitsConsumed: simulatedTransactionResponse.unitsConsumed,
+    //   status: simulatedTransactionResponse.err ? 'FAILED' : 'SUCCESS'
+    // });
+
     if (simulatedTransactionResponse.err) {
       const logs = simulatedTransactionResponse.logs || [];
-      logger.error('[JUPITER] Simulation Error Details:', {
-        error: simulatedTransactionResponse.err,
-        programLogs: logs,
-        accounts: simulatedTransactionResponse.accounts,
-        unitsConsumed: simulatedTransactionResponse.unitsConsumed,
-      });
+      // console.log('Simulation Error Details:', {
+      //   error: simulatedTransactionResponse.err,
+      //   programLogs: logs,
+      //   accounts: simulatedTransactionResponse.accounts,
+      //   unitsConsumed: simulatedTransactionResponse.unitsConsumed,
+      // });
 
       const errorMessage = `${SIMULATION_ERROR_MESSAGE}\nError: ${JSON.stringify(simulatedTransactionResponse.err)}\nProgram Logs: ${logs.join('\n')}`;
       
@@ -194,7 +199,7 @@ export class Jupiter {
   }> {
     let currentPriorityFee = (await this.solana.getGasPrice() * 1e9) - BASE_FEE;
 
-    logger.info(`[JUPITER] Sending swap with max priority fee of ${(currentPriorityFee / 1e9).toFixed(6)} SOL`);
+    logger.info(`Sending swap with max priority fee of ${(currentPriorityFee / 1e9).toFixed(6)} SOL`);
 
     // Convert maxPriorityFee from SOL to lamports for comparison
     while (currentPriorityFee <= this.solana.config.maxPriorityFee * 1e9) {
