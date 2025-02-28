@@ -60,7 +60,13 @@ export const uniswapRoutes: FastifyPluginAsync = async (fastify) => {
       validateTradeRequest(request.body);
       const ethereum = Ethereum.getInstance(request.body.network);
       const uniswapish = Uniswap.getInstance(request.body.chain, request.body.network);
-      return await trade(ethereum, uniswapish, request.body);
+      console.log('Trade request payload:', request.body);
+      try {
+        return await trade(ethereum, uniswapish, request.body);
+      } catch (error) {
+        console.error('Uniswap trade error:', error);
+        throw error;
+      }
     }
   );
 

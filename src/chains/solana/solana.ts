@@ -1,25 +1,24 @@
 import crypto from 'crypto';
 import bs58 from 'bs58';
-import { BigNumber } from 'ethers';
 import fse from 'fs-extra';
 import { TokenListType } from '../../services/base';
-
+import { HttpException, SIMULATION_ERROR_MESSAGE, SIMULATION_ERROR_CODE } from '../../services/error-handler';
 import { TokenInfo } from '@solana/spl-token-registry';
 import {
   Connection,
   Keypair,
   PublicKey,
   ComputeBudgetProgram,
+  MessageV0,
   Signer,
-  SignatureStatus,
   Transaction,
-  TokenAmount,
   TransactionResponse,
+  VersionedTransaction,
   VersionedTransactionResponse,
 } from '@solana/web3.js';
-import { TOKEN_PROGRAM_ID, unpackAccount } from "@solana/spl-token";
+import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID, unpackAccount, getMint, programSupportsExtensions } from "@solana/spl-token";
 
-import { TokenValue, walletPath } from '../../services/base';
+import { walletPath } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { logger } from '../../services/logger';
 import { TokenListResolutionStrategy } from '../../services/token-list-resolution';
@@ -28,7 +27,6 @@ import { SolanaController } from './solana.controllers';
 
 // Constants used for fee calculations
 export const BASE_FEE = 5000;
-const TOKEN_PROGRAM_ADDRESS = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
 const LAMPORT_TO_SOL = 1 / Math.pow(10, 9);
 
 enum TransactionResponseStatusCode {
@@ -152,12 +150,44 @@ export class Solana {
     }
   }
 
-  public getTokenBySymbol(tokenSymbol: string): TokenInfo | undefined {
-    // Normalize both strings by converting to uppercase and removing any spaces
-    const normalizedSearch = tokenSymbol.toUpperCase().trim();
-    return this.tokenList.find(
+  async getToken(addressOrSymbol: string): Promise<TokenInfo | null> {
+    // First try to find by symbol (case-insensitive)
+    const normalizedSearch = addressOrSymbol.toUpperCase().trim();
+    let token = this.tokenList.find(
       (token: TokenInfo) => token.symbol.toUpperCase().trim() === normalizedSearch
     );
+
+    // If not found by symbol, try to find by address
+    if (!token) {
+      token = this.tokenList.find(
+        (token: TokenInfo) => token.address.toLowerCase() === addressOrSymbol.toLowerCase()
+      );
+    }
+
+    // If still not found, try to create a new token assuming addressOrSymbol is an address
+    if (!token) {
+      try {
+        // Validate if it's a valid public key
+        const mintPubkey = new PublicKey(addressOrSymbol);
+        
+        // Fetch mint info to get decimals
+        const mintInfo = await getMint(this.connection, mintPubkey);
+        
+        // Create a basic token object with fetched decimals
+        token = {
+          address: addressOrSymbol,
+          symbol: `DUMMY_${addressOrSymbol.slice(0, 4)}`,
+          name: `Dummy Token (${addressOrSymbol.slice(0, 8)}...)`,
+          decimals: mintInfo.decimals,
+          chainId: 101,
+        };
+      } catch (e) {
+        // Not a valid public key or couldn't fetch mint info, return null
+        return null;
+      }
+    }
+
+    return token;
   }
 
   // returns Keypair for a private key, which should be encoded in Base58
@@ -231,132 +261,54 @@ export class Solana {
   }
 
   async getBalance(wallet: Keypair, symbols?: string[]): Promise<Record<string, number>> {
-    // Convert symbols to uppercase for case-insensitive matching
-    const upperCaseSymbols = symbols?.map(s => s.toUpperCase());
     const publicKey = wallet.publicKey;
     let balances: Record<string, number> = {};
 
     // Fetch SOL balance only if symbols is undefined or includes "SOL" (case-insensitive)
-    if (!upperCaseSymbols || upperCaseSymbols.includes("SOL")) {
+    if (!symbols || symbols.some(s => s.toUpperCase() === "SOL")) {
       const solBalance = await this.connection.getBalance(publicKey);
       const solBalanceInSol = solBalance * LAMPORT_TO_SOL;
       balances["SOL"] = solBalanceInSol;
     }
 
     // Get all token accounts for the provided address
-    const accounts = await this.connection.getTokenAccountsByOwner(
-      publicKey,
-      { programId: TOKEN_PROGRAM_ID }
-    );
+    const [legacyAccounts, token2022Accounts] = await Promise.all([
+      this.connection.getTokenAccountsByOwner(publicKey, { programId: TOKEN_PROGRAM_ID }),
+      this.connection.getTokenAccountsByOwner(publicKey, { programId: TOKEN_2022_PROGRAM_ID })
+    ]);
 
-    // Fetch the token list and create lookup map
-    const tokenList = await this.getTokenList();
-    const tokenDefs = tokenList.reduce((acc, token) => {
-      if (!upperCaseSymbols || upperCaseSymbols.includes(token.symbol.toUpperCase())) {
-        acc[token.address] = { symbol: token.symbol, decimals: token.decimals };
-      }
-      return acc;
-    }, {});
+    const allAccounts = [...legacyAccounts.value, ...token2022Accounts.value];
 
     // Process token accounts
-    for (const value of accounts.value) {
-      const parsedTokenAccount = unpackAccount(value.pubkey, value.account);
-      const mint = parsedTokenAccount.mint;
-      const tokenDef = tokenDefs[mint.toBase58()];
-      if (tokenDef === undefined) continue;
-
-      const amount = parsedTokenAccount.amount;
-      const uiAmount = Number(amount) / Math.pow(10, tokenDef.decimals);
-      balances[tokenDef.symbol] = uiAmount;
-    }
-
-    return balances;
-  }
-
-  async getBalances(wallet: Keypair): Promise<Record<string, TokenValue>> {
-    let balances: Record<string, TokenValue> = {};
-
-    balances['UNWRAPPED_SOL'] = await this.getSolBalance(wallet);
-
-    const allSplTokens = await this.connection.getParsedTokenAccountsByOwner(
-      wallet.publicKey, 
-      { programId: TOKEN_PROGRAM_ADDRESS }
-    );
-
-    for (const tokenAccount of allSplTokens.value) {
-      const tokenInfo = tokenAccount.account.data.parsed['info'];
-      const mintAddress = tokenInfo['mint'];
+    for (const value of allAccounts) {
+      const programId = value.account.owner;
+      const parsedAccount = unpackAccount(
+        value.pubkey, 
+        value.account,
+        programId,
+      );
+      const mintAddress = parsedAccount.mint.toBase58();
+      
+      // Only check tokens from our token list when no symbols are specified
       const token = this.tokenList.find(t => t.address === mintAddress);
-      if (token?.symbol) {
-        balances[token.symbol] = this.tokenResponseToTokenValue(
-          tokenInfo['tokenAmount']
-        );
+      
+      if (token && (!symbols || symbols.some(s => 
+        s.toUpperCase() === token.symbol.toUpperCase() || 
+        s.toLowerCase() === mintAddress.toLowerCase()
+      ))) {
+        const amount = parsedAccount.amount;
+        const uiAmount = Number(amount) / Math.pow(10, token.decimals);
+        balances[token.symbol] = uiAmount;
+      }
+
+      if (!token) {
+        console.log('token not found for address:', mintAddress);
+      } else {
+        console.log('token', token.symbol, 'balance:', parsedAccount.amount.toString());
       }
     }
 
-    let allSolBalance = BigNumber.from(0);
-    let allSolDecimals = 9; // Solana's default decimals
-
-    if (balances['UNWRAPPED_SOL'] && balances['UNWRAPPED_SOL'].value) {
-      allSolBalance = allSolBalance.add(balances['UNWRAPPED_SOL'].value);
-      allSolDecimals = balances['UNWRAPPED_SOL'].decimals;
-    }
-
-    if (balances['SOL'] && balances['SOL'].value) {
-      allSolBalance = allSolBalance.add(balances['SOL'].value);
-      allSolDecimals = balances['SOL'].decimals;
-    } else {
-      balances['SOL'] = {
-        value: allSolBalance,
-        decimals: allSolDecimals,
-      };
-    }
-
-    balances['ALL_SOL'] = {
-      value: allSolBalance,
-      decimals: allSolDecimals,
-    };
-
-    balances = Object.keys(balances)
-      .sort((key1: string, key2: string) =>
-        key1.toUpperCase().localeCompare(key2.toUpperCase())
-      )
-      .reduce((target: Record<string, TokenValue>, key) => {
-        target[key] = balances[key];
-        return target;
-      }, {});
-
     return balances;
-  }
-
-  // returns the SOL balance, convert BigNumber to string
-  async getSolBalance(wallet: Keypair): Promise<TokenValue> {
-    const lamports = await this.connection.getBalance(wallet.publicKey);
-    return { value: BigNumber.from(lamports), decimals: 9 };
-  }
-
-  tokenResponseToTokenValue(account: TokenAmount): TokenValue {
-    return {
-      value: BigNumber.from(account.amount),
-      decimals: account.decimals,
-    };
-  }
-
-  // returns the balance for an SPL token
-  public async getSplBalance(
-    walletAddress: PublicKey,
-    mintAddress: PublicKey
-  ): Promise<TokenValue> {
-    const response = await this.connection.getParsedTokenAccountsByOwner(
-      walletAddress,
-      { mint: mintAddress }
-    );
-    if (response['value'].length == 0) {
-      throw new Error(`Token account not initialized`);
-    }
-    return this.tokenResponseToTokenValue(
-      response.value[0].account.data.parsed['info']['tokenAmount']
-    );
   }
 
   // returns a Solana TransactionResponse for a txHash.
@@ -442,7 +394,7 @@ export class Solana {
       });
 
       if (!response.ok) {
-        logger.error(`[SOLANA] Failed to fetch priority fees, using minimum fee: ${response.status}`);
+        logger.error(`Failed to fetch priority fees, using minimum fee: ${response.status}`);
         return this.config.minPriorityFee * 1_000_000 / this.config.defaultComputeUnits;
       }
 
@@ -453,11 +405,10 @@ export class Solana {
         .map((item) => item.prioritizationFee)
         .filter((fee) => fee > 0);
 
-      // minimum fee is the minimum fee per compute unit
-      const minimumFee = this.config.minPriorityFee / this.config.defaultComputeUnits * 1_000_000;
-
+      const minimumFeeLamports = this.config.minPriorityFee * 1e9 / this.config.defaultComputeUnits;
+      console.log('minimumFeeLamports', minimumFeeLamports);
       if (fees.length === 0) {
-        return minimumFee;
+        return minimumFeeLamports;
       }
 
       // Sort fees in ascending order for percentile calculation
@@ -467,17 +418,16 @@ export class Solana {
       const minFee = Math.min(...fees) / 1_000_000; // Convert to lamports
       const maxFee = Math.max(...fees) / 1_000_000; // Convert to lamports
       const averageFee = fees.reduce((sum, fee) => sum + fee, 0) / fees.length / 1_000_000 // Convert to lamports
-      logger.info(`[SOLANA] Recent priority fees paid: ${minFee.toFixed(4)} - ${maxFee.toFixed(4)} lamports/CU (avg: ${averageFee.toFixed(4)})`);
+      logger.info(`Recent priority fees paid: ${minFee.toFixed(4)} - ${maxFee.toFixed(4)} lamports/CU (avg: ${averageFee.toFixed(4)})`);
 
       // Calculate index for percentile
       const percentileIndex = Math.ceil(fees.length * this.config.basePriorityFeePct / 100);
       let basePriorityFee = fees[percentileIndex - 1] / 1_000_000;  // Convert to lamports
       
       // Ensure fee is not below minimum (convert SOL to lamports)
-      const minimumFeeLamports = Math.floor(this.config.minPriorityFee * 1e9 / this.config.defaultComputeUnits);
       basePriorityFee = Math.max(basePriorityFee, minimumFeeLamports);
       
-      logger.info(`[SOLANA] Base priority fee: ${basePriorityFee.toFixed(4)} lamports/CU (${basePriorityFee === minimumFeeLamports ? 'minimum' : `${this.config.basePriorityFeePct}th percentile`})`);
+      logger.info(`Base priority fee: ${basePriorityFee.toFixed(4)} lamports/CU (${basePriorityFee === minimumFeeLamports ? 'minimum' : `${this.config.basePriorityFeePct}th percentile`})`);
 
       // Cache the result
       Solana.lastPriorityFeeEstimate = {
@@ -498,57 +448,29 @@ export class Solana {
   ): Promise<{ confirmed: boolean; txData?: any }> {
     try {
       const confirmationPromise = new Promise<{ confirmed: boolean; txData?: any }>(async (resolve, reject) => {
-        const payload = {
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'getSignatureStatuses',
-          params: [
-            [signature],
-            {
-              searchTransactionHistory: true,
-            },
-          ],
-        };
-
-        const response = await fetch(this.connection.rpcEndpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload),
+        // Use getTransaction instead of getSignatureStatuses for more reliability
+        const txData = await this.connection.getTransaction(signature, {
+          commitment: 'confirmed',
+          maxSupportedTransactionVersion: 0,
         });
 
-        if (!response.ok) {
-          reject(new Error(`HTTP error! status: ${response.status}`));
-          return;
+        if (!txData) {
+          return resolve({ confirmed: false });
         }
 
-        const data = await response.json();
-
-        if (data.result && data.result.value && data.result.value[0]) {
-          const status: SignatureStatus = data.result.value[0];
-          
-          if (status.err !== null) {
-            reject(new Error(`Transaction failed with error: ${JSON.stringify(status.err)}`));
-            return;
-          }
-          
-          const isConfirmed =
-            status.confirmationStatus === 'confirmed' || 
-            status.confirmationStatus === 'finalized';
-
-          if (isConfirmed) {
-            // Fetch transaction data if confirmed
-            const txData = await this.connection.getParsedTransaction(signature, {
-              maxSupportedTransactionVersion: 0,
-            });
-            resolve({ confirmed: true, txData });
-          } else {
-            resolve({ confirmed: false });
-          }
-        } else {
-          resolve({ confirmed: false });
+        // Check if transaction is already confirmed but had an error
+        if (txData.meta?.err) {
+          return reject(new Error(
+            `Transaction failed with error: ${JSON.stringify(txData.meta.err)}`
+          ));
         }
+
+        // More definitive check using slot confirmation
+        const status = await this.connection.getSignatureStatus(signature);
+        const isConfirmed = status.value?.confirmationStatus === 'confirmed' || 
+                          status.value?.confirmationStatus === 'finalized';
+
+        resolve({ confirmed: !!isConfirmed, txData });
       });
 
       const timeoutPromise = new Promise<{ confirmed: boolean }>((_, reject) =>
@@ -557,7 +479,7 @@ export class Solana {
 
       return await Promise.race([confirmationPromise, timeoutPromise]);
     } catch (error: any) {
-      throw new Error(`[SOLANA] Failed to confirm transaction: ${error.message}`);
+      throw new Error(`Failed to confirm transaction: ${error.message}`);
     }
   }
 
@@ -570,75 +492,62 @@ export class Solana {
   }
 
   public async sendAndConfirmTransaction(
-    tx: Transaction, 
+    tx: Transaction | VersionedTransaction, 
     signers: Signer[] = [],
     computeUnits?: number
-  ): Promise<string> {
+  ): Promise<{ signature: string; fee: number }> {
     let currentPriorityFee = await this.estimatePriorityFees();
     const computeUnitsToUse = computeUnits || this.config.defaultComputeUnits;
     
-    // Keep trying with increasing priority fees until we hit the max
     while (true) {
       const basePriorityFeeLamports = currentPriorityFee * computeUnitsToUse;
-      
-      logger.info(`[SOLANA] Sending transaction with max priority fee of ${(basePriorityFeeLamports * LAMPORT_TO_SOL).toFixed(6)} SOL`);
+      logger.info(`Sending transaction with ${currentPriorityFee} lamports/CU priority fee and max priority fee of ${(basePriorityFeeLamports * LAMPORT_TO_SOL).toFixed(6)} SOL`);
       
       // Check if we've exceeded max fee (convert maxPriorityFee from SOL to lamports)
       if (basePriorityFeeLamports > this.config.maxPriorityFee * 1e9) {
-        throw new Error(
-          `[SOLANA] Transaction failed after reaching maximum priority fee of ${
-            this.config.maxPriorityFee
-          } SOL`
-        );
+        throw new Error(`Exceeded maximum priority fee of ${this.config.maxPriorityFee} SOL`);
       }
 
-      // convert currentPriorityFee to microLamports for ComputeBudgetProgram
-      const priorityFeeInstruction = ComputeBudgetProgram.setComputeUnitPrice({
-        microLamports: currentPriorityFee * 1_000_000,
-      });
-      // Remove any existing priority fee instructions and add the new one
-      tx.instructions = [
-        ...tx.instructions.filter(inst => !inst.programId.equals(ComputeBudgetProgram.programId)),
-        priorityFeeInstruction
-      ];
-
-      // Set compute unit limit
-      const computeUnitInstruction = ComputeBudgetProgram.setComputeUnitLimit({
-        units: computeUnitsToUse
-      });
-      tx.add(computeUnitInstruction);
-
-      // Get latest blockhash
-      const blockhashAndContext = await this.connection
-        .getLatestBlockhashAndContext('confirmed');
-      
-      const lastValidBlockHeight = blockhashAndContext.value.lastValidBlockHeight;
-      const blockhash = blockhashAndContext.value.blockhash;
-
-      tx.lastValidBlockHeight = lastValidBlockHeight;
-      tx.recentBlockhash = blockhash;
-      tx.sign(...signers);
+      if (tx instanceof Transaction) {
+        tx = await this.prepareTx(
+          tx,
+          currentPriorityFee,
+          computeUnitsToUse,
+          signers
+        );
+      } else {
+        tx = await this.prepareVersionedTx(
+          tx,
+          currentPriorityFee,
+          computeUnitsToUse,
+          signers
+        );
+        await this.connection.simulateTransaction(tx);
+      }
 
       let retryCount = 0;
       while (retryCount < this.config.retryCount) {
         try {
           const signature = await this.sendRawTransaction(
-            tx.serialize(),
-            lastValidBlockHeight,
+            'message' in tx ? tx.serialize() : tx.serialize(),
+            'lastValidBlockHeight' in tx ? tx.lastValidBlockHeight : undefined,
           );
 
-          // Wait for confirmation
-          const confirmed = await this.confirmTransaction(signature);
-          if (confirmed.confirmed) {
-            const actualFee = this.getFee(confirmed.txData);
-            logger.info(`[SOLANA] Transaction ${signature} confirmed with actual fee: ${actualFee.toFixed(6)} SOL`);
-            logger.debug(`[SOLANA] Transaction data: ${JSON.stringify(confirmed.txData, null, 2)}`);
-            return signature;
+          const confirmationResult = await this.confirmTransaction(signature);
+          logger.info(`[${retryCount + 1}/${this.config.retryCount}] Transaction ${signature} confirmation status: ${confirmationResult.confirmed ? 'confirmed' : 'unconfirmed'}`);
+          if (confirmationResult.confirmed && confirmationResult.txData) {
+            const actualFee = this.getFee(confirmationResult.txData);
+            logger.info(`Transaction ${signature} confirmed with total fee: ${actualFee.toFixed(6)} SOL`);
+            return { signature, fee: actualFee };
           }
 
           retryCount++;
           await new Promise(resolve => setTimeout(resolve, this.config.retryIntervalMs));
         } catch (error) {
+          // Only retry if error is not a definitive failure
+          if (error.message.includes('Transaction failed')) {
+            throw error;
+          }
           retryCount++;
           await new Promise(resolve => setTimeout(resolve, this.config.retryIntervalMs));
         }
@@ -646,11 +555,218 @@ export class Solana {
 
       // If we get here, transaction wasn't confirmed after RETRY_COUNT attempts
       // Increase the priority fee and try again
-      currentPriorityFee = currentPriorityFee * this.config.priorityFeeMultiplier;
-      logger.info(`[SOLANA] Increasing max priority fee to ${(currentPriorityFee * computeUnitsToUse * LAMPORT_TO_SOL).toFixed(6)} SOL`);
+      currentPriorityFee = Math.floor(currentPriorityFee * this.config.priorityFeeMultiplier);
+      logger.info(`Increasing priority fee to ${currentPriorityFee} lamports/CU (max fee of ${(currentPriorityFee * computeUnitsToUse * LAMPORT_TO_SOL).toFixed(6)} SOL`);
     }
   }
 
+  private async prepareTx(
+    tx: Transaction,
+    currentPriorityFee: number,
+    computeUnitsToUse: number,
+    signers: Signer[]
+  ): Promise<Transaction> {
+    const priorityFeeMicroLamports = Math.floor(currentPriorityFee * 1_000_000);
+    const priorityFeeInstruction = ComputeBudgetProgram.setComputeUnitPrice({
+      microLamports: priorityFeeMicroLamports,
+    });
+  
+    // Remove any existing priority fee instructions and add the new one
+    tx.instructions = [
+      ...tx.instructions.filter(inst => !inst.programId.equals(ComputeBudgetProgram.programId)),
+      priorityFeeInstruction
+    ];
+  
+    // Set compute unit limit
+    const computeUnitInstruction = ComputeBudgetProgram.setComputeUnitLimit({
+      units: computeUnitsToUse
+    });
+    tx.add(computeUnitInstruction);
+  
+    // Get latest blockhash
+    const { value: { lastValidBlockHeight, blockhash } } = 
+      await this.connection.getLatestBlockhashAndContext('confirmed');
+    
+    tx.lastValidBlockHeight = lastValidBlockHeight;
+    tx.recentBlockhash = blockhash;
+    tx.sign(...signers);
+  
+    return tx;
+  }
+
+  private async prepareVersionedTx(
+    tx: VersionedTransaction,
+    currentPriorityFee: number,
+    computeUnits: number,
+    _signers: Signer[]
+  ): Promise<VersionedTransaction> {
+    const originalMessage = tx.message;
+    const originalStaticCount = originalMessage.staticAccountKeys.length;
+    const originalSignatures = tx.signatures; // Clone original signatures array
+
+    let modifiedTx: VersionedTransaction;
+
+    // Create new compute budget instructions
+    const priorityFeeMicroLamports = Math.floor(currentPriorityFee * 1_000_000);
+    const computeBudgetInstructions = [
+      ComputeBudgetProgram.setComputeUnitLimit({ units: computeUnits }),
+      ComputeBudgetProgram.setComputeUnitPrice({ microLamports: priorityFeeMicroLamports })
+    ];
+
+    // Check if ComputeBudgetProgram is in static keys
+    const computeBudgetProgramIndex = originalMessage.staticAccountKeys.findIndex(
+      key => key.equals(ComputeBudgetProgram.programId)
+    );
+
+    // Add ComputeBudget program to static keys, adjust indexes, and create modified instructions
+    if (computeBudgetProgramIndex === -1) {
+
+      // Add ComputeBudget program to static keys
+      const newStaticKeys = [
+        ...originalMessage.staticAccountKeys,
+        ComputeBudgetProgram.programId,
+      ];
+
+      // Process original instructions with index adjustment
+      const originalInstructions = originalMessage.compiledInstructions.map(ix => ({
+        ...ix,
+        accountKeyIndexes: ix.accountKeyIndexes.map(index => 
+          index >= originalStaticCount ? index + 1 : index
+        )
+      }));
+
+      // Create modified instructions
+      const modifiedInstructions = [
+        ...computeBudgetInstructions.map(ix => ({
+          programIdIndex: newStaticKeys.indexOf(ComputeBudgetProgram.programId), // Use new index
+          accountKeyIndexes: [],
+          data: ix.data instanceof Buffer ? new Uint8Array(ix.data) : ix.data
+        })),
+        ...originalInstructions
+      ];
+
+      // Build new transaction
+      modifiedTx = new VersionedTransaction(
+      new MessageV0({
+        header: originalMessage.header,
+        staticAccountKeys: newStaticKeys,
+        recentBlockhash: originalMessage.recentBlockhash!,
+        compiledInstructions: modifiedInstructions.map(ix => ({
+          programIdIndex: ix.programIdIndex,
+          accountKeyIndexes: ix.accountKeyIndexes,
+          data: ix.data instanceof Buffer ? new Uint8Array(ix.data) : ix.data
+        })),
+        addressTableLookups: originalMessage.addressTableLookups
+      })
+    );
+
+    } else {
+      // Remove compute budget instructions from original instructions
+      const nonComputeBudgetInstructions = originalMessage.compiledInstructions.filter(ix => 
+        !originalMessage.staticAccountKeys[ix.programIdIndex].equals(ComputeBudgetProgram.programId)
+      );
+
+      // Create modified instructions
+      const modifiedInstructions = [
+        ...computeBudgetInstructions.map(ix => ({
+          programIdIndex: computeBudgetProgramIndex, // Use existing index if already present
+          accountKeyIndexes: [],
+          data: ix.data instanceof Buffer ? new Uint8Array(ix.data) : ix.data
+        })),
+        ...nonComputeBudgetInstructions
+      ];
+      // Build new transaction with same keys but modified instructions
+      modifiedTx = new VersionedTransaction(
+        new MessageV0({
+          header: originalMessage.header,
+          staticAccountKeys: originalMessage.staticAccountKeys,
+          recentBlockhash: originalMessage.recentBlockhash,
+          compiledInstructions: modifiedInstructions.map(ix => ({
+            programIdIndex: ix.programIdIndex,
+            accountKeyIndexes: ix.accountKeyIndexes,
+            data: ix.data instanceof Buffer ? new Uint8Array(ix.data) : ix.data
+          })),
+          addressTableLookups: originalMessage.addressTableLookups
+        })
+      );
+    }
+    // DON'T DELETE COMMENTS BELOW
+    // console.log('Original message:', JSON.stringify({
+    //   message: {
+    //     header: originalMessage.header,
+    //     staticAccountKeys: originalMessage.staticAccountKeys.map(k => k.toBase58()),
+    //     recentBlockhash: originalMessage.recentBlockhash,
+    //     compiledInstructions: originalMessage.compiledInstructions.map(ix => ({
+    //       programIdIndex: ix.programIdIndex,
+    //       accountKeyIndexes: ix.accountKeyIndexes,
+    //       data: bs58.encode(ix.data)
+    //     })),
+    //     addressTableLookups: originalMessage.addressTableLookups
+    //   }
+    // }, null, 2));    
+    // console.log('Modified transaction:', JSON.stringify({
+    //   message: {
+    //     header: modifiedTx.message.header,
+    //     staticAccountKeys: modifiedTx.message.staticAccountKeys.map(k => k.toBase58()),
+    //     recentBlockhash: modifiedTx.message.recentBlockhash,
+    //     compiledInstructions: modifiedTx.message.compiledInstructions.map(ix => ({
+    //       programIdIndex: ix.programIdIndex,
+    //       accountKeyIndexes: ix.accountKeyIndexes,
+    //       data: bs58.encode(ix.data)
+    //     })),
+    //     addressTableLookups: modifiedTx.message.addressTableLookups
+    //   }
+    // }, null, 2));
+
+    modifiedTx.signatures = originalSignatures;
+    modifiedTx.sign([..._signers]);
+    console.log('modifiedTx:', modifiedTx);
+    
+    return modifiedTx;
+  }
+
+  async sendAndConfirmRawTransaction(
+    transaction: VersionedTransaction | Transaction
+  ): Promise<{ confirmed: boolean; signature: string; txData: any }> {
+    // Convert Transaction to VersionedTransaction if necessary
+    if (!(transaction instanceof VersionedTransaction)) {
+      // Ensure transaction is properly prepared
+      const { blockhash } = await this.connection.getLatestBlockhash();
+      transaction.recentBlockhash = transaction.recentBlockhash || blockhash;
+      transaction.feePayer = transaction.feePayer || 
+                            (transaction.signatures[0]?.publicKey || null);
+      
+      // Get serialized transaction bytes
+      const serializedTx = transaction.serialize();
+      return this._sendAndConfirmRawTransaction(serializedTx);
+    }
+    
+    // For VersionedTransaction, use existing logic
+    const serializedTx = transaction.serialize();
+    return this._sendAndConfirmRawTransaction(serializedTx);
+  }
+
+  // Create a private method to handle the actual sending
+  private async _sendAndConfirmRawTransaction(
+    serializedTx: Buffer | Uint8Array
+  ): Promise<{ confirmed: boolean; signature: string; txData: any }> {
+    let retryCount = 0;
+    while (retryCount < this.config.retryCount) {
+      const signature = await this.connection.sendRawTransaction(
+        serializedTx,
+        { skipPreflight: true }
+      );
+      const { confirmed, txData } = await this.confirmTransaction(signature);
+      logger.info(`[${retryCount + 1}/${this.config.retryCount}] Transaction ${signature} status: ${confirmed ? 'confirmed' : 'unconfirmed'}`);
+      if (confirmed && txData) {
+        return { confirmed, signature, txData };  
+      }
+      retryCount++;
+      await new Promise((resolve) => setTimeout(resolve, this.config.retryIntervalMs));
+    }
+    return { confirmed: false, signature: '', txData: null };
+  }
+  
   async sendRawTransaction(
     rawTx: Buffer | Uint8Array | Array<number>,
     lastValidBlockHeight: number,
@@ -795,7 +911,7 @@ export class Solana {
   }
 
   // Add new method to get first wallet address
-  public async getFirstWalletAddress(): Promise<string> {
+  public async getFirstWalletAddress(): Promise<string | null> {
     const path = `${walletPath}/solana`;
     try {
       // Create directory if it doesn't exist
@@ -806,14 +922,190 @@ export class Solana {
       const walletFiles = files.filter(f => f.endsWith('.json'));
       
       if (walletFiles.length === 0) {
-        throw new Error('No Solana wallets found');
+        return null;
       }
       
       // Return first wallet address (without .json extension)
       return walletFiles[0].slice(0, -5);
     } catch (error) {
-      logger.error(`Failed to get first wallet address: ${error.message}`);
-      throw error;
+      return null;
+    }
+  }
+
+  // Update getTokenBySymbol to use new getToken method
+  public async getTokenBySymbol(tokenSymbol: string): Promise<TokenInfo | undefined> {
+    return (await this.getToken(tokenSymbol)) || undefined;
+  }
+
+  /**
+   * Helper function to get balance changes for both tokens in a pair
+   * @param signature Transaction signature
+   * @param tokenX First token (can be SOL)
+   * @param tokenY Second token (can be SOL)
+   * @param walletAddress Wallet address to check balances for
+   * @returns Balance changes and transaction fee
+   */
+  async extractPairBalanceChangesAndFee(
+    signature: string,
+    tokenX: TokenInfo,
+    tokenY: TokenInfo,
+    walletAddress: string,
+  ): Promise<{ 
+    baseTokenBalanceChange: number; 
+    quoteTokenBalanceChange: number;
+    fee: number;
+  }> {
+    let baseTokenBalanceChange: number, quoteTokenBalanceChange: number;
+
+    if (tokenX.symbol === 'SOL') {
+      ({ balanceChange: baseTokenBalanceChange } = await this.extractAccountBalanceChangeAndFee(signature, 0));
+    } else {
+      ({ balanceChange: baseTokenBalanceChange } = await this.extractTokenBalanceChangeAndFee(
+        signature,
+        tokenX.address,
+        walletAddress
+      ));
+    }
+
+    if (tokenY.symbol === 'SOL') {
+      ({ balanceChange: quoteTokenBalanceChange } = await this.extractAccountBalanceChangeAndFee(signature, 0));
+    } else {
+      ({ balanceChange: quoteTokenBalanceChange } = await this.extractTokenBalanceChangeAndFee(
+        signature,
+        tokenY.address,
+        walletAddress
+      ));
+    }
+
+    const { fee } = await this.extractAccountBalanceChangeAndFee(signature, 0);
+
+    return {
+      baseTokenBalanceChange: Math.abs(baseTokenBalanceChange),
+      quoteTokenBalanceChange: Math.abs(quoteTokenBalanceChange),
+      fee,
+    };
+  }
+
+  public async simulateTransaction(transaction: VersionedTransaction | Transaction) {
+    try {
+      if (!(transaction instanceof VersionedTransaction)) {
+        // Convert regular Transaction to VersionedTransaction for simulation
+        const { blockhash } = await this.connection.getLatestBlockhash();
+        transaction.recentBlockhash = transaction.recentBlockhash || blockhash;
+        transaction.feePayer = transaction.feePayer || 
+                              (transaction.signatures[0]?.publicKey || null);
+
+        // Convert to VersionedTransaction
+        const messageV0 = new MessageV0({
+          header: transaction.compileMessage().header,
+          staticAccountKeys: transaction.compileMessage().staticAccountKeys,
+          recentBlockhash: transaction.recentBlockhash,
+          compiledInstructions: transaction.compileMessage().compiledInstructions,
+          addressTableLookups: []
+        });
+        
+        transaction = new VersionedTransaction(messageV0);
+      }
+      
+      // Now handle all as VersionedTransaction
+      const { value: simulatedTransactionResponse } = await this.connection.simulateTransaction(
+        transaction,
+        {
+          replaceRecentBlockhash: false,
+          commitment: 'confirmed',
+          accounts: { encoding: 'base64', addresses: [] },
+          sigVerify: false,
+        },
+      );
+      
+      logger.info('Simulation Result:', {
+        unitsConsumed: simulatedTransactionResponse.unitsConsumed,
+        status: simulatedTransactionResponse.err ? 'FAILED' : 'SUCCESS'
+      });
+
+      if (simulatedTransactionResponse.err) {
+        const logs = simulatedTransactionResponse.logs || [];
+        const errorMessage = `${SIMULATION_ERROR_MESSAGE}\nError: ${JSON.stringify(simulatedTransactionResponse.err)}\nProgram Logs: ${logs.join('\n')}`;
+        
+        throw new HttpException(
+          503,
+          errorMessage,
+          SIMULATION_ERROR_CODE
+        );
+      }
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        503,
+        `Error simulating transaction: ${error.message}`,
+        SIMULATION_ERROR_CODE
+      );
+    }
+  }
+
+  public async sendAndConfirmVersionedTransaction(
+    tx: VersionedTransaction, 
+    signers: Signer[] = [],
+    computeUnits?: number
+  ): Promise<{ signature: string; fee: number }> {
+    let currentPriorityFee = Math.floor(await this.estimatePriorityFees());
+    const computeUnitsToUse = computeUnits || this.config.defaultComputeUnits;
+    
+    while (true) {
+      const basePriorityFeeLamports = Math.floor(currentPriorityFee * computeUnitsToUse);
+      
+      logger.info(`Sending transaction with ${currentPriorityFee} lamports/CU priority fee and max priority fee of ${(basePriorityFeeLamports * LAMPORT_TO_SOL).toFixed(6)} SOL`);
+      
+      // Check if we've exceeded max fee (convert maxPriorityFee from SOL to lamports)
+      if (basePriorityFeeLamports > this.config.maxPriorityFee * 1e9) {
+        throw new Error(`Exceeded maximum priority fee of ${this.config.maxPriorityFee} SOL`);
+      }
+
+      // Prepare transaction with compute budget instructions
+      const modifiedTx = await this.prepareVersionedTx(
+        tx,
+        currentPriorityFee,
+        computeUnitsToUse,
+        signers
+      );
+
+      // Simulate transaction
+      await this.simulateTransaction(modifiedTx);
+
+      let retryCount = 0;
+      while (retryCount < this.config.retryCount) {
+        try {
+          const signature = await this.connection.sendRawTransaction(
+            Buffer.from(modifiedTx.serialize()),
+            { skipPreflight: true }
+          );
+
+          const confirmationResult = await this.confirmTransaction(signature);
+          logger.info(`[${retryCount + 1}/${this.config.retryCount}] Transaction ${signature} confirmation status: ${confirmationResult.confirmed ? 'confirmed' : 'unconfirmed'}`);
+          if (confirmationResult.confirmed && confirmationResult.txData) {
+            const actualFee = this.getFee(confirmationResult.txData);
+            logger.info(`Transaction ${signature} confirmed with total fee: ${actualFee.toFixed(6)} SOL`);
+            return { signature, fee: actualFee };
+          }
+
+          retryCount++;
+          await new Promise(resolve => setTimeout(resolve, this.config.retryIntervalMs));
+        } catch (error) {
+          // Only retry if error is not a definitive failure
+          if (error.message.includes('Transaction failed')) {
+            throw error;
+          }
+          retryCount++;
+          await new Promise(resolve => setTimeout(resolve, this.config.retryIntervalMs));
+        }
+      }
+
+      // If we get here, transaction wasn't confirmed after RETRY_COUNT attempts
+      // Increase the priority fee and try again
+      currentPriorityFee = Math.floor(currentPriorityFee * this.config.priorityFeeMultiplier);
+      logger.info(`Increasing priority fee to ${currentPriorityFee} lamports/CU (max fee of ${(currentPriorityFee * computeUnitsToUse * LAMPORT_TO_SOL).toFixed(6)} SOL`);
     }
   }
 

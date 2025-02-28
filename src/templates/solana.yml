@@ -14,7 +14,7 @@ networks:
 defaultComputeUnits: 200000
 
 # Floor percentile of recent priority fee samples used to estimate gasPrice for a transaction
-basePriorityFeePct: 75
+basePriorityFeePct: 90
 
 # Multiplier for increasing priority fee on retry
 priorityFeeMultiplier: 2
@@ -23,7 +23,7 @@ priorityFeeMultiplier: 2
 maxPriorityFee: 0.01
 
 # Minimum priority fee in SOL
-minPriorityFee: 0.00005
+minPriorityFee: 0.0001
 
 # Retry interval in milliseconds
 retryIntervalMs: 500
