@@ -86,7 +86,7 @@
     "minimist": "^1.2.6",
     "morgan": "^1.10.0",
     "pino-pretty": "^11.2.2",
-    "pnpm": "^1.22.17",
+    "pnpm": "^9.15.0",
     "promise-retry": "^2.0.1",
     "swagger-ui-express": "^4.1.6",
     "triple-beam": "^1.3.0",

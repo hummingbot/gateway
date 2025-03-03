@@ -203,8 +203,8 @@ importers:
         specifier: ^11.2.2
         version: 11.3.0
       pnpm:
-        specifier: ^1.22.17
-        version: 1.43.1
+        specifier: ^9.15.0
+        version: 9.15.0
       promise-retry:
         specifier: ^2.0.1
         version: 2.0.1
@@ -5764,10 +5764,9 @@ packages:
     resolution: {integrity: sha512-HRDzbaKjC+AOWVXxAU/x54COGeIv9eb+6CkDSQoNTt4XyWoIJvuPsXizxu/Fr23EiekbtZwmh1IcIG/l/a10GQ==}
     engines: {node: '>=8'}
 
-  pnpm@1.43.1:
-    resolution: {integrity: sha512-QWGsYMW17WFkn4B8wKYl54gQflekNuSKI5Ne+li1mTYofyqgD+bQB+OybYfgjzCxtzoRp57udb2qHJiPbaSFQQ==}
-    engines: {node: '>=4'}
-    deprecated: Please use the latest version of pnpm
+  pnpm@9.15.0:
+    resolution: {integrity: sha512-duI3l2CkMo7EQVgVvNZije5yevN3mqpMkU45RBVsQpmSGon5djge4QfUHxLPpLZmgcqccY8GaPoIMe1MbYulbA==}
+    engines: {node: '>=18.12'}
     hasBin: true
 
   posix-character-classes@0.1.1:
@@ -14710,7 +14709,7 @@ snapshots:
     dependencies:
       find-up: 4.1.0
 
-  pnpm@1.43.1: {}
+  pnpm@9.15.0: {}
 
   posix-character-classes@0.1.1: {}
 
