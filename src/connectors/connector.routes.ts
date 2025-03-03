@@ -3,6 +3,7 @@ import { Type, Static } from '@sinclair/typebox';
 import { UniswapConfig } from './uniswap/uniswap.config';
 import { JupiterConfig } from './jupiter/jupiter.config';
 import { MeteoraConfig } from './meteora/meteora.config';
+import { RaydiumConfig } from './raydium/raydium.config';
 import { logger } from '../services/logger';
 
 // Define the schema using Typebox
@@ -54,6 +55,11 @@ export const connectorsRoutes: FastifyPluginAsync = async (fastify) => {
           name: 'meteora',
           trading_type: MeteoraConfig.config.tradingTypes,
           available_networks: MeteoraConfig.config.availableNetworks,
+        },
+        {
+          name: 'raydium',
+          trading_type: RaydiumConfig.config.tradingTypes,
+          available_networks: RaydiumConfig.config.availableNetworks,
         },
       ];
 

@@ -544,7 +544,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"chain\": \"{{chain}}\",\n    \"network\": \"{{network}}\",\n    \"connector\": \"{{connector}}\",\n    \"base\": \"M3M3\",\n    \"quote\": \"SOL\",\n    \"amount\": \"200\",\n    \"side\": \"BUY\"\n}",
+							"raw": "{\n    \"chain\": \"{{chain}}\",\n    \"network\": \"{{network}}\",\n    \"connector\": \"{{connector}}\",\n    \"base\": \"JUP\",\n    \"quote\": \"SOL\",\n    \"amount\": \"200\",\n    \"side\": \"BUY\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -573,7 +573,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"chain\": \"{{chain}}\",\n    \"network\": \"{{network}}\",\n    \"address\": \"{{eth_address}}\",\n    \"connector\": \"{{connector}}\",\n    \"base\": \"M3M3\",\n    \"quote\": \"SOL\",\n    \"amount\": \"200\",\n    \"side\": \"SELL\"\n}",
+							"raw": "{\n    \"chain\": \"{{chain}}\",\n    \"network\": \"{{network}}\",\n    \"address\": \"{{eth_address}}\",\n    \"connector\": \"{{connector}}\",\n    \"base\": \"JUP\",\n    \"quote\": \"SOL\",\n    \"amount\": \"200\",\n    \"side\": \"SELL\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
