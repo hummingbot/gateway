@@ -62,7 +62,7 @@
     "abi-decoder": "^2.4.0",
     "ajv": "^8.6.3",
     "app-root-path": "^3.0.0",
-    "axios": "^1.6.0",
+    "axios": "^1.8.2",
     "bn.js": "^5.2.1",
     "body-parser": "^1.19.0",
     "dayjs": "^1.10.6",
