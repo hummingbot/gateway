@@ -27,3 +27,7 @@ configurations:
   $namespace raydium:
     configurationPath: raydium.yml
     schemaPath: raydium-schema.json
+
+  $namespace hydration:
+    configurationPath: hydration.yml
+    schemaPath: hydration-schema.json

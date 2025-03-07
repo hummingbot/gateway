@@ -68,6 +68,8 @@ export async function getConnector(
     return await Jupiter.getInstance(network);
   } else if (connector === 'meteora') {
     return await Meteora.getInstance(network);
+  } else if (connector === 'hydration') {
+    return await Hydration.getInstance(network);
   } else {
     throw new Error('unsupported chain or connector');
   }
