@@ -15,3 +15,8 @@ package-lock.json
 # VSCode
 .vscode/
 .history
+
+
+.aider*
+/temporary
+# /src/temporary
