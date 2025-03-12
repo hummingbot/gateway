@@ -14,8 +14,9 @@ import {
 import { KeyringPair } from '@polkadot/keyring/types';
 import { ApiPromise, WsProvider } from '@polkadot/api';
 import { BN } from '@polkadot/util';
-import { BigNumber, PoolService, Trade, TradeRouter, TradeType } from '@galacticcouncil/sdk';
+import { BigNumber, PoolService, Trade, TradeRouter, TradeType, PoolBase } from '@galacticcouncil/sdk';
 import { cryptoWaitReady } from '@polkadot/util-crypto';
+import { HttpException, TOKEN_NOT_SUPPORTED_ERROR_CODE, TOKEN_NOT_SUPPORTED_ERROR_MESSAGE } from '../../services/error-handler';
 
 // Default connection endpoint for Hydration protocol
 const DEFAULT_WS_PROVIDER_URL = 'wss://rpc.hydradx.cloud';
@@ -1218,5 +1219,36 @@ export class Hydration {
       logger.error(`Failed to get liquidity quote: ${error.message}`);
       throw error;
     }
+  }
+
+  /**
+   * Convert pool to PoolInfo format
+   * @param pool Pool object
+   * @returns Pool information
+   */
+  private async convertPoolToPoolInfo(pool: PoolBase): Promise<PoolInfo> {
+    // Get base and quote token info
+    const baseToken = this.polkadot.getAssetForSymbol(pool.tokenA.symbol);
+    const quoteToken = this.polkadot.getAssetForSymbol(pool.tokenB.symbol);
+    
+    return {
+      poolId: pool.address,
+      baseToken: {
+        symbol: baseToken.symbol,
+        address: baseToken.id,
+        decimals: baseToken.decimals
+      },
+      quoteToken: {
+        symbol: quoteToken.symbol,
+        address: quoteToken.id,
+        decimals: quoteToken.decimals
+      },
+      currentPrice: pool.price?.toNumber() || 0,
+      baseTokenLiquidity: pool.reserveA?.toNumber() || 0,
+      quoteTokenLiquidity: pool.reserveB?.toNumber() || 0,
+      fee: pool.fee?.toNumber() || 0,
+      volume24h: 0, // Would need additional API calls to get this
+      apr: 0 // Would need additional API calls to get this
+    };
   }
 }
