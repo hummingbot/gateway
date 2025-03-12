@@ -14,7 +14,7 @@ const NetworkSchema = Type.Object({
 
 const ConnectorSchema = Type.Object({
   name: Type.String(),
-  trading_type: Type.Array(Type.String()),
+  trading_types: Type.Array(Type.String()),
   available_networks: Type.Array(NetworkSchema)
 });
 
@@ -43,22 +43,22 @@ export const connectorsRoutes: FastifyPluginAsync = async (fastify) => {
       const connectors = [
         {
           name: 'uniswap',
-          trading_type: UniswapConfig.config.tradingTypes,
+          trading_types: UniswapConfig.config.tradingTypes,
           available_networks: UniswapConfig.config.availableNetworks,
         },
         {
           name: 'jupiter',
-          trading_type: JupiterConfig.config.tradingTypes,
+          trading_types: JupiterConfig.config.tradingTypes,
           available_networks: JupiterConfig.config.availableNetworks,
         },
         {
           name: 'meteora',
-          trading_type: MeteoraConfig.config.tradingTypes,
+          trading_types: MeteoraConfig.config.tradingTypes,
           available_networks: MeteoraConfig.config.availableNetworks,
         },
         {
           name: 'raydium',
-          trading_type: RaydiumConfig.config.tradingTypes,
+          trading_types: RaydiumConfig.config.tradingTypes,
           available_networks: RaydiumConfig.config.availableNetworks,
         },
       ];
