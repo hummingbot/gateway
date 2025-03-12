@@ -12,8 +12,13 @@ import {
   SwapRoute
 } from './hydration.types';
 import { KeyringPair } from '@polkadot/keyring/types';
-import { BN } from 'bn.js';
-import { Decimal } from 'decimal.js';
+import { ApiPromise, WsProvider } from '@polkadot/api';
+import { BN } from '@polkadot/util';
+import { BigNumber, PoolService, Trade, TradeRouter, TradeType } from '@galacticcouncil/sdk';
+import { cryptoWaitReady } from '@polkadot/util-crypto';
+
+// Default connection endpoint for Hydration protocol
+const DEFAULT_WS_PROVIDER_URL = 'wss://rpc.hydradx.cloud';
 
 /**
  * Main class for interacting with the Hydration protocol on Polkadot
@@ -22,12 +27,16 @@ export class Hydration {
   private static _instances: { [name: string]: Hydration } = {};
   private static readonly MAX_POSITIONS = 100; // Maximum number of positions to fetch
   private polkadot: Polkadot;
+  private api: ApiPromise;
+  private tradeRouter: TradeRouter;
+  private poolService: PoolService;
   public config: HydrationConfig.NetworkConfig;
   
   // Cache pool and position data
   private poolCache: Map<string, HydrationPoolInfo> = new Map();
   private poolCacheExpiry: Map<string, number> = new Map();
   private readonly CACHE_TTL_MS = 60000; // 1 minute cache validity
+  private _ready: boolean = false;
 
   /**
    * Private constructor - use getInstance instead
@@ -50,16 +59,105 @@ export class Hydration {
   }
 
   /**
+   * Check if the instance is ready
+   * @returns boolean indicating if the instance is ready
+   */
+  public ready(): boolean {
+    return this._ready;
+  }
+
+  /**
    * Initialize the Hydration instance
    * @param network The network to connect to
    */
   private async init(network: string) {
     try {
       logger.info(`Initializing Hydration for network: ${network}`);
+      
+      // Initialize Polkadot instance
       this.polkadot = await Polkadot.getInstance(network);
+      
+      // Wait for crypto libraries to be ready
+      await cryptoWaitReady();
+      
+      // Create API connection
+      const wsProvider = new WsProvider(DEFAULT_WS_PROVIDER_URL);
+      this.api = await ApiPromise.create({ provider: wsProvider });
+      
+      // Initialize Hydration services
+      this.poolService = new PoolService(this.api);
+      await this.poolService.syncRegistry();
+      this.tradeRouter = new TradeRouter(this.poolService);
+      
+      // Mark instance as ready
+      this._ready = true;
+      
       logger.info(`Hydration initialized for network: ${network}`);
     } catch (error) {
       logger.error(`Failed to initialize Hydration: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Calculate trade limit based on slippage tolerance
+   * @param trade The trade to calculate limits for
+   * @param slippagePercentage Slippage percentage as a BigNumber
+   * @param side The trade type (buy or sell)
+   * @returns A BigNumber representing the trade limit
+   */
+  private calculateTradeLimit(
+    trade: Trade,
+    slippagePercentage: BigNumber,
+    side: TradeType,
+  ): BigNumber {
+    const ONE_HUNDRED = BigNumber('100');
+    let amount: BigNumber;
+    let slippage: BigNumber;
+    let tradeLimit: BigNumber;
+
+    if (side === TradeType.Buy) {
+      // Maximum amount in.
+      amount = trade.amountIn;
+      slippage = amount
+        .div(ONE_HUNDRED)
+        .multipliedBy(slippagePercentage)
+        .decimalPlaces(0, 1);
+      tradeLimit = amount.plus(slippage);
+    } else if (side === TradeType.Sell) {
+      // Minimum amount out.
+      amount = trade.amountOut;
+      slippage = amount
+        .div(ONE_HUNDRED)
+        .multipliedBy(slippagePercentage)
+        .decimalPlaces(0, 1);
+      tradeLimit = amount.minus(slippage);
+    } else {
+      throw new Error('Invalid trade side');
+    }
+
+    logger.debug(
+      `Trade details: amountOut=${trade.amountOut}, amountIn=${trade.amountIn}, spotPrice=${trade.spotPrice}`
+    );
+    logger.debug(
+      `Side: ${side}, Amount: ${amount.toString()}, Slippage: ${slippage.toString()}, Trade limit: ${tradeLimit.toString()}`
+    );
+
+    return tradeLimit;
+  }
+
+  /**
+   * Get all supported tokens
+   * @returns A Promise that resolves to an array of supported tokens
+   */
+  public async getAllTokens() {
+    try {
+      if (!this.ready()) {
+        await this.init(this.polkadot.network);
+      }
+      return await this.tradeRouter.getAllAssets();
+    } catch (error) {
+      logger.error(`Failed to get all tokens: ${error.message}`);
       throw error;
     }
   }
@@ -80,29 +178,49 @@ export class Hydration {
         return this.poolCache.get(poolAddress);
       }
       
-      // Simulate fetching pool information from Polkadot chain
-      // In a real implementation, this would interact with Hydration smart contracts
-      const baseToken = await this.polkadot.getToken('DOT');
-      const quoteToken = await this.polkadot.getToken('ASTR');
+      // Ensure the instance is ready
+      if (!this.ready()) {
+        await this.init(this.polkadot.network);
+      }
+      
+      // Get pool data from the SDK
+      const poolData = await this.poolService.getPool(poolAddress);
+      
+      if (!poolData) {
+        logger.error(`Pool not found: ${poolAddress}`);
+        return null;
+      }
+      
+      // Get token info
+      const baseToken = await this.polkadot.getToken(poolData.tokens[0].symbol);
+      const quoteToken = await this.polkadot.getToken(poolData.tokens[1].symbol);
       
       if (!baseToken || !quoteToken) {
         throw new Error('Failed to retrieve token information');
       }
       
+      // Get pool statistics
+      const poolStats = await this.poolService.getPoolStats(poolAddress);
+      
+      // Calculate price from reserves
+      const price = poolData.spotPrice ? 
+        poolData.spotPrice.toNumber() : 
+        poolData.reserves[1].dividedBy(poolData.reserves[0]).toNumber();
+      
       const pool: HydrationPoolInfo = {
         poolAddress,
         baseToken,
         quoteToken,
-        fee: 500, // 0.05%
-        liquidity: 1000000,
-        sqrtPrice: '1234567890',
-        tick: 12345,
-        price: 10.5,
-        volume24h: 50000,
-        volumeWeek: 350000,
-        tvl: 2500000,
-        feesUSD24h: 250,
-        apr: 5.2
+        fee: poolData.fee ? poolData.fee.toNumber() * 10000 : 500, // Convert to basis points
+        liquidity: poolData.liquidity ? poolData.liquidity.toNumber() : 0,
+        sqrtPrice: poolData.sqrtPrice ? poolData.sqrtPrice.toString() : '0',
+        tick: poolData.currentTick || 0,
+        price,
+        volume24h: poolStats?.volume24h.toNumber() || 0,
+        volumeWeek: poolStats?.volumeWeek.toNumber() || 0,
+        tvl: poolStats?.tvl.toNumber() || 0,
+        feesUSD24h: poolStats?.feesUSD24h.toNumber() || 0,
+        apr: poolStats?.apr || 0
       };
       
       // Cache the result
@@ -129,25 +247,31 @@ export class Hydration {
         throw new Error(`Pool not found: ${poolAddress}`);
       }
       
-      // Simulate fetching liquidity distribution from the pool
-      // In a real implementation, this would interact with Hydration smart contracts
-      const currentPrice = poolInfo.price;
-      const bins: BinLiquidity[] = [];
+      // Ensure the instance is ready
+      if (!this.ready()) {
+        await this.init(this.polkadot.network);
+      }
       
-      // Generate 10 bins around the current price
-      for (let i = -5; i < 5; i++) {
-        const lowerPrice = currentPrice * (1 + i * 0.02);
-        const upperPrice = currentPrice * (1 + (i + 1) * 0.02);
-        const liquidityAmount = 100000 * Math.exp(-Math.abs(i) * 0.5);
+      // Get liquidity distribution from the SDK
+      const liquidityData = await this.poolService.getPoolLiquidity(poolAddress);
+      
+      if (!liquidityData || liquidityData.length === 0) {
+        return [];
+      }
+      
+      // Map to our BinLiquidity interface
+      const bins: BinLiquidity[] = liquidityData.map(bin => {
+        const lowerPrice = bin.lowerPrice ? bin.lowerPrice.toNumber() : 0;
+        const upperPrice = bin.upperPrice ? bin.upperPrice.toNumber() : 0;
         
-        bins.push({
+        return {
           lowerPrice,
           upperPrice,
-          liquidityAmount,
-          baseTokenAmount: liquidityAmount / Math.sqrt(lowerPrice),
-          quoteTokenAmount: liquidityAmount * Math.sqrt(upperPrice)
-        });
-      }
+          liquidityAmount: bin.liquidity ? bin.liquidity.toNumber() : 0,
+          baseTokenAmount: bin.reserves ? bin.reserves[0].toNumber() : 0,
+          quoteTokenAmount: bin.reserves ? bin.reserves[1].toNumber() : 0
+        };
+      });
       
       return bins;
     } catch (error) {
@@ -169,56 +293,37 @@ export class Hydration {
     tokenMintB?: string
   ): Promise<HydrationPoolInfo[]> {
     try {
-      // Simulate fetching pools from the chain
-      // In a real implementation, this would interact with Hydration smart contracts
-      const pools: HydrationPoolInfo[] = [];
-      
-      // Generate some sample pools
-      const baseTokens = ['DOT', 'KSM', 'ASTR'];
-      const quoteTokens = ['USDT', 'USDC', 'DAI'];
-      
-      for (let i = 0; i < Math.min(10, limit); i++) {
-        const baseTokenIdx = i % baseTokens.length;
-        const quoteTokenIdx = Math.floor(i / baseTokens.length) % quoteTokens.length;
-        
-        const baseToken = await this.polkadot.getToken(baseTokens[baseTokenIdx]);
-        const quoteToken = await this.polkadot.getToken(quoteTokens[quoteTokenIdx]);
-        
-        if (!baseToken || !quoteToken) continue;
-        
-        // Filter by tokens if specified
-        if (
-          (tokenMintA && baseToken.address !== tokenMintA) ||
-          (tokenMintB && quoteToken.address !== tokenMintB)
-        ) {
-          continue;
-        }
-        
-        const poolAddress = `hydration-pool-${i}`;
-        const pool: HydrationPoolInfo = {
-          poolAddress,
-          baseToken,
-          quoteToken,
-          fee: 500, // 0.05%
-          liquidity: 1000000 * (i + 1),
-          sqrtPrice: (1000000 + i * 10000).toString(),
-          tick: 10000 + i * 100,
-          price: 10 + i * 2,
-          volume24h: 50000 * (i + 1),
-          volumeWeek: 350000 * (i + 1),
-          tvl: 2500000 * (i + 1),
-          feesUSD24h: 250 * (i + 1),
-          apr: 5 + i * 0.5
-        };
-        
-        pools.push(pool);
-        
-        // Cache the pool info
-        this.poolCache.set(poolAddress, pool);
-        this.poolCacheExpiry.set(poolAddress, Date.now() + this.CACHE_TTL_MS);
+      // Ensure the instance is ready
+      if (!this.ready()) {
+        await this.init(this.polkadot.network);
       }
       
-      return pools;
+      // Get all pools from the SDK
+      const pools = await this.poolService.getAllPools();
+      const result: HydrationPoolInfo[] = [];
+      
+      // Process each pool
+      for (const pool of pools) {
+        if (result.length >= limit) break;
+        
+        // Get detailed pool info
+        const poolInfo = await this.getPoolInfo(pool.address);
+        
+        if (!poolInfo) continue;
+        
+        // Filter by tokens if specified
+        const baseTokenMatches = !tokenMintA || poolInfo.baseToken.address === tokenMintA;
+        const quoteTokenMatches = !tokenMintB || poolInfo.quoteToken.address === tokenMintB;
+        
+        if (baseTokenMatches && quoteTokenMatches) {
+          result.push(poolInfo);
+        }
+      }
+      
+      // Sort pools by TVL
+      result.sort((a, b) => b.tvl - a.tvl);
+      
+      return result.slice(0, limit);
     } catch (error) {
       logger.error(`Failed to get pools: ${error.message}`);
       throw error;
@@ -244,6 +349,11 @@ export class Hydration {
     slippagePct?: number
   ): Promise<SwapQuote> {
     try {
+      // Ensure the instance is ready
+      if (!this.ready()) {
+        await this.init(this.polkadot.network);
+      }
+      
       // Get token info
       const baseToken = await this.polkadot.getToken(baseTokenSymbol);
       const quoteToken = await this.polkadot.getToken(quoteTokenSymbol);
@@ -252,87 +362,82 @@ export class Hydration {
         throw new Error(`Token not found: ${!baseToken ? baseTokenSymbol : quoteTokenSymbol}`);
       }
       
-      // Get pool info
-      let poolInfo: HydrationPoolInfo;
-      if (poolAddress) {
-        const info = await this.getPoolInfo(poolAddress);
-        if (!info) {
-          throw new Error(`Pool not found: ${poolAddress}`);
-        }
-        poolInfo = info;
-      } else {
-        // Find the best pool for this pair
-        const pools = await this.getPools(100, baseToken.address, quoteToken.address);
-        if (pools.length === 0) {
-          throw new Error(`No pools found for ${baseTokenSymbol}/${quoteTokenSymbol}`);
-        }
-        
-        // Sort by liquidity (in a real implementation, would be more sophisticated)
-        pools.sort((a, b) => b.liquidity - a.liquidity);
-        poolInfo = pools[0];
+      // Find token IDs in the Hydration protocol
+      const assets = await this.tradeRouter.getAllAssets();
+      const baseTokenId = assets.find(a => a.symbol === baseToken.symbol)?.id;
+      const quoteTokenId = assets.find(a => a.symbol === quoteToken.symbol)?.id;
+      
+      if (!baseTokenId || !quoteTokenId) {
+        throw new Error(`Token not supported in Hydration: ${!baseTokenId ? baseToken.symbol : quoteToken.symbol}`);
       }
       
-      // Calculate swap amounts
-      const price = poolInfo.price;
-      const effectiveSlippage = slippagePct ?? parseFloat(this.config.allowedSlippage);
+      // Convert amount to BigNumber with proper decimals
+      const amountBN = BigNumber(amount.toString());
       
-      let estimatedAmountIn: number;
-      let estimatedAmountOut: number;
-      let priceImpact: number;
+      // Get the trade quote
+      let trade: Trade;
       
       if (side === 'buy') {
         // Buying base token with quote token
-        estimatedAmountOut = amount;
-        estimatedAmountIn = amount * price;
-        
-        // Simulate price impact
-        priceImpact = (amount / poolInfo.liquidity) * 100;
-        estimatedAmountIn *= (1 + priceImpact / 100);
-        
-        const maxAmountIn = estimatedAmountIn * (1 + effectiveSlippage / 100);
-        
-        return {
-          estimatedAmountIn,
-          estimatedAmountOut,
-          minAmountOut: estimatedAmountOut * (1 - effectiveSlippage / 100),
-          maxAmountIn,
-          baseTokenBalanceChange: estimatedAmountOut,
-          quoteTokenBalanceChange: -estimatedAmountIn,
-          priceImpact,
-          route: [{
-            poolAddress: poolInfo.poolAddress,
-            baseToken,
-            quoteToken,
-            percentage: 100
-          }]
-        };
+        trade = await this.tradeRouter.getBestBuy(
+          quoteTokenId,
+          baseTokenId,
+          amountBN,
+          poolAddress ? [poolAddress] : undefined
+        );
       } else {
         // Selling base token for quote token
-        estimatedAmountIn = amount;
-        estimatedAmountOut = amount * price;
-        
-        // Simulate price impact
-        priceImpact = (amount / poolInfo.liquidity) * 100;
-        estimatedAmountOut *= (1 - priceImpact / 100);
-        
-        const minAmountOut = estimatedAmountOut * (1 - effectiveSlippage / 100);
-        
-        return {
-          estimatedAmountIn,
-          estimatedAmountOut,
-          minAmountOut,
-          maxAmountIn: estimatedAmountIn,
-          baseTokenBalanceChange: -estimatedAmountIn,
-          quoteTokenBalanceChange: estimatedAmountOut,
-          priceImpact,
-          route: [{
-            poolAddress: poolInfo.poolAddress,
-            baseToken,
-            quoteToken,
-            percentage: 100
-          }]
-        };
+        trade = await this.tradeRouter.getBestSell(
+          baseTokenId,
+          quoteTokenId,
+          amountBN,
+          poolAddress ? [poolAddress] : undefined
+        );
       }
+      
+      if (!trade) {
+        throw new Error(`No route found for ${baseToken.symbol}/${quoteToken.symbol}`);
+      }
+      
+      // Apply slippage tolerance
+      const effectiveSlippage = slippagePct ?? parseFloat(this.config.allowedSlippage);
+      const slippageBN = BigNumber(effectiveSlippage.toString());
+      
+      // Extract amounts from the trade
+      const estimatedAmountIn = trade.amountIn.toNumber();
+      const estimatedAmountOut = trade.amountOut.toNumber();
+      const priceImpact = trade.priceImpact ? trade.priceImpact.toNumber() : 0;
+      
+      let minAmountOut, maxAmountIn;
+      
+      if (side === 'buy') {
+        // For buys, we're getting a fixed output and paying a variable input
+        minAmountOut = estimatedAmountOut; // Exact output
+        maxAmountIn = estimatedAmountIn * (1 + effectiveSlippage / 100); // Allow input to be higher by slippage %
+      } else {
+        // For sells, we're spending a fixed input and getting a variable output
+        maxAmountIn = estimatedAmountIn; // Exact input
+        minAmountOut = estimatedAmountOut * (1 - effectiveSlippage / 100); // Allow output to be lower by slippage %
+      }
+      
+      // Extract route information
+      const route: SwapRoute[] = trade.swaps.map(swap => ({
+        poolAddress: swap.poolAddress,
+        baseToken,
+        quoteToken,
+        percentage: swap.percentage || 100
+      }));
+      
+      return {
+        estimatedAmountIn,
+        estimatedAmountOut,
+        minAmountOut,
+        maxAmountIn,
+        baseTokenBalanceChange: side === 'buy' ? estimatedAmountOut : -estimatedAmountIn,
+        quoteTokenBalanceChange: side === 'buy' ? -estimatedAmountIn : estimatedAmountOut,
+        priceImpact,
+        route
+      };
     } catch (error) {
       logger.error(`Failed to get swap quote: ${error.message}`);
       throw error;
@@ -360,12 +465,9 @@ export class Hydration {
     slippagePct?: number
   ): Promise<any> {
     try {
-      // Get token info
-      const baseToken = await this.polkadot.getToken(baseTokenSymbol);
-      const quoteToken = await this.polkadot.getToken(quoteTokenSymbol);
-      
-      if (!baseToken || !quoteToken) {
-        throw new Error(`Token not found: ${!baseToken ? baseTokenSymbol : quoteTokenSymbol}`);
+      // Ensure the instance is ready
+      if (!this.ready()) {
+        await this.init(this.polkadot.network);
       }
       
       // Get swap quote
@@ -378,20 +480,93 @@ export class Hydration {
         slippagePct
       );
       
-      // Prepare swap parameters
-      // In a real implementation, this would create the actual swap extrinsic
+      // Get token info
+      const baseToken = await this.polkadot.getToken(baseTokenSymbol);
+      const quoteToken = await this.polkadot.getToken(quoteTokenSymbol);
       
-      // Simulate transaction execution
-      const signature = `0x${Math.random().toString(16).substring(2, 66)}`;
-      const fee = 0.01;
+      if (!baseToken || !quoteToken) {
+        throw new Error(`Token not found: ${!baseToken ? baseTokenSymbol : quoteTokenSymbol}`);
+      }
+      
+      // Find token IDs in the Hydration protocol
+      const assets = await this.tradeRouter.getAllAssets();
+      const baseTokenId = assets.find(a => a.symbol === baseToken.symbol)?.id;
+      const quoteTokenId = assets.find(a => a.symbol === quoteToken.symbol)?.id;
+      
+      if (!baseTokenId || !quoteTokenId) {
+        throw new Error(`Token not supported in Hydration: ${!baseTokenId ? baseToken.symbol : quoteToken.symbol}`);
+      }
+      
+      // Create the trade
+      const amountBN = BigNumber(amount.toString());
+      let trade: Trade;
+      
+      if (side === 'buy') {
+        trade = await this.tradeRouter.getBestBuy(
+          quoteTokenId,
+          baseTokenId,
+          amountBN,
+          poolAddress ? [poolAddress] : undefined
+        );
+      } else {
+        trade = await this.tradeRouter.getBestSell(
+          baseTokenId,
+          quoteTokenId,
+          amountBN,
+          poolAddress ? [poolAddress] : undefined
+        );
+      }
+      
+      if (!trade) {
+        throw new Error(`No route found for ${baseToken.symbol}/${quoteToken.symbol}`);
+      }
+      
+      // Calculate trade limit based on slippage
+      const effectiveSlippage = BigNumber(
+        (slippagePct ?? parseFloat(this.config.allowedSlippage)).toString()
+      );
+      const tradeLimit = this.calculateTradeLimit(
+        trade,
+        effectiveSlippage,
+        side === 'buy' ? TradeType.Buy : TradeType.Sell
+      );
+      
+      // Create the transaction
+      const transaction = trade.toTx(tradeLimit);
+      
+      // Execute the transaction
+      const txHash = await new Promise<string>((resolve, reject) => {
+        transaction.signAndSend(wallet, (result: any) => {
+          if (result.dispatchError) {
+            if (result.dispatchError.isModule) {
+              const decoded = this.api.registry.findMetaError(
+                result.dispatchError.asModule
+              );
+              const { name } = decoded;
+              logger.error(`Dispatch error: ${name}`);
+              reject(name);
+            } else {
+              logger.error(
+                'Unknown dispatch error:',
+                result.dispatchError.toString()
+              );
+              reject(result.dispatchError.toString());
+            }
+          } else if (result.status.isInBlock) {
+            const hash = result.status.asInBlock.toString();
+            logger.info('Swap executed. Transaction hash:', hash);
+            resolve(hash);
+          }
+        });
+      });
       
       logger.info(`Executed swap: ${amount} ${side === 'buy' ? quoteTokenSymbol : baseTokenSymbol} for ${quote.estimatedAmountOut} ${side === 'buy' ? baseTokenSymbol : quoteTokenSymbol}`);
       
       return {
-        signature,
+        signature: txHash,
         totalInputSwapped: side === 'buy' ? quote.estimatedAmountIn : amount,
         totalOutputSwapped: side === 'buy' ? amount : quote.estimatedAmountOut,
-        fee,
+        fee: 0, // Fee is included in the swap amounts
         baseTokenBalanceChange: quote.baseTokenBalanceChange,
         quoteTokenBalanceChange: quote.quoteTokenBalanceChange,
         priceImpact: quote.priceImpact
@@ -410,41 +585,88 @@ export class Hydration {
    */
   async getPositionsInPool(poolAddress: string, wallet: KeyringPair): Promise<PositionInfo[]> {
     try {
+      // Ensure the instance is ready
+      if (!this.ready()) {
+        await this.init(this.polkadot.network);
+      }
+      
       // Get pool info
       const poolInfo = await this.getPoolInfo(poolAddress);
       if (!poolInfo) {
         throw new Error(`Pool not found: ${poolAddress}`);
       }
       
-      // Simulate fetching positions from the chain
-      // In a real implementation, this would interact with Hydration smart contracts
-      const positions: PositionInfo[] = [];
+      // Get positions for this wallet from the SDK
+      const positions = await this.poolService.getPositions(wallet.address, poolAddress);
       
-      // Generate some sample positions
-      for (let i = 0; i < 3; i++) {
-        const lowerPrice = poolInfo.price * (1 - 0.1 * (i + 1));
-        const upperPrice = poolInfo.price * (1 + 0.1 * (i + 1));
+      if (!positions || positions.length === 0) {
+        return [];
+      }
+      
+      // Convert to our position interface
+      const currentPrice = poolInfo.price;
+      const positionInfoList: PositionInfo[] = [];
+      
+      for (const position of positions) {
+        // Calculate price range
+        const lowerPrice = position.tickLower ? 
+          Math.pow(1.0001, position.tickLower) :
+          position.lowerPrice ? position.lowerPrice.toNumber() : 0;
+          
+        const upperPrice = position.tickUpper ? 
+          Math.pow(1.0001, position.tickUpper) :
+          position.upperPrice ? position.upperPrice.toNumber() : 0;
         
-        positions.push({
-          positionAddress: `hydration-position-${i}`,
+        // Get token amounts
+        const baseTokenAmount = position.baseTokenAmount ? 
+          position.baseTokenAmount.toNumber() : 0;
+          
+        const quoteTokenAmount = position.quoteTokenAmount ? 
+          position.quoteTokenAmount.toNumber() : 0;
+        
+        // Get fee amounts
+        const baseFeeAmount = position.baseFeeAmount ? 
+          position.baseFeeAmount.toNumber() : 0;
+          
+        const quoteFeeAmount = position.quoteFeeAmount ? 
+          position.quoteFeeAmount.toNumber() : 0;
+        
+        // Calculate if in range
+        const inRange = currentPrice >= lowerPrice && currentPrice <= upperPrice;
+        
+        // Calculate APR if available
+        let apr = position.apr || 0;
+        if (!apr && position.creationTimestamp) {
+          // If APR is not directly provided, estimate it based on fees and age
+          const ageInDays = Math.max((Date.now() - position.creationTimestamp) / (1000 * 60 * 60 * 24), 1);
+          const valueCollected = (baseFeeAmount * poolInfo.price) + quoteFeeAmount;
+          const positionValue = (baseTokenAmount * poolInfo.price) + quoteTokenAmount;
+          
+          if (positionValue > 0) {
+            apr = (valueCollected / positionValue) * (365 / ageInDays) * 100;
+          }
+        }
+        
+        positionInfoList.push({
+          positionAddress: position.id,
           ownerAddress: wallet.address,
           poolAddress,
           baseToken: poolInfo.baseToken,
           quoteToken: poolInfo.quoteToken,
           lowerPrice,
           upperPrice,
-          baseTokenAmount: 10 * (i + 1),
-          quoteTokenAmount: 100 * (i + 1),
-          baseFeeAmount: 0.1 * (i + 1),
-          quoteFeeAmount: 1 * (i + 1),
-          liquidity: 1000 * (i + 1),
-          inRange: poolInfo.price >= lowerPrice && poolInfo.price <= upperPrice,
-          createdAt: Date.now() - i * 86400000, // i days ago
-          apr: 5 + i
+          baseTokenAmount,
+          quoteTokenAmount,
+          baseFeeAmount,
+          quoteFeeAmount,
+          liquidity: position.liquidity ? position.liquidity.toNumber() : 0,
+          inRange,
+          createdAt: position.creationTimestamp || Date.now(),
+          apr
         });
       }
       
-      return positions;
+      return positionInfoList;
     } catch (error) {
       logger.error(`Failed to get positions in pool: ${error.message}`);
       throw error;
@@ -459,19 +681,69 @@ export class Hydration {
    */
   async getPositionInfo(positionAddress: string, wallet: KeyringPair): Promise<PositionInfo> {
     try {
-      // Simulate fetching position information from the chain
-      // In a real implementation, this would interact with Hydration smart contracts
+      // Ensure the instance is ready
+      if (!this.ready()) {
+        await this.init(this.polkadot.network);
+      }
       
-      // Generate a sample position
-      const poolAddress = 'hydration-pool-0';
+      // Get position data from the SDK
+      const position = await this.poolService.getPosition(positionAddress);
+      
+      if (!position) {
+        throw new Error(`Position not found: ${positionAddress}`);
+      }
+      
+      // Verify ownership
+      if (position.owner !== wallet.address) {
+        throw new Error('Position not owned by this wallet');
+      }
+      
+      // Get pool information
+      const poolAddress = position.poolId;
       const poolInfo = await this.getPoolInfo(poolAddress);
       
       if (!poolInfo) {
         throw new Error(`Pool not found for position: ${positionAddress}`);
       }
       
-      const lowerPrice = poolInfo.price * 0.9;
-      const upperPrice = poolInfo.price * 1.1;
+      // Calculate price range
+      const lowerPrice = position.tickLower ? 
+        Math.pow(1.0001, position.tickLower) :
+        position.lowerPrice ? position.lowerPrice.toNumber() : 0;
+        
+      const upperPrice = position.tickUpper ? 
+        Math.pow(1.0001, position.tickUpper) :
+        position.upperPrice ? position.upperPrice.toNumber() : 0;
+      
+      // Get token amounts
+      const baseTokenAmount = position.baseTokenAmount ? 
+        position.baseTokenAmount.toNumber() : 0;
+        
+      const quoteTokenAmount = position.quoteTokenAmount ? 
+        position.quoteTokenAmount.toNumber() : 0;
+      
+      // Get fee amounts
+      const baseFeeAmount = position.baseFeeAmount ? 
+        position.baseFeeAmount.toNumber() : 0;
+        
+      const quoteFeeAmount = position.quoteFeeAmount ? 
+        position.quoteFeeAmount.toNumber() : 0;
+      
+      // Check if position is in range
+      const inRange = poolInfo.price >= lowerPrice && poolInfo.price <= upperPrice;
+      
+      // Calculate APR if available
+      let apr = position.apr || 0;
+      if (!apr && position.creationTimestamp) {
+        // If APR is not directly provided, estimate it based on fees and age
+        const ageInDays = Math.max((Date.now() - position.creationTimestamp) / (1000 * 60 * 60 * 24), 1);
+        const valueCollected = (baseFeeAmount * poolInfo.price) + quoteFeeAmount;
+        const positionValue = (baseTokenAmount * poolInfo.price) + quoteTokenAmount;
+        
+        if (positionValue > 0) {
+          apr = (valueCollected / positionValue) * (365 / ageInDays) * 100;
+        }
+      }
       
       return {
         positionAddress,
@@ -481,14 +753,14 @@ export class Hydration {
         quoteToken: poolInfo.quoteToken,
         lowerPrice,
         upperPrice,
-        baseTokenAmount: 10,
-        quoteTokenAmount: 100,
-        baseFeeAmount: 0.1,
-        quoteFeeAmount: 1,
-        liquidity: 1000,
-        inRange: poolInfo.price >= lowerPrice && poolInfo.price <= upperPrice,
-        createdAt: Date.now() - 86400000, // 1 day ago
-        apr: 5
+        baseTokenAmount,
+        quoteTokenAmount,
+        baseFeeAmount,
+        quoteFeeAmount,
+        liquidity: position.liquidity ? position.liquidity.toNumber() : 0,
+        inRange,
+        createdAt: position.creationTimestamp || Date.now(),
+        apr
       };
     } catch (error) {
       logger.error(`Failed to get position info: ${error.message}`);
@@ -507,32 +779,34 @@ export class Hydration {
     wallet: KeyringPair
   ): Promise<{ position: any; info: any }> {
     try {
-      // Get position info
-      const positionInfo = await this.getPositionInfo(positionAddress, wallet);
+      // Ensure the instance is ready
+      if (!this.ready()) {
+        await this.init(this.polkadot.network);
+      }
       
-      // Simulate raw position data
-      // In a real implementation, this would contain the actual position data from the chain
-      const rawPosition = {
-        publicKey: positionAddress,
-        positionData: {
-          lowerPrice: positionInfo.lowerPrice,
-          upperPrice: positionInfo.upperPrice,
-          liquidity: positionInfo.liquidity,
-          positionBinData: [
-            { binId: 1, amount: positionInfo.baseTokenAmount },
-            { binId: 2, amount: positionInfo.quoteTokenAmount }
-          ]
-        }
-      };
+      // Get position and pool data from the SDK
+      const position = await this.poolService.getPosition(positionAddress);
+      
+      if (!position) {
+        throw new Error(`Position not found: ${positionAddress}`);
+      }
+      
+      // Verify ownership
+      if (position.owner !== wallet.address) {
+        throw new Error('Position not owned by this wallet');
+      }
+      
+      // Get pool information
+      const poolInfo = await this.poolService.getPool(position.poolId);
       
       return {
-        position: rawPosition,
+        position: {
+          publicKey: positionAddress,
+          positionData: position
+        },
         info: {
-          publicKey: positionInfo.poolAddress,
-          data: {
-            baseToken: positionInfo.baseToken,
-            quoteToken: positionInfo.quoteToken
-          }
+          publicKey: position.poolId,
+          data: poolInfo
         }
       };
     } catch (error) {
@@ -556,17 +830,28 @@ export class Hydration {
     padBins: number = 1
   ): Promise<{ minBinId: number, maxBinId: number }> {
     try {
+      // Ensure the instance is ready
+      if (!this.ready()) {
+        await this.init(this.polkadot.network);
+      }
+      
       // Get pool info
       const poolInfo = await this.getPoolInfo(poolAddress);
       if (!poolInfo) {
         throw new Error(`Pool not found: ${poolAddress}`);
       }
       
-      // Simulate converting prices to bin IDs
-      // In a real implementation, this would use the actual formula from the Hydration protocol
-      const tickSpacing = 10;
-      const minBinId = Math.floor(Math.log(lowerPrice) / Math.log(1.0001) / tickSpacing) * tickSpacing - padBins;
-      const maxBinId = Math.ceil(Math.log(upperPrice) / Math.log(1.0001) / tickSpacing) * tickSpacing + padBins;
+      // Get tick spacing for this pool from the SDK
+      const poolDetails = await this.poolService.getPool(poolAddress);
+      const tickSpacing = poolDetails.tickSpacing || 10;
+      
+      // Convert prices to ticks
+      const tickLower = Math.floor(Math.log(lowerPrice) / Math.log(1.0001));
+      const tickUpper = Math.ceil(Math.log(upperPrice) / Math.log(1.0001));
+      
+      // Adjust to valid tick spacing and add padding
+      const minBinId = Math.floor(tickLower / tickSpacing) * tickSpacing - (padBins * tickSpacing);
+      const maxBinId = Math.ceil(tickUpper / tickSpacing) * tickSpacing + (padBins * tickSpacing);
       
       return { minBinId, maxBinId };
     } catch (error) {
