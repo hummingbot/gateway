@@ -91,7 +91,7 @@ const PollResponseSchema = Type.Object({
     Type.Null()
   ]),
   fee: Type.Union([Type.Number(), Type.Null()]),
-  balanceChange: Type.Union([Type.Number(), Type.Null()]),
+  balanceChange: Type.Optional(Type.Union([Type.Number(), Type.Null()])),
   timestamp: Type.Number(),
   latency: Type.Number()
 });
@@ -167,7 +167,7 @@ export const polkadotRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request, reply) => {
       const chain = await getInitializedChain<Polkadot>('polkadot', request.query.network);
-      const status = await PolkadotController.getStatus(chain as Polkadot, request.query);
+      const status = await PolkadotController.getStatus(chain, request.query);
       return reply.send(status);
     }
   );
@@ -187,7 +187,7 @@ export const polkadotRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request, reply) => {
       const chain = await getInitializedChain<Polkadot>('polkadot', request.query.network);
-      const response = await PolkadotController.getTokens(chain as Polkadot, request.query);
+      const response = await PolkadotController.getTokens(chain, request.query);
       return reply.send(response);
     }
   );
@@ -216,7 +216,7 @@ export const polkadotRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request, reply) => {
       const chain = await getInitializedChain<Polkadot>('polkadot', request.body.network);
-      const response = await PolkadotController.balances(chain as Polkadot, request.body);
+      const response = await PolkadotController.balances(chain, request.body);
       return reply.send(response);
     }
   );
@@ -245,7 +245,7 @@ export const polkadotRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request, reply) => {
       const chain = await getInitializedChain<Polkadot>('polkadot', request.body.network);
-      const response = await PolkadotController.poll(chain as Polkadot, request.body);
+      const response = await PolkadotController.poll(chain, request.body);
       return reply.send(response);
     }
   );
@@ -265,7 +265,7 @@ export const polkadotRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request, reply) => {
       const chain = await getInitializedChain<Polkadot>('polkadot', request.query.network);
-      const response = await PolkadotController.getStakingInfo(chain as Polkadot, request.query);
+      const response = await PolkadotController.getStakingInfo(chain, request.query);
       return reply.send(response);
     }
   );
@@ -297,7 +297,7 @@ export const polkadotRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request, reply) => {
       const chain = await getInitializedChain<Polkadot>('polkadot', request.body.network);
-      const response = await PolkadotController.transfer(chain as Polkadot, request.body);
+      const response = await PolkadotController.transfer(chain, request.body);
       return reply.send(response);
     }
   );
@@ -317,7 +317,7 @@ export const polkadotRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request, reply) => {
       const chain = await getInitializedChain<Polkadot>('polkadot', request.query.network);
-      const response = await PolkadotController.getMetadata(chain as Polkadot, request.query);
+      const response = await PolkadotController.getMetadata(chain, request.query);
       return reply.send(response);
     }
   );

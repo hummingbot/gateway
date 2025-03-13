@@ -351,7 +351,7 @@ export class Hydration {
     quoteTokenSymbol: string,
     amount: number,
     side: 'buy' | 'sell',
-    poolAddress?: string,
+    _poolAddress?: string,
     slippagePct?: number
   ): Promise<SwapQuote> {
     try {
@@ -893,13 +893,13 @@ export class Hydration {
    * @returns A Promise that resolves to the open position result
    */
   async openPosition(
-    wallet: KeyringPair,
+    _wallet: KeyringPair,
     lowerPrice: number,
     upperPrice: number,
     poolAddress: string,
     baseTokenAmount?: number,
     quoteTokenAmount?: number,
-    slippagePct?: number,
+    _slippagePct?: number,
     strategyType: PositionStrategyType = PositionStrategyType.Balanced
   ): Promise<any> {
     try {
@@ -983,8 +983,8 @@ export class Hydration {
     positionAddress: string,
     baseTokenAmount: number,
     quoteTokenAmount: number,
-    slippagePct?: number,
-    strategyType: PositionStrategyType = PositionStrategyType.Balanced
+    _slippagePct?: number,
+    _strategyType: PositionStrategyType = PositionStrategyType.Balanced
   ): Promise<any> {
     try {
       // Get position info
