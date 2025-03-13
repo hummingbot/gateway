@@ -141,8 +141,8 @@ export class Polkadot {
    * @param tokenListType Type of token list (e.g., JSON, CSV)
    */
   async loadTokens(
-    tokenListSource: string,
-    tokenListType: TokenListType
+    _tokenListSource: string,
+    _tokenListType: TokenListType
   ): Promise<void> {
     try {
       // Add native token
@@ -876,7 +876,7 @@ export class Polkadot {
    */
   async extractBalanceChangeAndFee(
     txHash: string,
-    address: string
+    _address: string
   ): Promise<{ balanceChange: number; fee: number }> {
     try {
       // Get transaction details

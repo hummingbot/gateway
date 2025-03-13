@@ -13,6 +13,7 @@ import {
   getInitializedChain,
   UnsupportedChainException,
   Chain,
+  ChainInstance,
 } from '../services/connection-manager';
 import {
   ERROR_RETRIEVING_WALLET_ADDRESS_ERROR_CODE,
@@ -45,7 +46,7 @@ export async function addWallet(
   let encryptedPrivateKey: string | undefined;
 
   try {
-    connection = await getInitializedChain<Chain>(req.chain, req.network);
+    connection = await getInitializedChain<ChainInstance>(req.chain, req.network);
   } catch (e) {
     if (e instanceof UnsupportedChainException) {
       throw new HttpException(
