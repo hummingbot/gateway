@@ -3,9 +3,9 @@ import { Type } from '@sinclair/typebox';
 import { Hydration } from '../hydration';
 import { Polkadot } from '../../../chains/polkadot/polkadot';
 import { logger } from '../../../services/logger';
-import { 
-  PoolInfoSchema, 
-  FetchPoolsRequest, 
+import {
+  PoolInfoSchema,
+  FetchPoolsRequest,
 } from '../../../services/clmm-interfaces';
 import { httpNotFound, httpInternalServerError, ERROR_MESSAGES } from '../../../services/error-handler';
 
@@ -32,14 +32,14 @@ export const fetchPoolsRoute: FastifyPluginAsync = async (fastify) => {
     },
     handler: async (request, _reply) => {
       try {
-        const { limit, tokenA, tokenB } = request.query;
-        const network = request.query.network || 'mainnet';
-        
+        const { limit, tokenA, tokenB } = request.query as typeof FetchPoolsRequest;
+        const network = (request.query as typeof FetchPoolsRequest).network || 'mainnet';
+
         const hydration = await Hydration.getInstance(network);
         const polkadot = await Polkadot.getInstance(network);
 
         let tokenMintA, tokenMintB;
-        
+
         if (tokenA) {
           const tokenInfoA = await polkadot.getToken(tokenA);
           if (!tokenInfoA) {
@@ -47,7 +47,7 @@ export const fetchPoolsRoute: FastifyPluginAsync = async (fastify) => {
           }
           tokenMintA = tokenInfoA.address;
         }
-        
+
         if (tokenB) {
           const tokenInfoB = await polkadot.getToken(tokenB);
           if (!tokenInfoB) {
@@ -55,7 +55,7 @@ export const fetchPoolsRoute: FastifyPluginAsync = async (fastify) => {
           }
           tokenMintB = tokenInfoB.address;
         }
-    
+
         const pools = await hydration.getPools(limit, tokenMintA, tokenMintB);
         if (!Array.isArray(pools)) {
           logger.error('No matching Hydration pools found');

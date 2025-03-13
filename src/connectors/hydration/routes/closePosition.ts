@@ -4,10 +4,10 @@ import { Polkadot } from '../../../chains/polkadot/polkadot';
 import { logger } from '../../../services/logger';
 import { removeLiquidity } from './removeLiquidity';
 import { collectFees } from './collectFees';
-import { 
-  ClosePositionRequest, 
-  ClosePositionResponse, 
-  ClosePositionRequestType, 
+import {
+  ClosePositionRequest,
+  ClosePositionResponse,
+  ClosePositionRequestType,
   ClosePositionResponseType,
   CollectFeesResponseType,
   RemoveLiquidityResponseType
@@ -24,12 +24,12 @@ async function closePosition(
   positionAddress: string
 ): Promise<ClosePositionResponseType> {
   try {
-    const polkadot = await Polkadot.getInstance(network);    
+    const polkadot = await Polkadot.getInstance(network);
     const hydration = await Hydration.getInstance(network);
-    
+
     // Get wallet
     const wallet = await polkadot.getWallet(walletAddress);
-    
+
     // Get position info
     const positionInfo = await hydration.getPositionInfo(positionAddress, wallet);
     logger.info('Position Info:', positionInfo);
@@ -49,9 +49,9 @@ async function closePosition(
       wallet,
       positionAddress
     );
-    
+
     logger.info(`Closed position ${positionAddress}`);
-    
+
     return {
       signature: closeResult.signature,
       fee: closeResult.fee,
@@ -78,14 +78,14 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
   // Get first wallet address for example
   const polkadot = await Polkadot.getInstance('mainnet');
   let firstWalletAddress = '<polkadot-wallet-address>';
-  
+
   const foundWallet = await polkadot.getFirstWalletAddress();
   if (foundWallet) {
     firstWalletAddress = foundWallet;
   } else {
     logger.info('No wallets found for examples in schema');
   }
-  
+
   // Update schema example
   ClosePositionRequest.properties.walletAddress.examples = [firstWalletAddress];
 
@@ -112,7 +112,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
       try {
         const { network, walletAddress, positionAddress } = request.body as ClosePositionRequestType;
         const networkToUse = network || 'mainnet';
-        
+
         return await closePosition(
           fastify,
           networkToUse,
@@ -126,11 +126,11 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
           code: e.code,
           statusCode: e.statusCode,
           stack: e.stack,
-          positionAddress: request.body.positionAddress,
-          network: request.body.network,
-          walletAddress: request.body.walletAddress
+          positionAddress: (request.body as ClosePositionRequestType).positionAddress,
+          network: (request.body as ClosePositionRequestType).network,
+          walletAddress: (request.body as ClosePositionRequestType).walletAddress
         });
-        
+
         if (e.statusCode) {
           throw fastify.httpErrors.createError(e.statusCode, e.message || 'Request failed');
         }

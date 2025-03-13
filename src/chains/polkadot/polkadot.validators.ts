@@ -18,7 +18,7 @@ export function validatePolkadotAddress(address: string, ss58Format?: number): b
     throw new HttpException(
       400,
       `Invalid Polkadot address: ${address}`,
-      'INVALID_ADDRESS'
+      -1
     );
   }
 }
@@ -30,16 +30,16 @@ export function validatePolkadotAddress(address: string, ss58Format?: number): b
  */
 export function validateTransactionHash(txHash: string): boolean {
   const hexRegex = /^0x[a-fA-F0-9]{64}$/;
-  
+
   if (!hexRegex.test(txHash)) {
     logger.error(`Invalid transaction hash format: ${txHash}`);
     throw new HttpException(
       400,
       `Invalid transaction hash format: ${txHash}`,
-      'INVALID_TX_HASH'
+      -1
     );
   }
-  
+
   return true;
 }
 
@@ -54,10 +54,10 @@ export function validateTokenSymbol(symbol: string): boolean {
     throw new HttpException(
       400,
       `Invalid token symbol: ${symbol}`,
-      'INVALID_TOKEN_SYMBOL'
+      -1
     );
   }
-  
+
   return true;
 }
 
@@ -72,10 +72,10 @@ export function validateAmount(amount: number): boolean {
     throw new HttpException(
       400,
       `Invalid amount: ${amount}. Amount must be a positive number.`,
-      'INVALID_AMOUNT'
+      -1
     );
   }
-  
+
   return true;
 }
 
@@ -86,16 +86,16 @@ export function validateAmount(amount: number): boolean {
  */
 export function validateNetwork(network: string): boolean {
   const validNetworks = ['mainnet', 'testnet', 'local'];
-  
+
   if (!validNetworks.includes(network)) {
     logger.error(`Invalid network: ${network}`);
     throw new HttpException(
       400,
       `Invalid network: ${network}. Valid networks are: ${validNetworks.join(', ')}`,
-      'INVALID_NETWORK'
+      -1
     );
   }
-  
+
   return true;
 }
 
@@ -110,10 +110,10 @@ export function validatePalletName(palletName: string): boolean {
     throw new HttpException(
       400,
       `Invalid pallet name: ${palletName}`,
-      'INVALID_PALLET_NAME'
+      -1
     );
   }
-  
+
   return true;
 }
 
@@ -125,11 +125,11 @@ export function validatePalletName(palletName: string): boolean {
  */
 export function validateStakingParams(amount: number, validatorAddress?: string): boolean {
   validateAmount(amount);
-  
+
   if (validatorAddress) {
     validatePolkadotAddress(validatorAddress);
   }
-  
+
   return true;
 }
 

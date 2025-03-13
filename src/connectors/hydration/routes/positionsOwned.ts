@@ -9,12 +9,12 @@ import { httpBadRequest, ERROR_MESSAGES } from '../../../services/error-handler'
 // Schema definitions
 const GetPositionsOwnedRequest = Type.Object({
   network: Type.Optional(Type.String({ default: 'mainnet' })),
-  walletAddress: Type.String({ 
+  walletAddress: Type.String({
     description: 'Will use first available wallet if not specified',
     examples: [] // Will be populated during route registration
   }),
-  poolAddress: Type.String({ 
-    examples: ['hydration-pool-0'] 
+  poolAddress: Type.String({
+    examples: ['hydration-pool-0']
   }),
 });
 
@@ -30,14 +30,14 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
   // Get first wallet address for example
   const polkadot = await Polkadot.getInstance('mainnet');
   let firstWalletAddress = '<polkadot-wallet-address>';
-  
+
   const foundWallet = await polkadot.getFirstWalletAddress();
   if (foundWallet) {
     firstWalletAddress = foundWallet;
   } else {
     logger.debug('No wallets found for examples in schema');
   }
-  
+
   // Update schema example
   GetPositionsOwnedRequest.properties.walletAddress.examples = [firstWalletAddress];
 
@@ -55,25 +55,25 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { walletAddress, poolAddress } = request.query;
-        const network = request.query.network || 'mainnet';
-        
+        const { walletAddress, poolAddress } = request.query as typeof GetPositionsOwnedRequest;
+        const network = (request.query as typeof GetPositionsOwnedRequest).network || 'mainnet';
+
         const hydration = await Hydration.getInstance(network);
         const polkadot = await Polkadot.getInstance(network);
-        
+
         // Validate address
         try {
           polkadot.validatePolkadotAddress(walletAddress);
         } catch (error) {
           throw httpBadRequest(`Invalid wallet address: ${walletAddress}`);
         }
-        
+
         // Get wallet
         const wallet = await polkadot.getWallet(walletAddress);
-        
+
         // Get positions
         const positions = await hydration.getPositionsInPool(poolAddress, wallet);
-        
+
         // Map to response format
         return positions.map(position => ({
           positionAddress: position.positionAddress,

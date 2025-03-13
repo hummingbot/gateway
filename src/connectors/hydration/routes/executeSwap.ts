@@ -2,7 +2,7 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { Hydration } from '../hydration';
 import { Polkadot } from '../../../chains/polkadot/polkadot';
 import { logger } from '../../../services/logger';
-import { 
+import {
   ExecuteSwapRequestType,
   ExecuteSwapResponseType,
   ExecuteSwapRequest,
@@ -40,10 +40,10 @@ async function executeSwap(
 
     const polkadot = await Polkadot.getInstance(network);
     const hydration = await Hydration.getInstance(network);
-    
+
     // Get wallet
     const wallet = await polkadot.getWallet(walletAddress);
-    
+
     // Execute swap
     const result = await hydration.executeSwap(
       wallet,
@@ -54,9 +54,9 @@ async function executeSwap(
       poolAddress,
       slippagePct
     );
-    
+
     logger.info(`Executed swap: ${amount} ${side === 'buy' ? quoteTokenIdentifier : baseTokenIdentifier} for ${result.totalOutputSwapped} ${side === 'buy' ? baseTokenIdentifier : quoteTokenIdentifier}`);
-    
+
     return {
       signature: result.signature,
       totalInputSwapped: result.totalInputSwapped,
@@ -82,13 +82,13 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
   // Get first wallet address for example
   const polkadot = await Polkadot.getInstance('mainnet');
   let firstWalletAddress = '<polkadot-wallet-address>';
-  
+
   try {
     firstWalletAddress = await polkadot.getFirstWalletAddress();
   } catch (error) {
     logger.warn('No wallets found for examples in schema');
   }
-  
+
   // Update schema example
   ExecuteSwapRequest.properties.walletAddress.examples = [firstWalletAddress];
 
@@ -119,10 +119,10 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       try {
         const { walletAddress, baseToken, quoteToken, amount, side, poolAddress, slippagePct } = request.body as ExecuteSwapRequestType;
-        const network = request.body.network || 'mainnet';
-        
+        const network = (request.body as ExecuteSwapRequestType).network || 'mainnet';
+
         logger.info(`Received swap request: ${amount} ${baseToken} -> ${quoteToken} in pool ${poolAddress}`);
-        
+
         return await executeSwap(
           fastify,
           network,
