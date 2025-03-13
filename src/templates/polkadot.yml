@@ -1,0 +1,8 @@
+networks:
+  mainnet:
+    chainId: mainnet
+    nodeURL: 'wss://rpc.polkadot.io'
+    assetListType: 'FILE'
+    assetListSource: 'src/templates/lists/polkadot_tokens_mainnet.json'
+nativeCurrencySymbol: DOT
+gasLimitEstimate: 500000

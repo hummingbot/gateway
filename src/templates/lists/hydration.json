@@ -1,0 +1,206 @@
+[
+    {
+        "name": "Hydration",
+        "symbol": "HDX",
+        "address": "0",
+        "decimals": 12
+    },
+    {
+        "name": "Polkadot",
+        "symbol": "DOT",
+        "address": "5",
+        "decimals": 10
+    },
+    {
+        "name": "Crust",
+        "symbol": "CRU",
+        "address": "27",
+        "decimals": 12
+    },
+    {
+        "name": "Nodle",
+        "symbol": "NODL",
+        "address": "26",
+        "decimals": 11
+    },
+    {
+        "name": "USDT (Polkadot Asset Hub)",
+        "symbol": "USDT",
+        "address": "10",
+        "decimals": 6
+    },
+    {
+        "name": "Unique network",
+        "symbol": "UNQ",
+        "address": "25",
+        "decimals": 18
+    },
+    {
+        "name": "Glimmer",
+        "symbol": "GLMR",
+        "address": "16",
+        "decimals": 18
+    },
+    {
+        "name": "Mythos",
+        "symbol": "MYTH",
+        "address": "30",
+        "decimals": 18
+    },
+    {
+        "name": "Pendulum",
+        "symbol": "PEN",
+        "address": "1000081",
+        "decimals": 12
+    },
+    {
+        "name": "Gavun Wud",
+        "symbol": "WUD",
+        "address": "1000085",
+        "decimals": 10
+    },
+    {
+        "name": "Bifrost Voucher DOT",
+        "symbol": "vDOT",
+        "address": "15",
+        "decimals": 10
+    },
+    {
+        "name": "HDX Bond 24/10/2024",
+        "symbol": "HDXb",
+        "address": "1000010",
+        "decimals": 12
+    },
+    {
+        "name": "Subsocial",
+        "symbol": "SUB",
+        "address": "24",
+        "decimals": 10
+    },
+    {
+        "name": "Ajuna Network",
+        "symbol": "AJUN",
+        "address": "32",
+        "decimals": 12
+    },
+    {
+        "name": "HDX Bond 03/01/2025",
+        "symbol": "HDXb",
+        "address": "1000013",
+        "decimals": 12
+    },
+    {
+        "name": "Interlay",
+        "symbol": "INTR",
+        "address": "17",
+        "decimals": 10
+    },
+    {
+        "name": "USDT, DAI, USDC, USDT",
+        "symbol": "4-Pool",
+        "address": "100",
+        "decimals": 18
+    },
+    {
+        "name": "KILT",
+        "symbol": "KILT",
+        "address": "28",
+        "decimals": 15
+    },
+    {
+        "name": "Ethereum (Moonbeam Wormhole)",
+        "symbol": "WETH",
+        "address": "20",
+        "decimals": 18
+    },
+    {
+        "name": "iBTC, WBTC",
+        "symbol": "2-Pool",
+        "address": "101",
+        "decimals": 18
+    },
+    {
+        "name": "Bifrost Native Coin",
+        "symbol": "BNC",
+        "address": "14",
+        "decimals": 12
+    },
+    {
+        "name": "Darwinia Network RING",
+        "symbol": "RING",
+        "address": "31",
+        "decimals": 18
+    },
+    {
+        "name": "Voucher ASTR",
+        "symbol": "vASTR",
+        "address": "33",
+        "decimals": 18
+    },
+    {
+        "name": "Centrifuge",
+        "symbol": "CFG",
+        "address": "13",
+        "decimals": 18
+    },
+    {
+        "name": "USDT, USDC",
+        "symbol": "2-Pool",
+        "address": "102",
+        "decimals": 18
+    },
+    {
+        "name": "Phala",
+        "symbol": "PHA",
+        "address": "8",
+        "decimals": 12
+    },
+    {
+        "name": "Zeitgeist",
+        "symbol": "ZTG",
+        "address": "12",
+        "decimals": 10
+    },
+    {
+        "name": "Astar",
+        "symbol": "ASTR",
+        "address": "9",
+        "decimals": 18
+    },
+    {
+        "name": "H2O",
+        "symbol": "H2O",
+        "address": "1",
+        "decimals": 12
+    },
+    {
+        "name": "DAI (Moonbeam Wormhole)",
+        "symbol": "DAI",
+        "address": "18",
+        "decimals": 18
+    },
+    {
+        "name": "USD Coin (Moonbeam Wormhole)",
+        "symbol": "USDC",
+        "address": "21",
+        "decimals": 6
+    },
+    {
+        "name": "interBTC",
+        "symbol": "iBTC",
+        "address": "11",
+        "decimals": 8
+    },
+    {
+        "name": "Bitcoin (Moonbeam Wormhole)",
+        "symbol": "WBTC",
+        "address": "19",
+        "decimals": 8
+    },
+    {
+        "name": "USDC (Polkadot Asset Hub)",
+        "symbol": "USDC",
+        "address": "22",
+        "decimals": 6
+    }
+]
