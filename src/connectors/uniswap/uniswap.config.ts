@@ -38,7 +38,7 @@ export namespace UniswapConfig {
     maximumHops: ConfigManagerV2.getInstance().get('uniswap.maximumHops'),
     useRouter: ConfigManagerV2.getInstance().get('uniswap.useRouter'),
     feeTier: ConfigManagerV2.getInstance().get('uniswap.feeTier'),
-    tradingTypes: ['AMM'],
+    tradingTypes: ['SWAP'],
     availableNetworks: [{
       chain: 'ethereum',
       networks: ['mainnet', 'arbitrum', 'optimism', 'base', 'sepolia', 'bsc', 'avalanche', 'celo', 'polygon']
