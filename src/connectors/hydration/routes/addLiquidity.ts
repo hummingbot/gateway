@@ -3,7 +3,6 @@ import { Hydration } from '../hydration';
 import { Polkadot } from '../../../chains/polkadot/polkadot';
 import { BigNumber } from '@galacticcouncil/sdk';
 import { logger } from '../../../services/logger';
-import { Type, Static } from '@sinclair/typebox';
 import { validatePolkadotAddress } from '../../../chains/polkadot/polkadot.validators';
 import { httpBadRequest, httpNotFound, ERROR_MESSAGES } from '../../../services/error-handler';
 import { 
@@ -36,18 +35,22 @@ async function addLiquidity(
   quoteTokenAmount: number,
   slippagePct?: number
 ): Promise<AddLiquidityResponseType> {
-  // Validate address
+  const initTime = Date.now();
+  
+  // Validate address - Use a simple validation without custom error message
   try {
     validatePolkadotAddress(walletAddress);
   } catch (error) {
-    throw httpBadRequest(ERROR_MESSAGES.INVALID_ADDRESS(walletAddress));
+    // Use a standard error format instead of the custom ERROR_MESSAGES.INVALID_ADDRESS
+    throw httpBadRequest(`Invalid Polkadot address: ${walletAddress}`);
   }
 
   const polkadot = await Polkadot.getInstance(network);
   const hydration = await Hydration.getInstance(network);
   
-  // Get keyPair from wallet address
-  const keyPair = await polkadot.getAccountFromAddress(walletAddress);
+  // Get keyPair from wallet address - Fix method name
+  // Use the correct method from the Polkadot class
+  const keyPair = await polkadot.getWallet(walletAddress);
   
   // Get position info
   // For Hydration, we'd need to get the poolId from the position
@@ -69,41 +72,30 @@ async function addLiquidity(
   }
   
   // Check balances with transaction buffer
-  const balances = await polkadot.balances(walletAddress, [baseTokenSymbol, quoteTokenSymbol, "HDX"]);
+  // Fix the method name for getting balances
+  const balances = await polkadot.getBalance(keyPair, [baseTokenSymbol, quoteTokenSymbol, "HDX"]);
   const requiredBase = baseTokenAmount;
   const requiredQuote = quoteTokenAmount;
   const requiredHDX = HDX_TRANSACTION_BUFFER;
   
-  // Check base token balance
-  if (parseFloat(balances[baseTokenSymbol] || '0') < requiredBase) {
+  // Check base token balance - Use proper error message construction
+  if (balances[baseTokenSymbol] < requiredBase) {
     throw httpBadRequest(
-      ERROR_MESSAGES.INSUFFICIENT_BALANCE(
-        baseTokenSymbol,
-        requiredBase,
-        parseFloat(balances[baseTokenSymbol] || '0')
-      )
+      `Insufficient ${baseTokenSymbol} balance. Required: ${requiredBase}, Available: ${balances[baseTokenSymbol]}`
     );
   }
   
   // Check quote token balance
-  if (parseFloat(balances[quoteTokenSymbol] || '0') < requiredQuote) {
+  if (balances[quoteTokenSymbol] < requiredQuote) {
     throw httpBadRequest(
-      ERROR_MESSAGES.INSUFFICIENT_BALANCE(
-        quoteTokenSymbol,
-        requiredQuote,
-        parseFloat(balances[quoteTokenSymbol] || '0')
-      )
+      `Insufficient ${quoteTokenSymbol} balance. Required: ${requiredQuote}, Available: ${balances[quoteTokenSymbol]}`
     );
   }
   
   // Check HDX balance for gas
-  if (parseFloat(balances['HDX'] || '0') < requiredHDX) {
+  if (balances['HDX'] < requiredHDX) {
     throw httpBadRequest(
-      ERROR_MESSAGES.INSUFFICIENT_BALANCE(
-        'HDX',
-        requiredHDX,
-        parseFloat(balances['HDX'] || '0')
-      )
+      `Insufficient HDX balance for transaction fees. Required: ${requiredHDX}, Available: ${balances['HDX']}`
     );
   }
   
@@ -142,28 +134,17 @@ async function addLiquidity(
       calculateMinAmountOut(quoteAmountBN, effectiveSlippage).toString()
     );
     
-    // Sign and send the transaction
+    // Sign and send the transaction - Fix the signAndSend callback signature
     const txHash = await new Promise<string>((resolve, reject) => {
-      addLiquidityTx.signAndSend(keyPair, ({ status, dispatchError, events }) => {
-        if (dispatchError) {
-          if (dispatchError.isModule) {
-            const decoded = api.registry.findMetaError(dispatchError.asModule);
-            reject(new Error(`${decoded.section}.${decoded.name}: ${decoded.docs}`));
-          } else {
-            reject(new Error(dispatchError.toString()));
-          }
-        } else if (status.isInBlock || status.isFinalized) {
-          // Find liquidity added event to get actual amounts
-          const liquidityEvent = events.find(
-            ({ event }) => 
-              event.section === 'omnipool' && 
-              event.method === 'LiquidityAdded'
-          );
-          
-          if (liquidityEvent) {
-            resolve(status.asInBlock.toString());
-          }
+      // Use the correct callback format for Polkadot.js
+      addLiquidityTx.signAndSend(keyPair, (result) => {
+        if (result.status.isInBlock || result.status.isFinalized) {
+          resolve(result.status.asInBlock.toString());
+        } else if (result.isError) {
+          reject(new Error(`Transaction failed: ${result.status.toString()}`));
         }
+      }).catch(error => {
+        reject(error);
       });
     });
     
@@ -200,9 +181,9 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   
   // Try to get a real wallet address for examples if available
   try {
-    const accountInfo = await polkadot.api.query.system.account.entries();
-    if (accountInfo && accountInfo.length > 0) {
-      firstWalletAddress = accountInfo[0][0].toString();
+    const firstWallet = await polkadot.getFirstWalletAddress();
+    if (firstWallet) {
+      firstWalletAddress = firstWallet;
     }
   } catch (error) {
     logger.debug('Could not get example wallet address', error);
@@ -211,10 +192,8 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   // Update schema example
   AddLiquidityRequest.properties.walletAddress.examples = [firstWalletAddress];
 
-  fastify.post<{
-    Body: AddLiquidityRequestType;
-    Reply: AddLiquidityResponseType;
-  }>(
+  // Fix the Fastify route typing issue
+  fastify.post(
     '/add-liquidity',
     {
       schema: {
@@ -233,7 +212,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         },
       }
     },
-    async (request) => {
+    async (request, reply) => {
       try {
         const { 
           walletAddress,
@@ -241,10 +220,10 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           baseTokenAmount,
           quoteTokenAmount,
           slippagePct
-        } = request.body;
-        const network = request.body.network || 'mainnet';
+        } = request.body as AddLiquidityRequestType;
+        const network = (request.body as AddLiquidityRequestType).network || 'mainnet';
         
-        return await addLiquidity(
+        const result = await addLiquidity(
           fastify,
           network,
           walletAddress,
@@ -253,13 +232,15 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           quoteTokenAmount,
           slippagePct
         );
+        
+        return reply.send(result);
       } catch (e) {
         logger.error('Error in add-liquidity endpoint:', e);
         
         if (e.statusCode) {
-          throw fastify.httpErrors.createError(e.statusCode, 'Request failed');
+          return reply.status(e.statusCode).send({ error: e.message });
         }
-        throw fastify.httpErrors.internalServerError('Internal server error');
+        return reply.status(500).send({ error: 'Internal server error' });
       }
     }
   );

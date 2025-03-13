@@ -3,7 +3,6 @@ import { Hydration } from '../hydration';
 import { Polkadot } from '../../../chains/polkadot/polkadot';
 import { logger } from '../../../services/logger';
 import { 
-  PositionInfo, 
   PositionInfoSchema, 
   GetPositionInfoRequestType, 
   GetPositionInfoRequest 
@@ -28,10 +27,7 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
   // Update schema example
   GetPositionInfoRequest.properties.walletAddress.examples = [firstWalletAddress];
 
-  fastify.get<{
-    Querystring: GetPositionInfoRequestType;
-    Reply: PositionInfo;
-  }>(
+  fastify.get(
     '/position-info',
     {
       schema: {
@@ -60,8 +56,8 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { positionAddress, walletAddress } = request.query;
-        const network = request.query.network || 'mainnet';
+        const { positionAddress, walletAddress } = request.query as GetPositionInfoRequestType;
+        const network = (request.query as GetPositionInfoRequestType).network || 'mainnet';
         
         const hydration = await Hydration.getInstance(network);
         const polkadot = await Polkadot.getInstance(network);

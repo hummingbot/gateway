@@ -14,7 +14,7 @@ import { httpBadRequest, httpNotFound } from '../../../services/error-handler';
  * Remove liquidity from a position
  */
 export async function removeLiquidity(
-  fastify: FastifyInstance,
+  _fastify: FastifyInstance,
   network: string,
   walletAddress: string,
   positionAddress: string,
@@ -75,10 +75,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   // Update schema example
   RemoveLiquidityRequest.properties.walletAddress.examples = [firstWalletAddress];
 
-  fastify.post<{
-    Body: RemoveLiquidityRequestType;
-    Reply: RemoveLiquidityResponseType;
-  }>(
+  fastify.post(
     '/remove-liquidity',
     {
       schema: {
@@ -100,7 +97,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network, walletAddress, positionAddress, percentageToRemove } = request.body;
+        const { network, walletAddress, positionAddress, percentageToRemove } = request.body as RemoveLiquidityRequestType;
         const networkToUse = network || 'mainnet';
         
         return await removeLiquidity(

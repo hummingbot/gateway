@@ -14,7 +14,7 @@ import { httpBadRequest, httpNotFound } from '../../../services/error-handler';
  * Execute a swap on Hydration
  */
 async function executeSwap(
-  fastify: FastifyInstance,
+  _fastify: FastifyInstance,
   network: string,
   walletAddress: string,
   baseTokenIdentifier: string,
@@ -65,7 +65,7 @@ async function executeSwap(
       baseTokenBalanceChange: result.baseTokenBalanceChange,
       quoteTokenBalanceChange: result.quoteTokenBalanceChange,
       priceImpact: result.priceImpact
-    };
+    } as ExecuteSwapResponseType;
   } catch (error) {
     logger.error(`Failed to execute swap: ${error.message}`);
     if (error.message.includes('not found')) {
@@ -92,10 +92,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
   // Update schema example
   ExecuteSwapRequest.properties.walletAddress.examples = [firstWalletAddress];
 
-  fastify.post<{
-    Body: ExecuteSwapRequestType;
-    Reply: ExecuteSwapResponseType;
-  }>(
+  fastify.post(
     '/execute-swap',
     {
       schema: {
@@ -121,7 +118,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { walletAddress, baseToken, quoteToken, amount, side, poolAddress, slippagePct } = request.body;
+        const { walletAddress, baseToken, quoteToken, amount, side, poolAddress, slippagePct } = request.body as ExecuteSwapRequestType;
         const network = request.body.network || 'mainnet';
         
         logger.info(`Received swap request: ${amount} ${baseToken} -> ${quoteToken} in pool ${poolAddress}`);

@@ -89,10 +89,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
   // Update schema example
   ClosePositionRequest.properties.walletAddress.examples = [firstWalletAddress];
 
-  fastify.post<{
-    Body: ClosePositionRequestType;
-    Reply: ClosePositionResponseType;
-  }>(
+  fastify.post(
     '/close-position',
     {
       schema: {
@@ -113,7 +110,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network, walletAddress, positionAddress } = request.body;
+        const { network, walletAddress, positionAddress } = request.body as ClosePositionRequestType;
         const networkToUse = network || 'mainnet';
         
         return await closePosition(

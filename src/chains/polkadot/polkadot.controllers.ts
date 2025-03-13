@@ -199,7 +199,7 @@ export class PolkadotController {
       throw new HttpException(
         500,
         `Failed to get staking info: ${error.message}`,
-        'STAKING_INFO_ERROR'
+        5001
       );
     }
   }
@@ -219,7 +219,7 @@ export class PolkadotController {
         throw new HttpException(
           400,
           'Missing required parameters',
-          'MISSING_PARAMETERS'
+          4001
         );
       }
       
@@ -253,7 +253,7 @@ export class PolkadotController {
       throw new HttpException(
         500,
         `Failed to transfer tokens: ${error.message}`,
-        'TRANSFER_ERROR'
+        5002
       );
     }
   }
@@ -281,7 +281,7 @@ export class PolkadotController {
       throw new HttpException(
         500,
         `Failed to get metadata: ${error.message}`,
-        'METADATA_ERROR'
+        5003
       );
     }
   }

@@ -37,10 +37,7 @@ type QuoteLiquidityResponseType = Static<typeof QuoteLiquidityResponse>;
  * Route handler for getting a liquidity quote
  */
 export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: QuoteLiquidityRequestType;
-    Reply: QuoteLiquidityResponseType;
-  }>(
+  fastify.get(
     '/quote-liquidity',
     {
       schema: {
@@ -62,7 +59,7 @@ export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           amount, 
           amountType,
           strategyType 
-        } = request.query;
+        } = request.query as QuoteLiquidityRequestType;
         const networkToUse = network || 'mainnet';
 
         // Validate inputs

@@ -13,10 +13,7 @@ import { httpNotFound } from '../../../services/error-handler';
  * Route handler for getting pool information
  */
 export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: GetPoolInfoRequestType;
-    Reply: MeteoraPoolInfo;
-  }>(
+  fastify.get(
     '/pool-info',
     {
       schema: {
@@ -36,8 +33,8 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { poolAddress } = request.query;
-        const network = request.query.network || 'mainnet';
+        const { poolAddress } = request.query as GetPoolInfoRequestType;
+        const network = (request.query as GetPoolInfoRequestType).network || 'mainnet';
         
         const hydration = await Hydration.getInstance(network);
         if (!hydration) {

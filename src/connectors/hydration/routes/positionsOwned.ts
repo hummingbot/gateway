@@ -41,10 +41,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
   // Update schema example
   GetPositionsOwnedRequest.properties.walletAddress.examples = [firstWalletAddress];
 
-  fastify.get<{
-    Querystring: GetPositionsOwnedRequestType;
-    Reply: GetPositionsOwnedResponseType;
-  }>(
+  fastify.get(
     '/positions-owned',
     {
       schema: {
@@ -68,7 +65,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
         try {
           polkadot.validatePolkadotAddress(walletAddress);
         } catch (error) {
-          throw httpBadRequest(ERROR_MESSAGES.INVALID_ADDRESS(walletAddress));
+          throw httpBadRequest(`Invalid wallet address: ${walletAddress}`);
         }
         
         // Get wallet

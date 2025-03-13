@@ -15,7 +15,7 @@ import { httpBadRequest, httpNotFound, ERROR_MESSAGES } from '../../../services/
  * Open a new position on Hydration
  */
 async function openPosition(
-  fastify: FastifyInstance,
+  _fastify: FastifyInstance,
   network: string,
   walletAddress: string,
   lowerPrice: number,
@@ -118,10 +118,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
   // Update schema example
   OpenPositionRequest.properties.walletAddress.examples = [firstWalletAddress];
 
-  fastify.post<{
-    Body: HydrationOpenPositionRequestType;
-    Reply: OpenPositionResponseType;
-  }>(
+  fastify.post(
     '/open-position',
     {
       schema: {
@@ -162,7 +159,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           quoteTokenAmount,
           slippagePct,
           strategyType 
-        } = request.body;
+        } = request.body as HydrationOpenPositionRequestType;
         const networkToUse = network || 'mainnet';
         
         return await openPosition(

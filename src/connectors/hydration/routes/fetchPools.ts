@@ -4,10 +4,8 @@ import { Hydration } from '../hydration';
 import { Polkadot } from '../../../chains/polkadot/polkadot';
 import { logger } from '../../../services/logger';
 import { 
-  PoolInfo, 
   PoolInfoSchema, 
   FetchPoolsRequest, 
-  FetchPoolsRequestType 
 } from '../../../services/clmm-interfaces';
 import { httpNotFound, httpInternalServerError, ERROR_MESSAGES } from '../../../services/error-handler';
 
@@ -15,10 +13,7 @@ import { httpNotFound, httpInternalServerError, ERROR_MESSAGES } from '../../../
  * Route handler for fetching pools
  */
 export const fetchPoolsRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: FetchPoolsRequestType,
-    Reply: PoolInfo[]
-  }>('/fetch-pools', {
+  fastify.get('/fetch-pools', {
     schema: {
       description: 'Fetch info about Hydration pools',
       tags: ['hydration'],

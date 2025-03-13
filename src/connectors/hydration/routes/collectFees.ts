@@ -14,7 +14,7 @@ import { httpNotFound } from '../../../services/error-handler';
  * Collect fees from a position
  */
 export async function collectFees(
-  fastify: FastifyInstance,
+  _fastify: FastifyInstance,
   network: string,
   walletAddress: string,
   positionAddress: string
@@ -68,10 +68,7 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
   // Update schema example
   CollectFeesRequest.properties.walletAddress.examples = [firstWalletAddress];
 
-  fastify.post<{
-    Body: CollectFeesRequestType;
-    Reply: CollectFeesResponseType;
-  }>(
+  fastify.post(
     '/collect-fees',
     {
       schema: {
@@ -92,7 +89,7 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network, walletAddress, positionAddress } = request.body;
+        const { network, walletAddress, positionAddress } = request.body as CollectFeesRequestType;
         const networkToUse = network || 'mainnet';
         
         return await collectFees(

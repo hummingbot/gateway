@@ -13,10 +13,7 @@ import { httpBadRequest, httpNotFound } from '../../../services/error-handler';
  * Route handler for getting a swap quote
  */
 export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: GetSwapQuoteRequestType;
-    Reply: GetSwapQuoteResponseType;
-  }>(
+  fastify.get(
     '/quote-swap',
     {
       schema: {
@@ -42,7 +39,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network, baseToken, quoteToken, amount, side, poolAddress, slippagePct } = request.query;
+        const { network, baseToken, quoteToken, amount, side, poolAddress, slippagePct } = request.query as GetSwapQuoteRequestType;
         const networkToUse = network || 'mainnet';
 
         // Validate inputs
