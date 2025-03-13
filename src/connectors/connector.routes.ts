@@ -64,7 +64,7 @@ export const connectorsRoutes: FastifyPluginAsync = async (fastify) => {
         },
         {
           name: 'hydration',
-          trading_type: HydrationConfig.config.tradingTypes,
+          trading_types: HydrationConfig.config.tradingTypes,
           available_networks: HydrationConfig.config.availableNetworks,
         },
       ];
