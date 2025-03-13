@@ -12,7 +12,7 @@ export namespace RaydiumConfig {
     allowedSlippage: ConfigManagerV2.getInstance().get(
       'raydium.allowedSlippage',
     ),
-    tradingTypes: ['AMM'],
+    tradingTypes: ['AMM', 'CLMM'],
     availableNetworks: [{ chain: 'solana', networks: ['mainnet-beta', 'devnet'] }],
   };
 } 
