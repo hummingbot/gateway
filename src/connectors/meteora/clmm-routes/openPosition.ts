@@ -229,7 +229,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
             slippagePct: { type: 'number', examples: [1] },
             strategyType: { 
               type: 'number', 
-              examples: [StrategyType.SpotImBalanced],
+              examples: [StrategyType.Spot],
               enum: Object.values(StrategyType).filter(x => typeof x === 'number')
             }
           }
