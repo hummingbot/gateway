@@ -7,9 +7,9 @@ import { logger } from '../../../services/logger';
 import { DecimalUtil } from '@orca-so/common-sdk';
 import { Decimal } from 'decimal.js';
 import { BN } from 'bn.js';
-import { 
-  OpenPositionRequest, 
-  OpenPositionResponse, 
+import {
+  OpenPositionRequest,
+  OpenPositionResponse,
   OpenPositionResponseType,
 } from '../../../services/clmm-interfaces';
 import { Type, Static } from '@sinclair/typebox';
@@ -69,9 +69,9 @@ async function openPosition(
 
   // Check balances with SOL buffer
   const balances = await solana.getBalance(wallet, [tokenXSymbol, tokenYSymbol, "SOL"]);
-  const requiredBaseAmount = (baseTokenAmount || 0) + 
+  const requiredBaseAmount = (baseTokenAmount || 0) +
     (tokenXSymbol === 'SOL' ? SOL_POSITION_RENT + SOL_TRANSACTION_BUFFER : 0);
-  const requiredQuoteAmount = (quoteTokenAmount || 0) + 
+  const requiredQuoteAmount = (quoteTokenAmount || 0) +
     (tokenYSymbol === 'SOL' ? SOL_POSITION_RENT + SOL_TRANSACTION_BUFFER : 0);
 
   if (balances[tokenXSymbol] < requiredBaseAmount) {
@@ -123,18 +123,18 @@ async function openPosition(
   const totalXAmount = new BN(
     DecimalUtil.toBN(
       new Decimal(
-        baseTokenAmount || 0 + 
+        baseTokenAmount || 0 +
         (tokenXSymbol === 'SOL' ? SOL_POSITION_RENT : 0)
-      ), 
+      ),
       dlmmPool.tokenX.decimal
     )
   );
   const totalYAmount = new BN(
     DecimalUtil.toBN(
       new Decimal(
-        quoteTokenAmount || 0 + 
+        quoteTokenAmount || 0 +
         (tokenYSymbol === 'SOL' ? SOL_POSITION_RENT : 0)
-      ), 
+      ),
       dlmmPool.tokenY.decimal
     )
   );
@@ -155,7 +155,7 @@ async function openPosition(
   logger.info(`Opening position in pool ${poolAddress} with price range ${lowerPrice.toFixed(4)} - ${upperPrice.toFixed(4)} ${tokenYSymbol}/${tokenXSymbol}`);
   const { signature } = await solana.sendAndConfirmTransaction(createPositionTx, [wallet, newImbalancePosition], 1_000_000);
 
-  const { baseTokenBalanceChange, quoteTokenBalanceChange, fee } = 
+  const { baseTokenBalanceChange, quoteTokenBalanceChange, fee } =
     await solana.extractPairBalanceChangesAndFee(
       signature,
       tokenX,
@@ -164,7 +164,7 @@ async function openPosition(
     );
 
   // Calculate sentSOL based on which token is SOL
-  const sentSOL = tokenXSymbol === 'SOL' 
+  const sentSOL = tokenXSymbol === 'SOL'
     ? Math.abs(baseTokenBalanceChange - fee)
     : tokenYSymbol === 'SOL'
     ? Math.abs(quoteTokenBalanceChange - fee)
@@ -185,7 +185,7 @@ async function openPosition(
 export const MeteoraOpenPositionRequest = Type.Intersect([
   OpenPositionRequest,
   Type.Object({
-    strategyType: Type.Optional(Type.Number({ 
+    strategyType: Type.Optional(Type.Number({
       enum: Object.values(StrategyType).filter(x => typeof x === 'number')
     }))
   })
@@ -196,14 +196,14 @@ export type MeteoraOpenPositionRequestType = Static<typeof MeteoraOpenPositionRe
 export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
   const solana = await Solana.getInstance('mainnet-beta');
   let firstWalletAddress = '<solana-wallet-address>';
-  
+
   const foundWallet = await solana.getFirstWalletAddress();
   if (foundWallet) {
     firstWalletAddress = foundWallet;
   } else {
     logger.debug('No wallets found for examples in schema');
   }
-  
+
   // Update schema example
   OpenPositionRequest.properties.walletAddress.examples = [firstWalletAddress];
 
@@ -227,9 +227,9 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
             baseTokenAmount: { type: 'number', examples: [0.1] },
             quoteTokenAmount: { type: 'number', examples: [15] },
             slippagePct: { type: 'number', examples: [1] },
-            strategyType: { 
-              type: 'number', 
-              examples: [StrategyType.Spot],
+            strategyType: {
+              type: 'number',
+              examples: [StrategyType.SpotImBalanced],
               enum: Object.values(StrategyType).filter(x => typeof x === 'number')
             }
           }
@@ -241,19 +241,19 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { 
-          network, 
-          walletAddress, 
-          lowerPrice, 
-          upperPrice, 
+        const {
+          network,
+          walletAddress,
+          lowerPrice,
+          upperPrice,
           poolAddress,
           baseTokenAmount,
           quoteTokenAmount,
           slippagePct,
-          strategyType 
+          strategyType
         } = request.body;
         const networkToUse = network || 'mainnet-beta';
-        
+
         return await openPosition(
           fastify,
           networkToUse,
@@ -277,4 +277,4 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
   );
 };
 
-export default openPositionRoute; 
+export default openPositionRoute;
