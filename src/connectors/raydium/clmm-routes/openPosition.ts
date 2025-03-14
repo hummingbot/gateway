@@ -61,7 +61,7 @@ async function openPosition(
 
   logger.info('Opening Raydium CLMM position...');
   const COMPUTE_UNITS = 300000;
-  let currentPriorityFee = (await solana.getGasPrice() * 1e9) - BASE_FEE;
+  let currentPriorityFee = (await solana.estimateGas() * 1e9) - BASE_FEE;
   while (currentPriorityFee <= solana.config.maxPriorityFee * 1e9) {
     const priorityFeePerCU = Math.floor(currentPriorityFee * 1e6 / COMPUTE_UNITS);
     const { transaction, extInfo } = await raydium.raydiumSDK.clmm.openPositionFromBase({

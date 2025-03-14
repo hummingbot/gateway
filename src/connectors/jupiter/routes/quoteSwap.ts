@@ -1,11 +1,11 @@
-import { FastifyPluginAsync } from 'fastify';
+import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { Solana } from '../../../chains/solana/solana';
 import { Jupiter } from '../jupiter';
 import { logger } from '../../../services/logger';
 import { GetSwapQuoteRequestType, GetSwapQuoteResponseType } from '../../../schemas/routes/swap-schema';
-import { HttpException } from '../../../services/error-handler';
 
 export async function getJupiterQuote(
+  fastify: FastifyInstance,
   network: string,
   baseToken: string,
   quoteToken: string,
@@ -20,7 +20,7 @@ export async function getJupiterQuote(
   const quoteTokenInfo = await solana.getToken(quoteToken);
 
   if (!baseTokenInfo || !quoteTokenInfo) {
-    throw new Error(`Token not found: ${!baseTokenInfo ? baseToken : quoteToken}`);
+    throw fastify.httpErrors.notFound(`Token not found: ${!baseTokenInfo ? baseToken : quoteToken}`);
   }
 
   const tradeSide = side === 'buy' ? 'BUY' : 'SELL';
@@ -56,9 +56,9 @@ export async function getJupiterQuote(
   } catch (error) {
     logger.error(`Jupiter quote error: ${error}`);
     if (error.message.includes('NO_ROUTE_FOUND')) {
-      throw new HttpException(404, `No swap route found for ${baseToken}-${quoteToken}`);
+      throw fastify.httpErrors.notFound(`No swap route found for ${baseToken}-${quoteToken}`);
     }
-    throw new HttpException(500, 'Failed to get Jupiter quote');
+    throw fastify.httpErrors.internalServerError('Failed to get Jupiter quote');
   }
 }
 
@@ -103,6 +103,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       const { network, baseToken, quoteToken, amount, side, slippagePct } = request.query;
       const quote = await getJupiterQuote(
+        fastify,
         network || 'mainnet-beta',
         baseToken,
         quoteToken,

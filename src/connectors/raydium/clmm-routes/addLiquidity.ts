@@ -50,7 +50,7 @@ async function addLiquidity(
   console.log('quotePositionResponse', quotePositionResponse)
   logger.info('Adding liquidity to Raydium CLMM position...');
   const COMPUTE_UNITS = 300000
-  let currentPriorityFee = (await solana.getGasPrice() * 1e9) - BASE_FEE
+  let currentPriorityFee = (await solana.estimateGas() * 1e9) - BASE_FEE
   while (currentPriorityFee <= solana.config.maxPriorityFee * 1e9) {
     const priorityFeePerCU = Math.floor(currentPriorityFee * 1e6 / COMPUTE_UNITS)
 

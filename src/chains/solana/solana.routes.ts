@@ -3,6 +3,7 @@ import { Type, Static } from '@sinclair/typebox';
 import { getInitializedChain } from '../../services/connection-manager';
 import { SolanaController } from './solana.controllers';
 import { Solana } from './solana';
+import { estimateGasRoute } from './routes/estimate-gas';
 
 // Define schemas
 const StatusRequestSchema = Type.Object({
@@ -87,6 +88,9 @@ export type PollResponse = Static<typeof PollResponseSchema>;
 export type StatusRequest = Static<typeof StatusRequestSchema>;
 
 export const solanaRoutes: FastifyPluginAsync = async (fastify) => {
+  // Register estimate-gas route
+  fastify.register(estimateGasRoute);
+
   // GET /solana/status
   fastify.get<{ Querystring: StatusRequest; Reply: StatusResponse }>(
     '/status',

@@ -1,14 +1,13 @@
-import { FastifyPluginAsync } from 'fastify';
+import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { Solana } from '../../../chains/solana/solana';
 import { Jupiter } from '../jupiter';
 import { logger } from '../../../services/logger';
 import { ExecuteSwapRequestType, ExecuteSwapResponseType } from '../../../schemas/routes/swap-schema';
-import { HttpException } from '../../../services/error-handler';
-import { wrapResponse } from '../../../services/response-wrapper';
 import { Wallet } from '@coral-xyz/anchor';
 import Decimal from 'decimal.js-light';
 
 async function executeJupiterSwap(
+  fastify: FastifyInstance,
   network: string,
   walletAddress: string,
   baseToken: string,
@@ -26,7 +25,7 @@ async function executeJupiterSwap(
   const quoteTokenInfo = await solana.getToken(quoteToken);
 
   if (!baseTokenInfo || !quoteTokenInfo) {
-    throw new Error(`Token not found: ${!baseTokenInfo ? baseToken : quoteToken}`);
+    throw fastify.httpErrors.notFound(`Token not found: ${!baseTokenInfo ? baseToken : quoteToken}`);
   }
 
   const tradeSide = side === 'buy' ? 'BUY' : 'SELL';
@@ -58,7 +57,7 @@ async function executeJupiterSwap(
     };
   } catch (error) {
     logger.error(`Jupiter swap error: ${error}`);
-    throw new HttpException(500, 'Failed to execute Jupiter swap');
+    throw fastify.httpErrors.internalServerError('Failed to execute Jupiter swap');
   }
 }
 
@@ -103,6 +102,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       const { network, walletAddress, baseToken, quoteToken, amount, side, slippagePct } = request.body;
       const result = await executeJupiterSwap(
+        fastify,
         network || 'mainnet-beta',
         walletAddress,
         baseToken,
@@ -119,14 +119,14 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         .div(10 ** result.quoteToken.decimals)
         .toNumber();
 
-      return wrapResponse({
+      return {
         signature: result.signature,
         totalInputSwapped: side === 'sell' ? inputAmount : outputAmount,
         totalOutputSwapped: side === 'sell' ? outputAmount : inputAmount,
         fee: Number(result.gasCost),
         baseTokenBalanceChange: side === 'sell' ? -inputAmount : outputAmount,
         quoteTokenBalanceChange: side === 'sell' ? outputAmount : -inputAmount
-      }, Date.now());
+      };
     }
   );
 };
