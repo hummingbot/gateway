@@ -56,11 +56,11 @@ const swaggerOptions = {
       { name: 'config', description: 'Configuration endpoints' },
       { name: 'wallet', description: 'Wallet endpoints' },
       { name: 'solana', description: 'Solana chain endpoints' },
-      { name: 'ethereum', description: 'Ethereum chain endpoints' },
       { name: 'jupiter', description: 'Jupiter connector endpoints' },
-      { name: 'meteora', description: 'Meteora connector endpoints' },
       { name: 'raydium', description: 'Raydium connector endpoints' },
+      { name: 'meteora', description: 'Meteora connector endpoints' },
       { name: 'uniswap', description: 'Uniswap connector endpoints' },
+      { name: 'ethereum', description: 'Ethereum chain endpoints' },
     ],
     components: {
       parameters: {

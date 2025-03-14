@@ -23,7 +23,6 @@ import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-
 import { logger } from '../../services/logger';
 import { TokenListResolutionStrategy } from '../../services/token-list-resolution';
 import { Config, getSolanaConfig } from './solana.config';
-import { SolanaController } from './solana.controllers';
 
 // Constants used for fee calculations
 export const BASE_FEE = 5000;
@@ -68,7 +67,6 @@ export class Solana {
   private _tokenMap: Record<string, TokenInfo> = {};
 
   private static _instances: { [name: string]: Solana };
-  public controller: typeof SolanaController;
 
   private static lastPriorityFeeEstimate: {
     timestamp: number;
@@ -81,7 +79,6 @@ export class Solana {
     this.config = getSolanaConfig('solana', network);
     this.nativeTokenSymbol = this.config.network.nativeCurrencySymbol;
     this.connection = new Connection(this.config.network.nodeURL, { commitment: 'confirmed' });
-    this.controller = SolanaController;
   }
 
   public static async getInstance(network: string): Promise<Solana> {
