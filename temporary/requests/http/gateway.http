@@ -1,0 +1,160 @@
+
+GET {{httpProtocol}}://{{host}}:{{port}}
+Content-Type: application/json
+
+{
+}
+
+###
+
+POST {{httpProtocol}}://{{host}}:{{port}}/wallet/add
+Content-Type: application/json
+
+{
+  "chain": "{{chain}}",
+  "network": "{{network}}",
+  "privateKey": "{{walletMnemonic}}",
+  "address": null,
+  "accountId": null
+}
+
+###
+
+GET {{httpProtocol}}://{{host}}:{{port}}/chain/status?chain={{chain}}&network={{network}}
+Content-Type: application/json
+
+{
+}
+
+###
+
+GET {{httpProtocol}}://{{host}}:{{port}}/chain/config?chain={{chain}}&network={{network}}
+Content-Type: application/json
+
+{
+}
+
+###
+
+GET {{httpProtocol}}://{{host}}:{{port}}/chain/tokens?chain={{chain}}&network={{network}}
+Content-Type: application/json
+
+{
+}
+
+###
+
+POST {{httpProtocol}}://{{host}}:{{port}}/chain/balances
+Content-Type: application/json
+
+{
+  "chain": "{{chain}}",
+  "network": "{{network}}",
+  "connector": "{{connector}}",
+  "address": "{{walletPublicKey}}",
+  "tokenSymbols": [
+    "USDT",
+    "HDX",
+    "DOT"
+  ]
+}
+
+###
+
+
+POST {{httpProtocol}}://{{host}}:{{port}}/amm/estimateGas
+Content-Type: application/json
+
+{
+  "chain": "{{chain}}",
+  "network": "{{network}}",
+  "connector": "{{connector}}"
+}
+
+###
+
+POST {{httpProtocol}}://{{host}}:{{port}}/amm/price
+Content-Type: application/json
+
+{
+  "chain": "{{chain}}",
+  "network": "{{network}}",
+  "connector": "{{connector}}",
+  "base": "HDX",
+  "quote": "USDT",
+  "amount": "1",
+  "side": "BUY"
+}
+
+###
+
+POST {{httpProtocol}}://{{host}}:{{port}}/amm/price
+Content-Type: application/json
+
+{
+  "chain": "{{chain}}",
+  "network": "{{network}}",
+  "connector": "{{connector}}",
+  "base": "HDX",
+  "quote": "USDT",
+  "amount": "1",
+  "side": "SELL"
+}
+
+###
+
+POST {{httpProtocol}}://{{host}}:{{port}}/chain/poll
+Content-Type: application/json
+
+{
+  "chain": "{{chain}}",
+  "network": "{{network}}",
+  "connector": "{{connector}}",
+  "txHash":"{{txHash}}"
+}
+
+###
+
+POST {{httpProtocol}}://{{host}}:{{port}}/amm/trade
+Content-Type: application/json
+
+{
+  "chain":"{{chain}}",
+  "network":"{{network}}",
+  "connector":"{{connector}}",
+  "base": "HDX",
+  "quote": "USDT",
+  "amount":"1",
+  "address":"{{walletPublicKey}}",
+  "side": "BUY",
+  "limitPrice": null,
+  "nonce": null,
+  "maxFeePerGas": null,
+  "maxPriorityFeePerGas": null,
+  "allowedSlippage": null,
+  "poolId": null
+}
+
+###
+
+POST {{httpProtocol}}://{{host}}:{{port}}/amm/trade
+Content-Type: application/json
+
+{
+  "chain":"{{chain}}",
+  "network":"{{network}}",
+  "connector":"{{connector}}",
+  "base": "HDX",
+  "quote": "USDT",
+  "amount":"1",
+  "address":"{{walletPublicKey}}",
+  "side": "SELL",
+  "limitPrice": null,
+  "nonce": null,
+  "maxFeePerGas": null,
+  "maxPriorityFeePerGas": null,
+  "allowedSlippage": null,
+  "poolId": null
+}
+
+###

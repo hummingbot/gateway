@@ -1,0 +1,55 @@
+GET https://api.restful-api.dev/objects
+
+###
+
+GET https://api.restful-api.dev/objects?id=3&id=5&id=10
+
+###
+
+GET https://api.restful-api.dev/objects/7
+
+###
+
+POST https://api.restful-api.dev/objects
+Content-Type: application/json
+
+{
+   "name": "Apple MacBook Pro 16",
+   "data": {
+      "year": 2019,
+      "price": 1849.99,
+      "CPU model": "Intel Core i9",
+      "Hard disk size": "1 TB"
+   }
+}
+
+###
+
+PUT https://api.restful-api.dev/objects/ff808181932badb6019594bf84354af3
+Content-Type: application/json
+
+{
+   "name": "Apple MacBook Pro 16",
+   "data": {
+      "year": 2019,
+      "price": 2049.99,
+      "CPU model": "Intel Core i9",
+      "Hard disk size": "1 TB",
+      "color": "silver"
+   }
+}
+
+###
+
+PATCH https://api.restful-api.dev/objects/ff808181932badb6019594bf84354af3
+Content-Type: application/json
+
+{
+   "name": "Apple MacBook Pro 16 (Updated Name)"
+}
+
+###
+
+DELETE https://api.restful-api.dev/objects/ff808181932badb6019594bf84354af3
+
+###

@@ -1,0 +1,51 @@
+# This is for the VSCode / Cursor settings file:
+
+{
+    ...
+
+    "rest-client.certificates": {
+        "localhost:15888": {
+            "cert": "</path/to/the/certificates/folder>/client_cert.pem",
+            "key": "</path/to/the/certificates/folder>/client_key.pem",
+            "passphrase": "<gateway certificate passphrase>"
+        },
+    },
+    
+    "rest-client.defaultHeaders": {
+    },
+    "rest-client.enableTelemetry": false,
+    "rest-client.environmentVariables": {
+        "$shared": {
+        },
+        "development": {
+            "httpProtocol": "https",
+            "webSocketProtocol": "wss",
+            "host": "localhost",
+            "port": "15888",
+            "baseUrl" : "",
+            "chain": "polkadot",
+            "network": "mainnet",
+            "connector": "hydration",
+            "walletPublicKey": "<wallet public key>",
+            "walletMnemonic": "<wallet mnemonic>",
+            "txHash": "<transaction hash>"
+        },
+        "docker": {
+            "httpProtocol": "https",
+            "webSocketProtocol": "wss",
+            "host": "localhost",
+            "port": "15888",
+            "baseUrl" : "",
+            "chain": "polkadot",
+            "network": "mainnet",
+            "connector": "hydration",
+            "walletPublicKey": "<wallet public key>",
+            "walletMnemonic": "<wallet mnemonic>",
+            "txHash": "<transaction hash>"
+        },
+    },
+    "rest-client.excludeHostsForProxy": [
+    ]
+
+    ...
+}
