@@ -12,7 +12,7 @@ export namespace MeteoraConfig {
     allowedSlippage: ConfigManagerV2.getInstance().get(
       'meteora.allowedSlippage',
     ),
-    tradingTypes: ['CLMM'],
+    tradingTypes: ['clmm'],
     availableNetworks: [{ chain: 'solana', networks: ['mainnet-beta', 'devnet'] }],
   };
 } 

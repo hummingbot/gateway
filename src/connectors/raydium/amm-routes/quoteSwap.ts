@@ -326,10 +326,16 @@ export async function getRawSwapQuote(
   
   logger.info(`Raw quote result: amountIn=${result.amountIn.toString()}, amountOut=${result.amountOut.toString()}, inputMint=${result.inputMint}, outputMint=${result.outputMint}`)
   
+  // Add price calculation
+  const price = side === 'sell' 
+    ? result.amountOut.toString() / result.amountIn.toString()
+    : result.amountIn.toString() / result.amountOut.toString();
+  
   return {
     ...result,
     inputToken,
-    outputToken
+    outputToken,
+    price,
   };
 }
 
@@ -411,6 +417,11 @@ async function formatSwapQuote(
   
   logger.info(`Balance changes: baseTokenBalanceChange=${baseTokenBalanceChange}, quoteTokenBalanceChange=${quoteTokenBalanceChange}`)
 
+  // Add price calculation
+  const price = side === 'sell' 
+    ? estimatedAmountOut / estimatedAmountIn
+    : estimatedAmountIn / estimatedAmountOut;
+
   return {
     estimatedAmountIn,
     estimatedAmountOut,
@@ -418,6 +429,7 @@ async function formatSwapQuote(
     maxAmountIn,
     baseTokenBalanceChange,
     quoteTokenBalanceChange,
+    price,
   }
 }
 
@@ -446,7 +458,12 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           }
         },
         response: {
-          200: GetSwapQuoteResponse
+          200: {
+            properties: {
+              ...GetSwapQuoteResponse.properties,
+              price: { type: 'number' }
+            }
+          }
         },
       }
     },

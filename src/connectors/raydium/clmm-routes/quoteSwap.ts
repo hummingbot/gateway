@@ -86,13 +86,19 @@ export async function getSwapQuote(
       catchLiquidityInsufficient: true,
     })
 
+  const price = side === 'sell'
+    ? (response as ReturnTypeComputeAmountOutFormat).amountOut.amount.raw.toNumber() / 
+      (response as ReturnTypeComputeAmountOutFormat).realAmountIn.amount.raw.toNumber()
+    : (response as ReturnTypeComputeAmountOutBaseOut).amountIn.amount.toNumber() / 
+      (response as ReturnTypeComputeAmountOutBaseOut).realAmountOut.amount.toNumber();
 
   return {
     inputToken,
     outputToken,
     response,
     clmmPoolInfo,
-    tickArrayCache: tickCache[poolAddress]
+    tickArrayCache: tickCache[poolAddress],
+    price
   };
 }
 
@@ -123,6 +129,8 @@ async function formatSwapQuote(
     const maxAmountIn = exactOutResponse.maxAmountIn.amount.toNumber() / 10 ** inputToken.decimals;
     const amountOut = exactOutResponse.realAmountOut.amount.toNumber() / 10 ** outputToken.decimals;
 
+    const price = amountOut / estimatedAmountIn;
+
     return {
       estimatedAmountIn,
       estimatedAmountOut: amountOut,
@@ -130,6 +138,7 @@ async function formatSwapQuote(
       minAmountOut: amountOut,
       baseTokenBalanceChange: amountOut,
       quoteTokenBalanceChange: -estimatedAmountIn,
+      price
     };
   } else {
     const exactInResponse = response as ReturnTypeComputeAmountOutFormat;
@@ -143,6 +152,8 @@ async function formatSwapQuote(
     const baseTokenChange = -estimatedAmountIn;
     const quoteTokenChange = estimatedAmountOut;
 
+    const price = estimatedAmountOut / estimatedAmountIn;
+
     return {
       estimatedAmountIn,
       estimatedAmountOut,
@@ -150,6 +161,7 @@ async function formatSwapQuote(
       maxAmountIn: estimatedAmountIn,
       baseTokenBalanceChange: baseTokenChange,
       quoteTokenBalanceChange: quoteTokenChange,
+      price
     };
   }
 }
@@ -178,7 +190,12 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           }
         },
           response: {
-          200: GetSwapQuoteResponse
+          200: {
+            properties: {
+              ...GetSwapQuoteResponse.properties,
+              price: { type: 'number' }
+            }
+          }
         },
       }
     },

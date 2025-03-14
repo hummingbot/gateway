@@ -20,8 +20,14 @@ import {
   validateTradeRequest,
 } from '../connector.validators';
 import { NetworkSelectionSchema, NetworkSelectionRequest } from '../../services/common-interfaces';
+import { quoteSwapRoute } from './routes/quoteSwap';
+import { executeSwapRoute } from './routes/executeSwap';
 
 export const jupiterRoutes: FastifyPluginAsync = async (fastify) => {
+  // Register swap routes
+  fastify.register(quoteSwapRoute);
+  fastify.register(executeSwapRoute);
+
   // POST /jupiter/price
   fastify.post<{ Body: PriceRequest; Reply: PriceResponse }>(
     '/price',

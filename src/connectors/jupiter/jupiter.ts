@@ -308,5 +308,4 @@ export class Jupiter {
   public static getRequestAmount(amount: number, decimals: number): number {
     return Math.floor(amount * DECIMAL_MULTIPLIER ** decimals);
   }
-
 }

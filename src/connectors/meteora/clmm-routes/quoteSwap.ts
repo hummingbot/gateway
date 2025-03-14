@@ -112,6 +112,8 @@ async function formatSwapQuote(
     const maxAmountIn = DecimalUtil.fromBN(exactOutQuote.maxInAmount, inputToken.decimals).toNumber();
     const amountOut = DecimalUtil.fromBN(exactOutQuote.outAmount, outputToken.decimals).toNumber();
 
+    const price = amountOut / estimatedAmountIn;
+
     return {
       estimatedAmountIn,
       estimatedAmountOut: amountOut,
@@ -119,6 +121,7 @@ async function formatSwapQuote(
       minAmountOut: amountOut,
       baseTokenBalanceChange: amountOut,
       quoteTokenBalanceChange: -estimatedAmountIn,
+      price,
     };
   } else {
     const exactInQuote = quote as SwapQuote;
@@ -132,6 +135,8 @@ async function formatSwapQuote(
     const baseTokenChange = -estimatedAmountIn;
     const quoteTokenChange = estimatedAmountOut;
 
+    const price = estimatedAmountOut / estimatedAmountIn;
+
     return {
       estimatedAmountIn,
       estimatedAmountOut,
@@ -139,6 +144,7 @@ async function formatSwapQuote(
       maxAmountIn: estimatedAmountIn,
       baseTokenBalanceChange: baseTokenChange,
       quoteTokenBalanceChange: quoteTokenChange,
+      price,
     };
   }
 }
@@ -167,7 +173,12 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           }
         },
         response: {
-          200: GetSwapQuoteResponse
+          200: {
+            properties: {
+              ...GetSwapQuoteResponse.properties,
+              price: { type: 'number' }
+            }
+          }
         },
       }
     },
