@@ -8,7 +8,7 @@ import {
   PoolInfoSchema, 
   FetchPoolsRequest, 
   FetchPoolsRequestType 
-} from '../../../services/clmm-interfaces';
+} from '../../../schemas/routes/clmm-schema';
 import { httpNotFound, httpInternalServerError, ERROR_MESSAGES } from '../../../services/error-handler';
 
 export const fetchPoolsRoute: FastifyPluginAsync = async (fastify) => {

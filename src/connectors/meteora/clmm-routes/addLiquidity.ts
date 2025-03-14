@@ -11,7 +11,7 @@ import {
   AddLiquidityRequest, 
   AddLiquidityResponse, 
   AddLiquidityResponseType 
-} from '../../../services/clmm-interfaces';
+} from '../../../schemas/routes/clmm-schema';
 import { Type, Static } from '@sinclair/typebox';
 import { httpBadRequest, httpNotFound, ERROR_MESSAGES } from '../../../services/error-handler';
 

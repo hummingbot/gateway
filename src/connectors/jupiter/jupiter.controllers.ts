@@ -312,8 +312,8 @@ export async function estimateGas(
   _jupiter: Jupiter,  // TODO: apply Jupiter-specific compute units estimation
 ): Promise<EstimateGasResponse> {
   const initTime = Date.now();
-  const priorityFeeInMicroLamports = await solana.estimatePriorityFees();
-  const gasCost = await solana.getGasPrice();
+  const priorityFeeInMicroLamports = await solana.estimateGasPrice();
+  const gasCost = await solana.estimateGas();
 
   return wrapResponse({
     network: solana.network,

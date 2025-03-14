@@ -7,7 +7,7 @@ import {
   ExecuteSwapResponseType,
   ExecuteSwapRequest,
   ExecuteSwapResponse
-} from '../../../services/swap-interfaces'
+} from '../../../schemas/routes/swap-schema'
 import { getRawSwapQuote } from './quoteSwap'
 import BN from 'bn.js'
 import { VersionedTransaction } from '@solana/web3.js'
@@ -51,7 +51,7 @@ async function executeSwap(
   logger.info(`Executing ${amount.toFixed(4)} ${side} swap in pool ${poolAddress}`)
 
   const COMPUTE_UNITS = 600000;
-  let currentPriorityFee = (await solana.getGasPrice() * 1e9) - BASE_FEE;
+  let currentPriorityFee = (await solana.estimateGas() * 1e9) - BASE_FEE;
   while (currentPriorityFee <= solana.config.maxPriorityFee * 1e9) {
     const priorityFeePerCU = Math.floor(currentPriorityFee * 1e6 / COMPUTE_UNITS);
     let transaction: VersionedTransaction;

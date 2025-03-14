@@ -9,7 +9,7 @@ import {
   ClosePositionResponse, 
   ClosePositionRequestType, 
   ClosePositionResponseType,
-} from '../../../services/clmm-interfaces';
+} from '../../../schemas/routes/clmm-schema';
 
 async function closePosition(
   _fastify: FastifyInstance,
