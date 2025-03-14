@@ -6,7 +6,7 @@ import {
   GetPoolInfoRequest,
   PoolInfo,
   PoolInfoSchema
-} from '../../../services/clmm-interfaces';
+} from '../../../schemas/routes/clmm-schema';
 
 export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{

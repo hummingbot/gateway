@@ -7,7 +7,7 @@ import {
   RemoveLiquidityResponse,
   RemoveLiquidityRequestType,
   RemoveLiquidityResponseType,
-} from '../../../services/clmm-interfaces'
+} from '../../../schemas/routes/clmm-schema'
 import { TxVersion } from '@raydium-io/raydium-sdk-v2'
 import BN from 'bn.js'
 import Decimal from 'decimal.js'

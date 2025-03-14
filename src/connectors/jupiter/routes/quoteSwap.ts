@@ -2,7 +2,7 @@ import { FastifyPluginAsync } from 'fastify';
 import { Solana } from '../../../chains/solana/solana';
 import { Jupiter } from '../jupiter';
 import { logger } from '../../../services/logger';
-import { GetSwapQuoteRequestType, GetSwapQuoteResponseType } from '../../../services/swap-interfaces';
+import { GetSwapQuoteRequestType, GetSwapQuoteResponseType } from '../../../schemas/routes/swap-schema';
 import { HttpException } from '../../../services/error-handler';
 
 export async function getJupiterQuote(

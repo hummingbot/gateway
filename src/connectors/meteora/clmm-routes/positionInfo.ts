@@ -7,7 +7,7 @@ import {
   PositionInfoSchema, 
   GetPositionInfoRequestType, 
   GetPositionInfoRequest 
-} from '../../../services/clmm-interfaces'
+} from '../../../schemas/routes/clmm-schema'
 import { PublicKey } from '@solana/web3.js';
 
 export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {

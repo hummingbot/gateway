@@ -7,7 +7,7 @@ import {
   RemoveLiquidityResponse,
   RemoveLiquidityRequestType,
   RemoveLiquidityResponseType,
-} from '../../../services/amm-interfaces'
+} from '../../../schemas/routes/amm-schema'
 import { 
   AmmV4Keys,
   CpmmKeys,

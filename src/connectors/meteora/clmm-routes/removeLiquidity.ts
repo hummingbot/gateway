@@ -8,7 +8,7 @@ import {
   RemoveLiquidityResponse, 
   RemoveLiquidityRequestType, 
   RemoveLiquidityResponseType 
-} from '../../../services/clmm-interfaces';
+} from '../../../schemas/routes/clmm-schema';
 import { httpBadRequest, ERROR_MESSAGES } from '../../../services/error-handler';
 import { PublicKey } from '@solana/web3.js';
 

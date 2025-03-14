@@ -11,7 +11,7 @@ import {
   GetSwapQuoteResponseType,
   GetSwapQuoteRequest,
   GetSwapQuoteResponse
-} from '../../../services/swap-interfaces';
+} from '../../../schemas/routes/swap-schema';
 
 export async function getRawSwapQuote(
   fastify: FastifyInstance,

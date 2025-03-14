@@ -7,7 +7,7 @@ import {
   GetSwapQuoteResponse,
   GetSwapQuoteRequestType,
   GetSwapQuoteResponseType,
-} from '../../../services/swap-interfaces'
+} from '../../../schemas/routes/swap-schema'
 import { 
   ApiV3PoolInfoStandardItem,
   ApiV3PoolInfoStandardItemCpmm,

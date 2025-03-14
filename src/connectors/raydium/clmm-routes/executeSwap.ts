@@ -7,7 +7,7 @@ import {
   ExecuteSwapResponseType,
   ExecuteSwapRequest,
   ExecuteSwapResponse
-} from '../../../services/swap-interfaces'
+} from '../../../schemas/routes/swap-schema'
 import { getSwapQuote } from './quoteSwap'
 import {
   ReturnTypeComputeAmountOutFormat,

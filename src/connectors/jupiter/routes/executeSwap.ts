@@ -2,7 +2,7 @@ import { FastifyPluginAsync } from 'fastify';
 import { Solana } from '../../../chains/solana/solana';
 import { Jupiter } from '../jupiter';
 import { logger } from '../../../services/logger';
-import { ExecuteSwapRequestType, ExecuteSwapResponseType } from '../../../services/swap-interfaces';
+import { ExecuteSwapRequestType, ExecuteSwapResponseType } from '../../../schemas/routes/swap-schema';
 import { HttpException } from '../../../services/error-handler';
 import { wrapResponse } from '../../../services/response-wrapper';
 import { Wallet } from '@coral-xyz/anchor';

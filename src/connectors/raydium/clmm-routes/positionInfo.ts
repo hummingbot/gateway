@@ -3,7 +3,7 @@ import { Raydium } from '../raydium'
 import { 
   PositionInfo, 
   PositionInfoSchema, 
-} from '../../../services/clmm-interfaces'
+} from '../../../schemas/routes/clmm-schema'
 
 export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{

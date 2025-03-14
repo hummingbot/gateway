@@ -8,7 +8,7 @@ import {
   AddLiquidityRequestType,
   AddLiquidityResponseType,
   QuoteLiquidityResponseType,
-} from '../../../services/amm-interfaces'
+} from '../../../schemas/routes/amm-schema'
 import { 
   AmmV4Keys,
   CpmmKeys,
