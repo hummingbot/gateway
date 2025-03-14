@@ -131,7 +131,7 @@ async function addLiquidity(
     const addLiquidityTx = api.tx.omnipool.addLiquidity(
       baseAsset.id,
       baseAmountBN.toString(),
-      calculateMinAmountOut(quoteAmountBN, effectiveSlippage).toString()
+      //calculateMinAmountOut(quoteAmountBN, effectiveSlippage).toString()
     );
 
     // Sign and send the transaction - Fix the signAndSend callback signature

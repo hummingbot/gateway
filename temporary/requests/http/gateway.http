@@ -7,6 +7,14 @@ Content-Type: application/json
 
 ###
 
+GET {{httpProtocol}}://{{host}}:{{port}}/config
+Content-Type: application/json
+
+{
+}
+
+###
+
 POST {{httpProtocol}}://{{host}}:{{port}}/wallet/add
 Content-Type: application/json
 

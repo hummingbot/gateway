@@ -46,6 +46,9 @@ importers:
       '@fastify/type-provider-typebox':
         specifier: ^4.1.0
         version: 4.1.0(@sinclair/typebox@0.33.22)
+      '@galacticcouncil/api-augment':
+        specifier: ^0.5.1
+        version: 0.5.1
       '@galacticcouncil/sdk':
         specifier: ^5.6.0
         version: 5.6.0(@polkadot/api-augment@15.8.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(@polkadot/api-base@15.8.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(@polkadot/api-derive@15.8.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(@polkadot/api@15.8.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(@polkadot/keyring@13.4.3(@polkadot/util-crypto@13.4.3(@polkadot/util@13.4.3))(@polkadot/util@13.4.3))(@polkadot/rpc-augment@15.8.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(@polkadot/rpc-core@15.8.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(@polkadot/rpc-provider@15.8.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(@polkadot/types-augment@15.8.1)(@polkadot/types-codec@15.8.1)(@polkadot/types-create@15.8.1)(@polkadot/types-known@15.8.1)(@polkadot/types@15.8.1)(@polkadot/util-crypto@13.4.3(@polkadot/util@13.4.3))(@polkadot/util@13.4.3)
@@ -196,6 +199,9 @@ importers:
       http-status-codes:
         specifier: 2.2.0
         version: 2.2.0
+      hydradx:
+        specifier: link:@galacticcouncil/api-augment/hydradx
+        version: link:@galacticcouncil/api-augment/hydradx
       i:
         specifier: ^0.3.7
         version: 0.3.7
@@ -970,6 +976,9 @@ packages:
     resolution: {integrity: sha512-mXNBaBEoS6Yf4/O2ujNhu9yEZwvBC7niqRESsiftE9NP1hV6ZdV3ZsFbPf1S520BK3rTZ0F28zr+sMdIXNJlfw==}
     peerDependencies:
       '@sinclair/typebox': '>=0.26 <=0.33'
+
+  '@galacticcouncil/api-augment@0.5.1':
+    resolution: {integrity: sha512-osQVsJPk8hxMcqV1B+Tmz1uvgJz1JE+5FegUX0Csxacfi16OaIbgNtWmVFueKHZ08MFaJFuX3gdXDAfBUnet0A==}
 
   '@galacticcouncil/math-lbp@1.0.0':
     resolution: {integrity: sha512-G5WsqJpQEkHcN8oFKxPOYqh7GSrt/6X6YQJWTNjxm9aKpXc/xQlTYXybML2J4wZ4VywEnqvX3CmpPfOg7wQkLg==}
@@ -8876,6 +8885,8 @@ snapshots:
   '@fastify/type-provider-typebox@4.1.0(@sinclair/typebox@0.33.22)':
     dependencies:
       '@sinclair/typebox': 0.33.22
+
+  '@galacticcouncil/api-augment@0.5.1': {}
 
   '@galacticcouncil/math-lbp@1.0.0': {}
 
