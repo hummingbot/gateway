@@ -24,6 +24,7 @@ import {
 } from '../services/error-handler';
 import { Solana } from '../chains/solana/solana';
 import { EthereumBase } from '../chains/ethereum/ethereum-base';
+import { Polkadot } from '../chains/polkadot/polkadot';
 
 const walletPath = './conf/wallets';
 
@@ -74,6 +75,16 @@ export async function addWallet(
         passphrase
       );
     }
+    else if (connection instanceof Polkadot) {
+      address = connection
+        .getKeyringPairFromPrivateKey(req.privateKey)
+        .publicKey.toString();
+      encryptedPrivateKey = await connection.encrypt(
+        req.privateKey,
+        passphrase
+      );
+    }
+
     if (address === undefined || encryptedPrivateKey === undefined) {
       throw new Error('ERROR_RETRIEVING_WALLET_ADDRESS_ERROR_CODE');
     }

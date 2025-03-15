@@ -1,0 +1,132 @@
+### Get Hydration Status
+GET {{httpProtocol}}://{{host}}:{{port}}/hydration/status
+
+###
+
+### Get Hydration Tokens
+GET {{httpProtocol}}://{{host}}:{{port}}/hydration/tokens
+
+###
+
+### Get Specific Token by ID
+GET {{httpProtocol}}://{{host}}:{{port}}/hydration/tokens/0
+
+###
+
+### Get Token Price
+GET {{httpProtocol}}://{{host}}:{{port}}/hydration/price?tokenId=0&quoteTokenId=5
+
+###
+
+### Get Liquidity Pools
+GET {{httpProtocol}}://{{host}}:{{port}}/hydration/pools
+
+###
+
+### Get Specific Pool by ID
+GET {{httpProtocol}}://{{host}}:{{port}}/hydration/pools/100
+
+###
+
+### Get Pool Reserves
+GET {{httpProtocol}}://{{host}}:{{port}}/hydration/pools/100/reserves
+
+###
+
+### Get Swap Quote
+POST {{httpProtocol}}://{{host}}:{{port}}/hydration/quote
+Content-Type: application/json
+
+{
+  "tokenIn": "0",
+  "tokenOut": "5",
+  "amount": "1000000000000",
+  "slippageTolerance": 0.5
+}
+
+###
+
+### Execute Swap
+POST {{httpProtocol}}://{{host}}:{{port}}/hydration/swap
+Content-Type: application/json
+
+{
+  "tokenIn": "0",
+  "tokenOut": "5",
+  "amount": "1000000000000",
+  "slippageTolerance": 0.5,
+  "walletAddress": "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY"
+}
+
+###
+
+### Add Liquidity
+POST {{httpProtocol}}://{{host}}:{{port}}/hydration/liquidity/add
+Content-Type: application/json
+
+{
+  "poolId": "100",
+  "amounts": [
+    {
+      "tokenId": "10",
+      "amount": "1000000"
+    },
+    {
+      "tokenId": "18",
+      "amount": "1000000000000000000"
+    }
+  ],
+  "slippageTolerance": 0.5,
+  "walletAddress": "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY"
+}
+
+###
+
+### Remove Liquidity
+POST http://localhost:15888/hydration/liquidity/remove
+Content-Type: application/json
+
+{
+  "poolId": "100",
+  "lpAmount": "500000000000000000",
+  "slippageTolerance": 0.5,
+  "walletAddress": "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY"
+}
+
+###
+
+### Get Transaction Status
+GET {{httpProtocol}}://{{host}}:{{port}}/hydration/transaction/0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
+
+###
+
+### Get Account Balance
+GET http://localhost:15888/hydration/balance?address=5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY&tokenId=0
+
+###
+
+### Get Account Balances (Multiple Tokens)
+POST http://localhost:15888/hydration/balances
+Content-Type: application/json
+
+{
+  "address": "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+  "tokenIds": ["0", "5", "10"]
+}
+
+###
+
+### Get Network Configuration
+GET {{httpProtocol}}://{{host}}:{{port}}/hydration/config
+
+###
+
+### Update Slippage Tolerance
+PATCH {{httpProtocol}}://{{host}}:{{port}}/hydration/config/slippage
+Content-Type: application/json
+
+{
+  "slippageTolerance": 1.0
+}
+
+###

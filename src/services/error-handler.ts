@@ -270,7 +270,7 @@ export const errorHandler = (
   if (error instanceof HttpError) {
     return reply.status(error.statusCode).send(error);
   }
-  
+
   // Handle our HttpException (this is what we're using in Jupiter controllers)
   if (error instanceof HttpException) {
     return reply.status(error.status).send({
@@ -324,7 +324,7 @@ export const ERROR_MESSAGES = {
     `Position width (${current} bins) exceeds ${max} bins limit`,
   TRANSACTION_FAILED: (reason: string) => `Transaction failed: ${reason}`,
   POSITION_CREATION_FAILED: 'Failed to create position',
-  INVALID_SOLANA_ADDRESS: (address: string) => 
+  INVALID_SOLANA_ADDRESS: (address: string) =>
     `Invalid Solana address: ${address}. Address must be a base58-encoded public key`,
   OPEN_POSITION_ERROR: (message: string) => `Open position error: ${message}`,
   TOKEN_NOT_FOUND: (token: string) => `Token not found: ${token}`,

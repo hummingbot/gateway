@@ -250,19 +250,19 @@ export class Polkadot {
 
   /**
    * Get a keyring pair from a private key
-   * @param privateKey The private key in hex format
+   * @param privateKey The private key in mnemonic format
    * @returns The keyring pair
    */
   getKeyringPairFromPrivateKey(privateKey: string): KeyringPair {
     try {
       // Remove '0x' prefix if present
-      const cleanPrivateKey = privateKey.startsWith('0x') ? privateKey.slice(2) : privateKey;
+      // const cleanPrivateKey = privateKey.startsWith('0x') ? privateKey.slice(2) : privateKey;
 
       // Convert hex to Uint8Array
-      const privateKeyBytes = hexToU8a('0x' + cleanPrivateKey);
+      // const privateKeyBytes = hexToU8a('0x' + cleanPrivateKey);
 
       // Create keyring pair
-      return this._keyring.addFromSeed(privateKeyBytes);
+      return this._keyring.addFromMnemonic(privateKey);
     } catch (error) {
       logger.error(`Failed to get keyring pair from private key: ${error.message}`);
       throw error;

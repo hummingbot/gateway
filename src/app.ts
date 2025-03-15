@@ -24,6 +24,8 @@ import { jupiterRoutes } from './connectors/jupiter/jupiter.routes';
 import { meteoraRoutes } from './connectors/meteora/meteora.routes';
 import { uniswapRoutes } from './connectors/uniswap/uniswap.routes';
 import { raydiumRoutes } from './connectors/raydium/raydium.routes';
+import { polkadotRoutes } from './chains/polkadot/polkadot.routes';
+import { hydrationRoutes } from './connectors/hydration/hydration.routes';
 
 
 // Change version for each release
@@ -61,6 +63,8 @@ const swaggerOptions = {
       { name: 'jupiter', description: 'Jupiter connector endpoints' },
       { name: 'ethereum', description: 'Ethereum chain endpoints' },
       { name: 'uniswap', description: 'Uniswap connector endpoints' },
+      { name: 'polkadot', description: 'Polkadot chain endpoints' },
+      { name: 'hydration', description: 'Hydration connector endpoints' },
     ],
     components: {
       parameters: {
@@ -106,11 +110,11 @@ const configureGatewayServer = () => {
     } : false,
     https: devMode ? undefined : getHttpsOptions()
   });
-  
+
   const docsPort = ConfigManagerV2.getInstance().get('server.docsPort');
-  
+
   docsServer = docsPort ? Fastify() : null;
-  
+
   // Register TypeBox provider
   server.withTypeProvider<TypeBoxTypeProvider>();
   if (docsServer) {
@@ -119,7 +123,7 @@ const configureGatewayServer = () => {
 
   // Register Swagger
   server.register(fastifySwagger, swaggerOptions);
-  
+
   // Register Swagger UI based on configuration
   if (!docsPort) {
     // If no docs port, serve docs on main server at /docs
@@ -163,6 +167,8 @@ const configureGatewayServer = () => {
     app.register(uniswapRoutes, { prefix: '/uniswap' });
     app.register(solanaRoutes, { prefix: '/solana' });
     app.register(ethereumRoutes, { prefix: '/ethereum' });
+    app.register(polkadotRoutes, { prefix: '/polkadot' });
+    app.register(hydrationRoutes, { prefix: '/hydration' });
   };
 
   // Register routes on main server
@@ -204,7 +210,7 @@ export const startGateway = async () => {
   const port = ConfigManagerV2.getInstance().get('server.port');
   const docsPort = ConfigManagerV2.getInstance().get('server.docsPort');
   const protocol = devMode ? 'http' : 'https';
-  
+
   // Display ASCII logo
   console.log(`\n${asciiLogo.trim()}`);
   logger.info(`⚡️ Gateway version ${GATEWAY_VERSION} starting at ${protocol}://localhost:${port}`);
@@ -213,7 +219,7 @@ export const startGateway = async () => {
     // Kill any process using the gateway port
     try {
       logger.info(`Checking for processes using port ${port}...`);
-      
+
       // Use more reliable platform-specific commands
       if (process.platform === 'win32') {
         try {
@@ -264,10 +270,10 @@ export const startGateway = async () => {
     }
 
     // Single documentation log after server starts
-    const docsUrl = docsPort 
+    const docsUrl = docsPort
       ? `http://localhost:${docsPort}`
       : `${protocol}://localhost:${port}/docs`;
-      
+
     logger.info(`📓 Documentation available at ${docsUrl}`);
 
   } catch (err) {
