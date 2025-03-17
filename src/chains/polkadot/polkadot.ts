@@ -75,30 +75,30 @@ export class Polkadot {
     try {
       logger.info(`Initializing Polkadot for network: ${this.network}`);
 
-      // Wait for crypto to be ready
-      await cryptoWaitReady();
-
-      // Initialize keyring
-      this._keyring = new Keyring({
-        type: 'sr25519',
-        ss58Format: this.config.network.ss58Format
-      });
-
-      // Connect to the node
-      const provider = this.config.network.nodeURL.startsWith('http')
-        ? new HttpProvider(this.config.network.nodeURL)
-        : new WsProvider(this.config.network.nodeURL);
-
-      this.api = await ApiPromise.create({ provider });
-
-      // Wait for API to be ready
-      await this.api.isReady;
-
-      // Load token list
-      await this.getTokenList(
-        this.config.network.tokenListSource,
-        this.config.network.tokenListType
-      );
+      // // Wait for crypto to be ready
+      // await cryptoWaitReady();
+      //
+      // // Initialize keyring
+      // this._keyring = new Keyring({
+      //   type: 'sr25519',
+      //   ss58Format: this.config.network.ss58Format
+      // });
+      //
+      // // Connect to the node
+      // const provider = this.config.network.nodeURL.startsWith('http')
+      //   ? new HttpProvider(this.config.network.nodeURL)
+      //   : new WsProvider(this.config.network.nodeURL);
+      //
+      // this.api = await ApiPromise.create({ provider });
+      //
+      // // Wait for API to be ready
+      // await this.api.isReady;
+      //
+      // // Load token list
+      // await this.getTokenList(
+      //   this.config.network.tokenListSource,
+      //   this.config.network.tokenListType
+      // );
 
       logger.info(`Polkadot initialized for network: ${this.network}`);
     } catch (error) {

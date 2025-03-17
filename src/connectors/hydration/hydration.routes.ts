@@ -17,10 +17,10 @@ import { quoteLiquidityRoute } from './routes/quoteLiquidity';
 /**
  * Register all Hydration routes
  */
-export const hydrationRoutes: FastifyPluginAsync = async (fastify) => {
+export const hydrationAMMRoutes: FastifyPluginAsync = async (fastify) => {
   // Register sensible plugin for better error handling
   await fastify.register(sensible);
-  
+
   // Register all route handlers
   await fastify.register(fetchPoolsRoute);
   await fastify.register(poolInfoRoute);
@@ -34,6 +34,10 @@ export const hydrationRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(removeLiquidityRoute);
   await fastify.register(collectFeesRoute);
   await fastify.register(closePositionRoute);
+};
+
+export const hydrationRoutes = {
+  amm: hydrationAMMRoutes
 };
 
 export default hydrationRoutes;

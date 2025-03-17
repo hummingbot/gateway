@@ -168,7 +168,7 @@ const configureGatewayServer = () => {
     app.register(solanaRoutes, { prefix: '/solana' });
     app.register(ethereumRoutes, { prefix: '/ethereum' });
     app.register(polkadotRoutes, { prefix: '/polkadot' });
-    app.register(hydrationRoutes, { prefix: '/hydration' });
+    app.register(hydrationRoutes.amm, { prefix: '/hydration/amm' });
   };
 
   // Register routes on main server
