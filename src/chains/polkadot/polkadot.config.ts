@@ -7,7 +7,6 @@ interface NetworkConfig {
   tokenListSource: string;
   nativeCurrencySymbol: string;
   ss58Format: number; // Polkadot-specific: SS58 address format
-  chainId?: number; // ID da rede para compatibilidade com TokenInfo
 }
 
 export interface Config {
@@ -37,9 +36,6 @@ export function getPolkadotConfig(
       ss58Format: ConfigManagerV2.getInstance().get(
         chainName + '.networks.' + networkName + '.ss58Format'
       ),
-      chainId: ConfigManagerV2.getInstance().get(
-        chainName + '.networks.' + networkName + '.chainId'
-      ) || 0,
     },
     defaultTransactionTimeout: ConfigManagerV2.getInstance().get(
       chainName + '.defaultTransactionTimeout'

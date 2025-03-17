@@ -14,26 +14,26 @@
                         "nodeURL": {
                             "type": "string"
                         },
-                        "assetListType": {
+                        "tokenListType": {
                             "type": "string"
                         },
-                        "assetListSource": {
+                        "tokenListSource": {
+                            "type": "string"
+                        },
+                        "nativeCurrencySymbol": {
                             "type": "string"
                         }
                     },
                     "required": [
-                        "chainId",
                         "nodeURL",
-                        "assetListType",
-                        "assetListSource"
+                        "tokenListType",
+                        "tokenListSource",
+                        "nativeCurrencySymbol"
                     ],
                     "additionalProperties": false
                 }
             },
             "additionalProperties": false
-        },
-        "nativeCurrencySymbol": {
-            "type": "string"
         },
         "gasLimitEstimate": {
             "type": "number"
@@ -41,6 +41,6 @@
     },
     "additionalProperties": false,
     "required": [
-        "nativeCurrencySymbol"
+        "networks"
     ]
 }
