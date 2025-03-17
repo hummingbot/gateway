@@ -1,4 +1,4 @@
-
+# GET /
 GET {{httpProtocol}}://{{host}}:{{port}}
 Content-Type: application/json
 
@@ -7,6 +7,7 @@ Content-Type: application/json
 
 ###
 
+# GET /config
 GET {{httpProtocol}}://{{host}}:{{port}}/config
 Content-Type: application/json
 
@@ -15,154 +16,180 @@ Content-Type: application/json
 
 ###
 
+# GET /config?chainOrConnector=polkadot
+GET {{httpProtocol}}://{{host}}:{{port}}/config?chainOrConnector=polkadot
+Content-Type: application/json
+
+{
+}
+
+###
+
+# GET /config?chainOrConnector=hydration
+GET {{httpProtocol}}://{{host}}:{{port}}/config?chainOrConnector=hydration
+Content-Type: application/json
+
+{
+}
+
+###
+
+# POST /config/update
+POST {{httpProtocol}}://{{host}}:{{port}}/config/update
+Content-Type: application/json
+
+{
+  "configPath": "hydration.allowedSlippage",
+  "configValue": "2/100"
+}
+
+###
+
+# GET /connectors
+GET {{httpProtocol}}://{{host}}:{{port}}/connectors
+Content-Type: application/json
+
+{
+}
+
+###
+
+# GET /wallet
+GET {{httpProtocol}}://{{host}}:{{port}}/wallet
+Content-Type: application/json
+
+{
+}
+
+###
+
+# POST /wallet/add
 POST {{httpProtocol}}://{{host}}:{{port}}/wallet/add
 Content-Type: application/json
 
 {
   "chain": "{{chain}}",
   "network": "{{network}}",
-  "privateKey": "{{walletMnemonic}}",
-  "address": null,
-  "accountId": null
+  "privateKey": "{{walletMnemonic}}"
 }
 
 ###
 
-GET {{httpProtocol}}://{{host}}:{{port}}/chain/status?chain={{chain}}&network={{network}}
+# DELETE /wallet/remove
+DELETE {{httpProtocol}}://{{host}}:{{port}}/wallet/remove
 Content-Type: application/json
 
 {
+  "chain": "{{chain}}",
+  "address": "{{walletPublicKey}}"
 }
 
 ###
 
-GET {{httpProtocol}}://{{host}}:{{port}}/chain/config?chain={{chain}}&network={{network}}
-Content-Type: application/json
-
-{
-}
-
-###
-
-GET {{httpProtocol}}://{{host}}:{{port}}/chain/tokens?chain={{chain}}&network={{network}}
-Content-Type: application/json
-
-{
-}
-
-###
-
-POST {{httpProtocol}}://{{host}}:{{port}}/chain/balances
+# POST /wallet/sign
+POST {{httpProtocol}}://{{host}}:{{port}}/wallet/sign
 Content-Type: application/json
 
 {
   "chain": "{{chain}}",
   "network": "{{network}}",
-  "connector": "{{connector}}",
   "address": "{{walletPublicKey}}",
-  "tokenSymbols": [
-    "USDT",
-    "HDX",
-    "DOT"
-  ]
+  "message": "Hello, World!"
 }
 
 ###
 
-
-POST {{httpProtocol}}://{{host}}:{{port}}/amm/estimateGas
+# GET /<chain>/status
+GET {{httpProtocol}}://{{host}}:{{port}}/{{chain}}/status?network={{network}}
 Content-Type: application/json
 
 {
-  "chain": "{{chain}}",
+}
+
+###
+
+# GET /<chain>/tokens - Just network
+GET {{httpProtocol}}://{{host}}:{{port}}/{{chain}}/tokens?network={{network}}
+Content-Type: application/json
+
+{
+}
+
+###
+
+# GET /<chain>/tokens - Single token
+GET {{httpProtocol}}://{{host}}:{{port}}/{{chain}}/tokens?network={{network}}&tokenSymbols=SOL
+Content-Type: application/json
+
+{
+}
+
+###
+
+# GET /<chain>/tokens - Multiple tokens
+GET {{httpProtocol}}://{{host}}:{{port}}/{{chain}}/tokens?network={{network}}&tokenSymbols=SOL,USDC,BONK
+Content-Type: application/json
+
+{
+}
+
+###
+
+# POST /{{chain}}/balances - All balances
+POST {{httpProtocol}}://{{host}}:{{port}}/{{chain}}/balances
+Content-Type: application/json
+
+{
   "network": "{{network}}",
-  "connector": "{{connector}}"
+  "address": "{{walletPublicKey}}"
 }
 
 ###
 
-POST {{httpProtocol}}://{{host}}:{{port}}/amm/price
+# POST /{{chain}}/balances - Single token (string format)
+POST {{httpProtocol}}://{{host}}:{{port}}/{{chain}}/balances
 Content-Type: application/json
 
 {
-  "chain": "{{chain}}",
   "network": "{{network}}",
-  "connector": "{{connector}}",
-  "base": "HDX",
-  "quote": "USDT",
-  "amount": "1",
-  "side": "BUY"
+  "address": "{{walletPublicKey}}",
+  "tokenSymbols": "SOL"
 }
 
 ###
 
-POST {{httpProtocol}}://{{host}}:{{port}}/amm/price
+# POST /{{chain}}/balances - Single token (array format)
+POST {{httpProtocol}}://{{host}}:{{port}}/{{chain}}/balances
 Content-Type: application/json
 
 {
-  "chain": "{{chain}}",
   "network": "{{network}}",
-  "connector": "{{connector}}",
-  "base": "HDX",
-  "quote": "USDT",
-  "amount": "1",
-  "side": "SELL"
+  "address": "{{walletPublicKey}}",
+  "tokenSymbols": ["SOL"]
 }
 
 ###
 
-POST {{httpProtocol}}://{{host}}:{{port}}/chain/poll
+# POST /{{chain}}/balances - Multiple tokens
+POST {{httpProtocol}}://{{host}}:{{port}}/{{chain}}/balances
 Content-Type: application/json
 
 {
-  "chain": "{{chain}}",
   "network": "{{network}}",
-  "connector": "{{connector}}",
-  "txHash":"{{txHash}}"
+  "address": "{{walletPublicKey}}",
+  "tokenSymbols": ["SOL", "USDC", "BONK"]
 }
 
 ###
 
-POST {{httpProtocol}}://{{host}}:{{port}}/amm/trade
+# POST /{{chain}}/poll - Poll for transaction status
+POST {{httpProtocol}}://{{host}}:{{port}}/{{chain}}/poll
 Content-Type: application/json
 
 {
-  "chain":"{{chain}}",
-  "network":"{{network}}",
-  "connector":"{{connector}}",
-  "base": "HDX",
-  "quote": "USDT",
-  "amount":"1",
-  "address":"{{walletPublicKey}}",
-  "side": "BUY",
-  "limitPrice": null,
-  "nonce": null,
-  "maxFeePerGas": null,
-  "maxPriorityFeePerGas": null,
-  "allowedSlippage": null,
-  "poolId": null
+  "network": "{{network}}",
+  "txHash": "{{txHash}}"
 }
 
 ###
 
-POST {{httpProtocol}}://{{host}}:{{port}}/amm/trade
-Content-Type: application/json
-
-{
-  "chain":"{{chain}}",
-  "network":"{{network}}",
-  "connector":"{{connector}}",
-  "base": "HDX",
-  "quote": "USDT",
-  "amount":"1",
-  "address":"{{walletPublicKey}}",
-  "side": "SELL",
-  "limitPrice": null,
-  "nonce": null,
-  "maxFeePerGas": null,
-  "maxPriorityFeePerGas": null,
-  "allowedSlippage": null,
-  "poolId": null
-}
-
-###
