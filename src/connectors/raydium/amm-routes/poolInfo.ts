@@ -6,7 +6,7 @@ import {
   GetPoolInfoRequest,
   PoolInfo,
   PoolInfoSchema
-} from '../../../schemas/routes/amm-schema';
+} from '../../../schemas/trading-types/amm-schema';
 
 export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{

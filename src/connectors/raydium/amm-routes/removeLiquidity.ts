@@ -7,7 +7,7 @@ import {
   RemoveLiquidityResponse,
   RemoveLiquidityRequestType,
   RemoveLiquidityResponseType,
-} from '../../../schemas/routes/amm-schema'
+} from '../../../schemas/trading-types/amm-schema'
 import { 
   AmmV4Keys,
   CpmmKeys,

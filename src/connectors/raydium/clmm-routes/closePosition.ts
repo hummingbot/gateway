@@ -9,7 +9,7 @@ import {
   ClosePositionResponse, 
   ClosePositionRequestType, 
   ClosePositionResponseType,
-} from '../../../schemas/routes/clmm-schema';
+} from '../../../schemas/trading-types/clmm-schema';
 
 async function closePosition(
   _fastify: FastifyInstance,

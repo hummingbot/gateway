@@ -7,7 +7,7 @@ import {
   ExecuteSwapResponseType,
   ExecuteSwapRequest,
   ExecuteSwapResponse
-} from '../../../schemas/routes/swap-schema'
+} from '../../../schemas/trading-types/swap-schema'
 import { getRawSwapQuote } from './quoteSwap'
 import BN from 'bn.js'
 import { VersionedTransaction } from '@solana/web3.js'

@@ -7,7 +7,7 @@ import {
   GetSwapQuoteResponse,
   GetSwapQuoteRequestType,
   GetSwapQuoteResponseType,
-} from '../../../schemas/routes/swap-schema'
+} from '../../../schemas/trading-types/swap-schema'
 import { 
   ApiV3PoolInfoStandardItem,
   ApiV3PoolInfoStandardItemCpmm,

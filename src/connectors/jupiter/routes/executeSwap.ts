@@ -2,7 +2,7 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { Solana } from '../../../chains/solana/solana';
 import { Jupiter } from '../jupiter';
 import { logger } from '../../../services/logger';
-import { ExecuteSwapRequestType, ExecuteSwapResponseType } from '../../../schemas/routes/swap-schema';
+import { ExecuteSwapRequestType, ExecuteSwapResponseType } from '../../../schemas/trading-types/swap-schema';
 import { Wallet } from '@coral-xyz/anchor';
 import Decimal from 'decimal.js-light';
 

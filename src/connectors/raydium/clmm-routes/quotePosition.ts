@@ -7,7 +7,7 @@ import {
   QuotePositionResponseType,
   QuotePositionRequest,
   QuotePositionResponse
-} from '../../../schemas/routes/clmm-schema';
+} from '../../../schemas/trading-types/clmm-schema';
 import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
 import { TickUtils, PoolUtils } from '@raydium-io/raydium-sdk-v2';

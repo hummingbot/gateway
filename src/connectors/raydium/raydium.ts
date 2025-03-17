@@ -19,8 +19,8 @@ import { logger } from '../../services/logger'
 import { RaydiumConfig } from './raydium.config'
 import { Solana } from '../../chains/solana/solana'
 import { Keypair } from '@solana/web3.js'
-import { PoolInfo as ClmmPoolInfo, PositionInfo } from '../../schemas/routes/clmm-schema'
-import { PoolInfo as AmmPoolInfo } from '../../schemas/routes/amm-schema'
+import { PoolInfo as ClmmPoolInfo, PositionInfo } from '../../schemas/trading-types/clmm-schema'
+import { PoolInfo as AmmPoolInfo } from '../../schemas/trading-types/amm-schema'
 import { PublicKey } from '@solana/web3.js'
 import { percentRegexp } from '../../services/config-manager-v2';
 

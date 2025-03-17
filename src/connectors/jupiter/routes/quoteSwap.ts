@@ -2,7 +2,8 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { Solana } from '../../../chains/solana/solana';
 import { Jupiter } from '../jupiter';
 import { logger } from '../../../services/logger';
-import { GetSwapQuoteRequestType, GetSwapQuoteResponseType } from '../../../schemas/routes/swap-schema';
+import { GetSwapQuoteRequestType, GetSwapQuoteResponseType } from '../../../schemas/trading-types/swap-schema';
+import { estimateGasSolana } from '../../../chains/solana/routes/estimate-gas';
 
 export async function getJupiterQuote(
   fastify: FastifyInstance,
@@ -81,7 +82,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
             quoteToken: { type: 'string', examples: ['USDC'] },
             amount: { type: 'number', examples: [0.1] },
             side: { type: 'string', enum: ['buy', 'sell'], examples: ['sell'] },
-            slippagePct: { type: 'number', examples: [1] }
+            slippagePct: { type: 'number', examples: [1] },
           }
         },
         response: {
@@ -94,7 +95,10 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
               maxAmountIn: { type: 'number' },
               baseTokenBalanceChange: { type: 'number' },
               quoteTokenBalanceChange: { type: 'number' },
-              price: { type: 'number' }
+              price: { type: 'number' },
+              gasPrice: { type: 'number' },
+              gasLimit: { type: 'number' },
+              gasCost: { type: 'number' }
             }
           }
         }
@@ -102,15 +106,24 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       const { network, baseToken, quoteToken, amount, side, slippagePct } = request.query;
+      const networkToUse = network || 'mainnet-beta';
+      
       const quote = await getJupiterQuote(
         fastify,
-        network || 'mainnet-beta',
+        networkToUse,
         baseToken,
         quoteToken,
         amount,
         side as 'buy' | 'sell',
         slippagePct
       );
+
+      let gasEstimation = null;
+      try {
+        gasEstimation = await estimateGasSolana(fastify, networkToUse);
+      } catch (error) {
+        logger.warn(`Failed to estimate gas for swap quote: ${error.message}`);
+      }
 
       return {
         estimatedAmountIn: quote.estimatedAmountIn,
@@ -119,7 +132,10 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         maxAmountIn: quote.maxAmountIn,
         baseTokenBalanceChange: side === 'sell' ? -quote.estimatedAmountIn : quote.estimatedAmountOut,
         quoteTokenBalanceChange: side === 'sell' ? quote.estimatedAmountOut : -quote.estimatedAmountIn,
-        price: quote.expectedPrice
+        price: quote.expectedPrice,
+        gasPrice: gasEstimation?.gasPrice,
+        gasLimit: gasEstimation?.gasLimit,
+        gasCost: gasEstimation?.gasCost
       };
     }
   );

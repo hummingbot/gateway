@@ -10,7 +10,7 @@ import {
   GetSwapQuoteResponseType,
   GetSwapQuoteRequest,
   GetSwapQuoteResponse
-} from '../../../schemas/routes/swap-schema';
+} from '../../../schemas/trading-types/swap-schema';
 import {
   PoolUtils,
   ReturnTypeComputeAmountOutFormat,

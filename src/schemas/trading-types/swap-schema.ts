@@ -9,7 +9,7 @@ export const GetSwapQuoteRequest = Type.Object({
     enum: ['buy', 'sell'],
     description: 'Trade direction'
   }),
-  poolAddress: Type.String(),
+  poolAddress: Type.Optional(Type.String()),
   slippagePct: Type.Optional(Type.Number()),
 }, { $id: 'GetSwapQuoteRequest' });
 export type GetSwapQuoteRequestType = Static<typeof GetSwapQuoteRequest>;
@@ -22,6 +22,9 @@ export const GetSwapQuoteResponse = Type.Object({
   baseTokenBalanceChange: Type.Number(),
   quoteTokenBalanceChange: Type.Number(),
   price: Type.Number(),
+  gasPrice: Type.Optional(Type.Number()),
+  gasLimit: Type.Optional(Type.Number()),
+  gasCost: Type.Optional(Type.Number()),
 }, { $id: 'GetSwapQuoteResponse' });
 export type GetSwapQuoteResponseType = Static<typeof GetSwapQuoteResponse>;
 
@@ -35,7 +38,7 @@ export const ExecuteSwapRequest = Type.Object({
     enum: ['buy', 'sell'],
     description: 'Trade direction'
   }),
-  poolAddress: Type.String(),
+  poolAddress: Type.Optional(Type.String()),
   slippagePct: Type.Optional(Type.Number()),
 });
 export type ExecuteSwapRequestType = Static<typeof ExecuteSwapRequest>;

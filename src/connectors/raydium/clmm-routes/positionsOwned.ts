@@ -3,7 +3,7 @@ import { Type, Static } from '@sinclair/typebox';
 import { Raydium } from '../raydium';
 import { PublicKey } from '@solana/web3.js';
 import { logger } from '../../../services/logger';
-import { PositionInfoSchema } from '../../../schemas/routes/clmm-schema';
+import { PositionInfoSchema } from '../../../schemas/trading-types/clmm-schema';
 import { httpBadRequest, ERROR_MESSAGES } from '../../../services/error-handler';
 
 // Schema definitions

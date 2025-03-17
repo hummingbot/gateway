@@ -9,7 +9,7 @@ import {
   ExecuteSwapResponseType,
   ExecuteSwapRequest,
   ExecuteSwapResponse
-} from '../../../schemas/routes/swap-schema';
+} from '../../../schemas/trading-types/swap-schema';
 
 async function executeSwap(
   fastify: FastifyInstance,
