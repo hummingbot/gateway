@@ -312,7 +312,7 @@ importers:
         specifier: ^1.9.3
         version: 1.9.9
       '@types/node':
-        specifier: ^15.12.4
+        specifier: ^15.14.9
         version: 15.14.9
       '@types/node-fetch':
         specifier: ^2.6.1
@@ -411,7 +411,7 @@ importers:
         specifier: ^10.9.2
         version: 10.9.2(@types/node@15.14.9)(typescript@5.7.3)
       typescript:
-        specifier: ^5.3.2
+        specifier: ^5.7.3
         version: 5.7.3
       viem:
         specifier: ^0.3.x
