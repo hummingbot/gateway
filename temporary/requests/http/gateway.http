@@ -20,8 +20,8 @@ Content-Type: application/json
 
 ###
 
-# GET /config?chainOrConnector=polkadot
-GET {{httpProtocol}}://{{host}}:{{port}}/config?chainOrConnector=polkadot
+# GET /config?chainOrConnector={{chain}}
+GET {{httpProtocol}}://{{host}}:{{port}}/config?chainOrConnector={{chain}}
 Content-Type: application/json
 
 {
@@ -29,8 +29,8 @@ Content-Type: application/json
 
 ###
 
-# GET /config?chainOrConnector=hydration
-GET {{httpProtocol}}://{{host}}:{{port}}/config?chainOrConnector=hydration
+# GET /config?chainOrConnector={{connector}}
+GET {{httpProtocol}}://{{host}}:{{port}}/config?chainOrConnector={{connector}}
 Content-Type: application/json
 
 {
@@ -43,8 +43,8 @@ POST {{httpProtocol}}://{{host}}:{{port}}/config/update
 Content-Type: application/json
 
 {
-  "configPath": "hydration.allowedSlippage",
-  "configValue": "2/100"
+  "configPath": "{{configPath}}",
+  "configValue": "{{configValue}}"
 }
 
 ###
@@ -94,7 +94,7 @@ Content-Type: application/json
 
 ###
 
-# POST /wallet/sign
+# POST /wallet/sign (seems not working with Solana too)
 POST {{httpProtocol}}://{{host}}:{{port}}/wallet/sign
 Content-Type: application/json
 
@@ -102,7 +102,7 @@ Content-Type: application/json
   "chain": "{{chain}}",
   "network": "{{network}}",
   "address": "{{walletPublicKey}}",
-  "message": "Hello, World!"
+  "message": "{{dummyMessage}}"
 }
 
 ###
@@ -114,6 +114,19 @@ GET {{httpProtocol}}://{{host}}:{{port}}/{{chain}}/status?network={{network}}
 Content-Type: application/json
 
 {
+}
+
+###
+
+# ===================== TRANSACTION ROUTES =====================
+
+# POST /{{chain}}/poll - Poll for transaction status
+POST {{httpProtocol}}://{{host}}:{{port}}/{{chain}}/poll
+Content-Type: application/json
+
+{
+  "network": "{{network}}",
+  "txHash": "{{txHash}}"
 }
 
 ###
@@ -130,7 +143,7 @@ Content-Type: application/json
 ###
 
 # GET /<chain>/tokens - Single token
-GET {{httpProtocol}}://{{host}}:{{port}}/{{chain}}/tokens?network={{network}}&tokenSymbols=SOL
+GET {{httpProtocol}}://{{host}}:{{port}}/{{chain}}/tokens?network={{network}}&tokenSymbols={{nativeTokenSymbol}}
 Content-Type: application/json
 
 {
@@ -139,7 +152,7 @@ Content-Type: application/json
 ###
 
 # GET /<chain>/tokens - Multiple tokens
-GET {{httpProtocol}}://{{host}}:{{port}}/{{chain}}/tokens?network={{network}}&tokenSymbols=SOL,USDC,BONK
+GET {{httpProtocol}}://{{host}}:{{port}}/{{chain}}/tokens?network={{network}}&tokenSymbols={{nativeTokenSymbol}},{{baseTokenSymbol}},{{quoteTokenSymbol}}
 Content-Type: application/json
 
 {
@@ -167,7 +180,7 @@ Content-Type: application/json
 {
   "network": "{{network}}",
   "address": "{{walletPublicKey}}",
-  "tokenSymbols": "SOL"
+  "tokenSymbols": "{{nativeTokenSymbol}}"
 }
 
 ###
@@ -179,7 +192,7 @@ Content-Type: application/json
 {
   "network": "{{network}}",
   "address": "{{walletPublicKey}}",
-  "tokenSymbols": ["SOL"]
+  "tokenSymbols": ["{{nativeTokenSymbol}}"]
 }
 
 ###
@@ -191,20 +204,7 @@ Content-Type: application/json
 {
   "network": "{{network}}",
   "address": "{{walletPublicKey}}",
-  "tokenSymbols": ["SOL", "USDC", "BONK"]
-}
-
-###
-
-# ===================== TRANSACTION ROUTES =====================
-
-# POST /{{chain}}/poll - Poll for transaction status
-POST {{httpProtocol}}://{{host}}:{{port}}/{{chain}}/poll
-Content-Type: application/json
-
-{
-  "network": "{{network}}",
-  "txHash": "{{txHash}}"
+  "tokenSymbols": ["{{nativeTokenSymbol}}", "{{baseTokenSymbol}}", "{{quoteTokenSymbol}}"]
 }
 
 ###
@@ -221,7 +221,7 @@ Content-Type: application/json
 ###
 
 # GET /{{connector}}/amm/quote-swap - Get swap quote
-GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/quote-swap?network={{network}}&baseToken={{baseToken}}&quoteToken={{quoteToken}}&amount={{amount}}&side={{side}}&poolAddress={{poolAddress}}&slippagePct={{slippagePct}}
+GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/quote-swap?network={{network}}&baseToken={{{{baseTokenSymbol}}}}&quoteToken={{{{quoteTokenSymbol}}}}&amount={{amount}}&side={{side}}&poolAddress={{poolAddress}}&slippagePct={{slippagePercentage}}
 Content-Type: application/json
 
 {
@@ -230,7 +230,7 @@ Content-Type: application/json
 ###
 
 # GET /{{connector}}/amm/quote-liquidity - Get liquidity quote
-GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/quote-liquidity?network={{network}}&poolAddress={{poolAddress}}&baseTokenAmount={{baseTokenAmount}}&quoteTokenAmount={{quoteTokenAmount}}&slippagePct={{slippagePct}}
+GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/quote-liquidity?network={{network}}&poolAddress={{poolAddress}}&baseTokenAmount={{baseTokenAmount}}&quoteTokenAmount={{quoteTokenAmount}}&slippagePct={{slippagePercentage}}
 Content-Type: application/json
 
 {
@@ -245,12 +245,12 @@ Content-Type: application/json
 {
   "network": "{{network}}",
   "walletAddress": "{{walletPublicKey}}",
-  "baseToken": "{{baseToken}}",
-  "quoteToken": "{{quoteToken}}",
+  "baseToken": "{{baseTokenSymbol}}",
+  "quoteToken": "{{quoteTokenSymbol}}",
   "amount": {{amount}},
   "side": "{{side}}",
   "poolAddress": "{{poolAddress}}",
-  "slippagePct": {{slippagePct}}
+  "slippagePct": {{slippagePercentage}}
 }
 
 ###
@@ -265,7 +265,7 @@ Content-Type: application/json
   "poolAddress": "{{poolAddress}}",
   "baseTokenAmount": {{baseTokenAmount}},
   "quoteTokenAmount": {{quoteTokenAmount}},
-  "slippagePct": {{slippagePct}}
+  "slippagePct": {{slippagePercentage}}
 }
 
 ###
@@ -313,7 +313,7 @@ Content-Type: application/json
 ###
 
 # GET /{{connector}}/clmm/quote-position - Get position quote
-GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/clmm/quote-position?network={{network}}&lowerPrice={{lowerPrice}}&upperPrice={{upperPrice}}&poolAddress={{poolAddress}}&baseTokenAmount={{baseTokenAmount}}&quoteTokenAmount={{quoteTokenAmount}}&slippagePct={{slippagePct}}
+GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/clmm/quote-position?network={{network}}&lowerPrice={{lowerPrice}}&upperPrice={{upperPrice}}&poolAddress={{poolAddress}}&baseTokenAmount={{baseTokenAmount}}&quoteTokenAmount={{quoteTokenAmount}}&slippagePct={{slippagePercentage}}
 Content-Type: application/json
 
 {
@@ -322,7 +322,7 @@ Content-Type: application/json
 ###
 
 # GET /{{connector}}/clmm/quote-swap - Get swap quote
-GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/clmm/quote-swap?network={{network}}&baseToken={{baseToken}}&quoteToken={{quoteToken}}&amount={{amount}}&side={{side}}&poolAddress={{poolAddress}}&slippagePct={{slippagePct}}
+GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/clmm/quote-swap?network={{network}}&baseToken={{baseTokenSymbol}}&quoteToken={{quoteTokenSymbol}}&amount={{amount}}&side={{side}}&poolAddress={{poolAddress}}&slippagePct={{slippagePercentage}}
 Content-Type: application/json
 
 {
@@ -337,12 +337,12 @@ Content-Type: application/json
 {
   "network": "{{network}}",
   "walletAddress": "{{walletPublicKey}}",
-  "baseToken": "{{baseToken}}",
-  "quoteToken": "{{quoteToken}}",
+  "baseToken": "{{baseTokenSymbol}}",
+  "quoteToken": "{{quoteTokenSymbol}}",
   "amount": {{amount}},
   "side": "{{side}}",
   "poolAddress": "{{poolAddress}}",
-  "slippagePct": {{slippagePct}}
+  "slippagePct": {{slippagePercentage}}
 }
 
 ###
@@ -359,7 +359,7 @@ Content-Type: application/json
   "poolAddress": "{{poolAddress}}",
   "baseTokenAmount": {{baseTokenAmount}},
   "quoteTokenAmount": {{quoteTokenAmount}},
-  "slippagePct": {{slippagePct}}
+  "slippagePct": {{slippagePercentage}}
 }
 
 ###
@@ -374,7 +374,7 @@ Content-Type: application/json
   "positionAddress": "{{positionAddress}}",
   "baseTokenAmount": {{baseTokenAmount}},
   "quoteTokenAmount": {{quoteTokenAmount}},
-  "slippagePct": {{slippagePct}}
+  "slippagePct": {{slippagePercentage}}
 }
 
 ###
