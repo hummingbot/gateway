@@ -1,14 +1,14 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
-import { Hydration } from '../hydration';
-import { Polkadot } from '../../../chains/polkadot/polkadot';
-import { logger } from '../../../services/logger';
+import { Hydration } from '../../hydration';
+import { Polkadot } from '../../../../chains/polkadot/polkadot';
+import { logger } from '../../../../services/logger';
 import {
   ExecuteSwapRequestType,
   ExecuteSwapResponseType,
   ExecuteSwapRequest,
   ExecuteSwapResponse
-} from '../../../services/swap-interfaces';
-import { httpBadRequest, httpNotFound } from '../../../services/error-handler';
+} from '../../../../services/swap-interfaces';
+import { httpBadRequest, httpNotFound } from '../../../../services/error-handler';
 
 /**
  * Execute a swap on Hydration

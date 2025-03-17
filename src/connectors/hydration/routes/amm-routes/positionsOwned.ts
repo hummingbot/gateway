@@ -1,10 +1,10 @@
 import { FastifyPluginAsync } from 'fastify';
 import { Type, Static } from '@sinclair/typebox';
-import { Hydration } from '../hydration';
-import { Polkadot } from '../../../chains/polkadot/polkadot';
-import { logger } from '../../../services/logger';
-import { PositionInfoSchema } from '../../../services/clmm-interfaces';
-import { httpBadRequest, ERROR_MESSAGES } from '../../../services/error-handler';
+import { Hydration } from '../../hydration';
+import { Polkadot } from '../../../../chains/polkadot/polkadot';
+import { logger } from '../../../../services/logger';
+import { PositionInfoSchema } from '../../../../services/clmm-interfaces';
+import { httpBadRequest, ERROR_MESSAGES } from '../../../../services/error-handler';
 
 // Schema definitions
 const GetPositionsOwnedRequest = Type.Object({

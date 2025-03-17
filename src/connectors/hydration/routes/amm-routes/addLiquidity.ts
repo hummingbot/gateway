@@ -1,16 +1,16 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
-import { Hydration } from '../hydration';
-import { Polkadot } from '../../../chains/polkadot/polkadot';
+import { Hydration } from '../../hydration';
+import { Polkadot } from '../../../../chains/polkadot/polkadot';
 import { BigNumber } from '@galacticcouncil/sdk';
-import { logger } from '../../../services/logger';
-import { validatePolkadotAddress } from '../../../chains/polkadot/polkadot.validators';
-import { httpBadRequest, httpNotFound, ERROR_MESSAGES } from '../../../services/error-handler';
+import { logger } from '../../../../services/logger';
+import { validatePolkadotAddress } from '../../../../chains/polkadot/polkadot.validators';
+import { httpBadRequest, httpNotFound, ERROR_MESSAGES } from '../../../../services/error-handler';
 import {
   AddLiquidityRequest,
   AddLiquidityResponse,
   AddLiquidityRequestType,
   AddLiquidityResponseType
-} from '../../../services/clmm-interfaces';
+} from '../../../../services/clmm-interfaces';
 
 // Buffer for transaction costs (in HDX)
 const HDX_TRANSACTION_BUFFER = 0.1;

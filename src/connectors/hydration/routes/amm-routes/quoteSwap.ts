@@ -1,13 +1,13 @@
 import { FastifyPluginAsync } from 'fastify';
-import { Hydration } from '../hydration';
-import { logger } from '../../../services/logger';
+import { Hydration } from '../../hydration';
+import { logger } from '../../../../services/logger';
 import { 
   GetSwapQuoteRequestType,
   GetSwapQuoteResponseType,
   GetSwapQuoteRequest,
   GetSwapQuoteResponse
-} from '../../../services/swap-interfaces';
-import { httpBadRequest, httpNotFound } from '../../../services/error-handler';
+} from '../../../../services/swap-interfaces';
+import { httpBadRequest, httpNotFound } from '../../../../services/error-handler';
 
 /**
  * Route handler for getting a swap quote

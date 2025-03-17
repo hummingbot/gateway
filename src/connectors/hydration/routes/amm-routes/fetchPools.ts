@@ -1,13 +1,13 @@
 import { FastifyPluginAsync } from 'fastify';
 import { Type } from '@sinclair/typebox';
-import { Hydration } from '../hydration';
-import { Polkadot } from '../../../chains/polkadot/polkadot';
-import { logger } from '../../../services/logger';
+import { Hydration } from '../../hydration';
+import { Polkadot } from '../../../../chains/polkadot/polkadot';
+import { logger } from '../../../../services/logger';
 import {
   PoolInfoSchema,
   FetchPoolsRequest,
-} from '../../../services/clmm-interfaces';
-import { httpNotFound, httpInternalServerError, ERROR_MESSAGES } from '../../../services/error-handler';
+} from '../../../../services/clmm-interfaces';
+import { httpNotFound, httpInternalServerError, ERROR_MESSAGES } from '../../../../services/error-handler';
 
 /**
  * Route handler for fetching pools

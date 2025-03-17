@@ -1,14 +1,14 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
-import { Hydration } from '../hydration';
-import { Polkadot } from '../../../chains/polkadot/polkadot';
-import { logger } from '../../../services/logger';
+import { Hydration } from '../../hydration';
+import { Polkadot } from '../../../../chains/polkadot/polkadot';
+import { logger } from '../../../../services/logger';
 import { 
   RemoveLiquidityRequest, 
   RemoveLiquidityResponse, 
   RemoveLiquidityRequestType, 
   RemoveLiquidityResponseType 
-} from '../../../services/clmm-interfaces';
-import { httpBadRequest, httpNotFound } from '../../../services/error-handler';
+} from '../../../../services/clmm-interfaces';
+import { httpBadRequest, httpNotFound } from '../../../../services/error-handler';
 
 /**
  * Remove liquidity from a position

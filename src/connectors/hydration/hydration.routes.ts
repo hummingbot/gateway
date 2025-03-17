@@ -1,18 +1,18 @@
 import type { FastifyPluginAsync } from 'fastify';
 import sensible from '@fastify/sensible';
 
-import { fetchPoolsRoute } from './routes/fetchPools';
-import { poolInfoRoute } from './routes/poolInfo';
-import { positionsOwnedRoute } from './routes/positionsOwned';
-import { quoteSwapRoute } from './routes/quoteSwap';
-import { positionInfoRoute } from './routes/positionInfo';
-import { executeSwapRoute } from './routes/executeSwap';
-import { openPositionRoute } from './routes/openPosition';
-import { addLiquidityRoute } from './routes/addLiquidity';
-import { removeLiquidityRoute } from './routes/removeLiquidity';
-import { collectFeesRoute } from './routes/collectFees';
-import { closePositionRoute } from './routes/closePosition';
-import { quoteLiquidityRoute } from './routes/quoteLiquidity';
+import { fetchPoolsRoute } from './routes/amm-routes/fetchPools';
+import { poolInfoRoute } from './routes/amm-routes/poolInfo';
+import { positionsOwnedRoute } from './routes/amm-routes/positionsOwned';
+import { quoteSwapRoute } from './routes/amm-routes/quoteSwap';
+import { positionInfoRoute } from './routes/amm-routes/positionInfo';
+import { executeSwapRoute } from './routes/amm-routes/executeSwap';
+import { openPositionRoute } from './routes/amm-routes/openPosition';
+import { addLiquidityRoute } from './routes/amm-routes/addLiquidity';
+import { removeLiquidityRoute } from './routes/amm-routes/removeLiquidity';
+import { collectFeesRoute } from './routes/amm-routes/collectFees';
+import { closePositionRoute } from './routes/amm-routes/closePosition';
+import { quoteLiquidityRoute } from './routes/amm-routes/quoteLiquidity';
 
 /**
  * Register all Hydration routes

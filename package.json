@@ -8,6 +8,7 @@
   "scripts": {
     "prebuild": "rimraf dist && mkdir dist",
     "build": "tsc --skipLibCheck --project ./ && pnpm run copy-files",
+    "full-build": "pnpm run prebuild && pnpm run build",
     "clean": "rm -rf ./node_modules && rm -rf ./coverage && rm -rf ./logs",
     "clean:config": "find ./conf -maxdepth 1 -type f -delete",
     "format": "prettier . --write",

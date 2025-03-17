@@ -1,9 +1,9 @@
 import { FastifyPluginAsync } from 'fastify';
 import { Type, Static } from '@sinclair/typebox';
-import { Hydration } from '../hydration';
-import { logger } from '../../../services/logger';
-import { PositionStrategyType } from '../hydration.types';
-import { httpBadRequest, httpNotFound } from '../../../services/error-handler';
+import { Hydration } from '../../hydration';
+import { logger } from '../../../../services/logger';
+import { PositionStrategyType } from '../../hydration.types';
+import { httpBadRequest, httpNotFound } from '../../../../services/error-handler';
 
 // Schema definitions
 const QuoteLiquidityRequest = Type.Object({

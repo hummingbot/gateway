@@ -1,13 +1,13 @@
 import { FastifyPluginAsync } from 'fastify';
-import { Hydration } from '../hydration';
-import { Polkadot } from '../../../chains/polkadot/polkadot';
-import { logger } from '../../../services/logger';
+import { Hydration } from '../../hydration';
+import { Polkadot } from '../../../../chains/polkadot/polkadot';
+import { logger } from '../../../../services/logger';
 import { 
   PositionInfoSchema, 
   GetPositionInfoRequestType, 
   GetPositionInfoRequest 
-} from '../../../services/clmm-interfaces';
-import { httpBadRequest, httpNotFound } from '../../../services/error-handler';
+} from '../../../../services/clmm-interfaces';
+import { httpBadRequest, httpNotFound } from '../../../../services/error-handler';
 
 /**
  * Route handler for getting information about a specific position

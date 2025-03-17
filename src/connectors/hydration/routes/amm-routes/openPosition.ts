@@ -1,15 +1,15 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
-import { Hydration } from '../hydration';
-import { Polkadot } from '../../../chains/polkadot/polkadot';
-import { logger } from '../../../services/logger';
+import { Hydration } from '../../hydration';
+import { Polkadot } from '../../../../chains/polkadot/polkadot';
+import { logger } from '../../../../services/logger';
 import { Type, Static } from '@sinclair/typebox';
-import { PositionStrategyType } from '../hydration.types';
+import { PositionStrategyType } from '../../hydration.types';
 import { 
   OpenPositionRequest, 
   OpenPositionResponse, 
   OpenPositionResponseType,
-} from '../../../services/clmm-interfaces';
-import { httpBadRequest, httpNotFound, ERROR_MESSAGES } from '../../../services/error-handler';
+} from '../../../../services/clmm-interfaces';
+import { httpBadRequest, httpNotFound, ERROR_MESSAGES } from '../../../../services/error-handler';
 
 /**
  * Open a new position on Hydration

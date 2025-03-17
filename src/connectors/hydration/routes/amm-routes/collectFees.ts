@@ -1,14 +1,14 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
-import { Hydration } from '../hydration';
-import { Polkadot } from '../../../chains/polkadot/polkadot';
-import { logger } from '../../../services/logger';
+import { Hydration } from '../../hydration';
+import { Polkadot } from '../../../../chains/polkadot/polkadot';
+import { logger } from '../../../../services/logger';
 import { 
   CollectFeesRequest, 
   CollectFeesResponse, 
   CollectFeesRequestType, 
   CollectFeesResponseType 
-} from '../../../services/clmm-interfaces';
-import { httpNotFound } from '../../../services/error-handler';
+} from '../../../../services/clmm-interfaces';
+import { httpNotFound } from '../../../../services/error-handler';
 
 /**
  * Collect fees from a position

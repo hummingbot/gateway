@@ -1,7 +1,7 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
-import { Hydration } from '../hydration';
-import { Polkadot } from '../../../chains/polkadot/polkadot';
-import { logger } from '../../../services/logger';
+import { Hydration } from '../../hydration';
+import { Polkadot } from '../../../../chains/polkadot/polkadot';
+import { logger } from '../../../../services/logger';
 import { removeLiquidity } from './removeLiquidity';
 import { collectFees } from './collectFees';
 import {
@@ -11,8 +11,8 @@ import {
   ClosePositionResponseType,
   CollectFeesResponseType,
   RemoveLiquidityResponseType
-} from '../../../services/clmm-interfaces';
-import { httpNotFound } from '../../../services/error-handler';
+} from '../../../../services/clmm-interfaces';
+import { httpNotFound } from '../../../../services/error-handler';
 
 /**
  * Close a position
