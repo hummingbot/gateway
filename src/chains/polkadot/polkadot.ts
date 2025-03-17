@@ -52,6 +52,9 @@ export class Polkadot {
     this.config = getPolkadotConfig('polkadot', network);
     this.nativeTokenSymbol = this.config.network.nativeCurrencySymbol;
     this.controller = PolkadotController;
+
+    const { Keyring } = require('@polkadot/keyring');
+    this._keyring = new Keyring({ type: 'sr25519' });
   }
 
   /**
@@ -897,6 +900,22 @@ export class Polkadot {
     } catch (error) {
       logger.error(`Failed to extract balance change and fee: ${error.message}`);
       throw error;
+    }
+  }
+
+  async addWalletFromPrivateKey(privateKey: string) {
+    try {
+      // Try as URI (seed/private key)
+      const keyPair = this._keyring.addFromUri(privateKey);
+      return { keyPair, address: keyPair.address };
+    } catch (e) {
+      // If that fails, try as mnemonic
+      try {
+        const keyPair = this._keyring.addFromMnemonic(privateKey);
+        return { keyPair, address: keyPair.address };
+      } catch (e2) {
+        throw new Error(`Unable to add wallet: ${e2.message}`);
+      }
     }
   }
 }
