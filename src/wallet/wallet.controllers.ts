@@ -77,8 +77,8 @@ export async function addWallet(
     }
     else if (connection instanceof Polkadot) {
       address = connection
-        .getKeyringPairFromPrivateKey(req.privateKey)
-        .publicKey.toString();
+        .getKeyringPairFromMnemonic(req.privateKey)
+        .address.toString();
       encryptedPrivateKey = await connection.encrypt(
         req.privateKey,
         passphrase

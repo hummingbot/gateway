@@ -27,6 +27,7 @@ import {
 import { cryptoWaitReady } from '@polkadot/util-crypto';
 import { BN } from 'bn.js';
 import * as crypto from 'crypto';
+import * as fs from 'fs';
 
 /**
  * Main class for interacting with the Polkadot blockchain.
@@ -109,10 +110,6 @@ export class Polkadot {
       throw error;
     }
   }
-
-
-
-
 
   /**
    * Get the token list from the specified source
@@ -253,19 +250,12 @@ export class Polkadot {
 
   /**
    * Get a keyring pair from a private key
-   * @param privateKey The private key in mnemonic format
+   * @param seed The private key in mnemonic format
    * @returns The keyring pair
    */
-  getKeyringPairFromPrivateKey(privateKey: string): KeyringPair {
+  getKeyringPairFromMnemonic(seed: string): KeyringPair {
     try {
-      // Remove '0x' prefix if present
-      // const cleanPrivateKey = privateKey.startsWith('0x') ? privateKey.slice(2) : privateKey;
-
-      // Convert hex to Uint8Array
-      // const privateKeyBytes = hexToU8a('0x' + cleanPrivateKey);
-
-      // Create keyring pair
-      return this._keyring.addFromMnemonic(privateKey);
+      return this._keyring.addFromMnemonic(seed);
     } catch (error) {
       logger.error(`Failed to get keyring pair from private key: ${error.message}`);
       throw error;
@@ -322,25 +312,20 @@ export class Polkadot {
 
   /**
    * Encrypt a secret (like a private key or mnemonic)
-   * @param secret The secret to encrypt
+   * @param mnemonic The secret to encrypt
    * @param password The password to encrypt with
    * @returns A Promise that resolves to the encrypted secret
    */
-  async encrypt(secret: string, password: string): Promise<string> {
+  async encrypt(mnemonic: string, password: string): Promise<string> {
     try {
-      // Implementação simplificada para evitar problemas de tipo
       const key = crypto.createHash('sha256').update(password).digest();
       const iv = crypto.randomBytes(16);
-
-      // @ts-ignore - Ignorando erros de tipo para simplificar
       const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
-      let encrypted = cipher.update(secret, 'utf8', 'hex');
+      
+      let encrypted = cipher.update(mnemonic, 'utf8', 'hex');
       encrypted += cipher.final('hex');
 
-      return JSON.stringify({
-        iv: iv.toString('hex'),
-        content: encrypted
-      });
+      return `${iv.toString('hex')}:${encrypted}`;
     } catch (error) {
       logger.error(`Failed to encrypt secret: ${error.message}`);
       throw error;
@@ -355,14 +340,10 @@ export class Polkadot {
    */
   async decrypt(encryptedSecret: string, password: string): Promise<string> {
     try {
-      // Implementação simplificada para evitar problemas de tipo
+      const [ivHex, encryptedText] = encryptedSecret.split(':');
+      const iv = Buffer.from(ivHex, 'hex');
       const key = crypto.createHash('sha256').update(password).digest();
-
-      const parsed = JSON.parse(encryptedSecret);
-      const iv = Buffer.from(parsed.iv, 'hex');
-      const encryptedText = parsed.content;
-
-      // @ts-ignore - Ignorando erros de tipo para simplificar
+      
       const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
       let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
       decrypted += decipher.final('utf8');
@@ -903,19 +884,77 @@ export class Polkadot {
     }
   }
 
+  /**
+   * Add a wallet from a private key or mnemonic
+   * @param privateKey The private key or mnemonic to add
+   * @returns A Promise that resolves to the keyring pair and address
+   */
   async addWalletFromPrivateKey(privateKey: string) {
     try {
-      // Try as URI (seed/private key)
-      const keyPair = this._keyring.addFromUri(privateKey);
-      return { keyPair, address: keyPair.address };
-    } catch (e) {
-      // If that fails, try as mnemonic
+      // Try adding the wallet in different formats
+      let keyPair;
+      
       try {
-        const keyPair = this._keyring.addFromMnemonic(privateKey);
-        return { keyPair, address: keyPair.address };
-      } catch (e2) {
-        throw new Error(`Unable to add wallet: ${e2.message}`);
+        // Try as URI (seed/private key)
+        keyPair = this._keyring.addFromUri(privateKey);
+      } catch (e) {
+        // If that fails, try as mnemonic
+        try {
+          keyPair = this._keyring.addFromMnemonic(privateKey);
+        } catch (e2) {
+          throw new Error(`Unable to add wallet: ${e2.message}`);
+        }
       }
+      
+      // Format the address in SS58 format for the current network
+      const formattedAddress = encodeAddress(
+        keyPair.publicKey, 
+        this.config.network.ss58Format
+      );
+      
+      // Return the formatted address along with the keyring pair
+      return { 
+        keyPair,
+        address: formattedAddress
+      };
+    } catch (error) {
+      logger.error(`Failed to add wallet from private key: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Get a wallet's public key in hex format
+   * @param keyPair The keyring pair
+   * @returns The public key in hex format
+   */
+  getPublicKeyHex(keyPair: KeyringPair): string {
+    return u8aToHex(keyPair.publicKey);
+  }
+
+  /**
+   * Save wallet to file system
+   * @param address The SS58-encoded address
+   * @param encryptedPrivateKey The encrypted private key
+   * @returns A Promise that resolves when the wallet is saved
+   */
+  async saveWalletToFile(address: string, encryptedPrivateKey: string): Promise<void> {
+    try {
+      // File path follows pattern: conf/wallets/polkadot/<address>.json
+      const walletPath = `conf/wallets/polkadot`;
+      
+      // Create directory if it doesn't exist
+      if (!fs.existsSync(walletPath)) {
+        fs.mkdirSync(walletPath, { recursive: true });
+      }
+
+      // Write the encrypted private key to the file
+      fs.writeFileSync(`${walletPath}/${address}.json`, encryptedPrivateKey);
+      
+      logger.info(`Wallet saved successfully: ${address}`);
+    } catch (error) {
+      logger.error(`Failed to save wallet to file: ${error.message}`);
+      throw error;
     }
   }
 }
