@@ -29,8 +29,8 @@ export async function getJupiterQuote(
 
   try {
     const quote = await jupiter.getQuote(
-      baseTokenInfo.address,
-      quoteTokenInfo.address,
+      tradeSide === 'BUY' ? quoteTokenInfo.address : baseTokenInfo.address,
+      tradeSide === 'BUY' ? baseTokenInfo.address : quoteTokenInfo.address,
       amountValue,
       slippagePct,
       false, // onlyDirectRoutes
@@ -130,8 +130,8 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         estimatedAmountOut: quote.estimatedAmountOut,
         minAmountOut: quote.minAmountOut,
         maxAmountIn: quote.maxAmountIn,
-        baseTokenBalanceChange: side === 'SELL' ? -quote.estimatedAmountIn : quote.estimatedAmountOut,
-        quoteTokenBalanceChange: side === 'SELL' ? quote.estimatedAmountOut : -quote.estimatedAmountIn,
+        baseTokenBalanceChange: side === 'SELL' ? -quote.estimatedAmountIn : quote.estimatedAmountIn,
+        quoteTokenBalanceChange: side === 'SELL' ? quote.estimatedAmountOut : -quote.estimatedAmountOut,
         price: quote.expectedPrice,
         gasPrice: gasEstimation?.gasPrice,
         gasLimit: gasEstimation?.gasLimit,
