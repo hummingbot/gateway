@@ -28,6 +28,7 @@ import { cryptoWaitReady } from '@polkadot/util-crypto';
 import { BN } from 'bn.js';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
+import axios from 'axios';
 
 /**
  * Main class for interacting with the Polkadot blockchain.
@@ -141,52 +142,39 @@ export class Polkadot {
    * @param tokenListType Type of token list (e.g., JSON, CSV)
    */
   async loadTokens(
-    _tokenListSource: string,
-    _tokenListType: TokenListType
+    tokenListSource: string,
+    tokenListType: TokenListType
   ): Promise<void> {
     try {
-      // Add native token
-      const nativeToken: TokenInfo = {
-        symbol: this.nativeTokenSymbol,
-        name: 'Polkadot',
-        decimals: 10, // Polkadot's DOT has 10 decimals
-        address: 'native',
-        chainId: 0, // Valor padrão para Polkadot
-      };
+      // Clear existing token lists
+      this.tokenList = [];
+      this._tokenMap = {};
 
-      this.tokenList = [nativeToken];
-      this._tokenMap[nativeToken.symbol.toLowerCase()] = nativeToken;
-      this._tokenMap[nativeToken.address.toLowerCase()] = nativeToken;
+      // Load tokens from source
+      let tokensData: any[] = [];
+      
+      if (tokenListType === 'URL') {
+        const response = await axios.get(tokenListSource);
+        tokensData = response.data.tokens || [];
+      } else {
+        const data = await fs.promises.readFile(tokenListSource, { encoding: 'utf8' });
+        const parsed = JSON.parse(data);
+        tokensData = parsed.tokens || [];
+      }
 
-      // TODO: Implement loading of additional tokens from tokenListSource
-      // For now, just add some common Polkadot ecosystem tokens
+      // Process tokens
+      for (const tokenData of tokensData) {
+        const token: TokenInfo = {
+          symbol: tokenData.symbol,
+          name: tokenData.name,
+          decimals: tokenData.decimals,
+          address: tokenData.id.toString(), // Use token ID as address
+          chainId: 0
+        };
 
-      if (this.network === 'mainnet') {
-        // Add some common mainnet tokens
-        const additionalTokens: TokenInfo[] = [
-          {
-            symbol: 'KSM',
-            name: 'Kusama',
-            decimals: 12,
-            address: 'kusama-native',
-            chainId: 0, // Valor padrão para Kusama
-          },
-          {
-            symbol: 'ASTR',
-            name: 'Astar',
-            decimals: 18,
-            address: 'astar-native',
-            chainId: 0, // Valor padrão para Astar
-          }
-        ];
-
-        this.tokenList.push(...additionalTokens);
-
-        // Update token map
-        for (const token of additionalTokens) {
-          this._tokenMap[token.symbol.toLowerCase()] = token;
-          this._tokenMap[token.address.toLowerCase()] = token;
-        }
+        this.tokenList.push(token);
+        this._tokenMap[token.symbol.toLowerCase()] = token;
+        this._tokenMap[token.address.toLowerCase()] = token;
       }
 
       logger.info(`Loaded ${this.tokenList.length} tokens for network: ${this.network}`);
