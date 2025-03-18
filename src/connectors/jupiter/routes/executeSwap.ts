@@ -13,7 +13,7 @@ async function executeJupiterSwap(
   baseToken: string,
   quoteToken: string,
   amount: number,
-  side: 'buy' | 'sell',
+  side: 'BUY' | 'SELL',
   slippagePct?: number
 ) {
   const solana = await Solana.getInstance(network);
@@ -28,8 +28,8 @@ async function executeJupiterSwap(
     throw fastify.httpErrors.notFound(`Token not found: ${!baseTokenInfo ? baseToken : quoteToken}`);
   }
 
-  const tradeSide = side === 'buy' ? 'BUY' : 'SELL';
-  const amountValue = side === 'buy' ? amount : amount;
+  const tradeSide = side === 'BUY' ? 'BUY' : 'SELL';
+  const amountValue = side === 'SELL' ? amount : amount;
 
   try {
     const quote = await jupiter.getQuote(
@@ -80,7 +80,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
             baseToken: { type: 'string' },
             quoteToken: { type: 'string' },
             amount: { type: 'number' },
-            side: { type: 'string', enum: ['buy', 'sell'] },
+            side: { type: 'string', enum: ['BUY', 'SELL'] },
             slippagePct: { type: 'number' }
           }
         },
@@ -108,7 +108,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         baseToken,
         quoteToken,
         amount,
-        side as 'buy' | 'sell',
+        side as 'BUY' | 'SELL',
         slippagePct
       );
 
@@ -121,11 +121,11 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
 
       return {
         signature: result.signature,
-        totalInputSwapped: side === 'sell' ? inputAmount : outputAmount,
-        totalOutputSwapped: side === 'sell' ? outputAmount : inputAmount,
+        totalInputSwapped: side === 'SELL' ? inputAmount : outputAmount,
+        totalOutputSwapped: side === 'SELL' ? outputAmount : inputAmount,
         fee: Number(result.gasCost),
-        baseTokenBalanceChange: side === 'sell' ? -inputAmount : outputAmount,
-        quoteTokenBalanceChange: side === 'sell' ? outputAmount : -inputAmount
+        baseTokenBalanceChange: side === 'SELL' ? -inputAmount : outputAmount,
+        quoteTokenBalanceChange: side === 'SELL' ? outputAmount : -inputAmount
       };
     }
   );

@@ -6,7 +6,7 @@ export const GetSwapQuoteRequest = Type.Object({
   quoteToken: Type.String(),
   amount: Type.Number(),
   side: Type.String({ 
-    enum: ['buy', 'sell'],
+    enum: ['BUY', 'SELL'],
     description: 'Trade direction'
   }),
   poolAddress: Type.Optional(Type.String()),
@@ -35,7 +35,7 @@ export const ExecuteSwapRequest = Type.Object({
   quoteToken: Type.String(),
   amount: Type.Number(),
   side: Type.String({ 
-    enum: ['buy', 'sell'],
+    enum: ['BUY', 'SELL'],
     description: 'Trade direction'
   }),
   poolAddress: Type.Optional(Type.String()),

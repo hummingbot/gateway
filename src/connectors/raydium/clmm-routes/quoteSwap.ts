@@ -24,7 +24,7 @@ export async function getSwapQuote(
   baseTokenSymbol: string,
   quoteTokenSymbol: string,
   amount: number,
-  side: 'buy' | 'sell',
+  side: 'BUY' | 'SELL',
   poolAddress: string,
   slippagePct?: number
 ) {
@@ -46,11 +46,11 @@ export async function getSwapQuote(
 
   // For buy orders, we're swapping quote token for base token (ExactOut)
   // For sell orders, we're swapping base token for quote token (ExactIn)
-  const [inputToken, outputToken] = side === 'buy' 
+  const [inputToken, outputToken] = side === 'BUY' 
     ? [quoteToken, baseToken]
     : [baseToken, quoteToken];
 
-  const amount_bn = side === 'buy'
+  const amount_bn = side === 'BUY'
     ? DecimalUtil.toBN(new Decimal(amount), outputToken.decimals)
     : DecimalUtil.toBN(new Decimal(amount), inputToken.decimals);
   const clmmPoolInfo = await PoolUtils.fetchComputeClmmInfo({
@@ -67,7 +67,7 @@ export async function getSwapQuote(
   const effectiveSlippageNumber = effectiveSlippage.toNumber();
 
   // AmountOut = swapQuote, AmountOutBaseOut = swapQuoteExactOut
-  const response : ReturnTypeComputeAmountOutFormat | ReturnTypeComputeAmountOutBaseOut = side === 'buy' 
+  const response : ReturnTypeComputeAmountOutFormat | ReturnTypeComputeAmountOutBaseOut = side === 'BUY' 
   ? await PoolUtils.computeAmountIn({
     poolInfo: clmmPoolInfo,
     tickArrayCache: tickCache[poolAddress],
@@ -86,7 +86,7 @@ export async function getSwapQuote(
       catchLiquidityInsufficient: true,
     })
 
-  const price = side === 'sell'
+  const price = side === 'SELL'
     ? (response as ReturnTypeComputeAmountOutFormat).amountOut.amount.raw.toNumber() / 
       (response as ReturnTypeComputeAmountOutFormat).realAmountIn.amount.raw.toNumber()
     : (response as ReturnTypeComputeAmountOutBaseOut).amountIn.amount.toNumber() / 
@@ -108,7 +108,7 @@ async function formatSwapQuote(
   baseTokenSymbol: string,
   quoteTokenSymbol: string,
   amount: number,
-  side: 'buy' | 'sell',
+  side: 'BUY' | 'SELL',
   poolAddress: string,
   slippagePct?: number
 ): Promise<GetSwapQuoteResponseType> {
@@ -123,7 +123,7 @@ async function formatSwapQuote(
     slippagePct
   );
 
-  if (side === 'buy') {
+  if (side === 'BUY') {
     const exactOutResponse = response as ReturnTypeComputeAmountOutBaseOut;
     const estimatedAmountIn = exactOutResponse.amountIn.amount.toNumber() / 10 ** inputToken.decimals;
     const maxAmountIn = exactOutResponse.maxAmountIn.amount.toNumber() / 10 ** inputToken.decimals;
@@ -184,7 +184,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
             baseToken: { type: 'string', examples: ['SOL'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
             amount: { type: 'number', examples: [0.1] },
-            side: { type: 'string', enum: ['buy', 'sell'], examples: ['sell'] },
+            side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
             poolAddress: { type: 'string', examples: ['3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv'] },
             slippagePct: { type: 'number', examples: [1] }
           }
@@ -210,7 +210,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           baseToken,
           quoteToken,
           amount,
-          side as 'buy' | 'sell',
+          side as 'BUY' | 'SELL',
           poolAddress,
           slippagePct
         );

@@ -232,11 +232,11 @@ export async function getRawSwapQuote(
   baseToken: string,
   quoteToken: string,
   amount: number,
-  side: 'buy' | 'sell',
+  side: 'BUY' | 'SELL',
   slippagePct?: number
 ): Promise<any> {
   // Convert side to exactIn
-  const exactIn = side === 'sell';
+  const exactIn = side === 'SELL';
   
   logger.info(`getRawSwapQuote: poolId=${poolId}, baseToken=${baseToken}, quoteToken=${quoteToken}, amount=${amount}, side=${side}, exactIn=${exactIn}`)
   
@@ -327,7 +327,7 @@ export async function getRawSwapQuote(
   logger.info(`Raw quote result: amountIn=${result.amountIn.toString()}, amountOut=${result.amountOut.toString()}, inputMint=${result.inputMint}, outputMint=${result.outputMint}`)
   
   // Add price calculation
-  const price = side === 'sell' 
+  const price = side === 'SELL' 
     ? result.amountOut.toString() / result.amountIn.toString()
     : result.amountIn.toString() / result.amountOut.toString();
   
@@ -346,7 +346,7 @@ async function formatSwapQuote(
   baseToken: string,
   quoteToken: string,
   amount: number,
-  side: 'buy' | 'sell',
+  side: 'BUY' | 'SELL',
   slippagePct?: number
 ): Promise<GetSwapQuoteResponseType> {
   logger.info(`formatSwapQuote: poolAddress=${poolAddress}, baseToken=${baseToken}, quoteToken=${quoteToken}, amount=${amount}, side=${side}`)
@@ -380,7 +380,7 @@ async function formatSwapQuote(
     baseToken,
     quoteToken,
     amount,
-    side as 'buy' | 'sell',
+    side as 'BUY' | 'SELL',
     slippagePct
   )
   
@@ -412,13 +412,13 @@ async function formatSwapQuote(
   logger.info(`Converted amounts: estimatedAmountIn=${estimatedAmountIn}, estimatedAmountOut=${estimatedAmountOut}, minAmountOut=${minAmountOut}, maxAmountIn=${maxAmountIn}`)
 
   // Calculate balance changes correctly based on which tokens are being swapped
-  const baseTokenBalanceChange = side === 'buy' ? estimatedAmountOut : -estimatedAmountIn
-  const quoteTokenBalanceChange = side === 'buy' ? -estimatedAmountIn : estimatedAmountOut
+  const baseTokenBalanceChange = side === 'BUY' ? estimatedAmountOut : -estimatedAmountIn
+  const quoteTokenBalanceChange = side === 'BUY' ? -estimatedAmountIn : estimatedAmountOut
   
   logger.info(`Balance changes: baseTokenBalanceChange=${baseTokenBalanceChange}, quoteTokenBalanceChange=${quoteTokenBalanceChange}`)
 
   // Add price calculation
-  const price = side === 'sell' 
+  const price = side === 'SELL' 
     ? estimatedAmountOut / estimatedAmountIn
     : estimatedAmountIn / estimatedAmountOut;
 
@@ -453,7 +453,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
             baseToken: { type: 'string', examples: ['RAY'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
             amount: { type: 'number', examples: [1] },
-            side: { type: 'string', enum: ['buy', 'sell'], examples: ['sell'] },
+            side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
             slippagePct: { type: 'number', examples: [1] }
           }
         },
@@ -479,7 +479,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           baseToken,
           quoteToken,
           amount,
-          side as 'buy' | 'sell',
+          side as 'BUY' | 'SELL',
           slippagePct
         )
       } catch (e) {

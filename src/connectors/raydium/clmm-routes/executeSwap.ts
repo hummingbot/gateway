@@ -23,7 +23,7 @@ async function executeSwap(
   baseToken: string,
   quoteToken: string,
   amount: number,
-  side: 'buy' | 'sell',
+  side: 'BUY' | 'SELL',
   poolAddress: string,
   slippagePct: number
 ): Promise<ExecuteSwapResponseType> {
@@ -57,7 +57,7 @@ async function executeSwap(
   while (currentPriorityFee <= solana.config.maxPriorityFee * 1e9) {
     const priorityFeePerCU = Math.floor(currentPriorityFee * 1e6 / COMPUTE_UNITS);
     let transaction : VersionedTransaction;
-    if (side === 'buy') {
+    if (side === 'BUY') {
       const exactOutResponse = response as ReturnTypeComputeAmountOutBaseOut;    
       ({ transaction } = await raydium.raydiumSDK.clmm.swapBaseOut({
         poolInfo,
@@ -157,7 +157,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
             baseToken: { type: 'string', examples: ['SOL'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
             amount: { type: 'number', examples: [0.1] },
-            side: { type: 'string', examples: ['sell'] },
+            side: { type: 'string', examples: ['SELL'] },
             poolAddress: { type: 'string', examples: ['3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv'] },
             slippagePct: { type: 'number', examples: [1] }
           }
@@ -175,7 +175,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           baseToken,
           quoteToken,
           amount,
-          side as 'buy' | 'sell',
+          side as 'BUY' | 'SELL',
           poolAddress,
           slippagePct
         )

@@ -11,7 +11,7 @@ export async function getJupiterQuote(
   baseToken: string,
   quoteToken: string,
   amount: number,
-  side: 'buy' | 'sell',
+  side: 'BUY' | 'SELL',
   slippagePct?: number
 ) {
   const solana = await Solana.getInstance(network);
@@ -24,8 +24,8 @@ export async function getJupiterQuote(
     throw fastify.httpErrors.notFound(`Token not found: ${!baseTokenInfo ? baseToken : quoteToken}`);
   }
 
-  const tradeSide = side === 'buy' ? 'BUY' : 'SELL';
-  const amountValue = side === 'buy' ? amount : amount;
+  const tradeSide = side === 'BUY' ? 'BUY' : 'SELL';
+  const amountValue = side === 'BUY' ? amount : amount;
 
   try {
     const quote = await jupiter.getQuote(
@@ -81,7 +81,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
             baseToken: { type: 'string', examples: ['SOL'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
             amount: { type: 'number', examples: [0.1] },
-            side: { type: 'string', enum: ['buy', 'sell'], examples: ['sell'] },
+            side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
             slippagePct: { type: 'number', examples: [1] },
           }
         },
@@ -114,7 +114,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         baseToken,
         quoteToken,
         amount,
-        side as 'buy' | 'sell',
+        side as 'BUY' | 'SELL',
         slippagePct
       );
 
@@ -130,8 +130,8 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         estimatedAmountOut: quote.estimatedAmountOut,
         minAmountOut: quote.minAmountOut,
         maxAmountIn: quote.maxAmountIn,
-        baseTokenBalanceChange: side === 'sell' ? -quote.estimatedAmountIn : quote.estimatedAmountOut,
-        quoteTokenBalanceChange: side === 'sell' ? quote.estimatedAmountOut : -quote.estimatedAmountIn,
+        baseTokenBalanceChange: side === 'SELL' ? -quote.estimatedAmountIn : quote.estimatedAmountOut,
+        quoteTokenBalanceChange: side === 'SELL' ? quote.estimatedAmountOut : -quote.estimatedAmountIn,
         price: quote.expectedPrice,
         gasPrice: gasEstimation?.gasPrice,
         gasLimit: gasEstimation?.gasLimit,

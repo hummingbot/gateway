@@ -19,7 +19,7 @@ export async function getRawSwapQuote(
   baseTokenSymbol: string,
   quoteTokenSymbol: string,
   amount: number,
-  side: 'buy' | 'sell',
+  side: 'BUY' | 'SELL',
   poolAddress: string,
   slippagePct?: number
 ) {
@@ -41,18 +41,18 @@ export async function getRawSwapQuote(
 
   // For buy orders, we're swapping quote token for base token (ExactOut)
   // For sell orders, we're swapping base token for quote token (ExactIn)
-  const [inputToken, outputToken] = side === 'buy' 
+  const [inputToken, outputToken] = side === 'BUY' 
     ? [quoteToken, baseToken]
     : [baseToken, quoteToken];
 
-  const amount_bn = side === 'buy'
+  const amount_bn = side === 'BUY'
     ? DecimalUtil.toBN(new Decimal(amount), outputToken.decimals)
     : DecimalUtil.toBN(new Decimal(amount), inputToken.decimals);
   const swapForY = inputToken.address === dlmmPool.tokenX.publicKey.toBase58();
   const binArrays = await dlmmPool.getBinArrayForSwap(swapForY);
   const effectiveSlippage = new BN((slippagePct ?? meteora.getSlippagePct()) * 100);
 
-  const quote = side === 'buy'
+  const quote = side === 'BUY'
     ? dlmmPool.swapQuoteExactOut(
         amount_bn,
         swapForY,
@@ -82,7 +82,7 @@ async function formatSwapQuote(
   baseTokenSymbol: string,
   quoteTokenSymbol: string,
   amount: number,
-  side: 'buy' | 'sell',
+  side: 'BUY' | 'SELL',
   poolAddress: string,
   slippagePct?: number
 ): Promise<GetSwapQuoteResponseType> {
@@ -92,7 +92,7 @@ async function formatSwapQuote(
     baseTokenSymbol,
     quoteTokenSymbol,
     amount,
-    side as 'buy' | 'sell',
+    side as 'BUY' | 'SELL',
     poolAddress,
     slippagePct
   );
@@ -106,7 +106,7 @@ async function formatSwapQuote(
     throw new Error('Failed to get pool tokens');
   }
 
-  if (side === 'buy') {
+  if (side === 'BUY') {
     const exactOutQuote = quote as SwapQuoteExactOut;
     const estimatedAmountIn = DecimalUtil.fromBN(exactOutQuote.inAmount, inputToken.decimals).toNumber();
     const maxAmountIn = DecimalUtil.fromBN(exactOutQuote.maxInAmount, inputToken.decimals).toNumber();
@@ -167,7 +167,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
             baseToken: { type: 'string', examples: ['SOL'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
             amount: { type: 'number', examples: [0.1] },
-            side: { type: 'string', enum: ['buy', 'sell'], examples: ['sell'] },
+            side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
             poolAddress: { type: 'string', examples: ['2sf5NYcY4zUPXUSmG6f66mskb24t5F8S11pC1Nz5nQT3'] },
             slippagePct: { type: 'number', examples: [1] }
           }
@@ -193,7 +193,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           baseToken,
           quoteToken,
           amount,
-          side as 'buy' | 'sell',
+          side as 'BUY' | 'SELL',
           poolAddress,
           slippagePct
         );

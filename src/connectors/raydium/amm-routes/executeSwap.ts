@@ -19,7 +19,7 @@ async function executeSwap(
   baseToken: string,
   quoteToken: string,
   amount: number,
-  side: 'buy' | 'sell',
+  side: 'BUY' | 'SELL',
   poolAddress: string,
   slippagePct: number
 ): Promise<ExecuteSwapResponseType> {
@@ -58,7 +58,7 @@ async function executeSwap(
 
     // Get transaction based on pool type
     if (poolInfo.poolType === 'amm') {
-      if (side === 'buy') {
+      if (side === 'BUY') {
         // AMM swap base out (exact output)
         ({ transaction } = await raydium.raydiumSDK.liquidity.swap({
           poolInfo: quote.poolInfo,
@@ -90,7 +90,7 @@ async function executeSwap(
         }) as { transaction: VersionedTransaction })
       }
     } else if (poolInfo.poolType === 'cpmm') {
-      if (side === 'buy') {
+      if (side === 'BUY') {
         // CPMM swap base out (exact output)
         ({ transaction } = await raydium.raydiumSDK.cpmm.swap({
           poolInfo: quote.poolInfo,
@@ -145,12 +145,12 @@ async function executeSwap(
           wallet.publicKey.toBase58()
         );
   
-      logger.info(`Swap executed successfully: ${Math.abs(side === 'sell' ? baseTokenBalanceChange : quoteTokenBalanceChange).toFixed(4)} ${inputToken.symbol} -> ${Math.abs(side === 'sell' ? quoteTokenBalanceChange : baseTokenBalanceChange).toFixed(4)} ${outputToken.symbol}`);
+      logger.info(`Swap executed successfully: ${Math.abs(side === 'SELL' ? baseTokenBalanceChange : quoteTokenBalanceChange).toFixed(4)} ${inputToken.symbol} -> ${Math.abs(side === 'SELL' ? quoteTokenBalanceChange : baseTokenBalanceChange).toFixed(4)} ${outputToken.symbol}`);
     
       return {
         signature,
-        totalInputSwapped: Math.abs(side === 'sell' ? baseTokenBalanceChange : quoteTokenBalanceChange),
-        totalOutputSwapped: Math.abs(side === 'sell' ? quoteTokenBalanceChange : baseTokenBalanceChange),
+        totalInputSwapped: Math.abs(side === 'SELL' ? baseTokenBalanceChange : quoteTokenBalanceChange),
+        totalOutputSwapped: Math.abs(side === 'SELL' ? quoteTokenBalanceChange : baseTokenBalanceChange),
         fee: txData.meta.fee / 1e9,
         baseTokenBalanceChange,
         quoteTokenBalanceChange,
@@ -192,7 +192,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
             baseToken: { type: 'string', examples: ['RAY'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
             amount: { type: 'number', examples: [1] },
-            side: { type: 'string', examples: ['sell'] },
+            side: { type: 'string', examples: ['SELL'] },
             poolAddress: { type: 'string', examples: ['6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg'] }, // AMM
             // poolAddress: { type: 'string', examples: ['7JuwJuNU88gurFnyWeiyGKbFmExMWcmRZntn9imEzdny'] }, // CPMM
             slippagePct: { type: 'number', examples: [1] }
@@ -211,7 +211,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           baseToken,
           quoteToken,
           amount,
-          side as 'buy' | 'sell',
+          side as 'BUY' | 'SELL',
           poolAddress,
           slippagePct
         )

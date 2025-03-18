@@ -18,7 +18,7 @@ async function executeSwap(
   baseTokenIdentifier: string,
   quoteTokenIdentifier: string,
   amount: number,
-  side: 'buy' | 'sell',
+  side: 'BUY' | 'SELL',
   poolAddress: string,
   slippagePct?: number
 ): Promise<ExecuteSwapResponseType> {
@@ -44,7 +44,7 @@ async function executeSwap(
 
   logger.info(`Executing ${amount.toFixed(4)} ${side} swap in pool ${poolAddress}`);
 
-  const swapTx = side === 'buy'
+  const swapTx = side === 'BUY'
     ? await dlmmPool.swapExactOut({
         inToken: new PublicKey(inputToken.address),
         outToken: new PublicKey(outputToken.address),
@@ -117,7 +117,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
             baseToken: { type: 'string', examples: ['SOL'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
             amount: { type: 'number', examples: [0.1] },
-            side: { type: 'string', enum: ['buy', 'sell'], examples: ['sell'] },
+            side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
             poolAddress: { type: 'string', examples: ['2sf5NYcY4zUPXUSmG6f66mskb24t5F8S11pC1Nz5nQT3'] },
             slippagePct: { type: 'number', examples: [1] }
           }
@@ -141,7 +141,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           baseToken,
           quoteToken,
           amount,
-          side as 'buy' | 'sell',
+          side as 'BUY' | 'SELL',
           poolAddress,
           slippagePct
         );
