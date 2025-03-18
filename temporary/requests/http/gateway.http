@@ -94,19 +94,6 @@ Content-Type: application/json
 
 ###
 
-# POST /wallet/sign (seems not working with Solana too)
-POST {{httpProtocol}}://{{host}}:{{port}}/wallet/sign
-Content-Type: application/json
-
-{
-  "chain": "{{chain}}",
-  "network": "{{network}}",
-  "address": "{{walletPublicKey}}",
-  "message": "{{dummyMessage}}"
-}
-
-###
-
 # ===================== CHAIN ROUTES =====================
 
 # GET /<chain>/status
