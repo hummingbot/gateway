@@ -208,7 +208,7 @@ Content-Type: application/json
 ###
 
 # GET /{{connector}}/amm/quote-swap - Get swap quote
-GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/quote-swap?network={{network}}&baseToken={{{{baseTokenSymbol}}}}&quoteToken={{{{quoteTokenSymbol}}}}&amount={{amount}}&side={{side}}&poolAddress={{poolAddress}}&slippagePct={{slippagePercentage}}
+GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/quote-swap?network={{network}}&baseToken={{baseTokenSymbol}}&quoteToken={{quoteTokenSymbol}}&amount={{amount}}&side={{side}}&poolAddress={{poolAddress}}&slippagePct={{slippagePercentage}}
 Content-Type: application/json
 
 {
@@ -234,10 +234,10 @@ Content-Type: application/json
   "walletAddress": "{{walletPublicKey}}",
   "baseToken": "{{baseTokenSymbol}}",
   "quoteToken": "{{quoteTokenSymbol}}",
-  "amount": {{amount}},
+  "amount": "{{amount}}",
   "side": "{{side}}",
   "poolAddress": "{{poolAddress}}",
-  "slippagePct": {{slippagePercentage}}
+  "slippagePct": "{{slippagePercentage}}"
 }
 
 ###
@@ -250,9 +250,9 @@ Content-Type: application/json
   "network": "{{network}}",
   "walletAddress": "{{walletPublicKey}}",
   "poolAddress": "{{poolAddress}}",
-  "baseTokenAmount": {{baseTokenAmount}},
-  "quoteTokenAmount": {{quoteTokenAmount}},
-  "slippagePct": {{slippagePercentage}}
+  "baseTokenAmount": "{{baseTokenAmount}}",
+  "quoteTokenAmount": "{{quoteTokenAmount}}",
+  "slippagePct": "{{slippagePercentage}}"
 }
 
 ###
@@ -265,7 +265,7 @@ Content-Type: application/json
   "network": "{{network}}",
   "walletAddress": "{{walletPublicKey}}",
   "poolAddress": "{{poolAddress}}",
-  "percentageToRemove": {{percentageToRemove}}
+  "percentageToRemove": "{{percentageToRemove}}"
 }
 
 ###
@@ -326,10 +326,10 @@ Content-Type: application/json
   "walletAddress": "{{walletPublicKey}}",
   "baseToken": "{{baseTokenSymbol}}",
   "quoteToken": "{{quoteTokenSymbol}}",
-  "amount": {{amount}},
+  "amount": "{{amount}}",
   "side": "{{side}}",
   "poolAddress": "{{poolAddress}}",
-  "slippagePct": {{slippagePercentage}}
+  "slippagePct": "{{slippagePercentage}}"
 }
 
 ###
@@ -341,12 +341,12 @@ Content-Type: application/json
 {
   "network": "{{network}}",
   "walletAddress": "{{walletPublicKey}}",
-  "lowerPrice": {{lowerPrice}},
-  "upperPrice": {{upperPrice}},
+  "lowerPrice": "{{lowerPrice}}",
+  "upperPrice": "{{upperPrice}}",
   "poolAddress": "{{poolAddress}}",
-  "baseTokenAmount": {{baseTokenAmount}},
-  "quoteTokenAmount": {{quoteTokenAmount}},
-  "slippagePct": {{slippagePercentage}}
+  "baseTokenAmount": "{{baseTokenAmount}}",
+  "quoteTokenAmount": "{{quoteTokenAmount}}",
+  "slippagePct": "{{slippagePercentage}}"
 }
 
 ###
@@ -359,9 +359,9 @@ Content-Type: application/json
   "network": "{{network}}",
   "walletAddress": "{{walletPublicKey}}",
   "positionAddress": "{{positionAddress}}",
-  "baseTokenAmount": {{baseTokenAmount}},
-  "quoteTokenAmount": {{quoteTokenAmount}},
-  "slippagePct": {{slippagePercentage}}
+  "baseTokenAmount": "{{baseTokenAmount}}",
+  "quoteTokenAmount": "{{quoteTokenAmount}}",
+  "slippagePct": "{{slippagePercentage}}"
 }
 
 ###
@@ -374,7 +374,7 @@ Content-Type: application/json
   "network": "{{network}}",
   "walletAddress": "{{walletPublicKey}}",
   "positionAddress": "{{positionAddress}}",
-  "percentageToRemove": {{percentageToRemove}}
+  "percentageToRemove": "{{percentageToRemove}}"
 }
 
 ###
