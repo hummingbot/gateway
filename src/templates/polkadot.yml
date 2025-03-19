@@ -1,6 +1,6 @@
 networks:
   mainnet:
-    nodeURL: 'wss://rpc.polkadot.io'
+    nodeURL: 'wss://rpc.hydradx.cloud'
     tokenListType: 'FILE'
     tokenListSource: 'src/templates/lists/polkadot_tokens_mainnet.json'
     nativeCurrencySymbol: DOT

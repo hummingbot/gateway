@@ -97,7 +97,7 @@ export class Polkadot {
         ? new HttpProvider(this.config.network.nodeURL)
         : new WsProvider(this.config.network.nodeURL);
       
-      this.api = await ApiPromise.create({ provider });
+      this.api = await ApiPromise.create({ provider: provider });
       
       // Wait for API to be ready
       await this.api.isReady;
@@ -158,11 +158,11 @@ export class Polkadot {
       
       if (tokenListType === 'URL') {
         const response = await axios.get(tokenListSource);
-        tokensData = response.data.tokens || [];
+        tokensData = response.data || [];
       } else {
         const data = await fs.promises.readFile(tokenListSource, { encoding: 'utf8' });
         const parsed = JSON.parse(data);
-        tokensData = parsed.tokens || [];
+        tokensData = parsed || [];
       }
 
       // Process tokens
