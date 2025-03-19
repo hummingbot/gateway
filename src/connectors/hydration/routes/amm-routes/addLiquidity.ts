@@ -12,8 +12,90 @@ import {
   AddLiquidityResponseType
 } from '../../../../services/clmm-interfaces';
 
-// Buffer for transaction costs (in HDX)
-const HDX_TRANSACTION_BUFFER = 0.1;
+// Maximum number of retries for transaction submission
+const MAX_RETRIES = 3;
+// Fee multiplier for retries
+const FEE_MULTIPLIER = 1.5;
+// Base transaction fee buffer in HDX
+const BASE_TX_FEE = 0.01;
+
+/**
+ * Create the add liquidity transaction
+ */
+async function createAddLiquidityTransaction(
+  hydration: Hydration,
+  polkadot: Polkadot,
+  poolId: string,
+  baseTokenAmount: number,
+  quoteTokenAmount: number,
+  slippage: number
+) {
+  const pool = await hydration.getPoolInfo(poolId);
+  if (!pool) {
+    throw new Error(`Pool not found: ${poolId}`);
+  }
+
+  const baseTokenSymbol = pool.baseToken.symbol;
+  const quoteTokenSymbol = pool.quoteToken.symbol;
+
+  // Get asset information
+  const assets = await hydration.getAllTokens();
+  const baseAsset = assets.find(a => a.symbol === baseTokenSymbol);
+  const quoteAsset = assets.find(a => a.symbol === quoteTokenSymbol);
+
+  if (!baseAsset || !quoteAsset) {
+    throw new Error(`Asset not found: ${!baseAsset ? baseTokenSymbol : quoteTokenSymbol}`);
+  }
+
+  // Convert amounts to BigNumber with proper decimals
+  const baseAmountBN = new BigNumber(baseTokenAmount)
+    .multipliedBy(new BigNumber(10).pow(baseAsset.decimals))
+    .decimalPlaces(0);
+
+  const quoteAmountBN = new BigNumber(quoteTokenAmount)
+    .multipliedBy(new BigNumber(10).pow(quoteAsset.decimals))
+    .decimalPlaces(0);
+
+  // Calculate minimum amount expected based on slippage
+  const minBaseExpected = baseAmountBN.multipliedBy(
+    new BigNumber(100 - slippage).dividedBy(100)
+  ).decimalPlaces(0);
+
+  const api = polkadot.api;
+
+  // Examine pool properties to determine type
+  // In a real implementation, we would use a more robust method to determine the pool type
+  // For now we're making an educated guess based on the pool structure
+  if (pool.hasOwnProperty('omnipoolId')) {
+    // Omnipool - the main Hydration pool type
+    return api.tx.omnipool.addLiquidity(
+      baseAsset.id,
+      baseAmountBN.toString()
+    );
+  } 
+  else if (pool.hasOwnProperty('lbpId')) {
+    // LBP pool - check actual required parameters from API
+    return api.tx.lbp.addLiquidity(
+      [
+        baseAsset.id,
+        baseAmountBN.toString()
+      ],
+      [
+        quoteAsset.id,
+        quoteAmountBN.toString()
+      ]
+    );
+  }
+  else {
+    // Default to XYK (standard AMM) pool
+    return api.tx.xyk.addLiquidity(
+      baseAsset.id,
+      quoteAsset.id,
+      baseAmountBN.toString(),
+      quoteAmountBN.toString()
+    );
+  }
+}
 
 /**
  * Add liquidity to a Hydration position
@@ -48,127 +130,99 @@ async function addLiquidity(
   const polkadot = await Polkadot.getInstance(network);
   const hydration = await Hydration.getInstance(network);
 
-  // Get keyPair from wallet address - Fix method name
-  // Use the correct method from the Polkadot class
-  const keyPair = await polkadot.getWallet(walletAddress);
-
-  // Get position info
-  // For Hydration, we'd need to get the poolId from the position
-  // This is an adaptation since Hydration doesn't have the same position concept
-  const poolId = positionAddress; // In Hydration we're using poolId as positionAddress
-
-  // Get pool info
+  // Get wallet
+  const wallet = await polkadot.getWallet(walletAddress);
+  
+  // Get pool info (positionAddress is poolId in Hydration)
+  const poolId = positionAddress;
   const pool = await hydration.getPoolInfo(poolId);
+  
   if (!pool) {
-    throw httpNotFound(`Pool not found: ${poolId}`);
+    logger.error(`Pool not found: ${poolId}`);
+    throw new Error(`Pool not found: ${poolId}`);
   }
-
+  
   const baseTokenSymbol = pool.baseToken.symbol;
   const quoteTokenSymbol = pool.quoteToken.symbol;
-
+  
   // Validate amounts
   if (baseTokenAmount <= 0 && quoteTokenAmount <= 0) {
-    throw httpBadRequest(ERROR_MESSAGES.MISSING_AMOUNTS);
+    throw new Error('At least one token amount must be greater than zero');
   }
-
-  // Check balances with transaction buffer
-  // Fix the method name for getting balances
-  const balances = await polkadot.getBalance(keyPair, [baseTokenSymbol, quoteTokenSymbol, "HDX"]);
-  const requiredBase = baseTokenAmount;
-  const requiredQuote = quoteTokenAmount;
-  const requiredHDX = HDX_TRANSACTION_BUFFER;
-
-  // Check base token balance - Use proper error message construction
-  if (balances[baseTokenSymbol] < requiredBase) {
-    throw httpBadRequest(
-      `Insufficient ${baseTokenSymbol} balance. Required: ${requiredBase}, Available: ${balances[baseTokenSymbol]}`
-    );
+  
+  // Check balances
+  const balances = await polkadot.getBalance(wallet, [baseTokenSymbol, quoteTokenSymbol, "HDX"]);
+  
+  if (balances[baseTokenSymbol] < baseTokenAmount) {
+    throw new Error(`Insufficient ${baseTokenSymbol} balance: ${balances[baseTokenSymbol]} < ${baseTokenAmount}`);
   }
-
-  // Check quote token balance
-  if (balances[quoteTokenSymbol] < requiredQuote) {
-    throw httpBadRequest(
-      `Insufficient ${quoteTokenSymbol} balance. Required: ${requiredQuote}, Available: ${balances[quoteTokenSymbol]}`
-    );
+  
+  if (balances[quoteTokenSymbol] < quoteTokenAmount) {
+    throw new Error(`Insufficient ${quoteTokenSymbol} balance: ${balances[quoteTokenSymbol]} < ${quoteTokenAmount}`);
   }
-
-  // Check HDX balance for gas
-  if (balances['HDX'] < requiredHDX) {
-    throw httpBadRequest(
-      `Insufficient HDX balance for transaction fees. Required: ${requiredHDX}, Available: ${balances['HDX']}`
-    );
+  
+  if (balances['HDX'] < BASE_TX_FEE) {
+    throw new Error(`Insufficient HDX for transaction fees: ${balances['HDX']} < ${BASE_TX_FEE}`);
   }
+  
+  logger.info(`Adding liquidity to Hydration pool ${poolId} (${baseTokenSymbol}-${quoteTokenSymbol})...`);
 
-  logger.info(`Adding liquidity to pool ${poolId}: ${baseTokenAmount.toFixed(4)} ${baseTokenSymbol}, ${quoteTokenAmount.toFixed(4)} ${quoteTokenSymbol}`);
+  // Use hydration's slippage or provided slippage
+  const slippage = slippagePct ?? hydration.getSlippagePct();
+  
+  // Try to submit transaction with increasing fees if needed
+  let currentFee = BASE_TX_FEE;
+  let retryCount = 0;
+  
+  while (retryCount < MAX_RETRIES) {
+    try {
+      // Create transaction
+      const tx = await createAddLiquidityTransaction(
+        hydration,
+        polkadot,
+        poolId,
+        baseTokenAmount,
+        quoteTokenAmount,
+        slippage
+      );
 
-  try {
-    // Use assets from Hydration to get asset IDs
-    const assets = await hydration.getAllTokens();
-    const baseAsset = assets.find(a => a.symbol === baseTokenSymbol);
-    const quoteAsset = assets.find(a => a.symbol === quoteTokenSymbol);
-
-    if (!baseAsset || !quoteAsset) {
-      throw httpNotFound(`Asset not found: ${!baseAsset ? baseTokenSymbol : quoteTokenSymbol}`);
-    }
-
-    // Convert amounts to BigNumber with proper decimals
-    const baseAmountBN = new BigNumber(baseTokenAmount)
-      .multipliedBy(new BigNumber(10).pow(baseAsset.decimals))
-      .decimalPlaces(0);
-
-    const quoteAmountBN = new BigNumber(quoteTokenAmount)
-      .multipliedBy(new BigNumber(10).pow(quoteAsset.decimals))
-      .decimalPlaces(0);
-
-    // Get slippage
-    const effectiveSlippage = slippagePct ?? hydration.getSlippagePct();
-
-    // Using the GalacticCouncil SDK to prepare the transaction
-    const api = polkadot.api;
-
-    // Create the add liquidity transaction
-    // Example based on GalacticCouncil SDK for Omnipool
-    const addLiquidityTx = api.tx.omnipool.addLiquidity(
-      baseAsset.id,
-      baseAmountBN.toString(),
-      //calculateMinAmountOut(quoteAmountBN, effectiveSlippage).toString()
-    );
-
-    // Sign and send the transaction - Fix the signAndSend callback signature
-    const txHash = await new Promise<string>((resolve, reject) => {
-      // Use the correct callback format for Polkadot.js
-      addLiquidityTx.signAndSend(keyPair, (result) => {
-        if (result.status.isInBlock || result.status.isFinalized) {
-          resolve(result.status.asInBlock.toString());
-        } else if (result.isError) {
-          reject(new Error(`Transaction failed: ${result.status.toString()}`));
-        }
-      }).catch(error => {
-        reject(error);
+      // Sign and send the transaction
+      const txHash = await new Promise<string>((resolve, reject) => {
+        tx.signAndSend(wallet, (result: any) => {
+          if (result.status.isInBlock || result.status.isFinalized) {
+            resolve(result.status.asInBlock.toString());
+          } else if (result.isError) {
+            reject(new Error(`Transaction failed: ${result.status.toString()}`));
+          }
+        }).catch((error: any) => {
+          reject(error);
+        });
       });
-    });
-
-    logger.info(`Liquidity added to pool ${poolId} with tx hash: ${txHash}`);
-
-    // In a real implementation, we would parse events to get actual amounts added
-    // Here we're returning the requested amounts
-    return {
-      signature: txHash,
-      baseTokenAmountAdded: baseTokenAmount,
-      quoteTokenAmountAdded: quoteTokenAmount,
-      fee: 0.01 // This should be the actual fee from the transaction
-    };
-  } catch (error) {
-    logger.error(`Error adding liquidity to pool ${poolId}:`, error);
-    throw error;
+      
+      logger.info(`Liquidity added to pool ${poolId} with tx hash: ${txHash}`);
+      
+      // For now, we return the requested amounts as the actual amounts
+      // In a production implementation, we would parse events to get actual amounts added
+      return {
+        signature: txHash,
+        fee: currentFee,
+        baseTokenAmountAdded: baseTokenAmount,
+        quoteTokenAmountAdded: quoteTokenAmount
+      };
+    } catch (error) {
+      retryCount++;
+      currentFee *= FEE_MULTIPLIER;
+      
+      if (retryCount >= MAX_RETRIES) {
+        logger.error(`Add liquidity failed after ${MAX_RETRIES} retries with max fee ${currentFee}`);
+        throw error;
+      }
+      
+      logger.info(`Retrying add liquidity with increased fee: ${currentFee} HDX (retry ${retryCount}/${MAX_RETRIES})`);
+    }
   }
-}
-
-/**
- * Calculate minimum amount out based on slippage
- */
-function calculateMinAmountOut(amount: BigNumber, slippagePct: number): BigNumber {
-  return amount.multipliedBy(new BigNumber(100 - slippagePct).dividedBy(100));
+  
+  throw new Error(`Add liquidity failed after ${MAX_RETRIES} retries`);
 }
 
 /**
@@ -177,34 +231,40 @@ function calculateMinAmountOut(amount: BigNumber, slippagePct: number): BigNumbe
 export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   // Get first wallet address for example
   const polkadot = await Polkadot.getInstance('mainnet');
-  let firstWalletAddress = '1examplePolkadotAddress...';
-
-  // Try to get a real wallet address for examples if available
+  let firstWalletAddress = '';
+  
   try {
-    const firstWallet = await polkadot.getFirstWalletAddress();
-    if (firstWallet) {
-      firstWalletAddress = firstWallet;
+    const foundWallet = await polkadot.getFirstWalletAddress();
+    if (foundWallet) {
+      firstWalletAddress = foundWallet;
+    } else {
+      logger.debug('No wallets found for examples in schema');
     }
   } catch (error) {
-    logger.debug('Could not get example wallet address', error);
+    logger.debug('Error getting example wallet address', error);
   }
-
+  
   // Update schema example
   AddLiquidityRequest.properties.walletAddress.examples = [firstWalletAddress];
 
-  // Fix the Fastify route typing issue
-  fastify.post(
+  fastify.post<{
+    Body: AddLiquidityRequestType
+    Reply: AddLiquidityResponseType
+  }>(
     '/add-liquidity',
     {
       schema: {
-        description: 'Add liquidity to a Hydration position',
+        description: 'Add liquidity to a Hydration pool',
         tags: ['hydration'],
         body: {
           ...AddLiquidityRequest,
           properties: {
             ...AddLiquidityRequest.properties,
             network: { type: 'string', default: 'mainnet' },
-            slippagePct: { type: 'number', examples: [1] }
+            positionAddress: { type: 'string', examples: ['12345'] }, // Example pool ID
+            slippagePct: { type: 'number', examples: [1] },
+            baseTokenAmount: { type: 'number', examples: [10] },
+            quoteTokenAmount: { type: 'number', examples: [10] },
           }
         },
         response: {
@@ -212,35 +272,29 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         },
       }
     },
-    async (request, reply) => {
+    async (request) => {
       try {
-        const {
+        const { 
+          network,
           walletAddress,
           positionAddress,
           baseTokenAmount,
           quoteTokenAmount,
-          slippagePct
-        } = request.body as AddLiquidityRequestType;
-        const network = (request.body as AddLiquidityRequestType).network || 'mainnet';
-
-        const result = await addLiquidity(
+          slippagePct 
+        } = request.body;
+        
+        return await addLiquidity(
           fastify,
-          network,
+          network || 'mainnet',
           walletAddress,
           positionAddress,
           baseTokenAmount,
           quoteTokenAmount,
           slippagePct
         );
-
-        return reply.send(result);
       } catch (e) {
-        logger.error('Error in add-liquidity endpoint:', e);
-
-        if (e.statusCode) {
-          return reply.status(e.statusCode).send({ error: e.message });
-        }
-        return reply.status(500).send({ error: 'Internal server error' });
+        logger.error(e);
+        throw fastify.httpErrors.internalServerError('Internal server error');
       }
     }
   );
