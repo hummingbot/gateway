@@ -29,6 +29,8 @@ import { BN } from 'bn.js';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import axios from 'axios';
+import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
+import { walletPath } from '../../services/base';
 
 /**
  * Main class for interacting with the Polkadot blockchain.
@@ -36,6 +38,7 @@ import axios from 'axios';
 export class Polkadot {
   public api: ApiPromise;
   public network: string;
+  public chain: string = 'polkadot';
   public nativeTokenSymbol: string;
   public tokenList: TokenInfo[] = [];
   public config: Config;
@@ -251,7 +254,7 @@ export class Polkadot {
   }
 
   /**
-   * Get a wallet from an address (uses stored keypairs or creates a new one)
+   * Get a wallet from an address (loads from encrypted file)
    * @param address The address of the wallet
    * @returns A Promise that resolves to the keyring pair
    */
@@ -266,12 +269,34 @@ export class Polkadot {
         return existingPair;
       }
 
-      // If not found, throw an error as we can't recreate a keyring pair just from an address
-      throw new HttpException(
-        500,
-        `Wallet not found for address: ${address}. You need to import the private key or mnemonic first.`,
-        -1
-      );
+      // If not found in memory, load from encrypted file
+      try {
+        // Path to the wallet file
+        const path = `${walletPath}/${this.chain}`;
+        const walletFile = `${path}/${address}.json`;
+        
+        // Read encrypted mnemonic from file
+        const encryptedMnemonic = await fs.promises.readFile(walletFile, 'utf8');
+        
+        // Get passphrase using ConfigManagerCertPassphrase
+        const passphrase = ConfigManagerCertPassphrase.readPassphrase();
+        if (!passphrase) {
+          throw new Error('Missing passphrase for wallet decryption');
+        }
+        
+        // Decrypt the mnemonic
+        const mnemonic = await this.decrypt(encryptedMnemonic, passphrase);
+        
+        // Add to keyring and return
+        return this._keyring.addFromUri(mnemonic);
+      } catch (error) {
+        logger.error(`Failed to load wallet from file: ${error.message}`);
+        throw new HttpException(
+          500,
+          `Wallet not found for address: ${address}. You need to import the private key or mnemonic first.`,
+          -1
+        );
+      }
     } catch (error) {
       logger.error(`Failed to get wallet: ${error.message}`);
       throw error;
@@ -352,30 +377,76 @@ export class Polkadot {
   async getBalance(wallet: KeyringPair, symbols?: string[]): Promise<Record<string, number>> {
     try {
       const balances: Record<string, number> = {};
-      const tokensToCheck = symbols
-        ? symbols.map(s => this.getToken(s)).filter(Boolean)
-        : this.tokenList;
+      const address = wallet.address;
+      
+      // Determine which tokens to check
+      let tokensToCheck: TokenInfo[] = [];
+      if (symbols && symbols.length > 0) {
+        // Filter tokens by specified symbols
+        for (const symbol of symbols) {
+          const token = await this.getToken(symbol);
+          if (token) {
+            tokensToCheck.push(token);
+          }
+        }
+      } else {
+        // Use all tokens in the token list
+        tokensToCheck = this.tokenList;
+      }
 
       // Get native token balance
-      // @ts-ignore - Ignorando erro de tipo para acessar propriedade symbol
-      const nativeToken = tokensToCheck.find(t => t && typeof t === 'object' && 'symbol' in t && t.symbol === this.nativeTokenSymbol);
-      if (nativeToken && !('then' in nativeToken)) {
-        const accountInfo = await this.api.query.system.account(wallet.address);
-        // @ts-ignore - Ignorando erro de tipo para propriedade 'data'
+      const nativeToken = tokensToCheck.find(t => t.symbol === this.nativeTokenSymbol);
+      if (nativeToken) {
+        const accountInfo = await this.api.query.system.account(address);
+        // @ts-ignore - Handle type issues with accountInfo structure
         const freeBalance = accountInfo.data.free.toString();
-        // @ts-ignore - Ignorando erro de tipo para propriedade 'data'
+        // @ts-ignore - Handle type issues with accountInfo structure
         const reservedBalance = accountInfo.data.reserved.toString();
         const totalBalance = new BN(freeBalance).add(new BN(reservedBalance));
-
-        // Convert from atomic units to human-readable form
+        
         balances[nativeToken.symbol] = this.fromBaseUnits(
           totalBalance.toString(),
           nativeToken.decimals
         );
       }
 
-      // Get balances for other tokens (if applicable in Polkadot)
-      // For most cases in Polkadot, we'd be checking balances in specific pallets or parachains
+      // Get balances for other tokens
+      for (const token of tokensToCheck) {
+        // Skip native token as we already processed it
+        if (token.symbol === this.nativeTokenSymbol) continue;
+        
+        try {
+          // Check if tokens module exists
+          if (this.api.query.tokens && this.api.query.tokens.accounts) {
+            const assetBalance = await this.api.query.tokens.accounts(address, token.address);
+            if (assetBalance) {
+              // @ts-ignore - Handle type issues with assetBalance structure
+              const free = assetBalance.free?.toString() || '0';
+              balances[token.symbol] = this.fromBaseUnits(free, token.decimals);
+            } else {
+              balances[token.symbol] = 0;
+            }
+          } else if (this.api.query.assets && this.api.query.assets.account) {
+            // Alternative assets pallet approach if available
+            const assetBalance = await this.api.query.assets.account(token.address, address);
+            if (assetBalance && !assetBalance.isEmpty) {
+              // Handle Option<AssetBalance> - use type-safe methods instead of isSome/unwrap
+              const balanceData = assetBalance as any;
+              const balance = balanceData.balance?.toString() || 
+                             (balanceData.toJSON && balanceData.toJSON().balance) || '0';
+              balances[token.symbol] = this.fromBaseUnits(balance, token.decimals);
+            } else {
+              balances[token.symbol] = 0;
+            }
+          } else {
+            // If no token module is available, set balance to 0
+            balances[token.symbol] = 0;
+          }
+        } catch (err) {
+          logger.warn(`Error getting balance for token ${token.symbol}: ${err.message}`);
+          balances[token.symbol] = 0;
+        }
+      }
 
       return balances;
     } catch (error) {
