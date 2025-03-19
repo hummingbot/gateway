@@ -399,7 +399,7 @@ export class Polkadot {
       if (nativeToken) {
         const accountInfo = await this.api.query.system.account(address);
         // @ts-ignore - Handle type issues with accountInfo structure
-        const freeBalance = accountInfo.data.free.toString();
+        const freeBalance = accountInfo.data.balance || accountInfo.data.free.toString();
         // @ts-ignore - Handle type issues with accountInfo structure
         const reservedBalance = accountInfo.data.reserved.toString();
         const totalBalance = new BN(freeBalance).add(new BN(reservedBalance));

@@ -3,4 +3,4 @@ networks:
     nodeURL: 'wss://rpc.hydradx.cloud'
     tokenListType: 'FILE'
     tokenListSource: 'src/templates/lists/polkadot_tokens_mainnet.json'
-    nativeCurrencySymbol: DOT
+    nativeCurrencySymbol: HDX
