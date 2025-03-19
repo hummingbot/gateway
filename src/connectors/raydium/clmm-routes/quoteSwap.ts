@@ -6,10 +6,10 @@ import { Decimal } from 'decimal.js';
 import { BN } from 'bn.js';
 import { logger } from '../../../services/logger';
 import { 
-  GetSwapQuoteRequestType,
   GetSwapQuoteResponseType,
-  GetSwapQuoteRequest,
-  GetSwapQuoteResponse
+  GetSwapQuoteResponse,
+  GetCLMMSwapQuoteRequestType,
+  GetCLMMSwapQuoteRequest
 } from '../../../schemas/trading-types/swap-schema';
 import {
   PoolUtils,
@@ -17,6 +17,7 @@ import {
   ReturnTypeComputeAmountOutBaseOut
 } from '@raydium-io/raydium-sdk-v2';
 import { PublicKey } from '@solana/web3.js';
+
 
 export async function getSwapQuote(
   fastify: FastifyInstance,
@@ -168,7 +169,7 @@ async function formatSwapQuote(
 
 export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
-    Querystring: GetSwapQuoteRequestType;
+    Querystring: GetCLMMSwapQuoteRequestType;
     Reply: GetSwapQuoteResponseType;
   }>(
     '/quote-swap',
@@ -176,10 +177,10 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Get swap quote for Raydium CLMM',
         tags: ['raydium-clmm'],
-        querystring: {
-          ...GetSwapQuoteRequest,
+        querystring:{ 
+          ...GetCLMMSwapQuoteRequest,
           properties: {
-            ...GetSwapQuoteRequest.properties,
+            ...GetCLMMSwapQuoteRequest.properties,
             network: { type: 'string', default: 'mainnet-beta' },
             baseToken: { type: 'string', examples: ['SOL'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
@@ -193,7 +194,6 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           200: {
             properties: {
               ...GetSwapQuoteResponse.properties,
-              price: { type: 'number' }
             }
           }
         },

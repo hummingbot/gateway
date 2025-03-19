@@ -3,10 +3,10 @@ import { Raydium } from '../raydium'
 import { Solana } from '../../../chains/solana/solana'
 import { logger } from '../../../services/logger'
 import { 
-  GetSwapQuoteRequest,
-  GetSwapQuoteResponse,
-  GetSwapQuoteRequestType,
+  GetCLMMSwapQuoteRequestType,
+  GetCLMMSwapQuoteRequest,
   GetSwapQuoteResponseType,
+  GetSwapQuoteResponse
 } from '../../../schemas/trading-types/swap-schema'
 import { 
   ApiV3PoolInfoStandardItem,
@@ -435,7 +435,7 @@ async function formatSwapQuote(
 
 export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
-    Querystring: GetSwapQuoteRequestType;
+    Querystring: GetCLMMSwapQuoteRequestType;
     Reply: GetSwapQuoteResponseType;
   }>(
     '/quote-swap',
@@ -444,12 +444,11 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         description: 'Get a swap quote for Raydium AMM or CPMM',
         tags: ['raydium-amm'],
         querystring: {
-          ...GetSwapQuoteRequest,
+          ...GetCLMMSwapQuoteRequest,
           properties: {
-            ...GetSwapQuoteRequest.properties,
+            ...GetCLMMSwapQuoteRequest.properties,
             network: { type: 'string', default: 'mainnet-beta' },
-            poolAddress: { type: 'string', examples: ['6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg'] }, // AMM
-            // poolAddress: { type: 'string', examples: ['7JuwJuNU88gurFnyWeiyGKbFmExMWcmRZntn9imEzdny'] }, // CPMM
+            poolAddress: { type: 'string', examples: ['6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg'] },
             baseToken: { type: 'string', examples: ['RAY'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
             amount: { type: 'number', examples: [1] },
@@ -461,7 +460,6 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           200: {
             properties: {
               ...GetSwapQuoteResponse.properties,
-              price: { type: 'number' }
             }
           }
         },

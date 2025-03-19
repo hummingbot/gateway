@@ -7,9 +7,9 @@ import { BN } from 'bn.js';
 import { logger } from '../../../services/logger';
 import { SwapQuoteExactOut, SwapQuote } from '@meteora-ag/dlmm';
 import { 
-  GetSwapQuoteRequestType,
+  GetCLMMSwapQuoteRequestType,
+  GetCLMMSwapQuoteRequest,
   GetSwapQuoteResponseType,
-  GetSwapQuoteRequest,
   GetSwapQuoteResponse
 } from '../../../schemas/trading-types/swap-schema';
 
@@ -151,7 +151,7 @@ async function formatSwapQuote(
 
 export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
-    Querystring: GetSwapQuoteRequestType;
+    Querystring: GetCLMMSwapQuoteRequestType;
     Reply: GetSwapQuoteResponseType;
   }>(
     '/quote-swap',
@@ -160,23 +160,22 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         description: 'Get a swap quote for Meteora',
         tags: ['meteora'],
         querystring: {
-          ...GetSwapQuoteRequest,
+          ...GetCLMMSwapQuoteRequest,
           properties: {
-            ...GetSwapQuoteRequest.properties,
+            ...GetCLMMSwapQuoteRequest.properties,
             network: { type: 'string', default: 'mainnet-beta' },
             baseToken: { type: 'string', examples: ['SOL'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
             amount: { type: 'number', examples: [0.1] },
             side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
             poolAddress: { type: 'string', examples: ['2sf5NYcY4zUPXUSmG6f66mskb24t5F8S11pC1Nz5nQT3'] },
-            slippagePct: { type: 'number', examples: [1] }
+            slippagePct: { type: 'number', examples: [1] },
           }
         },
         response: {
           200: {
             properties: {
               ...GetSwapQuoteResponse.properties,
-              price: { type: 'number' }
             }
           }
         },

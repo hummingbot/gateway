@@ -9,7 +9,6 @@ export const GetSwapQuoteRequest = Type.Object({
     enum: ['BUY', 'SELL'],
     description: 'Trade direction'
   }),
-  poolAddress: Type.Optional(Type.String()),
   slippagePct: Type.Optional(Type.Number()),
 }, { $id: 'GetSwapQuoteRequest' });
 export type GetSwapQuoteRequestType = Static<typeof GetSwapQuoteRequest>;
@@ -52,3 +51,11 @@ export const ExecuteSwapResponse = Type.Object({
   quoteTokenBalanceChange: Type.Number(),
 });
 export type ExecuteSwapResponseType = Static<typeof ExecuteSwapResponse>;
+
+export const GetCLMMSwapQuoteRequest = Type.Composite([
+  GetSwapQuoteRequest,
+  Type.Object({
+    poolAddress: Type.String({ description: 'CLMM pool address' }),
+  })
+], { $id: 'GetCLMMSwapQuoteRequest' });
+export type GetCLMMSwapQuoteRequestType = Static<typeof GetCLMMSwapQuoteRequest>;
