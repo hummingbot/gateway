@@ -82,6 +82,7 @@ const BalanceResponseSchema = Type.Object({
 });
 
 const PollResponseSchema = Type.Object({
+  network: Type.String(),
   currentBlock: Type.Number(),
   txHash: Type.String(),
   txBlock: Type.Union([Type.Number(), Type.Null()]),
@@ -226,18 +227,9 @@ export const polkadotRoutes: FastifyPluginAsync = async (fastify) => {
     '/poll',
     {
       schema: {
+        description: 'Poll for transaction status',
         tags: ['polkadot'],
-        description: 'Poll for the status of a Polkadot transaction',
-        body: {
-          ...PollRequestSchema,
-          examples: [
-            {
-              network: 'mainnet',
-              txHash: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
-              address: '15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5'
-            }
-          ]
-        },
+        body: PollRequestSchema,
         response: {
           200: PollResponseSchema
         }

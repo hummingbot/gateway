@@ -5,7 +5,8 @@ import {
   StatusRequest,
   StakingRequest,
   TransferRequest,
-  MetadataRequest
+  MetadataRequest,
+  PollResponse
 } from './polkadot.routes';
 import {
   HttpException,
@@ -50,78 +51,43 @@ export class PolkadotController {
    * @param req The poll request
    * @returns A wrapped response with transaction status
    */
-  static async poll(polkadot: Polkadot, req: PollRequest) {
-    const initTime = Date.now();
+  // In polkadot.controllers.ts - poll method
+public static async poll(chain: Polkadot, req: PollRequest): Promise<PollResponse> {
+  const startTime = Date.now();
+  
+  try {
+    // Get the transaction details
+    const txResult = await chain.getTransaction(req.txHash);
     
-    try {
-      const currentBlock = await polkadot.getCurrentBlockNumber();
-      
-      // Validate transaction hash format
-      if (!req.txHash || typeof req.txHash !== 'string' || !req.txHash.match(/^0x[a-fA-F0-9]{64}$/)) {
-        return wrapResponse({
-          currentBlock,
-          txHash: req.txHash,
-          txBlock: null,
-          txStatus: 0,
-          txData: null,
-          fee: null,
-          error: "Invalid transaction hash format"
-        }, initTime);
-      }
-      
-      const txData = await polkadot.getTransaction(req.txHash);
-      
-      if (!txData) {
-        return wrapResponse({
-          currentBlock,
-          txHash: req.txHash,
-          txBlock: null,
-          txStatus: 0,
-          txData: null,
-          fee: null,
-        }, initTime);
-      }
-
-      const txStatus = await polkadot.getTransactionStatusCode(txData);
-      
-      // Get fee and balance change if transaction is successful
-      let fee = null;
-      let balanceChange = null;
-      
-      if (txStatus === TransactionStatus.SUCCESS && req.address) {
-        try {
-          const result = await polkadot.extractBalanceChangeAndFee(req.txHash, req.address);
-          fee = result.fee;
-          balanceChange = result.balanceChange;
-        } catch (error) {
-          logger.error(`Error extracting fee and balance change: ${error.message}`);
-        }
-      }
-
-      logger.info(`Polling for transaction ${req.txHash}, Status: ${txStatus}, Fee: ${fee || 'Unknown'}`);
-
-      return wrapResponse({
-        currentBlock,
-        txHash: req.txHash,
-        txBlock: txData.blockNumber,
-        txStatus,
-        fee,
-        txData,
-        balanceChange
-      }, initTime);
-    } catch (error) {
-      logger.error(`Error polling transaction ${req.txHash}: ${error.message}`);
-      return wrapResponse({
-        currentBlock: await polkadot.getCurrentBlockNumber(),
-        txHash: req.txHash,
-        txBlock: null,
-        txStatus: 0,
-        txData: null,
-        fee: null,
-        error: "Transaction not found or invalid"
-      }, initTime);
-    }
+    // Create the response with ALL fields
+    return {
+      network: chain.network,
+      currentBlock: await chain.getCurrentBlockNumber(),
+      txHash: req.txHash,
+      txBlock: txResult.txBlock,  // Make sure this is included!
+      txStatus: txResult.txStatus, // Make sure this is included!
+      txData: txResult.txData,
+      fee: txResult.fee,
+      timestamp: Date.now(),
+      latency: (Date.now() - startTime) / 1000
+    };
+  } catch (error) {
+    logger.error(`Error in poll: ${error.message}`);
+    const currentBlock = await chain.getCurrentBlockNumber();
+    
+    return {
+      network: chain.network,
+      currentBlock,
+      txHash: req.txHash,
+      txBlock: currentBlock,  // Provide a fallback
+      txStatus: 0,  // Explicitly set status for error case
+      txData: {},
+      fee: null,
+      timestamp: Date.now(),
+      latency: (Date.now() - startTime) / 1000
+    };
   }
+}
 
   /**
    * Get tokens

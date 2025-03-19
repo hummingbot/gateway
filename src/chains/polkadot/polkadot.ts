@@ -32,6 +32,31 @@ import axios from 'axios';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { walletPath } from '../../services/base';
 
+interface PollResponse {
+  network: string;
+  currentBlock: number;
+  txHash: string;
+  txBlock: number;
+  txStatus: number;
+  txData: any | null;
+  fee: number | null;
+  timestamp: number;
+  latency: number;
+  error?: string;
+}
+
+interface HydrationTransaction {
+  code: number;
+  message?: string;
+  data: {
+    block_num?: number;
+    fee?: string;
+    success?: boolean;
+    finalized?: boolean;
+    // Add other properties as needed based on actual API response
+  };
+}
+
 /**
  * Main class for interacting with the Polkadot blockchain.
  */
@@ -516,33 +541,77 @@ export class Polkadot {
    * @param txHash The transaction hash
    * @returns A Promise that resolves to transaction details
    */
-  async getTransaction(txHash: string): Promise<TransactionDetails | null> {
+  public async getTransaction(txHash: string): Promise<any> {
+    const startTime = Date.now();
     try {
-      // Check if transaction exists in block hash
-      const extrinsicResult = await this.api.rpc.chain.getBlock();
-
-      for (const block of extrinsicResult.block.extrinsics) {
-        const blockHash = block.hash.toHex();
-
-        if (blockHash === txHash) {
-          // Found the transaction
-          const status = TransactionStatus.SUCCESS; // Assume success if found in a block
-
-          return {
-            hash: txHash,
-            blockHash: extrinsicResult.block.header.hash.toHex(),
-            blockNumber: extrinsicResult.block.header.number.toNumber(),
-            status,
-            // Add other details like events if available
-          };
+      const currentBlock = await this.getCurrentBlockNumber();
+      
+      // Try to fetch transaction data
+      let txData = null;
+      let txStatus = 0; // Not found by default
+      let blockNum = null;
+      let fee = null;
+      
+      try {
+        const headers = { 'Content-Type': 'application/json' };
+        const body = { hash: txHash };
+        
+        const response = await axios.post(
+          'https://hydration.api.subscan.io/api/scan/extrinsic',
+          body,
+          { headers }
+        );
+        
+        if (response.data && response.data.data) {
+          const transaction = response.data.data;
+          
+          // Extract transaction data
+          txData = transaction;
+          
+          blockNum = transaction.block_num || currentBlock;
+          fee = transaction.fee
+            ? parseFloat(transaction.fee) / Math.pow(10, 10)
+            : null;
+          
+          // Determine status based on success and finalized flags
+          if (transaction.success) {
+            txStatus = 1; // Success
+          } else if (transaction.success === false) {
+            txStatus = -1; // Failed
+          } else if (transaction.finalized) {
+            txStatus = 1; // Success if finalized
+          }
         }
+      } catch (error) {
+        logger.error(`Error fetching transaction ${txHash}: ${error.message}`);
       }
-
-      // Transaction not found
-      return null;
+      
+      return {
+        network: this.network,
+        currentBlock,
+        txHash,
+        txBlock: blockNum || currentBlock,
+        txStatus,
+        txData,
+        fee,
+        timestamp: Date.now(),
+        latency: (Date.now() - startTime) / 1000
+      };
     } catch (error) {
-      logger.error(`Failed to get transaction: ${error.message}`);
-      throw error;
+      logger.error(`Error in getTransaction for ${txHash}: ${error.message}`);
+      const currentBlock = await this.getCurrentBlockNumber().catch(() => 0);
+      
+      return {
+        network: this.network,
+        currentBlock,
+        txHash,
+        txBlock: currentBlock,
+        txStatus: 0,
+        txData: null,
+        fee: null,
+        timestamp: Date.now(),
+        latency: (Date.now() - startTime) / 1000
+      };
     }
   }
 
