@@ -2,5 +2,5 @@ networks:
   mainnet:
     nodeURL: 'wss://rpc.hydradx.cloud'
     tokenListType: 'FILE'
-    tokenListSource: 'src/templates/lists/polkadot_tokens_mainnet.json'
+    tokenListSource: 'conf/lists/hydration.json'
     nativeCurrencySymbol: HDX
