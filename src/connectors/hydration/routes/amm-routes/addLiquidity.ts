@@ -48,21 +48,9 @@ async function addLiquidity(
   const polkadot = await Polkadot.getInstance(network);
   const hydration = await Hydration.getInstance(network);
 
-<<<<<<< Updated upstream
-  // Get keyPair from wallet address - Fix method name
-  // Use the correct method from the Polkadot class
-  const keyPair = await polkadot.getWallet(walletAddress);
-
-  // Get position info
-  // For Hydration, we'd need to get the poolId from the position
-  // This is an adaptation since Hydration doesn't have the same position concept
-  const poolId = positionAddress; // In Hydration we're using poolId as positionAddress
-
-=======
   // Get wallet
   const wallet = await polkadot.getWallet(walletAddress);
   
->>>>>>> Stashed changes
   // Get pool info
   const pool = await hydration.getPoolInfo(poolId);
   if (!pool) {
@@ -79,7 +67,7 @@ async function addLiquidity(
 
   // Check balances with transaction buffer
   // Fix the method name for getting balances
-  const balances = await polkadot.getBalance(keyPair, [baseTokenSymbol, quoteTokenSymbol, "HDX"]);
+  const balances = await polkadot.getBalance(wallet, [baseTokenSymbol, quoteTokenSymbol, "HDX"]);
   const requiredBase = baseTokenAmount;
   const requiredQuote = quoteTokenAmount;
   const requiredHDX = HDX_TRANSACTION_BUFFER;
@@ -143,7 +131,7 @@ async function addLiquidity(
     // Sign and send the transaction - Fix the signAndSend callback signature
     const txHash = await new Promise<string>((resolve, reject) => {
       // Use the correct callback format for Polkadot.js
-      addLiquidityTx.signAndSend(keyPair, (result) => {
+      addLiquidityTx.signAndSend(wallet, (result) => {
         if (result.status.isInBlock || result.status.isFinalized) {
           resolve(result.status.asInBlock.toString());
         } else if (result.isError) {
@@ -210,14 +198,10 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             ...AddLiquidityRequest.properties,
             network: { type: 'string', default: 'mainnet' },
-<<<<<<< Updated upstream
-            slippagePct: { type: 'number', examples: [1] }
-=======
             poolAddress: { type: 'string', examples: ['12345'] }, // Example pool ID
             slippagePct: { type: 'number', examples: [1] },
             baseTokenAmount: { type: 'number', examples: [10] },
             quoteTokenAmount: { type: 'number', examples: [10] },
->>>>>>> Stashed changes
           }
         },
         response: {
