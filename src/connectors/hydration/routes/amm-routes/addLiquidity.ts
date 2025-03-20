@@ -10,7 +10,7 @@ import {
   AddLiquidityResponse,
   AddLiquidityRequestType,
   AddLiquidityResponseType
-} from '../../../../services/clmm-interfaces';
+} from '../../../../services/amm-interfaces';
 
 // Buffer for transaction costs (in HDX)
 const HDX_TRANSACTION_BUFFER = 0.1;
@@ -20,7 +20,7 @@ const HDX_TRANSACTION_BUFFER = 0.1;
  * @param fastify Fastify instance
  * @param network The blockchain network (e.g., 'mainnet')
  * @param walletAddress The user's wallet address
- * @param positionAddress The position address/ID to add liquidity to
+ * @param poolId The pool ID to add liquidity to
  * @param baseTokenAmount Amount of base token to add
  * @param quoteTokenAmount Amount of quote token to add
  * @param slippagePct Optional slippage percentage (default from config)
@@ -30,7 +30,7 @@ async function addLiquidity(
   _fastify: FastifyInstance,
   network: string,
   walletAddress: string,
-  positionAddress: string,
+  poolId: string,
   baseTokenAmount: number,
   quoteTokenAmount: number,
   slippagePct?: number
@@ -48,6 +48,7 @@ async function addLiquidity(
   const polkadot = await Polkadot.getInstance(network);
   const hydration = await Hydration.getInstance(network);
 
+<<<<<<< Updated upstream
   // Get keyPair from wallet address - Fix method name
   // Use the correct method from the Polkadot class
   const keyPair = await polkadot.getWallet(walletAddress);
@@ -57,6 +58,11 @@ async function addLiquidity(
   // This is an adaptation since Hydration doesn't have the same position concept
   const poolId = positionAddress; // In Hydration we're using poolId as positionAddress
 
+=======
+  // Get wallet
+  const wallet = await polkadot.getWallet(walletAddress);
+  
+>>>>>>> Stashed changes
   // Get pool info
   const pool = await hydration.getPoolInfo(poolId);
   if (!pool) {
@@ -204,7 +210,14 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             ...AddLiquidityRequest.properties,
             network: { type: 'string', default: 'mainnet' },
+<<<<<<< Updated upstream
             slippagePct: { type: 'number', examples: [1] }
+=======
+            poolAddress: { type: 'string', examples: ['12345'] }, // Example pool ID
+            slippagePct: { type: 'number', examples: [1] },
+            baseTokenAmount: { type: 'number', examples: [10] },
+            quoteTokenAmount: { type: 'number', examples: [10] },
+>>>>>>> Stashed changes
           }
         },
         response: {
@@ -216,7 +229,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
       try {
         const {
           walletAddress,
-          positionAddress,
+          poolAddress,
           baseTokenAmount,
           quoteTokenAmount,
           slippagePct
@@ -227,7 +240,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           fastify,
           network,
           walletAddress,
-          positionAddress,
+          poolAddress,
           baseTokenAmount,
           quoteTokenAmount,
           slippagePct
@@ -247,4 +260,3 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
 };
 
 export default addLiquidityRoute;
-
