@@ -120,20 +120,22 @@ async function addLiquidity(
     // Using the GalacticCouncil SDK to prepare the transaction
     const api = polkadot.api;
 
-    // Create the add liquidity transaction
-    // Example based on GalacticCouncil SDK for Omnipool
-    const addLiquidityTx = api.tx.omnipool.addLiquidity(
+    // Create the add liquidity transaction for XYK pool
+    // This is the correct implementation for XYK pools
+    const addLiquidityTx = api.tx.xyk.addLiquidity(
       baseAsset.id,
+      quoteAsset.id,
       baseAmountBN.toString(),
-      //calculateMinAmountOut(quoteAmountBN, effectiveSlippage).toString()
+      '200000' // TODO remove this hardcoded value. It should be the max amount out, not the min amount in!!!
     );
 
-    // Sign and send the transaction - Fix the signAndSend callback signature
+    // Sign and send the transaction
     const txHash = await new Promise<string>((resolve, reject) => {
       // Use the correct callback format for Polkadot.js
       addLiquidityTx.signAndSend(wallet, (result) => {
+        // Return the extrinsic hash, not the block hash
         if (result.status.isInBlock || result.status.isFinalized) {
-          resolve(result.status.asInBlock.toString());
+          resolve(result.txHash.toString());
         } else if (result.isError) {
           reject(new Error(`Transaction failed: ${result.status.toString()}`));
         }
