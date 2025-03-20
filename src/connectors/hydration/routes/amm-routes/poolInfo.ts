@@ -2,18 +2,66 @@ import { FastifyPluginAsync } from 'fastify';
 import { Hydration } from '../../hydration';
 import { logger } from '../../../../services/logger';
 import { 
-  MeteoraPoolInfo,
-  MeteoraPoolInfoSchema,
+  PoolInfo,
+  PoolInfoSchema,
   GetPoolInfoRequestType,
   GetPoolInfoRequest 
-} from '../../../../services/clmm-interfaces';
-import { httpNotFound } from '../../../../services/error-handler';
+} from '../../../../services/amm-interfaces';
 
 /**
  * Route handler for getting pool information
  */
 export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get(
+  // Add new endpoint to list all pools
+  fastify.get<{
+    Querystring: { network?: string };
+    Reply: { pools: Array<{ address: string; type: string; tokens: string[] }> };
+  }>(
+    '/list-pools',
+    {
+      schema: {
+        description: 'List all available Hydration pools',
+        tags: ['hydration'],
+        querystring: {
+          properties: {
+            network: { type: 'string', examples: ['mainnet'] }
+          }
+        }
+      }
+    },
+    async (request) => {
+      try {
+        const network = request.query.network || 'mainnet';
+        logger.info(`Listing all pools on network: ${network}`);
+        
+        const hydration = await Hydration.getInstance(network);
+        if (!hydration) {
+          throw fastify.httpErrors.serviceUnavailable('Hydration service unavailable');
+        }
+
+        // Get all pools
+        const pools = await hydration.getAllPools();
+        
+        // Format pool information
+        const formattedPools = pools.map(pool => ({
+          address: pool.address,
+          type: pool.type || 'Unknown',
+          tokens: pool.tokens.map(t => t.symbol)
+        }));
+
+        return { pools: formattedPools };
+      } catch (e) {
+        logger.error(`Error listing pools:`, e);
+        throw fastify.httpErrors.internalServerError('Internal server error');
+      }
+    }
+  );
+
+  // Existing pool-info endpoint
+  fastify.get<{
+    Querystring: GetPoolInfoRequestType;
+    Reply: PoolInfo;
+  }>(
     '/pool-info',
     {
       schema: {
@@ -27,63 +75,50 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
           }
         },
         response: {
-          200: MeteoraPoolInfoSchema
+          200: PoolInfoSchema
         },
       }
     },
-    async (request) => {
+    async (request): Promise<PoolInfo> => {
       try {
-        const { poolAddress } = request.query as GetPoolInfoRequestType;
-        const network = (request.query as GetPoolInfoRequestType).network || 'mainnet';
+        const { poolAddress } = request.query;
+        const network = request.query.network || 'mainnet';
+        
+        logger.info(`Getting pool info for: ${poolAddress} on network: ${network}`);
+        logger.debug('Request query:', JSON.stringify(request.query, null, 2));
         
         const hydration = await Hydration.getInstance(network);
         if (!hydration) {
           throw fastify.httpErrors.serviceUnavailable('Hydration service unavailable');
         }
         
+        // Get pool information
         const poolInfo = await hydration.getPoolInfo(poolAddress);
         if (!poolInfo) {
-          throw httpNotFound(`Pool not found: ${poolAddress}`);
+          logger.error(`Pool not found: ${poolAddress}`);
+          throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
         }
 
-        const liquidityBins = await hydration.getPoolLiquidity(poolAddress);
-        
-        // Map Hydration pool info to the interface expected by the client
-        return {
-          poolAddress: poolInfo.poolAddress,
-          baseToken: {
-            symbol: poolInfo.baseToken.symbol,
-            address: poolInfo.baseToken.address,
-            decimals: poolInfo.baseToken.decimals,
-            name: poolInfo.baseToken.name
-          },
-          quoteToken: {
-            symbol: poolInfo.quoteToken.symbol,
-            address: poolInfo.quoteToken.address,
-            decimals: poolInfo.quoteToken.decimals,
-            name: poolInfo.quoteToken.name
-          },
-          fee: poolInfo.fee,
-          liquidity: poolInfo.liquidity,
-          sqrtPrice: poolInfo.sqrtPrice,
-          tick: poolInfo.tick,
-          price: poolInfo.price,
-          volume24h: poolInfo.volume24h,
-          volumeWeek: poolInfo.volumeWeek,
-          tvl: poolInfo.tvl,
-          bins: liquidityBins.map(bin => ({
-            lowerPrice: bin.lowerPrice,
-            upperPrice: bin.upperPrice,
-            liquidityAmount: bin.liquidityAmount,
-            baseTokenAmount: bin.baseTokenAmount,
-            quoteTokenAmount: bin.quoteTokenAmount
-          })),
-          apr: poolInfo.apr
+        // Log the pool info structure for debugging
+        logger.debug('Hydration pool info structure:', JSON.stringify(poolInfo));
+
+        // Map to standard PoolInfo interface with safe property access
+        const result: PoolInfo = {
+          address: poolInfo.poolAddress,
+          baseTokenAddress: poolInfo.baseToken.address,
+          quoteTokenAddress: poolInfo.quoteToken.address,
+          feePct: poolInfo.fee / 10000, // Convert basis points to percentage
+          price: poolInfo.price || 0,
+          baseTokenAmount: poolInfo.liquidity || 0,
+          quoteTokenAmount: poolInfo.liquidity ? poolInfo.liquidity * (poolInfo.price || 0) : 0,
+          poolType: 'hydration'
         };
+        
+        return result;
       } catch (e) {
-        logger.error('Error in pool-info:', e);
+        logger.error(`Error in pool-info:`, e);
         if (e.statusCode) {
-          throw fastify.httpErrors.createError(e.statusCode, 'Request failed');
+          throw e; // Re-throw HTTP errors with their status codes
         }
         throw fastify.httpErrors.internalServerError('Internal server error');
       }

@@ -1,22 +1,19 @@
-import { TokenInfo } from '../../chains/ethereum/ethereum-base';
 import { Polkadot } from '../../chains/polkadot/polkadot';
 import { logger } from '../../services/logger';
 import { HydrationConfig } from './hydration.config';
 import {
-  HydrationPoolInfo,
   BinLiquidity,
   SwapQuote,
   PositionInfo,
   PositionStrategyType,
   LiquidityQuote,
-  SwapRoute
+  SwapRoute,
+  HydrationPoolInfo
 } from './hydration.types';
 import { KeyringPair } from '@polkadot/keyring/types';
 import { ApiPromise, WsProvider } from '@polkadot/api';
-import { BN } from '@polkadot/util';
 import { BigNumber, PoolService, Trade, TradeRouter, TradeType, PoolBase } from '@galacticcouncil/sdk';
 import { cryptoWaitReady } from '@polkadot/util-crypto';
-import { HttpException, TOKEN_NOT_SUPPORTED_ERROR_CODE, TOKEN_NOT_SUPPORTED_ERROR_MESSAGE } from '../../services/error-handler';
 
 // Default connection endpoint for Hydration protocol
 const DEFAULT_WS_PROVIDER_URL = 'wss://rpc.hydradx.cloud';
@@ -165,6 +162,22 @@ export class Hydration {
   }
 
   /**
+   * Get all available pools
+   * @returns A Promise that resolves to an array of pool information
+   */
+  async getAllPools() {
+    try {
+      if (!this.ready()) {
+        await this.init(this.polkadot.network);
+      }
+      return await this.poolService.getPools([]);
+    } catch (error) {
+      logger.error(`Failed to get all pools: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
    * Get detailed information about a Hydration pool
    * @param poolAddress The address of the pool
    * @returns A Promise that resolves to pool information or null if not found
@@ -186,13 +199,32 @@ export class Hydration {
       }
 
       // Get pool data from the SDK
-      // @ts-ignore - Generic Method, needs to improve
-      const poolData = await this.poolService.getPool(poolAddress);
+      const pools = await this.poolService.getPools([]); // Get all pools
+      
+      // Debug logging for pools
+      logger.info('=== Available Pools ===');
+      pools.forEach((pool, index) => {
+        logger.info(`Pool ${index + 1}:`);
+        logger.info(`  Address: ${pool.address}`);
+        logger.info(`  Type: ${pool.type || 'Unknown'}`);
+        logger.info(`  Tokens: ${pool.tokens.map(t => t.symbol).join(' / ')}`);
+        logger.info('-------------------');
+      });
+      
+      logger.debug(`Searching for pool address: ${poolAddress}`);
+      
+      const poolData = pools.find(pool => {
+        const matches = pool.address === poolAddress;
+        logger.debug(`Comparing pool ${pool.address} with ${poolAddress}: ${matches}`);
+        return matches;
+      });
 
       if (!poolData) {
         logger.error(`Pool not found: ${poolAddress}`);
         return null;
       }
+
+      logger.debug('Found pool data:', JSON.stringify(poolData, null, 2));
 
       // Get token info
       const baseToken = await this.polkadot.getToken(poolData.tokens[0].symbol);
@@ -202,29 +234,33 @@ export class Hydration {
         throw new Error('Failed to retrieve token information');
       }
 
-      // Get pool statistics
-      // @ts-ignore - Generic Method, needs to improve
-      const poolStats = await this.poolService.getPoolStats(poolAddress);
-
-      // Calculate price from reserves
-      const price = poolData.spotPrice ?
-        poolData.spotPrice.toNumber() :
-        poolData.reserves[1].dividedBy(poolData.reserves[0]).toNumber();
-
+      // Create pool info with available data
       const pool: HydrationPoolInfo = {
         poolAddress,
-        baseToken,
-        quoteToken,
-        fee: poolData.fee ? poolData.fee.toNumber() * 10000 : 500, // Convert to basis points
-        liquidity: poolData.liquidity ? poolData.liquidity.toNumber() : 0,
-        sqrtPrice: poolData.sqrtPrice ? poolData.sqrtPrice.toString() : '0',
-        tick: poolData.currentTick || 0,
-        price,
-        volume24h: poolStats?.volume24h.toNumber() || 0,
-        volumeWeek: poolStats?.volumeWeek.toNumber() || 0,
-        tvl: poolStats?.tvl.toNumber() || 0,
-        feesUSD24h: poolStats?.feesUSD24h.toNumber() || 0,
-        apr: poolStats?.apr || 0
+        baseToken: {
+          address: baseToken.address,
+          symbol: baseToken.symbol,
+          decimals: baseToken.decimals,
+          name: baseToken.name,
+          chainId: Number(baseToken.chainId)
+        },
+        quoteToken: {
+          address: quoteToken.address,
+          symbol: quoteToken.symbol,
+          decimals: quoteToken.decimals,
+          name: quoteToken.name,
+          chainId: Number(quoteToken.chainId)
+        },
+        fee: 500, // Default fee in basis points
+        liquidity: 0, // Not available in the SDK
+        sqrtPrice: '0', // Not available in the SDK
+        tick: 0, // Not available in the SDK
+        price: 0, // Not available in the SDK
+        volume24h: 0, // These would need additional API calls
+        volumeWeek: 0,
+        tvl: 0,
+        feesUSD24h: 0,
+        apr: 0
       };
 
       // Cache the result
@@ -710,7 +746,6 @@ export class Hydration {
       // Get pool information
       const poolAddress = position.poolId;
       const poolInfo = await this.getPoolInfo(poolAddress);
-
       if (!poolInfo) {
         throw new Error(`Pool not found for position: ${positionAddress}`);
       }
@@ -945,7 +980,6 @@ export class Hydration {
           }
           break;
       }
-
       // Simulate creating a position
       // In a real implementation, this would interact with Hydration smart contracts
       const newPositionAddress = `hydration-position-${Date.now()}`;
@@ -1267,3 +1301,5 @@ export class Hydration {
     };
   }
 }
+
+
