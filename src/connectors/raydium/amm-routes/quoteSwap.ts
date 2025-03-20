@@ -16,6 +16,7 @@ import {
 import BN from 'bn.js'
 import Decimal from 'decimal.js'
 import { PublicKey } from '@solana/web3.js'
+import { estimateGasSolana } from '../../../chains/solana/routes/estimate-gas'
 
 async function quoteAmmSwap(
   raydium: Raydium,
@@ -426,10 +427,13 @@ async function formatSwapQuote(
     estimatedAmountIn,
     estimatedAmountOut,
     minAmountOut,
-    maxAmountIn,
+    maxAmountIn: estimatedAmountIn,
     baseTokenBalanceChange,
     quoteTokenBalanceChange,
     price,
+    gasPrice: 0,
+    gasLimit: 0,
+    gasCost: 0
   }
 }
 
@@ -470,7 +474,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         const { network, poolAddress, baseToken, quoteToken, amount, side, slippagePct } = request.query
         const networkToUse = network || 'mainnet-beta'
 
-        return await formatSwapQuote(
+        const result = await formatSwapQuote(
           fastify,
           networkToUse,
           poolAddress,
@@ -480,6 +484,20 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           side as 'BUY' | 'SELL',
           slippagePct
         )
+
+        let gasEstimation = null;
+        try {
+          gasEstimation = await estimateGasSolana(fastify, networkToUse);
+        } catch (error) {
+          logger.warn(`Failed to estimate gas for swap quote: ${error.message}`);
+        }
+
+        return {
+          ...result,
+          gasPrice: gasEstimation?.gasPrice,
+          gasLimit: gasEstimation?.gasLimit,
+          gasCost: gasEstimation?.gasCost
+        }
       } catch (e) {
         logger.error(e)
         if (e.statusCode) {

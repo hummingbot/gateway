@@ -21,9 +21,9 @@ export const GetSwapQuoteResponse = Type.Object({
   baseTokenBalanceChange: Type.Number(),
   quoteTokenBalanceChange: Type.Number(),
   price: Type.Number(),
-  gasPrice: Type.Optional(Type.Number()),
-  gasLimit: Type.Optional(Type.Number()),
-  gasCost: Type.Optional(Type.Number()),
+  gasPrice: Type.Number(),
+  gasLimit: Type.Number(),
+  gasCost: Type.Number(),
 }, { $id: 'GetSwapQuoteResponse' });
 export type GetSwapQuoteResponseType = Static<typeof GetSwapQuoteResponse>;
 

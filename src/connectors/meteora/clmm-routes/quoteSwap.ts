@@ -12,6 +12,7 @@ import {
   GetSwapQuoteResponseType,
   GetSwapQuoteResponse
 } from '../../../schemas/trading-types/swap-schema';
+import { estimateGasSolana } from '../../../chains/solana/routes/estimate-gas';
 
 export async function getRawSwapQuote(
   fastify: FastifyInstance,
@@ -122,6 +123,9 @@ async function formatSwapQuote(
       baseTokenBalanceChange: amountOut,
       quoteTokenBalanceChange: -estimatedAmountIn,
       price,
+      gasPrice: 0,
+      gasLimit: 0,
+      gasCost: 0
     };
   } else {
     const exactInQuote = quote as SwapQuote;
@@ -145,6 +149,9 @@ async function formatSwapQuote(
       baseTokenBalanceChange: baseTokenChange,
       quoteTokenBalanceChange: quoteTokenChange,
       price,
+      gasPrice: 0,
+      gasLimit: 0,
+      gasCost: 0
     };
   }
 }
@@ -186,7 +193,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         const { network, baseToken, quoteToken, amount, side, poolAddress, slippagePct } = request.query;
         const networkToUse = network || 'mainnet-beta';
 
-        return await formatSwapQuote(
+        const result = await formatSwapQuote(
           fastify,
           networkToUse,
           baseToken,
@@ -196,6 +203,20 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           poolAddress,
           slippagePct
         );
+
+        let gasEstimation = null;
+        try {
+          gasEstimation = await estimateGasSolana(fastify, networkToUse);
+        } catch (error) {
+          logger.warn(`Failed to estimate gas for swap quote: ${error.message}`);
+        }
+
+        return {
+          ...result,
+          gasPrice: gasEstimation?.gasPrice,
+          gasLimit: gasEstimation?.gasLimit,
+          gasCost: gasEstimation?.gasCost
+        };
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {

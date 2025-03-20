@@ -17,6 +17,7 @@ import {
   ReturnTypeComputeAmountOutBaseOut
 } from '@raydium-io/raydium-sdk-v2';
 import { PublicKey } from '@solana/web3.js';
+import { estimateGasSolana } from '../../../chains/solana/routes/estimate-gas';
 
 
 export async function getSwapQuote(
@@ -139,7 +140,10 @@ async function formatSwapQuote(
       minAmountOut: amountOut,
       baseTokenBalanceChange: amountOut,
       quoteTokenBalanceChange: -estimatedAmountIn,
-      price
+      price,
+      gasPrice: 0,
+      gasLimit: 0,
+      gasCost: 0
     };
   } else {
     const exactInResponse = response as ReturnTypeComputeAmountOutFormat;
@@ -162,7 +166,10 @@ async function formatSwapQuote(
       maxAmountIn: estimatedAmountIn,
       baseTokenBalanceChange: baseTokenChange,
       quoteTokenBalanceChange: quoteTokenChange,
-      price
+      price,
+      gasPrice: 0,
+      gasLimit: 0,
+      gasCost: 0
     };
   }
 }
@@ -204,7 +211,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         const { network, baseToken, quoteToken, amount, side, poolAddress, slippagePct } = request.query;
         const networkToUse = network || 'mainnet-beta';
 
-        return await formatSwapQuote(
+        const result = await formatSwapQuote(
           fastify,
           networkToUse,
           baseToken,
@@ -214,6 +221,20 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           poolAddress,
           slippagePct
         );
+
+        let gasEstimation = null;
+        try {
+          gasEstimation = await estimateGasSolana(fastify, networkToUse);
+        } catch (error) {
+          logger.warn(`Failed to estimate gas for swap quote: ${error.message}`);
+        }
+
+        return {
+          ...result,
+          gasPrice: gasEstimation?.gasPrice,
+          gasLimit: gasEstimation?.gasLimit,
+          gasCost: gasEstimation?.gasCost
+        };
       } catch (e) {
         logger.error(e);
         throw fastify.httpErrors.internalServerError('Failed to get swap quote');
