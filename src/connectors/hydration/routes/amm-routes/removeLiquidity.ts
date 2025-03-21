@@ -70,22 +70,8 @@ export async function removeLiquidity(
         throw httpNotFound(`Asset not found: ${!baseAsset ? baseTokenSymbol : quoteTokenSymbol}`);
       }
 
-      // Get user's positions in the pool
-      const positions = await hydration.getPositionsInPool(poolAddress, wallet);
-      if (!positions || positions.length === 0) {
-        throw httpNotFound(`No liquidity positions found for this pool: ${poolAddress}`);
-      }
-      // Use the first position (we could sum all positions if needed)
-      const userPosition = positions[0];
-      if (userPosition.liquidity <= 0) {
-        throw httpNotFound(`No liquidity found in position for this pool: ${poolAddress}`);
-      }
-
-      // Calculate amount to remove based on percentage
-      const liquidityToRemove = new BigNumber(userPosition.liquidity)
-        .multipliedBy(percentageToRemove)
-        .dividedBy(100)
-        .decimalPlaces(0);
+      // TODO Important: verify how this calculation needs to be done!!!
+      const liquidityToRemove = new BigNumber(percentageToRemove * Math.pow(10, baseAsset.decimals));
 
       if (liquidityToRemove.lte(0)) {
         throw httpBadRequest('Calculated liquidity to remove is zero or negative');

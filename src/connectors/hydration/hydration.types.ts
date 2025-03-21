@@ -1,6 +1,7 @@
 import { TokenInfo } from '../../chains/ethereum/ethereum-base';
 
 export interface HydrationPoolInfo {
+  id: string;
   poolAddress: string;
   baseToken: TokenInfo;
   quoteToken: TokenInfo;

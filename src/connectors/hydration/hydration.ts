@@ -203,8 +203,10 @@ export class Hydration {
       
       // Debug logging for pools
       logger.info('=== Available Pools ===');
-      pools.forEach((pool, index) => {
-        logger.info(`Pool ${index + 1}:`);
+      pools.forEach((pool) => {
+        logger.info('-------------------');
+        // logger.info(JSON.stringify(pool, null, 2));
+        logger.info(`  ID: ${pool.id}`);
         logger.info(`  Address: ${pool.address}`);
         logger.info(`  Type: ${pool.type || 'Unknown'}`);
         logger.info(`  Tokens: ${pool.tokens.map(t => t.symbol).join(' / ')}`);
@@ -236,6 +238,7 @@ export class Hydration {
 
       // Create pool info with available data
       const pool: HydrationPoolInfo = {
+        id: poolData.id,
         poolAddress,
         baseToken: {
           address: baseToken.address,

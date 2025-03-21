@@ -179,7 +179,7 @@ Content-Type: application/json
 {
   "network": "{{network}}",
   "address": "{{walletPublicKey}}",
-  "tokenSymbols": ["{{nativeTokenSymbol}}"]
+  "tokenSymbols": ["{{quoteTokenSymbol}}"]
 }
 
 ###
