@@ -15,6 +15,14 @@ import {
 // Buffer for transaction costs (in HDX)
 const HDX_TRANSACTION_BUFFER = 0.1;
 
+// Pool types
+const POOL_TYPE = {
+  XYK: 'xyk',
+  LBP: 'lbp',
+  OMNIPOOL: 'omnipool',
+  STABLESWAP: 'stableswap'
+};
+
 /**
  * Add liquidity to a Hydration position
  * @param fastify Fastify instance
@@ -119,18 +127,77 @@ async function addLiquidity(
 
     // Using the GalacticCouncil SDK to prepare the transaction
     const api = polkadot.api;
+    
+    let addLiquidityTx;
+    const poolType = pool.type?.toLowerCase() || POOL_TYPE.XYK; // Default to XYK if type is not provided
 
-    // Calculate max limit for quote token based on slippage
-    const quoteAmountMaxLimit = calculateMaxAmountIn(quoteAmountBN, effectiveSlippage);
+    logger.info(`Adding liquidity to ${poolType} pool (${poolId})`);
 
-    // Create the add liquidity transaction for XYK pool
-    // Using the correct parameter order: asset_a, asset_b, amount_a, amount_b_max_limit
-    const addLiquidityTx = api.tx.xyk.addLiquidity(
-      baseAsset.id,
-      quoteAsset.id,
-      baseAmountBN.toString(),
-      quoteAmountMaxLimit.toString()
-    );
+    switch (poolType) {
+      case POOL_TYPE.XYK:
+        // Calculate max limit for quote token based on slippage
+        const quoteAmountMaxLimit = calculateMaxAmountIn(quoteAmountBN, effectiveSlippage);
+        
+        // Create XYK add liquidity transaction
+        addLiquidityTx = api.tx.xyk.addLiquidity(
+          baseAsset.id,
+          quoteAsset.id, 
+          baseAmountBN.toString(),
+          quoteAmountMaxLimit.toString()
+        );
+        break;
+
+      case POOL_TYPE.LBP:
+        // For LBP, we use [assetId, amount] tuples
+        const amountA = [baseAsset.id, baseAmountBN.toString()];
+        const amountB = [quoteAsset.id, quoteAmountBN.toString()];
+        
+        addLiquidityTx = api.tx.lbp.addLiquidity(
+          [baseAsset.id, baseAmountBN.toString()],
+          [quoteAsset.id, quoteAmountBN.toString()]
+        );
+        break;
+
+      case POOL_TYPE.OMNIPOOL:
+        // For Omnipool, we can only add liquidity for one asset at a time
+        // We'll use the base asset if both are provided
+        if (baseTokenAmount > 0) {
+          // Calculate min shares limit based on slippage (if applicable)
+          const minSharesLimit = calculateMinSharesLimit(baseAmountBN, effectiveSlippage);
+          
+          addLiquidityTx = api.tx.omnipool.addLiquidityWithLimit(
+            baseAsset.id,
+            baseAmountBN.toString(),
+            minSharesLimit.toString()
+          );
+        } else {
+          // Use quote asset if base amount is 0
+          const minSharesLimit = calculateMinSharesLimit(quoteAmountBN, effectiveSlippage);
+          
+          addLiquidityTx = api.tx.omnipool.addLiquidityWithLimit(
+            quoteAsset.id,
+            quoteAmountBN.toString(),
+            minSharesLimit.toString()
+          );
+        }
+        break;
+
+      case POOL_TYPE.STABLESWAP:
+        // For Stableswap, we need to provide assets array with [id, amount] objects
+        const assets = [
+          { assetId: baseAsset.id, amount: baseAmountBN.toString() },
+          { assetId: quoteAsset.id, amount: quoteAmountBN.toString() }
+        ].filter(asset => new BigNumber(asset.amount).gt(0)); // Only include assets with amount > 0
+        
+        addLiquidityTx = api.tx.stableswap.addLiquidity(
+          poolId, // Pool ID is required for stableswap
+          assets
+        );
+        break;
+
+      default:
+        throw httpBadRequest(`Unsupported pool type: ${poolType}`);
+    }
 
     // Sign and send the transaction
     const txHash = await new Promise<string>((resolve, reject) => {
@@ -168,6 +235,13 @@ async function addLiquidity(
  */
 function calculateMaxAmountIn(amount: BigNumber, slippagePct: number): BigNumber {
   return amount.multipliedBy(new BigNumber(100 + slippagePct).dividedBy(100)).decimalPlaces(0);
+}
+
+/**
+ * Calculate minimum shares limit based on slippage
+ */
+function calculateMinSharesLimit(amount: BigNumber, slippagePct: number): BigNumber {
+  return amount.multipliedBy(new BigNumber(100 - slippagePct).dividedBy(100)).decimalPlaces(0);
 }
 
 /**
