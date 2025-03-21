@@ -260,7 +260,8 @@ export class Hydration {
         volumeWeek: 0,
         tvl: 0,
         feesUSD24h: 0,
-        apr: 0
+        apr: 0,
+        type: poolData.type || 'Unknown' // Add the pool type from the data
       };
 
       // Cache the result
