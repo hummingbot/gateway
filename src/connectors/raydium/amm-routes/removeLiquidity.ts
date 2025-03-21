@@ -7,7 +7,7 @@ import {
   RemoveLiquidityResponse,
   RemoveLiquidityRequestType,
   RemoveLiquidityResponseType,
-} from '../../../services/amm-interfaces'
+} from '../../../schemas/trading-types/amm-schema'
 import { 
   AmmV4Keys,
   CpmmKeys,
@@ -167,7 +167,7 @@ async function removeLiquidity(
   logger.info(`Removing ${percentageToRemove.toFixed(4)}% liquidity from pool ${poolAddress}...`)
   const COMPUTE_UNITS = 600000
 
-  let currentPriorityFee = (await solana.getGasPrice() * 1e9) - BASE_FEE
+  let currentPriorityFee = (await solana.estimateGas() * 1e9) - BASE_FEE
   while (currentPriorityFee <= solana.config.maxPriorityFee * 1e9) {
     const priorityFeePerCU = Math.floor(currentPriorityFee * 1e6 / COMPUTE_UNITS)
     

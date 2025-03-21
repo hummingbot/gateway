@@ -3,11 +3,11 @@ import { Solana, BASE_FEE } from '../../../chains/solana/solana'
 import { Raydium } from '../raydium'
 import { logger } from '../../../services/logger'
 import {
-  ExecuteSwapRequestType,
+  ExecuteSwapResponse,
   ExecuteSwapResponseType,
-  ExecuteSwapRequest,
-  ExecuteSwapResponse
-} from '../../../services/swap-interfaces'
+  ExecuteSwapInPoolRequest,
+  ExecuteSwapInPoolRequestType
+} from '../../../schemas/trading-types/swap-schema'
 import { getRawSwapQuote } from './quoteSwap'
 import BN from 'bn.js'
 import { VersionedTransaction } from '@solana/web3.js'
@@ -19,7 +19,7 @@ async function executeSwap(
   baseToken: string,
   quoteToken: string,
   amount: number,
-  side: 'buy' | 'sell',
+  side: 'BUY' | 'SELL',
   poolAddress: string,
   slippagePct: number
 ): Promise<ExecuteSwapResponseType> {
@@ -51,14 +51,14 @@ async function executeSwap(
   logger.info(`Executing ${amount.toFixed(4)} ${side} swap in pool ${poolAddress}`)
 
   const COMPUTE_UNITS = 600000;
-  let currentPriorityFee = (await solana.getGasPrice() * 1e9) - BASE_FEE;
+  let currentPriorityFee = (await solana.estimateGas() * 1e9) - BASE_FEE;
   while (currentPriorityFee <= solana.config.maxPriorityFee * 1e9) {
     const priorityFeePerCU = Math.floor(currentPriorityFee * 1e6 / COMPUTE_UNITS);
     let transaction: VersionedTransaction;
 
     // Get transaction based on pool type
     if (poolInfo.poolType === 'amm') {
-      if (side === 'buy') {
+      if (side === 'BUY') {
         // AMM swap base out (exact output)
         ({ transaction } = await raydium.raydiumSDK.liquidity.swap({
           poolInfo: quote.poolInfo,
@@ -90,7 +90,7 @@ async function executeSwap(
         }) as { transaction: VersionedTransaction })
       }
     } else if (poolInfo.poolType === 'cpmm') {
-      if (side === 'buy') {
+      if (side === 'BUY') {
         // CPMM swap base out (exact output)
         ({ transaction } = await raydium.raydiumSDK.cpmm.swap({
           poolInfo: quote.poolInfo,
@@ -145,12 +145,12 @@ async function executeSwap(
           wallet.publicKey.toBase58()
         );
   
-      logger.info(`Swap executed successfully: ${Math.abs(side === 'sell' ? baseTokenBalanceChange : quoteTokenBalanceChange).toFixed(4)} ${inputToken.symbol} -> ${Math.abs(side === 'sell' ? quoteTokenBalanceChange : baseTokenBalanceChange).toFixed(4)} ${outputToken.symbol}`);
+      logger.info(`Swap executed successfully: ${Math.abs(side === 'SELL' ? baseTokenBalanceChange : quoteTokenBalanceChange).toFixed(4)} ${inputToken.symbol} -> ${Math.abs(side === 'SELL' ? quoteTokenBalanceChange : baseTokenBalanceChange).toFixed(4)} ${outputToken.symbol}`);
     
       return {
         signature,
-        totalInputSwapped: Math.abs(side === 'sell' ? baseTokenBalanceChange : quoteTokenBalanceChange),
-        totalOutputSwapped: Math.abs(side === 'sell' ? quoteTokenBalanceChange : baseTokenBalanceChange),
+        totalInputSwapped: Math.abs(side === 'SELL' ? baseTokenBalanceChange : quoteTokenBalanceChange),
+        totalOutputSwapped: Math.abs(side === 'SELL' ? quoteTokenBalanceChange : baseTokenBalanceChange),
         fee: txData.meta.fee / 1e9,
         baseTokenBalanceChange,
         quoteTokenBalanceChange,
@@ -173,10 +173,8 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
     logger.warn('No wallets found for examples in schema')
   }
   
-  ExecuteSwapRequest.properties.walletAddress.examples = [firstWalletAddress]
-
   fastify.post<{
-    Body: ExecuteSwapRequestType;
+    Body: ExecuteSwapInPoolRequestType;
     Reply: ExecuteSwapResponseType;
   }>(
     '/execute-swap',
@@ -185,16 +183,16 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         description: 'Execute a swap on Raydium AMM or CPMM',
         tags: ['raydium-amm'],
         body: {
-          ...ExecuteSwapRequest,
+          ...ExecuteSwapInPoolRequest,
           properties: {
-            ...ExecuteSwapRequest.properties,
+            ...ExecuteSwapInPoolRequest.properties,
             network: { type: 'string', default: 'mainnet-beta' },
+            walletAddress: { type: 'string', examples: [firstWalletAddress] },
             baseToken: { type: 'string', examples: ['RAY'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
             amount: { type: 'number', examples: [1] },
-            side: { type: 'string', examples: ['sell'] },
-            poolAddress: { type: 'string', examples: ['6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg'] }, // AMM
-            // poolAddress: { type: 'string', examples: ['7JuwJuNU88gurFnyWeiyGKbFmExMWcmRZntn9imEzdny'] }, // CPMM
+            side: { type: 'string', examples: ['SELL'] },
+            poolAddress: { type: 'string', examples: ['6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg'] },
             slippagePct: { type: 'number', examples: [1] }
           }
         },
@@ -211,7 +209,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           baseToken,
           quoteToken,
           amount,
-          side as 'buy' | 'sell',
+          side as 'BUY' | 'SELL',
           poolAddress,
           slippagePct
         )

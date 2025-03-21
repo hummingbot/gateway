@@ -4,7 +4,7 @@ import DLMM, { getPriceOfBinByBinId } from '@meteora-ag/dlmm';
 import { MeteoraConfig } from './meteora.config';
 import { logger } from '../../services/logger';
 import { convertDecimals } from '../../services/base';
-import { MeteoraPoolInfo, PositionInfo, BinLiquidity } from '../../services/clmm-interfaces';
+import { MeteoraPoolInfo, PositionInfo, BinLiquidity } from '../../schemas/trading-types/clmm-schema';
 import { LbPair } from '@meteora-ag/dlmm';
 import { percentRegexp } from '../../services/config-manager-v2';
 
