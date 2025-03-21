@@ -120,13 +120,16 @@ async function addLiquidity(
     // Using the GalacticCouncil SDK to prepare the transaction
     const api = polkadot.api;
 
+    // Calculate max limit for quote token based on slippage
+    const quoteAmountMaxLimit = calculateMaxAmountIn(quoteAmountBN, effectiveSlippage);
+
     // Create the add liquidity transaction for XYK pool
-    // This is the correct implementation for XYK pools
+    // Using the correct parameter order: asset_a, asset_b, amount_a, amount_b_max_limit
     const addLiquidityTx = api.tx.xyk.addLiquidity(
       baseAsset.id,
       quoteAsset.id,
       baseAmountBN.toString(),
-      '200000' // TODO remove this hardcoded value. It should be the max amount out, not the min amount in!!!
+      quoteAmountMaxLimit.toString()
     );
 
     // Sign and send the transaction
@@ -161,10 +164,10 @@ async function addLiquidity(
 }
 
 /**
- * Calculate minimum amount out based on slippage
+ * Calculate maximum amount in based on slippage
  */
-function calculateMinAmountOut(amount: BigNumber, slippagePct: number): BigNumber {
-  return amount.multipliedBy(new BigNumber(100 - slippagePct).dividedBy(100));
+function calculateMaxAmountIn(amount: BigNumber, slippagePct: number): BigNumber {
+  return amount.multipliedBy(new BigNumber(100 + slippagePct).dividedBy(100)).decimalPlaces(0);
 }
 
 /**
