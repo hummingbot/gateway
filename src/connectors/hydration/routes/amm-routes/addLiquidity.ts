@@ -246,36 +246,43 @@ async function submitTransaction(api: any, tx: any, wallet: any, poolType: strin
   return new Promise<string>(async (resolve, reject) => {
     let unsub: () => void;
     
+    // We'll get the hash from the status once available
+    // Initial logging will use the tx ID for context only
+    const txId = tx.hash.toHex(); // Short ID for initial logging
+    logger.debug(`Transaction created with ID: ${txId}`);
+    
     // Create a handler function for transaction status updates
-    const statusHandler = async ({ status, events, dispatchError }: any) => {
+    const statusHandler = async (result: any) => {
       try {
-        if (status.isInBlock || status.isFinalized) {
+        // Get the hash from status when available
+        const txHash = result.txHash.toString();
+        
+        if (result.status.isInBlock || result.status.isFinalized) {
           // Transaction is included in a block
-          const blockHash = status.isInBlock ? status.asInBlock : status.asFinalized;
-          const txHash = tx.hash.toString();
+          const blockHash = result.status.isInBlock ? result.status.asInBlock : result.status.asFinalized;
           
-          logger.debug(`Transaction ${txHash} ${status.isInBlock ? 'in block' : 'finalized'}: ${blockHash.toString()}`);
+          logger.debug(`Transaction ${txHash} ${result.status.isInBlock ? 'in block' : 'finalized'}: ${blockHash.toString()}`);
           
           // Handle dispatch errors - these come directly with the status
-          if (dispatchError) {
-            const errorMessage = await extractErrorMessage(api, dispatchError);
-            logger.error(`Transaction failed with dispatch error: ${errorMessage}`);
+          if (result.dispatchError) {
+            const errorMessage = await extractErrorMessage(api, result.dispatchError);
+            logger.error(`Transaction ${txHash} failed with dispatch error: ${errorMessage}`);
             unsub();
-            reject(new Error(errorMessage));
+            reject(new Error(`Transaction ${txHash} failed: ${errorMessage}`));
             return;
           }
           
           // Check transaction events for success or failure
-          if (await hasFailedEvent(api, events)) {
-            const errorMessage = await extractEventErrorMessage(api, events);
-            logger.error(`Transaction failed with event error: ${errorMessage}`);
+          if (await hasFailedEvent(api, result.events)) {
+            const errorMessage = await extractEventErrorMessage(api, result.events);
+            logger.error(`Transaction ${txHash} failed with event error: ${errorMessage}`);
             unsub();
-            reject(new Error(errorMessage));
+            reject(new Error(`Transaction ${txHash} failed: ${errorMessage}`));
             return;
           }
           
           // Check for pool-specific success events
-          if (await hasSuccessEvent(api, events, poolType)) {
+          if (await hasSuccessEvent(api, result.events, poolType)) {
             logger.info(`Transaction ${txHash} succeeded in block ${blockHash.toString()}`);
             unsub();
             resolve(txHash);
@@ -283,37 +290,47 @@ async function submitTransaction(api: any, tx: any, wallet: any, poolType: strin
           }
           
           // If we reached finalization with no explicit failure, consider it a success
-          if (status.isFinalized) {
+          if (result.status.isFinalized) {
             logger.warn(`Transaction ${txHash} finalized with no specific success/failure event. Assuming success.`);
             unsub();
             resolve(txHash);
             return;
           }
         } 
-        else if (status.isDropped || status.isInvalid || status.isUsurped) {
+        else if (result.status.isDropped || result.status.isInvalid || result.status.isUsurped) {
           // Transaction didn't make it to a block
-          const errorMessage = `Transaction ${status.type}: ${status.value.toString()}`;
-          logger.error(errorMessage);
+          const statusType = result.status.type;
+          const statusValue = result.status.value.toString();
+          const errorMessage = `Transaction ${statusType}: ${statusValue}`;
+          logger.error(`Transaction ${txHash} - ${errorMessage}`);
           unsub();
-          reject(new Error(errorMessage));
+          reject(new Error(`Transaction ${txHash} ${statusType}: ${statusValue}`));
           return;
+        }
+        else {
+          // Log other status updates with the transaction hash
+          logger.debug(`Transaction ${txHash} status: ${result.status.type}`);
         }
         // For other statuses (like Ready, Broadcast), we continue waiting
       } catch (error) {
-        // Handle any unexpected errors during status processing
+        // If we can't get the hash from status for some reason, fall back to tx hash
+        const fallbackHash = tx.hash.toString();
         logger.error(`Error processing transaction status: ${error.message}`);
         unsub();
-        reject(error);
+        reject(new Error(`Transaction ${fallbackHash} processing failed: ${error.message}`));
       }
     };
     
     // Submit the transaction using async/await
     try {
       // Use await instead of then/catch
+      logger.info(`Submitting transaction with id ${txId} ...`);
       unsub = await tx.signAndSend(wallet, statusHandler);
     } catch (error) {
+      // Use the fallback hash if submission failed before we got a status
+      const fallbackHash = tx.hash.toString();
       logger.error(`Exception during transaction submission: ${error.message}`);
-      reject(error);
+      reject(new Error(`Transaction ${fallbackHash} submission failed: ${error.message}`));
     }
   });
 }
