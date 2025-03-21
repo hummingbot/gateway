@@ -200,19 +200,7 @@ async function addLiquidity(
     }
 
     // Sign and send the transaction
-    const txHash = await new Promise<string>((resolve, reject) => {
-      // Use the correct callback format for Polkadot.js
-      addLiquidityTx.signAndSend(wallet, (result) => {
-        // Return the extrinsic hash, not the block hash
-        if (result.status.isInBlock || result.status.isFinalized) {
-          resolve(result.txHash.toString());
-        } else if (result.isError) {
-          reject(new Error(`Transaction failed: ${result.status.toString()}`));
-        }
-      }).catch(error => {
-        reject(error);
-      });
-    });
+    const txHash = await submitTransaction(api, addLiquidityTx, wallet, poolType);
 
     logger.info(`Liquidity added to pool ${poolId} with tx hash: ${txHash}`);
 
@@ -242,6 +230,154 @@ function calculateMaxAmountIn(amount: BigNumber, slippagePct: number): BigNumber
  */
 function calculateMinSharesLimit(amount: BigNumber, slippagePct: number): BigNumber {
   return amount.multipliedBy(new BigNumber(100 - slippagePct).dividedBy(100)).decimalPlaces(0);
+}
+
+/**
+ * Submit a transaction and wait for it to be included in a block
+ * @param api Polkadot API instance
+ * @param tx Transaction to submit
+ * @param wallet Wallet to sign the transaction
+ * @param poolType Type of pool (for event detection)
+ * @returns Transaction hash if successful
+ * @throws Error if transaction fails
+ */
+async function submitTransaction(api: any, tx: any, wallet: any, poolType: string): Promise<string> {
+  // We still need a promise for the event-based callbacks
+  return new Promise<string>(async (resolve, reject) => {
+    let unsub: () => void;
+    
+    // Create a handler function for transaction status updates
+    const statusHandler = async ({ status, events, dispatchError }: any) => {
+      try {
+        if (status.isInBlock || status.isFinalized) {
+          // Transaction is included in a block
+          const blockHash = status.isInBlock ? status.asInBlock : status.asFinalized;
+          const txHash = tx.hash.toString();
+          
+          logger.debug(`Transaction ${txHash} ${status.isInBlock ? 'in block' : 'finalized'}: ${blockHash.toString()}`);
+          
+          // Handle dispatch errors - these come directly with the status
+          if (dispatchError) {
+            const errorMessage = await extractErrorMessage(api, dispatchError);
+            logger.error(`Transaction failed with dispatch error: ${errorMessage}`);
+            unsub();
+            reject(new Error(errorMessage));
+            return;
+          }
+          
+          // Check transaction events for success or failure
+          if (await hasFailedEvent(api, events)) {
+            const errorMessage = await extractEventErrorMessage(api, events);
+            logger.error(`Transaction failed with event error: ${errorMessage}`);
+            unsub();
+            reject(new Error(errorMessage));
+            return;
+          }
+          
+          // Check for pool-specific success events
+          if (await hasSuccessEvent(api, events, poolType)) {
+            logger.info(`Transaction ${txHash} succeeded in block ${blockHash.toString()}`);
+            unsub();
+            resolve(txHash);
+            return;
+          }
+          
+          // If we reached finalization with no explicit failure, consider it a success
+          if (status.isFinalized) {
+            logger.warn(`Transaction ${txHash} finalized with no specific success/failure event. Assuming success.`);
+            unsub();
+            resolve(txHash);
+            return;
+          }
+        } 
+        else if (status.isDropped || status.isInvalid || status.isUsurped) {
+          // Transaction didn't make it to a block
+          const errorMessage = `Transaction ${status.type}: ${status.value.toString()}`;
+          logger.error(errorMessage);
+          unsub();
+          reject(new Error(errorMessage));
+          return;
+        }
+        // For other statuses (like Ready, Broadcast), we continue waiting
+      } catch (error) {
+        // Handle any unexpected errors during status processing
+        logger.error(`Error processing transaction status: ${error.message}`);
+        unsub();
+        reject(error);
+      }
+    };
+    
+    // Submit the transaction using async/await
+    try {
+      // Use await instead of then/catch
+      unsub = await tx.signAndSend(wallet, statusHandler);
+    } catch (error) {
+      logger.error(`Exception during transaction submission: ${error.message}`);
+      reject(error);
+    }
+  });
+}
+
+/**
+ * Extract a meaningful error message from a dispatch error
+ */
+async function extractErrorMessage(api: any, dispatchError: any): Promise<string> {
+  if (dispatchError.isModule) {
+    try {
+      const { docs, name, section } = api.registry.findMetaError(dispatchError.asModule);
+      return `${section}.${name}: ${docs.join(' ')}`;
+    } catch (error) {
+      return `Unknown module error: ${dispatchError.asModule.toString()}`;
+    }
+  } else {
+    return dispatchError.toString();
+  }
+}
+
+/**
+ * Extract error message from failure events
+ */
+async function extractEventErrorMessage(api: any, events: any[]): Promise<string> {
+  const failureEvent = events.find(({ event }) => 
+    api.events.system.ExtrinsicFailed.is(event)
+  );
+  
+  if (!failureEvent) return 'Unknown transaction failure';
+  
+  const { event: { data: [error] } } = failureEvent;
+  
+  if (error.isModule) {
+    try {
+      const { docs, name, section } = api.registry.findMetaError(error.asModule);
+      return `${section}.${name}: ${docs.join(' ')}`;
+    } catch (e) {
+      return `Unknown module error: ${error.toString()}`;
+    }
+  } else {
+    return error.toString();
+  }
+}
+
+/**
+ * Check if events contain a failure event
+ */
+async function hasFailedEvent(api: any, events: any[]): Promise<boolean> {
+  return events.some(({ event }) => 
+    api.events.system.ExtrinsicFailed.is(event)
+  );
+}
+
+/**
+ * Check if events contain a success event specific to the pool type
+ */
+async function hasSuccessEvent(api: any, events: any[], poolType: string): Promise<boolean> {
+  return events.some(({ event }) => 
+    api.events.system.ExtrinsicSuccess.is(event) || 
+    (poolType === POOL_TYPE.XYK && api.events.xyk.LiquidityAdded?.is(event)) ||
+    (poolType === POOL_TYPE.LBP && api.events.lbp.LiquidityAdded?.is(event)) ||
+    (poolType === POOL_TYPE.OMNIPOOL && api.events.omnipool.LiquidityAdded?.is(event)) ||
+    (poolType === POOL_TYPE.STABLESWAP && api.events.stableswap.LiquidityAdded?.is(event))
+  );
 }
 
 /**
