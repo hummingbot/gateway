@@ -5,10 +5,10 @@ import { logger } from '../../../services/logger';
 import { getRawSwapQuote } from './quoteSwap';
 import { SwapQuoteExactOut, SwapQuote } from '@meteora-ag/dlmm';
 import { 
-  ExecuteSwapRequestType,
   ExecuteSwapResponseType,
-  ExecuteSwapRequest,
-  ExecuteSwapResponse
+  ExecuteSwapResponse,
+  ExecuteSwapInPoolRequest,
+  ExecuteSwapInPoolRequestType
 } from '../../../schemas/trading-types/swap-schema';
 
 async function executeSwap(
@@ -97,11 +97,8 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
     logger.warn('No wallets found for examples in schema');
   }
   
-  // Update schema example
-  ExecuteSwapRequest.properties.walletAddress.examples = [firstWalletAddress];
-
   fastify.post<{
-    Body: ExecuteSwapRequestType;
+    Body: ExecuteSwapInPoolRequestType;
     Reply: ExecuteSwapResponseType;
   }>(
     '/execute-swap',
@@ -110,10 +107,11 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         description: 'Execute a token swap on Meteora',
         tags: ['meteora'],
         body: {
-          ...ExecuteSwapRequest,
+          ...ExecuteSwapInPoolRequest,
           properties: {
-            ...ExecuteSwapRequest.properties,
+            ...ExecuteSwapInPoolRequest.properties,
             network: { type: 'string', default: 'mainnet-beta' },
+            walletAddress: { type: 'string', examples: [firstWalletAddress] },
             baseToken: { type: 'string', examples: ['SOL'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
             amount: { type: 'number', examples: [0.1] },
@@ -122,9 +120,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
             slippagePct: { type: 'number', examples: [1] }
           }
         },
-        response: {
-          200: ExecuteSwapResponse
-        },
+        response: { 200: ExecuteSwapResponse }
       }
     },
     async (request) => {

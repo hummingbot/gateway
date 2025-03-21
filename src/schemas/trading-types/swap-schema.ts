@@ -37,10 +37,18 @@ export const ExecuteSwapRequest = Type.Object({
     enum: ['BUY', 'SELL'],
     description: 'Trade direction'
   }),
-  poolAddress: Type.Optional(Type.String()),
   slippagePct: Type.Optional(Type.Number()),
 });
+
+export const ExecuteSwapInPoolRequest = Type.Intersect([
+  ExecuteSwapRequest,
+  Type.Object({
+    poolAddress: Type.String(),
+  })
+]);
+
 export type ExecuteSwapRequestType = Static<typeof ExecuteSwapRequest>;
+export type ExecuteSwapInPoolRequestType = Static<typeof ExecuteSwapInPoolRequest>;
 
 export const ExecuteSwapResponse = Type.Object({
   signature: Type.String(),

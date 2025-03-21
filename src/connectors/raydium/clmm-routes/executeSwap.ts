@@ -3,10 +3,10 @@ import { Solana, BASE_FEE } from '../../../chains/solana/solana'
 import { Raydium } from '../raydium'
 import { logger } from '../../../services/logger'
 import {
-  ExecuteSwapRequestType,
   ExecuteSwapResponseType,
-  ExecuteSwapRequest,
-  ExecuteSwapResponse
+  ExecuteSwapResponse,
+  ExecuteSwapInPoolRequest,
+  ExecuteSwapInPoolRequestType
 } from '../../../schemas/trading-types/swap-schema'
 import { getSwapQuote } from './quoteSwap'
 import {
@@ -138,10 +138,8 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
     logger.warn('No wallets found for examples in schema')
   }
   
-  ExecuteSwapRequest.properties.walletAddress.examples = [firstWalletAddress]
-
   fastify.post<{
-    Body: ExecuteSwapRequestType;
+    Body: ExecuteSwapInPoolRequestType;
     Reply: ExecuteSwapResponseType;
   }>(
     '/execute-swap',
@@ -150,10 +148,11 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         description: 'Execute a swap on Raydium CLMM',
         tags: ['raydium-clmm'],
         body: {
-          ...ExecuteSwapRequest,
+          ...ExecuteSwapInPoolRequest,
           properties: {
-            ...ExecuteSwapRequest.properties,
+            ...ExecuteSwapInPoolRequest.properties,
             network: { type: 'string', default: 'mainnet-beta' },
+            walletAddress: { type: 'string', examples: [firstWalletAddress] },
             baseToken: { type: 'string', examples: ['SOL'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
             amount: { type: 'number', examples: [0.1] },

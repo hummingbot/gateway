@@ -2,7 +2,12 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { Solana } from '../../../chains/solana/solana';
 import { Jupiter } from '../jupiter';
 import { logger } from '../../../services/logger';
-import { ExecuteSwapRequestType, ExecuteSwapResponseType } from '../../../schemas/trading-types/swap-schema';
+import {
+  ExecuteSwapRequest,
+  ExecuteSwapResponse,
+  ExecuteSwapRequestType,
+  ExecuteSwapResponseType
+} from '../../../schemas/trading-types/swap-schema';
 import { Wallet } from '@coral-xyz/anchor';
 import Decimal from 'decimal.js-light';
 
@@ -15,7 +20,7 @@ async function executeJupiterSwap(
   amount: number,
   side: 'BUY' | 'SELL',
   slippagePct?: number
-) {
+): Promise<ExecuteSwapResponseType> {
   const solana = await Solana.getInstance(network);
   const jupiter = await Jupiter.getInstance(network);
   const keypair = await solana.getWallet(walletAddress);
@@ -33,12 +38,12 @@ async function executeJupiterSwap(
 
   try {
     const quote = await jupiter.getQuote(
-      baseTokenInfo.address,
-      quoteTokenInfo.address,
+      tradeSide === 'BUY' ? quoteTokenInfo.address : baseTokenInfo.address,
+      tradeSide === 'BUY' ? baseTokenInfo.address : quoteTokenInfo.address,
       amountValue,
       slippagePct,
-      false, // onlyDirectRoutes
-      false, // asLegacyTransaction
+      false,
+      false,
       tradeSide === 'BUY' ? 'ExactOut' : 'ExactIn'
     );
 
@@ -46,14 +51,21 @@ async function executeJupiterSwap(
       wallet,
       quote
     );
+    const { baseTokenBalanceChange, quoteTokenBalanceChange } = 
+      await solana.extractPairBalanceChangesAndFee(
+        signature,
+        baseTokenInfo,
+        quoteTokenInfo,
+        wallet.publicKey.toBase58()
+      );
 
     return {
       signature,
-      baseToken: baseTokenInfo,
-      quoteToken: quoteTokenInfo,
-      expectedAmount: quote.outAmount,
-      inputAmount: amountValue,
-      gasCost: feeInLamports / 1e9 // Convert lamports to SOL
+      totalInputSwapped: Math.abs(side === 'SELL' ? baseTokenBalanceChange : quoteTokenBalanceChange),
+      totalOutputSwapped: Math.abs(side === 'SELL' ? quoteTokenBalanceChange : baseTokenBalanceChange),
+      fee: feeInLamports / 1e9,
+      baseTokenBalanceChange: baseTokenBalanceChange,
+      quoteTokenBalanceChange: quoteTokenBalanceChange
     };
   } catch (error) {
     logger.error(`Jupiter swap error: ${error}`);
@@ -62,6 +74,19 @@ async function executeJupiterSwap(
 }
 
 export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
+  // Get first wallet address for example
+  const solana = await Solana.getInstance('mainnet-beta');
+  let firstWalletAddress = '<solana-wallet-address>';
+  
+  try {
+    firstWalletAddress = await solana.getFirstWalletAddress() || firstWalletAddress;
+  } catch (error) {
+    logger.warn('No wallets found for examples in schema');
+  }
+  
+  // Update schema example
+  ExecuteSwapRequest.properties.walletAddress.examples = [firstWalletAddress];
+
   fastify.post<{
     Body: ExecuteSwapRequestType;
     Reply: ExecuteSwapResponseType;
@@ -72,36 +97,24 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         description: 'Execute Jupiter swap',
         tags: ['jupiter'],
         body: {
-          type: 'object',
-          required: ['walletAddress', 'baseToken', 'quoteToken', 'amount', 'side'],
+          ...ExecuteSwapRequest,
           properties: {
+            ...ExecuteSwapRequest.properties,
             network: { type: 'string', default: 'mainnet-beta' },
-            walletAddress: { type: 'string' },
-            baseToken: { type: 'string' },
-            quoteToken: { type: 'string' },
-            amount: { type: 'number' },
-            side: { type: 'string', enum: ['BUY', 'SELL'] },
-            slippagePct: { type: 'number' }
+            walletAddress: { type: 'string', examples: [firstWalletAddress] },
+            baseToken: { type: 'string', examples: ['SOL'] },
+            quoteToken: { type: 'string', examples: ['USDC'] },
+            amount: { type: 'number', examples: [0.1] },
+            side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
+            slippagePct: { type: 'number', examples: [1] }
           }
         },
-        response: {
-          200: {
-            type: 'object',
-            properties: {
-              signature: { type: 'string' },
-              totalInputSwapped: { type: 'number' },
-              totalOutputSwapped: { type: 'number' },
-              fee: { type: 'number' },
-              baseTokenBalanceChange: { type: 'number' },
-              quoteTokenBalanceChange: { type: 'number' }
-            }
-          }
-        }
+        response: { 200: ExecuteSwapResponse }
       }
     },
     async (request) => {
       const { network, walletAddress, baseToken, quoteToken, amount, side, slippagePct } = request.body;
-      const result = await executeJupiterSwap(
+      return await executeJupiterSwap(
         fastify,
         network || 'mainnet-beta',
         walletAddress,
@@ -111,22 +124,6 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         side as 'BUY' | 'SELL',
         slippagePct
       );
-
-      const inputAmount = new Decimal(result.inputAmount)
-        .div(10 ** result.baseToken.decimals)
-        .toNumber();
-      const outputAmount = new Decimal(result.expectedAmount)
-        .div(10 ** result.quoteToken.decimals)
-        .toNumber();
-
-      return {
-        signature: result.signature,
-        totalInputSwapped: side === 'SELL' ? inputAmount : outputAmount,
-        totalOutputSwapped: side === 'SELL' ? outputAmount : inputAmount,
-        fee: Number(result.gasCost),
-        baseTokenBalanceChange: side === 'SELL' ? -inputAmount : outputAmount,
-        quoteTokenBalanceChange: side === 'SELL' ? outputAmount : -inputAmount
-      };
     }
   );
 };
