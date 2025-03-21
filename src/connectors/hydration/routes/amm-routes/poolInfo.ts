@@ -66,7 +66,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
           price: poolInfo.price || 0,
           baseTokenAmount: poolInfo.liquidity || 0,
           quoteTokenAmount: poolInfo.liquidity ? poolInfo.liquidity * (poolInfo.price || 0) : 0,
-          poolType: 'hydration'
+          poolType: poolInfo.type || 'Unknown' // Use the actual pool type from the data
         };
         
         return result;

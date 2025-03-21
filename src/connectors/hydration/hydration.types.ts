@@ -14,6 +14,7 @@ export interface HydrationPoolInfo {
   tvl: number;
   feesUSD24h: number;
   apr: number;
+  type: string;
 }
 
 export interface BinLiquidity {
