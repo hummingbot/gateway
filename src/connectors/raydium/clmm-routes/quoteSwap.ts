@@ -124,11 +124,32 @@ async function formatSwapQuote(
     poolAddress,
     slippagePct
   );
+  
+  logger.info(`Raydium CLMM swap quote: ${side} ${amount} ${baseTokenSymbol}/${quoteTokenSymbol} in pool ${poolAddress}`, {
+    inputToken: inputToken.symbol,
+    outputToken: outputToken.symbol,
+    responseType: side === 'BUY' ? 'ReturnTypeComputeAmountOutBaseOut' : 'ReturnTypeComputeAmountOutFormat',
+    response: side === 'BUY' 
+      ? {
+          amountIn: { amount: (response as ReturnTypeComputeAmountOutBaseOut).amountIn.amount.toNumber() },
+          maxAmountIn: { amount: (response as ReturnTypeComputeAmountOutBaseOut).maxAmountIn.amount.toNumber() },
+          realAmountOut: { amount: (response as ReturnTypeComputeAmountOutBaseOut).realAmountOut.amount.toNumber() },
+          currentPrice: (response as ReturnTypeComputeAmountOutBaseOut).currentPrice,
+          executionPrice: (response as ReturnTypeComputeAmountOutBaseOut).executionPrice,
+          priceImpact: {
+            numerator: (response as ReturnTypeComputeAmountOutBaseOut).priceImpact.numerator.toNumber(),
+            denominator: (response as ReturnTypeComputeAmountOutBaseOut).priceImpact.denominator.toNumber()
+          },
+          fee: (response as ReturnTypeComputeAmountOutBaseOut).fee.toNumber(),
+          remainingAccounts: (response as ReturnTypeComputeAmountOutBaseOut).remainingAccounts
+        }
+      : response
+  });
 
   if (side === 'BUY') {
     const exactOutResponse = response as ReturnTypeComputeAmountOutBaseOut;
-    const estimatedAmountIn = exactOutResponse.amountIn.amount.toNumber() / 10 ** inputToken.decimals;
-    const maxAmountIn = exactOutResponse.maxAmountIn.amount.toNumber() / 10 ** inputToken.decimals;
+    const estimatedAmountIn = exactOutResponse.amountIn.amount.toNumber() / 10 ** (outputToken.decimals + (outputToken.decimals - inputToken.decimals));
+    const maxAmountIn = exactOutResponse.maxAmountIn.amount.toNumber() / 10 ** (outputToken.decimals + (outputToken.decimals - inputToken.decimals));
     const amountOut = exactOutResponse.realAmountOut.amount.toNumber() / 10 ** outputToken.decimals;
 
     const price = amountOut / estimatedAmountIn;
