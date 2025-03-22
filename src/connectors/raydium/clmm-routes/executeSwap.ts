@@ -25,7 +25,7 @@ async function executeSwap(
   amount: number,
   side: 'BUY' | 'SELL',
   poolAddress: string,
-  slippagePct: number
+  slippagePct?: number
 ): Promise<ExecuteSwapResponseType> {
   const solana = await Solana.getInstance(network)
   const raydium = await Raydium.getInstance(network)
@@ -39,6 +39,9 @@ async function executeSwap(
   console.log('poolInfo', poolInfo)
   console.log('poolKeys', poolKeys)
 
+  // Use configured slippage if not provided
+  const effectiveSlippage = slippagePct || raydium.getSlippagePct()
+
   const { inputToken, outputToken, response, clmmPoolInfo } = await getSwapQuote(
     fastify,
     network,
@@ -47,7 +50,7 @@ async function executeSwap(
     amount,
     side,
     poolAddress,
-    slippagePct
+    effectiveSlippage
   );
 
   logger.info(`Executing ${amount.toFixed(4)} ${side} swap in pool ${poolAddress}`);

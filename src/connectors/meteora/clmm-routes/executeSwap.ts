@@ -10,6 +10,7 @@ import {
   ExecuteSwapInPoolRequest,
   ExecuteSwapInPoolRequestType
 } from '../../../schemas/trading-types/swap-schema';
+import { Meteora } from '../meteora';
 
 async function executeSwap(
   fastify: FastifyInstance,
@@ -23,6 +24,7 @@ async function executeSwap(
   slippagePct?: number
 ): Promise<ExecuteSwapResponseType> {
   const solana = await Solana.getInstance(network);
+  const meteora = await Meteora.getInstance(network);
   const wallet = await solana.getWallet(address);
 
   const { 
@@ -39,7 +41,7 @@ async function executeSwap(
     amount,
     side,
     poolAddress,
-    slippagePct
+    slippagePct || meteora.getSlippagePct()
   );
 
   logger.info(`Executing ${amount.toFixed(4)} ${side} swap in pool ${poolAddress}`);

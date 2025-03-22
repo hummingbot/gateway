@@ -21,7 +21,7 @@ async function executeSwap(
   amount: number,
   side: 'BUY' | 'SELL',
   poolAddress: string,
-  slippagePct: number
+  slippagePct?: number
 ): Promise<ExecuteSwapResponseType> {
   const solana = await Solana.getInstance(network)
   const raydium = await Raydium.getInstance(network)
@@ -33,6 +33,9 @@ async function executeSwap(
     throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`)
   }
 
+  // Use configured slippage if not provided
+  const effectiveSlippage = slippagePct || raydium.getSlippagePct()
+
   // Get swap quote
   const quote = await getRawSwapQuote(
     raydium,
@@ -42,7 +45,7 @@ async function executeSwap(
     quoteToken,
     amount,
     side,
-    slippagePct
+    effectiveSlippage
   )
 
   const inputToken = quote.inputToken
@@ -101,7 +104,7 @@ async function executeSwap(
             sourceAmountSwapped: quote.amountIn,
             destinationAmountSwapped: new BN(quote.amountOut),
           },
-          slippage: slippagePct / 100,
+          slippage: effectiveSlippage / 100,
           baseIn: inputToken.address === quote.poolInfo.mintA.address,
           txVersion: raydium.txVersion,
           computeBudgetConfig: {
@@ -119,7 +122,7 @@ async function executeSwap(
             sourceAmountSwapped: quote.amountIn,
             destinationAmountSwapped: quote.amountOut,
           },
-          slippage: slippagePct / 100,
+          slippage: effectiveSlippage / 100,
           baseIn: inputToken.address === quote.poolInfo.mintA.address,
           txVersion: raydium.txVersion,
           computeBudgetConfig: {

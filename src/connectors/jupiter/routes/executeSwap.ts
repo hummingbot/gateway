@@ -41,7 +41,7 @@ async function executeJupiterSwap(
       tradeSide === 'BUY' ? quoteTokenInfo.address : baseTokenInfo.address,
       tradeSide === 'BUY' ? baseTokenInfo.address : quoteTokenInfo.address,
       amountValue,
-      slippagePct,
+      slippagePct || jupiter.getSlippagePct(),
       false,
       false,
       tradeSide === 'BUY' ? 'ExactOut' : 'ExactIn'
