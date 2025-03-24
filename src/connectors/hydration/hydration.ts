@@ -611,11 +611,11 @@ export class Hydration {
 
       return {
         signature: txHash,
-        totalInputSwapped: side === 'buy' ? quote.estimatedAmountIn : amount,
-        totalOutputSwapped: side === 'buy' ? amount : quote.estimatedAmountOut,
-        fee: 0, // Fee is included in the swap amounts
-        baseTokenBalanceChange: quote.baseTokenBalanceChange,
-        quoteTokenBalanceChange: quote.quoteTokenBalanceChange,
+        totalInputSwapped: side === 'buy' ? BigNumber(quote.estimatedAmountIn.toString()).div(10 ** quoteToken.decimals).toString() : amount,
+        totalOutputSwapped: side === 'buy' ? amount : BigNumber(quote.estimatedAmountOut.toString()).div(10 ** baseToken.decimals).toString(),
+        fee: quote.priceImpact, // Fee is included in the swap amounts
+        baseTokenBalanceChange: BigNumber(quote.baseTokenBalanceChange.toString()).div(10 ** baseToken.decimals).toString(),
+        quoteTokenBalanceChange: BigNumber(quote.quoteTokenBalanceChange.toString()).div(10 ** quoteToken.decimals).toString(),
         priceImpact: quote.priceImpact
       };
     } catch (error) {
