@@ -578,7 +578,7 @@ export class Hydration {
       );
 
       // Create the transaction
-      const transaction = trade.toTx(tradeLimit);
+      const transaction = trade.toTx(tradeLimit).get<any>();
 
       // Execute the transaction
       const txHash = await new Promise<string>((resolve, reject) => {
@@ -600,7 +600,7 @@ export class Hydration {
               reject(result.dispatchError.toString());
             }
           } else if (result.status.isInBlock) {
-            const hash = result.status.asInBlock.toString();
+            const hash = result.txHash.toString();
             logger.info('Swap executed. Transaction hash:', hash);
             resolve(hash);
           }
