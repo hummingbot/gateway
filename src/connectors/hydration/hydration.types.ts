@@ -35,6 +35,7 @@ export interface SwapQuote {
   quoteTokenBalanceChange: number;
   priceImpact: number;
   route: SwapRoute[];
+  fee: number;
 }
 
 export interface SwapRoute {

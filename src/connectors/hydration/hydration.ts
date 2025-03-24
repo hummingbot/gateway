@@ -482,7 +482,8 @@ export class Hydration {
         baseTokenBalanceChange: side === 'buy' ? estimatedAmountOut : -estimatedAmountIn,
         quoteTokenBalanceChange: side === 'buy' ? -estimatedAmountIn : estimatedAmountOut,
         priceImpact,
-        route
+        route,
+        fee: trade.toHuman().tradeFee
       };
     } catch (error) {
       logger.error(`Failed to get swap quote: ${error.message}`);
@@ -611,9 +612,9 @@ export class Hydration {
 
       return {
         signature: txHash,
-        totalInputSwapped: side === 'buy' ? BigNumber(quote.estimatedAmountIn.toString()).div(10 ** quoteToken.decimals).toString() : amount,
-        totalOutputSwapped: side === 'buy' ? amount : BigNumber(quote.estimatedAmountOut.toString()).div(10 ** baseToken.decimals).toString(),
-        fee: quote.priceImpact, // Fee is included in the swap amounts
+        totalInputSwapped: side === 'buy' ? BigNumber(quote.estimatedAmountIn.toString()).div(10 ** quoteToken.decimals).toString() : amount.toString(),
+        totalOutputSwapped: side === 'buy' ? amount.toString() : BigNumber(quote.estimatedAmountOut.toString()).div(10 ** quoteToken.decimals).toString(),
+        fee: quote.fee,
         baseTokenBalanceChange: BigNumber(quote.baseTokenBalanceChange.toString()).div(10 ** baseToken.decimals).toString(),
         quoteTokenBalanceChange: BigNumber(quote.quoteTokenBalanceChange.toString()).div(10 ** quoteToken.decimals).toString(),
         priceImpact: quote.priceImpact
