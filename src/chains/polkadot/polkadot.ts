@@ -113,8 +113,7 @@ export class Polkadot {
       
       // Initialize keyring
       this._keyring = new Keyring({
-        type: 'sr25519',
-        ss58Format: this.config.network.ss58Format
+        type: 'sr25519'
       });
       
       // Connect to the node
@@ -336,7 +335,7 @@ export class Polkadot {
   validatePolkadotAddress(address: string): boolean {
     try {
       // Try to decode the address - will throw if invalid
-      decodeAddress(address, false, this.config.network.ss58Format);
+      decodeAddress(address, false);
       return true;
     } catch (error) {
       logger.error(`Invalid Polkadot address: ${address}`);
@@ -718,7 +717,7 @@ export class Polkadot {
     options?: TransferOptions
   ): Promise<TransactionReceipt> {
     try {
-      const timeout = options?.timeout || this.config.defaultTransactionTimeout;
+      const timeout = options?.timeout;
       const shouldWaitForFinalization = options?.waitForFinalization !== false;
 
       return new Promise((resolve, reject) => {
@@ -825,10 +824,6 @@ export class Polkadot {
     try {
       if (txs.length === 0) {
         throw new Error('No transactions provided for batch');
-      }
-
-      if (txs.length > this.config.batchTxLimit) {
-        throw new Error(`Batch transaction limit exceeded: ${txs.length} > ${this.config.batchTxLimit}`);
       }
 
       // Create batch transaction
@@ -1036,8 +1031,7 @@ export class Polkadot {
       
       // Format the address in SS58 format for the current network
       const formattedAddress = encodeAddress(
-        keyPair.publicKey, 
-        this.config.network.ss58Format
+        keyPair.publicKey
       );
       
       // Return the formatted address along with the keyring pair

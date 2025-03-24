@@ -3,46 +3,37 @@ import { ConfigManagerV2 } from '../../services/config-manager-v2';
 
 interface NetworkConfig {
   nodeURL: string;
+  transactionUrl: string;
   tokenListType: TokenListType;
   tokenListSource: string;
   nativeCurrencySymbol: string;
-  ss58Format: number; // Polkadot-specific: SS58 address format
+  feePaymentCurrencySymbol: string;
 }
 
 export interface Config {
   network: NetworkConfig;
-  defaultTransactionTimeout: number;
-  batchTxLimit: number; // Polkadot-specific: max number of transactions in a batch
 }
 
 export function getPolkadotConfig(
   chainName: string,
   networkName: string
 ): Config {
+  const configManager = ConfigManagerV2.getInstance();
+  
+  // Get the active parachain for this network
+  const activeParachain = configManager.get(
+    `${chainName}.networks.${networkName}.parachain`
+  );
+    
   return {
     network: {
-      nodeURL: ConfigManagerV2.getInstance().get(
-        chainName + '.networks.' + networkName + '.nodeURL'
-      ),
-      tokenListType: ConfigManagerV2.getInstance().get(
-        chainName + '.networks.' + networkName + '.tokenListType'
-      ),
-      tokenListSource: ConfigManagerV2.getInstance().get(
-        chainName + '.networks.' + networkName + '.tokenListSource'
-      ),
-      nativeCurrencySymbol: ConfigManagerV2.getInstance().get(
-        chainName + '.networks.' + networkName + '.nativeCurrencySymbol'
-      ),
-      ss58Format: ConfigManagerV2.getInstance().get(
-        chainName + '.networks.' + networkName + '.ss58Format'
-      ),
-    },
-    defaultTransactionTimeout: ConfigManagerV2.getInstance().get(
-      chainName + '.defaultTransactionTimeout'
-    ),
-    batchTxLimit: ConfigManagerV2.getInstance().get(
-      chainName + '.batchTxLimit'
-    ),
+      nodeURL: configManager.get(`${activeParachain}.nodeURL`),
+      transactionUrl: configManager.get(`${activeParachain}.transactionUrl`),
+      tokenListType: configManager.get(`${activeParachain}.tokenListType`),
+      tokenListSource: configManager.get(`${activeParachain}.tokenListSource`),
+      nativeCurrencySymbol: configManager.get(`${activeParachain}.nativeCurrencySymbol`),
+      feePaymentCurrencySymbol: configManager.get(`${activeParachain}.feePaymentCurrencySymbol`),
+    }
   };
 }
 

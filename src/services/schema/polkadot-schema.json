@@ -8,35 +8,26 @@
                 "^\\w+$": {
                     "type": "object",
                     "properties": {
-                        "chainId": {
-                            "type": "string"
-                        },
-                        "nodeURL": {
-                            "type": "string"
-                        },
-                        "tokenListType": {
-                            "type": "string"
-                        },
-                        "tokenListSource": {
-                            "type": "string"
-                        },
-                        "nativeCurrencySymbol": {
-                            "type": "string"
+                        "parachain": {
+                            "type": "string",
+                            "description": "The active parachain to use for this network"
                         }
                     },
                     "required": [
-                        "nodeURL",
-                        "tokenListType",
-                        "tokenListSource",
-                        "nativeCurrencySymbol"
+                        "parachain"
                     ],
                     "additionalProperties": false
                 }
             },
             "additionalProperties": false
         },
-        "gasLimitEstimate": {
-            "type": "number"
+        "defaultTransactionTimeout": {
+            "type": "integer",
+            "description": "Default timeout for transactions in milliseconds"
+        },
+        "batchTxLimit": {
+            "type": "integer",
+            "description": "Maximum number of transactions allowed in a batch"
         }
     },
     "additionalProperties": false,

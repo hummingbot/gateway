@@ -1,8 +1,3 @@
 networks:
   mainnet:
-    nodeURL: 'wss://rpc.hydradx.cloud'
-    tokenListType: 'FILE'
-    tokenListSource: 'conf/lists/hydration.json'
-    nativeCurrencySymbol: HDX
-    # parachain: 'hydration' // TODO add support for this!!!
-    # transactionUrl: 'https://hydration.api.subscan.io/api/scan/extrinsic' // TODO add support for this!!!
+    parachain: 'hydration'
