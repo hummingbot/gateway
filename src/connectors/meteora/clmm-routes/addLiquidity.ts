@@ -7,11 +7,11 @@ import { Decimal } from 'decimal.js';
 import { StrategyType } from '@meteora-ag/dlmm';
 import { logger } from '../../../services/logger';
 import { PublicKey } from '@solana/web3.js';
-import {
-  AddLiquidityRequest,
-  AddLiquidityResponse,
-  AddLiquidityResponseType
-} from '../../../services/clmm-interfaces';
+import { 
+  AddLiquidityRequest, 
+  AddLiquidityResponse, 
+  AddLiquidityResponseType 
+} from '../../../schemas/trading-types/clmm-schema';
 import { Type, Static } from '@sinclair/typebox';
 import { httpBadRequest, httpNotFound, ERROR_MESSAGES } from '../../../services/error-handler';
 

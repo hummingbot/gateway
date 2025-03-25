@@ -5,11 +5,12 @@ import { logger } from '../../../services/logger';
 import { getRawSwapQuote } from './quoteSwap';
 import { SwapQuoteExactOut, SwapQuote } from '@meteora-ag/dlmm';
 import { 
-  ExecuteSwapRequestType,
   ExecuteSwapResponseType,
-  ExecuteSwapRequest,
-  ExecuteSwapResponse
-} from '../../../services/swap-interfaces';
+  ExecuteSwapResponse,
+  ExecuteSwapInPoolRequest,
+  ExecuteSwapInPoolRequestType
+} from '../../../schemas/trading-types/swap-schema';
+import { Meteora } from '../meteora';
 
 async function executeSwap(
   fastify: FastifyInstance,
@@ -18,11 +19,12 @@ async function executeSwap(
   baseTokenIdentifier: string,
   quoteTokenIdentifier: string,
   amount: number,
-  side: 'buy' | 'sell',
+  side: 'BUY' | 'SELL',
   poolAddress: string,
   slippagePct?: number
 ): Promise<ExecuteSwapResponseType> {
   const solana = await Solana.getInstance(network);
+  const meteora = await Meteora.getInstance(network);
   const wallet = await solana.getWallet(address);
 
   const { 
@@ -39,12 +41,12 @@ async function executeSwap(
     amount,
     side,
     poolAddress,
-    slippagePct
+    slippagePct || meteora.getSlippagePct()
   );
 
   logger.info(`Executing ${amount.toFixed(4)} ${side} swap in pool ${poolAddress}`);
 
-  const swapTx = side === 'buy'
+  const swapTx = side === 'BUY'
     ? await dlmmPool.swapExactOut({
         inToken: new PublicKey(inputToken.address),
         outToken: new PublicKey(outputToken.address),
@@ -97,11 +99,8 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
     logger.warn('No wallets found for examples in schema');
   }
   
-  // Update schema example
-  ExecuteSwapRequest.properties.walletAddress.examples = [firstWalletAddress];
-
   fastify.post<{
-    Body: ExecuteSwapRequestType;
+    Body: ExecuteSwapInPoolRequestType;
     Reply: ExecuteSwapResponseType;
   }>(
     '/execute-swap',
@@ -110,21 +109,20 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         description: 'Execute a token swap on Meteora',
         tags: ['meteora'],
         body: {
-          ...ExecuteSwapRequest,
+          ...ExecuteSwapInPoolRequest,
           properties: {
-            ...ExecuteSwapRequest.properties,
+            ...ExecuteSwapInPoolRequest.properties,
             network: { type: 'string', default: 'mainnet-beta' },
+            walletAddress: { type: 'string', examples: [firstWalletAddress] },
             baseToken: { type: 'string', examples: ['SOL'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
             amount: { type: 'number', examples: [0.1] },
-            side: { type: 'string', enum: ['buy', 'sell'], examples: ['sell'] },
+            side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
             poolAddress: { type: 'string', examples: ['2sf5NYcY4zUPXUSmG6f66mskb24t5F8S11pC1Nz5nQT3'] },
             slippagePct: { type: 'number', examples: [1] }
           }
         },
-        response: {
-          200: ExecuteSwapResponse
-        },
+        response: { 200: ExecuteSwapResponse }
       }
     },
     async (request) => {
@@ -141,7 +139,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           baseToken,
           quoteToken,
           amount,
-          side as 'buy' | 'sell',
+          side as 'BUY' | 'SELL',
           poolAddress,
           slippagePct
         );

@@ -11,7 +11,7 @@ import {
   ClosePositionResponseType,
   CollectFeesResponseType,
   RemoveLiquidityResponseType
-} from '../../../services/clmm-interfaces';
+} from '../../../schemas/trading-types/clmm-schema';
 
 async function closePosition(
   fastify: FastifyInstance,

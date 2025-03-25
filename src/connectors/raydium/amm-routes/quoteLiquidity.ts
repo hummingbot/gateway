@@ -7,7 +7,7 @@ import {
   QuoteLiquidityRequestType,
   QuoteLiquidityResponse,
   QuoteLiquidityResponseType,
-} from '../../../services/amm-interfaces';
+} from '../../../schemas/trading-types/amm-schema';
 import { isValidAmm, isValidCpmm } from '../raydium.utils';
 import BN from 'bn.js';
 import { ApiV3PoolInfoStandardItemCpmm, ApiV3PoolInfoStandardItem, Percent, TokenAmount } from '@raydium-io/raydium-sdk-v2';

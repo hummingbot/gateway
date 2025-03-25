@@ -6,10 +6,9 @@ export const GetSwapQuoteRequest = Type.Object({
   quoteToken: Type.String(),
   amount: Type.Number(),
   side: Type.String({ 
-    enum: ['buy', 'sell'],
+    enum: ['BUY', 'SELL'],
     description: 'Trade direction'
   }),
-  poolAddress: Type.String(),
   slippagePct: Type.Optional(Type.Number()),
 }, { $id: 'GetSwapQuoteRequest' });
 export type GetSwapQuoteRequestType = Static<typeof GetSwapQuoteRequest>;
@@ -21,6 +20,10 @@ export const GetSwapQuoteResponse = Type.Object({
   maxAmountIn: Type.Number(),
   baseTokenBalanceChange: Type.Number(),
   quoteTokenBalanceChange: Type.Number(),
+  price: Type.Number(),
+  gasPrice: Type.Number(),
+  gasLimit: Type.Number(),
+  gasCost: Type.Number(),
 }, { $id: 'GetSwapQuoteResponse' });
 export type GetSwapQuoteResponseType = Static<typeof GetSwapQuoteResponse>;
 
@@ -31,13 +34,21 @@ export const ExecuteSwapRequest = Type.Object({
   quoteToken: Type.String(),
   amount: Type.Number(),
   side: Type.String({ 
-    enum: ['buy', 'sell'],
+    enum: ['BUY', 'SELL'],
     description: 'Trade direction'
   }),
-  poolAddress: Type.String(),
   slippagePct: Type.Optional(Type.Number()),
 });
+
+export const ExecuteSwapInPoolRequest = Type.Intersect([
+  ExecuteSwapRequest,
+  Type.Object({
+    poolAddress: Type.String(),
+  })
+]);
+
 export type ExecuteSwapRequestType = Static<typeof ExecuteSwapRequest>;
+export type ExecuteSwapInPoolRequestType = Static<typeof ExecuteSwapInPoolRequest>;
 
 export const ExecuteSwapResponse = Type.Object({
   signature: Type.String(),
@@ -48,3 +59,11 @@ export const ExecuteSwapResponse = Type.Object({
   quoteTokenBalanceChange: Type.Number(),
 });
 export type ExecuteSwapResponseType = Static<typeof ExecuteSwapResponse>;
+
+export const GetCLMMSwapQuoteRequest = Type.Composite([
+  GetSwapQuoteRequest,
+  Type.Object({
+    poolAddress: Type.String({ description: 'CLMM pool address' }),
+  })
+], { $id: 'GetCLMMSwapQuoteRequest' });
+export type GetCLMMSwapQuoteRequestType = Static<typeof GetCLMMSwapQuoteRequest>;

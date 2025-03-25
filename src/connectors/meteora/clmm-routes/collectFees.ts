@@ -7,7 +7,7 @@ import {
   CollectFeesResponse, 
   CollectFeesRequestType, 
   CollectFeesResponseType 
-} from '../../../services/clmm-interfaces';
+} from '../../../schemas/trading-types/clmm-schema';
 
 export async function collectFees(
   fastify: FastifyInstance,

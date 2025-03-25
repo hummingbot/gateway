@@ -3,11 +3,11 @@ import { Raydium } from '../raydium'
 import { Solana } from '../../../chains/solana/solana'
 import { logger } from '../../../services/logger'
 import { 
-  GetSwapQuoteRequest,
-  GetSwapQuoteResponse,
-  GetSwapQuoteRequestType,
+  GetCLMMSwapQuoteRequestType,
+  GetCLMMSwapQuoteRequest,
   GetSwapQuoteResponseType,
-} from '../../../services/swap-interfaces'
+  GetSwapQuoteResponse
+} from '../../../schemas/trading-types/swap-schema'
 import { 
   ApiV3PoolInfoStandardItem,
   ApiV3PoolInfoStandardItemCpmm,
@@ -16,6 +16,7 @@ import {
 import BN from 'bn.js'
 import Decimal from 'decimal.js'
 import { PublicKey } from '@solana/web3.js'
+import { estimateGasSolana } from '../../../chains/solana/routes/estimate-gas'
 
 async function quoteAmmSwap(
   raydium: Raydium,
@@ -232,11 +233,11 @@ export async function getRawSwapQuote(
   baseToken: string,
   quoteToken: string,
   amount: number,
-  side: 'buy' | 'sell',
+  side: 'BUY' | 'SELL',
   slippagePct?: number
 ): Promise<any> {
   // Convert side to exactIn
-  const exactIn = side === 'sell';
+  const exactIn = side === 'SELL';
   
   logger.info(`getRawSwapQuote: poolId=${poolId}, baseToken=${baseToken}, quoteToken=${quoteToken}, amount=${amount}, side=${side}, exactIn=${exactIn}`)
   
@@ -326,10 +327,16 @@ export async function getRawSwapQuote(
   
   logger.info(`Raw quote result: amountIn=${result.amountIn.toString()}, amountOut=${result.amountOut.toString()}, inputMint=${result.inputMint}, outputMint=${result.outputMint}`)
   
+  // Add price calculation
+  const price = side === 'SELL' 
+    ? result.amountOut.toString() / result.amountIn.toString()
+    : result.amountIn.toString() / result.amountOut.toString();
+  
   return {
     ...result,
     inputToken,
-    outputToken
+    outputToken,
+    price,
   };
 }
 
@@ -340,7 +347,7 @@ async function formatSwapQuote(
   baseToken: string,
   quoteToken: string,
   amount: number,
-  side: 'buy' | 'sell',
+  side: 'BUY' | 'SELL',
   slippagePct?: number
 ): Promise<GetSwapQuoteResponseType> {
   logger.info(`formatSwapQuote: poolAddress=${poolAddress}, baseToken=${baseToken}, quoteToken=${quoteToken}, amount=${amount}, side=${side}`)
@@ -374,7 +381,7 @@ async function formatSwapQuote(
     baseToken,
     quoteToken,
     amount,
-    side as 'buy' | 'sell',
+    side as 'BUY' | 'SELL',
     slippagePct
   )
   
@@ -406,24 +413,33 @@ async function formatSwapQuote(
   logger.info(`Converted amounts: estimatedAmountIn=${estimatedAmountIn}, estimatedAmountOut=${estimatedAmountOut}, minAmountOut=${minAmountOut}, maxAmountIn=${maxAmountIn}`)
 
   // Calculate balance changes correctly based on which tokens are being swapped
-  const baseTokenBalanceChange = side === 'buy' ? estimatedAmountOut : -estimatedAmountIn
-  const quoteTokenBalanceChange = side === 'buy' ? -estimatedAmountIn : estimatedAmountOut
+  const baseTokenBalanceChange = side === 'BUY' ? estimatedAmountOut : -estimatedAmountIn
+  const quoteTokenBalanceChange = side === 'BUY' ? -estimatedAmountIn : estimatedAmountOut
   
   logger.info(`Balance changes: baseTokenBalanceChange=${baseTokenBalanceChange}, quoteTokenBalanceChange=${quoteTokenBalanceChange}`)
+
+  // Add price calculation
+  const price = side === 'SELL' 
+    ? estimatedAmountOut / estimatedAmountIn
+    : estimatedAmountIn / estimatedAmountOut;
 
   return {
     estimatedAmountIn,
     estimatedAmountOut,
     minAmountOut,
-    maxAmountIn,
+    maxAmountIn: estimatedAmountIn,
     baseTokenBalanceChange,
     quoteTokenBalanceChange,
+    price,
+    gasPrice: 0,
+    gasLimit: 0,
+    gasCost: 0
   }
 }
 
 export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
-    Querystring: GetSwapQuoteRequestType;
+    Querystring: GetCLMMSwapQuoteRequestType;
     Reply: GetSwapQuoteResponseType;
   }>(
     '/quote-swap',
@@ -432,21 +448,24 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         description: 'Get a swap quote for Raydium AMM or CPMM',
         tags: ['raydium-amm'],
         querystring: {
-          ...GetSwapQuoteRequest,
+          ...GetCLMMSwapQuoteRequest,
           properties: {
-            ...GetSwapQuoteRequest.properties,
+            ...GetCLMMSwapQuoteRequest.properties,
             network: { type: 'string', default: 'mainnet-beta' },
-            poolAddress: { type: 'string', examples: ['6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg'] }, // AMM
-            // poolAddress: { type: 'string', examples: ['7JuwJuNU88gurFnyWeiyGKbFmExMWcmRZntn9imEzdny'] }, // CPMM
+            poolAddress: { type: 'string', examples: ['6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg'] },
             baseToken: { type: 'string', examples: ['RAY'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
             amount: { type: 'number', examples: [1] },
-            side: { type: 'string', enum: ['buy', 'sell'], examples: ['sell'] },
+            side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
             slippagePct: { type: 'number', examples: [1] }
           }
         },
         response: {
-          200: GetSwapQuoteResponse
+          200: {
+            properties: {
+              ...GetSwapQuoteResponse.properties,
+            }
+          }
         },
       }
     },
@@ -455,16 +474,30 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         const { network, poolAddress, baseToken, quoteToken, amount, side, slippagePct } = request.query
         const networkToUse = network || 'mainnet-beta'
 
-        return await formatSwapQuote(
+        const result = await formatSwapQuote(
           fastify,
           networkToUse,
           poolAddress,
           baseToken,
           quoteToken,
           amount,
-          side as 'buy' | 'sell',
+          side as 'BUY' | 'SELL',
           slippagePct
         )
+
+        let gasEstimation = null;
+        try {
+          gasEstimation = await estimateGasSolana(fastify, networkToUse);
+        } catch (error) {
+          logger.warn(`Failed to estimate gas for swap quote: ${error.message}`);
+        }
+
+        return {
+          ...result,
+          gasPrice: gasEstimation?.gasPrice,
+          gasLimit: gasEstimation?.gasLimit,
+          gasCost: gasEstimation?.gasCost
+        }
       } catch (e) {
         logger.error(e)
         if (e.statusCode) {

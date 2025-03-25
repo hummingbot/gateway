@@ -12,7 +12,7 @@ export namespace JupiterConfig {
     allowedSlippage: ConfigManagerV2.getInstance().get(
       'jupiter.allowedSlippage',
     ),
-    tradingTypes: ['SWAP'],
+    tradingTypes: ['swap'],
     availableNetworks: [{ chain: 'solana', networks: ['mainnet-beta', 'devnet'] }],
   };
 }

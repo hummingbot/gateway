@@ -6,17 +6,19 @@ import { Decimal } from 'decimal.js';
 import { BN } from 'bn.js';
 import { logger } from '../../../services/logger';
 import { 
-  GetSwapQuoteRequestType,
   GetSwapQuoteResponseType,
-  GetSwapQuoteRequest,
-  GetSwapQuoteResponse
-} from '../../../services/swap-interfaces';
+  GetSwapQuoteResponse,
+  GetCLMMSwapQuoteRequestType,
+  GetCLMMSwapQuoteRequest
+} from '../../../schemas/trading-types/swap-schema';
 import {
   PoolUtils,
   ReturnTypeComputeAmountOutFormat,
   ReturnTypeComputeAmountOutBaseOut
 } from '@raydium-io/raydium-sdk-v2';
 import { PublicKey } from '@solana/web3.js';
+import { estimateGasSolana } from '../../../chains/solana/routes/estimate-gas';
+
 
 export async function getSwapQuote(
   fastify: FastifyInstance,
@@ -24,7 +26,7 @@ export async function getSwapQuote(
   baseTokenSymbol: string,
   quoteTokenSymbol: string,
   amount: number,
-  side: 'buy' | 'sell',
+  side: 'BUY' | 'SELL',
   poolAddress: string,
   slippagePct?: number
 ) {
@@ -46,11 +48,11 @@ export async function getSwapQuote(
 
   // For buy orders, we're swapping quote token for base token (ExactOut)
   // For sell orders, we're swapping base token for quote token (ExactIn)
-  const [inputToken, outputToken] = side === 'buy' 
+  const [inputToken, outputToken] = side === 'BUY' 
     ? [quoteToken, baseToken]
     : [baseToken, quoteToken];
 
-  const amount_bn = side === 'buy'
+  const amount_bn = side === 'BUY'
     ? DecimalUtil.toBN(new Decimal(amount), outputToken.decimals)
     : DecimalUtil.toBN(new Decimal(amount), inputToken.decimals);
   const clmmPoolInfo = await PoolUtils.fetchComputeClmmInfo({
@@ -67,7 +69,7 @@ export async function getSwapQuote(
   const effectiveSlippageNumber = effectiveSlippage.toNumber();
 
   // AmountOut = swapQuote, AmountOutBaseOut = swapQuoteExactOut
-  const response : ReturnTypeComputeAmountOutFormat | ReturnTypeComputeAmountOutBaseOut = side === 'buy' 
+  const response : ReturnTypeComputeAmountOutFormat | ReturnTypeComputeAmountOutBaseOut = side === 'BUY' 
   ? await PoolUtils.computeAmountIn({
     poolInfo: clmmPoolInfo,
     tickArrayCache: tickCache[poolAddress],
@@ -86,13 +88,19 @@ export async function getSwapQuote(
       catchLiquidityInsufficient: true,
     })
 
+  const price = side === 'SELL'
+    ? (response as ReturnTypeComputeAmountOutFormat).amountOut.amount.raw.toNumber() / 
+      (response as ReturnTypeComputeAmountOutFormat).realAmountIn.amount.raw.toNumber()
+    : (response as ReturnTypeComputeAmountOutBaseOut).amountIn.amount.toNumber() / 
+      (response as ReturnTypeComputeAmountOutBaseOut).realAmountOut.amount.toNumber();
 
   return {
     inputToken,
     outputToken,
     response,
     clmmPoolInfo,
-    tickArrayCache: tickCache[poolAddress]
+    tickArrayCache: tickCache[poolAddress],
+    price
   };
 }
 
@@ -102,7 +110,7 @@ async function formatSwapQuote(
   baseTokenSymbol: string,
   quoteTokenSymbol: string,
   amount: number,
-  side: 'buy' | 'sell',
+  side: 'BUY' | 'SELL',
   poolAddress: string,
   slippagePct?: number
 ): Promise<GetSwapQuoteResponseType> {
@@ -116,12 +124,35 @@ async function formatSwapQuote(
     poolAddress,
     slippagePct
   );
+  
+  logger.info(`Raydium CLMM swap quote: ${side} ${amount} ${baseTokenSymbol}/${quoteTokenSymbol} in pool ${poolAddress}`, {
+    inputToken: inputToken.symbol,
+    outputToken: outputToken.symbol,
+    responseType: side === 'BUY' ? 'ReturnTypeComputeAmountOutBaseOut' : 'ReturnTypeComputeAmountOutFormat',
+    response: side === 'BUY' 
+      ? {
+          amountIn: { amount: (response as ReturnTypeComputeAmountOutBaseOut).amountIn.amount.toNumber() },
+          maxAmountIn: { amount: (response as ReturnTypeComputeAmountOutBaseOut).maxAmountIn.amount.toNumber() },
+          realAmountOut: { amount: (response as ReturnTypeComputeAmountOutBaseOut).realAmountOut.amount.toNumber() },
+          currentPrice: (response as ReturnTypeComputeAmountOutBaseOut).currentPrice,
+          executionPrice: (response as ReturnTypeComputeAmountOutBaseOut).executionPrice,
+          priceImpact: {
+            numerator: (response as ReturnTypeComputeAmountOutBaseOut).priceImpact.numerator.toNumber(),
+            denominator: (response as ReturnTypeComputeAmountOutBaseOut).priceImpact.denominator.toNumber()
+          },
+          fee: (response as ReturnTypeComputeAmountOutBaseOut).fee.toNumber(),
+          remainingAccounts: (response as ReturnTypeComputeAmountOutBaseOut).remainingAccounts
+        }
+      : response
+  });
 
-  if (side === 'buy') {
+  if (side === 'BUY') {
     const exactOutResponse = response as ReturnTypeComputeAmountOutBaseOut;
-    const estimatedAmountIn = exactOutResponse.amountIn.amount.toNumber() / 10 ** inputToken.decimals;
-    const maxAmountIn = exactOutResponse.maxAmountIn.amount.toNumber() / 10 ** inputToken.decimals;
+    const estimatedAmountIn = exactOutResponse.amountIn.amount.toNumber() / 10 ** (outputToken.decimals + (outputToken.decimals - inputToken.decimals));
+    const maxAmountIn = exactOutResponse.maxAmountIn.amount.toNumber() / 10 ** (outputToken.decimals + (outputToken.decimals - inputToken.decimals));
     const amountOut = exactOutResponse.realAmountOut.amount.toNumber() / 10 ** outputToken.decimals;
+
+    const price = amountOut / estimatedAmountIn;
 
     return {
       estimatedAmountIn,
@@ -130,6 +161,10 @@ async function formatSwapQuote(
       minAmountOut: amountOut,
       baseTokenBalanceChange: amountOut,
       quoteTokenBalanceChange: -estimatedAmountIn,
+      price,
+      gasPrice: 0,
+      gasLimit: 0,
+      gasCost: 0
     };
   } else {
     const exactInResponse = response as ReturnTypeComputeAmountOutFormat;
@@ -143,6 +178,8 @@ async function formatSwapQuote(
     const baseTokenChange = -estimatedAmountIn;
     const quoteTokenChange = estimatedAmountOut;
 
+    const price = estimatedAmountOut / estimatedAmountIn;
+
     return {
       estimatedAmountIn,
       estimatedAmountOut,
@@ -150,13 +187,17 @@ async function formatSwapQuote(
       maxAmountIn: estimatedAmountIn,
       baseTokenBalanceChange: baseTokenChange,
       quoteTokenBalanceChange: quoteTokenChange,
+      price,
+      gasPrice: 0,
+      gasLimit: 0,
+      gasCost: 0
     };
   }
 }
 
 export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
-    Querystring: GetSwapQuoteRequestType;
+    Querystring: GetCLMMSwapQuoteRequestType;
     Reply: GetSwapQuoteResponseType;
   }>(
     '/quote-swap',
@@ -164,21 +205,25 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Get swap quote for Raydium CLMM',
         tags: ['raydium-clmm'],
-        querystring: {
-          ...GetSwapQuoteRequest,
+        querystring:{ 
+          ...GetCLMMSwapQuoteRequest,
           properties: {
-            ...GetSwapQuoteRequest.properties,
+            ...GetCLMMSwapQuoteRequest.properties,
             network: { type: 'string', default: 'mainnet-beta' },
             baseToken: { type: 'string', examples: ['SOL'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
             amount: { type: 'number', examples: [0.1] },
-            side: { type: 'string', enum: ['buy', 'sell'], examples: ['sell'] },
+            side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
             poolAddress: { type: 'string', examples: ['3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv'] },
             slippagePct: { type: 'number', examples: [1] }
           }
         },
           response: {
-          200: GetSwapQuoteResponse
+          200: {
+            properties: {
+              ...GetSwapQuoteResponse.properties,
+            }
+          }
         },
       }
     },
@@ -187,16 +232,30 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         const { network, baseToken, quoteToken, amount, side, poolAddress, slippagePct } = request.query;
         const networkToUse = network || 'mainnet-beta';
 
-        return await formatSwapQuote(
+        const result = await formatSwapQuote(
           fastify,
           networkToUse,
           baseToken,
           quoteToken,
           amount,
-          side as 'buy' | 'sell',
+          side as 'BUY' | 'SELL',
           poolAddress,
           slippagePct
         );
+
+        let gasEstimation = null;
+        try {
+          gasEstimation = await estimateGasSolana(fastify, networkToUse);
+        } catch (error) {
+          logger.warn(`Failed to estimate gas for swap quote: ${error.message}`);
+        }
+
+        return {
+          ...result,
+          gasPrice: gasEstimation?.gasPrice,
+          gasLimit: gasEstimation?.gasLimit,
+          gasCost: gasEstimation?.gasCost
+        };
       } catch (e) {
         logger.error(e);
         throw fastify.httpErrors.internalServerError('Failed to get swap quote');

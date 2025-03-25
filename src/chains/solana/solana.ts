@@ -23,7 +23,6 @@ import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-
 import { logger } from '../../services/logger';
 import { TokenListResolutionStrategy } from '../../services/token-list-resolution';
 import { Config, getSolanaConfig } from './solana.config';
-import { SolanaController } from './solana.controllers';
 
 // Constants used for fee calculations
 export const BASE_FEE = 5000;
@@ -68,7 +67,6 @@ export class Solana {
   private _tokenMap: Record<string, TokenInfo> = {};
 
   private static _instances: { [name: string]: Solana };
-  public controller: typeof SolanaController;
 
   private static lastPriorityFeeEstimate: {
     timestamp: number;
@@ -81,7 +79,6 @@ export class Solana {
     this.config = getSolanaConfig('solana', network);
     this.nativeTokenSymbol = this.config.network.nativeCurrencySymbol;
     this.connection = new Connection(this.config.network.nodeURL, { commitment: 'confirmed' });
-    this.controller = SolanaController;
   }
 
   public static async getInstance(network: string): Promise<Solana> {
@@ -353,11 +350,10 @@ export class Solana {
     }
   }
 
-  public async getGasPrice(): Promise<number> {
-    const priorityFeePerCU = await this.estimatePriorityFees();
-    
-    // Calculate total priority fee in lamports (priorityFeePerCU is already in lamports/CU)
-    const priorityFee = this.config.defaultComputeUnits * priorityFeePerCU;
+  public async estimateGas(computeUnits?: number): Promise<number> {
+    const computeUnitsToUse = computeUnits || this.config.defaultComputeUnits;
+    const priorityFeePerCU = await this.estimateGasPrice();
+    const priorityFee = computeUnitsToUse * priorityFeePerCU;
     
     // Add base fee (in lamports) and convert total to SOL
     const totalLamports = BASE_FEE + priorityFee;
@@ -366,7 +362,7 @@ export class Solana {
     return gasCost;
   }
   
-  async estimatePriorityFees(): Promise<number> {
+  async estimateGasPrice(): Promise<number> {
     // Check cache first
     if (
       Solana.lastPriorityFeeEstimate && 
@@ -496,7 +492,7 @@ export class Solana {
     signers: Signer[] = [],
     computeUnits?: number
   ): Promise<{ signature: string; fee: number }> {
-    let currentPriorityFee = await this.estimatePriorityFees();
+    let currentPriorityFee = await this.estimateGasPrice();
     const computeUnitsToUse = computeUnits || this.config.defaultComputeUnits;
     
     while (true) {
@@ -1050,7 +1046,7 @@ export class Solana {
     signers: Signer[] = [],
     computeUnits?: number
   ): Promise<{ signature: string; fee: number }> {
-    let currentPriorityFee = Math.floor(await this.estimatePriorityFees());
+    let currentPriorityFee = Math.floor(await this.estimateGasPrice());
     const computeUnitsToUse = computeUnits || this.config.defaultComputeUnits;
     
     while (true) {
