@@ -52,17 +52,17 @@ export const connectorsRoutes: FastifyPluginAsync = async (fastify) => {
           available_networks: JupiterConfig.config.availableNetworks,
         },
         {
-          name: 'meteora_clmm',
+          name: 'meteora/clmm',
           trading_types: ['clmm'],
           available_networks: MeteoraConfig.config.availableNetworks,
         },
         {
-          name: 'raydium_amm',
+          name: 'raydium/amm',
           trading_types: ['amm'],
           available_networks: RaydiumConfig.config.availableNetworks,
         },
         {
-          name: 'raydium_clmm',
+          name: 'raydium/clmm',
           trading_types: ['clmm'],
           available_networks: RaydiumConfig.config.availableNetworks,
         },
