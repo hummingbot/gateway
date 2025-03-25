@@ -6,7 +6,7 @@ import {
   PoolInfoSchema,
   GetPoolInfoRequestType,
   GetPoolInfoRequest 
-} from '../../../../services/amm-interfaces';
+} from '../../../../schemas/trading-types/amm-schema';
 
 /**
  * Route handler for getting pool information

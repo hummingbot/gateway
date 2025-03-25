@@ -3,11 +3,11 @@ import { Hydration } from '../../hydration';
 import { Polkadot } from '../../../../chains/polkadot/polkadot';
 import { logger } from '../../../../services/logger';
 import {
-  ExecuteSwapRequestType,
   ExecuteSwapResponseType,
   ExecuteSwapRequest,
-  ExecuteSwapResponse
-} from '../../../../services/swap-interfaces';
+  ExecuteSwapResponse,
+  ExecuteSwapInPoolRequestType
+} from '../../../../schemas/trading-types/swap-schema';
 import { httpBadRequest, httpNotFound } from '../../../../services/error-handler';
 
 /**
@@ -118,8 +118,8 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { walletAddress, baseToken, quoteToken, amount, side, poolAddress, slippagePct } = request.body as ExecuteSwapRequestType;
-        const network = (request.body as ExecuteSwapRequestType).network || 'mainnet';
+        const { walletAddress, baseToken, quoteToken, amount, side, poolAddress, slippagePct } = request.body as ExecuteSwapInPoolRequestType;
+        const network = (request.body as ExecuteSwapInPoolRequestType).network || 'mainnet';
 
         logger.info(`Received swap request: ${amount} ${baseToken} -> ${quoteToken} in pool ${poolAddress}`);
 

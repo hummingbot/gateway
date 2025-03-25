@@ -6,7 +6,7 @@ import { logger } from '../../../../services/logger';
 import {
   PoolInfoSchema,
   FetchPoolsRequest,
-} from '../../../../services/clmm-interfaces';
+} from '../../../../schemas/trading-types/clmm-schema';
 import { httpNotFound, httpInternalServerError, ERROR_MESSAGES } from '../../../../services/error-handler';
 
 /**

@@ -5,8 +5,9 @@ import {
   GetSwapQuoteRequestType,
   GetSwapQuoteResponseType,
   GetSwapQuoteRequest,
-  GetSwapQuoteResponse
-} from '../../../../services/swap-interfaces';
+  GetSwapQuoteResponse,
+  GetCLMMSwapQuoteRequestType
+} from '../../../../schemas/trading-types/swap-schema';
 import { httpBadRequest, httpNotFound } from '../../../../services/error-handler';
 
 /**
@@ -39,7 +40,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network, baseToken, quoteToken, amount, side, poolAddress, slippagePct } = request.query as GetSwapQuoteRequestType;
+        const { network, baseToken, quoteToken, amount, side, poolAddress, slippagePct } = request.query as GetCLMMSwapQuoteRequestType;
         const networkToUse = network || 'mainnet';
 
         // Validate inputs

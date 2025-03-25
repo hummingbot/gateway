@@ -8,7 +8,7 @@ import {
   RemoveLiquidityResponse, 
   RemoveLiquidityRequestType, 
   RemoveLiquidityResponseType 
-} from '../../../../services/amm-interfaces';
+} from '../../../../schemas/trading-types/amm-schema';
 import { httpBadRequest, httpNotFound } from '../../../../services/error-handler';
 import { validatePolkadotAddress } from '../../../../chains/polkadot/polkadot.validators';
 

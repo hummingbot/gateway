@@ -10,7 +10,7 @@ import {
   AddLiquidityResponse,
   AddLiquidityRequestType,
   AddLiquidityResponseType
-} from '../../../../services/amm-interfaces';
+} from '../../../../schemas/trading-types/amm-schema';
 
 // Buffer for transaction costs (in HDX)
 const HDX_TRANSACTION_BUFFER = 0.1;
