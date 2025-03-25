@@ -1,4 +1,4 @@
 networks:
   mainnet:
-    # Parachain name - its config file will be loaded
+    # Parachain ID - its config file will be loaded
     parachain: 'hydration'
