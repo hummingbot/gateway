@@ -1481,6 +1481,19 @@ export class Hydration {
       apr: poolAny.apr || 0
     };
   }
+
+  /**
+   * Get token decimals
+   * @param tokenSymbol Token symbol
+   * @returns Token decimals
+   */
+  async getTokenDecimals(tokenSymbol: string): Promise<number> {
+    const token = await this.polkadot.getToken(tokenSymbol);
+    if (!token) {
+      throw new Error(`Token not found: ${tokenSymbol}`);
+    }
+    return token.decimals;
+  }
 }
 
 

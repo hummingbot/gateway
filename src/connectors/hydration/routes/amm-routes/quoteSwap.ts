@@ -68,14 +68,34 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
             slippagePct
           );
           
+          // Get token decimals for proper amount conversion
+          const baseTokenDecimals = await hydration.getTokenDecimals(baseToken);
+          const quoteTokenDecimals = await hydration.getTokenDecimals(quoteToken);
+          
+          // Convert amounts to proper decimal places
+          const estimatedAmountIn = quote.estimatedAmountIn / (10 ** quoteTokenDecimals);
+          const estimatedAmountOut = quote.estimatedAmountOut / (10 ** baseTokenDecimals);
+          const minAmountOut = quote.minAmountOut / (10 ** baseTokenDecimals);
+          const maxAmountIn = quote.maxAmountIn / (10 ** quoteTokenDecimals);
+          const baseTokenBalanceChange = quote.baseTokenBalanceChange / (10 ** baseTokenDecimals);
+          const quoteTokenBalanceChange = quote.quoteTokenBalanceChange / (10 ** quoteTokenDecimals);
+          
+          // Calculate price based on side
+          const price = side === 'buy' 
+            ? estimatedAmountOut / estimatedAmountIn 
+            : estimatedAmountIn / estimatedAmountOut;
+          
           return {
-            estimatedAmountIn: quote.estimatedAmountIn,
-            estimatedAmountOut: quote.estimatedAmountOut,
-            minAmountOut: quote.minAmountOut,
-            maxAmountIn: quote.maxAmountIn,
-            baseTokenBalanceChange: quote.baseTokenBalanceChange,
-            quoteTokenBalanceChange: quote.quoteTokenBalanceChange,
-            priceImpact: quote.priceImpact
+            estimatedAmountIn,
+            estimatedAmountOut,
+            minAmountOut,
+            maxAmountIn,
+            baseTokenBalanceChange,
+            quoteTokenBalanceChange,
+            price,
+            gasPrice: 0,
+            gasLimit: 0,
+            gasCost: 0
           };
         } catch (error) {
           logger.error(`Failed to get swap quote: ${error.message}`);

@@ -62,10 +62,10 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
           address: poolInfo.poolAddress,
           baseTokenAddress: poolInfo.baseToken.address,
           quoteTokenAddress: poolInfo.quoteToken.address,
-          feePct: poolInfo.fee / 10000, // Convert basis points to percentage
-          price: poolInfo.price || 0,
-          baseTokenAmount: poolInfo.liquidity || 0,
-          quoteTokenAmount: poolInfo.liquidity ? poolInfo.liquidity * (poolInfo.price || 0) : 0,
+          feePct: poolInfo.fee ? Number(poolInfo.fee) / 10000 : 0, // Convert basis points to percentage, default to 0
+          price: poolInfo.price ? Number(poolInfo.price) : 0,
+          baseTokenAmount: poolInfo.liquidity ? Number(poolInfo.liquidity) : 0,
+          quoteTokenAmount: poolInfo.liquidity && poolInfo.price ? Number(poolInfo.liquidity) * Number(poolInfo.price) : 0,
           poolType: poolInfo.type || 'Unknown' // Use the actual pool type from the data
         };
         
