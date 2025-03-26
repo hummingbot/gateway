@@ -24,7 +24,7 @@ export namespace HydrationConfig {
     tokenListSource: configManager.get('hydration.tokenListSource'),
     nativeCurrencySymbol: configManager.get('hydration.nativeCurrencySymbol'),
     feePaymentCurrencySymbol: configManager.get('hydration.feePaymentCurrencySymbol'),
-    tradingTypes: ['AMM', 'CLMM'],
+    tradingTypes: ['AMM'],
     availableNetworks: [{ chain: 'polkadot', networks: ['mainnet'] }],
     allowedSlippage: configManager.get('hydration.allowedSlippage'),
   };
