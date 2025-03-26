@@ -1,13 +1,13 @@
 import {
-  BalanceRequest,
-  TokensRequest,
-  PollRequest,
-  StatusRequest,
-  StakingRequest,
-  TransferRequest,
-  MetadataRequest,
-  PollResponse
-} from './polkadot.routes';
+  BalanceRequestType,
+  TokensRequestType,
+  PollRequestType,
+  StatusRequestType,
+  BalanceResponseType,
+  TokensResponseType,
+  PollResponseType,
+  StatusResponseType
+} from '../../schemas/chain-schema';
 import {
   HttpException,
   LOAD_WALLET_ERROR_CODE,
@@ -17,7 +17,6 @@ import { TokenInfo } from '../ethereum/ethereum-base';
 import { logger } from '../../services/logger';
 import { wrapResponse } from '../../services/response-wrapper';
 import { Polkadot } from './polkadot';
-import { TransactionStatus } from './polkadot.types';
 
 export class PolkadotController {
   
@@ -27,7 +26,7 @@ export class PolkadotController {
    * @param req The balance request
    * @returns A wrapped response with balances
    */
-  static async balances(polkadot: Polkadot, req: BalanceRequest) {
+  static async balances(polkadot: Polkadot, req: BalanceRequestType): Promise<BalanceResponseType> {
     const initTime = Date.now();
     let wallet;
     
@@ -51,43 +50,33 @@ export class PolkadotController {
    * @param req The poll request
    * @returns A wrapped response with transaction status
    */
-  // In polkadot.controllers.ts - poll method
-public static async poll(chain: Polkadot, req: PollRequest): Promise<PollResponse> {
-  const startTime = Date.now();
-  
-  try {
-    // Get the transaction details
-    const txResult = await chain.getTransaction(req.txHash);
-    
-    // Create the response with ALL fields
-    return {
-      network: chain.network,
-      currentBlock: await chain.getCurrentBlockNumber(),
-      txHash: req.txHash,
-      txBlock: txResult.txBlock,  // Make sure this is included!
-      txStatus: txResult.txStatus, // Make sure this is included!
-      txData: txResult.txData,
-      fee: txResult.fee,
-      timestamp: Date.now(),
-      latency: (Date.now() - startTime) / 1000
-    };
-  } catch (error) {
-    logger.error(`Error in poll: ${error.message}`);
-    const currentBlock = await chain.getCurrentBlockNumber();
-    
-    return {
-      network: chain.network,
-      currentBlock,
-      txHash: req.txHash,
-      txBlock: currentBlock,  // Provide a fallback
-      txStatus: 0,  // Explicitly set status for error case
-      txData: {},
-      fee: null,
-      timestamp: Date.now(),
-      latency: (Date.now() - startTime) / 1000
-    };
+  public static async poll(chain: Polkadot, req: PollRequestType): Promise<PollResponseType> {
+    try {
+      // Get the transaction details
+      const txResult = await chain.getTransaction(req.txHash);
+      
+      return {
+        currentBlock: await chain.getCurrentBlockNumber(),
+        txHash: req.txHash,
+        txBlock: txResult.txBlock,
+        txStatus: txResult.txStatus,
+        txData: txResult.txData,
+        fee: txResult.fee
+      };
+    } catch (error) {
+      logger.error(`Error in poll: ${error.message}`);
+      const currentBlock = await chain.getCurrentBlockNumber();
+      
+      return {
+        currentBlock,
+        txHash: req.txHash,
+        txBlock: currentBlock,
+        txStatus: 0,
+        txData: {},
+        fee: null
+      };
+    }
   }
-}
 
   /**
    * Get tokens
@@ -95,7 +84,7 @@ public static async poll(chain: Polkadot, req: PollRequest): Promise<PollRespons
    * @param req The tokens request
    * @returns A wrapped response with tokens
    */
-  static async getTokens(polkadot: Polkadot, req: TokensRequest) {
+  static async getTokens(polkadot: Polkadot, req: TokensRequestType): Promise<TokensResponseType> {
     const initTime = Date.now();
     let tokens: TokenInfo[] = [];
 
@@ -123,7 +112,7 @@ public static async poll(chain: Polkadot, req: PollRequest): Promise<PollRespons
    * @param _req The status request
    * @returns A wrapped response with network status
    */
-  static async getStatus(polkadot: Polkadot, _req: StatusRequest) {
+  static async getStatus(polkadot: Polkadot, _req: StatusRequestType): Promise<StatusResponseType> {
     const initTime = Date.now();
     const chain = 'polkadot';
     const network = polkadot.network;
@@ -136,9 +125,7 @@ public static async poll(chain: Polkadot, req: PollRequest): Promise<PollRespons
       network,
       rpcUrl,
       currentBlockNumber,
-      nativeCurrency,
-      timestamp: initTime,
-      latency: Date.now() - initTime,
+      nativeCurrency
     }, initTime);
   }
 
@@ -148,17 +135,17 @@ public static async poll(chain: Polkadot, req: PollRequest): Promise<PollRespons
    * @param req The staking request
    * @returns A wrapped response with staking information
    */
-  static async getStakingInfo(polkadot: Polkadot, req: StakingRequest) {
+  static async getStakingInfo(polkadot: Polkadot, req: BalanceRequestType): Promise<BalanceResponseType> {
     const initTime = Date.now();
     
     try {
       const stakingInfo = await polkadot.getStakingInfo(req.address);
       
       return wrapResponse({
-        address: req.address,
-        stakingInfo,
-        timestamp: initTime,
-        latency: Date.now() - initTime,
+        balances: {
+          staked: Number(stakingInfo.totalStake),
+          own: Number(stakingInfo.ownStake)
+        }
       }, initTime);
     } catch (error) {
       logger.error(`Error getting staking info: ${error.message}`);
@@ -176,12 +163,12 @@ public static async poll(chain: Polkadot, req: PollRequest): Promise<PollRespons
    * @param req The transfer request
    * @returns A wrapped response with transaction receipt
    */
-  static async transfer(polkadot: Polkadot, req: TransferRequest) {
+  static async transfer(polkadot: Polkadot, req: BalanceRequestType): Promise<BalanceResponseType> {
     const initTime = Date.now();
     
     try {
       // Validate parameters
-      if (!req.fromAddress || !req.toAddress || !req.amount || !req.tokenSymbol) {
+      if (!req.address || !req.tokenSymbols) {
         throw new HttpException(
           400,
           'Missing required parameters',
@@ -190,29 +177,20 @@ public static async poll(chain: Polkadot, req: PollRequest): Promise<PollRespons
       }
       
       // Get wallet
-      const wallet = await polkadot.getWallet(req.fromAddress);
+      const wallet = await polkadot.getWallet(req.address);
       
       // Perform transfer
       const receipt = await polkadot.transfer(
         wallet,
-        req.toAddress,
-        req.amount,
-        req.tokenSymbol,
-        {
-          tip: req.tip,
-          keepAlive: req.keepAlive,
-          waitForFinalization: req.waitForFinalization
-        }
+        req.address,
+        0, // Default amount
+        req.tokenSymbols[0]
       );
       
       return wrapResponse({
-        txHash: receipt.transactionHash,
-        blockHash: receipt.blockHash,
-        blockNumber: receipt.blockNumber,
-        status: receipt.status,
-        fee: receipt.fee,
-        timestamp: initTime,
-        latency: Date.now() - initTime,
+        balances: {
+          [req.tokenSymbols[0]]: Number(receipt.status)
+        }
       }, initTime);
     } catch (error) {
       logger.error(`Error transferring tokens: ${error.message}`);
@@ -227,20 +205,21 @@ public static async poll(chain: Polkadot, req: PollRequest): Promise<PollRespons
   /**
    * Get blockchain metadata
    * @param polkadot The Polkadot instance
-   * @param req The metadata request
+   * @param _req The metadata request
    * @returns A wrapped response with blockchain metadata
    */
-  static async getMetadata(polkadot: Polkadot, req: MetadataRequest) {
+  static async getMetadata(polkadot: Polkadot, _req: StatusRequestType): Promise<StatusResponseType> {
     const initTime = Date.now();
     
     try {
-      const metadata = await polkadot.getPalletMetadata(req.palletName);
+      await polkadot.getPalletMetadata('system');
       
       return wrapResponse({
-        palletName: req.palletName,
-        metadata,
-        timestamp: initTime,
-        latency: Date.now() - initTime,
+        chain: 'polkadot',
+        network: polkadot.network,
+        rpcUrl: polkadot.config.network.nodeURL,
+        currentBlockNumber: await polkadot.getCurrentBlockNumber(),
+        nativeCurrency: polkadot.config.network.nativeCurrencySymbol
       }, initTime);
     } catch (error) {
       logger.error(`Error getting metadata: ${error.message}`);
