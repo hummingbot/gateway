@@ -6,10 +6,6 @@
         "type": "object",
         "properties": {
           "allowedSlippage": { "type": "string" },
-          "defaultPools": {
-            "type": "object",
-            "additionalProperties": false
-          },
           "pools": {
             "type": "object",
             "patternProperties": {
@@ -20,17 +16,13 @@
             "additionalProperties": false
           }
         },
-        "required": ["allowedSlippage", "defaultPools", "pools"],
+        "required": ["allowedSlippage", "pools"],
         "additionalProperties": false
       },
       "clmm": {
         "type": "object",
         "properties": {
           "allowedSlippage": { "type": "string" },
-          "defaultPools": {
-            "type": "object",
-            "additionalProperties": false
-          },
           "pools": {
             "type": "object",
             "patternProperties": {
@@ -41,7 +33,7 @@
             "additionalProperties": false
           }
         },
-        "required": ["allowedSlippage", "defaultPools", "pools"],
+        "required": ["allowedSlippage", "pools"],
         "additionalProperties": false
       }
     },

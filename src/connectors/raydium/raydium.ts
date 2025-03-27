@@ -317,7 +317,7 @@ export class Raydium {
   }
 
   async findDefaultPool(baseToken: string, quoteToken: string, routeType: 'amm' | 'clmm'): Promise<string | null> {
-    const pools = this.config[routeType].defaultPools;
+    const pools = this.config[routeType].pools;
     const pairKey = this.getPairKey(baseToken, quoteToken);
     const reversePairKey = this.getPairKey(quoteToken, baseToken);
     

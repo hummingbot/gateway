@@ -14,7 +14,6 @@ export namespace RaydiumConfig {
 
   export interface RouteConfig {
     allowedSlippage: string;
-    defaultPools: { [pairKey: string]: Pool };
     pools: PoolsConfig;
   }
 
@@ -28,12 +27,10 @@ export namespace RaydiumConfig {
     availableNetworks: [{ chain: 'solana', networks: ['mainnet-beta', 'devnet'] }],
     amm: {
       allowedSlippage: ConfigManagerV2.getInstance().get('raydium.amm.allowedSlippage'),
-      defaultPools: ConfigManagerV2.getInstance().get('raydium.amm.defaultPools'),
       pools: ConfigManagerV2.getInstance().get('raydium.amm.pools'),
     },
     clmm: {
       allowedSlippage: ConfigManagerV2.getInstance().get('raydium.clmm.allowedSlippage'),
-      defaultPools: ConfigManagerV2.getInstance().get('raydium.clmm.defaultPools'),
       pools: ConfigManagerV2.getInstance().get('raydium.clmm.pools'),
     },
   };

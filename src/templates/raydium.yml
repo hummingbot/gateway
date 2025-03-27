@@ -2,8 +2,6 @@
 amm:
   # how much the execution price is allowed to move unfavorably
   allowedSlippage: '1/100'
-  # empty object for dynamic additions
-  defaultPools: {}
   # predefined pools
   pools:
     USDC-USDT: 'AVs9TA4nWDzfPJE9gGVNJMVhcQy3V9PGazuz33BfG2RA'
@@ -13,8 +11,6 @@ amm:
 clmm:
   # how much the execution price is allowed to move unfavorably
   allowedSlippage: '1/100'
-  # empty object for dynamic additions
-  defaultPools: {}
   # predefined pools
   pools:
     SOL-USDC: '3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv'

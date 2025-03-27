@@ -151,7 +151,6 @@ export const configRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /config/default-pools
   fastify.get<{
     Querystring: { connector: string };
-    Reply: DefaultPoolListResponse;
   }>(
     '/default-pools',
     {
@@ -165,7 +164,12 @@ export const configRoutes: FastifyPluginAsync = async (fastify) => {
           })
         }),
         response: {
-          200: DefaultPoolListSchema
+          200: Type.Record(
+            Type.String({
+              pattern: '^[A-Z]+-[A-Z]+$'
+            }),
+            Type.String()
+          )
         }
       }
     },
@@ -179,12 +183,11 @@ export const configRoutes: FastifyPluginAsync = async (fastify) => {
       }
 
       try {
-        // Changed path to match new config structure
         const configPath = `${baseConnector}.${connectorType}.pools`;
-        const defaultPools = ConfigManagerV2.getInstance().get(configPath) || {};
+        const pools = ConfigManagerV2.getInstance().get(configPath) || {};
 
         logger.info(`Retrieved default pools for ${connector}`);
-        return { defaultPools };
+        return pools;
       } catch (error) {
         logger.error(`Failed to get default pools for ${connector}: ${error}`);
         throw fastify.httpErrors.internalServerError('Failed to get default pools');
