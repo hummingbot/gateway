@@ -124,7 +124,6 @@ async function formatSwapQuote(
     poolAddress,
     slippagePct
   );
-  logger.info('Price', price)
   logger.info(`Raydium CLMM swap quote: ${side} ${amount} ${baseTokenSymbol}/${quoteTokenSymbol} in pool ${poolAddress}`, {
     inputToken: inputToken.symbol,
     outputToken: outputToken.symbol,
@@ -170,10 +169,13 @@ async function formatSwapQuote(
   });
 
   if (side === 'BUY') {
+    // Custom formula to calculate the number of decimals for the input token since inputToken.decimals is incorrect
+    const inputDecimals = Math.log10(amount) * 2 +  Math.max(inputToken.decimals, outputToken.decimals) + Math.abs(inputToken.decimals - outputToken.decimals)
+
     const exactOutResponse = response as ReturnTypeComputeAmountOutBaseOut;
-    const estimatedAmountIn = 1 / (exactOutResponse.amountIn.amount.toNumber() / 10 ** (outputToken.decimals + (outputToken.decimals - inputToken.decimals)));
     const estimatedAmountOut = exactOutResponse.realAmountOut.amount.toNumber() / 10 ** outputToken.decimals;
-    const maxAmountIn = 1 / (exactOutResponse.maxAmountIn.amount.toNumber() / 10 ** (outputToken.decimals + (outputToken.decimals - inputToken.decimals)));
+    const estimatedAmountIn = 1 / (exactOutResponse.amountIn.amount.toNumber() / 10 ** inputDecimals);
+    const maxAmountIn = 1 / (exactOutResponse.maxAmountIn.amount.toNumber() / 10 ** inputDecimals);
 
     const price = estimatedAmountIn / estimatedAmountOut;
 

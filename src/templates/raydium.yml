@@ -10,6 +10,7 @@ amm:
     WIF-SOL: 'EP2ib6dYdEeqD8MfE2ezHCxX3kP3K2eLKkirfPm5eyMx'
     POPCAT-SOL: 'FRhB8L7Y9Qq41qZXYLtC2nw8An1RJfLLxRF2x9RwLLMo'
     SOL-TRUMP: 'HKuJrP5tYQLbEUdjKwjgnHs2957QKjR2iWhJKTtMa1xs'
+    LAYER-USDC: 'G6drsaPCR3pxsEmSTAc81kW1EL3kFAFwtSAkzUZXmgH3'
 
 # settings for CLMM routes
 clmm:
@@ -24,3 +25,4 @@ clmm:
     USDC-USDT: 'BZtgQEyS6eXUXicYPHecYQ7PybqodXQMvkjUbP4R8mUU'
     SOL-JITOSOL: '2uoKbPEidR7KAMYtY4x7xdkHXWqYib5k4CutJauSL3Mc'
     SOL-TRUMP: 'GQsPr4RJk9AZkkfWHud7v4MtotcxhaYzZHdsPCg9vNvW'
+    LAYER-USDC: 'G6drsaPCR3pxsEmSTAc81kW1EL3kFAFwtSAkzUZXmgH3'
