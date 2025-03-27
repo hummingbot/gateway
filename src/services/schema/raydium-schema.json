@@ -2,9 +2,49 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "type": "object",
     "properties": {
-      "allowedSlippage": { "type": "string" }
+      "amm": {
+        "type": "object",
+        "properties": {
+          "allowedSlippage": { "type": "string" },
+          "defaultPools": {
+            "type": "object",
+            "additionalProperties": false
+          },
+          "pools": {
+            "type": "object",
+            "patternProperties": {
+              "^[A-Z]+-[A-Z]+$": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": ["allowedSlippage", "defaultPools", "pools"],
+        "additionalProperties": false
+      },
+      "clmm": {
+        "type": "object",
+        "properties": {
+          "allowedSlippage": { "type": "string" },
+          "defaultPools": {
+            "type": "object",
+            "additionalProperties": false
+          },
+          "pools": {
+            "type": "object",
+            "patternProperties": {
+              "^[A-Z]+-[A-Z]+$": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": ["allowedSlippage", "defaultPools", "pools"],
+        "additionalProperties": false
+      }
     },
-    "additionalProperties": false,
-    "required": ["allowedSlippage"]
-  }
-  
+    "required": ["amm", "clmm"],
+    "additionalProperties": false
+}

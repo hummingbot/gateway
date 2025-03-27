@@ -63,7 +63,7 @@ export async function getSwapQuote(
     connection: solana.connection,
     poolKeys: [clmmPoolInfo],
   })
-  const effectiveSlippage = new BN((slippagePct ?? raydium.getSlippagePct()) / 100);
+  const effectiveSlippage = new BN((slippagePct ?? raydium.getSlippagePct('clmm')) / 100);
 
   // Convert BN to number for slippage
   const effectiveSlippageNumber = effectiveSlippage.toNumber();

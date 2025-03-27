@@ -1,3 +1,21 @@
-# how much the execution price is allowed to move unfavorably from the trade
-# execution price. It uses a rational number for precision.
-allowedSlippage: '1/100'
+# settings for AMM routes
+amm:
+  # how much the execution price is allowed to move unfavorably
+  allowedSlippage: '1/100'
+  # empty object for dynamic additions
+  defaultPools: {}
+  # predefined pools
+  pools:
+    USDC-USDT: 'AVs9TA4nWDzfPJE9gGVNJMVhcQy3V9PGazuz33BfG2RA'
+    SOL-USDC: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2'
+
+# settings for CLMM routes
+clmm:
+  # how much the execution price is allowed to move unfavorably
+  allowedSlippage: '1/100'
+  # empty object for dynamic additions
+  defaultPools: {}
+  # predefined pools
+  pools:
+    SOL-USDC: '3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv'
+    SOL-USDT: '3nMFwZXwY1s1M5s8vYAHqd4wGs4iSxXE4LRoUMMYqEgF'

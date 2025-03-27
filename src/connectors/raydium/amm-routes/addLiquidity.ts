@@ -105,8 +105,7 @@ async function addLiquidity(
     logger.info(`Adding liquidity to Raydium ${ammPoolInfo.poolType} position...`);
     const COMPUTE_UNITS = 600000
     const slippage = new Percent(
-      Math.floor(((slippagePct === 0 ? 0 : slippagePct || raydium.getSlippagePct())) * 100), 
-      10000
+      Math.floor(((slippagePct === 0 ? 0 : slippagePct || raydium.getSlippagePct('amm')) * 100) / 10000)
     );
 
     let currentPriorityFee = (await solana.estimateGas() * 1e9) - BASE_FEE

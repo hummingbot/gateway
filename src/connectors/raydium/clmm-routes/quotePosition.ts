@@ -48,7 +48,7 @@ export async function quotePosition(
     }
 
     const epochInfo = await solana.connection.getEpochInfo();
-    const slippage = (slippagePct === 0 ? 0 : (slippagePct || raydium.getSlippagePct())) / 100;
+    const slippage = (slippagePct === 0 ? 0 : (slippagePct || raydium.getSlippagePct('clmm'))) / 100;
     const resBase = await PoolUtils.getLiquidityAmountOutFromAmountIn({
       poolInfo,
       slippage: slippage,
