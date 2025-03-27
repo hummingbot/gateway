@@ -461,14 +461,17 @@ export class Hydration {
         throw new Error(`No route found for ${baseToken.symbol}/${quoteToken.symbol}`);
       }
 
+      // Convert trade to human-readable format
+      const tradeHuman = trade.toHuman();
+
       // Apply slippage tolerance
       const effectiveSlippage = slippagePct ?? parseFloat(this.config.allowedSlippage);
       const slippageBN = BigNumber(effectiveSlippage.toString());
 
-      // Extract amounts from the trade
-      const estimatedAmountIn = trade.amountIn.toNumber();
-      const estimatedAmountOut = trade.amountOut.toNumber();
-      const priceImpact = trade.priceImpactPct ? trade.priceImpactPct : 0;
+      // Extract amounts from the trade and convert to numbers
+      const estimatedAmountIn = Number(tradeHuman.amountIn);
+      const estimatedAmountOut = Number(tradeHuman.amountOut);
+      const price = Number(tradeHuman.spotPrice);
 
       let minAmountOut, maxAmountIn;
 
@@ -483,23 +486,52 @@ export class Hydration {
       }
 
       // Extract route information
-      const route: SwapRoute[] = trade.swaps.map(swap => ({
+      const route: SwapRoute[] = tradeHuman.swaps.map(swap => ({
         poolAddress: swap.poolAddress,
         baseToken,
         quoteToken,
         percentage: swap.tradeFeePct || 100
       }));
 
+      // Get gas information from trade fee
+      let gasPrice = 0;
+      let gasLimit = 0;
+      let gasCost = 0;
+
+      try {
+        // Use trade fee to estimate gas
+        const tradeFee = Number(tradeHuman.tradeFee);
+        if (tradeFee > 0) {
+          // Estimate gas based on trade fee
+          gasPrice = tradeFee / 1000; // Convert fee to gas price
+          gasLimit = 200000; // Standard gas limit for swaps
+          gasCost = tradeFee; // Use actual trade fee as gas cost
+        }
+      } catch (error) {
+        logger.warn(`Failed to get gas information: ${error.message}, using defaults`);
+        // Fallback to reasonable defaults if we can't get actual values
+        gasPrice = 0.0001; // Default gas price in native token
+        gasLimit = 200000; // Default gas limit for swaps
+        gasCost = gasPrice * gasLimit;
+      }
+
+      // Calculate balance changes
+      const baseTokenBalanceChange = side === 'buy' ? estimatedAmountOut : -estimatedAmountIn;
+      const quoteTokenBalanceChange = side === 'buy' ? -estimatedAmountIn : estimatedAmountOut;
+
       return {
         estimatedAmountIn,
         estimatedAmountOut,
         minAmountOut,
         maxAmountIn,
-        baseTokenBalanceChange: side === 'buy' ? estimatedAmountOut : -estimatedAmountIn,
-        quoteTokenBalanceChange: side === 'buy' ? -estimatedAmountIn : estimatedAmountOut,
-        priceImpact,
+        baseTokenBalanceChange,
+        quoteTokenBalanceChange,
+        price,
         route,
-        fee: trade.toHuman().tradeFee
+        fee: Number(tradeHuman.tradeFee),
+        gasPrice,
+        gasLimit,
+        gasCost
       };
     } catch (error) {
       logger.error(`Failed to get swap quote: ${error.message}`);
@@ -633,7 +665,7 @@ export class Hydration {
         fee: quote.fee,
         baseTokenBalanceChange: BigNumber(quote.baseTokenBalanceChange.toString()).div(10 ** baseToken.decimals).toString(),
         quoteTokenBalanceChange: BigNumber(quote.quoteTokenBalanceChange.toString()).div(10 ** quoteToken.decimals).toString(),
-        priceImpact: quote.priceImpact
+        priceImpact: quote.price
       };
     } catch (error) {
       logger.error(`Failed to execute swap: ${error.message}`);

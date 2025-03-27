@@ -33,9 +33,12 @@ export interface SwapQuote {
   maxAmountIn: number;
   baseTokenBalanceChange: number;
   quoteTokenBalanceChange: number;
-  priceImpact: number;
+  price: number;
   route: SwapRoute[];
   fee: number;
+  gasPrice: number;
+  gasLimit: number;
+  gasCost: number;
 }
 
 export interface SwapRoute {
