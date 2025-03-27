@@ -321,6 +321,6 @@ export class Raydium {
     const pairKey = this.getPairKey(baseToken, quoteToken);
     const reversePairKey = this.getPairKey(quoteToken, baseToken);
     
-    return pools[pairKey]?.poolAddress || pools[reversePairKey]?.poolAddress || null;
+    return pools[pairKey] || pools[reversePairKey] || null;
   }
 }

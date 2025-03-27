@@ -4,8 +4,12 @@ amm:
   allowedSlippage: '1/100'
   # predefined pools
   pools:
-    USDC-USDT: 'AVs9TA4nWDzfPJE9gGVNJMVhcQy3V9PGazuz33BfG2RA'
+    RAY-SOL: 'AVs9TA4nWDzfPJE9gGVNJMVhcQy3V9PGazuz33BfG2RA'
     SOL-USDC: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2'
+    RAY-USDC: '6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg'
+    WIF-SOL: 'EP2ib6dYdEeqD8MfE2ezHCxX3kP3K2eLKkirfPm5eyMx'
+    POPCAT-SOL: 'FRhB8L7Y9Qq41qZXYLtC2nw8An1RJfLLxRF2x9RwLLMo'
+    SOL-TRUMP: 'HKuJrP5tYQLbEUdjKwjgnHs2957QKjR2iWhJKTtMa1xs'
 
 # settings for CLMM routes
 clmm:
@@ -14,4 +18,9 @@ clmm:
   # predefined pools
   pools:
     SOL-USDC: '3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv'
+    RAY-USDC: '61R1ndXxvsWXXkWSyNkCxnzwd3zUNB8Q2ibmkiLPC8ht'
     SOL-USDT: '3nMFwZXwY1s1M5s8vYAHqd4wGs4iSxXE4LRoUMMYqEgF'
+    SOL-RAY: '2AXXcN6oN9bBT5owwmTH53C7QHUXvhLeu718Kqt8rvY2'
+    USDC-USDT: 'BZtgQEyS6eXUXicYPHecYQ7PybqodXQMvkjUbP4R8mUU'
+    SOL-JITOSOL: '2uoKbPEidR7KAMYtY4x7xdkHXWqYib5k4CutJauSL3Mc'
+    SOL-TRUMP: 'GQsPr4RJk9AZkkfWHud7v4MtotcxhaYzZHdsPCg9vNvW'

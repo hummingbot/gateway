@@ -7,8 +7,8 @@ import { SwapQuoteExactOut, SwapQuote } from '@meteora-ag/dlmm';
 import { 
   ExecuteSwapResponseType,
   ExecuteSwapResponse,
-  ExecuteSwapInPoolRequest,
-  ExecuteSwapInPoolRequestType
+  ExecuteSwapRequest,
+  ExecuteSwapRequestType
 } from '../../../schemas/trading-types/swap-schema';
 import { Meteora } from '../meteora';
 
@@ -100,18 +100,18 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
   }
   
   fastify.post<{
-    Body: ExecuteSwapInPoolRequestType;
+    Body: ExecuteSwapRequestType;
     Reply: ExecuteSwapResponseType;
   }>(
     '/execute-swap',
     {
       schema: {
         description: 'Execute a token swap on Meteora',
-        tags: ['meteora'],
+        tags: ['meteora/clmm'],
         body: {
-          ...ExecuteSwapInPoolRequest,
+          ...ExecuteSwapRequest,
           properties: {
-            ...ExecuteSwapInPoolRequest.properties,
+            ...ExecuteSwapRequest.properties,
             network: { type: 'string', default: 'mainnet-beta' },
             walletAddress: { type: 'string', examples: [firstWalletAddress] },
             baseToken: { type: 'string', examples: ['SOL'] },

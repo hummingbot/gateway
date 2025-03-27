@@ -26,12 +26,10 @@ import { removeLiquidityRoute as ammRemoveLiquidityRoute } from './amm-routes/re
 const raydiumClmmRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(sensible);
   
-  // We'll use a plugin to modify the tags
   await fastify.register(async (instance) => {
-    // Decorate the instance with a hook to modify route options
     instance.addHook('onRoute', (routeOptions) => {
       if (routeOptions.schema && routeOptions.schema.tags) {
-        routeOptions.schema.tags = ['raydium'];
+        routeOptions.schema.tags = ['raydium/clmm'];
       }
     });
     
@@ -53,12 +51,10 @@ const raydiumClmmRoutes: FastifyPluginAsync = async (fastify) => {
 const raydiumAmmRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(sensible);
   
-  // We'll use a plugin to modify the tags
   await fastify.register(async (instance) => {
-    // Decorate the instance with a hook to modify route options
     instance.addHook('onRoute', (routeOptions) => {
       if (routeOptions.schema && routeOptions.schema.tags) {
-        routeOptions.schema.tags = ['raydium'];
+        routeOptions.schema.tags = ['raydium/amm'];
       }
     });
     

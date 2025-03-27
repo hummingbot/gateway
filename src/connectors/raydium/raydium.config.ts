@@ -9,7 +9,7 @@ export namespace RaydiumConfig {
   }
 
   export interface PoolsConfig {
-    [pairKey: string]: Pool;
+    [pairKey: string]: string;
   }
 
   export interface RouteConfig {

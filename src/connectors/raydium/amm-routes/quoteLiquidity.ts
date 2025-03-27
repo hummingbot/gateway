@@ -214,7 +214,7 @@ export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Quote amounts for a new Raydium AMM liquidity position',
-        tags: ['raydium-amm'],
+        tags: ['raydium/amm'],
         querystring: {
           ...QuoteLiquidityRequest,
           properties: {

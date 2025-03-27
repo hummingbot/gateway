@@ -118,7 +118,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Add liquidity to existing Raydium CLMM position',
-        tags: ['raydium-clmm'],
+        tags: ['raydium/clmm'],
         body: {
           ...AddLiquidityRequest,
           properties: {

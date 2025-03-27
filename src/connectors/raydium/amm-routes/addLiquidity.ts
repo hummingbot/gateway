@@ -188,7 +188,7 @@ async function addLiquidity(
       {
         schema: {
           description: 'Add liquidity to a Raydium AMM/CPMM pool',
-          tags: ['raydium-amm'],
+          tags: ['raydium/amm'],
           body: {
             ...AddLiquidityRequest,
             properties: {

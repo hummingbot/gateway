@@ -243,7 +243,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Remove liquidity from a Raydium AMM/CPMM pool',
-        tags: ['raydium-amm'],
+        tags: ['raydium/amm'],
         body: {
           ...RemoveLiquidityRequest,
           properties: {

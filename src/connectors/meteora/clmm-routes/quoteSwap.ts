@@ -7,10 +7,10 @@ import { BN } from 'bn.js';
 import { logger } from '../../../services/logger';
 import { SwapQuoteExactOut, SwapQuote } from '@meteora-ag/dlmm';
 import { 
-  GetCLMMSwapQuoteRequestType,
-  GetCLMMSwapQuoteRequest,
   GetSwapQuoteResponseType,
-  GetSwapQuoteResponse
+  GetSwapQuoteResponse,
+  GetSwapQuoteRequestType,
+  GetSwapQuoteRequest
 } from '../../../schemas/trading-types/swap-schema';
 import { estimateGasSolana } from '../../../chains/solana/routes/estimate-gas';
 
@@ -116,6 +116,7 @@ async function formatSwapQuote(
     const price = amountOut / estimatedAmountIn;
 
     return {
+      poolAddress,
       estimatedAmountIn,
       estimatedAmountOut: amountOut,
       maxAmountIn,
@@ -142,6 +143,7 @@ async function formatSwapQuote(
     const price = estimatedAmountOut / estimatedAmountIn;
 
     return {
+      poolAddress,
       estimatedAmountIn,
       estimatedAmountOut,
       minAmountOut,
@@ -158,25 +160,25 @@ async function formatSwapQuote(
 
 export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
-    Querystring: GetCLMMSwapQuoteRequestType;
+    Querystring: GetSwapQuoteRequestType;
     Reply: GetSwapQuoteResponseType;
   }>(
     '/quote-swap',
     {
       schema: {
-        description: 'Get a swap quote for Meteora',
-        tags: ['meteora'],
-        querystring: {
-          ...GetCLMMSwapQuoteRequest,
+        description: 'Get swap quote for Meteora CLMM',
+        tags: ['meteora/clmm'],
+        querystring:{ 
+          ...GetSwapQuoteRequest,
           properties: {
-            ...GetCLMMSwapQuoteRequest.properties,
+            ...GetSwapQuoteRequest.properties,
             network: { type: 'string', default: 'mainnet-beta' },
             baseToken: { type: 'string', examples: ['SOL'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
             amount: { type: 'number', examples: [0.1] },
             side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
-            poolAddress: { type: 'string', examples: ['2sf5NYcY4zUPXUSmG6f66mskb24t5F8S11pC1Nz5nQT3'] },
-            slippagePct: { type: 'number', examples: [1] },
+            poolAddress: { type: 'string', examples: ['3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv'] },
+            slippagePct: { type: 'number', examples: [1] }
           }
         },
         response: {

@@ -5,8 +5,8 @@ import { logger } from '../../../services/logger'
 import {
   ExecuteSwapResponse,
   ExecuteSwapResponseType,
-  ExecuteSwapInPoolRequest,
-  ExecuteSwapInPoolRequestType
+  ExecuteSwapRequest,
+  ExecuteSwapRequestType
 } from '../../../schemas/trading-types/swap-schema'
 import { getRawSwapQuote } from './quoteSwap'
 import BN from 'bn.js'
@@ -177,25 +177,25 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
   }
   
   fastify.post<{
-    Body: ExecuteSwapInPoolRequestType;
+    Body: ExecuteSwapRequestType;
     Reply: ExecuteSwapResponseType;
   }>(
     '/execute-swap',
     {
       schema: {
         description: 'Execute a swap on Raydium AMM or CPMM',
-        tags: ['raydium-amm'],
+        tags: ['raydium/amm'],
         body: {
-          ...ExecuteSwapInPoolRequest,
+          ...ExecuteSwapRequest,
           properties: {
-            ...ExecuteSwapInPoolRequest.properties,
+            ...ExecuteSwapRequest.properties,
             network: { type: 'string', default: 'mainnet-beta' },
             walletAddress: { type: 'string', examples: [firstWalletAddress] },
             baseToken: { type: 'string', examples: ['RAY'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
             amount: { type: 'number', examples: [1] },
             side: { type: 'string', examples: ['SELL'] },
-            poolAddress: { type: 'string', examples: ['6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg'] },
+            poolAddress: { type: 'string', examples: [''] },
             slippagePct: { type: 'number', examples: [1] }
           }
         },
@@ -205,15 +205,29 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       try {
         const { network, walletAddress, baseToken, quoteToken, amount, side, poolAddress, slippagePct } = request.body
+        const networkToUse = network || 'mainnet-beta'
+
+        // If no pool address provided, find default pool
+        let poolAddressToUse = poolAddress;
+        if (!poolAddressToUse) {
+          const raydium = await Raydium.getInstance(networkToUse);
+          poolAddressToUse = await raydium.findDefaultPool(baseToken, quoteToken, 'amm');
+          if (!poolAddressToUse) {
+            throw fastify.httpErrors.notFound(
+              `No AMM pool found for pair ${baseToken}-${quoteToken}`
+            );
+          }
+        }
+
         return await executeSwap(
           fastify,
-          network || 'mainnet-beta',
+          networkToUse,
           walletAddress,
           baseToken,
           quoteToken,
           amount,
           side as 'BUY' | 'SELL',
-          poolAddress,
+          poolAddressToUse,
           slippagePct
         )
       } catch (e) {
