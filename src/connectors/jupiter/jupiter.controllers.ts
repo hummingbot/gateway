@@ -48,6 +48,15 @@ export async function getTradeInfo(
 ): Promise<{ tradeInfo: TradeInfo; quote: QuoteResponse }> {
   const baseToken: TokenInfo = await solana.getToken(baseAsset);
   const quoteToken: TokenInfo = await solana.getToken(quoteAsset);
+  
+  if (!baseToken || !quoteToken) {
+    console.error('🔴 One or both tokens not found!');
+    console.error('baseAsset:', baseAsset, '=>', baseToken);
+    console.error('quoteAsset:', quoteAsset, '=>', quoteToken);
+    throw new Error('Token not found in token list');
+  }
+  
+  
   const requestAmount = Math.floor(amount * Math.pow(10, baseToken.decimals));
 
   const slippagePct = allowedSlippage ? Number(allowedSlippage) : jupiter.getSlippagePct();
@@ -126,8 +135,8 @@ export async function price(
     const result = await getTradeInfo(
       solana,
       jupiter,
-      req.base,
-      req.quote,
+      req.baseToken,
+      req.quoteToken,
       Number(req.amount),
       req.side,
       req.allowedSlippage,
