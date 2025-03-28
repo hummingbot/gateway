@@ -148,11 +148,11 @@ export const configRoutes: FastifyPluginAsync = async (fastify) => {
     }
   );
 
-  // GET /config/default-pools
+  // GET /config/pools
   fastify.get<{
     Querystring: { connector: string };
   }>(
-    '/default-pools',
+    '/pools',
     {
       schema: {
         description: 'Get default pools for a specific connector',
@@ -178,12 +178,20 @@ export const configRoutes: FastifyPluginAsync = async (fastify) => {
 
       // Parse connector name
       const [baseConnector, connectorType] = connector.split('/');
-      if (!baseConnector || !connectorType) {
-        throw fastify.httpErrors.badRequest('Invalid connector format. Expected format: connector/type');
+      let configPath;
+      
+      if (!baseConnector) {
+        throw fastify.httpErrors.badRequest('Connector name is required');
+      }
+
+      // Handle both formats: "connector/type" and "connector"
+      if (connectorType) {
+        configPath = `${baseConnector}.${connectorType}.pools`;
+      } else {
+        configPath = `${baseConnector}.pools`;
       }
 
       try {
-        const configPath = `${baseConnector}.${connectorType}.pools`;
         const pools = ConfigManagerV2.getInstance().get(configPath) || {};
 
         logger.info(`Retrieved default pools for ${connector}`);
@@ -195,9 +203,9 @@ export const configRoutes: FastifyPluginAsync = async (fastify) => {
     }
   );
 
-  // POST /config/add-default-pool
+  // POST /config/pools/add
   fastify.post<{ Body: DefaultPoolRequest; Reply: DefaultPoolResponse }>(
-    '/default-pools/add',
+    '/pools/add',
     {
       schema: {
         description: 'Add a default pool for a specific connector',
@@ -210,18 +218,25 @@ export const configRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       const { connector, baseToken, quoteToken, poolAddress } = request.body;
+      const pairKey = `${baseToken}-${quoteToken}`;
 
       if (!poolAddress) {
         throw fastify.httpErrors.badRequest('Pool address is required for adding a default pool');
       }
 
       const [baseConnector, connectorType] = connector.split('/');
-      if (!baseConnector || !connectorType) {
-        throw fastify.httpErrors.badRequest('Invalid connector format. Expected format: connector/type');
+      let configPath;
+      
+      if (!baseConnector) {
+        throw fastify.httpErrors.badRequest('Connector name is required');
       }
 
-      const pairKey = `${baseToken}-${quoteToken}`;
-      const configPath = `${baseConnector}.${connectorType}.pools.${pairKey}`;
+      // Handle both formats: "connector/type" and "connector"
+      if (connectorType) {
+        configPath = `${baseConnector}.${connectorType}.pools.${pairKey}`;
+      } else {
+        configPath = `${baseConnector}.pools.${pairKey}`;
+      }
 
       try {
         ConfigManagerV2.getInstance().set(configPath, poolAddress);
@@ -235,9 +250,9 @@ export const configRoutes: FastifyPluginAsync = async (fastify) => {
     }
   );
 
-  // POST /config/remove-default-pool
+  // POST /config/pools/remove
   fastify.post<{ Body: Omit<DefaultPoolRequest, 'poolAddress'>; Reply: DefaultPoolResponse }>(
-    '/default-pools/remove',
+    '/pools/remove',
     {
       schema: {
         description: 'Remove a default pool for a specific connector',
@@ -263,14 +278,21 @@ export const configRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request, _reply) => {
       const { connector, baseToken, quoteToken } = request.body;
+      const pairKey = `${baseToken}-${quoteToken}`;
 
       const [baseConnector, connectorType] = connector.split('/');
-      if (!baseConnector || !connectorType) {
-        throw new Error('Invalid connector format. Expected format: connector/type');
+      let configPath;
+      
+      if (!baseConnector) {
+        throw fastify.httpErrors.badRequest('Connector name is required');
       }
 
-      const pairKey = `${baseToken}-${quoteToken}`;
-      const configPath = `${baseConnector}.${connectorType}.pools.${pairKey}`;
+      // Handle both formats: "connector/type" and "connector"
+      if (connectorType) {
+        configPath = `${baseConnector}.${connectorType}.pools.${pairKey}`;
+      } else {
+        configPath = `${baseConnector}.pools.${pairKey}`;
+      }
 
       try {
         ConfigManagerV2.getInstance().delete(configPath);

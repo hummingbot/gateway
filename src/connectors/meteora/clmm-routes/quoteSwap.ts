@@ -175,9 +175,9 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
             network: { type: 'string', default: 'mainnet-beta' },
             baseToken: { type: 'string', examples: ['SOL'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
-            amount: { type: 'number', examples: [0.1] },
+            amount: { type: 'number', examples: [0.01] },
             side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
-            poolAddress: { type: 'string', examples: ['3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv'] },
+            // poolAddress: { type: 'string', examples: [''] },
             slippagePct: { type: 'number', examples: [1] }
           }
         },
@@ -193,22 +193,28 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       try {
         const { network, baseToken, quoteToken, amount, side, poolAddress, slippagePct } = request.query;
-        const networkToUse = network || 'mainnet-beta';
+        const networkUsed = network || 'mainnet-beta';
+        const meteora = await Meteora.getInstance(networkUsed);
+        const poolAddressUsed = poolAddress || await meteora.findDefaultPool(baseToken, quoteToken);
+        
+        if (!poolAddressUsed) {
+          throw fastify.httpErrors.notFound(`No pool found for ${baseToken}-${quoteToken} pair`);
+        }
 
         const result = await formatSwapQuote(
           fastify,
-          networkToUse,
+          networkUsed,
           baseToken,
           quoteToken,
           amount,
           side as 'BUY' | 'SELL',
-          poolAddress,
+          poolAddressUsed,
           slippagePct
         );
 
         let gasEstimation = null;
         try {
-          gasEstimation = await estimateGasSolana(fastify, networkToUse);
+          gasEstimation = await estimateGasSolana(fastify, networkUsed);
         } catch (error) {
           logger.warn(`Failed to estimate gas for swap quote: ${error.message}`);
         }
