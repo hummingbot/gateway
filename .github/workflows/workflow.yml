@@ -95,6 +95,10 @@ jobs:
           git checkout -b $GITHUB_SHA
           GATEWAY_TEST_MODE=dev NODE_OPTIONS=--trace-warnings npx jest --coverage --verbose ./test/ || { echo "Tests failed with exit code $?"; cat $(find ./.jest-coverage -name "*.log" 2>/dev/null) 2>/dev/null || true; exit 1; }
 
+      - name: Check package versions
+        run: |
+          npm list typescript @meteora-ag/dlmm
+
   docker_build_and_push:
     runs-on: ubuntu-latest
     needs: [build_gateway]
