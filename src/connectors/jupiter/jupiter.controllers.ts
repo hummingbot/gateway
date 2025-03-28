@@ -59,10 +59,6 @@ export async function getTradeInfo(
   
   const requestAmount = Math.floor(amount * Math.pow(10, baseToken.decimals));
 
-  console.log("🪙 Token lookup:");
-  console.log("  baseAsset:", baseAsset, "→", baseToken?.symbol || "NOT FOUND");
-  console.log("  quoteAsset:", quoteAsset, "→", quoteToken?.symbol || "NOT FOUND");
-
   const slippagePct = allowedSlippage ? Number(allowedSlippage) : jupiter.getSlippagePct();
 
   let quote: QuoteResponse;
