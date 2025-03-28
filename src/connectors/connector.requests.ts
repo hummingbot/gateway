@@ -14,8 +14,10 @@ const SideSchema = Type.Union([
 export const PriceRequestSchema = Type.Intersect([
   NetworkSelectionSchema,
   Type.Object({
-    quote: Type.String(),
     base: Type.String(),
+    quote: Type.String(),
+    baseToken: Type.String(),
+    quoteToken: Type.String(),
     amount: Type.String(),
     side: SideSchema,
     allowedSlippage: Type.Optional(Type.String()),
