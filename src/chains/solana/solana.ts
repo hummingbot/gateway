@@ -976,8 +976,8 @@ export class Solana {
     const { fee } = await this.extractAccountBalanceChangeAndFee(signature, 0);
 
     return {
-      baseTokenBalanceChange: Math.abs(baseTokenBalanceChange),
-      quoteTokenBalanceChange: Math.abs(quoteTokenBalanceChange),
+      baseTokenBalanceChange: baseTokenBalanceChange,
+      quoteTokenBalanceChange: quoteTokenBalanceChange,
       fee,
     };
   }
