@@ -455,9 +455,9 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
             network: { type: 'string', default: 'mainnet-beta' },
             baseToken: { type: 'string', examples: ['SOL'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
-            amount: { type: 'number', examples: [0.1] },
+            amount: { type: 'number', examples: [0.01] },
             side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
-            poolAddress: { type: 'string', examples: ['3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv'] },
+            // poolAddress: { type: 'string', examples: [''] },
             slippagePct: { type: 'number', examples: [1] }
           }
         },
@@ -472,8 +472,21 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network, poolAddress, baseToken, quoteToken, amount, side, slippagePct } = request.query
+        const { network, poolAddress: requestedPoolAddress, baseToken, quoteToken, amount, side, slippagePct } = request.query
         const networkToUse = network || 'mainnet-beta'
+
+        const raydium = await Raydium.getInstance(networkToUse);
+        let poolAddress = requestedPoolAddress;
+        
+        if (!poolAddress) {
+          poolAddress = await raydium.findDefaultPool(baseToken, quoteToken, 'amm');
+          
+          if (!poolAddress) {
+            throw fastify.httpErrors.notFound(
+              `No AMM pool found for pair ${baseToken}-${quoteToken}`
+            );
+          }
+        }
 
         const result = await formatSwapQuote(
           fastify,
@@ -502,7 +515,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
       } catch (e) {
         logger.error(e)
         if (e.statusCode) {
-          throw fastify.httpErrors.createError(e.statusCode, e.message)
+          throw e;
         }
         throw fastify.httpErrors.internalServerError('Internal server error')
       }

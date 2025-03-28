@@ -889,7 +889,7 @@ export class Solana {
     const postBalances = txDetails.meta?.postBalances || [];
 
     const balanceChange =
-      Math.abs(postBalances[accountIndex] - preBalances[accountIndex]) * LAMPORT_TO_SOL;
+      (postBalances[accountIndex] - preBalances[accountIndex]) * LAMPORT_TO_SOL;
     const fee = (txDetails.meta?.fee || 0) * LAMPORT_TO_SOL;
 
     return { balanceChange, fee };
