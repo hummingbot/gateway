@@ -1023,21 +1023,16 @@ export class Solana {
         const logs = simulatedTransactionResponse.logs || [];
         const errorMessage = `${SIMULATION_ERROR_MESSAGE}\nError: ${JSON.stringify(simulatedTransactionResponse.err)}\nProgram Logs: ${logs.join('\n')}`;
         
-        throw new HttpException(
-          503,
-          errorMessage,
-          SIMULATION_ERROR_CODE
-        );
+        logger.error(errorMessage);
+
+        throw new Error(errorMessage);
       }
     } catch (error) {
-      if (error instanceof HttpException) {
+      if (error instanceof Error) {
+        logger.error(`Transaction simulation failed: ${error.message}`);
         throw error;
       }
-      throw new HttpException(
-        503,
-        `Error simulating transaction: ${error.message}`,
-        SIMULATION_ERROR_CODE
-      );
+      throw new Error(`Error simulating transaction: ${error.message}`);
     }
   }
 

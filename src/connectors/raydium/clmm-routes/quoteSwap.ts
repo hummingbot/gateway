@@ -3,7 +3,7 @@ import { Raydium } from '../raydium';
 import { Solana } from '../../../chains/solana/solana';
 import { DecimalUtil } from '@orca-so/common-sdk';
 import { Decimal } from 'decimal.js';
-import { BN } from 'bn.js';
+import BN from 'bn.js';
 import { logger } from '../../../services/logger';
 import { 
   GetSwapQuoteResponseType,
@@ -19,6 +19,24 @@ import {
 import { PublicKey } from '@solana/web3.js';
 import { estimateGasSolana } from '../../../chains/solana/routes/estimate-gas';
 
+/**
+ * Helper function to convert amount for buy orders in Raydium CLMM
+ * This handles the special case where we need to invert the amount due to SDK limitations
+ * @param order_amount The order amount
+ * @param inputTokenDecimals The decimals of the input token
+ * @param outputTokenDecimals The decimals of the output token
+ * @param amountToConvert The BN raw amount to convert (e.g. amountIn or maxAmountIn) from the SDK
+ * @returns The converted amount
+ */
+export function convertAmountIn(
+  order_amount: number,
+  inputTokenDecimals: number,
+  outputTokenDecimals: number,
+  amountIn: BN
+): number {
+  const inputDecimals = Math.log10(order_amount) * 2 + Math.max(inputTokenDecimals, outputTokenDecimals) + Math.abs(inputTokenDecimals - outputTokenDecimals);
+  return 1 / (amountIn.toNumber() / 10 ** inputDecimals);
+}
 
 export async function getSwapQuote(
   fastify: FastifyInstance,
@@ -88,19 +106,12 @@ export async function getSwapQuote(
       catchLiquidityInsufficient: true,
     })
 
-  const price = side === 'SELL'
-    ? (response as ReturnTypeComputeAmountOutFormat).amountOut.amount.raw.toNumber() / 
-      (response as ReturnTypeComputeAmountOutFormat).realAmountIn.amount.raw.toNumber()
-    : (response as ReturnTypeComputeAmountOutBaseOut).amountIn.amount.toNumber() / 
-      (response as ReturnTypeComputeAmountOutBaseOut).realAmountOut.amount.toNumber();
-
   return {
     inputToken,
     outputToken,
     response,
     clmmPoolInfo,
     tickArrayCache: tickCache[poolAddress],
-    price
   };
 }
 
@@ -114,7 +125,7 @@ async function formatSwapQuote(
   poolAddress: string,
   slippagePct?: number
 ): Promise<GetSwapQuoteResponseType> {
-  const { inputToken, outputToken, response, price } = await getSwapQuote(
+  const { inputToken, outputToken, response } = await getSwapQuote(
     fastify,
     network,
     baseTokenSymbol,
@@ -169,13 +180,10 @@ async function formatSwapQuote(
   });
 
   if (side === 'BUY') {
-    // Custom formula to calculate the number of decimals for the input token since inputToken.decimals is incorrect
-    const inputDecimals = Math.log10(amount) * 2 +  Math.max(inputToken.decimals, outputToken.decimals) + Math.abs(inputToken.decimals - outputToken.decimals)
-
     const exactOutResponse = response as ReturnTypeComputeAmountOutBaseOut;
     const estimatedAmountOut = exactOutResponse.realAmountOut.amount.toNumber() / 10 ** outputToken.decimals;
-    const estimatedAmountIn = 1 / (exactOutResponse.amountIn.amount.toNumber() / 10 ** inputDecimals);
-    const maxAmountIn = 1 / (exactOutResponse.maxAmountIn.amount.toNumber() / 10 ** inputDecimals);
+    const estimatedAmountIn = convertAmountIn(amount, inputToken.decimals, outputToken.decimals, exactOutResponse.amountIn.amount);
+    const maxAmountIn = convertAmountIn(amount, inputToken.decimals, outputToken.decimals, exactOutResponse.maxAmountIn.amount);
 
     const price = estimatedAmountIn / estimatedAmountOut;
 
