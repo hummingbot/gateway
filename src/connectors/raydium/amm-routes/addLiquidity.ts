@@ -8,7 +8,7 @@ import {
   AddLiquidityRequestType,
   AddLiquidityResponseType,
   QuoteLiquidityResponseType,
-} from '../../../services/amm-interfaces'
+} from '../../../schemas/trading-types/amm-schema'
 import { 
   AmmV4Keys,
   CpmmKeys,
@@ -105,11 +105,10 @@ async function addLiquidity(
     logger.info(`Adding liquidity to Raydium ${ammPoolInfo.poolType} position...`);
     const COMPUTE_UNITS = 600000
     const slippage = new Percent(
-      Math.floor(((slippagePct === 0 ? 0 : slippagePct || raydium.getSlippagePct())) * 100), 
-      10000
+      Math.floor(((slippagePct === 0 ? 0 : slippagePct || raydium.getSlippagePct('amm')) * 100) / 10000)
     );
 
-    let currentPriorityFee = (await solana.getGasPrice() * 1e9) - BASE_FEE
+    let currentPriorityFee = (await solana.estimateGas() * 1e9) - BASE_FEE
     while (currentPriorityFee <= solana.config.maxPriorityFee * 1e9) {
       const priorityFeePerCU = Math.floor(currentPriorityFee * 1e6 / COMPUTE_UNITS)
       
@@ -189,7 +188,7 @@ async function addLiquidity(
       {
         schema: {
           description: 'Add liquidity to a Raydium AMM/CPMM pool',
-          tags: ['raydium-amm'],
+          tags: ['raydium/amm'],
           body: {
             ...AddLiquidityRequest,
             properties: {

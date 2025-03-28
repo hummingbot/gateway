@@ -197,7 +197,7 @@ export class Jupiter {
     computeUnitLimit: number;
     priorityFeePrice: number;
   }> {
-    let currentPriorityFee = (await this.solana.getGasPrice() * 1e9) - BASE_FEE;
+    let currentPriorityFee = (await this.solana.estimateGas() * 1e9) - BASE_FEE;
 
     logger.info(`Sending swap with max priority fee of ${(currentPriorityFee / 1e9).toFixed(6)} SOL`);
 
@@ -308,5 +308,4 @@ export class Jupiter {
   public static getRequestAmount(amount: number, decimals: number): number {
     return Math.floor(amount * DECIMAL_MULTIPLIER ** decimals);
   }
-
 }

@@ -7,7 +7,7 @@ import {
   CollectFeesResponse, 
   CollectFeesRequestType, 
   CollectFeesResponseType 
-} from '../../../services/clmm-interfaces';
+} from '../../../schemas/trading-types/clmm-schema';
 
 export async function collectFees(
   fastify: FastifyInstance,
@@ -100,7 +100,7 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Collect fees from a Meteora position',
-        tags: ['meteora'],
+        tags: ['meteora/clmm'],
         body: {
           ...CollectFeesRequest,
           properties: {

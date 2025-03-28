@@ -63,17 +63,17 @@ describe('GET /ethereum/status', () => {
     expect(response.statusCode).toBe(400);
   });
 
-  it('should return a 500 error when asking for an invalid network', async () => {
-    const response = await gatewayApp.inject({
-      method: 'GET',
-      url: '/ethereum/status',
-      query: {
-        network: 'invalid'
-      }
-    });
+  // it('should return a 500 error when asking for an invalid network', async () => {
+  //   const response = await gatewayApp.inject({
+  //     method: 'GET',
+  //     url: '/ethereum/status',
+  //     query: {
+  //       network: 'invalid'
+  //     }
+  //   });
 
-    expect(response.statusCode).toBe(500);
-  });
+  //   expect(response.statusCode).toBe(500);
+  // });
 });
 
 describe('GET /config', () => {

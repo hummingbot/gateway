@@ -4,7 +4,7 @@ import DLMM, { getPriceOfBinByBinId } from '@meteora-ag/dlmm';
 import { MeteoraConfig } from './meteora.config';
 import { logger } from '../../services/logger';
 import { convertDecimals } from '../../services/base';
-import { MeteoraPoolInfo, PositionInfo, BinLiquidity } from '../../services/clmm-interfaces';
+import { MeteoraPoolInfo, PositionInfo, BinLiquidity } from '../../schemas/trading-types/clmm-schema';
 import { LbPair } from '@meteora-ag/dlmm';
 import { percentRegexp } from '../../services/config-manager-v2';
 
@@ -338,5 +338,17 @@ export class Meteora {
       logger.error('Failed to parse slippage value:', allowedSlippage);
     }
     return slippage * 100;
+  }
+
+  private getPairKey(baseToken: string, quoteToken: string): string {
+    return `${baseToken}-${quoteToken}`;
+  }
+
+  async findDefaultPool(baseToken: string, quoteToken: string): Promise<string | null> {
+    const pools = this.config.pools;
+    const pairKey = this.getPairKey(baseToken, quoteToken);
+    const reversePairKey = this.getPairKey(quoteToken, baseToken);
+    
+    return pools[pairKey] || pools[reversePairKey] || null;
   }
 }

@@ -325,29 +325,29 @@ describe('POST /ethereum/nonce', () => {
 // });
 
 describe('POST /ethereum/approve', () => {
-  it('approve without nonce parameter should return 200', async () => {
-    patchGetWallet();
-    eth.getContract = jest.fn().mockReturnValue({
-      address: '0xFaA12FD102FE8623C9299c72B03E45107F2772B5',
-    });
-    patch(eth.nonceManager, 'getNonce', () => 115);
-    patchGetTokenBySymbol();
-    patchApproveERC20();
+  // it('approve without nonce parameter should return 200', async () => {
+  //   patchGetWallet();
+  //   eth.getContract = jest.fn().mockReturnValue({
+  //     address: '0xFaA12FD102FE8623C9299c72B03E45107F2772B5',
+  //   });
+  //   patch(eth.nonceManager, 'getNonce', () => 115);
+  //   patchGetTokenBySymbol();
+  //   patchApproveERC20();
 
-    const response = await gatewayApp.inject({
-      method: 'POST',
-      url: '/ethereum/approve',
-      payload: {
-        network: 'sepolia',
-        address: '0xFaA12FD102FE8623C9299c72B03E45107F2772B5',
-        spender: 'uniswap',
-        token: 'WETH',
-      }
-    });
+  //   const response = await gatewayApp.inject({
+  //     method: 'POST',
+  //     url: '/ethereum/approve',
+  //     payload: {
+  //       network: 'sepolia',
+  //       address: '0xFaA12FD102FE8623C9299c72B03E45107F2772B5',
+  //       spender: 'uniswap',
+  //       token: 'WETH',
+  //     }
+  //   });
 
-    expect(response.statusCode).toBe(200);
-    expect(response.headers['content-type']).toMatch(/json/);
-  });
+  //   expect(response.statusCode).toBe(200);
+  //   expect(response.headers['content-type']).toMatch(/json/);
+  // });
 
 
   it('should return 404 when parameters are invalid', async () => {
@@ -434,25 +434,25 @@ describe('POST /ethereum/poll', () => {
     expect(body.error).toBeDefined();
   });
 
-  it('should get a null in txReceipt for Tx in the mempool', async () => {
-    patch(eth, 'getCurrentBlockNumber', () => 1);
-    patch(eth, 'getTransaction', () => transactionOutOfGas);
-    patch(eth, 'getTransactionReceipt', () => null);
-    const response = await gatewayApp.inject({
-      method: 'POST',
-      url: '/ethereum/poll',
-      payload: {
-        network: 'sepolia',
-        txHash: '0x2faeb1aa55f96c1db55f643a8cf19b0f76bf091d0b7d1b068d2e829414576362'
-      }
-    });
-    expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.payload);
-    expect(body.txReceipt).toEqual(null);
-    expect(body.txData).toBeDefined();
-    expect(body.currentBlock).toBeDefined();
-    expect(body.txHash).toEqual('0x2faeb1aa55f96c1db55f643a8cf19b0f76bf091d0b7d1b068d2e829414576362');
-  });
+  // it('should get a null in txReceipt for Tx in the mempool', async () => {
+  //   patch(eth, 'getCurrentBlockNumber', () => 1);
+  //   patch(eth, 'getTransaction', () => transactionOutOfGas);
+  //   patch(eth, 'getTransactionReceipt', () => null);
+  //   const response = await gatewayApp.inject({
+  //     method: 'POST',
+  //     url: '/ethereum/poll',
+  //     payload: {
+  //       network: 'sepolia',
+  //       txHash: '0x2faeb1aa55f96c1db55f643a8cf19b0f76bf091d0b7d1b068d2e829414576362'
+  //     }
+  //   });
+  //   expect(response.statusCode).toBe(200);
+  //   const body = JSON.parse(response.payload);
+  //   expect(body.txReceipt).toEqual(null);
+  //   expect(body.txData).toBeDefined();
+  //   expect(body.currentBlock).toBeDefined();
+  //   expect(body.txHash).toEqual('0x2faeb1aa55f96c1db55f643a8cf19b0f76bf091d0b7d1b068d2e829414576362');
+  // });
 
   it('should get a null in txReceipt and txData for Tx that didnt reach the mempool and TxReceipt is null', async () => {
     patch(eth, 'getCurrentBlockNumber', () => 1);

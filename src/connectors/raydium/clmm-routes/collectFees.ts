@@ -9,7 +9,7 @@ import {
   CollectFeesResponse,
   CollectFeesRequestType,
   CollectFeesResponseType
-} from '../../../services/clmm-interfaces'
+} from '../../../schemas/trading-types/clmm-schema'
 
 export async function collectFees(
   fastify: FastifyInstance,
@@ -102,7 +102,7 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Collect fees from a Raydium CLMM position',
-        tags: ['raydium-clmm'],
+        tags: ['raydium/clmm'],
         body: {
           ...CollectFeesRequest,
           properties: {
