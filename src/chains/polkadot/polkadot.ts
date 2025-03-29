@@ -110,22 +110,22 @@ export class Polkadot {
 
       // Wait for crypto to be ready
       await cryptoWaitReady();
-      
+
       // Initialize keyring
       this._keyring = new Keyring({
         type: 'sr25519'
       });
-      
+
       // Connect to the node
       const provider = this.config.network.nodeURL.startsWith('http')
         ? new HttpProvider(this.config.network.nodeURL)
         : new WsProvider(this.config.network.nodeURL);
-      
+
       this.api = await ApiPromise.create({ provider: provider });
-      
+
       // Wait for API to be ready
       await this.api.isReady;
-      
+
       // Load token list
       await this.getTokenList(
         this.config.network.tokenListSource,
@@ -179,7 +179,7 @@ export class Polkadot {
 
       // Load tokens from source
       let tokensData: any[] = [];
-      
+
       if (tokenListType === 'URL') {
         const response = await axios.get(tokenListSource);
         tokensData = response.data || [];
@@ -298,19 +298,19 @@ export class Polkadot {
         // Path to the wallet file
         const path = `${walletPath}/${this.chain}`;
         const walletFile = `${path}/${address}.json`;
-        
+
         // Read encrypted mnemonic from file
         const encryptedMnemonic = await fs.promises.readFile(walletFile, 'utf8');
-        
+
         // Get passphrase using ConfigManagerCertPassphrase
         const passphrase = ConfigManagerCertPassphrase.readPassphrase();
         if (!passphrase) {
           throw new Error('Missing passphrase for wallet decryption');
         }
-        
+
         // Decrypt the mnemonic
         const mnemonic = await this.decrypt(encryptedMnemonic, passphrase);
-        
+
         // Add to keyring and return
         return this._keyring.addFromUri(mnemonic);
       } catch (error) {
@@ -358,7 +358,7 @@ export class Polkadot {
       const key = crypto.createHash('sha256').update(password).digest();
       const iv = crypto.randomBytes(16);
       const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
-      
+
       let encrypted = cipher.update(mnemonic, 'utf8', 'hex');
       encrypted += cipher.final('hex');
 
@@ -380,7 +380,7 @@ export class Polkadot {
       const [ivHex, encryptedText] = encryptedSecret.split(':');
       const iv = Buffer.from(ivHex, 'hex');
       const key = crypto.createHash('sha256').update(password).digest();
-      
+
       const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
       let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
       decrypted += decipher.final('utf8');
@@ -402,7 +402,7 @@ export class Polkadot {
     try {
       const balances: Record<string, number> = {};
       const address = wallet.address;
-      
+
       // Determine which tokens to check
       let tokensToCheck: TokenInfo[] = [];
       if (symbols && symbols.length > 0) {
@@ -427,7 +427,7 @@ export class Polkadot {
         // @ts-ignore - Handle type issues with accountInfo structure
         const reservedBalance = accountInfo.data.reserved.toString();
         const totalBalance = new BN(freeBalance).add(new BN(reservedBalance));
-        
+
         balances[nativeToken.symbol] = this.fromBaseUnits(
           totalBalance.toString(),
           nativeToken.decimals
@@ -438,7 +438,7 @@ export class Polkadot {
       for (const token of tokensToCheck) {
         // Skip native token as we already processed it
         if (token.symbol === this.nativeTokenSymbol) continue;
-        
+
         try {
           // Check if tokens module exists
           if (this.api.query.tokens && this.api.query.tokens.accounts) {
@@ -456,8 +456,8 @@ export class Polkadot {
             if (assetBalance && !assetBalance.isEmpty) {
               // Handle Option<AssetBalance> - use type-safe methods instead of isSome/unwrap
               const balanceData = assetBalance as any;
-              const balance = balanceData.balance?.toString() || 
-                             (balanceData.toJSON && balanceData.toJSON().balance) || '0';
+              const balance = balanceData.balance?.toString() ||
+                (balanceData.toJSON && balanceData.toJSON().balance) || '0';
               balances[token.symbol] = this.fromBaseUnits(balance, token.decimals);
             } else {
               balances[token.symbol] = 0;
@@ -471,6 +471,8 @@ export class Polkadot {
           balances[token.symbol] = 0;
         }
       }
+      //TODO fix !!!
+      balances["total"] = 0
 
       return balances;
     } catch (error) {
@@ -544,34 +546,34 @@ export class Polkadot {
     const startTime = Date.now();
     try {
       const currentBlock = await this.getCurrentBlockNumber();
-      
+
       // Try to fetch transaction data
       let txData = null;
       let txStatus = 0; // Not found by default
       let blockNum = null;
       let fee = null;
-      
+
       try {
         const headers = { 'Content-Type': 'application/json' };
         const body = { hash: txHash };
-        
+
         const response = await axios.post(
           'https://hydration.api.subscan.io/api/scan/extrinsic',
           body,
           { headers }
         );
-        
+
         if (response.data && response.data.data) {
           const transaction = response.data.data;
-          
+
           // Extract transaction data
           txData = transaction;
-          
+
           blockNum = transaction.block_num || currentBlock;
           fee = transaction.fee
             ? parseFloat(transaction.fee) / Math.pow(10, 10)
             : null;
-          
+
           // Determine status based on success and finalized flags
           if (transaction.success) {
             txStatus = 1; // Success
@@ -584,7 +586,7 @@ export class Polkadot {
       } catch (error) {
         logger.error(`Error fetching transaction ${txHash}: ${error.message}`);
       }
-      
+
       return {
         network: this.network,
         currentBlock,
@@ -599,7 +601,7 @@ export class Polkadot {
     } catch (error) {
       logger.error(`Error in getTransaction for ${txHash}: ${error.message}`);
       const currentBlock = await this.getCurrentBlockNumber().catch(() => 0);
-      
+
       return {
         network: this.network,
         currentBlock,
@@ -1016,7 +1018,7 @@ export class Polkadot {
     try {
       // Try adding the wallet in different formats
       let keyPair;
-      
+
       try {
         // Try as URI (seed/private key)
         keyPair = this._keyring.addFromUri(privateKey);
@@ -1028,14 +1030,14 @@ export class Polkadot {
           throw new Error(`Unable to add wallet: ${e2.message}`);
         }
       }
-      
+
       // Format the address in SS58 format for the current network
       const formattedAddress = encodeAddress(
         keyPair.publicKey
       );
-      
+
       // Return the formatted address along with the keyring pair
-      return { 
+      return {
         keyPair,
         address: formattedAddress
       };
@@ -1064,7 +1066,7 @@ export class Polkadot {
     try {
       // File path follows pattern: conf/wallets/polkadot/<address>.json
       const walletPath = `conf/wallets/polkadot`;
-      
+
       // Create directory if it doesn't exist
       if (!fs.existsSync(walletPath)) {
         fs.mkdirSync(walletPath, { recursive: true });
@@ -1072,7 +1074,7 @@ export class Polkadot {
 
       // Write the encrypted private key to the file
       fs.writeFileSync(`${walletPath}/${address}.json`, encryptedPrivateKey);
-      
+
       logger.info(`Wallet saved successfully: ${address}`);
     } catch (error) {
       logger.error(`Failed to save wallet to file: ${error.message}`);
