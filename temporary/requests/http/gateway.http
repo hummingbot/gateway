@@ -198,6 +198,15 @@ Content-Type: application/json
 
 # ===================== AMM CONNECTOR ROUTES =====================
 
+# GET /{{connector}}/amm/list-pools
+GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/list-pools?network={{network}}
+Content-Type: application/json
+
+{
+}
+
+###
+
 # GET /{{connector}}/amm/pool-info
 GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/pool-info?network={{network}}&poolAddress={{poolAddress}}
 Content-Type: application/json

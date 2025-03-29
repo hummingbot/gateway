@@ -1,11 +1,11 @@
 import { FastifyPluginAsync } from 'fastify';
 import { Hydration } from '../../hydration';
 import { logger } from '../../../../services/logger';
-import { 
+import {
   PoolInfo,
   PoolInfoSchema,
   GetPoolInfoRequestType,
-  GetPoolInfoRequest 
+  GetPoolInfoRequest
 } from '../../../../schemas/trading-types/amm-schema';
 
 /**
@@ -38,15 +38,15 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
       try {
         const { poolAddress } = request.query;
         const network = request.query.network || 'mainnet';
-        
+
         logger.info(`Getting pool info for: ${poolAddress} on network: ${network}`);
         logger.debug('Request query:', JSON.stringify(request.query, null, 2));
-        
+
         const hydration = await Hydration.getInstance(network);
         if (!hydration) {
           throw fastify.httpErrors.serviceUnavailable('Hydration service unavailable');
         }
-        
+
         // Get pool information
         const poolInfo = await hydration.getPoolInfo(poolAddress);
         if (!poolInfo) {
@@ -68,7 +68,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
           quoteTokenAmount: poolInfo.liquidity && poolInfo.price ? Number(poolInfo.liquidity) * Number(poolInfo.price) : 0,
           poolType: poolInfo.type || 'Unknown' // Use the actual pool type from the data
         };
-        
+
         return result;
       } catch (e) {
         logger.error(`Error in pool-info:`, e);

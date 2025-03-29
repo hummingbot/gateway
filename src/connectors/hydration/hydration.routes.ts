@@ -8,6 +8,7 @@ import { executeSwapRoute } from './routes/amm-routes/executeSwap';
 import { addLiquidityRoute } from './routes/amm-routes/addLiquidity';
 import { removeLiquidityRoute } from './routes/amm-routes/removeLiquidity';
 import { quoteLiquidityRoute } from './routes/amm-routes/quoteLiquidity';
+import getAllPoolsRoute from './routes/amm-routes/getAllPools';
 
 /**
  * Register all Hydration routes
@@ -17,7 +18,7 @@ export const hydrationAMMRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(sensible);
 
   // Register all route handlers
-  await fastify.register(fetchPoolsRoute);
+  await fastify.register(getAllPoolsRoute);
   await fastify.register(poolInfoRoute);
   await fastify.register(quoteSwapRoute);
   await fastify.register(quoteLiquidityRoute);
