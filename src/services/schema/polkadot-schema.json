@@ -5,18 +5,14 @@
         "networks": {
             "type": "object",
             "patternProperties": {
-                "^\\w+$": {
+                "^.+$": {
                     "type": "object",
                     "properties": {
-                        "parachain": {
-                            "type": "string",
-                            "description": "The active parachain to use for this network"
-                        },
                         "nodeURL": {
                             "type": "string",
                             "description": "WebSocket URL for connecting to the node"
                         },
-                        "transactionUrl": {
+                        "transactionURL": {
                             "type": "string",
                             "description": "URL for retrieving transaction information"
                         },
@@ -31,31 +27,19 @@
                         "nativeCurrencySymbol": {
                             "type": "string",
                             "description": "Symbol of the native currency on the network"
-                        },
-                        "feePaymentCurrencySymbol": {
-                            "type": "string",
-                            "description": "Symbol of the currency used to pay transaction fees"
-                        },
-                        "allowedSlippage": {
-                            "type": "string",
-                            "description": "How much the execution price is allowed to move unfavorably from the trade execution price"
                         }
                     },
                     "required": [
-                        "parachain"
+                        "nodeURL",
+                        "transactionURL",
+                        "tokenListType",
+                        "tokenListSource",
+                        "nativeCurrencySymbol"
                     ],
                     "additionalProperties": false
                 }
             },
             "additionalProperties": false
-        },
-        "defaultTransactionTimeout": {
-            "type": "integer",
-            "description": "Default timeout for transactions in milliseconds"
-        },
-        "batchTxLimit": {
-            "type": "integer",
-            "description": "Maximum number of transactions allowed in a batch"
         }
     },
     "additionalProperties": false,

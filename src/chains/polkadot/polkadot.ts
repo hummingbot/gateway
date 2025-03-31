@@ -558,7 +558,7 @@ export class Polkadot {
         const body = { hash: txHash };
 
         const response = await axios.post(
-          'https://hydration.api.subscan.io/api/scan/extrinsic',
+          this.config.network.transactionURL,
           body,
           { headers }
         );

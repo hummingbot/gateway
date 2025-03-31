@@ -3,11 +3,10 @@ import { ConfigManagerV2 } from '../../services/config-manager-v2';
 
 interface NetworkConfig {
   nodeURL: string;
-  transactionUrl: string;
+  transactionURL: string;
   tokenListType: TokenListType;
   tokenListSource: string;
   nativeCurrencySymbol: string;
-  feePaymentCurrencySymbol: string;
 }
 
 export interface Config {
@@ -19,20 +18,16 @@ export function getPolkadotConfig(
   networkName: string
 ): Config {
   const configManager = ConfigManagerV2.getInstance();
-  
-  // Get the active parachain for this network
-  const activeParachain = configManager.get(
-    `${chainName}.networks.${networkName}.parachain`
-  );
-    
+
+  const prefix = `${chainName}.networks.${networkName}`;
+
   return {
     network: {
-      nodeURL: configManager.get(`${activeParachain}.nodeURL`),
-      transactionUrl: configManager.get(`${activeParachain}.transactionUrl`),
-      tokenListType: configManager.get(`${activeParachain}.tokenListType`),
-      tokenListSource: configManager.get(`${activeParachain}.tokenListSource`),
-      nativeCurrencySymbol: configManager.get(`${activeParachain}.nativeCurrencySymbol`),
-      feePaymentCurrencySymbol: configManager.get(`${activeParachain}.feePaymentCurrencySymbol`),
+      nodeURL: configManager.get(`${prefix}.nodeURL`),
+      transactionURL: configManager.get(`${prefix}.transactionURL`),
+      tokenListType: configManager.get(`${prefix}.tokenListType`),
+      tokenListSource: configManager.get(`${prefix}.tokenListSource`),
+      nativeCurrencySymbol: configManager.get(`${prefix}.nativeCurrencySymbol`),
     }
   };
 }
