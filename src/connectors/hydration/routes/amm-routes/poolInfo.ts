@@ -26,7 +26,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
           ...GetPoolInfoRequest,
           properties: {
             network: { type: 'string', examples: ['mainnet'] },
-            poolAddress: { type: 'string', examples: ['hydration-pool-0'] }
+            poolAddress: { type: 'string', examples: ['poolAddressXyk'] }
           }
         },
         response: {
