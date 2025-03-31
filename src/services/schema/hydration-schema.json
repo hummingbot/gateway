@@ -2,44 +2,18 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "type": "object",
     "properties": {
-        "nodeURL": { 
-            "type": "string",
-            "description": "URL for connecting to the Hydration node"
-        },
-        "transactionUrl": { 
-            "type": "string",
-            "description": "URL for submitting transactions to the Hydration API"
-        },
-        "tokenListType": { 
-            "type": "string",
-            "enum": ["FILE", "URL"],
-            "description": "Type of token list source (FILE or URL)"
-        },
-        "tokenListSource": { 
-            "type": "string",
-            "description": "Path or URL to the token list"
-        },
-        "nativeCurrencySymbol": { 
-            "type": "string",
-            "description": "Symbol of the native currency (e.g., HDX)"
-        },
-        "feePaymentCurrencySymbol": { 
+        "feePaymentCurrencySymbol": {
             "type": "string",
             "description": "Symbol of the currency used for fee payment"
         },
-        "allowedSlippage": { 
+        "allowedSlippage": {
             "type": "string",
             "description": "How much the execution price is allowed to move unfavorably from the trade execution price (format: '1/100')"
         }
     },
     "additionalProperties": false,
     "required": [
-        "nodeURL",
-        "transactionUrl", 
-        "tokenListType", 
-        "tokenListSource", 
-        "nativeCurrencySymbol", 
-        "feePaymentCurrencySymbol", 
+        "feePaymentCurrencySymbol",
         "allowedSlippage"
     ]
 }

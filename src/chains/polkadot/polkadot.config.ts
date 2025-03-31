@@ -1,5 +1,5 @@
-import { TokenListType } from '../../services/base';
-import { ConfigManagerV2 } from '../../services/config-manager-v2';
+import {TokenListType} from '../../services/base';
+import {ConfigManagerV2} from '../../services/config-manager-v2';
 
 interface NetworkConfig {
   nodeURL: string;

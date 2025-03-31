@@ -1,20 +1,2 @@
-# WebSocket URL for connecting to the Hydration node
-nodeURL: 'wss://rpc.hydradx.cloud'
-
-# URL for retrieving transaction information
-transactionUrl: 'https://hydration.api.subscan.io/api/scan/extrinsic'
-
-# Type of token list source (FILE, URL, etc.)
-tokenListType: 'FILE'
-
-# Path to the token list file
-tokenListSource: 'src/templates/lists/hydration.json'
-
-# Symbol of the native currency on the Hydration network
-nativeCurrencySymbol: HDX
-
-# Symbol of the currency used to pay transaction fees
-feePaymentCurrencySymbol: HDX
-
-# How much the execution price is allowed to move unfavorably from the trade execution price. It uses a rational number for precision
+feePaymentCurrencySymbol: 'HDX'
 allowedSlippage: '1/100'
