@@ -216,6 +216,15 @@ Content-Type: application/json
 
 ###
 
+# GET /{{connector}}/amm/pool-info hydration examples[poolAddressStableswap, poolAddressOmnipool, poolAddressXyk]
+GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/pool-info?network={{network}}&poolAddress={{poolAddressXyk}}
+Content-Type: application/json
+
+{
+}
+
+###
+
 # GET /{{connector}}/amm/pool-info - Get HYDRATION XYK pool information
 GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/pool-info?network={{network}}&poolAddress={{poolAddressXyk}}
 Content-Type: application/json
