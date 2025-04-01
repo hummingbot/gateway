@@ -12,7 +12,7 @@ import {
 } from './hydration.types';
 import { KeyringPair } from '@polkadot/keyring/types';
 import { ApiPromise, WsProvider } from '@polkadot/api';
-import { BigNumber, PoolService, Trade, TradeRouter, TradeType, PoolBase } from '@galacticcouncil/sdk';
+import { BigNumber, PoolService, Trade, TradeRouter, TradeType, PoolBase, PoolType } from '@galacticcouncil/sdk';
 import { cryptoWaitReady } from '@polkadot/util-crypto';
 
 // Default connection endpoint for Hydration protocol
@@ -239,12 +239,81 @@ export class Hydration {
       // Cast poolData to any to access properties that might not be in the PoolBase type
       const poolDataAny = poolData as any;
 
-      // Try to get price from poolData or determine a realistic price
-      // This should ideally come from the SDK, but we're using a default if not available
-      const poolPrice = poolDataAny.price ? 
-        (typeof poolDataAny.price === 'object' && 'toNumber' in poolDataAny.price) ? 
-          poolDataAny.price.toNumber() : Number(poolDataAny.price) 
-        : 10.0; // Default price if none available
+      // Format token amounts based on their decimals
+      const baseTokenAmount = poolData.tokens[0].balance ? 
+        Number(BigNumber(poolData.tokens[0].balance.toString()).div(10 ** baseToken.decimals).toFixed(6)) : 0;
+      
+      const quoteTokenAmount = poolData.tokens[1].balance ? 
+        Number(BigNumber(poolData.tokens[1].balance.toString()).div(10 ** quoteToken.decimals).toFixed(6)) : 0;
+
+      // Calculate price using the SDK's trade router
+      let poolPrice = 0;
+      try {
+        // Get token IDs for the trade router
+        const assets = await this.tradeRouter.getAllAssets();
+        const baseTokenId = assets.find(a => a.symbol === poolData.tokens[0].symbol)?.id;
+        const quoteTokenId = assets.find(a => a.symbol === poolData.tokens[1].symbol)?.id;
+
+        if (!baseTokenId || !quoteTokenId) {
+          throw new Error('Failed to find token IDs in trade router');
+        }
+
+        // Use a small amount (1 unit) to get the spot price
+        const amountBN = BigNumber('1');
+        
+        // Get both buy and sell quotes to calculate the mid price
+        const buyQuote = await this.tradeRouter.getBestBuy(
+          quoteTokenId,
+          baseTokenId,
+          amountBN
+        );
+
+        const sellQuote = await this.tradeRouter.getBestSell(
+          baseTokenId,
+          quoteTokenId,
+          amountBN
+        );
+
+        if (buyQuote && sellQuote) {
+          // Convert quotes to human-readable format
+          const buyHuman = buyQuote.toHuman();
+          const sellHuman = sellQuote.toHuman();
+
+          // Calculate mid price from buy and sell quotes
+          const buyPrice = Number(buyHuman.spotPrice);
+          const sellPrice = Number(sellHuman.spotPrice);
+          
+          // Use the average of buy and sell prices
+          poolPrice = Number(((buyPrice + sellPrice) / 2).toFixed(6));
+
+          // Log the price calculation for debugging
+          logger.info(`Pool price calculation for ${poolAddress}:`, {
+            buyPrice,
+            sellPrice,
+            midPrice: poolPrice,
+            buyQuote: buyHuman,
+            sellQuote: sellHuman,
+            poolType: poolData.type,
+            baseTokenAmount,
+            quoteTokenAmount,
+            baseTokenDecimals: baseToken.decimals,
+            quoteTokenDecimals: quoteToken.decimals,
+            rawBaseBalance: poolData.tokens[0].balance?.toString(),
+            rawQuoteBalance: poolData.tokens[1].balance?.toString()
+          });
+
+          // Validate the calculated price
+          if (poolPrice <= 0 || isNaN(poolPrice)) {
+            logger.warn(`Invalid price calculated for pool ${poolAddress}: ${poolPrice}`);
+            throw new Error('Invalid pool price');
+          }
+        } else {
+          throw new Error('Failed to get trade quotes for price calculation');
+        }
+      } catch (error) {
+        logger.error(`Failed to calculate pool price for ${poolAddress}: ${error.message}`);
+        throw new Error('Failed to calculate pool price');
+      }
         
       // Try to get liquidity info
       const liquidity = poolDataAny.liquidity ? 
@@ -280,7 +349,9 @@ export class Hydration {
         tvl: poolDataAny.tvl ? Number(poolDataAny.tvl) : 1000000,
         feesUSD24h: poolDataAny.feesUSD24h ? Number(poolDataAny.feesUSD24h) : 1000,
         apr: poolDataAny.apr ? Number(poolDataAny.apr) : 5,
-        type: poolData.type || 'Unknown'
+        type: poolData.type || 'Unknown',
+        baseTokenAmount,
+        quoteTokenAmount
       };
 
       // Cache the result
