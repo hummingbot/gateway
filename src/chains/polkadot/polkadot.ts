@@ -471,8 +471,6 @@ export class Polkadot {
           balances[token.symbol] = 0;
         }
       }
-      //TODO fix !!!
-      balances["total"] = 0
 
       return balances;
     } catch (error) {
