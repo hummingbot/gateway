@@ -19,10 +19,11 @@ import { logger } from '../../services/logger'
 import { RaydiumConfig } from './raydium.config'
 import { Solana } from '../../chains/solana/solana'
 import { Keypair } from '@solana/web3.js'
-import { PoolInfo as ClmmPoolInfo, PositionInfo } from '../../services/clmm-interfaces'
-import { PoolInfo as AmmPoolInfo } from '../../services/amm-interfaces'
+import { PoolInfo as ClmmPoolInfo, PositionInfo } from '../../schemas/trading-types/clmm-schema'
+import { PoolInfo as AmmPoolInfo } from '../../schemas/trading-types/amm-schema'
 import { PublicKey } from '@solana/web3.js'
 import { percentRegexp } from '../../services/config-manager-v2';
+import { ConfigManagerV2 } from '../../services/config-manager-v2';
 
 export class Raydium {
   private static _instances: { [name: string]: Raydium }
@@ -299,8 +300,8 @@ export class Raydium {
   }  
 
   // General Slippage Settings
-  getSlippagePct(): number {
-    const allowedSlippage = this.config.allowedSlippage;
+  getSlippagePct(routeType: 'amm' | 'clmm'): number {
+    const allowedSlippage = this.config[routeType].allowedSlippage;
     const nd = allowedSlippage.match(percentRegexp);
     let slippage = 0.0;
     if (nd) {
@@ -311,4 +312,15 @@ export class Raydium {
     return slippage * 100;
   }
 
+  private getPairKey(baseToken: string, quoteToken: string): string {
+    return `${baseToken}-${quoteToken}`;
+  }
+
+  async findDefaultPool(baseToken: string, quoteToken: string, routeType: 'amm' | 'clmm'): Promise<string | null> {
+    const pools = this.config[routeType].pools;
+    const pairKey = this.getPairKey(baseToken, quoteToken);
+    const reversePairKey = this.getPairKey(quoteToken, baseToken);
+    
+    return pools[pairKey] || pools[reversePairKey] || null;
+  }
 }

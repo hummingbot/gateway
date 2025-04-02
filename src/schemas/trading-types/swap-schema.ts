@@ -6,21 +6,26 @@ export const GetSwapQuoteRequest = Type.Object({
   quoteToken: Type.String(),
   amount: Type.Number(),
   side: Type.String({ 
-    enum: ['buy', 'sell'],
+    enum: ['BUY', 'SELL'],
     description: 'Trade direction'
   }),
-  poolAddress: Type.String(),
   slippagePct: Type.Optional(Type.Number()),
+  poolAddress: Type.Optional(Type.String()),
 }, { $id: 'GetSwapQuoteRequest' });
 export type GetSwapQuoteRequestType = Static<typeof GetSwapQuoteRequest>;
 
 export const GetSwapQuoteResponse = Type.Object({
+  poolAddress: Type.Optional(Type.String()),
   estimatedAmountIn: Type.Number(),
   estimatedAmountOut: Type.Number(),
   minAmountOut: Type.Number(),
   maxAmountIn: Type.Number(),
   baseTokenBalanceChange: Type.Number(),
   quoteTokenBalanceChange: Type.Number(),
+  price: Type.Number(),
+  gasPrice: Type.Number(),
+  gasLimit: Type.Number(),
+  gasCost: Type.Number(),
 }, { $id: 'GetSwapQuoteResponse' });
 export type GetSwapQuoteResponseType = Static<typeof GetSwapQuoteResponse>;
 
@@ -31,12 +36,13 @@ export const ExecuteSwapRequest = Type.Object({
   quoteToken: Type.String(),
   amount: Type.Number(),
   side: Type.String({ 
-    enum: ['buy', 'sell'],
+    enum: ['BUY', 'SELL'],
     description: 'Trade direction'
   }),
-  poolAddress: Type.String(),
   slippagePct: Type.Optional(Type.Number()),
-});
+  poolAddress: Type.Optional(Type.String()),
+}, { $id: 'ExecuteSwapRequest' });
+
 export type ExecuteSwapRequestType = Static<typeof ExecuteSwapRequest>;
 
 export const ExecuteSwapResponse = Type.Object({
