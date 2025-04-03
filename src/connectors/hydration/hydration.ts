@@ -15,9 +15,6 @@ import { ApiPromise, WsProvider } from '@polkadot/api';
 import { BigNumber, PoolService, Trade, TradeRouter, TradeType, PoolBase, PoolType } from '@galacticcouncil/sdk';
 import { cryptoWaitReady } from '@polkadot/util-crypto';
 
-// Default connection endpoint for Hydration protocol
-const DEFAULT_WS_PROVIDER_URL = 'wss://rpc.hydradx.cloud';
-
 /**
  * Main class for interacting with the Hydration protocol on Polkadot
  */
@@ -79,7 +76,7 @@ export class Hydration {
       await cryptoWaitReady();
 
       // Create API connection
-      const wsProvider = new WsProvider(DEFAULT_WS_PROVIDER_URL);
+      const wsProvider = new WsProvider(this.polkadot.config.network.nodeURL);
       this.api = await ApiPromise.create({ provider: wsProvider });
 
       // Initialize Hydration services

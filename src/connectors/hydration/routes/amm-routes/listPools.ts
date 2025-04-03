@@ -5,7 +5,7 @@ import { logger } from '../../../../services/logger';
 /**
  * Route handler for getting all pools
  */
-export const getAllPoolsRoute: FastifyPluginAsync = async (fastify) => {
+export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
     Querystring: { network?: string };
     Reply: { pools: Array<{ address: string; type: string; tokens: string[] }> };
@@ -51,4 +51,4 @@ export const getAllPoolsRoute: FastifyPluginAsync = async (fastify) => {
   );
 };
 
-export default getAllPoolsRoute;
+export default listPoolsRoute;
