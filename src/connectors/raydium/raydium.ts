@@ -1,9 +1,9 @@
-import { 
-  Raydium as RaydiumSDK, 
+import {
+  Raydium as RaydiumSDK,
   ApiV3PoolInfoConcentratedItem,
   ApiV3PoolInfoStandardItem,
   ApiV3PoolInfoStandardItemCpmm,
-  PositionInfoLayout, 
+  PositionInfoLayout,
   CLMM_PROGRAM_ID,
   getPdaPersonalPositionAddress,
   PositionUtils,
@@ -12,7 +12,8 @@ import {
   ClmmRpcData,
   TxVersion,
   AmmV4Keys,
-  AmmV5Keys
+  AmmV5Keys,
+  PoolFetchType
 } from '@raydium-io/raydium-sdk-v2'
 import { isValidClmm, isValidAmm, isValidCpmm } from './raydium.utils'
 import { logger } from '../../services/logger'
@@ -311,4 +312,37 @@ export class Raydium {
     return slippage * 100;
   }
 
+  async listAllPools(): Promise<
+      Array<
+          ApiV3PoolInfoConcentratedItem |
+          ApiV3PoolInfoStandardItem |
+          ApiV3PoolInfoStandardItemCpmm
+      >
+  > {
+    try {
+      // Use the new SDK method getPoolList
+      const poolListResponse = await this.raydiumSDK.api.getPoolList({
+        page: 1,
+        pageSize: 1000, // maximum allowed by API
+        order: 'desc',
+        sort: 'liquidity',
+        type: PoolFetchType.Standard,
+      });
+      return poolListResponse.data;
+    } catch (error) {
+      logger.error('Error listing all pools:', error);
+      throw error;
+    }
+  }
+
+// Update your existing method to call the new one:
+  async getAllPoolsFromAPI(): Promise<
+      Array<
+          ApiV3PoolInfoConcentratedItem |
+          ApiV3PoolInfoStandardItem |
+          ApiV3PoolInfoStandardItemCpmm
+      >
+  > {
+    return this.listAllPools();
+  }
 }
