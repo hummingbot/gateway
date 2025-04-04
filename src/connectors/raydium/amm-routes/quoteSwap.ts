@@ -31,13 +31,17 @@ async function quoteAmmSwap(
   let poolInfo: ApiV3PoolInfoStandardItem
   let poolKeys: any
   let rpcData: any
-  
+
   if (network === 'mainnet-beta') {
     // note: api doesn't support get devnet pool info, so in devnet else we go rpc method
     const [poolInfoData, poolKeysData] = await raydium.getPoolfromAPI(poolId)
     poolInfo = poolInfoData as ApiV3PoolInfoStandardItem
     poolKeys = poolKeysData
-    rpcData = await raydium.raydiumSDK.liquidity.getRpcPoolInfo(poolId)
+    try {
+      rpcData = await raydium.raydiumSDK.liquidity.getPoolInfoFromRpc({ poolId })
+    } catch (error) {
+      rpcData = poolInfo
+    }
   } else {
     // note: getPoolInfoFromRpc method only returns required pool data for computing not all detail pool info
     const data = await raydium.raydiumSDK.liquidity.getPoolInfoFromRpc({ poolId })
@@ -46,7 +50,7 @@ async function quoteAmmSwap(
     rpcData = data.poolRpcData
   }
   
-  const [baseReserve, quoteReserve, status] = [rpcData.baseReserve, rpcData.quoteReserve, rpcData.status.toNumber()]
+  const [baseReserve, quoteReserve, status] = [rpcData.baseReserve || new BN(poolInfo.mintAmountA), rpcData.quoteReserve || new BN(poolInfo.mintAmountB)  , rpcData.status?.toNumber()]
 
   if (poolInfo.mintA.address !== inputMint && poolInfo.mintB.address !== inputMint)
     throw new Error('input mint does not match pool')
