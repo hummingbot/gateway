@@ -1,5 +1,23 @@
 import { Type, Static } from '@sinclair/typebox';
 
+// Add ListPoolsRequest and ListPoolsResponse schemas
+export const ListPoolsRequest = Type.Object({
+  network: Type.Optional(Type.String()), // Network (defaults to mainnet-beta for Raydium)
+}, { $id: 'ListPoolsRequest' });
+export type ListPoolsRequestType = Static<typeof ListPoolsRequest>;
+
+export const PoolItemSchema = Type.Object({
+  address: Type.String(),
+  type: Type.String(),
+  tokens: Type.Array(Type.String()),
+}, { $id: 'PoolItem' });
+export type PoolItem = Static<typeof PoolItemSchema>;
+
+export const ListPoolsResponse = Type.Object({
+  pools: Type.Array(PoolItemSchema),
+}, { $id: 'ListPoolsResponse' });
+export type ListPoolsResponseType = Static<typeof ListPoolsResponse>;
+
 export const PoolInfoSchema = Type.Object({
     address: Type.String(),
     baseTokenAddress: Type.String(),

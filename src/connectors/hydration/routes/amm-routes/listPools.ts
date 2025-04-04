@@ -1,14 +1,19 @@
 import { FastifyPluginAsync } from 'fastify';
 import { Hydration } from '../../hydration';
 import { logger } from '../../../../services/logger';
+import {
+  ListPoolsRequestType,
+  ListPoolsResponse,
+  ListPoolsResponseType
+} from '../../../../schemas/trading-types/amm-schema';
 
 /**
  * Route handler for getting all pools
  */
 export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
-    Querystring: { network?: string };
-    Reply: { pools: Array<{ address: string; type: string; tokens: string[] }> };
+    Querystring: ListPoolsRequestType;
+    Reply: ListPoolsResponseType;
   }>(
     '/list-pools',
     {
@@ -19,6 +24,9 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             network: { type: 'string', examples: ['mainnet'] }
           }
+        },
+        response: {
+          200: ListPoolsResponse
         }
       }
     },
