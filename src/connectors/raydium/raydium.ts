@@ -13,7 +13,7 @@ import {
   TxVersion,
   AmmV4Keys,
   AmmV5Keys,
-  PoolFetchType
+  PoolFetchType, ApiV3PoolInfoItem
 } from '@raydium-io/raydium-sdk-v2'
 import { isValidClmm, isValidAmm, isValidCpmm } from './raydium.utils'
 import { logger } from '../../services/logger'
@@ -263,17 +263,18 @@ export class Raydium {
       const poolType = await this.getPoolType(poolAddress)
       let poolInfo: AmmPoolInfo
       if (poolType === 'amm') {
-        const rawPool = await this.raydiumSDK.liquidity.getRpcPoolInfos([poolAddress])
+        const rawPools = await this.raydiumSDK.api.fetchPoolById({ ids: poolAddress })
+        const rawPool = rawPools[0] as ApiV3PoolInfoItem
         console.log('ammPoolInfo', rawPool)
 
         poolInfo = {
           address: poolAddress,
-          baseTokenAddress: rawPool[poolAddress].baseMint.toString(),
-          quoteTokenAddress: rawPool[poolAddress].quoteMint.toString(),
-          feePct: Number(rawPool[poolAddress].tradeFeeNumerator) / Number(rawPool[poolAddress].tradeFeeDenominator),
-          price: Number(rawPool[poolAddress].poolPrice),
-          baseTokenAmount: Number(rawPool[poolAddress].mintAAmount) / 10 ** Number(rawPool[poolAddress].baseDecimal),
-          quoteTokenAmount: Number(rawPool[poolAddress].mintBAmount) / 10 ** Number(rawPool[poolAddress].quoteDecimal),
+          baseTokenAddress: rawPool.mintA.address,
+          quoteTokenAddress: rawPool.mintB.address,
+          feePct: 100 * Number(rawPool.feeRate),
+          price: Number(rawPool.price),
+          baseTokenAmount: Number(rawPool.mintAmountA),
+          quoteTokenAmount: Number(rawPool.mintAmountB),
           poolType: poolType,
         }
         return poolInfo
