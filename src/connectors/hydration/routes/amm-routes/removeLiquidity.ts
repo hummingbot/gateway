@@ -55,8 +55,9 @@ export async function removeLiquidity(
       throw httpNotFound(`Pool not found: ${poolAddress}`);
     }
 
-    const baseTokenSymbol = pool.baseToken.symbol;
-    const quoteTokenSymbol = pool.quoteToken.symbol;
+    // Get token symbols from addresses
+    const baseTokenSymbol = await hydration.getTokenSymbol(pool.baseTokenAddress);
+    const quoteTokenSymbol = await hydration.getTokenSymbol(pool.quoteTokenAddress);
     
     logger.info(`Removing ${percentageToRemove}% liquidity from pool ${poolAddress}`);
 
@@ -81,7 +82,8 @@ export async function removeLiquidity(
       const api = polkadot.api;
       
       let removeLiquidityTx;
-      const poolType = pool.type?.toLowerCase() || POOL_TYPE.XYK; // Default to XYK if type is not provided
+      // Get pool type
+      const poolType = pool.poolType?.toLowerCase() || POOL_TYPE.XYK; // Default to XYK if type is not provided
 
       logger.info(`Removing liquidity from ${poolType} pool (${poolAddress})`);
 

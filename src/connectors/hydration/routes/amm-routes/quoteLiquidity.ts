@@ -64,12 +64,16 @@ export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
             throw httpNotFound(`Pool not found: ${poolAddress}`);
           }
 
+          // Get token symbols
+          const baseTokenSymbol = await hydration.getTokenSymbol(poolInfo.baseTokenAddress);
+          const quoteTokenSymbol = await hydration.getTokenSymbol(poolInfo.quoteTokenAddress);
+
           logger.info(`Pool info for quoteLiquidity:`, {
             poolAddress,
-            poolType: poolInfo.type,
-            baseToken: poolInfo.baseToken.symbol,
-            quoteToken: poolInfo.quoteToken.symbol,
-            currentPrice: poolInfo.price
+            poolType: poolInfo.poolType,
+            baseToken: baseTokenSymbol,
+            quoteToken: quoteTokenSymbol,
+            fee: poolInfo.feePct
           });
           
           // Determine price range based on pool type
@@ -79,12 +83,12 @@ export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           let priceRange = 0.05; // Default 5%
           
           // Adjust price range based on pool type
-          if (poolInfo.type?.toLowerCase().includes('stable')) {
+          if (poolInfo.poolType?.toLowerCase().includes('stable')) {
             priceRange = 0.005; // 0.5% for stable pools
-          } else if (poolInfo.type?.toLowerCase().includes('xyk') || 
-                   poolInfo.type?.toLowerCase().includes('constantproduct')) {
+          } else if (poolInfo.poolType?.toLowerCase().includes('xyk') || 
+                   poolInfo.poolType?.toLowerCase().includes('constantproduct')) {
             priceRange = 0.05; // 5% for XYK pools
-          } else if (poolInfo.type?.toLowerCase().includes('omni')) {
+          } else if (poolInfo.poolType?.toLowerCase().includes('omni')) {
             priceRange = 0.15; // 15% for Omnipool (wider range)
           }
           
@@ -97,7 +101,7 @@ export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
 
           if (baseTokenAmount && quoteTokenAmount) {
             // If both amounts are provided, choose based on pool type
-            if (poolInfo.type?.toLowerCase().includes('stable')) {
+            if (poolInfo.poolType?.toLowerCase().includes('stable')) {
               // For stable pools, prefer the token with lower volatility (usually quote)
               amount = quoteTokenAmount;
               amountType = 'quote';
@@ -123,12 +127,12 @@ export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           let positionStrategy = PositionStrategyType.Balanced;
           
           // For stable pools, always use balanced
-          if (poolInfo.type?.toLowerCase().includes('stable')) {
+          if (poolInfo.poolType?.toLowerCase().includes('stable')) {
             positionStrategy = PositionStrategyType.Balanced;
           } 
           // For XYK pools, use a strategy based on current price vs range
-          else if (poolInfo.type?.toLowerCase().includes('xyk') || 
-                  poolInfo.type?.toLowerCase().includes('constantproduct')) {
+          else if (poolInfo.poolType?.toLowerCase().includes('xyk') || 
+                  poolInfo.poolType?.toLowerCase().includes('constantproduct')) {
             // If price is near bottom of range, favor base token (BaseHeavy)
             if (currentPrice < currentPrice * (1 - priceRange * 0.5)) {
               positionStrategy = PositionStrategyType.BaseHeavy;
@@ -143,13 +147,13 @@ export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
             }
           }
           // For Omnipool, use imbalanced
-          else if (poolInfo.type?.toLowerCase().includes('omni')) {
+          else if (poolInfo.poolType?.toLowerCase().includes('omni')) {
             positionStrategy = PositionStrategyType.Imbalanced;
           }
 
           logger.info(`Quote parameters:`, {
             poolAddress,
-            poolType: poolInfo.type,
+            poolType: poolInfo.poolType,
             amountType,
             amount,
             lowerPrice,

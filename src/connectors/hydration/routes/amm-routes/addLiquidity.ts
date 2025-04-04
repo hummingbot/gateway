@@ -65,8 +65,9 @@ async function addLiquidity(
     throw httpNotFound(`Pool not found: ${poolId}`);
   }
 
-  const baseTokenSymbol = pool.baseToken.symbol;
-  const quoteTokenSymbol = pool.quoteToken.symbol;
+  // Get token symbols from addresses
+  const baseTokenSymbol = await hydration.getTokenSymbol(pool.baseTokenAddress);
+  const quoteTokenSymbol = await hydration.getTokenSymbol(pool.quoteTokenAddress);
 
   // Validate amounts
   if (baseTokenAmount <= 0 && quoteTokenAmount <= 0) {
@@ -129,7 +130,7 @@ async function addLiquidity(
     const api = polkadot.api;
     
     let addLiquidityTx;
-    const poolType = pool.type?.toLowerCase() || POOL_TYPE.XYK; // Default to XYK if type is not provided
+    const poolType = pool.poolType?.toLowerCase() || POOL_TYPE.XYK; // Default to XYK if type is not provided
 
     logger.info(`Adding liquidity to ${poolType} pool (${poolId})`);
 

@@ -4,7 +4,6 @@ import { HydrationConfig } from './hydration.config';
 import {
   BinLiquidity,
   SwapQuote,
-  PositionInfo,
   PositionStrategyType,
   LiquidityQuote,
   SwapRoute,
@@ -12,8 +11,59 @@ import {
 } from './hydration.types';
 import { KeyringPair } from '@polkadot/keyring/types';
 import { ApiPromise, WsProvider } from '@polkadot/api';
-import { BigNumber, PoolService, Trade, TradeRouter, TradeType, PoolBase, PoolType } from '@galacticcouncil/sdk';
+import { BigNumber, PoolService, Trade, TradeRouter, TradeType, PoolBase, PoolToken } from '@galacticcouncil/sdk';
 import { cryptoWaitReady } from '@polkadot/util-crypto';
+
+// Add interface for extended pool data
+interface ExtendedPoolBase extends Omit<PoolBase, 'tokens'> {
+  reserves?: BigNumber[];
+  tokens: Array<PoolToken & {
+    balance?: BigNumber;
+  }>;
+}
+
+// Add the external pool info type
+interface ExternalPoolInfo {
+  address: string;
+  baseTokenAddress: string;
+  quoteTokenAddress: string;
+  feePct: number;
+  price: number;
+  baseTokenAmount: number;
+  quoteTokenAmount: number;
+  poolType: string;
+  liquidity?: number;
+}
+
+// Add the Quote interface
+interface Quote {
+  type: 'Buy' | 'Sell';
+  amountIn: string;
+  amountOut: string;
+  price: string;
+  priceImpact: string;
+  fee: string;
+  route: string[];
+}
+
+// Update the PositionInfo interface to use token addresses instead of token objects
+interface PositionInfo {
+  positionAddress: string;
+  ownerAddress: string;
+  poolAddress: string;
+  baseTokenAddress: string;
+  quoteTokenAddress: string;
+  lowerPrice: number;
+  upperPrice: number;
+  baseTokenAmount: number;
+  quoteTokenAmount: number;
+  baseFeeAmount: number;
+  quoteFeeAmount: number;
+  liquidity: number;
+  inRange: boolean;
+  createdAt: number;
+  apr: number;
+}
 
 /**
  * Main class for interacting with the Hydration protocol on Polkadot
@@ -162,15 +212,15 @@ export class Hydration {
    * Get all available pools
    * @returns A Promise that resolves to an array of pool information
    */
-  async getAllPools() {
+  private async getAllPools(): Promise<ExternalPoolInfo[]> {
     try {
-      if (!this.ready()) {
-        await this.init(this.polkadot.network);
-      }
-      return await this.poolService.getPools([]);
+      const poolAddresses = await this.getPoolAddresses();
+      const poolPromises = poolAddresses.map(address => this.getPoolInfo(address));
+      const pools = await Promise.all(poolPromises);
+      return pools.filter((pool): pool is ExternalPoolInfo => pool !== null);
     } catch (error) {
       logger.error(`Failed to get all pools: ${error.message}`);
-      throw error;
+      return [];
     }
   }
 
@@ -179,15 +229,15 @@ export class Hydration {
    * @param poolAddress The address of the pool
    * @returns A Promise that resolves to pool information or null if not found
    */
-  async getPoolInfo(poolAddress: string): Promise<HydrationPoolInfo | null> {
+  async getPoolInfo(poolAddress: string): Promise<ExternalPoolInfo | null> {
     try {
       // Check cache first
       const currentTime = Date.now();
-      if (
-        this.poolCache.has(poolAddress) &&
-        this.poolCacheExpiry.get(poolAddress) > currentTime
-      ) {
-        return this.poolCache.get(poolAddress);
+      const cachedPool = this.poolCache.get(poolAddress);
+      const cacheExpiry = this.poolCacheExpiry.get(poolAddress);
+
+      if (cachedPool && cacheExpiry && currentTime < cacheExpiry) {
+        return this.toExternalPoolInfo(cachedPool, poolAddress);
       }
 
       // Ensure the instance is ready
@@ -198,32 +248,12 @@ export class Hydration {
       // Get pool data from the SDK
       const pools = await this.poolService.getPools([]); // Get all pools
       
-      // Debug logging for pools
-      logger.info('=== Available Pools ===');
-      pools.forEach((pool) => {
-        logger.info('-------------------');
-        // logger.info(JSON.stringify(pool, null, 2));
-        logger.info(`  ID: ${pool.id}`);
-        logger.info(`  Address: ${pool.address}`);
-        logger.info(`  Type: ${pool.type || 'Unknown'}`);
-        logger.info(`  Tokens: ${pool.tokens.map(t => t.symbol).join(' / ')}`);
-        logger.info('-------------------');
-      });
-      
-      logger.debug(`Searching for pool address: ${poolAddress}`);
-      
-      const poolData = pools.find(pool => {
-        const matches = pool.address === poolAddress;
-        logger.debug(`Comparing pool ${pool.address} with ${poolAddress}: ${matches}`);
-        return matches;
-      });
+      const poolData = pools.find(pool => pool.address === poolAddress);
 
       if (!poolData) {
         logger.error(`Pool not found: ${poolAddress}`);
         return null;
       }
-
-      logger.debug('Found pool data:', JSON.stringify(poolData, null, 2));
 
       // Get token info
       const baseToken = await this.polkadot.getToken(poolData.tokens[0].symbol);
@@ -236,90 +266,130 @@ export class Hydration {
       // Cast poolData to any to access properties that might not be in the PoolBase type
       const poolDataAny = poolData as any;
 
-      // Format token amounts based on their decimals
-      const baseTokenAmount = poolData.tokens[0].balance ? 
-        Number(BigNumber(poolData.tokens[0].balance.toString()).div(10 ** baseToken.decimals).toFixed(6)) : 0;
-      
-      const quoteTokenAmount = poolData.tokens[1].balance ? 
-        Number(BigNumber(poolData.tokens[1].balance.toString()).div(10 ** quoteToken.decimals).toFixed(6)) : 0;
-
-      // Calculate price using the SDK's trade router
+      // Initialize amounts with safe defaults
+      let baseTokenAmount = 0;
+      let quoteTokenAmount = 0;
       let poolPrice = 0;
-      try {
-        // Get token IDs for the trade router
-        const assets = await this.tradeRouter.getAllAssets();
-        const baseTokenId = assets.find(a => a.symbol === poolData.tokens[0].symbol)?.id;
-        const quoteTokenId = assets.find(a => a.symbol === poolData.tokens[1].symbol)?.id;
 
-        if (!baseTokenId || !quoteTokenId) {
-          throw new Error('Failed to find token IDs in trade router');
+      try {
+        // Get reserves from the SDK
+        const reserves = await this.getPoolReserves(poolAddress);
+        
+        if (reserves) {
+          // Calculate amounts using reserves
+          const baseAmount = Number(reserves.baseReserve
+            .div(BigNumber(10).pow(baseToken.decimals))
+            .toFixed(baseToken.decimals));
+          
+          const quoteAmount = Number(reserves.quoteReserve
+            .div(BigNumber(10).pow(quoteToken.decimals))
+            .toFixed(quoteToken.decimals));
+
+          // Validate the calculated amounts
+          baseTokenAmount = !isNaN(baseAmount) && isFinite(baseAmount) ? baseAmount : 0;
+          quoteTokenAmount = !isNaN(quoteAmount) && isFinite(quoteAmount) ? quoteAmount : 0;
+        } 
+        // Fallback to token balances if reserves not available
+        else if (poolData.tokens[0].balance && poolData.tokens[1].balance) {
+          const baseAmount = Number(BigNumber(poolData.tokens[0].balance.toString())
+            .div(BigNumber(10).pow(baseToken.decimals))
+            .toFixed(baseToken.decimals));
+          
+          const quoteAmount = Number(BigNumber(poolData.tokens[1].balance.toString())
+            .div(BigNumber(10).pow(quoteToken.decimals))
+            .toFixed(quoteToken.decimals));
+
+          // Validate the calculated amounts
+          baseTokenAmount = !isNaN(baseAmount) && isFinite(baseAmount) ? baseAmount : 0;
+          quoteTokenAmount = !isNaN(quoteAmount) && isFinite(quoteAmount) ? quoteAmount : 0;
         }
 
-        // Use a small amount (1 unit) to get the spot price
-        const amountBN = BigNumber('1');
-        
-        // Get both buy and sell quotes to calculate the mid price
-        const buyQuote = await this.tradeRouter.getBestBuy(
-          quoteTokenId,
-          baseTokenId,
-          amountBN
-        );
+        // Calculate price using the SDK's trade router
+        try {
+          const assets = await this.tradeRouter.getAllAssets();
+          const baseTokenId = assets.find(a => a.symbol === poolData.tokens[0].symbol)?.id;
+          const quoteTokenId = assets.find(a => a.symbol === poolData.tokens[1].symbol)?.id;
 
-        const sellQuote = await this.tradeRouter.getBestSell(
-          baseTokenId,
-          quoteTokenId,
-          amountBN
-        );
-
-        if (buyQuote && sellQuote) {
-          // Convert quotes to human-readable format
-          const buyHuman = buyQuote.toHuman();
-          const sellHuman = sellQuote.toHuman();
-
-          // Calculate mid price from buy and sell quotes
-          const buyPrice = Number(buyHuman.spotPrice);
-          const sellPrice = Number(sellHuman.spotPrice);
-          
-          // Use the average of buy and sell prices
-          poolPrice = Number(((buyPrice + sellPrice) / 2).toFixed(6));
-
-          // Log the price calculation for debugging
-          logger.info(`Pool price calculation for ${poolAddress}:`, {
-            buyPrice,
-            sellPrice,
-            midPrice: poolPrice,
-            buyQuote: buyHuman,
-            sellQuote: sellHuman,
-            poolType: poolData.type,
-            baseTokenAmount,
-            quoteTokenAmount,
-            baseTokenDecimals: baseToken.decimals,
-            quoteTokenDecimals: quoteToken.decimals,
-            rawBaseBalance: poolData.tokens[0].balance?.toString(),
-            rawQuoteBalance: poolData.tokens[1].balance?.toString()
-          });
-
-          // Validate the calculated price
-          if (poolPrice <= 0 || isNaN(poolPrice)) {
-            logger.warn(`Invalid price calculated for pool ${poolAddress}: ${poolPrice}`);
-            throw new Error('Invalid pool price');
+          if (!baseTokenId || !quoteTokenId) {
+            throw new Error('Failed to find token IDs in trade router');
           }
-        } else {
-          throw new Error('Failed to get trade quotes for price calculation');
+
+          // Use a small amount (1 unit) to get the spot price
+          const amountBN = BigNumber('1');
+          
+          // Get both buy and sell quotes to calculate the mid price
+          const buyQuote = await this.tradeRouter.getBestBuy(
+            quoteTokenId,
+            baseTokenId,
+            amountBN
+          );
+
+          const sellQuote = await this.tradeRouter.getBestSell(
+            baseTokenId,
+            quoteTokenId,
+            amountBN
+          );
+
+          if (buyQuote && sellQuote) {
+            const buyHuman = buyQuote.toHuman();
+            const sellHuman = sellQuote.toHuman();
+
+            const buyPrice = Number(buyHuman.spotPrice);
+            const sellPrice = Number(sellHuman.spotPrice);
+            
+            // Validate and set the pool price
+            const midPrice = (buyPrice + sellPrice) / 2;
+            poolPrice = !isNaN(midPrice) && isFinite(midPrice) ? Number(midPrice.toFixed(6)) : 1;
+          }
+        } catch (priceError) {
+          logger.error(`Failed to calculate pool price: ${priceError.message}`);
+          // If price calculation fails, try to derive it from token amounts
+          if (quoteTokenAmount > 0 && baseTokenAmount > 0) {
+            poolPrice = quoteTokenAmount / baseTokenAmount;
+          } else {
+            poolPrice = 1; // Fallback to 1:1 price
+          }
+        }
+
+        // Log the calculations for debugging
+        logger.debug('Token calculations:', {
+          baseToken: {
+            symbol: baseToken.symbol,
+            decimals: baseToken.decimals,
+            amount: baseTokenAmount
+          },
+          quoteToken: {
+            symbol: quoteToken.symbol,
+            decimals: quoteToken.decimals,
+            amount: quoteTokenAmount
+          },
+          price: poolPrice
+        });
+
+      } catch (error) {
+        logger.error(`Error calculating token amounts: ${error.message}`);
+        // Use safe defaults
+        baseTokenAmount = 0;
+        quoteTokenAmount = 0;
+        poolPrice = 1;
+      }
+
+      // Try to get liquidity info with validation
+      let liquidity = 1000000; // Default liquidity
+      try {
+        if (poolDataAny.liquidity) {
+          const liquidityValue = typeof poolDataAny.liquidity === 'object' && 'toNumber' in poolDataAny.liquidity ? 
+            poolDataAny.liquidity.toNumber() : 
+            Number(poolDataAny.liquidity);
+          
+          liquidity = !isNaN(liquidityValue) && isFinite(liquidityValue) ? liquidityValue : 1000000;
         }
       } catch (error) {
-        logger.error(`Failed to calculate pool price for ${poolAddress}: ${error.message}`);
-        throw new Error('Failed to calculate pool price');
+        logger.warn(`Error getting liquidity value: ${error.message}`);
       }
-        
-      // Try to get liquidity info
-      const liquidity = poolDataAny.liquidity ? 
-        (typeof poolDataAny.liquidity === 'object' && 'toNumber' in poolDataAny.liquidity) ? 
-          poolDataAny.liquidity.toNumber() : Number(poolDataAny.liquidity) 
-        : 1000000; // Default liquidity if none available
 
-      // Create pool info with available data
-      const pool: HydrationPoolInfo = {
+      // Create internal pool info with validated values
+      const internalPool: HydrationPoolInfo = {
         id: poolData.id,
         poolAddress,
         baseToken: {
@@ -336,26 +406,29 @@ export class Hydration {
           name: quoteToken.name,
           chainId: Number(quoteToken.chainId)
         },
-        fee: poolDataAny.fee ? Number(poolDataAny.fee) : 500, // Default fee in basis points
-        liquidity: liquidity,
+        fee: poolDataAny.fee ? Number(poolDataAny.fee) || 500 : 500,
+        liquidity,
         sqrtPrice: poolDataAny.sqrtPrice ? poolDataAny.sqrtPrice.toString() : '1000',
-        tick: poolDataAny.tick ? Number(poolDataAny.tick) : 0,
+        tick: poolDataAny.tick ? Number(poolDataAny.tick) || 0 : 0,
         price: poolPrice,
-        volume24h: poolDataAny.volume24h ? Number(poolDataAny.volume24h) : 100000,
-        volumeWeek: poolDataAny.volumeWeek ? Number(poolDataAny.volumeWeek) : 500000,
-        tvl: poolDataAny.tvl ? Number(poolDataAny.tvl) : 1000000,
-        feesUSD24h: poolDataAny.feesUSD24h ? Number(poolDataAny.feesUSD24h) : 1000,
-        apr: poolDataAny.apr ? Number(poolDataAny.apr) : 5,
+        volume24h: poolDataAny.volume24h ? Number(poolDataAny.volume24h) || 100000 : 100000,
+        volumeWeek: poolDataAny.volumeWeek ? Number(poolDataAny.volumeWeek) || 500000 : 500000,
+        tvl: poolDataAny.tvl ? Number(poolDataAny.tvl) || 1000000 : 1000000,
+        feesUSD24h: poolDataAny.feesUSD24h ? Number(poolDataAny.feesUSD24h) || 1000 : 1000,
+        apr: poolDataAny.apr ? Number(poolDataAny.apr) || 5 : 5,
         type: poolData.type || 'Unknown',
         baseTokenAmount,
         quoteTokenAmount
       };
 
-      // Cache the result
-      this.poolCache.set(poolAddress, pool);
+      // Cache the internal pool info
+      this.poolCache.set(poolAddress, internalPool);
       this.poolCacheExpiry.set(poolAddress, currentTime + this.CACHE_TTL_MS);
 
-      return pool;
+      // Convert to external format and return
+      const externalPool = this.toExternalPoolInfo(internalPool, poolAddress);
+      this.logPoolInfo(externalPool);
+      return externalPool;
     } catch (error) {
       logger.error(`Failed to get pool info for ${poolAddress}: ${error.message}`);
       return null;
@@ -367,17 +440,12 @@ export class Hydration {
    * @param poolAddress The address of the pool
    * @returns A Promise that resolves to an array of bin liquidity
    */
-  async getPoolLiquidity(poolAddress: string): Promise<BinLiquidity[]> {
+  private async getLiquidityDistribution(poolAddress: string): Promise<BinLiquidity[]> {
     try {
       // Get pool info
       const poolInfo = await this.getPoolInfo(poolAddress);
       if (!poolInfo) {
         throw new Error(`Pool not found: ${poolAddress}`);
-      }
-
-      // Ensure the instance is ready
-      if (!this.ready()) {
-        await this.init(this.polkadot.network);
       }
 
       // Get liquidity distribution from the SDK
@@ -404,8 +472,8 @@ export class Hydration {
 
       return bins;
     } catch (error) {
-      logger.error(`Failed to get pool liquidity for ${poolAddress}: ${error.message}`);
-      throw error;
+      logger.error(`Failed to get liquidity distribution for ${poolAddress}: ${error.message}`);
+      return [];
     }
   }
 
@@ -416,47 +484,19 @@ export class Hydration {
    * @param tokenMintB Optional filter by quote token
    * @returns A Promise that resolves to a list of Hydration pools
    */
-  async getPools(
-    limit: number = 100,
-    tokenMintA?: string,
-    tokenMintB?: string
-  ): Promise<HydrationPoolInfo[]> {
+  async getPools(tokenMintA?: string, tokenMintB?: string): Promise<ExternalPoolInfo[]> {
     try {
-      // Ensure the instance is ready
-      if (!this.ready()) {
-        await this.init(this.polkadot.network);
-      }
-
-      // Get all pools from the SDK
-      // @ts-ignore - Generic Method, needs to improve
-      const pools = await this.poolService.getAllPools();
-      const result: HydrationPoolInfo[] = [];
-
-      // Process each pool
-      for (const pool of pools) {
-        if (result.length >= limit) break;
-
-        // Get detailed pool info
-        const poolInfo = await this.getPoolInfo(pool.address);
-
-        if (!poolInfo) continue;
-
-        // Filter by tokens if specified
-        const baseTokenMatches = !tokenMintA || poolInfo.baseToken.address === tokenMintA;
-        const quoteTokenMatches = !tokenMintB || poolInfo.quoteToken.address === tokenMintB;
-
-        if (baseTokenMatches && quoteTokenMatches) {
-          result.push(poolInfo);
-        }
-      }
-
-      // Sort pools by TVL
-      result.sort((a, b) => b.tvl - a.tvl);
-
-      return result.slice(0, limit);
+      const pools = await this.getAllPools();
+      return pools
+        .map(poolInfo => {
+          const baseTokenMatches = !tokenMintA || poolInfo.baseTokenAddress === tokenMintA;
+          const quoteTokenMatches = !tokenMintB || poolInfo.quoteTokenAddress === tokenMintB;
+          return baseTokenMatches && quoteTokenMatches ? poolInfo : null;
+        })
+        .filter((pool): pool is ExternalPoolInfo => pool !== null);
     } catch (error) {
       logger.error(`Failed to get pools: ${error.message}`);
-      throw error;
+      return [];
     }
   }
 
@@ -816,8 +856,8 @@ export class Hydration {
           positionAddress: position.id,
           ownerAddress: wallet.address,
           poolAddress,
-          baseToken: poolInfo.baseToken,
-          quoteToken: poolInfo.quoteToken,
+          baseTokenAddress: poolInfo.baseTokenAddress,
+          quoteTokenAddress: poolInfo.quoteTokenAddress,
           lowerPrice,
           upperPrice,
           baseTokenAmount,
@@ -846,11 +886,6 @@ export class Hydration {
    */
   async getPositionInfo(positionAddress: string, wallet: KeyringPair): Promise<PositionInfo> {
     try {
-      // Ensure the instance is ready
-      if (!this.ready()) {
-        await this.init(this.polkadot.network);
-      }
-
       // Get position data from the SDK
       // @ts-ignore - Generic Method, needs to improve
       const position = await this.poolService.getPosition(positionAddress);
@@ -900,7 +935,6 @@ export class Hydration {
       // Calculate APR if available
       let apr = position.apr || 0;
       if (!apr && position.creationTimestamp) {
-        // If APR is not directly provided, estimate it based on fees and age
         const ageInDays = Math.max((Date.now() - position.creationTimestamp) / (1000 * 60 * 60 * 24), 1);
         const valueCollected = (baseFeeAmount * poolInfo.price) + quoteFeeAmount;
         const positionValue = (baseTokenAmount * poolInfo.price) + quoteTokenAmount;
@@ -914,8 +948,8 @@ export class Hydration {
         positionAddress,
         ownerAddress: wallet.address,
         poolAddress,
-        baseToken: poolInfo.baseToken,
-        quoteToken: poolInfo.quoteToken,
+        baseTokenAddress: poolInfo.baseTokenAddress,
+        quoteTokenAddress: poolInfo.quoteTokenAddress,
         lowerPrice,
         upperPrice,
         baseTokenAmount,
@@ -1326,7 +1360,7 @@ export class Hydration {
       // Get current pool state (use default values if not available)
       const currentPrice = poolInfo.price || 10;
       const currentLiquidity = poolInfo.liquidity || 1000000;
-      const poolType = poolInfo.type || 'Unknown';
+      const poolType = poolInfo.poolType;
 
       // Validate amount
       if (!amount || amount <= 0) {
@@ -1549,51 +1583,114 @@ export class Hydration {
   }
 
   /**
-   * Convert pool to PoolInfo format
-   * @param pool Pool object
-   * @returns Pool information
+   * Get pool reserves from the SDK
+   * @param poolAddress The pool address
+   * @returns A Promise that resolves to the pool reserves
    */
-  private async convertPoolToPoolInfo(pool: PoolBase): Promise<any> {
-    // Get base and quote token info
-    const baseToken = await this.polkadot.getToken(pool.tokens[0].symbol);
-    const quoteToken = await this.polkadot.getToken(pool.tokens[1].symbol);
+  private async getPoolReserves(poolAddress: string): Promise<{ baseReserve: BigNumber; quoteReserve: BigNumber } | null> {
+    try {
+      // Get pool from SDK
+      const pools = await this.poolService.getPools([]);
+      const pool = pools.find(p => p.address === poolAddress);
+      
+      if (!pool) {
+        logger.error(`Pool not found: ${poolAddress}`);
+        return null;
+      }
 
-    // Cast pool to any to access properties that might not be in the PoolBase type
-    const poolAny = pool as any;
+      // Cast to extended type after basic validation
+      const extendedPool = pool as unknown as ExtendedPoolBase;
 
+      // Try different methods to get reserves
+      let baseReserve: BigNumber;
+      let quoteReserve: BigNumber;
+
+      // Method 1: Direct reserves access
+      if (extendedPool.reserves && Array.isArray(extendedPool.reserves)) {
+        [baseReserve, quoteReserve] = extendedPool.reserves;
+      }
+      // Method 2: Through token balances
+      else if (extendedPool.tokens && Array.isArray(extendedPool.tokens)) {
+        baseReserve = BigNumber(extendedPool.tokens[0].balance?.toString() || '0');
+        quoteReserve = BigNumber(extendedPool.tokens[1].balance?.toString() || '0');
+      }
+      // Method 3: Through SDK's getReserves method if available
+      else if ('getReserves' in this.poolService) {
+        // @ts-ignore - Using SDK method that might not be in type definitions
+        const reserves = await this.poolService.getReserves(poolAddress);
+        if (reserves && Array.isArray(reserves)) {
+          [baseReserve, quoteReserve] = reserves;
+        }
+      }
+
+      if (!baseReserve || !quoteReserve) {
+        throw new Error('Could not get pool reserves');
+      }
+
+      return {
+        baseReserve: BigNumber(baseReserve.toString()),
+        quoteReserve: BigNumber(quoteReserve.toString())
+      };
+    } catch (error) {
+      logger.error(`Failed to get pool reserves: ${error.message}`);
+      return null;
+    }
+  }
+
+  // Helper method to convert internal to external pool info
+  private toExternalPoolInfo(internalPool: HydrationPoolInfo, poolAddress: string): ExternalPoolInfo {
     return {
-      poolId: pool.address,
-      baseToken: {
-        symbol: baseToken.symbol,
-        address: baseToken.address,
-        decimals: baseToken.decimals
-      },
-      quoteToken: {
-        symbol: quoteToken.symbol,
-        address: quoteToken.address,
-        decimals: quoteToken.decimals
-      },
-      currentPrice: poolAny.price?.toNumber?.() || 0,
-      baseTokenLiquidity: poolAny.reserves?.[0]?.toNumber?.() || 0,
-      quoteTokenLiquidity: poolAny.reserves?.[1]?.toNumber?.() || 0,
-      fee: poolAny.fee?.toNumber?.() || 0,
-      volume24h: poolAny.volume24h || 0,
-      apr: poolAny.apr || 0
+      address: poolAddress,
+      baseTokenAddress: internalPool.baseToken.address,
+      quoteTokenAddress: internalPool.quoteToken.address,
+      feePct: internalPool.fee / 10000,
+      price: internalPool.price,
+      baseTokenAmount: internalPool.baseTokenAmount,
+      quoteTokenAmount: internalPool.quoteTokenAmount,
+      poolType: internalPool.type,
+      liquidity: internalPool.liquidity
     };
   }
 
   /**
-   * Get token decimals
-   * @param tokenSymbol Token symbol
-   * @returns Token decimals
+   * Get all pool addresses from the Hydration protocol
+   * @returns Array of pool addresses
    */
-  async getTokenDecimals(tokenSymbol: string): Promise<number> {
-    const token = await this.polkadot.getToken(tokenSymbol);
-    if (!token) {
-      throw new Error(`Token not found: ${tokenSymbol}`);
+  public async getPoolAddresses(): Promise<string[]> {
+    try {
+      const pools = await this.poolService.getPools([]);
+      return pools.map(pool => pool.address);
+    } catch (error) {
+      logger.error('Error getting pool addresses:', error);
+      throw error;
     }
-    return token.decimals;
+  }
+
+  // Update logging to use external pool info structure
+  private logPoolInfo(poolInfo: ExternalPoolInfo) {
+    logger.debug('Pool info response:', {
+      address: poolInfo.address,
+      poolType: poolInfo.poolType,
+      baseTokenAmount: poolInfo.baseTokenAmount,
+      quoteTokenAmount: poolInfo.quoteTokenAmount,
+      price: poolInfo.price,
+      feePct: poolInfo.feePct,
+      liquidity: poolInfo.liquidity
+    });
+  }
+
+  // Keep the getTokenSymbol method as it's being used
+  async getTokenSymbol(tokenAddress: string): Promise<string> {
+    try {
+      // Get token info from Polkadot
+      const token = await this.polkadot.getToken(tokenAddress);
+      if (!token) {
+        throw new Error(`Token not found: ${tokenAddress}`);
+      }
+      return token.symbol;
+    } catch (error) {
+      logger.error(`Failed to get token symbol: ${error.message}`);
+      throw error;
+    }
   }
 }
-
-

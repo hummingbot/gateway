@@ -40,17 +40,38 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
           throw fastify.httpErrors.serviceUnavailable('Hydration service unavailable');
         }
 
-        // Get all pools
-        const pools = await hydration.getAllPools();
+        // Get Hydration instance
+        const hydrationInstance = await Hydration.getInstance(network);
         
-        // Format pool information
-        const formattedPools = pools.map(pool => ({
-          address: pool.address,
-          type: pool.type || 'Unknown',
-          tokens: pool.tokens.map(t => t.symbol).filter(symbol => symbol !== '2-Pool' && symbol !== '4-Pool')
-        }));
+        try {
+          // Get all pool addresses first
+          const poolAddresses = await hydrationInstance.getPoolAddresses();
+          
+          // Get pool info for each address
+          const pools = await Promise.all(
+            poolAddresses.map(address => hydrationInstance.getPoolInfo(address))
+          );
 
-        return { pools: formattedPools };
+          // Filter out null values and map to response format
+          const poolList = (await Promise.all(
+            pools.filter(Boolean).map(async pool => {
+              const baseTokenSymbol = await hydrationInstance.getTokenSymbol(pool.baseTokenAddress);
+              const quoteTokenSymbol = await hydrationInstance.getTokenSymbol(pool.quoteTokenAddress);
+              
+              return {
+                address: pool.address,
+                type: pool.poolType || 'Unknown',
+                tokens: [baseTokenSymbol, quoteTokenSymbol],
+                fee: pool.feePct
+              };
+            })
+          )).filter(pool => pool.tokens.every(symbol => symbol !== '2-Pool' && symbol !== '4-Pool'));
+
+          return { pools: poolList };
+        } catch (e) {
+          logger.error(`Error listing pools:`, e);
+          throw fastify.httpErrors.internalServerError('Internal server error');
+        }
       } catch (e) {
         logger.error(`Error listing pools:`, e);
         throw fastify.httpErrors.internalServerError('Internal server error');
