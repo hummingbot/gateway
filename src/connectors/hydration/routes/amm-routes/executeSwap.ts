@@ -20,7 +20,7 @@ async function executeSwap(
   baseTokenIdentifier: string,
   quoteTokenIdentifier: string,
   amount: number,
-  side: 'buy' | 'sell',
+  side: 'BUY' | 'SELL',
   poolAddress: string,
   slippagePct?: number
 ): Promise<ExecuteSwapResponseType> {
@@ -34,8 +34,8 @@ async function executeSwap(
       throw httpBadRequest('Amount must be a positive number');
     }
 
-    if (side !== 'buy' && side !== 'sell') {
-      throw httpBadRequest('Side must be "buy" or "sell"');
+    if (side !== 'BUY' && side !== 'SELL') {
+      throw httpBadRequest('Side must be "BUY" or "SELL"');
     }
 
     const polkadot = await Polkadot.getInstance(network);
@@ -55,7 +55,7 @@ async function executeSwap(
       slippagePct
     );
 
-    logger.info(`Executed swap: ${amount} ${side === 'buy' ? quoteTokenIdentifier : baseTokenIdentifier} for ${result.totalOutputSwapped} ${side === 'buy' ? baseTokenIdentifier : quoteTokenIdentifier}`);
+    logger.info(`Executed swap: ${amount} ${side === 'BUY' ? quoteTokenIdentifier : baseTokenIdentifier} for ${result.totalOutputSwapped} ${side === 'BUY' ? baseTokenIdentifier : quoteTokenIdentifier}`);
 
     return {
       signature: result.signature,
@@ -106,7 +106,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
             baseToken: { type: 'string', examples: ['DOT'] },
             quoteToken: { type: 'string', examples: ['USDT'] },
             amount: { type: 'number', examples: [1.5] },
-            side: { type: 'string', enum: ['buy', 'sell'], examples: ['sell'] },
+            side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
             poolAddress: { type: 'string', examples: ['hydration-pool-0'] },
             slippagePct: { type: 'number', examples: [0.5] }
           }
@@ -130,7 +130,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           baseToken,
           quoteToken,
           amount,
-          side as 'buy' | 'sell',
+          side as 'BUY' | 'SELL',
           poolAddress,
           slippagePct
         );

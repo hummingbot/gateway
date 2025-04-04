@@ -505,7 +505,7 @@ export class Hydration {
    * @param baseTokenSymbol Base token symbol or address
    * @param quoteTokenSymbol Quote token symbol or address
    * @param amount Amount to swap
-   * @param side 'buy' or 'sell'
+   * @param side 'BUY' or 'SELL'
    * @param poolAddress Pool address (optional, will find best pool if not specified)
    * @param slippagePct Slippage percentage (optional, uses default if not specified)
    * @returns A Promise that resolves to a swap quote
@@ -514,7 +514,7 @@ export class Hydration {
     baseTokenSymbol: string,
     quoteTokenSymbol: string,
     amount: number,
-    side: 'buy' | 'sell',
+    side: 'BUY' | 'SELL',
     _poolAddress?: string,
     slippagePct?: number
   ): Promise<SwapQuote> {
@@ -547,7 +547,7 @@ export class Hydration {
       // Get the trade quote
       let trade: Trade;
 
-      if (side === 'buy') {
+      if (side === 'BUY') {
         // Buying base token with quote token
         // @ts-ignore - Ignorando erro de incompatibilidade de API
         trade = await this.tradeRouter.getBestBuy(
@@ -583,7 +583,7 @@ export class Hydration {
 
       let minAmountOut, maxAmountIn;
 
-      if (side === 'buy') {
+      if (side === 'BUY') {
         // For buys, we're getting a fixed output and paying a variable input
         minAmountOut = estimatedAmountOut; // Exact output
         maxAmountIn = estimatedAmountIn * (1 + effectiveSlippage / 100); // Allow input to be higher by slippage %
@@ -624,8 +624,8 @@ export class Hydration {
       }
 
       // Calculate balance changes
-      const baseTokenBalanceChange = side === 'buy' ? estimatedAmountOut : -estimatedAmountIn;
-      const quoteTokenBalanceChange = side === 'buy' ? -estimatedAmountIn : estimatedAmountOut;
+      const baseTokenBalanceChange = side === 'BUY' ? estimatedAmountOut : -estimatedAmountIn;
+      const quoteTokenBalanceChange = side === 'BUY' ? -estimatedAmountIn : estimatedAmountOut;
 
       return {
         estimatedAmountIn,
@@ -653,7 +653,7 @@ export class Hydration {
    * @param baseTokenSymbol Base token symbol or address
    * @param quoteTokenSymbol Quote token symbol or address
    * @param amount Amount to swap
-   * @param side 'buy' or 'sell'
+   * @param side 'BUY' or 'SELL'
    * @param poolAddress Pool address
    * @param slippagePct Slippage percentage (optional)
    * @returns A Promise that resolves to the swap execution result
@@ -663,7 +663,7 @@ export class Hydration {
     baseTokenSymbol: string,
     quoteTokenSymbol: string,
     amount: number,
-    side: 'buy' | 'sell',
+    side: 'BUY' | 'SELL',
     poolAddress: string,
     slippagePct?: number
   ): Promise<any> {
@@ -704,7 +704,7 @@ export class Hydration {
       const amountBN = BigNumber(amount.toString());
       let trade: Trade;
 
-      if (side === 'buy') {
+      if (side === 'BUY') {
         // @ts-ignore - Ignorando erro de incompatibilidade de API
         trade = await this.tradeRouter.getBestBuy(
           quoteTokenId,
@@ -731,7 +731,7 @@ export class Hydration {
       const tradeLimit = this.calculateTradeLimit(
         trade,
         effectiveSlippage,
-        side === 'buy' ? TradeType.Buy : TradeType.Sell
+        side === 'BUY' ? TradeType.Buy : TradeType.Sell
       );
 
       // Create the transaction
@@ -764,12 +764,12 @@ export class Hydration {
         });
       });
 
-      logger.info(`Executed swap: ${amount} ${side === 'buy' ? quoteTokenSymbol : baseTokenSymbol} for ${quote.estimatedAmountOut} ${side === 'buy' ? baseTokenSymbol : quoteTokenSymbol}`);
+      logger.info(`Executed swap: ${amount} ${side === 'BUY' ? quoteTokenSymbol : baseTokenSymbol} for ${quote.estimatedAmountOut} ${side === 'BUY' ? baseTokenSymbol : quoteTokenSymbol}`);
 
       return {
         signature: txHash,
-        totalInputSwapped: side === 'buy' ? BigNumber(quote.estimatedAmountIn.toString()).div(10 ** quoteToken.decimals).toString() : amount.toString(),
-        totalOutputSwapped: side === 'buy' ? amount.toString() : BigNumber(quote.estimatedAmountOut.toString()).div(10 ** quoteToken.decimals).toString(),
+        totalInputSwapped: side === 'BUY' ? BigNumber(quote.estimatedAmountIn.toString()).div(10 ** quoteToken.decimals).toString() : amount.toString(),
+        totalOutputSwapped: side === 'BUY' ? amount.toString() : BigNumber(quote.estimatedAmountOut.toString()).div(10 ** quoteToken.decimals).toString(),
         fee: quote.fee,
         baseTokenBalanceChange: BigNumber(quote.baseTokenBalanceChange.toString()).div(10 ** baseToken.decimals).toString(),
         quoteTokenBalanceChange: BigNumber(quote.quoteTokenBalanceChange.toString()).div(10 ** quoteToken.decimals).toString(),
