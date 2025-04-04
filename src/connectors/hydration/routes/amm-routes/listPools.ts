@@ -47,7 +47,7 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
         const formattedPools = pools.map(pool => ({
           address: pool.address,
           type: pool.type || 'Unknown',
-          tokens: pool.tokens.map(t => t.symbol)
+          tokens: pool.tokens.map(t => t.symbol).filter(symbol => symbol !== '2-Pool' && symbol !== '4-Pool')
         }));
 
         return { pools: formattedPools };
