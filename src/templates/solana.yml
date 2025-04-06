@@ -1,6 +1,6 @@
 networks:
   mainnet-beta:
-    nodeURL: https://api.mainnet-beta.solana.com
+    nodeURL: https://solana-mainnet.api.syndica.io/api-key/3eLoUA675TgasV63EnW4E2GABstUZdpHfQbrB8abv5H3aEFoTb6SzyKKBrzRfMALUcMDC1cxKJvrfgX52qtksko3hULxW9iTH7F
     tokenListType: FILE
     tokenListSource: src/templates/lists/solana.json
     nativeCurrencySymbol: SOL

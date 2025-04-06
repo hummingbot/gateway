@@ -1,7 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify';
 import sensible from '@fastify/sensible';
 
-import { fetchPoolsRoute } from './routes/amm-routes/fetchPools';
+// import { fetchPoolsRoute } from './routes/amm-routes/fetchPools';
 import { poolInfoRoute } from './routes/amm-routes/poolInfo';
 import { quoteSwapRoute } from './routes/amm-routes/quoteSwap';
 import { executeSwapRoute } from './routes/amm-routes/executeSwap';
