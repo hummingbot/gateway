@@ -50,7 +50,7 @@ async function quoteAmmSwap(
     rpcData = data.poolRpcData
   }
   
-  const [baseReserve, quoteReserve, status] = [rpcData.baseReserve || new BN(poolInfo.mintAmountA), rpcData.quoteReserve || new BN(poolInfo.mintAmountB)  , rpcData.status?.toNumber()]
+  const [baseReserve, quoteReserve, status] = [rpcData.baseReserve || rpcData.poolInfo.baseReserve, rpcData.quoteReserve || rpcData.poolInfo.quoteReserve  , rpcData.poolInfo.status]
 
   if (poolInfo.mintA.address !== inputMint && poolInfo.mintB.address !== inputMint)
     throw new Error('input mint does not match pool')
