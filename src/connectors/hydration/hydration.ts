@@ -305,6 +305,8 @@ export class Hydration {
         }
 
         // Calculate price using the SDK's trade router
+        let buyQuote;
+        let sellQuote;
         try {
           const assets = await this.tradeRouter.getAllAssets();
           const baseTokenId = assets.find(a => a.symbol === poolData.tokens[0].symbol)?.id;
@@ -318,17 +320,25 @@ export class Hydration {
           const amountBN = BigNumber('1');
           
           // Get both buy and sell quotes to calculate the mid price
-          const buyQuote = await this.tradeRouter.getBestBuy(
-            quoteTokenId,
-            baseTokenId,
-            amountBN
-          );
+          try {
+            buyQuote = await this.tradeRouter.getBestBuy(
+              quoteTokenId,
+              baseTokenId,
+              amountBN
+            );
+          } catch (error) {
+            throw error;
+          }
 
-          const sellQuote = await this.tradeRouter.getBestSell(
-            baseTokenId,
-            quoteTokenId,
-            amountBN
-          );
+          try {
+            sellQuote = await this.tradeRouter.getBestSell(
+              baseTokenId,
+              quoteTokenId,
+              amountBN
+            );
+          } catch (error) {
+            throw error;
+          }
 
           if (buyQuote && sellQuote) {
             const buyHuman = buyQuote.toHuman();
