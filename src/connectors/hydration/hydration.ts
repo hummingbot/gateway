@@ -543,9 +543,9 @@ export class Hydration {
       }
 
       // Find token IDs in the Hydration protocol
-      const assets = await this.tradeRouter.getAllAssets();
-      const baseTokenId = assets.find(a => a.symbol === baseToken.symbol)?.id;
-      const quoteTokenId = assets.find(a => a.symbol === quoteToken.symbol)?.id;
+      const assets = this.polkadot.tokenList;
+      const baseTokenId = assets.find(a => a.symbol === baseToken.symbol)?.address;
+      const quoteTokenId = assets.find(a => a.symbol === quoteToken.symbol)?.address;
 
       if (!baseTokenId || !quoteTokenId) {
         throw new Error(`Token not supported in Hydration: ${!baseTokenId ? baseToken.symbol : quoteToken.symbol}`);
