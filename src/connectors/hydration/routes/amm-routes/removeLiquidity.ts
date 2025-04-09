@@ -91,8 +91,8 @@ export async function removeLiquidity(
         case POOL_TYPE.XYK:
           // For XYK pools
           removeLiquidityTx = api.tx.xyk.removeLiquidity(
-            baseAsset.id,
-            quoteAsset.id,
+            baseAsset.address,
+            quoteAsset.address,
             liquidityToRemove.toString()
           );
           break;
@@ -108,7 +108,7 @@ export async function removeLiquidity(
           // For Omnipool, we need to specify which asset we're withdrawing
           // In Omnipool, we can only withdraw one asset at a time, so we use the base asset
           removeLiquidityTx = api.tx.omnipool.removeLiquidity(
-            baseAsset.id,
+            baseAsset.address,
             liquidityToRemove.toString()
           );
           break;
@@ -117,8 +117,8 @@ export async function removeLiquidity(
           // For Stableswap pools
           // We need to specify which assets we want to receive
           const assets = [
-            { assetId: baseAsset.id, amount: '0' }, // Ask for minimum amount
-            { assetId: quoteAsset.id, amount: '0' }  // System will calculate actual amounts
+            { assetId: baseAsset.address, amount: '0' }, // Ask for minimum amount
+            { assetId: quoteAsset.address, amount: '0' }  // System will calculate actual amounts
           ];
           
           removeLiquidityTx = api.tx.stableswap.removeLiquidity(

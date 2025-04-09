@@ -141,8 +141,8 @@ async function addLiquidity(
         
         // Create XYK add liquidity transaction
         addLiquidityTx = api.tx.xyk.addLiquidity(
-          baseAsset.id,
-          quoteAsset.id, 
+          baseAsset.address,
+          quoteAsset.address,
           baseAmountBN.toString(),
           quoteAmountMaxLimit.toString()
         );
@@ -150,12 +150,12 @@ async function addLiquidity(
 
       case POOL_TYPE.LBP:
         // For LBP, we use [assetId, amount] tuples
-        const amountA = [baseAsset.id, baseAmountBN.toString()];
-        const amountB = [quoteAsset.id, quoteAmountBN.toString()];
+        const amountA = [baseAsset.address, baseAmountBN.toString()];
+        const amountB = [quoteAsset.address, quoteAmountBN.toString()];
         
         addLiquidityTx = api.tx.lbp.addLiquidity(
-          [baseAsset.id, baseAmountBN.toString()],
-          [quoteAsset.id, quoteAmountBN.toString()]
+          [baseAsset.address, baseAmountBN.toString()],
+          [quoteAsset.address, quoteAmountBN.toString()]
         );
         break;
 
@@ -167,7 +167,7 @@ async function addLiquidity(
           const minSharesLimit = calculateMinSharesLimit(baseAmountBN, effectiveSlippage);
           
           addLiquidityTx = api.tx.omnipool.addLiquidityWithLimit(
-            baseAsset.id,
+            baseAsset.address,
             baseAmountBN.toString(),
             minSharesLimit.toString()
           );
@@ -176,7 +176,7 @@ async function addLiquidity(
           const minSharesLimit = calculateMinSharesLimit(quoteAmountBN, effectiveSlippage);
           
           addLiquidityTx = api.tx.omnipool.addLiquidityWithLimit(
-            quoteAsset.id,
+            quoteAsset.address,
             quoteAmountBN.toString(),
             minSharesLimit.toString()
           );
@@ -186,8 +186,8 @@ async function addLiquidity(
       case POOL_TYPE.STABLESWAP:
         // For Stableswap, we need to provide assets array with [id, amount] objects
         const assets = [
-          { assetId: baseAsset.id, amount: baseAmountBN.toString() },
-          { assetId: quoteAsset.id, amount: quoteAmountBN.toString() }
+          { assetId: baseAsset.address, amount: baseAmountBN.toString() },
+          { assetId: quoteAsset.address, amount: quoteAmountBN.toString() }
         ].filter(asset => new BigNumber(asset.amount).gt(0)); // Only include assets with amount > 0
         
         addLiquidityTx = api.tx.stableswap.addLiquidity(

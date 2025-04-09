@@ -197,15 +197,11 @@ export class Hydration {
    * @returns A Promise that resolves to an array of supported tokens
    */
   public async getAllTokens() {
-    try {
-      if (!this.ready()) {
-        await this.init(this.polkadot.network);
-      }
-      return await this.tradeRouter.getAllAssets();
-    } catch (error) {
-      logger.error(`Failed to get all tokens: ${error.message}`);
-      throw error;
+    if (!this.ready()) {
+      await this.init(this.polkadot.network);
     }
+
+    return this.polkadot.tokenList;
   }
 
   /**
@@ -308,9 +304,9 @@ export class Hydration {
         let buyQuote;
         let sellQuote;
         try {
-          const assets = await this.tradeRouter.getAllAssets();
-          const baseTokenId = assets.find(a => a.symbol === poolData.tokens[0].symbol)?.id;
-          const quoteTokenId = assets.find(a => a.symbol === poolData.tokens[1].symbol)?.id;
+          const assets = await this.getAllTokens();
+          const baseTokenId = assets.find(a => a.symbol === poolData.tokens[0].symbol)?.address;
+          const quoteTokenId = assets.find(a => a.symbol === poolData.tokens[1].symbol)?.address;
 
           if (!baseTokenId || !quoteTokenId) {
             throw new Error('Failed to find token IDs in trade router');
@@ -543,7 +539,7 @@ export class Hydration {
       }
 
       // Find token IDs in the Hydration protocol
-      const assets = this.polkadot.tokenList;
+      const assets = await this.getAllTokens();
       const baseTokenId = assets.find(a => a.symbol === baseToken.symbol)?.address;
       const quoteTokenId = assets.find(a => a.symbol === quoteToken.symbol)?.address;
 
@@ -702,9 +698,9 @@ export class Hydration {
       }
 
       // Find token IDs in the Hydration protocol
-      const assets = await this.tradeRouter.getAllAssets();
-      const baseTokenId = assets.find(a => a.symbol === baseToken.symbol)?.id;
-      const quoteTokenId = assets.find(a => a.symbol === quoteToken.symbol)?.id;
+      const assets = await this.getAllTokens();
+      const baseTokenId = assets.find(a => a.symbol === baseToken.symbol)?.address;
+      const quoteTokenId = assets.find(a => a.symbol === quoteToken.symbol)?.address;
 
       if (!baseTokenId || !quoteTokenId) {
         throw new Error(`Token not supported in Hydration: ${!baseTokenId ? baseToken.symbol : quoteToken.symbol}`);
