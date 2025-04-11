@@ -188,3 +188,83 @@ export function* splitInChunks<T>(
         yield target.slice(i, i + quantity);
     }
 }
+
+// /**
+//  * Decorator that wraps a method with retry and timeout logic.
+//  *
+//  * @param options.maxRetries         Maximum number of retries (default: 3)
+//  * @param options.delayBetweenRetries Delay (in ms) between retries (default: 1000)
+//  * @param options.timeout            Total allowed time (in ms) for the operation (default: 5000)
+//  * @param options.timeoutMessage     Error message in case of timeout (default: 'Timeout exceeded.')
+//  */
+// function runWithRetryAndTimeout(
+//     options?: {
+//         maxRetries?: number;
+//         delayBetweenRetries?: number;
+//         timeout?: number;
+//         timeoutMessage?: string;
+//     }
+// ) {
+//     const {
+//       maxRetries = 3,
+//       delayBetweenRetries = 1000,
+//       timeout = 5000,
+//       timeoutMessage = 'Timeout exceeded.'
+//     } = options || {};
+  
+//     return function (
+//       target: any,
+//       propertyKey: string,
+//       descriptor: PropertyDescriptor
+//     ) {
+//       const originalMethod = descriptor.value;
+  
+//       descriptor.value = async function (...args: any[]) {
+//         // Helper to delay execution.
+//         const sleep = (ms: number) =>
+//           new Promise<void>((resolve) => setTimeout(resolve, ms));
+  
+//         // Function that performs the retries.
+//         const callWithRetries = async (): Promise<any> => {
+//           const errors: Error[] = [];
+  
+//           for (let attempt = 0; attempt < maxRetries; attempt++) {
+//             try {
+//               // Execute the original method with proper binding.
+//               const result = await originalMethod.apply(this, args);
+//               return result;
+//             } catch (error: any) {
+//               errors.push(error);
+//               console.debug(
+//                 `${target.constructor.name}.${propertyKey} => attempt ${attempt + 1} of ${maxRetries} failed`
+//               );
+  
+//               // If more retries remain, wait before retrying.
+//               if (attempt < maxRetries - 1 && delayBetweenRetries > 0) {
+//                 await sleep(delayBetweenRetries);
+//               }
+//             }
+//           }
+//           // Aggregate all error messages for clarity.
+//           const aggregatedErrors = errors.map(err => err.message).join(';\n');
+//           throw new Error(
+//             `Failed to execute "${propertyKey}" after ${maxRetries} retries. Errors:\n${aggregatedErrors}`
+//           );
+//         };
+  
+//         // If timeout is set, race retry logic against a timeout promise.
+//         if (timeout > 0) {
+//           return await Promise.race([
+//             callWithRetries(),
+//             new Promise((_, reject) =>
+//               setTimeout(() => reject(new Error(timeoutMessage)), timeout)
+//             )
+//           ]);
+//         } else {
+//           return await callWithRetries();
+//         }
+//       };
+  
+//       return descriptor;
+//     };
+// }
