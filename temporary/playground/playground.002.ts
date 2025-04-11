@@ -1,123 +1,3 @@
-// noinspection JSUnusedGlobalSymbols
-/**
- *
- */
-export class Constant {
-    static defaultTimeout = new Constant('Default Timeout', 'Default timeout.', 60);
-    static defaultMaxNumberOfRetries = new Constant('Default Max Number of Retries', 'Default max number of retries.', 3);
-    static defaultDelayDelayBetweenRetries = new Constant('Default Delay Between Retries', 'Default delay between retries.', 5);
-    static defaultBatchSize = new Constant('Default Batch Size', 'Default batch size.', 100);
-    static defaultDelayBetweenBatches = new Constant('Default Delay Between Batches', 'Default delay between batches.', 5);
-
-    title: string;
-
-    description: string;
-
-    value: any;
-
-    /**
-     *
-     * @param title
-     * @param description
-     * @param value
-     */
-    constructor(title: string, description: string, value: any) {
-        this.title = title;
-        this.description = description;
-        this.value = value;
-    }
-
-    getValueAs<T>(): T {
-        return this.value as T;
-    }
-}
-
-
-/**
- *
- * @param value
- * @param errorMessage
- */
-export const getNotNullOrThrowError = <R>(
-    value?: any,
-    errorMessage: string = 'Value is null or undefined'
-): R => {
-    if (value === undefined || value === null)
-        throw new Error(errorMessage);
-
-    return value as R;
-};
-
-/**
- *
- * @param value
- * @param defaultValue
- */
-export const getOrDefault = <R>(value: any, defaultValue: R): R => {
-    if (value === undefined || value === null) return defaultValue;
-
-    return value as R;
-};
-
-/**
- *
- * @param milliseconds
- */
-export const sleep = (milliseconds: number) =>
-    new Promise((callback) => setTimeout(callback, milliseconds));
-
-/**
- * Same as Promise.all(items.map(item => task(item))), but it waits for
- * the first {batchSize} promises to finish before starting the next batch.
- *
- * @template A
- * @template B
- * @param {function(A): B} task The task to run for each item.
- * @param {A[]} items Arguments to pass to the task for each call.
- * @param {int} batchSize The number of items to process at a time.
- * @param {int} delayBetweenBatches Delay between each batch (milliseconds).
- * @returns {B[]}
- */
-export const promiseAllInBatches = async <I, O>(
-    task: (item: I) => Promise<O>,
-    items: any[],
-    batchSize: number = Constant.defaultBatchSize.getValueAs<number>(),
-    delayBetweenBatches: number = Constant.defaultDelayBetweenBatches.getValueAs<number>()
-): Promise<O[]> => {
-    let position = 0;
-    let results: any[] = [];
-
-    if (!batchSize) {
-        batchSize = items.length;
-    }
-
-    while (position < items.length) {
-        const itemsForBatch = items.slice(position, position + batchSize);
-        results = [
-            ...results,
-            ...(await Promise.all(itemsForBatch.map((item) => task(item)))),
-        ];
-        position += batchSize;
-
-        if (position < items.length) {
-            if (delayBetweenBatches > 0) {
-                await sleep(delayBetweenBatches);
-            }
-        }
-    }
-
-    return results;
-};
-
-export function* splitInChunks<T>(
-    target: T[],
-    quantity: number
-): Generator<T[], void> {
-    for (let i = 0; i < target.length; i += quantity) {
-        yield target.slice(i, i + quantity);
-    }
-}
-
 /**
  * Decorator that wraps a method with retry and timeout logic.
  *
@@ -137,7 +17,7 @@ function runWithRetryAndTimeout(
     const {
         maxRetries = 3,
         delayBetweenRetries = 1000,
-        timeout = 60000,
+        timeout = 5000,
         timeoutMessage = 'Timeout exceeded.'
     } = options || {};
 
@@ -200,3 +80,39 @@ function runWithRetryAndTimeout(
         return descriptor;
     };
 }
+
+// Example usage in a service class.
+class ExampleService {
+    private callCount = 0;
+
+    /**
+     * A simulated unstable operation that only succeeds on the third call.
+     */
+    @runWithRetryAndTimeout({
+        maxRetries: 5,
+        delayBetweenRetries: 500,
+        timeout: 3000,
+        timeoutMessage: 'Operation timed out.'
+    })
+    async unstableOperation(): Promise<string> {
+        this.callCount++;
+        console.log(`Attempt ${this.callCount}`);
+
+        // Fail the first two times to simulate instability.
+        if (this.callCount < 3) {
+            throw new Error('Temporary failure. Please try again.');
+        }
+        return 'Operation succeeded!';
+    }
+}
+
+// Test runner to demonstrate the decorator in action.
+(async (): Promise<void> => {
+    const service = new ExampleService();
+    try {
+        const result = await service.unstableOperation();
+        console.log('Result:', result);
+    } catch (error: any) {
+        console.error('Operation failed:', error.message);
+    }
+})();

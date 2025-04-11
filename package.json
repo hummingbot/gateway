@@ -22,7 +22,8 @@
     "test:unit": "GATEWAY_TEST_MODE=dev jest --runInBand ./test/",
     "test:cov": "GATEWAY_TEST_MODE=dev jest --runInBand --coverage ./test/",
     "test:scripts": "GATEWAY_TEST_MODE=dev jest --runInBand ./test-scripts/*.test.ts",
-    "cli": "node dist/src/index.js"
+    "cli": "node dist/src/index.js",
+    "playground": "START_SERVER=true NODE_ENV=development nodemon --exec \"node --inspect -r ts-node/register\" temporary/playground/playground.002.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.29.0",
