@@ -313,7 +313,7 @@ export class Raydium {
     return slippage * 100;
   }
 
-  async listAllPools(): Promise<
+  async listAllPools(maxPages = 3): Promise<
       Array<
           ApiV3PoolInfoConcentratedItem |
           ApiV3PoolInfoStandardItem |
@@ -321,29 +321,56 @@ export class Raydium {
       >
   > {
     try {
-      // Use the new SDK method getPoolList
-      const poolListResponse = await this.raydiumSDK.api.getPoolList({
-        page: 1,
-        pageSize: 1000, // maximum allowed by API
-        order: 'desc',
-        sort: 'liquidity',
-        type: PoolFetchType.Standard,
-      });
-      return poolListResponse.data;
+      let allPools = [];
+      let currentPage = 1;
+      let hasMoreData = true;
+      
+      while (hasMoreData && currentPage <= maxPages) {
+        logger.info(`Fetching pool page ${currentPage}/${maxPages}`);
+        
+        // Use the SDK method getPoolList with pagination
+        const poolListResponse = await this.raydiumSDK.api.getPoolList({
+          page: currentPage,
+          pageSize: 1000, // maximum allowed by API
+          order: 'desc',
+          sort: 'liquidity',
+          type: PoolFetchType.Standard,
+        });
+        
+        if (poolListResponse.data && poolListResponse.data.length > 0) {
+          allPools = [...allPools, ...poolListResponse.data];
+          logger.info(`Retrieved ${poolListResponse.data.length} pools from page ${currentPage}. Total pools: ${allPools.length}`);
+          
+          // Check if we received a full page of results
+          hasMoreData = poolListResponse.data.length === 1000;
+        } else {
+          hasMoreData = false;
+        }
+        
+        currentPage++;
+        
+        // Add a small delay to avoid rate limiting
+        if (hasMoreData && currentPage <= maxPages) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
+      
+      logger.info(`Total pools retrieved: ${allPools.length}`);
+      return allPools;
     } catch (error) {
-      logger.error('Error listing all pools:', error);
+      logger.error('Error listing pools:', error);
       throw error;
     }
   }
 
-// Update your existing method to call the new one:
-  async getAllPoolsFromAPI(): Promise<
+  // Update your existing method to call the new one:
+  async getAllPoolsFromAPI(maxPages = 3): Promise<
       Array<
           ApiV3PoolInfoConcentratedItem |
           ApiV3PoolInfoStandardItem |
           ApiV3PoolInfoStandardItemCpmm
       >
   > {
-    return this.listAllPools();
+    return this.listAllPools(maxPages);
   }
 }

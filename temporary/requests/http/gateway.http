@@ -207,6 +207,34 @@ Content-Type: application/json
 
 ###
 
+# GET /{{connector}}/amm/list-pools with token filtering
+GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/list-pools?network={{network}}&quoteToken={{quoteTokenSymbol}}&baseToken={{baseTokenSymbol}}
+Content-Type: application/json
+
+{
+}
+
+###
+
+
+# GET /{{connector}}/amm/list-pools with single token filter
+GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/list-pools?network={{network}}&quoteToken={{quoteTokenSymbol}}
+Content-Type: application/json
+
+{
+}
+
+###
+
+# GET /{{connector}}/amm/list-pools with maxPages parameter
+GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/list-pools?network={{network}}&maxPages=5
+Content-Type: application/json
+
+{
+}
+
+###
+
 # GET /{{connector}}/amm/pool-info
 GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/pool-info?network={{network}}&poolAddress={{poolAddress}}
 Content-Type: application/json

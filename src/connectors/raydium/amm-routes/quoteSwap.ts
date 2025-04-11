@@ -32,91 +32,136 @@ async function quoteAmmSwap(
   let poolKeys: any
   let rpcData: any
 
-  if (network === 'mainnet-beta') {
-    // note: api doesn't support get devnet pool info, so in devnet else we go rpc method
-    const [poolInfoData, poolKeysData] = await raydium.getPoolfromAPI(poolId)
-    poolInfo = poolInfoData as ApiV3PoolInfoStandardItem
-    poolKeys = poolKeysData
-    try {
-      rpcData = await raydium.raydiumSDK.liquidity.getPoolInfoFromRpc({ poolId })
-    } catch (error) {
-      rpcData = poolInfo
+  try {
+    if (network === 'mainnet-beta') {
+      // First try to get pool info from API
+      const [poolInfoData, poolKeysData] = await raydium.getPoolfromAPI(poolId)
+      if (!poolInfoData) {
+        throw new Error(`Failed to get pool info from API for pool ${poolId}`)
+      }
+      poolInfo = poolInfoData as ApiV3PoolInfoStandardItem
+      poolKeys = poolKeysData
+
+      // Get reserves using only the API data, properly scaled by token decimals
+      const baseReserveAmount = new BN(
+        new Decimal(poolInfo.mintAmountB)
+          .mul(10 ** poolInfo.mintB.decimals)
+          .toFixed(0)
+      )
+      const quoteReserveAmount = new BN(
+        new Decimal(poolInfo.mintAmountA)
+          .mul(10 ** poolInfo.mintA.decimals)
+          .toFixed(0)
+      )
+      
+      rpcData = {
+        baseReserve: baseReserveAmount,
+        quoteReserve: quoteReserveAmount,
+        status: { 
+          initialized: true,
+          lpSupply: new BN(
+            new Decimal(poolInfo.lpAmount)
+              .mul(10 ** 9)
+              .toFixed(0)
+          ),
+          feeRate: poolInfo.feeRate,
+          protocolFeeRate: poolInfo.feeRate / 2
+        }
+      }
+    } else {
+      // For devnet, use RPC method
+      const data = await raydium.raydiumSDK.liquidity.getPoolInfoFromRpc({ poolId })
+      if (!data) {
+        throw new Error(`Failed to get pool info from RPC for pool ${poolId}`)
+      }
+      poolInfo = data.poolInfo
+      poolKeys = data.poolKeys
+      rpcData = data.poolRpcData
     }
-  } else {
-    // note: getPoolInfoFromRpc method only returns required pool data for computing not all detail pool info
-    const data = await raydium.raydiumSDK.liquidity.getPoolInfoFromRpc({ poolId })
-    poolInfo = data.poolInfo
-    poolKeys = data.poolKeys
-    rpcData = data.poolRpcData
+
+    // Validate pool data
+    if (!poolInfo || !poolInfo.mintA || !poolInfo.mintB) {
+      throw new Error(`Invalid pool data for pool ${poolId}`)
+    }
+
+    // Get reserves with fallback
+    const baseReserve = rpcData?.baseReserve
+    const quoteReserve = rpcData?.quoteReserve
+    const status = rpcData?.status
+
+    if (!baseReserve || !quoteReserve) {
+      throw new Error(`Missing reserve data for pool ${poolId}`)
+    }
+
+    if (poolInfo.mintA.address !== inputMint && poolInfo.mintB.address !== inputMint)
+      throw new Error('input mint does not match pool')
+
+    if (poolInfo.mintA.address !== outputMint && poolInfo.mintB.address !== outputMint)
+      throw new Error('output mint does not match pool')
+
+    const baseIn = inputMint === poolInfo.mintA.address
+    const [mintIn, mintOut] = baseIn ? [poolInfo.mintA, poolInfo.mintB] : [poolInfo.mintB, poolInfo.mintA]
+    
+    const effectiveSlippage = slippagePct === undefined ? poolInfo.feeRate : slippagePct / 100
+
+    if (amountIn) {
+      const out = raydium.raydiumSDK.liquidity.computeAmountOut({
+        poolInfo: {
+          ...poolInfo,
+          baseReserve,
+          quoteReserve,
+          status,
+          version: 4,
+        },
+        amountIn: new BN(amountIn),
+        mintIn: mintIn.address,
+        mintOut: mintOut.address,
+        slippage: effectiveSlippage,
+      })
+
+      return {
+        poolInfo,
+        mintIn,
+        mintOut,
+        amountIn: new BN(amountIn),
+        amountOut: out.amountOut,
+        minAmountOut: out.minAmountOut,
+        maxAmountIn: new BN(amountIn),
+        fee: out.fee,
+        priceImpact: out.priceImpact,
+      }
+    } else if (amountOut) {
+      const out = raydium.raydiumSDK.liquidity.computeAmountIn({
+        poolInfo: {
+          ...poolInfo,
+          baseReserve,
+          quoteReserve,
+          status,
+          version: 4,
+        },
+        amountOut: new BN(amountOut),
+        mintIn: mintIn.address,
+        mintOut: mintOut.address,
+        slippage: effectiveSlippage,
+      })
+
+      return {
+        poolInfo,
+        mintIn,
+        mintOut,
+        amountIn: out.amountIn,
+        amountOut: new BN(amountOut),
+        minAmountOut: new BN(amountOut),
+        maxAmountIn: out.maxAmountIn,
+        priceImpact: out.priceImpact,
+      }
+    }
+    
+    throw new Error('Either amountIn or amountOut must be provided')
+  } catch (error) {
+    logger.error(`Error in quoteAmmSwap: ${error.message}`)
+    return null
   }
-  
-  const [baseReserve, quoteReserve, status] = [rpcData.baseReserve || rpcData.poolInfo.baseReserve, rpcData.quoteReserve || rpcData.poolInfo.quoteReserve  , rpcData.poolInfo.status]
-
-  if (poolInfo.mintA.address !== inputMint && poolInfo.mintB.address !== inputMint)
-    throw new Error('input mint does not match pool')
-
-  if (poolInfo.mintA.address !== outputMint && poolInfo.mintB.address !== outputMint)
-    throw new Error('output mint does not match pool')
-
-  const baseIn = inputMint === poolInfo.mintA.address
-  const [mintIn, mintOut] = baseIn ? [poolInfo.mintA, poolInfo.mintB] : [poolInfo.mintB, poolInfo.mintA]
-  
-  const effectiveSlippage = slippagePct === undefined ? 0.01 : slippagePct / 100
-
-  if (amountIn) {
-    const out = raydium.raydiumSDK.liquidity.computeAmountOut({
-      poolInfo: {
-        ...poolInfo,
-        baseReserve,
-        quoteReserve,
-        status,
-        version: 4,
-      },
-      amountIn: new BN(amountIn),
-      mintIn: mintIn.address,
-      mintOut: mintOut.address,
-      slippage: effectiveSlippage, // range: 1 ~ 0.0001, means 100% ~ 0.01%
-    })
-
-    return {
-      poolInfo,
-      mintIn,
-      mintOut,
-      amountIn: new BN(amountIn),
-      amountOut: out.amountOut,
-      minAmountOut: out.minAmountOut,
-      maxAmountIn: new BN(amountIn),
-      fee: out.fee,
-      priceImpact: out.priceImpact,
-    }
-  } else if (amountOut) {
-    const out = raydium.raydiumSDK.liquidity.computeAmountIn({
-      poolInfo: {
-        ...poolInfo,
-        baseReserve,
-        quoteReserve,
-        status,
-        version: 4,
-      },
-      amountOut: new BN(amountOut),
-      mintIn: mintIn.address,
-      mintOut: mintOut.address,
-      slippage: effectiveSlippage, // range: 1 ~ 0.0001, means 100% ~ 0.01%
-    })
-
-    return {
-      poolInfo,
-      mintIn,
-      mintOut,
-      amountIn: out.amountIn,
-      amountOut: new BN(amountOut),
-      minAmountOut: new BN(amountOut),
-      maxAmountIn: out.maxAmountIn,
-      priceImpact: out.priceImpact,
-    }
-  }
-  
-  throw new Error('Either amountIn or amountOut must be provided')
 }
 
 async function quoteCpmmSwap(
@@ -245,17 +290,22 @@ export async function getRawSwapQuote(
   
   logger.info(`getRawSwapQuote: poolId=${poolId}, baseToken=${baseToken}, quoteToken=${quoteToken}, amount=${amount}, side=${side}, exactIn=${exactIn}`)
   
+  // First try to get pool info from API to determine pool type
+  const [poolInfoData, poolKeysData] = await raydium.getPoolfromAPI(poolId)
+  if (!poolInfoData) {
+    throw new Error(`Failed to get pool info from API for pool ${poolId}`)
+  }
+
   // Get pool info to determine if it's AMM or CPMM
   const ammPoolInfo = await raydium.getAmmPoolInfo(poolId)
-  
   if (!ammPoolInfo) {
     throw new Error(`Pool not found: ${poolId}`)
   }
   
-  logger.info(`Pool type: ${ammPoolInfo.poolType}`)
-
-  // Resolve tokens from symbols or addresses
+  // Check if pool tokens match requested tokens
   const solana = await Solana.getInstance(network)
+  
+  // Resolve tokens from symbols or addresses
   const resolvedBaseToken = await solana.getToken(baseToken)
   const resolvedQuoteToken = await solana.getToken(quoteToken)
   
@@ -302,31 +352,45 @@ export async function getRawSwapQuote(
   logger.info(`Amount in human readable: ${amount}`)
   logger.info(`Amount in with decimals: ${amountInWithDecimals}, Amount out with decimals: ${amountOutWithDecimals}`)
   
+  // Determine the correct quote function based on pool type
   let result;
-  if (ammPoolInfo.poolType === 'amm') {
-    result = await quoteAmmSwap(
-      raydium, 
-      network, 
-      poolId, 
-      inputToken.address, 
-      outputToken.address, 
-      amountInWithDecimals, 
-      amountOutWithDecimals, 
-      slippagePct
-    )
-  } else if (ammPoolInfo.poolType === 'cpmm') {
-    result = await quoteCpmmSwap(
-      raydium, 
-      network, 
-      poolId, 
-      inputToken.address, 
-      outputToken.address, 
-      amountInWithDecimals, 
-      amountOutWithDecimals, 
-      slippagePct
-    )
-  } else {
-    throw new Error(`Unsupported pool type: ${ammPoolInfo.poolType}`)
+  
+  try {
+    // Log pool type and program ID for debugging
+    logger.info(`Pool type: ${ammPoolInfo.poolType}, baseToken=${ammPoolInfo.baseTokenAddress}, quoteToken=${ammPoolInfo.quoteTokenAddress}`)
+    
+    if (ammPoolInfo.poolType === 'amm') {
+      result = await quoteAmmSwap(
+        raydium, 
+        network, 
+        poolId, 
+        inputToken.address, 
+        outputToken.address, 
+        amountInWithDecimals, 
+        amountOutWithDecimals, 
+        slippagePct
+      )
+    } else if (ammPoolInfo.poolType === 'cpmm') {
+      result = await quoteCpmmSwap(
+        raydium, 
+        network, 
+        poolId, 
+        inputToken.address, 
+        outputToken.address, 
+        amountInWithDecimals, 
+        amountOutWithDecimals, 
+        slippagePct
+      )
+    } else {
+      throw new Error(`Unsupported pool type: ${ammPoolInfo.poolType}`)
+    }
+  } catch (error) {
+    logger.error(`Error getting swap quote: ${error.message}`)
+    throw error
+  }
+  
+  if (!result) {
+    throw new Error('Failed to get swap quote')
   }
   
   logger.info(`Raw quote result: amountIn=${result.amountIn.toString()}, amountOut=${result.amountOut.toString()}, inputMint=${result.inputMint}, outputMint=${result.outputMint}`)
