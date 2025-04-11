@@ -2,8 +2,8 @@
  * Decorator that wraps a method with retry and timeout logic.
  *
  * @param options.maxRetries         Maximum number of retries (default: 3)
- * @param options.delayBetweenRetries Delay (in ms) between retries (default: 1000)
- * @param options.timeout            Total allowed time (in ms) for the operation (default: 5000)
+ * @param options.delayBetweenRetries Delay (in seconds) between retries (default: 1)
+ * @param options.timeout            Total allowed time (in seconds) for the operation (default: 60)
  * @param options.timeoutMessage     Error message in case of timeout (default: 'Timeout exceeded.')
  */
 function runWithRetryAndTimeout(
@@ -16,8 +16,8 @@ function runWithRetryAndTimeout(
 ): MethodDecorator {
     const {
         maxRetries = 3,
-        delayBetweenRetries = 1000,
-        timeout = 5000,
+        delayBetweenRetries = 1,
+        timeout = 60,
         timeoutMessage = 'Timeout exceeded.'
     } = options || {};
 
@@ -34,7 +34,7 @@ function runWithRetryAndTimeout(
         // Replace the original method with one that incorporates retry and timeout logic.
         descriptor.value = async function (...args: any[]): Promise<any> {
             const sleep = (ms: number): Promise<void> =>
-                new Promise<void>((resolve) => setTimeout(resolve, ms));
+                new Promise<void>((resolve) => setTimeout(resolve, Math.floor(ms)));
 
             // Function that performs the retries.
             const callWithRetries = async (): Promise<any> => {
@@ -53,7 +53,7 @@ function runWithRetryAndTimeout(
 
                         // Wait before retrying if there are remaining attempts.
                         if (attempt < maxRetries - 1 && delayBetweenRetries > 0) {
-                            await sleep(delayBetweenRetries);
+                            await sleep(delayBetweenRetries * 1000);
                         }
                     }
                 }
@@ -69,7 +69,7 @@ function runWithRetryAndTimeout(
                 return await Promise.race([
                     callWithRetries(),
                     new Promise((_, reject) =>
-                        setTimeout(() => reject(new Error(timeoutMessage)), timeout)
+                        setTimeout(() => reject(new Error(timeoutMessage)), Math.floor(timeout * 1000))
                     )
                 ]);
             } else {
@@ -90,8 +90,8 @@ class ExampleService {
      */
     @runWithRetryAndTimeout({
         maxRetries: 5,
-        delayBetweenRetries: 500,
-        timeout: 3000,
+        delayBetweenRetries: 1,
+        timeout: 60,
         timeoutMessage: 'Operation timed out.'
     })
     async unstableOperation(): Promise<string> {
