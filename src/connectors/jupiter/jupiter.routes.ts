@@ -1,87 +1,29 @@
-import { FastifyPluginAsync } from 'fastify';
-import { Solana } from '../../chains/solana/solana';
-import { Jupiter } from './jupiter';
-import { price, trade, estimateGas } from './jupiter.controllers';
-import {
-  PriceRequest,
-  PriceResponse,
-  TradeRequest,
-  TradeResponse,
-  EstimateGasResponse,
-  PriceRequestSchema,
-  PriceResponseSchema,
-  TradeRequestSchema,
-  TradeResponseSchema,
-  EstimateGasResponseSchema
-} from '../connector.requests';
-import {
-  validateEstimateGasRequest,
-  validatePriceRequest,
-  validateTradeRequest,
-} from '../connector.validators';
-import { NetworkSelectionSchema, NetworkSelectionRequest } from '../../services/common-interfaces';
+import type { FastifyPluginAsync } from 'fastify';
+import sensible from '@fastify/sensible';
 
-export const jupiterRoutes: FastifyPluginAsync = async (fastify) => {
-  // POST /jupiter/price
-  fastify.post<{ Body: PriceRequest; Reply: PriceResponse }>(
-    '/price',
-    {
-      schema: {
-        description: 'Get Jupiter price quote',
-        tags: ['jupiter'],
-        body: PriceRequestSchema,
-        response: {
-          200: PriceResponseSchema
-        }
-      }
-    },
-    async (request) => {
-      validatePriceRequest(request.body);
-      const network = await Solana.getInstance(request.body.network);
-      return await price(network, request.body);
-    }
-  );
+// Import routes
+import { quoteSwapRoute } from './routes/quoteSwap';
+import { executeSwapRoute } from './routes/executeSwap';
 
-  // POST /jupiter/trade
-  fastify.post<{ Body: TradeRequest; Reply: TradeResponse }>(
-    '/trade',
-    {
-      schema: {
-        description: 'Execute Jupiter trade',
-        tags: ['jupiter'],
-        body: TradeRequestSchema,
-        response: {
-          200: TradeResponseSchema
-        }
+// Main Jupiter routes
+const jupiterSwapRoutes: FastifyPluginAsync = async (fastify) => {
+  await fastify.register(sensible);
+  
+  // We'll use a plugin to modify the tags
+  await fastify.register(async (instance) => {
+    // Decorate the instance with a hook to modify route options
+    instance.addHook('onRoute', (routeOptions) => {
+      if (routeOptions.schema && routeOptions.schema.tags) {
+        routeOptions.schema.tags = ['jupiter'];
       }
-    },
-    async (request) => {
-      validateTradeRequest(request.body);
-      const network = await Solana.getInstance(request.body.network);
-      return await trade(network, request.body);
-    }
-  );
-
-  // POST /jupiter/estimateGas
-  fastify.post<{ Body: NetworkSelectionRequest; Reply: EstimateGasResponse }>(
-    '/estimateGas',
-    {
-      schema: {
-        description: 'Estimate Jupiter gas',
-        tags: ['jupiter'],
-        body: NetworkSelectionSchema,
-        response: {
-          200: EstimateGasResponseSchema
-        }
-      }
-    },
-    async (request) => {
-      validateEstimateGasRequest(request.body);
-      const solana = await Solana.getInstance(request.body.network);
-      const jupiter = await Jupiter.getInstance(request.body.network);
-      return await estimateGas(solana, jupiter);
-    }
-  );
+    });
+    
+    await instance.register(quoteSwapRoute);
+    await instance.register(executeSwapRoute);
+  });
 };
 
-export default jupiterRoutes;
+// Export routes in the same pattern as Raydium
+export const jupiterRoutes = {
+  swap: jupiterSwapRoutes
+};

@@ -8,6 +8,13 @@
   },
   {
     "chainId": 101,
+    "name": "Solayer",
+    "symbol": "LAYER",
+    "address": "LAYER4xPpTCb3QL8S9u41EAhAX7mhBn8Q6xMTwY2Yzc",
+    "decimals": 9
+  },
+  {
+    "chainId": 101,
     "name": "SPL Token",
     "symbol": "LIBRA",
     "address": "Bo9jh3wsmcC2AjakLWzNmKJ3SgtZmXEcSaW7L2FAvUsU",
