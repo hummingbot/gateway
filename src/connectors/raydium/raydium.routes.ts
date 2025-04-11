@@ -22,33 +22,52 @@ import { executeSwapRoute as ammExecuteSwapRoute } from './amm-routes/executeSwa
 import { addLiquidityRoute as ammAddLiquidityRoute } from './amm-routes/addLiquidity';
 import { removeLiquidityRoute as ammRemoveLiquidityRoute } from './amm-routes/removeLiquidity';
 
+// CLMM routes including swap endpoints
 const raydiumClmmRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(sensible);
   
-  await fastify.register(clmmPoolInfoRoute);
-  await fastify.register(positionsOwnedRoute);
-  await fastify.register(positionInfoRoute);
-  await fastify.register(quoteSwapRoute);
-  await fastify.register(quotePositionRoute);
-  await fastify.register(executeSwapRoute);
-  await fastify.register(openPositionRoute);
-  await fastify.register(addLiquidityRoute);
-  await fastify.register(removeLiquidityRoute);
-  await fastify.register(collectFeesRoute);
-  await fastify.register(closePositionRoute);
+  await fastify.register(async (instance) => {
+    instance.addHook('onRoute', (routeOptions) => {
+      if (routeOptions.schema && routeOptions.schema.tags) {
+        routeOptions.schema.tags = ['raydium/clmm'];
+      }
+    });
+    
+    await instance.register(clmmPoolInfoRoute);
+    await instance.register(positionsOwnedRoute);
+    await instance.register(positionInfoRoute);
+    await instance.register(quotePositionRoute);
+    await instance.register(quoteSwapRoute);
+    await instance.register(executeSwapRoute);
+    await instance.register(openPositionRoute);
+    await instance.register(addLiquidityRoute);
+    await instance.register(removeLiquidityRoute);
+    await instance.register(collectFeesRoute);
+    await instance.register(closePositionRoute);
+  });
 };
 
+// AMM routes including swap endpoints
 const raydiumAmmRoutes: FastifyPluginAsync = async (fastify) => {
-  await fastify.register(sensible); 
-  await fastify.register(ammPoolInfoRoute);
-  await fastify.register(quoteLiquidityRoute);
-  await fastify.register(ammQuoteSwapRoute);
-  await fastify.register(ammExecuteSwapRoute);
-  await fastify.register(ammAddLiquidityRoute);
-  await fastify.register(ammRemoveLiquidityRoute);
+  await fastify.register(sensible);
+  
+  await fastify.register(async (instance) => {
+    instance.addHook('onRoute', (routeOptions) => {
+      if (routeOptions.schema && routeOptions.schema.tags) {
+        routeOptions.schema.tags = ['raydium/amm'];
+      }
+    });
+    
+    await instance.register(ammPoolInfoRoute);
+    await instance.register(quoteLiquidityRoute);
+    await instance.register(ammQuoteSwapRoute);
+    await instance.register(ammExecuteSwapRoute);
+    await instance.register(ammAddLiquidityRoute);
+    await instance.register(ammRemoveLiquidityRoute);
+  });
 };
 
-// Main export that combines both
+// Main export that combines all routes
 export const raydiumRoutes = {
   clmm: raydiumClmmRoutes,
   amm: raydiumAmmRoutes

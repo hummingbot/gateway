@@ -11,7 +11,7 @@ import {
   ClosePositionResponseType,
   CollectFeesResponseType,
   RemoveLiquidityResponseType
-} from '../../../services/clmm-interfaces';
+} from '../../../schemas/trading-types/clmm-schema';
 
 async function closePosition(
   fastify: FastifyInstance,
@@ -110,7 +110,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Close a Meteora position',
-        tags: ['meteora'],
+        tags: ['meteora/clmm'],
         body: {
           ...ClosePositionRequest,
           properties: {

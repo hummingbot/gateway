@@ -6,7 +6,7 @@ import {
   MeteoraPoolInfoSchema,
   GetPoolInfoRequestType,
   GetPoolInfoRequest 
-} from '../../../services/clmm-interfaces';
+} from '../../../schemas/trading-types/clmm-schema';
 
 export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
@@ -17,7 +17,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Get pool information for a Meteora pool',
-        tags: ['meteora'],
+        tags: ['meteora/clmm'],
         querystring: {
           ...GetPoolInfoRequest,
           properties: {

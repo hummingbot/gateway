@@ -7,7 +7,7 @@ import {
   QuotePositionResponseType,
   QuotePositionRequest,
   QuotePositionResponse
-} from '../../../services/clmm-interfaces';
+} from '../../../schemas/trading-types/clmm-schema';
 import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
 import { TickUtils, PoolUtils } from '@raydium-io/raydium-sdk-v2';
@@ -48,7 +48,7 @@ export async function quotePosition(
     }
 
     const epochInfo = await solana.connection.getEpochInfo();
-    const slippage = (slippagePct === 0 ? 0 : (slippagePct || raydium.getSlippagePct())) / 100;
+    const slippage = (slippagePct === 0 ? 0 : (slippagePct || raydium.getSlippagePct('clmm'))) / 100;
     const resBase = await PoolUtils.getLiquidityAmountOutFromAmountIn({
       poolInfo,
       slippage: slippage,
@@ -119,7 +119,7 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Quote amounts for a new Raydium CLMM position',
-        tags: ['raydium-clmm'],
+        tags: ['raydium/clmm'],
         querystring: {
           ...QuotePositionRequest,
           properties: {
