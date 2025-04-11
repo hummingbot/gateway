@@ -275,6 +275,10 @@ export class Raydium {
           baseTokenAmount: Number(rawPool[poolAddress].mintAAmount) / 10 ** Number(rawPool[poolAddress].baseDecimal),
           quoteTokenAmount: Number(rawPool[poolAddress].mintBAmount) / 10 ** Number(rawPool[poolAddress].quoteDecimal),
           poolType: poolType,
+          lpMint: {
+            address: rawPool[poolAddress].lpMint.toString(),
+            decimals: 9 // Default LP token decimals for Raydium
+          },
         }
         return poolInfo
       } else if (poolType === 'cpmm') {
@@ -290,6 +294,10 @@ export class Raydium {
           baseTokenAmount: Number(rawPool[poolAddress].baseReserve) / 10 ** Number(rawPool[poolAddress].mintDecimalA),
           quoteTokenAmount: Number(rawPool[poolAddress].quoteReserve) / 10 ** Number(rawPool[poolAddress].mintDecimalB),
           poolType: poolType,
+          lpMint: {
+            address: rawPool[poolAddress].mintLp.toString(),
+            decimals: 9 // Default LP token decimals for Raydium
+          },
         }
         return poolInfo
       }
