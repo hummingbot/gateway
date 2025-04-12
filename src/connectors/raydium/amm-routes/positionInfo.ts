@@ -150,6 +150,8 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
         return {
           poolAddress,
           walletAddress,
+          baseTokenAddress: ammPoolInfo.baseTokenAddress,
+          quoteTokenAddress: ammPoolInfo.quoteTokenAddress,
           lpTokenAmount: lpTokenAmount,
           baseTokenAmount,
           quoteTokenAmount,

@@ -75,6 +75,8 @@ export const PoolInfoSchema = Type.Object({
   export const PositionInfoSchema = Type.Object({
     poolAddress: Type.String(),
     walletAddress: Type.String(),
+    baseTokenAddress: Type.String(),
+    quoteTokenAddress: Type.String(),
     lpTokenAmount: Type.Number(),
     baseTokenAmount: Type.Number(),
     quoteTokenAmount: Type.Number(),
