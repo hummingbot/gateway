@@ -2,6 +2,15 @@
 # execution price. It uses a rational number for precision.
 allowedSlippage: '1/100'
 
+# default DLMM strategy type for positions
+# SpotImBalanced = 0,
+# CurveImBalanced = 1,
+# BidAskImBalanced = 2,
+# SpotBalanced = 3,
+# CurveBalanced = 4,
+# BidAskBalanced = 5
+strategyType: 0
+
 # predefined pools
 pools:
   SOL-USDC: '5rCf1DM8LjKTw4YqhnoLcngyZYeNnQqztScTogYHAS6'

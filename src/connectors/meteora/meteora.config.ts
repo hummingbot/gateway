@@ -10,6 +10,7 @@ export namespace MeteoraConfig {
     allowedSlippage: string;
     availableNetworks: Array<AvailableNetworks>;
     pools: PoolsConfig;
+    strategyType: number;
   }
 
   export const config: NetworkConfig = {
@@ -18,5 +19,6 @@ export namespace MeteoraConfig {
     ),
     availableNetworks: [{ chain: 'solana', networks: ['mainnet-beta', 'devnet'] }],
     pools: ConfigManagerV2.getInstance().get('meteora.pools'),
+    strategyType: ConfigManagerV2.getInstance().get('meteora.strategyType') ?? 3,
   };
 } 

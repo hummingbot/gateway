@@ -25,7 +25,7 @@ async function addLiquidity(
   baseTokenAmount: number,
   quoteTokenAmount: number,
   slippagePct?: number,
-  strategyType: StrategyType = StrategyType.SpotBalanced
+  strategyType?: StrategyType
 ): Promise<AddLiquidityResponseType> {
   // Validate addresses first
   try {
@@ -107,7 +107,7 @@ async function addLiquidity(
     strategy: {
       maxBinId,
       minBinId,
-      strategyType,
+      strategyType: strategyType ?? meteora.config.strategyType,
     },
     slippage: slippagePct ?? meteora.getSlippagePct(),
   });
