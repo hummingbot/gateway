@@ -133,7 +133,6 @@ export class Hydration {
       // @ts-ignore - Ignorando erro de incompatibilidade de versões do ApiPromise
       this.poolService = new PoolService(this.api);
       await this.poolService.syncRegistry();
-      this.tradeRouter = new TradeRouter(this.poolService);
 
       // Mark instance as ready
       this._ready = true;
@@ -143,6 +142,10 @@ export class Hydration {
       logger.error(`Failed to initialize Hydration: ${error.message}`);
       throw error;
     }
+  }
+
+  private getNewTradeRouter(): TradeRouter {
+    return new TradeRouter(this.poolService);
   }
 
   /**
@@ -227,6 +230,7 @@ export class Hydration {
    */
   async getPoolInfo(poolAddress: string): Promise<ExternalPoolInfo | null> {
     try {
+      const tradeRouter = this.getNewTradeRouter();
       // Check cache first
       const currentTime = Date.now();
       const cachedPool = this.poolCache.get(poolAddress);
@@ -317,7 +321,7 @@ export class Hydration {
           
           // Get both buy and sell quotes to calculate the mid price
           try {
-            buyQuote = await this.tradeRouter.getBestBuy(
+            buyQuote = await tradeRouter.getBestBuy(
               quoteTokenId,
               baseTokenId,
               amountBN
@@ -327,7 +331,7 @@ export class Hydration {
           }
 
           try {
-            sellQuote = await this.tradeRouter.getBestSell(
+            sellQuote = await tradeRouter.getBestSell(
               baseTokenId,
               quoteTokenId,
               amountBN
@@ -525,6 +529,9 @@ export class Hydration {
     slippagePct?: number
   ): Promise<SwapQuote> {
     try {
+      // Get a new trade router instance
+      const tradeRouter = this.getNewTradeRouter();
+
       // Ensure the instance is ready
       if (!this.ready()) {
         await this.init(this.polkadot.network);
@@ -556,7 +563,7 @@ export class Hydration {
       if (side === 'BUY') {
         // Buying base token with quote token
         // @ts-ignore - Ignorando erro de incompatibilidade de API
-        trade = await this.tradeRouter.getBestBuy(
+        trade = await tradeRouter.getBestBuy(
           quoteTokenId,
           baseTokenId,
           amountBN
@@ -564,7 +571,7 @@ export class Hydration {
       } else {
         // Selling base token for quote token
         // @ts-ignore - Ignorando erro de incompatibilidade de API
-        trade = await this.tradeRouter.getBestSell(
+        trade = await tradeRouter.getBestSell(
           baseTokenId,
           quoteTokenId,
           amountBN
@@ -674,6 +681,9 @@ export class Hydration {
     slippagePct?: number
   ): Promise<any> {
     try {
+      // Get a new trade router instance
+      const tradeRouter = this.getNewTradeRouter();
+
       // Ensure the instance is ready
       if (!this.ready()) {
         await this.init(this.polkadot.network);
@@ -712,14 +722,14 @@ export class Hydration {
 
       if (side === 'BUY') {
         // @ts-ignore - Ignorando erro de incompatibilidade de API
-        trade = await this.tradeRouter.getBestBuy(
+        trade = await tradeRouter.getBestBuy(
           quoteTokenId,
           baseTokenId,
           amountBN
         );
       } else {
         // @ts-ignore - Ignorando erro de incompatibilidade de API
-        trade = await this.tradeRouter.getBestSell(
+        trade = await tradeRouter.getBestSell(
           baseTokenId,
           quoteTokenId,
           amountBN
