@@ -1,6 +1,6 @@
 {
   "name": "gateway",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "description": "Hummingbot Gateway is a CLI/API client that helps you interact with DEXs on various blockchains.",
   "main": "index.js",
   "license": "Apache-2.0",
