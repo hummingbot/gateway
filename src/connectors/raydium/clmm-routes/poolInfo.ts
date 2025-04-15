@@ -6,7 +6,7 @@ import {
   GetPoolInfoRequest,
   PoolInfo,
   PoolInfoSchema
-} from '../../../services/clmm-interfaces';
+} from '../../../schemas/trading-types/clmm-schema';
 
 export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
@@ -17,7 +17,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Get CLMM pool information from Raydium',
-        tags: ['raydium-clmm'],
+        tags: ['raydium/clmm'],
         querystring: {
           ...GetPoolInfoRequest,
           properties: {

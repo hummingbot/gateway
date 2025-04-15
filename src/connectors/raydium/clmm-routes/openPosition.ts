@@ -8,7 +8,7 @@ import {
   OpenPositionResponse,
   OpenPositionRequestType,
   OpenPositionResponseType,
-} from '../../../services/clmm-interfaces';
+} from '../../../schemas/trading-types/clmm-schema';
 import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
 import { TickUtils } from '@raydium-io/raydium-sdk-v2';
@@ -61,7 +61,7 @@ async function openPosition(
 
   logger.info('Opening Raydium CLMM position...');
   const COMPUTE_UNITS = 300000;
-  let currentPriorityFee = (await solana.getGasPrice() * 1e9) - BASE_FEE;
+  let currentPriorityFee = (await solana.estimateGas() * 1e9) - BASE_FEE;
   while (currentPriorityFee <= solana.config.maxPriorityFee * 1e9) {
     const priorityFeePerCU = Math.floor(currentPriorityFee * 1e6 / COMPUTE_UNITS);
     const { transaction, extInfo } = await raydium.raydiumSDK.clmm.openPositionFromBase({
@@ -135,7 +135,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Open a new Raydium CLMM position',
-        tags: ['raydium-clmm'],
+        tags: ['raydium/clmm'],
         body: {
           ...OpenPositionRequest,
           properties: {

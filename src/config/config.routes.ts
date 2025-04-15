@@ -27,6 +27,43 @@ const ConfigUpdateResponseSchema = Type.Object({
 type ConfigUpdateRequest = Static<typeof ConfigUpdateRequestSchema>;
 type ConfigUpdateResponse = Static<typeof ConfigUpdateResponseSchema>;
 
+// New schemas for default pools
+const DefaultPoolRequestSchema = Type.Object({
+  connector: Type.String({
+    description: 'Connector name (e.g., raydium/amm, raydium/clmm)',
+    examples: ['raydium/amm', 'raydium/clmm']
+  }),
+  baseToken: Type.String({
+    description: 'Base token symbol',
+    examples: ['SOL', 'USDC']
+  }),
+  quoteToken: Type.String({
+    description: 'Quote token symbol',
+    examples: ['USDC', 'USDT']
+  }),
+  poolAddress: Type.Optional(Type.String({
+    description: 'Pool address (required for adding, optional for removal)',
+    examples: ['3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv']
+  }))
+});
+
+const DefaultPoolResponseSchema = Type.Object({
+  message: Type.String({ description: 'Status message' })
+});
+
+type DefaultPoolRequest = Static<typeof DefaultPoolRequestSchema>;
+type DefaultPoolResponse = Static<typeof DefaultPoolResponseSchema>;
+
+// Add new schema for the GET response
+const DefaultPoolListSchema = Type.Object({
+  defaultPools: Type.Record(
+    Type.String(),  // pair key (e.g., "SOL-USDC")
+    Type.String()   // pool address
+  )
+});
+
+type DefaultPoolListResponse = Static<typeof DefaultPoolListSchema>;
+
 export const configRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /config
   fastify.get('/', {
@@ -110,6 +147,165 @@ export const configRoutes: FastifyPluginAsync = async (fastify) => {
       return { message: 'The config has been updated' };
     }
   );
+
+  // GET /config/pools
+  fastify.get<{
+    Querystring: { connector: string };
+  }>(
+    '/pools',
+    {
+      schema: {
+        description: 'Get default pools for a specific connector',
+        tags: ['config'],
+        querystring: Type.Object({
+          connector: Type.String({
+            description: 'Connector name (e.g., raydium/amm, raydium/clmm)',
+            examples: ['raydium/amm', 'raydium/clmm']
+          })
+        }),
+        response: {
+          200: Type.Record(
+            Type.String({
+              pattern: '^[A-Z]+-[A-Z]+$'
+            }),
+            Type.String()
+          )
+        }
+      }
+    },
+    async (request) => {
+      const { connector } = request.query;
+
+      // Parse connector name
+      const [baseConnector, connectorType] = connector.split('/');
+      let configPath;
+      
+      if (!baseConnector) {
+        throw fastify.httpErrors.badRequest('Connector name is required');
+      }
+
+      // Handle both formats: "connector/type" and "connector"
+      if (connectorType) {
+        configPath = `${baseConnector}.${connectorType}.pools`;
+      } else {
+        configPath = `${baseConnector}.pools`;
+      }
+
+      try {
+        const pools = ConfigManagerV2.getInstance().get(configPath) || {};
+
+        logger.info(`Retrieved default pools for ${connector}`);
+        return pools;
+      } catch (error) {
+        logger.error(`Failed to get default pools for ${connector}: ${error}`);
+        throw fastify.httpErrors.internalServerError('Failed to get default pools');
+      }
+    }
+  );
+
+  // POST /config/pools/add
+  fastify.post<{ Body: DefaultPoolRequest; Reply: DefaultPoolResponse }>(
+    '/pools/add',
+    {
+      schema: {
+        description: 'Add a default pool for a specific connector',
+        tags: ['config'],
+        body: DefaultPoolRequestSchema,
+        response: {
+          200: DefaultPoolResponseSchema
+        }
+      }
+    },
+    async (request) => {
+      const { connector, baseToken, quoteToken, poolAddress } = request.body;
+      const pairKey = `${baseToken}-${quoteToken}`;
+
+      if (!poolAddress) {
+        throw fastify.httpErrors.badRequest('Pool address is required for adding a default pool');
+      }
+
+      const [baseConnector, connectorType] = connector.split('/');
+      let configPath;
+      
+      if (!baseConnector) {
+        throw fastify.httpErrors.badRequest('Connector name is required');
+      }
+
+      // Handle both formats: "connector/type" and "connector"
+      if (connectorType) {
+        configPath = `${baseConnector}.${connectorType}.pools.${pairKey}`;
+      } else {
+        configPath = `${baseConnector}.pools.${pairKey}`;
+      }
+
+      try {
+        ConfigManagerV2.getInstance().set(configPath, poolAddress);
+
+        logger.info(`Added default pool for ${connector}: ${pairKey} (address: ${poolAddress})`);
+        return { message: `Default pool added for ${pairKey}` };
+      } catch (error) {
+        logger.error(`Failed to add default pool: ${error}`);
+        throw fastify.httpErrors.internalServerError('Failed to add default pool');
+      }
+    }
+  );
+
+  // POST /config/pools/remove
+  fastify.post<{ Body: Omit<DefaultPoolRequest, 'poolAddress'>; Reply: DefaultPoolResponse }>(
+    '/pools/remove',
+    {
+      schema: {
+        description: 'Remove a default pool for a specific connector',
+        tags: ['config'],
+        body: Type.Object({
+          connector: Type.String({
+            description: 'Connector name (e.g., raydium/amm, raydium/clmm)',
+            examples: ['raydium/amm', 'raydium/clmm']
+          }),
+          baseToken: Type.String({
+            description: 'Base token symbol',
+            examples: ['SOL', 'USDC']
+          }),
+          quoteToken: Type.String({
+            description: 'Quote token symbol',
+            examples: ['USDC', 'USDT']
+          })
+        }),
+        response: {
+          200: DefaultPoolResponseSchema
+        }
+      }
+    },
+    async (request, _reply) => {
+      const { connector, baseToken, quoteToken } = request.body;
+      const pairKey = `${baseToken}-${quoteToken}`;
+
+      const [baseConnector, connectorType] = connector.split('/');
+      let configPath;
+      
+      if (!baseConnector) {
+        throw fastify.httpErrors.badRequest('Connector name is required');
+      }
+
+      // Handle both formats: "connector/type" and "connector"
+      if (connectorType) {
+        configPath = `${baseConnector}.${connectorType}.pools.${pairKey}`;
+      } else {
+        configPath = `${baseConnector}.pools.${pairKey}`;
+      }
+
+      try {
+        ConfigManagerV2.getInstance().delete(configPath);
+        
+        logger.info(`Removed default pool for ${connector}: ${pairKey}`);
+        return { message: `Default pool removed for ${pairKey}` };
+      } catch (error) {
+        logger.error(`Failed to remove default pool: ${error}`);
+        throw new Error('Failed to remove default pool');
+      }
+    }
+  );
+
 };
 
 export default configRoutes;

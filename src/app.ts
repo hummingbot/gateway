@@ -27,7 +27,7 @@ import { raydiumRoutes } from './connectors/raydium/raydium.routes';
 
 
 // Change version for each release
-const GATEWAY_VERSION = '2.4.0';
+const GATEWAY_VERSION = '2.5.0';
 
 // At the top level, define devMode once
 // When true, runs server in HTTP mode (less secure but useful for development)
@@ -56,12 +56,12 @@ const swaggerOptions = {
       { name: 'config', description: 'Configuration endpoints' },
       { name: 'wallet', description: 'Wallet endpoints' },
       { name: 'solana', description: 'Solana chain endpoints' },
-      { name: 'meteora', description: 'Meteora DLMM endpoints' },
-      { name: 'raydium-clmm', description: 'Raydium CLMM endpoints' },
-      { name: 'raydium-amm', description: 'Raydium AMM/CPMM endpoints' },
-      { name: 'jupiter', description: 'Jupiter swap endpoints' },
+      { name: 'jupiter', description: 'Jupiter connector endpoints' },
+      { name: 'raydium/clmm', description: 'Raydium CLMM connector endpoints' },
+      { name: 'raydium/amm', description: 'Raydium AMM connector endpoints' },
+      { name: 'meteora/clmm', description: 'Meteora CLMM connector endpoints' },
+      { name: 'uniswap', description: 'Uniswap connector endpoints' },
       { name: 'ethereum', description: 'Ethereum chain endpoints' },
-      { name: 'uniswap', description: 'Uniswap swap endpoints' },
     ],
     components: {
       parameters: {
@@ -157,10 +157,15 @@ const configureGatewayServer = () => {
     app.register(configRoutes, { prefix: '/config' });
     app.register(connectorsRoutes, { prefix: '/connectors' });
     app.register(walletRoutes, { prefix: '/wallet' });
-    app.register(jupiterRoutes, { prefix: '/jupiter' });
-    app.register(meteoraRoutes, { prefix: '/meteora' });
+    app.register(jupiterRoutes.swap, { prefix: '/jupiter' });
+    
+    // Meteora routes
+    app.register(meteoraRoutes.clmm, { prefix: '/meteora/clmm' });
+    
+    // Raydium routes
     app.register(raydiumRoutes.clmm, { prefix: '/raydium/clmm' });
     app.register(raydiumRoutes.amm, { prefix: '/raydium/amm' });
+    
     app.register(uniswapRoutes, { prefix: '/uniswap' });
     app.register(solanaRoutes, { prefix: '/solana' });
     app.register(ethereumRoutes, { prefix: '/ethereum' });

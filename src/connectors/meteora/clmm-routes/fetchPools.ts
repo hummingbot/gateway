@@ -8,7 +8,7 @@ import {
   PoolInfoSchema, 
   FetchPoolsRequest, 
   FetchPoolsRequestType 
-} from '../../../services/clmm-interfaces';
+} from '../../../schemas/trading-types/clmm-schema';
 import { httpNotFound, httpInternalServerError, ERROR_MESSAGES } from '../../../services/error-handler';
 
 export const fetchPoolsRoute: FastifyPluginAsync = async (fastify) => {
@@ -18,7 +18,7 @@ export const fetchPoolsRoute: FastifyPluginAsync = async (fastify) => {
   }>('/fetch-pools', {
     schema: {
       description: 'Fetch info about Meteora pools',
-      tags: ['meteora'],
+      tags: ['meteora/clmm'],
       querystring: {
         ...FetchPoolsRequest,
         properties: {
