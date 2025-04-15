@@ -28,7 +28,7 @@ async function openPosition(
   baseTokenAmount: number | undefined,
   quoteTokenAmount: number | undefined,
   slippagePct?: number,
-  strategyType: number = 3
+  strategyType?: number
 ): Promise<OpenPositionResponseType> {
   const solana = await Solana.getInstance(network);
   const meteora = await Meteora.getInstance(network);
@@ -145,7 +145,7 @@ async function openPosition(
     strategy: {
       maxBinId,
       minBinId,
-      strategyType,
+      strategyType: strategyType ?? meteora.config.strategyType,
     },
     totalXAmount,
     totalYAmount,

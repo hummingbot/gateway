@@ -30,6 +30,3 @@ nonceDbPath: 'nonce.level'
 
 # Transaction database
 transactionDbPath: 'transaction.level'
-
-
-
