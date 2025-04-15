@@ -220,6 +220,39 @@ export class ConfigurationNamespace {
     this.#configuration = configClone;
     this.saveConfig();
   }
+
+  delete(configPath: string): void {
+    const pathComponents: Array<string> = configPath.split('.');
+    const configClone: Configuration = JSON.parse(
+      JSON.stringify(this.#configuration)
+    );
+    let cursor: Configuration | any = configClone;
+    let parent: Configuration = configClone;
+
+    // Navigate to the parent of the property we want to delete
+    for (const component of pathComponents.slice(0, -1)) {
+      parent = cursor;
+      cursor = cursor[component];
+      if (cursor === undefined) {
+        return; // Property doesn't exist, nothing to delete
+      }
+    }
+
+    const lastComponent: string = pathComponents[pathComponents.length - 1];
+    
+    // Delete the property
+    delete cursor[lastComponent];
+
+    // Validate the new configuration
+    if (!this.#validator(configClone)) {
+      throw new Error(
+        `Cannot delete ${this.id}.${configPath}: JSON schema violation.`
+      );
+    }
+
+    this.#configuration = configClone;
+    this.saveConfig();
+  }
 }
 
 export class ConfigManagerV2 {
@@ -366,6 +399,11 @@ export class ConfigManagerV2 {
   set(fullConfigPath: string, value: any) {
     const { namespace, configPath } = this.unpackFullConfigPath(fullConfigPath);
     namespace.set(configPath, value);
+  }
+
+  delete(fullConfigPath: string) {
+    const { namespace, configPath } = this.unpackFullConfigPath(fullConfigPath);
+    namespace.delete(configPath);
   }
 
   loadConfigRoot(configRootPath: string) {

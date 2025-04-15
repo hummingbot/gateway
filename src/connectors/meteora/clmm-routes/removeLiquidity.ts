@@ -8,7 +8,7 @@ import {
   RemoveLiquidityResponse, 
   RemoveLiquidityRequestType, 
   RemoveLiquidityResponseType 
-} from '../../../services/clmm-interfaces';
+} from '../../../schemas/trading-types/clmm-schema';
 import { httpBadRequest, ERROR_MESSAGES } from '../../../services/error-handler';
 import { PublicKey } from '@solana/web3.js';
 
@@ -100,7 +100,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Remove liquidity from a Meteora position',
-        tags: ['meteora'],
+        tags: ['meteora/clmm'],
         body: {
           ...RemoveLiquidityRequest,
           properties: {
