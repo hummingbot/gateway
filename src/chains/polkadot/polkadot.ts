@@ -1,10 +1,11 @@
+import { Transaction } from '@galacticcouncil/sdk';
 import { ApiPromise, WsProvider, HttpProvider } from '@polkadot/api';
 import { Keyring } from '@polkadot/keyring';
 import { KeyringPair } from '@polkadot/keyring/types';
 import { SubmittableExtrinsic } from '@polkadot/api/types';
 import { ISubmittableResult } from '@polkadot/types/types';
-import { mnemonicGenerate, mnemonicValidate } from '@polkadot/util-crypto';
-import { hexToU8a, u8aToHex, formatBalance } from '@polkadot/util';
+import { mnemonicGenerate } from '@polkadot/util-crypto';
+import { u8aToHex } from '@polkadot/util';
 import { encodeAddress, decodeAddress } from '@polkadot/util-crypto';
 import { TokenInfo } from '../ethereum/ethereum-base';
 import { Config, getPolkadotConfig } from './polkadot.config';
@@ -15,14 +16,12 @@ import { TokenListType } from '../../services/base';
 import {
   PolkadotAccount,
   TransactionStatus,
-  TransactionDetails,
   SubmittableTransaction,
-  TokenBalance,
   TransactionReceipt,
   TransferOptions,
   BatchTransactionOptions,
   StakingInfo,
-  FeeEstimate
+  FeeEstimate,
 } from './polkadot.types';
 import { cryptoWaitReady } from '@polkadot/util-crypto';
 import { BN } from 'bn.js';
@@ -31,7 +30,9 @@ import * as fs from 'fs';
 import axios from 'axios';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { walletPath } from '../../services/base';
+import { runWithRetryAndTimeout } from '../../connectors/hydration/hydration.utils';
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface PollResponse {
   network: string;
   currentBlock: number;
@@ -45,6 +46,7 @@ interface PollResponse {
   error?: string;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface HydrationTransaction {
   code: number;
   message?: string;
@@ -74,13 +76,81 @@ export class Polkadot {
   public controller: typeof PolkadotController;
 
   /**
+   * Get the native currency symbol for the network
+   * @returns The native currency symbol
+   */
+  @runWithRetryAndTimeout()
+  private configNetworkNativeCurrencySymbol() {
+    return this.config.network.nativeCurrencySymbol;
+  }
+
+  /**
+   * Get the token list source for the network
+   * @returns The token list source
+   */
+  @runWithRetryAndTimeout()
+  private async configNetworkTokenListSource() {
+    return this.config.network.tokenListSource;
+  }
+
+  /**
+   * Get the token list type for the network
+   * @returns The token list type
+   */
+  @runWithRetryAndTimeout()
+  private async configNetworkTokenListType() {
+    return this.config.network.tokenListType;
+  }
+
+  /**
+   * Get the current block number
+   * @returns A Promise that resolves to the current block number
+   */
+  @runWithRetryAndTimeout()
+  private apiRpcChainGetHeader() {
+    return this.api.rpc.chain.getHeader();
+  }
+
+  @runWithRetryAndTimeout()
+  private async apiQuerySystemAccount(address: string) {
+    return this.api.query.system.account(address);
+  }
+
+  @runWithRetryAndTimeout()
+  private async apiQueryTokensAccounts(address: string, tokenAddress: string) {
+    return this.api.query.tokens.accounts(address, tokenAddress);
+  }
+
+  @runWithRetryAndTimeout()
+  private async apiQueryTokens() {
+    return this.api.query.tokens;
+  }
+
+  @runWithRetryAndTimeout()
+  private async apiQueryAssets() {
+    return this.api.query.assets;
+  }
+
+  @runWithRetryAndTimeout()
+  private async configNetworkTrasactionURL() {
+    return this.config.network.transactionURL;
+  }
+
+  @runWithRetryAndTimeout()
+  private configNetworkNodeURL() {
+    return this.config.network.nodeURL;
+  }
+
+
+  /**
    * Private constructor - use getInstance instead
    * @param network The network to connect to
    */
+
   private constructor(network: string) {
     this.network = network;
     this.config = getPolkadotConfig('polkadot', network);
-    this.nativeTokenSymbol = this.config.network.nativeCurrencySymbol;
+    this.nativeTokenSymbol = this.configNetworkNativeCurrencySymbol();
     this.controller = PolkadotController;
 
     const { Keyring } = require('@polkadot/keyring');
@@ -113,13 +183,13 @@ export class Polkadot {
 
       // Initialize keyring
       this._keyring = new Keyring({
-        type: 'sr25519'
+        type: 'sr25519',
       });
 
       // Connect to the node
-      const provider = this.config.network.nodeURL.startsWith('http')
-        ? new HttpProvider(this.config.network.nodeURL)
-        : new WsProvider(this.config.network.nodeURL);
+      const provider = this.configNetworkNodeURL().startsWith('http')
+        ? new HttpProvider(this.configNetworkNodeURL())
+        : new WsProvider(this.configNetworkNodeURL());
 
       this.api = await ApiPromise.create({ provider: provider });
 
@@ -128,8 +198,8 @@ export class Polkadot {
 
       // Load token list
       await this.getTokenList(
-        this.config.network.tokenListSource,
-        this.config.network.tokenListType
+        await this.configNetworkTokenListSource(),
+        await this.configNetworkTokenListType(),
       );
 
       logger.info(`Polkadot initialized for network: ${this.network}`);
@@ -147,12 +217,12 @@ export class Polkadot {
    */
   async getTokenList(
     tokenListSource?: string,
-    tokenListType?: TokenListType
+    tokenListType?: TokenListType,
   ): Promise<TokenInfo[]> {
     try {
       if (!tokenListSource || !tokenListType) {
-        tokenListSource = this.config.network.tokenListSource;
-        tokenListType = this.config.network.tokenListType;
+        tokenListSource = await this.configNetworkTokenListSource();
+        tokenListType = await this.configNetworkTokenListType();
       }
 
       await this.loadTokens(tokenListSource, tokenListType);
@@ -170,7 +240,7 @@ export class Polkadot {
    */
   async loadTokens(
     tokenListSource: string,
-    tokenListType: TokenListType
+    tokenListType: TokenListType,
   ): Promise<void> {
     try {
       // Clear existing token lists
@@ -184,7 +254,9 @@ export class Polkadot {
         const response = await axios.get(tokenListSource);
         tokensData = response.data || [];
       } else {
-        const data = await fs.promises.readFile(tokenListSource, { encoding: 'utf8' });
+        const data = await fs.promises.readFile(tokenListSource, {
+          encoding: 'utf8',
+        });
         const parsed = JSON.parse(data);
         tokensData = parsed || [];
       }
@@ -196,7 +268,7 @@ export class Polkadot {
           name: tokenData.name,
           decimals: tokenData.decimals,
           address: tokenData.id.toString(), // Use token ID as address
-          chainId: 0
+          chainId: 0,
         };
 
         this.tokenList.push(token);
@@ -204,7 +276,9 @@ export class Polkadot {
         this._tokenMap[token.address.toLowerCase()] = token;
       }
 
-      logger.info(`Loaded ${this.tokenList.length} tokens for network: ${this.network}`);
+      logger.info(
+        `Loaded ${this.tokenList.length} tokens for network: ${this.network}`,
+      );
     } catch (error) {
       logger.error(`Failed to load tokens: ${error.message}`);
       throw error;
@@ -228,7 +302,7 @@ export class Polkadot {
       const foundToken = this.tokenList.find(
         (t) =>
           t.symbol.toLowerCase() === addressOrSymbol.toLowerCase() ||
-          t.address.toLowerCase() === addressOrSymbol.toLowerCase()
+          t.address.toLowerCase() === addressOrSymbol.toLowerCase(),
       );
 
       return foundToken || null;
@@ -253,7 +327,7 @@ export class Polkadot {
       const account: PolkadotAccount = {
         address: keyringPair.address,
         publicKey: u8aToHex(keyringPair.publicKey),
-        keyringPair
+        keyringPair,
       };
 
       return account;
@@ -272,7 +346,9 @@ export class Polkadot {
     try {
       return this._keyring.addFromMnemonic(seed);
     } catch (error) {
-      logger.error(`Failed to get keyring pair from private key: ${error.message}`);
+      logger.error(
+        `Failed to get keyring pair from private key: ${error.message}`,
+      );
       throw error;
     }
   }
@@ -288,7 +364,9 @@ export class Polkadot {
       this.validatePolkadotAddress(address);
 
       // Look for existing pair with this address
-      const existingPair = this._keyring.getPairs().find(pair => pair.address === address);
+      const existingPair = this._keyring
+        .getPairs()
+        .find((pair) => pair.address === address);
       if (existingPair) {
         return existingPair;
       }
@@ -300,7 +378,10 @@ export class Polkadot {
         const walletFile = `${path}/${address}.json`;
 
         // Read encrypted mnemonic from file
-        const encryptedMnemonic = await fs.promises.readFile(walletFile, 'utf8');
+        const encryptedMnemonic = await fs.promises.readFile(
+          walletFile,
+          'utf8',
+        );
 
         // Get passphrase using ConfigManagerCertPassphrase
         const passphrase = ConfigManagerCertPassphrase.readPassphrase();
@@ -318,7 +399,7 @@ export class Polkadot {
         throw new HttpException(
           500,
           `Wallet not found for address: ${address}. You need to import the private key or mnemonic first.`,
-          -1
+          -1,
         );
       }
     } catch (error) {
@@ -339,11 +420,7 @@ export class Polkadot {
       return true;
     } catch (error) {
       logger.error(`Invalid Polkadot address: ${address}`);
-      throw new HttpException(
-        400,
-        `Invalid Polkadot address: ${address}`,
-        -1
-      );
+      throw new HttpException(400, `Invalid Polkadot address: ${address}`, -1);
     }
   }
 
@@ -398,7 +475,10 @@ export class Polkadot {
    * @param symbols Optional list of token symbols to get balances for
    * @returns A Promise that resolves to a record of balances
    */
-  async getBalance(wallet: KeyringPair, symbols?: string[]): Promise<Record<string, number>> {
+  async getBalance(
+    wallet: KeyringPair,
+    symbols?: string[],
+  ): Promise<Record<string, number>> {
     try {
       const balances: Record<string, number> = {};
       const address = wallet.address;
@@ -419,18 +499,20 @@ export class Polkadot {
       }
 
       // Get native token balance
-      const nativeToken = tokensToCheck.find(t => t.symbol === this.nativeTokenSymbol);
+      const nativeToken = tokensToCheck.find(
+        (t) => t.symbol === this.nativeTokenSymbol,
+      );
+
       if (nativeToken) {
-        const accountInfo = await this.api.query.system.account(address);
-        // @ts-ignore - Handle type issues with accountInfo structure
+        const accountInfo = await this.apiQuerySystemAccount(address);
+        // @ts-expect-error - Handle type issues with accountInfo structure
         const freeBalance = accountInfo.data.balance || accountInfo.data.free.toString();
-        // @ts-ignore - Handle type issues with accountInfo structure
         const reservedBalance = accountInfo.data.reserved.toString();
         const totalBalance = new BN(freeBalance).add(new BN(reservedBalance));
 
         balances[nativeToken.symbol] = this.fromBaseUnits(
           totalBalance.toString(),
-          nativeToken.decimals
+          nativeToken.decimals,
         );
       }
 
@@ -438,27 +520,38 @@ export class Polkadot {
       for (const token of tokensToCheck) {
         // Skip native token as we already processed it
         if (token.symbol === this.nativeTokenSymbol) continue;
-
         try {
           // Check if tokens module exists
-          if (this.api.query.tokens && this.api.query.tokens.accounts) {
-            const assetBalance = await this.api.query.tokens.accounts(address, token.address);
+          if (this.apiQueryTokens && this.apiQueryTokensAccounts) {
+            const assetBalance = await this.apiQueryTokensAccounts(
+              address,
+              token.address,
+            );
             if (assetBalance) {
-              // @ts-ignore - Handle type issues with assetBalance structure
+              // @ts-expect-error - Handle type issues with assetBalance structure
               const free = assetBalance.free?.toString() || '0';
               balances[token.symbol] = this.fromBaseUnits(free, token.decimals);
             } else {
               balances[token.symbol] = 0;
             }
-          } else if (this.api.query.assets && this.api.query.assets.account) {
+
+          } else if (this.apiQueryAssets && this.apiQueryTokensAccounts) {
             // Alternative assets pallet approach if available
-            const assetBalance = await this.api.query.assets.account(token.address, address);
+            const assetBalance = await this.apiQueryTokensAccounts(
+              token.address,
+              address,
+            );
             if (assetBalance && !assetBalance.isEmpty) {
               // Handle Option<AssetBalance> - use type-safe methods instead of isSome/unwrap
               const balanceData = assetBalance as any;
-              const balance = balanceData.balance?.toString() ||
-                (balanceData.toJSON && balanceData.toJSON().balance) || '0';
-              balances[token.symbol] = this.fromBaseUnits(balance, token.decimals);
+              const balance =
+                balanceData.balance?.toString() ||
+                (balanceData.toJSON && balanceData.toJSON().balance) ||
+                '0';
+              balances[token.symbol] = this.fromBaseUnits(
+                balance,
+                token.decimals,
+              );
             } else {
               balances[token.symbol] = 0;
             }
@@ -467,7 +560,9 @@ export class Polkadot {
             balances[token.symbol] = 0;
           }
         } catch (err) {
-          logger.warn(`Error getting balance for token ${token.symbol}: ${err.message}`);
+          logger.warn(
+            `Error getting balance for token ${token.symbol}: ${err.message}`,
+          );
           balances[token.symbol] = 0;
         }
       }
@@ -522,7 +617,10 @@ export class Polkadot {
       // Split by decimal point
       const parts = amountStr.split('.');
       const wholePart = parts[0];
-      const fractionalPart = parts.length > 1 ? parts[1].padEnd(decimals, '0').slice(0, decimals) : '0'.repeat(decimals);
+      const fractionalPart =
+        parts.length > 1
+          ? parts[1].padEnd(decimals, '0').slice(0, decimals)
+          : '0'.repeat(decimals);
 
       // Combine and convert to BN
       const result = wholePart + fractionalPart;
@@ -556,9 +654,9 @@ export class Polkadot {
         const body = { hash: txHash };
 
         const response = await axios.post(
-          this.config.network.transactionURL,
+          await this.configNetworkTrasactionURL(),
           body,
-          { headers }
+          { headers },
         );
 
         if (response.data && response.data.data) {
@@ -594,7 +692,7 @@ export class Polkadot {
         txData,
         fee,
         timestamp: Date.now(),
-        latency: (Date.now() - startTime) / 1000
+        latency: (Date.now() - startTime) / 1000,
       };
     } catch (error) {
       logger.error(`Error in getTransaction for ${txHash}: ${error.message}`);
@@ -609,7 +707,7 @@ export class Polkadot {
         txData: null,
         fee: null,
         timestamp: Date.now(),
-        latency: (Date.now() - startTime) / 1000
+        latency: (Date.now() - startTime) / 1000,
       };
     }
   }
@@ -619,7 +717,9 @@ export class Polkadot {
    * @param txData Transaction data
    * @returns A Promise that resolves to the transaction status code
    */
-  async getTransactionStatusCode(txData: any | null): Promise<TransactionStatus> {
+  async getTransactionStatusCode(
+    txData: any | null,
+  ): Promise<TransactionStatus> {
     if (!txData) {
       return TransactionStatus.NOT_FOUND;
     }
@@ -631,9 +731,10 @@ export class Polkadot {
    * Get the current block number
    * @returns A Promise that resolves to the current block number
    */
+
   async getCurrentBlockNumber(): Promise<number> {
     try {
-      const header = await this.api.rpc.chain.getHeader();
+      const header = await this.apiRpcChainGetHeader();
       return header.number.toNumber();
     } catch (error) {
       logger.error(`Failed to get current block number: ${error.message}`);
@@ -667,7 +768,7 @@ export class Polkadot {
     sender: KeyringPair,
     recipient: string,
     amount: string,
-    options?: TransferOptions
+    options?: TransferOptions,
   ): Promise<SubmittableTransaction> {
     try {
       // Validate recipient address
@@ -680,10 +781,10 @@ export class Polkadot {
 
       // Add tip if specified
       if (options?.tip) {
-        // @ts-ignore - Generic Method, needs to improve
+        // @ts-expect-error - Generic Method, needs to improve
         tx.signFakeSignature(sender, { tip: options.tip });
       } else {
-        // @ts-ignore - Generic Method, needs to improve
+        // @ts-expect-error - Generic Method, needs to improve
         tx.signFakeSignature(sender);
       }
 
@@ -693,12 +794,12 @@ export class Polkadot {
       const feeEstimate: FeeEstimate = {
         estimatedFee: feeInfo.partialFee.toString(),
         partialFee: feeInfo.partialFee.toString(),
-        weight: feeInfo.weight.toString()
+        weight: feeInfo.weight.toString(),
       };
 
       return {
         tx: tx as SubmittableExtrinsic<'promise', ISubmittableResult>,
-        feeEstimate
+        feeEstimate,
       };
     } catch (error) {
       logger.error(`Failed to create transfer transaction: ${error.message}`);
@@ -714,7 +815,7 @@ export class Polkadot {
    */
   async submitTransaction(
     transaction: SubmittableTransaction,
-    options?: TransferOptions
+    options?: TransferOptions,
   ): Promise<TransactionReceipt> {
     try {
       const timeout = options?.timeout;
@@ -723,18 +824,27 @@ export class Polkadot {
       return new Promise((resolve, reject) => {
         // Set timeout
         const timeoutId = setTimeout(() => {
-          reject(new Error(`Transaction submission timed out after ${timeout}ms`));
+          reject(
+            new Error(`Transaction submission timed out after ${timeout}ms`),
+          );
         }, timeout);
 
         transaction.tx.send(async (result) => {
           if (result.isError) {
             clearTimeout(timeoutId);
-            reject(new Error(`Transaction submission failed: ${result.internalError.toString()}`));
+            reject(
+              new Error(
+                `Transaction submission failed: ${result.internalError.toString()}`,
+              ),
+            );
             return;
           }
 
           // Transaction was submitted
-          if (result.isInBlock || (shouldWaitForFinalization && result.isFinalized)) {
+          if (
+            result.isInBlock ||
+            (shouldWaitForFinalization && result.isFinalized)
+          ) {
             clearTimeout(timeoutId);
 
             const blockHash = result.isInBlock
@@ -756,7 +866,7 @@ export class Polkadot {
               events: result.events,
               status,
               transactionHash: transaction.tx.hash.toHex(),
-              fee
+              fee,
             });
           }
         });
@@ -781,7 +891,7 @@ export class Polkadot {
     recipient: string,
     amount: number,
     symbol: string,
-    options?: TransferOptions
+    options?: TransferOptions,
   ): Promise<TransactionReceipt> {
     try {
       // Get token info
@@ -798,7 +908,7 @@ export class Polkadot {
         sender,
         recipient,
         amountInBaseUnits,
-        options
+        options,
       );
 
       // Submit transaction
@@ -816,48 +926,48 @@ export class Polkadot {
    * @param options Optional batch options
    * @returns A Promise that resolves to a submittable transaction
    */
-  async createBatchTransaction(
-    sender: KeyringPair,
-    txs: SubmittableExtrinsic<'promise'>[],
-    options?: BatchTransactionOptions
-  ): Promise<SubmittableTransaction> {
-    try {
-      if (txs.length === 0) {
-        throw new Error('No transactions provided for batch');
-      }
-
-      // Create batch transaction
-      const batchTx = options?.atomicBatch
-        ? this.api.tx.utility.batchAll(txs)
-        : this.api.tx.utility.batch(txs);
-
-      // Add tip if specified
-      if (options?.tip) {
-        // @ts-ignore - Generic Method, needs to improve
-        batchTx.signFakeSignature(sender, { tip: options.tip });
-      } else {
-        // @ts-ignore - Generic Method, needs to improve
-        batchTx.signFakeSignature(sender);
-      }
-
-      // Get fee estimate
-      const feeInfo = await batchTx.paymentInfo(sender);
-
-      const feeEstimate: FeeEstimate = {
-        estimatedFee: feeInfo.partialFee.toString(),
-        partialFee: feeInfo.partialFee.toString(),
-        weight: feeInfo.weight.toString()
-      };
-
-      return {
-        tx: batchTx as SubmittableExtrinsic<'promise', ISubmittableResult>,
-        feeEstimate
-      };
-    } catch (error) {
-      logger.error(`Failed to create batch transaction: ${error.message}`);
-      throw error;
-    }
-  }
+  // async createBatchTransaction(
+  //   sender: KeyringPair,
+  //   txs: SubmittableExtrinsic<'promise'>[],
+  //   options?: BatchTransactionOptions,
+  // ): Promise<SubmittableTransaction> {
+  //   try {
+  //     if (txs.length === 0) {
+  //       throw new Error('No transactions provided for batch');
+  //     }
+  //
+  //     // Create batch transaction
+  //     const batchTx = options?.atomicBatch
+  //       ? this.api.tx.utility.batchAll(txs)
+  //       : this.api.tx.utility.batch(txs);
+  //
+  //     // Add tip if specified
+  //     if (options?.tip) {
+  //       // @ts-expect-error - Generic Method, needs to improve
+  //       batchTx.signFakeSignature(sender, { tip: options.tip });
+  //     } else {
+  //       // @ts-expect-error - Generic Method, needs to improve
+  //       batchTx.signFakeSignature(sender);
+  //     }
+  //
+  //     // Get fee estimate
+  //     const feeInfo = await batchTx.paymentInfo(sender);
+  //
+  //     const feeEstimate: FeeEstimate = {
+  //       estimatedFee: feeInfo.partialFee.toString(),
+  //       partialFee: feeInfo.partialFee.toString(),
+  //       weight: feeInfo.weight.toString(),
+  //     };
+  //
+  //     return {
+  //       tx: batchTx as SubmittableExtrinsic<'promise', ISubmittableResult>,
+  //       feeEstimate,
+  //     };
+  //   } catch (error) {
+  //     logger.error(`Failed to create batch transaction: ${error.message}`);
+  //     throw error;
+  //   }
+  // }
 
   /**
    * Get staking information for an account
@@ -878,7 +988,7 @@ export class Polkadot {
         ownStake: stakingInfo.stakingLedger.active.toString(),
         rewardDestination: stakingInfo.rewardDestination.toString(),
         nominators: [],
-        validators: []
+        validators: [],
       };
 
       // Get nominator info if available
@@ -886,19 +996,19 @@ export class Polkadot {
         for (const nominator of stakingInfo.nominators) {
           result.nominators.push({
             address: nominator.toString(),
-            value: '0' // Need to fetch actual value separately
+            value: '0', // Need to fetch actual value separately
           });
         }
       }
 
       // Get validator info if available
-      if (address in await this.api.query.staking.validators.entries()) {
+      if (address in (await this.api.query.staking.validators.entries())) {
         const validatorInfo = await this.api.query.staking.validators(address);
         result.validators.push({
           address,
           value: stakingInfo.stakingLedger.active.toString(),
           // @ts-ignore - Propriedade não reconhecida pelo TypeScript
-          commission: validatorInfo.commission.toString()
+          commission: validatorInfo.commission.toString(),
         });
       }
 
@@ -918,7 +1028,7 @@ export class Polkadot {
     try {
       const metadata = this.api.runtimeMetadata;
       const palletIndex = metadata.asLatest.pallets.findIndex(
-        p => p.name.toString() === palletName
+        (p) => p.name.toString() === palletName,
       );
 
       if (palletIndex === -1) {
@@ -933,7 +1043,7 @@ export class Polkadot {
         calls: pallet.calls ? this.api.tx[palletName] : [],
         constants: this.api.consts[palletName],
         storage: this.api.query[palletName],
-        errors: this.api.errors[palletName]
+        errors: this.api.errors[palletName],
       };
     } catch (error) {
       logger.error(`Failed to get pallet metadata: ${error.message}`);
@@ -983,7 +1093,7 @@ export class Polkadot {
    */
   async extractBalanceChangeAndFee(
     txHash: string,
-    _address: string
+    _address: string,
   ): Promise<{ balanceChange: number; fee: number }> {
     try {
       // Get transaction details
@@ -998,11 +1108,13 @@ export class Polkadot {
 
       // Calculate balance change (would require looking at events)
       // This is a simplified implementation
-      let balanceChange = 0;
+      const balanceChange = 0;
 
       return { balanceChange, fee };
     } catch (error) {
-      logger.error(`Failed to extract balance change and fee: ${error.message}`);
+      logger.error(
+        `Failed to extract balance change and fee: ${error.message}`,
+      );
       throw error;
     }
   }
@@ -1030,14 +1142,12 @@ export class Polkadot {
       }
 
       // Format the address in SS58 format for the current network
-      const formattedAddress = encodeAddress(
-        keyPair.publicKey
-      );
+      const formattedAddress = encodeAddress(keyPair.publicKey);
 
       // Return the formatted address along with the keyring pair
       return {
         keyPair,
-        address: formattedAddress
+        address: formattedAddress,
       };
     } catch (error) {
       logger.error(`Failed to add wallet from private key: ${error.message}`);
@@ -1046,21 +1156,15 @@ export class Polkadot {
   }
 
   /**
-   * Get a wallet's public key in hex format
-   * @param keyPair The keyring pair
-   * @returns The public key in hex format
-   */
-  getPublicKeyHex(keyPair: KeyringPair): string {
-    return u8aToHex(keyPair.publicKey);
-  }
-
-  /**
    * Save wallet to file system
    * @param address The SS58-encoded address
    * @param encryptedPrivateKey The encrypted private key
    * @returns A Promise that resolves when the wallet is saved
    */
-  async saveWalletToFile(address: string, encryptedPrivateKey: string): Promise<void> {
+  async saveWalletToFile(
+    address: string,
+    encryptedPrivateKey: string,
+  ): Promise<void> {
     try {
       // File path follows pattern: conf/wallets/polkadot/<address>.json
       const walletPath = `conf/wallets/polkadot`;
@@ -1080,4 +1184,3 @@ export class Polkadot {
     }
   }
 }
-
