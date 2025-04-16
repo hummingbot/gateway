@@ -20,12 +20,11 @@ const KNOWN_TOKEN_MINTS = {
 // Extended parameters for listPools
 interface ExtendedListPoolsRequestType extends ListPoolsRequestType {
   network?: string;
-  tokens?: string[]; // Array of token symbols/addresses for backwards compatibility
   types?: string[]; // Array of pool types (e.g. ['amm', 'cpmm', 'clmm'])
   maxNumberOfPages?: number;
   useOfficialTokens?: boolean;
   
-  // New specific token parameters
+  // Specific token parameters
   tokenSymbols?: string[]; // Array of token symbols (e.g. ['USDC', 'USDT'])
   tokenAddresses?: string[]; // Array of token addresses (e.g. ['EPjFWdd5...', 'Es9vMFrz...'])
 }
@@ -46,12 +45,6 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
         querystring: {
           properties: {
             network: { type: 'string', examples: ['mainnet-beta'] },
-            tokens: { 
-              type: 'array', 
-              description: 'Array of token symbols/addresses to filter by (for backward compatibility)',
-              items: { type: 'string' },
-              examples: [['usdt', 'usdc']]
-            },
             types: { 
               type: 'array', 
               description: 'Array of pool types to filter by',
@@ -92,7 +85,6 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
         // Extract parameters
         const {
           network = 'mainnet-beta',
-          tokens = [],
           types = [],
           maxNumberOfPages = 3,
           useOfficialTokens = false,
@@ -100,14 +92,10 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
           tokenAddresses = []
         } = request.query;
         
-        // Use arrays directly - no need to split strings
-        const tokensList = tokens;
-        const typesList = types;
-        
         // Determine if we need to fetch by token
         const hasTokenSymbols = tokenSymbols.length > 0;
         const hasTokenAddresses = tokenAddresses.length > 0;
-        const hasTokens = tokensList.length > 0 || hasTokenSymbols || hasTokenAddresses;
+        const hasTokens = hasTokenSymbols || hasTokenAddresses;
         
         // Store if we need to filter by both symbol and address
         const needsSymbolAndAddressMatch = hasTokenSymbols && hasTokenAddresses;
@@ -117,10 +105,9 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
         
         // Log what we're filtering for
         const logMessage = [`Listing Raydium pools on network: ${network}`];
-        if (tokensList.length > 0) logMessage.push(`General tokens: ${tokensList.join(', ')}`);
         if (tokenSymbols.length > 0) logMessage.push(`Token symbols: ${tokenSymbols.join(', ')}`);
         if (tokenAddresses.length > 0) logMessage.push(`Token addresses: ${tokenAddresses.join(', ')}`);
-        if (typesList.length > 0) logMessage.push(`Pool types: ${typesList.join(', ')}`);
+        if (types.length > 0) logMessage.push(`Pool types: ${types.join(', ')}`);
         logMessage.push(`Max pages: ${maxNumberOfPages}`);
         logMessage.push(`Use Jupiter tokens: ${useJupiterTokens}`);
         if (needsSymbolAndAddressMatch) logMessage.push(`Requiring both symbol AND address match`);
@@ -144,7 +131,7 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
         const allAddressesToFilterBy: string[] = [...tokenAddresses]; // Start with explicit addresses
         
         // If we have symbols to filter by, resolve them to addresses
-        if (hasTokenSymbols || (tokensList.length > 0 && useJupiterTokens)) {
+        if (hasTokenSymbols && useJupiterTokens) {
           try {
             logger.info(`Fetching Jupiter token list for token resolution`);
             jupTokenList = await raydium.raydiumSDK.api.getJupTokenList();
@@ -182,52 +169,18 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
             
             // Process specific token symbols parameter
             if (hasTokenSymbols) {
-              const resolvedFromSpecificSymbols = resolveSymbolsToAddresses(tokenSymbols);
-              resolvedAddressesFromSymbols.push(...resolvedFromSpecificSymbols);
+              const resolvedFromSymbols = resolveSymbolsToAddresses(tokenSymbols);
+              resolvedAddressesFromSymbols.push(...resolvedFromSymbols);
               
               // Only add to filter list if we don't need both symbol AND address match
               if (!needsSymbolAndAddressMatch) {
-                allAddressesToFilterBy.push(...resolvedFromSpecificSymbols);
+                allAddressesToFilterBy.push(...resolvedFromSymbols);
               }
-            }
-            
-            // Process general tokens parameter for symbols
-            if (tokensList.length > 0) {
-              // For the general tokens parameter, we'll treat everything as potential symbols and addresses
-              const resolvedFromGeneralTokens = resolveSymbolsToAddresses(tokensList);
-              allAddressesToFilterBy.push(...resolvedFromGeneralTokens);
-              
-              // Also add the original tokens as potential addresses
-              tokensList.forEach(token => {
-                if (token.length >= 32) { // Likely an address
-                  try {
-                    new PublicKey(token); // Validate it's a public key
-                    allAddressesToFilterBy.push(token);
-                  } catch (e) {
-                    // Not a valid address, skip
-                  }
-                }
-              });
             }
           } catch (error) {
-            logger.error(`Error fetching/processing Jupiter token list: ${error.message}`);
+            logger.error(`Error retrieving token list: ${error.message}`);
           }
-        } else if (tokensList.length > 0) {
-          // If not using Jupiter but have tokens, assume they might be addresses
-          tokensList.forEach(token => {
-            if (token.length >= 32) { // Likely an address
-              try {
-                new PublicKey(token); // Validate it's a public key
-                allAddressesToFilterBy.push(token);
-              } catch (e) {
-                // Not a valid address, skip
-              }
-            }
-          });
         }
-        
-        // Log the resolved addresses for debugging
-        logger.info(`Resolved addresses to filter by: ${allAddressesToFilterBy.join(', ') || 'none'}`);
         
         // Method 1: Use fetchPoolByMints if we have addresses to filter by
         if (allAddressesToFilterBy.length > 0) {
@@ -390,7 +343,7 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
         // Standard filtering by individual parameters
         else {
           // Filter by token addresses if specified
-          if (tokenAddresses.length > 0 || (tokensList.length > 0 && !hasTokenSymbols)) {
+          if (tokenAddresses.length > 0 || (tokenSymbols.length > 0 && !hasTokenSymbols)) {
             const beforeCount = filteredPools.length;
             
             filteredPools = filteredPools.filter(poolInfo => {
@@ -426,7 +379,7 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
           }
           
           // Filter by general tokens list if specified and we haven't already used it
-          if (tokensList.length > 0 && !hasTokenSymbols && !hasTokenAddresses) {
+          if (tokenSymbols.length > 0 && !hasTokenSymbols && !hasTokenAddresses) {
             const beforeCount = filteredPools.length;
             
             filteredPools = filteredPools.filter(poolInfo => {
@@ -437,7 +390,7 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
               const tokenBSymbol = poolInfo.mintB?.symbol || '';
               
               // Check if any token matches by symbol or address
-              return tokensList.some(token => {
+              return tokenSymbols.some(token => {
                 const upperToken = token.toUpperCase();
                 return tokenASymbol.toUpperCase().includes(upperToken) || 
                        tokenBSymbol.toUpperCase().includes(upperToken) ||
@@ -451,12 +404,12 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
         }
         
         // Filter by pool type if specified
-        if (typesList.length > 0) {
+        if (types.length > 0) {
           const beforeCount = filteredPools.length;
           
           filteredPools = filteredPools.filter(poolInfo => {
             // First check by type property
-            if (poolInfo.type && typesList.some(type => 
+            if (poolInfo.type && types.some(type => 
               poolInfo.type.toLowerCase() === type.toLowerCase())) {
               return true;
             }
@@ -466,7 +419,7 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
               ? poolInfo.programId 
               : poolInfo.programId?.toString() || '';
             
-            return typesList.some(type => {
+            return types.some(type => {
               if (type.toLowerCase() === 'amm' && isValidAmm(programIdStr)) {
                 return true;
               } else if (type.toLowerCase() === 'cpmm' && isValidCpmm(programIdStr)) {

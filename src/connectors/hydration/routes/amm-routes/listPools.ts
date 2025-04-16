@@ -18,10 +18,11 @@ const KNOWN_TOKENS = {
 // Extended parameters for listPools
 interface ExtendedListPoolsRequestType extends ListPoolsRequestType {
   network?: string;
-  tokens?: string[]; // Array of token symbols/addresses (e.g. ['usdt', 'usdc'])
   types?: string[]; // Array of pool types (e.g. ['xyz', 'stablepool'])
   maxNumberOfPages?: number;
   useOfficialTokens?: boolean;
+  tokenSymbols?: string[]; // Array of token symbols (e.g. ['USDT', 'DOT'])
+  tokenAddresses?: string[]; // Array of token addresses (e.g. ['10', '22'])
 }
 
 /**
@@ -40,12 +41,6 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
         querystring: {
           properties: {
             network: { type: 'string', examples: ['mainnet'] },
-            tokens: { 
-              type: 'array', 
-              description: 'Array of token symbols/addresses to filter by',
-              items: { type: 'string' },
-              examples: [['usdt', 'usdc']]
-            },
             types: { 
               type: 'array', 
               description: 'Array of pool types to filter by',
@@ -53,7 +48,19 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
               examples: [['xyz', 'stablepool']]
             },
             maxNumberOfPages: { type: 'integer', description: 'Maximum number of pages to fetch', default: 1 },
-            useOfficialTokens: { type: 'boolean', description: 'Whether to use official token list instead of on-chain resolution', default: true }
+            useOfficialTokens: { type: 'boolean', description: 'Whether to use official token list instead of on-chain resolution', default: true },
+            tokenSymbols: { 
+              type: 'array', 
+              description: 'Array of token symbols to filter by',
+              items: { type: 'string' },
+              examples: [['USDT', 'DOT']]
+            },
+            tokenAddresses: { 
+              type: 'array', 
+              description: 'Array of token addresses to filter by',
+              items: { type: 'string' },
+              examples: [['10', '5']]
+            }
           }
         },
         response: {
@@ -66,20 +73,35 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
         // Extract parameters
         const {
           network = 'mainnet',
-          tokens = [],
           types = [],
           maxNumberOfPages = 1,
-          useOfficialTokens = true
+          useOfficialTokens = true,
+          tokenSymbols = [],
+          tokenAddresses = []
         } = request.query;
         
-        // Use the arrays directly - no need to parse comma-separated strings
-        const tokensList = tokens;
-        const typesList = types;
+        // Make sure arrays are properly handled
+        const tokenSymbolsArray = Array.isArray(tokenSymbols) ? tokenSymbols : [tokenSymbols].filter(Boolean);
+        const tokenAddressesArray = Array.isArray(tokenAddresses) ? tokenAddresses : [tokenAddresses].filter(Boolean);
+        const typesArray = Array.isArray(types) ? types : [types].filter(Boolean);
         
-        logger.info(`Listing Hydration pools on network: ${network}`);
-        if (tokensList.length > 0) logger.info(`Filtering by tokens: ${tokensList.join(', ')}`);
-        if (typesList.length > 0) logger.info(`Filtering by types: ${typesList.join(', ')}`);
-        logger.info(`Max pages: ${maxNumberOfPages}, Use official tokens: ${useOfficialTokens}`);
+        // Determine if we need to fetch by token
+        const hasTokenSymbols = tokenSymbolsArray.length > 0;
+        const hasTokenAddresses = tokenAddressesArray.length > 0;
+        const hasTokens = hasTokenSymbols || hasTokenAddresses;
+        
+        // Store if we need to filter by both symbol and address
+        const needsSymbolAndAddressMatch = hasTokenSymbols && hasTokenAddresses;
+        
+        // Log what we're filtering for
+        const logMessage = [`Listing Hydration pools on network: ${network}`];
+        if (tokenSymbolsArray.length > 0) logMessage.push(`Token symbols: ${tokenSymbolsArray.join(', ')}`);
+        if (tokenAddressesArray.length > 0) logMessage.push(`Token addresses: ${tokenAddressesArray.join(', ')}`);
+        if (typesArray.length > 0) logMessage.push(`Pool types: ${typesArray.join(', ')}`);
+        logMessage.push(`Max pages: ${maxNumberOfPages}`);
+        logMessage.push(`Use official tokens: ${useOfficialTokens}`);
+        if (needsSymbolAndAddressMatch) logMessage.push(`Requiring both symbol AND address match`);
+        logger.info(logMessage.join(', '));
         
         const hydration = await Hydration.getInstance(network);
         if (!hydration) {
@@ -89,15 +111,34 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
         try {
           // Resolve token symbols to addresses if using official tokens list
           const resolvedTokenAddresses: string[] = [];
-          if (useOfficialTokens && tokensList.length > 0) {
-            for (const token of tokensList) {
-              const upperToken = token.toUpperCase();
-              if (KNOWN_TOKENS[upperToken]) {
-                resolvedTokenAddresses.push(KNOWN_TOKENS[upperToken]);
-                logger.info(`Resolved token ${token} to address ${KNOWN_TOKENS[upperToken]} using official list`);
-              } else {
-                // If not found in known tokens, use as is (might be an address)
-                resolvedTokenAddresses.push(token);
+          const allAddressesToFilterBy: string[] = [...tokenAddressesArray]; // Start with explicit addresses
+          
+          // Process token lists - we'll gather all addresses to filter by
+          if (useOfficialTokens && hasTokenSymbols) {
+            // Create a function to resolve symbols
+            const resolveSymbolsToAddresses = (symbols: string[]) => {
+              const resolved: string[] = [];
+              
+              for (const token of symbols) {
+                const upperToken = token.toUpperCase();
+                if (KNOWN_TOKENS[upperToken]) {
+                  const resolvedAddress = KNOWN_TOKENS[upperToken];
+                  resolved.push(resolvedAddress);
+                  logger.info(`Resolved token ${token} to address ${resolvedAddress} using official list`);
+                }
+              }
+              
+              return resolved;
+            };
+            
+            // Process specific token symbols parameter
+            if (hasTokenSymbols) {
+              const resolvedFromSymbols = resolveSymbolsToAddresses(tokenSymbolsArray);
+              resolvedTokenAddresses.push(...resolvedFromSymbols);
+              
+              // Only add to filter list if we don't need both symbol AND address match
+              if (!needsSymbolAndAddressMatch) {
+                allAddressesToFilterBy.push(...resolvedFromSymbols);
               }
             }
           }
@@ -148,7 +189,7 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
             }
             
             // Check if address matches any resolved token addresses when using official tokens
-            if (useOfficialTokens && resolvedTokenAddresses.length > 0) {
+            if (useOfficialTokens) {
               for (const [symbol, address] of Object.entries(KNOWN_TOKENS)) {
                 if (address === tokenAddress) {
                   tokenSymbolCache.set(tokenAddress, symbol);
@@ -179,23 +220,42 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
             }
           };
 
-          // Filter by token addresses first if we resolved them
-          let filteredPools = [...pools];
-          if (useOfficialTokens && resolvedTokenAddresses.length > 0) {
+          // Filter processing
+          let filteredPools = [...pools]; // Make a copy
+          
+          // Advanced filtering: Symbols and Addresses
+          if (needsSymbolAndAddressMatch) {
+            logger.info(`Applying specific symbol AND address matching filter`);
             const beforeCount = filteredPools.length;
+            
+            // Filter by addresses and then check if the symbols match
             filteredPools = filteredPools.filter(pool => 
-              resolvedTokenAddresses.some(tokenAddr => 
-                pool.baseTokenAddress === tokenAddr || pool.quoteTokenAddress === tokenAddr
+              tokenAddressesArray.some(addr => 
+                pool.baseTokenAddress === addr || pool.quoteTokenAddress === addr
               )
             );
+            
+            logger.info(`Symbol AND address filter: ${beforeCount} → ${filteredPools.length} pools`);
+          }
+          // Standard filtering by individual parameters
+          else if (hasTokens) {
+            // Filter by token addresses
+            const beforeCount = filteredPools.length;
+            
+            filteredPools = filteredPools.filter(pool => 
+              allAddressesToFilterBy.some(addr => 
+                pool.baseTokenAddress === addr || pool.quoteTokenAddress === addr
+              )
+            );
+            
             logger.info(`Token address filter: ${beforeCount} → ${filteredPools.length} pools`);
           }
           
           // Filter by pool type if specified
-          if (typesList.length > 0) {
+          if (typesArray.length > 0) {
             const beforeCount = filteredPools.length;
             filteredPools = filteredPools.filter(pool => 
-              pool.poolType && typesList.some(type => 
+              pool.poolType && typesArray.some(type => 
                 pool.poolType.toLowerCase().includes(type.toLowerCase())
               )
             );
@@ -207,24 +267,35 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
             const baseTokenSymbol = await getTokenSymbolWithFallback(pool.baseTokenAddress);
             const quoteTokenSymbol = await getTokenSymbolWithFallback(pool.quoteTokenAddress);
             
-            // Create pool object
+            // Calculate additional metrics from available properties
+            const volume24h = 0; // We don't have volume data in ExternalPoolInfo
+            const tvl = pool.baseTokenAmount * pool.price + pool.quoteTokenAmount || 0;
+            const apr = 0; // We don't have APR data in ExternalPoolInfo
+            
+            // Create pool object with extended information
             return {
               address: pool.address,
               type: pool.poolType || 'hydration',
               tokens: [baseTokenSymbol, quoteTokenSymbol],
-              fee: pool.feePct
+              tokenAddresses: [pool.baseTokenAddress, pool.quoteTokenAddress],
+              fee: pool.feePct,
+              price: pool.price || 0,
+              volume: volume24h,
+              tvl: tvl,
+              apr: apr
             };
           });
           
           // Wait for all pool info to be processed
           let poolList = await Promise.all(poolListPromises);
           
-          // Apply token symbol filter if tokens are specified and we're not using official tokens
+          // Apply token symbol filter if token symbols are specified and we're not using official tokens
           // (if we're using official tokens, we've already filtered by address above)
-          if (tokensList.length > 0 && !useOfficialTokens) {
+          if (hasTokenSymbols && !useOfficialTokens) {
             const beforeCount = poolList.length;
+            
             poolList = poolList.filter(pool => 
-              tokensList.some(token => 
+              tokenSymbolsArray.some(token => 
                 // Check if any of the pool tokens match the requested token
                 pool.tokens.some(poolToken => 
                   poolToken.toLowerCase().includes(token.toLowerCase())
