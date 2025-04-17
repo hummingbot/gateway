@@ -199,9 +199,15 @@ export class Hydration {
     return this.polkadot.getToken(tokenAddress);
   }
   @runWithRetryAndTimeout()
-  private async poolServiceGetPosition(wallet: KeyringPair, poolAddress?: string) {
-    return this.poolService.getPositions(wallet.address, poolAddress);
-  }  
+  private async poolServiceGetPosition(target: PoolService, wallet: KeyringPair, poolAddress: string) {
+    return target.getPositions(wallet.address, poolAddress);
+  }
+
+  @runWithRetryAndTimeout()
+  private poolServiceGetPool(target: PoolService, poolAddress: any) {
+    return target.getPool(poolAddress);
+  }
+
   /**
    * Calculate trade limit based on slippage tolerance
    * @param trade The trade to calculate limits for
@@ -838,7 +844,7 @@ export class Hydration {
 
       // Get positions for this wallet from the SDK
       /* getPositions don't exist in the SDK */
-      const positions = await this.poolService.getPositions(wallet.address, poolAddress);
+      const positions = await this.poolServiceGetPosition(wallet.address, poolAddress);
 
       if (!positions || positions.length === 0) {
         return [];
@@ -1022,7 +1028,7 @@ export class Hydration {
 
       // Get position and pool data from the SDK
       
-      const position = await this.poolService.getPosition(positionAddress);
+        const position = await this.poolServiceGetPosition(this.poolService, wallet, positionAddress);
 
       if (!position) {
         throw new Error(`Position not found: ${positionAddress}`);
@@ -1034,7 +1040,7 @@ export class Hydration {
       }
 
       // Get pool information
-      const poolInfo = await this.poolService.getPool(position.poolId);
+      const poolInfo = await this.poolServiceGetPool(this.poolService, position.poolId);
 
       return {
         position: {
@@ -1082,7 +1088,9 @@ export class Hydration {
       // Get tick spacing for this pool from the SDK
       // @ts-ignore - Generic Method, needs to improve
       /* getPool don't exist in the SDK */
-      const poolDetails = await this.poolService.getPool(poolAddress);
+      
+
+      const poolDetails = await this.poolServiceGetPool(this.poolService, poolAddress);
       const tickSpacing = poolDetails.tickSpacing || 10;
 
       // Convert prices to ticks

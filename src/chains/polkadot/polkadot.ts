@@ -1,4 +1,3 @@
-
 import { ApiPromise, WsProvider, HttpProvider } from '@polkadot/api';
 import { Keyring } from '@polkadot/keyring';
 import { KeyringPair } from '@polkadot/keyring/types';
@@ -111,31 +110,58 @@ export class Polkadot {
     return this.api.rpc.chain.getHeader();
   }
 
+  /**
+   * Get the system account
+   * @param address The address of the account
+   * @returns A Promise that resolves to the system account
+   */
   @runWithRetryAndTimeout()
   private async apiQuerySystemAccount(address: string) {
     return this.api.query.system.account(address);
   }
 
+  /**
+   * Get the tokens accounts
+   * @param address The address of the account
+   * @param tokenAddress The address of the token
+   * @returns A Promise that resolves to the tokens accounts
+   */
   @runWithRetryAndTimeout()
   private async apiQueryTokensAccounts(address: string, tokenAddress: string) {
     return this.api.query.tokens.accounts(address, tokenAddress);
   }
 
+  /**
+   * Get the tokens
+   * @returns A Promise that resolves to the tokens
+   */
   @runWithRetryAndTimeout()
   private async apiQueryTokens() {
     return this.api.query.tokens;
   }
 
+  /**
+   * Get the assets
+   * @returns A Promise that resolves to the assets
+   */
   @runWithRetryAndTimeout()
   private async apiQueryAssets() {
     return this.api.query.assets;
   }
 
+  /**
+   * Get the transaction URL
+   * @returns A Promise that resolves to the transaction URL
+   */
   @runWithRetryAndTimeout()
   private async configNetworkTrasactionURL() {
     return this.config.network.transactionURL;
   }
 
+  /**
+   * Get the node URL
+   * @returns A Promise that resolves to the node URL
+   */
   @runWithRetryAndTimeout()
   private configNetworkNodeURL() {
     return this.config.network.nodeURL;
@@ -145,7 +171,6 @@ export class Polkadot {
    * Private constructor - use getInstance instead
    * @param network The network to connect to
    */
-
   private constructor(network: string) {
     this.network = network;
     this.config = getPolkadotConfig('polkadot', network);
