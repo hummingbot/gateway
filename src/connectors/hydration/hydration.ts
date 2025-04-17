@@ -103,6 +103,10 @@ export class Hydration {
     return Hydration._instances[network];
   }
 
+  public getPoolService(): PoolService {
+    return this.poolService;
+  }
+
   /**
    * Check if the instance is ready
    * @returns boolean indicating if the instance is ready
@@ -144,7 +148,7 @@ export class Hydration {
     }
   }
 
-  private getNewTradeRouter(): TradeRouter {
+  public getNewTradeRouter(): TradeRouter {
     return new TradeRouter(this.poolService);
   }
 
@@ -247,7 +251,7 @@ export class Hydration {
 
       // Get pool data from the SDK
       const pools = await this.poolService.getPools([]); // Get all pools
-      
+
       const poolData = pools.find(pool => pool.address === poolAddress);
 
       if (!poolData) {
@@ -274,13 +278,13 @@ export class Hydration {
       try {
         // Get reserves from the SDK
         const reserves = await this.getPoolReserves(poolAddress);
-        
+
         if (reserves) {
           // Calculate amounts using reserves
           const baseAmount = Number(reserves.baseReserve
             .div(BigNumber(10).pow(baseToken.decimals))
             .toFixed(baseToken.decimals));
-          
+
           const quoteAmount = Number(reserves.quoteReserve
             .div(BigNumber(10).pow(quoteToken.decimals))
             .toFixed(quoteToken.decimals));
@@ -288,13 +292,13 @@ export class Hydration {
           // Validate the calculated amounts
           baseTokenAmount = !isNaN(baseAmount) && isFinite(baseAmount) ? baseAmount : 0;
           quoteTokenAmount = !isNaN(quoteAmount) && isFinite(quoteAmount) ? quoteAmount : 0;
-        } 
+        }
         // Fallback to token balances if reserves not available
         else if (poolData.tokens[0].balance && poolData.tokens[1].balance) {
           const baseAmount = Number(BigNumber(poolData.tokens[0].balance.toString())
             .div(BigNumber(10).pow(baseToken.decimals))
             .toFixed(baseToken.decimals));
-          
+
           const quoteAmount = Number(BigNumber(poolData.tokens[1].balance.toString())
             .div(BigNumber(10).pow(quoteToken.decimals))
             .toFixed(quoteToken.decimals));
@@ -318,7 +322,7 @@ export class Hydration {
 
           // Use a small amount (1 unit) to get the spot price
           const amountBN = BigNumber('1');
-          
+
           // Get both buy and sell quotes to calculate the mid price
           try {
             buyQuote = await tradeRouter.getBestBuy(
@@ -346,7 +350,7 @@ export class Hydration {
 
             const buyPrice = Number(buyHuman.spotPrice);
             const sellPrice = Number(sellHuman.spotPrice);
-            
+
             // Validate and set the pool price
             const midPrice = (buyPrice + sellPrice) / 2;
             poolPrice = !isNaN(midPrice) && isFinite(midPrice) ? Number(midPrice.toFixed(6)) : 1;
@@ -388,10 +392,10 @@ export class Hydration {
       let liquidity = 1000000; // Default liquidity
       try {
         if (poolDataAny.liquidity) {
-          const liquidityValue = typeof poolDataAny.liquidity === 'object' && 'toNumber' in poolDataAny.liquidity ? 
-            poolDataAny.liquidity.toNumber() : 
+          const liquidityValue = typeof poolDataAny.liquidity === 'object' && 'toNumber' in poolDataAny.liquidity ?
+            poolDataAny.liquidity.toNumber() :
             Number(poolDataAny.liquidity);
-          
+
           liquidity = !isNaN(liquidityValue) && isFinite(liquidityValue) ? liquidityValue : 1000000;
         }
       } catch (error) {
@@ -1000,7 +1004,7 @@ export class Hydration {
       }
 
       // Get position and pool data from the SDK
-      // @ts-ignore - Generic Method, needs to improve  
+      // @ts-ignore - Generic Method, needs to improve
       const position = await this.poolService.getPosition(positionAddress);
 
       if (!position) {
@@ -1535,7 +1539,7 @@ export class Hydration {
       } else if (poolType.toLowerCase().includes('omni')) {
         // For Omnipool, liquidity calculation might be different
         // Simple approximation: geometric mean weighted by TVL ratio
-        liquidity = Math.sqrt(baseTokenAmount * quoteTokenAmount) * 
+        liquidity = Math.sqrt(baseTokenAmount * quoteTokenAmount) *
           (1 + Math.min(0.2, Math.abs(currentPrice - (lowerPrice + upperPrice) / 2) / ((upperPrice - lowerPrice) / 2)));
       } else {
         // Default to geometric mean
@@ -1548,13 +1552,13 @@ export class Hydration {
         if (this.poolService.calculateLiquidity) {
           // @ts-ignore - Direct SDK access to calculate liquidity
           const sdkLiquidity = await this.poolService.calculateLiquidity(
-            poolAddress, 
-            baseTokenAmount.toString(), 
+            poolAddress,
+            baseTokenAmount.toString(),
             quoteTokenAmount.toString(),
             lowerPrice,
             upperPrice
           );
-          
+
           if (sdkLiquidity && !isNaN(Number(sdkLiquidity))) {
             liquidity = Number(sdkLiquidity);
             logger.info(`Using SDK liquidity calculation: ${liquidity}`);
@@ -1603,12 +1607,12 @@ export class Hydration {
    * @param poolAddress The pool address
    * @returns A Promise that resolves to the pool reserves
    */
-  private async getPoolReserves(poolAddress: string): Promise<{ baseReserve: BigNumber; quoteReserve: BigNumber } | null> {
+  public async getPoolReserves(poolAddress: string): Promise<{ baseReserve: BigNumber; quoteReserve: BigNumber } | null> {
     try {
       // Get pool from SDK
       const pools = await this.poolService.getPools([]);
       const pool = pools.find(p => p.address === poolAddress);
-      
+
       if (!pool) {
         logger.error(`Pool not found: ${poolAddress}`);
         return null;

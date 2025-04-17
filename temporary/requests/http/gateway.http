@@ -690,3 +690,61 @@ Content-Type: application/json
 }
 
 ###
+
+
+
+# ===================== HYDRATION LIST POOLS TESTS =====================
+
+# GET /hydration/amm/list-pools - List all pools
+GET {{httpProtocol}}://{{host}}:{{port}}/hydration/amm/list-pools?network={{network}}
+Content-Type: application/json
+
+###
+
+# GET /hydration/amm/list-pools - Filter by tokenSymbols (correct format)
+GET {{httpProtocol}}://{{host}}:{{port}}/hydration/amm/list-pools?network={{network}}&tokenSymbols={{baseTokenSymbol}}&tokenSymbols={{quoteTokenSymbol}}
+Content-Type: application/json
+
+###
+
+# GET /hydration/amm/list-pools - Filter by pool types (correct format)
+GET {{httpProtocol}}://{{host}}:{{port}}/hydration/amm/list-pools?network={{network}}&types=xyk
+Content-Type: application/json
+
+###
+
+# GET /hydration/amm/list-pools - Combination filtering (correct format)
+GET {{httpProtocol}}://{{host}}:{{port}}/hydration/amm/list-pools?network={{network}}&tokenSymbols={{baseTokenSymbol}}&tokenSymbols={{quoteTokenSymbol}}&maxNumberOfPages=2&types=xyk
+Content-Type: application/json
+
+###
+
+# ===================== RAYDIUM LIST POOLS TESTS =====================
+
+# GET /raydium/amm/list-pools - List all pools
+GET {{httpProtocol}}://{{host}}:{{port}}/raydium/amm/list-pools?network={{network}}
+Content-Type: application/json
+
+###
+
+# GET /raydium/amm/list-pools - Filter by tokenSymbols
+GET {{httpProtocol}}://{{host}}:{{port}}/raydium/amm/list-pools?network={{network}}&tokenSymbols={{baseTokenSymbol}}&tokenSymbols={{quoteTokenSymbol}}
+Content-Type: application/json
+
+###
+
+# GET /raydium/amm/list-pools - Filter by pool types
+GET {{httpProtocol}}://{{host}}:{{port}}/raydium/amm/list-pools?network={{network}}&types=amm
+Content-Type: application/json
+
+###
+
+# GET /raydium/amm/list-pools - Filter by tokenAddresses (USDC/USDT)
+GET {{httpProtocol}}://{{host}}:{{port}}/raydium/amm/list-pools?network={{network}}&tokenAddresses=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&tokenAddresses=Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB
+Content-Type: application/json
+
+###
+
+# GET /raydium/amm/list-pools - Combined filtering with useOfficialTokens
+GET {{httpProtocol}}://{{host}}:{{port}}/raydium/amm/list-pools?network={{network}}&tokenSymbols=USDC&types=amm&maxNumberOfPages=2&useOfficialTokens=true
+Content-Type: application/json
