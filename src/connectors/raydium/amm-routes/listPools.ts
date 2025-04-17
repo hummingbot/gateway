@@ -92,9 +92,14 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
           tokenAddresses = []
         } = request.query;
         
+        // Make sure arrays are properly handled
+        const tokenSymbolsArray = Array.isArray(tokenSymbols) ? tokenSymbols : [tokenSymbols].filter(Boolean);
+        const tokenAddressesArray = Array.isArray(tokenAddresses) ? tokenAddresses : [tokenAddresses].filter(Boolean);
+        const typesArray = Array.isArray(types) ? types : [types].filter(Boolean);
+        
         // Determine if we need to fetch by token
-        const hasTokenSymbols = tokenSymbols.length > 0;
-        const hasTokenAddresses = tokenAddresses.length > 0;
+        const hasTokenSymbols = tokenSymbolsArray.length > 0;
+        const hasTokenAddresses = tokenAddressesArray.length > 0;
         const hasTokens = hasTokenSymbols || hasTokenAddresses;
         
         // Store if we need to filter by both symbol and address
@@ -105,9 +110,9 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
         
         // Log what we're filtering for
         const logMessage = [`Listing Raydium pools on network: ${network}`];
-        if (tokenSymbols.length > 0) logMessage.push(`Token symbols: ${tokenSymbols.join(', ')}`);
-        if (tokenAddresses.length > 0) logMessage.push(`Token addresses: ${tokenAddresses.join(', ')}`);
-        if (types.length > 0) logMessage.push(`Pool types: ${types.join(', ')}`);
+        if (tokenSymbolsArray.length > 0) logMessage.push(`Token symbols: ${tokenSymbolsArray.join(', ')}`);
+        if (tokenAddressesArray.length > 0) logMessage.push(`Token addresses: ${tokenAddressesArray.join(', ')}`);
+        if (typesArray.length > 0) logMessage.push(`Pool types: ${typesArray.join(', ')}`);
         logMessage.push(`Max pages: ${maxNumberOfPages}`);
         logMessage.push(`Use Jupiter tokens: ${useJupiterTokens}`);
         if (needsSymbolAndAddressMatch) logMessage.push(`Requiring both symbol AND address match`);
@@ -128,7 +133,7 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
         const resolvedAddressesFromSymbols: string[] = [];
         
         // Process token lists - we'll gather all addresses to filter by
-        const allAddressesToFilterBy: string[] = [...tokenAddresses]; // Start with explicit addresses
+        const allAddressesToFilterBy: string[] = [...tokenAddressesArray]; // Start with explicit addresses
         
         // If we have symbols to filter by, resolve them to addresses
         if (hasTokenSymbols && useJupiterTokens) {
@@ -169,7 +174,7 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
             
             // Process specific token symbols parameter
             if (hasTokenSymbols) {
-              const resolvedFromSymbols = resolveSymbolsToAddresses(tokenSymbols);
+              const resolvedFromSymbols = resolveSymbolsToAddresses(tokenSymbolsArray);
               resolvedAddressesFromSymbols.push(...resolvedFromSymbols);
               
               // Only add to filter list if we don't need both symbol AND address match
@@ -211,7 +216,7 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
                   
                   // Get the valid public keys for addresses specifically provided
                   const addressPublicKeys: PublicKey[] = [];
-                  for (const address of tokenAddresses) {
+                  for (const address of tokenAddressesArray) {
                     try {
                       addressPublicKeys.push(new PublicKey(address));
                     } catch (error) {
@@ -326,11 +331,11 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
             const symbolB = poolInfo.mintB?.symbol || '';
             
             // Check if the pool has tokens matching both a specified address AND a specified symbol
-            const hasMatchingAddress = tokenAddresses.some(addr => 
+            const hasMatchingAddress = tokenAddressesArray.some(addr => 
               mintAAddress === addr || mintBAddress === addr
             );
             
-            const hasMatchingSymbol = tokenSymbols.some(sym => {
+            const hasMatchingSymbol = tokenSymbolsArray.some(sym => {
               const upperSym = sym.toUpperCase();
               return symbolA.toUpperCase() === upperSym || symbolB.toUpperCase() === upperSym;
             });
@@ -343,7 +348,7 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
         // Standard filtering by individual parameters
         else {
           // Filter by token addresses if specified
-          if (tokenAddresses.length > 0 || (tokenSymbols.length > 0 && !hasTokenSymbols)) {
+          if (tokenAddressesArray.length > 0 || (tokenSymbolsArray.length > 0 && !hasTokenSymbols)) {
             const beforeCount = filteredPools.length;
             
             filteredPools = filteredPools.filter(poolInfo => {
@@ -358,28 +363,49 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
             logger.info(`Token address filter: ${beforeCount} → ${filteredPools.length} pools`);
           }
           
-          // Filter by token symbols if specified
-          if (tokenSymbols.length > 0 && jupTokenList.length > 0) {
+          // Filter by token symbols if specified - removed dependency on jupTokenList length
+          if (hasTokenSymbols) {
             const beforeCount = filteredPools.length;
             
-            filteredPools = filteredPools.filter(poolInfo => {
-              // Get symbols for the pool tokens
-              const tokenASymbol = poolInfo.mintA?.symbol || '';
-              const tokenBSymbol = poolInfo.mintB?.symbol || '';
+            // First, handle the case when we have exactly 2 token symbols - find exact pairs
+            if (tokenSymbolsArray.length === 2) {
+              const [symbol1, symbol2] = tokenSymbolsArray;
+              const upperSymbol1 = symbol1.toUpperCase();
+              const upperSymbol2 = symbol2.toUpperCase();
               
-              // Check if any requested symbol matches
-              return tokenSymbols.some(symbol => {
-                const upperSymbol = symbol.toUpperCase();
-                return tokenASymbol.toUpperCase() === upperSymbol || 
-                       tokenBSymbol.toUpperCase() === upperSymbol;
+              filteredPools = filteredPools.filter(poolInfo => {
+                // Get symbols for the pool tokens
+                const tokenASymbol = (poolInfo.mintA?.symbol || '').toUpperCase();
+                const tokenBSymbol = (poolInfo.mintB?.symbol || '').toUpperCase();
+                
+                // Check for exact pair match (in either order)
+                return (tokenASymbol === upperSymbol1 && tokenBSymbol === upperSymbol2) ||
+                       (tokenASymbol === upperSymbol2 && tokenBSymbol === upperSymbol1);
               });
-            });
-            
-            logger.info(`Token symbol filter: ${beforeCount} → ${filteredPools.length} pools`);
+              
+              logger.info(`Exact token pair filter (${symbol1}/${symbol2}): ${beforeCount} → ${filteredPools.length} pools`);
+            }
+            // For single token or multiple tokens, use regular filter
+            else {
+              filteredPools = filteredPools.filter(poolInfo => {
+                // Get symbols for the pool tokens
+                const tokenASymbol = poolInfo.mintA?.symbol || '';
+                const tokenBSymbol = poolInfo.mintB?.symbol || '';
+                
+                // Check if any requested symbol matches
+                return tokenSymbolsArray.some(symbol => {
+                  const upperSymbol = symbol.toUpperCase();
+                  return tokenASymbol.toUpperCase() === upperSymbol || 
+                         tokenBSymbol.toUpperCase() === upperSymbol;
+                });
+              });
+              
+              logger.info(`Token symbol filter: ${beforeCount} → ${filteredPools.length} pools`);
+            }
           }
           
           // Filter by general tokens list if specified and we haven't already used it
-          if (tokenSymbols.length > 0 && !hasTokenSymbols && !hasTokenAddresses) {
+          if (tokenSymbolsArray.length > 0 && !hasTokenSymbols && !hasTokenAddresses) {
             const beforeCount = filteredPools.length;
             
             filteredPools = filteredPools.filter(poolInfo => {
@@ -390,7 +416,7 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
               const tokenBSymbol = poolInfo.mintB?.symbol || '';
               
               // Check if any token matches by symbol or address
-              return tokenSymbols.some(token => {
+              return tokenSymbolsArray.some(token => {
                 const upperToken = token.toUpperCase();
                 return tokenASymbol.toUpperCase().includes(upperToken) || 
                        tokenBSymbol.toUpperCase().includes(upperToken) ||
@@ -404,12 +430,12 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
         }
         
         // Filter by pool type if specified
-        if (types.length > 0) {
+        if (typesArray.length > 0) {
           const beforeCount = filteredPools.length;
           
           filteredPools = filteredPools.filter(poolInfo => {
             // First check by type property
-            if (poolInfo.type && types.some(type => 
+            if (poolInfo.type && typesArray.some(type => 
               poolInfo.type.toLowerCase() === type.toLowerCase())) {
               return true;
             }
@@ -419,7 +445,7 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
               ? poolInfo.programId 
               : poolInfo.programId?.toString() || '';
             
-            return types.some(type => {
+            return typesArray.some(type => {
               if (type.toLowerCase() === 'amm' && isValidAmm(programIdStr)) {
                 return true;
               } else if (type.toLowerCase() === 'cpmm' && isValidCpmm(programIdStr)) {

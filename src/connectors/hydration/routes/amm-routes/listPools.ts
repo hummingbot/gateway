@@ -156,51 +156,7 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
           }
 
           logger.info(`Successfully retrieved info for ${pools.length} pools`);
-
-          // Create a cache for token symbols to avoid duplicate lookups
-          // const tokenSymbolCache = new Map();
-
-          // Helper function to get token symbol with caching and fallbacks
-          // const getTokenSymbolWithFallback = async (tokenAddress) => {
-          //   if (!tokenAddress) return 'Unknown';
-
-          //   // Check cache first
-          //   if (tokenSymbolCache.has(tokenAddress)) {
-          //     return tokenSymbolCache.get(tokenAddress);
-          //   }
-
-          //   // Check if address matches any resolved token addresses when using official tokens
-          //   if (useOfficialTokens) {
-          //     for (const [symbol, address] of Object.entries(KNOWN_TOKENS)) {
-          //       if (address === tokenAddress) {
-          //         tokenSymbolCache.set(tokenAddress, symbol);
-          //         return symbol;
-          //       }
-          //     }
-          //   }
-
-          //   try {
-          //     // Try to get symbol from Hydration
-          //     const symbol = await hydration.getTokenSymbol(tokenAddress);
-
-          //     // If we got a valid symbol, cache and return it
-          //     if (symbol && symbol !== '2-Pool' && symbol !== '4-Pool') {
-          //       tokenSymbolCache.set(tokenAddress, symbol);
-          //       return symbol;
-          //     }
-
-          //     // If we have an address but no valid symbol, use shortened address
-          //     const shortAddress = `${tokenAddress.substring(0, 4)}...${tokenAddress.substring(tokenAddress.length - 4)}`;
-          //     tokenSymbolCache.set(tokenAddress, shortAddress);
-          //     return shortAddress;
-          //   } catch (error) {
-          //     logger.warn(`Failed to get token symbol for ${tokenAddress}: ${error.message}`);
-          //     const shortAddress = `${tokenAddress.substring(0, 4)}...${tokenAddress.substring(tokenAddress.length - 4)}`;
-          //     tokenSymbolCache.set(tokenAddress, shortAddress);
-          //     return shortAddress;
-          //   }
-          // };
-
+          
           // Filter processing
           let filteredPools = [...pools]; // Make a copy
 
@@ -334,20 +290,41 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
           if (hasTokenSymbols && !useOfficialTokens) {
             const beforeCount = poolList.length;
 
-            poolList = poolList.filter(pool =>
-              tokenSymbolsArray.some(token =>
-                // Check if any of the pool tokens match the requested token
-                pool.tokens.some(poolToken =>
-                  poolToken.toLowerCase().includes(token.toLowerCase())
+            // First, handle the case when we have exactly 2 token symbols - find exact pairs
+            if (tokenSymbolsArray.length === 2) {
+              const [symbol1, symbol2] = tokenSymbolsArray;
+              const upperSymbol1 = symbol1.toUpperCase();
+              const upperSymbol2 = symbol2.toUpperCase();
+              
+              poolList = poolList.filter(pool => {
+                // Get symbols for the pool tokens (assuming index 0 is baseToken and index 1 is quoteToken)
+                const baseTokenSymbol = pool.tokens[0].toUpperCase();
+                const quoteTokenSymbol = pool.tokens[1].toUpperCase();
+                
+                // Check for exact pair match (in either order)
+                return (baseTokenSymbol === upperSymbol1 && quoteTokenSymbol === upperSymbol2) ||
+                       (baseTokenSymbol === upperSymbol2 && quoteTokenSymbol === upperSymbol1);
+              });
+              
+              logger.info(`Exact token pair filter (${symbol1}/${symbol2}): ${beforeCount} → ${poolList.length} pools`);
+            }
+            // For single token or more than two tokens, use the original filter
+            else {
+              poolList = poolList.filter(pool =>
+                tokenSymbolsArray.some(token =>
+                  // Check if any of the pool tokens match the requested token
+                  pool.tokens.some(poolToken =>
+                    poolToken.toLowerCase().includes(token.toLowerCase())
+                  )
                 )
-              )
-            );
-            logger.info(`Token symbol filter: ${beforeCount} → ${poolList.length} pools`);
+              );
+              logger.info(`Token symbol filter: ${beforeCount} → ${poolList.length} pools`);
+            }
           }
-
+          
           // Log results
           logger.info(`Final result: ${poolList.length} pools after all filters`);
-
+          
           return { pools: poolList };
         } catch (e) {
           logger.error(`Error listing pools:`, e);
