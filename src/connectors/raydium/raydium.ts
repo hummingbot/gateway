@@ -278,7 +278,7 @@ export class Raydium {
           quoteTokenAmount: Number(rawPool.mintAmountB),
           poolType: poolType,
           lpMint: {
-            address: rawPool[poolAddress]?.lpMint?.toString(),
+            address: rawPool[poolAddress]?.lpMint?.toString() || '',
             decimals: 9 // Default LP token decimals for Raydium
           },
         }
