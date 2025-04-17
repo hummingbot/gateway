@@ -18,7 +18,7 @@ export const fetchPoolsRoute: FastifyPluginAsync = async (fastify) => {
   }>('/fetch-pools', {
     schema: {
       description: 'Fetch info about Meteora pools',
-      tags: ['meteora'],
+      tags: ['meteora/clmm'],
       querystring: {
         ...FetchPoolsRequest,
         properties: {

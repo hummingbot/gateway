@@ -104,7 +104,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Remove liquidity from Raydium CLMM position',
-        tags: ['raydium-clmm'],
+        tags: ['raydium/clmm'],
         body: {
           ...RemoveLiquidityRequest,
           properties: {

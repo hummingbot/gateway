@@ -77,8 +77,7 @@ export async function quoteLiquidity(
     // Convert percentage to basis points (multiply by 100 to handle decimals)
     // e.g., 0.5% becomes 50/10000, 0% becomes 0/10000
     const slippage = new Percent(
-      Math.floor(((slippagePct === 0 ? 0 : slippagePct || raydium.getSlippagePct())) * 100), 
-      10000
+      Math.floor(((slippagePct === 0 ? 0 : slippagePct || raydium.getSlippagePct('amm')) * 100) / 10000)
     );
 
     const ammPoolInfo = await raydium.getAmmPoolInfo(poolAddress);
@@ -215,7 +214,7 @@ export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Quote amounts for a new Raydium AMM liquidity position',
-        tags: ['raydium-amm'],
+        tags: ['raydium/amm'],
         querystring: {
           ...QuoteLiquidityRequest,
           properties: {

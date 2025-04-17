@@ -100,7 +100,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Remove liquidity from a Meteora position',
-        tags: ['meteora'],
+        tags: ['meteora/clmm'],
         body: {
           ...RemoveLiquidityRequest,
           properties: {

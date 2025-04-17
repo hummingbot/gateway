@@ -110,7 +110,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Close a Raydium CLMM position',
-        tags: ['raydium-clmm'],
+        tags: ['raydium/clmm'],
         body: {
           ...ClosePositionRequest,
           properties: {

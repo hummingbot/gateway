@@ -2,18 +2,20 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify'
 import { Solana, BASE_FEE } from '../../../chains/solana/solana'
 import { Raydium } from '../raydium'
 import { logger } from '../../../services/logger'
+import BN from 'bn.js';
 import {
   ExecuteSwapResponseType,
   ExecuteSwapResponse,
-  ExecuteSwapInPoolRequest,
-  ExecuteSwapInPoolRequestType
+  ExecuteSwapRequest,
+  ExecuteSwapRequestType
 } from '../../../schemas/trading-types/swap-schema'
 import { getSwapQuote } from './quoteSwap'
 import {
   ReturnTypeComputeAmountOutFormat,
   ReturnTypeComputeAmountOutBaseOut
 } from '@raydium-io/raydium-sdk-v2';
-import { VersionedTransaction } from '@solana/web3.js';
+import { VersionedTransaction } from '@solana/web3.js'
+import { convertAmountIn } from './quoteSwap';
 
 
 async function executeSwap(
@@ -40,7 +42,7 @@ async function executeSwap(
   console.log('poolKeys', poolKeys)
 
   // Use configured slippage if not provided
-  const effectiveSlippage = slippagePct || raydium.getSlippagePct()
+  const effectiveSlippage = slippagePct || raydium.getSlippagePct('clmm')
 
   const { inputToken, outputToken, response, clmmPoolInfo } = await getSwapQuote(
     fastify,
@@ -53,6 +55,47 @@ async function executeSwap(
     effectiveSlippage
   );
 
+  logger.info(`Raydium CLMM getSwapQuote:`, {
+    response: side === 'BUY' 
+      ? {
+          amountIn: { amount: (response as ReturnTypeComputeAmountOutBaseOut).amountIn.amount.toNumber() },
+          maxAmountIn: { amount: (response as ReturnTypeComputeAmountOutBaseOut).maxAmountIn.amount.toNumber() },
+          realAmountOut: { amount: (response as ReturnTypeComputeAmountOutBaseOut).realAmountOut.amount.toNumber() },
+        }
+      : {
+          realAmountIn: {
+            amount: {
+              raw: (response as ReturnTypeComputeAmountOutFormat).realAmountIn.amount.raw.toNumber(),
+              token: {
+                symbol: (response as ReturnTypeComputeAmountOutFormat).realAmountIn.amount.token.symbol,
+                mint: (response as ReturnTypeComputeAmountOutFormat).realAmountIn.amount.token.mint,
+                decimals: (response as ReturnTypeComputeAmountOutFormat).realAmountIn.amount.token.decimals,
+              }
+            }
+          },
+          amountOut: {
+            amount: {
+              raw: (response as ReturnTypeComputeAmountOutFormat).amountOut.amount.raw.toNumber(),
+              token: {
+                symbol: (response as ReturnTypeComputeAmountOutFormat).amountOut.amount.token.symbol,
+                mint: (response as ReturnTypeComputeAmountOutFormat).amountOut.amount.token.mint,
+                decimals: (response as ReturnTypeComputeAmountOutFormat).amountOut.amount.token.decimals,
+              }
+            }
+          },
+          minAmountOut: {
+            amount: {
+              numerator: (response as ReturnTypeComputeAmountOutFormat).minAmountOut.amount.raw.toNumber(),
+              token: {
+                symbol: (response as ReturnTypeComputeAmountOutFormat).minAmountOut.amount.token.symbol,
+                mint: (response as ReturnTypeComputeAmountOutFormat).minAmountOut.amount.token.mint,
+                decimals: (response as ReturnTypeComputeAmountOutFormat).minAmountOut.amount.token.decimals,
+              }
+            }
+          },
+        }
+  });
+
   logger.info(`Executing ${amount.toFixed(4)} ${side} swap in pool ${poolAddress}`);
 
   const COMPUTE_UNITS = 600000;
@@ -61,12 +104,15 @@ async function executeSwap(
     const priorityFeePerCU = Math.floor(currentPriorityFee * 1e6 / COMPUTE_UNITS);
     let transaction : VersionedTransaction;
     if (side === 'BUY') {
-      const exactOutResponse = response as ReturnTypeComputeAmountOutBaseOut;    
+      const exactOutResponse = response as ReturnTypeComputeAmountOutBaseOut; 
+      const amountIn = convertAmountIn(amount, inputToken.decimals, outputToken.decimals, exactOutResponse.amountIn.amount);
+      const amountInWithSlippage = (amountIn * 10 ** inputToken.decimals) * (1 + (effectiveSlippage / 100));
+      // logger.info(`amountInWithSlippage: ${amountInWithSlippage}`);
       ({ transaction } = await raydium.raydiumSDK.clmm.swapBaseOut({
         poolInfo,
         poolKeys,
         outputMint: outputToken.address,
-        amountInMax: exactOutResponse.maxAmountIn.amount,
+        amountInMax: new BN(Math.floor(amountInWithSlippage)),
         amountOut: exactOutResponse.realAmountOut.amount,
         observationId: clmmPoolInfo.observationId,
         ownerInfo: {
@@ -142,25 +188,25 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
   }
   
   fastify.post<{
-    Body: ExecuteSwapInPoolRequestType;
+    Body: ExecuteSwapRequestType;
     Reply: ExecuteSwapResponseType;
   }>(
     '/execute-swap',
     {
       schema: {
         description: 'Execute a swap on Raydium CLMM',
-        tags: ['raydium-clmm'],
+        tags: ['raydium/clmm'],
         body: {
-          ...ExecuteSwapInPoolRequest,
+          ...ExecuteSwapRequest,
           properties: {
-            ...ExecuteSwapInPoolRequest.properties,
+            ...ExecuteSwapRequest.properties,
             network: { type: 'string', default: 'mainnet-beta' },
             walletAddress: { type: 'string', examples: [firstWalletAddress] },
             baseToken: { type: 'string', examples: ['SOL'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
-            amount: { type: 'number', examples: [0.1] },
+            amount: { type: 'number', examples: [0.01] },
             side: { type: 'string', examples: ['SELL'] },
-            poolAddress: { type: 'string', examples: ['3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv'] },
+            poolAddress: { type: 'string', examples: [''] },
             slippagePct: { type: 'number', examples: [1] }
           }
         },
@@ -170,20 +216,37 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       try {
         const { network, walletAddress, baseToken, quoteToken, amount, side, poolAddress, slippagePct } = request.body
+        const networkToUse = network || 'mainnet-beta'
+
+        // If no pool address provided, find default pool
+        let poolAddressToUse = poolAddress;
+        if (!poolAddressToUse) {
+          const raydium = await Raydium.getInstance(networkToUse);
+          poolAddressToUse = await raydium.findDefaultPool(baseToken, quoteToken, 'clmm');
+          if (!poolAddressToUse) {
+            throw fastify.httpErrors.notFound(
+              `No CLMM pool found for pair ${baseToken}-${quoteToken}`
+            );
+          }
+        }
+
         return await executeSwap(
           fastify,
-          network || 'mainnet-beta',
+          networkToUse,
           walletAddress,
           baseToken,
           quoteToken,
           amount,
           side as 'BUY' | 'SELL',
-          poolAddress,
+          poolAddressToUse,
           slippagePct
         )
       } catch (e) {
-        logger.error(e);
-        throw fastify.httpErrors.internalServerError('Swap execution failed')
+        // Preserve the original error if it's a FastifyError
+        if (e.statusCode) {
+          throw e;
+        }
+        throw fastify.httpErrors.internalServerError('Failed to get swap quote');
       }
     }
   )

@@ -1,3 +1,19 @@
 # how much the execution price is allowed to move unfavorably from the trade
 # execution price. It uses a rational number for precision.
 allowedSlippage: '1/100'
+
+# default DLMM strategy type for positions
+# SpotImBalanced = 0,
+# CurveImBalanced = 1,
+# BidAskImBalanced = 2,
+# SpotBalanced = 3,
+# CurveBalanced = 4,
+# BidAskBalanced = 5
+strategyType: 0
+
+# predefined pools
+pools:
+  SOL-USDC: '5rCf1DM8LjKTw4YqhnoLcngyZYeNnQqztScTogYHAS6'
+  TRUMP-USDC: '9d9mb8kooFfaD3SctgZtkxQypkshx6ezhbKio89ixyy2'
+  JITOSOL-SOL: 'BoeMUkCLHchTD31HdXsbDExuZZfcUppSLpYtV3LZTH6U'
+  USDT-USDC: 'ARwi1S4DaiTG5DX7S4M4ZsrXqpMD1MrTmbu9ue2tpmEq'

@@ -7,8 +7,8 @@ import { SwapQuoteExactOut, SwapQuote } from '@meteora-ag/dlmm';
 import { 
   ExecuteSwapResponseType,
   ExecuteSwapResponse,
-  ExecuteSwapInPoolRequest,
-  ExecuteSwapInPoolRequestType
+  ExecuteSwapRequest,
+  ExecuteSwapRequestType
 } from '../../../schemas/trading-types/swap-schema';
 import { Meteora } from '../meteora';
 
@@ -100,25 +100,25 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
   }
   
   fastify.post<{
-    Body: ExecuteSwapInPoolRequestType;
+    Body: ExecuteSwapRequestType;
     Reply: ExecuteSwapResponseType;
   }>(
     '/execute-swap',
     {
       schema: {
         description: 'Execute a token swap on Meteora',
-        tags: ['meteora'],
+        tags: ['meteora/clmm'],
         body: {
-          ...ExecuteSwapInPoolRequest,
+          ...ExecuteSwapRequest,
           properties: {
-            ...ExecuteSwapInPoolRequest.properties,
+            ...ExecuteSwapRequest.properties,
             network: { type: 'string', default: 'mainnet-beta' },
             walletAddress: { type: 'string', examples: [firstWalletAddress] },
             baseToken: { type: 'string', examples: ['SOL'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
-            amount: { type: 'number', examples: [0.1] },
+            amount: { type: 'number', examples: [0.01] },
             side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
-            poolAddress: { type: 'string', examples: ['2sf5NYcY4zUPXUSmG6f66mskb24t5F8S11pC1Nz5nQT3'] },
+            poolAddress: { type: 'string', examples: [''] },
             slippagePct: { type: 'number', examples: [1] }
           }
         },
@@ -127,20 +127,25 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { walletAddress, baseToken, quoteToken, amount, side, poolAddress, slippagePct } = request.body;
-        const network = request.body.network || 'mainnet-beta';
-        
+        const { network, walletAddress, baseToken, quoteToken, amount, side, poolAddress, slippagePct } = request.body;
+        const networkUsed = network || 'mainnet-beta';        
+        const meteora = await Meteora.getInstance(networkUsed);
+        const poolAddressUsed = poolAddress || await meteora.findDefaultPool(baseToken, quoteToken);
+
+        if (!poolAddressUsed) {
+          throw fastify.httpErrors.notFound(`No pool found for ${baseToken}-${quoteToken} pair`);
+        }
         logger.info(`Received swap request: ${amount} ${baseToken} -> ${quoteToken} in pool ${poolAddress}`);
         
         return await executeSwap(
           fastify,
-          network,
+          networkUsed,
           walletAddress,
           baseToken,
           quoteToken,
           amount,
           side as 'BUY' | 'SELL',
-          poolAddress,
+          poolAddressUsed,
           slippagePct
         );
       } catch (e) {
