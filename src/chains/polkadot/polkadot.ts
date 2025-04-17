@@ -1,4 +1,4 @@
-import { Transaction } from '@galacticcouncil/sdk';
+
 import { ApiPromise, WsProvider, HttpProvider } from '@polkadot/api';
 import { Keyring } from '@polkadot/keyring';
 import { KeyringPair } from '@polkadot/keyring/types';
@@ -140,7 +140,6 @@ export class Polkadot {
   private configNetworkNodeURL() {
     return this.config.network.nodeURL;
   }
-
 
   /**
    * Private constructor - use getInstance instead
@@ -505,8 +504,9 @@ export class Polkadot {
 
       if (nativeToken) {
         const accountInfo = await this.apiQuerySystemAccount(address);
-        // @ts-expect-error - Handle type issues with accountInfo structure
+        // @ts-ignore - Handle type issues with accountInfo structure
         const freeBalance = accountInfo.data.balance || accountInfo.data.free.toString();
+        // @ts-ignore - Handle type issues with accountInfo structure
         const reservedBalance = accountInfo.data.reserved.toString();
         const totalBalance = new BN(freeBalance).add(new BN(reservedBalance));
 
@@ -528,13 +528,11 @@ export class Polkadot {
               token.address,
             );
             if (assetBalance) {
-              // @ts-expect-error - Handle type issues with assetBalance structure
               const free = assetBalance.free?.toString() || '0';
               balances[token.symbol] = this.fromBaseUnits(free, token.decimals);
             } else {
               balances[token.symbol] = 0;
             }
-
           } else if (this.apiQueryAssets && this.apiQueryTokensAccounts) {
             // Alternative assets pallet approach if available
             const assetBalance = await this.apiQueryTokensAccounts(
@@ -580,6 +578,7 @@ export class Polkadot {
    * @param decimals Number of decimals
    * @returns The human-readable decimal
    */
+  
   fromBaseUnits(amount: string, decimals: number): number {
     try {
       const divisor = new BN(10).pow(new BN(decimals));
@@ -609,6 +608,7 @@ export class Polkadot {
    * @param decimals Number of decimals
    * @returns The amount in base units as a string
    */
+  
   toBaseUnits(amount: number, decimals: number): string {
     try {
       // Convert to string for precision
@@ -794,12 +794,12 @@ export class Polkadot {
       const feeEstimate: FeeEstimate = {
         estimatedFee: feeInfo.partialFee.toString(),
         partialFee: feeInfo.partialFee.toString(),
-        weight: feeInfo.weight.toString(),
+        weight: feeInfo.weight.toString()
       };
 
       return {
         tx: tx as SubmittableExtrinsic<'promise', ISubmittableResult>,
-        feeEstimate,
+        feeEstimate
       };
     } catch (error) {
       logger.error(`Failed to create transfer transaction: ${error.message}`);
@@ -815,7 +815,7 @@ export class Polkadot {
    */
   async submitTransaction(
     transaction: SubmittableTransaction,
-    options?: TransferOptions,
+    options?: TransferOptions
   ): Promise<TransactionReceipt> {
     try {
       const timeout = options?.timeout;
@@ -825,7 +825,7 @@ export class Polkadot {
         // Set timeout
         const timeoutId = setTimeout(() => {
           reject(
-            new Error(`Transaction submission timed out after ${timeout}ms`),
+            new Error(`Transaction submission timed out after ${timeout}ms`)
           );
         }, timeout);
 
@@ -834,8 +834,8 @@ export class Polkadot {
             clearTimeout(timeoutId);
             reject(
               new Error(
-                `Transaction submission failed: ${result.internalError.toString()}`,
-              ),
+                `Transaction submission failed: ${result.internalError.toString()}`
+              )
             );
             return;
           }
@@ -866,7 +866,7 @@ export class Polkadot {
               events: result.events,
               status,
               transactionHash: transaction.tx.hash.toHex(),
-              fee,
+              fee
             });
           }
         });
@@ -891,7 +891,7 @@ export class Polkadot {
     recipient: string,
     amount: number,
     symbol: string,
-    options?: TransferOptions,
+    options?: TransferOptions
   ): Promise<TransactionReceipt> {
     try {
       // Get token info
@@ -908,7 +908,7 @@ export class Polkadot {
         sender,
         recipient,
         amountInBaseUnits,
-        options,
+        options
       );
 
       // Submit transaction
@@ -926,48 +926,48 @@ export class Polkadot {
    * @param options Optional batch options
    * @returns A Promise that resolves to a submittable transaction
    */
-  // async createBatchTransaction(
-  //   sender: KeyringPair,
-  //   txs: SubmittableExtrinsic<'promise'>[],
-  //   options?: BatchTransactionOptions,
-  // ): Promise<SubmittableTransaction> {
-  //   try {
-  //     if (txs.length === 0) {
-  //       throw new Error('No transactions provided for batch');
-  //     }
-  //
-  //     // Create batch transaction
-  //     const batchTx = options?.atomicBatch
-  //       ? this.api.tx.utility.batchAll(txs)
-  //       : this.api.tx.utility.batch(txs);
-  //
-  //     // Add tip if specified
-  //     if (options?.tip) {
-  //       // @ts-expect-error - Generic Method, needs to improve
-  //       batchTx.signFakeSignature(sender, { tip: options.tip });
-  //     } else {
-  //       // @ts-expect-error - Generic Method, needs to improve
-  //       batchTx.signFakeSignature(sender);
-  //     }
-  //
-  //     // Get fee estimate
-  //     const feeInfo = await batchTx.paymentInfo(sender);
-  //
-  //     const feeEstimate: FeeEstimate = {
-  //       estimatedFee: feeInfo.partialFee.toString(),
-  //       partialFee: feeInfo.partialFee.toString(),
-  //       weight: feeInfo.weight.toString(),
-  //     };
-  //
-  //     return {
-  //       tx: batchTx as SubmittableExtrinsic<'promise', ISubmittableResult>,
-  //       feeEstimate,
-  //     };
-  //   } catch (error) {
-  //     logger.error(`Failed to create batch transaction: ${error.message}`);
-  //     throw error;
-  //   }
-  // }
+  async createBatchTransaction(
+    sender: KeyringPair,
+    txs: SubmittableExtrinsic<'promise'>[],
+    options?: BatchTransactionOptions
+  ): Promise<SubmittableTransaction> {
+    try {
+      if (txs.length === 0) {
+        throw new Error('No transactions provided for batch');
+      }
+
+      // Create batch transaction
+      const batchTx = options?.atomicBatch
+        ? this.api.tx.utility.batchAll(txs)
+        : this.api.tx.utility.batch(txs);
+
+      // Add tip if specified
+      if (options?.tip) {
+        // @ts-ignore - Generic Method, needs to improve
+        batchTx.signFakeSignature(sender, { tip: options.tip });
+      } else {
+        // @ts-ignore - Generic Method, needs to improve
+        batchTx.signFakeSignature(sender);
+      }
+
+      // Get fee estimate
+      const feeInfo = await batchTx.paymentInfo(sender);
+
+      const feeEstimate: FeeEstimate = {
+        estimatedFee: feeInfo.partialFee.toString(),
+        partialFee: feeInfo.partialFee.toString(),
+        weight: feeInfo.weight.toString()
+      };
+
+      return {
+        tx: batchTx as SubmittableExtrinsic<'promise', ISubmittableResult>,
+        feeEstimate
+      };
+    } catch (error) {
+      logger.error(`Failed to create batch transaction: ${error.message}`);
+      throw error;
+    }
+  }
 
   /**
    * Get staking information for an account
@@ -988,7 +988,7 @@ export class Polkadot {
         ownStake: stakingInfo.stakingLedger.active.toString(),
         rewardDestination: stakingInfo.rewardDestination.toString(),
         nominators: [],
-        validators: [],
+        validators: []
       };
 
       // Get nominator info if available
@@ -996,7 +996,7 @@ export class Polkadot {
         for (const nominator of stakingInfo.nominators) {
           result.nominators.push({
             address: nominator.toString(),
-            value: '0', // Need to fetch actual value separately
+            value: '0' // Need to fetch actual value separately
           });
         }
       }
@@ -1008,7 +1008,7 @@ export class Polkadot {
           address,
           value: stakingInfo.stakingLedger.active.toString(),
           // @ts-ignore - Propriedade não reconhecida pelo TypeScript
-          commission: validatorInfo.commission.toString(),
+          commission: validatorInfo.commission.toString()
         });
       }
 
@@ -1043,7 +1043,7 @@ export class Polkadot {
         calls: pallet.calls ? this.api.tx[palletName] : [],
         constants: this.api.consts[palletName],
         storage: this.api.query[palletName],
-        errors: this.api.errors[palletName],
+        errors: this.api.errors[palletName]
       };
     } catch (error) {
       logger.error(`Failed to get pallet metadata: ${error.message}`);
@@ -1093,7 +1093,7 @@ export class Polkadot {
    */
   async extractBalanceChangeAndFee(
     txHash: string,
-    _address: string,
+    _address: string
   ): Promise<{ balanceChange: number; fee: number }> {
     try {
       // Get transaction details
@@ -1113,7 +1113,7 @@ export class Polkadot {
       return { balanceChange, fee };
     } catch (error) {
       logger.error(
-        `Failed to extract balance change and fee: ${error.message}`,
+        `Failed to extract balance change and fee: ${error.message}`
       );
       throw error;
     }
@@ -1147,7 +1147,7 @@ export class Polkadot {
       // Return the formatted address along with the keyring pair
       return {
         keyPair,
-        address: formattedAddress,
+        address: formattedAddress
       };
     } catch (error) {
       logger.error(`Failed to add wallet from private key: ${error.message}`);
@@ -1163,7 +1163,7 @@ export class Polkadot {
    */
   async saveWalletToFile(
     address: string,
-    encryptedPrivateKey: string,
+    encryptedPrivateKey: string
   ): Promise<void> {
     try {
       // File path follows pattern: conf/wallets/polkadot/<address>.json

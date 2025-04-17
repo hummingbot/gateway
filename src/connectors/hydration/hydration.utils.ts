@@ -126,7 +126,7 @@ export function* splitInChunks<T>(
  * @param options.timeout            Total allowed time (in seconds) for the operation (default: 60)
  * @param options.timeoutMessage     Error message in case of timeout (default: 'Timeout exceeded.')
  */
-function runWithRetryAndTimeout(
+export function runWithRetryAndTimeout(
     options?: {
         maxRetries?: number;
         delayBetweenRetries?: number;

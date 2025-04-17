@@ -90,8 +90,6 @@ export class Hydration {
   private constructor() {
     this.config = HydrationConfig.config;
   }
-
-
   /**
    * Get or create an instance of the Hydration class
    * @param network The network to connect to
@@ -158,8 +156,8 @@ export class Hydration {
   }
 
   @runWithRetryAndTimeout()
-  private poolServiceGetPools(target: PoolService, includeOnly: PoolType[]): Promise<PoolBase[]> {
-    return target.getPools(includeOnly);
+  private poolServiceGetPools(includeOnly: PoolType[]): Promise<PoolBase[]> {
+    return this.poolService.getPools(includeOnly);
   }
 
   @runWithRetryAndTimeout()
@@ -201,10 +199,9 @@ export class Hydration {
     return this.polkadot.getToken(tokenAddress);
   }
   @runWithRetryAndTimeout()
-  private async poolServiceGetPosition(target: PoolService, poolAddress?: string) {
-    return target.getPositions(wallet.address, poolAddress);
-  }
-
+  private async poolServiceGetPosition(wallet: KeyringPair, poolAddress?: string) {
+    return this.poolService.getPositions(wallet.address, poolAddress);
+  }  
   /**
    * Calculate trade limit based on slippage tolerance
    * @param trade The trade to calculate limits for
@@ -304,7 +301,7 @@ export class Hydration {
       }
 
       // Get pool data from the SDK
-      const pools = await this.poolServiceGetPools(this.poolService, []); // Get all pools
+      const pools = await this.poolServiceGetPools([]); // Get all pools
 
       const poolData = pools.find((pool) => pool.address === poolAddress);
 
@@ -337,13 +334,13 @@ export class Hydration {
           // Calculate amounts using reserves
           const baseAmount = Number(reserves.baseReserve
               .div(BigNumber(10).pow(baseToken.decimals))
-              .toFixed(baseToken.decimals),
+              .toFixed(baseToken.decimals)
             );
 
           const quoteAmount = Number(
             reserves.quoteReserve
               .div(BigNumber(10).pow(quoteToken.decimals))
-              .toFixed(quoteToken.decimals),
+              .toFixed(quoteToken.decimals)
           );
 
           // Validate the calculated amounts
@@ -561,7 +558,7 @@ export class Hydration {
         const network = await this.allTokenspolkadotnetwork();
         await this.init(network);
       }
-
+      
       // Get token info
       const baseToken = await this.polkadotGetTokenBaseTokenSymbol(baseTokenSymbol);
       const quoteToken = await this.polkadotGetTokenQuoteTokenSymbol(quoteTokenSymbol);
@@ -840,7 +837,7 @@ export class Hydration {
       }
 
       // Get positions for this wallet from the SDK
-
+      /* getPositions don't exist in the SDK */
       const positions = await this.poolService.getPositions(wallet.address, poolAddress);
 
       if (!positions || positions.length === 0) {
@@ -1024,8 +1021,8 @@ export class Hydration {
       }
 
       // Get position and pool data from the SDK
-
-      const position = await this.poolServiceGetPosition(positionAddress);
+      
+      const position = await this.poolService.getPosition(positionAddress);
 
       if (!position) {
         throw new Error(`Position not found: ${positionAddress}`);
@@ -1037,8 +1034,7 @@ export class Hydration {
       }
 
       // Get pool information
-
-      const poolInfo = await this.poolService.getPools(position.poolId);
+      const poolInfo = await this.poolService.getPool(position.poolId);
 
       return {
         position: {
@@ -1085,7 +1081,8 @@ export class Hydration {
 
       // Get tick spacing for this pool from the SDK
       // @ts-ignore - Generic Method, needs to improve
-      const poolDetails = await this.poolService.getPools(poolAddress);
+      /* getPool don't exist in the SDK */
+      const poolDetails = await this.poolService.getPool(poolAddress);
       const tickSpacing = poolDetails.tickSpacing || 10;
 
       // Convert prices to ticks
@@ -1631,7 +1628,7 @@ export class Hydration {
   private async getPoolReserves( poolAddress: string): Promise<{ baseReserve: BigNumber; quoteReserve: BigNumber } | null> {
     try {
       // Get pool from SDK
-      const pools = await this.poolServiceGetPools(this.poolService, []);
+      const pools = await this.poolServiceGetPools([]);
       const pool = pools.find(p => p.address === poolAddress);
 
       if (!pool) {
@@ -1699,7 +1696,7 @@ export class Hydration {
    */
   public async getPoolAddresses(): Promise<string[]> {
     try {
-      const pools = await this.poolServiceGetPools(this.poolService, []);
+      const pools = await this.poolServiceGetPools([]);
       return pools.map(pool => pool.address);
     } catch (error) {
       logger.error('Error getting pool addresses:', error);
