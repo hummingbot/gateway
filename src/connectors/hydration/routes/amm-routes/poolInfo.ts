@@ -66,7 +66,11 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
           price: poolInfo.price,
           baseTokenAmount: poolInfo.baseTokenAmount,
           quoteTokenAmount: poolInfo.quoteTokenAmount,
-          poolType: poolInfo.poolType
+          poolType: poolInfo.poolType,
+          lpMint: {
+            address: '',
+            decimals: 0
+          }
         };
 
         return result;
