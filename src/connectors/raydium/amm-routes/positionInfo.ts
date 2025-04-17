@@ -104,6 +104,8 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
               type: 'string', 
               examples: ['AVs9TA4nWDzfPJE9gGVNJMVhcQy3V9PGazuz33BfG2RA'] 
             },
+            baseToken: { type: 'string', examples: ['SOL'] },
+            quoteToken: { type: 'string', examples: ['USDC'] },
             walletAddress: { 
               type: 'string', 
               examples: [firstWalletAddress] 
@@ -117,23 +119,47 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { poolAddress, walletAddress } = request.query
+        const { poolAddress, walletAddress, baseToken, quoteToken } = request.query
         const network = request.query.network || 'mainnet-beta'
         
-        // Validate addresses
+        // Check if either poolAddress or both baseToken and quoteToken are provided
+        if (!poolAddress && (!baseToken || !quoteToken)) {
+          throw fastify.httpErrors.badRequest(
+            'Either poolAddress or both baseToken and quoteToken must be provided'
+          );
+        }
+        
+        // Validate wallet address
         try {
-          new PublicKey(poolAddress)
           new PublicKey(walletAddress)
         } catch (error) {
-          throw fastify.httpErrors.badRequest('Invalid Solana address')
+          throw fastify.httpErrors.badRequest('Invalid wallet address')
         }
 
         const raydium = await Raydium.getInstance(network)
         const solana = await Solana.getInstance(network)
 
+        // If no pool address provided, find default pool using base and quote tokens
+        let poolAddressToUse = poolAddress;
+        if (!poolAddressToUse) {
+          poolAddressToUse = await raydium.findDefaultPool(baseToken, quoteToken, 'amm');
+          if (!poolAddressToUse) {
+            throw fastify.httpErrors.notFound(
+              `No AMM pool found for pair ${baseToken}-${quoteToken}`
+            );
+          }
+        }
+
+        // Validate pool address
+        try {
+          new PublicKey(poolAddressToUse)
+        } catch (error) {
+          throw fastify.httpErrors.badRequest('Invalid pool address')
+        }
+
         // Get pool info
-        const ammPoolInfo = await raydium.getAmmPoolInfo(poolAddress)
-        const [poolInfo, poolKeys] = await raydium.getPoolfromAPI(poolAddress)
+        const ammPoolInfo = await raydium.getAmmPoolInfo(poolAddressToUse)
+        const [poolInfo, poolKeys] = await raydium.getPoolfromAPI(poolAddressToUse)
         if (!poolInfo) {
           throw fastify.httpErrors.notFound('Pool not found')
         }
@@ -144,11 +170,11 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
           new PublicKey(walletAddress),
           ammPoolInfo,
           poolInfo,
-          poolAddress
+          poolAddressToUse
         )
 
         return {
-          poolAddress,
+          poolAddress: poolAddressToUse,
           walletAddress,
           baseTokenAddress: ammPoolInfo.baseTokenAddress,
           quoteTokenAddress: ammPoolInfo.quoteTokenAddress,
