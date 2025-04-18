@@ -351,19 +351,19 @@ export class Polkadot {
       if (token.symbol === this.nativeTokenSymbol) continue;
       
       // Check if tokens module exists
-      const api = await this.getApiPromise();
-      if (api.query.tokens && api.query.tokens.accounts) {
-        const assetBalance = await this.apiPromiseQueryTokensAccounts(api, address, token.address);
+      const apiPromise = await this.getApiPromise();
+      if (apiPromise.query.tokens && apiPromise.query.tokens.accounts) {
+        const assetBalance = await this.apiPromiseQueryTokensAccounts(apiPromise, address, token.address);
         if (assetBalance) {
           const free = assetBalance.free?.toString() || '0';
           balances[token.symbol] = fromBaseUnits(free, token.decimals);
         } else {
           balances[token.symbol] = 0;
         }
-      } else if (api.query.assets && api.query.assets.account) {
+      } else if (apiPromise.query.assets && apiPromise.query.assets.account) {
         // Alternative assets pallet approach if available
         const assetBalance = await this.apiPromiseQueryAssetsAccount(
-          api,
+          apiPromise,
           token.address,
           address,
         );
