@@ -85,7 +85,7 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
           throw fastify.httpErrors.serviceUnavailable('Hydration service unavailable');
         }
 
-        const tradeRouter = await hydration.getNewTradeRouter();
+        const tradeRouter = await hydration.getTradeRouter();
 
         // Make sure arrays are properly handled
         const tokenSymbolsArray = Array.isArray(tokenSymbols) ? tokenSymbols : [tokenSymbols].filter(Boolean);

@@ -177,7 +177,7 @@ export class Hydration {
    */
   async getPoolInfo(poolAddress: string): Promise<ExternalPoolInfo | null> {
     try {
-      const tradeRouter = await this.getNewTradeRouter();
+      const tradeRouter = await this.getTradeRouter();
 
       // Check cache first
       const currentTime = Date.now();
@@ -422,7 +422,7 @@ export class Hydration {
     slippagePct?: number
   ): Promise<SwapQuote> {
     try {
-      const tradeRouter = await this.getNewTradeRouter();
+      const tradeRouter = await this.getTradeRouter();
 
       // Ensure the instance is ready
       if (!this.ready()) {
@@ -615,7 +615,7 @@ export class Hydration {
     slippagePct?: number
   ): Promise<any> {
     try {
-      const tradeRouter = await this.getNewTradeRouter();
+      const tradeRouter = await this.getTradeRouter();
 
       // Ensure the instance is ready
       if (!this.ready()) {
@@ -1083,20 +1083,24 @@ export class Hydration {
     return isToken1Stable && isToken2Stable;
   }
 
-  public getHttpProvider(): WsProvider {
-    if (!this.httpProvider) {
-      this.httpProvider = new HttpProvider(this.polkadot.config.network.nodeURL);
-    }
+  public getHttpProvider(): HttpProvider {
+    // if (!this.httpProvider) {
+    //   this.httpProvider = new HttpProvider(this.polkadot.config.network.nodeURL);
+    // }
 
-    return this.wsProvider;
+    // return this.wsProvider;
+
+    return new HttpProvider(this.polkadot.config.network.nodeURL);
   }
 
   public getWsProvider(): WsProvider {
-    if (!this.wsProvider) {
-      this.wsProvider = new WsProvider(this.polkadot.config.network.nodeURL);
-    }
+    // if (!this.wsProvider) {
+    //   this.wsProvider = new WsProvider(this.polkadot.config.network.nodeURL);
+    // }
 
-    return this.wsProvider;
+    // return this.wsProvider;
+
+    return new WsProvider(this.polkadot.config.network.nodeURL);
   }
 
   public getProvider(): WsProvider | HttpProvider {
@@ -1108,23 +1112,30 @@ export class Hydration {
   }
 
   public async getApiPromise(): Promise<ApiPromise> {
-    if (!this.apiPromise) {
-      this.apiPromise = await this.apiPromiseCreate({ provider: this.getProvider() });
-    }
+    // if (!this.apiPromise) {
+    //   this.apiPromise = await this.apiPromiseCreate({ provider: this.getProvider() });
+    // }
 
-    return this.apiPromise;
+    // return this.apiPromise;
+
+    return await this.apiPromiseCreate({ provider: this.getProvider() });
   }
 
   public async getPoolService(): Promise<PoolService> {
-    if (!this.poolService) {
-      this.poolService = new PoolService(await this.getApiPromise());
-      await this.poolServiceSyncRegistry(this.poolService);
-    }
+    // if (!this.poolService) {
+    //   this.poolService = new PoolService(await this.getApiPromise());
+    //   await this.poolServiceSyncRegistry(this.poolService);
+    // }
+    //
+    // return this.poolService;
 
-    return this.poolService;
+    const poolService = new PoolService(await this.getApiPromise());
+    await this.poolServiceSyncRegistry(poolService);
+
+    return poolService;
   }
 
-  public async getNewTradeRouter(): Promise<TradeRouter> {
+  public async getTradeRouter(): Promise<TradeRouter> {
     // if (!this.tradeRouter) {
     //   this.tradeRouter = new TradeRouter(await this.getPoolService());
     // }
