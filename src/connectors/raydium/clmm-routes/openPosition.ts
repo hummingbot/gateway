@@ -24,18 +24,33 @@ async function openPosition(
   poolAddress: string,
   baseTokenAmount?: number,
   quoteTokenAmount?: number,
+  baseTokenSymbol?: string,
+  quoteTokenSymbol?: string,
   slippagePct?: number
 ): Promise<OpenPositionResponseType> {
   const solana = await Solana.getInstance(network);
   const raydium = await Raydium.getInstance(network);
   const wallet = await solana.getWallet(walletAddress);
 
-  const [poolInfo, poolKeys] = await raydium.getClmmPoolfromAPI(poolAddress);
-  const rpcData = await raydium.getClmmPoolfromRPC(poolAddress)
+  // If no pool address provided, find default pool using base and quote tokens
+  let poolAddressToUse = poolAddress;
+  if (!poolAddressToUse) {
+    if (!baseTokenSymbol || !quoteTokenSymbol) {
+      throw new Error('Either poolAddress or both baseToken and quoteToken must be provided');
+    }
+    
+    poolAddressToUse = await raydium.findDefaultPool(baseTokenSymbol, quoteTokenSymbol, 'clmm');
+    if (!poolAddressToUse) {
+      throw new Error(`No CLMM pool found for pair ${baseTokenSymbol}-${quoteTokenSymbol}`);
+    }
+  }
+
+  const [poolInfo, poolKeys] = await raydium.getClmmPoolfromAPI(poolAddressToUse);
+  const rpcData = await raydium.getClmmPoolfromRPC(poolAddressToUse)
   poolInfo.price = rpcData.currentPrice
 
-  const baseToken = await solana.getToken(poolInfo.mintA.address);
-  const quoteToken = await solana.getToken(poolInfo.mintB.address);
+  const baseTokenInfo = await solana.getToken(poolInfo.mintA.address);
+  const quoteTokenInfo = await solana.getToken(poolInfo.mintB.address);
 
   const { tick: lowerTick } = TickUtils.getPriceAndTick({
     poolInfo,
@@ -53,7 +68,7 @@ async function openPosition(
     network,
     lowerPrice,
     upperPrice,
-    poolAddress,
+    poolAddressToUse,
     baseTokenAmount,
     quoteTokenAmount,
     slippagePct
@@ -71,8 +86,8 @@ async function openPosition(
       tickLower: Math.min(lowerTick, upperTick),
       base: quotePositionResponse.baseLimited ? 'MintA' : 'MintB',
       ownerInfo: {  useSOLBalance: true },
-      baseAmount: quotePositionResponse.baseLimited ? new BN(quotePositionResponse.baseTokenAmount * (10 ** baseToken.decimals)) : new BN(quotePositionResponse.quoteTokenAmount * (10 ** quoteToken.decimals)),
-      otherAmountMax: quotePositionResponse.baseLimited ? new BN(quotePositionResponse.quoteTokenAmountMax * (10 ** quoteToken.decimals)) : new BN(quotePositionResponse.baseTokenAmountMax * (10 ** baseToken.decimals)),
+      baseAmount: quotePositionResponse.baseLimited ? new BN(quotePositionResponse.baseTokenAmount * (10 ** baseTokenInfo.decimals)) : new BN(quotePositionResponse.quoteTokenAmount * (10 ** quoteTokenInfo.decimals)),
+      otherAmountMax: quotePositionResponse.baseLimited ? new BN(quotePositionResponse.quoteTokenAmountMax * (10 ** quoteTokenInfo.decimals)) : new BN(quotePositionResponse.baseTokenAmountMax * (10 ** baseTokenInfo.decimals)),
       txVersion: TxVersion.V0,
       computeBudgetConfig: {
         units: COMPUTE_UNITS,
@@ -92,8 +107,8 @@ async function openPosition(
       const { baseTokenBalanceChange, quoteTokenBalanceChange } = 
       await solana.extractPairBalanceChangesAndFee(
         signature,
-        baseToken,
-        quoteToken,
+        baseTokenInfo,
+        quoteTokenInfo,
         wallet.publicKey.toBase58()
       );
   
@@ -144,6 +159,8 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
             lowerPrice: { type: 'number', examples: [100] },
             upperPrice: { type: 'number', examples: [180] },
             poolAddress: { type: 'string', examples: ['3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv'] },
+            baseToken: { type: 'string', examples: ['SOL'] },
+            quoteToken: { type: 'string', examples: ['USDC'] },
             slippagePct: { type: 'number', examples: [1] },
             baseTokenAmount: { type: 'number', examples: [0.1] },
             quoteTokenAmount: { type: 'number', examples: [15] },
@@ -162,11 +179,20 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           lowerPrice,
           upperPrice,
           poolAddress,
+          baseToken,
+          quoteToken,
           baseTokenAmount,
           quoteTokenAmount,
           slippagePct 
         } = request.body;
         const networkToUse = network || 'mainnet-beta';
+        
+        // Check if either poolAddress or both baseToken and quoteToken are provided
+        if (!poolAddress && (!baseToken || !quoteToken)) {
+          throw fastify.httpErrors.badRequest(
+            'Either poolAddress or both baseToken and quoteToken must be provided'
+          );
+        }
         
         return await openPosition(
           fastify,
@@ -177,6 +203,8 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           poolAddress,
           baseTokenAmount,
           quoteTokenAmount,
+          baseToken,
+          quoteToken,
           slippagePct
         );
       } catch (e) {
