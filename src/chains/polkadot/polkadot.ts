@@ -639,10 +639,12 @@ export class Polkadot {
       // Validate recipient address
       this.validatePolkadotAddress(recipient);
 
+      const apiPromise = await this.getApiPromise();
+      
       // Create transfer extrinsic
       const tx = options?.keepAlive
-        ? (await this.getApiPromise()).tx.balances.transferKeepAlive(recipient, amount)
-        : (await this.getApiPromise()).tx.balances.transfer(recipient, amount);
+        ? await this.apiPromiseTxBalancesTransferKeepAlive(apiPromise, recipient, amount)
+        : await this.apiPromiseTxBalancesTransfer(apiPromise, recipient, amount);
 
       // Add tip if specified
       if (options?.tip) {
@@ -654,7 +656,7 @@ export class Polkadot {
       }
 
       // Get fee estimate
-      const feeInfo = await tx.paymentInfo(sender);
+      const feeInfo = await this.submittableExtrinsicPaymentInfo(tx, sender);
 
       const feeEstimate: FeeEstimate = {
         estimatedFee: feeInfo.partialFee.toString(),
@@ -719,7 +721,7 @@ export class Polkadot {
             const status = TransactionStatus.SUCCESS;
 
             // Get block information
-            const blockInfo = await this.apiPromise.rpc.chain.getBlock(blockHash);
+            const blockInfo = await this.apiPromiseRpcChainGetBlock(await this.getApiPromise(), blockHash);
             const blockNumber = blockInfo.block.header.number.toNumber();
 
             // Get transaction fee if possible
@@ -795,7 +797,7 @@ export class Polkadot {
       this.validatePolkadotAddress(address);
 
       // Get staking information
-      const stakingInfo = await this.apiPromise.derive.staking.account(address);
+      const stakingInfo = await this.apiPromiseDeriveStakingAccount(await this.getApiPromise(), address);
 
       // Format results
       const result: StakingInfo = {
@@ -817,8 +819,8 @@ export class Polkadot {
       }
 
       // Get validator info if available
-      if (address in (await this.apiPromise.query.staking.validators.entries())) {
-        const validatorInfo = await this.apiPromise.query.staking.validators(address);
+      if (address in (await this.apiPromiseQueryStakingValidatorsEntries(await this.getApiPromise()))) {
+        const validatorInfo = await this.apiPromiseQueryStakingValidators(await this.getApiPromise(), address);
         result.validators.push({
           address,
           value: stakingInfo.stakingLedger.active.toString(),
@@ -841,7 +843,7 @@ export class Polkadot {
    */
   async getPalletMetadata(palletName: string): Promise<any> {
     try {
-      const metadata = this.apiPromise.runtimeMetadata;
+      const metadata = await this.apiPromiseRuntimeMetadata(await this.getApiPromise());
       const palletIndex = metadata.asLatest.pallets.findIndex(
         (p) => p.name.toString() === palletName,
       );
@@ -851,14 +853,15 @@ export class Polkadot {
       }
 
       const pallet = metadata.asLatest.pallets[palletIndex];
+      const apiPromise = await this.getApiPromise();
 
       return {
         name: pallet.name.toString(),
         index: palletIndex,
-        calls: pallet.calls ? this.apiPromise.tx[palletName] : [],
-        constants: this.apiPromise.consts[palletName],
-        storage: this.apiPromise.query[palletName],
-        errors: this.apiPromise.errors[palletName]
+        calls: pallet.calls ? await this.apiPromiseTx(apiPromise, palletName) : [],
+        constants: await this.apiPromiseConsts(apiPromise, palletName),
+        storage: await this.apiPromiseQuery(apiPromise, palletName),
+        errors: await this.apiPromiseErrors(apiPromise, palletName)
       };
     } catch (error) {
       logger.error(`Failed to get pallet metadata: ${error.message}`);
@@ -950,5 +953,65 @@ export class Polkadot {
   @runWithRetryAndTimeout()
   public async apiPromiseQueryTokensAccounts(target: ApiPromise, arg1: string, arg2: string) {
     return target.query.tokens.accounts(arg1, arg2);
+  }
+
+  @runWithRetryAndTimeout()
+  public async apiPromiseDeriveStakingAccount(target: ApiPromise, address: string) {
+    return target.derive.staking.account(address);
+  }
+
+  @runWithRetryAndTimeout()
+  public async apiPromiseQueryStakingValidatorsEntries(target: ApiPromise) {
+    return target.query.staking.validators.entries();
+  }
+
+  @runWithRetryAndTimeout()
+  public async apiPromiseQueryStakingValidators(target: ApiPromise, address: string) {
+    return target.query.staking.validators(address);
+  }
+
+  @runWithRetryAndTimeout()
+  public async apiPromiseRpcChainGetBlock(target: ApiPromise, blockHash: string) {
+    return target.rpc.chain.getBlock(blockHash);
+  }
+
+  @runWithRetryAndTimeout()
+  public async apiPromiseRuntimeMetadata(target: ApiPromise) {
+    return target.runtimeMetadata;
+  }
+
+  @runWithRetryAndTimeout()
+  public async apiPromiseTx(target: ApiPromise, palletName: string) {
+    return target.tx[palletName];
+  }
+
+  @runWithRetryAndTimeout()
+  public async apiPromiseConsts(target: ApiPromise, palletName: string) {
+    return target.consts[palletName];
+  }
+
+  @runWithRetryAndTimeout()
+  public async apiPromiseQuery(target: ApiPromise, palletName: string) {
+    return target.query[palletName];
+  }
+
+  @runWithRetryAndTimeout()
+  public async apiPromiseErrors(target: ApiPromise, palletName: string) {
+    return target.errors[palletName];
+  }
+
+  @runWithRetryAndTimeout()
+  public async apiPromiseTxBalancesTransfer(target: ApiPromise, recipient: string, amount: string) {
+    return target.tx.balances.transfer(recipient, amount);
+  }
+
+  @runWithRetryAndTimeout()
+  public async apiPromiseTxBalancesTransferKeepAlive(target: ApiPromise, recipient: string, amount: string) {
+    return target.tx.balances.transferKeepAlive(recipient, amount);
+  }
+
+  @runWithRetryAndTimeout()
+  public async submittableExtrinsicPaymentInfo(target: any, sender: KeyringPair) {
+    return target.paymentInfo(sender);
   }
 }
