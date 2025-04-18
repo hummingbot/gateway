@@ -47,7 +47,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: "Retrieve a list of positions owned by a user's wallet in a specific Meteora pool",
-        tags: ['meteora'],
+        tags: ['meteora/clmm'],
         querystring: GetPositionsOwnedRequest,
         response: {
           200: GetPositionsOwnedResponse

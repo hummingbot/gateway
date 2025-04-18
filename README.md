@@ -12,18 +12,56 @@ Gateway may be used alongside the main [Hummingbot client](https://github.com/hu
 
 Gateway uses [Swagger](https://swagger.io/) for API documentation. When Gateway is started in HTTP mode, it automatically generates interactive Swagger API docs at: <http://localhost:15888/docs>
 
-## Installation
 
-For an overview of Gateway setup and how to use it with Hummingbot, see the [Gateway](https://hummingbot.org/gateway/installation/) in the Hummingbot docs.
+## Installation from Source
 
-### Installation from Source
+### Install NodeJS 20+
 
-First, install these dependencies:
+We recommend downloading the graphical installer from the [NodeJS official site](https://nodejs.org/en/download/).
 
-* NodeJS (20.11.0 or higher): Install from the [NodeJS official site](https://nodejs.org/en/download/)
-* PNPM: Run `npm install -g pnpm` after installing NodeJS
+For terminal-based users, follow the steps below to install from a Linux-based machine (Ubunbu 20+)
 
-Then, follow these steps to install Gateway:
+```bash
+#  Ensure your package list is up to date and install curl
+sudo apt update && sudo apt install -y curl
+
+# Add Node 20.x repository
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+
+
+# Install the default versions from Ubuntu’s repository:
+sudo apt install -y nodejs
+
+# Check Node.js version: 
+nodejs --version
+```  
+
+### Install `pnpm` package manager
+
+`pnpm` is a faster and more space-efficient package manager than `npm`.
+
+```bash
+# Install PNPM globally
+sudo npm install -g pnpm
+
+# Check pnpm version
+pnpm --version
+```
+
+### Clone Gateway repo
+
+```bash
+# Clone Github repo
+git clone https://github.com/hummingbot/gateway.git
+
+# Go to newly created folder
+cd gateway
+
+# Switch to `core-2.5 branch
+git checkout core-2.5
+```
+
+### Setup Gateway
 ```bash
 # Install JS libraries
 pnpm install
@@ -35,21 +73,21 @@ pnpm build
 pnpm run setup
 ```
 
-### Start Gateway from Source
+### Start Gateway
 
-To start the Gateway server in HTTPS mode, run the command below. Make sure to use the same passphrase that you used to generate certs in the Hummingbot client
-
-```bash
-pnpm start --passphrase=<PASSPHRASE>
-```
-
-You may also start the Gateway server in HTTP mode. Note that the passphrase is needed to encrypt and decrypt wallets used in executing transactions
+You can run Gateway in the Gateway server in unencrypted HTTP mode using the `--dev` flag. Note that a passphrase is still needed to encrypt and decrypt wallets used in executing transactions.
 
 ```bash
 pnpm start --passphrase=<PASSPHRASE> --dev
 ```
 
-### Installation with Docker
+To start the Gateway server in HTTPS mode, run the command without the `--dev` flag. Make sure to use the same passphrase that you used to generate certs in the Hummingbot client.
+
+```bash
+pnpm start --passphrase=<PASSPHRASE>
+```
+
+## Installation with Docker
 
 Build the Gateway Docker image locally by executing the below command. You may replace `development` with a tag of your choice.
 

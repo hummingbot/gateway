@@ -24,6 +24,7 @@ import { PoolInfo as ClmmPoolInfo, PositionInfo } from '../../schemas/trading-ty
 import { PoolInfo as AmmPoolInfo } from '../../schemas/trading-types/amm-schema'
 import { PublicKey } from '@solana/web3.js'
 import { percentRegexp } from '../../services/config-manager-v2';
+import { ConfigManagerV2 } from '../../services/config-manager-v2';
 
 export class Raydium {
   private static _instances: { [name: string]: Raydium }
@@ -276,6 +277,10 @@ export class Raydium {
           baseTokenAmount: Number(rawPool.mintAmountA),
           quoteTokenAmount: Number(rawPool.mintAmountB),
           poolType: poolType,
+          lpMint: {
+            address: rawPool[poolAddress]?.lpMint?.toString() || '',
+            decimals: 9 // Default LP token decimals for Raydium
+          },
         }
         return poolInfo
       } else if (poolType === 'cpmm') {
@@ -291,6 +296,10 @@ export class Raydium {
           baseTokenAmount: Number(rawPool[poolAddress].baseReserve) / 10 ** Number(rawPool[poolAddress].mintDecimalA),
           quoteTokenAmount: Number(rawPool[poolAddress].quoteReserve) / 10 ** Number(rawPool[poolAddress].mintDecimalB),
           poolType: poolType,
+          lpMint: {
+            address: rawPool[poolAddress].mintLp.toString(),
+            decimals: 9 // Default LP token decimals for Raydium
+          },
         }
         return poolInfo
       }
@@ -301,8 +310,8 @@ export class Raydium {
   }  
 
   // General Slippage Settings
-  getSlippagePct(): number {
-    const allowedSlippage = this.config.allowedSlippage;
+  getSlippagePct(routeType: 'amm' | 'clmm'): number {
+    const allowedSlippage = this.config[routeType].allowedSlippage;
     const nd = allowedSlippage.match(percentRegexp);
     let slippage = 0.0;
     if (nd) {
@@ -313,6 +322,17 @@ export class Raydium {
     return slippage * 100;
   }
 
+  private getPairKey(baseToken: string, quoteToken: string): string {
+    return `${baseToken}-${quoteToken}`;
+  }
+
+  async findDefaultPool(baseToken: string, quoteToken: string, routeType: 'amm' | 'clmm'): Promise<string | null> {
+    const pools = this.config[routeType].pools;
+    const pairKey = this.getPairKey(baseToken, quoteToken);
+    const reversePairKey = this.getPairKey(quoteToken, baseToken);
+
+    return pools[pairKey] || pools[reversePairKey] || null;
+  }
   async listAllPools(maxPages = 3): Promise<
       Array<
           ApiV3PoolInfoConcentratedItem |
@@ -324,10 +344,10 @@ export class Raydium {
       let allPools = [];
       let currentPage = 1;
       let hasMoreData = true;
-      
+
       while (hasMoreData && currentPage <= maxPages) {
         logger.info(`Fetching pool page ${currentPage}/${maxPages}`);
-        
+
         // Use the SDK method getPoolList with pagination
         const poolListResponse = await this.raydiumSDK.api.getPoolList({
           page: currentPage,
@@ -336,25 +356,25 @@ export class Raydium {
           sort: 'liquidity',
           type: PoolFetchType.Standard,
         });
-        
+
         if (poolListResponse.data && poolListResponse.data.length > 0) {
           allPools = [...allPools, ...poolListResponse.data];
           logger.info(`Retrieved ${poolListResponse.data.length} pools from page ${currentPage}. Total pools: ${allPools.length}`);
-          
+
           // Check if we received a full page of results
           hasMoreData = poolListResponse.data.length === 1000;
         } else {
           hasMoreData = false;
         }
-        
+
         currentPage++;
-        
+
         // Add a small delay to avoid rate limiting
         if (hasMoreData && currentPage <= maxPages) {
           await new Promise(resolve => setTimeout(resolve, 500));
         }
       }
-      
+
       logger.info(`Total pools retrieved: ${allPools.length}`);
       return allPools;
     } catch (error) {

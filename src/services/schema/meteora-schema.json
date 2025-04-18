@@ -2,8 +2,18 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "properties": {
-    "allowedSlippage": { "type": "string" }
+    "allowedSlippage": { "type": "string" },
+    "strategyType": { "type": "number" },
+    "pools": {
+      "type": "object",
+      "patternProperties": {
+        "^[A-Z]+-[A-Z]+$": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
   },
-  "additionalProperties": false,
-  "required": ["allowedSlippage"]
+  "required": ["allowedSlippage", "pools", "strategyType"],
+  "additionalProperties": false
 }

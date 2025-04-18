@@ -17,7 +17,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Get CLMM pool information from Raydium',
-        tags: ['raydium-clmm'],
+        tags: ['raydium/clmm'],
         querystring: {
           ...GetPoolInfoRequest,
           properties: {

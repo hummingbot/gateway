@@ -68,8 +68,7 @@ async function createRemoveLiquidityTransaction(
   } else if (ammPoolInfo.poolType === 'cpmm') {
     // Use default slippage from Raydium class
     const slippage = new Percent(
-      Math.floor(raydium.getSlippagePct() * 100),
-      10000
+      Math.floor(raydium.getSlippagePct('amm') * 100) / 10000
     )
     
     const response : CPMMWithdrawLiquiditySDKResponse = await raydium.raydiumSDK.cpmm.withdrawLiquidity({
@@ -244,7 +243,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Remove liquidity from a Raydium AMM/CPMM pool',
-        tags: ['raydium-amm'],
+        tags: ['raydium/amm'],
         body: {
           ...RemoveLiquidityRequest,
           properties: {

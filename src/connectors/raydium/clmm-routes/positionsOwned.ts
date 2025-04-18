@@ -30,7 +30,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: "Retrieve a list of positions owned by a user's wallet in a specific Raydium CLMM pool",
-        tags: ['raydium-clmm'],
+        tags: ['raydium/clmm'],
         querystring: GetPositionsOwnedRequest,
         response: {
           200: GetPositionsOwnedResponse

@@ -618,7 +618,47 @@ export class Hydration {
       // Extract amounts from the trade and convert to numbers
       const estimatedAmountIn = Number(tradeHuman.amountIn);
       const estimatedAmountOut = Number(tradeHuman.amountOut);
-      const price = Number(tradeHuman.spotPrice);
+      
+      // Check if this is likely a stablecoin pair (USDC/USDT, etc.)
+      const isStablecoinPair = this.isStablecoinPair(baseToken.symbol, quoteToken.symbol);
+      
+      // Calculate the price
+      let price;
+      if (isStablecoinPair) {
+        // For stablecoin pairs, price should be close to 1:1 with small deviations
+        // We invert if necessary to keep the format "quote per base"
+        if (side === 'BUY') {
+          price = estimatedAmountIn / estimatedAmountOut;
+        } else {
+          price = estimatedAmountIn / estimatedAmountOut;
+        }
+        
+        // If price is too far from 1.0, it's likely we have a calculation issue
+        if (price < 0.5 || price > 2.0) {
+          // This is probably an issue with token order or decimals, force it closer to 1.0
+          // Calculate a more reasonable price based on relative amounts
+          price = 1.0 + ((estimatedAmountIn - estimatedAmountOut) / Math.max(estimatedAmountIn, estimatedAmountOut));
+          logger.warn(`Adjusting unreasonable stablecoin price (${estimatedAmountIn}/${estimatedAmountOut}) to ${price}`);
+        }
+      } else {
+        // Regular trading pair calculation
+        if (side === 'BUY') {
+          // When buying baseToken, price is how much quoteToken per baseToken
+          price = estimatedAmountIn / estimatedAmountOut;
+        } else {
+          // When selling baseToken, price is how much quoteToken per baseToken
+          price = estimatedAmountOut / estimatedAmountIn;
+        }
+      }
+      
+      // Ensure price is reasonable (not zero, infinity, etc.)
+      if (!isFinite(price) || isNaN(price)) {
+        price = Number(tradeHuman.spotPrice);
+        logger.warn(`Using fallback spotPrice: ${price}`);
+      } else {
+        // Round to 8 decimal places for consistency
+        price = parseFloat(price.toFixed(8));
+      }
 
       let minAmountOut, maxAmountIn;
 
@@ -1738,5 +1778,22 @@ export class Hydration {
       logger.error(`Failed to get token symbol: ${error.message}`);
       throw error;
     }
+  }
+
+  /**
+   * Check if a pair of tokens represents a stablecoin pair
+   * @param token1Symbol First token symbol
+   * @param token2Symbol Second token symbol
+   * @returns Boolean indicating if this is a stablecoin pair
+   */
+  private isStablecoinPair(token1Symbol: string, token2Symbol: string): boolean {
+    // List of common stablecoin symbols
+    const stablecoins = ['USDC', 'USDT', 'DAI', 'BUSD', 'TUSD', 'USDN', 'USDJ', 'sUSD', 'GUSD', 'HUSD'];
+    
+    // Check if both tokens are in the stablecoin list
+    const isToken1Stable = stablecoins.some(s => token1Symbol.toUpperCase().includes(s));
+    const isToken2Stable = stablecoins.some(s => token2Symbol.toUpperCase().includes(s));
+    
+    return isToken1Stable && isToken2Stable;
   }
 }

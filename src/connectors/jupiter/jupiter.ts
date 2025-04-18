@@ -124,7 +124,12 @@ export class Jupiter {
             quoteResponse: quote,
             userPublicKey: wallet.publicKey.toBase58(),
             dynamicComputeUnitLimit: true,
-            prioritizationFeeLamports: feeLamports as any,
+            prioritizationFeeLamports: {
+              priorityLevelWithMaxLamports: {
+                maxLamports: feeLamports,
+                priorityLevel: this.config.priorityLevel
+              }
+            }
           },
         });
         return swapObj;

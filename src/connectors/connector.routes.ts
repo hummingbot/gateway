@@ -43,28 +43,23 @@ export const connectorsRoutes: FastifyPluginAsync = async (fastify) => {
 
       const connectors = [
         {
-          name: 'uniswap',
-          trading_types: ['swap'],
-          available_networks: UniswapConfig.config.availableNetworks,
-        },
-        {
           name: 'jupiter',
           trading_types: ['swap'],
           available_networks: JupiterConfig.config.availableNetworks,
         },
         {
-          name: 'meteora_clmm',
-          trading_types: ['clmm'],
+          name: 'meteora/clmm',
+          trading_types: ['clmm', 'swap'],
           available_networks: MeteoraConfig.config.availableNetworks,
         },
         {
-          name: 'raydium_amm',
-          trading_types: ['amm'],
+          name: 'raydium/amm',
+          trading_types: ['amm', 'swap'],
           available_networks: RaydiumConfig.config.availableNetworks,
         },
         {
-          name: 'raydium_clmm',
-          trading_types: ['clmm'],
+          name: 'raydium/clmm',
+          trading_types: ['clmm', 'swap'],
           available_networks: RaydiumConfig.config.availableNetworks,
         },
         {

@@ -27,6 +27,10 @@ export const PoolInfoSchema = Type.Object({
     baseTokenAmount: Type.Number(),
     quoteTokenAmount: Type.Number(),
     poolType: Type.Optional(Type.String()),
+    lpMint: Type.Object({
+      address: Type.String(),
+      decimals: Type.Number()
+    }),
   }, { $id: 'PoolInfo' });
   export type PoolInfo = Static<typeof PoolInfoSchema>;
 
@@ -85,4 +89,23 @@ export const PoolInfoSchema = Type.Object({
     quoteTokenAmountRemoved: Type.Number(),
   }, { $id: 'RemoveLiquidityResponse' });
   export type RemoveLiquidityResponseType = Static<typeof RemoveLiquidityResponse>;
+
+  export const PositionInfoSchema = Type.Object({
+    poolAddress: Type.String(),
+    walletAddress: Type.String(),
+    baseTokenAddress: Type.String(),
+    quoteTokenAddress: Type.String(),
+    lpTokenAmount: Type.Number(),
+    baseTokenAmount: Type.Number(),
+    quoteTokenAmount: Type.Number(),
+    price: Type.Number(),
+  }, { $id: 'PositionInfo' });
+  export type PositionInfo = Static<typeof PositionInfoSchema>;
+
+  export const GetPositionInfoRequest = Type.Object({
+    network: Type.Optional(Type.String()),
+    poolAddress: Type.String(),
+    walletAddress: Type.String(),
+  }, { $id: 'GetPositionInfoRequest' });
+  export type GetPositionInfoRequestType = Static<typeof GetPositionInfoRequest>;
 

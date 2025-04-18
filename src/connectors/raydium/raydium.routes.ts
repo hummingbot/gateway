@@ -16,6 +16,7 @@ import { closePositionRoute } from './clmm-routes/closePosition';
 
 // AMM routes
 import { poolInfoRoute as ammPoolInfoRoute } from './amm-routes/poolInfo';
+import { positionInfoRoute as ammPositionInfoRoute } from './amm-routes/positionInfo';
 import { listPoolsRoute } from './amm-routes/listPools';
 import { quoteLiquidityRoute } from './amm-routes/quoteLiquidity';
 import { quoteSwapRoute as ammQuoteSwapRoute } from './amm-routes/quoteSwap';
@@ -26,13 +27,11 @@ import { removeLiquidityRoute as ammRemoveLiquidityRoute } from './amm-routes/re
 // CLMM routes including swap endpoints
 const raydiumClmmRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(sensible);
-  
-  // We'll use a plugin to modify the tags
+
   await fastify.register(async (instance) => {
-    // Decorate the instance with a hook to modify route options
     instance.addHook('onRoute', (routeOptions) => {
       if (routeOptions.schema && routeOptions.schema.tags) {
-        routeOptions.schema.tags = ['raydium'];
+        routeOptions.schema.tags = ['raydium/clmm'];
       }
     });
     
@@ -53,17 +52,16 @@ const raydiumClmmRoutes: FastifyPluginAsync = async (fastify) => {
 // AMM routes including swap endpoints
 const raydiumAmmRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(sensible);
-  
-  // We'll use a plugin to modify the tags
+
   await fastify.register(async (instance) => {
-    // Decorate the instance with a hook to modify route options
     instance.addHook('onRoute', (routeOptions) => {
       if (routeOptions.schema && routeOptions.schema.tags) {
-        routeOptions.schema.tags = ['raydium'];
+        routeOptions.schema.tags = ['raydium/amm'];
       }
     });
     
     await instance.register(ammPoolInfoRoute);
+    await instance.register(ammPositionInfoRoute);
     await instance.register(listPoolsRoute);
     await instance.register(quoteLiquidityRoute);
     await instance.register(ammQuoteSwapRoute);

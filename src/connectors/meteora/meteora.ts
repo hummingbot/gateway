@@ -339,4 +339,16 @@ export class Meteora {
     }
     return slippage * 100;
   }
+
+  private getPairKey(baseToken: string, quoteToken: string): string {
+    return `${baseToken}-${quoteToken}`;
+  }
+
+  async findDefaultPool(baseToken: string, quoteToken: string): Promise<string | null> {
+    const pools = this.config.pools;
+    const pairKey = this.getPairKey(baseToken, quoteToken);
+    const reversePairKey = this.getPairKey(quoteToken, baseToken);
+    
+    return pools[pairKey] || pools[reversePairKey] || null;
+  }
 }
