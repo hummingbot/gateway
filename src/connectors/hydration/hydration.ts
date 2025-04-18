@@ -37,6 +37,7 @@ interface ExternalPoolInfo {
   quoteTokenAmount: number;
   poolType: string;
   liquidity?: number;
+  id: string;
 }
 
 /**
@@ -1034,7 +1035,8 @@ export class Hydration {
       baseTokenAmount: internalPool.baseTokenAmount,
       quoteTokenAmount: internalPool.quoteTokenAmount,
       poolType: internalPool.type,
-      liquidity: internalPool.liquidity
+      liquidity: internalPool.liquidity,
+      id: internalPool.id
     };
   }
 

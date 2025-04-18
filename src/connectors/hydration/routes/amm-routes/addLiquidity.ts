@@ -184,20 +184,21 @@ async function addLiquidity(
         break;
 
       case POOL_TYPE.STABLESWAP:
-        // For Stableswap, we need to provide assets array with [id, amount] objects
+        // For Stableswap pools
+        // We need to specify which assets we want to receive
         const assets = [
           { assetId: baseToken.address, amount: baseAmountBN.toString() },
           { assetId: quoteToken.address, amount: quoteAmountBN.toString() }
         ].filter(asset => new BigNumber(asset.amount).gt(0)); // Only include assets with amount > 0
         
-        // Convert poolId to number for stableswap
-        const numericPoolId = parseInt(poolId);
+        // Get the numeric pool ID from pool info
+        const numericPoolId = parseInt(pool.id);
         if (isNaN(numericPoolId)) {
-          throw httpBadRequest(`Invalid pool ID for stableswap: ${poolId}`);
+          throw httpBadRequest(`Invalid pool ID for stableswap: ${pool.id}`);
         }
         
         addLiquidityTx = apiPromise.tx.stableswap.addLiquidity(
-          numericPoolId, // Pool ID must be a number (u32)
+          numericPoolId, // Use the numeric pool ID
           assets
         );
         break;
