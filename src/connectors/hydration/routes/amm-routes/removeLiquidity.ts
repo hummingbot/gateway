@@ -79,7 +79,7 @@ export async function removeLiquidity(
       }
 
       // Using the GalacticCouncil SDK to prepare the transaction
-      const api = await polkadot.getApiPromise()
+      const apiPromise = await hydration.getApiPromise();
       
       let removeLiquidityTx;
       // Get pool type
@@ -90,7 +90,7 @@ export async function removeLiquidity(
       switch (poolType) {
         case POOL_TYPE.XYK:
           // For XYK pools
-          removeLiquidityTx = api.tx.xyk.removeLiquidity(
+          removeLiquidityTx = apiPromise.tx.xyk.removeLiquidity(
             baseAsset.address,
             quoteAsset.address,
             liquidityToRemove.toString()
@@ -99,7 +99,7 @@ export async function removeLiquidity(
 
         case POOL_TYPE.LBP:
           // For LBP pools
-          removeLiquidityTx = api.tx.lbp.removeLiquidity(
+          removeLiquidityTx = apiPromise.tx.lbp.removeLiquidity(
             poolAddress // Pool ID for LBP
           );
           break;
@@ -107,7 +107,7 @@ export async function removeLiquidity(
         case POOL_TYPE.OMNIPOOL:
           // For Omnipool, we need to specify which asset we're withdrawing
           // In Omnipool, we can only withdraw one asset at a time, so we use the base asset
-          removeLiquidityTx = api.tx.omnipool.removeLiquidity(
+          removeLiquidityTx = apiPromise.tx.omnipool.removeLiquidity(
             baseAsset.address,
             liquidityToRemove.toString()
           );
@@ -121,7 +121,7 @@ export async function removeLiquidity(
             { assetId: quoteAsset.address, amount: '0' }  // System will calculate actual amounts
           ];
           
-          removeLiquidityTx = api.tx.stableswap.removeLiquidity(
+          removeLiquidityTx = apiPromise.tx.stableswap.removeLiquidity(
             poolAddress, // Pool ID for stableswap
             liquidityToRemove.toString(),
             assets
@@ -133,13 +133,13 @@ export async function removeLiquidity(
       }
 
       // Sign and send the transaction
-      const txHash = await submitTransaction(api, removeLiquidityTx, wallet, poolType);
+      const txHash = await submitTransaction(apiPromise, removeLiquidityTx, wallet, poolType);
 
       logger.info(`Liquidity removed from pool ${poolAddress} with tx hash: ${txHash}`);
 
       // Get transaction result to retrieve actual amounts removed
       const { baseAmount, quoteAmount } = await getRemoveLiquidityResult(
-        api, 
+        apiPromise,
         txHash, 
         baseAsset, 
         quoteAsset, 

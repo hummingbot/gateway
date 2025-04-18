@@ -149,7 +149,8 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
           let pools: PoolBase[] = [];
           try {
             // In Hydration, we'll implement pagination by limiting the number of pools processed
-            pools = await hydration.poolServiceGetPools(await hydration.getPoolService(), []);
+            const poolService = await hydration.getPoolService();
+            pools = await hydration.poolServiceGetPools(poolService, []);
 
             logger.info(`Using pagination: Found ${pools.length} total pool addresses`);
           } catch (error) {

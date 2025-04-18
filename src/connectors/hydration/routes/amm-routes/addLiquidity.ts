@@ -127,7 +127,7 @@ async function addLiquidity(
     const effectiveSlippage = slippagePct ?? hydration.getSlippagePct();
 
     // Using the GalacticCouncil SDK to prepare the transaction
-    const api = await polkadot.getApiPromise();
+    const apiPromise = await hydration.getApiPromise();
     
     let addLiquidityTx;
     const poolType = pool.poolType?.toLowerCase() || POOL_TYPE.XYK; // Default to XYK if type is not provided
@@ -140,7 +140,7 @@ async function addLiquidity(
         const quoteAmountMaxLimit = calculateMaxAmountIn(quoteAmountBN, effectiveSlippage);
         
         // Create XYK add liquidity transaction
-        addLiquidityTx = api.tx.xyk.addLiquidity(
+        addLiquidityTx = apiPromise.tx.xyk.addLiquidity(
           baseAsset.address,
           quoteAsset.address,
           baseAmountBN.toString(),
@@ -153,7 +153,7 @@ async function addLiquidity(
         const amountA = [baseAsset.address, baseAmountBN.toString()];
         const amountB = [quoteAsset.address, quoteAmountBN.toString()];
         
-        addLiquidityTx = api.tx.lbp.addLiquidity(
+        addLiquidityTx = apiPromise.tx.lbp.addLiquidity(
           [baseAsset.address, baseAmountBN.toString()],
           [quoteAsset.address, quoteAmountBN.toString()]
         );
@@ -166,7 +166,7 @@ async function addLiquidity(
           // Calculate min shares limit based on slippage (if applicable)
           const minSharesLimit = calculateMinSharesLimit(baseAmountBN, effectiveSlippage);
           
-          addLiquidityTx = api.tx.omnipool.addLiquidityWithLimit(
+          addLiquidityTx = apiPromise.tx.omnipool.addLiquidityWithLimit(
             baseAsset.address,
             baseAmountBN.toString(),
             minSharesLimit.toString()
@@ -175,7 +175,7 @@ async function addLiquidity(
           // Use quote asset if base amount is 0
           const minSharesLimit = calculateMinSharesLimit(quoteAmountBN, effectiveSlippage);
           
-          addLiquidityTx = api.tx.omnipool.addLiquidityWithLimit(
+          addLiquidityTx = apiPromise.tx.omnipool.addLiquidityWithLimit(
             quoteAsset.address,
             quoteAmountBN.toString(),
             minSharesLimit.toString()
@@ -190,7 +190,7 @@ async function addLiquidity(
           { assetId: quoteAsset.address, amount: quoteAmountBN.toString() }
         ].filter(asset => new BigNumber(asset.amount).gt(0)); // Only include assets with amount > 0
         
-        addLiquidityTx = api.tx.stableswap.addLiquidity(
+        addLiquidityTx = apiPromise.tx.stableswap.addLiquidity(
           poolId, // Pool ID is required for stableswap
           assets
         );
@@ -201,7 +201,7 @@ async function addLiquidity(
     }
 
     // Sign and send the transaction
-    const txHash = await submitTransaction(api, addLiquidityTx, wallet, poolType);
+    const txHash = await submitTransaction(apiPromise, addLiquidityTx, wallet, poolType);
 
     logger.info(`Liquidity added to pool ${poolId} with tx hash: ${txHash}`);
 
