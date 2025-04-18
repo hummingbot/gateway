@@ -162,11 +162,14 @@ export class Polkadot {
 
   /**
    * Get token information by symbol
-   * @param symbol The token symbol
+   * @param addressOrSymbol The token symbol
    * @returns A Promise that resolves to token information or undefined if not found
    */
-  async getToken(symbol: string): Promise<TokenInfo | undefined> {
-    return this.tokenList.find(token => token.symbol.toLowerCase() === symbol.toLowerCase());
+  async getToken(addressOrSymbol: string): Promise<TokenInfo | undefined> {
+    return this.tokenList.find(token =>
+        token.symbol.toLowerCase() === addressOrSymbol.toLowerCase()
+        || token.address.toLowerCase() === addressOrSymbol.toLowerCase()
+    );
   }
 
   /**
