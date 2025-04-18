@@ -1,35 +1,32 @@
-import { ApiPromise, WsProvider, HttpProvider } from '@polkadot/api';
-import { Keyring } from '@polkadot/keyring';
-import { KeyringPair } from '@polkadot/keyring/types';
-import { SubmittableExtrinsic } from '@polkadot/api/types';
-import { ISubmittableResult } from '@polkadot/types/types';
-import { mnemonicGenerate } from '@polkadot/util-crypto';
-import { u8aToHex } from '@polkadot/util';
-import { encodeAddress, decodeAddress } from '@polkadot/util-crypto';
-import { TokenInfo } from '../ethereum/ethereum-base';
-import { Config, getPolkadotConfig } from './polkadot.config';
-import { PolkadotController } from './polkadot.controllers';
-import { HttpException } from '../../services/error-handler';
-import { logger } from '../../services/logger';
-import { TokenListType } from '../../services/base';
+import {ApiPromise, HttpProvider, WsProvider} from '@polkadot/api';
+import {Keyring} from '@polkadot/keyring';
+import {KeyringPair} from '@polkadot/keyring/types';
+import {SubmittableExtrinsic} from '@polkadot/api/types';
+import {ISubmittableResult} from '@polkadot/types/types';
+import {cryptoWaitReady, decodeAddress, encodeAddress, mnemonicGenerate} from '@polkadot/util-crypto';
+import {u8aToHex} from '@polkadot/util';
+import {TokenInfo} from '../ethereum/ethereum-base';
+import {Config, getPolkadotConfig} from './polkadot.config';
+import {PolkadotController} from './polkadot.controllers';
+import {HttpException} from '../../services/error-handler';
+import {logger} from '../../services/logger';
+import {TokenListType, walletPath} from '../../services/base';
 import {
+  BatchTransactionOptions,
+  FeeEstimate,
   PolkadotAccount,
-  TransactionStatus,
+  StakingInfo,
   SubmittableTransaction,
   TransactionReceipt,
+  TransactionStatus,
   TransferOptions,
-  BatchTransactionOptions,
-  StakingInfo,
-  FeeEstimate,
 } from './polkadot.types';
-import { cryptoWaitReady } from '@polkadot/util-crypto';
-import { BN } from 'bn.js';
+import {BN} from 'bn.js';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import axios from 'axios';
-import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
-import { walletPath } from '../../services/base';
-import { runWithRetryAndTimeout } from '../../connectors/hydration/hydration.utils';
+import {ConfigManagerCertPassphrase} from '../../services/config-manager-cert-passphrase';
+import {runWithRetryAndTimeout} from '../../connectors/hydration/hydration.utils';
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface PollResponse {
