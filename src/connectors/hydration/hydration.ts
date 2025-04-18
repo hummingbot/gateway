@@ -1,19 +1,23 @@
-import { TokenInfo } from '@solana/spl-token-registry';
-import { Polkadot } from '../../chains/polkadot/polkadot';
-import { logger } from '../../services/logger';
-import { HydrationConfig } from './hydration.config';
+import {Polkadot} from '../../chains/polkadot/polkadot';
+import {logger} from '../../services/logger';
+import {HydrationConfig} from './hydration.config';
+import {HydrationPoolInfo, LiquidityQuote, PositionStrategyType, SwapQuote, SwapRoute} from './hydration.types';
+import {KeyringPair} from '@polkadot/keyring/types';
+import {ApiPromise, WsProvider} from '@polkadot/api';
 import {
-  SwapQuote,
-  PositionStrategyType,
-  LiquidityQuote,
-  SwapRoute,
-  HydrationPoolInfo
-} from './hydration.types';
-import { KeyringPair } from '@polkadot/keyring/types';
-import { ApiPromise, WsProvider } from '@polkadot/api';
-import { BigNumber, PoolService, Trade, TradeRouter, TradeType, PoolBase, PoolToken, Transaction, Hop, PoolType } from '@galacticcouncil/sdk';
-import { cryptoWaitReady } from '@polkadot/util-crypto';
-import { runWithRetryAndTimeout } from './hydration.utils';
+  BigNumber,
+  Hop,
+  PoolBase,
+  PoolService,
+  PoolToken,
+  PoolType,
+  Trade,
+  TradeRouter,
+  TradeType,
+  Transaction
+} from '@galacticcouncil/sdk';
+import {cryptoWaitReady} from '@polkadot/util-crypto';
+import {runWithRetryAndTimeout} from './hydration.utils';
 
 // Add interface for extended pool data
 interface ExtendedPoolBase extends Omit<PoolBase, 'tokens'> {
@@ -72,11 +76,12 @@ interface PositionInfo {
  */
 export class Hydration {
   private static _instances: { [name: string]: Hydration } = {};
-  private static readonly MAX_POSITIONS = 100; // Maximum number of positions to fetch
   private polkadot: Polkadot;
-  private api: ApiPromise;
-  private poolService: PoolService;
   public config: HydrationConfig.NetworkConfig;
+
+  private wsProvider: WsProvider;
+  private apiPromise: ApiPromise;
+private poolService: PoolService;
 
   // Cache pool and position data
   private poolCache: Map<string, HydrationPoolInfo> = new Map();
@@ -127,11 +132,11 @@ export class Hydration {
 
       // Create API connection
       const wsProvider = new WsProvider(this.polkadot.config.network.nodeURL);
-      this.api = await ApiPromise.create({ provider: wsProvider });
+      this.apiPromise = await ApiPromise.create({ provider: wsProvider });
 
       // Initialize Hydration services
       // @ts-ignore - Ignorando erro de incompatibilidade de versões do ApiPromise
-      this.poolService = new PoolService(this.api);
+      this.poolService = new PoolService(this.apiPromise);
       await this.poolService.syncRegistry();
 
       // Mark instance as ready
@@ -142,70 +147,6 @@ export class Hydration {
       logger.error(`Failed to initialize Hydration: ${error.message}`);
       throw error;
     }
-  }
-
-  private tradeRouter: TradeRouter;
-
-  @runWithRetryAndTimeout()
-  private poolServiceBuildBuyTx(target: PoolService, assetIn: string, assetOut: string, amountOut: BigNumber, maxAmountIn: BigNumber, route: Hop[]): Transaction {
-    return target.buildBuyTx(assetIn, assetOut, amountOut, maxAmountIn, route);
-  }
-  @runWithRetryAndTimeout()
-  private poolServiceBuildSellTx(target: PoolService, assetIn: string, assetOut: string, amountIn: BigNumber, minAmountOut: BigNumber, route: Hop[]): Transaction {
-    return target.buildSellTx(assetIn, assetOut, amountIn, minAmountOut, route);
-  }
-
-  @runWithRetryAndTimeout()
-  private poolServiceGetPools(includeOnly: PoolType[]): Promise<PoolBase[]> {
-    return this.poolService.getPools(includeOnly);
-  }
-
-  @runWithRetryAndTimeout()
-  private async tradeRouterGetBestSell(assetIn: string, assetOut: string, amountIn: BigNumber | string | number): Promise<Trade> {
-    return this.tradeRouter.getBestSell(assetIn, assetOut, amountIn);
-  }
-
-  @runWithRetryAndTimeout()
-  private async tradeRouterGetBestBuy(assetIn: string, assetOut: string, amountIn: BigNumber | string | number): Promise<Trade> {
-    return this.tradeRouter.getBestBuy(assetIn, assetOut, amountIn);
-  }
-
-  @runWithRetryAndTimeout()
-  private async allTokenspolkadotnetwork() { if (!this.ready()) {await this.init(this.polkadot.network); }
-    return this.polkadot.network;
-  }
-
-  @runWithRetryAndTimeout()
-  private async getTokenPoolDataBaseToken(poolData: PoolBase) {
-    return this.polkadot.getToken(poolData.tokens[0].symbol);
-  }
-  @runWithRetryAndTimeout()
-  private async getTokenPoolDataQuoteToken(poolData: PoolBase) {
-    return this.polkadot.getToken(poolData.tokens[1].symbol);
-  }
-
-  @runWithRetryAndTimeout()
-  private async polkadotGetTokenBaseTokenSymbol(baseTokenSymbol: string) {
-    return this.polkadot.getToken(baseTokenSymbol);
-  }
-
-  @runWithRetryAndTimeout()
-  private async polkadotGetTokenQuoteTokenSymbol(quoteTokenSymbol: string) {
-    return this.polkadot.getToken(quoteTokenSymbol);
-  }
-
-  @runWithRetryAndTimeout()
-  private getTokenSymbolPolkadotGetToken(tokenAddress: string): Promise<TokenInfo> {
-    return this.polkadot.getToken(tokenAddress);
-  }
-  @runWithRetryAndTimeout()
-  private async poolServiceGetPosition(target: PoolService, wallet: KeyringPair, poolAddress: string) {
-    return target.getPositions(wallet.address, poolAddress);
-  }
-
-  @runWithRetryAndTimeout()
-  private poolServiceGetPool(target: PoolService, poolAddress: any) {
-    return target.getPool(poolAddress);
   }
 
   /**
@@ -262,7 +203,7 @@ export class Hydration {
    */
   public async getAllTokens() {
     if (!this.ready()) {
-      const network = await this.allTokenspolkadotnetwork();
+      const network = await this.polkadot.network;
       await this.init(network);
     }
     return this.polkadot.tokenList;
@@ -291,6 +232,8 @@ export class Hydration {
    */
   async getPoolInfo(poolAddress: string): Promise<ExternalPoolInfo | null> {
     try {
+      const tradeRouter = await this.getNewTradeRouter();
+
       // Check cache first
       const currentTime = Date.now();
       const cachedPool = this.poolCache.get(poolAddress);
@@ -302,12 +245,11 @@ export class Hydration {
 
       // Ensure the instance is ready
       if (!this.ready()) {
-        const network = await this.allTokenspolkadotnetwork();
-        await this.init(network);
+        await this.init(this.polkadot.network);
       }
 
       // Get pool data from the SDK
-      const pools = await this.poolServiceGetPools([]); // Get all pools
+      const pools = await this.poolServiceGetPools(await this.getPoolService(), []); // Get all pools
 
       const poolData = pools.find((pool) => pool.address === poolAddress);
 
@@ -317,8 +259,8 @@ export class Hydration {
       }
 
       // Get token info
-      const baseToken = await this.getTokenPoolDataBaseToken(poolData);
-      const quoteToken = await this.getTokenPoolDataQuoteToken(poolData);
+      const baseToken = await this.polkadot.getToken(poolData.tokens[0].symbol);
+      const quoteToken = await this.polkadot.getToken(poolData.tokens[1].symbol);
 
       if (!baseToken || !quoteToken) {
         throw new Error('Failed to retrieve token information');
@@ -390,6 +332,7 @@ export class Hydration {
           // Get both buy and sell quotes to calculate the mid price
           try {
             buyQuote = await this.tradeRouterGetBestBuy(
+              tradeRouter,
               quoteTokenId,
               baseTokenId,
               amountBN
@@ -400,6 +343,7 @@ export class Hydration {
 
           try {
             sellQuote = await this.tradeRouterGetBestSell(
+              tradeRouter,
               baseTokenId,
               quoteTokenId,
               amountBN
@@ -561,13 +505,14 @@ export class Hydration {
     try {
       // Ensure the instance is ready
       if (!this.ready()) {
-        const network = await this.allTokenspolkadotnetwork();
-        await this.init(network);
+        await this.init(this.polkadot.network);
       }
-      
+
+      const tradeRouter = await this.getNewTradeRouter();
+
       // Get token info
-      const baseToken = await this.polkadotGetTokenBaseTokenSymbol(baseTokenSymbol);
-      const quoteToken = await this.polkadotGetTokenQuoteTokenSymbol(quoteTokenSymbol);
+      const baseToken = await this.polkadot.getToken(baseTokenSymbol);
+      const quoteToken = await this.polkadot.getToken(quoteTokenSymbol);
 
       if (!baseToken || !quoteToken) {
         throw new Error(`Token not found: ${!baseToken ? baseTokenSymbol : quoteTokenSymbol}`);
@@ -591,6 +536,7 @@ export class Hydration {
       if (side === 'BUY') {
         // Buying base token with quote token
         trade = await this.tradeRouterGetBestBuy(
+          tradeRouter,
           quoteTokenId,
           baseTokenId,
           amountBN
@@ -598,6 +544,7 @@ export class Hydration {
       } else {
         // Selling base token for quote token
         trade = await this.tradeRouterGetBestSell(
+          tradeRouter,
           baseTokenId,
           quoteTokenId,
           amountBN
@@ -618,10 +565,10 @@ export class Hydration {
       // Extract amounts from the trade and convert to numbers
       const estimatedAmountIn = Number(tradeHuman.amountIn);
       const estimatedAmountOut = Number(tradeHuman.amountOut);
-      
+
       // Check if this is likely a stablecoin pair (USDC/USDT, etc.)
       const isStablecoinPair = this.isStablecoinPair(baseToken.symbol, quoteToken.symbol);
-      
+
       // Calculate the price
       let price;
       if (isStablecoinPair) {
@@ -632,7 +579,7 @@ export class Hydration {
         } else {
           price = estimatedAmountIn / estimatedAmountOut;
         }
-        
+
         // If price is too far from 1.0, it's likely we have a calculation issue
         if (price < 0.5 || price > 2.0) {
           // This is probably an issue with token order or decimals, force it closer to 1.0
@@ -650,7 +597,7 @@ export class Hydration {
           price = estimatedAmountOut / estimatedAmountIn;
         }
       }
-      
+
       // Ensure price is reasonable (not zero, infinity, etc.)
       if (!isFinite(price) || isNaN(price)) {
         price = Number(tradeHuman.spotPrice);
@@ -750,8 +697,7 @@ export class Hydration {
 
       // Ensure the instance is ready
       if (!this.ready()) {
-        const network = await this.allTokenspolkadotnetwork();
-        await this.init(network);
+        await this.init(this.polkadot.network);
       }
 
       // Get swap quote
@@ -765,8 +711,8 @@ export class Hydration {
       );
 
       // Get token info
-      const baseToken = await this.polkadotGetTokenBaseTokenSymbol(baseTokenSymbol);
-      const quoteToken = await this.polkadotGetTokenQuoteTokenSymbol(quoteTokenSymbol);
+      const baseToken = await this.polkadot.getToken(baseTokenSymbol);
+      const quoteToken = await this.polkadot.getToken(quoteTokenSymbol);
 
       if (!baseToken || !quoteToken) {
         throw new Error(`Token not found: ${!baseToken ? baseTokenSymbol : quoteTokenSymbol}`);
@@ -824,7 +770,7 @@ export class Hydration {
         transaction.signAndSend(wallet, (result: any) => {
           if (result.dispatchError) {
             if (result.dispatchError.isModule) {
-              const decoded = this.api.registry.findMetaError(
+              const decoded = this.apiPromise.registry.findMetaError(
                 result.dispatchError.asModule
               );
               const { name } = decoded;
@@ -872,8 +818,7 @@ export class Hydration {
     try {
       // Ensure the instance is ready
       if (!this.ready()) {
-        const network = await this.allTokenspolkadotnetwork();
-        await this.init(network);
+        await this.init(this.polkadot.network);
       }
 
       // Get pool info
@@ -884,7 +829,7 @@ export class Hydration {
 
       // Get positions for this wallet from the SDK
       /* getPositions don't exist in the SDK */
-      const positions = await this.poolServiceGetPosition(wallet.address, poolAddress);
+      const positions = await this.poolServiceGetPosition(await this.getPoolService(), wallet.address, poolAddress);
 
       if (!positions || positions.length === 0) {
         return [];
@@ -1062,12 +1007,11 @@ export class Hydration {
     try {
       // Ensure the instance is ready
       if (!this.ready()) {
-        const network = await this.allTokenspolkadotnetwork();
-        await this.init(network);
+        await this.init(this.polkadot.network);
       }
 
       // Get position and pool data from the SDK
-      
+
         const position = await this.poolServiceGetPosition(this.poolService, wallet, positionAddress);
 
       if (!position) {
@@ -1115,8 +1059,7 @@ export class Hydration {
     try {
       // Ensure the instance is ready
       if (!this.ready()) {
-        const network = await this.allTokenspolkadotnetwork();
-        await this.init(network);
+        await this.init(this.polkadot.network);
       }
 
       // Get pool info
@@ -1128,7 +1071,7 @@ export class Hydration {
       // Get tick spacing for this pool from the SDK
       // @ts-ignore - Generic Method, needs to improve
       /* getPool don't exist in the SDK */
-      
+
 
       const poolDetails = await this.poolServiceGetPool(this.poolService, poolAddress);
       const tickSpacing = poolDetails.tickSpacing || 10;
@@ -1676,7 +1619,7 @@ export class Hydration {
   private async getPoolReserves( poolAddress: string): Promise<{ baseReserve: BigNumber; quoteReserve: BigNumber } | null> {
     try {
       // Get pool from SDK
-      const pools = await this.poolServiceGetPools([]);
+      const pools = await this.poolServiceGetPools(await this.getPoolService(), []);
       const pool = pools.find(p => p.address === poolAddress);
 
       if (!pool) {
@@ -1744,7 +1687,7 @@ export class Hydration {
    */
   public async getPoolAddresses(): Promise<string[]> {
     try {
-      const pools = await this.poolServiceGetPools([]);
+      const pools = await this.poolServiceGetPools(await this.getPoolService(), []);
       return pools.map(pool => pool.address);
     } catch (error) {
       logger.error('Error getting pool addresses:', error);
@@ -1769,7 +1712,7 @@ export class Hydration {
   async getTokenSymbol(tokenAddress: string): Promise<string> {
     try {
       // Get token info from Polkadot
-      const token = await this.getTokenSymbolPolkadotGetToken(tokenAddress);
+      const token = await this.polkadot.getToken(tokenAddress);
       if (!token) {
         throw new Error(`Token not found: ${tokenAddress}`);
       }
@@ -1789,11 +1732,90 @@ export class Hydration {
   private isStablecoinPair(token1Symbol: string, token2Symbol: string): boolean {
     // List of common stablecoin symbols
     const stablecoins = ['USDC', 'USDT', 'DAI', 'BUSD', 'TUSD', 'USDN', 'USDJ', 'sUSD', 'GUSD', 'HUSD'];
-    
+
     // Check if both tokens are in the stablecoin list
     const isToken1Stable = stablecoins.some(s => token1Symbol.toUpperCase().includes(s));
     const isToken2Stable = stablecoins.some(s => token2Symbol.toUpperCase().includes(s));
-    
+
     return isToken1Stable && isToken2Stable;
   }
+
+  private getWsProvider(): WsProvider {
+    if (!this.wsProvider) {
+      this.wsProvider = new WsProvider(this.polkadot.config.network.nodeURL);
+    }
+
+    return this.wsProvider;
+  }
+
+  private async getApiPromise(): Promise<ApiPromise> {
+    if (!this.apiPromise) {
+      this.apiPromise = await ApiPromise.create({ provider: this.getWsProvider() });
+    }
+
+    return this.apiPromise;
+  }
+
+  private async getPoolService(): Promise<PoolService> {
+    if (!this.poolService) {
+      this.poolService = new PoolService(await this.getApiPromise());
+      await this.poolService.syncRegistry();
+    }
+
+    return this.poolService;
+  }
+
+  private async getNewTradeRouter(): Promise<TradeRouter> {
+    // if (!this.tradeRouter) {
+    //   this.tradeRouter = new TradeRouter(await this.getPoolService());
+    // }
+
+    // return this.tradeRouter;
+
+    return new TradeRouter(await this.getPoolService());
+  }
+
+  @runWithRetryAndTimeout()
+  public poolServiceBuildBuyTx(target: PoolService, assetIn: string, assetOut: string, amountOut: BigNumber, maxAmountIn: BigNumber, route: Hop[]): Transaction {
+    return target.buildBuyTx(assetIn, assetOut, amountOut, maxAmountIn, route);
+  }
+  @runWithRetryAndTimeout()
+  public poolServiceBuildSellTx(target: PoolService, assetIn: string, assetOut: string, amountIn: BigNumber, minAmountOut: BigNumber, route: Hop[]): Transaction {
+    return target.buildSellTx(assetIn, assetOut, amountIn, minAmountOut, route);
+  }
+
+  @runWithRetryAndTimeout()
+  public poolServiceGetPools(target: PoolService, includeOnly: PoolType[]): Promise<PoolBase[]> {
+    return target.getPools(includeOnly);
+  }
+
+  @runWithRetryAndTimeout()
+  public async tradeRouterGetBestSell(target: TradeRouter, assetIn: string, assetOut: string, amountIn: BigNumber | string | number): Promise<Trade> {
+    return target.getBestSell(assetIn, assetOut, amountIn);
+  }
+
+  @runWithRetryAndTimeout()
+  public async tradeRouterGetBestBuy(target: TradeRouter, assetIn: string, assetOut: string, amountIn: BigNumber | string | number): Promise<Trade> {
+    return target.getBestBuy(assetIn, assetOut, amountIn);
+  }
+
+  @runWithRetryAndTimeout()
+  public async poolServiceGetPosition(target: PoolService, wallet: any, poolAddress: string) {
+    // TODO: Check if this reference really exists!!!
+    // @ts-ignore
+    return target.getPositions(wallet.address, poolAddress);
+  }
+
+  @runWithRetryAndTimeout()
+  public poolServiceGetPool(target: PoolService, poolAddress: any) {
+    // TODO: Check if this reference really exists!!!
+    // @ts-ignore
+    return target.getPool(poolAddress);
+  }
+
+  @runWithRetryAndTimeout()
+  public async getTokenPoolDataBaseToken(target: Polkadot, poolData: PoolBase) {
+    return target.getToken(poolData.tokens[0].symbol);
+  }
+
 }
