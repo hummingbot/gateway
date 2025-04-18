@@ -107,20 +107,20 @@ async function addLiquidity(
   try {
     // Use assets from Hydration to get asset IDs
     const assets = await hydration.getAllTokens();
-    const baseAsset = assets.find(a => a.symbol === baseTokenSymbol);
-    const quoteAsset = assets.find(a => a.symbol === quoteTokenSymbol);
+    const baseToken = assets.find(a => a.symbol === baseTokenSymbol);
+    const quoteToken = assets.find(a => a.symbol === quoteTokenSymbol);
 
-    if (!baseAsset || !quoteAsset) {
-      throw httpNotFound(`Asset not found: ${!baseAsset ? baseTokenSymbol : quoteTokenSymbol}`);
+    if (!baseToken || !quoteToken) {
+      throw httpNotFound(`Asset not found: ${!baseToken ? baseTokenSymbol : quoteTokenSymbol}`);
     }
 
     // Convert amounts to BigNumber with proper decimals
     const baseAmountBN = new BigNumber(baseTokenAmount)
-      .multipliedBy(new BigNumber(10).pow(baseAsset.decimals))
+      .multipliedBy(new BigNumber(10).pow(baseToken.decimals))
       .decimalPlaces(0);
 
     const quoteAmountBN = new BigNumber(quoteTokenAmount)
-      .multipliedBy(new BigNumber(10).pow(quoteAsset.decimals))
+      .multipliedBy(new BigNumber(10).pow(quoteToken.decimals))
       .decimalPlaces(0);
 
     // Get slippage
@@ -141,8 +141,8 @@ async function addLiquidity(
         
         // Create XYK add liquidity transaction
         addLiquidityTx = apiPromise.tx.xyk.addLiquidity(
-          baseAsset.address,
-          quoteAsset.address,
+          baseToken.address,
+          quoteToken.address,
           baseAmountBN.toString(),
           quoteAmountMaxLimit.toString()
         );
@@ -150,12 +150,12 @@ async function addLiquidity(
 
       case POOL_TYPE.LBP:
         // For LBP, we use [assetId, amount] tuples
-        const amountA = [baseAsset.address, baseAmountBN.toString()];
-        const amountB = [quoteAsset.address, quoteAmountBN.toString()];
+        const amountA = [baseToken.address, baseAmountBN.toString()];
+        const amountB = [quoteToken.address, quoteAmountBN.toString()];
         
         addLiquidityTx = apiPromise.tx.lbp.addLiquidity(
-          [baseAsset.address, baseAmountBN.toString()],
-          [quoteAsset.address, quoteAmountBN.toString()]
+          [baseToken.address, baseAmountBN.toString()],
+          [quoteToken.address, quoteAmountBN.toString()]
         );
         break;
 
@@ -167,7 +167,7 @@ async function addLiquidity(
           const minSharesLimit = calculateMinSharesLimit(baseAmountBN, effectiveSlippage);
           
           addLiquidityTx = apiPromise.tx.omnipool.addLiquidityWithLimit(
-            baseAsset.address,
+            baseToken.address,
             baseAmountBN.toString(),
             minSharesLimit.toString()
           );
@@ -176,7 +176,7 @@ async function addLiquidity(
           const minSharesLimit = calculateMinSharesLimit(quoteAmountBN, effectiveSlippage);
           
           addLiquidityTx = apiPromise.tx.omnipool.addLiquidityWithLimit(
-            quoteAsset.address,
+            quoteToken.address,
             quoteAmountBN.toString(),
             minSharesLimit.toString()
           );
@@ -186,12 +186,18 @@ async function addLiquidity(
       case POOL_TYPE.STABLESWAP:
         // For Stableswap, we need to provide assets array with [id, amount] objects
         const assets = [
-          { assetId: baseAsset.address, amount: baseAmountBN.toString() },
-          { assetId: quoteAsset.address, amount: quoteAmountBN.toString() }
+          { assetId: baseToken.address, amount: baseAmountBN.toString() },
+          { assetId: quoteToken.address, amount: quoteAmountBN.toString() }
         ].filter(asset => new BigNumber(asset.amount).gt(0)); // Only include assets with amount > 0
         
+        // Convert poolId to number for stableswap
+        const numericPoolId = parseInt(poolId);
+        if (isNaN(numericPoolId)) {
+          throw httpBadRequest(`Invalid pool ID for stableswap: ${poolId}`);
+        }
+        
         addLiquidityTx = apiPromise.tx.stableswap.addLiquidity(
-          poolId, // Pool ID is required for stableswap
+          numericPoolId, // Pool ID must be a number (u32)
           assets
         );
         break;

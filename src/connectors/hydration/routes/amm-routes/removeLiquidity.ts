@@ -121,8 +121,14 @@ export async function removeLiquidity(
             { assetId: quoteAsset.address, amount: '0' }  // System will calculate actual amounts
           ];
           
+          // Convert poolId to number for stableswap
+          const numericPoolId = parseInt(poolAddress);
+          if (isNaN(numericPoolId)) {
+            throw httpBadRequest(`Invalid pool ID for stableswap: ${poolAddress}`);
+          }
+          
           removeLiquidityTx = apiPromise.tx.stableswap.removeLiquidity(
-            poolAddress, // Pool ID for stableswap
+            numericPoolId, // Pool ID must be a number (u32)
             liquidityToRemove.toString(),
             assets
           );
