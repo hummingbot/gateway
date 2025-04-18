@@ -27,3 +27,11 @@ configurations:
   $namespace raydium:
     configurationPath: raydium.yml
     schemaPath: raydium-schema.json
+  
+  $namespace ergo:
+    configurationPath: ergo.yml
+    schemaPath: ergo-schema.json
+
+  $namespace spectrum:
+    configurationPath: spectrum.yml
+    schemaPath: spectrum-schema.json

@@ -23,6 +23,7 @@ import {
 } from '../services/error-handler';
 import { Solana } from '../chains/solana/solana';
 import { EthereumBase } from '../chains/ethereum/ethereum-base';
+import { Ergo } from '../chains/ergo/ergo';
 
 const walletPath = './conf/wallets';
 
@@ -34,7 +35,7 @@ export async function mkdirIfDoesNotExist(path: string): Promise<void> {
 }
 
 export async function addWallet(
-  req: AddWalletRequest
+  req: AddWalletRequest,
 ): Promise<AddWalletResponse> {
   const passphrase = ConfigManagerCertPassphrase.readPassphrase();
   if (!passphrase) {
@@ -51,7 +52,7 @@ export async function addWallet(
       throw new HttpException(
         500,
         UNKNOWN_KNOWN_CHAIN_ERROR_MESSAGE(req.chain),
-        UNKNOWN_CHAIN_ERROR_CODE
+        UNKNOWN_CHAIN_ERROR_CODE,
       );
     }
     throw e;
@@ -62,7 +63,7 @@ export async function addWallet(
       address = connection.getWalletFromPrivateKey(req.privateKey).address;
       encryptedPrivateKey = await connection.encrypt(
         req.privateKey,
-        passphrase
+        passphrase,
       );
     } else if (connection instanceof Solana) {
       address = connection
@@ -70,7 +71,14 @@ export async function addWallet(
         .publicKey.toBase58();
       encryptedPrivateKey = await connection.encrypt(
         req.privateKey,
-        passphrase
+        passphrase,
+      );
+    } else if (connection instanceof Ergo) {
+      const account = connection.getAccountFromMnemonic(req.privateKey);
+      address = account.address;
+      encryptedPrivateKey = await connection.encrypt(
+        req.privateKey,
+        passphrase,
       );
     }
     if (address === undefined || encryptedPrivateKey === undefined) {
@@ -80,7 +88,7 @@ export async function addWallet(
     throw new HttpException(
       500,
       ERROR_RETRIEVING_WALLET_ADDRESS_ERROR_MESSAGE(req.privateKey),
-      ERROR_RETRIEVING_WALLET_ADDRESS_ERROR_CODE
+      ERROR_RETRIEVING_WALLET_ADDRESS_ERROR_CODE,
     );
   }
   const path = `${walletPath}/${req.chain}`;
@@ -94,8 +102,12 @@ export async function removeWallet(req: RemoveWalletRequest): Promise<void> {
   await fse.remove(`${walletPath}/${req.chain}/${req.address}.json`);
 }
 
-export async function signMessage(req: SignMessageRequest): Promise<SignMessageResponse> {
-  logger.info(`Signing message for wallet: ${req.address} on chain: ${req.chain}`);
+export async function signMessage(
+  req: SignMessageRequest,
+): Promise<SignMessageResponse> {
+  logger.info(
+    `Signing message for wallet: ${req.address} on chain: ${req.chain}`,
+  );
   const connection = await getInitializedChain(req.chain, req.network);
   const wallet = await (connection as any).getWallet(req.address);
   const signature = await wallet.signMessage(req.message);
@@ -130,7 +142,7 @@ export async function getWallets(): Promise<GetWalletResponse[]> {
     const walletFiles = await getJsonFiles(`${walletPath}/${chain}`);
     responses.push({
       chain,
-      walletAddresses: walletFiles.map(file => dropExtension(file))
+      walletAddresses: walletFiles.map((file) => dropExtension(file)),
     });
   }
 
