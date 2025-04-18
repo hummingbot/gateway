@@ -1,30 +1,28 @@
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
-import { Polkadot } from '../polkadot';
-import { BalanceRequestType, BalanceResponseType, BalanceRequestSchema, BalanceResponseSchema } from '../../../schemas/chain-schema';
-import { logger } from '../../../services/logger';
-import { HttpException } from '../../../services/error-handler';
-import { wrapResponse } from '../../../services/response-wrapper';
+import {FastifyInstance, FastifyPluginAsync} from 'fastify';
+import {Polkadot} from '../polkadot';
+import {
+  EstimateGasRequestSchema,
+  EstimateGasRequestType,
+  EstimateGasResponse,
+  EstimateGasResponseSchema
+} from '../../../schemas/chain-schema';
+import {logger} from '../../../services/logger';
+import {HttpException} from '../../../services/error-handler';
 
-export async function estimatePolkadotGas(
+export async function estimateGasPolkadot(
   _fastify: FastifyInstance,
   network: string,
-  address: string,
-  recipient: string,
-  amount: number,
-  tokenSymbol: string
-): Promise<BalanceResponseType> {
-  const initTime = Date.now();
-  const polkadot = await Polkadot.getInstance(network);
-  
+  _gasLimit?: number
+): Promise<EstimateGasResponse> {
   try {
-    const wallet = await polkadot.getWallet(address);
-    const gasEstimate = await polkadot.estimateGas(wallet, recipient, amount, tokenSymbol);
+    const polkadot = await Polkadot.getInstance(network);
     
-    return wrapResponse({
-      balances: {
-        [tokenSymbol]: Number(gasEstimate)
-      }
-    }, initTime);
+    return {
+      gasPrice: 0,
+      gasPriceToken: polkadot.config.network.nativeCurrencySymbol,
+      gasLimit: 0,
+      gasCost: 0
+    };
   } catch (error) {
     logger.error(`Error estimating gas: ${error.message}`);
     throw new HttpException(
@@ -37,33 +35,35 @@ export async function estimatePolkadotGas(
 
 export const estimateGasRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{
-    Body: BalanceRequestType;
-    Reply: BalanceResponseType;
+    Body: EstimateGasRequestType;
+    Reply: EstimateGasResponse;
   }>(
     '/estimate-gas',
     {
       schema: {
         description: 'Estimate gas for a Polkadot transaction',
         tags: ['polkadot'],
-        body: BalanceRequestSchema,
+        body: {
+          ...EstimateGasRequestSchema,
+          properties: {
+            ...EstimateGasRequestSchema.properties,
+            chain: { type: 'string', enum: ['polkadot'], examples: ['polkadot'] },
+            network: { type: 'string', examples: ['mainnet', 'westend'] },
+            gasLimit: { type: 'number', examples: [100000] }
+          }
+        },
         response: {
-          200: BalanceResponseSchema
+          200: EstimateGasResponseSchema
         }
       }
     },
     async (request) => {
-      const { network, address, tokenSymbols } = request.body;
-      const recipient = address; // Using same address as recipient for estimation
-      const amount = 0.001; // Small amount for estimation
-      const tokenSymbol = tokenSymbols && tokenSymbols.length > 0 ? tokenSymbols[0] : 'DOT';
+      const { network, gasLimit } = request.body;
       
-      return await estimatePolkadotGas(
+      return await estimateGasPolkadot(
         fastify,
         network,
-        address,
-        recipient,
-        amount,
-        tokenSymbol
+        gasLimit
       );
     }
   );

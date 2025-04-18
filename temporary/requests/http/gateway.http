@@ -105,11 +105,12 @@ Content-Type: application/json
 
 ###
 
-# GET /<chain>/estimate-gas
-GET {{httpProtocol}}://{{host}}:{{port}}/{{chain}}/estimateGas
+# POST /<chain>/estimate-gas
+POST {{httpProtocol}}://{{host}}:{{port}}/{{chain}}/estimate-gas
 Content-Type: application/json
 
 {
+  "chain": "{{chain}}",
   "network": "{{network}}",
   "gasLimit": "{{gasLimit}}"
 }
