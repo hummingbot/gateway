@@ -1,8 +1,6 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { Polkadot } from '../polkadot';
 import { BalanceRequestType, BalanceResponseType, BalanceRequestSchema, BalanceResponseSchema } from '../../../schemas/chain-schema';
-import { HttpException, LOAD_WALLET_ERROR_CODE, LOAD_WALLET_ERROR_MESSAGE } from '../../../services/error-handler';
-import { wrapResponse } from '../../../services/response-wrapper';
 
 export async function getPolkadotBalances(
   _fastify: FastifyInstance,
@@ -10,22 +8,8 @@ export async function getPolkadotBalances(
   address: string,
   tokenSymbols?: string[]
 ): Promise<BalanceResponseType> {
-  const initTime = Date.now();
   const polkadot = await Polkadot.getInstance(network);
-  
-  let wallet;
-  try {
-    wallet = await polkadot.getWallet(address);
-  } catch (err) {
-    throw new HttpException(
-      500,
-      LOAD_WALLET_ERROR_MESSAGE + err,
-      LOAD_WALLET_ERROR_CODE
-    );
-  }
-
-  const balances = await polkadot.getBalance(wallet, tokenSymbols);
-  return wrapResponse({ balances }, initTime);
+  return await polkadot.getAddressBalances(address, tokenSymbols);
 }
 
 export const balancesRoute: FastifyPluginAsync = async (fastify) => {
@@ -55,4 +39,4 @@ export const balancesRoute: FastifyPluginAsync = async (fastify) => {
   );
 };
 
-export default balancesRoute; 
+export default balancesRoute;

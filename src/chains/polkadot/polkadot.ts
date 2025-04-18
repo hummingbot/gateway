@@ -1,29 +1,21 @@
 import {ApiPromise, HttpProvider, WsProvider} from '@polkadot/api';
 import {Keyring} from '@polkadot/keyring';
 import {KeyringPair} from '@polkadot/keyring/types';
-import {SubmittableExtrinsic} from '@polkadot/api/types';
-import {ISubmittableResult} from '@polkadot/types/types';
 import {cryptoWaitReady, decodeAddress, mnemonicGenerate} from '@polkadot/util-crypto';
 import {u8aToHex} from '@polkadot/util';
 import {TokenInfo} from '../ethereum/ethereum-base';
 import {Config, getPolkadotConfig} from './polkadot.config';
-import {HttpException} from '../../services/error-handler';
+import {HttpException, LOAD_WALLET_ERROR_CODE, LOAD_WALLET_ERROR_MESSAGE} from '../../services/error-handler';
 import {logger} from '../../services/logger';
 import {TokenListType, walletPath} from '../../services/base';
-import {
-  FeeEstimate,
-  PolkadotAccount,
-  SubmittableTransaction,
-  TransactionReceipt,
-  TransactionStatus,
-  TransferOptions,
-} from './polkadot.types';
+import {PolkadotAccount,} from './polkadot.types';
 import {BN} from 'bn.js';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
-import axios from 'axios';
+import axios, {Axios} from 'axios';
 import {ConfigManagerCertPassphrase} from '../../services/config-manager-cert-passphrase';
 import {runWithRetryAndTimeout} from "../../connectors/hydration/hydration.utils";
+import {wrapResponse} from '../../services/response-wrapper';
 
 /**
  * Main class for interacting with the Polkadot blockchain.
@@ -140,7 +132,7 @@ export class Polkadot {
       let tokensData: any[] = [];
 
       if (tokenListType === 'URL') {
-        const response = await this.axiosGet(tokenListSource);
+        const response = await this.axiosGet(axios, tokenListSource);
         tokensData = response.data || [];
       } else {
         const fileContent = await this.fsReadFile(tokenListSource, {
@@ -523,7 +515,8 @@ export class Polkadot {
         const headers = { 'Content-Type': 'application/json' };
         const body = { hash: txHash };
 
-        const response = await axios.post(
+        const response = await this.axiosPost(
+            axios,
             this.config.network.transactionURL,
             body,
             { headers }
@@ -699,6 +692,107 @@ export class Polkadot {
     }
   }
 
+  /**
+   * Get balances for a specific address
+   * @param address The address to check balances for
+   * @param tokenSymbols Optional list of token symbols to filter
+   * @returns A Promise that resolves to the balance response
+   */
+  async getAddressBalances(address: string, tokenSymbols?: string[]): Promise<any> {
+    const initTime = Date.now();
+
+    let wallet;
+    try {
+      wallet = await this.getWallet(address);
+    } catch (err) {
+      throw new HttpException(
+          500,
+          LOAD_WALLET_ERROR_MESSAGE + err,
+          LOAD_WALLET_ERROR_CODE
+      );
+    }
+
+    const balances = await this.getBalance(wallet, tokenSymbols);
+    return wrapResponse({ balances }, initTime);
+  }
+
+  /**
+   * Estimate gas for a transaction
+   * @param gasLimit Optional gas limit for the transaction
+   * @returns A Promise that resolves to the gas estimation
+   */
+  async estimateTransactionGas(gasLimit?: number): Promise<any> {
+    try {
+      return {
+        gasPrice: 0,
+        gasPriceToken: this.config.network.nativeCurrencySymbol,
+        gasLimit: gasLimit,
+        gasCost: 0
+      };
+    } catch (error) {
+      logger.error(`Error estimating gas: ${error.message}`);
+      throw new HttpException(
+          500,
+          `Failed to estimate gas: ${error.message}`,
+          5004
+      );
+    }
+  }
+
+  /**
+   * Poll for transaction status
+   * @param txHash The transaction hash to poll
+   * @returns A Promise that resolves to the transaction status
+   */
+  async pollTransaction(txHash: string): Promise<any> {
+    try {
+      const txResult = await this.getTransaction(txHash);
+
+      return {
+        currentBlock: await this.getCurrentBlockNumber(),
+        txHash,
+        txBlock: txResult.txBlock,
+        txStatus: txResult.txStatus,
+        txData: txResult.txData,
+        fee: txResult.fee
+      };
+    } catch (error) {
+      logger.error(`Error in poll: ${error.message}`);
+      const currentBlock = await this.getCurrentBlockNumber();
+
+      return {
+        currentBlock,
+        txHash,
+        txBlock: currentBlock,
+        txStatus: 0,
+        txData: {},
+        fee: null
+      };
+    }
+  }
+
+  /**
+   * Get network status information
+   * @returns A Promise that resolves to the network status
+   */
+  async getNetworkStatus(): Promise<any> {
+    const initTime = Date.now();
+
+    const chain = 'polkadot';
+    const network = this.network;
+    const rpcUrl = this.config.network.nodeURL;
+    const nativeCurrency = this.config.network.nativeCurrencySymbol;
+    const currentBlockNumber = await this.getCurrentBlockNumber();
+
+    return wrapResponse({
+      chain,
+      network,
+      rpcUrl,
+      currentBlockNumber,
+      nativeCurrency
+    }, initTime);
+  }
+
   public getHttpProvider(): WsProvider {
     if (!this.httpProvider) {
       this.httpProvider = new HttpProvider(this.config.network.nodeURL);
@@ -827,12 +921,12 @@ export class Polkadot {
   }
 
   @runWithRetryAndTimeout()
-  public async axiosGet(url: string): Promise<any> {
-    return axios.get(url);
+  public async axiosGet(target: Axios, url: string): Promise<any> {
+    return target.get(url);
   }
 
   @runWithRetryAndTimeout()
-  public async axiosPost(url: string, data: any, config?: any): Promise<any> {
-    return axios.post(url, data, config);
+  public async axiosPost(target: Axios, url: string, data: any, config?: any): Promise<any> {
+    return target.post(url, data, config);
   }
 }

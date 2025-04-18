@@ -6,27 +6,13 @@ import {
   StatusResponseSchema,
   StatusResponseType
 } from '../../../schemas/chain-schema';
-import {wrapResponse} from '../../../services/response-wrapper';
 
 export async function getPolkadotStatus(
   _fastify: FastifyInstance,
   network: string
 ): Promise<StatusResponseType> {
-  const initTime = Date.now();
   const polkadot = await Polkadot.getInstance(network);
-  
-  const chain = 'polkadot';
-  const rpcUrl = polkadot.config.network.nodeURL;
-  const nativeCurrency = polkadot.config.network.nativeCurrencySymbol;
-  const currentBlockNumber = await polkadot.getCurrentBlockNumber();
-
-  return wrapResponse({
-    chain,
-    network,
-    rpcUrl,
-    currentBlockNumber,
-    nativeCurrency
-  }, initTime);
+  return await polkadot.getNetworkStatus();
 }
 
 export const statusRoute: FastifyPluginAsync = async (fastify) => {

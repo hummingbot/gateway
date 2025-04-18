@@ -1,7 +1,6 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { Polkadot } from '../polkadot';
 import { TokensRequestType, TokensResponseType, TokensRequestSchema, TokensResponseSchema } from '../../../schemas/chain-schema';
-import { getInitializedChain } from '../../../services/connection-manager';
 
 export async function getPolkadotTokens(
   _fastify: FastifyInstance,
@@ -30,8 +29,11 @@ export const tokensRoute: FastifyPluginAsync = async (fastify) => {
       }
     },
     async (request) => {
-      const chain = await getInitializedChain<Polkadot>('polkadot', request.query.network);
-      return await getPolkadotTokens(fastify, request.query.network, request.query.tokenSymbols);
+      return await getPolkadotTokens(
+        fastify,
+        request.query.network,
+        request.query.tokenSymbols
+      );
     }
   );
 };

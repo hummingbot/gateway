@@ -6,31 +6,14 @@ import {
   EstimateGasResponse,
   EstimateGasResponseSchema
 } from '../../../schemas/chain-schema';
-import {logger} from '../../../services/logger';
-import {HttpException} from '../../../services/error-handler';
 
 export async function estimateGasPolkadot(
   _fastify: FastifyInstance,
   network: string,
-  _gasLimit?: number
+  gasLimit?: number
 ): Promise<EstimateGasResponse> {
-  try {
-    const polkadot = await Polkadot.getInstance(network);
-    
-    return {
-      gasPrice: 0,
-      gasPriceToken: polkadot.config.network.nativeCurrencySymbol,
-      gasLimit: 0,
-      gasCost: 0
-    };
-  } catch (error) {
-    logger.error(`Error estimating gas: ${error.message}`);
-    throw new HttpException(
-      500,
-      `Failed to estimate gas: ${error.message}`,
-      5004
-    );
-  }
+  const polkadot = await Polkadot.getInstance(network);
+  return await polkadot.estimateTransactionGas(gasLimit);
 }
 
 export const estimateGasRoute: FastifyPluginAsync = async (fastify) => {

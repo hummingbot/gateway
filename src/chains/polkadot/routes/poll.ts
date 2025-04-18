@@ -1,7 +1,6 @@
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
-import { Polkadot } from '../polkadot';
-import { PollRequestType, PollResponseType, PollRequestSchema, PollResponseSchema } from '../../../schemas/chain-schema';
-import { logger } from '../../../services/logger';
+import {FastifyInstance, FastifyPluginAsync} from 'fastify';
+import {Polkadot} from '../polkadot';
+import {PollRequestSchema, PollRequestType, PollResponseSchema, PollResponseType} from '../../../schemas/chain-schema';
 
 export async function pollPolkadotTransaction(
   _fastify: FastifyInstance,
@@ -9,31 +8,7 @@ export async function pollPolkadotTransaction(
   txHash: string
 ): Promise<PollResponseType> {
   const polkadot = await Polkadot.getInstance(network);
-  
-  try {
-    const txResult = await polkadot.getTransaction(txHash);
-    
-    return {
-      currentBlock: await polkadot.getCurrentBlockNumber(),
-      txHash,
-      txBlock: txResult.txBlock,
-      txStatus: txResult.txStatus,
-      txData: txResult.txData,
-      fee: txResult.fee
-    };
-  } catch (error) {
-    logger.error(`Error in poll: ${error.message}`);
-    const currentBlock = await polkadot.getCurrentBlockNumber();
-    
-    return {
-      currentBlock,
-      txHash,
-      txBlock: currentBlock,
-      txStatus: 0,
-      txData: {},
-      fee: null
-    };
-  }
+  return await polkadot.pollTransaction(txHash);
 }
 
 export const pollRoute: FastifyPluginAsync = async (fastify) => {
