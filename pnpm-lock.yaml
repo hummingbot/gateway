@@ -9732,13 +9732,13 @@ snapshots:
       '@polkadot-api/utils': 0.1.0
     optional: true
 
-  '@polkadot-api/observable-client@0.3.2(@polkadot-api/substrate-client@0.1.4)(rxjs@7.8.1)':
+  '@polkadot-api/observable-client@0.3.2(@polkadot-api/substrate-client@0.1.4)(rxjs@7.8.2)':
     dependencies:
       '@polkadot-api/metadata-builders': 0.3.2
       '@polkadot-api/substrate-bindings': 0.6.0
       '@polkadot-api/substrate-client': 0.1.4
       '@polkadot-api/utils': 0.1.0
-      rxjs: 7.8.1
+      rxjs: 7.8.2
     optional: true
 
   '@polkadot-api/substrate-bindings@0.6.0':
@@ -9777,7 +9777,7 @@ snapshots:
       '@polkadot/rpc-core': 15.8.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       '@polkadot/types': 15.8.1
       '@polkadot/util': 13.4.3
-      rxjs: 7.8.1
+      rxjs: 7.8.2
       tslib: 2.8.1
     transitivePeerDependencies:
       - bufferutil
@@ -9794,7 +9794,7 @@ snapshots:
       '@polkadot/types-codec': 15.8.1
       '@polkadot/util': 13.4.3
       '@polkadot/util-crypto': 13.4.3(@polkadot/util@13.4.3)
-      rxjs: 7.8.1
+      rxjs: 7.8.2
       tslib: 2.8.1
     transitivePeerDependencies:
       - bufferutil
@@ -9818,7 +9818,7 @@ snapshots:
       '@polkadot/util': 13.4.3
       '@polkadot/util-crypto': 13.4.3(@polkadot/util@13.4.3)
       eventemitter3: 5.0.1
-      rxjs: 7.8.1
+      rxjs: 7.8.2
       tslib: 2.8.1
     transitivePeerDependencies:
       - bufferutil
@@ -9855,7 +9855,7 @@ snapshots:
       '@polkadot/rpc-provider': 15.8.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       '@polkadot/types': 15.8.1
       '@polkadot/util': 13.4.3
-      rxjs: 7.8.1
+      rxjs: 7.8.2
       tslib: 2.8.1
     transitivePeerDependencies:
       - bufferutil
@@ -9924,7 +9924,7 @@ snapshots:
       '@polkadot/types-create': 15.8.1
       '@polkadot/util': 13.4.3
       '@polkadot/util-crypto': 13.4.3(@polkadot/util@13.4.3)
-      rxjs: 7.8.1
+      rxjs: 7.8.2
       tslib: 2.8.1
 
   '@polkadot/util-crypto@13.4.3(@polkadot/util@13.4.3)':
@@ -10818,11 +10818,11 @@ snapshots:
     dependencies:
       '@polkadot-api/json-rpc-provider': 0.0.1
       '@polkadot-api/json-rpc-provider-proxy': 0.1.0
-      '@polkadot-api/observable-client': 0.3.2(@polkadot-api/substrate-client@0.1.4)(rxjs@7.8.1)
+      '@polkadot-api/observable-client': 0.3.2(@polkadot-api/substrate-client@0.1.4)(rxjs@7.8.2)
       '@polkadot-api/substrate-client': 0.1.4
       '@substrate/connect-extension-protocol': 2.2.2
       '@substrate/connect-known-chains': 1.9.2
-      rxjs: 7.8.1
+      rxjs: 7.8.2
       smoldot: 2.0.26(bufferutil@4.0.9)(utf-8-validate@5.0.10)
     optional: true
 
