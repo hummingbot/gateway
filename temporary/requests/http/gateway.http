@@ -183,7 +183,6 @@ Content-Type: application/json
 }
 
 ###
-
 # POST /{{chain}}/balances - Multiple tokens
 POST {{httpProtocol}}://{{host}}:{{port}}/{{chain}}/balances
 Content-Type: application/json
@@ -198,53 +197,8 @@ Content-Type: application/json
 
 # ===================== AMM CONNECTOR ROUTES =====================
 
-# GET /{{connector}}/amm/list-pools
-GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/list-pools?network={{network}}
-Content-Type: application/json
-
-{
-}
-
-###
-
-# GET /{{connector}}/amm/list-pools with token filtering
-GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/list-pools?network={{network}}&quoteToken={{quoteTokenSymbol}}&baseToken={{baseTokenSymbol}}
-Content-Type: application/json
-
-{
-}
-
-###
-
-# GET /{{connector}}/amm/list-pools with single token filter
-GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/list-pools?network={{network}}&quoteToken={{quoteTokenSymbol}}
-Content-Type: application/json
-
-{
-}
-
-###
-
-# GET /{{connector}}/amm/list-pools with maxPages parameter
-GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/list-pools?network={{network}}&maxPages=5
-Content-Type: application/json
-
-{
-}
-
-###
-
 # GET /{{connector}}/amm/pool-info
 GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/pool-info?network={{network}}&poolAddress={{poolAddress}}
-Content-Type: application/json
-
-{
-}
-
-###
-
-# GET /{{connector}}/amm/pool-info hydration examples[poolAddressStableswap, poolAddressOmnipool, poolAddressXyk]
-GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/pool-info?network={{network}}&poolAddress={{poolAddressXyk}}
 Content-Type: application/json
 
 {
@@ -663,35 +617,6 @@ Content-Type: application/json
 }
 
 ###
-
-# GET /{{connector}}/amm/list-pools with specific token pair (USDC/USDT) using mint addresses
-GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/list-pools?network={{network}}&baseMintToken=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&quoteMintToken=Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB
-Content-Type: application/json
-
-{
-}
-
-###
-
-# GET /{{connector}}/amm/list-pools with Jupiter token list integration
-GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/list-pools?network={{network}}&baseToken=USDC&quoteToken=USDT&useJupTokens=true
-Content-Type: application/json
-
-{
-}
-
-###
-
-# GET /{{connector}}/amm/list-pools with Jupiter token list and pool type filtering
-GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/list-pools?network={{network}}&baseToken=USDC&quoteToken=USDT&poolType=amm&useJupTokens=true
-Content-Type: application/json
-
-{
-}
-
-###
-
-
 
 # ===================== HYDRATION LIST POOLS TESTS =====================
 
