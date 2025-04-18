@@ -6,20 +6,16 @@ import {KeyringPair} from '@polkadot/keyring/types';
 import {ApiPromise, HttpProvider, WsProvider} from '@polkadot/api';
 import {
   BigNumber,
-  Hop,
   PoolBase,
   PoolService,
   PoolToken,
   PoolType,
   Trade,
   TradeRouter,
-  TradeType,
-  Transaction
+  TradeType
 } from '@galacticcouncil/sdk';
 import {cryptoWaitReady} from '@polkadot/util-crypto';
 import {runWithRetryAndTimeout} from './hydration.utils';
-import type {BN} from "@polkadot/util";
-import {RegistryError} from '@polkadot/types/types/registry';
 
 // Add interface for extended pool data
 interface ExtendedPoolBase extends Omit<PoolBase, 'tokens'> {
@@ -101,7 +97,7 @@ export class Hydration {
       this.polkadot = await Polkadot.getInstance(network);
 
       // Wait for crypto libraries to be ready
-      await cryptoWaitReady();
+      await this.cryptoWaitReady();
 
       await this.getPoolService();
 
@@ -699,8 +695,7 @@ export class Hydration {
           const apiPromise = await this.getApiPromise();
           if (result.dispatchError) {
             if (result.dispatchError.isModule) {
-              const decoded = this.apiPromiseRegistryFindMetaError(
-                apiPromise,
+              const decoded = apiPromise.registry.findMetaError(
                 result.dispatchError.asModule
               );
               const { name } = decoded;
@@ -940,29 +935,6 @@ export class Hydration {
         liquidity = Math.sqrt(baseTokenAmount * quoteTokenAmount) || 0;
       }
 
-      // Try to use SDK to get more accurate liquidity (if available)
-      try {
-        // @ts-ignore - Direct SDK access
-        if (this.poolService.calculateLiquidity) {
-          // @ts-ignore - Direct SDK access to calculate liquidity
-          const sdkLiquidity = await this.poolService.calculateLiquidity(
-            poolAddress,
-            baseTokenAmount.toString(),
-            quoteTokenAmount.toString(),
-            lowerPrice,
-            upperPrice
-          );
-
-          if (sdkLiquidity && !isNaN(Number(sdkLiquidity))) {
-            liquidity = Number(sdkLiquidity);
-            logger.info(`Using SDK liquidity calculation: ${liquidity}`);
-          }
-        }
-      } catch (sdkError) {
-        logger.warn(`Failed to use SDK liquidity calculation: ${sdkError.message}`);
-        // Continue with our calculation if SDK fails
-      }
-
       // Log the quote details for debugging
       logger.info(`Liquidity quote calculated for ${poolType} pool:`, {
         poolAddress,
@@ -1031,7 +1003,7 @@ export class Hydration {
       // Method 3: Through SDK's getReserves method if available
       else if ('getReserves' in this.poolService) {
         // @ts-ignore - Using SDK method that might not be in type definitions
-        const reserves = await this.poolService.getReserves(poolAddress);
+        const reserves = await this.poolServiceGetReserves(this.poolService, poolAddress);
         if (reserves && Array.isArray(reserves)) {
           [baseReserve, quoteReserve] = reserves;
         }
@@ -1137,7 +1109,7 @@ export class Hydration {
 
   public async getApiPromise(): Promise<ApiPromise> {
     if (!this.apiPromise) {
-      this.apiPromise = await ApiPromise.create({ provider: this.getProvider() });
+      this.apiPromise = await this.apiPromiseCreate({ provider: this.getProvider() });
     }
 
     return this.apiPromise;
@@ -1146,7 +1118,7 @@ export class Hydration {
   public async getPoolService(): Promise<PoolService> {
     if (!this.poolService) {
       this.poolService = new PoolService(await this.getApiPromise());
-      await this.poolService.syncRegistry();
+      await this.poolServiceSyncRegistry(this.poolService);
     }
 
     return this.poolService;
@@ -1163,40 +1135,37 @@ export class Hydration {
   }
 
   @runWithRetryAndTimeout()
-  public apiPromiseRegistryFindMetaError(
-    target: ApiPromise,
-    errorIndex: Uint8Array | {
-      error: BN;
-      index: BN;
-    } | {
-      error: BN | Uint8Array;
-      index: BN;
-    }
-  ): RegistryError {
-    return target.registry.findMetaError(errorIndex);
-  }
-
-  @runWithRetryAndTimeout()
-  public poolServiceBuildBuyTx(target: PoolService, assetIn: string, assetOut: string, amountOut: BigNumber, maxAmountIn: BigNumber, route: Hop[]): Transaction {
-    return target.buildBuyTx(assetIn, assetOut, amountOut, maxAmountIn, route);
-  }
-  @runWithRetryAndTimeout()
-  public poolServiceBuildSellTx(target: PoolService, assetIn: string, assetOut: string, amountIn: BigNumber, minAmountOut: BigNumber, route: Hop[]): Transaction {
-    return target.buildSellTx(assetIn, assetOut, amountIn, minAmountOut, route);
-  }
-
-  @runWithRetryAndTimeout()
-  public poolServiceGetPools(target: PoolService, includeOnly: PoolType[]): Promise<PoolBase[]> {
-    return target.getPools(includeOnly);
+  public async poolServiceGetPools(target: PoolService, includeOnly: PoolType[]): Promise<PoolBase[]> {
+    return await target.getPools(includeOnly);
   }
 
   @runWithRetryAndTimeout()
   public async tradeRouterGetBestSell(target: TradeRouter, assetIn: string, assetOut: string, amountIn: BigNumber | string | number): Promise<Trade> {
-    return target.getBestSell(assetIn, assetOut, amountIn);
+    return await target.getBestSell(assetIn, assetOut, amountIn);
   }
 
   @runWithRetryAndTimeout()
   public async tradeRouterGetBestBuy(target: TradeRouter, assetIn: string, assetOut: string, amountOut: BigNumber | string | number): Promise<Trade> {
-    return target.getBestBuy(assetIn, assetOut, amountOut);
+    return await target.getBestBuy(assetIn, assetOut, amountOut);
+  }
+
+  @runWithRetryAndTimeout()
+  public async cryptoWaitReady(): Promise<boolean> {
+    return await cryptoWaitReady();
+  }
+
+  @runWithRetryAndTimeout()
+  public async apiPromiseCreate(options: { provider: WsProvider | HttpProvider }): Promise<ApiPromise> {
+    return await ApiPromise.create(options);
+  }
+
+  @runWithRetryAndTimeout()
+  public async polkadotGetInstance(target: typeof Polkadot, network: string): Promise<Polkadot> {
+    return await target.getInstance(network);
+  }
+
+  @runWithRetryAndTimeout()
+  public async poolServiceSyncRegistry(target: PoolService): Promise<void> {
+    return await target.syncRegistry();
   }
 }
