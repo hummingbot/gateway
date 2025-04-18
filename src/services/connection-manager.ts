@@ -3,13 +3,15 @@ import { Solana } from '../chains/solana/solana';
 import { Uniswap } from '../connectors/uniswap/uniswap';
 import { Jupiter } from '../connectors/jupiter/jupiter';
 import { Meteora } from '../connectors/meteora/meteora';
+import { Spectrum } from '../connectors/spectrum/spectrum';
+import { Ergo } from '../chains/ergo/ergo';
 
 
 export interface Chain {
   // TODO: Add shared chain properties (e.g., network, chainId, etc.)
 }
 
-export type ChainInstance = Ethereum | Solana;
+export type ChainInstance = Ethereum | Solana | Ergo;
 
 export class UnsupportedChainException extends Error {
   constructor(message?: string) {
@@ -46,6 +48,8 @@ export async function getChainInstance(
     connection = Ethereum.getInstance(network);
   } else if (chain === 'solana') {
     connection = await Solana.getInstance(network);
+  } else if (chain === 'ergo') {
+    connection = Ergo.getInstance(network);
   } else {
     connection = undefined;
   }
@@ -68,6 +72,8 @@ export async function getConnector(
     return await Jupiter.getInstance(network);
   } else if (connector === 'meteora') {
     return await Meteora.getInstance(network);
+  } else if (connector === 'spectrum') {
+    return Spectrum.getInstance(chain, network);
   } else {
     throw new Error('unsupported chain or connector');
   }

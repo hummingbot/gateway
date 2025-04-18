@@ -24,7 +24,8 @@ import { jupiterRoutes } from './connectors/jupiter/jupiter.routes';
 import { meteoraRoutes } from './connectors/meteora/meteora.routes';
 import { uniswapRoutes } from './connectors/uniswap/uniswap.routes';
 import { raydiumRoutes } from './connectors/raydium/raydium.routes';
-
+import { ergoRoutes } from './chains/ergo/ergo.routes';
+import { spectrumRoutes } from './connectors/spectrum/spectrum.routes';
 
 // Change version for each release
 const GATEWAY_VERSION = '2.4.0';
@@ -34,8 +35,9 @@ const GATEWAY_VERSION = '2.4.0';
 // When false, runs server in HTTPS mode (secure, default for production)
 // Use --dev flag to enable HTTP mode, e.g.: pnpm start --dev
 // Tests automatically run in dev mode via GATEWAY_TEST_MODE=dev
-const devMode = process.argv.includes('--dev') || process.env.GATEWAY_TEST_MODE === 'dev';
 
+const devMode =
+  process.argv.includes('--dev') || process.env.GATEWAY_TEST_MODE === 'dev';
 // Promisify exec for async/await usage
 const execPromise = promisify(exec);
 
@@ -43,8 +45,9 @@ const swaggerOptions = {
   openapi: {
     info: {
       title: 'Hummingbot Gateway',
-      description: 'API endpoints for interacting with DEX connectors on various blockchain networks',
-      version: GATEWAY_VERSION
+      description:
+        'API endpoints for interacting with DEX connectors on various blockchain networks',
+      version: GATEWAY_VERSION,
     },
     servers: [
       {
@@ -62,6 +65,8 @@ const swaggerOptions = {
       { name: 'meteora/clmm', description: 'Meteora CLMM connector endpoints' },
       { name: 'uniswap', description: 'Uniswap connector endpoints' },
       { name: 'ethereum', description: 'Ethereum chain endpoints' },
+      { name: 'ergo', description: 'Ergo chain endpoints' },
+      { name: 'spectrum', description: 'Spectrum swap endpoints' },
     ],
     components: {
       parameters: {
@@ -69,11 +74,11 @@ const swaggerOptions = {
           in: 'query',
           name: 'example',
           schema: {
-            type: 'object' as const
-          }
-        }
-      }
-    }
+            type: 'object' as const,
+          },
+        },
+      },
+    },
   },
   transform: ({ schema, url }) => {
     try {
@@ -86,7 +91,7 @@ const swaggerOptions = {
     }
   },
   hideUntagged: true,
-  exposeRoute: true
+  exposeRoute: true,
 };
 
 // Make docsServer accessible to startGateway
@@ -95,23 +100,25 @@ let docsServer: FastifyInstance | null = null;
 // Create gateway app configuration function
 const configureGatewayServer = () => {
   const server = Fastify({
-    logger: ConfigManagerV2.getInstance().get('server.fastifyLogs') ? {
-      level: 'info',
-      transport: {
-        target: 'pino-pretty',
-        options: {
-          translateTime: 'HH:MM:ss Z',
-          ignore: 'pid,hostname',
-        },
-      },
-    } : false,
-    https: devMode ? undefined : getHttpsOptions()
+    logger: ConfigManagerV2.getInstance().get('server.fastifyLogs')
+      ? {
+          level: 'info',
+          transport: {
+            target: 'pino-pretty',
+            options: {
+              translateTime: 'HH:MM:ss Z',
+              ignore: 'pid,hostname',
+            },
+          },
+        }
+      : false,
+    https: devMode ? undefined : getHttpsOptions(),
   });
-  
+
   const docsPort = ConfigManagerV2.getInstance().get('server.docsPort');
-  
+
   docsServer = docsPort ? Fastify() : null;
-  
+
   // Register TypeBox provider
   server.withTypeProvider<TypeBoxTypeProvider>();
   if (docsServer) {
@@ -120,7 +127,7 @@ const configureGatewayServer = () => {
 
   // Register Swagger
   server.register(fastifySwagger, swaggerOptions);
-  
+
   // Register Swagger UI based on configuration
   if (!docsPort) {
     // If no docs port, serve docs on main server at /docs
@@ -134,10 +141,10 @@ const configureGatewayServer = () => {
         persistAuthorization: true,
         filter: true,
         defaultModelExpandDepth: 3,
-        defaultModelsExpandDepth: 3
+        defaultModelsExpandDepth: 3,
       },
       staticCSP: true,
-      transformStaticCSP: (header) => header
+      transformStaticCSP: (header) => header,
     });
   } else {
     // Otherwise set up separate docs server
@@ -158,17 +165,19 @@ const configureGatewayServer = () => {
     app.register(connectorsRoutes, { prefix: '/connectors' });
     app.register(walletRoutes, { prefix: '/wallet' });
     app.register(jupiterRoutes.swap, { prefix: '/jupiter' });
-    
+
     // Meteora routes
     app.register(meteoraRoutes.clmm, { prefix: '/meteora/clmm' });
-    
+
     // Raydium routes
     app.register(raydiumRoutes.clmm, { prefix: '/raydium/clmm' });
     app.register(raydiumRoutes.amm, { prefix: '/raydium/amm' });
-    
+
     app.register(uniswapRoutes, { prefix: '/uniswap' });
     app.register(solanaRoutes, { prefix: '/solana' });
     app.register(ethereumRoutes, { prefix: '/ethereum' });
+    app.register(spectrumRoutes, { prefix: '/spectrum' });
+    app.register(ergoRoutes, { prefix: '/ergo' });
   };
 
   // Register routes on main server
@@ -179,7 +188,11 @@ const configureGatewayServer = () => {
   }
 
   // Register request body parsers
-  server.addContentTypeParser('application/json', { parseAs: 'string' }, server.getDefaultJsonParser('ignore', 'ignore'));
+  server.addContentTypeParser(
+    'application/json',
+    { parseAs: 'string' },
+    server.getDefaultJsonParser('ignore', 'ignore'),
+  );
 
   // Global error handler
   server.setErrorHandler(errorHandler);
@@ -195,7 +208,7 @@ const configureGatewayServer = () => {
     // Spawn a new instance before exiting
     spawn(process.argv[0], process.argv.slice(1), {
       detached: true,
-      stdio: 'inherit'
+      stdio: 'inherit',
     });
     process.exit(0);
   });
@@ -210,28 +223,34 @@ export const startGateway = async () => {
   const port = ConfigManagerV2.getInstance().get('server.port');
   const docsPort = ConfigManagerV2.getInstance().get('server.docsPort');
   const protocol = devMode ? 'http' : 'https';
-  
+
   // Display ASCII logo
   console.log(`\n${asciiLogo.trim()}`);
-  logger.info(`⚡️ Gateway version ${GATEWAY_VERSION} starting at ${protocol}://localhost:${port}`);
+  logger.info(
+    `⚡️ Gateway version ${GATEWAY_VERSION} starting at ${protocol}://localhost:${port}`,
+  );
 
   try {
     // Kill any process using the gateway port
     try {
       logger.info(`Checking for processes using port ${port}...`);
-      
+
       // Use more reliable platform-specific commands
       if (process.platform === 'win32') {
         try {
           // Windows command to find and kill process on port
-          const { stdout } = await execPromise(`netstat -ano | findstr :${port}`);
+          const { stdout } = await execPromise(
+            `netstat -ano | findstr :${port}`,
+          );
           if (stdout) {
             const lines = stdout.trim().split('\n');
             for (const line of lines) {
               const parts = line.trim().split(/\s+/);
               if (parts.length > 4) {
                 const pid = parts[parts.length - 1];
-                logger.info(`Found process ${pid} using port ${port}, killing...`);
+                logger.info(
+                  `Found process ${pid} using port ${port}, killing...`,
+                );
                 await execPromise(`taskkill /F /PID ${pid}`);
               }
             }
@@ -248,7 +267,9 @@ export const startGateway = async () => {
             const pids = stdout.trim().split('\n');
             for (const pid of pids) {
               if (pid.trim()) {
-                logger.info(`Found process ${pid} using port ${port}, killing...`);
+                logger.info(
+                  `Found process ${pid} using port ${port}, killing...`,
+                );
                 await execPromise(`kill -9 ${pid}`);
               }
             }
@@ -258,11 +279,15 @@ export const startGateway = async () => {
         }
       }
     } catch (error) {
-      logger.warn(`Error while checking for processes on port ${port}: ${error}`);
+      logger.warn(
+        `Error while checking for processes on port ${port}: ${error}`,
+      );
     }
 
     if (devMode) {
-      logger.info('🔴 Running in development mode with (unsafe!) HTTP endpoints');
+      logger.info(
+        '🔴 Running in development mode with (unsafe!) HTTP endpoints',
+      );
       await gatewayApp.listen({ port, host: '0.0.0.0' });
     } else {
       logger.info('🟢 Running in secured mode with behind HTTPS endpoints');
@@ -270,12 +295,11 @@ export const startGateway = async () => {
     }
 
     // Single documentation log after server starts
-    const docsUrl = docsPort 
+    const docsUrl = docsPort
       ? `http://localhost:${docsPort}`
       : `${protocol}://localhost:${port}/docs`;
-      
-    logger.info(`📓 Documentation available at ${docsUrl}`);
 
+    logger.info(`📓 Documentation available at ${docsUrl}`);
   } catch (err) {
     logger.error(`Failed to start the server: ${err}`);
     process.exit(1);
