@@ -694,8 +694,8 @@ export class Hydration {
       // Execute the transaction
       const txHash = await new Promise<string>((resolve, reject) => {
         // @ts-ignore - Generic Method, needs to improve
-        const apiPromise = await this.getApiPromise();
-        transaction.signAndSend(wallet, (result: any) => {
+        transaction.signAndSend(wallet, async (result: any) => {
+          const apiPromise = await this.getApiPromise();
           if (result.dispatchError) {
             if (result.dispatchError.isModule) {
               const decoded = this.apiPromiseRegistryFindMetaError(

@@ -708,7 +708,7 @@ Content-Type: application/json
 ###
 
 # GET /hydration/amm/list-pools - Filter by pool types (correct format)
-GET {{httpProtocol}}://{{host}}:{{port}}/hydration/amm/list-pools?network={{network}}&types=xyk
+GET {{httpProtocol}}://{{host}}:{{port}}/hydration/amm/list-pools?network={{network}}&types=stableswap
 Content-Type: application/json
 
 ###
