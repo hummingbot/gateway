@@ -5,6 +5,16 @@ import { balancesRoute } from './routes/balances';
 import { pollRoute } from './routes/poll';
 import { estimateGasRoute } from './routes/estimate-gas';
 
+/**
+ * Registers all Polkadot-related routes with the Fastify instance
+ * 
+ * This plugin registers the following endpoints:
+ * - GET /status - Network status information
+ * - GET /tokens - Token list retrieval
+ * - POST /balances - Account balance lookup
+ * - POST /poll - Transaction status polling
+ * - POST /estimate-gas - Gas estimation for transactions
+ */
 export const polkadotRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.register(statusRoute);
   fastify.register(tokensRoute);

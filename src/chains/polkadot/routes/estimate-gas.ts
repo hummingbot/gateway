@@ -6,16 +6,38 @@ import {
   EstimateGasResponse,
   EstimateGasResponseSchema
 } from '../../../schemas/chain-schema';
+import {HttpException} from '../../../services/error-handler';
 
+/**
+ * Estimates gas (fees) for a Polkadot transaction
+ * 
+ * For Polkadot networks, this provides fee estimation information including:
+ * - Gas price (usually 0 as Polkadot uses weight-based fees)
+ * - Gas price token (native currency symbol)
+ * - Gas limit (if specified)
+ * - Gas cost estimate
+ * 
+ * @param fastify Fastify instance
+ * @param network Network identifier (e.g., 'mainnet', 'westend')
+ * @param gasLimit Optional gas limit for the transaction
+ * @returns Gas estimation information
+ */
 export async function estimateGasPolkadot(
   _fastify: FastifyInstance,
   network: string,
   gasLimit?: number
 ): Promise<EstimateGasResponse> {
+  if (!network) {
+    throw new HttpException(400, 'Network parameter is required', -1);
+  }
+  
   const polkadot = await Polkadot.getInstance(network);
   return await polkadot.estimateTransactionGas(gasLimit);
 }
 
+/**
+ * Route plugin that registers the gas estimation endpoint
+ */
 export const estimateGasRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{
     Body: EstimateGasRequestType;

@@ -8,17 +8,22 @@ import {Config, getPolkadotConfig} from './polkadot.config';
 import {HttpException, LOAD_WALLET_ERROR_CODE, LOAD_WALLET_ERROR_MESSAGE} from '../../services/error-handler';
 import {logger} from '../../services/logger';
 import {TokenListType, walletPath} from '../../services/base';
-import {PolkadotAccount,} from './polkadot.types';
+import {PolkadotAccount} from './polkadot.types';
 import {BN} from 'bn.js';
-import * as crypto from 'crypto';
 import * as fs from 'fs';
 import axios, {Axios} from 'axios';
 import {ConfigManagerCertPassphrase} from '../../services/config-manager-cert-passphrase';
 import {runWithRetryAndTimeout} from "../../connectors/hydration/hydration.utils";
 import {wrapResponse} from '../../services/response-wrapper';
+import {fromBaseUnits, toBaseUnits} from './polkadot.utils';
+import {validatePolkadotAddress} from './polkadot.validators';
+import * as crypto from 'crypto';
 
 /**
  * Main class for interacting with the Polkadot blockchain.
+ * 
+ * This class provides methods for account management, balance queries,
+ * transaction operations, and network status for Polkadot networks.
  */
 export class Polkadot {
   public wsProvider: WsProvider;
@@ -42,7 +47,6 @@ export class Polkadot {
     this.network = network;
     this.config = getPolkadotConfig('polkadot', network);
     this.nativeTokenSymbol = this.config.network.nativeCurrencySymbol;
-
     this._keyring = new Keyring({ type: 'sr25519' });
   }
 
@@ -52,6 +56,10 @@ export class Polkadot {
    * @returns A Promise that resolves to a Polkadot instance
    */
   public static async getInstance(network: string): Promise<Polkadot> {
+    if (!network) {
+      throw new HttpException(400, 'Network parameter is required', -1);
+    }
+    
     if (!Polkadot._instances[network]) {
       Polkadot._instances[network] = new Polkadot(network);
       await Polkadot._instances[network].init();
@@ -64,30 +72,25 @@ export class Polkadot {
    * @returns A Promise that resolves when initialization is complete
    */
   private async init(): Promise<void> {
-    try {
-      logger.info(`Initializing Polkadot for network: ${this.network}`);
+    logger.info(`Initializing Polkadot for network: ${this.network}`);
 
-      // Wait for crypto to be ready
-      await this.utilCryptoWaitReady();
+    // Wait for crypto to be ready
+    await this.utilCryptoWaitReady();
 
-      // Initialize keyring
-      this._keyring = new Keyring({
-        type: 'sr25519',
-      });
+    // Initialize keyring
+    this._keyring = new Keyring({
+      type: 'sr25519',
+    });
 
-      (await this.getApiPromise()).isReady;
+    (await this.getApiPromise()).isReady;
 
-      // Load token list
-      await this.getTokenList(
-        this.config.network.tokenListSource,
-        this.config.network.tokenListType
-      );
+    // Load token list
+    await this.getTokenList(
+      this.config.network.tokenListSource,
+      this.config.network.tokenListType
+    );
 
-      logger.info(`Polkadot initialized for network: ${this.network}`);
-    } catch (error) {
-      logger.error(`Failed to initialize Polkadot: ${error.message}`);
-      throw error;
-    }
+    logger.info(`Polkadot initialized for network: ${this.network}`);
   }
 
   /**
@@ -100,18 +103,13 @@ export class Polkadot {
     tokenListSource?: string,
     tokenListType?: TokenListType,
   ): Promise<TokenInfo[]> {
-    try {
-      if (!tokenListSource || !tokenListType) {
-        tokenListSource = this.config.network.tokenListSource;
-        tokenListType = this.config.network.tokenListType;
-      }
-
-      await this.loadTokens(tokenListSource, tokenListType);
-      return this.tokenList;
-    } catch (error) {
-      logger.error(`Failed to get token list: ${error.message}`);
-      throw error;
+    if (!tokenListSource || !tokenListType) {
+      tokenListSource = this.config.network.tokenListSource;
+      tokenListType = this.config.network.tokenListType;
     }
+
+    await this.loadTokens(tokenListSource, tokenListType);
+    return this.tokenList;
   }
 
   /**
@@ -123,48 +121,43 @@ export class Polkadot {
     tokenListSource: string,
     tokenListType: TokenListType,
   ): Promise<void> {
-    try {
-      // Clear existing token lists
-      this.tokenList = [];
-      this._tokenMap = {};
+    // Clear existing token lists
+    this.tokenList = [];
+    this._tokenMap = {};
 
-      // Load tokens from source
-      let tokensData: any[] = [];
+    // Load tokens from source
+    let tokensData: any[] = [];
 
-      if (tokenListType === 'URL') {
-        const response = await this.axiosGet(axios, tokenListSource);
-        tokensData = response.data || [];
-      } else {
-        const fileContent = await this.fsReadFile(tokenListSource, {
-          encoding: 'utf8',
-        });
-        const data = fileContent.toString();
-        const parsed = JSON.parse(data);
-        tokensData = parsed || [];
-      }
-
-      // Process tokens
-      for (const tokenData of tokensData) {
-        const token: TokenInfo = {
-          symbol: tokenData.symbol,
-          name: tokenData.name,
-          decimals: tokenData.decimals,
-          address: tokenData.id.toString(), // Use token ID as address
-          chainId: 0,
-        };
-
-        this.tokenList.push(token);
-        this._tokenMap[token.symbol.toLowerCase()] = token;
-        this._tokenMap[token.address.toLowerCase()] = token;
-      }
-
-      logger.info(
-        `Loaded ${this.tokenList.length} tokens for network: ${this.network}`,
-      );
-    } catch (error) {
-      logger.error(`Failed to load tokens: ${error.message}`);
-      throw error;
+    if (tokenListType === 'URL') {
+      const response = await this.axiosGet(axios, tokenListSource);
+      tokensData = response.data || [];
+    } else {
+      const fileContent = await this.fsReadFile(tokenListSource, {
+        encoding: 'utf8',
+      });
+      const data = fileContent.toString();
+      const parsed = JSON.parse(data);
+      tokensData = parsed || [];
     }
+
+    // Process tokens
+    for (const tokenData of tokensData) {
+      const token: TokenInfo = {
+        symbol: tokenData.symbol,
+        name: tokenData.name,
+        decimals: tokenData.decimals,
+        address: tokenData.id.toString(), // Use token ID as address
+        chainId: 0,
+      };
+
+      this.tokenList.push(token);
+      this._tokenMap[token.symbol.toLowerCase()] = token;
+      this._tokenMap[token.address.toLowerCase()] = token;
+    }
+
+    logger.info(
+      `Loaded ${this.tokenList.length} tokens for network: ${this.network}`,
+    );
   }
 
   /**
@@ -181,24 +174,19 @@ export class Polkadot {
    * @returns A Promise that resolves to a new account
    */
   async createAccount(): Promise<PolkadotAccount> {
-    try {
-      // Generate mnemonic
-      const mnemonic = mnemonicGenerate();
+    // Generate mnemonic
+    const mnemonic = mnemonicGenerate();
 
-      // Create keyring pair
-      const keyringPair = this._keyring.addFromMnemonic(mnemonic);
+    // Create keyring pair
+    const keyringPair = this._keyring.addFromMnemonic(mnemonic);
 
-      const account: PolkadotAccount = {
-        address: keyringPair.address,
-        publicKey: u8aToHex(keyringPair.publicKey),
-        keyringPair,
-      };
+    const account: PolkadotAccount = {
+      address: keyringPair.address,
+      publicKey: u8aToHex(keyringPair.publicKey),
+      keyringPair,
+    };
 
-      return account;
-    } catch (error) {
-      logger.error(`Failed to create account: ${error.message}`);
-      throw error;
-    }
+    return account;
   }
 
   /**
@@ -207,14 +195,7 @@ export class Polkadot {
    * @returns The keyring pair
    */
   getKeyringPairFromMnemonic(seed: string): KeyringPair {
-    try {
-      return this._keyring.addFromMnemonic(seed);
-    } catch (error) {
-      logger.error(
-        `Failed to get keyring pair from private key: ${error.message}`,
-      );
-      throw error;
-    }
+    return this._keyring.addFromMnemonic(seed);
   }
 
   /**
@@ -223,98 +204,72 @@ export class Polkadot {
    * @returns A Promise that resolves to the keyring pair
    */
   async getWallet(address: string): Promise<KeyringPair> {
+    // Check if address is valid
+    validatePolkadotAddress(address);
+
+    // Look for existing pair with this address
+    const existingPair = this._keyring
+      .getPairs()
+      .find((pair) => pair.address === address);
+    if (existingPair) {
+      return existingPair;
+    }
+
+    // If not found in memory, load from encrypted file
+    // Path to the wallet file
+    const path = `${walletPath}/${this.chain}`;
+    const walletFile = `${path}/${address}.json`;
+
     try {
-      // Check if address is valid
-      this.validatePolkadotAddress(address);
+      // Read encrypted mnemonic from file
+      const fileContent = await this.fsReadFile(walletFile, 'utf8');
+      const encryptedMnemonic = fileContent.toString();
 
-      // Look for existing pair with this address
-      const existingPair = this._keyring
-        .getPairs()
-        .find((pair) => pair.address === address);
-      if (existingPair) {
-        return existingPair;
+      // Get passphrase using ConfigManagerCertPassphrase
+      const passphrase = ConfigManagerCertPassphrase.readPassphrase();
+      if (!passphrase) {
+        throw new Error('Missing passphrase for wallet decryption');
       }
 
-      // If not found in memory, load from encrypted file
-      try {
-        // Path to the wallet file
-        const path = `${walletPath}/${this.chain}`;
-        const walletFile = `${path}/${address}.json`;
+      // Decrypt the mnemonic
+      const mnemonic = await this.decrypt(encryptedMnemonic, passphrase);
 
-        // Read encrypted mnemonic from file
-        const fileContent = await this.fsReadFile(walletFile, 'utf8');
-        const encryptedMnemonic = fileContent.toString();
-
-        // Get passphrase using ConfigManagerCertPassphrase
-        const passphrase = ConfigManagerCertPassphrase.readPassphrase();
-        if (!passphrase) {
-          throw new Error('Missing passphrase for wallet decryption');
-        }
-
-        // Decrypt the mnemonic
-        const mnemonic = await this.decrypt(encryptedMnemonic, passphrase);
-
-        // Add to keyring and return
-        return this._keyring.addFromUri(mnemonic);
-      } catch (error) {
-        logger.error(`Failed to load wallet from file: ${error.message}`);
-        throw new HttpException(
-          500,
-          `Wallet not found for address: ${address}. You need to import the private key or mnemonic first.`,
-          -1,
-        );
-      }
+      // Add to keyring and return
+      return this._keyring.addFromUri(mnemonic);
     } catch (error) {
-      logger.error(`Failed to get wallet: ${error.message}`);
-      throw error;
+      logger.error(`Failed to load wallet from file: ${error.message}`);
+      throw new HttpException(
+        500,
+        `Wallet not found for address: ${address}. You need to import the private key or mnemonic first.`,
+        -1,
+      );
     }
   }
 
   /**
-   * Validate a Polkadot address
-   * @param address The address to validate
-   * @returns True if valid, throws error if invalid
-   */
-  validatePolkadotAddress(address: string): boolean {
-    try {
-      // Try to decode the address - will throw if invalid
-      decodeAddress(address, false);
-      return true;
-    } catch (error) {
-      logger.error(`Invalid Polkadot address: ${address}`);
-      throw new HttpException(400, `Invalid Polkadot address: ${address}`, -1);
-    }
-  }
-
-  /**
-   * Encrypt a secret (like a private key or mnemonic)
-   * @param mnemonic The secret to encrypt
+   * Encrypts a secret (mnemonic or private key) with a password
+   * @param secret The secret to encrypt
    * @param password The password to encrypt with
-   * @returns A Promise that resolves to the encrypted secret
+   * @returns The encrypted secret string
    */
-  async encrypt(mnemonic: string, password: string): Promise<string> {
-    try {
-      const key = crypto.createHash('sha256').update(password).digest();
-      const iv = crypto.randomBytes(16);
-      const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
+  public async encrypt(secret: string, password: string): Promise<string> {
+    const key = crypto.createHash('sha256').update(password).digest();
+    const iv = crypto.randomBytes(16);
+    const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
 
-      let encrypted = cipher.update(mnemonic, 'utf8', 'hex');
-      encrypted += cipher.final('hex');
+    let encrypted = cipher.update(secret, 'utf8', 'hex');
+    encrypted += cipher.final('hex');
 
-      return `${iv.toString('hex')}:${encrypted}`;
-    } catch (error) {
-      logger.error(`Failed to encrypt secret: ${error.message}`);
-      throw error;
-    }
+    return `${iv.toString('hex')}:${encrypted}`;
   }
 
   /**
-   * Decrypt an encrypted secret
+   * Decrypts an encrypted secret
    * @param encryptedSecret The encrypted secret
    * @param password The password to decrypt with
-   * @returns A Promise that resolves to the decrypted secret
+   * @returns The decrypted secret
    */
-  async decrypt(encryptedSecret: string, password: string): Promise<string> {
+  public async decrypt(encryptedSecret: string, password: string): Promise<string> {
     try {
       const [ivHex, encryptedText] = encryptedSecret.split(':');
       const iv = Buffer.from(ivHex, 'hex');
@@ -327,7 +282,7 @@ export class Polkadot {
       return decrypted;
     } catch (error) {
       logger.error(`Failed to decrypt secret: ${error.message}`);
-      throw error;
+      throw new HttpException(500, 'Failed to decrypt wallet data', -1);
     }
   }
 
@@ -341,158 +296,98 @@ export class Polkadot {
     wallet: KeyringPair,
     symbols?: string[],
   ): Promise<Record<string, number>> {
-    try {
-      const balances: Record<string, number> = {};
-      const address = wallet.address;
+    const balances: Record<string, number> = {};
+    const address = wallet.address;
 
-      // Determine which tokens to check
-      let tokensToCheck: TokenInfo[] = [];
-      if (symbols && symbols.length > 0) {
-        // Filter tokens by specified symbols
-        for (const symbol of symbols) {
-          const token = await this.getToken(symbol);
-          if (token) {
-            tokensToCheck.push(token);
-          }
+    // Determine which tokens to check
+    let tokensToCheck: TokenInfo[] = [];
+    if (symbols && symbols.length > 0) {
+      // Filter tokens by specified symbols
+      for (const symbol of symbols) {
+        const token = await this.getToken(symbol);
+        if (token) {
+          tokensToCheck.push(token);
         }
-      } else {
-        // Use all tokens in the token list
-        tokensToCheck = this.tokenList;
       }
+    } else {
+      // Use all tokens in the token list
+      tokensToCheck = this.tokenList;
+    }
 
-      // Get native token balance
-      const nativeToken = tokensToCheck.find(
-        (t) => t.symbol === this.nativeTokenSymbol,
+    // Get native token balance
+    const nativeToken = tokensToCheck.find(
+      (t) => t.symbol === this.nativeTokenSymbol,
+    );
+
+    if (nativeToken) {
+      const accountInfo = await this.apiPromiseQuerySystemAccount(await this.getApiPromise(), address);
+      // Handle different account data structures safely
+      let freeBalance = '0';
+      let reservedBalance = '0';
+      
+      if (accountInfo && accountInfo.data) {
+        // Try to get free balance from different possible structures
+        if (accountInfo.data.free) {
+          freeBalance = accountInfo.data.free.toString();
+        }
+        
+        // Get reserved balance if available
+        if (accountInfo.data.reserved) {
+          reservedBalance = accountInfo.data.reserved.toString();
+        }
+      }
+      
+      const totalBalance = new BN(freeBalance).add(new BN(reservedBalance));
+
+      balances[nativeToken.symbol] = fromBaseUnits(
+        totalBalance.toString(),
+        nativeToken.decimals,
       );
+    }
 
-      if (nativeToken) {
-        // TODO: Verify if this method needs externalization!!!
-        const accountInfo = await this.apiPromiseQuerySystemAccount(await this.getApiPromise(), address);
-        // @ts-ignore - Handle type issues with accountInfo structure
-        const freeBalance = accountInfo.data.balance || accountInfo.data.free.toString();
-        // @ts-ignore - Handle type issues with accountInfo structure
-        const reservedBalance = accountInfo.data.reserved.toString();
-        const totalBalance = new BN(freeBalance).add(new BN(reservedBalance));
-
-        balances[nativeToken.symbol] = this.fromBaseUnits(
-          totalBalance.toString(),
-          nativeToken.decimals,
-        );
-      }
-
-      // Get balances for other tokens
-      for (const token of tokensToCheck) {
-        // Skip native token as we already processed it
-        if (token.symbol === this.nativeTokenSymbol) continue;
-        try {
-          // Check if tokens module exists
-          if ((await this.getApiPromise()).query.tokens && (await this.getApiPromise()).query.tokens.accounts) {
-            const assetBalance = await this.apiPromiseQueryTokensAccounts(await this.getApiPromise(), address, token.address);
-            if (assetBalance) {
-              const free = assetBalance.free?.toString() || '0';
-              balances[token.symbol] = this.fromBaseUnits(free, token.decimals);
-            } else {
-              balances[token.symbol] = 0;
-            }
-          } else if ((await this.getApiPromise()).query.assets && (await this.getApiPromise()).query.assets.account) {
-            // Alternative assets pallet approach if available
-            const assetBalance = await this.apiPromiseQueryAssetsAccount(
-              (await this.getApiPromise()),
-              token.address,
-              address,
-            );
-            if (assetBalance && !assetBalance.isEmpty) {
-              // Handle Option<AssetBalance> - use type-safe methods instead of isSome/unwrap
-              const balanceData = assetBalance as any;
-              const balance =
-                balanceData.balance?.toString() ||
-                (balanceData.toJSON && balanceData.toJSON().balance) ||
-                '0';
-              balances[token.symbol] = this.fromBaseUnits(
-                balance,
-                token.decimals,
-              );
-            } else {
-              balances[token.symbol] = 0;
-            }
-          } else {
-            // If no token module is available, set balance to 0
-            balances[token.symbol] = 0;
-          }
-        } catch (err) {
-          logger.warn(
-            `Error getting balance for token ${token.symbol}: ${err.message}`,
-          );
+    // Get balances for other tokens
+    for (const token of tokensToCheck) {
+      // Skip native token as we already processed it
+      if (token.symbol === this.nativeTokenSymbol) continue;
+      
+      // Check if tokens module exists
+      const api = await this.getApiPromise();
+      if (api.query.tokens && api.query.tokens.accounts) {
+        const assetBalance = await this.apiPromiseQueryTokensAccounts(api, address, token.address);
+        if (assetBalance) {
+          const free = assetBalance.free?.toString() || '0';
+          balances[token.symbol] = fromBaseUnits(free, token.decimals);
+        } else {
           balances[token.symbol] = 0;
         }
+      } else if (api.query.assets && api.query.assets.account) {
+        // Alternative assets pallet approach if available
+        const assetBalance = await this.apiPromiseQueryAssetsAccount(
+          api,
+          token.address,
+          address,
+        );
+        if (assetBalance && !assetBalance.isEmpty) {
+          // Handle Option<AssetBalance> - use type-safe methods
+          const balanceData = assetBalance as any;
+          const balance =
+            balanceData.balance?.toString() ||
+            (balanceData.toJSON && balanceData.toJSON().balance) ||
+            '0';
+          balances[token.symbol] = fromBaseUnits(
+            balance,
+            token.decimals,
+          );
+        } else {
+          balances[token.symbol] = 0;
+        }
+      } else {
+        // If no token module is available, set balance to 0
+        balances[token.symbol] = 0;
       }
-
-      return balances;
-    } catch (error) {
-      logger.error(`Failed to get balance: ${error.message}`);
-      throw error;
     }
-  }
 
-  /**
-   * Convert from base units to a human-readable decimal
-   * @param amount Amount in base units (as string to handle large numbers)
-   * @param decimals Number of decimals
-   * @returns The human-readable decimal
-   */
-  
-  fromBaseUnits(amount: string, decimals: number): number {
-    try {
-      const divisor = new BN(10).pow(new BN(decimals));
-      const amountBN = new BN(amount);
-      const wholePart = amountBN.div(divisor).toString();
-
-      const fractionalBN = amountBN.mod(divisor);
-      let fractionalPart = fractionalBN.toString().padStart(decimals, '0');
-
-      // Trim trailing zeros
-      while (fractionalPart.endsWith('0') && fractionalPart.length > 0) {
-        fractionalPart = fractionalPart.slice(0, -1);
-      }
-
-      // Format for JS number conversion
-      const result = `${wholePart}${fractionalPart.length > 0 ? '.' + fractionalPart : ''}`;
-      return parseFloat(result);
-    } catch (error) {
-      logger.error(`Failed to convert from base units: ${error.message}`);
-      throw error;
-    }
-  }
-
-  /**
-   * Convert to base units from a human-readable decimal
-   * @param amount Amount in human-readable form
-   * @param decimals Number of decimals
-   * @returns The amount in base units as a string
-   */
-  
-  toBaseUnits(amount: number, decimals: number): string {
-    try {
-      // Convert to string for precision
-      const amountStr = amount.toString();
-
-      // Split by decimal point
-      const parts = amountStr.split('.');
-      const wholePart = parts[0];
-      const fractionalPart =
-        parts.length > 1
-          ? parts[1].padEnd(decimals, '0').slice(0, decimals)
-          : '0'.repeat(decimals);
-
-      // Combine and convert to BN
-      const result = wholePart + fractionalPart;
-
-      // Remove leading zeros
-      return new BN(result).toString();
-    } catch (error) {
-      logger.error(`Failed to convert to base units: ${error.message}`);
-      throw error;
-    }
+    return balances;
   }
 
   /**
@@ -505,7 +400,7 @@ export class Polkadot {
     try {
       const currentBlock = await this.getCurrentBlockNumber();
 
-      // Try to fetch transaction data
+      // Initialize default values
       let txData = null;
       let txStatus = 0; // Not found by default
       let blockNum = null;
@@ -579,15 +474,9 @@ export class Polkadot {
    * Get the current block number
    * @returns A Promise that resolves to the current block number
    */
-
   async getCurrentBlockNumber(): Promise<number> {
-    try {
-      const header = await this.apiPromiseRpcChainGetHeader(await this.getApiPromise());
-      return header.number.toNumber();
-    } catch (error) {
-      logger.error(`Failed to get current block number: ${error.message}`);
-      throw error;
-    }
+    const header = await this.apiPromiseRpcChainGetHeader(await this.getApiPromise());
+    return header.number.toNumber();
   }
 
   /**
@@ -609,19 +498,14 @@ export class Polkadot {
    * @returns A Promise that resolves to the first wallet address or null if none found
    */
   public async getFirstWalletAddress(): Promise<string | null> {
-    try {
-      const pairs = this._keyring.getPairs();
-      if (pairs.length > 0) {
-        return pairs[0].address;
-      }
-
-      // If no wallets found, create a temporary one
-      const tempAccount = await this.createAccount();
-      return tempAccount.address;
-    } catch (error) {
-      logger.error(`Failed to get first wallet address: ${error.message}`);
-      return null;
+    const pairs = this._keyring.getPairs();
+    if (pairs.length > 0) {
+      return pairs[0].address;
     }
+
+    // If no wallets found, create a temporary one
+    const tempAccount = await this.createAccount();
+    return tempAccount.address;
   }
 
   /**
@@ -630,31 +514,27 @@ export class Polkadot {
    * @returns A Promise that resolves to a list of TokenInfo objects
    */
   async getTokensWithSymbols(tokenSymbols?: string[] | string): Promise<TokenInfo[]> {
-    try {
-      let tokens: TokenInfo[] = [];
+    let tokens: TokenInfo[] = [];
 
-      if (!tokenSymbols) {
-        tokens = this.tokenList;
-      } else {
-        const symbolsArray = Array.isArray(tokenSymbols)
-            ? tokenSymbols
-            : typeof tokenSymbols === 'string'
-                ? tokenSymbols.replace(/[\[\]]/g, '').split(',')
-                : [];
+    if (!tokenSymbols) {
+      tokens = this.tokenList;
+    } else {
+      const symbolsArray = Array.isArray(tokenSymbols)
+          ? tokenSymbols
+          : typeof tokenSymbols === 'string'
+              ? tokenSymbols.replace(/[\[\]]/g, '').split(',')
+              : [];
 
-        for (const symbol of symbolsArray) {
-          const token = await this.getToken(symbol.trim());
-          if (token) tokens.push(token);
-        }
+      for (const symbol of symbolsArray) {
+        const token = await this.getToken(symbol.trim());
+        if (token) tokens.push(token);
       }
-
-      return tokens;
-    } catch (error) {
-      logger.error(`Error getting tokens: ${error.message}`);
-      throw new HttpException(500, `Failed to get tokens: ${error.message}`, -1);
     }
+
+    return tokens;
   }
 
+  // noinspection JSUnusedGlobalSymbols
   /**
    * Estimate gas (fees) for a transaction
    * @param sender The sender keyring pair
@@ -669,27 +549,22 @@ export class Polkadot {
       amount: number,
       symbol: string
   ): Promise<string> {
-    try {
-      const token = await this.getToken(symbol);
-      if (!token) {
-        throw new Error(`Token not found: ${symbol}`);
-      }
-
-      const amountInBaseUnits = this.toBaseUnits(amount, token.decimals);
-
-      // Create transaction for estimation without signing
-      const apiPromise = await this.getApiPromise();
-      const transferTx = apiPromise.tx.balances.transfer(recipient, amountInBaseUnits);
-
-      // Get fee estimate
-      const info = await transferTx.paymentInfo(sender);
-
-      // Return estimated fee in human-readable format
-      return this.fromBaseUnits(info.partialFee.toString(), token.decimals).toString();
-    } catch (error) {
-      logger.error(`Failed to estimate gas: ${error.message}`);
-      throw error;
+    const token = await this.getToken(symbol);
+    if (!token) {
+      throw new HttpException(404, `Token not found: ${symbol}`, -1);
     }
+
+    const amountInBaseUnits = toBaseUnits(amount, token.decimals);
+
+    // Create transaction for estimation without signing
+    const apiPromise = await this.getApiPromise();
+    const transferTx = apiPromise.tx.balances.transfer(recipient, amountInBaseUnits);
+
+    // Get fee estimate
+    const info = await transferTx.paymentInfo(sender);
+
+    // Return estimated fee in human-readable format
+    return fromBaseUnits(info.partialFee.toString(), token.decimals).toString();
   }
 
   /**
@@ -722,21 +597,12 @@ export class Polkadot {
    * @returns A Promise that resolves to the gas estimation
    */
   async estimateTransactionGas(gasLimit?: number): Promise<any> {
-    try {
-      return {
-        gasPrice: 0,
-        gasPriceToken: this.config.network.nativeCurrencySymbol,
-        gasLimit: gasLimit,
-        gasCost: 0
-      };
-    } catch (error) {
-      logger.error(`Error estimating gas: ${error.message}`);
-      throw new HttpException(
-          500,
-          `Failed to estimate gas: ${error.message}`,
-          5004
-      );
-    }
+    return {
+      gasPrice: 0,
+      gasPriceToken: this.config.network.nativeCurrencySymbol,
+      gasLimit: gasLimit,
+      gasCost: 0
+    };
   }
 
   /**
@@ -745,30 +611,16 @@ export class Polkadot {
    * @returns A Promise that resolves to the transaction status
    */
   async pollTransaction(txHash: string): Promise<any> {
-    try {
-      const txResult = await this.getTransaction(txHash);
+    const txResult = await this.getTransaction(txHash);
 
-      return {
-        currentBlock: await this.getCurrentBlockNumber(),
-        txHash,
-        txBlock: txResult.txBlock,
-        txStatus: txResult.txStatus,
-        txData: txResult.txData,
-        fee: txResult.fee
-      };
-    } catch (error) {
-      logger.error(`Error in poll: ${error.message}`);
-      const currentBlock = await this.getCurrentBlockNumber();
-
-      return {
-        currentBlock,
-        txHash,
-        txBlock: currentBlock,
-        txStatus: 0,
-        txData: {},
-        fee: null
-      };
-    }
+    return {
+      currentBlock: await this.getCurrentBlockNumber(),
+      txHash,
+      txBlock: txResult.txBlock,
+      txStatus: txResult.txStatus,
+      txData: txResult.txData,
+      fee: txResult.fee
+    };
   }
 
   /**
@@ -793,6 +645,9 @@ export class Polkadot {
     }, initTime);
   }
 
+  /**
+   * Gets the HTTP provider for the Polkadot node
+   */
   public getHttpProvider(): WsProvider {
     if (!this.httpProvider) {
       this.httpProvider = new HttpProvider(this.config.network.nodeURL);
@@ -801,6 +656,9 @@ export class Polkadot {
     return this.wsProvider;
   }
 
+  /**
+   * Gets the WebSocket provider for the Polkadot node
+   */
   public getWsProvider(): WsProvider {
     if (!this.wsProvider) {
       this.wsProvider = new WsProvider(this.config.network.nodeURL);
@@ -809,6 +667,9 @@ export class Polkadot {
     return this.wsProvider;
   }
 
+  /**
+   * Gets the appropriate provider based on the node URL
+   */
   public getProvider(): WsProvider | HttpProvider {
     if (this.config.network.nodeURL.startsWith('http')) {
       return this.getHttpProvider();
@@ -817,6 +678,9 @@ export class Polkadot {
     }
   }
 
+  /**
+   * Gets the ApiPromise instance, creating it if necessary
+   */
   public async getApiPromise(): Promise<ApiPromise> {
     if (!this.apiPromise) {
       this.apiPromise = await this.apiPromiseCreate({ provider: this.getProvider() });
@@ -824,6 +688,8 @@ export class Polkadot {
 
     return this.apiPromise;
   }
+
+  // Externalized methods with retry/timeout below - must be maintained as is
 
   @runWithRetryAndTimeout()
   public async apiPromiseCreate(options: any): Promise<ApiPromise> {
