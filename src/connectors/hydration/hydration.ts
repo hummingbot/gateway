@@ -43,36 +43,6 @@ interface ExternalPoolInfo {
   liquidity?: number;
 }
 
-// Add the Quote interface
-interface Quote {
-  type: 'Buy' | 'Sell';
-  amountIn: string;
-  amountOut: string;
-  price: string;
-  priceImpact: string;
-  fee: string;
-  route: string[];
-}
-
-// Update the PositionInfo interface to use token addresses instead of token objects
-interface PositionInfo {
-  positionAddress: string;
-  ownerAddress: string;
-  poolAddress: string;
-  baseTokenAddress: string;
-  quoteTokenAddress: string;
-  lowerPrice: number;
-  upperPrice: number;
-  baseTokenAmount: number;
-  quoteTokenAmount: number;
-  baseFeeAmount: number;
-  quoteFeeAmount: number;
-  liquidity: number;
-  inRange: boolean;
-  createdAt: number;
-  apr: number;
-}
-
 /**
  * Main class for interacting with the Hydration protocol on Polkadot
  */
@@ -204,22 +174,6 @@ export class Hydration {
   }
 
   /**
-   * Get all available pools
-   * @returns A Promise that resolves to an array of pool information
-   */
-  private async getAllPools(): Promise<ExternalPoolInfo[]> {
-    try {
-      const poolAddresses = await this.getPoolAddresses();
-      const poolPromises = poolAddresses.map(address => this.getPoolInfo(address));
-      const pools = await Promise.all(poolPromises);
-      return pools.filter((pool): pool is ExternalPoolInfo => pool !== null);
-    } catch (error) {
-      logger.error(`Failed to get all pools: ${error.message}`);
-      return [];
-    }
-  }
-
-  /**
    * Get detailed information about a Hydration pool
    * @param poolAddress The address of the pool
    * @returns A Promise that resolves to pool information or null if not found
@@ -277,12 +231,12 @@ export class Hydration {
           const baseAmount = Number(reserves.baseReserve
               .div(BigNumber(10).pow(baseToken.decimals))
               .toFixed(baseToken.decimals)
-            );
+          );
 
           const quoteAmount = Number(
-            reserves.quoteReserve
-              .div(BigNumber(10).pow(quoteToken.decimals))
-              .toFixed(quoteToken.decimals)
+              reserves.quoteReserve
+                  .div(BigNumber(10).pow(quoteToken.decimals))
+                  .toFixed(quoteToken.decimals)
           );
 
           // Validate the calculated amounts
@@ -292,15 +246,15 @@ export class Hydration {
         // Fallback to token balances if reserves not available
         else if (poolData.tokens[0].balance && poolData.tokens[1].balance) {
           const baseAmount = Number(
-            BigNumber(poolData.tokens[0].balance.toString())
-              .div(BigNumber(10).pow(baseToken.decimals))
-              .toFixed(baseToken.decimals)
+              BigNumber(poolData.tokens[0].balance.toString())
+                  .div(BigNumber(10).pow(baseToken.decimals))
+                  .toFixed(baseToken.decimals)
           );
 
           const quoteAmount = Number(
-            BigNumber(poolData.tokens[1].balance.toString())
-              .div(BigNumber(10).pow(quoteToken.decimals))
-              .toFixed(quoteToken.decimals),
+              BigNumber(poolData.tokens[1].balance.toString())
+                  .div(BigNumber(10).pow(quoteToken.decimals))
+                  .toFixed(quoteToken.decimals),
           );
 
           // Validate the calculated amounts
@@ -326,10 +280,10 @@ export class Hydration {
           // Get both buy and sell quotes to calculate the mid price
           try {
             buyQuote = await this.tradeRouterGetBestBuy(
-              tradeRouter,
-              quoteTokenId,
-              baseTokenId,
-              amountBN
+                tradeRouter,
+                quoteTokenId,
+                baseTokenId,
+                amountBN
             );
           } catch (error) {
             throw error;
@@ -337,10 +291,10 @@ export class Hydration {
 
           try {
             sellQuote = await this.tradeRouterGetBestSell(
-              tradeRouter,
-              baseTokenId,
-              quoteTokenId,
-              amountBN
+                tradeRouter,
+                baseTokenId,
+                quoteTokenId,
+                amountBN
             );
           } catch (error) {
             throw error;
@@ -356,9 +310,9 @@ export class Hydration {
             // Validate and set the pool price
             const midPrice = (buyPrice + sellPrice) / 2;
             poolPrice =
-              !isNaN(midPrice) && isFinite(midPrice)
-                ? Number(midPrice.toFixed(6))
-                : 1;
+                !isNaN(midPrice) && isFinite(midPrice)
+                    ? Number(midPrice.toFixed(6))
+                    : 1;
           }
         } catch (priceError) {
           logger.error(`Failed to calculate pool price: ${priceError.message}`);
@@ -398,7 +352,7 @@ export class Hydration {
       try {
         if (poolDataAny.liquidity) {
           const liquidityValue = typeof poolDataAny.liquidity === 'object' && 'toNumber' in poolDataAny.liquidity ?
-            poolDataAny.liquidity.toNumber(): Number(poolDataAny.liquidity);
+              poolDataAny.liquidity.toNumber() : Number(poolDataAny.liquidity);
           liquidity = !isNaN(liquidityValue) && isFinite(liquidityValue) ? liquidityValue : 1000000;
         }
       } catch (error) {
@@ -449,32 +403,6 @@ export class Hydration {
     } catch (error) {
       logger.error(`Failed to get pool info for ${poolAddress}: ${error.message}`);
       return null;
-    }
-  }
-
-  /**
-   * Get a list of pools
-   * @param limit Maximum number of pools to return
-   * @param tokenMintA Optional filter by base token
-   * @param tokenMintB Optional filter by quote token
-   * @returns A Promise that resolves to a list of Hydration pools
-   */
-  async getPools(
-    tokenMintA?: string,
-    tokenMintB?: string,
-  ): Promise<ExternalPoolInfo[]> {
-    try {
-      const pools = await this.getAllPools();
-      return pools
-        .map((poolInfo) => {
-          const baseTokenMatches = !tokenMintA || poolInfo.baseTokenAddress === tokenMintA;
-          const quoteTokenMatches = !tokenMintB || poolInfo.quoteTokenAddress === tokenMintB;
-          return baseTokenMatches && quoteTokenMatches ? poolInfo : null;
-        })
-        .filter((pool): pool is ExternalPoolInfo => pool !== null);
-    } catch (error) {
-      logger.error(`Failed to get pools: ${error.message}`);
-      return [];
     }
   }
 
@@ -810,556 +738,11 @@ export class Hydration {
   }
 
   /**
-   * Get positions owned by a wallet in a specific pool
-   * @param poolAddress The pool address
-   * @param wallet The wallet
-   * @returns A Promise that resolves to a list of position information
-   */
-  async getPositionsInPool(poolAddress: string, wallet: KeyringPair): Promise<PositionInfo[]> {
-    try {
-      // Ensure the instance is ready
-      if (!this.ready()) {
-        await this.init(this.polkadot.network);
-      }
-
-      // Get pool info
-      const poolInfo = await this.getPoolInfo(poolAddress);
-      if (!poolInfo) {
-        throw new Error(`Pool not found: ${poolAddress}`);
-      }
-
-      // Get positions for this wallet from the SDK
-      /* getPositions don't exist in the SDK */
-      const positions = await this.poolServiceGetPositions(await this.getPoolService(), wallet.address, poolAddress);
-
-      if (!positions || positions.length === 0) {
-        return [];
-      }
-
-      // Convert to our position interface
-      const currentPrice = poolInfo.price;
-      const positionInfoList: PositionInfo[] = [];
-
-      for (const position of positions) {
-        // Calculate price range
-        const lowerPrice = position.tickLower ?
-          Math.pow(1.0001, position.tickLower) :
-          position.lowerPrice ? position.lowerPrice.toNumber() : 0;
-
-        const upperPrice = position.tickUpper ?
-          Math.pow(1.0001, position.tickUpper) :
-          position.upperPrice ? position.upperPrice.toNumber() : 0;
-
-        // Get token amounts
-        const baseTokenAmount = position.baseTokenAmount ?
-          position.baseTokenAmount.toNumber() : 0;
-
-        const quoteTokenAmount = position.quoteTokenAmount ?
-          position.quoteTokenAmount.toNumber() : 0;
-
-        // Get fee amounts
-        const baseFeeAmount = position.baseFeeAmount ?
-          position.baseFeeAmount.toNumber() : 0;
-
-        const quoteFeeAmount = position.quoteFeeAmount ?
-          position.quoteFeeAmount.toNumber() : 0;
-
-        // Calculate if in range
-        const inRange = currentPrice >= lowerPrice && currentPrice <= upperPrice;
-
-        // Calculate APR if available
-        let apr = position.apr || 0;
-        if (!apr && position.creationTimestamp) {
-          // If APR is not directly provided, estimate it based on fees and age
-          const ageInDays = Math.max((Date.now() - position.creationTimestamp) / (1000 * 60 * 60 * 24), 1);
-          const valueCollected = (baseFeeAmount * poolInfo.price) + quoteFeeAmount;
-          const positionValue = (baseTokenAmount * poolInfo.price) + quoteTokenAmount;
-
-          if (positionValue > 0) {
-            apr = (valueCollected / positionValue) * (365 / ageInDays) * 100;
-          }
-        }
-
-        positionInfoList.push({
-          positionAddress: position.id,
-          ownerAddress: wallet.address,
-          poolAddress,
-          baseTokenAddress: poolInfo.baseTokenAddress,
-          quoteTokenAddress: poolInfo.quoteTokenAddress,
-          lowerPrice,
-          upperPrice,
-          baseTokenAmount,
-          quoteTokenAmount,
-          baseFeeAmount,
-          quoteFeeAmount,
-          liquidity: position.liquidity ? position.liquidity.toNumber() : 0,
-          inRange,
-          createdAt: position.creationTimestamp || Date.now(),
-          apr
-        });
-      }
-
-      return positionInfoList;
-    } catch (error) {
-      logger.error(`Failed to get positions in pool: ${error.message}`);
-      throw error;
-    }
-  }
-
-  /**
-   * Get information about a specific position
-   * @param positionAddress The position address
-   * @param wallet The wallet
-   * @returns A Promise that resolves to position information
-   */
-  async getPositionInfo(positionAddress: string, wallet: KeyringPair): Promise<PositionInfo> {
-    try {
-      // Get position data from the SDK
-      // @ts-ignore - Generic Method, needs to improve
-      const position = await this.poolServiceGetPosition(positionAddress);
-
-      if (!position) {
-        throw new Error(`Position not found: ${positionAddress}`);
-      }
-
-      // Verify ownership
-      if (position.owner !== wallet.address) {
-        throw new Error('Position not owned by this wallet');
-      }
-
-      // Get pool information
-      const poolAddress = position.poolId;
-      const poolInfo = await this.getPoolInfo(poolAddress);
-      if (!poolInfo) {
-        throw new Error(`Pool not found for position: ${positionAddress}`);
-      }
-
-      // Calculate price range
-      const lowerPrice = position.tickLower ?
-        Math.pow(1.0001, position.tickLower) :
-        position.lowerPrice ? position.lowerPrice.toNumber() : 0;
-
-      const upperPrice = position.tickUpper ?
-        Math.pow(1.0001, position.tickUpper) :
-        position.upperPrice ? position.upperPrice.toNumber() : 0;
-
-      // Get token amounts
-      const baseTokenAmount = position.baseTokenAmount ?
-        position.baseTokenAmount.toNumber() : 0;
-
-      const quoteTokenAmount = position.quoteTokenAmount ?
-        position.quoteTokenAmount.toNumber() : 0;
-
-      // Get fee amounts
-      const baseFeeAmount = position.baseFeeAmount ?
-        position.baseFeeAmount.toNumber() : 0;
-
-      const quoteFeeAmount = position.quoteFeeAmount ?
-        position.quoteFeeAmount.toNumber() : 0;
-
-      // Check if position is in range
-      const inRange = poolInfo.price >= lowerPrice && poolInfo.price <= upperPrice;
-
-      // Calculate APR if available
-      let apr = position.apr || 0;
-      if (!apr && position.creationTimestamp) {
-        const ageInDays = Math.max((Date.now() - position.creationTimestamp) / (1000 * 60 * 60 * 24), 1);
-        const valueCollected = (baseFeeAmount * poolInfo.price) + quoteFeeAmount;
-        const positionValue = (baseTokenAmount * poolInfo.price) + quoteTokenAmount;
-
-        if (positionValue > 0) {
-          apr = (valueCollected / positionValue) * (365 / ageInDays) * 100;
-        }
-      }
-
-      return {
-        positionAddress,
-        ownerAddress: wallet.address,
-        poolAddress,
-        baseTokenAddress: poolInfo.baseTokenAddress,
-        quoteTokenAddress: poolInfo.quoteTokenAddress,
-        lowerPrice,
-        upperPrice,
-        baseTokenAmount,
-        quoteTokenAmount,
-        baseFeeAmount,
-        quoteFeeAmount,
-        liquidity: position.liquidity ? position.liquidity.toNumber() : 0,
-        inRange,
-        createdAt: position.creationTimestamp || Date.now(),
-        apr
-      };
-    } catch (error) {
-      logger.error(`Failed to get position info: ${error.message}`);
-      throw error;
-    }
-  }
-
-  /**
-   * Get the raw position data
-   * @param positionAddress The position address
-   * @param wallet The wallet
-   * @returns A Promise that resolves to the raw position data and info
-   */
-  async getRawPosition(
-    positionAddress: string,
-    wallet: KeyringPair
-  ): Promise<{ position: any; info: any }> {
-    try {
-      // Ensure the instance is ready
-      if (!this.ready()) {
-        await this.init(this.polkadot.network);
-      }
-
-      // Get position and pool data from the SDK
-
-        const position = await this.poolServiceGetPosition(this.poolService, wallet, positionAddress);
-
-      if (!position) {
-        throw new Error(`Position not found: ${positionAddress}`);
-      }
-
-      // Verify ownership
-      if (position.owner !== wallet.address) {
-        throw new Error('Position not owned by this wallet');
-      }
-
-      // Get pool information
-      const poolInfo = await this.poolServiceGetPool(this.poolService, position.poolId);
-
-      return {
-        position: {
-          publicKey: positionAddress,
-          positionData: position
-        },
-        info: {
-          publicKey: position.poolId,
-          data: poolInfo
-        }
-      };
-    } catch (error) {
-      logger.error(`Failed to get raw position: ${error.message}`);
-      throw error;
-    }
-  }
-
-  /**
-   * Get price to bin IDs
-   * @param poolAddress The pool address
-   * @param lowerPrice The lower price
-   * @param upperPrice The upper price
-   * @param padBins Number of bins to pad (optional)
-   * @returns A Promise that resolves to min and max bin IDs
-   */
-  async getPriceToBinIds(
-    poolAddress: string,
-    lowerPrice: number,
-    upperPrice: number,
-    padBins: number = 1
-  ): Promise<{ minBinId: number, maxBinId: number }> {
-    try {
-      // Ensure the instance is ready
-      if (!this.ready()) {
-        await this.init(this.polkadot.network);
-      }
-
-      // Get pool info
-      const poolInfo = await this.getPoolInfo(poolAddress);
-      if (!poolInfo) {
-        throw new Error(`Pool not found: ${poolAddress}`);
-      }
-
-      // Get tick spacing for this pool from the SDK
-      // @ts-ignore - Generic Method, needs to improve
-      /* getPool don't exist in the SDK */
-
-
-      const poolDetails = await this.poolServiceGetPool(this.poolService, poolAddress);
-      const tickSpacing = poolDetails.tickSpacing || 10;
-
-      // Convert prices to ticks
-      const tickLower = Math.floor(Math.log(lowerPrice) / Math.log(1.0001));
-      const tickUpper = Math.ceil(Math.log(upperPrice) / Math.log(1.0001));
-
-      // Adjust to valid tick spacing and add padding
-      const minBinId = Math.floor(tickLower / tickSpacing) * tickSpacing - (padBins * tickSpacing);
-      const maxBinId = Math.ceil(tickUpper / tickSpacing) * tickSpacing + (padBins * tickSpacing);
-
-      return { minBinId, maxBinId };
-    } catch (error) {
-      logger.error(`Failed to get price to bin IDs: ${error.message}`);
-      throw error;
-    }
-  }
-
-  /**
    * Get slippage percentage
    * @returns The slippage percentage
    */
   getSlippagePct(): number {
     return parseFloat(this.config.allowedSlippage);
-  }
-
-  /**
-   * Open a new position
-   * @param wallet The wallet
-   * @param lowerPrice The lower price
-   * @param upperPrice The upper price
-   * @param poolAddress The pool address
-   * @param baseTokenAmount Base token amount (optional)
-   * @param quoteTokenAmount Quote token amount (optional)
-   * @param slippagePct Slippage percentage (optional)
-   * @param strategyType Strategy type (optional)
-   * @returns A Promise that resolves to the open position result
-   */
-  async openPosition(
-    _wallet: KeyringPair,
-    lowerPrice: number,
-    upperPrice: number,
-    poolAddress: string,
-    baseTokenAmount?: number,
-    quoteTokenAmount?: number,
-    _slippagePct?: number,
-    strategyType: PositionStrategyType = PositionStrategyType.Balanced
-  ): Promise<any> {
-    try {
-      // Get pool info
-      const poolInfo = await this.getPoolInfo(poolAddress);
-      if (!poolInfo) {
-        throw new Error(`Pool not found: ${poolAddress}`);
-      }
-
-      // Check token amounts
-      if (!baseTokenAmount && !quoteTokenAmount) {
-        throw new Error('At least one token amount must be provided');
-      }
-
-      // Calculate liquidity distribution based on strategy
-      let baseAmount = baseTokenAmount || 0;
-      let quoteAmount = quoteTokenAmount || 0;
-
-      switch (strategyType) {
-        case PositionStrategyType.BaseHeavy:
-          baseAmount = baseAmount || (quoteAmount / poolInfo.price) * 2;
-          quoteAmount = quoteAmount || (baseAmount * poolInfo.price) / 2;
-          break;
-        case PositionStrategyType.QuoteHeavy:
-          baseAmount = baseAmount || (quoteAmount / poolInfo.price) / 2;
-          quoteAmount = quoteAmount || (baseAmount * poolInfo.price) * 2;
-          break;
-        case PositionStrategyType.Balanced:
-          baseAmount = baseAmount || (quoteAmount / poolInfo.price);
-          quoteAmount = quoteAmount || (baseAmount * poolInfo.price);
-          break;
-        case PositionStrategyType.Imbalanced:
-          // Custom distribution based on price range
-          const priceDiff = upperPrice - lowerPrice;
-          const midPrice = lowerPrice + priceDiff / 2;
-
-          if (poolInfo.price < midPrice) {
-            baseAmount = baseAmount || (quoteAmount / poolInfo.price) * 1.5;
-            quoteAmount = quoteAmount || (baseAmount * poolInfo.price) / 1.5;
-          } else {
-            baseAmount = baseAmount || (quoteAmount / poolInfo.price) / 1.5;
-            quoteAmount = quoteAmount || (baseAmount * poolInfo.price) * 1.5;
-          }
-          break;
-      }
-      // Simulate creating a position
-      // In a real implementation, this would interact with Hydration smart contracts
-      const newPositionAddress = `hydration-position-${Date.now()}`;
-      const signature = `0x${Math.random().toString(16).substring(2, 66)}`;
-      const fee = 0.01;
-
-      logger.info(`Opened position ${newPositionAddress} in pool ${poolAddress} with price range ${lowerPrice.toFixed(4)} - ${upperPrice.toFixed(4)}`);
-
-      return {
-        signature,
-        fee,
-        positionAddress: newPositionAddress,
-        positionRent: 0.05,
-        baseTokenAmountAdded: baseAmount,
-        quoteTokenAmountAdded: quoteAmount
-      };
-    } catch (error) {
-      logger.error(`Failed to open position: ${error.message}`);
-      throw error;
-    }
-  }
-
-  /**
-   * Add liquidity to an existing position
-   * @param wallet The wallet
-   * @param positionAddress The position address
-   * @param baseTokenAmount Base token amount
-   * @param quoteTokenAmount Quote token amount
-   * @param slippagePct Slippage percentage (optional)
-   * @param strategyType Strategy type (optional)
-   * @returns A Promise that resolves to the add liquidity result
-   */
-  async addLiquidity(
-    wallet: KeyringPair,
-    positionAddress: string,
-    baseTokenAmount: number,
-    quoteTokenAmount: number,
-    _slippagePct?: number,
-    _strategyType: PositionStrategyType = PositionStrategyType.Balanced
-  ): Promise<any> {
-    try {
-      // Get position info
-      const positionResult = await this.getRawPosition(positionAddress, wallet);
-      if (!positionResult || !positionResult.position) {
-        throw new Error(`Position not found: ${positionAddress}`);
-      }
-
-      // Check token amounts
-      if (baseTokenAmount <= 0 && quoteTokenAmount <= 0) {
-        throw new Error('At least one token amount must be positive');
-      }
-
-      // Simulate adding liquidity
-      // In a real implementation, this would interact with Hydration smart contracts
-      const signature = `0x${Math.random().toString(16).substring(2, 66)}`;
-      const fee = 0.01;
-
-      logger.info(`Added liquidity to position ${positionAddress}: ${baseTokenAmount.toFixed(4)} base token, ${quoteTokenAmount.toFixed(4)} quote token`);
-
-      return {
-        signature,
-        baseTokenAmountAdded: baseTokenAmount,
-        quoteTokenAmountAdded: quoteTokenAmount,
-        fee
-      };
-    } catch (error) {
-      logger.error(`Failed to add liquidity: ${error.message}`);
-      throw error;
-    }
-  }
-
-  /**
-   * Remove liquidity from a position
-   * @param wallet The wallet
-   * @param positionAddress The position address
-   * @param percentageToRemove Percentage of liquidity to remove
-   * @returns A Promise that resolves to the remove liquidity result
-   */
-  async removeLiquidity(
-    wallet: KeyringPair,
-    positionAddress: string,
-    percentageToRemove: number
-  ): Promise<any> {
-    try {
-      // Validate percentage
-      if (percentageToRemove <= 0 || percentageToRemove > 100) {
-        throw new Error('Percentage to remove must be between 0 and 100');
-      }
-
-      // Get position info
-      const positionInfo = await this.getPositionInfo(positionAddress, wallet);
-
-      // Calculate amounts to remove
-      const baseTokenAmount = positionInfo.baseTokenAmount * (percentageToRemove / 100);
-      const quoteTokenAmount = positionInfo.quoteTokenAmount * (percentageToRemove / 100);
-
-      // Simulate removing liquidity
-      // In a real implementation, this would interact with Hydration smart contracts
-      const signature = `0x${Math.random().toString(16).substring(2, 66)}`;
-      const fee = 0.01;
-
-      logger.info(`Removed ${percentageToRemove}% liquidity from position ${positionAddress}: ${baseTokenAmount.toFixed(4)} base token, ${quoteTokenAmount.toFixed(4)} quote token`);
-
-      return {
-        signature,
-        fee,
-        baseTokenAmountRemoved: baseTokenAmount,
-        quoteTokenAmountRemoved: quoteTokenAmount
-      };
-    } catch (error) {
-      logger.error(`Failed to remove liquidity: ${error.message}`);
-      throw error;
-    }
-  }
-
-  /**
-   * Collect fees from a position
-   * @param wallet The wallet
-   * @param positionAddress The position address
-   * @returns A Promise that resolves to the collect fees result
-   */
-  async collectFees(
-    wallet: KeyringPair,
-    positionAddress: string
-  ): Promise<any> {
-    try {
-      // Get position info
-      const positionInfo = await this.getPositionInfo(positionAddress, wallet);
-
-      // Simulate collecting fees
-      // In a real implementation, this would interact with Hydration smart contracts
-      const signature = `0x${Math.random().toString(16).substring(2, 66)}`;
-      const fee = 0.01;
-
-      logger.info(`Collected fees from position ${positionAddress}: ${positionInfo.baseFeeAmount.toFixed(4)} base token, ${positionInfo.quoteFeeAmount.toFixed(4)} quote token`);
-
-      return {
-        signature,
-        fee,
-        baseFeeAmountCollected: positionInfo.baseFeeAmount,
-        quoteFeeAmountCollected: positionInfo.quoteFeeAmount
-      };
-    } catch (error) {
-      logger.error(`Failed to collect fees: ${error.message}`);
-      throw error;
-    }
-  }
-
-  /**
-   * Close a position
-   * @param wallet The wallet
-   * @param positionAddress The position address
-   * @returns A Promise that resolves to the close position result
-   */
-  async closePosition(
-    wallet: KeyringPair,
-    positionAddress: string
-  ): Promise<any> {
-    try {
-      // Get position info
-      const positionInfo = await this.getPositionInfo(positionAddress, wallet);
-
-      // Simulate removing all liquidity first
-      const removeLiquidityResult = await this.removeLiquidity(
-        wallet,
-        positionAddress,
-        100
-      );
-
-      // Simulate collecting fees
-      const collectFeesResult = await this.collectFees(
-        wallet,
-        positionAddress
-      );
-
-      // Simulate closing the position
-      // In a real implementation, this would interact with Hydration smart contracts
-      const signature = `0x${Math.random().toString(16).substring(2, 66)}`;
-      const fee = 0.01;
-
-      logger.info(`Closed position ${positionAddress}`);
-
-      return {
-        signature,
-        fee: fee + removeLiquidityResult.fee + collectFeesResult.fee,
-        positionRentRefunded: 0.05,
-        baseTokenAmountRemoved: removeLiquidityResult.baseTokenAmountRemoved,
-        quoteTokenAmountRemoved: removeLiquidityResult.quoteTokenAmountRemoved,
-        baseFeeAmountCollected: collectFeesResult.baseFeeAmountCollected,
-        quoteFeeAmountCollected: collectFeesResult.quoteFeeAmountCollected
-      };
-    } catch (error) {
-      logger.error(`Failed to close position: ${error.message}`);
-      throw error;
-    }
   }
 
   /**
@@ -1682,20 +1065,6 @@ export class Hydration {
     };
   }
 
-  /**
-   * Get all pool addresses from the Hydration protocol
-   * @returns Array of pool addresses
-   */
-  public async getPoolAddresses(): Promise<string[]> {
-    try {
-      const pools = await this.poolServiceGetPools(await this.getPoolService(), []);
-      return pools.map(pool => pool.address);
-    } catch (error) {
-      logger.error('Error getting pool addresses:', error);
-      throw error;
-    }
-  }
-
   // Update logging to use external pool info structure
   private logPoolInfo(poolInfo: ExternalPoolInfo) {
     logger.debug('Pool info response:', {
@@ -1802,27 +1171,6 @@ export class Hydration {
   @runWithRetryAndTimeout()
   public poolServiceGetPools(target: PoolService, includeOnly: PoolType[]): Promise<PoolBase[]> {
     return target.getPools(includeOnly);
-  }
-
-  @runWithRetryAndTimeout()
-  public async poolServiceGetPosition(target: PoolService, wallet: any, poolAddress: string) {
-    // TODO: Check if this reference really exists!!!
-    // @ts-ignore
-    return target.getPositions(wallet.address, poolAddress);
-  }
-
-  @runWithRetryAndTimeout()
-  public async poolServiceGetPositions(target: PoolService, wallet: any, poolAddress: string) {
-    // TODO: Check if this reference really exists!!!
-    // @ts-ignore
-    return target.getPositions(wallet.address, poolAddress);
-  }
-
-  @runWithRetryAndTimeout()
-  public poolServiceGetPool(target: PoolService, poolAddress: any) {
-    // TODO: Check if this reference really exists!!!
-    // @ts-ignore
-    return target.getPool(poolAddress);
   }
 
   @runWithRetryAndTimeout()

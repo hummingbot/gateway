@@ -32,14 +32,6 @@ export interface HydrationPoolInfo {
   quoteTokenAmount: number;
 }
 
-export interface BinLiquidity {
-  lowerPrice: number;
-  upperPrice: number;
-  liquidityAmount: number;
-  baseTokenAmount: number;
-  quoteTokenAmount: number;
-}
-
 export interface SwapQuote {
   estimatedAmountIn: number;
   estimatedAmountOut: number;
@@ -62,74 +54,6 @@ export interface SwapRoute {
   percentage: number;
 }
 
-export interface SwapExecutionResult {
-  signature: string;
-  totalInputSwapped: number;
-  totalOutputSwapped: number;
-  fee: number;
-  baseTokenBalanceChange: number;
-  quoteTokenBalanceChange: number;
-  priceImpact: number;
-}
-
-export interface PositionInfo {
-  positionAddress: string;
-  ownerAddress: string;
-  poolAddress: string;
-  baseToken: TokenInfo;
-  quoteToken: TokenInfo;
-  lowerPrice: number;
-  upperPrice: number;
-  baseTokenAmount: number;
-  quoteTokenAmount: number;
-  baseFeeAmount: number;
-  quoteFeeAmount: number;
-  liquidity: number;
-  inRange: boolean;
-  createdAt: number;
-  apr: number;
-}
-
-export interface OpenPositionResult {
-  signature: string;
-  fee: number;
-  positionAddress: string;
-  positionRent: number;
-  baseTokenAmountAdded: number;
-  quoteTokenAmountAdded: number;
-}
-
-export interface AddLiquidityResult {
-  signature: string;
-  baseTokenAmountAdded: number;
-  quoteTokenAmountAdded: number;
-  fee: number;
-}
-
-export interface RemoveLiquidityResult {
-  signature: string;
-  fee: number;
-  baseTokenAmountRemoved: number;
-  quoteTokenAmountRemoved: number;
-}
-
-export interface CollectFeesResult {
-  signature: string;
-  fee: number;
-  baseFeeAmountCollected: number;
-  quoteFeeAmountCollected: number;
-}
-
-export interface ClosePositionResult {
-  signature: string;
-  fee: number;
-  positionRentRefunded: number;
-  baseTokenAmountRemoved: number;
-  quoteTokenAmountRemoved: number;
-  baseFeeAmountCollected: number;
-  quoteFeeAmountCollected: number;
-}
-
 export enum PositionStrategyType {
   Balanced = 0,
   BaseHeavy = 1,
@@ -145,45 +69,3 @@ export interface LiquidityQuote {
   upperPrice: number;
   liquidity: number;
 }
-
-export interface TokenBalance {
-  token: TokenInfo;
-  balance: number;
-}
-
-export interface PoolFeeInfo {
-  fee: number;
-  feeDescription: string;
-  protocolFee: number;
-  isV3: boolean;
-}
-
-export interface PoolSnapshot {
-  timestamp: number;
-  liquidity: number;
-  sqrtPrice: string;
-  tick: number;
-  volume: number;
-  fees: number;
-  tvl: number;
-}
-
-export interface RouteInfo {
-  path: TokenInfo[];
-  pools: string[];
-  inputAmount: number;
-  outputAmount: number;
-  percentage: number;
-}
-
-export interface FeeStrategyParams {
-  feeTier: number;
-  description: string;
-  tickSpacing: number;
-}
-
-export interface HydrationFeeStrategy {
-  id: number;
-  params: FeeStrategyParams;
-}
-

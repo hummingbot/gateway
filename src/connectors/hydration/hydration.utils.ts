@@ -33,6 +33,7 @@ export class Constant {
 }
 
 
+// noinspection JSUnusedGlobalSymbols
 /**
  *
  * @param value
@@ -48,6 +49,7 @@ export const getNotNullOrThrowError = <R>(
     return value as R;
 };
 
+// noinspection JSUnusedGlobalSymbols
 /**
  *
  * @param value
@@ -66,6 +68,7 @@ export const getOrDefault = <R>(value: any, defaultValue: R): R => {
 export const sleep = (milliseconds: number) =>
     new Promise((callback) => setTimeout(callback, milliseconds));
 
+// noinspection JSUnusedGlobalSymbols
 /**
  * Same as Promise.all(items.map(item => task(item))), but it waits for
  * the first {batchSize} promises to finish before starting the next batch.
@@ -109,6 +112,7 @@ export const promiseAllInBatches = async <I, O>(
     return results;
 };
 
+// noinspection JSUnusedGlobalSymbols
 export function* splitInChunks<T>(
     target: T[],
     quantity: number
