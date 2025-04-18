@@ -3,7 +3,7 @@ import {logger} from '../../services/logger';
 import {HydrationConfig} from './hydration.config';
 import {HydrationPoolInfo, LiquidityQuote, PositionStrategyType, SwapQuote, SwapRoute} from './hydration.types';
 import {KeyringPair} from '@polkadot/keyring/types';
-import {ApiPromise, WsProvider} from '@polkadot/api';
+import {ApiPromise, HttpProvider, WsProvider} from '@polkadot/api';
 import {
   BigNumber,
   Hop,
@@ -52,6 +52,7 @@ export class Hydration {
   public config: HydrationConfig.NetworkConfig;
 
   private wsProvider: WsProvider;
+  private httpProvider: HttpProvider;
   private apiPromise: ApiPromise;
   private poolService: PoolService;
 
@@ -1110,6 +1111,14 @@ export class Hydration {
     return isToken1Stable && isToken2Stable;
   }
 
+  public getHttpProvider(): WsProvider {
+    if (!this.httpProvider) {
+      this.httpProvider = new HttpProvider(this.polkadot.config.network.nodeURL);
+    }
+
+    return this.wsProvider;
+  }
+
   public getWsProvider(): WsProvider {
     if (!this.wsProvider) {
       this.wsProvider = new WsProvider(this.polkadot.config.network.nodeURL);
@@ -1118,9 +1127,17 @@ export class Hydration {
     return this.wsProvider;
   }
 
+  public getProvider(): WsProvider | HttpProvider {
+    if (this.polkadot.config.network.nodeURL.startsWith('http')) {
+      return this.getHttpProvider();
+    } else {
+      return this.getWsProvider();
+    }
+  }
+
   public async getApiPromise(): Promise<ApiPromise> {
     if (!this.apiPromise) {
-      this.apiPromise = await ApiPromise.create({ provider: this.getWsProvider() });
+      this.apiPromise = await ApiPromise.create({ provider: this.getProvider() });
     }
 
     return this.apiPromise;
