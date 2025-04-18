@@ -68,8 +68,8 @@ async function executeSwap(
     } as ExecuteSwapResponseType;
   } catch (error) {
     logger.error(`Failed to execute swap: ${error.message}`);
-    if (error.message.includes('not found')) {
-      throw httpNotFound(error.message);
+    if (error?.message?.includes('not found')) {
+      throw httpNotFound(error?.message);
     }
     throw error;
   }

@@ -728,7 +728,7 @@ export class Hydration {
         priceImpact: quote.price
       };
     } catch (error) {
-      logger.error(`Failed to execute swap: ${error.message}`);
+      logger.error(`Failed to execute swap: ${error?.message}`);
       throw error;
     }
   }
