@@ -641,15 +641,6 @@ export class Hydration {
         throw new Error(`Token not found: ${!baseToken ? baseTokenSymbol : quoteTokenSymbol}`);
       }
 
-      // Find token IDs in the Hydration protocol
-      const assets = await this.getAllTokens();
-      const baseTokenId = assets.find(a => a.symbol === baseToken.symbol)?.address;
-      const quoteTokenId = assets.find(a => a.symbol === quoteToken.symbol)?.address;
-
-      if (!baseTokenId || !quoteTokenId) {
-        throw new Error(`Token not supported in Hydration: ${!baseTokenId ? baseToken.symbol : quoteToken.symbol}`);
-      }
-
       // Create the trade
       const amountBN = BigNumber(amount.toString());
       let trade: Trade;
@@ -658,16 +649,16 @@ export class Hydration {
         // @ts-ignore - Ignorando erro de incompatibilidade de API
         trade = await this.tradeRouterGetBestBuy(
           tradeRouter,
-          quoteTokenId,
-          baseTokenId,
+          quoteToken.address,
+          baseToken.address,
           amountBN
         );
       } else {
         // @ts-ignore - Ignorando erro de incompatibilidade de API
         trade = await this.tradeRouterGetBestSell(
           tradeRouter,
-          baseTokenId,
-          quoteTokenId,
+          baseToken.address,
+          quoteToken.address,
           amountBN
         );
       }
@@ -690,10 +681,10 @@ export class Hydration {
       const transaction = trade.toTx(tradeLimit).get<any>();
 
       // Execute the transaction
+      const apiPromise = await this.getApiPromise();
       const txHash = await new Promise<string>((resolve, reject) => {
         // @ts-ignore - Generic Method, needs to improve
         transaction.signAndSend(wallet, async (result: any) => {
-          const apiPromise = await this.getApiPromise();
           if (result.dispatchError) {
             if (result.dispatchError.isModule) {
               const decoded = apiPromise.registry.findMetaError(
