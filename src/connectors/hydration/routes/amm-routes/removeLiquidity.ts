@@ -79,7 +79,7 @@ export async function removeLiquidity(
       }
 
       // Using the GalacticCouncil SDK to prepare the transaction
-      const api = polkadot.api;
+      const api = await polkadot.getApiPromise()
       
       let removeLiquidityTx;
       // Get pool type

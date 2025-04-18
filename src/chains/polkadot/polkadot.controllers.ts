@@ -17,46 +17,10 @@ import { TokenInfo } from '../ethereum/ethereum-base';
 import { logger } from '../../services/logger';
 import { wrapResponse } from '../../services/response-wrapper';
 import { Polkadot } from './polkadot';
-import { runWithRetryAndTimeout } from '../../connectors/hydration/hydration.utils';
 
 export class PolkadotController {
-  
-
-@runWithRetryAndTimeout()
-  private static polkadotStakingInfo(target: Polkadot, req: BalanceRequestType) {
-    return target.getStakingInfo(req.address);
-  }
-
-  @runWithRetryAndTimeout()
-  private static async chainGetTransaction(target: Polkadot, txHash: string) {
-    return target.getTransaction(txHash);
-  }
 
 
-  @runWithRetryAndTimeout()
-  private static async polkadotGetWallet(target: Polkadot, req: BalanceRequestType) {
-    return target.getWallet(req.address);
-  }
-
-  @runWithRetryAndTimeout()
-  private static async polkadotGetBalance(target: Polkadot, wallet: any, tokenSymbols: string[]) {
-    return target.getBalance(wallet, tokenSymbols);
-  }
-
-  @runWithRetryAndTimeout()
-  private static polkadotConfigNetworkNativeCurrencySymbol(target: Polkadot) {
-    return target.config.network.nativeCurrencySymbol;
-  }
-
-  @runWithRetryAndTimeout()
-  private static polkadotConfigNetworkNodeURL(target: Polkadot) {
-    return target.config.network.nodeURL;
-  }
-
-  @runWithRetryAndTimeout()
-  private static polkadotNetwork(polkadot: Polkadot) {
-    return polkadot.network;
-  }
 
   /**
    * Get balances for an address
@@ -69,7 +33,7 @@ export class PolkadotController {
     let wallet;
     
     try {
-      wallet = await this.polkadotGetWallet(polkadot, req);
+      wallet = await polkadot.getWallet(req.address);
     } catch (err) {
       throw new HttpException(
         500,
@@ -78,7 +42,7 @@ export class PolkadotController {
       );
     }
 
-    const balances = await this.polkadotGetBalance(polkadot, wallet, req.tokenSymbols);
+    const balances = await polkadot.getBalance(wallet, req.tokenSymbols);
     return wrapResponse({ balances }, initTime);
   }
 
@@ -93,7 +57,7 @@ export class PolkadotController {
   public static async poll(chain: Polkadot, req: PollRequestType): Promise<PollResponseType> {
     try {
       // Get the transaction details
-      const txResult = await this.chainGetTransaction(chain, req.txHash);
+      const txResult = await chain.getTransaction(req.txHash);
       
       return {
         currentBlock: await chain.getCurrentBlockNumber(),
@@ -156,9 +120,9 @@ export class PolkadotController {
   static async getStatus(polkadot: Polkadot, _req: StatusRequestType): Promise<StatusResponseType> {
     const initTime = Date.now();
     const chain = 'polkadot';
-    const network = this.polkadotNetwork(polkadot);
-    const rpcUrl = this.polkadotConfigNetworkNodeURL(polkadot);
-    const nativeCurrency = this.polkadotConfigNetworkNativeCurrencySymbol(polkadot);
+    const network = polkadot.network;
+    const rpcUrl = polkadot.config.network.nodeURL;
+    const nativeCurrency = polkadot.config.network.nativeCurrencySymbol;
     const currentBlockNumber = await polkadot.getCurrentBlockNumber();
 
     return wrapResponse({
@@ -181,7 +145,7 @@ export class PolkadotController {
     const initTime = Date.now();
     
     try {
-      const stakingInfo = await this.polkadotStakingInfo(polkadot, req);
+      const stakingInfo = await polkadot.getStakingInfo(req.address);
       
       return wrapResponse({
         balances: {
@@ -219,7 +183,7 @@ export class PolkadotController {
       }
 
       // Get wallet
-      const wallet = await this.polkadotGetWallet(polkadot, req);
+      const wallet = await polkadot.getWallet(req.address);
       
       // Perform transfer
       const receipt = await polkadot.transfer(
@@ -259,9 +223,9 @@ export class PolkadotController {
         return wrapResponse({
         chain: 'polkadot',
         network: polkadot.network,
-        rpcUrl: this.polkadotConfigNetworkNodeURL(polkadot),
+        rpcUrl: polkadot.config.network.nodeURL,
         currentBlockNumber: await polkadot.getCurrentBlockNumber(),
-        nativeCurrency: this.polkadotConfigNetworkNativeCurrencySymbol(polkadot)
+        nativeCurrency: polkadot.config.network.nativeCurrencySymbol
       }, initTime);
     } catch (error) {
       logger.error(`Error getting metadata: ${error.message}`);

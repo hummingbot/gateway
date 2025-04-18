@@ -127,7 +127,7 @@ async function addLiquidity(
     const effectiveSlippage = slippagePct ?? hydration.getSlippagePct();
 
     // Using the GalacticCouncil SDK to prepare the transaction
-    const api = polkadot.api;
+    const api = await polkadot.getApiPromise();
     
     let addLiquidityTx;
     const poolType = pool.poolType?.toLowerCase() || POOL_TYPE.XYK; // Default to XYK if type is not provided

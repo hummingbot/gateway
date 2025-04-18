@@ -3,7 +3,7 @@ import {Keyring} from '@polkadot/keyring';
 import {KeyringPair} from '@polkadot/keyring/types';
 import {SubmittableExtrinsic} from '@polkadot/api/types';
 import {ISubmittableResult} from '@polkadot/types/types';
-import {cryptoWaitReady, decodeAddress, encodeAddress, mnemonicGenerate} from '@polkadot/util-crypto';
+import {cryptoWaitReady, decodeAddress, mnemonicGenerate} from '@polkadot/util-crypto';
 import {u8aToHex} from '@polkadot/util';
 import {TokenInfo} from '../ethereum/ethereum-base';
 import {Config, getPolkadotConfig} from './polkadot.config';
@@ -12,7 +12,6 @@ import {HttpException} from '../../services/error-handler';
 import {logger} from '../../services/logger';
 import {TokenListType, walletPath} from '../../services/base';
 import {
-  BatchTransactionOptions,
   FeeEstimate,
   PolkadotAccount,
   StakingInfo,
@@ -26,40 +25,15 @@ import * as crypto from 'crypto';
 import * as fs from 'fs';
 import axios from 'axios';
 import {ConfigManagerCertPassphrase} from '../../services/config-manager-cert-passphrase';
-import {runWithRetryAndTimeout} from '../../connectors/hydration/hydration.utils';
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface PollResponse {
-  network: string;
-  currentBlock: number;
-  txHash: string;
-  txBlock: number;
-  txStatus: number;
-  txData: any | null;
-  fee: number | null;
-  timestamp: number;
-  latency: number;
-  error?: string;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface HydrationTransaction {
-  code: number;
-  message?: string;
-  data: {
-    block_num?: number;
-    fee?: string;
-    success?: boolean;
-    finalized?: boolean;
-    // Add other properties as needed based on actual API response
-  };
-}
+import {runWithRetryAndTimeout} from "../../connectors/hydration/hydration.utils";
 
 /**
  * Main class for interacting with the Polkadot blockchain.
  */
 export class Polkadot {
-  public api: ApiPromise;
+  public wsProvider: WsProvider;
+  public httpProvider: HttpProvider;
+  public apiPromise: ApiPromise;
   public network: string;
   public chain: string = 'polkadot';
   public nativeTokenSymbol: string;
@@ -72,106 +46,13 @@ export class Polkadot {
   public controller: typeof PolkadotController;
 
   /**
-   * Get the native currency symbol for the network
-   * @returns The native currency symbol
-   */
-  @runWithRetryAndTimeout()
-  private configNetworkNativeCurrencySymbol() {
-    return this.config.network.nativeCurrencySymbol;
-  }
-
-  /**
-   * Get the token list source for the network
-   * @returns The token list source
-   */
-  @runWithRetryAndTimeout()
-  private async configNetworkTokenListSource() {
-    return this.config.network.tokenListSource;
-  }
-
-  /**
-   * Get the token list type for the network
-   * @returns The token list type
-   */
-  @runWithRetryAndTimeout()
-  private async configNetworkTokenListType() {
-    return this.config.network.tokenListType;
-  }
-
-  /**
-   * Get the current block number
-   * @returns A Promise that resolves to the current block number
-   */
-  @runWithRetryAndTimeout()
-  private apiRpcChainGetHeader() {
-    return this.api.rpc.chain.getHeader();
-  }
-
-  /**
-   * Get the system account
-   * @param address The address of the account
-   * @returns A Promise that resolves to the system account
-   */
-  @runWithRetryAndTimeout()
-  private async apiQuerySystemAccount(address: string) {
-    return this.api.query.system.account(address);
-  }
-
-  /**
-   * Get the tokens accounts
-   * @param address The address of the account
-   * @param tokenAddress The address of the token
-   * @returns A Promise that resolves to the tokens accounts
-   */
-  @runWithRetryAndTimeout()
-  private async apiQueryTokensAccounts(address: string, tokenAddress: string) {
-    return this.api.query.tokens.accounts(address, tokenAddress);
-  }
-
-  /**
-   * Get the tokens
-   * @returns A Promise that resolves to the tokens
-   */
-  @runWithRetryAndTimeout()
-  private async apiQueryTokens() {
-    return this.api.query.tokens;
-  }
-
-  /**
-   * Get the assets
-   * @returns A Promise that resolves to the assets
-   */
-  @runWithRetryAndTimeout()
-  private async apiQueryAssets() {
-    return this.api.query.assets;
-  }
-
-  /**
-   * Get the transaction URL
-   * @returns A Promise that resolves to the transaction URL
-   */
-  @runWithRetryAndTimeout()
-  private async configNetworkTrasactionURL() {
-    return this.config.network.transactionURL;
-  }
-
-  /**
-   * Get the node URL
-   * @returns A Promise that resolves to the node URL
-   */
-  @runWithRetryAndTimeout()
-  private configNetworkNodeURL() {
-    return this.config.network.nodeURL;
-  }
-
-  /**
    * Private constructor - use getInstance instead
    * @param network The network to connect to
    */
   private constructor(network: string) {
     this.network = network;
     this.config = getPolkadotConfig('polkadot', network);
-    this.nativeTokenSymbol = this.configNetworkNativeCurrencySymbol();
+    this.nativeTokenSymbol = this.config.network.nativeCurrencySymbol;
     this.controller = PolkadotController;
 
     const { Keyring } = require('@polkadot/keyring');
@@ -207,20 +88,12 @@ export class Polkadot {
         type: 'sr25519',
       });
 
-      // Connect to the node
-      const provider = this.configNetworkNodeURL().startsWith('http')
-        ? new HttpProvider(this.configNetworkNodeURL())
-        : new WsProvider(this.configNetworkNodeURL());
-
-      this.api = await ApiPromise.create({ provider: provider });
-
-      // Wait for API to be ready
-      await this.api.isReady;
+      (await this.getApiPromise()).isReady;
 
       // Load token list
       await this.getTokenList(
-        await this.configNetworkTokenListSource(),
-        await this.configNetworkTokenListType(),
+        this.config.network.tokenListSource,
+        this.config.network.tokenListType
       );
 
       logger.info(`Polkadot initialized for network: ${this.network}`);
@@ -242,8 +115,8 @@ export class Polkadot {
   ): Promise<TokenInfo[]> {
     try {
       if (!tokenListSource || !tokenListType) {
-        tokenListSource = await this.configNetworkTokenListSource();
-        tokenListType = await this.configNetworkTokenListType();
+        tokenListSource = this.config.network.tokenListSource;
+        tokenListType = this.config.network.tokenListType;
       }
 
       await this.loadTokens(tokenListSource, tokenListType);
@@ -525,7 +398,8 @@ export class Polkadot {
       );
 
       if (nativeToken) {
-        const accountInfo = await this.apiQuerySystemAccount(address);
+        // TODO: Verify if this method needs externalization!!!
+        const accountInfo = await this.apiPromiseQuerySystemAccount(await this.getApiPromise(), address);
         // @ts-ignore - Handle type issues with accountInfo structure
         const freeBalance = accountInfo.data.balance || accountInfo.data.free.toString();
         // @ts-ignore - Handle type issues with accountInfo structure
@@ -544,20 +418,18 @@ export class Polkadot {
         if (token.symbol === this.nativeTokenSymbol) continue;
         try {
           // Check if tokens module exists
-          if (this.apiQueryTokens && this.apiQueryTokensAccounts) {
-            const assetBalance = await this.apiQueryTokensAccounts(
-              address,
-              token.address,
-            );
+          if ((await this.getApiPromise()).query.tokens && (await this.getApiPromise()).query.tokens.accounts) {
+            const assetBalance = await this.apiPromiseQueryTokensAccounts(await this.getApiPromise(), address, token.address);
             if (assetBalance) {
               const free = assetBalance.free?.toString() || '0';
               balances[token.symbol] = this.fromBaseUnits(free, token.decimals);
             } else {
               balances[token.symbol] = 0;
             }
-          } else if (this.apiQueryAssets && this.apiQueryTokensAccounts) {
+          } else if ((await this.getApiPromise()).query.assets && (await this.getApiPromise()).query.assets.account) {
             // Alternative assets pallet approach if available
-            const assetBalance = await this.apiQueryTokensAccounts(
+            const assetBalance = await this.apiPromiseQueryAssetsAccount(
+              (await this.getApiPromise()),
               token.address,
               address,
             );
@@ -676,7 +548,7 @@ export class Polkadot {
         const body = { hash: txHash };
 
         const response = await axios.post(
-          await this.configNetworkTrasactionURL(),
+          this.config.network.transactionURL,
           body,
           { headers },
         );
@@ -735,45 +607,16 @@ export class Polkadot {
   }
 
   /**
-   * Get transaction status code
-   * @param txData Transaction data
-   * @returns A Promise that resolves to the transaction status code
-   */
-  async getTransactionStatusCode(
-    txData: any | null,
-  ): Promise<TransactionStatus> {
-    if (!txData) {
-      return TransactionStatus.NOT_FOUND;
-    }
-
-    return txData.status as TransactionStatus;
-  }
-
-  /**
    * Get the current block number
    * @returns A Promise that resolves to the current block number
    */
 
   async getCurrentBlockNumber(): Promise<number> {
     try {
-      const header = await this.apiRpcChainGetHeader();
+      const header = await this.apiPromiseRpcChainGetHeader(await this.getApiPromise());
       return header.number.toNumber();
     } catch (error) {
       logger.error(`Failed to get current block number: ${error.message}`);
-      throw error;
-    }
-  }
-
-  /**
-   * Close the connection to the node
-   */
-  async close() {
-    try {
-      if (this.api) {
-        await this.api.disconnect();
-      }
-    } catch (error) {
-      logger.error(`Failed to close connection: ${error.message}`);
       throw error;
     }
   }
@@ -798,8 +641,8 @@ export class Polkadot {
 
       // Create transfer extrinsic
       const tx = options?.keepAlive
-        ? this.api.tx.balances.transferKeepAlive(recipient, amount)
-        : this.api.tx.balances.transfer(recipient, amount);
+        ? (await this.getApiPromise()).tx.balances.transferKeepAlive(recipient, amount)
+        : (await this.getApiPromise()).tx.balances.transfer(recipient, amount);
 
       // Add tip if specified
       if (options?.tip) {
@@ -876,7 +719,7 @@ export class Polkadot {
             const status = TransactionStatus.SUCCESS;
 
             // Get block information
-            const blockInfo = await this.api.rpc.chain.getBlock(blockHash);
+            const blockInfo = await this.apiPromise.rpc.chain.getBlock(blockHash);
             const blockNumber = blockInfo.block.header.number.toNumber();
 
             // Get transaction fee if possible
@@ -942,56 +785,6 @@ export class Polkadot {
   }
 
   /**
-   * Create a batch of transactions
-   * @param sender The sender keyring pair
-   * @param txs Array of transactions to batch
-   * @param options Optional batch options
-   * @returns A Promise that resolves to a submittable transaction
-   */
-  async createBatchTransaction(
-    sender: KeyringPair,
-    txs: SubmittableExtrinsic<'promise'>[],
-    options?: BatchTransactionOptions
-  ): Promise<SubmittableTransaction> {
-    try {
-      if (txs.length === 0) {
-        throw new Error('No transactions provided for batch');
-      }
-
-      // Create batch transaction
-      const batchTx = options?.atomicBatch
-        ? this.api.tx.utility.batchAll(txs)
-        : this.api.tx.utility.batch(txs);
-
-      // Add tip if specified
-      if (options?.tip) {
-        // @ts-ignore - Generic Method, needs to improve
-        batchTx.signFakeSignature(sender, { tip: options.tip });
-      } else {
-        // @ts-ignore - Generic Method, needs to improve
-        batchTx.signFakeSignature(sender);
-      }
-
-      // Get fee estimate
-      const feeInfo = await batchTx.paymentInfo(sender);
-
-      const feeEstimate: FeeEstimate = {
-        estimatedFee: feeInfo.partialFee.toString(),
-        partialFee: feeInfo.partialFee.toString(),
-        weight: feeInfo.weight.toString()
-      };
-
-      return {
-        tx: batchTx as SubmittableExtrinsic<'promise', ISubmittableResult>,
-        feeEstimate
-      };
-    } catch (error) {
-      logger.error(`Failed to create batch transaction: ${error.message}`);
-      throw error;
-    }
-  }
-
-  /**
    * Get staking information for an account
    * @param address The account address
    * @returns A Promise that resolves to staking information
@@ -1002,7 +795,7 @@ export class Polkadot {
       this.validatePolkadotAddress(address);
 
       // Get staking information
-      const stakingInfo = await this.api.derive.staking.account(address);
+      const stakingInfo = await this.apiPromise.derive.staking.account(address);
 
       // Format results
       const result: StakingInfo = {
@@ -1024,8 +817,8 @@ export class Polkadot {
       }
 
       // Get validator info if available
-      if (address in (await this.api.query.staking.validators.entries())) {
-        const validatorInfo = await this.api.query.staking.validators(address);
+      if (address in (await this.apiPromise.query.staking.validators.entries())) {
+        const validatorInfo = await this.apiPromise.query.staking.validators(address);
         result.validators.push({
           address,
           value: stakingInfo.stakingLedger.active.toString(),
@@ -1048,7 +841,7 @@ export class Polkadot {
    */
   async getPalletMetadata(palletName: string): Promise<any> {
     try {
-      const metadata = this.api.runtimeMetadata;
+      const metadata = this.apiPromise.runtimeMetadata;
       const palletIndex = metadata.asLatest.pallets.findIndex(
         (p) => p.name.toString() === palletName,
       );
@@ -1062,10 +855,10 @@ export class Polkadot {
       return {
         name: pallet.name.toString(),
         index: palletIndex,
-        calls: pallet.calls ? this.api.tx[palletName] : [],
-        constants: this.api.consts[palletName],
-        storage: this.api.query[palletName],
-        errors: this.api.errors[palletName]
+        calls: pallet.calls ? this.apiPromise.tx[palletName] : [],
+        constants: this.apiPromise.consts[palletName],
+        storage: this.apiPromise.query[palletName],
+        errors: this.apiPromise.errors[palletName]
       };
     } catch (error) {
       logger.error(`Failed to get pallet metadata: ${error.message}`);
@@ -1107,102 +900,55 @@ export class Polkadot {
     }
   }
 
-  /**
-   * Extract balance change and fee from a transaction
-   * @param txHash The transaction hash
-   * @param address The account address
-   * @returns A Promise that resolves to balance change and fee
-   */
-  async extractBalanceChangeAndFee(
-    txHash: string,
-    _address: string
-  ): Promise<{ balanceChange: number; fee: number }> {
-    try {
-      // Get transaction details
-      const txDetails = await this.getTransaction(txHash);
+  public getHttpProvider(): WsProvider {
+    if (!this.httpProvider) {
+      this.httpProvider = new HttpProvider(this.config.network.nodeURL);
+    }
 
-      if (!txDetails) {
-        throw new Error(`Transaction not found: ${txHash}`);
-      }
+    return this.wsProvider;
+  }
 
-      // Get fee if available
-      const fee = txDetails.fee || 0;
+  public getWsProvider(): WsProvider {
+    if (!this.wsProvider) {
+      this.wsProvider = new WsProvider(this.config.network.nodeURL);
+    }
 
-      // Calculate balance change (would require looking at events)
-      // This is a simplified implementation
-      const balanceChange = 0;
+    return this.wsProvider;
+  }
 
-      return { balanceChange, fee };
-    } catch (error) {
-      logger.error(
-        `Failed to extract balance change and fee: ${error.message}`
-      );
-      throw error;
+  public getProvider(): WsProvider | HttpProvider {
+    if (this.config.network.nodeURL.startsWith('http')) {
+      return this.getHttpProvider();
+    } else {
+      return this.getWsProvider();
     }
   }
 
-  /**
-   * Add a wallet from a private key or mnemonic
-   * @param privateKey The private key or mnemonic to add
-   * @returns A Promise that resolves to the keyring pair and address
-   */
-  async addWalletFromPrivateKey(privateKey: string) {
-    try {
-      // Try adding the wallet in different formats
-      let keyPair;
-
-      try {
-        // Try as URI (seed/private key)
-        keyPair = this._keyring.addFromUri(privateKey);
-      } catch (e) {
-        // If that fails, try as mnemonic
-        try {
-          keyPair = this._keyring.addFromMnemonic(privateKey);
-        } catch (e2) {
-          throw new Error(`Unable to add wallet: ${e2.message}`);
-        }
-      }
-
-      // Format the address in SS58 format for the current network
-      const formattedAddress = encodeAddress(keyPair.publicKey);
-
-      // Return the formatted address along with the keyring pair
-      return {
-        keyPair,
-        address: formattedAddress
-      };
-    } catch (error) {
-      logger.error(`Failed to add wallet from private key: ${error.message}`);
-      throw error;
+  public async getApiPromise(): Promise<ApiPromise> {
+    if (!this.apiPromise) {
+      this.apiPromise = await ApiPromise.create({ provider: this.getProvider() });
     }
+
+    return this.apiPromise;
   }
 
-  /**
-   * Save wallet to file system
-   * @param address The SS58-encoded address
-   * @param encryptedPrivateKey The encrypted private key
-   * @returns A Promise that resolves when the wallet is saved
-   */
-  async saveWalletToFile(
-    address: string,
-    encryptedPrivateKey: string
-  ): Promise<void> {
-    try {
-      // File path follows pattern: conf/wallets/polkadot/<address>.json
-      const walletPath = `conf/wallets/polkadot`;
+  @runWithRetryAndTimeout()
+  public async apiPromiseQuerySystemAccount(target: ApiPromise, address: string) {
+    return target.query.system.account(address);
+  }
 
-      // Create directory if it doesn't exist
-      if (!fs.existsSync(walletPath)) {
-        fs.mkdirSync(walletPath, { recursive: true });
-      }
+  @runWithRetryAndTimeout()
+  public async apiPromiseRpcChainGetHeader(target: ApiPromise) {
+    return target.rpc.chain.getHeader();
+  }
 
-      // Write the encrypted private key to the file
-      fs.writeFileSync(`${walletPath}/${address}.json`, encryptedPrivateKey);
+  @runWithRetryAndTimeout()
+  public async apiPromiseQueryAssetsAccount(target: ApiPromise, arg1: string, arg2: string) {
+    return target.query.assets.account(arg1, arg2);
+  }
 
-      logger.info(`Wallet saved successfully: ${address}`);
-    } catch (error) {
-      logger.error(`Failed to save wallet to file: ${error.message}`);
-      throw error;
-    }
+  @runWithRetryAndTimeout()
+  public async apiPromiseQueryTokensAccounts(target: ApiPromise, arg1: string, arg2: string) {
+    return target.query.tokens.accounts(arg1, arg2);
   }
 }

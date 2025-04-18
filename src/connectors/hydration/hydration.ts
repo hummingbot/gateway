@@ -18,6 +18,8 @@ import {
 } from '@galacticcouncil/sdk';
 import {cryptoWaitReady} from '@polkadot/util-crypto';
 import {runWithRetryAndTimeout} from './hydration.utils';
+import type {BN} from "@polkadot/util";
+import {RegistryError} from '@polkadot/types/types/registry';
 
 // Add interface for extended pool data
 interface ExtendedPoolBase extends Omit<PoolBase, 'tokens'> {
@@ -81,7 +83,7 @@ export class Hydration {
 
   private wsProvider: WsProvider;
   private apiPromise: ApiPromise;
-private poolService: PoolService;
+  private poolService: PoolService;
 
   // Cache pool and position data
   private poolCache: Map<string, HydrationPoolInfo> = new Map();
@@ -130,14 +132,7 @@ private poolService: PoolService;
       // Wait for crypto libraries to be ready
       await cryptoWaitReady();
 
-      // Create API connection
-      const wsProvider = new WsProvider(this.polkadot.config.network.nodeURL);
-      this.apiPromise = await ApiPromise.create({ provider: wsProvider });
-
-      // Initialize Hydration services
-      // @ts-ignore - Ignorando erro de incompatibilidade de versões do ApiPromise
-      this.poolService = new PoolService(this.apiPromise);
-      await this.poolService.syncRegistry();
+      await this.getPoolService();
 
       // Mark instance as ready
       this._ready = true;
@@ -203,8 +198,7 @@ private poolService: PoolService;
    */
   public async getAllTokens() {
     if (!this.ready()) {
-      const network = await this.polkadot.network;
-      await this.init(network);
+      await this.init(this.polkadot.network);
     }
     return this.polkadot.tokenList;
   }
@@ -503,12 +497,14 @@ private poolService: PoolService;
     slippagePct?: number
   ): Promise<SwapQuote> {
     try {
+      const tradeRouter = await this.getNewTradeRouter();
+
       // Ensure the instance is ready
       if (!this.ready()) {
         await this.init(this.polkadot.network);
       }
 
-      const tradeRouter = await this.getNewTradeRouter();
+
 
       // Get token info
       const baseToken = await this.polkadot.getToken(baseTokenSymbol);
@@ -694,6 +690,7 @@ private poolService: PoolService;
     slippagePct?: number
   ): Promise<any> {
     try {
+      const tradeRouter = await this.getNewTradeRouter();
 
       // Ensure the instance is ready
       if (!this.ready()) {
@@ -734,6 +731,7 @@ private poolService: PoolService;
       if (side === 'BUY') {
         // @ts-ignore - Ignorando erro de incompatibilidade de API
         trade = await this.tradeRouterGetBestBuy(
+          tradeRouter,
           quoteTokenId,
           baseTokenId,
           amountBN
@@ -741,6 +739,7 @@ private poolService: PoolService;
       } else {
         // @ts-ignore - Ignorando erro de incompatibilidade de API
         trade = await this.tradeRouterGetBestSell(
+          tradeRouter,
           baseTokenId,
           quoteTokenId,
           amountBN
@@ -767,10 +766,12 @@ private poolService: PoolService;
       // Execute the transaction
       const txHash = await new Promise<string>((resolve, reject) => {
         // @ts-ignore - Generic Method, needs to improve
+        const apiPromise = await this.getApiPromise();
         transaction.signAndSend(wallet, (result: any) => {
           if (result.dispatchError) {
             if (result.dispatchError.isModule) {
-              const decoded = this.apiPromise.registry.findMetaError(
+              const decoded = this.apiPromiseRegistryFindMetaError(
+                apiPromise,
                 result.dispatchError.asModule
               );
               const { name } = decoded;
@@ -829,7 +830,7 @@ private poolService: PoolService;
 
       // Get positions for this wallet from the SDK
       /* getPositions don't exist in the SDK */
-      const positions = await this.poolServiceGetPosition(await this.getPoolService(), wallet.address, poolAddress);
+      const positions = await this.poolServiceGetPositions(await this.getPoolService(), wallet.address, poolAddress);
 
       if (!positions || positions.length === 0) {
         return [];
@@ -1776,6 +1777,20 @@ private poolService: PoolService;
   }
 
   @runWithRetryAndTimeout()
+  public apiPromiseRegistryFindMetaError(
+    target: ApiPromise,
+    errorIndex: Uint8Array | {
+      error: BN;
+      index: BN;
+    } | {
+      error: BN | Uint8Array;
+      index: BN;
+    }
+  ): RegistryError {
+    return target.registry.findMetaError(errorIndex);
+  }
+
+  @runWithRetryAndTimeout()
   public poolServiceBuildBuyTx(target: PoolService, assetIn: string, assetOut: string, amountOut: BigNumber, maxAmountIn: BigNumber, route: Hop[]): Transaction {
     return target.buildBuyTx(assetIn, assetOut, amountOut, maxAmountIn, route);
   }
@@ -1790,17 +1805,14 @@ private poolService: PoolService;
   }
 
   @runWithRetryAndTimeout()
-  public async tradeRouterGetBestSell(target: TradeRouter, assetIn: string, assetOut: string, amountIn: BigNumber | string | number): Promise<Trade> {
-    return target.getBestSell(assetIn, assetOut, amountIn);
-  }
-
-  @runWithRetryAndTimeout()
-  public async tradeRouterGetBestBuy(target: TradeRouter, assetIn: string, assetOut: string, amountIn: BigNumber | string | number): Promise<Trade> {
-    return target.getBestBuy(assetIn, assetOut, amountIn);
-  }
-
-  @runWithRetryAndTimeout()
   public async poolServiceGetPosition(target: PoolService, wallet: any, poolAddress: string) {
+    // TODO: Check if this reference really exists!!!
+    // @ts-ignore
+    return target.getPositions(wallet.address, poolAddress);
+  }
+
+  @runWithRetryAndTimeout()
+  public async poolServiceGetPositions(target: PoolService, wallet: any, poolAddress: string) {
     // TODO: Check if this reference really exists!!!
     // @ts-ignore
     return target.getPositions(wallet.address, poolAddress);
@@ -1814,8 +1826,12 @@ private poolService: PoolService;
   }
 
   @runWithRetryAndTimeout()
-  public async getTokenPoolDataBaseToken(target: Polkadot, poolData: PoolBase) {
-    return target.getToken(poolData.tokens[0].symbol);
+  public async tradeRouterGetBestSell(target: TradeRouter, assetIn: string, assetOut: string, amountIn: BigNumber | string | number): Promise<Trade> {
+    return target.getBestSell(assetIn, assetOut, amountIn);
   }
 
+  @runWithRetryAndTimeout()
+  public async tradeRouterGetBestBuy(target: TradeRouter, assetIn: string, assetOut: string, amountOut: BigNumber | string | number): Promise<Trade> {
+    return target.getBestBuy(assetIn, assetOut, amountOut);
+  }
 }
