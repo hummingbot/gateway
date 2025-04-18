@@ -55,7 +55,6 @@ export class Polkadot {
     this.nativeTokenSymbol = this.config.network.nativeCurrencySymbol;
     this.controller = PolkadotController;
 
-    const { Keyring } = require('@polkadot/keyring');
     this._keyring = new Keyring({ type: 'sr25519' });
   }
 
@@ -81,7 +80,7 @@ export class Polkadot {
       logger.info(`Initializing Polkadot for network: ${this.network}`);
 
       // Wait for crypto to be ready
-      await cryptoWaitReady();
+      await this.utilCryptoWaitReady();
 
       // Initialize keyring
       this._keyring = new Keyring({
@@ -145,12 +144,13 @@ export class Polkadot {
       let tokensData: any[] = [];
 
       if (tokenListType === 'URL') {
-        const response = await axios.get(tokenListSource);
+        const response = await this.axiosGet(tokenListSource);
         tokensData = response.data || [];
       } else {
-        const data = await fs.promises.readFile(tokenListSource, {
+        const fileContent = await this.fsReadFile(tokenListSource, {
           encoding: 'utf8',
         });
+        const data = fileContent.toString();
         const parsed = JSON.parse(data);
         tokensData = parsed || [];
       }
@@ -272,10 +272,8 @@ export class Polkadot {
         const walletFile = `${path}/${address}.json`;
 
         // Read encrypted mnemonic from file
-        const encryptedMnemonic = await fs.promises.readFile(
-          walletFile,
-          'utf8',
-        );
+        const fileContent = await this.fsReadFile(walletFile, 'utf8');
+        const encryptedMnemonic = fileContent.toString();
 
         // Get passphrase using ConfigManagerCertPassphrase
         const passphrase = ConfigManagerCertPassphrase.readPassphrase();
@@ -547,7 +545,7 @@ export class Polkadot {
         const headers = { 'Content-Type': 'application/json' };
         const body = { hash: txHash };
 
-        const response = await axios.post(
+        const response = await this.axiosPost(
           this.config.network.transactionURL,
           body,
           { headers },
@@ -929,10 +927,20 @@ export class Polkadot {
 
   public async getApiPromise(): Promise<ApiPromise> {
     if (!this.apiPromise) {
-      this.apiPromise = await ApiPromise.create({ provider: this.getProvider() });
+      this.apiPromise = await this.apiPromiseCreate({ provider: this.getProvider() });
     }
 
     return this.apiPromise;
+  }
+
+  @runWithRetryAndTimeout()
+  public async apiPromiseCreate(options: any): Promise<ApiPromise> {
+    return ApiPromise.create(options);
+  }
+
+  @runWithRetryAndTimeout()
+  public async utilCryptoWaitReady(): Promise<boolean> {
+    return cryptoWaitReady();
   }
 
   @runWithRetryAndTimeout()
@@ -1013,5 +1021,20 @@ export class Polkadot {
   @runWithRetryAndTimeout()
   public async submittableExtrinsicPaymentInfo(target: any, sender: KeyringPair) {
     return target.paymentInfo(sender);
+  }
+
+  @runWithRetryAndTimeout()
+  public async fsReadFile(path: string, options?: { encoding: BufferEncoding } | BufferEncoding): Promise<string | Buffer> {
+    return fs.promises.readFile(path, options as any);
+  }
+
+  @runWithRetryAndTimeout()
+  public async axiosGet(url: string): Promise<any> {
+    return axios.get(url);
+  }
+
+  @runWithRetryAndTimeout()
+  public async axiosPost(url: string, data: any, config?: any): Promise<any> {
+    return axios.post(url, data, config);
   }
 }
