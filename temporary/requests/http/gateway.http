@@ -105,6 +105,17 @@ Content-Type: application/json
 
 ###
 
+# GET /<chain>/estimate-gas
+GET {{httpProtocol}}://{{host}}:{{port}}/{{chain}}/estimateGas
+Content-Type: application/json
+
+{
+  "network": "{{network}}",
+  "gasLimit": "{{gasLimit}}"
+}
+
+###
+
 # ===================== TRANSACTION ROUTES =====================
 
 # POST /{{chain}}/poll - Poll for transaction status
