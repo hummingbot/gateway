@@ -269,6 +269,7 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
               const tvl = baseTokenAmount * poolPrice + quoteTokenAmount;
 
               return {
+                ...pool,
                 address: pool.address,
                 type: pool.type,
                 tokens: [baseTokenSymbol, quoteTokenSymbol],
@@ -277,7 +278,7 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
                 price: poolPrice,
                 volume: 0, // ainda não disponível
                 tvl: tvl,
-                apr: 0 // ainda não disponível
+                apr: 0, // ainda não disponível
               };
             } catch (error) {
               logger.error(`Error processing pool ${pool?.address}: ${error.message}`);

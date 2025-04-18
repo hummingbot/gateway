@@ -72,7 +72,7 @@ export async function removeLiquidity(
       }
 
       // TODO Important: verify how this calculation needs to be done!!!
-      const liquidityToRemove = new BigNumber(percentageToRemove * Math.pow(10, baseAsset.decimals));
+      const liquidityToRemove = new BigNumber(percentageToRemove * Math.pow(10, 18));
 
       if (liquidityToRemove.lte(0)) {
         throw httpBadRequest('Calculated liquidity to remove is zero or negative');
@@ -117,18 +117,12 @@ export async function removeLiquidity(
           // For Stableswap pools
           // We need to specify which assets we want to receive
           const assets = [
-            { assetId: baseAsset.address, amount: '0' }, // Ask for minimum amount
-            { assetId: quoteAsset.address, amount: '0' }  // System will calculate actual amounts
+            { assetId: baseAsset.address, amount: 0 }, // Ask for minimum amount
+            { assetId: quoteAsset.address, amount: 0 }  // System will calculate actual amounts
           ];
           
-          // Convert poolId to number for stableswap
-          const numericPoolId = parseInt(poolAddress);
-          if (isNaN(numericPoolId)) {
-            throw httpBadRequest(`Invalid pool ID for stableswap: ${poolAddress}`);
-          }
-          
           removeLiquidityTx = apiPromise.tx.stableswap.removeLiquidity(
-            numericPoolId, // Pool ID must be a number (u32)
+            pool.id,
             liquidityToRemove.toString(),
             assets
           );
