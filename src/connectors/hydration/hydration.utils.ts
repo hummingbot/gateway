@@ -3,9 +3,10 @@
  *
  */
 export class Constant {
-    static defaultTimeout = new Constant('Default Timeout', 'Default timeout.', 60);
+    // TODO: revert to 60s!!!
+    static defaultTimeout = new Constant('Default Timeout', 'Default timeout.', 999);
     static defaultMaxNumberOfRetries = new Constant('Default Max Number of Retries', 'Default max number of retries.', 3);
-    static defaultDelayDelayBetweenRetries = new Constant('Default Delay Between Retries', 'Default delay between retries.', 5);
+    static defaultDelayBetweenRetries = new Constant('Default Delay Between Retries', 'Default delay between retries.', 5);
     static defaultBatchSize = new Constant('Default Batch Size', 'Default batch size.', 100);
     static defaultDelayBetweenBatches = new Constant('Default Delay Between Batches', 'Default delay between batches.', 5);
 
@@ -139,12 +140,11 @@ export function runWithRetryAndTimeout(
     }
 ): MethodDecorator {
     const {
-        maxRetries = 3,
-        delayBetweenRetries = 1,
-        timeout = 60,
+        maxRetries = Constant.defaultMaxNumberOfRetries.getValueAs<number>(),
+        delayBetweenRetries = Constant.defaultDelayBetweenRetries.getValueAs<number>(),
+        timeout = Constant.defaultTimeout.getValueAs<number>(),
         timeoutMessage = 'Timeout exceeded.'
     } = options || {};
-
     return function (
         target: Object,
         propertyKey: string | symbol,
