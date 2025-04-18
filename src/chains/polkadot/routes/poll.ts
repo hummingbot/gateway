@@ -1,29 +1,21 @@
-import {FastifyInstance, FastifyPluginAsync} from 'fastify';
-import {Polkadot} from '../polkadot';
-import {PollRequestSchema, PollRequestType, PollResponseSchema, PollResponseType} from '../../../schemas/chain-schema';
-import {HttpException} from '../../../services/error-handler';
+import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { Polkadot } from '../polkadot';
+import { PolkadotPollRequest, PolkadotPollResponse, PolkadotPollRequestSchema, PolkadotPollResponseSchema } from '../polkadot.types';
+import { HttpException } from '../../../services/error-handler';
 
 /**
- * Polls for the status of a Polkadot transaction
- * 
- * Checks the current status of a transaction identified by its hash.
- * Returns information including:
- * - Current block number
- * - Transaction inclusion block (if found)
- * - Transaction status (not found, pending, success, failed)
- * - Transaction data (if available)
- * - Transaction fee (if available)
+ * Polls transaction status on the Polkadot network
  * 
  * @param fastify Fastify instance
  * @param network Network identifier (e.g., 'mainnet', 'westend')
- * @param txHash Transaction hash to check
+ * @param txHash Transaction hash to poll
  * @returns Transaction status information
  */
 export async function pollPolkadotTransaction(
   _fastify: FastifyInstance,
   network: string,
   txHash: string
-): Promise<PollResponseType> {
+): Promise<PolkadotPollResponse> {
   if (!network) {
     throw new HttpException(400, 'Network parameter is required', -1);
   }
@@ -41,24 +33,24 @@ export async function pollPolkadotTransaction(
  */
 export const pollRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{
-    Body: PollRequestType;
-    Reply: PollResponseType;
+    Body: PolkadotPollRequest;
+    Reply: PolkadotPollResponse;
   }>(
     '/poll',
     {
       schema: {
-        description: 'Poll for transaction status',
+        description: 'Poll transaction status on Polkadot network',
         tags: ['polkadot'],
-        body: PollRequestSchema,
+        body: PolkadotPollRequestSchema,
         response: {
-          200: PollResponseSchema
+          200: PolkadotPollResponseSchema
         }
       }
     },
     async (request) => {
       return await pollPolkadotTransaction(
-        fastify, 
-        request.body.network, 
+        fastify,
+        request.body.network,
         request.body.txHash
       );
     }

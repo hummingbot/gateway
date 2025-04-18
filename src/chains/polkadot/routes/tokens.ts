@@ -1,31 +1,36 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { Polkadot } from '../polkadot';
-import { TokensRequestType, TokensResponseType, TokensRequestSchema, TokensResponseSchema } from '../../../schemas/chain-schema';
+import { PolkadotTokensRequest, PolkadotTokensResponse, PolkadotTokensRequestSchema, PolkadotTokensResponseSchema } from '../polkadot.types';
 import { HttpException } from '../../../services/error-handler';
 
 /**
- * Retrieves token information for Polkadot networks
- * 
- * This function gets a list of tokens supported by the specified Polkadot network.
- * It can optionally filter by specific token symbols if provided.
+ * Retrieves token information from the Polkadot network
  * 
  * @param fastify Fastify instance
  * @param network Network identifier (e.g., 'mainnet', 'westend')
- * @param tokenSymbols Optional filter for specific token symbols
- * @returns Token information response
+ * @param tokenSymbols Optional array or string of token symbols to filter by
+ * @returns Token information for the requested tokens
  */
 export async function getPolkadotTokens(
   _fastify: FastifyInstance,
   network: string,
   tokenSymbols?: string[] | string
-): Promise<TokensResponseType> {
+): Promise<PolkadotTokensResponse> {
   if (!network) {
     throw new HttpException(400, 'Network parameter is required', -1);
   }
   
   const polkadot = await Polkadot.getInstance(network);
   const tokens = await polkadot.getTokensWithSymbols(tokenSymbols);
-  return { tokens };
+  
+  return {
+    tokens: tokens.map(token => ({
+      symbol: token.symbol,
+      address: token.address,
+      decimals: token.decimals,
+      name: token.name
+    }))
+  };
 }
 
 /**
@@ -33,17 +38,17 @@ export async function getPolkadotTokens(
  */
 export const tokensRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
-    Querystring: TokensRequestType;
-    Reply: TokensResponseType;
+    Querystring: PolkadotTokensRequest;
+    Reply: PolkadotTokensResponse;
   }>(
     '/tokens',
     {
       schema: {
-        description: 'Get list of supported Polkadot tokens with their addresses and decimals',
+        description: 'Get token information for Polkadot network',
         tags: ['polkadot'],
-        querystring: TokensRequestSchema,
+        querystring: PolkadotTokensRequestSchema,
         response: {
-          200: TokensResponseSchema
+          200: PolkadotTokensResponseSchema
         }
       }
     },

@@ -1,6 +1,6 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { Polkadot } from '../polkadot';
-import { BalanceRequestType, BalanceResponseType, BalanceRequestSchema, BalanceResponseSchema } from '../../../schemas/chain-schema';
+import { PolkadotBalanceRequest, PolkadotBalanceResponse, PolkadotBalanceRequestSchema, PolkadotBalanceResponseSchema } from '../polkadot.types';
 import { HttpException } from '../../../services/error-handler';
 
 /**
@@ -17,7 +17,7 @@ export async function getPolkadotBalances(
   network: string,
   address: string,
   tokenSymbols?: string[]
-): Promise<BalanceResponseType> {
+): Promise<PolkadotBalanceResponse> {
   if (!network) {
     throw new HttpException(400, 'Network parameter is required', -1);
   }
@@ -35,17 +35,17 @@ export async function getPolkadotBalances(
  */
 export const balancesRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{
-    Body: BalanceRequestType;
-    Reply: BalanceResponseType;
+    Body: PolkadotBalanceRequest;
+    Reply: PolkadotBalanceResponse;
   }>(
     '/balances',
     {
       schema: {
         description: 'Get token balances for a Polkadot address',
         tags: ['polkadot'],
-        body: BalanceRequestSchema,
+        body: PolkadotBalanceRequestSchema,
         response: {
-          200: BalanceResponseSchema
+          200: PolkadotBalanceResponseSchema
         }
       }
     },

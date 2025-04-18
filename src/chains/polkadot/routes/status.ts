@@ -1,31 +1,19 @@
-import {FastifyInstance, FastifyPluginAsync} from 'fastify';
-import {Polkadot} from '../polkadot';
-import {
-  StatusRequestSchema,
-  StatusRequestType,
-  StatusResponseSchema,
-  StatusResponseType
-} from '../../../schemas/chain-schema';
-import {HttpException} from '../../../services/error-handler';
+import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { Polkadot } from '../polkadot';
+import { PolkadotStatusRequest, PolkadotStatusResponse, PolkadotStatusRequestSchema, PolkadotStatusResponseSchema } from '../polkadot.types';
+import { HttpException } from '../../../services/error-handler';
 
 /**
- * Retrieves the current status of a Polkadot network
- * 
- * Returns network information including:
- * - Chain identifier
- * - Network name
- * - RPC URL
- * - Current block number
- * - Native currency symbol
+ * Gets network status information from the Polkadot blockchain
  * 
  * @param fastify Fastify instance
  * @param network Network identifier (e.g., 'mainnet', 'westend')
- * @returns Network status response
+ * @returns Network status information
  */
 export async function getPolkadotStatus(
   _fastify: FastifyInstance,
   network: string
-): Promise<StatusResponseType> {
+): Promise<PolkadotStatusResponse> {
   if (!network) {
     throw new HttpException(400, 'Network parameter is required', -1);
   }
@@ -38,23 +26,26 @@ export async function getPolkadotStatus(
  * Route plugin that registers the status endpoint
  */
 export const statusRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: StatusRequestType;
-    Reply: StatusResponseType;
+  fastify.post<{
+    Body: PolkadotStatusRequest;
+    Reply: PolkadotStatusResponse;
   }>(
     '/status',
     {
       schema: {
         description: 'Get Polkadot network status',
         tags: ['polkadot'],
-        querystring: StatusRequestSchema,
+        body: PolkadotStatusRequestSchema,
         response: {
-          200: StatusResponseSchema
+          200: PolkadotStatusResponseSchema
         }
       }
     },
     async (request) => {
-      return await getPolkadotStatus(fastify, request.query.network);
+      return await getPolkadotStatus(
+        fastify,
+        request.body.network
+      );
     }
   );
 };

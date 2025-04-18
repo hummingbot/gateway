@@ -1,11 +1,11 @@
 import {FastifyInstance, FastifyPluginAsync} from 'fastify';
 import {Polkadot} from '../polkadot';
 import {
-  EstimateGasRequestSchema,
-  EstimateGasRequestType,
-  EstimateGasResponse,
-  EstimateGasResponseSchema
-} from '../../../schemas/chain-schema';
+  PolkadotEstimateGasRequest,
+  PolkadotEstimateGasResponse,
+  PolkadotEstimateGasRequestSchema,
+  PolkadotEstimateGasResponseSchema
+} from '../polkadot.types';
 import {HttpException} from '../../../services/error-handler';
 
 /**
@@ -26,7 +26,7 @@ export async function estimateGasPolkadot(
   _fastify: FastifyInstance,
   network: string,
   gasLimit?: number
-): Promise<EstimateGasResponse> {
+): Promise<PolkadotEstimateGasResponse> {
   if (!network) {
     throw new HttpException(400, 'Network parameter is required', -1);
   }
@@ -40,8 +40,8 @@ export async function estimateGasPolkadot(
  */
 export const estimateGasRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{
-    Body: EstimateGasRequestType;
-    Reply: EstimateGasResponse;
+    Body: PolkadotEstimateGasRequest;
+    Reply: PolkadotEstimateGasResponse;
   }>(
     '/estimate-gas',
     {
@@ -49,16 +49,16 @@ export const estimateGasRoute: FastifyPluginAsync = async (fastify) => {
         description: 'Estimate gas for a Polkadot transaction',
         tags: ['polkadot'],
         body: {
-          ...EstimateGasRequestSchema,
+          ...PolkadotEstimateGasRequestSchema,
           properties: {
-            ...EstimateGasRequestSchema.properties,
+            ...PolkadotEstimateGasRequestSchema.properties,
             chain: { type: 'string', enum: ['polkadot'], examples: ['polkadot'] },
             network: { type: 'string', examples: ['mainnet', 'westend'] },
             gasLimit: { type: 'number', examples: [100000] }
           }
         },
         response: {
-          200: EstimateGasResponseSchema
+          200: PolkadotEstimateGasResponseSchema
         }
       }
     },
