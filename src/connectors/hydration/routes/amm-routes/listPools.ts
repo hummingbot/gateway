@@ -80,6 +80,13 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
           tokenAddresses = []
         } = request.query;
 
+        const hydration = await Hydration.getInstance(network);
+        if (!hydration) {
+          throw fastify.httpErrors.serviceUnavailable('Hydration service unavailable');
+        }
+
+        const tradeRouter = await hydration.getNewTradeRouter();
+
         // Make sure arrays are properly handled
         const tokenSymbolsArray = Array.isArray(tokenSymbols) ? tokenSymbols : [tokenSymbols].filter(Boolean);
         const tokenAddressesArray = Array.isArray(tokenAddresses) ? tokenAddresses : [tokenAddresses].filter(Boolean);
@@ -102,11 +109,6 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
         logMessage.push(`Use official tokens: ${useOfficialTokens}`);
         if (needsSymbolAndAddressMatch) logMessage.push(`Requiring both symbol AND address match`);
         logger.info(logMessage.join(', '));
-
-        const hydration = await Hydration.getInstance(network);
-        if (!hydration) {
-          throw fastify.httpErrors.serviceUnavailable('Hydration service unavailable');
-        }
 
         try {
           // Resolve token symbols to addresses if using official tokens list
@@ -147,7 +149,7 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
           let pools: PoolBase[] = [];
           try {
             // In Hydration, we'll implement pagination by limiting the number of pools processed
-            pools = await hydration.getPoolService().getPools([]);
+            pools = await hydration.poolServiceGetPools(await hydration.getPoolService(), []);
 
             logger.info(`Using pagination: Found ${pools.length} total pool addresses`);
           } catch (error) {
@@ -243,8 +245,8 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
                 if (baseTokenId && quoteTokenId) {
                   const amountBN = BigNumber('1');
 
-                  const buyQuote = await hydration.getNewTradeRouter().getBestBuy(quoteTokenId, baseTokenId, amountBN);
-                  const sellQuote = await hydration.getNewTradeRouter().getBestSell(baseTokenId, quoteTokenId, amountBN);
+                  const buyQuote = await hydration.tradeRouterGetBestBuy(tradeRouter, quoteTokenId, baseTokenId, amountBN);
+                  const sellQuote = await hydration.tradeRouterGetBestSell(tradeRouter, baseTokenId, quoteTokenId, amountBN);
 
                   const buyPrice = Number(buyQuote.toHuman().spotPrice);
                   const sellPrice = Number(sellQuote.toHuman().spotPrice);

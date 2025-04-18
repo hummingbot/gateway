@@ -1616,7 +1616,7 @@ private poolService: PoolService;
    * @param poolAddress The pool address
    * @returns A Promise that resolves to the pool reserves
    */
-  private async getPoolReserves( poolAddress: string): Promise<{ baseReserve: BigNumber; quoteReserve: BigNumber } | null> {
+  public async getPoolReserves( poolAddress: string): Promise<{ baseReserve: BigNumber; quoteReserve: BigNumber } | null> {
     try {
       // Get pool from SDK
       const pools = await this.poolServiceGetPools(await this.getPoolService(), []);
@@ -1740,7 +1740,7 @@ private poolService: PoolService;
     return isToken1Stable && isToken2Stable;
   }
 
-  private getWsProvider(): WsProvider {
+  public getWsProvider(): WsProvider {
     if (!this.wsProvider) {
       this.wsProvider = new WsProvider(this.polkadot.config.network.nodeURL);
     }
@@ -1748,7 +1748,7 @@ private poolService: PoolService;
     return this.wsProvider;
   }
 
-  private async getApiPromise(): Promise<ApiPromise> {
+  public async getApiPromise(): Promise<ApiPromise> {
     if (!this.apiPromise) {
       this.apiPromise = await ApiPromise.create({ provider: this.getWsProvider() });
     }
@@ -1756,7 +1756,7 @@ private poolService: PoolService;
     return this.apiPromise;
   }
 
-  private async getPoolService(): Promise<PoolService> {
+  public async getPoolService(): Promise<PoolService> {
     if (!this.poolService) {
       this.poolService = new PoolService(await this.getApiPromise());
       await this.poolService.syncRegistry();
@@ -1765,7 +1765,7 @@ private poolService: PoolService;
     return this.poolService;
   }
 
-  private async getNewTradeRouter(): Promise<TradeRouter> {
+  public async getNewTradeRouter(): Promise<TradeRouter> {
     // if (!this.tradeRouter) {
     //   this.tradeRouter = new TradeRouter(await this.getPoolService());
     // }
