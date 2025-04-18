@@ -7,14 +7,12 @@ import {cryptoWaitReady, decodeAddress, mnemonicGenerate} from '@polkadot/util-c
 import {u8aToHex} from '@polkadot/util';
 import {TokenInfo} from '../ethereum/ethereum-base';
 import {Config, getPolkadotConfig} from './polkadot.config';
-import {PolkadotController} from './polkadot.controllers';
 import {HttpException} from '../../services/error-handler';
 import {logger} from '../../services/logger';
 import {TokenListType, walletPath} from '../../services/base';
 import {
   FeeEstimate,
   PolkadotAccount,
-  StakingInfo,
   SubmittableTransaction,
   TransactionReceipt,
   TransactionStatus,
@@ -43,7 +41,6 @@ export class Polkadot {
   private _keyring: Keyring;
 
   private static _instances: { [name: string]: Polkadot } = {};
-  public controller: typeof PolkadotController;
 
   /**
    * Private constructor - use getInstance instead
@@ -53,7 +50,6 @@ export class Polkadot {
     this.network = network;
     this.config = getPolkadotConfig('polkadot', network);
     this.nativeTokenSymbol = this.config.network.nativeCurrencySymbol;
-    this.controller = PolkadotController;
 
     this._keyring = new Keyring({ type: 'sr25519' });
   }
@@ -180,30 +176,12 @@ export class Polkadot {
   }
 
   /**
-   * Get token information by address or symbol
-   * @param addressOrSymbol Token address or symbol
-   * @returns A Promise that resolves to token info or null if not found
+   * Get token information by symbol
+   * @param symbol The token symbol
+   * @returns A Promise that resolves to token information or undefined if not found
    */
-  async getToken(addressOrSymbol: string): Promise<TokenInfo | null> {
-    try {
-      // First check the token map
-      const token = this._tokenMap[addressOrSymbol.toLowerCase()];
-      if (token) {
-        return token;
-      }
-
-      // Try to find token by symbol or address
-      const foundToken = this.tokenList.find(
-        (t) =>
-          t.symbol.toLowerCase() === addressOrSymbol.toLowerCase() ||
-          t.address.toLowerCase() === addressOrSymbol.toLowerCase(),
-      );
-
-      return foundToken || null;
-    } catch (error) {
-      logger.error(`Failed to get token: ${error.message}`);
-      return null;
-    }
+  async getToken(symbol: string): Promise<TokenInfo | undefined> {
+    return this.tokenList.find(token => token.symbol.toLowerCase() === symbol.toLowerCase());
   }
 
   /**
@@ -545,10 +523,10 @@ export class Polkadot {
         const headers = { 'Content-Type': 'application/json' };
         const body = { hash: txHash };
 
-        const response = await this.axiosPost(
-          this.config.network.transactionURL,
-          body,
-          { headers },
+        const response = await axios.post(
+            this.config.network.transactionURL,
+            body,
+            { headers }
         );
 
         if (response.data && response.data.data) {
@@ -559,8 +537,8 @@ export class Polkadot {
 
           blockNum = transaction.block_num || currentBlock;
           fee = transaction.fee
-            ? parseFloat(transaction.fee) / Math.pow(10, 10)
-            : null;
+              ? parseFloat(transaction.fee) / Math.pow(10, 10)
+              : null;
 
           // Determine status based on success and finalized flags
           if (transaction.success) {
@@ -584,7 +562,7 @@ export class Polkadot {
         txData,
         fee,
         timestamp: Date.now(),
-        latency: (Date.now() - startTime) / 1000,
+        latency: (Date.now() - startTime) / 1000
       };
     } catch (error) {
       logger.error(`Error in getTransaction for ${txHash}: ${error.message}`);
@@ -599,7 +577,7 @@ export class Polkadot {
         txData: null,
         fee: null,
         timestamp: Date.now(),
-        latency: (Date.now() - startTime) / 1000,
+        latency: (Date.now() - startTime) / 1000
       };
     }
   }
@@ -615,254 +593,6 @@ export class Polkadot {
       return header.number.toNumber();
     } catch (error) {
       logger.error(`Failed to get current block number: ${error.message}`);
-      throw error;
-    }
-  }
-
-  /**
-   * Create and sign a balance transfer transaction
-   * @param sender The sender keyring pair
-   * @param recipient The recipient address
-   * @param amount The amount to transfer
-   * @param options Optional transfer options
-   * @returns A Promise that resolves to a submittable transaction
-   */
-  async createTransferTransaction(
-    sender: KeyringPair,
-    recipient: string,
-    amount: string,
-    options?: TransferOptions,
-  ): Promise<SubmittableTransaction> {
-    try {
-      // Validate recipient address
-      this.validatePolkadotAddress(recipient);
-
-      const apiPromise = await this.getApiPromise();
-      
-      // Create transfer extrinsic
-      const tx = options?.keepAlive
-        ? await this.apiPromiseTxBalancesTransferKeepAlive(apiPromise, recipient, amount)
-        : await this.apiPromiseTxBalancesTransfer(apiPromise, recipient, amount);
-
-      // Add tip if specified
-      if (options?.tip) {
-        // @ts-expect-error - Generic Method, needs to improve
-        tx.signFakeSignature(sender, { tip: options.tip });
-      } else {
-        // @ts-expect-error - Generic Method, needs to improve
-        tx.signFakeSignature(sender);
-      }
-
-      // Get fee estimate
-      const feeInfo = await this.submittableExtrinsicPaymentInfo(tx, sender);
-
-      const feeEstimate: FeeEstimate = {
-        estimatedFee: feeInfo.partialFee.toString(),
-        partialFee: feeInfo.partialFee.toString(),
-        weight: feeInfo.weight.toString()
-      };
-
-      return {
-        tx: tx as SubmittableExtrinsic<'promise', ISubmittableResult>,
-        feeEstimate
-      };
-    } catch (error) {
-      logger.error(`Failed to create transfer transaction: ${error.message}`);
-      throw error;
-    }
-  }
-
-  /**
-   * Submit a transaction to the network and wait for confirmation
-   * @param transaction The transaction to submit
-   * @param options Optional submission options
-   * @returns A Promise that resolves to a transaction receipt
-   */
-  async submitTransaction(
-    transaction: SubmittableTransaction,
-    options?: TransferOptions
-  ): Promise<TransactionReceipt> {
-    try {
-      const timeout = options?.timeout;
-      const shouldWaitForFinalization = options?.waitForFinalization !== false;
-
-      return new Promise((resolve, reject) => {
-        // Set timeout
-        const timeoutId = setTimeout(() => {
-          reject(
-            new Error(`Transaction submission timed out after ${timeout}ms`)
-          );
-        }, timeout);
-
-        transaction.tx.send(async (result) => {
-          if (result.isError) {
-            clearTimeout(timeoutId);
-            reject(
-              new Error(
-                `Transaction submission failed: ${result.internalError.toString()}`
-              )
-            );
-            return;
-          }
-
-          // Transaction was submitted
-          if (
-            result.isInBlock ||
-            (shouldWaitForFinalization && result.isFinalized)
-          ) {
-            clearTimeout(timeoutId);
-
-            const blockHash = result.isInBlock
-              ? result.toHuman().toString()
-              : result.toHuman().toString();
-
-            const status = TransactionStatus.SUCCESS;
-
-            // Get block information
-            const blockInfo = await this.apiPromiseRpcChainGetBlock(await this.getApiPromise(), blockHash);
-            const blockNumber = blockInfo.block.header.number.toNumber();
-
-            // Get transaction fee if possible
-            const fee = transaction.feeEstimate.partialFee;
-
-            resolve({
-              blockHash,
-              blockNumber,
-              events: result.events,
-              status,
-              transactionHash: transaction.tx.hash.toHex(),
-              fee
-            });
-          }
-        });
-      });
-    } catch (error) {
-      logger.error(`Failed to submit transaction: ${error.message}`);
-      throw error;
-    }
-  }
-
-  /**
-   * Transfer tokens from one account to another
-   * @param sender The sender keyring pair
-   * @param recipient The recipient address
-   * @param amount The amount to transfer
-   * @param symbol The token symbol
-   * @param options Optional transfer options
-   * @returns A Promise that resolves to a transaction receipt
-   */
-  async transfer(
-    sender: KeyringPair,
-    recipient: string,
-    amount: number,
-    symbol: string,
-    options?: TransferOptions
-  ): Promise<TransactionReceipt> {
-    try {
-      // Get token info
-      const token = await this.getToken(symbol);
-      if (!token) {
-        throw new Error(`Token not found: ${symbol}`);
-      }
-
-      // Convert amount to base units
-      const amountInBaseUnits = this.toBaseUnits(amount, token.decimals);
-
-      // Create and sign transaction
-      const transaction = await this.createTransferTransaction(
-        sender,
-        recipient,
-        amountInBaseUnits,
-        options
-      );
-
-      // Submit transaction
-      return this.submitTransaction(transaction, options);
-    } catch (error) {
-      logger.error(`Failed to transfer: ${error.message}`);
-      throw error;
-    }
-  }
-
-  /**
-   * Get staking information for an account
-   * @param address The account address
-   * @returns A Promise that resolves to staking information
-   */
-  async getStakingInfo(address: string): Promise<StakingInfo> {
-    try {
-      // Validate address
-      this.validatePolkadotAddress(address);
-
-      // Get staking information
-      const stakingInfo = await this.apiPromiseDeriveStakingAccount(await this.getApiPromise(), address);
-
-      // Format results
-      const result: StakingInfo = {
-        totalStake: stakingInfo.stakingLedger.total.toString(),
-        ownStake: stakingInfo.stakingLedger.active.toString(),
-        rewardDestination: stakingInfo.rewardDestination.toString(),
-        nominators: [],
-        validators: []
-      };
-
-      // Get nominator info if available
-      if (stakingInfo.nominators) {
-        for (const nominator of stakingInfo.nominators) {
-          result.nominators.push({
-            address: nominator.toString(),
-            value: '0' // Need to fetch actual value separately
-          });
-        }
-      }
-
-      // Get validator info if available
-      if (address in (await this.apiPromiseQueryStakingValidatorsEntries(await this.getApiPromise()))) {
-        const validatorInfo = await this.apiPromiseQueryStakingValidators(await this.getApiPromise(), address);
-        result.validators.push({
-          address,
-          value: stakingInfo.stakingLedger.active.toString(),
-          // @ts-ignore - Propriedade não reconhecida pelo TypeScript
-          commission: validatorInfo.commission.toString()
-        });
-      }
-
-      return result;
-    } catch (error) {
-      logger.error(`Failed to get staking info: ${error.message}`);
-      throw error;
-    }
-  }
-
-  /**
-   * Get metadata for a specific pallet
-   * @param palletName The name of the pallet
-   * @returns A Promise that resolves to pallet metadata
-   */
-  async getPalletMetadata(palletName: string): Promise<any> {
-    try {
-      const metadata = await this.apiPromiseRuntimeMetadata(await this.getApiPromise());
-      const palletIndex = metadata.asLatest.pallets.findIndex(
-        (p) => p.name.toString() === palletName,
-      );
-
-      if (palletIndex === -1) {
-        throw new Error(`Pallet not found: ${palletName}`);
-      }
-
-      const pallet = metadata.asLatest.pallets[palletIndex];
-      const apiPromise = await this.getApiPromise();
-
-      return {
-        name: pallet.name.toString(),
-        index: palletIndex,
-        calls: pallet.calls ? await this.apiPromiseTx(apiPromise, palletName) : [],
-        constants: await this.apiPromiseConsts(apiPromise, palletName),
-        storage: await this.apiPromiseQuery(apiPromise, palletName),
-        errors: await this.apiPromiseErrors(apiPromise, palletName)
-      };
-    } catch (error) {
-      logger.error(`Failed to get pallet metadata: ${error.message}`);
       throw error;
     }
   }
@@ -898,6 +628,74 @@ export class Polkadot {
     } catch (error) {
       logger.error(`Failed to get first wallet address: ${error.message}`);
       return null;
+    }
+  }
+
+  /**
+   * Get tokens by symbols or return all tokens if no symbols specified
+   * @param tokenSymbols Optional token symbols to filter
+   * @returns A Promise that resolves to a list of TokenInfo objects
+   */
+  async getTokensWithSymbols(tokenSymbols?: string[] | string): Promise<TokenInfo[]> {
+    try {
+      let tokens: TokenInfo[] = [];
+
+      if (!tokenSymbols) {
+        tokens = this.tokenList;
+      } else {
+        const symbolsArray = Array.isArray(tokenSymbols)
+            ? tokenSymbols
+            : typeof tokenSymbols === 'string'
+                ? tokenSymbols.replace(/[\[\]]/g, '').split(',')
+                : [];
+
+        for (const symbol of symbolsArray) {
+          const token = await this.getToken(symbol.trim());
+          if (token) tokens.push(token);
+        }
+      }
+
+      return tokens;
+    } catch (error) {
+      logger.error(`Error getting tokens: ${error.message}`);
+      throw new HttpException(500, `Failed to get tokens: ${error.message}`, -1);
+    }
+  }
+
+  /**
+   * Estimate gas (fees) for a transaction
+   * @param sender The sender keyring pair
+   * @param recipient The recipient address
+   * @param amount The amount to transfer
+   * @param symbol The token symbol
+   * @returns A Promise that resolves to the estimated gas as a string
+   */
+  async estimateGas(
+      sender: KeyringPair,
+      recipient: string,
+      amount: number,
+      symbol: string
+  ): Promise<string> {
+    try {
+      const token = await this.getToken(symbol);
+      if (!token) {
+        throw new Error(`Token not found: ${symbol}`);
+      }
+
+      const amountInBaseUnits = this.toBaseUnits(amount, token.decimals);
+
+      // Create transaction for estimation without signing
+      const apiPromise = await this.getApiPromise();
+      const transferTx = apiPromise.tx.balances.transfer(recipient, amountInBaseUnits);
+
+      // Get fee estimate
+      const info = await transferTx.paymentInfo(sender);
+
+      // Return estimated fee in human-readable format
+      return this.fromBaseUnits(info.partialFee.toString(), token.decimals).toString();
+    } catch (error) {
+      logger.error(`Failed to estimate gas: ${error.message}`);
+      throw error;
     }
   }
 
