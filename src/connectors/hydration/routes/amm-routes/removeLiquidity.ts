@@ -63,7 +63,7 @@ export async function removeLiquidity(
 
     try {
       // Use assets from Hydration to get asset IDs
-      const assets = await hydration.getAllTokens();
+      const assets = hydration.getAllTokens();
       const baseAsset = assets.find(a => a.symbol === baseTokenSymbol);
       const quoteAsset = assets.find(a => a.symbol === quoteTokenSymbol);
 

@@ -47,8 +47,6 @@ export class Hydration {
   private static _instances: { [name: string]: Hydration } = {};
   public polkadot: Polkadot;
   public config: HydrationConfig.NetworkConfig;
-
-  private wsProvider: WsProvider;
   private httpProvider: HttpProvider;
   private apiPromise: ApiPromise;
   private poolService: PoolService;
@@ -76,14 +74,6 @@ export class Hydration {
       await Hydration._instances[network].init(network);
     }
     return Hydration._instances[network];
-  }
-
-  /**
-   * Check if the instance is ready
-   * @returns boolean indicating if the instance is ready
-   */
-  public ready(): boolean {
-    return this._ready;
   }
 
   /**
@@ -164,10 +154,7 @@ export class Hydration {
    * Get all supported tokens
    * @returns A Promise that resolves to an array of supported tokens
    */
-  public async getAllTokens() {
-    if (!this.ready()) {
-      await this.init(this.polkadot.network);
-    }
+  public getAllTokens() {
     return this.polkadot.tokenList;
   }
 
@@ -187,11 +174,6 @@ export class Hydration {
 
       if (cachedPool && cacheExpiry && currentTime < cacheExpiry) {
         return this.toExternalPoolInfo(cachedPool, poolAddress);
-      }
-
-      // Ensure the instance is ready
-      if (!this.ready()) {
-        await this.init(this.polkadot.network);
       }
 
       // Get pool data from the SDK
@@ -264,7 +246,7 @@ export class Hydration {
         let buyQuote;
         let sellQuote;
         try {
-          const assets = await this.getAllTokens();
+          const assets = this.getAllTokens();
           const baseTokenId = assets.find(a => a.symbol === poolData.tokens[0].symbol)?.address;
           const quoteTokenId = assets.find(a => a.symbol === poolData.tokens[1].symbol)?.address;
 
@@ -425,13 +407,6 @@ export class Hydration {
     try {
       const tradeRouter = await this.getTradeRouter();
 
-      // Ensure the instance is ready
-      if (!this.ready()) {
-        await this.init(this.polkadot.network);
-      }
-
-
-
       // Get token info
       const baseToken = this.polkadot.getToken(baseTokenSymbol);
       const quoteToken = this.polkadot.getToken(quoteTokenSymbol);
@@ -441,7 +416,7 @@ export class Hydration {
       }
 
       // Find token IDs in the Hydration protocol
-      const assets = await this.getAllTokens();
+      const assets = this.getAllTokens();
       const baseTokenId = assets.find(a => a.symbol === baseToken.symbol)?.address;
       const quoteTokenId = assets.find(a => a.symbol === quoteToken.symbol)?.address;
 
@@ -617,11 +592,6 @@ export class Hydration {
   ): Promise<any> {
     try {
       const tradeRouter = await this.getTradeRouter();
-
-      // Ensure the instance is ready
-      if (!this.ready()) {
-        await this.init(this.polkadot.network);
-      }
 
       // Get swap quote
       const quote = await this.getSwapQuote(

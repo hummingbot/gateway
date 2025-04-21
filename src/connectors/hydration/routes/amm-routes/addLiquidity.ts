@@ -106,7 +106,7 @@ async function addLiquidity(
 
   try {
     // Use assets from Hydration to get asset IDs
-    const assets = await hydration.getAllTokens();
+    const assets = hydration.getAllTokens();
     const baseToken = assets.find(a => a.symbol === baseTokenSymbol);
     const quoteToken = assets.find(a => a.symbol === quoteTokenSymbol);
 

@@ -239,7 +239,7 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
 
               // Calcular preço via tradeRouter
               try {
-                const assets = await hydration.getAllTokens();
+                const assets = hydration.getAllTokens();
                 const baseTokenId = assets.find(a => a.symbol === baseTokenSymbol)?.address;
                 const quoteTokenId = assets.find(a => a.symbol === quoteTokenSymbol)?.address;
 
