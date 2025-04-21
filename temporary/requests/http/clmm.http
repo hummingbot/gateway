@@ -1,0 +1,132 @@
+# ===================== CLMM CONNECTOR ROUTES =====================
+
+# GET /{{connector}}/clmm/pool-info - Get pool information
+GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/clmm/pool-info?network={{network}}&poolAddress={{poolAddress}}
+Content-Type: application/json
+
+{
+}
+
+###
+
+# GET /{{connector}}/clmm/positions-owned - Get positions owned by address in pool
+GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/clmm/positions-owned?network={{network}}&poolAddress={{poolAddress}}
+Content-Type: application/json
+
+{
+}
+
+###
+
+# GET /{{connector}}/clmm/position-info - Get position details
+GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/clmm/position-info?network={{network}}&positionAddress={{positionAddress}}
+Content-Type: application/json
+
+{
+}
+
+###
+
+# GET /{{connector}}/clmm/quote-position - Get position quote
+GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/clmm/quote-position?network={{network}}&lowerPrice={{lowerPrice}}&upperPrice={{upperPrice}}&poolAddress={{poolAddress}}&baseTokenAmount={{baseTokenAmount}}&quoteTokenAmount={{quoteTokenAmount}}&slippagePct={{slippagePercentage}}
+Content-Type: application/json
+
+{
+}
+
+###
+
+# GET /{{connector}}/clmm/quote-swap - Get swap quote
+GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/clmm/quote-swap?network={{network}}&baseToken={{baseTokenSymbol}}&quoteToken={{quoteTokenSymbol}}&amount={{amount}}&side={{side}}&poolAddress={{poolAddress}}&slippagePct={{slippagePercentage}}
+Content-Type: application/json
+
+{
+}
+
+###
+
+# POST /{{connector}}/clmm/execute-swap - Execute swap
+POST {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/clmm/execute-swap
+Content-Type: application/json
+
+{
+  "network": "{{network}}",
+  "walletAddress": "{{walletPublicKey}}",
+  "baseToken": "{{baseTokenSymbol}}",
+  "quoteToken": "{{quoteTokenSymbol}}",
+  "amount": "{{amount}}",
+  "side": "{{side}}",
+  "poolAddress": "{{poolAddress}}",
+  "slippagePct": "{{slippagePercentage}}"
+}
+
+###
+
+# POST /{{connector}}/clmm/open-position - Open new position
+POST {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/clmm/open-position
+Content-Type: application/json
+
+{
+  "network": "{{network}}",
+  "walletAddress": "{{walletPublicKey}}",
+  "lowerPrice": "{{lowerPrice}}",
+  "upperPrice": "{{upperPrice}}",
+  "poolAddress": "{{poolAddress}}",
+  "baseTokenAmount": "{{baseTokenAmount}}",
+  "quoteTokenAmount": "{{quoteTokenAmount}}",
+  "slippagePct": "{{slippagePercentage}}"
+}
+
+###
+
+# POST /{{connector}}/clmm/add-liquidity - Add liquidity to position
+POST {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/clmm/add-liquidity
+Content-Type: application/json
+
+{
+  "network": "{{network}}",
+  "walletAddress": "{{walletPublicKey}}",
+  "positionAddress": "{{positionAddress}}",
+  "baseTokenAmount": "{{baseTokenAmount}}",
+  "quoteTokenAmount": "{{quoteTokenAmount}}",
+  "slippagePct": "{{slippagePercentage}}"
+}
+
+###
+
+# POST /{{connector}}/clmm/remove-liquidity - Remove liquidity from position
+POST {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/clmm/remove-liquidity
+Content-Type: application/json
+
+{
+  "network": "{{network}}",
+  "walletAddress": "{{walletPublicKey}}",
+  "positionAddress": "{{positionAddress}}",
+  "percentageToRemove": "{{percentageToRemove}}"
+}
+
+###
+
+# POST /{{connector}}/clmm/collect-fees - Collect fees from position
+POST {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/clmm/collect-fees
+Content-Type: application/json
+
+{
+  "network": "{{network}}",
+  "walletAddress": "{{walletPublicKey}}",
+  "positionAddress": "{{positionAddress}}"
+}
+
+###
+
+# POST /{{connector}}/clmm/close-position - Close position and withdraw all funds
+POST {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/clmm/close-position
+Content-Type: application/json
+
+{
+  "network": "{{network}}",
+  "walletAddress": "{{walletPublicKey}}",
+  "positionAddress": "{{positionAddress}}"
+}
+
+###

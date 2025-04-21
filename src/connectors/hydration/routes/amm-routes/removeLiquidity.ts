@@ -80,7 +80,7 @@ export async function removeLiquidity(
 
       // Using the GalacticCouncil SDK to prepare the transaction
       const apiPromise = await hydration.getApiPromise();
-      
+
       let removeLiquidityTx;
       // Get pool type
       const poolType = pool.poolType?.toLowerCase() || POOL_TYPE.XYK; // Default to XYK if type is not provided
@@ -114,17 +114,13 @@ export async function removeLiquidity(
           break;
 
         case POOL_TYPE.STABLESWAP:
-          // For Stableswap pools
-          // We need to specify which assets we want to receive
-          const assets = [
-            { assetId: baseAsset.address, amount: 0 }, // Ask for minimum amount
-            { assetId: quoteAsset.address, amount: 0 }  // System will calculate actual amounts
-          ];
-          
           removeLiquidityTx = apiPromise.tx.stableswap.removeLiquidity(
             pool.id,
             liquidityToRemove.toString(),
-            assets
+            [
+              { assetId: baseAsset.address, amount: 0 }, // Ask for minimum amount
+              { assetId: quoteAsset.address, amount: 0 }  // System will calculate actual amounts
+            ]
           );
           break;
 

@@ -1,0 +1,317 @@
+# ===================== ROOT ROUTE =====================
+
+# GET /
+GET {{httpProtocol}}://{{host}}:{{port}}
+Content-Type: application/json
+
+{
+}
+
+###
+
+# ===================== CONFIG ROUTES =====================
+
+# GET /config
+GET {{httpProtocol}}://{{host}}:{{port}}/config
+Content-Type: application/json
+
+{
+}
+
+###
+
+# GET /config?chainOrConnector={{chain}}
+GET {{httpProtocol}}://{{host}}:{{port}}/config?chainOrConnector={{chain}}
+Content-Type: application/json
+
+{
+}
+
+###
+
+# GET /config?chainOrConnector={{connector}}
+GET {{httpProtocol}}://{{host}}:{{port}}/config?chainOrConnector={{connector}}
+Content-Type: application/json
+
+{
+}
+
+###
+
+# POST /config/update
+POST {{httpProtocol}}://{{host}}:{{port}}/config/update
+Content-Type: application/json
+
+{
+  "configPath": "{{configPath}}",
+  "configValue": "{{configValue}}"
+}
+
+###
+
+# ===================== CONNECTOR ROUTES =====================
+
+# GET /connectors
+GET {{httpProtocol}}://{{host}}:{{port}}/connectors
+Content-Type: application/json
+
+{
+}
+
+###
+
+# ===================== WALLET ROUTES =====================
+
+# GET /wallet
+GET {{httpProtocol}}://{{host}}:{{port}}/wallet
+Content-Type: application/json
+
+{
+}
+
+###
+
+# POST /wallet/add
+POST {{httpProtocol}}://{{host}}:{{port}}/wallet/add
+Content-Type: application/json
+
+{
+  "chain": "{{chain}}",
+  "network": "{{network}}",
+  "privateKey": "{{walletMnemonic}}"
+}
+
+###
+
+# DELETE /wallet/remove
+DELETE {{httpProtocol}}://{{host}}:{{port}}/wallet/remove
+Content-Type: application/json
+
+{
+  "chain": "{{chain}}",
+  "address": "{{walletPublicKey}}"
+}
+
+###
+
+# ===================== CHAIN ROUTES =====================
+
+# GET /<chain>/status
+GET {{httpProtocol}}://{{host}}:{{port}}/{{chain}}/status?network={{network}}
+Content-Type: application/json
+
+{
+}
+
+###
+
+# POST /<chain>/estimate-gas
+POST {{httpProtocol}}://{{host}}:{{port}}/{{chain}}/estimate-gas
+Content-Type: application/json
+
+{
+  "chain": "{{chain}}",
+  "network": "{{network}}",
+  "gasLimit": "{{gasLimit}}"
+}
+
+###
+
+# ===================== TRANSACTION ROUTES =====================
+
+# POST /{{chain}}/poll - Poll for transaction status
+POST {{httpProtocol}}://{{host}}:{{port}}/{{chain}}/poll
+Content-Type: application/json
+
+{
+  "network": "{{network}}",
+  "txHash": "{{txHash}}"
+}
+
+###
+
+# ===================== TOKEN ROUTES =====================
+
+# GET /<chain>/tokens - Just network
+GET {{httpProtocol}}://{{host}}:{{port}}/{{chain}}/tokens?network={{network}}
+Content-Type: application/json
+
+{
+}
+
+###
+
+# GET /<chain>/tokens - Single token
+GET {{httpProtocol}}://{{host}}:{{port}}/{{chain}}/tokens?network={{network}}&tokenSymbols={{nativeTokenSymbol}}
+Content-Type: application/json
+
+{
+}
+
+###
+
+# GET /<chain>/tokens - Multiple tokens
+GET {{httpProtocol}}://{{host}}:{{port}}/{{chain}}/tokens?network={{network}}&tokenSymbols={{nativeTokenSymbol}},{{baseTokenSymbol}},{{quoteTokenSymbol}}
+Content-Type: application/json
+
+{
+}
+
+###
+
+# ===================== BALANCE ROUTES =====================
+
+# POST /{{chain}}/balances - All balances
+POST {{httpProtocol}}://{{host}}:{{port}}/{{chain}}/balances
+Content-Type: application/json
+
+{
+  "network": "{{network}}",
+  "address": "{{walletPublicKey}}"
+}
+
+###
+
+# POST /{{chain}}/balances - Single token (string format)
+POST {{httpProtocol}}://{{host}}:{{port}}/{{chain}}/balances
+Content-Type: application/json
+
+{
+  "network": "{{network}}",
+  "address": "{{walletPublicKey}}",
+  "tokenSymbols": "{{nativeTokenSymbol}}"
+}
+
+###
+
+# POST /{{chain}}/balances - Single token (array format)
+POST {{httpProtocol}}://{{host}}:{{port}}/{{chain}}/balances
+Content-Type: application/json
+
+{
+  "network": "{{network}}",
+  "address": "{{walletPublicKey}}",
+  "tokenSymbols": ["{{quoteTokenSymbol}}"]
+}
+
+###
+# POST /{{chain}}/balances - Multiple tokens
+POST {{httpProtocol}}://{{host}}:{{port}}/{{chain}}/balances
+Content-Type: application/json
+
+{
+  "network": "{{network}}",
+  "address": "{{walletPublicKey}}",
+  "tokenSymbols": ["{{nativeTokenSymbol}}", "{{baseTokenSymbol}}", "{{quoteTokenSymbol}}"]
+}
+
+###
+
+# ===================== AMM CONNECTOR ROUTES =====================
+
+# ===================== LIST POOLS =====================
+
+# GET /{{connector}}/amm/list-pools - List all pools
+GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/list-pools?network={{network}}
+Content-Type: application/json
+
+###
+
+# GET /{{connector}}/amm/list-pools - Filter by tokenSymbols
+GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/list-pools?network={{network}}&tokenSymbols={{baseTokenSymbol}}&tokenSymbols={{quoteTokenSymbol}}
+Content-Type: application/json
+
+###
+
+# GET /{{connector}}/amm/list-pools - Filter by pool types
+GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/list-pools?network={{network}}&types=amm
+Content-Type: application/json
+
+###
+
+# GET /{{connector}}/amm/list-pools - Filter by tokenAddresses (USDC/USDT)
+GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/list-pools?network={{network}}&tokenAddresses=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&tokenAddresses=Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB
+Content-Type: application/json
+
+###
+
+# GET /{{connector}}/amm/list-pools - Combined filtering with useOfficialTokens
+GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/list-pools?network={{network}}&tokenSymbols=USDC&types=amm&maxNumberOfPages=2&useOfficialTokens=true
+Content-Type: application/json
+
+###
+
+# =======================================================
+
+# GET /{{connector}}/amm/pool-info - RAYDIUM
+GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/pool-info?network={{network}}&poolAddress={{poolAddress}}
+Content-Type: application/json
+
+{
+}
+
+###
+
+# GET /{{connector}}/amm/quote-swap - RAYDIUM
+GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/quote-swap?network={{network}}&baseToken={{baseTokenSymbol}}&quoteToken={{quoteTokenSymbol}}&amount={{amount}}&side={{side}}&poolAddress={{poolAddress}}&slippagePct={{slippagePercentage}}
+Content-Type: application/json
+
+{
+}
+
+###
+
+# GET /{{connector}}/amm/quote-liquidity - RADYDIUM
+GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/quote-liquidity?network={{network}}&poolAddress={{poolAddress}}&baseTokenAmount={{baseTokenAmount}}&quoteTokenAmount={{quoteTokenAmount}}&slippagePct={{slippagePercentage}}
+Content-Type: application/json
+
+{
+}
+
+###
+
+# POST /{{connector}}/amm/execute-swap - RAYDIUM
+POST {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/execute-swap
+Content-Type: application/json
+
+{
+  "network": "{{network}}",
+  "walletAddress": "{{walletPublicKey}}",
+  "baseToken": "{{baseTokenSymbol}}",
+  "quoteToken": "{{quoteTokenSymbol}}",
+  "amount": "{{amount}}",
+  "side": "{{side}}",
+  "poolAddress": "{{poolAddress}}",
+  "slippagePct": "{{slippagePercentage}}"
+}
+
+###
+
+
+# POST /{{connector}}/amm/add-liquidity - RAYDIUM
+POST {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/add-liquidity
+Content-Type: application/json
+
+{
+  "network": "{{network}}",
+  "walletAddress": "{{walletPublicKey}}",
+  "poolAddress": "{{poolAddress}}",
+  "baseTokenAmount": "{{baseTokenAmount}}",
+  "quoteTokenAmount": "{{quoteTokenAmount}}",
+  "slippagePct": "{{slippagePercentage}}"
+}
+
+###
+
+# POST /{{connector}}/amm/remove-liquidity - RAYDIUM
+POST {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/remove-liquidity
+Content-Type: application/json
+
+{
+  "network": "{{network}}",
+  "walletAddress": "{{walletPublicKey}}",
+  "poolAddress": "{{poolAddress}}",
+  "percentageToRemove": "{{percentageToRemove}}"
+}
+
+###
