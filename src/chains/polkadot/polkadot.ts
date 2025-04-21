@@ -430,7 +430,7 @@ export class Polkadot {
       
       // Keep polling until we find a fee or reach timeout
       // noinspection PointlessBooleanExpressionJS
-      while ((waitForFee && !fee) && (waitForTransfers && !transfers) && (Date.now() - startTime < 1000 * Constant.defaultTimeout.getValueAs<number>())) {
+      while (Date.now() - startTime < 1000 * Constant.defaultTimeout.getValueAs<number>()) {
         try {
           const headers = { 'Content-Type': 'application/json' };
           const body = { hash: txHash };
