@@ -9,7 +9,7 @@ import {
   ClosePositionResponse, 
   ClosePositionRequestType, 
   ClosePositionResponseType,
-} from '../../../services/clmm-interfaces';
+} from '../../../schemas/trading-types/clmm-schema';
 
 async function closePosition(
   _fastify: FastifyInstance,
@@ -110,7 +110,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Close a Raydium CLMM position',
-        tags: ['raydium-clmm'],
+        tags: ['raydium/clmm'],
         body: {
           ...ClosePositionRequest,
           properties: {

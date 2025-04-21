@@ -3,7 +3,7 @@ import { Type, Static } from '@sinclair/typebox';
 import { Raydium } from '../raydium';
 import { PublicKey } from '@solana/web3.js';
 import { logger } from '../../../services/logger';
-import { PositionInfoSchema } from '../../../services/clmm-interfaces';
+import { PositionInfoSchema } from '../../../schemas/trading-types/clmm-schema';
 import { httpBadRequest, ERROR_MESSAGES } from '../../../services/error-handler';
 
 // Schema definitions
@@ -30,7 +30,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: "Retrieve a list of positions owned by a user's wallet in a specific Raydium CLMM pool",
-        tags: ['raydium-clmm'],
+        tags: ['raydium/clmm'],
         querystring: GetPositionsOwnedRequest,
         response: {
           200: GetPositionsOwnedResponse

@@ -7,7 +7,7 @@ import {
   RemoveLiquidityResponse,
   RemoveLiquidityRequestType,
   RemoveLiquidityResponseType,
-} from '../../../services/amm-interfaces'
+} from '../../../schemas/trading-types/amm-schema'
 import { 
   AmmV4Keys,
   CpmmKeys,
@@ -68,8 +68,7 @@ async function createRemoveLiquidityTransaction(
   } else if (ammPoolInfo.poolType === 'cpmm') {
     // Use default slippage from Raydium class
     const slippage = new Percent(
-      Math.floor(raydium.getSlippagePct() * 100),
-      10000
+      Math.floor(raydium.getSlippagePct('amm') * 100) / 10000
     )
     
     const response : CPMMWithdrawLiquiditySDKResponse = await raydium.raydiumSDK.cpmm.withdrawLiquidity({
@@ -167,7 +166,7 @@ async function removeLiquidity(
   logger.info(`Removing ${percentageToRemove.toFixed(4)}% liquidity from pool ${poolAddress}...`)
   const COMPUTE_UNITS = 600000
 
-  let currentPriorityFee = (await solana.getGasPrice() * 1e9) - BASE_FEE
+  let currentPriorityFee = (await solana.estimateGas() * 1e9) - BASE_FEE
   while (currentPriorityFee <= solana.config.maxPriorityFee * 1e9) {
     const priorityFeePerCU = Math.floor(currentPriorityFee * 1e6 / COMPUTE_UNITS)
     
@@ -244,7 +243,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Remove liquidity from a Raydium AMM/CPMM pool',
-        tags: ['raydium-amm'],
+        tags: ['raydium/amm'],
         body: {
           ...RemoveLiquidityRequest,
           properties: {
