@@ -59,7 +59,7 @@ export async function removeLiquidity(
     const baseTokenSymbol = await hydration.getTokenSymbol(pool.baseTokenAddress);
     const quoteTokenSymbol = await hydration.getTokenSymbol(pool.quoteTokenAddress);
     
-    logger.info(`Removing ${percentageToRemove}% liquidity from pool ${poolAddress}`);
+    logger.info(`Removing ${percentageToRemove} shares from pool ${poolAddress}`);
 
     try {
       // Use assets from Hydration to get asset IDs
@@ -71,13 +71,6 @@ export async function removeLiquidity(
         throw httpNotFound(`Asset not found: ${!baseAsset ? baseTokenSymbol : quoteTokenSymbol}`);
       }
 
-      // TODO Important: verify how this calculation needs to be done!!!
-      const liquidityToRemove = new BigNumber(percentageToRemove * Math.pow(10, 18));
-
-      if (liquidityToRemove.lte(0)) {
-        throw httpBadRequest('Calculated liquidity to remove is zero or negative');
-      }
-
       // Using the GalacticCouncil SDK to prepare the transaction
       const apiPromise = await hydration.getApiPromise();
 
@@ -87,9 +80,13 @@ export async function removeLiquidity(
 
       logger.info(`Removing liquidity from ${poolType} pool (${poolAddress})`);
 
+      let liquidityToRemove: BigNumber;
+
       switch (poolType) {
         case POOL_TYPE.XYK:
           // For XYK pools
+
+          liquidityToRemove = new BigNumber(percentageToRemove * Math.pow(10, baseAsset.decimals));
           removeLiquidityTx = apiPromise.tx.xyk.removeLiquidity(
             baseAsset.address,
             quoteAsset.address,
@@ -107,6 +104,7 @@ export async function removeLiquidity(
         case POOL_TYPE.OMNIPOOL:
           // For Omnipool, we need to specify which asset we're withdrawing
           // In Omnipool, we can only withdraw one asset at a time, so we use the base asset
+          liquidityToRemove = new BigNumber(percentageToRemove * Math.pow(10, baseAsset.decimals));
           removeLiquidityTx = apiPromise.tx.omnipool.removeLiquidity(
             baseAsset.address,
             liquidityToRemove.toString()
@@ -114,6 +112,8 @@ export async function removeLiquidity(
           break;
 
         case POOL_TYPE.STABLESWAP:
+          // TODO: should this number come from the 2-Pool extra token in the pool?!!!
+          liquidityToRemove = new BigNumber(percentageToRemove * Math.pow(10, 18));
           removeLiquidityTx = apiPromise.tx.stableswap.removeLiquidity(
             pool.id,
             liquidityToRemove.toString(),
@@ -126,6 +126,10 @@ export async function removeLiquidity(
 
         default:
           throw httpBadRequest(`Unsupported pool type: ${poolType}`);
+      }
+
+      if (liquidityToRemove.lte(0)) {
+        throw httpBadRequest('Calculated liquidity to remove is zero or negative');
       }
 
       // Sign and send the transaction
