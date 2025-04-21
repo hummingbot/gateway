@@ -50,8 +50,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       '@galacticcouncil/sdk':
-        specifier: ^5.6.0
-        version: 5.6.0(@polkadot/api-augment@15.8.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(@polkadot/api-base@15.8.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(@polkadot/api-derive@15.8.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(@polkadot/api@15.8.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(@polkadot/keyring@13.4.3(@polkadot/util-crypto@13.4.3(@polkadot/util@13.4.3))(@polkadot/util@13.4.3))(@polkadot/rpc-augment@15.8.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(@polkadot/rpc-core@15.8.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(@polkadot/rpc-provider@15.8.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(@polkadot/types-augment@15.8.1)(@polkadot/types-codec@15.8.1)(@polkadot/types-create@15.8.1)(@polkadot/types-known@15.8.1)(@polkadot/types@15.8.1)(@polkadot/util-crypto@13.4.3(@polkadot/util@13.4.3))(@polkadot/util@13.4.3)
+        specifier: ^6.1.4
+        version: 6.1.4(@polkadot/api-augment@15.8.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(@polkadot/api-base@15.8.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(@polkadot/api-derive@15.8.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(@polkadot/api@15.8.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(@polkadot/keyring@13.4.3(@polkadot/util-crypto@13.4.3(@polkadot/util@13.4.3))(@polkadot/util@13.4.3))(@polkadot/rpc-augment@15.8.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(@polkadot/rpc-core@15.8.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(@polkadot/rpc-provider@15.8.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(@polkadot/types-augment@15.8.1)(@polkadot/types-codec@15.8.1)(@polkadot/types-create@15.8.1)(@polkadot/types-known@15.8.1)(@polkadot/types@15.8.1)(@polkadot/util-crypto@13.4.3(@polkadot/util@13.4.3))(@polkadot/util@13.4.3)(viem@0.3.50(bufferutil@4.0.9)(typescript@5.8.2)(utf-8-validate@5.0.10)(zod@3.24.2))
       '@improbable-eng/grpc-web':
         specifier: ^0.13.0
         version: 0.13.0(google-protobuf@3.21.4)
@@ -1007,14 +1007,14 @@ packages:
   '@galacticcouncil/math-omnipool@1.1.0':
     resolution: {integrity: sha512-9sfzxwPeKTGTCxZfeYU7Wdp7Zye4tncyQ7aBrlae1qCncmoLsdr6BQd1MCOHeigJ06WxKBUtxSozO4Ipuxk1gQ==}
 
-  '@galacticcouncil/math-stableswap@1.2.0':
-    resolution: {integrity: sha512-S46l/lfIO4KOPrXW8r62RXkFavcKEBpOUqOFw6JqTbabD1o7/TSbbpx1dQ2LQRfu5oOuhzWWPoIWyxeS1tOpMA==}
+  '@galacticcouncil/math-stableswap@2.0.0':
+    resolution: {integrity: sha512-cFOuZlm04D3gHVCbsUZINOyuSLXaG6ZHqoHVQnW0PnZVEGRL9hXD3iLz06j9R5+xfHONirKHDJ/ZShw0XCx9Cw==}
 
   '@galacticcouncil/math-xyk@1.0.0':
     resolution: {integrity: sha512-n44M7jKes5Rxr4RQZ5W7kscTfoO4xwhW3VL/VyaEP1KEHMavlICpDNOlCwO/k6RTr+UXU8cHLJZdBzGFa2soJA==}
 
-  '@galacticcouncil/sdk@5.6.0':
-    resolution: {integrity: sha512-gJ6cHY64FpBdYPj7ej0iknFsz9ErNiUCKP74+5yCCEp16nMcDu7lWCtMsRVA8XCYJxW0aRo0+pj9MYpJfOwkFQ==}
+  '@galacticcouncil/sdk@6.1.4':
+    resolution: {integrity: sha512-sS4S4uCKJ0JvwX5Tr04+SRY7gV8Z8nvpIA7swBRECVQsS/EjeMJvTtLWtFnXmE4gPnMhaGNlfyDGIU/aWxNAdw==}
     peerDependencies:
       '@polkadot/api': ~14.0.1
       '@polkadot/api-augment': ~14.0.1
@@ -1031,6 +1031,7 @@ packages:
       '@polkadot/types-known': ~14.0.1
       '@polkadot/util': ~13.1.1
       '@polkadot/util-crypto': ~13.1.1
+      viem: ^2.23.7
 
   '@graphql-typed-document-node/core@3.2.0':
     resolution: {integrity: sha512-mB9oAsNCm9aM3/SOv4YtBMqZbYj10R7dkq8byBqxGY/ncFwhf2oQzMV+LCRlWoDSEBJ3COiR1yeDvMtsoOsuFQ==}
@@ -8972,16 +8973,16 @@ snapshots:
 
   '@galacticcouncil/math-omnipool@1.1.0': {}
 
-  '@galacticcouncil/math-stableswap@1.2.0': {}
+  '@galacticcouncil/math-stableswap@2.0.0': {}
 
   '@galacticcouncil/math-xyk@1.0.0': {}
 
-  '@galacticcouncil/sdk@5.6.0(@polkadot/api-augment@15.8.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(@polkadot/api-base@15.8.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(@polkadot/api-derive@15.8.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(@polkadot/api@15.8.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(@polkadot/keyring@13.4.3(@polkadot/util-crypto@13.4.3(@polkadot/util@13.4.3))(@polkadot/util@13.4.3))(@polkadot/rpc-augment@15.8.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(@polkadot/rpc-core@15.8.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(@polkadot/rpc-provider@15.8.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(@polkadot/types-augment@15.8.1)(@polkadot/types-codec@15.8.1)(@polkadot/types-create@15.8.1)(@polkadot/types-known@15.8.1)(@polkadot/types@15.8.1)(@polkadot/util-crypto@13.4.3(@polkadot/util@13.4.3))(@polkadot/util@13.4.3)':
+  '@galacticcouncil/sdk@6.1.4(@polkadot/api-augment@15.8.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(@polkadot/api-base@15.8.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(@polkadot/api-derive@15.8.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(@polkadot/api@15.8.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(@polkadot/keyring@13.4.3(@polkadot/util-crypto@13.4.3(@polkadot/util@13.4.3))(@polkadot/util@13.4.3))(@polkadot/rpc-augment@15.8.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(@polkadot/rpc-core@15.8.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(@polkadot/rpc-provider@15.8.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(@polkadot/types-augment@15.8.1)(@polkadot/types-codec@15.8.1)(@polkadot/types-create@15.8.1)(@polkadot/types-known@15.8.1)(@polkadot/types@15.8.1)(@polkadot/util-crypto@13.4.3(@polkadot/util@13.4.3))(@polkadot/util@13.4.3)(viem@0.3.50(bufferutil@4.0.9)(typescript@5.8.2)(utf-8-validate@5.0.10)(zod@3.24.2))':
     dependencies:
       '@galacticcouncil/math-lbp': 1.0.0
       '@galacticcouncil/math-liquidity-mining': 1.0.0
       '@galacticcouncil/math-omnipool': 1.1.0
-      '@galacticcouncil/math-stableswap': 1.2.0
+      '@galacticcouncil/math-stableswap': 2.0.0
       '@galacticcouncil/math-xyk': 1.0.0
       '@polkadot/api': 15.8.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       '@polkadot/api-augment': 15.8.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
@@ -9002,6 +9003,7 @@ snapshots:
       '@thi.ng/memoize': 4.0.12
       bignumber.js: 9.1.2
       lodash.clonedeep: 4.5.0
+      viem: 0.3.50(bufferutil@4.0.9)(typescript@5.8.2)(utf-8-validate@5.0.10)(zod@3.24.2)
 
   '@graphql-typed-document-node/core@3.2.0(graphql@15.10.1)':
     dependencies:
