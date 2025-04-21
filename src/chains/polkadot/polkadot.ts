@@ -14,7 +14,7 @@ import * as fs from 'fs';
 import axios, {Axios} from 'axios';
 import {ConfigManagerCertPassphrase} from '../../services/config-manager-cert-passphrase';
 import {wrapResponse} from '../../services/response-wrapper';
-import {Constant, fromBaseUnits, runWithRetryAndTimeout, toBaseUnits} from './polkadot.utils';
+import {Constant, fromBaseUnits, runWithRetryAndTimeout, sleep, toBaseUnits} from './polkadot.utils';
 import {validatePolkadotAddress} from './polkadot.validators';
 import * as crypto from 'crypto';
 
@@ -413,7 +413,7 @@ export class Polkadot {
    * @param txHash The transaction hash
    * @returns A Promise that resolves to transaction details
    */
-  public async getTransaction(txHash: string): Promise<any> {
+  public async getTransaction(txHash: string, waitForFee: boolean = false, waitForTransfers: boolean = false): Promise<any> {
     const startTime = Date.now();
 
     try {
@@ -426,10 +426,11 @@ export class Polkadot {
       let txStatus = 0; // Not found by default
       let blockNum = null;
       let fee = null;
+      let transfers = null;
       
       // Keep polling until we find a fee or reach timeout
       // noinspection PointlessBooleanExpressionJS
-      while (fee == null && (Date.now() - startTime < Constant.defaultTimeout.getValueAs<number>())) {
+      while ((waitForFee && !fee) && (waitForTransfers && !transfers) && (Date.now() - startTime < 1000 * Constant.defaultTimeout.getValueAs<number>())) {
         try {
           const headers = { 'Content-Type': 'application/json' };
           const body = { hash: txHash };
@@ -451,6 +452,8 @@ export class Polkadot {
             fee = transaction.fee
                 ? parseFloat(transaction.fee) / Math.pow(10, feePaymentToken.decimals)
                 : null;
+
+            transfers = transaction.transfers;
             
             // Determine status based on success and finalized flags
             if (transaction.success) {
@@ -460,9 +463,18 @@ export class Polkadot {
             } else if (transaction.finalized) {
               txStatus = 1; // Success if finalized
             }
-            
-            // If fee is found, break the loop
-            if (fee !== null) {
+
+            if (waitForFee) {
+              if (waitForTransfers) {
+                if (transfers) {
+                  break;
+                }
+              } else {
+                if (fee) {
+                  break;
+                }
+              }
+            } else {
               break;
             }
           }
@@ -471,7 +483,7 @@ export class Polkadot {
         }
         
         // Wait a bit before polling again
-        await new Promise(resolve => setTimeout(resolve, 1000 * Constant.defaultDelayBetweenRetries.getValueAs<number>()));
+        await sleep(1000 * Constant.defaultDelayBetweenRetries.getValueAs<number>());
       }
       
       return {
