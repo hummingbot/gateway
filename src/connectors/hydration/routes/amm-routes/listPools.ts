@@ -159,7 +159,7 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
           }
 
           logger.info(`Successfully retrieved info for ${pools.length} pools`);
-          
+
           // Filter processing
           let filteredPools = [...pools]; // Make a copy
 

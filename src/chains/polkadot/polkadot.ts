@@ -165,11 +165,19 @@ export class Polkadot {
    * @param addressOrSymbol The token symbol
    * @returns A Promise that resolves to token information or undefined if not found
    */
-  async getToken(addressOrSymbol: string): Promise<TokenInfo | undefined> {
+  getToken(addressOrSymbol: string): TokenInfo | undefined {
     return this.tokenList.find(token =>
         token.symbol.toLowerCase() === addressOrSymbol.toLowerCase()
         || token.address.toLowerCase() === addressOrSymbol.toLowerCase()
     );
+  }
+
+  /**
+   * Get the native token
+   * @returns A Promise that resolves to the native token
+   */
+  public getNativeToken(): TokenInfo {
+    return this.getToken(this.config.network.nativeCurrencySymbol);
   }
 
   /**
@@ -307,7 +315,7 @@ export class Polkadot {
     if (symbols && symbols.length > 0) {
       // Filter tokens by specified symbols
       for (const symbol of symbols) {
-        const token = await this.getToken(symbol);
+        const token = this.getToken(symbol);
         if (token) {
           tokensToCheck.push(token);
         }
@@ -428,7 +436,7 @@ export class Polkadot {
 
           blockNum = transaction.block_num || currentBlock;
           fee = transaction.fee
-              ? parseFloat(transaction.fee) / Math.pow(10, 10)
+              ? parseFloat(transaction.fee) / Math.pow(10, this.getNativeToken().decimals)
               : null;
 
           // Determine status based on success and finalized flags
@@ -529,7 +537,7 @@ export class Polkadot {
               : [];
 
       for (const symbol of symbolsArray) {
-        const token = await this.getToken(symbol.trim());
+        const token = this.getToken(symbol.trim());
         if (token) tokens.push(token);
       }
     }
@@ -552,7 +560,7 @@ export class Polkadot {
       amount: number,
       symbol: string
   ): Promise<string> {
-    const token = await this.getToken(symbol);
+    const token = this.getToken(symbol);
     if (!token) {
       throw new HttpException(404, `Token not found: ${symbol}`, -1);
     }

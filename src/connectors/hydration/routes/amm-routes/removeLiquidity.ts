@@ -112,7 +112,7 @@ export async function removeLiquidity(
           break;
 
         case POOL_TYPE.STABLESWAP:
-          // TODO: should this number come from the 2-Pool extra token in the pool?!!!
+          // TODO: should this number come from the 2-Pool, 4-Pool extra token in the pool, the protocol is always using 18?!!!
           liquidityToRemove = new BigNumber(percentageToRemove * Math.pow(10, 18));
           removeLiquidityTx = apiPromise.tx.stableswap.removeLiquidity(
             pool.id,
@@ -135,6 +135,8 @@ export async function removeLiquidity(
       // Sign and send the transaction
       const txHash = await submitTransaction(apiPromise, removeLiquidityTx, wallet, poolType);
 
+      const fullTransaction = await hydration.polkadot.getTransaction(txHash);
+
       logger.info(`Liquidity removed from pool ${poolAddress} with tx hash: ${txHash}`);
 
       // Get transaction result to retrieve actual amounts removed
@@ -148,7 +150,7 @@ export async function removeLiquidity(
 
       return {
         signature: txHash,
-        fee: 0.01, // This should be the actual fee from the transaction
+        fee: fullTransaction.txData.fee,
         baseTokenAmountRemoved: baseAmount,
         quoteTokenAmountRemoved: quoteAmount
       };

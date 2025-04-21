@@ -45,7 +45,7 @@ interface ExternalPoolInfo {
  */
 export class Hydration {
   private static _instances: { [name: string]: Hydration } = {};
-  private polkadot: Polkadot;
+  public polkadot: Polkadot;
   public config: HydrationConfig.NetworkConfig;
 
   private wsProvider: WsProvider;
@@ -205,8 +205,8 @@ export class Hydration {
       }
 
       // Get token info
-      const baseToken = await this.polkadot.getToken(poolData.tokens[0].symbol);
-      const quoteToken = await this.polkadot.getToken(poolData.tokens[1].symbol);
+      const baseToken = this.polkadot.getToken(poolData.tokens[0].symbol);
+      const quoteToken = this.polkadot.getToken(poolData.tokens[1].symbol);
 
       if (!baseToken || !quoteToken) {
         throw new Error('Failed to retrieve token information');
@@ -433,8 +433,8 @@ export class Hydration {
 
 
       // Get token info
-      const baseToken = await this.polkadot.getToken(baseTokenSymbol);
-      const quoteToken = await this.polkadot.getToken(quoteTokenSymbol);
+      const baseToken = this.polkadot.getToken(baseTokenSymbol);
+      const quoteToken = this.polkadot.getToken(quoteTokenSymbol);
 
       if (!baseToken || !quoteToken) {
         throw new Error(`Token not found: ${!baseToken ? baseTokenSymbol : quoteTokenSymbol}`);
@@ -634,8 +634,8 @@ export class Hydration {
       );
 
       // Get token info
-      const baseToken = await this.polkadot.getToken(baseTokenSymbol);
-      const quoteToken = await this.polkadot.getToken(quoteTokenSymbol);
+      const baseToken = this.polkadot.getToken(baseTokenSymbol);
+      const quoteToken = this.polkadot.getToken(quoteTokenSymbol);
 
       if (!baseToken || !quoteToken) {
         throw new Error(`Token not found: ${!baseToken ? baseTokenSymbol : quoteTokenSymbol}`);
@@ -1048,7 +1048,7 @@ export class Hydration {
   async getTokenSymbol(tokenAddress: string): Promise<string> {
     try {
       // Get token info from Polkadot
-      const token = await this.polkadot.getToken(tokenAddress);
+      const token = this.polkadot.getToken(tokenAddress);
       if (!token) {
         throw new Error(`Token not found: ${tokenAddress}`);
       }
