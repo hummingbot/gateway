@@ -6,7 +6,8 @@ import {
   ListPoolsResponse,
   ListPoolsResponseType
 } from '../../../../schemas/trading-types/amm-schema';
-import { BigNumber, PoolBase } from '@galacticcouncil/sdk';
+import { BigNumber } from '@galacticcouncil/sdk/build/types/utils/bignumber';
+import { PoolBase } from '@galacticcouncil/sdk/build/types/types';
 
 import hydrationJson from '../../../../../conf/lists/hydration.json';
 
