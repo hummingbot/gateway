@@ -135,7 +135,7 @@ export async function removeLiquidity(
       // Sign and send the transaction
       const txHash = await submitTransaction(apiPromise, removeLiquidityTx, wallet, poolType);
 
-      const fullTransaction = await hydration.polkadot.getTransaction(txHash);
+      const fullTransaction = await hydration.polkadot.getTransaction(txHash, true, true);
 
       logger.info(`Liquidity removed from pool ${poolAddress} with tx hash: ${txHash}`);
 
@@ -150,7 +150,7 @@ export async function removeLiquidity(
 
       return {
         signature: txHash,
-        fee: fullTransaction.txData.fee,
+        fee: fullTransaction.fee,
         baseTokenAmountRemoved: baseAmount,
         quoteTokenAmountRemoved: quoteAmount
       };
