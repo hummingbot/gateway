@@ -1,26 +1,37 @@
-import { FastifyPluginAsync } from 'fastify';
-import { Hydration } from '../../hydration';
-import { logger } from '../../../../services/logger';
+import {FastifyPluginAsync} from 'fastify';
+import {Hydration} from '../../hydration';
 import {
   ListPoolsRequestType,
   ListPoolsResponse,
   ListPoolsResponseType
 } from '../../../../schemas/trading-types/amm-schema';
-import { BigNumber } from '@galacticcouncil/sdk/build/types/utils/bignumber';
-import { PoolBase } from '@galacticcouncil/sdk/build/types/types';
 
-// Extended parameters for listPools
+/**
+ * Extended parameters for listPools endpoint, adding additional filtering options.
+ */
 interface ExtendedListPoolsRequestType extends ListPoolsRequestType {
+  /** Target network to query (defaults to mainnet) */
   network?: string;
-  types?: string[]; // Array of pool types (e.g. ['xyz', 'stablepool'])
+  
+  /** Array of pool types to filter by (e.g. ['xyz', 'stablepool']) */
+  types?: string[];
+  
+  /** Maximum number of pages to fetch from the API */
   maxNumberOfPages?: number;
+  
+  /** Whether to use official token list instead of on-chain resolution */
   useOfficialTokens?: boolean;
-  tokenSymbols?: string[]; // Array of token symbols (e.g. ['USDT', 'DOT'])
-  tokenAddresses?: string[]; // Array of token addresses (e.g. ['10', '22'])
+  
+  /** Array of token symbols to filter pools by (e.g. ['USDT', 'DOT']) */
+  tokenSymbols?: string[];
+  
+  /** Array of token addresses to filter pools by */
+  tokenAddresses?: string[];
 }
 
 /**
- * Route handler for getting all pools
+ * Route handler for listing all available pools.
+ * Supports filtering by token, pool type, and other parameters.
  */
 export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
@@ -63,37 +74,32 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
       }
     },
     async (request) => {
-      try {
-        // Extract parameters
-        const {
-          network = 'mainnet',
-          types = [],
-          maxNumberOfPages = 1,
-          useOfficialTokens = true,
-          tokenSymbols = [],
-          tokenAddresses = []
-        } = request.query;
+      // Extract parameters with defaults
+      const {
+        network = 'mainnet',
+        types = [],
+        maxNumberOfPages = 1,
+        useOfficialTokens = true,
+        tokenSymbols = [],
+        tokenAddresses = []
+      } = request.query;
 
-        // Get Hydration instance
-        const hydration = await Hydration.getInstance(network);
-        if (!hydration) {
-          throw fastify.httpErrors.serviceUnavailable('Hydration service unavailable');
-        }
-
-        // Use the business logic method from the Hydration class
-        const pools = await hydration.listPools(
-          types,
-          tokenSymbols,
-          tokenAddresses,
-          useOfficialTokens,
-          maxNumberOfPages
-        );
-
-        return { pools };
-      } catch (e) {
-        logger.error(`Error listing pools:`, e);
-        throw fastify.httpErrors.internalServerError('Internal server error');
+      // Get Hydration instance
+      const hydration = await Hydration.getInstance(network);
+      if (!hydration) {
+        throw fastify.httpErrors.serviceUnavailable('Hydration service unavailable');
       }
+
+      // Use the business logic method from the Hydration class
+      const pools = await hydration.listPools(
+        types,
+        tokenSymbols,
+        tokenAddresses,
+        useOfficialTokens,
+        maxNumberOfPages
+      );
+
+      return { pools };
     }
   );
 };

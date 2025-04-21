@@ -10,7 +10,8 @@ import {
 } from '../../../../schemas/trading-types/amm-schema';
 
 /**
- * Route handler for getting a liquidity quote
+ * Route handler for getting a liquidity quote.
+ * Provides estimates for adding liquidity to a specific pool.
  */
 export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
@@ -51,33 +52,28 @@ export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         // Get Hydration instance
         const hydration = await Hydration.getInstance(network);
         
-        try {
-          // Call the business logic method from the Hydration class
-          const quote = await hydration.quoteLiquidity(
-            poolAddress,
-            baseTokenAmount,
-            quoteTokenAmount,
-            slippagePct
-          );
-          
-          return quote;
-        } catch (error) {
-          logger.error(`Failed to get liquidity quote: ${error.message}`);
-          
-          // Map errors to HTTP errors
-          if (error.message.includes('not found')) {
-            throw httpNotFound(error.message);
-          }
-          if (error.message.includes('must be provided')) {
-            throw httpBadRequest(error.message);
-          }
-          
-          throw error;
+        // Call the business logic method from the Hydration class
+        const quote = await hydration.quoteLiquidity(
+          poolAddress,
+          baseTokenAmount,
+          quoteTokenAmount,
+          slippagePct
+        );
+        
+        return quote;
+      } catch (error) {
+        // Map specific errors to HTTP errors
+        if (error.message?.includes('not found')) {
+          throw httpNotFound(error.message);
         }
-      } catch (e) {
-        logger.error('Error in quote-liquidity:', e);
-        if (e.statusCode) {
-          throw fastify.httpErrors.createError(e.statusCode, e.message);
+        if (error.message?.includes('must be provided')) {
+          throw httpBadRequest(error.message);
+        }
+        
+        // Log and rethrow any unexpected errors
+        logger.error('Error in quote-liquidity:', error);
+        if (error.statusCode) {
+          throw fastify.httpErrors.createError(error.statusCode, error.message);
         }
         throw fastify.httpErrors.internalServerError('Internal server error');
       }

@@ -1,27 +1,26 @@
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
-import { Hydration } from '../../hydration';
-import { Polkadot } from '../../../../chains/polkadot/polkadot';
-import { BigNumber } from '@galacticcouncil/sdk/build/types/utils/bignumber';
-import { logger } from '../../../../services/logger';
-import { validatePolkadotAddress } from '../../../../chains/polkadot/polkadot.validators';
-import { httpBadRequest, httpNotFound, ERROR_MESSAGES } from '../../../../services/error-handler';
+import {FastifyInstance, FastifyPluginAsync} from 'fastify';
+import {Hydration} from '../../hydration';
+import {Polkadot} from '../../../../chains/polkadot/polkadot';
+import {logger} from '../../../../services/logger';
+import {validatePolkadotAddress} from '../../../../chains/polkadot/polkadot.validators';
 import {
   AddLiquidityRequest,
-  AddLiquidityResponse,
   AddLiquidityRequestType,
+  AddLiquidityResponse,
   AddLiquidityResponseType
 } from '../../../../schemas/trading-types/amm-schema';
 
 /**
- * Add liquidity to a Hydration position
- * @param fastify Fastify instance
- * @param network The blockchain network (e.g., 'mainnet')
- * @param walletAddress The user's wallet address
- * @param poolId The pool ID to add liquidity to
- * @param baseTokenAmount Amount of base token to add
- * @param quoteTokenAmount Amount of quote token to add
- * @param slippagePct Optional slippage percentage (default from config)
- * @returns Details of the liquidity addition
+ * Adds liquidity to a Hydration position.
+ * 
+ * @param fastify - Fastify instance
+ * @param network - The blockchain network (e.g., 'mainnet')
+ * @param walletAddress - The user's wallet address
+ * @param poolId - The pool ID to add liquidity to
+ * @param baseTokenAmount - Amount of base token to add
+ * @param quoteTokenAmount - Amount of quote token to add
+ * @param slippagePct - Optional slippage percentage (default from config)
+ * @returns Details of the liquidity addition operation
  */
 async function addLiquidity(
   _fastify: FastifyInstance,
@@ -32,47 +31,26 @@ async function addLiquidity(
   quoteTokenAmount: number,
   slippagePct?: number
 ): Promise<AddLiquidityResponseType> {
-  const initTime = Date.now();
+  // Validate wallet address
+  validatePolkadotAddress(walletAddress);
 
-  // Validate address - Use a simple validation without custom error message
-  try {
-    validatePolkadotAddress(walletAddress);
-  } catch (error) {
-    // Use a standard error format instead of the custom ERROR_MESSAGES.INVALID_ADDRESS
-    throw httpBadRequest(`Invalid Polkadot address: ${walletAddress}`);
-  }
-
-  try {
-    const hydration = await Hydration.getInstance(network);
-    
-    // Call the business logic method from the Hydration class
-    const result = await hydration.addLiquidity(
-      walletAddress,
-      poolId,
-      baseTokenAmount,
-      quoteTokenAmount, 
-      slippagePct
-    );
-    
-    return result;
-  } catch (error) {
-    // Handle specific error types and convert to HTTP errors
-    if (error.message.includes('Pool not found')) {
-      throw httpNotFound(error.message);
-    } else if (error.message.includes('Insufficient') || 
-               error.message.includes('Invalid') ||
-               error.message.includes('You must provide')) {
-      throw httpBadRequest(error.message);
-    }
-    
-    // Log the error and rethrow
-    logger.error(`Error adding liquidity to pool ${poolId}:`, error);
-    throw error;
-  }
+  const hydration = await Hydration.getInstance(network);
+  
+  // Call the business logic method from the Hydration class
+  const result = await hydration.addLiquidity(
+    walletAddress,
+    poolId,
+    baseTokenAmount,
+    quoteTokenAmount, 
+    slippagePct
+  );
+  
+  return result;
 }
 
 /**
- * Register the add-liquidity route
+ * Registers the add-liquidity route.
+ * Exposes an endpoint for adding liquidity to specified pools.
  */
 export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   // Get first wallet address for example
@@ -92,7 +70,6 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   // Update schema example
   AddLiquidityRequest.properties.walletAddress.examples = [firstWalletAddress];
 
-  // Fix the Fastify route typing issue
   fastify.post(
     '/add-liquidity',
     {
@@ -104,7 +81,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             ...AddLiquidityRequest.properties,
             network: { type: 'string', default: 'mainnet' },
-            poolAddress: { type: 'string', examples: ['12345'] }, // Example pool ID
+            poolAddress: { type: 'string', examples: ['12345'] },
             slippagePct: { type: 'number', examples: [1] },
             baseTokenAmount: { type: 'number', examples: [10] },
             quoteTokenAmount: { type: 'number', examples: [10] },
@@ -140,6 +117,18 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
       } catch (e) {
         logger.error('Error in add-liquidity endpoint:', e);
 
+        // Handle specific error types
+        if (e.message?.includes('Pool not found')) {
+          return reply.status(404).send({ error: e.message });
+        } else if (e.message?.includes('Invalid Polkadot address')) {
+          return reply.status(400).send({ error: e.message });
+        } else if (e.message?.includes('Insufficient') || 
+                   e.message?.includes('Invalid') ||
+                   e.message?.includes('You must provide')) {
+          return reply.status(400).send({ error: e.message });
+        }
+
+        // Default error response
         if (e.statusCode) {
           return reply.status(e.statusCode).send({ error: e.message });
         }

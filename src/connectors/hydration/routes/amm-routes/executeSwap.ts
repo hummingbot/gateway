@@ -10,7 +10,8 @@ import {
 import {httpBadRequest, httpNotFound} from '../../../../services/error-handler';
 
 /**
- * Route handler for executing a swap
+ * Route handler for executing token swaps.
+ * Provides an endpoint to perform token exchanges on Hydration protocol.
  */
 export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
   // Get first wallet address for example
@@ -54,8 +55,6 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
       try {
         const { walletAddress, baseToken, quoteToken, amount, side, poolAddress, slippagePct } = request.body as ExecuteSwapRequestType;
         const network = (request.body as ExecuteSwapRequestType).network || 'mainnet';
-
-        logger.info(`Received swap request: ${amount} ${baseToken} -> ${quoteToken} in pool ${poolAddress}`);
 
         // Get Hydration instance
         const hydration = await Hydration.getInstance(network);

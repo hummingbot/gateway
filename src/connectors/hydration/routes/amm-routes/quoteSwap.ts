@@ -9,7 +9,8 @@ import {
 import { httpBadRequest, httpNotFound } from '../../../../services/error-handler';
 
 /**
- * Route handler for getting a swap quote
+ * Route handler for getting swap quotes.
+ * Provides price estimates and token amounts for potential swaps.
  */
 export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get(
@@ -56,39 +57,39 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
 
         const hydration = await Hydration.getInstance(networkToUse);
         
-        try {
-          const quote = await hydration.getSwapQuote(
-            baseToken,
-            quoteToken,
-            amount,
-            side as 'BUY' | 'SELL',
-            poolAddress,
-            slippagePct
-          );
-          
-          return {
-            estimatedAmountIn: quote.estimatedAmountIn,
-            estimatedAmountOut: quote.estimatedAmountOut,
-            minAmountOut: quote.minAmountOut,
-            maxAmountIn: quote.maxAmountIn,
-            baseTokenBalanceChange: quote.baseTokenBalanceChange,
-            quoteTokenBalanceChange: quote.quoteTokenBalanceChange,
-            price: quote.price,
-            gasPrice: quote.gasPrice,
-            gasLimit: quote.gasLimit,
-            gasCost: quote.gasCost
-          };
-        } catch (error) {
-          logger.error(`Failed to get swap quote: ${error.message}`);
-          if (error.message.includes('not found')) {
-            throw httpNotFound(error.message);
-          }
-          throw error;
+        // Get swap quote from Hydration service
+        const quote = await hydration.getSwapQuote(
+          baseToken,
+          quoteToken,
+          amount,
+          side as 'BUY' | 'SELL',
+          poolAddress,
+          slippagePct
+        );
+        
+        // Map to response schema
+        return {
+          estimatedAmountIn: quote.estimatedAmountIn,
+          estimatedAmountOut: quote.estimatedAmountOut,
+          minAmountOut: quote.minAmountOut,
+          maxAmountIn: quote.maxAmountIn,
+          baseTokenBalanceChange: quote.baseTokenBalanceChange,
+          quoteTokenBalanceChange: quote.quoteTokenBalanceChange,
+          price: quote.price,
+          gasPrice: quote.gasPrice,
+          gasLimit: quote.gasLimit,
+          gasCost: quote.gasCost
+        };
+      } catch (error) {
+        // Handle specific error types
+        if (error.message?.includes('not found')) {
+          throw httpNotFound(error.message);
         }
-      } catch (e) {
-        logger.error('Error in quote-swap:', e);
-        if (e.statusCode) {
-          throw fastify.httpErrors.createError(e.statusCode, 'Request failed');
+        
+        // Propagate HTTP errors or convert to internal server error
+        logger.error('Error in quote-swap:', error);
+        if (error.statusCode) {
+          throw fastify.httpErrors.createError(error.statusCode, error.message || 'Request failed');
         }
         throw fastify.httpErrors.internalServerError('Internal server error');
       }
