@@ -1,10 +1,29 @@
 import { TokenInfo } from '../../chains/ethereum/ethereum-base';
+import { Type, Static } from '@sinclair/typebox';
+import {
+  AddLiquidityRequest,
+  AddLiquidityResponse,
+  GetPoolInfoRequest,
+  ListPoolsRequest,
+  ListPoolsResponse,
+  PoolInfoSchema,
+  QuoteLiquidityRequest,
+  QuoteLiquidityResponse,
+  RemoveLiquidityRequest,
+  RemoveLiquidityResponse
+} from '../../schemas/trading-types/amm-schema';
+import {
+  ExecuteSwapRequest,
+  ExecuteSwapResponse,
+  GetSwapQuoteRequest,
+  GetSwapQuoteResponse
+} from '../../schemas/trading-types/swap-schema';
 
 /**
  * Represents a pool in the Hydration protocol with detailed information.
  * Contains all necessary data about a liquidity pool including tokens, pricing, and metrics.
  */
-export interface HydrationPoolInfo {
+export interface HydrationPoolDetails {
   /** Unique identifier for the pool */
   id: string;
   
@@ -188,3 +207,115 @@ export interface LiquidityQuote {
   /** Liquidity amount calculated */
   liquidity: number;
 }
+
+/**
+ * Hydration add liquidity request schema
+ */
+export const HydrationAddLiquidityRequestSchema = Type.Composite([
+  AddLiquidityRequest
+], { $id: 'HydrationAddLiquidityRequest' });
+export type HydrationAddLiquidityRequest = Static<typeof HydrationAddLiquidityRequestSchema>;
+
+/**
+ * Hydration add liquidity response schema
+ */
+export const HydrationAddLiquidityResponseSchema = Type.Composite([
+  AddLiquidityResponse
+], { $id: 'HydrationAddLiquidityResponse' });
+export type HydrationAddLiquidityResponse = Static<typeof HydrationAddLiquidityResponseSchema>;
+
+/**
+ * Hydration list pools request schema
+ */
+export const HydrationListPoolsRequestSchema = Type.Composite([
+  ListPoolsRequest
+], { $id: 'HydrationListPoolsRequest' });
+export type HydrationListPoolsRequest = Static<typeof HydrationListPoolsRequestSchema>;
+
+/**
+ * Hydration list pools response schema
+ */
+export const HydrationListPoolsResponseSchema = Type.Composite([
+  ListPoolsResponse
+], { $id: 'HydrationListPoolsResponse' });
+export type HydrationListPoolsResponse = Static<typeof HydrationListPoolsResponseSchema>;
+
+/**
+ * Hydration get pool info request schema
+ */
+export const HydrationGetPoolInfoRequestSchema = Type.Composite([
+  GetPoolInfoRequest
+], { $id: 'HydrationGetPoolInfoRequest' });
+export type HydrationGetPoolInfoRequest = Static<typeof HydrationGetPoolInfoRequestSchema>;
+
+/**
+ * Hydration pool info schema
+ */
+export const HydrationPoolInfoSchema = Type.Composite([
+  PoolInfoSchema
+], { $id: 'HydrationPoolInfo' });
+export type HydrationPoolInfo = Static<typeof HydrationPoolInfoSchema>;
+
+/**
+ * Hydration quote liquidity request schema
+ */
+export const HydrationQuoteLiquidityRequestSchema = Type.Composite([
+  QuoteLiquidityRequest
+], { $id: 'HydrationQuoteLiquidityRequest' });
+export type HydrationQuoteLiquidityRequest = Static<typeof HydrationQuoteLiquidityRequestSchema>;
+
+/**
+ * Hydration quote liquidity response schema
+ */
+export const HydrationQuoteLiquidityResponseSchema = Type.Composite([
+  QuoteLiquidityResponse
+], { $id: 'HydrationQuoteLiquidityResponse' });
+export type HydrationQuoteLiquidityResponse = Static<typeof HydrationQuoteLiquidityResponseSchema>;
+
+/**
+ * Hydration remove liquidity request schema
+ */
+export const HydrationRemoveLiquidityRequestSchema = Type.Composite([
+  RemoveLiquidityRequest
+], { $id: 'HydrationRemoveLiquidityRequest' });
+export type HydrationRemoveLiquidityRequest = Static<typeof HydrationRemoveLiquidityRequestSchema>;
+
+/**
+ * Hydration remove liquidity response schema
+ */
+export const HydrationRemoveLiquidityResponseSchema = Type.Composite([
+  RemoveLiquidityResponse
+], { $id: 'HydrationRemoveLiquidityResponse' });
+export type HydrationRemoveLiquidityResponse = Static<typeof HydrationRemoveLiquidityResponseSchema>;
+
+/**
+ * Hydration execute swap request schema
+ */
+export const HydrationExecuteSwapRequestSchema = Type.Composite([
+  ExecuteSwapRequest
+], { $id: 'HydrationExecuteSwapRequest' });
+export type HydrationExecuteSwapRequest = Static<typeof HydrationExecuteSwapRequestSchema>;
+
+/**
+ * Hydration execute swap response schema
+ */
+export const HydrationExecuteSwapResponseSchema = Type.Composite([
+  ExecuteSwapResponse
+], { $id: 'HydrationExecuteSwapResponse' });
+export type HydrationExecuteSwapResponse = Static<typeof HydrationExecuteSwapResponseSchema>;
+
+/**
+ * Hydration get swap quote request schema
+ */
+export const HydrationGetSwapQuoteRequestSchema = Type.Composite([
+  GetSwapQuoteRequest
+], { $id: 'HydrationGetSwapQuoteRequest' });
+export type HydrationGetSwapQuoteRequest = Static<typeof HydrationGetSwapQuoteRequestSchema>;
+
+/**
+ * Hydration get swap quote response schema
+ */
+export const HydrationGetSwapQuoteResponseSchema = Type.Composite([
+  GetSwapQuoteResponse
+], { $id: 'HydrationGetSwapQuoteResponse' });
+export type HydrationGetSwapQuoteResponse = Static<typeof HydrationGetSwapQuoteResponseSchema>;
