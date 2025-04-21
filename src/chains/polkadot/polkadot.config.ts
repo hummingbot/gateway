@@ -15,6 +15,8 @@ interface NetworkConfig {
   tokenListSource: string;
   /** Symbol of the native currency (e.g., DOT, KSM) */
   nativeCurrencySymbol: string;
+  /** Symbol of the fee payment currency (e.g., DOT, KSM) */
+  feePaymentCurrencySymbol: string;
 }
 
 /**
@@ -46,6 +48,7 @@ export function getPolkadotConfig(
       tokenListType: configManager.get(`${prefix}.tokenListType`),
       tokenListSource: configManager.get(`${prefix}.tokenListSource`),
       nativeCurrencySymbol: configManager.get(`${prefix}.nativeCurrencySymbol`),
+      feePaymentCurrencySymbol: configManager.get(`${prefix}.feePaymentCurrencySymbol`),
     }
   };
 }

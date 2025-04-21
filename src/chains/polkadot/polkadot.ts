@@ -13,7 +13,7 @@ import {BN} from 'bn.js';
 import * as fs from 'fs';
 import axios, {Axios} from 'axios';
 import {ConfigManagerCertPassphrase} from '../../services/config-manager-cert-passphrase';
-import {runWithRetryAndTimeout} from "../../connectors/hydration/hydration.utils";
+import {Constant, runWithRetryAndTimeout} from "../../connectors/hydration/hydration.utils";
 import {wrapResponse} from '../../services/response-wrapper';
 import {fromBaseUnits, toBaseUnits} from './polkadot.utils';
 import {validatePolkadotAddress} from './polkadot.validators';
@@ -178,6 +178,14 @@ export class Polkadot {
    */
   public getNativeToken(): TokenInfo {
     return this.getToken(this.config.network.nativeCurrencySymbol);
+  }
+
+  /**
+   * Get the fee payment currency
+   * @returns A Promise that resolves to the fee payment currency
+   */
+  public getFeePaymentToken(): TokenInfo {
+    return this.getToken(this.config.network.feePaymentCurrencySymbol);
   }
 
   /**
@@ -408,50 +416,65 @@ export class Polkadot {
    */
   public async getTransaction(txHash: string): Promise<any> {
     const startTime = Date.now();
-    try {
-      const currentBlock = await this.getCurrentBlockNumber();
 
+    try {
+      const feePaymentToken = this.getFeePaymentToken();
+
+      const currentBlock = await this.getCurrentBlockNumber();
+      
       // Initialize default values
       let txData = null;
       let txStatus = 0; // Not found by default
       let blockNum = null;
       let fee = null;
-
-      try {
-        const headers = { 'Content-Type': 'application/json' };
-        const body = { hash: txHash };
-
-        const response = await this.axiosPost(
-            axios,
-            this.config.network.transactionURL,
-            body,
-            { headers }
-        );
-
-        if (response.data && response.data.data) {
-          const transaction = response.data.data;
-
-          // Extract transaction data
-          txData = transaction;
-
-          blockNum = transaction.block_num || currentBlock;
-          fee = transaction.fee
-              ? parseFloat(transaction.fee) / Math.pow(10, this.getNativeToken().decimals)
-              : null;
-
-          // Determine status based on success and finalized flags
-          if (transaction.success) {
-            txStatus = 1; // Success
-          } else if (transaction.success === false) {
-            txStatus = -1; // Failed
-          } else if (transaction.finalized) {
-            txStatus = 1; // Success if finalized
+      
+      // Keep polling until we find a fee or reach timeout
+      // noinspection PointlessBooleanExpressionJS
+      while (fee == null && (Date.now() - startTime < Constant.defaultTimeout.getValueAs<number>())) {
+        try {
+          const headers = { 'Content-Type': 'application/json' };
+          const body = { hash: txHash };
+          
+          const response = await this.axiosPost(
+              axios,
+              this.config.network.transactionURL,
+              body,
+              { headers }
+          );
+          
+          if (response.data && response.data.data) {
+            const transaction = response.data.data;
+            
+            // Extract transaction data
+            txData = transaction;
+            
+            blockNum = transaction.block_num || currentBlock;
+            fee = transaction.fee
+                ? parseFloat(transaction.fee) / Math.pow(10, feePaymentToken.decimals)
+                : null;
+            
+            // Determine status based on success and finalized flags
+            if (transaction.success) {
+              txStatus = 1; // Success
+            } else if (transaction.success === false) {
+              txStatus = -1; // Failed
+            } else if (transaction.finalized) {
+              txStatus = 1; // Success if finalized
+            }
+            
+            // If fee is found, break the loop
+            if (fee !== null) {
+              break;
+            }
           }
+        } catch (error) {
+          logger.error(`Error fetching transaction ${txHash}: ${error.message}`);
         }
-      } catch (error) {
-        logger.error(`Error fetching transaction ${txHash}: ${error.message}`);
+        
+        // Wait a bit before polling again
+        await new Promise(resolve => setTimeout(resolve, 1000 * Constant.defaultDelayBetweenRetries.getValueAs<number>()));
       }
-
+      
       return {
         network: this.network,
         currentBlock,
@@ -466,7 +489,7 @@ export class Polkadot {
     } catch (error) {
       logger.error(`Error in getTransaction for ${txHash}: ${error.message}`);
       const currentBlock = await this.getCurrentBlockNumber().catch(() => 0);
-
+      
       return {
         network: this.network,
         currentBlock,
