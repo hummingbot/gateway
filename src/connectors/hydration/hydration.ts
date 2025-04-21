@@ -183,8 +183,7 @@ export class Hydration {
       const poolData = pools.find((pool) => pool.address === poolAddress || pool.id == poolAddress);
 
       if (!poolData) {
-        logger.error(`Pool not found: ${poolAddress}`);
-        return null;
+        throw new Error(`Pool not found: ${poolAddress}`);
       }
 
       // Get token info

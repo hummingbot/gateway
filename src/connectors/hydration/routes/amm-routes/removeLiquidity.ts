@@ -28,7 +28,7 @@ export async function removeLiquidity(
   network: string,
   walletAddress: string,
   poolAddress: string,
-  percentageToRemove: number
+  percentageToRemove: number // 1 means 1% (or 1 share if it as a Xyk pool)
 ): Promise<RemoveLiquidityResponseType> {
   try {
     // Validate inputs
@@ -45,6 +45,7 @@ export async function removeLiquidity(
 
     const polkadot = await Polkadot.getInstance(network);
     const hydration = await Hydration.getInstance(network);
+    const apiPromise = await hydration.getApiPromise();
     
     // Get wallet
     const wallet = await polkadot.getWallet(walletAddress);
@@ -58,21 +59,44 @@ export async function removeLiquidity(
     // Get token symbols from addresses
     const baseTokenSymbol = await hydration.getTokenSymbol(pool.baseTokenAddress);
     const quoteTokenSymbol = await hydration.getTokenSymbol(pool.quoteTokenAddress);
-    
-    logger.info(`Removing ${percentageToRemove} shares from pool ${poolAddress}`);
 
     try {
       // Use assets from Hydration to get asset IDs
-      const assets = hydration.getAllTokens();
-      const baseAsset = assets.find(a => a.symbol === baseTokenSymbol);
-      const quoteAsset = assets.find(a => a.symbol === quoteTokenSymbol);
+      const feePaymentToken = polkadot.getFeePaymentToken();
+      const baseToken = polkadot.getToken(baseTokenSymbol);
+      const quoteToken = polkadot.getToken(quoteTokenSymbol);
 
-      if (!baseAsset || !quoteAsset) {
-        throw httpNotFound(`Asset not found: ${!baseAsset ? baseTokenSymbol : quoteTokenSymbol}`);
+      if (!baseToken || !quoteToken) {
+        throw httpNotFound(`Asset not found: ${!baseToken ? baseTokenSymbol : quoteTokenSymbol}`);
       }
 
       // Using the GalacticCouncil SDK to prepare the transaction
       const apiPromise = await hydration.getApiPromise();
+
+
+      let percentageToRemoveBN: BigNumber = new BigNumber(percentageToRemove.toString());
+      let totalUserSharesInThePool: BigNumber;
+      let userSharesToRemove: BigNumber;
+      if (pool.id) {
+        // TODO: should this number come from the 2-Pool, 4-Pool extra token in the pool, the protocol is always using 18?!!!
+        totalUserSharesInThePool = new BigNumber((await apiPromise.query.tokens.accounts(walletAddress, pool.id)).free.toString()).dividedBy(Math.pow(10, 18));
+        userSharesToRemove = percentageToRemoveBN.multipliedBy(totalUserSharesInThePool).dividedBy(100);
+
+        logger.info(`Removing ${percentageToRemove}% or ${userSharesToRemove} shares of the user from the pool ${poolAddress}`);
+
+        userSharesToRemove = userSharesToRemove.multipliedBy(Math.pow(10, 18));
+      } else {
+        // TODO: Xyk pools are not informing the pool id, which is mandatory for the `query.tokens.accounts` call so we consider the percentage to remove as the amount of shares to remove!!!
+        userSharesToRemove = percentageToRemoveBN;
+
+        logger.info(`Removing ${userSharesToRemove} shares from the pool ${poolAddress}`);
+
+        userSharesToRemove = userSharesToRemove.multipliedBy(Math.pow(10, baseToken.decimals));
+      }
+
+      if (userSharesToRemove.lte(0)) {
+        throw httpBadRequest('Calculated liquidity to remove is zero or negative');
+      }
 
       let removeLiquidityTx;
       // Get pool type
@@ -80,17 +104,13 @@ export async function removeLiquidity(
 
       logger.info(`Removing liquidity from ${poolType} pool (${poolAddress})`);
 
-      let liquidityToRemove: BigNumber;
-
       switch (poolType) {
         case POOL_TYPE.XYK:
           // For XYK pools
-
-          liquidityToRemove = new BigNumber(percentageToRemove * Math.pow(10, baseAsset.decimals));
           removeLiquidityTx = apiPromise.tx.xyk.removeLiquidity(
-            baseAsset.address,
-            quoteAsset.address,
-            liquidityToRemove.toString()
+            baseToken.address,
+            quoteToken.address,
+            userSharesToRemove.toString()
           );
           break;
 
@@ -104,22 +124,19 @@ export async function removeLiquidity(
         case POOL_TYPE.OMNIPOOL:
           // For Omnipool, we need to specify which asset we're withdrawing
           // In Omnipool, we can only withdraw one asset at a time, so we use the base asset
-          liquidityToRemove = new BigNumber(percentageToRemove * Math.pow(10, baseAsset.decimals));
           removeLiquidityTx = apiPromise.tx.omnipool.removeLiquidity(
-            baseAsset.address,
-            liquidityToRemove.toString()
+            baseToken.address,
+            userSharesToRemove.toString()
           );
           break;
 
         case POOL_TYPE.STABLESWAP:
-          // TODO: should this number come from the 2-Pool, 4-Pool extra token in the pool, the protocol is always using 18?!!!
-          liquidityToRemove = new BigNumber(percentageToRemove * Math.pow(10, 18));
           removeLiquidityTx = apiPromise.tx.stableswap.removeLiquidity(
             pool.id,
-            liquidityToRemove.toString(),
+            userSharesToRemove.toString(),
             [
-              { assetId: baseAsset.address, amount: 0 }, // Ask for minimum amount
-              { assetId: quoteAsset.address, amount: 0 }  // System will calculate actual amounts
+              { assetId: baseToken.address, amount: 0 }, // Ask for minimum amount
+              { assetId: quoteToken.address, amount: 0 }  // System will calculate actual amounts
             ]
           );
           break;
@@ -128,31 +145,40 @@ export async function removeLiquidity(
           throw httpBadRequest(`Unsupported pool type: ${poolType}`);
       }
 
-      if (liquidityToRemove.lte(0)) {
-        throw httpBadRequest('Calculated liquidity to remove is zero or negative');
-      }
-
       // Sign and send the transaction
-      const txHash = await submitTransaction(apiPromise, removeLiquidityTx, wallet, poolType);
-
-      const fullTransaction = await hydration.polkadot.getTransaction(txHash, true, true);
+      const {txHash, transaction} = await submitTransaction(apiPromise, removeLiquidityTx, wallet, poolType);
 
       logger.info(`Liquidity removed from pool ${poolAddress} with tx hash: ${txHash}`);
 
-      // Get transaction result to retrieve actual amounts removed
-      const { baseAmount, quoteAmount } = await getRemoveLiquidityResult(
-        apiPromise,
-        txHash, 
-        baseAsset, 
-        quoteAsset, 
-        poolType
-      );
+      let fee: BigNumber;
+      try {
+        fee = new BigNumber(transaction.events.map((it) => it.toHuman()).filter((it) => it.event.method == 'TransactionFeePaid')[0].event.data.actualFee.toString().replaceAll(',', '')).dividedBy(Math.pow(10, feePaymentToken.decimals));
+      } catch (error) {
+        logger.error(`It was not possible to extract the fee from the transaction:`, error);
+        fee = new BigNumber(Number.NaN);
+      }
+
+      let baseTokenAmountRemoved: BigNumber;
+      try {
+        baseTokenAmountRemoved = new BigNumber(transaction.events.map((it) => it.toHuman()).filter((it) => it.event.section == 'currencies' && it.event.method == 'Transferred' && it.event.data.currencyId == baseToken.address)[0].event.data.amount.toString().replaceAll(',', '')).dividedBy(Math.pow(10, baseToken.decimals));
+      } catch (error) {
+        logger.error(`It was not possible to extract the base token amount removed from the transaction:`, error);
+        baseTokenAmountRemoved = new BigNumber(Number.NaN);
+      }
+
+      let quoteTokenAmountRemoved: BigNumber;
+      try {
+        quoteTokenAmountRemoved = new BigNumber(transaction.events.map((it) => it.toHuman()).filter((it) => it.event.section == 'currencies' && it.event.method == 'Transferred' && it.event.data.currencyId == quoteToken.address)[0].event.data.amount.toString().replaceAll(',', '')).dividedBy(Math.pow(10, quoteToken.decimals));
+      } catch (error) {
+        logger.error(`It was not possible to extract the quote token amount removed from the transaction:`, error);
+        quoteTokenAmountRemoved = new BigNumber(Number.NaN);
+      }
 
       return {
         signature: txHash,
-        fee: fullTransaction.fee,
-        baseTokenAmountRemoved: baseAmount,
-        quoteTokenAmountRemoved: quoteAmount
+        fee: fee.toNumber(),
+        baseTokenAmountRemoved: baseTokenAmountRemoved.toNumber(),
+        quoteTokenAmountRemoved: quoteTokenAmountRemoved.toNumber()
       };
     } catch (error) {
       logger.error(`Error removing liquidity from pool ${poolAddress}:`, error);
@@ -177,9 +203,9 @@ export async function removeLiquidity(
  * @returns Transaction hash if successful
  * @throws Error if transaction fails
  */
-async function submitTransaction(api: any, tx: any, wallet: any, poolType: string): Promise<string> {
+async function submitTransaction(api: any, tx: any, wallet: any, poolType: string): Promise<{txHash: string, transaction: any}> {
   // We still need a promise for the event-based callbacks
-  return new Promise<string>(async (resolve, reject) => {
+  return new Promise<{txHash: string, transaction: any}>(async (resolve, reject) => {
     let unsub: () => void;
     
     // We'll get the hash from the status once available
@@ -221,7 +247,7 @@ async function submitTransaction(api: any, tx: any, wallet: any, poolType: strin
           if (await hasSuccessEvent(api, result.events, poolType)) {
             logger.info(`Transaction ${txHash} succeeded in block ${blockHash.toString()}`);
             unsub();
-            resolve(txHash);
+            resolve({txHash: txHash, transaction: result});
             return;
           }
           
@@ -229,7 +255,7 @@ async function submitTransaction(api: any, tx: any, wallet: any, poolType: strin
           if (result.status.isFinalized) {
             logger.warn(`Transaction ${txHash} finalized with no specific success/failure event. Assuming success.`);
             unsub();
-            resolve(txHash);
+            resolve({txHash: txHash, transaction: result});
             return;
           }
         } 
