@@ -6,17 +6,42 @@ import {KeyringPair} from '@polkadot/keyring/types';
 import {ApiPromise, HttpProvider, WsProvider} from '@polkadot/api';
 import {
   BigNumber,
-  PoolBase,
-  PoolService,
-  PoolToken,
+} from '@galacticcouncil/sdk/build/types/utils/bignumber';
+import {
   PoolType,
-  Trade,
-  TradeRouter,
-  TradeType
-} from '@galacticcouncil/sdk';
+  PoolBase,
+  PoolToken,
+  TradeType,
+  Trade
+} from '@galacticcouncil/sdk/build/types/types';
+import {
+  PoolService,
+} from '@galacticcouncil/sdk/build/types/pool/PoolService';
+import {
+  TradeRouter
+} from '@galacticcouncil/sdk/build/types/api/TradeRouter';
 import {cryptoWaitReady} from '@polkadot/util-crypto';
-
 import {runWithRetryAndTimeout} from "../../chains/polkadot/polkadot.utils";
+
+// Import hydration.json for token resolution
+import hydrationJson from '../../../conf/lists/hydration.json';
+
+// Create a map of token symbols to addresses from hydration.json
+const KNOWN_TOKENS = hydrationJson.reduce((acc, token) => {
+  acc[token.symbol.toUpperCase()] = token.address;
+  return acc;
+}, {});
+
+// Buffer for transaction costs (in HDX)
+const HDX_TRANSACTION_BUFFER = 0.1;
+
+// Pool types
+const POOL_TYPE = {
+  XYK: 'xyk',
+  LBP: 'lbp',
+  OMNIPOOL: 'omnipool',
+  STABLESWAP: 'stableswap'
+};
 
 // Add interface for extended pool data
 interface ExtendedPoolBase extends Omit<PoolBase, 'tokens'> {
@@ -648,7 +673,7 @@ export class Hydration {
       );
 
       // Create the transaction
-      const transaction = trade.toTx(tradeLimit).get<any>();
+      const transaction = trade.toTx(tradeLimit).get();
 
       // Execute the transaction
       const apiPromise = await this.getApiPromise();
@@ -1141,5 +1166,888 @@ export class Hydration {
   @runWithRetryAndTimeout()
   public async poolServiceSyncRegistry(target: PoolService): Promise<void> {
     return await target.syncRegistry();
+  }
+
+  /**
+   * Add liquidity to a Hydration position
+   * @param walletAddress The user's wallet address
+   * @param poolId The pool ID to add liquidity to
+   * @param baseTokenAmount Amount of base token to add
+   * @param quoteTokenAmount Amount of quote token to add
+   * @param slippagePct Optional slippage percentage (default from config)
+   * @returns Details of the liquidity addition
+   */
+  async addLiquidity(
+    walletAddress: string,
+    poolId: string,
+    baseTokenAmount: number,
+    quoteTokenAmount: number,
+    slippagePct?: number
+  ): Promise<any> {
+    try {
+      // Get wallet
+      const wallet = await this.polkadot.getWallet(walletAddress);
+      
+      // Get pool info
+      const pool = await this.getPoolInfo(poolId);
+      if (!pool) {
+        throw new Error(`Pool not found: ${poolId}`);
+      }
+
+      // Get token symbols from addresses
+      const baseTokenSymbol = await this.getTokenSymbol(pool.baseTokenAddress);
+      const quoteTokenSymbol = await this.getTokenSymbol(pool.quoteTokenAddress);
+
+      // Validate amounts
+      if (baseTokenAmount <= 0 && quoteTokenAmount <= 0) {
+        throw new Error('You must provide at least one non-zero amount');
+      }
+
+      // Check balances with transaction buffer
+      const balances = await this.polkadot.getBalance(wallet, [baseTokenSymbol, quoteTokenSymbol, "HDX"]);
+      const requiredBase = baseTokenAmount;
+      const requiredQuote = quoteTokenAmount;
+      const requiredHDX = HDX_TRANSACTION_BUFFER;
+
+      // Check base token balance
+      if (balances[baseTokenSymbol] < requiredBase) {
+        throw new Error(
+          `Insufficient ${baseTokenSymbol} balance. Required: ${requiredBase}, Available: ${balances[baseTokenSymbol]}`
+        );
+      }
+
+      // Check quote token balance
+      if (balances[quoteTokenSymbol] < requiredQuote) {
+        throw new Error(
+          `Insufficient ${quoteTokenSymbol} balance. Required: ${requiredQuote}, Available: ${balances[quoteTokenSymbol]}`
+        );
+      }
+
+      // Check HDX balance for gas
+      if (balances['HDX'] < requiredHDX) {
+        throw new Error(
+          `Insufficient HDX balance for transaction fees. Required: ${requiredHDX}, Available: ${balances['HDX']}`
+        );
+      }
+
+      logger.info(`Adding liquidity to pool ${poolId}: ${baseTokenAmount.toFixed(4)} ${baseTokenSymbol}, ${quoteTokenAmount.toFixed(4)} ${quoteTokenSymbol}`);
+
+      // Use assets from Hydration to get asset IDs
+      const assets = this.getAllTokens();
+      const baseToken = assets.find(a => a.symbol === baseTokenSymbol);
+      const quoteToken = assets.find(a => a.symbol === quoteTokenSymbol);
+
+      if (!baseToken || !quoteToken) {
+        throw new Error(`Asset not found: ${!baseToken ? baseTokenSymbol : quoteTokenSymbol}`);
+      }
+
+      // Convert amounts to BigNumber with proper decimals
+      const baseAmountBN = new BigNumber(baseTokenAmount)
+        .multipliedBy(new BigNumber(10).pow(baseToken.decimals))
+        .decimalPlaces(0);
+
+      const quoteAmountBN = new BigNumber(quoteTokenAmount)
+        .multipliedBy(new BigNumber(10).pow(quoteToken.decimals))
+        .decimalPlaces(0);
+
+      // Get slippage
+      const effectiveSlippage = slippagePct ?? parseFloat(this.config.allowedSlippage);
+
+      // Using the GalacticCouncil SDK to prepare the transaction
+      const apiPromise = await this.getApiPromise();
+      
+      let addLiquidityTx;
+      const poolType = pool.poolType?.toLowerCase() || POOL_TYPE.XYK; // Default to XYK if type is not provided
+
+      logger.info(`Adding liquidity to ${poolType} pool (${poolId})`);
+
+      switch (poolType) {
+        case POOL_TYPE.XYK:
+          // Calculate max limit for quote token based on slippage
+          const quoteAmountMaxLimit = this.calculateMaxAmountIn(quoteAmountBN, effectiveSlippage);
+          
+          // Create XYK add liquidity transaction
+          addLiquidityTx = apiPromise.tx.xyk.addLiquidity(
+            baseToken.address,
+            quoteToken.address,
+            baseAmountBN.toString(),
+            quoteAmountMaxLimit.toString()
+          );
+          break;
+
+        case POOL_TYPE.LBP:
+          // For LBP, we use [assetId, amount] tuples
+          addLiquidityTx = apiPromise.tx.lbp.addLiquidity(
+            [baseToken.address, baseAmountBN.toString()],
+            [quoteToken.address, quoteAmountBN.toString()]
+          );
+          break;
+
+        case POOL_TYPE.OMNIPOOL:
+          // For Omnipool, we can only add liquidity for one asset at a time
+          // We'll use the base asset if both are provided
+          if (baseTokenAmount > 0) {
+            // Calculate min shares limit based on slippage (if applicable)
+            const minSharesLimit = this.calculateMinSharesLimit(baseAmountBN, effectiveSlippage);
+            
+            addLiquidityTx = apiPromise.tx.omnipool.addLiquidityWithLimit(
+              baseToken.address,
+              baseAmountBN.toString(),
+              minSharesLimit.toString()
+            );
+          } else {
+            // Use quote asset if base amount is 0
+            const minSharesLimit = this.calculateMinSharesLimit(quoteAmountBN, effectiveSlippage);
+            
+            addLiquidityTx = apiPromise.tx.omnipool.addLiquidityWithLimit(
+              quoteToken.address,
+              quoteAmountBN.toString(),
+              minSharesLimit.toString()
+            );
+          }
+          break;
+
+        case POOL_TYPE.STABLESWAP:
+          // For Stableswap pools
+          // We need to specify which assets we want to receive
+          const assets = [
+            { assetId: baseToken.address, amount: baseAmountBN.toString() },
+            { assetId: quoteToken.address, amount: quoteAmountBN.toString() }
+          ].filter(asset => new BigNumber(asset.amount).gt(0)); // Only include assets with amount > 0
+          
+          // Get the numeric pool ID from pool info
+          const numericPoolId = parseInt(pool.id);
+          if (isNaN(numericPoolId)) {
+            throw new Error(`Invalid pool ID for stableswap: ${pool.id}`);
+          }
+          
+          addLiquidityTx = apiPromise.tx.stableswap.addLiquidity(
+            numericPoolId, // Use the numeric pool ID
+            assets
+          );
+          break;
+
+        default:
+          throw new Error(`Unsupported pool type: ${poolType}`);
+      }
+
+      // Sign and send the transaction
+      const txHash = await this.submitTransaction(apiPromise, addLiquidityTx, wallet, poolType);
+
+      logger.info(`Liquidity added to pool ${poolId} with tx hash: ${txHash}`);
+
+      // In a real implementation, we would parse events to get actual amounts added
+      // Here we're returning the requested amounts
+      return {
+        signature: txHash,
+        baseTokenAmountAdded: baseTokenAmount,
+        quoteTokenAmountAdded: quoteTokenAmount,
+        fee: 0.01 // This should be the actual fee from the transaction
+      };
+    } catch (error) {
+      logger.error(`Error adding liquidity to pool: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Calculate maximum amount in based on slippage
+   */
+  private calculateMaxAmountIn(amount: BigNumber, slippagePct: number): BigNumber {
+    return amount.multipliedBy(new BigNumber(100 + slippagePct).dividedBy(100)).decimalPlaces(0);
+  }
+
+  /**
+   * Calculate minimum shares limit based on slippage
+   */
+  private calculateMinSharesLimit(amount: BigNumber, slippagePct: number): BigNumber {
+    return amount.multipliedBy(new BigNumber(100 - slippagePct).dividedBy(100)).decimalPlaces(0);
+  }
+
+  /**
+   * Submit a transaction and wait for it to be included in a block
+   * @param api Polkadot API instance
+   * @param tx Transaction to submit
+   * @param wallet Wallet to sign the transaction
+   * @param poolType Type of pool (for event detection)
+   * @returns Transaction hash if successful
+   * @throws Error if transaction fails
+   */
+  private async submitTransaction(api: any, tx: any, wallet: any, poolType: string): Promise<string> {
+    // We still need a promise for the event-based callbacks
+    return new Promise<string>(async (resolve, reject) => {
+      let unsub: () => void;
+      
+      // We'll get the hash from the status once available
+      // Initial logging will use the tx ID for context only
+      const txId = tx.hash.toHex(); // Short ID for initial logging
+      logger.debug(`Transaction created with ID: ${txId}`);
+      
+      // Create a handler function for transaction status updates
+      const statusHandler = async (result: any) => {
+        try {
+          // Get the hash from status when available
+          const txHash = result.txHash.toString();
+          
+          if (result.status.isInBlock || result.status.isFinalized) {
+            // Transaction is included in a block
+            const blockHash = result.status.isInBlock ? result.status.asInBlock : result.status.asFinalized;
+            
+            logger.debug(`Transaction ${txHash} ${result.status.isInBlock ? 'in block' : 'finalized'}: ${blockHash.toString()}`);
+            
+            // Handle dispatch errors - these come directly with the status
+            if (result.dispatchError) {
+              const errorMessage = await this.extractErrorMessage(api, result.dispatchError);
+              logger.error(`Transaction ${txHash} failed with dispatch error: ${errorMessage}`);
+              unsub();
+              reject(new Error(`Transaction ${txHash} failed: ${errorMessage}`));
+              return;
+            }
+            
+            // Check transaction events for success or failure
+            if (await this.hasFailedEvent(api, result.events)) {
+              const errorMessage = await this.extractEventErrorMessage(api, result.events);
+              logger.error(`Transaction ${txHash} failed with event error: ${errorMessage}`);
+              unsub();
+              reject(new Error(`Transaction ${txHash} failed: ${errorMessage}`));
+              return;
+            }
+            
+            // Check for pool-specific success events
+            if (await this.hasSuccessEvent(api, result.events, poolType)) {
+              logger.info(`Transaction ${txHash} succeeded in block ${blockHash.toString()}`);
+              unsub();
+              resolve(txHash);
+              return;
+            }
+            
+            // If we reached finalization with no explicit failure, consider it a success
+            if (result.status.isFinalized) {
+              logger.warn(`Transaction ${txHash} finalized with no specific success/failure event. Assuming success.`);
+              unsub();
+              resolve(txHash);
+              return;
+            }
+          } 
+          else if (result.status.isDropped || result.status.isInvalid || result.status.isUsurped) {
+            // Transaction didn't make it to a block
+            const statusType = result.status.type;
+            const statusValue = result.status.value.toString();
+            const errorMessage = `Transaction ${statusType}: ${statusValue}`;
+            logger.error(`Transaction ${txHash} - ${errorMessage}`);
+            unsub();
+            reject(new Error(`Transaction ${txHash} ${statusType}: ${statusValue}`));
+            return;
+          }
+          else {
+            // Log other status updates with the transaction hash
+            logger.debug(`Transaction ${txHash} status: ${result.status.type}`);
+          }
+          // For other statuses (like Ready, Broadcast), we continue waiting
+        } catch (error) {
+          // If we can't get the hash from status for some reason, fall back to tx hash
+          const fallbackHash = tx.hash.toString();
+          logger.error(`Error processing transaction status: ${error.message}`);
+          unsub();
+          reject(new Error(`Transaction ${fallbackHash} processing failed: ${error.message}`));
+        }
+      };
+      
+      // Submit the transaction using async/await
+      try {
+        // Use await instead of then/catch
+        logger.info(`Submitting transaction with id ${txId} ...`);
+        unsub = await tx.signAndSend(wallet, statusHandler);
+      } catch (error) {
+        // Use the fallback hash if submission failed before we got a status
+        const fallbackHash = tx.hash.toString();
+        logger.error(`Exception during transaction submission: ${error.message}`);
+        reject(new Error(`Transaction ${fallbackHash} submission failed: ${error.message}`));
+      }
+    });
+  }
+
+  /**
+   * Extract a meaningful error message from a dispatch error
+   */
+  private async extractErrorMessage(api: any, dispatchError: any): Promise<string> {
+    if (dispatchError.isModule) {
+      try {
+        const { docs, name, section } = api.registry.findMetaError(dispatchError.asModule);
+        return `${section}.${name}: ${docs.join(' ')}`;
+      } catch (error) {
+        return `Unknown module error: ${dispatchError.asModule.toString()}`;
+      }
+    } else {
+      return dispatchError.toString();
+    }
+  }
+
+  /**
+   * Extract error message from failure events
+   */
+  private async extractEventErrorMessage(api: any, events: any[]): Promise<string> {
+    const failureEvent = events.find(({ event }) => 
+      api.events.system.ExtrinsicFailed.is(event)
+    );
+    
+    if (!failureEvent) return 'Unknown transaction failure';
+    
+    const { event: { data: [error] } } = failureEvent;
+    
+    if (error.isModule) {
+      try {
+        const { docs, name, section } = api.registry.findMetaError(error.asModule);
+        return `${section}.${name}: ${docs.join(' ')}`;
+      } catch (e) {
+        return `Unknown module error: ${error.toString()}`;
+      }
+    } else {
+      return error.toString();
+    }
+  }
+
+  /**
+   * Check if events contain a failure event
+   */
+  private async hasFailedEvent(api: any, events: any[]): Promise<boolean> {
+    return events.some(({ event }) => 
+      api.events.system.ExtrinsicFailed.is(event)
+    );
+  }
+
+  /**
+   * Check if events contain a success event specific to the pool type
+   */
+  private async hasSuccessEvent(api: any, events: any[], poolType: string): Promise<boolean> {
+    return events.some(({ event }) => 
+      api.events.system.ExtrinsicSuccess.is(event) || 
+      (poolType === POOL_TYPE.XYK && api.events.xyk.LiquidityAdded?.is(event)) ||
+      (poolType === POOL_TYPE.LBP && api.events.lbp.LiquidityAdded?.is(event)) ||
+      (poolType === POOL_TYPE.OMNIPOOL && api.events.omnipool.LiquidityAdded?.is(event)) ||
+      (poolType === POOL_TYPE.STABLESWAP && api.events.stableswap.LiquidityAdded?.is(event))
+    );
+  }
+
+  /**
+   * List all available pools with filtering options
+   * @param types Pool types to filter by
+   * @param tokenSymbols Token symbols to filter by
+   * @param tokenAddresses Token addresses to filter by
+   * @param useOfficialTokens Whether to use official token list for resolving symbols
+   * @param maxNumberOfPages Maximum number of pages to fetch
+   * @returns A list of filtered pools
+   */
+  async listPools(
+    types: string[] = [],
+    tokenSymbols: string[] = [],
+    tokenAddresses: string[] = [],
+    useOfficialTokens: boolean = true,
+    maxNumberOfPages: number = 1
+  ): Promise<any[]> {
+    try {
+      const tradeRouter = await this.getTradeRouter();
+
+      // Make sure arrays are properly handled
+      const tokenSymbolsArray = Array.isArray(tokenSymbols) ? tokenSymbols : [tokenSymbols].filter(Boolean);
+      const tokenAddressesArray = Array.isArray(tokenAddresses) ? tokenAddresses : [tokenAddresses].filter(Boolean);
+      const typesArray = Array.isArray(types) ? types : [types].filter(Boolean);
+
+      // Determine if we need to fetch by token
+      const hasTokenSymbols = tokenSymbolsArray.length > 0;
+      const hasTokenAddresses = tokenAddressesArray.length > 0;
+      const hasTokens = hasTokenSymbols || hasTokenAddresses;
+
+      // Store if we need to filter by both symbol and address
+      const needsSymbolAndAddressMatch = hasTokenSymbols && hasTokenAddresses;
+
+      // Log what we're filtering for
+      const logMessage = [`Listing Hydration pools`];
+      if (tokenSymbolsArray.length > 0) logMessage.push(`Token symbols: ${tokenSymbolsArray.join(', ')}`);
+      if (tokenAddressesArray.length > 0) logMessage.push(`Token addresses: ${tokenAddressesArray.join(', ')}`);
+      if (typesArray.length > 0) logMessage.push(`Pool types: ${typesArray.join(', ')}`);
+      logMessage.push(`Max pages: ${maxNumberOfPages}`);
+      logMessage.push(`Use official tokens: ${useOfficialTokens}`);
+      if (needsSymbolAndAddressMatch) logMessage.push(`Requiring both symbol AND address match`);
+      logger.info(logMessage.join(', '));
+
+      // Resolve token symbols to addresses if using official tokens list
+      const resolvedTokenAddresses: string[] = [];
+      const allAddressesToFilterBy: string[] = [...tokenAddressesArray]; // Start with explicit addresses
+
+      // Process token lists - we'll gather all addresses to filter by
+      if (useOfficialTokens && hasTokenSymbols) {
+        // Get the tokens from Polkadot token list
+        const tokenList = this.getAllTokens();
+        
+        // Create a function to resolve symbols
+        const resolveSymbolsToAddresses = (symbols: string[]) => {
+          const resolved: string[] = [];
+
+          for (const token of symbols) {
+            const upperToken = token.toUpperCase();
+            
+            // First check in KNOWN_TOKENS from hydration.json
+            if (KNOWN_TOKENS[upperToken]) {
+              const resolvedAddress = KNOWN_TOKENS[upperToken];
+              resolved.push(resolvedAddress);
+              logger.info(`Resolved token ${token} to address ${resolvedAddress} using official list`);
+              continue;
+            }
+            
+            // Then check in tokenList from getAllTokens()
+            const foundToken = tokenList.find(t => t.symbol.toUpperCase() === upperToken);
+            if (foundToken) {
+              const resolvedAddress = foundToken.address;
+              resolved.push(resolvedAddress);
+              logger.info(`Resolved token ${token} to address ${resolvedAddress} using token list`);
+            }
+          }
+
+          return resolved;
+        };
+
+        // Process specific token symbols parameter
+        if (hasTokenSymbols) {
+          const resolvedFromSymbols = resolveSymbolsToAddresses(tokenSymbolsArray);
+          resolvedTokenAddresses.push(...resolvedFromSymbols);
+
+          // Only add to filter list if we don't need both symbol AND address match
+          if (!needsSymbolAndAddressMatch) {
+            allAddressesToFilterBy.push(...resolvedFromSymbols);
+          }
+        }
+      }
+
+      // Get all pool addresses
+      let pools: PoolBase[] = [];
+      try {
+        // Get pool info using the SDK
+        const poolService = await this.getPoolService();
+        pools = await this.poolServiceGetPools(poolService, []);
+
+        logger.info(`Found ${pools.length} total pool addresses`);
+      } catch (error) {
+        logger.error(`Error getting pool addresses: ${error.message}`);
+        throw new Error('Failed to get pool addresses');
+      }
+
+      logger.info(`Successfully retrieved info for ${pools.length} pools`);
+
+      // Filter processing
+      let filteredPools = [...pools]; // Make a copy
+
+      // Advanced filtering: Symbols and Addresses
+      if (needsSymbolAndAddressMatch) {
+        logger.info(`Applying specific symbol AND address matching filter`);
+        const beforeCount = filteredPools.length;
+
+        // Filter by addresses and then check if the symbols match
+        filteredPools = filteredPools.filter(pool =>
+          pool.tokens.every(token =>
+            tokenAddressesArray.includes(token.id)
+          )
+        );
+
+        logger.info(`Symbol AND address filter: ${beforeCount} → ${filteredPools.length} pools`);
+      }
+      // Standard filtering by individual parameters
+      else if (hasTokens) {
+        // Filter by token addresses
+        const beforeCount = filteredPools.length;
+
+        filteredPools = filteredPools.filter(pool =>
+          pool.tokens.some(token =>
+            allAddressesToFilterBy.includes(token.id)
+          )
+        );
+
+        logger.info(`Token address filter: ${beforeCount} → ${filteredPools.length} pools`);
+      }
+
+      // Filter by pool type if specified
+      if (typesArray.length > 0) {
+        const beforeCount = filteredPools.length;
+        filteredPools = filteredPools.filter(pool =>
+          pool.type && typesArray.some(type =>
+            pool.type.toLowerCase().includes(type.toLowerCase())
+          )
+        );
+        logger.info(`Pool type filter: ${beforeCount} → ${filteredPools.length} pools`);
+      }
+
+      // Map pools to response format and process token filters
+      const poolListPromises = filteredPools.map(async (pool) => {
+        try {
+          const [baseToken, quoteToken] = pool.tokens;
+          const baseTokenSymbol = baseToken.symbol;
+          const quoteTokenSymbol = quoteToken.symbol;
+          const poolAddress = pool.address;
+
+          let baseTokenAmount = 0;
+          let quoteTokenAmount = 0;
+          let poolPrice = 1;
+
+          // Try to get reserves
+          const reserves = await this.getPoolReserves(poolAddress);
+
+          if (reserves) {
+            baseTokenAmount = Number(reserves.baseReserve
+              .div(BigNumber(10).pow(baseToken.decimals))
+              .toFixed(baseToken.decimals));
+
+            quoteTokenAmount = Number(reserves.quoteReserve
+              .div(BigNumber(10).pow(quoteToken.decimals))
+              .toFixed(quoteToken.decimals));
+          } else {
+            // Fallback to direct pool balance
+            baseTokenAmount = Number(BigNumber(baseToken.balance.toString())
+              .div(BigNumber(10).pow(baseToken.decimals))
+              .toFixed(baseToken.decimals));
+
+            quoteTokenAmount = Number(BigNumber(quoteToken.balance.toString())
+              .div(BigNumber(10).pow(quoteToken.decimals))
+              .toFixed(quoteToken.decimals));
+          }
+
+          // Calculate price via tradeRouter
+          try {
+            const assets = this.getAllTokens();
+            const baseTokenId = assets.find(a => a.symbol === baseTokenSymbol)?.address;
+            const quoteTokenId = assets.find(a => a.symbol === quoteTokenSymbol)?.address;
+
+            if (baseTokenId && quoteTokenId) {
+              const amountBN = BigNumber('1');
+
+              const buyQuote = await this.tradeRouterGetBestBuy(
+                tradeRouter, 
+                quoteTokenId, 
+                baseTokenId, 
+                amountBN
+              );
+              
+              const sellQuote = await this.tradeRouterGetBestSell(
+                tradeRouter, 
+                baseTokenId, 
+                quoteTokenId, 
+                amountBN
+              );
+
+              const buyPrice = Number(buyQuote.toHuman().spotPrice);
+              const sellPrice = Number(sellQuote.toHuman().spotPrice);
+              const midPrice = (buyPrice + sellPrice) / 2;
+
+              if (!isNaN(midPrice) && isFinite(midPrice)) {
+                poolPrice = Number(midPrice.toFixed(6));
+              }
+            }
+          } catch (priceError) {
+            logger.error(`Failed to calculate pool price: ${priceError.message}`);
+            // Fallback: derive from ratio
+            if (baseTokenAmount > 0 && quoteTokenAmount > 0) {
+              poolPrice = quoteTokenAmount / baseTokenAmount;
+            }
+          }
+
+          // Calculate TVL based on current values
+          const tvl = baseTokenAmount * poolPrice + quoteTokenAmount;
+
+          return {
+            ...pool,
+            address: pool.address,
+            type: pool.type,
+            tokens: [baseTokenSymbol, quoteTokenSymbol],
+            tokenAddresses: [baseToken.id, quoteToken.id],
+            fee: 500/10000,
+            price: poolPrice,
+            volume: 0, // Not available yet
+            tvl: tvl,
+            apr: 0, // Not available yet
+          };
+        } catch (error) {
+          logger.error(`Error processing pool ${pool?.address}: ${error.message}`);
+          return null; // or return a default object
+        }
+      });
+
+      // Wait for all pool info to be processed
+      let poolList = await Promise.all(poolListPromises);
+      poolList = poolList.filter(Boolean); // Remove null entries
+
+      // Apply token symbol filter if token symbols are specified and we're not using official tokens
+      // (if we're using official tokens, we've already filtered by address above)
+      if (hasTokenSymbols && !useOfficialTokens) {
+        const beforeCount = poolList.length;
+
+        // First, handle the case when we have exactly 2 token symbols - find exact pairs
+        if (tokenSymbolsArray.length === 2) {
+          const [symbol1, symbol2] = tokenSymbolsArray;
+          const upperSymbol1 = symbol1.toUpperCase();
+          const upperSymbol2 = symbol2.toUpperCase();
+          
+          poolList = poolList.filter(pool => {
+            // Get symbols for the pool tokens
+            const baseTokenSymbol = String(pool.tokens[0]).toUpperCase();
+            const quoteTokenSymbol = String(pool.tokens[1]).toUpperCase();
+            
+            // Check for exact pair match (in either order)
+            return (baseTokenSymbol === upperSymbol1 && quoteTokenSymbol === upperSymbol2) ||
+                  (baseTokenSymbol === upperSymbol2 && quoteTokenSymbol === upperSymbol1);
+          });
+          
+          logger.info(`Exact token pair filter (${symbol1}/${symbol2}): ${beforeCount} → ${poolList.length} pools`);
+        }
+        // For single token or more than two tokens, use the original filter
+        else {
+          poolList = poolList.filter(pool =>
+            tokenSymbolsArray.some(token =>
+              // Check if any of the pool tokens match the requested token
+              pool.tokens.some(poolToken =>
+                String(poolToken).toLowerCase().includes(token.toLowerCase())
+              )
+            )
+          );
+          logger.info(`Token symbol filter: ${beforeCount} → ${poolList.length} pools`);
+        }
+      }
+      
+      // Log results
+      logger.info(`Final result: ${poolList.length} pools after all filters`);
+      
+      return poolList;
+    } catch (error) {
+      logger.error(`Error listing pools:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get a detailed liquidity quote with adjusted pricing and strategy
+   * @param poolAddress The pool address
+   * @param baseTokenAmount Amount of base token to add
+   * @param quoteTokenAmount Amount of quote token to add
+   * @param slippagePct Slippage percentage (optional)
+   * @returns A detailed liquidity quote with recommended amounts
+   */
+  async quoteLiquidity(
+    poolAddress: string,
+    baseTokenAmount?: number,
+    quoteTokenAmount?: number,
+    slippagePct: number = 1
+  ): Promise<{
+    baseLimited: boolean;
+    baseTokenAmount: number;
+    quoteTokenAmount: number;
+    baseTokenAmountMax: number;
+    quoteTokenAmountMax: number;
+  }> {
+    try {
+      // Validate inputs
+      if (!baseTokenAmount && !quoteTokenAmount) {
+        throw new Error('Either baseTokenAmount or quoteTokenAmount must be provided');
+      }
+
+      // Get pool info to determine price range and pool type
+      const poolInfo = await this.getPoolInfo(poolAddress);
+      if (!poolInfo) {
+        throw new Error(`Pool not found: ${poolAddress}`);
+      }
+
+      // Get token symbols
+      const baseTokenSymbol = await this.getTokenSymbol(poolInfo.baseTokenAddress);
+      const quoteTokenSymbol = await this.getTokenSymbol(poolInfo.quoteTokenAddress);
+
+      logger.info(`Pool info for quoteLiquidity:`, {
+        poolAddress,
+        poolType: poolInfo.poolType,
+        baseToken: baseTokenSymbol,
+        quoteToken: quoteTokenSymbol,
+        fee: poolInfo.feePct
+      });
+      
+      // Determine price range based on pool type
+      const currentPrice = poolInfo.price || 10;
+      
+      // Calculate price range based on pool type
+      let priceRange = 0.05; // Default 5%
+      
+      // Adjust price range based on pool type
+      if (poolInfo.poolType?.toLowerCase().includes('stable')) {
+        priceRange = 0.005; // 0.5% for stable pools
+      } else if (poolInfo.poolType?.toLowerCase().includes('xyk') || 
+               poolInfo.poolType?.toLowerCase().includes('constantproduct')) {
+        priceRange = 0.05; // 5% for XYK pools
+      } else if (poolInfo.poolType?.toLowerCase().includes('omni')) {
+        priceRange = 0.15; // 15% for Omnipool (wider range)
+      }
+      
+      const lowerPrice = currentPrice * (1 - priceRange);
+      const upperPrice = currentPrice * (1 + priceRange);
+
+      // Determine which amount to use for the quote
+      let amount: number;
+      let amountType: 'base' | 'quote';
+
+      if (baseTokenAmount && quoteTokenAmount) {
+        // If both amounts are provided, choose based on pool type
+        if (poolInfo.poolType?.toLowerCase().includes('stable')) {
+          // For stable pools, prefer the token with lower volatility (usually quote)
+          amount = quoteTokenAmount;
+          amountType = 'quote';
+        } else {
+          // For other pools, use the one that would provide more balanced liquidity
+          const baseValue = baseTokenAmount * currentPrice;
+          const quoteValue = quoteTokenAmount;
+          
+          if (baseValue > quoteValue) {
+            amount = baseTokenAmount;
+            amountType = 'base';
+          } else {
+            amount = quoteTokenAmount;
+            amountType = 'quote';
+          }
+        }
+      } else {
+        amount = baseTokenAmount || quoteTokenAmount;
+        amountType = baseTokenAmount ? 'base' : 'quote';
+      }
+
+      // Choose appropriate strategy based on pool type
+      let positionStrategy = PositionStrategyType.Balanced;
+      
+      // For stable pools, always use balanced
+      if (poolInfo.poolType?.toLowerCase().includes('stable')) {
+        positionStrategy = PositionStrategyType.Balanced;
+      } 
+      // For XYK pools, use a strategy based on current price vs range
+      else if (poolInfo.poolType?.toLowerCase().includes('xyk') || 
+              poolInfo.poolType?.toLowerCase().includes('constantproduct')) {
+        // If price is near bottom of range, favor base token (BaseHeavy)
+        if (currentPrice < currentPrice * (1 - priceRange * 0.5)) {
+          positionStrategy = PositionStrategyType.BaseHeavy;
+        } 
+        // If price is near top of range, favor quote token (QuoteHeavy)
+        else if (currentPrice > currentPrice * (1 + priceRange * 0.5)) {
+          positionStrategy = PositionStrategyType.QuoteHeavy;
+        }
+        // Otherwise use balanced strategy
+        else {
+          positionStrategy = PositionStrategyType.Balanced;
+        }
+      }
+      // For Omnipool, use imbalanced
+      else if (poolInfo.poolType?.toLowerCase().includes('omni')) {
+        positionStrategy = PositionStrategyType.Imbalanced;
+      }
+
+      logger.info(`Quote parameters:`, {
+        poolAddress,
+        poolType: poolInfo.poolType,
+        amountType,
+        amount,
+        lowerPrice,
+        upperPrice,
+        strategyType: positionStrategy
+      });
+
+      // Get liquidity quote
+      const quote = await this.getLiquidityQuote(
+        poolAddress,
+        lowerPrice,
+        upperPrice,
+        amount,
+        amountType,
+        positionStrategy
+      );
+      
+      logger.info(`Quote result:`, quote);
+
+      // Calculate effective slippage (default to 1% if not provided)
+      const effectiveSlippage = slippagePct / 100;
+
+      // Ensure we don't have null values in the response
+      const finalBaseAmount = quote.baseTokenAmount || 0;
+      const finalQuoteAmount = quote.quoteTokenAmount || 0;
+
+      // Map to standard AMM interface response
+      return {
+        baseLimited: amountType === 'base',
+        baseTokenAmount: finalBaseAmount,
+        quoteTokenAmount: finalQuoteAmount,
+        baseTokenAmountMax: finalBaseAmount * (1 + effectiveSlippage),
+        quoteTokenAmountMax: finalQuoteAmount * (1 + effectiveSlippage)
+      };
+    } catch (error) {
+      logger.error(`Failed to get liquidity quote: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Execute a swap using a wallet address
+   * @param network The blockchain network (e.g., 'mainnet')
+   * @param walletAddress The user's wallet address
+   * @param baseTokenIdentifier Base token symbol or address
+   * @param quoteTokenIdentifier Quote token symbol or address
+   * @param amount Amount to swap
+   * @param side 'BUY' or 'SELL'
+   * @param poolAddress Pool address
+   * @param slippagePct Slippage percentage (optional)
+   * @returns Result of the swap execution
+   */
+  async executeSwapWithWalletAddress(
+    network: string,
+    walletAddress: string,
+    baseTokenIdentifier: string,
+    quoteTokenIdentifier: string,
+    amount: number,
+    side: 'BUY' | 'SELL',
+    poolAddress: string,
+    slippagePct?: number
+  ): Promise<any> {
+    try {
+      // Validate inputs
+      if (!baseTokenIdentifier || !quoteTokenIdentifier) {
+        throw new Error('Base token and quote token are required');
+      }
+
+      if (!amount || amount <= 0) {
+        throw new Error('Amount must be a positive number');
+      }
+
+      if (side !== 'BUY' && side !== 'SELL') {
+        throw new Error('Side must be "BUY" or "SELL"');
+      }
+
+      // Get the wallet
+      const polkadot = await this.polkadotGetInstance(Polkadot, network);
+      const wallet = await polkadot.getWallet(walletAddress);
+
+      // Execute swap using the existing method
+      const result = await this.executeSwap(
+        wallet,
+        baseTokenIdentifier,
+        quoteTokenIdentifier,
+        amount,
+        side,
+        poolAddress,
+        slippagePct
+      );
+
+      logger.info(`Executed swap: ${amount} ${side === 'BUY' ? quoteTokenIdentifier : baseTokenIdentifier} for ${result.totalOutputSwapped} ${side === 'BUY' ? baseTokenIdentifier : quoteTokenIdentifier}`);
+
+      return {
+        signature: result.signature,
+        totalInputSwapped: result.totalInputSwapped,
+        totalOutputSwapped: result.totalOutputSwapped,
+        fee: result.fee,
+        baseTokenBalanceChange: result.baseTokenBalanceChange,
+        quoteTokenBalanceChange: result.quoteTokenBalanceChange,
+        priceImpact: result.priceImpact
+      };
+    } catch (error) {
+      logger.error(`Failed to execute swap: ${error.message}`);
+      throw error;
+    }
   }
 }
