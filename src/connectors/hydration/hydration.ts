@@ -4,27 +4,13 @@ import {HydrationConfig} from './hydration.config';
 import {HydrationPoolInfo, LiquidityQuote, PositionStrategyType, SwapQuote, SwapRoute} from './hydration.types';
 import {KeyringPair} from '@polkadot/keyring/types';
 import {ApiPromise, HttpProvider, WsProvider} from '@polkadot/api';
-import {
-  BigNumber,
-} from '@galacticcouncil/sdk/build/types/utils/bignumber';
-import {
-  PoolType,
-  PoolBase,
-  PoolToken,
-  TradeType,
-  Trade
-} from '@galacticcouncil/sdk/build/types/types';
-import {
-  PoolService,
-} from '@galacticcouncil/sdk/build/types/pool/PoolService';
-import {
-  TradeRouter
-} from '@galacticcouncil/sdk/build/types/api/TradeRouter';
 import {cryptoWaitReady} from '@polkadot/util-crypto';
 import {runWithRetryAndTimeout} from "../../chains/polkadot/polkadot.utils";
 
 // Import hydration.json for token resolution
 import hydrationJson from '../../../conf/lists/hydration.json';
+import {PoolBase, PoolToken, Trade} from '@galacticcouncil/sdk/build/types/types';
+import {BigNumber, PoolService, PoolType, TradeRouter, TradeType} from "@galacticcouncil/sdk";
 
 // Create a map of token symbols to addresses from hydration.json
 const KNOWN_TOKENS = hydrationJson.reduce((acc, token) => {
