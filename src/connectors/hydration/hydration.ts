@@ -1983,4 +1983,72 @@ export class Hydration {
       throw error;
     }
   }
+
+  /**
+   * Execute a swap using a wallet address
+   * @param network The blockchain network (e.g., 'mainnet')
+   * @param walletAddress The user's wallet address
+   * @param baseTokenIdentifier Base token symbol or address
+   * @param quoteTokenIdentifier Quote token symbol or address
+   * @param amount Amount to swap
+   * @param side 'BUY' or 'SELL'
+   * @param poolAddress Pool address
+   * @param slippagePct Slippage percentage (optional)
+   * @returns Result of the swap execution
+   */
+  async executeSwapWithWalletAddress(
+    network: string,
+    walletAddress: string,
+    baseTokenIdentifier: string,
+    quoteTokenIdentifier: string,
+    amount: number,
+    side: 'BUY' | 'SELL',
+    poolAddress: string,
+    slippagePct?: number
+  ): Promise<any> {
+    try {
+      // Validate inputs
+      if (!baseTokenIdentifier || !quoteTokenIdentifier) {
+        throw new Error('Base token and quote token are required');
+      }
+
+      if (!amount || amount <= 0) {
+        throw new Error('Amount must be a positive number');
+      }
+
+      if (side !== 'BUY' && side !== 'SELL') {
+        throw new Error('Side must be "BUY" or "SELL"');
+      }
+
+      // Get the wallet
+      const polkadot = await this.polkadotGetInstance(Polkadot, network);
+      const wallet = await polkadot.getWallet(walletAddress);
+
+      // Execute swap using the existing method
+      const result = await this.executeSwap(
+        wallet,
+        baseTokenIdentifier,
+        quoteTokenIdentifier,
+        amount,
+        side,
+        poolAddress,
+        slippagePct
+      );
+
+      logger.info(`Executed swap: ${amount} ${side === 'BUY' ? quoteTokenIdentifier : baseTokenIdentifier} for ${result.totalOutputSwapped} ${side === 'BUY' ? baseTokenIdentifier : quoteTokenIdentifier}`);
+
+      return {
+        signature: result.signature,
+        totalInputSwapped: result.totalInputSwapped,
+        totalOutputSwapped: result.totalOutputSwapped,
+        fee: result.fee,
+        baseTokenBalanceChange: result.baseTokenBalanceChange,
+        quoteTokenBalanceChange: result.quoteTokenBalanceChange,
+        priceImpact: result.priceImpact
+      };
+    } catch (error) {
+      logger.error(`Failed to execute swap: ${error.message}`);
+      throw error;
+    }
+  }
 }
