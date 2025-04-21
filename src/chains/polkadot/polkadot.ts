@@ -13,9 +13,8 @@ import {BN} from 'bn.js';
 import * as fs from 'fs';
 import axios, {Axios} from 'axios';
 import {ConfigManagerCertPassphrase} from '../../services/config-manager-cert-passphrase';
-import {Constant, runWithRetryAndTimeout} from "../../connectors/hydration/hydration.utils";
 import {wrapResponse} from '../../services/response-wrapper';
-import {fromBaseUnits, toBaseUnits} from './polkadot.utils';
+import {Constant, fromBaseUnits, runWithRetryAndTimeout, toBaseUnits} from './polkadot.utils';
 import {validatePolkadotAddress} from './polkadot.validators';
 import * as crypto from 'crypto';
 

@@ -15,7 +15,8 @@ import {
   TradeType
 } from '@galacticcouncil/sdk';
 import {cryptoWaitReady} from '@polkadot/util-crypto';
-import {runWithRetryAndTimeout} from './hydration.utils';
+
+import {runWithRetryAndTimeout} from "../../chains/polkadot/polkadot.utils";
 
 // Add interface for extended pool data
 interface ExtendedPoolBase extends Omit<PoolBase, 'tokens'> {
