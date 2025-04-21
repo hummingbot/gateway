@@ -180,7 +180,7 @@ export class Hydration {
       // Get pool data from the SDK
       const pools = await this.poolServiceGetPools(await this.getPoolService(), []); // Get all pools
 
-      const poolData = pools.find((pool) => pool.address === poolAddress);
+      const poolData = pools.find((pool) => pool.address === poolAddress || pool.id == poolAddress);
 
       if (!poolData) {
         logger.error(`Pool not found: ${poolAddress}`);
