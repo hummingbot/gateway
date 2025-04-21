@@ -23,6 +23,15 @@ import {
 import {cryptoWaitReady} from '@polkadot/util-crypto';
 import {runWithRetryAndTimeout} from "../../chains/polkadot/polkadot.utils";
 
+// Import hydration.json for token resolution
+import hydrationJson from '../../../conf/lists/hydration.json';
+
+// Create a map of token symbols to addresses from hydration.json
+const KNOWN_TOKENS = hydrationJson.reduce((acc, token) => {
+  acc[token.symbol.toUpperCase()] = token.address;
+  return acc;
+}, {});
+
 // Buffer for transaction costs (in HDX)
 const HDX_TRANSACTION_BUFFER = 0.1;
 
@@ -1519,5 +1528,297 @@ export class Hydration {
       (poolType === POOL_TYPE.OMNIPOOL && api.events.omnipool.LiquidityAdded?.is(event)) ||
       (poolType === POOL_TYPE.STABLESWAP && api.events.stableswap.LiquidityAdded?.is(event))
     );
+  }
+
+  /**
+   * List all available pools with filtering options
+   * @param types Pool types to filter by
+   * @param tokenSymbols Token symbols to filter by
+   * @param tokenAddresses Token addresses to filter by
+   * @param useOfficialTokens Whether to use official token list for resolving symbols
+   * @param maxNumberOfPages Maximum number of pages to fetch
+   * @returns A list of filtered pools
+   */
+  async listPools(
+    types: string[] = [],
+    tokenSymbols: string[] = [],
+    tokenAddresses: string[] = [],
+    useOfficialTokens: boolean = true,
+    maxNumberOfPages: number = 1
+  ): Promise<any[]> {
+    try {
+      const tradeRouter = await this.getTradeRouter();
+
+      // Make sure arrays are properly handled
+      const tokenSymbolsArray = Array.isArray(tokenSymbols) ? tokenSymbols : [tokenSymbols].filter(Boolean);
+      const tokenAddressesArray = Array.isArray(tokenAddresses) ? tokenAddresses : [tokenAddresses].filter(Boolean);
+      const typesArray = Array.isArray(types) ? types : [types].filter(Boolean);
+
+      // Determine if we need to fetch by token
+      const hasTokenSymbols = tokenSymbolsArray.length > 0;
+      const hasTokenAddresses = tokenAddressesArray.length > 0;
+      const hasTokens = hasTokenSymbols || hasTokenAddresses;
+
+      // Store if we need to filter by both symbol and address
+      const needsSymbolAndAddressMatch = hasTokenSymbols && hasTokenAddresses;
+
+      // Log what we're filtering for
+      const logMessage = [`Listing Hydration pools`];
+      if (tokenSymbolsArray.length > 0) logMessage.push(`Token symbols: ${tokenSymbolsArray.join(', ')}`);
+      if (tokenAddressesArray.length > 0) logMessage.push(`Token addresses: ${tokenAddressesArray.join(', ')}`);
+      if (typesArray.length > 0) logMessage.push(`Pool types: ${typesArray.join(', ')}`);
+      logMessage.push(`Max pages: ${maxNumberOfPages}`);
+      logMessage.push(`Use official tokens: ${useOfficialTokens}`);
+      if (needsSymbolAndAddressMatch) logMessage.push(`Requiring both symbol AND address match`);
+      logger.info(logMessage.join(', '));
+
+      // Resolve token symbols to addresses if using official tokens list
+      const resolvedTokenAddresses: string[] = [];
+      const allAddressesToFilterBy: string[] = [...tokenAddressesArray]; // Start with explicit addresses
+
+      // Process token lists - we'll gather all addresses to filter by
+      if (useOfficialTokens && hasTokenSymbols) {
+        // Get the tokens from Polkadot token list
+        const tokenList = this.getAllTokens();
+        
+        // Create a function to resolve symbols
+        const resolveSymbolsToAddresses = (symbols: string[]) => {
+          const resolved: string[] = [];
+
+          for (const token of symbols) {
+            const upperToken = token.toUpperCase();
+            
+            // First check in KNOWN_TOKENS from hydration.json
+            if (KNOWN_TOKENS[upperToken]) {
+              const resolvedAddress = KNOWN_TOKENS[upperToken];
+              resolved.push(resolvedAddress);
+              logger.info(`Resolved token ${token} to address ${resolvedAddress} using official list`);
+              continue;
+            }
+            
+            // Then check in tokenList from getAllTokens()
+            const foundToken = tokenList.find(t => t.symbol.toUpperCase() === upperToken);
+            if (foundToken) {
+              const resolvedAddress = foundToken.address;
+              resolved.push(resolvedAddress);
+              logger.info(`Resolved token ${token} to address ${resolvedAddress} using token list`);
+            }
+          }
+
+          return resolved;
+        };
+
+        // Process specific token symbols parameter
+        if (hasTokenSymbols) {
+          const resolvedFromSymbols = resolveSymbolsToAddresses(tokenSymbolsArray);
+          resolvedTokenAddresses.push(...resolvedFromSymbols);
+
+          // Only add to filter list if we don't need both symbol AND address match
+          if (!needsSymbolAndAddressMatch) {
+            allAddressesToFilterBy.push(...resolvedFromSymbols);
+          }
+        }
+      }
+
+      // Get all pool addresses
+      let pools: PoolBase[] = [];
+      try {
+        // Get pool info using the SDK
+        const poolService = await this.getPoolService();
+        pools = await this.poolServiceGetPools(poolService, []);
+
+        logger.info(`Found ${pools.length} total pool addresses`);
+      } catch (error) {
+        logger.error(`Error getting pool addresses: ${error.message}`);
+        throw new Error('Failed to get pool addresses');
+      }
+
+      logger.info(`Successfully retrieved info for ${pools.length} pools`);
+
+      // Filter processing
+      let filteredPools = [...pools]; // Make a copy
+
+      // Advanced filtering: Symbols and Addresses
+      if (needsSymbolAndAddressMatch) {
+        logger.info(`Applying specific symbol AND address matching filter`);
+        const beforeCount = filteredPools.length;
+
+        // Filter by addresses and then check if the symbols match
+        filteredPools = filteredPools.filter(pool =>
+          pool.tokens.every(token =>
+            tokenAddressesArray.includes(token.id)
+          )
+        );
+
+        logger.info(`Symbol AND address filter: ${beforeCount} → ${filteredPools.length} pools`);
+      }
+      // Standard filtering by individual parameters
+      else if (hasTokens) {
+        // Filter by token addresses
+        const beforeCount = filteredPools.length;
+
+        filteredPools = filteredPools.filter(pool =>
+          pool.tokens.some(token =>
+            allAddressesToFilterBy.includes(token.id)
+          )
+        );
+
+        logger.info(`Token address filter: ${beforeCount} → ${filteredPools.length} pools`);
+      }
+
+      // Filter by pool type if specified
+      if (typesArray.length > 0) {
+        const beforeCount = filteredPools.length;
+        filteredPools = filteredPools.filter(pool =>
+          pool.type && typesArray.some(type =>
+            pool.type.toLowerCase().includes(type.toLowerCase())
+          )
+        );
+        logger.info(`Pool type filter: ${beforeCount} → ${filteredPools.length} pools`);
+      }
+
+      // Map pools to response format and process token filters
+      const poolListPromises = filteredPools.map(async (pool) => {
+        try {
+          const [baseToken, quoteToken] = pool.tokens;
+          const baseTokenSymbol = baseToken.symbol;
+          const quoteTokenSymbol = quoteToken.symbol;
+          const poolAddress = pool.address;
+
+          let baseTokenAmount = 0;
+          let quoteTokenAmount = 0;
+          let poolPrice = 1;
+
+          // Try to get reserves
+          const reserves = await this.getPoolReserves(poolAddress);
+
+          if (reserves) {
+            baseTokenAmount = Number(reserves.baseReserve
+              .div(BigNumber(10).pow(baseToken.decimals))
+              .toFixed(baseToken.decimals));
+
+            quoteTokenAmount = Number(reserves.quoteReserve
+              .div(BigNumber(10).pow(quoteToken.decimals))
+              .toFixed(quoteToken.decimals));
+          } else {
+            // Fallback to direct pool balance
+            baseTokenAmount = Number(BigNumber(baseToken.balance.toString())
+              .div(BigNumber(10).pow(baseToken.decimals))
+              .toFixed(baseToken.decimals));
+
+            quoteTokenAmount = Number(BigNumber(quoteToken.balance.toString())
+              .div(BigNumber(10).pow(quoteToken.decimals))
+              .toFixed(quoteToken.decimals));
+          }
+
+          // Calculate price via tradeRouter
+          try {
+            const assets = this.getAllTokens();
+            const baseTokenId = assets.find(a => a.symbol === baseTokenSymbol)?.address;
+            const quoteTokenId = assets.find(a => a.symbol === quoteTokenSymbol)?.address;
+
+            if (baseTokenId && quoteTokenId) {
+              const amountBN = BigNumber('1');
+
+              const buyQuote = await this.tradeRouterGetBestBuy(
+                tradeRouter, 
+                quoteTokenId, 
+                baseTokenId, 
+                amountBN
+              );
+              
+              const sellQuote = await this.tradeRouterGetBestSell(
+                tradeRouter, 
+                baseTokenId, 
+                quoteTokenId, 
+                amountBN
+              );
+
+              const buyPrice = Number(buyQuote.toHuman().spotPrice);
+              const sellPrice = Number(sellQuote.toHuman().spotPrice);
+              const midPrice = (buyPrice + sellPrice) / 2;
+
+              if (!isNaN(midPrice) && isFinite(midPrice)) {
+                poolPrice = Number(midPrice.toFixed(6));
+              }
+            }
+          } catch (priceError) {
+            logger.error(`Failed to calculate pool price: ${priceError.message}`);
+            // Fallback: derive from ratio
+            if (baseTokenAmount > 0 && quoteTokenAmount > 0) {
+              poolPrice = quoteTokenAmount / baseTokenAmount;
+            }
+          }
+
+          // Calculate TVL based on current values
+          const tvl = baseTokenAmount * poolPrice + quoteTokenAmount;
+
+          return {
+            ...pool,
+            address: pool.address,
+            type: pool.type,
+            tokens: [baseTokenSymbol, quoteTokenSymbol],
+            tokenAddresses: [baseToken.id, quoteToken.id],
+            fee: 500/10000,
+            price: poolPrice,
+            volume: 0, // Not available yet
+            tvl: tvl,
+            apr: 0, // Not available yet
+          };
+        } catch (error) {
+          logger.error(`Error processing pool ${pool?.address}: ${error.message}`);
+          return null; // or return a default object
+        }
+      });
+
+      // Wait for all pool info to be processed
+      let poolList = await Promise.all(poolListPromises);
+      poolList = poolList.filter(Boolean); // Remove null entries
+
+      // Apply token symbol filter if token symbols are specified and we're not using official tokens
+      // (if we're using official tokens, we've already filtered by address above)
+      if (hasTokenSymbols && !useOfficialTokens) {
+        const beforeCount = poolList.length;
+
+        // First, handle the case when we have exactly 2 token symbols - find exact pairs
+        if (tokenSymbolsArray.length === 2) {
+          const [symbol1, symbol2] = tokenSymbolsArray;
+          const upperSymbol1 = symbol1.toUpperCase();
+          const upperSymbol2 = symbol2.toUpperCase();
+          
+          poolList = poolList.filter(pool => {
+            // Get symbols for the pool tokens
+            const baseTokenSymbol = String(pool.tokens[0]).toUpperCase();
+            const quoteTokenSymbol = String(pool.tokens[1]).toUpperCase();
+            
+            // Check for exact pair match (in either order)
+            return (baseTokenSymbol === upperSymbol1 && quoteTokenSymbol === upperSymbol2) ||
+                  (baseTokenSymbol === upperSymbol2 && quoteTokenSymbol === upperSymbol1);
+          });
+          
+          logger.info(`Exact token pair filter (${symbol1}/${symbol2}): ${beforeCount} → ${poolList.length} pools`);
+        }
+        // For single token or more than two tokens, use the original filter
+        else {
+          poolList = poolList.filter(pool =>
+            tokenSymbolsArray.some(token =>
+              // Check if any of the pool tokens match the requested token
+              pool.tokens.some(poolToken =>
+                String(poolToken).toLowerCase().includes(token.toLowerCase())
+              )
+            )
+          );
+          logger.info(`Token symbol filter: ${beforeCount} → ${poolList.length} pools`);
+        }
+      }
+      
+      // Log results
+      logger.info(`Final result: ${poolList.length} pools after all filters`);
+      
+      return poolList;
+    } catch (error) {
+      logger.error(`Error listing pools:`, error);
+      throw error;
+    }
   }
 }
