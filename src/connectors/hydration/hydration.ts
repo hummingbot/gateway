@@ -541,16 +541,13 @@ export class Hydration {
 
     const tradeHuman = trade.toHuman();
 
-
-    logger.info(`Executed swap: ${amount} ${side === 'BUY' ? quoteTokenSymbol : baseTokenSymbol} for ${side === 'BUY' ? tradeHuman.amountOut : tradeHuman.amountIn} ${side === 'BUY' ? baseTokenSymbol : quoteTokenSymbol}`);
-
     return {
       signature: txHash,
-      totalInputSwapped: side === 'BUY' ? tradeHuman.amountIn : tradeHuman.amountOut,
-      totalOutputSwapped: side === 'BUY' ? tradeHuman.amountOut : tradeHuman.amountIn,
+      totalInputSwapped: tradeHuman.amountIn,
+      totalOutputSwapped: tradeHuman.amountOut,
       fee: fee.toNumber(),
-      baseTokenBalanceChange: side === 'BUY' ? tradeHuman.amountOut : tradeHuman.amountIn,
-      quoteTokenBalanceChange: side === 'BUY' ? -tradeHuman.amountIn : -tradeHuman.amountOut,
+      baseTokenBalanceChange: side === 'BUY' ? tradeHuman.amountOut : -tradeHuman.amountIn,
+      quoteTokenBalanceChange: side === 'BUY' ? -tradeHuman.amountIn : tradeHuman.amountOut,
       priceImpact: 0
     };
   }
@@ -1825,7 +1822,7 @@ export class Hydration {
       slippagePct
     );
 
-    logger.info(`Swap executed: ${amount} ${side === 'BUY' ? quoteTokenIdentifier : baseTokenIdentifier} for ${result.totalOutputSwapped} ${side === 'BUY' ? baseTokenIdentifier : quoteTokenIdentifier}`);
+    logger.info(`Swap executed: ${result.totalInputSwapped} ${side === 'BUY' ? quoteTokenIdentifier : baseTokenIdentifier} for ${result.totalOutputSwapped} ${side === 'BUY' ? baseTokenIdentifier : quoteTokenIdentifier}`);
 
     return {
       signature: result.signature,
