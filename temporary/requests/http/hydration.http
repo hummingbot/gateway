@@ -49,6 +49,15 @@ Content-Type: application/json
 
 ###
 
+# GET /config?chainOrConnector={{connector}}
+GET {{httpProtocol}}://{{host}}:{{port}}/config?chainOrConnector={{connector}}
+Content-Type: application/json
+
+{
+}
+
+###
+
 # ===================== CONNECTOR ROUTES =====================
 
 # GET /connectors
@@ -111,6 +120,7 @@ Content-Type: application/json
 {
 }
 
+###
 
 # ===================== CHAIN ROUTES =====================
 
