@@ -1,3 +1,12 @@
+// Para transferências
+const transferTx = api.tx.balances.transfer(destino, valor);
+
+// Para staking
+const stakeTx = api.tx.staking.bond(valor, 'Staked');
+
+// Para votação
+const voteTx = api.tx.democracy.vote(referendumId, 'Aye');
+
 /**
    * Estimate gas for a transaction
    * @param gasLimit Optional gas limit for the transaction
