@@ -274,15 +274,6 @@ Content-Type: application/json
 
 ###
 
-# # GET /{{connector}}/amm/pool-info - HYDRATION Omnipool
-# GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/pool-info?network={{network}}&poolAddress={{poolAddressOmnipool}}
-# Content-Type: application/json
-
-# {
-# }
-
-# ###
-
 # GET /{{connector}}/amm/pool-info - HYDRATION Stableswap
 GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/pool-info?network={{network}}&poolAddress={{poolAddressStableswap}}
 Content-Type: application/json
@@ -292,8 +283,26 @@ Content-Type: application/json
 
 ###
 
+# # GET /{{connector}}/amm/pool-info - HYDRATION Omnipool
+# GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/pool-info?network={{network}}&poolAddress={{poolAddressOmnipool}}
+# Content-Type: application/json
+
+# {
+# }
+
+# ###
+
 # GET /{{connector}}/amm/quote-swap - HYDRATION XYK
 GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/quote-swap?network={{network}}&baseToken={{xykBaseTokenSymbol}}&quoteToken={{xykQuoteTokenSymbol}}&amount={{amount}}&side={{side}}&poolAddress={{poolAddressXyk}}&slippagePct={{slippagePercentage}}
+Content-Type: application/json
+
+{
+}
+
+###
+
+# GET /{{connector}}/amm/quote-swap - HYDRATION Stableswap
+GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/quote-swap?network={{network}}&baseToken={{stableBaseTokenSymbol}}&quoteToken={{stableQuoteTokenSymbol}}&amount={{amount}}&side={{side}}&poolAddress={{poolAddressStableswap}}&slippagePct={{slippagePercentage}}
 Content-Type: application/json
 
 {
@@ -310,8 +319,8 @@ Content-Type: application/json
 
 # ###
 
-# GET /{{connector}}/amm/quote-swap - HYDRATION Stableswap
-GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/quote-swap?network={{network}}&baseToken={{stableBaseTokenSymbol}}&quoteToken={{stableQuoteTokenSymbol}}&amount={{amount}}&side={{side}}&poolAddress={{poolAddressStableswap}}&slippagePct={{slippagePercentage}}
+# GET /{{connector}}/amm/quote-liquidity -  HYDRATION XYK
+GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/quote-liquidity?network={{network}}&poolAddress={{poolAddressXyk}}&baseTokenAmount={{baseTokenAmount}}&quoteTokenAmount={{quoteTokenAmount}}&slippagePct={{slippagePercentage}}
 Content-Type: application/json
 
 {
@@ -319,8 +328,8 @@ Content-Type: application/json
 
 ###
 
-# GET /{{connector}}/amm/quote-liquidity -  HYDRATION XYK
-GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/quote-liquidity?network={{network}}&poolAddress={{poolAddressXyk}}&baseTokenAmount={{baseTokenAmount}}&quoteTokenAmount={{quoteTokenAmount}}&slippagePct={{slippagePercentage}}
+# GET /{{connector}}/amm/quote-liquidity - HYDRATION Stableswap
+GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/quote-liquidity?network={{network}}&poolAddress={{poolAddressStableswap}}&baseTokenAmount={{baseTokenAmount}}&quoteTokenAmount={{quoteTokenAmount}}&slippagePct={{slippagePercentage}}
 Content-Type: application/json
 
 {
@@ -337,15 +346,6 @@ Content-Type: application/json
 
 # ###
 
-# GET /{{connector}}/amm/quote-liquidity - HYDRATION Stableswap
-GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/quote-liquidity?network={{network}}&poolAddress={{poolAddressStableswap}}&baseTokenAmount={{baseTokenAmount}}&quoteTokenAmount={{quoteTokenAmount}}&slippagePct={{slippagePercentage}}
-Content-Type: application/json
-
-{
-}
-
-###
-
 # POST /{{connector}}/amm/execute-swap - HYDRATION XYK
 POST {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/execute-swap
 Content-Type: application/json
@@ -358,6 +358,23 @@ Content-Type: application/json
   "amount": "{{amount}}",
   "side": "{{side}}",
   "poolAddress": "{{poolAddressXyk}}",
+  "slippagePct": "{{slippagePercentage}}"
+}
+
+###
+
+# POST /{{connector}}/amm/execute-swap - HYDRATION Stableswap
+POST {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/execute-swap
+Content-Type: application/json
+
+{
+  "network": "{{network}}",
+  "walletAddress": "{{walletPublicKey}}",
+  "baseToken": "{{stableBaseTokenSymbol}}",
+  "quoteToken": "{{stableQuoteTokenSymbol}}",
+  "amount": "{{amount}}",
+  "side": "{{side}}",
+  "poolAddress": "{{poolAddressStableswap}}",
   "slippagePct": "{{slippagePercentage}}"
 }
 
@@ -380,23 +397,6 @@ Content-Type: application/json
 
 # ###
 
-# POST /{{connector}}/amm/execute-swap - HYDRATION Stableswap
-POST {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/execute-swap
-Content-Type: application/json
-
-{
-  "network": "{{network}}",
-  "walletAddress": "{{walletPublicKey}}",
-  "baseToken": "{{stableBaseTokenSymbol}}",
-  "quoteToken": "{{stableQuoteTokenSymbol}}",
-  "amount": "{{amount}}",
-  "side": "{{side}}",
-  "poolAddress": "{{poolAddressStableswap}}",
-  "slippagePct": "{{slippagePercentage}}"
-}
-
-###
-
 # POST /{{connector}}/amm/add-liquidity - HYDRATION XYK
 POST {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/add-liquidity
 Content-Type: application/json
@@ -405,6 +405,21 @@ Content-Type: application/json
   "network": "{{network}}",
   "walletAddress": "{{walletPublicKey}}",
   "poolAddress": "{{poolAddressXyk}}",
+  "baseTokenAmount": "{{baseTokenAmount}}",
+  "quoteTokenAmount": "{{quoteTokenAmount}}",
+  "slippagePct": "{{slippagePercentage}}"
+}
+
+###
+
+# POST /{{connector}}/amm/add-liquidity - HYDRATION Stableswap
+POST {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/add-liquidity
+Content-Type: application/json
+
+{
+  "network": "{{network}}",
+  "walletAddress": "{{walletPublicKey}}",
+  "poolAddress": "{{poolAddressStableswap}}",
   "baseTokenAmount": "{{baseTokenAmount}}",
   "quoteTokenAmount": "{{quoteTokenAmount}}",
   "slippagePct": "{{slippagePercentage}}"
@@ -427,21 +442,6 @@ Content-Type: application/json
 
 # ###
 
-# POST /{{connector}}/amm/add-liquidity - HYDRATION Stableswap
-POST {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/add-liquidity
-Content-Type: application/json
-
-{
-  "network": "{{network}}",
-  "walletAddress": "{{walletPublicKey}}",
-  "poolAddress": "{{poolAddressStableswap}}",
-  "baseTokenAmount": "{{baseTokenAmount}}",
-  "quoteTokenAmount": "{{quoteTokenAmount}}",
-  "slippagePct": "{{slippagePercentage}}"
-}
-
-###
-
 # POST /{{connector}}/amm/remove-liquidity - HYDRATION XYK
 POST {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/remove-liquidity
 Content-Type: application/json
@@ -450,6 +450,19 @@ Content-Type: application/json
   "network": "{{network}}",
   "walletAddress": "{{walletPublicKey}}",
   "poolAddress": "{{poolAddressXyk}}",
+  "percentageToRemove": "{{percentageToRemove}}"
+}
+
+###
+
+# POST /{{connector}}/amm/remove-liquidity - HYDRATION Stableswap
+POST {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/remove-liquidity
+Content-Type: application/json
+
+{
+  "network": "{{network}}",
+  "walletAddress": "{{walletPublicKey}}",
+  "poolAddress": "{{poolAddressStableswap}}",
   "percentageToRemove": "{{percentageToRemove}}"
 }
 
@@ -467,16 +480,3 @@ Content-Type: application/json
 # }
 
 # ###
-
-# POST /{{connector}}/amm/remove-liquidity - HYDRATION Stableswap
-POST {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/remove-liquidity
-Content-Type: application/json
-
-{
-  "network": "{{network}}",
-  "walletAddress": "{{walletPublicKey}}",
-  "poolAddress": "{{poolAddressStableswap}}",
-  "percentageToRemove": "{{percentageToRemove}}"
-}
-
-###
