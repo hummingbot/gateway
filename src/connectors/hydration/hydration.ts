@@ -73,10 +73,6 @@ export class Hydration {
   private httpProvider: HttpProvider;
   private apiPromise: ApiPromise;
   private poolService: PoolService;
-
-  private poolCache: Map<string, HydrationPoolDetails> = new Map();
-  private poolCacheExpiry: Map<string, number> = new Map();
-  private readonly CACHE_TTL_MS = 60000; // 1 minute cache validity
   private _ready: boolean = false;
 
   /**
@@ -166,15 +162,6 @@ export class Hydration {
   async getPoolInfo(poolAddress: string): Promise<ExternalPoolInfo | null> {
     try {
       const tradeRouter = await this.getTradeRouter();
-
-      // Check cache first
-      const currentTime = Date.now();
-      const cachedPool = this.poolCache.get(poolAddress);
-      const cacheExpiry = this.poolCacheExpiry.get(poolAddress);
-
-      if (cachedPool && cacheExpiry && currentTime < cacheExpiry) {
-        return this.toExternalPoolInfo(cachedPool, poolAddress);
-      }
 
       const pools = await this.poolServiceGetPools(await this.getPoolService(), []);
       const poolData = pools.find((pool) => pool.address === poolAddress || pool.id == poolAddress);
@@ -302,9 +289,6 @@ export class Hydration {
         baseTokenAmount,
         quoteTokenAmount
       };
-
-      this.poolCache.set(poolAddress, internalPool);
-      this.poolCacheExpiry.set(poolAddress, currentTime + this.CACHE_TTL_MS);
 
       const externalPool = this.toExternalPoolInfo(internalPool, poolAddress);
       logger.debug('Pool info retrieved successfully');
