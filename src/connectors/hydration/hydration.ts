@@ -1725,10 +1725,10 @@ export class Hydration {
       logger.info(`Removing ${percentageToRemove}% or ${userSharesToRemove} shares of the user from the pool ${poolAddress}`);
       userSharesToRemove = userSharesToRemove.multipliedBy(Math.pow(10, 18));
     } else {
-      // Xyk pools are not informing the pool id, which is mandatory for the `query.tokens.accounts` call
-      // so we consider the percentage to remove as the amount of shares to remove
-      userSharesToRemove = percentageToRemoveBN;
-      logger.info(`Removing ${userSharesToRemove} shares from the pool ${poolAddress}`);
+      const shareTokenId = await apiPromise.query.xyk.shareToken(poolAddress);
+      totalUserSharesInThePool = new BigNumber((await apiPromise.query.tokens.accounts(walletAddress, shareTokenId)).free.toString()).dividedBy(Math.pow(10, baseToken.decimals));
+      userSharesToRemove = percentageToRemoveBN.multipliedBy(totalUserSharesInThePool).dividedBy(100);
+      logger.info(`Removing ${percentageToRemove}% or ${userSharesToRemove} shares of the user from the pool ${poolAddress}`);
       userSharesToRemove = userSharesToRemove.multipliedBy(Math.pow(10, baseToken.decimals));
     }
 
