@@ -484,14 +484,6 @@ export class Hydration {
     slippagePct?: number
   ): Promise<any> {
     const tradeRouter = await this.getTradeRouter();
-    const quote = await this.getSwapQuote(
-      baseTokenSymbol,
-      quoteTokenSymbol,
-      amount,
-      side,
-      poolAddress,
-      slippagePct
-    );
 
     const baseToken = this.polkadot.getToken(baseTokenSymbol);
     const quoteToken = this.polkadot.getToken(quoteTokenSymbol);
@@ -532,21 +524,34 @@ export class Hydration {
       side === 'BUY' ? TradeType.Buy : TradeType.Sell
     );
 
-    const transaction = trade.toTx(tradeLimit).get();
+    const tx = trade.toTx(tradeLimit).get();
     const apiPromise = await this.getApiPromise();
     
-    const {txHash} = await this.submitTransaction(apiPromise, transaction, wallet, poolAddress);
+    const {txHash, transaction} = await this.submitTransaction(apiPromise, tx, wallet, poolAddress);
 
-    logger.info(`Executed swap: ${amount} ${side === 'BUY' ? quoteTokenSymbol : baseTokenSymbol} for ${quote.estimatedAmountOut} ${side === 'BUY' ? baseTokenSymbol : quoteTokenSymbol}`);
+    const feePaymentToken = this.polkadot.getFeePaymentToken();
+
+    let fee: BigNumber;
+    try {
+      fee = new BigNumber(transaction.events.map((it) => it.toHuman()).filter((it) => it.event.method == 'TransactionFeePaid')[0].event.data.actualFee.toString().replaceAll(',', '')).dividedBy(Math.pow(10, feePaymentToken.decimals));
+    } catch (error) {
+      logger.error(`It was not possible to extract the fee from the transaction:`, error);
+      fee = new BigNumber(Number.NaN);
+    }
+
+    const tradeHuman = trade.toHuman();
+
+
+    logger.info(`Executed swap: ${amount} ${side === 'BUY' ? quoteTokenSymbol : baseTokenSymbol} for ${side === 'BUY' ? tradeHuman.amountOut : tradeHuman.amountIn} ${side === 'BUY' ? baseTokenSymbol : quoteTokenSymbol}`);
 
     return {
       signature: txHash,
-      totalInputSwapped: side === 'BUY' ? BigNumber(quote.estimatedAmountIn.toString()).div(10 ** quoteToken.decimals).toString() : amount.toString(),
-      totalOutputSwapped: side === 'BUY' ? amount.toString() : BigNumber(quote.estimatedAmountOut.toString()).div(10 ** quoteToken.decimals).toString(),
-      fee: quote.fee,
-      baseTokenBalanceChange: BigNumber(quote.baseTokenBalanceChange.toString()).div(10 ** baseToken.decimals).toString(),
-      quoteTokenBalanceChange: BigNumber(quote.quoteTokenBalanceChange.toString()).div(10 ** quoteToken.decimals).toString(),
-      priceImpact: quote.price
+      totalInputSwapped: side === 'BUY' ? tradeHuman.amountIn : tradeHuman.amountOut,
+      totalOutputSwapped: side === 'BUY' ? tradeHuman.amountOut : tradeHuman.amountIn,
+      fee: fee.toNumber(),
+      baseTokenBalanceChange: side === 'BUY' ? tradeHuman.amountOut : tradeHuman.amountIn,
+      quoteTokenBalanceChange: side === 'BUY' ? -tradeHuman.amountIn : -tradeHuman.amountOut,
+      priceImpact: 0
     };
   }
 
