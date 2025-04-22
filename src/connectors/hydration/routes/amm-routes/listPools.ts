@@ -1,4 +1,4 @@
-import {FastifyPluginAsync} from 'fastify';
+import {FastifyInstance, FastifyPluginAsync} from 'fastify';
 import {Hydration} from '../../hydration';
 import {
   HydrationListPoolsRequest,
@@ -6,6 +6,60 @@ import {
   HydrationListPoolsResponse,
   HydrationListPoolsResponseSchema
 } from '../../hydration.types';
+import {HttpException} from '../../../../services/error-handler';
+import {logger} from '../../../../services/logger';
+
+/**
+ * Extended request parameters for listPools endpoint with additional filtering options.
+ */
+interface ExtendedListPoolsRequest extends HydrationListPoolsRequest {
+  types?: string[];
+  maxNumberOfPages?: number;
+  useOfficialTokens?: boolean;
+  tokenSymbols?: string[];
+  tokenAddresses?: string[];
+}
+
+/**
+ * Lists available pools on the Hydration protocol with filtering options.
+ * 
+ * @param fastify - Fastify instance
+ * @param network - The blockchain network (e.g., 'mainnet')
+ * @param types - Array of pool types to filter by (e.g., ['xyk', 'stableswap'])
+ * @param tokenSymbols - Array of token symbols to filter by
+ * @param tokenAddresses - Array of token addresses to filter by
+ * @param useOfficialTokens - Whether to use official token list for symbol resolution
+ * @param maxNumberOfPages - Maximum number of pages to fetch
+ * @returns List of filtered pools
+ */
+export async function listHydrationPools(
+  _fastify: FastifyInstance,
+  network: string,
+  types: string[] = [],
+  tokenSymbols: string[] = [],
+  tokenAddresses: string[] = [],
+  useOfficialTokens: boolean = true,
+  maxNumberOfPages: number = 1
+): Promise<HydrationListPoolsResponse> {
+  if (!network) {
+    throw new HttpException(400, 'Network parameter is required', -1);
+  }
+
+  const hydration = await Hydration.getInstance(network);
+  if (!hydration) {
+    throw new HttpException(503, 'Hydration service unavailable', -1);
+  }
+  
+  const pools = await hydration.listPools(
+    types,
+    tokenSymbols,
+    tokenAddresses,
+    useOfficialTokens,
+    maxNumberOfPages
+  );
+
+  return { pools };
+}
 
 // Define error response interface
 interface ErrorResponse {
@@ -13,43 +67,12 @@ interface ErrorResponse {
 }
 
 /**
- * Extended parameters for listPools endpoint, adding additional filtering options.
- */
-interface ExtendedListPoolsRequestType extends HydrationListPoolsRequest {
-  /** Target network to query (defaults to mainnet) */
-  network?: string;
-  
-  /** Array of pool types to filter by (e.g. ['xyz', 'stablepool']) */
-  types?: string[];
-  
-  /** Maximum number of pages to fetch from the API */
-  maxNumberOfPages?: number;
-  
-  /** Whether to use official token list instead of on-chain resolution */
-  useOfficialTokens?: boolean;
-  
-  /** Array of token symbols to filter pools by (e.g. ['USDT', 'DOT']) */
-  tokenSymbols?: string[];
-  
-  /** Array of token addresses to filter pools by */
-  tokenAddresses?: string[];
-}
-
-/**
- * Route handler for listing all available pools.
- * Supports filtering by token, pool type, and other parameters.
+ * Route plugin that registers the list-pools endpoint.
+ * Exposes an endpoint for listing all available pools with filtering options.
  */
 export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
-  // Define error response schema
-  const ErrorResponseSchema = {
-    type: 'object',
-    properties: {
-      error: { type: 'string' }
-    }
-  };
-
   fastify.get<{
-    Querystring: ExtendedListPoolsRequestType;
+    Querystring: ExtendedListPoolsRequest;
     Reply: HydrationListPoolsResponse | ErrorResponse;
   }>(
     '/list-pools',
@@ -60,62 +83,71 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
         querystring: {
           ...HydrationListPoolsRequestSchema,
           properties: {
-            network: { type: 'string', examples: ['mainnet'] },
-            types: {
-              type: 'array',
-              description: 'Array of pool types to filter by',
+            network: { type: 'string', default: 'mainnet' },
+            types: { 
+              type: 'array', 
               items: { type: 'string' },
-              examples: [['xyz', 'stablepool']]
+              description: 'Pool types to filter by'
             },
-            maxNumberOfPages: { type: 'integer', description: 'Maximum number of pages to fetch', default: 1 },
-            useOfficialTokens: { type: 'boolean', description: 'Whether to use official token list instead of on-chain resolution', default: true },
-            tokenSymbols: {
-              type: 'array',
-              description: 'Array of token symbols to filter by',
-              items: { type: 'string' },
-              examples: [['USDT', 'DOT']]
+            maxNumberOfPages: { 
+              type: 'integer', 
+              default: 1,
+              description: 'Maximum number of pages to fetch'
             },
-            tokenAddresses: {
-              type: 'array',
-              description: 'Array of token addresses to filter by',
+            useOfficialTokens: { 
+              type: 'boolean', 
+              default: true,
+              description: 'Whether to use official token list for resolution'
+            },
+            tokenSymbols: { 
+              type: 'array', 
               items: { type: 'string' },
-              examples: [['10', '5']]
+              description: 'Token symbols to filter by'
+            },
+            tokenAddresses: { 
+              type: 'array', 
+              items: { type: 'string' },
+              description: 'Token addresses to filter by'
             }
           }
         },
         response: {
-          200: HydrationListPoolsResponseSchema,
-          500: ErrorResponseSchema
+          200: HydrationListPoolsResponseSchema
         }
       }
     },
-    async (request) => {
-      // Extract parameters with defaults
-      const {
-        network = 'mainnet',
-        types = [],
-        maxNumberOfPages = 1,
-        useOfficialTokens = true,
-        tokenSymbols = [],
-        tokenAddresses = []
-      } = request.query;
+    async (request, reply) => {
+      try {
+        // Extract parameters with defaults
+        const {
+          network = 'mainnet',
+          types = [],
+          maxNumberOfPages = 1,
+          useOfficialTokens = true,
+          tokenSymbols = [],
+          tokenAddresses = []
+        } = request.query;
 
-      // Get Hydration instance
-      const hydration = await Hydration.getInstance(network);
-      if (!hydration) {
-        throw fastify.httpErrors.serviceUnavailable('Hydration service unavailable');
+        const result = await listHydrationPools(
+          fastify,
+          network,
+          types,
+          tokenSymbols,
+          tokenAddresses,
+          useOfficialTokens,
+          maxNumberOfPages
+        );
+
+        return result;
+      } catch (error) {
+        logger.error('Error in list-pools endpoint:', error);
+
+        if (error.statusCode) {
+          return reply.status(error.statusCode).send({ error: error.message });
+        }
+
+        return reply.status(500).send({ error: 'Internal server error' });
       }
-
-      // Use the business logic method from the Hydration class
-      const pools = await hydration.listPools(
-        types,
-        tokenSymbols,
-        tokenAddresses,
-        useOfficialTokens,
-        maxNumberOfPages
-      );
-
-      return { pools };
     }
   );
 };

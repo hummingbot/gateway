@@ -1,6 +1,5 @@
 import {FastifyInstance, FastifyPluginAsync} from 'fastify';
 import {Hydration} from '../../hydration';
-import {Polkadot} from '../../../../chains/polkadot/polkadot';
 import {logger} from '../../../../services/logger';
 import {validatePolkadotAddress} from '../../../../chains/polkadot/polkadot.validators';
 import {
@@ -9,7 +8,7 @@ import {
   HydrationAddLiquidityResponse,
   HydrationAddLiquidityResponseSchema
 } from '../../hydration.types';
-import {AddLiquidityRequest} from '../../../../schemas/trading-types/amm-schema';
+import {HttpException} from '../../../../services/error-handler';
 
 /**
  * Adds liquidity to a Hydration position.
@@ -23,7 +22,7 @@ import {AddLiquidityRequest} from '../../../../schemas/trading-types/amm-schema'
  * @param slippagePct - Optional slippage percentage (default from config)
  * @returns Details of the liquidity addition operation
  */
-async function addLiquidity(
+export async function addLiquidityToHydration(
   _fastify: FastifyInstance,
   network: string,
   walletAddress: string,
@@ -32,21 +31,25 @@ async function addLiquidity(
   quoteTokenAmount: number,
   slippagePct?: number
 ): Promise<HydrationAddLiquidityResponse> {
+  if (!network) {
+    throw new HttpException(400, 'Network parameter is required', -1);
+  }
+  
+  if (!poolId) {
+    throw new HttpException(400, 'Pool ID parameter is required', -1);
+  }
+  
   // Validate wallet address
   validatePolkadotAddress(walletAddress);
-
-  const hydration = await Hydration.getInstance(network);
   
-  // Call the business logic method from the Hydration class
-  const result = await hydration.addLiquidity(
+  const hydration = await Hydration.getInstance(network);
+  return await hydration.addLiquidity(
     walletAddress,
     poolId,
     baseTokenAmount,
-    quoteTokenAmount, 
+    quoteTokenAmount,
     slippagePct
   );
-  
-  return result;
 }
 
 // Define error response interface
@@ -55,35 +58,10 @@ interface ErrorResponse {
 }
 
 /**
- * Registers the add-liquidity route.
+ * Route plugin that registers the add-liquidity endpoint.
  * Exposes an endpoint for adding liquidity to specified pools.
  */
 export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
-  // Get first wallet address for example
-  const polkadot = await Polkadot.getInstance('mainnet');
-  let firstWalletAddress = '1examplePolkadotAddress...';
-
-  // Try to get a real wallet address for examples if available
-  try {
-    const firstWallet = await polkadot.getFirstWalletAddress();
-    if (firstWallet) {
-      firstWalletAddress = firstWallet;
-    }
-  } catch (error) {
-    logger.debug('Could not get example wallet address', error);
-  }
-
-  // Update schema example
-  AddLiquidityRequest.properties.walletAddress.examples = [firstWalletAddress];
-
-  // Define error response schema
-  const ErrorResponseSchema = {
-    type: 'object',
-    properties: {
-      error: { type: 'string' }
-    }
-  };
-
   fastify.post<{
     Body: HydrationAddLiquidityRequest;
     Reply: HydrationAddLiquidityResponse | ErrorResponse;
@@ -93,23 +71,10 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Add liquidity to a Hydration position',
         tags: ['hydration'],
-        body: {
-          ...HydrationAddLiquidityRequestSchema,
-          properties: {
-            ...HydrationAddLiquidityRequestSchema.properties,
-            network: { type: 'string', default: 'mainnet' },
-            poolAddress: { type: 'string', examples: ['12345'] },
-            slippagePct: { type: 'number', examples: [1] },
-            baseTokenAmount: { type: 'number', examples: [10] },
-            quoteTokenAmount: { type: 'number', examples: [10] },
-          }
-        },
+        body: HydrationAddLiquidityRequestSchema,
         response: {
-          200: HydrationAddLiquidityResponseSchema,
-          400: ErrorResponseSchema,
-          404: ErrorResponseSchema,
-          500: ErrorResponseSchema
-        },
+          200: HydrationAddLiquidityResponseSchema
+        }
       }
     },
     async (request, reply) => {
@@ -120,10 +85,10 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           baseTokenAmount,
           quoteTokenAmount,
           slippagePct
-        } = request.body as HydrationAddLiquidityRequest;
-        const network = (request.body as HydrationAddLiquidityRequest).network || 'mainnet';
+        } = request.body;
+        const network = request.body.network || 'mainnet';
 
-        const result = await addLiquidity(
+        const result = await addLiquidityToHydration(
           fastify,
           network,
           walletAddress,
@@ -133,25 +98,24 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           slippagePct
         );
 
-        return reply.send(result);
-      } catch (e) {
-        logger.error('Error in add-liquidity endpoint:', e);
+        return result;
+      } catch (error) {
+        logger.error('Error in add-liquidity endpoint:', error);
 
-        // Handle specific error types
-        if (e.message?.includes('Pool not found')) {
-          return reply.status(404).send({ error: e.message });
-        } else if (e.message?.includes('Invalid Polkadot address')) {
-          return reply.status(400).send({ error: e.message });
-        } else if (e.message?.includes('Insufficient') || 
-                   e.message?.includes('Invalid') ||
-                   e.message?.includes('You must provide')) {
-          return reply.status(400).send({ error: e.message });
+        if (error.statusCode) {
+          return reply.status(error.statusCode).send({ error: error.message });
         }
 
-        // Default error response
-        if (e.statusCode) {
-          return reply.status(e.statusCode).send({ error: e.message });
+        if (error.message?.includes('Pool not found')) {
+          return reply.status(404).send({ error: error.message });
+        } else if (error.message?.includes('Invalid Polkadot address')) {
+          return reply.status(400).send({ error: error.message });
+        } else if (error.message?.includes('Insufficient') || 
+                   error.message?.includes('Invalid') ||
+                   error.message?.includes('You must provide')) {
+          return reply.status(400).send({ error: error.message });
         }
+
         return reply.status(500).send({ error: 'Internal server error' });
       }
     }

@@ -2,8 +2,12 @@ import {Polkadot} from '../../chains/polkadot/polkadot';
 import {logger} from '../../services/logger';
 import {HydrationConfig} from './hydration.config';
 import {
+  HydrationAddLiquidityResponse,
+  HydrationExecuteSwapResponse,
   HydrationPoolDetails,
   HydrationPoolInfo,
+  HydrationQuoteLiquidityResponse,
+  HydrationRemoveLiquidityResponse,
   LiquidityQuote,
   PositionStrategyType,
   SwapQuote,
@@ -16,6 +20,7 @@ import {runWithRetryAndTimeout} from "../../chains/polkadot/polkadot.utils";
 import hydrationJson from '../../../conf/lists/hydration.json';
 import {PoolBase, PoolToken, Trade} from '@galacticcouncil/sdk/build/types/types';
 import {BigNumber, PoolService, PoolType, TradeRouter, TradeType} from "@galacticcouncil/sdk";
+import {PoolItem} from '../../schemas/trading-types/amm-schema';
 
 // Create a map of token symbols to addresses from hydration.json
 const KNOWN_TOKENS = hydrationJson.reduce((acc, token) => {
@@ -910,7 +915,7 @@ export class Hydration {
     baseTokenAmount: number,
     quoteTokenAmount: number,
     slippagePct?: number
-  ): Promise<any> {
+  ): Promise<HydrationAddLiquidityResponse> {
     // Get wallet
     const wallet = await this.polkadot.getWallet(walletAddress);
     
@@ -1249,7 +1254,7 @@ export class Hydration {
     tokenAddresses: string[] = [],
     useOfficialTokens: boolean = true,
     maxNumberOfPages: number = 1
-  ): Promise<any[]> {
+  ): Promise<PoolItem[]> {
     const tradeRouter = await this.getTradeRouter();
 
     // Normalize input arrays
@@ -1468,13 +1473,7 @@ export class Hydration {
     baseTokenAmount?: number,
     quoteTokenAmount?: number,
     slippagePct: number = 1
-  ): Promise<{
-    baseLimited: boolean;
-    baseTokenAmount: number;
-    quoteTokenAmount: number;
-    baseTokenAmountMax: number;
-    quoteTokenAmountMax: number;
-  }> {
+  ): Promise<HydrationQuoteLiquidityResponse> {
     // Validate inputs
     if (!baseTokenAmount && !quoteTokenAmount) {
       throw new Error('Either baseTokenAmount or quoteTokenAmount must be provided');
@@ -1605,7 +1604,7 @@ export class Hydration {
     side: 'BUY' | 'SELL',
     poolAddress: string,
     slippagePct?: number
-  ): Promise<any> {
+  ): Promise<HydrationExecuteSwapResponse> {
     // Validate inputs
     if (!baseTokenIdentifier || !quoteTokenIdentifier) {
       throw new Error('Base token and quote token are required');
@@ -1642,8 +1641,157 @@ export class Hydration {
       totalOutputSwapped: result.totalOutputSwapped,
       fee: result.fee,
       baseTokenBalanceChange: result.baseTokenBalanceChange,
-      quoteTokenBalanceChange: result.quoteTokenBalanceChange,
-      priceImpact: result.priceImpact
+      quoteTokenBalanceChange: result.quoteTokenBalanceChange
+    };
+  }
+
+  /**
+   * Get detailed pool information with proper typing for the API
+   * @param poolAddress Address of the pool to query
+   * @returns Detailed pool information in the HydrationPoolInfo format
+   */
+  async getPoolDetails(poolAddress: string): Promise<HydrationPoolInfo | null> {
+    const poolInfo = await this.getPoolInfo(poolAddress);
+    
+    if (!poolInfo) {
+      return null;
+    }
+    
+    // Map ExternalPoolInfo to HydrationPoolInfo, adding required lpMint field
+    return {
+      address: poolInfo.address,
+      baseTokenAddress: poolInfo.baseTokenAddress,
+      quoteTokenAddress: poolInfo.quoteTokenAddress,
+      feePct: poolInfo.feePct,
+      price: poolInfo.price,
+      baseTokenAmount: poolInfo.baseTokenAmount,
+      quoteTokenAmount: poolInfo.quoteTokenAmount,
+      poolType: poolInfo.poolType,
+      lpMint: {
+        address: '', // Not applicable for Polkadot, but required by interface
+        decimals: 0   // Not applicable for Polkadot, but required by interface
+      }
+    };
+  }
+
+  /**
+   * Remove liquidity from a Hydration position
+   * @param walletAddress The user's wallet address
+   * @param poolAddress The pool address to remove liquidity from
+   * @param percentageToRemove Percentage to remove (1-100)
+   * @returns Details of the liquidity removal operation
+   */
+  async removeLiquidity(
+    walletAddress: string,
+    poolAddress: string,
+    percentageToRemove: number
+  ): Promise<HydrationRemoveLiquidityResponse> {
+    if (percentageToRemove <= 0 || percentageToRemove > 100) {
+      throw new Error('Percentage to remove must be between 0 and 100');
+    }
+
+    // Get wallet
+    const wallet = await this.polkadot.getWallet(walletAddress);
+    
+    // Get pool info
+    const pool = await this.getPoolInfo(poolAddress);
+    if (!pool) {
+      throw new Error(`Pool not found: ${poolAddress}`);
+    }
+
+    // Get token symbols from addresses
+    const baseTokenSymbol = await this.getTokenSymbol(pool.baseTokenAddress);
+    const quoteTokenSymbol = await this.getTokenSymbol(pool.quoteTokenAddress);
+
+    // Use assets from Hydration to get asset IDs
+    const feePaymentToken = this.polkadot.getFeePaymentToken();
+    const baseToken = this.polkadot.getToken(baseTokenSymbol);
+    const quoteToken = this.polkadot.getToken(quoteTokenSymbol);
+
+    if (!baseToken || !quoteToken) {
+      throw new Error(`Asset not found: ${!baseToken ? baseTokenSymbol : quoteTokenSymbol}`);
+    }
+
+    // Calculate shares to remove
+    let percentageToRemoveBN = BigNumber(percentageToRemove.toString());
+    let totalUserSharesInThePool: BigNumber;
+    let userSharesToRemove: BigNumber;
+    
+    const apiPromise = await this.getApiPromise();
+
+    if (pool.id) {
+      totalUserSharesInThePool = new BigNumber((await apiPromise.query.tokens.accounts(walletAddress, pool.id)).free.toString()).dividedBy(Math.pow(10, 18));
+      userSharesToRemove = percentageToRemoveBN.multipliedBy(totalUserSharesInThePool).dividedBy(100);
+      logger.info(`Removing ${percentageToRemove}% or ${userSharesToRemove} shares of the user from the pool ${poolAddress}`);
+      userSharesToRemove = userSharesToRemove.multipliedBy(Math.pow(10, 18));
+    } else {
+      // Xyk pools are not informing the pool id, which is mandatory for the `query.tokens.accounts` call
+      // so we consider the percentage to remove as the amount of shares to remove
+      userSharesToRemove = percentageToRemoveBN;
+      logger.info(`Removing ${userSharesToRemove} shares from the pool ${poolAddress}`);
+      userSharesToRemove = userSharesToRemove.multipliedBy(Math.pow(10, baseToken.decimals));
+    }
+
+    if (userSharesToRemove.lte(0)) {
+      throw new Error('Calculated liquidity to remove is zero or negative');
+    }
+
+    // Prepare transaction based on pool type
+    const poolType = pool.poolType?.toLowerCase() || POOL_TYPE.XYK;
+    let removeLiquidityTx;
+
+    switch (poolType) {
+      case POOL_TYPE.XYK:
+        removeLiquidityTx = apiPromise.tx.xyk.removeLiquidity(
+          baseToken.address,
+          quoteToken.address,
+          userSharesToRemove.toString()
+        );
+        break;
+
+      case POOL_TYPE.LBP:
+        removeLiquidityTx = apiPromise.tx.lbp.removeLiquidity(
+          poolAddress
+        );
+        break;
+
+      case POOL_TYPE.OMNIPOOL:
+        removeLiquidityTx = apiPromise.tx.omnipool.removeLiquidity(
+          baseToken.address,
+          userSharesToRemove.toString()
+        );
+        break;
+
+      case POOL_TYPE.STABLESWAP:
+        removeLiquidityTx = apiPromise.tx.stableswap.removeLiquidity(
+          pool.id,
+          userSharesToRemove.toString(),
+          [
+            { assetId: baseToken.address, amount: 0 },
+            { assetId: quoteToken.address, amount: 0 }
+          ]
+        );
+        break;
+
+      default:
+        throw new Error(`Unsupported pool type: ${poolType}`);
+    }
+
+    // Submit transaction
+    const txHash = await this.submitTransaction(apiPromise, removeLiquidityTx, wallet, poolType);
+
+    logger.info(`Liquidity removed from pool ${poolAddress} with tx hash: ${txHash}`);
+
+    // Extract token amounts from transaction if possible
+    // For simplicity, we'll estimate the amounts based on the user share percentage
+    const baseTokenEstimate = pool.baseTokenAmount * (percentageToRemove / 100);
+    const quoteTokenEstimate = pool.quoteTokenAmount * (percentageToRemove / 100);
+
+    return {
+      signature: txHash,
+      fee: 0.01, // Estimated fee
+      baseTokenAmountRemoved: baseTokenEstimate,
+      quoteTokenAmountRemoved: quoteTokenEstimate
     };
   }
 }

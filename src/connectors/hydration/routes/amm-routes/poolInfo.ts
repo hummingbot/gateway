@@ -1,4 +1,4 @@
-import { FastifyPluginAsync } from 'fastify';
+import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { Hydration } from '../../hydration';
 import { logger } from '../../../../services/logger';
 import {
@@ -7,6 +7,42 @@ import {
   HydrationGetPoolInfoRequest,
   HydrationGetPoolInfoRequestSchema
 } from '../../hydration.types';
+import { HttpException } from '../../../../services/error-handler';
+
+/**
+ * Retrieves detailed information about a specific Hydration pool.
+ * 
+ * @param fastify - Fastify instance
+ * @param network - The blockchain network (e.g., 'mainnet')
+ * @param poolAddress - Address of the pool to retrieve information for
+ * @returns Detailed pool information
+ */
+export async function getHydrationPoolInfo(
+  _fastify: FastifyInstance,
+  network: string,
+  poolAddress: string
+): Promise<HydrationPoolInfo> {
+  if (!network) {
+    throw new HttpException(400, 'Network parameter is required', -1);
+  }
+  
+  if (!poolAddress) {
+    throw new HttpException(400, 'Pool address parameter is required', -1);
+  }
+
+  const hydration = await Hydration.getInstance(network);
+  if (!hydration) {
+    throw new HttpException(503, 'Hydration service unavailable', -1);
+  }
+
+  // Get pool information with proper typing
+  const poolInfo = await hydration.getPoolDetails(poolAddress);
+  if (!poolInfo) {
+    throw new HttpException(404, `Pool not found: ${poolAddress}`, -1);
+  }
+
+  return poolInfo;
+}
 
 // Define error response interface
 interface ErrorResponse {
@@ -14,19 +50,10 @@ interface ErrorResponse {
 }
 
 /**
- * Route handler for retrieving pool information.
- * Provides detailed data about a specific liquidity pool.
+ * Route plugin that registers the pool-info endpoint.
+ * Exposes an endpoint for retrieving detailed information about a specific pool.
  */
 export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
-  // Define error response schema
-  const ErrorResponseSchema = {
-    type: 'object',
-    properties: {
-      error: { type: 'string' }
-    }
-  };
-
-  // Existing pool-info endpoint
   fastify.get<{
     Querystring: HydrationGetPoolInfoRequest;
     Reply: HydrationPoolInfo | ErrorResponse;
@@ -36,52 +63,37 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Get pool information for a Hydration pool',
         tags: ['hydration'],
-        querystring: {
-          ...HydrationGetPoolInfoRequestSchema,
-          properties: {
-            network: { type: 'string', examples: ['mainnet'] },
-            poolAddress: { type: 'string', examples: ['poolAddressXyk'] }
-          }
-        },
+        querystring: HydrationGetPoolInfoRequestSchema,
         response: {
-          200: HydrationPoolInfoSchema,
-          404: ErrorResponseSchema,
-          500: ErrorResponseSchema
-        },
+          200: HydrationPoolInfoSchema
+        }
       }
     },
-    async (request): Promise<HydrationPoolInfo> => {
-      const { poolAddress } = request.query;
-      const network = request.query.network || 'mainnet';
+    async (request, reply) => {
+      try {
+        const { poolAddress } = request.query;
+        const network = request.query.network || 'mainnet';
 
-      const hydration = await Hydration.getInstance(network);
-      if (!hydration) {
-        throw fastify.httpErrors.serviceUnavailable('Hydration service unavailable');
-      }
+        const result = await getHydrationPoolInfo(
+          fastify,
+          network,
+          poolAddress
+        );
 
-      // Get pool information
-      const poolInfo = await hydration.getPoolInfo(poolAddress);
-      if (!poolInfo) {
-        throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
-      }
+        return result;
+      } catch (error) {
+        logger.error('Error in pool-info endpoint:', error);
 
-      // Map to standard PoolInfo interface with safe property access
-      const result: HydrationPoolInfo = {
-        address: poolInfo.address,
-        baseTokenAddress: poolInfo.baseTokenAddress,
-        quoteTokenAddress: poolInfo.quoteTokenAddress,
-        feePct: poolInfo.feePct,
-        price: poolInfo.price,
-        baseTokenAmount: poolInfo.baseTokenAmount,
-        quoteTokenAmount: poolInfo.quoteTokenAmount,
-        poolType: poolInfo.poolType,
-        lpMint: {
-          address: '',
-          decimals: 0
+        if (error.statusCode) {
+          return reply.status(error.statusCode).send({ error: error.message });
         }
-      };
 
-      return result;
+        if (error.message?.includes('not found')) {
+          return reply.status(404).send({ error: error.message });
+        }
+
+        return reply.status(500).send({ error: 'Internal server error' });
+      }
     }
   );
 };
