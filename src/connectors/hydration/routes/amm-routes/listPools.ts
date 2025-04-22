@@ -117,17 +117,36 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
       }
     },
     async (request, reply) => {
-      try {
-        // Extract parameters with defaults
-        const {
-          network = 'mainnet',
-          types = [],
-          maxNumberOfPages = 1,
-          useOfficialTokens = true,
-          tokenSymbols = [],
-          tokenAddresses = []
-        } = request.query;
+      // Extract parameters with defaults
+      const {
+        network = 'mainnet',
+        types = [],
+        maxNumberOfPages = 1,
+        useOfficialTokens = true,
+      } = request.query;
 
+      // Handle tokenSymbols and tokenAddresses specially to ensure they're properly formatted as arrays
+      // This fixes the case when they're passed as multiple query params with the same name
+      let tokenSymbols = request.query.tokenSymbols || [];
+      let tokenAddresses = request.query.tokenAddresses || [];
+      
+      // Ensure tokenSymbols is always an array
+      if (!Array.isArray(tokenSymbols)) {
+        tokenSymbols = [tokenSymbols];
+      }
+      
+      // Ensure tokenAddresses is always an array
+      if (!Array.isArray(tokenAddresses)) {
+        tokenAddresses = [tokenAddresses];
+      }
+      
+      // Filter out empty strings
+      tokenSymbols = tokenSymbols.filter(Boolean);
+      tokenAddresses = tokenAddresses.filter(Boolean);
+
+      logger.debug(`Request params: network=${network}, tokenSymbols=${JSON.stringify(tokenSymbols)}, tokenAddresses=${JSON.stringify(tokenAddresses)}`);
+
+      try {
         const result = await listHydrationPools(
           fastify,
           network,

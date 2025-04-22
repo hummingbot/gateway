@@ -69,6 +69,27 @@ Content-Type: application/json
 {
 }
 
+
+###
+
+# DELETE /wallet/remove
+DELETE {{httpProtocol}}://{{host}}:{{port}}/wallet/remove
+Content-Type: application/json
+
+{
+  "chain": "{{chain}}",
+  "address": "{{walletPublicKey}}"
+}
+
+###
+
+# GET /wallet
+GET {{httpProtocol}}://{{host}}:{{port}}/wallet
+Content-Type: application/json
+
+{
+}
+
 ###
 
 # POST /wallet/add
@@ -83,16 +104,13 @@ Content-Type: application/json
 
 ###
 
-# DELETE /wallet/remove
-DELETE {{httpProtocol}}://{{host}}:{{port}}/wallet/remove
+# GET /wallet
+GET {{httpProtocol}}://{{host}}:{{port}}/wallet
 Content-Type: application/json
 
 {
-  "chain": "{{chain}}",
-  "address": "{{walletPublicKey}}"
 }
 
-###
 
 # ===================== CHAIN ROUTES =====================
 
@@ -217,19 +235,19 @@ Content-Type: application/json
 
 ###
 
-# GET /hydration/amm/list-pools - Filter by tokenSymbols (correct format)
+# GET /hydration/amm/list-pools - Filter by tokenSymbols
 GET {{httpProtocol}}://{{host}}:{{port}}/hydration/amm/list-pools?network={{network}}&tokenSymbols={{baseTokenSymbol}}&tokenSymbols={{quoteTokenSymbol}}
 Content-Type: application/json
 
 ###
 
-# GET /hydration/amm/list-pools - Filter by pool types (correct format)
+# GET /hydration/amm/list-pools - Filter by pool types
 GET {{httpProtocol}}://{{host}}:{{port}}/hydration/amm/list-pools?network={{network}}&types=stableswap
 Content-Type: application/json
 
 ###
 
-# GET /hydration/amm/list-pools - Combination filtering (correct format)
+# GET /hydration/amm/list-pools - Combination filtering
 GET {{httpProtocol}}://{{host}}:{{port}}/hydration/amm/list-pools?network={{network}}&tokenSymbols={{baseTokenSymbol}}&tokenSymbols={{quoteTokenSymbol}}&maxNumberOfPages=2&types=xyk
 Content-Type: application/json
 
@@ -265,7 +283,7 @@ Content-Type: application/json
 ###
 
 # GET /{{connector}}/amm/quote-swap - HYDRATION XYK
-GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/quote-swap?network={{network}}&baseToken={{baseTokenSymbol}}&quoteToken={{quoteTokenSymbol}}&amount={{amount}}&side={{side}}&poolAddress={{poolAddressXyk}}&slippagePct={{slippagePercentage}}
+GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/quote-swap?network={{network}}&baseToken={{xykBaseTokenSymbol}}&quoteToken={{xykQuoteTokenSymbol}}&amount={{amount}}&side={{side}}&poolAddress={{poolAddressXyk}}&slippagePct={{slippagePercentage}}
 Content-Type: application/json
 
 {
@@ -283,7 +301,7 @@ Content-Type: application/json
 # ###
 
 # GET /{{connector}}/amm/quote-swap - HYDRATION Stableswap
-GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/quote-swap?network={{network}}&baseToken={{baseTokenSymbol}}&quoteToken={{quoteTokenSymbol}}&amount={{amount}}&side={{side}}&poolAddress={{poolAddressStableswap}}&slippagePct={{slippagePercentage}}
+GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/quote-swap?network={{network}}&baseToken={{stableBaseTokenSymbol}}&quoteToken={{stableQuoteTokenSymbol}}&amount={{amount}}&side={{side}}&poolAddress={{poolAddressStableswap}}&slippagePct={{slippagePercentage}}
 Content-Type: application/json
 
 {
@@ -291,7 +309,7 @@ Content-Type: application/json
 
 ###
 
-# GET /{{connector}}/amm/quote-liquidity -  HYDRATION XYl
+# GET /{{connector}}/amm/quote-liquidity -  HYDRATION XYK
 GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/quote-liquidity?network={{network}}&poolAddress={{poolAddressXyk}}&baseTokenAmount={{baseTokenAmount}}&quoteTokenAmount={{quoteTokenAmount}}&slippagePct={{slippagePercentage}}
 Content-Type: application/json
 
@@ -325,8 +343,8 @@ Content-Type: application/json
 {
   "network": "{{network}}",
   "walletAddress": "{{walletPublicKey}}",
-  "baseToken": "{{baseTokenSymbol}}",
-  "quoteToken": "{{quoteTokenSymbol}}",
+  "baseToken": "{{xykBaseTokenSymbol}}",
+  "quoteToken": "{{xykQuoteTokenSymbol}}",
   "amount": "{{amount}}",
   "side": "{{side}}",
   "poolAddress": "{{poolAddressXyk}}",
@@ -359,8 +377,8 @@ Content-Type: application/json
 {
   "network": "{{network}}",
   "walletAddress": "{{walletPublicKey}}",
-  "baseToken": "{{baseTokenSymbol}}",
-  "quoteToken": "{{quoteTokenSymbol}}",
+  "baseToken": "{{stableBaseTokenSymbol}}",
+  "quoteToken": "{{stableQuoteTokenSymbol}}",
   "amount": "{{amount}}",
   "side": "{{side}}",
   "poolAddress": "{{poolAddressStableswap}}",
