@@ -4,11 +4,12 @@ import {Polkadot} from '../../../../chains/polkadot/polkadot';
 import {logger} from '../../../../services/logger';
 import {validatePolkadotAddress} from '../../../../chains/polkadot/polkadot.validators';
 import {
-  AddLiquidityRequest,
-  AddLiquidityRequestType,
-  AddLiquidityResponse,
-  AddLiquidityResponseType
-} from '../../../../schemas/trading-types/amm-schema';
+  HydrationAddLiquidityRequest,
+  HydrationAddLiquidityRequestSchema,
+  HydrationAddLiquidityResponse,
+  HydrationAddLiquidityResponseSchema
+} from '../../hydration.types';
+import {AddLiquidityRequest} from '../../../../schemas/trading-types/amm-schema';
 
 /**
  * Adds liquidity to a Hydration position.
@@ -30,7 +31,7 @@ async function addLiquidity(
   baseTokenAmount: number,
   quoteTokenAmount: number,
   slippagePct?: number
-): Promise<AddLiquidityResponseType> {
+): Promise<HydrationAddLiquidityResponse> {
   // Validate wallet address
   validatePolkadotAddress(walletAddress);
 
@@ -46,6 +47,11 @@ async function addLiquidity(
   );
   
   return result;
+}
+
+// Define error response interface
+interface ErrorResponse {
+  error: string;
 }
 
 /**
@@ -70,16 +76,27 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   // Update schema example
   AddLiquidityRequest.properties.walletAddress.examples = [firstWalletAddress];
 
-  fastify.post(
+  // Define error response schema
+  const ErrorResponseSchema = {
+    type: 'object',
+    properties: {
+      error: { type: 'string' }
+    }
+  };
+
+  fastify.post<{
+    Body: HydrationAddLiquidityRequest;
+    Reply: HydrationAddLiquidityResponse | ErrorResponse;
+  }>(
     '/add-liquidity',
     {
       schema: {
         description: 'Add liquidity to a Hydration position',
         tags: ['hydration'],
         body: {
-          ...AddLiquidityRequest,
+          ...HydrationAddLiquidityRequestSchema,
           properties: {
-            ...AddLiquidityRequest.properties,
+            ...HydrationAddLiquidityRequestSchema.properties,
             network: { type: 'string', default: 'mainnet' },
             poolAddress: { type: 'string', examples: ['12345'] },
             slippagePct: { type: 'number', examples: [1] },
@@ -88,7 +105,10 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           }
         },
         response: {
-          200: AddLiquidityResponse
+          200: HydrationAddLiquidityResponseSchema,
+          400: ErrorResponseSchema,
+          404: ErrorResponseSchema,
+          500: ErrorResponseSchema
         },
       }
     },
@@ -100,8 +120,8 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           baseTokenAmount,
           quoteTokenAmount,
           slippagePct
-        } = request.body as AddLiquidityRequestType;
-        const network = (request.body as AddLiquidityRequestType).network || 'mainnet';
+        } = request.body as HydrationAddLiquidityRequest;
+        const network = (request.body as HydrationAddLiquidityRequest).network || 'mainnet';
 
         const result = await addLiquidity(
           fastify,

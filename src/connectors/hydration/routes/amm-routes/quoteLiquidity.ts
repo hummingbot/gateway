@@ -3,20 +3,33 @@ import { Hydration } from '../../hydration';
 import { logger } from '../../../../services/logger';
 import { httpBadRequest, httpNotFound } from '../../../../services/error-handler';
 import {
-  QuoteLiquidityRequest,
-  QuoteLiquidityRequestType,
-  QuoteLiquidityResponse,
-  QuoteLiquidityResponseType
-} from '../../../../schemas/trading-types/amm-schema';
+  HydrationQuoteLiquidityRequest,
+  HydrationQuoteLiquidityRequestSchema,
+  HydrationQuoteLiquidityResponse,
+  HydrationQuoteLiquidityResponseSchema
+} from '../../hydration.types';
+
+// Define error response interface
+interface ErrorResponse {
+  error: string;
+}
 
 /**
  * Route handler for getting a liquidity quote.
  * Provides estimates for adding liquidity to a specific pool.
  */
 export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
+  // Define error response schema
+  const ErrorResponseSchema = {
+    type: 'object',
+    properties: {
+      error: { type: 'string' }
+    }
+  };
+
   fastify.get<{
-    Querystring: QuoteLiquidityRequestType;
-    Reply: QuoteLiquidityResponseType;
+    Querystring: HydrationQuoteLiquidityRequest;
+    Reply: HydrationQuoteLiquidityResponse | ErrorResponse;
   }>(
     '/quote-liquidity',
     {
@@ -24,9 +37,9 @@ export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         description: 'Get a liquidity quote for adding liquidity to a Hydration pool',
         tags: ['hydration'],
         querystring: {
-          ...QuoteLiquidityRequest,
+          ...HydrationQuoteLiquidityRequestSchema,
           properties: {
-            ...QuoteLiquidityRequest.properties,
+            ...HydrationQuoteLiquidityRequestSchema.properties,
             network: { type: 'string', default: 'mainnet' },
             poolAddress: { type: 'string', examples: ['hydration-pool-0'] },
             baseTokenAmount: { type: 'number', examples: [1] },
@@ -35,7 +48,10 @@ export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           }
         },
         response: {
-          200: QuoteLiquidityResponse
+          200: HydrationQuoteLiquidityResponseSchema,
+          400: ErrorResponseSchema,
+          404: ErrorResponseSchema,
+          500: ErrorResponseSchema
         },
       }
     },

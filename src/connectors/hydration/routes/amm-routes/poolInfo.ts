@@ -2,21 +2,34 @@ import { FastifyPluginAsync } from 'fastify';
 import { Hydration } from '../../hydration';
 import { logger } from '../../../../services/logger';
 import {
-  PoolInfo,
-  PoolInfoSchema,
-  GetPoolInfoRequestType,
-  GetPoolInfoRequest
-} from '../../../../schemas/trading-types/amm-schema';
+  HydrationPoolInfo,
+  HydrationPoolInfoSchema,
+  HydrationGetPoolInfoRequest,
+  HydrationGetPoolInfoRequestSchema
+} from '../../hydration.types';
+
+// Define error response interface
+interface ErrorResponse {
+  error: string;
+}
 
 /**
  * Route handler for retrieving pool information.
  * Provides detailed data about a specific liquidity pool.
  */
 export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
+  // Define error response schema
+  const ErrorResponseSchema = {
+    type: 'object',
+    properties: {
+      error: { type: 'string' }
+    }
+  };
+
   // Existing pool-info endpoint
   fastify.get<{
-    Querystring: GetPoolInfoRequestType;
-    Reply: PoolInfo;
+    Querystring: HydrationGetPoolInfoRequest;
+    Reply: HydrationPoolInfo | ErrorResponse;
   }>(
     '/pool-info',
     {
@@ -24,18 +37,20 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
         description: 'Get pool information for a Hydration pool',
         tags: ['hydration'],
         querystring: {
-          ...GetPoolInfoRequest,
+          ...HydrationGetPoolInfoRequestSchema,
           properties: {
             network: { type: 'string', examples: ['mainnet'] },
             poolAddress: { type: 'string', examples: ['poolAddressXyk'] }
           }
         },
         response: {
-          200: PoolInfoSchema
+          200: HydrationPoolInfoSchema,
+          404: ErrorResponseSchema,
+          500: ErrorResponseSchema
         },
       }
     },
-    async (request): Promise<PoolInfo> => {
+    async (request): Promise<HydrationPoolInfo> => {
       const { poolAddress } = request.query;
       const network = request.query.network || 'mainnet';
 
@@ -51,7 +66,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
       }
 
       // Map to standard PoolInfo interface with safe property access
-      const result: PoolInfo = {
+      const result: HydrationPoolInfo = {
         address: poolInfo.address,
         baseTokenAddress: poolInfo.baseTokenAddress,
         quoteTokenAddress: poolInfo.quoteTokenAddress,

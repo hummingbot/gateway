@@ -4,13 +4,19 @@ import { Polkadot } from '../../../../chains/polkadot/polkadot';
 import { BigNumber } from '@galacticcouncil/sdk';
 import { logger } from '../../../../services/logger';
 import { 
-  RemoveLiquidityRequest, 
-  RemoveLiquidityResponse, 
-  RemoveLiquidityRequestType, 
-  RemoveLiquidityResponseType 
-} from '../../../../schemas/trading-types/amm-schema';
+  HydrationRemoveLiquidityRequest, 
+  HydrationRemoveLiquidityRequestSchema, 
+  HydrationRemoveLiquidityResponse, 
+  HydrationRemoveLiquidityResponseSchema 
+} from '../../hydration.types';
 import { httpBadRequest, httpNotFound } from '../../../../services/error-handler';
 import { validatePolkadotAddress } from '../../../../chains/polkadot/polkadot.validators';
+import { RemoveLiquidityRequest } from '../../../../schemas/trading-types/amm-schema';
+
+// Define error response interface
+interface ErrorResponse {
+  error: string;
+}
 
 /**
  * Pool type constants for different AMM implementations
@@ -38,7 +44,7 @@ export async function removeLiquidity(
   walletAddress: string,
   poolAddress: string,
   percentageToRemove: number
-): Promise<RemoveLiquidityResponseType> {
+): Promise<HydrationRemoveLiquidityResponse> {
   // Validate inputs
   if (percentageToRemove <= 0 || percentageToRemove > 100) {
     throw httpBadRequest('Percentage to remove must be between 0 and 100');
@@ -461,29 +467,43 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   // Update schema example
   RemoveLiquidityRequest.properties.walletAddress.examples = [firstWalletAddress];
 
-  fastify.post(
+  // Define error response schema
+  const ErrorResponseSchema = {
+    type: 'object',
+    properties: {
+      error: { type: 'string' }
+    }
+  };
+
+  fastify.post<{
+    Body: HydrationRemoveLiquidityRequest;
+    Reply: HydrationRemoveLiquidityResponse | ErrorResponse;
+  }>(
     '/remove-liquidity',
     {
       schema: {
         description: 'Remove liquidity from a Hydration pool',
         tags: ['hydration'],
         body: {
-          ...RemoveLiquidityRequest,
+          ...HydrationRemoveLiquidityRequestSchema,
           properties: {
-            ...RemoveLiquidityRequest.properties,
+            ...HydrationRemoveLiquidityRequestSchema.properties,
             network: { type: 'string', default: 'mainnet' },
             poolAddress: { type: 'string', examples: ['hydration-pool-0'] },
             percentageToRemove: { type: 'number', examples: [50] }
           }
         },
         response: {
-          200: RemoveLiquidityResponse
+          200: HydrationRemoveLiquidityResponseSchema,
+          400: ErrorResponseSchema,
+          404: ErrorResponseSchema,
+          500: ErrorResponseSchema
         },
       }
     },
     async (request, reply) => {
       try {
-        const { network, walletAddress, poolAddress, percentageToRemove } = request.body as RemoveLiquidityRequestType;
+        const { network, walletAddress, poolAddress, percentageToRemove } = request.body as HydrationRemoveLiquidityRequest;
         const networkToUse = network || 'mainnet';
         
         const result = await removeLiquidity(

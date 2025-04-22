@@ -1,15 +1,21 @@
 import {FastifyPluginAsync} from 'fastify';
 import {Hydration} from '../../hydration';
 import {
-  ListPoolsRequestType,
-  ListPoolsResponse,
-  ListPoolsResponseType
-} from '../../../../schemas/trading-types/amm-schema';
+  HydrationListPoolsRequest,
+  HydrationListPoolsRequestSchema,
+  HydrationListPoolsResponse,
+  HydrationListPoolsResponseSchema
+} from '../../hydration.types';
+
+// Define error response interface
+interface ErrorResponse {
+  error: string;
+}
 
 /**
  * Extended parameters for listPools endpoint, adding additional filtering options.
  */
-interface ExtendedListPoolsRequestType extends ListPoolsRequestType {
+interface ExtendedListPoolsRequestType extends HydrationListPoolsRequest {
   /** Target network to query (defaults to mainnet) */
   network?: string;
   
@@ -34,9 +40,17 @@ interface ExtendedListPoolsRequestType extends ListPoolsRequestType {
  * Supports filtering by token, pool type, and other parameters.
  */
 export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
+  // Define error response schema
+  const ErrorResponseSchema = {
+    type: 'object',
+    properties: {
+      error: { type: 'string' }
+    }
+  };
+
   fastify.get<{
     Querystring: ExtendedListPoolsRequestType;
-    Reply: ListPoolsResponseType;
+    Reply: HydrationListPoolsResponse | ErrorResponse;
   }>(
     '/list-pools',
     {
@@ -44,6 +58,7 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
         description: 'List all available Hydration pools',
         tags: ['hydration'],
         querystring: {
+          ...HydrationListPoolsRequestSchema,
           properties: {
             network: { type: 'string', examples: ['mainnet'] },
             types: {
@@ -69,7 +84,8 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
           }
         },
         response: {
-          200: ListPoolsResponse
+          200: HydrationListPoolsResponseSchema,
+          500: ErrorResponseSchema
         }
       }
     },

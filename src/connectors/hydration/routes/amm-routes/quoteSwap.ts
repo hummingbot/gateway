@@ -2,27 +2,44 @@ import { FastifyPluginAsync } from 'fastify';
 import { Hydration } from '../../hydration';
 import { logger } from '../../../../services/logger';
 import {
-  GetSwapQuoteRequest,
-  GetSwapQuoteRequestType,
-  GetSwapQuoteResponse,
-} from '../../../../schemas/trading-types/swap-schema';
+  HydrationGetSwapQuoteRequest,
+  HydrationGetSwapQuoteRequestSchema,
+  HydrationGetSwapQuoteResponse,
+  HydrationGetSwapQuoteResponseSchema
+} from '../../hydration.types';
 import { httpBadRequest, httpNotFound } from '../../../../services/error-handler';
+
+// Define error response interface
+interface ErrorResponse {
+  error: string;
+}
 
 /**
  * Route handler for getting swap quotes.
  * Provides price estimates and token amounts for potential swaps.
  */
 export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get(
+  // Define error response schema
+  const ErrorResponseSchema = {
+    type: 'object',
+    properties: {
+      error: { type: 'string' }
+    }
+  };
+
+  fastify.get<{
+    Querystring: HydrationGetSwapQuoteRequest;
+    Reply: HydrationGetSwapQuoteResponse | ErrorResponse;
+  }>(
     '/quote-swap',
     {
       schema: {
         description: 'Get a swap quote for Hydration',
         tags: ['hydration'],
         querystring: {
-          ...GetSwapQuoteRequest,
+          ...HydrationGetSwapQuoteRequestSchema,
           properties: {
-            ...GetSwapQuoteRequest.properties,
+            ...HydrationGetSwapQuoteRequestSchema.properties,
             network: { type: 'string', default: 'mainnet' },
             baseToken: { type: 'string', examples: ['DOT'] },
             quoteToken: { type: 'string', examples: ['USDT'] },
@@ -33,13 +50,16 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           }
         },
         response: {
-          200: GetSwapQuoteResponse
+          200: HydrationGetSwapQuoteResponseSchema,
+          400: ErrorResponseSchema,
+          404: ErrorResponseSchema,
+          500: ErrorResponseSchema
         },
       }
     },
     async (request) => {
       try {
-        const { network, baseToken, quoteToken, amount, side, poolAddress, slippagePct } = request.query as GetSwapQuoteRequestType;
+        const { network, baseToken, quoteToken, amount, side, poolAddress, slippagePct } = request.query as HydrationGetSwapQuoteRequest;
         const networkToUse = network || 'mainnet';
 
         // Validate inputs

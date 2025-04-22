@@ -3,11 +3,18 @@ import {Hydration} from '../../hydration';
 import {Polkadot} from '../../../../chains/polkadot/polkadot';
 import {logger} from '../../../../services/logger';
 import {
-  ExecuteSwapRequest,
-  ExecuteSwapRequestType,
-  ExecuteSwapResponse,
-} from '../../../../schemas/trading-types/swap-schema';
+  HydrationExecuteSwapRequest,
+  HydrationExecuteSwapRequestSchema,
+  HydrationExecuteSwapResponse,
+  HydrationExecuteSwapResponseSchema
+} from '../../hydration.types';
+import {ExecuteSwapRequest} from '../../../../schemas/trading-types/swap-schema';
 import {httpBadRequest, httpNotFound} from '../../../../services/error-handler';
+
+// Define error response interface
+interface ErrorResponse {
+  error: string;
+}
 
 /**
  * Route handler for executing token swaps.
@@ -27,16 +34,27 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
   // Update schema example
   ExecuteSwapRequest.properties.walletAddress.examples = [firstWalletAddress];
 
-  fastify.post(
+  // Define error response schema
+  const ErrorResponseSchema = {
+    type: 'object',
+    properties: {
+      error: { type: 'string' }
+    }
+  };
+
+  fastify.post<{
+    Body: HydrationExecuteSwapRequest;
+    Reply: HydrationExecuteSwapResponse | ErrorResponse;
+  }>(
     '/execute-swap',
     {
       schema: {
         description: 'Execute a token swap on Hydration',
         tags: ['hydration'],
         body: {
-          ...ExecuteSwapRequest,
+          ...HydrationExecuteSwapRequestSchema,
           properties: {
-            ...ExecuteSwapRequest.properties,
+            ...HydrationExecuteSwapRequestSchema.properties,
             network: { type: 'string', default: 'mainnet' },
             baseToken: { type: 'string', examples: ['DOT'] },
             quoteToken: { type: 'string', examples: ['USDT'] },
@@ -47,14 +65,17 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           }
         },
         response: {
-          200: ExecuteSwapResponse
+          200: HydrationExecuteSwapResponseSchema,
+          400: ErrorResponseSchema,
+          404: ErrorResponseSchema,
+          500: ErrorResponseSchema
         },
       }
     },
     async (request) => {
       try {
-        const { walletAddress, baseToken, quoteToken, amount, side, poolAddress, slippagePct } = request.body as ExecuteSwapRequestType;
-        const network = (request.body as ExecuteSwapRequestType).network || 'mainnet';
+        const { walletAddress, baseToken, quoteToken, amount, side, poolAddress, slippagePct } = request.body as HydrationExecuteSwapRequest;
+        const network = (request.body as HydrationExecuteSwapRequest).network || 'mainnet';
 
         // Get Hydration instance
         const hydration = await Hydration.getInstance(network);
