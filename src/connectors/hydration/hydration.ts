@@ -1,7 +1,14 @@
 import {Polkadot} from '../../chains/polkadot/polkadot';
 import {logger} from '../../services/logger';
 import {HydrationConfig} from './hydration.config';
-import {HydrationPoolInfo, LiquidityQuote, PositionStrategyType, SwapQuote, SwapRoute} from './hydration.types';
+import {
+  HydrationPoolDetails,
+  HydrationPoolInfo,
+  LiquidityQuote,
+  PositionStrategyType,
+  SwapQuote,
+  SwapRoute
+} from './hydration.types';
 import {KeyringPair} from '@polkadot/keyring/types';
 import {ApiPromise, HttpProvider, WsProvider} from '@polkadot/api';
 import {cryptoWaitReady} from '@polkadot/util-crypto';
@@ -62,7 +69,7 @@ export class Hydration {
   private apiPromise: ApiPromise;
   private poolService: PoolService;
 
-  private poolCache: Map<string, HydrationPoolInfo> = new Map();
+  private poolCache: Map<string, HydrationPoolDetails> = new Map();
   private poolCacheExpiry: Map<string, number> = new Map();
   private readonly CACHE_TTL_MS = 60000; // 1 minute cache validity
   private _ready: boolean = false;
@@ -259,7 +266,7 @@ export class Hydration {
         liquidity = !isNaN(liquidityValue) && isFinite(liquidityValue) ? liquidityValue : 1000000;
       }
 
-      const internalPool: HydrationPoolInfo = {
+      const internalPool: HydrationPoolDetails = {
         id: poolData.id,
         poolAddress,
         baseToken: {
@@ -729,7 +736,7 @@ export class Hydration {
    * @param poolAddress Pool address
    * @returns External pool information
    */
-  private toExternalPoolInfo(internalPool: HydrationPoolInfo, poolAddress: string): ExternalPoolInfo {
+  private toExternalPoolInfo(internalPool: HydrationPoolDetails, poolAddress: string): ExternalPoolInfo {
     return {
       address: poolAddress,
       baseTokenAddress: internalPool.baseToken.address,
