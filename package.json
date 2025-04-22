@@ -38,7 +38,7 @@
     "@fastify/swagger-ui": "^4.1.0",
     "@fastify/type-provider-typebox": "^4.1.0",
     "@galacticcouncil/api-augment": "^0.5.1",
-    "@galacticcouncil/sdk": "^5.6.0",
+    "@galacticcouncil/sdk": "^6.1.4",
     "@improbable-eng/grpc-web": "^0.13.0",
     "@jup-ag/api": "^6.0.29",
     "@meteora-ag/dlmm": "1.3.12",

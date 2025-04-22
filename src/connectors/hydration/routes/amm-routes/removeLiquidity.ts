@@ -4,15 +4,23 @@ import { Polkadot } from '../../../../chains/polkadot/polkadot';
 import { BigNumber } from '@galacticcouncil/sdk';
 import { logger } from '../../../../services/logger';
 import { 
-  RemoveLiquidityRequest, 
-  RemoveLiquidityResponse, 
-  RemoveLiquidityRequestType, 
-  RemoveLiquidityResponseType 
-} from '../../../../schemas/trading-types/amm-schema';
+  HydrationRemoveLiquidityRequest, 
+  HydrationRemoveLiquidityRequestSchema, 
+  HydrationRemoveLiquidityResponse, 
+  HydrationRemoveLiquidityResponseSchema 
+} from '../../hydration.types';
 import { httpBadRequest, httpNotFound } from '../../../../services/error-handler';
 import { validatePolkadotAddress } from '../../../../chains/polkadot/polkadot.validators';
+import { RemoveLiquidityRequest } from '../../../../schemas/trading-types/amm-schema';
 
-// Pool types
+// Define error response interface
+interface ErrorResponse {
+  error: string;
+}
+
+/**
+ * Pool type constants for different AMM implementations
+ */
 const POOL_TYPE = {
   XYK: 'xyk',
   LBP: 'lbp',
@@ -21,7 +29,14 @@ const POOL_TYPE = {
 };
 
 /**
- * Remove liquidity from a pool
+ * Removes liquidity from a pool.
+ * 
+ * @param fastify - Fastify instance
+ * @param network - The blockchain network (e.g., 'mainnet')
+ * @param walletAddress - The user's wallet address
+ * @param poolAddress - The pool address to remove liquidity from
+ * @param percentageToRemove - Percentage to remove (1-100)
+ * @returns Details of the liquidity removal operation
  */
 export async function removeLiquidity(
   _fastify: FastifyInstance,
@@ -29,137 +44,143 @@ export async function removeLiquidity(
   walletAddress: string,
   poolAddress: string,
   percentageToRemove: number
-): Promise<RemoveLiquidityResponseType> {
-  try {
-    // Validate inputs
-    if (percentageToRemove <= 0 || percentageToRemove > 100) {
-      throw httpBadRequest('Percentage to remove must be between 0 and 100');
-    }
-
-    // Validate address
-    try {
-      validatePolkadotAddress(walletAddress);
-    } catch (error) {
-      throw httpBadRequest(`Invalid Polkadot address: ${walletAddress}`);
-    }
-
-    const polkadot = await Polkadot.getInstance(network);
-    const hydration = await Hydration.getInstance(network);
-    
-    // Get wallet
-    const wallet = await polkadot.getWallet(walletAddress);
-    
-    // Get pool info
-    const pool = await hydration.getPoolInfo(poolAddress);
-    if (!pool) {
-      throw httpNotFound(`Pool not found: ${poolAddress}`);
-    }
-
-    // Get token symbols from addresses
-    const baseTokenSymbol = await hydration.getTokenSymbol(pool.baseTokenAddress);
-    const quoteTokenSymbol = await hydration.getTokenSymbol(pool.quoteTokenAddress);
-    
-    logger.info(`Removing ${percentageToRemove}% liquidity from pool ${poolAddress}`);
-
-    try {
-      // Use assets from Hydration to get asset IDs
-      const assets = await hydration.getAllTokens();
-      const baseAsset = assets.find(a => a.symbol === baseTokenSymbol);
-      const quoteAsset = assets.find(a => a.symbol === quoteTokenSymbol);
-
-      if (!baseAsset || !quoteAsset) {
-        throw httpNotFound(`Asset not found: ${!baseAsset ? baseTokenSymbol : quoteTokenSymbol}`);
-      }
-
-      // TODO Important: verify how this calculation needs to be done!!!
-      const liquidityToRemove = new BigNumber(percentageToRemove * Math.pow(10, 18));
-
-      if (liquidityToRemove.lte(0)) {
-        throw httpBadRequest('Calculated liquidity to remove is zero or negative');
-      }
-
-      // Using the GalacticCouncil SDK to prepare the transaction
-      const apiPromise = await hydration.getApiPromise();
-
-      let removeLiquidityTx;
-      // Get pool type
-      const poolType = pool.poolType?.toLowerCase() || POOL_TYPE.XYK; // Default to XYK if type is not provided
-
-      logger.info(`Removing liquidity from ${poolType} pool (${poolAddress})`);
-
-      switch (poolType) {
-        case POOL_TYPE.XYK:
-          // For XYK pools
-          removeLiquidityTx = apiPromise.tx.xyk.removeLiquidity(
-            baseAsset.address,
-            quoteAsset.address,
-            liquidityToRemove.toString()
-          );
-          break;
-
-        case POOL_TYPE.LBP:
-          // For LBP pools
-          removeLiquidityTx = apiPromise.tx.lbp.removeLiquidity(
-            poolAddress // Pool ID for LBP
-          );
-          break;
-
-        case POOL_TYPE.OMNIPOOL:
-          // For Omnipool, we need to specify which asset we're withdrawing
-          // In Omnipool, we can only withdraw one asset at a time, so we use the base asset
-          removeLiquidityTx = apiPromise.tx.omnipool.removeLiquidity(
-            baseAsset.address,
-            liquidityToRemove.toString()
-          );
-          break;
-
-        case POOL_TYPE.STABLESWAP:
-          removeLiquidityTx = apiPromise.tx.stableswap.removeLiquidity(
-            pool.id,
-            liquidityToRemove.toString(),
-            [
-              { assetId: baseAsset.address, amount: 0 }, // Ask for minimum amount
-              { assetId: quoteAsset.address, amount: 0 }  // System will calculate actual amounts
-            ]
-          );
-          break;
-
-        default:
-          throw httpBadRequest(`Unsupported pool type: ${poolType}`);
-      }
-
-      // Sign and send the transaction
-      const txHash = await submitTransaction(apiPromise, removeLiquidityTx, wallet, poolType);
-
-      logger.info(`Liquidity removed from pool ${poolAddress} with tx hash: ${txHash}`);
-
-      // Get transaction result to retrieve actual amounts removed
-      const { baseAmount, quoteAmount } = await getRemoveLiquidityResult(
-        apiPromise,
-        txHash, 
-        baseAsset, 
-        quoteAsset, 
-        poolType
-      );
-
-      return {
-        signature: txHash,
-        fee: 0.01, // This should be the actual fee from the transaction
-        baseTokenAmountRemoved: baseAmount,
-        quoteTokenAmountRemoved: quoteAmount
-      };
-    } catch (error) {
-      logger.error(`Error removing liquidity from pool ${poolAddress}:`, error);
-      throw error;
-    }
-  } catch (error) {
-    logger.error(`Failed to remove liquidity: ${error.message}`);
-    if (error.statusCode) throw error;
-    if (error.message.includes('not found')) {
-      throw httpNotFound(error.message);
-    }
-    throw error;
+): Promise<HydrationRemoveLiquidityResponse> {
+  // Validate inputs
+  if (percentageToRemove <= 0 || percentageToRemove > 100) {
+    throw httpBadRequest('Percentage to remove must be between 0 and 100');
   }
+
+  // Validate address
+  validatePolkadotAddress(walletAddress);
+
+  const polkadot = await Polkadot.getInstance(network);
+  const hydration = await Hydration.getInstance(network);
+  const apiPromise = await hydration.getApiPromise();
+  
+  // Get wallet
+  const wallet = await polkadot.getWallet(walletAddress);
+  
+  // Get pool info
+  const pool = await hydration.getPoolInfo(poolAddress);
+  if (!pool) {
+    throw httpNotFound(`Pool not found: ${poolAddress}`);
+  }
+
+  // Get token symbols from addresses
+  const baseTokenSymbol = await hydration.getTokenSymbol(pool.baseTokenAddress);
+  const quoteTokenSymbol = await hydration.getTokenSymbol(pool.quoteTokenAddress);
+
+  // Use assets from Hydration to get asset IDs
+  const feePaymentToken = polkadot.getFeePaymentToken();
+  const baseToken = polkadot.getToken(baseTokenSymbol);
+  const quoteToken = polkadot.getToken(quoteTokenSymbol);
+
+  if (!baseToken || !quoteToken) {
+    throw httpNotFound(`Asset not found: ${!baseToken ? baseTokenSymbol : quoteTokenSymbol}`);
+  }
+
+  // Calculate shares to remove
+  let percentageToRemoveBN: BigNumber = new BigNumber(percentageToRemove.toString());
+  let totalUserSharesInThePool: BigNumber;
+  let userSharesToRemove: BigNumber;
+  
+  if (pool.id) {
+    totalUserSharesInThePool = new BigNumber((await apiPromise.query.tokens.accounts(walletAddress, pool.id)).free.toString()).dividedBy(Math.pow(10, 18));
+    userSharesToRemove = percentageToRemoveBN.multipliedBy(totalUserSharesInThePool).dividedBy(100);
+    logger.info(`Removing ${percentageToRemove}% or ${userSharesToRemove} shares of the user from the pool ${poolAddress}`);
+    userSharesToRemove = userSharesToRemove.multipliedBy(Math.pow(10, 18));
+  } else {
+    // Xyk pools are not informing the pool id, which is mandatory for the `query.tokens.accounts` call
+    // so we consider the percentage to remove as the amount of shares to remove
+    userSharesToRemove = percentageToRemoveBN;
+    logger.info(`Removing ${userSharesToRemove} shares from the pool ${poolAddress}`);
+    userSharesToRemove = userSharesToRemove.multipliedBy(Math.pow(10, baseToken.decimals));
+  }
+
+  if (userSharesToRemove.lte(0)) {
+    throw httpBadRequest('Calculated liquidity to remove is zero or negative');
+  }
+
+  // Get pool type and prepare transaction
+  const poolType = pool.poolType?.toLowerCase() || POOL_TYPE.XYK; // Default to XYK if type is not provided
+  let removeLiquidityTx;
+
+  switch (poolType) {
+    case POOL_TYPE.XYK:
+      // For XYK pools
+      removeLiquidityTx = apiPromise.tx.xyk.removeLiquidity(
+        baseToken.address,
+        quoteToken.address,
+        userSharesToRemove.toString()
+      );
+      break;
+
+    case POOL_TYPE.LBP:
+      // For LBP pools
+      removeLiquidityTx = apiPromise.tx.lbp.removeLiquidity(
+        poolAddress // Pool ID for LBP
+      );
+      break;
+
+    case POOL_TYPE.OMNIPOOL:
+      // For Omnipool, we need to specify which asset we're withdrawing
+      // In Omnipool, we can only withdraw one asset at a time, so we use the base asset
+      removeLiquidityTx = apiPromise.tx.omnipool.removeLiquidity(
+        baseToken.address,
+        userSharesToRemove.toString()
+      );
+      break;
+
+    case POOL_TYPE.STABLESWAP:
+      removeLiquidityTx = apiPromise.tx.stableswap.removeLiquidity(
+        pool.id,
+        userSharesToRemove.toString(),
+        [
+          { assetId: baseToken.address, amount: 0 }, // Ask for minimum amount
+          { assetId: quoteToken.address, amount: 0 }  // System will calculate actual amounts
+        ]
+      );
+      break;
+
+    default:
+      throw httpBadRequest(`Unsupported pool type: ${poolType}`);
+  }
+
+  // Sign and send the transaction
+  const {txHash, transaction} = await submitTransaction(apiPromise, removeLiquidityTx, wallet, poolType);
+
+  logger.info(`Liquidity removed from pool ${poolAddress} with tx hash: ${txHash}`);
+
+  let fee: BigNumber;
+  try {
+    fee = new BigNumber(transaction.events.map((it) => it.toHuman()).filter((it) => it.event.method == 'TransactionFeePaid')[0].event.data.actualFee.toString().replaceAll(',', '')).dividedBy(Math.pow(10, feePaymentToken.decimals));
+  } catch (error) {
+    logger.error(`It was not possible to extract the fee from the transaction:`, error);
+    fee = new BigNumber(Number.NaN);
+  }
+
+  let baseTokenAmountRemoved: BigNumber;
+  try {
+    baseTokenAmountRemoved = new BigNumber(transaction.events.map((it) => it.toHuman()).filter((it) => it.event.section == 'currencies' && it.event.method == 'Transferred' && it.event.data.currencyId == baseToken.address)[0].event.data.amount.toString().replaceAll(',', '')).dividedBy(Math.pow(10, baseToken.decimals));
+  } catch (error) {
+    logger.error(`It was not possible to extract the base token amount removed from the transaction:`, error);
+    baseTokenAmountRemoved = new BigNumber(Number.NaN);
+  }
+
+  let quoteTokenAmountRemoved: BigNumber;
+  try {
+    quoteTokenAmountRemoved = new BigNumber(transaction.events.map((it) => it.toHuman()).filter((it) => it.event.section == 'currencies' && it.event.method == 'Transferred' && it.event.data.currencyId == quoteToken.address)[0].event.data.amount.toString().replaceAll(',', '')).dividedBy(Math.pow(10, quoteToken.decimals));
+  } catch (error) {
+    logger.error(`It was not possible to extract the quote token amount removed from the transaction:`, error);
+    quoteTokenAmountRemoved = new BigNumber(Number.NaN);
+  }
+
+  return {
+    signature: txHash,
+    fee: fee.toNumber(),
+    baseTokenAmountRemoved: baseTokenAmountRemoved.toNumber(),
+    quoteTokenAmountRemoved: quoteTokenAmountRemoved.toNumber()
+  };
 }
 
 /**
@@ -171,9 +192,9 @@ export async function removeLiquidity(
  * @returns Transaction hash if successful
  * @throws Error if transaction fails
  */
-async function submitTransaction(api: any, tx: any, wallet: any, poolType: string): Promise<string> {
+async function submitTransaction(api: any, tx: any, wallet: any, poolType: string): Promise<{txHash: string, transaction: any}> {
   // We still need a promise for the event-based callbacks
-  return new Promise<string>(async (resolve, reject) => {
+  return new Promise<{txHash: string, transaction: any}>(async (resolve, reject) => {
     let unsub: () => void;
     
     // We'll get the hash from the status once available
@@ -215,7 +236,7 @@ async function submitTransaction(api: any, tx: any, wallet: any, poolType: strin
           if (await hasSuccessEvent(api, result.events, poolType)) {
             logger.info(`Transaction ${txHash} succeeded in block ${blockHash.toString()}`);
             unsub();
-            resolve(txHash);
+            resolve({txHash: txHash, transaction: result});
             return;
           }
           
@@ -223,7 +244,7 @@ async function submitTransaction(api: any, tx: any, wallet: any, poolType: strin
           if (result.status.isFinalized) {
             logger.warn(`Transaction ${txHash} finalized with no specific success/failure event. Assuming success.`);
             unsub();
-            resolve(txHash);
+            resolve({txHash: txHash, transaction: result});
             return;
           }
         } 
@@ -446,29 +467,43 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   // Update schema example
   RemoveLiquidityRequest.properties.walletAddress.examples = [firstWalletAddress];
 
-  fastify.post(
+  // Define error response schema
+  const ErrorResponseSchema = {
+    type: 'object',
+    properties: {
+      error: { type: 'string' }
+    }
+  };
+
+  fastify.post<{
+    Body: HydrationRemoveLiquidityRequest;
+    Reply: HydrationRemoveLiquidityResponse | ErrorResponse;
+  }>(
     '/remove-liquidity',
     {
       schema: {
         description: 'Remove liquidity from a Hydration pool',
         tags: ['hydration'],
         body: {
-          ...RemoveLiquidityRequest,
+          ...HydrationRemoveLiquidityRequestSchema,
           properties: {
-            ...RemoveLiquidityRequest.properties,
+            ...HydrationRemoveLiquidityRequestSchema.properties,
             network: { type: 'string', default: 'mainnet' },
             poolAddress: { type: 'string', examples: ['hydration-pool-0'] },
             percentageToRemove: { type: 'number', examples: [50] }
           }
         },
         response: {
-          200: RemoveLiquidityResponse
+          200: HydrationRemoveLiquidityResponseSchema,
+          400: ErrorResponseSchema,
+          404: ErrorResponseSchema,
+          500: ErrorResponseSchema
         },
       }
     },
     async (request, reply) => {
       try {
-        const { network, walletAddress, poolAddress, percentageToRemove } = request.body as RemoveLiquidityRequestType;
+        const { network, walletAddress, poolAddress, percentageToRemove } = request.body as HydrationRemoveLiquidityRequest;
         const networkToUse = network || 'mainnet';
         
         const result = await removeLiquidity(

@@ -2,26 +2,44 @@ import { FastifyPluginAsync } from 'fastify';
 import { Hydration } from '../../hydration';
 import { logger } from '../../../../services/logger';
 import {
-  GetSwapQuoteRequest,
-  GetSwapQuoteRequestType,
-  GetSwapQuoteResponse,
-} from '../../../../schemas/trading-types/swap-schema';
+  HydrationGetSwapQuoteRequest,
+  HydrationGetSwapQuoteRequestSchema,
+  HydrationGetSwapQuoteResponse,
+  HydrationGetSwapQuoteResponseSchema
+} from '../../hydration.types';
 import { httpBadRequest, httpNotFound } from '../../../../services/error-handler';
 
+// Define error response interface
+interface ErrorResponse {
+  error: string;
+}
+
 /**
- * Route handler for getting a swap quote
+ * Route handler for getting swap quotes.
+ * Provides price estimates and token amounts for potential swaps.
  */
 export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get(
+  // Define error response schema
+  const ErrorResponseSchema = {
+    type: 'object',
+    properties: {
+      error: { type: 'string' }
+    }
+  };
+
+  fastify.get<{
+    Querystring: HydrationGetSwapQuoteRequest;
+    Reply: HydrationGetSwapQuoteResponse | ErrorResponse;
+  }>(
     '/quote-swap',
     {
       schema: {
         description: 'Get a swap quote for Hydration',
         tags: ['hydration'],
         querystring: {
-          ...GetSwapQuoteRequest,
+          ...HydrationGetSwapQuoteRequestSchema,
           properties: {
-            ...GetSwapQuoteRequest.properties,
+            ...HydrationGetSwapQuoteRequestSchema.properties,
             network: { type: 'string', default: 'mainnet' },
             baseToken: { type: 'string', examples: ['DOT'] },
             quoteToken: { type: 'string', examples: ['USDT'] },
@@ -32,13 +50,16 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           }
         },
         response: {
-          200: GetSwapQuoteResponse
+          200: HydrationGetSwapQuoteResponseSchema,
+          400: ErrorResponseSchema,
+          404: ErrorResponseSchema,
+          500: ErrorResponseSchema
         },
       }
     },
     async (request) => {
       try {
-        const { network, baseToken, quoteToken, amount, side, poolAddress, slippagePct } = request.query as GetSwapQuoteRequestType;
+        const { network, baseToken, quoteToken, amount, side, poolAddress, slippagePct } = request.query as HydrationGetSwapQuoteRequest;
         const networkToUse = network || 'mainnet';
 
         // Validate inputs
@@ -56,39 +77,39 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
 
         const hydration = await Hydration.getInstance(networkToUse);
         
-        try {
-          const quote = await hydration.getSwapQuote(
-            baseToken,
-            quoteToken,
-            amount,
-            side as 'BUY' | 'SELL',
-            poolAddress,
-            slippagePct
-          );
-          
-          return {
-            estimatedAmountIn: quote.estimatedAmountIn,
-            estimatedAmountOut: quote.estimatedAmountOut,
-            minAmountOut: quote.minAmountOut,
-            maxAmountIn: quote.maxAmountIn,
-            baseTokenBalanceChange: quote.baseTokenBalanceChange,
-            quoteTokenBalanceChange: quote.quoteTokenBalanceChange,
-            price: quote.price,
-            gasPrice: quote.gasPrice,
-            gasLimit: quote.gasLimit,
-            gasCost: quote.gasCost
-          };
-        } catch (error) {
-          logger.error(`Failed to get swap quote: ${error.message}`);
-          if (error.message.includes('not found')) {
-            throw httpNotFound(error.message);
-          }
-          throw error;
+        // Get swap quote from Hydration service
+        const quote = await hydration.getSwapQuote(
+          baseToken,
+          quoteToken,
+          amount,
+          side as 'BUY' | 'SELL',
+          poolAddress,
+          slippagePct
+        );
+        
+        // Map to response schema
+        return {
+          estimatedAmountIn: quote.estimatedAmountIn,
+          estimatedAmountOut: quote.estimatedAmountOut,
+          minAmountOut: quote.minAmountOut,
+          maxAmountIn: quote.maxAmountIn,
+          baseTokenBalanceChange: quote.baseTokenBalanceChange,
+          quoteTokenBalanceChange: quote.quoteTokenBalanceChange,
+          price: quote.price,
+          gasPrice: quote.gasPrice,
+          gasLimit: quote.gasLimit,
+          gasCost: quote.gasCost
+        };
+      } catch (error) {
+        // Handle specific error types
+        if (error.message?.includes('not found')) {
+          throw httpNotFound(error.message);
         }
-      } catch (e) {
-        logger.error('Error in quote-swap:', e);
-        if (e.statusCode) {
-          throw fastify.httpErrors.createError(e.statusCode, 'Request failed');
+        
+        // Propagate HTTP errors or convert to internal server error
+        logger.error('Error in quote-swap:', error);
+        if (error.statusCode) {
+          throw fastify.httpErrors.createError(error.statusCode, error.message || 'Request failed');
         }
         throw fastify.httpErrors.internalServerError('Internal server error');
       }

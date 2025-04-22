@@ -13,9 +13,8 @@ import {BN} from 'bn.js';
 import * as fs from 'fs';
 import axios, {Axios} from 'axios';
 import {ConfigManagerCertPassphrase} from '../../services/config-manager-cert-passphrase';
-import {runWithRetryAndTimeout} from "../../connectors/hydration/hydration.utils";
 import {wrapResponse} from '../../services/response-wrapper';
-import {fromBaseUnits, toBaseUnits} from './polkadot.utils';
+import {Constant, fromBaseUnits, runWithRetryAndTimeout, sleep, toBaseUnits} from './polkadot.utils';
 import {validatePolkadotAddress} from './polkadot.validators';
 import * as crypto from 'crypto';
 
@@ -165,11 +164,27 @@ export class Polkadot {
    * @param addressOrSymbol The token symbol
    * @returns A Promise that resolves to token information or undefined if not found
    */
-  async getToken(addressOrSymbol: string): Promise<TokenInfo | undefined> {
+  getToken(addressOrSymbol: string): TokenInfo | undefined {
     return this.tokenList.find(token =>
         token.symbol.toLowerCase() === addressOrSymbol.toLowerCase()
         || token.address.toLowerCase() === addressOrSymbol.toLowerCase()
     );
+  }
+
+  /**
+   * Get the native token
+   * @returns A Promise that resolves to the native token
+   */
+  public getNativeToken(): TokenInfo {
+    return this.getToken(this.config.network.nativeCurrencySymbol);
+  }
+
+  /**
+   * Get the fee payment currency
+   * @returns A Promise that resolves to the fee payment currency
+   */
+  public getFeePaymentToken(): TokenInfo {
+    return this.getToken(this.config.network.feePaymentCurrencySymbol);
   }
 
   /**
@@ -307,7 +322,7 @@ export class Polkadot {
     if (symbols && symbols.length > 0) {
       // Filter tokens by specified symbols
       for (const symbol of symbols) {
-        const token = await this.getToken(symbol);
+        const token = this.getToken(symbol);
         if (token) {
           tokensToCheck.push(token);
         }
@@ -398,52 +413,79 @@ export class Polkadot {
    * @param txHash The transaction hash
    * @returns A Promise that resolves to transaction details
    */
-  public async getTransaction(txHash: string): Promise<any> {
+  public async getTransaction(txHash: string, waitForFee: boolean = false, waitForTransfers: boolean = false): Promise<any> {
     const startTime = Date.now();
-    try {
-      const currentBlock = await this.getCurrentBlockNumber();
 
+    try {
+      const feePaymentToken = this.getFeePaymentToken();
+
+      const currentBlock = await this.getCurrentBlockNumber();
+      
       // Initialize default values
       let txData = null;
       let txStatus = 0; // Not found by default
       let blockNum = null;
       let fee = null;
+      let transfers = null;
+      
+      // Keep polling until we find a fee or reach timeout
+      // noinspection PointlessBooleanExpressionJS
+      while (Date.now() - startTime < 1000 * Constant.defaultTimeout.getValueAs<number>()) {
+        try {
+          const headers = { 'Content-Type': 'application/json' };
+          const body = { hash: txHash };
+          
+          const response = await this.axiosPost(
+              axios,
+              this.config.network.transactionURL,
+              body,
+              { headers }
+          );
+          
+          if (response.data && response.data.data) {
+            const transaction = response.data.data;
+            
+            // Extract transaction data
+            txData = transaction;
+            
+            blockNum = transaction.block_num || currentBlock;
+            fee = transaction.fee
+                ? parseFloat(transaction.fee) / Math.pow(10, feePaymentToken.decimals)
+                : null;
 
-      try {
-        const headers = { 'Content-Type': 'application/json' };
-        const body = { hash: txHash };
+            transfers = transaction.transfers;
+            
+            // Determine status based on success and finalized flags
+            if (transaction.success) {
+              txStatus = 1; // Success
+            } else if (transaction.success === false) {
+              txStatus = -1; // Failed
+            } else if (transaction.finalized) {
+              txStatus = 1; // Success if finalized
+            }
 
-        const response = await this.axiosPost(
-            axios,
-            this.config.network.transactionURL,
-            body,
-            { headers }
-        );
-
-        if (response.data && response.data.data) {
-          const transaction = response.data.data;
-
-          // Extract transaction data
-          txData = transaction;
-
-          blockNum = transaction.block_num || currentBlock;
-          fee = transaction.fee
-              ? parseFloat(transaction.fee) / Math.pow(10, 10)
-              : null;
-
-          // Determine status based on success and finalized flags
-          if (transaction.success) {
-            txStatus = 1; // Success
-          } else if (transaction.success === false) {
-            txStatus = -1; // Failed
-          } else if (transaction.finalized) {
-            txStatus = 1; // Success if finalized
+            if (waitForFee) {
+              if (waitForTransfers) {
+                if (transfers) {
+                  break;
+                }
+              } else {
+                if (fee) {
+                  break;
+                }
+              }
+            } else {
+              break;
+            }
           }
+        } catch (error) {
+          logger.error(`Error fetching transaction ${txHash}: ${error.message}`);
         }
-      } catch (error) {
-        logger.error(`Error fetching transaction ${txHash}: ${error.message}`);
+        
+        // Wait a bit before polling again
+        await sleep(1000 * Constant.defaultDelayBetweenRetries.getValueAs<number>());
       }
-
+      
       return {
         network: this.network,
         currentBlock,
@@ -458,7 +500,7 @@ export class Polkadot {
     } catch (error) {
       logger.error(`Error in getTransaction for ${txHash}: ${error.message}`);
       const currentBlock = await this.getCurrentBlockNumber().catch(() => 0);
-
+      
       return {
         network: this.network,
         currentBlock,
@@ -529,7 +571,7 @@ export class Polkadot {
               : [];
 
       for (const symbol of symbolsArray) {
-        const token = await this.getToken(symbol.trim());
+        const token = this.getToken(symbol.trim());
         if (token) tokens.push(token);
       }
     }
@@ -552,7 +594,7 @@ export class Polkadot {
       amount: number,
       symbol: string
   ): Promise<string> {
-    const token = await this.getToken(symbol);
+    const token = this.getToken(symbol);
     if (!token) {
       throw new HttpException(404, `Token not found: ${symbol}`, -1);
     }

@@ -5,3 +5,4 @@ networks:
     tokenListType: 'FILE'
     tokenListSource: 'src/templates/lists/hydration.json'
     nativeCurrencySymbol: 'HDX'
+    feePaymentCurrencySymbol: 'HDX'

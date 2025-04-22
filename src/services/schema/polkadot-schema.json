@@ -27,6 +27,10 @@
                         "nativeCurrencySymbol": {
                             "type": "string",
                             "description": "Symbol of the native currency on the network"
+                        },
+                        "feePaymentCurrencySymbol": {
+                            "type": "string",
+                            "description": "Symbol of the currency used for fee payment"
                         }
                     },
                     "required": [
@@ -34,7 +38,8 @@
                         "transactionURL",
                         "tokenListType",
                         "tokenListSource",
-                        "nativeCurrencySymbol"
+                        "nativeCurrencySymbol",
+                        "feePaymentCurrencySymbol"
                     ],
                     "additionalProperties": false
                 }

@@ -2,10 +2,6 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "type": "object",
     "properties": {
-        "feePaymentCurrencySymbol": {
-            "type": "string",
-            "description": "Symbol of the currency used for fee payment"
-        },
         "allowedSlippage": {
             "type": "string",
             "description": "How much the execution price is allowed to move unfavorably from the trade execution price (format: '1/100')"
@@ -13,7 +9,6 @@
     },
     "additionalProperties": false,
     "required": [
-        "feePaymentCurrencySymbol",
         "allowedSlippage"
     ]
 }

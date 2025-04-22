@@ -11,13 +11,16 @@ import { quoteLiquidityRoute } from './routes/amm-routes/quoteLiquidity';
 import { listPoolsRoute } from './routes/amm-routes/listPools';
 
 /**
- * Register all Hydration routes
+ * Registers all Hydration AMM routes to the Fastify instance.
+ * Includes routes for pool management, liquidity operations, and swap functionality.
+ * 
+ * @param fastify - The Fastify instance to register routes with
  */
 export const hydrationAMMRoutes: FastifyPluginAsync = async (fastify) => {
   // Register sensible plugin for better error handling
   await fastify.register(sensible);
 
-  // Register all route handlers
+  // Register all AMM route handlers
   await fastify.register(listPoolsRoute);
   await fastify.register(poolInfoRoute);
   await fastify.register(quoteSwapRoute);
@@ -27,6 +30,10 @@ export const hydrationAMMRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(removeLiquidityRoute);
 };
 
+/**
+ * Exports organized Hydration routes by category.
+ * Currently includes AMM (Automated Market Maker) routes.
+ */
 export const hydrationRoutes = {
   amm: hydrationAMMRoutes
 };

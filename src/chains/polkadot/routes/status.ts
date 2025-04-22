@@ -26,8 +26,8 @@ export async function getPolkadotStatus(
  * Route plugin that registers the status endpoint
  */
 export const statusRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: PolkadotStatusRequest;
+  fastify.get<{
+    Querystring: PolkadotStatusRequest;
     Reply: PolkadotStatusResponse;
   }>(
     '/status',
@@ -35,7 +35,7 @@ export const statusRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Get Polkadot network status',
         tags: ['polkadot'],
-        body: PolkadotStatusRequestSchema,
+        querystring: PolkadotStatusRequestSchema,
         response: {
           200: PolkadotStatusResponseSchema
         }
@@ -44,7 +44,7 @@ export const statusRoute: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       return await getPolkadotStatus(
         fastify,
-        request.body.network
+        request.query.network
       );
     }
   );
