@@ -17,6 +17,7 @@ import {wrapResponse} from '../../services/response-wrapper';
 import {Constant, fromBaseUnits, runWithRetryAndTimeout, sleep, toBaseUnits} from './polkadot.utils';
 import {validatePolkadotAddress} from './polkadot.validators';
 import * as crypto from 'crypto';
+import { BigNumber } from '@galacticcouncil/sdk';
 
 /**
  * Main class for interacting with the Polkadot blockchain.
@@ -579,39 +580,6 @@ export class Polkadot {
     return tokens;
   }
 
-  // noinspection JSUnusedGlobalSymbols
-  /**
-   * Estimate gas (fees) for a transaction
-   * @param sender The sender keyring pair
-   * @param recipient The recipient address
-   * @param amount The amount to transfer
-   * @param symbol The token symbol
-   * @returns A Promise that resolves to the estimated gas as a string
-   */
-  async estimateGas(
-      sender: KeyringPair,
-      recipient: string,
-      amount: number,
-      symbol: string
-  ): Promise<string> {
-    const token = this.getToken(symbol);
-    if (!token) {
-      throw new HttpException(404, `Token not found: ${symbol}`, -1);
-    }
-
-    const amountInBaseUnits = toBaseUnits(amount, token.decimals);
-
-    // Create transaction for estimation without signing
-    const apiPromise = await this.getApiPromise();
-    const transferTx = apiPromise.tx.balances.transfer(recipient, amountInBaseUnits);
-
-    // Get fee estimate
-    const info = await transferTx.paymentInfo(sender);
-
-    // Return estimated fee in human-readable format
-    return fromBaseUnits(info.partialFee.toString(), token.decimals).toString();
-  }
-
   /**
    * Get balances for a specific address
    * @param address The address to check balances for
@@ -639,14 +607,40 @@ export class Polkadot {
   /**
    * Estimate gas for a transaction
    * @param gasLimit Optional gas limit for the transaction
+   * @param address Optional address to use for fee estimation
    * @returns A Promise that resolves to the gas estimation
    */
   async estimateTransactionGas(gasLimit?: number): Promise<any> {
+    const api = await this.getApiPromise();
+
+    const feePaymentToken = this.getFeePaymentToken();
+    
+    // Get the current block header to get the block hash
+    const header = await api.rpc.chain.getHeader();
+    
+    // Get the runtime version to ensure we have the correct metadata
+    const runtimeVersion = await api.rpc.state.getRuntimeVersion();
+    
+    // Create a sample transfer transaction to estimate base fees
+    const transferTx = api.tx.system.remark('0x00');
+    
+    const feeAddress = await this.getFirstWalletAddress();
+    
+    // Get the payment info for the transaction
+    const paymentInfo = await transferTx.paymentInfo(feeAddress);
+    
+    // Convert the fee to human readable format (HDX)
+    const fee = new BigNumber(paymentInfo.partialFee.toString()).div(new BigNumber(10).pow(feePaymentToken.decimals));
+    
+    // Calculate gas price based on fee and gas limit
+    const calculatedGasLimit = new BigNumber(gasLimit.toString());
+    const gasPrice = fee.dividedBy(calculatedGasLimit);
+    
     return {
-      gasPrice: 0,
-      gasPriceToken: this.config.network.nativeCurrencySymbol,
-      gasLimit: gasLimit,
-      gasCost: 0
+      gasPrice: gasPrice.toNumber(),
+      gasPriceToken: feePaymentToken.symbol,
+      gasLimit: calculatedGasLimit.toNumber(),
+      gasCost: fee.toNumber()
     };
   }
 
