@@ -535,7 +535,7 @@ export class Hydration {
     const transaction = trade.toTx(tradeLimit).get();
     const apiPromise = await this.getApiPromise();
     
-    const txHash = await this.submitTransaction(apiPromise, transaction, wallet, poolAddress);
+    const {txHash} = await this.submitTransaction(apiPromise, transaction, wallet, poolAddress);
 
     logger.info(`Executed swap: ${amount} ${side === 'BUY' ? quoteTokenSymbol : baseTokenSymbol} for ${quote.estimatedAmountOut} ${side === 'BUY' ? baseTokenSymbol : quoteTokenSymbol}`);
 
@@ -1050,7 +1050,7 @@ export class Hydration {
     }
 
     // Sign and send the transaction
-    const txHash = await this.submitTransaction(apiPromise, addLiquidityTx, wallet, poolType);
+    const {txHash} = await this.submitTransaction(apiPromise, addLiquidityTx, wallet, poolType);
 
     logger.info(`Liquidity added to pool ${poolId} with tx hash: ${txHash}`);
 
@@ -1091,8 +1091,8 @@ export class Hydration {
    * @returns Transaction hash if successful
    * @throws Error if transaction fails
    */
-  private async submitTransaction(api: any, tx: any, wallet: any, poolType: string): Promise<string> {
-    return new Promise<string>(async (resolve, reject) => {
+  private async submitTransaction(api: any, tx: any, wallet: any, poolType: string): Promise<{txHash: string, transaction: any}> {
+    return new Promise<{txHash: string, transaction: any}>(async (resolve, reject) => {
       let unsub: () => void;
       
       const txId = tx.hash.toHex();
@@ -1125,14 +1125,14 @@ export class Hydration {
             if (await this.hasSuccessEvent(api, result.events, poolType)) {
               logger.info(`Transaction ${txHash} succeeded in block ${blockHash.toString()}`);
               unsub();
-              resolve(txHash);
+              resolve({txHash: txHash, transaction: result});
               return;
             }
             
             if (result.status.isFinalized) {
               logger.warn(`Transaction ${txHash} finalized with no specific success/failure event. Assuming success.`);
               unsub();
-              resolve(txHash);
+              resolve({txHash: txHash, transaction: result});
               return;
             }
           } 
@@ -1925,7 +1925,7 @@ export class Hydration {
 
     // Prepare transaction based on pool type
     const poolType = pool.poolType?.toLowerCase() || POOL_TYPE.XYK;
-    let removeLiquidityTx;
+    let removeLiquidityTx: any;
 
     switch (poolType) {
       case POOL_TYPE.XYK:
@@ -1964,21 +1964,40 @@ export class Hydration {
         throw new Error(`Unsupported pool type: ${poolType}`);
     }
 
-    // Submit transaction
-    const txHash = await this.submitTransaction(apiPromise, removeLiquidityTx, wallet, poolType);
+    // Sign and submit the transaction
+    const {txHash, transaction} = await this.submitTransaction(apiPromise, removeLiquidityTx, wallet, poolType);
 
     logger.info(`Liquidity removed from pool ${poolAddress} with tx hash: ${txHash}`);
 
-    // Extract token amounts from transaction if possible
-    // For simplicity, we'll estimate the amounts based on the user share percentage
-    const baseTokenEstimate = pool.baseTokenAmount * (percentageToRemove / 100);
-    const quoteTokenEstimate = pool.quoteTokenAmount * (percentageToRemove / 100);
+    let fee: BigNumber;
+    try {
+      fee = new BigNumber(transaction.events.map((it) => it.toHuman()).filter((it) => it.event.method == 'TransactionFeePaid')[0].event.data.actualFee.toString().replaceAll(',', '')).dividedBy(Math.pow(10, feePaymentToken.decimals));
+    } catch (error) {
+      logger.error(`It was not possible to extract the fee from the transaction:`, error);
+      fee = new BigNumber(Number.NaN);
+    }
+
+    let baseTokenAmountRemoved: BigNumber;
+    try {
+      baseTokenAmountRemoved = new BigNumber(transaction.events.map((it) => it.toHuman()).filter((it) => it.event.section == 'currencies' && it.event.method == 'Transferred' && it.event.data.currencyId == baseToken.address)[0].event.data.amount.toString().replaceAll(',', '')).dividedBy(Math.pow(10, baseToken.decimals));
+    } catch (error) {
+      logger.error(`It was not possible to extract the base token amount removed from the transaction:`, error);
+      baseTokenAmountRemoved = new BigNumber(Number.NaN);
+    }
+
+    let quoteTokenAmountRemoved: BigNumber;
+    try {
+      quoteTokenAmountRemoved = new BigNumber(transaction.events.map((it) => it.toHuman()).filter((it) => it.event.section == 'currencies' && it.event.method == 'Transferred' && it.event.data.currencyId == quoteToken.address)[0].event.data.amount.toString().replaceAll(',', '')).dividedBy(Math.pow(10, quoteToken.decimals));
+    } catch (error) {
+      logger.error(`It was not possible to extract the quote token amount removed from the transaction:`, error);
+      quoteTokenAmountRemoved = new BigNumber(Number.NaN);
+    }
 
     return {
       signature: txHash,
-      fee: 0.01, // Estimated fee
-      baseTokenAmountRemoved: baseTokenEstimate,
-      quoteTokenAmountRemoved: quoteTokenEstimate
+      fee: fee.toNumber(),
+      baseTokenAmountRemoved: baseTokenAmountRemoved.toNumber(),
+      quoteTokenAmountRemoved: quoteTokenAmountRemoved.toNumber()
     };
   }
 }
