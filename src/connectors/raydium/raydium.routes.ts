@@ -27,7 +27,7 @@ import { removeLiquidityRoute as ammRemoveLiquidityRoute } from './amm-routes/re
 // CLMM routes including swap endpoints
 const raydiumClmmRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(sensible);
-
+  
   await fastify.register(async (instance) => {
     instance.addHook('onRoute', (routeOptions) => {
       if (routeOptions.schema && routeOptions.schema.tags) {
@@ -52,7 +52,7 @@ const raydiumClmmRoutes: FastifyPluginAsync = async (fastify) => {
 // AMM routes including swap endpoints
 const raydiumAmmRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(sensible);
-
+  
   await fastify.register(async (instance) => {
     instance.addHook('onRoute', (routeOptions) => {
       if (routeOptions.schema && routeOptions.schema.tags) {
