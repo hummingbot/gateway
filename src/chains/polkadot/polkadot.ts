@@ -274,7 +274,7 @@ export class Polkadot {
   public async encrypt(secret: string, password: string): Promise<string> {
     const key = crypto.createHash('sha256').update(password).digest();
     const iv = crypto.randomBytes(16);
-    const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
+    const cipher = crypto.createCipheriv('aes-256-gcm', new Uint8Array(key), new Uint8Array(iv));
 
     let encrypted = cipher.update(secret, 'utf8', 'hex');
     encrypted += cipher.final('hex');
@@ -294,7 +294,7 @@ export class Polkadot {
       const iv = Buffer.from(ivHex, 'hex');
       const key = crypto.createHash('sha256').update(password).digest();
 
-      const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+      const decipher = crypto.createDecipheriv('aes-256-gcm', new Uint8Array(key), new Uint8Array(iv));
       let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
       decrypted += decipher.final('utf8');
 

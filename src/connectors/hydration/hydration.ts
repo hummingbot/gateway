@@ -17,16 +17,9 @@ import {KeyringPair} from '@polkadot/keyring/types';
 import {ApiPromise, HttpProvider, WsProvider} from '@polkadot/api';
 import {cryptoWaitReady} from '@polkadot/util-crypto';
 import {runWithRetryAndTimeout} from "../../chains/polkadot/polkadot.utils";
-import hydrationJson from '../../../conf/lists/hydration.json';
-import {PoolBase, PoolToken, Trade} from '@galacticcouncil/sdk/build/types/types';
+import {PoolBase, Trade} from '@galacticcouncil/sdk/build/types/types';
 import {BigNumber, PoolService, PoolType, TradeRouter, TradeType} from "@galacticcouncil/sdk";
 import {PoolItem} from '../../schemas/trading-types/amm-schema';
-
-// Create a map of token symbols to addresses from hydration.json
-const KNOWN_TOKENS = hydrationJson.reduce((acc, token) => {
-  acc[token.symbol.toUpperCase()] = token.address;
-  return acc;
-}, {});
 
 // Buffer for transaction costs (in HDX)
 const HDX_TRANSACTION_BUFFER = 0.1;
@@ -39,15 +32,6 @@ const POOL_TYPE = {
   STABLESWAP: 'stableswap',
   AAVE: 'aave'
 };
-
-// Add interface for extended pool data
-interface ExtendedPoolBase extends Omit<PoolBase, 'tokens'> {
-  reserves?: BigNumber[];
-  tokens: Array<PoolToken & {
-    balance?: BigNumber;
-  }>;
-}
-
 
 // Add the external pool info type
 interface ExternalPoolInfo {
@@ -1036,7 +1020,17 @@ export class Hydration {
     }
 
     // Sign and send the transaction
-    const {txHash} = await this.submitTransaction(apiPromise, addLiquidityTx, wallet, poolType);
+    const {txHash, transaction} = await this.submitTransaction(apiPromise, addLiquidityTx, wallet, poolType);
+
+    const feePaymentToken = this.polkadot.getFeePaymentToken();
+
+    let fee: BigNumber;
+    try {
+      fee = new BigNumber(transaction.events.map((it) => it.toHuman()).filter((it) => it.event.method == 'TransactionFeePaid')[0].event.data.actualFee.toString().replaceAll(',', '')).dividedBy(Math.pow(10, feePaymentToken.decimals));
+    } catch (error) {
+      logger.error(`It was not possible to extract the fee from the transaction:`, error);
+      fee = new BigNumber(Number.NaN);
+    }
 
     logger.info(`Liquidity added to pool ${poolId} with tx hash: ${txHash}`);
 
@@ -1044,7 +1038,7 @@ export class Hydration {
       signature: txHash,
       baseTokenAmountAdded: baseTokenAmount,
       quoteTokenAmountAdded: quoteTokenAmount,
-      fee: 0.01
+      fee: fee.toNumber()
     };
   }
 
@@ -1272,12 +1266,13 @@ export class Hydration {
       for (const symbol of tokenSymbolsArray) {
         const upperSymbol = symbol.toUpperCase();
         
-        // First check known tokens constant
-        if (KNOWN_TOKENS[upperSymbol]) {
-          const resolvedAddress = KNOWN_TOKENS[upperSymbol];
+        // First check using polkadot's getToken method
+        const token = this.polkadot.getToken(upperSymbol);
+        if (token) {
+          const resolvedAddress = token.address;
           resolvedSymbolToAddress[upperSymbol] = resolvedAddress;
           resolvedAddresses.push(resolvedAddress);
-          logger.debug(`Resolved ${upperSymbol} to address ${resolvedAddress} from KNOWN_TOKENS`);
+          logger.debug(`Resolved ${upperSymbol} to address ${resolvedAddress} from polkadot.getToken`);
           continue;
         }
         
