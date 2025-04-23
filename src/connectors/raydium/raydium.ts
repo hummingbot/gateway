@@ -12,7 +12,8 @@ import {
   ClmmRpcData,
   TxVersion,
   AmmV4Keys,
-  AmmV5Keys
+  AmmV5Keys,
+  PoolFetchType
 } from '@raydium-io/raydium-sdk-v2'
 import { isValidClmm, isValidAmm, isValidCpmm } from './raydium.utils'
 import { logger } from '../../services/logger'
