@@ -45,7 +45,7 @@ async function addLiquidity(
   }
 
   const { position, info } = await meteora.getRawPosition(
-    positionAddress,
+    positionAddress, 
     wallet.publicKey
   );
 
@@ -139,7 +139,7 @@ async function addLiquidity(
 export const MeteoraAddLiquidityRequest = Type.Intersect([
   AddLiquidityRequest,
   Type.Object({
-    strategyType: Type.Optional(Type.Number({
+    strategyType: Type.Optional(Type.Number({ 
       enum: Object.values(StrategyType).filter(x => typeof x === 'number')
     }))
   })
@@ -151,14 +151,14 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   // Get first wallet address for example
   const solana = await Solana.getInstance('mainnet-beta');
   let firstWalletAddress = '<solana-wallet-address>';
-
+  
   const foundWallet = await solana.getFirstWalletAddress();
   if (foundWallet) {
     firstWalletAddress = foundWallet;
   } else {
     logger.debug('No wallets found for examples in schema');
   }
-
+  
   // Update schema example
   AddLiquidityRequest.properties.walletAddress.examples = [firstWalletAddress];
 
@@ -177,8 +177,8 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
             ...AddLiquidityRequest.properties,
             network: { type: 'string', default: 'mainnet-beta' },
             slippagePct: { type: 'number', examples: [1] },
-            strategyType: {
-              type: 'number',
+            strategyType: { 
+              type: 'number', 
               examples: [StrategyType.SpotImBalanced],
               enum: Object.values(StrategyType).filter(x => typeof x === 'number')
             },
@@ -193,7 +193,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
       try {
         const { walletAddress, positionAddress, baseTokenAmount, quoteTokenAmount, slippagePct, strategyType } = request.body;
         const network = request.body.network || 'mainnet-beta';
-
+        
         return await addLiquidity(
           fastify,
           network,
@@ -215,4 +215,4 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   );
 };
 
-export default addLiquidityRoute;
+export default addLiquidityRoute; 
