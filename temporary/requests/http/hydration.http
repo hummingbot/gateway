@@ -317,7 +317,7 @@ Content-Type: application/json
 ###
 
 # GET /{{connector}}/amm/quote-swap - HYDRATION Stableswap BUYING SMALL AMOUNT
-GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/quote-swap?network={{network}}&baseToken={{stableBaseTokenSymbol}}&quoteToken={{stableQuoteTokenSymbol}}&amount={{smallAmount}}&side={{{{sideBuy}}}}&poolAddress={{poolAddressStableswap}}&slippagePct={{slippagePercentage}}
+GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/quote-swap?network={{network}}&baseToken={{stableBaseTokenSymbol}}&quoteToken={{stableQuoteTokenSymbol}}&amount={{smallAmount}}&side={{sideBuy}}&poolAddress={{poolAddressStableswap}}&slippagePct={{slippagePercentage}}
 Content-Type: application/json
 
 {
@@ -353,7 +353,7 @@ Content-Type: application/json
 ###
 
 # GET /{{connector}}/amm/quote-swap - HYDRATION Stableswap BUYING BIGGER AMOUNT
-GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/quote-swap?network={{network}}&baseToken={{stableBaseTokenSymbol}}&quoteToken={{stableQuoteTokenSymbol}}&amount={{biggerAmount}}&side={{{{sideBuy}}}}&poolAddress={{poolAddressStableswap}}&slippagePct={{slippagePercentage}}
+GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/quote-swap?network={{network}}&baseToken={{stableBaseTokenSymbol}}&quoteToken={{stableQuoteTokenSymbol}}&amount={{biggerAmount}}&side={{sideBuy}}&poolAddress={{poolAddressStableswap}}&slippagePct={{slippagePercentage}}
 Content-Type: application/json
 
 {
