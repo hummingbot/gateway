@@ -1,9 +1,9 @@
-import {
-  Raydium as RaydiumSDK,
+import { 
+  Raydium as RaydiumSDK, 
   ApiV3PoolInfoConcentratedItem,
   ApiV3PoolInfoStandardItem,
   ApiV3PoolInfoStandardItemCpmm,
-  PositionInfoLayout,
+  PositionInfoLayout, 
   CLMM_PROGRAM_ID,
   getPdaPersonalPositionAddress,
   PositionUtils,
@@ -12,8 +12,7 @@ import {
   ClmmRpcData,
   TxVersion,
   AmmV4Keys,
-  AmmV5Keys,
-  PoolFetchType, ApiV3PoolInfoItem
+  AmmV5Keys
 } from '@raydium-io/raydium-sdk-v2'
 import { isValidClmm, isValidAmm, isValidCpmm } from './raydium.utils'
 import { logger } from '../../services/logger'
@@ -264,24 +263,41 @@ export class Raydium {
       const poolType = await this.getPoolType(poolAddress)
       let poolInfo: AmmPoolInfo
       if (poolType === 'amm') {
-        const rawPools = await this.raydiumSDK.api.fetchPoolById({ ids: poolAddress })
-        const rawPool = rawPools[0] as ApiV3PoolInfoItem
+        const rawPool = await this.raydiumSDK.liquidity.getRpcPoolInfos([poolAddress])
         console.log('ammPoolInfo', rawPool)
 
         poolInfo = {
           address: poolAddress,
-          baseTokenAddress: rawPool.mintA.address,
-          quoteTokenAddress: rawPool.mintB.address,
-          feePct: 100 * Number(rawPool.feeRate),
-          price: Number(rawPool.price),
-          baseTokenAmount: Number(rawPool.mintAmountA),
-          quoteTokenAmount: Number(rawPool.mintAmountB),
+          baseTokenAddress: rawPool[poolAddress].baseMint.toString(),
+          quoteTokenAddress: rawPool[poolAddress].quoteMint.toString(),
+          feePct: Number(rawPool[poolAddress].tradeFeeNumerator) / Number(rawPool[poolAddress].tradeFeeDenominator),
+          price: Number(rawPool[poolAddress].poolPrice),
+          baseTokenAmount: Number(rawPool[poolAddress].mintAAmount) / 10 ** Number(rawPool[poolAddress].baseDecimal),
+          quoteTokenAmount: Number(rawPool[poolAddress].mintBAmount) / 10 ** Number(rawPool[poolAddress].quoteDecimal),
           poolType: poolType,
           lpMint: {
-            address: rawPool[poolAddress]?.lpMint?.toString() || '',
+            address: rawPool[poolAddress].lpMint.toString(),
             decimals: 9 // Default LP token decimals for Raydium
           },
         }
+
+        // const rawPools = await this.raydiumSDK.api.fetchPoolById({ ids: poolAddress })
+        // const rawPool = rawPools[0] as ApiV3PoolInfoItem
+        // poolInfo = {
+        //   address: poolAddress,
+        //   baseTokenAddress: rawPool.mintA.address,
+        //   quoteTokenAddress: rawPool.mintB.address,
+        //   feePct: 100 * Number(rawPool.feeRate),
+        //   price: Number(rawPool.price),
+        //   baseTokenAmount: Number(rawPool.mintAmountA),
+        //   quoteTokenAmount: Number(rawPool.mintAmountB),
+        //   poolType: poolType,
+        //   lpMint: {
+        //     address: rawPool[poolAddress]?.lpMint?.toString() || '',
+        //     decimals: 9 // Default LP token decimals for Raydium
+        //   },
+        // }
+
         return poolInfo
       } else if (poolType === 'cpmm') {
         const rawPool = await this.raydiumSDK.cpmm.getRpcPoolInfos([poolAddress])
@@ -330,7 +346,7 @@ export class Raydium {
     const pools = this.config[routeType].pools;
     const pairKey = this.getPairKey(baseToken, quoteToken);
     const reversePairKey = this.getPairKey(quoteToken, baseToken);
-
+    
     return pools[pairKey] || pools[reversePairKey] || null;
   }
   async listAllPools(maxPages = 3): Promise<
