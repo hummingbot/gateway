@@ -1897,7 +1897,7 @@ export class Hydration {
       totalUserSharesInThePool = new BigNumber((await apiPromise.query.tokens.accounts(walletAddress, shareTokenId)).free.toString()).dividedBy(Math.pow(10, baseToken.decimals));
       userSharesToRemove = percentageToRemoveBN.multipliedBy(totalUserSharesInThePool).dividedBy(100);
       logger.info(`Removing ${percentageToRemove}% or ${userSharesToRemove} shares of the user from the pool ${poolAddress}`);
-      userSharesToRemove = userSharesToRemove.multipliedBy(Math.pow(10, baseToken.decimals));
+      userSharesToRemove = userSharesToRemove.multipliedBy(Math.pow(10, baseToken.decimals)).integerValue(BigNumber.ROUND_DOWN);
     }
 
     if (userSharesToRemove.lte(0)) {
@@ -1960,7 +1960,7 @@ export class Hydration {
 
     let baseTokenAmountRemoved: BigNumber;
     try {
-      baseTokenAmountRemoved = new BigNumber(transaction.events.map((it) => it.toHuman()).filter((it) => it.event.section == 'currencies' && it.event.method == 'Transferred' && it.event.data.currencyId == baseToken.address)[0].event.data.amount.toString().replaceAll(',', '')).dividedBy(Math.pow(10, baseToken.decimals));
+      baseTokenAmountRemoved = new BigNumber(transaction.events.map((it) => it.toHuman()).filter((it) => it.event.section == 'currencies' && it.event.method == 'Transferred' && it.event.data.currencyId.toString().replaceAll(',', '') == baseToken.address)[0].event.data.amount.toString().replaceAll(',', '')).dividedBy(Math.pow(10, baseToken.decimals));
     } catch (error) {
       logger.error(`It was not possible to extract the base token amount removed from the transaction:`, error);
       baseTokenAmountRemoved = new BigNumber(Number.NaN);
@@ -1968,7 +1968,7 @@ export class Hydration {
 
     let quoteTokenAmountRemoved: BigNumber;
     try {
-      quoteTokenAmountRemoved = new BigNumber(transaction.events.map((it) => it.toHuman()).filter((it) => it.event.section == 'currencies' && it.event.method == 'Transferred' && it.event.data.currencyId == quoteToken.address)[0].event.data.amount.toString().replaceAll(',', '')).dividedBy(Math.pow(10, quoteToken.decimals));
+      quoteTokenAmountRemoved = new BigNumber(transaction.events.map((it) => it.toHuman()).filter((it) => it.event.section == 'currencies' && it.event.method == 'Transferred' && it.event.data.currencyId.toString().replaceAll(',', '') == quoteToken.address)[0].event.data.amount.toString().replaceAll(',', '')).dividedBy(Math.pow(10, quoteToken.decimals));
     } catch (error) {
       logger.error(`It was not possible to extract the quote token amount removed from the transaction:`, error);
       quoteTokenAmountRemoved = new BigNumber(Number.NaN);
