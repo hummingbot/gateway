@@ -2,12 +2,12 @@ networks:
   mainnet-beta:
     nodeURL: https://api.mainnet-beta.solana.com
     tokenListType: FILE
-    tokenListSource: src/templates/lists/solana.json
+    tokenListSource: /home/gateway/conf/lists/solana.json
     nativeCurrencySymbol: SOL
   devnet:
     nodeURL: https://api.devnet.solana.com
     tokenListType: FILE
-    tokenListSource: src/templates/lists/solana-devnet.json
+    tokenListSource: /home/gateway/conf/lists/solana-devnet.json
     nativeCurrencySymbol: SOL
 
 # Default compute units for a transaction used to estimate gasPrice

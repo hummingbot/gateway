@@ -12,7 +12,6 @@ import {
 import {
   getInitializedChain,
   UnsupportedChainException,
-  Chain,
   ChainInstance,
 } from '../services/connection-manager';
 import {
@@ -42,7 +41,7 @@ export async function addWallet(
   if (!passphrase) {
     throw new Error('There is no passphrase');
   }
-  let connection: Chain;
+  let connection: ChainInstance;
   let address: string | undefined;
   let encryptedPrivateKey: string | undefined;
 

@@ -40,7 +40,7 @@ export const connectorsRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async () => {
       logger.info('Getting available DEX connectors and networks');
-
+      
       const connectors = [
         {
           name: 'jupiter',
@@ -63,7 +63,7 @@ export const connectorsRoutes: FastifyPluginAsync = async (fastify) => {
           available_networks: RaydiumConfig.config.availableNetworks,
         },
         {
-          name: 'hydration_amm',
+          name: 'hydration/amm',
           trading_types: HydrationConfig.config.tradingTypes,
           available_networks: HydrationConfig.config.availableNetworks,
         },

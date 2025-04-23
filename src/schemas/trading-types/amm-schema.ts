@@ -4,6 +4,7 @@ import { Type, Static } from '@sinclair/typebox';
 export const ListPoolsRequest = Type.Object({
   network: Type.Optional(Type.String()), // Network (defaults to mainnet-beta for Raydium)
 }, { $id: 'ListPoolsRequest' });
+// noinspection JSUnusedGlobalSymbols
 export type ListPoolsRequestType = Static<typeof ListPoolsRequest>;
 
 export const PoolItemSchema = Type.Object({
@@ -16,6 +17,7 @@ export type PoolItem = Static<typeof PoolItemSchema>;
 export const ListPoolsResponse = Type.Object({
   pools: Type.Array(PoolItemSchema),
 }, { $id: 'ListPoolsResponse' });
+// noinspection JSUnusedGlobalSymbols
 export type ListPoolsResponseType = Static<typeof ListPoolsResponse>;
 
 export const PoolInfoSchema = Type.Object({
