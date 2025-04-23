@@ -1,6 +1,0 @@
-[submodule "temporary/hydration/sdk"]
-	path = temporary/hydration/sdk
-	url = https://github.com/galacticcouncil/sdk.git
-[submodule "temporary/hydration/docs"]
-	path = temporary/hydration/docs
-	url = https://github.com/galacticcouncil/hydration-docs.git

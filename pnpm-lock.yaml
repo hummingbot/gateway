@@ -199,12 +199,6 @@ importers:
       http-status-codes:
         specifier: 2.2.0
         version: 2.2.0
-      hydradx:
-        specifier: link:@galacticcouncil/api-augment/hydradx
-        version: link:@galacticcouncil/api-augment/hydradx
-      i:
-        specifier: ^0.3.7
-        version: 0.3.7
       immutable:
         specifier: ^4.2.4
         version: 4.3.7
@@ -226,9 +220,6 @@ importers:
       morgan:
         specifier: ^1.10.0
         version: 1.10.0
-      npm:
-        specifier: ^11.2.0
-        version: 11.2.0
       pino-pretty:
         specifier: ^11.2.2
         version: 11.3.0
@@ -247,9 +238,6 @@ importers:
       tslib:
         specifier: ^2.3.1
         version: 2.8.1
-      types:
-        specifier: link:@polkadot/types/types
-        version: link:@polkadot/types/types
       uuid:
         specifier: ^8.3.2
         version: 8.3.2
@@ -4625,10 +4613,6 @@ packages:
     resolution: {integrity: sha512-Ty8UblRWFEcfSuIaajM34LdPXIhbs1ajEX/BBPv24J+enSVaEVY63xQ6lTO9VRYS5LAoghIG0IDJ+p+IPzKUQQ==}
     engines: {node: '>=4'}
 
-  i@0.3.7:
-    resolution: {integrity: sha512-FYz4wlXgkQwIPqhzC5TdNMLSE5+GS1IIDJZY/1ZiEPCT2S3COUVZeT5OW4BmW4r5LHLQuOosSwsvnroG9GR59Q==}
-    engines: {node: '>=0.4'}
-
   iconv-lite@0.4.24:
     resolution: {integrity: sha512-v3MXnZAcvnywkTUEZomIActle7RXXeedOR31wwl7VlyoXO4Qi9arvSenNQWne1TcRwhCL1HwLI21bEqdpj8/rA==}
     engines: {node: '>=0.10.0'}
@@ -5831,78 +5815,6 @@ packages:
       - validate-npm-package-name
       - which
       - write-file-atomic
-
-  npm@11.2.0:
-    resolution: {integrity: sha512-PcnFC6gTo9VDkxVaQ1/mZAS3JoWrDjAI+a6e2NgfYQSGDwftJlbdV0jBMi2V8xQPqbGcWaa7p3UP0SKF+Bhm2g==}
-    engines: {node: ^20.17.0 || >=22.9.0}
-    hasBin: true
-    bundledDependencies:
-      - '@isaacs/string-locale-compare'
-      - '@npmcli/arborist'
-      - '@npmcli/config'
-      - '@npmcli/fs'
-      - '@npmcli/map-workspaces'
-      - '@npmcli/package-json'
-      - '@npmcli/promise-spawn'
-      - '@npmcli/redact'
-      - '@npmcli/run-script'
-      - '@sigstore/tuf'
-      - abbrev
-      - archy
-      - cacache
-      - chalk
-      - ci-info
-      - cli-columns
-      - fastest-levenshtein
-      - fs-minipass
-      - glob
-      - graceful-fs
-      - hosted-git-info
-      - ini
-      - init-package-json
-      - is-cidr
-      - json-parse-even-better-errors
-      - libnpmaccess
-      - libnpmdiff
-      - libnpmexec
-      - libnpmfund
-      - libnpmorg
-      - libnpmpack
-      - libnpmpublish
-      - libnpmsearch
-      - libnpmteam
-      - libnpmversion
-      - make-fetch-happen
-      - minimatch
-      - minipass
-      - minipass-pipeline
-      - ms
-      - node-gyp
-      - nopt
-      - normalize-package-data
-      - npm-audit-report
-      - npm-install-checks
-      - npm-package-arg
-      - npm-pick-manifest
-      - npm-profile
-      - npm-registry-fetch
-      - npm-user-validate
-      - p-map
-      - pacote
-      - parse-conflict-json
-      - proc-log
-      - qrcode-terminal
-      - read
-      - semver
-      - spdx-expression-parse
-      - ssri
-      - supports-color
-      - tar
-      - text-table
-      - tiny-relative-date
-      - treeverse
-      - validate-npm-package-name
-      - which
 
   number-is-nan@1.0.1:
     resolution: {integrity: sha512-4jbtZXNAsfZbAHiiqjLPBiCl16dES1zI4Hpzzxw61Tk+loF+sBDBKx1ICKKKwIqQ7M0mFn1TmkN7euSncWgHiQ==}
@@ -14014,8 +13926,6 @@ snapshots:
 
   hyperlinker@1.0.0: {}
 
-  i@0.3.7: {}
-
   iconv-lite@0.4.24:
     dependencies:
       safer-buffer: 2.1.2
@@ -15403,8 +15313,6 @@ snapshots:
       path-key: 4.0.0
 
   npm@10.9.2: {}
-
-  npm@11.2.0: {}
 
   number-is-nan@1.0.1: {}
 

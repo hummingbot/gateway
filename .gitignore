@@ -15,6 +15,3 @@ package-lock.json
 # VSCode
 .vscode/
 .history
-
-
-.aider*
