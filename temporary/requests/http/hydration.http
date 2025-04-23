@@ -379,25 +379,25 @@ Content-Type: application/json
 
 # ###
 
-  # GET /{{connector}}/amm/quote-liquidity -  HYDRATION XYK SMALL AMOUNT
-  GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/quote-liquidity?network={{network}}&poolAddress={{poolAddressXyk}}&baseTokenAmount={{smallBaseTokenAmount}}&quoteTokenAmount={{smallQuoteTokenAmount}}&slippagePct={{slippagePercentage}}
-  Content-Type: application/json
+# GET /{{connector}}/amm/quote-liquidity -  HYDRATION XYK SMALL AMOUNT
+GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/quote-liquidity?network={{network}}&poolAddress={{poolAddressXyk}}&baseTokenAmount={{smallBaseTokenAmount}}&quoteTokenAmount={{smallQuoteTokenAmount}}&slippagePct={{slippagePercentage}}
+Content-Type: application/json
 
-  {
-  }
+{
+}
 
-  ###
+###
 
-  # GET /{{connector}}/amm/quote-liquidity - HYDRATION Stableswap SMALL AMOUNT
-  GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/quote-liquidity?network={{network}}&poolAddress={{poolAddressStableswap}}&baseTokenAmount={{smallBaseTokenAmount}}&quoteTokenAmount={{smallQuoteTokenAmount}}&slippagePct={{slippagePercentage}}
-  Content-Type: application/json
+# GET /{{connector}}/amm/quote-liquidity - HYDRATION Stableswap SMALL AMOUNT
+GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/quote-liquidity?network={{network}}&poolAddress={{poolAddressStableswap}}&baseTokenAmount={{smallBaseTokenAmount}}&quoteTokenAmount={{smallQuoteTokenAmount}}&slippagePct={{slippagePercentage}}
+Content-Type: application/json
 
-  {
-  }
+{
+}
 
-  ###
+###
 
-  # GET /{{connector}}/amm/quote-liquidity -  HYDRATION XYK BIGGER AMOUNT
+# GET /{{connector}}/amm/quote-liquidity -  HYDRATION XYK BIGGER AMOUNT
 GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/quote-liquidity?network={{network}}&poolAddress={{poolAddressXyk}}&baseTokenAmount={{biggerBaseTokenAmount}}&quoteTokenAmount={{biggerQuoteTokenAmount}}&slippagePct={{slippagePercentage}}
 Content-Type: application/json
 
@@ -414,15 +414,6 @@ Content-Type: application/json
 }
 
 ###
-
-# # GET /{{connector}}/amm/quote-liquidity - HYDRATION Omnipool
-# GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/quote-liquidity?network={{network}}&poolAddress={{poolAddressOmnipool}}&baseTokenAmount={{baseTokenAmount}}&quoteTokenAmount={{quoteTokenAmount}}&slippagePct={{slippagePercentage}}
-# Content-Type: application/json
-
-# {
-# }
-
-# ###
 
 # POST /{{connector}}/amm/execute-swap - HYDRATION XYK BUYING SMALL AMOUNT
 POST {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/execute-swap
