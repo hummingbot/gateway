@@ -298,8 +298,8 @@ Content-Type: application/json
 
 # ###
 
-# GET /{{connector}}/amm/quote-swap - HYDRATION XYK BUYING SMALL AMOUNT
-GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/quote-swap?network={{network}}&baseToken={{xykBaseTokenSymbol}}&quoteToken={{xykQuoteTokenSymbol}}&amount={{smallAmount}}&side={{sideBuy}}&poolAddress={{poolAddressXyk}}&slippagePct={{slippagePercentage}}
+# GET /{{connector}}/amm/quote-swap - HYDRATION XYK BUYING MEDIUM AMOUNT
+GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/quote-swap?network={{network}}&baseToken={{xykBaseTokenSymbol}}&quoteToken={{xykQuoteTokenSymbol}}&amount={{mediumAmount}}&side={{sideBuy}}&poolAddress={{poolAddressXyk}}&slippagePct={{slippagePercentage}}
 Content-Type: application/json
 
 {
@@ -307,8 +307,8 @@ Content-Type: application/json
 
 ###
 
-# GET /{{connector}}/amm/quote-swap - HYDRATION XYK SELLING SMALL AMOUNT
-GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/quote-swap?network={{network}}&baseToken={{xykBaseTokenSymbol}}&quoteToken={{xykQuoteTokenSymbol}}&amount={{smallAmount}}&side={{sideSell}}&poolAddress={{poolAddressXyk}}&slippagePct={{slippagePercentage}}
+# GET /{{connector}}/amm/quote-swap - HYDRATION XYK SELLING MEDIUM AMOUNT
+GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/quote-swap?network={{network}}&baseToken={{xykBaseTokenSymbol}}&quoteToken={{xykQuoteTokenSymbol}}&amount={{mediumAmount}}&side={{sideSell}}&poolAddress={{poolAddressXyk}}&slippagePct={{slippagePercentage}}
 Content-Type: application/json
 
 {
@@ -415,7 +415,7 @@ Content-Type: application/json
 
 ###
 
-# POST /{{connector}}/amm/execute-swap - HYDRATION XYK BUYING SMALL AMOUNT
+# POST /{{connector}}/amm/execute-swap - HYDRATION XYK BUYING MEDIUM AMOUNT
 POST {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/execute-swap
 Content-Type: application/json
 
@@ -424,7 +424,7 @@ Content-Type: application/json
   "walletAddress": "{{walletPublicKey}}",
   "baseToken": "{{xykBaseTokenSymbol}}",
   "quoteToken": "{{xykQuoteTokenSymbol}}",
-  "amount": "{{smallAmount}}",
+  "amount": "{{mediumAmount}}",
   "side": "{{sideBuy}}",
   "poolAddress": "{{poolAddressXyk}}",
   "slippagePct": "{{slippagePercentage}}"
@@ -432,7 +432,7 @@ Content-Type: application/json
 
 ###
 
-# POST /{{connector}}/amm/execute-swap - HYDRATION XYK SELLING SMALL AMOUNT
+# POST /{{connector}}/amm/execute-swap - HYDRATION XYK SELLING MEDIUM AMOUNT
 POST {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/execute-swap
 Content-Type: application/json
 
@@ -441,7 +441,7 @@ Content-Type: application/json
   "walletAddress": "{{walletPublicKey}}",
   "baseToken": "{{xykBaseTokenSymbol}}",
   "quoteToken": "{{xykQuoteTokenSymbol}}",
-  "amount": "{{smallAmount}}",
+  "amount": "{{mediumAmount}}",
   "side": "{{sideSell}}",
   "poolAddress": "{{poolAddressXyk}}",
   "slippagePct": "{{slippagePercentage}}"
