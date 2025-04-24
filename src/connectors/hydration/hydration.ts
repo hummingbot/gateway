@@ -20,6 +20,7 @@ import {runWithRetryAndTimeout} from "../../chains/polkadot/polkadot.utils";
 import {PoolBase, Trade} from '@galacticcouncil/sdk/build/types/types';
 import {BigNumber, PoolService, PoolType, TradeRouter, TradeType} from "@galacticcouncil/sdk";
 import {PoolItem} from '../../schemas/trading-types/amm-schema';
+import { percentRegexp } from '../../services/config-manager-v2';
 
 // Buffer for transaction costs (in HDX)
 const HDX_TRANSACTION_BUFFER = 0.1;
@@ -289,8 +290,8 @@ export class Hydration {
    * @param quoteTokenSymbol Quote token symbol or address
    * @param amount Amount to swap
    * @param side 'BUY' or 'SELL'
-   * @param poolAddress Pool address (optional, will find best pool if not specified)
-   * @param slippagePct Slippage percentage (optional, uses default if not specified)
+   * @param _poolAddress Pool address (optional, will find best pool if not specified)
+   * @param slippagePct Slippage percentage (1 means 1%) (optional, uses default if not specified)
    * @returns A Promise that resolves to a swap quote
    */
   async getSwapQuote(
@@ -344,47 +345,45 @@ export class Hydration {
     }
 
     const tradeHuman = trade.toHuman();
-    const effectiveSlippage = slippagePct ?? parseFloat(this.config.allowedSlippage);
-    const estimatedAmountIn = Number(tradeHuman.amountIn);
-    const estimatedAmountOut = Number(tradeHuman.amountOut);
+    const effectiveSlippage = this.getSlippagePercentage(slippagePct);
+    const estimatedAmountIn = new BigNumber(tradeHuman.amountIn.toString());
+    const estimatedAmountOut = new BigNumber(tradeHuman.amountOut.toString());
     const isStablecoinPair = this.isStablecoinPair(baseToken.symbol, quoteToken.symbol);
 
     // Calculate the price
-    let price;
+    let price: BigNumber;
     if (isStablecoinPair) {
       if (side === 'BUY') {
-        price = estimatedAmountIn / estimatedAmountOut;
+        price = estimatedAmountIn.dividedBy(estimatedAmountOut);
       } else {
-        price = estimatedAmountIn / estimatedAmountOut;
+        price = estimatedAmountIn.dividedBy(estimatedAmountOut);
       }
 
-      if (price < 0.5 || price > 2.0) {
-        price = 1.0 + ((estimatedAmountIn - estimatedAmountOut) / Math.max(estimatedAmountIn, estimatedAmountOut));
+      if (price.lt(new BigNumber(0.5)) || price.gt(new BigNumber(2.0))) {
+        price = (new BigNumber(1.0)).plus((estimatedAmountIn.minus(estimatedAmountOut)).dividedBy(BigNumber.max(estimatedAmountIn, estimatedAmountOut)));
         logger.warn(`Adjusting unreasonable stablecoin price (${estimatedAmountIn}/${estimatedAmountOut}) to ${price}`);
       }
     } else {
       if (side === 'BUY') {
-        price = estimatedAmountIn / estimatedAmountOut;
+        price = estimatedAmountIn.dividedBy(estimatedAmountOut);
       } else {
-        price = estimatedAmountOut / estimatedAmountIn;
+        price = estimatedAmountOut.dividedBy(estimatedAmountIn);
       }
     }
 
-    if (!isFinite(price) || isNaN(price)) {
-      price = Number(tradeHuman.spotPrice);
+    if (!price.isFinite() || price.isNaN()) {
+      price = new BigNumber(tradeHuman.spotPrice.toString());
       logger.warn(`Using fallback spotPrice: ${price}`);
-    } else {
-      price = parseFloat(price.toFixed(8));
     }
 
     let minAmountOut, maxAmountIn;
 
     if (side === 'BUY') {
       minAmountOut = estimatedAmountOut;
-      maxAmountIn = estimatedAmountIn * (1 + effectiveSlippage / 100);
+      maxAmountIn = estimatedAmountIn.multipliedBy((new BigNumber(100)).plus(effectiveSlippage).dividedBy(new BigNumber(100)));
     } else {
       maxAmountIn = estimatedAmountIn;
-      minAmountOut = estimatedAmountOut * (1 - effectiveSlippage / 100);
+      minAmountOut = estimatedAmountOut.multipliedBy((new BigNumber(100)).minus(effectiveSlippage).dividedBy(new BigNumber(100)));
     }
 
     const route: SwapRoute[] = tradeHuman.swaps.map(swap => ({
@@ -412,17 +411,17 @@ export class Hydration {
       gasCost = gasPrice * gasLimit;
     }
 
-    const baseTokenBalanceChange = side === 'BUY' ? estimatedAmountOut : -estimatedAmountIn;
-    const quoteTokenBalanceChange = side === 'BUY' ? -estimatedAmountIn : estimatedAmountOut;
+    const baseTokenBalanceChange = side === 'BUY' ? estimatedAmountOut : estimatedAmountIn.multipliedBy(new BigNumber(-1));
+    const quoteTokenBalanceChange = side === 'BUY' ? estimatedAmountIn.multipliedBy(new BigNumber(-1)) : estimatedAmountOut;
 
     return {
-      estimatedAmountIn,
-      estimatedAmountOut,
-      minAmountOut,
-      maxAmountIn,
-      baseTokenBalanceChange,
-      quoteTokenBalanceChange,
-      price,
+      estimatedAmountIn: estimatedAmountIn.toNumber(),
+      estimatedAmountOut: estimatedAmountOut.toNumber(),
+      minAmountOut: minAmountOut.toNumber(),
+      maxAmountIn: maxAmountIn.toNumber(),
+      baseTokenBalanceChange: baseTokenBalanceChange.toNumber(),
+      quoteTokenBalanceChange: quoteTokenBalanceChange.toNumber(),
+      price: price.toNumber(),
       route,
       fee: Number(tradeHuman.tradeFee),
       gasPrice,
@@ -439,7 +438,7 @@ export class Hydration {
    * @param amount Amount to swap
    * @param side 'BUY' or 'SELL'
    * @param poolAddress Pool address
-   * @param slippagePct Slippage percentage (optional)
+   * @param slippagePct Slippage percentage (1 means 1%) (optional)
    * @returns A Promise that resolves to the swap execution result
    */
   async executeSwap(
@@ -483,9 +482,7 @@ export class Hydration {
       throw new Error(`No route found for ${baseToken.symbol}/${quoteToken.symbol}`);
     }
 
-    const effectiveSlippage = BigNumber(
-      (slippagePct ?? parseFloat(this.config.allowedSlippage)).toString()
-    );
+    const effectiveSlippage = this.getSlippagePercentage(slippagePct);
     const tradeLimit = this.calculateTradeLimit(
       trade,
       effectiveSlippage,
@@ -524,8 +521,24 @@ export class Hydration {
    * Get slippage percentage
    * @returns The slippage percentage
    */
-  getSlippagePct(): number {
-    return parseFloat(this.config.allowedSlippage);
+  getSlippagePercentage(slippagePercentage: number | string | BigNumber): BigNumber {
+    let actualSlippagePercentage: string;
+
+    if (!slippagePercentage) {
+      actualSlippagePercentage = this.config.allowedSlippage;
+    } else {
+      actualSlippagePercentage = slippagePercentage.toString();
+    }
+
+    if (actualSlippagePercentage.includes('/')) {
+      const match = actualSlippagePercentage.match(percentRegexp);
+
+      actualSlippagePercentage = new BigNumber(match[1]).dividedBy(BigNumber(match[2])).toString();
+    } else {
+      actualSlippagePercentage = actualSlippagePercentage.toString()
+    }
+
+    return new BigNumber(actualSlippagePercentage).multipliedBy(new BigNumber(100));
   }
 
   /**
@@ -876,7 +889,7 @@ export class Hydration {
    * @param poolId The pool ID to add liquidity to
    * @param baseTokenAmount Amount of base token to add
    * @param quoteTokenAmount Amount of quote token to add
-   * @param slippagePct Optional slippage percentage (default from config)
+   * @param slippagePct Optional slippage percentage (1 means 1%) (default from config)
    * @returns Details of the liquidity addition
    */
   async addLiquidity(
@@ -945,14 +958,13 @@ export class Hydration {
     // Convert amounts to BigNumber with proper decimals
     const baseAmountBN = new BigNumber(baseTokenAmount)
       .multipliedBy(new BigNumber(10).pow(baseToken.decimals))
-      .decimalPlaces(0);
+      .integerValue(BigNumber.ROUND_DOWN);
 
     const quoteAmountBN = new BigNumber(quoteTokenAmount)
       .multipliedBy(new BigNumber(10).pow(quoteToken.decimals))
-      .decimalPlaces(0);
+      .integerValue(BigNumber.ROUND_DOWN);
 
-    // Get slippage
-    const effectiveSlippage = slippagePct ?? parseFloat(this.config.allowedSlippage);
+    const effectiveSlippage = this.getSlippagePercentage(slippagePct);
 
     // Using the GalacticCouncil SDK to prepare the transaction
     const apiPromise = await this.getApiPromise();
@@ -1045,21 +1057,21 @@ export class Hydration {
   /**
    * Calculate maximum amount in based on slippage
    * @param amount The amount to calculate maximum for
-   * @param slippagePct The slippage percentage
+   * @param slippagePct The slippage percentage (1 means 1%)
    * @returns Maximum amount with slippage applied
    */
-  private calculateMaxAmountIn(amount: BigNumber, slippagePct: number): BigNumber {
-    return amount.multipliedBy(new BigNumber(100 + slippagePct).dividedBy(100)).decimalPlaces(0);
+  private calculateMaxAmountIn(amount: BigNumber, slippagePct: BigNumber): BigNumber {
+    return amount.multipliedBy(((new BigNumber(100)).plus(slippagePct)).dividedBy(100)).integerValue(BigNumber.ROUND_DOWN);
   }
 
   /**
    * Calculate minimum shares limit based on slippage
    * @param amount The amount to calculate minimum for
-   * @param slippagePct The slippage percentage
+   * @param slippagePct The slippage percentage (1 means 1%)
    * @returns Minimum amount with slippage applied
    */
-  private calculateMinSharesLimit(amount: BigNumber, slippagePct: number): BigNumber {
-    return amount.multipliedBy(new BigNumber(100 - slippagePct).dividedBy(100)).decimalPlaces(0);
+  private calculateMinSharesLimit(amount: BigNumber, slippagePct: BigNumber): BigNumber {
+    return amount.multipliedBy(((new BigNumber(100)).minus(slippagePct)).dividedBy(100)).integerValue(BigNumber.ROUND_DOWN);
   }
 
   /**
@@ -1633,14 +1645,14 @@ export class Hydration {
    * @param poolAddress The pool address
    * @param baseTokenAmount Amount of base token to add
    * @param quoteTokenAmount Amount of quote token to add
-   * @param slippagePct Slippage percentage (optional)
+   * @param slippagePct Slippage percentage (1 means 1%) (optional)
    * @returns A detailed liquidity quote with recommended amounts
    */
   async quoteLiquidity(
     poolAddress: string,
     baseTokenAmount?: number,
     quoteTokenAmount?: number,
-    slippagePct: number = 1
+    slippagePct?: number
   ): Promise<HydrationQuoteLiquidityResponse> {
     // Validate inputs
     if (!baseTokenAmount && !quoteTokenAmount) {
@@ -1734,20 +1746,19 @@ export class Hydration {
       positionStrategy
     );
 
-    // Calculate effective slippage
-    const effectiveSlippage = slippagePct / 100;
+    const effectiveSlippage = this.getSlippagePercentage(slippagePct);
 
     // Ensure valid values
-    const finalBaseAmount = quote.baseTokenAmount || 0;
-    const finalQuoteAmount = quote.quoteTokenAmount || 0;
+    const finalBaseAmount = new BigNumber(quote.baseTokenAmount.toString() || 0);
+    const finalQuoteAmount = new BigNumber(quote.quoteTokenAmount.toString() || 0);
 
     // Return standardized response
     return {
       baseLimited: amountType === 'base',
-      baseTokenAmount: finalBaseAmount,
-      quoteTokenAmount: finalQuoteAmount,
-      baseTokenAmountMax: finalBaseAmount * (1 + effectiveSlippage),
-      quoteTokenAmountMax: finalQuoteAmount * (1 + effectiveSlippage)
+      baseTokenAmount: finalBaseAmount.toNumber(),
+      quoteTokenAmount: finalQuoteAmount.toNumber(),
+      baseTokenAmountMax: finalBaseAmount.multipliedBy((new BigNumber(100)).plus(effectiveSlippage).dividedBy(new BigNumber(100))).toNumber(),
+      quoteTokenAmountMax: finalQuoteAmount.multipliedBy((new BigNumber(100)).plus(effectiveSlippage).dividedBy(new BigNumber(100))).toNumber()
     };
   }
 
@@ -1760,7 +1771,7 @@ export class Hydration {
    * @param amount Amount to swap
    * @param side 'BUY' or 'SELL'
    * @param poolAddress Pool address
-   * @param slippagePct Slippage percentage (optional)
+   * @param slippagePct Slippage percentage (1 means 1%) (optional)
    * @returns Result of the swap execution
    */
   async executeSwapWithWalletAddress(
@@ -1790,6 +1801,8 @@ export class Hydration {
     const polkadot = await this.polkadotGetInstance(Polkadot, network);
     const wallet = await polkadot.getWallet(walletAddress);
 
+    const effectiveSlippage = this.getSlippagePercentage(slippagePct);
+
     // Execute swap
     const result = await this.executeSwap(
       wallet,
@@ -1798,7 +1811,7 @@ export class Hydration {
       amount,
       side,
       poolAddress,
-      slippagePct
+      effectiveSlippage.toNumber()
     );
 
     logger.info(`Swap executed: ${result.totalInputSwapped} ${side === 'BUY' ? quoteTokenIdentifier : baseTokenIdentifier} for ${result.totalOutputSwapped} ${side === 'BUY' ? baseTokenIdentifier : quoteTokenIdentifier}`);
