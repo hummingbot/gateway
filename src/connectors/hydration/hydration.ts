@@ -1891,7 +1891,7 @@ export class Hydration {
       totalUserSharesInThePool = new BigNumber((await apiPromise.query.tokens.accounts(walletAddress, pool.id)).free.toString()).dividedBy(Math.pow(10, 18));
       userSharesToRemove = percentageToRemoveBN.multipliedBy(totalUserSharesInThePool).dividedBy(100);
       logger.info(`Removing ${percentageToRemove}% or ${userSharesToRemove} shares of the user from the pool ${poolAddress}`);
-      userSharesToRemove = userSharesToRemove.multipliedBy(Math.pow(10, 18));
+      userSharesToRemove = userSharesToRemove.multipliedBy(Math.pow(10, 18)).integerValue(BigNumber.ROUND_DOWN);
     } else {
       const shareTokenId = await apiPromise.query.xyk.shareToken(poolAddress);
       totalUserSharesInThePool = new BigNumber((await apiPromise.query.tokens.accounts(walletAddress, shareTokenId)).free.toString()).dividedBy(Math.pow(10, baseToken.decimals));
