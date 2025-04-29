@@ -527,7 +527,7 @@ export class Hydration {
     if (!slippagePercentage) {
       actualSlippagePercentage = this.config.allowedSlippage;
     } else {
-      actualSlippagePercentage = slippagePercentage.toString();
+      actualSlippagePercentage = new BigNumber(slippagePercentage.toString()).dividedBy(new BigNumber(100)).toString();
     }
 
     if (actualSlippagePercentage.includes('/')) {
