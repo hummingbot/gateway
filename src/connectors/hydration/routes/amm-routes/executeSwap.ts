@@ -32,13 +32,9 @@ export async function executeSwapOnHydration(
   quoteToken: string,
   amount: number,
   side: 'BUY' | 'SELL',
-  poolAddress: string,
+  poolAddress?: string,
   slippagePct?: number
 ): Promise<HydrationExecuteSwapResponse> {
-  if (!network) {
-    throw new HttpException(400, 'Network parameter is required', -1);
-  }
-  
   if (!baseToken) {
     throw new HttpException(400, 'Base token parameter is required', -1);
   }
@@ -53,10 +49,6 @@ export async function executeSwapOnHydration(
   
   if (side !== 'BUY' && side !== 'SELL') {
     throw new HttpException(400, 'Side must be "BUY" or "SELL"', -1);
-  }
-  
-  if (!poolAddress) {
-    throw new HttpException(400, 'Pool address parameter is required', -1);
   }
   
   // Validate wallet address
