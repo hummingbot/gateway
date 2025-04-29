@@ -296,7 +296,6 @@ export class Polkadot {
 
       const decipher = crypto.createDecipheriv('aes-256-gcm', new Uint8Array(key), new Uint8Array(iv));
       let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
-      decrypted += decipher.final('utf8');
 
       return decrypted;
     } catch (error) {
