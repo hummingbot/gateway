@@ -289,14 +289,14 @@ Content-Type: application/json
 
 ###
 
-# # GET /{{connector}}/amm/pool-info - HYDRATION Omnipool
-# GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/pool-info?network={{network}}&poolAddress={{poolAddressOmnipool}}
-# Content-Type: application/json
+# GET /{{connector}}/amm/pool-info - HYDRATION Omnipool
+GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/pool-info?network={{network}}&poolAddress={{poolAddressOmnipool}}
+Content-Type: application/json
 
-# {
-# }
+{
+}
 
-# ###
+###
 
 # GET /{{connector}}/amm/quote-swap - HYDRATION XYK BUYING MEDIUM AMOUNT
 GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/quote-swap?network={{network}}&baseToken={{xykBaseTokenSymbol}}&quoteToken={{xykQuoteTokenSymbol}}&amount={{mediumAmount}}&side={{sideBuy}}&poolAddress={{poolAddressXyk}}&slippagePct={{slippagePercentage}}
@@ -370,14 +370,14 @@ Content-Type: application/json
 
 ###
 
-# # GET /{{connector}}/amm/quote-swap - HYDRATION Omnipool
-# GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/quote-swap?network={{network}}&baseToken={{baseTokenSymbol}}&quoteToken={{quoteTokenSymbol}}&amount={{amount}}&side={{side}}&poolAddress={{poolAddressOmnipool}}&slippagePct={{slippagePercentage}}
-# Content-Type: application/json
+# GET /{{connector}}/amm/quote-swap - HYDRATION Omnipool BUYING SMALL AMOUNT
+GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/quote-swap?network={{network}}&baseToken={{baseTokenSymbol}}&quoteToken={{quoteTokenSymbol}}&amount={{smallAmount}}&side={{sideBuy}}&poolAddress={{poolAddressOmnipool}}&slippagePct={{slippagePercentage}}
+Content-Type: application/json
 
-# {
-# }
+{
+}
 
-# ###
+###
 
 # GET /{{connector}}/amm/quote-liquidity -  HYDRATION XYK SMALL AMOUNT
 GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/quote-liquidity?network={{network}}&poolAddress={{poolAddressXyk}}&baseTokenAmount={{smallBaseTokenAmount}}&quoteTokenAmount={{smallQuoteTokenAmount}}&slippagePct={{slippagePercentage}}
