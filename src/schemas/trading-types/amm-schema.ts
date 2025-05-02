@@ -3,6 +3,11 @@ import { Type, Static } from '@sinclair/typebox';
 // Add ListPoolsRequest and ListPoolsResponse schemas
 export const ListPoolsRequest = Type.Object({
   network: Type.Optional(Type.String()), // Network (defaults to mainnet-beta for Raydium)
+  types: Type.Optional(Type.Array(Type.String())), // Types to filter by
+  tokensSymbols: Type.Optional(Type.Array(Type.String())), // Tokens symbols to filter by
+  tokensAddresses: Type.Optional(Type.Array(Type.String())), // Tokens addresses to filter by
+  maxNumberOfPages: Type.Optional(Type.Number()), // Maximum number of pages to fetch
+  useOfficialTokens: Type.Optional(Type.Boolean()), // Whether to use official tokens
 }, { $id: 'ListPoolsRequest' });
 // noinspection JSUnusedGlobalSymbols
 export type ListPoolsRequestType = Static<typeof ListPoolsRequest>;

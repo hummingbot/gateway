@@ -56,6 +56,7 @@ export class Hydration {
   public polkadot: Polkadot;
   public config: HydrationConfig.NetworkConfig;
   private httpProvider: HttpProvider;
+  private wsProvider: WsProvider;
   private apiPromise: ApiPromise;
   private poolService: PoolService;
   private _ready: boolean = false;
@@ -527,7 +528,7 @@ export class Hydration {
     if (!slippagePercentage) {
       actualSlippagePercentage = this.config.allowedSlippage;
     } else {
-      actualSlippagePercentage = slippagePercentage.toString();
+      actualSlippagePercentage = new BigNumber(slippagePercentage.toString()).dividedBy(new BigNumber(100)).toString();
     }
 
     if (actualSlippagePercentage.includes('/')) {
@@ -780,17 +781,25 @@ export class Hydration {
   }
 
   /**
-   * Get HTTP provider for the network
+   * Gets the HTTP provider for the Polkadot node
    */
   public getHttpProvider(): HttpProvider {
-    return new HttpProvider(this.polkadot.config.network.nodeURL);
+    if (!this.httpProvider) {
+      this.httpProvider = new HttpProvider(this.polkadot.config.network.nodeURL);
+    }
+
+    return this.httpProvider;
   }
 
   /**
-   * Get WebSocket provider for the network
+   * Gets the WebSocket provider for the Polkadot node
    */
   public getWsProvider(): WsProvider {
-    return new WsProvider(this.polkadot.config.network.nodeURL);
+    if (!this.wsProvider) {
+      this.wsProvider = new WsProvider(this.polkadot.config.network.nodeURL);
+    }
+
+    return this.wsProvider;
   }
 
   /**

@@ -296,7 +296,6 @@ export class Polkadot {
 
       const decipher = crypto.createDecipheriv('aes-256-gcm', new Uint8Array(key), new Uint8Array(iv));
       let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
-      decrypted += decipher.final('utf8');
 
       return decrypted;
     } catch (error) {
@@ -687,12 +686,12 @@ export class Polkadot {
   /**
    * Gets the HTTP provider for the Polkadot node
    */
-  public getHttpProvider(): WsProvider {
+  public getHttpProvider(): HttpProvider {
     if (!this.httpProvider) {
       this.httpProvider = new HttpProvider(this.config.network.nodeURL);
     }
 
-    return this.wsProvider;
+    return this.httpProvider;
   }
 
   /**
