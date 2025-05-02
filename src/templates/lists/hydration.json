@@ -201,5 +201,12 @@
         "symbol": "USDC",
         "address": "22",
         "decimals": 6
+    },
+    {
+        "id": "21",
+        "name": "USDC (Moonbeam Wormhole)",
+        "symbol": "USDC",
+        "address": "21",
+        "decimals": 6
     }
 ]
