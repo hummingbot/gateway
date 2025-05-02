@@ -517,7 +517,7 @@ Content-Type: application/json
 
 ###
 
-# POST /{{connector}}/amm/execute-swap - HYDRATION Stableswap BUYING BIGGER AMOUNT
+# POST /{{connector}}/amm/execute-swap - HYDRATION Stableswap BUYING MEDIUM AMOUNT
 POST {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/execute-swap
 Content-Type: application/json
 
@@ -526,7 +526,7 @@ Content-Type: application/json
   "walletAddress": "{{walletPublicKey}}",
   "baseToken": "{{stableBaseTokenSymbol}}",
   "quoteToken": "{{stableQuoteTokenSymbol}}",
-  "amount": "{{biggerAmount}}",
+  "amount": "{{mediumAmount}}",
   "side": "{{sideBuy}}",
   "poolAddress": "{{poolAddressStableswap}}",
   "slippagePct": "{{slippagePercentage}}"
@@ -534,7 +534,7 @@ Content-Type: application/json
 
 ###
 
-# POST /{{connector}}/amm/execute-swap - HYDRATION Stableswap SELLING BIGGER AMOUNT
+# POST /{{connector}}/amm/execute-swap - HYDRATION Stableswap SELLING MEDIUM AMOUNT
 POST {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/execute-swap
 Content-Type: application/json
 
@@ -543,7 +543,7 @@ Content-Type: application/json
   "walletAddress": "{{walletPublicKey}}",
   "baseToken": "{{stableBaseTokenSymbol}}",
   "quoteToken": "{{stableQuoteTokenSymbol}}",
-  "amount": "{{biggerAmount}}",
+  "amount": "{{mediumAmount}}",
   "side": "{{sideSell}}",
   "poolAddress": "{{poolAddressStableswap}}",
   "slippagePct": "{{slippagePercentage}}"
