@@ -236,7 +236,7 @@ Content-Type: application/json
 ###
 
 # GET /{{connector}}/amm/list-pools - Combined filtering with useOfficialTokens
-GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/list-pools?network={{network}}&tokenSymbols=USDC&types=amm&maxNumberOfPages=2&useOfficialTokens=true
+GET {{httpProtocol}}://{{host}}:{{port}}/{{connector}}/amm/list-pools?network={{network}}&tokenSymbols=USDC&tokenSymbols=USDT&types=amm&types=amm&maxNumberOfPages=2&useOfficialTokens=true
 Content-Type: application/json
 
 ###
