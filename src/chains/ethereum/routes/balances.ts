@@ -67,6 +67,18 @@ export async function getEthereumBalances(
 }
 
 export const balancesRoute: FastifyPluginAsync = async (fastify) => {
+  // Get first wallet address for example
+  const ethereum = await Ethereum.getInstance('sepolia');
+  let firstWalletAddress = '<ethereum-wallet-address>';
+  
+  try {
+    firstWalletAddress = await ethereum.getFirstWalletAddress() || firstWalletAddress;
+  } catch (error) {
+    logger.warn('No wallets found for examples in schema');
+  }
+
+  BalanceRequestSchema.properties.address.examples = [firstWalletAddress];
+
   fastify.post<{
     Body: BalanceRequestType;
     Reply: BalanceResponseType;

@@ -252,6 +252,30 @@ export class Ethereum {
     }
     return await this.decrypt(encryptedPrivateKey, passphrase);
   }
+  
+  /**
+   * Get the first available wallet address
+   */
+  public async getFirstWalletAddress(): Promise<string | null> {
+    const path = `${walletPath}/ethereum`;
+    try {
+      // Create directory if it doesn't exist
+      await fse.ensureDir(path);
+      
+      // Get all .json files in the directory
+      const files = await fse.readdir(path);
+      const walletFiles = files.filter(f => f.endsWith('.json'));
+      
+      if (walletFiles.length === 0) {
+        return null;
+      }
+      
+      // Return first wallet address (without .json extension)
+      return walletFiles[0].slice(0, -5);
+    } catch (error) {
+      return null;
+    }
+  }
 
   /**
    * Encrypt a private key

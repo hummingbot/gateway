@@ -65,6 +65,16 @@ export async function getEthereumAllowances(
 }
 
 export const allowancesRoute: FastifyPluginAsync = async (fastify) => {
+  // Get first wallet address for example
+  const ethereum = await Ethereum.getInstance('sepolia');
+  let firstWalletAddress = '<ethereum-wallet-address>';
+  
+  try {
+    firstWalletAddress = await ethereum.getFirstWalletAddress() || firstWalletAddress;
+  } catch (error) {
+    logger.warn('No wallets found for examples in schema');
+  }
+
   fastify.post<{
     Body: AllowancesRequestType;
     Reply: AllowancesResponseType;
@@ -76,7 +86,7 @@ export const allowancesRoute: FastifyPluginAsync = async (fastify) => {
         tags: ['ethereum'],
         body: Type.Object({
           network: Type.String({ examples: ['mainnet', 'sepolia', 'polygon'] }),
-          address: Type.String({ examples: ['0x1234...'] }),
+          address: Type.String({ examples: [firstWalletAddress] }),
           spender: Type.String({ examples: ['0xSpender...', 'uniswap'] }),
           tokenSymbols: Type.Array(Type.String(), { examples: [['USDC', 'DAI']] })
         }),

@@ -3,7 +3,6 @@ import { NetworkSelectionRequest, CustomTransactionReceipt, CustomTransactionRes
 import { TokenInfo } from '../chains/ethereum/ethereum';
 
 export const EstimateGasRequestSchema = Type.Object({
-  chain: Type.String(),
   network: Type.String(),
   gasLimit: Type.Optional(Type.Number())
 }, { $id: 'EstimateGasRequest'});

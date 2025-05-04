@@ -1,23 +1,29 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
-import { Solana } from '../solana';
+import { Ethereum } from '../ethereum';
 import { logger } from '../../../services/logger';
 import { EstimateGasRequestType, EstimateGasResponse, EstimateGasRequestSchema, EstimateGasResponseSchema } from '../../../schemas/chain-schema';
-import { BASE_FEE } from '../solana';
+import { gasCostInEthString } from '../../../services/base';
 
-export async function estimateGasSolana(
+export async function estimateGasEthereum(
   fastify: FastifyInstance,
   network: string,
   gasLimit?: number
 ): Promise<EstimateGasResponse> {
   try {
-    const solana = await Solana.getInstance(network);
-    const gasLimitUsed = gasLimit || solana.config.defaultComputeUnits;
-    const gasCost = await solana.estimateGas(gasLimitUsed);
-    const priorityFeeInLamports = await solana.estimateGasPrice();
+    const ethereum = await Ethereum.getInstance(network);
+    
+    // Get gas price in GWEI
+    const gasPrice = await ethereum.estimateGasPrice();
+    
+    // Use provided gas limit or default from config
+    const gasLimitUsed = gasLimit || ethereum.gasLimitTransaction;
+    
+    // Calculate total gas cost in ETH
+    const gasCost = parseFloat(gasCostInEthString(gasPrice, gasLimitUsed));
     
     return {
-      gasPrice: priorityFeeInLamports,
-      gasPriceToken: solana.nativeTokenSymbol,
+      gasPrice: gasPrice,
+      gasPriceToken: ethereum.nativeTokenSymbol,
       gasLimit: gasLimitUsed,
       gasCost: gasCost
     };
@@ -35,14 +41,14 @@ export const estimateGasRoute: FastifyPluginAsync = async (fastify) => {
     '/estimate-gas',
     {
       schema: {
-        description: 'Estimate gas prices for Solana transactions',
-        tags: ['solana'],
+        description: 'Estimate gas prices for Ethereum transactions',
+        tags: ['ethereum'],
         body: {
           ...EstimateGasRequestSchema,
           properties: {
             ...EstimateGasRequestSchema.properties,
-            network: { type: 'string', examples: ['mainnet-beta', 'devnet'] },
-            gasLimit: { type: 'number', examples: [200000] }
+            network: { type: 'string', examples: ['mainnet', 'sepolia', 'polygon'] },
+            gasLimit: { type: 'number', examples: [21000] }
           }
         },
         response: {
@@ -52,7 +58,7 @@ export const estimateGasRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       const { network, gasLimit } = request.body;
-      return await estimateGasSolana(fastify, network, gasLimit);
+      return await estimateGasEthereum(fastify, network, gasLimit);
     }
   );
 };

@@ -5,6 +5,7 @@ import { balancesRoute } from './routes/balances';
 import { pollRoute } from './routes/poll';
 import { allowancesRoute } from './routes/allowances';
 import { approveRoute } from './routes/approve';
+import { estimateGasRoute } from './routes/estimate-gas';
 
 // Register the type declaration needed for Fastify schema tags
 declare module 'fastify' {
@@ -22,6 +23,7 @@ export const ethereumRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.register(pollRoute);
   fastify.register(allowancesRoute);
   fastify.register(approveRoute);
+  fastify.register(estimateGasRoute);
 };
 
 export default ethereumRoutes;
