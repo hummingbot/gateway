@@ -22,31 +22,31 @@ export async function approveEthereumToken(
   token: string,
   amount?: string
 ) {
+  const ethereum = await Ethereum.getInstance(network);
+  await ethereum.init();
+  
+  let wallet: ethers.Wallet;
   try {
-    const ethereum = await Ethereum.getInstance(network);
-    await ethereum.init();
-    
-    let wallet: ethers.Wallet;
-    try {
-      wallet = await ethereum.getWallet(address);
-    } catch (err) {
-      logger.error(`Failed to load wallet: ${err.message}`);
-      throw fastify.httpErrors.internalServerError(`Failed to load wallet: ${err.message}`);
-    }
-    
-    const spenderAddress = ethereum.getSpender(spender);
-    const fullToken = ethereum.getTokenBySymbol(token);
-    if (!fullToken) {
-      throw fastify.httpErrors.badRequest(`Token not supported: ${token}`);
-    }
-    
-    const amountBigNumber = amount
-      ? utils.parseUnits(amount, fullToken.decimals)
-      : constants.MaxUint256;
-    
-    // instantiate a contract and pass in wallet, which act on behalf of that signer
-    const contract = ethereum.getContract(fullToken.address, wallet);
+    wallet = await ethereum.getWallet(address);
+  } catch (err) {
+    logger.error(`Failed to load wallet: ${err.message}`);
+    throw fastify.httpErrors.internalServerError(`Failed to load wallet: ${err.message}`);
+  }
+  
+  const spenderAddress = ethereum.getSpender(spender);
+  const fullToken = ethereum.getTokenBySymbol(token);
+  if (!fullToken) {
+    throw fastify.httpErrors.badRequest(`Token not supported: ${token}`);
+  }
+  
+  const amountBigNumber = amount
+    ? utils.parseUnits(amount, fullToken.decimals)
+    : constants.MaxUint256;
+  
+  // instantiate a contract and pass in wallet, which act on behalf of that signer
+  const contract = ethereum.getContract(fullToken.address, wallet);
 
+  try {
     // call approve function - let ethereum.ts handle gas params and nonce internally
     const approval = await ethereum.approveERC20(
       contract,
@@ -56,7 +56,7 @@ export async function approveEthereumToken(
       undefined, // nonce - let ethereum.ts handle it
       undefined, // maxFeePerGas - let ethereum.ts handle it
       undefined, // maxPriorityFeePerGas - let ethereum.ts handle it
-      ethereum.gasPrice
+      undefined  // let provider determine gas price
     );
 
     return {
@@ -67,10 +67,13 @@ export async function approveEthereumToken(
       approval: toEthereumTransaction(approval),
     };
   } catch (error) {
-    if (error.statusCode) {
-      throw error; // Re-throw if it's already a Fastify error
-    }
     logger.error(`Error approving token: ${error.message}`);
+    
+    // Handle specific error cases
+    if (error.message && error.message.includes('insufficient funds')) {
+      throw fastify.httpErrors.badRequest('Insufficient funds for transaction. Please ensure you have enough ETH to cover gas costs.');
+    }
+    
     throw fastify.httpErrors.internalServerError(`Failed to approve token: ${error.message}`);
   }
 }
@@ -124,35 +127,22 @@ export const approveRoute: FastifyPluginAsync = async (fastify) => {
       }
     },
     async (request) => {
-      try {
-        const { 
-          network, 
-          address, 
-          spender, 
-          token, 
-          amount
-        } = request.body;
-        
-        return await approveEthereumToken(
-          fastify, 
-          network, 
-          address, 
-          spender, 
-          token, 
-          amount
-        );
-      } catch (error) {
-        // Properly handle the error here instead of letting it propagate
-        logger.error(`Error in approve endpoint: ${error.message}`);
-        
-        // Check for insufficient funds error
-        if (error.message && error.message.includes('insufficient funds')) {
-          throw fastify.httpErrors.badRequest('Insufficient funds for transaction. Please ensure your wallet has enough ETH to cover the gas cost.');
-        }
-        
-        // Handle other errors
-        throw fastify.httpErrors.internalServerError(`Failed to approve token: ${error.message}`);
-      }
+      const { 
+        network, 
+        address, 
+        spender, 
+        token, 
+        amount
+      } = request.body;
+      
+      return await approveEthereumToken(
+        fastify, 
+        network, 
+        address, 
+        spender, 
+        token, 
+        amount
+      );
     }
   );
 };
