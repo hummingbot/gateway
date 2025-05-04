@@ -360,44 +360,25 @@ export class Ethereum {
   }
 
   /**
-   * Approve ERC-20 token spending with provided parameters
-   * This version doesn't use nonce management
+   * Approve ERC-20 token spending
    */
   public async approveERC20(
     contract: Contract,
     wallet: Wallet,
     spender: string,
-    amount: BigNumber,
-    nonce?: number,
-    maxFeePerGas?: BigNumber,
-    maxPriorityFeePerGas?: BigNumber,
-    gasPrice?: number
+    amount: BigNumber
   ): Promise<Transaction> {
     logger.info(`Approving ${amount.toString()} tokens for spender ${spender}`);
     
     const params: any = {
       gasLimit: this.gasLimitTransaction,
+      nonce: await this.provider.getTransactionCount(wallet.address)
     };
     
-    // Use provided nonce or get current nonce from provider
-    if (nonce !== undefined) {
-      params.nonce = nonce;
-    } else {
-      params.nonce = await this.provider.getTransactionCount(wallet.address);
-    }
-    
-    // Set gas pricing parameters
-    if (maxFeePerGas || maxPriorityFeePerGas) {
-      params.maxFeePerGas = maxFeePerGas;
-      params.maxPriorityFeePerGas = maxPriorityFeePerGas;
-    } else if (gasPrice) {
-      params.gasPrice = (gasPrice * 1e9).toFixed(0);
-    } else {
-      // Always fetch gas price from the network
-      const currentGasPrice = await this.provider.getGasPrice();
-      params.gasPrice = currentGasPrice.toString();
-      logger.info(`Using network gas price: ${utils.formatUnits(currentGasPrice, 'gwei')} GWEI`);
-    }
+    // Always fetch gas price from the network
+    const currentGasPrice = await this.provider.getGasPrice();
+    params.gasPrice = currentGasPrice.toString();
+    logger.info(`Using network gas price: ${utils.formatUnits(currentGasPrice, 'gwei')} GWEI`);
     
     return contract.approve(spender, amount, params);
   }

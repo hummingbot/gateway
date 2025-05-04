@@ -51,16 +51,12 @@ export async function approveEthereumToken(
   const contract = ethereum.getContract(fullToken.address, wallet);
 
   try {
-    // call approve function - let ethereum.ts handle gas params and nonce internally
+    // call approve function
     const approval = await ethereum.approveERC20(
       contract,
       wallet,
       spenderAddress,
-      amountBigNumber,
-      undefined, // nonce - let ethereum.ts handle it
-      undefined, // maxFeePerGas - let ethereum.ts handle it
-      undefined, // maxPriorityFeePerGas - let ethereum.ts handle it
-      undefined  // let provider determine gas price
+      amountBigNumber
     );
 
     return {
