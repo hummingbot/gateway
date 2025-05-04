@@ -101,7 +101,7 @@ export const approveRoute: FastifyPluginAsync = async (fastify) => {
           spender: Type.String({ examples: ['uniswap', '0xSpender...'] }),
           token: Type.String({ examples: ['USDC', 'DAI'] }),
           amount: Type.Optional(Type.String({ 
-            examples: ['10.5'],
+            examples: [], // No examples since it's typically omitted for max approval
             description: 'The amount to approve. If not provided, defaults to maximum amount (unlimited approval).'
           }))
         }),
