@@ -10,7 +10,11 @@ import { ethers, BigNumber, constants, utils } from 'ethers';
 const toEthereumTransaction = (transaction: ethers.Transaction) => {
   return {
     data: transaction.data,
-    to: transaction.to || ''
+    to: transaction.to || '',
+    maxPriorityFeePerGas: transaction.maxPriorityFeePerGas?.toString() || null,
+    maxFeePerGas: transaction.maxFeePerGas?.toString() || null,
+    gasLimit: transaction.gasLimit?.toString() || null,
+    value: transaction.value?.toString() || "0"
   };
 };
 
