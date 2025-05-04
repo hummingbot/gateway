@@ -20,10 +20,7 @@ export async function approveEthereumToken(
   address: string, 
   spender: string,
   token: string,
-  amount?: string,
-  nonce?: number,
-  maxFeePerGas?: string,
-  maxPriorityFeePerGas?: string
+  amount?: string
 ) {
   try {
     const ethereum = await Ethereum.getInstance(network);
@@ -46,29 +43,19 @@ export async function approveEthereumToken(
     const amountBigNumber = amount
       ? utils.parseUnits(amount, fullToken.decimals)
       : constants.MaxUint256;
-
-    let maxFeePerGasBigNumber;
-    if (maxFeePerGas) {
-      maxFeePerGasBigNumber = BigNumber.from(maxFeePerGas);
-    }
-    
-    let maxPriorityFeePerGasBigNumber;
-    if (maxPriorityFeePerGas) {
-      maxPriorityFeePerGasBigNumber = BigNumber.from(maxPriorityFeePerGas);
-    }
     
     // instantiate a contract and pass in wallet, which act on behalf of that signer
     const contract = ethereum.getContract(fullToken.address, wallet);
 
-    // call approve function
+    // call approve function - let ethereum.ts handle gas params and nonce internally
     const approval = await ethereum.approveERC20(
       contract,
       wallet,
       spenderAddress,
       amountBigNumber,
-      nonce,
-      maxFeePerGasBigNumber,
-      maxPriorityFeePerGasBigNumber,
+      undefined, // nonce - let ethereum.ts handle it
+      undefined, // maxFeePerGas - let ethereum.ts handle it
+      undefined, // maxPriorityFeePerGas - let ethereum.ts handle it
       ethereum.gasPrice
     );
 
@@ -113,10 +100,7 @@ export const approveRoute: FastifyPluginAsync = async (fastify) => {
           address: Type.String({ examples: [firstWalletAddress] }),
           spender: Type.String({ examples: ['uniswap', '0xSpender...'] }),
           token: Type.String({ examples: ['USDC', 'DAI'] }),
-          amount: Type.Optional(Type.String({ examples: ['10.5'] })),
-          nonce: Type.Optional(Type.Number()),
-          maxFeePerGas: Type.Optional(Type.String()),
-          maxPriorityFeePerGas: Type.Optional(Type.String())
+          amount: Type.Optional(Type.String({ examples: ['10.5'] }))
         }),
         response: {
           200: Type.Object({
@@ -142,10 +126,7 @@ export const approveRoute: FastifyPluginAsync = async (fastify) => {
         address, 
         spender, 
         token, 
-        amount, 
-        nonce, 
-        maxFeePerGas, 
-        maxPriorityFeePerGas 
+        amount
       } = request.body;
       
       return await approveEthereumToken(
@@ -154,10 +135,7 @@ export const approveRoute: FastifyPluginAsync = async (fastify) => {
         address, 
         spender, 
         token, 
-        amount, 
-        nonce, 
-        maxFeePerGas, 
-        maxPriorityFeePerGas
+        amount
       );
     }
   );

@@ -112,9 +112,6 @@ export const ApproveRequestSchema = Type.Intersect([
   NetworkSelectionSchema,
   Type.Object({
     amount: Type.Optional(Type.String({ description: "the amount the spender will be approved to use" })),
-    nonce: Type.Optional(Type.Number({ description: "the address's next nonce" })),
-    maxFeePerGas: Type.Optional(Type.String()),
-    maxPriorityFeePerGas: Type.Optional(Type.String()),
     address: Type.String({ description: "the user's public Ethereum key" }),
     spender: Type.String({ description: "the address of the spender" }),
     token: Type.String({ description: "the token symbol the spender will be approved for" }),
