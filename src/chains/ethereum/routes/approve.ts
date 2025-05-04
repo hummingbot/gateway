@@ -124,22 +124,35 @@ export const approveRoute: FastifyPluginAsync = async (fastify) => {
       }
     },
     async (request) => {
-      const { 
-        network, 
-        address, 
-        spender, 
-        token, 
-        amount
-      } = request.body;
-      
-      return await approveEthereumToken(
-        fastify, 
-        network, 
-        address, 
-        spender, 
-        token, 
-        amount
-      );
+      try {
+        const { 
+          network, 
+          address, 
+          spender, 
+          token, 
+          amount
+        } = request.body;
+        
+        return await approveEthereumToken(
+          fastify, 
+          network, 
+          address, 
+          spender, 
+          token, 
+          amount
+        );
+      } catch (error) {
+        // Properly handle the error here instead of letting it propagate
+        logger.error(`Error in approve endpoint: ${error.message}`);
+        
+        // Check for insufficient funds error
+        if (error.message && error.message.includes('insufficient funds')) {
+          throw fastify.httpErrors.badRequest('Insufficient funds for transaction. Please ensure your wallet has enough ETH to cover the gas cost.');
+        }
+        
+        // Handle other errors
+        throw fastify.httpErrors.internalServerError(`Failed to approve token: ${error.message}`);
+      }
     }
   );
 };

@@ -110,8 +110,18 @@ export class Ethereum {
         );
       }
 
-      const totalFeeGwei = baseFee.add(priorityFee).toNumber() * 1e-9;
-      logger.info(`[GAS PRICE] Estimated: ${totalFeeGwei} GWEI`);
+      // Apply special handling for Base network
+      let totalFeeGwei: number;
+      if (this.network === 'base') {
+        // Base has low gas fees, use a lower value to avoid insufficient funds errors
+        // Use 20% of the estimated price or a minimum of 0.1 GWEI
+        totalFeeGwei = Math.max(baseFee.toNumber() * 0.2 * 1e-9, 0.1);
+        logger.info(`[BASE GAS PRICE] Adjusted: ${totalFeeGwei} GWEI (reduced from ${baseFee.toNumber() * 1e-9} GWEI)`);
+      } else {
+        totalFeeGwei = baseFee.add(priorityFee).toNumber() * 1e-9;
+        logger.info(`[GAS PRICE] Estimated: ${totalFeeGwei} GWEI`);
+      }
+      
       return totalFeeGwei;
     } catch (error: any) {
       logger.error(`Failed to estimate gas price: ${error.message}`);
@@ -385,12 +395,41 @@ export class Ethereum {
       params.nonce = await this.provider.getTransactionCount(wallet.address);
     }
     
-    // Set gas pricing parameters
+    // Set gas pricing parameters with special handling for Base network
     if (maxFeePerGas || maxPriorityFeePerGas) {
       params.maxFeePerGas = maxFeePerGas;
       params.maxPriorityFeePerGas = maxPriorityFeePerGas;
     } else if (gasPrice) {
-      params.gasPrice = (gasPrice * 1e9).toFixed(0);
+      // Apply a reduction for Base to avoid insufficient funds errors
+      if (this.network === 'base') {
+        // Use a lower gas price for Base - only 20% of the estimated price
+        const reducedGasPrice = gasPrice * 0.2;
+        logger.info(`Using reduced gas price for Base: ${reducedGasPrice} GWEI (was ${gasPrice} GWEI)`);
+        params.gasPrice = (reducedGasPrice * 1e9).toFixed(0);
+      } else {
+        params.gasPrice = (gasPrice * 1e9).toFixed(0);
+      }
+    } else {
+      // If no gas parameters provided, dynamically estimate gas price
+      const dynamicGasPrice = await this.estimateGasPrice();
+      params.gasPrice = (dynamicGasPrice * 1e9).toFixed(0);
+      logger.info(`Dynamically set gas price to ${dynamicGasPrice} GWEI`);
+    }
+    
+    // Check wallet balance to avoid insufficient funds errors
+    try {
+      const balance = await wallet.getBalance();
+      const requiredAmount = BigNumber.from(params.gasPrice || 0).mul(this.gasLimitTransaction);
+      
+      if (balance.lt(requiredAmount)) {
+        logger.warn(`Insufficient funds for transaction. Available: ${utils.formatEther(balance)} ETH, Required: ${utils.formatEther(requiredAmount)} ETH`);
+        throw new Error(`Insufficient funds for transaction. Available: ${utils.formatEther(balance)} ETH, Required: ${utils.formatEther(requiredAmount)} ETH`);
+      }
+    } catch (error) {
+      if (error.message && !error.message.includes('Insufficient funds')) {
+        logger.error(`Error checking balance: ${error.message}`);
+      }
+      throw error;
     }
     
     return contract.approve(spender, amount, params);
