@@ -87,7 +87,7 @@ export const allowancesRoute: FastifyPluginAsync = async (fastify) => {
         body: Type.Object({
           network: Type.String({ examples: ['mainnet', 'sepolia', 'polygon'] }),
           address: Type.String({ examples: [firstWalletAddress] }),
-          spender: Type.String({ examples: ['0xSpender...', 'uniswap'] }),
+          spender: Type.String({ examples: ['uniswap', '0xSpender...'] }),
           tokenSymbols: Type.Array(Type.String(), { examples: [['USDC', 'DAI']] })
         }),
         response: {

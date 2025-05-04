@@ -111,7 +111,7 @@ export const approveRoute: FastifyPluginAsync = async (fastify) => {
         body: Type.Object({
           network: Type.String({ examples: ['mainnet', 'sepolia', 'polygon'] }),
           address: Type.String({ examples: [firstWalletAddress] }),
-          spender: Type.String({ examples: ['0xSpender...', 'uniswap'] }),
+          spender: Type.String({ examples: ['uniswap', '0xSpender...'] }),
           token: Type.String({ examples: ['USDC', 'DAI'] }),
           amount: Type.Optional(Type.String({ examples: ['10.5'] })),
           nonce: Type.Optional(Type.Number()),
