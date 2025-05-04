@@ -14,6 +14,7 @@ import { getAddress } from 'ethers/lib/utils';
 import { TokenListResolutionStrategy } from '../../services/token-list-resolution';
 import { getEthereumConfig } from './ethereum.config';
 import { Provider } from '@ethersproject/abstract-provider';
+import { UniswapConfig } from '../../connectors/uniswap/uniswap.config';
 
 // information about an Ethereum token
 export interface TokenInfo {
@@ -147,8 +148,16 @@ export class Ethereum {
    * Resolves a spender name to an address
    */
   public getSpender(reqSpender: string): string {
-    // Simply return the spender address - specific platform resolvers should be in their own connectors
-    return reqSpender;
+    let spender: string;
+    if (reqSpender === 'uniswap') {
+      spender = UniswapConfig.config.uniswapV3SmartOrderRouterAddress(
+        'ethereum',
+        this.network,
+      );
+    } else {
+      spender = reqSpender;
+    }
+    return spender;
   }
 
   /**
