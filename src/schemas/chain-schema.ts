@@ -111,7 +111,7 @@ export type AllowancesResponseType = Static<typeof AllowancesResponseSchema>;
 export const ApproveRequestSchema = Type.Intersect([
   NetworkSelectionSchema,
   Type.Object({
-    amount: Type.Optional(Type.String({ description: "the amount the spender will be approved to use" })),
+    amount: Type.Optional(Type.String({ description: "the amount the spender will be approved to use, defaults to unlimited approval (MaxUint256) if not provided" })),
     address: Type.String({ description: "the user's public Ethereum key" }),
     spender: Type.String({ description: "the address of the spender" }),
     token: Type.String({ description: "the token symbol the spender will be approved for" }),
