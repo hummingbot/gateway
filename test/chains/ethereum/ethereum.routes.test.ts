@@ -9,7 +9,6 @@ import {
   RATE_LIMIT_ERROR_MESSAGE,
   UNKNOWN_ERROR_MESSAGE,
 } from '../../../src/services/error-handler';
-import { patchEVMNonceManager } from '../../evm.nonce.mock';
 import * as transactionSuccesful from './fixtures/transaction-succesful.json';
 import * as transactionSuccesfulReceipt from './fixtures/transaction-succesful-receipt.json';
 import * as transactionOutOfGas from './fixtures/transaction-out-of-gas.json';
@@ -17,14 +16,12 @@ import * as transactionOutOfGas from './fixtures/transaction-out-of-gas.json';
 let eth: Ethereum;
 
 beforeAll(async () => {
-  eth = Ethereum.getInstance('sepolia');
-  patchEVMNonceManager(eth.nonceManager);
-  await eth.init();
+  eth = await Ethereum.getInstance('sepolia');
   await gatewayApp.ready();
 });
 
 beforeEach(() => {
-  patchEVMNonceManager(eth.nonceManager);
+  // Reset any mocks
 });
 
 afterEach(() => {
@@ -44,8 +41,9 @@ const patchGetWallet = () => {
   });
 };
 
+// Replace with provider getTransactionCount
 const patchGetNonce = () => {
-  patch(eth.nonceManager, 'getNonce', () => 2);
+  patch(eth.provider, 'getTransactionCount', () => 2);
 };
 
 // const patchGetNextNonce = () => {
@@ -255,39 +253,7 @@ describe('POST /ethereum/balances', () => {
   });
 });
 
-describe('POST /ethereum/nonce', () => {
-  it('should return 200', async () => {
-    patchGetWallet();
-    patchGetNonce();
-
-    const response = await gatewayApp.inject({
-      method: 'POST',
-      url: '/ethereum/nonce',
-      payload: {
-        network: 'sepolia',
-        address: '0xFaA12FD102FE8623C9299c72B03E45107F2772B5',
-      }
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(response.headers['content-type']).toMatch(/json/);
-    const body = JSON.parse(response.payload);
-    expect(body.nonce).toBe(2);
-  });
-
-  it('should return 404 when parameters are invalid', async () => {
-    const response = await gatewayApp.inject({
-      method: 'POST',
-      url: '/ethereum/nonce',
-      payload: {
-        network: 'sepolia',
-        address: 'da857cbda0ba96757fed842617a4',
-      }
-    });
-
-    expect(response.statusCode).toBe(404);
-  });
-});
+// Nonce endpoint has been removed
 
 // describe('POST /ethereum/nextNonce', () => {
 //   it('should return 200', async () => {
@@ -367,32 +333,7 @@ describe('POST /ethereum/approve', () => {
   });
 });
 
-describe('POST /ethereum/cancel', () => {
-  it('should return 200', async () => {
-    eth.getWallet = jest.fn().mockReturnValue({
-      address: '0xFaA12FD102FE8623C9299c72B03E45107F2772B5',
-    });
-
-    eth.cancelTx = jest.fn().mockReturnValue({
-      hash: '0xf6b9e7cec507cb3763a1179ff7e2a88c6008372e3a6f297d9027a0b39b0fff77',
-    });
-
-    const response = await gatewayApp.inject({
-      method: 'POST',
-      url: '/ethereum/cancel',
-      payload: {
-        network: 'sepolia',
-        address: '0xFaA12FD102FE8623C9299c72B03E45107F2772B5',
-        nonce: 23,
-      }
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(response.headers['content-type']).toMatch(/json/);
-    const body = JSON.parse(response.payload);
-    expect(body.txHash).toEqual('0xf6b9e7cec507cb3763a1179ff7e2a88c6008372e3a6f297d9027a0b39b0fff77');
-  });
-});
+// Cancel endpoint has been removed
 
 describe('POST /ethereum/poll', () => {
   it('should get a NETWORK_ERROR_CODE when the network is unavailable', async () => {

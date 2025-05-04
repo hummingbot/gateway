@@ -8,14 +8,8 @@ import {
 } from '../services/validators';
 
 import {
-  validateChain,
-  validateNetwork,
-  validateNonce,
-  validateMaxFeePerGas,
-  validateMaxPriorityFeePerGas,
   isAddress as isEthereumAddress,
-  invalidAddressError,
-} from '../chains/ethereum/ethereum.validators';
+} from '../chains/ethereum/ethereum.utils';
 
 import { FeeAmount } from '@uniswap/v3-sdk';
 
@@ -34,6 +28,14 @@ export const invalidAmountError: string =
 
 export const invalidSideError: string =
   'The side param must be a string of "BUY" or "SELL".';
+
+// Error messages that were previously imported from ethereum.utils
+export const invalidAddressError: string = 'The address param is not a valid Ethereum address.';
+export const invalidChainError: string = 'The chain param is not a string.';
+export const invalidNetworkError: string = 'The network param is not a string.';
+export const invalidNonceError: string = 'If nonce is included it must be a non-negative integer.';
+export const invalidMaxFeePerGasError: string = 'If maxFeePerGas is included it must be a string of a float.';
+export const invalidMaxPriorityFeePerGasError: string = 'If maxPriorityFeePerGas is included it must be a string of a float.';
 
 export const invalidFeeTier: string = 'Incorrect fee tier';
 
@@ -188,6 +190,40 @@ export const validatePoolId: Validator = mkValidator(
   'poolId',
   invalidPoolIdError,
   (val) => typeof val === 'string' && val.length !== 0,
+  true
+);
+
+// Define the validators that were previously imported
+export const validateChain: Validator = mkValidator(
+  'chain',
+  invalidChainError,
+  (val) => typeof val === 'string'
+);
+
+export const validateNetwork: Validator = mkValidator(
+  'network',
+  invalidNetworkError,
+  (val) => typeof val === 'string'
+);
+
+export const validateNonce: Validator = mkValidator(
+  'nonce',
+  invalidNonceError,
+  (val) => typeof val === 'number' && val >= 0 && Number.isInteger(val),
+  true
+);
+
+export const validateMaxFeePerGas: Validator = mkValidator(
+  'maxFeePerGas',
+  invalidMaxFeePerGasError,
+  (val) => typeof val === 'string' && isFloatString(val),
+  true
+);
+
+export const validateMaxPriorityFeePerGas: Validator = mkValidator(
+  'maxPriorityFeePerGas',
+  invalidMaxPriorityFeePerGasError,
+  (val) => typeof val === 'string' && isFloatString(val),
   true
 );
 

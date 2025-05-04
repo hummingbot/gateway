@@ -20,8 +20,7 @@ let eth: Ethereum;
 
 beforeAll(async () => {
   patch(ConfigManagerCertPassphrase, 'readPassphrase', () => 'a');
-  eth = Ethereum.getInstance('sepolia');
-  await eth.init();
+  eth = await Ethereum.getInstance('sepolia');
 });
 
 beforeEach(() =>

@@ -8,7 +8,7 @@ let eth: Ethereum;
 
 beforeAll(async () => {
   patch(ConfigManagerCertPassphrase, 'readPassphrase', () => 'a');
-  eth = Ethereum.getInstance('sepolia');
+  eth = await Ethereum.getInstance('sepolia');
   await gatewayApp.ready();
 });
 

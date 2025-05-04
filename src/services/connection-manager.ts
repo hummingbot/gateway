@@ -43,7 +43,7 @@ export async function getChainInstance(
   let connection: ChainInstance | undefined;
 
   if (chain === 'ethereum') {
-    connection = Ethereum.getInstance(network);
+    connection = await Ethereum.getInstance(network);
   } else if (chain === 'solana') {
     connection = await Solana.getInstance(network);
   } else {
@@ -63,7 +63,7 @@ export async function getConnector(
   connector: string | undefined,
 ): Promise<Connector> {
   if (connector === 'uniswap') {
-    return Uniswap.getInstance(chain, network);
+    return await Uniswap.getInstance(chain, network);
   } else if (connector === 'jupiter') {
     return await Jupiter.getInstance(network);
   } else if (connector === 'meteora') {

@@ -2,25 +2,21 @@ import { Ethereum } from '../../../src/chains/ethereum/ethereum';
 import { Uniswap } from '../../../src/connectors/uniswap/uniswap';
 import { patch, unpatch } from '../../../test/services/patch';
 import { gasCostInEthString } from '../../../src/services/base';
-import { patchEVMNonceManager } from '../../evm.nonce.mock';
 import { gatewayApp } from '../../../src/app';
 
 let eth: Ethereum;
 let uniswap: Uniswap;
 
 beforeAll(async () => {
-  eth = Ethereum.getInstance('sepolia');
-  patchEVMNonceManager(eth.nonceManager);
-  await eth.init();
+  eth = await Ethereum.getInstance('sepolia');
 
-  uniswap = Uniswap.getInstance('ethereum', 'sepolia');
-  await uniswap.init();
+  uniswap = await Uniswap.getInstance('ethereum', 'sepolia');
   
   await gatewayApp.ready();
 });
 
 beforeEach(() => {
-  patchEVMNonceManager(eth.nonceManager);
+  // Reset any mocks
 });
 
 afterEach(() => {
@@ -142,7 +138,7 @@ const patchEstimateSellTrade = () => {
 };
 
 const patchGetNonce = () => {
-  patch(eth.nonceManager, 'getNonce', () => 21);
+  patch(eth.provider, 'getTransactionCount', () => 21);
 };
 
 const patchExecuteTrade = () => {

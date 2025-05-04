@@ -22,7 +22,7 @@ import {
   UNKNOWN_KNOWN_CHAIN_ERROR_MESSAGE,
 } from '../services/error-handler';
 import { Solana } from '../chains/solana/solana';
-import { EthereumBase } from '../chains/ethereum/ethereum-base';
+import { Ethereum } from '../chains/ethereum/ethereum';
 
 const walletPath = './conf/wallets';
 
@@ -58,7 +58,7 @@ export async function addWallet(
   }
 
   try {
-    if (connection instanceof EthereumBase) {
+    if (connection instanceof Ethereum) {
       address = connection.getWalletFromPrivateKey(req.privateKey).address;
       encryptedPrivateKey = await connection.encrypt(
         req.privateKey,

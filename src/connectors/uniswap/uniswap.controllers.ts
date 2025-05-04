@@ -18,7 +18,7 @@ import {
   UNKNOWN_ERROR_ERROR_CODE,
   UNKNOWN_ERROR_MESSAGE,
 } from '../../services/error-handler';
-import { TokenInfo } from '../../chains/ethereum/ethereum-base';
+import { TokenInfo } from '../../chains/ethereum/ethereum';
 import { gasCostInEthString } from '../../services/base';
 import {
   ExpectedTrade,
@@ -175,7 +175,7 @@ export async function price(
   const gasPrice = ethereum.gasPrice;
   const gasLimitEstimate = uniswapish.gasLimitEstimate;
   return wrapResponse({
-    network: ethereum.chain,
+    network: ethereum.network,
     base: tradeInfo.baseToken.address,
     quote: tradeInfo.quoteToken.address,
     amount: new Decimal(req.amount).toFixed(tradeInfo.baseToken.decimals),
@@ -272,13 +272,8 @@ export async function trade(
     );
 
     if (tx.hash) {
-      await ethereum.txStorage.saveTx(
-        ethereum.chain,
-        ethereum.chainId,
-        tx.hash,
-        new Date(),
-        ethereum.gasPrice
-      );
+      // With stateless design, no longer storing transactions
+      logger.info(`Transaction hash: ${tx.hash}`);
     }
 
     logger.info(
@@ -286,7 +281,7 @@ export async function trade(
     );
 
     return wrapResponse({
-      network: ethereum.chain,
+      network: ethereum.network,
       base: tradeInfo.baseToken.address,
       quote: tradeInfo.quoteToken.address,
       amount: new Decimal(req.amount).toFixed(tradeInfo.baseToken.decimals),
@@ -340,7 +335,7 @@ export async function trade(
     );
 
     return wrapResponse({
-      network: ethereum.chain,
+      network: ethereum.network,
       base: tradeInfo.baseToken.address,
       quote: tradeInfo.quoteToken.address,
       amount: new Decimal(req.amount).toFixed(tradeInfo.baseToken.decimals),

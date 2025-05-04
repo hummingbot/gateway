@@ -37,8 +37,8 @@ export const uniswapRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       validatePriceRequest(request.body);
-      const ethereum = Ethereum.getInstance(request.body.network);
-      const uniswapish = Uniswap.getInstance(request.body.chain, request.body.network);
+      const ethereum = await Ethereum.getInstance(request.body.network);
+      const uniswapish = await Uniswap.getInstance(request.body.chain, request.body.network);
       return await price(ethereum, uniswapish, request.body);
     }
   );
@@ -58,8 +58,8 @@ export const uniswapRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       validateTradeRequest(request.body);
-      const ethereum = Ethereum.getInstance(request.body.network);
-      const uniswapish = Uniswap.getInstance(request.body.chain, request.body.network);
+      const ethereum = await Ethereum.getInstance(request.body.network);
+      const uniswapish = await Uniswap.getInstance(request.body.chain, request.body.network);
       console.log('Trade request payload:', request.body);
       try {
         return await trade(ethereum, uniswapish, request.body);
@@ -85,8 +85,8 @@ export const uniswapRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       validateEstimateGasRequest(request.body);
-      const ethereum = Ethereum.getInstance(request.body.network);
-      const uniswapish = Uniswap.getInstance(request.body.chain, request.body.network);
+      const ethereum = await Ethereum.getInstance(request.body.network);
+      const uniswapish = await Uniswap.getInstance(request.body.chain, request.body.network);
       return await estimateGas(ethereum, uniswapish);
     }
   );

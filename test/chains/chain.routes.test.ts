@@ -1,17 +1,14 @@
 import { gatewayApp } from '../../src/app';
 import { Ethereum } from '../../src/chains/ethereum/ethereum';
-import { patchEVMNonceManager } from '../evm.nonce.mock';
 import { patch, unpatch } from '../services/patch';
 let eth: Ethereum;
 
 beforeAll(async () => {
-  eth = Ethereum.getInstance('sepolia');
-  patchEVMNonceManager(eth.nonceManager);
-  await eth.init();
+  eth = await Ethereum.getInstance('sepolia');
 });
 
 beforeEach(() => {
-  patchEVMNonceManager(eth.nonceManager);
+  // Reset any mocks
 });
 
 afterEach(async () => {

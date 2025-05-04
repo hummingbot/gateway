@@ -15,7 +15,7 @@ import {
   Token as UniswapCoreToken,
   Fraction as UniswapFraction,
 } from '@uniswap/sdk-core';
-import { BalanceRequest } from '../chains/chain.requests';
+import { BalanceRequestType } from '../schemas/chain-schema';
 import { Type, Static } from '@sinclair/typebox';
 
 export type Tokenish =
@@ -70,7 +70,7 @@ export interface Uniswapish {
 
   ready(): boolean;
 
-  balances?(req: BalanceRequest): Promise<Record<string, string>>;
+  balances?(req: BalanceRequestType): Promise<Record<string, string>>;
 
   /**
    * Given a token's address, return the connector's native representation of

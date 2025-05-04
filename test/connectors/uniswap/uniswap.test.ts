@@ -8,7 +8,6 @@ import { Pair, Route } from '@uniswap/v2-sdk';
 import { Trade } from '@uniswap/router-sdk';
 import { BigNumber, constants, utils } from 'ethers';
 import { Ethereum } from '../../../src/chains/ethereum/ethereum';
-import { patchEVMNonceManager } from '../../evm.nonce.mock';
 import { UniswapConfig } from '../../../src/connectors/uniswap/uniswap.config';
 import {
   FACTORY_ADDRESS,
@@ -50,13 +49,11 @@ const DAI_WETH_POOL = new UniswapV3Pool(
 );
 
 beforeAll(async () => {
-  ethereum = Ethereum.getInstance('sepolia');
-  patchEVMNonceManager(ethereum.nonceManager);
-  await ethereum.init();
+  ethereum = await Ethereum.getInstance('sepolia');
 });
 
 beforeEach(() => {
-  patchEVMNonceManager(ethereum.nonceManager);
+  // Reset any mocks
 });
 
 afterEach(() => {
@@ -183,8 +180,7 @@ const useRouter = async () => {
   config.useRouter = true;
 
   patch(Uniswap, '_instances', () => ({}));
-  uniswap = Uniswap.getInstance('ethereum', 'sepolia');
-  await uniswap.init();
+  uniswap = await Uniswap.getInstance('ethereum', 'sepolia');
 };
 
 const useQouter = async () => {
@@ -193,8 +189,7 @@ const useQouter = async () => {
   config.feeTier = 'MEDIUM';
 
   patch(Uniswap, '_instances', () => ({}));
-  uniswap = Uniswap.getInstance('ethereum', 'sepolia');
-  await uniswap.init();
+  uniswap = await Uniswap.getInstance('ethereum', 'sepolia');
 
   mockProvider = new MockProvider();
   patchMockProvider();

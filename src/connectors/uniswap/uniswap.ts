@@ -56,22 +56,22 @@ export class Uniswap implements Uniswapish {
   private readonly _quoterContractAddress: string;
   private readonly _factoryAddress: string;
 
+  private _chainName: string;
+  private _networkName: string;
+
   private constructor(chain: string, network: string) {
     const config = UniswapConfig.config;
-    if (chain === 'ethereum') {
-      this.chain = Ethereum.getInstance(network);
-    } else {
+    this._chainName = chain;
+    this._networkName = network;
+    
+    if (chain !== 'ethereum') {
       throw new Error('Unsupported chain');
     }
   
-    this.chainId = this.chain.chainId;
     this._ttl = UniswapConfig.config.ttl;
     this._maximumHops = UniswapConfig.config.maximumHops;
 
-    this._alphaRouter = new AlphaRouter({
-      chainId: this.chainId,
-      provider: this.chain.provider,
-    });
+    // Chain and provider will be initialized in the init method
     this._routerAbi = routerAbi.abi;
     this._gasLimitEstimate = UniswapConfig.config.gasLimitEstimate;
     this._router = config.uniswapV3SmartOrderRouterAddress(chain, network);
@@ -92,15 +92,18 @@ export class Uniswap implements Uniswapish {
     this._factoryAddress = config.uniswapV3FactoryAddress(chain, network);
   }
 
-  public static getInstance(chain: string, network: string): Uniswap {
+  public static async getInstance(chain: string, network: string): Promise<Uniswap> {
     if (Uniswap._instances === undefined) {
       Uniswap._instances = {};
     }
-    if (!(chain + network in Uniswap._instances)) {
-      Uniswap._instances[chain + network] = new Uniswap(chain, network);
+    
+    const key = chain + network;
+    if (!(key in Uniswap._instances)) {
+      Uniswap._instances[key] = new Uniswap(chain, network);
+      await Uniswap._instances[key].init();
     }
 
-    return Uniswap._instances[chain + network];
+    return Uniswap._instances[key];
   }
 
   /**
@@ -114,9 +117,21 @@ export class Uniswap implements Uniswapish {
   }
 
   public async init() {
+    // Initialize the Ethereum chain instance
+    this.chain = await Ethereum.getInstance(this._networkName);
+    this.chainId = this.chain.chainId;
+    
+    // Initialize the Alpha Router once we have the chain
+    this._alphaRouter = new AlphaRouter({
+      chainId: this.chainId,
+      provider: this.chain.provider,
+    });
+    
+    // Load tokens
     if (!this.chain.ready()) {
       await this.chain.init();
     }
+    
     for (const token of this.chain.storedTokenList) {
       this.tokenList[token.address] = new Token(
         this.chainId,
@@ -401,35 +416,34 @@ export class Uniswap implements Uniswapish {
       }
     );
 
-    return this.chain.nonceManager.provideNonce(
-      nonce,
-      wallet.address,
-      async (nextNonce) => {
-        let tx: ContractTransaction;
-        if (maxFeePerGas !== undefined || maxPriorityFeePerGas !== undefined) {
-          tx = await wallet.sendTransaction({
-            data: methodParameters.calldata,
-            to: uniswapRouter,
-            gasLimit: gasLimit.toFixed(0),
-            value: methodParameters.value,
-            nonce: nextNonce,
-            maxFeePerGas,
-            maxPriorityFeePerGas,
-          });
-        } else {
-          tx = await wallet.sendTransaction({
-            data: methodParameters.calldata,
-            to: uniswapRouter,
-            gasPrice: (gasPrice * 1e9).toFixed(0),
-            gasLimit: gasLimit.toFixed(0),
-            value: methodParameters.value,
-            nonce: nextNonce,
-          });
-        }
-        logger.info(JSON.stringify(tx));
-        return tx;
-      }
-    );
+    // Get nonce directly from provider or use the provided nonce
+    const nextNonce = nonce !== undefined 
+      ? nonce 
+      : await this.chain.provider.getTransactionCount(wallet.address);
+
+    let tx: ContractTransaction;
+    if (maxFeePerGas !== undefined || maxPriorityFeePerGas !== undefined) {
+      tx = await wallet.sendTransaction({
+        data: methodParameters.calldata,
+        to: uniswapRouter,
+        gasLimit: gasLimit.toFixed(0),
+        value: methodParameters.value,
+        nonce: nextNonce,
+        maxFeePerGas,
+        maxPriorityFeePerGas,
+      });
+    } else {
+      tx = await wallet.sendTransaction({
+        data: methodParameters.calldata,
+        to: uniswapRouter,
+        gasPrice: (gasPrice * 1e9).toFixed(0),
+        gasLimit: gasLimit.toFixed(0),
+        value: methodParameters.value,
+        nonce: nextNonce,
+      });
+    }
+    logger.info(JSON.stringify(tx));
+    return tx;
   }
 
   private async getPool(
