@@ -55,7 +55,7 @@ export const statusRoute: FastifyPluginAsync = async (fastify) => {
           ...StatusRequestSchema,
           properties: {
             ...StatusRequestSchema.properties,
-            network: { type: 'string', examples: ['mainnet', 'sepolia', 'polygon'] }
+            network: { type: 'string', examples: ['base', 'mainnet', 'sepolia', 'polygon'] }
           }
         },
         response: {

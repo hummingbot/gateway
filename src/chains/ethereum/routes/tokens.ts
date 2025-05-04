@@ -48,7 +48,7 @@ export const tokensRoute: FastifyPluginAsync = async (fastify) => {
           ...TokensRequestSchema,
           properties: {
             ...TokensRequestSchema.properties,
-            network: { type: 'string', examples: ['mainnet', 'sepolia', 'polygon'] }
+            network: { type: 'string', examples: ['base', 'mainnet', 'sepolia', 'polygon'] }
           }
         },
         response: {

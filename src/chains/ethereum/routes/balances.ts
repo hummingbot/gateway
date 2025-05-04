@@ -68,7 +68,7 @@ export async function getEthereumBalances(
 
 export const balancesRoute: FastifyPluginAsync = async (fastify) => {
   // Get first wallet address for example
-  const ethereum = await Ethereum.getInstance('sepolia');
+  const ethereum = await Ethereum.getInstance('base');
   let firstWalletAddress = '<ethereum-wallet-address>';
   
   try {
@@ -92,7 +92,7 @@ export const balancesRoute: FastifyPluginAsync = async (fastify) => {
           ...BalanceRequestSchema,
           properties: {
             ...BalanceRequestSchema.properties,
-            network: { type: 'string', examples: ['mainnet', 'sepolia', 'polygon'] },
+            network: { type: 'string', examples: ['base', 'mainnet', 'sepolia', 'polygon'] },
             tokenSymbols: { 
               type: 'array', 
               items: { type: 'string' },

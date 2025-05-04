@@ -160,7 +160,7 @@ export const pollRoute: FastifyPluginAsync = async (fastify) => {
           ...PollRequestSchema,
           properties: {
             ...PollRequestSchema.properties,
-            network: { type: 'string', examples: ['mainnet', 'sepolia', 'polygon'] },
+            network: { type: 'string', examples: ['base', 'mainnet', 'sepolia', 'polygon'] },
             txHash: { type: 'string', examples: ['0x123...'] },
           }
         },

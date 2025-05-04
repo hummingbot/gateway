@@ -77,7 +77,7 @@ export async function approveEthereumToken(
 
 export const approveRoute: FastifyPluginAsync = async (fastify) => {
   // Get first wallet address for example
-  const ethereum = await Ethereum.getInstance('sepolia');
+  const ethereum = await Ethereum.getInstance('base');
   let firstWalletAddress = '<ethereum-wallet-address>';
   
   try {
@@ -96,7 +96,7 @@ export const approveRoute: FastifyPluginAsync = async (fastify) => {
         description: 'Approve token spending',
         tags: ['ethereum'],
         body: Type.Object({
-          network: Type.String({ examples: ['mainnet', 'sepolia', 'polygon'] }),
+          network: Type.String({ examples: ['base', 'mainnet', 'sepolia', 'polygon'] }),
           address: Type.String({ examples: [firstWalletAddress] }),
           spender: Type.String({ examples: ['uniswap', '0xSpender...'] }),
           token: Type.String({ examples: ['USDC', 'DAI'] }),

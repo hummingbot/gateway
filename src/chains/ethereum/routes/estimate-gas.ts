@@ -47,7 +47,7 @@ export const estimateGasRoute: FastifyPluginAsync = async (fastify) => {
           ...EstimateGasRequestSchema,
           properties: {
             ...EstimateGasRequestSchema.properties,
-            network: { type: 'string', examples: ['mainnet', 'sepolia', 'polygon'] },
+            network: { type: 'string', examples: ['base', 'mainnet', 'sepolia', 'polygon'] },
             gasLimit: { type: 'number', examples: [21000] }
           }
         },
