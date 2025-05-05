@@ -1351,19 +1351,13 @@ export class Hydration {
    * @param types Pool types to filter by
    * @param tokenSymbols Token symbols to filter by
    * @param tokenAddresses Token addresses to filter by
-   * @param useOfficialTokens Whether to use official token list for resolving symbols
-   * @param maxNumberOfPages Maximum number of pages to fetch
    * @returns A list of filtered pools
    */
   async listPools(
     types: string[] = [],
     tokenSymbols: string[] = [],
-    tokenAddresses: string[] = [],
-    useOfficialTokens: boolean = true,
-    maxNumberOfPages: number = 1
+    tokenAddresses: string[] = []
   ): Promise<PoolItem[]> {
-    const tradeRouter = await this.getTradeRouter();
-
     // Normalize input arrays
     const tokenSymbolsArray = Array.isArray(tokenSymbols) ? tokenSymbols : [tokenSymbols].filter(Boolean);
     const tokenAddressesArray = Array.isArray(tokenAddresses) ? tokenAddresses : [tokenAddresses].filter(Boolean);
@@ -1377,380 +1371,59 @@ export class Hydration {
     logger.info(`Listing Hydration pools with filters: ${JSON.stringify({
       types: typesArray, 
       tokenSymbols: tokenSymbolsArray, 
-      tokenAddresses: tokenAddressesArray,
-      useOfficialTokens,
-      maxPages: maxNumberOfPages
+      tokenAddresses: tokenAddressesArray
     })}`);
 
-    // Resolve token symbols to addresses
-    const resolvedSymbolToAddress: Record<string, string> = {};
-    const resolvedAddresses: string[] = [];
-
-    if (useOfficialTokens && hasTokenSymbols) {
-      const tokenList = this.getAllTokens();
-      logger.debug(`Available tokens on the network: ${tokenList.map(t => t.symbol).join(', ')}`);
-      
-      for (const symbol of tokenSymbolsArray) {
-        const upperSymbol = symbol.toUpperCase();
-        
-        // First check using polkadot's getToken method
-        const token = this.polkadot.getToken(upperSymbol);
-        if (token) {
-          const resolvedAddress = token.address;
-          resolvedSymbolToAddress[upperSymbol] = resolvedAddress;
-          resolvedAddresses.push(resolvedAddress);
-          logger.debug(`Resolved ${upperSymbol} to address ${resolvedAddress} from polkadot.getToken`);
-          continue;
-        }
-        
-        // Then check token list
-        const foundToken = tokenList.find(t => t.symbol.toUpperCase() === upperSymbol);
-        if (foundToken) {
-          resolvedSymbolToAddress[upperSymbol] = foundToken.address;
-          resolvedAddresses.push(foundToken.address);
-          logger.debug(`Resolved ${upperSymbol} to address ${foundToken.address} from tokenList`);
-        } else {
-          // Try partial matching for stablecoins which might have network prefixes
-          const possibleMatches = tokenList.filter(t => 
-            t.symbol.toUpperCase().includes(upperSymbol) || 
-            upperSymbol.includes(t.symbol.toUpperCase())
-          );
-          
-          if (possibleMatches.length > 0) {
-            // If multiple matches, prefer exact or closest match
-            const bestMatch = possibleMatches.find(t => t.symbol.toUpperCase() === upperSymbol) || 
-                            possibleMatches[0];
-            
-            resolvedSymbolToAddress[upperSymbol] = bestMatch.address;
-            resolvedAddresses.push(bestMatch.address);
-            logger.debug(`Resolved ${upperSymbol} to address ${bestMatch.address} via partial match to ${bestMatch.symbol}`);
-          } else {
-            logger.warn(`Could not resolve token symbol: ${symbol}`);
-          }
-        }
-      }
-    }
-
     // Get all pools
-    let pools: PoolBase[] = [];
     const poolService = await this.getPoolService();
-    pools = await this.poolServiceGetPools(poolService, []);
+    const pools = await this.poolServiceGetPools(poolService, []);
     logger.info(`Found ${pools.length} total pools`);
 
-    // Log some sample pools to debug token matching
-    const samplePools = pools.slice(0, 5);
-    samplePools.forEach(pool => {
-      logger.debug(`Sample pool: ${pool.address} with tokens: ${pool.tokens.map(t => t.symbol).join(', ')}`);
-    });
-
-    // Log if there are any known stablecoin pools
-    const stablePools = pools.filter(pool => 
-      pool.tokens.some(t => 
-        t.symbol.toUpperCase().includes('USD') || 
-        t.symbol.toUpperCase().includes('USDT') ||
-        t.symbol.toUpperCase().includes('USDC')
-      )
-    );
-    
-    if (stablePools.length > 0) {
-      logger.debug(`Found ${stablePools.length} pools containing stablecoins`);
-      stablePools.forEach(pool => {
-        logger.debug(`Stablecoin pool: ${pool.address} with tokens: ${pool.tokens.map(t => t.symbol).join(', ')}`);
-      });
-    }
-
-    // Apply filters
-    let filteredPools = [...pools];
-
-    // FILTERING BY TOKEN ADDRESSES AND SYMBOLS
-    // Collect all addresses to filter by (including resolved symbols)
-    const allAddressesToFilterBy = [...tokenAddressesArray];
-    if (hasTokenSymbols && useOfficialTokens) {
-      allAddressesToFilterBy.push(...resolvedAddresses);
-    }
-    
-    // Debug log
-    if (allAddressesToFilterBy.length > 0) {
-      logger.debug(`Filtering pools by addresses: ${allAddressesToFilterBy.join(', ')}`);
-    }
-
     // Filter pools based on our criteria
-    if (hasTokens) {
-      const preFilterCount = filteredPools.length;
-      
-      // For symbol-based searching, we'll be more flexible
-      if (hasTokenSymbols && tokenSymbolsArray.length === 2) {
-        const symbol1 = tokenSymbolsArray[0].toUpperCase();
-        const symbol2 = tokenSymbolsArray[1].toUpperCase();
-        
-        logger.debug(`Looking for pools with symbols ${symbol1} and ${symbol2}`);
-        
-        filteredPools = filteredPools.filter(pool => {
-          // Get normalized pool token symbols (handle variants of the same stablecoin)
-          const poolTokenSymbols = pool.tokens.map(t => t.symbol.toUpperCase());
-          
-          // For stablecoins, be more flexible with the matching but ensure we match the specific stablecoins
-          const isStablecoinSearch = symbol1.includes('USD') || symbol2.includes('USD');
-          
-          if (isStablecoinSearch) {
-            // For stablecoins, check for specific matches instead of general USD matching
-            // Get the specific parts that identify each stablecoin
-            const getSpecificStablecoinType = (symbol: string): string => {
-              if (symbol.includes('USDT')) return 'USDT';
-              if (symbol.includes('USDC')) return 'USDC';
-              if (symbol.includes('DAI')) return 'DAI';
-              if (symbol.includes('BUSD')) return 'BUSD';
-              // Return the whole thing if we can't identify a specific type
-              return symbol;
-            };
-            
-            const type1 = getSpecificStablecoinType(symbol1);
-            const type2 = getSpecificStablecoinType(symbol2);
-            
-            logger.debug(`Looking for stablecoins of types: ${type1} and ${type2}`);
-            
-            // Check if the pool has these specific stablecoin types
-            const hasFirstType = poolTokenSymbols.some(s => s.includes(type1));
-            const hasSecondType = poolTokenSymbols.some(s => s.includes(type2));
-            
-            if (hasFirstType && hasSecondType) {
-              logger.debug(`Found stablecoin pool match: ${pool.address} with tokens ${poolTokenSymbols.join(', ')}`);
-              return true;
-            }
-            
-            return false;
-          } else {
-            // For regular tokens, use exact matching
-            const matches = poolTokenSymbols.includes(symbol1) && poolTokenSymbols.includes(symbol2);
-            
-            if (matches) {
-              logger.debug(`Found exact pool match: ${pool.address} with tokens ${poolTokenSymbols.join(', ')}`);
-              return true;
-            }
-          }
-          
-          return false;
-        });
-      } 
-      // For address-based searching, continue to use exact matching
-      else if (allAddressesToFilterBy.length === 2) {
-        filteredPools = filteredPools.filter(pool => {
-          if (pool.tokens.length !== 2) return false;
-          
-          const poolTokenIds = pool.tokens.map(token => token.id);
-          const matches = 
-            (poolTokenIds.includes(allAddressesToFilterBy[0]) && 
-             poolTokenIds.includes(allAddressesToFilterBy[1]));
-          
-          return matches;
-        });
-      } 
-      // For other cases (more than 2 tokens or mixed filtering)
-      else {
-        filteredPools = filteredPools.filter(pool => {
-          const poolTokenIds = pool.tokens.map(token => token.id);
-          const poolTokenSymbols = pool.tokens.map(token => token.symbol.toUpperCase());
-          
-          // For addresses, require all specified addresses to be in the pool
-          const allAddressesFound = tokenAddressesArray.every(addr =>
-            poolTokenIds.includes(addr)
-          );
-          
-          // For symbols, be more flexible with stablecoins
-          let allSymbolsFound = true;
-          
-          if (hasTokenSymbols) {
-            allSymbolsFound = tokenSymbolsArray.every(symbol => {
-              const upperSymbol = symbol.toUpperCase();
-              const isStablecoin = upperSymbol.includes('USD');
-              
-              if (isStablecoin) {
-                // More precise matching for stablecoins
-                const specificType = upperSymbol.includes('USDT') ? 'USDT' : 
-                                     upperSymbol.includes('USDC') ? 'USDC' :
-                                     upperSymbol.includes('DAI') ? 'DAI' :
-                                     upperSymbol.includes('BUSD') ? 'BUSD' :
-                                     upperSymbol;
-                                     
-                // Look for the specific stablecoin type
-                return poolTokenSymbols.some(s => s.includes(specificType));
-              } else {
-                // Exact matching for regular tokens
-                return poolTokenSymbols.includes(upperSymbol);
-              }
-            });
-          }
-          
-          return (hasTokenSymbols ? allSymbolsFound : true) && 
-                 (hasTokenAddresses ? allAddressesFound : true);
-        });
-      }
-      
-      logger.debug(`Filtered from ${preFilterCount} to ${filteredPools.length} pools based on token criteria`);
-    }
+    let filteredPools = [...pools];
 
     // Filter by pool type if specified
     if (typesArray.length > 0) {
-      const preTypeFilterCount = filteredPools.length;
-      
       filteredPools = filteredPools.filter(pool =>
         pool.type && typesArray.some(type =>
           pool.type.toLowerCase().includes(type.toLowerCase())
         )
       );
-      
-      logger.debug(`Further filtered from ${preTypeFilterCount} to ${filteredPools.length} pools based on pool type`);
     }
 
-    // Process each pool to gather additional information
-    const poolListPromises = filteredPools.map(async (pool) => {
-      try {
-        const [baseToken, quoteToken] = pool.tokens;
-        const baseTokenSymbol = baseToken.symbol;
-        const quoteTokenSymbol = quoteToken.symbol;
-        const poolAddress = pool.address;
+    // Filter by tokens if specified
+    if (hasTokens) {
+      filteredPools = filteredPools.filter(pool => {
+        const poolTokenIds = pool.tokens.map(token => token.id);
+        const poolTokenSymbols = pool.tokens.map(token => token.symbol.toUpperCase());
 
-        let baseTokenAmount = 0;
-        let quoteTokenAmount = 0;
-        let poolPrice = 1;
+        // For addresses, require all specified addresses to be in the pool
+        const allAddressesFound = tokenAddressesArray.every(addr =>
+          poolTokenIds.includes(addr)
+        );
 
-        baseTokenAmount = Number(BigNumber(baseToken.balance.toString())
-            .div(BigNumber(10).pow(baseToken.decimals))
-            .toFixed(baseToken.decimals));
-
-        quoteTokenAmount = Number(BigNumber(quoteToken.balance.toString())
-            .div(BigNumber(10).pow(quoteToken.decimals))
-            .toFixed(quoteToken.decimals));
-
-        // Calculate price
-        try {
-          const assets = this.getAllTokens();
-          const baseTokenId = assets.find(a => a.symbol === baseTokenSymbol)?.address;
-          const quoteTokenId = assets.find(a => a.symbol === quoteTokenSymbol)?.address;
-
-          if (baseTokenId && quoteTokenId) {
-            const amountBN = BigNumber('1');
-
-            const buyQuote = await this.tradeRouterGetBestBuy(
-              tradeRouter, 
-              quoteTokenId, 
-              baseTokenId, 
-              amountBN
-            );
-            
-            const sellQuote = await this.tradeRouterGetBestSell(
-              tradeRouter, 
-              baseTokenId, 
-              quoteTokenId, 
-              amountBN
-            );
-
-            const buyPrice = Number(buyQuote.toHuman().spotPrice);
-            const sellPrice = Number(sellQuote.toHuman().spotPrice);
-            const midPrice = (buyPrice + sellPrice) / 2;
-
-            if (!isNaN(midPrice) && isFinite(midPrice)) {
-              poolPrice = Number(midPrice.toFixed(6));
-            }
-          }
-        } catch (priceError) {
-          // Fallback: derive from ratio
-          if (baseTokenAmount > 0 && quoteTokenAmount > 0) {
-            poolPrice = quoteTokenAmount / baseTokenAmount;
-          }
+        // For symbols, do exact matching
+        let allSymbolsFound = true;
+        if (hasTokenSymbols) {
+          allSymbolsFound = tokenSymbolsArray.every(symbol =>
+            poolTokenSymbols.includes(symbol.toUpperCase())
+          );
         }
 
-        // Calculate TVL
-        const tvl = baseTokenAmount * poolPrice + quoteTokenAmount;
-
-        return {
-          ...pool,
-          address: pool.address,
-          type: pool.type,
-          tokens: [baseTokenSymbol, quoteTokenSymbol],
-          tokenAddresses: [baseToken.id, quoteToken.id],
-          fee: 500/10000,
-          price: poolPrice,
-          volume: 0,
-          tvl: tvl,
-          apr: 0,
-        };
-      } catch (error) {
-        logger.error(`Error processing pool ${pool?.address}: ${error.message}`);
-        return null;
-      }
-    });
-
-    // Wait for all pool info to be processed
-    let poolList = await Promise.all(poolListPromises);
-    poolList = poolList.filter(Boolean);
-    
-    // Final filter to ensure only pools with the exact specified tokens are returned
-    if (hasTokenSymbols && tokenSymbolsArray.length > 0) {
-      const requestedSymbols = tokenSymbolsArray.map(s => s.toUpperCase());
-      logger.debug(`Final filter - requested tokens: ${requestedSymbols.join(', ')}`);
-      
-      poolList = poolList.filter(pool => {
-        // Get the pool tokens in uppercase for consistent comparison
-        const poolTokens = pool.tokens.map(t => String(t).toUpperCase());
-        logger.debug(`Pool ${pool.address} has tokens: ${poolTokens.join(', ')}`);
-        
-        if (requestedSymbols.length === 2) {
-          // For two specific tokens (common case), make sure the pool has exactly these tokens
-          const token1 = requestedSymbols[0];
-          const token2 = requestedSymbols[1];
-          
-          // Special handling for stablecoins
-          const isStablecoinSearch = token1.includes('USD') || token2.includes('USD');
-          
-          if (isStablecoinSearch) {
-            // For stablecoins, check for the specific types
-            const getStablecoinType = (symbol: string) => {
-              if (symbol.includes('USDT')) return 'USDT';
-              if (symbol.includes('USDC')) return 'USDC';
-              if (symbol.includes('DAI')) return 'DAI';
-              if (symbol.includes('BUSD')) return 'BUSD';
-              return symbol;
-            };
-            
-            const type1 = getStablecoinType(token1);
-            const type2 = getStablecoinType(token2);
-            
-            const poolHasToken1 = poolTokens.some(t => t.includes(type1));
-            const poolHasToken2 = poolTokens.some(t => t.includes(type2));
-            
-            return poolHasToken1 && poolHasToken2 && poolTokens.length === 2;
-          } else {
-            // For regular tokens, require exact matches
-            return (
-              poolTokens.includes(token1) && 
-              poolTokens.includes(token2) &&
-              poolTokens.length === 2 // Ensure pool has exactly two tokens
-            );
-          }
-        } else {
-          // For a single token or more than two tokens, ensure all requested tokens are in the pool
-          return requestedSymbols.every(token => {
-            const isStablecoin = token.includes('USD');
-            
-            if (isStablecoin) {
-              // Special handling for stablecoins
-              const stablecoinType = token.includes('USDT') ? 'USDT' : 
-                                    token.includes('USDC') ? 'USDC' :
-                                    token.includes('DAI') ? 'DAI' : 
-                                    token.includes('BUSD') ? 'BUSD' : token;
-                                    
-              return poolTokens.some(t => t.includes(stablecoinType));
-            }
-            
-            return poolTokens.includes(token);
-          });
-        }
+        return (hasTokenSymbols ? allSymbolsFound : true) && 
+               (hasTokenAddresses ? allAddressesFound : true);
       });
-      
-      logger.debug(`After final filtering: ${poolList.length} pools remain`);
     }
-    
+
+    // Map pools to the required format, filtering out special tokens
+    const poolList = filteredPools.map(pool => ({
+      address: pool.address,
+      type: pool.type,
+      tokens: pool.tokens
+        .map(token => token.symbol)
+        .filter(symbol => !symbol.includes('-Pool')) // Filter out special tokens like "2-Pool", "4-Pool"
+    }));
+
     logger.info(`Returning ${poolList.length} pools after filtering`);
     return poolList;
   }

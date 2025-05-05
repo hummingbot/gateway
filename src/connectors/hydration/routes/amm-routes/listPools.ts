@@ -10,12 +10,10 @@ import {HttpException} from '../../../../services/error-handler';
 import {logger} from '../../../../services/logger';
 
 /**
- * Extended request parameters for listPools endpoint with additional filtering options.
+ * Extended request parameters for listPools endpoint with filtering options.
  */
 interface ExtendedListPoolsRequest extends HydrationListPoolsRequest {
   types?: string[];
-  maxNumberOfPages?: number;
-  useOfficialTokens?: boolean;
   tokenSymbols?: string[];
   tokenAddresses?: string[];
 }
@@ -28,8 +26,6 @@ interface ExtendedListPoolsRequest extends HydrationListPoolsRequest {
  * @param types - Array of pool types to filter by (e.g., ['xyk', 'stableswap'])
  * @param tokenSymbols - Array of token symbols to filter by
  * @param tokenAddresses - Array of token addresses to filter by
- * @param useOfficialTokens - Whether to use official token list for symbol resolution
- * @param maxNumberOfPages - Maximum number of pages to fetch
  * @returns List of filtered pools
  */
 export async function listHydrationPools(
@@ -37,9 +33,7 @@ export async function listHydrationPools(
   network: string,
   types: string[] = [],
   tokenSymbols: string[] = [],
-  tokenAddresses: string[] = [],
-  useOfficialTokens: boolean = true,
-  maxNumberOfPages: number = 1
+  tokenAddresses: string[] = []
 ): Promise<HydrationListPoolsResponse> {
   if (!network) {
     throw new HttpException(400, 'Network parameter is required', -1);
@@ -53,9 +47,7 @@ export async function listHydrationPools(
   const pools = await hydration.listPools(
     types,
     tokenSymbols,
-    tokenAddresses,
-    useOfficialTokens,
-    maxNumberOfPages
+    tokenAddresses
   );
 
   return { pools };
@@ -89,16 +81,6 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
               items: { type: 'string' },
               description: 'Pool types to filter by'
             },
-            maxNumberOfPages: { 
-              type: 'integer', 
-              default: 1,
-              description: 'Maximum number of pages to fetch'
-            },
-            useOfficialTokens: { 
-              type: 'boolean', 
-              default: true,
-              description: 'Whether to use official token list for resolution'
-            },
             tokenSymbols: { 
               type: 'array', 
               items: { type: 'string' },
@@ -121,12 +103,9 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
       const {
         network = 'mainnet',
         types = [],
-        maxNumberOfPages = 1,
-        useOfficialTokens = true,
       } = request.query;
 
       // Handle tokenSymbols and tokenAddresses specially to ensure they're properly formatted as arrays
-      // This fixes the case when they're passed as multiple query params with the same name
       let tokenSymbols = request.query.tokenSymbols || [];
       let tokenAddresses = request.query.tokenAddresses || [];
       
@@ -152,9 +131,7 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
           network,
           types,
           tokenSymbols,
-          tokenAddresses,
-          useOfficialTokens,
-          maxNumberOfPages
+          tokenAddresses
         );
 
         return result;
