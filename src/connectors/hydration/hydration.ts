@@ -2,6 +2,7 @@ import {Polkadot} from '../../chains/polkadot/polkadot';
 import {logger} from '../../services/logger';
 import {HydrationConfig} from './hydration.config';
 import {
+  ExternalPoolInfo,
   HydrationAddLiquidityResponse,
   HydrationExecuteSwapResponse,
   HydrationPoolDetails,
@@ -9,6 +10,7 @@ import {
   HydrationQuoteLiquidityResponse,
   HydrationRemoveLiquidityResponse,
   LiquidityQuote,
+  OmniPool,
   PositionStrategyType,
   SwapQuote,
   SwapRoute
@@ -33,71 +35,6 @@ const POOL_TYPE = {
   STABLESWAP: 'stableswap',
   AAVE: 'aave'
 };
-
-// Add the external pool info type
-interface ExternalPoolInfo {
-  address: string;
-  baseTokenAddress: string;
-  quoteTokenAddress: string;
-  feePct: number;
-  price: number;
-  baseTokenAmount: number;
-  quoteTokenAmount: number;
-  poolType: string;
-  liquidity?: number;
-  id: string;
-}
-
-// Add these interfaces before the Hydration class
-interface OmniPoolToken {
-  id: string;
-  balance: {
-    s: number;
-    e: number;
-    c: [number, number];
-  };
-  name: string;
-  icon: string;
-  symbol: string;
-  decimals: number;
-  hubReserves: {
-    s: number;
-    e: number;
-    c: [number, number];
-  };
-  shares: {
-    s: number;
-    e: number;
-    c: [number, number];
-  };
-  tradeable: number;
-  cap: {
-    s: number;
-    e: number;
-    c: [number];
-  };
-  protocolShares: {
-    s: number;
-    e: number;
-    c: [number, number];
-  };
-  isSufficient: boolean;
-  existentialDeposit: string;
-  location?: any;
-  meta?: Record<string, string>;
-}
-
-interface OmniPool {
-  id: string;
-  address: string;
-  type?: string;
-  poolType?: string;
-  hubAssetId: string;
-  maxInRatio: number;
-  maxOutRatio: number;
-  minTradingLimit: number;
-  tokens: OmniPoolToken[];
-}
 
 /**
  * Main class for interacting with the Hydration protocol on Polkadot

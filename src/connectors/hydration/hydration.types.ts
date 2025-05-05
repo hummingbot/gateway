@@ -208,6 +208,71 @@ export interface LiquidityQuote {
   liquidity: number;
 }
 
+// Add the external pool info type
+export interface ExternalPoolInfo {
+  address: string;
+  baseTokenAddress: string;
+  quoteTokenAddress: string;
+  feePct: number;
+  price: number;
+  baseTokenAmount: number;
+  quoteTokenAmount: number;
+  poolType: string;
+  liquidity?: number;
+  id: string;
+}
+
+// Add these interfaces before the Hydration class
+export interface OmniPoolToken {
+  id: string;
+  balance: {
+    s: number;
+    e: number;
+    c: [number, number];
+  };
+  name: string;
+  icon: string;
+  symbol: string;
+  decimals: number;
+  hubReserves: {
+    s: number;
+    e: number;
+    c: [number, number];
+  };
+  shares: {
+    s: number;
+    e: number;
+    c: [number, number];
+  };
+  tradeable: number;
+  cap: {
+    s: number;
+    e: number;
+    c: [number];
+  };
+  protocolShares: {
+    s: number;
+    e: number;
+    c: [number, number];
+  };
+  isSufficient: boolean;
+  existentialDeposit: string;
+  location?: any;
+  meta?: Record<string, string>;
+}
+
+export interface OmniPool {
+  id: string;
+  address: string;
+  type?: string;
+  poolType?: string;
+  hubAssetId: string;
+  maxInRatio: number;
+  maxOutRatio: number;
+  minTradingLimit: number;
+  tokens: OmniPoolToken[];
+}
+
 /**
  * Hydration add liquidity request schema
  */
