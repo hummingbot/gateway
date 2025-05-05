@@ -106,10 +106,15 @@ export class Hydration {
   private static _instances: { [name: string]: Hydration } = {};
   public polkadot: Polkadot;
   public config: HydrationConfig.NetworkConfig;
+  // noinspection JSUnusedLocalSymbols
   private httpProvider: HttpProvider;
+  // noinspection JSUnusedLocalSymbols
   private wsProvider: WsProvider;
+  // noinspection JSUnusedLocalSymbols
   private apiPromise: ApiPromise;
+  // noinspection JSUnusedLocalSymbols
   private poolService: PoolService;
+  // noinspection JSUnusedLocalSymbols
   private _ready: boolean = false;
 
   /**
@@ -204,8 +209,7 @@ export class Hydration {
       const poolData = pools.find((pool) => pool.address === poolAddress || pool.id == poolAddress);
 
       if (!poolData) {
-        logger.error(`Pool not found: ${poolAddress}`);
-        return null;
+        throw new Error(`Pool not found: ${poolAddress}`);
       }
 
       // Validate pool data structure
@@ -944,22 +948,26 @@ export class Hydration {
    * Gets the HTTP provider for the Polkadot node
    */
   public getHttpProvider(): HttpProvider {
-    if (!this.httpProvider) {
-      this.httpProvider = new HttpProvider(this.polkadot.config.network.nodeURL);
-    }
+    // if (!this.httpProvider) {
+    //   this.httpProvider = new HttpProvider(this.polkadot.config.network.nodeURL);
+    // }
+    //
+    // return this.httpProvider;
 
-    return this.httpProvider;
+    return new HttpProvider(this.polkadot.config.network.nodeURL);
   }
 
   /**
    * Gets the WebSocket provider for the Polkadot node
    */
   public getWsProvider(): WsProvider {
-    if (!this.wsProvider) {
-      this.wsProvider = new WsProvider(this.polkadot.config.network.nodeURL);
-    }
+    // if (!this.wsProvider) {
+    //   this.wsProvider = new WsProvider(this.polkadot.config.network.nodeURL);
+    // }
+    //
+    // return this.wsProvider;
 
-    return this.wsProvider;
+    return new WsProvider(this.polkadot.config.network.nodeURL);
   }
 
   /**
@@ -1738,26 +1746,6 @@ export class Hydration {
     // Wait for all pool info to be processed
     let poolList = await Promise.all(poolListPromises);
     poolList = poolList.filter(Boolean);
-    
-    // Filter out stablecoin pairs
-    poolList = poolList.filter(pool => {
-      const poolTokens = pool.tokens.map(t => String(t).toUpperCase());
-      const isStablecoinPair = poolTokens.every(token => 
-        token.includes('USDT') || 
-        token.includes('USDC') || 
-        token.includes('DAI') || 
-        token.includes('BUSD') || 
-        token.includes('TUSD') || 
-        token.includes('USDN') || 
-        token.includes('USDJ') || 
-        token.includes('SUSD') || 
-        token.includes('GUSD') || 
-        token.includes('HUSD') ||
-        token.includes('2-pool') ||
-        token.includes('4-pool')
-      );
-      return !isStablecoinPair;
-    });
     
     // Final filter to ensure only pools with the exact specified tokens are returned
     if (hasTokenSymbols && tokenSymbolsArray.length > 0) {
