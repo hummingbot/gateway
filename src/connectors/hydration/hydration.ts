@@ -321,9 +321,10 @@ export class Hydration {
         const baseToken = this.polkadot.getToken(poolData.tokens[0].symbol);
         const quoteToken = this.polkadot.getToken(poolData.tokens[1].symbol);
 
-        if (!baseToken || !quoteToken) {
-          logger.error(`Failed to retrieve token information for pool ${poolAddress}`);
-          return null;
+        if (!baseToken) {
+          throw new Error(`Base token not found for pool ${poolAddress}: ${poolAddress}`);
+        } else if (!quoteToken) {
+          throw new Error(`Quote token not found for pool ${poolAddress}: ${poolAddress}`);
         }
 
         const poolDataAny = poolData as any;
