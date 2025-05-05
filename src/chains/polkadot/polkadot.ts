@@ -26,8 +26,11 @@ import { BigNumber } from '@galacticcouncil/sdk';
  * transaction operations, and network status for Polkadot networks.
  */
 export class Polkadot {
+  // noinspection JSUnusedGlobalSymbols
   public wsProvider: WsProvider;
+  // noinspection JSUnusedGlobalSymbols
   public httpProvider: HttpProvider;
+  // noinspection JSUnusedGlobalSymbols
   public apiPromise: ApiPromise;
   public network: string;
   public chain: string = 'polkadot';
@@ -81,8 +84,6 @@ export class Polkadot {
     this._keyring = new Keyring({
       type: 'sr25519',
     });
-
-    (await this.getApiPromise()).isReady;
 
     // Load token list
     await this.getTokenList(
@@ -314,6 +315,9 @@ export class Polkadot {
     wallet: KeyringPair,
     symbols?: string[],
   ): Promise<Record<string, number>> {
+    const apiPromise = await this.getApiPromise();
+    await apiPromise.isReady;
+
     const balances: Record<string, number> = {};
     const address = wallet.address;
 
@@ -338,7 +342,7 @@ export class Polkadot {
     );
 
     if (nativeToken) {
-      const accountInfo = await this.apiPromiseQuerySystemAccount(await this.getApiPromise(), address);
+      const accountInfo = await this.apiPromiseQuerySystemAccount(apiPromise, address);
       // Handle different account data structures safely
       let freeBalance = '0';
       let reservedBalance = '0';
@@ -369,7 +373,6 @@ export class Polkadot {
       if (token.symbol === this.nativeTokenSymbol) continue;
       
       // Check if tokens module exists
-      const apiPromise = await this.getApiPromise();
       if (apiPromise.query.tokens && apiPromise.query.tokens.accounts) {
         const assetBalance = await this.apiPromiseQueryTokensAccounts(apiPromise, address, token.address);
         if (assetBalance) {
@@ -520,7 +523,10 @@ export class Polkadot {
    * @returns A Promise that resolves to the current block number
    */
   async getCurrentBlockNumber(): Promise<number> {
-    const header = await this.apiPromiseRpcChainGetHeader(await this.getApiPromise());
+    const apiPromise = await this.getApiPromise();
+    await apiPromise.isReady;
+
+    const header = await this.apiPromiseRpcChainGetHeader(apiPromise);
     return header.number.toNumber();
   }
 
@@ -606,22 +612,22 @@ export class Polkadot {
   /**
    * Estimate gas for a transaction
    * @param gasLimit Optional gas limit for the transaction
-   * @param address Optional address to use for fee estimation
    * @returns A Promise that resolves to the gas estimation
    */
   async estimateTransactionGas(gasLimit?: number): Promise<any> {
-    const api = await this.getApiPromise();
+    const apiPromise = await this.getApiPromise();
+    await apiPromise.isReady;
 
     const feePaymentToken = this.getFeePaymentToken();
     
     // Get the current block header to get the block hash
-    const header = await api.rpc.chain.getHeader();
+    // const header = await apiPromise.rpc.chain.getHeader();
     
     // Get the runtime version to ensure we have the correct metadata
-    const runtimeVersion = await api.rpc.state.getRuntimeVersion();
+    // const runtimeVersion = await apiPromise.rpc.state.getRuntimeVersion();
     
     // Create a sample transfer transaction to estimate base fees
-    const transferTx = api.tx.system.remark('0x00');
+    const transferTx = apiPromise.tx.system.remark('0x00');
     
     const feeAddress = await this.getFirstWalletAddress();
     
@@ -687,22 +693,26 @@ export class Polkadot {
    * Gets the HTTP provider for the Polkadot node
    */
   public getHttpProvider(): HttpProvider {
-    if (!this.httpProvider) {
-      this.httpProvider = new HttpProvider(this.config.network.nodeURL);
-    }
+    // if (!this.httpProvider) {
+    //   this.httpProvider = new HttpProvider(this.config.network.nodeURL);
+    // }
+    //
+    // return this.httpProvider;
 
-    return this.httpProvider;
+    return new HttpProvider(this.config.network.nodeURL);
   }
 
   /**
    * Gets the WebSocket provider for the Polkadot node
    */
   public getWsProvider(): WsProvider {
-    if (!this.wsProvider) {
-      this.wsProvider = new WsProvider(this.config.network.nodeURL);
-    }
+    // if (!this.wsProvider) {
+    //   this.wsProvider = new WsProvider(this.config.network.nodeURL);
+    // }
+    //
+    // return this.wsProvider;
 
-    return this.wsProvider;
+    return new WsProvider(this.config.network.nodeURL);
   }
 
   /**
@@ -720,11 +730,13 @@ export class Polkadot {
    * Gets the ApiPromise instance, creating it if necessary
    */
   public async getApiPromise(): Promise<ApiPromise> {
-    if (!this.apiPromise) {
-      this.apiPromise = await this.apiPromiseCreate({ provider: this.getProvider() });
-    }
+    // if (!this.apiPromise) {
+    //   this.apiPromise = await this.apiPromiseCreate({ provider: this.getProvider() });
+    // }
+    //
+    // return this.apiPromise;
 
-    return this.apiPromise;
+    return await this.apiPromiseCreate({ provider: this.getProvider() });
   }
 
   // Externalized methods with retry/timeout below - must be maintained as is
