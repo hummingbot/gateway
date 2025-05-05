@@ -1739,6 +1739,26 @@ export class Hydration {
     let poolList = await Promise.all(poolListPromises);
     poolList = poolList.filter(Boolean);
     
+    // Filter out stablecoin pairs
+    poolList = poolList.filter(pool => {
+      const poolTokens = pool.tokens.map(t => String(t).toUpperCase());
+      const isStablecoinPair = poolTokens.every(token => 
+        token.includes('USDT') || 
+        token.includes('USDC') || 
+        token.includes('DAI') || 
+        token.includes('BUSD') || 
+        token.includes('TUSD') || 
+        token.includes('USDN') || 
+        token.includes('USDJ') || 
+        token.includes('SUSD') || 
+        token.includes('GUSD') || 
+        token.includes('HUSD') ||
+        token.includes('2-pool') ||
+        token.includes('4-pool')
+      );
+      return !isStablecoinPair;
+    });
+    
     // Final filter to ensure only pools with the exact specified tokens are returned
     if (hasTokenSymbols && tokenSymbolsArray.length > 0) {
       const requestedSymbols = tokenSymbolsArray.map(s => s.toUpperCase());
