@@ -9,7 +9,8 @@ import {
   RemoveLiquidityRequestType, 
   RemoveLiquidityResponseType 
 } from '../../../schemas/trading-types/clmm-schema';
-import { httpBadRequest, ERROR_MESSAGES } from '../../../services/error-handler';
+// Using Fastify's native error handling
+const INVALID_SOLANA_ADDRESS_MESSAGE = (address: string) => `Invalid Solana address: ${address}`;
 import { PublicKey } from '@solana/web3.js';
 
 export async function removeLiquidity(
@@ -28,7 +29,7 @@ export async function removeLiquidity(
     new PublicKey(walletAddress);
   } catch (error) {
     const invalidAddress = error.message.includes(positionAddress) ? 'position' : 'wallet';
-    throw httpBadRequest(ERROR_MESSAGES.INVALID_SOLANA_ADDRESS(invalidAddress));
+    throw fastify.httpErrors.badRequest(INVALID_SOLANA_ADDRESS_MESSAGE(invalidAddress));
   }
 
   const { position, info } = await meteora.getRawPosition(positionAddress, wallet.publicKey);

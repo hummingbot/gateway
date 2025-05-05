@@ -11,13 +11,6 @@ import { percentRegexp } from '../../services/config-manager-v2';
 import { Wallet } from '@coral-xyz/anchor';
 import { logger } from '../../services/logger';
 import { BASE_FEE } from '../../chains/solana/solana';
-import { 
-  HttpException,
-  SIMULATION_ERROR_CODE,
-  SIMULATION_ERROR_MESSAGE,
-  SWAP_ROUTE_FETCH_ERROR_CODE,
-  SWAP_ROUTE_FETCH_ERROR_MESSAGE,
-} from '../../services/error-handler';
 
 const JUPITER_API_RETRY_COUNT = 5;
 const JUPITER_API_RETRY_INTERVAL_MS = 1000;
@@ -150,11 +143,7 @@ export class Jupiter {
       }
     }
 
-    throw new HttpException(
-      503,
-      SWAP_ROUTE_FETCH_ERROR_MESSAGE + `Failed after ${JUPITER_API_RETRY_COUNT} attempts. Last error: ${lastError?.message}`,
-      SWAP_ROUTE_FETCH_ERROR_CODE
-    );
+    throw new Error(`Failed to fetch swap route after ${JUPITER_API_RETRY_COUNT} attempts. Last error: ${lastError?.message}`);
   }
 
   public async simulateTransaction(transaction: VersionedTransaction) {
@@ -183,13 +172,9 @@ export class Jupiter {
       //   unitsConsumed: simulatedTransactionResponse.unitsConsumed,
       // });
 
-      const errorMessage = `${SIMULATION_ERROR_MESSAGE}\nError: ${JSON.stringify(simulatedTransactionResponse.err)}\nProgram Logs: ${logs.join('\n')}`;
+      const errorMessage = `Transaction simulation failed: Error: ${JSON.stringify(simulatedTransactionResponse.err)}\nProgram Logs: ${logs.join('\n')}`;
       
-      throw new HttpException(
-        503,
-        errorMessage,
-        SIMULATION_ERROR_CODE
-      );
+      throw new Error(errorMessage);
     }
   }
 

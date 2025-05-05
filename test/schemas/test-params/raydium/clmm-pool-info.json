@@ -1,0 +1,56 @@
+[
+  {
+    "description": "Basic Raydium CLMM pool info request with tokens",
+    "validRequest": {
+      "network": "mainnet",
+      "baseToken": "SOL",
+      "quoteToken": "USDC",
+      "feeTier": "MEDIUM"
+    },
+    "invalidRequest": {
+      "network": "mainnet",
+      "baseToken": "SOL",
+      "quoteToken": "USDC",
+      "feeTier": "INVALID_FEE_TIER"
+    },
+    "fieldTests": [
+      {
+        "field": "feeTier",
+        "validValue": "MEDIUM",
+        "invalidValue": "INVALID_FEE_TIER",
+        "description": "Testing invalid feeTier value (not in enum)"
+      },
+      {
+        "field": "baseToken",
+        "validValue": "SOL",
+        "invalidValue": 123,
+        "description": "Testing invalid baseToken format (number)"
+      }
+    ]
+  },
+  {
+    "description": "Raydium CLMM pool info request with pool address",
+    "validRequest": {
+      "network": "mainnet",
+      "poolAddress": "7quzvT3yBcbxLMGxbvHBwrXuUeN5xHPGUXUm6eKwLMsW"
+    },
+    "invalidRequest": {
+      "network": 123,
+      "poolAddress": "7quzvT3yBcbxLMGxbvHBwrXuUeN5xHPGUXUm6eKwLMsW"
+    },
+    "fieldTests": [
+      {
+        "field": "network",
+        "validValue": "mainnet",
+        "invalidValue": 123,
+        "description": "Testing invalid network format (number)"
+      },
+      {
+        "field": "poolAddress",
+        "validValue": "7quzvT3yBcbxLMGxbvHBwrXuUeN5xHPGUXUm6eKwLMsW", 
+        "invalidValue": 456,
+        "description": "Testing invalid poolAddress format (number)"
+      }
+    ]
+  }
+]

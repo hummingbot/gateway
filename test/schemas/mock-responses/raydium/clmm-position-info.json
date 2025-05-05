@@ -1,0 +1,64 @@
+[
+  {
+    "validResponse": {
+      "address": "7E2qVUhVgzHkrWP1QCi6fSjU9kZ1KUAvwhzB9h9mzWJA",
+      "poolAddress": "7quzvT3yBcbxLMGxbvHBwrXuUeN5xHPGUXUm6eKwLMsW",
+      "baseTokenAddress": "So11111111111111111111111111111111111111112",
+      "quoteTokenAddress": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "baseTokenAmount": 0.5,
+      "quoteTokenAmount": 15.0,
+      "baseFeeAmount": 0.001,
+      "quoteFeeAmount": 0.03,
+      "lowerBinId": 205700,
+      "upperBinId": 205900,
+      "lowerPrice": 29.0,
+      "upperPrice": 31.0,
+      "price": 30.0
+    },
+    "invalidResponse": {
+      "address": "7E2qVUhVgzHkrWP1QCi6fSjU9kZ1KUAvwhzB9h9mzWJA",
+      "poolAddress": "7quzvT3yBcbxLMGxbvHBwrXuUeN5xHPGUXUm6eKwLMsW",
+      "baseTokenAddress": "So11111111111111111111111111111111111111112",
+      "quoteTokenAddress": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "baseTokenAmount": "0.5",
+      "quoteTokenAmount": 15.0,
+      "baseFeeAmount": 0.001,
+      "quoteFeeAmount": 0.03,
+      "lowerBinId": 205700,
+      "upperBinId": 205900,
+      "lowerPrice": 29.0,
+      "upperPrice": 31.0,
+      "price": 30.0
+    }
+  },
+  {
+    "validResponse": {
+      "address": "7E2qVUhVgzHkrWP1QCi6fSjU9kZ1KUAvwhzB9h9mzWJA",
+      "poolAddress": "7quzvT3yBcbxLMGxbvHBwrXuUeN5xHPGUXUm6eKwLMsW",
+      "baseTokenAddress": "So11111111111111111111111111111111111111112",
+      "quoteTokenAddress": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "baseTokenAmount": 0.5,
+      "quoteTokenAmount": 15.0,
+      "baseFeeAmount": 0.001,
+      "quoteFeeAmount": 0.03,
+      "lowerBinId": 205700,
+      "upperBinId": 205900,
+      "lowerPrice": 29.0,
+      "upperPrice": 31.0,
+      "price": 30.0
+    },
+    "invalidResponse": {
+      "address": "7E2qVUhVgzHkrWP1QCi6fSjU9kZ1KUAvwhzB9h9mzWJA",
+      "poolAddress": "7quzvT3yBcbxLMGxbvHBwrXuUeN5xHPGUXUm6eKwLMsW",
+      "baseTokenAddress": "So11111111111111111111111111111111111111112",
+      "quoteTokenAddress": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "baseTokenAmount": 0.5,
+      "quoteTokenAmount": 15.0,
+      "baseFeeAmount": 0.001,
+      "quoteFeeAmount": 0.03,
+      "lowerPrice": 29.0,
+      "upperPrice": 31.0,
+      "price": 30.0
+    }
+  }
+]

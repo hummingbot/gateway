@@ -1,5 +1,5 @@
 import { Type, Static } from '@sinclair/typebox';
-import { NetworkSelectionRequest, CustomTransactionReceipt, CustomTransactionResponse } from '../services/common-interfaces';
+import { NetworkSelectionRequest, CustomTransactionReceipt, CustomTransactionResponse } from './common-interfaces';
 import { TokenInfo } from '../chains/ethereum/ethereum';
 
 export const EstimateGasRequestSchema = Type.Object({

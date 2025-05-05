@@ -8,19 +8,14 @@ import {
   SignMessageRequest,
   SignMessageResponse,
   GetWalletResponse,
-} from './wallet.routes';
+} from '../system/wallet/schemas';
 import {
   getInitializedChain,
   UnsupportedChainException,
   Chain,
 } from '../services/connection-manager';
-import {
-  ERROR_RETRIEVING_WALLET_ADDRESS_ERROR_CODE,
-  ERROR_RETRIEVING_WALLET_ADDRESS_ERROR_MESSAGE,
-  HttpException,
-  UNKNOWN_CHAIN_ERROR_CODE,
-  UNKNOWN_KNOWN_CHAIN_ERROR_MESSAGE,
-} from '../services/error-handler';
+// Using Fastify's native error handling
+import { FastifyInstance } from 'fastify';
 import { Solana } from '../chains/solana/solana';
 import { Ethereum } from '../chains/ethereum/ethereum';
 
@@ -34,11 +29,12 @@ export async function mkdirIfDoesNotExist(path: string): Promise<void> {
 }
 
 export async function addWallet(
+  fastify: FastifyInstance,
   req: AddWalletRequest
 ): Promise<AddWalletResponse> {
   const passphrase = ConfigManagerCertPassphrase.readPassphrase();
   if (!passphrase) {
-    throw new Error('There is no passphrase');
+    throw fastify.httpErrors.internalServerError('No passphrase configured');
   }
   let connection: Chain;
   let address: string | undefined;
@@ -48,11 +44,7 @@ export async function addWallet(
     connection = await getInitializedChain<Chain>(req.chain, req.network);
   } catch (e) {
     if (e instanceof UnsupportedChainException) {
-      throw new HttpException(
-        500,
-        UNKNOWN_KNOWN_CHAIN_ERROR_MESSAGE(req.chain),
-        UNKNOWN_CHAIN_ERROR_CODE
-      );
+      throw fastify.httpErrors.badRequest(`Unrecognized chain name: ${req.chain}`);
     }
     throw e;
   }
@@ -74,13 +66,11 @@ export async function addWallet(
       );
     }
     if (address === undefined || encryptedPrivateKey === undefined) {
-      throw new Error('ERROR_RETRIEVING_WALLET_ADDRESS_ERROR_CODE');
+      throw fastify.httpErrors.internalServerError('Unable to retrieve wallet address');
     }
   } catch (_e: unknown) {
-    throw new HttpException(
-      500,
-      ERROR_RETRIEVING_WALLET_ADDRESS_ERROR_MESSAGE(req.privateKey),
-      ERROR_RETRIEVING_WALLET_ADDRESS_ERROR_CODE
+    throw fastify.httpErrors.badRequest(
+      `Unable to retrieve wallet address for provided private key: ${req.privateKey.substring(0, 5)}...`
     );
   }
   const path = `${walletPath}/${req.chain}`;
@@ -89,17 +79,37 @@ export async function addWallet(
   return { address };
 }
 
-export async function removeWallet(req: RemoveWalletRequest): Promise<void> {
+export async function removeWallet(
+  fastify: FastifyInstance,
+  req: RemoveWalletRequest
+): Promise<void> {
   logger.info(`Removing wallet: ${req.address} from chain: ${req.chain}`);
-  await fse.remove(`${walletPath}/${req.chain}/${req.address}.json`);
+  try {
+    await fse.remove(`${walletPath}/${req.chain}/${req.address}.json`);
+  } catch (error) {
+    throw fastify.httpErrors.internalServerError(`Failed to remove wallet: ${error.message}`);
+  }
 }
 
-export async function signMessage(req: SignMessageRequest): Promise<SignMessageResponse> {
+export async function signMessage(
+  fastify: FastifyInstance,
+  req: SignMessageRequest
+): Promise<SignMessageResponse> {
   logger.info(`Signing message for wallet: ${req.address} on chain: ${req.chain}`);
-  const connection = await getInitializedChain(req.chain, req.network);
-  const wallet = await (connection as any).getWallet(req.address);
-  const signature = await wallet.signMessage(req.message);
-  return { signature };
+  try {
+    const connection = await getInitializedChain(req.chain, req.network);
+    const wallet = await (connection as any).getWallet(req.address);
+    if (!wallet) {
+      throw fastify.httpErrors.notFound(`Wallet ${req.address} not found for chain ${req.chain}`);
+    }
+    const signature = await wallet.signMessage(req.message);
+    return { signature };
+  } catch (error) {
+    if (error.statusCode) {
+      throw error;
+    }
+    throw fastify.httpErrors.internalServerError(`Failed to sign message: ${error.message}`);
+  }
 }
 
 async function getDirectories(source: string): Promise<string[]> {
@@ -121,18 +131,24 @@ async function getJsonFiles(source: string): Promise<string[]> {
     .map((f) => f.name);
 }
 
-export async function getWallets(): Promise<GetWalletResponse[]> {
+export async function getWallets(
+  fastify: FastifyInstance
+): Promise<GetWalletResponse[]> {
   logger.info('Getting all wallets');
-  const chains = await getDirectories(walletPath);
+  try {
+    const chains = await getDirectories(walletPath);
 
-  const responses: GetWalletResponse[] = [];
-  for (const chain of chains) {
-    const walletFiles = await getJsonFiles(`${walletPath}/${chain}`);
-    responses.push({
-      chain,
-      walletAddresses: walletFiles.map(file => dropExtension(file))
-    });
+    const responses: GetWalletResponse[] = [];
+    for (const chain of chains) {
+      const walletFiles = await getJsonFiles(`${walletPath}/${chain}`);
+      responses.push({
+        chain,
+        walletAddresses: walletFiles.map(file => dropExtension(file))
+      });
+    }
+
+    return responses;
+  } catch (error) {
+    throw fastify.httpErrors.internalServerError(`Failed to get wallets: ${error.message}`);
   }
-
-  return responses;
 }

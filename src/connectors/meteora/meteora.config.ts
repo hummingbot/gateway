@@ -1,4 +1,4 @@
-import { AvailableNetworks } from '../connector.requests';
+import { AvailableNetworks } from '../connector.interfaces';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 
 export namespace MeteoraConfig {

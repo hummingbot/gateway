@@ -10,14 +10,11 @@ import { promisify } from 'util';
 // Internal services
 import { logger } from './services/logger';
 import { getHttpsOptions } from './https';
-import { errorHandler } from './services/error-handler';
 import { ConfigManagerV2 } from './services/config-manager-v2';
 import { asciiLogo } from './index';
 
 // Routes
-import { configRoutes } from './config/config.routes';
-import { walletRoutes } from './wallet/wallet.routes';
-import { connectorsRoutes } from './connectors/connector.routes';
+import { systemRoutes } from './system/routes';
 import { solanaRoutes } from './chains/solana/solana.routes';
 import { ethereumRoutes } from './chains/ethereum/ethereum.routes';
 import { jupiterRoutes } from './connectors/jupiter/jupiter.routes';
@@ -154,9 +151,10 @@ const configureGatewayServer = () => {
 
   // Register routes on both servers
   const registerRoutes = async (app: FastifyInstance) => {
-    app.register(configRoutes, { prefix: '/config' });
-    app.register(connectorsRoutes, { prefix: '/connectors' });
-    app.register(walletRoutes, { prefix: '/wallet' });
+    // Register system routes (config, connectors, wallet)
+    app.register(systemRoutes);
+    
+    // Register DEX connector routes
     app.register(jupiterRoutes.swap, { prefix: '/jupiter' });
     
     // Meteora routes
@@ -167,6 +165,8 @@ const configureGatewayServer = () => {
     app.register(raydiumRoutes.amm, { prefix: '/raydium/amm' });
     
     app.register(uniswapRoutes, { prefix: '/uniswap' });
+    
+    // Register chain routes
     app.register(solanaRoutes, { prefix: '/solana' });
     app.register(ethereumRoutes, { prefix: '/ethereum' });
   };
@@ -182,7 +182,40 @@ const configureGatewayServer = () => {
   server.addContentTypeParser('application/json', { parseAs: 'string' }, server.getDefaultJsonParser('ignore', 'ignore'));
 
   // Global error handler
-  server.setErrorHandler(errorHandler);
+  server.setErrorHandler((error, request, reply) => {
+    // Handle validation errors
+    if ('validation' in error && error.validation) {
+      return reply.status(400).send({
+        statusCode: 400,
+        error: 'Validation Error',
+        message: error.message,
+        validation: error.validation
+      });
+    }
+
+    // Handle Fastify's native errors
+    if (error.statusCode && error.statusCode >= 400) {
+      return reply.status(error.statusCode).send({
+        statusCode: error.statusCode,
+        error: error.name,
+        message: error.message
+      });
+    }
+
+    // Log and handle unexpected errors
+    logger.error('Unhandled error:', {
+      error: error.message,
+      stack: error.stack,
+      url: request.url,
+      params: request.params
+    });
+
+    reply.status(500).send({
+      statusCode: 500,
+      error: 'Internal Server Error',
+      message: 'An unexpected error occurred'
+    });
+  });
 
   // Health check route (outside registerRoutes, only on main server)
   server.get('/', async () => {

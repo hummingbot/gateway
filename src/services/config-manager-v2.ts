@@ -23,11 +23,12 @@ interface ConfigurationRoot {
   configurations: ConfigurationNamespaceDefinitions;
 }
 const NamespaceTag: string = '$namespace ';
+// Adjust paths to work with the compiled structure
 export const ConfigRootSchemaPath: string = path.join(
-  __dirname,
-  'schema/configuration-root-schema.json'
+  rootPath(),
+  'dist/src/schemas/json/configuration-root-schema.json'
 );
-const ConfigTemplatesDir: string = path.join(__dirname, '../templates/');
+const ConfigTemplatesDir: string = path.join(rootPath(), 'dist/templates/');
 const ConfigDir: string = path.join(rootPath(), 'conf/');
 
 interface UnpackedConfigNamespace {
@@ -441,7 +442,8 @@ export class ConfigManagerV2 {
             namespaceDefinition[key] = path.join(configRootDir, filePath);
           } else if (key === 'schemaPath') {
             namespaceDefinition[key] = path.join(
-              path.dirname(ConfigRootSchemaPath),
+              rootPath(),
+              'dist/src/schemas/json',
               filePath
             );
           }

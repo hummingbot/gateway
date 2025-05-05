@@ -1,0 +1,22 @@
+[
+  {
+    "description": "Basic gas estimation request",
+    "validRequest": {
+      "network": "base"
+    },
+    "invalidRequest": {
+      "gasLimit": 200000
+    }
+  },
+  {
+    "description": "Gas estimation with gas limit",
+    "validRequest": {
+      "network": "base",
+      "gasLimit": 200000
+    },
+    "invalidRequest": {
+      "network": "base",
+      "gasLimit": "200000"
+    }
+  }
+]

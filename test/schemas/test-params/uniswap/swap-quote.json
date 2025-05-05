@@ -1,0 +1,40 @@
+[
+  {
+    "description": "Basic swap quote request",
+    "validRequest": {
+      "network": "base",
+      "baseToken": "ETH",
+      "quoteToken": "USDC",
+      "amount": 1.0,
+      "side": "SELL",
+      "slippagePct": 0.5
+    },
+    "invalidRequest": {
+      "network": "base",
+      "baseToken": "ETH",
+      "quoteToken": "USDC",
+      "amount": "1.0",
+      "side": "SELL",
+      "slippagePct": 0.5
+    }
+  },
+  {
+    "description": "Swap quote with pool address",
+    "validRequest": {
+      "network": "base",
+      "baseToken": "ETH",
+      "quoteToken": "USDC",
+      "amount": 1.0,
+      "side": "BUY",
+      "poolAddress": "0x4c36388be6f416a29c8d8eee81c771ce6be14b18"
+    },
+    "invalidRequest": {
+      "network": "base",
+      "baseToken": "ETH",
+      "quoteToken": "USDC",
+      "amount": 1.0,
+      "side": "INVALID_SIDE",
+      "poolAddress": "0x4c36388be6f416a29c8d8eee81c771ce6be14b18"
+    }
+  }
+]

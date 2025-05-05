@@ -1,0 +1,57 @@
+[
+  {
+    "validResponse": {
+      "address": "0x4c36388be6f416a29c8d8eee81c771ce6be14b18",
+      "baseTokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "quoteTokenAddress": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      "feePct": 0.3,
+      "price": 3000.0,
+      "baseTokenAmount": 50.0,
+      "quoteTokenAmount": 150000.0,
+      "lpMint": {
+        "address": "0x4c36388be6f416a29c8d8eee81c771ce6be14b18",
+        "decimals": 18
+      }
+    },
+    "invalidResponse": {
+      "address": "0x4c36388be6f416a29c8d8eee81c771ce6be14b18",
+      "baseTokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "quoteTokenAddress": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      "feePct": "0.3", 
+      "price": 3000.0,
+      "baseTokenAmount": 50.0,
+      "quoteTokenAmount": 150000.0,
+      "lpMint": {
+        "address": "0x4c36388be6f416a29c8d8eee81c771ce6be14b18"
+      }
+    }
+  },
+  {
+    "validResponse": {
+      "address": "0x4c36388be6f416a29c8d8eee81c771ce6be14b18",
+      "baseTokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "quoteTokenAddress": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      "feePct": 0.3,
+      "price": 3000.0,
+      "baseTokenAmount": 50.0,
+      "quoteTokenAmount": 150000.0,
+      "lpMint": {
+        "address": "0x4c36388be6f416a29c8d8eee81c771ce6be14b18",
+        "decimals": 18
+      }
+    },
+    "invalidResponse": {
+      "address": 123, 
+      "baseTokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "quoteTokenAddress": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      "feePct": 0.3,
+      "price": 3000.0,
+      "baseTokenAmount": 50.0,
+      "quoteTokenAmount": 150000.0,
+      "lpMint": {
+        "address": "0x4c36388be6f416a29c8d8eee81c771ce6be14b18",
+        "decimals": 18
+      }
+    }
+  }
+]

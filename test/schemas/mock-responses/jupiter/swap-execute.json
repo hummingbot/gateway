@@ -1,0 +1,38 @@
+[
+  {
+    "validResponse": {
+      "signature": "5KtPn1LGuxhPdNK7Lr13Jxj5JBAf7xTEEBs4iFBtVGZSDYgAQECXfXnGQ2jiAiRHNLbz8pT8xcTKfPZ9jQpKGNZR",
+      "totalInputSwapped": 1.0,
+      "totalOutputSwapped": 30.0,
+      "fee": 0.0001,
+      "baseTokenBalanceChange": -1.0,
+      "quoteTokenBalanceChange": 30.0
+    },
+    "invalidResponse": {
+      "signature": 12345,
+      "totalInputSwapped": 1.0,
+      "totalOutputSwapped": 30.0,
+      "fee": 0.0001,
+      "baseTokenBalanceChange": -1.0,
+      "quoteTokenBalanceChange": 30.0
+    }
+  },
+  {
+    "validResponse": {
+      "signature": "4YtGpQPGkKhffNNrKWLYBKEj6EYYvpNTmL9EMZGvqRPvP1JLxvAGGM5amVsoJ2xNQ7FU1ATjDnZvgdJ35rmNkwmL",
+      "totalInputSwapped": 0.5,
+      "totalOutputSwapped": 15.0,
+      "fee": 0.0001,
+      "baseTokenBalanceChange": -0.5,
+      "quoteTokenBalanceChange": 15.0
+    },
+    "invalidResponse": {
+      "signature": "4YtGpQPGkKhffNNrKWLYBKEj6EYYvpNTmL9EMZGvqRPvP1JLxvAGGM5amVsoJ2xNQ7FU1ATjDnZvgdJ35rmNkwmL",
+      "totalInputSwapped": "0.5",
+      "totalOutputSwapped": 15.0,
+      "fee": 0.0001,
+      "baseTokenBalanceChange": -0.5,
+      "quoteTokenBalanceChange": 15.0
+    }
+  }
+]

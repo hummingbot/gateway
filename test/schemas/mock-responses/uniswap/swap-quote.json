@@ -1,0 +1,57 @@
+[
+  {
+    "validResponse": {
+      "poolAddress": "0x4c36388be6f416a29c8d8eee81c771ce6be14b18",
+      "estimatedAmountIn": 1.0,
+      "estimatedAmountOut": 3000.0,
+      "minAmountOut": 2970.0,
+      "maxAmountIn": 1.05,
+      "baseTokenBalanceChange": -1.0,
+      "quoteTokenBalanceChange": 3000.0,
+      "price": 3000.0,
+      "gasPrice": 1000000000,
+      "gasLimit": 200000,
+      "gasCost": 0.0002
+    },
+    "invalidResponse": {
+      "poolAddress": "0x4c36388be6f416a29c8d8eee81c771ce6be14b18",
+      "estimatedAmountIn": 1.0,
+      "estimatedAmountOut": 3000.0,
+      "minAmountOut": 2970.0,
+      "maxAmountIn": 1.05,
+      "baseTokenBalanceChange": -1.0,
+      "quoteTokenBalanceChange": 3000.0,
+      "price": 3000.0,
+      "gasPrice": "1000000000",
+      "gasLimit": 200000,
+      "gasCost": 0.0002
+    }
+  },
+  {
+    "validResponse": {
+      "poolAddress": "0x4c36388be6f416a29c8d8eee81c771ce6be14b18",
+      "estimatedAmountIn": 0.33,
+      "estimatedAmountOut": 1000.0,
+      "minAmountOut": 995.0,
+      "maxAmountIn": 0.335,
+      "baseTokenBalanceChange": -0.33,
+      "quoteTokenBalanceChange": 1000.0,
+      "price": 3030.3,
+      "gasPrice": 1000000000,
+      "gasLimit": 200000,
+      "gasCost": 0.0002
+    },
+    "invalidResponse": {
+      "poolAddress": "0x4c36388be6f416a29c8d8eee81c771ce6be14b18",
+      "estimatedAmountIn": 0.33,
+      "estimatedAmountOut": 1000.0,
+      "minAmountOut": 995.0,
+      "baseTokenBalanceChange": -0.33,
+      "quoteTokenBalanceChange": 1000.0,
+      "price": 3030.3,
+      "gasPrice": 1000000000,
+      "gasLimit": 200000,
+      "gasCost": 0.0002
+    }
+  }
+]

@@ -1,6 +1,6 @@
 import { BigNumber } from 'ethers';
 import { format, fraction, number } from 'mathjs';
-import { isFractionString, isFloatString } from './validators';
+import { isFractionString, isFloatString } from './string-utils';
 import { DecimalUtil } from '@orca-so/common-sdk';
 import { Decimal } from 'decimal.js';
 

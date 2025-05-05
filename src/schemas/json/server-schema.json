@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "certificatePath": { "type": "string" },
+    "logPath": { "type": "string" },
+    "port": { "type": "integer" },
+    "docsPort": { "type": "integer" },
+    "ipWhitelist": { "type": "array" },
+    "GMTOffset": { "type": "number" },
+    "logToStdOut": { "type": "boolean" },
+    "fastifyLogs": { "type": "boolean" },
+    "nonceDbPath": { "type": "string" },
+    "transactionDbPath": { "type": "string" }
+  },
+  "additionalProperties": false,
+  "required": [
+    "port",
+    "certificatePath",
+    "logPath",
+    "nonceDbPath",
+    "transactionDbPath"
+  ]
+}
