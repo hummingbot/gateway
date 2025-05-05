@@ -26,9 +26,9 @@ const NamespaceTag: string = '$namespace ';
 // Adjust paths to work with the compiled structure
 export const ConfigRootSchemaPath: string = path.join(
   rootPath(),
-  'dist/src/schemas/json/configuration-root-schema.json'
+  'dist/src/services/schema/configuration-root-schema.json'
 );
-const ConfigTemplatesDir: string = path.join(rootPath(), 'dist/templates/');
+const ConfigTemplatesDir: string = path.join(__dirname, '../templates/');
 const ConfigDir: string = path.join(rootPath(), 'conf/');
 
 interface UnpackedConfigNamespace {
@@ -443,7 +443,7 @@ export class ConfigManagerV2 {
           } else if (key === 'schemaPath') {
             namespaceDefinition[key] = path.join(
               rootPath(),
-              'dist/src/schemas/json',
+              'dist/src/services/schema',
               filePath
             );
           }

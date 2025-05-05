@@ -9,16 +9,12 @@
     "ipWhitelist": { "type": "array" },
     "GMTOffset": { "type": "number" },
     "logToStdOut": { "type": "boolean" },
-    "fastifyLogs": { "type": "boolean" },
-    "nonceDbPath": { "type": "string" },
-    "transactionDbPath": { "type": "string" }
+    "fastifyLogs": { "type": "boolean" }
   },
   "additionalProperties": false,
   "required": [
     "port",
     "certificatePath",
-    "logPath",
-    "nonceDbPath",
-    "transactionDbPath"
+    "logPath"
   ]
 }

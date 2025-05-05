@@ -6,11 +6,11 @@ import {
   getWallets,
   removeWallet,
 } from '../../src/wallet/wallet.controllers';
-import {
-  HttpException,
-  UNKNOWN_CHAIN_ERROR_CODE,
-  UNKNOWN_KNOWN_CHAIN_ERROR_MESSAGE,
-} from '../../src/services/error-handler';
+// Import HttpException from Solana class since error-handler.ts was removed
+import { Solana } from '../../src/chains/solana/solana';
+const { HttpException } = Solana;
+const UNKNOWN_CHAIN_ERROR_CODE = -1;
+const UNKNOWN_KNOWN_CHAIN_ERROR_MESSAGE = (chain: string) => `Unknown chain: ${chain}`;
 
 import { ConfigManagerCertPassphrase } from '../../src/services/config-manager-cert-passphrase';
 // import { Cosmos } from '../../../src/chains/cosmos/cosmos';

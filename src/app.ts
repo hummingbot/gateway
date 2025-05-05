@@ -57,8 +57,9 @@ const swaggerOptions = {
       { name: 'raydium/clmm', description: 'Raydium CLMM connector endpoints' },
       { name: 'raydium/amm', description: 'Raydium AMM connector endpoints' },
       { name: 'meteora/clmm', description: 'Meteora CLMM connector endpoints' },
-      { name: 'uniswap', description: 'Uniswap connector endpoints' },
       { name: 'ethereum', description: 'Ethereum chain endpoints' },
+      { name: 'uniswap/clmm', description: 'Uniswap V3 connector endpoints' },
+      { name: 'uniswap/amm', description: 'Uniswap V2 connector endpoints' },
     ],
     components: {
       parameters: {
@@ -124,7 +125,7 @@ const configureGatewayServer = () => {
     server.register(fastifySwaggerUi, {
       routePrefix: '/docs',
       uiConfig: {
-        docExpansion: 'list',
+        docExpansion: 'none',
         deepLinking: false,
         tryItOutEnabled: true,
         displayRequestDuration: true,
@@ -142,9 +143,12 @@ const configureGatewayServer = () => {
     docsServer?.register(fastifySwaggerUi, {
       routePrefix: '/',
       uiConfig: {
-        docExpansion: 'list',
+        docExpansion: 'none',
         deepLinking: false,
         tryItOutEnabled: true,
+        displayRequestDuration: true,
+        persistAuthorization: true,
+        filter: true,
       },
     });
   }
