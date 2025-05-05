@@ -1,0 +1,8 @@
+networks:
+  mainnet:
+    nodeURL: 'wss://rpc.hydradx.cloud'
+    transactionURL: 'https://hydration.api.subscan.io/api/scan/extrinsic'
+    tokenListType: 'FILE'
+    tokenListSource: 'src/templates/lists/hydration.json'
+    nativeCurrencySymbol: 'HDX'
+    feePaymentCurrencySymbol: 'HDX'

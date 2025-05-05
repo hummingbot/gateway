@@ -1,15 +1,17 @@
 import { Ethereum } from '../chains/ethereum/ethereum';
 import { Solana } from '../chains/solana/solana';
+import { Polkadot } from '../chains/polkadot/polkadot';
 import { Uniswap } from '../connectors/uniswap/uniswap';
 import { Jupiter } from '../connectors/jupiter/jupiter';
 import { Meteora } from '../connectors/meteora/meteora';
+import { Hydration } from '../connectors/hydration/hydration';
 
 
 export interface Chain {
   // TODO: Add shared chain properties (e.g., network, chainId, etc.)
 }
 
-export type ChainInstance = Ethereum | Solana;
+export type ChainInstance = Ethereum | Solana | Polkadot;
 
 export class UnsupportedChainException extends Error {
   constructor(message?: string) {
@@ -23,11 +25,11 @@ export class UnsupportedChainException extends Error {
   }
 }
 
-export async function getInitializedChain<_T>(
+export async function getInitializedChain<T extends ChainInstance>(
   chain: string,
   network: string,
-): Promise<ChainInstance> {
-  const chainInstance = await getChainInstance(chain, network) as ChainInstance;
+): Promise<T> {
+  const chainInstance = await getChainInstance(chain, network) as T;
 
   if (chainInstance === undefined) {
     throw new UnsupportedChainException(`unsupported chain ${chain}`);
@@ -46,6 +48,8 @@ export async function getChainInstance(
     connection = Ethereum.getInstance(network);
   } else if (chain === 'solana') {
     connection = await Solana.getInstance(network);
+  } else if (chain === 'polkadot') {
+    connection = await Polkadot.getInstance(network);
   } else {
     connection = undefined;
   }
@@ -68,6 +72,8 @@ export async function getConnector(
     return await Jupiter.getInstance(network);
   } else if (connector === 'meteora') {
     return await Meteora.getInstance(network);
+  } else if (connector === 'hydration') {
+    return await Hydration.getInstance(network);
   } else {
     throw new Error('unsupported chain or connector');
   }

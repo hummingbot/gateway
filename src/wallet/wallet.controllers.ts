@@ -12,7 +12,7 @@ import {
 import {
   getInitializedChain,
   UnsupportedChainException,
-  Chain,
+  ChainInstance,
 } from '../services/connection-manager';
 import {
   ERROR_RETRIEVING_WALLET_ADDRESS_ERROR_CODE,
@@ -23,6 +23,7 @@ import {
 } from '../services/error-handler';
 import { Solana } from '../chains/solana/solana';
 import { EthereumBase } from '../chains/ethereum/ethereum-base';
+import { Polkadot } from '../chains/polkadot/polkadot';
 
 const walletPath = './conf/wallets';
 
@@ -40,12 +41,12 @@ export async function addWallet(
   if (!passphrase) {
     throw new Error('There is no passphrase');
   }
-  let connection: Chain;
+  let connection: ChainInstance;
   let address: string | undefined;
   let encryptedPrivateKey: string | undefined;
 
   try {
-    connection = await getInitializedChain<Chain>(req.chain, req.network);
+    connection = await getInitializedChain<ChainInstance>(req.chain, req.network);
   } catch (e) {
     if (e instanceof UnsupportedChainException) {
       throw new HttpException(
@@ -73,6 +74,16 @@ export async function addWallet(
         passphrase
       );
     }
+    else if (connection instanceof Polkadot) {
+      address = connection
+        .getKeyringPairFromMnemonic(req.privateKey)
+        .address.toString();
+      encryptedPrivateKey = await connection.encrypt(
+        req.privateKey,
+        passphrase
+      );
+    }
+
     if (address === undefined || encryptedPrivateKey === undefined) {
       throw new Error('ERROR_RETRIEVING_WALLET_ADDRESS_ERROR_CODE');
     }

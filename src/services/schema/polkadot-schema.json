@@ -1,0 +1,54 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+        "networks": {
+            "type": "object",
+            "patternProperties": {
+                "^.+$": {
+                    "type": "object",
+                    "properties": {
+                        "nodeURL": {
+                            "type": "string",
+                            "description": "WebSocket URL for connecting to the node"
+                        },
+                        "transactionURL": {
+                            "type": "string",
+                            "description": "URL for retrieving transaction information"
+                        },
+                        "tokenListType": {
+                            "type": "string",
+                            "description": "Type of token list source (FILE, URL, etc.)"
+                        },
+                        "tokenListSource": {
+                            "type": "string",
+                            "description": "Path or URL to the token list"
+                        },
+                        "nativeCurrencySymbol": {
+                            "type": "string",
+                            "description": "Symbol of the native currency on the network"
+                        },
+                        "feePaymentCurrencySymbol": {
+                            "type": "string",
+                            "description": "Symbol of the currency used for fee payment"
+                        }
+                    },
+                    "required": [
+                        "nodeURL",
+                        "transactionURL",
+                        "tokenListType",
+                        "tokenListSource",
+                        "nativeCurrencySymbol",
+                        "feePaymentCurrencySymbol"
+                    ],
+                    "additionalProperties": false
+                }
+            },
+            "additionalProperties": false
+        }
+    },
+    "additionalProperties": false,
+    "required": [
+        "networks"
+    ]
+}

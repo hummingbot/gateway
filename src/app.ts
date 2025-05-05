@@ -24,6 +24,8 @@ import { jupiterRoutes } from './connectors/jupiter/jupiter.routes';
 import { meteoraRoutes } from './connectors/meteora/meteora.routes';
 import { uniswapRoutes } from './connectors/uniswap/uniswap.routes';
 import { raydiumRoutes } from './connectors/raydium/raydium.routes';
+import { polkadotRoutes } from './chains/polkadot/polkadot.routes';
+import { hydrationRoutes } from './connectors/hydration/hydration.routes';
 
 
 // Change version for each release
@@ -62,6 +64,8 @@ const swaggerOptions = {
       { name: 'meteora/clmm', description: 'Meteora CLMM connector endpoints' },
       { name: 'uniswap', description: 'Uniswap connector endpoints' },
       { name: 'ethereum', description: 'Ethereum chain endpoints' },
+      { name: 'polkadot', description: 'Polkadot chain endpoints' },
+      { name: 'hydration', description: 'Hydration connector endpoints' },
     ],
     components: {
       parameters: {
@@ -169,6 +173,8 @@ const configureGatewayServer = () => {
     app.register(uniswapRoutes, { prefix: '/uniswap' });
     app.register(solanaRoutes, { prefix: '/solana' });
     app.register(ethereumRoutes, { prefix: '/ethereum' });
+    app.register(polkadotRoutes, { prefix: '/polkadot' });
+    app.register(hydrationRoutes.amm, { prefix: '/hydration/amm' });
   };
 
   // Register routes on main server
