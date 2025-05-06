@@ -5,12 +5,10 @@ import {
   ExternalPoolInfo,
   HydrationAddLiquidityResponse,
   HydrationExecuteSwapResponse,
-  HydrationPoolDetails,
   HydrationPoolInfo,
   HydrationQuoteLiquidityResponse,
   HydrationRemoveLiquidityResponse,
   LiquidityQuote,
-  OmniPool,
   PositionStrategyType,
   SwapQuote,
   SwapRoute
@@ -140,249 +138,105 @@ export class Hydration {
    */
   async getPoolInfo(poolAddress: string): Promise<ExternalPoolInfo | null> {
     try {
-      const tradeRouter = await this.getTradeRouter();
-
-      const pools = await this.poolServiceGetPools(await this.getPoolService(), []);
-      const poolData = pools.find((pool) => pool.address === poolAddress || pool.id == poolAddress);
+      const poolService = await this.getPoolService();
+      const pools = await this.poolServiceGetPools(poolService, []);
+      const poolData = pools.find(pool => pool.address === poolAddress || pool.id === poolAddress);
 
       if (!poolData) {
-        throw new Error(`Pool not found: ${poolAddress}`);
-      }
-
-      // Validate pool data structure
-      if (!poolData.tokens || !Array.isArray(poolData.tokens) || poolData.tokens.length === 0) {
-        logger.error(`Invalid pool data structure for pool ${poolAddress}: missing or invalid tokens array`);
+        logger.error(`Pool not found: ${poolAddress}`);
         return null;
       }
 
-      const isOmnipool = poolData.type?.toLowerCase().includes('omni') || 
-                        (poolData as any).poolType?.toLowerCase().includes('omni');
+      // Check if it's an omnipool
+      const isOmnipool = poolData.type?.toLowerCase() === POOL_TYPE.OMNIPOOL;
 
       if (isOmnipool) {
-        const omniPool = poolData as unknown as OmniPool;
+        // For omnipool, return all available tokens
+        const tokens = poolData.tokens
+          .filter(token => !token.symbol.includes('-Pool'))
+          .map(token => token.symbol);
+
+        // Get hub asset (H2O)
+        const hubAsset = poolData.tokens.find(token => token.symbol === 'H2O');
         
-        // Validate omnipool structure
-        if (!omniPool.hubAssetId || !omniPool.tokens || omniPool.tokens.length === 0) {
-          logger.error(`Invalid omnipool structure for pool ${poolAddress}`);
-          return null;
-        }
-
-        // For omnipools, we need to handle the hub asset and multiple tokens
-        const hubAsset = omniPool.tokens.find(token => token.id === omniPool.hubAssetId);
-        if (!hubAsset) {
-          logger.error(`Hub asset not found in omnipool ${poolAddress}`);
-          return null;
-        }
-
-        // Get the first non-hub token as base token for display purposes
-        const baseToken = omniPool.tokens.find(token => token.id !== omniPool.hubAssetId);
-        if (!baseToken) {
-          logger.error(`No base token found in omnipool ${poolAddress}`);
-          return null;
-        }
-
-        // Calculate total liquidity and reserves
-        let totalLiquidity = 0;
-        let totalHubReserves = 0;
-        let totalTokenReserves = 0;
-
-        omniPool.tokens.forEach(token => {
-          if (token.id !== omniPool.hubAssetId) {
-            try {
-              const tokenBalance = BigNumber(token.balance.c[0].toString())
-                .times(BigNumber(10).pow(token.balance.e))
-                .plus(BigNumber(token.balance.c[1].toString()))
-                .div(BigNumber(10).pow(token.decimals))
-                .toNumber();
-              
-              const hubReserves = BigNumber(token.hubReserves.c[0].toString())
-                .times(BigNumber(10).pow(token.hubReserves.e))
-                .plus(BigNumber(token.hubReserves.c[1].toString()))
-                .div(BigNumber(10).pow(hubAsset.decimals))
-                .toNumber();
-
-              totalTokenReserves += tokenBalance;
-              totalHubReserves += hubReserves;
-              totalLiquidity += Math.sqrt(tokenBalance * hubReserves);
-            } catch (error) {
-              logger.warn(`Error calculating reserves for token ${token.id} in omnipool ${poolAddress}: ${error.message}`);
-            }
-          }
-        });
-
-        // Calculate average price
-        const avgPrice = totalHubReserves > 0 ? totalTokenReserves / totalHubReserves : 1;
-
-        const internalPool: HydrationPoolDetails = {
-          id: omniPool.id,
-          poolAddress,
-          baseToken: {
-            address: baseToken.id,
-            symbol: baseToken.symbol,
-            decimals: baseToken.decimals,
-            name: baseToken.name,
-            chainId: 0 // Omnipool is on the same chain
-          },
-          quoteToken: {
-            address: hubAsset.id,
-            symbol: hubAsset.symbol,
-            decimals: hubAsset.decimals,
-            name: hubAsset.name,
-            chainId: 0
-          },
-          fee: 500, // Default fee for omnipool
-          liquidity: totalLiquidity,
-          sqrtPrice: '1000', // Not applicable for omnipool
-          tick: 0, // Not applicable for omnipool
-          price: avgPrice,
-          volume24h: 0, // Not tracked for omnipool
-          volumeWeek: 0, // Not tracked for omnipool
-          tvl: totalLiquidity,
-          feesUSD24h: 0, // Not tracked for omnipool
-          apr: 0, // Not tracked for omnipool
-          type: POOL_TYPE.OMNIPOOL,
-          baseTokenAmount: totalTokenReserves,
-          quoteTokenAmount: totalHubReserves
-        };
-
-        const externalPool = this.toExternalPoolInfo(internalPool, poolAddress);
-        logger.debug('Omnipool info retrieved successfully');
-        return externalPool;
-      } else {
-        // Handle regular pools
-        if (poolData.tokens.length < 2) {
-          logger.error(`Invalid pool structure for regular pool ${poolAddress}: insufficient tokens`);
-          return null;
-        }
-
-        const baseToken = this.polkadot.getToken(poolData.tokens[0].symbol);
-        const quoteToken = this.polkadot.getToken(poolData.tokens[1].symbol);
-
-        if (!baseToken) {
-          throw new Error(`Base token not found for pool ${poolAddress}: ${poolAddress}`);
-        } else if (!quoteToken) {
-          throw new Error(`Quote token not found for pool ${poolAddress}: ${poolAddress}`);
-        }
-
-        const poolDataAny = poolData as any;
-        let baseTokenAmount = 0;
-        let quoteTokenAmount = 0;
-        let poolPrice = 0;
-
-        try {
-          if (poolData.tokens[0].balance && poolData.tokens[1].balance) {
-            const baseAmount = Number(
-                BigNumber(poolData.tokens[0].balance.toString())
-                    .div(BigNumber(10).pow(baseToken.decimals))
-                    .toFixed(baseToken.decimals)
-            );
-
-            const quoteAmount = Number(
-                BigNumber(poolData.tokens[1].balance.toString())
-                    .div(BigNumber(10).pow(quoteToken.decimals))
-                    .toFixed(quoteToken.decimals),
-            );
-
-            baseTokenAmount = !isNaN(baseAmount) && isFinite(baseAmount) ? baseAmount : 0;
-            quoteTokenAmount = !isNaN(quoteAmount) && isFinite(quoteAmount) ? quoteAmount : 0;
-          }
-
-          try {
-            const assets = this.getAllTokens();
-            const baseTokenId = assets.find(a => a.symbol === poolData.tokens[0].symbol)?.address;
-            const quoteTokenId = assets.find(a => a.symbol === poolData.tokens[1].symbol)?.address;
-
-            if (!baseTokenId || !quoteTokenId) {
-              throw new Error('Failed to find token IDs in trade router');
-            }
-
-            const amountBN = BigNumber('1');
-            const buyQuote = await this.tradeRouterGetBestBuy(
-                tradeRouter,
-                quoteTokenId,
-                baseTokenId,
-                amountBN
-            );
-            
-            const sellQuote = await this.tradeRouterGetBestSell(
-                tradeRouter,
-                baseTokenId,
-                quoteTokenId,
-                amountBN
-            );
-
-            if (buyQuote && sellQuote) {
-              const buyHuman = buyQuote.toHuman();
-              const sellHuman = sellQuote.toHuman();
-
-              const buyPrice = Number(buyHuman.spotPrice);
-              const sellPrice = Number(sellHuman.spotPrice);
-
-              const midPrice = (buyPrice + sellPrice) / 2;
-              poolPrice = !isNaN(midPrice) && isFinite(midPrice)
-                  ? Number(midPrice.toFixed(6))
-                  : 1;
-            }
-          } catch (priceError) {
-            logger.error(`Failed to calculate pool price: ${priceError.message}`);
-            if (quoteTokenAmount > 0 && baseTokenAmount > 0) {
-              poolPrice = quoteTokenAmount / baseTokenAmount;
-            } else {
-              poolPrice = 1;
-            }
-          }
-        } catch (error) {
-          logger.error(`Error calculating token amounts: ${error.message}`);
-          baseTokenAmount = 0;
-          quoteTokenAmount = 0;
-          poolPrice = 1;
-        }
-
-        let liquidity = 1000000;
-        if (poolDataAny.liquidity) {
-          const liquidityValue = typeof poolDataAny.liquidity === 'object' && 'toNumber' in poolDataAny.liquidity ?
-              poolDataAny.liquidity.toNumber() : Number(poolDataAny.liquidity);
-          liquidity = !isNaN(liquidityValue) && isFinite(liquidityValue) ? liquidityValue : 1000000;
-        }
-
-        const internalPool: HydrationPoolDetails = {
+        return {
+          address: poolData.address,
+          baseTokenAddress: hubAsset?.id || '',
+          quoteTokenAddress: poolData.tokens[0]?.id || '',
+          feePct: 500/10000, // Default fee for omnipool
+          price: 1, // Default price for omnipool
+          baseTokenAmount: 0,
+          quoteTokenAmount: 0,
+          poolType: POOL_TYPE.OMNIPOOL,
           id: poolData.id,
-          poolAddress,
-          baseToken: {
-            address: baseToken.address,
-            symbol: baseToken.symbol,
-            decimals: baseToken.decimals,
-            name: baseToken.name,
-            chainId: Number(baseToken.chainId)
-          },
-          quoteToken: {
-            address: quoteToken.address,
-            symbol: quoteToken.symbol,
-            decimals: quoteToken.decimals,
-            name: quoteToken.name,
-            chainId: Number(quoteToken.chainId)
-          },
-          fee: poolDataAny.fee ? Number(poolDataAny.fee) || 500 : 500,
-          liquidity,
-          sqrtPrice: poolDataAny.sqrtPrice ? poolDataAny.sqrtPrice.toString() : '1000',
-          tick: poolDataAny.tick ? Number(poolDataAny.tick) || 0 : 0,
-          price: poolPrice,
-          volume24h: poolDataAny.volume24h ? Number(poolDataAny.volume24h) || 100000 : 100000,
-          volumeWeek: poolDataAny.volumeWeek ? Number(poolDataAny.volumeWeek) || 500000 : 500000,
-          tvl: poolDataAny.tvl ? Number(poolDataAny.tvl) || 1000000 : 1000000,
-          feesUSD24h: poolDataAny.feesUSD24h ? Number(poolDataAny.feesUSD24h) || 1000 : 1000,
-          apr: poolDataAny.apr ? Number(poolDataAny.apr) || 5 : 5,
-          type: poolData.type || 'Unknown',
-          baseTokenAmount,
-          quoteTokenAmount
+          tokens: tokens // Include all available tokens
         };
-
-        const externalPool = this.toExternalPoolInfo(internalPool, poolAddress);
-        logger.debug('Pool info retrieved successfully');
-        return externalPool;
       }
+
+      // For regular pools, continue with existing logic
+      const baseToken = this.polkadot.getToken(poolData.tokens[0].symbol);
+      const quoteToken = this.polkadot.getToken(poolData.tokens[1].symbol);
+
+      if (!baseToken) {
+        throw new Error(`Base token not found for pool ${poolAddress}: ${poolData.tokens[0].symbol}`);
+      } else if (!quoteToken) {
+        throw new Error(`Quote token not found for pool ${poolAddress}: ${poolData.tokens[1].symbol}`);
+      }
+
+      const baseTokenAmount = Number(BigNumber(poolData.tokens[0].balance.toString())
+        .div(BigNumber(10).pow(poolData.tokens[0].decimals))
+        .toFixed(poolData.tokens[0].decimals));
+
+      const quoteTokenAmount = Number(BigNumber(poolData.tokens[1].balance.toString())
+        .div(BigNumber(10).pow(poolData.tokens[1].decimals))
+        .toFixed(poolData.tokens[1].decimals));
+
+      let poolPrice = 1;
+      try {
+        const tradeRouter = await this.getTradeRouter();
+        const amountBN = BigNumber('1');
+
+        const buyQuote = await this.tradeRouterGetBestBuy(
+          tradeRouter,
+          quoteToken.address,
+          baseToken.address,
+          amountBN
+        );
+
+        const sellQuote = await this.tradeRouterGetBestSell(
+          tradeRouter,
+          baseToken.address,
+          quoteToken.address,
+          amountBN
+        );
+
+        const buyPrice = Number(buyQuote.toHuman().spotPrice);
+        const sellPrice = Number(sellQuote.toHuman().spotPrice);
+        const midPrice = (buyPrice + sellPrice) / 2;
+
+        if (!isNaN(midPrice) && isFinite(midPrice)) {
+          poolPrice = Number(midPrice.toFixed(6));
+        }
+      } catch (priceError) {
+        if (baseTokenAmount > 0 && quoteTokenAmount > 0) {
+          poolPrice = quoteTokenAmount / baseTokenAmount;
+        }
+      }
+
+      return {
+        address: poolData.address,
+        baseTokenAddress: baseToken.address,
+        quoteTokenAddress: quoteToken.address,
+        feePct: 500/10000,
+        price: poolPrice,
+        baseTokenAmount,
+        quoteTokenAmount,
+        poolType: poolData.type || 'xyk',
+        id: poolData.id,
+        tokens: [poolData.tokens[0].symbol, poolData.tokens[1].symbol] // Include base and quote tokens
+      };
     } catch (error) {
-      logger.error(`Failed to get pool info for ${poolAddress}: ${error.message}`);
+      logger.error(`Error getting pool info for ${poolAddress}:`, error);
       return null;
     }
   }
@@ -820,42 +674,7 @@ export class Hydration {
       };
     }
   }
-
-  /**
-   * Convert internal pool info to external format
-   * @param internalPool Internal pool information
-   * @param poolAddress Pool address
-   * @returns External pool information
-   */
-  private toExternalPoolInfo(internalPool: HydrationPoolDetails, poolAddress: string): ExternalPoolInfo {
-    return {
-      address: poolAddress,
-      baseTokenAddress: internalPool.baseToken.address,
-      quoteTokenAddress: internalPool.quoteToken.address,
-      feePct: internalPool.fee / 10000,
-      price: internalPool.price,
-      baseTokenAmount: internalPool.baseTokenAmount,
-      quoteTokenAmount: internalPool.quoteTokenAmount,
-      poolType: internalPool.type,
-      liquidity: internalPool.liquidity,
-      id: internalPool.id
-    };
-  }
-
-  /**
-   * Log pool information
-   * @param poolInfo External pool information
-   */
-  private logPoolInfo(poolInfo: ExternalPoolInfo) {
-    logger.debug('Pool info response:', {
-      address: poolInfo.address,
-      poolType: poolInfo.poolType,
-      price: poolInfo.price,
-      feePct: poolInfo.feePct,
-      liquidity: poolInfo.liquidity
-    });
-  }
-
+  
   /**
    * Get token symbol from address
    * @param tokenAddress Token address
@@ -1604,8 +1423,27 @@ export class Hydration {
     if (!poolInfo) {
       return null;
     }
+
+    // For omnipools, we need to include all tokens
+    if (poolInfo.poolType?.toLowerCase() === POOL_TYPE.OMNIPOOL) {
+      return {
+        address: poolInfo.address,
+        baseTokenAddress: poolInfo.baseTokenAddress,
+        quoteTokenAddress: poolInfo.quoteTokenAddress,
+        feePct: poolInfo.feePct,
+        price: poolInfo.price,
+        baseTokenAmount: poolInfo.baseTokenAmount,
+        quoteTokenAmount: poolInfo.quoteTokenAmount,
+        poolType: poolInfo.poolType,
+        lpMint: {
+          address: '', // Not applicable for Polkadot, but required by interface
+          decimals: 0   // Not applicable for Polkadot, but required by interface
+        },
+        tokens: poolInfo.tokens // Include all available tokens
+      };
+    }
     
-    // Map ExternalPoolInfo to HydrationPoolInfo, adding required lpMint field
+    // For other pool types, return standard response
     return {
       address: poolInfo.address,
       baseTokenAddress: poolInfo.baseTokenAddress,
@@ -1618,7 +1456,8 @@ export class Hydration {
       lpMint: {
         address: '', // Not applicable for Polkadot, but required by interface
         decimals: 0   // Not applicable for Polkadot, but required by interface
-      }
+      },
+      tokens: poolInfo.tokens // Include base and quote tokens
     };
   }
 
