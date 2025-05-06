@@ -220,6 +220,23 @@ export interface ExternalPoolInfo {
   poolType: string;
   liquidity?: number;
   id: string;
+  tokens: string[];
+}
+
+// Add new interface for omnipool response
+export interface OmniPoolResponse {
+  address: string;
+  type: string;
+  tokens: string[];
+  hubAssetId?: string;
+  baseTokenAddress?: string;
+  quoteTokenAddress?: string;
+  feePct?: number;
+  price?: number;
+  baseTokenAmount?: number;
+  quoteTokenAmount?: number;
+  liquidity?: number;
+  id?: string;
 }
 
 // Add these interfaces before the Hydration class
@@ -317,7 +334,10 @@ export type HydrationGetPoolInfoRequest = Static<typeof HydrationGetPoolInfoRequ
  * Hydration pool info schema
  */
 export const HydrationPoolInfoSchema = Type.Composite([
-  PoolInfoSchema
+  PoolInfoSchema,
+  Type.Object({
+    tokens: Type.Array(Type.String())
+  })
 ], { $id: 'HydrationPoolInfo' });
 export type HydrationPoolInfo = Static<typeof HydrationPoolInfoSchema>;
 
