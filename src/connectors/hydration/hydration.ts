@@ -1358,73 +1358,52 @@ export class Hydration {
     tokenSymbols: string[] = [],
     tokenAddresses: string[] = []
   ): Promise<PoolItem[]> {
-    // Normalize input arrays
-    const tokenSymbolsArray = Array.isArray(tokenSymbols) ? tokenSymbols : [tokenSymbols].filter(Boolean);
-    const tokenAddressesArray = Array.isArray(tokenAddresses) ? tokenAddresses : [tokenAddresses].filter(Boolean);
-    const typesArray = Array.isArray(types) ? types : [types].filter(Boolean);
+    types = types.map(type => type.toLowerCase());
+    tokenSymbols = tokenSymbols.map(symbol => symbol.toLowerCase());
+    tokenAddresses = tokenAddresses.map(address => address.toLowerCase());
 
-    // Set filtering flags
-    const hasTokenSymbols = tokenSymbolsArray.length > 0;
-    const hasTokenAddresses = tokenAddressesArray.length > 0;
-    const hasTokens = hasTokenSymbols || hasTokenAddresses;
+    const allTokenAddresses = tokenAddresses
+      .concat(tokenSymbols.map(symbol => this.polkadot.getToken(symbol).address.toLowerCase()))
+      .sort((a, b) => a.localeCompare(b));
 
-    logger.info(`Listing Hydration pools with filters: ${JSON.stringify({
-      types: typesArray, 
-      tokenSymbols: tokenSymbolsArray, 
-      tokenAddresses: tokenAddressesArray
-    })}`);
-
-    // Get all pools
+    // Get all pools and token mappings
     const poolService = await this.getPoolService();
     const pools = await this.poolServiceGetPools(poolService, []);
-    logger.info(`Found ${pools.length} total pools`);
-
-    // Filter pools based on our criteria
-    let filteredPools = [...pools];
-
-    // Filter by pool type if specified
-    if (typesArray.length > 0) {
-      filteredPools = filteredPools.filter(pool =>
-        pool.type && typesArray.some(type =>
-          pool.type.toLowerCase().includes(type.toLowerCase())
-        )
-      );
-    }
-
-    // Filter by tokens if specified
-    if (hasTokens) {
-      filteredPools = filteredPools.filter(pool => {
-        const poolTokenIds = pool.tokens.map(token => token.id);
-        const poolTokenSymbols = pool.tokens.map(token => token.symbol.toUpperCase());
-
-        // For addresses, require all specified addresses to be in the pool
-        const allAddressesFound = tokenAddressesArray.every(addr =>
-          poolTokenIds.includes(addr)
-        );
-
-        // For symbols, do exact matching
-        let allSymbolsFound = true;
-        if (hasTokenSymbols) {
-          allSymbolsFound = tokenSymbolsArray.every(symbol =>
-            poolTokenSymbols.includes(symbol.toUpperCase())
-          );
+    
+    const filteredPools = pools.filter(pool => {
+      // Filter by pool type
+      if (types.length > 0) {
+        if (!types.includes(pool.type?.toLowerCase())) {
+          return false;
         }
+      }
 
-        return (hasTokenSymbols ? allSymbolsFound : true) && 
-               (hasTokenAddresses ? allAddressesFound : true);
-      });
-    }
+      // If no token filters, return true
+      if (!(allTokenAddresses.length > 0)){
+        return true;
+      }
 
-    // Map pools to the required format, filtering out special tokens
+      const poolTokenAddresses = pool.tokens
+        .filter(token => !token.symbol.toLowerCase().includes('-pool'))
+        .map(token => token.id.toString().toLowerCase())
+        .sort((a, b) => a.localeCompare(b));
+
+      if (JSON.stringify(poolTokenAddresses) !== JSON.stringify(allTokenAddresses)) {
+        return false;
+      }
+
+      return true;
+    });
+
     const poolList = filteredPools.map(pool => ({
       address: pool.address,
       type: pool.type,
       tokens: pool.tokens
         .map(token => token.symbol)
-        .filter(symbol => !symbol.includes('-Pool')) // Filter out special tokens like "2-Pool", "4-Pool"
+        .filter(symbol => !symbol.includes('-Pool'))
+        .sort((a, b) => a.localeCompare(b))
     }));
 
-    logger.info(`Returning ${poolList.length} pools after filtering`);
     return poolList;
   }
 
