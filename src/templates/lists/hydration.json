@@ -56,27 +56,6 @@
         "decimals": 18
     },
     {
-        "id": "1000081",
-        "name": "Pendulum",
-        "symbol": "PEN",
-        "address": "1000081",
-        "decimals": 12
-    },
-    {
-        "id": "1000085",
-        "name": "Gavun Wud",
-        "symbol": "WUD",
-        "address": "1000085",
-        "decimals": 10
-    },
-    {
-        "id": "15",
-        "name": "Bifrost Voucher DOT",
-        "symbol": "vDOT",
-        "address": "15",
-        "decimals": 10
-    },
-    {
         "id": "24",
         "name": "Subsocial",
         "symbol": "SUB",
@@ -88,13 +67,6 @@
         "name": "Ajuna Network",
         "symbol": "AJUN",
         "address": "32",
-        "decimals": 12
-    },
-    {
-        "id": "1000013",
-        "name": "HDX Bond 03/01/2025",
-        "symbol": "HDXb",
-        "address": "1000013",
         "decimals": 12
     },
     {
@@ -130,13 +102,6 @@
         "name": "Darwinia Network RING",
         "symbol": "RING",
         "address": "31",
-        "decimals": 18
-    },
-    {
-        "id": "33",
-        "name": "Voucher ASTR",
-        "symbol": "vASTR",
-        "address": "33",
         "decimals": 18
     },
     {
@@ -182,13 +147,6 @@
         "decimals": 18
     },
     {
-        "id": "11",
-        "name": "interBTC",
-        "symbol": "iBTC",
-        "address": "11",
-        "decimals": 8
-    },
-    {
         "id": "19",
         "name": "Bitcoin (Moonbeam Wormhole)",
         "symbol": "WBTC",
@@ -208,12 +166,5 @@
         "symbol": "wUSDC",
         "address": "21",
         "decimals": 6
-    },
-    {
-        "id": "1000752",
-        "name": "Solana (Moonbeam Wormhole)",
-        "symbol": "SOL",
-        "address": "1000752",
-        "decimals": 9
     }
 ]
