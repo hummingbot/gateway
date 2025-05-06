@@ -205,15 +205,8 @@
     {
         "id": "21",
         "name": "USDC (Moonbeam Wormhole)",
-        "symbol": "wUSDC",
+        "symbol": "USDC",
         "address": "21",
         "decimals": 6
-    },
-    {
-        "id": "1000752",
-        "name": "Solana (Moonbeam Wormhole)",
-        "symbol": "SOL",
-        "address": "1000752",
-        "decimals": 9
     }
 ]
