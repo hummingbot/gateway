@@ -196,7 +196,7 @@ Gateway follows a modular architecture with clear separation of concerns between
 - **Connectors**: DEX protocol implementations
   - [src/connectors/connector.interfaces.ts](./src/connectors/connector.interfaces.ts): Standard interfaces for all connectors
   - [src/connectors/jupiter/jupiter.ts](./src/connectors/jupiter/jupiter.ts): Jupiter DEX connector for Solana
-  - [src/connectors/raydium/raydium.ts](./src/connectors/raydium/raydium.ts): Raydium DEX connector for Solana (AMM, CLMM, Launchpad)
+  - [src/connectors/raydium/raydium.ts](./src/connectors/raydium/raydium.ts): Raydium DEX connector for Solana (AMM, CLMM)
   - [src/connectors/uniswap/uniswap.ts](./src/connectors/uniswap/uniswap.ts): Uniswap DEX connector for Ethereum
 
 - **System**: Core system components and utilities
@@ -237,16 +237,23 @@ The test directory is organized as follows:
 
 ```
 /test
-  /schemas/                   # Schema and API validation tests 
+  /chains/                    # Chain endpoint tests (ethereum.test.js, solana.test.js)
+  /connectors/                # Connector endpoint tests by protocol
+    /jupiter/                 # Jupiter connector tests
+    /uniswap/                 # Uniswap connector tests
+    /raydium/                 # Raydium connector tests
+    /meteora/                 # Meteora connector tests
+  /mocks/                     # Mock response data
+    /chains/                  # Chain mock responses
+    /connectors/              # Connector mock responses
   /services/                  # Service tests
     /data/                    # Test data files
   /wallet/                    # Wallet tests
   /utils/                     # Test utilities
+  /jest-setup.js              # Test environment configuration
 ```
 
-### Manual tests
-
-We have found it is useful to test individual endpoints with `curl` commands. We have a collection of prepared curl calls. POST bodies are stored in JSON files. Take a look at the [curl calls for gateway](./test-helpers/curl/curl.sh). Note that some environment variables are expected.
+For more details on the test setup and structure, see [Test README](./test/README.md).
 
 ## Adding a New Chain or Connector
 
@@ -263,21 +270,16 @@ We have found it is useful to test individual endpoints with `curl` commands. We
 
 2. Create test mock files:
    ```bash
-   mkdir -p test/schemas/mock-responses/yourchain
-   touch test/schemas/mock-responses/yourchain/balance.json
-   touch test/schemas/mock-responses/yourchain/status.json
-   touch test/schemas/mock-responses/yourchain/estimate-gas.json
+   mkdir -p test/mocks/chains/yourchain
+   touch test/mocks/chains/yourchain/balance.json
+   touch test/mocks/chains/yourchain/status.json
+   touch test/mocks/chains/yourchain/tokens.json
    ```
 
-3. Create test parameter files:
+3. Create chain test file:
    ```bash
-   mkdir -p test/schemas/test-params/yourchain
-   touch test/schemas/test-params/yourchain/balance.json
-   touch test/schemas/test-params/yourchain/status.json
-   touch test/schemas/test-params/yourchain/estimate-gas.json
+   touch test/chains/yourchain.test.js
    ```
-
-4. Create schema test files (if needed) or reuse existing schema tests
 
 ### Adding a New Connector
 
@@ -310,34 +312,34 @@ We have found it is useful to test individual endpoints with `curl` commands. We
 
 4. Create test mock files:
    ```bash
-   mkdir -p test/schemas/mock-responses/yourconnector
-   touch test/schemas/mock-responses/yourconnector/swap-quote.json
-   touch test/schemas/mock-responses/yourconnector/swap-execute.json
+   mkdir -p test/mocks/connectors/yourconnector
+   touch test/mocks/connectors/yourconnector/amm-pool-info.json
+   touch test/mocks/connectors/yourconnector/amm-quote-swap.json
+   touch test/mocks/connectors/yourconnector/clmm-pool-info.json
+   touch test/mocks/connectors/yourconnector/clmm-quote-swap.json
    # Add other mock response files as needed
    ```
 
-5. Create test parameter files:
+5. Create connector test files:
    ```bash
-   mkdir -p test/schemas/test-params/yourconnector
-   touch test/schemas/test-params/yourconnector/swap-quote.json
-   touch test/schemas/test-params/yourconnector/swap-execute.json
-   # Add other test parameter files as needed
+   mkdir -p test/connectors/yourconnector
+   touch test/connectors/yourconnector/amm.test.js
+   touch test/connectors/yourconnector/clmm.test.js
+   touch test/connectors/yourconnector/swap.test.js
    ```
 
-## Linting
+## Linting and Formatting
 
-This repo uses `eslint` and `prettier`. When you run `git commit` it will trigger the `pre-commit` hook. This will run `eslint` on the `src` and `test` directories.
+This repo uses `eslint` and `prettier` for code quality and consistent formatting.
 
-You can lint before committing with:
-
-```bash
-pnpm run lint
-```
-
-You can run the prettifier before committing with:
+Run linting manually with:
 
 ```bash
-pnpm run prettier
+pnpm lint
 ```
 
+Format code with prettier:
 
+```bash
+pnpm format
+```

@@ -10,7 +10,6 @@ export namespace RaydiumConfig {
     // Pool configurations
     amm: PoolsConfig;
     clmm: PoolsConfig;
-    launchpad?: PoolsConfig;
   }
 
   export interface NetworkPoolsConfig {
@@ -43,7 +42,7 @@ export namespace RaydiumConfig {
   };
   
   // Helper methods to get pools for a specific network
-  export const getNetworkPools = (network: string, poolType: 'amm' | 'clmm' | 'launchpad'): PoolsConfig => {
+  export const getNetworkPools = (network: string, poolType: 'amm' | 'clmm'): PoolsConfig => {
     return config.networks[network]?.[poolType] || {};
   };
 }

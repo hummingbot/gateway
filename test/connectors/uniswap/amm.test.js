@@ -22,8 +22,9 @@ axios.post = jest.fn();
 
 // Helper to load mock responses
 function loadMockResponse(filename) {
+  // Use generic connector mocks without network specificiation
   const filePath = path.join(__dirname, '..', '..', 'mocks', 'connectors', 
-    `${CONNECTOR}-${NETWORK}`, `${PROTOCOL}-${filename}.json`);
+    `${CONNECTOR}`, `${PROTOCOL}-${filename}.json`);
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
 

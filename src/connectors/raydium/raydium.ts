@@ -326,7 +326,7 @@ export class Raydium {
     return `${baseToken}-${quoteToken}`;
   }
 
-  async findDefaultPool(baseToken: string, quoteToken: string, routeType: 'amm' | 'clmm' | 'launchpad'): Promise<string | null> {
+  async findDefaultPool(baseToken: string, quoteToken: string, routeType: 'amm' | 'clmm'): Promise<string | null> {
     // Get the network-specific pools
     const network = this.solana.network;
     const pools = RaydiumConfig.getNetworkPools(network, routeType);
@@ -337,60 +337,5 @@ export class Raydium {
     const reversePairKey = this.getPairKey(quoteToken, baseToken);
     
     return pools[pairKey] || pools[reversePairKey] || null;
-  }
-
-  /**
-   * Checks if an address is a valid launchpad pool
-   * @param poolAddress The launchpad pool address to check
-   * @returns True if the pool is a valid launchpad pool
-   */
-  async isValidLaunchpadPool(poolAddress: string): Promise<boolean> {
-    try {
-      const poolAccount = await this.solana.connection.getAccountInfo(new PublicKey(poolAddress));
-      if (!poolAccount) return false;
-      
-      // The LAUNCHPAD_PROGRAM_ID is not directly exported from SDK at the moment
-      // In a real implementation, we would check if the account owner matches the launchpad program ID
-      const LAUNCHPAD_PROGRAM_ID = new PublicKey('LaunchpooLRTWMeqRRQkwBrob83SHDMqXxpW3Q1YKT53'); // Example, would use actual ID from SDK
-      return poolAccount.owner.equals(LAUNCHPAD_PROGRAM_ID);
-    } catch (error) {
-      logger.error(`Error checking launchpad pool: ${error}`);
-      return false;
-    }
-  }
-
-  /**
-   * Get information about a launchpad pool
-   * @param poolAddress The address of the launchpad pool
-   * @returns Pool information or null if not found
-   */
-  async getLaunchpadPoolInfo(poolAddress: string): Promise<any | null> {
-    try {
-      // In real implementation we would call:
-      // 1. Get the pool account data
-      const poolAccountInfo = await this.solana.connection.getAccountInfo(new PublicKey(poolAddress));
-      if (!poolAccountInfo) {
-        logger.warn(`Launchpad pool not found: ${poolAddress}`);
-        return null;
-      }
-      
-      // 2. Decode the pool data using SDK
-      // const poolData = this.raydiumSDK.launchpad.LaunchpadPool.decode(poolAccountInfo.data);
-      logger.info(`Retrieved launchpad pool information for: ${poolAddress}`);
-      
-      // 3. Get configuration data if needed
-      // const configId = poolData.configId;
-      // const configInfo = ... fetch config account data
-      
-      // 4. Return the combined pool information
-      // For testing, return the raw data for now
-      return {
-        id: poolAddress,
-        data: poolAccountInfo.data
-      };
-    } catch (error) {
-      logger.error(`Error getting launchpad pool info: ${error}`);
-      return null;
-    }
   }
 }

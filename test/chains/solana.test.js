@@ -17,7 +17,8 @@ axios.post = jest.fn();
 
 // Helper to load mock responses
 function loadMockResponse(filename) {
-  const filePath = path.join(__dirname, '..', 'mocks', 'chains', `${CHAIN}-${NETWORK}`, `${filename}.json`);
+  // Use generic solana mocks instead of network-specific
+  const filePath = path.join(__dirname, '..', 'mocks', 'chains', `${CHAIN}`, `${filename}.json`);
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
 

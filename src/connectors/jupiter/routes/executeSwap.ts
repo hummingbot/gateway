@@ -109,7 +109,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
             amount: { type: 'number', examples: [0.1] },
             side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
             slippagePct: { type: 'number', examples: [0.5], description: 'Slippage tolerance in percentage (e.g., 0.5 for 0.5%)' },
-            poolAddress: { type: 'string', examples: ['jupiter-aggregator'], description: 'Optional pool address from pool-info route' }
+            poolAddress: { type: 'string', examples: ['jupiter-aggregator'], description: 'Optional pool address for routing' }
           }
         },
         response: { 200: ExecuteSwapResponse }
