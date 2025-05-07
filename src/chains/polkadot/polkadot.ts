@@ -570,11 +570,13 @@ export class Polkadot {
     if (!tokenSymbols) {
       tokens = this.tokenList;
     } else {
-      const symbolsArray = Array.isArray(tokenSymbols)
-          ? tokenSymbols
-          : typeof tokenSymbols === 'string'
-              ? tokenSymbols.replace(/[\[\]]/g, '').split(',')
-              : [];
+      let symbolsArray = Array.isArray(tokenSymbols)
+        ? tokenSymbols
+        : typeof tokenSymbols === 'string'
+          ? tokenSymbols.replace(/[\[\]]/g, '').split(',')
+          : [];
+
+      symbolsArray = [...new Set(symbolsArray)];
 
       for (const symbol of symbolsArray) {
         const token = this.getToken(symbol.trim());
