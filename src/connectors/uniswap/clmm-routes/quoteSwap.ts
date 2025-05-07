@@ -37,10 +37,13 @@ async function quoteClmmSwap(
   slippagePct?: number
 ): Promise<any> {
   try {
-    // Get fee amount from tier string if provided
-    const feeAmount = feeTier ? parseFeeTier(feeTier) : undefined;
+    // Get the V3 pool - prioritize poolAddress
+    // If a feeTier is provided, it's just a hint but we'll use the poolAddress
+    let feeAmount = undefined;
+    if (feeTier) {
+      feeAmount = parseFeeTier(feeTier);
+    }
     
-    // Get the V3 pool
     const pool = await uniswap.getV3Pool(baseToken, quoteToken, feeAmount, poolAddress);
     if (!pool) {
       throw new Error(`Pool not found for ${baseToken.symbol}-${quoteToken.symbol}`);
@@ -71,7 +74,7 @@ async function quoteClmmSwap(
     // Calculate slippage-adjusted amounts
     const slippageTolerance = slippagePct 
       ? new Percent(slippagePct, 100) 
-      : uniswap.getAllowedSlippage(undefined, 'clmm');
+      : uniswap.getAllowedSlippage();
 
     const minAmountOut = exactIn
       ? trade.minimumAmountOut(slippageTolerance).quotient.toString()
@@ -148,7 +151,7 @@ async function formatSwapQuote(
     baseTokenObj,
     quoteTokenObj,
     amount,
-    side,
+    side as 'BUY' | 'SELL',
     feeTier,
     slippagePct
   );
@@ -210,7 +213,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
             quoteToken: { type: 'string', examples: ['USDC'] },
             amount: { type: 'number', examples: [0.01] },
             side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
-            feeTier: { type: 'string', enum: ['LOWEST', 'LOW', 'MEDIUM', 'HIGH'], default: 'MEDIUM' },
+            feeTier: { type: 'string', enum: ['LOWEST', 'LOW', 'MEDIUM', 'HIGH'] },
             slippagePct: { type: 'number', examples: [1] }
           }
         },
@@ -243,18 +246,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         let poolAddress = requestedPoolAddress;
         
         if (!poolAddress) {
-          // Convert feeTier to FeeAmount if provided
-          const feeAmount = feeTier ? parseFeeTier(feeTier) : undefined;
-          
-          // Get base and quote token objects
-          const baseTokenObj = uniswap.getTokenBySymbol(baseToken);
-          const quoteTokenObj = uniswap.getTokenBySymbol(quoteToken);
-          
-          if (!baseTokenObj || !quoteTokenObj) {
-            throw fastify.httpErrors.badRequest(`Token not found: ${!baseTokenObj ? baseToken : quoteToken}`);
-          }
-          
-          // Try to find a V3 pool with the given tokens and fee amount
+          // Look up the pool from configuration pools dictionary
           poolAddress = await uniswap.findDefaultPool(baseToken, quoteToken, 'clmm');
           
           if (!poolAddress) {
@@ -264,6 +256,8 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           }
         }
 
+        // If feeTier is provided, pass it to the quoteClmmSwap function
+        // which will help with price calculation but we'll still use the poolAddress
         return await formatSwapQuote(
           fastify,
           chain,

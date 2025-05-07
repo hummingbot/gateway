@@ -1,9 +1,24 @@
 import { FastifyPluginAsync } from 'fastify';
-import { getConnectorsRoute } from './routes/getConnectors';
+import { getAvailableConnectors } from './utils';
+import { ConnectorsResponse, ConnectorsResponseSchema } from './schemas';
 
 export const connectorsRoutes: FastifyPluginAsync = async (fastify) => {
-  // Register individual route handlers
-  await fastify.register(getConnectorsRoute);
+  fastify.get<{ Reply: ConnectorsResponse }>(
+    '/',
+    {
+      schema: {
+        description: 'Returns a list of available DEX connectors and their supported blockchain networks.',
+        tags: ['connectors'],
+        response: {
+          200: ConnectorsResponseSchema
+        }
+      }
+    },
+    async () => {
+      const connectors = getAvailableConnectors();
+      return { connectors };
+    }
+  );
 };
 
 export default connectorsRoutes;

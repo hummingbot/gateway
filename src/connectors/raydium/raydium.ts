@@ -34,7 +34,7 @@ export class Raydium {
   private owner?: Keypair
 
   private constructor() {
-    this.config = RaydiumConfig.config
+    this.config = RaydiumConfig.config as unknown as RaydiumConfig.NetworkConfig
     this.solana = null
     this.txVersion = TxVersion.V0
   }
@@ -307,9 +307,12 @@ export class Raydium {
     }
   }  
 
-  // General Slippage Settings
-  getSlippagePct(routeType: 'amm' | 'clmm'): number {
-    const allowedSlippage = this.config[routeType].allowedSlippage;
+  /**
+   * Gets the allowed slippage percentage from config
+   * @returns Slippage as a percentage (e.g., 1.0 for 1%)
+   */
+  getSlippagePct(): number {
+    const allowedSlippage = RaydiumConfig.config.allowedSlippage;
     const nd = allowedSlippage.match(percentRegexp);
     let slippage = 0.0;
     if (nd) {
@@ -325,7 +328,12 @@ export class Raydium {
   }
 
   async findDefaultPool(baseToken: string, quoteToken: string, routeType: 'amm' | 'clmm'): Promise<string | null> {
-    const pools = this.config[routeType].pools;
+    // Get the network-specific pools
+    const network = this.solana.network;
+    const pools = RaydiumConfig.getNetworkPools(network, routeType);
+    
+    if (!pools) return null;
+    
     const pairKey = this.getPairKey(baseToken, quoteToken);
     const reversePairKey = this.getPairKey(quoteToken, baseToken);
     

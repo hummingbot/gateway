@@ -4,6 +4,9 @@ import {
 } from '@uniswap/v3-sdk';
 import { Pair as V2Pair } from '@uniswap/v2-sdk';
 import { Token } from '@uniswap/sdk-core';
+import { FastifyInstance } from 'fastify';
+import { TokenInfo } from '../../chains/ethereum/ethereum';
+import { Ethereum } from '../../chains/ethereum/ethereum';
 import { logger } from '../../services/logger';
 import { UniswapConfig } from './uniswap.config';
 
@@ -64,41 +67,34 @@ export const parseFeeTier = (feeTier: string): FeeAmount => {
  * @param baseToken The base token symbol or address
  * @param quoteToken The quote token symbol or address
  * @param poolType 'amm' for Uniswap V2 or 'clmm' for Uniswap V3
+ * @param network Network name (e.g., 'base', 'mainnet') - now required for pool lookup
  * @returns The pool address if found, otherwise null
  */
 export const findPoolAddress = (
   baseToken: string, 
   quoteToken: string, 
-  poolType: 'amm' | 'clmm'
+  poolType: 'amm' | 'clmm',
+  network: string
 ): string | null => {
   const poolKey = `${baseToken}-${quoteToken}`;
   const reversePoolKey = `${quoteToken}-${baseToken}`;
   
   try {
-    if (poolType === 'amm') {
-      // Check AMM (V2) pools
-      if (UniswapConfig.config.amm.pools[poolKey]) {
-        return UniswapConfig.config.amm.pools[poolKey];
-      }
-      
-      // Check reversed pair name
-      if (UniswapConfig.config.amm.pools[reversePoolKey]) {
-        return UniswapConfig.config.amm.pools[reversePoolKey];
-      }
-    } else {
-      // For CLMM (V3), we might have different fee tiers
-      // Try to find a match with any fee tier
-      const allPoolKeys = Object.keys(UniswapConfig.config.clmm.pools);
-      
-      // Look for exact match first
-      for (const key of allPoolKeys) {
-        if (key.startsWith(`${baseToken}-${quoteToken}`) || key.startsWith(`${quoteToken}-${baseToken}`)) {
-          return UniswapConfig.config.clmm.pools[key];
-        }
-      }
+    // Check if we have network-specific pools configuration
+    if (!UniswapConfig.config.networks || !UniswapConfig.config.networks[network]) {
+      logger.error(`Network pools configuration not found for network: ${network}`);
+      return null;
     }
+
+    const networkConfig = UniswapConfig.config.networks[network];
     
-    return null;
+    if (poolType === 'amm') {
+      // Check AMM pools for the given network
+      return networkConfig.amm[poolKey] || networkConfig.amm[reversePoolKey] || null;
+    } else {
+      // Check CLMM pools for the given network
+      return networkConfig.clmm[poolKey] || networkConfig.clmm[reversePoolKey] || null;
+    }
   } catch (error) {
     logger.error(`Error finding pool address: ${error}`);
     return null;
@@ -122,3 +118,41 @@ export const formatTokenAmount = (amount: string | number, decimals: number): nu
     return 0;
   }
 };
+
+/**
+ * Gets a Uniswap Token from a token symbol
+ * This helper function is used by the AMM and CLMM routes
+ * @param fastify Fastify instance for error handling
+ * @param ethereum Ethereum instance to look up tokens
+ * @param tokenSymbol The token symbol to look up
+ * @returns A Uniswap SDK Token object
+ */
+export async function getFullTokenFromSymbol(
+  fastify: FastifyInstance,
+  ethereum: Ethereum,
+  tokenSymbol: string
+): Promise<Token> {
+  if (!ethereum.ready()) {
+    await ethereum.init();
+  }
+  
+  const tokenInfo: TokenInfo = ethereum.getTokenBySymbol(tokenSymbol);
+  
+  if (!tokenInfo) {
+    throw fastify.httpErrors.badRequest(`Token ${tokenSymbol} is not supported`);
+  }
+  
+  const uniswapToken = new Token(
+    tokenInfo.chainId,
+    tokenInfo.address,
+    tokenInfo.decimals,
+    tokenInfo.symbol,
+    tokenInfo.name
+  );
+  
+  if (!uniswapToken) {
+    throw fastify.httpErrors.internalServerError(`Failed to create token for ${tokenSymbol}`);
+  }
+    
+  return uniswapToken;
+}

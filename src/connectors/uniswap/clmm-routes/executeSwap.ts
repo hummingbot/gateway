@@ -168,7 +168,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         // Calculate slippage-adjusted amounts
         const slippageTolerance = slippagePct 
           ? new Percent(slippagePct, 100) 
-          : uniswap.getAllowedSlippage(undefined, 'clmm');
+          : uniswap.getAllowedSlippage();
 
         // Get swap parameters for V3 swap
         const routerSwapParams = SwapRouter.swapCallParameters(trade, {

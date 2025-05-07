@@ -52,6 +52,10 @@ export class Jupiter {
     }
   }
 
+  /**
+   * Gets the allowed slippage percentage from config
+   * @returns Slippage as a percentage (e.g., 1.0 for 1%)
+   */
   getSlippagePct(): number {
     const allowedSlippage = this.config.allowedSlippage;
     const nd = allowedSlippage.match(percentRegexp);

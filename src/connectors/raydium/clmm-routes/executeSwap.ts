@@ -42,7 +42,7 @@ async function executeSwap(
   console.log('poolKeys', poolKeys)
 
   // Use configured slippage if not provided
-  const effectiveSlippage = slippagePct || raydium.getSlippagePct('clmm')
+  const effectiveSlippage = slippagePct || raydium.getSlippagePct()
 
   const { inputToken, outputToken, response, clmmPoolInfo } = await getSwapQuote(
     fastify,

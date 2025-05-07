@@ -63,7 +63,7 @@ async function quoteAmmSwap(
     // Calculate slippage-adjusted amounts
     const slippageTolerance = slippagePct 
       ? new Percent(slippagePct, 100) 
-      : uniswap.getAllowedSlippage(undefined, 'amm');
+      : uniswap.getAllowedSlippage();
 
     const minAmountOut = exactIn
       ? trade.minimumAmountOut(slippageTolerance).quotient.toString()

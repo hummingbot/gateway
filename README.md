@@ -57,8 +57,8 @@ git clone https://github.com/hummingbot/gateway.git
 # Go to newly created folder
 cd gateway
 
-# Switch to `core-2.5 branch
-git checkout core-2.5
+# Switch to main branch (or a specific version branch like core-2.6)
+git checkout main
 ```
 
 ### Setup Gateway
@@ -180,25 +180,37 @@ Here are some ways that you can contribute to Gateway:
 
 - If you want Gateway to log to standard out, set `logToStdOut` to `true` in [conf/server.yml](./conf/server.yml).
 
-- The format of configuration files are dictated by [src/services/config-manager-v2.ts](./src/services/config-manager-v2.ts) and the corresponding schema files in [src/services/schema](./src/services/schema).
+- The format of configuration files are dictated by [src/services/config-manager-v2.ts](./src/services/config-manager-v2.ts) and the corresponding schema files in [src/schemas/json](./src/schemas/json).
 
 - For each supported chain, token lists that translate address to symbols for each chain are stored in `/conf/lists`. You can add tokens here to make them available to Gateway.
 
 
 ## Architecture
 
-Gateway is currently undergoing a large-scale refactor to improve codebase architecture and modularity. The Meteora connector serves as the reference implementation for this new architecture:
+Gateway follows a modular architecture with clear separation of concerns between chains, connectors, and system components:
 
-- [src/connectors/meteora/meteora.ts](./src/connectors/meteora/meteora.ts): Core DEX connector class that implements the standard interface
-- [src/connectors/meteora/meteora.config.ts](./src/connectors/meteora/meteora.config.ts): Configuration for the DEX connector
-- [src/connectors/meteora/meteora.routes.ts](./src/connectors/meteora/meteora.routes.ts): Route definitions and handlers
-- [src/connectors/meteora/routes/](./src/connectors/meteora/routes/): Individual route implementations for each DEX operation
+- **Chains**: Blockchain network implementations
+  - [src/chains/ethereum/ethereum.ts](./src/chains/ethereum/ethereum.ts): Core Ethereum chain operations
+  - [src/chains/solana/solana.ts](./src/chains/solana/solana.ts): Core Solana chain operations
 
-Other key files:
+- **Connectors**: DEX protocol implementations
+  - [src/connectors/connector.interfaces.ts](./src/connectors/connector.interfaces.ts): Standard interfaces for all connectors
+  - [src/connectors/jupiter/jupiter.ts](./src/connectors/jupiter/jupiter.ts): Jupiter DEX connector for Solana
+  - [src/connectors/uniswap/uniswap.ts](./src/connectors/uniswap/uniswap.ts): Uniswap DEX connector for Ethereum
 
-- [src/services/clmm-interface.ts](./src/services/clmm-interface.ts): Standard request and response interfaces for Concentrated Liquidity Market Maker (CLMM) DEXs
-- [src/chains/solana/solana.ts](./src/chains/solana/solana.ts): Base class for Solana chain operations
-- [src/chains/solana/solana.routes.ts](./src/chains/solana/solana.routes.ts): Solana route definitions and handlers
+- **System**: Core system components and utilities
+  - [src/system/wallet/utils.ts](./src/system/wallet/utils.ts): Wallet management utilities
+  - [src/system/config/utils.ts](./src/system/config/utils.ts): Configuration management utilities
+
+- **Schemas**: Common type definitions and schemas
+  - [src/schemas/trading-types/clmm-schema.ts](./src/schemas/trading-types/clmm-schema.ts): Standard schemas for CLMM operations
+  - [src/schemas/trading-types/amm-schema.ts](./src/schemas/trading-types/amm-schema.ts): Standard schemas for AMM operations
+  - [src/schemas/trading-types/swap-schema.ts](./src/schemas/trading-types/swap-schema.ts): Standard schemas for swap operations
+
+- **Services**: Core functionality and utilities
+  - [src/services/config-manager-v2.ts](./src/services/config-manager-v2.ts): Configuration management
+  - [src/services/logger.ts](./src/services/logger.ts): Logging utilities
+  - [src/services/base.ts](./src/services/base.ts): Base service functionality
 
 ## Testing
 
@@ -209,13 +221,36 @@ For a pull request merged into the codebase, it has to pass unit test coverage r
 Run all unit tests.
 
 ```bash
-pnpm test:unit
+pnpm test
 ```
 
 Run an individual test folder or file
 
 ```bash
-pnpm run jest test/<folder>/<file>
+GATEWAY_TEST_MODE=dev jest --runInBand test/<folder>/<file>.test.ts
+```
+
+### Test Structure
+
+The test directory is organized as follows:
+
+```
+/test
+  /schemas/                   # Schema validation tests
+    /chain-schema/            # Chain schema tests
+    /trading-types/           # Trading type schema tests
+      /amm-schema/            # AMM schema tests
+      /clmm-schema/           # CLMM schema tests
+      /swap-schema/           # Swap schema tests
+    /mock-responses/          # Mock response files
+      /ethereum/              # Ethereum mock responses
+      /solana/                # Solana mock responses
+      /jupiter/               # Jupiter mock responses
+      /uniswap/               # Uniswap mock responses
+    /test-params/             # Test parameters
+  /services/                  # Service tests
+    /data/                    # Test data files
+  /wallet/                    # Wallet tests
 ```
 
 ### Manual tests

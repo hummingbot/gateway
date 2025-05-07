@@ -1,15 +1,12 @@
 import { isFractionString } from '../../services/string-utils';
 import { UniswapConfig } from './uniswap.config';
-import { findPoolAddress, parseFeeTier, isValidV2Pool, isValidV3Pool } from './uniswap.utils';
+import { findPoolAddress, isValidV2Pool, isValidV3Pool } from './uniswap.utils';
 import { Ethereum } from '../../chains/ethereum/ethereum';
 
 // V2 (AMM) imports
 import { 
-  Pair as V2Pair,
-  Route as V2Route,
-  Trade as V2Trade
+  Pair as V2Pair
 } from '@uniswap/v2-sdk';
-import { Contract as EthersContract } from '@ethersproject/contracts';
 
 // Define minimal ABIs for Uniswap V2 contracts
 const IUniswapV2PairABI = {
@@ -37,34 +34,21 @@ const IUniswapV2RouterABI = {
 
 // V3 (CLMM) imports
 import { AlphaRouter } from '@uniswap/smart-order-router';
-import { Trade, SwapRouter } from '@uniswap/router-sdk';
 import {
   FeeAmount,
-  MethodParameters,
-  Pool as V3Pool,
-  SwapQuoter,
-  Trade as UniswapV3Trade,
-  Route as V3Route,
-  Position as V3Position,
-  NonfungiblePositionManager
+  Pool as V3Pool
 } from '@uniswap/v3-sdk';
 import { abi as IUniswapV3PoolABI } from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
 import { abi as IUniswapV3FactoryABI } from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Factory.sol/IUniswapV3Factory.json';
 import {
   Token,
   CurrencyAmount,
-  Percent,
-  TradeType,
-  Currency,
-  Fraction,
+  Percent
 } from '@uniswap/sdk-core';
 import {
   BigNumber,
-  Transaction,
-  Wallet,
   Contract,
-  utils,
-  constants,
+  constants
 } from 'ethers';
 import { logger } from '../../services/logger';
 import { percentRegexp } from '../../services/config-manager-v2';
@@ -77,7 +61,7 @@ export class Uniswap {
   private ethereum: Ethereum;
   
   // Configuration
-  public config: UniswapConfig.NetworkConfig;
+  public config: UniswapConfig.RootConfig;
   
   // Common properties
   private chainId: number;
@@ -93,7 +77,6 @@ export class Uniswap {
   private v3Factory: Contract;
   private v3NFTManager: Contract;
   private v3Quoter: Contract;
-  private _feeTier: FeeAmount;
   
   // Network information
   private chainName: string;
@@ -107,9 +90,6 @@ export class Uniswap {
     if (chain !== 'ethereum') {
       throw new Error('Unsupported chain');
     }
-    
-    // Set default fee tier for V3
-    this._feeTier = parseFeeTier('MEDIUM');
   }
 
   public static async getInstance(chain: string, network: string): Promise<Uniswap> {
@@ -193,7 +173,8 @@ export class Uniswap {
       );
       
       // Initialize AlphaRouter for V3 swaps if needed
-      if (this.config.clmm.useRouter) {
+      const useRouter = UniswapConfig.getNetworkUseRouter(this.networkName);
+      if (useRouter) {
         this._alphaRouter = new AlphaRouter({
           chainId: this.chainId,
           provider: this.ethereum.provider,
@@ -276,7 +257,7 @@ export class Uniswap {
       // Find pool address if not provided
       if (!pairAddress) {
         if (typeof tokenA === 'string' && typeof tokenB === 'string') {
-          pairAddress = findPoolAddress(tokenA, tokenB, 'amm');
+          pairAddress = findPoolAddress(tokenA, tokenB, 'amm', this.networkName);
         }
         
         // If still not found, try to get it from the factory
@@ -337,7 +318,6 @@ export class Uniswap {
     try {
       // Resolve pool address if provided
       let poolAddr = poolAddress;
-      const useFeeTier = fee || this._feeTier;
       
       // If tokenA and tokenB are strings, assume they are symbols
       const tokenAObj = typeof tokenA === 'string' 
@@ -355,32 +335,42 @@ export class Uniswap {
       // Find pool address if not provided
       if (!poolAddr) {
         if (typeof tokenA === 'string' && typeof tokenB === 'string') {
-          // Try to find pool with fee tier in name first
-          let feeStr = '';
-          if (fee === FeeAmount.LOWEST) feeStr = '-0.01';
-          else if (fee === FeeAmount.LOW) feeStr = '-0.05';
-          else if (fee === FeeAmount.MEDIUM) feeStr = '-0.3';
-          else if (fee === FeeAmount.HIGH) feeStr = '-1';
-          
-          // Try to find pool with fee in name
-          if (feeStr) {
-            poolAddr = findPoolAddress(`${tokenA}${feeStr}`, tokenB, 'clmm') || 
-                       findPoolAddress(tokenA, `${tokenB}${feeStr}`, 'clmm');
-          }
-          
-          // If still not found, try without fee
-          if (!poolAddr) {
-            poolAddr = findPoolAddress(tokenA, tokenB, 'clmm');
-          }
+          // Try to find pool from the config pools dictionary
+          poolAddr = findPoolAddress(tokenA, tokenB, 'clmm', this.networkName);
         }
         
-        // If still not found, try to get it from the factory
-        if (!poolAddr) {
+        // If still not found and a fee is provided, try to get it from the factory
+        if (!poolAddr && fee) {
           poolAddr = await this.v3Factory.getPool(
             tokenAObj.address,
             tokenBObj.address,
-            useFeeTier
+            fee
           );
+        }
+        
+        // If still not found, try all possible fee tiers
+        if (!poolAddr) {
+          // Try each fee tier
+          const allFeeTiers = [
+            FeeAmount.LOWEST,
+            FeeAmount.LOW,
+            FeeAmount.MEDIUM,
+            FeeAmount.HIGH
+          ];
+          
+          for (const feeTier of allFeeTiers) {
+            if (feeTier === fee) continue; // Skip if we already tried this fee tier
+            
+            poolAddr = await this.v3Factory.getPool(
+              tokenAObj.address,
+              tokenBObj.address,
+              feeTier
+            );
+            
+            if (poolAddr && poolAddr !== constants.AddressZero) {
+              break;
+            }
+          }
         }
       }
       
@@ -433,8 +423,8 @@ export class Uniswap {
     poolType: 'amm' | 'clmm'
   ): Promise<string | null> {
     try {
-      // Try to find pool in the config
-      const poolAddr = findPoolAddress(baseToken, quoteToken, poolType);
+      // Try to find pool in the config pools dictionary, passing in the network
+      const poolAddr = findPoolAddress(baseToken, quoteToken, poolType, this.networkName);
       if (poolAddr) {
         return poolAddr;
       }
@@ -460,24 +450,13 @@ export class Uniswap {
           return pairAddress;
         }
       } else {
-        // V3 pool - try with default fee tier
-        const poolAddress = await this.v3Factory.getPool(
-          baseTokenObj.address,
-          quoteTokenObj.address,
-          this._feeTier
-        );
-        
-        if (poolAddress && poolAddress !== constants.AddressZero) {
-          return poolAddress;
-        }
-        
-        // Try other fee tiers if default tier doesn't work
+        // V3 pool - try all fee tiers
         const feeTiers = [
-          FeeAmount.LOWEST,
-          FeeAmount.LOW,
-          FeeAmount.MEDIUM,
-          FeeAmount.HIGH
-        ].filter(fee => fee !== this._feeTier);
+          FeeAmount.MEDIUM,  // Try medium fee first (0.3%)
+          FeeAmount.LOW,     // Then low (0.05%)
+          FeeAmount.LOWEST,  // Then lowest (0.01%)
+          FeeAmount.HIGH     // Finally high (1%)
+        ];
         
         for (const fee of feeTiers) {
           const addr = await this.v3Factory.getPool(
@@ -501,22 +480,39 @@ export class Uniswap {
   
   /**
    * Get the allowed slippage percent from string or config
+   * @param allowedSlippageStr Optional string representation of slippage value
+   * @returns A Percent object for use with Uniswap SDK
    */
-  public getAllowedSlippage(allowedSlippageStr?: string, poolType: 'amm' | 'clmm' = 'clmm'): Percent {
+  public getAllowedSlippage(allowedSlippageStr?: string): Percent {
     if (allowedSlippageStr != null && isFractionString(allowedSlippageStr)) {
       const fractionSplit = allowedSlippageStr.split('/');
       return new Percent(fractionSplit[0], fractionSplit[1]);
     }
 
-    const allowedSlippage = poolType === 'amm' 
-      ? this.config.amm.allowedSlippage
-      : this.config.clmm.allowedSlippage;
+    // Use the global allowedSlippage setting
+    const allowedSlippage = this.config.allowedSlippage;
       
     const nd = allowedSlippage.match(percentRegexp);
     if (nd) return new Percent(nd[1], nd[2]);
     throw new Error(
       'Encountered a malformed percent string in the config for allowed slippage.'
     );
+  }
+  
+  /**
+   * Gets the allowed slippage percentage from config
+   * @returns Slippage as a percentage (e.g., 1.0 for 1%)
+   */
+  public getSlippagePct(): number {
+    const allowedSlippage = this.config.allowedSlippage;
+    const nd = allowedSlippage.match(percentRegexp);
+    let slippage = 0.0;
+    if (nd) {
+      slippage = Number(nd[1]) / Number(nd[2]);
+    } else {
+      logger.error('Failed to parse slippage value:', allowedSlippage);
+    }
+    return slippage * 100;
   }
 
   /**

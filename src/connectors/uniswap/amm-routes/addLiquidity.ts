@@ -166,7 +166,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         // Calculate slippage-adjusted amounts
         const slippageTolerance = slippagePct 
           ? new Percent(slippagePct, 100) 
-          : uniswap.getAllowedSlippage(undefined, 'amm');
+          : uniswap.getAllowedSlippage();
           
         const slippageMultiplier = new Percent(1).subtract(slippageTolerance);
         

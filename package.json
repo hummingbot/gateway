@@ -14,19 +14,12 @@
     "lint": "eslint src test test-scripts --format table --fix",
     "setup": "./gateway-setup.sh",
     "start": "START_SERVER=true node dist/index.js",
-    "copy-files": "copyfiles 'src/**/schema/*.json' 'src/templates/*.yml' 'src/templates/lists/*.json' 'test/services/data/**/*.*' dist",
+    "copy-files": "copyfiles 'src/schemas/json/*.json' 'src/services/schema/*.json' 'src/templates/*.yml' 'src/templates/lists/*.json' 'test/services/data/**/*.*' dist",
     "test": "GATEWAY_TEST_MODE=dev jest --verbose",
     "test:debug": "GATEWAY_TEST_MODE=dev jest --watch --runInBand",
     "test:unit": "GATEWAY_TEST_MODE=dev jest --runInBand ./test/",
     "test:cov": "GATEWAY_TEST_MODE=dev jest --runInBand --coverage ./test/",
     "test:scripts": "GATEWAY_TEST_MODE=dev jest --runInBand ./test-scripts/*.test.ts",
-    "test:live": "GATEWAY_TEST_MODE=live jest --forceExit --testNamePattern='Live network tests'",
-    "test:schemas": "GATEWAY_TEST_MODE=dev jest --runInBand ./test/schemas/",
-    "test:schemas:chain": "GATEWAY_TEST_MODE=dev jest --runInBand ./test/schemas/chain-schema/",
-    "test:schemas:amm": "GATEWAY_TEST_MODE=dev jest --runInBand ./test/schemas/trading-types/amm-schema/",
-    "test:schemas:clmm": "GATEWAY_TEST_MODE=dev jest --runInBand ./test/schemas/trading-types/clmm-schema/",
-    "test:schemas:swap": "GATEWAY_TEST_MODE=dev jest --runInBand ./test/schemas/trading-types/swap-schema/",
-    "test:live:raydium": "node ./test/schemas/trading-types/live-tests/run-live-tests.js",
     "cli": "node dist/index.js"
   },
   "dependencies": {
@@ -172,6 +165,6 @@
     }
   },
   "bin": {
-    "gateway": "./dist/src/index.js"
+    "gateway": "./dist/index.js"
   }
 }

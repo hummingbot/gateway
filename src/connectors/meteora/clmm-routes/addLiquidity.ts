@@ -1,5 +1,6 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { Meteora } from '../meteora';
+import { MeteoraConfig } from '../meteora.config';
 import { Solana } from '../../../chains/solana/solana';
 import { DecimalUtil } from '@orca-so/common-sdk';
 import { BN } from 'bn.js';
@@ -113,7 +114,7 @@ async function addLiquidity(
     strategy: {
       maxBinId,
       minBinId,
-      strategyType: strategyType ?? meteora.config.strategyType,
+      strategyType: strategyType ?? MeteoraConfig.config.strategyType,
     },
     slippage: slippagePct ?? meteora.getSlippagePct(),
   });

@@ -99,7 +99,7 @@ export const latency = (startTime: number, endTime: number): number => {
   return (endTime - startTime) / 1000;
 };
 
-export const walletPath = './conf/wallets';
+// Wallet path has been moved to src/system/wallet/utils.ts
 
 // convert a fraction string to a number
 export const fromFractionString = (value: string): number | null => {

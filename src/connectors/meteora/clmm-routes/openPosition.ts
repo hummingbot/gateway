@@ -1,5 +1,6 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { Meteora } from '../meteora';
+import { MeteoraConfig } from '../meteora.config';
 import { StrategyType } from '@meteora-ag/dlmm';
 import { Solana } from '../../../chains/solana/solana';
 import { Keypair, PublicKey } from '@solana/web3.js';
@@ -153,7 +154,7 @@ async function openPosition(
     strategy: {
       maxBinId,
       minBinId,
-      strategyType: strategyType ?? meteora.config.strategyType,
+      strategyType: strategyType ?? MeteoraConfig.config.strategyType,
     },
     totalXAmount,
     totalYAmount,

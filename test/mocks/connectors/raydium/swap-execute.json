@@ -1,0 +1,38 @@
+[
+  {
+    "validResponse": {
+      "signature": "2nP5aBUErzJJ5ryqmhUBR4q7iTwFqzuBLpzbNxfGFi9ywsPjxBYKJdJgF2xg18ZWmKTvkHKfJJu9q9QMtfhYbcRg",
+      "totalInputSwapped": 1.0,
+      "totalOutputSwapped": 30.0,
+      "fee": 0.001,
+      "baseTokenBalanceChange": -1.0,
+      "quoteTokenBalanceChange": 30.0
+    },
+    "invalidResponse": {
+      "signature": "2nP5aBUErzJJ5ryqmhUBR4q7iTwFqzuBLpzbNxfGFi9ywsPjxBYKJdJgF2xg18ZWmKTvkHKfJJu9q9QMtfhYbcRg",
+      "totalInputSwapped": "1.0",
+      "totalOutputSwapped": 30.0,
+      "fee": 0.001,
+      "baseTokenBalanceChange": -1.0,
+      "quoteTokenBalanceChange": 30.0
+    }
+  },
+  {
+    "validResponse": {
+      "signature": "2nP5aBUErzJJ5ryqmhUBR4q7iTwFqzuBLpzbNxfGFi9ywsPjxBYKJdJgF2xg18ZWmKTvkHKfJJu9q9QMtfhYbcRg",
+      "totalInputSwapped": 0.33,
+      "totalOutputSwapped": 10.0,
+      "fee": 0.001,
+      "baseTokenBalanceChange": -0.33,
+      "quoteTokenBalanceChange": 10.0
+    },
+    "invalidResponse": {
+      "signature": 123,
+      "totalInputSwapped": 0.33,
+      "totalOutputSwapped": 10.0,
+      "fee": 0.001,
+      "baseTokenBalanceChange": -0.33,
+      "quoteTokenBalanceChange": 10.0
+    }
+  }
+]

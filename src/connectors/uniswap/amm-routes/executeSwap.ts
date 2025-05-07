@@ -216,7 +216,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         // Calculate slippage-adjusted amounts
         const slippageTolerance = slippagePct 
           ? new Percent(slippagePct, 100) 
-          : uniswap.getAllowedSlippage(undefined, 'amm');
+          : uniswap.getAllowedSlippage();
 
         // Get the router contract with signer
         const routerAddress = uniswap.config.uniswapV2RouterAddress(chain, networkToUse);

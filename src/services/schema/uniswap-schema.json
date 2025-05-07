@@ -2,71 +2,35 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "properties": {
-    "amm": {
-      "type": "object",
-      "properties": {
-        "allowedSlippage": { "type": "string" },
-        "gasLimitEstimate": { "type": "integer" },
-        "ttl": { "type": "integer" },
-        "maximumHops": { "type": "integer" },
-        "pools": {
-          "type": "object",
-          "patternProperties": {
-            "^[A-Z]+-[A-Z]+$": {
-              "type": "string"
-            }
-          },
-          "additionalProperties": false
-        }
-      },
-      "required": ["allowedSlippage", "gasLimitEstimate", "ttl", "maximumHops", "pools"],
-      "additionalProperties": false
-    },
-    "clmm": {
-      "type": "object",
-      "properties": {
-        "allowedSlippage": { "type": "string" },
-        "useRouter": { "type": "boolean" },
-        "pools": {
-          "type": "object",
-          "patternProperties": {
-            "^[A-Z]+-[A-Z]+-[0-9]\\.[0-9]+$": {
-              "type": "string"
-            }
-          },
-          "additionalProperties": false
-        }
-      },
-      "required": ["allowedSlippage", "useRouter", "pools"],
-      "additionalProperties": false
-    },
-    "contractAddresses": {
+    "allowedSlippage": { "type": "string" },
+    "networks": {
       "type": "object",
       "patternProperties": {
-        "[\\w-]+$": {
+        "^\\w+$": {
           "type": "object",
-          "patternProperties": {
-            "^\\w+$": {
+          "properties": {
+            "maximumHops": { "type": "integer" },
+            "useRouter": { "type": "boolean" },
+            "amm": {
               "type": "object",
-              "properties": {
-                "uniswapV2RouterAddress": { "type": "string" },
-                "uniswapV2FactoryAddress": { "type": "string" },
-                "uniswapV3SmartOrderRouterAddress": { "type": "string" },
-                "uniswapV3NftManagerAddress": { "type": "string" },
-                "uniswapV3QuoterV2ContractAddress": { "type": "string" },
-                "uniswapV3FactoryAddress": { "type": "string" }
+              "patternProperties": {
+                "^[A-Z]+-[A-Z]+$": {
+                  "type": "string"
+                }
               },
-              "required": [
-                "uniswapV2RouterAddress",
-                "uniswapV2FactoryAddress",
-                "uniswapV3SmartOrderRouterAddress",
-                "uniswapV3NftManagerAddress",
-                "uniswapV3QuoterV2ContractAddress",
-                "uniswapV3FactoryAddress"
-              ],
+              "additionalProperties": false
+            },
+            "clmm": {
+              "type": "object", 
+              "patternProperties": {
+                "^[A-Z]+-[A-Z]+$": {
+                  "type": "string"
+                }
+              },
               "additionalProperties": false
             }
           },
+          "required": ["maximumHops", "useRouter", "amm", "clmm"],
           "additionalProperties": false
         }
       },
@@ -74,5 +38,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["amm", "clmm", "contractAddresses"]
+  "required": ["allowedSlippage", "networks"]
 }

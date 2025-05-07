@@ -68,7 +68,7 @@ async function createRemoveLiquidityTransaction(
   } else if (ammPoolInfo.poolType === 'cpmm') {
     // Use default slippage from Raydium class
     const slippage = new Percent(
-      Math.floor(raydium.getSlippagePct('amm') * 100) / 10000
+      Math.floor(raydium.getSlippagePct() * 100) / 10000
     )
     
     const response : CPMMWithdrawLiquiditySDKResponse = await raydium.raydiumSDK.cpmm.withdrawLiquidity({
