@@ -20,7 +20,9 @@
     "test:unit": "GATEWAY_TEST_MODE=dev jest --runInBand ./test/",
     "test:cov": "GATEWAY_TEST_MODE=dev jest --runInBand --coverage ./test/",
     "test:scripts": "GATEWAY_TEST_MODE=dev jest --runInBand ./test-scripts/*.test.ts",
-    "cli": "node dist/index.js"
+    "cli": "node dist/index.js",
+    "build:code": "cd code && pnpm install && pnpm build",
+    "gateway-code": "node code/dist/client/client.js"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.29.0",

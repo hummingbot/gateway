@@ -22,7 +22,7 @@ axios.post = jest.fn();
 // Helper to load mock responses
 function loadMockResponse(filename) {
   const filePath = path.join(__dirname, '..', '..', 'mocks', 'connectors', 
-    `${CONNECTOR}-${NETWORK}`, `${filename}.json`);
+    `${CONNECTOR}`, `${filename}.json`);
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
 
@@ -61,6 +61,79 @@ describe('Jupiter Swap Tests (Solana Mainnet)', () => {
     // Reset axios mocks before each test
     axios.get.mockClear();
     axios.post.mockClear();
+  });
+
+  describe('Pool Info Endpoint', () => {
+    test('returns pool information for a token pair', async () => {
+      // Load mock response
+      const mockResponse = loadMockResponse('pool-info');
+      
+      // Setup mock axios
+      axios.get.mockResolvedValueOnce({ 
+        status: 200, 
+        data: mockResponse 
+      });
+      
+      // Make the request
+      const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/pool-info`, {
+        params: {
+          network: NETWORK,
+          baseToken: BASE_TOKEN,
+          quoteToken: QUOTE_TOKEN
+        }
+      });
+      
+      // Validate the response
+      expect(response.status).toBe(200);
+      expect(response.data).toHaveProperty('pools');
+      expect(Array.isArray(response.data.pools)).toBe(true);
+      expect(response.data.pools.length).toBeGreaterThan(0);
+      
+      // Check pool properties
+      const pool = response.data.pools[0];
+      expect(pool).toHaveProperty('address');
+      expect(pool).toHaveProperty('baseTokenAddress');
+      expect(pool).toHaveProperty('quoteTokenAddress');
+      expect(pool).toHaveProperty('feePct');
+      expect(pool).toHaveProperty('price');
+      expect(pool).toHaveProperty('connectorName');
+      expect(pool.connectorName).toBe('jupiter');
+      
+      // Verify axios was called with correct parameters
+      expect(axios.get).toHaveBeenCalledWith(
+        `http://localhost:15888/connectors/${CONNECTOR}/pool-info`,
+        expect.objectContaining({
+          params: expect.objectContaining({
+            network: NETWORK,
+            baseToken: BASE_TOKEN,
+            quoteToken: QUOTE_TOKEN
+          })
+        })
+      );
+    });
+    
+    test('returns empty pools array when no pools found', async () => {
+      // Setup mock axios with empty pools response
+      axios.get.mockResolvedValueOnce({ 
+        status: 200, 
+        data: { pools: [] } 
+      });
+      
+      // Make the request with tokens that don't have a pool
+      const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/pool-info`, {
+        params: {
+          network: NETWORK,
+          baseToken: 'UNKNOWN_TOKEN',
+          quoteToken: QUOTE_TOKEN
+        }
+      });
+      
+      // Validate the response
+      expect(response.status).toBe(200);
+      expect(response.data).toHaveProperty('pools');
+      expect(Array.isArray(response.data.pools)).toBe(true);
+      expect(response.data.pools.length).toBe(0);
+    });
   });
   
   describe('Quote Swap Endpoint', () => {

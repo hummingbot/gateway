@@ -76,6 +76,7 @@ export class Jupiter {
     onlyDirectRoutes: boolean = false,
     asLegacyTransaction: boolean = false,
     swapMode: 'ExactIn' | 'ExactOut' = 'ExactIn',
+    poolAddress?: string,
   ): Promise<QuoteResponse> {
     const inputToken = await this.solana.getToken(inputTokenIdentifier);
     const outputToken = await this.solana.getToken(outputTokenIdentifier);
@@ -84,10 +85,11 @@ export class Jupiter {
       throw new Error(`Token not found: ${!inputToken ? inputTokenIdentifier : outputTokenIdentifier}`);
     }
 
-    const slippageBps = slippagePct ? Math.round(slippagePct * 100) : 0;
+    const slippageBps = slippagePct ? Math.round(slippagePct * 100) : 50; // Default to 0.5% if not provided
     const tokenDecimals = swapMode === 'ExactOut' ? outputToken.decimals : inputToken.decimals;
     const quoteAmount = Math.floor(amount * 10 ** tokenDecimals);
 
+    // Use best practices from Jupiter API documentation
     const params: QuoteGetRequest = {
       inputMint: inputToken.address,
       outputMint: outputToken.address,
@@ -96,8 +98,20 @@ export class Jupiter {
       onlyDirectRoutes,
       asLegacyTransaction,
       swapMode,
+      maxAccounts: 64, // Recommended for optimal routing flexibility
+      restrictIntermediateTokens: false, // Allow routing through all tokens
     };
+    
+    // If a specific pool is requested, we can use directMarketRouteOnly
+    // Note: Jupiter doesn't support specific pool routing directly, but we can
+    // optimize for direct routes if a pool address is specified
+    if (poolAddress) {
+      params.onlyDirectRoutes = true;
+      // We could also add more constraints here if Jupiter API adds support for specific pools
+    }
 
+    logger.debug(`Getting Jupiter quote for ${inputToken.symbol} to ${outputToken.symbol}`);
+    
     const quote = await this.jupiterQuoteApi.quoteGet(params);
 
     if (!quote) {

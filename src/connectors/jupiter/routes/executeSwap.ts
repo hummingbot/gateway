@@ -19,7 +19,8 @@ async function executeJupiterSwap(
   quoteToken: string,
   amount: number,
   side: 'BUY' | 'SELL',
-  slippagePct?: number
+  slippagePct?: number,
+  poolAddress?: string
 ): Promise<ExecuteSwapResponseType> {
   const solana = await Solana.getInstance(network);
   const jupiter = await Jupiter.getInstance(network);
@@ -44,7 +45,8 @@ async function executeJupiterSwap(
       slippagePct || jupiter.getSlippagePct(),
       false,
       false,
-      tradeSide === 'BUY' ? 'ExactOut' : 'ExactIn'
+      tradeSide === 'BUY' ? 'ExactOut' : 'ExactIn',
+      poolAddress // Pass the poolAddress parameter
     );
 
     const { signature, feeInLamports } = await jupiter.executeSwap(
@@ -106,15 +108,32 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
             quoteToken: { type: 'string', examples: ['USDC'] },
             amount: { type: 'number', examples: [0.1] },
             side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
-            slippagePct: { type: 'number', examples: [1] },
-            poolAddress: { type: 'string', examples: [''] }
+            slippagePct: { type: 'number', examples: [0.5], description: 'Slippage tolerance in percentage (e.g., 0.5 for 0.5%)' },
+            poolAddress: { type: 'string', examples: ['jupiter-aggregator'], description: 'Optional pool address from pool-info route' }
           }
         },
         response: { 200: ExecuteSwapResponse }
       }
     },
     async (request) => {
-      const { network, walletAddress, baseToken, quoteToken, amount, side, slippagePct } = request.body;
+      const { network, walletAddress, baseToken, quoteToken, amount, side, slippagePct, poolAddress } = request.body;
+      
+      // For Jupiter, same token pair rules apply:
+      // 1. If poolAddress is provided, use it to identify the specific market
+      // 2. If only baseToken/quoteToken are provided, use default routing
+      
+      // Verify we have the needed parameters
+      if (!baseToken || !quoteToken) {
+        throw fastify.httpErrors.badRequest('baseToken and quoteToken are required');
+      }
+      
+      // Log the operation
+      if (poolAddress) {
+        logger.debug(`Executing Jupiter swap for ${baseToken}-${quoteToken} with pool: ${poolAddress}`);
+      } else {
+        logger.debug(`Executing Jupiter swap for ${baseToken}-${quoteToken} with default routing`);
+      }
+      
       return await executeJupiterSwap(
         fastify,
         network || 'mainnet-beta',
@@ -123,7 +142,8 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         quoteToken,
         amount,
         side as 'BUY' | 'SELL',
-        slippagePct
+        slippagePct,
+        poolAddress
       );
     }
   );
