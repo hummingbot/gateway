@@ -404,7 +404,7 @@ export class Hydration {
     quoteTokenSymbol: string,
     amount: number,
     side: 'BUY' | 'SELL',
-    poolAddress: string,
+    _poolAddress: string,
     slippagePct?: number
   ): Promise<any> {
     const tradeRouter = await this.getTradeRouter();
@@ -449,7 +449,7 @@ export class Hydration {
     const tx = trade.toTx(tradeLimit).get();
     const apiPromise = await this.getApiPromise();
     
-    const {txHash, transaction} = await this.submitTransaction(apiPromise, tx, wallet, poolAddress);
+    const {txHash, transaction} = await this.submitTransaction(apiPromise, tx, wallet);
 
     const feePaymentToken = this.polkadot.getFeePaymentToken();
 
@@ -1017,7 +1017,7 @@ export class Hydration {
    * @returns Transaction hash if successful
    * @throws Error if transaction fails
    */
-  private async submitTransaction(api: any, tx: any, wallet: any, poolType: string): Promise<{txHash: string, transaction: any}> {
+  private async submitTransaction(api: any, tx: any, wallet: any, poolType?: string): Promise<{txHash: string, transaction: any}> {
     return new Promise<{txHash: string, transaction: any}>(async (resolve, reject) => {
       let unsub: () => void;
       
@@ -1155,7 +1155,7 @@ export class Hydration {
    * @param poolType Pool type
    * @returns True if success event exists
    */
-  private async hasSuccessEvent(api: any, events: any[], poolType: string): Promise<boolean> {
+  private async hasSuccessEvent(api: any, events: any[], poolType?: string): Promise<boolean> {
     return events.some(({ event }) => 
       api.events.system.ExtrinsicSuccess.is(event) || 
       (poolType === POOL_TYPE.XYK && api.events.xyk.LiquidityAdded?.is(event)) ||
