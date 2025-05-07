@@ -75,7 +75,7 @@ jobs:
             pnpm hardhat node &
 
       - name: Install Dependencies
-        run: pnpm install
+        run: pnpm install --no-frozen-lockfile
 
       - name: Build project
         run: pnpm build
