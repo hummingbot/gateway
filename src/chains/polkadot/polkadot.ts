@@ -16,6 +16,7 @@ import {Constant, fromBaseUnits, runWithRetryAndTimeout, sleep} from './polkadot
 import {validatePolkadotAddress} from './polkadot.validators';
 import * as crypto from 'crypto';
 import { BigNumber } from '@galacticcouncil/sdk';
+import {walletPath} from "../../system/wallet/utils";
 
 /**
  * Main class for interacting with the Polkadot blockchain.
@@ -590,8 +591,6 @@ export class Polkadot {
    * @returns A Promise that resolves to the balance response
    */
   async getAddressBalances(address: string, tokenSymbols?: string[]): Promise<any> {
-    const initTime = Date.now();
-
     let wallet;
     try {
       wallet = await this.getWallet(address);
@@ -602,7 +601,8 @@ export class Polkadot {
     }
 
     const balances = await this.getBalance(wallet, tokenSymbols);
-    return wrapResponse({ balances }, initTime);
+
+    return { balances };
   }
 
   /**
@@ -668,21 +668,19 @@ export class Polkadot {
    * @returns A Promise that resolves to the network status
    */
   async getNetworkStatus(): Promise<any> {
-    const initTime = Date.now();
-
     const chain = 'polkadot';
     const network = this.network;
     const rpcUrl = this.config.network.nodeURL;
     const nativeCurrency = this.config.network.nativeCurrencySymbol;
     const currentBlockNumber = await this.getCurrentBlockNumber();
 
-    return wrapResponse({
+    return {
       chain,
       network,
       rpcUrl,
       currentBlockNumber,
       nativeCurrency
-    }, initTime);
+    };
   }
 
   /**

@@ -26,6 +26,7 @@ export async function getPolkadotBalances(
   }
   
   const polkadot = await Polkadot.getInstance(network);
+
   return await polkadot.getAddressBalances(address, tokenSymbols);
 }
 
