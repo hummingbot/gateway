@@ -17,7 +17,7 @@ import {
 import { Solana } from '../../chains/solana/solana';
 import { Ethereum } from '../../chains/ethereum/ethereum';
 import { FastifyInstance } from 'fastify';
-import { Polkadot } from '../chains/polkadot/polkadot';
+import { Polkadot } from '../../chains/polkadot/polkadot';
 
 export const walletPath = './conf/wallets';
 

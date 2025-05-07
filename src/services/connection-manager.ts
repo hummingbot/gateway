@@ -1,7 +1,6 @@
 import { Ethereum } from '../chains/ethereum/ethereum';
 import { Solana } from '../chains/solana/solana';
 import { Polkadot } from '../chains/polkadot/polkadot';
-import { Hydration } from '../connectors/hydration/hydration';
 
 
 export interface Chain {
@@ -74,6 +73,7 @@ export async function getConnector(
     const { Meteora } = await import('../connectors/meteora/meteora');
     return await Meteora.getInstance(network);
   } else if (connector === 'hydration') {
+    const { Hydration } = await import('../connectors/hydration/hydration');
     return await Hydration.getInstance(network);
   } else {
     throw new Error('unsupported chain or connector');
