@@ -1,0 +1,40 @@
+# Claude AI Model Configuration
+
+# API Key for Claude (required)
+apiKey: ""
+
+# Base URL for Claude API (optional)
+baseUrl: "https://api.anthropic.com"
+
+# Available models and their configuration
+models:
+  - name: "claude-3-opus-20240229"
+    description: "Most powerful model for complex tasks"
+    contextWindow: 200000
+    default: true
+  
+  - name: "claude-3-sonnet-20240229"
+    description: "Balanced performance and efficiency"
+    contextWindow: 180000
+    
+  - name: "claude-3-haiku-20240307"
+    description: "Fast and cost-effective for simpler tasks"
+    contextWindow: 150000
+    
+  - name: "claude-2.1"
+    description: "Legacy Claude 2.1 model"
+    contextWindow: 100000
+    
+  - name: "claude-2.0"
+    description: "Legacy Claude 2.0 model"
+    contextWindow: 100000
+    
+  - name: "claude-instant-1.2"
+    description: "Legacy instant model"
+    contextWindow: 100000
+
+# Default parameters
+parameters:
+  temperature: 0.7
+  topP: 1.0
+  maxTokens: 4000

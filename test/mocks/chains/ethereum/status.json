@@ -1,0 +1,13 @@
+{
+  "network": "base",
+  "chainId": 8453,
+  "rpcUrl": "https://mainnet.base.org",
+  "isConnected": true,
+  "latestBlock": 12345678,
+  "gasPrice": "1.5",
+  "nativeCurrency": {
+    "name": "Ethereum",
+    "symbol": "ETH",
+    "decimals": 18
+  }
+}

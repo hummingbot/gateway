@@ -1,4 +1,4 @@
-import { AvailableNetworks } from '../connector.requests';
+import { AvailableNetworks } from '../connector.interfaces';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 
 export namespace MeteoraConfig {
@@ -7,18 +7,44 @@ export namespace MeteoraConfig {
   }
 
   export interface NetworkConfig {
-    allowedSlippage: string;
-    availableNetworks: Array<AvailableNetworks>;
-    pools: PoolsConfig;
-    strategyType: number;
+    // Pool configurations
+    amm: PoolsConfig;
+    clmm: PoolsConfig;
   }
 
-  export const config: NetworkConfig = {
-    allowedSlippage: ConfigManagerV2.getInstance().get(
-      'meteora.allowedSlippage',
-    ),
-    availableNetworks: [{ chain: 'solana', networks: ['mainnet-beta', 'devnet'] }],
-    pools: ConfigManagerV2.getInstance().get('meteora.pools'),
-    strategyType: ConfigManagerV2.getInstance().get('meteora.strategyType') ?? 3,
+  export interface NetworkPoolsConfig {
+    // Dictionary of predefined pool addresses and settings by network
+    [network: string]: NetworkConfig;
+  }
+
+  export interface RootConfig {
+    // Global configuration
+    allowedSlippage: string;
+    strategyType: number;
+    
+    // Network-specific configurations
+    networks: NetworkPoolsConfig;
+    
+    // Available networks
+    availableNetworks: Array<AvailableNetworks>;
+  }
+
+  export const config: RootConfig = {
+    // Global configuration
+    allowedSlippage: ConfigManagerV2.getInstance().get('meteora.allowedSlippage'),
+    strategyType: ConfigManagerV2.getInstance().get('meteora.strategyType') ?? 0,
+    
+    // Network-specific pools
+    networks: ConfigManagerV2.getInstance().get('meteora.networks'),
+    
+    availableNetworks: [{
+      chain: 'solana',
+      networks: ['mainnet-beta', 'devnet']
+    }]
   };
-} 
+  
+  // Helper methods to get pools for a specific network
+  export const getNetworkPools = (network: string, poolType: 'amm' | 'clmm'): PoolsConfig => {
+    return config.networks[network]?.[poolType] || {};
+  };
+}

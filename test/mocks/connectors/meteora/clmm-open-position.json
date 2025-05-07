@@ -1,0 +1,37 @@
+[
+  {
+    "validResponse": {
+      "signature": "5KtPn1LGuxhPdNK7Lr13Jxj5JBAf7xTEEBs4iFBtVGZSDYgAQECXfXnGQ2jiAiRHNLbz8pT8xcTKfPZ9jQpKGNZR",
+      "fee": 0.0001,
+      "positionAddress": "7E2qVUhVgzHkrWP1QCi6fSjU9kZ1KUAvwhzB9h9mzWJA",
+      "positionRent": 0.00089088,
+      "baseTokenAmountAdded": 0.5,
+      "quoteTokenAmountAdded": 15.0
+    },
+    "invalidResponse": {
+      "signature": "5KtPn1LGuxhPdNK7Lr13Jxj5JBAf7xTEEBs4iFBtVGZSDYgAQECXfXnGQ2jiAiRHNLbz8pT8xcTKfPZ9jQpKGNZR",
+      "fee": "0.0001",
+      "positionAddress": "7E2qVUhVgzHkrWP1QCi6fSjU9kZ1KUAvwhzB9h9mzWJA",
+      "positionRent": 0.00089088,
+      "baseTokenAmountAdded": 0.5,
+      "quoteTokenAmountAdded": 15.0
+    }
+  },
+  {
+    "validResponse": {
+      "signature": "4YtGpQPGkKhffNNrKWLYBKEj6EYYvpNTmL9EMZGvqRPvP1JLxvAGGM5amVsoJ2xNQ7FU1ATjDnZvgdJ35rmNkwmL",
+      "fee": 0.0001,
+      "positionAddress": "BzEAdz2mEbS7r5YZnESG8W6m4AmUVg5pHhF7kJqgH4Yy",
+      "positionRent": 0.00089088,
+      "baseTokenAmountAdded": 0.5,
+      "quoteTokenAmountAdded": 15.0
+    },
+    "invalidResponse": {
+      "signature": "4YtGpQPGkKhffNNrKWLYBKEj6EYYvpNTmL9EMZGvqRPvP1JLxvAGGM5amVsoJ2xNQ7FU1ATjDnZvgdJ35rmNkwmL",
+      "fee": 0.0001,
+      "positionAddress": "BzEAdz2mEbS7r5YZnESG8W6m4AmUVg5pHhF7kJqgH4Yy",
+      "positionRent": 0.00089088,
+      "baseTokenAmountAdded": 0.5
+    }
+  }
+]

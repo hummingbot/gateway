@@ -1,0 +1,38 @@
+{
+  "name": "fast-content-type-parse",
+  "version": "1.1.0",
+  "description": "Parse HTTP Content-Type header according to RFC 7231",
+  "main": "index.js",
+  "types": "./types/index.d.ts",
+  "scripts": {
+    "benchmark": "node benchmarks/simple.js && node benchmarks/simple-ows.js && node benchmarks/with-param.js && node benchmarks/with-param-quoted.js",
+    "lint": "standard",
+    "lint:fix": "standard --fix",
+    "test": "npm run test:unit && npm run test:typescript",
+    "test:typescript": "tsd",
+    "test:unit": "tap"
+  },
+  "keywords": [
+    "content-type",
+    "rfc7231"
+  ],
+  "author": "Aras Abbasi <aras.abbasi@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fastify/fast-content-type-parse.git"
+  },
+  "devDependencies": {
+    "@fastify/pre-commit": "^2.0.2",
+    "benchmark": "^2.1.4",
+    "busboy": "^1.6.0",
+    "content-type": "^1.0.4",
+    "standard": "^17.0.0",
+    "tap": "^16.3.2",
+    "tsd": "^0.29.0"
+  },
+  "pre-commit": [
+    "lint",
+    "test"
+  ]
+}

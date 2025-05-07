@@ -1,9 +1,6 @@
 import { Ethereum } from '../chains/ethereum/ethereum';
 import { Solana } from '../chains/solana/solana';
 import { Polkadot } from '../chains/polkadot/polkadot';
-import { Uniswap } from '../connectors/uniswap/uniswap';
-import { Jupiter } from '../connectors/jupiter/jupiter';
-import { Meteora } from '../connectors/meteora/meteora';
 import { Hydration } from '../connectors/hydration/hydration';
 
 
@@ -45,7 +42,7 @@ export async function getChainInstance(
   let connection: ChainInstance | undefined;
 
   if (chain === 'ethereum') {
-    connection = Ethereum.getInstance(network);
+    connection = await Ethereum.getInstance(network);
   } else if (chain === 'solana') {
     connection = await Solana.getInstance(network);
   } else if (chain === 'polkadot') {
@@ -66,11 +63,15 @@ export async function getConnector(
   network: string,
   connector: string | undefined,
 ): Promise<Connector> {
+  // Dynamically import connector classes only when needed
   if (connector === 'uniswap') {
-    return Uniswap.getInstance(chain, network);
+    const { Uniswap } = await import('../connectors/uniswap/uniswap');
+    return await Uniswap.getInstance(chain, network);
   } else if (connector === 'jupiter') {
+    const { Jupiter } = await import('../connectors/jupiter/jupiter');
     return await Jupiter.getInstance(network);
   } else if (connector === 'meteora') {
+    const { Meteora } = await import('../connectors/meteora/meteora');
     return await Meteora.getInstance(network);
   } else if (connector === 'hydration') {
     return await Hydration.getInstance(network);

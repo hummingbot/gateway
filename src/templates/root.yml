@@ -35,3 +35,16 @@ configurations:
   $namespace hydration:
     configurationPath: hydration.yml
     schemaPath: hydration-schema.json
+
+  # LLM Models Configuration
+  $namespace claude:
+    configurationPath: llm/claude.yml
+    schemaPath: llm-schema.json
+
+  $namespace openai:
+    configurationPath: llm/openai.yml
+    schemaPath: llm-schema.json
+
+  $namespace deepseek:
+    configurationPath: llm/deepseek.yml
+    schemaPath: llm-schema.json

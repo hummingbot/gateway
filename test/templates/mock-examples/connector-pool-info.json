@@ -1,0 +1,14 @@
+{
+  "address": "your-pool-address",
+  "baseTokenAddress": "base-token-address",
+  "quoteTokenAddress": "quote-token-address",
+  "feePct": 0.3,
+  "price": 25.5,
+  "baseTokenAmount": 100.0,
+  "quoteTokenAmount": 2550.0,
+  "poolType": "amm",
+  "lpMint": {
+    "address": "your-pool-address",
+    "decimals": 18
+  }
+}

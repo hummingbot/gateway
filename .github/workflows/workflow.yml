@@ -75,15 +75,18 @@ jobs:
             pnpm hardhat node &
 
       - name: Install Dependencies
-        run: pnpm install
+        run: pnpm install --no-frozen-lockfile
 
       - name: Build project
         run: pnpm build
 
-      - name: Replace testnet nodeURL and lists path
+      - name: Setup configuration for CI
         run: |
-          mkdir conf db
-          cp -rf src/templates/* conf
+          mkdir -p conf/lists db
+          # Copy template configurations if they don't already exist in conf
+          if [ ! -f conf/root.yml ]; then
+            cp -rf src/templates/* conf/
+          fi
           sed -i 's|/home/gateway/conf/lists/|conf/lists/|g' ./conf/*.yml
           sed -i 's/https:\/\/rpc.ankr.com\/eth_sepolia/http:\/\/127.0.0.1:8545\//g' ./conf/ethereum.yml
 

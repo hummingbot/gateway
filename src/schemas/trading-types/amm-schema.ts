@@ -43,14 +43,18 @@ export const PoolInfoSchema = Type.Object({
 
   export const GetPoolInfoRequest = Type.Object({
     network: Type.Optional(Type.String()),
-    poolAddress: Type.String(),
+    poolAddress: Type.Optional(Type.String()),
+    baseToken: Type.Optional(Type.String({ examples: ['SOL'] })),
+    quoteToken: Type.Optional(Type.String({ examples: ['USDC'] })),
   }, { $id: 'GetPoolInfoRequest' });
   export type GetPoolInfoRequestType = Static<typeof GetPoolInfoRequest>;
   
   export const AddLiquidityRequest = Type.Object({
     network: Type.Optional(Type.String()),
     walletAddress: Type.String(),
-    poolAddress: Type.String(),
+    poolAddress: Type.Optional(Type.String()),
+    baseToken: Type.Optional(Type.String({ examples: ['SOL'] })),
+    quoteToken: Type.Optional(Type.String({ examples: ['USDC'] })),
     baseTokenAmount: Type.Number(),
     quoteTokenAmount: Type.Number(),
     slippagePct: Type.Optional(Type.Number({ minimum: 0, maximum: 100 })),
@@ -84,7 +88,9 @@ export const PoolInfoSchema = Type.Object({
   export const RemoveLiquidityRequest = Type.Object({
     network: Type.Optional(Type.String()),
     walletAddress: Type.String({ examples: ['<solana-wallet-address>'] }),
-    poolAddress: Type.String(),
+    poolAddress: Type.Optional(Type.String()),
+    baseToken: Type.Optional(Type.String({ examples: ['SOL'] })),
+    quoteToken: Type.Optional(Type.String({ examples: ['USDC'] })),
     percentageToRemove: Type.Number({ minimum: 0, maximum: 100 }),
   }, { $id: 'RemoveLiquidityRequest' });
   export type RemoveLiquidityRequestType = Static<typeof RemoveLiquidityRequest>;
@@ -111,7 +117,9 @@ export const PoolInfoSchema = Type.Object({
 
   export const GetPositionInfoRequest = Type.Object({
     network: Type.Optional(Type.String()),
-    poolAddress: Type.String(),
+    poolAddress: Type.Optional(Type.String()),
+    baseToken: Type.Optional(Type.String({ examples: ['SOL'] })),
+    quoteToken: Type.Optional(Type.String({ examples: ['USDC'] })),
     walletAddress: Type.String(),
   }, { $id: 'GetPositionInfoRequest' });
   export type GetPositionInfoRequestType = Static<typeof GetPositionInfoRequest>;

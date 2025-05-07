@@ -41,7 +41,6 @@ export const estimateGasRoute: FastifyPluginAsync = async (fastify) => {
           ...EstimateGasRequestSchema,
           properties: {
             ...EstimateGasRequestSchema.properties,
-            chain: { type: 'string', enum: ['solana'], examples: ['solana'] },
             network: { type: 'string', examples: ['mainnet-beta', 'devnet'] },
             gasLimit: { type: 'number', examples: [200000] }
           }
@@ -52,13 +51,7 @@ export const estimateGasRoute: FastifyPluginAsync = async (fastify) => {
       }
     },
     async (request) => {
-      const { chain, network, gasLimit } = request.body;
-      
-      // Validate chain is solana
-      if (chain.toLowerCase() !== 'solana') {
-        throw fastify.httpErrors.badRequest('Invalid chain specified. Only "solana" is supported for this endpoint.');
-      }
-      
+      const { network, gasLimit } = request.body;
       return await estimateGasSolana(fastify, network, gasLimit);
     }
   );

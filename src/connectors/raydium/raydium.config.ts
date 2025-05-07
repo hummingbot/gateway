@@ -1,37 +1,49 @@
-import { AvailableNetworks } from '../connector.requests';
+import { AvailableNetworks } from '../connector.interfaces';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 
 export namespace RaydiumConfig {
-  export interface Pool {
-    base: string;
-    quote: string;
-    poolAddress: string;
-  }
-
   export interface PoolsConfig {
     [pairKey: string]: string;
   }
 
-  export interface RouteConfig {
-    allowedSlippage: string;
-    pools: PoolsConfig;
-  }
-
   export interface NetworkConfig {
-    availableNetworks: Array<AvailableNetworks>;
-    amm: RouteConfig;
-    clmm: RouteConfig;
+    // Pool configurations
+    amm: PoolsConfig;
+    clmm: PoolsConfig;
+    launchpad?: PoolsConfig;
   }
 
-  export const config: NetworkConfig = {
-    availableNetworks: [{ chain: 'solana', networks: ['mainnet-beta', 'devnet'] }],
-    amm: {
-      allowedSlippage: ConfigManagerV2.getInstance().get('raydium.amm.allowedSlippage'),
-      pools: ConfigManagerV2.getInstance().get('raydium.amm.pools'),
-    },
-    clmm: {
-      allowedSlippage: ConfigManagerV2.getInstance().get('raydium.clmm.allowedSlippage'),
-      pools: ConfigManagerV2.getInstance().get('raydium.clmm.pools'),
-    },
+  export interface NetworkPoolsConfig {
+    // Dictionary of predefined pool addresses and settings by network
+    [network: string]: NetworkConfig;
+  }
+
+  export interface RootConfig {
+    // Global configuration
+    allowedSlippage: string;
+    
+    // Network-specific configurations
+    networks: NetworkPoolsConfig;
+    
+    // Available networks
+    availableNetworks: Array<AvailableNetworks>;
+  }
+
+  export const config: RootConfig = {
+    // Global configuration
+    allowedSlippage: ConfigManagerV2.getInstance().get('raydium.allowedSlippage'),
+    
+    // Network-specific pools
+    networks: ConfigManagerV2.getInstance().get('raydium.networks'),
+    
+    availableNetworks: [{
+      chain: 'solana',
+      networks: ['mainnet-beta', 'devnet']
+    }]
   };
-} 
+  
+  // Helper methods to get pools for a specific network
+  export const getNetworkPools = (network: string, poolType: 'amm' | 'clmm' | 'launchpad'): PoolsConfig => {
+    return config.networks[network]?.[poolType] || {};
+  };
+}

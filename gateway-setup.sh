@@ -7,6 +7,8 @@ TEMPLATE_DIR="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )/src/template
 
 CERTS_TO_PATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )/certs"
 
+GATEWAY_CODE_DIR="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )/code"
+
 
 prompt_proceed () {
  read -p "Do you want to proceed? [Y/N] >>> " PROCEED
@@ -24,9 +26,14 @@ prompt_proceed () {
 copy_configs () {
   echo
   # Make destination folder if needed
-  mkdir $HOST_CONF_PATH
+  mkdir -p $HOST_CONF_PATH
   # Copy all files in the source folder to the destination folder
   cp $TEMPLATE_DIR/**.yml $HOST_CONF_PATH
+  
+  # Copy model configuration templates
+  mkdir -p $HOST_CONF_PATH/llm
+  cp $TEMPLATE_DIR/llm/**.yml $HOST_CONF_PATH/llm
+  
   # Confirm that the files were copied
   if [ $? -eq 0 ]; then
     echo "Files successfully copied from $TEMPLATE_DIR to $HOST_CONF_PATH"
@@ -131,3 +138,86 @@ else
   echo "Exiting..."
   exit
 fi
+
+# Gateway Code setup
+echo
+echo "===============  SETUP GATEWAY CODE ==============="
+echo
+echo "Gateway Code is a next-generation CLI for interacting with Gateway using Large Language Models."
+echo
+
+read -p "Do you want to set up Gateway Code? (Y/N) >>> " SETUP_GATEWAY_CODE
+if [[ "$SETUP_GATEWAY_CODE" == "Y" ||  "$SETUP_GATEWAY_CODE" == "y" ]]
+then
+  echo "Setting up Gateway Code..."
+  
+  # Check if Node.js is installed
+  if ! command -v node &> /dev/null
+  then
+    echo "Error: Node.js is not installed. Please install Node.js 18+ and try again."
+    exit 1
+  fi
+  
+  # Check if pnpm is installed
+  if ! command -v pnpm &> /dev/null
+  then
+    echo "pnpm is not installed. Installing pnpm..."
+    npm install -g pnpm
+  fi
+  
+  # Install dependencies and build
+  echo "Installing Gateway Code dependencies..."
+  (cd "$GATEWAY_CODE_DIR" && pnpm install --no-frozen-lockfile)
+  
+  if [ $? -eq 0 ]; then
+    echo "Successfully installed Gateway Code dependencies."
+    
+    # Build the project
+    echo "Building Gateway Code..."
+    (cd "$GATEWAY_CODE_DIR" && pnpm build)
+    
+    if [ $? -eq 0 ]; then
+      echo "Gateway Code successfully set up!"
+      
+      # Ask for LLM API keys
+      echo
+      echo "Would you like to configure LLM API keys now?"
+      read -p "Enter Claude API key (or press Enter to skip): " CLAUDE_API_KEY
+      if [[ ! -z "$CLAUDE_API_KEY" ]]; then
+        # Update the claude.yml file with the API key
+        perl -pi -e "s|apiKey: \"\"|apiKey: \"$CLAUDE_API_KEY\"|g" "$HOST_CONF_PATH/llm/claude.yml"
+        echo "Claude API key saved."
+      fi
+      
+      read -p "Enter OpenAI API key (or press Enter to skip): " OPENAI_API_KEY
+      if [[ ! -z "$OPENAI_API_KEY" ]]; then
+        # Update the openai.yml file with the API key
+        perl -pi -e "s|apiKey: \"\"|apiKey: \"$OPENAI_API_KEY\"|g" "$HOST_CONF_PATH/llm/openai.yml"
+        echo "OpenAI API key saved."
+      fi
+      
+      read -p "Enter DeepSeek API key (or press Enter to skip): " DEEPSEEK_API_KEY
+      if [[ ! -z "$DEEPSEEK_API_KEY" ]]; then
+        # Update the deepseek.yml file with the API key
+        perl -pi -e "s|apiKey: \"\"|apiKey: \"$DEEPSEEK_API_KEY\"|g" "$HOST_CONF_PATH/llm/deepseek.yml"
+        echo "DeepSeek API key saved."
+      fi
+      
+      echo "You can now run Gateway Code with: pnpm gateway-code"
+    else
+      echo "Error building Gateway Code. Please see $GATEWAY_CODE_DIR/README.md for troubleshooting."
+      # Continue execution instead of stopping
+      echo "Continuing with setup despite build errors..."
+    fi
+  else
+    echo "Error installing Gateway Code dependencies."
+    echo "Continuing with setup despite dependency installation errors..."
+    # Continue execution instead of stopping
+  fi
+else
+  echo "Skipping Gateway Code setup."
+fi
+
+echo
+echo "===============  SETUP COMPLETE ==============="
+echo

@@ -1,0 +1,58 @@
+{
+  "name": "light-my-request",
+  "version": "5.14.0",
+  "description": "Fake HTTP injection library",
+  "main": "index.js",
+  "type": "commonjs",
+  "types": "types/index.d.ts",
+  "dependencies": {
+    "cookie": "^0.7.0",
+    "process-warning": "^3.0.0",
+    "set-cookie-parser": "^2.4.1"
+  },
+  "devDependencies": {
+    "@fastify/ajv-compiler": "^3.1.0",
+    "@fastify/pre-commit": "^2.0.2",
+    "@types/node": "^20.1.0",
+    "end-of-stream": "^1.4.4",
+    "express": "^4.17.1",
+    "form-auto-content": "^3.0.0",
+    "form-data": "^4.0.0",
+    "formdata-node": "^4.4.1",
+    "standard": "^17.0.0",
+    "tap": "^16.0.0",
+    "tinybench": "^2.5.1",
+    "tsd": "^0.31.0",
+    "undici": "^5.28.4"
+  },
+  "scripts": {
+    "benchmark": "node benchmark/benchmark.js",
+    "coverage": "npm run unit -- --cov --coverage-report=html",
+    "lint": "standard",
+    "test": "npm run lint && npm run test:unit && npm run test:typescript",
+    "test:typescript": "tsd",
+    "test:unit": "tap"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fastify/light-my-request.git"
+  },
+  "keywords": [
+    "http",
+    "inject",
+    "fake",
+    "request",
+    "server"
+  ],
+  "author": "Tomas Della Vedova - @delvedor (http://delved.org)",
+  "license": "BSD-3-Clause",
+  "bugs": {
+    "url": "https://github.com/fastify/light-my-request/issues"
+  },
+  "homepage": "https://github.com/fastify/light-my-request/blob/master/README.md",
+  "standard": {
+    "ignore": [
+      "test/benchmark.js"
+    ]
+  }
+}

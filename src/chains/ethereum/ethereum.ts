@@ -1,91 +1,78 @@
-import abi from '../ethereum/ethereum.abi.json';
+import {
+  BigNumber,
+  Contract,
+  providers,
+  Transaction,
+  utils,
+  Wallet,
+} from 'ethers';
+import { TokenListType, TokenValue } from '../../services/base';
+import { walletPath } from '../../system/wallet/utils';
+import fse from 'fs-extra';
+import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { logger } from '../../services/logger';
-import { BigNumber, Contract, Transaction, Wallet } from 'ethers';
-import { EthereumBase } from './ethereum-base';
+import { getAddress } from 'ethers/lib/utils';
+import { TokenListResolutionStrategy } from '../../services/token-list-resolution';
 import { getEthereumConfig } from './ethereum.config';
 import { Provider } from '@ethersproject/abstract-provider';
-import { ConfigManagerV2 } from '../../services/config-manager-v2';
-import { EVMController } from './evm.controllers';
 import { UniswapConfig } from '../../connectors/uniswap/uniswap.config';
 
-// MKR does not match the ERC20 perfectly so we need to use a separate ABI.
-const MKR_ADDRESS = '0x9f8f72aa9304c8b593d555f12ef6589cc3a579a2';
+// information about an Ethereum token
+export interface TokenInfo {
+  chainId: number;
+  address: string;
+  name: string;
+  symbol: string;
+  decimals: number;
+}
 
-// See: https://docs.infura.io/infura/networks/ethereum/json-rpc-methods/eth_feehistory
-// interface EthFeeHistoryResponse {
-//   baseFeePerGas: string[];
-//   gasUsedRatio: number[];
-//   oldestBlock: string;
-// }
+export type NewBlockHandler = (bn: number) => void;
+export type NewDebugMsgHandler = (msg: any) => void;
 
-export class Ethereum extends EthereumBase {
+export class Ethereum {
   private static _instances: { [name: string]: Ethereum };
-  private _gasPrice: number;
-  private _gasPriceRefreshInterval: number | null;
-  private _nativeTokenSymbol: string;
-  private _chain: string;
-  private _requestCount: number;
-  private _metricsLogInterval: number;
-  private _metricTimer;
-  public controller;
+  public provider: providers.StaticJsonRpcProvider;
+  public tokenList: TokenInfo[] = [];
+  public tokenMap: Record<string, TokenInfo> = {};
+  public network: string;
+  public nativeTokenSymbol: string;
+  public chainId: number;
+  public rpcUrl: string;
+  public gasPrice: number;
+  public gasLimitTransaction: number;
+  public tokenListSource: string;
+  public tokenListType: TokenListType;
+  private _initialized: boolean = false;
 
-  private static lastGasPriceEstimate: {
-    timestamp: number;
-    price: number;
-  } | null = null;
-  private static GAS_PRICE_CACHE_MS = 10000; // 10 second cache
+  // For backward compatibility
+  public get chain(): string {
+    return this.network;
+  }
 
   private constructor(network: string) {
     logger.info(`Initializing Ethereum connector for network: ${network}`);
     const config = getEthereumConfig('ethereum', network);
-    super(
-      'ethereum',
-      config.network.chainID,
-      config.network.nodeURL,
-      config.network.tokenListSource,
-      config.network.tokenListType,
-      config.manualGasPrice,
-      config.gasLimitTransaction,
-      ConfigManagerV2.getInstance().get('server.nonceDbPath'),
-      ConfigManagerV2.getInstance().get('server.transactionDbPath'),
-    );
-    this._chain = network;
-    this._nativeTokenSymbol = config.nativeCurrencySymbol;
-    this._gasPrice = config.manualGasPrice;
-    this._gasPriceRefreshInterval =
-      config.network.gasPriceRefreshInterval !== undefined
-        ? config.network.gasPriceRefreshInterval
-        : null;
-
-    this.updateGasPrice();
-
-    this._requestCount = 0;
-    this._metricsLogInterval = 300000; // 5 minutes
-
-    this.onDebugMessage(this.requestCounter.bind(this));
-    this._metricTimer = setInterval(
-      this.metricLogger.bind(this),
-      this.metricsLogInterval,
-    );
-    this.controller = EVMController;
     
-    // Load tokens immediately
-    this.loadTokens(
-      config.network.tokenListSource,
-      config.network.tokenListType
-    ).catch(error => {
-      logger.error(`Failed to load tokens in constructor: ${error.message}`);
-    });
+    this.chainId = config.network.chainID;
+    this.rpcUrl = config.network.nodeURL;
+    this.provider = new providers.StaticJsonRpcProvider(this.rpcUrl);
+    this.tokenListSource = config.network.tokenListSource;
+    this.tokenListType = config.network.tokenListType;
+    this.network = network;
+    this.nativeTokenSymbol = config.nativeCurrencySymbol;
+    this.gasPrice = config.manualGasPrice;
+    this.gasLimitTransaction = config.gasLimitTransaction;
   }
 
-  public static getInstance(network: string): Ethereum {
-    if (Ethereum._instances === undefined) {
+  public static async getInstance(network: string): Promise<Ethereum> {
+    if (!Ethereum._instances) {
       Ethereum._instances = {};
     }
-    if (!(network in Ethereum._instances)) {
-      Ethereum._instances[network] = new Ethereum(network);
+    if (!Ethereum._instances[network]) {
+      const instance = new Ethereum(network);
+      await instance.init();
+      Ethereum._instances[network] = instance;
     }
-
     return Ethereum._instances[network];
   }
 
@@ -93,126 +80,81 @@ export class Ethereum extends EthereumBase {
     return Ethereum._instances;
   }
 
-  public requestCounter(msg: any): void {
-    if (msg.action === 'request') this._requestCount += 1;
+  public onNewBlock(func: NewBlockHandler) {
+    this.provider.on('block', func);
   }
 
-  public metricLogger(): void {
-    logger.info(
-      this.requestCount +
-        ' request(s) sent in last ' +
-        this.metricsLogInterval / 1000 +
-        ' seconds.',
-    );
-    this._requestCount = 0; // reset
-  }
-
-  // getters
-  public get gasPrice(): number {
-    return this._gasPrice;
-  }
-
-  public get chain(): string {
-    return this._chain;
-  }
-
-  public get nativeTokenSymbol(): string {
-    return this._nativeTokenSymbol;
-  }
-
-  public get requestCount(): number {
-    return this._requestCount;
-  }
-
-  public get metricsLogInterval(): number {
-    return this._metricsLogInterval;
-  }
-
-  // in place for mocking
-  public get provider() {
-    return super.provider;
+  public onDebugMessage(func: NewDebugMsgHandler) {
+    this.provider.on('debug', func);
   }
 
   /**
-   * Estimates the current gas price with caching
+   * Check if the Ethereum instance is ready
+   */
+  public ready(): boolean {
+    return this._initialized;
+  }
+
+  /**
+   * Estimates the current gas price
    * Returns the gas price in GWEI
    */
   public async estimateGasPrice(): Promise<number> {
-    // Check cache first
-    if (
-      Ethereum.lastGasPriceEstimate && 
-      Date.now() - Ethereum.lastGasPriceEstimate.timestamp < Ethereum.GAS_PRICE_CACHE_MS
-    ) {
-      return Ethereum.lastGasPriceEstimate.price;
-    }
-
     try {
       const baseFee: BigNumber = await this.provider.getGasPrice();
       let priorityFee: BigNumber = BigNumber.from('0');
 
       // Only get priority fee for mainnet
-      if (this._chain === 'mainnet') {
+      if (this.network === 'mainnet') {
         priorityFee = BigNumber.from(
           await this.provider.send('eth_maxPriorityFeePerGas', [])
         );
       }
 
       const totalFeeGwei = baseFee.add(priorityFee).toNumber() * 1e-9;
+      logger.info(`[GAS PRICE] Estimated: ${totalFeeGwei} GWEI for network ${this.network}`);
       
-      // Update both cache and instance gas price
-      Ethereum.lastGasPriceEstimate = {
-        timestamp: Date.now(),
-        price: totalFeeGwei
-      };
-      this._gasPrice = totalFeeGwei;
-
-      logger.info(`[GAS PRICE] Estimated: ${totalFeeGwei} GWEI`);
-
       return totalFeeGwei;
-
     } catch (error: any) {
       logger.error(`Failed to estimate gas price: ${error.message}`);
-      return this._gasPrice; // Return existing gas price as fallback
+      return this.gasPrice; // Return existing gas price as fallback
     }
   }
 
   /**
-   * Automatically update the prevailing gas price on the network.
+   * Get a contract instance for a token using standard ERC20 interface
    */
-  async updateGasPrice(): Promise<void> {
-    if (this._gasPriceRefreshInterval === null) {
-      return;
-    }
-
-    // Use estimateGasPrice instead of getGasPriceFromEthereumNode
-    const gasPrice = await this.estimateGasPrice();
-    if (gasPrice !== null) {
-      this._gasPrice = gasPrice;
-    } else {
-      logger.info('gasPrice is unexpectedly null.');
-    }
-
-    setTimeout(
-      this.updateGasPrice.bind(this),
-      this._gasPriceRefreshInterval * 1000,
-    );
-  }
-
-  getContract(
+  public getContract(
     tokenAddress: string,
     signerOrProvider?: Wallet | Provider,
   ): Contract {
-    return tokenAddress === MKR_ADDRESS
-      ? new Contract(tokenAddress, abi.MKRAbi, signerOrProvider)
-      : new Contract(tokenAddress, abi.ERC20Abi, signerOrProvider);
+    // Standard ERC20 interface ABI - the minimum needed for our operations
+    const erc20Interface = [
+      'function name() view returns (string)',
+      'function symbol() view returns (string)',
+      'function decimals() view returns (uint8)',
+      'function totalSupply() view returns (uint256)',
+      'function balanceOf(address owner) view returns (uint256)',
+      'function transfer(address to, uint256 amount) returns (bool)',
+      'function allowance(address owner, address spender) view returns (uint256)',
+      'function approve(address spender, uint256 amount) returns (bool)',
+      'function transferFrom(address from, address to, uint256 amount) returns (bool)',
+      'event Transfer(address indexed from, address indexed to, uint256 amount)',
+      'event Approval(address indexed owner, address indexed spender, uint256 amount)'
+    ];
+    
+    return new Contract(tokenAddress, erc20Interface, signerOrProvider || this.provider);
   }
 
-  getSpender(reqSpender: string): string {
+  /**
+   * Resolves a spender name to an address
+   */
+  public getSpender(reqSpender: string): string {
     let spender: string;
     if (reqSpender === 'uniswap') {
       spender = UniswapConfig.config.uniswapV3SmartOrderRouterAddress(
-        this.chainName,
-        this._chain,
+        'ethereum',
+        this.network,
       );
     } else {
       spender = reqSpender;
@@ -220,19 +162,241 @@ export class Ethereum extends EthereumBase {
     return spender;
   }
 
-  // cancel transaction
-  async cancelTx(wallet: Wallet, nonce: number): Promise<Transaction> {
-    logger.info(
-      'Canceling any existing transaction(s) with nonce number ' + nonce + '.',
-    );
-    return this.cancelTxWithGasPrice(wallet, nonce, this._gasPrice * 2);
+  /**
+   * Initialize the Ethereum connector
+   */
+  public async init(): Promise<void> {
+    try {
+      await this.loadTokens(this.tokenListSource, this.tokenListType);
+      this._initialized = true;
+    } catch (e) {
+      logger.error(`Failed to initialize Ethereum chain: ${e}`);
+      throw e;
+    }
   }
 
-  async close() {
-    await super.close();
-    clearInterval(this._metricTimer);
-    if (this._chain in Ethereum._instances) {
-      delete Ethereum._instances[this._chain];
+  /**
+   * Load tokens from the token list source
+   */
+  public async loadTokens(
+    tokenListSource: string,
+    tokenListType: TokenListType
+  ): Promise<void> {
+    logger.info(`Loading tokens for ethereum (${this.chainId}) from ${tokenListType} source: ${tokenListSource}`);
+    try {
+      this.tokenList = await this.getTokenList(tokenListSource, tokenListType);
+      // Only keep tokens in the same chain
+      this.tokenList = this.tokenList.filter(
+        (token: TokenInfo) => token.chainId === this.chainId
+      );
+      
+      if (this.tokenList) {
+        logger.info(`Loaded ${this.tokenList.length} tokens for ethereum`);
+        // Build token map for faster lookups
+        this.tokenList.forEach(
+          (token: TokenInfo) => (this.tokenMap[token.symbol] = token)
+        );
+      }
+    } catch (error) {
+      logger.error(`Failed to load token list: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Get token list from source
+   */
+  private async getTokenList(
+    tokenListSource: string,
+    tokenListType: TokenListType
+  ): Promise<TokenInfo[]> {
+    const tokens = await new TokenListResolutionStrategy(
+      tokenListSource,
+      tokenListType
+    ).resolve();
+    
+    // Normalize addresses
+    return tokens.map((token) => {
+      token.address = getAddress(token.address);
+      return token;
+    });
+  }
+
+  /**
+   * Get all tokens loaded from the token list
+   */
+  public get storedTokenList(): TokenInfo[] {
+    return Object.values(this.tokenMap);
+  }
+
+  /**
+   * Get token info by symbol
+   */
+  public getTokenBySymbol(tokenSymbol: string): TokenInfo | undefined {
+    return this.tokenList.find(
+      (token: TokenInfo) =>
+        token.symbol.toUpperCase() === tokenSymbol.toUpperCase() &&
+        token.chainId === this.chainId
+    );
+  }
+
+  /**
+   * Create a wallet from a private key
+   */
+  public getWalletFromPrivateKey(privateKey: string): Wallet {
+    return new Wallet(privateKey, this.provider);
+  }
+  
+  /**
+   * Get a wallet from stored encrypted key
+   */
+  public async getWallet(address: string): Promise<Wallet> {
+    const path = `${walletPath}/ethereum`;
+    const encryptedPrivateKey = await fse.readFile(
+      `${path}/${address}.json`,
+      'utf8'
+    );
+
+    const passphrase = ConfigManagerCertPassphrase.readPassphrase();
+    if (!passphrase) {
+      throw new Error('Missing passphrase');
+    }
+    return await this.decrypt(encryptedPrivateKey, passphrase);
+  }
+  
+  /**
+   * Get the first available wallet address
+   */
+  public async getFirstWalletAddress(): Promise<string | null> {
+    const path = `${walletPath}/ethereum`;
+    try {
+      // Create directory if it doesn't exist
+      await fse.ensureDir(path);
+      
+      // Get all .json files in the directory
+      const files = await fse.readdir(path);
+      const walletFiles = files.filter(f => f.endsWith('.json'));
+      
+      if (walletFiles.length === 0) {
+        return null;
+      }
+      
+      // Return first wallet address (without .json extension)
+      return walletFiles[0].slice(0, -5);
+    } catch (error) {
+      return null;
+    }
+  }
+
+  /**
+   * Encrypt a private key
+   */
+  public encrypt(privateKey: string, password: string): Promise<string> {
+    const wallet = this.getWalletFromPrivateKey(privateKey);
+    return wallet.encrypt(password);
+  }
+
+  /**
+   * Decrypt an encrypted private key
+   */
+  public async decrypt(
+    encryptedPrivateKey: string,
+    password: string
+  ): Promise<Wallet> {
+    const wallet = await Wallet.fromEncryptedJson(
+      encryptedPrivateKey,
+      password
+    );
+    return wallet.connect(this.provider);
+  }
+
+  /**
+   * Get native token balance
+   */
+  public async getNativeBalance(wallet: Wallet): Promise<TokenValue> {
+    const balance = await wallet.getBalance();
+    return { value: balance, decimals: 18 };
+  }
+
+  /**
+   * Get ERC-20 token balance
+   */
+  public async getERC20Balance(
+    contract: Contract,
+    wallet: Wallet,
+    decimals: number
+  ): Promise<TokenValue> {
+    const balance: BigNumber = await contract.balanceOf(wallet.address);
+    logger.info(`Token balance for ${wallet.address}: ${balance.toString()}`);
+    return { value: balance, decimals: decimals };
+  }
+
+  /**
+   * Get ERC-20 token allowance
+   */
+  public async getERC20Allowance(
+    contract: Contract,
+    wallet: Wallet,
+    spender: string,
+    decimals: number
+  ): Promise<TokenValue> {
+    const allowance = await contract.allowance(wallet.address, spender);
+    return { value: allowance, decimals: decimals };
+  }
+
+  /**
+   * Get transaction details
+   */
+  public async getTransaction(txHash: string): Promise<providers.TransactionResponse> {
+    return this.provider.getTransaction(txHash);
+  }
+
+  /**
+   * Get transaction receipt directly
+   */
+  public async getTransactionReceipt(
+    txHash: string
+  ): Promise<providers.TransactionReceipt | null> {
+    return this.provider.getTransactionReceipt(txHash);
+  }
+
+  /**
+   * Approve ERC-20 token spending
+   */
+  public async approveERC20(
+    contract: Contract,
+    wallet: Wallet,
+    spender: string,
+    amount: BigNumber
+  ): Promise<Transaction> {
+    logger.info(`Approving ${amount.toString()} tokens for spender ${spender}`);
+    
+    const params: any = {
+      gasLimit: this.gasLimitTransaction,
+      nonce: await this.provider.getTransactionCount(wallet.address)
+    };
+    
+    // Always fetch gas price from the network
+    const currentGasPrice = await this.provider.getGasPrice();
+    params.gasPrice = currentGasPrice.toString();
+    logger.info(`Using network gas price: ${utils.formatUnits(currentGasPrice, 'gwei')} GWEI`);
+    
+    return contract.approve(spender, amount, params);
+  }
+
+  /**
+   * Get current block number
+   */
+  public async getCurrentBlockNumber(): Promise<number> {
+    return this.provider.getBlockNumber();
+  }
+
+  /**
+   * Close the Ethereum connector and clean up resources
+   */
+  public async close() {
+    if (this.network in Ethereum._instances) {
+      delete Ethereum._instances[this.network];
     }
   }
 }

@@ -10,14 +10,12 @@ import { promisify } from 'util';
 // Internal services
 import { logger } from './services/logger';
 import { getHttpsOptions } from './https';
-import { errorHandler } from './services/error-handler';
 import { ConfigManagerV2 } from './services/config-manager-v2';
+import { initializeModelsConfig } from './services/initialize-models-config';
 import { asciiLogo } from './index';
 
 // Routes
-import { configRoutes } from './config/config.routes';
-import { walletRoutes } from './wallet/wallet.routes';
-import { connectorsRoutes } from './connectors/connector.routes';
+import { systemRoutes } from './system/routes';
 import { solanaRoutes } from './chains/solana/solana.routes';
 import { ethereumRoutes } from './chains/ethereum/ethereum.routes';
 import { jupiterRoutes } from './connectors/jupiter/jupiter.routes';
@@ -59,11 +57,13 @@ const swaggerOptions = {
       { name: 'wallet', description: 'Wallet endpoints' },
       { name: 'solana', description: 'Solana chain endpoints' },
       { name: 'jupiter', description: 'Jupiter connector endpoints' },
-      { name: 'raydium/clmm', description: 'Raydium CLMM connector endpoints' },
-      { name: 'raydium/amm', description: 'Raydium AMM connector endpoints' },
-      { name: 'meteora/clmm', description: 'Meteora CLMM connector endpoints' },
-      { name: 'uniswap', description: 'Uniswap connector endpoints' },
+      { name: 'raydium/clmm', description: 'Raydium Concentrated connector endpoints' },
+      { name: 'raydium/amm', description: 'Raydium Standard connector endpoints' },
+      { name: 'raydium/launchpad', description: 'Raydium Launchlab connector endpoints' },
+      { name: 'meteora/clmm', description: 'Meteora DLMM connector endpoints' },
       { name: 'ethereum', description: 'Ethereum chain endpoints' },
+      { name: 'uniswap/clmm', description: 'Uniswap V3 connector endpoints' },
+      { name: 'uniswap/amm', description: 'Uniswap V2 connector endpoints' },
       { name: 'polkadot', description: 'Polkadot chain endpoints' },
       { name: 'hydration', description: 'Hydration connector endpoints' },
     ],
@@ -131,7 +131,7 @@ const configureGatewayServer = () => {
     server.register(fastifySwaggerUi, {
       routePrefix: '/docs',
       uiConfig: {
-        docExpansion: 'list',
+        docExpansion: 'none',
         deepLinking: false,
         tryItOutEnabled: true,
         displayRequestDuration: true,
@@ -149,18 +149,22 @@ const configureGatewayServer = () => {
     docsServer?.register(fastifySwaggerUi, {
       routePrefix: '/',
       uiConfig: {
-        docExpansion: 'list',
+        docExpansion: 'none',
         deepLinking: false,
         tryItOutEnabled: true,
+        displayRequestDuration: true,
+        persistAuthorization: true,
+        filter: true,
       },
     });
   }
 
   // Register routes on both servers
   const registerRoutes = async (app: FastifyInstance) => {
-    app.register(configRoutes, { prefix: '/config' });
-    app.register(connectorsRoutes, { prefix: '/connectors' });
-    app.register(walletRoutes, { prefix: '/wallet' });
+    // Register system routes (config, connectors, wallet)
+    app.register(systemRoutes);
+
+    // Register DEX connector routes
     app.register(jupiterRoutes.swap, { prefix: '/jupiter' });
     
     // Meteora routes
@@ -169,8 +173,11 @@ const configureGatewayServer = () => {
     // Raydium routes
     app.register(raydiumRoutes.clmm, { prefix: '/raydium/clmm' });
     app.register(raydiumRoutes.amm, { prefix: '/raydium/amm' });
-    
+    app.register(raydiumRoutes.launchpad, { prefix: '/raydium/launchpad' });
+
     app.register(uniswapRoutes, { prefix: '/uniswap' });
+
+    // Register chain routes
     app.register(solanaRoutes, { prefix: '/solana' });
     app.register(ethereumRoutes, { prefix: '/ethereum' });
     app.register(polkadotRoutes, { prefix: '/polkadot' });
@@ -188,7 +195,40 @@ const configureGatewayServer = () => {
   server.addContentTypeParser('application/json', { parseAs: 'string' }, server.getDefaultJsonParser('ignore', 'ignore'));
 
   // Global error handler
-  server.setErrorHandler(errorHandler);
+  server.setErrorHandler((error, request, reply) => {
+    // Handle validation errors
+    if ('validation' in error && error.validation) {
+      return reply.status(400).send({
+        statusCode: 400,
+        error: 'Validation Error',
+        message: error.message,
+        validation: error.validation
+      });
+    }
+
+    // Handle Fastify's native errors
+    if (error.statusCode && error.statusCode >= 400) {
+      return reply.status(error.statusCode).send({
+        statusCode: error.statusCode,
+        error: error.name,
+        message: error.message
+      });
+    }
+
+    // Log and handle unexpected errors
+    logger.error('Unhandled error:', {
+      error: error.message,
+      stack: error.stack,
+      url: request.url,
+      params: request.params
+    });
+
+    reply.status(500).send({
+      statusCode: 500,
+      error: 'Internal Server Error',
+      message: 'An unexpected error occurred'
+    });
+  });
 
   // Health check route (outside registerRoutes, only on main server)
   server.get('/', async () => {
@@ -220,6 +260,9 @@ export const startGateway = async () => {
   // Display ASCII logo
   console.log(`\n${asciiLogo.trim()}`);
   logger.info(`⚡️ Gateway version ${GATEWAY_VERSION} starting at ${protocol}://localhost:${port}`);
+
+  // Initialize LLM model configurations
+  initializeModelsConfig();
 
   try {
     // Kill any process using the gateway port

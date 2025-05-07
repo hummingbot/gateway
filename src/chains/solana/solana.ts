@@ -2,7 +2,18 @@ import crypto from 'crypto';
 import bs58 from 'bs58';
 import fse from 'fs-extra';
 import { TokenListType } from '../../services/base';
-import { HttpException, SIMULATION_ERROR_MESSAGE, SIMULATION_ERROR_CODE } from '../../services/error-handler';
+// TODO: Replace with Fastify httpErrors
+class HttpException extends Error {
+  status: number;
+  errorCode: number;
+  constructor(status: number, message: string, errorCode: number = -1) {
+    super(message);
+    this.status = status;
+    this.errorCode = errorCode;
+  }
+}
+const SIMULATION_ERROR_CODE = 1024;
+const SIMULATION_ERROR_MESSAGE = 'Transaction simulation failed: ';
 import { TokenInfo } from '@solana/spl-token-registry';
 import {
   Connection,
@@ -18,7 +29,7 @@ import {
 } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID, unpackAccount, getMint, programSupportsExtensions } from "@solana/spl-token";
 
-import { walletPath } from '../../services/base';
+import { walletPath } from '../../system/wallet/utils';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { logger } from '../../services/logger';
 import { TokenListResolutionStrategy } from '../../services/token-list-resolution';

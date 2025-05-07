@@ -1,94 +1,46 @@
 import { FastifyPluginAsync } from 'fastify';
-import { Ethereum } from '../../chains/ethereum/ethereum';
-import { Uniswap } from './uniswap';
-import { price, trade, estimateGas } from './uniswap.controllers';
-import {
-  PriceRequest,
-  PriceResponse,
-  TradeRequest,
-  TradeResponse,
-  EstimateGasResponse,
-  PriceRequestSchema,
-  PriceResponseSchema,
-  TradeRequestSchema,
-  TradeResponseSchema,
-  EstimateGasResponseSchema
-} from '../connector.requests';
-import {
-  validateEstimateGasRequest,
-  validatePriceRequest,
-  validateTradeRequest,
-} from '../connector.validators';
-import { NetworkSelectionSchema, NetworkSelectionRequest } from '../../services/common-interfaces';
+import { logger } from '../../services/logger';
+
+// Import AMM routes
+import poolInfoRoute from './amm-routes/poolInfo';
+import quoteSwapRoute from './amm-routes/quoteSwap';
+import executeSwapRoute from './amm-routes/executeSwap';
+import addLiquidityRoute from './amm-routes/addLiquidity';
+import removeLiquidityRoute from './amm-routes/removeLiquidity';
+import positionInfoRoute from './amm-routes/positionInfo';
+import quoteLiquidityRoute from './amm-routes/quoteLiquidity';
 
 export const uniswapRoutes: FastifyPluginAsync = async (fastify) => {
-  // POST /uniswap/price
-  fastify.post<{ Body: PriceRequest; Reply: PriceResponse }>(
-    '/price',
-    {
-      schema: {
-        description: 'Get Uniswap price quote',
-        tags: ['uniswap'],
-        body: PriceRequestSchema,
-        response: {
-          200: PriceResponseSchema
-        }
-      }
+  // Register AMM routes (Uniswap V2)
+  fastify.register(
+    async (ammRouter) => {
+      await ammRouter.register(poolInfoRoute);
+      await ammRouter.register(quoteSwapRoute);
+      await ammRouter.register(executeSwapRoute);
+      await ammRouter.register(addLiquidityRoute);
+      await ammRouter.register(removeLiquidityRoute);
+      await ammRouter.register(positionInfoRoute);
+      await ammRouter.register(quoteLiquidityRoute);
     },
-    async (request) => {
-      validatePriceRequest(request.body);
-      const ethereum = Ethereum.getInstance(request.body.network);
-      const uniswapish = Uniswap.getInstance(request.body.chain, request.body.network);
-      return await price(ethereum, uniswapish, request.body);
-    }
+    { prefix: '/amm' }
   );
 
-  // POST /uniswap/trade
-  fastify.post<{ Body: TradeRequest; Reply: TradeResponse }>(
-    '/trade',
-    {
-      schema: {
-        description: 'Execute Uniswap trade',
-        tags: ['uniswap'],
-        body: TradeRequestSchema,
-        response: {
-          200: TradeResponseSchema
-        }
-      }
+  // Register CLMM routes (Uniswap V3)
+  fastify.register(
+    async (clmmRouter) => {
+      await clmmRouter.register(require('./clmm-routes/poolInfo').default);
+      await clmmRouter.register(require('./clmm-routes/quoteSwap').default);
+      await clmmRouter.register(require('./clmm-routes/executeSwap').default);
+      await clmmRouter.register(require('./clmm-routes/positionInfo').default);
+      await clmmRouter.register(require('./clmm-routes/positionsOwned').default);
+      await clmmRouter.register(require('./clmm-routes/openPosition').default);
+      await clmmRouter.register(require('./clmm-routes/addLiquidity').default);
+      await clmmRouter.register(require('./clmm-routes/removeLiquidity').default);
+      await clmmRouter.register(require('./clmm-routes/collectFees').default);
+      await clmmRouter.register(require('./clmm-routes/closePosition').default);
+      await clmmRouter.register(require('./clmm-routes/quotePosition').default);
     },
-    async (request) => {
-      validateTradeRequest(request.body);
-      const ethereum = Ethereum.getInstance(request.body.network);
-      const uniswapish = Uniswap.getInstance(request.body.chain, request.body.network);
-      console.log('Trade request payload:', request.body);
-      try {
-        return await trade(ethereum, uniswapish, request.body);
-      } catch (error) {
-        console.error('Uniswap trade error:', error);
-        throw error;
-      }
-    }
-  );
-
-  // POST /uniswap/estimateGas
-  fastify.post<{ Body: NetworkSelectionRequest; Reply: EstimateGasResponse }>(
-    '/estimateGas',
-    {
-      schema: {
-        description: 'Estimate Uniswap gas',
-        tags: ['uniswap'],
-        body: NetworkSelectionSchema,
-        response: {
-          200: EstimateGasResponseSchema
-        }
-      }
-    },
-    async (request) => {
-      validateEstimateGasRequest(request.body);
-      const ethereum = Ethereum.getInstance(request.body.network);
-      const uniswapish = Uniswap.getInstance(request.body.chain, request.body.network);
-      return await estimateGas(ethereum, uniswapish);
-    }
+    { prefix: '/clmm' }
   );
 };
 

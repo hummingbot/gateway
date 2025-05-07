@@ -1,0 +1,16 @@
+[
+  {
+    "validResponse": {
+      "signature": "2nP5aBUErzJJ5ryqmhUBR4q7iTwFqzuBLpzbNxfGFi9ywsPjxBYKJdJgF2xg18ZWmKTvkHKfJJu9q9QMtfhYbcRg",
+      "fee": 0.001,
+      "baseTokenAmountAdded": 1.0,
+      "quoteTokenAmountAdded": 30.0
+    },
+    "invalidResponse": {
+      "signature": "2nP5aBUErzJJ5ryqmhUBR4q7iTwFqzuBLpzbNxfGFi9ywsPjxBYKJdJgF2xg18ZWmKTvkHKfJJu9q9QMtfhYbcRg",
+      "fee": 0.001,
+      "baseTokenAmountAdded": "1.0",
+      "quoteTokenAmountAdded": 30.0
+    }
+  }
+]

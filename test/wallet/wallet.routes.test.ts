@@ -2,13 +2,13 @@ import { gatewayApp } from '../../src/app';
 import { patch, unpatch } from '../services/patch';
 import { Ethereum } from '../../src/chains/ethereum/ethereum';
 import { ConfigManagerCertPassphrase } from '../../src/services/config-manager-cert-passphrase';
-import { GetWalletResponse } from '../../src/wallet/wallet.routes';
+import { GetWalletResponse } from '../../src/system/wallet/schemas';
 
 let eth: Ethereum;
 
 beforeAll(async () => {
   patch(ConfigManagerCertPassphrase, 'readPassphrase', () => 'a');
-  eth = Ethereum.getInstance('sepolia');
+  eth = await Ethereum.getInstance('sepolia');
   await gatewayApp.ready();
 });
 

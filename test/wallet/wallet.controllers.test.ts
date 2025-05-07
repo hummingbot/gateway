@@ -1,16 +1,12 @@
 import { patch, unpatch } from '../services/patch';
 import { Ethereum } from '../../src/chains/ethereum/ethereum';
+import { FastifyInstance } from 'fastify';
 
 import {
   addWallet,
   getWallets,
   removeWallet,
-} from '../../src/wallet/wallet.controllers';
-import {
-  HttpException,
-  UNKNOWN_CHAIN_ERROR_CODE,
-  UNKNOWN_KNOWN_CHAIN_ERROR_MESSAGE,
-} from '../../src/services/error-handler';
+} from '../../src/system/wallet/utils';
 
 import { ConfigManagerCertPassphrase } from '../../src/services/config-manager-cert-passphrase';
 // import { Cosmos } from '../../../src/chains/cosmos/cosmos';
@@ -20,8 +16,7 @@ let eth: Ethereum;
 
 beforeAll(async () => {
   patch(ConfigManagerCertPassphrase, 'readPassphrase', () => 'a');
-  eth = Ethereum.getInstance('sepolia');
-  await eth.init();
+  eth = await Ethereum.getInstance('sepolia');
 });
 
 beforeEach(() =>
@@ -79,7 +74,7 @@ const encodedPrivateKey = {
 
 describe('addWallet and getWallets', () => {
   it('add an Ethereum wallet', async () => {
-    patch(eth, 'getWallet', () => {
+    patch(eth, 'getWalletFromPrivateKey', () => {
       return {
         address: oneAddress,
       };
@@ -89,13 +84,21 @@ describe('addWallet and getWallets', () => {
       return JSON.stringify(encodedPrivateKey);
     });
 
-    await addWallet({
+    // Create a mock Fastify instance
+    const mockFastify = {
+      httpErrors: {
+        internalServerError: (msg: string) => new Error(msg),
+        badRequest: (msg: string) => new Error(msg)
+      }
+    } as unknown as FastifyInstance;
+
+    await addWallet(mockFastify, {
       privateKey: onePrivateKey,
       chain: 'ethereum',
       network: 'sepolia',
     });
 
-    const wallets = await getWallets();
+    const wallets = await getWallets(mockFastify);
 
     const addresses: string[][] = wallets
       .filter((wallet) => wallet.chain === 'ethereum')
@@ -105,26 +108,28 @@ describe('addWallet and getWallets', () => {
   });
 
   it('fail to add a wallet to unknown chain', async () => {
+    // Create a mock Fastify instance
+    const mockFastify = {
+      httpErrors: {
+        internalServerError: (msg: string) => new Error(msg),
+        badRequest: (msg: string) => new Error(msg)
+      }
+    } as unknown as FastifyInstance;
+
     await expect(
-      addWallet({
+      addWallet(mockFastify, {
         privateKey: onePrivateKey,
         chain: 'shibainu',
         network: 'doge',
       })
-    ).rejects.toThrow(
-      new HttpException(
-        500,
-        UNKNOWN_KNOWN_CHAIN_ERROR_MESSAGE('shibainu'),
-        UNKNOWN_CHAIN_ERROR_CODE
-      )
-    );
+    ).rejects.toThrow('Unrecognized chain name: shibainu');
   });
 
 });
 
 describe('addWallet and removeWallets', () => {
   it('remove an Ethereum wallet', async () => {
-    patch(eth, 'getWallet', () => {
+    patch(eth, 'getWalletFromPrivateKey', () => {
       return {
         address: oneAddress,
       };
@@ -134,21 +139,24 @@ describe('addWallet and removeWallets', () => {
       return JSON.stringify(encodedPrivateKey);
     });
 
-    patch(eth, 'getWalletFromPrivateKey', () => {
-      return {
-        address: oneAddress,
-      };
-    });
+    // Create a mock Fastify instance
+    const mockFastify = {
+      httpErrors: {
+        internalServerError: (msg: string) => new Error(msg),
+        badRequest: (msg: string) => new Error(msg),
+        notFound: (msg: string) => new Error(msg)
+      }
+    } as unknown as FastifyInstance;
 
-    await addWallet({
+    await addWallet(mockFastify, {
       privateKey: onePrivateKey,
       chain: 'ethereum',
       network: 'sepolia',
     });
 
-    await removeWallet({ chain: 'ethereum', address: oneAddress });
+    await removeWallet(mockFastify, { chain: 'ethereum', address: oneAddress });
 
-    const wallets = await getWallets();
+    const wallets = await getWallets(mockFastify);
 
     const addresses: string[][] = wallets
       .filter((wallet) => wallet.chain === 'ethereum')

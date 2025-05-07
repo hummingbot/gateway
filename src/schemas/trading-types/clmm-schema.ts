@@ -45,7 +45,12 @@ export type MeteoraPoolInfo = Static<typeof MeteoraPoolInfoSchema>;
 
 export const GetPoolInfoRequest = Type.Object({
   network: Type.Optional(Type.String()),
-  poolAddress: Type.String(),
+  poolAddress: Type.Optional(Type.String()),
+  baseToken: Type.Optional(Type.String({ examples: ['SOL'] })),
+  quoteToken: Type.Optional(Type.String({ examples: ['USDC'] })),
+  feeTier: Type.Optional(Type.String({ 
+    enum: ['LOWEST', 'LOW', 'MEDIUM', 'HIGH'] 
+  })),
 }, { $id: 'GetPoolInfoRequest' });
 export type GetPoolInfoRequestType = Static<typeof GetPoolInfoRequest>;
 
@@ -78,10 +83,15 @@ export const OpenPositionRequest = Type.Object({
   walletAddress: Type.String(),
   lowerPrice: Type.Number(),
   upperPrice: Type.Number(),
-  poolAddress: Type.String(),
+  poolAddress: Type.Optional(Type.String()),
+  baseToken: Type.Optional(Type.String({ examples: ['SOL'] })),
+  quoteToken: Type.Optional(Type.String({ examples: ['USDC'] })),
   baseTokenAmount: Type.Optional(Type.Number()),
   quoteTokenAmount: Type.Optional(Type.Number()),
   slippagePct: Type.Optional(Type.Number({ minimum: 0, maximum: 100 })),
+  feeTier: Type.Optional(Type.String({ 
+    enum: ['LOWEST', 'LOW', 'MEDIUM', 'HIGH'] 
+  })),
 }, { $id: 'OpenPositionRequest' });
 export type OpenPositionRequestType = Static<typeof OpenPositionRequest>;
 

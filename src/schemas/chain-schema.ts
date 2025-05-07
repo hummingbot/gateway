@@ -1,7 +1,8 @@
 import { Type, Static } from '@sinclair/typebox';
+import { NetworkSelectionRequest, CustomTransactionReceipt, CustomTransactionResponse } from './common-interfaces';
+import { TokenInfo } from '../chains/ethereum/ethereum';
 
 export const EstimateGasRequestSchema = Type.Object({
-  chain: Type.String(),
   network: Type.String(),
   gasLimit: Type.Optional(Type.Number())
 }, { $id: 'EstimateGasRequest'});
@@ -81,3 +82,55 @@ export const StatusResponseSchema = Type.Object({
   nativeCurrency: Type.String()
 }, { $id: 'StatusResponse' });
 export type StatusResponseType = Static<typeof StatusResponseSchema>;
+
+// Base schemas
+export const NetworkSelectionSchema = Type.Object({
+  chain: Type.String(),
+  network: Type.String(),
+}, { $id: 'NetworkSelection' });
+
+
+// Allowances schemas
+export const AllowancesRequestSchema = Type.Intersect([
+  NetworkSelectionSchema,
+  Type.Object({
+    address: Type.String({ description: "the user's public Ethereum key" }),
+    spender: Type.String({ description: "the spender address for whom approvals are checked" }),
+    tokenSymbols: Type.Array(Type.String(), { description: "a list of token symbols" }),
+  }),
+], { $id: 'AllowancesRequest' });
+export type AllowancesRequestType = Static<typeof AllowancesRequestSchema>;
+
+export const AllowancesResponseSchema = Type.Object({
+  spender: Type.String(),
+  approvals: Type.Record(Type.String(), Type.String()),
+}, { $id: 'AllowancesResponse' });
+export type AllowancesResponseType = Static<typeof AllowancesResponseSchema>;
+
+// Approve schemas
+export const ApproveRequestSchema = Type.Intersect([
+  NetworkSelectionSchema,
+  Type.Object({
+    amount: Type.Optional(Type.String({ description: "the amount the spender will be approved to use, defaults to unlimited approval (MaxUint256) if not provided" })),
+    address: Type.String({ description: "the user's public Ethereum key" }),
+    spender: Type.String({ description: "the address of the spender" }),
+    token: Type.String({ description: "the token symbol the spender will be approved for" }),
+  }),
+], { $id: 'ApproveRequest' });
+export type ApproveRequestType = Static<typeof ApproveRequestSchema>;
+
+export const CustomTransactionSchema = Type.Object({
+  data: Type.String(),
+  to: Type.String(),
+  // Minimal definition, expand as needed
+}, { $id: 'CustomTransaction' });
+
+export const ApproveResponseSchema = Type.Object({
+  tokenAddress: Type.String(),
+  spender: Type.String(),
+  amount: Type.String(),
+  nonce: Type.Number(),
+  approval: CustomTransactionSchema,
+}, { $id: 'ApproveResponse' });
+export type ApproveResponseType = Static<typeof ApproveResponseSchema>;
+

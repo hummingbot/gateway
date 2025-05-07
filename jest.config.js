@@ -18,10 +18,7 @@ module.exports = {
   ],
   modulePathIgnorePatterns: ['<rootDir>/dist/'],
   setupFilesAfterEnv: ['<rootDir>/test/setupTests.js'],
-  globalSetup: '<rootDir>/test/setup.ts',
-  globalTeardown: '<rootDir>/test/teardown.ts',
   moduleNameMapper: {
-    eccrypto: '<rootDir>/test/mock/eccrypto-mock.js',
   },
   testPathIgnorePatterns: ['/node_modules/', 'test-helpers'],
 };

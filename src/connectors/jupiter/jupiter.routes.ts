@@ -4,6 +4,7 @@ import sensible from '@fastify/sensible';
 // Import routes
 import { quoteSwapRoute } from './routes/quoteSwap';
 import { executeSwapRoute } from './routes/executeSwap';
+import poolInfoRoute from './routes/poolInfo';
 
 // Main Jupiter routes
 const jupiterSwapRoutes: FastifyPluginAsync = async (fastify) => {
@@ -18,6 +19,7 @@ const jupiterSwapRoutes: FastifyPluginAsync = async (fastify) => {
       }
     });
     
+    await instance.register(poolInfoRoute);
     await instance.register(quoteSwapRoute);
     await instance.register(executeSwapRoute);
   });

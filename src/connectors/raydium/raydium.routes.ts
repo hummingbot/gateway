@@ -8,6 +8,10 @@ import { positionInfoRoute } from './clmm-routes/positionInfo';
 import { quoteSwapRoute } from './clmm-routes/quoteSwap';
 import { quotePositionRoute } from './clmm-routes/quotePosition';
 import { executeSwapRoute } from './clmm-routes/executeSwap';
+
+// Launchpad routes
+import { quoteSwapRoute as launchpadQuoteSwapRoute } from './launchpad-routes/quoteSwap';
+import { executeSwapRoute as launchpadExecuteSwapRoute } from './launchpad-routes/executeSwap';
 import { openPositionRoute } from './clmm-routes/openPosition';
 import { addLiquidityRoute } from './clmm-routes/addLiquidity';
 import { removeLiquidityRoute } from './clmm-routes/removeLiquidity';
@@ -71,8 +75,25 @@ const raydiumAmmRoutes: FastifyPluginAsync = async (fastify) => {
   });
 };
 
+// Launchpad routes for token buying/selling
+const raydiumLaunchpadRoutes: FastifyPluginAsync = async (fastify) => {
+  await fastify.register(sensible);
+  
+  await fastify.register(async (instance) => {
+    instance.addHook('onRoute', (routeOptions) => {
+      if (routeOptions.schema && routeOptions.schema.tags) {
+        routeOptions.schema.tags = ['raydium/launchpad'];
+      }
+    });
+    
+    await instance.register(launchpadQuoteSwapRoute);
+    await instance.register(launchpadExecuteSwapRoute);
+  });
+};
+
 // Main export that combines all routes
 export const raydiumRoutes = {
   clmm: raydiumClmmRoutes,
-  amm: raydiumAmmRoutes
+  amm: raydiumAmmRoutes,
+  launchpad: raydiumLaunchpadRoutes
 };

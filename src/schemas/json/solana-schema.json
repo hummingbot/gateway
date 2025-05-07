@@ -1,0 +1,38 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+      "networks": {
+        "type": "object",
+        "patternProperties": {
+          "^..+$": {
+            "type": "object",
+            "properties": {
+              "nodeURL": { "type": "string" },
+              "tokenListType": { "type": "string" },
+              "tokenListSource": { "type": "string" },
+              "nativeCurrencySymbol": { "type": "string" }
+            },
+            "required": [
+              "nodeURL",
+              "tokenListType",
+              "tokenListSource",
+              "nativeCurrencySymbol"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      "network": { "type": "string" },
+      "defaultComputeUnits": { "type": "number" },
+      "basePriorityFeePct": { "type": "number" },
+      "priorityFeeMultiplier": { "type": "number" },
+      "maxPriorityFee": { "type": "number" },
+      "minPriorityFee": { "type": "number" },
+      "retryIntervalMs": { "type": "number" },
+      "retryCount": { "type": "number" }
+    },
+    "additionalProperties": false
+  }
+  

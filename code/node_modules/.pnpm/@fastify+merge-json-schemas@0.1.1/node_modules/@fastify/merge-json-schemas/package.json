@@ -1,0 +1,39 @@
+{
+  "name": "@fastify/merge-json-schemas",
+  "version": "0.1.1",
+  "description": "Builds a logical conjunction (AND) of multiple JSON schemas",
+  "main": "index.js",
+  "type": "commonjs",
+  "types": "types/index.d.ts",
+  "scripts": {
+    "lint": "standard",
+    "lint:fix": "standard --fix",
+    "test:unit": "c8 --100 node --test",
+    "test:types": "tsd",
+    "test": "npm run lint && npm run test:unit && npm run test:types"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fastify/merge-json-schemas.git"
+  },
+  "keywords": [
+    "json",
+    "schema",
+    "merge",
+    "allOf"
+  ],
+  "author": "Ivan Tymoshenko <ivan@tymoshenko.me>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/fastify/merge-json-schemas/issues"
+  },
+  "homepage": "https://github.com/fastify/merge-json-schemas#readme",
+  "devDependencies": {
+    "c8": "^8.0.1",
+    "standard": "^17.1.0",
+    "tsd": "^0.30.3"
+  },
+  "dependencies": {
+    "fast-deep-equal": "^3.1.3"
+  }
+}

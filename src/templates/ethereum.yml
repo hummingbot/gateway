@@ -1,3 +1,9 @@
+# Global settings for Ethereum
+# Gas parameters for transactions (applies to all networks)
+gasLimitTransaction: 3000000
+manualGasPrice: 33
+
+# Network-specific configurations
 networks:
   mainnet:
     chainID: 1
@@ -62,7 +68,24 @@ networks:
     tokenListSource: conf/lists/polygon.json
     nativeCurrencySymbol: POL
     gasPriceRefreshInterval: 60
-
-# if you use the gas assumptions below, your wallet needs >0.1 ETH balance for gas
-gasLimitTransaction: 3000000
-manualGasPrice: 33
+  blast:
+    chainID: 81457
+    nodeURL: https://rpc.blast.io
+    tokenListType: FILE
+    tokenListSource: /home/gateway/conf/lists/mainnet.json
+    nativeCurrencySymbol: ETH
+    gasPriceRefreshInterval: 60
+  zora:
+    chainID: 7777777
+    nodeURL: https://rpc.zora.energy
+    tokenListType: FILE
+    tokenListSource: /home/gateway/conf/lists/mainnet.json
+    nativeCurrencySymbol: ETH
+    gasPriceRefreshInterval: 60
+  worldchain:
+    chainID: 29
+    nodeURL: https://rpc.worldcoin.org
+    tokenListType: FILE
+    tokenListSource: /home/gateway/conf/lists/mainnet.json
+    nativeCurrencySymbol: WLD
+    gasPriceRefreshInterval: 60
