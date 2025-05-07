@@ -1424,27 +1424,48 @@ export class Hydration {
       return null;
     }
 
-    // For omnipools, we need to include all tokens
-    if (poolInfo.poolType?.toLowerCase() === POOL_TYPE.OMNIPOOL) {
-      return {
-        address: poolInfo.address,
-        baseTokenAddress: poolInfo.baseTokenAddress,
-        quoteTokenAddress: poolInfo.quoteTokenAddress,
-        feePct: poolInfo.feePct,
-        price: poolInfo.price,
-        baseTokenAmount: poolInfo.baseTokenAmount,
-        quoteTokenAmount: poolInfo.quoteTokenAmount,
-        poolType: poolInfo.poolType,
-        lpMint: {
-          address: '', // Not applicable for Polkadot, but required by interface
-          decimals: 0   // Not applicable for Polkadot, but required by interface
-        },
-        tokens: poolInfo.tokens // Include all available tokens
-      };
+    const apiPromise = await this.getApiPromise();
+
+    const poolType = poolInfo.poolType?.toLowerCase();
+
+    let lpMint = { address: '', decimals: 0 };
+
+    switch (poolType) {
+      case POOL_TYPE.XYK: {
+        const shareTokenId = await apiPromise.query.xyk.shareToken(poolAddress);
+        const baseSymbol = await this.getTokenSymbol(poolInfo.baseTokenAddress);
+        const baseToken = this.polkadot.getToken(baseSymbol);
+        lpMint = {
+          address: shareTokenId.toString(),
+          decimals: baseToken?.decimals || 0
+        };
+        break;
+      }
+
+      case POOL_TYPE.STABLESWAP: {
+        lpMint = {
+          address: poolInfo.id || '',
+          decimals: 18
+        };
+        break;
+      }
+
+      case POOL_TYPE.OMNIPOOL: {
+        const hubAsset = await this.polkadot.getToken('H2O');
+        lpMint = {
+          address: hubAsset?.address || '',
+          decimals: hubAsset?.decimals || 0
+        };
+        break;
+      }
+
+      default:
+        logger.warn(`Unknown pool type "${poolType}" for pool ${poolAddress}`);
+        break;
     }
     
     // For other pool types, return standard response
-    return {
+    const result = {
       address: poolInfo.address,
       baseTokenAddress: poolInfo.baseTokenAddress,
       quoteTokenAddress: poolInfo.quoteTokenAddress,
@@ -1453,12 +1474,15 @@ export class Hydration {
       baseTokenAmount: poolInfo.baseTokenAmount,
       quoteTokenAmount: poolInfo.quoteTokenAmount,
       poolType: poolInfo.poolType,
-      lpMint: {
-        address: '', // Not applicable for Polkadot, but required by interface
-        decimals: 0   // Not applicable for Polkadot, but required by interface
-      },
+      lpMint: lpMint,
       tokens: poolInfo.tokens // Include base and quote tokens
     };
+
+    if (poolInfo.poolType?.toLowerCase() === POOL_TYPE.OMNIPOOL) {
+      result.tokens = poolInfo.tokens;
+    }
+
+    return result;
   }
 
   /**
