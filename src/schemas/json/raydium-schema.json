@@ -26,6 +26,15 @@
                 }
               },
               "additionalProperties": false
+            },
+            "launchpad": {
+              "type": "object", 
+              "patternProperties": {
+                "^[A-Z]+-[A-Z]+$": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
             }
           },
           "required": ["amm", "clmm"],
