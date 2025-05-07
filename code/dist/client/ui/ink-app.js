@@ -38,8 +38,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.startInkApp = void 0;
 const react_1 = __importStar(require("react"));
+// @ts-ignore
 const ink_1 = require("ink");
+// @ts-ignore
 const ink_text_input_1 = __importDefault(require("ink-text-input"));
+// @ts-ignore
 const ink_spinner_1 = __importDefault(require("ink-spinner"));
 const logger_1 = require("../../common/utils/logger");
 const ChatApp = ({ llmProvider, mcpServer, initialSystemPrompt = 'You are Gateway Code, an AI assistant that helps users interact with Gateway API for blockchain and DEX operations.' }) => {

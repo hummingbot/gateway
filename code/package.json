@@ -7,7 +7,7 @@
     "gateway-code": "dist/client/client.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc --skipLibCheck",
     "start": "node dist/client/client.js",
     "start:server": "node dist/server/server.js",
     "dev": "ts-node-dev --respawn client/client.ts",

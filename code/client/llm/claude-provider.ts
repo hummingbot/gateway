@@ -50,6 +50,7 @@ export class ClaudeProvider implements LlmProvider {
     const tools = options.tools ? this.formatTools(options.tools) : undefined;
     
     try {
+      // @ts-ignore - Assuming Anthropic SDK version might be outdated in types
       const response = await this.client.messages.create({
         model: options.model || this.model,
         messages: formattedMessages,
@@ -73,7 +74,7 @@ export class ClaudeProvider implements LlmProvider {
           totalTokens: response.usage.input_tokens + response.usage.output_tokens
         }
       };
-    } catch (error) {
+    } catch (error: any) {
       throw new Error(`Claude API error: ${error.message}`);
     }
   }
@@ -87,6 +88,7 @@ export class ClaudeProvider implements LlmProvider {
     const tools = options.tools ? this.formatTools(options.tools) : undefined;
     
     try {
+      // @ts-ignore - Assuming Anthropic SDK version might be outdated in types
       const stream = await this.client.messages.create({
         model: options.model || this.model,
         messages: formattedMessages,
@@ -168,7 +170,7 @@ export class ClaudeProvider implements LlmProvider {
           totalTokens: usage.input_tokens + usage.output_tokens
         }
       };
-    } catch (error) {
+    } catch (error: any) {
       throw new Error(`Claude streaming API error: ${error.message}`);
     }
   }

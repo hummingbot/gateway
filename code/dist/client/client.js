@@ -11,10 +11,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const chalk_1 = __importDefault(require("chalk"));
 const minimist_1 = __importDefault(require("minimist"));
 const dotenv_1 = __importDefault(require("dotenv"));
+const path_1 = __importDefault(require("path"));
 const server_1 = require("../server/mcp/server");
 const provider_factory_1 = require("./llm/provider-factory");
 const logger_1 = require("../common/utils/logger");
-const ink_app_1 = require("./ui/ink-app");
+const interactive_shell_1 = require("./ui/interactive-shell");
+// Get the root path
+const rootPath = () => path_1.default.resolve(__dirname, '..');
 // Load environment variables
 dotenv_1.default.config();
 // Define CLI arguments
@@ -57,17 +60,25 @@ if (argv.help) {
     console.log(usage);
     process.exit(0);
 }
-// Get API key from arguments or environment
-const apiKey = argv['api-key'] || process.env.GATEWAY_CODE_API_KEY;
 // Configure logger
 logger_1.logger.configure({
     level: argv.verbose ? 'debug' : 'info',
     timestamp: true,
     colorize: true
 });
+// Import the models configuration manager
+const models_config_1 = require("./config/models-config");
+// Get the models configuration manager instance
+const modelsConfig = models_config_1.ModelsConfigManager.getInstance(path_1.default.dirname(path_1.default.dirname(__dirname)));
+// Get API key from arguments, environment, or configuration
+let apiKey = argv['api-key'] || process.env.GATEWAY_CODE_API_KEY;
+// If no API key is provided via args or env, try to get it from config
+if (!apiKey) {
+    apiKey = modelsConfig.getApiKey(argv.provider);
+}
 // Validate required arguments
 if (!apiKey) {
-    console.error(chalk_1.default.red('Error: API key is required. Set it with --api-key or GATEWAY_CODE_API_KEY environment variable.'));
+    console.error(chalk_1.default.red('Error: API key is required. Set it with --api-key or GATEWAY_CODE_API_KEY environment variable, or configure it in conf/<provider>.yml'));
     console.log(usage);
     process.exit(1);
 }
@@ -95,9 +106,14 @@ async function main() {
             gatewayApiPort: parseInt(gatewayUrl.port || '15888')
         });
         await mcpServer.start();
-        // Initialize LLM provider
+        // Get provider configuration
+        const providerConfig = modelsConfig.getProviderConfig(providerType);
+        // Initialize LLM provider with configuration
         const llmProvider = provider_factory_1.LlmProviderFactory.getProvider(providerType, {
-            apiKey: apiKey
+            apiKey: apiKey,
+            baseUrl: providerConfig?.baseUrl,
+            model: providerConfig?.models?.find(m => m.default)?.name,
+            organization: providerConfig?.organizationId
         });
         // Define system prompt
         const systemPrompt = `You are Gateway Code, an AI assistant that helps users interact with Gateway API for blockchain and DEX operations. Gateway is a platform that lets users interact with blockchain networks and their decentralized exchanges (DEXs). 
@@ -106,8 +122,12 @@ Your goal is to understand user requests and provide helpful responses, using Ga
 
 Current connection: ${argv['gateway-url']}
 Current provider: ${argv.provider}`;
-        // Start Ink app
-        await (0, ink_app_1.startInkApp)(llmProvider, mcpServer, { systemPrompt });
+        // Start interactive shell
+        const shell = new interactive_shell_1.InteractiveShell({
+            mcpServer,
+            llmProvider
+        });
+        await shell.start();
     }
     catch (error) {
         logger_1.logger.error('Error starting Gateway Code:', error);
@@ -116,9 +136,9 @@ Current provider: ${argv.provider}`;
     }
 }
 // Run the main function
-main().catch(error => {
+main().catch((error) => {
     logger_1.logger.error('Unhandled error:', error);
-    console.error(chalk_1.default.red('An unexpected error occurred:'), error);
+    console.error(chalk_1.default.red('An unexpected error occurred:'), error.message || error);
     process.exit(1);
 });
 //# sourceMappingURL=client.js.map

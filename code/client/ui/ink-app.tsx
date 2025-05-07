@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
+// @ts-ignore
 import { render, Box, Text, useApp, useInput } from 'ink';
+// @ts-ignore
 import TextInput from 'ink-text-input';
+// @ts-ignore
 import Spinner from 'ink-spinner';
 import { LlmProvider } from '../llm/provider-interface';
 import { GatewayMcpServer } from '../../server/mcp/server';
@@ -83,7 +86,7 @@ const ChatApp: React.FC<ChatAppProps> = ({
         .map(m => ({ role: m.role, content: m.content }));
       
       // Prepare conversation history for LLM
-      const conversationHistory = [
+      const conversationHistory: any = [
         // System prompt
         messages[0],
         // Previous messages

@@ -8,10 +8,14 @@
 import chalk from 'chalk';
 import minimist from 'minimist';
 import dotenv from 'dotenv';
+import path from 'path';
 import { GatewayMcpServer } from '../server/mcp/server';
 import { LlmProviderFactory, ProviderType } from './llm/provider-factory';
 import { logger } from '../common/utils/logger';
-import { startInkApp } from './ui/ink-app';
+import { InteractiveShell } from './ui/interactive-shell';
+
+// Get the root path
+const rootPath = () => path.resolve(__dirname, '..');
 
 // Load environment variables
 dotenv.config();
@@ -59,9 +63,6 @@ if (argv.help) {
   process.exit(0);
 }
 
-// Get API key from arguments or environment
-const apiKey = argv['api-key'] || process.env.GATEWAY_CODE_API_KEY;
-
 // Configure logger
 logger.configure({
   level: argv.verbose ? 'debug' : 'info',
@@ -69,9 +70,23 @@ logger.configure({
   colorize: true
 });
 
+// Import the models configuration manager
+import { ModelsConfigManager } from './config/models-config';
+
+// Get the models configuration manager instance
+const modelsConfig = ModelsConfigManager.getInstance(path.dirname(path.dirname(__dirname)));
+
+// Get API key from arguments, environment, or configuration
+let apiKey = argv['api-key'] || process.env.GATEWAY_CODE_API_KEY;
+
+// If no API key is provided via args or env, try to get it from config
+if (!apiKey) {
+  apiKey = modelsConfig.getApiKey(argv.provider);
+}
+
 // Validate required arguments
 if (!apiKey) {
-  console.error(chalk.red('Error: API key is required. Set it with --api-key or GATEWAY_CODE_API_KEY environment variable.'));
+  console.error(chalk.red('Error: API key is required. Set it with --api-key or GATEWAY_CODE_API_KEY environment variable, or configure it in conf/<provider>.yml'));
   console.log(usage);
   process.exit(1);
 }
@@ -104,9 +119,15 @@ async function main() {
     
     await mcpServer.start();
     
-    // Initialize LLM provider
+    // Get provider configuration
+    const providerConfig = modelsConfig.getProviderConfig(providerType);
+    
+    // Initialize LLM provider with configuration
     const llmProvider = LlmProviderFactory.getProvider(providerType, {
-      apiKey: apiKey
+      apiKey: apiKey,
+      baseUrl: providerConfig?.baseUrl,
+      model: providerConfig?.models?.find(m => m.default)?.name,
+      organization: providerConfig?.organizationId
     });
     
     // Define system prompt
@@ -117,8 +138,13 @@ Your goal is to understand user requests and provide helpful responses, using Ga
 Current connection: ${argv['gateway-url']}
 Current provider: ${argv.provider}`;
     
-    // Start Ink app
-    await startInkApp(llmProvider, mcpServer, { systemPrompt });
+    // Start interactive shell
+    const shell = new InteractiveShell({
+      mcpServer,
+      llmProvider
+    });
+    
+    await shell.start();
   } catch (error) {
     logger.error('Error starting Gateway Code:', error);
     console.error(chalk.red(`Failed to start Gateway Code: ${error.message}`));
@@ -127,8 +153,8 @@ Current provider: ${argv.provider}`;
 }
 
 // Run the main function
-main().catch(error => {
+main().catch((error: any) => {
   logger.error('Unhandled error:', error);
-  console.error(chalk.red('An unexpected error occurred:'), error);
+  console.error(chalk.red('An unexpected error occurred:'), error.message || error);
   process.exit(1);
 });

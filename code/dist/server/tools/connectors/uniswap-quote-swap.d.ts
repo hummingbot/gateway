@@ -15,87 +15,87 @@ declare const parametersSchema: z.ZodObject<{
             address: z.ZodString;
             symbol: z.ZodOptional<z.ZodString>;
         }, "strip", z.ZodTypeAny, {
-            address: string;
-            symbol?: string | undefined;
+            symbol?: string;
+            address?: string;
         }, {
-            address: string;
-            symbol?: string | undefined;
+            symbol?: string;
+            address?: string;
         }>;
         quoteToken: z.ZodObject<{
             address: z.ZodString;
             symbol: z.ZodOptional<z.ZodString>;
         }, "strip", z.ZodTypeAny, {
-            address: string;
-            symbol?: string | undefined;
+            symbol?: string;
+            address?: string;
         }, {
-            address: string;
-            symbol?: string | undefined;
+            symbol?: string;
+            address?: string;
         }>;
         amount: z.ZodString;
         side: z.ZodEnum<["BUY", "SELL"]>;
         type: z.ZodOptional<z.ZodEnum<["EXACT_INPUT", "EXACT_OUTPUT"]>>;
     }, "strip", z.ZodTypeAny, {
-        baseToken: {
-            address: string;
-            symbol?: string | undefined;
+        type?: "EXACT_INPUT" | "EXACT_OUTPUT";
+        marketAddress?: string;
+        baseToken?: {
+            symbol?: string;
+            address?: string;
         };
-        quoteToken: {
-            address: string;
-            symbol?: string | undefined;
+        quoteToken?: {
+            symbol?: string;
+            address?: string;
         };
-        amount: string;
-        side: "BUY" | "SELL";
-        type?: "EXACT_INPUT" | "EXACT_OUTPUT" | undefined;
-        marketAddress?: string | undefined;
+        amount?: string;
+        side?: "BUY" | "SELL";
     }, {
-        baseToken: {
-            address: string;
-            symbol?: string | undefined;
+        type?: "EXACT_INPUT" | "EXACT_OUTPUT";
+        marketAddress?: string;
+        baseToken?: {
+            symbol?: string;
+            address?: string;
         };
-        quoteToken: {
-            address: string;
-            symbol?: string | undefined;
+        quoteToken?: {
+            symbol?: string;
+            address?: string;
         };
-        amount: string;
-        side: "BUY" | "SELL";
-        type?: "EXACT_INPUT" | "EXACT_OUTPUT" | undefined;
-        marketAddress?: string | undefined;
+        amount?: string;
+        side?: "BUY" | "SELL";
     }>;
 }, "strip", z.ZodTypeAny, {
-    chain: string;
-    network: string;
-    connector: "uniswap";
-    quote: {
-        baseToken: {
-            address: string;
-            symbol?: string | undefined;
+    chain?: string;
+    network?: string;
+    connector?: "uniswap";
+    quote?: {
+        type?: "EXACT_INPUT" | "EXACT_OUTPUT";
+        marketAddress?: string;
+        baseToken?: {
+            symbol?: string;
+            address?: string;
         };
-        quoteToken: {
-            address: string;
-            symbol?: string | undefined;
+        quoteToken?: {
+            symbol?: string;
+            address?: string;
         };
-        amount: string;
-        side: "BUY" | "SELL";
-        type?: "EXACT_INPUT" | "EXACT_OUTPUT" | undefined;
-        marketAddress?: string | undefined;
+        amount?: string;
+        side?: "BUY" | "SELL";
     };
 }, {
-    chain: string;
-    network: string;
-    connector: "uniswap";
-    quote: {
-        baseToken: {
-            address: string;
-            symbol?: string | undefined;
+    chain?: string;
+    network?: string;
+    connector?: "uniswap";
+    quote?: {
+        type?: "EXACT_INPUT" | "EXACT_OUTPUT";
+        marketAddress?: string;
+        baseToken?: {
+            symbol?: string;
+            address?: string;
         };
-        quoteToken: {
-            address: string;
-            symbol?: string | undefined;
+        quoteToken?: {
+            symbol?: string;
+            address?: string;
         };
-        amount: string;
-        side: "BUY" | "SELL";
-        type?: "EXACT_INPUT" | "EXACT_OUTPUT" | undefined;
-        marketAddress?: string | undefined;
+        amount?: string;
+        side?: "BUY" | "SELL";
     };
 }>;
 interface QuoteResponse {
@@ -134,87 +134,87 @@ export declare class UniswapQuoteSwapTool extends BaseTool<z.infer<typeof parame
                 address: z.ZodString;
                 symbol: z.ZodOptional<z.ZodString>;
             }, "strip", z.ZodTypeAny, {
-                address: string;
-                symbol?: string | undefined;
+                symbol?: string;
+                address?: string;
             }, {
-                address: string;
-                symbol?: string | undefined;
+                symbol?: string;
+                address?: string;
             }>;
             quoteToken: z.ZodObject<{
                 address: z.ZodString;
                 symbol: z.ZodOptional<z.ZodString>;
             }, "strip", z.ZodTypeAny, {
-                address: string;
-                symbol?: string | undefined;
+                symbol?: string;
+                address?: string;
             }, {
-                address: string;
-                symbol?: string | undefined;
+                symbol?: string;
+                address?: string;
             }>;
             amount: z.ZodString;
             side: z.ZodEnum<["BUY", "SELL"]>;
             type: z.ZodOptional<z.ZodEnum<["EXACT_INPUT", "EXACT_OUTPUT"]>>;
         }, "strip", z.ZodTypeAny, {
-            baseToken: {
-                address: string;
-                symbol?: string | undefined;
+            type?: "EXACT_INPUT" | "EXACT_OUTPUT";
+            marketAddress?: string;
+            baseToken?: {
+                symbol?: string;
+                address?: string;
             };
-            quoteToken: {
-                address: string;
-                symbol?: string | undefined;
+            quoteToken?: {
+                symbol?: string;
+                address?: string;
             };
-            amount: string;
-            side: "BUY" | "SELL";
-            type?: "EXACT_INPUT" | "EXACT_OUTPUT" | undefined;
-            marketAddress?: string | undefined;
+            amount?: string;
+            side?: "BUY" | "SELL";
         }, {
-            baseToken: {
-                address: string;
-                symbol?: string | undefined;
+            type?: "EXACT_INPUT" | "EXACT_OUTPUT";
+            marketAddress?: string;
+            baseToken?: {
+                symbol?: string;
+                address?: string;
             };
-            quoteToken: {
-                address: string;
-                symbol?: string | undefined;
+            quoteToken?: {
+                symbol?: string;
+                address?: string;
             };
-            amount: string;
-            side: "BUY" | "SELL";
-            type?: "EXACT_INPUT" | "EXACT_OUTPUT" | undefined;
-            marketAddress?: string | undefined;
+            amount?: string;
+            side?: "BUY" | "SELL";
         }>;
     }, "strip", z.ZodTypeAny, {
-        chain: string;
-        network: string;
-        connector: "uniswap";
-        quote: {
-            baseToken: {
-                address: string;
-                symbol?: string | undefined;
+        chain?: string;
+        network?: string;
+        connector?: "uniswap";
+        quote?: {
+            type?: "EXACT_INPUT" | "EXACT_OUTPUT";
+            marketAddress?: string;
+            baseToken?: {
+                symbol?: string;
+                address?: string;
             };
-            quoteToken: {
-                address: string;
-                symbol?: string | undefined;
+            quoteToken?: {
+                symbol?: string;
+                address?: string;
             };
-            amount: string;
-            side: "BUY" | "SELL";
-            type?: "EXACT_INPUT" | "EXACT_OUTPUT" | undefined;
-            marketAddress?: string | undefined;
+            amount?: string;
+            side?: "BUY" | "SELL";
         };
     }, {
-        chain: string;
-        network: string;
-        connector: "uniswap";
-        quote: {
-            baseToken: {
-                address: string;
-                symbol?: string | undefined;
+        chain?: string;
+        network?: string;
+        connector?: "uniswap";
+        quote?: {
+            type?: "EXACT_INPUT" | "EXACT_OUTPUT";
+            marketAddress?: string;
+            baseToken?: {
+                symbol?: string;
+                address?: string;
             };
-            quoteToken: {
-                address: string;
-                symbol?: string | undefined;
+            quoteToken?: {
+                symbol?: string;
+                address?: string;
             };
-            amount: string;
-            side: "BUY" | "SELL";
-            type?: "EXACT_INPUT" | "EXACT_OUTPUT" | undefined;
-            marketAddress?: string | undefined;
+            amount?: string;
+            side?: "BUY" | "SELL";
         };
     }>;
     constructor(config: McpServerConfig);

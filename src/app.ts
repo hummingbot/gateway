@@ -11,6 +11,7 @@ import { promisify } from 'util';
 import { logger } from './services/logger';
 import { getHttpsOptions } from './https';
 import { ConfigManagerV2 } from './services/config-manager-v2';
+import { initializeModelsConfig } from './services/initialize-models-config';
 import { asciiLogo } from './index';
 
 // Routes
@@ -253,6 +254,9 @@ export const startGateway = async () => {
   // Display ASCII logo
   console.log(`\n${asciiLogo.trim()}`);
   logger.info(`⚡️ Gateway version ${GATEWAY_VERSION} starting at ${protocol}://localhost:${port}`);
+  
+  // Initialize LLM model configurations
+  initializeModelsConfig();
 
   try {
     // Kill any process using the gateway port

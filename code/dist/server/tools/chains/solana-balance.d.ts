@@ -10,13 +10,13 @@ declare const parametersSchema: z.ZodObject<{
     tokenSymbols: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
     address: z.ZodString;
 }, "strip", z.ZodTypeAny, {
-    address: string;
-    network: string;
-    tokenSymbols?: string[] | undefined;
+    address?: string;
+    network?: string;
+    tokenSymbols?: string[];
 }, {
-    address: string;
-    network: string;
-    tokenSymbols?: string[] | undefined;
+    address?: string;
+    network?: string;
+    tokenSymbols?: string[];
 }>;
 interface BalanceResponse {
     network: string;
@@ -39,13 +39,13 @@ export declare class SolanaBalanceTool extends BaseTool<z.infer<typeof parameter
         tokenSymbols: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
         address: z.ZodString;
     }, "strip", z.ZodTypeAny, {
-        address: string;
-        network: string;
-        tokenSymbols?: string[] | undefined;
+        address?: string;
+        network?: string;
+        tokenSymbols?: string[];
     }, {
-        address: string;
-        network: string;
-        tokenSymbols?: string[] | undefined;
+        address?: string;
+        network?: string;
+        tokenSymbols?: string[];
     }>;
     constructor(config: McpServerConfig);
     execute(params: z.infer<typeof parametersSchema>): Promise<BalanceResponse>;

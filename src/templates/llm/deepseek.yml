@@ -1,0 +1,24 @@
+# DeepSeek AI Model Configuration
+
+# API Key for DeepSeek (required)
+apiKey: ""
+
+# Base URL for DeepSeek API (optional)
+baseUrl: "https://api.deepseek.com/v1"
+
+# Available models and their configuration
+models:
+  - name: "deepseek-chat"
+    description: "General-purpose chat model"
+    contextWindow: 32000
+    default: true
+    
+  - name: "deepseek-coder"
+    description: "Specialized for code generation and understanding"
+    contextWindow: 32000
+
+# Default parameters
+parameters:
+  temperature: 0.7
+  topP: 1.0
+  maxTokens: 2000

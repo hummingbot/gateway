@@ -1,0 +1,37 @@
+# OpenAI Model Configuration
+
+# API Key for OpenAI (required)
+apiKey: ""
+
+# Organization ID (optional)
+organizationId: ""
+
+# Base URL for OpenAI API (optional)
+baseUrl: "https://api.openai.com/v1"
+
+# Available models and their configuration
+models:
+  - name: "gpt-4o"
+    description: "Latest GPT-4o model with vision capabilities"
+    contextWindow: 128000
+    default: true
+    
+  - name: "gpt-4-turbo"
+    description: "Powerful and efficient GPT-4 Turbo"
+    contextWindow: 128000
+    
+  - name: "gpt-4"
+    description: "Original GPT-4 model"
+    contextWindow: 8192
+    
+  - name: "gpt-3.5-turbo"
+    description: "Fast and cost-effective for simpler tasks"
+    contextWindow: 16385
+
+# Default parameters
+parameters:
+  temperature: 0.7
+  topP: 1.0
+  maxTokens: 2000
+  presencePenalty: 0.0
+  frequencyPenalty: 0.0

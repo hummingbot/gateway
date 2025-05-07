@@ -232,8 +232,11 @@ export class InteractiveShell {
     console.log(chalk.cyan('  exit') + '           - Exit the Gateway Code CLI');
     console.log(chalk.cyan('  clear') + '          - Clear the screen');
     console.log(chalk.cyan('  history') + '        - Show command history');
-    console.log(chalk.cyan('  config set <key> <value>') + ' - Set configuration option');
-    console.log(chalk.cyan('  config get <key>') + '      - Get configuration option');
+    console.log('');
+    console.log(chalk.bold('Configuration Commands:'));
+    console.log(chalk.cyan('  config set api-key <key>') + ' - Set API key for current provider');
+    console.log(chalk.cyan('  config get provider') + '     - Show current LLM provider');
+    console.log(chalk.cyan('  config get models') + '       - Show available models for current provider');
     console.log('');
     console.log(chalk.bold('Examples:'));
     console.log('  "Show my ETH balance"');
@@ -271,20 +274,61 @@ export class InteractiveShell {
     const action = parts[0].toLowerCase();
     
     if (action === 'set' && parts.length >= 3) {
-      const key = parts[1];
+      const key = parts[1].toLowerCase();
       const value = parts.slice(2).join(' ');
       
-      console.log(chalk.green(`Config ${key} set to: ${value}`));
-      // Here we'd actually set the config
-      
+      if (key === 'api-key' || key === 'apikey') {
+        try {
+          // Import the ModelsConfigManager
+          const { ModelsConfigManager } = require('../config/models-config');
+          const modelsConfig = ModelsConfigManager.getInstance();
+          
+          // Get the current provider
+          const provider = this.llmProvider.getName();
+          
+          // Save the API key
+          modelsConfig.setApiKey(provider, value);
+          
+          console.log(chalk.green(`API key for ${provider} saved successfully.`));
+        } catch (error) {
+          console.error(chalk.red(`Failed to save API key: ${error.message}`));
+        }
+      } else if (key === 'provider') {
+        console.log(chalk.yellow('Changing provider requires restarting Gateway Code with --provider flag.'));
+        console.log(chalk.yellow('Example: gateway-code --provider openai'));
+      } else {
+        console.log(chalk.yellow(`Config option '${key}' not recognized.`));
+      }
     } else if (action === 'get' && parts.length >= 2) {
-      const key = parts[1];
+      const key = parts[1].toLowerCase();
       
-      console.log(chalk.blue(`Config ${key}:`), 'mock-value');
-      // Here we'd actually get the config
-      
+      if (key === 'provider') {
+        console.log(chalk.blue(`Current provider:`), this.llmProvider.getName());
+      } else if (key === 'models') {
+        try {
+          // Import the ModelsConfigManager
+          const { ModelsConfigManager } = require('../config/models-config');
+          const modelsConfig = ModelsConfigManager.getInstance();
+          
+          // Get the current provider
+          const provider = this.llmProvider.getName();
+          
+          // Get models for the provider
+          const models = modelsConfig.getModels(provider);
+          
+          console.log(chalk.blue(`Available models for ${provider}:`));
+          for (const model of models) {
+            const defaultMarker = model.default ? ' (default)' : '';
+            console.log(`  - ${model.name}${defaultMarker}: ${model.description}`);
+          }
+        } catch (error) {
+          console.error(chalk.red(`Failed to get models: ${error.message}`));
+        }
+      } else {
+        console.log(chalk.yellow(`Config option '${key}' not recognized.`));
+      }
     } else {
-      console.log(chalk.red('Invalid config command. Try "config set key value" or "config get key".'));
+      console.log(chalk.red('Invalid config command. Try "config set api-key <your-key>" or "config get models".'));
     }
   }
 }
