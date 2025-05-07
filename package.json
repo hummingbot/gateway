@@ -70,6 +70,7 @@
     "@uniswap/v3-periphery": "^1.1.1",
     "@uniswap/v3-sdk": "^3.13.1",
     "ajv": "^8.6.3",
+    "ajv-formats": "^3.0.1",
     "app-root-path": "^3.0.0",
     "axios": "^1.8.2",
     "bn.js": "^5.2.1",

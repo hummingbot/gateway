@@ -5,6 +5,7 @@ import fse from 'fs-extra';
 import path from 'path';
 import yaml from 'js-yaml';
 import { rootPath } from '../paths';
+import addFormats from 'ajv-formats';
 
 type Configuration = { [key: string]: any };
 type ConfigurationDefaults = { [namespaceId: string]: Configuration };
@@ -70,6 +71,7 @@ export function initiateWithTemplate(templateFile: string, configFile: string) {
 }
 
 const ajv: Ajv = new Ajv();
+addFormats(ajv);
 
 export const percentRegexp = new RegExp(/^(\d+)\/(\d+)$/);
 
