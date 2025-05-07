@@ -1,0 +1,87 @@
+{
+	"name": "ink-text-input",
+	"version": "5.0.1",
+	"description": "Text input component for Ink",
+	"license": "MIT",
+	"repository": "vadimdemedes/ink-text-input",
+	"author": {
+		"name": "Vadim Demedes",
+		"email": "vadimdemedes@hey.com",
+		"url": "https://github.com/vadimdemedes"
+	},
+	"type": "module",
+	"exports": {
+		"types": "./build/index.d.ts",
+		"default": "./build/index.js"
+	},
+	"engines": {
+		"node": ">=14.16"
+	},
+	"scripts": {
+		"test": "tsc --noEmit && xo && FORCE_COLOR=1 ava",
+		"build": "tsc",
+		"prepare": "tsc",
+		"pretest": "tsc"
+	},
+	"files": [
+		"build"
+	],
+	"keywords": [
+		"ink",
+		"text",
+		"input",
+		"component",
+		"jsx",
+		"react",
+		"stdin",
+		"keypress",
+		"search",
+		"query"
+	],
+	"dependencies": {
+		"chalk": "^5.2.0",
+		"type-fest": "^3.6.1"
+	},
+	"devDependencies": {
+		"@sindresorhus/tsconfig": "^3.0.1",
+		"@types/react": "^18.0.0",
+		"@types/sinon": "^10.0.13",
+		"@vdemedes/prettier-config": "^1.0.1",
+		"ava": "^5.1.1",
+		"delay": "^5.0.0",
+		"eslint-config-xo-react": "^0.27.0",
+		"eslint-plugin-react": "^7.32.2",
+		"eslint-plugin-react-hooks": "^4.6.0",
+		"ink": "^4.0.0",
+		"ink-testing-library": "^3.0.0",
+		"prettier": "^2.0.5",
+		"react": "^18.0.0",
+		"sinon": "^15.0.1",
+		"ts-node": "^10.9.1",
+		"typescript": "^4.9.5",
+		"xo": "^0.53.0"
+	},
+	"peerDependencies": {
+		"ink": "^4.0.0",
+		"react": "^18.0.0"
+	},
+	"ava": {
+		"extensions": {
+			"ts": "module",
+			"tsx": "module"
+		},
+		"nodeArguments": [
+			"--loader=ts-node/esm"
+		]
+	},
+	"xo": {
+		"extends": [
+			"xo-react"
+		],
+		"prettier": true,
+		"rules": {
+			"unicorn/no-hex-escape": 0
+		}
+	},
+	"prettier": "@vdemedes/prettier-config"
+}

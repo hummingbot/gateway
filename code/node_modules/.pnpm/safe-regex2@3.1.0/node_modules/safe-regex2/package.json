@@ -1,0 +1,42 @@
+{
+  "name": "safe-regex2",
+  "version": "3.1.0",
+  "description": "detect possibly catastrophic, exponential-time regular expressions",
+  "main": "index.js",
+  "types": "types/index.d.ts",
+  "dependencies": {
+    "ret": "~0.4.0"
+  },
+  "devDependencies": {
+    "standard": "^17.0.0",
+    "tape": "^5.0.0",
+    "tsd": "^0.25.0"
+  },
+  "scripts": {
+    "lint": "standard",
+    "test": "npm run test:unit",
+    "test:typescript": "tsd",
+    "test:unit": "tape test/*.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/fastify/safe-regex.git"
+  },
+  "homepage": "https://github.com/fastify/safe-regex",
+  "keywords": [
+    "catastrophic",
+    "exponential",
+    "regex",
+    "safe",
+    "sandbox"
+  ],
+  "author": {
+    "name": "James Halliday",
+    "email": "mail@substack.net",
+    "url": "http://substack.net"
+  },
+  "contributors": [
+    "Matteo Collina <hello@matteocollina.com>"
+  ],
+  "license": "MIT"
+}
