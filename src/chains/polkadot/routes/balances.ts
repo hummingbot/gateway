@@ -1,7 +1,6 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { Polkadot } from '../polkadot';
 import { PolkadotBalanceRequest, PolkadotBalanceResponse, PolkadotBalanceRequestSchema, PolkadotBalanceResponseSchema } from '../polkadot.types';
-import { HttpException } from '../../../services/error-handler';
 
 /**
  * Retrieves token balances for a Polkadot address
@@ -19,11 +18,11 @@ export async function getPolkadotBalances(
   tokenSymbols?: string[]
 ): Promise<PolkadotBalanceResponse> {
   if (!network) {
-    throw new HttpException(400, 'Network parameter is required', -1);
+    throw new Error('Network parameter is required');
   }
   
   if (!address) {
-    throw new HttpException(400, 'Address parameter is required', -1);
+    throw new Error('Address parameter is required');
   }
   
   const polkadot = await Polkadot.getInstance(network);

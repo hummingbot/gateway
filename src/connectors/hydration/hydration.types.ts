@@ -1,4 +1,4 @@
-import { TokenInfo } from '../../chains/ethereum/ethereum-base';
+import { TokenInfo } from '../../chains/ethereum/ethereum';
 import { Type, Static } from '@sinclair/typebox';
 import {
   AddLiquidityRequest,

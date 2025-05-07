@@ -7,7 +7,6 @@ import {
   HydrationGetPoolInfoRequest,
   HydrationGetPoolInfoRequestSchema
 } from '../../hydration.types';
-import { HttpException } from '../../../../services/error-handler';
 
 /**
  * Retrieves detailed information about a specific Hydration pool.
@@ -23,22 +22,22 @@ export async function getHydrationPoolInfo(
   poolAddress: string
 ): Promise<HydrationPoolInfo> {
   if (!network) {
-    throw new HttpException(400, 'Network parameter is required', -1);
+    throw new Error('Network parameter is required');
   }
   
   if (!poolAddress) {
-    throw new HttpException(400, 'Pool address parameter is required', -1);
+    throw new Error('Pool address parameter is required');
   }
 
   const hydration = await Hydration.getInstance(network);
   if (!hydration) {
-    throw new HttpException(503, 'Hydration service unavailable', -1);
+    throw new Error('Hydration service unavailable');
   }
 
   // Get pool information with proper typing
   const poolInfo = await hydration.getPoolDetails(poolAddress);
   if (!poolInfo) {
-    throw new HttpException(404, `Pool not found: ${poolAddress}`, -1);
+    throw new Error(`Pool not found: ${poolAddress}`);
   }
 
   return poolInfo;

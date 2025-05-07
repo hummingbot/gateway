@@ -6,7 +6,6 @@ import {
   PolkadotEstimateGasRequestSchema,
   PolkadotEstimateGasResponseSchema
 } from '../polkadot.types';
-import {HttpException} from '../../../services/error-handler';
 
 /**
  * Estimates gas (fees) for a Polkadot transaction
@@ -28,7 +27,7 @@ export async function estimateGasPolkadot(
   gasLimit?: number
 ): Promise<PolkadotEstimateGasResponse> {
   if (!network) {
-    throw new HttpException(400, 'Network parameter is required', -1);
+    throw new Error('Network parameter is required');
   }
   
   const polkadot = await Polkadot.getInstance(network);

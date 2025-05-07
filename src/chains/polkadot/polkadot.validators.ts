@@ -1,5 +1,4 @@
 import { decodeAddress } from '@polkadot/util-crypto';
-import { HttpException } from '../../services/error-handler';
 import { logger } from '../../services/logger';
 
 /**
@@ -16,11 +15,7 @@ import { logger } from '../../services/logger';
 export function validatePolkadotAddress(address: string, ss58Format?: number): boolean {
   if (!address) {
     logger.error('Empty Polkadot address provided');
-    throw new HttpException(
-      400,
-      'Invalid Polkadot address: Address cannot be empty',
-      -1
-    );
+    throw new Error('Invalid Polkadot address: Address cannot be empty');
   }
   
   try {
@@ -28,11 +23,6 @@ export function validatePolkadotAddress(address: string, ss58Format?: number): b
     decodeAddress(address, false, ss58Format);
     return true;
   } catch (error) {
-    logger.error(`Invalid Polkadot address: ${address}`);
-    throw new HttpException(
-      400,
-      `Invalid Polkadot address: ${address}`,
-      -1
-    );
+    throw new Error(`Invalid Polkadot address: ${address}`);
   }
 }

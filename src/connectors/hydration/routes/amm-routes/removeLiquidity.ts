@@ -8,7 +8,6 @@ import {
   HydrationRemoveLiquidityResponse, 
   HydrationRemoveLiquidityResponseSchema 
 } from '../../hydration.types';
-import { httpBadRequest, httpNotFound } from '../../../../services/error-handler';
 import { validatePolkadotAddress } from '../../../../chains/polkadot/polkadot.validators';
 import { RemoveLiquidityRequest } from '../../../../schemas/trading-types/amm-schema';
 
@@ -36,7 +35,7 @@ export async function removeLiquidity(
 ): Promise<HydrationRemoveLiquidityResponse> {
   // Validate inputs
   if (percentageToRemove <= 0 || percentageToRemove > 100) {
-    throw httpBadRequest('Percentage to remove must be between 0 and 100');
+    throw new Error('Percentage to remove must be between 0 and 100');
   }
 
   // Validate address
@@ -54,9 +53,9 @@ export async function removeLiquidity(
     return result;
   } catch (error) {
     if (error.message?.includes('not found')) {
-      throw httpNotFound(error.message);
+      throw new Error(error.message);
     } else if (error.message?.includes('must be between')) {
-      throw httpBadRequest(error.message);
+      throw new Error(error.message);
     }
     
     logger.error(`Error removing liquidity: ${error.message}`);

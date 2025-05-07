@@ -8,7 +8,6 @@ import {
   HydrationAddLiquidityResponse,
   HydrationAddLiquidityResponseSchema
 } from '../../hydration.types';
-import {HttpException} from '../../../../services/error-handler';
 
 /**
  * Adds liquidity to a Hydration position.
@@ -32,11 +31,11 @@ export async function addLiquidityToHydration(
   slippagePct?: number
 ): Promise<HydrationAddLiquidityResponse> {
   if (!network) {
-    throw new HttpException(400, 'Network parameter is required', -1);
+    throw new Error('Network parameter is required');
   }
   
   if (!poolId) {
-    throw new HttpException(400, 'Pool ID parameter is required', -1);
+    throw new Error('Pool ID parameter is required');
   }
   
   // Validate wallet address

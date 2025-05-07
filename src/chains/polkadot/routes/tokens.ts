@@ -1,7 +1,6 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { Polkadot } from '../polkadot';
 import { PolkadotTokensRequest, PolkadotTokensResponse, PolkadotTokensRequestSchema, PolkadotTokensResponseSchema } from '../polkadot.types';
-import { HttpException } from '../../../services/error-handler';
 
 /**
  * Retrieves token information from the Polkadot network
@@ -17,7 +16,7 @@ export async function getPolkadotTokens(
   tokenSymbols?: string[] | string
 ): Promise<PolkadotTokensResponse> {
   if (!network) {
-    throw new HttpException(400, 'Network parameter is required', -1);
+    throw new Error('Network parameter is required');
   }
   
   const polkadot = await Polkadot.getInstance(network);

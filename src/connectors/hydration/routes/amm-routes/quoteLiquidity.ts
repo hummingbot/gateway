@@ -1,7 +1,6 @@
 import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { Hydration } from '../../hydration';
 import { logger } from '../../../../services/logger';
-import { HttpException } from '../../../../services/error-handler';
 import {
   HydrationQuoteLiquidityRequest,
   HydrationQuoteLiquidityRequestSchema,
@@ -29,20 +28,20 @@ export async function getHydrationLiquidityQuote(
   slippagePct: number = 1
 ): Promise<HydrationQuoteLiquidityResponse> {
   if (!network) {
-    throw new HttpException(400, 'Network parameter is required', -1);
+    throw new Error('Network parameter is required');
   }
   
   if (!poolAddress) {
-    throw new HttpException(400, 'Pool address parameter is required', -1);
+    throw new Error('Pool address parameter is required');
   }
   
   if (!baseTokenAmount && !quoteTokenAmount) {
-    throw new HttpException(400, 'Either baseTokenAmount or quoteTokenAmount must be provided', -1);
+    throw new Error('Either baseTokenAmount or quoteTokenAmount must be provided');
   }
 
   const hydration = await Hydration.getInstance(network);
   if (!hydration) {
-    throw new HttpException(503, 'Hydration service unavailable', -1);
+    throw new Error('Hydration service unavailable');
   }
 
   try {
@@ -56,10 +55,10 @@ export async function getHydrationLiquidityQuote(
     return quote;
   } catch (error) {
     if (error.message?.includes('not found')) {
-      throw new HttpException(404, error.message, -1);
+      throw new Error(error.message);
     }
     logger.error(`Error getting liquidity quote: ${error.message}`);
-    throw new HttpException(500, 'Failed to get liquidity quote', -1);
+    throw new Error('Failed to get liquidity quote');
   }
 }
 

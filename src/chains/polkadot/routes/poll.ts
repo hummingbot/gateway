@@ -1,7 +1,6 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { Polkadot } from '../polkadot';
 import { PolkadotPollRequest, PolkadotPollResponse, PolkadotPollRequestSchema, PolkadotPollResponseSchema } from '../polkadot.types';
-import { HttpException } from '../../../services/error-handler';
 
 /**
  * Polls transaction status on the Polkadot network
@@ -17,11 +16,11 @@ export async function pollPolkadotTransaction(
   txHash: string
 ): Promise<PolkadotPollResponse> {
   if (!network) {
-    throw new HttpException(400, 'Network parameter is required', -1);
+    throw new Error('Network parameter is required');
   }
   
   if (!txHash) {
-    throw new HttpException(400, 'Transaction hash parameter is required', -1);
+    throw new Error('Transaction hash parameter is required');
   }
   
   const polkadot = await Polkadot.getInstance(network);

@@ -3,18 +3,16 @@ import {Keyring} from '@polkadot/keyring';
 import {KeyringPair} from '@polkadot/keyring/types';
 import {cryptoWaitReady, decodeAddress, mnemonicGenerate} from '@polkadot/util-crypto';
 import {u8aToHex} from '@polkadot/util';
-import {TokenInfo} from '../ethereum/ethereum-base';
+import {TokenInfo} from '../ethereum/ethereum';
 import {Config, getPolkadotConfig} from './polkadot.config';
-import {HttpException, LOAD_WALLET_ERROR_CODE, LOAD_WALLET_ERROR_MESSAGE} from '../../services/error-handler';
 import {logger} from '../../services/logger';
-import {TokenListType, walletPath} from '../../services/base';
+import {TokenListType} from '../../services/base';
 import {PolkadotAccount} from './polkadot.types';
 import {BN} from 'bn.js';
 import * as fs from 'fs';
 import axios, {Axios} from 'axios';
 import {ConfigManagerCertPassphrase} from '../../services/config-manager-cert-passphrase';
-import {wrapResponse} from '../../services/response-wrapper';
-import {Constant, fromBaseUnits, runWithRetryAndTimeout, sleep, toBaseUnits} from './polkadot.utils';
+import {Constant, fromBaseUnits, runWithRetryAndTimeout, sleep} from './polkadot.utils';
 import {validatePolkadotAddress} from './polkadot.validators';
 import * as crypto from 'crypto';
 import { BigNumber } from '@galacticcouncil/sdk';
@@ -60,7 +58,7 @@ export class Polkadot {
    */
   public static async getInstance(network: string): Promise<Polkadot> {
     if (!network) {
-      throw new HttpException(400, 'Network parameter is required', -1);
+      throw new Error('Network parameter is required');
     }
     
     if (!Polkadot._instances[network]) {
@@ -258,10 +256,8 @@ export class Polkadot {
       return this._keyring.addFromUri(mnemonic);
     } catch (error) {
       logger.error(`Failed to load wallet from file: ${error.message}`);
-      throw new HttpException(
-        500,
+      throw new Error(
         `Wallet not found for address: ${address}. You need to import the private key or mnemonic first.`,
-        -1,
       );
     }
   }
@@ -301,7 +297,7 @@ export class Polkadot {
       return decrypted;
     } catch (error) {
       logger.error(`Failed to decrypt secret: ${error.message}`);
-      throw new HttpException(500, 'Failed to decrypt wallet data', -1);
+      throw new Error('Failed to decrypt wallet data');
     }
   }
 
@@ -600,10 +596,8 @@ export class Polkadot {
     try {
       wallet = await this.getWallet(address);
     } catch (err) {
-      throw new HttpException(
-          500,
-          LOAD_WALLET_ERROR_MESSAGE + err,
-          LOAD_WALLET_ERROR_CODE
+      throw new Error(
+        `Failed to get wallet for address: ${address}. Error: ${err}`,
       );
     }
 

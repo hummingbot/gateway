@@ -7,7 +7,6 @@ import {
   HydrationGetSwapQuoteResponse,
   HydrationGetSwapQuoteResponseSchema
 } from '../../hydration.types';
-import { HttpException } from '../../../../services/error-handler';
 
 /**
  * Gets a swap quote for a potential token exchange on Hydration.
@@ -33,28 +32,28 @@ export async function getHydrationSwapQuote(
   slippagePct?: number
 ): Promise<HydrationGetSwapQuoteResponse> {
   if (!network) {
-    throw new HttpException(400, 'Network parameter is required', -1);
+    throw new Error('Network parameter is required');
   }
   
   if (!baseToken) {
-    throw new HttpException(400, 'Base token parameter is required', -1);
+    throw new Error('Base token parameter is required');
   }
   
   if (!quoteToken) {
-    throw new HttpException(400, 'Quote token parameter is required', -1);
+    throw new Error('Quote token parameter is required');
   }
   
   if (!amount || amount <= 0) {
-    throw new HttpException(400, 'Amount must be a positive number', -1);
+    throw new Error('Amount must be a positive number');
   }
   
   if (side !== 'BUY' && side !== 'SELL') {
-    throw new HttpException(400, 'Side must be "BUY" or "SELL"', -1);
+    throw new Error('Side must be "BUY" or "SELL"');
   }
 
   const hydration = await Hydration.getInstance(network);
   if (!hydration) {
-    throw new HttpException(503, 'Hydration service unavailable', -1);
+    throw new Error('Hydration service unavailable');
   }
 
   try {
@@ -81,11 +80,11 @@ export async function getHydrationSwapQuote(
     };
   } catch (error) {
     if (error.message?.includes('not found') || error.message?.includes('not supported')) {
-      throw new HttpException(404, error.message, -1);
+      throw new Error(error.message);
     }
     
     logger.error(`Error getting swap quote: ${error.message}`);
-    throw new HttpException(500, 'Failed to get swap quote', -1);
+    throw new Error('Failed to get swap quote');
   }
 }
 

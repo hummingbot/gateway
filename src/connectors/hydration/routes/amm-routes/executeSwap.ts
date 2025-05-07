@@ -7,7 +7,6 @@ import {
   HydrationExecuteSwapResponse,
   HydrationExecuteSwapResponseSchema
 } from '../../hydration.types';
-import {HttpException} from '../../../../services/error-handler';
 import {validatePolkadotAddress} from '../../../../chains/polkadot/polkadot.validators';
 
 /**
@@ -36,19 +35,19 @@ export async function executeSwapOnHydration(
   slippagePct?: number
 ): Promise<HydrationExecuteSwapResponse> {
   if (!baseToken) {
-    throw new HttpException(400, 'Base token parameter is required', -1);
+    throw new Error('Base token parameter is required');
   }
   
   if (!quoteToken) {
-    throw new HttpException(400, 'Quote token parameter is required', -1);
+    throw new Error('Quote token parameter is required');
   }
   
   if (!amount || amount <= 0) {
-    throw new HttpException(400, 'Amount must be a positive number', -1);
+    throw new Error('Amount must be a positive number');
   }
   
   if (side !== 'BUY' && side !== 'SELL') {
-    throw new HttpException(400, 'Side must be "BUY" or "SELL"', -1);
+    throw new Error('Side must be "BUY" or "SELL"');
   }
   
   // Validate wallet address

@@ -1,7 +1,6 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { Polkadot } from '../polkadot';
 import { PolkadotStatusRequest, PolkadotStatusResponse, PolkadotStatusRequestSchema, PolkadotStatusResponseSchema } from '../polkadot.types';
-import { HttpException } from '../../../services/error-handler';
 
 /**
  * Gets network status information from the Polkadot blockchain
@@ -15,7 +14,7 @@ export async function getPolkadotStatus(
   network: string
 ): Promise<PolkadotStatusResponse> {
   if (!network) {
-    throw new HttpException(400, 'Network parameter is required', -1);
+    throw new Error('Network parameter is required');
   }
   
   const polkadot = await Polkadot.getInstance(network);

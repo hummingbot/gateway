@@ -6,7 +6,6 @@ import {
   HydrationListPoolsResponse,
   HydrationListPoolsResponseSchema
 } from '../../hydration.types';
-import {HttpException} from '../../../../services/error-handler';
 import {logger} from '../../../../services/logger';
 
 /**
@@ -36,12 +35,12 @@ export async function listHydrationPools(
   tokenAddresses: string[] = []
 ): Promise<HydrationListPoolsResponse> {
   if (!network) {
-    throw new HttpException(400, 'Network parameter is required', -1);
+    throw new Error('Network parameter is required');
   }
 
   const hydration = await Hydration.getInstance(network);
   if (!hydration) {
-    throw new HttpException(503, 'Hydration service unavailable', -1);
+    throw new Error('Hydration service unavailable');
   }
   
   const pools = await hydration.listPools(
