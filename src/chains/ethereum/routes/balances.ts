@@ -9,7 +9,7 @@ export async function getEthereumBalances(
   fastify: FastifyInstance,
   network: string,
   address: string,
-  tokenSymbols: string[]
+  tokens: string[]
 ): Promise<BalanceResponseType> {
   try {
     const ethereum = await Ethereum.getInstance(network);
@@ -26,7 +26,7 @@ export async function getEthereumBalances(
     }
 
     // Get native token balance if requested
-    if (tokenSymbols.includes(ethereum.nativeTokenSymbol)) {
+    if (tokens.includes(ethereum.nativeTokenSymbol)) {
       const nativeBalance = await ethereum.getNativeBalance(wallet);
       // Convert string to number as required by schema
       balances[ethereum.nativeTokenSymbol] = parseFloat(tokenValueToString(nativeBalance));
@@ -34,8 +34,13 @@ export async function getEthereumBalances(
 
     // Get ERC20 token balances
     await Promise.all(
-      tokenSymbols.map(async (symbol) => {
-        const token = ethereum.getTokenBySymbol(symbol);
+      tokens.map(async (symbolOrAddress) => {
+        // Don't process the native token again
+        if (symbolOrAddress === ethereum.nativeTokenSymbol) {
+          return;
+        }
+        
+        const token = ethereum.getTokenBySymbol(symbolOrAddress);
         if (token) {
           const contract = ethereum.getContract(
             token.address,
@@ -47,13 +52,13 @@ export async function getEthereumBalances(
             token.decimals
           );
           // Convert string to number as required by schema
-          balances[symbol] = parseFloat(tokenValueToString(balance));
+          balances[token.symbol] = parseFloat(tokenValueToString(balance));
         }
       })
     );
 
     if (!Object.keys(balances).length) {
-      throw fastify.httpErrors.badRequest('No token balances found for the given symbols');
+      throw fastify.httpErrors.badRequest('No token balances found for the given tokens');
     }
     
     return { balances };
@@ -94,10 +99,11 @@ export const balancesRoute: FastifyPluginAsync = async (fastify) => {
             ...BalanceRequestSchema.properties,
             network: { type: 'string', examples: ['base', 'mainnet', 'sepolia', 'polygon'] },
             address: { type: 'string', examples: [firstWalletAddress] },
-            tokenSymbols: { 
+            tokens: { 
               type: 'array', 
               items: { type: 'string' },
-              examples: [['ETH', 'USDC', 'DAI']]
+              description: 'A list of token symbols or addresses',
+              examples: [['ETH', 'USDC', 'DAI', '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48']]
             }
           }
         },
@@ -107,8 +113,8 @@ export const balancesRoute: FastifyPluginAsync = async (fastify) => {
       }
     },
     async (request) => {
-      const { network, address, tokenSymbols = [] } = request.body;
-      return await getEthereumBalances(fastify, network, address, tokenSymbols);
+      const { network, address, tokens = [] } = request.body;
+      return await getEthereumBalances(fastify, network, address, tokens);
     }
   );
 };

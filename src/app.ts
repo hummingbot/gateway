@@ -14,13 +14,15 @@ import { ConfigManagerV2 } from './services/config-manager-v2';
 import { asciiLogo } from './index';
 
 // Routes
-import { systemRoutes } from './system/routes';
 import { solanaRoutes } from './chains/solana/solana.routes';
 import { ethereumRoutes } from './chains/ethereum/ethereum.routes';
 import { jupiterRoutes } from './connectors/jupiter/jupiter.routes';
 import { meteoraRoutes } from './connectors/meteora/meteora.routes';
 import { uniswapRoutes } from './connectors/uniswap/uniswap.routes';
 import { raydiumRoutes } from './connectors/raydium/raydium.routes';
+import { connectorsRoutes } from './connectors/connector.routes';
+import { configRoutes } from './config/config.routes';
+import { walletRoutes } from './wallet/wallet.routes';
 
 
 // Change version for each release
@@ -58,6 +60,7 @@ const swaggerOptions = {
       { name: 'raydium/amm', description: 'Raydium Standard connector endpoints' },
       { name: 'meteora/clmm', description: 'Meteora DLMM connector endpoints' },
       { name: 'ethereum', description: 'Ethereum chain endpoints' },
+      { name: 'uniswap', description: 'Uniswap Router connector endpoints' },
       { name: 'uniswap/clmm', description: 'Uniswap V3 connector endpoints' },
       { name: 'uniswap/amm', description: 'Uniswap V2 connector endpoints' },
     ],
@@ -155,8 +158,12 @@ const configureGatewayServer = () => {
 
   // Register routes on both servers
   const registerRoutes = async (app: FastifyInstance) => {
-    // Register system routes (config, connectors, wallet)
-    app.register(systemRoutes);
+    // Register system routes
+    app.register(configRoutes, { prefix: '/config' });
+    app.register(walletRoutes, { prefix: '/wallet' });
+    
+    // Register connector list route
+    app.register(connectorsRoutes, { prefix: '/connectors' });
     
     // Register DEX connector routes
     app.register(jupiterRoutes.swap, { prefix: '/jupiter' });

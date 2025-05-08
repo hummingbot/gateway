@@ -7,13 +7,13 @@ export async function getSolanaBalances(
   fastify: FastifyInstance,
   network: string,
   address: string,
-  tokenSymbols?: string[]
+  tokens?: string[]
 ): Promise<BalanceResponseType> {
   try {
     const solana = await Solana.getInstance(network);
     const wallet = await solana.getWallet(address);
     
-    const balances = await solana.getBalance(wallet, tokenSymbols);
+    const balances = await solana.getBalance(wallet, tokens);
     return { balances };
   } catch (error) {
     logger.error(`Error getting balances: ${error.message}`);
@@ -48,10 +48,11 @@ export const balancesRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             ...BalanceRequestSchema.properties,
             network: { type: 'string', examples: ['mainnet-beta', 'devnet'] },
-            tokenSymbols: { 
+            tokens: { 
               type: 'array', 
               items: { type: 'string' },
-              examples: [['SOL', 'USDC']]
+              description: 'A list of token symbols or addresses',
+              examples: [['SOL', 'USDC', 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v']]
             }
           }
         },
@@ -61,8 +62,8 @@ export const balancesRoute: FastifyPluginAsync = async (fastify) => {
       }
     },
     async (request) => {
-      const { network, address, tokenSymbols } = request.body;
-      return await getSolanaBalances(fastify, network, address, tokenSymbols);
+      const { network, address, tokens } = request.body;
+      return await getSolanaBalances(fastify, network, address, tokens);
     }
   );
 };

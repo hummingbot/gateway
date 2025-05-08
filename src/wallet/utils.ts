@@ -1,6 +1,6 @@
 import fse from 'fs-extra';
-import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
-import { logger } from '../../services/logger';
+import { ConfigManagerCertPassphrase } from '../services/config-manager-cert-passphrase';
+import { logger } from '../services/logger';
 import {
   AddWalletRequest,
   AddWalletResponse,
@@ -13,9 +13,9 @@ import {
   getInitializedChain,
   UnsupportedChainException,
   Chain,
-} from '../../services/connection-manager';
-import { Solana } from '../../chains/solana/solana';
-import { Ethereum } from '../../chains/ethereum/ethereum';
+} from '../services/connection-manager';
+import { Solana } from '../chains/solana/solana';
+import { Ethereum } from '../chains/ethereum/ethereum';
 import { FastifyInstance } from 'fastify';
 
 export const walletPath = './conf/wallets';

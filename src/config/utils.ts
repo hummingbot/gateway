@@ -1,7 +1,7 @@
-import { ConfigManagerV2 } from '../../services/config-manager-v2';
-import { logger } from '../../services/logger';
-import { isFloatString, isFractionString } from '../../services/string-utils';
-import { fromFractionString, toFractionString } from '../../services/base';
+import { ConfigManagerV2 } from '../services/config-manager-v2';
+import { logger } from '../services/logger';
+import { isFloatString, isFractionString } from '../services/string-utils';
+import { fromFractionString, toFractionString } from '../services/base';
 import { ConfigUpdateRequest } from './schemas';
 import { FastifyInstance } from 'fastify';
 

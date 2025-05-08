@@ -1,5 +1,5 @@
 import { FastifyPluginAsync } from 'fastify';
-import { logger } from '../../../services/logger';
+import { logger } from '../../services/logger';
 import { getConfig } from '../utils';
 import { ConfigQuery, ConfigQuerySchema } from '../schemas';
 

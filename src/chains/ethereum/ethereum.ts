@@ -7,7 +7,7 @@ import {
   Wallet,
 } from 'ethers';
 import { TokenListType, TokenValue } from '../../services/base';
-import { walletPath } from '../../system/wallet/utils';
+import { walletPath } from '../../wallet/utils';
 import fse from 'fs-extra';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { logger } from '../../services/logger';

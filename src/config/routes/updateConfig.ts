@@ -1,8 +1,8 @@
 import { FastifyPluginAsync } from 'fastify';
-import { logger } from '../../../services/logger';
+import { logger } from '../../services/logger';
 import { updateConfig, updateAllowedSlippageToFraction } from '../utils';
 import { ConfigUpdateRequest, ConfigUpdateResponse, ConfigUpdateRequestSchema, ConfigUpdateResponseSchema } from '../schemas';
-import { ConfigManagerV2 } from '../../../services/config-manager-v2';
+import { ConfigManagerV2 } from '../../services/config-manager-v2';
 
 export const updateConfigRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{ Body: ConfigUpdateRequest; Reply: ConfigUpdateResponse }>(

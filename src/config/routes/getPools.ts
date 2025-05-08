@@ -1,6 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { Type } from '@sinclair/typebox';
-import { logger } from '../../../services/logger';
+import { logger } from '../../services/logger';
 import { getDefaultPools } from '../utils';
 import { PoolsQuery, PoolsQuerySchema, DefaultPoolListSchema } from '../schemas';
 

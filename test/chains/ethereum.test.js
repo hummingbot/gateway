@@ -123,7 +123,7 @@ describe('Ethereum Chain Tests (Base Network)', () => {
         params: {
           network: NETWORK,
           wallet: TEST_WALLET,
-          tokenSymbols: ['ETH', 'USDC', 'WETH']
+          tokens: ['ETH', 'USDC', 'WETH']
         }
       });
       
@@ -142,7 +142,8 @@ describe('Ethereum Chain Tests (Base Network)', () => {
         expect.objectContaining({
           params: expect.objectContaining({
             network: NETWORK,
-            wallet: TEST_WALLET
+            wallet: TEST_WALLET,
+            tokens: ['ETH', 'USDC', 'WETH']
           })
         })
       );
@@ -166,7 +167,7 @@ describe('Ethereum Chain Tests (Base Network)', () => {
           params: {
             network: NETWORK,
             wallet: 'invalidwallet',
-            tokenSymbols: ['ETH']
+            tokens: ['ETH']
           }
         })
       ).rejects.toMatchObject({
@@ -272,7 +273,7 @@ describe('Ethereum Chain Tests (Base Network)', () => {
         network: NETWORK,
         address: TEST_WALLET,
         spenderAddress: TEST_SPENDER,
-        tokenSymbols: ['USDC', 'DAI']
+        tokens: ['USDC', 'DAI']
       });
       
       // Validate the response
@@ -291,7 +292,7 @@ describe('Ethereum Chain Tests (Base Network)', () => {
           network: NETWORK,
           address: TEST_WALLET,
           spenderAddress: TEST_SPENDER,
-          tokenSymbols: ['USDC', 'DAI']
+          tokens: ['USDC', 'DAI']
         })
       );
     });
@@ -311,7 +312,7 @@ describe('Ethereum Chain Tests (Base Network)', () => {
         network: NETWORK,
         address: TEST_WALLET,
         spenderAddress: TEST_SPENDER,
-        tokenSymbols: [TEST_TOKEN_ADDRESS, '0x6B175474E89094C44Da98b954EedeAC495271d0F'] // USDC and DAI addresses
+        tokens: [TEST_TOKEN_ADDRESS, '0x6B175474E89094C44Da98b954EedeAC495271d0F'] // USDC and DAI addresses
       });
       
       // Validate the response
@@ -322,7 +323,7 @@ describe('Ethereum Chain Tests (Base Network)', () => {
       expect(axios.post).toHaveBeenCalledWith(
         `http://localhost:15888/chains/${CHAIN}/allowances`,
         expect.objectContaining({
-          tokenSymbols: [TEST_TOKEN_ADDRESS, '0x6B175474E89094C44Da98b954EedeAC495271d0F']
+          tokens: [TEST_TOKEN_ADDRESS, '0x6B175474E89094C44Da98b954EedeAC495271d0F']
         })
       );
     });
@@ -345,7 +346,7 @@ describe('Ethereum Chain Tests (Base Network)', () => {
           network: NETWORK,
           address: TEST_WALLET,
           spenderAddress: TEST_SPENDER,
-          tokenSymbols: ['INVALID_TOKEN']
+          tokens: ['INVALID_TOKEN']
         })
       ).rejects.toMatchObject({
         response: {

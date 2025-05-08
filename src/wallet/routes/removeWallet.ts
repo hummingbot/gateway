@@ -1,5 +1,5 @@
 import { FastifyPluginAsync } from 'fastify';
-import { logger } from '../../../services/logger';
+import { logger } from '../../services/logger';
 import { RemoveWalletRequest, RemoveWalletRequestSchema } from '../schemas';
 import { removeWallet } from '../utils';
 

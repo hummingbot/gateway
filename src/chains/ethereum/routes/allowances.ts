@@ -6,22 +6,22 @@ import { AllowancesRequestType, AllowancesResponseType } from '../../../schemas/
 import { TokenInfo } from '../ethereum';
 import { tokenValueToString } from '../../../services/base';
 
-export async function getTokenSymbolsToTokens(
+export async function getTokensToTokenInfo(
   ethereum: Ethereum,
-  tokenSymbols: Array<string>
+  tokens: Array<string>
 ): Promise<Record<string, TokenInfo>> {
-  const tokens: Record<string, TokenInfo> = {};
+  const tokenInfoMap: Record<string, TokenInfo> = {};
 
-  for (let i = 0; i < tokenSymbols.length; i++) {
-    const symbolOrAddress = tokenSymbols[i];
-    const token = ethereum.getTokenBySymbol(symbolOrAddress);
-    if (token) {
+  for (let i = 0; i < tokens.length; i++) {
+    const symbolOrAddress = tokens[i];
+    const tokenInfo = ethereum.getTokenBySymbol(symbolOrAddress);
+    if (tokenInfo) {
       // Use the actual token symbol as the key, not the input which might be an address
-      tokens[token.symbol] = token;
+      tokenInfoMap[tokenInfo.symbol] = tokenInfo;
     }
   }
 
-  return tokens;
+  return tokenInfoMap;
 }
 
 export async function getEthereumAllowances(
@@ -29,24 +29,24 @@ export async function getEthereumAllowances(
   network: string,
   address: string,
   spenderAddress: string,
-  tokenSymbols: string[]
+  tokens: string[]
 ) {
   try {
     const ethereum = await Ethereum.getInstance(network);
     await ethereum.init();
     const wallet = await ethereum.getWallet(address);
-    const tokens = await getTokenSymbolsToTokens(ethereum, tokenSymbols);
+    const tokenInfoMap = await getTokensToTokenInfo(ethereum, tokens);
     
     // Check if any tokens were not found and create a helpful error message
-    const foundSymbols = Object.keys(tokens);
+    const foundSymbols = Object.keys(tokenInfoMap);
     if (foundSymbols.length === 0) {
-      const errorMsg = `None of the provided tokens were found: ${tokenSymbols.join(', ')}`;
+      const errorMsg = `None of the provided tokens were found: ${tokens.join(', ')}`;
       logger.error(errorMsg);
       throw fastify.httpErrors.badRequest(errorMsg);
     }
     
-    const missingTokens = tokenSymbols.filter((t) => 
-      !Object.values(tokens).some((token) => 
+    const missingTokens = tokens.filter((t) => 
+      !Object.values(tokenInfoMap).some((token) => 
         token.symbol.toUpperCase() === t.toUpperCase() || 
         token.address.toLowerCase() === t.toLowerCase()
       )
@@ -58,9 +58,9 @@ export async function getEthereumAllowances(
 
     const approvals: Record<string, string> = {};
     await Promise.all(
-      Object.keys(tokens).map(async (symbol) => {
+      Object.keys(tokenInfoMap).map(async (symbol) => {
         const contract = ethereum.getContract(
-          tokens[symbol].address,
+          tokenInfoMap[symbol].address,
           ethereum.provider
         );
         approvals[symbol] = tokenValueToString(
@@ -68,7 +68,7 @@ export async function getEthereumAllowances(
             contract,
             wallet,
             spenderAddress,
-            tokens[symbol].decimals
+            tokenInfoMap[symbol].decimals
           )
         );
       })
@@ -111,7 +111,7 @@ export const allowancesRoute: FastifyPluginAsync = async (fastify) => {
           network: Type.String({ examples: ['base', 'mainnet', 'sepolia', 'polygon'] }),
           address: Type.String({ examples: [firstWalletAddress] }),
           spenderAddress: Type.String({ examples: ['0xC36442b4a4522E871399CD717aBDD847Ab11FE88'] }),
-          tokenSymbols: Type.Array(Type.String(), { examples: [['USDC', 'DAI']] })
+          tokens: Type.Array(Type.String(), { examples: [['USDC', 'DAI']] })
         }),
         response: {
           200: Type.Object({
@@ -122,13 +122,13 @@ export const allowancesRoute: FastifyPluginAsync = async (fastify) => {
       }
     },
     async (request) => {
-      const { network, address, spenderAddress, tokenSymbols } = request.body;
+      const { network, address, spenderAddress, tokens } = request.body;
       return await getEthereumAllowances(
         fastify, 
         network, 
         address, 
         spenderAddress, 
-        tokenSymbols
+        tokens
       );
     }
   );

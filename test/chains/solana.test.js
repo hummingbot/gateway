@@ -94,7 +94,7 @@ describe('Solana Chain Tests (Mainnet Beta)', () => {
         params: {
           network: NETWORK,
           wallet: TEST_WALLET,
-          tokenSymbols: ['SOL', 'USDC', 'USDT']
+          tokens: ['SOL', 'USDC', 'USDT']
         }
       });
       
@@ -113,7 +113,8 @@ describe('Solana Chain Tests (Mainnet Beta)', () => {
         expect.objectContaining({
           params: expect.objectContaining({
             network: NETWORK,
-            wallet: TEST_WALLET
+            wallet: TEST_WALLET,
+            tokens: ['SOL', 'USDC', 'USDT']
           })
         })
       );
@@ -137,7 +138,7 @@ describe('Solana Chain Tests (Mainnet Beta)', () => {
           params: {
             network: NETWORK,
             wallet: 'invalidwallet',
-            tokenSymbols: ['SOL']
+            tokens: ['SOL']
           }
         })
       ).rejects.toMatchObject({

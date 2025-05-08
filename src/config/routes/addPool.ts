@@ -1,5 +1,5 @@
 import { FastifyPluginAsync } from 'fastify';
-import { logger } from '../../../services/logger';
+import { logger } from '../../services/logger';
 import { addDefaultPool } from '../utils';
 import { DefaultPoolRequest, DefaultPoolResponse, DefaultPoolRequestSchema, DefaultPoolResponseSchema } from '../schemas';
 
