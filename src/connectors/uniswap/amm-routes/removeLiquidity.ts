@@ -105,7 +105,6 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         } = request.body;
         
         const networkToUse = network || 'base';
-        const chain = 'ethereum'; // Default to ethereum
 
         // Validate essential parameters
         if (!baseToken || !quoteToken || !percentageToRemove) {
@@ -117,7 +116,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         // Get Uniswap and Ethereum instances
-        const uniswap = await Uniswap.getInstance(chain, networkToUse);
+        const uniswap = await Uniswap.getInstance(networkToUse);
         const ethereum = await Ethereum.getInstance(networkToUse);
         
         // Get wallet address - either from request or first available
@@ -187,7 +186,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         const expectedQuoteTokenAmount = quoteTokenReserve.mul(liquidityToRemove).div(totalSupply);
         
         // Get the router contract with signer
-        const routerAddress = uniswap.config.uniswapV2RouterAddress(chain, networkToUse);
+        const routerAddress = uniswap.config.uniswapV2RouterAddress(networkToUse);
         const router = new Contract(
           routerAddress,
           IUniswapV2Router02ABI.abi,

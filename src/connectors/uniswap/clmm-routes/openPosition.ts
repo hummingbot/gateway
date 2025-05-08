@@ -93,7 +93,6 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         } = request.body;
         
         const networkToUse = network || 'base';
-        const chain = 'ethereum'; // Default to ethereum
 
         // Validate essential parameters
         if (!lowerPrice || !upperPrice || 
@@ -103,7 +102,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         // Get Uniswap and Ethereum instances
-        const uniswap = await Uniswap.getInstance(chain, networkToUse);
+        const uniswap = await Uniswap.getInstance(networkToUse);
         const ethereum = await Ethereum.getInstance(networkToUse);
         
         // Get wallet address - either from request or first available
@@ -256,7 +255,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         const { calldata, value } = NonfungiblePositionManager.addCallParameters(position, mintOptions);
 
         // Approve NFT manager to use tokens
-        const positionManagerAddress = uniswap.config.uniswapV3NftManagerAddress(chain, networkToUse);
+        const positionManagerAddress = uniswap.config.uniswapV3NftManagerAddress(networkToUse);
         
         // Approve token0 if needed
         if (!token0Amount.equalTo(0) && token0.symbol !== 'WETH') {

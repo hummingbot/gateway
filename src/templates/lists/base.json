@@ -8,6 +8,13 @@
   },
   {
     "chainId": 8453,
+    "name": "Virtual Protocol",
+    "symbol": "VIRTUAL",
+    "address": "0x0b3e328455c4059eeb9e3f84b5543f74e24e7e1b",
+    "decimals": 18
+  },
+  {
+    "chainId": 8453,
     "name": "Compound",
     "symbol": "COMP",
     "address": "0x9e1028F5F1D5eDE59748FFceE5532509976840E0",

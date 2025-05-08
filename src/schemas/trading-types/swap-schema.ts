@@ -11,9 +11,6 @@ export const GetSwapQuoteRequest = Type.Object({
   }),
   slippagePct: Type.Optional(Type.Number()),
   poolAddress: Type.Optional(Type.String()),
-  feeTier: Type.Optional(Type.String({ 
-    enum: ['LOWEST', 'LOW', 'MEDIUM', 'HIGH'] 
-  })),
 }, { $id: 'GetSwapQuoteRequest' });
 export type GetSwapQuoteRequestType = Static<typeof GetSwapQuoteRequest>;
 
@@ -44,9 +41,6 @@ export const ExecuteSwapRequest = Type.Object({
   }),
   slippagePct: Type.Optional(Type.Number()),
   poolAddress: Type.Optional(Type.String()),
-  feeTier: Type.Optional(Type.String({ 
-    enum: ['LOWEST', 'LOW', 'MEDIUM', 'HIGH'] 
-  })),
 }, { $id: 'ExecuteSwapRequest' });
 
 export type ExecuteSwapRequestType = Static<typeof ExecuteSwapRequest>;

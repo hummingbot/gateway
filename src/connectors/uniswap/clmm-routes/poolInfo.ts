@@ -45,7 +45,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
         const network = request.query.network || 'base';
         const chain = 'ethereum'; // Default to ethereum
         
-        const uniswap = await Uniswap.getInstance(chain, network);
+        const uniswap = await Uniswap.getInstance(network);
         
         // Check if either poolAddress or both baseToken and quoteToken are provided
         if (!poolAddress && (!baseToken || !quoteToken)) {

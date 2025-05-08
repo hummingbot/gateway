@@ -79,31 +79,24 @@ export class Uniswap {
   private v3Quoter: Contract;
   
   // Network information
-  private chainName: string;
   private networkName: string;
 
-  private constructor(chain: string, network: string) {
-    this.chainName = chain;
+  private constructor(network: string) {
     this.networkName = network;
     this.config = UniswapConfig.config;
-    
-    if (chain !== 'ethereum') {
-      throw new Error('Unsupported chain');
-    }
   }
 
-  public static async getInstance(chain: string, network: string): Promise<Uniswap> {
+  public static async getInstance(network: string): Promise<Uniswap> {
     if (Uniswap._instances === undefined) {
       Uniswap._instances = {};
     }
     
-    const key = chain + network;
-    if (!(key in Uniswap._instances)) {
-      Uniswap._instances[key] = new Uniswap(chain, network);
-      await Uniswap._instances[key].init();
+    if (!(network in Uniswap._instances)) {
+      Uniswap._instances[network] = new Uniswap(network);
+      await Uniswap._instances[network].init();
     }
 
-    return Uniswap._instances[key];
+    return Uniswap._instances[network];
   }
   
   /**
@@ -117,20 +110,20 @@ export class Uniswap {
       
       // Initialize V2 (AMM) contracts
       this.v2Factory = new Contract(
-        this.config.uniswapV2FactoryAddress(this.chainName, this.networkName),
+        this.config.uniswapV2FactoryAddress(this.networkName),
         IUniswapV2FactoryABI.abi,
         this.ethereum.provider
       );
       
       this.v2Router = new Contract(
-        this.config.uniswapV2RouterAddress(this.chainName, this.networkName),
+        this.config.uniswapV2RouterAddress(this.networkName),
         IUniswapV2RouterABI.abi,
         this.ethereum.provider
       );
       
       // Initialize V3 (CLMM) contracts
       this.v3Factory = new Contract(
-        this.config.uniswapV3FactoryAddress(this.chainName, this.networkName),
+        this.config.uniswapV3FactoryAddress(this.networkName),
         IUniswapV3FactoryABI,
         this.ethereum.provider
       );
@@ -147,7 +140,7 @@ export class Uniswap {
       ];
       
       this.v3NFTManager = new Contract(
-        this.config.uniswapV3NftManagerAddress(this.chainName, this.networkName),
+        this.config.uniswapV3NftManagerAddress(this.networkName),
         NFTManagerABI,
         this.ethereum.provider
       );
@@ -167,7 +160,7 @@ export class Uniswap {
       ];
       
       this.v3Quoter = new Contract(
-        this.config.quoterContractAddress(this.chainName, this.networkName),
+        this.config.quoterContractAddress(this.networkName),
         QuoterABI,
         this.ethereum.provider
       );
@@ -199,7 +192,7 @@ export class Uniswap {
       }
       
       this._ready = true;
-      logger.info(`Uniswap connector initialized for ${this.chainName}:${this.networkName}`);
+      logger.info(`Uniswap connector initialized for network: ${this.networkName}`);
     } catch (error) {
       logger.error(`Error initializing Uniswap: ${error.message}`);
       throw error;
@@ -532,8 +525,8 @@ export class Uniswap {
    */
   public async close() {
     // Clean up resources
-    if (this.chainName + this.networkName in Uniswap._instances) {
-      delete Uniswap._instances[this.chainName + this.networkName];
+    if (this.networkName in Uniswap._instances) {
+      delete Uniswap._instances[this.networkName];
     }
   }
 }

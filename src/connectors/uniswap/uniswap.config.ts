@@ -37,13 +37,13 @@ export namespace UniswapConfig {
     availableNetworks: Array<AvailableNetworks>;
     
     // Exported contract address helper methods
-    uniswapV2RouterAddress: (chain: string, network: string) => string;
-    uniswapV2FactoryAddress: (chain: string, network: string) => string;
-    uniswapV3SmartOrderRouterAddress: (chain: string, network: string) => string;
-    uniswapV3NftManagerAddress: (chain: string, network: string) => string;
-    quoterContractAddress: (chain: string, network: string) => string;
-    uniswapV3FactoryAddress: (chain: string, network: string) => string;
-    universalRouterAddress: (chain: string, network: string) => string;
+    uniswapV2RouterAddress: (network: string) => string;
+    uniswapV2FactoryAddress: (network: string) => string;
+    uniswapV3SmartOrderRouterAddress: (network: string) => string;
+    uniswapV3NftManagerAddress: (network: string) => string;
+    quoterContractAddress: (network: string) => string;
+    uniswapV3FactoryAddress: (network: string) => string;
+    universalRouterAddress: (network: string) => string;
   }
 
   export const config: RootConfig = {

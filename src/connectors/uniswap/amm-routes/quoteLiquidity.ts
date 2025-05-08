@@ -75,7 +75,7 @@ export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         // Get Uniswap and Ethereum instances
-        const uniswap = await Uniswap.getInstance(chain, networkToUse);
+        const uniswap = await Uniswap.getInstance(networkToUse);
         const ethereum = await Ethereum.getInstance(networkToUse);
 
         // Resolve tokens

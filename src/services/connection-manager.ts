@@ -55,14 +55,14 @@ export interface Connector {
 }
 
 export async function getConnector(
-  chain: string,
+  _chain: string, // Parameter kept for compatibility but no longer used by Uniswap
   network: string,
   connector: string | undefined,
 ): Promise<Connector> {
   // Dynamically import connector classes only when needed
   if (connector === 'uniswap') {
     const { Uniswap } = await import('../connectors/uniswap/uniswap');
-    return await Uniswap.getInstance(chain, network);
+    return await Uniswap.getInstance(network);
   } else if (connector === 'jupiter') {
     const { Jupiter } = await import('../connectors/jupiter/jupiter');
     return await Jupiter.getInstance(network);

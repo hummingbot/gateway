@@ -95,7 +95,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
         const chain = 'ethereum'; // Default to ethereum
 
         // Get instances
-        const uniswap = await Uniswap.getInstance(chain, network);
+        const uniswap = await Uniswap.getInstance(network);
         const ethereum = await Ethereum.getInstance(network);
         
         // Get wallet address - either from request or first available
@@ -109,7 +109,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         // Get position manager address
-        const positionManagerAddress = uniswap.config.uniswapV3NftManagerAddress(chain, network);
+        const positionManagerAddress = uniswap.config.uniswapV3NftManagerAddress(network);
         
         // Create position manager contract
         const positionManager = new Contract(

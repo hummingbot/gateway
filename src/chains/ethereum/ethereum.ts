@@ -153,7 +153,6 @@ export class Ethereum {
     let spender: string;
     if (reqSpender === 'uniswap') {
       spender = UniswapConfig.config.uniswapV3SmartOrderRouterAddress(
-        'ethereum',
         this.network,
       );
     } else {

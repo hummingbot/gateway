@@ -126,6 +126,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
             quoteToken: { type: 'string', examples: ['USDC'] },
             amount: { type: 'number', examples: [0.01] },
             side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
+            poolAddress: { type: 'string', examples: [''] },
             slippagePct: { type: 'number', examples: [1] }
           }
         },
@@ -138,7 +139,6 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
       try {
         const { network, poolAddress: requestedPoolAddress, baseToken, quoteToken, amount, side, slippagePct, walletAddress: requestedWalletAddress } = request.body;
         const networkToUse = network || 'base';
-        const chain = 'ethereum'; // Default to ethereum
 
         // Validate essential parameters
         if (!baseToken || !quoteToken || !amount || !side) {
@@ -146,13 +146,13 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         }
         
         // Get Uniswap and Ethereum instances
-        const uniswap = await Uniswap.getInstance(chain, networkToUse);
+        const uniswap = await Uniswap.getInstance(networkToUse);
         const ethereum = await Ethereum.getInstance(networkToUse);
         
         // Get wallet address - either from request or first available
         let walletAddress = requestedWalletAddress;
         if (!walletAddress) {
-          walletAddress = await uniswap.getFirstWalletAddress();
+          walletAddress = await ethereum.getFirstWalletAddress();
           if (!walletAddress) {
             throw fastify.httpErrors.badRequest('No wallet address provided and no default wallet found');
           }
@@ -168,11 +168,10 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         // Find pool address if not provided
-        let poolAddress = requestedPoolAddress;
-        if (!poolAddress) {
-          poolAddress = await uniswap.findDefaultPool(baseToken, quoteToken, 'amm');
-          
-          if (!poolAddress) {
+        let poolAddressToUse = requestedPoolAddress;
+        if (!poolAddressToUse) {
+          poolAddressToUse = await uniswap.findDefaultPool(baseToken, quoteToken, 'amm');
+          if (!poolAddressToUse) {
             throw fastify.httpErrors.notFound(
               `No AMM pool found for pair ${baseToken}-${quoteToken}`
             );
@@ -186,7 +185,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         // Get the V2 pair
-        const pair = await uniswap.getV2Pool(baseTokenObj, quoteTokenObj, poolAddress);
+        const pair = await uniswap.getV2Pool(baseTokenObj, quoteTokenObj, poolAddressToUse);
         if (!pair) {
           throw fastify.httpErrors.notFound(`Pool not found for ${baseToken}-${quoteToken}`);
         }
@@ -219,7 +218,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           : uniswap.getAllowedSlippage();
 
         // Get the router contract with signer
-        const routerAddress = uniswap.config.uniswapV2RouterAddress(chain, networkToUse);
+        const routerAddress = uniswap.config.uniswapV2RouterAddress(networkToUse);
         const router = new Contract(
           routerAddress,
           IUniswapV2Router02ABI.abi,

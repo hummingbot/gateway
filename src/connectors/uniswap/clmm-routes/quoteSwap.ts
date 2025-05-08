@@ -118,7 +118,6 @@ async function quoteClmmSwap(
 
 async function formatSwapQuote(
   _fastify: FastifyInstance,
-  chain: string,
   network: string,
   poolAddress: string,
   baseToken: string,
@@ -128,70 +127,103 @@ async function formatSwapQuote(
   feeTier?: string,
   slippagePct?: number
 ): Promise<GetSwapQuoteResponseType> {
-  logger.info(`formatSwapQuote: poolAddress=${poolAddress}, baseToken=${baseToken}, quoteToken=${quoteToken}, amount=${amount}, side=${side}`);
+  logger.info(`formatSwapQuote: poolAddress=${poolAddress}, baseToken=${baseToken}, quoteToken=${quoteToken}, amount=${amount}, side=${side}, network=${network}`);
   
-  const uniswap = await Uniswap.getInstance(chain, network);
-  const ethereum = await Ethereum.getInstance(network);
+  try {
+    // Get instances
+    const uniswap = await Uniswap.getInstance(network);
+    const ethereum = await Ethereum.getInstance(network);
+    
+    // Check if instances are ready
+    if (!uniswap.ready()) {
+      logger.info('Uniswap instance not ready, initializing...');
+      await uniswap.init();
+    }
+    
+    if (!ethereum.ready()) {
+      logger.info('Ethereum instance not ready, initializing...');
+      await ethereum.init();
+    }
 
-  // Resolve tokens
-  const baseTokenObj = uniswap.getTokenBySymbol(baseToken);
-  const quoteTokenObj = uniswap.getTokenBySymbol(quoteToken);
+    // Resolve tokens
+    const baseTokenObj = uniswap.getTokenBySymbol(baseToken);
+    const quoteTokenObj = uniswap.getTokenBySymbol(quoteToken);
 
-  if (!baseTokenObj || !quoteTokenObj) {
-    throw new Error(`Token not found: ${!baseTokenObj ? baseToken : quoteToken}`);
+    if (!baseTokenObj) {
+      logger.error(`Base token not found: ${baseToken}`);
+      throw new Error(`Base token not found: ${baseToken}`);
+    }
+    
+    if (!quoteTokenObj) {
+      logger.error(`Quote token not found: ${quoteToken}`);
+      throw new Error(`Quote token not found: ${quoteToken}`);
+    }
+    
+    logger.info(`Base token: ${baseTokenObj.symbol}, address=${baseTokenObj.address}, decimals=${baseTokenObj.decimals}`);
+    logger.info(`Quote token: ${quoteTokenObj.symbol}, address=${quoteTokenObj.address}, decimals=${quoteTokenObj.decimals}`);
+
+    // Get the quote
+    const quote = await quoteClmmSwap(
+      uniswap,
+      poolAddress,
+      baseTokenObj,
+      quoteTokenObj,
+      amount,
+      side as 'BUY' | 'SELL',
+      feeTier,
+      slippagePct
+    );
+    
+    if (!quote) {
+      throw new Error('Failed to get swap quote');
+    }
+    
+    logger.info(`Quote result: estimatedAmountIn=${quote.estimatedAmountIn}, estimatedAmountOut=${quote.estimatedAmountOut}`);
+
+    // Calculate balance changes based on which tokens are being swapped
+    const baseTokenBalanceChange = side === 'BUY' ? quote.estimatedAmountOut : -quote.estimatedAmountIn;
+    const quoteTokenBalanceChange = side === 'BUY' ? -quote.estimatedAmountIn : quote.estimatedAmountOut;
+    
+    logger.info(`Balance changes: baseTokenBalanceChange=${baseTokenBalanceChange}, quoteTokenBalanceChange=${quoteTokenBalanceChange}`);
+
+    // Get gas estimate for V3 swap
+    const estimatedGasValue = 200000; // V3 swaps use more gas than V2
+    const gasPrice = await ethereum.provider.getGasPrice();
+    logger.info(`Gas price from provider: ${gasPrice.toString()}`);
+    
+    // Calculate gas cost
+    const estimatedGasBN = BigNumber.from(estimatedGasValue.toString());
+    const gasCostRaw = gasPrice.mul(estimatedGasBN);
+    const gasCost = formatTokenAmount(gasCostRaw.toString(), 18); // ETH has 18 decimals
+    logger.info(`Gas cost: ${gasCost} ETH`);
+
+    // Calculate price
+    const price = quote.estimatedAmountOut / quote.estimatedAmountIn;
+    
+    // Format gas price as Gwei
+    const gasPriceGwei = formatTokenAmount(gasPrice.toString(), 9); // Convert to Gwei
+    logger.info(`Gas price in Gwei: ${gasPriceGwei}`);
+
+    return {
+      poolAddress,
+      estimatedAmountIn: quote.estimatedAmountIn,
+      estimatedAmountOut: quote.estimatedAmountOut,
+      minAmountOut: quote.minAmountOut,
+      maxAmountIn: quote.maxAmountIn,
+      baseTokenBalanceChange,
+      quoteTokenBalanceChange,
+      price,
+      gasPrice: Number(gasPriceGwei), // Convert to number
+      gasLimit: estimatedGasValue, // Already a number
+      gasCost
+    };
+  } catch (error) {
+    logger.error(`Error formatting swap quote: ${error.message}`);
+    if (error.stack) {
+      logger.debug(`Stack trace: ${error.stack}`);
+    }
+    throw error;
   }
-  
-  logger.info(`Base token: ${baseTokenObj.symbol}, address=${baseTokenObj.address}, decimals=${baseTokenObj.decimals}`);
-  logger.info(`Quote token: ${quoteTokenObj.symbol}, address=${quoteTokenObj.address}, decimals=${quoteTokenObj.decimals}`);
-
-  // Get the quote
-  const quote = await quoteClmmSwap(
-    uniswap,
-    poolAddress,
-    baseTokenObj,
-    quoteTokenObj,
-    amount,
-    side as 'BUY' | 'SELL',
-    feeTier,
-    slippagePct
-  );
-  
-  logger.info(`Quote result: estimatedAmountIn=${quote.estimatedAmountIn}, estimatedAmountOut=${quote.estimatedAmountOut}`);
-
-  // Calculate balance changes based on which tokens are being swapped
-  const baseTokenBalanceChange = side === 'BUY' ? quote.estimatedAmountOut : -quote.estimatedAmountIn;
-  const quoteTokenBalanceChange = side === 'BUY' ? -quote.estimatedAmountIn : quote.estimatedAmountOut;
-  
-  logger.info(`Balance changes: baseTokenBalanceChange=${baseTokenBalanceChange}, quoteTokenBalanceChange=${quoteTokenBalanceChange}`);
-
-  // Get gas estimate for V3 swap
-  const estimatedGasValue = 200000; // V3 swaps use more gas than V2
-  const gasPrice = await ethereum.provider.getGasPrice();
-  
-  // Calculate gas cost
-  const estimatedGasBN = BigNumber.from(estimatedGasValue.toString());
-  const gasCostRaw = gasPrice.mul(estimatedGasBN);
-  const gasCost = formatTokenAmount(gasCostRaw.toString(), 18); // ETH has 18 decimals
-
-  // Calculate price
-  const price = quote.estimatedAmountOut / quote.estimatedAmountIn;
-  
-  // Format gas price as Gwei
-  const gasPriceGwei = formatTokenAmount(gasPrice.toString(), 9); // Convert to Gwei
-
-  return {
-    poolAddress,
-    estimatedAmountIn: quote.estimatedAmountIn,
-    estimatedAmountOut: quote.estimatedAmountOut,
-    minAmountOut: quote.minAmountOut,
-    maxAmountIn: quote.maxAmountIn,
-    baseTokenBalanceChange,
-    quoteTokenBalanceChange,
-    price,
-    gasPrice: Number(gasPriceGwei), // Convert to number
-    gasLimit: estimatedGasValue, // Already a number
-    gasCost
-  };
 }
 
 export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
@@ -213,7 +245,6 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
             quoteToken: { type: 'string', examples: ['USDC'] },
             amount: { type: 'number', examples: [0.01] },
             side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
-            feeTier: { type: 'string', enum: ['LOWEST', 'LOW', 'MEDIUM', 'HIGH'] },
             slippagePct: { type: 'number', examples: [1] }
           }
         },
@@ -234,15 +265,13 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           baseToken, 
           quoteToken, 
           amount, 
-          side, 
-          feeTier,
+          side,
           slippagePct 
         } = request.query;
         
         const networkToUse = network || 'base';
-        const chain = 'ethereum'; // Default to ethereum
 
-        const uniswap = await Uniswap.getInstance(chain, networkToUse);
+        const uniswap = await Uniswap.getInstance(networkToUse);
         let poolAddress = requestedPoolAddress;
         
         if (!poolAddress) {
@@ -255,19 +284,17 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
             );
           }
         }
-
-        // If feeTier is provided, pass it to the quoteClmmSwap function
-        // which will help with price calculation but we'll still use the poolAddress
+        
+        // We no longer pass feeTier from query parameters
         return await formatSwapQuote(
           fastify,
-          chain,
           networkToUse,
           poolAddress,
           baseToken,
           quoteToken,
           amount,
           side as 'BUY' | 'SELL',
-          feeTier,
+          undefined, // feeTier is now undefined
           slippagePct
         );
       } catch (e) {
@@ -275,7 +302,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         if (e.statusCode) {
           throw e;
         }
-        throw fastify.httpErrors.internalServerError('Internal server error');
+        throw fastify.httpErrors.internalServerError(`Error getting swap quote: ${e.message}`);
       }
     }
   );

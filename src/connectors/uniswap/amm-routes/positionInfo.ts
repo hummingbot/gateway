@@ -59,7 +59,6 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
         } = request.query;
         
         const networkToUse = network || 'base';
-        const chain = 'ethereum'; // Default to ethereum
 
         // Validate essential parameters        
         if (!requestedPoolAddress && (!baseToken || !quoteToken)) {
@@ -67,7 +66,7 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         // Get Uniswap and Ethereum instances
-        const uniswap = await Uniswap.getInstance(chain, networkToUse);
+        const uniswap = await Uniswap.getInstance(networkToUse);
         const ethereum = await Ethereum.getInstance(networkToUse);
         
         // Get wallet address - either from request or first available

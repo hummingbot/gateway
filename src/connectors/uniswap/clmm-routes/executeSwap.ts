@@ -63,7 +63,6 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
             quoteToken: { type: 'string', examples: ['USDC'] },
             amount: { type: 'number', examples: [0.01] },
             side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
-            feeTier: { type: 'string', enum: ['LOWEST', 'LOW', 'MEDIUM', 'HIGH'], default: 'MEDIUM' },
             slippagePct: { type: 'number', examples: [1] }
           }
         },
@@ -81,7 +80,6 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           quoteToken, 
           amount, 
           side, 
-          feeTier, 
           slippagePct, 
           walletAddress: requestedWalletAddress 
         } = request.body;
@@ -95,7 +93,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         // Get Uniswap and Ethereum instances
-        const uniswap = await Uniswap.getInstance(chain, networkToUse);
+        const uniswap = await Uniswap.getInstance(networkToUse);
         const ethereum = await Ethereum.getInstance(networkToUse);
         
         // Get wallet address - either from request or first available
@@ -134,11 +132,9 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           throw fastify.httpErrors.badRequest('Wallet not found');
         }
 
-        // Convert feeTier to FeeAmount if provided
-        const feeAmount = feeTier ? parseFeeTier(feeTier) : undefined;
-
+        // We don't use feeTier anymore from request parameters
         // Get the V3 pool
-        const pool = await uniswap.getV3Pool(baseTokenObj, quoteTokenObj, feeAmount, poolAddress);
+        const pool = await uniswap.getV3Pool(baseTokenObj, quoteTokenObj, undefined, poolAddress);
         if (!pool) {
           throw fastify.httpErrors.notFound(`Pool not found for ${baseToken}-${quoteToken}`);
         }
@@ -186,7 +182,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           );
           
           // Approve the router to spend tokens
-          const router = uniswap.config.uniswapV3SmartOrderRouterAddress(chain, networkToUse);
+          const router = uniswap.config.uniswapV3SmartOrderRouterAddress(networkToUse);
           const approvalTx = await tokenContract.approve(
             router,
             routerSwapParams.value && routerSwapParams.value !== '0' ? 
@@ -200,7 +196,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
 
         // Create the SwapRouter contract instance
         const swapRouter = new Contract(
-          uniswap.config.uniswapV3SmartOrderRouterAddress(chain, networkToUse),
+          uniswap.config.uniswapV3SmartOrderRouterAddress(networkToUse),
           [
             {
               inputs: [
