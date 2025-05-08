@@ -24,7 +24,9 @@ import { getUniversalRouterQuote } from './quote-swap';
 // SwapRoute from AlphaRouter
 import { SwapRoute } from '@uniswap/smart-order-router';
 
-export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
+export const executeSwapRoute: FastifyPluginAsync = async (fastify, _options) => {
+  // Import the httpErrors plugin to ensure it's available
+  await fastify.register(require('@fastify/sensible'));
   // Get first wallet address for example
   const ethereum = await Ethereum.getInstance('base');
   let firstWalletAddress = '<ethereum-wallet-address>';
@@ -62,8 +64,10 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         },
       }
     },
-    async (request) => {
+    async (request, reply) => {
       try {
+        // Log the request parameters for debugging
+        logger.info(`Received execute-swap request: ${JSON.stringify(request.body)}`);
         const { 
           network, 
           walletAddress: requestedWalletAddress,
@@ -78,7 +82,8 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
 
         // Validate essential parameters
         if (!baseTokenSymbol || !quoteTokenSymbol || !amount || !side) {
-          throw fastify.httpErrors.badRequest('Missing required parameters');
+          logger.error('Missing required parameters in request');
+          return reply.badRequest('Missing required parameters');
         }
         
         // Get Uniswap and Ethereum instances
@@ -100,13 +105,15 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         const quoteToken = uniswap.getTokenBySymbol(quoteTokenSymbol);
 
         if (!baseToken || !quoteToken) {
-          throw fastify.httpErrors.badRequest(`Token not found: ${!baseToken ? baseTokenSymbol : quoteTokenSymbol}`);
+          logger.error(`Token not found: ${!baseToken ? baseTokenSymbol : quoteTokenSymbol}`);
+          return reply.badRequest(`Token not found: ${!baseToken ? baseTokenSymbol : quoteTokenSymbol}`);
         }
 
         // Get the wallet
         const wallet = await ethereum.getWallet(walletAddress);
         if (!wallet) {
-          throw fastify.httpErrors.badRequest('Wallet not found');
+          logger.error(`Wallet not found: ${walletAddress}`);
+          return reply.badRequest('Wallet not found');
         }
 
         // Determine which token is being traded
@@ -151,7 +158,8 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
 
         // Check if methodParameters are available
         if (!swapRoute.methodParameters) {
-          throw fastify.httpErrors.internalServerError('Failed to generate swap parameters');
+          logger.error('Failed to generate swap parameters');
+          return reply.internalServerError('Failed to generate swap parameters');
         }
 
         // Get the Universal Router address for this network
@@ -185,7 +193,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           // Show error if allowance is insufficient
           if (currentAllowance.lt(amountNeeded)) {
             logger.error(`Insufficient allowance for ${inputToken.symbol}`);
-            throw fastify.httpErrors.badRequest(
+            return reply.badRequest(
               `Insufficient allowance for ${inputToken.symbol}. Please approve at least ${formatTokenAmount(amountNeeded.toString(), inputToken.decimals)} ${inputToken.symbol} for the Uniswap Universal Router (${universalRouterAddress})`
             );
           } else {
@@ -245,22 +253,22 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         };
       } catch (e) {
         logger.error(`Execute swap error: ${e.message}`);
+        if (e.stack) {
+          logger.debug(`Error stack: ${e.stack}`);
+        }
         
         // Specific error handling for allowance issues
         if (e.message && e.message.includes('Insufficient allowance')) {
-          throw fastify.httpErrors.badRequest(e.message);
+          return reply.badRequest(e.message);
         }
         
         // Handle transaction failures
         if (e.code === 'UNPREDICTABLE_GAS_LIMIT' || e.message.includes('insufficient funds')) {
-          throw fastify.httpErrors.badRequest('Transaction failed: Insufficient funds or gas estimation error');
+          return reply.badRequest('Transaction failed: Insufficient funds or gas estimation error');
         }
         
-        if (e.statusCode) {
-          throw e; // Re-throw if it's already a Fastify error
-        } else {
-          throw fastify.httpErrors.internalServerError(`Failed to execute swap: ${e.message}`);
-        }
+        // Generic error handling
+        return reply.internalServerError(`Failed to execute swap: ${e.message}`);
       }
     }
   );
