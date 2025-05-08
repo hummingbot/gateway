@@ -3,14 +3,13 @@
   "type": "object",
   "properties": {
     "allowedSlippage": { "type": "string" },
+    "maximumHops": { "type": "integer" },
     "networks": {
       "type": "object",
       "patternProperties": {
         "^\\w+$": {
           "type": "object",
           "properties": {
-            "maximumHops": { "type": "integer" },
-            "useRouter": { "type": "boolean" },
             "amm": {
               "type": "object",
               "patternProperties": {
@@ -30,7 +29,7 @@
               "additionalProperties": false
             }
           },
-          "required": ["maximumHops", "useRouter", "amm", "clmm"],
+          "required": ["amm", "clmm"],
           "additionalProperties": false
         }
       },
@@ -38,5 +37,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["allowedSlippage", "networks"]
+  "required": ["allowedSlippage", "maximumHops", "networks"]
 }

@@ -16,10 +16,6 @@ interface AvailableNetworks {
 
 export namespace UniswapConfig {
   export interface NetworkConfig {
-    // Settings for specific networks
-    maximumHops: number;
-    useRouter: boolean;
-    
     // Pool configurations
     amm: { [pairName: string]: string };
     clmm: { [pairName: string]: string };
@@ -33,6 +29,7 @@ export namespace UniswapConfig {
   export interface RootConfig {
     // Global configuration
     allowedSlippage: string;
+    maximumHops: number;
     
     // Network-specific configurations
     networks: NetworkPoolsConfig;
@@ -48,11 +45,13 @@ export namespace UniswapConfig {
     quoterContractAddress: (network: string) => string;
     uniswapV3FactoryAddress: (network: string) => string;
     universalRouterAddress: (network: string) => string;
+    getUniversalRouterAddress: (network: string) => string;
   }
 
   export const config: RootConfig = {
     // Global configuration
     allowedSlippage: ConfigManagerV2.getInstance().get('uniswap.allowedSlippage'),
+    maximumHops: ConfigManagerV2.getInstance().get('uniswap.maximumHops') || 4,
     
     // Network-specific pools
     networks: ConfigManagerV2.getInstance().get('uniswap.networks'),
@@ -69,15 +68,12 @@ export namespace UniswapConfig {
     uniswapV3NftManagerAddress: getUniswapV3NftManagerAddress,
     quoterContractAddress: getUniswapV3QuoterV2ContractAddress,
     uniswapV3FactoryAddress: getUniswapV3FactoryAddress,
-    universalRouterAddress: getUniversalRouterAddress
+    universalRouterAddress: getUniversalRouterAddress,
+    getUniversalRouterAddress: getUniversalRouterAddress
   }
 
-  // Helper methods to get network-specific settings
-  export const getNetworkMaximumHops = (network: string): number => {
-    return config.networks[network]?.maximumHops || 4; // Default to 4 hops
-  };
-
-  export const getNetworkUseRouter = (network: string): boolean => {
-    return config.networks[network]?.useRouter || false; // Default to false
+  // Helper method to get maximum hops
+  export const getMaximumHops = (): number => {
+    return config.maximumHops || 4; // Default to 4 hops
   };
 }

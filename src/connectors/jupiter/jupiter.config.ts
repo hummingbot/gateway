@@ -1,5 +1,9 @@
-import { AvailableNetworks } from '../connector.interfaces';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
+
+interface AvailableNetworks {
+  chain: string;
+  networks: Array<string>;
+}
 
 export namespace JupiterConfig {
   export interface NetworkConfig {

@@ -1,15 +1,14 @@
 # Global settings for Uniswap
-# how much the execution price is allowed to move unfavorably
+# How much the execution price is allowed to move unfavorably
 allowedSlippage: '2/100'
+
+# For each swap, the maximum number of hops to consider
+maximumHops: 4
 
 # Network-specific pool configurations
 networks:
   # Base network pools
   base:
-    # Network-specific settings
-    maximumHops: 4     # For each swap, the maximum number of hops to consider
-    useRouter: false   # Use Uniswap Router or Quoter to quote prices (true = Router, false = Quoter)
-    
     # AMM (Uniswap V2) pools for Base network
     amm:
       WETH-USDC: '0x88a43bbdf9d098eec7bceda4e2494615dfd9bb9c'
@@ -22,10 +21,6 @@ networks:
       
   # Ethereum Mainnet pools
   mainnet:
-    # Network-specific settings
-    maximumHops: 4     # For each swap, the maximum number of hops to consider
-    useRouter: false   # Use Uniswap Router or Quoter to quote prices (true = Router, false = Quoter)
-    
     # AMM (Uniswap V2) pools for Mainnet
     amm:
       ETH-USDC: '0xb4e16d0168e52d35cacd2c6185b44281ec28c9dc'
@@ -43,100 +38,60 @@ networks:
       
   # Arbitrum pools
   arbitrum:
-    # Network-specific settings
-    maximumHops: 4
-    useRouter: false
-    
     # AMM and CLMM pools for Arbitrum
     amm: {}
     clmm: {}
     
   # Optimism pools
   optimism:
-    # Network-specific settings
-    maximumHops: 4
-    useRouter: false
-    
     # AMM and CLMM pools for Optimism
     amm: {}
     clmm: {}
     
   # BSC pools
   bsc:
-    # Network-specific settings
-    maximumHops: 4
-    useRouter: false
-    
     # AMM and CLMM pools for BSC
     amm: {}
     clmm: {}
     
   # Avalanche pools
   avalanche:
-    # Network-specific settings
-    maximumHops: 4
-    useRouter: false
-    
     # AMM and CLMM pools for Avalanche
     amm: {}
     clmm: {}
     
   # Celo pools
   celo:
-    # Network-specific settings
-    maximumHops: 4
-    useRouter: false
-    
     # AMM and CLMM pools for Celo
     amm: {}
     clmm: {}
     
   # Polygon pools
   polygon:
-    # Network-specific settings
-    maximumHops: 4
-    useRouter: false
-    
     # AMM and CLMM pools for Polygon
     amm: {}
     clmm: {}
     
   # Sepolia testnet pools
   sepolia:
-    # Network-specific settings
-    maximumHops: 4
-    useRouter: false
-    
     # AMM and CLMM pools for Sepolia
     amm: {}
     clmm: {}
     
   # Blast pools
   blast:
-    # Network-specific settings
-    maximumHops: 4
-    useRouter: false
-    
     # AMM and CLMM pools for Blast
     amm: {}
     clmm: {}
     
   # Zora pools
   zora:
-    # Network-specific settings
-    maximumHops: 4
-    useRouter: false
-    
     # AMM and CLMM pools for Zora
     amm: {}
     clmm: {}
     
   # WorldChain pools
   worldchain:
-    # Network-specific settings
-    maximumHops: 4
-    useRouter: false
-    
     # AMM and CLMM pools for WorldChain
     amm: {}
     clmm: {}

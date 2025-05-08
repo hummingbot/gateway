@@ -42,6 +42,16 @@ const POSITION_MANAGER_ABI = [
 ];
 
 export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
+  // Get first wallet address for example
+  const ethereum = await Ethereum.getInstance('base');
+  let firstWalletAddress = '<ethereum-wallet-address>';
+  
+  try {
+    firstWalletAddress = await ethereum.getFirstWalletAddress() || firstWalletAddress;
+  } catch (error) {
+    logger.warn('No wallets found for examples in schema');
+  }
+  
   fastify.get<{
     Querystring: GetPositionInfoRequestType;
     Reply: PositionInfo;
@@ -55,8 +65,8 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
           ...GetPositionInfoRequest,
           properties: {
             network: { type: 'string', default: 'base' },
-            positionAddress: { type: 'string', description: 'Position NFT token ID' },
-            walletAddress: { type: 'string', examples: ['0x...'] }
+            positionAddress: { type: 'string', description: 'Position NFT token ID', examples: ['1234'] },
+            walletAddress: { type: 'string', examples: [firstWalletAddress] }
           }
         },
         response: {

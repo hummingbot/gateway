@@ -39,7 +39,7 @@ export const contractAddresses: NetworkContractAddresses = {
       '0x61fFE014bA17989E743c5F6cB21bF9697530B21e',
     uniswapV3FactoryAddress: '0x1F98431c8aD98523631AE4a59f267346ea31F984',
     // Universal Router - Official Uniswap address
-    universalRouterAddress: '0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD', // V1.2 with V2 Support
+    universalRouterAddress: '0x66a9893cc07d91d95644aedd05d03f95e1dba8af', // V2
   },
   arbitrum: {
     // V2 contracts - Official Uniswap addresses
@@ -52,6 +52,8 @@ export const contractAddresses: NetworkContractAddresses = {
     uniswapV3QuoterV2ContractAddress:
       '0x61fFE014bA17989E743c5F6cB21bF9697530B21e',
     uniswapV3FactoryAddress: '0x1F98431c8aD98523631AE4a59f267346ea31F984',
+    // Universal Router - Official Uniswap address
+    universalRouterAddress: '0xa51afafe0263b40edaef0df8781ea9aa03e381a3', // V2
   },
   optimism: {
     // V2 contracts - Official Uniswap addresses
@@ -64,6 +66,8 @@ export const contractAddresses: NetworkContractAddresses = {
     uniswapV3QuoterV2ContractAddress:
       '0x61fFE014bA17989E743c5F6cB21bF9697530B21e',
     uniswapV3FactoryAddress: '0x1F98431c8aD98523631AE4a59f267346ea31F984',
+    // Universal Router - Official Uniswap address
+    universalRouterAddress: '0x851116d9223fabed8e56c0e6b8ad0c31d98b3507', // V2
   },
   base: {
     // V2 contracts - Official Uniswap addresses
@@ -76,6 +80,8 @@ export const contractAddresses: NetworkContractAddresses = {
     uniswapV3QuoterV2ContractAddress:
       '0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a',
     uniswapV3FactoryAddress: '0x33128a8fC17869897dcE68Ed026d694621f6FDfD',
+    // Universal Router - Official Uniswap address
+    universalRouterAddress: '0x6ff5693b99212da76ad316178a184ab56d299b43', // V2
   },
   sepolia: {
     // V2 contracts - Official Uniswap addresses for Sepolia testnet
@@ -88,6 +94,7 @@ export const contractAddresses: NetworkContractAddresses = {
     uniswapV3QuoterV2ContractAddress:
       '0x61fFE014bA17989E743c5F6cB21bF9697530B21e', // Default mainnet QuoterV2
     uniswapV3FactoryAddress: '0x1F98431c8aD98523631AE4a59f267346ea31F984', // Default mainnet factory
+    // No Universal Router address for Sepolia yet, will fall back to mainnet
   },
   bsc: {
     // V2 contracts - Official Uniswap addresses
@@ -100,6 +107,8 @@ export const contractAddresses: NetworkContractAddresses = {
     uniswapV3QuoterV2ContractAddress:
       '0x78D78E420Da98ad378D7799bE8f4AF69033EB077',
     uniswapV3FactoryAddress: '0xdB1d10011AD0Ff90774D0C6Bb92e5C5c8b4461F7',
+    // Universal Router - Official Uniswap address
+    universalRouterAddress: '0x1906c1d672b88cd1b9ac7593301ca990f94eae07', // V2
   },
   avalanche: {
     // V2 contracts - Official Uniswap addresses
@@ -112,6 +121,8 @@ export const contractAddresses: NetworkContractAddresses = {
     uniswapV3QuoterV2ContractAddress:
       '0xbe0F5544EC67e9B3b2D979aaA43f18Fd87E6257F',
     uniswapV3FactoryAddress: '0x740b1c1de25031C31FF4fC9A62f554A55cdC1baD',
+    // Universal Router - Official Uniswap address
+    universalRouterAddress: '0x4Dae2f939ACf50408e13d58534Ff8c2776d45265', // V1.2 with V2 Support
   },
   celo: {
     // V2 contracts - No official Uniswap V2 deployment for Celo network
@@ -124,6 +135,8 @@ export const contractAddresses: NetworkContractAddresses = {
     uniswapV3QuoterV2ContractAddress:
       '0x82825d0554fA07f7FC52Ab63c961F330fdEFa8E8',
     uniswapV3FactoryAddress: '0xAfE208a311B21f13EF87E33A90049fC17A7acDEc',
+    // Universal Router - Official Uniswap address
+    universalRouterAddress: '0xC73d61d192FB994157168Fb56730FdEc64C9Cb8F', // V1
   },
   polygon: {
     // V2 contracts - Official Uniswap addresses
@@ -136,6 +149,8 @@ export const contractAddresses: NetworkContractAddresses = {
     uniswapV3QuoterV2ContractAddress:
       '0x61fFE014bA17989E743c5F6cB21bF9697530B21e',
     uniswapV3FactoryAddress: '0x1F98431c8aD98523631AE4a59f267346ea31F984',
+    // Universal Router - Official Uniswap address
+    universalRouterAddress: '0x4c60051384bd2d3c01bfc845cf5f4b44bcbe9de5'
   },
   blast: {
     // V2 contracts - Official Uniswap addresses
@@ -148,6 +163,8 @@ export const contractAddresses: NetworkContractAddresses = {
     uniswapV3QuoterV2ContractAddress:
       '0x61fFE014bA17989E743c5F6cB21bF9697530B21e', // Default mainnet QuoterV2
     uniswapV3FactoryAddress: '0x1F98431c8aD98523631AE4a59f267346ea31F984', // Default mainnet factory
+    // Universal Router - Official Uniswap address
+    universalRouterAddress: '0xeabbcb3e8e415306207ef514f660a3f820025be3',
   },
   zora: {
     // V2 contracts - Official Uniswap addresses
@@ -160,6 +177,8 @@ export const contractAddresses: NetworkContractAddresses = {
     uniswapV3QuoterV2ContractAddress:
       '0x61fFE014bA17989E743c5F6cB21bF9697530B21e', // Default mainnet QuoterV2
     uniswapV3FactoryAddress: '0x1F98431c8aD98523631AE4a59f267346ea31F984', // Default mainnet factory
+    // Universal Router - Official Uniswap address
+    universalRouterAddress: '0x3315ef7ca28db74abadc6c44570efdf06b04b020',
   },
   worldchain: {
     // V2 contracts - Official Uniswap addresses
@@ -172,6 +191,8 @@ export const contractAddresses: NetworkContractAddresses = {
     uniswapV3QuoterV2ContractAddress:
       '0x61fFE014bA17989E743c5F6cB21bF9697530B21e', // Default mainnet QuoterV2
     uniswapV3FactoryAddress: '0x1F98431c8aD98523631AE4a59f267346ea31F984', // Default mainnet factory
+    // Universal Router - Official Uniswap address
+    universalRouterAddress: '0x8ac7bee993bb44dab564ea4bc9ea67bf9eb5e743',
   },
 };
 
@@ -240,8 +261,36 @@ export function getUniswapV3FactoryAddress(network: string): string {
 export function getUniversalRouterAddress(network: string): string {
   return (
     contractAddresses[network]?.universalRouterAddress ||
-    '0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD'
-  ); // Default to mainnet Universal Router
+    '0x66a9893cc07d91d95644aedd05d03f95e1dba8af'
+  ); // Default to mainnet Universal Router V2
+}
+
+/**
+ * Returns the appropriate spender address based on the schema
+ * @param network The network name (e.g. 'mainnet', 'base')
+ * @param schema The schema type (amm, clmm, etc.)
+ * @returns The address of the contract that should be approved to spend tokens
+ */
+export function getSpender(network: string, schema: string = 'clmm'): string {
+  // For AMM (V2), use the V2 Router
+  if (schema === 'amm') {
+    return getUniswapV2RouterAddress(network);
+  }
+  
+  // For CLMM (V3), use the NFT Position Manager
+  if (schema === 'clmm') {
+    return getUniswapV3NftManagerAddress(network);
+  }
+  
+  // For router operations or any other case, try Universal Router first,
+  // falling back to NFT Manager if Universal Router isn't available
+  const universalRouter = contractAddresses[network]?.universalRouterAddress;
+  if (universalRouter) {
+    return universalRouter;
+  }
+  
+  // Default to NFT Manager if no Universal Router
+  return getUniswapV3NftManagerAddress(network);
 }
 
 /**

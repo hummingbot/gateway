@@ -27,7 +27,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
             network: { type: 'string', default: 'base' },
             poolAddress: { 
               type: 'string', 
-              examples: ['0x4c36388be6f416a29c8d8eee81c771ce6be14b18'] 
+              examples: [''] 
             },
             baseToken: { type: 'string', examples: ['WETH'] },
             quoteToken: { type: 'string', examples: ['USDC'] },

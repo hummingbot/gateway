@@ -44,6 +44,16 @@ const ERC20_ABI = [
 ];
 
 export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
+  // Get first wallet address for example
+  const ethereum = await Ethereum.getInstance('base');
+  let firstWalletAddress = '<ethereum-wallet-address>';
+  
+  try {
+    firstWalletAddress = await ethereum.getFirstWalletAddress() || firstWalletAddress;
+  } catch (error) {
+    logger.warn('No wallets found for examples in schema');
+  }
+
   fastify.post<{
     Body: ExecuteSwapRequestType;
     Reply: ExecuteSwapResponseType;
@@ -58,12 +68,12 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             ...ExecuteSwapRequest.properties,
             network: { type: 'string', default: 'base' },
-            walletAddress: { type: 'string', examples: ['0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'] },
+            walletAddress: { type: 'string', examples: [firstWalletAddress] },
             baseToken: { type: 'string', examples: ['WETH'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
-            amount: { type: 'number', examples: [0.01] },
+            amount: { type: 'number', examples: [0.001] },
             side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
-            slippagePct: { type: 'number', examples: [1] }
+            slippagePct: { type: 'number', examples: [0.5] }
           }
         },
         response: {

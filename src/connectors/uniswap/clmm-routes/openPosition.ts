@@ -45,6 +45,16 @@ const ERC20_ABI = [
 ];
 
 export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
+  // Get first wallet address for example
+  const ethereum = await Ethereum.getInstance('base');
+  let firstWalletAddress = '<ethereum-wallet-address>';
+  
+  try {
+    firstWalletAddress = await ethereum.getFirstWalletAddress() || firstWalletAddress;
+  } catch (error) {
+    logger.warn('No wallets found for examples in schema');
+  }
+  
   fastify.post<{
     Body: OpenPositionRequestType;
     Reply: OpenPositionResponseType;
@@ -59,16 +69,16 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             ...OpenPositionRequest.properties,
             network: { type: 'string', default: 'base' },
-            walletAddress: { type: 'string', examples: ['0x...'] },
+            walletAddress: { type: 'string', examples: [firstWalletAddress] },
             lowerPrice: { type: 'number', examples: [1500] },
             upperPrice: { type: 'number', examples: [2000] },
-            poolAddress: { type: 'string', examples: ['0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640'] },
+            poolAddress: { type: 'string', examples: [''] },
             baseToken: { type: 'string', examples: ['WETH'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
-            baseTokenAmount: { type: 'number', examples: [0.1] },
-            quoteTokenAmount: { type: 'number', examples: [200] },
+            baseTokenAmount: { type: 'number', examples: [0.001] },
+            quoteTokenAmount: { type: 'number', examples: [2] },
             feeTier: { type: 'string', enum: ['LOWEST', 'LOW', 'MEDIUM', 'HIGH'], default: 'MEDIUM' },
-            slippagePct: { type: 'number', examples: [1] }
+            slippagePct: { type: 'number', examples: [0.5] }
           }
         },
         response: {

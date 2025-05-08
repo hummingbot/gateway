@@ -7,8 +7,8 @@ import { Contract } from '@ethersproject/contracts';
 
 // Define the request and response types
 const PositionsOwnedRequest = Type.Object({
-  network: Type.Optional(Type.String()),
-  walletAddress: Type.String(),
+  network: Type.Optional(Type.String({ examples: ['base'], default: 'base' })),
+  walletAddress: Type.String({ examples: ['<ethereum-wallet-address>'] }),
 });
 
 const PositionsOwnedResponse = Type.Array(
@@ -73,6 +73,18 @@ const POSITION_MANAGER_ABI = [
 ];
 
 export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
+  // Get first wallet address for example
+  const ethereum = await Ethereum.getInstance('base');
+  let firstWalletAddress = '<ethereum-wallet-address>';
+  
+  try {
+    firstWalletAddress = await ethereum.getFirstWalletAddress() || firstWalletAddress;
+    // Update the example in the schema
+    PositionsOwnedRequest.properties.walletAddress.examples = [firstWalletAddress];
+  } catch (error) {
+    logger.warn('No wallets found for examples in schema');
+  }
+
   fastify.get<{
     Querystring: typeof PositionsOwnedRequest.static;
     Reply: typeof PositionsOwnedResponse.static;
