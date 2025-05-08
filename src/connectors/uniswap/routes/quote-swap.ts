@@ -1,5 +1,4 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
-import { Uniswap } from '../uniswap';
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { logger } from '../../../services/logger';
 import { 
@@ -14,7 +13,7 @@ import {
   Percent,
   TradeType,
 } from '@uniswap/sdk-core';
-import { AlphaRouter, SwapType, SwapOptionsSwapRouter02 } from '@uniswap/smart-order-router';
+import { AlphaRouter, SwapOptions, SwapRoute, SwapType } from '@uniswap/smart-order-router';
 import { ethers } from 'ethers';
 
 /**
@@ -32,7 +31,6 @@ export async function getUniswapQuote(
   recipient: string = ethers.constants.AddressZero // Default to zero address for quote
 ) {
   // Get Uniswap and Ethereum instances
-  const uniswap = await Uniswap.getInstance(network);
   const ethereum = await Ethereum.getInstance(network);
   
   // Resolve tokens using Ethereum class
@@ -81,23 +79,20 @@ export async function getUniswapQuote(
     provider: ethereum.provider as ethers.providers.JsonRpcProvider,
   });
 
-  // Create specific swap options for SwapRouter02 only - no universal router
-  const swapRouter02Options = {
-    type: SwapType.SWAP_ROUTER_02,
+  // Create options for the router with the required SwapOptions format
+  const swapOptions: SwapOptions = {
+    type: SwapType.SWAP_ROUTER_02, // Explicitly use SwapRouter02
     recipient, // Add recipient from parameter
     slippageTolerance,
     deadline: Math.floor(Date.now() / 1000) + 1800 // 30 minutes
-  } as SwapOptionsSwapRouter02;
+  };
   
-  // Generate the route using SwapRouter02
+  // Generate the route using AlphaRouter
   const route = await alphaRouter.route(
     inputAmount,
     outputToken,
     exactIn ? TradeType.EXACT_INPUT : TradeType.EXACT_OUTPUT,
-    undefined,
-    {
-      maxSwapsPerPath: uniswap.config.maximumHops || 4
-    }
+    swapOptions
   );
 
   if (!route) {

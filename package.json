@@ -52,7 +52,6 @@
     "@solana/spl-token-registry": "^0.2.4574",
     "@solana/web3.js": "^1.98.0",
     "@solflare-wallet/utl-sdk": "^1.4.0",
-    "@uniswap/router-sdk": "^1.23.0",
     "@uniswap/sdk": "3.0.3",
     "@uniswap/sdk-core": "^5.9.0",
     "@uniswap/smart-order-router": "^3.59.0",

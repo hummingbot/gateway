@@ -7,21 +7,21 @@ manualGasPrice: 33
 networks:
   mainnet:
     chainID: 1
-    nodeURL: https://rpc.ankr.com/eth
+    nodeURL: https://eth.llamarpc.com
     tokenListType: FILE
     nativeCurrencySymbol: ETH
     tokenListSource: /home/gateway/conf/lists/mainnet.json
     gasPriceRefreshInterval: 60
   arbitrum:
     chainID: 42161
-    nodeURL: https://rpc.ankr.com/arbitrum
+    nodeURL: https://arb1.arbitrum.io/rpc
     tokenListType: FILE
     tokenListSource: /home/gateway/conf/lists/arbitrum.json
     nativeCurrencySymbol: ETH
     gasPriceRefreshInterval: 60
   optimism:
     chainID: 10
-    nodeURL: https://rpc.ankr.com/optimism
+    nodeURL: https://mainnet.optimism.io
     tokenListType: FILE
     tokenListSource: /home/gateway/conf/lists/optimism.json
     nativeCurrencySymbol: OETH
@@ -49,7 +49,7 @@ networks:
     gasPriceRefreshInterval: 60
   avalanche:
     chainID: 43114
-    nodeURL: https://rpc.ankr.com/avalanche
+    nodeURL: https://api.avax.network/ext/bc/C/rpc
     tokenListType: FILE
     tokenListSource: conf/lists/avalanche.json
     nativeCurrencySymbol: AVAX
@@ -83,8 +83,8 @@ networks:
     nativeCurrencySymbol: ETH
     gasPriceRefreshInterval: 60
   worldchain:
-    chainID: 29
-    nodeURL: https://rpc.worldcoin.org
+    chainID: 480
+    nodeURL: https://worldchain-mainnet.g.alchemy.com/public
     tokenListType: FILE
     tokenListSource: /home/gateway/conf/lists/mainnet.json
     nativeCurrencySymbol: WLD
