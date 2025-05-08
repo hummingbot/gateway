@@ -3,20 +3,28 @@ import { logger } from '../../services/logger';
 
 // Import AMM routes
 import poolInfoRoute from './amm-routes/poolInfo';
-import quoteSwapRoute from './amm-routes/quoteSwap';
-import executeSwapRoute from './amm-routes/executeSwap';
+import ammQuoteSwapRoute from './amm-routes/quoteSwap';
+import ammExecuteSwapRoute from './amm-routes/executeSwap';
 import addLiquidityRoute from './amm-routes/addLiquidity';
 import removeLiquidityRoute from './amm-routes/removeLiquidity';
 import positionInfoRoute from './amm-routes/positionInfo';
 import quoteLiquidityRoute from './amm-routes/quoteLiquidity';
 
+// Import new router-based routes
+import quoteSwapRoute from './routes/quote-swap';
+import executeSwapRoute from './routes/execute-swap';
+
 export const uniswapRoutes: FastifyPluginAsync = async (fastify) => {
+  // Register direct routes (using SwapRouter02)
+  fastify.register(quoteSwapRoute);
+  fastify.register(executeSwapRoute);
+
   // Register AMM routes (Uniswap V2)
   fastify.register(
     async (ammRouter) => {
       await ammRouter.register(poolInfoRoute);
-      await ammRouter.register(quoteSwapRoute);
-      await ammRouter.register(executeSwapRoute);
+      await ammRouter.register(ammQuoteSwapRoute);
+      await ammRouter.register(ammExecuteSwapRoute);
       await ammRouter.register(addLiquidityRoute);
       await ammRouter.register(removeLiquidityRoute);
       await ammRouter.register(positionInfoRoute);

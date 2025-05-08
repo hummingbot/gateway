@@ -173,25 +173,41 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           deadline: Math.floor(Date.now() / 1000) + 60 * 20 // 20 minutes from now
         });
 
-        // If input token is not ETH, approve the router to spend the tokens
+        // If input token is not ETH, check allowance for the router
         if (inputToken.symbol !== 'WETH') {
-          const tokenContract = new Contract(
+          // Get the router address that needs approval
+          const router = uniswap.config.uniswapV3SmartOrderRouterAddress(networkToUse);
+          
+          // Get token contract
+          const tokenContract = ethereum.getContract(
             inputToken.address,
-            ERC20_ABI,
             wallet
           );
           
-          // Approve the router to spend tokens
-          const router = uniswap.config.uniswapV3SmartOrderRouterAddress(networkToUse);
-          const approvalTx = await tokenContract.approve(
+          // Check existing allowance
+          const allowance = await ethereum.getERC20Allowance(
+            tokenContract,
+            wallet,
             router,
-            routerSwapParams.value && routerSwapParams.value !== '0' ? 
-              BigNumber.from(routerSwapParams.value) : 
-              inputAmount.quotient.toString()
+            inputToken.decimals
           );
           
-          // Wait for approval transaction to be mined
-          await approvalTx.wait();
+          // Calculate required amount
+          const amountNeeded = routerSwapParams.value && routerSwapParams.value !== '0' ? 
+            BigNumber.from(routerSwapParams.value) : 
+            BigNumber.from(inputAmount.quotient.toString());
+            
+          const currentAllowance = BigNumber.from(allowance.value);
+          
+          // Instead of approving, throw an error if allowance is insufficient
+          if (currentAllowance.lt(amountNeeded)) {
+            logger.error(`Insufficient allowance for ${inputToken.symbol}`);
+            throw new Error(
+              `Insufficient allowance for ${inputToken.symbol}. Please approve at least ${formatTokenAmount(amountNeeded.toString(), inputToken.decimals)} ${inputToken.symbol} for the Uniswap router (${router})`
+            );
+          } else {
+            logger.info(`Sufficient allowance exists: ${formatTokenAmount(currentAllowance.toString(), inputToken.decimals)} ${inputToken.symbol}`);
+          }
         }
 
         // Create the SwapRouter contract instance

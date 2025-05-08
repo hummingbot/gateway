@@ -168,6 +168,8 @@ export class Ethereum {
 
   /**
    * Resolves a spender name to an address
+   * @param reqConnector The connector name or direct address
+   * @param schema The schema type (amm, clmm, etc.)
    */
   public getSpender(reqConnector: string, schema: string = 'clmm'): string {
     let spender: string;
@@ -178,8 +180,8 @@ export class Ethereum {
         // Use the V2 router for AMM (Automated Market Maker)
         spender = UniswapConfig.config.uniswapV2RouterAddress(this.network);
       } else {
-        // Use the V3 router for CLMM (Concentrated Liquidity Market Maker) - default
-        spender = UniswapConfig.config.uniswapV3SmartOrderRouterAddress(this.network);
+        // Use the NonfungiblePositionManager for CLMM (default)
+        spender = UniswapConfig.config.uniswapV3NftManagerAddress(this.network);
       }
     } else {
       // For direct addresses or other connectors
