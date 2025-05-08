@@ -177,7 +177,7 @@ describe('Uniswap V3 Swap Router Tests (Base Network)', () => {
   });
   
   describe('Execute Swap Endpoint', () => {
-    test('returns successful swap execution with V3 Swap Router', async () => {
+    test('returns successful swap execution with Uniswap V3 Swap Router', async () => {
       // Create a quote-swap response to use as input for execute-swap
       let quoteResponse;
       try {

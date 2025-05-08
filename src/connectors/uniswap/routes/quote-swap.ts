@@ -14,7 +14,7 @@ import {
   Percent,
   TradeType,
 } from '@uniswap/sdk-core';
-import { AlphaRouter, SwapType } from '@uniswap/smart-order-router';
+import { AlphaRouter, SwapType, SwapOptions } from '@uniswap/smart-order-router';
 import { ethers } from 'ethers';
 import JSBI from 'jsbi';
 
@@ -81,12 +81,29 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify, _options) => {
         }
         
         // Get Uniswap and Ethereum instances
-        const uniswap = await Uniswap.getInstance(networkToUse);
+        const uniswap = await Uniswap.getInstance('ethereum', networkToUse);
         const ethereum = await Ethereum.getInstance(networkToUse);
         
-        // Resolve tokens
-        const baseToken = uniswap.getTokenBySymbol(baseTokenSymbol);
-        const quoteToken = uniswap.getTokenBySymbol(quoteTokenSymbol);
+        // Resolve tokens using Ethereum class
+        const baseTokenInfo = ethereum.getTokenBySymbol(baseTokenSymbol);
+        const quoteTokenInfo = ethereum.getTokenBySymbol(quoteTokenSymbol);
+        
+        // Convert to Uniswap SDK Token objects
+        const baseToken = baseTokenInfo ? new Token(
+          ethereum.chainId,
+          baseTokenInfo.address,
+          baseTokenInfo.decimals,
+          baseTokenInfo.symbol,
+          baseTokenInfo.name
+        ) : null;
+        
+        const quoteToken = quoteTokenInfo ? new Token(
+          ethereum.chainId,
+          quoteTokenInfo.address,
+          quoteTokenInfo.decimals,
+          quoteTokenInfo.symbol,
+          quoteTokenInfo.name
+        ) : null;
 
         if (!baseToken || !quoteToken) {
           logger.error(`Token not found: ${!baseToken ? baseTokenSymbol : quoteTokenSymbol}`);
@@ -117,19 +134,22 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify, _options) => {
             provider: ethereum.provider as ethers.providers.JsonRpcProvider,
           });
 
-          // Generate a swap route - EXPLICITLY using SwapType.SWAP_ROUTER_02
+          // Generate a swap route - using TypeScript-compliant approach
+          const swapOptions: SwapOptions = {
+            recipient: ethers.constants.AddressZero, // Dummy recipient for quote
+            slippageTolerance: slippagePct ? 
+              new Percent(Math.floor(slippagePct * 100), 10000) : 
+              new Percent(50, 10000), // 0.5% default slippage
+            deadline: Math.floor(Date.now() / 1000) + 1800, // 30 minutes
+            type: SwapType.SWAP_ROUTER_02 // Required by TypeScript typing
+          };
+            
+          // Generate a swap route
           const route = await alphaRouter.route(
             inputAmount,
             outputToken,
             exactIn ? TradeType.EXACT_INPUT : TradeType.EXACT_OUTPUT,
-            {
-              recipient: ethers.constants.AddressZero, // Dummy recipient for quote
-              slippageTolerance: slippagePct ? 
-                new Percent(Math.floor(slippagePct * 100), 10000) : 
-                new Percent(50, 10000), // 0.5% default slippage
-              deadline: Math.floor(Date.now() / 1000) + 1800, // 30 minutes
-              type: SwapType.SWAP_ROUTER_02  // EXPLICITLY use SWAP_ROUTER_02
-            }
+            swapOptions
           );
 
           if (!route) {

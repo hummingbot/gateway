@@ -97,7 +97,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify, _options) =>
         }
         
         // Get Uniswap and Ethereum instances
-        const uniswap = await Uniswap.getInstance(networkToUse);
+        const uniswap = await Uniswap.getInstance('ethereum', networkToUse);
         const ethereum = await Ethereum.getInstance(networkToUse);
         
         // Get wallet address - either from request or first available
@@ -110,9 +110,26 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify, _options) =>
           logger.info(`Using first available wallet address: ${walletAddress}`);
         }
 
-        // Resolve tokens
-        const baseToken = uniswap.getTokenBySymbol(baseTokenSymbol);
-        const quoteToken = uniswap.getTokenBySymbol(quoteTokenSymbol);
+        // Resolve tokens using Ethereum class
+        const baseTokenInfo = ethereum.getTokenBySymbol(baseTokenSymbol);
+        const quoteTokenInfo = ethereum.getTokenBySymbol(quoteTokenSymbol);
+        
+        // Convert to Uniswap SDK Token objects
+        const baseToken = baseTokenInfo ? new Token(
+          ethereum.chainId,
+          baseTokenInfo.address,
+          baseTokenInfo.decimals,
+          baseTokenInfo.symbol,
+          baseTokenInfo.name
+        ) : null;
+        
+        const quoteToken = quoteTokenInfo ? new Token(
+          ethereum.chainId,
+          quoteTokenInfo.address,
+          quoteTokenInfo.decimals,
+          quoteTokenInfo.symbol,
+          quoteTokenInfo.name
+        ) : null;
 
         if (!baseToken || !quoteToken) {
           logger.error(`Token not found: ${!baseToken ? baseTokenSymbol : quoteTokenSymbol}`);
@@ -163,15 +180,15 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify, _options) =>
             provider: ethereum.provider as ethers.providers.JsonRpcProvider,
           });
 
-          // Configure swap options - EXPLICITLY use SWAP_ROUTER_02
+          // Configure swap options with basic parameters
           const swapOptions: SwapOptions = {
             recipient: walletAddress,
             slippageTolerance,
             deadline: Math.floor(Date.now() / 1000) + 1800, // 30 minutes
-            type: SwapType.SWAP_ROUTER_02, // EXPLICITLY use SWAP_ROUTER_02
+            type: SwapType.SWAP_ROUTER_02, // Required by TypeScript typing
           };
 
-          // Generate a swap route
+          // Generate a swap route - using simple approach without specifying SwapType
           route = await alphaRouter.route(
             inputAmount,
             outputToken,

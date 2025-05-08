@@ -3,7 +3,9 @@
 allowedSlippage: '2/100'
 
 # For each swap, the maximum number of hops to consider
-maximumHops: 4
+# This is currently used only for internal hops if direct swaps are not available
+# Setting a value of 1 restricts to direct token-to-token swaps
+maximumHops: 1
 
 # Network-specific pool configurations
 networks:
