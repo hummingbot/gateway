@@ -20,14 +20,12 @@ import { ethers } from 'ethers';
 import JSBI from 'jsbi';
 
 /**
- * Get a Universal Router quote using AlphaRouter with SwapType.SWAP_ROUTER_02
+ * Get a V3 swap quote using AlphaRouter with the Swap Router 02
  * 
- * NOTE: We use SwapType.SWAP_ROUTER_02 instead of UNIVERSAL_ROUTER because of
- * compatibility issues between the SDK versions. The calldata generated
- * with SwapType.SWAP_ROUTER_02 can be sent to the Universal Router address,
- * which is what we do in execute-swap.ts.
+ * This function uses the V3 Smart Order Router to find the optimal route
+ * and generates calldata for the Swap Router 02 contract.
  */
-export async function getUniversalRouterQuote(
+export async function getV3SwapRouterQuote(
   ethereum: Ethereum,
   inputToken: Token,
   outputToken: Token,
@@ -55,7 +53,7 @@ export async function getUniversalRouterQuote(
       {
         recipient: ethers.constants.AddressZero, // Dummy recipient for quote
         slippageTolerance,
-        // Use SWAP_ROUTER_02 type for compatibility - the calldata will be sent to Universal Router later
+        // Use SwapRouter02 - this is the recommended router for V3 swaps
         type: SwapType.SWAP_ROUTER_02,
         deadline: Math.floor(Date.now() / 1000) + 1800, // 30 minutes
       }
@@ -102,7 +100,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify, _options) => {
     '/quote-swap',
     {
       schema: {
-        description: 'Get a swap quote using Uniswap Universal Router',
+        description: 'Get a swap quote using Uniswap V3 Swap Router',
         tags: ['uniswap'],
         querystring: {
           type: 'object',
@@ -174,10 +172,10 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify, _options) => {
             new Percent(Math.floor(slippagePct * 100), 10000) : 
             new Percent(50, 10000); // 0.5% default slippage
           
-          // Generate a Universal Router quote with enhanced logging
+          // Generate a V3 Swap Router quote with enhanced logging
           logger.info(`Generating quote for ${side} of ${amount} ${baseTokenSymbol} for ${quoteTokenSymbol} on ${networkToUse}`);
           
-          const route = await getUniversalRouterQuote(
+          const route = await getV3SwapRouterQuote(
             ethereum,
             inputToken,
             outputToken,

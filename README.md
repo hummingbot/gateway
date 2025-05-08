@@ -14,7 +14,7 @@ Hummingbot Gateway is an API/CLI client that exposes standardized REST endponts 
 - GET /solana/... - Solana chain endpoints (balances, tokens)
 - GET /jupiter/... - Jupiter Aggregator swap endpoints
 - GET /uniswap/... - Uniswap swap, AMM, and CLMM endpoints
-- GET /uniswap/routes/... - Uniswap Universal Router swap endpoints (recommended for token swapping)
+- GET /uniswap/routes/... - Uniswap V3 Swap Router endpoints (recommended for token swapping)
 - GET /raydium/amm/... - Raydium AMM endpoints
 - GET /raydium/clmm/... - Raydium CLMM endpoints
 - GET /meteora/clmm/... - Meteora CLMM endpoints
@@ -212,9 +212,9 @@ Gateway follows a modular architecture with clear separation of concerns between
   - [src/connectors/jupiter/jupiter.ts](./src/connectors/jupiter/jupiter.ts): Jupiter DEX connector for Solana
   - [src/connectors/raydium/raydium.ts](./src/connectors/raydium/raydium.ts): Raydium DEX connector for Solana (AMM, CLMM)
   - [src/connectors/uniswap/uniswap.ts](./src/connectors/uniswap/uniswap.ts): Uniswap DEX connector for Ethereum
-  - [src/connectors/uniswap/routes/quote-swap.ts](./src/connectors/uniswap/routes/quote-swap.ts): Uniswap Universal Router for quote generation
-  - [src/connectors/uniswap/routes/execute-swap.ts](./src/connectors/uniswap/routes/execute-swap.ts): Uniswap Universal Router for swap execution
-  - [src/connectors/uniswap/uniswap.contracts.ts](./src/connectors/uniswap/uniswap.contracts.ts): Contract addresses including Universal Router addresses for all networks
+  - [src/connectors/uniswap/routes/quote-swap.ts](./src/connectors/uniswap/routes/quote-swap.ts): Uniswap V3 Swap Router for quote generation
+  - [src/connectors/uniswap/routes/execute-swap.ts](./src/connectors/uniswap/routes/execute-swap.ts): Uniswap V3 Swap Router for swap execution
+  - [src/connectors/uniswap/uniswap.contracts.ts](./src/connectors/uniswap/uniswap.contracts.ts): Contract addresses for Uniswap on all networks
 
 - **Configuration**: Configuration management
   - [src/config/config.routes.ts](./src/config/config.routes.ts): Configuration endpoints

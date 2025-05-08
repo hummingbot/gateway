@@ -19,8 +19,8 @@ import { BigNumber } from 'ethers';
 import { ethers } from 'ethers';
 import JSBI from 'jsbi';
 
-// Import the getUniversalRouterQuote function from quote-swap
-import { getUniversalRouterQuote } from './quote-swap';
+// Import the getV3SwapRouterQuote function from quote-swap
+import { getV3SwapRouterQuote } from './quote-swap';
 // SwapRoute from AlphaRouter
 import { SwapRoute } from '@uniswap/smart-order-router';
 
@@ -44,7 +44,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify, _options) =>
     '/execute-swap',
     {
       schema: {
-        description: 'Execute a swap using Uniswap Universal Router (the preferred entry point for trading on Uniswap)',
+        description: 'Execute a swap using Uniswap V3 Swap Router (recommended for token swapping)',
         tags: ['uniswap'],
         body: {
           type: 'object',
@@ -146,7 +146,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify, _options) =>
         } else {
           // If no cached route, generate a new one
           logger.info('Generating new route for swap execution');
-          swapRoute = await getUniversalRouterQuote(
+          swapRoute = await getV3SwapRouterQuote(
             ethereum, 
             inputToken, 
             outputToken, 
@@ -162,11 +162,11 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify, _options) =>
           return reply.internalServerError('Failed to generate swap parameters');
         }
 
-        // Get the Universal Router address for this network
-        const { getUniversalRouterAddress } = require('../uniswap.contracts');
-        const universalRouterAddress = getUniversalRouterAddress(networkToUse);
+        // Get the Swap Router address for this network
+        const { getUniswapV3SmartOrderRouterAddress } = require('../uniswap.contracts');
+        const swapRouterAddress = getUniswapV3SmartOrderRouterAddress(networkToUse);
 
-        // If input token is not ETH, check allowance for the Universal Router
+        // If input token is not ETH, check allowance for the Swap Router
         if (inputToken.symbol !== 'WETH') {
           // Get token contract
           const tokenContract = ethereum.getContract(
@@ -174,11 +174,11 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify, _options) =>
             wallet
           );
           
-          // Check existing allowance for the Universal Router
+          // Check existing allowance for the Swap Router
           const allowance = await ethereum.getERC20Allowance(
             tokenContract,
             wallet,
-            universalRouterAddress,
+            swapRouterAddress,
             inputToken.decimals
           );
           
@@ -194,7 +194,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify, _options) =>
           if (currentAllowance.lt(amountNeeded)) {
             logger.error(`Insufficient allowance for ${inputToken.symbol}`);
             return reply.badRequest(
-              `Insufficient allowance for ${inputToken.symbol}. Please approve at least ${formatTokenAmount(amountNeeded.toString(), inputToken.decimals)} ${inputToken.symbol} for the Uniswap Universal Router (${universalRouterAddress})`
+              `Insufficient allowance for ${inputToken.symbol}. Please approve at least ${formatTokenAmount(amountNeeded.toString(), inputToken.decimals)} ${inputToken.symbol} for the Uniswap V3 Swap Router (${swapRouterAddress})`
             );
           } else {
             logger.info(`Sufficient allowance exists: ${formatTokenAmount(currentAllowance.toString(), inputToken.decimals)} ${inputToken.symbol}`);
@@ -207,14 +207,13 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify, _options) =>
         // Prepare transaction with gas settings
         const txOptions = {
           value: value || '0',
-          gasLimit: 500000, // Universal Router swaps need more gas
+          gasLimit: 350000, // V3 Swap Router gas limit
           gasPrice: await wallet.getGasPrice() // Use network gas price
         };
         
-        // Send the calldata to the Universal Router address (not the SwapRouter02 address)
-        // This is the key step to use Universal Router even though we generated calldata with SwapRouter02 type
+        // Send the transaction to the Swap Router address
         const tx = await wallet.sendTransaction({
-          to: universalRouterAddress,
+          to: swapRouterAddress,
           data: calldata,
           ...txOptions
         });
