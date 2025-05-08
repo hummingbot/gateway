@@ -29,7 +29,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify, _options) =>
   await fastify.register(require('@fastify/sensible'));
   
   // Get first wallet address for example
-  const ethereum = await Ethereum.getInstance('base');
+  const ethereum = await Ethereum.getInstance('mainnet');
   let firstWalletAddress = '<ethereum-wallet-address>';
   
   try {
@@ -45,12 +45,12 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify, _options) =>
     '/execute-swap',
     {
       schema: {
-        description: 'Execute a swap using Uniswap V3 Smart Order Router',
+        description: 'Execute a swap using Uniswap V3 Smart Order Router (mainnet only)',
         tags: ['uniswap'],
         body: {
           type: 'object',
           properties: {
-            network: { type: 'string', default: 'base' },
+            network: { type: 'string', default: 'mainnet', enum: ['mainnet'] },
             walletAddress: { type: 'string', examples: [firstWalletAddress] },
             baseToken: { type: 'string', examples: ['WETH'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
@@ -79,7 +79,12 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify, _options) =>
           slippagePct 
         } = request.body;
         
-        const networkToUse = network || 'base';
+        const networkToUse = network || 'mainnet';
+        
+        // Only allow mainnet for quote swaps
+        if (networkToUse !== 'mainnet') {
+          throw fastify.httpErrors.badRequest(`Uniswap router execution is only supported on mainnet. Current network: ${networkToUse}`);
+        }
 
         // Validate essential parameters
         if (!baseTokenSymbol || !quoteTokenSymbol || !amount || !side) {

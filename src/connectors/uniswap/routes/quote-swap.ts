@@ -120,30 +120,24 @@ export async function getUniswapQuote(
       // Following similar approach to v2.2.0 - simpler configuration
     logger.info(`Fetching trade data for ${baseToken.address}-${quoteToken.address}`);
     
-    // Use V2 protocol as fallback if we're on mainnet
-    if (network === 'mainnet') {
-      // For mainnet, just eliminate splits which seems to be causing issues
-      const routingConfig = {
-        maxSplits: 0,  // Disable splits for simplicity
-        distributionPercent: 100 // Use 100% for a single route
-      };
-      
-      route = await alphaRouter.route(
-        inputAmount,
-        outputToken,
-        exactIn ? TradeType.EXACT_INPUT : TradeType.EXACT_OUTPUT,
-        swapOptions,
-        routingConfig
-      );
-    } else {
-      // Default configuration for other networks
-      route = await alphaRouter.route(
-        inputAmount,
-        outputToken,
-        exactIn ? TradeType.EXACT_INPUT : TradeType.EXACT_OUTPUT,
-        swapOptions
-      );
+    // Only support mainnet for alpha router routes
+    if (network !== 'mainnet') {
+      throw fastify.httpErrors.badRequest(`Alpha router quotes are only supported on mainnet. Current network: ${network}`);
     }
+    
+    // For mainnet, just eliminate splits which seems to be causing issues
+    const routingConfig = {
+      maxSplits: 0,  // Disable splits for simplicity
+      distributionPercent: 100 // Use 100% for a single route
+    };
+    
+    route = await alphaRouter.route(
+      inputAmount,
+      outputToken,
+      exactIn ? TradeType.EXACT_INPUT : TradeType.EXACT_OUTPUT,
+      swapOptions,
+      routingConfig
+    );
   } catch (routeError) {
     // Simple error logging like v2.2.0
     logger.error(`Failed to get route for ${baseToken.symbol}-${quoteToken.symbol}: ${routeError.message}`);
@@ -232,7 +226,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify, _options) => {
   await fastify.register(require('@fastify/sensible'));
 
   // Get first wallet address for example
-  const ethereum = await Ethereum.getInstance('base');
+  const ethereum = await Ethereum.getInstance('mainnet');
   let firstWalletAddress = '<ethereum-wallet-address>';
   
   try {
@@ -248,12 +242,12 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify, _options) => {
     '/quote-swap',
     {
       schema: {
-        description: 'Get a swap quote using Uniswap AlphaRouter',
+        description: 'Get a swap quote using Uniswap AlphaRouter (mainnet only)',
         tags: ['uniswap'],
         querystring: {
           type: 'object',
           properties: {
-            network: { type: 'string', default: 'base' },
+            network: { type: 'string', default: 'mainnet', enum: ['mainnet'] },
             baseToken: { type: 'string', examples: ['WETH'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
             amount: { type: 'number', examples: [0.001] },
@@ -281,7 +275,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify, _options) => {
           slippagePct 
         } = request.query;
         
-        const networkToUse = network || 'base';
+        const networkToUse = network || 'mainnet';
 
         // Validate essential parameters
         if (!baseTokenSymbol || !quoteTokenSymbol || !amount || !side) {
