@@ -103,6 +103,7 @@ export class Ethereum {
     try {
       const baseFee: BigNumber = await this.provider.getGasPrice();
       let priorityFee: BigNumber = BigNumber.from('0');
+      let adjustedFee: BigNumber;
 
       // Only get priority fee for mainnet
       if (this.network === 'mainnet') {
@@ -111,7 +112,26 @@ export class Ethereum {
         );
       }
 
-      const totalFeeGwei = baseFee.add(priorityFee).toNumber() * 1e-9;
+      // Base network needs special handling for gas prices
+      // Base network sometimes reports very low gas prices that don't match reality
+      if (this.network === 'base') {
+        // For Base, use at least 2.5 Gwei as minimum or 2x the current price
+        const minBaseGasPrice = utils.parseUnits("2.5", "gwei");
+        const baseMultiplier = baseFee.mul(200).div(100); // 2x current 
+        
+        // Use the larger of the two values
+        adjustedFee = baseFee.lt(minBaseGasPrice) 
+          ? minBaseGasPrice 
+          : baseMultiplier;
+          
+        logger.info(`[GAS PRICE] Base network detected: Using higher gas price. Reported gas price was too low.`);
+        logger.info(`[GAS PRICE] Raw gas price: ${baseFee.toNumber() * 1e-9} GWEI, Adjusted: ${adjustedFee.toNumber() * 1e-9} GWEI`);
+      } else {
+        // For other networks, just add the priority fee
+        adjustedFee = baseFee.add(priorityFee);
+      }
+
+      const totalFeeGwei = adjustedFee.toNumber() * 1e-9;
       logger.info(`[GAS PRICE] Estimated: ${totalFeeGwei} GWEI for network ${this.network}`);
       
       return totalFeeGwei;

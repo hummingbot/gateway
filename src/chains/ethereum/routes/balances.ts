@@ -93,6 +93,7 @@ export const balancesRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             ...BalanceRequestSchema.properties,
             network: { type: 'string', examples: ['base', 'mainnet', 'sepolia', 'polygon'] },
+            address: { type: 'string', examples: [firstWalletAddress] },
             tokenSymbols: { 
               type: 'array', 
               items: { type: 'string' },

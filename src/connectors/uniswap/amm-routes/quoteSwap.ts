@@ -36,10 +36,20 @@ async function quoteAmmSwap(
     logger.info(`quoteAmmSwap: poolAddress=${poolAddress}, baseToken=${baseToken.symbol}, quoteToken=${quoteToken.symbol}, amount=${amount}, side=${side}`);
     
     // Get the V2 pair
-    const pair = await uniswap.getV2Pool(baseToken, quoteToken, poolAddress);
-    if (!pair) {
-      logger.error(`Pool not found at address ${poolAddress} for pair ${baseToken.symbol}-${quoteToken.symbol}`);
-      throw new Error(`Pool not found for ${baseToken.symbol}-${quoteToken.symbol}`);
+    let pair;
+    try {
+      pair = await uniswap.getV2Pool(baseToken, quoteToken, poolAddress);
+      if (!pair) {
+        logger.error(`Pool not found at address ${poolAddress} for pair ${baseToken.symbol}-${quoteToken.symbol}`);
+        throw new Error(`Pool not found for ${baseToken.symbol}-${quoteToken.symbol}`);
+      }
+    } catch (error) {
+      logger.error(`Error getting V2 pool: ${error.message}`);
+      // More specific error message for invalid pool address
+      if (error.message.includes('invalid address') || error.message.includes('value out-of-bounds')) {
+        throw new Error(`Invalid pool address: ${poolAddress}`);
+      }
+      throw error;
     }
     
     logger.info(`V2 pool found for ${baseToken.symbol}-${quoteToken.symbol}`);
@@ -214,8 +224,17 @@ async function formatSwapQuote(
     const gasCost = formatTokenAmount(gasCostRaw.toString(), 18); // ETH has 18 decimals
     logger.info(`Gas cost: ${gasCost} ETH`);
 
-    // Calculate price
-    const price = quote.estimatedAmountOut / quote.estimatedAmountIn;
+    // Calculate price - this should always be quote/base regardless of direction
+    let price;
+    if (side === 'SELL') {
+      // For SELL, estimatedAmountIn is baseToken and estimatedAmountOut is quoteToken
+      price = quote.estimatedAmountOut / quote.estimatedAmountIn;
+    } else {
+      // For BUY, estimatedAmountIn is quoteToken and estimatedAmountOut is baseToken
+      price = quote.estimatedAmountIn / quote.estimatedAmountOut;
+    }
+    
+    logger.info(`Calculated price for ${side} direction: ${price}`);
     
     // Format gas price as Gwei
     const gasPriceGwei = formatTokenAmount(gasPrice.toString(), 9); // Convert to Gwei
@@ -260,9 +279,9 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
             network: { type: 'string', default: 'base' },
             baseToken: { type: 'string', examples: ['WETH'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
-            amount: { type: 'number', examples: [0.01] },
+            amount: { type: 'number', examples: [0.001] },
             side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
-            poolAddress: { type: 'string', examples: ['0x88a43bbdf9d098eec7bceda4e2494615dfd9bb9c'] },
+            poolAddress: { type: 'string', examples: [''] },
             slippagePct: { type: 'number', examples: [1] }
           }
         },
@@ -304,11 +323,23 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           slippagePct
         );
       } catch (e) {
-        logger.error(e);
-        if (e.statusCode) {
-          throw e;
+        logger.error(`Error in quote-swap route: ${e.message}`);
+        if (e.stack) {
+          logger.debug(`Stack trace: ${e.stack}`);
         }
-        throw fastify.httpErrors.internalServerError(`Error getting swap quote: ${e.message}`);
+        
+        // Return appropriate error based on the error message
+        if (e.statusCode) {
+          throw e; // Already a formatted Fastify error
+        } else if (e.message.includes('Invalid pool address')) {
+          throw fastify.httpErrors.badRequest(`Invalid pool address provided`);
+        } else if (e.message.includes('Pool not found')) {
+          throw fastify.httpErrors.notFound(`Pool not found for the requested token pair`);
+        } else if (e.message.includes('token not found')) {
+          throw fastify.httpErrors.badRequest(e.message);
+        } else {
+          throw fastify.httpErrors.internalServerError(`Error getting swap quote: ${e.message}`);
+        }
       }
     }
   );

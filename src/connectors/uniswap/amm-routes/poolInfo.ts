@@ -24,10 +24,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             network: { type: 'string', examples: ['base'], default: 'base' },
             chain: { type: 'string', examples: ['ethereum'], default: 'ethereum' },
-            poolAddress: { 
-              type: 'string', 
-              examples: ['0xb4e16d0168e52d35cacd2c6185b44281ec28c9dc'] 
-            },
+            poolAddress: { type: 'string', examples: [''] },
             baseToken: { type: 'string', examples: ['WETH'] },
             quoteToken: { type: 'string', examples: ['USDC'] }
           }
@@ -115,8 +112,21 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
           }
         };
       } catch (e) {
-        logger.error(e);
-        throw fastify.httpErrors.internalServerError('Failed to fetch pool info');
+        logger.error(`Error in pool-info route: ${e.message}`);
+        if (e.stack) {
+          logger.debug(`Stack trace: ${e.stack}`);
+        }
+        
+        // Return appropriate error based on the error message
+        if (e.statusCode) {
+          throw e; // Already a formatted Fastify error
+        } else if (e.message && e.message.includes('invalid address')) {
+          throw fastify.httpErrors.badRequest(`Invalid pool address`);
+        } else if (e.message && e.message.includes('not found')) {
+          throw fastify.httpErrors.notFound(e.message);
+        } else {
+          throw fastify.httpErrors.internalServerError(`Failed to fetch pool info: ${e.message}`);
+        }
       }
     }
   );
