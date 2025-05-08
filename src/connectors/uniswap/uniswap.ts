@@ -1,595 +1,235 @@
-import { isFractionString } from '../../services/string-utils';
+import { UniswapishPriceError } from '../../services/error-handler';
+import { isFractionString } from '../../services/validators';
 import { UniswapConfig } from './uniswap.config';
-import { findPoolAddress, isValidV2Pool, isValidV3Pool } from './uniswap.utils';
-import { Ethereum } from '../../chains/ethereum/ethereum';
-
-// V2 (AMM) imports
-import { Pair as V2Pair } from '@uniswap/v2-sdk';
-
-// Define minimal ABIs for Uniswap V2 contracts
-const IUniswapV2PairABI = {
-  abi: [
-    {
-      constant: true,
-      inputs: [],
-      name: 'getReserves',
-      outputs: [
-        { internalType: 'uint112', name: '_reserve0', type: 'uint112' },
-        { internalType: 'uint112', name: '_reserve1', type: 'uint112' },
-        { internalType: 'uint32', name: '_blockTimestampLast', type: 'uint32' },
-      ],
-      payable: false,
-      stateMutability: 'view',
-      type: 'function',
-    },
-    {
-      constant: true,
-      inputs: [],
-      name: 'token0',
-      outputs: [{ internalType: 'address', name: '', type: 'address' }],
-      payable: false,
-      stateMutability: 'view',
-      type: 'function',
-    },
-    {
-      constant: true,
-      inputs: [],
-      name: 'token1',
-      outputs: [{ internalType: 'address', name: '', type: 'address' }],
-      payable: false,
-      stateMutability: 'view',
-      type: 'function',
-    },
-    {
-      constant: true,
-      inputs: [{ internalType: 'address', name: 'owner', type: 'address' }],
-      name: 'balanceOf',
-      outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
-      payable: false,
-      stateMutability: 'view',
-      type: 'function',
-    },
-    {
-      constant: true,
-      inputs: [],
-      name: 'totalSupply',
-      outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
-      payable: false,
-      stateMutability: 'view',
-      type: 'function',
-    },
-    {
-      constant: false,
-      inputs: [
-        { internalType: 'address', name: 'spender', type: 'address' },
-        { internalType: 'uint256', name: 'value', type: 'uint256' },
-      ],
-      name: 'approve',
-      outputs: [{ internalType: 'bool', name: '', type: 'bool' }],
-      payable: false,
-      stateMutability: 'nonpayable',
-      type: 'function',
-    },
-  ],
-};
-
-const IUniswapV2FactoryABI = {
-  abi: [
-    {
-      constant: true,
-      inputs: [
-        { internalType: 'address', name: 'tokenA', type: 'address' },
-        { internalType: 'address', name: 'tokenB', type: 'address' },
-      ],
-      name: 'getPair',
-      outputs: [{ internalType: 'address', name: 'pair', type: 'address' }],
-      payable: false,
-      stateMutability: 'view',
-      type: 'function',
-    },
-  ],
-};
-
-const IUniswapV2RouterABI = {
-  abi: [
-    {
-      inputs: [
-        { internalType: 'address', name: 'tokenA', type: 'address' },
-        { internalType: 'address', name: 'tokenB', type: 'address' },
-        { internalType: 'uint256', name: 'amountADesired', type: 'uint256' },
-        { internalType: 'uint256', name: 'amountBDesired', type: 'uint256' },
-        { internalType: 'uint256', name: 'amountAMin', type: 'uint256' },
-        { internalType: 'uint256', name: 'amountBMin', type: 'uint256' },
-        { internalType: 'address', name: 'to', type: 'address' },
-        { internalType: 'uint256', name: 'deadline', type: 'uint256' },
-      ],
-      name: 'addLiquidity',
-      outputs: [
-        { internalType: 'uint256', name: 'amountA', type: 'uint256' },
-        { internalType: 'uint256', name: 'amountB', type: 'uint256' },
-        { internalType: 'uint256', name: 'liquidity', type: 'uint256' },
-      ],
-      stateMutability: 'nonpayable',
-      type: 'function',
-    },
-  ],
-};
-
-// V3 (CLMM) imports
+import routerAbi from './uniswap_v2_router_abi.json';
+import {
+  ContractInterface,
+  ContractTransaction,
+} from '@ethersproject/contracts';
 import { AlphaRouter } from '@uniswap/smart-order-router';
-import { FeeAmount, Pool as V3Pool } from '@uniswap/v3-sdk';
+import { Trade, SwapRouter } from '@uniswap/router-sdk';
+import {
+  FeeAmount,
+  MethodParameters,
+  Pool,
+  SwapQuoter,
+  Trade as UniswapV3Trade,
+  Route
+} from '@uniswap/v3-sdk';
 import { abi as IUniswapV3PoolABI } from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
 import { abi as IUniswapV3FactoryABI } from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Factory.sol/IUniswapV3Factory.json';
-import { Token, CurrencyAmount, Percent } from '@uniswap/sdk-core';
-import { Contract, constants } from 'ethers';
+import {
+  Token,
+  CurrencyAmount,
+  Percent,
+  TradeType,
+  Currency,
+} from '@uniswap/sdk-core';
+import {
+  BigNumber,
+  Transaction,
+  Wallet,
+  Contract,
+  utils,
+  constants,
+} from 'ethers';
 import { logger } from '../../services/logger';
 import { percentRegexp } from '../../services/config-manager-v2';
+import { Ethereum } from '../../chains/ethereum/ethereum';
+import { Avalanche } from '../../chains/avalanche/avalanche';
+import { Polygon } from '../../chains/polygon/polygon';
+import { BinanceSmartChain } from "../../chains/binance-smart-chain/binance-smart-chain";
+import { ExpectedTrade, Uniswapish, UniswapishTrade } from '../../services/common-interfaces';
 import { getAddress } from 'ethers/lib/utils';
+import { Celo } from '../../chains/celo/celo';
 
-export class Uniswap {
+export class Uniswap implements Uniswapish {
   private static _instances: { [name: string]: Uniswap };
-
-  // Ethereum chain instance
-  private ethereum: Ethereum;
-
-  // Configuration
-  public config: UniswapConfig.RootConfig;
-
-  // Common properties
-  private chainId: number;
+  private chain: Ethereum | Polygon | BinanceSmartChain | Avalanche | Celo;
+  private _alphaRouter: AlphaRouter | null;
+  private _router: string;
+  private _routerAbi: ContractInterface;
+  private _gasLimitEstimate: number;
+  private _ttl: number;
+  private _maximumHops: number;
+  private chainId;
   private tokenList: Record<string, Token> = {};
   private _ready: boolean = false;
+  private readonly _useRouter: boolean;
+  private readonly _feeTier: FeeAmount;
+  private readonly _quoterContractAddress: string;
+  private readonly _factoryAddress: string;
 
-  // V2 (AMM) properties
-  private v2Factory: Contract;
-  private v2Router: Contract;
-
-  // V3 (CLMM) properties
-  private _alphaRouter: AlphaRouter | null;
-  private v3Factory: Contract;
-  private v3NFTManager: Contract;
-  private v3Quoter: Contract;
-
-  // Network information
-  private networkName: string;
-
-  /**
-   * Returns the appropriate spender address based on the schema
-   * @param schema The schema type (amm, clmm, etc.)
-   * @returns The address of the contract that should be approved to spend tokens
-   */
-  public getSpender(schema: string = 'clmm'): string {
-    // For AMM (V2), use the V2 Router
-    if (schema === 'amm') {
-      return this.config.uniswapV2RouterAddress(this.networkName);
+  private constructor(chain: string, network: string) {
+    const config = UniswapConfig.config;
+    if (chain === 'ethereum') {
+      this.chain = Ethereum.getInstance(network);
+    } else if (chain === 'polygon') {
+      this.chain = Polygon.getInstance(network);
+    } else if (chain === 'binance-smart-chain') {
+      this.chain = BinanceSmartChain.getInstance(network);
+    } else if (chain === 'avalanche') { 
+      this.chain = Avalanche.getInstance(network);
+    } else if (chain === 'celo')  {
+      this.chain = Celo.getInstance(network);
+    } else {
+      throw new Error('Unsupported chain');
     }
+  
+    this.chainId = this.chain.chainId;
+    this._ttl = UniswapConfig.config.ttl;
+    this._maximumHops = UniswapConfig.config.maximumHops;
 
-    // For CLMM (V3), use the NFT Position Manager
-    if (schema === 'clmm') {
-      return this.config.uniswapV3NftManagerAddress(this.networkName);
+      this._alphaRouter = new AlphaRouter({
+      chainId: this.chainId,
+      provider: this.chain.provider,
+    });
+    this._routerAbi = routerAbi.abi;
+    this._gasLimitEstimate = UniswapConfig.config.gasLimitEstimate;
+    this._router = config.uniswapV3SmartOrderRouterAddress(chain, network);
+
+    if (config.useRouter === false && config.feeTier == null) {
+      throw new Error('Must specify fee tier if not using router');
     }
-
-    // For router operations or swaps, use the Universal Router when available
-    const universalRouterAddress = this.getUniversalRouterAddress();
-    if (universalRouterAddress) {
-      return universalRouterAddress;
+    if (config.useRouter === false && config.quoterContractAddress == null) {
+      throw new Error(
+        'Must specify quoter contract address if not using router'
+      );
     }
-
-    // Default to NFT Manager if no Universal Router
-    return this.config.uniswapV3NftManagerAddress(this.networkName);
+    this._useRouter = config.useRouter ?? true;
+    this._feeTier = config.feeTier
+      ? FeeAmount[config.feeTier as keyof typeof FeeAmount]
+      : FeeAmount.MEDIUM;
+    this._quoterContractAddress = config.quoterContractAddress(chain, network);
+    this._factoryAddress = config.uniswapV3FactoryAddress(chain, network);
   }
 
-  private constructor(network: string) {
-    this.networkName = network;
-    this.config = UniswapConfig.config;
-  }
-
-  public static async getInstance(network: string): Promise<Uniswap> {
+  public static getInstance(chain: string, network: string): Uniswap {
     if (Uniswap._instances === undefined) {
       Uniswap._instances = {};
     }
-
-    if (!(network in Uniswap._instances)) {
-      Uniswap._instances[network] = new Uniswap(network);
-      await Uniswap._instances[network].init();
+    if (!(chain + network in Uniswap._instances)) {
+      Uniswap._instances[chain + network] = new Uniswap(chain, network);
     }
 
-    return Uniswap._instances[network];
+    return Uniswap._instances[chain + network];
   }
 
   /**
-   * Initialize the Uniswap instance
-   */
-  public async init() {
-    try {
-      // Initialize the Ethereum chain instance
-      this.ethereum = await Ethereum.getInstance(this.networkName);
-      this.chainId = this.ethereum.chainId;
-
-      // Initialize V2 (AMM) contracts
-      this.v2Factory = new Contract(
-        this.config.uniswapV2FactoryAddress(this.networkName),
-        IUniswapV2FactoryABI.abi,
-        this.ethereum.provider,
-      );
-
-      this.v2Router = new Contract(
-        this.config.uniswapV2RouterAddress(this.networkName),
-        IUniswapV2RouterABI.abi,
-        this.ethereum.provider,
-      );
-
-      // Initialize V3 (CLMM) contracts
-      this.v3Factory = new Contract(
-        this.config.uniswapV3FactoryAddress(this.networkName),
-        IUniswapV3FactoryABI,
-        this.ethereum.provider,
-      );
-
-      // Define a minimal ABI for the NFT Manager
-      const NFTManagerABI = [
-        {
-          inputs: [{ internalType: 'address', name: 'owner', type: 'address' }],
-          name: 'balanceOf',
-          outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
-          stateMutability: 'view',
-          type: 'function',
-        },
-      ];
-
-      this.v3NFTManager = new Contract(
-        this.config.uniswapV3NftManagerAddress(this.networkName),
-        NFTManagerABI,
-        this.ethereum.provider,
-      );
-
-      // Define a minimal ABI for the Quoter
-      const QuoterABI = [
-        {
-          inputs: [
-            { internalType: 'bytes', name: 'path', type: 'bytes' },
-            { internalType: 'uint256', name: 'amountIn', type: 'uint256' },
-          ],
-          name: 'quoteExactInput',
-          outputs: [
-            { internalType: 'uint256', name: 'amountOut', type: 'uint256' },
-          ],
-          stateMutability: 'nonpayable',
-          type: 'function',
-        },
-      ];
-
-      this.v3Quoter = new Contract(
-        this.config.quoterContractAddress(this.networkName),
-        QuoterABI,
-        this.ethereum.provider,
-      );
-
-      // Initialize AlphaRouter for V3 swaps (always use AlphaRouter with Universal Router)
-      this._alphaRouter = new AlphaRouter({
-        chainId: this.chainId,
-        provider: this.ethereum.provider,
-      });
-
-      // Load tokens
-      if (!this.ethereum.ready()) {
-        await this.ethereum.init();
-      }
-
-      for (const token of this.ethereum.storedTokenList) {
-        this.tokenList[token.address] = new Token(
-          this.chainId,
-          token.address,
-          token.decimals,
-          token.symbol,
-          token.name,
-        );
-      }
-
-      this._ready = true;
-      logger.info(
-        `Uniswap connector initialized for network: ${this.networkName}`,
-      );
-    } catch (error) {
-      logger.error(`Error initializing Uniswap: ${error.message}`);
-      throw error;
-    }
-  }
-
-  /**
-   * Check if the Uniswap instance is ready
-   */
-  public ready(): boolean {
-    return this._ready;
-  }
-  
-  /**
-   * Get the Universal Router address for the current network
-   * @returns The Universal Router address for the current network, or null if not available
-   */
-  public getUniversalRouterAddress(): string {
-    return this.config.getUniversalRouterAddress(this.networkName);
-  }
-
-  /**
-   * Given a token's address, return the connector's native representation of the token.
+   * Given a token's address, return the connector's native representation of
+   * the token.
+   *
+   * @param address Token address
    */
   public getTokenByAddress(address: string): Token {
     return this.tokenList[getAddress(address)];
   }
 
   /**
-   * Given a token's symbol, return the connector's native representation of the token.
+   * Get a token by its symbol
+   * This searches through the tokenList for a token with matching symbol
+   * @param symbol The token symbol to search for
+   * @returns The Token object or undefined if not found
    */
-  public getTokenBySymbol(symbol: string): Token | null {
-    const token = this.ethereum.getTokenBySymbol(symbol);
-    if (!token) return null;
-    return this.getTokenByAddress(token.address);
-  }
-
-  /**
-   * Get a V2 pool (pair) by its address or by token symbols
-   */
-  public async getV2Pool(
-    tokenA: Token | string,
-    tokenB: Token | string,
-    poolAddress?: string,
-  ): Promise<V2Pair | null> {
-    try {
-      // Resolve pool address if provided
-      let pairAddress = poolAddress;
-
-      // If tokenA and tokenB are strings, assume they are symbols
-      const tokenAObj =
-        typeof tokenA === 'string' ? this.getTokenBySymbol(tokenA) : tokenA;
-
-      const tokenBObj =
-        typeof tokenB === 'string' ? this.getTokenBySymbol(tokenB) : tokenB;
-
-      if (!tokenAObj || !tokenBObj) {
-        throw new Error(`Invalid tokens: ${tokenA}, ${tokenB}`);
+  public getTokenBySymbol(symbol: string): Token | undefined {
+    // First check if we already have a token with this symbol in our internal tokenList
+    for (const address in this.tokenList) {
+      if (this.tokenList[address].symbol.toUpperCase() === symbol.toUpperCase()) {
+        return this.tokenList[address];
       }
-
-      // Find pool address if not provided
-      if (!pairAddress) {
-        if (typeof tokenA === 'string' && typeof tokenB === 'string') {
-          pairAddress = findPoolAddress(
-            tokenA,
-            tokenB,
-            'amm',
-            this.networkName,
-          );
-        }
-
-        // If still not found, try to get it from the factory
-        if (!pairAddress) {
-          pairAddress = await this.v2Factory.getPair(
-            tokenAObj.address,
-            tokenBObj.address,
-          );
-        }
-      }
-
-      // If no pair exists or invalid address, return null
-      if (!pairAddress || pairAddress === constants.AddressZero) {
-        return null;
-      }
-
-      // Check if pool is valid
-      const isValid = await isValidV2Pool(pairAddress);
-      if (!isValid) {
-        return null;
-      }
-
-      // Get pair data from the contract
-      const pairContract = new Contract(
-        pairAddress,
-        IUniswapV2PairABI.abi,
-        this.ethereum.provider,
-      );
-
-      const [reserves, token0Address] = await Promise.all([
-        pairContract.getReserves(),
-        pairContract.token0(),
-      ]);
-
-      const [reserve0, reserve1] = reserves;
-      const token0 =
-        getAddress(token0Address) === getAddress(tokenAObj.address)
-          ? tokenAObj
-          : tokenBObj;
-      const token1 =
-        token0.address === tokenAObj.address ? tokenBObj : tokenAObj;
-
-      return new V2Pair(
-        CurrencyAmount.fromRawAmount(token0, reserve0.toString()),
-        CurrencyAmount.fromRawAmount(token1, reserve1.toString()),
-      );
-    } catch (error) {
-      logger.error(`Error getting V2 pool: ${error.message}`);
-      return null;
     }
-  }
 
-  /**
-   * Get a V3 pool by its address or by token symbols and fee
-   */
-  public async getV3Pool(
-    tokenA: Token | string,
-    tokenB: Token | string,
-    fee?: FeeAmount,
-    poolAddress?: string,
-  ): Promise<V3Pool | null> {
-    try {
-      // Resolve pool address if provided
-      let poolAddr = poolAddress;
-
-      // If tokenA and tokenB are strings, assume they are symbols
-      const tokenAObj =
-        typeof tokenA === 'string' ? this.getTokenBySymbol(tokenA) : tokenA;
-
-      const tokenBObj =
-        typeof tokenB === 'string' ? this.getTokenBySymbol(tokenB) : tokenB;
-
-      if (!tokenAObj || !tokenBObj) {
-        throw new Error(`Invalid tokens: ${tokenA}, ${tokenB}`);
-      }
-
-      // Find pool address if not provided
-      if (!poolAddr) {
-        if (typeof tokenA === 'string' && typeof tokenB === 'string') {
-          // Try to find pool from the config pools dictionary
-          poolAddr = findPoolAddress(tokenA, tokenB, 'clmm', this.networkName);
-        }
-
-        // If still not found and a fee is provided, try to get it from the factory
-        if (!poolAddr && fee) {
-          poolAddr = await this.v3Factory.getPool(
-            tokenAObj.address,
-            tokenBObj.address,
-            fee,
-          );
-        }
-
-        // If still not found, try all possible fee tiers
-        if (!poolAddr) {
-          // Try each fee tier
-          const allFeeTiers = [
-            FeeAmount.LOWEST,
-            FeeAmount.LOW,
-            FeeAmount.MEDIUM,
-            FeeAmount.HIGH,
-          ];
-
-          for (const feeTier of allFeeTiers) {
-            if (feeTier === fee) continue; // Skip if we already tried this fee tier
-
-            poolAddr = await this.v3Factory.getPool(
-              tokenAObj.address,
-              tokenBObj.address,
-              feeTier,
-            );
-
-            if (poolAddr && poolAddr !== constants.AddressZero) {
-              break;
-            }
-          }
-        }
-      }
-
-      // If no pool exists or invalid address, return null
-      if (!poolAddr || poolAddr === constants.AddressZero) {
-        return null;
-      }
-
-      // Check if pool is valid
-      const isValid = await isValidV3Pool(poolAddr);
-      if (!isValid) {
-        return null;
-      }
-
-      // Get pool data from the contract
-      const poolContract = new Contract(
-        poolAddr,
-        IUniswapV3PoolABI,
-        this.ethereum.provider,
+    // If not found, try to get it from the chain implementation
+    const tokenInfo = this.chain.getTokenBySymbol(symbol);
+    if (tokenInfo) {
+      // Create a new Token instance and cache it for future use
+      const token = new Token(
+        tokenInfo.chainId,
+        tokenInfo.address,
+        tokenInfo.decimals,
+        tokenInfo.symbol,
+        tokenInfo.name
       );
-
-      const [liquidity, slot0, feeData] = await Promise.all([
-        poolContract.liquidity(),
-        poolContract.slot0(),
-        poolContract.fee(),
-      ]);
-
-      const [sqrtPriceX96, tick] = slot0;
-
-      return new V3Pool(
-        tokenAObj,
-        tokenBObj,
-        feeData,
-        sqrtPriceX96.toString(),
-        liquidity.toString(),
-        tick,
-      );
-    } catch (error) {
-      logger.error(`Error getting V3 pool: ${error.message}`);
-      return null;
+      
+      // Add to our local cache
+      this.tokenList[getAddress(tokenInfo.address)] = token;
+      
+      return token;
     }
+    
+    return undefined;
   }
 
-  /**
-   * Find a default pool for a token pair in either AMM or CLMM
-   */
-  public async findDefaultPool(
-    baseToken: string,
-    quoteToken: string,
-    poolType: 'amm' | 'clmm',
-  ): Promise<string | null> {
-    try {
-      // Try to find pool in the config pools dictionary, passing in the network
-      const poolAddr = findPoolAddress(
-        baseToken,
-        quoteToken,
-        poolType,
-        this.networkName,
-      );
-      if (poolAddr) {
-        return poolAddr;
-      }
-
-      // Get token objects
-      const baseTokenObj = this.getTokenBySymbol(baseToken);
-      const quoteTokenObj = this.getTokenBySymbol(quoteToken);
-
-      if (!baseTokenObj || !quoteTokenObj) {
-        logger.error(`Tokens not found: ${baseToken}, ${quoteToken}`);
-        return null;
-      }
-
-      // If not found, try to get it from the factory
-      if (poolType === 'amm') {
-        // V2 pool
-        const pairAddress = await this.v2Factory.getPair(
-          baseTokenObj.address,
-          quoteTokenObj.address,
-        );
-
-        if (pairAddress && pairAddress !== constants.AddressZero) {
-          return pairAddress;
-        }
-      } else {
-        // V3 pool - try all fee tiers
-        const feeTiers = [
-          FeeAmount.MEDIUM, // Try medium fee first (0.3%)
-          FeeAmount.LOW, // Then low (0.05%)
-          FeeAmount.LOWEST, // Then lowest (0.01%)
-          FeeAmount.HIGH, // Finally high (1%)
-        ];
-
-        for (const fee of feeTiers) {
-          const addr = await this.v3Factory.getPool(
-            baseTokenObj.address,
-            quoteTokenObj.address,
-            fee,
-          );
-
-          if (addr && addr !== constants.AddressZero) {
-            return addr;
-          }
-        }
-      }
-
-      return null;
-    } catch (error) {
-      logger.error(`Error finding default pool: ${error.message}`);
-      return null;
+  public async init() {
+    if (!this.chain.ready()) {
+      await this.chain.init();
     }
+    for (const token of this.chain.storedTokenList) {
+      this.tokenList[token.address] = new Token(
+        this.chainId,
+        token.address,
+        token.decimals,
+        token.symbol,
+        token.name
+      );
+    }
+    this._ready = true;
+  }
+
+  public ready(): boolean {
+    return this._ready;
   }
 
   /**
-   * Get the allowed slippage percent from string or config
-   * @param allowedSlippageStr Optional string representation of slippage value
-   * @returns A Percent object for use with Uniswap SDK
+   * Router address.
+   */
+  public get router(): string {
+    return this._router;
+  }
+
+  /**
+   * AlphaRouter instance.
+   */
+  public get alphaRouter(): AlphaRouter {
+    if (this._alphaRouter === null) {
+      throw new Error('AlphaRouter is not initialized');
+    }
+    return this._alphaRouter;
+  }
+
+  /**
+   * Router smart contract ABI.
+   */
+  public get routerAbi(): ContractInterface {
+    return this._routerAbi;
+  }
+
+  /**
+   * Default gas limit used to estimate gasCost for swap transactions.
+   */
+  public get gasLimitEstimate(): number {
+    return this._gasLimitEstimate;
+  }
+
+  /**
+   * Default time-to-live for swap transactions, in seconds.
+   */
+  public get ttl(): number {
+    return this._ttl;
+  }
+
+  /**
+   * Default maximum number of hops for to go through for a swap transactions.
+   */
+  public get maximumHops(): number {
+    return this._maximumHops;
+  }
+
+  /**
+   * Gets the allowed slippage percent from the optional parameter or the value
+   * in the configuration.
+   *
+   * @param allowedSlippageStr (Optional) should be of the form '1/10'.
    */
   public getAllowedSlippage(allowedSlippageStr?: string): Percent {
     if (allowedSlippageStr != null && isFractionString(allowedSlippageStr)) {
@@ -597,51 +237,377 @@ export class Uniswap {
       return new Percent(fractionSplit[0], fractionSplit[1]);
     }
 
-    // Use the global allowedSlippage setting
-    const allowedSlippage = this.config.allowedSlippage;
-
+    const allowedSlippage = UniswapConfig.config.allowedSlippage;
     const nd = allowedSlippage.match(percentRegexp);
     if (nd) return new Percent(nd[1], nd[2]);
     throw new Error(
-      'Encountered a malformed percent string in the config for allowed slippage.',
+      'Encountered a malformed percent string in the config for ALLOWED_SLIPPAGE.'
     );
   }
 
   /**
-   * Gets the allowed slippage percentage from config
-   * @returns Slippage as a percentage (e.g., 1.0 for 1%)
+   * Given the amount of `baseToken` to put into a transaction, calculate the
+   * amount of `quoteToken` that can be expected from the transaction.
+   *
+   * This is typically used for calculating token sell prices.
+   *
+   * @param baseToken Token input for the transaction
+   * @param quoteToken Output from the transaction
+   * @param amount Amount of `baseToken` to put into the transaction
    */
-  public getSlippagePct(): number {
-    const allowedSlippage = this.config.allowedSlippage;
-    const nd = allowedSlippage.match(percentRegexp);
-    let slippage = 0.0;
-    if (nd) {
-      slippage = Number(nd[1]) / Number(nd[2]);
+  async estimateSellTrade(
+    baseToken: Token,
+    quoteToken: Token,
+    amount: BigNumber,
+    allowedSlippage?: string,
+    poolId?: string
+  ): Promise<ExpectedTrade> {
+    const nativeTokenAmount: CurrencyAmount<Token> =
+      CurrencyAmount.fromRawAmount(baseToken, amount.toString());
+
+    logger.info(
+      `Fetching trade data for ${baseToken.address}-${quoteToken.address}.`
+    );
+
+    if (this._useRouter) {
+      if (this._alphaRouter === null) {
+        throw new Error('AlphaRouter is not initialized');
+      }
+      const route = await this._alphaRouter.route(
+        nativeTokenAmount,
+        quoteToken,
+        TradeType.EXACT_INPUT,
+        undefined,
+        {
+          maxSwapsPerPath: this.maximumHops,
+        }
+      );
+
+      if (!route) {
+        throw new UniswapishPriceError(
+          `priceSwapIn: no trade pair found for ${baseToken.address} to ${quoteToken.address}.`
+        );
+      }
+      logger.info(
+        `Best trade for ${baseToken.address}-${quoteToken.address}: ` +
+          `${route.trade.executionPrice.toFixed(6)}` +
+          `${baseToken.symbol}.`
+      );
+      const expectedAmount = route.trade.minimumAmountOut(
+        this.getAllowedSlippage(allowedSlippage)
+      );
+      return { trade: route.trade as unknown as UniswapishTrade, expectedAmount };
     } else {
-      logger.error('Failed to parse slippage value:', allowedSlippage);
+      const pool = await this.getPool(baseToken, quoteToken, this._feeTier, poolId);
+      if (!pool) {
+        throw new UniswapishPriceError(
+          `priceSwapIn: no trade pair found for ${baseToken.address} to ${quoteToken.address}.`
+        );
+      }
+      const swapRoute = new Route([pool], baseToken, quoteToken);
+      const quotedAmount = await this.getQuote(
+        swapRoute,
+        quoteToken,
+        nativeTokenAmount,
+        TradeType.EXACT_INPUT
+      );
+      const trade = UniswapV3Trade.createUncheckedTrade({
+        route: swapRoute,
+        inputAmount: nativeTokenAmount,
+        outputAmount: quotedAmount,
+        tradeType: TradeType.EXACT_INPUT,
+      });
+      logger.info(
+        `Best trade for ${baseToken.address}-${quoteToken.address}: ` +
+          `${trade.executionPrice.toFixed(6)}` +
+          `${baseToken.symbol}.`
+      );
+      const expectedAmount = trade.minimumAmountOut(
+        this.getAllowedSlippage(allowedSlippage)
+      );
+      return { trade, expectedAmount };
     }
-    return slippage * 100;
   }
 
   /**
-   * Get the first available wallet address from Ethereum
+   * Given the amount of `baseToken` desired to acquire from a transaction,
+   * calculate the amount of `quoteToken` needed for the transaction.
+   *
+   * This is typically used for calculating token buy prices.
+   *
+   * @param quoteToken Token input for the transaction
+   * @param baseToken Token output from the transaction
+   * @param amount Amount of `baseToken` desired from the transaction
    */
-  public async getFirstWalletAddress(): Promise<string | null> {
+  async estimateBuyTrade(
+    quoteToken: Token,
+    baseToken: Token,
+    amount: BigNumber,
+    allowedSlippage?: string,
+    poolId?: string
+  ): Promise<ExpectedTrade> {
+    const nativeTokenAmount: CurrencyAmount<Token> =
+      CurrencyAmount.fromRawAmount(baseToken, amount.toString());
+    logger.info(
+      `Fetching pair data for ${quoteToken.address}-${baseToken.address}.`
+    );
+
+    if (this._useRouter) {
+      if (this._alphaRouter === null) {
+        throw new Error('AlphaRouter is not initialized');
+      }
+      const route = await this._alphaRouter.route(
+        nativeTokenAmount,
+        quoteToken,
+        TradeType.EXACT_OUTPUT,
+        undefined,
+        {
+          maxSwapsPerPath: this.maximumHops,
+        }
+      );
+      if (!route) {
+        throw new UniswapishPriceError(
+          `priceSwapOut: no trade pair found for ${quoteToken.address} to ${baseToken.address}.`
+        );
+      }
+      logger.info(
+        `Best trade for ${quoteToken.address}-${baseToken.address}: ` +
+          `${route.trade.executionPrice.invert().toFixed(6)} ` +
+          `${baseToken.symbol}.`
+      );
+
+      const expectedAmount = route.trade.maximumAmountIn(
+        this.getAllowedSlippage(allowedSlippage)
+      );
+      return { trade: route.trade as unknown as UniswapishTrade, expectedAmount };
+    } else {
+      const pool = await this.getPool(quoteToken, baseToken, this._feeTier, poolId);
+      if (!pool) {
+        throw new UniswapishPriceError(
+          `priceSwapOut: no trade pair found for ${quoteToken.address} to ${baseToken.address}.`
+        );
+      }
+      const swapRoute = new Route([pool], quoteToken, baseToken);
+      const quotedAmount = await this.getQuote(
+        swapRoute,
+        quoteToken,
+        nativeTokenAmount,
+        TradeType.EXACT_OUTPUT
+      );
+      const trade = UniswapV3Trade.createUncheckedTrade({
+        route: swapRoute,
+        inputAmount: quotedAmount,
+        outputAmount: nativeTokenAmount,
+        tradeType: TradeType.EXACT_OUTPUT,
+      });
+      logger.info(
+        `Best trade for ${baseToken.address}-${quoteToken.address}: ` +
+          `${trade.executionPrice.invert().toFixed(6)}` +
+          `${baseToken.symbol}.`
+      );
+      const expectedAmount = trade.maximumAmountIn(
+        this.getAllowedSlippage(allowedSlippage)
+      );
+      return { trade, expectedAmount };
+    }
+  }
+
+  /**
+   * Given a wallet and a Uniswap trade, try to execute it on blockchain.
+   *
+   * @param wallet Wallet
+   * @param trade Expected trade
+   * @param gasPrice Base gas price, for pre-EIP1559 transactions
+   * @param uniswapRouter Router smart contract address
+   * @param ttl How long the swap is valid before expiry, in seconds
+   * @param _abi Router contract ABI
+   * @param gasLimit Gas limit
+   * @param nonce (Optional) EVM transaction nonce
+   * @param maxFeePerGas (Optional) Maximum total fee per gas you want to pay
+   * @param maxPriorityFeePerGas (Optional) Maximum tip per gas you want to pay
+   */
+  async executeTrade(
+    wallet: Wallet,
+    trade: Trade<Currency, Currency, TradeType>,
+    gasPrice: number,
+    uniswapRouter: string,
+    ttl: number,
+    _abi: ContractInterface,
+    gasLimit: number,
+    nonce?: number,
+    maxFeePerGas?: BigNumber,
+    maxPriorityFeePerGas?: BigNumber,
+    allowedSlippage?: string
+  ): Promise<Transaction> {
+    const methodParameters: MethodParameters = SwapRouter.swapCallParameters(
+      trade,
+      {
+        deadlineOrPreviousBlockhash: Math.floor(Date.now() / 1000 + ttl),
+        recipient: wallet.address,
+        slippageTolerance: this.getAllowedSlippage(allowedSlippage),
+      }
+    );
+
+    return this.chain.nonceManager.provideNonce(
+      nonce,
+      wallet.address,
+      async (nextNonce) => {
+        let tx: ContractTransaction;
+        if (maxFeePerGas !== undefined || maxPriorityFeePerGas !== undefined) {
+          tx = await wallet.sendTransaction({
+            data: methodParameters.calldata,
+            to: uniswapRouter,
+            gasLimit: gasLimit.toFixed(0),
+            value: methodParameters.value,
+            nonce: nextNonce,
+            maxFeePerGas,
+            maxPriorityFeePerGas,
+          });
+        } else {
+          tx = await wallet.sendTransaction({
+            data: methodParameters.calldata,
+            to: uniswapRouter,
+            gasPrice: (gasPrice * 1e9).toFixed(0),
+            gasLimit: gasLimit.toFixed(0),
+            value: methodParameters.value,
+            nonce: nextNonce,
+          });
+        }
+        logger.info(JSON.stringify(tx));
+        return tx;
+      }
+    );
+  }
+
+  /**
+   * Get a Uniswap V3 pool for a pair of tokens
+   * This is a public wrapper around the private getPool method
+   * 
+   * @param tokenA First token
+   * @param tokenB Second token
+   * @param feeTier Fee tier for the pool
+   * @param poolId Optional explicit pool address to use
+   * @returns The V3 Pool or null if not found
+   */
+  public async getV3Pool(
+    tokenA: Token,
+    tokenB: Token,
+    feeTier?: FeeAmount,
+    poolId?: string
+  ): Promise<Pool | null> {
+    return this.getPool(tokenA, tokenB, feeTier || this._feeTier, poolId);
+  }
+
+  /**
+   * Find the default pool for a token pair based on configuration
+   * 
+   * @param baseTokenSymbol Base token symbol
+   * @param quoteTokenSymbol Quote token symbol
+   * @param poolType 'amm' for V2 or 'clmm' for V3
+   * @returns The pool address or null if not found
+   */
+  public async findDefaultPool(
+    baseTokenSymbol: string,
+    quoteTokenSymbol: string,
+    poolType: 'amm' | 'clmm'
+  ): Promise<string | null> {
     try {
-      return await this.ethereum.getFirstWalletAddress();
+      // Use network from the chain instance
+      const network = this.chain.network;
+      
+      // Check if we have network-specific pools configuration in UniswapConfig
+      const config = UniswapConfig.config;
+      if (!config.networks || !config.networks[network]) {
+        logger.error(`Network pools configuration not found for network: ${network}`);
+        return null;
+      }
+      
+      const networkConfig = config.networks[network];
+      const poolKey = `${baseTokenSymbol}-${quoteTokenSymbol}`;
+      const reversePoolKey = `${quoteTokenSymbol}-${baseTokenSymbol}`;
+      
+      if (poolType === 'amm') {
+        // Check AMM pools for the given network
+        return networkConfig.amm?.[poolKey] || networkConfig.amm?.[reversePoolKey] || null;
+      } else {
+        // Check CLMM pools for the given network
+        return networkConfig.clmm?.[poolKey] || networkConfig.clmm?.[reversePoolKey] || null;
+      }
     } catch (error) {
-      logger.error(`Error getting first wallet address: ${error.message}`);
+      logger.error(`Error finding default pool: ${error.message}`);
       return null;
     }
   }
 
-  /**
-   * Close the Uniswap instance and clean up resources
-   */
-  public async close() {
-    // Clean up resources
-    if (this.networkName in Uniswap._instances) {
-      delete Uniswap._instances[this.networkName];
+  private async getPool(
+    tokenA: Token,
+    tokenB: Token,
+    feeTier: FeeAmount,
+    poolId?: string
+  ): Promise<Pool | null> {
+    const uniswapFactory = new Contract(
+      this._factoryAddress,
+      IUniswapV3FactoryABI,
+      this.chain.provider
+    );
+    // Use Uniswap V3 factory to get pool address instead of `Pool.getAddress` to check if pool exists.
+    const poolAddress = poolId || await uniswapFactory.getPool(
+      tokenA.address,
+      tokenB.address,
+      feeTier
+    );
+    if (poolAddress === constants.AddressZero || poolAddress === undefined || poolAddress === '') {
+      return null;
     }
+    const poolContract = new Contract(
+      poolAddress,
+      IUniswapV3PoolABI,
+      this.chain.provider
+    );
+
+    const [liquidity, slot0, fee] = await Promise.all([
+      poolContract.liquidity(),
+      poolContract.slot0(),
+      poolContract.fee(),
+    ]);
+    const [sqrtPriceX96, tick] = slot0;
+
+    const pool = new Pool(
+      tokenA,
+      tokenB,
+      fee,
+      sqrtPriceX96,
+      liquidity,
+      tick
+    );
+
+    return pool;
+  }
+
+  private async getQuote(
+    swapRoute: Route<Token, Token>,
+    quoteToken: Token,
+    amount: CurrencyAmount<Token>,
+    tradeType: TradeType
+  ) {
+    const { calldata } = await SwapQuoter.quoteCallParameters(
+      swapRoute,
+      amount,
+      tradeType,
+      { useQuoterV2: true }
+    );
+    const quoteCallReturnData = await this.chain.provider.call({
+      to: this._quoterContractAddress,
+      data: calldata,
+    });
+    const quoteTokenRawAmount = utils.defaultAbiCoder.decode(
+      ['uint256'],
+      quoteCallReturnData
+    );
+    const qouteTokenAmount = CurrencyAmount.fromRawAmount(
+      quoteToken,
+      quoteTokenRawAmount.toString()
+    );
+    return qouteTokenAmount;
   }
 }
