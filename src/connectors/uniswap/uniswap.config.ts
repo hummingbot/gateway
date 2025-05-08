@@ -5,8 +5,7 @@ import {
   getUniswapV3SmartOrderRouterAddress,
   getUniswapV3NftManagerAddress,
   getUniswapV3QuoterV2ContractAddress,
-  getUniswapV3FactoryAddress,
-  getUniversalRouterAddress
+  getUniswapV3FactoryAddress
 } from './uniswap.contracts';
 
 interface AvailableNetworks {
@@ -44,8 +43,6 @@ export namespace UniswapConfig {
     uniswapV3NftManagerAddress: (network: string) => string;
     quoterContractAddress: (network: string) => string;
     uniswapV3FactoryAddress: (network: string) => string;
-    universalRouterAddress: (network: string) => string;
-    getUniversalRouterAddress: (network: string) => string;
   }
 
   export const config: RootConfig = {
@@ -67,9 +64,7 @@ export namespace UniswapConfig {
     uniswapV3SmartOrderRouterAddress: getUniswapV3SmartOrderRouterAddress,
     uniswapV3NftManagerAddress: getUniswapV3NftManagerAddress,
     quoterContractAddress: getUniswapV3QuoterV2ContractAddress,
-    uniswapV3FactoryAddress: getUniswapV3FactoryAddress,
-    universalRouterAddress: getUniversalRouterAddress,
-    getUniversalRouterAddress: getUniversalRouterAddress
+    uniswapV3FactoryAddress: getUniswapV3FactoryAddress
   }
 
   // Helper method to get maximum hops

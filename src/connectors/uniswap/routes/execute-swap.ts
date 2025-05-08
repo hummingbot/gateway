@@ -1,5 +1,4 @@
 import { FastifyPluginAsync } from 'fastify';
-import { Uniswap } from '../uniswap';
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { logger } from '../../../services/logger';
 import { 
@@ -7,18 +6,10 @@ import {
   ExecuteSwapResponseType,
   ExecuteSwapResponse
 } from '../../../schemas/trading-types/swap-schema';
-import {
-  Token,
-  CurrencyAmount,
-  Percent,
-  TradeType,
-} from '@uniswap/sdk-core';
 import { formatTokenAmount } from '../uniswap.utils';
 import { Contract } from '@ethersproject/contracts';
-import { BigNumber } from 'ethers';
-import { AlphaRouter, SwapType, SwapOptions } from '@uniswap/smart-order-router';
-import { ethers } from 'ethers';
-import JSBI from 'jsbi';
+import { BigNumber, ethers } from 'ethers';
+import { getUniswapQuote } from './quote-swap';
 
 // Router02 ABI for executing swaps
 const SwapRouter02ABI = {
@@ -96,8 +87,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify, _options) =>
           return reply.badRequest('Missing required parameters');
         }
         
-        // Get Uniswap and Ethereum instances
-        const uniswap = await Uniswap.getInstance(networkToUse);
+        // Get Ethereum instance for wallet operations
         const ethereum = await Ethereum.getInstance(networkToUse);
         
         // Get wallet address - either from request or first available
@@ -110,32 +100,6 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify, _options) =>
           logger.info(`Using first available wallet address: ${walletAddress}`);
         }
 
-        // Resolve tokens using Ethereum class
-        const baseTokenInfo = ethereum.getTokenBySymbol(baseTokenSymbol);
-        const quoteTokenInfo = ethereum.getTokenBySymbol(quoteTokenSymbol);
-        
-        // Convert to Uniswap SDK Token objects
-        const baseToken = baseTokenInfo ? new Token(
-          ethereum.chainId,
-          baseTokenInfo.address,
-          baseTokenInfo.decimals,
-          baseTokenInfo.symbol,
-          baseTokenInfo.name
-        ) : null;
-        
-        const quoteToken = quoteTokenInfo ? new Token(
-          ethereum.chainId,
-          quoteTokenInfo.address,
-          quoteTokenInfo.decimals,
-          quoteTokenInfo.symbol,
-          quoteTokenInfo.name
-        ) : null;
-
-        if (!baseToken || !quoteToken) {
-          logger.error(`Token not found: ${!baseToken ? baseTokenSymbol : quoteTokenSymbol}`);
-          return reply.badRequest(`Token not found: ${!baseToken ? baseTokenSymbol : quoteTokenSymbol}`);
-        }
-
         // Get the wallet
         const wallet = await ethereum.getWallet(walletAddress);
         if (!wallet) {
@@ -143,60 +107,34 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify, _options) =>
           return reply.badRequest('Wallet not found');
         }
 
-        // Determine which token is being traded
-        const exactIn = side === 'SELL';
-        const [inputToken, outputToken] = exactIn 
-          ? [baseToken, quoteToken] 
-          : [quoteToken, baseToken];
-
-        // Convert amount to token units with decimals
-        const inputAmount = CurrencyAmount.fromRawAmount(
-          inputToken,
-          JSBI.BigInt(Math.floor(amount * Math.pow(10, inputToken.decimals)).toString())
+        // Get a quote using the shared function
+        // Use the wallet address as recipient for execution
+        const quoteResult = await getUniswapQuote(
+          fastify,
+          networkToUse,
+          baseTokenSymbol,
+          quoteTokenSymbol,
+          amount,
+          side as 'BUY' | 'SELL',
+          slippagePct,
+          walletAddress // Use real wallet address as recipient
         );
-
-        // Calculate slippage tolerance
-        const slippageTolerance = slippagePct 
-          ? new Percent(Math.floor(slippagePct * 100), 10000)  // Convert to basis points
-          : new Percent(50, 10000); // 0.5% default slippage
-
-        // Generate a fresh route (not using cache) for execution
-        logger.info('Generating new route for swap execution');
         
-        // Initialize AlphaRouter for optimal routing
-        const alphaRouter = new AlphaRouter({
-          chainId: ethereum.chainId,
-          provider: ethereum.provider as ethers.providers.JsonRpcProvider,
-        });
-
-        // Generate a swap route
-        const swapOptions: SwapOptions = {
-          recipient: walletAddress, // Real recipient for execution
-          slippageTolerance,
-          deadline: Math.floor(Date.now() / 1000) + 1800, // 30 minutes
-          type: SwapType.SWAP_ROUTER_02 // Required by TypeScript typing
-        };
-        
-        // Generate the route
-        const route = await alphaRouter.route(
+        // Extract what we need from the quote
+        const { 
+          route, 
+          baseToken, 
+          quoteToken, 
+          inputToken, 
+          outputToken, 
           inputAmount,
-          outputToken,
-          exactIn ? TradeType.EXACT_INPUT : TradeType.EXACT_OUTPUT,
-          swapOptions,
-          {
-            maxSwapsPerPath: uniswap.config.maximumHops || 4
-          }
-        );
+          slippageTolerance,
+          exactIn
+        } = quoteResult;
 
-        // Check if a route was found
-        if (!route) {
-          logger.error(`Could not find a route for ${baseTokenSymbol}-${quoteTokenSymbol}`);
-          return reply.badRequest(`Could not find a route for ${baseTokenSymbol}-${quoteTokenSymbol}`);
-        }
-
-        // Get the V3 Smart Order Router address
-        const { getUniswapV3SmartOrderRouterAddress } = require('../uniswap.contracts');
-        const routerAddress = getUniswapV3SmartOrderRouterAddress(networkToUse);
+        // Get the router address using getSpender from contracts
+        const { getSpender } = require('../uniswap.contracts');
+        const routerAddress = getSpender(networkToUse, 'uniswap');
         logger.info(`Using Swap Router address: ${routerAddress}`);
 
         // If input token is not ETH, check allowance for the router
@@ -249,11 +187,11 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify, _options) =>
           wallet
         );
 
-        // Prepare transaction with gas settings
+        // Prepare transaction with gas settings from quote
         const txOptions = {
           value: methodParameters.value === '0x' ? '0' : methodParameters.value,
-          gasLimit: 350000, // V3 swaps need more gas
-          gasPrice: await wallet.getGasPrice() // Use network gas price
+          gasLimit: quoteResult.gasLimit || 350000, // Use estimated gas from quote
+          gasPrice: ethers.utils.parseUnits(quoteResult.gasPrice.toString(), 'gwei') // Convert the gas price from quote to wei
         };
         
         // Execute the swap using the multicall function

@@ -138,7 +138,7 @@ export class Jupiter {
             prioritizationFeeLamports: {
               priorityLevelWithMaxLamports: {
                 maxLamports: feeLamports,
-                priorityLevel: this.config.priorityLevel
+                priorityLevel: this.getPriorityLevel(this.config.priorityLevel)
               }
             }
           },
@@ -315,5 +315,24 @@ export class Jupiter {
 
   public static getRequestAmount(amount: number, decimals: number): number {
     return Math.floor(amount * DECIMAL_MULTIPLIER ** decimals);
+  }
+  
+  /**
+   * Converts a priority level string to the expected format for Jupiter API
+   * @param priorityLevel The priority level from config
+   * @returns Properly formatted priority level for Jupiter API
+   */
+  private getPriorityLevel(priorityLevel: string): 'medium' | 'high' | 'veryHigh' {
+    const level = priorityLevel.toLowerCase();
+    
+    if (level === 'medium' || level === 'high') {
+      return level as 'medium' | 'high';
+    } else if (level === 'veryhigh') {
+      return 'veryHigh';
+    }
+    
+    // Default to medium if invalid value
+    logger.warn(`Invalid priority level: ${priorityLevel}, defaulting to 'medium'`);
+    return 'medium';
   }
 }
