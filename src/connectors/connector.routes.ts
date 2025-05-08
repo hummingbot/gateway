@@ -4,6 +4,7 @@ import { UniswapConfig } from './uniswap/uniswap.config';
 import { JupiterConfig } from './jupiter/jupiter.config';
 import { MeteoraConfig } from './meteora/meteora.config';
 import { RaydiumConfig } from './raydium/raydium.config';
+import { HydrationConfig } from './hydration/hydration.config';
 import { logger } from '../services/logger';
 
 // Define the schema using Typebox
@@ -77,6 +78,11 @@ export const connectorsRoutes: FastifyPluginAsync = async (fastify) => {
           name: 'uniswap/clmm',
           trading_types: ['clmm', 'swap'],
           available_networks: UniswapConfig.config.availableNetworks,
+        },
+        {
+          name: 'hydration/amm',
+          trading_types: ['amm', 'swap'],
+          available_networks: HydrationConfig.config.availableNetworks,
         },
       ];
 

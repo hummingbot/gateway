@@ -1,12 +1,13 @@
 import { Ethereum } from '../chains/ethereum/ethereum';
 import { Solana } from '../chains/solana/solana';
+import { Polkadot } from "../chains/polkadot/polkadot";
 
 
 export interface Chain {
   // TODO: Add shared chain properties (e.g., network, chainId, etc.)
 }
 
-export type ChainInstance = Ethereum | Solana;
+export type ChainInstance = Ethereum | Solana | Polkadot;
 
 export class UnsupportedChainException extends Error {
   constructor(message?: string) {
@@ -43,6 +44,8 @@ export async function getChainInstance(
     connection = await Ethereum.getInstance(network);
   } else if (chain === 'solana') {
     connection = await Solana.getInstance(network);
+  } else if (chain === 'polkadot') {
+    connection = await Polkadot.getInstance(network);
   } else {
     connection = undefined;
   }
@@ -69,6 +72,9 @@ export async function getConnector(
   } else if (connector === 'meteora') {
     const { Meteora } = await import('../connectors/meteora/meteora');
     return await Meteora.getInstance(network);
+  } else if (connector === 'hydration') {
+    const { Hydration } = await import('../connectors/hydration/hydration');
+    return await Hydration.getInstance(network);
   } else {
     throw new Error('unsupported chain or connector');
   }

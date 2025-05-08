@@ -27,3 +27,11 @@ configurations:
   $namespace raydium:
     configurationPath: raydium.yml
     schemaPath: raydium-schema.json
+
+  $namespace polkadot:
+    configurationPath: polkadot.yml
+    schemaPath: polkadot-schema.json
+
+  $namespace hydration:
+    configurationPath: hydration.yml
+    schemaPath: hydration-schema.json
