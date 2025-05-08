@@ -180,15 +180,15 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify, _options) =>
             provider: ethereum.provider as ethers.providers.JsonRpcProvider,
           });
 
-          // Configure swap options with basic parameters
+          // Generate a swap route - using same approach as quote-swap.ts
           const swapOptions: SwapOptions = {
-            recipient: walletAddress,
+            recipient: walletAddress, // Real recipient for execution
             slippageTolerance,
             deadline: Math.floor(Date.now() / 1000) + 1800, // 30 minutes
-            type: SwapType.SWAP_ROUTER_02, // Required by TypeScript typing
+            type: SwapType.SWAP_ROUTER_02 // Required by TypeScript typing
           };
-
-          // Generate a swap route - using simple approach without specifying SwapType
+          
+          // Generate the route using same parameters as quote-swap.ts
           route = await alphaRouter.route(
             inputAmount,
             outputToken,
@@ -199,7 +199,26 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify, _options) =>
             }
           );
 
-          if (!route) {
+          // Cache the route for potential reuse
+          if (route) {
+            const cacheObj = {
+              route,
+              timestamp: Date.now(),
+              expiresAt: Date.now() + 120000 // 2 minutes
+            };
+            
+            try {
+              if (fastify.hasDecorator(cacheProperty)) {
+                fastify[cacheProperty] = cacheObj;
+                logger.info(`Updated cached route for key: ${cacheKey}`);
+              } else {
+                fastify.decorate(cacheProperty, cacheObj);
+                logger.info(`Created new cached route for key: ${cacheKey}`);
+              }
+            } catch (error) {
+              logger.warn(`Failed to cache route: ${error.message}`);
+            }
+          } else {
             logger.error(`Could not find a route for ${baseTokenSymbol}-${quoteTokenSymbol}`);
             return reply.badRequest(`Could not find a route for ${baseTokenSymbol}-${quoteTokenSymbol}`);
           }
