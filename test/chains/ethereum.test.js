@@ -7,6 +7,8 @@ const path = require('path');
 const CHAIN = 'ethereum';
 const NETWORK = 'base';  // Only test Base network
 const TEST_WALLET = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
+const TEST_SPENDER = '0xC36442b4a4522E871399CD717aBDD847Ab11FE88'; // Uniswap V3 Position Manager
+const TEST_TOKEN_ADDRESS = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'; // USDC
 
 // Mock API calls (axios.get and axios.post)
 jest.mock('axios');
@@ -67,6 +69,32 @@ function validateStatusResponse(response) {
       (typeof response.nativeCurrency.name === 'string' &&
        typeof response.nativeCurrency.symbol === 'string' &&
        typeof response.nativeCurrency.decimals === 'number'))
+  );
+}
+
+// Function to validate allowances response structure
+function validateAllowancesResponse(response) {
+  return (
+    response &&
+    typeof response.spender === 'string' &&
+    typeof response.approvals === 'object' &&
+    Object.values(response.approvals).every(value => 
+      typeof value === 'string'
+    )
+  );
+}
+
+// Function to validate approve response structure
+function validateApproveResponse(response) {
+  return (
+    response &&
+    typeof response.tokenAddress === 'string' &&
+    typeof response.spender === 'string' &&
+    typeof response.amount === 'string' &&
+    typeof response.nonce === 'number' &&
+    typeof response.approval === 'object' &&
+    typeof response.approval.data === 'string' &&
+    typeof response.approval.to === 'string'
   );
 }
 
@@ -225,6 +253,272 @@ describe('Ethereum Chain Tests (Base Network)', () => {
           })
         })
       );
+    });
+  });
+
+  describe('Allowances Endpoint', () => {
+    test('returns allowances using token symbols', async () => {
+      // Load mock response
+      const mockResponse = loadMockResponse('allowances');
+      
+      // Setup mock axios
+      axios.post.mockResolvedValueOnce({ 
+        status: 200, 
+        data: mockResponse 
+      });
+      
+      // Make the request
+      const response = await axios.post(`http://localhost:15888/chains/${CHAIN}/allowances`, {
+        network: NETWORK,
+        address: TEST_WALLET,
+        spenderAddress: TEST_SPENDER,
+        tokenSymbols: ['USDC', 'DAI']
+      });
+      
+      // Validate the response
+      expect(response.status).toBe(200);
+      expect(validateAllowancesResponse(response.data)).toBe(true);
+      
+      // Check expected mock values
+      expect(response.data.spender).toBe(TEST_SPENDER);
+      expect(response.data.approvals).toHaveProperty('USDC');
+      expect(response.data.approvals).toHaveProperty('DAI');
+      
+      // Verify axios was called with correct parameters
+      expect(axios.post).toHaveBeenCalledWith(
+        `http://localhost:15888/chains/${CHAIN}/allowances`,
+        expect.objectContaining({
+          network: NETWORK,
+          address: TEST_WALLET,
+          spenderAddress: TEST_SPENDER,
+          tokenSymbols: ['USDC', 'DAI']
+        })
+      );
+    });
+
+    test('returns allowances using token addresses', async () => {
+      // Load mock response
+      const mockResponse = loadMockResponse('allowances');
+      
+      // Setup mock axios
+      axios.post.mockResolvedValueOnce({ 
+        status: 200, 
+        data: mockResponse 
+      });
+      
+      // Make the request with token addresses
+      const response = await axios.post(`http://localhost:15888/chains/${CHAIN}/allowances`, {
+        network: NETWORK,
+        address: TEST_WALLET,
+        spenderAddress: TEST_SPENDER,
+        tokenSymbols: [TEST_TOKEN_ADDRESS, '0x6B175474E89094C44Da98b954EedeAC495271d0F'] // USDC and DAI addresses
+      });
+      
+      // Validate the response
+      expect(response.status).toBe(200);
+      expect(validateAllowancesResponse(response.data)).toBe(true);
+      
+      // Verify axios was called with correct parameters
+      expect(axios.post).toHaveBeenCalledWith(
+        `http://localhost:15888/chains/${CHAIN}/allowances`,
+        expect.objectContaining({
+          tokenSymbols: [TEST_TOKEN_ADDRESS, '0x6B175474E89094C44Da98b954EedeAC495271d0F']
+        })
+      );
+    });
+
+    test('handles error when no tokens are found', async () => {
+      // Setup mock axios with error response
+      axios.post.mockRejectedValueOnce({
+        response: {
+          status: 400,
+          data: {
+            error: 'None of the provided tokens were found: INVALID_TOKEN',
+            code: 400
+          }
+        }
+      });
+      
+      // Make the request with invalid token
+      await expect(
+        axios.post(`http://localhost:15888/chains/${CHAIN}/allowances`, {
+          network: NETWORK,
+          address: TEST_WALLET,
+          spenderAddress: TEST_SPENDER,
+          tokenSymbols: ['INVALID_TOKEN']
+        })
+      ).rejects.toMatchObject({
+        response: {
+          status: 400,
+          data: {
+            error: expect.stringContaining('None of the provided tokens were found')
+          }
+        }
+      });
+    });
+  });
+
+  describe('Approve Endpoint', () => {
+    test('approves token using token symbol', async () => {
+      // Load mock response
+      const mockResponse = loadMockResponse('approve');
+      
+      // Setup mock axios
+      axios.post.mockResolvedValueOnce({ 
+        status: 200, 
+        data: mockResponse 
+      });
+      
+      // Make the request
+      const response = await axios.post(`http://localhost:15888/chains/${CHAIN}/approve`, {
+        network: NETWORK,
+        address: TEST_WALLET,
+        spenderAddress: TEST_SPENDER,
+        token: 'USDC'
+      });
+      
+      // Validate the response
+      expect(response.status).toBe(200);
+      expect(validateApproveResponse(response.data)).toBe(true);
+      
+      // Check expected mock values
+      expect(response.data.tokenAddress).toBe(TEST_TOKEN_ADDRESS);
+      expect(response.data.spender).toBe(TEST_SPENDER);
+      
+      // Verify axios was called with correct parameters
+      expect(axios.post).toHaveBeenCalledWith(
+        `http://localhost:15888/chains/${CHAIN}/approve`,
+        expect.objectContaining({
+          network: NETWORK,
+          address: TEST_WALLET,
+          spenderAddress: TEST_SPENDER,
+          token: 'USDC'
+        })
+      );
+    });
+
+    test('approves token using token address', async () => {
+      // Load mock response
+      const mockResponse = loadMockResponse('approve');
+      
+      // Setup mock axios
+      axios.post.mockResolvedValueOnce({ 
+        status: 200, 
+        data: mockResponse 
+      });
+      
+      // Make the request with token address
+      const response = await axios.post(`http://localhost:15888/chains/${CHAIN}/approve`, {
+        network: NETWORK,
+        address: TEST_WALLET,
+        spenderAddress: TEST_SPENDER,
+        token: TEST_TOKEN_ADDRESS
+      });
+      
+      // Validate the response
+      expect(response.status).toBe(200);
+      expect(validateApproveResponse(response.data)).toBe(true);
+      
+      // Check expected mock values
+      expect(response.data.tokenAddress).toBe(TEST_TOKEN_ADDRESS);
+      
+      // Verify axios was called with correct parameters
+      expect(axios.post).toHaveBeenCalledWith(
+        `http://localhost:15888/chains/${CHAIN}/approve`,
+        expect.objectContaining({
+          token: TEST_TOKEN_ADDRESS
+        })
+      );
+    });
+
+    test('approves token with custom amount', async () => {
+      // Load mock response
+      const mockResponse = {
+        ...loadMockResponse('approve'),
+        amount: "1000000" // 1 USDC with 6 decimals
+      };
+      
+      // Setup mock axios
+      axios.post.mockResolvedValueOnce({ 
+        status: 200, 
+        data: mockResponse 
+      });
+      
+      // Make the request with amount
+      const response = await axios.post(`http://localhost:15888/chains/${CHAIN}/approve`, {
+        network: NETWORK,
+        address: TEST_WALLET,
+        spenderAddress: TEST_SPENDER,
+        token: 'USDC',
+        amount: '1'
+      });
+      
+      // Validate the response
+      expect(response.status).toBe(200);
+      expect(validateApproveResponse(response.data)).toBe(true);
+      
+      // Verify amount was set correctly
+      expect(response.data.amount).toBe("1000000");
+    });
+
+    test('handles error for invalid token', async () => {
+      // Setup mock axios with error response
+      axios.post.mockRejectedValueOnce({
+        response: {
+          status: 400,
+          data: {
+            error: 'Token not supported and not a valid Ethereum address: INVALID_TOKEN',
+            code: 400
+          }
+        }
+      });
+      
+      // Make the request with invalid token
+      await expect(
+        axios.post(`http://localhost:15888/chains/${CHAIN}/approve`, {
+          network: NETWORK,
+          address: TEST_WALLET,
+          spenderAddress: TEST_SPENDER,
+          token: 'INVALID_TOKEN'
+        })
+      ).rejects.toMatchObject({
+        response: {
+          status: 400,
+          data: {
+            error: expect.stringContaining('Token not supported')
+          }
+        }
+      });
+    });
+
+    test('handles error for invalid token address', async () => {
+      // Setup mock axios with error response
+      axios.post.mockRejectedValueOnce({
+        response: {
+          status: 400,
+          data: {
+            error: 'Invalid token address or not an ERC20 token: 0x1234567890abcdef',
+            code: 400
+          }
+        }
+      });
+      
+      // Make the request with invalid address format
+      await expect(
+        axios.post(`http://localhost:15888/chains/${CHAIN}/approve`, {
+          network: NETWORK,
+          address: TEST_WALLET,
+          spenderAddress: TEST_SPENDER,
+          token: '0x1234567890abcdef' // Invalid address format
+        })
+      ).rejects.toMatchObject({
+        response: {
+          status: 400,
+          data: {
+            error: expect.stringContaining('Invalid token address')
+          }
+        }
+      });
     });
   });
 });

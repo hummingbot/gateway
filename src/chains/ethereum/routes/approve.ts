@@ -1,6 +1,6 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { Type } from '@sinclair/typebox';
-import { Ethereum } from '../ethereum';
+import { Ethereum, TokenInfo } from '../ethereum';
 import { logger } from '../../../services/logger';
 import { ApproveRequestType, ApproveResponseType } from '../../../schemas/chain-schema';
 import { bigNumberWithDecimalToStr } from '../../../services/base';
@@ -22,9 +22,8 @@ export async function approveEthereumToken(
   fastify: FastifyInstance,
   network: string,
   address: string, 
-  connector: string,
+  spenderAddress: string,
   token: string,
-  schema?: string,
   amount?: string
 ) {
   const ethereum = await Ethereum.getInstance(network);
@@ -38,22 +37,73 @@ export async function approveEthereumToken(
     throw fastify.httpErrors.internalServerError(`Failed to load wallet: ${err.message}`);
   }
   
-  // Use the updated getSpender method that handles AMM/CLMM differences
-  const spenderAddress = ethereum.getSpender(connector, schema);
+  // Try to find the token by symbol or address
   const fullToken = ethereum.getTokenBySymbol(token);
   if (!fullToken) {
-    throw fastify.httpErrors.badRequest(`Token not supported: ${token}`);
+    // Check if the token string is a valid Ethereum address
+    try {
+      const normalizedAddress = utils.getAddress(token);
+      // If it's a valid address but not in our token list, we create a basic contract
+      // and try to get its decimals, symbol, and name directly
+      try {
+        const contract = ethereum.getContract(normalizedAddress, wallet);
+        logger.info(`Token ${token} not found in list but has valid address format. Fetching token info from chain...`);
+        
+        // Try to fetch token information directly from the contract
+        const [decimals, symbol, name] = await Promise.all([
+          contract.decimals(),
+          contract.symbol(),
+          contract.name(),
+        ]);
+        
+        // Create a token info object
+        const tokenInfo: TokenInfo = {
+          chainId: ethereum.chainId,
+          address: normalizedAddress,
+          name: name,
+          symbol: symbol,
+          decimals: decimals,
+        };
+        
+        // Use this token for the approval
+        const amountBigNumber = amount
+          ? utils.parseUnits(amount, tokenInfo.decimals)
+          : constants.MaxUint256;
+        
+        // Call approve function
+        const approval = await ethereum.approveERC20(
+          contract,
+          wallet,
+          spenderAddress,
+          amountBigNumber
+        );
+
+        return {
+          tokenAddress: tokenInfo.address,
+          spender: spenderAddress,
+          amount: bigNumberWithDecimalToStr(amountBigNumber, tokenInfo.decimals),
+          nonce: approval.nonce,
+          approval: toEthereumTransaction(approval),
+        };
+      } catch (contractErr) {
+        logger.error(`Failed to interact with token contract at ${normalizedAddress}: ${contractErr.message}`);
+        throw fastify.httpErrors.badRequest(`Invalid token address or not an ERC20 token: ${token}`);
+      }
+    } catch (addressErr) {
+      // Not a valid Ethereum address or symbol
+      throw fastify.httpErrors.badRequest(`Token not supported and not a valid Ethereum address: ${token}`);
+    }
   }
   
   const amountBigNumber = amount
     ? utils.parseUnits(amount, fullToken.decimals)
     : constants.MaxUint256;
   
-  // instantiate a contract and pass in wallet, which act on behalf of that signer
+  // Instantiate a contract and pass in wallet, which act on behalf of that signer
   const contract = ethereum.getContract(fullToken.address, wallet);
 
   try {
-    // call approve function
+    // Call approve function
     const approval = await ethereum.approveERC20(
       contract,
       wallet,
@@ -103,15 +153,10 @@ export const approveRoute: FastifyPluginAsync = async (fastify) => {
         body: Type.Object({
           network: Type.String({ examples: ['base', 'mainnet', 'sepolia', 'polygon'] }),
           address: Type.String({ examples: [firstWalletAddress] }),
-          connector: Type.String({ examples: ['uniswap'] }),
-          schema: Type.Optional(Type.String({ 
-            default: 'clmm',
-            examples: ['amm', 'clmm'],
-            enum: ['amm', 'clmm']
-          })),
+          spenderAddress: Type.String({ examples: ['0xC36442b4a4522E871399CD717aBDD847Ab11FE88'] }),
           token: Type.String({ examples: ['USDC', 'DAI'] }),
           amount: Type.Optional(Type.String({ 
-            examples: [], // No examples since it's typically omitted for max approval
+            examples: [''], // No examples since it's typically omitted for max approval
             description: 'The amount to approve. If not provided, defaults to maximum amount (unlimited approval).'
           }))
         }),
@@ -137,9 +182,8 @@ export const approveRoute: FastifyPluginAsync = async (fastify) => {
       const { 
         network, 
         address, 
-        connector, 
+        spenderAddress, 
         token, 
-        schema,
         amount
       } = request.body;
       
@@ -147,9 +191,8 @@ export const approveRoute: FastifyPluginAsync = async (fastify) => {
         fastify, 
         network, 
         address, 
-        connector, 
+        spenderAddress, 
         token, 
-        schema,
         amount
       );
     }

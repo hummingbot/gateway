@@ -15,7 +15,6 @@ import { getAddress } from 'ethers/lib/utils';
 import { TokenListResolutionStrategy } from '../../services/token-list-resolution';
 import { getEthereumConfig } from './ethereum.config';
 import { Provider } from '@ethersproject/abstract-provider';
-import { UniswapConfig } from '../../connectors/uniswap/uniswap.config';
 
 // information about an Ethereum token
 export interface TokenInfo {
@@ -52,7 +51,7 @@ export class Ethereum {
   private constructor(network: string) {
     logger.info(`Initializing Ethereum connector for network: ${network}`);
     const config = getEthereumConfig('ethereum', network);
-    
+
     this.chainId = config.network.chainID;
     this.rpcUrl = config.network.nodeURL;
     this.provider = new providers.StaticJsonRpcProvider(this.rpcUrl);
@@ -108,7 +107,7 @@ export class Ethereum {
       // Only get priority fee for mainnet
       if (this.network === 'mainnet') {
         priorityFee = BigNumber.from(
-          await this.provider.send('eth_maxPriorityFeePerGas', [])
+          await this.provider.send('eth_maxPriorityFeePerGas', []),
         );
       }
 
@@ -116,24 +115,30 @@ export class Ethereum {
       // Base network sometimes reports very low gas prices that don't match reality
       if (this.network === 'base') {
         // For Base, use at least 2.5 Gwei as minimum or 2x the current price
-        const minBaseGasPrice = utils.parseUnits("2.5", "gwei");
-        const baseMultiplier = baseFee.mul(200).div(100); // 2x current 
-        
+        const minBaseGasPrice = utils.parseUnits('2.5', 'gwei');
+        const baseMultiplier = baseFee.mul(200).div(100); // 2x current
+
         // Use the larger of the two values
-        adjustedFee = baseFee.lt(minBaseGasPrice) 
-          ? minBaseGasPrice 
+        adjustedFee = baseFee.lt(minBaseGasPrice)
+          ? minBaseGasPrice
           : baseMultiplier;
-          
-        logger.info(`[GAS PRICE] Base network detected: Using higher gas price. Reported gas price was too low.`);
-        logger.info(`[GAS PRICE] Raw gas price: ${baseFee.toNumber() * 1e-9} GWEI, Adjusted: ${adjustedFee.toNumber() * 1e-9} GWEI`);
+
+        logger.info(
+          `[GAS PRICE] Base network detected: Using higher gas price. Reported gas price was too low.`,
+        );
+        logger.info(
+          `[GAS PRICE] Raw gas price: ${baseFee.toNumber() * 1e-9} GWEI, Adjusted: ${adjustedFee.toNumber() * 1e-9} GWEI`,
+        );
       } else {
         // For other networks, just add the priority fee
         adjustedFee = baseFee.add(priorityFee);
       }
 
       const totalFeeGwei = adjustedFee.toNumber() * 1e-9;
-      logger.info(`[GAS PRICE] Estimated: ${totalFeeGwei} GWEI for network ${this.network}`);
-      
+      logger.info(
+        `[GAS PRICE] Estimated: ${totalFeeGwei} GWEI for network ${this.network}`,
+      );
+
       return totalFeeGwei;
     } catch (error: any) {
       logger.error(`Failed to estimate gas price: ${error.message}`);
@@ -160,35 +165,14 @@ export class Ethereum {
       'function approve(address spender, uint256 amount) returns (bool)',
       'function transferFrom(address from, address to, uint256 amount) returns (bool)',
       'event Transfer(address indexed from, address indexed to, uint256 amount)',
-      'event Approval(address indexed owner, address indexed spender, uint256 amount)'
+      'event Approval(address indexed owner, address indexed spender, uint256 amount)',
     ];
-    
-    return new Contract(tokenAddress, erc20Interface, signerOrProvider || this.provider);
-  }
 
-  /**
-   * Resolves a spender name to an address
-   * @param reqConnector The connector name or direct address
-   * @param schema The schema type (amm, clmm, etc.)
-   */
-  public getSpender(reqConnector: string, schema: string = 'clmm'): string {
-    let spender: string;
-    
-    // Handle different connectors and their schemas
-    if (reqConnector === 'uniswap') {
-      if (schema === 'amm') {
-        // Use the V2 router for AMM (Automated Market Maker)
-        spender = UniswapConfig.config.uniswapV2RouterAddress(this.network);
-      } else {
-        // Use the NonfungiblePositionManager for CLMM (default)
-        spender = UniswapConfig.config.uniswapV3NftManagerAddress(this.network);
-      }
-    } else {
-      // For direct addresses or other connectors
-      spender = reqConnector;
-    }
-    
-    return spender;
+    return new Contract(
+      tokenAddress,
+      erc20Interface,
+      signerOrProvider || this.provider,
+    );
   }
 
   /**
@@ -209,21 +193,23 @@ export class Ethereum {
    */
   public async loadTokens(
     tokenListSource: string,
-    tokenListType: TokenListType
+    tokenListType: TokenListType,
   ): Promise<void> {
-    logger.info(`Loading tokens for ethereum (${this.chainId}) from ${tokenListType} source: ${tokenListSource}`);
+    logger.info(
+      `Loading tokens for ethereum (${this.chainId}) from ${tokenListType} source: ${tokenListSource}`,
+    );
     try {
       this.tokenList = await this.getTokenList(tokenListSource, tokenListType);
       // Only keep tokens in the same chain
       this.tokenList = this.tokenList.filter(
-        (token: TokenInfo) => token.chainId === this.chainId
+        (token: TokenInfo) => token.chainId === this.chainId,
       );
-      
+
       if (this.tokenList) {
         logger.info(`Loaded ${this.tokenList.length} tokens for ethereum`);
         // Build token map for faster lookups
         this.tokenList.forEach(
-          (token: TokenInfo) => (this.tokenMap[token.symbol] = token)
+          (token: TokenInfo) => (this.tokenMap[token.symbol] = token),
         );
       }
     } catch (error) {
@@ -237,13 +223,13 @@ export class Ethereum {
    */
   private async getTokenList(
     tokenListSource: string,
-    tokenListType: TokenListType
+    tokenListType: TokenListType,
   ): Promise<TokenInfo[]> {
     const tokens = await new TokenListResolutionStrategy(
       tokenListSource,
-      tokenListType
+      tokenListType,
     ).resolve();
-    
+
     // Normalize addresses
     return tokens.map((token) => {
       token.address = getAddress(token.address);
@@ -259,14 +245,33 @@ export class Ethereum {
   }
 
   /**
-   * Get token info by symbol
+   * Get token info by symbol or address
    */
   public getTokenBySymbol(tokenSymbol: string): TokenInfo | undefined {
-    return this.tokenList.find(
+    // First try to find token by symbol
+    const tokenBySymbol = this.tokenList.find(
       (token: TokenInfo) =>
         token.symbol.toUpperCase() === tokenSymbol.toUpperCase() &&
-        token.chainId === this.chainId
+        token.chainId === this.chainId,
     );
+    
+    if (tokenBySymbol) {
+      return tokenBySymbol;
+    }
+    
+    // If not found by symbol, check if it's a valid address
+    try {
+      const normalizedAddress = utils.getAddress(tokenSymbol);
+      // Try to find token by normalized address
+      return this.tokenList.find(
+        (token: TokenInfo) =>
+          token.address.toLowerCase() === normalizedAddress.toLowerCase() &&
+          token.chainId === this.chainId,
+      );
+    } catch (error) {
+      // Not a valid Ethereum address, return undefined
+      return undefined;
+    }
   }
 
   /**
@@ -275,7 +280,7 @@ export class Ethereum {
   public getWalletFromPrivateKey(privateKey: string): Wallet {
     return new Wallet(privateKey, this.provider);
   }
-  
+
   /**
    * Get a wallet from stored encrypted key
    */
@@ -283,7 +288,7 @@ export class Ethereum {
     const path = `${walletPath}/ethereum`;
     const encryptedPrivateKey = await fse.readFile(
       `${path}/${address}.json`,
-      'utf8'
+      'utf8',
     );
 
     const passphrase = ConfigManagerCertPassphrase.readPassphrase();
@@ -292,7 +297,7 @@ export class Ethereum {
     }
     return await this.decrypt(encryptedPrivateKey, passphrase);
   }
-  
+
   /**
    * Get the first available wallet address
    */
@@ -301,15 +306,15 @@ export class Ethereum {
     try {
       // Create directory if it doesn't exist
       await fse.ensureDir(path);
-      
+
       // Get all .json files in the directory
       const files = await fse.readdir(path);
-      const walletFiles = files.filter(f => f.endsWith('.json'));
-      
+      const walletFiles = files.filter((f) => f.endsWith('.json'));
+
       if (walletFiles.length === 0) {
         return null;
       }
-      
+
       // Return first wallet address (without .json extension)
       return walletFiles[0].slice(0, -5);
     } catch (error) {
@@ -330,11 +335,11 @@ export class Ethereum {
    */
   public async decrypt(
     encryptedPrivateKey: string,
-    password: string
+    password: string,
   ): Promise<Wallet> {
     const wallet = await Wallet.fromEncryptedJson(
       encryptedPrivateKey,
-      password
+      password,
     );
     return wallet.connect(this.provider);
   }
@@ -353,7 +358,7 @@ export class Ethereum {
   public async getERC20Balance(
     contract: Contract,
     wallet: Wallet,
-    decimals: number
+    decimals: number,
   ): Promise<TokenValue> {
     const balance: BigNumber = await contract.balanceOf(wallet.address);
     logger.info(`Token balance for ${wallet.address}: ${balance.toString()}`);
@@ -367,7 +372,7 @@ export class Ethereum {
     contract: Contract,
     wallet: Wallet,
     spender: string,
-    decimals: number
+    decimals: number,
   ): Promise<TokenValue> {
     const allowance = await contract.allowance(wallet.address, spender);
     return { value: allowance, decimals: decimals };
@@ -376,7 +381,9 @@ export class Ethereum {
   /**
    * Get transaction details
    */
-  public async getTransaction(txHash: string): Promise<providers.TransactionResponse> {
+  public async getTransaction(
+    txHash: string,
+  ): Promise<providers.TransactionResponse> {
     return this.provider.getTransaction(txHash);
   }
 
@@ -384,7 +391,7 @@ export class Ethereum {
    * Get transaction receipt directly
    */
   public async getTransactionReceipt(
-    txHash: string
+    txHash: string,
   ): Promise<providers.TransactionReceipt | null> {
     return this.provider.getTransactionReceipt(txHash);
   }
@@ -396,20 +403,22 @@ export class Ethereum {
     contract: Contract,
     wallet: Wallet,
     spender: string,
-    amount: BigNumber
+    amount: BigNumber,
   ): Promise<Transaction> {
     logger.info(`Approving ${amount.toString()} tokens for spender ${spender}`);
-    
+
     const params: any = {
       gasLimit: this.gasLimitTransaction,
-      nonce: await this.provider.getTransactionCount(wallet.address)
+      nonce: await this.provider.getTransactionCount(wallet.address),
     };
-    
+
     // Always fetch gas price from the network
     const currentGasPrice = await this.provider.getGasPrice();
     params.gasPrice = currentGasPrice.toString();
-    logger.info(`Using network gas price: ${utils.formatUnits(currentGasPrice, 'gwei')} GWEI`);
-    
+    logger.info(
+      `Using network gas price: ${utils.formatUnits(currentGasPrice, 'gwei')} GWEI`,
+    );
+
     return contract.approve(spender, amount, params);
   }
 
