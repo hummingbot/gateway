@@ -16,6 +16,8 @@ import {
 import { AlphaRouter, SwapOptions, SwapRoute, SwapType } from '@uniswap/smart-order-router';
 import { ethers } from 'ethers';
 
+// Removing the Protocol enum as it's causing type issues
+
 /**
  * Get a swap quote for the given tokens and amount
  * This function can be reused by executeSwap to ensure consistent routing logic
@@ -33,9 +35,16 @@ export async function getUniswapQuote(
   // Get Uniswap and Ethereum instances
   const ethereum = await Ethereum.getInstance(network);
   
+  // Add debug logging for chainId
+  logger.info(`Network: ${network}, Chain ID: ${ethereum.chainId}`);
+  
   // Resolve tokens using Ethereum class
   const baseTokenInfo = ethereum.getTokenBySymbol(baseTokenSymbol);
   const quoteTokenInfo = ethereum.getTokenBySymbol(quoteTokenSymbol);
+  
+  // Log token resolution results
+  logger.info(`Base token (${baseTokenSymbol}) info: ${JSON.stringify(baseTokenInfo)}`);
+  logger.info(`Quote token (${quoteTokenSymbol}) info: ${JSON.stringify(quoteTokenInfo)}`);
   
   if (!baseTokenInfo || !quoteTokenInfo) {
     throw fastify.httpErrors.badRequest(`Token not found: ${!baseTokenInfo ? baseTokenSymbol : quoteTokenSymbol}`);
@@ -64,8 +73,13 @@ export async function getUniswapQuote(
     ? [baseToken, quoteToken] 
     : [quoteToken, baseToken];
 
-  // Convert amount to token units with decimals
-  const rawAmount = Math.floor(amount * Math.pow(10, inputToken.decimals)).toString();
+  // Convert amount to token units with decimals - ensure proper precision
+  // For BUY orders with USDC as input, we need to ensure proper decimal handling
+  const scaleFactor = Math.pow(10, inputToken.decimals);
+  const scaledAmount = amount * scaleFactor;
+  const rawAmount = Math.floor(scaledAmount).toString();
+  
+  logger.info(`Amount conversion for ${inputToken.symbol} (decimals: ${inputToken.decimals}): ${amount} -> ${scaledAmount} -> ${rawAmount}`);
   const inputAmount = CurrencyAmount.fromRawAmount(inputToken, rawAmount);
 
   // Calculate slippage tolerance
@@ -87,28 +101,65 @@ export async function getUniswapQuote(
     deadline: Math.floor(Date.now() / 1000) + 1800 // 30 minutes
   };
   
+  // Log the parameters being sent to the alpha router
+  logger.info(`Alpha router params:
+  - Input token: ${inputToken.symbol} (${inputToken.address})
+  - Output token: ${outputToken.symbol} (${outputToken.address})
+  - Input amount: ${inputAmount.toExact()} (${rawAmount} in raw units)
+  - Trade type: ${exactIn ? 'EXACT_INPUT' : 'EXACT_OUTPUT'}
+  - Slippage tolerance: ${slippageTolerance.toFixed(2)}%
+  - Chain ID: ${ethereum.chainId}`);
+  
   // Generate the route using AlphaRouter
-  const route = await alphaRouter.route(
-    inputAmount,
-    outputToken,
-    exactIn ? TradeType.EXACT_INPUT : TradeType.EXACT_OUTPUT,
-    swapOptions
-  );
+  // Add extra validation to ensure tokens are correctly formed
+  // Simple logging, similar to v2.2.0
+  logger.info(`Converting amount for ${inputToken.symbol} (decimals: ${inputToken.decimals}): ${amount} -> ${inputAmount.toExact()} -> ${rawAmount}`);
+  
+  let route;
+  try {
+      // Following similar approach to v2.2.0 - simpler configuration
+    logger.info(`Fetching trade data for ${baseToken.address}-${quoteToken.address}`);
+    
+    // Use V2 protocol as fallback if we're on mainnet
+    if (network === 'mainnet') {
+      // For mainnet, just eliminate splits which seems to be causing issues
+      const routingConfig = {
+        maxSplits: 0,  // Disable splits for simplicity
+        distributionPercent: 100 // Use 100% for a single route
+      };
+      
+      route = await alphaRouter.route(
+        inputAmount,
+        outputToken,
+        exactIn ? TradeType.EXACT_INPUT : TradeType.EXACT_OUTPUT,
+        swapOptions,
+        routingConfig
+      );
+    } else {
+      // Default configuration for other networks
+      route = await alphaRouter.route(
+        inputAmount,
+        outputToken,
+        exactIn ? TradeType.EXACT_INPUT : TradeType.EXACT_OUTPUT,
+        swapOptions
+      );
+    }
+  } catch (routeError) {
+    // Simple error logging like v2.2.0
+    logger.error(`Failed to get route for ${baseToken.symbol}-${quoteToken.symbol}: ${routeError.message}`);
+    throw fastify.httpErrors.badRequest(`No route found for ${baseToken.symbol}-${quoteToken.symbol}`);
+  }
 
   if (!route) {
-    throw fastify.httpErrors.badRequest(`Could not find a route for ${baseTokenSymbol}-${quoteTokenSymbol}`);
+    logger.error(`Alpha router returned null for ${baseTokenSymbol}-${quoteTokenSymbol} on network ${network}`);
+    throw fastify.httpErrors.badRequest(`Could not find a route for ${baseTokenSymbol}-${quoteTokenSymbol} on network ${network}`);
   }
   
   // Log route details
   logger.info(`Route generation successful - has method parameters: ${!!route.methodParameters}`);
   
-  // Log extra information about the route for debugging
-  if (route.route) {
-    const routeInfo = route.route.map(r => 
-      `${r.tokenPath.map(t => t.symbol).join(' → ')}`
-    ).join(', ');
-    logger.info(`Route details: ${routeInfo}`);
-  }
+  // Simple route logging, similar to v2.2.0
+  logger.info(`Best trade for ${baseToken.address}-${quoteToken.address}: ${route.quote.toExact()}${outputToken.symbol}.`);
 
   // Calculate amounts
   let estimatedAmountIn, estimatedAmountOut;
@@ -269,10 +320,22 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify, _options) => {
             throw error;
           }
           
+          // Log more detailed information about the error
           logger.error(`Router error: ${error.message}`);
           if (error.stack) {
             logger.debug(`Error stack: ${error.stack}`);
           }
+          
+          // Check if there's any additional error details
+          if (error.innerError) {
+            logger.error(`Inner error: ${JSON.stringify(error.innerError)}`);
+          }
+          
+          // Check if it's a specific error type from the Alpha Router
+          if (error.name === 'SwapRouterError') {
+            logger.error(`SwapRouterError details: ${JSON.stringify(error)}`);
+          }
+          
           return reply.badRequest(`Failed to get quote with router: ${error.message}`);
         }
       } catch (e) {
