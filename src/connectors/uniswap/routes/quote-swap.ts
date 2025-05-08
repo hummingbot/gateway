@@ -149,7 +149,10 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify, _options) => {
             inputAmount,
             outputToken,
             exactIn ? TradeType.EXACT_INPUT : TradeType.EXACT_OUTPUT,
-            swapOptions
+            swapOptions,
+            {
+              maxSwapsPerPath: uniswap.config.maximumHops || 4
+            }
           );
 
           if (!route) {
