@@ -65,20 +65,9 @@ const swaggerOptions = {
       { name: 'raydium', description: 'Raydium DEX connector (Solana)' },
       { name: 'meteora', description: 'Meteora DEX connector (Solana)' },
       
-      // Keep connector-specific paths in their respective routes instead of adding general AMM/CLMM tags
-      
       // System categories
       { name: 'config', description: 'Configuration management endpoints' },
       { name: 'wallet', description: 'Wallet management endpoints' },
-      
-      // Legacy tags (for compatibility)
-      { name: 'chains', description: 'Blockchain endpoints (legacy)' },
-      { name: 'connectors', description: 'DEX connector endpoints (legacy)' },
-      { name: 'raydium/clmm', description: 'Raydium CLMM endpoints (legacy)' },
-      { name: 'raydium/amm', description: 'Raydium AMM endpoints (legacy)' },
-      { name: 'meteora/clmm', description: 'Meteora DLMM endpoints (legacy)' },
-      { name: 'uniswap/clmm', description: 'Uniswap V3 endpoints (legacy)' },
-      { name: 'uniswap/amm', description: 'Uniswap V2 endpoints (legacy)' },
     ],
     components: {
       parameters: {
