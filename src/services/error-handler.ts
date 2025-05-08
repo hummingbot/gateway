@@ -1,7 +1,2 @@
-export class UniswapishPriceError extends Error {
-  constructor(message?: string) {
-    super(message);
-    this.name = 'UniswapishPriceError';
-    this.stack = (<any>new Error()).stack;
-  }
-}
+// This file is kept as a placeholder for potential future error handlers
+// Custom error classes can be added here
