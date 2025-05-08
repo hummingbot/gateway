@@ -12,11 +12,12 @@ import {
 import {
   getInitializedChain,
   UnsupportedChainException,
-  Chain,
+  ChainInstance,
 } from '../../services/connection-manager';
 import { Solana } from '../../chains/solana/solana';
 import { Ethereum } from '../../chains/ethereum/ethereum';
 import { FastifyInstance } from 'fastify';
+import { Polkadot } from '../../chains/polkadot/polkadot';
 
 export const walletPath = './conf/wallets';
 
@@ -35,13 +36,13 @@ export async function addWallet(
   if (!passphrase) {
     throw fastify.httpErrors.internalServerError('No passphrase configured');
   }
-  
-  let connection: Chain;
+
+  let connection: ChainInstance;
   let address: string | undefined;
   let encryptedPrivateKey: string | undefined;
 
   try {
-    connection = await getInitializedChain<Chain>(req.chain, req.network);
+    connection = await getInitializedChain<ChainInstance>(req.chain, req.network);
   } catch (e) {
     if (e instanceof UnsupportedChainException) {
       throw fastify.httpErrors.badRequest(`Unrecognized chain name: ${req.chain}`);
@@ -64,8 +65,16 @@ export async function addWallet(
         req.privateKey,
         passphrase
       );
+    } else if (connection instanceof Polkadot) {
+      address = connection
+        .getKeyringPairFromMnemonic(req.privateKey)
+        .address.toString();
+      encryptedPrivateKey = await connection.encrypt(
+        req.privateKey,
+        passphrase
+      );
     }
-    
+
     if (address === undefined || encryptedPrivateKey === undefined) {
       throw new Error('Unable to retrieve wallet address');
     }
@@ -74,7 +83,7 @@ export async function addWallet(
       `Unable to retrieve wallet address for provided private key: ${req.privateKey.substring(0, 5)}...`
     );
   }
-  
+
   const path = `${walletPath}/${req.chain}`;
   await mkdirIfDoesNotExist(path);
   await fse.writeFile(`${path}/${address}.json`, encryptedPrivateKey);

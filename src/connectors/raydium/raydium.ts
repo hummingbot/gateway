@@ -12,7 +12,8 @@ import {
   ClmmRpcData,
   TxVersion,
   AmmV4Keys,
-  AmmV5Keys
+  AmmV5Keys,
+  PoolFetchType
 } from '@raydium-io/raydium-sdk-v2'
 import { isValidClmm, isValidAmm, isValidCpmm } from './raydium.utils'
 import { logger } from '../../services/logger'
@@ -330,9 +331,9 @@ export class Raydium {
     // Get the network-specific pools
     const network = this.solana.network;
     const pools = RaydiumConfig.getNetworkPools(network, routeType);
-    
+
     if (!pools) return null;
-    
+
     const pairKey = this.getPairKey(baseToken, quoteToken);
     const reversePairKey = this.getPairKey(quoteToken, baseToken);
     
@@ -348,7 +349,7 @@ export class Raydium {
     try {
       const poolAccount = await this.solana.connection.getAccountInfo(new PublicKey(poolAddress));
       if (!poolAccount) return false;
-      
+
       // The LAUNCHPAD_PROGRAM_ID is not directly exported from SDK at the moment
       // In a real implementation, we would check if the account owner matches the launchpad program ID
       const LAUNCHPAD_PROGRAM_ID = new PublicKey('LaunchpooLRTWMeqRRQkwBrob83SHDMqXxpW3Q1YKT53'); // Example, would use actual ID from SDK
@@ -373,15 +374,15 @@ export class Raydium {
         logger.warn(`Launchpad pool not found: ${poolAddress}`);
         return null;
       }
-      
+
       // 2. Decode the pool data using SDK
       // const poolData = this.raydiumSDK.launchpad.LaunchpadPool.decode(poolAccountInfo.data);
       logger.info(`Retrieved launchpad pool information for: ${poolAddress}`);
-      
+
       // 3. Get configuration data if needed
       // const configId = poolData.configId;
       // const configInfo = ... fetch config account data
-      
+
       // 4. Return the combined pool information
       // For testing, return the raw data for now
       return {
@@ -392,5 +393,65 @@ export class Raydium {
       logger.error(`Error getting launchpad pool info: ${error}`);
       return null;
     }
+  }
+  async listAllPools(maxPages = 3): Promise<
+      Array<
+          ApiV3PoolInfoConcentratedItem |
+          ApiV3PoolInfoStandardItem |
+          ApiV3PoolInfoStandardItemCpmm
+      >
+  > {
+    try {
+      let allPools = [];
+      let currentPage = 1;
+      let hasMoreData = true;
+
+      while (hasMoreData && currentPage <= maxPages) {
+        logger.info(`Fetching pool page ${currentPage}/${maxPages}`);
+
+        // Use the SDK method getPoolList with pagination
+        const poolListResponse = await this.raydiumSDK.api.getPoolList({
+          page: currentPage,
+          pageSize: 1000, // maximum allowed by API
+          order: 'desc',
+          sort: 'liquidity',
+          type: PoolFetchType.Standard,
+        });
+
+        if (poolListResponse.data && poolListResponse.data.length > 0) {
+          allPools = [...allPools, ...poolListResponse.data];
+          logger.info(`Retrieved ${poolListResponse.data.length} pools from page ${currentPage}. Total pools: ${allPools.length}`);
+
+          // Check if we received a full page of results
+          hasMoreData = poolListResponse.data.length === 1000;
+        } else {
+          hasMoreData = false;
+        }
+
+        currentPage++;
+
+        // Add a small delay to avoid rate limiting
+        if (hasMoreData && currentPage <= maxPages) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
+
+      logger.info(`Total pools retrieved: ${allPools.length}`);
+      return allPools;
+    } catch (error) {
+      logger.error('Error listing pools:', error);
+      throw error;
+    }
+  }
+
+  // Update your existing method to call the new one:
+  async getAllPoolsFromAPI(maxPages = 3): Promise<
+      Array<
+          ApiV3PoolInfoConcentratedItem |
+          ApiV3PoolInfoStandardItem |
+          ApiV3PoolInfoStandardItemCpmm
+      >
+  > {
+    return this.listAllPools(maxPages);
   }
 }

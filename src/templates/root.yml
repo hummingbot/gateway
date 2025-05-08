@@ -27,16 +27,24 @@ configurations:
   $namespace raydium:
     configurationPath: raydium.yml
     schemaPath: raydium-schema.json
-    
+
+  $namespace polkadot:
+    configurationPath: polkadot.yml
+    schemaPath: polkadot-schema.json
+
+  $namespace hydration:
+    configurationPath: hydration.yml
+    schemaPath: hydration-schema.json
+
   # LLM Models Configuration
   $namespace claude:
     configurationPath: llm/claude.yml
     schemaPath: llm-schema.json
-    
+
   $namespace openai:
     configurationPath: llm/openai.yml
     schemaPath: llm-schema.json
-    
+
   $namespace deepseek:
     configurationPath: llm/deepseek.yml
     schemaPath: llm-schema.json

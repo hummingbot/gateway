@@ -22,6 +22,8 @@ import { jupiterRoutes } from './connectors/jupiter/jupiter.routes';
 import { meteoraRoutes } from './connectors/meteora/meteora.routes';
 import { uniswapRoutes } from './connectors/uniswap/uniswap.routes';
 import { raydiumRoutes } from './connectors/raydium/raydium.routes';
+import { polkadotRoutes } from './chains/polkadot/polkadot.routes';
+import { hydrationRoutes } from './connectors/hydration/hydration.routes';
 
 
 // Change version for each release
@@ -62,6 +64,8 @@ const swaggerOptions = {
       { name: 'ethereum', description: 'Ethereum chain endpoints' },
       { name: 'uniswap/clmm', description: 'Uniswap V3 connector endpoints' },
       { name: 'uniswap/amm', description: 'Uniswap V2 connector endpoints' },
+      { name: 'polkadot', description: 'Polkadot chain endpoints' },
+      { name: 'hydration/amm', description: 'Hydration connector endpoints' },
     ],
     components: {
       parameters: {
@@ -159,7 +163,7 @@ const configureGatewayServer = () => {
   const registerRoutes = async (app: FastifyInstance) => {
     // Register system routes (config, connectors, wallet)
     app.register(systemRoutes);
-    
+
     // Register DEX connector routes
     app.register(jupiterRoutes.swap, { prefix: '/jupiter' });
     
@@ -170,12 +174,16 @@ const configureGatewayServer = () => {
     app.register(raydiumRoutes.clmm, { prefix: '/raydium/clmm' });
     app.register(raydiumRoutes.amm, { prefix: '/raydium/amm' });
     app.register(raydiumRoutes.launchpad, { prefix: '/raydium/launchpad' });
-    
+
     app.register(uniswapRoutes, { prefix: '/uniswap' });
-    
+
+    // Hydration routes
+    app.register(hydrationRoutes.amm, { prefix: '/hydration/amm' });
+
     // Register chain routes
     app.register(solanaRoutes, { prefix: '/solana' });
     app.register(ethereumRoutes, { prefix: '/ethereum' });
+    app.register(polkadotRoutes, { prefix: '/polkadot' });
   };
 
   // Register routes on main server
@@ -254,7 +262,7 @@ export const startGateway = async () => {
   // Display ASCII logo
   console.log(`\n${asciiLogo.trim()}`);
   logger.info(`⚡️ Gateway version ${GATEWAY_VERSION} starting at ${protocol}://localhost:${port}`);
-  
+
   // Initialize LLM model configurations
   initializeModelsConfig();
 

@@ -4,10 +4,11 @@ import { UniswapConfig } from './uniswap/uniswap.config';
 import { JupiterConfig } from './jupiter/jupiter.config';
 import { MeteoraConfig } from './meteora/meteora.config';
 import { RaydiumConfig } from './raydium/raydium.config';
+import { HydrationConfig } from './hydration/hydration.config';
 import { logger } from '../services/logger';
 import axios from 'axios';
-import { 
-  GetPoolInfoRequestType, 
+import {
+  GetPoolInfoRequestType,
   GetPoolInfoRequest,
   GetPoolInfoResponse,
   PoolInfo
@@ -64,7 +65,7 @@ export const connectorsRoutes: FastifyPluginAsync = async (fastify) => {
         const { baseToken, quoteToken, connector, marketType } = request.query;
         const network = request.query.network || 'mainnet-beta';
         const allPools: PoolInfo[] = [];
-        
+
         // List of connectors and their endpoints to check
         const connectors = [
           // Solana-based connectors
@@ -74,22 +75,24 @@ export const connectorsRoutes: FastifyPluginAsync = async (fastify) => {
           { name: 'meteora', endpoint: '/meteora/clmm/pool-info', chain: 'solana', marketType: 'clmm' },
           // Ethereum-based connectors
           { name: 'uniswap', endpoint: '/uniswap/amm/pool-info', chain: 'ethereum', marketType: 'amm' },
-          { name: 'uniswap', endpoint: '/uniswap/clmm/pool-info', chain: 'ethereum', marketType: 'clmm' }
+          { name: 'uniswap', endpoint: '/uniswap/clmm/pool-info', chain: 'ethereum', marketType: 'clmm' },
+          // Polkadot-based connectors
+          { name: 'hydration', endpoint: '/hydration/amm/pool-info', chain: 'polkadot', marketType: 'amm' }
         ];
-        
+
         // Filter the connectors if a specific one was requested
         const filteredConnectors = connectors.filter(c => {
           if (connector && c.name !== connector) return false;
           if (marketType && c.marketType !== marketType) return false;
           return true;
         });
-        
+
         // Fetch pool info from all applicable connectors in parallel
         const serverAddress = fastify.server.address();
-        const baseUrl = typeof serverAddress === 'string' 
-          ? serverAddress 
+        const baseUrl = typeof serverAddress === 'string'
+          ? serverAddress
           : `http://localhost:${serverAddress.port}`;
-          
+
         const poolRequests = filteredConnectors.map(async (c) => {
           try {
             const queryParams = new URLSearchParams({
@@ -97,12 +100,12 @@ export const connectorsRoutes: FastifyPluginAsync = async (fastify) => {
               quoteToken: quoteToken,
               network: network
             }).toString();
-            
+
             const url = `${baseUrl}${c.endpoint}?${queryParams}`;
             logger.debug(`Fetching pool info from: ${url}`);
-            
+
             const response = await axios.get(url, { timeout: 5000 });
-            
+
             // Parse and add connector-specific details to pool info
             if (response.data && response.data.pools && Array.isArray(response.data.pools)) {
               response.data.pools.forEach((pool: PoolInfo) => {
@@ -117,10 +120,10 @@ export const connectorsRoutes: FastifyPluginAsync = async (fastify) => {
             logger.warn(`Error fetching pool info from ${c.name} (${c.marketType || 'default'}): ${error.message}`);
           }
         });
-        
+
         // Wait for all requests to finish
         await Promise.all(poolRequests);
-        
+
         return { pools: allPools };
       } catch (e) {
         logger.error(`Error in connector poolInfo route: ${e}`);
@@ -169,6 +172,11 @@ export const connectorsRoutes: FastifyPluginAsync = async (fastify) => {
           name: 'raydium/launchpad',
           trading_types: ['swap'],
           available_networks: RaydiumConfig.config.availableNetworks,
+        },
+        {
+          name: 'hydration/amm',
+          trading_types: HydrationConfig.config.tradingTypes,
+          available_networks: HydrationConfig.config.availableNetworks,
         },
       ];
 
