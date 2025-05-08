@@ -4,7 +4,6 @@ import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { logger } from '../../../services/logger';
 import { 
   ExecuteSwapRequestType,
-  ExecuteSwapRequest,
   ExecuteSwapResponseType,
   ExecuteSwapResponse
 } from '../../../schemas/trading-types/swap-schema';
@@ -15,18 +14,29 @@ import {
   TradeType,
 } from '@uniswap/sdk-core';
 import { formatTokenAmount } from '../uniswap.utils';
+import { Contract } from '@ethersproject/contracts';
 import { BigNumber } from 'ethers';
+import { AlphaRouter, SwapType, SwapOptions } from '@uniswap/smart-order-router';
 import { ethers } from 'ethers';
 import JSBI from 'jsbi';
 
-// Import the getV3SwapRouterQuote function from quote-swap
-import { getV3SwapRouterQuote } from './quote-swap';
-// SwapRoute from AlphaRouter
-import { SwapRoute } from '@uniswap/smart-order-router';
+// Router02 ABI for executing swaps
+const SwapRouter02ABI = {
+  inputs: [
+    { internalType: 'bytes', name: 'data', type: 'bytes' }
+  ],
+  name: 'multicall',
+  outputs: [
+    { internalType: 'bytes[]', name: 'results', type: 'bytes[]' }
+  ],
+  stateMutability: 'payable',
+  type: 'function'
+};
 
 export const executeSwapRoute: FastifyPluginAsync = async (fastify, _options) => {
   // Import the httpErrors plugin to ensure it's available
   await fastify.register(require('@fastify/sensible'));
+  
   // Get first wallet address for example
   const ethereum = await Ethereum.getInstance('base');
   let firstWalletAddress = '<ethereum-wallet-address>';
@@ -44,7 +54,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify, _options) =>
     '/execute-swap',
     {
       schema: {
-        description: 'Execute a swap using Uniswap V3 Swap Router (recommended for token swapping)',
+        description: 'Execute a swap using Uniswap V3 Smart Order Router',
         tags: ['uniswap'],
         body: {
           type: 'object',
@@ -95,7 +105,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify, _options) =>
         if (!walletAddress) {
           walletAddress = await ethereum.getFirstWalletAddress();
           if (!walletAddress) {
-            throw fastify.httpErrors.badRequest('No wallet address provided and no default wallet found');
+            return reply.badRequest('No wallet address provided and no default wallet found');
           }
           logger.info(`Using first available wallet address: ${walletAddress}`);
         }
@@ -128,111 +138,148 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify, _options) =>
           JSBI.BigInt(Math.floor(amount * Math.pow(10, inputToken.decimals)).toString())
         );
 
-        // Calculate slippage tolerance - use provided slippage or default from config
-        const slippageTolerance = slippagePct ? 
-          new Percent(Math.floor(slippagePct * 100), 10000) : 
-          uniswap.getAllowedSlippage();
+        // Calculate slippage tolerance
+        const slippageTolerance = slippagePct 
+          ? new Percent(Math.floor(slippagePct * 100), 10000)  // Convert to basis points
+          : new Percent(50, 10000); // 0.5% default slippage
 
         // Check if we have a cached route from quote-swap
         const cacheKey = `${networkToUse}-${baseTokenSymbol}-${quoteTokenSymbol}-${amount}-${side}`;
         const cacheProperty = `uniswapRouteCache_${cacheKey}`;
         
-        let swapRoute: SwapRoute;
+        let route;
         
         if (fastify[cacheProperty] && fastify[cacheProperty].expiresAt > Date.now()) {
           // Use the cached route if valid
           logger.info('Using cached route from previous quote');
-          swapRoute = fastify[cacheProperty].route;
+          route = fastify[cacheProperty].route;
         } else {
-          // If no cached route, generate a new one
+          // If no cached route, generate a new one with AlphaRouter
           logger.info('Generating new route for swap execution');
-          swapRoute = await getV3SwapRouterQuote(
-            ethereum, 
-            inputToken, 
-            outputToken, 
-            inputAmount, 
-            exactIn, 
-            slippageTolerance
+          
+          // Initialize AlphaRouter for optimal routing
+          const alphaRouter = new AlphaRouter({
+            chainId: ethereum.chainId,
+            provider: ethereum.provider as ethers.providers.JsonRpcProvider,
+          });
+
+          // Configure swap options - IMPORTANT: Use SWAP_ROUTER_02, not UNIVERSAL_ROUTER
+          const swapOptions: SwapOptions = {
+            recipient: walletAddress,
+            slippageTolerance,
+            deadline: Math.floor(Date.now() / 1000) + 1800, // 30 minutes
+            type: SwapType.SWAP_ROUTER_02, // Must use SWAP_ROUTER_02 for compatibility
+          };
+
+          // Generate a swap route
+          route = await alphaRouter.route(
+            inputAmount,
+            outputToken,
+            exactIn ? TradeType.EXACT_INPUT : TradeType.EXACT_OUTPUT,
+            swapOptions
           );
+
+          if (!route) {
+            logger.error(`Could not find a route for ${baseTokenSymbol}-${quoteTokenSymbol}`);
+            return reply.badRequest(`Could not find a route for ${baseTokenSymbol}-${quoteTokenSymbol}`);
+          }
         }
 
-        // Check if methodParameters are available
-        if (!swapRoute.methodParameters) {
-          logger.error('Failed to generate swap parameters');
-          return reply.internalServerError('Failed to generate swap parameters');
-        }
+        // Get the router address
+        const routerAddress = uniswap.getSpender('swap');
+        logger.info(`Using Swap Router address: ${routerAddress}`);
 
-        // Get the Swap Router address for this network
-        const { getUniswapV3SmartOrderRouterAddress } = require('../uniswap.contracts');
-        const swapRouterAddress = getUniswapV3SmartOrderRouterAddress(networkToUse);
-
-        // If input token is not ETH, check allowance for the Swap Router
-        if (inputToken.symbol !== 'WETH') {
+        // If input token is not ETH, check allowance for the router
+        if (inputToken.symbol !== 'ETH') {
           // Get token contract
           const tokenContract = ethereum.getContract(
             inputToken.address,
             wallet
           );
           
-          // Check existing allowance for the Swap Router
+          // Check existing allowance for the router
           const allowance = await ethereum.getERC20Allowance(
             tokenContract,
             wallet,
-            swapRouterAddress,
+            routerAddress,
             inputToken.decimals
           );
           
           // Calculate required amount
-          const amountNeeded = swapRoute.methodParameters && swapRoute.methodParameters.value !== '0x00' ? 
-            BigNumber.from(swapRoute.methodParameters.value) : 
-            BigNumber.from(inputAmount.quotient.toString());
-          
-          // Compare allowance to required amount
+          const amountNeeded = BigNumber.from(inputAmount.quotient.toString());
           const currentAllowance = BigNumber.from(allowance.value);
           
-          // Show error if allowance is insufficient
+          // Throw an error if allowance is insufficient
           if (currentAllowance.lt(amountNeeded)) {
             logger.error(`Insufficient allowance for ${inputToken.symbol}`);
             return reply.badRequest(
-              `Insufficient allowance for ${inputToken.symbol}. Please approve at least ${formatTokenAmount(amountNeeded.toString(), inputToken.decimals)} ${inputToken.symbol} for the Uniswap V3 Swap Router (${swapRouterAddress})`
+              `Insufficient allowance for ${inputToken.symbol}. Please approve at least ${formatTokenAmount(amountNeeded.toString(), inputToken.decimals)} ${inputToken.symbol} for the Uniswap router (${routerAddress}) using the /ethereum/approve endpoint`
             );
           } else {
             logger.info(`Sufficient allowance exists: ${formatTokenAmount(currentAllowance.toString(), inputToken.decimals)} ${inputToken.symbol}`);
           }
         }
 
-        // Extract method parameters from the swap route
-        const { calldata, value } = swapRoute.methodParameters;
+        // Get transaction parameters from the route
+        const { methodParameters } = route;
         
+        if (!methodParameters) {
+          logger.error('Failed to generate swap parameters');
+          return reply.internalServerError('Failed to generate swap parameters');
+        }
+
+        // Create the SwapRouter contract instance
+        const swapRouter = new Contract(
+          routerAddress,
+          [SwapRouter02ABI],
+          wallet
+        );
+
         // Prepare transaction with gas settings
         const txOptions = {
-          value: value || '0',
-          gasLimit: 350000, // V3 Swap Router gas limit
+          value: methodParameters.value === '0x' ? '0' : methodParameters.value,
+          gasLimit: 350000, // V3 swaps need more gas
           gasPrice: await wallet.getGasPrice() // Use network gas price
         };
         
-        // Send the transaction to the Swap Router address
-        const tx = await wallet.sendTransaction({
-          to: swapRouterAddress,
-          data: calldata,
-          ...txOptions
-        });
+        // Execute the swap using the multicall function
+        const tx = await swapRouter.multicall(
+          methodParameters.calldata,
+          txOptions
+        );
 
         // Wait for transaction confirmation
         const receipt = await tx.wait();
         
-        // Calculate estimated amounts
-        const totalInputSwapped = Number(formatTokenAmount(
-          exactIn ? inputAmount.quotient.toString() : swapRoute.quote.quotient.toString(),
-          inputToken.decimals
-        ));
+        // Get expected amounts from the route
+        let totalInputSwapped, totalOutputSwapped;
         
-        const totalOutputSwapped = Number(formatTokenAmount(
-          exactIn ? swapRoute.quote.quotient.toString() : inputAmount.quotient.toString(),
-          outputToken.decimals
-        ));
+        // For SELL (exactIn), we know the exact input amount, output is estimated
+        if (exactIn) {
+          totalInputSwapped = Number(formatTokenAmount(
+            inputAmount.quotient.toString(),
+            inputToken.decimals
+          ));
+          
+          totalOutputSwapped = Number(formatTokenAmount(
+            route.quote.quotient.toString(),
+            outputToken.decimals
+          ));
+        } 
+        // For BUY (exactOut), the output is exact, input is estimated
+        else {
+          totalOutputSwapped = Number(formatTokenAmount(
+            inputAmount.quotient.toString(),
+            outputToken.decimals
+          ));
+          
+          totalInputSwapped = Number(formatTokenAmount(
+            route.quote.quotient.toString(),
+            inputToken.decimals
+          ));
+        }
         
-        // Calculate balance changes based on direction
+        // Set balance changes based on direction
         const baseTokenBalanceChange = side === 'BUY' ? totalOutputSwapped : -totalInputSwapped;
         const quoteTokenBalanceChange = side === 'BUY' ? -totalInputSwapped : totalOutputSwapped;
         
@@ -256,17 +303,10 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify, _options) =>
           logger.debug(`Error stack: ${e.stack}`);
         }
         
-        // Specific error handling for allowance issues
-        if (e.message && e.message.includes('Insufficient allowance')) {
-          return reply.badRequest(e.message);
-        }
-        
-        // Handle transaction failures
-        if (e.code === 'UNPREDICTABLE_GAS_LIMIT' || e.message.includes('insufficient funds')) {
+        if (e.code === 'UNPREDICTABLE_GAS_LIMIT') {
           return reply.badRequest('Transaction failed: Insufficient funds or gas estimation error');
         }
         
-        // Generic error handling
         return reply.internalServerError(`Failed to execute swap: ${e.message}`);
       }
     }
