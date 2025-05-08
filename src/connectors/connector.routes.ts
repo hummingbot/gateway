@@ -63,6 +63,21 @@ export const connectorsRoutes: FastifyPluginAsync = async (fastify) => {
           trading_types: ['clmm', 'swap'],
           available_networks: RaydiumConfig.config.availableNetworks,
         },
+        {
+          name: 'uniswap',
+          trading_types: ['swap'],
+          available_networks: UniswapConfig.config.availableNetworks,
+        },
+        {
+          name: 'uniswap/amm',
+          trading_types: ['amm', 'swap'],
+          available_networks: UniswapConfig.config.availableNetworks,
+        },
+        {
+          name: 'uniswap/clmm',
+          trading_types: ['clmm', 'swap'],
+          available_networks: UniswapConfig.config.availableNetworks,
+        },
       ];
 
       logger.info('Available connectors: ' + connectors.map(c => c.name).join(', '));

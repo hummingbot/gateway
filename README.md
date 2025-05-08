@@ -6,6 +6,18 @@
 
 Hummingbot Gateway is an API/CLI client that exposes standardized REST endponts to perform actions and fetch data from **blockchain networks** (wallet, node & chain interaction) and their **decentralized exchanges (DEX)** (pricing, trading & liquidity provision).
 
+### API Overview
+
+- GET /chains - List all available blockchain networks and their supported networks
+- GET /connectors - List all available DEX connectors and their supported networks
+- GET /ethereum/... - Ethereum chain endpoints (balances, tokens, allowances)
+- GET /solana/... - Solana chain endpoints (balances, tokens)
+- GET /jupiter/... - Jupiter Aggregator swap endpoints
+- GET /uniswap/... - Uniswap swap, AMM, and CLMM endpoints
+- GET /raydium/amm/... - Raydium AMM endpoints
+- GET /raydium/clmm/... - Raydium CLMM endpoints
+- GET /meteora/clmm/... - Meteora CLMM endpoints
+
 Gateway is written in Typescript in order to use Javascript-based SDKs provided by blockchains and DEX protocols. The advantage of using Gateway is it provides a standardized, language-agnostic approach to interacting with these protocols.
 
 Gateway may be used alongside the main [Hummingbot client](https://github.com/hummingbot/hummingbot) to enable trading and market making on DEXs, or as a standalone command line interface (CLI).
@@ -187,21 +199,26 @@ Here are some ways that you can contribute to Gateway:
 
 ## Architecture
 
-Gateway follows a modular architecture with clear separation of concerns between chains, connectors, and system components:
+Gateway follows a modular architecture with clear separation of concerns between chains, connectors, configuration, and wallet management:
 
 - **Chains**: Blockchain network implementations
+  - [src/chains/chain.routes.ts](./src/chains/chain.routes.ts): List of supported chains and networks
   - [src/chains/ethereum/ethereum.ts](./src/chains/ethereum/ethereum.ts): Core Ethereum chain operations
   - [src/chains/solana/solana.ts](./src/chains/solana/solana.ts): Core Solana chain operations
 
 - **Connectors**: DEX protocol implementations
-  - [src/connectors/connector.interfaces.ts](./src/connectors/connector.interfaces.ts): Standard interfaces for all connectors
+  - [src/connectors/connector.routes.ts](./src/connectors/connector.routes.ts): List of available DEX connectors
   - [src/connectors/jupiter/jupiter.ts](./src/connectors/jupiter/jupiter.ts): Jupiter DEX connector for Solana
   - [src/connectors/raydium/raydium.ts](./src/connectors/raydium/raydium.ts): Raydium DEX connector for Solana (AMM, CLMM)
   - [src/connectors/uniswap/uniswap.ts](./src/connectors/uniswap/uniswap.ts): Uniswap DEX connector for Ethereum
 
-- **System**: Core system components and utilities
-  - [src/system/wallet/utils.ts](./src/system/wallet/utils.ts): Wallet management utilities
-  - [src/system/config/utils.ts](./src/system/config/utils.ts): Configuration management utilities
+- **Configuration**: Configuration management
+  - [src/config/config.routes.ts](./src/config/config.routes.ts): Configuration endpoints
+  - [src/config/utils.ts](./src/config/utils.ts): Configuration utilities
+
+- **Wallet**: Wallet management
+  - [src/wallet/wallet.routes.ts](./src/wallet/wallet.routes.ts): Wallet endpoints
+  - [src/wallet/utils.ts](./src/wallet/utils.ts): Wallet utilities
 
 - **Schemas**: Common type definitions and schemas
   - [src/schemas/trading-types/clmm-schema.ts](./src/schemas/trading-types/clmm-schema.ts): Standard schemas for CLMM operations
@@ -237,7 +254,10 @@ The test directory is organized as follows:
 
 ```
 /test
-  /chains/                    # Chain endpoint tests (ethereum.test.js, solana.test.js)
+  /chains/                    # Chain endpoint tests
+    chain.test.js            # Chain routes test
+    ethereum.test.js         # Ethereum chain tests
+    solana.test.js           # Solana chain tests
   /connectors/                # Connector endpoint tests by protocol
     /jupiter/                 # Jupiter connector tests
     /uniswap/                 # Uniswap connector tests
@@ -245,11 +265,14 @@ The test directory is organized as follows:
     /meteora/                 # Meteora connector tests
   /mocks/                     # Mock response data
     /chains/                  # Chain mock responses
+      chains.json            # Chain routes mock response
+      /ethereum/             # Ethereum mock responses
+      /solana/               # Solana mock responses
     /connectors/              # Connector mock responses
   /services/                  # Service tests
     /data/                    # Test data files
   /wallet/                    # Wallet tests
-  /utils/                     # Test utilities
+  /config/                    # Configuration tests
   /jest-setup.js              # Test environment configuration
 ```
 

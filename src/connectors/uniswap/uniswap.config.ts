@@ -1,4 +1,3 @@
-import { AvailableNetworks } from '../connector.interfaces';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { 
   getUniswapV2RouterAddress,
@@ -9,6 +8,11 @@ import {
   getUniswapV3FactoryAddress,
   getUniversalRouterAddress
 } from './uniswap.contracts';
+
+interface AvailableNetworks {
+  chain: string;
+  networks: Array<string>;
+}
 
 export namespace UniswapConfig {
   export interface NetworkConfig {

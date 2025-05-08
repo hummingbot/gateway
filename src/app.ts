@@ -16,6 +16,7 @@ import { asciiLogo } from './index';
 // Routes
 import { solanaRoutes } from './chains/solana/solana.routes';
 import { ethereumRoutes } from './chains/ethereum/ethereum.routes';
+import { chainRoutes } from './chains/chain.routes';
 import { jupiterRoutes } from './connectors/jupiter/jupiter.routes';
 import { meteoraRoutes } from './connectors/meteora/meteora.routes';
 import { uniswapRoutes } from './connectors/uniswap/uniswap.routes';
@@ -51,7 +52,8 @@ const swaggerOptions = {
       },
     ],
     tags: [
-      { name: 'connectors', description: 'Available connectors' },
+      { name: 'chains', description: 'Available blockchain networks' },
+      { name: 'connectors', description: 'Available DEX connectors' },
       { name: 'config', description: 'Configuration endpoints' },
       { name: 'wallet', description: 'Wallet endpoints' },
       { name: 'solana', description: 'Solana chain endpoints' },
@@ -60,7 +62,7 @@ const swaggerOptions = {
       { name: 'raydium/amm', description: 'Raydium Standard connector endpoints' },
       { name: 'meteora/clmm', description: 'Meteora DLMM connector endpoints' },
       { name: 'ethereum', description: 'Ethereum chain endpoints' },
-      { name: 'uniswap', description: 'Uniswap Router connector endpoints' },
+      { name: 'uniswap', description: 'Uniswap Univeral Router connector endpoints' },
       { name: 'uniswap/clmm', description: 'Uniswap V3 connector endpoints' },
       { name: 'uniswap/amm', description: 'Uniswap V2 connector endpoints' },
     ],
@@ -164,6 +166,9 @@ const configureGatewayServer = () => {
     
     // Register connector list route
     app.register(connectorsRoutes, { prefix: '/connectors' });
+    
+    // Register chain list route
+    app.register(chainRoutes, { prefix: '/chains' });
     
     // Register DEX connector routes
     app.register(jupiterRoutes.swap, { prefix: '/jupiter' });

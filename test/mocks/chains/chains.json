@@ -1,0 +1,12 @@
+{
+  "chains": [
+    {
+      "chain": "ethereum",
+      "networks": ["mainnet", "arbitrum", "optimism", "base", "sepolia", "bsc", "avalanche", "celo", "polygon", "blast", "zora", "worldchain"]
+    },
+    {
+      "chain": "solana",
+      "networks": ["mainnet-beta", "devnet"]
+    }
+  ]
+}
