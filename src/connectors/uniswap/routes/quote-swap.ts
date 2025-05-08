@@ -204,30 +204,15 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify, _options) => {
           const gasPrice = parseFloat(ethers.utils.formatUnits(await ethereum.provider.getGasPrice(), 'gwei'));
           const gasCost = gasPrice * gasLimit * 1e-9; // Convert to ETH
 
-          // Store route in app state for later use in execute-swap
-          const cacheKey = `${networkToUse}-${baseTokenSymbol}-${quoteTokenSymbol}-${amount}-${side}`;
-          const cacheObj = {
-            route,
-            timestamp: Date.now(),
-            // Cache expires after 2 minutes
-            expiresAt: Date.now() + 120000
-          };
+          // No need to cache the route, just log information about it
+          logger.info(`Generated route with ${route.route?.length || 0} hops for ${baseTokenSymbol}-${quoteTokenSymbol}`);
           
-          // Check if decoration already exists
-          const decoratorKey = `uniswapRouteCache_${cacheKey}`;
-          try {
-            if (fastify.hasDecorator(decoratorKey)) {
-              // If it exists, update it
-              fastify[decoratorKey] = cacheObj;
-              logger.info(`Updated cached route for key: ${cacheKey}`);
-            } else {
-              // Otherwise create it
-              fastify.decorate(decoratorKey, cacheObj);
-              logger.info(`Created new cached route for key: ${cacheKey}`);
-            }
-          } catch (error) {
-            // Handle any decorator errors
-            logger.warn(`Failed to cache route, will regenerate in execute: ${error.message}`);
+          // Log extra information about the route for debugging
+          if (route.route) {
+            const routeInfo = route.route.map(r => 
+              `${r.tokenPath.map(t => t.symbol).join(' → ')}`
+            ).join(', ');
+            logger.info(`Route details: ${routeInfo}`);
           }
 
           // Log success

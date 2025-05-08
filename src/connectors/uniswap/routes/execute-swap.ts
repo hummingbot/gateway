@@ -160,68 +160,38 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify, _options) =>
           ? new Percent(Math.floor(slippagePct * 100), 10000)  // Convert to basis points
           : new Percent(50, 10000); // 0.5% default slippage
 
-        // Check if we have a cached route from quote-swap
-        const cacheKey = `${networkToUse}-${baseTokenSymbol}-${quoteTokenSymbol}-${amount}-${side}`;
-        const cacheProperty = `uniswapRouteCache_${cacheKey}`;
+        // Generate a fresh route (not using cache) for execution
+        logger.info('Generating new route for swap execution');
         
-        let route;
+        // Initialize AlphaRouter for optimal routing
+        const alphaRouter = new AlphaRouter({
+          chainId: ethereum.chainId,
+          provider: ethereum.provider as ethers.providers.JsonRpcProvider,
+        });
+
+        // Generate a swap route
+        const swapOptions: SwapOptions = {
+          recipient: walletAddress, // Real recipient for execution
+          slippageTolerance,
+          deadline: Math.floor(Date.now() / 1000) + 1800, // 30 minutes
+          type: SwapType.SWAP_ROUTER_02 // Required by TypeScript typing
+        };
         
-        if (fastify[cacheProperty] && fastify[cacheProperty].expiresAt > Date.now()) {
-          // Use the cached route if valid
-          logger.info('Using cached route from previous quote');
-          route = fastify[cacheProperty].route;
-        } else {
-          // If no cached route, generate a new one with AlphaRouter
-          logger.info('Generating new route for swap execution');
-          
-          // Initialize AlphaRouter for optimal routing
-          const alphaRouter = new AlphaRouter({
-            chainId: ethereum.chainId,
-            provider: ethereum.provider as ethers.providers.JsonRpcProvider,
-          });
-
-          // Generate a swap route - using same approach as quote-swap.ts
-          const swapOptions: SwapOptions = {
-            recipient: walletAddress, // Real recipient for execution
-            slippageTolerance,
-            deadline: Math.floor(Date.now() / 1000) + 1800, // 30 minutes
-            type: SwapType.SWAP_ROUTER_02 // Required by TypeScript typing
-          };
-          
-          // Generate the route using same parameters as quote-swap.ts
-          route = await alphaRouter.route(
-            inputAmount,
-            outputToken,
-            exactIn ? TradeType.EXACT_INPUT : TradeType.EXACT_OUTPUT,
-            swapOptions,
-            {
-              maxSwapsPerPath: uniswap.config.maximumHops || 4
-            }
-          );
-
-          // Cache the route for potential reuse
-          if (route) {
-            const cacheObj = {
-              route,
-              timestamp: Date.now(),
-              expiresAt: Date.now() + 120000 // 2 minutes
-            };
-            
-            try {
-              if (fastify.hasDecorator(cacheProperty)) {
-                fastify[cacheProperty] = cacheObj;
-                logger.info(`Updated cached route for key: ${cacheKey}`);
-              } else {
-                fastify.decorate(cacheProperty, cacheObj);
-                logger.info(`Created new cached route for key: ${cacheKey}`);
-              }
-            } catch (error) {
-              logger.warn(`Failed to cache route: ${error.message}`);
-            }
-          } else {
-            logger.error(`Could not find a route for ${baseTokenSymbol}-${quoteTokenSymbol}`);
-            return reply.badRequest(`Could not find a route for ${baseTokenSymbol}-${quoteTokenSymbol}`);
+        // Generate the route
+        const route = await alphaRouter.route(
+          inputAmount,
+          outputToken,
+          exactIn ? TradeType.EXACT_INPUT : TradeType.EXACT_OUTPUT,
+          swapOptions,
+          {
+            maxSwapsPerPath: uniswap.config.maximumHops || 4
           }
+        );
+
+        // Check if a route was found
+        if (!route) {
+          logger.error(`Could not find a route for ${baseTokenSymbol}-${quoteTokenSymbol}`);
+          return reply.badRequest(`Could not find a route for ${baseTokenSymbol}-${quoteTokenSymbol}`);
         }
 
         // Get the V3 Smart Order Router address
