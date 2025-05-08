@@ -52,19 +52,35 @@ const swaggerOptions = {
       },
     ],
     tags: [
-      { name: 'chains', description: 'Available blockchain networks' },
-      { name: 'connectors', description: 'Available DEX connectors' },
-      { name: 'config', description: 'Configuration endpoints' },
-      { name: 'wallet', description: 'Wallet endpoints' },
-      { name: 'solana', description: 'Solana chain endpoints' },
-      { name: 'jupiter', description: 'Jupiter connector endpoints' },
-      { name: 'raydium/clmm', description: 'Raydium Concentrated connector endpoints' },
-      { name: 'raydium/amm', description: 'Raydium Standard connector endpoints' },
-      { name: 'meteora/clmm', description: 'Meteora DLMM connector endpoints' },
-      { name: 'ethereum', description: 'Ethereum chain endpoints' },
-      { name: 'uniswap', description: 'Uniswap V3 Alpha Router connector endpoints' },
-      { name: 'uniswap/clmm', description: 'Uniswap V3 connector endpoints' },
-      { name: 'uniswap/amm', description: 'Uniswap V2 connector endpoints' },
+      // Main chain categories
+      { name: 'ethereum', description: 'Ethereum blockchain and its connectors' },
+      { name: 'solana', description: 'Solana blockchain and its connectors' },
+      { name: 'system', description: 'System configuration and wallet endpoints' },
+
+      // Ethereum connectors 
+      { name: 'uniswap', description: 'Uniswap DEX connector (Ethereum)' },
+      
+      // Solana connectors
+      { name: 'jupiter', description: 'Jupiter DEX aggregator (Solana)' },
+      { name: 'raydium', description: 'Raydium DEX connector (Solana)' },
+      { name: 'meteora', description: 'Meteora DEX connector (Solana)' },
+      
+      // Specific connector subtypes
+      { name: 'amm', description: 'Automated Market Maker endpoints' },
+      { name: 'clmm', description: 'Concentrated Liquidity Market Maker endpoints' },
+      
+      // System categories
+      { name: 'config', description: 'Configuration management endpoints' },
+      { name: 'wallet', description: 'Wallet management endpoints' },
+      
+      // Legacy tags (for compatibility)
+      { name: 'chains', description: 'Blockchain endpoints (legacy)' },
+      { name: 'connectors', description: 'DEX connector endpoints (legacy)' },
+      { name: 'raydium/clmm', description: 'Raydium CLMM endpoints (legacy)' },
+      { name: 'raydium/amm', description: 'Raydium AMM endpoints (legacy)' },
+      { name: 'meteora/clmm', description: 'Meteora DLMM endpoints (legacy)' },
+      { name: 'uniswap/clmm', description: 'Uniswap V3 endpoints (legacy)' },
+      { name: 'uniswap/amm', description: 'Uniswap V2 endpoints (legacy)' },
     ],
     components: {
       parameters: {
