@@ -25,8 +25,9 @@ export async function getEthereumAllowances(
   fastify: FastifyInstance,
   network: string,
   address: string,
-  spender: string,
-  tokenSymbols: string[]
+  connector: string,
+  tokenSymbols: string[],
+  schema?: string
 ) {
   try {
     const ethereum = await Ethereum.getInstance(network);
@@ -34,7 +35,9 @@ export async function getEthereumAllowances(
     
     const wallet = await ethereum.getWallet(address);
     const tokens = await getTokenSymbolsToTokens(ethereum, tokenSymbols);
-    const spenderAddress = ethereum.getSpender(spender);
+    
+    // Use the updated getSpender method that handles AMM/CLMM differences
+    const spenderAddress = ethereum.getSpender(connector, schema);
 
     const approvals: Record<string, string> = {};
     await Promise.all(
@@ -87,7 +90,12 @@ export const allowancesRoute: FastifyPluginAsync = async (fastify) => {
         body: Type.Object({
           network: Type.String({ examples: ['base', 'mainnet', 'sepolia', 'polygon'] }),
           address: Type.String({ examples: [firstWalletAddress] }),
-          spender: Type.String({ examples: ['uniswap', '0xSpender...'] }),
+          connector: Type.String({ examples: ['uniswap'] }),
+          schema: Type.Optional(Type.String({ 
+            default: 'clmm',
+            examples: ['amm', 'clmm'],
+            enum: ['amm', 'clmm']
+          })),
           tokenSymbols: Type.Array(Type.String(), { examples: [['USDC', 'DAI']] })
         }),
         response: {
@@ -99,8 +107,15 @@ export const allowancesRoute: FastifyPluginAsync = async (fastify) => {
       }
     },
     async (request) => {
-      const { network, address, spender, tokenSymbols } = request.body;
-      return await getEthereumAllowances(fastify, network, address, spender, tokenSymbols);
+      const { network, address, connector, tokenSymbols, schema } = request.body;
+      return await getEthereumAllowances(
+        fastify, 
+        network, 
+        address, 
+        connector, 
+        tokenSymbols, 
+        schema
+      );
     }
   );
 };

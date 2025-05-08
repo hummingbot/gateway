@@ -22,8 +22,9 @@ export async function approveEthereumToken(
   fastify: FastifyInstance,
   network: string,
   address: string, 
-  spender: string,
+  connector: string,
   token: string,
+  schema?: string,
   amount?: string
 ) {
   const ethereum = await Ethereum.getInstance(network);
@@ -37,7 +38,8 @@ export async function approveEthereumToken(
     throw fastify.httpErrors.internalServerError(`Failed to load wallet: ${err.message}`);
   }
   
-  const spenderAddress = ethereum.getSpender(spender);
+  // Use the updated getSpender method that handles AMM/CLMM differences
+  const spenderAddress = ethereum.getSpender(connector, schema);
   const fullToken = ethereum.getTokenBySymbol(token);
   if (!fullToken) {
     throw fastify.httpErrors.badRequest(`Token not supported: ${token}`);
@@ -101,7 +103,12 @@ export const approveRoute: FastifyPluginAsync = async (fastify) => {
         body: Type.Object({
           network: Type.String({ examples: ['base', 'mainnet', 'sepolia', 'polygon'] }),
           address: Type.String({ examples: [firstWalletAddress] }),
-          spender: Type.String({ examples: ['uniswap', '0xSpender...'] }),
+          connector: Type.String({ examples: ['uniswap'] }),
+          schema: Type.Optional(Type.String({ 
+            default: 'clmm',
+            examples: ['amm', 'clmm'],
+            enum: ['amm', 'clmm']
+          })),
           token: Type.String({ examples: ['USDC', 'DAI'] }),
           amount: Type.Optional(Type.String({ 
             examples: [], // No examples since it's typically omitted for max approval
@@ -130,8 +137,9 @@ export const approveRoute: FastifyPluginAsync = async (fastify) => {
       const { 
         network, 
         address, 
-        spender, 
+        connector, 
         token, 
+        schema,
         amount
       } = request.body;
       
@@ -139,8 +147,9 @@ export const approveRoute: FastifyPluginAsync = async (fastify) => {
         fastify, 
         network, 
         address, 
-        spender, 
+        connector, 
         token, 
+        schema,
         amount
       );
     }
