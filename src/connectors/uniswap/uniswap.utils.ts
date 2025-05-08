@@ -11,6 +11,15 @@ import { logger } from '../../services/logger';
 import { UniswapConfig } from './uniswap.config';
 
 /**
+ * Check if a string is a valid fraction (in the form of 'a/b')
+ * @param value The string to check
+ * @returns True if the string is a valid fraction, false otherwise
+ */
+export function isFractionString(value: string): boolean {
+  return value.includes('/') && value.split('/').length === 2;
+}
+
+/**
  * Determine if a pool address is a valid Uniswap V2 pool
  * @param poolAddress The pool address to check
  * @returns True if the address is a valid Uniswap V2 pool, false otherwise

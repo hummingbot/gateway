@@ -1,6 +1,5 @@
-import { isFractionString } from '../../services/string-utils';
 import { UniswapConfig } from './uniswap.config';
-import { findPoolAddress, isValidV2Pool, isValidV3Pool } from './uniswap.utils';
+import { findPoolAddress, isValidV2Pool, isValidV3Pool, isFractionString } from './uniswap.utils';
 import { Ethereum } from '../../chains/ethereum/ethereum';
 
 // V2 (AMM) imports
