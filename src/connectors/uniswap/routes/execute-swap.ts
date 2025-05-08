@@ -163,12 +163,12 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify, _options) =>
             provider: ethereum.provider as ethers.providers.JsonRpcProvider,
           });
 
-          // Configure swap options - IMPORTANT: Use SWAP_ROUTER_02, not UNIVERSAL_ROUTER
+          // Configure swap options - EXPLICITLY use SWAP_ROUTER_02
           const swapOptions: SwapOptions = {
             recipient: walletAddress,
             slippageTolerance,
             deadline: Math.floor(Date.now() / 1000) + 1800, // 30 minutes
-            type: SwapType.SWAP_ROUTER_02, // Must use SWAP_ROUTER_02 for compatibility
+            type: SwapType.SWAP_ROUTER_02, // EXPLICITLY use SWAP_ROUTER_02
           };
 
           // Generate a swap route
@@ -185,8 +185,9 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify, _options) =>
           }
         }
 
-        // Get the router address
-        const routerAddress = uniswap.getSpender('swap');
+        // Get the V3 Smart Order Router address
+        const { getUniswapV3SmartOrderRouterAddress } = require('../uniswap.contracts');
+        const routerAddress = getUniswapV3SmartOrderRouterAddress(networkToUse);
         logger.info(`Using Swap Router address: ${routerAddress}`);
 
         // If input token is not ETH, check allowance for the router
@@ -228,7 +229,11 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify, _options) =>
           return reply.internalServerError('Failed to generate swap parameters');
         }
 
-        // Create the SwapRouter contract instance
+        logger.info('Generated method parameters successfully');
+        logger.info(`Calldata length: ${methodParameters.calldata.length}`);
+        logger.info(`Value: ${methodParameters.value}`);
+
+        // Create the SwapRouter contract instance with the specific router address
         const swapRouter = new Contract(
           routerAddress,
           [SwapRouter02ABI],
@@ -243,13 +248,16 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify, _options) =>
         };
         
         // Execute the swap using the multicall function
+        logger.info(`Executing swap via multicall to router: ${routerAddress}`);
         const tx = await swapRouter.multicall(
           methodParameters.calldata,
           txOptions
         );
 
         // Wait for transaction confirmation
+        logger.info(`Transaction sent: ${tx.hash}`);
         const receipt = await tx.wait();
+        logger.info(`Transaction confirmed: ${receipt.transactionHash}`);
         
         // Get expected amounts from the route
         let totalInputSwapped, totalOutputSwapped;

@@ -18,12 +18,6 @@ import { AlphaRouter, SwapType } from '@uniswap/smart-order-router';
 import { ethers } from 'ethers';
 import JSBI from 'jsbi';
 
-/**
- * NOTE: We use SwapType.SWAP_ROUTER_02 instead of UNIVERSAL_ROUTER because of
- * compatibility issues between the SDK versions. The calldata generated
- * with SwapType.SWAP_ROUTER_02 works with the SwapRouter02 contract.
- */
-
 export const quoteSwapRoute: FastifyPluginAsync = async (fastify, _options) => {
   // Import the httpErrors plugin to ensure it's available
   await fastify.register(require('@fastify/sensible'));
@@ -123,7 +117,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify, _options) => {
             provider: ethereum.provider as ethers.providers.JsonRpcProvider,
           });
 
-          // Generate a swap route - IMPORTANT: Use SwapType.SWAP_ROUTER_02 for compatibility
+          // Generate a swap route - EXPLICITLY using SwapType.SWAP_ROUTER_02
           const route = await alphaRouter.route(
             inputAmount,
             outputToken,
@@ -134,7 +128,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify, _options) => {
                 new Percent(Math.floor(slippagePct * 100), 10000) : 
                 new Percent(50, 10000), // 0.5% default slippage
               deadline: Math.floor(Date.now() / 1000) + 1800, // 30 minutes
-              type: SwapType.SWAP_ROUTER_02  // Use SWAP_ROUTER_02, not UNIVERSAL_ROUTER
+              type: SwapType.SWAP_ROUTER_02  // EXPLICITLY use SWAP_ROUTER_02
             }
           );
 
