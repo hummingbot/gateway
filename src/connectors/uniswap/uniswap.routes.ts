@@ -10,14 +10,10 @@ import removeLiquidityRoute from './amm-routes/removeLiquidity';
 import positionInfoRoute from './amm-routes/positionInfo';
 import quoteLiquidityRoute from './amm-routes/quoteLiquidity';
 
-// Import new router-based routes
-import quoteSwapRoute from './routes/quote-swap';
-import executeSwapRoute from './routes/execute-swap';
-
 export const uniswapRoutes: FastifyPluginAsync = async (fastify) => {
-  // Register direct routes (using SwapRouter02)
-  fastify.register(quoteSwapRoute);
-  fastify.register(executeSwapRoute);
+  // Register direct routes (Universal Router)
+  fastify.register(require('./routes/quote-swap').default);
+  fastify.register(require('./routes/execute-swap').default);
 
   // Register AMM routes (Uniswap V2)
   fastify.register(
