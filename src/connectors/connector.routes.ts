@@ -75,7 +75,9 @@ export const connectorsRoutes: FastifyPluginAsync = async (fastify) => {
           { name: 'meteora', endpoint: '/meteora/clmm/pool-info', chain: 'solana', marketType: 'clmm' },
           // Ethereum-based connectors
           { name: 'uniswap', endpoint: '/uniswap/amm/pool-info', chain: 'ethereum', marketType: 'amm' },
-          { name: 'uniswap', endpoint: '/uniswap/clmm/pool-info', chain: 'ethereum', marketType: 'clmm' }
+          { name: 'uniswap', endpoint: '/uniswap/clmm/pool-info', chain: 'ethereum', marketType: 'clmm' },
+          // Polkadot-based connectors
+          { name: 'hydration', endpoint: '/hydration/amm/pool-info', chain: 'polkadot', marketType: 'amm' }
         ];
 
         // Filter the connectors if a specific one was requested
