@@ -65,9 +65,7 @@ const swaggerOptions = {
       { name: 'raydium', description: 'Raydium DEX connector (Solana)' },
       { name: 'meteora', description: 'Meteora DEX connector (Solana)' },
       
-      // Specific connector subtypes
-      { name: 'amm', description: 'Automated Market Maker endpoints' },
-      { name: 'clmm', description: 'Concentrated Liquidity Market Maker endpoints' },
+      // Keep connector-specific paths in their respective routes instead of adding general AMM/CLMM tags
       
       // System categories
       { name: 'config', description: 'Configuration management endpoints' },
