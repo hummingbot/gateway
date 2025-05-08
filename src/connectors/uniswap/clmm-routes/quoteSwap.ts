@@ -134,11 +134,8 @@ async function formatSwapQuote(
     const uniswap = await Uniswap.getInstance(network);
     const ethereum = await Ethereum.getInstance(network);
     
-    // Check if instances are ready
-    if (!uniswap.ready()) {
-      logger.info('Uniswap instance not ready, initializing...');
-      await uniswap.init();
-    }
+    // Instances are always ready with new getInstance pattern
+    // No need to check ready() or call init()
     
     if (!ethereum.ready()) {
       logger.info('Ethereum instance not ready, initializing...');

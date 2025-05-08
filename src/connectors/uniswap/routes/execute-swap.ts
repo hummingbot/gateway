@@ -97,7 +97,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify, _options) =>
         }
         
         // Get Uniswap and Ethereum instances
-        const uniswap = await Uniswap.getInstance('ethereum', networkToUse);
+        const uniswap = await Uniswap.getInstance(networkToUse);
         const ethereum = await Ethereum.getInstance(networkToUse);
         
         // Get wallet address - either from request or first available

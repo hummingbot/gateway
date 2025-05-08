@@ -81,7 +81,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify, _options) => {
         }
         
         // Get Uniswap and Ethereum instances
-        const uniswap = await Uniswap.getInstance('ethereum', networkToUse);
+        const uniswap = await Uniswap.getInstance(networkToUse);
         const ethereum = await Ethereum.getInstance(networkToUse);
         
         // Resolve tokens using Ethereum class
