@@ -1,6 +1,5 @@
-import { isFractionString } from '../../services/string-utils';
 import { UniswapConfig } from './uniswap.config';
-import { findPoolAddress, isValidV2Pool, isValidV3Pool } from './uniswap.utils';
+import { findPoolAddress, isValidV2Pool, isValidV3Pool, isFractionString } from './uniswap.utils';
 import { Ethereum } from '../../chains/ethereum/ethereum';
 
 // V2 (AMM) imports
@@ -153,31 +152,6 @@ export class Uniswap {
   // Network information
   private networkName: string;
 
-  /**
-   * Returns the appropriate spender address based on the schema
-   * @param schema The schema type (amm, clmm, etc.)
-   * @returns The address of the contract that should be approved to spend tokens
-   */
-  public getSpender(schema: string = 'clmm'): string {
-    // For AMM (V2), use the V2 Router
-    if (schema === 'amm') {
-      return this.config.uniswapV2RouterAddress(this.networkName);
-    }
-
-    // For CLMM (V3), use the NFT Position Manager
-    if (schema === 'clmm') {
-      return this.config.uniswapV3NftManagerAddress(this.networkName);
-    }
-
-    // For router operations or swaps, use the Universal Router when available
-    const universalRouterAddress = this.getUniversalRouterAddress();
-    if (universalRouterAddress) {
-      return universalRouterAddress;
-    }
-
-    // Default to NFT Manager if no Universal Router
-    return this.config.uniswapV3NftManagerAddress(this.networkName);
-  }
 
   private constructor(network: string) {
     this.networkName = network;
@@ -303,13 +277,6 @@ export class Uniswap {
     return this._ready;
   }
   
-  /**
-   * Get the Universal Router address for the current network
-   * @returns The Universal Router address for the current network, or null if not available
-   */
-  public getUniversalRouterAddress(): string {
-    return this.config.getUniversalRouterAddress(this.networkName);
-  }
 
   /**
    * Given a token's address, return the connector's native representation of the token.

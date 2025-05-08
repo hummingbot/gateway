@@ -14,7 +14,8 @@ Hummingbot Gateway is an API/CLI client that exposes standardized REST endponts 
 - GET /solana/... - Solana chain endpoints (balances, tokens)
 - GET /jupiter/... - Jupiter Aggregator swap endpoints
 - GET /uniswap/... - Uniswap swap, AMM, and CLMM endpoints
-- GET /uniswap/routes/... - Uniswap V3 Swap Router endpoints (recommended for token swapping)
+- GET /uniswap/routes/quote-swap - Get price quote using Uniswap V3 Swap Router (recommended for token swapping)
+- GET /uniswap/routes/execute-swap - Execute swap using Uniswap V3 Swap Router (recommended for token swapping)
 - GET /raydium/amm/... - Raydium AMM endpoints
 - GET /raydium/clmm/... - Raydium CLMM endpoints
 - GET /meteora/clmm/... - Meteora CLMM endpoints

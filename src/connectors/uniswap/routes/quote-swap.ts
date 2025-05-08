@@ -1,12 +1,10 @@
-import { FastifyPluginAsync } from 'fastify';
-import { Uniswap } from '../uniswap';
+import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { logger } from '../../../services/logger';
 import { 
   GetSwapQuoteResponseType,
   GetSwapQuoteResponse,
-  GetSwapQuoteRequestType,
-  GetSwapQuoteRequest
+  GetSwapQuoteRequestType
 } from '../../../schemas/trading-types/swap-schema';
 import { formatTokenAmount } from '../uniswap.utils';
 import {
@@ -15,68 +13,167 @@ import {
   Percent,
   TradeType,
 } from '@uniswap/sdk-core';
-import { AlphaRouter, SwapType, SwapRoute } from '@uniswap/smart-order-router';
+import { AlphaRouter, SwapOptions, SwapRoute, SwapType } from '@uniswap/smart-order-router';
 import { ethers } from 'ethers';
-import JSBI from 'jsbi';
 
 /**
- * Get a V3 swap quote using AlphaRouter with the Swap Router 02
- * 
- * This function uses the V3 Smart Order Router to find the optimal route
- * and generates calldata for the Swap Router 02 contract.
+ * Get a swap quote for the given tokens and amount
+ * This function can be reused by executeSwap to ensure consistent routing logic
  */
-export async function getV3SwapRouterQuote(
-  ethereum: Ethereum,
-  inputToken: Token,
-  outputToken: Token,
-  inputAmount: CurrencyAmount<Token>,
-  exactIn: boolean,
-  slippageTolerance: Percent
-): Promise<SwapRoute> {
-  // Log information about this request for debugging
-  logger.info(`Getting quote for ${exactIn ? 'selling' : 'buying'} ${inputToken.symbol}/${outputToken.symbol}`);
-  logger.info(`Input amount: ${formatTokenAmount(inputAmount.quotient.toString(), inputToken.decimals)} ${inputToken.symbol}`);
-  logger.info(`Slippage tolerance: ${slippageTolerance.toFixed(2)}%`);
+export async function getUniswapQuote(
+  fastify: FastifyInstance,
+  network: string,
+  baseTokenSymbol: string,
+  quoteTokenSymbol: string,
+  amount: number,
+  side: 'BUY' | 'SELL',
+  slippagePct?: number,
+  recipient: string = ethers.constants.AddressZero // Default to zero address for quote
+) {
+  // Get Uniswap and Ethereum instances
+  const ethereum = await Ethereum.getInstance(network);
   
-  try {
-    // Use AlphaRouter to find optimal routes
-    const alphaRouter = new AlphaRouter({
-      chainId: ethereum.chainId,
-      provider: ethereum.provider as ethers.providers.JsonRpcProvider,
-    });
-
-    // Generate a swap route using AlphaRouter with SWAP_ROUTER_02 type
-    const route = await alphaRouter.route(
-      inputAmount,
-      outputToken,
-      exactIn ? TradeType.EXACT_INPUT : TradeType.EXACT_OUTPUT,
-      {
-        recipient: ethers.constants.AddressZero, // Dummy recipient for quote
-        slippageTolerance,
-        // Use SwapRouter02 - this is the recommended router for V3 swaps
-        type: SwapType.SWAP_ROUTER_02,
-        deadline: Math.floor(Date.now() / 1000) + 1800, // 30 minutes
-      }
-    );
-
-    if (!route) {
-      logger.error(`Could not find a route between ${inputToken.symbol} and ${outputToken.symbol}`);
-      throw new Error(`Could not find a route between ${inputToken.symbol} and ${outputToken.symbol}`);
-    }
-
-    // Log success for debugging
-    logger.info(`Found route with ${route.route.length} paths`);
-    logger.info(`Quote amount: ${formatTokenAmount(route.quote.quotient.toString(), outputToken.decimals)} ${outputToken.symbol}`);
-    
-    return route;
-  } catch (error) {
-    // Log detailed error info
-    logger.error(`Error getting quote: ${error.message}`);
-    if (error.stack) {
-      logger.debug(`Error stack: ${error.stack}`);
-    }
-    throw error;
+  // Resolve tokens using Ethereum class
+  const baseTokenInfo = ethereum.getTokenBySymbol(baseTokenSymbol);
+  const quoteTokenInfo = ethereum.getTokenBySymbol(quoteTokenSymbol);
+  
+  if (!baseTokenInfo || !quoteTokenInfo) {
+    throw fastify.httpErrors.badRequest(`Token not found: ${!baseTokenInfo ? baseTokenSymbol : quoteTokenSymbol}`);
   }
+  
+  // Convert to Uniswap SDK Token objects
+  const baseToken = new Token(
+    ethereum.chainId,
+    baseTokenInfo.address,
+    baseTokenInfo.decimals,
+    baseTokenInfo.symbol,
+    baseTokenInfo.name
+  );
+  
+  const quoteToken = new Token(
+    ethereum.chainId,
+    quoteTokenInfo.address,
+    quoteTokenInfo.decimals,
+    quoteTokenInfo.symbol,
+    quoteTokenInfo.name
+  );
+
+  // Determine which token is being traded
+  const exactIn = side === 'SELL';
+  const [inputToken, outputToken] = exactIn 
+    ? [baseToken, quoteToken] 
+    : [quoteToken, baseToken];
+
+  // Convert amount to token units with decimals
+  const rawAmount = Math.floor(amount * Math.pow(10, inputToken.decimals)).toString();
+  const inputAmount = CurrencyAmount.fromRawAmount(inputToken, rawAmount);
+
+  // Calculate slippage tolerance
+  const slippageTolerance = slippagePct 
+    ? new Percent(Math.floor(slippagePct * 100), 10000)  // Convert to basis points
+    : new Percent(50, 10000); // 0.5% default slippage
+
+  // Initialize AlphaRouter for optimal routing
+  const alphaRouter = new AlphaRouter({
+    chainId: ethereum.chainId,
+    provider: ethereum.provider as ethers.providers.JsonRpcProvider,
+  });
+
+  // Create options for the router with the required SwapOptions format
+  const swapOptions: SwapOptions = {
+    type: SwapType.SWAP_ROUTER_02, // Explicitly use SwapRouter02
+    recipient, // Add recipient from parameter
+    slippageTolerance,
+    deadline: Math.floor(Date.now() / 1000) + 1800 // 30 minutes
+  };
+  
+  // Generate the route using AlphaRouter
+  const route = await alphaRouter.route(
+    inputAmount,
+    outputToken,
+    exactIn ? TradeType.EXACT_INPUT : TradeType.EXACT_OUTPUT,
+    swapOptions
+  );
+
+  if (!route) {
+    throw fastify.httpErrors.badRequest(`Could not find a route for ${baseTokenSymbol}-${quoteTokenSymbol}`);
+  }
+  
+  // Log route details
+  logger.info(`Route generation successful - has method parameters: ${!!route.methodParameters}`);
+  
+  // Log extra information about the route for debugging
+  if (route.route) {
+    const routeInfo = route.route.map(r => 
+      `${r.tokenPath.map(t => t.symbol).join(' → ')}`
+    ).join(', ');
+    logger.info(`Route details: ${routeInfo}`);
+  }
+
+  // Calculate amounts
+  let estimatedAmountIn, estimatedAmountOut;
+  
+  // For SELL (exactIn), we know the exact input amount, output is estimated
+  if (exactIn) {
+    estimatedAmountIn = Number(formatTokenAmount(
+      inputAmount.quotient.toString(),
+      inputToken.decimals
+    ));
+    
+    estimatedAmountOut = Number(formatTokenAmount(
+      route.quote.quotient.toString(),
+      outputToken.decimals
+    ));
+  } 
+  // For BUY (exactOut), the output is exact, input is estimated
+  else {
+    estimatedAmountOut = Number(formatTokenAmount(
+      inputAmount.quotient.toString(),
+      outputToken.decimals
+    ));
+    
+    estimatedAmountIn = Number(formatTokenAmount(
+      route.quote.quotient.toString(), 
+      inputToken.decimals
+    ));
+  }
+
+  // Calculate min/max values with slippage
+  const minAmountOut = exactIn ? estimatedAmountOut * (1 - (slippagePct || 0.5) / 100) : estimatedAmountOut;
+  const maxAmountIn = exactIn ? estimatedAmountIn : estimatedAmountIn * (1 + (slippagePct || 0.5) / 100);
+
+  // Calculate price
+  const price = estimatedAmountOut / estimatedAmountIn;
+  
+  // Calculate balance changes
+  const baseTokenBalanceChange = side === 'BUY' ? estimatedAmountOut : -estimatedAmountIn;
+  const quoteTokenBalanceChange = side === 'BUY' ? -estimatedAmountIn : estimatedAmountOut;
+
+  // Get gas estimate
+  const gasLimit = route.estimatedGasUsed?.toNumber() || 350000;
+  const gasPrice = await ethereum.estimateGasPrice(); // Use ethereum's estimateGasPrice method
+  const gasCost = gasPrice * gasLimit * 1e-9; // Convert to ETH
+
+  return {
+    route,
+    baseToken,
+    quoteToken,
+    inputToken,
+    outputToken,
+    inputAmount,
+    exactIn,
+    estimatedAmountIn,
+    estimatedAmountOut,
+    minAmountOut,
+    maxAmountIn,
+    price,
+    slippageTolerance, // Include this for calculations even though we don't pass it to the router
+    baseTokenBalanceChange,
+    quoteTokenBalanceChange,
+    gasPrice,
+    gasLimit,
+    gasCost
+  };
 }
 
 export const quoteSwapRoute: FastifyPluginAsync = async (fastify, _options) => {
@@ -100,7 +197,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify, _options) => {
     '/quote-swap',
     {
       schema: {
-        description: 'Get a swap quote using Uniswap V3 Swap Router',
+        description: 'Get a swap quote using Uniswap AlphaRouter',
         tags: ['uniswap'],
         querystring: {
           type: 'object',
@@ -141,128 +238,41 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify, _options) => {
           return reply.badRequest('Missing required parameters');
         }
         
-        // Get Uniswap and Ethereum instances
-        const uniswap = await Uniswap.getInstance(networkToUse);
-        const ethereum = await Ethereum.getInstance(networkToUse);
-        
-        // Resolve tokens
-        const baseToken = uniswap.getTokenBySymbol(baseTokenSymbol);
-        const quoteToken = uniswap.getTokenBySymbol(quoteTokenSymbol);
-
-        if (!baseToken || !quoteToken) {
-          logger.error(`Token not found: ${!baseToken ? baseTokenSymbol : quoteTokenSymbol}`);
-          return reply.badRequest(`Token not found: ${!baseToken ? baseTokenSymbol : quoteTokenSymbol}`);
-        }
-
-        // Determine which token is being traded
-        const exactIn = side === 'SELL';
-        const [inputToken, outputToken] = exactIn 
-          ? [baseToken, quoteToken] 
-          : [quoteToken, baseToken];
-
-        // Convert amount to token units with decimals
-        const inputAmount = CurrencyAmount.fromRawAmount(
-          inputToken,
-          JSBI.BigInt(Math.floor(amount * Math.pow(10, inputToken.decimals)).toString())
-        );
-
         try {
-          // Calculate slippage tolerance
-          const slippageTolerance = slippagePct ? 
-            new Percent(Math.floor(slippagePct * 100), 10000) : 
-            new Percent(50, 10000); // 0.5% default slippage
-          
-          // Generate a V3 Swap Router quote with enhanced logging
-          logger.info(`Generating quote for ${side} of ${amount} ${baseTokenSymbol} for ${quoteTokenSymbol} on ${networkToUse}`);
-          
-          const route = await getV3SwapRouterQuote(
-            ethereum,
-            inputToken,
-            outputToken,
-            inputAmount,
-            exactIn,
-            slippageTolerance
+          // Use our shared quote function
+          const quoteResult = await getUniswapQuote(
+            fastify,
+            networkToUse,
+            baseTokenSymbol,
+            quoteTokenSymbol,
+            amount,
+            side as 'BUY' | 'SELL',
+            slippagePct
           );
-
-          // Calculate estimated amounts
-          const estimatedAmountIn = Number(formatTokenAmount(
-            exactIn ? inputAmount.quotient.toString() : route.quote.quotient.toString(),
-            inputToken.decimals
-          ));
           
-          const estimatedAmountOut = Number(formatTokenAmount(
-            exactIn ? route.quote.quotient.toString() : inputAmount.quotient.toString(),
-            outputToken.decimals
-          ));
-
-          // Calculate min/max values with slippage
-          const slippageNumber = slippagePct ? slippagePct / 100 : 0.005; // 0.5% default
-          const minAmountOut = exactIn ? 
-            estimatedAmountOut * (1 - slippageNumber) : 
-            estimatedAmountOut;
-          
-          const maxAmountIn = exactIn ? 
-            estimatedAmountIn : 
-            estimatedAmountIn * (1 + slippageNumber);
-
-          // Calculate price
-          const price = estimatedAmountOut / estimatedAmountIn;
-          
-          // Get gas estimate (default value if not available)
-          const gasLimit = route.estimatedGasUsed?.toNumber() || 500000; // Universal Router typically needs more gas
-          const gasPriceWei = await ethereum.provider.getGasPrice();
-          const gasPrice = parseFloat(ethers.utils.formatUnits(gasPriceWei, 'gwei'));
-          const gasCost = gasPrice * gasLimit * 1e-9; // Convert to ETH
-
-          // Prepare balance changes
-          const baseTokenBalanceChange = side === 'BUY' ? estimatedAmountOut : -estimatedAmountIn;
-          const quoteTokenBalanceChange = side === 'BUY' ? -estimatedAmountIn : estimatedAmountOut;
-
-          // Store route in app state for later use in execute-swap
-          // This gets cached for a brief period to be used by execute-swap
-          const cacheKey = `${networkToUse}-${baseTokenSymbol}-${quoteTokenSymbol}-${amount}-${side}`;
-          const cacheObj = {
-            route,
-            timestamp: Date.now(),
-            // Cache expires after 2 minutes
-            expiresAt: Date.now() + 120000
-          };
-          
-          // Check if decoration already exists
-          const decoratorKey = `uniswapRouteCache_${cacheKey}`;
-          try {
-            if (fastify.hasDecorator(decoratorKey)) {
-              // If it exists, update it
-              fastify[decoratorKey] = cacheObj;
-              logger.info(`Updated cached route for key: ${cacheKey}`);
-            } else {
-              // Otherwise create it
-              fastify.decorate(decoratorKey, cacheObj);
-              logger.info(`Created new cached route for key: ${cacheKey}`);
-            }
-          } catch (error) {
-            // Handle any decorator errors
-            logger.warn(`Failed to cache route, will regenerate in execute: ${error.message}`);
-          }
-
-          // Log success
-          logger.info(`Generated quote successfully for ${side} of ${amount} ${baseTokenSymbol} for ${quoteTokenSymbol}`);
-          logger.info(`Estimated price: ${price}, min amount out: ${minAmountOut}, gas: ${gasLimit}`);
-
+          // Return only the data needed for the API response
           return {
-            estimatedAmountIn,
-            estimatedAmountOut,
-            minAmountOut,
-            maxAmountIn,
-            price,
-            baseTokenBalanceChange,
-            quoteTokenBalanceChange,
-            gasPrice,
-            gasLimit,
-            gasCost
+            estimatedAmountIn: quoteResult.estimatedAmountIn,
+            estimatedAmountOut: quoteResult.estimatedAmountOut,
+            minAmountOut: quoteResult.minAmountOut,
+            maxAmountIn: quoteResult.maxAmountIn,
+            price: quoteResult.price,
+            baseTokenBalanceChange: quoteResult.baseTokenBalanceChange,
+            quoteTokenBalanceChange: quoteResult.quoteTokenBalanceChange,
+            gasPrice: quoteResult.gasPrice,
+            gasLimit: quoteResult.gasLimit,
+            gasCost: quoteResult.gasCost
           };
         } catch (error) {
+          // If the error already has a status code, it's a Fastify HTTP error
+          if (error.statusCode) {
+            throw error;
+          }
+          
           logger.error(`Router error: ${error.message}`);
+          if (error.stack) {
+            logger.debug(`Error stack: ${error.stack}`);
+          }
           return reply.badRequest(`Failed to get quote with router: ${error.message}`);
         }
       } catch (e) {

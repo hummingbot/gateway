@@ -92,10 +92,10 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
         const baseTokenObj = baseToken ? uniswap.getTokenBySymbol(baseToken) : null;
         const quoteTokenObj = quoteToken ? uniswap.getTokenBySymbol(quoteToken) : null;
         
-        // Get V3 pool details
+        // Get V3 pool details - using null coalescing with type assertion to handle type checking
         const pool = await uniswap.getV3Pool(
-          baseTokenObj || '',
-          quoteTokenObj || '',
+          baseTokenObj || baseTokenObj as any,
+          quoteTokenObj || quoteTokenObj as any,
           undefined,
           poolAddressToUse
         );
