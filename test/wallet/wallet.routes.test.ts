@@ -159,6 +159,8 @@ describe('GET /wallet', () => {
       .filter((wallet) => wallet.chain === 'ethereum')
       .map((wallet) => wallet.walletAddresses);
 
-    expect(addresses[0]).toContain(twoAddress);
+    // Use case-insensitive comparison for Ethereum addresses
+    const lowerCaseAddresses = addresses[0].map(addr => addr.toLowerCase());
+    expect(lowerCaseAddresses).toContain(twoAddress.toLowerCase());
   });
 });
