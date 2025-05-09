@@ -10,7 +10,7 @@ export const updateConfigRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Update a specific configuration value by its path',
-        tags: ['config'],
+        tags: ['system'],
         body: {
           ...ConfigUpdateRequestSchema,
           examples: [{

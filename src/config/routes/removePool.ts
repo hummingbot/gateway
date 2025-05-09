@@ -10,7 +10,7 @@ export const removePoolRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Remove a default pool for a specific connector',
-        tags: ['config'],
+        tags: ['system'],
         body: Type.Object({
           connector: Type.String({
             description: 'Connector name (e.g., raydium/amm, raydium/clmm)',

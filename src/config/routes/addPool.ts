@@ -9,7 +9,7 @@ export const addPoolRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Add a default pool for a specific connector',
-        tags: ['config'],
+        tags: ['system'],
         body: DefaultPoolRequestSchema,
         response: {
           200: DefaultPoolResponseSchema

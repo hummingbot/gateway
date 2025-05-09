@@ -13,7 +13,7 @@ export const getPoolsRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Get default pools for a specific connector',
-        tags: ['config'],
+        tags: ['system'],
         querystring: PoolsQuerySchema,
         response: {
           200: Type.Record(
