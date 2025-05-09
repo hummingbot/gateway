@@ -75,8 +75,7 @@ export class Jupiter {
     slippagePct?: number,
     onlyDirectRoutes: boolean = false,
     asLegacyTransaction: boolean = false,
-    swapMode: 'ExactIn' | 'ExactOut' = 'ExactIn',
-    poolAddress?: string,
+    swapMode: 'ExactIn' | 'ExactOut' = 'ExactIn'
   ): Promise<QuoteResponse> {
     const inputToken = await this.solana.getToken(inputTokenIdentifier);
     const outputToken = await this.solana.getToken(outputTokenIdentifier);
@@ -102,13 +101,7 @@ export class Jupiter {
       restrictIntermediateTokens: false, // Allow routing through all tokens
     };
     
-    // If a specific pool is requested, we can use directMarketRouteOnly
-    // Note: Jupiter doesn't support specific pool routing directly, but we can
-    // optimize for direct routes if a pool address is specified
-    if (poolAddress) {
-      params.onlyDirectRoutes = true;
-      // We could also add more constraints here if Jupiter API adds support for specific pools
-    }
+    // Jupiter doesn't support specific pool routing like Uniswap
 
     logger.debug(`Getting Jupiter quote for ${inputToken.symbol} to ${outputToken.symbol}`);
     

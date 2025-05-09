@@ -12,8 +12,7 @@ export async function getJupiterQuote(
   quoteToken: string,
   amount: number,
   side: 'BUY' | 'SELL',
-  slippagePct?: number,
-  poolAddress?: string
+  slippagePct?: number
 ) {
   const solana = await Solana.getInstance(network);
   const jupiter = await Jupiter.getInstance(network);
@@ -36,8 +35,7 @@ export async function getJupiterQuote(
       slippagePct,
       false, // onlyDirectRoutes
       false, // asLegacyTransaction
-      tradeSide === 'BUY' ? 'ExactOut' : 'ExactIn',
-      poolAddress  // Pass the poolAddress parameter
+      tradeSide === 'BUY' ? 'ExactOut' : 'ExactIn'
     );
 
     const baseAmount = tradeSide === 'BUY'
@@ -84,7 +82,6 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
             amount: { type: 'number', examples: [0.01] },
             side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
             slippagePct: { type: 'number', examples: [1] },
-            poolAddress: { type: 'string', examples: ['jupiter-aggregator'] }
           },
           required: ['baseToken', 'quoteToken', 'amount', 'side']
         },
@@ -109,24 +106,16 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
       }
     },
     async (request) => {
-      const { network, baseToken, quoteToken, amount, side, slippagePct, poolAddress } = request.query;
+      const { network, baseToken, quoteToken, amount, side, slippagePct } = request.query;
       const networkToUse = network || 'mainnet-beta';
-      
-      // For Jupiter, same token pair rules apply:
-      // 1. If poolAddress is provided, use it to identify the specific market
-      // 2. If only baseToken/quoteToken are provided, use default routing
-      
+
       // Verify we have the needed parameters
       if (!baseToken || !quoteToken) {
         throw fastify.httpErrors.badRequest('baseToken and quoteToken are required');
       }
-      
+
       // Log the operation
-      if (poolAddress) {
-        logger.debug(`Getting Jupiter quote for ${baseToken}-${quoteToken} with pool: ${poolAddress}`);
-      } else {
-        logger.debug(`Getting Jupiter quote for ${baseToken}-${quoteToken} with default routing`);
-      }
+      logger.debug(`Getting Jupiter quote for ${baseToken}-${quoteToken} with default routing`);
       
       // Get the quote
       const quote = await getJupiterQuote(
@@ -136,8 +125,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         quoteToken,
         amount,
         side as 'BUY' | 'SELL',
-        slippagePct,
-        poolAddress
+        slippagePct
       );
 
       // Get gas estimation
