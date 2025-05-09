@@ -1,33 +1,19 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { Ethereum } from '../ethereum';
 import { logger } from '../../../services/logger';
-import { PollRequestType, PollResponseType, PollRequestSchema, PollResponseSchema } from '../../../schemas/chain-schema';
+import {
+  PollRequestType,
+  PollResponseType,
+  PollRequestSchema,
+  PollResponseSchema,
+} from '../../../schemas/chain-schema';
 import { getConnector } from '../../../services/connection-manager';
 import { ethers } from 'ethers';
 
-// TransactionReceipt from ethers uses BigNumber which is not easy to interpret directly from JSON.
-// Transform those BigNumbers to string and pass the rest of the data without changes.
-const toEthereumTransactionReceipt = (
-  receipt: ethers.providers.TransactionReceipt | null
-) => {
-  if (receipt) {
-    let effectiveGasPrice = null;
-    if (receipt.effectiveGasPrice) {
-      effectiveGasPrice = receipt.effectiveGasPrice.toString();
-    }
-    return {
-      ...receipt,
-      gasUsed: receipt.gasUsed.toString(),
-      cumulativeGasUsed: receipt.cumulativeGasUsed.toString(),
-      effectiveGasPrice,
-    };
-  }
-
-  return null;
-};
+// Helper function for transaction response formatting
 
 const toEthereumTransactionResponse = (
-  response: ethers.providers.TransactionResponse | null
+  response: ethers.providers.TransactionResponse | null,
 ) => {
   if (response) {
     let gasPrice = null;
@@ -49,11 +35,11 @@ export async function pollEthereumTransaction(
   fastify: FastifyInstance,
   network: string,
   txHash: string,
-  connector?: string
+  connector?: string,
 ): Promise<PollResponseType> {
   try {
     const ethereum = await Ethereum.getInstance(network);
-    
+
     const currentBlock = await ethereum.getCurrentBlockNumber();
     let txData = await ethereum.getTransaction(txHash);
     let txBlock, txReceipt, txStatus;
@@ -63,7 +49,7 @@ export async function pollEthereumTransaction(
       let retryCount = 0;
 
       while (retryCount < MAX_RETRIES) {
-        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+        await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
         txData = await ethereum.getTransaction(txHash);
         if (txData) break;
         retryCount++;
@@ -71,7 +57,9 @@ export async function pollEthereumTransaction(
 
       if (!txData) {
         // tx not found after retries
-        logger.info(`Transaction ${txHash} not found in mempool or does not exist after ${MAX_RETRIES} retries.`);
+        logger.info(
+          `Transaction ${txHash} not found in mempool or does not exist after ${MAX_RETRIES} retries.`,
+        );
         txBlock = -1;
         txReceipt = null;
         txStatus = -1;
@@ -84,11 +72,11 @@ export async function pollEthereumTransaction(
         // tx is in the mempool
         txBlock = -1;
         txReceipt = null;
-        
+
         // In stateless approach, we simply check if the transaction is still pending
         // We use a basic status code of 0 for pending transactions in mempool
         txStatus = 0;
-        
+
         // Check if transaction is likely to be processed based on gas price
         if (txData.gasPrice) {
           const currentGasPrice = await ethereum.estimateGasPrice();
@@ -113,22 +101,24 @@ export async function pollEthereumTransaction(
             const connectorInstance: any = await getConnector(
               'ethereum',
               network,
-              connector
+              connector,
             );
 
-            txReceipt.logs = connectorInstance.abiDecoder?.decodeLogs(txReceipt.logs);
+            txReceipt.logs = connectorInstance.abiDecoder?.decodeLogs(
+              txReceipt.logs,
+            );
           } catch (e) {
             logger.error(`Error with connector: ${e.message}`);
-            throw fastify.httpErrors.internalServerError(`Failed to decode logs: ${e.message}`);
+            throw fastify.httpErrors.internalServerError(
+              `Failed to decode logs: ${e.message}`,
+            );
           }
         }
       }
     }
 
-    logger.info(
-      `Poll ethereum, txHash ${txHash}, status ${txStatus}.`
-    );
-    
+    logger.info(`Poll ethereum, txHash ${txHash}, status ${txStatus}.`);
+
     return {
       currentBlock,
       txHash,
@@ -142,7 +132,9 @@ export async function pollEthereumTransaction(
       throw error; // Re-throw if it's already a Fastify error
     }
     logger.error(`Error polling transaction: ${error.message}`);
-    throw fastify.httpErrors.internalServerError(`Failed to poll transaction: ${error.message}`);
+    throw fastify.httpErrors.internalServerError(
+      `Failed to poll transaction: ${error.message}`,
+    );
   }
 }
 
@@ -160,19 +152,35 @@ export const pollRoute: FastifyPluginAsync = async (fastify) => {
           ...PollRequestSchema,
           properties: {
             ...PollRequestSchema.properties,
-            network: { type: 'string', examples: ['base', 'mainnet', 'sepolia', 'polygon'] },
+            network: {
+              type: 'string',
+              examples: [
+                'mainnet',
+                'arbitrum',
+                'optimism',
+                'base',
+                'sepolia',
+                'bsc',
+                'avalanche',
+                'celo',
+                'polygon',
+                'blast',
+                'zora',
+                'worldchain',
+              ],
+            },
             txHash: { type: 'string', examples: ['0x123...'] },
-          }
+          },
         },
         response: {
-          200: PollResponseSchema
-        }
-      }
+          200: PollResponseSchema,
+        },
+      },
     },
     async (request) => {
       const { network, txHash } = request.body;
       return await pollEthereumTransaction(fastify, network, txHash);
-    }
+    },
   );
 };
 

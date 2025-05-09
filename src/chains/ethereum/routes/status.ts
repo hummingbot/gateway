@@ -1,17 +1,22 @@
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 import { Ethereum } from '../ethereum';
 import { logger } from '../../../services/logger';
-import { StatusRequestType, StatusResponseType, StatusRequestSchema, StatusResponseSchema } from '../../../schemas/chain-schema';
+import {
+  StatusRequestType,
+  StatusResponseType,
+  StatusRequestSchema,
+  StatusResponseSchema,
+} from '../../../schemas/chain-schema';
 
 export async function getEthereumStatus(
-  network: string
+  network: string,
 ): Promise<StatusResponseType> {
   try {
     const ethereum = await Ethereum.getInstance(network);
     const chain = 'ethereum';
     const rpcUrl = ethereum.rpcUrl;
     const nativeCurrency = ethereum.nativeTokenSymbol;
-    
+
     // Directly try to get the current block number with a timeout
     let currentBlockNumber = 0;
     try {
@@ -20,20 +25,20 @@ export async function getEthereumStatus(
       const timeoutPromise = new Promise<number>((_, reject) => {
         setTimeout(() => reject(new Error('Request timed out')), 5000);
       });
-      
+
       // Race the block request against the timeout
       currentBlockNumber = await Promise.race([blockPromise, timeoutPromise]);
     } catch (blockError) {
       logger.warn(`Failed to get block number: ${blockError.message}`);
       // Continue with default block number
     }
-    
+
     return {
       chain,
       network,
       rpcUrl,
       currentBlockNumber,
-      nativeCurrency
+      nativeCurrency,
     };
   } catch (error) {
     logger.error(`Error getting Ethereum status: ${error.message}`);
@@ -55,13 +60,29 @@ export const statusRoute: FastifyPluginAsync = async (fastify) => {
           ...StatusRequestSchema,
           properties: {
             ...StatusRequestSchema.properties,
-            network: { type: 'string', examples: ['base', 'mainnet', 'sepolia', 'polygon'] }
-          }
+            network: {
+              type: 'string',
+              examples: [
+                'mainnet',
+                'arbitrum',
+                'optimism',
+                'base',
+                'sepolia',
+                'bsc',
+                'avalanche',
+                'celo',
+                'polygon',
+                'blast',
+                'zora',
+                'worldchain',
+              ],
+            },
+          },
         },
         response: {
-          200: StatusResponseSchema
-        }
-      }
+          200: StatusResponseSchema,
+        },
+      },
     },
     async (request, reply) => {
       const { network } = request.query;
@@ -81,7 +102,7 @@ export const statusRoute: FastifyPluginAsync = async (fastify) => {
           nativeCurrency: 'ETH',
         };
       }
-    }
+    },
   );
 };
 

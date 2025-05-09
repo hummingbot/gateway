@@ -2,13 +2,16 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { Type } from '@sinclair/typebox';
 import { Ethereum } from '../ethereum';
 import { logger } from '../../../services/logger';
-import { AllowancesRequestType, AllowancesResponseType } from '../../../schemas/chain-schema';
+import {
+  AllowancesRequestType,
+  AllowancesResponseType,
+} from '../../../schemas/chain-schema';
 import { TokenInfo } from '../ethereum';
 import { tokenValueToString } from '../../../services/base';
 
 export async function getTokensToTokenInfo(
   ethereum: Ethereum,
-  tokens: Array<string>
+  tokens: Array<string>,
 ): Promise<Record<string, TokenInfo>> {
   const tokenInfoMap: Record<string, TokenInfo> = {};
 
@@ -29,14 +32,14 @@ export async function getEthereumAllowances(
   network: string,
   address: string,
   spenderAddress: string,
-  tokens: string[]
+  tokens: string[],
 ) {
   try {
     const ethereum = await Ethereum.getInstance(network);
     await ethereum.init();
     const wallet = await ethereum.getWallet(address);
     const tokenInfoMap = await getTokensToTokenInfo(ethereum, tokens);
-    
+
     // Check if any tokens were not found and create a helpful error message
     const foundSymbols = Object.keys(tokenInfoMap);
     if (foundSymbols.length === 0) {
@@ -44,14 +47,16 @@ export async function getEthereumAllowances(
       logger.error(errorMsg);
       throw fastify.httpErrors.badRequest(errorMsg);
     }
-    
-    const missingTokens = tokens.filter((t) => 
-      !Object.values(tokenInfoMap).some((token) => 
-        token.symbol.toUpperCase() === t.toUpperCase() || 
-        token.address.toLowerCase() === t.toLowerCase()
-      )
+
+    const missingTokens = tokens.filter(
+      (t) =>
+        !Object.values(tokenInfoMap).some(
+          (token) =>
+            token.symbol.toUpperCase() === t.toUpperCase() ||
+            token.address.toLowerCase() === t.toLowerCase(),
+        ),
     );
-    
+
     if (missingTokens.length > 0) {
       logger.warn(`Some tokens were not found: ${missingTokens.join(', ')}`);
     }
@@ -61,17 +66,17 @@ export async function getEthereumAllowances(
       Object.keys(tokenInfoMap).map(async (symbol) => {
         const contract = ethereum.getContract(
           tokenInfoMap[symbol].address,
-          ethereum.provider
+          ethereum.provider,
         );
         approvals[symbol] = tokenValueToString(
           await ethereum.getERC20Allowance(
             contract,
             wallet,
             spenderAddress,
-            tokenInfoMap[symbol].decimals
-          )
+            tokenInfoMap[symbol].decimals,
+          ),
         );
-      })
+      }),
     );
 
     return {
@@ -83,7 +88,9 @@ export async function getEthereumAllowances(
     if (error.statusCode === 400) {
       throw error; // Rethrow badRequest errors
     }
-    throw fastify.httpErrors.internalServerError(`Failed to get allowances: ${error.message}`);
+    throw fastify.httpErrors.internalServerError(
+      `Failed to get allowances: ${error.message}`,
+    );
   }
 }
 
@@ -91,9 +98,10 @@ export const allowancesRoute: FastifyPluginAsync = async (fastify) => {
   // Get first wallet address for example
   const ethereum = await Ethereum.getInstance('base');
   let firstWalletAddress = '<ethereum-wallet-address>';
-  
+
   try {
-    firstWalletAddress = await ethereum.getFirstWalletAddress() || firstWalletAddress;
+    firstWalletAddress =
+      (await ethereum.getFirstWalletAddress()) || firstWalletAddress;
   } catch (error) {
     logger.warn('No wallets found for examples in schema');
   }
@@ -108,29 +116,46 @@ export const allowancesRoute: FastifyPluginAsync = async (fastify) => {
         description: 'Get token allowances',
         tags: ['ethereum'],
         body: Type.Object({
-          network: Type.String({ examples: ['base', 'mainnet', 'sepolia', 'polygon'] }),
+          network: Type.String({
+            examples: [
+              'mainnet',
+              'arbitrum',
+              'optimism',
+              'base',
+              'sepolia',
+              'bsc',
+              'avalanche',
+              'celo',
+              'polygon',
+              'blast',
+              'zora',
+              'worldchain',
+            ],
+          }),
           address: Type.String({ examples: [firstWalletAddress] }),
-          spenderAddress: Type.String({ examples: ['0xC36442b4a4522E871399CD717aBDD847Ab11FE88'] }),
-          tokens: Type.Array(Type.String(), { examples: [['USDC', 'DAI']] })
+          spenderAddress: Type.String({
+            examples: ['0xC36442b4a4522E871399CD717aBDD847Ab11FE88'],
+          }),
+          tokens: Type.Array(Type.String(), { examples: [['USDC', 'DAI']] }),
         }),
         response: {
           200: Type.Object({
             spender: Type.String(),
-            approvals: Type.Record(Type.String(), Type.String())
-          })
-        }
-      }
+            approvals: Type.Record(Type.String(), Type.String()),
+          }),
+        },
+      },
     },
     async (request) => {
       const { network, address, spenderAddress, tokens } = request.body;
       return await getEthereumAllowances(
-        fastify, 
-        network, 
-        address, 
-        spenderAddress, 
-        tokens
+        fastify,
+        network,
+        address,
+        spenderAddress,
+        tokens,
       );
-    }
+    },
   );
 };
 

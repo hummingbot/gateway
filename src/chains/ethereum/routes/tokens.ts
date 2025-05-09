@@ -1,32 +1,37 @@
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 import { Ethereum } from '../ethereum';
 import { logger } from '../../../services/logger';
-import { TokensRequestType, TokensResponseType, TokensRequestSchema, TokensResponseSchema } from '../../../schemas/chain-schema';
+import {
+  TokensRequestType,
+  TokensResponseType,
+  TokensRequestSchema,
+  TokensResponseSchema,
+} from '../../../schemas/chain-schema';
 
 export async function getEthereumTokens(
   network: string,
-  tokenSymbols?: string[] | string
+  tokenSymbols?: string[] | string,
 ): Promise<TokensResponseType> {
   try {
     const ethereum = await Ethereum.getInstance(network);
     await ethereum.init();
-    
+
     let tokens = [];
     if (!tokenSymbols) {
       tokens = ethereum.storedTokenList;
     } else {
-      const symbolsArray = Array.isArray(tokenSymbols) 
-        ? tokenSymbols 
+      const symbolsArray = Array.isArray(tokenSymbols)
+        ? tokenSymbols
         : typeof tokenSymbols === 'string'
-          ? (tokenSymbols as string).replace(/[\[\]]/g, '').split(',')
+          ? (tokenSymbols as string).replace(/[[\]]/g, '').split(',')
           : [];
-          
+
       for (const symbol of symbolsArray) {
         const token = ethereum.getTokenBySymbol(symbol.trim());
         if (token) tokens.push(token);
       }
     }
-    
+
     return { tokens };
   } catch (error) {
     logger.error(`Error getting Ethereum tokens: ${error.message}`);
@@ -48,24 +53,42 @@ export const tokensRoute: FastifyPluginAsync = async (fastify) => {
           ...TokensRequestSchema,
           properties: {
             ...TokensRequestSchema.properties,
-            network: { type: 'string', examples: ['base', 'mainnet', 'sepolia', 'polygon'] }
-          }
+            network: {
+              type: 'string',
+              examples: [
+                'mainnet',
+                'arbitrum',
+                'optimism',
+                'base',
+                'sepolia',
+                'bsc',
+                'avalanche',
+                'celo',
+                'polygon',
+                'blast',
+                'zora',
+                'worldchain',
+              ],
+            },
+          },
         },
         response: {
-          200: TokensResponseSchema
-        }
-      }
+          200: TokensResponseSchema,
+        },
+      },
     },
     async (request, reply) => {
       const { network, tokenSymbols } = request.query;
       try {
         return await getEthereumTokens(network, tokenSymbols);
       } catch (error) {
-        logger.error(`Error handling Ethereum tokens request: ${error.message}`);
+        logger.error(
+          `Error handling Ethereum tokens request: ${error.message}`,
+        );
         reply.status(500);
         return { tokens: [] };
       }
-    }
+    },
   );
 };
 
