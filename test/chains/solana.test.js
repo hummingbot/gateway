@@ -79,16 +79,16 @@ describe('Solana Chain Tests (Mainnet Beta)', () => {
   });
   
   describe('Balance Endpoint', () => {
-    test('returns and validates wallet balances', async () => {
+    test('returns and validates wallet balances with token symbols', async () => {
       // Load mock response
       const mockResponse = loadMockResponse('balance');
-      
+
       // Setup mock axios
-      axios.get.mockResolvedValueOnce({ 
-        status: 200, 
-        data: mockResponse 
+      axios.get.mockResolvedValueOnce({
+        status: 200,
+        data: mockResponse
       });
-      
+
       // Make the request
       const response = await axios.get(`http://localhost:15888/chains/${CHAIN}/balances`, {
         params: {
@@ -97,16 +97,16 @@ describe('Solana Chain Tests (Mainnet Beta)', () => {
           tokens: ['SOL', 'USDC', 'USDT']
         }
       });
-      
+
       // Validate the response
       expect(response.status).toBe(200);
       expect(validateBalanceResponse(response.data)).toBe(true);
-      
+
       // Check expected mock values
       expect(response.data.network).toBe(NETWORK);
       expect(response.data.wallet).toBe(TEST_WALLET);
-      expect(response.data.balances).toHaveLength(3); // SOL, USDC, USDT
-      
+      expect(response.data.balances).toHaveLength(4); // SOL, USDC, USDT, and the token with abbreviated address
+
       // Verify axios was called with correct parameters
       expect(axios.get).toHaveBeenCalledWith(
         `http://localhost:15888/chains/${CHAIN}/balances`,
@@ -119,7 +119,90 @@ describe('Solana Chain Tests (Mainnet Beta)', () => {
         })
       );
     });
-    
+
+    test('returns and validates wallet balances with token addresses', async () => {
+      // Define some known Solana token addresses
+      const USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
+      const BONK_MINT = 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263';
+
+      // Load mock response
+      const mockResponse = loadMockResponse('balance');
+
+      // Setup mock axios
+      axios.get.mockResolvedValueOnce({
+        status: 200,
+        data: mockResponse
+      });
+
+      // Make the request with token addresses instead of symbols
+      const response = await axios.get(`http://localhost:15888/chains/${CHAIN}/balances`, {
+        params: {
+          network: NETWORK,
+          wallet: TEST_WALLET,
+          tokens: ['SOL', USDC_MINT, BONK_MINT]
+        }
+      });
+
+      // Validate the response
+      expect(response.status).toBe(200);
+      expect(validateBalanceResponse(response.data)).toBe(true);
+
+      // Check expected mock values
+      expect(response.data.network).toBe(NETWORK);
+      expect(response.data.wallet).toBe(TEST_WALLET);
+
+      // Verify axios was called with correct parameters
+      expect(axios.get).toHaveBeenCalledWith(
+        `http://localhost:15888/chains/${CHAIN}/balances`,
+        expect.objectContaining({
+          params: expect.objectContaining({
+            network: NETWORK,
+            wallet: TEST_WALLET,
+            tokens: ['SOL', USDC_MINT, BONK_MINT]
+          })
+        })
+      );
+    });
+
+    test('returns and validates wallet balances with mixed token symbols and addresses', async () => {
+      // Define a known Solana token address
+      const USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
+
+      // Load mock response
+      const mockResponse = loadMockResponse('balance');
+
+      // Setup mock axios
+      axios.get.mockResolvedValueOnce({
+        status: 200,
+        data: mockResponse
+      });
+
+      // Make the request with mixed token symbols and addresses
+      const response = await axios.get(`http://localhost:15888/chains/${CHAIN}/balances`, {
+        params: {
+          network: NETWORK,
+          wallet: TEST_WALLET,
+          tokens: ['SOL', 'BONK', USDC_MINT]
+        }
+      });
+
+      // Validate the response
+      expect(response.status).toBe(200);
+      expect(validateBalanceResponse(response.data)).toBe(true);
+
+      // Verify axios was called with correct parameters
+      expect(axios.get).toHaveBeenCalledWith(
+        `http://localhost:15888/chains/${CHAIN}/balances`,
+        expect.objectContaining({
+          params: expect.objectContaining({
+            network: NETWORK,
+            wallet: TEST_WALLET,
+            tokens: ['SOL', 'BONK', USDC_MINT]
+          })
+        })
+      );
+    });
+
     test('handles error response for invalid wallet', async () => {
       // Setup mock axios with error response
       axios.get.mockRejectedValueOnce({
@@ -131,7 +214,7 @@ describe('Solana Chain Tests (Mainnet Beta)', () => {
           }
         }
       });
-      
+
       // Make the request and expect it to be rejected
       await expect(
         axios.get(`http://localhost:15888/chains/${CHAIN}/balances`, {
@@ -146,6 +229,37 @@ describe('Solana Chain Tests (Mainnet Beta)', () => {
           status: 400,
           data: {
             error: 'Invalid wallet address'
+          }
+        }
+      });
+    });
+
+    test('handles error response for invalid token address', async () => {
+      // Setup mock axios with error response
+      axios.get.mockRejectedValueOnce({
+        response: {
+          status: 400,
+          data: {
+            error: 'Invalid token address format',
+            code: 400
+          }
+        }
+      });
+
+      // Make the request with an invalid token address
+      await expect(
+        axios.get(`http://localhost:15888/chains/${CHAIN}/balances`, {
+          params: {
+            network: NETWORK,
+            wallet: TEST_WALLET,
+            tokens: ['SOL', 'USDC', 'not-a-valid-address']
+          }
+        })
+      ).rejects.toMatchObject({
+        response: {
+          status: 400,
+          data: {
+            error: 'Invalid token address format'
           }
         }
       });
