@@ -284,18 +284,46 @@ export class Ethereum {
   /**
    * Get a wallet from stored encrypted key
    */
-  public async getWallet(address: string): Promise<Wallet> {
-    const path = `${walletPath}/ethereum`;
-    const encryptedPrivateKey = await fse.readFile(
-      `${path}/${address}.json`,
-      'utf8',
-    );
-
-    const passphrase = ConfigManagerCertPassphrase.readPassphrase();
-    if (!passphrase) {
-      throw new Error('Missing passphrase');
+  /**
+   * Validate Ethereum address format
+   * @param address The address to validate
+   * @returns The checksummed address if valid
+   * @throws Error if the address is invalid
+   */
+  public static validateAddress(address: string): string {
+    try {
+      // getAddress will both validate the address format and return a checksummed version
+      return getAddress(address);
+    } catch (error) {
+      throw new Error(`Invalid Ethereum address format: ${address}`);
     }
-    return await this.decrypt(encryptedPrivateKey, passphrase);
+  }
+
+  public async getWallet(address: string): Promise<Wallet> {
+    try {
+      // Validate the address format first
+      const validatedAddress = Ethereum.validateAddress(address);
+
+      const path = `${walletPath}/ethereum`;
+      const encryptedPrivateKey = await fse.readFile(
+        `${path}/${validatedAddress}.json`,
+        'utf8',
+      );
+
+      const passphrase = ConfigManagerCertPassphrase.readPassphrase();
+      if (!passphrase) {
+        throw new Error('Missing passphrase');
+      }
+      return await this.decrypt(encryptedPrivateKey, passphrase);
+    } catch (error) {
+      if (error.message.includes('Invalid Ethereum address')) {
+        throw error; // Re-throw validation errors
+      }
+      if (error.code === 'ENOENT') {
+        throw new Error(`Wallet not found for address: ${address}`);
+      }
+      throw error;
+    }
   }
 
   /**

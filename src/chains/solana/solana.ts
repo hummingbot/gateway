@@ -204,21 +204,56 @@ export class Solana {
     return Keypair.fromSecretKey(new Uint8Array(decoded));
   }
 
-  async getWallet(address: string): Promise<Keypair> {
-    const path = `${walletPath}/solana`;
+  /**
+   * Validate Solana address format
+   * @param address The address to validate
+   * @returns The address if valid
+   * @throws Error if the address is invalid
+   */
+  public static validateAddress(address: string): string {
+    try {
+      // Check if address can be parsed as a public key
+      new PublicKey(address);
 
-    const encryptedPrivateKey: string = await fse.readFile(
-      `${path}/${address}.json`,
-      'utf8'
-    );
+      // Additional check for proper length
+      if (address.length < 32 || address.length > 44) {
+        throw new Error('Invalid address length');
+      }
 
-    const passphrase = ConfigManagerCertPassphrase.readPassphrase();
-    if (!passphrase) {
-      throw new Error('missing passphrase');
+      return address;
+    } catch (error) {
+      throw new Error(`Invalid Solana address format: ${address}`);
     }
-    const decrypted = await this.decrypt(encryptedPrivateKey, passphrase);
+  }
 
-    return Keypair.fromSecretKey(new Uint8Array(bs58.decode(decrypted)));
+  async getWallet(address: string): Promise<Keypair> {
+    try {
+      // Validate the address format first
+      const validatedAddress = Solana.validateAddress(address);
+
+      const path = `${walletPath}/solana`;
+
+      const encryptedPrivateKey: string = await fse.readFile(
+        `${path}/${validatedAddress}.json`,
+        'utf8'
+      );
+
+      const passphrase = ConfigManagerCertPassphrase.readPassphrase();
+      if (!passphrase) {
+        throw new Error('missing passphrase');
+      }
+      const decrypted = await this.decrypt(encryptedPrivateKey, passphrase);
+
+      return Keypair.fromSecretKey(new Uint8Array(bs58.decode(decrypted)));
+    } catch (error) {
+      if (error.message.includes('Invalid Solana address')) {
+        throw error; // Re-throw validation errors
+      }
+      if (error.code === 'ENOENT') {
+        throw new Error(`Wallet not found for address: ${address}`);
+      }
+      throw error;
+    }
   }
 
   async encrypt(secret: string, password: string): Promise<string> {
