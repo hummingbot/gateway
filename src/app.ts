@@ -52,24 +52,22 @@ const swaggerOptions = {
       },
     ],
     tags: [
-      // System categories
-      { name: '/config', description: 'Configuration management endpoints' },
-      { name: '/wallet', description: 'Wallet management endpoints' },
+      // Main categories
+      { name: 'system', description: 'System configuration endpoints' },
+      { name: 'wallet', description: 'Wallet management endpoints' },
 
-      // Chains 
-      { name: '/chains/', description: 'Available chains and networks' },
-      { name: '/chains/solana', description: 'Solana chain endpoints' },
-      { name: '/chains/ethereum', description: 'Ethereum chain endpoints' },
+      // Chains
+      { name: 'solana', description: 'Solana chain endpoints' },
+      { name: 'ethereum', description: 'Ethereum chain endpoints' },
 
       // Connectors
-      { name: '/connectors/', description: 'Available connectors' },
-      { name: '/connectors/jupiter', description: 'Jupiter DEX aggregator (Solana)' },
-      { name: '/connectors/raydium/amm', description: 'Raydium Standard pool connector (Solana)' },
-      { name: '/connectors/raydium/clmm', description: 'Raydium Concentrated pool connector (Solana)' },
-      { name: '/connectors/meteora/clmm', description: 'Meteora DLMM pool connector (Solana)' },
-      { name: '/connectors/uniswap', description: 'Uniswap router connector (Ethereum mainnet)' },
-      { name: '/connectors/uniswap/amm', description: 'Uniswap V2 pool connector (Ethereum)' },
-      { name: '/connectors/uniswap/clmm', description: 'Uniswap V3 pool connector (Ethereum)' },      
+      { name: 'jupiter', description: 'Jupiter DEX aggregator (Solana)' },
+      { name: 'raydium/amm', description: 'Raydium Standard pool connector (Solana)' },
+      { name: 'raydium/clmm', description: 'Raydium Concentrated pool connector (Solana)' },
+      { name: 'meteora/clmm', description: 'Meteora DLMM pool connector (Solana)' },
+      { name: 'uniswap', description: 'Uniswap router connector (Ethereum mainnet)' },
+      { name: 'uniswap/amm', description: 'Uniswap V2 pool connector (Ethereum)' },
+      { name: 'uniswap/clmm', description: 'Uniswap V3 pool connector (Ethereum)' },      
     ],
     components: {
       parameters: {

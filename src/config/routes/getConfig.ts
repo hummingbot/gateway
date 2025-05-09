@@ -9,7 +9,7 @@ export const getConfigRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Get configuration settings. Returns all configurations if no chain/connector is specified.',
-        tags: ['config'],
+        tags: ['system'],
         querystring: ConfigQuerySchema,
         response: {
           200: {

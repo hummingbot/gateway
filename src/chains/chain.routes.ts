@@ -24,7 +24,7 @@ export const chainRoutes: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Returns a list of available blockchain networks supported by Gateway.',
-        tags: ['chains'],
+        tags: ['system'],
         response: {
           200: ChainsResponseSchema
         }

@@ -33,7 +33,7 @@ export const connectorsRoutes: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Returns a list of available DEX connectors and their supported blockchain networks.',
-        tags: ['connectors'],
+        tags: ['system'],
         response: {
           200: ConnectorsResponseSchema
         }
