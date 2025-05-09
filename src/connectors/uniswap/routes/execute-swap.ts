@@ -46,7 +46,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify, _options) =>
     {
       schema: {
         description: 'Execute a swap using Uniswap V3 Smart Order Router (mainnet only)',
-        tags: ['uniswap'],
+        tags: ['/connectors/uniswap'],
         body: {
           type: 'object',
           properties: {

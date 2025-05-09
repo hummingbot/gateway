@@ -52,22 +52,24 @@ const swaggerOptions = {
       },
     ],
     tags: [
-      // Main chain categories
-      { name: 'ethereum', description: 'Ethereum blockchain and its connectors' },
-      { name: 'solana', description: 'Solana blockchain and its connectors' },
-      { name: 'system', description: 'System configuration and wallet endpoints' },
-
-      // Ethereum connectors 
-      { name: 'uniswap', description: 'Uniswap DEX connector (Ethereum)' },
-      
-      // Solana connectors
-      { name: 'jupiter', description: 'Jupiter DEX aggregator (Solana)' },
-      { name: 'raydium', description: 'Raydium DEX connector (Solana)' },
-      { name: 'meteora', description: 'Meteora DEX connector (Solana)' },
-      
       // System categories
-      { name: 'config', description: 'Configuration management endpoints' },
-      { name: 'wallet', description: 'Wallet management endpoints' },
+      { name: '/config', description: 'Configuration management endpoints' },
+      { name: '/wallet', description: 'Wallet management endpoints' },
+
+      // Chains 
+      { name: '/chains/', description: 'Available chains and networks' },
+      { name: '/chains/solana', description: 'Solana chain endpoints' },
+      { name: '/chains/ethereum', description: 'Ethereum chain endpoints' },
+
+      // Connectors
+      { name: '/connectors/', description: 'Available connectors' },
+      { name: '/connectors/jupiter', description: 'Jupiter DEX aggregator (Solana)' },
+      { name: '/connectors/raydium/amm', description: 'Raydium Standard pool connector (Solana)' },
+      { name: '/connectors/raydium/clmm', description: 'Raydium Concentrated pool connector (Solana)' },
+      { name: '/connectors/meteora/clmm', description: 'Meteora DLMM pool connector (Solana)' },
+      { name: '/connectors/uniswap', description: 'Uniswap router connector (Ethereum mainnet)' },
+      { name: '/connectors/uniswap/amm', description: 'Uniswap V2 pool connector (Ethereum)' },
+      { name: '/connectors/uniswap/clmm', description: 'Uniswap V3 pool connector (Ethereum)' },      
     ],
     components: {
       parameters: {
