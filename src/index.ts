@@ -2,6 +2,19 @@
 
 import { run } from '@oclif/core';
 import { startGateway } from './app';
+import { setGlobalDispatcher, ProxyAgent } from 'undici';
+
+export function setupProxy() {
+  const proxy = process.env.HTTP_PROXY || process.env.http_proxy;
+  if (proxy) {
+    const dispatcher = new ProxyAgent(proxy);
+    setGlobalDispatcher(dispatcher);
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+    console.log(`[proxy] Enabled HTTP_PROXY=${proxy}`);
+  }
+}
+
+setupProxy();
 
 export const asciiLogo = `
 ╔██████╗  █████╗ ████████╗███████╗██╗    ██╗ █████╗ ██╗   ██╗
