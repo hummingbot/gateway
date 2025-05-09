@@ -29,7 +29,7 @@ import {
 } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID, unpackAccount, getMint, programSupportsExtensions } from "@solana/spl-token";
 
-import { walletPath } from '../../wallet/utils';
+import { walletPath, getSafeWalletFilePath, sanitizePathComponent } from '../../wallet/utils';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { logger } from '../../services/logger';
 import { TokenListResolutionStrategy } from '../../services/token-list-resolution';
@@ -231,10 +231,12 @@ export class Solana {
       // Validate the address format first
       const validatedAddress = Solana.validateAddress(address);
 
-      const path = `${walletPath}/solana`;
+      // Use the safe wallet file path utility to prevent path injection
+      const safeWalletPath = getSafeWalletFilePath('solana', validatedAddress);
 
+      // Read the wallet file using the safe path
       const encryptedPrivateKey: string = await fse.readFile(
-        `${path}/${validatedAddress}.json`,
+        safeWalletPath,
         'utf8'
       );
 
@@ -1070,7 +1072,8 @@ export class Solana {
   // Add new method to get first wallet address
   public async getFirstWalletAddress(): Promise<string | null> {
     // Specifically look in the solana subdirectory, not in any other chain's directory
-    const path = `${walletPath}/solana`;
+    const safeChain = sanitizePathComponent('solana');
+    const path = `${walletPath}/${safeChain}`;
     try {
       // Create directory if it doesn't exist
       await fse.ensureDir(path);
@@ -1083,17 +1086,16 @@ export class Solana {
         return null;
       }
 
-      // Return first wallet address (without .json extension)
+      // Get the first wallet address (without .json extension)
       const walletAddress = walletFiles[0].slice(0, -5);
 
-      // Validate it looks like a Solana address (not an Ethereum address)
-      // Solana addresses don't start with 0x and are typically 32-44 chars
-      if (walletAddress.startsWith('0x') || walletAddress.length < 32 || walletAddress.length > 44) {
+      try {
+        // Attempt to validate the address
+        return Solana.validateAddress(walletAddress);
+      } catch (e) {
         logger.warn(`Invalid Solana address found in wallet directory: ${walletAddress}`);
         return null;
       }
-
-      return walletAddress;
     } catch (error) {
       logger.error(`Error getting Solana wallet address: ${error.message}`);
       return null;
