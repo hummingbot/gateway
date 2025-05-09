@@ -919,22 +919,33 @@ export class Solana {
 
   // Add new method to get first wallet address
   public async getFirstWalletAddress(): Promise<string | null> {
+    // Specifically look in the solana subdirectory, not in any other chain's directory
     const path = `${walletPath}/solana`;
     try {
       // Create directory if it doesn't exist
       await fse.ensureDir(path);
-      
+
       // Get all .json files in the directory
       const files = await fse.readdir(path);
       const walletFiles = files.filter(f => f.endsWith('.json'));
-      
+
       if (walletFiles.length === 0) {
         return null;
       }
-      
+
       // Return first wallet address (without .json extension)
-      return walletFiles[0].slice(0, -5);
+      const walletAddress = walletFiles[0].slice(0, -5);
+
+      // Validate it looks like a Solana address (not an Ethereum address)
+      // Solana addresses don't start with 0x and are typically 32-44 chars
+      if (walletAddress.startsWith('0x') || walletAddress.length < 32 || walletAddress.length > 44) {
+        logger.warn(`Invalid Solana address found in wallet directory: ${walletAddress}`);
+        return null;
+      }
+
+      return walletAddress;
     } catch (error) {
+      logger.error(`Error getting Solana wallet address: ${error.message}`);
       return null;
     }
   }

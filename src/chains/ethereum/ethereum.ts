@@ -299,9 +299,10 @@ export class Ethereum {
   }
 
   /**
-   * Get the first available wallet address
+   * Get the first available Ethereum wallet address
    */
   public async getFirstWalletAddress(): Promise<string | null> {
+    // Specifically look in the ethereum subdirectory, not in any other chain's directory
     const path = `${walletPath}/ethereum`;
     try {
       // Create directory if it doesn't exist
@@ -316,8 +317,17 @@ export class Ethereum {
       }
 
       // Return first wallet address (without .json extension)
-      return walletFiles[0].slice(0, -5);
+      const walletAddress = walletFiles[0].slice(0, -5);
+
+      // Validate it looks like an Ethereum address (0x followed by 40 hex chars)
+      if (!walletAddress.startsWith('0x') || walletAddress.length !== 42) {
+        logger.warn(`Invalid Ethereum address found in wallet directory: ${walletAddress}`);
+        return null;
+      }
+
+      return walletAddress;
     } catch (error) {
+      logger.error(`Error getting Ethereum wallet address: ${error.message}`);
       return null;
     }
   }

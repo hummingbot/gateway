@@ -34,10 +34,16 @@ export const balancesRoute: FastifyPluginAsync = async (fastify) => {
     const userWallet = await solana.getFirstWalletAddress();
     if (userWallet) {
       // Make sure it's a valid Solana address (base58 encoded, ~44 chars)
-      const isValidSolanaAddress = userWallet.length >= 32 && userWallet.length <= 44;
+      // Solana addresses don't start with 0x and are typically 32-44 chars
+      const isValidSolanaAddress = userWallet.length >= 32 &&
+                                   userWallet.length <= 44 &&
+                                   !userWallet.startsWith('0x');
+
       if (isValidSolanaAddress) {
         firstWalletAddress = userWallet;
         logger.info(`Using user's Solana wallet for examples: ${firstWalletAddress}`);
+      } else {
+        logger.warn(`Found wallet address ${userWallet} but it doesn't appear to be a valid Solana address`);
       }
     }
   } catch (error) {
