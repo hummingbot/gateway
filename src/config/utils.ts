@@ -91,22 +91,40 @@ export const getDefaultPools = (
 ): Record<string, string> => {
   // Parse connector name
   const [baseConnector, connectorType] = connector.split('/');
-  let configPath;
   
   if (!baseConnector) {
     throw fastify.httpErrors.badRequest('Connector name is required');
   }
-
-  // Handle both formats: "connector/type" and "connector"
-  if (connectorType) {
-    configPath = `${baseConnector}.${connectorType}.pools`;
-  } else {
-    configPath = `${baseConnector}.pools`;
+  
+  if (!connectorType) {
+    throw fastify.httpErrors.badRequest('Connector type is required (e.g., amm, clmm)');
   }
 
   try {
-    const pools = ConfigManagerV2.getInstance().get(configPath) || {};
-    logger.info(`Retrieved default pools for ${connector}`);
+    // Get connector config
+    const connectorConfig = ConfigManagerV2.getInstance().getNamespace(baseConnector)?.configuration;
+    
+    if (!connectorConfig || !connectorConfig.networks) {
+      logger.error(`Connector ${baseConnector} configuration not found or missing networks`);
+      return {};
+    }
+    
+    // Get active network
+    const activeNetworks = Object.keys(connectorConfig.networks);
+    if (activeNetworks.length === 0) {
+      return {};
+    }
+    
+    // Use mainnet-beta for Solana, mainnet for Ethereum by default, or first available network
+    let activeNetwork = 'mainnet-beta';
+    if (!connectorConfig.networks[activeNetwork]) {
+      activeNetwork = activeNetworks[0];
+    }
+    
+    // Get pools for the specific connector type
+    const pools = connectorConfig.networks[activeNetwork][connectorType] || {};
+    
+    logger.info(`Retrieved default pools for ${connector} on network ${activeNetwork}`);
     return pools;
   } catch (error) {
     logger.error(`Failed to get default pools for ${connector}: ${error}`);
@@ -128,25 +146,43 @@ export const addDefaultPool = (
   }
 
   const [baseConnector, connectorType] = connector.split('/');
-  let configPath;
   
   if (!baseConnector) {
     throw fastify.httpErrors.badRequest('Connector name is required');
   }
 
-  // Handle both formats: "connector/type" and "connector"
-  if (connectorType) {
-    configPath = `${baseConnector}.${connectorType}.pools.${pairKey}`;
-  } else {
-    configPath = `${baseConnector}.pools.${pairKey}`;
+  if (!connectorType) {
+    throw fastify.httpErrors.badRequest('Connector type is required (e.g., amm, clmm)');
   }
 
   try {
+    // Get connector config
+    const connectorConfig = ConfigManagerV2.getInstance().getNamespace(baseConnector)?.configuration;
+    
+    if (!connectorConfig || !connectorConfig.networks) {
+      throw new Error(`Connector ${baseConnector} configuration not found or missing networks`);
+    }
+    
+    // Get active network
+    const activeNetworks = Object.keys(connectorConfig.networks);
+    if (activeNetworks.length === 0) {
+      throw new Error(`No networks configured for ${baseConnector}`);
+    }
+    
+    // Use mainnet-beta for Solana, mainnet for Ethereum by default, or first available network
+    let activeNetwork = 'mainnet-beta';
+    if (!connectorConfig.networks[activeNetwork]) {
+      activeNetwork = activeNetworks[0];
+    }
+    
+    // Set the pool in the active network and connector type
+    const configPath = `${baseConnector}.networks.${activeNetwork}.${connectorType}.${pairKey}`;
     ConfigManagerV2.getInstance().set(configPath, poolAddress);
-    logger.info(`Added default pool for ${connector}: ${pairKey} (address: ${poolAddress})`);
+    
+    logger.info(`Added default pool for ${connector}: ${pairKey} (address: ${poolAddress}) on network ${activeNetwork}`);
   } catch (error) {
     logger.error(`Failed to add default pool: ${error}`);
-    throw fastify.httpErrors.internalServerError('Failed to add default pool');
+    throw fastify.httpErrors.internalServerError(`Failed to add default pool: ${error.message}`);
   }
 };
 
@@ -159,24 +195,42 @@ export const removeDefaultPool = (
   const pairKey = `${baseToken}-${quoteToken}`;
 
   const [baseConnector, connectorType] = connector.split('/');
-  let configPath;
   
   if (!baseConnector) {
     throw fastify.httpErrors.badRequest('Connector name is required');
   }
 
-  // Handle both formats: "connector/type" and "connector"
-  if (connectorType) {
-    configPath = `${baseConnector}.${connectorType}.pools.${pairKey}`;
-  } else {
-    configPath = `${baseConnector}.pools.${pairKey}`;
+  if (!connectorType) {
+    throw fastify.httpErrors.badRequest('Connector type is required (e.g., amm, clmm)');
   }
 
   try {
+    // Get connector config
+    const connectorConfig = ConfigManagerV2.getInstance().getNamespace(baseConnector)?.configuration;
+    
+    if (!connectorConfig || !connectorConfig.networks) {
+      throw new Error(`Connector ${baseConnector} configuration not found or missing networks`);
+    }
+    
+    // Get active network
+    const activeNetworks = Object.keys(connectorConfig.networks);
+    if (activeNetworks.length === 0) {
+      throw new Error(`No networks configured for ${baseConnector}`);
+    }
+    
+    // Use mainnet-beta for Solana, mainnet for Ethereum by default, or first available network
+    let activeNetwork = 'mainnet-beta';
+    if (!connectorConfig.networks[activeNetwork]) {
+      activeNetwork = activeNetworks[0];
+    }
+    
+    // Delete the pool from the active network and connector type
+    const configPath = `${baseConnector}.networks.${activeNetwork}.${connectorType}.${pairKey}`;
     ConfigManagerV2.getInstance().delete(configPath);
-    logger.info(`Removed default pool for ${connector}: ${pairKey}`);
+    
+    logger.info(`Removed default pool for ${connector}: ${pairKey} on network ${activeNetwork}`);
   } catch (error) {
     logger.error(`Failed to remove default pool: ${error}`);
-    throw fastify.httpErrors.internalServerError('Failed to remove default pool');
+    throw fastify.httpErrors.internalServerError(`Failed to remove default pool: ${error.message}`);
   }
 };

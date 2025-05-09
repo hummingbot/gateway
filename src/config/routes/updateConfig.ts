@@ -50,8 +50,8 @@ export const updateConfigRoute: FastifyPluginAsync = async (fastify) => {
       }
       
       updateConfig(fastify, configPath, processedValue);
-      
-      return { message: 'The config has been updated' };
+
+      return { message: `Configuration updated successfully: '${configPath}' set to ${JSON.stringify(processedValue)}` };
     }
   );
 };

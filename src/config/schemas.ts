@@ -23,20 +23,23 @@ export type ConfigUpdateResponse = Static<typeof ConfigUpdateResponseSchema>;
 // Default pools schemas
 export const DefaultPoolRequestSchema = Type.Object({
   connector: Type.String({
-    description: 'Connector name (e.g., raydium/amm, raydium/clmm)',
-    examples: ['raydium/amm', 'raydium/clmm']
+    description: 'Connector name in format "connector/type" (e.g., raydium/amm, raydium/clmm, uniswap/amm, uniswap/clmm, meteora/clmm)',
+    examples: ['raydium/amm', 'raydium/clmm', 'uniswap/amm', 'uniswap/clmm', 'meteora/clmm']
   }),
   baseToken: Type.String({
     description: 'Base token symbol',
-    examples: ['SOL', 'USDC']
+    examples: ['SOL', 'USDC', 'ETH', 'WETH']
   }),
   quoteToken: Type.String({
     description: 'Quote token symbol',
-    examples: ['USDC', 'USDT']
+    examples: ['USDC', 'USDT', 'DAI', 'WETH']
   }),
   poolAddress: Type.Optional(Type.String({
     description: 'Pool address (required for adding, optional for removal)',
-    examples: ['3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv']
+    examples: [
+      '3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv', // Solana example (raydium/meteora)
+      '0xd0b53d9277642d899df5c87a3966a349a798f224'    // Ethereum example (uniswap)
+    ]
   }))
 });
 
@@ -70,8 +73,8 @@ export type ConfigQuery = Static<typeof ConfigQuerySchema>;
 // Pools query schema
 export const PoolsQuerySchema = Type.Object({
   connector: Type.String({
-    description: 'Connector name (e.g., raydium/amm, raydium/clmm)',
-    examples: ['raydium/amm', 'raydium/clmm']
+    description: 'Connector name in format "connector/type" (e.g., raydium/amm, raydium/clmm, uniswap/amm, uniswap/clmm, meteora/clmm)',
+    examples: ['raydium/amm', 'raydium/clmm', 'uniswap/amm', 'uniswap/clmm', 'meteora/clmm']
   })
 });
 
