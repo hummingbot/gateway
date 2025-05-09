@@ -26,11 +26,22 @@ export function sanitizePathComponent(input: string): string {
   return input.replace(/[\/\\:*?"<>|]/g, '');
 }
 
+// Import supported chains function
+import { getSupportedChains } from '../services/connection-manager';
+
 // Validate chain name against known chains to prevent injection
 export function validateChainName(chain: string): boolean {
-  // List of supported chains
-  const validChains = ['ethereum', 'solana'];
-  return validChains.includes(chain.toLowerCase());
+  if (!chain) return false;
+
+  try {
+    // Get supported chains directly without caching
+    const supportedChains = getSupportedChains();
+    return supportedChains.includes(chain.toLowerCase());
+  } catch (error) {
+    // Fallback to hardcoded list if there's an error
+    logger.warn(`Failed to get supported chains: ${error.message}. Using fallback list.`);
+    return ['ethereum', 'solana'].includes(chain.toLowerCase());
+  }
 }
 
 // Get safe path for wallet files, with chain and address validation
