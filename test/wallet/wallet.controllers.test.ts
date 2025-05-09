@@ -6,7 +6,7 @@ import {
   addWallet,
   getWallets,
   removeWallet,
-} from '../../src/system/wallet/utils';
+} from '../../src/wallet/utils';
 
 import { ConfigManagerCertPassphrase } from '../../src/services/config-manager-cert-passphrase';
 // import { Cosmos } from '../../../src/chains/cosmos/cosmos';
@@ -95,7 +95,6 @@ describe('addWallet and getWallets', () => {
     await addWallet(mockFastify, {
       privateKey: onePrivateKey,
       chain: 'ethereum',
-      network: 'sepolia',
     });
 
     const wallets = await getWallets(mockFastify);
@@ -120,7 +119,6 @@ describe('addWallet and getWallets', () => {
       addWallet(mockFastify, {
         privateKey: onePrivateKey,
         chain: 'shibainu',
-        network: 'doge',
       })
     ).rejects.toThrow('Unrecognized chain name: shibainu');
   });
@@ -151,7 +149,6 @@ describe('addWallet and removeWallets', () => {
     await addWallet(mockFastify, {
       privateKey: onePrivateKey,
       chain: 'ethereum',
-      network: 'sepolia',
     });
 
     await removeWallet(mockFastify, { chain: 'ethereum', address: oneAddress });

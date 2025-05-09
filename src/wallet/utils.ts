@@ -35,13 +35,16 @@ export async function addWallet(
   if (!passphrase) {
     throw fastify.httpErrors.internalServerError('No passphrase configured');
   }
-  
+
   let connection: Chain;
   let address: string | undefined;
   let encryptedPrivateKey: string | undefined;
 
+  // Default to mainnet-beta for Solana or mainnet for other chains
+  const network = req.chain === 'solana' ? 'mainnet-beta' : 'mainnet';
+
   try {
-    connection = await getInitializedChain<Chain>(req.chain, req.network);
+    connection = await getInitializedChain<Chain>(req.chain, network);
   } catch (e) {
     if (e instanceof UnsupportedChainException) {
       throw fastify.httpErrors.badRequest(`Unrecognized chain name: ${req.chain}`);

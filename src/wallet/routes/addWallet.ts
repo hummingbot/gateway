@@ -19,7 +19,6 @@ export const addWalletRoute: FastifyPluginAsync = async (fastify) => {
           ...AddWalletRequestSchema,
           examples: [{
             chain: 'solana',
-            network: 'mainnet-beta',
             privateKey: '<your-private-key>'
           }]
         },

@@ -2,7 +2,7 @@ import { gatewayApp } from '../../src/app';
 import { patch, unpatch } from '../services/patch';
 import { Ethereum } from '../../src/chains/ethereum/ethereum';
 import { ConfigManagerCertPassphrase } from '../../src/services/config-manager-cert-passphrase';
-import { GetWalletResponse } from '../../src/system/wallet/schemas';
+import { GetWalletResponse } from '../../src/wallet/schemas';
 
 let eth: Ethereum;
 
@@ -68,7 +68,6 @@ describe('POST /wallet/add', () => {
       payload: {
         privateKey: twoPrivateKey,
         chain: 'ethereum',
-        network: 'sepolia',
       }
     });
 
@@ -96,7 +95,6 @@ describe('DELETE /wallet/remove', () => {
       payload: {
         privateKey: twoPrivateKey,
         chain: 'ethereum',
-        network: 'sepolia',
       }
     });
 
@@ -144,7 +142,6 @@ describe('GET /wallet', () => {
       payload: {
         privateKey: twoPrivateKey,
         chain: 'ethereum',
-        network: 'sepolia',
       }
     });
 
