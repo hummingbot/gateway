@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4.1.1
       - uses: technote-space/get-diff-action@v6
         with:
           PATTERNS:  |
@@ -31,7 +31,7 @@ jobs:
         if: env.GIT_DIFF
         run: |
           echo ${{ env.GIT_DIFF }}
-          echo "::set-output name=is_set::true"
+          echo "is_set=true" >> $GITHUB_OUTPUT
 
   build_gateway:
     name: Gateway build + unit tests
@@ -41,10 +41,10 @@ jobs:
 
     steps:
       - name: Checkout commit
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4.1.1
 
       - name: Use Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 20
 
@@ -59,7 +59,7 @@ jobs:
         run: |
           echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         name: Setup pnpm cache
         with:
           path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
@@ -67,12 +67,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
 
-      - name: Install hardhat and start node
-        run: |
-            mkdir hardhat && cd hardhat && npm init -y
-            touch hardhat.config.js
-            pnpm add --save-dev hardhat
-            pnpm hardhat node &
 
       - name: Install Dependencies
         run: pnpm install --no-frozen-lockfile
@@ -83,44 +77,21 @@ jobs:
       - name: Setup configuration for CI
         run: |
           mkdir -p conf/lists db
-          # Copy template configurations if they don't already exist in conf
-          if [ ! -f conf/root.yml ]; then
-            cp -rf src/templates/* conf/
-          fi
+          # Copy template configurations
+          cp -rf src/templates/* conf/
+          # Adjust paths for CI environment
           sed -i 's|/home/gateway/conf/lists/|conf/lists/|g' ./conf/*.yml
-          sed -i 's/https:\/\/rpc.ankr.com\/eth_sepolia/http:\/\/127.0.0.1:8545\//g' ./conf/ethereum.yml
 
       - name: Run unit test coverage
         if: github.event_name == 'pull_request'
         shell: bash
         run: |
-          git fetch --all -q
-          git checkout -b $GITHUB_SHA
-          GATEWAY_TEST_MODE=dev NODE_OPTIONS=--trace-warnings npx jest --coverage --verbose ./test/ || { echo "Tests failed with exit code $?"; cat $(find ./.jest-coverage -name "*.log" 2>/dev/null) 2>/dev/null || true; exit 1; }
+          GATEWAY_TEST_MODE=dev NODE_OPTIONS=--trace-warnings pnpm test || {
+            echo "Tests failed with exit code $?"
+            cat $(find ./.jest-coverage -name "*.log" 2>/dev/null) 2>/dev/null || true
+            exit 1
+          }
 
-  docker_build_and_push:
-    runs-on: ubuntu-latest
-    needs: [build_gateway]
-    if: github.event_name == 'pull_request' && github.event.pull_request.merged == true
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
-
-      - name: Login to DockerHub
-        uses: docker/login-action@v1 
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Build and push
-        uses: docker/build-push-action@v2
-        with:
-          context: .
-          push: true
-          tags: hummingbot/gateway:latest
-          platforms: linux/amd64,linux/arm64
+# Docker build and push is handled by the separate docker_buildx_workflow.yml
 
 
