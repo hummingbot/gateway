@@ -24,10 +24,17 @@ export async function getSolanaBalances(
 export const balancesRoute: FastifyPluginAsync = async (fastify) => {
   // Get first wallet address for example
   const solana = await Solana.getInstance('mainnet-beta');
-  let firstWalletAddress = '<solana-wallet-address>';
-  
+
+  // Default wallet address for example if no wallet is available
+  let firstWalletAddress = 'CuieVDEDtLo7FypA9SbLM9saXFdb1dsshEkyErMqkRQq';
+
   try {
-    firstWalletAddress = await solana.getFirstWalletAddress() || firstWalletAddress;
+    // Try to get user's first wallet if available
+    const userWallet = await solana.getFirstWalletAddress();
+    if (userWallet) {
+      firstWalletAddress = userWallet;
+      logger.info(`Using user's wallet for examples: ${firstWalletAddress}`);
+    }
   } catch (error) {
     logger.warn('No wallets found for examples in schema');
   }
@@ -48,11 +55,13 @@ export const balancesRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             ...BalanceRequestSchema.properties,
             network: { type: 'string', examples: ['mainnet-beta', 'devnet'] },
-            tokens: { 
-              type: 'array', 
+            tokens: {
+              type: 'array',
               items: { type: 'string' },
               description: 'A list of token symbols or addresses',
-              examples: [['SOL', 'USDC', 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v']]
+              examples: [
+                ['SOL', 'USDC'],
+              ]
             }
           }
         },
