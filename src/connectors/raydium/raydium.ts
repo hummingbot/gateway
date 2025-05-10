@@ -18,23 +18,22 @@ import { isValidClmm, isValidAmm, isValidCpmm } from './raydium.utils'
 import { logger } from '../../services/logger'
 import { RaydiumConfig } from './raydium.config'
 import { Solana } from '../../chains/solana/solana'
-import { Keypair } from '@solana/web3.js'
+import { Keypair, PublicKey } from '@solana/web3.js'
 import { PoolInfo as ClmmPoolInfo, PositionInfo } from '../../schemas/trading-types/clmm-schema'
 import { PoolInfo as AmmPoolInfo } from '../../schemas/trading-types/amm-schema'
-import { PublicKey } from '@solana/web3.js'
-import { percentRegexp } from '../../services/config-manager-v2';
-import { ConfigManagerV2 } from '../../services/config-manager-v2';
+import { percentRegexp } from '../../services/config-manager-v2'
+import { ConfigManagerV2 } from '../../services/config-manager-v2'
 
 export class Raydium {
   private static _instances: { [name: string]: Raydium }
-  private solana: Solana
+  public solana: Solana  // Changed to public for use in route handlers
   public raydiumSDK: RaydiumSDK
   public config: RaydiumConfig.NetworkConfig
   public txVersion: TxVersion
   private owner?: Keypair
 
   private constructor() {
-    this.config = RaydiumConfig.config
+    this.config = RaydiumConfig.config as unknown as RaydiumConfig.NetworkConfig
     this.solana = null
     this.txVersion = TxVersion.V0
   }
@@ -307,9 +306,12 @@ export class Raydium {
     }
   }  
 
-  // General Slippage Settings
-  getSlippagePct(routeType: 'amm' | 'clmm'): number {
-    const allowedSlippage = this.config[routeType].allowedSlippage;
+  /**
+   * Gets the allowed slippage percentage from config
+   * @returns Slippage as a percentage (e.g., 1.0 for 1%)
+   */
+  getSlippagePct(): number {
+    const allowedSlippage = RaydiumConfig.config.allowedSlippage;
     const nd = allowedSlippage.match(percentRegexp);
     let slippage = 0.0;
     if (nd) {
@@ -325,7 +327,12 @@ export class Raydium {
   }
 
   async findDefaultPool(baseToken: string, quoteToken: string, routeType: 'amm' | 'clmm'): Promise<string | null> {
-    const pools = this.config[routeType].pools;
+    // Get the network-specific pools
+    const network = this.solana.network;
+    const pools = RaydiumConfig.getNetworkPools(network, routeType);
+    
+    if (!pools) return null;
+    
     const pairKey = this.getPairKey(baseToken, quoteToken);
     const reversePairKey = this.getPairKey(quoteToken, baseToken);
     

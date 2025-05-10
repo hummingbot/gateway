@@ -4,8 +4,9 @@ on:
   pull_request:
     types: [closed]
     branches:
-      - master
+      - main
       - development
+      - core-2.6
   release:
     types: [published, edited]
 
@@ -39,7 +40,7 @@ jobs:
           tags: hummingbot/gateway:development  
 
       - name: Build and push Latest Image
-        if: github.base_ref == 'master'
+        if: github.base_ref == 'main'
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -69,7 +70,7 @@ jobs:
 
       - name: Extract tag name
         id: get_tag
-        run: echo ::set-output name=VERSION::version-${GITHUB_REF#refs/tags/v}
+        run: echo "VERSION=version-${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
       - name: Build and push
         uses: docker/build-push-action@v5

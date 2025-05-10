@@ -1,0 +1,30 @@
+[
+  {
+    "validResponse": {
+      "positions": [
+        {
+          "address": "8vw7gxkGoDNWmqxKgBrwJEFwCvFK4uPJqMrCwxMmL4dd",
+          "poolAddress": "CS2H8nbAVVEUHWPF5extCSymqheQdkd4d7thik6eet9N",
+          "lowerBinId": 205700,
+          "upperBinId": 206200
+        },
+        {
+          "address": "3bXWxjWiLX9ZiyxaYMY5DFtkjwYMC4LRwGQDRvTbNrS2",
+          "poolAddress": "CS2H8nbAVVEUHWPF5extCSymqheQdkd4d7thik6eet9N",
+          "lowerBinId": 205900,
+          "upperBinId": 206000
+        }
+      ]
+    },
+    "invalidResponse": {
+      "positions": [
+        {
+          "address": 12345,
+          "poolAddress": "CS2H8nbAVVEUHWPF5extCSymqheQdkd4d7thik6eet9N",
+          "lowerBinId": 205700,
+          "upperBinId": 206200
+        }
+      ]
+    }
+  }
+]

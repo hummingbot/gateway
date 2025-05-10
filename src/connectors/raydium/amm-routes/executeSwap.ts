@@ -34,7 +34,7 @@ async function executeSwap(
   }
 
   // Use configured slippage if not provided
-  const effectiveSlippage = slippagePct || raydium.getSlippagePct('amm')
+  const effectiveSlippage = slippagePct || raydium.getSlippagePct()
 
   // Get swap quote
   const quote = await getRawSwapQuote(

@@ -9,7 +9,7 @@ import {
   FetchPoolsRequest, 
   FetchPoolsRequestType 
 } from '../../../schemas/trading-types/clmm-schema';
-import { httpNotFound, httpInternalServerError, ERROR_MESSAGES } from '../../../services/error-handler';
+// Using Fastify's native error handling
 
 export const fetchPoolsRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
@@ -45,7 +45,7 @@ export const fetchPoolsRoute: FastifyPluginAsync = async (fastify) => {
         if (tokenA) {
           const tokenInfoA = await solana.getToken(tokenA);
           if (!tokenInfoA) {
-            throw httpNotFound(ERROR_MESSAGES.TOKEN_NOT_FOUND(tokenA));
+            throw fastify.httpErrors.notFound(`Token ${tokenA} not found`);
           }
           tokenMintA = tokenInfoA.address;
         }
@@ -53,7 +53,7 @@ export const fetchPoolsRoute: FastifyPluginAsync = async (fastify) => {
         if (tokenB) {
           const tokenInfoB = await solana.getToken(tokenB);
           if (!tokenInfoB) {
-            throw httpNotFound(ERROR_MESSAGES.TOKEN_NOT_FOUND(tokenB));
+            throw fastify.httpErrors.notFound(`Token ${tokenB} not found`);
           }
           tokenMintB = tokenInfoB.address;
         }
@@ -72,7 +72,7 @@ export const fetchPoolsRoute: FastifyPluginAsync = async (fastify) => {
                 return await meteora.getPoolInfo(pair.publicKey.toString());
               } catch (error) {
                 logger.error(`Failed to get pool info for ${pair.publicKey.toString()}: ${error.message}`);
-                throw httpNotFound(ERROR_MESSAGES.POOL_NOT_FOUND(pair.publicKey.toString()));
+                throw fastify.httpErrors.notFound(`Pool not found: ${pair.publicKey.toString()}`);
               }
             })
         );
@@ -81,7 +81,7 @@ export const fetchPoolsRoute: FastifyPluginAsync = async (fastify) => {
       } catch (e) {
         logger.error('Error in fetch-pools:', e);
         if (e.statusCode) throw e;
-        throw httpInternalServerError();
+        throw fastify.httpErrors.internalServerError('Error processing the request');
       }
     }
   });

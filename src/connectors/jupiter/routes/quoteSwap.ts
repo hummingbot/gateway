@@ -75,15 +75,15 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         tags: ['jupiter'],
         querystring: {
           type: 'object',
-          required: ['baseToken', 'quoteToken', 'amount', 'side'],
           properties: {
-            network: { type: 'string', default: 'mainnet-beta' },
+            network: { type: 'string', examples: ['mainnet-beta'] },
             baseToken: { type: 'string', examples: ['SOL'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
-            amount: { type: 'number', examples: [0.1] },
+            amount: { type: 'number', examples: [0.01] },
             side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
             slippagePct: { type: 'number', examples: [1] },
-          }
+          },
+          required: ['baseToken', 'quoteToken', 'amount', 'side']
         },
         response: {
           200: {
@@ -98,7 +98,8 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
               price: { type: 'number' },
               gasPrice: { type: 'number' },
               gasLimit: { type: 'number' },
-              gasCost: { type: 'number' }
+              gasCost: { type: 'number' },
+              poolAddress: { type: 'string', description: 'Jupiter aggregator ID' }
             }
           }
         }
@@ -107,7 +108,16 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       const { network, baseToken, quoteToken, amount, side, slippagePct } = request.query;
       const networkToUse = network || 'mainnet-beta';
+
+      // Verify we have the needed parameters
+      if (!baseToken || !quoteToken) {
+        throw fastify.httpErrors.badRequest('baseToken and quoteToken are required');
+      }
+
+      // Log the operation
+      logger.debug(`Getting Jupiter quote for ${baseToken}-${quoteToken} with default routing`);
       
+      // Get the quote
       const quote = await getJupiterQuote(
         fastify,
         networkToUse,
@@ -118,6 +128,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         slippagePct
       );
 
+      // Get gas estimation
       let gasEstimation = null;
       try {
         gasEstimation = await estimateGasSolana(fastify, networkToUse);
@@ -135,7 +146,8 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         price: quote.expectedPrice,
         gasPrice: gasEstimation?.gasPrice,
         gasLimit: gasEstimation?.gasLimit,
-        gasCost: gasEstimation?.gasCost
+        gasCost: gasEstimation?.gasCost,
+        poolAddress: 'jupiter-aggregator' // Jupiter doesn't expose specific pool addresses
       };
     }
   );

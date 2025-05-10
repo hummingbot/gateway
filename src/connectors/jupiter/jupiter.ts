@@ -11,13 +11,6 @@ import { percentRegexp } from '../../services/config-manager-v2';
 import { Wallet } from '@coral-xyz/anchor';
 import { logger } from '../../services/logger';
 import { BASE_FEE } from '../../chains/solana/solana';
-import { 
-  HttpException,
-  SIMULATION_ERROR_CODE,
-  SIMULATION_ERROR_MESSAGE,
-  SWAP_ROUTE_FETCH_ERROR_CODE,
-  SWAP_ROUTE_FETCH_ERROR_MESSAGE,
-} from '../../services/error-handler';
 
 const JUPITER_API_RETRY_COUNT = 5;
 const JUPITER_API_RETRY_INTERVAL_MS = 1000;
@@ -59,6 +52,10 @@ export class Jupiter {
     }
   }
 
+  /**
+   * Gets the allowed slippage percentage from config
+   * @returns Slippage as a percentage (e.g., 1.0 for 1%)
+   */
   getSlippagePct(): number {
     const allowedSlippage = this.config.allowedSlippage;
     const nd = allowedSlippage.match(percentRegexp);
@@ -78,7 +75,7 @@ export class Jupiter {
     slippagePct?: number,
     onlyDirectRoutes: boolean = false,
     asLegacyTransaction: boolean = false,
-    swapMode: 'ExactIn' | 'ExactOut' = 'ExactIn',
+    swapMode: 'ExactIn' | 'ExactOut' = 'ExactIn'
   ): Promise<QuoteResponse> {
     const inputToken = await this.solana.getToken(inputTokenIdentifier);
     const outputToken = await this.solana.getToken(outputTokenIdentifier);
@@ -87,10 +84,11 @@ export class Jupiter {
       throw new Error(`Token not found: ${!inputToken ? inputTokenIdentifier : outputTokenIdentifier}`);
     }
 
-    const slippageBps = slippagePct ? Math.round(slippagePct * 100) : 0;
+    const slippageBps = slippagePct ? Math.round(slippagePct * 100) : 50; // Default to 0.5% if not provided
     const tokenDecimals = swapMode === 'ExactOut' ? outputToken.decimals : inputToken.decimals;
     const quoteAmount = Math.floor(amount * 10 ** tokenDecimals);
 
+    // Use best practices from Jupiter API documentation
     const params: QuoteGetRequest = {
       inputMint: inputToken.address,
       outputMint: outputToken.address,
@@ -99,8 +97,14 @@ export class Jupiter {
       onlyDirectRoutes,
       asLegacyTransaction,
       swapMode,
+      maxAccounts: 64, // Recommended for optimal routing flexibility
+      restrictIntermediateTokens: false, // Allow routing through all tokens
     };
+    
+    // Jupiter doesn't support specific pool routing like Uniswap
 
+    logger.debug(`Getting Jupiter quote for ${inputToken.symbol} to ${outputToken.symbol}`);
+    
     const quote = await this.jupiterQuoteApi.quoteGet(params);
 
     if (!quote) {
@@ -127,7 +131,7 @@ export class Jupiter {
             prioritizationFeeLamports: {
               priorityLevelWithMaxLamports: {
                 maxLamports: feeLamports,
-                priorityLevel: this.config.priorityLevel
+                priorityLevel: this.getPriorityLevel(this.config.priorityLevel)
               }
             }
           },
@@ -150,11 +154,7 @@ export class Jupiter {
       }
     }
 
-    throw new HttpException(
-      503,
-      SWAP_ROUTE_FETCH_ERROR_MESSAGE + `Failed after ${JUPITER_API_RETRY_COUNT} attempts. Last error: ${lastError?.message}`,
-      SWAP_ROUTE_FETCH_ERROR_CODE
-    );
+    throw new Error(`Failed to fetch swap route after ${JUPITER_API_RETRY_COUNT} attempts. Last error: ${lastError?.message}`);
   }
 
   public async simulateTransaction(transaction: VersionedTransaction) {
@@ -183,13 +183,9 @@ export class Jupiter {
       //   unitsConsumed: simulatedTransactionResponse.unitsConsumed,
       // });
 
-      const errorMessage = `${SIMULATION_ERROR_MESSAGE}\nError: ${JSON.stringify(simulatedTransactionResponse.err)}\nProgram Logs: ${logs.join('\n')}`;
+      const errorMessage = `Transaction simulation failed: Error: ${JSON.stringify(simulatedTransactionResponse.err)}\nProgram Logs: ${logs.join('\n')}`;
       
-      throw new HttpException(
-        503,
-        errorMessage,
-        SIMULATION_ERROR_CODE
-      );
+      throw new Error(errorMessage);
     }
   }
 
@@ -312,5 +308,24 @@ export class Jupiter {
 
   public static getRequestAmount(amount: number, decimals: number): number {
     return Math.floor(amount * DECIMAL_MULTIPLIER ** decimals);
+  }
+  
+  /**
+   * Converts a priority level string to the expected format for Jupiter API
+   * @param priorityLevel The priority level from config
+   * @returns Properly formatted priority level for Jupiter API
+   */
+  private getPriorityLevel(priorityLevel: string): 'medium' | 'high' | 'veryHigh' {
+    const level = priorityLevel.toLowerCase();
+    
+    if (level === 'medium' || level === 'high') {
+      return level as 'medium' | 'high';
+    } else if (level === 'veryhigh') {
+      return 'veryHigh';
+    }
+    
+    // Default to medium if invalid value
+    logger.warn(`Invalid priority level: ${priorityLevel}, defaulting to 'medium'`);
+    return 'medium';
   }
 }

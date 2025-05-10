@@ -2,7 +2,18 @@ import crypto from 'crypto';
 import bs58 from 'bs58';
 import fse from 'fs-extra';
 import { TokenListType } from '../../services/base';
-import { HttpException, SIMULATION_ERROR_MESSAGE, SIMULATION_ERROR_CODE } from '../../services/error-handler';
+// TODO: Replace with Fastify httpErrors
+class HttpException extends Error {
+  status: number;
+  errorCode: number;
+  constructor(status: number, message: string, errorCode: number = -1) {
+    super(message);
+    this.status = status;
+    this.errorCode = errorCode;
+  }
+}
+const SIMULATION_ERROR_CODE = 1024;
+const SIMULATION_ERROR_MESSAGE = 'Transaction simulation failed: ';
 import { TokenInfo } from '@solana/spl-token-registry';
 import {
   Connection,
@@ -18,7 +29,7 @@ import {
 } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID, unpackAccount, getMint, programSupportsExtensions } from "@solana/spl-token";
 
-import { walletPath } from '../../services/base';
+import { walletPath, getSafeWalletFilePath, sanitizePathComponent } from '../../wallet/utils';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { logger } from '../../services/logger';
 import { TokenListResolutionStrategy } from '../../services/token-list-resolution';
@@ -193,21 +204,58 @@ export class Solana {
     return Keypair.fromSecretKey(new Uint8Array(decoded));
   }
 
-  async getWallet(address: string): Promise<Keypair> {
-    const path = `${walletPath}/solana`;
+  /**
+   * Validate Solana address format
+   * @param address The address to validate
+   * @returns The address if valid
+   * @throws Error if the address is invalid
+   */
+  public static validateAddress(address: string): string {
+    try {
+      // Check if address can be parsed as a public key
+      new PublicKey(address);
 
-    const encryptedPrivateKey: string = await fse.readFile(
-      `${path}/${address}.json`,
-      'utf8'
-    );
+      // Additional check for proper length
+      if (address.length < 32 || address.length > 44) {
+        throw new Error('Invalid address length');
+      }
 
-    const passphrase = ConfigManagerCertPassphrase.readPassphrase();
-    if (!passphrase) {
-      throw new Error('missing passphrase');
+      return address;
+    } catch (error) {
+      throw new Error(`Invalid Solana address format: ${address}`);
     }
-    const decrypted = await this.decrypt(encryptedPrivateKey, passphrase);
+  }
 
-    return Keypair.fromSecretKey(new Uint8Array(bs58.decode(decrypted)));
+  async getWallet(address: string): Promise<Keypair> {
+    try {
+      // Validate the address format first
+      const validatedAddress = Solana.validateAddress(address);
+
+      // Use the safe wallet file path utility to prevent path injection
+      const safeWalletPath = getSafeWalletFilePath('solana', validatedAddress);
+
+      // Read the wallet file using the safe path
+      const encryptedPrivateKey: string = await fse.readFile(
+        safeWalletPath,
+        'utf8'
+      );
+
+      const passphrase = ConfigManagerCertPassphrase.readPassphrase();
+      if (!passphrase) {
+        throw new Error('missing passphrase');
+      }
+      const decrypted = await this.decrypt(encryptedPrivateKey, passphrase);
+
+      return Keypair.fromSecretKey(new Uint8Array(bs58.decode(decrypted)));
+    } catch (error) {
+      if (error.message.includes('Invalid Solana address')) {
+        throw error; // Re-throw validation errors
+      }
+      if (error.code === 'ENOENT') {
+        throw new Error(`Wallet not found for address: ${address}`);
+      }
+      throw error;
+    }
   }
 
   async encrypt(secret: string, password: string): Promise<string> {
@@ -268,6 +316,11 @@ export class Solana {
       balances["SOL"] = solBalanceInSol;
     }
 
+    // Return early if only SOL balance was requested
+    if (symbols && symbols.length === 1 && symbols[0].toUpperCase() === "SOL") {
+      return balances;
+    }
+
     // Get all token accounts for the provided address
     const [legacyAccounts, token2022Accounts] = await Promise.all([
       this.connection.getTokenAccountsByOwner(publicKey, { programId: TOKEN_PROGRAM_ID }),
@@ -276,32 +329,142 @@ export class Solana {
 
     const allAccounts = [...legacyAccounts.value, ...token2022Accounts.value];
 
-    // Process token accounts
-    for (const value of allAccounts) {
-      const programId = value.account.owner;
-      const parsedAccount = unpackAccount(
-        value.pubkey, 
-        value.account,
-        programId,
-      );
-      const mintAddress = parsedAccount.mint.toBase58();
-      
-      // Only check tokens from our token list when no symbols are specified
-      const token = this.tokenList.find(t => t.address === mintAddress);
-      
-      if (token && (!symbols || symbols.some(s => 
-        s.toUpperCase() === token.symbol.toUpperCase() || 
-        s.toLowerCase() === mintAddress.toLowerCase()
-      ))) {
-        const amount = parsedAccount.amount;
-        const uiAmount = Number(amount) / Math.pow(10, token.decimals);
-        balances[token.symbol] = uiAmount;
-      }
+    // Track tokens that were found and those that still need to be fetched
+    const foundTokens = new Set<string>();
+    const tokensToFetch = new Map<string, string>(); // Maps address -> display symbol
 
-      if (!token) {
-        console.log('token not found for address:', mintAddress);
-      } else {
-        console.log('token', token.symbol, 'balance:', parsedAccount.amount.toString());
+    // Create a mapping of all mint addresses to their token accounts
+    const mintToAccount = new Map();
+    for (const value of allAccounts) {
+      try {
+        const programId = value.account.owner;
+        const parsedAccount = unpackAccount(
+          value.pubkey,
+          value.account,
+          programId,
+        );
+        const mintAddress = parsedAccount.mint.toBase58();
+        mintToAccount.set(mintAddress, { parsedAccount, value });
+      } catch (error) {
+        logger.warn(`Error unpacking account: ${error.message}`);
+        continue;
+      }
+    }
+
+    // Process requested symbols
+    if (symbols) {
+      for (const s of symbols) {
+        // Skip SOL as it's handled separately
+        if (s.toUpperCase() === "SOL") {
+          foundTokens.add("SOL");
+          continue;
+        }
+
+        // Check if it's a token symbol in our list
+        const tokenBySymbol = this.tokenList.find(t =>
+          t.symbol.toUpperCase() === s.toUpperCase());
+
+        if (tokenBySymbol) {
+          foundTokens.add(tokenBySymbol.symbol);
+
+          // Check if we have this token in the wallet
+          if (mintToAccount.has(tokenBySymbol.address)) {
+            const { parsedAccount } = mintToAccount.get(tokenBySymbol.address);
+            const amount = parsedAccount.amount;
+            const uiAmount = Number(amount) / Math.pow(10, tokenBySymbol.decimals);
+            balances[tokenBySymbol.symbol] = uiAmount;
+            logger.debug(`Found balance for ${tokenBySymbol.symbol}: ${uiAmount}`);
+          } else {
+            // Token not found in wallet, set balance to 0
+            balances[tokenBySymbol.symbol] = 0;
+            logger.debug(`No balance found for ${tokenBySymbol.symbol}, setting to 0`);
+          }
+        }
+        // If it looks like a Solana address, prepare to fetch it directly
+        else if (s.length >= 32 && s.length <= 44) {
+          try {
+            // Validate it's a proper public key
+            const pubKey = new PublicKey(s);
+            const mintAddress = pubKey.toBase58();
+
+            // Check if we have this mint in the wallet
+            if (mintToAccount.has(mintAddress)) {
+              const { parsedAccount } = mintToAccount.get(mintAddress);
+
+              // Try to get token from our token list
+              const token = this.tokenList.find(t => t.address === mintAddress);
+
+              if (token) {
+                // Token is in our list
+                foundTokens.add(token.symbol);
+                const amount = parsedAccount.amount;
+                const uiAmount = Number(amount) / Math.pow(10, token.decimals);
+                balances[token.symbol] = uiAmount;
+                logger.debug(`Found balance for ${token.symbol} (${mintAddress}): ${uiAmount}`);
+              } else {
+                // Token is not in our list, need to fetch its metadata
+                tokensToFetch.set(mintAddress, s);
+              }
+            } else {
+              // Mint not found in wallet, add to tokens to fetch for metadata
+              tokensToFetch.set(mintAddress, s);
+            }
+          } catch (e) {
+            logger.warn(`Invalid token address format: ${s}`);
+          }
+        } else {
+          logger.warn(`Token not recognized: ${s} (not a known symbol or valid address)`);
+        }
+      }
+    } else {
+      // No symbols provided, process all tokens in the wallet
+      for (const [mintAddress, { parsedAccount }] of mintToAccount.entries()) {
+        const token = this.tokenList.find(t => t.address === mintAddress);
+
+        if (token) {
+          const amount = parsedAccount.amount;
+          const uiAmount = Number(amount) / Math.pow(10, token.decimals);
+          balances[token.symbol] = uiAmount;
+          logger.debug(`Found balance for ${token.symbol} (${mintAddress}): ${uiAmount}`);
+        } else {
+          // Unknown token, will fetch metadata later
+          tokensToFetch.set(mintAddress, mintAddress);
+        }
+      }
+    }
+
+    // Fetch metadata for unknown tokens
+    for (const [mintAddress, displayKey] of tokensToFetch.entries()) {
+      try {
+        // Check if we have this mint in the wallet
+        let balance = 0;
+        let decimals = 0;
+
+        if (mintToAccount.has(mintAddress)) {
+          const { parsedAccount } = mintToAccount.get(mintAddress);
+          // Fetch mint info to get decimals
+          const mintInfo = await getMint(this.connection, parsedAccount.mint);
+          decimals = mintInfo.decimals;
+
+          // Calculate balance
+          const amount = parsedAccount.amount;
+          balance = Number(amount) / Math.pow(10, decimals);
+        } else {
+          // Try to get decimals anyway for the display
+          try {
+            const mintInfo = await getMint(this.connection, new PublicKey(mintAddress));
+            decimals = mintInfo.decimals;
+          } catch (error) {
+            logger.warn(`Could not fetch mint info for ${mintAddress}: ${error.message}`);
+            decimals = 9; // Default to 9 decimals
+          }
+        }
+
+        // Use the full mint address as the display key for the balance
+        balances[mintAddress] = balance;
+        logger.debug(`Using full address as display key for ${mintAddress} with balance ${balance}`);
+      } catch (error) {
+        logger.error(`Failed to process token ${mintAddress}: ${error.message}`);
       }
     }
 
@@ -908,22 +1071,33 @@ export class Solana {
 
   // Add new method to get first wallet address
   public async getFirstWalletAddress(): Promise<string | null> {
-    const path = `${walletPath}/solana`;
+    // Specifically look in the solana subdirectory, not in any other chain's directory
+    const safeChain = sanitizePathComponent('solana');
+    const path = `${walletPath}/${safeChain}`;
     try {
       // Create directory if it doesn't exist
       await fse.ensureDir(path);
-      
+
       // Get all .json files in the directory
       const files = await fse.readdir(path);
       const walletFiles = files.filter(f => f.endsWith('.json'));
-      
+
       if (walletFiles.length === 0) {
         return null;
       }
-      
-      // Return first wallet address (without .json extension)
-      return walletFiles[0].slice(0, -5);
+
+      // Get the first wallet address (without .json extension)
+      const walletAddress = walletFiles[0].slice(0, -5);
+
+      try {
+        // Attempt to validate the address
+        return Solana.validateAddress(walletAddress);
+      } catch (e) {
+        logger.warn(`Invalid Solana address found in wallet directory: ${walletAddress}`);
+        return null;
+      }
     } catch (error) {
+      logger.error(`Error getting Solana wallet address: ${error.message}`);
       return null;
     }
   }

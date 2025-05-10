@@ -4,7 +4,8 @@ import { Raydium } from '../raydium';
 import { PublicKey } from '@solana/web3.js';
 import { logger } from '../../../services/logger';
 import { PositionInfoSchema } from '../../../schemas/trading-types/clmm-schema';
-import { httpBadRequest, ERROR_MESSAGES } from '../../../services/error-handler';
+// Using Fastify's native error handling
+const INVALID_SOLANA_ADDRESS_MESSAGE = (address: string) => `Invalid Solana address: ${address}`;
 
 // Schema definitions
 const GetPositionsOwnedRequest = Type.Object({
@@ -47,7 +48,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
         try {
           new PublicKey(poolAddress);
         } catch (error) {
-          throw httpBadRequest(ERROR_MESSAGES.INVALID_SOLANA_ADDRESS('pool'));
+          throw fastify.httpErrors.badRequest(INVALID_SOLANA_ADDRESS_MESSAGE('pool'));
         }
         console.log('poolAddress', poolAddress)
 

@@ -1,0 +1,11 @@
+{
+  "address": "0xd0b53d9277642d899df5c87a3966a349a798f224",
+  "baseTokenAddress": "0x4200000000000000000000000000000000000006",
+  "quoteTokenAddress": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+  "feePct": 0.05,
+  "price": 2202.75,
+  "baseTokenAmount": 150.25,
+  "quoteTokenAmount": 330963.1,
+  "tickSpacing": 10,
+  "tick": -202315
+}

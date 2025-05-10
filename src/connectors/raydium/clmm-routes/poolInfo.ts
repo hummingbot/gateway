@@ -25,7 +25,9 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
             poolAddress: { 
               type: 'string', 
               examples: ['3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv'] 
-            }
+            },
+            baseToken: { type: 'string', examples: ['SOL'] },
+            quoteToken: { type: 'string', examples: ['USDC'] }
           }
         },
         response: {
@@ -35,11 +37,31 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request): Promise<PoolInfo> => {
       try {
-        const { poolAddress } = request.query;
+        const { poolAddress, baseToken, quoteToken } = request.query;
         const network = request.query.network || 'mainnet-beta';
         
         const raydium = await Raydium.getInstance(network);
-        const poolInfo = await raydium.getClmmPoolInfo(poolAddress);
+        
+        // Check if either poolAddress or both baseToken and quoteToken are provided
+        if (!poolAddress && (!baseToken || !quoteToken)) {
+          throw fastify.httpErrors.badRequest(
+            'Either poolAddress or both baseToken and quoteToken must be provided'
+          );
+        }
+        
+        let poolAddressToUse = poolAddress;
+        
+        // If no pool address provided, find default pool using base and quote tokens
+        if (!poolAddressToUse) {
+          poolAddressToUse = await raydium.findDefaultPool(baseToken, quoteToken, 'clmm');
+          if (!poolAddressToUse) {
+            throw fastify.httpErrors.notFound(
+              `No CLMM pool found for pair ${baseToken}-${quoteToken}`
+            );
+          }
+        }
+        
+        const poolInfo = await raydium.getClmmPoolInfo(poolAddressToUse);
         if (!poolInfo) throw fastify.httpErrors.notFound('Pool not found');
         return poolInfo;
       } catch (e) {

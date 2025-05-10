@@ -5,7 +5,8 @@ import { PublicKey } from '@solana/web3.js';
 import { logger } from '../../../services/logger';
 import { Solana } from '../../../chains/solana/solana';
 import { PositionInfoSchema } from '../../../schemas/trading-types/clmm-schema';
-import { httpBadRequest, ERROR_MESSAGES } from '../../../services/error-handler';
+// Using Fastify's native error handling
+const INVALID_SOLANA_ADDRESS_MESSAGE = (address: string) => `Invalid Solana address: ${address}`;
 
 // Schema definitions
 const GetPositionsOwnedRequest = Type.Object({
@@ -66,7 +67,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
           new PublicKey(walletAddress);
         } catch (error) {
           const invalidAddress = error.message.includes(poolAddress) ? 'pool' : 'wallet';
-          throw httpBadRequest(ERROR_MESSAGES.INVALID_SOLANA_ADDRESS(invalidAddress));
+          throw fastify.httpErrors.badRequest(INVALID_SOLANA_ADDRESS_MESSAGE(invalidAddress));
               }
 
         const positions = await meteora.getPositionsInPool(

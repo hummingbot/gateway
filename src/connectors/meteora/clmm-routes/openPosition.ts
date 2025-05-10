@@ -1,5 +1,6 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { Meteora } from '../meteora';
+import { MeteoraConfig } from '../meteora.config';
 import { StrategyType } from '@meteora-ag/dlmm';
 import { Solana } from '../../../chains/solana/solana';
 import { Keypair, PublicKey } from '@solana/web3.js';
@@ -13,7 +14,15 @@ import {
   OpenPositionResponseType,
 } from '../../../schemas/trading-types/clmm-schema';
 import { Type, Static } from '@sinclair/typebox';
-import { httpBadRequest, httpNotFound, ERROR_MESSAGES } from '../../../services/error-handler';
+// Using Fastify's native error handling
+
+// Define error messages
+const INVALID_SOLANA_ADDRESS_MESSAGE = (address: string) => `Invalid Solana address: ${address}`;
+const POOL_NOT_FOUND_MESSAGE = (poolAddress: string) => `Pool not found: ${poolAddress}`;
+const MISSING_AMOUNTS_MESSAGE = 'Missing amounts for position creation';
+const INSUFFICIENT_BALANCE_MESSAGE = (token: string, required: string, actual: string) => 
+  `Insufficient balance for ${token}. Required: ${required}, Available: ${actual}`;
+const OPEN_POSITION_ERROR_MESSAGE = (error: any) => `Failed to open position: ${error.message || error}`;
 
 const SOL_POSITION_RENT = 0.05; // SOL amount required for position rent
 const SOL_TRANSACTION_BUFFER = 0.01; // Additional SOL buffer for transaction costs
@@ -39,7 +48,7 @@ async function openPosition(
     new PublicKey(walletAddress);
   } catch (error) {
     const invalidAddress = error.message.includes(poolAddress) ? 'pool' : 'wallet';
-    throw httpBadRequest(ERROR_MESSAGES.INVALID_SOLANA_ADDRESS(invalidAddress));
+    throw fastify.httpErrors.badRequest(INVALID_SOLANA_ADDRESS_MESSAGE(invalidAddress));
   }
 
   const wallet = await solana.getWallet(walletAddress);
@@ -49,11 +58,11 @@ async function openPosition(
   try {
     dlmmPool = await meteora.getDlmmPool(poolAddress);
     if (!dlmmPool) {
-      throw httpNotFound(ERROR_MESSAGES.POOL_NOT_FOUND(poolAddress));
+      throw fastify.httpErrors.notFound(POOL_NOT_FOUND_MESSAGE(poolAddress));
     }
   } catch (error) {
     if (error instanceof Error && error.message.includes('Invalid account discriminator')) {
-      throw httpNotFound(ERROR_MESSAGES.POOL_NOT_FOUND(poolAddress));
+      throw fastify.httpErrors.notFound(POOL_NOT_FOUND_MESSAGE(poolAddress));
     }
     throw error; // Re-throw unexpected errors
   }
@@ -64,7 +73,7 @@ async function openPosition(
   const tokenYSymbol = tokenY?.symbol || 'UNKNOWN';
 
   if (!baseTokenAmount && !quoteTokenAmount) {
-    throw httpBadRequest(ERROR_MESSAGES.MISSING_AMOUNTS);
+    throw fastify.httpErrors.badRequest(MISSING_AMOUNTS_MESSAGE);
   }
 
   // Check balances with SOL buffer
@@ -75,11 +84,11 @@ async function openPosition(
     (tokenYSymbol === 'SOL' ? SOL_POSITION_RENT + SOL_TRANSACTION_BUFFER : 0);
 
   if (balances[tokenXSymbol] < requiredBaseAmount) {
-    throw httpBadRequest(
-      ERROR_MESSAGES.INSUFFICIENT_BALANCE(
+    throw fastify.httpErrors.badRequest(
+      INSUFFICIENT_BALANCE_MESSAGE(
         tokenXSymbol,
-        requiredBaseAmount,
-        balances[tokenXSymbol]
+        requiredBaseAmount.toString(),
+        balances[tokenXSymbol].toString()
       )
     );
   }
@@ -97,8 +106,8 @@ async function openPosition(
   // Validate price position requirements
   if (currentPrice < lowerPrice) {
     if (!baseTokenAmount || baseTokenAmount <= 0 || (quoteTokenAmount !== undefined && quoteTokenAmount !== 0)) {
-      throw httpBadRequest(
-        ERROR_MESSAGES.OPEN_POSITION_ERROR(
+      throw fastify.httpErrors.badRequest(
+        OPEN_POSITION_ERROR_MESSAGE(
           `Current price ${currentPrice.toFixed(4)} is below lower price ${lowerPrice.toFixed(4)}. ` +
           `Requires positive ${tokenXSymbol} amount and zero ${tokenYSymbol} amount.`
         )
@@ -106,8 +115,8 @@ async function openPosition(
     }
   } else if (currentPrice > upperPrice) {
     if (!quoteTokenAmount || quoteTokenAmount <= 0 || (baseTokenAmount !== undefined && baseTokenAmount !== 0)) {
-      throw httpBadRequest(
-        ERROR_MESSAGES.OPEN_POSITION_ERROR(
+      throw fastify.httpErrors.badRequest(
+        OPEN_POSITION_ERROR_MESSAGE(
           `Current price ${currentPrice.toFixed(4)} is above upper price ${upperPrice.toFixed(4)}. ` +
           `Requires positive ${tokenYSymbol} amount and zero ${tokenXSymbol} amount.`
         )
@@ -145,7 +154,7 @@ async function openPosition(
     strategy: {
       maxBinId,
       minBinId,
-      strategyType: strategyType ?? meteora.config.strategyType,
+      strategyType: strategyType ?? MeteoraConfig.config.strategyType,
     },
     totalXAmount,
     totalYAmount,

@@ -17,7 +17,7 @@ export class Meteora {
   private dlmmPoolPromises: Map<string, Promise<DLMM>> = new Map();
 
   private constructor() {
-    this.config = MeteoraConfig.config;
+    this.config = MeteoraConfig.config as unknown as MeteoraConfig.NetworkConfig;
     this.solana = null; // Initialize as null since we need to await getInstance
   }
 
@@ -327,9 +327,12 @@ export class Meteora {
     return { minBinId, maxBinId };
   }
 
-  /** Gets slippage percentage from config */
+  /**
+   * Gets the allowed slippage percentage from config
+   * @returns Slippage as a percentage (e.g., 1.0 for 1%)
+   */
   getSlippagePct(): number {
-    const allowedSlippage = this.config.allowedSlippage;
+    const allowedSlippage = MeteoraConfig.config.allowedSlippage;
     const nd = allowedSlippage.match(percentRegexp);
     let slippage = 0.0;
     if (nd) {
@@ -345,7 +348,12 @@ export class Meteora {
   }
 
   async findDefaultPool(baseToken: string, quoteToken: string): Promise<string | null> {
-    const pools = this.config.pools;
+    // Get the network-specific pools
+    const network = this.solana.network;
+    const pools = MeteoraConfig.getNetworkPools(network, 'clmm');
+    
+    if (!pools) return null;
+    
     const pairKey = this.getPairKey(baseToken, quoteToken);
     const reversePairKey = this.getPairKey(quoteToken, baseToken);
     

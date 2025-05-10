@@ -26,12 +26,14 @@ const ConnectorsResponseSchema = Type.Object({
 type ConnectorsResponse = Static<typeof ConnectorsResponseSchema>;
 
 export const connectorsRoutes: FastifyPluginAsync = async (fastify) => {
+
+  // List available connectors
   fastify.get<{ Reply: ConnectorsResponse }>(
     '/',
     {
       schema: {
         description: 'Returns a list of available DEX connectors and their supported blockchain networks.',
-        tags: ['connectors'],
+        tags: ['system'],
         response: {
           200: ConnectorsResponseSchema
         }
@@ -60,6 +62,21 @@ export const connectorsRoutes: FastifyPluginAsync = async (fastify) => {
           name: 'raydium/clmm',
           trading_types: ['clmm', 'swap'],
           available_networks: RaydiumConfig.config.availableNetworks,
+        },
+        {
+          name: 'uniswap',
+          trading_types: ['swap'],
+          available_networks: UniswapConfig.config.availableNetworks,
+        },
+        {
+          name: 'uniswap/amm',
+          trading_types: ['amm', 'swap'],
+          available_networks: UniswapConfig.config.availableNetworks,
+        },
+        {
+          name: 'uniswap/clmm',
+          trading_types: ['clmm', 'swap'],
+          available_networks: UniswapConfig.config.availableNetworks,
         },
       ];
 

@@ -106,8 +106,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
             quoteToken: { type: 'string', examples: ['USDC'] },
             amount: { type: 'number', examples: [0.1] },
             side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
-            slippagePct: { type: 'number', examples: [1] },
-            poolAddress: { type: 'string', examples: [''] }
+            slippagePct: { type: 'number', examples: [0.5], description: 'Slippage tolerance in percentage (e.g., 0.5 for 0.5%)' },
           }
         },
         response: { 200: ExecuteSwapResponse }
@@ -115,6 +114,15 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       const { network, walletAddress, baseToken, quoteToken, amount, side, slippagePct } = request.body;
+
+      // Verify we have the needed parameters
+      if (!baseToken || !quoteToken) {
+        throw fastify.httpErrors.badRequest('baseToken and quoteToken are required');
+      }
+
+      // Log the operation
+      logger.debug(`Executing Jupiter swap for ${baseToken}-${quoteToken} with default routing`);
+      
       return await executeJupiterSwap(
         fastify,
         network || 'mainnet-beta',

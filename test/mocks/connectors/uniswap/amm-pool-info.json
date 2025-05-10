@@ -1,0 +1,14 @@
+{
+  "address": "0x88a43bbdf9d098eec7bceda4e2494615dfd9bb9c",
+  "baseTokenAddress": "0x4200000000000000000000000000000000000006",
+  "quoteTokenAddress": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+  "feePct": 0.3,
+  "price": 2200.50,
+  "baseTokenAmount": 80.5,
+  "quoteTokenAmount": 177150.25,
+  "poolType": "amm",
+  "lpMint": {
+    "address": "0x88a43bbdf9d098eec7bceda4e2494615dfd9bb9c",
+    "decimals": 18
+  }
+}

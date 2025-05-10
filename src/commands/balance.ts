@@ -81,7 +81,7 @@ export default class Balance extends Command {
       
     } else if (chain.toLowerCase() === 'ethereum') {
       // Get an Ethereum instance for the given network.
-      const ethereum = Ethereum.getInstance(network);
+      const ethereum = await Ethereum.getInstance(network);
       
       if (!wallet) {
         this.error('For Ethereum, please supply a wallet address.');

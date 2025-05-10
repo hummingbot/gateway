@@ -23,12 +23,19 @@ interface ConfigurationRoot {
   configurations: ConfigurationNamespaceDefinitions;
 }
 const NamespaceTag: string = '$namespace ';
-export const ConfigRootSchemaPath: string = path.join(
-  __dirname,
-  'schema/configuration-root-schema.json'
-);
-const ConfigTemplatesDir: string = path.join(__dirname, '../templates/');
+// Adjust paths to work with the compiled structure
+// Use services/schema directory for backwards compatibility, but prefer schemas/json for new code
+const LegacySchemasBaseDir: string = path.join(rootPath(), 'dist/src/services/schema');
+const SchemasBaseDir: string = path.join(rootPath(), 'dist/src/schemas/json');
+
+// Try to find schema in schemas/json first, fall back to services/schema if needed
+export const ConfigRootSchemaPath: string = fs.existsSync(path.join(SchemasBaseDir, 'configuration-root-schema.json'))
+  ? path.join(SchemasBaseDir, 'configuration-root-schema.json')
+  : path.join(LegacySchemasBaseDir, 'configuration-root-schema.json');
+
+// Always use conf directory for both configs and templates
 const ConfigDir: string = path.join(rootPath(), 'conf/');
+const ConfigTemplatesDir: string = ConfigDir;
 
 interface UnpackedConfigNamespace {
   namespace: ConfigurationNamespace;
@@ -53,6 +60,12 @@ export function deepCopy(srcObject: any, dstObject: any): any {
 }
 
 export function initiateWithTemplate(templateFile: string, configFile: string) {
+  // Throw an error if the template file doesn't exist
+  if (!fs.existsSync(templateFile)) {
+    throw new Error(`Template file not found: ${templateFile}`);
+  }
+  
+  // Copy the template file to the config file
   fs.copyFileSync(templateFile, configFile);
 }
 
@@ -105,6 +118,8 @@ export class ConfigurationNamespace {
     this.#configurationPath = configurationPath;
     this.#templatePath = templatePath;
     this.#configuration = {};
+    
+    // Ensure schema exists
     if (!fs.existsSync(schemaPath)) {
       throw new Error(
         `The JSON schema for namespace ${id} (${schemaPath}) does not exist.`
@@ -115,10 +130,15 @@ export class ConfigurationNamespace {
       JSON.parse(fs.readFileSync(schemaPath).toString())
     );
 
+    // If config file doesn't exist, initialize from template
     if (!fs.existsSync(configurationPath)) {
-      // copy from template
-      initiateWithTemplate(this.templatePath, this.configurationPath);
+      try {
+        initiateWithTemplate(templatePath, configurationPath);
+      } catch (err) {
+        throw new Error(`Failed to initiate configuration from template for ${id}: ${err.message}`);
+      }
     }
+    
     this.loadConfig();
   }
 
@@ -143,33 +163,49 @@ export class ConfigurationNamespace {
   }
 
   loadConfig() {
-    const configCandidate: Configuration = yaml.load(
-      fs.readFileSync(this.#configurationPath, 'utf8')
-    ) as Configuration;
-    if (!this.#validator(configCandidate)) {
-      // merge with template file and try validating again
-      const configTemplateCandidate: Configuration = yaml.load(
-        fs.readFileSync(this.#templatePath, 'utf8')
+    try {
+      const configCandidate: Configuration = yaml.load(
+        fs.readFileSync(this.#configurationPath, 'utf8')
       ) as Configuration;
-      deepCopy(configCandidate, configTemplateCandidate);
-      if (!this.#validator(configTemplateCandidate)) {
-        for (const err of this.#validator.errors as DefinedError[]) {
-          if (err.keyword === 'additionalProperties') {
-            throw new Error(
-              `${this.id} config file seems to be outdated/broken due to additional property "${err.params.additionalProperty}". Kindly fix manually.`
-            );
-          } else {
-            throw new Error(
-              `${this.id} config file seems to be outdated/broken due to "${err.keyword}" in "${err.instancePath}" - ${err.message}. Kindly fix manually.`
-            );
+      
+      if (!this.#validator(configCandidate)) {
+        try {
+          // Try to merge with template file
+          if (!fs.existsSync(this.#templatePath)) {
+            throw new Error(`Template file not found: ${this.#templatePath}`);
           }
+          
+          const configTemplateCandidate: Configuration = yaml.load(
+            fs.readFileSync(this.#templatePath, 'utf8')
+          ) as Configuration;
+          
+          deepCopy(configCandidate, configTemplateCandidate);
+          if (!this.#validator(configTemplateCandidate)) {
+            for (const err of this.#validator.errors as DefinedError[]) {
+              if (err.keyword === 'additionalProperties') {
+                throw new Error(
+                  `${this.id} config file seems to be outdated/broken due to additional property "${err.params.additionalProperty}". Kindly fix manually.`
+                );
+              } else {
+                throw new Error(
+                  `${this.id} config file seems to be outdated/broken due to "${err.keyword}" in "${err.instancePath}" - ${err.message}. Kindly fix manually.`
+                );
+              }
+            }
+          }
+          
+          this.#configuration = configTemplateCandidate;
+          this.saveConfig();
+          return;
+        } catch (err) {
+          throw new Error(`Failed to validate or merge with template: ${err.message}`);
         }
       }
-      this.#configuration = configTemplateCandidate;
-      this.saveConfig();
-      return;
+      
+      this.#configuration = configCandidate;
+    } catch (err) {
+      throw new Error(`Failed to load configuration for ${this.id}: ${err.message}`);
     }
-    this.#configuration = configCandidate;
   }
 
   saveConfig() {
@@ -440,10 +476,13 @@ export class ConfigManagerV2 {
             );
             namespaceDefinition[key] = path.join(configRootDir, filePath);
           } else if (key === 'schemaPath') {
-            namespaceDefinition[key] = path.join(
-              path.dirname(ConfigRootSchemaPath),
-              filePath
-            );
+            // Try schemas/json first, then fall back to services/schema if needed
+            const newSchemaPath = path.join(SchemasBaseDir, filePath);
+            const legacySchemaPath = path.join(LegacySchemasBaseDir, filePath);
+            
+            namespaceDefinition[key] = fs.existsSync(newSchemaPath)
+              ? newSchemaPath
+              : legacySchemaPath;
           }
         } else {
           throw new Error(`Absolute path not allowed for ${key}.`);

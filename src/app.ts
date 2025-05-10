@@ -10,20 +10,20 @@ import { promisify } from 'util';
 // Internal services
 import { logger } from './services/logger';
 import { getHttpsOptions } from './https';
-import { errorHandler } from './services/error-handler';
 import { ConfigManagerV2 } from './services/config-manager-v2';
 import { asciiLogo } from './index';
 
 // Routes
-import { configRoutes } from './config/config.routes';
-import { walletRoutes } from './wallet/wallet.routes';
-import { connectorsRoutes } from './connectors/connector.routes';
 import { solanaRoutes } from './chains/solana/solana.routes';
 import { ethereumRoutes } from './chains/ethereum/ethereum.routes';
+import { chainRoutes } from './chains/chain.routes';
 import { jupiterRoutes } from './connectors/jupiter/jupiter.routes';
 import { meteoraRoutes } from './connectors/meteora/meteora.routes';
 import { uniswapRoutes } from './connectors/uniswap/uniswap.routes';
 import { raydiumRoutes } from './connectors/raydium/raydium.routes';
+import { connectorsRoutes } from './connectors/connector.routes';
+import { configRoutes } from './config/config.routes';
+import { walletRoutes } from './wallet/wallet.routes';
 
 
 // Change version for each release
@@ -52,16 +52,22 @@ const swaggerOptions = {
       },
     ],
     tags: [
-      { name: 'connectors', description: 'Available connectors' },
-      { name: 'config', description: 'Configuration endpoints' },
-      { name: 'wallet', description: 'Wallet endpoints' },
+      // Main categories
+      { name: 'system', description: 'System configuration endpoints' },
+      { name: 'wallet', description: 'Wallet management endpoints' },
+
+      // Chains
       { name: 'solana', description: 'Solana chain endpoints' },
-      { name: 'jupiter', description: 'Jupiter connector endpoints' },
-      { name: 'raydium/clmm', description: 'Raydium CLMM connector endpoints' },
-      { name: 'raydium/amm', description: 'Raydium AMM connector endpoints' },
-      { name: 'meteora/clmm', description: 'Meteora CLMM connector endpoints' },
-      { name: 'uniswap', description: 'Uniswap connector endpoints' },
       { name: 'ethereum', description: 'Ethereum chain endpoints' },
+
+      // Connectors
+      { name: 'jupiter', description: 'Jupiter DEX aggregator (Solana)' },
+      { name: 'raydium/amm', description: 'Raydium Standard pool connector (Solana)' },
+      { name: 'raydium/clmm', description: 'Raydium Concentrated pool connector (Solana)' },
+      { name: 'meteora/clmm', description: 'Meteora DLMM pool connector (Solana)' },
+      { name: 'uniswap', description: 'Uniswap router connector (Ethereum mainnet)' },
+      { name: 'uniswap/amm', description: 'Uniswap V2 pool connector (Ethereum)' },
+      { name: 'uniswap/clmm', description: 'Uniswap V3 pool connector (Ethereum)' },      
     ],
     components: {
       parameters: {
@@ -127,7 +133,7 @@ const configureGatewayServer = () => {
     server.register(fastifySwaggerUi, {
       routePrefix: '/docs',
       uiConfig: {
-        docExpansion: 'list',
+        docExpansion: 'none',
         deepLinking: false,
         tryItOutEnabled: true,
         displayRequestDuration: true,
@@ -145,30 +151,43 @@ const configureGatewayServer = () => {
     docsServer?.register(fastifySwaggerUi, {
       routePrefix: '/',
       uiConfig: {
-        docExpansion: 'list',
+        docExpansion: 'none',
         deepLinking: false,
         tryItOutEnabled: true,
+        displayRequestDuration: true,
+        persistAuthorization: true,
+        filter: true,
       },
     });
   }
 
   // Register routes on both servers
   const registerRoutes = async (app: FastifyInstance) => {
+    // Register system routes
     app.register(configRoutes, { prefix: '/config' });
-    app.register(connectorsRoutes, { prefix: '/connectors' });
     app.register(walletRoutes, { prefix: '/wallet' });
-    app.register(jupiterRoutes.swap, { prefix: '/jupiter' });
+    
+    // Register connector list route
+    app.register(connectorsRoutes, { prefix: '/connectors' });
+    
+    // Register chain list route
+    app.register(chainRoutes, { prefix: '/chains' });
+    
+    // Register DEX connector routes
+    app.register(jupiterRoutes.swap, { prefix: '/connectors/jupiter' });
     
     // Meteora routes
-    app.register(meteoraRoutes.clmm, { prefix: '/meteora/clmm' });
+    app.register(meteoraRoutes.clmm, { prefix: '/connectors/meteora/clmm' });
     
     // Raydium routes
-    app.register(raydiumRoutes.clmm, { prefix: '/raydium/clmm' });
-    app.register(raydiumRoutes.amm, { prefix: '/raydium/amm' });
+    app.register(raydiumRoutes.clmm, { prefix: '/connectors/raydium/clmm' });
+    app.register(raydiumRoutes.amm, { prefix: '/connectors/raydium/amm' });
     
-    app.register(uniswapRoutes, { prefix: '/uniswap' });
-    app.register(solanaRoutes, { prefix: '/solana' });
-    app.register(ethereumRoutes, { prefix: '/ethereum' });
+    app.register(uniswapRoutes, { prefix: '/connectors/uniswap' });
+    
+    // Register chain routes
+    app.register(solanaRoutes, { prefix: '/chains/solana' });
+    app.register(ethereumRoutes, { prefix: '/chains/ethereum' });
   };
 
   // Register routes on main server
@@ -182,7 +201,40 @@ const configureGatewayServer = () => {
   server.addContentTypeParser('application/json', { parseAs: 'string' }, server.getDefaultJsonParser('ignore', 'ignore'));
 
   // Global error handler
-  server.setErrorHandler(errorHandler);
+  server.setErrorHandler((error, request, reply) => {
+    // Handle validation errors
+    if ('validation' in error && error.validation) {
+      return reply.status(400).send({
+        statusCode: 400,
+        error: 'Validation Error',
+        message: error.message,
+        validation: error.validation
+      });
+    }
+
+    // Handle Fastify's native errors
+    if (error.statusCode && error.statusCode >= 400) {
+      return reply.status(error.statusCode).send({
+        statusCode: error.statusCode,
+        error: error.name,
+        message: error.message
+      });
+    }
+
+    // Log and handle unexpected errors
+    logger.error('Unhandled error:', {
+      error: error.message,
+      stack: error.stack,
+      url: request.url,
+      params: request.params
+    });
+
+    reply.status(500).send({
+      statusCode: 500,
+      error: 'Internal Server Error',
+      message: 'An unexpected error occurred'
+    });
+  });
 
   // Health check route (outside registerRoutes, only on main server)
   server.get('/', async () => {
