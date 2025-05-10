@@ -1,12 +1,12 @@
-import winston from 'winston';
-import DailyRotateFile from 'winston-daily-rotate-file';
+import appRoot from 'app-root-path';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
-import appRoot from 'app-root-path';
+import { LEVEL, MESSAGE } from 'triple-beam';
+import winston from 'winston';
+import DailyRotateFile from 'winston-daily-rotate-file';
+
 import { ConfigManagerV2 } from './config-manager-v2';
 dayjs.extend(utc);
-
-const { LEVEL, MESSAGE } = require('triple-beam');
 
 const errorsWithStack = winston.format((einfo) => {
   if (einfo instanceof Error) {
@@ -35,44 +35,46 @@ const logFileFormat = winston.format.combine(
   winston.format.printf((info) => {
     const localDate = getLocalDate();
     let output = info.message;
-    
+
     // Handle metadata (additional arguments)
-    if (Object.keys(info).length > 2) {  // more than just 'message' and 'level'
-      const metaData = {...info};
+    if (Object.keys(info).length > 2) {
+      // more than just 'message' and 'level'
+      const metaData = { ...info };
       delete metaData.message;
       delete metaData.level;
       delete metaData.stack;
       delete metaData[LEVEL];
       delete metaData[MESSAGE];
-      
+
       output += ' ' + JSON.stringify(metaData, null, 2);
     }
-    
-    return info.stack 
+
+    return info.stack
       ? `${localDate} | ${info.level} | ${output} | ${info.stack}`
       : `${localDate} | ${info.level} | ${output}`;
-  })
+  }),
 );
 
 const sdtoutFormat = winston.format.combine(
   winston.format.printf((info) => {
     const localDate = getLocalDate();
     let output = info.message;
-    
+
     // Handle metadata (additional arguments)
-    if (Object.keys(info).length > 2) {  // more than just 'message' and 'level'
-      const metaData = {...info};
+    if (Object.keys(info).length > 2) {
+      // more than just 'message' and 'level'
+      const metaData = { ...info };
       delete metaData.message;
       delete metaData.level;
       delete metaData.stack;
       delete metaData[LEVEL];
       delete metaData[MESSAGE];
-      
+
       output += ' ' + JSON.stringify(metaData, null, 2);
     }
-    
+
     return `${localDate} | ${info.level} | ${output}`;
-  })
+  }),
 );
 
 const getLogPath = () => {
@@ -105,4 +107,5 @@ export const updateLoggerToStdout = () => {
     : logger.remove(toStdout);
 };
 
+// Initialize logger with stdout configuration
 updateLoggerToStdout();
