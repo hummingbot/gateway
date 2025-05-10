@@ -1,13 +1,13 @@
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { Type } from '@sinclair/typebox';
-import { Ethereum } from '../ethereum';
-import { logger } from '../../../services/logger';
+import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+
 import {
   AllowancesRequestType,
   AllowancesResponseType,
 } from '../../../schemas/chain-schema';
-import { TokenInfo } from '../ethereum';
 import { tokenValueToString } from '../../../services/base';
+import { logger } from '../../../services/logger';
+import { Ethereum, TokenInfo } from '../ethereum';
 
 export async function getTokensToTokenInfo(
   ethereum: Ethereum,

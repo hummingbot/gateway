@@ -1,6 +1,7 @@
 import { FastifyPluginAsync } from 'fastify';
-import { getWalletsRoute } from './routes/getWallets';
+
 import { addWalletRoute } from './routes/addWallet';
+import { getWalletsRoute } from './routes/getWallets';
 import { removeWalletRoute } from './routes/removeWallet';
 import { signMessageRoute } from './routes/signMessage';
 

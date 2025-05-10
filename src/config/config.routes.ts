@@ -1,9 +1,10 @@
 import { FastifyPluginAsync } from 'fastify';
-import { getConfigRoute } from './routes/getConfig';
-import { updateConfigRoute } from './routes/updateConfig';
-import { getPoolsRoute } from './routes/getPools';
+
 import { addPoolRoute } from './routes/addPool';
+import { getConfigRoute } from './routes/getConfig';
+import { getPoolsRoute } from './routes/getPools';
 import { removePoolRoute } from './routes/removePool';
+import { updateConfigRoute } from './routes/updateConfig';
 
 export const configRoutes: FastifyPluginAsync = async (fastify) => {
   // Register individual route handlers

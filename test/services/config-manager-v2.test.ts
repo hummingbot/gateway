@@ -1,8 +1,10 @@
 import fs from 'fs';
 import fsp from 'fs/promises';
-import fse from 'fs-extra';
 import os from 'os';
 import path from 'path';
+
+import fse from 'fs-extra';
+
 import {
   deepCopy,
   ConfigManagerV2,
@@ -12,7 +14,7 @@ import {
 
 describe('Configuration manager v2 tests', () => {
   const testDataSourcePath: string = fse.realpathSync(
-    path.join(__dirname, 'data/config-manager-v2')
+    path.join(__dirname, 'data/config-manager-v2'),
   );
   let tempDirPath: string = '';
   let configManager: ConfigManagerV2;
@@ -20,7 +22,7 @@ describe('Configuration manager v2 tests', () => {
   beforeEach(async () => {
     // Create a temp dir in project
     tempDirPath = await fsp.mkdtemp(
-      path.join(os.tmpdir(), 'config-manager-v2-unit-test')
+      path.join(os.tmpdir(), 'config-manager-v2-unit-test'),
     );
     tempDirPath = fse.realpathSync(tempDirPath);
 
@@ -29,7 +31,7 @@ describe('Configuration manager v2 tests', () => {
 
     // Create a valid configuration manager from the temp dir.
     configManager = new ConfigManagerV2(
-      path.join(tempDirPath, 'test1/root.yml')
+      path.join(tempDirPath, 'test1/root.yml'),
     );
   });
 
@@ -67,7 +69,7 @@ describe('Configuration manager v2 tests', () => {
     }).toThrow();
     expect(() => {
       new ConfigManagerV2(
-        path.join(tempDirPath, 'test1/invalid-root-defira.yml')
+        path.join(tempDirPath, 'test1/invalid-root-defira.yml'),
       );
     }).toThrow();
     done();
@@ -77,7 +79,7 @@ describe('Configuration manager v2 tests', () => {
     expect(configManager.get('server.certificatePath')).toEqual('gateway.crt');
     expect(configManager.get('ethereum.networks.mainnet.chainID')).toEqual(1);
     expect(
-      configManager.get('ethereum.networks.mainnet.nativeCurrencySymbol')
+      configManager.get('ethereum.networks.mainnet.nativeCurrencySymbol'),
     ).toEqual('ETH');
     done();
   });
@@ -113,16 +115,16 @@ describe('Configuration manager v2 tests', () => {
     expect(configManager.get('server.certificatePath')).toEqual(newKeyPath);
 
     const verifyConfigManager: ConfigManagerV2 = new ConfigManagerV2(
-      path.join(tempDirPath, 'test1/root.yml')
+      path.join(tempDirPath, 'test1/root.yml'),
     );
     expect(verifyConfigManager.get('server.certificatePath')).toEqual(
-      newKeyPath
-    );
-    expect(verifyConfigManager.get('ethereum.networks.sepolia.chainID')).toEqual(
-      970
+      newKeyPath,
     );
     expect(
-      verifyConfigManager.get('ethereum.networks.mainnet.chainID')
+      verifyConfigManager.get('ethereum.networks.sepolia.chainID'),
+    ).toEqual(970);
+    expect(
+      verifyConfigManager.get('ethereum.networks.mainnet.chainID'),
     ).toEqual(61);
     done();
   });
@@ -152,16 +154,16 @@ describe('Configuration manager v2 tests', () => {
 
   it('getting namespace objects', (done) => {
     const serverNamespace: ConfigurationNamespace = configManager.getNamespace(
-      'server'
+      'server',
     ) as ConfigurationNamespace;
     expect(path.basename(serverNamespace.schemaPath)).toEqual(
-      'server-schema.json'
+      'server-schema.json',
     );
     expect(path.dirname(serverNamespace.schemaPath)).toEqual(
-      path.dirname(ConfigRootSchemaPath)
+      path.dirname(ConfigRootSchemaPath),
     );
     expect(serverNamespace.configurationPath).toEqual(
-      path.join(tempDirPath, 'test1/server.yml')
+      path.join(tempDirPath, 'test1/server.yml'),
     );
     done();
   });
@@ -172,7 +174,7 @@ describe('Configuration manager v2 tests', () => {
 
   it('Dummy test to attempt migration', () => {
     const configManager2 = new ConfigManagerV2(
-      path.join(tempDirPath, 'test1/root2.yml')
+      path.join(tempDirPath, 'test1/root2.yml'),
     );
     expect(configManager2.get('server.certificatePath')).toBeDefined();
   });
@@ -219,9 +221,7 @@ describe('Configuration manager v2 tests', () => {
   it.skip('Get instance', (done) => {
     // Skipping this test as it relies on actual config files that may change
     let configManager = ConfigManagerV2.getInstance();
-    expect(configManager.allConfigurations.server.logToStdOut).toEqual(
-      true
-    );
+    expect(configManager.allConfigurations.server.logToStdOut).toEqual(true);
     configManager = ConfigManagerV2.getInstance();
     done();
   });

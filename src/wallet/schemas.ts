@@ -5,32 +5,32 @@ export const WalletAddressSchema = Type.String();
 
 export const AddWalletRequestSchema = Type.Object({
   chain: Type.String(),
-  privateKey: Type.String()
+  privateKey: Type.String(),
 });
 
 export const AddWalletResponseSchema = Type.Object({
-  address: WalletAddressSchema
+  address: WalletAddressSchema,
 });
 
 export const GetWalletResponseSchema = Type.Object({
   chain: Type.String(),
-  walletAddresses: Type.Array(WalletAddressSchema)
+  walletAddresses: Type.Array(WalletAddressSchema),
 });
 
 export const RemoveWalletRequestSchema = Type.Object({
   chain: Type.String(),
-  address: WalletAddressSchema
+  address: WalletAddressSchema,
 });
 
 export const SignMessageRequestSchema = Type.Object({
   chain: Type.String(),
   network: Type.String(),
   address: WalletAddressSchema,
-  message: Type.String()
+  message: Type.String(),
 });
 
 export const SignMessageResponseSchema = Type.Object({
-  signature: Type.String()
+  signature: Type.String(),
 });
 
 // Export TypeScript types

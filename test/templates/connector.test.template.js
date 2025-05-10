@@ -1,6 +1,6 @@
 /**
  * Template for adding a new connector test
- * 
+ *
  * Instructions:
  * 1. Copy this file to test/connectors/yourconnector/protocol.test.js
  *    (e.g., test/connectors/pancakeswap/swap.test.js)
@@ -10,19 +10,20 @@
  * 5. Add or remove test cases based on your connector's capabilities
  */
 
-const { test, describe, expect, beforeEach } = require('@jest/globals');
-const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 
+const { test, describe, expect, beforeEach } = require('@jest/globals');
+const axios = require('axios');
+
 // Constants for this test file - UPDATE THESE FOR YOUR CONNECTOR
-const CONNECTOR = 'yourconnector';      // Connector name used in API paths
-const PROTOCOL = 'yourprotocol';        // Protocol type (swap, amm, clmm)
-const CHAIN = 'yourchain';              // Chain this connector operates on
-const NETWORK = 'yournetwork';          // Default network to test
-const BASE_TOKEN = 'BASE';              // Example base token
-const QUOTE_TOKEN = 'QUOTE';            // Example quote token
-const TEST_POOL = 'your-pool-address';  // Example pool address (for AMM/CLMM)
+const CONNECTOR = 'yourconnector'; // Connector name used in API paths
+const PROTOCOL = 'yourprotocol'; // Protocol type (swap, amm, clmm)
+const CHAIN = 'yourchain'; // Chain this connector operates on
+const NETWORK = 'yournetwork'; // Default network to test
+const BASE_TOKEN = 'BASE'; // Example base token
+const QUOTE_TOKEN = 'QUOTE'; // Example quote token
+const TEST_POOL = 'your-pool-address'; // Example pool address (for AMM/CLMM)
 const TEST_WALLET = 'your-wallet-address';
 
 // Mock API calls (axios.get and axios.post)
@@ -30,8 +31,14 @@ jest.mock('axios');
 
 // Helper to load mock responses
 function loadMockResponse(filename) {
-  const filePath = path.join(__dirname, '..', 'mocks', 'connectors', 
-    CONNECTOR, `${PROTOCOL}-${filename}.json`);
+  const filePath = path.join(
+    __dirname,
+    '..',
+    'mocks',
+    'connectors',
+    CONNECTOR,
+    `${PROTOCOL}-${filename}.json`,
+  );
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
 
@@ -62,15 +69,14 @@ function validateSwapQuote(response) {
 
 // Tests
 describe(`${CONNECTOR} ${PROTOCOL} Tests (${NETWORK} Network)`, () => {
-  
   beforeEach(() => {
     // Reset axios mocks before each test
     axios.get.mockReset();
     axios.post.mockReset();
   });
-  
+
   // UNCOMMENT AND CUSTOMIZE THE TEST SECTIONS THAT APPLY TO YOUR CONNECTOR
-  
+
   /* 
   // For AMM/CLMM connectors: Pool Info tests
   describe('Pool Info Endpoint', () => {
@@ -145,7 +151,7 @@ describe(`${CONNECTOR} ${PROTOCOL} Tests (${NETWORK} Network)`, () => {
     });
   });
   */
-  
+
   /* 
   // For swap-supporting connectors: Quote Swap tests
   describe('Quote Swap Endpoint', () => {
@@ -230,7 +236,7 @@ describe(`${CONNECTOR} ${PROTOCOL} Tests (${NETWORK} Network)`, () => {
     });
   });
   */
-  
+
   /* 
   // For swap-supporting connectors: Execute Swap tests
   describe('Execute Swap Endpoint', () => {
@@ -276,6 +282,6 @@ describe(`${CONNECTOR} ${PROTOCOL} Tests (${NETWORK} Network)`, () => {
     });
   });
   */
-  
+
   // Add additional connector-specific endpoint tests here
 });

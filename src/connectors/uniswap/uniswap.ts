@@ -1,9 +1,12 @@
 import { UniswapConfig } from './uniswap.config';
-import { findPoolAddress, isValidV2Pool, isValidV3Pool, isFractionString } from './uniswap.utils';
-import { Ethereum } from '../../chains/ethereum/ethereum';
+import {
+  findPoolAddress,
+  isValidV2Pool,
+  isValidV3Pool,
+  isFractionString,
+} from './uniswap.utils';
 
 // V2 (AMM) imports
-import { Pair as V2Pair } from '@uniswap/v2-sdk';
 
 // Define minimal ABIs for Uniswap V2 contracts
 const IUniswapV2PairABI = {
@@ -115,15 +118,18 @@ const IUniswapV2RouterABI = {
 };
 
 // V3 (CLMM) imports
-import { AlphaRouter } from '@uniswap/smart-order-router';
-import { FeeAmount, Pool as V3Pool } from '@uniswap/v3-sdk';
-import { abi as IUniswapV3PoolABI } from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
-import { abi as IUniswapV3FactoryABI } from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Factory.sol/IUniswapV3Factory.json';
 import { Token, CurrencyAmount, Percent } from '@uniswap/sdk-core';
+import { AlphaRouter } from '@uniswap/smart-order-router';
+import { Pair as V2Pair } from '@uniswap/v2-sdk';
+import { abi as IUniswapV3FactoryABI } from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Factory.sol/IUniswapV3Factory.json';
+import { abi as IUniswapV3PoolABI } from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
+import { FeeAmount, Pool as V3Pool } from '@uniswap/v3-sdk';
 import { Contract, constants } from 'ethers';
-import { logger } from '../../services/logger';
-import { percentRegexp } from '../../services/config-manager-v2';
 import { getAddress } from 'ethers/lib/utils';
+
+import { Ethereum } from '../../chains/ethereum/ethereum';
+import { percentRegexp } from '../../services/config-manager-v2';
+import { logger } from '../../services/logger';
 
 export class Uniswap {
   private static _instances: { [name: string]: Uniswap };
@@ -151,7 +157,6 @@ export class Uniswap {
 
   // Network information
   private networkName: string;
-
 
   private constructor(network: string) {
     this.networkName = network;
@@ -276,7 +281,6 @@ export class Uniswap {
   public ready(): boolean {
     return this._ready;
   }
-  
 
   /**
    * Given a token's address, return the connector's native representation of the token.

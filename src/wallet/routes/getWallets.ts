@@ -1,4 +1,5 @@
 import { FastifyPluginAsync } from 'fastify';
+
 import { logger } from '../../services/logger';
 import { GetWalletResponse, GetWalletResponseSchema } from '../schemas';
 import { getWallets } from '../utils';
@@ -13,15 +14,15 @@ export const getWalletsRoute: FastifyPluginAsync = async (fastify) => {
         response: {
           200: {
             type: 'array',
-            items: GetWalletResponseSchema
-          }
-        }
-      }
+            items: GetWalletResponseSchema,
+          },
+        },
+      },
     },
     async () => {
       logger.info('Getting all wallets');
       return await getWallets(fastify);
-    }
+    },
   );
 };
 

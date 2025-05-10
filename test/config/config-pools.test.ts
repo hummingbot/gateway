@@ -1,6 +1,11 @@
 import { FastifyInstance } from 'fastify';
+
+import {
+  getDefaultPools,
+  addDefaultPool,
+  removeDefaultPool,
+} from '../../src/config/utils';
 import { ConfigManagerV2 } from '../../src/services/config-manager-v2';
-import { getDefaultPools, addDefaultPool, removeDefaultPool } from '../../src/config/utils';
 
 // Mock dependencies before importing functions
 jest.mock('../../src/services/config-manager-v2');
@@ -9,8 +14,8 @@ jest.mock('../../src/services/logger', () => ({
     info: jest.fn(),
     error: jest.fn(),
     warn: jest.fn(),
-    debug: jest.fn()
-  }
+    debug: jest.fn(),
+  },
 }));
 
 // Import logger after mocking
@@ -23,8 +28,10 @@ describe('Pool Configuration Tests', () => {
   const mockFastify = {
     httpErrors: {
       badRequest: jest.fn((msg: string) => new Error(`Bad Request: ${msg}`)),
-      internalServerError: jest.fn((msg: string) => new Error(`Internal Server Error: ${msg}`))
-    }
+      internalServerError: jest.fn(
+        (msg: string) => new Error(`Internal Server Error: ${msg}`),
+      ),
+    },
   } as unknown as FastifyInstance;
 
   // Mock connector configuration with networks structure
@@ -34,18 +41,18 @@ describe('Pool Configuration Tests', () => {
       'mainnet-beta': {
         amm: {
           'SOL-USDC': '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
-          'RAY-USDC': '6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg'
+          'RAY-USDC': '6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg',
         },
         clmm: {
           'SOL-USDC': '3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv',
-          'RAY-USDC': '61R1ndXxvsWXXkWSyNkCxnzwd3zUNB8Q2ibmkiLPC8ht'
-        }
+          'RAY-USDC': '61R1ndXxvsWXXkWSyNkCxnzwd3zUNB8Q2ibmkiLPC8ht',
+        },
       },
-      'devnet': {
+      devnet: {
         amm: {},
-        clmm: {}
-      }
-    }
+        clmm: {},
+      },
+    },
   };
 
   // Mock ConfigManagerV2 implementation
@@ -53,19 +60,21 @@ describe('Pool Configuration Tests', () => {
   const mockGet = jest.fn();
   const mockSet = jest.fn();
   const mockDelete = jest.fn();
-  
+
   beforeEach(() => {
     // Reset all mocks
     jest.clearAllMocks();
-    
+
     // Setup ConfigManagerV2 mock
-    (ConfigManagerV2 as jest.Mocked<typeof ConfigManagerV2>).getInstance = jest.fn().mockReturnValue({
-      getNamespace: mockGetNamespace,
-      get: mockGet,
-      set: mockSet,
-      delete: mockDelete
-    });
-    
+    (ConfigManagerV2 as jest.Mocked<typeof ConfigManagerV2>).getInstance = jest
+      .fn()
+      .mockReturnValue({
+        getNamespace: mockGetNamespace,
+        get: mockGet,
+        set: mockSet,
+        delete: mockDelete,
+      });
+
     // Default mock returns
     mockGetNamespace.mockReturnValue({ configuration: mockConnectorConfig });
     mockGet.mockImplementation((path: string) => {
@@ -97,22 +106,26 @@ describe('Pool Configuration Tests', () => {
       const result = getDefaultPools(mockFastify, 'unknown/amm');
       expect(result).toEqual({});
       expect(logger.error).toHaveBeenCalledWith(
-        expect.stringContaining('Connector unknown configuration not found')
+        expect.stringContaining('Connector unknown configuration not found'),
       );
     });
 
     it('should return an empty object if networks configuration is missing', () => {
-      mockGetNamespace.mockReturnValue({ configuration: { allowedSlippage: '1/100' } });
+      mockGetNamespace.mockReturnValue({
+        configuration: { allowedSlippage: '1/100' },
+      });
       const result = getDefaultPools(mockFastify, 'raydium/amm');
       expect(result).toEqual({});
       expect(logger.error).toHaveBeenCalledWith(
-        expect.stringContaining('Connector raydium configuration not found or missing networks')
+        expect.stringContaining(
+          'Connector raydium configuration not found or missing networks',
+        ),
       );
     });
 
     it('should return an empty object if no networks are configured', () => {
       mockGetNamespace.mockReturnValue({
-        configuration: { allowedSlippage: '1/100', networks: {} }
+        configuration: { allowedSlippage: '1/100', networks: {} },
       });
       const result = getDefaultPools(mockFastify, 'raydium/amm');
       expect(result).toEqual({});
@@ -122,10 +135,12 @@ describe('Pool Configuration Tests', () => {
       const result = getDefaultPools(mockFastify, 'raydium/amm');
       expect(result).toEqual({
         'SOL-USDC': '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
-        'RAY-USDC': '6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg'
+        'RAY-USDC': '6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg',
       });
       expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining('Retrieved default pools for raydium/amm on network mainnet-beta')
+        expect.stringContaining(
+          'Retrieved default pools for raydium/amm on network mainnet-beta',
+        ),
       );
     });
 
@@ -133,10 +148,12 @@ describe('Pool Configuration Tests', () => {
       const result = getDefaultPools(mockFastify, 'raydium/clmm');
       expect(result).toEqual({
         'SOL-USDC': '3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv',
-        'RAY-USDC': '61R1ndXxvsWXXkWSyNkCxnzwd3zUNB8Q2ibmkiLPC8ht'
+        'RAY-USDC': '61R1ndXxvsWXXkWSyNkCxnzwd3zUNB8Q2ibmkiLPC8ht',
       });
       expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining('Retrieved default pools for raydium/clmm on network mainnet-beta')
+        expect.stringContaining(
+          'Retrieved default pools for raydium/clmm on network mainnet-beta',
+        ),
       );
     });
 
@@ -150,17 +167,19 @@ describe('Pool Configuration Tests', () => {
         configuration: {
           allowedSlippage: '1/100',
           networks: {
-            'devnet': {
+            devnet: {
               amm: { 'SOL-USDC': 'devnet-pool-address' },
-              clmm: {}
-            }
-          }
-        }
+              clmm: {},
+            },
+          },
+        },
       });
       const result = getDefaultPools(mockFastify, 'raydium/amm');
       expect(result).toEqual({ 'SOL-USDC': 'devnet-pool-address' });
       expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining('Retrieved default pools for raydium/amm on network devnet')
+        expect.stringContaining(
+          'Retrieved default pools for raydium/amm on network devnet',
+        ),
       );
     });
   });
@@ -185,25 +204,41 @@ describe('Pool Configuration Tests', () => {
     });
 
     it('should add a pool to the configuration', () => {
-      addDefaultPool(mockFastify, 'raydium/amm', 'SOL', 'USDC', 'new-pool-address');
+      addDefaultPool(
+        mockFastify,
+        'raydium/amm',
+        'SOL',
+        'USDC',
+        'new-pool-address',
+      );
       expect(mockSet).toHaveBeenCalledWith(
-        'raydium.networks.mainnet-beta.amm.SOL-USDC', 
-        'new-pool-address'
+        'raydium.networks.mainnet-beta.amm.SOL-USDC',
+        'new-pool-address',
       );
       expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining('Added default pool for raydium/amm: SOL-USDC (address: new-pool-address) on network mainnet-beta')
+        expect.stringContaining(
+          'Added default pool for raydium/amm: SOL-USDC (address: new-pool-address) on network mainnet-beta',
+        ),
       );
     });
 
     it('should throw an error if configuration is not found', () => {
       mockGetNamespace.mockReturnValue(null);
-      
+
       expect(() => {
-        addDefaultPool(mockFastify, 'unknown/amm', 'SOL', 'USDC', 'pool-address');
-      }).toThrow('Internal Server Error: Failed to add default pool: Connector unknown configuration not found or missing networks');
-      
+        addDefaultPool(
+          mockFastify,
+          'unknown/amm',
+          'SOL',
+          'USDC',
+          'pool-address',
+        );
+      }).toThrow(
+        'Internal Server Error: Failed to add default pool: Connector unknown configuration not found or missing networks',
+      );
+
       expect(logger.error).toHaveBeenCalledWith(
-        expect.stringContaining('Failed to add default pool')
+        expect.stringContaining('Failed to add default pool'),
       );
     });
   });
@@ -224,22 +259,26 @@ describe('Pool Configuration Tests', () => {
     it('should remove a pool from the configuration', () => {
       removeDefaultPool(mockFastify, 'raydium/amm', 'SOL', 'USDC');
       expect(mockDelete).toHaveBeenCalledWith(
-        'raydium.networks.mainnet-beta.amm.SOL-USDC'
+        'raydium.networks.mainnet-beta.amm.SOL-USDC',
       );
       expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining('Removed default pool for raydium/amm: SOL-USDC on network mainnet-beta')
+        expect.stringContaining(
+          'Removed default pool for raydium/amm: SOL-USDC on network mainnet-beta',
+        ),
       );
     });
 
     it('should throw an error if configuration is not found', () => {
       mockGetNamespace.mockReturnValue(null);
-      
+
       expect(() => {
         removeDefaultPool(mockFastify, 'unknown/amm', 'SOL', 'USDC');
-      }).toThrow('Internal Server Error: Failed to remove default pool: Connector unknown configuration not found or missing networks');
-      
+      }).toThrow(
+        'Internal Server Error: Failed to remove default pool: Connector unknown configuration not found or missing networks',
+      );
+
       expect(logger.error).toHaveBeenCalledWith(
-        expect.stringContaining('Failed to remove default pool')
+        expect.stringContaining('Failed to remove default pool'),
       );
     });
   });

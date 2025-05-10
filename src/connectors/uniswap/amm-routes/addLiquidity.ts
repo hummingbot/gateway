@@ -1,15 +1,17 @@
+import { Contract } from '@ethersproject/contracts';
 import { FastifyPluginAsync } from 'fastify';
-import { Uniswap } from '../uniswap';
+
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import { logger } from '../../../services/logger';
-import { 
-  AddLiquidityRequestType, 
+import {
+  AddLiquidityRequestType,
   AddLiquidityRequest,
   AddLiquidityResponseType,
-  AddLiquidityResponse
+  AddLiquidityResponse,
 } from '../../../schemas/trading-types/amm-schema';
+import { logger } from '../../../services/logger';
+import { Uniswap } from '../uniswap';
 import { formatTokenAmount } from '../uniswap.utils';
-import { Contract } from '@ethersproject/contracts';
+
 // Replace direct import with require
 const IUniswapV2Router02ABI = {
   abi: [
@@ -23,36 +25,40 @@ const IUniswapV2Router02ABI = {
         { internalType: 'uint256', name: 'amountAMin', type: 'uint256' },
         { internalType: 'uint256', name: 'amountBMin', type: 'uint256' },
         { internalType: 'address', name: 'to', type: 'address' },
-        { internalType: 'uint256', name: 'deadline', type: 'uint256' }
+        { internalType: 'uint256', name: 'deadline', type: 'uint256' },
       ],
       name: 'addLiquidity',
       outputs: [
         { internalType: 'uint256', name: 'amountA', type: 'uint256' },
         { internalType: 'uint256', name: 'amountB', type: 'uint256' },
-        { internalType: 'uint256', name: 'liquidity', type: 'uint256' }
+        { internalType: 'uint256', name: 'liquidity', type: 'uint256' },
       ],
       stateMutability: 'nonpayable',
-      type: 'function'
+      type: 'function',
     },
     {
       inputs: [
         { internalType: 'address', name: 'token', type: 'address' },
-        { internalType: 'uint256', name: 'amountTokenDesired', type: 'uint256' },
+        {
+          internalType: 'uint256',
+          name: 'amountTokenDesired',
+          type: 'uint256',
+        },
         { internalType: 'uint256', name: 'amountTokenMin', type: 'uint256' },
         { internalType: 'uint256', name: 'amountETHMin', type: 'uint256' },
         { internalType: 'address', name: 'to', type: 'address' },
-        { internalType: 'uint256', name: 'deadline', type: 'uint256' }
+        { internalType: 'uint256', name: 'deadline', type: 'uint256' },
       ],
       name: 'addLiquidityETH',
       outputs: [
         { internalType: 'uint256', name: 'amountToken', type: 'uint256' },
         { internalType: 'uint256', name: 'amountETH', type: 'uint256' },
-        { internalType: 'uint256', name: 'liquidity', type: 'uint256' }
+        { internalType: 'uint256', name: 'liquidity', type: 'uint256' },
       ],
       stateMutability: 'payable',
-      type: 'function'
-    }
-  ]
+      type: 'function',
+    },
+  ],
 };
 import { BigNumber } from 'ethers';
 import { Percent } from '@uniswap/sdk-core';
@@ -74,49 +80,59 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
             network: { type: 'string', default: 'base' },
             chain: { type: 'string', default: 'ethereum' },
             walletAddress: { type: 'string', examples: ['0x...'] },
-            poolAddress: { type: 'string', examples: ['0xb4e16d0168e52d35cacd2c6185b44281ec28c9dc'] },
+            poolAddress: {
+              type: 'string',
+              examples: ['0xb4e16d0168e52d35cacd2c6185b44281ec28c9dc'],
+            },
             baseToken: { type: 'string', examples: ['WETH'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
             baseTokenAmount: { type: 'number', examples: [0.1] },
             quoteTokenAmount: { type: 'number', examples: [100] },
-            slippagePct: { type: 'number', examples: [1] }
-          }
+            slippagePct: { type: 'number', examples: [1] },
+          },
         },
         response: {
-          200: AddLiquidityResponse
+          200: AddLiquidityResponse,
         },
-      }
+      },
     },
     async (request) => {
       try {
-        const { 
-          network, 
-          poolAddress: requestedPoolAddress, 
-          baseToken, 
+        const {
+          network,
+          poolAddress: requestedPoolAddress,
+          baseToken,
           quoteToken,
           baseTokenAmount,
-          quoteTokenAmount, 
+          quoteTokenAmount,
           slippagePct,
-          walletAddress: requestedWalletAddress 
+          walletAddress: requestedWalletAddress,
         } = request.body;
-        
+
         const networkToUse = network || 'base';
 
         // Validate essential parameters
-        if (!baseToken || !quoteToken || !baseTokenAmount || !quoteTokenAmount) {
+        if (
+          !baseToken ||
+          !quoteToken ||
+          !baseTokenAmount ||
+          !quoteTokenAmount
+        ) {
           throw fastify.httpErrors.badRequest('Missing required parameters');
         }
-        
+
         // Get Uniswap and Ethereum instances
         const uniswap = await Uniswap.getInstance(networkToUse);
         const ethereum = await Ethereum.getInstance(networkToUse);
-        
+
         // Get wallet address - either from request or first available
         let walletAddress = requestedWalletAddress;
         if (!walletAddress) {
           walletAddress = await uniswap.getFirstWalletAddress();
           if (!walletAddress) {
-            throw fastify.httpErrors.badRequest('No wallet address provided and no default wallet found');
+            throw fastify.httpErrors.badRequest(
+              'No wallet address provided and no default wallet found',
+            );
           }
           logger.info(`Using first available wallet address: ${walletAddress}`);
         }
@@ -126,16 +142,24 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         const quoteTokenObj = uniswap.getTokenBySymbol(quoteToken);
 
         if (!baseTokenObj || !quoteTokenObj) {
-          throw fastify.httpErrors.badRequest(`Token not found: ${!baseTokenObj ? baseToken : quoteToken}`);
+          throw fastify.httpErrors.badRequest(
+            `Token not found: ${!baseTokenObj ? baseToken : quoteToken}`,
+          );
         }
 
         // Find pool address if not provided
         let poolAddress = requestedPoolAddress;
         if (!poolAddress) {
-          poolAddress = await uniswap.findDefaultPool(baseToken, quoteToken, 'amm');
+          poolAddress = await uniswap.findDefaultPool(
+            baseToken,
+            quoteToken,
+            'amm',
+          );
           if (!poolAddress) {
             // If no pool exists, it's okay - we'll create one
-            logger.info(`No existing pool found for ${baseToken}-${quoteToken}, will create a new one`);
+            logger.info(
+              `No existing pool found for ${baseToken}-${quoteToken}, will create a new one`,
+            );
           }
         }
 
@@ -146,42 +170,47 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         // Get the router contract with signer
-        const routerAddress = uniswap.config.uniswapV2RouterAddress(networkToUse);
+        const routerAddress =
+          uniswap.config.uniswapV2RouterAddress(networkToUse);
         const router = new Contract(
           routerAddress,
           IUniswapV2Router02ABI.abi,
-          wallet
+          wallet,
         );
 
         // Convert amounts to token units with decimals
         const baseTokenAmountRaw = BigNumber.from(
-          Math.floor(baseTokenAmount * Math.pow(10, baseTokenObj.decimals)).toString()
+          Math.floor(
+            baseTokenAmount * Math.pow(10, baseTokenObj.decimals),
+          ).toString(),
         );
-        
+
         const quoteTokenAmountRaw = BigNumber.from(
-          Math.floor(quoteTokenAmount * Math.pow(10, quoteTokenObj.decimals)).toString()
+          Math.floor(
+            quoteTokenAmount * Math.pow(10, quoteTokenObj.decimals),
+          ).toString(),
         );
 
         // Calculate slippage-adjusted amounts
-        const slippageTolerance = slippagePct 
-          ? new Percent(slippagePct, 100) 
+        const slippageTolerance = slippagePct
+          ? new Percent(slippagePct, 100)
           : uniswap.getAllowedSlippage();
-          
+
         const slippageMultiplier = new Percent(1).subtract(slippageTolerance);
-        
+
         const baseTokenMinAmount = baseTokenAmountRaw
           .mul(slippageMultiplier.numerator.toString())
           .div(slippageMultiplier.denominator.toString());
-          
+
         const quoteTokenMinAmount = quoteTokenAmountRaw
           .mul(slippageMultiplier.numerator.toString())
           .div(slippageMultiplier.denominator.toString());
 
         // Prepare the transaction parameters
         const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes from now
-        
+
         let tx;
-        
+
         // Check if one of the tokens is WETH
         if (baseTokenObj.symbol === 'WETH') {
           // First, approve router to spend tokens if quote token isn't ETH
@@ -192,19 +221,19 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
                 constant: false,
                 inputs: [
                   { name: '_spender', type: 'address' },
-                  { name: '_value', type: 'uint256' }
+                  { name: '_value', type: 'uint256' },
                 ],
                 name: 'approve',
                 outputs: [{ name: '', type: 'bool' }],
                 payable: false,
                 stateMutability: 'nonpayable',
-                type: 'function'
-              }
+                type: 'function',
+              },
             ],
-            wallet
+            wallet,
           );
           await tokenContract.approve(routerAddress, quoteTokenAmountRaw);
-          
+
           // Add liquidity ETH + Token
           tx = await router.addLiquidityETH(
             quoteTokenObj.address,
@@ -213,10 +242,10 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
             baseTokenMinAmount,
             walletAddress,
             deadline,
-            { 
+            {
               value: baseTokenAmountRaw,
-              gasLimit: 300000
-            }
+              gasLimit: 300000,
+            },
           );
         } else if (quoteTokenObj.symbol === 'WETH') {
           // First, approve router to spend tokens
@@ -227,19 +256,19 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
                 constant: false,
                 inputs: [
                   { name: '_spender', type: 'address' },
-                  { name: '_value', type: 'uint256' }
+                  { name: '_value', type: 'uint256' },
                 ],
                 name: 'approve',
                 outputs: [{ name: '', type: 'bool' }],
                 payable: false,
                 stateMutability: 'nonpayable',
-                type: 'function'
-              }
+                type: 'function',
+              },
             ],
-            wallet
+            wallet,
           );
           await tokenContract.approve(routerAddress, baseTokenAmountRaw);
-          
+
           // Add liquidity Token + ETH
           tx = await router.addLiquidityETH(
             baseTokenObj.address,
@@ -248,10 +277,10 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
             quoteTokenMinAmount,
             walletAddress,
             deadline,
-            { 
+            {
               value: quoteTokenAmountRaw,
-              gasLimit: 300000
-            }
+              gasLimit: 300000,
+            },
           );
         } else {
           // Both tokens are ERC20
@@ -263,19 +292,19 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
                 constant: false,
                 inputs: [
                   { name: '_spender', type: 'address' },
-                  { name: '_value', type: 'uint256' }
+                  { name: '_value', type: 'uint256' },
                 ],
                 name: 'approve',
                 outputs: [{ name: '', type: 'bool' }],
                 payable: false,
                 stateMutability: 'nonpayable',
-                type: 'function'
-              }
+                type: 'function',
+              },
             ],
-            wallet
+            wallet,
           );
           await baseTokenContract.approve(routerAddress, baseTokenAmountRaw);
-          
+
           const quoteTokenContract = new Contract(
             quoteTokenObj.address,
             [
@@ -283,18 +312,18 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
                 constant: false,
                 inputs: [
                   { name: '_spender', type: 'address' },
-                  { name: '_value', type: 'uint256' }
+                  { name: '_value', type: 'uint256' },
                 ],
                 name: 'approve',
                 outputs: [{ name: '', type: 'bool' }],
                 payable: false,
                 stateMutability: 'nonpayable',
-                type: 'function'
-              }
+                type: 'function',
+              },
             ],
-            wallet
+            wallet,
           );
-          
+
           // Add liquidity Token + Token
           tx = await router.addLiquidity(
             baseTokenObj.address,
@@ -305,24 +334,24 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
             quoteTokenMinAmount,
             walletAddress,
             deadline,
-            { gasLimit: 300000 }
+            { gasLimit: 300000 },
           );
         }
 
         // Wait for transaction confirmation
         const receipt = await tx.wait();
-        
+
         // Calculate gas fee
         const gasFee = formatTokenAmount(
           receipt.gasUsed.mul(receipt.effectiveGasPrice).toString(),
-          18 // ETH has 18 decimals
+          18, // ETH has 18 decimals
         );
 
         return {
           signature: receipt.transactionHash,
           fee: gasFee,
           baseTokenAmountAdded: baseTokenAmount,
-          quoteTokenAmountAdded: quoteTokenAmount
+          quoteTokenAmountAdded: quoteTokenAmount,
         };
       } catch (e) {
         logger.error(e);
@@ -331,7 +360,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         }
         throw fastify.httpErrors.internalServerError('Failed to add liquidity');
       }
-    }
+    },
   );
 };
 

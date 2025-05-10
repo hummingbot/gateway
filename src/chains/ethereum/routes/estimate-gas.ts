@@ -1,6 +1,5 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
-import { Ethereum } from '../ethereum';
-import { logger } from '../../../services/logger';
+
 import {
   EstimateGasRequestType,
   EstimateGasResponse,
@@ -8,6 +7,8 @@ import {
   EstimateGasResponseSchema,
 } from '../../../schemas/chain-schema';
 import { gasCostInEthString } from '../../../services/base';
+import { logger } from '../../../services/logger';
+import { Ethereum } from '../ethereum';
 
 export async function estimateGasEthereum(
   fastify: FastifyInstance,

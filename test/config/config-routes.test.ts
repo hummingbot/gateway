@@ -6,14 +6,18 @@ jest.mock('../../src/services/logger', () => ({
     info: jest.fn(),
     error: jest.fn(),
     warn: jest.fn(),
-    debug: jest.fn()
-  }
+    debug: jest.fn(),
+  },
 }));
 jest.mock('../../src/config/utils');
 
 // Import after mocking
-import { getDefaultPools, addDefaultPool, removeDefaultPool } from '../../src/config/utils';
 import { configRoutes } from '../../src/config/config.routes';
+import {
+  getDefaultPools,
+  addDefaultPool,
+  removeDefaultPool,
+} from '../../src/config/utils';
 
 // Remove duplicate mock declaration
 
@@ -23,31 +27,31 @@ describe('Config Routes Tests', () => {
   // Sample pool data for testing
   const ammPools = {
     'SOL-USDC': '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
-    'RAY-USDC': '6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg'
+    'RAY-USDC': '6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg',
   };
 
   const clmmPools = {
     'SOL-USDC': '3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv',
-    'RAY-USDC': '61R1ndXxvsWXXkWSyNkCxnzwd3zUNB8Q2ibmkiLPC8ht'
+    'RAY-USDC': '61R1ndXxvsWXXkWSyNkCxnzwd3zUNB8Q2ibmkiLPC8ht',
   };
 
   beforeEach(async () => {
     // Create a new Fastify instance for each test
     fastify = Fastify();
-    
+
     // Register the config routes plugin
     await fastify.register(configRoutes);
-    
+
     // Reset all mocks
     jest.clearAllMocks();
-    
+
     // Setup default mock implementations
     (getDefaultPools as jest.Mock).mockImplementation((_fastify, connector) => {
       if (connector === 'raydium/amm') return ammPools;
       if (connector === 'raydium/clmm') return clmmPools;
       return {};
     });
-    
+
     (addDefaultPool as jest.Mock).mockImplementation(() => {});
     (removeDefaultPool as jest.Mock).mockImplementation(() => {});
   });
@@ -60,31 +64,37 @@ describe('Config Routes Tests', () => {
     it('should return pools for raydium/amm', async () => {
       const response = await fastify.inject({
         method: 'GET',
-        url: '/pools?connector=raydium/amm'
+        url: '/pools?connector=raydium/amm',
       });
-      
+
       expect(response.statusCode).toBe(200);
       expect(JSON.parse(response.payload)).toEqual(ammPools);
-      expect(getDefaultPools).toHaveBeenCalledWith(expect.anything(), 'raydium/amm');
+      expect(getDefaultPools).toHaveBeenCalledWith(
+        expect.anything(),
+        'raydium/amm',
+      );
     });
 
     it('should return pools for raydium/clmm', async () => {
       const response = await fastify.inject({
         method: 'GET',
-        url: '/pools?connector=raydium/clmm'
+        url: '/pools?connector=raydium/clmm',
       });
-      
+
       expect(response.statusCode).toBe(200);
       expect(JSON.parse(response.payload)).toEqual(clmmPools);
-      expect(getDefaultPools).toHaveBeenCalledWith(expect.anything(), 'raydium/clmm');
+      expect(getDefaultPools).toHaveBeenCalledWith(
+        expect.anything(),
+        'raydium/clmm',
+      );
     });
 
     it('should return empty object for unknown connector', async () => {
       const response = await fastify.inject({
         method: 'GET',
-        url: '/pools?connector=unknown/amm'
+        url: '/pools?connector=unknown/amm',
       });
-      
+
       expect(response.statusCode).toBe(200);
       expect(JSON.parse(response.payload)).toEqual({});
     });
@@ -92,9 +102,9 @@ describe('Config Routes Tests', () => {
     it('should return 400 if connector parameter is missing', async () => {
       const response = await fastify.inject({
         method: 'GET',
-        url: '/pools'
+        url: '/pools',
       });
-      
+
       expect(response.statusCode).toBe(400);
     });
 
@@ -102,12 +112,12 @@ describe('Config Routes Tests', () => {
       (getDefaultPools as jest.Mock).mockImplementation(() => {
         throw new Error('Test error');
       });
-      
+
       const response = await fastify.inject({
         method: 'GET',
-        url: '/pools?connector=raydium/amm'
+        url: '/pools?connector=raydium/amm',
       });
-      
+
       expect(response.statusCode).toBe(500);
     });
   });
@@ -121,21 +131,21 @@ describe('Config Routes Tests', () => {
           connector: 'raydium/amm',
           baseToken: 'SOL',
           quoteToken: 'USDC',
-          poolAddress: 'new-pool-address'
-        }
+          poolAddress: 'new-pool-address',
+        },
       });
-      
+
       expect(response.statusCode).toBe(200);
       expect(JSON.parse(response.payload)).toEqual({
-        message: 'Default pool added for SOL-USDC'
+        message: 'Default pool added for SOL-USDC',
       });
-      
+
       expect(addDefaultPool).toHaveBeenCalledWith(
         expect.anything(),
         'raydium/amm',
         'SOL',
         'USDC',
-        'new-pool-address'
+        'new-pool-address',
       );
     });
 
@@ -145,11 +155,11 @@ describe('Config Routes Tests', () => {
         url: '/pools/add',
         payload: {
           connector: 'raydium/amm',
-          baseToken: 'SOL'
+          baseToken: 'SOL',
           // Missing quoteToken and poolAddress
-        }
+        },
       });
-      
+
       expect(response.statusCode).toBe(400);
     });
 
@@ -157,7 +167,7 @@ describe('Config Routes Tests', () => {
       (addDefaultPool as jest.Mock).mockImplementation(() => {
         throw new Error('Test error');
       });
-      
+
       const response = await fastify.inject({
         method: 'POST',
         url: '/pools/add',
@@ -165,10 +175,10 @@ describe('Config Routes Tests', () => {
           connector: 'raydium/amm',
           baseToken: 'SOL',
           quoteToken: 'USDC',
-          poolAddress: 'new-pool-address'
-        }
+          poolAddress: 'new-pool-address',
+        },
       });
-      
+
       expect(response.statusCode).toBe(500);
     });
   });
@@ -181,20 +191,20 @@ describe('Config Routes Tests', () => {
         payload: {
           connector: 'raydium/amm',
           baseToken: 'SOL',
-          quoteToken: 'USDC'
-        }
+          quoteToken: 'USDC',
+        },
       });
-      
+
       expect(response.statusCode).toBe(200);
       expect(JSON.parse(response.payload)).toEqual({
-        message: 'Default pool removed for SOL-USDC'
+        message: 'Default pool removed for SOL-USDC',
       });
-      
+
       expect(removeDefaultPool).toHaveBeenCalledWith(
         expect.anything(),
         'raydium/amm',
         'SOL',
-        'USDC'
+        'USDC',
       );
     });
 
@@ -203,11 +213,11 @@ describe('Config Routes Tests', () => {
         method: 'POST',
         url: '/pools/remove',
         payload: {
-          connector: 'raydium/amm'
+          connector: 'raydium/amm',
           // Missing baseToken and quoteToken
-        }
+        },
       });
-      
+
       expect(response.statusCode).toBe(400);
     });
 
@@ -215,17 +225,17 @@ describe('Config Routes Tests', () => {
       (removeDefaultPool as jest.Mock).mockImplementation(() => {
         throw new Error('Test error');
       });
-      
+
       const response = await fastify.inject({
         method: 'POST',
         url: '/pools/remove',
         payload: {
           connector: 'raydium/amm',
           baseToken: 'SOL',
-          quoteToken: 'USDC'
-        }
+          quoteToken: 'USDC',
+        },
       });
-      
+
       expect(response.statusCode).toBe(500);
     });
   });

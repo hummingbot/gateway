@@ -1,12 +1,13 @@
 import { FastifyPluginAsync } from 'fastify';
-import { Ethereum } from '../ethereum';
-import { logger } from '../../../services/logger';
+
 import {
   StatusRequestType,
   StatusResponseType,
   StatusRequestSchema,
   StatusResponseSchema,
 } from '../../../schemas/chain-schema';
+import { logger } from '../../../services/logger';
+import { Ethereum } from '../ethereum';
 
 export async function getEthereumStatus(
   network: string,

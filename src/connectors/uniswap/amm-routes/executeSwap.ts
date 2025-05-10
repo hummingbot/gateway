@@ -1,23 +1,24 @@
-import { FastifyPluginAsync } from 'fastify';
-import { Uniswap } from '../uniswap';
-import { Ethereum } from '../../../chains/ethereum/ethereum';
-import { logger } from '../../../services/logger';
-import {
-  ExecuteSwapRequestType,
-  ExecuteSwapRequest,
-  ExecuteSwapResponseType,
-  ExecuteSwapResponse,
-} from '../../../schemas/trading-types/swap-schema';
+import { Contract } from '@ethersproject/contracts';
 import { Token, CurrencyAmount, Percent, TradeType } from '@uniswap/sdk-core';
 import {
   Pair as V2Pair,
   Route as V2Route,
   Trade as V2Trade,
 } from '@uniswap/v2-sdk';
-import { formatTokenAmount } from '../uniswap.utils';
 import { BigNumber, Wallet, utils } from 'ethers';
-import { Contract } from '@ethersproject/contracts';
+import { FastifyPluginAsync } from 'fastify';
+
+import { Ethereum } from '../../../chains/ethereum/ethereum';
+import {
+  ExecuteSwapRequestType,
+  ExecuteSwapRequest,
+  ExecuteSwapResponseType,
+  ExecuteSwapResponse,
+} from '../../../schemas/trading-types/swap-schema';
+import { logger } from '../../../services/logger';
+import { Uniswap } from '../uniswap';
 import { IUniswapV2Router02ABI } from '../uniswap.contracts';
+import { formatTokenAmount } from '../uniswap.utils';
 
 export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
   // Get first wallet address for example

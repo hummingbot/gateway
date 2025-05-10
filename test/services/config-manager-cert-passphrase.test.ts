@@ -1,5 +1,6 @@
-import { patch, unpatch } from './patch';
 import { ConfigManagerCertPassphrase } from '../../src/services/config-manager-cert-passphrase';
+
+import { patch, unpatch } from './patch';
 import 'jest-extended';
 
 describe('ConfigManagerCertPassphrase.readPassphrase', () => {
@@ -20,10 +21,10 @@ describe('ConfigManagerCertPassphrase.readPassphrase', () => {
     // Clear any existing passphrase from environment variables
     const originalPassphrase = process.env['GATEWAY_PASSPHRASE'];
     delete process.env['GATEWAY_PASSPHRASE'];
-    
+
     ConfigManagerCertPassphrase.readPassphrase();
     expect(witnessFailure).toEqual(true);
-    
+
     // Restore the original passphrase if it existed
     if (originalPassphrase !== undefined) {
       process.env['GATEWAY_PASSPHRASE'] = originalPassphrase;

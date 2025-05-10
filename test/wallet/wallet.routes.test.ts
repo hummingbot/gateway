@@ -1,8 +1,8 @@
 import { gatewayApp } from '../../src/app';
-import { patch, unpatch } from '../services/patch';
 import { Ethereum } from '../../src/chains/ethereum/ethereum';
 import { ConfigManagerCertPassphrase } from '../../src/services/config-manager-cert-passphrase';
 import { GetWalletResponse } from '../../src/wallet/schemas';
+import { patch, unpatch } from '../services/patch';
 
 let eth: Ethereum;
 
@@ -13,7 +13,7 @@ beforeAll(async () => {
 });
 
 beforeEach(() =>
-  patch(ConfigManagerCertPassphrase, 'readPassphrase', () => 'a')
+  patch(ConfigManagerCertPassphrase, 'readPassphrase', () => 'a'),
 );
 
 afterAll(async () => {
@@ -68,7 +68,7 @@ describe('POST /wallet/add', () => {
       payload: {
         privateKey: twoPrivateKey,
         chain: 'ethereum',
-      }
+      },
     });
 
     expect(response.statusCode).toBe(200);
@@ -95,7 +95,7 @@ describe('DELETE /wallet/remove', () => {
       payload: {
         privateKey: twoPrivateKey,
         chain: 'ethereum',
-      }
+      },
     });
 
     // Then delete it
@@ -105,7 +105,7 @@ describe('DELETE /wallet/remove', () => {
       payload: {
         address: twoAddress,
         chain: 'ethereum',
-      }
+      },
     });
 
     expect(response.statusCode).toBe(200);
@@ -116,9 +116,9 @@ describe('DELETE /wallet/remove', () => {
     const response = await gatewayApp.inject({
       method: 'DELETE',
       url: '/wallet/delete',
-      payload: {}
+      payload: {},
     });
-    
+
     expect(response.statusCode).toBe(404);
   });
 });
@@ -142,13 +142,13 @@ describe('GET /wallet', () => {
       payload: {
         privateKey: twoPrivateKey,
         chain: 'ethereum',
-      }
+      },
     });
 
     // Then get wallets
     const response = await gatewayApp.inject({
       method: 'GET',
-      url: '/wallet'
+      url: '/wallet',
     });
 
     expect(response.statusCode).toBe(200);
@@ -160,7 +160,7 @@ describe('GET /wallet', () => {
       .map((wallet) => wallet.walletAddresses);
 
     // Use case-insensitive comparison for Ethereum addresses
-    const lowerCaseAddresses = addresses[0].map(addr => addr.toLowerCase());
+    const lowerCaseAddresses = addresses[0].map((addr) => addr.toLowerCase());
     expect(lowerCaseAddresses).toContain(twoAddress.toLowerCase());
   });
 });

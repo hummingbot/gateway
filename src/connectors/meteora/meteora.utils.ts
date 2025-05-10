@@ -2,7 +2,7 @@ import { MeteoraConfig } from './meteora.config';
 
 /**
  * Find a pool address for a token pair in the configured pools
- * 
+ *
  * @param baseToken Base token symbol
  * @param quoteToken Quote token symbol
  * @param poolType Type of pool ('amm' or 'clmm')
@@ -13,7 +13,7 @@ export const findPoolAddress = (
   baseToken: string,
   quoteToken: string,
   poolType: 'amm' | 'clmm',
-  network: string = 'mainnet-beta'
+  network: string = 'mainnet-beta',
 ): string | null => {
   // Get the network-specific pools
   const pools = MeteoraConfig.getNetworkPools(network, poolType);

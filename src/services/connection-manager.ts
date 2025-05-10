@@ -1,7 +1,6 @@
 import { Ethereum } from '../chains/ethereum/ethereum';
 import { Solana } from '../chains/solana/solana';
 
-
 export interface Chain {
   // TODO: Add shared chain properties (e.g., network, chainId, etc.)
 }
@@ -24,7 +23,10 @@ export async function getInitializedChain<_T>(
   chain: string,
   network: string,
 ): Promise<ChainInstance> {
-  const chainInstance = await getChainInstance(chain, network) as ChainInstance;
+  const chainInstance = (await getChainInstance(
+    chain,
+    network,
+  )) as ChainInstance;
 
   if (chainInstance === undefined) {
     throw new UnsupportedChainException(`unsupported chain ${chain}`);

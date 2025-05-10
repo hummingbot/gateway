@@ -1,3 +1,4 @@
+import { Provider } from '@ethersproject/abstract-provider';
 import {
   BigNumber,
   Contract,
@@ -6,15 +7,16 @@ import {
   utils,
   Wallet,
 } from 'ethers';
-import { TokenListType, TokenValue } from '../../services/base';
-import { walletPath } from '../../wallet/utils';
+import { getAddress } from 'ethers/lib/utils';
 import fse from 'fs-extra';
+
+import { TokenListType, TokenValue } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { logger } from '../../services/logger';
-import { getAddress } from 'ethers/lib/utils';
 import { TokenListResolutionStrategy } from '../../services/token-list-resolution';
+import { walletPath } from '../../wallet/utils';
+
 import { getEthereumConfig } from './ethereum.config';
-import { Provider } from '@ethersproject/abstract-provider';
 
 // information about an Ethereum token
 export interface TokenInfo {
@@ -254,11 +256,11 @@ export class Ethereum {
         token.symbol.toUpperCase() === tokenSymbol.toUpperCase() &&
         token.chainId === this.chainId,
     );
-    
+
     if (tokenBySymbol) {
       return tokenBySymbol;
     }
-    
+
     // If not found by symbol, check if it's a valid address
     try {
       const normalizedAddress = utils.getAddress(tokenSymbol);
@@ -349,7 +351,9 @@ export class Ethereum {
 
       // Validate it looks like an Ethereum address (0x followed by 40 hex chars)
       if (!walletAddress.startsWith('0x') || walletAddress.length !== 42) {
-        logger.warn(`Invalid Ethereum address found in wallet directory: ${walletAddress}`);
+        logger.warn(
+          `Invalid Ethereum address found in wallet directory: ${walletAddress}`,
+        );
         return null;
       }
 

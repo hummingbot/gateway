@@ -1,6 +1,17 @@
+import { FastifyInstance } from 'fastify';
 import fse from 'fs-extra';
+
+import { Ethereum } from '../chains/ethereum/ethereum';
+import { Solana } from '../chains/solana/solana';
 import { ConfigManagerCertPassphrase } from '../services/config-manager-cert-passphrase';
+import {
+  getInitializedChain,
+  UnsupportedChainException,
+  Chain,
+  getSupportedChains,
+} from '../services/connection-manager';
 import { logger } from '../services/logger';
+
 import {
   AddWalletRequest,
   AddWalletResponse,
@@ -9,14 +20,6 @@ import {
   SignMessageResponse,
   GetWalletResponse,
 } from './schemas';
-import {
-  getInitializedChain,
-  UnsupportedChainException,
-  Chain,
-} from '../services/connection-manager';
-import { Solana } from '../chains/solana/solana';
-import { Ethereum } from '../chains/ethereum/ethereum';
-import { FastifyInstance } from 'fastify';
 
 export const walletPath = './conf/wallets';
 
@@ -27,7 +30,6 @@ export function sanitizePathComponent(input: string): string {
 }
 
 // Import supported chains function
-import { getSupportedChains } from '../services/connection-manager';
 
 // Validate chain name against known chains to prevent injection
 export function validateChainName(chain: string): boolean {
@@ -39,7 +41,9 @@ export function validateChainName(chain: string): boolean {
     return supportedChains.includes(chain.toLowerCase());
   } catch (error) {
     // Fallback to hardcoded list if there's an error
-    logger.warn(`Failed to get supported chains: ${error.message}. Using fallback list.`);
+    logger.warn(
+      `Failed to get supported chains: ${error.message}. Using fallback list.`,
+    );
     return ['ethereum', 'solana'].includes(chain.toLowerCase());
   }
 }
@@ -72,7 +76,7 @@ export async function mkdirIfDoesNotExist(path: string): Promise<void> {
 
 export async function addWallet(
   fastify: FastifyInstance,
-  req: AddWalletRequest
+  req: AddWalletRequest,
 ): Promise<AddWalletResponse> {
   const passphrase = ConfigManagerCertPassphrase.readPassphrase();
   if (!passphrase) {
@@ -81,7 +85,9 @@ export async function addWallet(
 
   // Validate chain name
   if (!validateChainName(req.chain)) {
-    throw fastify.httpErrors.badRequest(`Unrecognized chain name: ${req.chain}`);
+    throw fastify.httpErrors.badRequest(
+      `Unrecognized chain name: ${req.chain}`,
+    );
   }
 
   let connection: Chain;
@@ -95,7 +101,9 @@ export async function addWallet(
     connection = await getInitializedChain<Chain>(req.chain, network);
   } catch (e) {
     if (e instanceof UnsupportedChainException) {
-      throw fastify.httpErrors.badRequest(`Unrecognized chain name: ${req.chain}`);
+      throw fastify.httpErrors.badRequest(
+        `Unrecognized chain name: ${req.chain}`,
+      );
     }
     throw e;
   }
@@ -107,7 +115,7 @@ export async function addWallet(
       address = Ethereum.validateAddress(address);
       encryptedPrivateKey = await connection.encrypt(
         req.privateKey,
-        passphrase
+        passphrase,
       );
     } else if (connection instanceof Solana) {
       address = connection
@@ -117,7 +125,7 @@ export async function addWallet(
       address = Solana.validateAddress(address);
       encryptedPrivateKey = await connection.encrypt(
         req.privateKey,
-        passphrase
+        passphrase,
       );
     }
 
@@ -126,7 +134,7 @@ export async function addWallet(
     }
   } catch (_e: unknown) {
     throw fastify.httpErrors.badRequest(
-      `Unable to retrieve wallet address for provided private key: ${req.privateKey.substring(0, 5)}...`
+      `Unable to retrieve wallet address for provided private key: ${req.privateKey.substring(0, 5)}...`,
     );
   }
 
@@ -145,14 +153,16 @@ export async function addWallet(
 
 export async function removeWallet(
   fastify: FastifyInstance,
-  req: RemoveWalletRequest
+  req: RemoveWalletRequest,
 ): Promise<void> {
   logger.info(`Removing wallet: ${req.address} from chain: ${req.chain}`);
 
   try {
     // Validate chain name
     if (!validateChainName(req.chain)) {
-      throw fastify.httpErrors.badRequest(`Unrecognized chain name: ${req.chain}`);
+      throw fastify.httpErrors.badRequest(
+        `Unrecognized chain name: ${req.chain}`,
+      );
     }
 
     // Validate the address based on chain type
@@ -173,22 +183,31 @@ export async function removeWallet(
     // Remove file
     await fse.remove(`${walletPath}/${safeChain}/${safeAddress}.json`);
   } catch (error) {
-    if (error.message.includes('Invalid') || error.message.includes('Unrecognized')) {
+    if (
+      error.message.includes('Invalid') ||
+      error.message.includes('Unrecognized')
+    ) {
       throw fastify.httpErrors.badRequest(error.message);
     }
-    throw fastify.httpErrors.internalServerError(`Failed to remove wallet: ${error.message}`);
+    throw fastify.httpErrors.internalServerError(
+      `Failed to remove wallet: ${error.message}`,
+    );
   }
 }
 
 export async function signMessage(
   fastify: FastifyInstance,
-  req: SignMessageRequest
+  req: SignMessageRequest,
 ): Promise<SignMessageResponse> {
-  logger.info(`Signing message for wallet: ${req.address} on chain: ${req.chain}`);
+  logger.info(
+    `Signing message for wallet: ${req.address} on chain: ${req.chain}`,
+  );
   try {
     // Validate chain name
     if (!validateChainName(req.chain)) {
-      throw fastify.httpErrors.badRequest(`Unrecognized chain name: ${req.chain}`);
+      throw fastify.httpErrors.badRequest(
+        `Unrecognized chain name: ${req.chain}`,
+      );
     }
 
     // Validate the address based on chain type
@@ -208,19 +227,26 @@ export async function signMessage(
     // getWallet now includes its own address validation
     const wallet = await (connection as any).getWallet(validatedAddress);
     if (!wallet) {
-      throw fastify.httpErrors.notFound(`Wallet ${req.address} not found for chain ${req.chain}`);
+      throw fastify.httpErrors.notFound(
+        `Wallet ${req.address} not found for chain ${req.chain}`,
+      );
     }
 
     const signature = await wallet.signMessage(req.message);
     return { signature };
   } catch (error) {
-    if (error.message.includes('Invalid') || error.message.includes('Unrecognized')) {
+    if (
+      error.message.includes('Invalid') ||
+      error.message.includes('Unrecognized')
+    ) {
       throw fastify.httpErrors.badRequest(error.message);
     }
     if (error.statusCode) {
       throw error;
     }
-    throw fastify.httpErrors.internalServerError(`Failed to sign message: ${error.message}`);
+    throw fastify.httpErrors.internalServerError(
+      `Failed to sign message: ${error.message}`,
+    );
   }
 }
 
@@ -249,7 +275,7 @@ async function getJsonFiles(source: string): Promise<string[]> {
 }
 
 export async function getWallets(
-  fastify: FastifyInstance
+  fastify: FastifyInstance,
 ): Promise<GetWalletResponse[]> {
   logger.info('Getting all wallets');
   try {
@@ -259,7 +285,9 @@ export async function getWallets(
     // Get only valid chain directories
     const validChains = ['ethereum', 'solana'];
     const allDirs = await getDirectories(walletPath);
-    const chains = allDirs.filter(dir => validChains.includes(dir.toLowerCase()));
+    const chains = allDirs.filter((dir) =>
+      validChains.includes(dir.toLowerCase()),
+    );
 
     const responses: GetWalletResponse[] = [];
     for (const chain of chains) {
@@ -269,9 +297,9 @@ export async function getWallets(
 
       // Filter out any suspicious filenames that might have survived
       const safeWalletAddresses = walletFiles
-        .map(file => dropExtension(file))
+        .map((file) => dropExtension(file))
         // Additional validation for addresses based on chain type
-        .filter(address => {
+        .filter((address) => {
           try {
             if (chain.toLowerCase() === 'ethereum') {
               // Basic Ethereum address validation (0x + 40 hex chars)
@@ -288,12 +316,14 @@ export async function getWallets(
 
       responses.push({
         chain: safeChain,
-        walletAddresses: safeWalletAddresses
+        walletAddresses: safeWalletAddresses,
       });
     }
 
     return responses;
   } catch (error) {
-    throw fastify.httpErrors.internalServerError(`Failed to get wallets: ${error.message}`);
+    throw fastify.httpErrors.internalServerError(
+      `Failed to get wallets: ${error.message}`,
+    );
   }
 }

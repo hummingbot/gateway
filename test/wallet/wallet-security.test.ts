@@ -1,11 +1,11 @@
-import { sanitizePathComponent, walletPath } from '../../src/wallet/utils';
-import * as walletUtils from '../../src/wallet/utils';
 import { Ethereum } from '../../src/chains/ethereum/ethereum';
 import { Solana } from '../../src/chains/solana/solana';
+import { sanitizePathComponent, walletPath } from '../../src/wallet/utils';
+import * as walletUtils from '../../src/wallet/utils';
 
 // Mock dependencies
 jest.mock('../../src/services/connection-manager', () => ({
-  getSupportedChains: jest.fn().mockReturnValue(['ethereum', 'solana'])
+  getSupportedChains: jest.fn().mockReturnValue(['ethereum', 'solana']),
 }));
 
 describe('Wallet Security Functions', () => {
@@ -16,7 +16,7 @@ describe('Wallet Security Functions', () => {
         { input: 'wallet/../../config', expected: 'wallet....config' },
         { input: 'normal/path', expected: 'normalpath' },
         { input: 'strange:chars?*"<>|\\', expected: 'strangechars' },
-        { input: '0x1234567890abcdef', expected: '0x1234567890abcdef' }
+        { input: '0x1234567890abcdef', expected: '0x1234567890abcdef' },
       ];
 
       testCases.forEach(({ input, expected }) => {
@@ -61,30 +61,34 @@ describe('Wallet Security Functions', () => {
         {
           chain: 'ethereum',
           address: '0x1234567890abcdef',
-          expected: `${walletPath}/ethereum/0x1234567890abcdef.json`
+          expected: `${walletPath}/ethereum/0x1234567890abcdef.json`,
         },
         {
           chain: 'ETHEREUM',
           address: '0x1234567890ABCDEF',
-          expected: `${walletPath}/ethereum/0x1234567890ABCDEF.json`
+          expected: `${walletPath}/ethereum/0x1234567890ABCDEF.json`,
         },
         {
           chain: 'solana',
           address: 'ABCDEFGHIJKabcdefghijk123456789012345678',
-          expected: `${walletPath}/solana/ABCDEFGHIJKabcdefghijk123456789012345678.json`
-        }
+          expected: `${walletPath}/solana/ABCDEFGHIJKabcdefghijk123456789012345678.json`,
+        },
       ];
 
       cases.forEach(({ chain, address, expected }) => {
-        expect(walletUtils.getSafeWalletFilePath(chain, address)).toBe(expected);
+        expect(walletUtils.getSafeWalletFilePath(chain, address)).toBe(
+          expected,
+        );
       });
     });
 
     test('rejects invalid inputs', () => {
       // Mock validateChainName to fail for 'invalid' chain
-      mockValidateChainName.mockImplementation(chain => chain === 'ethereum');
-      
-      expect(() => walletUtils.getSafeWalletFilePath('invalid', '0x1234')).toThrow();
+      mockValidateChainName.mockImplementation((chain) => chain === 'ethereum');
+
+      expect(() =>
+        walletUtils.getSafeWalletFilePath('invalid', '0x1234'),
+      ).toThrow();
       expect(() => walletUtils.getSafeWalletFilePath('ethereum', '')).toThrow();
     });
   });
@@ -100,9 +104,10 @@ describe('Wallet Security Functions', () => {
       });
 
       // Valid addresses
-      expect(Ethereum.validateAddress('0x1234567890abcdef1234567890abcdef12345678'))
-        .toBe('0x1234567890abcdef1234567890abcdef12345678');
-      
+      expect(
+        Ethereum.validateAddress('0x1234567890abcdef1234567890abcdef12345678'),
+      ).toBe('0x1234567890abcdef1234567890abcdef12345678');
+
       // Invalid addresses
       expect(() => Ethereum.validateAddress('not-an-address')).toThrow();
       expect(() => Ethereum.validateAddress('0x12345')).toThrow(); // too short
@@ -113,25 +118,29 @@ describe('Wallet Security Functions', () => {
   describe('Solana Address Validation', () => {
     test('validates Solana addresses correctly', () => {
       // Mock validation with different conditions
-      const mockValidate = jest.spyOn(Solana, 'validateAddress').mockImplementation((address) => {
-        if (address === '7RCz8wb6WXxUhAigxy9rWPRB2GmTDaYH1Jb8GzJ5Vf9P') {
-          return address;
-        }
+      const mockValidate = jest
+        .spyOn(Solana, 'validateAddress')
+        .mockImplementation((address) => {
+          if (address === '7RCz8wb6WXxUhAigxy9rWPRB2GmTDaYH1Jb8GzJ5Vf9P') {
+            return address;
+          }
 
-        // Specifically throw for these test cases
-        if (address === 'too-short' ||
+          // Specifically throw for these test cases
+          if (
+            address === 'too-short' ||
             address === '../etc/passwd' ||
-            address === '0x1234567890abcdef1234567890abcdef12345678') {
+            address === '0x1234567890abcdef1234567890abcdef12345678'
+          ) {
+            throw new Error(`Invalid Solana address format: ${address}`);
+          }
+
+          // For any other addresses in test
+          if (address.length >= 32 && address.length <= 44) {
+            return address;
+          }
+
           throw new Error(`Invalid Solana address format: ${address}`);
-        }
-
-        // For any other addresses in test
-        if (address.length >= 32 && address.length <= 44) {
-          return address;
-        }
-
-        throw new Error(`Invalid Solana address format: ${address}`);
-      });
+        });
 
       const validAddress = '7RCz8wb6WXxUhAigxy9rWPRB2GmTDaYH1Jb8GzJ5Vf9P';
 
@@ -140,7 +149,9 @@ describe('Wallet Security Functions', () => {
 
       // Invalid addresses
       expect(() => Solana.validateAddress('too-short')).toThrow();
-      expect(() => Solana.validateAddress('0x1234567890abcdef1234567890abcdef12345678')).toThrow();
+      expect(() =>
+        Solana.validateAddress('0x1234567890abcdef1234567890abcdef12345678'),
+      ).toThrow();
       expect(() => Solana.validateAddress('../etc/passwd')).toThrow();
     });
   });

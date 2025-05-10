@@ -1,11 +1,14 @@
+import { FastifyInstance } from 'fastify';
+
+import { fromFractionString, toFractionString } from '../services/base';
 import { ConfigManagerV2 } from '../services/config-manager-v2';
 import { logger } from '../services/logger';
 import { isFloatString, isFractionString } from '../services/string-utils';
-import { fromFractionString, toFractionString } from '../services/base';
-import { ConfigUpdateRequest } from './schemas';
-import { FastifyInstance } from 'fastify';
 
-export const invalidAllowedSlippage: string = 'allowedSlippage should be a number between 0.0 and 1.0 or a string of a fraction.';
+import { ConfigUpdateRequest } from './schemas';
+
+export const invalidAllowedSlippage: string =
+  'allowedSlippage should be a number between 0.0 and 1.0 or a string of a fraction.';
 
 // Only permit percentages 0.0 (inclusive) to less than 1.0
 export const isAllowedPercentage = (val: string | number): boolean => {
@@ -24,15 +27,17 @@ export const isAllowedPercentage = (val: string | number): boolean => {
 export const validateAllowedSlippage = (
   fastify: FastifyInstance,
   configPath: string,
-  configValue: any
+  configValue: any,
 ): void => {
   if (configPath.endsWith('allowedSlippage')) {
-    if (!(
-      (typeof configValue === 'number' ||
-        (typeof configValue === 'string' &&
-          (isFractionString(configValue) || isFloatString(configValue)))) &&
-      isAllowedPercentage(configValue)
-    )) {
+    if (
+      !(
+        (typeof configValue === 'number' ||
+          (typeof configValue === 'string' &&
+            (isFractionString(configValue) || isFloatString(configValue)))) &&
+        isAllowedPercentage(configValue)
+      )
+    ) {
       throw fastify.httpErrors.badRequest(invalidAllowedSlippage);
     }
   }
@@ -40,7 +45,7 @@ export const validateAllowedSlippage = (
 
 // Mutates the input value in place to convert to fraction string format
 export const updateAllowedSlippageToFraction = (
-  body: ConfigUpdateRequest
+  body: ConfigUpdateRequest,
 ): void => {
   if (body.configPath.endsWith('allowedSlippage')) {
     if (
@@ -55,14 +60,17 @@ export const updateAllowedSlippageToFraction = (
 
 export const getConfig = (
   _fastify: FastifyInstance, // Underscore to indicate unused parameter
-  chainOrConnector?: string
+  chainOrConnector?: string,
 ): object => {
   if (chainOrConnector) {
-    logger.info(`Getting configuration for chain/connector: ${chainOrConnector}`);
-    const namespace = ConfigManagerV2.getInstance().getNamespace(chainOrConnector);
+    logger.info(
+      `Getting configuration for chain/connector: ${chainOrConnector}`,
+    );
+    const namespace =
+      ConfigManagerV2.getInstance().getNamespace(chainOrConnector);
     return namespace ? namespace.configuration : {};
   }
-  
+
   logger.info('Getting all configurations');
   return ConfigManagerV2.getInstance().allConfigurations;
 };
@@ -70,61 +78,72 @@ export const getConfig = (
 export const updateConfig = (
   fastify: FastifyInstance,
   configPath: string,
-  configValue: any
+  configValue: any,
 ): void => {
-  logger.info(`Updating config path: ${configPath} with value: ${JSON.stringify(configValue)}`);
-  
+  logger.info(
+    `Updating config path: ${configPath} with value: ${JSON.stringify(configValue)}`,
+  );
+
   validateAllowedSlippage(fastify, configPath, configValue);
-  
+
   try {
     ConfigManagerV2.getInstance().set(configPath, configValue);
     logger.info(`Successfully updated configuration: ${configPath}`);
   } catch (error) {
     logger.error(`Failed to update configuration: ${error.message}`);
-    throw fastify.httpErrors.internalServerError(`Failed to update configuration: ${error.message}`);
+    throw fastify.httpErrors.internalServerError(
+      `Failed to update configuration: ${error.message}`,
+    );
   }
 };
 
 export const getDefaultPools = (
   fastify: FastifyInstance,
-  connector: string
+  connector: string,
 ): Record<string, string> => {
   // Parse connector name
   const [baseConnector, connectorType] = connector.split('/');
-  
+
   if (!baseConnector) {
     throw fastify.httpErrors.badRequest('Connector name is required');
   }
-  
+
   if (!connectorType) {
-    throw fastify.httpErrors.badRequest('Connector type is required (e.g., amm, clmm)');
+    throw fastify.httpErrors.badRequest(
+      'Connector type is required (e.g., amm, clmm)',
+    );
   }
 
   try {
     // Get connector config
-    const connectorConfig = ConfigManagerV2.getInstance().getNamespace(baseConnector)?.configuration;
-    
+    const connectorConfig =
+      ConfigManagerV2.getInstance().getNamespace(baseConnector)?.configuration;
+
     if (!connectorConfig || !connectorConfig.networks) {
-      logger.error(`Connector ${baseConnector} configuration not found or missing networks`);
+      logger.error(
+        `Connector ${baseConnector} configuration not found or missing networks`,
+      );
       return {};
     }
-    
+
     // Get active network
     const activeNetworks = Object.keys(connectorConfig.networks);
     if (activeNetworks.length === 0) {
       return {};
     }
-    
+
     // Use mainnet-beta for Solana, mainnet for Ethereum by default, or first available network
     let activeNetwork = 'mainnet-beta';
     if (!connectorConfig.networks[activeNetwork]) {
       activeNetwork = activeNetworks[0];
     }
-    
+
     // Get pools for the specific connector type
     const pools = connectorConfig.networks[activeNetwork][connectorType] || {};
-    
-    logger.info(`Retrieved default pools for ${connector} on network ${activeNetwork}`);
+
+    logger.info(
+      `Retrieved default pools for ${connector} on network ${activeNetwork}`,
+    );
     return pools;
   } catch (error) {
     logger.error(`Failed to get default pools for ${connector}: ${error}`);
@@ -137,52 +156,63 @@ export const addDefaultPool = (
   connector: string,
   baseToken: string,
   quoteToken: string,
-  poolAddress?: string
+  poolAddress?: string,
 ): void => {
   const pairKey = `${baseToken}-${quoteToken}`;
 
   if (!poolAddress) {
-    throw fastify.httpErrors.badRequest('Pool address is required for adding a default pool');
+    throw fastify.httpErrors.badRequest(
+      'Pool address is required for adding a default pool',
+    );
   }
 
   const [baseConnector, connectorType] = connector.split('/');
-  
+
   if (!baseConnector) {
     throw fastify.httpErrors.badRequest('Connector name is required');
   }
 
   if (!connectorType) {
-    throw fastify.httpErrors.badRequest('Connector type is required (e.g., amm, clmm)');
+    throw fastify.httpErrors.badRequest(
+      'Connector type is required (e.g., amm, clmm)',
+    );
   }
 
   try {
     // Get connector config
-    const connectorConfig = ConfigManagerV2.getInstance().getNamespace(baseConnector)?.configuration;
-    
+    const connectorConfig =
+      ConfigManagerV2.getInstance().getNamespace(baseConnector)?.configuration;
+
     if (!connectorConfig || !connectorConfig.networks) {
-      throw new Error(`Connector ${baseConnector} configuration not found or missing networks`);
+      throw new Error(
+        `Connector ${baseConnector} configuration not found or missing networks`,
+      );
     }
-    
+
     // Get active network
     const activeNetworks = Object.keys(connectorConfig.networks);
     if (activeNetworks.length === 0) {
       throw new Error(`No networks configured for ${baseConnector}`);
     }
-    
+
     // Use mainnet-beta for Solana, mainnet for Ethereum by default, or first available network
     let activeNetwork = 'mainnet-beta';
     if (!connectorConfig.networks[activeNetwork]) {
       activeNetwork = activeNetworks[0];
     }
-    
+
     // Set the pool in the active network and connector type
     const configPath = `${baseConnector}.networks.${activeNetwork}.${connectorType}.${pairKey}`;
     ConfigManagerV2.getInstance().set(configPath, poolAddress);
-    
-    logger.info(`Added default pool for ${connector}: ${pairKey} (address: ${poolAddress}) on network ${activeNetwork}`);
+
+    logger.info(
+      `Added default pool for ${connector}: ${pairKey} (address: ${poolAddress}) on network ${activeNetwork}`,
+    );
   } catch (error) {
     logger.error(`Failed to add default pool: ${error}`);
-    throw fastify.httpErrors.internalServerError(`Failed to add default pool: ${error.message}`);
+    throw fastify.httpErrors.internalServerError(
+      `Failed to add default pool: ${error.message}`,
+    );
   }
 };
 
@@ -190,47 +220,56 @@ export const removeDefaultPool = (
   fastify: FastifyInstance,
   connector: string,
   baseToken: string,
-  quoteToken: string
+  quoteToken: string,
 ): void => {
   const pairKey = `${baseToken}-${quoteToken}`;
 
   const [baseConnector, connectorType] = connector.split('/');
-  
+
   if (!baseConnector) {
     throw fastify.httpErrors.badRequest('Connector name is required');
   }
 
   if (!connectorType) {
-    throw fastify.httpErrors.badRequest('Connector type is required (e.g., amm, clmm)');
+    throw fastify.httpErrors.badRequest(
+      'Connector type is required (e.g., amm, clmm)',
+    );
   }
 
   try {
     // Get connector config
-    const connectorConfig = ConfigManagerV2.getInstance().getNamespace(baseConnector)?.configuration;
-    
+    const connectorConfig =
+      ConfigManagerV2.getInstance().getNamespace(baseConnector)?.configuration;
+
     if (!connectorConfig || !connectorConfig.networks) {
-      throw new Error(`Connector ${baseConnector} configuration not found or missing networks`);
+      throw new Error(
+        `Connector ${baseConnector} configuration not found or missing networks`,
+      );
     }
-    
+
     // Get active network
     const activeNetworks = Object.keys(connectorConfig.networks);
     if (activeNetworks.length === 0) {
       throw new Error(`No networks configured for ${baseConnector}`);
     }
-    
+
     // Use mainnet-beta for Solana, mainnet for Ethereum by default, or first available network
     let activeNetwork = 'mainnet-beta';
     if (!connectorConfig.networks[activeNetwork]) {
       activeNetwork = activeNetworks[0];
     }
-    
+
     // Delete the pool from the active network and connector type
     const configPath = `${baseConnector}.networks.${activeNetwork}.${connectorType}.${pairKey}`;
     ConfigManagerV2.getInstance().delete(configPath);
-    
-    logger.info(`Removed default pool for ${connector}: ${pairKey} on network ${activeNetwork}`);
+
+    logger.info(
+      `Removed default pool for ${connector}: ${pairKey} on network ${activeNetwork}`,
+    );
   } catch (error) {
     logger.error(`Failed to remove default pool: ${error}`);
-    throw fastify.httpErrors.internalServerError(`Failed to remove default pool: ${error.message}`);
+    throw fastify.httpErrors.internalServerError(
+      `Failed to remove default pool: ${error.message}`,
+    );
   }
 };

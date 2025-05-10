@@ -1,17 +1,18 @@
-import { FastifyPluginAsync } from 'fastify'
-import { Raydium } from '../raydium'
-import { 
-  PositionInfo, 
-  PositionInfoSchema, 
-} from '../../../schemas/trading-types/clmm-schema'
+import { FastifyPluginAsync } from 'fastify';
+
+import {
+  PositionInfo,
+  PositionInfoSchema,
+} from '../../../schemas/trading-types/clmm-schema';
+import { Raydium } from '../raydium';
 
 export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
     Querystring: {
       network?: string;
       positionAddress: string;
-    }
-    Reply: PositionInfo
+    };
+    Reply: PositionInfo;
   }>(
     '/position-info',
     {
@@ -22,21 +23,21 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
           type: 'object',
           properties: {
             network: { type: 'string', default: 'mainnet-beta' },
-            positionAddress: { type: 'string' }
+            positionAddress: { type: 'string' },
           },
-          required: ['positionAddress']
+          required: ['positionAddress'],
         },
         response: {
-          200: PositionInfoSchema
-        }
-      }
+          200: PositionInfoSchema,
+        },
+      },
     },
     async (request) => {
-      const { network = 'mainnet-beta', positionAddress } = request.query
-      const raydium = await Raydium.getInstance(network)
-      return raydium.getPositionInfo(positionAddress)
-    }
-  )
-}
+      const { network = 'mainnet-beta', positionAddress } = request.query;
+      const raydium = await Raydium.getInstance(network);
+      return raydium.getPositionInfo(positionAddress);
+    },
+  );
+};
 
-export default positionInfoRoute
+export default positionInfoRoute;

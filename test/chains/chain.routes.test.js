@@ -7,12 +7,12 @@ describe('Chain Routes', () => {
   it('should validate chain support for ethereum and solana', async () => {
     // Get ethereum networks directly from ConfigManagerV2
     const ethereumNetworks = Object.keys(
-      ConfigManagerV2.getInstance().get('ethereum.networks') || {}
+      ConfigManagerV2.getInstance().get('ethereum.networks') || {},
     );
 
     // Get Solana networks directly from ConfigManagerV2
     const solanaNetworks = Object.keys(
-      ConfigManagerV2.getInstance().get('solana.networks') || {}
+      ConfigManagerV2.getInstance().get('solana.networks') || {},
     );
 
     // Verify we have networks for both chains

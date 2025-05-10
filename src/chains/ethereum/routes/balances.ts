@@ -1,6 +1,6 @@
+import { ethers } from 'ethers';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
-import { Ethereum } from '../ethereum';
-import { logger } from '../../../services/logger';
+
 import {
   BalanceRequestType,
   BalanceResponseType,
@@ -8,7 +8,8 @@ import {
   BalanceResponseSchema,
 } from '../../../schemas/chain-schema';
 import { tokenValueToString } from '../../../services/base';
-import { ethers } from 'ethers';
+import { logger } from '../../../services/logger';
+import { Ethereum } from '../ethereum';
 
 export async function getEthereumBalances(
   fastify: FastifyInstance,
@@ -100,7 +101,9 @@ export const balancesRoute: FastifyPluginAsync = async (fastify) => {
       const isValidEthAddress = /^0x[a-fA-F0-9]{40}$/i.test(userWallet);
       if (isValidEthAddress) {
         firstWalletAddress = userWallet;
-        logger.info(`Using user's Ethereum wallet for examples: ${firstWalletAddress}`);
+        logger.info(
+          `Using user's Ethereum wallet for examples: ${firstWalletAddress}`,
+        );
       }
     }
   } catch (error) {

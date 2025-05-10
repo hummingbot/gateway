@@ -17,10 +17,10 @@ export namespace JupiterConfig {
     allowedSlippage: ConfigManagerV2.getInstance().get(
       'jupiter.allowedSlippage',
     ),
-    priorityLevel: ConfigManagerV2.getInstance().get(
-      'jupiter.priorityLevel',
-    ),
+    priorityLevel: ConfigManagerV2.getInstance().get('jupiter.priorityLevel'),
     tradingTypes: ['swap'],
-    availableNetworks: [{ chain: 'solana', networks: ['mainnet-beta', 'devnet'] }],
+    availableNetworks: [
+      { chain: 'solana', networks: ['mainnet-beta', 'devnet'] },
+    ],
   };
 }

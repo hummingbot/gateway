@@ -1,8 +1,9 @@
-import { BigNumber } from 'ethers';
-import { format, fraction, number } from 'mathjs';
-import { isFractionString, isFloatString } from './string-utils';
 import { DecimalUtil } from '@orca-so/common-sdk';
 import { Decimal } from 'decimal.js';
+import { BigNumber } from 'ethers';
+import { format, fraction, number } from 'mathjs';
+
+import { isFractionString, isFloatString } from './string-utils';
 
 // the type of information source for tokens
 export type TokenListType = 'FILE' | 'URL';
@@ -33,7 +34,7 @@ export const stringInsert = (str: string, val: string, index: number) => {
 export const countDecimals = (value: number): number => {
   if (value >= 1 || value <= 0) {
     throw new RangeError(
-      'countDecimals() is only valid for values between (0, 1).'
+      'countDecimals() is only valid for values between (0, 1).',
     );
   } else {
     return Number(value.toExponential().split('-')[1]);
@@ -59,13 +60,13 @@ export const bigNumberWithDecimalToStr = (n: BigNumber, d: number): string => {
 
 export const gasCostInEthString = (
   gasPrice: number,
-  gasLimitTransaction: number
+  gasLimitTransaction: number,
 ): string => {
   return bigNumberWithDecimalToStr(
     BigNumber.from(Math.ceil(gasPrice * gasLimitTransaction)).mul(
-      BigNumber.from(1e9)
+      BigNumber.from(1e9),
     ),
-    18
+    18,
   );
 };
 
@@ -132,7 +133,7 @@ export const toFractionString = (value: number | string): string | null => {
 
 export const floatStringWithDecimalToBigNumber = (
   floatString: string,
-  d: number
+  d: number,
 ): BigNumber | null => {
   if (d < 0) {
     return null;
@@ -154,7 +155,7 @@ export const floatStringWithDecimalToBigNumber = (
 
 export const floatStringWithDecimalToFixed = (
   floatString: string,
-  d: number
+  d: number,
 ): string | null => {
   if (d < 0) {
     return null;
@@ -181,5 +182,8 @@ export const floatStringWithDecimalToFixed = (
  * @returns The decimal string representation
  */
 export const convertDecimals = (value: any, decimals: number): string => {
-  return DecimalUtil.adjustDecimals(new Decimal(value.toString()), decimals).toString();
+  return DecimalUtil.adjustDecimals(
+    new Decimal(value.toString()),
+    decimals,
+  ).toString();
 };

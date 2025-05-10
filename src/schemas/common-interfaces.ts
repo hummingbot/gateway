@@ -1,8 +1,5 @@
-import {
-  Transaction,
-  ethers,
-} from 'ethers';
 import { Type, Static } from '@sinclair/typebox';
+import { Transaction, ethers } from 'ethers';
 
 export interface PriceLevel {
   price: string;
@@ -76,5 +73,5 @@ export interface FullTransferResponse {
 export const NetworkSelectionSchema = Type.Object({
   chain: Type.String(),
   network: Type.String(),
-  connector: Type.String()
+  connector: Type.String(),
 });

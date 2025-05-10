@@ -1,7 +1,13 @@
 import { FastifyPluginAsync } from 'fastify';
+
 import { logger } from '../../services/logger';
+import {
+  DefaultPoolRequest,
+  DefaultPoolResponse,
+  DefaultPoolRequestSchema,
+  DefaultPoolResponseSchema,
+} from '../schemas';
 import { addDefaultPool } from '../utils';
-import { DefaultPoolRequest, DefaultPoolResponse, DefaultPoolRequestSchema, DefaultPoolResponseSchema } from '../schemas';
 
 export const addPoolRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{ Body: DefaultPoolRequest; Reply: DefaultPoolResponse }>(
@@ -12,15 +18,15 @@ export const addPoolRoute: FastifyPluginAsync = async (fastify) => {
         tags: ['system'],
         body: DefaultPoolRequestSchema,
         response: {
-          200: DefaultPoolResponseSchema
-        }
-      }
+          200: DefaultPoolResponseSchema,
+        },
+      },
     },
     async (request) => {
       const { connector, baseToken, quoteToken, poolAddress } = request.body;
       addDefaultPool(fastify, connector, baseToken, quoteToken, poolAddress);
       return { message: `Default pool added for ${baseToken}-${quoteToken}` };
-    }
+    },
   );
 };
 

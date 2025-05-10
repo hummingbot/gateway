@@ -1,13 +1,11 @@
-import { 
-  FeeAmount,
-  Pool as V3Pool
-} from '@uniswap/v3-sdk';
-import { Pair as V2Pair } from '@uniswap/v2-sdk';
 import { Token } from '@uniswap/sdk-core';
+import { Pair as V2Pair } from '@uniswap/v2-sdk';
+import { FeeAmount, Pool as V3Pool } from '@uniswap/v3-sdk';
 import { FastifyInstance } from 'fastify';
-import { TokenInfo } from '../../chains/ethereum/ethereum';
-import { Ethereum } from '../../chains/ethereum/ethereum';
+
+import { TokenInfo, Ethereum } from '../../chains/ethereum/ethereum';
 import { logger } from '../../services/logger';
+
 import { UniswapConfig } from './uniswap.config';
 
 /**
@@ -28,7 +26,9 @@ export const isValidV2Pool = async (poolAddress: string): Promise<boolean> => {
   try {
     // This would typically check if the contract at poolAddress conforms to the V2 Pair interface
     // For now, we'll just check if it's a valid address
-    return poolAddress && poolAddress.length === 42 && poolAddress.startsWith('0x');
+    return (
+      poolAddress && poolAddress.length === 42 && poolAddress.startsWith('0x')
+    );
   } catch (error) {
     logger.error(`Error validating V2 pool: ${error}`);
     return false;
@@ -44,7 +44,9 @@ export const isValidV3Pool = async (poolAddress: string): Promise<boolean> => {
   try {
     // This would typically check if the contract at poolAddress conforms to the V3 Pool interface
     // For now, we'll just check if it's a valid address
-    return poolAddress && poolAddress.length === 42 && poolAddress.startsWith('0x');
+    return (
+      poolAddress && poolAddress.length === 42 && poolAddress.startsWith('0x')
+    );
   } catch (error) {
     logger.error(`Error validating V3 pool: ${error}`);
     return false;
@@ -72,7 +74,7 @@ export const parseFeeTier = (feeTier: string): FeeAmount => {
 };
 
 /**
- * Find the pool address for a token pair in either Uniswap V2 or V3 
+ * Find the pool address for a token pair in either Uniswap V2 or V3
  * @param baseToken The base token symbol or address
  * @param quoteToken The quote token symbol or address
  * @param poolType 'amm' for Uniswap V2 or 'clmm' for Uniswap V3
@@ -80,29 +82,40 @@ export const parseFeeTier = (feeTier: string): FeeAmount => {
  * @returns The pool address if found, otherwise null
  */
 export const findPoolAddress = (
-  baseToken: string, 
-  quoteToken: string, 
+  baseToken: string,
+  quoteToken: string,
   poolType: 'amm' | 'clmm',
-  network: string
+  network: string,
 ): string | null => {
   const poolKey = `${baseToken}-${quoteToken}`;
   const reversePoolKey = `${quoteToken}-${baseToken}`;
-  
+
   try {
     // Check if we have network-specific pools configuration
-    if (!UniswapConfig.config.networks || !UniswapConfig.config.networks[network]) {
-      logger.error(`Network pools configuration not found for network: ${network}`);
+    if (
+      !UniswapConfig.config.networks ||
+      !UniswapConfig.config.networks[network]
+    ) {
+      logger.error(
+        `Network pools configuration not found for network: ${network}`,
+      );
       return null;
     }
 
     const networkConfig = UniswapConfig.config.networks[network];
-    
+
     if (poolType === 'amm') {
       // Check AMM pools for the given network
-      return networkConfig.amm[poolKey] || networkConfig.amm[reversePoolKey] || null;
+      return (
+        networkConfig.amm[poolKey] || networkConfig.amm[reversePoolKey] || null
+      );
     } else {
       // Check CLMM pools for the given network
-      return networkConfig.clmm[poolKey] || networkConfig.clmm[reversePoolKey] || null;
+      return (
+        networkConfig.clmm[poolKey] ||
+        networkConfig.clmm[reversePoolKey] ||
+        null
+      );
     }
   } catch (error) {
     logger.error(`Error finding pool address: ${error}`);
@@ -116,7 +129,10 @@ export const findPoolAddress = (
  * @param decimals The token decimals
  * @returns The formatted token amount
  */
-export const formatTokenAmount = (amount: string | number, decimals: number): number => {
+export const formatTokenAmount = (
+  amount: string | number,
+  decimals: number,
+): number => {
   try {
     if (typeof amount === 'string') {
       return parseFloat(amount) / Math.pow(10, decimals);
@@ -139,29 +155,33 @@ export const formatTokenAmount = (amount: string | number, decimals: number): nu
 export async function getFullTokenFromSymbol(
   fastify: FastifyInstance,
   ethereum: Ethereum,
-  tokenSymbol: string
+  tokenSymbol: string,
 ): Promise<Token> {
   if (!ethereum.ready()) {
     await ethereum.init();
   }
-  
+
   const tokenInfo: TokenInfo = ethereum.getTokenBySymbol(tokenSymbol);
-  
+
   if (!tokenInfo) {
-    throw fastify.httpErrors.badRequest(`Token ${tokenSymbol} is not supported`);
+    throw fastify.httpErrors.badRequest(
+      `Token ${tokenSymbol} is not supported`,
+    );
   }
-  
+
   const uniswapToken = new Token(
     tokenInfo.chainId,
     tokenInfo.address,
     tokenInfo.decimals,
     tokenInfo.symbol,
-    tokenInfo.name
+    tokenInfo.name,
   );
-  
+
   if (!uniswapToken) {
-    throw fastify.httpErrors.internalServerError(`Failed to create token for ${tokenSymbol}`);
+    throw fastify.httpErrors.internalServerError(
+      `Failed to create token for ${tokenSymbol}`,
+    );
   }
-    
+
   return uniswapToken;
 }

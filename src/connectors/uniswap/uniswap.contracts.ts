@@ -17,7 +17,6 @@ export interface UniswapContractAddresses {
   uniswapV3NftManagerAddress: string;
   uniswapV3QuoterV2ContractAddress: string;
   uniswapV3FactoryAddress: string;
-
 }
 
 export interface NetworkContractAddresses {
@@ -213,52 +212,51 @@ export function getUniswapV2FactoryAddress(network: string): string {
 
 export function getUniswapV3SmartOrderRouterAddress(network: string): string {
   const address = contractAddresses[network]?.uniswapV3SmartOrderRouterAddress;
-  
+
   if (!address) {
     throw new Error(
       `Uniswap V3 Smart Order Router address not configured for network: ${network}`,
     );
   }
-  
+
   return address;
 }
 
 export function getUniswapV3NftManagerAddress(network: string): string {
   const address = contractAddresses[network]?.uniswapV3NftManagerAddress;
-  
+
   if (!address) {
     throw new Error(
       `Uniswap V3 NFT Manager address not configured for network: ${network}`,
     );
   }
-  
+
   return address;
 }
 
 export function getUniswapV3QuoterV2ContractAddress(network: string): string {
   const address = contractAddresses[network]?.uniswapV3QuoterV2ContractAddress;
-  
+
   if (!address) {
     throw new Error(
       `Uniswap V3 Quoter V2 contract address not configured for network: ${network}`,
     );
   }
-  
+
   return address;
 }
 
 export function getUniswapV3FactoryAddress(network: string): string {
   const address = contractAddresses[network]?.uniswapV3FactoryAddress;
-  
+
   if (!address) {
     throw new Error(
       `Uniswap V3 Factory address not configured for network: ${network}`,
     );
   }
-  
+
   return address;
 }
-
 
 /**
  * Returns the appropriate spender address based on the connector name
@@ -271,12 +269,12 @@ export function getSpender(network: string, connectorName: string): string {
   if (connectorName.includes('/amm')) {
     return getUniswapV2RouterAddress(network);
   }
-  
+
   // Check for CLMM (V3) connector pattern
   if (connectorName.includes('/clmm')) {
     return getUniswapV3NftManagerAddress(network);
   }
-  
+
   // For regular uniswap connector or any other case, use the V3 Smart Order Router
   return getUniswapV3SmartOrderRouterAddress(network);
 }

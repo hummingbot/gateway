@@ -1,58 +1,64 @@
-import { FastifyPluginAsync, FastifyInstance } from 'fastify'
-import { Raydium } from '../raydium'
-import { Solana, BASE_FEE } from '../../../chains/solana/solana'
-import { logger } from '../../../services/logger'
-import { 
+import { TxVersion } from '@raydium-io/raydium-sdk-v2';
+import BN from 'bn.js';
+import Decimal from 'decimal.js';
+import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+
+import { Solana, BASE_FEE } from '../../../chains/solana/solana';
+import {
   RemoveLiquidityRequest,
   RemoveLiquidityResponse,
   RemoveLiquidityRequestType,
   RemoveLiquidityResponseType,
-} from '../../../schemas/trading-types/clmm-schema'
-import { TxVersion } from '@raydium-io/raydium-sdk-v2'
-import BN from 'bn.js'
-import Decimal from 'decimal.js'
-
+} from '../../../schemas/trading-types/clmm-schema';
+import { logger } from '../../../services/logger';
+import { Raydium } from '../raydium';
 
 export async function removeLiquidity(
-_fastify: FastifyInstance,
-network: string,
-walletAddress: string,
-positionAddress: string,
-percentageToRemove: number,
-closePosition: boolean = false
+  _fastify: FastifyInstance,
+  network: string,
+  walletAddress: string,
+  positionAddress: string,
+  percentageToRemove: number,
+  closePosition: boolean = false,
 ): Promise<RemoveLiquidityResponseType> {
-  const solana = await Solana.getInstance(network)
-  const raydium = await Raydium.getInstance(network)
-  const wallet = await solana.getWallet(walletAddress)
+  const solana = await Solana.getInstance(network);
+  const raydium = await Raydium.getInstance(network);
+  const wallet = await solana.getWallet(walletAddress);
 
-  const positionInfo = await raydium.getClmmPosition(positionAddress)
-  const [poolInfo, poolKeys] = await raydium.getClmmPoolfromAPI(positionInfo.poolId.toBase58())
+  const positionInfo = await raydium.getClmmPosition(positionAddress);
+  const [poolInfo, poolKeys] = await raydium.getClmmPoolfromAPI(
+    positionInfo.poolId.toBase58(),
+  );
 
   if (positionInfo.liquidity.isZero()) {
-    throw new Error('Position has zero liquidity - nothing to remove')
+    throw new Error('Position has zero liquidity - nothing to remove');
   }
   if (percentageToRemove <= 0 || percentageToRemove > 100) {
-    throw new Error('Invalid percentageToRemove - must be between 0 and 100')
+    throw new Error('Invalid percentageToRemove - must be between 0 and 100');
   }
 
   const liquidityToRemove = new BN(
     new Decimal(positionInfo.liquidity.toString())
       .mul(percentageToRemove / 100)
-      .toFixed(0)
-  )
+      .toFixed(0),
+  );
 
-  logger.info(`Removing ${percentageToRemove.toFixed(4)}% liquidity from position ${positionAddress}`)
-  const COMPUTE_UNITS = 600000
-  let currentPriorityFee = (await solana.estimateGas() * 1e9) - BASE_FEE
+  logger.info(
+    `Removing ${percentageToRemove.toFixed(4)}% liquidity from position ${positionAddress}`,
+  );
+  const COMPUTE_UNITS = 600000;
+  let currentPriorityFee = (await solana.estimateGas()) * 1e9 - BASE_FEE;
   while (currentPriorityFee <= solana.config.maxPriorityFee * 1e9) {
-    const priorityFeePerCU = Math.floor(currentPriorityFee * 1e6 / COMPUTE_UNITS)
+    const priorityFeePerCU = Math.floor(
+      (currentPriorityFee * 1e6) / COMPUTE_UNITS,
+    );
     const { transaction } = await raydium.raydiumSDK.clmm.decreaseLiquidity({
       poolInfo,
       poolKeys,
       ownerPosition: positionInfo,
-      ownerInfo: { 
-          useSOLBalance: true,
-          closePosition: closePosition
+      ownerInfo: {
+        useSOLBalance: true,
+        closePosition: closePosition,
       },
       liquidity: liquidityToRemove,
       amountMinA: new BN(0),
@@ -62,43 +68,49 @@ closePosition: boolean = false
         units: COMPUTE_UNITS,
         microLamports: priorityFeePerCU,
       },
-    })
+    });
 
-    transaction.sign([wallet])
-    await solana.simulateTransaction(transaction)
+    transaction.sign([wallet]);
+    await solana.simulateTransaction(transaction);
 
-    const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction)
+    const { confirmed, signature, txData } =
+      await solana.sendAndConfirmRawTransaction(transaction);
     if (confirmed && txData) {
-      const { baseTokenBalanceChange, quoteTokenBalanceChange } = 
+      const { baseTokenBalanceChange, quoteTokenBalanceChange } =
         await solana.extractPairBalanceChangesAndFee(
           signature,
           await solana.getToken(poolInfo.mintA.address),
           await solana.getToken(poolInfo.mintB.address),
-          wallet.publicKey.toBase58()
+          wallet.publicKey.toBase58(),
         );
 
-      logger.info(`Liquidity removed from position ${positionAddress}: ${Math.abs(baseTokenBalanceChange).toFixed(4)} ${poolInfo.mintA.symbol}, ${Math.abs(quoteTokenBalanceChange).toFixed(4)} ${poolInfo.mintB.symbol}`);
+      logger.info(
+        `Liquidity removed from position ${positionAddress}: ${Math.abs(baseTokenBalanceChange).toFixed(4)} ${poolInfo.mintA.symbol}, ${Math.abs(quoteTokenBalanceChange).toFixed(4)} ${poolInfo.mintB.symbol}`,
+      );
 
-
-
-      const totalFee = txData.meta.fee
+      const totalFee = txData.meta.fee;
       return {
         signature,
         fee: totalFee / 1e9,
         baseTokenAmountRemoved: 0,
         quoteTokenAmountRemoved: 0,
-      }
+      };
     }
-    currentPriorityFee = currentPriorityFee * solana.config.priorityFeeMultiplier
-    logger.info(`Increasing max priority fee to ${(currentPriorityFee / 1e9).toFixed(6)} SOL`)
+    currentPriorityFee =
+      currentPriorityFee * solana.config.priorityFeeMultiplier;
+    logger.info(
+      `Increasing max priority fee to ${(currentPriorityFee / 1e9).toFixed(6)} SOL`,
+    );
   }
-  throw new Error(`Remove liquidity failed after reaching max priority fee of ${(solana.config.maxPriorityFee / 1e9).toFixed(6)} SOL`)
+  throw new Error(
+    `Remove liquidity failed after reaching max priority fee of ${(solana.config.maxPriorityFee / 1e9).toFixed(6)} SOL`,
+  );
 }
 
 export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{
-    Body: RemoveLiquidityRequestType
-    Reply: RemoveLiquidityResponseType
+    Body: RemoveLiquidityRequestType;
+    Reply: RemoveLiquidityResponseType;
   }>(
     '/remove-liquidity',
     {
@@ -109,36 +121,32 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           ...RemoveLiquidityRequest,
           properties: {
             ...RemoveLiquidityRequest.properties,
-            network: { type: 'string', default: 'mainnet-beta' }
-          }
+            network: { type: 'string', default: 'mainnet-beta' },
+          },
         },
         response: {
-          200: RemoveLiquidityResponse
+          200: RemoveLiquidityResponse,
         },
-      }
+      },
     },
     async (request) => {
       try {
-        const { 
-          network,
-          walletAddress,
-          positionAddress,
-          percentageToRemove,
-        } = request.body
-        
+        const { network, walletAddress, positionAddress, percentageToRemove } =
+          request.body;
+
         return await removeLiquidity(
           fastify,
           network || 'mainnet-beta',
           walletAddress,
           positionAddress,
           percentageToRemove,
-        )
+        );
       } catch (e) {
-        logger.error(e)
-        throw fastify.httpErrors.internalServerError('Internal server error')
+        logger.error(e);
+        throw fastify.httpErrors.internalServerError('Internal server error');
       }
-    }
-  )
-}
+    },
+  );
+};
 
-export default removeLiquidityRoute
+export default removeLiquidityRoute;

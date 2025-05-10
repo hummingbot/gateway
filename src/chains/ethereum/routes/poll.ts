@@ -1,6 +1,6 @@
+import { ethers } from 'ethers';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
-import { Ethereum } from '../ethereum';
-import { logger } from '../../../services/logger';
+
 import {
   PollRequestType,
   PollResponseType,
@@ -8,7 +8,8 @@ import {
   PollResponseSchema,
 } from '../../../schemas/chain-schema';
 import { getConnector } from '../../../services/connection-manager';
-import { ethers } from 'ethers';
+import { logger } from '../../../services/logger';
+import { Ethereum } from '../ethereum';
 
 // Helper function for transaction response formatting
 

@@ -1,13 +1,14 @@
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { Type } from '@sinclair/typebox';
-import { Ethereum, TokenInfo } from '../ethereum';
-import { logger } from '../../../services/logger';
+import { ethers, constants, utils } from 'ethers';
+import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+
 import {
   ApproveRequestType,
   ApproveResponseType,
 } from '../../../schemas/chain-schema';
 import { bigNumberWithDecimalToStr } from '../../../services/base';
-import { ethers, constants, utils } from 'ethers';
+import { logger } from '../../../services/logger';
+import { Ethereum, TokenInfo } from '../ethereum';
 
 // Helper function to convert transaction to a format matching the CustomTransactionSchema
 const toEthereumTransaction = (transaction: ethers.Transaction) => {

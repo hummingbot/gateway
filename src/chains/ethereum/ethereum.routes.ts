@@ -1,11 +1,12 @@
 import { FastifyPluginAsync } from 'fastify';
-import { statusRoute } from './routes/status';
-import { tokensRoute } from './routes/tokens';
-import { balancesRoute } from './routes/balances';
-import { pollRoute } from './routes/poll';
+
 import { allowancesRoute } from './routes/allowances';
 import { approveRoute } from './routes/approve';
+import { balancesRoute } from './routes/balances';
 import { estimateGasRoute } from './routes/estimate-gas';
+import { pollRoute } from './routes/poll';
+import { statusRoute } from './routes/status';
+import { tokensRoute } from './routes/tokens';
 
 // Register the type declaration needed for Fastify schema tags
 declare module 'fastify' {

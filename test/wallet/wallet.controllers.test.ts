@@ -1,14 +1,9 @@
-import { patch, unpatch } from '../services/patch';
-import { Ethereum } from '../../src/chains/ethereum/ethereum';
 import { FastifyInstance } from 'fastify';
 
-import {
-  addWallet,
-  getWallets,
-  removeWallet,
-} from '../../src/wallet/utils';
-
+import { Ethereum } from '../../src/chains/ethereum/ethereum';
 import { ConfigManagerCertPassphrase } from '../../src/services/config-manager-cert-passphrase';
+import { addWallet, getWallets, removeWallet } from '../../src/wallet/utils';
+import { patch, unpatch } from '../services/patch';
 // import { Cosmos } from '../../../src/chains/cosmos/cosmos';
 
 let eth: Ethereum;
@@ -20,7 +15,7 @@ beforeAll(async () => {
 });
 
 beforeEach(() =>
-  patch(ConfigManagerCertPassphrase, 'readPassphrase', () => 'a')
+  patch(ConfigManagerCertPassphrase, 'readPassphrase', () => 'a'),
 );
 
 afterAll(async () => {
@@ -88,8 +83,8 @@ describe('addWallet and getWallets', () => {
     const mockFastify = {
       httpErrors: {
         internalServerError: (msg: string) => new Error(msg),
-        badRequest: (msg: string) => new Error(msg)
-      }
+        badRequest: (msg: string) => new Error(msg),
+      },
     } as unknown as FastifyInstance;
 
     await addWallet(mockFastify, {
@@ -111,18 +106,17 @@ describe('addWallet and getWallets', () => {
     const mockFastify = {
       httpErrors: {
         internalServerError: (msg: string) => new Error(msg),
-        badRequest: (msg: string) => new Error(msg)
-      }
+        badRequest: (msg: string) => new Error(msg),
+      },
     } as unknown as FastifyInstance;
 
     await expect(
       addWallet(mockFastify, {
         privateKey: onePrivateKey,
         chain: 'shibainu',
-      })
+      }),
     ).rejects.toThrow('Unrecognized chain name: shibainu');
   });
-
 });
 
 describe('addWallet and removeWallets', () => {
@@ -142,8 +136,8 @@ describe('addWallet and removeWallets', () => {
       httpErrors: {
         internalServerError: (msg: string) => new Error(msg),
         badRequest: (msg: string) => new Error(msg),
-        notFound: (msg: string) => new Error(msg)
-      }
+        notFound: (msg: string) => new Error(msg),
+      },
     } as unknown as FastifyInstance;
 
     await addWallet(mockFastify, {
@@ -161,5 +155,4 @@ describe('addWallet and removeWallets', () => {
 
     expect(addresses[0]).not.toContain(oneAddress);
   });
-
 });

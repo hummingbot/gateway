@@ -1,19 +1,5 @@
-import { FastifyPluginAsync } from 'fastify';
-import { Uniswap } from '../uniswap';
-import { Ethereum } from '../../../chains/ethereum/ethereum';
-import { logger } from '../../../services/logger';
-import { 
-  OpenPositionRequestType, 
-  OpenPositionRequest,
-  OpenPositionResponseType,
-  OpenPositionResponse
-} from '../../../schemas/trading-types/clmm-schema';
-import { formatTokenAmount, parseFeeTier } from '../uniswap.utils';
-import {
-  Token,
-  CurrencyAmount,
-  Percent,
-} from '@uniswap/sdk-core';
+import { Contract } from '@ethersproject/contracts';
+import { Token, CurrencyAmount, Percent } from '@uniswap/sdk-core';
 import {
   Position,
   Pool as V3Pool,
@@ -24,9 +10,20 @@ import {
   priceToClosestTick,
   FeeAmount,
 } from '@uniswap/v3-sdk';
-import { Contract } from '@ethersproject/contracts';
 import { BigNumber } from 'ethers';
+import { FastifyPluginAsync } from 'fastify';
 import JSBI from 'jsbi';
+
+import { Ethereum } from '../../../chains/ethereum/ethereum';
+import {
+  OpenPositionRequestType,
+  OpenPositionRequest,
+  OpenPositionResponseType,
+  OpenPositionResponse,
+} from '../../../schemas/trading-types/clmm-schema';
+import { logger } from '../../../services/logger';
+import { Uniswap } from '../uniswap';
+import { formatTokenAmount, parseFeeTier } from '../uniswap.utils';
 
 // Define a minimal ABI for ERC20 tokens
 const ERC20_ABI = [
@@ -34,27 +31,28 @@ const ERC20_ABI = [
     constant: false,
     inputs: [
       { name: '_spender', type: 'address' },
-      { name: '_value', type: 'uint256' }
+      { name: '_value', type: 'uint256' },
     ],
     name: 'approve',
     outputs: [{ name: '', type: 'bool' }],
     payable: false,
     stateMutability: 'nonpayable',
-    type: 'function'
-  }
+    type: 'function',
+  },
 ];
 
 export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
   // Get first wallet address for example
   const ethereum = await Ethereum.getInstance('base');
   let firstWalletAddress = '<ethereum-wallet-address>';
-  
+
   try {
-    firstWalletAddress = await ethereum.getFirstWalletAddress() || firstWalletAddress;
+    firstWalletAddress =
+      (await ethereum.getFirstWalletAddress()) || firstWalletAddress;
   } catch (error) {
     logger.warn('No wallets found for examples in schema');
   }
-  
+
   fastify.post<{
     Body: OpenPositionRequestType;
     Reply: OpenPositionResponseType;
@@ -77,18 +75,22 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
             quoteToken: { type: 'string', examples: ['USDC'] },
             baseTokenAmount: { type: 'number', examples: [0.001] },
             quoteTokenAmount: { type: 'number', examples: [2] },
-            feeTier: { type: 'string', enum: ['LOWEST', 'LOW', 'MEDIUM', 'HIGH'], default: 'MEDIUM' },
-            slippagePct: { type: 'number', examples: [0.5] }
-          }
+            feeTier: {
+              type: 'string',
+              enum: ['LOWEST', 'LOW', 'MEDIUM', 'HIGH'],
+              default: 'MEDIUM',
+            },
+            slippagePct: { type: 'number', examples: [0.5] },
+          },
         },
         response: {
-          200: OpenPositionResponse
+          200: OpenPositionResponse,
         },
-      }
+      },
     },
     async (request) => {
       try {
-        const { 
+        const {
           network,
           walletAddress: requestedWalletAddress,
           lowerPrice,
@@ -99,28 +101,34 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           baseTokenAmount,
           quoteTokenAmount,
           feeTier,
-          slippagePct
+          slippagePct,
         } = request.body;
-        
+
         const networkToUse = network || 'base';
 
         // Validate essential parameters
-        if (!lowerPrice || !upperPrice || 
-            (!baseToken || !quoteToken) || 
-            (baseTokenAmount === undefined && quoteTokenAmount === undefined)) {
+        if (
+          !lowerPrice ||
+          !upperPrice ||
+          !baseToken ||
+          !quoteToken ||
+          (baseTokenAmount === undefined && quoteTokenAmount === undefined)
+        ) {
           throw fastify.httpErrors.badRequest('Missing required parameters');
         }
 
         // Get Uniswap and Ethereum instances
         const uniswap = await Uniswap.getInstance(networkToUse);
         const ethereum = await Ethereum.getInstance(networkToUse);
-        
+
         // Get wallet address - either from request or first available
         let walletAddress = requestedWalletAddress;
         if (!walletAddress) {
           walletAddress = await uniswap.getFirstWalletAddress();
           if (!walletAddress) {
-            throw fastify.httpErrors.badRequest('No wallet address provided and no default wallet found');
+            throw fastify.httpErrors.badRequest(
+              'No wallet address provided and no default wallet found',
+            );
           }
           logger.info(`Using first available wallet address: ${walletAddress}`);
         }
@@ -130,7 +138,9 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         const quoteTokenObj = uniswap.getTokenBySymbol(quoteToken);
 
         if (!baseTokenObj || !quoteTokenObj) {
-          throw fastify.httpErrors.badRequest(`Token not found: ${!baseTokenObj ? baseToken : quoteToken}`);
+          throw fastify.httpErrors.badRequest(
+            `Token not found: ${!baseTokenObj ? baseToken : quoteToken}`,
+          );
         }
 
         // Get the wallet
@@ -148,24 +158,35 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         // Find pool address if not provided
         let poolAddress = requestedPoolAddress;
         if (!poolAddress) {
-          poolAddress = await uniswap.findDefaultPool(baseToken, quoteToken, 'clmm');
-          
+          poolAddress = await uniswap.findDefaultPool(
+            baseToken,
+            quoteToken,
+            'clmm',
+          );
+
           if (!poolAddress) {
             throw fastify.httpErrors.notFound(
-              `No CLMM pool found for pair ${baseToken}-${quoteToken}`
+              `No CLMM pool found for pair ${baseToken}-${quoteToken}`,
             );
           }
         }
 
         // Get the V3 pool
-        const pool = await uniswap.getV3Pool(baseTokenObj, quoteTokenObj, feeAmount, poolAddress);
+        const pool = await uniswap.getV3Pool(
+          baseTokenObj,
+          quoteTokenObj,
+          feeAmount,
+          poolAddress,
+        );
         if (!pool) {
-          throw fastify.httpErrors.notFound(`Pool not found for ${baseToken}-${quoteToken}`);
+          throw fastify.httpErrors.notFound(
+            `Pool not found for ${baseToken}-${quoteToken}`,
+          );
         }
 
         // Calculate slippage tolerance
-        const slippageTolerance = slippagePct 
-          ? new Percent(slippagePct, 100) 
+        const slippageTolerance = slippagePct
+          ? new Percent(slippagePct, 100)
           : uniswap.getAllowedSlippage();
 
         // Convert price range to ticks
@@ -173,77 +194,84 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         // We need to convert the user's desired price range to tick range
         const token0 = pool.token0;
         const token1 = pool.token1;
-        
+
         // Determine if we need to invert the price depending on which token is token0
-        const isBaseToken0 = baseTokenObj.address.toLowerCase() === token0.address.toLowerCase();
-        
+        const isBaseToken0 =
+          baseTokenObj.address.toLowerCase() === token0.address.toLowerCase();
+
         // Convert prices to ticks
         let lowerTick, upperTick;
-        
+
         // For simplicity, we'll convert the price directly to tick
         // This isn't as accurate as using the SDK's methods, but it works for demonstration
         const getTickAtSqrtRatio = (price: number): number => {
           return Math.log(Math.sqrt(price)) / Math.log(Math.sqrt(1.0001));
         };
-        
+
         if (isBaseToken0) {
           // If base token is token0, prices are in quote/base
           lowerTick = Math.floor(getTickAtSqrtRatio(lowerPrice));
           upperTick = Math.ceil(getTickAtSqrtRatio(upperPrice));
         } else {
           // If base token is token1, prices are in base/quote
-          lowerTick = Math.floor(getTickAtSqrtRatio(1/upperPrice));
-          upperTick = Math.ceil(getTickAtSqrtRatio(1/lowerPrice));
+          lowerTick = Math.floor(getTickAtSqrtRatio(1 / upperPrice));
+          upperTick = Math.ceil(getTickAtSqrtRatio(1 / lowerPrice));
         }
-        
+
         // Ensure ticks are on valid tick spacing boundaries
         const tickSpacing = pool.tickSpacing;
         lowerTick = nearestUsableTick(lowerTick, tickSpacing);
         upperTick = nearestUsableTick(upperTick, tickSpacing);
-        
+
         // Ensure lower < upper
         if (lowerTick >= upperTick) {
-          throw fastify.httpErrors.badRequest('Lower price must be less than upper price');
+          throw fastify.httpErrors.badRequest(
+            'Lower price must be less than upper price',
+          );
         }
 
         // Calculate token amounts for the position
         let token0Amount = CurrencyAmount.fromRawAmount(token0, 0);
         let token1Amount = CurrencyAmount.fromRawAmount(token1, 0);
-        
+
         if (baseTokenAmount !== undefined) {
           // Convert baseTokenAmount to raw amount
-          const baseAmountRaw = Math.floor(baseTokenAmount * Math.pow(10, baseTokenObj.decimals));
-          
+          const baseAmountRaw = Math.floor(
+            baseTokenAmount * Math.pow(10, baseTokenObj.decimals),
+          );
+
           if (isBaseToken0) {
             token0Amount = CurrencyAmount.fromRawAmount(
-              token0, 
-              JSBI.BigInt(baseAmountRaw.toString())
+              token0,
+              JSBI.BigInt(baseAmountRaw.toString()),
             );
           } else {
             token1Amount = CurrencyAmount.fromRawAmount(
-              token1, 
-              JSBI.BigInt(baseAmountRaw.toString())
+              token1,
+              JSBI.BigInt(baseAmountRaw.toString()),
             );
           }
         }
-        
+
         if (quoteTokenAmount !== undefined) {
           // Convert quoteTokenAmount to raw amount
-          const quoteAmountRaw = Math.floor(quoteTokenAmount * Math.pow(10, quoteTokenObj.decimals));
-          
+          const quoteAmountRaw = Math.floor(
+            quoteTokenAmount * Math.pow(10, quoteTokenObj.decimals),
+          );
+
           if (isBaseToken0) {
             token1Amount = CurrencyAmount.fromRawAmount(
-              token1, 
-              JSBI.BigInt(quoteAmountRaw.toString())
+              token1,
+              JSBI.BigInt(quoteAmountRaw.toString()),
             );
           } else {
             token0Amount = CurrencyAmount.fromRawAmount(
-              token0, 
-              JSBI.BigInt(quoteAmountRaw.toString())
+              token0,
+              JSBI.BigInt(quoteAmountRaw.toString()),
             );
           }
         }
-        
+
         // Create the position
         const position = Position.fromAmounts({
           pool,
@@ -251,51 +279,53 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           tickUpper: upperTick,
           amount0: token0Amount.quotient,
           amount1: token1Amount.quotient,
-          useFullPrecision: true
+          useFullPrecision: true,
         });
 
         // Get the mintOptions for creating the position
         const mintOptions: MintOptions = {
           recipient: walletAddress,
           deadline: Math.floor(Date.now() / 1000) + 60 * 20, // 20 minutes from now
-          slippageTolerance
+          slippageTolerance,
         };
 
         // Get the calldata for creating the position
-        const { calldata, value } = NonfungiblePositionManager.addCallParameters(position, mintOptions);
+        const { calldata, value } =
+          NonfungiblePositionManager.addCallParameters(position, mintOptions);
 
         // Approve NFT manager to use tokens
-        const positionManagerAddress = uniswap.config.uniswapV3NftManagerAddress(networkToUse);
-        
+        const positionManagerAddress =
+          uniswap.config.uniswapV3NftManagerAddress(networkToUse);
+
         // Approve token0 if needed
         if (!token0Amount.equalTo(0) && token0.symbol !== 'WETH') {
           const token0Contract = new Contract(
             token0.address,
             ERC20_ABI,
-            wallet
+            wallet,
           );
-          
+
           const approvalTx0 = await token0Contract.approve(
             positionManagerAddress,
-            token0Amount.quotient.toString()
+            token0Amount.quotient.toString(),
           );
-          
+
           await approvalTx0.wait();
         }
-        
+
         // Approve token1 if needed
         if (!token1Amount.equalTo(0) && token1.symbol !== 'WETH') {
           const token1Contract = new Contract(
             token1.address,
             ERC20_ABI,
-            wallet
+            wallet,
           );
-          
+
           const approvalTx1 = await token1Contract.approve(
             positionManagerAddress,
-            token1Amount.quotient.toString()
+            token1Amount.quotient.toString(),
           );
-          
+
           await approvalTx1.wait();
         }
 
@@ -304,68 +334,72 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           positionManagerAddress,
           [
             {
-              inputs: [
-                { internalType: 'bytes', name: 'data', type: 'bytes' }
-              ],
+              inputs: [{ internalType: 'bytes', name: 'data', type: 'bytes' }],
               name: 'multicall',
               outputs: [
-                { internalType: 'bytes[]', name: 'results', type: 'bytes[]' }
+                { internalType: 'bytes[]', name: 'results', type: 'bytes[]' },
               ],
               stateMutability: 'payable',
-              type: 'function'
-            }
+              type: 'function',
+            },
           ],
-          wallet
+          wallet,
         );
-        
+
         // Create the position
-        const tx = await positionManager.multicall(
-          JSON.parse(calldata), 
-          { 
-            value: BigNumber.from(value.toString()),
-            gasLimit: 500000 // Opening a position can be gas-heavy
-          }
-        );
-        
+        const tx = await positionManager.multicall(JSON.parse(calldata), {
+          value: BigNumber.from(value.toString()),
+          gasLimit: 500000, // Opening a position can be gas-heavy
+        });
+
         // Wait for transaction confirmation
         const receipt = await tx.wait();
-        
+
         // Find the NFT ID from the transaction logs
         let positionId = '';
         for (const log of receipt.logs) {
           // Look for the Transfer event from the NFT manager (position created)
-          if (log.address.toLowerCase() === positionManagerAddress.toLowerCase() &&
-              log.topics[0] === '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef' && 
-              log.topics[1] === '0x0000000000000000000000000000000000000000000000000000000000000000') {
+          if (
+            log.address.toLowerCase() ===
+              positionManagerAddress.toLowerCase() &&
+            log.topics[0] ===
+              '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef' &&
+            log.topics[1] ===
+              '0x0000000000000000000000000000000000000000000000000000000000000000'
+          ) {
             // This is a Transfer from address 0, which is a mint
             positionId = BigNumber.from(log.topics[3]).toString();
             break;
           }
         }
-        
+
         // Calculate gas fee
         const gasFee = formatTokenAmount(
           receipt.gasUsed.mul(receipt.effectiveGasPrice).toString(),
-          18 // ETH has 18 decimals
+          18, // ETH has 18 decimals
         );
-        
+
         // For position rent, we're using the estimated gas cost since Ethereum doesn't have rent like Solana
         const positionRent = 0;
-        
+
         // Calculate actual token amounts added based on position
         const actualToken0Amount = formatTokenAmount(
           position.amount0.quotient.toString(),
-          token0.decimals
+          token0.decimals,
         );
-        
+
         const actualToken1Amount = formatTokenAmount(
           position.amount1.quotient.toString(),
-          token1.decimals
+          token1.decimals,
         );
-        
+
         // Map back to base and quote amounts
-        const actualBaseAmount = isBaseToken0 ? actualToken0Amount : actualToken1Amount;
-        const actualQuoteAmount = isBaseToken0 ? actualToken1Amount : actualToken0Amount;
+        const actualBaseAmount = isBaseToken0
+          ? actualToken0Amount
+          : actualToken1Amount;
+        const actualQuoteAmount = isBaseToken0
+          ? actualToken1Amount
+          : actualToken0Amount;
 
         return {
           signature: receipt.transactionHash,
@@ -373,7 +407,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           positionAddress: positionId,
           positionRent,
           baseTokenAmountAdded: actualBaseAmount,
-          quoteTokenAmountAdded: actualQuoteAmount
+          quoteTokenAmountAdded: actualQuoteAmount,
         };
       } catch (e) {
         logger.error(e);
@@ -382,7 +416,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         }
         throw fastify.httpErrors.internalServerError('Failed to open position');
       }
-    }
+    },
   );
 };
 

@@ -24,29 +24,36 @@ export namespace RaydiumConfig {
   export interface RootConfig {
     // Global configuration
     allowedSlippage: string;
-    
+
     // Network-specific configurations
     networks: NetworkPoolsConfig;
-    
+
     // Available networks
     availableNetworks: Array<AvailableNetworks>;
   }
 
   export const config: RootConfig = {
     // Global configuration
-    allowedSlippage: ConfigManagerV2.getInstance().get('raydium.allowedSlippage'),
-    
+    allowedSlippage: ConfigManagerV2.getInstance().get(
+      'raydium.allowedSlippage',
+    ),
+
     // Network-specific pools
     networks: ConfigManagerV2.getInstance().get('raydium.networks'),
-    
-    availableNetworks: [{
-      chain: 'solana',
-      networks: ['mainnet-beta', 'devnet']
-    }]
+
+    availableNetworks: [
+      {
+        chain: 'solana',
+        networks: ['mainnet-beta', 'devnet'],
+      },
+    ],
   };
-  
+
   // Helper methods to get pools for a specific network
-  export const getNetworkPools = (network: string, poolType: 'amm' | 'clmm'): PoolsConfig => {
+  export const getNetworkPools = (
+    network: string,
+    poolType: 'amm' | 'clmm',
+  ): PoolsConfig => {
     return config.networks[network]?.[poolType] || {};
   };
 }
