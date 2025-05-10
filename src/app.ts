@@ -28,7 +28,7 @@ import { ergoRoutes } from './chains/ergo/ergo.routes';
 import { spectrumRoutes } from './connectors/spectrum/spectrum.routes';
 
 // Change version for each release
-const GATEWAY_VERSION = '2.4.0';
+const GATEWAY_VERSION = 'dev-2.6.0';
 
 // At the top level, define devMode once
 // When true, runs server in HTTP mode (less secure but useful for development)
