@@ -371,3 +371,15 @@ Format code with prettier:
 ```bash
 pnpm format
 ```
+
+## Troubleshooting
+
+### Fixing bigint-buffer warnings
+
+If you see warnings like `bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)` when running Gateway, you can fix it by running the included rebuild script:
+
+```bash
+pnpm rebuild-bigint
+```
+
+This will rebuild the native C++ modules for bigint-buffer, which should resolve the warning. You might need to have node-gyp and C++ build tools installed on your system for this to work properly.
