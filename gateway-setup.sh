@@ -131,3 +131,7 @@ else
   echo "Exiting..."
   exit
 fi
+
+echo
+echo "===============  SETUP COMPLETE ==============="
+echo

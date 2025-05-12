@@ -1,19 +1,20 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
-import { Meteora } from '../meteora';
+
 import { Solana } from '../../../chains/solana/solana';
-import { logger } from '../../../services/logger';
-import { 
-  CollectFeesRequest, 
-  CollectFeesResponse, 
-  CollectFeesRequestType, 
-  CollectFeesResponseType 
+import {
+  CollectFeesRequest,
+  CollectFeesResponse,
+  CollectFeesRequestType,
+  CollectFeesResponseType,
 } from '../../../schemas/trading-types/clmm-schema';
+import { logger } from '../../../services/logger';
+import { Meteora } from '../meteora';
 
 export async function collectFees(
   fastify: FastifyInstance,
   network: string,
   address: string,
-  positionAddress: string
+  positionAddress: string,
 ): Promise<CollectFeesResponseType> {
   const solana = await Solana.getInstance(network);
   const meteora = await Meteora.getInstance(network);
@@ -22,7 +23,7 @@ export async function collectFees(
   // Get position result and check if it's null before destructuring
   const positionResult = await meteora.getRawPosition(
     positionAddress,
-    wallet.publicKey
+    wallet.publicKey,
   );
 
   if (!positionResult) {
@@ -38,7 +39,9 @@ export async function collectFees(
 
   const dlmmPool = await meteora.getDlmmPool(info.publicKey.toBase58());
   if (!dlmmPool) {
-    throw fastify.httpErrors.notFound(`Pool not found for position: ${positionAddress}`);
+    throw fastify.httpErrors.notFound(
+      `Pool not found for position: ${positionAddress}`,
+    );
   }
 
   const tokenX = await solana.getToken(dlmmPool.tokenX.publicKey.toBase58());
@@ -53,21 +56,29 @@ export async function collectFees(
     position: position,
   });
 
-  const { signature, fee } = await solana.sendAndConfirmTransaction(claimSwapFeeTx, [wallet], 300_000);
-
-  const { balanceChange: collectedFeeX } = await solana.extractTokenBalanceChangeAndFee(
-    signature,
-    dlmmPool.tokenX.publicKey.toBase58(),
-    dlmmPool.pubkey.toBase58()
+  const { signature, fee } = await solana.sendAndConfirmTransaction(
+    claimSwapFeeTx,
+    [wallet],
+    300_000,
   );
 
-  const { balanceChange: collectedFeeY } = await solana.extractTokenBalanceChangeAndFee(
-    signature,
-    dlmmPool.tokenY.publicKey.toBase58(),
-    dlmmPool.pubkey.toBase58()
-  );
+  const { balanceChange: collectedFeeX } =
+    await solana.extractTokenBalanceChangeAndFee(
+      signature,
+      dlmmPool.tokenX.publicKey.toBase58(),
+      dlmmPool.pubkey.toBase58(),
+    );
 
-  logger.info(`Fees collected from position ${positionAddress}: ${Math.abs(collectedFeeX).toFixed(4)} ${tokenXSymbol}, ${Math.abs(collectedFeeY).toFixed(4)} ${tokenYSymbol}`);
+  const { balanceChange: collectedFeeY } =
+    await solana.extractTokenBalanceChangeAndFee(
+      signature,
+      dlmmPool.tokenY.publicKey.toBase58(),
+      dlmmPool.pubkey.toBase58(),
+    );
+
+  logger.info(
+    `Fees collected from position ${positionAddress}: ${Math.abs(collectedFeeX).toFixed(4)} ${tokenXSymbol}, ${Math.abs(collectedFeeY).toFixed(4)} ${tokenYSymbol}`,
+  );
 
   return {
     signature,
@@ -81,14 +92,14 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
   // Get first wallet address for example
   const solana = await Solana.getInstance('mainnet-beta');
   let firstWalletAddress = '<solana-wallet-address>';
-  
+
   const foundWallet = await solana.getFirstWalletAddress();
   if (foundWallet) {
     firstWalletAddress = foundWallet;
   } else {
     logger.debug('No wallets found for examples in schema');
   }
-  
+
   // Update schema example
   CollectFeesRequest.properties.walletAddress.examples = [firstWalletAddress];
 
@@ -105,24 +116,24 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
           ...CollectFeesRequest,
           properties: {
             ...CollectFeesRequest.properties,
-            network: { type: 'string', default: 'mainnet-beta' }
-          }
+            network: { type: 'string', default: 'mainnet-beta' },
+          },
         },
         response: {
-          200: CollectFeesResponse
+          200: CollectFeesResponse,
         },
-      }
+      },
     },
     async (request) => {
       try {
         const { network, walletAddress, positionAddress } = request.body;
         const networkToUse = network || 'mainnet-beta';
-        
+
         return await collectFees(
           fastify,
           networkToUse,
           walletAddress,
-          positionAddress
+          positionAddress,
         );
       } catch (e) {
         logger.error(e);
@@ -131,7 +142,7 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
         }
         throw fastify.httpErrors.internalServerError('Internal server error');
       }
-    }
+    },
   );
 };
 

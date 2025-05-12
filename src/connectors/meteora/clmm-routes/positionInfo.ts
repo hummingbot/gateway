@@ -1,29 +1,32 @@
-import { FastifyPluginAsync } from 'fastify';
-import { Meteora } from '../meteora';
-import { Solana } from '../../../chains/solana/solana';
-import { logger } from '../../../services/logger';
-import { 
-  PositionInfo, 
-  PositionInfoSchema, 
-  GetPositionInfoRequestType, 
-  GetPositionInfoRequest 
-} from '../../../schemas/trading-types/clmm-schema'
 import { PublicKey } from '@solana/web3.js';
+import { FastifyPluginAsync } from 'fastify';
+
+import { Solana } from '../../../chains/solana/solana';
+import {
+  PositionInfo,
+  PositionInfoSchema,
+  GetPositionInfoRequestType,
+  GetPositionInfoRequest,
+} from '../../../schemas/trading-types/clmm-schema';
+import { logger } from '../../../services/logger';
+import { Meteora } from '../meteora';
 
 export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
   // Get first wallet address for example
   const solana = await Solana.getInstance('mainnet-beta');
   let firstWalletAddress = '<solana-wallet-address>';
-  
+
   const foundWallet = await solana.getFirstWalletAddress();
   if (foundWallet) {
     firstWalletAddress = foundWallet;
   } else {
     logger.debug('No wallets found for examples in schema');
   }
-  
+
   // Update schema example
-  GetPositionInfoRequest.properties.walletAddress.examples = [firstWalletAddress];
+  GetPositionInfoRequest.properties.walletAddress.examples = [
+    firstWalletAddress,
+  ];
 
   fastify.get<{
     Querystring: GetPositionInfoRequestType;
@@ -41,18 +44,18 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
             walletAddress: {
               type: 'string',
               description: 'Will use first available wallet if not specified',
-              examples: [firstWalletAddress]
+              examples: [firstWalletAddress],
             },
             positionAddress: {
               type: 'string',
-              description: 'Meteora position'
-            }
-          }
+              description: 'Meteora position',
+            },
+          },
         },
         response: {
-          200: PositionInfoSchema
+          200: PositionInfoSchema,
         },
-      }
+      },
     },
     async (request) => {
       try {
@@ -63,12 +66,14 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
         try {
           new PublicKey(walletAddress);
         } catch (error) {
-          throw fastify.httpErrors.badRequest(`Invalid wallet address: ${walletAddress}`);
+          throw fastify.httpErrors.badRequest(
+            `Invalid wallet address: ${walletAddress}`,
+          );
         }
 
         const position = await meteora.getPositionInfo(
           positionAddress,
-          new PublicKey(walletAddress)
+          new PublicKey(walletAddress),
         );
 
         return position;
@@ -79,7 +84,7 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
         }
         throw fastify.httpErrors.internalServerError('Internal server error');
       }
-    }
+    },
   );
 };
 

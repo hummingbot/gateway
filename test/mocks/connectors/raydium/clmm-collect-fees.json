@@ -1,0 +1,16 @@
+[
+  {
+    "validResponse": {
+      "signature": "2nP5aBUErzJJ5ryqmhUBR4q7iTwFqzuBLpzbNxfGFi9ywsPjxBYKJdJgF2xg18ZWmKTvkHKfJJu9q9QMtfhYbcRg",
+      "fee": 0.001,
+      "baseFeeAmountCollected": 0.05,
+      "quoteFeeAmountCollected": 1.5
+    },
+    "invalidResponse": {
+      "signature": "2nP5aBUErzJJ5ryqmhUBR4q7iTwFqzuBLpzbNxfGFi9ywsPjxBYKJdJgF2xg18ZWmKTvkHKfJJu9q9QMtfhYbcRg",
+      "fee": "0.001",
+      "baseFeeAmountCollected": 0.05,
+      "quoteFeeAmountCollected": 1.5
+    }
+  }
+]

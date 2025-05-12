@@ -25,36 +25,36 @@ export interface Config {
 
 export function getEthereumConfig(
   chainName: string,
-  networkName: string
+  networkName: string,
 ): Config {
   const network = networkName;
   return {
     network: {
       name: network,
       chainID: ConfigManagerV2.getInstance().get(
-        chainName + '.networks.' + network + '.chainID'
+        chainName + '.networks.' + network + '.chainID',
       ),
       nodeURL: ConfigManagerV2.getInstance().get(
-        chainName + '.networks.' + network + '.nodeURL'
+        chainName + '.networks.' + network + '.nodeURL',
       ),
       tokenListType: ConfigManagerV2.getInstance().get(
-        chainName + '.networks.' + network + '.tokenListType'
+        chainName + '.networks.' + network + '.tokenListType',
       ),
       tokenListSource: ConfigManagerV2.getInstance().get(
-        chainName + '.networks.' + network + '.tokenListSource'
+        chainName + '.networks.' + network + '.tokenListSource',
       ),
       gasPriceRefreshInterval: ConfigManagerV2.getInstance().get(
-        chainName + '.networks.' + network + '.gasPriceRefreshInterval'
+        chainName + '.networks.' + network + '.gasPriceRefreshInterval',
       ),
     },
     nativeCurrencySymbol: ConfigManagerV2.getInstance().get(
-      chainName + '.networks.' + network + '.nativeCurrencySymbol'
+      chainName + '.networks.' + network + '.nativeCurrencySymbol',
     ),
     manualGasPrice: ConfigManagerV2.getInstance().get(
-      chainName + '.manualGasPrice'
+      chainName + '.manualGasPrice',
     ),
     gasLimitTransaction: ConfigManagerV2.getInstance().get(
-      chainName + '.gasLimitTransaction'
+      chainName + '.gasLimitTransaction',
     ),
   };
 }

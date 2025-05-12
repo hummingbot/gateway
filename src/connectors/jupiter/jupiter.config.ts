@@ -1,7 +1,15 @@
-import { AvailableNetworks } from '../connector.requests';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 
+interface AvailableNetworks {
+  chain: string;
+  networks: Array<string>;
+}
+
 export namespace JupiterConfig {
+  // Supported networks for Jupiter
+  export const chain = 'solana';
+  export const networks = ['mainnet-beta', 'devnet'];
+
   export interface NetworkConfig {
     allowedSlippage: string;
     priorityLevel: string;
@@ -13,10 +21,10 @@ export namespace JupiterConfig {
     allowedSlippage: ConfigManagerV2.getInstance().get(
       'jupiter.allowedSlippage',
     ),
-    priorityLevel: ConfigManagerV2.getInstance().get(
-      'jupiter.priorityLevel',
-    ),
+    priorityLevel: ConfigManagerV2.getInstance().get('jupiter.priorityLevel'),
     tradingTypes: ['swap'],
-    availableNetworks: [{ chain: 'solana', networks: ['mainnet-beta', 'devnet'] }],
+    availableNetworks: [
+      { chain: 'solana', networks: ['mainnet-beta', 'devnet'] },
+    ],
   };
 }

@@ -15,3 +15,5 @@ package-lock.json
 # VSCode
 .vscode/
 .history
+
+**/.claude/settings.local.json

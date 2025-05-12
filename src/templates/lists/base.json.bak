@@ -1,0 +1,114 @@
+[
+  {
+    "chainId": 8453,
+    "name": "Aerodrome Finance",
+    "symbol": "AERO",
+    "address": "0x940181a94A35A4569E4529A3CDfB74e38FD98631",
+    "decimals": 18
+  },
+  {
+    "chainId": 8453,
+    "name": "Virtual Protocol",
+    "symbol": "VIRTUAL",
+    "address": "0x0b3e328455c4059eeb9e3f84b5543f74e24e7e1b",
+    "decimals": 18
+  },
+  {
+    "chainId": 8453,
+    "name": "Compound",
+    "symbol": "COMP",
+    "address": "0x9e1028F5F1D5eDE59748FFceE5532509976840E0",
+    "decimals": 18
+  },
+  {
+    "chainId": 8453,
+    "name": "Dai Stablecoin",
+    "symbol": "DAI",
+    "address": "0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb",
+    "decimals": 18
+  },
+  {
+    "chainId": 8453,
+    "name": "Degen",
+    "symbol": "DEGEN",
+    "address": "0x4ed4E862860beD51a9570b96d89aF5E1B0Efefed",
+    "decimals": 18
+  },
+  {
+    "chainId": 8453,
+    "name": "EURC",
+    "symbol": "EURC",
+    "address": "0x60a3E35Cc302bFA44Cb288Bc5a4F316Fdb1adb42",
+    "decimals": 6
+  },
+  {
+    "chainId": 8453,
+    "name": "Seamlesss",
+    "symbol": "SEAM",
+    "address": "0x1C7a460413dD4e964f96D8dFC56E7223cE88CD85",
+    "decimals": 18
+  },
+  {
+    "chainId": 8453,
+    "name": "SPX6900",
+    "symbol": "SPX",
+    "address": "0x50dA645f148798F68EF2d7dB7C1CB22A6819bb2C",
+    "decimals": 8
+  },
+  {
+    "chainId": 8453,
+    "name": "USD Coin",
+    "symbol": "USDC",
+    "address": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+    "decimals": 6
+  },
+  {
+    "chainId": 8453,
+    "name": "USD Base Coin",
+    "symbol": "USDbC",
+    "address": "0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA",
+    "decimals": 6
+  },
+  {
+    "chainId": 8453,
+    "name": "Moonwell",
+    "symbol": "WELL",
+    "address": "0xA88594D404727625A9437C3f886C7643872296AE",
+    "decimals": 18
+  },
+  {
+    "chainId": 8453,
+    "name": "Wrapped Ether",
+    "symbol": "WETH",
+    "address": "0x4200000000000000000000000000000000000006",
+    "decimals": 18
+  },
+  {
+    "chainId": 8453,
+    "name": "LayerZero",
+    "symbol": "ZRO",
+    "address": "0x6985884C4392D348587B19cb9eAAf157F13271cd",
+    "decimals": 18
+  },
+  {
+    "chainId": 8453,
+    "name": "0x Protocol Token",
+    "symbol": "ZRX",
+    "address": "0x3bB4445D30AC020a84c1b5A8A2C6248ebC9779D0",
+    "decimals": 18
+  },
+  {
+    "chainId": 8453,
+    "name": "Coinbase Wrapped BTC",
+    "symbol": "cbBTC",
+    "address": "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf",
+    "decimals": 8
+  },
+  {
+    "chainId": 8453,
+    "name": "Coinbase Wrapped Staked ETH",
+    "symbol": "cbETH",
+    "address": "0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22",
+    "decimals": 18
+  }
+]
