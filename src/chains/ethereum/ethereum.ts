@@ -401,9 +401,22 @@ export class Ethereum {
     contract: Contract,
     wallet: Wallet,
     decimals: number,
+    timeoutMs: number = 5000, // Default 5 second timeout
   ): Promise<TokenValue> {
-    const balance: BigNumber = await contract.balanceOf(wallet.address);
-    logger.info(`Token balance for ${wallet.address}: ${balance.toString()}`);
+    // Add timeout to prevent hanging on problematic tokens
+    const balancePromise = contract.balanceOf(wallet.address);
+
+    // Create a timeout promise that rejects after specified timeout
+    const timeoutPromise = new Promise<BigNumber>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error('Token balance request timed out'));
+      }, timeoutMs);
+    });
+
+    // Race the balance request against the timeout
+    const balance: BigNumber = await Promise.race([balancePromise, timeoutPromise]);
+
+    logger.debug(`Token balance for ${wallet.address}: ${balance.toString()}`);
     return { value: balance, decimals: decimals };
   }
 

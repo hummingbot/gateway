@@ -337,6 +337,9 @@ export class Solana {
     return decrypted.toString();
   }
 
+  /**
+   * @deprecated Use the optimized implementation in routes/balances.ts instead
+   */
   async getBalance(
     wallet: Keypair,
     symbols?: string[],
@@ -344,15 +347,18 @@ export class Solana {
     const publicKey = wallet.publicKey;
     const balances: Record<string, number> = {};
 
+    // Treat empty array as if no tokens were specified
+    const effectiveSymbols = symbols && symbols.length === 0 ? undefined : symbols;
+
     // Fetch SOL balance only if symbols is undefined or includes "SOL" (case-insensitive)
-    if (!symbols || symbols.some((s) => s.toUpperCase() === 'SOL')) {
+    if (!effectiveSymbols || effectiveSymbols.some((s) => s.toUpperCase() === 'SOL')) {
       const solBalance = await this.connection.getBalance(publicKey);
       const solBalanceInSol = solBalance * LAMPORT_TO_SOL;
       balances['SOL'] = solBalanceInSol;
     }
 
     // Return early if only SOL balance was requested
-    if (symbols && symbols.length === 1 && symbols[0].toUpperCase() === 'SOL') {
+    if (effectiveSymbols && effectiveSymbols.length === 1 && effectiveSymbols[0].toUpperCase() === 'SOL') {
       return balances;
     }
 
@@ -390,9 +396,9 @@ export class Solana {
       }
     }
 
-    // Process requested symbols
-    if (symbols) {
-      for (const s of symbols) {
+    // Process requested specific symbols
+    if (effectiveSymbols) {
+      for (const s of effectiveSymbols) {
         // Skip SOL as it's handled separately
         if (s.toUpperCase() === 'SOL') {
           foundTokens.add('SOL');
@@ -468,20 +474,34 @@ export class Solana {
         }
       }
     } else {
-      // No symbols provided, process all tokens in the wallet
-      for (const [mintAddress, { parsedAccount }] of mintToAccount.entries()) {
-        const token = this.tokenList.find((t) => t.address === mintAddress);
+      // No symbols provided or empty array - check all tokens in the token list
+      // Note: When symbols is an empty array, we check all tokens in the token list
+      logger.info(
+        `Checking balances for all ${this.tokenList.length} tokens in the token list`,
+      );
 
-        if (token) {
+      // Process all tokens from the token list
+      for (const token of this.tokenList) {
+        // Skip if already processed
+        if (token.symbol === 'SOL' || foundTokens.has(token.symbol)) {
+          continue;
+        }
+
+        // Check if we have this token in the wallet
+        if (mintToAccount.has(token.address)) {
+          const { parsedAccount } = mintToAccount.get(token.address);
           const amount = parsedAccount.amount;
           const uiAmount = Number(amount) / Math.pow(10, token.decimals);
           balances[token.symbol] = uiAmount;
           logger.debug(
-            `Found balance for ${token.symbol} (${mintAddress}): ${uiAmount}`,
+            `Found balance for ${token.symbol} (${token.address}): ${uiAmount}`,
           );
         } else {
-          // Unknown token, will fetch metadata later
-          tokensToFetch.set(mintAddress, mintAddress);
+          // Set balance to 0 for tokens in the list but not in wallet
+          balances[token.symbol] = 0;
+          logger.debug(
+            `No balance found for ${token.symbol} (${token.address}), setting to 0`,
+          );
         }
       }
     }
@@ -528,6 +548,25 @@ export class Solana {
           `Failed to process token ${mintAddress}: ${error.message}`,
         );
       }
+    }
+
+    // Filter out zero balances when no specific tokens are requested
+    if (!symbols || (symbols && symbols.length === 0)) {
+      const filteredBalances: Record<string, number> = {};
+
+      // Keep SOL balance regardless of its value
+      if ('SOL' in balances) {
+        filteredBalances['SOL'] = balances['SOL'];
+      }
+
+      // Filter other tokens with zero balances
+      Object.entries(balances).forEach(([key, value]) => {
+        if (key !== 'SOL' && value > 0) {
+          filteredBalances[key] = value;
+        }
+      });
+
+      return filteredBalances;
     }
 
     return balances;
