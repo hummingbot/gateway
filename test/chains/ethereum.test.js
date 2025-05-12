@@ -104,6 +104,7 @@ function validateApproveResponse(response) {
     typeof response.spender === 'string' &&
     typeof response.amount === 'string' &&
     typeof response.nonce === 'number' &&
+    typeof response.txHash === 'string' &&
     typeof response.approval === 'object' &&
     typeof response.approval.data === 'string' &&
     typeof response.approval.to === 'string'

@@ -6,6 +6,10 @@ interface AvailableNetworks {
 }
 
 export namespace RaydiumConfig {
+  // Supported networks for Raydium
+  export const chain = 'solana';
+  export const networks = ['mainnet-beta', 'devnet'];
+
   export interface PoolsConfig {
     [pairKey: string]: string;
   }

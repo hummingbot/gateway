@@ -6,18 +6,19 @@ import { logger } from '../services/logger';
 import { JupiterConfig } from './jupiter/jupiter.config';
 import { MeteoraConfig } from './meteora/meteora.config';
 import { RaydiumConfig } from './raydium/raydium.config';
-import { UniswapConfig } from './uniswap/uniswap.config';
+import {
+  UniswapConfig,
+  uniswapNetworks,
+  uniswapAmmNetworks,
+  uniswapClmmNetworks
+} from './uniswap/uniswap.config';
 
 // Define the schema using Typebox
-const NetworkSchema = Type.Object({
-  chain: Type.String(),
-  networks: Type.Array(Type.String()),
-});
-
 const ConnectorSchema = Type.Object({
   name: Type.String(),
   trading_types: Type.Array(Type.String()),
-  available_networks: Type.Array(NetworkSchema),
+  chain: Type.String(),
+  networks: Type.Array(Type.String()),
 });
 
 const ConnectorsResponseSchema = Type.Object({
@@ -48,37 +49,44 @@ export const connectorsRoutes: FastifyPluginAsync = async (fastify) => {
         {
           name: 'jupiter',
           trading_types: ['swap'],
-          available_networks: JupiterConfig.config.availableNetworks,
+          chain: JupiterConfig.chain,
+          networks: JupiterConfig.networks,
         },
         {
           name: 'meteora/clmm',
           trading_types: ['clmm', 'swap'],
-          available_networks: MeteoraConfig.config.availableNetworks,
+          chain: MeteoraConfig.chain,
+          networks: MeteoraConfig.networks,
         },
         {
           name: 'raydium/amm',
           trading_types: ['amm', 'swap'],
-          available_networks: RaydiumConfig.config.availableNetworks,
+          chain: RaydiumConfig.chain,
+          networks: RaydiumConfig.networks,
         },
         {
           name: 'raydium/clmm',
           trading_types: ['clmm', 'swap'],
-          available_networks: RaydiumConfig.config.availableNetworks,
+          chain: RaydiumConfig.chain,
+          networks: RaydiumConfig.networks,
         },
         {
           name: 'uniswap',
           trading_types: ['swap'],
-          available_networks: UniswapConfig.config.availableNetworks,
+          chain: 'ethereum',
+          networks: uniswapNetworks,
         },
         {
           name: 'uniswap/amm',
           trading_types: ['amm', 'swap'],
-          available_networks: UniswapConfig.config.availableNetworks,
+          chain: 'ethereum',
+          networks: uniswapAmmNetworks,
         },
         {
           name: 'uniswap/clmm',
           trading_types: ['clmm', 'swap'],
-          available_networks: UniswapConfig.config.availableNetworks,
+          chain: 'ethereum',
+          networks: uniswapClmmNetworks,
         },
       ];
 

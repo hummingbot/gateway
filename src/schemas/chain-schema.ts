@@ -79,7 +79,7 @@ export type TokensResponseType = Static<typeof TokensResponseSchema>;
 export const PollRequestSchema = Type.Object(
   {
     network: Type.String(),
-    txHash: Type.String(),
+    txHash: Type.String({ description: 'Transaction signature/hash' }),
   },
   { $id: 'PollRequest' },
 );
@@ -196,8 +196,35 @@ export const ApproveResponseSchema = Type.Object(
     spender: Type.String(),
     amount: Type.String(),
     nonce: Type.Number(),
+    txHash: Type.String(),
     approval: CustomTransactionSchema,
   },
   { $id: 'ApproveResponse' },
 );
 export type ApproveResponseType = Static<typeof ApproveResponseSchema>;
+
+// Wrap ETH to WETH schemas
+export const WrapRequestSchema = Type.Object(
+  {
+    network: Type.String(),
+    address: Type.String({ description: "the user's public Ethereum key" }),
+    amount: Type.String({ description: 'the amount of ETH to wrap into WETH' }),
+  },
+  { $id: 'WrapRequest' },
+);
+export type WrapRequestType = Static<typeof WrapRequestSchema>;
+
+export const WrapResponseSchema = Type.Object(
+  {
+    nonce: Type.Number(),
+    txHash: Type.String(),
+    fee: Type.String(),
+    amount: Type.String(),
+    wrappedAddress: Type.String(),
+    nativeToken: Type.String(),
+    wrappedToken: Type.String(),
+    tx: CustomTransactionSchema,
+  },
+  { $id: 'WrapResponse' },
+);
+export type WrapResponseType = Static<typeof WrapResponseSchema>;

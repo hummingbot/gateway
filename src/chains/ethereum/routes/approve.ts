@@ -94,6 +94,7 @@ export async function approveEthereumToken(
             tokenInfo.decimals,
           ),
           nonce: approval.nonce,
+          txHash: approval.hash,
           approval: toEthereumTransaction(approval),
         };
       } catch (contractErr) {
@@ -133,6 +134,7 @@ export async function approveEthereumToken(
       spender: spenderAddress,
       amount: bigNumberWithDecimalToStr(amountBigNumber, fullToken.decimals),
       nonce: approval.nonce,
+      txHash: approval.hash,
       approval: toEthereumTransaction(approval),
     };
   } catch (error) {
@@ -208,6 +210,7 @@ export const approveRoute: FastifyPluginAsync = async (fastify) => {
             spender: Type.String(),
             amount: Type.String(),
             nonce: Type.Number(),
+            txHash: Type.String(),
             approval: Type.Object({
               data: Type.String(),
               to: Type.String(),

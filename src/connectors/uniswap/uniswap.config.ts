@@ -14,6 +14,37 @@ interface AvailableNetworks {
   networks: Array<string>;
 }
 
+// Export network arrays at the module level for direct import
+export const uniswapNetworks = ['mainnet'];
+export const uniswapAmmNetworks = [
+  'mainnet',
+  'arbitrum',
+  'optimism',
+  'base',
+  'sepolia',
+  'bsc',
+  'avalanche',
+  'celo',
+  'polygon',
+  'blast',
+  'zora',
+  'worldchain'
+];
+export const uniswapClmmNetworks = [
+  'mainnet',
+  'arbitrum',
+  'optimism',
+  'base',
+  'sepolia',
+  'bsc',
+  'avalanche',
+  'celo',
+  'polygon',
+  'blast',
+  'zora',
+  'worldchain'
+];
+
 export namespace UniswapConfig {
   export interface NetworkConfig {
     // Pool configurations
@@ -45,6 +76,8 @@ export namespace UniswapConfig {
     quoterContractAddress: (network: string) => string;
     uniswapV3FactoryAddress: (network: string) => string;
   }
+  // Supported networks for the different Uniswap connectors
+  export const chain = 'ethereum';
 
   export const config: RootConfig = {
     // Global configuration

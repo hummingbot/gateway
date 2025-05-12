@@ -6,6 +6,10 @@ interface AvailableNetworks {
 }
 
 export namespace JupiterConfig {
+  // Supported networks for Jupiter
+  export const chain = 'solana';
+  export const networks = ['mainnet-beta', 'devnet'];
+
   export interface NetworkConfig {
     allowedSlippage: string;
     priorityLevel: string;
