@@ -17,8 +17,8 @@
     "copy-files": "copyfiles 'src/**/schema/*.json' 'src/templates/*.yml' 'src/templates/lists/*.json' 'test/services/data/**/*.*' dist",
     "test": "GATEWAY_TEST_MODE=dev jest --verbose",
     "test:debug": "GATEWAY_TEST_MODE=dev jest --watch --runInBand",
-    "test:unit": "GATEWAY_TEST_MODE=dev jest --runInBand ./test/chains/ergo",
-    "test:cov": "GATEWAY_TEST_MODE=dev jest --runInBand --coverage ./test/chains/ergo",
+    "test:unit": "GATEWAY_TEST_MODE=dev jest --runInBand ./test/",
+    "test:cov": "GATEWAY_TEST_MODE=dev jest --runInBand --coverage ./test/",
     "test:scripts": "GATEWAY_TEST_MODE=dev jest --runInBand ./test-scripts/*.test.ts",
     "cli": "node dist/src/index.js"
   },
