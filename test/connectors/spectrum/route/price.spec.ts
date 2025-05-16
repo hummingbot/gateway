@@ -142,7 +142,6 @@ describe('priceRoute', () => {
         url: '/spectrum/amm/price',
         payload: {}, // No body parameters
       });
-      console.log('Response:', response.json());
 
       expect(response.statusCode).toBe(400);
       expect(response.json().error).toEqual('Bad Request');
