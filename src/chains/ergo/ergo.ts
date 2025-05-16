@@ -63,7 +63,7 @@ import { ExecuteSwapResponseType } from '../../schemas/trading-types/swap-schema
 /**
  * Extended AmmPool class with additional properties and methods
  */
-class Pool extends AmmPool {
+export class Pool extends AmmPool {
   private _name: string;
 
   constructor(public pool: AmmPool) {
@@ -558,7 +558,7 @@ export class Ergo {
       limit,
       offset,
     });
-
+    
     return AmmPool;
   }
 
@@ -732,7 +732,7 @@ export class Ergo {
    * @param {number} [slippage] - The slippage tolerance
    * @returns {Promise<{ realBaseToken: ErgoAsset, realQuoteToken: ErgoAsset, pool: Pool }>}
    */
-  private async findBestPool(
+  public async findBestPool(
     baseToken: string,
     quoteToken: string,
     value: BigNumber,
@@ -785,7 +785,7 @@ export class Ergo {
    * @param {string} symbol - The token symbol
    * @returns {ErgoAsset}
    */
-  private findToken(symbol: string): ErgoAsset | undefined {
+  public findToken(symbol: string): ErgoAsset | undefined {
     const token = this.storedAssetList.find((asset) => asset.symbol === symbol);
     return token;
   }
@@ -798,7 +798,7 @@ export class Ergo {
    * @param {number} [slippage] - The slippage tolerance
    * @returns {{ sell: boolean, amount: BigNumber, from: any, to: any, minOutput: any }}
    */
-  private calculateSwapParameters(
+  public calculateSwapParameters(
     pool: Pool,
     baseToken: ErgoAsset,
     value: BigNumber,
@@ -864,7 +864,7 @@ export class Ergo {
    * @param {boolean} sell - Whether it's a sell operation
    * @returns {BigNumber}
    */
-  private calculateExpectedAmount(
+  public calculateExpectedAmount(
     minOutput: any,
     pool: Pool,
     sell: boolean,
@@ -882,7 +882,7 @@ export class Ergo {
    * @param {DefaultTxAssembler} txAssembler - The transaction assembler
    * @returns {Function}
    */
-  private getPoolActions(
+  public getPoolActions(
     output_address: string,
     account: ErgoAccount,
     txAssembler: DefaultTxAssembler,
@@ -900,7 +900,7 @@ export class Ergo {
    * @param {any} minOutput - The minimum output
    * @returns {[number, SwapExtremums]}
    */
-  private calculateSwapVariables(
+  public calculateSwapVariables(
     config: any,
     minOutput: any,
   ): [number, SwapExtremums] {
@@ -922,7 +922,7 @@ export class Ergo {
    * @param {SwapExtremums} extremum - The swap extremums
    * @returns {any[]}
    */
-  private prepareInputs(
+  public prepareInputs(
     utxos: any[],
     from: any,
     baseInputAmount: BigNumber,
@@ -990,7 +990,7 @@ export class Ergo {
    * @param {any} config - The Ergo configuration
    * @returns {TransactionContext}
    */
-  private createTxContext(
+  public createTxContext(
     inputs: BoxSelection,
     networkContext: NetworkContext,
     return_address: string,
@@ -1255,4 +1255,12 @@ export class Ergo {
   public async getCurrentEpoch(): Promise<EpochParams> {
     return (await this._explorer.getNetworkContext()).epoch;
   }
+
+    /**
+   * Gets network context
+   * @returns {string} The Explorer url
+   */
+    public async getNetworkContext(): Promise<NetworkContext> {
+      return await this._explorer.getNetworkContext();
+    }
 }

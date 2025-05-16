@@ -1,5 +1,5 @@
 import Fastify, { FastifyInstance } from 'fastify';
-import spectrumRoutes from '../../../src/connectors/spectrum/spectrum.routes';
+import {spectrumRoutes} from '../../../src/connectors/spectrum/spectrum.routes';
 import { Ergo } from '../../../src/chains/ergo/ergo';
 import { ErgoController } from '../../../src/chains/ergo/ergo.controllers';
 import * as validators from '../../../src/connectors/connector.validators';
@@ -24,7 +24,7 @@ describe('spectrumRoutes', () => {
 
   beforeEach(async () => {
     fastify = Fastify();
-    await fastify.register(spectrumRoutes);
+    await fastify.register(spectrumRoutes.amm);
     jest.clearAllMocks();
   });
 
@@ -69,7 +69,7 @@ describe('spectrumRoutes', () => {
     });
   });
 
-  describe('POST /spectrum/price', () => {
+  describe('POST /spectrum/amm/price', () => {
     const mockPriceResponse = {
       price: '100.50',
       base: 'SIGUSD',
@@ -133,7 +133,7 @@ describe('spectrumRoutes', () => {
     });
   });
 
-  describe('POST /spectrum/trade', () => {
+  describe('POST /spectrum/amm/trade', () => {
     it('should execute trade for valid request', async () => {
       const mockTradeRequest: ExecuteSwapRequestType = {
         network: 'mainnet',

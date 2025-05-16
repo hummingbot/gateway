@@ -176,7 +176,7 @@ const configureGatewayServer = () => {
     app.register(uniswapRoutes, { prefix: '/uniswap' });
     app.register(solanaRoutes, { prefix: '/solana' });
     app.register(ethereumRoutes, { prefix: '/ethereum' });
-    app.register(spectrumRoutes, { prefix: '/spectrum' });
+    app.register(spectrumRoutes.amm, { prefix: '/spectrum/amm' });
     app.register(ergoRoutes, { prefix: '/ergo' });
   };
 
