@@ -67,7 +67,6 @@ describe('positionInfoRoute', () => {
         url: '/spectrum/amm/position-info',
         query: {}, // No query parameters
       });
-      console.log('Response:', response.json());
 
       expect(response.statusCode).toBe(400);
       expect(response.json().error).toEqual('Bad Request');
