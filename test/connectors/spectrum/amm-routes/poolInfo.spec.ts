@@ -1,0 +1,76 @@
+import Fastify, { FastifyInstance } from 'fastify';
+import sensible from '@fastify/sensible';
+import poolInfoRoute from '../../../../src/connectors/spectrum/amm-routes/poolInfo';
+
+// Mock dependencies
+jest.mock('../../../../src/services/logger', () => ({
+  logger: {
+    error: jest.fn(),
+    info: jest.fn(),
+    debug: jest.fn(),
+    warn: jest.fn(),
+  },
+}));
+
+describe('poolInfoRoute', () => {
+  let fastify: FastifyInstance;
+
+  beforeEach(async () => {
+    fastify = Fastify();
+    await fastify.register(sensible);
+    await fastify.register(poolInfoRoute, { prefix: '/spectrum/amm' });
+
+    jest.clearAllMocks();
+  });
+
+  afterEach(async () => {
+    await fastify.close();
+  });
+
+  describe('GET /spectrum/amm/pool-info', () => {
+    it('should register the route correctly', async () => {
+      const response = await fastify.inject({
+        method: 'GET',
+        url: '/spectrum/amm/pool-info',
+        query: {
+          network: 'mainnet-beta',
+          poolAddress: 'pool-address-123',
+        },
+      });
+
+      expect(response.statusCode).not.toBe(404);
+    });
+
+    it('should return 500 with "Failed to fetch pool info" error for valid query', async () => {
+
+      const response = await fastify.inject({
+        method: 'GET',
+        url: '/spectrum/amm/pool-info',
+        query: {
+          network: 'mainnet-beta',
+          poolAddress: 'pool-address-123',
+        },
+      });
+
+      expect(response.statusCode).toBe(500);
+      expect(response.json()).toEqual({
+        statusCode: 500,
+        error: 'Internal Server Error',
+        message: 'Failed to fetch pool info',
+      });
+
+    });
+
+    it('should handle missing querystring parameters', async () => {
+      const response = await fastify.inject({
+        method: 'GET',
+        url: '/spectrum/amm/pool-info',
+        query: {}, // No query parameters
+      });
+      console.log('Response:', response.json());
+
+      expect(response.statusCode).toBe(400);
+      expect(response.json().error).toEqual('Bad Request');
+  });
+})
+});
