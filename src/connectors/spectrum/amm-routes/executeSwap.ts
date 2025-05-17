@@ -17,7 +17,7 @@ const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Execute Spectrum swap',
-        tags: ['spectrum'],
+        tags: ['spectrum/amm'],
         body: {
           ...ExecuteSwapRequest,
           properties: {

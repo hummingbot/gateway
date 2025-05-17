@@ -63,8 +63,8 @@ export const connectorsRoutes: FastifyPluginAsync = async (fastify) => {
           available_networks: RaydiumConfig.config.availableNetworks,
         },
         {
-          name: 'spectrum',
-          trading_types: ['amm'],
+          name: 'spectrum/amm',
+          trading_types: ['amm', 'swap'],
           available_networks: SpectrumConfig.config.availableNetworks,
         },
       ];

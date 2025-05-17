@@ -66,7 +66,7 @@ const swaggerOptions = {
       { name: 'uniswap', description: 'Uniswap connector endpoints' },
       { name: 'ethereum', description: 'Ethereum chain endpoints' },
       { name: 'ergo', description: 'Ergo chain endpoints' },
-      { name: 'spectrum', description: 'Spectrum swap endpoints' },
+      { name: 'spectrum/amm', description: 'Spectrum swap endpoints' },
     ],
     components: {
       parameters: {

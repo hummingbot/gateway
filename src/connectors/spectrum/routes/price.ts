@@ -15,7 +15,7 @@ export const priceRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Get spectrum price quote',
-        tags: ['spectrum'],
+        tags: ['spectrum/amm'],
         body: PriceRequestSchema,
         response: {
           200: PriceResponseSchema,
