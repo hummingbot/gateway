@@ -61,11 +61,6 @@ export const GetPoolInfoRequest = Type.Object(
     poolAddress: Type.Optional(Type.String()),
     baseToken: Type.Optional(Type.String({ examples: ['SOL'] })),
     quoteToken: Type.Optional(Type.String({ examples: ['USDC'] })),
-    feeTier: Type.Optional(
-      Type.String({
-        enum: ['LOWEST', 'LOW', 'MEDIUM', 'HIGH'],
-      }),
-    ),
   },
   { $id: 'GetPoolInfoRequest' },
 );
@@ -113,11 +108,6 @@ export const OpenPositionRequest = Type.Object(
     baseTokenAmount: Type.Optional(Type.Number()),
     quoteTokenAmount: Type.Optional(Type.Number()),
     slippagePct: Type.Optional(Type.Number({ minimum: 0, maximum: 100 })),
-    feeTier: Type.Optional(
-      Type.String({
-        enum: ['LOWEST', 'LOW', 'MEDIUM', 'HIGH'],
-      }),
-    ),
   },
   { $id: 'OpenPositionRequest' },
 );

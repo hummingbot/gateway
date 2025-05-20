@@ -474,6 +474,7 @@ export class Uniswap {
 
       const [sqrtPriceX96, tick] = slot0;
 
+      // Create the pool with a tick data provider to avoid 'No tick data provider' error
       return new V3Pool(
         tokenAObj,
         tokenBObj,
@@ -481,6 +482,16 @@ export class Uniswap {
         sqrtPriceX96.toString(),
         liquidity.toString(),
         tick,
+        // Add a tick data provider that always returns null
+        // This is enough for price quotes but not for real trading
+        {
+          async getTick() {
+            return null;
+          },
+          async nextInitializedTickWithinOneWord() {
+            return [0, false];
+          }
+        }
       );
     } catch (error) {
       logger.error(`Error getting V3 pool: ${error.message}`);

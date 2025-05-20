@@ -32,11 +32,6 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
             },
             baseToken: { type: 'string', examples: ['WETH'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
-            feeTier: {
-              type: 'string',
-              enum: ['LOWEST', 'LOW', 'MEDIUM', 'HIGH'],
-              default: 'MEDIUM',
-            },
           },
         },
         response: {
@@ -46,7 +41,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request): Promise<PoolInfo> => {
       try {
-        const { poolAddress, baseToken, quoteToken, feeTier } = request.query;
+        const { poolAddress, baseToken, quoteToken } = request.query;
         const network = request.query.network || 'base';
         const chain = 'ethereum'; // Default to ethereum
 
@@ -63,28 +58,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
 
         // If no pool address provided, find default pool using base and quote tokens
         if (!poolAddressToUse) {
-          // Convert feeTier string to FeeAmount if provided
-          let feeAmount: FeeAmount | undefined;
-          if (feeTier) {
-            switch (feeTier.toUpperCase()) {
-              case 'LOWEST':
-                feeAmount = FeeAmount.LOWEST;
-                break;
-              case 'LOW':
-                feeAmount = FeeAmount.LOW;
-                break;
-              case 'MEDIUM':
-                feeAmount = FeeAmount.MEDIUM;
-                break;
-              case 'HIGH':
-                feeAmount = FeeAmount.HIGH;
-                break;
-              default:
-                feeAmount = FeeAmount.MEDIUM;
-            }
-          }
-
-          // Find pool using tokens and optional fee amount
+          // Find pool using tokens
           poolAddressToUse = await uniswap.findDefaultPool(
             baseToken,
             quoteToken,

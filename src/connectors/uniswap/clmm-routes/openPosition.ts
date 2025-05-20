@@ -75,11 +75,6 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
             quoteToken: { type: 'string', examples: ['USDC'] },
             baseTokenAmount: { type: 'number', examples: [0.001] },
             quoteTokenAmount: { type: 'number', examples: [2] },
-            feeTier: {
-              type: 'string',
-              enum: ['LOWEST', 'LOW', 'MEDIUM', 'HIGH'],
-              default: 'MEDIUM',
-            },
             slippagePct: { type: 'number', examples: [0.5] },
           },
         },
@@ -100,7 +95,6 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           quoteToken,
           baseTokenAmount,
           quoteTokenAmount,
-          feeTier,
           slippagePct,
         } = request.body;
 
@@ -149,12 +143,6 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           throw fastify.httpErrors.badRequest('Wallet not found');
         }
 
-        // Determine fee amount from tier
-        let feeAmount: FeeAmount = FeeAmount.MEDIUM; // Default
-        if (feeTier) {
-          feeAmount = parseFeeTier(feeTier);
-        }
-
         // Find pool address if not provided
         let poolAddress = requestedPoolAddress;
         if (!poolAddress) {
@@ -175,7 +163,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         const pool = await uniswap.getV3Pool(
           baseTokenObj,
           quoteTokenObj,
-          feeAmount,
+          undefined,
           poolAddress,
         );
         if (!pool) {

@@ -28,21 +28,14 @@ async function quoteClmmSwap(
   quoteToken: Token,
   amount: number,
   side: 'BUY' | 'SELL',
-  feeTier?: string,
   slippagePct?: number,
 ): Promise<any> {
   try {
-    // Get the V3 pool - prioritize poolAddress
-    // If a feeTier is provided, it's just a hint but we'll use the poolAddress
-    let feeAmount = undefined;
-    if (feeTier) {
-      feeAmount = parseFeeTier(feeTier);
-    }
-
+    // Get the V3 pool - only use poolAddress
     const pool = await uniswap.getV3Pool(
       baseToken,
       quoteToken,
-      feeAmount,
+      undefined, // No fee amount needed, using poolAddress directly
       poolAddress,
     );
     if (!pool) {
@@ -143,7 +136,6 @@ async function formatSwapQuote(
   quoteToken: string,
   amount: number,
   side: 'BUY' | 'SELL',
-  feeTier?: string,
   slippagePct?: number,
 ): Promise<GetSwapQuoteResponseType> {
   logger.info(
@@ -192,7 +184,6 @@ async function formatSwapQuote(
       quoteTokenObj,
       amount,
       side as 'BUY' | 'SELL',
-      feeTier,
       slippagePct,
     );
 
@@ -317,7 +308,6 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           }
         }
 
-        // We no longer pass feeTier from query parameters
         return await formatSwapQuote(
           fastify,
           networkToUse,
@@ -326,7 +316,6 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           quoteToken,
           amount,
           side as 'BUY' | 'SELL',
-          undefined, // feeTier is now undefined
           slippagePct,
         );
       } catch (e) {

@@ -46,11 +46,6 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
             quoteToken: { type: 'string', examples: ['USDC'] },
             baseTokenAmount: { type: 'number', examples: [0.1] },
             quoteTokenAmount: { type: 'number', examples: [200] },
-            feeTier: {
-              type: 'string',
-              enum: ['LOWEST', 'LOW', 'MEDIUM', 'HIGH'],
-              default: 'MEDIUM',
-            },
           },
         },
         response: {
@@ -69,7 +64,6 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
           quoteToken,
           baseTokenAmount,
           quoteTokenAmount,
-          feeTier,
         } = request.query;
 
         const networkToUse = network || 'base';
@@ -100,12 +94,6 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
           );
         }
 
-        // Determine fee amount from tier
-        let feeAmount: FeeAmount = FeeAmount.MEDIUM; // Default
-        if (feeTier) {
-          feeAmount = parseFeeTier(feeTier);
-        }
-
         // Find pool address if not provided
         let poolAddress = requestedPoolAddress;
         if (!poolAddress) {
@@ -126,7 +114,7 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
         const pool = await uniswap.getV3Pool(
           baseTokenObj,
           quoteTokenObj,
-          feeAmount,
+          undefined,
           poolAddress,
         );
         if (!pool) {
