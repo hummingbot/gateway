@@ -199,8 +199,8 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         // Create parameters for removing liquidity
         const removeParams = {
           tokenId: positionAddress,
-          liquidityPercentage: new Percent(percentageToRemove, 100),
-          slippageTolerance: new Percent(1, 100), // 1% slippage tolerance
+          liquidityPercentage: new Percent(Math.floor(percentageToRemove * 100), 10000),
+          slippageTolerance: new Percent(100, 10000), // 1% slippage tolerance
           deadline: Math.floor(Date.now() / 1000) + 60 * 20, // 20 minutes from now
           burnToken: false,
           collectOptions: {
