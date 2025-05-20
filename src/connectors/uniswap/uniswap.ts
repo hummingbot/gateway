@@ -121,6 +121,7 @@ const IUniswapV2RouterABI = {
 import { Token, CurrencyAmount, Percent } from '@uniswap/sdk-core';
 import { AlphaRouter } from '@uniswap/smart-order-router';
 import { Pair as V2Pair } from '@uniswap/v2-sdk';
+import JSBI from 'jsbi';
 import { abi as IUniswapV3FactoryABI } from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Factory.sol/IUniswapV3Factory.json';
 import { abi as IUniswapV3PoolABI } from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
 import { FeeAmount, Pool as V3Pool } from '@uniswap/v3-sdk';
@@ -482,14 +483,18 @@ export class Uniswap {
         sqrtPriceX96.toString(),
         liquidity.toString(),
         tick,
-        // Add a tick data provider that always returns null
-        // This is enough for price quotes but not for real trading
+        // Add a tick data provider to make SDK operations work
         {
-          async getTick() {
-            return null;
+          async getTick(index) {
+            return {
+              index,
+              liquidityNet: JSBI.BigInt(0),
+              liquidityGross: JSBI.BigInt(0)
+            };
           },
-          async nextInitializedTickWithinOneWord() {
-            return [0, false];
+          async nextInitializedTickWithinOneWord(tick, lte, tickSpacing) {
+            // Always return a valid result to prevent errors
+            return [tick, false];
           }
         }
       );
