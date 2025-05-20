@@ -134,9 +134,9 @@ export const AllowancesRequestSchema = Type.Intersect(
     NetworkSelectionSchema,
     Type.Object({
       address: Type.String({ description: "the user's public Ethereum key" }),
-      spenderAddress: Type.String({
+      spender: Type.String({
         description:
-          'the address of the contract that will be allowed to spend tokens',
+          'connector name (e.g., uniswap/clmm, uniswap/amm, uniswap) or the address of the contract that will be allowed to spend tokens',
       }),
       tokens: Type.Array(Type.String(), {
         description: 'a list of token symbols or addresses',
@@ -168,9 +168,9 @@ export const ApproveRequestSchema = Type.Intersect(
         }),
       ),
       address: Type.String({ description: "the user's public Ethereum key" }),
-      spenderAddress: Type.String({
+      spender: Type.String({
         description:
-          'the address of the contract that will be allowed to spend tokens',
+          'connector name (e.g., uniswap/clmm, uniswap/amm, uniswap) or the address of the contract that will be allowed to spend tokens',
       }),
       token: Type.String({
         description: 'the token symbol the spender will be approved for',

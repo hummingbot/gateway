@@ -122,6 +122,7 @@ export class Solana {
 
   private async init(): Promise<void> {
     try {
+      logger.info(`Initializing Solana connector for network: ${this.network}, nodeURL: ${this.config.network.nodeURL}`);
       await this.loadTokens(
         this.config.network.tokenListSource,
         this.config.network.tokenListType,

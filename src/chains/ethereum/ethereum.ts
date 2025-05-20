@@ -51,11 +51,10 @@ export class Ethereum {
   }
 
   private constructor(network: string) {
-    logger.info(`Initializing Ethereum connector for network: ${network}`);
     const config = getEthereumConfig('ethereum', network);
-
     this.chainId = config.network.chainID;
     this.rpcUrl = config.network.nodeURL;
+    logger.info(`Initializing Ethereum connector for network: ${network}, nodeURL: ${this.rpcUrl}`);
     this.provider = new providers.StaticJsonRpcProvider(this.rpcUrl);
     this.tokenListSource = config.network.tokenListSource;
     this.tokenListType = config.network.tokenListType;

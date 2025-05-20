@@ -9,6 +9,7 @@ import {
 import { bigNumberWithDecimalToStr } from '../../../services/base';
 import { logger } from '../../../services/logger';
 import { Ethereum, TokenInfo } from '../ethereum';
+import { getSpender } from '../../../connectors/uniswap/uniswap.contracts';
 
 // Helper function to convert transaction to a format matching the CustomTransactionSchema
 const toEthereumTransaction = (transaction: ethers.Transaction) => {
@@ -26,12 +27,29 @@ export async function approveEthereumToken(
   fastify: FastifyInstance,
   network: string,
   address: string,
-  spenderAddress: string,
+  spender: string,
   token: string,
   amount?: string,
 ) {
   const ethereum = await Ethereum.getInstance(network);
   await ethereum.init();
+
+  // Determine the spender address based on the input
+  let spenderAddress: string;
+  try {
+    // Check if the spender parameter is a connector name
+    if (spender.includes('/') || spender === 'uniswap') {
+      logger.info(`Looking up spender address for connector: ${spender}`);
+      spenderAddress = getSpender(network, spender);
+      logger.info(`Resolved connector ${spender} to spender address: ${spenderAddress}`);
+    } else {
+      // Otherwise assume it's a direct address
+      spenderAddress = spender;
+    }
+  } catch (error) {
+    logger.error(`Failed to resolve spender address: ${error.message}`);
+    throw fastify.httpErrors.badRequest(`Invalid spender: ${error.message}`);
+  }
 
   let wallet: ethers.Wallet;
   try {
@@ -192,8 +210,9 @@ export const approveRoute: FastifyPluginAsync = async (fastify) => {
             ],
           }),
           address: Type.String({ examples: [firstWalletAddress] }),
-          spenderAddress: Type.String({
-            examples: ['0xC36442b4a4522E871399CD717aBDD847Ab11FE88'],
+          spender: Type.String({
+            examples: ['uniswap/clmm', 'uniswap', '0xC36442b4a4522E871399CD717aBDD847Ab11FE88'],
+            description: 'Spender can be a connector name (e.g., uniswap/clmm, uniswap/amm, uniswap) or a direct contract address',
           }),
           token: Type.String({ examples: ['USDC', 'DAI'] }),
           amount: Type.Optional(
@@ -224,13 +243,13 @@ export const approveRoute: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request) => {
-      const { network, address, spenderAddress, token, amount } = request.body;
+      const { network, address, spender, token, amount } = request.body;
 
       return await approveEthereumToken(
         fastify,
         network,
         address,
-        spenderAddress,
+        spender,
         token,
         amount,
       );

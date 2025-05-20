@@ -8,6 +8,7 @@ import {
 import { tokenValueToString } from '../../../services/base';
 import { logger } from '../../../services/logger';
 import { Ethereum, TokenInfo } from '../ethereum';
+import { getSpender } from '../../../connectors/uniswap/uniswap.contracts';
 
 export async function getTokensToTokenInfo(
   ethereum: Ethereum,
@@ -31,7 +32,7 @@ export async function getEthereumAllowances(
   fastify: FastifyInstance,
   network: string,
   address: string,
-  spenderAddress: string,
+  spender: string,
   tokens: string[],
 ) {
   try {
@@ -59,6 +60,23 @@ export async function getEthereumAllowances(
 
     if (missingTokens.length > 0) {
       logger.warn(`Some tokens were not found: ${missingTokens.join(', ')}`);
+    }
+
+    // Determine the spender address based on the input
+    let spenderAddress: string;
+    try {
+      // Check if the spender parameter is a connector name
+      if (spender.includes('/') || spender === 'uniswap') {
+        logger.info(`Looking up spender address for connector: ${spender}`);
+        spenderAddress = getSpender(network, spender);
+        logger.info(`Resolved connector ${spender} to spender address: ${spenderAddress}`);
+      } else {
+        // Otherwise assume it's a direct address
+        spenderAddress = spender;
+      }
+    } catch (error) {
+      logger.error(`Failed to resolve spender address: ${error.message}`);
+      throw fastify.httpErrors.badRequest(`Invalid spender: ${error.message}`);
     }
 
     const approvals: Record<string, string> = {};
@@ -133,8 +151,9 @@ export const allowancesRoute: FastifyPluginAsync = async (fastify) => {
             ],
           }),
           address: Type.String({ examples: [firstWalletAddress] }),
-          spenderAddress: Type.String({
-            examples: ['0xC36442b4a4522E871399CD717aBDD847Ab11FE88'],
+          spender: Type.String({
+            examples: ['uniswap/clmm', 'uniswap', '0xC36442b4a4522E871399CD717aBDD847Ab11FE88'],
+            description: 'Spender can be a connector name (e.g., uniswap/clmm, uniswap/amm, uniswap) or a direct contract address',
           }),
           tokens: Type.Array(Type.String(), { examples: [['USDC', 'DAI']] }),
         }),
@@ -147,12 +166,12 @@ export const allowancesRoute: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request) => {
-      const { network, address, spenderAddress, tokens } = request.body;
+      const { network, address, spender, tokens } = request.body;
       return await getEthereumAllowances(
         fastify,
         network,
         address,
-        spenderAddress,
+        spender,
         tokens,
       );
     },
