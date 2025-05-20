@@ -70,7 +70,8 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
             quoteToken: { type: 'string', examples: ['USDC'] },
             amount: { type: 'number', examples: [0.001] },
             side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
-            slippagePct: { type: 'number', examples: [0.5] },
+            poolAddress: { type: 'string', examples: [''] },
+            slippagePct: { type: 'number', examples: [1] },
           },
         },
         response: {
@@ -239,47 +240,20 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           }
         }
 
-        // Create the SwapRouter contract instance
-        const swapRouter = new Contract(
-          uniswap.config.uniswapV3SmartOrderRouterAddress(networkToUse),
-          [
-            {
-              inputs: [{ internalType: 'bytes', name: 'data', type: 'bytes' }],
-              name: 'multicall',
-              outputs: [
-                { internalType: 'bytes[]', name: 'results', type: 'bytes[]' },
-              ],
-              stateMutability: 'payable',
-              type: 'function',
-            },
-          ],
-          wallet,
-        );
-
         // Execute the swap
-        // In Uniswap V3, the exact method depends on the swap type, but we'll use a simplified approach
+        // In Uniswap V3, we use the SDK to generate the proper calldata
         // SwapRouter methods typically include:
         // - exactInput: For exact input swaps
         // - exactOutput: For exact output swaps
 
-        // For simplicity, we'll use a single call method
-        const swapMethod = exactIn ? 'exactInput' : 'exactOutput';
-        const encodedSwapParams = {
-          // We need to create the path differently since V3Route structure is different
-          path: Buffer.from(
-            trade.swaps[0].route.tokenPath.map((t) => t.address).join(''),
-          ),
-          recipient: walletAddress,
-          deadline: Math.floor(Date.now() / 1000) + 60 * 20,
-          amountIn: inputAmount.quotient.toString(),
-          amountOutMinimum: trade
-            .minimumAmountOut(slippageTolerance)
-            .quotient.toString(),
-        };
+        // Use the parameters directly from the SDK
+        const { value, calldata } = routerSwapParams;
 
-        const tx = await swapRouter.multicall([swapMethod, encodedSwapParams], {
-          value:
-            inputToken.symbol === 'WETH' ? inputAmount.quotient.toString() : 0,
+        // Execute the swap using the calldata from the SDK
+        const tx = await wallet.sendTransaction({
+          to: uniswap.config.uniswapV3SmartOrderRouterAddress(networkToUse),
+          data: calldata,
+          value: value ? value : '0',
           gasLimit: 350000, // V3 swaps use more gas
         });
 
