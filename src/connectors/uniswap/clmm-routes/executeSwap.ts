@@ -8,11 +8,12 @@ import {
   MethodParameters,
   FeeAmount,
 } from '@uniswap/v3-sdk';
-import { BigNumber } from 'ethers';
-import { FastifyPluginAsync } from 'fastify';
+import { BigNumber, utils } from 'ethers';
+import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import JSBI from 'jsbi';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
+import { wrapEthereum } from '../../../chains/ethereum/routes/wrap';
 import {
   ExecuteSwapRequestType,
   ExecuteSwapRequest,
@@ -38,6 +39,42 @@ const ERC20_ABI = [
     type: 'function',
   },
 ];
+
+/**
+ * Helper function to handle ETH to WETH wrapping when needed
+ * Uses the existing wrapping functionality from wrap.ts
+ */
+async function handleWethWrapping(
+  fastify: FastifyInstance,
+  network: string,
+  walletAddress: string,
+  inputToken: Token,
+  amountInEth: string,
+): Promise<string | null> {
+  // Check if input token is WETH
+  if (inputToken.symbol === 'WETH') {
+    try {
+      logger.info(`WETH detected as input token, checking if wrapping is needed`);
+
+      // Use the existing wrapEthereum function from wrap.ts
+      const wrapResult = await wrapEthereum(
+        fastify,
+        network,
+        walletAddress,
+        amountInEth,
+      );
+
+      logger.info(`Successfully wrapped ${amountInEth} ETH to WETH, txHash: ${wrapResult.txHash}`);
+      return wrapResult.txHash;
+    } catch (error) {
+      logger.error(`Failed to wrap ETH to WETH: ${error.message}`);
+      throw error; // Propagate the error to the caller
+    }
+  }
+
+  // No wrapping needed
+  return null;
+}
 
 export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
   // Get first wallet address for example
@@ -249,47 +286,117 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         // Use the parameters directly from the SDK
         const { value, calldata } = routerSwapParams;
 
-        // Execute the swap using the calldata from the SDK
-        const tx = await wallet.sendTransaction({
-          to: uniswap.config.uniswapV3SmartOrderRouterAddress(networkToUse),
-          data: calldata,
-          value: value ? value : '0',
-          gasLimit: 350000, // V3 swaps use more gas
-        });
+        // Get the exact path from the trade to debug
+        const pathAddresses = trade.swaps[0].route.tokenPath.map(t => t.address);
+        const pathDescription = pathAddresses.join(' → ');
+        logger.info(`Executing swap with path: ${pathDescription}`);
+        logger.info(`Fee amount used: ${pool.fee}`);
+        logger.info(`Swap call to: ${uniswap.config.uniswapV3SmartOrderRouterAddress(networkToUse)}`);
+        logger.info(`Input amount: ${inputAmount.toSignificant(6)} ${inputToken.symbol}`);
+        logger.info(`Expected output: ${trade.outputAmount.toSignificant(6)} ${outputToken.symbol}`);
 
-        // Wait for transaction confirmation
-        const receipt = await tx.wait();
+        // If WETH is the input token, we need to wrap ETH first
+        let wrapTxHash = null;
+        if (inputToken.symbol === 'WETH' && value) {
+          // Convert the value from wei to eth for the wrapping function
+          const amountInEth = utils.formatEther(value);
+          logger.info(`WETH detected as input token with value ${amountInEth} ETH, wrapping ETH to WETH first`);
 
-        // Calculate amounts for response
-        const totalInputSwapped = formatTokenAmount(
-          inputAmount.quotient.toString(),
-          inputToken.decimals,
-        );
+          // Use the wrap function to convert ETH to WETH
+          wrapTxHash = await handleWethWrapping(
+            fastify,
+            networkToUse,
+            walletAddress,
+            inputToken,
+            amountInEth,
+          );
 
-        const totalOutputSwapped = formatTokenAmount(
-          trade.outputAmount.quotient.toString(),
-          outputToken.decimals,
-        );
+          if (wrapTxHash) {
+            logger.info(`Successfully wrapped ETH to WETH, transaction hash: ${wrapTxHash}`);
+          }
+        }
 
-        const baseTokenBalanceChange =
-          side === 'BUY' ? totalOutputSwapped : -totalInputSwapped;
-        const quoteTokenBalanceChange =
-          side === 'BUY' ? -totalInputSwapped : totalOutputSwapped;
+        try {
+          // Execute the swap using the calldata from the SDK
+          // If we already wrapped ETH to WETH, we don't need to send value with the transaction
+          const tx = await wallet.sendTransaction({
+            to: uniswap.config.uniswapV3SmartOrderRouterAddress(networkToUse),
+            data: calldata,
+            value: wrapTxHash ? '0' : (value ? value : '0'), // Don't send value if we already wrapped
+            gasLimit: 350000, // V3 swaps use more gas
+          });
 
-        // Calculate gas fee
-        const gasFee = formatTokenAmount(
-          receipt.gasUsed.mul(receipt.effectiveGasPrice).toString(),
-          18, // ETH has 18 decimals
-        );
+          // Wait for transaction confirmation
+          const receipt = await tx.wait();
 
-        return {
-          signature: receipt.transactionHash,
-          totalInputSwapped,
-          totalOutputSwapped,
-          fee: gasFee,
-          baseTokenBalanceChange,
-          quoteTokenBalanceChange,
-        };
+          // Check if the transaction was successful
+          if (receipt.status === 0) {
+            logger.error(`Transaction failed on-chain. Receipt: ${JSON.stringify(receipt)}`);
+            throw new Error("Transaction reverted on-chain. This could be due to slippage, insufficient funds, or other blockchain issues.");
+          }
+
+          // Calculate amounts for input and output
+          const totalInputSwapped = formatTokenAmount(
+            inputAmount.quotient.toString(),
+            inputToken.decimals,
+          );
+
+          const totalOutputSwapped = formatTokenAmount(
+            trade.outputAmount.quotient.toString(),
+            outputToken.decimals,
+          );
+
+          // formatTokenAmount already returns numbers, so no conversion needed
+
+          // Calculate balance changes as numbers
+          const baseTokenBalanceChange =
+            side === 'BUY' ? totalOutputSwapped : -totalInputSwapped;
+          const quoteTokenBalanceChange =
+            side === 'BUY' ? -totalInputSwapped : totalOutputSwapped;
+
+          // Calculate gas fee (formatTokenAmount already returns a number)
+          const gasFee = formatTokenAmount(
+            receipt.gasUsed.mul(receipt.effectiveGasPrice).toString(),
+            18, // ETH has 18 decimals
+          );
+
+          // Include both swap and wrap txHash in the response if applicable
+          const txSignature = wrapTxHash
+            ? `swap:${receipt.transactionHash},wrap:${wrapTxHash}`
+            : receipt.transactionHash;
+
+          return {
+            signature: txSignature,
+            totalInputSwapped: totalInputSwapped,
+            totalOutputSwapped: totalOutputSwapped,
+            fee: gasFee,
+            baseTokenBalanceChange,
+            quoteTokenBalanceChange,
+          };
+        } catch (error) {
+          logger.error(`Swap execution error: ${error.message}`);
+          if (error.transaction) {
+            logger.debug(`Transaction details: ${JSON.stringify(error.transaction)}`);
+          }
+          if (error.receipt) {
+            logger.debug(`Transaction receipt: ${JSON.stringify(error.receipt)}`);
+          }
+
+          // Provide more detailed error messages for common issues
+          if (inputToken.symbol === 'WETH') {
+            if (wrapTxHash) {
+              logger.error(`ETH was wrapped (tx: ${wrapTxHash}) but swap failed. This could be a problem with the swap itself.`);
+            } else if (!value) {
+              logger.error('Possible ETH wrapping issue: Attempting to swap WETH but no ETH value was provided');
+            } else {
+              logger.error(`ETH wrapping may have failed. Check if you have enough ETH for both wrapping and gas fees.`);
+            }
+          }
+
+          // Extract and log the specific error message
+          const errorMessage = error.reason || error.message;
+          throw new Error(`Failed to execute swap: ${errorMessage}`);
+        }
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {

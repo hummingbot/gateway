@@ -2,6 +2,7 @@ import { Provider } from '@ethersproject/abstract-provider';
 import {
   BigNumber,
   Contract,
+  ContractTransaction,
   providers,
   Transaction,
   utils,
@@ -490,5 +491,133 @@ export class Ethereum {
     if (this.network in Ethereum._instances) {
       delete Ethereum._instances[this.network];
     }
+  }
+
+  // WETH ABI for wrap/unwrap operations
+  private static WETH9ABI = [
+    // Standard ERC20 functions
+    'function name() view returns (string)',
+    'function symbol() view returns (string)',
+    'function decimals() view returns (uint8)',
+    'function balanceOf(address owner) view returns (uint256)',
+    'function transfer(address to, uint256 amount) returns (bool)',
+
+    // WETH-specific functions
+    'function deposit() public payable',
+    'function withdraw(uint256 amount) public',
+  ];
+
+  // Define wrapped native token addresses for different networks
+  private static WRAPPED_ADDRESSES: { [key: string]: {address: string, symbol: string, nativeSymbol: string} } = {
+    mainnet: {
+      address: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+      symbol: 'WETH',
+      nativeSymbol: 'ETH'
+    },
+    arbitrum: {
+      address: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
+      symbol: 'WETH',
+      nativeSymbol: 'ETH'
+    },
+    optimism: {
+      address: '0x4200000000000000000000000000000000000006',
+      symbol: 'WETH',
+      nativeSymbol: 'ETH'
+    },
+    base: {
+      address: '0x4200000000000000000000000000000000000006',
+      symbol: 'WETH',
+      nativeSymbol: 'ETH'
+    },
+    sepolia: {
+      address: '0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14',
+      symbol: 'WETH',
+      nativeSymbol: 'ETH'
+    },
+    polygon: {
+      address: '0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619',
+      symbol: 'WETH',
+      nativeSymbol: 'MATIC'
+    },
+    bsc: {
+      address: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
+      symbol: 'WBNB',
+      nativeSymbol: 'BNB'
+    },
+    avalanche: {
+      address: '0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7',
+      symbol: 'WAVAX',
+      nativeSymbol: 'AVAX'
+    },
+    celo: {
+      address: '0x471EcE3750Da237f93B8E339c536989b8978a438',
+      symbol: 'WCELO',
+      nativeSymbol: 'CELO'
+    },
+    blast: {
+      address: '0x4300000000000000000000000000000000000004',
+      symbol: 'WETH',
+      nativeSymbol: 'ETH'
+    },
+    zora: {
+      address: '0x4200000000000000000000000000000000000006',
+      symbol: 'WETH',
+      nativeSymbol: 'ETH'
+    },
+    worldchain: {
+      address: '0x4300000000000000000000000000000000000004',
+      symbol: 'WETH',
+      nativeSymbol: 'ETH'
+    },
+  };
+
+  /**
+   * Get the wrapped token (WETH, WBNB, etc.) address for the current network
+   * @returns The address of the wrapped token
+   */
+  public getWrappedNativeTokenAddress(): string {
+    const wrappedInfo = Ethereum.WRAPPED_ADDRESSES[this.network];
+    if (!wrappedInfo) {
+      throw new Error(`Wrapped token address not found for network: ${this.network}`);
+    }
+    return wrappedInfo.address;
+  }
+
+  /**
+   * Check if a token is the wrapped native token (WETH, WBNB, etc.)
+   * @param tokenAddress The token address to check
+   * @returns True if the token is the wrapped native token
+   */
+  public isWrappedNativeToken(tokenAddress: string): boolean {
+    const wrappedAddress = this.getWrappedNativeTokenAddress();
+    return tokenAddress.toLowerCase() === wrappedAddress.toLowerCase();
+  }
+
+  /**
+   * Wraps native ETH to WETH (or equivalent on other chains)
+   * @param wallet The wallet to use for wrapping
+   * @param amountInWei The amount of ETH to wrap in wei (as a BigNumber)
+   * @returns The transaction receipt
+   */
+  public async wrapNativeToken(wallet: Wallet, amountInWei: BigNumber): Promise<ContractTransaction> {
+    const wrappedAddress = this.getWrappedNativeTokenAddress();
+
+    // Create wrapped token contract instance
+    const wrappedContract = new Contract(wrappedAddress, Ethereum.WETH9ABI, wallet);
+
+    // Set transaction parameters
+    const params: any = {
+      gasLimit: this.gasLimitTransaction,
+      nonce: await this.provider.getTransactionCount(wallet.address),
+      value: amountInWei, // Send native token with the transaction
+    };
+
+    // Always fetch gas price from the network
+    const currentGasPrice = await this.provider.getGasPrice();
+    params.gasPrice = currentGasPrice.toString();
+
+    // Create transaction to call deposit() function
+    logger.info(`Wrapping ${utils.formatEther(amountInWei)} ETH to WETH`);
+    return await wrappedContract.deposit(params);
   }
 }
