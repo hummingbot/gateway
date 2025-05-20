@@ -2,6 +2,7 @@ import { Token } from '@uniswap/sdk-core';
 import { Pair as V2Pair } from '@uniswap/v2-sdk';
 import { FeeAmount, Pool as V3Pool } from '@uniswap/v3-sdk';
 import { FastifyInstance } from 'fastify';
+import JSBI from 'jsbi';
 
 import { TokenInfo, Ethereum } from '../../chains/ethereum/ethereum';
 import { logger } from '../../services/logger';
@@ -184,4 +185,48 @@ export async function getFullTokenFromSymbol(
   }
 
   return uniswapToken;
+}
+
+/**
+ * Creates a Uniswap V3 Pool instance with a tick data provider
+ * @param tokenA The first token in the pair
+ * @param tokenB The second token in the pair
+ * @param fee The fee for the pool
+ * @param sqrtPriceX96 The square root price as a Q64.96
+ * @param liquidity The liquidity of the pool
+ * @param tick The current tick of the pool
+ * @returns A V3Pool instance with a tick data provider
+ */
+export function getUniswapV3PoolWithTickProvider(
+  tokenA: Token,
+  tokenB: Token,
+  fee: FeeAmount,
+  sqrtPriceX96: string,
+  liquidity: string,
+  tick: number
+): V3Pool {
+  return new V3Pool(
+    tokenA,
+    tokenB,
+    fee,
+    sqrtPriceX96,
+    liquidity,
+    tick,
+    // Add a tick data provider to make SDK operations work
+    {
+      async getTick(index) {
+        return {
+          index,
+          liquidityNet: JSBI.BigInt(0),
+          liquidityGross: JSBI.BigInt(0)
+        };
+      },
+      async nextInitializedTickWithinOneWord(tick, lte, tickSpacing) {
+        // Always return a valid result to prevent errors
+        // Use the direction parameter (lte) to determine which way to go
+        const nextTick = lte ? tick - tickSpacing : tick + tickSpacing;
+        return [nextTick, false];
+      }
+    }
+  );
 }

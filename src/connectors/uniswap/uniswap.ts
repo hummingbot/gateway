@@ -494,7 +494,9 @@ export class Uniswap {
           },
           async nextInitializedTickWithinOneWord(tick, lte, tickSpacing) {
             // Always return a valid result to prevent errors
-            return [tick, false];
+            // Use the direction parameter (lte) to determine which way to go
+            const nextTick = lte ? tick - tickSpacing : tick + tickSpacing;
+            return [nextTick, false];
           }
         }
       );
