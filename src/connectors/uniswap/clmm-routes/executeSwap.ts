@@ -54,7 +54,9 @@ async function handleWethWrapping(
   // Check if input token is WETH
   if (inputToken.symbol === 'WETH') {
     try {
-      logger.info(`WETH detected as input token, checking if wrapping is needed`);
+      logger.info(
+        `WETH detected as input token, checking if wrapping is needed`,
+      );
 
       // Use the existing wrapEthereum function from wrap.ts
       const wrapResult = await wrapEthereum(
@@ -64,7 +66,9 @@ async function handleWethWrapping(
         amountInEth,
       );
 
-      logger.info(`Successfully wrapped ${amountInEth} ETH to WETH, txHash: ${wrapResult.txHash}`);
+      logger.info(
+        `Successfully wrapped ${amountInEth} ETH to WETH, txHash: ${wrapResult.txHash}`,
+      );
       return wrapResult.txHash;
     } catch (error) {
       logger.error(`Failed to wrap ETH to WETH: ${error.message}`);
@@ -201,33 +205,109 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
 
         // Determine which token is being traded
         const exactIn = side === 'SELL';
-        const [inputToken, outputToken] = exactIn
+        const [originalInputToken, originalOutputToken] = exactIn
           ? [baseTokenObj, quoteTokenObj]
           : [quoteTokenObj, baseTokenObj];
 
         // Convert amount to token units with decimals
-        const inputAmount = CurrencyAmount.fromRawAmount(
-          inputToken,
+        const originalInputAmount = CurrencyAmount.fromRawAmount(
+          originalInputToken,
           JSBI.BigInt(
-            Math.floor(amount * Math.pow(10, inputToken.decimals)).toString(),
+            Math.floor(
+              amount * Math.pow(10, originalInputToken.decimals),
+            ).toString(),
           ),
         );
 
-        // Create a route for the trade
-        const route = new V3Route([pool], inputToken, outputToken);
+        // Handle ETH->WETH wrapping if needed (reuse helper from AMM)
+        let wrapTxHash = null;
+        let actualInputToken = originalInputToken;
+        let actualOutputToken = originalOutputToken;
+        let actualInputAmount = originalInputAmount;
+
+        // If user inputs ETH, wrap it to WETH first
+        if (originalInputToken.symbol === 'ETH') {
+          const wethToken = uniswap.getTokenBySymbol('WETH');
+
+          if (!wethToken) {
+            throw new Error('WETH token not found');
+          }
+
+          // Convert the amount to ETH string for wrapping
+          const amountInEth = formatTokenAmount(
+            originalInputAmount.quotient.toString(),
+            18,
+          ).toString();
+
+          logger.info(
+            `ETH detected as input token, wrapping ${amountInEth} ETH to WETH first`,
+          );
+
+          const wrapResult = await wrapEthereum(
+            fastify,
+            networkToUse,
+            walletAddress,
+            amountInEth,
+          );
+          wrapTxHash = wrapResult.txHash;
+
+          // Update to use WETH instead of ETH
+          actualInputToken = wethToken;
+          actualInputAmount = CurrencyAmount.fromRawAmount(
+            wethToken,
+            JSBI.BigInt(originalInputAmount.quotient.toString()),
+          );
+
+          logger.info(
+            `Successfully wrapped ${amountInEth} ETH to WETH, transaction hash: ${wrapTxHash}`,
+          );
+        }
+
+        // If user wants ETH as output, use WETH instead (they can unwrap later if needed)
+        if (originalOutputToken.symbol === 'ETH') {
+          const wethToken = uniswap.getTokenBySymbol('WETH');
+
+          if (!wethToken) {
+            throw new Error('WETH token not found');
+          }
+
+          actualOutputToken = wethToken;
+          logger.info('ETH detected as output token, will use WETH instead');
+        }
+
+        // Get the V3 pool with actual tokens (after potential WETH conversion)
+        const actualPool = await uniswap.getV3Pool(
+          actualInputToken,
+          actualOutputToken,
+          undefined,
+          poolAddress,
+        );
+        if (!actualPool) {
+          throw fastify.httpErrors.notFound(
+            `Pool not found for ${actualInputToken.symbol}-${actualOutputToken.symbol}`,
+          );
+        }
+
+        // Create a route for the trade with actual tokens
+        const route = new V3Route(
+          [actualPool],
+          actualInputToken,
+          actualOutputToken,
+        );
 
         // Create the V3 trade
         const trade = await V3Trade.fromRoute(
           route,
-          inputAmount,
+          actualInputAmount,
           exactIn ? TradeType.EXACT_INPUT : TradeType.EXACT_OUTPUT,
         );
 
         // Calculate slippage-adjusted amounts
         // Convert slippagePct to integer basis points (0.5% -> 50 basis points)
-        const slippageTolerance = slippagePct !== undefined
-          ? new Percent(Math.floor(slippagePct * 100), 10000)
-          : uniswap.getAllowedSlippage();
+        const slippageTolerance =
+          slippagePct !== undefined
+            ? new Percent(Math.floor(slippagePct * 100), 10000)
+            : uniswap.getAllowedSlippage();
 
         // Get swap parameters for V3 swap
         const routerSwapParams = SwapRouter.swapCallParameters(trade, {
@@ -236,45 +316,42 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           deadline: Math.floor(Date.now() / 1000) + 60 * 20, // 20 minutes from now
         });
 
-        // If input token is not ETH, check allowance for the router
-        if (inputToken.symbol !== 'WETH') {
-          // Get the router address that needs approval
-          const router =
-            uniswap.config.uniswapV3SmartOrderRouterAddress(networkToUse);
+        // Check allowance for input token (all are now ERC20 tokens after potential wrapping)
+        const router =
+          uniswap.config.uniswapV3SmartOrderRouterAddress(networkToUse);
 
-          // Get token contract
-          const tokenContract = ethereum.getContract(
-            inputToken.address,
-            wallet,
+        // Get token contract
+        const tokenContract = ethereum.getContract(
+          actualInputToken.address,
+          wallet,
+        );
+
+        // Check existing allowance
+        const allowance = await ethereum.getERC20Allowance(
+          tokenContract,
+          wallet,
+          router,
+          actualInputToken.decimals,
+        );
+
+        // Calculate required amount
+        const amountNeeded =
+          routerSwapParams.value && routerSwapParams.value !== '0'
+            ? BigNumber.from(routerSwapParams.value)
+            : BigNumber.from(actualInputAmount.quotient.toString());
+
+        const currentAllowance = BigNumber.from(allowance.value);
+
+        // Check if allowance is sufficient
+        if (currentAllowance.lt(amountNeeded)) {
+          logger.error(`Insufficient allowance for ${actualInputToken.symbol}`);
+          throw new Error(
+            `Insufficient allowance for ${actualInputToken.symbol}. Please approve at least ${formatTokenAmount(amountNeeded.toString(), actualInputToken.decimals)} ${actualInputToken.symbol} for the Uniswap router (${router})`,
           );
-
-          // Check existing allowance
-          const allowance = await ethereum.getERC20Allowance(
-            tokenContract,
-            wallet,
-            router,
-            inputToken.decimals,
+        } else {
+          logger.info(
+            `Sufficient allowance exists: ${formatTokenAmount(currentAllowance.toString(), actualInputToken.decimals)} ${actualInputToken.symbol}`,
           );
-
-          // Calculate required amount
-          const amountNeeded =
-            routerSwapParams.value && routerSwapParams.value !== '0'
-              ? BigNumber.from(routerSwapParams.value)
-              : BigNumber.from(inputAmount.quotient.toString());
-
-          const currentAllowance = BigNumber.from(allowance.value);
-
-          // Instead of approving, throw an error if allowance is insufficient
-          if (currentAllowance.lt(amountNeeded)) {
-            logger.error(`Insufficient allowance for ${inputToken.symbol}`);
-            throw new Error(
-              `Insufficient allowance for ${inputToken.symbol}. Please approve at least ${formatTokenAmount(amountNeeded.toString(), inputToken.decimals)} ${inputToken.symbol} for the Uniswap router (${router})`,
-            );
-          } else {
-            logger.info(
-              `Sufficient allowance exists: ${formatTokenAmount(currentAllowance.toString(), inputToken.decimals)} ${inputToken.symbol}`,
-            );
-          }
         }
 
         // Execute the swap
@@ -287,42 +364,29 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         const { value, calldata } = routerSwapParams;
 
         // Get the exact path from the trade to debug
-        const pathAddresses = trade.swaps[0].route.tokenPath.map(t => t.address);
+        const pathAddresses = trade.swaps[0].route.tokenPath.map(
+          (t) => t.address,
+        );
         const pathDescription = pathAddresses.join(' → ');
         logger.info(`Executing swap with path: ${pathDescription}`);
-        logger.info(`Fee amount used: ${pool.fee}`);
-        logger.info(`Swap call to: ${uniswap.config.uniswapV3SmartOrderRouterAddress(networkToUse)}`);
-        logger.info(`Input amount: ${inputAmount.toSignificant(6)} ${inputToken.symbol}`);
-        logger.info(`Expected output: ${trade.outputAmount.toSignificant(6)} ${outputToken.symbol}`);
-
-        // If WETH is the input token, we need to wrap ETH first
-        let wrapTxHash = null;
-        if (inputToken.symbol === 'WETH' && value) {
-          // Convert the value from wei to eth for the wrapping function
-          const amountInEth = utils.formatEther(value);
-          logger.info(`WETH detected as input token with value ${amountInEth} ETH, wrapping ETH to WETH first`);
-
-          // Use the wrap function to convert ETH to WETH
-          wrapTxHash = await handleWethWrapping(
-            fastify,
-            networkToUse,
-            walletAddress,
-            inputToken,
-            amountInEth,
-          );
-
-          if (wrapTxHash) {
-            logger.info(`Successfully wrapped ETH to WETH, transaction hash: ${wrapTxHash}`);
-          }
-        }
+        logger.info(`Fee amount used: ${actualPool.fee}`);
+        logger.info(
+          `Swap call to: ${uniswap.config.uniswapV3SmartOrderRouterAddress(networkToUse)}`,
+        );
+        logger.info(
+          `Input amount: ${actualInputAmount.toSignificant(6)} ${actualInputToken.symbol}`,
+        );
+        logger.info(
+          `Expected output: ${trade.outputAmount.toSignificant(6)} ${actualOutputToken.symbol}`,
+        );
 
         try {
           // Execute the swap using the calldata from the SDK
-          // If we already wrapped ETH to WETH, we don't need to send value with the transaction
+          // Since we've already wrapped ETH to WETH if needed, we don't send value
           const tx = await wallet.sendTransaction({
             to: uniswap.config.uniswapV3SmartOrderRouterAddress(networkToUse),
             data: calldata,
-            value: wrapTxHash ? '0' : (value ? value : '0'), // Don't send value if we already wrapped
+            value: '0', // Always 0 since we handle ETH wrapping separately
             gasLimit: 350000, // V3 swaps use more gas
           });
 
@@ -331,19 +395,23 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
 
           // Check if the transaction was successful
           if (receipt.status === 0) {
-            logger.error(`Transaction failed on-chain. Receipt: ${JSON.stringify(receipt)}`);
-            throw new Error("Transaction reverted on-chain. This could be due to slippage, insufficient funds, or other blockchain issues.");
+            logger.error(
+              `Transaction failed on-chain. Receipt: ${JSON.stringify(receipt)}`,
+            );
+            throw new Error(
+              'Transaction reverted on-chain. This could be due to slippage, insufficient funds, or other blockchain issues.',
+            );
           }
 
-          // Calculate amounts for input and output
+          // Calculate amounts for input and output using actual tokens
           const totalInputSwapped = formatTokenAmount(
-            inputAmount.quotient.toString(),
-            inputToken.decimals,
+            actualInputAmount.quotient.toString(),
+            actualInputToken.decimals,
           );
 
           const totalOutputSwapped = formatTokenAmount(
             trade.outputAmount.quotient.toString(),
-            outputToken.decimals,
+            actualOutputToken.decimals,
           );
 
           // formatTokenAmount already returns numbers, so no conversion needed
@@ -376,21 +444,21 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         } catch (error) {
           logger.error(`Swap execution error: ${error.message}`);
           if (error.transaction) {
-            logger.debug(`Transaction details: ${JSON.stringify(error.transaction)}`);
+            logger.debug(
+              `Transaction details: ${JSON.stringify(error.transaction)}`,
+            );
           }
           if (error.receipt) {
-            logger.debug(`Transaction receipt: ${JSON.stringify(error.receipt)}`);
+            logger.debug(
+              `Transaction receipt: ${JSON.stringify(error.receipt)}`,
+            );
           }
 
           // Provide more detailed error messages for common issues
-          if (inputToken.symbol === 'WETH') {
-            if (wrapTxHash) {
-              logger.error(`ETH was wrapped (tx: ${wrapTxHash}) but swap failed. This could be a problem with the swap itself.`);
-            } else if (!value) {
-              logger.error('Possible ETH wrapping issue: Attempting to swap WETH but no ETH value was provided');
-            } else {
-              logger.error(`ETH wrapping may have failed. Check if you have enough ETH for both wrapping and gas fees.`);
-            }
+          if (wrapTxHash) {
+            logger.error(
+              `ETH was wrapped (tx: ${wrapTxHash}) but swap failed. This could be a problem with the swap itself.`,
+            );
           }
 
           // Extract and log the specific error message

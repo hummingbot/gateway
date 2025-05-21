@@ -9,6 +9,7 @@ import { BigNumber, Wallet, utils } from 'ethers';
 import { FastifyPluginAsync } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
+import { wrapEthereum } from '../../../chains/ethereum/routes/wrap';
 import {
   ExecuteSwapRequestType,
   ExecuteSwapRequest,
@@ -19,6 +20,79 @@ import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
 import { IUniswapV2Router02ABI } from '../uniswap.contracts';
 import { formatTokenAmount } from '../uniswap.utils';
+
+async function handleEthToWethWrapping(
+  fastify: any,
+  networkToUse: string,
+  walletAddress: string,
+  inputToken: Token,
+  outputToken: Token,
+  inputAmount: CurrencyAmount<Token>,
+): Promise<{
+  wrapTxHash: string | null;
+  actualInputToken: Token;
+  actualOutputToken: Token;
+  actualInputAmount: CurrencyAmount<Token>;
+}> {
+  let wrapTxHash = null;
+  let actualInputToken = inputToken;
+  let actualOutputToken = outputToken;
+  let actualInputAmount = inputAmount;
+
+  // If user inputs ETH, wrap it to WETH first
+  if (inputToken.symbol === 'ETH') {
+    const uniswap = await Uniswap.getInstance(networkToUse);
+    const wethToken = uniswap.getTokenBySymbol('WETH');
+
+    if (!wethToken) {
+      throw new Error('WETH token not found');
+    }
+
+    // Convert the amount to ETH string for wrapping
+    const amountInEth = formatTokenAmount(
+      inputAmount.quotient.toString(),
+      18,
+    ).toString();
+
+    logger.info(
+      `ETH detected as input token, wrapping ${amountInEth} ETH to WETH first`,
+    );
+
+    const wrapResult = await wrapEthereum(
+      fastify,
+      networkToUse,
+      walletAddress,
+      amountInEth,
+    );
+    wrapTxHash = wrapResult.txHash;
+
+    // Update to use WETH instead of ETH
+    actualInputToken = wethToken;
+    actualInputAmount = CurrencyAmount.fromRawAmount(
+      wethToken,
+      inputAmount.quotient.toString(),
+    );
+
+    logger.info(
+      `Successfully wrapped ${amountInEth} ETH to WETH, transaction hash: ${wrapTxHash}`,
+    );
+  }
+
+  // If user wants ETH as output, use WETH instead (they can unwrap later if needed)
+  if (outputToken.symbol === 'ETH') {
+    const uniswap = await Uniswap.getInstance(networkToUse);
+    const wethToken = uniswap.getTokenBySymbol('WETH');
+
+    if (!wethToken) {
+      throw new Error('WETH token not found');
+    }
+
+    actualOutputToken = wethToken;
+    logger.info('ETH detected as output token, will use WETH instead');
+  }
+
+  return { wrapTxHash, actualInputToken, actualOutputToken, actualInputAmount };
+}
 
 export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
   // Get first wallet address for example
@@ -140,36 +214,71 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
 
         // Determine which token is being traded
         const exactIn = side === 'SELL';
-        const [inputToken, outputToken] = exactIn
+        const [originalInputToken, originalOutputToken] = exactIn
           ? [baseTokenObj, quoteTokenObj]
           : [quoteTokenObj, baseTokenObj];
 
         // Convert amount to token units with decimals
-        const inputAmount = CurrencyAmount.fromRawAmount(
-          inputToken,
-          Math.floor(amount * Math.pow(10, inputToken.decimals)).toString(),
+        const originalInputAmount = CurrencyAmount.fromRawAmount(
+          originalInputToken,
+          Math.floor(
+            amount * Math.pow(10, originalInputToken.decimals),
+          ).toString(),
         );
 
-        // Create a route for the trade
-        const route = new V2Route([pair], inputToken, outputToken);
+        // Handle ETH->WETH wrapping if needed
+        const {
+          wrapTxHash,
+          actualInputToken,
+          actualOutputToken,
+          actualInputAmount,
+        } = await handleEthToWethWrapping(
+          fastify,
+          networkToUse,
+          walletAddress,
+          originalInputToken,
+          originalOutputToken,
+          originalInputAmount,
+        );
+
+        // Get the V2 pair with actual tokens (after potential WETH conversion)
+        const actualPair = await uniswap.getV2Pool(
+          actualInputToken,
+          actualOutputToken,
+          poolAddressToUse,
+        );
+        if (!actualPair) {
+          throw fastify.httpErrors.notFound(
+            `Pool not found for ${actualInputToken.symbol}-${actualOutputToken.symbol}`,
+          );
+        }
+
+        // Create a route for the trade with actual tokens
+        const route = new V2Route(
+          [actualPair],
+          actualInputToken,
+          actualOutputToken,
+        );
 
         // For BUY direction, we need a different approach
         let trade;
         if (exactIn) {
           // For SELL (exactIn), we use the input amount and EXACT_INPUT trade type
-          trade = new V2Trade(route, inputAmount, TradeType.EXACT_INPUT);
+          trade = new V2Trade(route, actualInputAmount, TradeType.EXACT_INPUT);
           logger.info(
-            `Created EXACT_INPUT trade with input amount: ${formatTokenAmount(inputAmount.quotient.toString(), inputToken.decimals)} ${inputToken.symbol}`,
+            `Created EXACT_INPUT trade with input amount: ${formatTokenAmount(actualInputAmount.quotient.toString(), actualInputToken.decimals)} ${actualInputToken.symbol}`,
           );
         } else {
           // For BUY (exactOut), we create an exact output amount and use EXACT_OUTPUT trade type
           const outputAmount = CurrencyAmount.fromRawAmount(
-            outputToken,
-            Math.floor(amount * Math.pow(10, outputToken.decimals)).toString(),
+            actualOutputToken,
+            Math.floor(
+              amount * Math.pow(10, actualOutputToken.decimals),
+            ).toString(),
           );
 
           logger.info(
-            `Creating EXACT_OUTPUT trade with output amount: ${formatTokenAmount(outputAmount.quotient.toString(), outputToken.decimals)} ${outputToken.symbol}`,
+            `Creating EXACT_OUTPUT trade with output amount: ${formatTokenAmount(outputAmount.quotient.toString(), actualOutputToken.decimals)} ${actualOutputToken.symbol}`,
           );
 
           trade = new V2Trade(route, outputAmount, TradeType.EXACT_OUTPUT);
@@ -222,121 +331,61 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           })}`,
         );
 
+        // Check allowance for input token (all are now ERC20 tokens after potential wrapping)
+        const tokenContract = ethereum.getContract(
+          actualInputToken.address,
+          wallet,
+        );
+        const allowance = await ethereum.getERC20Allowance(
+          tokenContract,
+          wallet,
+          routerAddress,
+          actualInputToken.decimals,
+        );
+
+        const amountNeeded = exactIn
+          ? actualInputAmount.quotient.toString()
+          : trade.maximumAmountIn(slippageTolerance).quotient.toString();
+        const currentAllowance = BigNumber.from(allowance.value);
+
+        logger.info(
+          `Current allowance: ${formatTokenAmount(currentAllowance.toString(), actualInputToken.decimals)} ${actualInputToken.symbol}`,
+        );
+        logger.info(
+          `Amount needed: ${formatTokenAmount(amountNeeded, actualInputToken.decimals)} ${actualInputToken.symbol}`,
+        );
+
+        // Check if allowance is sufficient
+        if (currentAllowance.lt(amountNeeded)) {
+          logger.error(`Insufficient allowance for ${actualInputToken.symbol}`);
+          throw new Error(
+            `Insufficient allowance for ${actualInputToken.symbol}. Please approve at least ${formatTokenAmount(amountNeeded, actualInputToken.decimals)} ${actualInputToken.symbol} for the Uniswap router (${routerAddress})`,
+          );
+        } else {
+          logger.info(
+            `Sufficient allowance exists: ${formatTokenAmount(currentAllowance.toString(), actualInputToken.decimals)} ${actualInputToken.symbol}`,
+          );
+        }
+
+        // Execute the swap - now all tokens are ERC20, so we use generic swap functions
         let tx;
         if (exactIn) {
-          // SwapExactTokensForTokens or SwapExactETHForTokens
+          // Swap exact tokens for tokens
           const amountOutMin = trade
             .minimumAmountOut(slippageTolerance)
             .quotient.toString();
 
-          if (inputToken.symbol === 'WETH') {
-            // Swap exact ETH for tokens
-            tx = await router.swapExactETHForTokens(
-              amountOutMin,
-              path,
-              walletAddress,
-              deadline,
-              {
-                ...txOptions,
-                value: inputAmount.quotient.toString(),
-              },
-            );
-          } else if (outputToken.symbol === 'WETH') {
-            // Swap exact tokens for ETH
-            // Check allowance using Ethereum's getERC20Allowance
-            const tokenContract = ethereum.getContract(
-              inputToken.address,
-              wallet,
-            );
-            const allowance = await ethereum.getERC20Allowance(
-              tokenContract,
-              wallet,
-              routerAddress,
-              inputToken.decimals,
-            );
-
-            const amountNeeded = inputAmount.quotient.toString();
-            const currentAllowance = BigNumber.from(allowance.value);
-
-            logger.info(
-              `Current allowance: ${formatTokenAmount(currentAllowance.toString(), inputToken.decimals)} ${inputToken.symbol}`,
-            );
-            logger.info(
-              `Amount needed: ${formatTokenAmount(amountNeeded, inputToken.decimals)} ${inputToken.symbol}`,
-            );
-
-            // Instead of approving, throw an error if allowance is insufficient
-            if (currentAllowance.lt(amountNeeded)) {
-              logger.error(`Insufficient allowance for ${inputToken.symbol}`);
-              throw new Error(
-                `Insufficient allowance for ${inputToken.symbol}. Please approve at least ${formatTokenAmount(amountNeeded, inputToken.decimals)} ${inputToken.symbol} for the Uniswap router (${routerAddress})`,
-              );
-            } else {
-              logger.info(
-                `Sufficient allowance exists: ${formatTokenAmount(currentAllowance.toString(), inputToken.decimals)} ${inputToken.symbol}`,
-              );
-            }
-
-            tx = await router.swapExactTokensForETH(
-              inputAmount.quotient.toString(),
-              amountOutMin,
-              path,
-              walletAddress,
-              deadline,
-              txOptions,
-            );
-          } else {
-            // Swap exact tokens for tokens
-            // Check allowance using Ethereum's getERC20Allowance
-            const tokenContract = ethereum.getContract(
-              inputToken.address,
-              wallet,
-            );
-            const allowance = await ethereum.getERC20Allowance(
-              tokenContract,
-              wallet,
-              routerAddress,
-              inputToken.decimals,
-            );
-
-            const amountNeeded = inputAmount.quotient.toString();
-            const currentAllowance = BigNumber.from(allowance.value);
-
-            logger.info(
-              `Current allowance: ${formatTokenAmount(currentAllowance.toString(), inputToken.decimals)} ${inputToken.symbol}`,
-            );
-            logger.info(
-              `Amount needed: ${formatTokenAmount(amountNeeded, inputToken.decimals)} ${inputToken.symbol}`,
-            );
-
-            // Instead of approving, throw an error if allowance is insufficient
-            if (currentAllowance.lt(amountNeeded)) {
-              logger.error(`Insufficient allowance for ${inputToken.symbol}`);
-              throw new Error(
-                `Insufficient allowance for ${inputToken.symbol}. Please approve at least ${formatTokenAmount(amountNeeded, inputToken.decimals)} ${inputToken.symbol} for the Uniswap router (${routerAddress})`,
-              );
-            } else {
-              logger.info(
-                `Sufficient allowance exists: ${formatTokenAmount(currentAllowance.toString(), inputToken.decimals)} ${inputToken.symbol}`,
-              );
-            }
-
-            tx = await router.swapExactTokensForTokens(
-              inputAmount.quotient.toString(),
-              amountOutMin,
-              path,
-              walletAddress,
-              deadline,
-              txOptions,
-            );
-          }
+          logger.info(`Executing swapExactTokensForTokens`);
+          tx = await router.swapExactTokensForTokens(
+            actualInputAmount.quotient.toString(),
+            amountOutMin,
+            path,
+            walletAddress,
+            deadline,
+            txOptions,
+          );
         } else {
-          // SwapTokensForExactTokens or SwapETHForExactTokens
-          // For BUY direction, the input amount is the quote token amount
-          // and the output amount is the base token amount
-          // The amount provided by the user is meant for the base token (output token)
-
-          // We're now using the output amount from the trade directly
+          // Swap tokens for exact tokens
           const amountOut = trade.outputAmount.quotient.toString();
           const amountInMax = trade
             .maximumAmountIn(slippageTolerance)
@@ -345,147 +394,50 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           logger.info(
             `BUY direction - amountOut: ${amountOut}, amountInMax: ${amountInMax}`,
           );
+          logger.info(`Executing swapTokensForExactTokens`);
 
-          if (inputToken.symbol === 'WETH') {
-            // Swap ETH for exact tokens
-            logger.info(`Executing swapETHForExactTokens`);
-            tx = await router.swapETHForExactTokens(
-              amountOut,
-              path,
-              walletAddress,
-              deadline,
-              {
-                ...txOptions,
-                value: amountInMax,
-              },
-            );
-          } else if (outputToken.symbol === 'WETH') {
-            // Swap tokens for exact ETH
-            logger.info(`Executing swapTokensForExactETH`);
-
-            // Check allowance using Ethereum's getERC20Allowance
-            const tokenContract = ethereum.getContract(
-              inputToken.address,
-              wallet,
-            );
-            const allowance = await ethereum.getERC20Allowance(
-              tokenContract,
-              wallet,
-              routerAddress,
-              inputToken.decimals,
-            );
-
-            const amountNeeded = amountInMax;
-            const currentAllowance = BigNumber.from(allowance.value);
-
-            logger.info(
-              `Current allowance: ${formatTokenAmount(currentAllowance.toString(), inputToken.decimals)} ${inputToken.symbol}`,
-            );
-            logger.info(
-              `Amount needed: ${formatTokenAmount(amountNeeded, inputToken.decimals)} ${inputToken.symbol}`,
-            );
-
-            // Instead of approving, throw an error if allowance is insufficient
-            if (currentAllowance.lt(amountNeeded)) {
-              logger.error(`Insufficient allowance for ${inputToken.symbol}`);
-              throw new Error(
-                `Insufficient allowance for ${inputToken.symbol}. Please approve at least ${formatTokenAmount(amountNeeded, inputToken.decimals)} ${inputToken.symbol} for the Uniswap router (${routerAddress})`,
-              );
-            } else {
-              logger.info(
-                `Sufficient allowance exists: ${formatTokenAmount(currentAllowance.toString(), inputToken.decimals)} ${inputToken.symbol}`,
-              );
-            }
-
-            tx = await router.swapTokensForExactETH(
-              amountOut,
-              amountInMax,
-              path,
-              walletAddress,
-              deadline,
-              txOptions,
-            );
-          } else {
-            // Swap tokens for exact tokens
-            logger.info(`Executing swapTokensForExactTokens`);
-
-            // Check allowance using Ethereum's getERC20Allowance
-            const tokenContract = ethereum.getContract(
-              inputToken.address,
-              wallet,
-            );
-            const allowance = await ethereum.getERC20Allowance(
-              tokenContract,
-              wallet,
-              routerAddress,
-              inputToken.decimals,
-            );
-
-            const amountNeeded = amountInMax;
-            const currentAllowance = BigNumber.from(allowance.value);
-
-            logger.info(
-              `Current allowance: ${formatTokenAmount(currentAllowance.toString(), inputToken.decimals)} ${inputToken.symbol}`,
-            );
-            logger.info(
-              `Amount needed: ${formatTokenAmount(amountNeeded, inputToken.decimals)} ${inputToken.symbol}`,
-            );
-
-            // Instead of approving, throw an error if allowance is insufficient
-            if (currentAllowance.lt(amountNeeded)) {
-              logger.error(`Insufficient allowance for ${inputToken.symbol}`);
-              throw new Error(
-                `Insufficient allowance for ${inputToken.symbol}. Please approve at least ${formatTokenAmount(amountNeeded, inputToken.decimals)} ${inputToken.symbol} for the Uniswap router (${routerAddress})`,
-              );
-            } else {
-              logger.info(
-                `Sufficient allowance exists: ${formatTokenAmount(currentAllowance.toString(), inputToken.decimals)} ${inputToken.symbol}`,
-              );
-            }
-
-            tx = await router.swapTokensForExactTokens(
-              amountOut,
-              amountInMax,
-              path,
-              walletAddress,
-              deadline,
-              txOptions,
-            );
-          }
+          tx = await router.swapTokensForExactTokens(
+            amountOut,
+            amountInMax,
+            path,
+            walletAddress,
+            deadline,
+            txOptions,
+          );
         }
 
         // Wait for transaction confirmation
         const receipt = await tx.wait();
 
-        // Calculate balance changes
+        // Calculate balance changes using actual tokens
         let totalInputSwapped, totalOutputSwapped;
 
         if (exactIn) {
           // For SELL (exactIn), we know the exact input amount
           totalInputSwapped = formatTokenAmount(
-            inputAmount.quotient.toString(),
-            inputToken.decimals,
+            actualInputAmount.quotient.toString(),
+            actualInputToken.decimals,
           );
 
           totalOutputSwapped = formatTokenAmount(
             trade.outputAmount.quotient.toString(),
-            outputToken.decimals,
+            actualOutputToken.decimals,
           );
         } else {
           // For BUY (exactOut), we know the exact output amount from the trade
           totalOutputSwapped = formatTokenAmount(
             trade.outputAmount.quotient.toString(),
-            outputToken.decimals,
+            actualOutputToken.decimals,
           );
 
           totalInputSwapped = formatTokenAmount(
             trade.inputAmount.quotient.toString(),
-            inputToken.decimals,
+            actualInputToken.decimals,
           );
         }
 
         logger.info(
-          `Swap completed - Input: ${totalInputSwapped} ${inputToken.symbol}, Output: ${totalOutputSwapped} ${outputToken.symbol}`,
+          `Swap completed - Input: ${totalInputSwapped} ${actualInputToken.symbol}, Output: ${totalOutputSwapped} ${actualOutputToken.symbol}`,
         );
 
         const baseTokenBalanceChange =
@@ -510,8 +462,13 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         );
         logger.info(`Total gas fee: ${gasFee} ETH`);
 
+        // Include both swap and wrap txHash in the response if applicable
+        const txSignature = wrapTxHash
+          ? `swap:${receipt.transactionHash},wrap:${wrapTxHash}`
+          : receipt.transactionHash;
+
         return {
-          signature: receipt.transactionHash,
+          signature: txSignature,
           totalInputSwapped,
           totalOutputSwapped,
           fee: gasFee,
