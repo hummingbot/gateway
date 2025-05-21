@@ -50,55 +50,64 @@ async function quoteClmmSwap(
       ? [baseToken, quoteToken]
       : [quoteToken, baseToken];
 
-    // Convert amount to token units with decimals
-    const inputAmount = CurrencyAmount.fromRawAmount(
-      inputToken,
-      JSBI.BigInt(
-        Math.floor(amount * Math.pow(10, inputToken.decimals)).toString(),
-      ),
-    );
-
     // Create a route for the trade
     const route = new V3Route([pool], inputToken, outputToken);
 
     // Create the V3 trade
-    const trade = await V3Trade.fromRoute(
-      route,
-      inputAmount,
-      exactIn ? TradeType.EXACT_INPUT : TradeType.EXACT_OUTPUT,
-    );
+    let trade;
+    if (exactIn) {
+      // For SELL (exactIn), we use the input amount and EXACT_INPUT trade type
+      const inputAmount = CurrencyAmount.fromRawAmount(
+        inputToken,
+        JSBI.BigInt(
+          Math.floor(amount * Math.pow(10, inputToken.decimals)).toString(),
+        ),
+      );
+      trade = await V3Trade.fromRoute(
+        route,
+        inputAmount,
+        TradeType.EXACT_INPUT,
+      );
+    } else {
+      // For BUY (exactOut), we use the output amount and EXACT_OUTPUT trade type
+      const outputAmount = CurrencyAmount.fromRawAmount(
+        outputToken,
+        JSBI.BigInt(
+          Math.floor(amount * Math.pow(10, outputToken.decimals)).toString(),
+        ),
+      );
+      trade = await V3Trade.fromRoute(
+        route,
+        outputAmount,
+        TradeType.EXACT_OUTPUT,
+      );
+    }
 
     // Calculate slippage-adjusted amounts
     // Convert slippagePct to integer basis points (0.5% -> 50 basis points)
-    const slippageTolerance = slippagePct !== undefined
-      ? new Percent(Math.floor(slippagePct * 100), 10000)
-      : uniswap.getAllowedSlippage();
+    const slippageTolerance =
+      slippagePct !== undefined
+        ? new Percent(Math.floor(slippagePct * 100), 10000)
+        : uniswap.getAllowedSlippage();
 
     const minAmountOut = exactIn
       ? trade.minimumAmountOut(slippageTolerance).quotient.toString()
-      : inputAmount.quotient.toString();
+      : trade.outputAmount.quotient.toString();
 
     const maxAmountIn = exactIn
-      ? inputAmount.quotient.toString()
+      ? trade.inputAmount.quotient.toString()
       : trade.maximumAmountIn(slippageTolerance).quotient.toString();
 
-    // Calculate amounts
-    const estimatedAmountIn = exactIn
-      ? formatTokenAmount(inputAmount.quotient.toString(), inputToken.decimals)
-      : formatTokenAmount(
-          trade.inputAmount.quotient.toString(),
-          inputToken.decimals,
-        );
+    // Calculate amounts - trade object has inputAmount and outputAmount for both types
+    const estimatedAmountIn = formatTokenAmount(
+      trade.inputAmount.quotient.toString(),
+      inputToken.decimals,
+    );
 
-    const estimatedAmountOut = exactIn
-      ? formatTokenAmount(
-          trade.outputAmount.quotient.toString(),
-          outputToken.decimals,
-        )
-      : formatTokenAmount(
-          inputAmount.quotient.toString(),
-          outputToken.decimals,
-        );
+    const estimatedAmountOut = formatTokenAmount(
+      trade.outputAmount.quotient.toString(),
+      outputToken.decimals,
+    );
 
     const minAmountOutValue = formatTokenAmount(
       minAmountOut,
