@@ -203,7 +203,7 @@ export function getUniswapV3PoolWithTickProvider(
   fee: FeeAmount,
   sqrtPriceX96: string,
   liquidity: string,
-  tick: number
+  tick: number,
 ): V3Pool {
   return new V3Pool(
     tokenA,
@@ -218,7 +218,7 @@ export function getUniswapV3PoolWithTickProvider(
         return {
           index,
           liquidityNet: JSBI.BigInt(0),
-          liquidityGross: JSBI.BigInt(0)
+          liquidityGross: JSBI.BigInt(0),
         };
       },
       async nextInitializedTickWithinOneWord(tick, lte, tickSpacing) {
@@ -226,7 +226,7 @@ export function getUniswapV3PoolWithTickProvider(
         // Use the direction parameter (lte) to determine which way to go
         const nextTick = lte ? tick - tickSpacing : tick + tickSpacing;
         return [nextTick, false];
-      }
-    }
+      },
+    },
   );
 }

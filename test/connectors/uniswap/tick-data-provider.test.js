@@ -1,7 +1,7 @@
 const { test, describe, expect, beforeEach } = require('@jest/globals');
-const JSBI = require('jsbi');
 const { Token } = require('@uniswap/sdk-core');
 const { FeeAmount, Pool } = require('@uniswap/v3-sdk');
+const JSBI = require('jsbi');
 
 // Create a mock implementation of the tick data provider
 const mockTickDataProvider = {
@@ -9,13 +9,13 @@ const mockTickDataProvider = {
     return {
       index,
       liquidityNet: JSBI.BigInt(0),
-      liquidityGross: JSBI.BigInt(0)
+      liquidityGross: JSBI.BigInt(0),
     };
   },
   async nextInitializedTickWithinOneWord(tick, lte, tickSpacing) {
     const nextTick = lte ? tick - tickSpacing : tick + tickSpacing;
     return [nextTick, false];
-  }
+  },
 };
 
 // Constants for testing
@@ -28,7 +28,7 @@ describe('Uniswap Tick Data Provider Tests', () => {
   // Create token instances for testing
   const weth = new Token(8453, WETH_ADDRESS, 18, 'WETH', 'Wrapped Ether');
   const usdc = new Token(8453, USDC_ADDRESS, 6, 'USDC', 'USD Coin');
-  
+
   // Mock the required pool data
   // Use values that meet the SDK's price bounds requirements
   const mockPoolData = {
@@ -36,7 +36,7 @@ describe('Uniswap Tick Data Provider Tests', () => {
     sqrtPriceX96: JSBI.BigInt('79228162514264337593543950336'),
     liquidity: JSBI.BigInt('15000000000000000'),
     tick: 0, // Use a safe tick value
-    fee: FeeAmount.LOW
+    fee: FeeAmount.LOW,
   };
 
   describe('Pool with tick data provider', () => {
@@ -49,7 +49,7 @@ describe('Uniswap Tick Data Provider Tests', () => {
         mockPoolData.sqrtPriceX96.toString(),
         mockPoolData.liquidity.toString(),
         mockPoolData.tick,
-        mockTickDataProvider
+        mockTickDataProvider,
       );
 
       // Test that the pool instance has the expected properties
@@ -58,10 +58,12 @@ describe('Uniswap Tick Data Provider Tests', () => {
       expect(pool.token1).toBeDefined();
       expect(pool.fee).toBe(mockPoolData.fee);
       expect(pool.tickCurrent).toBe(mockPoolData.tick);
-      
+
       // Verify the tick data provider functionality
       expect(typeof pool.tickDataProvider.getTick).toBe('function');
-      expect(typeof pool.tickDataProvider.nextInitializedTickWithinOneWord).toBe('function');
+      expect(
+        typeof pool.tickDataProvider.nextInitializedTickWithinOneWord,
+      ).toBe('function');
     });
 
     test('tick data provider returns the expected formats', async () => {
@@ -73,7 +75,7 @@ describe('Uniswap Tick Data Provider Tests', () => {
         mockPoolData.sqrtPriceX96.toString(),
         mockPoolData.liquidity.toString(),
         mockPoolData.tick,
-        mockTickDataProvider
+        mockTickDataProvider,
       );
 
       // Test the tick data provider methods
@@ -84,20 +86,22 @@ describe('Uniswap Tick Data Provider Tests', () => {
       expect(tickInfo).toHaveProperty('liquidityGross');
 
       // Test going up (lte = false)
-      const [nextTickUp, initializedUp] = await pool.tickDataProvider.nextInitializedTickWithinOneWord(
-        testTick, 
-        false, 
-        pool.tickSpacing
-      );
+      const [nextTickUp, initializedUp] =
+        await pool.tickDataProvider.nextInitializedTickWithinOneWord(
+          testTick,
+          false,
+          pool.tickSpacing,
+        );
       expect(nextTickUp).toBe(testTick + pool.tickSpacing);
       expect(initializedUp).toBe(false);
-      
+
       // Test going down (lte = true)
-      const [nextTickDown, initializedDown] = await pool.tickDataProvider.nextInitializedTickWithinOneWord(
-        testTick, 
-        true, 
-        pool.tickSpacing
-      );
+      const [nextTickDown, initializedDown] =
+        await pool.tickDataProvider.nextInitializedTickWithinOneWord(
+          testTick,
+          true,
+          pool.tickSpacing,
+        );
       expect(nextTickDown).toBe(testTick - pool.tickSpacing);
       expect(initializedDown).toBe(false);
     });

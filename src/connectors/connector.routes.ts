@@ -10,7 +10,7 @@ import {
   UniswapConfig,
   uniswapNetworks,
   uniswapAmmNetworks,
-  uniswapClmmNetworks
+  uniswapClmmNetworks,
 } from './uniswap/uniswap.config';
 
 // Define the schema using Typebox

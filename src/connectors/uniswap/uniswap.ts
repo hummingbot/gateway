@@ -121,12 +121,12 @@ const IUniswapV2RouterABI = {
 import { Token, CurrencyAmount, Percent } from '@uniswap/sdk-core';
 import { AlphaRouter } from '@uniswap/smart-order-router';
 import { Pair as V2Pair } from '@uniswap/v2-sdk';
-import JSBI from 'jsbi';
 import { abi as IUniswapV3FactoryABI } from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Factory.sol/IUniswapV3Factory.json';
 import { abi as IUniswapV3PoolABI } from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
 import { FeeAmount, Pool as V3Pool } from '@uniswap/v3-sdk';
 import { Contract, constants } from 'ethers';
 import { getAddress } from 'ethers/lib/utils';
+import JSBI from 'jsbi';
 
 import { Ethereum } from '../../chains/ethereum/ethereum';
 import { percentRegexp } from '../../services/config-manager-v2';
@@ -489,7 +489,7 @@ export class Uniswap {
             return {
               index,
               liquidityNet: JSBI.BigInt(0),
-              liquidityGross: JSBI.BigInt(0)
+              liquidityGross: JSBI.BigInt(0),
             };
           },
           async nextInitializedTickWithinOneWord(tick, lte, tickSpacing) {
@@ -497,8 +497,8 @@ export class Uniswap {
             // Use the direction parameter (lte) to determine which way to go
             const nextTick = lte ? tick - tickSpacing : tick + tickSpacing;
             return [nextTick, false];
-          }
-        }
+          },
+        },
       );
     } catch (error) {
       logger.error(`Error getting V3 pool: ${error.message}`);

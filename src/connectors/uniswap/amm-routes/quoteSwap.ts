@@ -115,7 +115,7 @@ async function quoteAmmSwap(
       rawAmountOut: trade.outputAmount.quotient.toString(),
       rawMinAmountOut: minAmountOut,
       rawMaxAmountIn: maxAmountIn,
-      pathAddresses: trade.route.path.map(token => token.address),
+      pathAddresses: trade.route.path.map((token) => token.address),
     };
   } catch (error) {
     logger.error(`Error quoting AMM swap: ${error.message}`);

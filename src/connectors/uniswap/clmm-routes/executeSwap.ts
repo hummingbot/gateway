@@ -11,12 +11,13 @@ import {
 } from '../../../schemas/trading-types/swap-schema';
 import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
-import { formatTokenAmount } from '../uniswap.utils';
-import { getUniswapClmmQuote } from './quoteSwap';
-import { 
+import {
   getUniswapV3SmartOrderRouterAddress,
-  ISwapRouter02ABI 
+  ISwapRouter02ABI,
 } from '../uniswap.contracts';
+import { formatTokenAmount } from '../uniswap.utils';
+
+import { getUniswapClmmQuote } from './quoteSwap';
 
 export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
   // Import the httpErrors plugin to ensure it's available
@@ -112,7 +113,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         // Get quote using the shared quote function - this eliminates duplication
-        const { quote, ethereum, baseTokenObj, quoteTokenObj } = 
+        const { quote, ethereum, baseTokenObj, quoteTokenObj } =
           await getUniswapClmmQuote(
             fastify,
             networkToUse,
@@ -172,7 +173,11 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
 
         // Get SwapRouter02 contract
         const routerAddress = getUniswapV3SmartOrderRouterAddress(networkToUse);
-        const routerContract = new Contract(routerAddress, ISwapRouter02ABI, wallet);
+        const routerContract = new Contract(
+          routerAddress,
+          ISwapRouter02ABI,
+          wallet,
+        );
 
         logger.info(`Executing swap using SwapRouter02:`);
         logger.info(`Router address: ${routerAddress}`);
@@ -200,7 +205,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           // exactInputSingle - we know the exact input amount
           swapParams.amountIn = quote.rawAmountIn;
           swapParams.amountOutMinimum = quote.rawMinAmountOut;
-          
+
           logger.info(`ExactInputSingle params:`);
           logger.info(`  amountIn: ${swapParams.amountIn}`);
           logger.info(`  amountOutMinimum: ${swapParams.amountOutMinimum}`);
@@ -297,9 +302,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           );
         }
         if (error.receipt) {
-          logger.debug(
-            `Transaction receipt: ${JSON.stringify(error.receipt)}`,
-          );
+          logger.debug(`Transaction receipt: ${JSON.stringify(error.receipt)}`);
         }
 
         // Check if this is already a fastify error
@@ -309,7 +312,9 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
 
         // Provide more detailed error messages for common issues
         const errorMessage = error.reason || error.message;
-        throw fastify.httpErrors.internalServerError(`Failed to execute swap: ${errorMessage}`);
+        throw fastify.httpErrors.internalServerError(
+          `Failed to execute swap: ${errorMessage}`,
+        );
       }
     },
   );

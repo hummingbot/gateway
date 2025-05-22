@@ -28,7 +28,7 @@ export const uniswapAmmNetworks = [
   'polygon',
   'blast',
   'zora',
-  'worldchain'
+  'worldchain',
 ];
 export const uniswapClmmNetworks = [
   'mainnet',
@@ -42,7 +42,7 @@ export const uniswapClmmNetworks = [
   'polygon',
   'blast',
   'zora',
-  'worldchain'
+  'worldchain',
 ];
 
 export namespace UniswapConfig {

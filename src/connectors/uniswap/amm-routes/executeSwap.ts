@@ -11,12 +11,13 @@ import {
 } from '../../../schemas/trading-types/swap-schema';
 import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
-import { formatTokenAmount } from '../uniswap.utils';
-import { getUniswapAmmQuote } from './quoteSwap';
-import { 
+import {
   getUniswapV2RouterAddress,
-  IUniswapV2Router02ABI 
+  IUniswapV2Router02ABI,
 } from '../uniswap.contracts';
+import { formatTokenAmount } from '../uniswap.utils';
+
+import { getUniswapAmmQuote } from './quoteSwap';
 
 export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
   // Import the httpErrors plugin to ensure it's available
@@ -112,7 +113,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         // Get quote using the shared quote function - this eliminates duplication
-        const { quote, ethereum, baseTokenObj, quoteTokenObj } = 
+        const { quote, ethereum, baseTokenObj, quoteTokenObj } =
           await getUniswapAmmQuote(
             fastify,
             networkToUse,
@@ -172,7 +173,11 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
 
         // Get Router02 contract
         const routerAddress = getUniswapV2RouterAddress(networkToUse);
-        const routerContract = new Contract(routerAddress, IUniswapV2Router02ABI.abi, wallet);
+        const routerContract = new Contract(
+          routerAddress,
+          IUniswapV2Router02ABI.abi,
+          wallet,
+        );
 
         logger.info(`Executing swap using Router02:`);
         logger.info(`Router address: ${routerAddress}`);
@@ -191,7 +196,8 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           quote.inputToken.decimals,
         );
 
-        const amountNeeded = side === 'SELL' ? quote.rawAmountIn : quote.rawMaxAmountIn;
+        const amountNeeded =
+          side === 'SELL' ? quote.rawAmountIn : quote.rawMaxAmountIn;
         const currentAllowance = BigNumber.from(allowance.value);
 
         logger.info(
@@ -233,7 +239,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
             deadline,
             {
               gasLimit: 300000,
-            }
+            },
           );
         } else {
           // swapTokensForExactTokens - we know the exact output amount
@@ -251,7 +257,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
             deadline,
             {
               gasLimit: 300000,
-            }
+            },
           );
         }
 
@@ -310,9 +316,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           );
         }
         if (error.receipt) {
-          logger.debug(
-            `Transaction receipt: ${JSON.stringify(error.receipt)}`,
-          );
+          logger.debug(`Transaction receipt: ${JSON.stringify(error.receipt)}`);
         }
 
         // Check if this is already a fastify error
@@ -322,7 +326,9 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
 
         // Provide more detailed error messages for common issues
         const errorMessage = error.reason || error.message;
-        throw fastify.httpErrors.internalServerError(`Failed to execute swap: ${errorMessage}`);
+        throw fastify.httpErrors.internalServerError(
+          `Failed to execute swap: ${errorMessage}`,
+        );
       }
     },
   );

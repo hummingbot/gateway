@@ -17,22 +17,25 @@ const TEST_WALLET = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
 jest.mock('axios');
 jest.mock('../../../src/chains/ethereum/routes/wrap', () => {
   return {
-    wrapEthereum: jest.fn().mockImplementation(async (fastify, network, walletAddress, amount) => {
-      return {
-        txHash: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
-        nonce: 123,
-        fee: '0.0001',
-        amount: amount,
-        wrappedAddress: '0x4200000000000000000000000000000000000006', // Base WETH address
-        nativeToken: 'ETH',
-        wrappedToken: 'WETH',
-        tx: {
-          data: '0x',
-          to: '0x4200000000000000000000000000000000000006',
-          value: '1000000000000000000', // 1 ETH in wei
-        }
-      };
-    })
+    wrapEthereum: jest
+      .fn()
+      .mockImplementation(async (fastify, network, walletAddress, amount) => {
+        return {
+          txHash:
+            '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+          nonce: 123,
+          fee: '0.0001',
+          amount: amount,
+          wrappedAddress: '0x4200000000000000000000000000000000000006', // Base WETH address
+          nativeToken: 'ETH',
+          wrappedToken: 'WETH',
+          tx: {
+            data: '0x',
+            to: '0x4200000000000000000000000000000000000006',
+            value: '1000000000000000000', // 1 ETH in wei
+          },
+        };
+      }),
   };
 });
 
@@ -123,14 +126,18 @@ describe('Uniswap CLMM ETH to WETH Wrapping Tests', () => {
 
       // Validate the response
       expect(response.status).toBe(200);
-      
+
       // Check that the signature includes both wrap and swap transaction hashes
       expect(response.data.signature).toContain('swap:');
       expect(response.data.signature).toContain('wrap:');
-      
+
       // Verify swap amounts are correct
-      expect(response.data.totalInputSwapped).toBe(quoteResponse.estimatedAmountIn);
-      expect(response.data.totalOutputSwapped).toBe(quoteResponse.estimatedAmountOut);
+      expect(response.data.totalInputSwapped).toBe(
+        quoteResponse.estimatedAmountIn,
+      );
+      expect(response.data.totalOutputSwapped).toBe(
+        quoteResponse.estimatedAmountOut,
+      );
 
       // Verify axios was called with correct parameters
       expect(axios.post).toHaveBeenCalledWith(
@@ -151,11 +158,16 @@ describe('Uniswap CLMM ETH to WETH Wrapping Tests', () => {
       // This is a more advanced test that requires accessing the implementation directly
       const executeSwapHandler = async (req, res) => {
         // Mock a successful execution with ETH wrapping
-        const wrapAmount = '1.0';  // 1 ETH
-        
+        const wrapAmount = '1.0'; // 1 ETH
+
         // Call the wrapEthereum function (this will use our mock)
-        const wrapResult = await wrapEthereum({}, NETWORK, TEST_WALLET, wrapAmount);
-        
+        const wrapResult = await wrapEthereum(
+          {},
+          NETWORK,
+          TEST_WALLET,
+          wrapAmount,
+        );
+
         // Create a mock swap result that includes the wrap transaction
         return {
           signature: `swap:0x9876543210abcdef,wrap:${wrapResult.txHash}`,
@@ -166,7 +178,7 @@ describe('Uniswap CLMM ETH to WETH Wrapping Tests', () => {
           quoteTokenBalanceChange: 1800.0,
         };
       };
-      
+
       // Mock axios to use our handler
       axios.post.mockImplementationOnce(async (url, data) => {
         const response = await executeSwapHandler(data);
@@ -194,9 +206,9 @@ describe('Uniswap CLMM ETH to WETH Wrapping Tests', () => {
         expect.anything(),
         NETWORK,
         TEST_WALLET,
-        expect.any(String)
+        expect.any(String),
       );
-      
+
       // Validate the response contains the wrapped transaction hash
       expect(response.data.signature).toContain('wrap:0x1234567890abcdef');
     });

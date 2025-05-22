@@ -299,7 +299,11 @@ export const IQuoterV2ABI = [
     outputs: [
       { internalType: 'uint256', name: 'amountOut', type: 'uint256' },
       { internalType: 'uint160', name: 'sqrtPriceX96After', type: 'uint160' },
-      { internalType: 'uint32', name: 'initializedTicksCrossed', type: 'uint32' },
+      {
+        internalType: 'uint32',
+        name: 'initializedTicksCrossed',
+        type: 'uint32',
+      },
       { internalType: 'uint256', name: 'gasEstimate', type: 'uint256' },
     ],
     stateMutability: 'nonpayable',
@@ -317,7 +321,11 @@ export const IQuoterV2ABI = [
     outputs: [
       { internalType: 'uint256', name: 'amountIn', type: 'uint256' },
       { internalType: 'uint160', name: 'sqrtPriceX96After', type: 'uint160' },
-      { internalType: 'uint32', name: 'initializedTicksCrossed', type: 'uint32' },
+      {
+        internalType: 'uint32',
+        name: 'initializedTicksCrossed',
+        type: 'uint32',
+      },
       { internalType: 'uint256', name: 'gasEstimate', type: 'uint256' },
     ],
     stateMutability: 'nonpayable',
@@ -338,8 +346,16 @@ export const ISwapRouter02ABI = [
           { internalType: 'uint24', name: 'fee', type: 'uint24' },
           { internalType: 'address', name: 'recipient', type: 'address' },
           { internalType: 'uint256', name: 'amountIn', type: 'uint256' },
-          { internalType: 'uint256', name: 'amountOutMinimum', type: 'uint256' },
-          { internalType: 'uint160', name: 'sqrtPriceLimitX96', type: 'uint160' },
+          {
+            internalType: 'uint256',
+            name: 'amountOutMinimum',
+            type: 'uint256',
+          },
+          {
+            internalType: 'uint160',
+            name: 'sqrtPriceLimitX96',
+            type: 'uint160',
+          },
         ],
         internalType: 'struct IV3SwapRouter.ExactInputSingleParams',
         name: 'params',
@@ -361,7 +377,11 @@ export const ISwapRouter02ABI = [
           { internalType: 'address', name: 'recipient', type: 'address' },
           { internalType: 'uint256', name: 'amountOut', type: 'uint256' },
           { internalType: 'uint256', name: 'amountInMaximum', type: 'uint256' },
-          { internalType: 'uint160', name: 'sqrtPriceLimitX96', type: 'uint160' },
+          {
+            internalType: 'uint160',
+            name: 'sqrtPriceLimitX96',
+            type: 'uint160',
+          },
         ],
         internalType: 'struct IV3SwapRouter.ExactOutputSingleParams',
         name: 'params',
