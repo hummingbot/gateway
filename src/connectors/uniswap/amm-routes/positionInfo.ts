@@ -232,6 +232,9 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
         const price = quoteTokenAmountFloat / baseTokenAmountFloat;
 
         // Format for response
+        logger.info(`Raw LP balance: ${lpBalance.toString()}`);
+        logger.info(`Total supply: ${totalSupply.toString()}`);
+
         const formattedLpAmount = formatTokenAmount(lpBalance.toString(), 18); // LP tokens have 18 decimals
         const formattedBaseAmount = formatTokenAmount(
           userBaseTokenAmount.toString(),
@@ -241,6 +244,10 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
           userQuoteTokenAmount.toString(),
           quoteTokenObj.decimals,
         );
+
+        logger.info(`Formatted LP amount: ${formattedLpAmount}`);
+        logger.info(`Formatted base amount: ${formattedBaseAmount}`);
+        logger.info(`Formatted quote amount: ${formattedQuoteAmount}`);
 
         return {
           poolAddress,
