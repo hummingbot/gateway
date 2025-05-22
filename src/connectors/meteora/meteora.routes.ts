@@ -1,29 +1,29 @@
-import type { FastifyPluginAsync } from 'fastify';
 import sensible from '@fastify/sensible';
+import type { FastifyPluginAsync } from 'fastify';
 
+import { addLiquidityRoute } from './clmm-routes/addLiquidity';
+import { closePositionRoute } from './clmm-routes/closePosition';
+import { collectFeesRoute } from './clmm-routes/collectFees';
+import { executeSwapRoute } from './clmm-routes/executeSwap';
 import { fetchPoolsRoute } from './clmm-routes/fetchPools';
+import { openPositionRoute } from './clmm-routes/openPosition';
 import { poolInfoRoute } from './clmm-routes/poolInfo';
+import { positionInfoRoute } from './clmm-routes/positionInfo';
 import { positionsOwnedRoute } from './clmm-routes/positionsOwned';
 import { quoteSwapRoute } from './clmm-routes/quoteSwap';
-import { positionInfoRoute } from './clmm-routes/positionInfo';
-import { executeSwapRoute } from './clmm-routes/executeSwap';
-import { openPositionRoute } from './clmm-routes/openPosition';
-import { addLiquidityRoute } from './clmm-routes/addLiquidity';
 import { removeLiquidityRoute } from './clmm-routes/removeLiquidity';
-import { collectFeesRoute } from './clmm-routes/collectFees';
-import { closePositionRoute } from './clmm-routes/closePosition';
 
 // CLMM routes including swap endpoints
 const meteoraClmmRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(sensible);
-  
+
   await fastify.register(async (instance) => {
     instance.addHook('onRoute', (routeOptions) => {
       if (routeOptions.schema && routeOptions.schema.tags) {
         routeOptions.schema.tags = ['meteora/clmm'];
       }
     });
-    
+
     await instance.register(fetchPoolsRoute);
     await instance.register(poolInfoRoute);
     await instance.register(positionsOwnedRoute);
@@ -40,7 +40,7 @@ const meteoraClmmRoutes: FastifyPluginAsync = async (fastify) => {
 
 // Export the CLMM routes
 export const meteoraRoutes = {
-  clmm: meteoraClmmRoutes
+  clmm: meteoraClmmRoutes,
 };
 
-export default meteoraRoutes; 
+export default meteoraRoutes;

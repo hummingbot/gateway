@@ -1,19 +1,19 @@
 import { gatewayApp } from '../../src/app';
-import { patch, unpatch } from '../services/patch';
 import { Ethereum } from '../../src/chains/ethereum/ethereum';
 import { ConfigManagerCertPassphrase } from '../../src/services/config-manager-cert-passphrase';
-import { GetWalletResponse } from '../../src/wallet/wallet.routes';
+import { GetWalletResponse } from '../../src/wallet/schemas';
+import { patch, unpatch } from '../services/patch';
 
 let eth: Ethereum;
 
 beforeAll(async () => {
   patch(ConfigManagerCertPassphrase, 'readPassphrase', () => 'a');
-  eth = Ethereum.getInstance('sepolia');
+  eth = await Ethereum.getInstance('sepolia');
   await gatewayApp.ready();
 });
 
 beforeEach(() =>
-  patch(ConfigManagerCertPassphrase, 'readPassphrase', () => 'a')
+  patch(ConfigManagerCertPassphrase, 'readPassphrase', () => 'a'),
 );
 
 afterAll(async () => {
@@ -68,8 +68,7 @@ describe('POST /wallet/add', () => {
       payload: {
         privateKey: twoPrivateKey,
         chain: 'ethereum',
-        network: 'sepolia',
-      }
+      },
     });
 
     expect(response.statusCode).toBe(200);
@@ -96,8 +95,7 @@ describe('DELETE /wallet/remove', () => {
       payload: {
         privateKey: twoPrivateKey,
         chain: 'ethereum',
-        network: 'sepolia',
-      }
+      },
     });
 
     // Then delete it
@@ -107,7 +105,7 @@ describe('DELETE /wallet/remove', () => {
       payload: {
         address: twoAddress,
         chain: 'ethereum',
-      }
+      },
     });
 
     expect(response.statusCode).toBe(200);
@@ -118,9 +116,9 @@ describe('DELETE /wallet/remove', () => {
     const response = await gatewayApp.inject({
       method: 'DELETE',
       url: '/wallet/delete',
-      payload: {}
+      payload: {},
     });
-    
+
     expect(response.statusCode).toBe(404);
   });
 });
@@ -144,14 +142,13 @@ describe('GET /wallet', () => {
       payload: {
         privateKey: twoPrivateKey,
         chain: 'ethereum',
-        network: 'sepolia',
-      }
+      },
     });
 
     // Then get wallets
     const response = await gatewayApp.inject({
       method: 'GET',
-      url: '/wallet'
+      url: '/wallet',
     });
 
     expect(response.statusCode).toBe(200);
@@ -162,6 +159,8 @@ describe('GET /wallet', () => {
       .filter((wallet) => wallet.chain === 'ethereum')
       .map((wallet) => wallet.walletAddresses);
 
-    expect(addresses[0]).toContain(twoAddress);
+    // Use case-insensitive comparison for Ethereum addresses
+    const lowerCaseAddresses = addresses[0].map((addr) => addr.toLowerCase());
+    expect(lowerCaseAddresses).toContain(twoAddress.toLowerCase());
   });
 });

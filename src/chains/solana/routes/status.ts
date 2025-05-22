@@ -1,11 +1,17 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
-import { Solana } from '../solana';
+
+import {
+  StatusRequestType,
+  StatusResponseType,
+  StatusRequestSchema,
+  StatusResponseSchema,
+} from '../../../schemas/chain-schema';
 import { logger } from '../../../services/logger';
-import { StatusRequestType, StatusResponseType, StatusRequestSchema, StatusResponseSchema } from '../../../schemas/chain-schema';
+import { Solana } from '../solana';
 
 export async function getSolanaStatus(
   fastify: FastifyInstance,
-  network: string
+  network: string,
 ): Promise<StatusResponseType> {
   try {
     const solana = await Solana.getInstance(network);
@@ -13,17 +19,19 @@ export async function getSolanaStatus(
     const rpcUrl = solana.config.network.nodeURL;
     const nativeCurrency = solana.config.network.nativeCurrencySymbol;
     const currentBlockNumber = await solana.getCurrentBlockNumber();
-    
+
     return {
       chain,
       network,
       rpcUrl,
       currentBlockNumber,
-      nativeCurrency
+      nativeCurrency,
     };
   } catch (error) {
     logger.error(`Error getting Solana status: ${error.message}`);
-    throw fastify.httpErrors.internalServerError(`Failed to get Solana status: ${error.message}`);
+    throw fastify.httpErrors.internalServerError(
+      `Failed to get Solana status: ${error.message}`,
+    );
   }
 }
 
@@ -41,18 +49,18 @@ export const statusRoute: FastifyPluginAsync = async (fastify) => {
           ...StatusRequestSchema,
           properties: {
             ...StatusRequestSchema.properties,
-            network: { type: 'string', examples: ['mainnet-beta', 'devnet'] }
-          }
+            network: { type: 'string', examples: ['mainnet-beta', 'devnet'] },
+          },
         },
         response: {
-          200: StatusResponseSchema
-        }
-      }
+          200: StatusResponseSchema,
+        },
+      },
     },
     async (request) => {
       const { network } = request.query;
       return await getSolanaStatus(fastify, network);
-    }
+    },
   );
 };
 

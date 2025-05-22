@@ -1,0 +1,57 @@
+[
+  {
+    "validResponse": {
+      "address": "CS2H8nbAVVEUHWPF5extCSymqheQdkd4d7thik6eet9N",
+      "baseTokenAddress": "So11111111111111111111111111111111111111112",
+      "quoteTokenAddress": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "feePct": 0.25,
+      "price": 30.0,
+      "baseTokenAmount": 1000.0,
+      "quoteTokenAmount": 30000.0,
+      "lpMint": {
+        "address": "8HoQnePLqPj4M7PUDzfw8e3Ymdwgc7NLGnaTUapubyvu",
+        "decimals": 9
+      }
+    },
+    "invalidResponse": {
+      "address": "CS2H8nbAVVEUHWPF5extCSymqheQdkd4d7thik6eet9N",
+      "baseTokenAddress": "So11111111111111111111111111111111111111112",
+      "quoteTokenAddress": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "feePct": "0.25",
+      "price": 30.0,
+      "baseTokenAmount": 1000.0,
+      "quoteTokenAmount": 30000.0,
+      "lpMint": {
+        "address": "8HoQnePLqPj4M7PUDzfw8e3Ymdwgc7NLGnaTUapubyvu",
+        "decimals": 9
+      }
+    }
+  },
+  {
+    "validResponse": {
+      "address": "CS2H8nbAVVEUHWPF5extCSymqheQdkd4d7thik6eet9N",
+      "baseTokenAddress": "So11111111111111111111111111111111111111112",
+      "quoteTokenAddress": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "feePct": 0.25,
+      "price": 30.0,
+      "baseTokenAmount": 1000.0,
+      "quoteTokenAmount": 30000.0,
+      "lpMint": {
+        "address": "8HoQnePLqPj4M7PUDzfw8e3Ymdwgc7NLGnaTUapubyvu",
+        "decimals": 9
+      }
+    },
+    "invalidResponse": {
+      "address": "CS2H8nbAVVEUHWPF5extCSymqheQdkd4d7thik6eet9N",
+      "baseTokenAddress": "So11111111111111111111111111111111111111112",
+      "quoteTokenAddress": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "feePct": 0.25,
+      "price": 30.0,
+      "baseTokenAmount": 1000.0,
+      "quoteTokenAmount": 30000.0,
+      "lpMint": {
+        "address": "8HoQnePLqPj4M7PUDzfw8e3Ymdwgc7NLGnaTUapubyvu"
+      }
+    }
+  }
+]

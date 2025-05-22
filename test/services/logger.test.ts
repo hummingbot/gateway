@@ -1,9 +1,7 @@
 import winston from 'winston';
+
 import { ConfigManagerV2 } from '../../src/services/config-manager-v2';
-import {
-  logger,
-  updateLoggerToStdout,
-} from '../../src/services/logger';
+import { logger, updateLoggerToStdout } from '../../src/services/logger';
 
 describe('Test logger', () => {
   it('updateLoggerToStdout works', (done) => {

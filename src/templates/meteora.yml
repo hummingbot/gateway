@@ -1,5 +1,5 @@
-# how much the execution price is allowed to move unfavorably from the trade
-# execution price. It uses a rational number for precision.
+# Global settings for Meteora
+# how much the execution price is allowed to move unfavorably
 allowedSlippage: '1/100'
 
 # default DLMM strategy type for positions
@@ -11,9 +11,25 @@ allowedSlippage: '1/100'
 # BidAskBalanced = 5
 strategyType: 0
 
-# predefined pools
-pools:
-  SOL-USDC: '5rCf1DM8LjKTw4YqhnoLcngyZYeNnQqztScTogYHAS6'
-  TRUMP-USDC: '9d9mb8kooFfaD3SctgZtkxQypkshx6ezhbKio89ixyy2'
-  JITOSOL-SOL: 'BoeMUkCLHchTD31HdXsbDExuZZfcUppSLpYtV3LZTH6U'
-  USDT-USDC: 'ARwi1S4DaiTG5DX7S4M4ZsrXqpMD1MrTmbu9ue2tpmEq'
+# Network-specific pool configurations
+networks:
+  # Solana mainnet pools
+  mainnet-beta:
+    # CLMM (Meteora DLMM) pools for Solana mainnet
+    clmm:
+      # Format: base-quote: pool_address
+      SOL-USDC: '5rCf1DM8LjKTw4YqhnoLcngyZYeNnQqztScTogYHAS6'
+      TRUMP-USDC: '9d9mb8kooFfaD3SctgZtkxQypkshx6ezhbKio89ixyy2'
+      JITOSOL-SOL: 'BoeMUkCLHchTD31HdXsbDExuZZfcUppSLpYtV3LZTH6U'
+      USDT-USDC: 'ARwi1S4DaiTG5DX7S4M4ZsrXqpMD1MrTmbu9ue2tpmEq'
+    
+    # AMM pools (to be implemented)
+    amm: {}
+  
+  # Solana devnet pools
+  devnet:
+    # CLMM (Meteora DLMM) pools for Solana devnet
+    clmm: {}
+    
+    # AMM pools (to be implemented)
+    amm: {}

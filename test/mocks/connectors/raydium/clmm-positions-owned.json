@@ -1,0 +1,30 @@
+[
+  {
+    "validResponse": {
+      "positions": [
+        {
+          "address": "5RhWqrZqBuT32N7uCwVxPqKQUUEsEQf9PyNQsjySBTKn",
+          "poolAddress": "7quzvT3yBcbxLMGxbvHBwrXuUeN5xHPGUXUm6eKwLMsW",
+          "lowerBinId": 205500,
+          "upperBinId": 206100
+        },
+        {
+          "address": "9RwDGSM1fWvKBD7iLDQWWTTPaeXhRPcr7jXJeXBbCFXs",
+          "poolAddress": "7quzvT3yBcbxLMGxbvHBwrXuUeN5xHPGUXUm6eKwLMsW",
+          "lowerBinId": 205700,
+          "upperBinId": 205900
+        }
+      ]
+    },
+    "invalidResponse": {
+      "positions": [
+        {
+          "address": "5RhWqrZqBuT32N7uCwVxPqKQUUEsEQf9PyNQsjySBTKn",
+          "poolAddress": "7quzvT3yBcbxLMGxbvHBwrXuUeN5xHPGUXUm6eKwLMsW",
+          "lowerBinId": "205500",
+          "upperBinId": 206100
+        }
+      ]
+    }
+  }
+]
