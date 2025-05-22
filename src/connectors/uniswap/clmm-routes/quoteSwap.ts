@@ -131,6 +131,12 @@ async function quoteClmmSwap(
       inputToken,
       outputToken,
       trade,
+      // Add raw values for execution
+      rawAmountIn: trade.inputAmount.quotient.toString(),
+      rawAmountOut: trade.outputAmount.quotient.toString(),
+      rawMinAmountOut: minAmountOut,
+      rawMaxAmountIn: maxAmountIn,
+      feeTier: pool.fee,
     };
   } catch (error) {
     logger.error(`Error quoting CLMM swap: ${error.message}`);
@@ -291,6 +297,9 @@ async function formatSwapQuote(
 }
 
 export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
+  // Import the httpErrors plugin to ensure it's available
+  await fastify.register(require('@fastify/sensible'));
+
   fastify.get<{
     Querystring: GetSwapQuoteRequestType;
     Reply: GetSwapQuoteResponseType;
