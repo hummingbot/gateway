@@ -138,8 +138,78 @@ async function quoteClmmSwap(
   }
 }
 
-async function formatSwapQuote(
+export async function getUniswapClmmQuote(
   _fastify: FastifyInstance,
+  network: string,
+  poolAddress: string,
+  baseToken: string,
+  quoteToken: string,
+  amount: number,
+  side: 'BUY' | 'SELL',
+  slippagePct?: number,
+): Promise<{
+  quote: any;
+  uniswap: any;
+  ethereum: any;
+  baseTokenObj: any;
+  quoteTokenObj: any;
+}> {
+  // Get instances
+  const uniswap = await Uniswap.getInstance(network);
+  const ethereum = await Ethereum.getInstance(network);
+
+  if (!ethereum.ready()) {
+    logger.info('Ethereum instance not ready, initializing...');
+    await ethereum.init();
+  }
+
+  // Resolve tokens
+  const baseTokenObj = uniswap.getTokenBySymbol(baseToken);
+  const quoteTokenObj = uniswap.getTokenBySymbol(quoteToken);
+
+  if (!baseTokenObj) {
+    logger.error(`Base token not found: ${baseToken}`);
+    throw new Error(`Base token not found: ${baseToken}`);
+  }
+
+  if (!quoteTokenObj) {
+    logger.error(`Quote token not found: ${quoteToken}`);
+    throw new Error(`Quote token not found: ${quoteToken}`);
+  }
+
+  logger.info(
+    `Base token: ${baseTokenObj.symbol}, address=${baseTokenObj.address}, decimals=${baseTokenObj.decimals}`,
+  );
+  logger.info(
+    `Quote token: ${quoteTokenObj.symbol}, address=${quoteTokenObj.address}, decimals=${quoteTokenObj.decimals}`,
+  );
+
+  // Get the quote
+  const quote = await quoteClmmSwap(
+    uniswap,
+    poolAddress,
+    baseTokenObj,
+    quoteTokenObj,
+    amount,
+    side as 'BUY' | 'SELL',
+    slippagePct,
+  );
+
+  if (!quote) {
+    throw new Error('Failed to get swap quote');
+  }
+
+  return {
+    quote,
+    uniswap,
+    ethereum,
+    baseTokenObj,
+    quoteTokenObj,
+  };
+}
+
+async function formatSwapQuote(
+  fastify: FastifyInstance,
   network: string,
   poolAddress: string,
   baseToken: string,
@@ -153,53 +223,18 @@ async function formatSwapQuote(
   );
 
   try {
-    // Get instances
-    const uniswap = await Uniswap.getInstance(network);
-    const ethereum = await Ethereum.getInstance(network);
-
-    // Instances are always ready with new getInstance pattern
-    // No need to check ready() or call init()
-
-    if (!ethereum.ready()) {
-      logger.info('Ethereum instance not ready, initializing...');
-      await ethereum.init();
-    }
-
-    // Resolve tokens
-    const baseTokenObj = uniswap.getTokenBySymbol(baseToken);
-    const quoteTokenObj = uniswap.getTokenBySymbol(quoteToken);
-
-    if (!baseTokenObj) {
-      logger.error(`Base token not found: ${baseToken}`);
-      throw new Error(`Base token not found: ${baseToken}`);
-    }
-
-    if (!quoteTokenObj) {
-      logger.error(`Quote token not found: ${quoteToken}`);
-      throw new Error(`Quote token not found: ${quoteToken}`);
-    }
-
-    logger.info(
-      `Base token: ${baseTokenObj.symbol}, address=${baseTokenObj.address}, decimals=${baseTokenObj.decimals}`,
-    );
-    logger.info(
-      `Quote token: ${quoteTokenObj.symbol}, address=${quoteTokenObj.address}, decimals=${quoteTokenObj.decimals}`,
-    );
-
-    // Get the quote
-    const quote = await quoteClmmSwap(
-      uniswap,
-      poolAddress,
-      baseTokenObj,
-      quoteTokenObj,
-      amount,
-      side as 'BUY' | 'SELL',
-      slippagePct,
-    );
-
-    if (!quote) {
-      throw new Error('Failed to get swap quote');
-    }
+    // Use the extracted quote function
+    const { quote, uniswap, ethereum, baseTokenObj, quoteTokenObj } =
+      await getUniswapClmmQuote(
+        fastify,
+        network,
+        poolAddress,
+        baseToken,
+        quoteToken,
+        amount,
+        side,
+        slippagePct,
+      );
 
     logger.info(
       `Quote result: estimatedAmountIn=${quote.estimatedAmountIn}, estimatedAmountOut=${quote.estimatedAmountOut}`,

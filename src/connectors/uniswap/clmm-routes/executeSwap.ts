@@ -19,6 +19,7 @@ import {
 import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
 import { formatTokenAmount } from '../uniswap.utils';
+import { getUniswapClmmQuote } from './quoteSwap';
 
 
 export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
@@ -84,14 +85,11 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           throw fastify.httpErrors.badRequest('Missing required parameters');
         }
 
-        // Get Uniswap and Ethereum instances
-        const uniswap = await Uniswap.getInstance(networkToUse);
-        const ethereum = await Ethereum.getInstance(networkToUse);
-
         // Get wallet address - either from request or first available
         let walletAddress = requestedWalletAddress;
         if (!walletAddress) {
-          walletAddress = await uniswap.getFirstWalletAddress();
+          const ethereum = await Ethereum.getInstance(networkToUse);
+          walletAddress = await ethereum.getFirstWalletAddress();
           if (!walletAddress) {
             throw fastify.httpErrors.badRequest(
               'No wallet address provided and no default wallet found',
@@ -100,17 +98,8 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           logger.info(`Using first available wallet address: ${walletAddress}`);
         }
 
-        // Resolve tokens
-        const baseTokenObj = uniswap.getTokenBySymbol(baseToken);
-        const quoteTokenObj = uniswap.getTokenBySymbol(quoteToken);
-
-        if (!baseTokenObj || !quoteTokenObj) {
-          throw fastify.httpErrors.badRequest(
-            `Token not found: ${!baseTokenObj ? baseToken : quoteToken}`,
-          );
-        }
-
         // Find pool address if not provided
+        const uniswap = await Uniswap.getInstance(networkToUse);
         let poolAddress = requestedPoolAddress;
         if (!poolAddress) {
           poolAddress = await uniswap.findDefaultPool(
@@ -126,59 +115,40 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           }
         }
 
+        // Get quote using the shared quote function - this eliminates duplication
+        const { quote, ethereum, baseTokenObj, quoteTokenObj } = 
+          await getUniswapClmmQuote(
+            fastify,
+            networkToUse,
+            poolAddress,
+            baseToken,
+            quoteToken,
+            amount,
+            side as 'BUY' | 'SELL',
+            slippagePct,
+          );
+
         // Get the wallet
         const wallet = await ethereum.getWallet(walletAddress);
         if (!wallet) {
           throw fastify.httpErrors.badRequest('Wallet not found');
         }
 
-        // We don't use feeTier anymore from request parameters
-        // Get the V3 pool
-        const pool = await uniswap.getV3Pool(
-          baseTokenObj,
-          quoteTokenObj,
-          undefined,
-          poolAddress,
-        );
-        if (!pool) {
-          throw fastify.httpErrors.notFound(
-            `Pool not found for ${baseToken}-${quoteToken}`,
-          );
-        }
-
-        // Determine which token is being traded
-        const exactIn = side === 'SELL';
-        const [originalInputToken, originalOutputToken] = exactIn
-          ? [baseTokenObj, quoteTokenObj]
-          : [quoteTokenObj, baseTokenObj];
-
-        // Convert amount to token units with decimals
-        const originalInputAmount = CurrencyAmount.fromRawAmount(
-          originalInputToken,
-          JSBI.BigInt(
-            Math.floor(
-              amount * Math.pow(10, originalInputToken.decimals),
-            ).toString(),
-          ),
-        );
-
-        // Handle ETH->WETH wrapping if needed (reuse helper from AMM)
+        // Extract trade and token information from quote
+        const { trade, inputToken, outputToken } = quote;
         let wrapTxHash = null;
-        let actualInputToken = originalInputToken;
-        let actualOutputToken = originalOutputToken;
-        let actualInputAmount = originalInputAmount;
+        let actualInputToken = inputToken;
+        let actualOutputToken = outputToken;
 
-        // If user inputs ETH, wrap it to WETH first
-        if (originalInputToken.symbol === 'ETH') {
+        // Handle ETH->WETH wrapping if needed
+        if (inputToken.symbol === 'ETH') {
           const wethToken = uniswap.getTokenBySymbol('WETH');
-
           if (!wethToken) {
             throw new Error('WETH token not found');
           }
 
-          // Convert the amount to ETH string for wrapping
           const amountInEth = formatTokenAmount(
-            originalInputAmount.quotient.toString(),
+            trade.inputAmount.quotient.toString(),
             18,
           ).toString();
 
@@ -193,66 +163,29 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
             amountInEth,
           );
           wrapTxHash = wrapResult.txHash;
-
-          // Update to use WETH instead of ETH
           actualInputToken = wethToken;
-          actualInputAmount = CurrencyAmount.fromRawAmount(
-            wethToken,
-            JSBI.BigInt(originalInputAmount.quotient.toString()),
-          );
 
           logger.info(
             `Successfully wrapped ${amountInEth} ETH to WETH, transaction hash: ${wrapTxHash}`,
           );
         }
 
-        // If user wants ETH as output, use WETH instead (they can unwrap later if needed)
-        if (originalOutputToken.symbol === 'ETH') {
+        // If user wants ETH as output, we're already using WETH from quote
+        if (outputToken.symbol === 'ETH') {
           const wethToken = uniswap.getTokenBySymbol('WETH');
-
           if (!wethToken) {
             throw new Error('WETH token not found');
           }
-
           actualOutputToken = wethToken;
           logger.info('ETH detected as output token, will use WETH instead');
         }
 
-        // Get the V3 pool with actual tokens (after potential WETH conversion)
-        const actualPool = await uniswap.getV3Pool(
-          actualInputToken,
-          actualOutputToken,
-          undefined,
-          poolAddress,
-        );
-        if (!actualPool) {
-          throw fastify.httpErrors.notFound(
-            `Pool not found for ${actualInputToken.symbol}-${actualOutputToken.symbol}`,
-          );
-        }
-
-        // Create a route for the trade with actual tokens
-        const route = new V3Route(
-          [actualPool],
-          actualInputToken,
-          actualOutputToken,
-        );
-
-        // Create the V3 trade
-        const trade = await V3Trade.fromRoute(
-          route,
-          actualInputAmount,
-          exactIn ? TradeType.EXACT_INPUT : TradeType.EXACT_OUTPUT,
-        );
-
-        // Calculate slippage-adjusted amounts
-        // Convert slippagePct to integer basis points (0.5% -> 50 basis points)
+        // Get swap parameters for V3 swap from the trade
         const slippageTolerance =
           slippagePct !== undefined
             ? new Percent(Math.floor(slippagePct * 100), 10000)
             : uniswap.getAllowedSlippage();
 
-        // Get swap parameters for V3 swap
         const routerSwapParams = SwapRouter.swapCallParameters(trade, {
           slippageTolerance,
           recipient: walletAddress,
@@ -281,7 +214,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         const amountNeeded =
           routerSwapParams.value && routerSwapParams.value !== '0'
             ? BigNumber.from(routerSwapParams.value)
-            : BigNumber.from(actualInputAmount.quotient.toString());
+            : BigNumber.from(trade.inputAmount.quotient.toString());
 
         const currentAllowance = BigNumber.from(allowance.value);
 
@@ -314,17 +247,15 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         const { value, calldata } = routerSwapParams;
 
         // Get the exact path from the trade to debug
-        const pathAddresses = trade.swaps[0].route.tokenPath.map(
-          (t) => t.address,
-        );
+        const pathAddresses = trade.swaps[0].route.tokenPath.map(t => t.address);
         const pathDescription = pathAddresses.join(' → ');
         logger.info(`Executing swap with path: ${pathDescription}`);
-        logger.info(`Fee amount used: ${actualPool.fee}`);
+        logger.info(`Fee amount used: ${trade.swaps[0].route.pools[0].fee}`);
         logger.info(
           `Swap call to: ${uniswap.config.uniswapV3SmartOrderRouterAddress(networkToUse)}`,
         );
         logger.info(
-          `Input amount: ${actualInputAmount.toSignificant(6)} ${actualInputToken.symbol}`,
+          `Input amount: ${trade.inputAmount.toSignificant(6)} ${actualInputToken.symbol}`,
         );
         logger.info(
           `Expected output: ${trade.outputAmount.toSignificant(6)} ${actualOutputToken.symbol}`,
@@ -358,7 +289,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
 
           // Calculate amounts for input and output using actual tokens
           const totalInputSwapped = formatTokenAmount(
-            actualInputAmount.quotient.toString(),
+            trade.inputAmount.quotient.toString(),
             actualInputToken.decimals,
           );
 
@@ -366,8 +297,6 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
             trade.outputAmount.quotient.toString(),
             actualOutputToken.decimals,
           );
-
-          // formatTokenAmount already returns numbers, so no conversion needed
 
           // Calculate balance changes as numbers
           const baseTokenBalanceChange =
