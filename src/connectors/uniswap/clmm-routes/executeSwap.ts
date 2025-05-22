@@ -1,15 +1,11 @@
-import { Contract } from '@ethersproject/contracts';
 import { Token, CurrencyAmount, Percent, TradeType } from '@uniswap/sdk-core';
 import {
-  Pool as V3Pool,
   SwapRouter,
   Route as V3Route,
   Trade as V3Trade,
-  MethodParameters,
-  FeeAmount,
 } from '@uniswap/v3-sdk';
-import { BigNumber, utils } from 'ethers';
-import { FastifyInstance, FastifyPluginAsync } from 'fastify';
+import { BigNumber } from 'ethers';
+import { FastifyPluginAsync } from 'fastify';
 import JSBI from 'jsbi';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
@@ -22,63 +18,8 @@ import {
 } from '../../../schemas/trading-types/swap-schema';
 import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
-import { formatTokenAmount, parseFeeTier } from '../uniswap.utils';
+import { formatTokenAmount } from '../uniswap.utils';
 
-// Define a minimal ABI for ERC20 tokens
-const ERC20_ABI = [
-  {
-    constant: false,
-    inputs: [
-      { name: '_spender', type: 'address' },
-      { name: '_value', type: 'uint256' },
-    ],
-    name: 'approve',
-    outputs: [{ name: '', type: 'bool' }],
-    payable: false,
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-];
-
-/**
- * Helper function to handle ETH to WETH wrapping when needed
- * Uses the existing wrapping functionality from wrap.ts
- */
-async function handleWethWrapping(
-  fastify: FastifyInstance,
-  network: string,
-  walletAddress: string,
-  inputToken: Token,
-  amountInEth: string,
-): Promise<string | null> {
-  // Check if input token is WETH
-  if (inputToken.symbol === 'WETH') {
-    try {
-      logger.info(
-        `WETH detected as input token, checking if wrapping is needed`,
-      );
-
-      // Use the existing wrapEthereum function from wrap.ts
-      const wrapResult = await wrapEthereum(
-        fastify,
-        network,
-        walletAddress,
-        amountInEth,
-      );
-
-      logger.info(
-        `Successfully wrapped ${amountInEth} ETH to WETH, txHash: ${wrapResult.txHash}`,
-      );
-      return wrapResult.txHash;
-    } catch (error) {
-      logger.error(`Failed to wrap ETH to WETH: ${error.message}`);
-      throw error; // Propagate the error to the caller
-    }
-  }
-
-  // No wrapping needed
-  return null;
-}
 
 export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
   // Import the httpErrors plugin to ensure it's available
@@ -137,7 +78,6 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         } = request.body;
 
         const networkToUse = network || 'base';
-        const chain = 'ethereum'; // Default to ethereum
 
         // Validate essential parameters
         if (!baseToken || !quoteToken || !amount || !side) {
@@ -344,6 +284,13 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
             : BigNumber.from(actualInputAmount.quotient.toString());
 
         const currentAllowance = BigNumber.from(allowance.value);
+
+        logger.info(
+          `Current allowance: ${formatTokenAmount(currentAllowance.toString(), actualInputToken.decimals)} ${actualInputToken.symbol}`,
+        );
+        logger.info(
+          `Amount needed: ${formatTokenAmount(amountNeeded.toString(), actualInputToken.decimals)} ${actualInputToken.symbol}`,
+        );
 
         // Check if allowance is sufficient
         if (currentAllowance.lt(amountNeeded)) {
