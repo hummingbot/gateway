@@ -4,7 +4,6 @@ import {
   Position,
   Pool as V3Pool,
   NonfungiblePositionManager,
-  MintOptions,
   FeeAmount,
 } from '@uniswap/v3-sdk';
 import { BigNumber } from 'ethers';
@@ -193,8 +192,8 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           useFullPrecision: true,
         });
 
-        // Create mint options for adding liquidity
-        const mintOptions = {
+        // Create increase liquidity options
+        const increaseLiquidityOptions = {
           tokenId: positionAddress,
           slippageTolerance,
           deadline: Math.floor(Date.now() / 1000) + 60 * 20, // 20 minutes from now
@@ -204,7 +203,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         const { calldata, value } =
           NonfungiblePositionManager.addCallParameters(
             newPosition,
-            mintOptions,
+            increaseLiquidityOptions,
           );
 
         // Approve the position manager to use tokens
@@ -274,14 +273,14 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           18, // ETH has 18 decimals
         );
 
-        // Calculate actual token amounts added
+        // Calculate actual token amounts added from the position's mint amounts
         const actualToken0Amount = formatTokenAmount(
-          newPosition.amount0.quotient.toString(),
+          newPosition.mintAmounts.amount0.toString(),
           token0.decimals,
         );
 
         const actualToken1Amount = formatTokenAmount(
-          newPosition.amount1.quotient.toString(),
+          newPosition.mintAmounts.amount1.toString(),
           token1.decimals,
         );
 

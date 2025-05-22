@@ -7,7 +7,6 @@ import {
   MintOptions,
   nearestUsableTick,
   tickToPrice,
-  priceToClosestTick,
   FeeAmount,
 } from '@uniswap/v3-sdk';
 import { BigNumber } from 'ethers';
@@ -192,20 +191,21 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         // Convert prices to ticks
         let lowerTick, upperTick;
 
-        // For simplicity, we'll convert the price directly to tick
-        // This isn't as accurate as using the SDK's methods, but it works for demonstration
-        const getTickAtSqrtRatio = (price: number): number => {
-          return Math.log(Math.sqrt(price)) / Math.log(Math.sqrt(1.0001));
+        // Calculate ticks based on price
+        // Tick = log(price) / log(1.0001)
+        const priceToTick = (price: number): number => {
+          return Math.floor(Math.log(price) / Math.log(1.0001));
         };
 
         if (isBaseToken0) {
-          // If base token is token0, prices are in quote/base
-          lowerTick = Math.floor(getTickAtSqrtRatio(lowerPrice));
-          upperTick = Math.ceil(getTickAtSqrtRatio(upperPrice));
+          // If base token is token0, price is token1/token0
+          lowerTick = priceToTick(lowerPrice);
+          upperTick = priceToTick(upperPrice);
         } else {
-          // If base token is token1, prices are in base/quote
-          lowerTick = Math.floor(getTickAtSqrtRatio(1 / upperPrice));
-          upperTick = Math.ceil(getTickAtSqrtRatio(1 / lowerPrice));
+          // If base token is token1, we need to invert prices
+          // User provides baseToken price in quote, but pool needs token1/token0 price
+          lowerTick = priceToTick(1 / upperPrice);
+          upperTick = priceToTick(1 / lowerPrice);
         }
 
         // Ensure ticks are on valid tick spacing boundaries
@@ -319,12 +319,14 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           await approvalTx1.wait();
         }
 
-        // Create position manager contract
+        // Create position manager contract with proper multicall interface
         const positionManager = new Contract(
           positionManagerAddress,
           [
             {
-              inputs: [{ internalType: 'bytes', name: 'data', type: 'bytes' }],
+              inputs: [
+                { internalType: 'bytes[]', name: 'data', type: 'bytes[]' },
+              ],
               name: 'multicall',
               outputs: [
                 { internalType: 'bytes[]', name: 'results', type: 'bytes[]' },
@@ -337,7 +339,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         );
 
         // Create the position
-        const tx = await positionManager.multicall(JSON.parse(calldata), {
+        const tx = await positionManager.multicall([calldata], {
           value: BigNumber.from(value.toString()),
           gasLimit: 500000, // Opening a position can be gas-heavy
         });
@@ -384,10 +386,10 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         );
 
         // Map back to base and quote amounts
-        const actualBaseAmount = isBaseToken0
+        const baseAmountUsed = isBaseToken0
           ? actualToken0Amount
           : actualToken1Amount;
-        const actualQuoteAmount = isBaseToken0
+        const quoteAmountUsed = isBaseToken0
           ? actualToken1Amount
           : actualToken0Amount;
 
@@ -396,8 +398,8 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           fee: gasFee,
           positionAddress: positionId,
           positionRent,
-          baseTokenAmountAdded: actualBaseAmount,
-          quoteTokenAmountAdded: actualQuoteAmount,
+          baseTokenAmountAdded: baseAmountUsed,
+          quoteTokenAmountAdded: quoteAmountUsed,
         };
       } catch (e) {
         logger.error(e);

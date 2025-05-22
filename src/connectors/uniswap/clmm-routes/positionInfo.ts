@@ -4,6 +4,8 @@ import {
   Position,
   NonfungiblePositionManager,
   tickToPrice,
+  computePoolAddress,
+  FACTORY_ADDRESS,
 } from '@uniswap/v3-sdk';
 import { BigNumber } from 'ethers';
 import { FastifyPluginAsync } from 'fastify';
@@ -214,12 +216,17 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
           ? [feeAmount0, feeAmount1]
           : [feeAmount1, feeAmount0];
 
-        // For the V3 pool, we need to construct an ID since Pool objects don't have an address property
-        const poolAddressStr = `${token0.address}-${token1.address}-${fee}`;
+        // Get the actual pool address using computePoolAddress
+        const poolAddress = computePoolAddress({
+          factoryAddress: uniswap.config.uniswapV3FactoryAddress(networkToUse),
+          tokenA: token0,
+          tokenB: token1,
+          fee,
+        });
 
         return {
           address: positionAddress,
-          poolAddress: poolAddressStr, // Use a constructed ID since V3 Pool doesn't expose address
+          poolAddress,
           baseTokenAddress,
           quoteTokenAddress,
           baseTokenAmount,

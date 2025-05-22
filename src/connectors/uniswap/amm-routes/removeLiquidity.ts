@@ -18,6 +18,7 @@ import {
   IUniswapV2PairABI,
 } from '../uniswap.contracts';
 import { formatTokenAmount } from '../uniswap.utils';
+
 import { checkLPAllowance } from './positionInfo';
 
 export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
@@ -195,7 +196,13 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
 
         // Check LP token allowance
         try {
-          await checkLPAllowance(ethereum, wallet, poolAddress, routerAddress, liquidityToRemove);
+          await checkLPAllowance(
+            ethereum,
+            wallet,
+            poolAddress,
+            routerAddress,
+            liquidityToRemove,
+          );
         } catch (error) {
           throw fastify.httpErrors.badRequest(error.message);
         }

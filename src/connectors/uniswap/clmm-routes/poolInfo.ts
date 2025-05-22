@@ -91,26 +91,36 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
           throw fastify.httpErrors.notFound('Pool not found');
         }
 
-        // Get token amounts from pool liquidity
-        const sqrt = BigInt(pool.sqrtRatioX96.toString());
-        const q96 = BigInt(2) ** BigInt(96);
-        const price = Number((sqrt * sqrt) / q96) / 2 ** 96;
+        // Determine token ordering
+        const token0 = pool.token0;
+        const token1 = pool.token1;
+        const isBaseToken0 = baseTokenObj.address.toLowerCase() === token0.address.toLowerCase();
+        
+        // Calculate price based on sqrtPriceX96
+        // sqrtPriceX96 = sqrt(price) * 2^96
+        // price = (sqrtPriceX96 / 2^96)^2
+        const sqrtPriceX96 = pool.sqrtRatioX96;
+        const price0 = pool.token0Price.toSignificant(15);
+        const price1 = pool.token1Price.toSignificant(15);
+        
+        // Get the price of base token in terms of quote token
+        const price = isBaseToken0 ? parseFloat(price0) : parseFloat(price1);
 
-        // Calculate token amounts based on liquidity and current price
-        const liquidity = BigInt(pool.liquidity.toString());
-        const sqrtPriceX96 = BigInt(pool.sqrtRatioX96.toString());
-
-        // Calculate token amounts (simplified approximation)
-        const baseTokenAmount = Number(
-          (liquidity * q96) /
-            sqrtPriceX96 /
-            BigInt(10 ** baseTokenObj.decimals),
+        // Get token reserves in the pool
+        // This is a simplified calculation - actual reserves depend on the tick distribution
+        const liquidity = pool.liquidity;
+        const token0Amount = formatTokenAmount(
+          liquidity.toString(),
+          token0.decimals
         );
-        const quoteTokenAmount = Number(
-          (liquidity * sqrtPriceX96) /
-            q96 /
-            BigInt(10 ** quoteTokenObj.decimals),
+        const token1Amount = formatTokenAmount(
+          liquidity.toString(), 
+          token1.decimals
         );
+        
+        // Map to base and quote amounts
+        const baseTokenAmount = isBaseToken0 ? token0Amount : token1Amount;
+        const quoteTokenAmount = isBaseToken0 ? token1Amount : token0Amount;
 
         // Convert fee percentage (fee is stored as a fixed point number in parts per million)
         const feePct = pool.fee / 10000;
