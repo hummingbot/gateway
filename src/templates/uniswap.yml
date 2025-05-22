@@ -93,5 +93,6 @@ networks:
   # WorldChain pools
   worldchain:
     # AMM and CLMM pools for WorldChain
-    amm: {}
+    amm:
+      'WLD-USDC.e': '0x610e319b3a3ab56a0ed5562927d37c233774ba39'
     clmm: {}

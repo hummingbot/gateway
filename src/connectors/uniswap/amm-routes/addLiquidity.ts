@@ -186,7 +186,10 @@ async function addLiquidity(
   // Check if one of the tokens is WETH
   if (quote.baseTokenObj.symbol === 'WETH') {
     // Check allowance for quote token
-    const tokenContract = ethereum.getContract(quote.quoteTokenObj.address, wallet);
+    const tokenContract = ethereum.getContract(
+      quote.quoteTokenObj.address,
+      wallet,
+    );
     const allowance = await ethereum.getERC20Allowance(
       tokenContract,
       wallet,
@@ -224,7 +227,10 @@ async function addLiquidity(
     );
   } else if (quote.quoteTokenObj.symbol === 'WETH') {
     // Check allowance for base token
-    const tokenContract = ethereum.getContract(quote.baseTokenObj.address, wallet);
+    const tokenContract = ethereum.getContract(
+      quote.baseTokenObj.address,
+      wallet,
+    );
     const allowance = await ethereum.getERC20Allowance(
       tokenContract,
       wallet,
@@ -262,7 +268,10 @@ async function addLiquidity(
     );
   } else {
     // Both tokens are ERC20 - check allowances for both
-    const baseTokenContract = ethereum.getContract(quote.baseTokenObj.address, wallet);
+    const baseTokenContract = ethereum.getContract(
+      quote.baseTokenObj.address,
+      wallet,
+    );
     const baseAllowance = await ethereum.getERC20Allowance(
       baseTokenContract,
       wallet,
@@ -270,7 +279,10 @@ async function addLiquidity(
       quote.baseTokenObj.decimals,
     );
 
-    const quoteTokenContract = ethereum.getContract(quote.quoteTokenObj.address, wallet);
+    const quoteTokenContract = ethereum.getContract(
+      quote.quoteTokenObj.address,
+      wallet,
+    );
     const quoteAllowance = await ethereum.getERC20Allowance(
       quoteTokenContract,
       wallet,
@@ -463,10 +475,12 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         // Handle insufficient funds errors
-        if (e.code === 'INSUFFICIENT_FUNDS' ||
-            (e.message && e.message.includes('insufficient funds'))) {
+        if (
+          e.code === 'INSUFFICIENT_FUNDS' ||
+          (e.message && e.message.includes('insufficient funds'))
+        ) {
           throw fastify.httpErrors.badRequest(
-            'Insufficient ETH balance to pay for gas fees. Please add more ETH to your wallet.'
+            'Insufficient ETH balance to pay for gas fees. Please add more ETH to your wallet.',
           );
         }
 

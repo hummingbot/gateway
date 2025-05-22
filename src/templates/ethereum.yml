@@ -86,6 +86,6 @@ networks:
     chainID: 480
     nodeURL: https://worldchain-mainnet.g.alchemy.com/public
     tokenListType: FILE
-    tokenListSource: /home/gateway/conf/lists/mainnet.json
+    tokenListSource: /home/gateway/conf/lists/worldchain.json
     nativeCurrencySymbol: WLD
     gasPriceRefreshInterval: 60

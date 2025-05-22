@@ -12,7 +12,7 @@
             "amm": {
               "type": "object",
               "patternProperties": {
-                "^[A-Z]+-[A-Z]+$": {
+                "^[A-Za-z0-9.-]+-[A-Za-z0-9.-]+$": {
                   "type": "string"
                 }
               },
@@ -21,7 +21,7 @@
             "clmm": {
               "type": "object", 
               "patternProperties": {
-                "^[A-Z]+-[A-Z]+$": {
+                "^[A-Za-z0-9.-]+-[A-Za-z0-9.-]+$": {
                   "type": "string"
                 }
               },
