@@ -206,37 +206,45 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
             increaseLiquidityOptions,
           );
 
-        // Approve the position manager to use tokens
-        // Approve token0 if needed
+        // Check allowances instead of approving
+        // Check token0 allowance if needed
         if (!token0Amount.equalTo(0) && token0.symbol !== 'WETH') {
-          const token0Contract = new Contract(
-            token0.address,
-            ERC20_ABI,
+          const token0Contract = ethereum.getContract(token0.address, wallet);
+          const allowance0 = await ethereum.getERC20Allowance(
+            token0Contract,
             wallet,
-          );
-
-          const approvalTx0 = await token0Contract.approve(
             positionManagerAddress,
-            token0Amount.quotient.toString(),
+            token0.decimals,
           );
-
-          await approvalTx0.wait();
+          
+          const currentAllowance0 = BigNumber.from(allowance0.value);
+          const requiredAmount0 = BigNumber.from(token0Amount.quotient.toString());
+          
+          if (currentAllowance0.lt(requiredAmount0)) {
+            throw fastify.httpErrors.badRequest(
+              `Insufficient ${token0.symbol} allowance. Please approve at least ${formatTokenAmount(requiredAmount0.toString(), token0.decimals)} ${token0.symbol} for the Position Manager (${positionManagerAddress})`
+            );
+          }
         }
 
-        // Approve token1 if needed
+        // Check token1 allowance if needed
         if (!token1Amount.equalTo(0) && token1.symbol !== 'WETH') {
-          const token1Contract = new Contract(
-            token1.address,
-            ERC20_ABI,
+          const token1Contract = ethereum.getContract(token1.address, wallet);
+          const allowance1 = await ethereum.getERC20Allowance(
+            token1Contract,
             wallet,
-          );
-
-          const approvalTx1 = await token1Contract.approve(
             positionManagerAddress,
-            token1Amount.quotient.toString(),
+            token1.decimals,
           );
-
-          await approvalTx1.wait();
+          
+          const currentAllowance1 = BigNumber.from(allowance1.value);
+          const requiredAmount1 = BigNumber.from(token1Amount.quotient.toString());
+          
+          if (currentAllowance1.lt(requiredAmount1)) {
+            throw fastify.httpErrors.badRequest(
+              `Insufficient ${token1.symbol} allowance. Please approve at least ${formatTokenAmount(requiredAmount1.toString(), token1.decimals)} ${token1.symbol} for the Position Manager (${positionManagerAddress})`
+            );
+          }
         }
 
         // Initialize position manager with multicall interface

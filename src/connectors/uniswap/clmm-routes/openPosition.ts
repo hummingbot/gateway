@@ -67,14 +67,14 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
             ...OpenPositionRequest.properties,
             network: { type: 'string', default: 'base' },
             walletAddress: { type: 'string', examples: [firstWalletAddress] },
-            lowerPrice: { type: 'number', examples: [1500] },
-            upperPrice: { type: 'number', examples: [2000] },
+            lowerPrice: { type: 'number', examples: [1000] },
+            upperPrice: { type: 'number', examples: [4000] },
             poolAddress: { type: 'string', examples: [''] },
             baseToken: { type: 'string', examples: ['WETH'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
             baseTokenAmount: { type: 'number', examples: [0.001] },
-            quoteTokenAmount: { type: 'number', examples: [2] },
-            slippagePct: { type: 'number', examples: [0.5] },
+            quoteTokenAmount: { type: 'number', examples: [3] },
+            slippagePct: { type: 'number', examples: [1] },
           },
         },
         response: {
@@ -191,22 +191,19 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         // Convert prices to ticks
         let lowerTick, upperTick;
 
-        // Calculate ticks based on price
-        // Tick = log(price) / log(1.0001)
-        const priceToTick = (price: number): number => {
-          return Math.floor(Math.log(price) / Math.log(1.0001));
+        // IMPORTANT: Ticks represent prices in RAW TOKEN UNITS, not human-readable prices
+        // For WETH (18 decimals) and USDC (6 decimals), we need to adjust for the decimal difference
+        const priceToTickWithDecimals = (humanPrice: number): number => {
+          // Convert human price (USDC per WETH) to raw price (USDC units per WETH unit)
+          const rawPrice = humanPrice * Math.pow(10, token1.decimals - token0.decimals);
+          return Math.floor(Math.log(rawPrice) / Math.log(1.0001));
         };
 
-        if (isBaseToken0) {
-          // If base token is token0, price is token1/token0
-          lowerTick = priceToTick(lowerPrice);
-          upperTick = priceToTick(upperPrice);
-        } else {
-          // If base token is token1, we need to invert prices
-          // User provides baseToken price in quote, but pool needs token1/token0 price
-          lowerTick = priceToTick(1 / upperPrice);
-          upperTick = priceToTick(1 / lowerPrice);
-        }
+        lowerTick = priceToTickWithDecimals(lowerPrice);
+        upperTick = priceToTickWithDecimals(upperPrice);
+        
+        logger.info(`Calculated ticks - Lower: ${lowerTick}, Upper: ${upperTick}`);
+        logger.info(`Current pool tick: ${pool.tickCurrent}`);
 
         // Ensure ticks are on valid tick spacing boundaries
         const tickSpacing = pool.tickSpacing;
@@ -280,43 +277,85 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         };
 
         // Get the calldata for creating the position
+        logger.info('Creating position with parameters:');
+        logger.info(`  Token0: ${token0.symbol} (${token0.address})`);
+        logger.info(`  Token1: ${token1.symbol} (${token1.address})`);
+        logger.info(`  Fee: ${pool.fee}`);
+        logger.info(`  Tick Lower: ${lowerTick}`);
+        logger.info(`  Tick Upper: ${upperTick}`);
+        logger.info(`  Amount0: ${position.amount0.toSignificant(18)}`);
+        logger.info(`  Amount1: ${position.amount1.toSignificant(18)}`);
+        logger.info(`  Liquidity: ${position.liquidity.toString()}`);
+        
         const { calldata, value } =
           NonfungiblePositionManager.addCallParameters(position, mintOptions);
+          
+        logger.info(`  Value (ETH): ${value}`);
+        logger.info(`  Recipient: ${walletAddress}`);
+        logger.info(`  Deadline: ${mintOptions.deadline}`);
 
-        // Approve NFT manager to use tokens
+        // Check allowances instead of approving
         const positionManagerAddress =
           uniswap.config.uniswapV3NftManagerAddress(networkToUse);
-
-        // Approve token0 if needed
-        if (!token0Amount.equalTo(0) && token0.symbol !== 'WETH') {
-          const token0Contract = new Contract(
-            token0.address,
-            ERC20_ABI,
-            wallet,
-          );
-
-          const approvalTx0 = await token0Contract.approve(
-            positionManagerAddress,
-            token0Amount.quotient.toString(),
-          );
-
-          await approvalTx0.wait();
+          
+        // Check if we have enough ETH for WETH positions
+        if (value && value !== '0') {
+          const walletBalance = await wallet.getBalance();
+          const requiredValue = BigNumber.from(value);
+          logger.info(`Wallet ETH balance: ${formatTokenAmount(walletBalance.toString(), 18)}`);
+          logger.info(`Required ETH value: ${formatTokenAmount(requiredValue.toString(), 18)}`);
+          
+          if (walletBalance.lt(requiredValue)) {
+            throw fastify.httpErrors.badRequest(
+              `Insufficient ETH balance. Required: ${formatTokenAmount(requiredValue.toString(), 18)} ETH`
+            );
+          }
         }
 
-        // Approve token1 if needed
-        if (!token1Amount.equalTo(0) && token1.symbol !== 'WETH') {
-          const token1Contract = new Contract(
-            token1.address,
-            ERC20_ABI,
+        // Check token0 allowance if needed
+        if (!token0Amount.equalTo(0) && token0.symbol !== 'WETH') {
+          const token0Contract = ethereum.getContract(token0.address, wallet);
+          const allowance0 = await ethereum.getERC20Allowance(
+            token0Contract,
             wallet,
-          );
-
-          const approvalTx1 = await token1Contract.approve(
             positionManagerAddress,
-            token1Amount.quotient.toString(),
+            token0.decimals,
           );
+          
+          const currentAllowance0 = BigNumber.from(allowance0.value);
+          const requiredAmount0 = BigNumber.from(token0Amount.quotient.toString());
+          
+          logger.info(`${token0.symbol} allowance: ${formatTokenAmount(currentAllowance0.toString(), token0.decimals)}`);
+          logger.info(`${token0.symbol} required: ${formatTokenAmount(requiredAmount0.toString(), token0.decimals)}`);
+          
+          if (currentAllowance0.lt(requiredAmount0)) {
+            throw fastify.httpErrors.badRequest(
+              `Insufficient ${token0.symbol} allowance. Please approve at least ${formatTokenAmount(requiredAmount0.toString(), token0.decimals)} ${token0.symbol} for the Position Manager (${positionManagerAddress})`
+            );
+          }
+        }
 
-          await approvalTx1.wait();
+        // Check token1 allowance if needed
+        if (!token1Amount.equalTo(0) && token1.symbol !== 'WETH') {
+          const token1Contract = ethereum.getContract(token1.address, wallet);
+          const allowance1 = await ethereum.getERC20Allowance(
+            token1Contract,
+            wallet,
+            positionManagerAddress,
+            token1.decimals,
+          );
+          
+          const currentAllowance1 = BigNumber.from(allowance1.value);
+          const requiredAmount1 = BigNumber.from(token1Amount.quotient.toString());
+          
+          logger.info(`${token1.symbol} allowance: ${formatTokenAmount(currentAllowance1.toString(), token1.decimals)}`);
+          logger.info(`${token1.symbol} required: ${formatTokenAmount(requiredAmount1.toString(), token1.decimals)}`);
+          
+          if (currentAllowance1.lt(requiredAmount1)) {
+            throw fastify.httpErrors.badRequest(
+              `Insufficient ${token1.symbol} allowance. Please approve at least ${formatTokenAmount(requiredAmount1.toString(), token1.decimals)} ${token1.symbol} for the Position Manager (${positionManagerAddress})`
+            );
+          }
         }
 
         // Create position manager contract with proper multicall interface
@@ -339,10 +378,20 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         );
 
         // Create the position
-        const tx = await positionManager.multicall([calldata], {
-          value: BigNumber.from(value.toString()),
-          gasLimit: 500000, // Opening a position can be gas-heavy
-        });
+        logger.info('Sending transaction to create position...');
+        logger.info(`Calldata length: ${calldata.length}`);
+        logger.info(`Value: ${value.toString()}`);
+        
+        let tx;
+        try {
+          tx = await positionManager.multicall([calldata], {
+            value: BigNumber.from(value.toString()),
+            gasLimit: 500000, // Opening a position can be gas-heavy
+          });
+        } catch (txError: any) {
+          logger.error('Transaction failed:', txError);
+          throw txError;
+        }
 
         // Wait for transaction confirmation
         const receipt = await tx.wait();
@@ -401,12 +450,53 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           baseTokenAmountAdded: baseAmountUsed,
           quoteTokenAmountAdded: quoteAmountUsed,
         };
-      } catch (e) {
-        logger.error(e);
+      } catch (e: any) {
+        logger.error('Failed to open position:', e);
+        
+        // Log transaction details if available
+        if (e.transaction) {
+          logger.error('Transaction data:', e.transaction.data);
+          logger.error('Transaction to:', e.transaction.to);
+        }
+        
+        // If error already has statusCode, re-throw it
         if (e.statusCode) {
           throw e;
         }
-        throw fastify.httpErrors.internalServerError('Failed to open position');
+        
+        // Check for specific error types
+        if (e.code === 'CALL_EXCEPTION') {
+          // Transaction reverted
+          logger.error('Transaction reverted. This could be due to:');
+          logger.error('- Insufficient token balance');
+          logger.error('- Lack of token approval');
+          logger.error('- Invalid tick range');
+          logger.error('- Slippage tolerance exceeded');
+          
+          throw fastify.httpErrors.badRequest(
+            'Transaction failed. Please check token balances, approvals, and position parameters.'
+          );
+        }
+        
+        // Handle insufficient allowance errors
+        if (e.message && e.message.includes('Insufficient') && e.message.includes('allowance')) {
+          throw fastify.httpErrors.badRequest(e.message);
+        }
+        
+        // Handle insufficient funds errors
+        if (
+          e.code === 'INSUFFICIENT_FUNDS' ||
+          (e.message && e.message.includes('insufficient funds'))
+        ) {
+          throw fastify.httpErrors.badRequest(
+            'Insufficient funds to complete the transaction'
+          );
+        }
+        
+        // Generic error
+        throw fastify.httpErrors.internalServerError(
+          `Failed to open position: ${e.message || 'Unknown error'}`
+        );
       }
     },
   );
