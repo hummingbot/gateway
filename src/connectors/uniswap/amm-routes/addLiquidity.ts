@@ -297,7 +297,6 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             ...AddLiquidityRequest.properties,
             network: { type: 'string', default: 'base' },
-            chain: { type: 'string', default: 'ethereum' },
             walletAddress: { type: 'string', examples: ['0x...'] },
             poolAddress: {
               type: 'string',
