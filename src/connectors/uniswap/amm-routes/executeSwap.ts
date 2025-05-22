@@ -1,11 +1,4 @@
-import { Contract } from '@ethersproject/contracts';
-import { Token, CurrencyAmount, Percent, TradeType } from '@uniswap/sdk-core';
-import {
-  Pair as V2Pair,
-  Route as V2Route,
-  Trade as V2Trade,
-} from '@uniswap/v2-sdk';
-import { BigNumber, Wallet, utils } from 'ethers';
+import { BigNumber, Contract } from 'ethers';
 import { FastifyPluginAsync } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
@@ -18,81 +11,12 @@ import {
 } from '../../../schemas/trading-types/swap-schema';
 import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
-import { IUniswapV2Router02ABI } from '../uniswap.contracts';
 import { formatTokenAmount } from '../uniswap.utils';
-
-async function handleEthToWethWrapping(
-  fastify: any,
-  networkToUse: string,
-  walletAddress: string,
-  inputToken: Token,
-  outputToken: Token,
-  inputAmount: CurrencyAmount<Token>,
-): Promise<{
-  wrapTxHash: string | null;
-  actualInputToken: Token;
-  actualOutputToken: Token;
-  actualInputAmount: CurrencyAmount<Token>;
-}> {
-  let wrapTxHash = null;
-  let actualInputToken = inputToken;
-  let actualOutputToken = outputToken;
-  let actualInputAmount = inputAmount;
-
-  // If user inputs ETH, wrap it to WETH first
-  if (inputToken.symbol === 'ETH') {
-    const uniswap = await Uniswap.getInstance(networkToUse);
-    const wethToken = uniswap.getTokenBySymbol('WETH');
-
-    if (!wethToken) {
-      throw new Error('WETH token not found');
-    }
-
-    // Convert the amount to ETH string for wrapping
-    const amountInEth = formatTokenAmount(
-      inputAmount.quotient.toString(),
-      18,
-    ).toString();
-
-    logger.info(
-      `ETH detected as input token, wrapping ${amountInEth} ETH to WETH first`,
-    );
-
-    const wrapResult = await wrapEthereum(
-      fastify,
-      networkToUse,
-      walletAddress,
-      amountInEth,
-    );
-    wrapTxHash = wrapResult.txHash;
-
-    // Update to use WETH instead of ETH
-    actualInputToken = wethToken;
-    actualInputAmount = CurrencyAmount.fromRawAmount(
-      wethToken,
-      inputAmount.quotient.toString(),
-    );
-
-    logger.info(
-      `Successfully wrapped ${amountInEth} ETH to WETH, transaction hash: ${wrapTxHash}`,
-    );
-  }
-
-  // If user wants ETH as output, use WETH instead (they can unwrap later if needed)
-  if (outputToken.symbol === 'ETH') {
-    const uniswap = await Uniswap.getInstance(networkToUse);
-    const wethToken = uniswap.getTokenBySymbol('WETH');
-
-    if (!wethToken) {
-      throw new Error('WETH token not found');
-    }
-
-    actualOutputToken = wethToken;
-    logger.info('ETH detected as output token, will use WETH instead');
-  }
-
-  return { wrapTxHash, actualInputToken, actualOutputToken, actualInputAmount };
-}
+import { getUniswapAmmQuote } from './quoteSwap';
+import { 
+  getUniswapV2RouterAddress,
+  IUniswapV2Router02ABI 
+} from '../uniswap.contracts';
 
 export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
   // Import the httpErrors plugin to ensure it's available
@@ -116,7 +40,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
     '/execute-swap',
     {
       schema: {
-        description: 'Execute a swap on Uniswap V2 AMM',
+        description: 'Execute a swap on Uniswap V2 AMM using Router02',
         tags: ['uniswap/amm'],
         body: {
           ...ExecuteSwapRequest,
@@ -149,6 +73,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           slippagePct,
           walletAddress: requestedWalletAddress,
         } = request.body;
+
         const networkToUse = network || 'base';
 
         // Validate essential parameters
@@ -156,13 +81,10 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           throw fastify.httpErrors.badRequest('Missing required parameters');
         }
 
-        // Get Uniswap and Ethereum instances
-        const uniswap = await Uniswap.getInstance(networkToUse);
-        const ethereum = await Ethereum.getInstance(networkToUse);
-
         // Get wallet address - either from request or first available
         let walletAddress = requestedWalletAddress;
         if (!walletAddress) {
+          const ethereum = await Ethereum.getInstance(networkToUse);
           walletAddress = await ethereum.getFirstWalletAddress();
           if (!walletAddress) {
             throw fastify.httpErrors.badRequest(
@@ -172,30 +94,35 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           logger.info(`Using first available wallet address: ${walletAddress}`);
         }
 
-        // Resolve tokens
-        const baseTokenObj = uniswap.getTokenBySymbol(baseToken);
-        const quoteTokenObj = uniswap.getTokenBySymbol(quoteToken);
-
-        if (!baseTokenObj || !quoteTokenObj) {
-          throw fastify.httpErrors.badRequest(
-            `Token not found: ${!baseTokenObj ? baseToken : quoteToken}`,
-          );
-        }
-
         // Find pool address if not provided
-        let poolAddressToUse = requestedPoolAddress;
-        if (!poolAddressToUse) {
-          poolAddressToUse = await uniswap.findDefaultPool(
+        const uniswap = await Uniswap.getInstance(networkToUse);
+        let poolAddress = requestedPoolAddress;
+        if (!poolAddress) {
+          poolAddress = await uniswap.findDefaultPool(
             baseToken,
             quoteToken,
             'amm',
           );
-          if (!poolAddressToUse) {
+
+          if (!poolAddress) {
             throw fastify.httpErrors.notFound(
               `No AMM pool found for pair ${baseToken}-${quoteToken}`,
             );
           }
         }
+
+        // Get quote using the shared quote function - this eliminates duplication
+        const { quote, ethereum, baseTokenObj, quoteTokenObj } = 
+          await getUniswapAmmQuote(
+            fastify,
+            networkToUse,
+            poolAddress,
+            baseToken,
+            quoteToken,
+            amount,
+            side as 'BUY' | 'SELL',
+            slippagePct,
+          );
 
         // Get the wallet
         const wallet = await ethereum.getWallet(walletAddress);
@@ -203,267 +130,164 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           throw fastify.httpErrors.badRequest('Wallet not found');
         }
 
-        // Get the V2 pair
-        const pair = await uniswap.getV2Pool(
-          baseTokenObj,
-          quoteTokenObj,
-          poolAddressToUse,
-        );
-        if (!pair) {
-          throw fastify.httpErrors.notFound(
-            `Pool not found for ${baseToken}-${quoteToken}`,
-          );
-        }
-
-        // Determine which token is being traded
-        const exactIn = side === 'SELL';
-        const [originalInputToken, originalOutputToken] = exactIn
-          ? [baseTokenObj, quoteTokenObj]
-          : [quoteTokenObj, baseTokenObj];
-
-        // Convert amount to token units with decimals
-        const originalInputAmount = CurrencyAmount.fromRawAmount(
-          originalInputToken,
-          Math.floor(
-            amount * Math.pow(10, originalInputToken.decimals),
-          ).toString(),
-        );
+        // Extract info from quote
+        let wrapTxHash = null;
+        let inputTokenAddress = quote.inputToken.address;
+        let outputTokenAddress = quote.outputToken.address;
 
         // Handle ETH->WETH wrapping if needed
-        const {
-          wrapTxHash,
-          actualInputToken,
-          actualOutputToken,
-          actualInputAmount,
-        } = await handleEthToWethWrapping(
-          fastify,
-          networkToUse,
-          walletAddress,
-          originalInputToken,
-          originalOutputToken,
-          originalInputAmount,
-        );
+        if (baseToken === 'ETH' && side === 'SELL') {
+          const wethToken = uniswap.getTokenBySymbol('WETH');
+          if (!wethToken) {
+            throw new Error('WETH token not found');
+          }
 
-        // Get the V2 pair with actual tokens (after potential WETH conversion)
-        const actualPair = await uniswap.getV2Pool(
-          actualInputToken,
-          actualOutputToken,
-          poolAddressToUse,
-        );
-        if (!actualPair) {
-          throw fastify.httpErrors.notFound(
-            `Pool not found for ${actualInputToken.symbol}-${actualOutputToken.symbol}`,
+          logger.info(
+            `ETH detected as input token, wrapping ${amount} ETH to WETH first`,
+          );
+
+          const wrapResult = await wrapEthereum(
+            fastify,
+            networkToUse,
+            walletAddress,
+            amount.toString(),
+          );
+          wrapTxHash = wrapResult.txHash;
+          inputTokenAddress = wethToken.address;
+
+          logger.info(
+            `Successfully wrapped ${amount} ETH to WETH, transaction hash: ${wrapTxHash}`,
           );
         }
 
-        // Create a route for the trade with actual tokens
-        const route = new V2Route(
-          [actualPair],
-          actualInputToken,
-          actualOutputToken,
-        );
-
-        // For BUY direction, we need a different approach
-        let trade;
-        if (exactIn) {
-          // For SELL (exactIn), we use the input amount and EXACT_INPUT trade type
-          trade = new V2Trade(route, actualInputAmount, TradeType.EXACT_INPUT);
-          logger.info(
-            `Created EXACT_INPUT trade with input amount: ${formatTokenAmount(actualInputAmount.quotient.toString(), actualInputToken.decimals)} ${actualInputToken.symbol}`,
-          );
-        } else {
-          // For BUY (exactOut), we create an exact output amount and use EXACT_OUTPUT trade type
-          const outputAmount = CurrencyAmount.fromRawAmount(
-            actualOutputToken,
-            Math.floor(
-              amount * Math.pow(10, actualOutputToken.decimals),
-            ).toString(),
-          );
-
-          logger.info(
-            `Creating EXACT_OUTPUT trade with output amount: ${formatTokenAmount(outputAmount.quotient.toString(), actualOutputToken.decimals)} ${actualOutputToken.symbol}`,
-          );
-
-          trade = new V2Trade(route, outputAmount, TradeType.EXACT_OUTPUT);
+        // Handle output ETH conversion (we're using WETH)
+        if (quoteToken === 'ETH' && side === 'BUY') {
+          const wethToken = uniswap.getTokenBySymbol('WETH');
+          if (!wethToken) {
+            throw new Error('WETH token not found');
+          }
+          outputTokenAddress = wethToken.address;
+          logger.info('ETH detected as output token, will use WETH instead');
         }
 
-        // Calculate slippage-adjusted amounts
-        const slippageTolerance = slippagePct
-          ? new Percent(slippagePct, 100)
-          : uniswap.getAllowedSlippage();
+        // Get Router02 contract
+        const routerAddress = getUniswapV2RouterAddress(networkToUse);
+        const routerContract = new Contract(routerAddress, IUniswapV2Router02ABI.abi, wallet);
 
-        // Get the router contract with signer
-        const routerAddress =
-          uniswap.config.uniswapV2RouterAddress(networkToUse);
-        const router = new Contract(
-          routerAddress,
-          IUniswapV2Router02ABI.abi,
-          wallet,
-        );
-
-        // Prepare the transaction parameters
-        const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes from now
-        const path = trade.route.path.map((token) => token.address);
-
-        // Get transaction gas settings
-        logger.info(`Getting gas price for ${networkToUse} network`);
-
-        // Get the gas price in GWEI and convert to wei
-        const estimatedGasPrice = await ethereum.estimateGasPrice();
-        const gasPrice = utils.parseUnits(estimatedGasPrice.toString(), 'gwei');
-
-        logger.info(`Using estimated gas price: ${estimatedGasPrice} Gwei`);
-
-        // We also need a high gas limit for safety
-        const gasLimit = 500000; // Higher gas limit to ensure transaction completes
-        logger.info(`Using gas limit: ${gasLimit}`);
-
-        // Set up transaction options with higher gas price and limit
-        const txOptions = {
-          gasLimit: gasLimit,
-          gasPrice: gasPrice,
-          nonce: await wallet.getTransactionCount('pending'), // Explicitly set nonce to prevent conflicts
-        };
-
-        // Log transaction options for debugging
-        logger.info(
-          `Transaction options: ${JSON.stringify({
-            gasLimit: gasLimit.toString(),
-            gasPrice: formatTokenAmount(gasPrice.toString(), 9) + ' Gwei',
-            nonce: txOptions.nonce,
-          })}`,
-        );
+        logger.info(`Executing swap using Router02:`);
+        logger.info(`Router address: ${routerAddress}`);
+        logger.info(`Pool address: ${poolAddress}`);
+        logger.info(`Input token: ${inputTokenAddress}`);
+        logger.info(`Output token: ${outputTokenAddress}`);
+        logger.info(`Side: ${side}`);
+        logger.info(`Path: ${quote.pathAddresses.join(' -> ')}`);
 
         // Check allowance for input token (all are now ERC20 tokens after potential wrapping)
-        const tokenContract = ethereum.getContract(
-          actualInputToken.address,
-          wallet,
-        );
+        const tokenContract = ethereum.getContract(inputTokenAddress, wallet);
         const allowance = await ethereum.getERC20Allowance(
           tokenContract,
           wallet,
           routerAddress,
-          actualInputToken.decimals,
+          quote.inputToken.decimals,
         );
 
-        const amountNeeded = exactIn
-          ? actualInputAmount.quotient.toString()
-          : trade.maximumAmountIn(slippageTolerance).quotient.toString();
+        const amountNeeded = side === 'SELL' ? quote.rawAmountIn : quote.rawMaxAmountIn;
         const currentAllowance = BigNumber.from(allowance.value);
 
         logger.info(
-          `Current allowance: ${formatTokenAmount(currentAllowance.toString(), actualInputToken.decimals)} ${actualInputToken.symbol}`,
+          `Current allowance: ${formatTokenAmount(currentAllowance.toString(), quote.inputToken.decimals)} ${quote.inputToken.symbol}`,
         );
         logger.info(
-          `Amount needed: ${formatTokenAmount(amountNeeded, actualInputToken.decimals)} ${actualInputToken.symbol}`,
+          `Amount needed: ${formatTokenAmount(amountNeeded, quote.inputToken.decimals)} ${quote.inputToken.symbol}`,
         );
 
         // Check if allowance is sufficient
         if (currentAllowance.lt(amountNeeded)) {
-          logger.error(`Insufficient allowance for ${actualInputToken.symbol}`);
+          logger.error(`Insufficient allowance for ${quote.inputToken.symbol}`);
           throw new Error(
-            `Insufficient allowance for ${actualInputToken.symbol}. Please approve at least ${formatTokenAmount(amountNeeded, actualInputToken.decimals)} ${actualInputToken.symbol} for the Uniswap router (${routerAddress})`,
+            `Insufficient allowance for ${quote.inputToken.symbol}. Please approve at least ${formatTokenAmount(amountNeeded, quote.inputToken.decimals)} ${quote.inputToken.symbol} for the Uniswap router (${routerAddress})`,
           );
         } else {
           logger.info(
-            `Sufficient allowance exists: ${formatTokenAmount(currentAllowance.toString(), actualInputToken.decimals)} ${actualInputToken.symbol}`,
+            `Sufficient allowance exists: ${formatTokenAmount(currentAllowance.toString(), quote.inputToken.decimals)} ${quote.inputToken.symbol}`,
           );
         }
 
-        // Execute the swap - now all tokens are ERC20, so we use generic swap functions
+        // Prepare transaction parameters
+        const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes from now
+
         let tx;
-        if (exactIn) {
-          // Swap exact tokens for tokens
-          const amountOutMin = trade
-            .minimumAmountOut(slippageTolerance)
-            .quotient.toString();
+        if (side === 'SELL') {
+          // swapExactTokensForTokens - we know the exact input amount
+          logger.info(`ExactTokensForTokens params:`);
+          logger.info(`  amountIn: ${quote.rawAmountIn}`);
+          logger.info(`  amountOutMin: ${quote.rawMinAmountOut}`);
+          logger.info(`  path: ${quote.pathAddresses}`);
+          logger.info(`  deadline: ${deadline}`);
 
-          logger.info(`Executing swapExactTokensForTokens`);
-          tx = await router.swapExactTokensForTokens(
-            actualInputAmount.quotient.toString(),
-            amountOutMin,
-            path,
+          tx = await routerContract.swapExactTokensForTokens(
+            quote.rawAmountIn,
+            quote.rawMinAmountOut,
+            quote.pathAddresses,
             walletAddress,
             deadline,
-            txOptions,
+            {
+              gasLimit: 300000,
+            }
           );
         } else {
-          // Swap tokens for exact tokens
-          const amountOut = trade.outputAmount.quotient.toString();
-          const amountInMax = trade
-            .maximumAmountIn(slippageTolerance)
-            .quotient.toString();
+          // swapTokensForExactTokens - we know the exact output amount
+          logger.info(`TokensForExactTokens params:`);
+          logger.info(`  amountOut: ${quote.rawAmountOut}`);
+          logger.info(`  amountInMax: ${quote.rawMaxAmountIn}`);
+          logger.info(`  path: ${quote.pathAddresses}`);
+          logger.info(`  deadline: ${deadline}`);
 
-          logger.info(
-            `BUY direction - amountOut: ${amountOut}, amountInMax: ${amountInMax}`,
-          );
-          logger.info(`Executing swapTokensForExactTokens`);
-
-          tx = await router.swapTokensForExactTokens(
-            amountOut,
-            amountInMax,
-            path,
+          tx = await routerContract.swapTokensForExactTokens(
+            quote.rawAmountOut,
+            quote.rawMaxAmountIn,
+            quote.pathAddresses,
             walletAddress,
             deadline,
-            txOptions,
+            {
+              gasLimit: 300000,
+            }
           );
         }
+
+        logger.info(`Transaction sent: ${tx.hash}`);
 
         // Wait for transaction confirmation
         const receipt = await tx.wait();
 
-        // Calculate balance changes using actual tokens
-        let totalInputSwapped, totalOutputSwapped;
-
-        if (exactIn) {
-          // For SELL (exactIn), we know the exact input amount
-          totalInputSwapped = formatTokenAmount(
-            actualInputAmount.quotient.toString(),
-            actualInputToken.decimals,
+        // Check if the transaction was successful
+        if (receipt.status === 0) {
+          logger.error(
+            `Transaction failed on-chain. Receipt: ${JSON.stringify(receipt)}`,
           );
-
-          totalOutputSwapped = formatTokenAmount(
-            trade.outputAmount.quotient.toString(),
-            actualOutputToken.decimals,
-          );
-        } else {
-          // For BUY (exactOut), we know the exact output amount from the trade
-          totalOutputSwapped = formatTokenAmount(
-            trade.outputAmount.quotient.toString(),
-            actualOutputToken.decimals,
-          );
-
-          totalInputSwapped = formatTokenAmount(
-            trade.inputAmount.quotient.toString(),
-            actualInputToken.decimals,
+          throw new Error(
+            'Transaction reverted on-chain. This could be due to slippage, insufficient funds, or other blockchain issues.',
           );
         }
 
-        logger.info(
-          `Swap completed - Input: ${totalInputSwapped} ${actualInputToken.symbol}, Output: ${totalOutputSwapped} ${actualOutputToken.symbol}`,
-        );
+        logger.info(`Transaction confirmed: ${receipt.transactionHash}`);
+        logger.info(`Gas used: ${receipt.gasUsed.toString()}`);
 
+        // Calculate amounts using quote values
+        const totalInputSwapped = quote.estimatedAmountIn;
+        const totalOutputSwapped = quote.estimatedAmountOut;
+
+        // Calculate balance changes as numbers
         const baseTokenBalanceChange =
           side === 'BUY' ? totalOutputSwapped : -totalInputSwapped;
         const quoteTokenBalanceChange =
           side === 'BUY' ? -totalInputSwapped : totalOutputSwapped;
 
-        // Calculate gas fee
-        const actualGasPrice = receipt.effectiveGasPrice;
-        const actualGasUsed = receipt.gasUsed;
+        // Calculate gas fee (formatTokenAmount already returns a number)
         const gasFee = formatTokenAmount(
-          actualGasUsed.mul(actualGasPrice).toString(),
+          receipt.gasUsed.mul(receipt.effectiveGasPrice).toString(),
           18, // ETH has 18 decimals
         );
-
-        // Log the actual gas used vs what we estimated
-        logger.info(
-          `Gas used: ${actualGasUsed.toString()} (limit was ${gasLimit})`,
-        );
-        logger.info(
-          `Gas price: ${formatTokenAmount(actualGasPrice.toString(), 9)} Gwei`,
-        );
-        logger.info(`Total gas fee: ${gasFee} ETH`);
 
         // Include both swap and wrap txHash in the response if applicable
         const txSignature = wrapTxHash
@@ -472,87 +296,33 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
 
         return {
           signature: txSignature,
-          totalInputSwapped,
-          totalOutputSwapped,
+          totalInputSwapped: totalInputSwapped,
+          totalOutputSwapped: totalOutputSwapped,
           fee: gasFee,
           baseTokenBalanceChange,
           quoteTokenBalanceChange,
         };
-      } catch (e) {
-        logger.error(`Execute swap error: ${e.message}`);
-
-        // Check specifically for TRANSACTION_REPLACED error
-        if (e.code === 'TRANSACTION_REPLACED') {
-          // Extract information about the replacement transaction
-          const { replacement, hash, receipt } = e;
-
-          logger.info(
-            `Transaction was replaced. Checking replacement transaction status...`,
+      } catch (error) {
+        logger.error(`Swap execution error: ${error.message}`);
+        if (error.transaction) {
+          logger.debug(
+            `Transaction details: ${JSON.stringify(error.transaction)}`,
           );
-
-          // If the replacement transaction was successful (status=1), we can use that instead
-          if (receipt && receipt.status === 1) {
-            logger.info(
-              `Replacement transaction ${replacement.hash} was successful!`,
-            );
-
-            // The approval transaction succeeded, so we can return a special message
-            if (replacement.data && replacement.data.startsWith('0x095ea7b3')) {
-              // This is an approval transaction (0x095ea7b3 is the approval function selector)
-              logger.info(
-                `Replacement was an approval transaction. Please try the swap again.`,
-              );
-
-              const error = new Error(
-                `Token approval succeeded. Please try the swap transaction again.`,
-              );
-              (error as any).statusCode = 400; // Bad request, needs retry
-              (error as any).replacementTxHash = replacement.hash;
-              throw error;
-            }
-
-            // This was a successful swap (not just an approval), but we don't have exact details
-            // We'll provide a simplified receipt based on the transaction that succeeded
-            const estimatedAmount = 'Unknown'; // We don't know the exact amounts
-            const baseTokenBalanceChange = receipt.status === 1 ? 1 : 0; // Just indicate success
-            const quoteTokenBalanceChange = receipt.status === 1 ? -1 : 0; // Just indicate success
-
-            return {
-              signature: replacement.hash,
-              totalInputSwapped: estimatedAmount,
-              totalOutputSwapped: estimatedAmount,
-              fee: formatTokenAmount(
-                receipt.gasUsed.mul(receipt.effectiveGasPrice).toString(),
-                18,
-              ),
-              baseTokenBalanceChange,
-              quoteTokenBalanceChange,
-            };
-          }
+        }
+        if (error.receipt) {
+          logger.debug(
+            `Transaction receipt: ${JSON.stringify(error.receipt)}`,
+          );
         }
 
-        // Special message for common errors
-        let errorMessage = e.message;
-
-        if (e.code === 'REPLACEMENT_UNDERPRICED') {
-          errorMessage = `Transaction gas price too low. Please try again in a few minutes.`;
-        } else if (e.code === 'TRANSACTION_REPLACED' && e.cancelled) {
-          errorMessage = `Transaction was cancelled by a replacement. Please try again.`;
-        } else if (e.code === 'NONCE_EXPIRED') {
-          errorMessage = `Transaction nonce already used. Please try again.`;
-        } else if (
-          e.message.includes('nonce too low') ||
-          e.message.includes('nonce has already been used')
-        ) {
-          errorMessage = `Transaction rejected - nonce already used. Please try again.`;
-        } else if (e.message.includes('insufficient funds')) {
-          errorMessage = `Insufficient funds for transaction.`;
+        // Check if this is already a fastify error
+        if (error.statusCode) {
+          throw error;
         }
 
-        // Create error object with status code for consistent response format
-        const error = new Error(errorMessage);
-        (error as any).statusCode = 500;
-        throw error;
+        // Provide more detailed error messages for common issues
+        const errorMessage = error.reason || error.message;
+        throw fastify.httpErrors.internalServerError(`Failed to execute swap: ${errorMessage}`);
       }
     },
   );
