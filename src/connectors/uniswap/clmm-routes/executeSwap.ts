@@ -81,6 +81,9 @@ async function handleWethWrapping(
 }
 
 export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
+  // Import the httpErrors plugin to ensure it's available
+  await fastify.register(require('@fastify/sensible'));
+
   // Get first wallet address for example
   const ethereum = await Ethereum.getInstance('base');
   let firstWalletAddress = '<ethereum-wallet-address>';
@@ -382,11 +385,14 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
 
         try {
           // Execute the swap using the calldata from the SDK
-          // Since we've already wrapped ETH to WETH if needed, we don't send value
+          // Send the value from SDK if ETH wrapping wasn't needed, otherwise 0
+          const txValue = wrapTxHash ? '0' : (value || '0');
+
+          logger.info(`Sending transaction with value: ${txValue}`);
           const tx = await wallet.sendTransaction({
             to: uniswap.config.uniswapV3SmartOrderRouterAddress(networkToUse),
             data: calldata,
-            value: '0', // Always 0 since we handle ETH wrapping separately
+            value: txValue,
             gasLimit: 350000, // V3 swaps use more gas
           });
 

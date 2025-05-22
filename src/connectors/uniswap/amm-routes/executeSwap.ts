@@ -95,6 +95,9 @@ async function handleEthToWethWrapping(
 }
 
 export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
+  // Import the httpErrors plugin to ensure it's available
+  await fastify.register(require('@fastify/sensible'));
+
   // Get first wallet address for example
   const ethereum = await Ethereum.getInstance('base');
   let firstWalletAddress = '<ethereum-wallet-address>';
