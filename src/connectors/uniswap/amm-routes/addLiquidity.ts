@@ -2,6 +2,7 @@ import { Contract } from '@ethersproject/contracts';
 import { FastifyPluginAsync } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
+import { wrapEthereum } from '../../../chains/ethereum/routes/wrap';
 import {
   AddLiquidityRequestType,
   AddLiquidityRequest,
@@ -66,6 +67,7 @@ import { BigNumber } from 'ethers';
 import { Percent } from '@uniswap/sdk-core';
 
 async function addLiquidity(
+  fastify: any,
   network: string,
   walletAddress: string,
   poolAddress: string,
@@ -77,12 +79,68 @@ async function addLiquidity(
 ): Promise<AddLiquidityResponseType> {
   const networkToUse = network || 'base';
 
+  // Handle ETH->WETH wrapping if needed for baseToken
+  let actualBaseToken = baseToken;
+  let baseWrapTxHash = null;
+  if (baseToken === 'ETH') {
+    const uniswap = await Uniswap.getInstance(networkToUse);
+    const wethToken = uniswap.getTokenBySymbol('WETH');
+    if (!wethToken) {
+      throw new Error('WETH token not found');
+    }
+
+    logger.info(
+      `ETH detected as base token, wrapping ${baseTokenAmount} ETH to WETH first`,
+    );
+
+    const wrapResult = await wrapEthereum(
+      fastify,
+      networkToUse,
+      walletAddress,
+      baseTokenAmount.toString(),
+    );
+    baseWrapTxHash = wrapResult.txHash;
+    actualBaseToken = 'WETH';
+
+    logger.info(
+      `Successfully wrapped ${baseTokenAmount} ETH to WETH, transaction hash: ${baseWrapTxHash}`,
+    );
+  }
+
+  // Handle ETH->WETH wrapping if needed for quoteToken
+  let actualQuoteToken = quoteToken;
+  let quoteWrapTxHash = null;
+  if (quoteToken === 'ETH') {
+    const uniswap = await Uniswap.getInstance(networkToUse);
+    const wethToken = uniswap.getTokenBySymbol('WETH');
+    if (!wethToken) {
+      throw new Error('WETH token not found');
+    }
+
+    logger.info(
+      `ETH detected as quote token, wrapping ${quoteTokenAmount} ETH to WETH first`,
+    );
+
+    const wrapResult = await wrapEthereum(
+      fastify,
+      networkToUse,
+      walletAddress,
+      quoteTokenAmount.toString(),
+    );
+    quoteWrapTxHash = wrapResult.txHash;
+    actualQuoteToken = 'WETH';
+
+    logger.info(
+      `Successfully wrapped ${quoteTokenAmount} ETH to WETH, transaction hash: ${quoteWrapTxHash}`,
+    );
+  }
+
   // Get quote first to calculate optimal amounts and get execution data
   const quote = await getUniswapAmmLiquidityQuote(
     networkToUse,
     poolAddress,
-    baseToken,
-    quoteToken,
+    actualBaseToken,
+    actualQuoteToken,
     baseTokenAmount,
     quoteTokenAmount,
     slippagePct,
@@ -277,11 +335,24 @@ async function addLiquidity(
     fee: gasFee,
     baseTokenAmountAdded: quote.baseTokenAmount,
     quoteTokenAmountAdded: quote.quoteTokenAmount,
+    ...(baseWrapTxHash && { baseWrapTxHash }),
+    ...(quoteWrapTxHash && { quoteWrapTxHash }),
   };
 }
 
 export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   await fastify.register(require('@fastify/sensible'));
+
+  // Get first wallet address for example
+  const ethereum = await Ethereum.getInstance('base');
+  let firstWalletAddress = '<ethereum-wallet-address>';
+
+  try {
+    firstWalletAddress =
+      (await ethereum.getFirstWalletAddress()) || firstWalletAddress;
+  } catch (error) {
+    logger.warn('No wallets found for examples in schema');
+  }
 
   fastify.post<{
     Body: AddLiquidityRequestType;
@@ -297,15 +368,15 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             ...AddLiquidityRequest.properties,
             network: { type: 'string', default: 'base' },
-            walletAddress: { type: 'string', examples: ['0x...'] },
+            walletAddress: { type: 'string', examples: [firstWalletAddress] },
             poolAddress: {
               type: 'string',
-              examples: ['0xb4e16d0168e52d35cacd2c6185b44281ec28c9dc'],
+              examples: [''],
             },
             baseToken: { type: 'string', examples: ['WETH'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
-            baseTokenAmount: { type: 'number', examples: [0.1] },
-            quoteTokenAmount: { type: 'number', examples: [100] },
+            baseTokenAmount: { type: 'number', examples: [0.001] },
+            quoteTokenAmount: { type: 'number', examples: [2.5] },
             slippagePct: { type: 'number', examples: [1] },
           },
         },
@@ -337,13 +408,13 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           throw fastify.httpErrors.badRequest('Missing required parameters');
         }
 
-        // Get Uniswap instance to resolve wallet
-        const uniswap = await Uniswap.getInstance(network || 'base');
+        const networkToUse = network || 'base';
 
         // Get wallet address - either from request or first available
         let walletAddress = requestedWalletAddress;
         if (!walletAddress) {
-          walletAddress = await uniswap.getFirstWalletAddress();
+          const ethereum = await Ethereum.getInstance(networkToUse);
+          walletAddress = await ethereum.getFirstWalletAddress();
           if (!walletAddress) {
             throw fastify.httpErrors.badRequest(
               'No wallet address provided and no default wallet found',
@@ -353,6 +424,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         // Find pool address if not provided
+        const uniswap = await Uniswap.getInstance(networkToUse);
         let poolAddress = requestedPoolAddress;
         if (!poolAddress) {
           poolAddress = await uniswap.findDefaultPool(
@@ -360,16 +432,17 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
             quoteToken,
             'amm',
           );
+
           if (!poolAddress) {
-            // If no pool exists, it's okay - we'll create one
-            logger.info(
-              `No existing pool found for ${baseToken}-${quoteToken}, will create a new one`,
+            throw fastify.httpErrors.notFound(
+              `No AMM pool found for pair ${baseToken}-${quoteToken}`,
             );
           }
         }
 
         return await addLiquidity(
-          network || 'base',
+          fastify,
+          networkToUse,
           walletAddress,
           poolAddress,
           baseToken,
@@ -383,6 +456,20 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         if (e.statusCode) {
           throw e;
         }
+
+        // Handle specific user-actionable errors
+        if (e.message && e.message.includes('Insufficient allowance')) {
+          throw fastify.httpErrors.badRequest(e.message);
+        }
+
+        // Handle insufficient funds errors
+        if (e.code === 'INSUFFICIENT_FUNDS' ||
+            (e.message && e.message.includes('insufficient funds'))) {
+          throw fastify.httpErrors.badRequest(
+            'Insufficient ETH balance to pay for gas fees. Please add more ETH to your wallet.'
+          );
+        }
+
         throw fastify.httpErrors.internalServerError('Failed to add liquidity');
       }
     },
