@@ -1,6 +1,10 @@
+import {
+  TOKEN_PROGRAM_ID,
+  TOKEN_2022_PROGRAM_ID,
+  unpackAccount,
+  getMint,
+} from '@solana/spl-token';
 import { Keypair, PublicKey } from '@solana/web3.js';
-import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID, unpackAccount } from '@solana/spl-token';
-import { getMint } from '@solana/spl-token';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import {
@@ -24,7 +28,7 @@ export async function getSolanaBalances(
   try {
     const solana = await Solana.getInstance(network);
     const wallet = await solana.getWallet(address);
-    
+
     // Call our new optimized getBalance function
     const balances = await getOptimizedBalance(solana, wallet, tokens);
     return { balances };
@@ -48,10 +52,14 @@ async function getOptimizedBalance(
   const balances: Record<string, number> = {};
 
   // Treat empty array as if no tokens were specified
-  const effectiveSymbols = symbols && symbols.length === 0 ? undefined : symbols;
+  const effectiveSymbols =
+    symbols && symbols.length === 0 ? undefined : symbols;
 
   // Fetch SOL balance only if symbols is undefined or includes "SOL" (case-insensitive)
-  if (!effectiveSymbols || effectiveSymbols.some((s) => s.toUpperCase() === 'SOL')) {
+  if (
+    !effectiveSymbols ||
+    effectiveSymbols.some((s) => s.toUpperCase() === 'SOL')
+  ) {
     try {
       const solBalance = await solana.connection.getBalance(publicKey);
       const solBalanceInSol = solBalance * LAMPORT_TO_SOL;
@@ -63,7 +71,11 @@ async function getOptimizedBalance(
   }
 
   // Return early if only SOL balance was requested
-  if (effectiveSymbols && effectiveSymbols.length === 1 && effectiveSymbols[0].toUpperCase() === 'SOL') {
+  if (
+    effectiveSymbols &&
+    effectiveSymbols.length === 1 &&
+    effectiveSymbols[0].toUpperCase() === 'SOL'
+  ) {
     return balances;
   }
 
@@ -76,21 +88,26 @@ async function getOptimizedBalance(
       programId: TOKEN_2022_PROGRAM_ID,
     }),
   ]);
-  
+
   // Set a timeout for the token accounts request
   const timeoutPromise = new Promise((_, reject) => {
-    setTimeout(() => reject(new Error('Token accounts request timed out')), 10000);
+    setTimeout(
+      () => reject(new Error('Token accounts request timed out')),
+      10000,
+    );
   });
-  
+
   let allAccounts = [];
   try {
-    const [legacyAccounts, token2022Accounts] = await Promise.race([
+    const [legacyAccounts, token2022Accounts] = (await Promise.race([
       tokenAccountsPromise,
       timeoutPromise,
-    ]) as any;
-    
+    ])) as any;
+
     allAccounts = [...legacyAccounts.value, ...token2022Accounts.value];
-    logger.info(`Found ${allAccounts.length} token accounts for wallet ${publicKey.toString()}`);
+    logger.info(
+      `Found ${allAccounts.length} token accounts for wallet ${publicKey.toString()}`,
+    );
   } catch (error) {
     logger.error(`Error fetching token accounts: ${error.message}`);
     // If we couldn't fetch token accounts, return at least SOL balance
@@ -123,7 +140,9 @@ async function getOptimizedBalance(
   const processTokensPromise = (async () => {
     // Set up processing based on whether specific tokens are requested
     if (effectiveSymbols) {
-      logger.info(`Processing ${effectiveSymbols.length} specifically requested tokens`);
+      logger.info(
+        `Processing ${effectiveSymbols.length} specifically requested tokens`,
+      );
 
       for (const symbol of effectiveSymbols) {
         // Skip SOL as it's handled separately
@@ -144,13 +163,18 @@ async function getOptimizedBalance(
           if (mintToAccount.has(tokenBySymbol.address)) {
             const { parsedAccount } = mintToAccount.get(tokenBySymbol.address);
             const amount = parsedAccount.amount;
-            const uiAmount = Number(amount) / Math.pow(10, tokenBySymbol.decimals);
+            const uiAmount =
+              Number(amount) / Math.pow(10, tokenBySymbol.decimals);
             balances[tokenBySymbol.symbol] = uiAmount;
-            logger.debug(`Found balance for ${tokenBySymbol.symbol}: ${uiAmount}`);
+            logger.debug(
+              `Found balance for ${tokenBySymbol.symbol}: ${uiAmount}`,
+            );
           } else {
             // Token not found in wallet, set balance to 0
             balances[tokenBySymbol.symbol] = 0;
-            logger.debug(`No balance found for ${tokenBySymbol.symbol}, setting to 0`);
+            logger.debug(
+              `No balance found for ${tokenBySymbol.symbol}, setting to 0`,
+            );
           }
         }
         // If it looks like a Solana address, check if it matches a token in our list
@@ -173,11 +197,15 @@ async function getOptimizedBalance(
                 const amount = parsedAccount.amount;
                 const uiAmount = Number(amount) / Math.pow(10, token.decimals);
                 balances[token.symbol] = uiAmount;
-                logger.debug(`Found balance for ${token.symbol} (${mintAddress}): ${uiAmount}`);
+                logger.debug(
+                  `Found balance for ${token.symbol} (${mintAddress}): ${uiAmount}`,
+                );
               } else {
                 // Token not found in wallet, set balance to 0
                 balances[token.symbol] = 0;
-                logger.debug(`No balance found for ${token.symbol} (${mintAddress}), setting to 0`);
+                logger.debug(
+                  `No balance found for ${token.symbol} (${mintAddress}), setting to 0`,
+                );
               }
             } else {
               // If token not in our list, use a default 9 decimals (common for Solana SPL tokens)
@@ -186,23 +214,31 @@ async function getOptimizedBalance(
                 const amount = parsedAccount.amount;
                 const uiAmount = Number(amount) / Math.pow(10, 9);
                 balances[mintAddress] = uiAmount;
-                logger.debug(`Found balance for unlisted token ${mintAddress}: ${uiAmount}`);
+                logger.debug(
+                  `Found balance for unlisted token ${mintAddress}: ${uiAmount}`,
+                );
               } else {
                 // Address not found in wallet, set balance to 0
                 balances[mintAddress] = 0;
-                logger.debug(`No balance found for unlisted token ${mintAddress}, setting to 0`);
+                logger.debug(
+                  `No balance found for unlisted token ${mintAddress}, setting to 0`,
+                );
               }
             }
           } catch (e) {
             logger.warn(`Invalid token address format: ${symbol}`);
           }
         } else {
-          logger.warn(`Token not recognized: ${symbol} (not a known symbol or valid address)`);
+          logger.warn(
+            `Token not recognized: ${symbol} (not a known symbol or valid address)`,
+          );
         }
       }
     } else {
       // No symbols provided or empty array - check all tokens in token list with batching
-      logger.info(`Checking balances for all ${solana.tokenList.length} tokens in the token list`);
+      logger.info(
+        `Checking balances for all ${solana.tokenList.length} tokens in the token list`,
+      );
 
       // Process tokens in batches to avoid overwhelming the RPC provider
       const batchSize = 25; // Reasonable default batch size
@@ -214,18 +250,24 @@ async function getOptimizedBalance(
       const startTime = Date.now();
       let timeExceeded = false;
 
-      logger.info(`Processing ${totalTokens} tokens in batches of ${batchSize} with ${maxScanTimeMs}ms time limit`);
+      logger.info(
+        `Processing ${totalTokens} tokens in batches of ${batchSize} with ${maxScanTimeMs}ms time limit`,
+      );
 
       for (let i = 0; i < totalTokens && !timeExceeded; i += batchSize) {
         // Check if we've exceeded the time limit
         if (Date.now() - startTime > maxScanTimeMs) {
-          logger.warn(`Time limit of ${maxScanTimeMs}ms exceeded after checking ${i} tokens. Stopping scan.`);
+          logger.warn(
+            `Time limit of ${maxScanTimeMs}ms exceeded after checking ${i} tokens. Stopping scan.`,
+          );
           timeExceeded = true;
           break;
         }
 
         const batch = tokenList.slice(i, i + batchSize);
-        logger.debug(`Processing batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(totalTokens/batchSize)}`);
+        logger.debug(
+          `Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(totalTokens / batchSize)}`,
+        );
 
         // Process tokens in the current batch
         for (const token of batch) {
@@ -243,7 +285,9 @@ async function getOptimizedBalance(
             // Only add tokens with non-zero balances
             if (uiAmount > 0) {
               balances[token.symbol] = uiAmount;
-              logger.debug(`Found non-zero balance for ${token.symbol} (${token.address}): ${uiAmount}`);
+              logger.debug(
+                `Found non-zero balance for ${token.symbol} (${token.address}): ${uiAmount}`,
+              );
             }
           }
         }
@@ -306,7 +350,8 @@ export const balancesRoute: FastifyPluginAsync = async (fastify) => {
     '/balances',
     {
       schema: {
-        description: 'Get token balances for a Solana address. If no tokens specified or empty array provided, returns non-zero balances for tokens from the token list that are found in the wallet (includes SOL even if zero). If specific tokens are requested, returns those exact tokens with their balances, including zeros.',
+        description:
+          'Get token balances for a Solana address. If no tokens specified or empty array provided, returns non-zero balances for tokens from the token list that are found in the wallet (includes SOL even if zero). If specific tokens are requested, returns those exact tokens with their balances, including zeros.',
         tags: ['solana'],
         body: {
           ...BalanceRequestSchema,

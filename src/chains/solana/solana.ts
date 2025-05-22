@@ -122,7 +122,9 @@ export class Solana {
 
   private async init(): Promise<void> {
     try {
-      logger.info(`Initializing Solana connector for network: ${this.network}, nodeURL: ${this.config.network.nodeURL}`);
+      logger.info(
+        `Initializing Solana connector for network: ${this.network}, nodeURL: ${this.config.network.nodeURL}`,
+      );
       await this.loadTokens(
         this.config.network.tokenListSource,
         this.config.network.tokenListType,
@@ -349,17 +351,25 @@ export class Solana {
     const balances: Record<string, number> = {};
 
     // Treat empty array as if no tokens were specified
-    const effectiveSymbols = symbols && symbols.length === 0 ? undefined : symbols;
+    const effectiveSymbols =
+      symbols && symbols.length === 0 ? undefined : symbols;
 
     // Fetch SOL balance only if symbols is undefined or includes "SOL" (case-insensitive)
-    if (!effectiveSymbols || effectiveSymbols.some((s) => s.toUpperCase() === 'SOL')) {
+    if (
+      !effectiveSymbols ||
+      effectiveSymbols.some((s) => s.toUpperCase() === 'SOL')
+    ) {
       const solBalance = await this.connection.getBalance(publicKey);
       const solBalanceInSol = solBalance * LAMPORT_TO_SOL;
       balances['SOL'] = solBalanceInSol;
     }
 
     // Return early if only SOL balance was requested
-    if (effectiveSymbols && effectiveSymbols.length === 1 && effectiveSymbols[0].toUpperCase() === 'SOL') {
+    if (
+      effectiveSymbols &&
+      effectiveSymbols.length === 1 &&
+      effectiveSymbols[0].toUpperCase() === 'SOL'
+    ) {
       return balances;
     }
 

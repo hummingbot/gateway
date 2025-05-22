@@ -55,7 +55,9 @@ export class Ethereum {
     const config = getEthereumConfig('ethereum', network);
     this.chainId = config.network.chainID;
     this.rpcUrl = config.network.nodeURL;
-    logger.info(`Initializing Ethereum connector for network: ${network}, nodeURL: ${this.rpcUrl}`);
+    logger.info(
+      `Initializing Ethereum connector for network: ${network}, nodeURL: ${this.rpcUrl}`,
+    );
     this.provider = new providers.StaticJsonRpcProvider(this.rpcUrl);
     this.tokenListSource = config.network.tokenListSource;
     this.tokenListType = config.network.tokenListType;
@@ -414,7 +416,10 @@ export class Ethereum {
     });
 
     // Race the balance request against the timeout
-    const balance: BigNumber = await Promise.race([balancePromise, timeoutPromise]);
+    const balance: BigNumber = await Promise.race([
+      balancePromise,
+      timeoutPromise,
+    ]);
 
     logger.debug(`Token balance for ${wallet.address}: ${balance.toString()}`);
     return { value: balance, decimals: decimals };
@@ -508,66 +513,68 @@ export class Ethereum {
   ];
 
   // Define wrapped native token addresses for different networks
-  private static WRAPPED_ADDRESSES: { [key: string]: {address: string, symbol: string, nativeSymbol: string} } = {
+  private static WRAPPED_ADDRESSES: {
+    [key: string]: { address: string; symbol: string; nativeSymbol: string };
+  } = {
     mainnet: {
       address: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
       symbol: 'WETH',
-      nativeSymbol: 'ETH'
+      nativeSymbol: 'ETH',
     },
     arbitrum: {
       address: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
       symbol: 'WETH',
-      nativeSymbol: 'ETH'
+      nativeSymbol: 'ETH',
     },
     optimism: {
       address: '0x4200000000000000000000000000000000000006',
       symbol: 'WETH',
-      nativeSymbol: 'ETH'
+      nativeSymbol: 'ETH',
     },
     base: {
       address: '0x4200000000000000000000000000000000000006',
       symbol: 'WETH',
-      nativeSymbol: 'ETH'
+      nativeSymbol: 'ETH',
     },
     sepolia: {
       address: '0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14',
       symbol: 'WETH',
-      nativeSymbol: 'ETH'
+      nativeSymbol: 'ETH',
     },
     polygon: {
       address: '0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619',
       symbol: 'WETH',
-      nativeSymbol: 'MATIC'
+      nativeSymbol: 'MATIC',
     },
     bsc: {
       address: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
       symbol: 'WBNB',
-      nativeSymbol: 'BNB'
+      nativeSymbol: 'BNB',
     },
     avalanche: {
       address: '0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7',
       symbol: 'WAVAX',
-      nativeSymbol: 'AVAX'
+      nativeSymbol: 'AVAX',
     },
     celo: {
       address: '0x471EcE3750Da237f93B8E339c536989b8978a438',
       symbol: 'WCELO',
-      nativeSymbol: 'CELO'
+      nativeSymbol: 'CELO',
     },
     blast: {
       address: '0x4300000000000000000000000000000000000004',
       symbol: 'WETH',
-      nativeSymbol: 'ETH'
+      nativeSymbol: 'ETH',
     },
     zora: {
       address: '0x4200000000000000000000000000000000000006',
       symbol: 'WETH',
-      nativeSymbol: 'ETH'
+      nativeSymbol: 'ETH',
     },
     worldchain: {
       address: '0x4300000000000000000000000000000000000004',
       symbol: 'WETH',
-      nativeSymbol: 'ETH'
+      nativeSymbol: 'ETH',
     },
   };
 
@@ -578,7 +585,9 @@ export class Ethereum {
   public getWrappedNativeTokenAddress(): string {
     const wrappedInfo = Ethereum.WRAPPED_ADDRESSES[this.network];
     if (!wrappedInfo) {
-      throw new Error(`Wrapped token address not found for network: ${this.network}`);
+      throw new Error(
+        `Wrapped token address not found for network: ${this.network}`,
+      );
     }
     return wrappedInfo.address;
   }
@@ -599,11 +608,18 @@ export class Ethereum {
    * @param amountInWei The amount of ETH to wrap in wei (as a BigNumber)
    * @returns The transaction receipt
    */
-  public async wrapNativeToken(wallet: Wallet, amountInWei: BigNumber): Promise<ContractTransaction> {
+  public async wrapNativeToken(
+    wallet: Wallet,
+    amountInWei: BigNumber,
+  ): Promise<ContractTransaction> {
     const wrappedAddress = this.getWrappedNativeTokenAddress();
 
     // Create wrapped token contract instance
-    const wrappedContract = new Contract(wrappedAddress, Ethereum.WETH9ABI, wallet);
+    const wrappedContract = new Contract(
+      wrappedAddress,
+      Ethereum.WETH9ABI,
+      wallet,
+    );
 
     // Set transaction parameters
     const params: any = {

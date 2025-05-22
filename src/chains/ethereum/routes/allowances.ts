@@ -1,6 +1,7 @@
 import { Type } from '@sinclair/typebox';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
+import { getSpender } from '../../../connectors/uniswap/uniswap.contracts';
 import {
   AllowancesRequestType,
   AllowancesResponseType,
@@ -8,7 +9,6 @@ import {
 import { tokenValueToString } from '../../../services/base';
 import { logger } from '../../../services/logger';
 import { Ethereum, TokenInfo } from '../ethereum';
-import { getSpender } from '../../../connectors/uniswap/uniswap.contracts';
 
 export async function getTokensToTokenInfo(
   ethereum: Ethereum,
@@ -69,7 +69,9 @@ export async function getEthereumAllowances(
       if (spender.includes('/') || spender === 'uniswap') {
         logger.info(`Looking up spender address for connector: ${spender}`);
         spenderAddress = getSpender(network, spender);
-        logger.info(`Resolved connector ${spender} to spender address: ${spenderAddress}`);
+        logger.info(
+          `Resolved connector ${spender} to spender address: ${spenderAddress}`,
+        );
       } else {
         // Otherwise assume it's a direct address
         spenderAddress = spender;
@@ -152,8 +154,13 @@ export const allowancesRoute: FastifyPluginAsync = async (fastify) => {
           }),
           address: Type.String({ examples: [firstWalletAddress] }),
           spender: Type.String({
-            examples: ['uniswap/clmm', 'uniswap', '0xC36442b4a4522E871399CD717aBDD847Ab11FE88'],
-            description: 'Spender can be a connector name (e.g., uniswap/clmm, uniswap/amm, uniswap) or a direct contract address',
+            examples: [
+              'uniswap/clmm',
+              'uniswap',
+              '0xC36442b4a4522E871399CD717aBDD847Ab11FE88',
+            ],
+            description:
+              'Spender can be a connector name (e.g., uniswap/clmm, uniswap/amm, uniswap) or a direct contract address',
           }),
           tokens: Type.Array(Type.String(), { examples: [['USDC', 'DAI']] }),
         }),

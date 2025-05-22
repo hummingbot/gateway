@@ -57,25 +57,31 @@ export async function getEthereumBalances(
       const batchSize = 25; // Reasonable default batch size
       const tokenList = ethereum.storedTokenList;
       const totalTokens = tokenList.length;
-      
+
       // Set a maximum time limit for the entire operation
       const maxScanTimeMs = 30000; // 30 seconds maximum for scanning
       const startTime = Date.now();
       let timeExceeded = false;
-      
-      logger.info(`Processing ${totalTokens} tokens in batches of ${batchSize} with ${maxScanTimeMs}ms time limit`);
-      
+
+      logger.info(
+        `Processing ${totalTokens} tokens in batches of ${batchSize} with ${maxScanTimeMs}ms time limit`,
+      );
+
       for (let i = 0; i < totalTokens && !timeExceeded; i += batchSize) {
         // Check if we've exceeded the time limit
         if (Date.now() - startTime > maxScanTimeMs) {
-          logger.warn(`Time limit of ${maxScanTimeMs}ms exceeded after checking ${i} tokens. Stopping scan.`);
+          logger.warn(
+            `Time limit of ${maxScanTimeMs}ms exceeded after checking ${i} tokens. Stopping scan.`,
+          );
           timeExceeded = true;
           break;
         }
-        
+
         const batch = tokenList.slice(i, i + batchSize);
-        logger.debug(`Processing batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(totalTokens/batchSize)}`);
-        
+        logger.debug(
+          `Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(totalTokens / batchSize)}`,
+        );
+
         // Process batch in parallel with timeout
         await Promise.all(
           batch.map(async (token) => {
@@ -88,7 +94,7 @@ export async function getEthereumBalances(
                 contract,
                 wallet,
                 token.decimals,
-                3000 // 3 second timeout for better responsiveness
+                3000, // 3 second timeout for better responsiveness
               );
               // Parse balance to number
               const balanceNum = parseFloat(tokenValueToString(balance));
@@ -102,7 +108,9 @@ export async function getEthereumBalances(
               }
             } catch (err) {
               // Log error but continue with other tokens
-              logger.warn(`Error getting balance for ${token.symbol}: ${err.message}`);
+              logger.warn(
+                `Error getting balance for ${token.symbol}: ${err.message}`,
+              );
             }
           }),
         );
@@ -126,7 +134,7 @@ export async function getEthereumBalances(
               contract,
               wallet,
               token.decimals,
-              5000 // 5 second timeout for specifically requested tokens
+              5000, // 5 second timeout for specifically requested tokens
             );
             // Convert string to number as required by schema
             balances[token.symbol] = parseFloat(tokenValueToString(balance));
@@ -187,7 +195,8 @@ export const balancesRoute: FastifyPluginAsync = async (fastify) => {
     '/balances',
     {
       schema: {
-        description: 'Get Ethereum balances. If no tokens specified or empty array provided, returns native token (ETH) and only non-zero balances for tokens from the token list. If specific tokens are requested, returns those exact tokens with their balances, including zeros.',
+        description:
+          'Get Ethereum balances. If no tokens specified or empty array provided, returns native token (ETH) and only non-zero balances for tokens from the token list. If specific tokens are requested, returns those exact tokens with their balances, including zeros.',
         tags: ['ethereum'],
         body: {
           ...BalanceRequestSchema,
@@ -214,7 +223,8 @@ export const balancesRoute: FastifyPluginAsync = async (fastify) => {
             tokens: {
               type: 'array',
               items: { type: 'string' },
-              description: 'A list of token symbols or addresses. An empty array is treated the same as if the parameter was not provided, returning only non-zero balances plus the native token.',
+              description:
+                'A list of token symbols or addresses. An empty array is treated the same as if the parameter was not provided, returning only non-zero balances plus the native token.',
               examples: [
                 [
                   'ETH',

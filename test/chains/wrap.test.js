@@ -44,7 +44,8 @@ function validateWrapResponse(response) {
     typeof response.tx === 'object' &&
     typeof response.tx.data === 'string' &&
     typeof response.tx.to === 'string' &&
-    (response.tx.gasLimit === null || typeof response.tx.gasLimit === 'string') &&
+    (response.tx.gasLimit === null ||
+      typeof response.tx.gasLimit === 'string') &&
     typeof response.tx.value === 'string'
   );
 }
@@ -167,7 +168,8 @@ describe('Ethereum Wrap Native Token Tests (Base Network)', () => {
         response: {
           status: 400,
           data: {
-            error: 'Insufficient funds for transaction. Please ensure you have enough ETH to wrap.',
+            error:
+              'Insufficient funds for transaction. Please ensure you have enough ETH to wrap.',
             code: 400,
           },
         },
