@@ -12,116 +12,26 @@ import {
 } from '../../../schemas/trading-types/amm-schema';
 import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
+import {
+  getUniswapV2RouterAddress,
+  IUniswapV2Router02ABI,
+  IUniswapV2PairABI,
+} from '../uniswap.contracts';
 import { formatTokenAmount } from '../uniswap.utils';
-
-// Define the necessary ABIs
-const IUniswapV2Router02ABI = {
-  abi: [
-    {
-      inputs: [
-        { internalType: 'address', name: 'tokenA', type: 'address' },
-        { internalType: 'address', name: 'tokenB', type: 'address' },
-        { internalType: 'uint256', name: 'liquidity', type: 'uint256' },
-        { internalType: 'uint256', name: 'amountAMin', type: 'uint256' },
-        { internalType: 'uint256', name: 'amountBMin', type: 'uint256' },
-        { internalType: 'address', name: 'to', type: 'address' },
-        { internalType: 'uint256', name: 'deadline', type: 'uint256' },
-      ],
-      name: 'removeLiquidity',
-      outputs: [
-        { internalType: 'uint256', name: 'amountA', type: 'uint256' },
-        { internalType: 'uint256', name: 'amountB', type: 'uint256' },
-      ],
-      stateMutability: 'nonpayable',
-      type: 'function',
-    },
-    {
-      inputs: [
-        { internalType: 'address', name: 'token', type: 'address' },
-        { internalType: 'uint256', name: 'liquidity', type: 'uint256' },
-        { internalType: 'uint256', name: 'amountTokenMin', type: 'uint256' },
-        { internalType: 'uint256', name: 'amountETHMin', type: 'uint256' },
-        { internalType: 'address', name: 'to', type: 'address' },
-        { internalType: 'uint256', name: 'deadline', type: 'uint256' },
-      ],
-      name: 'removeLiquidityETH',
-      outputs: [
-        { internalType: 'uint256', name: 'amountToken', type: 'uint256' },
-        { internalType: 'uint256', name: 'amountETH', type: 'uint256' },
-      ],
-      stateMutability: 'nonpayable',
-      type: 'function',
-    },
-  ],
-};
-
-const IUniswapV2PairABI = {
-  abi: [
-    {
-      constant: true,
-      inputs: [],
-      name: 'getReserves',
-      outputs: [
-        { internalType: 'uint112', name: '_reserve0', type: 'uint112' },
-        { internalType: 'uint112', name: '_reserve1', type: 'uint112' },
-        { internalType: 'uint32', name: '_blockTimestampLast', type: 'uint32' },
-      ],
-      payable: false,
-      stateMutability: 'view',
-      type: 'function',
-    },
-    {
-      constant: true,
-      inputs: [],
-      name: 'token0',
-      outputs: [{ internalType: 'address', name: '', type: 'address' }],
-      payable: false,
-      stateMutability: 'view',
-      type: 'function',
-    },
-    {
-      constant: true,
-      inputs: [],
-      name: 'token1',
-      outputs: [{ internalType: 'address', name: '', type: 'address' }],
-      payable: false,
-      stateMutability: 'view',
-      type: 'function',
-    },
-    {
-      constant: true,
-      inputs: [{ internalType: 'address', name: 'owner', type: 'address' }],
-      name: 'balanceOf',
-      outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
-      payable: false,
-      stateMutability: 'view',
-      type: 'function',
-    },
-    {
-      constant: true,
-      inputs: [],
-      name: 'totalSupply',
-      outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
-      payable: false,
-      stateMutability: 'view',
-      type: 'function',
-    },
-    {
-      constant: false,
-      inputs: [
-        { internalType: 'address', name: 'spender', type: 'address' },
-        { internalType: 'uint256', name: 'value', type: 'uint256' },
-      ],
-      name: 'approve',
-      outputs: [{ internalType: 'bool', name: '', type: 'bool' }],
-      payable: false,
-      stateMutability: 'nonpayable',
-      type: 'function',
-    },
-  ],
-};
+import { checkLPAllowance } from './positionInfo';
 
 export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
+  // Get first wallet address for example
+  const ethereum = await Ethereum.getInstance('base');
+  let firstWalletAddress = '<ethereum-wallet-address>';
+
+  try {
+    firstWalletAddress =
+      (await ethereum.getFirstWalletAddress()) || firstWalletAddress;
+  } catch (error) {
+    logger.warn('No wallets found for examples in schema');
+  }
+
   fastify.post<{
     Body: RemoveLiquidityRequestType;
     Reply: RemoveLiquidityResponseType;
@@ -136,15 +46,14 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             ...RemoveLiquidityRequest.properties,
             network: { type: 'string', default: 'base' },
-            chain: { type: 'string', default: 'ethereum' },
-            walletAddress: { type: 'string', examples: ['0x...'] },
+            walletAddress: { type: 'string', examples: [firstWalletAddress] },
             poolAddress: {
               type: 'string',
-              examples: ['0xb4e16d0168e52d35cacd2c6185b44281ec28c9dc'],
+              examples: [''],
             },
             baseToken: { type: 'string', examples: ['WETH'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
-            percentageToRemove: { type: 'number', examples: [50] },
+            percentageToRemove: { type: 'number', examples: [100] },
           },
         },
         response: {
@@ -284,11 +193,15 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           .mul(slippageMultiplier.numerator.toString())
           .div(slippageMultiplier.denominator.toString());
 
+        // Check LP token allowance
+        try {
+          await checkLPAllowance(ethereum, wallet, poolAddress, routerAddress, liquidityToRemove);
+        } catch (error) {
+          throw fastify.httpErrors.badRequest(error.message);
+        }
+
         // Prepare the transaction parameters
         const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes from now
-
-        // Approve router to spend LP tokens
-        await pairContract.approve(routerAddress, liquidityToRemove);
 
         let tx;
 
@@ -360,6 +273,17 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         if (e.statusCode) {
           throw e;
         }
+
+        // Handle insufficient funds errors
+        if (
+          e.code === 'INSUFFICIENT_FUNDS' ||
+          (e.message && e.message.includes('insufficient funds'))
+        ) {
+          throw fastify.httpErrors.badRequest(
+            'Insufficient ETH balance to pay for gas fees. Please add more ETH to your wallet.',
+          );
+        }
+
         throw fastify.httpErrors.internalServerError(
           'Failed to remove liquidity',
         );

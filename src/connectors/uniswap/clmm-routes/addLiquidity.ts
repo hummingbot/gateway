@@ -20,55 +20,12 @@ import {
 } from '../../../schemas/trading-types/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
+import {
+  getUniswapV3NftManagerAddress,
+  POSITION_MANAGER_ABI,
+  ERC20_ABI,
+} from '../uniswap.contracts';
 import { formatTokenAmount } from '../uniswap.utils';
-
-// Define minimal ABI for the NonfungiblePositionManager
-const POSITION_MANAGER_ABI = [
-  {
-    inputs: [{ internalType: 'uint256', name: 'tokenId', type: 'uint256' }],
-    name: 'positions',
-    outputs: [
-      { internalType: 'uint96', name: 'nonce', type: 'uint96' },
-      { internalType: 'address', name: 'operator', type: 'address' },
-      { internalType: 'address', name: 'token0', type: 'address' },
-      { internalType: 'address', name: 'token1', type: 'address' },
-      { internalType: 'uint24', name: 'fee', type: 'uint24' },
-      { internalType: 'int24', name: 'tickLower', type: 'int24' },
-      { internalType: 'int24', name: 'tickUpper', type: 'int24' },
-      { internalType: 'uint128', name: 'liquidity', type: 'uint128' },
-      {
-        internalType: 'uint256',
-        name: 'feeGrowthInside0LastX128',
-        type: 'uint256',
-      },
-      {
-        internalType: 'uint256',
-        name: 'feeGrowthInside1LastX128',
-        type: 'uint256',
-      },
-      { internalType: 'uint128', name: 'tokensOwed0', type: 'uint128' },
-      { internalType: 'uint128', name: 'tokensOwed1', type: 'uint128' },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-];
-
-// Define a minimal ABI for ERC20 tokens
-const ERC20_ABI = [
-  {
-    constant: false,
-    inputs: [
-      { name: '_spender', type: 'address' },
-      { name: '_value', type: 'uint256' },
-    ],
-    name: 'approve',
-    outputs: [{ name: '', type: 'bool' }],
-    payable: false,
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-];
 
 export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{

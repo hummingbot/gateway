@@ -1,4 +1,5 @@
 import { Contract } from '@ethersproject/contracts';
+import { BigNumber } from 'ethers';
 import { FastifyPluginAsync } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
@@ -10,64 +11,43 @@ import {
 } from '../../../schemas/trading-types/amm-schema';
 import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
+import { IUniswapV2PairABI } from '../uniswap.contracts';
 import { formatTokenAmount } from '../uniswap.utils';
 
-// Define a minimal ABI for the Uniswap V2 Pair contract
-const IUniswapV2PairABI = {
-  abi: [
-    {
-      constant: true,
-      inputs: [],
-      name: 'getReserves',
-      outputs: [
-        { internalType: 'uint112', name: '_reserve0', type: 'uint112' },
-        { internalType: 'uint112', name: '_reserve1', type: 'uint112' },
-        { internalType: 'uint32', name: '_blockTimestampLast', type: 'uint32' },
-      ],
-      payable: false,
-      stateMutability: 'view',
-      type: 'function',
-    },
-    {
-      constant: true,
-      inputs: [],
-      name: 'token0',
-      outputs: [{ internalType: 'address', name: '', type: 'address' }],
-      payable: false,
-      stateMutability: 'view',
-      type: 'function',
-    },
-    {
-      constant: true,
-      inputs: [],
-      name: 'token1',
-      outputs: [{ internalType: 'address', name: '', type: 'address' }],
-      payable: false,
-      stateMutability: 'view',
-      type: 'function',
-    },
-    {
-      constant: true,
-      inputs: [{ internalType: 'address', name: 'owner', type: 'address' }],
-      name: 'balanceOf',
-      outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
-      payable: false,
-      stateMutability: 'view',
-      type: 'function',
-    },
-    {
-      constant: true,
-      inputs: [],
-      name: 'totalSupply',
-      outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
-      payable: false,
-      stateMutability: 'view',
-      type: 'function',
-    },
-  ],
-};
+export async function checkLPAllowance(
+  ethereum: any,
+  wallet: any,
+  poolAddress: string,
+  routerAddress: string,
+  requiredAmount: BigNumber,
+): Promise<void> {
+  const lpTokenContract = ethereum.getContract(poolAddress, wallet);
+  const lpAllowance = await ethereum.getERC20Allowance(
+    lpTokenContract,
+    wallet,
+    routerAddress,
+    18, // LP tokens typically have 18 decimals
+  );
+  const currentLpAllowance = BigNumber.from(lpAllowance.value);
+  if (currentLpAllowance.lt(requiredAmount)) {
+    throw new Error(
+      `Insufficient LP token allowance. Please approve at least ${formatTokenAmount(requiredAmount.toString(), 18)} LP tokens for the Uniswap router (${routerAddress})`
+    );
+  }
+}
 
 export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
+  // Get first wallet address for example
+  const ethereum = await Ethereum.getInstance('base');
+  let firstWalletAddress = '<ethereum-wallet-address>';
+
+  try {
+    firstWalletAddress =
+      (await ethereum.getFirstWalletAddress()) || firstWalletAddress;
+  } catch (error) {
+    logger.warn('No wallets found for examples in schema');
+  }
+
   fastify.get<{
     Querystring: GetPositionInfoRequestType;
     Reply: PositionInfo;
@@ -81,14 +61,13 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
           ...GetPositionInfoRequest,
           properties: {
             network: { type: 'string', default: 'base' },
-            chain: { type: 'string', default: 'ethereum' },
             poolAddress: {
               type: 'string',
-              examples: ['0xb4e16d0168e52d35cacd2c6185b44281ec28c9dc'],
+              examples: [''],
             },
             baseToken: { type: 'string', examples: ['WETH'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
-            walletAddress: { type: 'string', examples: ['0x...'] },
+            walletAddress: { type: 'string', examples: [firstWalletAddress] },
           },
         },
         response: {

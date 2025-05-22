@@ -11,44 +11,8 @@ import {
 } from '../../../schemas/trading-types/amm-schema';
 import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
+import { IUniswapV2PairABI } from '../uniswap.contracts';
 import { formatTokenAmount } from '../uniswap.utils';
-
-// Define a minimal ABI for the Uniswap V2 Pair contract
-const IUniswapV2PairABI = {
-  abi: [
-    {
-      constant: true,
-      inputs: [],
-      name: 'getReserves',
-      outputs: [
-        { internalType: 'uint112', name: '_reserve0', type: 'uint112' },
-        { internalType: 'uint112', name: '_reserve1', type: 'uint112' },
-        { internalType: 'uint32', name: '_blockTimestampLast', type: 'uint32' },
-      ],
-      payable: false,
-      stateMutability: 'view',
-      type: 'function',
-    },
-    {
-      constant: true,
-      inputs: [],
-      name: 'token0',
-      outputs: [{ internalType: 'address', name: '', type: 'address' }],
-      payable: false,
-      stateMutability: 'view',
-      type: 'function',
-    },
-    {
-      constant: true,
-      inputs: [],
-      name: 'token1',
-      outputs: [{ internalType: 'address', name: '', type: 'address' }],
-      payable: false,
-      stateMutability: 'view',
-      type: 'function',
-    },
-  ],
-};
 
 export async function getUniswapAmmLiquidityQuote(
   network: string,

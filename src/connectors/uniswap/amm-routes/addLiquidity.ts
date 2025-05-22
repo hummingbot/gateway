@@ -1,4 +1,6 @@
 import { Contract } from '@ethersproject/contracts';
+import { Percent } from '@uniswap/sdk-core';
+import { BigNumber } from 'ethers';
 import { FastifyPluginAsync } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
@@ -11,60 +13,13 @@ import {
 } from '../../../schemas/trading-types/amm-schema';
 import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
+import {
+  getUniswapV2RouterAddress,
+  IUniswapV2Router02ABI,
+} from '../uniswap.contracts';
 import { formatTokenAmount } from '../uniswap.utils';
 
 import { getUniswapAmmLiquidityQuote } from './quoteLiquidity';
-
-// Replace direct import with require
-const IUniswapV2Router02ABI = {
-  abi: [
-    // Router methods for adding liquidity
-    {
-      inputs: [
-        { internalType: 'address', name: 'tokenA', type: 'address' },
-        { internalType: 'address', name: 'tokenB', type: 'address' },
-        { internalType: 'uint256', name: 'amountADesired', type: 'uint256' },
-        { internalType: 'uint256', name: 'amountBDesired', type: 'uint256' },
-        { internalType: 'uint256', name: 'amountAMin', type: 'uint256' },
-        { internalType: 'uint256', name: 'amountBMin', type: 'uint256' },
-        { internalType: 'address', name: 'to', type: 'address' },
-        { internalType: 'uint256', name: 'deadline', type: 'uint256' },
-      ],
-      name: 'addLiquidity',
-      outputs: [
-        { internalType: 'uint256', name: 'amountA', type: 'uint256' },
-        { internalType: 'uint256', name: 'amountB', type: 'uint256' },
-        { internalType: 'uint256', name: 'liquidity', type: 'uint256' },
-      ],
-      stateMutability: 'nonpayable',
-      type: 'function',
-    },
-    {
-      inputs: [
-        { internalType: 'address', name: 'token', type: 'address' },
-        {
-          internalType: 'uint256',
-          name: 'amountTokenDesired',
-          type: 'uint256',
-        },
-        { internalType: 'uint256', name: 'amountTokenMin', type: 'uint256' },
-        { internalType: 'uint256', name: 'amountETHMin', type: 'uint256' },
-        { internalType: 'address', name: 'to', type: 'address' },
-        { internalType: 'uint256', name: 'deadline', type: 'uint256' },
-      ],
-      name: 'addLiquidityETH',
-      outputs: [
-        { internalType: 'uint256', name: 'amountToken', type: 'uint256' },
-        { internalType: 'uint256', name: 'amountETH', type: 'uint256' },
-        { internalType: 'uint256', name: 'liquidity', type: 'uint256' },
-      ],
-      stateMutability: 'payable',
-      type: 'function',
-    },
-  ],
-};
-import { BigNumber } from 'ethers';
-import { Percent } from '@uniswap/sdk-core';
 
 async function addLiquidity(
   fastify: any,
