@@ -1,0 +1,26 @@
+# Global settings for Gamma
+# how much the execution price is allowed to move unfavorably 
+allowedSlippage: '1/100'
+
+# Network-specific pool configurations
+networks:
+  # Solana mainnet pools
+  mainnet-beta:
+    # AMM (Gamma) pools for Solana mainnet
+    amm:
+      # Format: base-quote: pool_address
+      SOL-FARTCOIN: 'CM681mP5GjxrzFWg452RfJ2W4zEnshR9kkgg34NdAthi'
+      SOL-JITOSOL: 'CyK256TZTwELBABZ8vpnAKbKo3pD8oQgvW4RSt8PCRJ8'
+      MSOL-PYTH: '9WQYffYDVvCwmNdxB7QJX64ueuGQuEP8tfpcNzQ7AMF6'
+      SOL-GOFX: '4jN2hoeY9neREyifv8xU5i8XNotC563e78pJ7CkazdoJ'
+      SOL-WBTC: 'Cr3AWsnmXyrEJh3DSrF1xYRct4LSWPh1qGuUUo8JNnTt'
+      SOL-PWEASE: '39yqW5xvumoMN6LtEVaP5xjndamHacE4fKnYbQXkvJXV'
+      SOL-USDC: 'Hjm1F98vgVdN7Y9L46KLqcZZWyTKS9tj9ybYKJcXnSng'
+      SOL-JUPSOL: '9Pmk5Wa9LdVDNtwBzSU9GVfRrcdFyBi6XKBsZykCfrRS'
+  
+  # Solana devnet pools
+  devnet:    
+    # AMM (Gamma) pools for Solana devnet
+    amm: {}
+
+  

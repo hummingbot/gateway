@@ -3,6 +3,7 @@ import { FastifyPluginAsync } from 'fastify';
 
 import { logger } from '../services/logger';
 
+import { GammaConfig } from './gamma/gamma.config';
 import { JupiterConfig } from './jupiter/jupiter.config';
 import { MeteoraConfig } from './meteora/meteora.config';
 import { RaydiumConfig } from './raydium/raydium.config';
@@ -46,6 +47,12 @@ export const connectorsRoutes: FastifyPluginAsync = async (fastify) => {
       logger.info('Getting available DEX connectors and networks');
 
       const connectors = [
+        {
+          name: 'gamma/amm',
+          trading_types: ['amm'],
+          chain: GammaConfig.chain,
+          networks: GammaConfig.networks
+        },
         {
           name: 'jupiter',
           trading_types: ['swap'],
