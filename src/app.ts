@@ -24,7 +24,7 @@ import { jupiterRoutes } from './connectors/jupiter/jupiter.routes';
 import { meteoraRoutes } from './connectors/meteora/meteora.routes';
 import { uniswapRoutes } from './connectors/uniswap/uniswap.routes';
 import { raydiumRoutes } from './connectors/raydium/raydium.routes';
-
+import { gammaRoutes } from './connectors/gamma/gamma.routes';
 
 // Change version for each release
 const GATEWAY_VERSION = 'dev-2.6.0';
@@ -62,6 +62,7 @@ const swaggerOptions = {
       { name: 'meteora/clmm', description: 'Meteora CLMM connector endpoints' },
       { name: 'uniswap', description: 'Uniswap connector endpoints' },
       { name: 'ethereum', description: 'Ethereum chain endpoints' },
+      { name: 'gamma/amm', description: 'Gamma AMM connector endpoints' }
     ],
     components: {
       parameters: {
@@ -169,6 +170,7 @@ const configureGatewayServer = () => {
     app.register(uniswapRoutes, { prefix: '/uniswap' });
     app.register(solanaRoutes, { prefix: '/solana' });
     app.register(ethereumRoutes, { prefix: '/ethereum' });
+    app.register(gammaRoutes.amm, { prefix: '/gamma/amm' });
   };
 
   // Register routes on main server

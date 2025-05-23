@@ -75,6 +75,7 @@
     "fastify": "^4.28.1",
     "fastify-type-provider-zod": "^2.0.0",
     "fs-extra": "^10.0.0",
+    "goosefx-amm-sdk": "^2.0.0",
     "graphql-request": "^6.1.0",
     "handle": "link:@oclif/errors/handle",
     "http-status-codes": "2.2.0",
@@ -182,5 +183,6 @@
   },
   "bin": {
     "gateway": "./dist/src/index.js"
-  }
+  },
+  "packageManager": "pnpm@9.7.1+sha512.faf344af2d6ca65c4c5c8c2224ea77a81a5e8859cbc4e06b1511ddce2f0151512431dd19e6aff31f2c6a8f5f2aced9bd2273e1fed7dd4de1868984059d2c4247"
 }

@@ -5,6 +5,7 @@ import { JupiterConfig } from './jupiter/jupiter.config';
 import { MeteoraConfig } from './meteora/meteora.config';
 import { RaydiumConfig } from './raydium/raydium.config';
 import { logger } from '../services/logger';
+import { GammaConfig } from './gamma/gamma.config';
 
 // Define the schema using Typebox
 const NetworkSchema = Type.Object({
@@ -61,6 +62,11 @@ export const connectorsRoutes: FastifyPluginAsync = async (fastify) => {
           trading_types: ['clmm', 'swap'],
           available_networks: RaydiumConfig.config.availableNetworks,
         },
+        {
+          name: 'gamma/amm',
+          trading_types: ['amm'],
+          available_networks: GammaConfig.config.availableNetworks
+        }
       ];
 
       logger.info('Available connectors: ' + connectors.map(c => c.name).join(', '));
