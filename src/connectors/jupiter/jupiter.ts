@@ -1,11 +1,6 @@
 import { Wallet } from '@coral-xyz/anchor';
-import {
-  QuoteGetRequest,
-  QuoteResponse,
-  SwapResponse,
-  createJupiterApiClient,
-} from '@jup-ag/api';
 import { VersionedTransaction } from '@solana/web3.js';
+import axios, { AxiosInstance } from 'axios';
 
 import { Solana, BASE_FEE } from '../../chains/solana/solana';
 import { percentRegexp } from '../../services/config-manager-v2';
@@ -17,15 +12,56 @@ const JUPITER_API_RETRY_COUNT = 5;
 const JUPITER_API_RETRY_INTERVAL_MS = 1000;
 export const DECIMAL_MULTIPLIER = 10;
 
+// Jupiter API base URL
+const JUPITER_API_BASE = 'https://lite-api.jup.ag';
+
+// Type definitions for Jupiter API responses
+interface QuoteResponse {
+  inAmount: string;
+  outAmount: string;
+  priceImpactPct: string;
+  otherAmountThreshold: string;
+  slippageBps: number;
+  swapMode: string;
+  routePlan: any[];
+  contextSlot: number;
+  timeTaken: number;
+}
+
+interface SwapResponse {
+  swapTransaction: string;
+  lastValidBlockHeight: number;
+  prioritizationFeeLamports: number;
+}
+
 export class Jupiter {
   private static _instances: { [name: string]: Jupiter };
   private solana: Solana;
   public config: JupiterConfig.NetworkConfig;
-  protected jupiterQuoteApi!: ReturnType<typeof createJupiterApiClient>;
+  private httpClient: AxiosInstance;
 
   private constructor() {
     this.config = JupiterConfig.config;
     this.solana = null;
+    
+    // Initialize HTTP client with Jupiter API base URL
+    const headers: any = {
+      'Content-Type': 'application/json',
+    };
+    
+    // Add API key header if provided
+    if (this.config.apiKey && this.config.apiKey.length > 0) {
+      headers['x-api-key'] = this.config.apiKey;
+      logger.info('Using Jupiter API key for requests');
+    } else {
+      logger.info('Using Jupiter free tier (no API key)');
+    }
+    
+    this.httpClient = axios.create({
+      baseURL: JUPITER_API_BASE,
+      timeout: 30000,
+      headers,
+    });
   }
 
   public static async getInstance(network: string): Promise<Jupiter> {
@@ -43,10 +79,7 @@ export class Jupiter {
   private async init(network: string): Promise<void> {
     try {
       this.solana = await Solana.getInstance(network);
-      if (!this.jupiterQuoteApi) {
-        this.jupiterQuoteApi = createJupiterApiClient();
-      }
-      logger.info('Initializing Jupiter');
+      logger.info('Initialized Jupiter for network:', network);
     } catch (error) {
       logger.error('Failed to initialize Jupiter:', error);
       throw error;
@@ -92,33 +125,56 @@ export class Jupiter {
       swapMode === 'ExactOut' ? outputToken.decimals : inputToken.decimals;
     const quoteAmount = Math.floor(amount * 10 ** tokenDecimals);
 
-    // Use best practices from Jupiter API documentation
-    const params: QuoteGetRequest = {
+    // Build query parameters for the REST API
+    const params = new URLSearchParams({
       inputMint: inputToken.address,
       outputMint: outputToken.address,
-      amount: quoteAmount,
-      slippageBps,
-      onlyDirectRoutes,
-      asLegacyTransaction,
-      swapMode,
-      maxAccounts: 64, // Recommended for optimal routing flexibility
-      restrictIntermediateTokens: false, // Allow routing through all tokens
-    };
-
-    // Jupiter doesn't support specific pool routing like Uniswap
+      amount: quoteAmount.toString(),
+      slippageBps: slippageBps.toString(),
+      swapMode: swapMode,
+      onlyDirectRoutes: onlyDirectRoutes.toString(),
+      asLegacyTransaction: asLegacyTransaction.toString(),
+      maxAccounts: '64',
+      restrictIntermediateTokens: 'false',
+    });
 
     logger.debug(
-      `Getting Jupiter quote for ${inputToken.symbol} to ${outputToken.symbol}`,
+      `Getting Jupiter quote for ${inputToken.symbol} to ${outputToken.symbol} with params:`,
+      params.toString()
     );
 
-    const quote = await this.jupiterQuoteApi.quoteGet(params);
+    try {
+      const response = await this.httpClient.get('/swap/v1/quote', { params });
+      const quote = response.data;
 
-    if (!quote) {
-      logger.error('Unable to get quote');
-      throw new Error('Unable to get quote');
+      if (!quote) {
+        logger.error('Unable to get quote - empty response');
+        throw new Error('Unable to get quote - empty response');
+      }
+
+      logger.debug('Got Jupiter quote:', quote);
+      return quote;
+    } catch (error: any) {
+      logger.error('Jupiter API error:', error.message);
+      if (error.response?.data) {
+        logger.error('Jupiter API error response:', error.response.data);
+        
+        // Handle specific error messages
+        if (typeof error.response.data === 'string') {
+          if (error.response.data === 'Route not found') {
+            if (swapMode === 'ExactOut') {
+              throw new Error('ExactOut not supported for this token pair');
+            } else {
+              throw new Error('No route found for this token pair');
+            }
+          }
+          throw new Error(`Jupiter API error: ${error.response.data}`);
+        } else if (error.response.data.error) {
+          throw new Error(`Jupiter API error: ${error.response.data.error}`);
+        }
+      }
+      throw error;
     }
-
-    return quote;
   }
 
   async getSwapObj(
@@ -133,21 +189,23 @@ export class Jupiter {
     let lastError: Error | null = null;
     for (let attempt = 1; attempt <= JUPITER_API_RETRY_COUNT; attempt++) {
       try {
-        const swapObj = await this.jupiterQuoteApi.swapPost({
-          swapRequest: {
-            quoteResponse: quote,
-            userPublicKey: wallet.publicKey.toBase58(),
-            dynamicComputeUnitLimit: true,
-            prioritizationFeeLamports: {
-              priorityLevelWithMaxLamports: {
-                maxLamports: feeLamports,
-                priorityLevel: this.getPriorityLevel(this.config.priorityLevel),
-              },
+        const swapRequest = {
+          quoteResponse: quote,
+          userPublicKey: wallet.publicKey.toBase58(),
+          dynamicComputeUnitLimit: true,
+          prioritizationFeeLamports: {
+            priorityLevelWithMaxLamports: {
+              maxLamports: feeLamports,
+              priorityLevel: this.getPriorityLevel(this.config.priorityLevel),
             },
           },
-        });
+        };
+        
+        const response = await this.httpClient.post('/swap/v1/swap', swapRequest);
+        const swapObj = response.data;
+        
         return swapObj;
-      } catch (error) {
+      } catch (error: any) {
         lastError = error;
         logger.error(
           `[JUPITER] Fetching swap object attempt ${attempt}/${JUPITER_API_RETRY_COUNT} failed:`,

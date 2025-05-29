@@ -74,10 +74,22 @@ async function executeJupiterSwap(
       baseTokenBalanceChange: baseTokenBalanceChange,
       quoteTokenBalanceChange: quoteTokenBalanceChange,
     };
-  } catch (error) {
-    logger.error(`Jupiter swap error: ${error}`);
+  } catch (error: any) {
+    logger.error(`Jupiter swap error: ${error.message || error}`);
+    
+    // Check for specific error types
+    if (error.message?.includes('ExactOut not supported')) {
+      throw fastify.httpErrors.badRequest(error.message);
+    }
+    if (error.message?.includes('No route found')) {
+      throw fastify.httpErrors.notFound(error.message);
+    }
+    if (error.message?.includes('Token not found')) {
+      throw fastify.httpErrors.badRequest(error.message);
+    }
+    
     throw fastify.httpErrors.internalServerError(
-      'Failed to execute Jupiter swap',
+      `Failed to execute Jupiter swap: ${error.message || 'Unknown error'}`,
     );
   }
 }

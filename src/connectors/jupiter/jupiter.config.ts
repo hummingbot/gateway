@@ -13,6 +13,7 @@ export namespace JupiterConfig {
   export interface NetworkConfig {
     allowedSlippage: string;
     priorityLevel: string;
+    apiKey?: string;
     tradingTypes: Array<string>;
     availableNetworks: Array<AvailableNetworks>;
   }
@@ -22,6 +23,7 @@ export namespace JupiterConfig {
       'jupiter.allowedSlippage',
     ),
     priorityLevel: ConfigManagerV2.getInstance().get('jupiter.priorityLevel'),
+    apiKey: ConfigManagerV2.getInstance().get('jupiter.apiKey'),
     tradingTypes: ['swap'],
     availableNetworks: [
       { chain: 'solana', networks: ['mainnet-beta', 'devnet'] },

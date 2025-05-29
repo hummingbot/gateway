@@ -5,3 +5,8 @@ allowedSlippage: '1/100'
 # Priority level for swap transaction processing
 # Options: medium, high, veryHigh
 priorityLevel: 'veryHigh'
+
+# Jupiter API key (optional)
+# For free tier, leave empty and use lite-api.jup.ag
+# For paid plans, generate key at https://portal.jup.ag
+apiKey: ''

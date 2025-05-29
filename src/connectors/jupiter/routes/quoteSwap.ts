@@ -18,58 +18,128 @@ export async function getJupiterQuote(
   side: 'BUY' | 'SELL',
   slippagePct?: number,
 ) {
+  logger.info('=== Starting getJupiterQuote ===', {
+    network,
+    baseToken,
+    quoteToken,
+    amount,
+    side,
+    slippagePct
+  });
+
   const solana = await Solana.getInstance(network);
   const jupiter = await Jupiter.getInstance(network);
 
+  logger.debug('Resolving tokens...');
   const baseTokenInfo = await solana.getToken(baseToken);
   const quoteTokenInfo = await solana.getToken(quoteToken);
 
+  logger.debug('Token resolution results:', {
+    baseToken: baseTokenInfo ? {
+      symbol: baseTokenInfo.symbol,
+      address: baseTokenInfo.address,
+      decimals: baseTokenInfo.decimals
+    } : null,
+    quoteToken: quoteTokenInfo ? {
+      symbol: quoteTokenInfo.symbol,
+      address: quoteTokenInfo.address,
+      decimals: quoteTokenInfo.decimals
+    } : null
+  });
+
   if (!baseTokenInfo || !quoteTokenInfo) {
+    const missingToken = !baseTokenInfo ? baseToken : quoteToken;
+    logger.error(`Token not found: ${missingToken}`);
     throw fastify.httpErrors.notFound(
-      `Token not found: ${!baseTokenInfo ? baseToken : quoteToken}`,
+      `Token not found: ${missingToken}`,
     );
   }
 
   const tradeSide = side === 'BUY' ? 'BUY' : 'SELL';
-  const amountValue = side === 'BUY' ? amount : amount;
+  // For BUY orders, amount represents the base token amount we want to receive
+  // For SELL orders, amount represents the base token amount we want to send
+  const amountValue = amount;
+  
 
   try {
-    const quote = await jupiter.getQuote(
-      tradeSide === 'BUY' ? quoteTokenInfo.address : baseTokenInfo.address,
-      tradeSide === 'BUY' ? baseTokenInfo.address : quoteTokenInfo.address,
-      amountValue,
-      slippagePct,
-      false, // onlyDirectRoutes
-      false, // asLegacyTransaction
-      tradeSide === 'BUY' ? 'ExactOut' : 'ExactIn',
-    );
+    let quote;
+    
+    if (tradeSide === 'BUY') {
+      // BUY orders use ExactOut mode
+      quote = await jupiter.getQuote(
+        quoteTokenInfo.address,
+        baseTokenInfo.address,
+        amountValue,
+        slippagePct,
+        false,
+        false,
+        'ExactOut',
+      );
+    } else {
+      // SELL order - standard ExactIn
+      quote = await jupiter.getQuote(
+        baseTokenInfo.address,
+        quoteTokenInfo.address,
+        amountValue,
+        slippagePct,
+        false,
+        false,
+        'ExactIn',
+      );
+    }
 
-    const baseAmount =
+    // For BUY: we're buying baseToken with quoteToken, so output is base, input is quote
+    // For SELL: we're selling baseToken for quoteToken, so input is base, output is quote
+    const estimatedAmountIn =
       tradeSide === 'BUY'
-        ? Number(quote.outAmount) / 10 ** baseTokenInfo.decimals
-        : Number(quote.inAmount) / 10 ** baseTokenInfo.decimals;
-    const quoteAmount =
+        ? Number(quote.inAmount) / 10 ** quoteTokenInfo.decimals  // Buying base with quote
+        : Number(quote.inAmount) / 10 ** baseTokenInfo.decimals;  // Selling base for quote
+    
+    const estimatedAmountOut =
       tradeSide === 'BUY'
-        ? Number(quote.inAmount) / 10 ** quoteTokenInfo.decimals
-        : Number(quote.outAmount) / 10 ** quoteTokenInfo.decimals;
+        ? Number(quote.outAmount) / 10 ** baseTokenInfo.decimals  // Getting base
+        : Number(quote.outAmount) / 10 ** quoteTokenInfo.decimals; // Getting quote
 
     return {
-      estimatedAmountIn: baseAmount,
-      estimatedAmountOut: quoteAmount,
-      minAmountOut: quoteAmount,
-      maxAmountIn: baseAmount,
+      estimatedAmountIn: tradeSide === 'BUY' ? estimatedAmountOut : estimatedAmountIn,  // Always in base token
+      estimatedAmountOut: tradeSide === 'BUY' ? estimatedAmountIn : estimatedAmountOut, // Always in quote token
+      minAmountOut: tradeSide === 'BUY' ? estimatedAmountIn : estimatedAmountOut,
+      maxAmountIn: tradeSide === 'BUY' ? estimatedAmountOut : estimatedAmountIn,
       baseToken: baseTokenInfo,
       quoteToken: quoteTokenInfo,
-      expectedPrice: quoteAmount / baseAmount,
+      expectedPrice: tradeSide === 'BUY' ? estimatedAmountIn / estimatedAmountOut : estimatedAmountOut / estimatedAmountIn,
     };
-  } catch (error) {
-    logger.error(`Jupiter quote error: ${error}`);
-    if (error.message.includes('NO_ROUTE_FOUND')) {
+  } catch (error: any) {
+    logger.error(`Jupiter quote error: ${error.message || error}`);
+    logger.error(`Jupiter quote error details:`, {
+      baseToken,
+      quoteToken,
+      amount: amountValue,
+      side: tradeSide,
+      swapMode: tradeSide === 'BUY' ? 'ExactOut' : 'ExactIn',
+      errorMessage: error.message,
+      errorStack: error.stack,
+      responseStatus: error.response?.status,
+      responseData: error.response?.data,
+      fullError: JSON.stringify(error, null, 2)
+    });
+    
+    if (error.message?.includes('NO_ROUTE_FOUND')) {
       throw fastify.httpErrors.notFound(
         `No swap route found for ${baseToken}-${quoteToken}`,
       );
     }
-    throw fastify.httpErrors.internalServerError('Failed to get Jupiter quote');
+    
+    if (error.message?.includes('ExactOut not supported')) {
+      throw fastify.httpErrors.badRequest(error.message);
+    }
+    
+    // Check for specific Jupiter API errors
+    if (error.response?.data?.error) {
+      throw fastify.httpErrors.badRequest(`Jupiter API error: ${error.response.data.error}`);
+    }
+    
+    throw fastify.httpErrors.internalServerError(`Failed to get Jupiter quote: ${error.message || 'Unknown error'}`);
   }
 }
 

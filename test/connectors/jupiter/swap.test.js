@@ -34,22 +34,24 @@ function loadMockResponse(filename) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
 
-// Function to validate swap quote response structure
+// Function to validate swap quote response structure based on GetSwapQuoteResponse schema
 function validateSwapQuote(response) {
   return (
     response &&
-    typeof response.inAmount === 'number' &&
-    typeof response.outAmount === 'number' &&
     typeof response.estimatedAmountIn === 'number' &&
     typeof response.estimatedAmountOut === 'number' &&
     typeof response.minAmountOut === 'number' &&
+    typeof response.maxAmountIn === 'number' &&
     typeof response.baseTokenBalanceChange === 'number' &&
     typeof response.quoteTokenBalanceChange === 'number' &&
-    typeof response.price === 'number'
+    typeof response.price === 'number' &&
+    typeof response.gasPrice === 'number' &&
+    typeof response.gasLimit === 'number' &&
+    typeof response.gasCost === 'number'
   );
 }
 
-// Function to validate swap execution response structure
+// Function to validate swap execution response structure based on ExecuteSwapResponse schema
 function validateSwapExecution(response) {
   return (
     response &&
@@ -127,8 +129,8 @@ describe('Jupiter Swap Tests (Solana Mainnet)', () => {
         // Flip the values for BUY direction
         estimatedAmountIn: mockSellResponse.estimatedAmountOut,
         estimatedAmountOut: mockSellResponse.estimatedAmountIn,
-        inAmount: mockSellResponse.outAmount,
-        outAmount: mockSellResponse.inAmount,
+        maxAmountIn: mockSellResponse.estimatedAmountOut,
+        minAmountOut: mockSellResponse.estimatedAmountIn,
         baseTokenBalanceChange: 1.0, // Positive for BUY
         quoteTokenBalanceChange: -mockSellResponse.quoteTokenBalanceChange, // Negative for BUY
       };
@@ -166,10 +168,10 @@ describe('Jupiter Swap Tests (Solana Mainnet)', () => {
       // Setup mock axios with error response
       axios.get.mockRejectedValueOnce({
         response: {
-          status: 400,
+          status: 404,
           data: {
-            error: 'Token not found',
-            code: 400,
+            error: 'NotFound',
+            message: 'Token not found: INVALID',
           },
         },
       });
@@ -187,12 +189,86 @@ describe('Jupiter Swap Tests (Solana Mainnet)', () => {
         }),
       ).rejects.toMatchObject({
         response: {
-          status: 400,
+          status: 404,
           data: {
-            error: 'Token not found',
+            error: 'NotFound',
+            message: 'Token not found: INVALID',
           },
         },
       });
+    });
+
+    test('handles missing required parameters', async () => {
+      // Setup mock axios with error response
+      axios.get.mockRejectedValueOnce({
+        response: {
+          status: 400,
+          data: {
+            error: 'BadRequest',
+            message: 'Missing required parameter: amount',
+          },
+        },
+      });
+
+      // Make the request without amount
+      await expect(
+        axios.get(`http://localhost:15888/connectors/${CONNECTOR}/quote-swap`, {
+          params: {
+            network: NETWORK,
+            baseToken: BASE_TOKEN,
+            quoteToken: QUOTE_TOKEN,
+            side: 'SELL',
+            // Missing amount
+          },
+        }),
+      ).rejects.toMatchObject({
+        response: {
+          status: 400,
+          data: {
+            error: 'BadRequest',
+          },
+        },
+      });
+    });
+
+    test('returns quote with custom slippage', async () => {
+      // Load mock response
+      const mockResponse = loadMockResponse('quote-swap');
+
+      // Setup mock axios
+      axios.get.mockResolvedValueOnce({
+        status: 200,
+        data: mockResponse,
+      });
+
+      // Make the request with custom slippage
+      const response = await axios.get(
+        `http://localhost:15888/connectors/${CONNECTOR}/quote-swap`,
+        {
+          params: {
+            network: NETWORK,
+            baseToken: BASE_TOKEN,
+            quoteToken: QUOTE_TOKEN,
+            side: 'SELL',
+            amount: 1.0,
+            slippagePct: 2.5, // 2.5% slippage
+          },
+        },
+      );
+
+      // Validate the response
+      expect(response.status).toBe(200);
+      expect(validateSwapQuote(response.data)).toBe(true);
+
+      // Verify axios was called with slippage parameter
+      expect(axios.get).toHaveBeenCalledWith(
+        `http://localhost:15888/connectors/${CONNECTOR}/quote-swap`,
+        expect.objectContaining({
+          params: expect.objectContaining({
+            slippagePct: 2.5,
+          }),
+        }),
+      );
     });
   });
 
@@ -217,7 +293,7 @@ describe('Jupiter Swap Tests (Solana Mainnet)', () => {
           quoteToken: QUOTE_TOKEN,
           side: 'SELL',
           amount: 1.0,
-          wallet: TEST_WALLET,
+          walletAddress: TEST_WALLET,
         },
       );
 
@@ -244,7 +320,7 @@ describe('Jupiter Swap Tests (Solana Mainnet)', () => {
           quoteToken: QUOTE_TOKEN,
           side: 'SELL',
           amount: 1.0,
-          wallet: TEST_WALLET,
+          walletAddress: TEST_WALLET,
         }),
       );
     });
@@ -271,7 +347,7 @@ describe('Jupiter Swap Tests (Solana Mainnet)', () => {
             quoteToken: QUOTE_TOKEN,
             side: 'SELL',
             amount: 1000000.0, // Very large amount to cause error
-            wallet: TEST_WALLET,
+            walletAddress: TEST_WALLET,
           },
         ),
       ).rejects.toMatchObject({

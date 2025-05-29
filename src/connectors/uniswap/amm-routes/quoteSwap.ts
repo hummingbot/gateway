@@ -119,6 +119,10 @@ async function quoteAmmSwap(
     };
   } catch (error) {
     logger.error(`Error quoting AMM swap: ${error.message}`);
+    // Check for insufficient reserves error from Uniswap SDK
+    if (error.isInsufficientReservesError || error.name === 'InsufficientReservesError') {
+      throw new Error(`Insufficient liquidity in pool for ${baseToken.symbol}-${quoteToken.symbol}`);
+    }
     throw error;
   }
 }
@@ -354,12 +358,27 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           slippagePct,
         );
       } catch (e) {
-        logger.error(e);
+        logger.error(`Error in quote-swap route: ${e.message}`);
+        
+        // If it's already a Fastify HTTP error, re-throw it
         if (e.statusCode) {
           throw e;
         }
+        
+        // Check for specific error types
+        if (e.message?.includes('Insufficient liquidity')) {
+          throw fastify.httpErrors.badRequest(e.message);
+        }
+        if (e.message?.includes('Pool not found') || e.message?.includes('No AMM pool found')) {
+          throw fastify.httpErrors.notFound(e.message);
+        }
+        if (e.message?.includes('token not found')) {
+          throw fastify.httpErrors.badRequest(e.message);
+        }
+        
+        // Default to internal server error with the actual error message
         throw fastify.httpErrors.internalServerError(
-          `Error getting swap quote: ${e.message}`,
+          `Error getting swap quote: ${e.message || 'Unknown error'}`,
         );
       }
     },

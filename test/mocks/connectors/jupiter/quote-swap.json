@@ -1,25 +1,13 @@
 {
-  "inAmount": 1.0,
-  "outAmount": 52.75,
+  "poolAddress": "jupiter-aggregator",
   "estimatedAmountIn": 1.0,
   "estimatedAmountOut": 52.75,
   "minAmountOut": 52.22,
+  "maxAmountIn": 1.0,
   "baseTokenBalanceChange": -1.0,
   "quoteTokenBalanceChange": 52.75,
   "price": 52.75,
-  "routePath": "SOL → USDC",
-  "routeInformation": {
-    "inMint": "So11111111111111111111111111111111111111112",
-    "outMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
-    "marketInfos": [
-      {
-        "amm": "Jupiter",
-        "inputMint": "So11111111111111111111111111111111111111112",
-        "outputMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
-        "inAmount": 1000000000,
-        "outAmount": 52750000,
-        "fee": 100000
-      }
-    ]
-  }
+  "gasPrice": 0.0005,
+  "gasLimit": 500000,
+  "gasCost": 0.25
 }
