@@ -2,7 +2,7 @@ import { Type, Static } from '@sinclair/typebox';
 import { PublicKey } from '@solana/web3.js';
 import { FastifyPluginAsync } from 'fastify';
 
-import { PositionInfoSchema } from '../../../schemas/trading-types/clmm-schema';
+import { PositionInfoSchema } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
 // Using Fastify's native error handling

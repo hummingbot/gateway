@@ -9,7 +9,7 @@ import {
   PositionInfoSchema,
   GetPositionInfoRequest,
   GetPositionInfoRequestType,
-} from '../../../schemas/trading-types/amm-schema';
+} from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
 

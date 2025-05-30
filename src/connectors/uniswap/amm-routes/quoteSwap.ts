@@ -13,7 +13,7 @@ import {
   GetSwapQuoteResponse,
   GetSwapQuoteRequestType,
   GetSwapQuoteRequest,
-} from '../../../schemas/trading-types/swap-schema';
+} from '../../../schemas/swap-schema';
 import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
 import { formatTokenAmount } from '../uniswap.utils';

@@ -17,11 +17,11 @@ import {
 import { Keypair, PublicKey } from '@solana/web3.js';
 
 import { Solana } from '../../chains/solana/solana';
-import { PoolInfo as AmmPoolInfo } from '../../schemas/trading-types/amm-schema';
+import { PoolInfo as AmmPoolInfo } from '../../schemas/amm-schema';
 import {
   PoolInfo as ClmmPoolInfo,
   PositionInfo,
-} from '../../schemas/trading-types/clmm-schema';
+} from '../../schemas/clmm-schema';
 import {
   percentRegexp,
   ConfigManagerV2,

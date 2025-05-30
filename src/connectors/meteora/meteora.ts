@@ -6,7 +6,7 @@ import {
   MeteoraPoolInfo,
   PositionInfo,
   BinLiquidity,
-} from '../../schemas/trading-types/clmm-schema';
+} from '../../schemas/clmm-schema';
 import { convertDecimals } from '../../services/base';
 import { percentRegexp } from '../../services/config-manager-v2';
 import { logger } from '../../services/logger';

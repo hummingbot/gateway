@@ -11,7 +11,7 @@ import {
   GetSwapQuoteResponse,
   GetSwapQuoteRequestType,
   GetSwapQuoteRequest,
-} from '../../../schemas/trading-types/swap-schema';
+} from '../../../schemas/swap-schema';
 import { logger } from '../../../services/logger';
 import { Meteora } from '../meteora';
 

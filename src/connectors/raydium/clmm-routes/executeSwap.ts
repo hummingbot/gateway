@@ -12,7 +12,7 @@ import {
   ExecuteSwapResponse,
   ExecuteSwapRequest,
   ExecuteSwapRequestType,
-} from '../../../schemas/trading-types/swap-schema';
+} from '../../../schemas/swap-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
 

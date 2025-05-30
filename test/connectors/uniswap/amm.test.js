@@ -23,14 +23,10 @@ axios.post = jest.fn();
 
 // Helper to load mock responses
 function loadMockResponse(filename) {
-  // Use generic connector mocks without network specificiation
+  // Use mocks from the same directory
   const filePath = path.join(
     __dirname,
-    '..',
-    '..',
     'mocks',
-    'connectors',
-    `${CONNECTOR}`,
     `${PROTOCOL}-${filename}.json`,
   );
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
@@ -292,6 +288,300 @@ describe('Uniswap AMM Tests (Base Network)', () => {
       expect(response.data.totalOutputSwapped).toBe(
         quoteResponse.estimatedAmountOut,
       );
+    });
+
+    test('handles transaction simulation error', async () => {
+      // Setup mock axios with error response
+      axios.post.mockRejectedValueOnce({
+        response: {
+          status: 500,
+          data: {
+            error: 'InternalServerError',
+            message: 'Transaction simulation failed',
+            code: 500,
+          },
+        },
+      });
+
+      // Make the request and expect it to be rejected
+      await expect(
+        axios.post(
+          `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/execute-swap`,
+          {
+            network: NETWORK,
+            baseToken: BASE_TOKEN,
+            quoteToken: QUOTE_TOKEN,
+            side: 'SELL',
+            amount: 1000000.0,
+            wallet: TEST_WALLET,
+          },
+        ),
+      ).rejects.toMatchObject({
+        response: {
+          status: 500,
+          data: {
+            error: 'InternalServerError',
+          },
+        },
+      });
+    });
+  });
+
+  describe('Quote Liquidity Endpoint', () => {
+    test('returns and validates liquidity quote', async () => {
+      const mockResponse = {
+        poolAddress: TEST_POOL,
+        baseTokenLiquidity: 1.0,
+        quoteTokenLiquidity: 2340.5,
+        lpTokenAmount: 54.32,
+        shareOfPool: 0.0001,
+      };
+
+      // Setup mock axios
+      axios.get.mockResolvedValueOnce({
+        status: 200,
+        data: mockResponse,
+      });
+
+      // Make the request
+      const response = await axios.get(
+        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-liquidity`,
+        {
+          params: {
+            network: NETWORK,
+            poolAddress: TEST_POOL,
+            baseTokenAmount: 1.0,
+            quoteTokenAmount: 2340.5,
+          },
+        },
+      );
+
+      // Validate the response
+      expect(response.status).toBe(200);
+      expect(response.data.poolAddress).toBe(TEST_POOL);
+      expect(response.data.lpTokenAmount).toBeGreaterThan(0);
+      expect(response.data.shareOfPool).toBeGreaterThan(0);
+    });
+
+    test('handles imbalanced liquidity error', async () => {
+      // Setup mock axios with error response
+      axios.get.mockRejectedValueOnce({
+        response: {
+          status: 400,
+          data: {
+            error: 'BadRequest',
+            message: 'Token amounts do not match pool ratio',
+            code: 400,
+          },
+        },
+      });
+
+      // Make the request and expect it to be rejected
+      await expect(
+        axios.get(
+          `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-liquidity`,
+          {
+            params: {
+              network: NETWORK,
+              poolAddress: TEST_POOL,
+              baseTokenAmount: 1.0,
+              quoteTokenAmount: 100.0, // Wrong ratio
+            },
+          },
+        ),
+      ).rejects.toMatchObject({
+        response: {
+          status: 400,
+          data: {
+            error: 'BadRequest',
+            message: expect.stringContaining('ratio'),
+          },
+        },
+      });
+    });
+  });
+
+  describe('Position Info Endpoint', () => {
+    test('returns and validates position info', async () => {
+      const mockResponse = {
+        poolAddress: TEST_POOL,
+        positionId: 'uniswap-v2-lp-123456',
+        lpTokenAmount: 100.5,
+        baseTokenAmount: 1.85,
+        quoteTokenAmount: 4329.225,
+        shareOfPool: 0.01,
+      };
+
+      // Setup mock axios
+      axios.get.mockResolvedValueOnce({
+        status: 200,
+        data: mockResponse,
+      });
+
+      // Make the request
+      const response = await axios.get(
+        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/position-info`,
+        {
+          params: {
+            network: NETWORK,
+            poolAddress: TEST_POOL,
+            lpTokenAmount: 100.5,
+          },
+        },
+      );
+
+      // Validate the response
+      expect(response.status).toBe(200);
+      expect(response.data.poolAddress).toBe(TEST_POOL);
+      expect(response.data.lpTokenAmount).toBe(100.5);
+      expect(response.data.baseTokenAmount).toBeGreaterThan(0);
+      expect(response.data.quoteTokenAmount).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Add Liquidity Endpoint', () => {
+    test('returns successful liquidity addition', async () => {
+      const mockResponse = {
+        signature: '0xabcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab',
+        baseTokenAmount: 1.0,
+        quoteTokenAmount: 2340.5,
+        lpTokenAmount: 54.32,
+        poolAddress: TEST_POOL,
+        fee: 0.003,
+      };
+
+      // Setup mock axios
+      axios.post.mockResolvedValueOnce({
+        status: 200,
+        data: mockResponse,
+      });
+
+      // Make the request
+      const response = await axios.post(
+        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/add-liquidity`,
+        {
+          network: NETWORK,
+          poolAddress: TEST_POOL,
+          baseTokenAmount: 1.0,
+          quoteTokenAmount: 2340.5,
+          wallet: TEST_WALLET,
+        },
+      );
+
+      // Validate the response
+      expect(response.status).toBe(200);
+      expect(response.data.signature).toBeDefined();
+      expect(response.data.lpTokenAmount).toBeGreaterThan(0);
+      expect(response.data.baseTokenAmount).toBe(1.0);
+      expect(response.data.quoteTokenAmount).toBe(2340.5);
+    });
+
+    test('handles insufficient balance error', async () => {
+      // Setup mock axios with error response
+      axios.post.mockRejectedValueOnce({
+        response: {
+          status: 400,
+          data: {
+            error: 'BadRequest',
+            message: 'Insufficient balance for WETH',
+            code: 400,
+          },
+        },
+      });
+
+      // Make the request and expect it to be rejected
+      await expect(
+        axios.post(
+          `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/add-liquidity`,
+          {
+            network: NETWORK,
+            poolAddress: TEST_POOL,
+            baseTokenAmount: 10000.0, // Large amount
+            quoteTokenAmount: 23405000.0,
+            wallet: TEST_WALLET,
+          },
+        ),
+      ).rejects.toMatchObject({
+        response: {
+          status: 400,
+          data: {
+            error: 'BadRequest',
+            message: expect.stringContaining('Insufficient balance'),
+          },
+        },
+      });
+    });
+  });
+
+  describe('Remove Liquidity Endpoint', () => {
+    test('returns successful liquidity removal', async () => {
+      const mockResponse = {
+        signature: '0xdef4567890abcdef1234567890abcdef1234567890abcdef1234567890abcd12',
+        baseTokenAmount: 0.95,
+        quoteTokenAmount: 2223.475,
+        lpTokenAmount: 54.32,
+        poolAddress: TEST_POOL,
+        fee: 0.003,
+      };
+
+      // Setup mock axios
+      axios.post.mockResolvedValueOnce({
+        status: 200,
+        data: mockResponse,
+      });
+
+      // Make the request
+      const response = await axios.post(
+        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/remove-liquidity`,
+        {
+          network: NETWORK,
+          poolAddress: TEST_POOL,
+          lpTokenAmount: 54.32,
+          wallet: TEST_WALLET,
+        },
+      );
+
+      // Validate the response
+      expect(response.status).toBe(200);
+      expect(response.data.signature).toBeDefined();
+      expect(response.data.baseTokenAmount).toBeGreaterThan(0);
+      expect(response.data.quoteTokenAmount).toBeGreaterThan(0);
+      expect(response.data.lpTokenAmount).toBe(54.32);
+    });
+
+    test('handles insufficient LP token balance error', async () => {
+      // Setup mock axios with error response
+      axios.post.mockRejectedValueOnce({
+        response: {
+          status: 400,
+          data: {
+            error: 'BadRequest',
+            message: 'Insufficient LP token balance',
+            code: 400,
+          },
+        },
+      });
+
+      // Make the request and expect it to be rejected
+      await expect(
+        axios.post(
+          `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/remove-liquidity`,
+          {
+            network: NETWORK,
+            poolAddress: TEST_POOL,
+            lpTokenAmount: 10000.0, // Large amount
+            wallet: TEST_WALLET,
+          },
+        ),
+      ).rejects.toMatchObject({
+        response: {
+          status: 400,
+          data: {
+            error: 'BadRequest',
+            message: expect.stringContaining('Insufficient LP token balance'),
+          },
+        },
+      });
     });
   });
 });

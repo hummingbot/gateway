@@ -5,7 +5,7 @@ import {
   GetPoolInfoRequest,
   PoolInfo,
   PoolInfoSchema,
-} from '../../../schemas/trading-types/amm-schema';
+} from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
 import { formatTokenAmount } from '../uniswap.utils';

@@ -9,7 +9,7 @@ import {
   CollectFeesRequest,
   CollectFeesResponseType,
   CollectFeesResponse,
-} from '../../../schemas/trading-types/clmm-schema';
+} from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
 import { formatTokenAmount } from '../uniswap.utils';

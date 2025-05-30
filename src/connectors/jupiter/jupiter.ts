@@ -134,9 +134,13 @@ export class Jupiter {
       swapMode: swapMode,
       onlyDirectRoutes: onlyDirectRoutes.toString(),
       asLegacyTransaction: asLegacyTransaction.toString(),
-      maxAccounts: '64',
       restrictIntermediateTokens: 'false',
     });
+    
+    // Only add maxAccounts for ExactIn mode (not supported for ExactOut)
+    if (swapMode === 'ExactIn') {
+      params.append('maxAccounts', '64');
+    }
 
     logger.debug(
       `Getting Jupiter quote for ${inputToken.symbol} to ${outputToken.symbol} with params:`,

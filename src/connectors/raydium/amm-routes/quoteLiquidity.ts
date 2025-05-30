@@ -13,7 +13,7 @@ import {
   QuoteLiquidityRequestType,
   QuoteLiquidityResponse,
   QuoteLiquidityResponseType,
-} from '../../../schemas/trading-types/amm-schema';
+} from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
 import { isValidAmm, isValidCpmm } from '../raydium.utils';

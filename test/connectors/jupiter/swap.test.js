@@ -24,11 +24,7 @@ axios.post = jest.fn();
 function loadMockResponse(filename) {
   const filePath = path.join(
     __dirname,
-    '..',
-    '..',
     'mocks',
-    'connectors',
-    `${CONNECTOR}`,
     `${filename}.json`,
   );
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
@@ -122,18 +118,8 @@ describe('Jupiter Swap Tests (Solana Mainnet)', () => {
     });
 
     test('returns and validates swap quote for BUY', async () => {
-      // Modify the mock response for BUY direction
-      const mockSellResponse = loadMockResponse('quote-swap');
-      const mockBuyResponse = {
-        ...mockSellResponse,
-        // Flip the values for BUY direction
-        estimatedAmountIn: mockSellResponse.estimatedAmountOut,
-        estimatedAmountOut: mockSellResponse.estimatedAmountIn,
-        maxAmountIn: mockSellResponse.estimatedAmountOut,
-        minAmountOut: mockSellResponse.estimatedAmountIn,
-        baseTokenBalanceChange: 1.0, // Positive for BUY
-        quoteTokenBalanceChange: -mockSellResponse.quoteTokenBalanceChange, // Negative for BUY
-      };
+      // Load BUY mock response
+      const mockBuyResponse = loadMockResponse('quote-swap-buy');
 
       // Setup mock axios
       axios.get.mockResolvedValueOnce({
@@ -150,7 +136,7 @@ describe('Jupiter Swap Tests (Solana Mainnet)', () => {
             baseToken: BASE_TOKEN,
             quoteToken: QUOTE_TOKEN,
             side: 'BUY',
-            amount: 1.0,
+            amount: 10,
           },
         },
       );
@@ -159,9 +145,10 @@ describe('Jupiter Swap Tests (Solana Mainnet)', () => {
       expect(response.status).toBe(200);
       expect(validateSwapQuote(response.data)).toBe(true);
 
-      // Check expected mock values
+      // Check expected mock values for BUY
       expect(response.data.baseTokenBalanceChange).toBeGreaterThan(0); // BUY means positive base token change
       expect(response.data.quoteTokenBalanceChange).toBeLessThan(0); // BUY means negative quote token change
+      expect(response.data.estimatedAmountIn).toBe(10); // Input is USDC amount for BUY
     });
 
     test('handles error with invalid token', async () => {
@@ -232,8 +219,8 @@ describe('Jupiter Swap Tests (Solana Mainnet)', () => {
     });
 
     test('returns quote with custom slippage', async () => {
-      // Load mock response
-      const mockResponse = loadMockResponse('quote-swap');
+      // Load mock response for custom slippage
+      const mockResponse = loadMockResponse('quote-swap-slippage');
 
       // Setup mock axios
       axios.get.mockResolvedValueOnce({
@@ -250,7 +237,7 @@ describe('Jupiter Swap Tests (Solana Mainnet)', () => {
             baseToken: BASE_TOKEN,
             quoteToken: QUOTE_TOKEN,
             side: 'SELL',
-            amount: 1.0,
+            amount: 0.1,
             slippagePct: 2.5, // 2.5% slippage
           },
         },
@@ -259,6 +246,10 @@ describe('Jupiter Swap Tests (Solana Mainnet)', () => {
       // Validate the response
       expect(response.status).toBe(200);
       expect(validateSwapQuote(response.data)).toBe(true);
+      
+      // With higher slippage, minAmountOut should be lower than the estimated output
+      expect(response.data.minAmountOut).toBeLessThan(response.data.estimatedAmountOut);
+      expect(response.data.minAmountOut).toBeCloseTo(15.98, 1); // ~2.5% less than 16.39
 
       // Verify axios was called with slippage parameter
       expect(axios.get).toHaveBeenCalledWith(
@@ -304,11 +295,13 @@ describe('Jupiter Swap Tests (Solana Mainnet)', () => {
       // Check expected mock values
       expect(response.data.signature).toBeDefined();
       expect(response.data.signature.length).toBeGreaterThan(30); // Solana signatures are long
-      expect(response.data.totalInputSwapped).toBe(
+      expect(response.data.totalInputSwapped).toBeCloseTo(
         quoteResponse.estimatedAmountIn,
+        3, // Allow some difference due to fees
       );
-      expect(response.data.totalOutputSwapped).toBe(
+      expect(response.data.totalOutputSwapped).toBeCloseTo(
         quoteResponse.estimatedAmountOut,
+        3,
       );
 
       // Verify axios was called with correct parameters

@@ -5,7 +5,7 @@ import { Solana } from '../../../chains/solana/solana';
 import {
   GetSwapQuoteRequestType,
   GetSwapQuoteResponseType,
-} from '../../../schemas/trading-types/swap-schema';
+} from '../../../schemas/swap-schema';
 import { logger } from '../../../services/logger';
 import { Jupiter } from '../jupiter';
 

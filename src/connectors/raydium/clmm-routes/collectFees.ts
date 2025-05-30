@@ -8,7 +8,7 @@ import {
   CollectFeesResponse,
   CollectFeesRequestType,
   CollectFeesResponseType,
-} from '../../../schemas/trading-types/clmm-schema';
+} from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
 

@@ -23,14 +23,10 @@ axios.post = jest.fn();
 
 // Helper to load mock responses
 function loadMockResponse(filename) {
-  // Use generic connector mocks without network specificiation
+  // Use mocks from the same directory
   const filePath = path.join(
     __dirname,
-    '..',
-    '..',
     'mocks',
-    'connectors',
-    `${CONNECTOR}`,
     `${PROTOCOL}-${filename}.json`,
   );
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
@@ -288,6 +284,435 @@ describe('Uniswap CLMM Tests (Base Network)', () => {
       expect(response.data.totalOutputSwapped).toBe(
         quoteResponse.estimatedAmountOut,
       );
+    });
+  });
+
+  describe('Position Info Endpoint', () => {
+    test('returns and validates position info', async () => {
+      const mockResponse = {
+        poolAddress: TEST_POOL,
+        positionId: '123456',
+        lowerTick: -887272,
+        upperTick: 887272,
+        liquidity: '1000000000000000000',
+        baseTokenAmount: 1.5,
+        quoteTokenAmount: 3510.75,
+        unclaimedFeeBaseAmount: 0.001,
+        unclaimedFeeQuoteAmount: 2.34,
+      };
+
+      // Setup mock axios
+      axios.get.mockResolvedValueOnce({
+        status: 200,
+        data: mockResponse,
+      });
+
+      // Make the request
+      const response = await axios.get(
+        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/position-info`,
+        {
+          params: {
+            network: NETWORK,
+            positionId: '123456',
+          },
+        },
+      );
+
+      // Validate the response
+      expect(response.status).toBe(200);
+      expect(response.data.positionId).toBe('123456');
+      expect(response.data.liquidity).toBeDefined();
+      expect(response.data.unclaimedFeeBaseAmount).toBeGreaterThanOrEqual(0);
+      expect(response.data.unclaimedFeeQuoteAmount).toBeGreaterThanOrEqual(0);
+    });
+
+    test('handles position not found error', async () => {
+      // Setup mock axios with error response
+      axios.get.mockRejectedValueOnce({
+        response: {
+          status: 404,
+          data: {
+            error: 'NotFound',
+            message: 'Position not found',
+            code: 404,
+          },
+        },
+      });
+
+      // Make the request and expect it to be rejected
+      await expect(
+        axios.get(
+          `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/position-info`,
+          {
+            params: {
+              network: NETWORK,
+              positionId: 'invalid-position',
+            },
+          },
+        ),
+      ).rejects.toMatchObject({
+        response: {
+          status: 404,
+          data: {
+            error: 'NotFound',
+          },
+        },
+      });
+    });
+  });
+
+  describe('Positions Owned Endpoint', () => {
+    test('returns list of owned positions', async () => {
+      const mockResponse = [
+        {
+          poolAddress: TEST_POOL,
+          positionId: '123456',
+          lowerTick: -887272,
+          upperTick: 887272,
+          liquidity: '1000000000000000000',
+          baseTokenAmount: 1.5,
+          quoteTokenAmount: 3510.75,
+          unclaimedFeeBaseAmount: 0.001,
+          unclaimedFeeQuoteAmount: 2.34,
+        },
+        {
+          poolAddress: TEST_POOL,
+          positionId: '789012',
+          lowerTick: -443636,
+          upperTick: 443636,
+          liquidity: '500000000000000000',
+          baseTokenAmount: 0.75,
+          quoteTokenAmount: 1755.375,
+          unclaimedFeeBaseAmount: 0.0005,
+          unclaimedFeeQuoteAmount: 1.17,
+        },
+      ];
+
+      // Setup mock axios
+      axios.get.mockResolvedValueOnce({
+        status: 200,
+        data: mockResponse,
+      });
+
+      // Make the request
+      const response = await axios.get(
+        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/positions-owned`,
+        {
+          params: {
+            network: NETWORK,
+            wallet: TEST_WALLET,
+          },
+        },
+      );
+
+      // Validate the response
+      expect(response.status).toBe(200);
+      expect(Array.isArray(response.data)).toBe(true);
+      expect(response.data.length).toBe(2);
+      expect(response.data[0].positionId).toBe('123456');
+      expect(response.data[1].positionId).toBe('789012');
+    });
+  });
+
+  describe('Quote Position Endpoint', () => {
+    test('returns and validates quote for new position', async () => {
+      const mockResponse = {
+        poolAddress: TEST_POOL,
+        lowerTick: -887272,
+        upperTick: 887272,
+        baseTokenAmount: 1.0,
+        quoteTokenAmount: 2340.5,
+        liquidity: '680000000000000000',
+        shareOfPool: 0.0001,
+      };
+
+      // Setup mock axios
+      axios.get.mockResolvedValueOnce({
+        status: 200,
+        data: mockResponse,
+      });
+
+      // Make the request
+      const response = await axios.get(
+        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-position`,
+        {
+          params: {
+            network: NETWORK,
+            poolAddress: TEST_POOL,
+            lowerTick: -887272,
+            upperTick: 887272,
+            baseTokenAmount: 1.0,
+            quoteTokenAmount: 2340.5,
+          },
+        },
+      );
+
+      // Validate the response
+      expect(response.status).toBe(200);
+      expect(response.data.liquidity).toBeDefined();
+      expect(response.data.shareOfPool).toBeGreaterThan(0);
+    });
+
+    test('handles invalid tick range error', async () => {
+      // Setup mock axios with error response
+      axios.get.mockRejectedValueOnce({
+        response: {
+          status: 400,
+          data: {
+            error: 'BadRequest',
+            message: 'Invalid tick range',
+            code: 400,
+          },
+        },
+      });
+
+      // Make the request and expect it to be rejected
+      await expect(
+        axios.get(
+          `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-position`,
+          {
+            params: {
+              network: NETWORK,
+              poolAddress: TEST_POOL,
+              lowerTick: 100,
+              upperTick: 50, // Invalid: upper < lower
+              baseTokenAmount: 1.0,
+              quoteTokenAmount: 2340.5,
+            },
+          },
+        ),
+      ).rejects.toMatchObject({
+        response: {
+          status: 400,
+          data: {
+            error: 'BadRequest',
+            message: expect.stringContaining('Invalid tick range'),
+          },
+        },
+      });
+    });
+  });
+
+  describe('Open Position Endpoint', () => {
+    test('returns successful position opening', async () => {
+      const mockResponse = {
+        signature: '0xabcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab',
+        positionId: '345678',
+        poolAddress: TEST_POOL,
+        lowerTick: -887272,
+        upperTick: 887272,
+        liquidity: '680000000000000000',
+        baseTokenAmount: 1.0,
+        quoteTokenAmount: 2340.5,
+        fee: 0.003,
+      };
+
+      // Setup mock axios
+      axios.post.mockResolvedValueOnce({
+        status: 200,
+        data: mockResponse,
+      });
+
+      // Make the request
+      const response = await axios.post(
+        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/open-position`,
+        {
+          network: NETWORK,
+          poolAddress: TEST_POOL,
+          lowerTick: -887272,
+          upperTick: 887272,
+          baseTokenAmount: 1.0,
+          quoteTokenAmount: 2340.5,
+          wallet: TEST_WALLET,
+        },
+      );
+
+      // Validate the response
+      expect(response.status).toBe(200);
+      expect(response.data.signature).toBeDefined();
+      expect(response.data.positionId).toBeDefined();
+      expect(response.data.liquidity).toBeDefined();
+    });
+
+    test('handles insufficient balance error', async () => {
+      // Setup mock axios with error response
+      axios.post.mockRejectedValueOnce({
+        response: {
+          status: 400,
+          data: {
+            error: 'BadRequest',
+            message: 'Insufficient balance for WETH',
+            code: 400,
+          },
+        },
+      });
+
+      // Make the request and expect it to be rejected
+      await expect(
+        axios.post(
+          `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/open-position`,
+          {
+            network: NETWORK,
+            poolAddress: TEST_POOL,
+            lowerTick: -887272,
+            upperTick: 887272,
+            baseTokenAmount: 10000.0, // Large amount
+            quoteTokenAmount: 23405000.0,
+            wallet: TEST_WALLET,
+          },
+        ),
+      ).rejects.toMatchObject({
+        response: {
+          status: 400,
+          data: {
+            error: 'BadRequest',
+            message: expect.stringContaining('Insufficient balance'),
+          },
+        },
+      });
+    });
+  });
+
+  describe('Add Liquidity Endpoint', () => {
+    test('returns successful liquidity addition to existing position', async () => {
+      const mockResponse = {
+        signature: '0xdef4567890abcdef1234567890abcdef1234567890abcdef1234567890abcd12',
+        positionId: '123456',
+        liquidity: '340000000000000000',
+        baseTokenAmount: 0.5,
+        quoteTokenAmount: 1170.25,
+        fee: 0.003,
+      };
+
+      // Setup mock axios
+      axios.post.mockResolvedValueOnce({
+        status: 200,
+        data: mockResponse,
+      });
+
+      // Make the request
+      const response = await axios.post(
+        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/add-liquidity`,
+        {
+          network: NETWORK,
+          positionId: '123456',
+          baseTokenAmount: 0.5,
+          quoteTokenAmount: 1170.25,
+          wallet: TEST_WALLET,
+        },
+      );
+
+      // Validate the response
+      expect(response.status).toBe(200);
+      expect(response.data.signature).toBeDefined();
+      expect(response.data.positionId).toBe('123456');
+      expect(response.data.liquidity).toBeDefined();
+    });
+  });
+
+  describe('Remove Liquidity Endpoint', () => {
+    test('returns successful liquidity removal', async () => {
+      const mockResponse = {
+        signature: '0x1234abcd5678efgh1234abcd5678efgh1234abcd5678efgh1234abcd5678efgh',
+        positionId: '123456',
+        baseTokenAmount: 0.75,
+        quoteTokenAmount: 1755.375,
+        liquidityRemoved: '500000000000000000',
+        fee: 0.003,
+      };
+
+      // Setup mock axios
+      axios.post.mockResolvedValueOnce({
+        status: 200,
+        data: mockResponse,
+      });
+
+      // Make the request
+      const response = await axios.post(
+        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/remove-liquidity`,
+        {
+          network: NETWORK,
+          positionId: '123456',
+          liquidity: '500000000000000000',
+          wallet: TEST_WALLET,
+        },
+      );
+
+      // Validate the response
+      expect(response.status).toBe(200);
+      expect(response.data.signature).toBeDefined();
+      expect(response.data.baseTokenAmount).toBeGreaterThan(0);
+      expect(response.data.quoteTokenAmount).toBeGreaterThan(0);
+      expect(response.data.liquidityRemoved).toBe('500000000000000000');
+    });
+  });
+
+  describe('Close Position Endpoint', () => {
+    test('returns successful position closure', async () => {
+      const mockResponse = {
+        signature: '0xaaaa1111bbbb2222cccc3333dddd4444eeee5555ffff6666aaaa7777bbbb8888',
+        positionId: '123456',
+        baseTokenAmount: 1.5,
+        quoteTokenAmount: 3510.75,
+        feeBaseAmount: 0.001,
+        feeQuoteAmount: 2.34,
+      };
+
+      // Setup mock axios
+      axios.post.mockResolvedValueOnce({
+        status: 200,
+        data: mockResponse,
+      });
+
+      // Make the request
+      const response = await axios.post(
+        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/close-position`,
+        {
+          network: NETWORK,
+          positionId: '123456',
+          wallet: TEST_WALLET,
+        },
+      );
+
+      // Validate the response
+      expect(response.status).toBe(200);
+      expect(response.data.signature).toBeDefined();
+      expect(response.data.positionId).toBe('123456');
+      expect(response.data.baseTokenAmount).toBeGreaterThan(0);
+      expect(response.data.quoteTokenAmount).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Collect Fees Endpoint', () => {
+    test('returns successful fee collection', async () => {
+      const mockResponse = {
+        signature: '0x9999888877776666555544443333222211110000aaaabbbbccccddddeeeeffff',
+        positionId: '123456',
+        feeBaseAmount: 0.001,
+        feeQuoteAmount: 2.34,
+      };
+
+      // Setup mock axios
+      axios.post.mockResolvedValueOnce({
+        status: 200,
+        data: mockResponse,
+      });
+
+      // Make the request
+      const response = await axios.post(
+        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/collect-fees`,
+        {
+          network: NETWORK,
+          positionId: '123456',
+          wallet: TEST_WALLET,
+        },
+      );
+
+      // Validate the response
+      expect(response.status).toBe(200);
+      expect(response.data.signature).toBeDefined();
+      expect(response.data.feeBaseAmount).toBeGreaterThanOrEqual(0);
+      expect(response.data.feeQuoteAmount).toBeGreaterThanOrEqual(0);
     });
   });
 });

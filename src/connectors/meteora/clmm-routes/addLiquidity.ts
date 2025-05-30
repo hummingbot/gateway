@@ -11,7 +11,7 @@ import {
   AddLiquidityRequest,
   AddLiquidityResponse,
   AddLiquidityResponseType,
-} from '../../../schemas/trading-types/clmm-schema';
+} from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Meteora } from '../meteora';
 import { MeteoraConfig } from '../meteora.config';

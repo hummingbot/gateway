@@ -3,7 +3,7 @@ import { PublicKey } from '@solana/web3.js';
 import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { PositionInfoSchema } from '../../../schemas/trading-types/clmm-schema';
+import { PositionInfoSchema } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Meteora } from '../meteora';
 // Using Fastify's native error handling
