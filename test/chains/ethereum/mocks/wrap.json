@@ -1,6 +1,6 @@
 {
   "nonce": 42,
-  "txHash": "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+  "signature": "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
   "fee": "0.000021",
   "amount": "0.1",
   "wrappedAddress": "0x4200000000000000000000000000000000000006",

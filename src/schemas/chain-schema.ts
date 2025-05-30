@@ -79,7 +79,7 @@ export type TokensResponseType = Static<typeof TokensResponseSchema>;
 export const PollRequestSchema = Type.Object(
   {
     network: Type.String(),
-    txHash: Type.String({ description: 'Transaction signature/hash' }),
+    signature: Type.String({ description: 'Transaction signature/hash' }),
   },
   { $id: 'PollRequest' },
 );
@@ -88,7 +88,7 @@ export type PollRequestType = Static<typeof PollRequestSchema>;
 export const PollResponseSchema = Type.Object(
   {
     currentBlock: Type.Number(),
-    txHash: Type.String(),
+    signature: Type.String(),
     txBlock: Type.Union([Type.Number(), Type.Null()]),
     txStatus: Type.Number(),
     txData: Type.Union([Type.Record(Type.String(), Type.Any()), Type.Null()]),
@@ -196,7 +196,7 @@ export const ApproveResponseSchema = Type.Object(
     spender: Type.String(),
     amount: Type.String(),
     nonce: Type.Number(),
-    txHash: Type.String(),
+    signature: Type.String(),
     approval: CustomTransactionSchema,
   },
   { $id: 'ApproveResponse' },
@@ -217,7 +217,7 @@ export type WrapRequestType = Static<typeof WrapRequestSchema>;
 export const WrapResponseSchema = Type.Object(
   {
     nonce: Type.Number(),
-    txHash: Type.String(),
+    signature: Type.String(),
     fee: Type.String(),
     amount: Type.String(),
     wrappedAddress: Type.String(),

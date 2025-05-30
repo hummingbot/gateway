@@ -153,7 +153,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
             walletAddress,
             amount.toString(),
           );
-          wrapTxHash = wrapResult.txHash;
+          wrapTxHash = wrapResult.signature;
           inputTokenAddress = wethToken.address;
 
           logger.info(

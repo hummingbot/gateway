@@ -1,8 +1,8 @@
 {
   "signature": "2opPG8d8XvnWg54FKutcx6gENWySPwbm1VMedp9PL8Krb7PoEFZv1X76HcJPAoo4gDNvmJrP3DBsVcQ1WTHE6VVo",
-  "totalInputSwapped": 0.001011167,
-  "totalOutputSwapped": 0.163493,
+  "totalInputSwapped": 1.000011167,
+  "totalOutputSwapped": 163.456119,
   "fee": 0.000011167,
-  "baseTokenBalanceChange": -0.001011167,
-  "quoteTokenBalanceChange": 0.163493
+  "baseTokenBalanceChange": -1.000011167,
+  "quoteTokenBalanceChange": 163.456119
 }

@@ -21,7 +21,7 @@ jest.mock('../../../src/chains/ethereum/routes/wrap', () => {
       .fn()
       .mockImplementation(async (fastify, network, walletAddress, amount) => {
         return {
-          txHash:
+          signature:
             '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
           nonce: 123,
           fee: '0.0001',
@@ -170,7 +170,7 @@ describe('Uniswap CLMM ETH to WETH Wrapping Tests', () => {
 
         // Create a mock swap result that includes the wrap transaction
         return {
-          signature: `swap:0x9876543210abcdef,wrap:${wrapResult.txHash}`,
+          signature: `swap:0x9876543210abcdef,wrap:${wrapResult.signature}`,
           totalInputSwapped: 1.0,
           totalOutputSwapped: 1800.0,
           fee: 0.003,

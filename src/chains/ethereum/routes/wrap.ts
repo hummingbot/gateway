@@ -166,7 +166,7 @@ export async function wrapEthereum(
 
     return {
       nonce: transaction.nonce,
-      txHash: transaction.hash,
+      signature: transaction.hash,
       fee: bigNumberWithDecimalToStr(fee, 18),
       amount: bigNumberWithDecimalToStr(amountInWei, 18),
       wrappedAddress: wrappedInfo.address,
@@ -241,7 +241,7 @@ export const wrapRoute: FastifyPluginAsync = async (fastify) => {
         response: {
           200: Type.Object({
             nonce: Type.Number(),
-            txHash: Type.String(),
+            signature: Type.String(),
             fee: Type.String(),
             amount: Type.String(),
             wrappedAddress: Type.String(),

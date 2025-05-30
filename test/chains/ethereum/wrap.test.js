@@ -32,7 +32,7 @@ function validateWrapResponse(response) {
   return (
     response &&
     typeof response.nonce === 'number' &&
-    typeof response.txHash === 'string' &&
+    typeof response.signature === 'string' &&
     typeof response.fee === 'string' &&
     typeof response.amount === 'string' &&
     typeof response.wrappedAddress === 'string' &&
@@ -88,7 +88,7 @@ describe('Ethereum Wrap Native Token Tests (Base Network)', () => {
       expect(response.data.wrappedToken).toBe('WETH');
       expect(response.data.tx.to).toBe(WRAPPED_ADDRESS);
       expect(response.data.tx.value).toBe('100000000000000000'); // 0.1 ETH in wei
-      expect(response.data.txHash).toBeTruthy();
+      expect(response.data.signature).toBeTruthy();
 
       // Verify axios was called with correct parameters
       expect(axios.post).toHaveBeenCalledWith(

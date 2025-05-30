@@ -54,7 +54,7 @@ async function addLiquidity(
       walletAddress,
       baseTokenAmount.toString(),
     );
-    baseWrapTxHash = wrapResult.txHash;
+    baseWrapTxHash = wrapResult.signature;
     actualBaseToken = 'WETH';
 
     logger.info(
@@ -82,7 +82,7 @@ async function addLiquidity(
       walletAddress,
       quoteTokenAmount.toString(),
     );
-    quoteWrapTxHash = wrapResult.txHash;
+    quoteWrapTxHash = wrapResult.signature;
     actualQuoteToken = 'WETH';
 
     logger.info(

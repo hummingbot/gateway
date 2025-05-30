@@ -12,36 +12,36 @@ import { Solana } from '../solana';
 export async function pollSolanaTransaction(
   _fastify: FastifyInstance,
   network: string,
-  txHash: string,
+  signature: string,
 ): Promise<PollResponseType> {
   const solana = await Solana.getInstance(network);
 
   try {
     const currentBlock = await solana.getCurrentBlockNumber();
 
-    // Validate transaction hash format
+    // Validate transaction signature format
     if (
-      !txHash ||
-      typeof txHash !== 'string' ||
-      !txHash.match(/^[A-Za-z0-9]{43,88}$/)
+      !signature ||
+      typeof signature !== 'string' ||
+      !signature.match(/^[A-Za-z0-9]{43,88}$/)
     ) {
       return {
         currentBlock,
-        txHash,
+        signature,
         txBlock: null,
         txStatus: 0,
         txData: null,
         fee: null,
-        error: 'Invalid transaction hash format',
+        error: 'Invalid transaction signature format',
       };
     }
 
-    const txData = await solana.getTransaction(txHash);
+    const txData = await solana.getTransaction(signature);
 
     if (!txData) {
       return {
         currentBlock,
-        txHash,
+        signature,
         txBlock: null,
         txStatus: 0,
         txData: null,
@@ -51,25 +51,25 @@ export async function pollSolanaTransaction(
 
     const txStatus = await solana.getTransactionStatusCode(txData as any);
     const { balanceChange, fee } =
-      await solana.extractAccountBalanceChangeAndFee(txHash, 0);
+      await solana.extractAccountBalanceChangeAndFee(signature, 0);
 
     logger.info(
-      `Polling for transaction ${txHash}, Status: ${txStatus}, Balance Change: ${balanceChange} SOL, Fee: ${fee} SOL`,
+      `Polling for transaction ${signature}, Status: ${txStatus}, Balance Change: ${balanceChange} SOL, Fee: ${fee} SOL`,
     );
 
     return {
       currentBlock,
-      txHash,
+      signature,
       txBlock: txData.slot,
       txStatus,
       fee,
       txData,
     };
   } catch (error) {
-    logger.error(`Error polling transaction ${txHash}: ${error.message}`);
+    logger.error(`Error polling transaction ${signature}: ${error.message}`);
     return {
       currentBlock: await solana.getCurrentBlockNumber(),
-      txHash,
+      signature,
       txBlock: null,
       txStatus: 0,
       txData: null,
@@ -94,7 +94,7 @@ export const pollRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             ...PollRequestSchema.properties,
             network: { type: 'string', examples: ['mainnet-beta', 'devnet'] },
-            txHash: {
+            signature: {
               type: 'string',
               examples: [
                 '55ukR6VCt1sQFMC8Nyeo51R1SMaTzUC7jikmkEJ2jjkQNdqBxXHraH7vaoaNmf8rX4Y55EXAj8XXoyzvvsrQqWZa',
@@ -108,8 +108,8 @@ export const pollRoute: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request) => {
-      const { network, txHash } = request.body;
-      return await pollSolanaTransaction(fastify, network, txHash);
+      const { network, signature } = request.body;
+      return await pollSolanaTransaction(fastify, network, signature);
     },
   );
 };

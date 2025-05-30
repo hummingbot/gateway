@@ -35,14 +35,14 @@ const toEthereumTransactionResponse = (
 export async function pollEthereumTransaction(
   fastify: FastifyInstance,
   network: string,
-  txHash: string,
+  signature: string,
   connector?: string,
 ): Promise<PollResponseType> {
   try {
     const ethereum = await Ethereum.getInstance(network);
 
     const currentBlock = await ethereum.getCurrentBlockNumber();
-    let txData = await ethereum.getTransaction(txHash);
+    let txData = await ethereum.getTransaction(signature);
     let txBlock, txReceipt, txStatus;
     if (!txData) {
       const MAX_RETRIES = 3;
@@ -51,7 +51,7 @@ export async function pollEthereumTransaction(
 
       while (retryCount < MAX_RETRIES) {
         await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
-        txData = await ethereum.getTransaction(txHash);
+        txData = await ethereum.getTransaction(signature);
         if (txData) break;
         retryCount++;
       }
@@ -59,7 +59,7 @@ export async function pollEthereumTransaction(
       if (!txData) {
         // tx not found after retries
         logger.info(
-          `Transaction ${txHash} not found in mempool or does not exist after ${MAX_RETRIES} retries.`,
+          `Transaction ${signature} not found in mempool or does not exist after ${MAX_RETRIES} retries.`,
         );
         txBlock = -1;
         txReceipt = null;
@@ -68,7 +68,7 @@ export async function pollEthereumTransaction(
     }
 
     if (txData) {
-      txReceipt = await ethereum.getTransactionReceipt(txHash);
+      txReceipt = await ethereum.getTransactionReceipt(signature);
       if (txReceipt === null) {
         // tx is in the mempool
         txBlock = -1;
@@ -118,11 +118,11 @@ export async function pollEthereumTransaction(
       }
     }
 
-    logger.info(`Poll ethereum, txHash ${txHash}, status ${txStatus}.`);
+    logger.info(`Poll ethereum, signature ${signature}, status ${txStatus}.`);
 
     return {
       currentBlock,
-      txHash,
+      signature,
       txBlock,
       txStatus,
       txData: toEthereumTransactionResponse(txData),
@@ -170,7 +170,7 @@ export const pollRoute: FastifyPluginAsync = async (fastify) => {
                 'worldchain',
               ],
             },
-            txHash: { type: 'string', examples: ['0x123...'] },
+            signature: { type: 'string', examples: ['0x123...'] },
           },
         },
         response: {
@@ -179,8 +179,8 @@ export const pollRoute: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request) => {
-      const { network, txHash } = request.body;
-      return await pollEthereumTransaction(fastify, network, txHash);
+      const { network, signature } = request.body;
+      return await pollEthereumTransaction(fastify, network, signature);
     },
   );
 };
