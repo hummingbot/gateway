@@ -128,12 +128,8 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
             quoteToken: { type: 'string', examples: ['USDC'] },
             amount: { type: 'number', examples: [0.1] },
             side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
-            slippagePct: {
-              type: 'number',
-              examples: [0.5],
-              description:
-                'Slippage tolerance in percentage (e.g., 0.5 for 0.5%)',
-            },
+            slippagePct: { type: 'number', examples: [1] },
+            poolAddress: { type: 'string', examples: [''] },
           },
         },
         response: { 200: ExecuteSwapResponse },

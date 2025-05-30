@@ -134,12 +134,14 @@ describe('Uniswap V3 Swap Router Tests (Base Network)', () => {
         mockBuyResponse = {
           ...mockSellResponse,
           // Flip the values for BUY direction
-          estimatedAmountIn: mockSellResponse.estimatedAmountOut / 100, // Adjust for a reasonable price
-          estimatedAmountOut: 1.0,
+          estimatedAmountIn: mockSellResponse.estimatedAmountOut, // Quote amount needed
+          estimatedAmountOut: 1.0, // Base amount to receive
           minAmountOut: 1.0,
-          maxAmountIn: (mockSellResponse.estimatedAmountOut / 100) * 1.005, // Add slippage
+          maxAmountIn: mockSellResponse.estimatedAmountOut * 1.01, // Add 1% slippage
           baseTokenBalanceChange: 1.0, // Positive for BUY
-          quoteTokenBalanceChange: -(mockSellResponse.estimatedAmountOut / 100), // Negative for BUY
+          quoteTokenBalanceChange: -mockSellResponse.estimatedAmountOut, // Negative for BUY
+          // For BUY: price = quote needed / base received
+          price: mockSellResponse.estimatedAmountOut / 1.0,
         };
       } catch (error) {
         // Create minimal mock if not found
@@ -147,8 +149,8 @@ describe('Uniswap V3 Swap Router Tests (Base Network)', () => {
           estimatedAmountIn: 1800.0,
           estimatedAmountOut: 1.0,
           minAmountOut: 1.0,
-          maxAmountIn: 1809.0,
-          price: 1800.0,
+          maxAmountIn: 1818.0,
+          price: 1800.0, // For BUY: price = quote needed / base received = 1800.0 / 1.0
           baseTokenBalanceChange: 1.0,
           quoteTokenBalanceChange: -1800.0,
           gasPrice: 5.0,

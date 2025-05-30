@@ -256,8 +256,13 @@ async function formatSwapQuote(
     const gasCost = formatTokenAmount(gasCostRaw.toString(), 18); // ETH has 18 decimals
     logger.info(`Gas cost: ${gasCost} ETH`);
 
-    // Calculate price
-    const price = quote.estimatedAmountOut / quote.estimatedAmountIn;
+    // Calculate price based on side
+    // For SELL: price = quote received / base sold
+    // For BUY: price = quote needed / base received
+    const price =
+      side === 'SELL'
+        ? quote.estimatedAmountOut / quote.estimatedAmountIn
+        : quote.estimatedAmountIn / quote.estimatedAmountOut;
 
     // Format gas price as Gwei
     const gasPriceGwei = formatTokenAmount(gasPrice.toString(), 9); // Convert to Gwei

@@ -214,8 +214,13 @@ export async function getUniswapQuote(
     ? estimatedAmountIn
     : estimatedAmountIn * (1 + (slippagePct || 0.5) / 100);
 
-  // Calculate price
-  const price = estimatedAmountOut / estimatedAmountIn;
+  // Calculate price based on side
+  // For SELL: price = quote received / base sold
+  // For BUY: price = quote needed / base received
+  const price =
+    side === 'SELL'
+      ? estimatedAmountOut / estimatedAmountIn
+      : estimatedAmountIn / estimatedAmountOut;
 
   // Calculate balance changes
   const baseTokenBalanceChange =
