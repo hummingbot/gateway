@@ -6,7 +6,21 @@
 
 Hummingbot Gateway is an API/CLI client that exposes standardized REST endponts to perform actions and fetch data from **blockchain networks** (wallet, node & chain interaction) and their **decentralized exchanges (DEX)** (pricing, trading & liquidity provision).
 
-Gateway is written in Typescript in order to use Javascript-based SDKs provided by blockchains and DEX protocols. The advantage of using Gateway is it provides a standardizedm, language-agnostic approach to interacting with these protocols.
+### API Overview
+
+- GET /chains - List all available blockchain networks and their supported networks
+- GET /connectors - List all available DEX connectors and their supported networks
+- GET /ethereum/... - Ethereum chain endpoints (balances, tokens, allowances)
+- GET /solana/... - Solana chain endpoints (balances, tokens)
+- GET /jupiter/... - Jupiter Aggregator swap endpoints
+- GET /uniswap/... - Uniswap swap, AMM, and CLMM endpoints
+- GET /uniswap/routes/quote-swap - Get price quote using Uniswap V3 Swap Router (recommended for token swapping)
+- GET /uniswap/routes/execute-swap - Execute swap using Uniswap V3 Swap Router (recommended for token swapping)
+- GET /raydium/amm/... - Raydium AMM endpoints
+- GET /raydium/clmm/... - Raydium CLMM endpoints
+- GET /meteora/clmm/... - Meteora CLMM endpoints
+
+Gateway is written in Typescript in order to use Javascript-based SDKs provided by blockchains and DEX protocols. The advantage of using Gateway is it provides a standardized, language-agnostic approach to interacting with these protocols.
 
 Gateway may be used alongside the main [Hummingbot client](https://github.com/hummingbot/hummingbot) to enable trading and market making on DEXs, or as a standalone command line interface (CLI).
 
@@ -57,8 +71,8 @@ git clone https://github.com/hummingbot/gateway.git
 # Go to newly created folder
 cd gateway
 
-# Switch to `core-2.5 branch
-git checkout core-2.5
+# Switch to main branch (or a specific version branch like core-2.6)
+git checkout main
 ```
 
 ### Setup Gateway
@@ -180,25 +194,46 @@ Here are some ways that you can contribute to Gateway:
 
 - If you want Gateway to log to standard out, set `logToStdOut` to `true` in [conf/server.yml](./conf/server.yml).
 
-- The format of configuration files are dictated by [src/services/config-manager-v2.ts](./src/services/config-manager-v2.ts) and the corresponding schema files in [src/services/schema](./src/services/schema).
+- The format of configuration files are dictated by [src/services/config-manager-v2.ts](./src/services/config-manager-v2.ts) and the corresponding schema files in [src/templates/json](./src/templates/json).
 
 - For each supported chain, token lists that translate address to symbols for each chain are stored in `/conf/lists`. You can add tokens here to make them available to Gateway.
 
 
 ## Architecture
 
-Gateway is currently undergoing a large-scale refactor to improve codebase architecture and modularity. The Meteora connector serves as the reference implementation for this new architecture:
+Gateway follows a modular architecture with clear separation of concerns between chains, connectors, configuration, and wallet management:
 
-- [src/connectors/meteora/meteora.ts](./src/connectors/meteora/meteora.ts): Core DEX connector class that implements the standard interface
-- [src/connectors/meteora/meteora.config.ts](./src/connectors/meteora/meteora.config.ts): Configuration for the DEX connector
-- [src/connectors/meteora/meteora.routes.ts](./src/connectors/meteora/meteora.routes.ts): Route definitions and handlers
-- [src/connectors/meteora/routes/](./src/connectors/meteora/routes/): Individual route implementations for each DEX operation
+- **Chains**: Blockchain network implementations
+  - [src/chains/chain.routes.ts](./src/chains/chain.routes.ts): List of supported chains and networks
+  - [src/chains/ethereum/ethereum.ts](./src/chains/ethereum/ethereum.ts): Core Ethereum chain operations
+  - [src/chains/solana/solana.ts](./src/chains/solana/solana.ts): Core Solana chain operations
 
-Other key files:
+- **Connectors**: DEX protocol implementations
+  - [src/connectors/connector.routes.ts](./src/connectors/connector.routes.ts): List of available DEX connectors
+  - [src/connectors/jupiter/jupiter.ts](./src/connectors/jupiter/jupiter.ts): Jupiter DEX connector for Solana
+  - [src/connectors/raydium/raydium.ts](./src/connectors/raydium/raydium.ts): Raydium DEX connector for Solana (AMM, CLMM)
+  - [src/connectors/uniswap/uniswap.ts](./src/connectors/uniswap/uniswap.ts): Uniswap DEX connector for Ethereum
+  - [src/connectors/uniswap/routes/quote-swap.ts](./src/connectors/uniswap/routes/quote-swap.ts): Uniswap V3 Swap Router for quote generation
+  - [src/connectors/uniswap/routes/execute-swap.ts](./src/connectors/uniswap/routes/execute-swap.ts): Uniswap V3 Swap Router for swap execution
+  - [src/connectors/uniswap/uniswap.contracts.ts](./src/connectors/uniswap/uniswap.contracts.ts): Contract addresses for Uniswap on all networks
 
-- [src/services/clmm-interface.ts](./src/services/clmm-interface.ts): Standard request and response interfaces for Concentrated Liquidity Market Maker (CLMM) DEXs
-- [src/chains/solana/solana.ts](./src/chains/solana/solana.ts): Base class for Solana chain operations
-- [src/chains/solana/solana.routes.ts](./src/chains/solana/solana.routes.ts): Solana route definitions and handlers
+- **Configuration**: Configuration management
+  - [src/config/config.routes.ts](./src/config/config.routes.ts): Configuration endpoints
+  - [src/config/utils.ts](./src/config/utils.ts): Configuration utilities
+
+- **Wallet**: Wallet management
+  - [src/wallet/wallet.routes.ts](./src/wallet/wallet.routes.ts): Wallet endpoints
+  - [src/wallet/utils.ts](./src/wallet/utils.ts): Wallet utilities
+
+- **Schemas**: Common type definitions and schemas
+  - [src/schemas/trading-types/clmm-schema.ts](./src/schemas/trading-types/clmm-schema.ts): Standard schemas for CLMM operations
+  - [src/schemas/trading-types/amm-schema.ts](./src/schemas/trading-types/amm-schema.ts): Standard schemas for AMM operations
+  - [src/schemas/trading-types/swap-schema.ts](./src/schemas/trading-types/swap-schema.ts): Standard schemas for swap operations
+
+- **Services**: Core functionality and utilities
+  - [src/services/config-manager-v2.ts](./src/services/config-manager-v2.ts): Configuration management
+  - [src/services/logger.ts](./src/services/logger.ts): Logging utilities
+  - [src/services/base.ts](./src/services/base.ts): Base service functionality
 
 ## Testing
 
@@ -209,33 +244,144 @@ For a pull request merged into the codebase, it has to pass unit test coverage r
 Run all unit tests.
 
 ```bash
-pnpm test:unit
+pnpm test
 ```
 
 Run an individual test folder or file
 
 ```bash
-pnpm run jest test/<folder>/<file>
+GATEWAY_TEST_MODE=dev jest --runInBand test/<folder>/<file>.test.ts
 ```
 
-### Manual tests
+### Test Structure
 
-We have found it is useful to test individual endpoints with `curl` commands. We have a collection of prepared curl calls. POST bodies are stored in JSON files. Take a look at the [curl calls for gateway](./test-helpers/curl/curl.sh). Note that some environment variables are expected.
+The test directory is organized as follows:
 
-## Linting
+```
+/test
+  /chains/                    # Chain endpoint tests
+    chain.test.js            # Chain routes test
+    ethereum.test.js         # Ethereum chain tests
+    solana.test.js           # Solana chain tests
+  /connectors/                # Connector endpoint tests by protocol
+    /jupiter/                 # Jupiter connector tests
+    /uniswap/                 # Uniswap connector tests
+    /raydium/                 # Raydium connector tests
+    /meteora/                 # Meteora connector tests
+  /mocks/                     # Mock response data
+    /chains/                  # Chain mock responses
+      chains.json            # Chain routes mock response
+      /ethereum/             # Ethereum mock responses
+      /solana/               # Solana mock responses
+    /connectors/              # Connector mock responses
+  /services/                  # Service tests
+    /data/                    # Test data files
+  /wallet/                    # Wallet tests
+  /config/                    # Configuration tests
+  /jest-setup.js              # Test environment configuration
+```
 
-This repo uses `eslint` and `prettier`. When you run `git commit` it will trigger the `pre-commit` hook. This will run `eslint` on the `src` and `test` directories.
+For more details on the test setup and structure, see [Test README](./test/README.md).
 
-You can lint before committing with:
+## Adding a New Chain or Connector
+
+### Adding a New Chain
+
+1. Create chain implementation files:
+   ```bash
+   mkdir -p src/chains/yourchain/routes
+   touch src/chains/yourchain/yourchain.ts
+   touch src/chains/yourchain/yourchain.config.ts
+   touch src/chains/yourchain/yourchain.routes.ts
+   touch src/chains/yourchain/yourchain.utils.ts
+   ```
+
+2. Create test mock files:
+   ```bash
+   mkdir -p test/mocks/chains/yourchain
+   touch test/mocks/chains/yourchain/balance.json
+   touch test/mocks/chains/yourchain/status.json
+   touch test/mocks/chains/yourchain/tokens.json
+   ```
+
+3. Create chain test file:
+   ```bash
+   touch test/chains/yourchain.test.js
+   ```
+
+### Adding a New Connector
+
+1. Create connector implementation files:
+   ```bash
+   mkdir -p src/connectors/yourconnector/routes
+   touch src/connectors/yourconnector/yourconnector.ts
+   touch src/connectors/yourconnector/yourconnector.config.ts
+   touch src/connectors/yourconnector/yourconnector.routes.ts
+   ```
+
+2. If the connector supports AMM, create these files:
+   ```bash
+   mkdir -p src/connectors/yourconnector/amm-routes
+   touch src/connectors/yourconnector/amm-routes/executeSwap.ts
+   touch src/connectors/yourconnector/amm-routes/poolInfo.ts
+   touch src/connectors/yourconnector/amm-routes/quoteSwap.ts
+   # Add other AMM operation files as needed
+   ```
+
+3. If the connector supports CLMM, create these files:
+   ```bash
+   mkdir -p src/connectors/yourconnector/clmm-routes
+   touch src/connectors/yourconnector/clmm-routes/executeSwap.ts
+   touch src/connectors/yourconnector/clmm-routes/poolInfo.ts
+   touch src/connectors/yourconnector/clmm-routes/quoteSwap.ts
+   touch src/connectors/yourconnector/clmm-routes/openPosition.ts
+   # Add other CLMM operation files as needed
+   ```
+
+4. Create test mock files:
+   ```bash
+   mkdir -p test/mocks/connectors/yourconnector
+   touch test/mocks/connectors/yourconnector/amm-pool-info.json
+   touch test/mocks/connectors/yourconnector/amm-quote-swap.json
+   touch test/mocks/connectors/yourconnector/clmm-pool-info.json
+   touch test/mocks/connectors/yourconnector/clmm-quote-swap.json
+   # Add other mock response files as needed
+   ```
+
+5. Create connector test files:
+   ```bash
+   mkdir -p test/connectors/yourconnector
+   touch test/connectors/yourconnector/amm.test.js
+   touch test/connectors/yourconnector/clmm.test.js
+   touch test/connectors/yourconnector/swap.test.js
+   ```
+
+## Linting and Formatting
+
+This repo uses `eslint` and `prettier` for code quality and consistent formatting.
+
+Run linting manually with:
 
 ```bash
-pnpm run lint
+pnpm lint
 ```
 
-You can run the prettifier before committing with:
+Format code with prettier:
 
 ```bash
-pnpm run prettier
+pnpm format
 ```
 
+## Troubleshooting
 
+### Fixing bigint-buffer warnings
+
+If you see warnings like `bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)` when running Gateway, you can safely ignore them. The warnings are related to the bigint-buffer package, which falls back to pure JavaScript implementation when native bindings are not available. This doesn't affect Gateway's functionality.
+
+If you want to attempt to fix these warnings, you can run:
+
+```bash
+pnpm rebuild-bigint
+```
+
+Note that this requires having the necessary C++ build tools installed on your system.

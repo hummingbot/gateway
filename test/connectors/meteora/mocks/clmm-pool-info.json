@@ -1,0 +1,14 @@
+{
+  "address": "5rCf1DM8LjKTw4YqhnoLcngyZYeNnQqztScTogYHAS6",
+  "baseTokenAddress": "So11111111111111111111111111111111111111112",
+  "quoteTokenAddress": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+  "feePct": 0.04,
+  "dynamicFeePct": 0.0411578,
+  "price": 163.6479153592644,
+  "baseTokenAmount": 30318.675104312,
+  "quoteTokenAmount": 1249165.517756,
+  "activeBinId": -4526,
+  "binStep": 4,
+  "minBinId": -109192,
+  "maxBinId": 109192
+}

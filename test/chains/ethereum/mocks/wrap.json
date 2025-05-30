@@ -1,0 +1,17 @@
+{
+  "nonce": 42,
+  "signature": "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+  "fee": "0.000021",
+  "amount": "0.1",
+  "wrappedAddress": "0x4200000000000000000000000000000000000006",
+  "nativeToken": "ETH",
+  "wrappedToken": "WETH",
+  "tx": {
+    "data": "0xd0e30db0",
+    "to": "0x4200000000000000000000000000000000000006",
+    "maxPriorityFeePerGas": null,
+    "maxFeePerGas": null,
+    "gasLimit": "21000",
+    "value": "100000000000000000"
+  }
+}

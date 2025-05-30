@@ -1,0 +1,27 @@
+{
+  "network": "base",
+  "wallet": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "balances": [
+    {
+      "symbol": "ETH",
+      "address": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "decimals": 18,
+      "name": "Ethereum",
+      "balance": "2.5"
+    },
+    {
+      "symbol": "USDC",
+      "address": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+      "decimals": 6,
+      "name": "USD Coin",
+      "balance": "1500.00"
+    },
+    {
+      "symbol": "WETH",
+      "address": "0x4200000000000000000000000000000000000006",
+      "decimals": 18,
+      "name": "Wrapped Ethereum",
+      "balance": "1.0"
+    }
+  ]
+}

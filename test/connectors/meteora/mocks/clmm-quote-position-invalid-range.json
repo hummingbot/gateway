@@ -1,0 +1,5 @@
+{
+  "message": "Route GET:/connectors/meteora/clmm/quote-position?network=mainnet-beta&poolAddress=CS2H8nbAVVEUHWPF5extCSymqheQdkd4d7thik6eet9N&lowerTick=88720&upperTick=-88720&baseAmount=0.1&quoteAmount=16 not found",
+  "error": "Not Found",
+  "statusCode": 404
+}

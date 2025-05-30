@@ -1,16 +1,18 @@
-import { FastifyPluginAsync, FastifyInstance } from 'fastify'
-import { Solana, BASE_FEE } from '../../../chains/solana/solana'
-import { Raydium } from '../raydium'
-import { logger } from '../../../services/logger'
+import { VersionedTransaction } from '@solana/web3.js';
+import BN from 'bn.js';
+import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+
+import { Solana, BASE_FEE } from '../../../chains/solana/solana';
 import {
   ExecuteSwapResponse,
   ExecuteSwapResponseType,
   ExecuteSwapRequest,
-  ExecuteSwapRequestType
-} from '../../../schemas/trading-types/swap-schema'
-import { getRawSwapQuote } from './quoteSwap'
-import BN from 'bn.js'
-import { VersionedTransaction } from '@solana/web3.js'
+  ExecuteSwapRequestType,
+} from '../../../schemas/swap-schema';
+import { logger } from '../../../services/logger';
+import { Raydium } from '../raydium';
+
+import { getRawSwapQuote } from './quoteSwap';
 
 async function executeSwap(
   fastify: FastifyInstance,
@@ -21,20 +23,20 @@ async function executeSwap(
   amount: number,
   side: 'BUY' | 'SELL',
   poolAddress: string,
-  slippagePct?: number
+  slippagePct?: number,
 ): Promise<ExecuteSwapResponseType> {
-  const solana = await Solana.getInstance(network)
-  const raydium = await Raydium.getInstance(network)
-  const wallet = await solana.getWallet(walletAddress)
+  const solana = await Solana.getInstance(network);
+  const raydium = await Raydium.getInstance(network);
+  const wallet = await solana.getWallet(walletAddress);
 
   // Get pool info from address
-  const poolInfo = await raydium.getAmmPoolInfo(poolAddress)
+  const poolInfo = await raydium.getAmmPoolInfo(poolAddress);
   if (!poolInfo) {
-    throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`)
+    throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
   }
 
   // Use configured slippage if not provided
-  const effectiveSlippage = slippagePct || raydium.getSlippagePct('amm')
+  const effectiveSlippage = slippagePct || raydium.getSlippagePct();
 
   // Get swap quote
   const quote = await getRawSwapQuote(
@@ -45,29 +47,33 @@ async function executeSwap(
     quoteToken,
     amount,
     side,
-    effectiveSlippage
-  )
+    effectiveSlippage,
+  );
 
-  const inputToken = quote.inputToken
-  const outputToken = quote.outputToken
+  const inputToken = quote.inputToken;
+  const outputToken = quote.outputToken;
 
-  logger.info(`Executing ${amount.toFixed(4)} ${side} swap in pool ${poolAddress}`)
+  logger.info(
+    `Executing ${amount.toFixed(4)} ${side} swap in pool ${poolAddress}`,
+  );
 
   const COMPUTE_UNITS = 600000;
-  let currentPriorityFee = (await solana.estimateGas() * 1e9) - BASE_FEE;
+  let currentPriorityFee = (await solana.estimateGas()) * 1e9 - BASE_FEE;
   while (currentPriorityFee <= solana.config.maxPriorityFee * 1e9) {
-    const priorityFeePerCU = Math.floor(currentPriorityFee * 1e6 / COMPUTE_UNITS);
+    const priorityFeePerCU = Math.floor(
+      (currentPriorityFee * 1e6) / COMPUTE_UNITS,
+    );
     let transaction: VersionedTransaction;
 
     // Get transaction based on pool type
     if (poolInfo.poolType === 'amm') {
       if (side === 'BUY') {
         // AMM swap base out (exact output)
-        ({ transaction } = await raydium.raydiumSDK.liquidity.swap({
+        ({ transaction } = (await raydium.raydiumSDK.liquidity.swap({
           poolInfo: quote.poolInfo,
           poolKeys: quote.poolKeys,
           amountIn: quote.maxAmountIn,
-          amountOut: new BN(quote.amountOut), 
+          amountOut: new BN(quote.amountOut),
           fixedSide: 'out',
           inputMint: inputToken.address,
           txVersion: raydium.txVersion,
@@ -75,14 +81,14 @@ async function executeSwap(
             units: COMPUTE_UNITS,
             microLamports: priorityFeePerCU,
           },
-        }) as { transaction: VersionedTransaction })
+        })) as { transaction: VersionedTransaction });
       } else {
         // AMM swap (exact input)
-        ({ transaction } = await raydium.raydiumSDK.liquidity.swap({
+        ({ transaction } = (await raydium.raydiumSDK.liquidity.swap({
           poolInfo: quote.poolInfo,
           poolKeys: quote.poolKeys,
           amountIn: new BN(quote.amountIn),
-          amountOut: quote.minAmountOut, 
+          amountOut: quote.minAmountOut,
           fixedSide: 'in',
           inputMint: inputToken.address,
           txVersion: raydium.txVersion,
@@ -90,12 +96,12 @@ async function executeSwap(
             units: COMPUTE_UNITS,
             microLamports: priorityFeePerCU,
           },
-        }) as { transaction: VersionedTransaction })
+        })) as { transaction: VersionedTransaction });
       }
     } else if (poolInfo.poolType === 'cpmm') {
       if (side === 'BUY') {
         // CPMM swap base out (exact output)
-        ({ transaction } = await raydium.raydiumSDK.cpmm.swap({
+        ({ transaction } = (await raydium.raydiumSDK.cpmm.swap({
           poolInfo: quote.poolInfo,
           poolKeys: quote.poolKeys,
           inputAmount: new BN(0), // not used when fixedOut is true
@@ -111,10 +117,10 @@ async function executeSwap(
             units: COMPUTE_UNITS,
             microLamports: priorityFeePerCU,
           },
-        }) as { transaction: VersionedTransaction })
+        })) as { transaction: VersionedTransaction });
       } else {
         // CPMM swap (exact input)
-        ({ transaction } = await raydium.raydiumSDK.cpmm.swap({
+        ({ transaction } = (await raydium.raydiumSDK.cpmm.swap({
           poolInfo: quote.poolInfo,
           poolKeys: quote.poolKeys,
           inputAmount: quote.amountIn,
@@ -129,53 +135,66 @@ async function executeSwap(
             units: COMPUTE_UNITS,
             microLamports: priorityFeePerCU,
           },
-        }) as { transaction: VersionedTransaction })
+        })) as { transaction: VersionedTransaction });
       }
     } else {
-      throw new Error(`Unsupported pool type: ${poolInfo.poolType}`)
+      throw new Error(`Unsupported pool type: ${poolInfo.poolType}`);
     }
 
     transaction.sign([wallet]);
     await solana.simulateTransaction(transaction as VersionedTransaction);
 
-    const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
+    const { confirmed, signature, txData } =
+      await solana.sendAndConfirmRawTransaction(transaction);
     if (confirmed && txData) {
-      const { baseTokenBalanceChange, quoteTokenBalanceChange } = 
+      const { baseTokenBalanceChange, quoteTokenBalanceChange } =
         await solana.extractPairBalanceChangesAndFee(
           signature,
           await solana.getToken(poolInfo.baseTokenAddress),
           await solana.getToken(poolInfo.quoteTokenAddress),
-          wallet.publicKey.toBase58()
+          wallet.publicKey.toBase58(),
         );
-  
-      logger.info(`Swap executed successfully: ${Math.abs(side === 'SELL' ? baseTokenBalanceChange : quoteTokenBalanceChange).toFixed(4)} ${inputToken.symbol} -> ${Math.abs(side === 'SELL' ? quoteTokenBalanceChange : baseTokenBalanceChange).toFixed(4)} ${outputToken.symbol}`);
-    
+
+      logger.info(
+        `Swap executed successfully: ${Math.abs(side === 'SELL' ? baseTokenBalanceChange : quoteTokenBalanceChange).toFixed(4)} ${inputToken.symbol} -> ${Math.abs(side === 'SELL' ? quoteTokenBalanceChange : baseTokenBalanceChange).toFixed(4)} ${outputToken.symbol}`,
+      );
+
       return {
         signature,
-        totalInputSwapped: Math.abs(side === 'SELL' ? baseTokenBalanceChange : quoteTokenBalanceChange),
-        totalOutputSwapped: Math.abs(side === 'SELL' ? quoteTokenBalanceChange : baseTokenBalanceChange),
+        totalInputSwapped: Math.abs(
+          side === 'SELL' ? baseTokenBalanceChange : quoteTokenBalanceChange,
+        ),
+        totalOutputSwapped: Math.abs(
+          side === 'SELL' ? quoteTokenBalanceChange : baseTokenBalanceChange,
+        ),
         fee: txData.meta.fee / 1e9,
         baseTokenBalanceChange,
         quoteTokenBalanceChange,
-      }
+      };
     }
-    currentPriorityFee = currentPriorityFee * solana.config.priorityFeeMultiplier
-    logger.info(`Increasing priority fee to ${currentPriorityFee} lamports/CU (max fee of ${(currentPriorityFee / 1e9).toFixed(6)} SOL)`);
+    currentPriorityFee =
+      currentPriorityFee * solana.config.priorityFeeMultiplier;
+    logger.info(
+      `Increasing priority fee to ${currentPriorityFee} lamports/CU (max fee of ${(currentPriorityFee / 1e9).toFixed(6)} SOL)`,
+    );
   }
-  throw new Error(`Swap execution failed after reaching max priority fee of ${(solana.config.maxPriorityFee / 1e9).toFixed(6)} SOL`);
+  throw new Error(
+    `Swap execution failed after reaching max priority fee of ${(solana.config.maxPriorityFee / 1e9).toFixed(6)} SOL`,
+  );
 }
 
 export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
   // Get first wallet address for example
-  const solana = await Solana.getInstance('mainnet-beta')
-  let firstWalletAddress = '<solana-wallet-address>'
-  
+  const solana = await Solana.getInstance('mainnet-beta');
+  let firstWalletAddress = '<solana-wallet-address>';
+
   try {
-    firstWalletAddress = await solana.getFirstWalletAddress() || firstWalletAddress
+    firstWalletAddress =
+      (await solana.getFirstWalletAddress()) || firstWalletAddress;
   } catch (error) {
-    logger.warn('No wallets found for examples in schema')
+    logger.warn('No wallets found for examples in schema');
   }
-  
+
   fastify.post<{
     Body: ExecuteSwapRequestType;
     Reply: ExecuteSwapResponseType;
@@ -196,25 +215,38 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
             amount: { type: 'number', examples: [0.01] },
             side: { type: 'string', examples: ['SELL'] },
             poolAddress: { type: 'string', examples: [''] },
-            slippagePct: { type: 'number', examples: [1] }
-          }
+            slippagePct: { type: 'number', examples: [1] },
+          },
         },
-        response: { 200: ExecuteSwapResponse }
-      }
+        response: { 200: ExecuteSwapResponse },
+      },
     },
     async (request) => {
       try {
-        const { network, walletAddress, baseToken, quoteToken, amount, side, poolAddress, slippagePct } = request.body
-        const networkToUse = network || 'mainnet-beta'
+        const {
+          network,
+          walletAddress,
+          baseToken,
+          quoteToken,
+          amount,
+          side,
+          poolAddress,
+          slippagePct,
+        } = request.body;
+        const networkToUse = network || 'mainnet-beta';
 
         // If no pool address provided, find default pool
         let poolAddressToUse = poolAddress;
         if (!poolAddressToUse) {
           const raydium = await Raydium.getInstance(networkToUse);
-          poolAddressToUse = await raydium.findDefaultPool(baseToken, quoteToken, 'amm');
+          poolAddressToUse = await raydium.findDefaultPool(
+            baseToken,
+            quoteToken,
+            'amm',
+          );
           if (!poolAddressToUse) {
             throw fastify.httpErrors.notFound(
-              `No AMM pool found for pair ${baseToken}-${quoteToken}`
+              `No AMM pool found for pair ${baseToken}-${quoteToken}`,
             );
           }
         }
@@ -228,14 +260,14 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           amount,
           side as 'BUY' | 'SELL',
           poolAddressToUse,
-          slippagePct
-        )
+          slippagePct,
+        );
       } catch (e) {
         logger.error(e);
-        throw fastify.httpErrors.internalServerError('Swap execution failed')
+        throw fastify.httpErrors.internalServerError('Swap execution failed');
       }
-    }
-  )
-}
+    },
+  );
+};
 
-export default executeSwapRoute
+export default executeSwapRoute;

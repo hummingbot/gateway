@@ -1,0 +1,5 @@
+{
+  "statusCode": 404,
+  "error": "NotFoundError",
+  "message": "Token not found: INVALID_TOKEN"
+}

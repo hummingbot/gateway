@@ -29,11 +29,10 @@
   },
   "exclude": [
     "node_modules",
-    // ... any other existing excludes ...
+    "test"
   ],
   "include": [
     "src/**/*.ts",
-    "src/**/*.js",
-    "test/**/*.ts",
+    "src/**/*.js"
   ]
 }

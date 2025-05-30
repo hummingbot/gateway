@@ -1,16 +1,18 @@
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
-import { Solana } from '../../../chains/solana/solana';
-import { PublicKey } from '@solana/web3.js';
-import { logger } from '../../../services/logger';
-import { getRawSwapQuote } from './quoteSwap';
 import { SwapQuoteExactOut, SwapQuote } from '@meteora-ag/dlmm';
-import { 
+import { PublicKey } from '@solana/web3.js';
+import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+
+import { Solana } from '../../../chains/solana/solana';
+import {
   ExecuteSwapResponseType,
   ExecuteSwapResponse,
   ExecuteSwapRequest,
-  ExecuteSwapRequestType
-} from '../../../schemas/trading-types/swap-schema';
+  ExecuteSwapRequestType,
+} from '../../../schemas/swap-schema';
+import { logger } from '../../../services/logger';
 import { Meteora } from '../meteora';
+
+import { getRawSwapQuote } from './quoteSwap';
 
 async function executeSwap(
   fastify: FastifyInstance,
@@ -21,18 +23,18 @@ async function executeSwap(
   amount: number,
   side: 'BUY' | 'SELL',
   poolAddress: string,
-  slippagePct?: number
+  slippagePct?: number,
 ): Promise<ExecuteSwapResponseType> {
   const solana = await Solana.getInstance(network);
   const meteora = await Meteora.getInstance(network);
   const wallet = await solana.getWallet(address);
 
-  const { 
-    inputToken, 
-    outputToken, 
-    swapAmount, 
-    quote: swapQuote, 
-    dlmmPool 
+  const {
+    inputToken,
+    outputToken,
+    swapAmount,
+    quote: swapQuote,
+    dlmmPool,
   } = await getRawSwapQuote(
     fastify,
     network,
@@ -41,42 +43,51 @@ async function executeSwap(
     amount,
     side,
     poolAddress,
-    slippagePct || meteora.getSlippagePct()
+    slippagePct || meteora.getSlippagePct(),
   );
 
-  logger.info(`Executing ${amount.toFixed(4)} ${side} swap in pool ${poolAddress}`);
+  logger.info(
+    `Executing ${amount.toFixed(4)} ${side} swap in pool ${poolAddress}`,
+  );
 
-  const swapTx = side === 'BUY'
-    ? await dlmmPool.swapExactOut({
-        inToken: new PublicKey(inputToken.address),
-        outToken: new PublicKey(outputToken.address),
-        outAmount: (swapQuote as SwapQuoteExactOut).outAmount,
-        maxInAmount: (swapQuote as SwapQuoteExactOut).maxInAmount,
-        lbPair: dlmmPool.pubkey,
-        user: wallet.publicKey,
-        binArraysPubkey: (swapQuote as SwapQuoteExactOut).binArraysPubkey,
-      })
-    : await dlmmPool.swap({
-        inToken: new PublicKey(inputToken.address),
-        outToken: new PublicKey(outputToken.address),
-        inAmount: swapAmount,
-        minOutAmount: (swapQuote as SwapQuote).minOutAmount,
-        lbPair: dlmmPool.pubkey,
-        user: wallet.publicKey,
-        binArraysPubkey: (swapQuote as SwapQuote).binArraysPubkey,
-      });
+  const swapTx =
+    side === 'BUY'
+      ? await dlmmPool.swapExactOut({
+          inToken: new PublicKey(inputToken.address),
+          outToken: new PublicKey(outputToken.address),
+          outAmount: (swapQuote as SwapQuoteExactOut).outAmount,
+          maxInAmount: (swapQuote as SwapQuoteExactOut).maxInAmount,
+          lbPair: dlmmPool.pubkey,
+          user: wallet.publicKey,
+          binArraysPubkey: (swapQuote as SwapQuoteExactOut).binArraysPubkey,
+        })
+      : await dlmmPool.swap({
+          inToken: new PublicKey(inputToken.address),
+          outToken: new PublicKey(outputToken.address),
+          inAmount: swapAmount,
+          minOutAmount: (swapQuote as SwapQuote).minOutAmount,
+          lbPair: dlmmPool.pubkey,
+          user: wallet.publicKey,
+          binArraysPubkey: (swapQuote as SwapQuote).binArraysPubkey,
+        });
 
-  const { signature, fee } = await solana.sendAndConfirmTransaction(swapTx, [wallet], 150_000);
+  const { signature, fee } = await solana.sendAndConfirmTransaction(
+    swapTx,
+    [wallet],
+    150_000,
+  );
 
-  const { baseTokenBalanceChange, quoteTokenBalanceChange } = 
+  const { baseTokenBalanceChange, quoteTokenBalanceChange } =
     await solana.extractPairBalanceChangesAndFee(
       signature,
       await solana.getToken(dlmmPool.tokenX.publicKey.toBase58()),
       await solana.getToken(dlmmPool.tokenY.publicKey.toBase58()),
-      wallet.publicKey.toBase58()
+      wallet.publicKey.toBase58(),
     );
 
-  logger.info(`Swap executed successfully: ${Math.abs(baseTokenBalanceChange).toFixed(4)} ${inputToken.symbol} -> ${Math.abs(quoteTokenBalanceChange).toFixed(4)} ${outputToken.symbol}`);
+  logger.info(
+    `Swap executed successfully: ${Math.abs(baseTokenBalanceChange).toFixed(4)} ${inputToken.symbol} -> ${Math.abs(quoteTokenBalanceChange).toFixed(4)} ${outputToken.symbol}`,
+  );
 
   return {
     signature,
@@ -92,13 +103,13 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
   // Get first wallet address for example
   const solana = await Solana.getInstance('mainnet-beta');
   let firstWalletAddress = '<solana-wallet-address>';
-  
+
   try {
     firstWalletAddress = await solana.getFirstWalletAddress();
   } catch (error) {
     logger.warn('No wallets found for examples in schema');
   }
-  
+
   fastify.post<{
     Body: ExecuteSwapRequestType;
     Reply: ExecuteSwapResponseType;
@@ -119,24 +130,38 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
             amount: { type: 'number', examples: [0.01] },
             side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
             poolAddress: { type: 'string', examples: [''] },
-            slippagePct: { type: 'number', examples: [1] }
-          }
+            slippagePct: { type: 'number', examples: [1] },
+          },
         },
-        response: { 200: ExecuteSwapResponse }
-      }
+        response: { 200: ExecuteSwapResponse },
+      },
     },
     async (request) => {
       try {
-        const { network, walletAddress, baseToken, quoteToken, amount, side, poolAddress, slippagePct } = request.body;
-        const networkUsed = network || 'mainnet-beta';        
+        const {
+          network,
+          walletAddress,
+          baseToken,
+          quoteToken,
+          amount,
+          side,
+          poolAddress,
+          slippagePct,
+        } = request.body;
+        const networkUsed = network || 'mainnet-beta';
         const meteora = await Meteora.getInstance(networkUsed);
-        const poolAddressUsed = poolAddress || await meteora.findDefaultPool(baseToken, quoteToken);
+        const poolAddressUsed =
+          poolAddress || (await meteora.findDefaultPool(baseToken, quoteToken));
 
         if (!poolAddressUsed) {
-          throw fastify.httpErrors.notFound(`No pool found for ${baseToken}-${quoteToken} pair`);
+          throw fastify.httpErrors.notFound(
+            `No pool found for ${baseToken}-${quoteToken} pair`,
+          );
         }
-        logger.info(`Received swap request: ${amount} ${baseToken} -> ${quoteToken} in pool ${poolAddress}`);
-        
+        logger.info(
+          `Received swap request: ${amount} ${baseToken} -> ${quoteToken} in pool ${poolAddress}`,
+        );
+
         return await executeSwap(
           fastify,
           networkUsed,
@@ -146,15 +171,15 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           amount,
           side as 'BUY' | 'SELL',
           poolAddressUsed,
-          slippagePct
+          slippagePct,
         );
       } catch (e) {
         if (e.statusCode) return e;
         logger.error('Error executing swap:', e);
         throw fastify.httpErrors.internalServerError('Internal server error');
       }
-    }
+    },
   );
 };
 
-export default executeSwapRoute; 
+export default executeSwapRoute;

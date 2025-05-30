@@ -1,9 +1,10 @@
-import Ajv from 'ajv';
-import { ValidateFunction, DefinedError } from 'ajv';
 import fs from 'fs';
-import fse from 'fs-extra';
 import path from 'path';
+
+import Ajv, { ValidateFunction, DefinedError } from 'ajv';
+import fse from 'fs-extra';
 import yaml from 'js-yaml';
+
 import { rootPath } from '../paths';
 
 type Configuration = { [key: string]: any };
@@ -23,12 +24,17 @@ interface ConfigurationRoot {
   configurations: ConfigurationNamespaceDefinitions;
 }
 const NamespaceTag: string = '$namespace ';
+// Schemas are always in dist/src/templates/json/
+const SchemasBaseDir: string = path.join(rootPath(), 'dist/src/templates/json');
+
 export const ConfigRootSchemaPath: string = path.join(
-  __dirname,
-  'schema/configuration-root-schema.json'
+  SchemasBaseDir,
+  'configuration-root-schema.json',
 );
-const ConfigTemplatesDir: string = path.join(__dirname, '../templates/');
+
+// Always use conf directory for both configs and templates
 const ConfigDir: string = path.join(rootPath(), 'conf/');
+const ConfigTemplatesDir: string = ConfigDir;
 
 interface UnpackedConfigNamespace {
   namespace: ConfigurationNamespace;
@@ -53,6 +59,12 @@ export function deepCopy(srcObject: any, dstObject: any): any {
 }
 
 export function initiateWithTemplate(templateFile: string, configFile: string) {
+  // Throw an error if the template file doesn't exist
+  if (!fs.existsSync(templateFile)) {
+    throw new Error(`Template file not found: ${templateFile}`);
+  }
+
+  // Copy the template file to the config file
   fs.copyFileSync(templateFile, configFile);
 }
 
@@ -98,27 +110,36 @@ export class ConfigurationNamespace {
     id: string,
     schemaPath: string,
     configurationPath: string,
-    templatePath: string
+    templatePath: string,
   ) {
     this.#namespaceId = id;
     this.#schemaPath = schemaPath;
     this.#configurationPath = configurationPath;
     this.#templatePath = templatePath;
     this.#configuration = {};
+
+    // Ensure schema exists
     if (!fs.existsSync(schemaPath)) {
       throw new Error(
-        `The JSON schema for namespace ${id} (${schemaPath}) does not exist.`
+        `The JSON schema for namespace ${id} (${schemaPath}) does not exist.`,
       );
     }
 
     this.#validator = ajv.compile(
-      JSON.parse(fs.readFileSync(schemaPath).toString())
+      JSON.parse(fs.readFileSync(schemaPath).toString()),
     );
 
+    // If config file doesn't exist, initialize from template
     if (!fs.existsSync(configurationPath)) {
-      // copy from template
-      initiateWithTemplate(this.templatePath, this.configurationPath);
+      try {
+        initiateWithTemplate(templatePath, configurationPath);
+      } catch (err) {
+        throw new Error(
+          `Failed to initiate configuration from template for ${id}: ${err.message}`,
+        );
+      }
     }
+
     this.loadConfig();
   }
 
@@ -143,33 +164,53 @@ export class ConfigurationNamespace {
   }
 
   loadConfig() {
-    const configCandidate: Configuration = yaml.load(
-      fs.readFileSync(this.#configurationPath, 'utf8')
-    ) as Configuration;
-    if (!this.#validator(configCandidate)) {
-      // merge with template file and try validating again
-      const configTemplateCandidate: Configuration = yaml.load(
-        fs.readFileSync(this.#templatePath, 'utf8')
+    try {
+      const configCandidate: Configuration = yaml.load(
+        fs.readFileSync(this.#configurationPath, 'utf8'),
       ) as Configuration;
-      deepCopy(configCandidate, configTemplateCandidate);
-      if (!this.#validator(configTemplateCandidate)) {
-        for (const err of this.#validator.errors as DefinedError[]) {
-          if (err.keyword === 'additionalProperties') {
-            throw new Error(
-              `${this.id} config file seems to be outdated/broken due to additional property "${err.params.additionalProperty}". Kindly fix manually.`
-            );
-          } else {
-            throw new Error(
-              `${this.id} config file seems to be outdated/broken due to "${err.keyword}" in "${err.instancePath}" - ${err.message}. Kindly fix manually.`
-            );
+
+      if (!this.#validator(configCandidate)) {
+        try {
+          // Try to merge with template file
+          if (!fs.existsSync(this.#templatePath)) {
+            throw new Error(`Template file not found: ${this.#templatePath}`);
           }
+
+          const configTemplateCandidate: Configuration = yaml.load(
+            fs.readFileSync(this.#templatePath, 'utf8'),
+          ) as Configuration;
+
+          deepCopy(configCandidate, configTemplateCandidate);
+          if (!this.#validator(configTemplateCandidate)) {
+            for (const err of this.#validator.errors as DefinedError[]) {
+              if (err.keyword === 'additionalProperties') {
+                throw new Error(
+                  `${this.id} config file seems to be outdated/broken due to additional property "${err.params.additionalProperty}". Kindly fix manually.`,
+                );
+              } else {
+                throw new Error(
+                  `${this.id} config file seems to be outdated/broken due to "${err.keyword}" in "${err.instancePath}" - ${err.message}. Kindly fix manually.`,
+                );
+              }
+            }
+          }
+
+          this.#configuration = configTemplateCandidate;
+          this.saveConfig();
+          return;
+        } catch (err) {
+          throw new Error(
+            `Failed to validate or merge with template: ${err.message}`,
+          );
         }
       }
-      this.#configuration = configTemplateCandidate;
-      this.saveConfig();
-      return;
+
+      this.#configuration = configCandidate;
+    } catch (err) {
+      throw new Error(
+        `Failed to load configuration for ${this.id}: ${err.message}`,
+      );
     }
-    this.#configuration = configCandidate;
   }
 
   saveConfig() {
@@ -193,7 +234,7 @@ export class ConfigurationNamespace {
   set(configPath: string, value: any): void {
     const pathComponents: Array<string> = configPath.split('.');
     const configClone: Configuration = JSON.parse(
-      JSON.stringify(this.#configuration)
+      JSON.stringify(this.#configuration),
     );
     let cursor: Configuration | any = configClone;
     let parent: Configuration = configClone;
@@ -213,7 +254,7 @@ export class ConfigurationNamespace {
     if (!this.#validator(configClone)) {
       throw new Error(
         `Cannot set ${this.id}.${configPath} to ${value}: ` +
-          'JSON schema violation.'
+          'JSON schema violation.',
       );
     }
 
@@ -224,7 +265,7 @@ export class ConfigurationNamespace {
   delete(configPath: string): void {
     const pathComponents: Array<string> = configPath.split('.');
     const configClone: Configuration = JSON.parse(
-      JSON.stringify(this.#configuration)
+      JSON.stringify(this.#configuration),
     );
     let cursor: Configuration | any = configClone;
     let parent: Configuration = configClone;
@@ -239,14 +280,14 @@ export class ConfigurationNamespace {
     }
 
     const lastComponent: string = pathComponents[pathComponents.length - 1];
-    
+
     // Delete the property
     delete cursor[lastComponent];
 
     // Validate the new configuration
     if (!this.#validator(configClone)) {
       throw new Error(
-        `Cannot delete ${this.id}.${configPath}: JSON schema violation.`
+        `Cannot delete ${this.id}.${configPath}: JSON schema violation.`,
       );
     }
 
@@ -355,13 +396,13 @@ export class ConfigManagerV2 {
     id: string,
     schemaPath: string,
     configurationPath: string,
-    templatePath: string
+    templatePath: string,
   ): void {
     this.#namespaces[id] = new ConfigurationNamespace(
       id,
       schemaPath,
       configurationPath,
-      templatePath
+      templatePath,
     );
   }
 
@@ -376,7 +417,7 @@ export class ConfigManagerV2 {
       this.#namespaces[namespaceComponent];
     if (namespace === undefined) {
       throw new Error(
-        `The configuration namespace ${namespaceComponent} does not exist.`
+        `The configuration namespace ${namespaceComponent} does not exist.`,
       );
     }
 
@@ -411,12 +452,12 @@ export class ConfigManagerV2 {
     const configRootFullPath: string = fs.realpathSync(configRootPath);
     const configRootDir: string = path.dirname(configRootFullPath);
     const configRoot: ConfigurationRoot = yaml.load(
-      fs.readFileSync(configRootFullPath, 'utf8')
+      fs.readFileSync(configRootFullPath, 'utf8'),
     ) as ConfigurationRoot;
 
     // Validate the config root file.
     const validator: ValidateFunction = ajv.compile(
-      JSON.parse(fs.readFileSync(ConfigRootSchemaPath).toString())
+      JSON.parse(fs.readFileSync(ConfigRootSchemaPath).toString()),
     );
     if (!validator(configRoot)) {
       throw new Error('Configuration root file is invalid.');
@@ -436,14 +477,12 @@ export class ConfigManagerV2 {
           if (key === 'configurationPath') {
             namespaceDefinition['templatePath'] = path.join(
               ConfigTemplatesDir,
-              filePath
+              filePath,
             );
             namespaceDefinition[key] = path.join(configRootDir, filePath);
           } else if (key === 'schemaPath') {
-            namespaceDefinition[key] = path.join(
-              path.dirname(ConfigRootSchemaPath),
-              filePath
-            );
+            // Schemas are always in dist/src/templates/json/
+            namespaceDefinition[key] = path.join(SchemasBaseDir, filePath);
           }
         } else {
           throw new Error(`Absolute path not allowed for ${key}.`);
@@ -453,13 +492,13 @@ export class ConfigManagerV2 {
 
     // Add the namespaces according to config root.
     for (const [namespaceId, namespaceDefinition] of Object.entries(
-      namespaceMap
+      namespaceMap,
     )) {
       this.addNamespace(
         namespaceId,
         namespaceDefinition.schemaPath,
         namespaceDefinition.configurationPath,
-        namespaceDefinition.templatePath
+        namespaceDefinition.templatePath,
       );
     }
   }

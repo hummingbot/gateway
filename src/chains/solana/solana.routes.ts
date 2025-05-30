@@ -1,10 +1,10 @@
 import { FastifyPluginAsync } from 'fastify';
-import { estimateGasRoute } from './routes/estimate-gas';
+
 import { balancesRoute } from './routes/balances';
-import { tokensRoute } from './routes/tokens';
+import { estimateGasRoute } from './routes/estimate-gas';
 import { pollRoute } from './routes/poll';
 import { statusRoute } from './routes/status';
-
+import { tokensRoute } from './routes/tokens';
 
 export const solanaRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.register(statusRoute);
