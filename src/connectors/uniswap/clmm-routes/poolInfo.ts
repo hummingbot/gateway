@@ -94,15 +94,16 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
         // Determine token ordering
         const token0 = pool.token0;
         const token1 = pool.token1;
-        const isBaseToken0 = baseTokenObj.address.toLowerCase() === token0.address.toLowerCase();
-        
+        const isBaseToken0 =
+          baseTokenObj.address.toLowerCase() === token0.address.toLowerCase();
+
         // Calculate price based on sqrtPriceX96
         // sqrtPriceX96 = sqrt(price) * 2^96
         // price = (sqrtPriceX96 / 2^96)^2
         const sqrtPriceX96 = pool.sqrtRatioX96;
         const price0 = pool.token0Price.toSignificant(15);
         const price1 = pool.token1Price.toSignificant(15);
-        
+
         // Get the price of base token in terms of quote token
         const price = isBaseToken0 ? parseFloat(price0) : parseFloat(price1);
 
@@ -111,13 +112,13 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
         const liquidity = pool.liquidity;
         const token0Amount = formatTokenAmount(
           liquidity.toString(),
-          token0.decimals
+          token0.decimals,
         );
         const token1Amount = formatTokenAmount(
-          liquidity.toString(), 
-          token1.decimals
+          liquidity.toString(),
+          token1.decimals,
         );
-        
+
         // Map to base and quote amounts
         const baseTokenAmount = isBaseToken0 ? token0Amount : token1Amount;
         const quoteTokenAmount = isBaseToken0 ? token1Amount : token0Amount;

@@ -216,13 +216,15 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
             positionManagerAddress,
             token0.decimals,
           );
-          
+
           const currentAllowance0 = BigNumber.from(allowance0.value);
-          const requiredAmount0 = BigNumber.from(token0Amount.quotient.toString());
-          
+          const requiredAmount0 = BigNumber.from(
+            token0Amount.quotient.toString(),
+          );
+
           if (currentAllowance0.lt(requiredAmount0)) {
             throw fastify.httpErrors.badRequest(
-              `Insufficient ${token0.symbol} allowance. Please approve at least ${formatTokenAmount(requiredAmount0.toString(), token0.decimals)} ${token0.symbol} for the Position Manager (${positionManagerAddress})`
+              `Insufficient ${token0.symbol} allowance. Please approve at least ${formatTokenAmount(requiredAmount0.toString(), token0.decimals)} ${token0.symbol} for the Position Manager (${positionManagerAddress})`,
             );
           }
         }
@@ -236,13 +238,15 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
             positionManagerAddress,
             token1.decimals,
           );
-          
+
           const currentAllowance1 = BigNumber.from(allowance1.value);
-          const requiredAmount1 = BigNumber.from(token1Amount.quotient.toString());
-          
+          const requiredAmount1 = BigNumber.from(
+            token1Amount.quotient.toString(),
+          );
+
           if (currentAllowance1.lt(requiredAmount1)) {
             throw fastify.httpErrors.badRequest(
-              `Insufficient ${token1.symbol} allowance. Please approve at least ${formatTokenAmount(requiredAmount1.toString(), token1.decimals)} ${token1.symbol} for the Position Manager (${positionManagerAddress})`
+              `Insufficient ${token1.symbol} allowance. Please approve at least ${formatTokenAmount(requiredAmount1.toString(), token1.decimals)} ${token1.symbol} for the Position Manager (${positionManagerAddress})`,
             );
           }
         }

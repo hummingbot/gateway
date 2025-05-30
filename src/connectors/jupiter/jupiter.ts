@@ -43,12 +43,12 @@ export class Jupiter {
   private constructor() {
     this.config = JupiterConfig.config;
     this.solana = null;
-    
+
     // Initialize HTTP client with Jupiter API base URL
     const headers: any = {
       'Content-Type': 'application/json',
     };
-    
+
     // Add API key header if provided
     if (this.config.apiKey && this.config.apiKey.length > 0) {
       headers['x-api-key'] = this.config.apiKey;
@@ -56,7 +56,7 @@ export class Jupiter {
     } else {
       logger.info('Using Jupiter free tier (no API key)');
     }
-    
+
     this.httpClient = axios.create({
       baseURL: JUPITER_API_BASE,
       timeout: 30000,
@@ -136,7 +136,7 @@ export class Jupiter {
       asLegacyTransaction: asLegacyTransaction.toString(),
       restrictIntermediateTokens: 'false',
     });
-    
+
     // Only add maxAccounts for ExactIn mode (not supported for ExactOut)
     if (swapMode === 'ExactIn') {
       params.append('maxAccounts', '64');
@@ -144,7 +144,7 @@ export class Jupiter {
 
     logger.debug(
       `Getting Jupiter quote for ${inputToken.symbol} to ${outputToken.symbol} with params:`,
-      params.toString()
+      params.toString(),
     );
 
     try {
@@ -162,7 +162,7 @@ export class Jupiter {
       logger.error('Jupiter API error:', error.message);
       if (error.response?.data) {
         logger.error('Jupiter API error response:', error.response.data);
-        
+
         // Handle specific error messages
         if (typeof error.response.data === 'string') {
           if (error.response.data === 'Route not found') {
@@ -204,10 +204,13 @@ export class Jupiter {
             },
           },
         };
-        
-        const response = await this.httpClient.post('/swap/v1/swap', swapRequest);
+
+        const response = await this.httpClient.post(
+          '/swap/v1/swap',
+          swapRequest,
+        );
         const swapObj = response.data;
-        
+
         return swapObj;
       } catch (error: any) {
         lastError = error;

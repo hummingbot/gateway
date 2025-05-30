@@ -24,11 +24,7 @@ axios.post = jest.fn();
 
 // Helper to load mock responses
 function loadMockResponse(filename) {
-  const filePath = path.join(
-    __dirname,
-    'mocks',
-    `${filename}.json`,
-  );
+  const filePath = path.join(__dirname, 'mocks', `${filename}.json`);
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
 
@@ -455,7 +451,7 @@ describe('Meteora CLMM Tests (Solana Mainnet)', () => {
       // Validate the response
       expect(response.status).toBe(200);
       expect(Array.isArray(response.data)).toBe(true);
-      
+
       // If there are positions, validate the first one
       if (response.data.length > 0) {
         const firstPosition = response.data[0];
@@ -535,7 +531,8 @@ describe('Meteora CLMM Tests (Solana Mainnet)', () => {
           status: 400,
           data: {
             error: 'BadRequest',
-            message: 'Invalid tick range: lower tick must be less than upper tick',
+            message:
+              'Invalid tick range: lower tick must be less than upper tick',
             code: 400,
           },
         },
@@ -745,7 +742,8 @@ describe('Meteora CLMM Tests (Solana Mainnet)', () => {
   describe('Remove Liquidity Endpoint', () => {
     test('returns successful liquidity removal', async () => {
       const mockResponse = {
-        signature: '4bF7KhhZTPixeNQVxjDv2LcX7VTxQN9vwMv8Z89FwqYKKQRmqPQCuwyWQMjGwUJKdRrPoKNL7Rn6fHZFvVbpU5Ay',
+        signature:
+          '4bF7KhhZTPixeNQVxjDv2LcX7VTxQN9vwMv8Z89FwqYKKQRmqPQCuwyWQMjGwUJKdRrPoKNL7Rn6fHZFvVbpU5Ay',
         positionId: TEST_POSITION_ID,
         baseTokenAmount: 0.95,
         quoteTokenAmount: 159.125,
@@ -817,7 +815,8 @@ describe('Meteora CLMM Tests (Solana Mainnet)', () => {
   describe('Close Position Endpoint', () => {
     test('returns successful position closure', async () => {
       const mockResponse = {
-        signature: '5cG8KhhZTPixeNQVxjDv2LcX7VTxQN9vwMv8Z89FwqYKKQRmqPQCuwyWQMjGwUJKdRrPoKNL7Rn6fHZFvVbpV6Bz',
+        signature:
+          '5cG8KhhZTPixeNQVxjDv2LcX7VTxQN9vwMv8Z89FwqYKKQRmqPQCuwyWQMjGwUJKdRrPoKNL7Rn6fHZFvVbpV6Bz',
         positionId: TEST_POSITION_ID,
         baseTokenAmount: 1.0,
         quoteTokenAmount: 167.5,
@@ -914,7 +913,8 @@ describe('Meteora CLMM Tests (Solana Mainnet)', () => {
 
     test('handles no fees to collect', async () => {
       const mockResponse = {
-        signature: '7eH9KihZTPixeNQVxjDv2LcX7VTxQN9vwMv8Z89FwqYKKQRmqPQCuwyWQMjGwUJKdRrPoKNL7Rn6fHZFvVbpX8Ed',
+        signature:
+          '7eH9KihZTPixeNQVxjDv2LcX7VTxQN9vwMv8Z89FwqYKKQRmqPQCuwyWQMjGwUJKdRrPoKNL7Rn6fHZFvVbpX8Ed',
         positionId: TEST_POSITION_ID,
         feeBaseAmount: 0,
         feeQuoteAmount: 0,

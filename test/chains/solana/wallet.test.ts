@@ -1,14 +1,15 @@
 // Mock fs-extra to prevent actual file writes
 jest.mock('fs-extra');
 
+import { Keypair } from '@solana/web3.js';
+import bs58 from 'bs58';
+import * as fse from 'fs-extra';
+
 import { gatewayApp } from '../../../src/app';
 import { Solana } from '../../../src/chains/solana/solana';
 import { ConfigManagerCertPassphrase } from '../../../src/services/config-manager-cert-passphrase';
 import { GetWalletResponse } from '../../../src/wallet/schemas';
 import { patch, unpatch } from '../../services/patch';
-import { Keypair } from '@solana/web3.js';
-import bs58 from 'bs58';
-import * as fse from 'fs-extra';
 
 const mockFse = fse as jest.Mocked<typeof fse>;
 
@@ -53,70 +54,74 @@ beforeAll(async () => {
 
 beforeEach(() => {
   patch(ConfigManagerCertPassphrase, 'readPassphrase', () => 'a');
-  
+
   // Clear mock wallets
   mockWallets.solana.clear();
-  
+
   // Mock wallet operations to work with in-memory storage
   patch(solana, 'getKeypairFromPrivateKey', () => {
     return testKeypair;
   });
-  
+
   patch(solana, 'encrypt', () => {
     return JSON.stringify(encodedPrivateKey);
   });
-  
+
   // Setup fs-extra mocks
   (mockFse.writeFile as jest.Mock).mockImplementation(async (path: any) => {
     const pathStr = path.toString();
     const pathParts = pathStr.split('/');
     const chain = pathParts[pathParts.length - 2];
     const address = pathParts[pathParts.length - 1].replace('.json', '');
-    
+
     if (chain && address) {
       mockWallets[chain].add(address);
     }
     return undefined;
   });
-  
-  (mockFse.readdir as jest.Mock).mockImplementation(async (dirPath: any, options?: any) => {
-    const pathStr = dirPath.toString();
-    
-    // If asking for directories in wallet path
-    if (pathStr.endsWith('/wallets') && options?.withFileTypes) {
-      return Object.keys(mockWallets).map(chain => ({
-        name: chain,
-        isDirectory: () => true,
-        isFile: () => false,
-      }));
-    }
-    
-    // If asking for files in a chain directory
-    const chain = pathStr.split('/').pop();
-    if (chain && mockWallets[chain]) {
-      if (options?.withFileTypes) {
-        return Array.from(mockWallets[chain]).map(addr => ({
-          name: `${addr}.json`,
-          isDirectory: () => false,
-          isFile: () => true,
+
+  (mockFse.readdir as jest.Mock).mockImplementation(
+    async (dirPath: any, options?: any) => {
+      const pathStr = dirPath.toString();
+
+      // If asking for directories in wallet path
+      if (pathStr.endsWith('/wallets') && options?.withFileTypes) {
+        return Object.keys(mockWallets).map((chain) => ({
+          name: chain,
+          isDirectory: () => true,
+          isFile: () => false,
         }));
       }
-      return Array.from(mockWallets[chain]).map(addr => `${addr}.json`);
-    }
-    
-    return [];
-  });
-  
-  (mockFse.readFile as jest.Mock).mockResolvedValue(Buffer.from(JSON.stringify(encodedPrivateKey)));
+
+      // If asking for files in a chain directory
+      const chain = pathStr.split('/').pop();
+      if (chain && mockWallets[chain]) {
+        if (options?.withFileTypes) {
+          return Array.from(mockWallets[chain]).map((addr) => ({
+            name: `${addr}.json`,
+            isDirectory: () => false,
+            isFile: () => true,
+          }));
+        }
+        return Array.from(mockWallets[chain]).map((addr) => `${addr}.json`);
+      }
+
+      return [];
+    },
+  );
+
+  (mockFse.readFile as jest.Mock).mockResolvedValue(
+    Buffer.from(JSON.stringify(encodedPrivateKey)),
+  );
   (mockFse.pathExists as jest.Mock).mockResolvedValue(true);
   (mockFse.ensureDir as jest.Mock).mockResolvedValue(undefined);
-  
+
   (mockFse.remove as jest.Mock).mockImplementation(async (filePath: any) => {
     const pathStr = filePath.toString();
     const pathParts = pathStr.split('/');
     const chain = pathParts[pathParts.length - 2];
     const address = pathParts[pathParts.length - 1].replace('.json', '');
-    
+
     if (chain && mockWallets[chain]) {
       mockWallets[chain].delete(address);
     }
@@ -148,10 +153,10 @@ describe('Solana Wallet Operations', () => {
 
       expect(response.statusCode).toBe(200);
       expect(response.headers['content-type']).toMatch(/json/);
-      
+
       const result = JSON.parse(response.payload);
       expect(result).toMatchObject({
-        address: testAddress
+        address: testAddress,
       });
     });
 
@@ -160,7 +165,7 @@ describe('Solana Wallet Operations', () => {
       patch(solana, 'getKeypairFromPrivateKey', () => {
         throw new Error('Invalid private key');
       });
-      
+
       const response = await gatewayApp.inject({
         method: 'POST',
         url: '/wallet/add',
@@ -191,7 +196,7 @@ describe('Solana Wallet Operations', () => {
     it('should fetch wallets for Solana', async () => {
       // First add a wallet
       mockWallets.solana.add(testAddress);
-      
+
       const response = await gatewayApp.inject({
         method: 'GET',
         url: '/wallet',
@@ -201,8 +206,8 @@ describe('Solana Wallet Operations', () => {
       expect(response.headers['content-type']).toMatch(/json/);
 
       const wallets: GetWalletResponse[] = JSON.parse(response.payload);
-      const solanaWallet = wallets.find(w => w.chain === 'solana');
-      
+      const solanaWallet = wallets.find((w) => w.chain === 'solana');
+
       expect(solanaWallet).toBeDefined();
       expect(solanaWallet?.walletAddresses).toContain(testAddress);
     });
@@ -210,17 +215,17 @@ describe('Solana Wallet Operations', () => {
     it('should return empty array when no wallets exist', async () => {
       // Clear wallets
       mockWallets.solana.clear();
-      
+
       const response = await gatewayApp.inject({
         method: 'GET',
         url: '/wallet',
       });
 
       expect(response.statusCode).toBe(200);
-      
+
       const wallets: GetWalletResponse[] = JSON.parse(response.payload);
-      const solanaWallet = wallets.find(w => w.chain === 'solana');
-      
+      const solanaWallet = wallets.find((w) => w.chain === 'solana');
+
       expect(solanaWallet?.walletAddresses).toHaveLength(0);
     });
   });
@@ -229,7 +234,7 @@ describe('Solana Wallet Operations', () => {
     it('should remove a Solana wallet successfully', async () => {
       // First add the wallet to mock storage
       mockWallets.solana.add(testAddress);
-      
+
       const response = await gatewayApp.inject({
         method: 'DELETE',
         url: '/wallet/remove',
@@ -241,14 +246,14 @@ describe('Solana Wallet Operations', () => {
 
       expect(response.statusCode).toBe(200);
       expect(response.headers['content-type']).toMatch(/json/);
-      
+
       expect(response.payload).toBe('null');
       expect(mockWallets.solana.has(testAddress)).toBe(false);
     });
 
     it('should fail when removing non-existent wallet', async () => {
       (mockFse.pathExists as jest.Mock).mockResolvedValue(false);
-      
+
       const response = await gatewayApp.inject({
         method: 'DELETE',
         url: '/wallet/remove',
@@ -279,7 +284,6 @@ describe('Solana Wallet Operations', () => {
 
   describe('Wallet Operations Integration', () => {
     it('should handle full wallet lifecycle: add, fetch, and remove', async () => {
-
       // 1. Add wallet
       const addResponse = await gatewayApp.inject({
         method: 'POST',
@@ -297,9 +301,9 @@ describe('Solana Wallet Operations', () => {
         url: '/wallet',
       });
       expect(getResponse.statusCode).toBe(200);
-      
+
       const wallets: GetWalletResponse[] = JSON.parse(getResponse.payload);
-      const solanaWallet = wallets.find(w => w.chain === 'solana');
+      const solanaWallet = wallets.find((w) => w.chain === 'solana');
       expect(solanaWallet?.walletAddresses).toContain(testAddress);
 
       // 3. Remove wallet
@@ -319,9 +323,11 @@ describe('Solana Wallet Operations', () => {
         url: '/wallet',
       });
       expect(finalGetResponse.statusCode).toBe(200);
-      
-      const finalWallets: GetWalletResponse[] = JSON.parse(finalGetResponse.payload);
-      const finalSolanaWallet = finalWallets.find(w => w.chain === 'solana');
+
+      const finalWallets: GetWalletResponse[] = JSON.parse(
+        finalGetResponse.payload,
+      );
+      const finalSolanaWallet = finalWallets.find((w) => w.chain === 'solana');
       expect(finalSolanaWallet?.walletAddresses).not.toContain(testAddress);
     });
   });
@@ -345,7 +351,7 @@ describe('Solana Wallet Operations', () => {
       patch(solana, 'getKeypairFromPrivateKey', () => {
         throw new Error('Invalid base58 string');
       });
-      
+
       const response = await gatewayApp.inject({
         method: 'POST',
         url: '/wallet/add',

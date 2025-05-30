@@ -442,7 +442,8 @@ describe('Uniswap AMM Tests (Base Network)', () => {
   describe('Add Liquidity Endpoint', () => {
     test('returns successful liquidity addition', async () => {
       const mockResponse = {
-        signature: '0xabcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab',
+        signature:
+          '0xabcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab',
         baseTokenAmount: 1.0,
         quoteTokenAmount: 2340.5,
         lpTokenAmount: 54.32,
@@ -516,7 +517,8 @@ describe('Uniswap AMM Tests (Base Network)', () => {
   describe('Remove Liquidity Endpoint', () => {
     test('returns successful liquidity removal', async () => {
       const mockResponse = {
-        signature: '0xdef4567890abcdef1234567890abcdef1234567890abcdef1234567890abcd12',
+        signature:
+          '0xdef4567890abcdef1234567890abcdef1234567890abcdef1234567890abcd12',
         baseTokenAmount: 0.95,
         quoteTokenAmount: 2223.475,
         lpTokenAmount: 54.32,

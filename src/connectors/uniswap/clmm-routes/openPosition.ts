@@ -195,14 +195,17 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         // For WETH (18 decimals) and USDC (6 decimals), we need to adjust for the decimal difference
         const priceToTickWithDecimals = (humanPrice: number): number => {
           // Convert human price (USDC per WETH) to raw price (USDC units per WETH unit)
-          const rawPrice = humanPrice * Math.pow(10, token1.decimals - token0.decimals);
+          const rawPrice =
+            humanPrice * Math.pow(10, token1.decimals - token0.decimals);
           return Math.floor(Math.log(rawPrice) / Math.log(1.0001));
         };
 
         lowerTick = priceToTickWithDecimals(lowerPrice);
         upperTick = priceToTickWithDecimals(upperPrice);
-        
-        logger.info(`Calculated ticks - Lower: ${lowerTick}, Upper: ${upperTick}`);
+
+        logger.info(
+          `Calculated ticks - Lower: ${lowerTick}, Upper: ${upperTick}`,
+        );
         logger.info(`Current pool tick: ${pool.tickCurrent}`);
 
         // Ensure ticks are on valid tick spacing boundaries
@@ -286,10 +289,10 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         logger.info(`  Amount0: ${position.amount0.toSignificant(18)}`);
         logger.info(`  Amount1: ${position.amount1.toSignificant(18)}`);
         logger.info(`  Liquidity: ${position.liquidity.toString()}`);
-        
+
         const { calldata, value } =
           NonfungiblePositionManager.addCallParameters(position, mintOptions);
-          
+
         logger.info(`  Value (ETH): ${value}`);
         logger.info(`  Recipient: ${walletAddress}`);
         logger.info(`  Deadline: ${mintOptions.deadline}`);
@@ -297,17 +300,21 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         // Check allowances instead of approving
         const positionManagerAddress =
           uniswap.config.uniswapV3NftManagerAddress(networkToUse);
-          
+
         // Check if we have enough ETH for WETH positions
         if (value && value !== '0') {
           const walletBalance = await wallet.getBalance();
           const requiredValue = BigNumber.from(value);
-          logger.info(`Wallet ETH balance: ${formatTokenAmount(walletBalance.toString(), 18)}`);
-          logger.info(`Required ETH value: ${formatTokenAmount(requiredValue.toString(), 18)}`);
-          
+          logger.info(
+            `Wallet ETH balance: ${formatTokenAmount(walletBalance.toString(), 18)}`,
+          );
+          logger.info(
+            `Required ETH value: ${formatTokenAmount(requiredValue.toString(), 18)}`,
+          );
+
           if (walletBalance.lt(requiredValue)) {
             throw fastify.httpErrors.badRequest(
-              `Insufficient ETH balance. Required: ${formatTokenAmount(requiredValue.toString(), 18)} ETH`
+              `Insufficient ETH balance. Required: ${formatTokenAmount(requiredValue.toString(), 18)} ETH`,
             );
           }
         }
@@ -321,16 +328,22 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
             positionManagerAddress,
             token0.decimals,
           );
-          
+
           const currentAllowance0 = BigNumber.from(allowance0.value);
-          const requiredAmount0 = BigNumber.from(token0Amount.quotient.toString());
-          
-          logger.info(`${token0.symbol} allowance: ${formatTokenAmount(currentAllowance0.toString(), token0.decimals)}`);
-          logger.info(`${token0.symbol} required: ${formatTokenAmount(requiredAmount0.toString(), token0.decimals)}`);
-          
+          const requiredAmount0 = BigNumber.from(
+            token0Amount.quotient.toString(),
+          );
+
+          logger.info(
+            `${token0.symbol} allowance: ${formatTokenAmount(currentAllowance0.toString(), token0.decimals)}`,
+          );
+          logger.info(
+            `${token0.symbol} required: ${formatTokenAmount(requiredAmount0.toString(), token0.decimals)}`,
+          );
+
           if (currentAllowance0.lt(requiredAmount0)) {
             throw fastify.httpErrors.badRequest(
-              `Insufficient ${token0.symbol} allowance. Please approve at least ${formatTokenAmount(requiredAmount0.toString(), token0.decimals)} ${token0.symbol} for the Position Manager (${positionManagerAddress})`
+              `Insufficient ${token0.symbol} allowance. Please approve at least ${formatTokenAmount(requiredAmount0.toString(), token0.decimals)} ${token0.symbol} for the Position Manager (${positionManagerAddress})`,
             );
           }
         }
@@ -344,16 +357,22 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
             positionManagerAddress,
             token1.decimals,
           );
-          
+
           const currentAllowance1 = BigNumber.from(allowance1.value);
-          const requiredAmount1 = BigNumber.from(token1Amount.quotient.toString());
-          
-          logger.info(`${token1.symbol} allowance: ${formatTokenAmount(currentAllowance1.toString(), token1.decimals)}`);
-          logger.info(`${token1.symbol} required: ${formatTokenAmount(requiredAmount1.toString(), token1.decimals)}`);
-          
+          const requiredAmount1 = BigNumber.from(
+            token1Amount.quotient.toString(),
+          );
+
+          logger.info(
+            `${token1.symbol} allowance: ${formatTokenAmount(currentAllowance1.toString(), token1.decimals)}`,
+          );
+          logger.info(
+            `${token1.symbol} required: ${formatTokenAmount(requiredAmount1.toString(), token1.decimals)}`,
+          );
+
           if (currentAllowance1.lt(requiredAmount1)) {
             throw fastify.httpErrors.badRequest(
-              `Insufficient ${token1.symbol} allowance. Please approve at least ${formatTokenAmount(requiredAmount1.toString(), token1.decimals)} ${token1.symbol} for the Position Manager (${positionManagerAddress})`
+              `Insufficient ${token1.symbol} allowance. Please approve at least ${formatTokenAmount(requiredAmount1.toString(), token1.decimals)} ${token1.symbol} for the Position Manager (${positionManagerAddress})`,
             );
           }
         }
@@ -381,7 +400,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         logger.info('Sending transaction to create position...');
         logger.info(`Calldata length: ${calldata.length}`);
         logger.info(`Value: ${value.toString()}`);
-        
+
         let tx;
         try {
           tx = await positionManager.multicall([calldata], {
@@ -452,18 +471,18 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         };
       } catch (e: any) {
         logger.error('Failed to open position:', e);
-        
+
         // Log transaction details if available
         if (e.transaction) {
           logger.error('Transaction data:', e.transaction.data);
           logger.error('Transaction to:', e.transaction.to);
         }
-        
+
         // If error already has statusCode, re-throw it
         if (e.statusCode) {
           throw e;
         }
-        
+
         // Check for specific error types
         if (e.code === 'CALL_EXCEPTION') {
           // Transaction reverted
@@ -472,30 +491,34 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           logger.error('- Lack of token approval');
           logger.error('- Invalid tick range');
           logger.error('- Slippage tolerance exceeded');
-          
+
           throw fastify.httpErrors.badRequest(
-            'Transaction failed. Please check token balances, approvals, and position parameters.'
+            'Transaction failed. Please check token balances, approvals, and position parameters.',
           );
         }
-        
+
         // Handle insufficient allowance errors
-        if (e.message && e.message.includes('Insufficient') && e.message.includes('allowance')) {
+        if (
+          e.message &&
+          e.message.includes('Insufficient') &&
+          e.message.includes('allowance')
+        ) {
           throw fastify.httpErrors.badRequest(e.message);
         }
-        
+
         // Handle insufficient funds errors
         if (
           e.code === 'INSUFFICIENT_FUNDS' ||
           (e.message && e.message.includes('insufficient funds'))
         ) {
           throw fastify.httpErrors.badRequest(
-            'Insufficient funds to complete the transaction'
+            'Insufficient funds to complete the transaction',
           );
         }
-        
+
         // Generic error
         throw fastify.httpErrors.internalServerError(
-          `Failed to open position: ${e.message || 'Unknown error'}`
+          `Failed to open position: ${e.message || 'Unknown error'}`,
         );
       }
     },

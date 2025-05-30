@@ -23,11 +23,7 @@ axios.post = jest.fn();
 function loadMockResponse(filename) {
   try {
     // First try to find connector-specific mock
-    const filePath = path.join(
-      __dirname,
-      'mocks',
-      `${filename}.json`,
-    );
+    const filePath = path.join(__dirname, 'mocks', `${filename}.json`);
     return JSON.parse(fs.readFileSync(filePath, 'utf8'));
   } catch (error) {
     // If not found, use generic mock template

@@ -496,7 +496,8 @@ describe('Uniswap CLMM Tests (Base Network)', () => {
   describe('Open Position Endpoint', () => {
     test('returns successful position opening', async () => {
       const mockResponse = {
-        signature: '0xabcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab',
+        signature:
+          '0xabcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab',
         positionId: '345678',
         poolAddress: TEST_POOL,
         lowerTick: -887272,
@@ -576,7 +577,8 @@ describe('Uniswap CLMM Tests (Base Network)', () => {
   describe('Add Liquidity Endpoint', () => {
     test('returns successful liquidity addition to existing position', async () => {
       const mockResponse = {
-        signature: '0xdef4567890abcdef1234567890abcdef1234567890abcdef1234567890abcd12',
+        signature:
+          '0xdef4567890abcdef1234567890abcdef1234567890abcdef1234567890abcd12',
         positionId: '123456',
         liquidity: '340000000000000000',
         baseTokenAmount: 0.5,
@@ -613,7 +615,8 @@ describe('Uniswap CLMM Tests (Base Network)', () => {
   describe('Remove Liquidity Endpoint', () => {
     test('returns successful liquidity removal', async () => {
       const mockResponse = {
-        signature: '0x1234abcd5678efgh1234abcd5678efgh1234abcd5678efgh1234abcd5678efgh',
+        signature:
+          '0x1234abcd5678efgh1234abcd5678efgh1234abcd5678efgh1234abcd5678efgh',
         positionId: '123456',
         baseTokenAmount: 0.75,
         quoteTokenAmount: 1755.375,
@@ -650,7 +653,8 @@ describe('Uniswap CLMM Tests (Base Network)', () => {
   describe('Close Position Endpoint', () => {
     test('returns successful position closure', async () => {
       const mockResponse = {
-        signature: '0xaaaa1111bbbb2222cccc3333dddd4444eeee5555ffff6666aaaa7777bbbb8888',
+        signature:
+          '0xaaaa1111bbbb2222cccc3333dddd4444eeee5555ffff6666aaaa7777bbbb8888',
         positionId: '123456',
         baseTokenAmount: 1.5,
         quoteTokenAmount: 3510.75,
@@ -686,7 +690,8 @@ describe('Uniswap CLMM Tests (Base Network)', () => {
   describe('Collect Fees Endpoint', () => {
     test('returns successful fee collection', async () => {
       const mockResponse = {
-        signature: '0x9999888877776666555544443333222211110000aaaabbbbccccddddeeeeffff',
+        signature:
+          '0x9999888877776666555544443333222211110000aaaabbbbccccddddeeeeffff',
         positionId: '123456',
         feeBaseAmount: 0.001,
         feeQuoteAmount: 2.34,

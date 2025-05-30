@@ -22,11 +22,7 @@ axios.post = jest.fn();
 
 // Helper to load mock responses
 function loadMockResponse(filename) {
-  const filePath = path.join(
-    __dirname,
-    'mocks',
-    `${filename}.json`,
-  );
+  const filePath = path.join(__dirname, 'mocks', `${filename}.json`);
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
 
@@ -246,9 +242,11 @@ describe('Jupiter Swap Tests (Solana Mainnet)', () => {
       // Validate the response
       expect(response.status).toBe(200);
       expect(validateSwapQuote(response.data)).toBe(true);
-      
+
       // With higher slippage, minAmountOut should be lower than the estimated output
-      expect(response.data.minAmountOut).toBeLessThan(response.data.estimatedAmountOut);
+      expect(response.data.minAmountOut).toBeLessThan(
+        response.data.estimatedAmountOut,
+      );
       expect(response.data.minAmountOut).toBeCloseTo(15.98, 1); // ~2.5% less than 16.39
 
       // Verify axios was called with slippage parameter

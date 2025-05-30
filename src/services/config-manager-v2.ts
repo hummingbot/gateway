@@ -24,20 +24,13 @@ interface ConfigurationRoot {
   configurations: ConfigurationNamespaceDefinitions;
 }
 const NamespaceTag: string = '$namespace ';
-// Adjust paths to work with the compiled structure
-// Use services/schema directory for backwards compatibility, but prefer schemas/json for new code
-const LegacySchemasBaseDir: string = path.join(
-  rootPath(),
-  'dist/src/services/schema',
-);
-const SchemasBaseDir: string = path.join(rootPath(), 'dist/src/schemas/json');
+// Schemas are always in dist/src/templates/json/
+const SchemasBaseDir: string = path.join(rootPath(), 'dist/src/templates/json');
 
-// Try to find schema in schemas/json first, fall back to services/schema if needed
-export const ConfigRootSchemaPath: string = fs.existsSync(
-  path.join(SchemasBaseDir, 'configuration-root-schema.json'),
-)
-  ? path.join(SchemasBaseDir, 'configuration-root-schema.json')
-  : path.join(LegacySchemasBaseDir, 'configuration-root-schema.json');
+export const ConfigRootSchemaPath: string = path.join(
+  SchemasBaseDir,
+  'configuration-root-schema.json',
+);
 
 // Always use conf directory for both configs and templates
 const ConfigDir: string = path.join(rootPath(), 'conf/');
@@ -488,13 +481,8 @@ export class ConfigManagerV2 {
             );
             namespaceDefinition[key] = path.join(configRootDir, filePath);
           } else if (key === 'schemaPath') {
-            // Try schemas/json first, then fall back to services/schema if needed
-            const newSchemaPath = path.join(SchemasBaseDir, filePath);
-            const legacySchemaPath = path.join(LegacySchemasBaseDir, filePath);
-
-            namespaceDefinition[key] = fs.existsSync(newSchemaPath)
-              ? newSchemaPath
-              : legacySchemaPath;
+            // Schemas are always in dist/src/templates/json/
+            namespaceDefinition[key] = path.join(SchemasBaseDir, filePath);
           }
         } else {
           throw new Error(`Absolute path not allowed for ${key}.`);

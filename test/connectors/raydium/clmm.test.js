@@ -24,11 +24,7 @@ axios.post = jest.fn();
 
 // Helper to load mock responses
 function loadMockResponse(filename) {
-  const filePath = path.join(
-    __dirname,
-    'mocks',
-    `${filename}.json`,
-  );
+  const filePath = path.join(__dirname, 'mocks', `${filename}.json`);
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
 
@@ -384,7 +380,7 @@ describe('Raydium CLMM Tests (Solana Mainnet)', () => {
       expect(response.status).toBe(200);
       expect(Array.isArray(response.data)).toBe(true);
       expect(response.data.length).toBeGreaterThan(0);
-      
+
       // Validate first position
       const firstPosition = response.data[0];
       expect(validatePositionInfo(firstPosition)).toBe(true);
@@ -574,7 +570,8 @@ describe('Raydium CLMM Tests (Solana Mainnet)', () => {
   describe('Remove Liquidity Endpoint', () => {
     test('returns successful liquidity removal', async () => {
       const mockResponse = {
-        signature: '4bF7KhhZTPixeNQVxjDv2LcX7VTxQN9vwMv8Z89FwqYKKQRmqPQCuwyWQMjGwUJKdRrPoKNL7Rn6fHZFvVbpU5Ay',
+        signature:
+          '4bF7KhhZTPixeNQVxjDv2LcX7VTxQN9vwMv8Z89FwqYKKQRmqPQCuwyWQMjGwUJKdRrPoKNL7Rn6fHZFvVbpU5Ay',
         positionId: TEST_POSITION_ID,
         baseTokenAmount: 0.95,
         quoteTokenAmount: 159.125,
@@ -611,7 +608,8 @@ describe('Raydium CLMM Tests (Solana Mainnet)', () => {
   describe('Close Position Endpoint', () => {
     test('returns successful position closure', async () => {
       const mockResponse = {
-        signature: '5cG8KhhZTPixeNQVxjDv2LcX7VTxQN9vwMv8Z89FwqYKKQRmqPQCuwyWQMjGwUJKdRrPoKNL7Rn6fHZFvVbpV6Bz',
+        signature:
+          '5cG8KhhZTPixeNQVxjDv2LcX7VTxQN9vwMv8Z89FwqYKKQRmqPQCuwyWQMjGwUJKdRrPoKNL7Rn6fHZFvVbpV6Bz',
         positionId: TEST_POSITION_ID,
         baseTokenAmount: 1.0,
         quoteTokenAmount: 167.5,

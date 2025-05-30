@@ -23,11 +23,7 @@ axios.post = jest.fn();
 
 // Helper to load mock responses
 function loadMockResponse(filename) {
-  const filePath = path.join(
-    __dirname,
-    'mocks',
-    `${filename}.json`,
-  );
+  const filePath = path.join(__dirname, 'mocks', `${filename}.json`);
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
 
@@ -474,7 +470,8 @@ describe('Raydium AMM Tests (Solana Mainnet)', () => {
   describe('Add Liquidity Endpoint', () => {
     test('returns successful liquidity addition', async () => {
       const mockResponse = {
-        signature: '2ZE6KhhZTPixeNQVxjDv2LcX7VTxQN9vwMv8Z89FwqYKKQRmqPQCuwyWQMjGwUJKdRrPoKNL7Rn6fHZFvVbpS3Yw',
+        signature:
+          '2ZE6KhhZTPixeNQVxjDv2LcX7VTxQN9vwMv8Z89FwqYKKQRmqPQCuwyWQMjGwUJKdRrPoKNL7Rn6fHZFvVbpS3Yw',
         baseTokenAmount: 1.0,
         quoteTokenAmount: 167.5,
         lpTokenAmount: 12.94,
@@ -548,7 +545,8 @@ describe('Raydium AMM Tests (Solana Mainnet)', () => {
   describe('Remove Liquidity Endpoint', () => {
     test('returns successful liquidity removal', async () => {
       const mockResponse = {
-        signature: '3aF7KhhZTPixeNQVxjDv2LcX7VTxQN9vwMv8Z89FwqYKKQRmqPQCuwyWQMjGwUJKdRrPoKNL7Rn6fHZFvVbpT4Zx',
+        signature:
+          '3aF7KhhZTPixeNQVxjDv2LcX7VTxQN9vwMv8Z89FwqYKKQRmqPQCuwyWQMjGwUJKdRrPoKNL7Rn6fHZFvVbpT4Zx',
         baseTokenAmount: 0.95,
         quoteTokenAmount: 159.125,
         lpTokenAmount: 12.94,

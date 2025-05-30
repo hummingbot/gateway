@@ -14,7 +14,7 @@
     "lint": "eslint src test --format table --fix",
     "setup": "./gateway-setup.sh",
     "start": "START_SERVER=true node dist/index.js",
-    "copy-files": "copyfiles 'src/schemas/json/*.json' 'src/services/schema/*.json' 'src/templates/*.yml' 'src/templates/lists/*.json' 'test/services/data/**/*.*' dist",
+    "copy-files": "copyfiles 'src/templates/json/*.json' 'src/templates/*.yml' 'src/templates/lists/*.json' dist",
     "test": "GATEWAY_TEST_MODE=dev jest --verbose",
     "test:debug": "GATEWAY_TEST_MODE=dev jest --watch --runInBand",
     "test:unit": "GATEWAY_TEST_MODE=dev jest --runInBand ./test/",

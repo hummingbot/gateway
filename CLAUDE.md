@@ -86,7 +86,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Chain configs: `src/templates/{chain}.yml`
 - Connector configs: `src/templates/{connector}.yml`
 - Token lists: `src/templates/lists/{network}.json`
-- All configs validated against JSON schemas in `src/schemas/json/`
+- All configs validated against JSON schemas in `src/templates/json/`
 
 ## Hummingbot Gateway Endpoint Standardization
 - This repo standardized DEX and chain endpoints that are used by Hummingbot strategies. See this branch for the matching code, especially the Gateway connector classes https://github.com/hummingbot/hummingbot/tree/feat/gateway-2.6

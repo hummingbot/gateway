@@ -1,12 +1,13 @@
 // Mock fs-extra to prevent actual file writes
 jest.mock('fs-extra');
 
+import * as fse from 'fs-extra';
+
 import { gatewayApp } from '../../../src/app';
 import { Ethereum } from '../../../src/chains/ethereum/ethereum';
 import { ConfigManagerCertPassphrase } from '../../../src/services/config-manager-cert-passphrase';
 import { GetWalletResponse } from '../../../src/wallet/schemas';
 import { patch, unpatch } from '../../services/patch';
-import * as fse from 'fs-extra';
 
 const mockFse = fse as jest.Mocked<typeof fse>;
 
@@ -14,7 +15,8 @@ let eth: Ethereum;
 
 // Test wallet data
 const testAddress = '0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf';
-const testPrivateKey = '0000000000000000000000000000000000000000000000000000000000000001'; // noqa: mock
+const testPrivateKey =
+  '0000000000000000000000000000000000000000000000000000000000000001'; // noqa: mock
 
 // Mock the encoded private key response
 const encodedPrivateKey = {
@@ -24,7 +26,8 @@ const encodedPrivateKey = {
   Crypto: {
     cipher: 'aes-128-ctr',
     cipherparams: { iv: '60276d7bf5fa57ce0ae8e65fc578c3ac' },
-    ciphertext: 'be98ee3d44744e1417531b15a7b1e47b945cfc100d3ff2680f757a824840fb67', // noqa: mock
+    ciphertext:
+      'be98ee3d44744e1417531b15a7b1e47b945cfc100d3ff2680f757a824840fb67', // noqa: mock
     kdf: 'scrypt',
     kdfparams: {
       salt: '90b7e0017b4f9df67aa5f2de73495c14de086b8abb5b68ce3329596eb14f991c', // noqa: mock
@@ -50,70 +53,74 @@ beforeAll(async () => {
 
 beforeEach(() => {
   patch(ConfigManagerCertPassphrase, 'readPassphrase', () => 'a');
-  
+
   // Clear mock wallets
   mockWallets.ethereum.clear();
-  
+
   // Mock wallet operations to work with in-memory storage
   patch(eth, 'getWalletFromPrivateKey', () => {
     return { address: testAddress };
   });
-  
+
   patch(eth, 'encrypt', () => {
     return JSON.stringify(encodedPrivateKey);
   });
-  
+
   // Setup fs-extra mocks
   (mockFse.writeFile as jest.Mock).mockImplementation(async (path: any) => {
     const pathStr = path.toString();
     const pathParts = pathStr.split('/');
     const chain = pathParts[pathParts.length - 2];
     const address = pathParts[pathParts.length - 1].replace('.json', '');
-    
+
     if (chain && address) {
       mockWallets[chain].add(address);
     }
     return undefined;
   });
-  
-  (mockFse.readdir as jest.Mock).mockImplementation(async (dirPath: any, options?: any) => {
-    const pathStr = dirPath.toString();
-    
-    // If asking for directories in wallet path
-    if (pathStr.endsWith('/wallets') && options?.withFileTypes) {
-      return Object.keys(mockWallets).map(chain => ({
-        name: chain,
-        isDirectory: () => true,
-        isFile: () => false,
-      }));
-    }
-    
-    // If asking for files in a chain directory
-    const chain = pathStr.split('/').pop();
-    if (chain && mockWallets[chain]) {
-      if (options?.withFileTypes) {
-        return Array.from(mockWallets[chain]).map(addr => ({
-          name: `${addr}.json`,
-          isDirectory: () => false,
-          isFile: () => true,
+
+  (mockFse.readdir as jest.Mock).mockImplementation(
+    async (dirPath: any, options?: any) => {
+      const pathStr = dirPath.toString();
+
+      // If asking for directories in wallet path
+      if (pathStr.endsWith('/wallets') && options?.withFileTypes) {
+        return Object.keys(mockWallets).map((chain) => ({
+          name: chain,
+          isDirectory: () => true,
+          isFile: () => false,
         }));
       }
-      return Array.from(mockWallets[chain]).map(addr => `${addr}.json`);
-    }
-    
-    return [];
-  });
-  
-  (mockFse.readFile as jest.Mock).mockResolvedValue(Buffer.from(JSON.stringify(encodedPrivateKey)));
+
+      // If asking for files in a chain directory
+      const chain = pathStr.split('/').pop();
+      if (chain && mockWallets[chain]) {
+        if (options?.withFileTypes) {
+          return Array.from(mockWallets[chain]).map((addr) => ({
+            name: `${addr}.json`,
+            isDirectory: () => false,
+            isFile: () => true,
+          }));
+        }
+        return Array.from(mockWallets[chain]).map((addr) => `${addr}.json`);
+      }
+
+      return [];
+    },
+  );
+
+  (mockFse.readFile as jest.Mock).mockResolvedValue(
+    Buffer.from(JSON.stringify(encodedPrivateKey)),
+  );
   (mockFse.pathExists as jest.Mock).mockResolvedValue(true);
   (mockFse.ensureDir as jest.Mock).mockResolvedValue(undefined);
-  
+
   (mockFse.remove as jest.Mock).mockImplementation(async (filePath: any) => {
     const pathStr = filePath.toString();
     const pathParts = pathStr.split('/');
     const chain = pathParts[pathParts.length - 2];
     const address = pathParts[pathParts.length - 1].replace('.json', '');
-    
+
     if (chain && mockWallets[chain]) {
       mockWallets[chain].delete(address);
     }
@@ -145,10 +152,10 @@ describe('Ethereum Wallet Operations', () => {
 
       expect(response.statusCode).toBe(200);
       expect(response.headers['content-type']).toMatch(/json/);
-      
+
       const result = JSON.parse(response.payload);
       expect(result).toMatchObject({
-        address: testAddress
+        address: testAddress,
       });
     });
 
@@ -157,7 +164,7 @@ describe('Ethereum Wallet Operations', () => {
       patch(eth, 'getWalletFromPrivateKey', () => {
         throw new Error('Invalid private key');
       });
-      
+
       const response = await gatewayApp.inject({
         method: 'POST',
         url: '/wallet/add',
@@ -188,7 +195,7 @@ describe('Ethereum Wallet Operations', () => {
     it('should fetch wallets for Ethereum', async () => {
       // First add a wallet
       mockWallets.ethereum.add(testAddress);
-      
+
       const response = await gatewayApp.inject({
         method: 'GET',
         url: '/wallet',
@@ -198,8 +205,8 @@ describe('Ethereum Wallet Operations', () => {
       expect(response.headers['content-type']).toMatch(/json/);
 
       const wallets: GetWalletResponse[] = JSON.parse(response.payload);
-      const ethereumWallet = wallets.find(w => w.chain === 'ethereum');
-      
+      const ethereumWallet = wallets.find((w) => w.chain === 'ethereum');
+
       expect(ethereumWallet).toBeDefined();
       expect(ethereumWallet?.walletAddresses).toContain(testAddress);
     });
@@ -207,17 +214,17 @@ describe('Ethereum Wallet Operations', () => {
     it('should return empty array when no wallets exist', async () => {
       // Clear wallets
       mockWallets.ethereum.clear();
-      
+
       const response = await gatewayApp.inject({
         method: 'GET',
         url: '/wallet',
       });
 
       expect(response.statusCode).toBe(200);
-      
+
       const wallets: GetWalletResponse[] = JSON.parse(response.payload);
-      const ethereumWallet = wallets.find(w => w.chain === 'ethereum');
-      
+      const ethereumWallet = wallets.find((w) => w.chain === 'ethereum');
+
       expect(ethereumWallet?.walletAddresses).toHaveLength(0);
     });
   });
@@ -226,7 +233,7 @@ describe('Ethereum Wallet Operations', () => {
     it('should remove an Ethereum wallet successfully', async () => {
       // First add the wallet to mock storage
       mockWallets.ethereum.add(testAddress);
-      
+
       const response = await gatewayApp.inject({
         method: 'DELETE',
         url: '/wallet/remove',
@@ -238,14 +245,14 @@ describe('Ethereum Wallet Operations', () => {
 
       expect(response.statusCode).toBe(200);
       expect(response.headers['content-type']).toMatch(/json/);
-      
+
       expect(response.payload).toBe('null');
       expect(mockWallets.ethereum.has(testAddress)).toBe(false);
     });
 
     it('should fail when removing non-existent wallet', async () => {
       (mockFse.pathExists as jest.Mock).mockResolvedValue(false);
-      
+
       const response = await gatewayApp.inject({
         method: 'DELETE',
         url: '/wallet/remove',
@@ -276,7 +283,6 @@ describe('Ethereum Wallet Operations', () => {
 
   describe('Wallet Operations Integration', () => {
     it('should handle full wallet lifecycle: add, fetch, and remove', async () => {
-
       // 1. Add wallet
       const addResponse = await gatewayApp.inject({
         method: 'POST',
@@ -294,9 +300,9 @@ describe('Ethereum Wallet Operations', () => {
         url: '/wallet',
       });
       expect(getResponse.statusCode).toBe(200);
-      
+
       const wallets: GetWalletResponse[] = JSON.parse(getResponse.payload);
-      const ethereumWallet = wallets.find(w => w.chain === 'ethereum');
+      const ethereumWallet = wallets.find((w) => w.chain === 'ethereum');
       expect(ethereumWallet?.walletAddresses).toContain(testAddress);
 
       // 3. Remove wallet
@@ -316,9 +322,13 @@ describe('Ethereum Wallet Operations', () => {
         url: '/wallet',
       });
       expect(finalGetResponse.statusCode).toBe(200);
-      
-      const finalWallets: GetWalletResponse[] = JSON.parse(finalGetResponse.payload);
-      const finalEthereumWallet = finalWallets.find(w => w.chain === 'ethereum');
+
+      const finalWallets: GetWalletResponse[] = JSON.parse(
+        finalGetResponse.payload,
+      );
+      const finalEthereumWallet = finalWallets.find(
+        (w) => w.chain === 'ethereum',
+      );
       expect(finalEthereumWallet?.walletAddresses).not.toContain(testAddress);
     });
   });

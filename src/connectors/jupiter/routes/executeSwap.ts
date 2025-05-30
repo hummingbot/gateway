@@ -76,7 +76,7 @@ async function executeJupiterSwap(
     };
   } catch (error: any) {
     logger.error(`Jupiter swap error: ${error.message || error}`);
-    
+
     // Check for specific error types
     if (error.message?.includes('ExactOut not supported')) {
       throw fastify.httpErrors.badRequest(error.message);
@@ -87,7 +87,7 @@ async function executeJupiterSwap(
     if (error.message?.includes('Token not found')) {
       throw fastify.httpErrors.badRequest(error.message);
     }
-    
+
     throw fastify.httpErrors.internalServerError(
       `Failed to execute Jupiter swap: ${error.message || 'Unknown error'}`,
     );

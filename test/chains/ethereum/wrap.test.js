@@ -19,11 +19,7 @@ axios.post = jest.fn();
 
 // Helper to load mock responses
 function loadMockResponse(filename) {
-  const filePath = path.join(
-    __dirname,
-    'mocks',
-    `${filename}.json`,
-  );
+  const filePath = path.join(__dirname, 'mocks', `${filename}.json`);
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
 
