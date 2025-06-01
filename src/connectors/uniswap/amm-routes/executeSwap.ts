@@ -73,6 +73,8 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           side,
           slippagePct,
           walletAddress: requestedWalletAddress,
+          priorityFeePerCU,
+          computeUnits,
         } = request.body;
 
         const networkToUse = network || 'base';
@@ -222,6 +224,21 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         // Prepare transaction parameters
         const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes from now
 
+        // Use provided gas parameters or defaults
+        const gasLimit = computeUnits || 300000;
+        
+        // For Ethereum, priorityFeePerCU is interpreted as gas price in Gwei
+        let txOptions: any = { gasLimit };
+        
+        if (priorityFeePerCU !== undefined) {
+          // Convert from Gwei to Wei (1 Gwei = 1e9 Wei)
+          const gasPriceWei = BigNumber.from(priorityFeePerCU).mul(1e9);
+          txOptions.gasPrice = gasPriceWei;
+          logger.info(`Using custom gas price: ${priorityFeePerCU} Gwei`);
+        }
+        
+        logger.info(`Using gas limit: ${gasLimit}`);
+
         let tx;
         if (side === 'SELL') {
           // swapExactTokensForTokens - we know the exact input amount
@@ -237,9 +254,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
             quote.pathAddresses,
             walletAddress,
             deadline,
-            {
-              gasLimit: 300000,
-            },
+            txOptions,
           );
         } else {
           // swapTokensForExactTokens - we know the exact output amount
@@ -255,9 +270,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
             quote.pathAddresses,
             walletAddress,
             deadline,
-            {
-              gasLimit: 300000,
-            },
+            txOptions,
           );
         }
 
@@ -302,11 +315,14 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
 
         return {
           signature: txSignature,
-          totalInputSwapped: totalInputSwapped,
-          totalOutputSwapped: totalOutputSwapped,
-          fee: gasFee,
-          baseTokenBalanceChange,
-          quoteTokenBalanceChange,
+          status: 1, // CONFIRMED
+          data: {
+            totalInputSwapped: totalInputSwapped,
+            totalOutputSwapped: totalOutputSwapped,
+            fee: gasFee,
+            baseTokenBalanceChange,
+            quoteTokenBalanceChange,
+          },
         };
       } catch (error) {
         logger.error(`Swap execution error: ${error.message}`);

@@ -73,6 +73,8 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           side,
           slippagePct,
           walletAddress: requestedWalletAddress,
+          priorityFeePerCU,
+          computeUnits,
         } = request.body;
 
         const networkToUse = network || 'base';
@@ -200,6 +202,21 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           sqrtPriceLimitX96: 0,
         };
 
+        // Use provided gas parameters or defaults
+        const gasLimit = computeUnits || 300000;
+        
+        // For Ethereum, priorityFeePerCU is interpreted as gas price in Gwei
+        let txOptions: any = { gasLimit };
+        
+        if (priorityFeePerCU !== undefined) {
+          // Convert from Gwei to Wei (1 Gwei = 1e9 Wei)
+          const gasPriceWei = BigNumber.from(priorityFeePerCU).mul(1e9);
+          txOptions.gasPrice = gasPriceWei;
+          logger.info(`Using custom gas price: ${priorityFeePerCU} Gwei`);
+        }
+        
+        logger.info(`Using gas limit: ${gasLimit}`);
+
         let tx;
         if (side === 'SELL') {
           // exactInputSingle - we know the exact input amount
@@ -220,9 +237,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
             sqrtPriceLimitX96: swapParams.sqrtPriceLimitX96,
           };
 
-          tx = await routerContract.exactInputSingle(exactInputParams, {
-            gasLimit: 300000,
-          });
+          tx = await routerContract.exactInputSingle(exactInputParams, txOptions);
         } else {
           // exactOutputSingle - we know the exact output amount
           swapParams.amountOut = quote.rawAmountOut;
@@ -242,9 +257,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
             sqrtPriceLimitX96: swapParams.sqrtPriceLimitX96,
           };
 
-          tx = await routerContract.exactOutputSingle(exactOutputParams, {
-            gasLimit: 300000,
-          });
+          tx = await routerContract.exactOutputSingle(exactOutputParams, txOptions);
         }
 
         logger.info(`Transaction sent: ${tx.hash}`);
@@ -288,11 +301,14 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
 
         return {
           signature: txSignature,
-          totalInputSwapped: totalInputSwapped,
-          totalOutputSwapped: totalOutputSwapped,
-          fee: gasFee,
-          baseTokenBalanceChange,
-          quoteTokenBalanceChange,
+          status: 1, // CONFIRMED
+          data: {
+            totalInputSwapped: totalInputSwapped,
+            totalOutputSwapped: totalOutputSwapped,
+            fee: gasFee,
+            baseTokenBalanceChange,
+            quoteTokenBalanceChange,
+          },
         };
       } catch (error) {
         logger.error(`Swap execution error: ${error.message}`);

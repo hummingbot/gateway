@@ -24,6 +24,8 @@ async function executeSwap(
   side: 'BUY' | 'SELL',
   poolAddress: string,
   slippagePct?: number,
+  priorityFeePerCU?: number,
+  computeUnits?: number,
 ): Promise<ExecuteSwapResponseType> {
   const solana = await Solana.getInstance(network);
   const meteora = await Meteora.getInstance(network);
@@ -71,12 +73,25 @@ async function executeSwap(
           binArraysPubkey: (swapQuote as SwapQuote).binArraysPubkey,
         });
 
+  // Use provided compute units or default
+  const finalComputeUnits = computeUnits || 150000;
+  
+  // Note: Meteora SDK doesn't support custom compute budget configuration in swap methods
+  // The priority fee will be handled by Solana's sendAndConfirmTransaction method internally
+  // For now, we'll use the default behavior and document this limitation
+  
+  logger.info(
+    `Executing swap with ${finalComputeUnits} compute units${priorityFeePerCU ? ` and ${priorityFeePerCU} microlamports/CU priority fee` : ''}`,
+  );
+  
+  // Use the existing method - it will use estimateGas internally for fee calculation
   const { signature, fee } = await solana.sendAndConfirmTransaction(
     swapTx,
     [wallet],
-    150_000,
+    finalComputeUnits,
+    priorityFeePerCU,
   );
-
+  
   const { baseTokenBalanceChange, quoteTokenBalanceChange } =
     await solana.extractPairBalanceChangesAndFee(
       signature,
@@ -84,18 +99,21 @@ async function executeSwap(
       await solana.getToken(dlmmPool.tokenY.publicKey.toBase58()),
       wallet.publicKey.toBase58(),
     );
-
+  
   logger.info(
     `Swap executed successfully: ${Math.abs(baseTokenBalanceChange).toFixed(4)} ${inputToken.symbol} -> ${Math.abs(quoteTokenBalanceChange).toFixed(4)} ${outputToken.symbol}`,
   );
-
+  
   return {
     signature,
-    totalInputSwapped: Math.abs(baseTokenBalanceChange),
-    totalOutputSwapped: Math.abs(quoteTokenBalanceChange),
-    fee,
-    baseTokenBalanceChange,
-    quoteTokenBalanceChange,
+    status: 1, // CONFIRMED
+    data: {
+      totalInputSwapped: Math.abs(baseTokenBalanceChange),
+      totalOutputSwapped: Math.abs(quoteTokenBalanceChange),
+      fee,
+      baseTokenBalanceChange,
+      quoteTokenBalanceChange,
+    },
   };
 }
 
@@ -147,6 +165,8 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           side,
           poolAddress,
           slippagePct,
+          priorityFeePerCU,
+          computeUnits,
         } = request.body;
         const networkUsed = network || 'mainnet-beta';
         const meteora = await Meteora.getInstance(networkUsed);
@@ -172,6 +192,8 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           side as 'BUY' | 'SELL',
           poolAddressUsed,
           slippagePct,
+          priorityFeePerCU,
+          computeUnits,
         );
       } catch (e) {
         if (e.statusCode) return e;

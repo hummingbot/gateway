@@ -145,6 +145,8 @@ async function removeLiquidity(
   percentageToRemove: number,
   baseToken?: string,
   quoteToken?: string,
+  priorityFeePerCU?: number,
+  computeUnits?: number,
 ): Promise<RemoveLiquidityResponseType> {
   const solana = await Solana.getInstance(network);
   const raydium = await Raydium.getInstance(network);
@@ -189,71 +191,80 @@ async function removeLiquidity(
   logger.info(
     `Removing ${percentageToRemove.toFixed(4)}% liquidity from pool ${poolAddressToUse}...`,
   );
-  const COMPUTE_UNITS = 600000;
+  const DEFAULT_COMPUTE_UNITS = 600000;
 
-  let currentPriorityFee = (await solana.estimateGas()) * 1e9 - BASE_FEE;
-  while (currentPriorityFee <= solana.config.maxPriorityFee * 1e9) {
-    const priorityFeePerCU = Math.floor(
-      (currentPriorityFee * 1e6) / COMPUTE_UNITS,
+  // Use provided compute units or default
+  const computeUnitsToUse = computeUnits || DEFAULT_COMPUTE_UNITS;
+
+  // Calculate priority fee
+  let priorityFeePerCUMicroLamports: number;
+  if (priorityFeePerCU !== undefined) {
+    // Convert from lamports per CU to microlamports per CU
+    priorityFeePerCUMicroLamports = Math.floor(priorityFeePerCU * 1000);
+  } else {
+    // Default priority fee calculation
+    const currentPriorityFee = (await solana.estimateGas()) * 1e9 - BASE_FEE;
+    priorityFeePerCUMicroLamports = Math.floor(
+      (currentPriorityFee * 1e6) / computeUnitsToUse,
     );
+  }
 
-    const transaction = await createRemoveLiquidityTransaction(
-      raydium,
-      ammPoolInfo,
-      poolInfo,
-      poolKeys,
-      lpAmountToRemove,
-      {
-        units: COMPUTE_UNITS,
-        microLamports: priorityFeePerCU,
-      },
-    );
+  const transaction = await createRemoveLiquidityTransaction(
+    raydium,
+    ammPoolInfo,
+    poolInfo,
+    poolKeys,
+    lpAmountToRemove,
+    {
+      units: computeUnitsToUse,
+      microLamports: priorityFeePerCUMicroLamports,
+    },
+  );
 
-    if (transaction instanceof VersionedTransaction) {
-      (transaction as VersionedTransaction).sign([wallet]);
-    } else {
-      const txAsTransaction = transaction as Transaction;
-      const { blockhash, lastValidBlockHeight } =
-        await solana.connection.getLatestBlockhash();
-      txAsTransaction.recentBlockhash = blockhash;
-      txAsTransaction.lastValidBlockHeight = lastValidBlockHeight;
-      txAsTransaction.feePayer = wallet.publicKey;
-      txAsTransaction.sign(wallet);
-    }
+  if (transaction instanceof VersionedTransaction) {
+    (transaction as VersionedTransaction).sign([wallet]);
+  } else {
+    const txAsTransaction = transaction as Transaction;
+    const { blockhash, lastValidBlockHeight } =
+      await solana.connection.getLatestBlockhash();
+    txAsTransaction.recentBlockhash = blockhash;
+    txAsTransaction.lastValidBlockHeight = lastValidBlockHeight;
+    txAsTransaction.feePayer = wallet.publicKey;
+    txAsTransaction.sign(wallet);
+  }
 
-    await solana.simulateTransaction(transaction);
+  await solana.simulateTransaction(transaction);
 
-    const { confirmed, signature, txData } =
-      await solana.sendAndConfirmRawTransaction(transaction);
-    if (confirmed && txData) {
-      const { baseTokenBalanceChange, quoteTokenBalanceChange } =
-        await solana.extractPairBalanceChangesAndFee(
-          signature,
-          await solana.getToken(poolInfo.mintA.address),
-          await solana.getToken(poolInfo.mintB.address),
-          wallet.publicKey.toBase58(),
-        );
-
-      logger.info(
-        `Liquidity removed from pool ${poolAddressToUse}: ${Math.abs(baseTokenBalanceChange).toFixed(4)} ${poolInfo.mintA.symbol}, ${Math.abs(quoteTokenBalanceChange).toFixed(4)} ${poolInfo.mintB.symbol}`,
+  const { confirmed, signature, txData } =
+    await solana.sendAndConfirmRawTransaction(transaction);
+  if (confirmed && txData) {
+    const { baseTokenBalanceChange, quoteTokenBalanceChange } =
+      await solana.extractPairBalanceChangesAndFee(
+        signature,
+        await solana.getToken(poolInfo.mintA.address),
+        await solana.getToken(poolInfo.mintB.address),
+        wallet.publicKey.toBase58(),
       );
 
-      return {
-        signature,
+    logger.info(
+      `Liquidity removed from pool ${poolAddressToUse}: ${Math.abs(baseTokenBalanceChange).toFixed(4)} ${poolInfo.mintA.symbol}, ${Math.abs(quoteTokenBalanceChange).toFixed(4)} ${poolInfo.mintB.symbol}`,
+    );
+
+    return {
+      signature,
+      status: 1, // CONFIRMED
+      data: {
         fee: txData.meta.fee / 1e9,
         baseTokenAmountRemoved: Math.abs(baseTokenBalanceChange),
         quoteTokenAmountRemoved: Math.abs(quoteTokenBalanceChange),
-      };
-    }
-    currentPriorityFee =
-      currentPriorityFee * solana.config.priorityFeeMultiplier;
-    logger.info(
-      `Increasing max priority fee to ${(currentPriorityFee / 1e9).toFixed(6)} SOL`,
-    );
+      },
+    };
+  } else {
+    return {
+      signature,
+      status: 0, // PENDING
+    };
   }
-  throw new Error(
-    `Remove liquidity failed after reaching max priority fee of ${(solana.config.maxPriorityFee / 1e9).toFixed(6)} SOL`,
-  );
 }
 
 export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
@@ -327,6 +338,8 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           percentageToRemove,
           baseToken,
           quoteToken,
+          request.body.priorityFeePerCU,
+          request.body.computeUnits,
         );
       } catch (e) {
         logger.error(e);

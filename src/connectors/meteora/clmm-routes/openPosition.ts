@@ -47,6 +47,8 @@ async function openPosition(
   quoteTokenAmount: number | undefined,
   slippagePct?: number,
   strategyType?: number,
+  priorityFeePerCU?: number,
+  computeUnits?: number,
 ): Promise<OpenPositionResponseType> {
   const solana = await Solana.getInstance(network);
   const meteora = await Meteora.getInstance(network);
@@ -200,13 +202,18 @@ async function openPosition(
   logger.info(
     `Opening position in pool ${poolAddress} with price range ${lowerPrice.toFixed(4)} - ${upperPrice.toFixed(4)} ${tokenYSymbol}/${tokenXSymbol}`,
   );
-  const { signature } = await solana.sendAndConfirmTransaction(
+  
+  // Use provided compute units or default
+  const finalComputeUnits = computeUnits || 1_000_000;
+  
+  const { signature, fee: txFee } = await solana.sendAndConfirmTransaction(
     createPositionTx,
     [wallet, newImbalancePosition],
-    1_000_000,
+    finalComputeUnits,
+    priorityFeePerCU,
   );
 
-  const { baseTokenBalanceChange, quoteTokenBalanceChange, fee } =
+  const { baseTokenBalanceChange, quoteTokenBalanceChange, fee: extractedFee } =
     await solana.extractPairBalanceChangesAndFee(
       signature,
       tokenX,
@@ -217,10 +224,10 @@ async function openPosition(
   // Calculate sentSOL based on which token is SOL
   const sentSOL =
     tokenXSymbol === 'SOL'
-      ? Math.abs(baseTokenBalanceChange - fee)
+      ? Math.abs(baseTokenBalanceChange - extractedFee)
       : tokenYSymbol === 'SOL'
-        ? Math.abs(quoteTokenBalanceChange - fee)
-        : fee;
+        ? Math.abs(quoteTokenBalanceChange - extractedFee)
+        : extractedFee;
 
   logger.info(
     `Position opened at ${newImbalancePosition.publicKey.toBase58()}: ${Math.abs(baseTokenBalanceChange).toFixed(4)} ${tokenXSymbol}, ${Math.abs(quoteTokenBalanceChange).toFixed(4)} ${tokenYSymbol}`,
@@ -228,11 +235,14 @@ async function openPosition(
 
   return {
     signature,
-    fee: fee,
-    positionAddress: newImbalancePosition.publicKey.toBase58(),
-    positionRent: sentSOL,
-    baseTokenAmountAdded: baseTokenBalanceChange,
-    quoteTokenAmountAdded: quoteTokenBalanceChange,
+    status: 1, // CONFIRMED
+    data: {
+      fee: txFee,
+      positionAddress: newImbalancePosition.publicKey.toBase58(),
+      positionRent: sentSOL,
+      baseTokenAmountAdded: baseTokenBalanceChange,
+      quoteTokenAmountAdded: quoteTokenBalanceChange,
+    },
   };
 }
 
@@ -319,6 +329,8 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           quoteTokenAmount,
           slippagePct,
           strategyType,
+          priorityFeePerCU,
+          computeUnits,
         } = request.body;
         const networkToUse = network || 'mainnet-beta';
 
@@ -333,6 +345,8 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           quoteTokenAmount,
           slippagePct,
           strategyType,
+          priorityFeePerCU,
+          computeUnits,
         );
       } catch (e) {
         logger.error(e);

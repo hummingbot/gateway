@@ -187,9 +187,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
               baseTokenBalanceChange: { type: 'number' },
               quoteTokenBalanceChange: { type: 'number' },
               price: { type: 'number' },
-              gasPrice: { type: 'number' },
-              gasLimit: { type: 'number' },
-              gasCost: { type: 'number' },
+              computeUnits: { type: 'number' },
               poolAddress: {
                 type: 'string',
                 description: 'Jupiter aggregator ID',
@@ -227,14 +225,6 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         slippagePct,
       );
 
-      // Get gas estimation
-      let gasEstimation = null;
-      try {
-        gasEstimation = await estimateGasSolana(fastify, networkToUse);
-      } catch (error) {
-        logger.warn(`Failed to estimate gas for swap quote: ${error.message}`);
-      }
-
       return {
         estimatedAmountIn: quote.estimatedAmountIn,
         estimatedAmountOut: quote.estimatedAmountOut,
@@ -247,9 +237,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
             ? quote.estimatedAmountOut
             : -quote.estimatedAmountOut,
         price: quote.expectedPrice,
-        gasPrice: gasEstimation?.gasPrice,
-        gasLimit: gasEstimation?.gasLimit,
-        gasCost: gasEstimation?.gasCost,
+        computeUnits: 300000, // Default compute units for Jupiter swaps
         poolAddress: 'jupiter-aggregator', // Jupiter doesn't expose specific pool addresses
       };
     },

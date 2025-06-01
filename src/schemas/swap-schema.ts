@@ -1,4 +1,5 @@
 import { Type, Static } from '@sinclair/typebox';
+import { TransactionStatus } from './chain-schema';
 
 export const GetSwapQuoteRequest = Type.Object(
   {
@@ -48,7 +49,7 @@ export const ExecuteSwapRequest = Type.Object(
     poolAddress: Type.Optional(Type.String()),
     // New optional fee parameters
     priorityFeePerCU: Type.Optional(Type.Number({
-      description: 'Priority fee per compute unit (microlamports on Solana)'
+      description: 'Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)'
     })),
     computeUnits: Type.Optional(Type.Number({
       description: 'Compute units for transaction'
@@ -59,12 +60,6 @@ export const ExecuteSwapRequest = Type.Object(
 
 export type ExecuteSwapRequestType = Static<typeof ExecuteSwapRequest>;
 
-// Transaction status enum
-export enum TransactionStatus {
-  PENDING = 0,
-  CONFIRMED = 1,
-  FAILED = -1
-}
 
 export const ExecuteSwapResponse = Type.Object({
   signature: Type.String(),

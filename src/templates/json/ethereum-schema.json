@@ -28,7 +28,14 @@
       "additionalProperties": false
     },
     "manualGasPrice": { "type": "integer" },
-    "gasLimitTransaction": { "type": "integer" }
+    "gasLimitTransaction": { "type": "integer" },
+    "defaultComputeUnits": { "type": "number" },
+    "gasEstimateInterval": { "type": "number" },
+    "maxFee": { "type": "number" },
+    "minFee": { "type": "number" },
+    "retryCount": { "type": "number" },
+    "retryFeeMultiplier": { "type": "number" },
+    "retryInterval": { "type": "number" }
   },
   "additionalProperties": false
 }

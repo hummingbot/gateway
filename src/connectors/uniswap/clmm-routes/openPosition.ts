@@ -95,6 +95,8 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           baseTokenAmount,
           quoteTokenAmount,
           slippagePct,
+          priorityFeePerCU,
+          computeUnits,
         } = request.body;
 
         const networkToUse = network || 'base';
@@ -403,10 +405,11 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
 
         let tx;
         try {
-          tx = await positionManager.multicall([calldata], {
-            value: BigNumber.from(value.toString()),
-            gasLimit: 500000, // Opening a position can be gas-heavy
-          });
+          // Use Ethereum's prepareGasOptions method
+          const txParams = await ethereum.prepareGasOptions(priorityFeePerCU, computeUnits);
+          txParams.value = BigNumber.from(value.toString());
+
+          tx = await positionManager.multicall([calldata], txParams);
         } catch (txError: any) {
           logger.error('Transaction failed:', txError);
           throw txError;
@@ -463,11 +466,14 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
 
         return {
           signature: receipt.transactionHash,
-          fee: gasFee,
-          positionAddress: positionId,
-          positionRent,
-          baseTokenAmountAdded: baseAmountUsed,
-          quoteTokenAmountAdded: quoteAmountUsed,
+          status: 1, // CONFIRMED
+          data: {
+            fee: gasFee,
+            positionAddress: positionId,
+            positionRent,
+            baseTokenAmountAdded: baseAmountUsed,
+            quoteTokenAmountAdded: quoteAmountUsed,
+          },
         };
       } catch (e: any) {
         logger.error('Failed to open position:', e);

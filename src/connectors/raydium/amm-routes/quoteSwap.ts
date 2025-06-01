@@ -500,9 +500,7 @@ async function formatSwapQuote(
     baseTokenBalanceChange,
     quoteTokenBalanceChange,
     price,
-    gasPrice: 0,
-    gasLimit: 0,
-    gasCost: 0,
+    computeUnits: 300000, // Default compute units for AMM swaps
   };
 }
 
@@ -588,12 +586,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           );
         }
 
-        return {
-          ...result,
-          gasPrice: gasEstimation?.gasPrice,
-          gasLimit: gasEstimation?.gasLimit,
-          gasCost: gasEstimation?.gasCost,
-        };
+        return result;
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {

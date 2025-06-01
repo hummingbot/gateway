@@ -88,9 +88,12 @@ export async function collectFees(
 
   return {
     signature,
-    fee,
-    baseFeeAmountCollected: Math.abs(collectedFeeA),
-    quoteFeeAmountCollected: Math.abs(collectedFeeB),
+    status: 1, // CONFIRMED
+    data: {
+      fee,
+      baseFeeAmountCollected: Math.abs(collectedFeeA),
+      quoteFeeAmountCollected: Math.abs(collectedFeeB),
+    },
   };
 }
 

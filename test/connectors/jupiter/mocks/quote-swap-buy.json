@@ -6,8 +6,6 @@
   "baseTokenBalanceChange": 10,
   "quoteTokenBalanceChange": -1639.410442,
   "price": 163.94104420000002,
-  "gasPrice": 0.5,
-  "gasLimit": 200000,
-  "gasCost": 0.000105,
+  "computeUnits": 300000,
   "poolAddress": "jupiter-aggregator"
 }

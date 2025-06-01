@@ -193,6 +193,7 @@ export async function quoteLiquidity(
           quoteTokenAmount: resParsed.anotherAmount,
           baseTokenAmountMax: baseTokenAmount,
           quoteTokenAmountMax: resParsed.maxAnotherAmount,
+          computeUnits: 600000, // Standard compute units for liquidity operations
         };
       } else {
         return {
@@ -201,6 +202,7 @@ export async function quoteLiquidity(
           quoteTokenAmount: quoteTokenAmount,
           baseTokenAmountMax: resParsed.maxAnotherAmount,
           quoteTokenAmountMax: quoteTokenAmount,
+          computeUnits: 600000, // Standard compute units for liquidity operations
         };
       }
     } else if (ammPoolInfo.poolType === 'cpmm') {
@@ -228,6 +230,7 @@ export async function quoteLiquidity(
           baseTokenAmountMax: baseTokenAmount,
           quoteTokenAmountMax:
             resParsed.maxAnotherAmount / 10 ** quoteToken.decimals,
+          computeUnits: 600000, // Standard compute units for adding liquidity
         };
       } else {
         return {
@@ -237,6 +240,7 @@ export async function quoteLiquidity(
           baseTokenAmountMax:
             resParsed.maxAnotherAmount / 10 ** baseToken.decimals,
           quoteTokenAmountMax: quoteTokenAmount,
+          computeUnits: 600000, // Standard compute units for adding liquidity
         };
       }
     }

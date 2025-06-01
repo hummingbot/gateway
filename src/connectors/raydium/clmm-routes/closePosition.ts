@@ -1,7 +1,7 @@
 import { TxVersion } from '@raydium-io/raydium-sdk-v2';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
-import { Solana } from '../../../chains/solana/solana';
+import { Solana, BASE_FEE } from '../../../chains/solana/solana';
 import {
   ClosePositionRequest,
   ClosePositionResponse,
@@ -18,6 +18,8 @@ async function closePosition(
   network: string,
   walletAddress: string,
   positionAddress: string,
+  priorityFeePerCU?: number,
+  computeUnits?: number,
 ): Promise<ClosePositionResponseType> {
   try {
     const solana = await Solana.getInstance(network);
@@ -36,6 +38,8 @@ async function closePosition(
         positionAddress,
         100,
         true,
+        priorityFeePerCU,
+        computeUnits,
       );
 
       const { balanceChange } = await solana.extractAccountBalanceChangeAndFee(
@@ -46,13 +50,16 @@ async function closePosition(
 
       return {
         signature: removeLiquidityResponse.signature,
-        fee: removeLiquidityResponse.fee,
-        positionRentRefunded: rentRefunded,
-        baseTokenAmountRemoved: removeLiquidityResponse.baseTokenAmountRemoved,
-        quoteTokenAmountRemoved:
-          removeLiquidityResponse.quoteTokenAmountRemoved,
-        baseFeeAmountCollected: 0,
-        quoteFeeAmountCollected: 0,
+        status: removeLiquidityResponse.status,
+        data: removeLiquidityResponse.data ? {
+          fee: removeLiquidityResponse.data.fee,
+          positionRentRefunded: rentRefunded,
+          baseTokenAmountRemoved: removeLiquidityResponse.data.baseTokenAmountRemoved,
+          quoteTokenAmountRemoved:
+            removeLiquidityResponse.data.quoteTokenAmountRemoved,
+          baseFeeAmountCollected: 0,
+          quoteFeeAmountCollected: 0,
+        } : undefined,
       };
     }
 
@@ -71,10 +78,23 @@ async function closePosition(
 
     logger.info('Close position transaction created:', result.transaction);
 
+    // Use provided compute units or default
+    const COMPUTE_UNITS = computeUnits || 200000;
+    
+    // Use provided priority fee per CU or estimate default
+    let finalPriorityFeePerCU: number;
+    if (priorityFeePerCU !== undefined) {
+      finalPriorityFeePerCU = priorityFeePerCU;
+    } else {
+      // Calculate default if not provided
+      const currentPriorityFee = (await solana.estimateGas()) * 1e9 - BASE_FEE;
+      finalPriorityFeePerCU = Math.floor((currentPriorityFee * 1e6) / COMPUTE_UNITS);
+    }
+
     const { signature, fee } = await solana.sendAndConfirmVersionedTransaction(
       result.transaction,
       [wallet],
-      200_000,
+      COMPUTE_UNITS,
     );
 
     const { balanceChange } = await solana.extractAccountBalanceChangeAndFee(
@@ -85,12 +105,15 @@ async function closePosition(
 
     return {
       signature,
-      fee,
-      positionRentRefunded: rentRefunded,
-      baseTokenAmountRemoved: 0,
-      quoteTokenAmountRemoved: 0,
-      baseFeeAmountCollected: 0,
-      quoteFeeAmountCollected: 0,
+      status: 1, // CONFIRMED
+      data: {
+        fee,
+        positionRentRefunded: rentRefunded,
+        baseTokenAmountRemoved: 0,
+        quoteTokenAmountRemoved: 0,
+        baseFeeAmountCollected: 0,
+        quoteFeeAmountCollected: 0,
+      },
     };
   } catch (error) {
     logger.error(error);
@@ -137,7 +160,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network, walletAddress, positionAddress } = request.body;
+        const { network, walletAddress, positionAddress, priorityFeePerCU, computeUnits } = request.body;
         const networkToUse = network || 'mainnet-beta';
 
         return await closePosition(
@@ -145,6 +168,8 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
           networkToUse,
           walletAddress,
           positionAddress,
+          priorityFeePerCU,
+          computeUnits,
         );
       } catch (e) {
         logger.error(e);

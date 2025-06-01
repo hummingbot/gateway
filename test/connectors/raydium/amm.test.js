@@ -57,9 +57,7 @@ function validateSwapQuote(response) {
     typeof response.baseTokenBalanceChange === 'number' &&
     typeof response.quoteTokenBalanceChange === 'number' &&
     typeof response.price === 'number' &&
-    typeof response.gasPrice === 'number' &&
-    typeof response.gasLimit === 'number' &&
-    typeof response.gasCost === 'number'
+    typeof response.computeUnits === 'number' // Updated to use computeUnits
   );
 }
 
@@ -68,11 +66,14 @@ function validateSwapExecution(response) {
   return (
     response &&
     typeof response.signature === 'string' &&
-    typeof response.totalInputSwapped === 'number' &&
-    typeof response.totalOutputSwapped === 'number' &&
-    typeof response.fee === 'number' &&
-    typeof response.baseTokenBalanceChange === 'number' &&
-    typeof response.quoteTokenBalanceChange === 'number'
+    typeof response.status === 'number' && // Added status field
+    (response.status !== 1 || // If not CONFIRMED
+      (response.data && // then data is optional
+       typeof response.data.totalInputSwapped === 'number' &&
+       typeof response.data.totalOutputSwapped === 'number' &&
+       typeof response.data.fee === 'number' &&
+       typeof response.data.baseTokenBalanceChange === 'number' &&
+       typeof response.data.quoteTokenBalanceChange === 'number'))
   );
 }
 
@@ -80,11 +81,12 @@ function validateSwapExecution(response) {
 function validateLiquidityQuote(response) {
   return (
     response &&
-    typeof response.poolAddress === 'string' &&
-    typeof response.baseTokenLiquidity === 'number' &&
-    typeof response.quoteTokenLiquidity === 'number' &&
-    typeof response.lpTokenAmount === 'number' &&
-    typeof response.shareOfPool === 'number'
+    typeof response.baseLimited === 'boolean' &&
+    typeof response.baseTokenAmount === 'number' &&
+    typeof response.quoteTokenAmount === 'number' &&
+    typeof response.baseTokenAmountMax === 'number' &&
+    typeof response.quoteTokenAmountMax === 'number' &&
+    typeof response.computeUnits === 'number' // Added computeUnits
   );
 }
 
@@ -251,6 +253,7 @@ describe('Raydium AMM Tests (Solana Mainnet)', () => {
         minAmountOut: mockSellResponse.estimatedAmountIn * 0.99, // with slippage
         baseTokenBalanceChange: 1.0, // Positive for BUY
         quoteTokenBalanceChange: -mockSellResponse.quoteTokenBalanceChange, // Negative for BUY
+        computeUnits: 200000,
       };
 
       // Setup mock axios
@@ -353,7 +356,8 @@ describe('Raydium AMM Tests (Solana Mainnet)', () => {
       // Check expected mock values
       expect(response.data.signature).toBeDefined();
       expect(response.data.signature.length).toBeGreaterThan(80); // Solana signatures are long
-      expect(response.data.fee).toBeGreaterThan(0);
+      expect(response.data.status).toBe(1); // CONFIRMED
+      expect(response.data.data.fee).toBeGreaterThan(0);
     });
 
     test('handles transaction simulation error', async () => {
@@ -397,10 +401,14 @@ describe('Raydium AMM Tests (Solana Mainnet)', () => {
     test('returns and validates liquidity quote', async () => {
       const mockResponse = {
         poolAddress: TEST_POOL,
-        baseTokenLiquidity: 1.0,
-        quoteTokenLiquidity: 167.5,
+        baseLimited: false,
+        baseTokenAmount: 1.0,
+        quoteTokenAmount: 167.5,
+        baseTokenAmountMax: 1.0,
+        quoteTokenAmountMax: 167.5,
         lpTokenAmount: 12.94,
         shareOfPool: 0.0001,
+        computeUnits: 150000,
       };
 
       // Setup mock axios

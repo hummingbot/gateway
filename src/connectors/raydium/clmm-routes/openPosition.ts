@@ -27,6 +27,8 @@ async function openPosition(
   baseTokenSymbol?: string,
   quoteTokenSymbol?: string,
   slippagePct?: number,
+  priorityFeePerCU?: number,
+  computeUnits?: number,
 ): Promise<OpenPositionResponseType> {
   const solana = await Solana.getInstance(network);
   const raydium = await Raydium.getInstance(network);
@@ -84,12 +86,19 @@ async function openPosition(
   );
 
   logger.info('Opening Raydium CLMM position...');
-  const COMPUTE_UNITS = 300000;
-  let currentPriorityFee = (await solana.estimateGas()) * 1e9 - BASE_FEE;
-  while (currentPriorityFee <= solana.config.maxPriorityFee * 1e9) {
-    const priorityFeePerCU = Math.floor(
-      (currentPriorityFee * 1e6) / COMPUTE_UNITS,
-    );
+  
+  // Use provided compute units or quote's estimate
+  const COMPUTE_UNITS = computeUnits || quotePositionResponse.computeUnits;
+  
+  // Use provided priority fee per CU or estimate default
+  let finalPriorityFeePerCU: number;
+  if (priorityFeePerCU !== undefined) {
+    finalPriorityFeePerCU = priorityFeePerCU;
+  } else {
+    // Calculate default if not provided
+    const currentPriorityFee = (await solana.estimateGas()) * 1e9 - BASE_FEE;
+    finalPriorityFeePerCU = Math.floor((currentPriorityFee * 1e6) / COMPUTE_UNITS);
+  }
     const { transaction, extInfo } =
       await raydium.raydiumSDK.clmm.openPositionFromBase({
         poolInfo,
@@ -119,7 +128,7 @@ async function openPosition(
         txVersion: TxVersion.V0,
         computeBudgetConfig: {
           units: COMPUTE_UNITS,
-          microLamports: priorityFeePerCU,
+          microLamports: finalPriorityFeePerCU,
         },
       });
 
@@ -128,7 +137,10 @@ async function openPosition(
 
     const { confirmed, signature, txData } =
       await solana.sendAndConfirmRawTransaction(transaction);
+
+    // Return with status
     if (confirmed && txData) {
+      // Transaction confirmed, return full data
       const totalFee = txData.meta.fee;
       const { balanceChange } = await solana.extractAccountBalanceChangeAndFee(
         signature,
@@ -146,22 +158,22 @@ async function openPosition(
 
       return {
         signature,
-        fee: totalFee / 1e9,
-        positionAddress: extInfo.nftMint.toBase58(),
-        positionRent,
-        baseTokenAmountAdded: baseTokenBalanceChange,
-        quoteTokenAmountAdded: quoteTokenBalanceChange,
+        status: 1, // CONFIRMED
+        data: {
+          fee: totalFee / 1e9,
+          positionAddress: extInfo.nftMint.toBase58(),
+          positionRent,
+          baseTokenAmountAdded: baseTokenBalanceChange,
+          quoteTokenAmountAdded: quoteTokenBalanceChange,
+        },
+      };
+    } else {
+      // Transaction pending, return for Hummingbot to handle retry
+      return {
+        signature,
+        status: 0, // PENDING
       };
     }
-    currentPriorityFee =
-      currentPriorityFee * solana.config.priorityFeeMultiplier;
-    logger.info(
-      `Increasing priority fee to ${currentPriorityFee} lamports/CU (max fee of ${(currentPriorityFee / 1e9).toFixed(6)} SOL)`,
-    );
-  }
-  throw new Error(
-    `Open position failed after reaching max priority fee of ${(solana.config.maxPriorityFee / 1e9).toFixed(6)} SOL`,
-  );
 }
 
 export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
@@ -224,6 +236,8 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           baseTokenAmount,
           quoteTokenAmount,
           slippagePct,
+          priorityFeePerCU,
+          computeUnits,
         } = request.body;
         const networkToUse = network || 'mainnet-beta';
 
@@ -246,6 +260,8 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           baseToken,
           quoteToken,
           slippagePct,
+          priorityFeePerCU,
+          computeUnits,
         );
       } catch (e) {
         logger.error(e);

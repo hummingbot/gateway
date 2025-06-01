@@ -26,12 +26,13 @@
       },
       "network": { "type": "string" },
       "defaultComputeUnits": { "type": "number" },
-      "basePriorityFeePct": { "type": "number" },
-      "priorityFeeMultiplier": { "type": "number" },
-      "maxPriorityFee": { "type": "number" },
-      "minPriorityFee": { "type": "number" },
-      "retryIntervalMs": { "type": "number" },
-      "retryCount": { "type": "number" }
+      "gasEstimateInterval": { "type": "number" },
+      "maxFee": { "type": "number" },
+      "minFee": { "type": "number" },
+      "retryCount": { "type": "number" },
+      "retryFeeMultiplier": { "type": "number" },
+      "retryInterval": { "type": "number" },
+      "basePriorityFeePct": { "type": "number" }
     },
     "additionalProperties": false
   }

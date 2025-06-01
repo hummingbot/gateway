@@ -79,6 +79,8 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
           network,
           walletAddress: requestedWalletAddress,
           positionAddress,
+          priorityFeePerCU,
+          computeUnits,
         } = request.body;
 
         const networkToUse = network || 'base';
@@ -173,10 +175,11 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
         );
 
         // Execute the transaction to collect fees
-        const tx = await positionManagerWithSigner.multicall([calldata], {
-          value: BigNumber.from(value.toString()),
-          gasLimit: 300000,
-        });
+        // Use Ethereum's prepareGasOptions method
+        const txParams = await ethereum.prepareGasOptions(priorityFeePerCU, computeUnits || 300000);
+        txParams.value = BigNumber.from(value.toString());
+
+        const tx = await positionManagerWithSigner.multicall([calldata], txParams);
 
         // Wait for transaction confirmation
         const receipt = await tx.wait();
@@ -207,9 +210,12 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
 
         return {
           signature: receipt.transactionHash,
-          fee: gasFee,
-          baseFeeAmountCollected,
-          quoteFeeAmountCollected,
+          status: 1, // CONFIRMED
+          data: {
+            fee: gasFee,
+            baseFeeAmountCollected,
+            quoteFeeAmountCollected,
+          },
         };
       } catch (e) {
         logger.error(e);

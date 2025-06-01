@@ -17,13 +17,10 @@ export async function estimateGasSolana(
   try {
     const solana = await Solana.getInstance(network);
     const priorityFeePerCUInLamports = await solana.estimateGasPrice();
-    
-    // Convert lamports to microlamports (1 lamport = 1,000,000 microlamports)
-    const feePerComputeUnit = Math.floor(priorityFeePerCUInLamports * 1_000_000);
 
     return {
-      feePerComputeUnit,
-      denomination: 'microlamports',
+      feePerComputeUnit: priorityFeePerCUInLamports,
+      denomination: 'lamports',
       timestamp: Date.now(),
     };
   } catch (error) {

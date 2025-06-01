@@ -71,6 +71,8 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           quoteToken,
           percentageToRemove,
           walletAddress: requestedWalletAddress,
+          priorityFeePerCU,
+          computeUnits,
         } = request.body;
 
         const networkToUse = network || 'base';
@@ -212,6 +214,9 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
 
         let tx;
 
+        // Prepare gas options
+        const gasOptions = await ethereum.prepareGasOptions(priorityFeePerCU, computeUnits || 300000);
+
         // Check if one of the tokens is WETH
         if (baseTokenObj.symbol === 'WETH') {
           // Remove liquidity WETH + Token
@@ -222,7 +227,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
             token0IsBase ? baseTokenMinAmount : quoteTokenMinAmount, // Min amount of WETH
             walletAddress,
             deadline,
-            { gasLimit: 300000 },
+            gasOptions,
           );
         } else if (quoteTokenObj.symbol === 'WETH') {
           // Remove liquidity Token + WETH
@@ -233,7 +238,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
             token0IsBase ? quoteTokenMinAmount : baseTokenMinAmount, // Min amount of WETH
             walletAddress,
             deadline,
-            { gasLimit: 300000 },
+            gasOptions,
           );
         } else {
           // Remove liquidity Token + Token
@@ -245,7 +250,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
             token0IsBase ? quoteTokenMinAmount : baseTokenMinAmount, // Min amount of token1
             walletAddress,
             deadline,
-            { gasLimit: 300000 },
+            gasOptions,
           );
         }
 
@@ -271,9 +276,12 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
 
         return {
           signature: receipt.transactionHash,
-          fee: gasFee,
-          baseTokenAmountRemoved,
-          quoteTokenAmountRemoved,
+          status: 1, // CONFIRMED
+          data: {
+            fee: gasFee,
+            baseTokenAmountRemoved,
+            quoteTokenAmountRemoved,
+          },
         };
       } catch (e) {
         logger.error(e);

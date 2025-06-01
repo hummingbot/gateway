@@ -21,6 +21,8 @@ async function executeJupiterSwap(
   amount: number,
   side: 'BUY' | 'SELL',
   slippagePct?: number,
+  priorityFeePerCU?: number,
+  computeUnits?: number,
 ): Promise<ExecuteSwapResponseType> {
   const solana = await Solana.getInstance(network);
   const jupiter = await Jupiter.getInstance(network);
@@ -50,30 +52,46 @@ async function executeJupiterSwap(
       tradeSide === 'BUY' ? 'ExactOut' : 'ExactIn',
     );
 
-    const { signature, feeInLamports } = await jupiter.executeSwap(
+    const swapResult = await jupiter.executeSwap(
       wallet,
       quote,
+      priorityFeePerCU,
+      computeUnits,
     );
-    const { baseTokenBalanceChange, quoteTokenBalanceChange } =
-      await solana.extractPairBalanceChangesAndFee(
-        signature,
-        baseTokenInfo,
-        quoteTokenInfo,
-        wallet.publicKey.toBase58(),
-      );
 
-    return {
-      signature,
-      totalInputSwapped: Math.abs(
-        side === 'SELL' ? baseTokenBalanceChange : quoteTokenBalanceChange,
-      ),
-      totalOutputSwapped: Math.abs(
-        side === 'SELL' ? quoteTokenBalanceChange : baseTokenBalanceChange,
-      ),
-      fee: feeInLamports / 1e9,
-      baseTokenBalanceChange: baseTokenBalanceChange,
-      quoteTokenBalanceChange: quoteTokenBalanceChange,
-    };
+    // Return with status
+    if (swapResult.confirmed && swapResult.txData) {
+      // Transaction confirmed, extract balance changes
+      const { baseTokenBalanceChange, quoteTokenBalanceChange } =
+        await solana.extractPairBalanceChangesAndFee(
+          swapResult.signature,
+          baseTokenInfo,
+          quoteTokenInfo,
+          wallet.publicKey.toBase58(),
+        );
+
+      return {
+        signature: swapResult.signature,
+        status: 1, // CONFIRMED
+        data: {
+          totalInputSwapped: Math.abs(
+            side === 'SELL' ? baseTokenBalanceChange : quoteTokenBalanceChange,
+          ),
+          totalOutputSwapped: Math.abs(
+            side === 'SELL' ? quoteTokenBalanceChange : baseTokenBalanceChange,
+          ),
+          fee: swapResult.feeInLamports / 1e9,
+          baseTokenBalanceChange: baseTokenBalanceChange,
+          quoteTokenBalanceChange: quoteTokenBalanceChange,
+        },
+      };
+    } else {
+      // Transaction pending, return for Hummingbot to handle retry
+      return {
+        signature: swapResult.signature,
+        status: 0, // PENDING
+      };
+    }
   } catch (error: any) {
     logger.error(`Jupiter swap error: ${error.message || error}`);
 
@@ -144,6 +162,8 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         amount,
         side,
         slippagePct,
+        priorityFeePerCU,
+        computeUnits,
       } = request.body;
 
       // Verify we have the needed parameters
@@ -167,6 +187,8 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         amount,
         side as 'BUY' | 'SELL',
         slippagePct,
+        priorityFeePerCU,
+        computeUnits,
       );
     },
   );

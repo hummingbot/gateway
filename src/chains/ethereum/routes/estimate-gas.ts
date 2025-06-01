@@ -20,12 +20,9 @@ export async function estimateGasEthereum(
     // Get gas price in GWEI
     const gasPrice = await ethereum.estimateGasPrice();
 
-    // Convert GWEI to Wei (1 GWEI = 1e9 Wei)
-    const feePerComputeUnit = Math.floor(gasPrice * 1e9);
-
     return {
-      feePerComputeUnit,
-      denomination: 'wei',
+      feePerComputeUnit: gasPrice,
+      denomination: 'gwei',
       timestamp: Date.now(),
     };
   } catch (error) {

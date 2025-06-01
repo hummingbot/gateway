@@ -3,7 +3,7 @@ import BN from 'bn.js';
 import Decimal from 'decimal.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
-import { Solana, BASE_FEE } from '../../../chains/solana/solana';
+import { Solana } from '../../../chains/solana/solana';
 import {
   RemoveLiquidityRequest,
   RemoveLiquidityResponse,
@@ -20,6 +20,8 @@ export async function removeLiquidity(
   positionAddress: string,
   percentageToRemove: number,
   closePosition: boolean = false,
+  priorityFeePerCU?: number,
+  computeUnits?: number,
 ): Promise<RemoveLiquidityResponseType> {
   const solana = await Solana.getInstance(network);
   const raydium = await Raydium.getInstance(network);
@@ -46,12 +48,12 @@ export async function removeLiquidity(
   logger.info(
     `Removing ${percentageToRemove.toFixed(4)}% liquidity from position ${positionAddress}`,
   );
-  const COMPUTE_UNITS = 600000;
-  let currentPriorityFee = (await solana.estimateGas()) * 1e9 - BASE_FEE;
-  while (currentPriorityFee <= solana.config.maxPriorityFee * 1e9) {
-    const priorityFeePerCU = Math.floor(
-      (currentPriorityFee * 1e6) / COMPUTE_UNITS,
-    );
+  
+  // Use provided compute units or default
+  const COMPUTE_UNITS = computeUnits || 600000;
+  
+  // Use provided priority fee or default to 0
+  const finalPriorityFeePerCU = priorityFeePerCU || 0;
     const { transaction } = await raydium.raydiumSDK.clmm.decreaseLiquidity({
       poolInfo,
       poolKeys,
@@ -66,7 +68,7 @@ export async function removeLiquidity(
       txVersion: TxVersion.V0,
       computeBudgetConfig: {
         units: COMPUTE_UNITS,
-        microLamports: priorityFeePerCU,
+        microLamports: finalPriorityFeePerCU,
       },
     });
 
@@ -75,7 +77,10 @@ export async function removeLiquidity(
 
     const { confirmed, signature, txData } =
       await solana.sendAndConfirmRawTransaction(transaction);
+
+    // Return with status
     if (confirmed && txData) {
+      // Transaction confirmed, return full data
       const { baseTokenBalanceChange, quoteTokenBalanceChange } =
         await solana.extractPairBalanceChangesAndFee(
           signature,
@@ -91,20 +96,20 @@ export async function removeLiquidity(
       const totalFee = txData.meta.fee;
       return {
         signature,
-        fee: totalFee / 1e9,
-        baseTokenAmountRemoved: 0,
-        quoteTokenAmountRemoved: 0,
+        status: 1, // CONFIRMED
+        data: {
+          fee: totalFee / 1e9,
+          baseTokenAmountRemoved: Math.abs(baseTokenBalanceChange),
+          quoteTokenAmountRemoved: Math.abs(quoteTokenBalanceChange),
+        },
+      };
+    } else {
+      // Transaction pending, return for Hummingbot to handle retry
+      return {
+        signature,
+        status: 0, // PENDING
       };
     }
-    currentPriorityFee =
-      currentPriorityFee * solana.config.priorityFeeMultiplier;
-    logger.info(
-      `Increasing max priority fee to ${(currentPriorityFee / 1e9).toFixed(6)} SOL`,
-    );
-  }
-  throw new Error(
-    `Remove liquidity failed after reaching max priority fee of ${(solana.config.maxPriorityFee / 1e9).toFixed(6)} SOL`,
-  );
 }
 
 export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
@@ -131,7 +136,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network, walletAddress, positionAddress, percentageToRemove } =
+        const { network, walletAddress, positionAddress, percentageToRemove, priorityFeePerCU, computeUnits } =
           request.body;
 
         return await removeLiquidity(
@@ -140,6 +145,9 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           walletAddress,
           positionAddress,
           percentageToRemove,
+          false,
+          priorityFeePerCU,
+          computeUnits,
         );
       } catch (e) {
         logger.error(e);

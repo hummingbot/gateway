@@ -198,6 +198,7 @@ export async function quotePosition(
         Number(res.amountSlippageB.amount.toString()) /
         10 ** poolInfo.mintB.decimals,
       liquidity: res.liquidity,
+      computeUnits: 500000, // Standard compute units for CLMM position operations
     };
   } catch (error) {
     logger.error(error);

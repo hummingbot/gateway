@@ -667,7 +667,7 @@ export class Solana {
           `Failed to fetch priority fees, using minimum fee: ${response.status}`,
         );
         return (
-          (this.config.minPriorityFee * 1_000_000) /
+          (this.config.minFee * 1_000_000) /
           this.config.defaultComputeUnits
         );
       }
@@ -680,7 +680,7 @@ export class Solana {
         .filter((fee) => fee > 0);
 
       const minimumFeeLamports =
-        (this.config.minPriorityFee * 1e9) / this.config.defaultComputeUnits;
+        (this.config.minFee * 1e9) / this.config.defaultComputeUnits;
       console.log('minimumFeeLamports', minimumFeeLamports);
       if (fees.length === 0) {
         return minimumFeeLamports;
@@ -782,85 +782,48 @@ export class Solana {
     tx: Transaction | VersionedTransaction,
     signers: Signer[] = [],
     computeUnits?: number,
+    priorityFeePerCU?: number,
   ): Promise<{ signature: string; fee: number }> {
-    let currentPriorityFee = await this.estimateGasPrice();
+    // Use provided priority fee or estimate it
+    const currentPriorityFee = priorityFeePerCU ?? await this.estimateGasPrice();
     const computeUnitsToUse = computeUnits || this.config.defaultComputeUnits;
 
-    while (true) {
-      const basePriorityFeeLamports = currentPriorityFee * computeUnitsToUse;
-      logger.info(
-        `Sending transaction with ${currentPriorityFee} lamports/CU priority fee and max priority fee of ${(basePriorityFeeLamports * LAMPORT_TO_SOL).toFixed(6)} SOL`,
+    const basePriorityFeeLamports = currentPriorityFee * computeUnitsToUse;
+    logger.info(
+      `Sending transaction with ${currentPriorityFee} lamports/CU priority fee and total priority fee of ${(basePriorityFeeLamports * LAMPORT_TO_SOL).toFixed(6)} SOL`,
+    );
+
+    // Prepare transaction with compute budget
+    if (tx instanceof Transaction) {
+      tx = await this.prepareTx(
+        tx,
+        currentPriorityFee,
+        computeUnitsToUse,
+        signers,
       );
-
-      // Check if we've exceeded max fee (convert maxPriorityFee from SOL to lamports)
-      if (basePriorityFeeLamports > this.config.maxPriorityFee * 1e9) {
-        throw new Error(
-          `Exceeded maximum priority fee of ${this.config.maxPriorityFee} SOL`,
-        );
-      }
-
-      if (tx instanceof Transaction) {
-        tx = await this.prepareTx(
-          tx,
-          currentPriorityFee,
-          computeUnitsToUse,
-          signers,
-        );
-      } else {
-        tx = await this.prepareVersionedTx(
-          tx,
-          currentPriorityFee,
-          computeUnitsToUse,
-          signers,
-        );
-        await this.connection.simulateTransaction(tx);
-      }
-
-      let retryCount = 0;
-      while (retryCount < this.config.retryCount) {
-        try {
-          const signature = await this.sendRawTransaction(
-            'message' in tx ? tx.serialize() : tx.serialize(),
-            'lastValidBlockHeight' in tx ? tx.lastValidBlockHeight : undefined,
-          );
-
-          const confirmationResult = await this.confirmTransaction(signature);
-          logger.info(
-            `[${retryCount + 1}/${this.config.retryCount}] Transaction ${signature} confirmation status: ${confirmationResult.confirmed ? 'confirmed' : 'unconfirmed'}`,
-          );
-          if (confirmationResult.confirmed && confirmationResult.txData) {
-            const actualFee = this.getFee(confirmationResult.txData);
-            logger.info(
-              `Transaction ${signature} confirmed with total fee: ${actualFee.toFixed(6)} SOL`,
-            );
-            return { signature, fee: actualFee };
-          }
-
-          retryCount++;
-          await new Promise((resolve) =>
-            setTimeout(resolve, this.config.retryIntervalMs),
-          );
-        } catch (error) {
-          // Only retry if error is not a definitive failure
-          if (error.message.includes('Transaction failed')) {
-            throw error;
-          }
-          retryCount++;
-          await new Promise((resolve) =>
-            setTimeout(resolve, this.config.retryIntervalMs),
-          );
-        }
-      }
-
-      // If we get here, transaction wasn't confirmed after RETRY_COUNT attempts
-      // Increase the priority fee and try again
-      currentPriorityFee = Math.floor(
-        currentPriorityFee * this.config.priorityFeeMultiplier,
+    } else {
+      tx = await this.prepareVersionedTx(
+        tx,
+        currentPriorityFee,
+        computeUnitsToUse,
+        signers,
       );
-      logger.info(
-        `Increasing priority fee to ${currentPriorityFee} lamports/CU (max fee of ${(currentPriorityFee * computeUnitsToUse * LAMPORT_TO_SOL).toFixed(6)} SOL`,
-      );
+      await this.connection.simulateTransaction(tx);
     }
+
+    // Use the confirmation retry logic from sendAndConfirmRawTransaction
+    const serializedTx = tx.serialize();
+    const { confirmed, signature, txData } = await this._sendAndConfirmRawTransaction(serializedTx);
+    
+    if (confirmed && txData) {
+      const actualFee = this.getFee(txData);
+      logger.info(
+        `Transaction ${signature} confirmed with total fee: ${actualFee.toFixed(6)} SOL`,
+      );
+      return { signature, fee: actualFee };
+    }
+    
+    throw new Error(`Transaction failed to confirm after ${this.config.retryCount} attempts`);
   }
 
   private async prepareTx(
@@ -1077,7 +1040,7 @@ export class Solana {
       }
       retryCount++;
       await new Promise((resolve) =>
-        setTimeout(resolve, this.config.retryIntervalMs),
+        setTimeout(resolve, this.config.retryInterval * 1000),
       );
     }
     return { confirmed: false, signature: '', txData: null };
@@ -1120,7 +1083,7 @@ export class Solana {
           if (!signatures.every((sig) => sig === signatures[0])) {
             retryCount++;
             await new Promise((resolve) =>
-              setTimeout(resolve, this.config.retryIntervalMs),
+              setTimeout(resolve, this.config.retryInterval * 1000),
             );
             continue;
           }
@@ -1130,12 +1093,12 @@ export class Solana {
 
         retryCount++;
         await new Promise((resolve) =>
-          setTimeout(resolve, this.config.retryIntervalMs),
+          setTimeout(resolve, this.config.retryInterval * 1000),
         );
       } catch (error) {
         retryCount++;
         await new Promise((resolve) =>
-          setTimeout(resolve, this.config.retryIntervalMs),
+          setTimeout(resolve, this.config.retryInterval * 1000),
         );
       }
     }
@@ -1405,9 +1368,9 @@ export class Solana {
       );
 
       // Check if we've exceeded max fee (convert maxPriorityFee from SOL to lamports)
-      if (basePriorityFeeLamports > this.config.maxPriorityFee * 1e9) {
+      if (basePriorityFeeLamports > this.config.maxFee * 1e9) {
         throw new Error(
-          `Exceeded maximum priority fee of ${this.config.maxPriorityFee} SOL`,
+          `Exceeded maximum priority fee of ${this.config.maxFee} SOL`,
         );
       }
 
@@ -1444,7 +1407,7 @@ export class Solana {
 
           retryCount++;
           await new Promise((resolve) =>
-            setTimeout(resolve, this.config.retryIntervalMs),
+            setTimeout(resolve, this.config.retryInterval * 1000),
           );
         } catch (error) {
           // Only retry if error is not a definitive failure
@@ -1453,7 +1416,7 @@ export class Solana {
           }
           retryCount++;
           await new Promise((resolve) =>
-            setTimeout(resolve, this.config.retryIntervalMs),
+            setTimeout(resolve, this.config.retryInterval * 1000),
           );
         }
       }
@@ -1461,7 +1424,7 @@ export class Solana {
       // If we get here, transaction wasn't confirmed after RETRY_COUNT attempts
       // Increase the priority fee and try again
       currentPriorityFee = Math.floor(
-        currentPriorityFee * this.config.priorityFeeMultiplier,
+        currentPriorityFee * this.config.retryFeeMultiplier,
       );
       logger.info(
         `Increasing priority fee to ${currentPriorityFee} lamports/CU (max fee of ${(currentPriorityFee * computeUnitsToUse * LAMPORT_TO_SOL).toFixed(6)} SOL`,

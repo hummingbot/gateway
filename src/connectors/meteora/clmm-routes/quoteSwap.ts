@@ -132,9 +132,7 @@ async function formatSwapQuote(
       baseTokenBalanceChange: amountOut,
       quoteTokenBalanceChange: -estimatedAmountIn,
       price,
-      gasPrice: 0,
-      gasLimit: 0,
-      gasCost: 0,
+      computeUnits: 0,
     };
   } else {
     const exactInQuote = quote as SwapQuote;
@@ -168,9 +166,7 @@ async function formatSwapQuote(
       baseTokenBalanceChange: baseTokenChange,
       quoteTokenBalanceChange: quoteTokenChange,
       price,
-      gasPrice: 0,
-      gasLimit: 0,
-      gasCost: 0,
+      computeUnits: 0,
     };
   }
 }
@@ -240,9 +236,12 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           slippagePct,
         );
 
-        let gasEstimation = null;
+        let computeUnits = 150000; // Default compute units for Meteora swaps
         try {
-          gasEstimation = await estimateGasSolana(fastify, networkUsed);
+          // Note: estimateGasSolana returns feePerComputeUnit, not gasLimit
+          // For Solana, we use a default compute units value for swaps
+          await estimateGasSolana(fastify, networkUsed);
+          // Keep the default compute units value
         } catch (error) {
           logger.warn(
             `Failed to estimate gas for swap quote: ${error.message}`,
@@ -251,9 +250,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
 
         return {
           ...result,
-          gasPrice: gasEstimation?.gasPrice,
-          gasLimit: gasEstimation?.gasLimit,
-          gasCost: gasEstimation?.gasCost,
+          computeUnits,
         };
       } catch (e) {
         logger.error(e);

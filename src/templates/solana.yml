@@ -10,23 +10,26 @@ networks:
     tokenListSource: /home/gateway/conf/lists/solana-devnet.json
     nativeCurrencySymbol: SOL
 
-# Default compute units for a transaction used to estimate gasPrice
+# Default compute units for a transaction
 defaultComputeUnits: 200000
+
+# Gas estimate interval in seconds
+gasEstimateInterval: 60
+
+# Maximum fee in SOL (now controlled by Hummingbot)
+maxFee: 0.01
+
+# Minimum fee in SOL (now controlled by Hummingbot)
+minFee: 0.0001
+
+# Number of retry attempts for transaction confirmation
+retryCount: 3
+
+# Multiplier for increasing priority fee on retry (now controlled by Hummingbot)
+retryFeeMultiplier: 2.0
+
+# Retry interval in seconds
+retryInterval: 2
 
 # Floor percentile of recent priority fee samples used to estimate gasPrice for a transaction
 basePriorityFeePct: 90
-
-# Multiplier for increasing priority fee on retry
-priorityFeeMultiplier: 2
-
-# Maximum priority fee in SOL
-maxPriorityFee: 0.01
-
-# Minimum priority fee in SOL
-minPriorityFee: 0.0001
-
-# Retry interval in milliseconds
-retryIntervalMs: 500
-
-# Number of retry attempts
-retryCount: 10

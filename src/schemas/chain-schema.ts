@@ -1,5 +1,12 @@
 import { Type, Static } from '@sinclair/typebox';
 
+// Transaction status enum
+export enum TransactionStatus {
+  PENDING = 0,
+  CONFIRMED = 1,
+  FAILED = -1
+}
+
 export const EstimateGasRequestSchema = Type.Object(
   {
     network: Type.String(),
@@ -12,7 +19,7 @@ export type EstimateGasRequestType = Static<typeof EstimateGasRequestSchema>;
 export const EstimateGasResponseSchema = Type.Object(
   {
     feePerComputeUnit: Type.Number(), // Fee per compute unit
-    denomination: Type.String(),      // Denomination: "microlamports" or "wei"
+    denomination: Type.String(),      // Denomination: "lamports" or "gwei"
     timestamp: Type.Number(),         // Unix timestamp when estimate was made
   },
   { $id: 'EstimateGasResponse' },
@@ -183,12 +190,17 @@ export const CustomTransactionSchema = Type.Object(
 
 export const ApproveResponseSchema = Type.Object(
   {
-    tokenAddress: Type.String(),
-    spender: Type.String(),
-    amount: Type.String(),
-    nonce: Type.Number(),
     signature: Type.String(),
-    approval: CustomTransactionSchema,
+    status: Type.Number({ description: 'TransactionStatus enum value' }),
+    
+    // Only included when status = CONFIRMED
+    data: Type.Optional(Type.Object({
+      tokenAddress: Type.String(),
+      spender: Type.String(),
+      amount: Type.String(),
+      nonce: Type.Number(),
+      fee: Type.String(),
+    })),
   },
   { $id: 'ApproveResponse' },
 );
@@ -207,14 +219,18 @@ export type WrapRequestType = Static<typeof WrapRequestSchema>;
 
 export const WrapResponseSchema = Type.Object(
   {
-    nonce: Type.Number(),
     signature: Type.String(),
-    fee: Type.String(),
-    amount: Type.String(),
-    wrappedAddress: Type.String(),
-    nativeToken: Type.String(),
-    wrappedToken: Type.String(),
-    tx: CustomTransactionSchema,
+    status: Type.Number({ description: 'TransactionStatus enum value' }),
+    
+    // Only included when status = CONFIRMED
+    data: Type.Optional(Type.Object({
+      nonce: Type.Number(),
+      fee: Type.String(),
+      amount: Type.String(),
+      wrappedAddress: Type.String(),
+      nativeToken: Type.String(),
+      wrappedToken: Type.String(),
+    })),
   },
   { $id: 'WrapResponse' },
 );

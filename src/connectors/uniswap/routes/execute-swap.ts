@@ -7,6 +7,7 @@ import {
   ExecuteSwapRequestType,
   ExecuteSwapResponseType,
   ExecuteSwapResponse,
+  ExecuteSwapRequest,
 } from '../../../schemas/swap-schema';
 import { logger } from '../../../services/logger';
 import { formatTokenAmount } from '../uniswap.utils';
@@ -51,8 +52,9 @@ export const executeSwapRoute: FastifyPluginAsync = async (
           'Execute a swap using Uniswap V3 Smart Order Router (mainnet only)',
         tags: ['uniswap'],
         body: {
-          type: 'object',
+          ...ExecuteSwapRequest,
           properties: {
+            ...ExecuteSwapRequest.properties,
             network: { type: 'string', default: 'mainnet', enum: ['mainnet'] },
             walletAddress: { type: 'string', examples: [firstWalletAddress] },
             baseToken: { type: 'string', examples: ['WETH'] },
@@ -61,13 +63,6 @@ export const executeSwapRoute: FastifyPluginAsync = async (
             side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
             slippagePct: { type: 'number', examples: [0.5] },
           },
-          required: [
-            'walletAddress',
-            'baseToken',
-            'quoteToken',
-            'amount',
-            'side',
-          ],
         },
         response: {
           200: ExecuteSwapResponse,
@@ -88,6 +83,8 @@ export const executeSwapRoute: FastifyPluginAsync = async (
           amount,
           side,
           slippagePct,
+          priorityFeePerCU,
+          computeUnits,
         } = request.body;
 
         const networkToUse = network || 'mainnet';
@@ -211,15 +208,28 @@ export const executeSwapRoute: FastifyPluginAsync = async (
           wallet,
         );
 
-        // Prepare transaction with gas settings from quote
-        const txOptions = {
+        // Prepare transaction with gas settings
+        const gasLimit = computeUnits || quoteResult.gasLimit || 350000;
+        
+        let txOptions: any = {
           value: methodParameters.value === '0x' ? '0' : methodParameters.value,
-          gasLimit: quoteResult.gasLimit || 350000, // Use estimated gas from quote
-          gasPrice: ethers.utils.parseUnits(
+          gasLimit,
+        };
+        
+        if (priorityFeePerCU !== undefined) {
+          // Convert from Gwei to Wei (1 Gwei = 1e9 Wei)
+          const gasPriceWei = BigNumber.from(priorityFeePerCU).mul(1e9);
+          txOptions.gasPrice = gasPriceWei;
+          logger.info(`Using custom gas price: ${priorityFeePerCU} Gwei`);
+        } else {
+          // Use gas price from quote
+          txOptions.gasPrice = ethers.utils.parseUnits(
             quoteResult.gasPrice.toString(),
             'gwei',
-          ), // Convert the gas price from quote to wei
-        };
+          );
+        }
+        
+        logger.info(`Using gas limit: ${gasLimit}`);
 
         // Execute the swap using the multicall function
         logger.info(`Executing swap via multicall to router: ${routerAddress}`);
@@ -285,11 +295,14 @@ export const executeSwapRoute: FastifyPluginAsync = async (
 
         return {
           signature: receipt.transactionHash,
-          totalInputSwapped,
-          totalOutputSwapped,
-          fee: gasFee,
-          baseTokenBalanceChange,
-          quoteTokenBalanceChange,
+          status: 1, // CONFIRMED
+          data: {
+            totalInputSwapped,
+            totalOutputSwapped,
+            fee: gasFee,
+            baseTokenBalanceChange,
+            quoteTokenBalanceChange,
+          },
         };
       } catch (e) {
         logger.error(`Execute swap error: ${e.message}`);

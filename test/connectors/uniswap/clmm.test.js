@@ -57,7 +57,97 @@ function validateSwapQuote(response) {
     typeof response.maxAmountIn === 'number' &&
     typeof response.baseTokenBalanceChange === 'number' &&
     typeof response.quoteTokenBalanceChange === 'number' &&
-    typeof response.price === 'number'
+    typeof response.price === 'number' &&
+    typeof response.computeUnits === 'number' // Added computeUnits
+  );
+}
+
+// Function to validate position info response structure
+function validatePositionInfo(response) {
+  return (
+    response &&
+    typeof response.poolAddress === 'string' &&
+    typeof response.positionId === 'string' &&
+    typeof response.lowerTick === 'number' &&
+    typeof response.upperTick === 'number' &&
+    typeof response.liquidity === 'string' &&
+    typeof response.baseTokenAmount === 'number' &&
+    typeof response.quoteTokenAmount === 'number' &&
+    typeof response.unclaimedFeeBaseAmount === 'number' &&
+    typeof response.unclaimedFeeQuoteAmount === 'number'
+  );
+}
+
+// Function to validate quote position response
+function validateQuotePosition(response) {
+  return (
+    response &&
+    typeof response.baseLimited === 'boolean' &&
+    typeof response.baseTokenAmount === 'number' &&
+    typeof response.quoteTokenAmount === 'number' &&
+    typeof response.baseTokenAmountMax === 'number' &&
+    typeof response.quoteTokenAmountMax === 'number' &&
+    response.liquidity !== undefined && // Can be string or object
+    typeof response.computeUnits === 'number' // Added computeUnits
+  );
+}
+
+// Function to validate open position response
+function validateOpenPosition(response) {
+  return (
+    response &&
+    typeof response.signature === 'string' &&
+    typeof response.status === 'number' &&
+    (response.status !== 1 || // If not CONFIRMED
+      (response.data &&
+       typeof response.data.fee === 'number' &&
+       typeof response.data.positionId === 'string' &&
+       typeof response.data.baseTokenAmountAdded === 'number' &&
+       typeof response.data.quoteTokenAmountAdded === 'number'))
+  );
+}
+
+// Function to validate add liquidity response
+function validateAddLiquidity(response) {
+  return (
+    response &&
+    typeof response.signature === 'string' &&
+    typeof response.status === 'number' &&
+    (response.status !== 1 || // If not CONFIRMED
+      (response.data &&
+       typeof response.data.fee === 'number' &&
+       typeof response.data.baseTokenAmountAdded === 'number' &&
+       typeof response.data.quoteTokenAmountAdded === 'number'))
+  );
+}
+
+// Function to validate remove liquidity response
+function validateRemoveLiquidity(response) {
+  return (
+    response &&
+    typeof response.signature === 'string' &&
+    typeof response.status === 'number' &&
+    (response.status !== 1 || // If not CONFIRMED
+      (response.data &&
+       typeof response.data.fee === 'number' &&
+       typeof response.data.baseTokenAmountRemoved === 'number' &&
+       typeof response.data.quoteTokenAmountRemoved === 'number'))
+  );
+}
+
+// Function to validate close position response
+function validateClosePosition(response) {
+  return (
+    response &&
+    typeof response.signature === 'string' &&
+    typeof response.status === 'number' &&
+    (response.status !== 1 || // If not CONFIRMED
+      (response.data &&
+       typeof response.data.fee === 'number' &&
+       typeof response.data.baseTokenAmountRemoved === 'number' &&
+       typeof response.data.quoteTokenAmountRemoved === 'number' &&
+       typeof response.data.baseFeeAmountCollected === 'number' &&
+       typeof response.data.quoteFeeAmountCollected === 'number'))
   );
 }
 
@@ -209,6 +299,7 @@ describe('Uniswap CLMM Tests (Base Network)', () => {
         quoteTokenBalanceChange: -mockSellResponse.quoteTokenBalanceChange, // Negative for BUY
         // For BUY: price = quote needed / base received
         price: mockSellResponse.estimatedAmountOut / mockSellResponse.estimatedAmountIn,
+        computeUnits: 180000,
       };
 
       // Setup mock axios

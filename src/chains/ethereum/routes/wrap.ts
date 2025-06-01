@@ -5,6 +5,7 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import {
   WrapRequestType,
   WrapResponseType,
+  WrapResponseSchema,
 } from '../../../schemas/chain-schema';
 import { bigNumberWithDecimalToStr } from '../../../services/base';
 import { logger } from '../../../services/logger';
@@ -165,14 +166,16 @@ export async function wrapEthereum(
     const fee = transaction.gasLimit.mul(gasPrice);
 
     return {
-      nonce: transaction.nonce,
       signature: transaction.hash,
-      fee: bigNumberWithDecimalToStr(fee, 18),
-      amount: bigNumberWithDecimalToStr(amountInWei, 18),
-      wrappedAddress: wrappedInfo.address,
-      nativeToken: wrappedInfo.nativeSymbol,
-      wrappedToken: wrappedInfo.symbol,
-      tx: toEthereumTransaction(transaction),
+      status: 1, // CONFIRMED
+      data: {
+        nonce: transaction.nonce,
+        fee: bigNumberWithDecimalToStr(fee, 18),
+        amount: bigNumberWithDecimalToStr(amountInWei, 18),
+        wrappedAddress: wrappedInfo.address,
+        nativeToken: wrappedInfo.nativeSymbol,
+        wrappedToken: wrappedInfo.symbol,
+      },
     };
   } catch (error) {
     logger.error(
@@ -239,23 +242,7 @@ export const wrapRoute: FastifyPluginAsync = async (fastify) => {
           }),
         }),
         response: {
-          200: Type.Object({
-            nonce: Type.Number(),
-            signature: Type.String(),
-            fee: Type.String(),
-            amount: Type.String(),
-            wrappedAddress: Type.String(),
-            nativeToken: Type.String(),
-            wrappedToken: Type.String(),
-            tx: Type.Object({
-              data: Type.String(),
-              to: Type.String(),
-              maxPriorityFeePerGas: Type.Union([Type.String(), Type.Null()]),
-              maxFeePerGas: Type.Union([Type.String(), Type.Null()]),
-              gasLimit: Type.Union([Type.String(), Type.Null()]),
-              value: Type.String(),
-            }),
-          }),
+          200: WrapResponseSchema,
         },
       },
     },

@@ -31,6 +31,8 @@ async function addLiquidity(
   baseTokenAmount: number,
   quoteTokenAmount: number,
   slippagePct?: number,
+  priorityFeePerCU?: number,
+  computeUnits?: number,
 ): Promise<AddLiquidityResponseType> {
   const networkToUse = network || 'base';
 
@@ -209,6 +211,9 @@ async function addLiquidity(
     }
 
     // Add liquidity Token + ETH
+    const gasOptions = await ethereum.prepareGasOptions(priorityFeePerCU, computeUnits);
+    gasOptions.value = quote.rawQuoteTokenAmount;
+
     tx = await router.addLiquidityETH(
       quote.baseTokenObj.address,
       quote.rawBaseTokenAmount,
@@ -216,10 +221,7 @@ async function addLiquidity(
       quoteTokenMinAmount,
       walletAddress,
       deadline,
-      {
-        value: quote.rawQuoteTokenAmount,
-        gasLimit: 300000,
-      },
+      gasOptions,
     );
   } else {
     // Both tokens are ERC20 - check allowances for both
@@ -275,6 +277,8 @@ async function addLiquidity(
     }
 
     // Add liquidity Token + Token
+    const gasOptions = await ethereum.prepareGasOptions(priorityFeePerCU, computeUnits);
+
     tx = await router.addLiquidity(
       quote.baseTokenObj.address,
       quote.quoteTokenObj.address,
@@ -284,7 +288,7 @@ async function addLiquidity(
       quoteTokenMinAmount,
       walletAddress,
       deadline,
-      { gasLimit: 300000 },
+      gasOptions,
     );
   }
 
@@ -299,11 +303,14 @@ async function addLiquidity(
 
   return {
     signature: receipt.transactionHash,
-    fee: gasFee,
-    baseTokenAmountAdded: quote.baseTokenAmount,
-    quoteTokenAmountAdded: quote.quoteTokenAmount,
-    ...(baseWrapTxHash && { baseWrapTxHash }),
-    ...(quoteWrapTxHash && { quoteWrapTxHash }),
+    status: 1, // CONFIRMED
+    data: {
+      fee: gasFee,
+      baseTokenAmountAdded: quote.baseTokenAmount,
+      quoteTokenAmountAdded: quote.quoteTokenAmount,
+      ...(baseWrapTxHash && { baseWrapTxHash }),
+      ...(quoteWrapTxHash && { quoteWrapTxHash }),
+    },
   };
 }
 
@@ -363,6 +370,8 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           quoteTokenAmount,
           slippagePct,
           walletAddress: requestedWalletAddress,
+          priorityFeePerCU,
+          computeUnits,
         } = request.body;
 
         // Validate essential parameters
@@ -417,6 +426,8 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           baseTokenAmount,
           quoteTokenAmount,
           slippagePct,
+          priorityFeePerCU,
+          computeUnits,
         );
       } catch (e) {
         logger.error(e);

@@ -1,4 +1,5 @@
 import { Type, Static } from '@sinclair/typebox';
+import { TransactionStatus } from './chain-schema';
 
 export const FetchPoolsRequest = Type.Object(
   {
@@ -108,19 +109,32 @@ export const OpenPositionRequest = Type.Object(
     baseTokenAmount: Type.Optional(Type.Number()),
     quoteTokenAmount: Type.Optional(Type.Number()),
     slippagePct: Type.Optional(Type.Number({ minimum: 0, maximum: 100 })),
+    // New optional fee parameters
+    priorityFeePerCU: Type.Optional(Type.Number({
+      description: 'Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)'
+    })),
+    computeUnits: Type.Optional(Type.Number({
+      description: 'Compute units for transaction'
+    })),
   },
   { $id: 'OpenPositionRequest' },
 );
 export type OpenPositionRequestType = Static<typeof OpenPositionRequest>;
 
+
 export const OpenPositionResponse = Type.Object(
   {
     signature: Type.String(),
-    fee: Type.Number(),
-    positionAddress: Type.String(),
-    positionRent: Type.Number(),
-    baseTokenAmountAdded: Type.Number(),
-    quoteTokenAmountAdded: Type.Number(),
+    status: Type.Number({ description: 'TransactionStatus enum value' }),
+    
+    // Only included when status = CONFIRMED
+    data: Type.Optional(Type.Object({
+      fee: Type.Number(),
+      positionAddress: Type.String(),
+      positionRent: Type.Number(),
+      baseTokenAmountAdded: Type.Number(),
+      quoteTokenAmountAdded: Type.Number(),
+    })),
   },
   { $id: 'OpenPositionResponse' },
 );
@@ -134,6 +148,13 @@ export const AddLiquidityRequest = Type.Object(
     baseTokenAmount: Type.Number(),
     quoteTokenAmount: Type.Number(),
     slippagePct: Type.Optional(Type.Number({ minimum: 0, maximum: 100 })),
+    // New optional fee parameters
+    priorityFeePerCU: Type.Optional(Type.Number({
+      description: 'Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)'
+    })),
+    computeUnits: Type.Optional(Type.Number({
+      description: 'Compute units for transaction'
+    })),
   },
   { $id: 'AddLiquidityRequest' },
 );
@@ -142,9 +163,14 @@ export type AddLiquidityRequestType = Static<typeof AddLiquidityRequest>;
 export const AddLiquidityResponse = Type.Object(
   {
     signature: Type.String(),
-    fee: Type.Number(),
-    baseTokenAmountAdded: Type.Number(),
-    quoteTokenAmountAdded: Type.Number(),
+    status: Type.Number({ description: 'TransactionStatus enum value' }),
+    
+    // Only included when status = CONFIRMED
+    data: Type.Optional(Type.Object({
+      fee: Type.Number(),
+      baseTokenAmountAdded: Type.Number(),
+      quoteTokenAmountAdded: Type.Number(),
+    })),
   },
   { $id: 'AddLiquidityResponse' },
 );
@@ -156,6 +182,13 @@ export const RemoveLiquidityRequest = Type.Object(
     walletAddress: Type.String(),
     positionAddress: Type.String(),
     percentageToRemove: Type.Number({ minimum: 0, maximum: 100 }),
+    // New optional fee parameters
+    priorityFeePerCU: Type.Optional(Type.Number({
+      description: 'Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)'
+    })),
+    computeUnits: Type.Optional(Type.Number({
+      description: 'Compute units for transaction'
+    })),
   },
   { $id: 'RemoveLiquidityRequest' },
 );
@@ -164,9 +197,14 @@ export type RemoveLiquidityRequestType = Static<typeof RemoveLiquidityRequest>;
 export const RemoveLiquidityResponse = Type.Object(
   {
     signature: Type.String(),
-    fee: Type.Number(),
-    baseTokenAmountRemoved: Type.Number(),
-    quoteTokenAmountRemoved: Type.Number(),
+    status: Type.Number({ description: 'TransactionStatus enum value' }),
+    
+    // Only included when status = CONFIRMED
+    data: Type.Optional(Type.Object({
+      fee: Type.Number(),
+      baseTokenAmountRemoved: Type.Number(),
+      quoteTokenAmountRemoved: Type.Number(),
+    })),
   },
   { $id: 'RemoveLiquidityResponse' },
 );
@@ -179,6 +217,13 @@ export const CollectFeesRequest = Type.Object(
     network: Type.Optional(Type.String()),
     walletAddress: Type.String(),
     positionAddress: Type.String(),
+    // New optional fee parameters
+    priorityFeePerCU: Type.Optional(Type.Number({
+      description: 'Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)'
+    })),
+    computeUnits: Type.Optional(Type.Number({
+      description: 'Compute units for transaction'
+    })),
   },
   { $id: 'CollectFeesRequest' },
 );
@@ -187,9 +232,14 @@ export type CollectFeesRequestType = Static<typeof CollectFeesRequest>;
 export const CollectFeesResponse = Type.Object(
   {
     signature: Type.String(),
-    fee: Type.Number(),
-    baseFeeAmountCollected: Type.Number(),
-    quoteFeeAmountCollected: Type.Number(),
+    status: Type.Number({ description: 'TransactionStatus enum value' }),
+    
+    // Only included when status = CONFIRMED
+    data: Type.Optional(Type.Object({
+      fee: Type.Number(),
+      baseFeeAmountCollected: Type.Number(),
+      quoteFeeAmountCollected: Type.Number(),
+    })),
   },
   { $id: 'CollectFeesResponse' },
 );
@@ -200,6 +250,13 @@ export const ClosePositionRequest = Type.Object(
     network: Type.Optional(Type.String()),
     walletAddress: Type.String(),
     positionAddress: Type.String(),
+    // New optional fee parameters
+    priorityFeePerCU: Type.Optional(Type.Number({
+      description: 'Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)'
+    })),
+    computeUnits: Type.Optional(Type.Number({
+      description: 'Compute units for transaction'
+    })),
   },
   { $id: 'ClosePositionRequest' },
 );
@@ -208,12 +265,17 @@ export type ClosePositionRequestType = Static<typeof ClosePositionRequest>;
 export const ClosePositionResponse = Type.Object(
   {
     signature: Type.String(),
-    fee: Type.Number(),
-    positionRentRefunded: Type.Number(),
-    baseTokenAmountRemoved: Type.Number(),
-    quoteTokenAmountRemoved: Type.Number(),
-    baseFeeAmountCollected: Type.Number(),
-    quoteFeeAmountCollected: Type.Number(),
+    status: Type.Number({ description: 'TransactionStatus enum value' }),
+    
+    // Only included when status = CONFIRMED
+    data: Type.Optional(Type.Object({
+      fee: Type.Number(),
+      positionRentRefunded: Type.Number(),
+      baseTokenAmountRemoved: Type.Number(),
+      quoteTokenAmountRemoved: Type.Number(),
+      baseFeeAmountCollected: Type.Number(),
+      quoteFeeAmountCollected: Type.Number(),
+    })),
   },
   { $id: 'ClosePositionResponse' },
 );
@@ -234,6 +296,7 @@ export const QuotePositionResponse = Type.Object(
     baseTokenAmountMax: Type.Number(),
     quoteTokenAmountMax: Type.Number(),
     liquidity: Type.Optional(Type.Any()),
+    computeUnits: Type.Number({ description: 'Estimated compute units for the transaction' }),
   },
   { $id: 'QuotePositionResponse' },
 );

@@ -2,6 +2,15 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Important: Fee Units for Blockchain Transactions
+- **Solana**: `priorityFeePerCU` is in **lamports per compute unit** (not microlamports)
+  - EstimateGasResponse returns denomination: "lamports"
+  - Example: 1000 lamports/CU means 1000 lamports per compute unit
+- **Ethereum**: `priorityFeePerCU` is in **Gwei** (not Wei)
+  - EstimateGasResponse returns denomination: "gwei"
+  - Example: 50 Gwei means 50 * 10^9 Wei
+  - Routes convert Gwei to Wei when passing to ethers.js
+
 ## Build & Command Reference
 - Build: `pnpm build`
 - Start server: `pnpm start`

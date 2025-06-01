@@ -6,6 +6,7 @@ import { getSpender } from '../../../connectors/uniswap/uniswap.contracts';
 import {
   ApproveRequestType,
   ApproveResponseType,
+  ApproveResponseSchema,
 } from '../../../schemas/chain-schema';
 import { bigNumberWithDecimalToStr } from '../../../services/base';
 import { logger } from '../../../services/logger';
@@ -107,15 +108,18 @@ export async function approveEthereumToken(
         );
 
         return {
-          tokenAddress: tokenInfo.address,
-          spender: spenderAddress,
-          amount: bigNumberWithDecimalToStr(
-            amountBigNumber,
-            tokenInfo.decimals,
-          ),
-          nonce: approval.nonce,
           signature: approval.hash,
-          approval: toEthereumTransaction(approval),
+          status: 1, // CONFIRMED
+          data: {
+            tokenAddress: tokenInfo.address,
+            spender: spenderAddress,
+            amount: bigNumberWithDecimalToStr(
+              amountBigNumber,
+              tokenInfo.decimals,
+            ),
+            nonce: approval.nonce,
+            fee: '0', // TODO: Calculate actual fee from receipt
+          },
         };
       } catch (contractErr) {
         logger.error(
@@ -150,12 +154,15 @@ export async function approveEthereumToken(
     );
 
     return {
-      tokenAddress: fullToken.address,
-      spender: spenderAddress,
-      amount: bigNumberWithDecimalToStr(amountBigNumber, fullToken.decimals),
-      nonce: approval.nonce,
       signature: approval.hash,
-      approval: toEthereumTransaction(approval),
+      status: 1, // CONFIRMED
+      data: {
+        tokenAddress: fullToken.address,
+        spender: spenderAddress,
+        amount: bigNumberWithDecimalToStr(amountBigNumber, fullToken.decimals),
+        nonce: approval.nonce,
+        fee: '0', // TODO: Calculate actual fee from receipt
+      },
     };
   } catch (error) {
     logger.error(`Error approving token: ${error.message}`);
@@ -231,21 +238,7 @@ export const approveRoute: FastifyPluginAsync = async (fastify) => {
           ),
         }),
         response: {
-          200: Type.Object({
-            tokenAddress: Type.String(),
-            spender: Type.String(),
-            amount: Type.String(),
-            nonce: Type.Number(),
-            signature: Type.String(),
-            approval: Type.Object({
-              data: Type.String(),
-              to: Type.String(),
-              maxPriorityFeePerGas: Type.Union([Type.String(), Type.Null()]),
-              maxFeePerGas: Type.Union([Type.String(), Type.Null()]),
-              gasLimit: Type.Union([Type.String(), Type.Null()]),
-              value: Type.String(),
-            }),
-          }),
+          200: ApproveResponseSchema,
         },
       },
     },

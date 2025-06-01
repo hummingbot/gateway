@@ -342,9 +342,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify, _options) => {
             price: quoteResult.price,
             baseTokenBalanceChange: quoteResult.baseTokenBalanceChange,
             quoteTokenBalanceChange: quoteResult.quoteTokenBalanceChange,
-            gasPrice: quoteResult.gasPrice,
-            gasLimit: quoteResult.gasLimit,
-            gasCost: quoteResult.gasCost,
+            computeUnits: quoteResult.gasLimit, // Using gasLimit as computeUnits for Ethereum
           };
         } catch (error) {
           // If the error already has a status code, it's a Fastify HTTP error

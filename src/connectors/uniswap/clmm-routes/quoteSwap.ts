@@ -288,9 +288,7 @@ async function formatSwapQuote(
       baseTokenBalanceChange,
       quoteTokenBalanceChange,
       price,
-      gasPrice: Number(gasPriceGwei), // Convert to number
-      gasLimit: estimatedGasValue, // Already a number
-      gasCost,
+      computeUnits: estimatedGasValue, // Use gas limit as compute units for Ethereum
     };
   } catch (error) {
     logger.error(`Error formatting swap quote: ${error.message}`);

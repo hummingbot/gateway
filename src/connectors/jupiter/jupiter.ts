@@ -188,7 +188,7 @@ export class Jupiter {
   ): Promise<SwapResponse> {
     const feeLamports = priorityFee
       ? Math.floor(priorityFee)
-      : Math.floor(this.solana.config.minPriorityFee * 1e9);
+      : Math.floor(this.solana.config.minFee * 1e9);
 
     let lastError: Error | null = null;
     for (let attempt = 1; attempt <= JUPITER_API_RETRY_COUNT; attempt++) {
@@ -274,83 +274,92 @@ export class Jupiter {
   async executeSwap(
     wallet: Wallet,
     quote: QuoteResponse,
+    priorityFeePerCU?: number,
+    computeUnits?: number,
   ): Promise<{
     signature: string;
     feeInLamports: number;
     computeUnitLimit: number;
     priorityFeePrice: number;
+    confirmed: boolean;
+    txData?: any;
   }> {
-    let currentPriorityFee = (await this.solana.estimateGas()) * 1e9 - BASE_FEE;
+    // Use provided priority fee per CU or default to minimum
+    const finalPriorityFeePerCU = priorityFeePerCU || 0;
+    
+    // Use provided compute units or default
+    const computeUnitsToUse = computeUnits || 300000;
+    
+    // Calculate total priority fee in lamports (priorityFeePerCU is in lamports/CU)
+    const currentPriorityFee = Math.floor(finalPriorityFeePerCU * computeUnitsToUse);
 
     logger.info(
-      `Sending swap with max priority fee of ${(currentPriorityFee / 1e9).toFixed(6)} SOL`,
+      `Sending swap with priority fee of ${finalPriorityFeePerCU} lamports/CU (${(currentPriorityFee / 1e9).toFixed(6)} SOL total)`,
     );
 
-    // Convert maxPriorityFee from SOL to lamports for comparison
-    while (currentPriorityFee <= this.solana.config.maxPriorityFee * 1e9) {
-      const swapObj = await this.getSwapObj(wallet, quote, currentPriorityFee);
+    // Get swap object from Jupiter API
+    const swapObj = await this.getSwapObj(wallet, quote, currentPriorityFee);
 
-      const swapTransactionBuf = Buffer.from(swapObj.swapTransaction, 'base64');
-      const transaction = VersionedTransaction.deserialize(
-        new Uint8Array(swapTransactionBuf),
-      );
-      await this.simulateTransaction(transaction);
-      transaction.sign([wallet.payer]);
+    const swapTransactionBuf = Buffer.from(swapObj.swapTransaction, 'base64');
+    const transaction = VersionedTransaction.deserialize(
+      new Uint8Array(swapTransactionBuf),
+    );
+    await this.simulateTransaction(transaction);
+    transaction.sign([wallet.payer]);
 
-      let retryCount = 0;
-      while (retryCount < this.solana.config.retryCount) {
-        try {
-          const signature = await this.solana.connection.sendRawTransaction(
-            Buffer.from(transaction.serialize()),
-            { skipPreflight: true },
-          );
+    // Send transaction
+    const signature = await this.solana.connection.sendRawTransaction(
+      Buffer.from(transaction.serialize()),
+      { skipPreflight: true },
+    );
 
-          try {
-            const { confirmed, txData } =
-              await this.solana.confirmTransaction(signature);
-            if (confirmed && txData) {
-              const computeUnitsUsed = txData.meta.computeUnitsConsumed;
-              const totalFee = txData.meta.fee;
-              const priorityFee = totalFee - BASE_FEE;
-              const priorityFeePrice = (priorityFee / computeUnitsUsed) * 1e6;
+    // Try to confirm transaction (but don't retry with higher fees)
+    let retryCount = 0;
+    while (retryCount < this.solana.config.retryCount) {
+      try {
+        const { confirmed, txData } =
+          await this.solana.confirmTransaction(signature);
+        if (confirmed && txData) {
+          const computeUnitsUsed = txData.meta.computeUnitsConsumed;
+          const totalFee = txData.meta.fee;
+          const priorityFee = totalFee - BASE_FEE;
+          const priorityFeePrice = (priorityFee / computeUnitsUsed) * 1e6;
 
-              return {
-                signature,
-                feeInLamports: totalFee,
-                computeUnitLimit: computeUnitsUsed,
-                priorityFeePrice,
-              };
-            }
-          } catch (error) {
-            logger.debug(
-              `[JUPITER] Swap confirmation attempt ${retryCount + 1}/${this.solana.config.retryCount} failed with priority fee ${(currentPriorityFee / 1e9).toFixed(6)} SOL: ${error.message}`,
-            );
-          }
-
-          retryCount++;
-          await new Promise((resolve) =>
-            setTimeout(resolve, this.solana.config.retryIntervalMs),
-          );
-        } catch (error) {
-          retryCount++;
-          await new Promise((resolve) =>
-            setTimeout(resolve, this.solana.config.retryIntervalMs),
-          );
+          return {
+            signature,
+            feeInLamports: totalFee,
+            computeUnitLimit: computeUnitsUsed,
+            priorityFeePrice,
+            confirmed: true,
+            txData,
+          };
         }
+      } catch (error) {
+        logger.debug(
+          `[JUPITER] Swap confirmation attempt ${retryCount + 1}/${this.solana.config.retryCount} failed: ${error.message}`,
+        );
       }
 
-      // If we get here, swap wasn't confirmed after retryCount attempts
-      // Increase the priority fee and try again
-      currentPriorityFee =
-        currentPriorityFee * this.solana.config.priorityFeeMultiplier;
-      logger.info(
-        `[JUPITER] Increasing max priority fee to ${(currentPriorityFee / 1e9).toFixed(6)} SOL`,
-      );
+      retryCount++;
+      if (retryCount < this.solana.config.retryCount) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, this.solana.config.retryInterval * 1000),
+        );
+      }
     }
 
-    throw new Error(
-      `[JUPITER] Swap failed after reaching max priority fee of ${(this.solana.config.maxPriorityFee / 1e9).toFixed(6)} SOL`,
-    );
+    // If we get here, swap wasn't confirmed after retryCount attempts
+    // Return pending status for Hummingbot to handle retry
+    return {
+      signature,
+      feeInLamports: 0,
+      computeUnitLimit: 0,
+      priorityFeePrice: 0,
+      confirmed: false,
+    };
+
+    // If no signature obtained, throw error
+    throw new Error('Failed to execute swap - no transaction signature obtained');
   }
 
   async extractSwapBalances(

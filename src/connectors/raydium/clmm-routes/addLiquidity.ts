@@ -3,7 +3,7 @@ import BN from 'bn.js';
 import Decimal from 'decimal.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
-import { Solana, BASE_FEE } from '../../../chains/solana/solana';
+import { Solana } from '../../../chains/solana/solana';
 import {
   AddLiquidityRequest,
   AddLiquidityResponse,
@@ -23,6 +23,8 @@ async function addLiquidity(
   baseTokenAmount: number,
   quoteTokenAmount: number,
   slippagePct?: number,
+  priorityFeePerCU?: number,
+  computeUnits?: number,
 ): Promise<AddLiquidityResponseType> {
   const solana = await Solana.getInstance(network);
   const raydium = await Raydium.getInstance(network);
@@ -52,88 +54,74 @@ async function addLiquidity(
   );
   console.log('quotePositionResponse', quotePositionResponse);
   logger.info('Adding liquidity to Raydium CLMM position...');
-  const COMPUTE_UNITS = 300000;
-  let currentPriorityFee = (await solana.estimateGas()) * 1e9 - BASE_FEE;
-  while (currentPriorityFee <= solana.config.maxPriorityFee * 1e9) {
-    const priorityFeePerCU = Math.floor(
-      (currentPriorityFee * 1e6) / COMPUTE_UNITS,
-    );
+  
+  // Use provided compute units or quote's estimate
+  const COMPUTE_UNITS = computeUnits || quotePositionResponse.computeUnits;
+  
+  // Use provided priority fee or default to 0
+  const finalPriorityFeePerCU = priorityFeePerCU || 0;
 
-    const { transaction } =
-      await raydium.raydiumSDK.clmm.increasePositionFromBase({
-        poolInfo,
-        ownerPosition: position,
-        ownerInfo: { useSOLBalance: true },
-        base: quotePositionResponse.baseLimited ? 'MintA' : 'MintB',
-        baseAmount: quotePositionResponse.baseLimited
-          ? new BN(
-              quotePositionResponse.baseTokenAmount * 10 ** baseToken.decimals,
-            )
-          : new BN(
-              quotePositionResponse.quoteTokenAmount *
-                10 ** quoteToken.decimals,
-            ),
-        otherAmountMax: quotePositionResponse.baseLimited
-          ? new BN(
-              quotePositionResponse.quoteTokenAmountMax *
-                10 ** quoteToken.decimals,
-            )
-          : new BN(
-              quotePositionResponse.baseTokenAmountMax *
-                10 ** baseToken.decimals,
-            ),
-        txVersion: TxVersion.V0,
-        computeBudgetConfig: {
-          units: COMPUTE_UNITS,
-          microLamports: priorityFeePerCU,
-        },
-      });
+  const { transaction } =
+    await raydium.raydiumSDK.clmm.increasePositionFromBase({
+      poolInfo,
+      ownerPosition: position,
+      ownerInfo: { useSOLBalance: true },
+      base: quotePositionResponse.baseLimited ? 'MintA' : 'MintB',
+      baseAmount: quotePositionResponse.baseLimited
+        ? new BN(
+            quotePositionResponse.baseTokenAmount * 10 ** baseToken.decimals,
+          )
+        : new BN(
+            quotePositionResponse.quoteTokenAmount *
+              10 ** quoteToken.decimals,
+          ),
+      otherAmountMax: quotePositionResponse.baseLimited
+        ? new BN(
+            quotePositionResponse.quoteTokenAmountMax *
+              10 ** quoteToken.decimals,
+          )
+        : new BN(
+            quotePositionResponse.baseTokenAmountMax *
+              10 ** baseToken.decimals,
+          ),
+      txVersion: TxVersion.V0,
+      computeBudgetConfig: {
+        units: COMPUTE_UNITS,
+        microLamports: finalPriorityFeePerCU,
+      },
+    });
 
-    // const { transaction } = await raydium.raydiumSDK.clmm.increasePositionFromLiquidity({
-    //   poolInfo,
-    //   poolKeys,
-    //   ownerPosition: position,
-    //   ownerInfo: { useSOLBalance: true },
-    //   liquidity: quotePositionResponse.liquidity,
-    //   amountMaxA: new BN(quotePositionResponse.baseTokenAmountMax * (10 ** baseToken.decimals)),
-    //   amountMaxB: new BN(quotePositionResponse.quoteTokenAmountMax * (10 ** quoteToken.decimals)),
-    //   txVersion: TxVersion.V0,
-    //   computeBudgetConfig: {
-    //     units: COMPUTE_UNITS,
-    //     microLamports: priorityFeePerCU,
-    //   },
-    // })
+  transaction.sign([wallet]);
+  await solana.simulateTransaction(transaction);
 
-    transaction.sign([wallet]);
-    await solana.simulateTransaction(transaction);
-
-    const { confirmed, signature, txData } =
-      await solana.sendAndConfirmRawTransaction(transaction);
-    if (confirmed && txData) {
-      const totalFee = txData.meta.fee;
-      const { baseTokenBalanceChange, quoteTokenBalanceChange } =
-        await solana.extractPairBalanceChangesAndFee(
-          signature,
-          baseToken,
-          quoteToken,
-          wallet.publicKey.toBase58(),
-        );
-      return {
+  const { confirmed, signature, txData } =
+    await solana.sendAndConfirmRawTransaction(transaction);
+    
+  if (confirmed && txData) {
+    const totalFee = txData.meta.fee;
+    const { baseTokenBalanceChange, quoteTokenBalanceChange } =
+      await solana.extractPairBalanceChangesAndFee(
         signature,
+        baseToken,
+        quoteToken,
+        wallet.publicKey.toBase58(),
+      );
+    return {
+      signature,
+      status: 1, // CONFIRMED
+      data: {
         fee: totalFee / 1e9,
         baseTokenAmountAdded: baseTokenBalanceChange,
         quoteTokenAmountAdded: quoteTokenBalanceChange,
-      };
-    }
-    currentPriorityFee =
-      currentPriorityFee * solana.config.priorityFeeMultiplier;
-    logger.info(
-      `Increasing max priority fee to ${(currentPriorityFee / 1e9).toFixed(6)} SOL`,
-    );
+      }
+    };
+  } else {
+    // Return pending status for Hummingbot to handle retry
+    return {
+      signature,
+      status: 0, // PENDING
+    };
   }
-  throw new Error(
-    `Add liquidity failed after reaching max priority fee of ${(solana.config.maxPriorityFee / 1e9).toFixed(6)} SOL`,
-  );
 }
 
 export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
@@ -168,6 +156,8 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           baseTokenAmount,
           quoteTokenAmount,
           slippagePct,
+          priorityFeePerCU,
+          computeUnits,
         } = request.body;
 
         return await addLiquidity(
@@ -178,6 +168,8 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           baseTokenAmount,
           quoteTokenAmount,
           slippagePct,
+          priorityFeePerCU,
+          computeUnits,
         );
       } catch (e) {
         logger.error(e);

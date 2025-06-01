@@ -65,6 +65,8 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           baseTokenAmount,
           quoteTokenAmount,
           slippagePct,
+          priorityFeePerCU,
+          computeUnits,
         } = request.body;
 
         const networkToUse = network || 'base';
@@ -271,10 +273,11 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         );
 
         // Execute the transaction to increase liquidity
-        const tx = await positionManagerWithSigner.multicall([calldata], {
-          value: BigNumber.from(value.toString()),
-          gasLimit: 500000,
-        });
+        // Use Ethereum's prepareGasOptions method
+        const txParams = await ethereum.prepareGasOptions(priorityFeePerCU, computeUnits);
+        txParams.value = BigNumber.from(value.toString());
+
+        const tx = await positionManagerWithSigner.multicall([calldata], txParams);
 
         // Wait for transaction confirmation
         const receipt = await tx.wait();
@@ -306,9 +309,12 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
 
         return {
           signature: receipt.transactionHash,
-          fee: gasFee,
-          baseTokenAmountAdded: actualBaseAmount,
-          quoteTokenAmountAdded: actualQuoteAmount,
+          status: 1, // CONFIRMED
+          data: {
+            fee: gasFee,
+            baseTokenAmountAdded: actualBaseAmount,
+            quoteTokenAmountAdded: actualQuoteAmount,
+          },
         };
       } catch (e) {
         logger.error(e);

@@ -56,9 +56,7 @@ function validateSwapQuote(response) {
     typeof response.baseTokenBalanceChange === 'number' &&
     typeof response.quoteTokenBalanceChange === 'number' &&
     typeof response.price === 'number' &&
-    typeof response.gasPrice === 'number' &&
-    typeof response.gasLimit === 'number' &&
-    typeof response.gasCost === 'number'
+    typeof response.computeUnits === 'number' // Updated to use computeUnits
   );
 }
 
@@ -82,13 +80,74 @@ function validatePositionInfo(response) {
 function validateQuotePosition(response) {
   return (
     response &&
-    typeof response.poolAddress === 'string' &&
-    typeof response.lowerTick === 'number' &&
-    typeof response.upperTick === 'number' &&
+    typeof response.baseLimited === 'boolean' &&
     typeof response.baseTokenAmount === 'number' &&
     typeof response.quoteTokenAmount === 'number' &&
-    typeof response.liquidity === 'string' &&
-    typeof response.shareOfPool === 'number'
+    typeof response.baseTokenAmountMax === 'number' &&
+    typeof response.quoteTokenAmountMax === 'number' &&
+    response.liquidity !== undefined && // Can be string or object
+    typeof response.computeUnits === 'number' // Added computeUnits
+  );
+}
+
+// Function to validate open position response
+function validateOpenPosition(response) {
+  return (
+    response &&
+    typeof response.signature === 'string' &&
+    typeof response.status === 'number' &&
+    (response.status !== 1 || // If not CONFIRMED
+      (response.data &&
+       typeof response.data.fee === 'number' &&
+       typeof response.data.positionAddress === 'string' &&
+       typeof response.data.positionRent === 'number' &&
+       typeof response.data.baseTokenAmountAdded === 'number' &&
+       typeof response.data.quoteTokenAmountAdded === 'number'))
+  );
+}
+
+// Function to validate add liquidity response
+function validateAddLiquidity(response) {
+  return (
+    response &&
+    typeof response.signature === 'string' &&
+    typeof response.status === 'number' &&
+    (response.status !== 1 || // If not CONFIRMED
+      (response.data &&
+       typeof response.data.fee === 'number' &&
+       typeof response.data.baseTokenAmountAdded === 'number' &&
+       typeof response.data.quoteTokenAmountAdded === 'number'))
+  );
+}
+
+// Function to validate remove liquidity response
+function validateRemoveLiquidity(response) {
+  return (
+    response &&
+    typeof response.signature === 'string' &&
+    typeof response.status === 'number' &&
+    (response.status !== 1 || // If not CONFIRMED
+      (response.data &&
+       typeof response.data.fee === 'number' &&
+       typeof response.data.baseTokenAmountRemoved === 'number' &&
+       typeof response.data.quoteTokenAmountRemoved === 'number'))
+  );
+}
+
+// Function to validate close position response
+function validateClosePosition(response) {
+  return (
+    response &&
+    typeof response.signature === 'string' &&
+    typeof response.status === 'number' &&
+    (response.status !== 1 || // If not CONFIRMED
+      (response.data &&
+       typeof response.data.fee === 'number' &&
+       typeof response.data.positionRentRefunded === 'number' &&
+       typeof response.data.baseTokenAmountRemoved === 'number' &&
+       typeof response.data.quoteTokenAmountRemoved === 'number' &&
+       typeof response.data.baseFeeAmountCollected === 'number' &&
+       typeof response.data.quoteFeeAmountCollected === 'number'))
   );
 }
 
@@ -227,6 +286,7 @@ describe('Raydium CLMM Tests (Solana Mainnet)', () => {
         minAmountOut: mockSellResponse.estimatedAmountIn * 0.99,
         baseTokenBalanceChange: 1.0, // Positive for BUY
         quoteTokenBalanceChange: -mockSellResponse.quoteTokenBalanceChange, // Negative for BUY
+        computeUnits: 300000,
       };
 
       // Setup mock axios
@@ -393,10 +453,14 @@ describe('Raydium CLMM Tests (Solana Mainnet)', () => {
         poolAddress: TEST_POOL,
         lowerTick: -887272,
         upperTick: 887272,
+        baseLimited: false,
         baseTokenAmount: 1.0,
         quoteTokenAmount: 167.5,
+        baseTokenAmountMax: 1.0,
+        quoteTokenAmountMax: 167.5,
         liquidity: '1294000000',
         shareOfPool: 0.0001,
+        computeUnits: 150000,
       };
 
       // Setup mock axios

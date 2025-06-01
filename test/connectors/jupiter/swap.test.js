@@ -37,9 +37,7 @@ function validateSwapQuote(response) {
     typeof response.baseTokenBalanceChange === 'number' &&
     typeof response.quoteTokenBalanceChange === 'number' &&
     typeof response.price === 'number' &&
-    typeof response.gasPrice === 'number' &&
-    typeof response.gasLimit === 'number' &&
-    typeof response.gasCost === 'number'
+    typeof response.computeUnits === 'number' // Updated: replaced gas fields with computeUnits
   );
 }
 
@@ -48,11 +46,14 @@ function validateSwapExecution(response) {
   return (
     response &&
     typeof response.signature === 'string' &&
-    typeof response.totalInputSwapped === 'number' &&
-    typeof response.totalOutputSwapped === 'number' &&
-    typeof response.fee === 'number' &&
-    typeof response.baseTokenBalanceChange === 'number' &&
-    typeof response.quoteTokenBalanceChange === 'number'
+    typeof response.status === 'number' && // Added: status field
+    (response.status !== 1 || // If not CONFIRMED
+      (response.data && // then data is optional
+       typeof response.data.totalInputSwapped === 'number' &&
+       typeof response.data.totalOutputSwapped === 'number' &&
+       typeof response.data.fee === 'number' &&
+       typeof response.data.baseTokenBalanceChange === 'number' &&
+       typeof response.data.quoteTokenBalanceChange === 'number'))
   );
 }
 
@@ -265,7 +266,17 @@ describe('Jupiter Swap Tests (Solana Mainnet)', () => {
     test('returns successful swap execution', async () => {
       // Load mock responses
       const quoteResponse = loadMockResponse('quote-swap');
-      const executeResponse = loadMockResponse('execute-swap');
+      const executeResponse = {
+        signature: '2XGwPTNGFvRjLb6HkBQq8qwsRZ8XNjEjvuehVeNDdz3TxxKnvYBfgMsYCQKNHMpDYzKcUfKdCwzBvkPvDz5aLfYc',
+        status: 1, // CONFIRMED
+        data: {
+          totalInputSwapped: 1.0,
+          totalOutputSwapped: 163.456119,
+          fee: 0.001,
+          baseTokenBalanceChange: -1.0,
+          quoteTokenBalanceChange: 163.456119,
+        },
+      };
 
       // Setup mock axios for the execute-swap request
       axios.post.mockResolvedValueOnce({
@@ -293,11 +304,12 @@ describe('Jupiter Swap Tests (Solana Mainnet)', () => {
       // Check expected mock values
       expect(response.data.signature).toBeDefined();
       expect(response.data.signature.length).toBeGreaterThan(30); // Solana signatures are long
-      expect(response.data.totalInputSwapped).toBeCloseTo(
+      expect(response.data.status).toBe(1); // CONFIRMED
+      expect(response.data.data.totalInputSwapped).toBeCloseTo(
         quoteResponse.estimatedAmountIn,
         3, // Allow some difference due to fees
       );
-      expect(response.data.totalOutputSwapped).toBeCloseTo(
+      expect(response.data.data.totalOutputSwapped).toBeCloseTo(
         quoteResponse.estimatedAmountOut,
         3,
       );
@@ -314,6 +326,92 @@ describe('Jupiter Swap Tests (Solana Mainnet)', () => {
           walletAddress: TEST_WALLET,
         }),
       );
+    });
+
+    test('returns successful swap execution with fee parameters', async () => {
+      // Mock response with status-based format
+      const executeResponse = {
+        signature: '3YHqPTNGFvRjLb6HkBQq8qwsRZ8XNjEjvuehVeNDdz3TxxKnvYBfgMsYCQKNHMpDYzKcUfKdCwzBvkPvDz5aLfYd',
+        status: 1, // CONFIRMED
+        data: {
+          totalInputSwapped: 1.0,
+          totalOutputSwapped: 16.391234,
+          fee: 0.002, // Higher fee due to priority
+          baseTokenBalanceChange: -1.0,
+          quoteTokenBalanceChange: 16.391234,
+        },
+      };
+
+      // Setup mock axios
+      axios.post.mockResolvedValueOnce({
+        status: 200,
+        data: executeResponse,
+      });
+
+      // Make the request with fee parameters
+      const response = await axios.post(
+        `http://localhost:15888/connectors/${CONNECTOR}/execute-swap`,
+        {
+          network: NETWORK,
+          baseToken: BASE_TOKEN,
+          quoteToken: QUOTE_TOKEN,
+          side: 'SELL',
+          amount: 1.0,
+          walletAddress: TEST_WALLET,
+          priorityFeePerCU: 1000, // 1000 lamports per CU
+          computeUnits: 400000, // Custom compute units
+        },
+      );
+
+      // Validate the response
+      expect(response.status).toBe(200);
+      expect(validateSwapExecution(response.data)).toBe(true);
+      expect(response.data.status).toBe(1); // CONFIRMED
+      expect(response.data.data.fee).toBe(0.002); // Higher fee
+
+      // Verify axios was called with fee parameters
+      expect(axios.post).toHaveBeenCalledWith(
+        `http://localhost:15888/connectors/${CONNECTOR}/execute-swap`,
+        expect.objectContaining({
+          priorityFeePerCU: 1000,
+          computeUnits: 400000,
+        }),
+      );
+    });
+
+    test('returns pending swap execution', async () => {
+      // Mock response with PENDING status
+      const executeResponse = {
+        signature: '4ZIrQTNGFvRjLb6HkBQq8qwsRZ8XNjEjvuehVeNDdz3TxxKnvYBfgMsYCQKNHMpDYzKcUfKdCwzBvkPvDz5aLfYe',
+        status: 0, // PENDING
+        // No data field when pending
+      };
+
+      // Setup mock axios
+      axios.post.mockResolvedValueOnce({
+        status: 200,
+        data: executeResponse,
+      });
+
+      // Make the request
+      const response = await axios.post(
+        `http://localhost:15888/connectors/${CONNECTOR}/execute-swap`,
+        {
+          network: NETWORK,
+          baseToken: BASE_TOKEN,
+          quoteToken: QUOTE_TOKEN,
+          side: 'SELL',
+          amount: 1.0,
+          walletAddress: TEST_WALLET,
+        },
+      );
+
+      // Validate the response
+      expect(response.status).toBe(200);
+      expect(validateSwapExecution(response.data)).toBe(true);
+      expect(response.data.signature).toBeDefined();
+      expect(response.data.status).toBe(0); // PENDING
+      expect(response.data.data).toBeUndefined(); // No data when pending
     });
 
     test('handles execution errors', async () => {

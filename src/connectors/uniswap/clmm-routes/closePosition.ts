@@ -92,6 +92,8 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
           network,
           walletAddress: requestedWalletAddress,
           positionAddress,
+          priorityFeePerCU,
+          computeUnits,
         } = request.body;
 
         const networkToUse = network || 'base';
@@ -261,10 +263,11 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
         );
 
         // Execute the transaction to remove liquidity and burn the position
-        const tx = await positionManagerWithSigner.multicall([calldata], {
-          value: BigNumber.from(value.toString()),
-          gasLimit: 500000,
-        });
+        // Use Ethereum's prepareGasOptions method
+        const txParams = await ethereum.prepareGasOptions(priorityFeePerCU, computeUnits);
+        txParams.value = BigNumber.from(value.toString());
+
+        const tx = await positionManagerWithSigner.multicall([calldata], txParams);
 
         // Wait for transaction confirmation
         const receipt = await tx.wait();
@@ -315,12 +318,15 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
 
         return {
           signature: receipt.transactionHash,
-          fee: gasFee,
-          positionRentRefunded,
-          baseTokenAmountRemoved,
-          quoteTokenAmountRemoved,
-          baseFeeAmountCollected,
-          quoteFeeAmountCollected,
+          status: 1, // CONFIRMED
+          data: {
+            fee: gasFee,
+            positionRentRefunded,
+            baseTokenAmountRemoved,
+            quoteTokenAmountRemoved,
+            baseFeeAmountCollected,
+            quoteFeeAmountCollected,
+          },
         };
       } catch (e) {
         logger.error(e);

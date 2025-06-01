@@ -481,6 +481,9 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
         // Calculate liquidity value
         const liquidity = position.liquidity.toString();
 
+        // Use standard gas limit for position operations
+        const computeUnits = ethereum.gasLimitTransaction || 500000;
+
         return {
           baseLimited,
           baseTokenAmount: actualBaseAmount,
@@ -488,6 +491,7 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
           baseTokenAmountMax,
           quoteTokenAmountMax,
           liquidity,
+          computeUnits,
         };
       } catch (e) {
         logger.error(e);

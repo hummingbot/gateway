@@ -366,9 +366,6 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         return {
           poolAddress,
           ...result,
-          gasPrice: gasEstimation?.gasPrice,
-          gasLimit: gasEstimation?.gasLimit,
-          gasCost: gasEstimation?.gasCost,
         };
       } catch (e) {
         logger.error(e);

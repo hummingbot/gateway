@@ -1,8 +1,11 @@
 {
   "signature": "2ZE6KhhZTPixeNQVxjDv2LcX7VTxQN9vwMv8Z89FwqYKKQRmqPQCuwyWQMjGwUJKdRrPoKNL7Rn6fHZFvVbpS3Yw",
-  "totalInputSwapped": 1.0,
-  "totalOutputSwapped": 167.5,
-  "fee": 0.0025,
-  "baseTokenBalanceChange": -1.0,
-  "quoteTokenBalanceChange": 167.5
+  "status": 1,
+  "data": {
+    "totalInputSwapped": 1.0,
+    "totalOutputSwapped": 167.5,
+    "fee": 0.0025,
+    "baseTokenBalanceChange": -1.0,
+    "quoteTokenBalanceChange": 167.5
+  }
 }

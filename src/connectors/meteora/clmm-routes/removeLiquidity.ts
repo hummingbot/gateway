@@ -22,6 +22,8 @@ export async function removeLiquidity(
   walletAddress: string,
   positionAddress: string,
   percentageToRemove: number,
+  priorityFeePerCU?: number,
+  computeUnits?: number,
 ): Promise<RemoveLiquidityResponseType> {
   const solana = await Solana.getInstance(network);
   const meteora = await Meteora.getInstance(network);
@@ -70,10 +72,18 @@ export async function removeLiquidity(
       'Unexpected array of transactions',
     );
   }
+  // Use provided compute units or default
+  const finalComputeUnits = computeUnits || 1_000_000;
+  
+  logger.info(
+    `Executing removeLiquidity with ${finalComputeUnits} compute units${priorityFeePerCU ? ` and ${priorityFeePerCU} lamports/CU priority fee` : ''}`,
+  );
+
   const { signature, fee } = await solana.sendAndConfirmTransaction(
     removeLiquidityTx,
     [wallet],
-    1_000_000,
+    finalComputeUnits,
+    priorityFeePerCU,
   );
 
   const { balanceChange: tokenXRemovedAmount } =
@@ -96,9 +106,12 @@ export async function removeLiquidity(
 
   return {
     signature,
-    fee,
-    baseTokenAmountRemoved: Math.abs(tokenXRemovedAmount),
-    quoteTokenAmountRemoved: Math.abs(tokenYRemovedAmount),
+    status: 1, // CONFIRMED
+    data: {
+      fee,
+      baseTokenAmountRemoved: Math.abs(tokenXRemovedAmount),
+      quoteTokenAmountRemoved: Math.abs(tokenYRemovedAmount),
+    },
   };
 }
 
@@ -143,7 +156,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network, walletAddress, positionAddress, percentageToRemove } =
+        const { network, walletAddress, positionAddress, percentageToRemove, priorityFeePerCU, computeUnits } =
           request.body;
 
         const networkToUse = network || 'mainnet-beta';
@@ -154,6 +167,8 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           walletAddress,
           positionAddress,
           percentageToRemove,
+          priorityFeePerCU,
+          computeUnits,
         );
       } catch (e) {
         logger.error(e);

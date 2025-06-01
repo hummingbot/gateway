@@ -20,6 +20,8 @@ async function closePosition(
   network: string,
   walletAddress: string,
   positionAddress: string,
+  priorityFeePerCU?: number,
+  computeUnits?: number,
 ): Promise<ClosePositionResponseType> {
   try {
     const solana = await Solana.getInstance(network);
@@ -42,8 +44,18 @@ async function closePosition(
             walletAddress,
             positionAddress,
             100,
+            priorityFeePerCU,
+            computeUnits,
           )) as RemoveLiquidityResponseType)
-        : { baseTokenAmountRemoved: 0, quoteTokenAmountRemoved: 0, fee: 0 };
+        : { 
+            signature: '', 
+            status: 1, 
+            data: { 
+              baseTokenAmountRemoved: 0, 
+              quoteTokenAmountRemoved: 0, 
+              fee: 0 
+            } 
+          };
 
     // Remove liquidity if baseTokenFees or quoteTokenFees is greater than 0
     const collectFeesResult =
@@ -53,8 +65,18 @@ async function closePosition(
             network,
             walletAddress,
             positionAddress,
+            priorityFeePerCU,
+            computeUnits,
           )) as CollectFeesResponseType)
-        : { baseFeeAmountCollected: 0, quoteFeeAmountCollected: 0, fee: 0 };
+        : { 
+            signature: '', 
+            status: 1, 
+            data: { 
+              baseFeeAmountCollected: 0, 
+              quoteFeeAmountCollected: 0, 
+              fee: 0 
+            } 
+          };
 
     // Now close the position
     try {
@@ -68,10 +90,14 @@ async function closePosition(
         position: position,
       });
 
+      // Use provided compute units or default
+      const finalComputeUnits = computeUnits || 200_000;
+
       const { signature, fee } = await solana.sendAndConfirmTransaction(
         closePositionTx,
         [wallet],
-        200_000,
+        finalComputeUnits,
+        priorityFeePerCU,
       );
       logger.info(
         `Position ${positionAddress} closed successfully with signature: ${signature}`,
@@ -83,14 +109,19 @@ async function closePosition(
       );
       const returnedSOL = Math.abs(balanceChange);
 
+      const totalFee = fee + (removeLiquidityResult.data?.fee || 0) + (collectFeesResult.data?.fee || 0);
+
       return {
         signature,
-        fee: fee + removeLiquidityResult.fee + collectFeesResult.fee,
-        positionRentRefunded: returnedSOL,
-        baseTokenAmountRemoved: removeLiquidityResult.baseTokenAmountRemoved,
-        quoteTokenAmountRemoved: removeLiquidityResult.quoteTokenAmountRemoved,
-        baseFeeAmountCollected: collectFeesResult.baseFeeAmountCollected,
-        quoteFeeAmountCollected: collectFeesResult.quoteFeeAmountCollected,
+        status: 1, // CONFIRMED
+        data: {
+          fee: totalFee,
+          positionRentRefunded: returnedSOL,
+          baseTokenAmountRemoved: removeLiquidityResult.data?.baseTokenAmountRemoved || 0,
+          quoteTokenAmountRemoved: removeLiquidityResult.data?.quoteTokenAmountRemoved || 0,
+          baseFeeAmountCollected: collectFeesResult.data?.baseFeeAmountCollected || 0,
+          quoteFeeAmountCollected: collectFeesResult.data?.quoteFeeAmountCollected || 0,
+        },
       };
     } catch (positionError) {
       logger.error('Error in position closing workflow:', {
@@ -156,7 +187,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network, walletAddress, positionAddress } = request.body;
+        const { network, walletAddress, positionAddress, priorityFeePerCU, computeUnits } = request.body;
         const networkToUse = network || 'mainnet-beta';
 
         return await closePosition(
@@ -164,6 +195,8 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
           networkToUse,
           walletAddress,
           positionAddress,
+          priorityFeePerCU,
+          computeUnits,
         );
       } catch (e) {
         logger.error('Close position route error:', {

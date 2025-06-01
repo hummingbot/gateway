@@ -151,6 +151,35 @@ export class Ethereum {
   }
 
   /**
+   * Prepare gas options for a transaction
+   * @param priorityFeePerCU Priority fee in Gwei (optional)
+   * @param computeUnits Gas limit (optional)
+   * @returns Gas options object for ethers.js transaction
+   */
+  public async prepareGasOptions(
+    priorityFeePerCU?: number,
+    computeUnits?: number,
+  ): Promise<any> {
+    const gasOptions: any = {
+      gasLimit: computeUnits || this.gasLimitTransaction,
+    };
+
+    // Add EIP-1559 parameters if priorityFeePerCU is provided
+    if (priorityFeePerCU !== undefined) {
+      gasOptions.type = 2; // EIP-1559 transaction
+      const priorityFeePerGasWei = utils.parseUnits(priorityFeePerCU.toString(), 'gwei');
+      gasOptions.maxPriorityFeePerGas = priorityFeePerGasWei;
+      
+      // Get current base fee and add priority fee with 10% buffer
+      const block = await this.provider.getBlock('latest');
+      const baseFee = block.baseFeePerGas || BigNumber.from(0);
+      gasOptions.maxFeePerGas = baseFee.add(priorityFeePerGasWei).mul(110).div(100);
+    }
+
+    return gasOptions;
+  }
+
+  /**
    * Get a contract instance for a token using standard ERC20 interface
    */
   public getContract(

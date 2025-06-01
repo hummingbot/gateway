@@ -49,7 +49,8 @@ function validateSwapQuote(response) {
     typeof response.maxAmountIn === 'number' &&
     typeof response.baseTokenBalanceChange === 'number' &&
     typeof response.quoteTokenBalanceChange === 'number' &&
-    typeof response.price === 'number'
+    typeof response.price === 'number' &&
+    typeof response.computeUnits === 'number' // Added computeUnits
   );
 }
 
@@ -77,9 +78,7 @@ describe('Uniswap V3 Swap Router Tests (Base Network)', () => {
           price: 1800.0,
           baseTokenBalanceChange: -1.0,
           quoteTokenBalanceChange: 1800.0,
-          gasPrice: 5.0,
-          gasLimit: 250000,
-          gasCost: 0.00125,
+          computeUnits: 250000, // Gas limit for Ethereum
         };
       }
 
@@ -142,6 +141,7 @@ describe('Uniswap V3 Swap Router Tests (Base Network)', () => {
           quoteTokenBalanceChange: -mockSellResponse.estimatedAmountOut, // Negative for BUY
           // For BUY: price = quote needed / base received
           price: mockSellResponse.estimatedAmountOut / 1.0,
+          computeUnits: 250000,
         };
       } catch (error) {
         // Create minimal mock if not found
