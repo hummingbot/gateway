@@ -7,24 +7,24 @@ import {
   EstimateGasResponseSchema,
 } from '../../../schemas/chain-schema';
 import { logger } from '../../../services/logger';
-import { Solana, BASE_FEE } from '../solana';
+import { Solana } from '../solana';
 
 export async function estimateGasSolana(
   fastify: FastifyInstance,
   network: string,
-  gasLimit?: number,
+  _gasLimit?: number,
 ): Promise<EstimateGasResponse> {
   try {
     const solana = await Solana.getInstance(network);
-    const gasLimitUsed = gasLimit || solana.config.defaultComputeUnits;
-    const gasCost = await solana.estimateGas(gasLimitUsed);
-    const priorityFeeInLamports = await solana.estimateGasPrice();
+    const priorityFeePerCUInLamports = await solana.estimateGasPrice();
+    
+    // Convert lamports to microlamports (1 lamport = 1,000,000 microlamports)
+    const feePerComputeUnit = Math.floor(priorityFeePerCUInLamports * 1_000_000);
 
     return {
-      gasPrice: priorityFeeInLamports,
-      gasPriceToken: solana.nativeTokenSymbol,
-      gasLimit: gasLimitUsed,
-      gasCost: gasCost,
+      feePerComputeUnit,
+      denomination: 'microlamports',
+      timestamp: Date.now(),
     };
   } catch (error) {
     logger.error(`Error estimating gas: ${error.message}`);

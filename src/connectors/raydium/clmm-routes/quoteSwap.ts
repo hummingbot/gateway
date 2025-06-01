@@ -251,9 +251,7 @@ async function formatSwapQuote(
       baseTokenBalanceChange: estimatedAmountOut,
       quoteTokenBalanceChange: -estimatedAmountIn,
       price,
-      gasPrice: 0,
-      gasLimit: 0,
-      gasCost: 0,
+      computeUnits: 600000, // CLMM swaps typically need 600k compute units
     };
   } else {
     const exactInResponse = response as ReturnTypeComputeAmountOutFormat;
@@ -278,9 +276,7 @@ async function formatSwapQuote(
       baseTokenBalanceChange: -estimatedAmountIn,
       quoteTokenBalanceChange: estimatedAmountOut,
       price,
-      gasPrice: 0,
-      gasLimit: 0,
-      gasCost: 0,
+      computeUnits: 600000, // CLMM swaps typically need 600k compute units
     };
   }
 }

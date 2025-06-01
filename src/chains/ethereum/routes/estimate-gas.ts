@@ -6,14 +6,13 @@ import {
   EstimateGasRequestSchema,
   EstimateGasResponseSchema,
 } from '../../../schemas/chain-schema';
-import { gasCostInEthString } from '../../../services/base';
 import { logger } from '../../../services/logger';
 import { Ethereum } from '../ethereum';
 
 export async function estimateGasEthereum(
   fastify: FastifyInstance,
   network: string,
-  gasLimit?: number,
+  _gasLimit?: number,
 ): Promise<EstimateGasResponse> {
   try {
     const ethereum = await Ethereum.getInstance(network);
@@ -21,17 +20,13 @@ export async function estimateGasEthereum(
     // Get gas price in GWEI
     const gasPrice = await ethereum.estimateGasPrice();
 
-    // Use provided gas limit or default from config
-    const gasLimitUsed = gasLimit || ethereum.gasLimitTransaction;
-
-    // Calculate total gas cost in ETH
-    const gasCost = parseFloat(gasCostInEthString(gasPrice, gasLimitUsed));
+    // Convert GWEI to Wei (1 GWEI = 1e9 Wei)
+    const feePerComputeUnit = Math.floor(gasPrice * 1e9);
 
     return {
-      gasPrice: gasPrice,
-      gasPriceToken: ethereum.nativeTokenSymbol,
-      gasLimit: gasLimitUsed,
-      gasCost: gasCost,
+      feePerComputeUnit,
+      denomination: 'wei',
+      timestamp: Date.now(),
     };
   } catch (error) {
     logger.error(`Error estimating gas: ${error.message}`);

@@ -22,7 +22,8 @@
     "test:scripts": "GATEWAY_TEST_MODE=dev jest --runInBand ./test-scripts/*.test.ts",
     "cli": "node dist/index.js",
     "typecheck": "tsc --noEmit",
-    "rebuild-bigint": "cd node_modules/bigint-buffer && npm run rebuild"
+    "rebuild-bigint": "cd node_modules/bigint-buffer && npm run rebuild",
+    "generate:openapi": "curl http://localhost:15888/docs/json -o openapi.json && echo 'OpenAPI spec saved to openapi.json'"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.29.0",

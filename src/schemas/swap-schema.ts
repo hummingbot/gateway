@@ -27,9 +27,7 @@ export const GetSwapQuoteResponse = Type.Object(
     baseTokenBalanceChange: Type.Number(),
     quoteTokenBalanceChange: Type.Number(),
     price: Type.Number(),
-    gasPrice: Type.Number(),
-    gasLimit: Type.Number(),
-    gasCost: Type.Number(),
+    computeUnits: Type.Number(), // Compute units required for this swap
   },
   { $id: 'GetSwapQuoteResponse' },
 );
@@ -48,18 +46,37 @@ export const ExecuteSwapRequest = Type.Object(
     }),
     slippagePct: Type.Optional(Type.Number()),
     poolAddress: Type.Optional(Type.String()),
+    // New optional fee parameters
+    priorityFeePerCU: Type.Optional(Type.Number({
+      description: 'Priority fee per compute unit (microlamports on Solana)'
+    })),
+    computeUnits: Type.Optional(Type.Number({
+      description: 'Compute units for transaction'
+    })),
   },
   { $id: 'ExecuteSwapRequest' },
 );
 
 export type ExecuteSwapRequestType = Static<typeof ExecuteSwapRequest>;
 
+// Transaction status enum
+export enum TransactionStatus {
+  PENDING = 0,
+  CONFIRMED = 1,
+  FAILED = -1
+}
+
 export const ExecuteSwapResponse = Type.Object({
   signature: Type.String(),
-  totalInputSwapped: Type.Number(),
-  totalOutputSwapped: Type.Number(),
-  fee: Type.Number(),
-  baseTokenBalanceChange: Type.Number(),
-  quoteTokenBalanceChange: Type.Number(),
+  status: Type.Number({ description: 'TransactionStatus enum value' }),
+  
+  // Only included when status = CONFIRMED
+  data: Type.Optional(Type.Object({
+    totalInputSwapped: Type.Number(),
+    totalOutputSwapped: Type.Number(),
+    fee: Type.Number(),
+    baseTokenBalanceChange: Type.Number(),
+    quoteTokenBalanceChange: Type.Number(),
+  })),
 });
 export type ExecuteSwapResponseType = Static<typeof ExecuteSwapResponse>;

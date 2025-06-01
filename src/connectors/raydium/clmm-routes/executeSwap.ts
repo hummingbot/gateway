@@ -28,6 +28,8 @@ async function executeSwap(
   side: 'BUY' | 'SELL',
   poolAddress: string,
   slippagePct?: number,
+  priorityFeePerCU?: number,
+  computeUnits?: number,
 ): Promise<ExecuteSwapResponseType> {
   const solana = await Solana.getInstance(network);
   const raydium = await Raydium.getInstance(network);
@@ -129,14 +131,22 @@ async function executeSwap(
     `Executing ${amount.toFixed(4)} ${side} swap in pool ${poolAddress}`,
   );
 
-  const COMPUTE_UNITS = 600000;
-  let currentPriorityFee = (await solana.estimateGas()) * 1e9 - BASE_FEE;
-  while (currentPriorityFee <= solana.config.maxPriorityFee * 1e9) {
-    const priorityFeePerCU = Math.floor(
-      (currentPriorityFee * 1e6) / COMPUTE_UNITS,
-    );
-    let transaction: VersionedTransaction;
-    if (side === 'BUY') {
+  // Use provided compute units or default
+  const COMPUTE_UNITS = computeUnits || 600000;
+  
+  // Use provided priority fee per CU or estimate default
+  let finalPriorityFeePerCU: number;
+  if (priorityFeePerCU !== undefined) {
+    finalPriorityFeePerCU = priorityFeePerCU;
+  } else {
+    // Calculate default if not provided
+    const currentPriorityFee = (await solana.estimateGas()) * 1e9 - BASE_FEE;
+    finalPriorityFeePerCU = Math.floor((currentPriorityFee * 1e6) / COMPUTE_UNITS);
+  }
+  
+  // Build transaction with SDK - pass parameters directly
+  let transaction: VersionedTransaction;
+  if (side === 'BUY') {
       const exactOutResponse = response as ReturnTypeComputeAmountOutBaseOut;
       const amountIn = convertAmountIn(
         amount,
@@ -161,7 +171,7 @@ async function executeSwap(
         remainingAccounts: exactOutResponse.remainingAccounts,
         computeBudgetConfig: {
           units: COMPUTE_UNITS,
-          microLamports: priorityFeePerCU,
+          microLamports: finalPriorityFeePerCU,  // Pass directly without transformation
         },
       })) as { transaction: VersionedTransaction });
     } else {
@@ -180,47 +190,51 @@ async function executeSwap(
         txVersion: raydium.txVersion,
         computeBudgetConfig: {
           units: COMPUTE_UNITS,
-          microLamports: priorityFeePerCU,
+          microLamports: finalPriorityFeePerCU,  // Pass directly without transformation
         },
       })) as { transaction: VersionedTransaction });
     }
 
-    transaction.sign([wallet]);
-    await solana.simulateTransaction(transaction as VersionedTransaction);
+  // Sign and simulate transaction
+  transaction.sign([wallet]);
+  await solana.simulateTransaction(transaction as VersionedTransaction);
+  
+  // Send and confirm - keep retry loop here for retrying same tx hash
+  const { confirmed, signature, txData } =
+    await solana.sendAndConfirmRawTransaction(transaction);
 
-    const { confirmed, signature, txData } =
-      await solana.sendAndConfirmRawTransaction(transaction);
-    if (confirmed && txData) {
-      const { baseTokenBalanceChange, quoteTokenBalanceChange } =
-        await solana.extractPairBalanceChangesAndFee(
-          signature,
-          await solana.getToken(poolInfo.mintA.address),
-          await solana.getToken(poolInfo.mintB.address),
-          wallet.publicKey.toBase58(),
-        );
-
-      logger.info(
-        `Swap executed successfully: ${Math.abs(baseTokenBalanceChange).toFixed(4)} ${inputToken.symbol} -> ${Math.abs(quoteTokenBalanceChange).toFixed(4)} ${outputToken.symbol}`,
+  if (confirmed && txData) {
+    // Return confirmed with full data
+    const { baseTokenBalanceChange, quoteTokenBalanceChange } =
+      await solana.extractPairBalanceChangesAndFee(
+        signature,
+        await solana.getToken(poolInfo.mintA.address),
+        await solana.getToken(poolInfo.mintB.address),
+        wallet.publicKey.toBase58(),
       );
 
-      return {
-        signature,
+    logger.info(
+      `Swap executed successfully: ${Math.abs(baseTokenBalanceChange).toFixed(4)} ${inputToken.symbol} -> ${Math.abs(quoteTokenBalanceChange).toFixed(4)} ${outputToken.symbol}`,
+    );
+
+    return {
+      signature,
+      status: 1, // CONFIRMED
+      data: {
         totalInputSwapped: Math.abs(baseTokenBalanceChange),
         totalOutputSwapped: Math.abs(quoteTokenBalanceChange),
         fee: txData.meta.fee / 1e9,
         baseTokenBalanceChange,
         quoteTokenBalanceChange,
-      };
-    }
-    currentPriorityFee =
-      currentPriorityFee * solana.config.priorityFeeMultiplier;
-    logger.info(
-      `Increasing priority fee to ${currentPriorityFee} lamports/CU (max fee of ${(currentPriorityFee / 1e9).toFixed(6)} SOL)`,
-    );
+      }
+    };
+  } else {
+    // Return pending for Hummingbot to handle retry
+    return {
+      signature,
+      status: 0, // PENDING
+    };
   }
-  throw new Error(
-    `Swap execution failed after reaching max priority fee of ${(solana.config.maxPriorityFee / 1e9).toFixed(6)} SOL`,
-  );
 }
 
 export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
@@ -272,6 +286,8 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           side,
           poolAddress,
           slippagePct,
+          priorityFeePerCU,
+          computeUnits,
         } = request.body;
         const networkToUse = network || 'mainnet-beta';
 
@@ -301,6 +317,8 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           side as 'BUY' | 'SELL',
           poolAddressToUse,
           slippagePct,
+          priorityFeePerCU,
+          computeUnits,
         );
       } catch (e) {
         // Preserve the original error if it's a FastifyError

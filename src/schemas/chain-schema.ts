@@ -11,10 +11,9 @@ export type EstimateGasRequestType = Static<typeof EstimateGasRequestSchema>;
 
 export const EstimateGasResponseSchema = Type.Object(
   {
-    gasPrice: Type.Number(),
-    gasPriceToken: Type.String(),
-    gasLimit: Type.Number(),
-    gasCost: Type.Number(),
+    feePerComputeUnit: Type.Number(), // Fee per compute unit
+    denomination: Type.String(),      // Denomination: "microlamports" or "wei"
+    timestamp: Type.Number(),         // Unix timestamp when estimate was made
   },
   { $id: 'EstimateGasResponse' },
 );

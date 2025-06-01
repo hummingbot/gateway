@@ -13,6 +13,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Format code: `pnpm format`
 - Type check: `pnpm typecheck`
 - Initial setup: `pnpm setup` (creates configs and generates certificates)
+- Generate OpenAPI spec: `pnpm generate:openapi` (outputs to openapi.json)
 
 ## Architecture Overview
 
@@ -37,6 +38,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Connector routes: `/connectors/{dex}/{type}/{operation}`
 - Config routes: `/config/*`
 - Wallet routes: `/wallet/*`
+
+### API Documentation
+- Live Swagger docs: `/docs` endpoint when server is running
+- OpenAPI specification: `openapi.json` (generated from running server)
+- Use the OpenAPI spec for accurate route information and schemas
+- To update OpenAPI spec: start server and run `pnpm generate:openapi`
 
 ## Coding Style Guidelines
 - TypeScript with ESNext target and CommonJS modules
