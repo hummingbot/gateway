@@ -32,6 +32,8 @@
       "retryCount": { "type": "number" },
       "retryFeeMultiplier": { "type": "number" },
       "retryInterval": { "type": "number" },
+      "confirmRetryInterval": { "type": "number" },
+      "confirmRetryCount": { "type": "number" },
       "basePriorityFeePct": { "type": "number" }
     },
     "additionalProperties": false

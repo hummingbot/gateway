@@ -823,7 +823,7 @@ export class Solana {
       return { signature, fee: actualFee };
     }
     
-    throw new Error(`Transaction failed to confirm after ${this.config.retryCount} attempts`);
+    throw new Error(`Transaction failed to confirm after ${this.config.confirmRetryCount} attempts`);
   }
 
   private async prepareTx(
@@ -1027,20 +1027,20 @@ export class Solana {
     serializedTx: Buffer | Uint8Array,
   ): Promise<{ confirmed: boolean; signature: string; txData: any }> {
     let retryCount = 0;
-    while (retryCount < this.config.retryCount) {
+    while (retryCount < this.config.confirmRetryCount) {
       const signature = await this.connection.sendRawTransaction(serializedTx, {
         skipPreflight: true,
       });
       const { confirmed, txData } = await this.confirmTransaction(signature);
       logger.info(
-        `[${retryCount + 1}/${this.config.retryCount}] Transaction ${signature} status: ${confirmed ? 'confirmed' : 'unconfirmed'}`,
+        `[${retryCount + 1}/${this.config.confirmRetryCount}] Transaction ${signature} status: ${confirmed ? 'confirmed' : 'unconfirmed'}`,
       );
       if (confirmed && txData) {
         return { confirmed, signature, txData };
       }
       retryCount++;
       await new Promise((resolve) =>
-        setTimeout(resolve, this.config.retryInterval * 1000),
+        setTimeout(resolve, this.config.confirmRetryInterval * 1000),
       );
     }
     return { confirmed: false, signature: '', txData: null };
@@ -1386,7 +1386,7 @@ export class Solana {
       await this.simulateTransaction(modifiedTx);
 
       let retryCount = 0;
-      while (retryCount < this.config.retryCount) {
+      while (retryCount < this.config.confirmRetryCount) {
         try {
           const signature = await this.connection.sendRawTransaction(
             Buffer.from(modifiedTx.serialize()),
@@ -1395,7 +1395,7 @@ export class Solana {
 
           const confirmationResult = await this.confirmTransaction(signature);
           logger.info(
-            `[${retryCount + 1}/${this.config.retryCount}] Transaction ${signature} confirmation status: ${confirmationResult.confirmed ? 'confirmed' : 'unconfirmed'}`,
+            `[${retryCount + 1}/${this.config.confirmRetryCount}] Transaction ${signature} confirmation status: ${confirmationResult.confirmed ? 'confirmed' : 'unconfirmed'}`,
           );
           if (confirmationResult.confirmed && confirmationResult.txData) {
             const actualFee = this.getFee(confirmationResult.txData);
@@ -1407,7 +1407,7 @@ export class Solana {
 
           retryCount++;
           await new Promise((resolve) =>
-            setTimeout(resolve, this.config.retryInterval * 1000),
+            setTimeout(resolve, this.config.confirmRetryInterval * 1000),
           );
         } catch (error) {
           // Only retry if error is not a definitive failure
@@ -1416,12 +1416,12 @@ export class Solana {
           }
           retryCount++;
           await new Promise((resolve) =>
-            setTimeout(resolve, this.config.retryInterval * 1000),
+            setTimeout(resolve, this.config.confirmRetryInterval * 1000),
           );
         }
       }
 
-      // If we get here, transaction wasn't confirmed after RETRY_COUNT attempts
+      // If we get here, transaction wasn't confirmed after confirmRetryCount attempts
       // Increase the priority fee and try again
       currentPriorityFee = Math.floor(
         currentPriorityFee * this.config.retryFeeMultiplier,

@@ -17,6 +17,8 @@ export interface Config {
   retryCount: number;
   retryFeeMultiplier: number;
   retryInterval: number;
+  confirmRetryInterval: number;
+  confirmRetryCount: number;
   basePriorityFeePct: number;
 }
 
@@ -58,6 +60,12 @@ export function getSolanaConfig(
     ),
     retryInterval: ConfigManagerV2.getInstance().get(
       chainName + '.retryInterval',
+    ),
+    confirmRetryInterval: ConfigManagerV2.getInstance().get(
+      chainName + '.confirmRetryInterval',
+    ),
+    confirmRetryCount: ConfigManagerV2.getInstance().get(
+      chainName + '.confirmRetryCount',
     ),
     basePriorityFeePct: ConfigManagerV2.getInstance().get(
       chainName + '.basePriorityFeePct',
