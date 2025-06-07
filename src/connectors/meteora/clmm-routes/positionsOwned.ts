@@ -1,21 +1,24 @@
-import { FastifyPluginAsync } from 'fastify';
 import { Type, Static } from '@sinclair/typebox';
-import { Meteora } from '../meteora';
 import { PublicKey } from '@solana/web3.js';
-import { logger } from '../../../services/logger';
+import { FastifyPluginAsync } from 'fastify';
+
 import { Solana } from '../../../chains/solana/solana';
-import { PositionInfoSchema } from '../../../schemas/trading-types/clmm-schema';
-import { httpBadRequest, ERROR_MESSAGES } from '../../../services/error-handler';
+import { PositionInfoSchema } from '../../../schemas/clmm-schema';
+import { logger } from '../../../services/logger';
+import { Meteora } from '../meteora';
+// Using Fastify's native error handling
+const INVALID_SOLANA_ADDRESS_MESSAGE = (address: string) =>
+  `Invalid Solana address: ${address}`;
 
 // Schema definitions
 const GetPositionsOwnedRequest = Type.Object({
   network: Type.Optional(Type.String({ default: 'mainnet-beta' })),
-  walletAddress: Type.String({ 
+  walletAddress: Type.String({
     description: 'Will use first available wallet if not specified',
-    examples: [] // Will be populated during route registration
+    examples: [], // Will be populated during route registration
   }),
-  poolAddress: Type.String({ 
-    examples: ['FtFUzuXbbw6oBbU53SDUGspEka1D5Xyc4cwnkxer6xKz'] 
+  poolAddress: Type.String({
+    examples: ['FtFUzuXbbw6oBbU53SDUGspEka1D5Xyc4cwnkxer6xKz'],
   }),
 });
 
@@ -28,16 +31,18 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
   // Get first wallet address for example
   const solana = await Solana.getInstance('mainnet-beta');
   let firstWalletAddress = '<solana-wallet-address>';
-  
+
   const foundWallet = await solana.getFirstWalletAddress();
   if (foundWallet) {
     firstWalletAddress = foundWallet;
   } else {
     logger.debug('No wallets found for examples in schema');
   }
-  
+
   // Update schema example
-  GetPositionsOwnedRequest.properties.walletAddress.examples = [firstWalletAddress];
+  GetPositionsOwnedRequest.properties.walletAddress.examples = [
+    firstWalletAddress,
+  ];
 
   fastify.get<{
     Querystring: GetPositionsOwnedRequestType;
@@ -46,32 +51,37 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
     '/positions-owned',
     {
       schema: {
-        description: "Retrieve a list of positions owned by a user's wallet in a specific Meteora pool",
+        description:
+          "Retrieve a list of positions owned by a user's wallet in a specific Meteora pool",
         tags: ['meteora/clmm'],
         querystring: GetPositionsOwnedRequest,
         response: {
-          200: GetPositionsOwnedResponse
+          200: GetPositionsOwnedResponse,
         },
-      }
+      },
     },
     async (request) => {
       try {
         const { walletAddress, poolAddress } = request.query;
         const network = request.query.network || 'mainnet-beta';
         const meteora = await Meteora.getInstance(network);
-        
+
         // Validate addresses first
         try {
           new PublicKey(poolAddress);
           new PublicKey(walletAddress);
         } catch (error) {
-          const invalidAddress = error.message.includes(poolAddress) ? 'pool' : 'wallet';
-          throw httpBadRequest(ERROR_MESSAGES.INVALID_SOLANA_ADDRESS(invalidAddress));
-              }
+          const invalidAddress = error.message.includes(poolAddress)
+            ? 'pool'
+            : 'wallet';
+          throw fastify.httpErrors.badRequest(
+            INVALID_SOLANA_ADDRESS_MESSAGE(invalidAddress),
+          );
+        }
 
         const positions = await meteora.getPositionsInPool(
           poolAddress,
-          new PublicKey(walletAddress)
+          new PublicKey(walletAddress),
         );
 
         return positions;
@@ -82,8 +92,8 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
         }
         throw fastify.httpErrors.internalServerError('Internal server error');
       }
-    }
+    },
   );
 };
 
-export default positionsOwnedRoute; 
+export default positionsOwnedRoute;

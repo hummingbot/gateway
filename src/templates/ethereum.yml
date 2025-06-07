@@ -1,21 +1,27 @@
+# Global settings for Ethereum
+# Gas parameters for transactions (applies to all networks)
+gasLimitTransaction: 3000000
+manualGasPrice: 33
+
+# Network-specific configurations
 networks:
   mainnet:
     chainID: 1
-    nodeURL: https://rpc.ankr.com/eth
+    nodeURL: https://eth.llamarpc.com
     tokenListType: FILE
     nativeCurrencySymbol: ETH
     tokenListSource: /home/gateway/conf/lists/mainnet.json
     gasPriceRefreshInterval: 60
   arbitrum:
     chainID: 42161
-    nodeURL: https://rpc.ankr.com/arbitrum
+    nodeURL: https://arb1.arbitrum.io/rpc
     tokenListType: FILE
     tokenListSource: /home/gateway/conf/lists/arbitrum.json
     nativeCurrencySymbol: ETH
     gasPriceRefreshInterval: 60
   optimism:
     chainID: 10
-    nodeURL: https://rpc.ankr.com/optimism
+    nodeURL: https://mainnet.optimism.io
     tokenListType: FILE
     tokenListSource: /home/gateway/conf/lists/optimism.json
     nativeCurrencySymbol: OETH
@@ -43,7 +49,7 @@ networks:
     gasPriceRefreshInterval: 60
   avalanche:
     chainID: 43114
-    nodeURL: https://rpc.ankr.com/avalanche
+    nodeURL: https://api.avax.network/ext/bc/C/rpc
     tokenListType: FILE
     tokenListSource: conf/lists/avalanche.json
     nativeCurrencySymbol: AVAX
@@ -62,7 +68,24 @@ networks:
     tokenListSource: conf/lists/polygon.json
     nativeCurrencySymbol: POL
     gasPriceRefreshInterval: 60
-
-# if you use the gas assumptions below, your wallet needs >0.1 ETH balance for gas
-gasLimitTransaction: 3000000
-manualGasPrice: 33
+  blast:
+    chainID: 81457
+    nodeURL: https://rpc.blast.io
+    tokenListType: FILE
+    tokenListSource: /home/gateway/conf/lists/mainnet.json
+    nativeCurrencySymbol: ETH
+    gasPriceRefreshInterval: 60
+  zora:
+    chainID: 7777777
+    nodeURL: https://rpc.zora.energy
+    tokenListType: FILE
+    tokenListSource: /home/gateway/conf/lists/mainnet.json
+    nativeCurrencySymbol: ETH
+    gasPriceRefreshInterval: 60
+  worldchain:
+    chainID: 480
+    nodeURL: https://worldchain-mainnet.g.alchemy.com/public
+    tokenListType: FILE
+    tokenListSource: /home/gateway/conf/lists/worldchain.json
+    nativeCurrencySymbol: WLD
+    gasPriceRefreshInterval: 60

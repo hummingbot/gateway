@@ -1,16 +1,19 @@
-import { FastifyPluginAsync } from 'fastify';
 import { Type, Static } from '@sinclair/typebox';
-import { Raydium } from '../raydium';
 import { PublicKey } from '@solana/web3.js';
+import { FastifyPluginAsync } from 'fastify';
+
+import { PositionInfoSchema } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
-import { PositionInfoSchema } from '../../../schemas/trading-types/clmm-schema';
-import { httpBadRequest, ERROR_MESSAGES } from '../../../services/error-handler';
+import { Raydium } from '../raydium';
+// Using Fastify's native error handling
+const INVALID_SOLANA_ADDRESS_MESSAGE = (address: string) =>
+  `Invalid Solana address: ${address}`;
 
 // Schema definitions
 const GetPositionsOwnedRequest = Type.Object({
   network: Type.Optional(Type.String({ default: 'mainnet-beta' })),
-  poolAddress: Type.String({ 
-    examples: ['61R1ndXxvsWXXkWSyNkCxnzwd3zUNB8Q2ibmkiLPC8ht'] 
+  poolAddress: Type.String({
+    examples: ['61R1ndXxvsWXXkWSyNkCxnzwd3zUNB8Q2ibmkiLPC8ht'],
   }),
 });
 
@@ -21,7 +24,7 @@ type GetPositionsOwnedResponseType = Static<typeof GetPositionsOwnedResponse>;
 
 export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
   // Remove wallet address example population code
-  
+
   fastify.get<{
     Querystring: GetPositionsOwnedRequestType;
     Reply: GetPositionsOwnedResponseType;
@@ -29,47 +32,51 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
     '/positions-owned',
     {
       schema: {
-        description: "Retrieve a list of positions owned by a user's wallet in a specific Raydium CLMM pool",
+        description:
+          "Retrieve a list of positions owned by a user's wallet in a specific Raydium CLMM pool",
         tags: ['raydium/clmm'],
         querystring: GetPositionsOwnedRequest,
         response: {
-          200: GetPositionsOwnedResponse
+          200: GetPositionsOwnedResponse,
         },
-      }
+      },
     },
     async (request) => {
       try {
         const { poolAddress } = request.query;
         const network = request.query.network || 'mainnet-beta';
         const raydium = await Raydium.getInstance(network);
-        
+
         // Validate pool address only
         try {
           new PublicKey(poolAddress);
         } catch (error) {
-          throw httpBadRequest(ERROR_MESSAGES.INVALID_SOLANA_ADDRESS('pool'));
+          throw fastify.httpErrors.badRequest(
+            INVALID_SOLANA_ADDRESS_MESSAGE('pool'),
+          );
         }
-        console.log('poolAddress', poolAddress)
+        console.log('poolAddress', poolAddress);
 
         // Get pool info to extract program ID
         const apiResponse = await raydium.getClmmPoolfromAPI(poolAddress);
 
         if (apiResponse !== null) {
-          const poolInfo = apiResponse[0];  // Direct array access instead of destructuring
+          const poolInfo = apiResponse[0]; // Direct array access instead of destructuring
           console.log('poolInfo', poolInfo, 'Program ID:', poolInfo.programId);
-          
+
           const positions = await raydium.raydiumSDK.clmm.getOwnerPositionInfo({
-            programId: poolInfo.programId
+            programId: poolInfo.programId,
           });
           console.log('positions', positions);
           const positionsInfo = await Promise.all(
-            positions.map(pos => raydium.getPositionInfo(pos.nftMint.toString()))
+            positions.map((pos) =>
+              raydium.getPositionInfo(pos.nftMint.toString()),
+            ),
           );
           return positionsInfo;
         }
         console.log('No positions found in pool', poolAddress);
         return [];
-
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {
@@ -77,8 +84,8 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
         }
         throw fastify.httpErrors.internalServerError('Internal server error');
       }
-    }
+    },
   );
 };
 
-export default positionsOwnedRoute; 
+export default positionsOwnedRoute;

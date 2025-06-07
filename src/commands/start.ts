@@ -1,4 +1,5 @@
 import { Command } from '@oclif/core';
+
 import { startGateway } from '../app';
 
 export default class Start extends Command {
@@ -10,4 +11,4 @@ export default class Start extends Command {
     process.env.START_SERVER = 'true';
     await startGateway();
   }
-} 
+}

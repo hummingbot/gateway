@@ -1,0 +1,11 @@
+{
+  "poolAddress": "CS2H8nbAVVEUHWPF5extCSymqheQdkd4d7thik6eet9N",
+  "positionId": "123456789",
+  "lowerTick": -88720,
+  "upperTick": 88720,
+  "liquidity": "1000000000000000000",
+  "baseTokenAmount": 1.5,
+  "quoteTokenAmount": 251.25,
+  "unclaimedFeeBaseAmount": 0.001,
+  "unclaimedFeeQuoteAmount": 0.1675
+}

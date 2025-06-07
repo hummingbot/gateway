@@ -1,0 +1,15 @@
+{
+  "tokenAddress": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+  "spender": "0xC36442b4a4522E871399CD717aBDD847Ab11FE88",
+  "amount": "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+  "nonce": 42,
+  "signature": "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+  "approval": {
+    "data": "0x095ea7b3000000000000000000000000c36442b4a4522e871399cd717abdd847ab11fe88ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "to": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    "maxPriorityFeePerGas": "1500000000",
+    "maxFeePerGas": "3000000000",
+    "gasLimit": "60000",
+    "value": "0"
+  }
+}

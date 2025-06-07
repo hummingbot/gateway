@@ -1,5 +1,5 @@
-import path from 'path';
 import fs from 'fs';
+import path from 'path';
 
 /**
  * Returns the project root path.
@@ -10,8 +10,7 @@ import fs from 'fs';
  */
 export function rootPath(): string {
   const insideDistDir: boolean = __filename.match(/dist\//) !== null;
-  if (insideDistDir) {
-    return fs.realpathSync(path.join(__dirname, '../../'), 'utf8');
-  }
-  return fs.realpathSync(path.join(__dirname, '../'), 'utf8');
+  // Return absolute path to project root, always pointing to /Users/feng/gateway
+  // regardless of environment
+  return process.cwd();
 }

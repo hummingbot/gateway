@@ -1,0 +1,28 @@
+{
+  "inputMint": "So11111111111111111111111111111111111111112",
+  "inAmount": "1000000000",
+  "outputMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+  "outAmount": "167000000",
+  "otherAmountThreshold": "166165000",
+  "swapMode": "ExactIn",
+  "slippageBps": 50,
+  "platformFee": null,
+  "priceImpactPct": "0.01",
+  "routePlan": [
+    {
+      "swapInfo": {
+        "ammKey": "2QdhepnKRTLjjSqPL1PtKNwqrUkoLee5Gqs8bvZhRdMv",
+        "label": "Raydium CLMM",
+        "inputMint": "So11111111111111111111111111111111111111112",
+        "outputMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "inAmount": "1000000000",
+        "outAmount": "167000000",
+        "feeAmount": "100000",
+        "feeMint": "So11111111111111111111111111111111111111112"
+      },
+      "percent": 100
+    }
+  ],
+  "contextSlot": 123456789,
+  "timeTaken": 0.123
+}

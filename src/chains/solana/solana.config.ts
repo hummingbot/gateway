@@ -21,44 +21,42 @@ export interface Config {
 
 export function getSolanaConfig(
   chainName: string,
-  networkName: string
+  networkName: string,
 ): Config {
   return {
     network: {
       name: networkName,
       nodeURL: ConfigManagerV2.getInstance().get(
-        chainName + '.networks.' + networkName + '.nodeURL'
+        chainName + '.networks.' + networkName + '.nodeURL',
       ),
       tokenListType: ConfigManagerV2.getInstance().get(
-        chainName + '.networks.' + networkName + '.tokenListType'
+        chainName + '.networks.' + networkName + '.tokenListType',
       ),
       tokenListSource: ConfigManagerV2.getInstance().get(
-        chainName + '.networks.' + networkName + '.tokenListSource'
+        chainName + '.networks.' + networkName + '.tokenListSource',
       ),
       nativeCurrencySymbol: ConfigManagerV2.getInstance().get(
-        chainName + '.networks.' + networkName + '.nativeCurrencySymbol'
+        chainName + '.networks.' + networkName + '.nativeCurrencySymbol',
       ),
     },
     defaultComputeUnits: ConfigManagerV2.getInstance().get(
-      chainName + '.defaultComputeUnits'
+      chainName + '.defaultComputeUnits',
     ),
     basePriorityFeePct: ConfigManagerV2.getInstance().get(
-      chainName + '.basePriorityFeePct'
+      chainName + '.basePriorityFeePct',
     ),
     priorityFeeMultiplier: ConfigManagerV2.getInstance().get(
-      chainName + '.priorityFeeMultiplier'
+      chainName + '.priorityFeeMultiplier',
     ),
     maxPriorityFee: ConfigManagerV2.getInstance().get(
-      chainName + '.maxPriorityFee'
+      chainName + '.maxPriorityFee',
     ),
     minPriorityFee: ConfigManagerV2.getInstance().get(
-      chainName + '.minPriorityFee'
+      chainName + '.minPriorityFee',
     ),
     retryIntervalMs: ConfigManagerV2.getInstance().get(
-      chainName + '.retryIntervalMs'
+      chainName + '.retryIntervalMs',
     ),
-    retryCount: ConfigManagerV2.getInstance().get(
-      chainName + '.retryCount'
-    ),
+    retryCount: ConfigManagerV2.getInstance().get(chainName + '.retryCount'),
   };
 }

@@ -1,0 +1,8 @@
+{
+  "signature": "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+  "totalInputSwapped": 1.0,
+  "totalOutputSwapped": 1800.0,
+  "fee": 0.003,
+  "baseTokenBalanceChange": -1.0,
+  "quoteTokenBalanceChange": 1800.0
+}

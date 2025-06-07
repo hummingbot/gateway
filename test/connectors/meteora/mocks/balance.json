@@ -1,0 +1,34 @@
+[
+  {
+    "validResponse": {
+      "balances": {
+        "SOL": 2.5,
+        "USDC": 1000.0,
+        "USDT": 500.0
+      }
+    },
+    "invalidResponse": {
+      "balances": {
+        "SOL": "2.5",
+        "USDC": 1000.0,
+        "USDT": 500.0
+      }
+    }
+  },
+  {
+    "validResponse": {
+      "balances": {
+        "SOL": 2.5,
+        "USDC": 1000.0,
+        "USDT": 500.0
+      }
+    },
+    "invalidResponse": {
+      "balances": [
+        { "symbol": "SOL", "amount": 2.5 },
+        { "symbol": "USDC", "amount": 1000.0 },
+        { "symbol": "USDT", "amount": 500.0 }
+      ]
+    }
+  }
+]
