@@ -1,2 +1,10 @@
-# turn off specific file for eslint
+# Directories to ignore
 /node_modules
+/dist
+/build
+/coverage
+/logs
+
+# Generated files
+*.d.ts
+*.js.map

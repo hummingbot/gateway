@@ -1,0 +1,5 @@
+{
+  "statusCode": 404,
+  "error": "NotFound",
+  "message": "Position not found"
+}

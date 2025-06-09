@@ -1,0 +1,12 @@
+{
+  "network": "mainnet-beta",
+  "isConnected": true,
+  "latestBlock": 228950121,
+  "rpcUrl": "https://api.mainnet-beta.solana.com",
+  "gasPrice": "5000",
+  "nativeCurrency": {
+    "name": "Solana",
+    "symbol": "SOL",
+    "decimals": 9
+  }
+}

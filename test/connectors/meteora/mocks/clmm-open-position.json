@@ -1,0 +1,11 @@
+{
+  "signature": "5KtPn1LGuxhPdNK7Lr13Jxj5JBAf7xTEEBs4iFBtVGZSDYgAQECXfXnGQ2jiAiRHNLbz8pT8xcTKfPZ9jQpKGNZR",
+  "positionId": "123456789",
+  "poolAddress": "CS2H8nbAVVEUHWPF5extCSymqheQdkd4d7thik6eet9N",
+  "lowerTick": -88720,
+  "upperTick": 88720,
+  "liquidity": "1294000000",
+  "baseTokenAmount": 1.0,
+  "quoteTokenAmount": 167.5,
+  "fee": 0.005
+}
