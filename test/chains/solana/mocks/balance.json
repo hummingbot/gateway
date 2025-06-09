@@ -1,0 +1,34 @@
+{
+  "network": "mainnet-beta",
+  "wallet": "AabEVCB1sWgCPxbn6hFYM4Ukj7UubpBRbbYqRnqRXnZD",
+  "balances": [
+    {
+      "symbol": "SOL",
+      "address": "So11111111111111111111111111111111111111112",
+      "decimals": 9,
+      "name": "Solana",
+      "balance": "10.5"
+    },
+    {
+      "symbol": "USDC",
+      "address": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "decimals": 6,
+      "name": "USD Coin",
+      "balance": "2500.00"
+    },
+    {
+      "symbol": "USDT",
+      "address": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+      "decimals": 6,
+      "name": "Tether USD",
+      "balance": "1000.00"
+    },
+    {
+      "symbol": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+      "address": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+      "decimals": 5,
+      "name": "Unknown Token",
+      "balance": "50000.00"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "address": "3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv",
+  "baseTokenAddress": "So11111111111111111111111111111111111111112",
+  "quoteTokenAddress": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+  "feePct": 0.04,
+  "price": 167.5,
+  "baseTokenAmount": 12500.0,
+  "quoteTokenAmount": 2093750.0,
+  "currentTick": 23100,
+  "liquidity": "5000000000000000000"
+}

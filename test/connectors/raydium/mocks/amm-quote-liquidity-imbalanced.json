@@ -1,0 +1,16 @@
+{
+  "statusCode": 400,
+  "error": "Validation Error",
+  "message": "querystring must have required property 'baseTokenAmount'",
+  "validation": [
+    {
+      "instancePath": "",
+      "schemaPath": "#/required",
+      "keyword": "required",
+      "params": {
+        "missingProperty": "baseTokenAmount"
+      },
+      "message": "must have required property 'baseTokenAmount'"
+    }
+  ]
+}

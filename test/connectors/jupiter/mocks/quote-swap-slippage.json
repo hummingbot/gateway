@@ -1,0 +1,13 @@
+{
+  "estimatedAmountIn": 0.1,
+  "estimatedAmountOut": 16.391966,
+  "minAmountOut": 15.98216585,
+  "maxAmountIn": 0.1,
+  "baseTokenBalanceChange": -0.1,
+  "quoteTokenBalanceChange": 16.391966,
+  "price": 163.91966,
+  "gasPrice": 0.5,
+  "gasLimit": 200000,
+  "gasCost": 0.000105,
+  "poolAddress": "jupiter-aggregator"
+}

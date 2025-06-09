@@ -1,5 +1,7 @@
-import { Command } from '@oclif/core';
 import { execSync } from 'child_process';
+
+import { Command } from '@oclif/core';
+
 import { logger } from '../services/logger';
 
 export default class Build extends Command {
@@ -21,7 +23,7 @@ export default class Build extends Command {
       logger.info('Copying additional files...');
       execSync(
         "npx copyfiles 'src/**/schema/*.json' 'src/templates/*.yml' 'src/templates/lists/*.json' 'test/services/data/**/*.*' dist",
-        { stdio: 'inherit' }
+        { stdio: 'inherit' },
       );
 
       logger.info('Build completed successfully');
@@ -29,4 +31,4 @@ export default class Build extends Command {
       this.error('Build failed: ' + error.message);
     }
   }
-} 
+}

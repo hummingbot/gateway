@@ -1,13 +1,19 @@
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
-import { Solana } from '../solana';
-import { logger } from '../../../services/logger';
 import { TokenInfo } from '@solana/spl-token-registry';
-import { TokensRequestType, TokensResponseType, TokensRequestSchema, TokensResponseSchema } from '../../../schemas/chain-schema';
+import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+
+import {
+  TokensRequestType,
+  TokensResponseType,
+  TokensRequestSchema,
+  TokensResponseSchema,
+} from '../../../schemas/chain-schema';
+import { logger } from '../../../services/logger';
+import { Solana } from '../solana';
 
 export async function getSolanaTokens(
   fastify: FastifyInstance,
   network: string,
-  tokenSymbols?: string[] | string
+  tokenSymbols?: string[] | string,
 ): Promise<TokensResponseType> {
   try {
     const solana = await Solana.getInstance(network);
@@ -16,12 +22,12 @@ export async function getSolanaTokens(
     if (!tokenSymbols) {
       tokens = solana.tokenList;
     } else {
-      const symbolsArray = Array.isArray(tokenSymbols) 
-        ? tokenSymbols 
+      const symbolsArray = Array.isArray(tokenSymbols)
+        ? tokenSymbols
         : typeof tokenSymbols === 'string'
           ? tokenSymbols.replace(/[\[\]]/g, '').split(',')
           : [];
-          
+
       for (const symbol of symbolsArray) {
         const token = await solana.getToken(symbol.trim());
         if (token) tokens.push(token);
@@ -31,7 +37,9 @@ export async function getSolanaTokens(
     return { tokens };
   } catch (error) {
     logger.error(`Error getting tokens: ${error.message}`);
-    throw fastify.httpErrors.internalServerError(`Failed to get tokens: ${error.message}`);
+    throw fastify.httpErrors.internalServerError(
+      `Failed to get tokens: ${error.message}`,
+    );
   }
 }
 
@@ -43,7 +51,8 @@ export const tokensRoute: FastifyPluginAsync = async (fastify) => {
     '/tokens',
     {
       schema: {
-        description: 'Get list of supported Solana tokens with their addresses and decimals',
+        description:
+          'Get list of supported Solana tokens with their addresses and decimals',
         tags: ['solana'],
         querystring: {
           ...TokensRequestSchema,
@@ -51,17 +60,17 @@ export const tokensRoute: FastifyPluginAsync = async (fastify) => {
             ...TokensRequestSchema.properties,
             network: { type: 'string', default: 'mainnet-beta' },
             tokenSymbols: { type: 'array', items: { type: 'string' } },
-          }
+          },
         },
         response: {
-          200: TokensResponseSchema
-        }
-      }
+          200: TokensResponseSchema,
+        },
+      },
     },
     async (request) => {
       const { network, tokenSymbols } = request.query;
       return await getSolanaTokens(fastify, network, tokenSymbols);
-    }
+    },
   );
 };
 

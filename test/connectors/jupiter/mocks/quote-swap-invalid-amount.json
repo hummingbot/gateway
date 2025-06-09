@@ -1,0 +1,5 @@
+{
+  "statusCode": 500,
+  "error": "InternalServerError",
+  "message": "Failed to get Jupiter quote: Jupiter API error: Query parameter amount cannot be parsed: ParseIntError { kind: InvalidDigit }"
+}

@@ -1,0 +1,24 @@
+[
+  {
+    "poolAddress": "3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv",
+    "positionId": "123456789",
+    "lowerTick": -887272,
+    "upperTick": 887272,
+    "liquidity": "1000000000000000000",
+    "baseTokenAmount": 1.5,
+    "quoteTokenAmount": 251.25,
+    "unclaimedFeeBaseAmount": 0.001,
+    "unclaimedFeeQuoteAmount": 0.1675
+  },
+  {
+    "poolAddress": "3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv",
+    "positionId": "987654321",
+    "lowerTick": -443636,
+    "upperTick": 443636,
+    "liquidity": "500000000000000000",
+    "baseTokenAmount": 0.75,
+    "quoteTokenAmount": 125.625,
+    "unclaimedFeeBaseAmount": 0.0005,
+    "unclaimedFeeQuoteAmount": 0.08375
+  }
+]

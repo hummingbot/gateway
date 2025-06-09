@@ -1,0 +1,14 @@
+{
+  "address": "58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2",
+  "baseTokenAddress": "So11111111111111111111111111111111111111112",
+  "quoteTokenAddress": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+  "feePct": 0.0025,
+  "price": 163.5123715722968,
+  "baseTokenAmount": 40078.234338467,
+  "quoteTokenAmount": 6553287.145113,
+  "lpMint": {
+    "address": "8HoQnePLqPj4M7PUDzfw8e3Ymdwgc7NLGnaTUapubyvu",
+    "decimals": 9
+  },
+  "poolType": "amm"
+}
