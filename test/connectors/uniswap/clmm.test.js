@@ -208,7 +208,9 @@ describe('Uniswap CLMM Tests (Base Network)', () => {
         baseTokenBalanceChange: 1.0, // Positive for BUY
         quoteTokenBalanceChange: -mockSellResponse.quoteTokenBalanceChange, // Negative for BUY
         // For BUY: price = quote needed / base received
-        price: mockSellResponse.estimatedAmountOut / mockSellResponse.estimatedAmountIn,
+        price:
+          mockSellResponse.estimatedAmountOut /
+          mockSellResponse.estimatedAmountIn,
       };
 
       // Setup mock axios
