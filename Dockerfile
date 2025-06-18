@@ -45,12 +45,10 @@ RUN pnpm build
 # Expose port 15888 - note that docs port is 8080
 EXPOSE 15888
 
-# Copy the entrypoint script
-COPY docker-entrypoint.sh /usr/local/bin/
+# Copy entrypoint script
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-# Set the entrypoint
-ENTRYPOINT ["docker-entrypoint.sh"]
-
-# Set the default command to run when starting the container
+# Set entrypoint
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["sh", "-c", "if [ \"$DEV\" = \"true\" ]; then pnpm start --dev; else pnpm start; fi"]
