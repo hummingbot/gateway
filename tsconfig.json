@@ -21,12 +21,10 @@
     "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
-      "#src/*": [
-        "src/*"
-      ],
-      "#test/*": [
-        "test/*"
-      ]
+      "#src": ["src/index.ts"],
+      "#src/*": ["src/*"],
+      "#test": ["test"],
+      "#test/*": ["test/*"]
     },
     "typeRoots": ["node_modules/@types", "src/@types"],
     "downlevelIteration": true,

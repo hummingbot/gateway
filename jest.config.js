@@ -15,8 +15,6 @@ module.exports = {
     'src/connectors/uniswap/uniswap.ts',
     'src/connectors/uniswap/uniswap.lp.helper.ts',
     'src/network/network.controllers.ts',
-    'src/services/ethereum-base.ts',
-    'src/services/telemetry-transport.ts',
     'test/*',
   ],
   modulePathIgnorePatterns: ['<rootDir>/dist/'],
@@ -28,7 +26,7 @@ module.exports = {
   ],
   testMatch: ['<rootDir>/test/**/*.test.ts', '<rootDir>/test/**/*.test.js'],
   transform: {
-    '^.+\\.(t|j)s$': 'ts-jest',
+    '^.+\\.tsx?$': 'ts-jest',
   },
   transformIgnorePatterns: ['/node_modules/(?!.*superjson)'],
   moduleNameMapper: pathsToModuleNameMapper(compilerOptions.paths, {
