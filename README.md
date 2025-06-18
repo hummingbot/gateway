@@ -1,4 +1,4 @@
-![Hummingbot](https://i.ibb.co/X5zNkKw/blacklogo-with-text.png)
+![Hummingbot](https://github.com/user-attachments/assets/3213d7f8-414b-4df8-8c1b-a0cd142a82d8)
 
 # Hummingbot Gateway
 
