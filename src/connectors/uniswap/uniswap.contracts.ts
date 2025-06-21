@@ -168,6 +168,17 @@ export const contractAddresses: NetworkContractAddresses = {
       '0x10158D43e6cc414deE1Bd1eB0EfC6a5cBCfF244c', // Official QuoterV2
     uniswapV3FactoryAddress: '0x7a5028BDa40e7B173C278C5342087826455ea25a', // Official V3 Factory
   },
+  berachain: {
+    uniswapV2RouterAddress: '0xd91dd58387Ccd9B66B390ae2d7c66dBD46BC6022', 
+    uniswapV2FactoryAddress: '0x5e705e184d233ff2a7cb1553793464a9d0c3028f', 
+    uniswapV3SmartOrderRouterAddress:
+      '0xe301E48F77963D3F7DbD2a4796962Bd7f3867Fb4',
+    uniswapV3NftManagerAddress: '0xFE5E8C83FFE4d9627A75EaA7Fee864768dB989bD',
+    uniswapV3QuoterV2ContractAddress:
+      '0x644C8D6E501f7C994B74F5ceA96abe65d0BA662B',
+    uniswapV3FactoryAddress: '0xD84CBf0B02636E7f53dB9E5e45A616E05d710990',
+    // multicallAddress: '0xcA11bde05977b3631167028862bE2a173976CA11', 
+  },
 };
 
 /**

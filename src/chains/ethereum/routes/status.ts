@@ -76,6 +76,7 @@ export const statusRoute: FastifyPluginAsync = async (fastify) => {
                 'blast',
                 'zora',
                 'worldchain',
+                'berachain',
               ],
             },
           },

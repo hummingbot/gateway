@@ -576,6 +576,11 @@ export class Ethereum {
       symbol: 'WETH',
       nativeSymbol: 'ETH',
     },
+    berachain: {
+      address: '0x6969696969696969696969696969696969696969',
+      symbol: 'WBERA',
+      nativeSymbol: 'BERA',
+    },
   };
 
   /**

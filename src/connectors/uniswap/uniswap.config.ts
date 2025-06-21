@@ -29,6 +29,7 @@ export const uniswapAmmNetworks = [
   'blast',
   'zora',
   'worldchain',
+  'berachain',
 ];
 export const uniswapClmmNetworks = [
   'mainnet',
@@ -43,6 +44,7 @@ export const uniswapClmmNetworks = [
   'blast',
   'zora',
   'worldchain',
+  'berachain',
 ];
 
 export namespace UniswapConfig {
@@ -105,6 +107,7 @@ export namespace UniswapConfig {
           'blast',
           'zora',
           'worldchain',
+          'berachain',
         ],
       },
     ],

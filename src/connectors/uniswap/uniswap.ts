@@ -5,6 +5,7 @@ import {
   isValidV3Pool,
   isFractionString,
 } from './uniswap.utils';
+import { JsonRpcProvider } from '@ethersproject/providers';
 
 // V2 (AMM) imports
 
@@ -119,7 +120,8 @@ const IUniswapV2RouterABI = {
 
 // V3 (CLMM) imports
 import { Token, CurrencyAmount, Percent } from '@uniswap/sdk-core';
-import { AlphaRouter } from '@uniswap/smart-order-router';
+// import { AlphaRouter } from '@uniswap/smart-order-router';
+import { AlphaRouter } from '@kodiak-finance/smart-order-router';
 import { Pair as V2Pair } from '@uniswap/v2-sdk';
 import { abi as IUniswapV3FactoryABI } from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Factory.sol/IUniswapV3Factory.json';
 import { abi as IUniswapV3PoolABI } from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
@@ -244,11 +246,11 @@ export class Uniswap {
         QuoterABI,
         this.ethereum.provider,
       );
-
+      const jsonRpcProvider = new JsonRpcProvider(this.ethereum.provider.connection.url);
       // Initialize AlphaRouter for V3 swaps (always use AlphaRouter with Universal Router)
       this._alphaRouter = new AlphaRouter({
         chainId: this.chainId,
-        provider: this.ethereum.provider,
+        provider: jsonRpcProvider,
       });
 
       // Load tokens

@@ -3,8 +3,8 @@ import {
   AlphaRouter,
   SwapOptions,
   SwapRoute,
-  SwapType,
-} from '@uniswap/smart-order-router';
+} from '@kodiak-finance/smart-order-router';
+// } from '@uniswap/smart-order-router';
 import { ethers } from 'ethers';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
@@ -104,7 +104,7 @@ export async function getUniswapQuote(
 
   // Create options for the router with the required SwapOptions format
   const swapOptions: SwapOptions = {
-    type: SwapType.SWAP_ROUTER_02, // Explicitly use SwapRouter02
+    // type: SwapType.SWAP_ROUTER_02, // Explicitly use SwapRouter02
     recipient, // Add recipient from parameter
     slippageTolerance,
     deadline: Math.floor(Date.now() / 1000) + 1800, // 30 minutes

@@ -96,3 +96,9 @@ networks:
     amm:
       'WLD-USDC.e': '0x610e319b3a3ab56a0ed5562927d37c233774ba39'
     clmm: {}
+    
+  # Berachain pools (Kodiak DEX)
+  berachain:
+    amm: {}
+    clmm:
+      'SOL-HONEY': '0xCE214367756fA4ff523289fc87c032Bc7a9abE70'

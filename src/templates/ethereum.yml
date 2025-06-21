@@ -89,3 +89,11 @@ networks:
     tokenListSource: /home/gateway/conf/lists/worldchain.json
     nativeCurrencySymbol: WLD
     gasPriceRefreshInterval: 60
+  berachain:
+    chainID: 80094
+    nodeURL: https://rpc.kodiak.finance/berizard7x23nrcjqifl95k3vcth89hl
+    tokenListType: FILE
+    tokenListSource: /home/gateway/conf/lists/berachain.json
+    nativeCurrencySymbol: BERA
+    gasPriceRefreshInterval: 60
+
