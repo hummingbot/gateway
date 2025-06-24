@@ -1,4 +1,5 @@
 import { Contract } from '@ethersproject/contracts';
+import { CurrencyAmount } from '@uniswap/sdk-core';
 import { NonfungiblePositionManager } from '@uniswap/v3-sdk';
 import { BigNumber } from 'ethers';
 import { FastifyPluginAsync } from 'fastify';
@@ -12,41 +13,23 @@ import {
 } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
+import { POSITION_MANAGER_ABI } from '../uniswap.contracts';
 import { formatTokenAmount } from '../uniswap.utils';
 
-// Define minimal ABI for the NonfungiblePositionManager
-const POSITION_MANAGER_ABI = [
-  {
-    inputs: [{ internalType: 'uint256', name: 'tokenId', type: 'uint256' }],
-    name: 'positions',
-    outputs: [
-      { internalType: 'uint96', name: 'nonce', type: 'uint96' },
-      { internalType: 'address', name: 'operator', type: 'address' },
-      { internalType: 'address', name: 'token0', type: 'address' },
-      { internalType: 'address', name: 'token1', type: 'address' },
-      { internalType: 'uint24', name: 'fee', type: 'uint24' },
-      { internalType: 'int24', name: 'tickLower', type: 'int24' },
-      { internalType: 'int24', name: 'tickUpper', type: 'int24' },
-      { internalType: 'uint128', name: 'liquidity', type: 'uint128' },
-      {
-        internalType: 'uint256',
-        name: 'feeGrowthInside0LastX128',
-        type: 'uint256',
-      },
-      {
-        internalType: 'uint256',
-        name: 'feeGrowthInside1LastX128',
-        type: 'uint256',
-      },
-      { internalType: 'uint128', name: 'tokensOwed0', type: 'uint128' },
-      { internalType: 'uint128', name: 'tokensOwed1', type: 'uint128' },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-];
-
 export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
+  await fastify.register(require('@fastify/sensible'));
+
+  // Get first wallet address for example
+  const ethereum = await Ethereum.getInstance('base');
+  let firstWalletAddress = '<ethereum-wallet-address>';
+
+  try {
+    firstWalletAddress =
+      (await ethereum.getFirstWalletAddress()) || firstWalletAddress;
+  } catch (error) {
+    logger.warn('No wallets found for examples in schema');
+  }
+
   fastify.post<{
     Body: CollectFeesRequestType;
     Reply: CollectFeesResponseType;
@@ -61,10 +44,11 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             ...CollectFeesRequest.properties,
             network: { type: 'string', default: 'base' },
-            walletAddress: { type: 'string', examples: ['0x...'] },
+            walletAddress: { type: 'string', examples: [firstWalletAddress] },
             positionAddress: {
               type: 'string',
               description: 'Position NFT token ID',
+              examples: ['1234'],
             },
           },
         },
@@ -117,6 +101,17 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
         const positionManagerAddress =
           uniswap.config.uniswapV3NftManagerAddress(networkToUse);
 
+        // Check NFT ownership
+        try {
+          await uniswap.checkNFTOwnership(positionAddress, walletAddress);
+        } catch (error: any) {
+          if (error.message.includes('is not owned by')) {
+            throw fastify.httpErrors.forbidden(error.message);
+          }
+          throw fastify.httpErrors.badRequest(error.message);
+        }
+
+
         // Create position manager contract
         const positionManager = new Contract(
           positionManagerAddress,
@@ -131,10 +126,11 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
         const token0 = uniswap.getTokenByAddress(position.token0);
         const token1 = uniswap.getTokenByAddress(position.token1);
 
-        // Determine base and quote tokens
-        const baseTokenSymbol =
-          token0.symbol === 'WETH' ? token0.symbol : token1.symbol;
-        const isBaseToken0 = token0.symbol === baseTokenSymbol;
+        // Determine base and quote tokens - WETH or lower address is base
+        const isBaseToken0 =
+          token0.symbol === 'WETH' ||
+          (token1.symbol !== 'WETH' &&
+            token0.address.toLowerCase() < token1.address.toLowerCase());
 
         // Get fees owned
         const feeAmount0 = position.tokensOwed0;
@@ -145,11 +141,21 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
           throw fastify.httpErrors.badRequest('No fees to collect');
         }
 
+        // Create CurrencyAmount objects for fees
+        const expectedCurrencyOwed0 = CurrencyAmount.fromRawAmount(
+          token0,
+          feeAmount0.toString(),
+        );
+        const expectedCurrencyOwed1 = CurrencyAmount.fromRawAmount(
+          token1,
+          feeAmount1.toString(),
+        );
+
         // Create parameters for collecting fees
         const collectParams = {
           tokenId: positionAddress,
-          expectedCurrencyOwed0: feeAmount0,
-          expectedCurrencyOwed1: feeAmount1,
+          expectedCurrencyOwed0,
+          expectedCurrencyOwed1,
           recipient: walletAddress,
         };
 
@@ -157,29 +163,12 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
         const { calldata, value } =
           NonfungiblePositionManager.collectCallParameters(collectParams);
 
-        // Initialize position manager with multicall interface
-        const positionManagerWithSigner = new Contract(
-          positionManagerAddress,
-          [
-            {
-              inputs: [{ internalType: 'bytes', name: 'data', type: 'bytes' }],
-              name: 'multicall',
-              outputs: [
-                { internalType: 'bytes[]', name: 'results', type: 'bytes[]' },
-              ],
-              stateMutability: 'payable',
-              type: 'function',
-            },
-          ],
-          wallet,
-        );
-
         // Execute the transaction to collect fees
         // Use Ethereum's prepareGasOptions method
         const txParams = await ethereum.prepareGasOptions(priorityFeePerCU, computeUnits || 300000);
         txParams.value = BigNumber.from(value.toString());
 
-        const tx = await positionManagerWithSigner.multicall([calldata], txParams);
+        const tx = await positionManager.multicall([calldata], txParams);
 
         // Wait for transaction confirmation
         const receipt = await tx.wait();

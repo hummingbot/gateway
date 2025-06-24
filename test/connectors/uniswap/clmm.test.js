@@ -7,7 +7,6 @@ const axios = require('axios');
 // Constants for this test file
 const CONNECTOR = 'uniswap';
 const PROTOCOL = 'clmm';
-const CHAIN = 'ethereum';
 const NETWORK = 'base'; // Only test Base network
 const BASE_TOKEN = 'WETH';
 const QUOTE_TOKEN = 'USDC';
@@ -298,8 +297,9 @@ describe('Uniswap CLMM Tests (Base Network)', () => {
         baseTokenBalanceChange: 1.0, // Positive for BUY
         quoteTokenBalanceChange: -mockSellResponse.quoteTokenBalanceChange, // Negative for BUY
         // For BUY: price = quote needed / base received
-        price: mockSellResponse.estimatedAmountOut / mockSellResponse.estimatedAmountIn,
-        computeUnits: 180000,
+        price:
+          mockSellResponse.estimatedAmountOut /
+          mockSellResponse.estimatedAmountIn,
       };
 
       // Setup mock axios

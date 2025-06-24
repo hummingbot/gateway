@@ -31,7 +31,7 @@ export async function checkLPAllowance(
   const currentLpAllowance = BigNumber.from(lpAllowance.value);
   if (currentLpAllowance.lt(requiredAmount)) {
     throw new Error(
-      `Insufficient LP token allowance. Please approve at least ${formatTokenAmount(requiredAmount.toString(), 18)} LP tokens for the Uniswap router (${routerAddress})`,
+      `Insufficient LP token allowance. Please approve at least ${formatTokenAmount(requiredAmount.toString(), 18)} LP tokens (${poolAddress}) for the Uniswap router (${routerAddress})`,
     );
   }
 }

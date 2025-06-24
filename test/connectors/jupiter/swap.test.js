@@ -6,8 +6,6 @@ const axios = require('axios');
 
 // Constants for this test file
 const CONNECTOR = 'jupiter';
-const PROTOCOL = 'swap';
-const CHAIN = 'solana';
 const NETWORK = 'mainnet-beta'; // Only test mainnet-beta
 const BASE_TOKEN = 'SOL';
 const QUOTE_TOKEN = 'USDC';
