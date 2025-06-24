@@ -27,3 +27,7 @@ configurations:
   $namespace raydium:
     configurationPath: raydium.yml
     schemaPath: raydium-schema.json
+
+  $namespace cardano:
+    configurationPath: cardano.yml
+    schemaPath: cardano-schema.json

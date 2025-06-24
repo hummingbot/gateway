@@ -1,0 +1,55 @@
+# how much the execution price is allowed to move unfavorably from the trade execution price. It uses a rational number for precision.
+allowedSlippage: '1/100'
+
+# For Cardano this will be used to connect to the network via blockfrost API
+blockfrostProjectId: 'mainnetkCD2MvERTpHuh2oojUli0QtGp6zuJyrR'
+
+preprodBlockfrostProjectId: 'preprodN1EZYj11zL89jJeaAjeRybxYMLp7grmn'
+
+previewBlockfrostProjectId: 'previewjsuJtAX0Fki1dAewDoWQ1xoHXXgVzg1w'
+
+# how long a trade is valid in seconds. 
+ttl: 300
+
+minswapPoolId:
+    mainnet: 
+       poolId : 6aa2153e1ae896a95539c9d62f76cedcdabdcdf144e564b8955f609d660cf6a2
+    preprod: 
+       poolId : 3bb0079303c57812462dec9de8fb867cef8fd3768de7f12c77f6f0dd80381d0d
+
+sundaeswapPoolId:
+    preview:
+        poolId : '2baab4c73a1cd60176f903a29a9c92ed4237c88622da51e9179121a3'
+    mainnet:
+        poolId : '2f36866691fa75a9aab66dec99f7cc2d297ca09e34d9ce68cde04773'
+
+defaultAddress: testaddresstouse
+
+
+# this is the blockfrost project id we need to connect to the Minswap DEX
+#blockfrost-projectid:
+
+blockfrostApiUrls:
+  # Blockfrost API URLs for different Cardano networks
+  mainnet:
+      apiurl: 'https://cardano-mainnet.blockfrost.io/api/v0'
+  preprod:
+      apiurl: 'https://cardano-preprod.blockfrost.io/api/v0'
+  preview:
+      apiurl: 'https://cardano-preview.blockfrost.io/api/v0'
+
+
+networks:
+  mainnet:
+    tokenListType: "FILE"
+    tokenListSource: "/home/gateway/conf/lists/cardano_mainnet_tokens.json"
+    nativeCurrencySymbol: 'ADA'
+  preprod:
+    tokenListType: "FILE"
+    tokenListSource: "/home/gateway/conf/lists/cardano_preprod_tokens.json"
+    nativeCurrencySymbol: 'ADA'
+  preview:
+    tokenListType: "FILE"
+    tokenListSource: "/home/gateway/conf/lists/cardano_preview_tokens.json"
+    nativeCurrencySymbol: 'ADA'
+

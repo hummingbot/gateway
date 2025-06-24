@@ -3,6 +3,7 @@ import fse from 'fs-extra';
 
 import { Ethereum } from '../chains/ethereum/ethereum';
 import { Solana } from '../chains/solana/solana';
+import { Cardano } from '../chains/cardano/cardano';
 import { ConfigManagerCertPassphrase } from '../services/config-manager-cert-passphrase';
 import {
   getInitializedChain,
@@ -44,7 +45,7 @@ export function validateChainName(chain: string): boolean {
     logger.warn(
       `Failed to get supported chains: ${error.message}. Using fallback list.`,
     );
-    return ['ethereum', 'solana'].includes(chain.toLowerCase());
+    return ['ethereum', 'solana', 'cardano'].includes(chain.toLowerCase());
   }
 }
 
@@ -96,9 +97,18 @@ export async function addWallet(
 
   // Default to mainnet-beta for Solana or mainnet for other chains
   const network = req.chain === 'solana' ? 'mainnet-beta' : 'mainnet';
+  const cardanoNetwork = req.network ? req.network : 'mainnet';
 
   try {
-    connection = await getInitializedChain<Chain>(req.chain, network);
+    if (req.chain.toLowerCase() === 'cardano') {
+      connection = await getInitializedChain<Cardano>(
+        req.chain,
+        cardanoNetwork,
+      );
+    } else {
+      // For Ethereum and Solana, use the default network
+      connection = await getInitializedChain<Chain>(req.chain, network);
+    }
   } catch (e) {
     if (e instanceof UnsupportedChainException) {
       throw fastify.httpErrors.badRequest(
@@ -123,6 +133,17 @@ export async function addWallet(
         .publicKey.toBase58();
       // Further validate Solana address
       address = Solana.validateAddress(address);
+      encryptedPrivateKey = await connection.encrypt(
+        req.privateKey,
+        passphrase,
+      );
+    } else if (connection instanceof Cardano) {
+      const cardanoWallet = await connection.getWalletFromPrivateKey(
+        req.privateKey,
+      );
+      address = cardanoWallet.address;
+      // Further validate Cardano address
+      address = Cardano.validateAddress(address);
       encryptedPrivateKey = await connection.encrypt(
         req.privateKey,
         passphrase,
@@ -171,6 +192,8 @@ export async function removeWallet(
       validatedAddress = Ethereum.validateAddress(req.address);
     } else if (req.chain.toLowerCase() === 'solana') {
       validatedAddress = Solana.validateAddress(req.address);
+    } else if (req.chain.toLowerCase() === 'cardano') {
+      validatedAddress = Cardano.validateAddress(req.address);
     } else {
       // This should not happen due to validateChainName check, but just in case
       throw new Error(`Unsupported chain: ${req.chain}`);
@@ -283,7 +306,7 @@ export async function getWallets(
     await mkdirIfDoesNotExist(walletPath);
 
     // Get only valid chain directories
-    const validChains = ['ethereum', 'solana'];
+    const validChains = ['ethereum', 'solana', 'cardano'];
     const allDirs = await getDirectories(walletPath);
     const chains = allDirs.filter((dir) =>
       validChains.includes(dir.toLowerCase()),
@@ -307,6 +330,9 @@ export async function getWallets(
             } else if (chain.toLowerCase() === 'solana') {
               // Basic Solana address length check
               return address.length >= 32 && address.length <= 44;
+            } else if (chain.toLowerCase() === 'cardano') {
+              // Basic Cardano address validation (starts with addr or addr_test)
+              return /^(addr|addr_test)[0-9a-zA-Z]{1,}$/i.test(address);
             }
             return false;
           } catch {

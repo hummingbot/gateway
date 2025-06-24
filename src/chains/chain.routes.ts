@@ -44,6 +44,12 @@ export const chainRoutes: FastifyPluginAsync = async (fastify) => {
         ConfigManagerV2.getInstance().get('solana.networks') || {},
       );
 
+      // Get Cardano networks
+
+      const cardanoNetworks = Object.keys(
+        ConfigManagerV2.getInstance().get('cardano.networks') || {},
+      );
+
       const chains = [
         {
           chain: 'ethereum',
@@ -52,6 +58,10 @@ export const chainRoutes: FastifyPluginAsync = async (fastify) => {
         {
           chain: 'solana',
           networks: solanaNetworks,
+        },
+        {
+          chain: 'cardano',
+          networks: cardanoNetworks,
         },
       ];
 

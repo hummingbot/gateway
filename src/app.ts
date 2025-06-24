@@ -15,6 +15,7 @@ import Fastify, { FastifyInstance } from 'fastify';
 import { chainRoutes } from './chains/chain.routes';
 import { ethereumRoutes } from './chains/ethereum/ethereum.routes';
 import { solanaRoutes } from './chains/solana/solana.routes';
+import { cardanoRoutes } from './chains/cardano/cardano.routes';
 import { configRoutes } from './config/config.routes';
 import { connectorsRoutes } from './connectors/connector.routes';
 import { jupiterRoutes } from './connectors/jupiter/jupiter.routes';
@@ -63,6 +64,7 @@ const swaggerOptions = {
       // Chains
       { name: 'solana', description: 'Solana chain endpoints' },
       { name: 'ethereum', description: 'Ethereum chain endpoints' },
+      { name: 'cardano', description: 'Cardano chain endpoints' },
 
       // Connectors
       { name: 'jupiter', description: 'Jupiter DEX aggregator (Solana)' },
@@ -212,6 +214,7 @@ const configureGatewayServer = () => {
     // Register chain routes
     app.register(solanaRoutes, { prefix: '/chains/solana' });
     app.register(ethereumRoutes, { prefix: '/chains/ethereum' });
+    app.register(cardanoRoutes, { prefix: '/chains/cardano' });
   };
 
   // Register routes on main server

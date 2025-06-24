@@ -6,6 +6,7 @@ export const WalletAddressSchema = Type.String();
 export const AddWalletRequestSchema = Type.Object({
   chain: Type.String(),
   privateKey: Type.String(),
+  network: Type.Optional(Type.String()),
 });
 
 export const AddWalletResponseSchema = Type.Object({
