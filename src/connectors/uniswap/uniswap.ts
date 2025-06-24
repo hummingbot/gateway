@@ -507,7 +507,7 @@ export class Uniswap {
    */
   public async getFirstWalletAddress(): Promise<string | null> {
     try {
-      return await this.ethereum.getFirstWalletAddress();
+      return await Ethereum.getFirstWalletAddress();
     } catch (error) {
       logger.error(`Error getting first wallet address: ${error.message}`);
       return null;

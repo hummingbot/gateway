@@ -20,15 +20,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (
   await fastify.register(require('@fastify/sensible'));
 
   // Get first wallet address for example
-  const ethereum = await Ethereum.getInstance('mainnet');
-  let firstWalletAddress = '<ethereum-wallet-address>';
-
-  try {
-    firstWalletAddress =
-      (await ethereum.getFirstWalletAddress()) || firstWalletAddress;
-  } catch (error) {
-    logger.warn('No wallets found for examples in schema');
-  }
+  const firstWalletAddress = await Ethereum.getWalletAddressExample();
 
   // Get available networks from Ethereum configuration (same method as chain.routes.ts)
   const { ConfigManagerV2 } = require('../../../services/config-manager-v2');
@@ -104,7 +96,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (
         // Get wallet address - either from request or first available
         let walletAddress = requestedWalletAddress;
         if (!walletAddress) {
-          walletAddress = await ethereum.getFirstWalletAddress();
+          walletAddress = await Ethereum.getFirstWalletAddress();
           if (!walletAddress) {
             return reply.badRequest(
               'No wallet address provided and no default wallet found',

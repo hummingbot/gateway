@@ -43,19 +43,11 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
   await fastify.register(require('@fastify/sensible'));
 
   // Get first wallet address for example
-  const ethereum = await Ethereum.getInstance('base');
-  let firstWalletAddress = '<ethereum-wallet-address>';
+  const firstWalletAddress = await Ethereum.getWalletAddressExample();
 
-  try {
-    firstWalletAddress =
-      (await ethereum.getFirstWalletAddress()) || firstWalletAddress;
-    // Update the example in the schema
-    PositionsOwnedRequest.properties.walletAddress.examples = [
-      firstWalletAddress,
-    ];
-  } catch (error) {
-    logger.warn('No wallets found for examples in schema');
-  }
+  PositionsOwnedRequest.properties.walletAddress.examples = [
+    firstWalletAddress,
+  ];
 
   fastify.get<{
     Querystring: typeof PositionsOwnedRequest.static;
