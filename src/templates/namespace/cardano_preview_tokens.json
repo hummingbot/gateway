@@ -1,0 +1,32 @@
+{
+  "name": "Cardano Tokenlist",
+  "logoURI": "https://ibb.co/N1Jmswk",
+  "keywords": ["cardano", "tokens", "SUNDAE"],
+  "timestamp": "2024-12-12T12:00:00+00:00",
+  "tokens": [
+    {
+      "policyId": "99b071ce8580d6a3a11b4902145adb8bfd0d2a03935af8cf66403e15",
+      "assetName": "534245525259",
+      "decimals": 0,
+      "name": "SBERRY Token",
+      "symbol": "SBERRY",
+      "logoURI": "https://ibb.co/hJbVKRJW"
+    },
+    {
+      "policyId": "ada",
+      "assetName": "lovelace",
+      "decimals": 6,
+      "name": "Cardano Native Token",
+      "symbol": "ADA",
+      "logoURI": "https://ibb.co/N1Jmswk"
+    },
+    {
+      "policyId": "44a1eb2d9f58add4eb1932bd0048e6a1947e85e3fe4f32956a110414",
+      "assetName": "0014df102baab4c73a1cd60176f903a29a9c92ed4237c88622da51e9179121a3",
+      "decimals": 0,
+      "name": "Sundaeswap Liquidity pool token",
+      "symbol": "LP",
+      "logoURI": "hhttps://ibb.co/JWr1GWs3"
+    }
+  ]
+}

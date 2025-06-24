@@ -92,3 +92,7 @@ configurations:
   $namespace infura:
     configurationPath: rpc/infura.yml
     schemaPath: infura-schema.json
+
+  $namespace cardano:
+    configurationPath: connectors/cardano.yml
+    schemaPath: cardano-schema.json

@@ -6,21 +6,9 @@ export const WalletAddressSchema = Type.String({
 });
 
 export const AddWalletRequestSchema = Type.Object({
-  chain: Type.String({
-    description: 'Blockchain to add wallet to',
-    enum: ['ethereum', 'solana'],
-    examples: ['solana', 'ethereum'],
-  }),
-  privateKey: Type.String({
-    description: 'Private key for the wallet',
-    examples: ['<your-private-key>'],
-  }),
-  setDefault: Type.Optional(
-    Type.Boolean({
-      description: 'Set this wallet as the default for the chain',
-      default: false,
-    }),
-  ),
+  chain: Type.String(),
+  privateKey: Type.String(),
+  network: Type.Optional(Type.String()),
 });
 
 export const AddWalletResponseSchema = Type.Object({

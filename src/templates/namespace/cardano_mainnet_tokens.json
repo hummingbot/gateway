@@ -1,0 +1,40 @@
+{
+  "name": "Cardano Tokenlist",
+  "logoURI": "https://ibb.co/N1Jmswk",
+  "keywords": ["cardano", "tokens", "MIN"],
+  "timestamp": "2024-12-12T12:00:00+00:00",
+  "tokens": [
+    {
+      "policyId": "29d222ce763455e3d7a09a665ce554f00ac89d2e99a1a83d267170c6",
+      "assetName": "4d494e",
+      "decimals": 0,
+      "name": "Minswap Token",
+      "symbol": "MIN",
+      "logoURI": "https://ibb.co/L1Tp0rQ"
+    },
+    {
+      "policyId": "9a9693a9a37912a5097918f97918d15240c92ab729a0b7c4aa144d77",
+      "assetName": "53554e444145",
+      "decimals": 6,
+      "name": "SUNDAE Token",
+      "symbol": "SUNDAE",
+      "logoURI": "https://ibb.co/Q31Nv1TK"
+    },
+    {
+      "policyId": "ada",
+      "assetName": "lovelace",
+      "decimals": 6,
+      "name": "Cardano Native Token",
+      "symbol": "ADA",
+      "logoURI": "https://ibb.co/N1Jmswk"
+    },
+    {
+      "policyId": "e0302560ced2fdcbfcb2602697df970cd0d6a38f94b32703f51c312b",
+      "assetName": "0014df102f36866691fa75a9aab66dec99f7cc2d297ca09e34d9ce68cde04773",
+      "decimals": 0,
+      "name": "SundaeSwap LP Token",
+      "symbol": "LP-SUNDAE",
+      "logoURI": ""
+    }
+  ]
+}

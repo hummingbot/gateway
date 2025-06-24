@@ -15,6 +15,7 @@ import Fastify, { FastifyInstance } from 'fastify';
 // Routes
 import { ethereumRoutes } from './chains/ethereum/ethereum.routes';
 import { solanaRoutes } from './chains/solana/solana.routes';
+import { cardanoRoutes } from './chains/cardano/cardano.routes';
 import { configRoutes } from './config/config.routes';
 import { register0xRoutes } from './connectors/0x/0x.routes';
 import { jupiterRoutes } from './connectors/jupiter/jupiter.routes';
@@ -63,6 +64,12 @@ const swaggerOptions = {
       { name: '/pools', description: 'Pool management endpoints' },
 
       // Chains
+      { name: 'solana', description: 'Solana chain endpoints' },
+      { name: 'ethereum', description: 'Ethereum chain endpoints' },
+      { name: 'cardano', description: 'Cardano chain endpoints' },
+
+      // Connectors
+      { name: 'jupiter', description: 'Jupiter DEX aggregator (Solana)' },
       {
         name: '/chain/solana',
         description: 'Solana and SVM-based chain endpoints',
@@ -247,6 +254,7 @@ const configureGatewayServer = () => {
     });
     app.register(pancakeswapRoutes.amm, { prefix: '/connectors/pancakeswap/amm' });
     app.register(pancakeswapRoutes.clmm, { prefix: '/connectors/pancakeswap/clmm' });
+    app.register(cardanoRoutes, { prefix: '/chains/cardano' });
   };
 
   // Register routes on main server

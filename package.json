@@ -37,6 +37,7 @@
     "prepare": "pnpm husky"
   },
   "dependencies": {
+    "@aiquant/minswap-sdk": "^0.0.0",
     "@coral-xyz/anchor": "^0.29.0",
     "@ethersproject/abstract-provider": "5.7.0",
     "@ethersproject/address": "5.7.0",
