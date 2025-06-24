@@ -60,7 +60,7 @@ export default class Balance extends Command {
       let keypair;
       let walletIdentifier = wallet;
       if (!walletIdentifier) {
-        walletIdentifier = await solana.getFirstWalletAddress();
+        walletIdentifier = await Solana.getFirstWalletAddress();
         if (!walletIdentifier) {
           this.error('No wallet provided and none found on file.');
         }
