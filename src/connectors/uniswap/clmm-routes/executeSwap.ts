@@ -187,6 +187,38 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         logger.info(`Side: ${side}`);
         logger.info(`Fee tier: ${quote.feeTier}`);
 
+        // Check allowance for input token (including WETH)
+        const tokenContract = ethereum.getContract(inputTokenAddress, wallet);
+        const allowance = await ethereum.getERC20Allowance(
+          tokenContract,
+          wallet,
+          routerAddress,
+          quote.inputToken.decimals,
+        );
+
+        const amountNeeded =
+          side === 'SELL' ? quote.rawAmountIn : quote.rawMaxAmountIn;
+        const currentAllowance = BigNumber.from(allowance.value);
+
+        logger.info(
+          `Current allowance: ${formatTokenAmount(currentAllowance.toString(), quote.inputToken.decimals)} ${quote.inputToken.symbol}`,
+        );
+        logger.info(
+          `Amount needed: ${formatTokenAmount(amountNeeded, quote.inputToken.decimals)} ${quote.inputToken.symbol}`,
+        );
+
+        // Check if allowance is sufficient
+        if (currentAllowance.lt(amountNeeded)) {
+          logger.error(`Insufficient allowance for ${quote.inputToken.symbol}`);
+          throw fastify.httpErrors.badRequest(
+            `Insufficient allowance for ${quote.inputToken.symbol}. Please approve at least ${formatTokenAmount(amountNeeded, quote.inputToken.decimals)} ${quote.inputToken.symbol} (${inputTokenAddress}) for the Uniswap SwapRouter02 (${routerAddress})`,
+          );
+        } else {
+          logger.info(
+            `Sufficient allowance exists: ${formatTokenAmount(currentAllowance.toString(), quote.inputToken.decimals)} ${quote.inputToken.symbol}`,
+          );
+        }
+
         // Build swap parameters
         const swapParams = {
           tokenIn: inputTokenAddress,
