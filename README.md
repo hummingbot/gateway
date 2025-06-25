@@ -4,7 +4,12 @@
 
 ## Introduction
 
-Hummingbot Gateway is an API/CLI client that exposes standardized REST endponts to perform actions and fetch data from **blockchain networks** (wallet, node & chain interaction) and their **decentralized exchanges (DEX)** (pricing, trading & liquidity provision).
+Hummingbot Gateway is an API/MCP server that exposes standardized REST endpoints and MCP tools to perform actions and fetch data from **blockchain networks** (wallet, node & chain interaction) and their **decentralized exchanges (DEX)** (pricing, trading & liquidity provision).
+
+Gateway can be accessed through:
+- **MCP (Model Context Protocol)**: Use AI assistants like Claude to interact with Gateway through natural language
+- **REST API**: Direct HTTP/HTTPS endpoints for programmatic access
+- **Hummingbot Client**: For automated trading strategies, use the [Hummingbot repository](https://github.com/hummingbot/hummingbot)
 
 ### API Overview
 
@@ -22,7 +27,48 @@ Hummingbot Gateway is an API/CLI client that exposes standardized REST endponts 
 
 Gateway is written in Typescript in order to use Javascript-based SDKs provided by blockchains and DEX protocols. The advantage of using Gateway is it provides a standardized, language-agnostic approach to interacting with these protocols.
 
-Gateway may be used alongside the main [Hummingbot client](https://github.com/hummingbot/hummingbot) to enable trading and market making on DEXs, or as a standalone command line interface (CLI).
+## MCP (Model Context Protocol) Integration
+
+Gateway includes an MCP server that exposes trading operations as tools for AI assistants like Claude. This enables natural language interaction with decentralized exchanges and blockchain networks.
+
+### Available MCP Tools
+
+- **get_chains** - Query available blockchain networks and their configurations
+- **get_connectors** - List available DEX connectors and their supported chains
+- **wallet_list** - List wallets stored in Gateway (optionally filtered by chain)
+- **get_balance_stub** - Check wallet balances (requires running Gateway server)
+
+### Quick Start with Claude Code
+
+```bash
+# 1. Build MCP server
+pnpm mcp:build
+
+# 2. Start Gateway
+pnpm start --passphrase=YOUR_PASSPHRASE
+
+# 3. Add to Claude Code (in your project directory)
+claude mcp add gateway -e GATEWAY_URL=http://localhost:15888 -- /path/to/gateway/dist/mcp/index.js
+
+# 4. Use in Claude Code
+# Example: "Use the gateway MCP to show me available chains"
+```
+
+### MCP Configuration
+
+The MCP server can be configured to connect to different Gateway instances:
+
+```bash
+# Default Gateway URL (localhost:15888)
+claude mcp add gateway /path/to/gateway/dist/mcp/index.js
+
+# Custom Gateway URL
+claude mcp add gateway -e GATEWAY_URL=http://localhost:8080 -- /path/to/gateway/dist/mcp/index.js
+```
+
+For detailed MCP setup instructions, see the [MCP documentation](./src/mcp/README.md).
+
+Gateway may be used alongside the main [Hummingbot client](https://github.com/hummingbot/hummingbot) to enable trading and market making on DEXs, or as a standalone API/MCP server.
 
 Gateway uses [Swagger](https://swagger.io/) for API documentation. When Gateway is started in HTTP mode, it automatically generates interactive Swagger API docs at: <http://localhost:15888/docs>
 
@@ -145,37 +191,6 @@ docker run --name gateway \
 Afterwards, client may connect to Gateway at: <http://localhost:15888> and you can access the Swagger documentation UI at: <http://localhost:15888/docs>
 
 
-## CLI Commands
-
-When running Gateway from source, it provides a CLI interface for interacting with chains and DEXs. After installing from source, you can enable the `gateway` command by linking the CLI globally:
-```bash
-pnpm link --global
-```
-
-Afterwards, you can use the `gateway` command to see available commands:
-```bash
-gateway
-```
-
-Sample commands:
-```bash
-# Check wallet balances (requires running server)
-gateway balance --chain solana --wallet <WALLET_ADDRESS>
-
-# Build project from source (same as pnpm build)
-gateway build
-
-# Start the API server (same as pnpm start)
-gateway start --passphrase=<PASSPHRASE> [--dev]
-
-# Get command help
-gateway help [COMMAND]
-```
-
-**Note:** Similar to the server, CLI commands require a `passphrase` argument used to encrypt and decrypt wallets used in executing transactions. Set the passphrase using the `--passphrase` argument when starting the server or by setting the `GATEWAY_PASSPHRASE` environment variable:
-```bash
-export GATEWAY_PASSPHRASE=<PASSPHRASE>
-```
 
 ## Contribution
 

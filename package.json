@@ -1,7 +1,7 @@
 {
   "name": "gateway",
   "version": "dev-2.7.0",
-  "description": "Hummingbot Gateway is a CLI/API client that helps you interact with DEXs on various blockchains.",
+  "description": "Hummingbot Gateway is an API/MCP server that helps you interact with DEXs on various blockchains.",
   "main": "index.js",
   "license": "Apache-2.0",
   "repository": "https://github.com/hummingbot/gateway",
@@ -158,32 +158,9 @@
     "@openzeppelin/contracts": "^4.9.6"
   },
   "files": [
-    "/dist",
-    "/src/commands"
+    "/dist"
   ],
-  "oclif": {
-    "bin": "gateway",
-    "dirname": "gateway",
-    "commands": "./dist/src/commands",
-    "plugins": [
-      "@oclif/plugin-help",
-      "@oclif/plugin-autocomplete"
-    ],
-    "topicSeparator": " ",
-    "topics": {
-      "balance": {
-        "description": "Retrieve token balances for a wallet on the specified chain"
-      },
-      "start": {
-        "description": "Start the Gateway API server"
-      },
-      "build": {
-        "description": "Build Gateway by compiling Typescript into Javascript"
-      }
-    }
-  },
   "bin": {
-    "gateway": "./dist/index.js",
     "gateway-mcp": "./dist/mcp/index.js"
   }
 }
