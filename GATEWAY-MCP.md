@@ -728,9 +728,38 @@ echo '{"method": "tools/call", "params": {"name": "wallet_list"}}' | pnpm start:
 ```
 
 ### 3. Deployment Options
-- **Standalone**: Run as separate MCP server process
-- **Integrated**: Include MCP endpoints in main Gateway server
-- **Docker**: Create MCP-specific Docker image
+
+#### Option 1: Claude Desktop Integration (Recommended)
+Add to Claude Desktop config (`~/.claude/claude_desktop_config.json` on macOS):
+```json
+{
+  "mcpServers": {
+    "gateway": {
+      "command": "/absolute/path/to/gateway/dist/mcp/index.js",
+      "env": {
+        "GATEWAY_URL": "http://localhost:15888"
+      }
+    }
+  }
+}
+```
+
+#### Option 2: Standalone MCP Server
+```bash
+# Start Gateway first
+pnpm start --passphrase=XXX
+
+# In another terminal, start MCP server
+pnpm mcp:start
+```
+
+#### Option 3: Use with MCP Inspector
+```bash
+# For testing and development
+npx @modelcontextprotocol/inspector dist/mcp/index.js
+```
+
+Note: The MCP server communicates via stdio protocol, not HTTP. It requires an MCP client (like Claude Desktop or MCP Inspector) to connect to it.
 
 ## Security Considerations
 
