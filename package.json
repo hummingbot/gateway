@@ -23,7 +23,10 @@
     "cli": "node dist/index.js",
     "typecheck": "tsc --noEmit",
     "rebuild-bigint": "cd node_modules/bigint-buffer && npm run rebuild",
-    "generate:openapi": "curl http://localhost:15888/docs/json -o openapi.json && echo 'OpenAPI spec saved to openapi.json'"
+    "generate:openapi": "curl http://localhost:15888/docs/json -o openapi.json && echo 'OpenAPI spec saved to openapi.json'",
+    "mcp:build": "tsc -p tsconfig.mcp.json",
+    "mcp:start": "node dist/mcp/index.js",
+    "mcp:dev": "tsx src/mcp/index.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.29.0",
@@ -94,6 +97,7 @@
     "@babel/runtime": "^7.27.0",
     "@connectis/diff-test-coverage": "^1.5.3",
     "@improbable-eng/grpc-web": "^0.13.0",
+    "@modelcontextprotocol/sdk": "^1.0.0",
     "@types/app-root-path": "^1.2.8",
     "@types/bn.js": "5.1.6",
     "@types/bs58": "^4.0.4",
@@ -138,8 +142,10 @@
     "supertest": "^7.1.0",
     "ts-jest": "^29.3.0",
     "ts-node": "^10.9.2",
+    "tsx": "^4.20.3",
     "typescript": "^5.8.2",
-    "viem": "^0.3.50"
+    "viem": "^0.3.50",
+    "zod": "^3.22.0"
   },
   "resolutions": {
     "@types/bn.js": "5.1.6",
@@ -176,6 +182,7 @@
     }
   },
   "bin": {
-    "gateway": "./dist/index.js"
+    "gateway": "./dist/index.js",
+    "gateway-mcp": "./dist/mcp/index.js"
   }
 }

@@ -1,0 +1,18 @@
+{
+  "name": "hummingbot-gateway",
+  "version": "2.7.0",
+  "description": "Gateway MCP server for DEX and blockchain operations",
+  "main": "dist/mcp/index.js",
+  "bin": {
+    "gateway-mcp": "dist/mcp/index.js"
+  },
+  "mcp": {
+    "transport": "stdio",
+    "env": {
+      "ANTHROPIC_API_KEY": {
+        "required": false,
+        "description": "API key for Claude access in agent prompts"
+      }
+    }
+  }
+}
