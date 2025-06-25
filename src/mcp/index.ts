@@ -9,12 +9,13 @@ import { z } from "zod";
 import * as fs from "fs/promises";
 import * as path from "path";
 import axios from "axios";
+import { GATEWAY_VERSION } from "../version";
 
 // Initialize the MCP server
 const server = new Server(
   {
     name: "hummingbot-gateway",
-    version: "2.8.0",
+    version: GATEWAY_VERSION,
   },
   {
     capabilities: {

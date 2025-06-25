@@ -9,7 +9,8 @@ import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Type } from '@sinclair/typebox';
 import Fastify, { FastifyInstance } from 'fastify';
 
-// Internal services
+// Internal dependencies
+import { GATEWAY_VERSION } from './version';
 
 // Routes
 import { chainRoutes } from './chains/chain.routes';
@@ -27,9 +28,6 @@ import { logger } from './services/logger';
 import { walletRoutes } from './wallet/wallet.routes';
 
 import { asciiLogo } from './index';
-
-// Change version for each release
-const GATEWAY_VERSION = 'dev-2.8.0';
 
 // At the top level, define devMode once
 // When true, runs server in HTTP mode (less secure but useful for development)
