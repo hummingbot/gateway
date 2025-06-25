@@ -36,7 +36,65 @@ const server = new Server({
 
 ## Tool Implementations
 
-### 1. Wallet Management Tools
+### 1. Discovery Tools
+
+#### `get_chains`
+```typescript
+server.tool(
+  "get_chains",
+  "Get available blockchain networks and their configurations",
+  {},
+  async () => {
+    const configManager = ConfigManagerV2.getInstance();
+    const chains = configManager.listChains();
+    
+    return {
+      content: [{
+        type: "text",
+        text: JSON.stringify({
+          chains: chains.map(chain => ({
+            name: chain.name,
+            networks: chain.networks,
+            nativeCurrency: chain.nativeCurrency,
+            chainId: chain.chainId
+          }))
+        })
+      }]
+    };
+  }
+);
+```
+
+#### `get_connectors`
+```typescript
+server.tool(
+  "get_connectors",
+  "Get available DEX connectors and their supported chains",
+  {
+    chain: z.string().optional().describe("Filter connectors by chain")
+  },
+  async ({ chain }) => {
+    const configManager = ConfigManagerV2.getInstance();
+    const connectors = configManager.listConnectors(chain);
+    
+    return {
+      content: [{
+        type: "text",
+        text: JSON.stringify({
+          connectors: connectors.map(conn => ({
+            name: conn.name,
+            supportedChains: conn.supportedChains,
+            type: conn.type, // 'amm', 'clmm', 'swap'
+            description: conn.description
+          }))
+        })
+      }]
+    };
+  }
+);
+```
+
+### 2. Wallet Management Tools
 
 #### `wallet_add`
 ```typescript
@@ -44,7 +102,7 @@ server.tool(
   "wallet_add",
   "Add a new wallet for a blockchain network",
   {
-    chain: z.enum(["ethereum", "solana", "polygon", "avalanche", "arbitrum"]),
+    chain: z.string().describe("Blockchain network (use get_chains to see available)"),
     privateKey: z.string().describe("Private key in hex format"),
     name: z.string().optional().describe("Optional wallet label")
   },
@@ -77,7 +135,7 @@ server.tool(
   "wallet_list",
   "List all wallets or filter by chain",
   {
-    chain: z.enum(["ethereum", "solana", "polygon", "avalanche", "arbitrum"]).optional()
+    chain: z.string().optional().describe("Filter by chain (use get_chains to see available)")
   },
   async ({ chain }) => {
     const walletService = WalletService.getInstance();
@@ -99,7 +157,7 @@ server.tool(
 );
 ```
 
-### 2. Price Discovery Tools
+### 3. Price Discovery Tools
 
 #### `get_price`
 ```typescript
@@ -107,7 +165,7 @@ server.tool(
   "get_price",
   "Get current price and liquidity information for a trading pair",
   {
-    connector: z.string().describe("DEX connector (jupiter, meteora, raydium, uniswap)"),
+    connector: z.string().describe("DEX connector (use get_connectors to see available)"),
     network: z.string().describe("Network name (mainnet, testnet, etc)"),
     tokenPair: z.string().describe("Trading pair (e.g., ETH-USDT)"),
     amount: z.number().optional().describe("Amount for price impact calculation"),
@@ -145,7 +203,7 @@ server.tool(
 );
 ```
 
-### 3. Trading Tools
+### 4. Trading Tools
 
 #### `execute_swap`
 ```typescript
@@ -195,7 +253,7 @@ server.tool(
 );
 ```
 
-### 4. Balance Tools
+### 5. Balance Tools
 
 #### `get_balances`
 ```typescript
@@ -203,7 +261,7 @@ server.tool(
   "get_balances",
   "Get token balances for a wallet",
   {
-    chain: z.enum(["ethereum", "solana", "polygon", "avalanche", "arbitrum"]),
+    chain: z.string().describe("Blockchain network (use get_chains to see available)"),
     network: z.string(),
     address: z.string().describe("Wallet address"),
     tokenSymbols: z.array(z.string()).optional().describe("Filter by specific tokens")
@@ -234,7 +292,7 @@ server.tool(
 );
 ```
 
-### 5. Gas Management Tools
+### 6. Gas Management Tools
 
 #### `estimate_gas`
 ```typescript
@@ -242,7 +300,7 @@ server.tool(
   "estimate_gas",
   "Estimate gas costs for a transaction",
   {
-    chain: z.enum(["ethereum", "solana", "polygon", "avalanche", "arbitrum"]),
+    chain: z.string().describe("Blockchain network (use get_chains to see available)"),
     network: z.string(),
     txType: z.enum(["swap", "transfer", "approve"]).default("swap")
   },
@@ -339,10 +397,6 @@ server.prompt(
     network: z.string()
   },
   async ({ tokenIn, tokenOut, amountIn, chain, network }) => {
-    const dexConnectors = chain === "solana" 
-      ? ["jupiter", "meteora", "raydium"]
-      : ["uniswap", "sushiswap", "pancakeswap"];
-    
     const prompt = `You are a Swap Optimizer agent with access to Gateway MCP tools.
 
 Task: Find the best swap route for:
@@ -351,7 +405,7 @@ Task: Find the best swap route for:
 - Chain: ${chain}
 - Network: ${network}
 
-Available DEXs: ${dexConnectors.join(", ")}
+First, use the get_connectors tool to find available DEXs for ${chain}, then compare prices across all compatible connectors.
 
 Use the get_price tool to:
 1. Query prices from all available DEXs
@@ -551,7 +605,7 @@ gateway/
     "transport": "stdio",
     "env": {
       "ANTHROPIC_API_KEY": {
-        "required": true,
+        "required": false,
         "description": "API key for Claude access in agent prompts"
       }
     }
@@ -694,6 +748,461 @@ echo '{"method": "tools/call", "params": {"name": "wallet_list"}}' | pnpm start:
 - Implement per-tool rate limits
 - Monitor usage patterns
 - Prevent abuse of trading tools
+
+## Test Plan for Evaluation
+
+### 1. Setup and Prerequisites
+
+#### Environment Setup
+```bash
+# 1. Build the MCP server
+pnpm mcp:build
+
+# 2. Create test wallets directory (if not exists)
+mkdir -p conf/wallets/ethereum
+mkdir -p conf/wallets/solana
+
+# 3. Create mock wallet files for testing
+echo '{"address": "0x1234..."}' > conf/wallets/ethereum/0x1234567890abcdef.json
+echo '{"address": "So1..."}' > conf/wallets/solana/So11111111111111111111111111111111111111112.json
+```
+
+#### Test Harness Script
+Create `test-mcp.sh`:
+```bash
+#!/bin/bash
+# MCP Test Harness for Gateway
+
+MCP_SERVER="node dist/mcp/index.js"
+TEST_OUTPUT_DIR="./mcp-test-results"
+mkdir -p $TEST_OUTPUT_DIR
+
+# Function to send JSON-RPC request and save response
+test_tool() {
+    local test_name=$1
+    local json_request=$2
+    local output_file="$TEST_OUTPUT_DIR/${test_name}.json"
+    
+    echo "Testing: $test_name"
+    echo "$json_request" | $MCP_SERVER 2>/dev/null | jq '.' > "$output_file"
+    echo "Result saved to: $output_file"
+    echo "---"
+}
+
+# Test cases
+echo "Starting MCP Gateway Tests..."
+```
+
+### 2. Core Functionality Tests
+
+#### Test Suite 1: Discovery Tools
+```bash
+# Test 1.1: Get available chains
+test_tool "get_chains" '{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "get_chains",
+    "arguments": {}
+  },
+  "id": 1
+}'
+
+# Test 1.2: Get all connectors
+test_tool "get_connectors_all" '{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "get_connectors",
+    "arguments": {}
+  },
+  "id": 2
+}'
+
+# Test 1.3: Get connectors for specific chain
+test_tool "get_connectors_solana" '{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "get_connectors",
+    "arguments": {"chain": "solana"}
+  },
+  "id": 3
+}'
+```
+
+#### Test Suite 2: Wallet Operations
+```bash
+# Test 2.1: List all wallets
+test_tool "wallet_list_all" '{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "wallet_list",
+    "arguments": {}
+  },
+  "id": 4
+}'
+
+# Test 2.2: List wallets for specific chain
+test_tool "wallet_list_ethereum" '{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "wallet_list",
+    "arguments": {"chain": "ethereum"}
+  },
+  "id": 5
+}'
+```
+
+#### Test Suite 3: Balance Operations (Stub)
+```bash
+# Test 3.1: Get balance stub
+test_tool "get_balance_stub" '{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "get_balance_stub",
+    "arguments": {
+      "chain": "ethereum",
+      "network": "mainnet",
+      "address": "0x1234567890abcdef"
+    }
+  },
+  "id": 6
+}'
+```
+
+### 3. Integration Tests with MCP Inspector
+
+#### Using MCP Inspector
+```bash
+# Install MCP Inspector
+npm install -g @modelcontextprotocol/inspector
+
+# Run interactive tests
+npx @modelcontextprotocol/inspector dist/mcp/index.js
+
+# Test sequence in Inspector:
+# 1. Connect to server
+# 2. List available tools
+# 3. Execute each tool with sample parameters
+# 4. Verify responses match expected schema
+```
+
+### 4. Claude Desktop Integration Test
+
+#### Setup Claude Desktop
+```json
+// Add to Claude Desktop config (~/.config/claude/config.json on macOS)
+{
+  "mcpServers": {
+    "gateway-test": {
+      "command": "/absolute/path/to/gateway/dist/mcp/index.js",
+      "env": {
+        "NODE_ENV": "test"
+      }
+    }
+  }
+}
+```
+
+#### Test Scenarios for Claude
+1. **Discovery Flow**:
+   - "What chains are available in Gateway?"
+   - "Show me all DEX connectors for Solana"
+
+2. **Wallet Operations**:
+   - "List all my wallets"
+   - "Show me my Ethereum wallets"
+
+3. **Complex Queries**:
+   - "What Solana DEXs can I use for trading?"
+   - "Check what chains support Uniswap"
+
+### 5. Automated Test Runner
+
+Create `run-mcp-tests.js`:
+```javascript
+const { spawn } from 'child_process';
+const fs = require('fs').promises;
+const path = require('path');
+
+class MCPTestRunner {
+  constructor(serverPath) {
+    this.serverPath = serverPath;
+    this.results = [];
+  }
+
+  async runTest(testName, request) {
+    return new Promise((resolve, reject) => {
+      const child = spawn('node', [this.serverPath]);
+      let response = '';
+      let error = '';
+
+      child.stdout.on('data', (data) => {
+        response += data.toString();
+      });
+
+      child.stderr.on('data', (data) => {
+        error += data.toString();
+      });
+
+      child.on('close', (code) => {
+        this.results.push({
+          testName,
+          request,
+          response: response.trim(),
+          error: error.trim(),
+          exitCode: code,
+          success: code === 0 && response.length > 0
+        });
+        resolve();
+      });
+
+      // Send request
+      child.stdin.write(JSON.stringify(request) + '\n');
+      child.stdin.end();
+    });
+  }
+
+  async runAllTests() {
+    const tests = [
+      {
+        name: 'list_tools',
+        request: {
+          jsonrpc: '2.0',
+          method: 'tools/list',
+          params: {},
+          id: 1
+        }
+      },
+      {
+        name: 'get_chains',
+        request: {
+          jsonrpc: '2.0',
+          method: 'tools/call',
+          params: { name: 'get_chains', arguments: {} },
+          id: 2
+        }
+      },
+      // Add more tests...
+    ];
+
+    for (const test of tests) {
+      await this.runTest(test.name, test.request);
+    }
+
+    // Save results
+    await this.saveResults();
+  }
+
+  async saveResults() {
+    const timestamp = new Date().toISOString().replace(/:/g, '-');
+    const resultsPath = path.join('mcp-test-results', `test-run-${timestamp}.json`);
+    
+    await fs.mkdir('mcp-test-results', { recursive: true });
+    await fs.writeFile(resultsPath, JSON.stringify(this.results, null, 2));
+    
+    // Generate summary
+    const passed = this.results.filter(r => r.success).length;
+    const failed = this.results.filter(r => !r.success).length;
+    
+    console.log(`\nTest Results:`);
+    console.log(`✅ Passed: ${passed}`);
+    console.log(`❌ Failed: ${failed}`);
+    console.log(`📄 Full results: ${resultsPath}`);
+  }
+}
+
+// Run tests
+const runner = new MCPTestRunner('./dist/mcp/index.js');
+runner.runAllTests().catch(console.error);
+```
+
+### 6. Performance Benchmarks
+
+Create `benchmark-mcp.js`:
+```javascript
+const { performance } = require('perf_hooks');
+
+async function benchmarkTool(toolName, iterations = 100) {
+  const times = [];
+  
+  for (let i = 0; i < iterations; i++) {
+    const start = performance.now();
+    // Execute tool call
+    const end = performance.now();
+    times.push(end - start);
+  }
+  
+  return {
+    tool: toolName,
+    iterations,
+    avgTime: times.reduce((a, b) => a + b) / times.length,
+    minTime: Math.min(...times),
+    maxTime: Math.max(...times),
+    p95: times.sort((a, b) => a - b)[Math.floor(times.length * 0.95)]
+  };
+}
+
+// Run benchmarks for each tool
+```
+
+### 7. Evaluation Metrics
+
+#### Success Criteria
+1. **Functional Requirements**:
+   - ✅ All tools respond within 500ms
+   - ✅ Error responses include actionable messages
+   - ✅ Tool discovery works without hard-coded values
+   - ✅ Integration with Claude Desktop successful
+
+2. **Performance Metrics**:
+   - Response time p95 < 200ms for simple tools
+   - Response time p95 < 500ms for complex tools
+   - Memory usage < 100MB during normal operation
+   - No memory leaks over extended operation
+
+3. **Reliability Metrics**:
+   - 100% success rate for valid requests
+   - Graceful error handling for invalid inputs
+   - Proper cleanup on server shutdown
+
+### 8. Continuous Testing
+
+#### GitHub Action for MCP Tests
+```yaml
+name: MCP Server Tests
+on: [push, pull_request]
+
+jobs:
+  test-mcp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          
+      - name: Install dependencies
+        run: pnpm install
+        
+      - name: Build MCP server
+        run: pnpm mcp:build
+        
+      - name: Run MCP tests
+        run: node run-mcp-tests.js
+        
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        with:
+          name: mcp-test-results
+          path: mcp-test-results/
+```
+
+### 9. Manual Testing Checklist
+
+- [ ] MCP server builds without errors
+- [ ] Server starts and responds to health check
+- [ ] `get_chains` returns expected chains
+- [ ] `get_connectors` returns expected connectors
+- [ ] `wallet_list` reads wallet files correctly
+- [ ] Error handling works for missing parameters
+- [ ] Claude Desktop can discover and use the server
+- [ ] All tools appear in MCP Inspector
+- [ ] Performance meets target metrics
+- [ ] No sensitive data exposed in responses
+
+### 10. Test Data Management
+
+#### Sample Test Data
+```json
+// test-data/chains.json
+{
+  "expected_response": {
+    "chains": [
+      {
+        "chain": "ethereum",
+        "networks": [
+          "mainnet",
+          "arbitrum",
+          "optimism",
+          "base",
+          "sepolia",
+          "bsc",
+          "avalanche",
+          "celo",
+          "polygon",
+          "blast",
+          "zora",
+          "worldchain"
+        ]
+      },
+      {
+        "chain": "solana",
+        "networks": [
+          "mainnet-beta",
+          "devnet"
+        ]
+      }
+    ]
+  }
+}
+
+// test-data/connectors.json
+{
+  "expected_response": {
+    "connectors": [
+      {
+        "name": "jupiter",
+        "trading_types": ["swap"],
+        "chain": "solana",
+        "networks": ["mainnet-beta", "devnet"]
+      },
+      {
+        "name": "meteora/clmm",
+        "trading_types": ["clmm", "swap"],
+        "chain": "solana",
+        "networks": ["mainnet-beta", "devnet"]
+      },
+      {
+        "name": "raydium/amm",
+        "trading_types": ["amm", "swap"],
+        "chain": "solana",
+        "networks": ["mainnet-beta", "devnet"]
+      },
+      {
+        "name": "raydium/clmm",
+        "trading_types": ["clmm", "swap"],
+        "chain": "solana",
+        "networks": ["mainnet-beta", "devnet"]
+      },
+      {
+        "name": "uniswap",
+        "trading_types": ["swap"],
+        "chain": "ethereum",
+        "networks": ["mainnet"]
+      },
+      {
+        "name": "uniswap/amm",
+        "trading_types": ["amm", "swap"],
+        "chain": "ethereum",
+        "networks": ["mainnet", "arbitrum", "optimism", "base", "sepolia", "bsc", "avalanche", "celo", "polygon", "blast", "zora", "worldchain"]
+      },
+      {
+        "name": "uniswap/clmm",
+        "trading_types": ["clmm", "swap"],
+        "chain": "ethereum",
+        "networks": ["mainnet", "arbitrum", "optimism", "base", "sepolia", "bsc", "avalanche", "celo", "polygon", "blast", "zora", "worldchain"]
+      }
+    ]
+  }
+}
+```
 
 ## Monitoring and Logging
 
