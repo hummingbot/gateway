@@ -729,8 +729,38 @@ echo '{"method": "tools/call", "params": {"name": "wallet_list"}}' | pnpm start:
 
 ### 3. Deployment Options
 
-#### Option 1: Claude Desktop Integration (Recommended)
-Add to Claude Desktop config (`~/.claude/claude_desktop_config.json` on macOS):
+#### Option 1: Claude Code Integration (Recommended for developers)
+
+Add MCP server to Claude Code:
+```bash
+# Local scope (current project only)
+claude mcp add gateway /path/to/gateway/dist/mcp/index.js -e GATEWAY_URL=http://localhost:15888
+
+# User scope (available in all projects)
+claude mcp add --user gateway /path/to/gateway/dist/mcp/index.js -e GATEWAY_URL=http://localhost:15888
+
+# Project scope (shared via .mcp.json)
+claude mcp add --project gateway /path/to/gateway/dist/mcp/index.js -e GATEWAY_URL=http://localhost:15888
+```
+
+Manage MCP servers:
+```bash
+# List all servers
+claude mcp list
+
+# Get server details
+claude mcp get gateway
+
+# Remove server
+claude mcp remove gateway
+```
+
+#### Option 2: Claude Desktop Integration
+
+Add to Claude Desktop config:
+- macOS: `~/.claude/claude_desktop_config.json`
+- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+
 ```json
 {
   "mcpServers": {
@@ -744,22 +774,30 @@ Add to Claude Desktop config (`~/.claude/claude_desktop_config.json` on macOS):
 }
 ```
 
-#### Option 2: Standalone MCP Server
-```bash
-# Start Gateway first
-pnpm start --passphrase=XXX
+#### Option 3: Project Configuration (.mcp.json)
 
-# In another terminal, start MCP server
-pnpm mcp:start
+For team collaboration, add `.mcp.json` to your project:
+```json
+{
+  "mcpServers": {
+    "gateway": {
+      "command": "./node_modules/@hummingbot/gateway-mcp/dist/index.js",
+      "args": [],
+      "env": {
+        "GATEWAY_URL": "http://localhost:15888"
+      }
+    }
+  }
+}
 ```
 
-#### Option 3: Use with MCP Inspector
+#### Option 4: MCP Inspector (Development)
 ```bash
-# For testing and development
+# For testing and debugging
 npx @modelcontextprotocol/inspector dist/mcp/index.js
 ```
 
-Note: The MCP server communicates via stdio protocol, not HTTP. It requires an MCP client (like Claude Desktop or MCP Inspector) to connect to it.
+Note: The MCP server communicates via stdio protocol, not HTTP. It requires an MCP client to connect to it.
 
 ## Security Considerations
 
@@ -920,16 +958,33 @@ npx @modelcontextprotocol/inspector dist/mcp/index.js
 # 4. Verify responses match expected schema
 ```
 
-### 4. Claude Desktop Integration Test
+### 4. MCP Client Integration Test
 
-#### Setup Claude Desktop
+#### Option A: Claude Code (Primary)
+```bash
+# Add MCP server to Claude Code
+claude mcp add gateway-test /absolute/path/to/gateway/dist/mcp/index.js \
+  -e GATEWAY_URL=http://localhost:15888 \
+  -e NODE_ENV=test
+
+# Verify server is added
+claude mcp get gateway-test
+
+# Remove when done testing
+claude mcp remove gateway-test
+```
+
+#### Option B: Claude Desktop
 ```json
-// Add to Claude Desktop config (~/.config/claude/config.json on macOS)
+// Add to Claude Desktop config
+// macOS: ~/.claude/claude_desktop_config.json
+// Windows: %APPDATA%\Claude\claude_desktop_config.json
 {
   "mcpServers": {
     "gateway-test": {
       "command": "/absolute/path/to/gateway/dist/mcp/index.js",
       "env": {
+        "GATEWAY_URL": "http://localhost:15888",
         "NODE_ENV": "test"
       }
     }
@@ -937,18 +992,23 @@ npx @modelcontextprotocol/inspector dist/mcp/index.js
 }
 ```
 
-#### Test Scenarios for Claude
+#### Test Scenarios
 1. **Discovery Flow**:
    - "What chains are available in Gateway?"
    - "Show me all DEX connectors for Solana"
+   - "Use the gateway MCP server to list available chains"
 
 2. **Wallet Operations**:
-   - "List all my wallets"
+   - "List all my wallets using the gateway MCP"
    - "Show me my Ethereum wallets"
 
 3. **Complex Queries**:
    - "What Solana DEXs can I use for trading?"
    - "Check what chains support Uniswap"
+
+4. **Claude Code Specific**:
+   - Use `/mcp` to check server status
+   - Reference resources: `@gateway:chains` (if implemented)
 
 ### 5. Automated Test Runner
 
