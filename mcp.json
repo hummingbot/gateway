@@ -1,6 +1,6 @@
 {
   "name": "hummingbot-gateway",
-  "version": "2.7.0",
+  "version": "2.8.0",
   "description": "Gateway MCP server for DEX and blockchain operations",
   "main": "dist/mcp/index.js",
   "bin": {

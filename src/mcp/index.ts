@@ -14,7 +14,7 @@ import axios from "axios";
 const server = new Server(
   {
     name: "hummingbot-gateway",
-    version: "2.7.0",
+    version: "2.8.0",
   },
   {
     capabilities: {

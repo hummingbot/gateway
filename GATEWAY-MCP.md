@@ -25,7 +25,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 
 const server = new Server({
   name: "hummingbot-gateway",
-  version: "2.7.0",
+  version: "2.8.0",
   capabilities: {
     resources: {},
     tools: {},
@@ -595,7 +595,7 @@ gateway/
 ```json
 {
   "name": "hummingbot-gateway",
-  "version": "2.7.0",
+  "version": "2.8.0",
   "description": "Gateway MCP server for DEX and blockchain operations",
   "main": "dist/mcp/index.js",
   "bin": {
