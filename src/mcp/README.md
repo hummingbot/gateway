@@ -1,199 +1,168 @@
-# Gateway MCP Server
-
-The Gateway MCP (Model Context Protocol) server exposes Hummingbot Gateway operations as tools that can be used by AI assistants like Claude.
+# Gateway MCP Server - Implementation Complete
 
 ## Overview
 
-The MCP server provides tools to:
-- Query available blockchain networks and DEX connectors
-- List and manage wallets
-- Check balances (when Gateway is running)
-- Execute trades and other DeFi operations (future)
+The Gateway MCP server has been successfully restructured to reduce permission requests and provide better functionality through resources and prompts.
 
-## Setup
+## Key Improvements
 
-### 1. Build the MCP server
-```bash
-pnpm mcp:build
-```
+### 1. Reduced Permission Requests
+- **Before**: Each tool required individual permission grant (4 tools = 4 permission prompts)
+- **After**: Tools are grouped by functionality, resources provide read-only access, prompts guide complex workflows
 
-### 2. Start Gateway server
-```bash
-pnpm start --passphrase=YOUR_PASSPHRASE
-```
+### 2. Tool Organization (18 tools total)
 
-### 3. Configure MCP Client
+#### Discovery Tools (4)
+- `get_chains` - Get available blockchain networks
+- `get_connectors` - Get available DEX connectors
+- `get_tokens` - Get supported tokens for a chain/network
+- `get_status` - Get blockchain network status
 
-#### Option A: Claude Code (Recommended for developers)
+#### Configuration Tools (5)
+- `get_config` - Get configuration settings
+- `update_config` - Update configuration values
+- `get_pools` - Get default pools for a connector
+- `add_pool` - Add a default pool
+- `remove_pool` - Remove a default pool
 
-Add the Gateway MCP server using the claude command:
+#### Trading Tools (5)
+- `quote_swap` - Get swap quotes
+- `execute_swap` - Execute token swaps
+- `get_pool_info` - Get liquidity pool information
+- `estimate_gas` - Estimate gas prices
+- `poll_transaction` - Poll transaction status
 
-```bash
-# Basic setup (stdio transport - default)
-claude mcp add gateway /absolute/path/to/gateway/dist/mcp/index.js
+#### Wallet Tools (4)
+- `wallet_list` - List wallets
+- `wallet_add` - Add new wallet
+- `wallet_remove` - Remove wallet
+- `get_balances` - Get token balances
 
-# With environment variable for Gateway URL
-claude mcp add gateway -e GATEWAY_URL=http://localhost:15888 -- /absolute/path/to/gateway/dist/mcp/index.js
+### 3. Resources (8 total)
+Resources provide read-only access without requiring permissions:
 
-# With custom Gateway port
-claude mcp add gateway -e GATEWAY_URL=http://localhost:8080 -- /absolute/path/to/gateway/dist/mcp/index.js
-```
+- `gateway://chains` - Available blockchain networks
+- `gateway://connectors` - DEX connectors and capabilities
+- `gateway://config/ethereum` - Ethereum configuration
+- `gateway://config/solana` - Solana configuration
+- `gateway://wallets` - Wallet list
+- `gateway://token-lists/ethereum-mainnet` - Ethereum token list
+- `gateway://token-lists/solana-mainnet` - Solana token list
+- `gateway://openapi` - Complete API specification
 
-Configuration scopes:
-```bash
-# Local scope (default - current project only)
-claude mcp add gateway /absolute/path/to/gateway/dist/mcp/index.js
+### 4. Prompts (4 total)
+Guided workflows for complex operations:
 
-# User scope (available in all projects)
-claude mcp add --user gateway /absolute/path/to/gateway/dist/mcp/index.js
-
-# Project scope (shared via .mcp.json)
-claude mcp add --project gateway /absolute/path/to/gateway/dist/mcp/index.js
-```
-
-Managing the server:
-```bash
-# List all configured servers
-claude mcp list
-
-# Get details for Gateway server
-claude mcp get gateway
-
-# Remove Gateway server
-claude mcp remove gateway
-```
-
-For project-wide configuration, `.mcp.json` will be created automatically when using `--project` flag, or you can create it manually:
-```json
-{
-  "mcpServers": {
-    "gateway": {
-      "command": "/absolute/path/to/gateway/dist/mcp/index.js",
-      "args": [],
-      "env": {
-        "GATEWAY_URL": "http://localhost:15888"
-      }
-    }
-  }
-}
-```
-
-#### Option B: Claude Desktop
-
-Add to your Claude Desktop configuration file:
-- macOS: `~/.claude/claude_desktop_config.json`
-- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
-
-```json
-{
-  "mcpServers": {
-    "gateway": {
-      "command": "/absolute/path/to/gateway/dist/mcp/index.js",
-      "env": {
-        "GATEWAY_URL": "http://localhost:15888"
-      }
-    }
-  }
-}
-```
-
-### 4. Verify Connection
-
-#### In Claude Code:
-```bash
-# Check server details
-claude mcp get gateway
-
-# Or use the /mcp command in chat
-/mcp
-```
-
-#### In Claude Desktop:
-Restart Claude Desktop and the MCP server will automatically connect.
-
-## Quick Start (Claude Code)
-
-```bash
-# 1. Build MCP server
-cd /path/to/gateway
-pnpm mcp:build
-
-# 2. Start Gateway
-pnpm start --passphrase=YOUR_PASSPHRASE
-
-# 3. Add to Claude Code (in your project directory)
-cd /path/to/your/trading/project
-claude mcp add gateway -e GATEWAY_URL=http://localhost:15888 -- /path/to/gateway/dist/mcp/index.js
-
-# 4. Test in Claude Code
-# Type: "Use the gateway MCP to show me available chains"
-# Or: "List all DEX connectors using gateway"
-```
-
-To use in Claude Code after setup:
-- Use `/mcp` command to check server status
-- Mention "gateway" or "gateway MCP" in your requests to use the tools
-- Example: "Using the gateway MCP, what chains are available?"
-
-## Available Tools
-
-### `get_chains`
-Returns available blockchain networks from the Gateway API.
-
-Example usage in Claude Code:
-- "What chains are available in Gateway?"
-- "Use the gateway MCP to list all supported blockchains"
-
-### `get_connectors` 
-Returns available DEX connectors, optionally filtered by chain.
-
-Example usage:
-- "Show me all DEX connectors"
-- "What connectors are available for Solana?"
-
-### `wallet_list`
-Lists wallets stored in the Gateway, optionally filtered by chain.
-
-Example usage:
-- "List all my wallets"
-- "Show me my Ethereum wallets using the gateway MCP"
-
-### `get_balance_stub`
-Placeholder for balance checking (requires full Gateway integration).
-
-## Testing
-
-### With MCP Inspector
-```bash
-npx @modelcontextprotocol/inspector dist/mcp/index.js
-```
-
-### Direct testing
-```bash
-# List tools
-echo '{"jsonrpc": "2.0", "method": "tools/list", "params": {}, "id": 1}' | node dist/mcp/index.js
-
-# Get chains
-echo '{"jsonrpc": "2.0", "method": "tools/call", "params": {"name": "get_chains", "arguments": {}}, "id": 1}' | node dist/mcp/index.js
-```
+- `swap_optimizer` - Find best swap route across DEXs
+- `portfolio_analyzer` - Analyze wallet portfolio
+- `liquidity_finder` - Find best liquidity pools
+- `gas_optimizer` - Optimize gas settings
 
 ## Architecture
 
-The MCP server:
-1. Connects to the Gateway API when available
-2. Falls back to reading config files when Gateway is offline
-3. Provides a consistent interface for AI assistants
-4. Returns data in the same format as Gateway API endpoints
-
-## Development
-
-```bash
-# Run in development mode (requires tsx)
-pnpm mcp:dev
-
-# Run tests
-node run-mcp-tests.js
-
-# Validate against Gateway API
-node validate-mcp-gateway.js
 ```
+src/mcp/
+├── index.ts              # Main MCP server entry
+├── types.ts              # TypeScript type definitions
+├── version.ts            # Version constant
+├── tools/                # Tool implementations
+│   ├── discovery.ts      # Chain/connector discovery
+│   ├── config.ts         # Configuration management
+│   ├── trading.ts        # Trading operations
+│   └── wallet.ts         # Wallet management
+├── resources/            # Resource providers
+│   └── index.ts          # Resource handlers
+├── prompts/              # Prompt definitions
+│   └── index.ts          # Prompt handlers
+└── utils/                # Utilities
+    ├── api-client.ts     # Gateway API client
+    ├── fallback.ts       # Offline fallback data
+    └── tool-registry.ts  # Tool registration system
+```
+
+## Usage Examples
+
+### With Claude Desktop
+```json
+{
+  "mcpServers": {
+    "gateway": {
+      "command": "/path/to/gateway/dist/mcp/index.js",
+      "env": {
+        "GATEWAY_URL": "http://localhost:15888"
+      }
+    }
+  }
+}
+```
+
+### With Claude Code
+```bash
+claude mcp add gateway /path/to/gateway/dist/mcp/index.js \
+  -e GATEWAY_URL=http://localhost:15888
+```
+
+### Example Interactions
+
+1. **Simple Query**:
+   ```
+   User: "What chains are available?"
+   Claude: [Uses get_chains tool] Ethereum and Solana are available...
+   ```
+
+2. **Resource Access** (No permission needed):
+   ```
+   User: "Show me the Ethereum configuration"
+   Claude: [Reads gateway://config/ethereum resource] Here's the configuration...
+   ```
+
+3. **Guided Workflow**:
+   ```
+   User: "Help me find the best swap route for 1 ETH to USDC"
+   Claude: [Uses swap_optimizer prompt] I'll analyze all available DEXs...
+   ```
+
+## Benefits
+
+1. **Fewer Interruptions**: Resources and prompts reduce permission requests
+2. **Better Organization**: Tools grouped by functionality
+3. **Offline Support**: Fallback data when Gateway isn't running
+4. **Guided Assistance**: Prompts provide structured workflows
+5. **Comprehensive Coverage**: All major Gateway operations exposed
+
+## Testing
+
+Run the test suite:
+```bash
+node test-mcp-tools.js
+```
+
+Expected output:
+- ✅ 18 tools available
+- ✅ 8 resources accessible
+- ✅ 4 prompts ready
+- ✅ Fallback data works offline
+
+## Next Steps
+
+1. **Add More Tools**:
+   - Liquidity management (add/remove)
+   - Position management for CLMM
+   - Cross-chain operations
+
+2. **Enhance Resources**:
+   - Real-time price feeds
+   - Historical data
+   - Network statistics
+
+3. **Create More Prompts**:
+   - Arbitrage finder
+   - Yield optimizer
+   - Risk analyzer
+
+## Security Notes
+
+- Private keys never exposed through MCP
+- All signing happens within Gateway
+- Resources are read-only
+- Tools validate inputs

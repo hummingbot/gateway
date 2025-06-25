@@ -4,7 +4,7 @@
     "module": "commonjs",
     "lib": ["ES2020"],
     "outDir": "./dist/mcp",
-    "rootDir": "./src",
+    "rootDir": "./src/mcp",
     "strict": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -14,6 +14,6 @@
     "allowSyntheticDefaultImports": true,
     "noImplicitAny": false
   },
-  "include": ["src/mcp/**/*", "src/version.ts"],
+  "include": ["src/mcp/**/*"],
   "exclude": ["node_modules", "dist"]
 }

@@ -1,0 +1,170 @@
+[
+  {
+    "testName": "list_tools",
+    "success": true,
+    "response": {
+      "result": {
+        "tools": [
+          {
+            "name": "get_chains",
+            "description": "Get available blockchain networks from Gateway API",
+            "inputSchema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          {
+            "name": "get_connectors",
+            "description": "Get available DEX connectors from Gateway API",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "chain": {
+                  "type": "string",
+                  "description": "Optional: filter connectors by chain (ethereum, solana)"
+                }
+              }
+            }
+          },
+          {
+            "name": "wallet_list",
+            "description": "List all wallets or filter by chain",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "chain": {
+                  "type": "string",
+                  "description": "Optional: filter wallets by chain (use get_chains to see available)"
+                }
+              }
+            }
+          },
+          {
+            "name": "get_balance_stub",
+            "description": "Placeholder for balance checking (requires Gateway server)",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "chain": {
+                  "type": "string",
+                  "description": "Blockchain network (use get_chains to see available)"
+                },
+                "network": {
+                  "type": "string",
+                  "description": "Network name (mainnet, testnet, etc)"
+                },
+                "address": {
+                  "type": "string",
+                  "description": "Wallet address"
+                }
+              },
+              "required": [
+                "chain",
+                "network",
+                "address"
+              ]
+            }
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 1
+    }
+  },
+  {
+    "testName": "list_resources",
+    "success": true,
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 2,
+      "error": {
+        "code": -32601,
+        "message": "Method not found"
+      }
+    }
+  },
+  {
+    "testName": "list_prompts",
+    "success": true,
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 3,
+      "error": {
+        "code": -32601,
+        "message": "Method not found"
+      }
+    }
+  },
+  {
+    "testName": "get_chains",
+    "success": true,
+    "response": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"chains\": [\n    {\n      \"chain\": \"ethereum\",\n      \"networks\": [\n        \"mainnet\",\n        \"arbitrum\",\n        \"optimism\",\n        \"base\",\n        \"sepolia\",\n        \"bsc\",\n        \"avalanche\",\n        \"celo\",\n        \"polygon\",\n        \"blast\",\n        \"zora\",\n        \"worldchain\"\n      ]\n    },\n    {\n      \"chain\": \"solana\",\n      \"networks\": [\n        \"mainnet-beta\",\n        \"devnet\"\n      ]\n    }\n  ]\n}"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 4
+    }
+  },
+  {
+    "testName": "get_connectors",
+    "success": true,
+    "response": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"connectors\": [\n    {\n      \"name\": \"jupiter\",\n      \"trading_types\": [\n        \"swap\"\n      ],\n      \"chain\": \"solana\",\n      \"networks\": [\n        \"mainnet-beta\",\n        \"devnet\"\n      ]\n    },\n    {\n      \"name\": \"meteora/clmm\",\n      \"trading_types\": [\n        \"clmm\",\n        \"swap\"\n      ],\n      \"chain\": \"solana\",\n      \"networks\": [\n        \"mainnet-beta\",\n        \"devnet\"\n      ]\n    },\n    {\n      \"name\": \"raydium/amm\",\n      \"trading_types\": [\n        \"amm\",\n        \"swap\"\n      ],\n      \"chain\": \"solana\",\n      \"networks\": [\n        \"mainnet-beta\",\n        \"devnet\"\n      ]\n    },\n    {\n      \"name\": \"raydium/clmm\",\n      \"trading_types\": [\n        \"clmm\",\n        \"swap\"\n      ],\n      \"chain\": \"solana\",\n      \"networks\": [\n        \"mainnet-beta\",\n        \"devnet\"\n      ]\n    },\n    {\n      \"name\": \"uniswap\",\n      \"trading_types\": [\n        \"swap\"\n      ],\n      \"chain\": \"ethereum\",\n      \"networks\": [\n        \"mainnet\"\n      ]\n    },\n    {\n      \"name\": \"uniswap/amm\",\n      \"trading_types\": [\n        \"amm\",\n        \"swap\"\n      ],\n      \"chain\": \"ethereum\",\n      \"networks\": [\n        \"mainnet\",\n        \"arbitrum\",\n        \"optimism\",\n        \"base\",\n        \"sepolia\",\n        \"bsc\",\n        \"avalanche\",\n        \"celo\",\n        \"polygon\",\n        \"blast\",\n        \"zora\",\n        \"worldchain\"\n      ]\n    },\n    {\n      \"name\": \"uniswap/clmm\",\n      \"trading_types\": [\n        \"clmm\",\n        \"swap\"\n      ],\n      \"chain\": \"ethereum\",\n      \"networks\": [\n        \"mainnet\",\n        \"arbitrum\",\n        \"optimism\",\n        \"base\",\n        \"sepolia\",\n        \"bsc\",\n        \"avalanche\",\n        \"celo\",\n        \"polygon\",\n        \"blast\",\n        \"zora\",\n        \"worldchain\"\n      ]\n    }\n  ]\n}"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 5
+    }
+  },
+  {
+    "testName": "wallet_list",
+    "success": true,
+    "response": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"wallets\": [\n    {\n      \"address\": \"0xDA50C69342216b538Daf06FfECDa7363E0B96684\",\n      \"chain\": \"ethereum\",\n      \"name\": \"ethereum-wallet\"\n    },\n    {\n      \"address\": \"82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5\",\n      \"chain\": \"solana\",\n      \"name\": \"solana-wallet\"\n    }\n  ],\n  \"count\": 2\n}"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 6
+    }
+  },
+  {
+    "testName": "read_chains_resource",
+    "success": true,
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 7,
+      "error": {
+        "code": -32601,
+        "message": "Method not found"
+      }
+    }
+  },
+  {
+    "testName": "get_swap_optimizer_prompt",
+    "success": true,
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 8,
+      "error": {
+        "code": -32601,
+        "message": "Method not found"
+      }
+    }
+  }
+]
