@@ -47,8 +47,8 @@ pnpm mcp:build
 # 2. Start Gateway
 pnpm start --passphrase=YOUR_PASSPHRASE
 
-# 3. Add to Claude Code (in your project directory)
-claude mcp add gateway -e GATEWAY_URL=http://localhost:15888 -- /path/to/gateway/dist/mcp/index.js
+# 3. Add to Claude Code (from gateway directory)
+claude mcp add gateway -e GATEWAY_URL=http://localhost:15888 node dist/mcp/index.js
 
 # 4. Use in Claude Code
 # Example: "Use the gateway MCP to show me available chains"
@@ -56,15 +56,7 @@ claude mcp add gateway -e GATEWAY_URL=http://localhost:15888 -- /path/to/gateway
 
 ### MCP Configuration
 
-The MCP server can be configured to connect to different Gateway instances:
-
-```bash
-# Default Gateway URL (localhost:15888)
-claude mcp add gateway /path/to/gateway/dist/mcp/index.js
-
-# Custom Gateway URL
-claude mcp add gateway -e GATEWAY_URL=http://localhost:8080 -- /path/to/gateway/dist/mcp/index.js
-```
+The MCP server connects to Gateway at the default URL (http://localhost:15888).
 
 For detailed MCP setup instructions, see the [MCP documentation](./src/mcp/README.md).
 
