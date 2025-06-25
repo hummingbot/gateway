@@ -48,7 +48,7 @@ pnpm mcp:build
 pnpm start --passphrase=YOUR_PASSPHRASE
 
 # 3. Add to Claude Code (from gateway directory)
-claude mcp add gateway -e GATEWAY_URL=http://localhost:15888 node dist/mcp/index.js
+claude mcp add gateway -e GATEWAY_URL=http://localhost:15888 -- node dist/mcp/index.js
 
 # 4. Use in Claude Code
 # Example: "Use the gateway MCP to show me available chains"
