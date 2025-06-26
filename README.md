@@ -29,14 +29,55 @@ Gateway is written in Typescript in order to use Javascript-based SDKs provided 
 
 ## MCP (Model Context Protocol) Integration
 
-Gateway includes an MCP server that exposes trading operations as tools for AI assistants like Claude. This enables natural language interaction with decentralized exchanges and blockchain networks.
+Gateway includes an enhanced MCP server that exposes trading operations as tools for AI assistants like Claude. This enables natural language interaction with decentralized exchanges and blockchain networks with reduced permission requests through resources and prompts.
 
-### Available MCP Tools
+### Available MCP Tools (18 total)
 
-- **get_chains** - Query available blockchain networks and their configurations
-- **get_connectors** - List available DEX connectors and their supported chains
-- **wallet_list** - List wallets stored in Gateway (optionally filtered by chain)
-- **get_balance_stub** - Check wallet balances (requires running Gateway server)
+#### Discovery Tools (4)
+- **get_chains** - Get available blockchain networks
+- **get_connectors** - Get available DEX connectors
+- **get_tokens** - Get supported tokens for a chain/network
+- **get_status** - Get blockchain network status
+
+#### Configuration Tools (5)
+- **get_config** - Get configuration settings
+- **update_config** - Update configuration values
+- **get_pools** - Get default pools for a connector
+- **add_pool** - Add a default pool
+- **remove_pool** - Remove a default pool
+
+#### Trading Tools (5)
+- **quote_swap** - Get swap quotes
+- **execute_swap** - Execute token swaps
+- **get_pool_info** - Get liquidity pool information
+- **estimate_gas** - Estimate gas prices
+- **poll_transaction** - Poll transaction status
+
+#### Wallet Tools (4)
+- **wallet_list** - List wallets
+- **wallet_add** - Add new wallet
+- **wallet_remove** - Remove wallet
+- **get_balances** - Get token balances
+
+### MCP Resources (8 total)
+Resources provide read-only access without requiring permissions:
+
+- `gateway://chains` - Available blockchain networks
+- `gateway://connectors` - DEX connectors and capabilities
+- `gateway://config/ethereum` - Ethereum configuration
+- `gateway://config/solana` - Solana configuration
+- `gateway://wallets` - Wallet list
+- `gateway://token-lists/ethereum-mainnet` - Ethereum token list
+- `gateway://token-lists/solana-mainnet` - Solana token list
+- `gateway://openapi` - Complete API specification
+
+### MCP Prompts (4 total)
+Guided workflows for complex operations:
+
+- **swap_optimizer** - Find best swap route across DEXs
+- **portfolio_analyzer** - Analyze wallet portfolio
+- **liquidity_finder** - Find best liquidity pools
+- **gas_optimizer** - Optimize gas settings
 
 ### Quick Start with Claude Code
 
@@ -51,14 +92,20 @@ pnpm start --passphrase=YOUR_PASSPHRASE
 claude mcp add gateway -e GATEWAY_URL=http://localhost:15888 -- node dist/mcp/index.js
 
 # 4. Use in Claude Code
-# Example: "Use the gateway MCP to show me available chains"
+# Example: "What chains are available?"
+# Example: "Show me the Ethereum configuration" (uses resource, no permission needed)
+# Example: "Help me find the best swap route for 1 ETH to USDC" (uses prompt)
 ```
 
-### MCP Configuration
+### MCP Benefits
 
-The MCP server connects to Gateway at the default URL (http://localhost:15888).
+- **Fewer Interruptions**: Resources and prompts reduce permission requests
+- **Better Organization**: Tools grouped by functionality
+- **Offline Support**: Fallback data when Gateway isn't running
+- **Guided Assistance**: Prompts provide structured workflows
+- **Comprehensive Coverage**: All major Gateway operations exposed
 
-For detailed MCP setup instructions, see the [MCP documentation](./src/mcp/README.md).
+For detailed MCP setup instructions and architecture, see the [MCP documentation](./src/mcp/README.md).
 
 Gateway may be used alongside the main [Hummingbot client](https://github.com/hummingbot/hummingbot) to enable trading and market making on DEXs, or as a standalone API/MCP server.
 
