@@ -4,12 +4,26 @@
 
 ## Introduction
 
-Hummingbot Gateway is an API/MCP server that exposes standardized REST endpoints and MCP tools to perform actions and fetch data from **blockchain networks** (wallet, node & chain interaction) and their **decentralized exchanges (DEX)** (pricing, trading & liquidity provision).
+Hummingbot Gateway is a versatile API and Model Context Protocol (MCP) server that standardizes interactions with blockchain networks and decentralized exchanges (DEXs). It acts as a middleware layer, providing a unified interface for performing actions like checking balances, executing trades, and managing wallets across different protocols.
 
 Gateway can be accessed through:
 - **MCP (Model Context Protocol)**: Use AI assistants like Claude to interact with Gateway through natural language
 - **REST API**: Direct HTTP/HTTPS endpoints for programmatic access
 - **Hummingbot Client**: For automated trading strategies, use the [Hummingbot repository](https://github.com/hummingbot/hummingbot)
+
+### Key Features
+- **Standardized REST API**: Consistent endpoints for interacting with blockchains (Ethereum, Solana) and DEXs (Uniswap, Jupiter, Raydium, Meteora)
+- **MCP Integration**: Natural language interaction with trading operations through AI assistants
+- **Modular Architecture**: Clear separation of concerns with distinct modules for chains, connectors, configuration, and wallet management
+- **TypeScript-based**: Leverages the TypeScript ecosystem and popular libraries like Fastify, Ethers.js, and Solana/web3.js
+- **Extensible**: Easily extended with new chains and connectors
+
+### Core Technologies
+- **Backend**: Node.js, TypeScript, Fastify
+- **Blockchain Interaction**: Ethers.js (Ethereum), @solana/web3.js (Solana)
+- **Package Manager**: pnpm
+- **Testing**: Jest
+- **Linting/Formatting**: ESLint, Prettier
 
 ### API Overview
 
@@ -25,7 +39,7 @@ Gateway can be accessed through:
 - GET /raydium/clmm/... - Raydium CLMM endpoints
 - GET /meteora/clmm/... - Meteora CLMM endpoints
 
-Gateway is written in Typescript in order to use Javascript-based SDKs provided by blockchains and DEX protocols. The advantage of using Gateway is it provides a standardized, language-agnostic approach to interacting with these protocols.
+Gateway is written in TypeScript to leverage JavaScript-based SDKs provided by blockchains and DEX protocols. The advantage of using Gateway is it provides a standardized, language-agnostic approach to interacting with these protocols.
 
 ## MCP (Model Context Protocol) Integration
 
@@ -255,43 +269,42 @@ Here are some ways that you can contribute to Gateway:
 
 ## Architecture
 
-Gateway follows a modular architecture with clear separation of concerns between chains, connectors, configuration, and wallet management:
+Gateway follows a modular architecture with clear separation of concerns:
 
-- **Chains**: Blockchain network implementations
-  - [src/chains/chain.routes.ts](./src/chains/chain.routes.ts): List of supported chains and networks
-  - [src/chains/ethereum/ethereum.ts](./src/chains/ethereum/ethereum.ts): Core Ethereum chain operations
-  - [src/chains/solana/solana.ts](./src/chains/solana/solana.ts): Core Solana chain operations
+```
+/src
+├── chains/               # Blockchain-specific implementations
+├── connectors/           # DEX-specific implementations
+├── mcp/                  # Model Context Protocol server
+├── services/             # Core services (config, logging, tokens)
+├── schemas/              # API request/response schemas (TypeBox)
+├── config/               # Configuration routes and utilities
+└── wallet/               # Wallet management
+```
 
-- **Connectors**: DEX protocol implementations
-  - [src/connectors/connector.routes.ts](./src/connectors/connector.routes.ts): List of available DEX connectors
-  - [src/connectors/jupiter/jupiter.ts](./src/connectors/jupiter/jupiter.ts): Jupiter DEX connector for Solana
-  - [src/connectors/raydium/raydium.ts](./src/connectors/raydium/raydium.ts): Raydium DEX connector for Solana (AMM, CLMM)
-  - [src/connectors/uniswap/uniswap.ts](./src/connectors/uniswap/uniswap.ts): Uniswap DEX connector for Ethereum
-  - [src/connectors/uniswap/routes/quote-swap.ts](./src/connectors/uniswap/routes/quote-swap.ts): Uniswap V3 Swap Router for quote generation
-  - [src/connectors/uniswap/routes/execute-swap.ts](./src/connectors/uniswap/routes/execute-swap.ts): Uniswap V3 Swap Router for swap execution
-  - [src/connectors/uniswap/uniswap.contracts.ts](./src/connectors/uniswap/uniswap.contracts.ts): Contract addresses for Uniswap on all networks
+### Key Components
 
-- **Configuration**: Configuration management
-  - [src/config/config.routes.ts](./src/config/config.routes.ts): Configuration endpoints
-  - [src/config/utils.ts](./src/config/utils.ts): Configuration utilities
+#### Chains
+The `src/chains` directory contains blockchain network implementations. Each chain module includes:
+- Core chain class implementing operations like `getBalances`, `getTokens`
+- Chain-specific routes defining API endpoints
+- Configuration management for the chain
 
-- **Wallet**: Wallet management
-  - [src/wallet/wallet.routes.ts](./src/wallet/wallet.routes.ts): Wallet endpoints
-  - [src/wallet/utils.ts](./src/wallet/utils.ts): Wallet utilities
+#### Connectors
+The `src/connectors` directory houses DEX protocol implementations. Each connector provides:
+- **Quoting**: Getting price quotes for swaps
+- **Trading**: Executing trades
+- **Liquidity Pool Info**: Fetching pool information
+- Support for different DEX models (AMM, CLMM)
 
-- **Tokens**: Token management
-  - [src/tokens/tokens.routes.ts](./src/tokens/tokens.routes.ts): Token management endpoints
-  - [src/services/token-service.ts](./src/services/token-service.ts): Token service for CRUD operations
+#### MCP Server
+The `src/mcp` directory implements the Model Context Protocol server, exposing Gateway's functionality as "tools" that can be called by AI assistants.
 
-- **Schemas**: Common type definitions and schemas
-  - [src/schemas/trading-types/clmm-schema.ts](./src/schemas/trading-types/clmm-schema.ts): Standard schemas for CLMM operations
-  - [src/schemas/trading-types/amm-schema.ts](./src/schemas/trading-types/amm-schema.ts): Standard schemas for AMM operations
-  - [src/schemas/trading-types/swap-schema.ts](./src/schemas/trading-types/swap-schema.ts): Standard schemas for swap operations
-
-- **Services**: Core functionality and utilities
-  - [src/services/config-manager-v2.ts](./src/services/config-manager-v2.ts): Configuration management
-  - [src/services/logger.ts](./src/services/logger.ts): Logging utilities
-  - [src/services/base.ts](./src/services/base.ts): Base service functionality
+#### Services
+Essential services in `src/services` include:
+- **config-manager-v2.ts**: Robust configuration management with validation
+- **logger.ts**: Flexible logging service
+- **token-service.ts**: Token list management with security validation
 
 ## Testing
 
