@@ -29,7 +29,7 @@ export class APITestCase<T extends AbstractGatewayTestHarness<any> = any>
      * @example { 'getLatestBlock': 'mayanode-getLatestBlock-response' }
      */
     public requiredMocks: Partial<
-      Record<keyof T['dependencyContracts'], string>
+      Record<keyof T['dependencyContracts'], string | string[]>
     >,
     public propertyMatchers?: Partial<any>,
   ) {}
@@ -59,7 +59,7 @@ export class APITestCase<T extends AbstractGatewayTestHarness<any> = any>
     response: LightMyRequestResponse;
     body: any;
   }> {
-    await harness.setupMocksForTest(this.requiredMocks);
+    await harness.loadMocks(this.requiredMocks);
     const response = await harness.gatewayApp.inject(this);
     expect(response.statusCode).toBe(this.expectedStatus);
     const body = JSON.parse(response.body);

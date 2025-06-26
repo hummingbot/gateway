@@ -54,12 +54,12 @@ const useDTwiceRoute: FastifyPluginAsync = async (fastify) => {
   );
 };
 
-const useUnmappedDepRoute: FastifyPluginAsync = async (fastify) => {
+const useUnmappedMethodRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
     Querystring: { network: string };
-    Reply: { z: string };
+    Reply: { unmapped: string };
   }>(
-    '/useUnmappedDep',
+    '/useUnmappedMethod',
     {
       schema: {
         summary: 'A RnpExample route for testing',
@@ -68,7 +68,7 @@ const useUnmappedDepRoute: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       try {
         const rnpExample = await RnpExample.getInstance(request.query.network);
-        return await rnpExample.useUnmappedDep();
+        return await rnpExample.useUnmappedMethod();
       } catch (error) {
         logger.error(`Error getting useUnmappedDep status: ${error.message}`);
         throw fastify.httpErrors.internalServerError(
@@ -79,10 +79,36 @@ const useUnmappedDepRoute: FastifyPluginAsync = async (fastify) => {
   );
 };
 
+const useDep2Route: FastifyPluginAsync = async (fastify) => {
+  fastify.get<{
+    Querystring: { network: string };
+    Reply: { z: string };
+  }>(
+    '/useDep2',
+    {
+      schema: {
+        summary: 'A RnpExample route for testing',
+      },
+    },
+    async (request) => {
+      try {
+        const rnpExample = await RnpExample.getInstance(request.query.network);
+        return await rnpExample.useDep2();
+      } catch (error) {
+        logger.error(`Error getting useDep2 status: ${error.message}`);
+        throw fastify.httpErrors.internalServerError(
+          `Failed to useDep2: ${error.message}`,
+        );
+      }
+    },
+  );
+};
+
 export const rnpExampleRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(useABCRoute);
   await fastify.register(useDTwiceRoute);
-  await fastify.register(useUnmappedDepRoute);
+  await fastify.register(useUnmappedMethodRoute);
+  await fastify.register(useDep2Route);
 };
 
 export default rnpExampleRoutes;
