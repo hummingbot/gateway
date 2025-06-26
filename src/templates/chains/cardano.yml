@@ -1,0 +1,20 @@
+networks:
+  mainnet:
+    tokenListType: "FILE"
+    tokenListSource: "/home/gateway/conf/lists/cardano_mainnet_tokens.json"
+    nativeCurrencySymbol: 'ADA'
+    apiurl: 'https://cardano-mainnet.blockfrost.io/api/v0'
+    projectId: 'mainnetkCD2MvERTpHuh2oojUli0QtGp6zuJyrR'
+  preprod:
+    tokenListType: "FILE"
+    tokenListSource: "/home/gateway/conf/lists/cardano_preprod_tokens.json"
+    nativeCurrencySymbol: 'ADA'
+    apiurl: 'https://cardano-preprod.blockfrost.io/api/v0'
+    projectId: 'preprodN1EZYj11zL89jJeaAjeRybxYMLp7grmn'
+  preview:
+    tokenListType: "FILE"
+    tokenListSource: "/home/gateway/conf/lists/cardano_preview_tokens.json"
+    nativeCurrencySymbol: 'ADA'
+    apiurl: 'https://cardano-preview.blockfrost.io/api/v0'
+    projectId: 'previewjsuJtAX0Fki1dAewDoWQ1xoHXXgVzg1w'
+

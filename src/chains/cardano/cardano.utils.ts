@@ -64,3 +64,5 @@ export interface TransactionStatus {
   validContract: boolean;
   status: 0 | 1; // 0 = pending, 1 = confirmed
 }
+
+export interface CardanoTokensResponseType {}

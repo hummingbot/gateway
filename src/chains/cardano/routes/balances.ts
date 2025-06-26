@@ -20,9 +20,7 @@ export async function getCardanoBalances(
     const cardano = await Cardano.getInstance(network);
     await cardano.init();
 
-    let wallet: {
-      privateKey: string;
-    };
+    let wallet: string;
     const balances: Record<string, number> = {};
 
     // Treat empty array as if no tokens were specified
@@ -41,7 +39,7 @@ export async function getCardanoBalances(
     }
 
     // Always get native token balance
-    const nativeBalance = await cardano.getNativeBalance(wallet.privateKey);
+    const nativeBalance = await cardano.getNativeBalance(wallet);
     // Convert string to number as required by schema
     balances[cardano.nativeTokenSymbol] = parseFloat(
       tokenValueToString(nativeBalance),
@@ -87,10 +85,7 @@ export async function getCardanoBalances(
         await Promise.all(
           batch.map(async (token) => {
             try {
-              const balance = await cardano.getAssetBalance(
-                wallet.privateKey,
-                token,
-              );
+              const balance = await cardano.getAssetBalance(wallet, token);
               // Parse balance to number
               const balanceNum = parseFloat(tokenValueToString(balance));
 
@@ -121,10 +116,7 @@ export async function getCardanoBalances(
 
           const token = cardano.getTokenBySymbol(symbolOrAddress);
           if (token) {
-            const balance = await cardano.getAssetBalance(
-              wallet.privateKey,
-              token,
-            );
+            const balance = await cardano.getAssetBalance(wallet, token);
             // Convert string to number as required by schema
             balances[token.symbol] = parseFloat(tokenValueToString(balance));
           }

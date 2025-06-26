@@ -64,6 +64,10 @@ configurations:
     configurationPath: connectors/uniswap.yml
     schemaPath: uniswap-schema.json
 
+  $namespace solana:
+    configurationPath: solana.yml
+    schemaPath: solana-schema.json
+
   $namespace jupiter:
     configurationPath: connectors/jupiter.yml
     schemaPath: jupiter-schema.json
@@ -94,5 +98,13 @@ configurations:
     schemaPath: infura-schema.json
 
   $namespace cardano:
-    configurationPath: connectors/cardano.yml
+    configurationPath: chains/cardano.yml
     schemaPath: cardano-schema.json
+
+  $namespace minswap:
+    configurationPath: connectors/minswap.yml
+    schemaPath: minswap-schema.json
+
+  $namespace sundaeswap:
+    configurationPath: connectors/sundaeswap.yml
+    schemaPath: sundaeswap-schema.json

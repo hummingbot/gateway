@@ -25,29 +25,23 @@ export type CardanoTokenInfo = {
   name: string;
   symbol: string;
   logoURI: string;
+  address: string;
 };
 
 export class Cardano {
   private static _instances: { [name: string]: Cardano };
-  // protected tokenList: CardanoTokenInfo[] = [];
-  // private _tokenMap: Record<string, CardanoTokenInfo[]> = {};
   public tokenList: CardanoTokenInfo[] = [];
   public config: Config;
   public tokenMap: Record<string, CardanoTokenInfo> = {};
   private _tokenListSource: string;
   private _tokenListType: TokenListType;
   public lucidInstance: Lucid | null = null;
-  private network: string;
-  public allowedSlippage?: string;
-  public blockfrostProjectId: string;
-  //public gasLimitEstimate: number;
-  public ttl?: string;
+  public network: string;
   private _chain: string;
   private _ready: boolean = false;
   public apiURL: any;
-  public minswapPoolId: string;
-  public sundaeswapPoolId: string;
   public nativeTokenSymbol: string;
+  public projectId: string;
 
   private constructor(network: string) {
     // Throw error if network is not 'mainnet' or 'preprod'
@@ -60,24 +54,13 @@ export class Cardano {
     }
     this.config = getCardanoConfig('cardano', network);
     this._chain = 'cardano';
-    this.ttl = this.config.ttl;
     // Determine the appropriate Blockfrost Project ID and API URL
-    const networkConfig = {
-      preprod: this.config.preprodBlockfrostProjectId,
-      preview: this.config.previewBlockfrostProjectId,
-      mainnet: this.config.blockfrostProjectId, // Assuming mainnet as default
-    };
-    this.blockfrostProjectId =
-      networkConfig[network] || this.config.blockfrostProjectId;
-
-    this.allowedSlippage = this.config.allowedSlippage;
     this.apiURL = this.config.network.apiurl;
-    this.minswapPoolId = this.config.minswapPoolId;
-    this.sundaeswapPoolId = this.config.sundaeswapPoolId;
     this.network = this.config.network.name;
-    this.nativeTokenSymbol = this.config.nativeCurrencySymbol;
-    this._tokenListSource = this.config.tokenListSource;
-    this._tokenListType = <TokenListType>this.config.tokenListType;
+    this.nativeTokenSymbol = this.config.network.nativeCurrencySymbol;
+    this._tokenListSource = this.config.network.tokenListSource;
+    this._tokenListType = <TokenListType>this.config.network.tokenListType;
+    this.projectId = this.config.network.projectId;
   }
   public static async getInstance(network: string): Promise<Cardano> {
     if (Cardano._instances === undefined) {
@@ -108,7 +91,7 @@ export class Cardano {
   public async init(): Promise<void> {
     if (!this.lucidInstance) {
       this.lucidInstance = await Lucid.new(
-        new Blockfrost(this.apiURL, this.blockfrostProjectId),
+        new Blockfrost(this.apiURL, this.projectId),
         this.network === 'preprod'
           ? 'Preprod'
           : this.network === 'preview'
@@ -155,9 +138,7 @@ export class Cardano {
     }
   }
 
-  public async getWalletFromAddress(address: string): Promise<{
-    privateKey: string;
-  }> {
+  public async getWalletFromAddress(address: string): Promise<string> {
     const path = `${walletPath}/${this._chain}`;
     const encryptedPrivateKey: string = await fse.readFile(
       `${path}/${address}.json`,
@@ -171,7 +152,7 @@ export class Cardano {
     // Ensure decrypt is awaited if it's asynchronous
     const privateKey = await this.decrypt(encryptedPrivateKey, passphrase);
 
-    return { privateKey }; // Correctly resolved the Promise<string> to string
+    return privateKey; // Correctly resolved the Promise<string> to string
   }
   // get native balance ADA
   public async getNativeBalance(privateKey: string): Promise<string> {
@@ -296,7 +277,7 @@ export class Cardano {
   async getCurrentBlockNumber(): Promise<number> {
     const response = await fetch(`${this.apiURL}/blocks/latest`, {
       headers: {
-        project_id: this.blockfrostProjectId,
+        project_id: this.projectId,
       },
     });
 
@@ -314,7 +295,7 @@ export class Cardano {
       const response = await fetch(`${this.apiURL}/txs/${txHash}`, {
         method: 'GET',
         headers: {
-          project_id: this.blockfrostProjectId, // Pass project ID in the header
+          project_id: this.projectId, // Pass project ID in the header
         },
       });
 
@@ -325,11 +306,12 @@ export class Cardano {
 
       // Parse the response JSON
       const tx = await response.json();
+      console.log(tx);
 
       // Simplify the response for the bot
       return {
         txHash: tx.hash,
-        block: Number(tx.block),
+        block: tx.block,
         blockHeight: tx.block_height,
         blockTime: tx.block_time,
         fees: Number(tx.fees),
