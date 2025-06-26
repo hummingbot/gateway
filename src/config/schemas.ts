@@ -74,11 +74,18 @@ export type DefaultPoolListResponse = Static<typeof DefaultPoolListSchema>;
 
 // Config query schema
 export const ConfigQuerySchema = Type.Object({
-  chainOrConnector: Type.Optional(
+  namespace: Type.Optional(
     Type.String({
       description:
-        'Optional chain or connector name (e.g., "solana", "ethereum", "uniswap")',
-      examples: ['solana'],
+        'Optional configuration namespace (e.g., "server", "ethereum", "solana", "uniswap", "jupiter")',
+      examples: ['server', 'ethereum', 'solana', 'uniswap'],
+    }),
+  ),
+  network: Type.Optional(
+    Type.String({
+      description:
+        'Optional network name (e.g., "mainnet", "mainnet-beta", "devnet"). Only used when namespace is a chain.',
+      examples: ['mainnet', 'mainnet-beta', 'devnet', 'arbitrum', 'optimism'],
     }),
   ),
 });

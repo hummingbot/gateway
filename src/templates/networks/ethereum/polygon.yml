@@ -1,0 +1,4 @@
+chainID: 137
+nodeURL: https://rpc.ankr.com/polygon
+nativeCurrencySymbol: POL
+gasPriceRefreshInterval: 60

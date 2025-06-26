@@ -1,5 +1,8 @@
 import { TokenListType } from '../../services/base';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
+import { rootPath } from '../../paths';
+import path from 'path';
+
 export interface NetworkConfig {
   name: string;
   chainID: number;
@@ -44,11 +47,13 @@ export function getEthereumConfig(
       nodeURL: ConfigManagerV2.getInstance().get(
         chainName + '.networks.' + network + '.nodeURL',
       ),
-      tokenListType: ConfigManagerV2.getInstance().get(
-        chainName + '.networks.' + network + '.tokenListType',
-      ),
-      tokenListSource: ConfigManagerV2.getInstance().get(
-        chainName + '.networks.' + network + '.tokenListSource',
+      tokenListType: 'FILE' as TokenListType,
+      tokenListSource: path.join(
+        rootPath(),
+        'conf',
+        'lists',
+        chainName,
+        `${network}.json`
       ),
       gasPriceRefreshInterval: ConfigManagerV2.getInstance().get(
         chainName + '.networks.' + network + '.gasPriceRefreshInterval',

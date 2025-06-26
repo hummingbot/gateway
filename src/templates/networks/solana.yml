@@ -1,15 +1,3 @@
-networks:
-  mainnet-beta:
-    nodeURL: https://api.mainnet-beta.solana.com
-    tokenListType: FILE
-    tokenListSource: /home/gateway/conf/lists/solana.json
-    nativeCurrencySymbol: SOL
-  devnet:
-    nodeURL: https://api.devnet.solana.com
-    tokenListType: FILE
-    tokenListSource: /home/gateway/conf/lists/solana-devnet.json
-    nativeCurrencySymbol: SOL
-
 # Default compute units for a transaction
 # This sets the compute unit limit for transactions when not specified by the user
 defaultComputeUnits: 200000

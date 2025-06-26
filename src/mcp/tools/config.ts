@@ -4,7 +4,7 @@ import { z } from "zod";
 import { ToolRegistry } from "../utils/tool-registry";
 import { GatewayApiClient } from "../utils/api-client";
 
-export function registerConfigTools(server: Server, apiClient: GatewayApiClient) {
+export function registerConfigTools(_server: Server, apiClient: GatewayApiClient) {
   // Tool: get_config
   ToolRegistry.registerTool(
     {

@@ -4,7 +4,7 @@ import { z } from "zod";
 import { ToolRegistry } from "../utils/tool-registry";
 import { GatewayApiClient } from "../utils/api-client";
 
-export function registerTradingTools(server: Server, apiClient: GatewayApiClient) {
+export function registerTradingTools(_server: Server, apiClient: GatewayApiClient) {
   // Tool: quote_swap
   ToolRegistry.registerTool(
     {

@@ -4,7 +4,7 @@ import { GatewayApiClient } from "../utils/api-client";
 import { FallbackDataProvider } from "../utils/fallback";
 import { ToolRegistry } from "../utils/tool-registry";
 
-export function registerWalletTools(server: Server, apiClient: GatewayApiClient) {
+export function registerWalletTools(_server: Server, apiClient: GatewayApiClient) {
   // Tool: wallet_list
   ToolRegistry.registerTool(
     {

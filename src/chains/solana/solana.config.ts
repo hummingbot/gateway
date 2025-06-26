@@ -1,5 +1,8 @@
 import { TokenListType } from '../../services/base';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
+import { rootPath } from '../../paths';
+import path from 'path';
+
 interface NetworkConfig {
   name: string;
   nodeURL: string;
@@ -32,11 +35,13 @@ export function getSolanaConfig(
       nodeURL: ConfigManagerV2.getInstance().get(
         chainName + '.networks.' + networkName + '.nodeURL',
       ),
-      tokenListType: ConfigManagerV2.getInstance().get(
-        chainName + '.networks.' + networkName + '.tokenListType',
-      ),
-      tokenListSource: ConfigManagerV2.getInstance().get(
-        chainName + '.networks.' + networkName + '.tokenListSource',
+      tokenListType: 'FILE' as TokenListType,
+      tokenListSource: path.join(
+        rootPath(),
+        'conf',
+        'lists',
+        chainName,
+        `${networkName}.json`
       ),
       nativeCurrencySymbol: ConfigManagerV2.getInstance().get(
         chainName + '.networks.' + networkName + '.nativeCurrencySymbol',

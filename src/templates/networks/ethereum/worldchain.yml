@@ -1,0 +1,4 @@
+chainID: 480
+nodeURL: https://worldchain-mainnet.g.alchemy.com/public
+nativeCurrencySymbol: WLD
+gasPriceRefreshInterval: 60

@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Solana Config",
+  "description": "A schema for Solana-specific configuration parameters",
+  "type": "object",
+  "properties": {
+    "gasLevel": {
+      "description": "The gas level to use for transactions",
+      "type": "string"
+    },
+    "transactionConfirmationTimeout": {
+      "description": "The timeout in seconds for transaction confirmation",
+      "type": "integer"
+    }
+  },
+  "required": ["gasLevel", "transactionConfirmationTimeout"]
+}

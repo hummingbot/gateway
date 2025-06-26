@@ -59,16 +59,45 @@ export const updateAllowedSlippageToFraction = (
 };
 
 export const getConfig = (
-  _fastify: FastifyInstance, // Underscore to indicate unused parameter
-  chainOrConnector?: string,
+  fastify: FastifyInstance,
+  namespace?: string,
+  network?: string,
 ): object => {
-  if (chainOrConnector) {
+  if (namespace) {
     logger.info(
-      `Getting configuration for chain/connector: ${chainOrConnector}`,
+      `Getting configuration for namespace: ${namespace}${network ? `, network: ${network}` : ''}`,
     );
-    const namespace =
-      ConfigManagerV2.getInstance().getNamespace(chainOrConnector);
-    return namespace ? namespace.configuration : {};
+    const namespaceConfig =
+      ConfigManagerV2.getInstance().getNamespace(namespace);
+    
+    if (!namespaceConfig) {
+      throw fastify.httpErrors.notFound(
+        `Namespace '${namespace}' not found`,
+      );
+    }
+
+    // If network is specified, return only that network's config
+    if (network) {
+      // Check if this namespace has networks property
+      if (!namespaceConfig.configuration.networks) {
+        throw fastify.httpErrors.badRequest(
+          `Network parameter '${network}' is not valid for '${namespace}'. The '${namespace}' namespace does not support network configurations.`,
+        );
+      }
+
+      // Check if the network exists
+      if (!namespaceConfig.configuration.networks[network]) {
+        const availableNetworks = Object.keys(namespaceConfig.configuration.networks);
+        throw fastify.httpErrors.notFound(
+          `Network '${network}' not found for '${namespace}'. Available networks: ${availableNetworks.join(', ')}`,
+        );
+      }
+
+      // Return only the network configuration
+      return namespaceConfig.configuration.networks[network];
+    }
+
+    return namespaceConfig.configuration;
   }
 
   logger.info('Getting all configurations');

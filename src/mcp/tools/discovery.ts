@@ -4,7 +4,7 @@ import { GatewayApiClient } from "../utils/api-client";
 import { FallbackDataProvider } from "../utils/fallback";
 import { ToolRegistry } from "../utils/tool-registry";
 
-export function registerDiscoveryTools(server: Server, apiClient: GatewayApiClient) {
+export function registerDiscoveryTools(_server: Server, apiClient: GatewayApiClient) {
   // Tool: get_chains
   ToolRegistry.registerTool(
     {
@@ -15,7 +15,7 @@ export function registerDiscoveryTools(server: Server, apiClient: GatewayApiClie
         properties: {}
       }
     },
-    async (request) => {
+    async (_request) => {
       try {
         const chainsData = await apiClient.get("/chains/").catch(() => 
           FallbackDataProvider.getChains()
@@ -61,9 +61,9 @@ export function registerDiscoveryTools(server: Server, apiClient: GatewayApiClie
         }
       }
     },
-    async (request) => {
+    async (_request) => {
       try {
-        const args = request.params.arguments as { chain?: string };
+        const args = _request.params.arguments as { chain?: string };
         const connectorsData = await apiClient.get("/connectors/", args.chain ? { chain: args.chain } : undefined)
           .catch(() => FallbackDataProvider.getConnectors(args.chain));
         
@@ -117,9 +117,9 @@ export function registerDiscoveryTools(server: Server, apiClient: GatewayApiClie
         required: ["chain", "network"]
       }
     },
-    async (request) => {
+    async (_request) => {
       try {
-        const args = request.params.arguments as { 
+        const args = _request.params.arguments as { 
           chain: string;
           network: string;
           tokenSymbols?: string[];
@@ -175,9 +175,9 @@ export function registerDiscoveryTools(server: Server, apiClient: GatewayApiClie
         required: ["chain", "network"]
       }
     },
-    async (request) => {
+    async (_request) => {
       try {
-        const args = request.params.arguments as { 
+        const args = _request.params.arguments as { 
           chain: string;
           network: string;
         };

@@ -1,0 +1,4 @@
+chainID: 1
+nodeURL: https://eth.llamarpc.com
+nativeCurrencySymbol: ETH
+gasPriceRefreshInterval: 60

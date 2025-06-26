@@ -5,25 +5,25 @@ configurations:
     schemaPath: server-schema.json
 
   $namespace ethereum:
-    configurationPath: ethereum.yml
+    configurationPath: networks/ethereum.yml
     schemaPath: ethereum-schema.json
 
   $namespace uniswap:
-    configurationPath: uniswap.yml
+    configurationPath: connectors/uniswap.yml
     schemaPath: uniswap-schema.json
 
   $namespace solana:
-    configurationPath: solana.yml
+    configurationPath: networks/solana.yml
     schemaPath: solana-schema.json
 
   $namespace jupiter:
-    configurationPath: jupiter.yml
+    configurationPath: connectors/jupiter.yml
     schemaPath: jupiter-schema.json
 
   $namespace meteora:
-    configurationPath: meteora.yml
+    configurationPath: connectors/meteora.yml
     schemaPath: meteora-schema.json
 
   $namespace raydium:
-    configurationPath: raydium.yml
+    configurationPath: connectors/raydium.yml
     schemaPath: raydium-schema.json
