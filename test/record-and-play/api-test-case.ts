@@ -43,10 +43,7 @@ export class APITestCase<T extends AbstractGatewayTestHarness<any> = any>
   }> {
     const response = await harness.gatewayApp.inject(this);
     await harness.saveMocks(this.requiredMocks);
-    if (response.statusCode !== this.expectedStatus) {
-      console.log('Response body:', response.body);
-      expect(response.statusCode).toBe(this.expectedStatus);
-    }
+    this.assertStatusCode(response);
     const body = JSON.parse(response.body);
     this.assertSnapshot(body, propertyMatchers);
     return { response, body };
@@ -61,7 +58,7 @@ export class APITestCase<T extends AbstractGatewayTestHarness<any> = any>
   }> {
     await harness.loadMocks(this.requiredMocks);
     const response = await harness.gatewayApp.inject(this);
-    expect(response.statusCode).toBe(this.expectedStatus);
+    this.assertStatusCode(response);
     const body = JSON.parse(response.body);
     this.assertSnapshot(body, propertyMatchers);
     return { response, body };
@@ -72,6 +69,14 @@ export class APITestCase<T extends AbstractGatewayTestHarness<any> = any>
       expect(body).toMatchSnapshot(propertyMatchers || this.propertyMatchers);
     } else {
       expect(body).toMatchSnapshot();
+    }
+  }
+
+  public assertStatusCode(response: LightMyRequestResponse) {
+    if (response.statusCode !== this.expectedStatus) {
+      console.log('Response body:', response.body);
+      expect(response.statusCode).toBe(this.expectedStatus);
+      // TODO: check if it has a stack property to log
     }
   }
 }

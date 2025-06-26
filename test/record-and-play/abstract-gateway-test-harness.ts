@@ -75,8 +75,7 @@ export abstract class AbstractGatewayTestHarness<TInstance>
   abstract init(): Promise<void>;
 
   private async setupSpies() {
-    for (const key in this.dependencyContracts) {
-      const dep = this.dependencyContracts[key];
+    for (const [_key, dep] of Object.entries(this.dependencyContracts)) {
       const spy = dep.setupSpy(this);
       dep.spy = spy;
     }
@@ -106,12 +105,19 @@ export abstract class AbstractGatewayTestHarness<TInstance>
   async setupMockedTests() {
     await this.init();
     await this.setupSpies();
-    // TODO: make unmocked methods throw errors
-    // for (const key in this.dependencyContracts) {
-    //   const dep = this.dependencyContracts[key];
-    //   const spyOrSpies = dep.setupSpy(this.instance);
-    //   dep.spy = spyOrSpies
-    // }
+    for (const [instanceKey, dep] of Object.entries(this.dependencyContracts)) {
+      const object = dep.getObject(this);
+      for (const [methodName, method] of Object.entries(object)) {
+        if (!(method as any).mock) {
+          const spy = jest.spyOn(object, methodName);
+          spy.mockImplementation(() => {
+            throw new Error(
+              `Unmocked method was called: ${instanceKey}.${methodName}`,
+            );
+          });
+        }
+      }
+    }
   }
 
   public async loadMocks(requiredMocks: Record<string, string | string[]>) {

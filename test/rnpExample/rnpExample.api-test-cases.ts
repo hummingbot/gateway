@@ -27,11 +27,32 @@ export const useDTwice = new TestCase(
   },
 );
 
-export const useUnmappedDep = new TestCase(
+export const useUnmappedMethodRecorder = new TestCase(
   'GET',
-  '/rnpExample/useUnmappedDep',
+  '/rnpExample/useUnmappedMethod',
   200,
   { network: 'TEST' },
   {},
   {},
+);
+
+export const useUnmappedMethodMocked = new TestCase(
+  'GET',
+  '/rnpExample/useUnmappedMethod',
+  424,
+  { network: 'TEST' },
+  {},
+  {},
+);
+
+export const useDep2 = new TestCase(
+  'GET',
+  '/rnpExample/useDep2',
+  200,
+  { network: 'TEST' },
+  {},
+  {},
+  {
+    z: expect.any(String),
+  },
 );

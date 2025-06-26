@@ -70,9 +70,11 @@ const useUnmappedMethodRoute: FastifyPluginAsync = async (fastify) => {
         const rnpExample = await RnpExample.getInstance(request.query.network);
         return await rnpExample.useUnmappedMethod();
       } catch (error) {
-        logger.error(`Error getting useUnmappedDep status: ${error.message}`);
-        throw fastify.httpErrors.internalServerError(
-          `Failed to useUnmappedDep: ${error.message}`,
+        logger.error(
+          `Error getting useUnmappedMethod status: ${error.message}`,
+        );
+        throw fastify.httpErrors.failedDependency(
+          `Failed to useUnmappedMethod: ${error.message}`,
         );
       }
     },

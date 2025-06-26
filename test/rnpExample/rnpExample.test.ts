@@ -1,4 +1,9 @@
-import { useABC, useDTwice, useUnmappedDep } from './rnpExample.api-test-cases';
+import {
+  useABC,
+  useDep2,
+  useDTwice,
+  useUnmappedMethodMocked,
+} from './rnpExample.api-test-cases';
 import { RnpExampleTestHarness } from './rnpExample.test-harness';
 
 describe('RnpExample', () => {
@@ -6,7 +11,6 @@ describe('RnpExample', () => {
 
   beforeAll(async () => {
     harness = new RnpExampleTestHarness();
-    await harness.init();
     await harness.setupMockedTests();
   });
 
@@ -22,7 +26,11 @@ describe('RnpExample', () => {
     await useDTwice.processPlayRequest(harness);
   });
 
-  it('useUnmappedDep', async () => {
-    await useUnmappedDep.processPlayRequest(harness);
+  it('useUnmappedMethodMocked', async () => {
+    await useUnmappedMethodMocked.processPlayRequest(harness);
+  });
+
+  it('useDep2', async () => {
+    await useDep2.processPlayRequest(harness);
   });
 });

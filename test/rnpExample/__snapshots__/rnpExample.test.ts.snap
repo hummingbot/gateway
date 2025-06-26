@@ -2,21 +2,35 @@
 
 exports[`RnpExample useABC 1`] = `
 {
-  "a": "real methodA-0.4019890230670282",
-  "b": "real methodB-0.5932643445442789",
-  "c": "real methodC-0.9555927541390334",
+  "a": "real methodA-0.04965624398717727",
+  "b": "real methodB-0.29469062977016547",
+  "c": "real methodC-0.07593266140415622",
 }
 `;
 
 exports[`RnpExample useDTwice 1`] = `
 {
-  "d1": "real methodD-0.546786535872487",
-  "d2": "real methodD-0.9218730426590118",
+  "d1": "real methodD-0.6444137082306514",
+  "d2": "real methodD-0.1376059747752234",
 }
 `;
 
-exports[`RnpExample useUnmappedDep 1`] = `
+exports[`RnpExample useDep2 1`] = `
 {
-  "z": "real methodZ-0.42323554137867947",
+  "z": Any<String>,
+}
+`;
+
+exports[`RnpExample useUnmappedMethodMocked 1`] = `
+{
+  "error": "FailedDependencyError",
+  "message": "Failed to useUnmappedMethod: Unmocked method was called: dep1_A.methodUnmapped",
+  "statusCode": 424,
+}
+`;
+
+exports[`RnpExample useUnmappedMethodRecorder 1`] = `
+{
+  "unmapped": "real methodUnmapped-0.17405589451073245",
 }
 `;
