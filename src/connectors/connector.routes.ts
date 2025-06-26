@@ -6,6 +6,8 @@ import { logger } from '../services/logger';
 import { JupiterConfig } from './jupiter/jupiter.config';
 import { MeteoraConfig } from './meteora/meteora.config';
 import { RaydiumConfig } from './raydium/raydium.config';
+import { MinswapConfig } from './minswap/minswap.config';
+import { SundaeswapConfig } from './sundaeswap/sundaeswap.config';
 import {
   UniswapConfig,
   uniswapNetworks,
@@ -87,6 +89,18 @@ export const connectorsRoutes: FastifyPluginAsync = async (fastify) => {
           trading_types: ['clmm', 'swap'],
           chain: 'ethereum',
           networks: uniswapClmmNetworks,
+        },
+        {
+          name: 'minswap/amm',
+          trading_types: ['amm', 'swap'],
+          chain: MinswapConfig.chain,
+          networks: MinswapConfig.networks,
+        },
+        {
+          name: 'sundaeswap/amm',
+          trading_types: ['amm', 'swap'],
+          chain: SundaeswapConfig.chain,
+          networks: SundaeswapConfig.networks,
         },
       ];
 

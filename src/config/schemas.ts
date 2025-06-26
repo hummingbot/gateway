@@ -34,15 +34,17 @@ export const DefaultPoolRequestSchema = Type.Object({
       'uniswap/amm',
       'uniswap/clmm',
       'meteora/clmm',
+      'minswap/amm',
+      'sundaeswap/amm',
     ],
   }),
   baseToken: Type.String({
     description: 'Base token symbol',
-    examples: ['SOL', 'USDC', 'ETH', 'WETH'],
+    examples: ['SOL', 'USDC', 'ETH', 'WETH', 'ADA'],
   }),
   quoteToken: Type.String({
     description: 'Quote token symbol',
-    examples: ['USDC', 'USDT', 'DAI', 'WETH'],
+    examples: ['USDC', 'USDT', 'DAI', 'WETH', 'MIN', 'SUNDAE'],
   }),
   poolAddress: Type.Optional(
     Type.String({
@@ -96,6 +98,8 @@ export const PoolsQuerySchema = Type.Object({
       'uniswap/amm',
       'uniswap/clmm',
       'meteora/clmm',
+      'minswap/amm',
+      'sundaeswap/amm',
     ],
   }),
 });

@@ -1,0 +1,20 @@
+# Global settings for Minswap
+# how much the execution price is allowed to move unfavorably
+allowedSlippage: '1/100'
+
+# Network-specific pool configurations
+networks:
+  # Cardano mainnet pools
+  mainnet:
+    # AMM pools for Cardano mainnet
+    amm:
+      # Format: base-quote: pool_address
+      ADA-MIN: '6aa2153e1ae896a95539c9d62f76cedcdabdcdf144e564b8955f609d660cf6a2'
+
+  # Cardano preprod pools
+  preprod:
+    # AMM pools for Cardano preprod
+    amm:
+      # Format: base-quote: pool_address
+      ADA-MIN: '3bb0079303c57812462dec9de8fb867cef8fd3768de7f12c77f6f0dd80381d0d'
+      ADA-USDM: '3bb0079303c57812462dec9de8fb867cef8fd3768de7f12c77f6f0dd80381d0d'

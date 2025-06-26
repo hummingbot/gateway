@@ -2,116 +2,30 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "properties": {
-    "allowedSlippage": { "type": "string" },
-    "blockfrostProjectId": { "type": "string" },
-    "nativeCurrencySymbol": { "type": "string" },
-    "preprodBlockfrostProjectId": { "type": "string" },
-    "previewBlockfrostProjectId": { "type": "string" },
-    "minswapPoolId": {
-      "type": "object",
-      "patternProperties": {
-        "^\\w+$": {
-          "type": "object",
-          "properties": {
-            "poolId": { "type": "string" }
-          },
-          "required": ["poolId"],
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
-    },
-    "sundaeswapPoolId": {
-      "type": "object",
-      "patternProperties": {
-        "^\\w+$": {
-          "type": "object",
-          "properties": {
-            "poolId": { "type": "string" }
-          },
-          "required": ["poolId"],
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
-    },
-    "defaultAddress": { "type": "string" },
-    "ttl": { "type": "integer" },
-    "blockfrostApiUrls": {
-      "type": "object",
-      "patternProperties": {
-        "^\\w+$": {
-          "type": "object",
-          "properties": {
-            "apiurl": { "type": "string" }
-          },
-          "required": ["apiurl"],
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
-    },
     "networks": {
       "type": "object",
-      "properties": {
-        "mainnet": {
+      "patternProperties": {
+        "^\\w+$": {
           "type": "object",
           "properties": {
             "tokenListType": { "type": "string" },
             "tokenListSource": { "type": "string" },
-            "nativeCurrencySymbol": { "type": "string" }
+            "nativeCurrencySymbol": { "type": "string" },
+            "apiurl": { "type": "string" },
+            "projectId": { "type": "string" }
           },
           "required": [
             "tokenListType",
             "tokenListSource",
-            "nativeCurrencySymbol"
-          ],
-          "additionalProperties": false
-        },
-        "preprod": {
-          "type": "object",
-          "properties": {
-            "tokenListType": { "type": "string" },
-            "tokenListSource": { "type": "string" },
-            "nativeCurrencySymbol": { "type": "string" }
-          },
-          "required": [
-            "tokenListType",
-            "tokenListSource",
-            "nativeCurrencySymbol"
-          ],
-          "additionalProperties": false
-        },
-        "preview": {
-          "type": "object",
-          "properties": {
-            "tokenListType": { "type": "string" },
-            "tokenListSource": { "type": "string" },
-            "nativeCurrencySymbol": { "type": "string" }
-          },
-          "required": [
-            "tokenListType",
-            "tokenListSource",
-            "nativeCurrencySymbol"
+            "nativeCurrencySymbol",
+            "apiurl",
+            "projectId"
           ],
           "additionalProperties": false
         }
       },
-      "required": ["mainnet", "preprod", "preview"],
       "additionalProperties": false
     }
   },
-  "additionalProperties": false,
-  "required": [
-    "allowedSlippage",
-    "blockfrostProjectId",
-    "preprodBlockfrostProjectId",
-    "previewBlockfrostProjectId",
-    "ttl",
-    "minswapPoolId",
-    "sundaeswapPoolId",
-    "defaultAddress",
-    "blockfrostApiUrls",
-    "networks"
-  ]
+  "additionalProperties": false
 }

@@ -22,6 +22,7 @@ import { jupiterRoutes } from './connectors/jupiter/jupiter.routes';
 import { meteoraRoutes } from './connectors/meteora/meteora.routes';
 import { raydiumRoutes } from './connectors/raydium/raydium.routes';
 import { uniswapRoutes } from './connectors/uniswap/uniswap.routes';
+import { minswapRoutes } from './connectors/minswap/minswap.routes';
 import { getHttpsOptions } from './https';
 import { ConfigManagerV2 } from './services/config-manager-v2';
 import { logger } from './services/logger';
@@ -210,6 +211,9 @@ const configureGatewayServer = () => {
     app.register(raydiumRoutes.amm, { prefix: '/connectors/raydium/amm' });
 
     app.register(uniswapRoutes, { prefix: '/connectors/uniswap' });
+
+    // Minswap routes
+    app.register(minswapRoutes.amm, { prefix: '/connectors/minswap/amm' });
 
     // Register chain routes
     app.register(solanaRoutes, { prefix: '/chains/solana' });

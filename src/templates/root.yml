@@ -16,6 +16,10 @@ configurations:
     configurationPath: solana.yml
     schemaPath: solana-schema.json
 
+  $namespace cardano:
+    configurationPath: cardano.yml
+    schemaPath: cardano-schema.json
+
   $namespace jupiter:
     configurationPath: jupiter.yml
     schemaPath: jupiter-schema.json
@@ -28,6 +32,10 @@ configurations:
     configurationPath: raydium.yml
     schemaPath: raydium-schema.json
 
-  $namespace cardano:
-    configurationPath: cardano.yml
-    schemaPath: cardano-schema.json
+  $namespace minswap:
+    configurationPath: minswap.yml
+    schemaPath: minswap-schema.json
+
+  $namespace sundaeswap:
+    configurationPath: sundaeswap.yml
+    schemaPath: sundaeswap-schema.json

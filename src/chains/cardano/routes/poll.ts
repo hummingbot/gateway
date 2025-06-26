@@ -12,7 +12,7 @@ import { Cardano } from '../cardano';
 export async function pollCardanoTransaction(
   _fastify: FastifyInstance,
   network: string,
-  txHash: string,
+  signature: string,
 ): Promise<PollResponseType> {
   const cardano = await Cardano.getInstance(network);
 
@@ -20,10 +20,10 @@ export async function pollCardanoTransaction(
     const currentBlock = await cardano.getCurrentBlockNumber();
 
     // Validate transaction signature format
-    if (!txHash || typeof txHash !== 'string') {
+    if (!signature || typeof signature !== 'string') {
       return {
         currentBlock,
-        signature: txHash,
+        signature,
         txBlock: null,
         txStatus: 0,
         txData: null,
@@ -32,12 +32,12 @@ export async function pollCardanoTransaction(
       };
     }
 
-    const txData = await cardano.getTransaction(txHash);
+    const txData = await cardano.getTransaction(signature);
 
     if (!txData) {
       return {
         currentBlock,
-        signature: txHash,
+        signature,
         txBlock: null,
         txStatus: 0,
         txData: null,
@@ -47,17 +47,17 @@ export async function pollCardanoTransaction(
 
     return {
       currentBlock,
-      signature: txHash,
-      txBlock: txData.block,
+      signature,
+      txBlock: txData.blockHeight,
       txStatus: txData.status,
       fee: txData.fees,
       txData,
     };
   } catch (error) {
-    logger.error(`Error polling transaction ${txHash}: ${error.message}`);
+    logger.error(`Error polling transaction ${signature}: ${error.message}`);
     return {
       currentBlock: await cardano.getCurrentBlockNumber(),
-      signature: txHash,
+      signature,
       txBlock: null,
       txStatus: 0,
       txData: null,
@@ -88,7 +88,7 @@ export const pollRoute: FastifyPluginAsync = async (fastify) => {
             signature: {
               type: 'string',
               examples: [
-                'a03a01fb56ba60fab341bcb95340302853aea4c3d8faace9ba930a5b3e93f307',
+                '66f5f15d15124a77418cfa3ec0e72cc1d2295647e528a9ecb4636f9ed5342d06',
               ],
             },
           },

@@ -53,6 +53,16 @@ export const getPoolsRoute: FastifyPluginAsync = async (fastify) => {
                 'SOL-USDC': '5rCf1DM8LjKTw4YqhnoLcngyZYeNnQqztScTogYHAS6',
                 'USDT-USDC': 'ARwi1S4DaiTG5DX7S4M4ZsrXqpMD1MrTmbu9ue2tpmEq',
               },
+              {
+                // Minswap AMM examples
+                'ADA-MIN':
+                  '6aa2153e1ae896a95539c9d62f76cedcdabdcdf144e564b8955f609d660cf6a2',
+              },
+              {
+                // Sundaeswap AMM examples
+                'ADA-SUNDAE':
+                  '2baab4c73a1cd60176f903a29a9c92ed4237c88622da51e9179121a3',
+              },
             ],
           },
         },
