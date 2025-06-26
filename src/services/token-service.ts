@@ -1,4 +1,5 @@
 import fs from 'fs';
+import * as fse from 'fs-extra';
 import path from 'path';
 import { promisify } from 'util';
 
@@ -26,32 +27,56 @@ export class TokenService {
   }
 
   /**
-   * Get the path to a token list file
+   * Get the path to a token list file with security validation
    */
   private getTokenListPath(chain: string, network: string): string {
-    return path.join(
+    // Validate chain and network to prevent path traversal
+    if (!chain || !network) {
+      throw new Error('Chain and network parameters are required');
+    }
+    
+    // Remove any path traversal attempts
+    const sanitizedChain = path.basename(chain);
+    const sanitizedNetwork = path.basename(network);
+    
+    // Additional validation - only allow alphanumeric, dash, and underscore
+    const validPathRegex = /^[a-zA-Z0-9_-]+$/;
+    if (!validPathRegex.test(sanitizedChain)) {
+      throw new Error(`Invalid chain name: ${chain}`);
+    }
+    if (!validPathRegex.test(sanitizedNetwork)) {
+      throw new Error(`Invalid network name: ${network}`);
+    }
+    
+    // Construct the path
+    const tokenListPath = path.join(
       rootPath(),
       'conf',
       'tokens',
-      chain,
-      `${network}.json`
+      sanitizedChain,
+      `${sanitizedNetwork}.json`
     );
+    
+    // Ensure the resolved path is within the expected directory
+    const expectedRoot = path.join(rootPath(), 'conf', 'tokens');
+    const resolvedPath = path.resolve(tokenListPath);
+    if (!resolvedPath.startsWith(path.resolve(expectedRoot))) {
+      throw new Error('Invalid path: attempted directory traversal');
+    }
+    
+    return resolvedPath;
   }
 
   /**
    * Validate that chain and network combination is valid
    */
-  private async validateChainNetwork(chain: string, network: string): Promise<void> {
+  private async validateChainNetwork(chain: string, _network: string): Promise<void> {
     if (!isSupportedChain(chain)) {
       throw new Error(`Unsupported chain: ${chain}. Supported chains: ${Object.values(SupportedChain).join(', ')}`);
     }
-
-    const tokenListPath = this.getTokenListPath(chain, network);
-    const dirPath = path.dirname(tokenListPath);
     
-    if (!fs.existsSync(dirPath)) {
-      throw new Error(`Chain directory not found: ${dirPath}`);
-    }
+    // Additional validation is handled by getTokenListPath
+    // which includes path traversal protection
   }
 
   /**
@@ -90,7 +115,22 @@ export class TokenService {
     await this.validateChainNetwork(chain, network);
     
     const tokenListPath = this.getTokenListPath(chain, network);
-    const tempPath = `${tokenListPath}.tmp`;
+    const dirPath = path.dirname(tokenListPath);
+    
+    // Ensure directory exists (safe because getTokenListPath validates the path)
+    if (!fs.existsSync(dirPath)) {
+      await fse.ensureDir(dirPath);
+    }
+    
+    // Create temp file in the same directory to ensure atomic operation works
+    const tempFileName = `.${path.basename(tokenListPath)}.tmp`;
+    const tempPath = path.join(dirPath, tempFileName);
+    
+    // Validate temp path is still within expected directory
+    const expectedRoot = path.join(rootPath(), 'conf', 'tokens');
+    if (!path.resolve(tempPath).startsWith(path.resolve(expectedRoot))) {
+      throw new Error('Invalid temp file path');
+    }
     
     try {
       // Write to temporary file first
