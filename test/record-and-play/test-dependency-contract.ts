@@ -1,5 +1,6 @@
-export interface MockProvider {
+export interface MockProvider<TInstance> {
   getMock(fileName: string): any;
+  instance: TInstance;
 }
 
 /**
@@ -7,22 +8,27 @@ export interface MockProvider {
  * or spied on for recorder tests.
  */
 export abstract class TestDependencyContract<TInstance> {
-  constructor(public mockFileName: string) {}
+  // constructor(public readonly mockFileName: string) {}
+  constructor() {}
 
   /**
    * Sets up a spy on a real instance method to record its live output.
    * @returns A tuple containing the spy instance and the generated name for the save function.
    */
-  abstract setupRecorder(instance: TInstance): [jest.SpyInstance, string];
+  abstract setupSpy(harness: MockProvider<TInstance>): jest.SpyInstance;
 
   /**
    * Replaces a dependency with a mock for isolated unit testing.
    * @returns A spy instance if one was created, otherwise void.
    */
-  abstract setupUnitTest(
-    harness: MockProvider,
-    instance: TInstance,
-  ): jest.SpyInstance | void;
+  setupMock(
+    spy: jest.SpyInstance,
+    harness: MockProvider<TInstance>,
+    mockFileName: string,
+  ): void {
+    const mockData = harness.getMock(mockFileName);
+    spy.mockResolvedValueOnce(mockData);
+  }
 }
 
 /**
@@ -35,33 +41,18 @@ export class InstancePropertyDependency<
   K extends keyof TInstance,
 > extends TestDependencyContract<TInstance> {
   constructor(
-    mockFileName: string,
-    private instanceKey: K,
+    // mockFileName: string,
+    private instancePropertyKey: K,
     private methodName: keyof TInstance[K],
   ) {
-    super(mockFileName);
+    super();
   }
 
-  setupRecorder(instance: TInstance): [jest.SpyInstance, string] {
-    const dependencyInstance = instance[this.instanceKey];
+  setupSpy(harness: MockProvider<TInstance>): jest.SpyInstance {
+    const dependencyInstance = harness.instance[this.instancePropertyKey];
+    // TODO: check if dependencyInstance is already a spy??
     const spy = jest.spyOn(dependencyInstance as any, this.methodName as any);
-    const saverName = this.getSaverName();
-    return [spy, saverName];
-  }
-
-  setupUnitTest(harness: MockProvider, instance: TInstance): void {
-    const mockData = harness.getMock(this.mockFileName);
-    const mockInstance = {
-      [this.methodName]: jest.fn().mockResolvedValue(mockData),
-    };
-    (instance as any)[this.instanceKey] = mockInstance as TInstance[K];
-  }
-
-  private getSaverName(): string {
-    const methodNameStr = this.methodName as string;
-    const methodNameTitleCase =
-      methodNameStr.charAt(0).toUpperCase() + methodNameStr.slice(1);
-    return `save${methodNameTitleCase}Mock`;
+    return spy;
   }
 }
 
@@ -86,52 +77,17 @@ export class PrototypeDependency<
   TPrototype,
 > extends TestDependencyContract<TInstance> {
   constructor(
-    mockFileName: string,
+    // mockFileName: string,
     private Klass: new (...args: any[]) => TPrototype,
     private prototypeMethod: keyof TPrototype,
-    private method: keyof TInstance,
+    // private method: keyof TInstance,
   ) {
-    super(mockFileName);
+    super();
   }
 
-  setupRecorder(instance: TInstance): [jest.SpyInstance, string] {
-    const methodSpy = jest.spyOn(instance as any, this.method as any);
-
-    methodSpy.mockImplementation(async (...args: any[]) => {
-      // Restore the original method to get the real dependency instance
-      methodSpy.mockRestore();
-      const dependencyInstance = await (instance as any)[this.method](...args);
-
-      // Spy on the method of the real dependency instance
-      jest.spyOn(dependencyInstance, this.prototypeMethod as any);
-
-      // Re-spy on the method to return the now-spied-upon dependency instance
-      jest
-        .spyOn(instance as any, this.method as any)
-        .mockReturnValue(dependencyInstance);
-
-      return dependencyInstance;
-    });
-
-    const saverName = this.getSaverName();
-    return [methodSpy, saverName];
-  }
-
-  setupUnitTest(harness: MockProvider, instance: TInstance): jest.SpyInstance {
-    const mockData = harness.getMock(this.mockFileName);
-    const mockInstance = {
-      [this.prototypeMethod]: jest.fn().mockResolvedValue(mockData),
-    };
-    return jest
-      .spyOn(instance as any, this.method as any)
-      .mockResolvedValue(mockInstance);
-  }
-
-  private getSaverName(): string {
-    const methodNameStr = this.prototypeMethod as string;
-    const methodNameTitleCase =
-      methodNameStr.charAt(0).toUpperCase() + methodNameStr.slice(1);
-    return `save${methodNameTitleCase}Mock`;
+  setupSpy(_harness: MockProvider<TInstance>): jest.SpyInstance {
+    const spy = jest.spyOn(this.Klass.prototype, this.prototypeMethod as any);
+    return spy;
   }
 }
 
@@ -139,13 +95,11 @@ export class DependencyFactory<TInstance> {
   instanceProperty<K extends keyof TInstance>(
     instanceKey: K,
     methodName: keyof TInstance[K],
-    mockFileName?: string,
   ): InstancePropertyDependency<TInstance, K> {
-    const finalMockFileName =
-      mockFileName ||
-      this.generateMockFileName(String(instanceKey), String(methodName));
-    return new InstancePropertyDependency(
-      finalMockFileName,
+    // const finalMockFileName =
+    //   mockFileName ||
+    //   this.generateMockFileName(String(instanceKey), String(methodName));
+    return new InstancePropertyDependency<TInstance, K>(
       instanceKey,
       methodName,
     );
@@ -154,17 +108,17 @@ export class DependencyFactory<TInstance> {
   prototype<TPrototype>(
     Klass: new (...args: any[]) => TPrototype,
     prototypeMethod: keyof TPrototype,
-    instanceMethod: keyof TInstance,
-    mockFileName?: string,
+    // instanceMethod: keyof TInstance,
+    // mockFileName?: string,
   ): PrototypeDependency<TInstance, TPrototype> {
-    const finalMockFileName =
-      mockFileName ||
-      this.generateMockFileName(Klass.name, String(prototypeMethod));
-    return new PrototypeDependency(
-      finalMockFileName,
+    // const finalMockFileName =
+    //   mockFileName ||
+    //   this.generateMockFileName(Klass.name, String(prototypeMethod));
+    return new PrototypeDependency<TInstance, TPrototype>(
+      // finalMockFileName,
       Klass,
       prototypeMethod,
-      instanceMethod,
+      // instanceMethod,
     );
   }
 

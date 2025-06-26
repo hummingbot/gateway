@@ -1,5 +1,5 @@
 import { RnpExampleTestHarness } from '#test/rnpExample/rnpExample.test-harness';
-import { useABC, useUnmappedDep } from '#test/rnpExample/rnpExample.api-test-cases';
+import { useABC, useDTwice, useUnmappedDep } from '#test/rnpExample/rnpExample.api-test-cases';
 
 describe('RnpExample', () => {
   let harness: RnpExampleTestHarness;
@@ -18,9 +18,9 @@ describe('RnpExample', () => {
     await useABC.processRecorderRequest(harness);
   });
   
-  // it('useDTwice', async () => {
-  //   await useDTwice.processRecorderRequest(harness);
-  // });
+  it('useDTwice', async () => {
+    await useDTwice.processRecorderRequest(harness);
+  });
  
   it('useUnmappedDep', async () => {
     await useUnmappedDep.processRecorderRequest(harness);

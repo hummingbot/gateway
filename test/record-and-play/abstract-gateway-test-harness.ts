@@ -10,18 +10,21 @@ import {
   TestDependencyContract,
 } from './test-dependency-contract';
 
+interface ContractWithSpy<TInstance> extends TestDependencyContract<TInstance> {
+  spy?: jest.SpyInstance;
+}
+
 export abstract class AbstractGatewayTestHarness<TInstance>
-  implements MockProvider
+  implements MockProvider<TInstance>
 {
   protected _gatewayApp!: FastifyInstance;
   protected _mockDir: string;
   protected _instance!: TInstance;
   protected readonly dependencyFactory = new DependencyFactory<TInstance>();
-  protected _spies: Record<string, jest.SpyInstance> = {};
 
   abstract readonly dependencyContracts: Record<
     string,
-    TestDependencyContract<TInstance>
+    ContractWithSpy<TInstance>
   >;
 
   constructor(mockDir: string) {
@@ -71,48 +74,66 @@ export abstract class AbstractGatewayTestHarness<TInstance>
 
   abstract init(): Promise<void>;
 
-  async setupRecorder() {
-    await this.init();
-
+  private async setupSpies() {
     for (const key in this.dependencyContracts) {
       const dep = this.dependencyContracts[key];
-      const [spy] = dep.setupRecorder(this.instance);
-      this._spies[key] = spy;
+      const spy = dep.setupSpy(this);
+      dep.spy = spy;
     }
   }
 
-  public async saveMocks(mocksToSave: Record<string, string>) {
-    for (const [key, filename] of Object.entries(mocksToSave)) {
-      const spy = this._spies[key];
-      if (!spy) {
+  async setupRecorder() {
+    await this.init();
+    await this.setupSpies();
+  }
+
+  public async saveMocks(requiredMocks: Record<string, string | string[]>) {
+    for (const [key, filenames] of Object.entries(requiredMocks)) {
+      const dep = this.dependencyContracts[key];
+      if (!dep.spy) {
         throw new Error(`Spy for mock key "${key}" not found.`);
       }
-      const data = await spy.mock.results[spy.mock.results.length - 1].value;
-      this._saveMock(filename, data);
+      for (const [i, filename] of (Array.isArray(filenames)
+        ? filenames
+        : [filenames]
+      ).entries()) {
+        const data = await dep.spy.mock.results[i].value;
+        this._saveMock(filename, data);
+      }
     }
   }
 
-  public async setupMocksForTest(mocksToSetup: Record<string, string>) {
-    for (const [key, mockFileName] of Object.entries(mocksToSetup)) {
-      const contract = this.dependencyContracts[key];
-      if (!contract) {
+  async setupMockedTests() {
+    await this.init();
+    await this.setupSpies();
+    // TODO: make unmocked methods throw errors
+    // for (const key in this.dependencyContracts) {
+    //   const dep = this.dependencyContracts[key];
+    //   const spyOrSpies = dep.setupSpy(this.instance);
+    //   dep.spy = spyOrSpies
+    // }
+  }
+
+  public async loadMocks(requiredMocks: Record<string, string | string[]>) {
+    for (const [key, filenames] of Object.entries(requiredMocks)) {
+      const dep = this.dependencyContracts[key];
+      if (!dep.spy) {
         throw new Error(
           `Dependency contract with key '${key}' not found in harness.`,
         );
       }
-      const originalFileName = contract.mockFileName;
-      contract.mockFileName = mockFileName;
-      const spy = contract.setupUnitTest(this, this.instance);
-      contract.mockFileName = originalFileName; // restore it
-      if (spy) {
-        this._spies[key] = spy;
+      for (const fileName of Array.isArray(filenames)
+        ? filenames
+        : [filenames]) {
+        dep.setupMock(dep.spy, this, fileName);
       }
     }
   }
 
   async teardown() {
-    Object.values(this._spies).forEach((spy) => spy.mockRestore());
-    this._spies = {};
+    Object.values(this.dependencyContracts).forEach((dep) => {
+      dep.spy.mockRestore();
+    });
     if (this._gatewayApp) {
       await this._gatewayApp.close();
     }

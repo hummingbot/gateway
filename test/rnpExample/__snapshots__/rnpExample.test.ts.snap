@@ -2,14 +2,21 @@
 
 exports[`RnpExample useABC 1`] = `
 {
-  "a": "real methodA0.010457451655017325",
-  "b": "real methodB0.4991488291709618",
-  "c": "real methodC0.21659401529162925",
+  "a": "real methodA-0.4019890230670282",
+  "b": "real methodB-0.5932643445442789",
+  "c": "real methodC-0.9555927541390334",
+}
+`;
+
+exports[`RnpExample useDTwice 1`] = `
+{
+  "d1": "real methodD-0.546786535872487",
+  "d2": "real methodD-0.9218730426590118",
 }
 `;
 
 exports[`RnpExample useUnmappedDep 1`] = `
 {
-  "z": "real methodZ0.34224475880908223",
+  "z": "real methodZ-0.42323554137867947",
 }
 `;

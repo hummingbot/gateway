@@ -16,16 +16,16 @@ export const useABC = new TestCase(
   },
 );
 
-// export const useDTwice = new TestCase(
-//   'GET',
-//   '/rnpExample/useDTwice',
-//   200,
-//   { network: 'TEST' },
-//   {},
-//   {
-//     dep1_D: [ 'rnpExample-methodD1', 'rnpExample-methodD2' ],
-//   },
-// );
+export const useDTwice = new TestCase(
+  'GET',
+  '/rnpExample/useDTwice',
+  200,
+  { network: 'TEST' },
+  {},
+  {
+    dep1_D: ['rnpExample-methodD1', 'rnpExample-methodD2'],
+  },
+);
 
 export const useUnmappedDep = new TestCase(
   'GET',

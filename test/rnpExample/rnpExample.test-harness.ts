@@ -4,26 +4,14 @@ import { RnpExample } from './api/rnpExample';
 
 export class RnpExampleTestHarness extends AbstractGatewayTestHarness<RnpExample> {
   readonly dependencyContracts = {
-    dep1_A: this.dependencyFactory.instanceProperty(
-      'dep1',
-      'methodA',
-      'rnpExample-methodA',
-    ),
-    dep1_B: this.dependencyFactory.instanceProperty(
-      'dep1',
-      'methodB',
-      'rnpExample-methodB',
-    ),
+    dep1_A: this.dependencyFactory.instanceProperty('dep1', 'methodA'),
+    dep1_B: this.dependencyFactory.instanceProperty('dep1', 'methodB'),
     // TODO: C should be a passthrough
     // dep1_C: this.dependencyFactory.instanceProperty(
     //   'dep1',
     //   'methodC',
     // ),
-    dep1_D: this.dependencyFactory.instanceProperty(
-      'dep1',
-      'methodD',
-      'rnpExample-methodD1',
-    ),
+    dep1_D: this.dependencyFactory.instanceProperty('dep1', 'methodD'),
   };
 
   constructor() {

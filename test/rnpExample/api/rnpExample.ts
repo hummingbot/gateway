@@ -1,15 +1,19 @@
 export class Dep1 {
-  methodA = () => 'real methodA-' + Math.random();
+  methodA = async () => 'real methodA-' + Math.random();
 
-  methodB = () => 'real methodB-' + Math.random();
+  // TODO: always mocked
+  methodB = async () => 'real methodB-' + Math.random();
 
-  methodC = () => 'real methodC-' + Math.random();
+  // TODO: passthrough during playback
+  methodC = async () => 'real methodC-' + Math.random();
 
-  methodD = () => 'real methodD-' + Math.random();
+  methodD = async () => 'real methodD-' + Math.random();
+
+  methodUnmapped = async () => 'real methodUnmapped-' + Math.random();
 }
 
 export class Dep2 {
-  methodZ = () => 'real methodZ-' + Math.random();
+  methodZ = async () => 'real methodZ-' + Math.random();
 }
 
 export class RnpExample {
@@ -34,20 +38,25 @@ export class RnpExample {
   }
 
   async useABC() {
-    const a = this.dep1.methodA();
-    const b = this.dep1.methodB();
-    const c = this.dep1.methodC();
+    const a = await this.dep1.methodA();
+    const b = await this.dep1.methodB();
+    const c = await this.dep1.methodC();
     return { a, b, c };
   }
 
   async useDTwice() {
-    const d1 = this.dep1.methodD();
-    const d2 = this.dep1.methodD();
+    const d1 = await this.dep1.methodD();
+    const d2 = await this.dep1.methodD();
     return { d1, d2 };
   }
 
-  async useUnmappedDep() {
-    const z = this.dep2.methodZ();
+  async useUnmappedMethod() {
+    const unmapped = await this.dep1.methodUnmapped();
+    return { unmapped };
+  }
+
+  async useDep2() {
+    const z = await this.dep2.methodZ();
     return { z };
   }
 }
