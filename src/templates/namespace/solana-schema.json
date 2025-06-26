@@ -1,0 +1,37 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+      "networks": {
+        "type": "object",
+        "patternProperties": {
+          "^..+$": {
+            "type": "object",
+            "properties": {
+              "nodeURL": { "type": "string" },
+              "nativeCurrencySymbol": { "type": "string" }
+            },
+            "required": [
+              "nodeURL",
+              "nativeCurrencySymbol"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      "network": { "type": "string" },
+      "defaultComputeUnits": { "type": "number" },
+      "gasEstimateInterval": { "type": "number" },
+      "maxFee": { "type": "number" },
+      "minFee": { "type": "number" },
+      "retryCount": { "type": "number" },
+      "retryFeeMultiplier": { "type": "number" },
+      "retryInterval": { "type": "number" },
+      "confirmRetryInterval": { "type": "number" },
+      "confirmRetryCount": { "type": "number" },
+      "basePriorityFeePct": { "type": "number" }
+    },
+    "additionalProperties": false
+  }
+  

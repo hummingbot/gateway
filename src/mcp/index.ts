@@ -17,6 +17,7 @@ import { registerDiscoveryTools } from "./tools/discovery";
 import { registerConfigTools } from "./tools/config";
 import { registerTradingTools } from "./tools/trading";
 import { registerWalletTools } from "./tools/wallet";
+import { registerTokenTools } from "./tools/tokens";
 import { registerResources } from "./resources";
 import { registerPrompts } from "./prompts";
 import { ToolRegistry } from "./utils/tool-registry";
@@ -48,6 +49,7 @@ registerDiscoveryTools(server, apiClient);
 registerConfigTools(server, apiClient);
 registerTradingTools(server, apiClient);
 registerWalletTools(server, apiClient);
+registerTokenTools(server, apiClient);
 
 // Set up tool handlers after all tools are registered
 ToolRegistry.setupHandlers(server);

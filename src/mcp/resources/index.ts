@@ -98,7 +98,7 @@ export function registerResources(server: Server, apiClient: GatewayApiClient) {
       // Config resources
       if (uri.startsWith("gateway://config/")) {
         const configName = uri.replace("gateway://config/", "");
-        const data = await apiClient.get("/config/", { chainOrConnector: configName })
+        const data = await apiClient.get("/config/", { namespace: configName })
           .catch(() => ({ error: "Configuration not available offline" }));
         
         return {
@@ -156,10 +156,10 @@ export function registerResources(server: Server, apiClient: GatewayApiClient) {
         }
         
         if (chain && network) {
-          const data = await apiClient.get(`/chains/${chain}/tokens`, { network })
+          const data = await apiClient.get(`/tokens`, { chain, network })
             .catch(async () => {
               // Try to read from local token list files
-              const tokenListPath = `./src/templates/lists/${network}.json`;
+              const tokenListPath = `./src/templates/tokens/${chain}/${network}.json`;
               try {
                 const content = await fs.readFile(tokenListPath, 'utf-8');
                 return { tokens: JSON.parse(content) };

@@ -92,69 +92,6 @@ export function registerDiscoveryTools(_server: Server, apiClient: GatewayApiCli
     }
   );
 
-  // Tool: get_tokens
-  ToolRegistry.registerTool(
-    {
-      name: "get_tokens",
-      description: "Get list of supported tokens for a specific chain and network",
-      inputSchema: {
-        type: "object",
-        properties: {
-          chain: {
-            type: "string",
-            description: "Blockchain (ethereum, solana)"
-          },
-          network: {
-            type: "string", 
-            description: "Network name (mainnet, mainnet-beta, etc)"
-          },
-          tokenSymbols: {
-            type: "array",
-            items: { type: "string" },
-            description: "Optional: filter by specific token symbols"
-          }
-        },
-        required: ["chain", "network"]
-      }
-    },
-    async (_request) => {
-      try {
-        const args = _request.params.arguments as { 
-          chain: string;
-          network: string;
-          tokenSymbols?: string[];
-        };
-        
-        const tokensData = await apiClient.get(`/chains/${args.chain}/tokens`, {
-          network: args.network,
-          tokenSymbols: args.tokenSymbols
-        });
-        
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(tokensData, null, 2)
-            }
-          ]
-        };
-      } catch (error) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify({
-                error: "Failed to get tokens",
-                message: error instanceof Error ? error.message : String(error),
-                hint: "Gateway server must be running to fetch token information"
-              })
-            }
-          ]
-        };
-      }
-    }
-  );
-
   // Tool: get_status
   ToolRegistry.registerTool(
     {

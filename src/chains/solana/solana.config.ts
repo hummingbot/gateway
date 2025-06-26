@@ -39,7 +39,7 @@ export function getSolanaConfig(
       tokenListSource: path.join(
         rootPath(),
         'conf',
-        'lists',
+        'tokens',
         chainName,
         `${networkName}.json`
       ),

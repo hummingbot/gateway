@@ -38,7 +38,7 @@ copy_configs () {
   cp $TEMPLATE_DIR/*.yml $HOST_CONF_PATH
   cp -r $TEMPLATE_DIR/networks $HOST_CONF_PATH/
   cp -r $TEMPLATE_DIR/connectors $HOST_CONF_PATH/
-  cp -r $TEMPLATE_DIR/lists $HOST_CONF_PATH/
+  cp -r $TEMPLATE_DIR/tokens $HOST_CONF_PATH/
   # Confirm that the files were copied
   if [ $? -eq 0 ]; then
     echo "Files successfully copied from $TEMPLATE_DIR to $HOST_CONF_PATH"
@@ -48,20 +48,6 @@ copy_configs () {
   fi
 }
 
-copy_lists () {
-  echo
-  # Make destination folder if needed
-  mkdir $HOST_CONF_PATH/lists
-  # Copy all files in the source folder to the destination folder
-  cp $TEMPLATE_DIR/lists/*.json $HOST_CONF_PATH/lists
-  # Confirm that the files were copied
-  if [ $? -eq 0 ]; then
-    echo "Files successfully copied from $TEMPLATE_DIR/lists to $HOST_CONF_PATH"
-  else
-    echo "Error copying files from $TEMPLATE_DIR/lists to $HOST_CONF_PATH"
-    exit
-  fi
-}
 
 link_certs () {
   # Default to Hummingbot certs path, but allow user to override
@@ -112,7 +98,7 @@ replace_lists_source () {
     # Check for references to Docker lists folder
     if grep -q "/home/gateway/conf/lists/" $file; then
       # Replace with local lists folder
-      perl -pi -e 's|/home/gateway/conf/lists/|conf/lists/|g' $file
+      perl -pi -e 's|/home/gateway/conf/lists/|conf/tokens/|g' $file
       echo "Replaced list locations in: $file"
     fi
   done
@@ -153,7 +139,6 @@ prompt_proceed
 if [[ "$PROCEED" == "Y" || "$PROCEED" == "y" ]]
 then
   copy_configs
-  copy_lists
   replace_lists_source
 else
   echo "Exiting..."

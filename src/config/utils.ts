@@ -5,8 +5,6 @@ import { ConfigManagerV2 } from '../services/config-manager-v2';
 import { logger } from '../services/logger';
 import { isFloatString, isFractionString } from '../services/string-utils';
 
-import { ConfigUpdateRequest } from './schemas';
-
 export const invalidAllowedSlippage: string =
   'allowedSlippage should be a number between 0.0 and 1.0 or a string of a fraction.';
 
@@ -45,7 +43,7 @@ export const validateAllowedSlippage = (
 
 // Mutates the input value in place to convert to fraction string format
 export const updateAllowedSlippageToFraction = (
-  body: ConfigUpdateRequest,
+  body: { configPath: string; configValue: any },
 ): void => {
   if (body.configPath.endsWith('allowedSlippage')) {
     if (

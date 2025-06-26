@@ -248,9 +248,9 @@ Here are some ways that you can contribute to Gateway:
 
 - If you want Gateway to log to standard out, set `logToStdOut` to `true` in [conf/server.yml](./conf/server.yml).
 
-- The format of configuration files are dictated by [src/services/config-manager-v2.ts](./src/services/config-manager-v2.ts) and the corresponding schema files in [src/templates/json](./src/templates/json).
+- The format of configuration files are dictated by [src/services/config-manager-v2.ts](./src/services/config-manager-v2.ts) and the corresponding schema files in [src/templates/namespace](./src/templates/namespace).
 
-- For each supported chain, token lists that translate address to symbols for each chain are stored in `/conf/lists`. You can add tokens here to make them available to Gateway.
+- For each supported chain, token lists that translate address to symbols for each chain are stored in `/conf/tokens`. Use the `/tokens` API endpoints to manage tokens - changes require a Gateway restart to take effect.
 
 
 ## Architecture
@@ -278,6 +278,10 @@ Gateway follows a modular architecture with clear separation of concerns between
 - **Wallet**: Wallet management
   - [src/wallet/wallet.routes.ts](./src/wallet/wallet.routes.ts): Wallet endpoints
   - [src/wallet/utils.ts](./src/wallet/utils.ts): Wallet utilities
+
+- **Tokens**: Token management
+  - [src/tokens/tokens.routes.ts](./src/tokens/tokens.routes.ts): Token management endpoints
+  - [src/services/token-service.ts](./src/services/token-service.ts): Token service for CRUD operations
 
 - **Schemas**: Common type definitions and schemas
   - [src/schemas/trading-types/clmm-schema.ts](./src/schemas/trading-types/clmm-schema.ts): Standard schemas for CLMM operations

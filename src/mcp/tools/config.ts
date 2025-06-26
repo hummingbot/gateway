@@ -13,19 +13,27 @@ export function registerConfigTools(_server: Server, apiClient: GatewayApiClient
       inputSchema: {
         type: "object",
         properties: {
-          chainOrConnector: {
+          namespace: {
             type: "string",
-            description: "Optional: specific chain or connector name (e.g., 'solana', 'uniswap')"
+            description: "Optional: specific namespace (e.g., 'server', 'ethereum', 'solana', 'uniswap')"
+          },
+          network: {
+            type: "string",
+            description: "Optional: network name (e.g., 'mainnet', 'mainnet-beta'). Only used when namespace is a chain."
           }
         }
       }
     },
     async (request) => {
       try {
-        const args = request.params.arguments as { chainOrConnector?: string };
+        const args = request.params.arguments as { namespace?: string; network?: string };
+        
+        const params: any = {};
+        if (args.namespace) params.namespace = args.namespace;
+        if (args.network) params.network = args.network;
         
         const result = await apiClient.get("/config/", 
-          args.chainOrConnector ? { chainOrConnector: args.chainOrConnector } : undefined
+          Object.keys(params).length > 0 ? params : undefined
         );
         
         return {
@@ -61,28 +69,42 @@ export function registerConfigTools(_server: Server, apiClient: GatewayApiClient
       inputSchema: {
         type: "object",
         properties: {
-          configPath: {
+          namespace: {
             type: "string",
-            description: "Configuration path (e.g., 'solana.priorityFeeMultiplier')"
+            description: "Configuration namespace (e.g., 'server', 'ethereum', 'solana', 'uniswap')"
           },
-          configValue: {
+          network: {
+            type: "string",
+            description: "Optional: network name (e.g., 'mainnet', 'mainnet-beta'). Only used when namespace is a chain."
+          },
+          path: {
+            type: "string",
+            description: "Configuration path within the namespace/network (e.g., 'nodeURL', 'manualGasPrice')"
+          },
+          value: {
             description: "New configuration value (string, number, boolean, object, or array)"
           }
         },
-        required: ["configPath", "configValue"]
+        required: ["namespace", "path", "value"]
       }
     },
     async (request) => {
       try {
         const args = request.params.arguments as {
-          configPath: string;
-          configValue: any;
+          namespace: string;
+          network?: string;
+          path: string;
+          value: any;
         };
         
-        const result = await apiClient.post("/config/update", {
-          configPath: args.configPath,
-          configValue: args.configValue
-        });
+        const body: any = {
+          namespace: args.namespace,
+          path: args.path,
+          value: args.value
+        };
+        if (args.network) body.network = args.network;
+        
+        const result = await apiClient.post("/config/update", body);
         
         return {
           content: [

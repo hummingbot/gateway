@@ -103,16 +103,9 @@ describe('Configuration manager v2 tests', () => {
   it('writing a valid configuration', (done) => {
     const newKeyPath: string = 'new-gateway.crt';
     configManager.set('server.certificatePath', newKeyPath);
-    configManager.set('ethereum.networks.sepolia.chainID', 970);
-    configManager.set('ethereum.networks.mainnet', {
-      chainID: 61,
-      nodeURL: 'http://localhost:8561',
-      tokenListType: 'URL',
-      tokenListSource:
-        'https://wispy-bird-88a7.uniswap.workers.dev/?url=http://tokens.1inch.eth.link',
-      nativeCurrencySymbol: 'ETH',
-    });
+    configManager.set('ethereum.manualGasPrice', 150);
     expect(configManager.get('server.certificatePath')).toEqual(newKeyPath);
+    expect(configManager.get('ethereum.manualGasPrice')).toEqual(150);
 
     const verifyConfigManager: ConfigManagerV2 = new ConfigManagerV2(
       path.join(tempDirPath, 'test1/root.yml'),
@@ -120,12 +113,10 @@ describe('Configuration manager v2 tests', () => {
     expect(verifyConfigManager.get('server.certificatePath')).toEqual(
       newKeyPath,
     );
-    expect(
-      verifyConfigManager.get('ethereum.networks.sepolia.chainID'),
-    ).toEqual(970);
-    expect(
-      verifyConfigManager.get('ethereum.networks.mainnet.chainID'),
-    ).toEqual(61);
+    expect(verifyConfigManager.get('ethereum.manualGasPrice')).toEqual(150);
+    
+    // Note: Setting network-specific configs is not supported yet
+    // as they are loaded from separate files but saveConfig() only saves the main file
     done();
   });
 

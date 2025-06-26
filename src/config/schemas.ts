@@ -1,9 +1,22 @@
 import { Type, Static } from '@sinclair/typebox';
 
-// Configuration update schema
+// Configuration update schema - improved version
 export const ConfigUpdateRequestSchema = Type.Object({
-  configPath: Type.String({ description: 'Configuration path' }),
-  configValue: Type.Union(
+  namespace: Type.String({
+    description: 'Configuration namespace (e.g., "server", "ethereum", "solana", "uniswap")',
+    examples: ['server', 'ethereum', 'solana', 'uniswap', 'jupiter'],
+  }),
+  network: Type.Optional(
+    Type.String({
+      description: 'Optional network name (e.g., "mainnet", "mainnet-beta"). Only used when namespace is a chain.',
+      examples: ['mainnet', 'mainnet-beta', 'devnet', 'arbitrum', 'optimism'],
+    }),
+  ),
+  path: Type.String({
+    description: 'Configuration path within the namespace/network (e.g., "nodeURL", "manualGasPrice")',
+    examples: ['nodeURL', 'nativeCurrencySymbol', 'manualGasPrice', 'allowedSlippage'],
+  }),
+  value: Type.Union(
     [
       Type.String(),
       Type.Number(),

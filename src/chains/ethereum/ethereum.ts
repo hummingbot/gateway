@@ -14,7 +14,7 @@ import fse from 'fs-extra';
 import { TokenListType, TokenValue } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { logger } from '../../services/logger';
-import { TokenListResolutionStrategy } from '../../services/token-list-resolution';
+import { TokenService } from '../../services/token-service';
 import { walletPath } from '../../wallet/utils';
 
 import { getEthereumConfig } from './ethereum.config';
@@ -225,21 +225,25 @@ export class Ethereum {
    * Load tokens from the token list source
    */
   public async loadTokens(
-    tokenListSource: string,
-    tokenListType: TokenListType,
+    _tokenListSource: string,
+    _tokenListType: TokenListType,
   ): Promise<void> {
     logger.info(
-      `Loading tokens for ethereum (${this.chainId}) from ${tokenListType} source: ${tokenListSource}`,
+      `Loading tokens for ethereum/${this.network} using TokenService`,
     );
     try {
-      this.tokenList = await this.getTokenList(tokenListSource, tokenListType);
-      // Only keep tokens in the same chain
-      this.tokenList = this.tokenList.filter(
-        (token: TokenInfo) => token.chainId === this.chainId,
-      );
+      // Use TokenService to load tokens
+      const tokens = await TokenService.getInstance().loadTokenList('ethereum', this.network);
+      
+      // Convert to TokenInfo format with chainId and normalize addresses
+      this.tokenList = tokens.map(token => ({
+        ...token,
+        address: getAddress(token.address), // Normalize to checksummed address
+        chainId: this.chainId,
+      }));
 
       if (this.tokenList) {
-        logger.info(`Loaded ${this.tokenList.length} tokens for ethereum`);
+        logger.info(`Loaded ${this.tokenList.length} tokens for ethereum/${this.network}`);
         // Build token map for faster lookups
         this.tokenList.forEach(
           (token: TokenInfo) => (this.tokenMap[token.symbol] = token),
@@ -251,24 +255,6 @@ export class Ethereum {
     }
   }
 
-  /**
-   * Get token list from source
-   */
-  private async getTokenList(
-    tokenListSource: string,
-    tokenListType: TokenListType,
-  ): Promise<TokenInfo[]> {
-    const tokens = await new TokenListResolutionStrategy(
-      tokenListSource,
-      tokenListType,
-    ).resolve();
-
-    // Normalize addresses
-    return tokens.map((token) => {
-      token.address = getAddress(token.address);
-      return token;
-    });
-  }
 
   /**
    * Get all tokens loaded from the token list

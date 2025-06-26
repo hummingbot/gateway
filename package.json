@@ -15,7 +15,7 @@
     "setup": "./gateway-setup.sh",
     "start": "START_SERVER=true node dist/index.js",
     "start:with-mcp": "./start-with-mcp.sh",
-    "copy-files": "copyfiles 'src/templates/json/*.json' 'src/templates/*.yml' 'src/templates/networks/**/*.yml' 'src/templates/connectors/*.yml' 'src/templates/lists/**/*.json' dist",
+    "copy-files": "copyfiles 'src/templates/namespace/*.json' 'src/templates/*.yml' 'src/templates/networks/**/*.yml' 'src/templates/connectors/*.yml' 'src/templates/tokens/**/*.json' dist",
     "test": "GATEWAY_TEST_MODE=dev jest --verbose",
     "test:debug": "GATEWAY_TEST_MODE=dev jest --watch --runInBand",
     "test:unit": "GATEWAY_TEST_MODE=dev jest --runInBand ./test/",

@@ -40,7 +40,7 @@ import {
 
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { logger } from '../../services/logger';
-import { TokenListResolutionStrategy } from '../../services/token-list-resolution';
+import { TokenService } from '../../services/token-service';
 import {
   walletPath,
   getSafeWalletFilePath,
@@ -136,41 +136,36 @@ export class Solana {
   }
 
   async getTokenList(
-    tokenListSource?: string,
-    tokenListType?: TokenListType,
+    _tokenListSource?: string,
+    _tokenListType?: TokenListType,
   ): Promise<TokenInfo[]> {
-    // If no source/type provided, return stored list
-    if (!tokenListSource || !tokenListType) {
-      return this.tokenList;
-    }
-
-    // Otherwise fetch new list
-    const tokens = await new TokenListResolutionStrategy(
-      tokenListSource,
-      tokenListType,
-    ).resolve();
-    return tokens;
+    // Always return the stored list loaded via TokenService
+    return this.tokenList;
   }
 
   async loadTokens(
-    tokenListSource: string,
-    tokenListType: TokenListType,
+    _tokenListSource: string,
+    _tokenListType: TokenListType,
   ): Promise<void> {
     try {
-      // Get tokens from source
-      const tokens = await new TokenListResolutionStrategy(
-        tokenListSource,
-        tokenListType,
-      ).resolve();
+      // Use TokenService to load tokens
+      const tokens = await TokenService.getInstance().loadTokenList('solana', this.network);
 
-      this.tokenList = tokens;
+      // Convert to TokenInfo format (SPL token registry format)
+      this.tokenList = tokens.map(token => ({
+        address: token.address,
+        symbol: token.symbol,
+        name: token.name,
+        decimals: token.decimals,
+        chainId: 101, // Solana mainnet chainId
+      }));
 
       // Create symbol -> token mapping
-      tokens.forEach((token: TokenInfo) => {
+      this.tokenList.forEach((token: TokenInfo) => {
         this._tokenMap[token.symbol] = token;
       });
 
-      logger.info(`Loaded ${tokens.length} tokens for ${this.network}`);
+      logger.info(`Loaded ${this.tokenList.length} tokens for solana/${this.network}`);
     } catch (error) {
       logger.error(
         `Failed to load token list for ${this.network}: ${error.message}`,

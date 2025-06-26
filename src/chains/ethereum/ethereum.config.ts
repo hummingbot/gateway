@@ -51,7 +51,7 @@ export function getEthereumConfig(
       tokenListSource: path.join(
         rootPath(),
         'conf',
-        'lists',
+        'tokens',
         chainName,
         `${network}.json`
       ),

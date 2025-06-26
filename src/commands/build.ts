@@ -22,7 +22,7 @@ export default class Build extends Command {
       // Execute copy-files script
       logger.info('Copying additional files...');
       execSync(
-        "npx copyfiles 'src/**/schema/*.json' 'src/templates/*.yml' 'src/templates/lists/*.json' 'test/services/data/**/*.*' dist",
+        "npx copyfiles 'src/**/schema/*.json' 'src/templates/*.yml' 'src/templates/tokens/**/*.json' 'test/services/data/**/*.*' dist",
         { stdio: 'inherit' },
       );
 

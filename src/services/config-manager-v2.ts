@@ -24,8 +24,8 @@ interface ConfigurationRoot {
   configurations: ConfigurationNamespaceDefinitions;
 }
 const NamespaceTag: string = '$namespace ';
-// Schemas are always in dist/src/templates/json/
-const SchemasBaseDir: string = path.join(rootPath(), 'dist/src/templates/json');
+// Schemas are always in dist/src/templates/namespace/
+const SchemasBaseDir: string = path.join(rootPath(), 'dist/src/templates/namespace');
 
 export const ConfigRootSchemaPath: string = path.join(
   SchemasBaseDir,
@@ -358,10 +358,10 @@ export class ConfigManagerV2 {
         fs.copyFileSync(path.join(ConfigTemplatesDir, 'root.yml'), rootPath);
       }
 
-      const listsPath = path.join(ConfigDir, 'lists');
-      if (!fs.existsSync(listsPath)) {
+      const tokensPath = path.join(ConfigDir, 'tokens');
+      if (!fs.existsSync(tokensPath)) {
         // copy from template
-        fse.copySync(path.join(ConfigTemplatesDir, 'lists'), listsPath);
+        fse.copySync(path.join(ConfigTemplatesDir, 'tokens'), tokensPath);
       }
 
       ConfigManagerV2._instance = new ConfigManagerV2(rootPath);
@@ -503,7 +503,7 @@ export class ConfigManagerV2 {
             );
             namespaceDefinition[key] = path.join(configRootDir, filePath);
           } else if (key === 'schemaPath') {
-            // Schemas are always in dist/src/templates/json/
+            // Schemas are always in dist/src/templates/namespace/
             namespaceDefinition[key] = path.join(SchemasBaseDir, filePath);
           }
         } else {

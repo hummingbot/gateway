@@ -10,12 +10,11 @@ The Gateway MCP server has been successfully restructured to reduce permission r
 - **Before**: Each tool required individual permission grant (4 tools = 4 permission prompts)
 - **After**: Tools are grouped by functionality, resources provide read-only access, prompts guide complex workflows
 
-### 2. Tool Organization (18 tools total)
+### 2. Tool Organization (22 tools total)
 
-#### Discovery Tools (4)
+#### Discovery Tools (3)
 - `get_chains` - Get available blockchain networks
 - `get_connectors` - Get available DEX connectors
-- `get_tokens` - Get supported tokens for a chain/network
 - `get_status` - Get blockchain network status
 
 #### Configuration Tools (5)
@@ -37,6 +36,13 @@ The Gateway MCP server has been successfully restructured to reduce permission r
 - `wallet_add` - Add new wallet
 - `wallet_remove` - Remove wallet
 - `get_balances` - Get token balances
+
+#### Token Tools (5)
+- `list_tokens` - List tokens with filtering
+- `search_tokens` - Search for specific tokens
+- `get_token` - Get token details (by symbol or address)
+- `add_token` - Add new token to a list
+- `remove_token` - Remove token from a list (by address only)
 
 ### 3. Resources (8 total)
 Resources provide read-only access without requiring permissions:
@@ -69,7 +75,8 @@ src/mcp/
 │   ├── discovery.ts      # Chain/connector discovery
 │   ├── config.ts         # Configuration management
 │   ├── trading.ts        # Trading operations
-│   └── wallet.ts         # Wallet management
+│   ├── wallet.ts         # Wallet management
+│   └── tokens.ts         # Token management
 ├── resources/            # Resource providers
 │   └── index.ts          # Resource handlers
 ├── prompts/              # Prompt definitions
@@ -138,7 +145,7 @@ node test-mcp-tools.js
 ```
 
 Expected output:
-- ✅ 18 tools available
+- ✅ 22 tools available
 - ✅ 8 resources accessible
 - ✅ 4 prompts ready
 - ✅ Fallback data works offline
