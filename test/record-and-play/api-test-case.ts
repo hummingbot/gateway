@@ -31,6 +31,7 @@ export class APITestCase<T extends AbstractGatewayTestHarness<any> = any>
     public requiredMocks: Partial<
       Record<keyof T['dependencyContracts'], string>
     >,
+    public propertyMatchers?: Partial<any>,
   ) {}
 
   public async processRecorderRequest(
@@ -47,7 +48,7 @@ export class APITestCase<T extends AbstractGatewayTestHarness<any> = any>
       expect(response.statusCode).toBe(this.expectedStatus);
     }
     const body = JSON.parse(response.body);
-    expect(body).toMatchSnapshot(propertyMatchers);
+    this.assertSnapshot(body, propertyMatchers);
     return { response, body };
   }
 
@@ -62,7 +63,15 @@ export class APITestCase<T extends AbstractGatewayTestHarness<any> = any>
     const response = await harness.gatewayApp.inject(this);
     expect(response.statusCode).toBe(this.expectedStatus);
     const body = JSON.parse(response.body);
-    expect(body).toMatchSnapshot(propertyMatchers);
+    this.assertSnapshot(body, propertyMatchers);
     return { response, body };
+  }
+
+  public assertSnapshot(body: any, propertyMatchers?: Partial<any>) {
+    if (propertyMatchers || this.propertyMatchers) {
+      expect(body).toMatchSnapshot(propertyMatchers || this.propertyMatchers);
+    } else {
+      expect(body).toMatchSnapshot();
+    }
   }
 }

@@ -1,5 +1,6 @@
 const { pathsToModuleNameMapper } = require('ts-jest');
 const { compilerOptions } = require('./tsconfig.json');
+process.env.GATEWAY_TEST_MODE = 'test';
 
 module.exports = {
   preset: 'ts-jest',

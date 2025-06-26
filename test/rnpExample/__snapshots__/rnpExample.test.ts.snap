@@ -1,0 +1,15 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`RnpExample useABC 1`] = `
+{
+  "a": "real methodA0.010457451655017325",
+  "b": "real methodB0.4991488291709618",
+  "c": "real methodC0.21659401529162925",
+}
+`;
+
+exports[`RnpExample useUnmappedDep 1`] = `
+{
+  "z": "real methodZ0.34224475880908223",
+}
+`;
