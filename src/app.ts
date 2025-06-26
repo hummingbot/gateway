@@ -37,7 +37,13 @@ import { asciiLogo } from './index';
 // When false, runs server in HTTPS mode (secure, default for production)
 // Use --dev flag to enable HTTP mode, e.g.: pnpm start --dev
 // Tests automatically run in dev mode via GATEWAY_TEST_MODE=dev
-const devMode = process.argv.includes('--dev') || process.env.GATEWAY_TEST_MODE === 'dev';
+const testMode =
+  process.argv.includes('--test') || process.env.GATEWAY_TEST_MODE === 'test';
+
+const devMode =
+  process.argv.includes('--dev') ||
+  process.env.GATEWAY_TEST_MODE === 'dev' ||
+  testMode;
 
 // Promisify exec for async/await usage
 const execPromise = promisify(exec);
@@ -120,7 +126,7 @@ const swaggerOptions = {
 let docsServer: FastifyInstance | null = null;
 
 // Create gateway app configuration function
-const configureGatewayServer = () => {
+export const configureGatewayServer = () => {
   const server = Fastify({
     logger: ConfigManagerV2.getInstance().get('server.fastifyLogs')
       ? {
