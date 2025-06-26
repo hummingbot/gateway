@@ -12,6 +12,8 @@ overrides:
   minimist: ^0.2.4
   mkdirp: ^1.0.4
   '@openzeppelin/contracts': ^4.9.6
+  pbkdf2: ^3.1.3
+  axios: ^1.8.4
 
 importers:
 
@@ -127,7 +129,7 @@ importers:
         version: 3.1.0
       axios:
         specifier: ^1.8.4
-        version: 1.9.0
+        version: 1.9.0(debug@4.3.4)
       bn.js:
         specifier: 5.2.1
         version: 5.2.1
@@ -2594,15 +2596,6 @@ packages:
     resolution: {integrity: sha512-gsDXAS6XVc4Jt+7S92MPX6Noq69bdeXUPEaXd8dk3+yVr629LTDLxNt4j1ycBbrU+AStK2PhKIyNIM+xzWMVOQ==}
     engines: {node: '>=6'}
 
-  axios@0.21.4:
-    resolution: {integrity: sha512-ut5vewkiu8jjGBdqpM44XxjuCjq9LAKeHVmoVfHVzy8eHgxxq8SbAVQNovDA8mVi05kP0Ea/n/UzcSHcTJQfNg==}
-
-  axios@0.25.0:
-    resolution: {integrity: sha512-cD8FOb0tRH3uuEe6+evtAbgJtfxr7ly3fQjYcMcuPlgkwVS9xboaVIpcDV+cYQe+yGykgwZCs1pzjntcGa6l5g==}
-
-  axios@0.27.2:
-    resolution: {integrity: sha512-t+yRIyySRTp/wua5xEr+z1q60QmLq8ABsS5O9Me1AsE5dfKqgnCFzwiCZZ/cGNd1lq4/7akDWMxdhVlucjmnOQ==}
-
   axios@1.9.0:
     resolution: {integrity: sha512-re4CqKTJaURpzbLHtIi6XpDv20/CnpXOtjRY5/CU32L8gU8ek9UIivcfvSWvmKEngmVbrUtPpdDwWDWL7DNHvg==}
 
@@ -3107,6 +3100,9 @@ packages:
   cors@2.8.5:
     resolution: {integrity: sha512-KIHbLJqu73RGr/hnbrO9uBeixNGuvSQjul/jdFvS/KFSIH1hWVd1ng7zOHx+YrEfInLG7q4n6GHQ9cDtxv/P6g==}
     engines: {node: '>= 0.10'}
+
+  create-hash@1.1.3:
+    resolution: {integrity: sha512-snRpch/kwQhcdlnZKYanNF1m0RDlrCdSKQaH87w1FCFPVPNCQ/Il9QJKAX2jVBZddRdaHBMC+zXa9Gw9tmkNUA==}
 
   create-hash@1.2.0:
     resolution: {integrity: sha512-z00bCGNHDG8mHAkP7CtT1qVu+bFQUPjYq/4Iv3C3kWjTFV10zIjfSoeqXo9Asws8gwSHDGj/hl2u4OGIjapeCg==}
@@ -4187,6 +4183,9 @@ packages:
   has-values@1.0.0:
     resolution: {integrity: sha512-ODYZC64uqzmtfGMEAX/FvZiRyWLpAC3vYnNunURUnkGVTS+mI0smVsWaPydRBsE3g+ok7h960jChO8mFcWlHaQ==}
     engines: {node: '>=0.10.0'}
+
+  hash-base@2.0.2:
+    resolution: {integrity: sha512-0TROgQ1/SxE6KmxWSvXHvRj90/Xo1JvZShofnYF+f6ZsGtR4eES7WfrQzPalmyagfKZCXpVnitiRebZulWsbiw==}
 
   hash-base@3.1.0:
     resolution: {integrity: sha512-1nmYp/rhMDiE7AYkDw+lLwlAzz0AntGIe51F3RfFfEqyQ3feY2eI/NcwC6umIQVOASPMsWJLJScWKSSvzL9IVA==}
@@ -5662,8 +5661,8 @@ packages:
   pause-stream@0.0.11:
     resolution: {integrity: sha512-e3FBlXLmN/D1S+zHzanP4E/4Z60oFAa3O051qt1pxa7DEJWKAyil6upYVXCWadEnuoqa4Pkc9oUx9zsxYeRv8A==}
 
-  pbkdf2@3.1.2:
-    resolution: {integrity: sha512-iuh7L6jA7JEGu2WxDwtQP1ddOpaJNC4KlDEFfdQajSGgGPNi4OyDc2R7QnbY2bR9QjBVGwgvTdNJZoE7RaxUMA==}
+  pbkdf2@3.1.3:
+    resolution: {integrity: sha512-wfRLBZ0feWRhCIkoMB6ete7czJcnNnqRpcoWQBLqatqXXmelSRqfdDK4F3u9T2s2cXas/hQJcryI/4lAL+XTlA==}
     engines: {node: '>=0.12'}
 
   picocolors@1.1.1:
@@ -5969,6 +5968,9 @@ packages:
     resolution: {integrity: sha512-JZkJMZkAGFFPP2YqXZXPbMlMBgsxzE8ILs4lMIX/2o0L9UBw9O/Y3o6wFw/i9YLapcUJWwqbi3kdxIPdC62TIA==}
     deprecated: Rimraf versions prior to v4 are no longer supported
     hasBin: true
+
+  ripemd160@2.0.1:
+    resolution: {integrity: sha512-J7f4wutN8mdbV08MJnXibYpCOPHR+yzy+iQ/AsjMv2j8cLavQ8VGagDFUwwTAdF8FmRKVeNpbTTEwNHCW1g94w==}
 
   ripemd160@2.0.2:
     resolution: {integrity: sha512-ii4iagi25WusVoiC4B4lq7pbXfAp3D9v5CwfkY33vffw2+pkDjY1D8GaN7spsxvCSx8dkPqOZCEZyfxcmJG2IA==}
@@ -6506,6 +6508,10 @@ packages:
 
   tmpl@1.0.5:
     resolution: {integrity: sha512-3f0uOEAQwIqGuWW2MVzYg8fV/QNnc/IpuJNG837rLuczAaLVHslWHZQj4IGiEl5Hs3kkbhwL9Ab7Hrsmuj+Smw==}
+
+  to-buffer@1.2.1:
+    resolution: {integrity: sha512-tB82LpAIWjhLYbqjx3X4zEeHN6M8CiuOEy2JY8SEQVdYRe3CCHOFaqrBW1doLDrfpWhplcW7BL+bO3/6S3pcDQ==}
+    engines: {node: '>= 0.4'}
 
   to-object-path@0.3.0:
     resolution: {integrity: sha512-9mWHdnGRuh3onocaHzukyvCZhzvr6tiflAy/JRFXcJX0TjgfWA9pk9t8CMbzmBE4Jfw58pXbkngtBtqYxzNEyg==}
@@ -7712,7 +7718,7 @@ snapshots:
       arbundles: 0.6.23(@solana/web3.js@1.98.2(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.8.3)(utf-8-validate@5.0.10))(bufferutil@4.0.9)(debug@4.4.0)(encoding@0.1.13)(utf-8-validate@5.0.10)
       arweave: 1.15.7
       async-retry: 1.3.3
-      axios: 0.25.0(debug@4.4.0)
+      axios: 1.9.0(debug@4.4.0)
       base64url: 3.0.1
       bignumber.js: 9.3.0
       bs58: 4.0.1
@@ -9909,7 +9915,7 @@ snapshots:
     dependencies:
       '@metaplex-foundation/js': 0.11.7(bufferutil@4.0.9)(encoding@0.1.13)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.3)(utf-8-validate@5.0.10)
       '@solana/web3.js': 1.98.2(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.8.3)(utf-8-validate@5.0.10)
-      axios: 0.27.2(debug@4.3.4)
+      axios: 1.9.0
       eventemitter3: 5.0.1
       lodash: 4.17.21
     transitivePeerDependencies:
@@ -10303,7 +10309,7 @@ snapshots:
       '@uniswap/v4-sdk': 1.21.4(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))
       async-retry: 1.3.3
       await-timeout: 1.1.1
-      axios: 0.21.4
+      axios: 1.9.0
       brotli: 1.3.2
       bunyan: 1.8.15
       bunyan-blackhole: 1.1.1(bunyan@1.8.15)
@@ -10583,7 +10589,7 @@ snapshots:
       arweave: 1.15.7
       arweave-stream-tx: 1.2.2(arweave@1.15.7)
       avsc: https://codeload.github.com/Irys-xyz/avsc/tar.gz/a730cc8018b79e114b6a3381bbb57760a24c6cef
-      axios: 0.21.4(debug@4.4.0)
+      axios: 1.9.0(debug@4.4.0)
       base64url: 3.0.1
       bs58: 4.0.1
       ethers: 5.8.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
@@ -10735,34 +10741,25 @@ snapshots:
 
   await-timeout@1.1.1: {}
 
-  axios@0.21.4:
-    dependencies:
-      follow-redirects: 1.15.9(debug@4.3.4)
-    transitivePeerDependencies:
-      - debug
-
-  axios@0.21.4(debug@4.4.0):
-    dependencies:
-      follow-redirects: 1.15.9(debug@4.4.0)
-    transitivePeerDependencies:
-      - debug
-
-  axios@0.25.0(debug@4.4.0):
-    dependencies:
-      follow-redirects: 1.15.9(debug@4.4.0)
-    transitivePeerDependencies:
-      - debug
-
-  axios@0.27.2(debug@4.3.4):
-    dependencies:
-      follow-redirects: 1.15.9(debug@4.3.4)
-      form-data: 4.0.2
-    transitivePeerDependencies:
-      - debug
-
   axios@1.9.0:
     dependencies:
       follow-redirects: 1.15.9(debug@4.3.4)
+      form-data: 4.0.2
+      proxy-from-env: 1.1.0
+    transitivePeerDependencies:
+      - debug
+
+  axios@1.9.0(debug@4.3.4):
+    dependencies:
+      follow-redirects: 1.15.9(debug@4.3.4)
+      form-data: 4.0.2
+      proxy-from-env: 1.1.0
+    transitivePeerDependencies:
+      - debug
+
+  axios@1.9.0(debug@4.4.0):
+    dependencies:
+      follow-redirects: 1.15.9(debug@4.4.0)
       form-data: 4.0.2
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
@@ -10868,13 +10865,13 @@ snapshots:
   bip39-light@1.0.7:
     dependencies:
       create-hash: 1.2.0
-      pbkdf2: 3.1.2
+      pbkdf2: 3.1.3
 
   bip39@3.0.2:
     dependencies:
       '@types/node': 11.11.6
       create-hash: 1.2.0
-      pbkdf2: 3.1.2
+      pbkdf2: 3.1.3
       randombytes: 2.1.0
 
   bl@4.1.0:
@@ -11366,6 +11363,13 @@ snapshots:
     dependencies:
       object-assign: 4.1.1
       vary: 1.1.2
+
+  create-hash@1.1.3:
+    dependencies:
+      cipher-base: 1.0.6
+      inherits: 2.0.4
+      ripemd160: 2.0.2
+      sha.js: 2.4.11
 
   create-hash@1.2.0:
     dependencies:
@@ -11989,7 +11993,7 @@ snapshots:
       create-hmac: 1.1.7
       hash.js: 1.1.7
       keccak: 3.0.4
-      pbkdf2: 3.1.2
+      pbkdf2: 3.1.3
       randombytes: 2.1.0
       safe-buffer: 5.2.1
       scrypt-js: 3.0.1
@@ -12790,6 +12794,10 @@ snapshots:
     dependencies:
       is-number: 3.0.0
       kind-of: 4.0.0
+
+  hash-base@2.0.2:
+    dependencies:
+      inherits: 2.0.4
 
   hash-base@3.1.0:
     dependencies:
@@ -14471,13 +14479,14 @@ snapshots:
     dependencies:
       through: 2.3.8
 
-  pbkdf2@3.1.2:
+  pbkdf2@3.1.3:
     dependencies:
-      create-hash: 1.2.0
+      create-hash: 1.1.3
       create-hmac: 1.1.7
-      ripemd160: 2.0.2
+      ripemd160: 2.0.1
       safe-buffer: 5.2.1
       sha.js: 2.4.11
+      to-buffer: 1.2.1
 
   picocolors@1.1.1: {}
 
@@ -14781,6 +14790,11 @@ snapshots:
   rimraf@3.0.2:
     dependencies:
       glob: 7.2.3
+
+  ripemd160@2.0.1:
+    dependencies:
+      hash-base: 2.0.2
+      inherits: 2.0.4
 
   ripemd160@2.0.2:
     dependencies:
@@ -15434,6 +15448,12 @@ snapshots:
 
   tmpl@1.0.5: {}
 
+  to-buffer@1.2.1:
+    dependencies:
+      isarray: 2.0.5
+      safe-buffer: 5.2.1
+      typed-array-buffer: 1.0.3
+
   to-object-path@0.3.0:
     dependencies:
       kind-of: 3.2.2
@@ -15713,7 +15733,7 @@ snapshots:
 
   wait-on@7.0.1(debug@4.3.4):
     dependencies:
-      axios: 0.27.2(debug@4.3.4)
+      axios: 1.9.0(debug@4.3.4)
       joi: 17.13.3
       lodash: 4.17.21
       minimist: 0.2.4
