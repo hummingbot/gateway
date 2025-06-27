@@ -63,7 +63,7 @@ pnpm build
 
 ```bash
 # Generate certificates and initial configs
-pnpm setup
+./gateway-setup.sh
 
 # Start Gateway API
 pnpm start

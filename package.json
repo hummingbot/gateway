@@ -13,6 +13,7 @@
     "format": "prettier . --write",
     "lint": "eslint src test --format table --fix",
     "setup": "./gateway-setup.sh",
+    "setup:help": "echo 'Run ./gateway-setup.sh to generate certificates and initial configs'",
     "start": "START_SERVER=true node dist/index.js",
     "start:with-mcp": "./start-with-mcp.sh",
     "copy-files": "copyfiles 'src/templates/namespace/*.json' 'src/templates/*.yml' 'src/templates/networks/**/*.yml' 'src/templates/connectors/*.yml' 'src/templates/tokens/**/*.json' dist",
