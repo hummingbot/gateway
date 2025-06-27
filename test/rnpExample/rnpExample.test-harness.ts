@@ -5,7 +5,6 @@ import { RnpExample } from './api/rnpExample';
 export class RnpExampleTestHarness extends AbstractGatewayTestHarness<RnpExample> {
   readonly dependencyContracts = {
     dep1_A: this.dependencyFactory.instanceProperty('dep1', 'methodA'),
-    // TODO: Alwayed mocked depdendency
     dep1_B: this.dependencyFactory.instanceProperty('dep1', 'methodB'),
     dep1_C: this.dependencyFactory.instanceProperty('dep1', 'methodC', true),
     dep1_D: this.dependencyFactory.instanceProperty('dep1', 'methodD'),

@@ -54,7 +54,7 @@ export class RnpExample {
     return { unmapped };
   }
 
-  async useDep2() {
+  async useUnmappedDep() {
     const z = await this.dep2.methodZ();
     return { z };
   }

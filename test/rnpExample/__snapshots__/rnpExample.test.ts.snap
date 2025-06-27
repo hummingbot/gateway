@@ -15,7 +15,7 @@ exports[`RnpExample useDTwice 1`] = `
 }
 `;
 
-exports[`RnpExample useDep2 1`] = `
+exports[`RnpExample useUnmappedDep 1`] = `
 {
   "z": Any<String>,
 }
@@ -31,6 +31,6 @@ exports[`RnpExample useUnmappedMethodMocked 1`] = `
 
 exports[`RnpExample useUnmappedMethodRecorder 1`] = `
 {
-  "unmapped": "real methodUnmapped-0.14017814520237115",
+  "unmapped": Any<String>,
 }
 `;
