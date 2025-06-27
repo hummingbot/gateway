@@ -14,6 +14,9 @@ export const useABC = new TestCase(
     dep1_A: 'rnpExample-methodA',
     dep1_B: 'rnpExample-methodB',
   },
+  {
+    c: expect.any(String),
+  },
 );
 
 export const useDTwice = new TestCase(

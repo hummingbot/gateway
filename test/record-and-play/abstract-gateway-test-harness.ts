@@ -108,7 +108,7 @@ export abstract class AbstractGatewayTestHarness<TInstance>
     for (const [instanceKey, dep] of Object.entries(this.dependencyContracts)) {
       const object = dep.getObject(this);
       for (const [methodName, method] of Object.entries(object)) {
-        if (!(method as any).mock) {
+        if (!(method as any).mock && !dep.allowPassThrough) {
           const spy = jest.spyOn(object, methodName);
           spy.mockImplementation(() => {
             throw new Error(

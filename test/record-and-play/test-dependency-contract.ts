@@ -19,6 +19,11 @@ export abstract class TestDependencyContract<TInstance> {
   abstract getObject(harness: MockProvider<TInstance>): any;
 
   /**
+   * Whether to allow the dependency to pass through to the real implementation.
+   */
+  abstract allowPassThrough: boolean;
+
+  /**
    * Replaces a dependency call with a mock for record and play testing.
    * Can be called multiple times to mock subsequent calls to the same dependency.
    * @returns void.
@@ -43,6 +48,7 @@ export class InstancePropertyDependency<
   constructor(
     private instancePropertyKey: K,
     private methodName: keyof TInstance[K],
+    public allowPassThrough: boolean = false,
   ) {
     super();
   }
@@ -69,6 +75,7 @@ export class PrototypeDependency<
   constructor(
     private Klass: new (...args: any[]) => TPrototype,
     private prototypeMethod: keyof TPrototype,
+    public allowPassThrough: boolean = false,
   ) {
     super();
   }
@@ -87,20 +94,24 @@ export class DependencyFactory<TInstance> {
   instanceProperty<K extends keyof TInstance>(
     instanceKey: K,
     methodName: keyof TInstance[K],
+    allowPassThrough: boolean = false,
   ): InstancePropertyDependency<TInstance, K> {
     return new InstancePropertyDependency<TInstance, K>(
       instanceKey,
       methodName,
+      allowPassThrough,
     );
   }
 
   prototype<TPrototype>(
     Klass: new (...args: any[]) => TPrototype,
     prototypeMethod: keyof TPrototype,
+    allowPassThrough: boolean = false,
   ): PrototypeDependency<TInstance, TPrototype> {
     return new PrototypeDependency<TInstance, TPrototype>(
       Klass,
       prototypeMethod,
+      allowPassThrough,
     );
   }
 }
