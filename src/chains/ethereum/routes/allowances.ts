@@ -1,4 +1,5 @@
 import { Type } from '@sinclair/typebox';
+import { utils } from 'ethers';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { getSpender } from '../../../connectors/uniswap/uniswap.contracts';
@@ -18,10 +19,55 @@ export async function getTokensToTokenInfo(
 
   for (let i = 0; i < tokens.length; i++) {
     const symbolOrAddress = tokens[i];
+    
+    // First try to find the token in the list
     const tokenInfo = ethereum.getTokenBySymbol(symbolOrAddress);
     if (tokenInfo) {
       // Use the actual token symbol as the key, not the input which might be an address
       tokenInfoMap[tokenInfo.symbol] = tokenInfo;
+    } else {
+      // Check if the token string is a valid Ethereum address
+      try {
+        const normalizedAddress = utils.getAddress(symbolOrAddress);
+        // If it's a valid address but not in our token list, we create a basic contract
+        // and try to get its decimals, symbol, and name directly
+        try {
+          const contract = ethereum.getContract(normalizedAddress, ethereum.provider);
+          logger.info(
+            `Token ${symbolOrAddress} not found in list but has valid address format. Fetching token info from chain...`,
+          );
+
+          // Try to fetch token information directly from the contract
+          const [decimals, symbol, name] = await Promise.all([
+            contract.decimals(),
+            contract.symbol(),
+            contract.name(),
+          ]);
+
+          // Create a token info object
+          const tokenInfoObj: TokenInfo = {
+            chainId: ethereum.chainId,
+            address: normalizedAddress,
+            name: name,
+            symbol: symbol,
+            decimals: decimals,
+          };
+
+          // Use the contract symbol as the key, or the address if symbol is empty
+          const key = symbol || normalizedAddress;
+          tokenInfoMap[key] = tokenInfoObj;
+          
+          logger.info(
+            `Successfully fetched token info for ${normalizedAddress}: ${symbol} (${name})`,
+          );
+        } catch (contractError) {
+          logger.warn(
+            `Failed to fetch token info for address ${normalizedAddress}: ${contractError.message}`,
+          );
+        }
+      } catch (addressError) {
+        logger.debug(`${symbolOrAddress} is not a valid Ethereum address`);
+      }
     }
   }
 
@@ -41,25 +87,26 @@ export async function getEthereumAllowances(
     const wallet = await ethereum.getWallet(address);
     const tokenInfoMap = await getTokensToTokenInfo(ethereum, tokens);
 
-    // Check if any tokens were not found and create a helpful error message
+    // Check if any tokens were found
     const foundSymbols = Object.keys(tokenInfoMap);
     if (foundSymbols.length === 0) {
-      const errorMsg = `None of the provided tokens were found: ${tokens.join(', ')}`;
+      const errorMsg = `None of the provided tokens could be found or fetched: ${tokens.join(', ')}`;
       logger.error(errorMsg);
       throw fastify.httpErrors.badRequest(errorMsg);
     }
 
-    const missingTokens = tokens.filter(
-      (t) =>
-        !Object.values(tokenInfoMap).some(
-          (token) =>
-            token.symbol.toUpperCase() === t.toUpperCase() ||
-            token.address.toLowerCase() === t.toLowerCase(),
-        ),
-    );
-
-    if (missingTokens.length > 0) {
-      logger.warn(`Some tokens were not found: ${missingTokens.join(', ')}`);
+    // Log any tokens that couldn't be resolved
+    if (foundSymbols.length < tokens.length) {
+      const resolvedAddresses = Object.values(tokenInfoMap).map(t => t.address.toLowerCase());
+      const resolvedSymbols = Object.values(tokenInfoMap).map(t => t.symbol.toUpperCase());
+      
+      const missingTokens = tokens.filter(t => {
+        const tLower = t.toLowerCase();
+        const tUpper = t.toUpperCase();
+        return !resolvedAddresses.includes(tLower) && !resolvedSymbols.includes(tUpper);
+      });
+      
+      logger.warn(`Some tokens could not be resolved: ${missingTokens.join(', ')}`);
     }
 
     // Determine the spender address based on the input
@@ -162,7 +209,14 @@ export const allowancesRoute: FastifyPluginAsync = async (fastify) => {
             description:
               'Spender can be a connector name (e.g., uniswap/clmm, uniswap/amm, uniswap) or a direct contract address',
           }),
-          tokens: Type.Array(Type.String(), { examples: [['USDC', 'DAI']] }),
+          tokens: Type.Array(Type.String(), { 
+            examples: [
+              ['USDC', 'DAI'],
+              ['0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', '0x6B175474E89094C44Da98b954EedeAC495271d0F'],
+              ['USDC', '0xd0b53D9277642d899DF5C87A3966A349A798F224']
+            ],
+            description: 'Array of token symbols or addresses' 
+          }),
         }),
         response: {
           200: Type.Object({

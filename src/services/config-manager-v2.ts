@@ -32,9 +32,9 @@ export const ConfigRootSchemaPath: string = path.join(
   'configuration-root-schema.json',
 );
 
-// Always use conf directory for both configs and templates
+// Use conf directory for configs and dist/src/templates for templates
 const ConfigDir: string = path.join(rootPath(), 'conf/');
-const ConfigTemplatesDir: string = ConfigDir;
+const ConfigTemplatesDir: string = path.join(rootPath(), 'dist/src/templates/');
 
 interface UnpackedConfigNamespace {
   namespace: ConfigurationNamespace;

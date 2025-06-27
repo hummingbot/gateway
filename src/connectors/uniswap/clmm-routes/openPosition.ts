@@ -24,23 +24,9 @@ import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
 import { formatTokenAmount, parseFeeTier } from '../uniswap.utils';
 
-// Define a minimal ABI for ERC20 tokens
-const ERC20_ABI = [
-  {
-    constant: false,
-    inputs: [
-      { name: '_spender', type: 'address' },
-      { name: '_value', type: 'uint256' },
-    ],
-    name: 'approve',
-    outputs: [{ name: '', type: 'bool' }],
-    payable: false,
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-];
-
 export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
+  await fastify.register(require('@fastify/sensible'));
+
   // Get first wallet address for example
   const ethereum = await Ethereum.getInstance('base');
   let firstWalletAddress = '<ethereum-wallet-address>';
@@ -297,30 +283,12 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         logger.info(`  Recipient: ${walletAddress}`);
         logger.info(`  Deadline: ${mintOptions.deadline}`);
 
-        // Check allowances instead of approving
+        // Get position manager address for allowance checks
         const positionManagerAddress =
           uniswap.config.uniswapV3NftManagerAddress(networkToUse);
 
-        // Check if we have enough ETH for WETH positions
-        if (value && value !== '0') {
-          const walletBalance = await wallet.getBalance();
-          const requiredValue = BigNumber.from(value);
-          logger.info(
-            `Wallet ETH balance: ${formatTokenAmount(walletBalance.toString(), 18)}`,
-          );
-          logger.info(
-            `Required ETH value: ${formatTokenAmount(requiredValue.toString(), 18)}`,
-          );
-
-          if (walletBalance.lt(requiredValue)) {
-            throw fastify.httpErrors.badRequest(
-              `Insufficient ETH balance. Required: ${formatTokenAmount(requiredValue.toString(), 18)} ETH`,
-            );
-          }
-        }
-
-        // Check token0 allowance if needed
-        if (!token0Amount.equalTo(0) && token0.symbol !== 'WETH') {
+        // Check token0 allowance if needed (including WETH)
+        if (!token0Amount.equalTo(0)) {
           const token0Contract = ethereum.getContract(token0.address, wallet);
           const allowance0 = await ethereum.getERC20Allowance(
             token0Contract,
@@ -343,13 +311,13 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
 
           if (currentAllowance0.lt(requiredAmount0)) {
             throw fastify.httpErrors.badRequest(
-              `Insufficient ${token0.symbol} allowance. Please approve at least ${formatTokenAmount(requiredAmount0.toString(), token0.decimals)} ${token0.symbol} for the Position Manager (${positionManagerAddress})`,
+              `Insufficient ${token0.symbol} allowance. Please approve at least ${formatTokenAmount(requiredAmount0.toString(), token0.decimals)} ${token0.symbol} (${token0.address}) for the Position Manager (${positionManagerAddress})`,
             );
           }
         }
 
-        // Check token1 allowance if needed
-        if (!token1Amount.equalTo(0) && token1.symbol !== 'WETH') {
+        // Check token1 allowance if needed (including WETH)
+        if (!token1Amount.equalTo(0)) {
           const token1Contract = ethereum.getContract(token1.address, wallet);
           const allowance1 = await ethereum.getERC20Allowance(
             token1Contract,
@@ -372,7 +340,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
 
           if (currentAllowance1.lt(requiredAmount1)) {
             throw fastify.httpErrors.badRequest(
-              `Insufficient ${token1.symbol} allowance. Please approve at least ${formatTokenAmount(requiredAmount1.toString(), token1.decimals)} ${token1.symbol} for the Position Manager (${positionManagerAddress})`,
+              `Insufficient ${token1.symbol} allowance. Please approve at least ${formatTokenAmount(requiredAmount1.toString(), token1.decimals)} ${token1.symbol} (${token1.address}) for the Position Manager (${positionManagerAddress})`,
             );
           }
         }

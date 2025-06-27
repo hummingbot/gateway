@@ -5,117 +5,11 @@ import {
   isValidV3Pool,
   isFractionString,
 } from './uniswap.utils';
-
-// V2 (AMM) imports
-
-// Define minimal ABIs for Uniswap V2 contracts
-const IUniswapV2PairABI = {
-  abi: [
-    {
-      constant: true,
-      inputs: [],
-      name: 'getReserves',
-      outputs: [
-        { internalType: 'uint112', name: '_reserve0', type: 'uint112' },
-        { internalType: 'uint112', name: '_reserve1', type: 'uint112' },
-        { internalType: 'uint32', name: '_blockTimestampLast', type: 'uint32' },
-      ],
-      payable: false,
-      stateMutability: 'view',
-      type: 'function',
-    },
-    {
-      constant: true,
-      inputs: [],
-      name: 'token0',
-      outputs: [{ internalType: 'address', name: '', type: 'address' }],
-      payable: false,
-      stateMutability: 'view',
-      type: 'function',
-    },
-    {
-      constant: true,
-      inputs: [],
-      name: 'token1',
-      outputs: [{ internalType: 'address', name: '', type: 'address' }],
-      payable: false,
-      stateMutability: 'view',
-      type: 'function',
-    },
-    {
-      constant: true,
-      inputs: [{ internalType: 'address', name: 'owner', type: 'address' }],
-      name: 'balanceOf',
-      outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
-      payable: false,
-      stateMutability: 'view',
-      type: 'function',
-    },
-    {
-      constant: true,
-      inputs: [],
-      name: 'totalSupply',
-      outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
-      payable: false,
-      stateMutability: 'view',
-      type: 'function',
-    },
-    {
-      constant: false,
-      inputs: [
-        { internalType: 'address', name: 'spender', type: 'address' },
-        { internalType: 'uint256', name: 'value', type: 'uint256' },
-      ],
-      name: 'approve',
-      outputs: [{ internalType: 'bool', name: '', type: 'bool' }],
-      payable: false,
-      stateMutability: 'nonpayable',
-      type: 'function',
-    },
-  ],
-};
-
-const IUniswapV2FactoryABI = {
-  abi: [
-    {
-      constant: true,
-      inputs: [
-        { internalType: 'address', name: 'tokenA', type: 'address' },
-        { internalType: 'address', name: 'tokenB', type: 'address' },
-      ],
-      name: 'getPair',
-      outputs: [{ internalType: 'address', name: 'pair', type: 'address' }],
-      payable: false,
-      stateMutability: 'view',
-      type: 'function',
-    },
-  ],
-};
-
-const IUniswapV2RouterABI = {
-  abi: [
-    {
-      inputs: [
-        { internalType: 'address', name: 'tokenA', type: 'address' },
-        { internalType: 'address', name: 'tokenB', type: 'address' },
-        { internalType: 'uint256', name: 'amountADesired', type: 'uint256' },
-        { internalType: 'uint256', name: 'amountBDesired', type: 'uint256' },
-        { internalType: 'uint256', name: 'amountAMin', type: 'uint256' },
-        { internalType: 'uint256', name: 'amountBMin', type: 'uint256' },
-        { internalType: 'address', name: 'to', type: 'address' },
-        { internalType: 'uint256', name: 'deadline', type: 'uint256' },
-      ],
-      name: 'addLiquidity',
-      outputs: [
-        { internalType: 'uint256', name: 'amountA', type: 'uint256' },
-        { internalType: 'uint256', name: 'amountB', type: 'uint256' },
-        { internalType: 'uint256', name: 'liquidity', type: 'uint256' },
-      ],
-      stateMutability: 'nonpayable',
-      type: 'function',
-    },
-  ],
-};
+import { 
+  IUniswapV2PairABI, 
+  IUniswapV2FactoryABI,
+  IUniswapV2Router02ABI 
+} from './uniswap.contracts';
 
 // V3 (CLMM) imports
 import { Token, CurrencyAmount, Percent } from '@uniswap/sdk-core';
@@ -195,7 +89,7 @@ export class Uniswap {
 
       this.v2Router = new Contract(
         this.config.uniswapV2RouterAddress(this.networkName),
-        IUniswapV2RouterABI.abi,
+        IUniswapV2Router02ABI.abi,
         this.ethereum.provider,
       );
 
@@ -206,42 +100,38 @@ export class Uniswap {
         this.ethereum.provider,
       );
 
-      // Define a minimal ABI for the NFT Manager
-      const NFTManagerABI = [
-        {
-          inputs: [{ internalType: 'address', name: 'owner', type: 'address' }],
-          name: 'balanceOf',
-          outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
-          stateMutability: 'view',
-          type: 'function',
-        },
-      ];
-
+      // Initialize NFT Manager with minimal ABI
       this.v3NFTManager = new Contract(
         this.config.uniswapV3NftManagerAddress(this.networkName),
-        NFTManagerABI,
+        [
+          {
+            inputs: [{ internalType: 'address', name: 'owner', type: 'address' }],
+            name: 'balanceOf',
+            outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
+            stateMutability: 'view',
+            type: 'function',
+          },
+        ],
         this.ethereum.provider,
       );
 
-      // Define a minimal ABI for the Quoter
-      const QuoterABI = [
-        {
-          inputs: [
-            { internalType: 'bytes', name: 'path', type: 'bytes' },
-            { internalType: 'uint256', name: 'amountIn', type: 'uint256' },
-          ],
-          name: 'quoteExactInput',
-          outputs: [
-            { internalType: 'uint256', name: 'amountOut', type: 'uint256' },
-          ],
-          stateMutability: 'nonpayable',
-          type: 'function',
-        },
-      ];
-
+      // Initialize Quoter with minimal ABI
       this.v3Quoter = new Contract(
         this.config.quoterContractAddress(this.networkName),
-        QuoterABI,
+        [
+          {
+            inputs: [
+              { internalType: 'bytes', name: 'path', type: 'bytes' },
+              { internalType: 'uint256', name: 'amountIn', type: 'uint256' },
+            ],
+            name: 'quoteExactInput',
+            outputs: [
+              { internalType: 'uint256', name: 'amountOut', type: 'uint256' },
+            ],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+        ],
         this.ethereum.provider,
       );
 
@@ -621,6 +511,102 @@ export class Uniswap {
     } catch (error) {
       logger.error(`Error getting first wallet address: ${error.message}`);
       return null;
+    }
+  }
+
+  /**
+   * Check NFT ownership for Uniswap V3 positions
+   * @param positionId The NFT position ID
+   * @param walletAddress The wallet address to check ownership for
+   * @throws Error if position is not owned by wallet or position ID is invalid
+   */
+  public async checkNFTOwnership(
+    positionId: string,
+    walletAddress: string,
+  ): Promise<void> {
+    const nftContract = new Contract(
+      this.config.uniswapV3NftManagerAddress(this.networkName),
+      [
+        {
+          inputs: [
+            { internalType: 'uint256', name: 'tokenId', type: 'uint256' },
+          ],
+          name: 'ownerOf',
+          outputs: [{ internalType: 'address', name: '', type: 'address' }],
+          stateMutability: 'view',
+          type: 'function',
+        },
+      ],
+      this.ethereum.provider,
+    );
+
+    try {
+      const owner = await nftContract.ownerOf(positionId);
+      if (owner.toLowerCase() !== walletAddress.toLowerCase()) {
+        throw new Error(
+          `Position ${positionId} is not owned by wallet ${walletAddress}`,
+        );
+      }
+    } catch (error: any) {
+      if (error.message.includes('is not owned by')) {
+        throw error;
+      }
+      throw new Error(`Invalid position ID ${positionId}`);
+    }
+  }
+
+  /**
+   * Check NFT approval for Uniswap V3 positions
+   * @param positionId The NFT position ID
+   * @param walletAddress The wallet address that owns the NFT
+   * @param operatorAddress The address that needs approval (usually the position manager itself)
+   * @throws Error if NFT is not approved
+   */
+  public async checkNFTApproval(
+    positionId: string,
+    walletAddress: string,
+    operatorAddress: string,
+  ): Promise<void> {
+    const nftContract = new Contract(
+      this.config.uniswapV3NftManagerAddress(this.networkName),
+      [
+        {
+          inputs: [
+            { internalType: 'uint256', name: 'tokenId', type: 'uint256' },
+          ],
+          name: 'getApproved',
+          outputs: [{ internalType: 'address', name: '', type: 'address' }],
+          stateMutability: 'view',
+          type: 'function',
+        },
+        {
+          inputs: [
+            { internalType: 'address', name: 'owner', type: 'address' },
+            { internalType: 'address', name: 'operator', type: 'address' },
+          ],
+          name: 'isApprovedForAll',
+          outputs: [{ internalType: 'bool', name: '', type: 'bool' }],
+          stateMutability: 'view',
+          type: 'function',
+        },
+      ],
+      this.ethereum.provider,
+    );
+
+    // Check if the position manager itself is approved (it should be the operator)
+    const approvedAddress = await nftContract.getApproved(positionId);
+    const isApprovedForAll = await nftContract.isApprovedForAll(
+      walletAddress,
+      operatorAddress,
+    );
+
+    if (
+      approvedAddress.toLowerCase() !== operatorAddress.toLowerCase() &&
+      !isApprovedForAll
+    ) {
+      throw new Error(
+        `Insufficient NFT approval. Please approve the position NFT (${positionId}) for the Uniswap Position Manager (${operatorAddress})`,
+      );
     }
   }
 
