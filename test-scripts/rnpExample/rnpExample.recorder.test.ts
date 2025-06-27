@@ -7,7 +7,7 @@ describe('RnpExample', () => {
   
   beforeAll(async () => {
     harness = new RnpExampleTestHarness();
-    await harness.setupRecorder();
+    await harness.initRecorderTests();
   });
 
   afterEach(async () => {

@@ -72,7 +72,7 @@ export abstract class AbstractGatewayTestHarness<TInstance>
     return this.loadMock(fileName);
   }
 
-  abstract init(): Promise<void>;
+  protected abstract init(): Promise<void>;
 
   private async setupSpies() {
     for (const [_key, dep] of Object.entries(this.dependencyContracts)) {
@@ -83,7 +83,7 @@ export abstract class AbstractGatewayTestHarness<TInstance>
     }
   }
 
-  async setupRecorder() {
+  async initRecorderTests() {
     await this.init();
     await this.setupSpies();
   }
@@ -104,7 +104,7 @@ export abstract class AbstractGatewayTestHarness<TInstance>
     }
   }
 
-  async setupMockedTests() {
+  async initMockedTests() {
     await this.init();
     await this.setupSpies();
     for (const [instanceKey, dep] of Object.entries(this.dependencyContracts)) {
