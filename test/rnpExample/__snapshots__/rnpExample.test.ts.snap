@@ -2,16 +2,16 @@
 
 exports[`RnpExample useABC 1`] = `
 {
-  "a": "real methodA-0.04965624398717727",
-  "b": "real methodB-0.29469062977016547",
-  "c": "real methodC-0.07593266140415622",
+  "a": "real methodA-0.3167918897895934",
+  "b": "real methodB-0.5959480847973675",
+  "c": Any<String>,
 }
 `;
 
 exports[`RnpExample useDTwice 1`] = `
 {
-  "d1": "real methodD-0.6444137082306514",
-  "d2": "real methodD-0.1376059747752234",
+  "d1": "real methodD-0.9822143426913119",
+  "d2": "real methodD-0.3523185054710709",
 }
 `;
 
@@ -31,6 +31,6 @@ exports[`RnpExample useUnmappedMethodMocked 1`] = `
 
 exports[`RnpExample useUnmappedMethodRecorder 1`] = `
 {
-  "unmapped": "real methodUnmapped-0.17405589451073245",
+  "unmapped": "real methodUnmapped-0.14017814520237115",
 }
 `;

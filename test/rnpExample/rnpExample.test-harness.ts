@@ -5,13 +5,13 @@ import { RnpExample } from './api/rnpExample';
 export class RnpExampleTestHarness extends AbstractGatewayTestHarness<RnpExample> {
   readonly dependencyContracts = {
     dep1_A: this.dependencyFactory.instanceProperty('dep1', 'methodA'),
+    // TODO: Alwayed mocked depdendency
     dep1_B: this.dependencyFactory.instanceProperty('dep1', 'methodB'),
-    // TODO: C should be a passthrough
-    // dep1_C: this.dependencyFactory.instanceProperty(
-    //   'dep1',
-    //   'methodC',
-    // ),
+    dep1_C: this.dependencyFactory.instanceProperty('dep1', 'methodC', true),
     dep1_D: this.dependencyFactory.instanceProperty('dep1', 'methodD'),
+
+    // TODO: prototype dependency examples
+    // TODO: explain that unlisted deps will be ignored
   };
 
   constructor() {
@@ -37,7 +37,6 @@ export class RnpExampleTestHarness extends AbstractGatewayTestHarness<RnpExample
   async init() {
     await this.initializeGatewayApp();
     this._instance = await RnpExample.getInstance('TEST');
-    // this.setupMocksForTest();
   }
 
   async teardown() {

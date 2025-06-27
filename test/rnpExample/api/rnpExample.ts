@@ -4,7 +4,6 @@ export class Dep1 {
   // TODO: always mocked
   methodB = async () => 'real methodB-' + Math.random();
 
-  // TODO: passthrough during playback
   methodC = async () => 'real methodC-' + Math.random();
 
   methodD = async () => 'real methodD-' + Math.random();
