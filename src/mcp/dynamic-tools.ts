@@ -2,23 +2,14 @@ import { z } from "zod";
 import { GatewayApiClient } from "./utils/api-client";
 import { ToolRegistry, ToolDefinition } from "./utils/tool-registry";
 
-// Simple helper to convert zod schema to JSON schema format
-// Since we're defining schemas manually, this is just a placeholder
-const zodToJsonSchema = (schema: z.ZodSchema) => {
-  return {
-    type: "object" as const,
-    properties: {},
-    required: [],
-    additionalProperties: false,
-  };
-};
+// Note: We define schemas manually instead of using zod conversion
 
 /**
  * Dynamic tools for Gateway MCP that expose all tools through a discovery interface.
  * This allows users to approve only 3 tools instead of all individual tools.
  */
 export function createDynamicTools(
-  apiClient: GatewayApiClient, 
+  _apiClient: GatewayApiClient, 
   allTools: ToolDefinition[],
   allHandlers: Map<string, (request: any) => Promise<any>>
 ) {
@@ -37,8 +28,8 @@ export function createDynamicTools(
 
   ToolRegistry.registerTool(
     {
-      name: "list_gateway_tools",
-      description: "List or search for available Gateway MCP tools",
+      name: "gateway_list_tools",
+      description: "List or search for available Gateway DEX/blockchain tools",
       inputSchema: {
         type: "object",
         properties: {
@@ -101,7 +92,7 @@ export function createDynamicTools(
 
   ToolRegistry.registerTool(
     {
-      name: "get_tool_schema",
+      name: "gateway_get_tool_schema",
       description: "Get the input schema and details for a specific Gateway tool",
       inputSchema: {
         type: "object",
@@ -121,7 +112,7 @@ export function createDynamicTools(
       
       const tool = allTools.find(t => t.name === tool_name);
       if (!tool) {
-        throw new Error(`Tool '${tool_name}' not found. Use list_gateway_tools to see available tools.`);
+        throw new Error(`Tool '${tool_name}' not found. Use gateway_list_tools to see available tools.`);
       }
       
       return {
@@ -149,8 +140,8 @@ export function createDynamicTools(
 
   ToolRegistry.registerTool(
     {
-      name: "invoke_gateway_tool",
-      description: "Invoke a Gateway tool with the specified arguments. Use list_gateway_tools to discover tools and get_tool_schema to see required arguments.",
+      name: "gateway_invoke_tool",
+      description: "Invoke a Gateway tool with the specified arguments. Use gateway_list_tools to discover tools and gateway_get_tool_schema to see required arguments.",
       inputSchema: {
         type: "object",
         properties: {
@@ -174,7 +165,7 @@ export function createDynamicTools(
       
       const handler = allHandlers.get(tool_name);
       if (!handler) {
-        throw new Error(`Tool '${tool_name}' not found. Use list_gateway_tools to see available tools.`);
+        throw new Error(`Tool '${tool_name}' not found. Use gateway_list_tools to see available tools.`);
       }
       
       // Create a new request with the tool arguments
@@ -192,8 +183,8 @@ export function createDynamicTools(
   );
 
   return [
-    "list_gateway_tools",
-    "get_tool_schema", 
-    "invoke_gateway_tool"
+    "gateway_list_tools",
+    "gateway_get_tool_schema", 
+    "gateway_invoke_tool"
   ];
 }

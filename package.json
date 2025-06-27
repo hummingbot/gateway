@@ -98,7 +98,7 @@
     "@babel/runtime": "^7.27.0",
     "@connectis/diff-test-coverage": "^1.5.3",
     "@improbable-eng/grpc-web": "^0.13.0",
-    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@modelcontextprotocol/sdk": "^1.13.1",
     "@types/app-root-path": "^1.2.8",
     "@types/bn.js": "5.1.6",
     "@types/bs58": "^4.0.4",

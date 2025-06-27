@@ -1,405 +1,324 @@
-# Gateway MCP Server Setup Guide
+# Gateway MCP Server with CoinGecko Integration
 
 ## Overview
 
-The Gateway MCP server provides access to DEX trading, blockchain operations, and wallet management through the Model Context Protocol (MCP). This guide explains how to configure and use the server with dynamic tools for simplified approval.
+The Gateway MCP server provides access to DEX trading, blockchain operations, and wallet management through the Model Context Protocol (MCP). The server optionally includes integrated CoinGecko support for market data - when enabled, it automatically spawns the CoinGecko MCP server as a subprocess, providing seamless access through a single interface.
+
+## Key Features
+
+- **Core Gateway Tools**: 25+ DEX/blockchain tools for trading and wallet management
+- **Optional CoinGecko Integration**: Add 200+ market data endpoints with `--with-coingecko`
+- **Single Installation**: Install once, optionally get both Gateway and CoinGecko functionality
+- **Dynamic Tools Mode**: Simplified approval with just 3-6 tools
+- **Full Lifecycle Management**: Gateway handles CoinGecko startup/shutdown when enabled
 
 ## Dynamic Tools vs All Tools
 
-The Gateway MCP server offers two modes of operation:
-
 ### 1. **Dynamic Tools Mode** (Recommended)
-- **Tools Required**: Only 3 tools to approve
-  - `list_gateway_tools` - Discover available tools
-  - `get_tool_schema` - Get tool details
-  - `invoke_gateway_tool` - Execute tools
+- **Without CoinGecko**: 3 tools
+  - `gateway_list_tools` - Discover Gateway tools
+  - `gateway_get_tool_schema` - Get Gateway tool details
+  - `gateway_invoke_tool` - Execute Gateway tools
+- **With CoinGecko**: 6 tools (adds 3 more)
+  - `coingecko_list_api_endpoints` - Discover CoinGecko endpoints
+  - `coingecko_get_api_endpoint_schema` - Get CoinGecko endpoint details
+  - `coingecko_invoke_api_endpoint` - Execute CoinGecko endpoints
 - **Benefits**: 
   - Simplified approval process
-  - Full access to all Gateway functionality
+  - Full access to all functionality
   - Reduced context usage
   - Easier to get started
 
 ### 2. **All Tools Mode** 
-- **Tools Required**: 20+ individual tools across categories
+- **Without CoinGecko**: ~25 Gateway tools
+- **With CoinGecko**: ~25 Gateway tools + ~200 CoinGecko tools
 - **Benefits**:
-  - Direct access to specific tools
+  - Direct access to all individual tools
   - Better for automation and scripts
   - More granular permissions
+  - No need to use dynamic discovery
 
 ## Installation and Setup
 
 ### Prerequisites
-- Gateway server running (default: http://localhost:15888)
-- Claude Code installed
 - Node.js 18+ installed
+- pnpm package manager (`npm install -g pnpm`)
+- CoinGecko API key (optional, for enhanced rate limits)
 
-### Step 1: Build the MCP Server
+### Step 1: Clone and Build
 
 ```bash
-# From the gateway directory
-pnpm build:mcp
+# Clone the repository
+git clone https://github.com/hummingbot/gateway.git
+cd gateway
+
+# Install dependencies
+pnpm install
+
+# Build the project
+pnpm build
 ```
 
-### Step 2: Set Gateway URL (Optional)
+### Step 2: Start Gateway API Server
 
 ```bash
-# Default is http://localhost:15888
+# Generate certificates and initial configs
+pnpm setup
+
+# Start Gateway API
+pnpm start
+
+# Or in development mode (HTTP only)
+pnpm start --dev
+```
+
+### Step 3: Set Environment Variables
+
+```bash
+# Gateway API URL (default: http://localhost:15888)
 export GATEWAY_URL="http://localhost:15888"
+
+# CoinGecko API key (get from https://www.coingecko.com/api/pricing)
+export COINGECKO_DEMO_API_KEY="your-demo-key"
+# OR for pro users:
+export COINGECKO_PRO_API_KEY="your-pro-key"
 ```
 
-### Step 3: Add MCP Server with Dynamic Tools
+### Step 4: Add MCP Server to Claude Code
 
+#### Basic Gateway Only (Recommended to start)
 ```bash
-# Add with dynamic tools (3 tools only)
-claude mcp add gateway node -- /path/to/gateway/dist/mcp/index.js --tools=dynamic \
+# Dynamic mode - 3 tools
+claude mcp add gateway node -- $(pwd)/dist/mcp/index.js --tools=dynamic \
+  -e GATEWAY_URL=$GATEWAY_URL
+
+# All tools mode - ~25 tools
+claude mcp add gateway node -- $(pwd)/dist/mcp/index.js \
   -e GATEWAY_URL=$GATEWAY_URL
 ```
 
-### Step 4: Add MCP Server with All Tools
-
+#### Gateway with CoinGecko Integration
 ```bash
-# Add with all tools (20+ individual tools)
-claude mcp add gateway node -- /path/to/gateway/dist/mcp/index.js \
-  -e GATEWAY_URL=$GATEWAY_URL
+# Dynamic mode - 6 tools (3 Gateway + 3 CoinGecko)
+claude mcp add gateway node -- $(pwd)/dist/mcp/index.js --tools=dynamic --with-coingecko \
+  -e GATEWAY_URL=$GATEWAY_URL \
+  -e COINGECKO_DEMO_API_KEY=$COINGECKO_DEMO_API_KEY
+
+# All tools mode - ~225 tools (25 Gateway + 200 CoinGecko)
+claude mcp add gateway node -- $(pwd)/dist/mcp/index.js --with-coingecko \
+  -e GATEWAY_URL=$GATEWAY_URL \
+  -e COINGECKO_DEMO_API_KEY=$COINGECKO_DEMO_API_KEY
 ```
 
-## Switching Between Modes
+### Manual Configuration
 
-### From Dynamic to All Tools
-```bash
-# Remove current configuration
-claude mcp remove gateway
+Alternatively, edit your Claude Desktop configuration directly:
 
-# Add with all tools
-claude mcp add gateway node -- /path/to/gateway/dist/mcp/index.js \
-  -e GATEWAY_URL=$GATEWAY_URL
-```
+**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+**Linux**: `~/.config/claude/claude_desktop_config.json`
 
-### From All Tools to Dynamic
-```bash
-# Remove current configuration
-claude mcp remove gateway
-
-# Add with dynamic tools
-claude mcp add gateway node -- /path/to/gateway/dist/mcp/index.js --tools=dynamic \
-  -e GATEWAY_URL=$GATEWAY_URL
+```json
+{
+  "mcpServers": {
+    "gateway": {
+      "command": "node",
+      "args": [
+        "/absolute/path/to/gateway/dist/mcp/index.js",
+        "--tools=dynamic",
+        "--with-coingecko"  // Optional: remove for Gateway only
+      ],
+      "env": {
+        "GATEWAY_URL": "http://localhost:15888",
+        "COINGECKO_DEMO_API_KEY": "your-api-key"  // Optional: only if using --with-coingecko
+      }
+    }
+  }
+}
 ```
 
 ## Usage Examples
 
-### With Dynamic Tools Mode
+### Basic Tool Discovery
 
-1. **Discover Available Tools**
-   ```
-   Use list_gateway_tools to see all available tools
-   
-   Or filter by category:
-   - category: "discovery"
-   - category: "trading"
-   - category: "wallet"
-   ```
-
-2. **Get Tool Details**
-   ```
-   Use get_tool_schema with:
-   - tool_name: "get_chains"
-   ```
-
-3. **Execute Tools**
-   ```
-   Use invoke_gateway_tool to execute any tool:
-   - tool_name: "get_chains"
-   - arguments: {}
-   ```
-
-### With All Tools Mode
-
-Direct access to specific tools:
-```
-Use get_chains directly to see available blockchains
-Use get_connectors to see available DEX connectors
-Use execute_swap to perform a token swap
-```
-
-## Common Operations
-
-### Discover Available Resources
 ```javascript
-// Dynamic mode
-invoke_gateway_tool({
-  tool_name: "get_chains",
-  arguments: {}
-})
+// Discover Gateway tools
+gateway_list_tools({ category: "trading" })
 
-invoke_gateway_tool({
-  tool_name: "get_connectors", 
-  arguments: { chain: "solana" }
-})
-
-// All tools mode
-get_chains()
-get_connectors({ chain: "solana" })
+// Discover CoinGecko endpoints  
+coingecko_list_api_endpoints({ search_query: "trending" })
 ```
 
-### Check Wallet Balances
+### Market Data from CoinGecko
+
 ```javascript
-// Dynamic mode
-invoke_gateway_tool({
-  tool_name: "get_balances",
-  arguments: {
-    chain: "ethereum",
-    network: "mainnet",
-    address: "0x..."
+// Get current prices
+coingecko_invoke_api_endpoint({
+  endpoint_name: "simplePrice",
+  args: { 
+    ids: "bitcoin,ethereum", 
+    vs_currencies: "usd",
+    include_24hr_change: true
   }
 })
 
-// All tools mode
-get_balances({
-  chain: "ethereum",
-  network: "mainnet", 
-  address: "0x..."
+// Get trending coins
+coingecko_invoke_api_endpoint({
+  endpoint_name: "searchTrending",
+  args: {}
 })
 ```
 
-### Execute a Swap
+### DEX Trading via Gateway
+
 ```javascript
-// Dynamic mode
-invoke_gateway_tool({
-  tool_name: "execute_swap",
+// Get swap quote
+gateway_invoke_tool({
+  tool_name: "jupiter_quote",
   arguments: {
-    connector: "uniswap",
-    network: "mainnet",
-    walletAddress: "0x...",
-    baseToken: "ETH",
-    quoteToken: "USDC",
-    amount: "1",
-    side: "SELL"
+    inputMint: "So11111111111111111111111111111111111112", // SOL
+    outputMint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", // USDC
+    amount: 1000000000 // 1 SOL
+  }
+})
+
+// Execute swap
+gateway_invoke_tool({
+  tool_name: "jupiter_swap",
+  arguments: {
+    // swap parameters from quote
   }
 })
 ```
 
-### Get Price Quote
+### Combined Workflow: Market Analysis + DEX Trading
+
 ```javascript
-// Dynamic mode
-invoke_gateway_tool({
-  tool_name: "quote_swap",
+// 1. Check CoinGecko market price
+const marketPrice = await coingecko_invoke_api_endpoint({
+  endpoint_name: "simplePrice",
+  args: { ids: "ethereum", vs_currencies: "usd" }
+})
+
+// 2. Get DEX quote
+const dexQuote = await gateway_invoke_tool({
+  tool_name: "uniswap_quote",
   arguments: {
-    connector: "jupiter",
-    network: "mainnet-beta",
-    baseToken: "SOL",
-    quoteToken: "USDC",
-    amount: 10,
-    side: "SELL"
+    tokenIn: "ETH",
+    tokenOut: "USDC", 
+    amount: "1"
   }
 })
+
+// 3. Compare prices and execute if favorable
+if (dexPrice > marketPrice * 0.99) { // Within 1% of market
+  await gateway_invoke_tool({
+    tool_name: "uniswap_swap",
+    arguments: { /* swap params */ }
+  })
+}
 ```
+
+## Available Prompts (Pre-built Agents)
+
+- `swap_optimizer` - Find best swap routes across DEXs
+- `portfolio_analyzer` - Analyze wallet holdings across chains
+- `liquidity_finder` - Find best liquidity pools
+- `gas_optimizer` - Optimize transaction gas settings
+- `trending_pools_analyzer` - Analyze trending pools with price data
+- `market-analyzer` - Compare CoinGecko and DEX prices
 
 ## Tool Categories
 
-### Discovery Tools
-- `get_chains` - List supported blockchains
-- `get_connectors` - List DEX connectors
-- `get_status` - Check chain/network status
+### Gateway Tools
+- **Discovery**: chains, connectors, status
+- **Wallet**: list, add, remove, balances  
+- **Trading**: quote, swap, pools, transactions
+- **Configuration**: get/update config, pools
+- **Tokens**: list, search, add tokens
 
-### Wallet Tools  
-- `wallet_list` - List configured wallets
-- `wallet_add` - Add a new wallet
-- `wallet_remove` - Remove a wallet
-- `get_balances` - Check token balances
+### CoinGecko Tools
+- **Market Data**: prices, market caps, volumes
+- **Trending**: trending coins, pools, searches
+- **Token Info**: detailed token data
+- **Exchanges**: exchange rates, volumes
+- **DeFi**: TVL, yields, protocols
 
-### Trading Tools
-- `quote_swap` - Get swap price quote
-- `execute_swap` - Execute token swap
-- `get_pool_info` - Get liquidity pool details
-- `poll_transaction` - Check transaction status
+## Testing
 
-### Configuration Tools
-- `get_config` - Get configuration settings
-- `update_config` - Update settings
-- `get_pools` - Get default pools
-- `add_pool` - Add default pool
-
-### Token Tools
-- `list_tokens` - List available tokens
-- `search_tokens` - Search for tokens
-- `get_token` - Get token details
-- `add_token` - Add custom token
-
-## Configuration Options
-
-### Scope Options
-- **Local** (default): Available in current project only
-- **User**: Available across all your projects  
-- **Project**: Shared with team via `.mcp.json`
+Verify your installation with included test scripts:
 
 ```bash
-# User scope
-claude mcp add --scope user gateway node -- /path/to/gateway/dist/mcp/index.js --tools=dynamic \
-  -e GATEWAY_URL=$GATEWAY_URL
+# Test dynamic tools listing
+node test/mcp/test-dynamic-tools.js
 
-# Project scope (creates .mcp.json)
-claude mcp add --scope project gateway node -- /path/to/gateway/dist/mcp/index.js --tools=dynamic \
-  -e GATEWAY_URL=$GATEWAY_URL
-```
+# Test CoinGecko integration
+node test/mcp/test-coingecko-integration.js
 
-### Environment Variables
-- `GATEWAY_URL`: Gateway server URL (default: http://localhost:15888)
-- `--tools`: "dynamic" for 3-tool mode (omit for all tools)
-
-## MCP Architecture Comparison
-
-### Dynamic Tools Architecture
-```
-User Request → list_gateway_tools → get_tool_schema → invoke_gateway_tool → Gateway API
-              ↓                    ↓                   ↓
-              (Discover tools)     (Get parameters)    (Execute with args)
-```
-
-### All Tools Architecture  
-```
-User Request → Specific Tool (e.g., execute_swap) → Gateway API
-              ↓
-              (Direct execution with known schema)
+# Test trending data
+node test/mcp/test-coingecko-trending.js
 ```
 
 ## Troubleshooting
 
 ### Connection Issues
-- Verify Gateway is running: `curl http://localhost:15888/`
+- Verify Gateway API is running: `curl http://localhost:15888/`
 - Check GATEWAY_URL environment variable
-- Ensure firewall allows connection
+- Ensure firewall allows localhost connections
+
+### CoinGecko Not Working
+- CoinGecko MCP server spawns automatically (may take a few seconds)
+- Check logs for "Connected to CoinGecko MCP server"
+- Verify your API key is valid
+- Free tier has rate limits (30 calls/minute)
 
 ### Tool Discovery Issues
-- Use `/mcp` command to refresh connection
-- Check server status with `claude mcp get gateway`
-- Restart server: Remove and re-add
+- Use `/mcp` command in Claude to refresh connection
+- Restart Claude Code after configuration changes
+- Remove and re-add the server if needed
 
-### Authentication Errors
-- Ensure wallets are properly configured in Gateway
-- Check wallet private keys are valid
-- Verify network selection matches wallet
+## Configuration Options
 
-## Best Practices
+### Scope Options
+- **Local** (default): Available in current project only
+- **User**: Available across all your projects
+- **Project**: Shared with team via `.mcp.json`
 
-1. **Start with Dynamic Tools**
-   - Easier approval process
-   - Good for exploration
-   - Switch to all tools for automation
+```bash
+# User scope
+claude mcp add --scope user gateway node -- /path/to/gateway/dist/mcp/index.js --tools=dynamic
 
-2. **Security**
-   - Never expose Gateway publicly
-   - Use localhost or secure connection
-   - Keep wallet keys secure
-
-3. **Performance**
-   - Cache frequently used data
-   - Use specific tools when known
-   - Monitor Gateway logs
-
-4. **Error Handling**
-   - Check transaction status before retry
-   - Handle network timeouts gracefully
-   - Validate inputs before execution
-
-## Example Workflows
-
-### DEX Trading Workflow
-```javascript
-// 1. Find available DEXs
-list_gateway_tools({ category: "trading" })
-
-// 2. Get price quote
-invoke_gateway_tool({
-  tool_name: "quote_swap",
-  arguments: {
-    connector: "uniswap",
-    network: "mainnet",
-    baseToken: "ETH",
-    quoteToken: "USDC",
-    amount: 1,
-    side: "SELL"
-  }
-})
-
-// 3. Execute swap if price is good
-invoke_gateway_tool({
-  tool_name: "execute_swap",
-  arguments: {
-    connector: "uniswap",
-    network: "mainnet",
-    walletAddress: "0x...",
-    baseToken: "ETH", 
-    quoteToken: "USDC",
-    amount: "1",
-    side: "SELL",
-    slippagePct: 1
-  }
-})
-
-// 4. Monitor transaction
-invoke_gateway_tool({
-  tool_name: "poll_transaction",
-  arguments: {
-    chain: "ethereum",
-    network: "mainnet",
-    signature: "0x..."
-  }
-})
+# Project scope  
+claude mcp add --scope project gateway node -- /path/to/gateway/dist/mcp/index.js --tools=dynamic
 ```
 
-### Portfolio Management
-```javascript
-// 1. List wallets
-invoke_gateway_tool({
-  tool_name: "wallet_list",
-  arguments: {}
-})
+### Environment Variables
+- `GATEWAY_URL`: Gateway API URL (default: http://localhost:15888)
+- `COINGECKO_DEMO_API_KEY`: Demo API key (required if using --with-coingecko)
+- `COINGECKO_PRO_API_KEY`: Pro API key (higher rate limits)
 
-// 2. Check balances across chains
-invoke_gateway_tool({
-  tool_name: "get_balances",
-  arguments: {
-    chain: "ethereum",
-    network: "mainnet",
-    address: "0x..."
-  }
-})
+### Command Line Arguments
+- `--tools=dynamic`: Enable dynamic tools mode (3 or 6 tools instead of all)
+- `--with-coingecko`: Include CoinGecko integration (default: false)
 
-// 3. Search for tokens
-invoke_gateway_tool({
-  tool_name: "search_tokens",
-  arguments: {
-    search: "USDC",
-    chain: "ethereum"
-  }
-})
-```
+## Security Best Practices
 
-## Resources & Prompts
-
-The Gateway MCP server also provides:
-
-### Resources
-- Token lists for each network
-- Configuration templates
-- API documentation
-
-### Prompts (Agents)
-- `transaction_executor` - Execute and monitor transactions
-- `swap_optimizer` - Find best swap routes
-- `portfolio_monitor` - Monitor wallet portfolio
-- `token_analyzer` - Analyze token liquidity
+- Gateway MCP server runs locally only
+- Never expose Gateway API to public internet
+- Keep wallet private keys secure
+- API keys are passed securely via environment
+- Use test networks for development
+- Monitor transaction logs regularly
 
 ## Additional Resources
 
 - [Gateway Documentation](https://github.com/hummingbot/gateway)
+- [CoinGecko API Documentation](https://docs.coingecko.com)
 - [MCP Protocol Specification](https://modelcontextprotocol.io)
 - [Claude Code MCP Documentation](https://docs.anthropic.com/en/docs/claude-code/mcp)
 
-## Security Notes
+## Support
 
-- Gateway MCP server runs locally only
-- Never expose Gateway to public internet
-- Keep wallet private keys secure
-- Monitor transaction logs regularly
-- Use test networks for development
+- Gateway Issues: [GitHub Issues](https://github.com/hummingbot/gateway/issues)
+- CoinGecko API: [CoinGecko Support](https://www.coingecko.com/en/api/documentation)
+- Claude Code: [Anthropic Support](https://support.anthropic.com)

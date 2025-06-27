@@ -1,8 +1,13 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { ListPromptsRequestSchema, GetPromptRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
+import { trendingPoolsAnalyzer } from "./trending-pools-analyzer";
+import { registerMarketAnalyzerPrompt } from "./market-analyzer";
 
 export function registerPrompts(server: Server) {
+  // Register the market analyzer prompt handler
+  registerMarketAnalyzerPrompt(server);
+  
   // List available prompts
   server.setRequestHandler(ListPromptsRequestSchema, async () => {
     return {
@@ -95,6 +100,28 @@ export function registerPrompts(server: Server) {
               required: true
             }
           ]
+        },
+        trendingPoolsAnalyzer,
+        {
+          name: "market-analyzer",
+          description: "Analyzes a token's market data from CoinGecko and compares with DEX prices",
+          arguments: [
+            {
+              name: "token",
+              description: "Token symbol to analyze (default: 'bitcoin')",
+              required: false,
+            },
+            {
+              name: "dex",
+              description: "DEX to check prices on (default: 'jupiter')",
+              required: false,
+            },
+            {
+              name: "network",
+              description: "Network to use (default: 'mainnet')",
+              required: false,
+            },
+          ],
         }
       ]
     };
@@ -306,6 +333,25 @@ Format your response as:
 - Slow: [cost and time]
 - Standard: [cost and time]
 - Fast: [cost and time]`
+            }
+          }
+        ]
+      };
+    }
+
+    if (promptName === "trending_pools_analyzer") {
+      const { network, limit, connector } = args;
+      
+      return {
+        messages: [
+          {
+            role: "user",
+            content: {
+              type: "text",
+              text: trendingPoolsAnalyzer.instructions
+                .replace("{{network}}", network || "ethereum")
+                .replace("{{limit || 5}}", limit || "5")
+                .replace("{{connector || 'auto-select'}}", connector || "auto-select")
             }
           }
         ]

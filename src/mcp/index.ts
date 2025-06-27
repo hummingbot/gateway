@@ -22,6 +22,7 @@ import { registerResources } from "./resources";
 import { registerPrompts } from "./prompts";
 import { ToolRegistry } from "./utils/tool-registry";
 import { createDynamicTools } from "./dynamic-tools";
+import { registerCoinGeckoTools } from "./tools/coingecko-gateway";
 
 // Initialize the MCP server with full capabilities
 const server = new Server(
@@ -45,52 +46,65 @@ const apiClient = new GatewayApiClient({ url: gatewayUrl });
 // Export for use in tool modules
 export { server, apiClient };
 
-// Check if dynamic tools mode is enabled
-const isDynamicMode = process.argv.includes("--tools=dynamic");
+// First, register all Gateway tools internally to make them available
+registerDiscoveryTools(server, apiClient);
+registerConfigTools(server, apiClient);
+registerTradingTools(server, apiClient);
+registerWalletTools(server, apiClient);
+registerTokenTools(server, apiClient);
 
-if (isDynamicMode) {
-  // First, we need to register all tools internally to make them available via dynamic tools
-  // But we clear the registry after to only expose the 3 dynamic tools
-  registerDiscoveryTools(server, apiClient);
-  registerConfigTools(server, apiClient);
-  registerTradingTools(server, apiClient);
-  registerWalletTools(server, apiClient);
-  registerTokenTools(server, apiClient);
-  
-  // Store all registered tools
-  const allTools = ToolRegistry.getAllTools();
-  const allHandlers = new Map();
-  allTools.forEach(tool => {
-    allHandlers.set(tool.name, ToolRegistry.getHandler(tool.name));
-  });
-  
-  // Clear the registry
-  ToolRegistry.clear();
-  
-  // Create and register only the 3 dynamic tools
-  createDynamicTools(apiClient, allTools, allHandlers);
-  console.error("Gateway MCP server starting with dynamic tools (3 tools)");
-} else {
-  // Register all tools normally
-  registerDiscoveryTools(server, apiClient);
-  registerConfigTools(server, apiClient);
-  registerTradingTools(server, apiClient);
-  registerWalletTools(server, apiClient);
-  registerTokenTools(server, apiClient);
-  console.error("Gateway MCP server starting with all tools");
-}
-
-// Set up tool handlers after all tools are registered
-ToolRegistry.setupHandlers(server);
-
-// Register resources (available in both modes)
-registerResources(server, apiClient);
-
-// Register prompts (available in both modes)
-registerPrompts(server);
+// Store all registered tools and handlers
+const allGatewayTools = ToolRegistry.getAllTools();
+const allGatewayHandlers = new Map();
+allGatewayTools.forEach(tool => {
+  allGatewayHandlers.set(tool.name, ToolRegistry.getHandler(tool.name));
+});
 
 // Start the server
 async function main() {
+  // Check command line arguments
+  const isDynamicMode = process.argv.includes("--tools=dynamic");
+  const withCoinGecko = process.argv.includes("--with-coingecko");
+
+  if (isDynamicMode) {
+    // Clear the registry to use only dynamic tools
+    ToolRegistry.clear();
+    
+    // Register only the 3 dynamic gateway tools
+    createDynamicTools(apiClient, allGatewayTools, allGatewayHandlers);
+    
+    // Register CoinGecko dynamic tools if requested
+    if (withCoinGecko) {
+      await registerCoinGeckoTools(server, apiClient, true);
+      console.error("Gateway MCP server starting with dynamic tools only (6 tools: 3 Gateway + 3 CoinGecko)");
+    } else {
+      console.error("Gateway MCP server starting with dynamic tools only (3 Gateway tools)");
+    }
+  } else {
+    // Keep all Gateway tools registered (don't add dynamic tools in this mode)
+    
+    // Register all CoinGecko tools if requested
+    if (withCoinGecko) {
+      await registerCoinGeckoTools(server, apiClient, false);
+    }
+    
+    const totalTools = ToolRegistry.getAllTools().length;
+    if (withCoinGecko) {
+      console.error(`Gateway MCP server starting with all tools (${totalTools} total)`);
+    } else {
+      console.error(`Gateway MCP server starting with all Gateway tools (${totalTools} total)`);
+    }
+  }
+
+  // Set up tool handlers after all tools are registered
+  ToolRegistry.setupHandlers(server);
+
+  // Register resources (available in both modes)
+  registerResources(server, apiClient);
+
+  // Register prompts (available in both modes)
+  registerPrompts(server);
+  
   const transport = new StdioServerTransport();
   await server.connect(transport);
   console.error(`Gateway MCP server v${GATEWAY_VERSION} running on stdio`);
