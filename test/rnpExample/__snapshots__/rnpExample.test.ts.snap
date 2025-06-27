@@ -2,28 +2,36 @@
 
 exports[`RnpExample useABC 1`] = `
 {
-  "a": "real methodA-0.034080353463923796",
-  "b": "real methodB-0.39351069588009646",
+  "a": "real methodA-0.2479827843513731",
+  "b": "real methodB-0.00816658738172471",
   "c": Any<String>,
 }
 `;
 
 exports[`RnpExample useB 1`] = `
 {
-  "b": "real methodB-0.2923468171146517",
+  "b": "real methodB-0.16196714271689694",
+}
+`;
+
+exports[`RnpExample useBUnloaded 1`] = `
+{
+  "error": "InternalServerError",
+  "message": "Failed to useB: Mocked dependency was called without a mock loaded: dep1_B. Either load a mock or allowPassThrough.",
+  "statusCode": 500,
 }
 `;
 
 exports[`RnpExample useDTwice 1`] = `
 {
-  "d1": "real methodD-0.1248116055553734",
-  "d2": "real methodD-0.6261969755482932",
+  "d1": "real methodD-0.2688678022183604",
+  "d2": "real methodD-0.7199207348433552",
 }
 `;
 
 exports[`RnpExample useProtoDep 1`] = `
 {
-  "x": "real methodX-0.36103557228007754",
+  "x": "real methodX-0.41410977701045093",
 }
 `;
 
@@ -36,7 +44,7 @@ exports[`RnpExample useUnlistedDep 1`] = `
 exports[`RnpExample useUnmappedMethodMocked 1`] = `
 {
   "error": "FailedDependencyError",
-  "message": "Failed to useUnmappedMethod: Unmocked method was called: dep1_A.methodUnmapped",
+  "message": "Failed to useUnmappedMethod: Unmapped method was called: dep1_A.methodUnmapped. Method must be listed and either mocked or specify allowPassThrough.",
   "statusCode": 424,
 }
 `;

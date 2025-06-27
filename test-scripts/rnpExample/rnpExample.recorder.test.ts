@@ -50,8 +50,18 @@ describe('RnpExample', () => {
     expect({
       error: 'FailedDependencyError',
       message:
-        'Failed to useUnmappedMethod: Unmocked method was called: dep1_A.methodUnmapped',
+        'Failed to useUnmappedMethod: Unmapped method was called: dep1_A.methodUnmapped. Method must be listed and either mocked or specify allowPassThrough.',
       statusCode: 424,
+    }).toMatchSnapshot({});
+  });
+
+  it('useBUnloaded', async () => {
+    // Create to force snapshot file to match exactly
+    expect({
+      error: 'InternalServerError',
+      message:
+        'Failed to useB: Mocked dependency was called without a mock loaded: dep1_B. Either load a mock or allowPassThrough.',
+      statusCode: 500,
     }).toMatchSnapshot({});
   });
 
