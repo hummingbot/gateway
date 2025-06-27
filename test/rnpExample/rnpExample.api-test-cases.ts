@@ -30,6 +30,15 @@ export const useB = new TestCase({
   },
 });
 
+export const useBUnloaded = new TestCase({
+  method: 'GET',
+  url: '/rnpExample/useB',
+  expectedStatus: 500,
+  query: { network: 'TEST' },
+  payload: {},
+  requiredMocks: {},
+});
+
 export const useDTwice = new TestCase({
   method: 'GET',
   url: '/rnpExample/useDTwice',

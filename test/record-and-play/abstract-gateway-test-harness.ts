@@ -107,14 +107,20 @@ export abstract class AbstractGatewayTestHarness<TInstance>
   async initMockedTests() {
     await this.init();
     await this.setupSpies();
-    for (const [instanceKey, dep] of Object.entries(this.dependencyContracts)) {
+    for (const [depKey, dep] of Object.entries(this.dependencyContracts)) {
       const object = dep.getObject(this);
       for (const [methodName, method] of Object.entries(object)) {
-        if (!(method as any).mock && !dep.allowPassThrough) {
+        if (!(method as any).mock) {
           const spy = jest.spyOn(object, methodName);
           spy.mockImplementation(() => {
             throw new Error(
-              `Unmocked method was called: ${instanceKey}.${methodName}`,
+              `Unmapped method was called: ${depKey}.${methodName}. Method must be listed and either mocked or specify allowPassThrough.`,
+            );
+          });
+        } else if (!dep.allowPassThrough) {
+          dep.spy.mockImplementation(() => {
+            throw new Error(
+              `Mocked dependency was called without a mock loaded: ${depKey}. Either load a mock or allowPassThrough.`,
             );
           });
         }
