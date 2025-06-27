@@ -4,8 +4,8 @@ import { TransactionStatus } from './chain-schema';
 export const GetSwapQuoteRequest = Type.Object(
   {
     network: Type.Optional(Type.String()),
-    baseToken: Type.String(),
-    quoteToken: Type.String(),
+    baseToken: Type.Optional(Type.String()),
+    quoteToken: Type.Optional(Type.String()),
     amount: Type.Number(),
     side: Type.String({
       enum: ['BUY', 'SELL'],

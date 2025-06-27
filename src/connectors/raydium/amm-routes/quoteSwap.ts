@@ -278,13 +278,39 @@ export async function getRawSwapQuote(
 
   // Resolve tokens from symbols or addresses
   const solana = await Solana.getInstance(network);
-  const resolvedBaseToken = await solana.getToken(baseToken);
-  const resolvedQuoteToken = await solana.getToken(quoteToken);
+  
+  let resolvedBaseToken = await solana.getToken(baseToken);
+  let resolvedQuoteToken = await solana.getToken(quoteToken);
 
   if (!resolvedBaseToken || !resolvedQuoteToken) {
-    throw new Error(
-      `Token not found: ${!resolvedBaseToken ? baseToken : quoteToken}`,
-    );
+    // If tokens not found in list but we have pool info, create dummy token info
+    // The swap quote doesn't need accurate symbol/decimals since it uses pool's on-chain data
+    if (!resolvedBaseToken && (baseToken === ammPoolInfo.baseTokenAddress || baseToken === ammPoolInfo.quoteTokenAddress)) {
+      resolvedBaseToken = {
+        address: baseToken,
+        symbol: baseToken.length > 10 ? baseToken.slice(0, 6) : baseToken,
+        name: baseToken.length > 10 ? baseToken.slice(0, 6) : baseToken,
+        decimals: 9, // Default, will be overridden by pool data
+        chainId: 0, // Solana mainnet
+      };
+    }
+    
+    if (!resolvedQuoteToken && (quoteToken === ammPoolInfo.baseTokenAddress || quoteToken === ammPoolInfo.quoteTokenAddress)) {
+      resolvedQuoteToken = {
+        address: quoteToken,
+        symbol: quoteToken.length > 10 ? quoteToken.slice(0, 6) : quoteToken,
+        name: quoteToken.length > 10 ? quoteToken.slice(0, 6) : quoteToken,
+        decimals: 9, // Default, will be overridden by pool data
+        chainId: 0, // Solana mainnet
+      };
+    }
+    
+    // If still not resolved, throw error
+    if (!resolvedBaseToken || !resolvedQuoteToken) {
+      throw new Error(
+        `Token not found: ${!resolvedBaseToken ? baseToken : quoteToken}`,
+      );
+    }
   }
 
   logger.info(
@@ -551,8 +577,16 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
 
         const raydium = await Raydium.getInstance(networkToUse);
         let poolAddress = requestedPoolAddress;
+        let baseTokenToUse = baseToken;
+        let quoteTokenToUse = quoteToken;
 
         if (!poolAddress) {
+          if (!baseToken || !quoteToken) {
+            throw fastify.httpErrors.badRequest(
+              'Either poolAddress or both baseToken and quoteToken must be provided',
+            );
+          }
+          
           poolAddress = await raydium.findDefaultPool(
             baseToken,
             quoteToken,
@@ -564,14 +598,25 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
               `No AMM pool found for pair ${baseToken}-${quoteToken}`,
             );
           }
+        } else if (!baseToken || !quoteToken) {
+          // If poolAddress is provided but not tokens, get them from pool info
+          const poolInfo = await raydium.getAmmPoolInfo(poolAddress);
+          if (!poolInfo) {
+            throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
+          }
+          
+          // For AMM pools, baseToken is always the first token (SOL in SOL/MORI)
+          // and quoteToken is always the second token (MORI in SOL/MORI)
+          baseTokenToUse = poolInfo.baseTokenAddress;
+          quoteTokenToUse = poolInfo.quoteTokenAddress;
         }
 
         const result = await formatSwapQuote(
           fastify,
           networkToUse,
           poolAddress,
-          baseToken,
-          quoteToken,
+          baseTokenToUse,
+          quoteTokenToUse,
           amount,
           side as 'BUY' | 'SELL',
           slippagePct,
