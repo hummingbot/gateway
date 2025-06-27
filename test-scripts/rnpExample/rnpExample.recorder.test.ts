@@ -18,8 +18,7 @@ describe('RnpExample', () => {
   });
 
   afterEach(async () => {
-    // Do NOT call reset() it will break the spies
-    // TODO: allow calling reset as currently multiple tests using the same method will break
+    await harness.reset();
   });
 
   afterAll(async () => {
