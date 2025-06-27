@@ -19,6 +19,17 @@ export const useABC = new TestCase({
   },
 });
 
+export const useB = new TestCase({
+  method: 'GET',
+  url: '/rnpExample/useB',
+  expectedStatus: 200,
+  query: { network: 'TEST' },
+  payload: {},
+  requiredMocks: {
+    dep1_B: 'rnpExample-methodB-useB',
+  },
+});
+
 export const useDTwice = new TestCase({
   method: 'GET',
   url: '/rnpExample/useDTwice',

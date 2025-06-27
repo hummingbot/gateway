@@ -48,6 +48,11 @@ export class RnpExample {
     return { a, b, c };
   }
 
+  async useB() {
+    const b = await this.dep1.methodB();
+    return { b };
+  }
+
   async useDTwice() {
     const d1 = await this.dep1.methodD();
     const d2 = await this.dep1.methodD();

@@ -4,6 +4,7 @@ import {
   useDTwice,
   useProtoDep,
   useUnmappedMethodMocked,
+  useB,
 } from './rnpExample.api-test-cases';
 import { RnpExampleTestHarness } from './rnpExample.test-harness';
 
@@ -21,6 +22,11 @@ describe('RnpExample', () => {
 
   afterAll(async () => {
     await harness.teardown();
+  });
+
+  it('useB', async () => {
+    // In a different order than recorder test to verify that the mock order is correct
+    await useB.processPlayRequest(harness);
   });
 
   it('useABC', async () => {

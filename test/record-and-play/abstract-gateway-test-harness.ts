@@ -141,7 +141,7 @@ export abstract class AbstractGatewayTestHarness<TInstance>
   async reset() {
     Object.values(this.dependencyContracts).forEach((dep) => {
       if (dep.spy) {
-        dep.spy.mockReset();
+        dep.spy.mockClear();
       }
     });
   }
