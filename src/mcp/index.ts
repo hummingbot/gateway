@@ -62,6 +62,17 @@ allGatewayTools.forEach(tool => {
 
 // Start the server
 async function main() {
+  // Parse environment variables from command line arguments
+  process.argv.forEach((arg, index) => {
+    if (arg === '-e' && index + 1 < process.argv.length) {
+      const envVar = process.argv[index + 1];
+      const [key, value] = envVar.split('=');
+      if (key && value) {
+        process.env[key] = value;
+      }
+    }
+  });
+
   // Check command line arguments
   const isDynamicMode = process.argv.includes("--tools=dynamic");
   const withCoinGecko = process.argv.includes("--with-coingecko");
