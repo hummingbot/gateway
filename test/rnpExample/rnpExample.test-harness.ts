@@ -10,8 +10,7 @@ export class RnpExampleTestHarness extends AbstractGatewayTestHarness<RnpExample
     dep1_D: this.dependencyFactory.instanceProperty('dep1', 'methodD'),
     dep3_X: this.dependencyFactory.prototype(DepProto, 'methodX'),
 
-    // TODO: rename unmappedDep to unlistedDep
-    // Unlisted deps like unmappedDep will be ignored and used as is
+    // Unlisted deps like unlistedDep will be ignored and used as is
   };
 
   constructor() {

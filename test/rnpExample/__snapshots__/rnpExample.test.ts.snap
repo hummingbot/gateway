@@ -27,7 +27,7 @@ exports[`RnpExample useProtoDep 1`] = `
 }
 `;
 
-exports[`RnpExample useUnmappedDep 1`] = `
+exports[`RnpExample useUnlistedDep 1`] = `
 {
   "z": Any<String>,
 }

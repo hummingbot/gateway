@@ -1,6 +1,6 @@
 import {
   useABC,
-  useUnmappedDep,
+  useUnlistedDep,
   useDTwice,
   useProtoDep,
   useUnmappedMethodMocked,
@@ -52,7 +52,7 @@ describe('RnpExample', () => {
     await useProtoDep.processPlayRequest(harness);
   });
 
-  it('useUnmappedDep', async () => {
-    await useUnmappedDep.processPlayRequest(harness);
+  it('useUnlistedDep', async () => {
+    await useUnlistedDep.processPlayRequest(harness);
   });
 });

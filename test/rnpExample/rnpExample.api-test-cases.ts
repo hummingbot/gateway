@@ -60,9 +60,9 @@ export const useUnmappedMethodMocked = new TestCase({
   propertyMatchers: {},
 });
 
-export const useUnmappedDep = new TestCase({
+export const useUnlistedDep = new TestCase({
   method: 'GET',
-  url: '/rnpExample/useUnmappedDep',
+  url: '/rnpExample/useUnlistedDep',
   expectedStatus: 200,
   query: { network: 'TEST' },
   payload: {},

@@ -1,7 +1,7 @@
 import { RnpExampleTestHarness } from '#test/rnpExample/rnpExample.test-harness';
 import { 
    useABC,
-   useUnmappedDep,
+   useUnlistedDep,
    useDTwice,
    useProtoDep,
    useUnmappedMethodRecorder,
@@ -48,15 +48,14 @@ describe('RnpExample', () => {
   it('useUnmappedMethodMocked', async () => {
     // Create to force snapshot file to match exactly
     expect({
-      "error": "FailedDependencyError",
-      "message": "Failed to useUnmappedMethod: Unmocked method was called: dep1_A.methodUnmapped",
-      "statusCode": 424,
-    }).toMatchSnapshot( {
-
-    });
+      error: 'FailedDependencyError',
+      message:
+        'Failed to useUnmappedMethod: Unmocked method was called: dep1_A.methodUnmapped',
+      statusCode: 424,
+    }).toMatchSnapshot({});
   });
 
-  it('useUnmappedDep', async () => {
-    await useUnmappedDep.processRecorderRequest(harness);
+  it('useUnlistedDep', async () => {
+    await useUnlistedDep.processRecorderRequest(harness);
   });
 });
