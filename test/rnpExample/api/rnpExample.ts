@@ -1,7 +1,6 @@
 export class Dep1 {
   methodA = async () => 'real methodA-' + Math.random();
 
-  // TODO: always mocked
   methodB = async () => 'real methodB-' + Math.random();
 
   methodC = async () => 'real methodC-' + Math.random();
@@ -13,6 +12,12 @@ export class Dep1 {
 
 export class Dep2 {
   methodZ = async () => 'real methodZ-' + Math.random();
+}
+
+export class DepProto {
+  async methodX() {
+    return 'real methodX-' + Math.random();
+  }
 }
 
 export class RnpExample {
@@ -54,6 +59,11 @@ export class RnpExample {
     return { unmapped };
   }
 
+  async useProtoDep() {
+    const dep3 = new DepProto();
+    const x = await dep3.methodX();
+    return { x };
+  }
   async useUnmappedDep() {
     const z = await this.dep2.methodZ();
     return { z };

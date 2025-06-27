@@ -60,3 +60,14 @@ export const useUnmappedDep = new TestCase(
     z: expect.any(String),
   },
 );
+
+export const useProtoDep = new TestCase(
+  'GET',
+  '/rnpExample/useProtoDep',
+  200,
+  { network: 'TEST' },
+  {},
+  {
+    dep3_X: 'rnpExample-methodX',
+  },
+);

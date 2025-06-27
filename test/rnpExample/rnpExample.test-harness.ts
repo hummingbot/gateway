@@ -1,6 +1,6 @@
 import { AbstractGatewayTestHarness } from '#test/record-and-play/abstract-gateway-test-harness';
 
-import { RnpExample } from './api/rnpExample';
+import { DepProto, RnpExample } from './api/rnpExample';
 
 export class RnpExampleTestHarness extends AbstractGatewayTestHarness<RnpExample> {
   readonly dependencyContracts = {
@@ -8,6 +8,7 @@ export class RnpExampleTestHarness extends AbstractGatewayTestHarness<RnpExample
     dep1_B: this.dependencyFactory.instanceProperty('dep1', 'methodB'),
     dep1_C: this.dependencyFactory.instanceProperty('dep1', 'methodC', true),
     dep1_D: this.dependencyFactory.instanceProperty('dep1', 'methodD'),
+    dep3_X: this.dependencyFactory.prototype(DepProto, 'methodX'),
 
     // TODO: prototype dependency examples
     // TODO: explain that unlisted deps will be ignored

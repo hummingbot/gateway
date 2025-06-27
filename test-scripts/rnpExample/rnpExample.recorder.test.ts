@@ -1,6 +1,5 @@
 import { RnpExampleTestHarness } from '#test/rnpExample/rnpExample.test-harness';
-import { useABC, useUnmappedDep, useDTwice, useUnmappedMethodRecorder } from '#test/rnpExample/rnpExample.api-test-cases';
-import { useABC, useDep2, useDTwice, useUnmappedMethodMocked, useUnmappedMethodRecorder } from '#test/rnpExample/rnpExample.api-test-cases';
+import { useABC, useUnmappedDep, useDTwice, useProtoDep, useUnmappedMethodRecorder } from '#test/rnpExample/rnpExample.api-test-cases';
 
 describe('RnpExample', () => {
   let harness: RnpExampleTestHarness;
@@ -12,7 +11,8 @@ describe('RnpExample', () => {
   });
 
   afterEach(async () => {
-    await harness.reset();
+    // Do NOT call reset() it will break the spies
+    // TODO: allow calling reset as currently multiple tests using the same method will break
   });
 
   afterAll(async () => {
@@ -22,11 +22,15 @@ describe('RnpExample', () => {
   it('useABC', async () => {
     await useABC.processRecorderRequest(harness);
   });
-  
+ 
   it('useDTwice', async () => {
     await useDTwice.processRecorderRequest(harness);
   });
  
+  it('useProtoDep', async () => {
+    await useProtoDep.processRecorderRequest(harness);
+  });
+
   it('useUnmappedMethodRecorder', async () => {
     await useUnmappedMethodRecorder.processRecorderRequest(harness);
   });
