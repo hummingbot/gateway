@@ -12,7 +12,7 @@ describe('RnpExample', () => {
 
   beforeAll(async () => {
     harness = new RnpExampleTestHarness();
-    await harness.setupMockedTests();
+    await harness.initMockedTests();
   });
 
   afterEach(async () => {
