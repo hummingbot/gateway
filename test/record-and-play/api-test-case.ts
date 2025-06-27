@@ -6,38 +6,58 @@ import {
 
 import { AbstractGatewayTestHarness } from './abstract-gateway-test-harness';
 
+export interface APITestCaseParams<
+  T extends AbstractGatewayTestHarness<any> = any,
+> {
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'OPTIONS' | 'HEAD';
+  url: string;
+  expectedStatus: number;
+  query?: Record<string, string>;
+  payload?: Record<string, any>;
+  /**
+   * A map of mock keys to their corresponding mock file basenames.
+   * The test harness will automatically append the '.json' extension.
+   * The keys must correspond to the keys in the Test Harness's dependencyContracts object.
+   * @example { 'getLatestBlock': 'mayanode-getLatestBlock-response' }
+   */
+  requiredMocks?: Partial<
+    Record<keyof T['dependencyContracts'], string | string[]>
+  >;
+  propertyMatchers?: Partial<any>;
+}
+
 export class APITestCase<T extends AbstractGatewayTestHarness<any> = any>
   implements InjectOptions
 {
-  constructor(
-    public method:
-      | 'GET'
-      | 'POST'
-      | 'PUT'
-      | 'DELETE'
-      | 'PATCH'
-      | 'OPTIONS'
-      | 'HEAD',
-    public url: string,
-    public expectedStatus: number,
-    public query: Record<string, string>,
-    public payload: Record<string, any>,
-    /**
-     * A map of mock keys to their corresponding mock file basenames.
-     * The test harness will automatically append the '.json' extension.
-     * The keys must correspond to the keys in the Test Harness's dependencyContracts object.
-     * @example { 'getLatestBlock': 'mayanode-getLatestBlock-response' }
-     */
-    public requiredMocks: Partial<
-      Record<keyof T['dependencyContracts'], string | string[]>
-    >,
-    public propertyMatchers?: Partial<any>,
-  ) {}
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'OPTIONS' | 'HEAD';
+  url: string;
+  expectedStatus: number;
+  query: Record<string, string>;
+  payload: Record<string, any>;
+  requiredMocks: Partial<
+    Record<keyof T['dependencyContracts'], string | string[]>
+  >;
+  propertyMatchers?: Partial<any>;
 
-  public async processRecorderRequest(
-    harness: T,
-    propertyMatchers?: Partial<any>,
-  ): Promise<{
+  constructor({
+    method,
+    url,
+    expectedStatus,
+    query = {},
+    payload = {},
+    requiredMocks = {},
+    propertyMatchers,
+  }: APITestCaseParams<T>) {
+    this.method = method;
+    this.url = url;
+    this.expectedStatus = expectedStatus;
+    this.query = query;
+    this.payload = payload;
+    this.requiredMocks = requiredMocks;
+    this.propertyMatchers = propertyMatchers;
+  }
+
+  public async processRecorderRequest(harness: T): Promise<{
     response: LightMyRequestResponse;
     body: any;
   }> {
@@ -45,14 +65,11 @@ export class APITestCase<T extends AbstractGatewayTestHarness<any> = any>
     await harness.saveMocks(this.requiredMocks);
     this.assertStatusCode(response);
     const body = JSON.parse(response.body);
-    this.assertSnapshot(body, propertyMatchers);
+    this.assertSnapshot(body);
     return { response, body };
   }
 
-  public async processPlayRequest(
-    harness: T,
-    propertyMatchers?: Partial<any>,
-  ): Promise<{
+  public async processPlayRequest(harness: T): Promise<{
     response: LightMyRequestResponse;
     body: any;
   }> {
@@ -60,13 +77,13 @@ export class APITestCase<T extends AbstractGatewayTestHarness<any> = any>
     const response = await harness.gatewayApp.inject(this);
     this.assertStatusCode(response);
     const body = JSON.parse(response.body);
-    this.assertSnapshot(body, propertyMatchers);
+    this.assertSnapshot(body);
     return { response, body };
   }
 
-  public assertSnapshot(body: any, propertyMatchers?: Partial<any>) {
-    if (propertyMatchers || this.propertyMatchers) {
-      expect(body).toMatchSnapshot(propertyMatchers || this.propertyMatchers);
+  public assertSnapshot(body: any) {
+    if (this.propertyMatchers) {
+      expect(body).toMatchSnapshot(this.propertyMatchers);
     } else {
       expect(body).toMatchSnapshot();
     }
