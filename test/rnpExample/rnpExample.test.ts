@@ -14,6 +14,10 @@ describe('RnpExample', () => {
     await harness.setupMockedTests();
   });
 
+  afterEach(async () => {
+    await harness.reset();
+  });
+
   afterAll(async () => {
     await harness.teardown();
   });

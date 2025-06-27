@@ -10,6 +10,10 @@ describe('RnpExample', () => {
     await harness.setupRecorder();
   });
 
+  afterEach(async () => {
+    await harness.reset();
+  });
+
   afterAll(async () => {
     await harness.teardown();
   });
