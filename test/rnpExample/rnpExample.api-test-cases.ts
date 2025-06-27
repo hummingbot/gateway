@@ -4,70 +4,70 @@ import { RnpExampleTestHarness } from './rnpExample.test-harness';
 
 class TestCase extends APITestCase<RnpExampleTestHarness> {}
 
-export const useABC = new TestCase(
-  'GET',
-  '/rnpExample/useABC',
-  200,
-  { network: 'TEST' },
-  {},
-  {
+export const useABC = new TestCase({
+  method: 'GET',
+  url: '/rnpExample/useABC',
+  expectedStatus: 200,
+  query: { network: 'TEST' },
+  payload: {},
+  requiredMocks: {
     dep1_A: 'rnpExample-methodA',
     dep1_B: 'rnpExample-methodB',
   },
-  {
+  propertyMatchers: {
     c: expect.any(String),
   },
-);
+});
 
-export const useDTwice = new TestCase(
-  'GET',
-  '/rnpExample/useDTwice',
-  200,
-  { network: 'TEST' },
-  {},
-  {
+export const useDTwice = new TestCase({
+  method: 'GET',
+  url: '/rnpExample/useDTwice',
+  expectedStatus: 200,
+  query: { network: 'TEST' },
+  payload: {},
+  requiredMocks: {
     dep1_D: ['rnpExample-methodD1', 'rnpExample-methodD2'],
   },
-);
+});
 
-export const useUnmappedMethodRecorder = new TestCase(
-  'GET',
-  '/rnpExample/useUnmappedMethod',
-  200,
-  { network: 'TEST' },
-  {},
-  {},
-  { unmapped: expect.any(String) },
-);
+export const useUnmappedMethodRecorder = new TestCase({
+  method: 'GET',
+  url: '/rnpExample/useUnmappedMethod',
+  expectedStatus: 200,
+  query: { network: 'TEST' },
+  payload: {},
+  propertyMatchers: { unmapped: expect.any(String) },
+});
 
-export const useUnmappedMethodMocked = new TestCase(
-  'GET',
-  '/rnpExample/useUnmappedMethod',
-  424,
-  { network: 'TEST' },
-  {},
-  {},
-);
+export const useUnmappedMethodMocked = new TestCase({
+  method: 'GET',
+  url: '/rnpExample/useUnmappedMethod',
+  expectedStatus: 424,
+  query: { network: 'TEST' },
+  payload: {},
+  requiredMocks: {},
+  propertyMatchers: {},
+});
 
-export const useUnmappedDep = new TestCase(
-  'GET',
-  '/rnpExample/useUnmappedDep',
-  200,
-  { network: 'TEST' },
-  {},
-  {},
-  {
+export const useUnmappedDep = new TestCase({
+  method: 'GET',
+  url: '/rnpExample/useUnmappedDep',
+  expectedStatus: 200,
+  query: { network: 'TEST' },
+  payload: {},
+  requiredMocks: {},
+  propertyMatchers: {
     z: expect.any(String),
   },
-);
+});
 
-export const useProtoDep = new TestCase(
-  'GET',
-  '/rnpExample/useProtoDep',
-  200,
-  { network: 'TEST' },
-  {},
-  {
+export const useProtoDep = new TestCase({
+  method: 'GET',
+  url: '/rnpExample/useProtoDep',
+  expectedStatus: 200,
+  query: { network: 'TEST' },
+  payload: {},
+  requiredMocks: {
     dep3_X: 'rnpExample-methodX',
   },
-);
+});
