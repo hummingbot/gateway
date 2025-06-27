@@ -1,117 +1,129 @@
+/**
+ * Provides access to the harness's core mocking capabilities.
+ * This interface is used by dependency contracts to get mocks and the service instance.
+ */
 export interface MockProvider<TInstance> {
-  getMock(fileName: string): any;
+  getMock<TMock>(fileName: string): TMock;
   instance: TInstance;
 }
 
 /**
- * Defines the contract for a dependency that can be utilized for record and play testing.
+ * Defines the contract for how a dependency should be spied upon and mocked.
  */
 export abstract class TestDependencyContract<TInstance> {
+  /** If true, the real method will be called even during "Play" mode tests. */
+  public allowPassThrough: boolean;
+  /** Returns the object or prototype that contains the method to be spied on. */
+  abstract getObject(provider: MockProvider<TInstance>): any;
+  /** Creates and returns a Jest spy on the dependency's method. */
+  abstract setupSpy(provider: MockProvider<TInstance>): jest.SpyInstance;
   /**
-   * Sets up a spy on a real method to record or modify its output.
-   * @returns The spy instance.
+   * Attaches a mock implementation to the spy.
+   * Can be called multiple times to mock subsequent calls.
    */
-  abstract setupSpy(harness: MockProvider<TInstance>): jest.SpyInstance;
-
-  /**
-   * @returns The object that has the property that is being spied on.
-   */
-  abstract getObject(harness: MockProvider<TInstance>): any;
-
-  /**
-   * Whether to allow the dependency to pass through to the real implementation.
-   */
-  abstract allowPassThrough: boolean;
-
-  /**
-   * Replaces a dependency call with a mock for record and play testing.
-   * Can be called multiple times to mock subsequent calls to the same dependency.
-   * @returns void.
-   */
-  setupMock(
+  setupMock<TMock>(
     spy: jest.SpyInstance,
-    harness: MockProvider<TInstance>,
-    mockFileName: string,
+    provider: MockProvider<TInstance>,
+    fileName: string,
   ): void {
-    const mockData = harness.getMock(mockFileName);
-    spy.mockResolvedValueOnce(mockData);
+    const mock = provider.getMock<TMock>(fileName);
+    spy.mockResolvedValueOnce(mock);
   }
 }
 
 /**
- * Handles dependencies that are properties on the main instance.
+ * A dependency contract for a method on a class *instance*.
+ * This is the most common type of dependency. It should be used for any
+ * dependency that is a property of the main service instance being tested.
+ * It is required for methods defined with arrow functions.
  */
 export class InstancePropertyDependency<
   TInstance,
-  K extends keyof TInstance,
+  TObject,
 > extends TestDependencyContract<TInstance> {
   constructor(
-    private instancePropertyKey: K,
-    private methodName: keyof TInstance[K],
-    public allowPassThrough: boolean = false,
+    private getObjectFn: (provider: MockProvider<TInstance>) => TObject,
+    public methodName: keyof TObject,
+    public allowPassThrough = false,
   ) {
     super();
   }
 
-  setupSpy(harness: MockProvider<TInstance>): jest.SpyInstance {
-    const dependencyInstance = harness.instance[this.instancePropertyKey];
-    const spy = jest.spyOn(dependencyInstance as any, this.methodName as any);
-    return spy;
+  getObject(provider: MockProvider<TInstance>) {
+    return this.getObjectFn(provider);
   }
 
-  getObject(harness: MockProvider<TInstance>): any {
-    return harness.instance[this.instancePropertyKey];
+  setupSpy(provider: MockProvider<TInstance>): jest.SpyInstance {
+    const object = this.getObject(provider);
+    return jest.spyOn(object, this.methodName as any);
   }
 }
 
 /**
- * Handles dependencies that exist on a prototype, e.g. a class which is initialized inside a method.
+ * A dependency contract for a method on a class *prototype*.
+ * This should be used when the dependency is not an instance property, but a method
+ * on the prototype of a class that is instantiated within the code under test.
  *
+ * IMPORTANT: This will NOT work for methods defined with arrow functions, as they
+ * do not exist on the prototype.
  */
 export class PrototypeDependency<
   TInstance,
-  TPrototype,
+  TObject,
 > extends TestDependencyContract<TInstance> {
   constructor(
-    private Klass: new (...args: any[]) => TPrototype,
-    private prototypeMethod: keyof TPrototype,
-    public allowPassThrough: boolean = false,
+    private proto: { new (...args: any[]): TObject },
+    public methodName: keyof TObject,
+    public allowPassThrough = false,
   ) {
     super();
   }
 
-  setupSpy(_harness: MockProvider<TInstance>): jest.SpyInstance {
-    const spy = jest.spyOn(this.Klass.prototype, this.prototypeMethod as any);
-    return spy;
+  getObject(_provider: MockProvider<TInstance>) {
+    return this.proto.prototype;
   }
 
-  getObject(_harness: MockProvider<TInstance>): any {
-    return this.Klass.prototype;
+  setupSpy(_provider: MockProvider<TInstance>): jest.SpyInstance {
+    return jest.spyOn(this.proto.prototype, this.methodName as any);
   }
 }
 
+/**
+ * Provides factory methods for creating dependency contracts.
+ * This should be used within a concrete TestHarness class.
+ */
 export class DependencyFactory<TInstance> {
+  /**
+   * Creates a contract for a method on a class instance property.
+   * @param instancePropertyName The name of the property on the main service instance that holds the dependency object.
+   * @param methodName The name of the method on the dependency object to spy on.
+   * @param allowPassThrough If true, the real method is called during "Play" mode.
+   */
   instanceProperty<K extends keyof TInstance>(
-    instanceKey: K,
+    instancePropertyName: K,
     methodName: keyof TInstance[K],
-    allowPassThrough: boolean = false,
-  ): InstancePropertyDependency<TInstance, K> {
-    return new InstancePropertyDependency<TInstance, K>(
-      instanceKey,
+    allowPassThrough = false,
+  ) {
+    return new InstancePropertyDependency(
+      (p: MockProvider<TInstance>): TInstance[K] =>
+        p.instance[instancePropertyName],
       methodName,
       allowPassThrough,
     );
   }
 
-  prototype<TPrototype>(
-    Klass: new (...args: any[]) => TPrototype,
-    prototypeMethod: keyof TPrototype,
-    allowPassThrough: boolean = false,
-  ): PrototypeDependency<TInstance, TPrototype> {
-    return new PrototypeDependency<TInstance, TPrototype>(
-      Klass,
-      prototypeMethod,
-      allowPassThrough,
-    );
+  /**
+   * Creates a contract for a method on a class prototype.
+   * WARNING: This will not work for methods defined as arrow functions.
+   * @param proto The class (not an instance) whose prototype contains the method.
+   * @param methodName The name of the method on the prototype to spy on.
+   * @param allowPassThrough If true, the real method is called during "Play" mode.
+   */
+  prototype<TObject>(
+    proto: { new (...args: any[]): TObject },
+    methodName: keyof TObject,
+    allowPassThrough = false,
+  ) {
+    return new PrototypeDependency(proto, methodName, allowPassThrough);
   }
 }
