@@ -37,6 +37,7 @@ export const useUnmappedMethodRecorder = new TestCase(
   { network: 'TEST' },
   {},
   {},
+  { unmapped: expect.any(String) },
 );
 
 export const useUnmappedMethodMocked = new TestCase(
@@ -48,9 +49,9 @@ export const useUnmappedMethodMocked = new TestCase(
   {},
 );
 
-export const useDep2 = new TestCase(
+export const useUnmappedDep = new TestCase(
   'GET',
-  '/rnpExample/useDep2',
+  '/rnpExample/useUnmappedDep',
   200,
   { network: 'TEST' },
   {},

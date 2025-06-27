@@ -1,6 +1,6 @@
 import {
   useABC,
-  useDep2,
+  useUnmappedDep,
   useDTwice,
   useUnmappedMethodMocked,
 } from './rnpExample.api-test-cases';
@@ -30,11 +30,18 @@ describe('RnpExample', () => {
     await useDTwice.processPlayRequest(harness);
   });
 
+  it('useUnmappedMethodRecorder', async () => {
+    // Used to force snapshot file to match exactly
+    expect({
+      unmapped: expect.any(String),
+    }).toMatchSnapshot();
+  });
+
   it('useUnmappedMethodMocked', async () => {
     await useUnmappedMethodMocked.processPlayRequest(harness);
   });
 
-  it('useDep2', async () => {
-    await useDep2.processPlayRequest(harness);
+  it('useUnmappedDep', async () => {
+    await useUnmappedDep.processPlayRequest(harness);
   });
 });
