@@ -76,8 +76,10 @@ export abstract class AbstractGatewayTestHarness<TInstance>
 
   private async setupSpies() {
     for (const [_key, dep] of Object.entries(this.dependencyContracts)) {
-      const spy = dep.setupSpy(this);
-      dep.spy = spy;
+      if (!dep.spy) {
+        const spy = dep.setupSpy(this);
+        dep.spy = spy;
+      }
     }
   }
 
@@ -136,9 +138,19 @@ export abstract class AbstractGatewayTestHarness<TInstance>
     }
   }
 
+  async reset() {
+    Object.values(this.dependencyContracts).forEach((dep) => {
+      if (dep.spy) {
+        dep.spy.mockReset();
+      }
+    });
+  }
+
   async teardown() {
     Object.values(this.dependencyContracts).forEach((dep) => {
-      dep.spy.mockRestore();
+      if (dep.spy) {
+        dep.spy.mockRestore();
+      }
     });
     if (this._gatewayApp) {
       await this._gatewayApp.close();
