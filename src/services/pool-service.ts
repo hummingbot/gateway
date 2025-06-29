@@ -115,14 +115,16 @@ export class PoolService {
    */
   private async initializePoolList(connector: string): Promise<Pool[]> {
     const templatePath = this.getTemplatePath(connector);
-    
+
     // If template exists, use it
     if (fs.existsSync(templatePath)) {
       try {
         const data = await readFile(templatePath, 'utf8');
         return JSON.parse(data);
       } catch (error) {
-        logger.warn(`Failed to read template for ${connector}: ${error.message}`);
+        logger.warn(
+          `Failed to read template for ${connector}: ${error.message}`,
+        );
       }
     }
 
@@ -168,10 +170,7 @@ export class PoolService {
   /**
    * Save pool list to file with atomic write
    */
-  public async savePoolList(
-    connector: string,
-    pools: Pool[],
-  ): Promise<void> {
+  public async savePoolList(connector: string, pools: Pool[]): Promise<void> {
     await this.validateConnector(connector);
 
     const poolListPath = this.getPoolListPath(connector);
@@ -184,7 +183,7 @@ export class PoolService {
 
     // Use atomic write (write to temp file then rename)
     const tempPath = `${poolListPath}.tmp`;
-    
+
     try {
       await writeFile(tempPath, JSON.stringify(pools, null, 2));
       fs.renameSync(tempPath, poolListPath);
@@ -212,19 +211,19 @@ export class PoolService {
 
     // Filter by network if specified
     if (network) {
-      filteredPools = filteredPools.filter(pool => pool.network === network);
+      filteredPools = filteredPools.filter((pool) => pool.network === network);
     }
 
     // Filter by type if specified
     if (type) {
-      filteredPools = filteredPools.filter(pool => pool.type === type);
+      filteredPools = filteredPools.filter((pool) => pool.type === type);
     }
 
     // Filter by search term if provided
     if (search) {
       const searchLower = search.toLowerCase();
       filteredPools = filteredPools.filter(
-        pool =>
+        (pool) =>
           pool.baseSymbol.toLowerCase().includes(searchLower) ||
           pool.quoteSymbol.toLowerCase().includes(searchLower) ||
           pool.address.toLowerCase().includes(searchLower),
@@ -248,7 +247,7 @@ export class PoolService {
 
     // Find by exact match or reversed match
     const pool = pools.find(
-      p =>
+      (p) =>
         (p.baseSymbol === baseSymbol && p.quoteSymbol === quoteSymbol) ||
         (p.baseSymbol === quoteSymbol && p.quoteSymbol === baseSymbol),
     );
@@ -308,18 +307,22 @@ export class PoolService {
     const pools = await this.loadPoolList(connector);
 
     // Check for duplicate address
-    if (pools.some(p => p.address.toLowerCase() === pool.address.toLowerCase())) {
+    if (
+      pools.some((p) => p.address.toLowerCase() === pool.address.toLowerCase())
+    ) {
       throw new Error(`Pool with address ${pool.address} already exists`);
     }
 
     // Check for duplicate token pair on same network and type
     if (
       pools.some(
-        p =>
+        (p) =>
           p.network === pool.network &&
           p.type === pool.type &&
-          ((p.baseSymbol === pool.baseSymbol && p.quoteSymbol === pool.quoteSymbol) ||
-            (p.baseSymbol === pool.quoteSymbol && p.quoteSymbol === pool.baseSymbol)),
+          ((p.baseSymbol === pool.baseSymbol &&
+            p.quoteSymbol === pool.quoteSymbol) ||
+            (p.baseSymbol === pool.quoteSymbol &&
+              p.quoteSymbol === pool.baseSymbol)),
       )
     ) {
       throw new Error(
@@ -344,13 +347,18 @@ export class PoolService {
     const initialLength = pools.length;
 
     const filteredPools = pools.filter(
-      p => !(p.address.toLowerCase() === address.toLowerCase() && 
-             p.network === network && 
-             p.type === type)
+      (p) =>
+        !(
+          p.address.toLowerCase() === address.toLowerCase() &&
+          p.network === network &&
+          p.type === type
+        ),
     );
 
     if (filteredPools.length === initialLength) {
-      throw new Error(`Pool with address ${address} not found on ${network} ${type}`);
+      throw new Error(
+        `Pool with address ${address} not found on ${network} ${type}`,
+      );
     }
 
     await this.savePoolList(connector, filteredPools);
@@ -364,7 +372,10 @@ export class PoolService {
     address: string,
   ): Promise<Pool | null> {
     const pools = await this.loadPoolList(connector);
-    return pools.find(p => p.address.toLowerCase() === address.toLowerCase()) || null;
+    return (
+      pools.find((p) => p.address.toLowerCase() === address.toLowerCase()) ||
+      null
+    );
   }
 
   /**

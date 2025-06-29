@@ -60,7 +60,15 @@ export type RemoveWalletRequest = Static<typeof RemoveWalletRequestSchema>;
 export type SignMessageRequest = Static<typeof SignMessageRequestSchema>;
 export type SignMessageResponse = Static<typeof SignMessageResponseSchema>;
 export type GetWalletResponse = Static<typeof GetWalletResponseSchema>;
-export type AddReadOnlyWalletRequest = Static<typeof AddReadOnlyWalletRequestSchema>;
-export type AddReadOnlyWalletResponse = Static<typeof AddReadOnlyWalletResponseSchema>;
-export type RemoveReadOnlyWalletRequest = Static<typeof RemoveReadOnlyWalletRequestSchema>;
-export type RemoveReadOnlyWalletResponse = Static<typeof RemoveReadOnlyWalletResponseSchema>;
+export type AddReadOnlyWalletRequest = Static<
+  typeof AddReadOnlyWalletRequestSchema
+>;
+export type AddReadOnlyWalletResponse = Static<
+  typeof AddReadOnlyWalletResponseSchema
+>;
+export type RemoveReadOnlyWalletRequest = Static<
+  typeof RemoveReadOnlyWalletRequestSchema
+>;
+export type RemoveReadOnlyWalletResponse = Static<
+  typeof RemoveReadOnlyWalletResponseSchema
+>;

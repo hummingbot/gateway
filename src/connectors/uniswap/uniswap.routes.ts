@@ -1,6 +1,7 @@
+import sensible from '@fastify/sensible';
 import { FastifyPluginAsync } from 'fastify';
 
-import { logger } from '../../services/logger';
+// Import swap routes
 
 // Import AMM routes
 import addLiquidityRoute from './amm-routes/addLiquidity';
@@ -11,46 +12,88 @@ import quoteLiquidityRoute from './amm-routes/quoteLiquidity';
 import ammQuoteSwapRoute from './amm-routes/quoteSwap';
 import removeLiquidityRoute from './amm-routes/removeLiquidity';
 
-export const uniswapRoutes: FastifyPluginAsync = async (fastify) => {
-  // Register direct routes (Universal Router)
-  fastify.register(require('./routes/quote-swap').default);
-  fastify.register(require('./routes/execute-swap').default);
+// Import CLMM routes
+import clmmAddLiquidityRoute from './clmm-routes/addLiquidity';
+import closePositionRoute from './clmm-routes/closePosition';
+import collectFeesRoute from './clmm-routes/collectFees';
+import clmmExecuteSwapRoute from './clmm-routes/executeSwap';
+import openPositionRoute from './clmm-routes/openPosition';
+import clmmPoolInfoRoute from './clmm-routes/poolInfo';
+import clmmPositionInfoRoute from './clmm-routes/positionInfo';
+import positionsOwnedRoute from './clmm-routes/positionsOwned';
+import quotePositionRoute from './clmm-routes/quotePosition';
+import clmmQuoteSwapRoute from './clmm-routes/quoteSwap';
+import clmmRemoveLiquidityRoute from './clmm-routes/removeLiquidity';
+import executeSwapRoute from './swap-routes/execute-swap';
+import quoteSwapRoute from './swap-routes/quote-swap';
 
-  // Register AMM routes (Uniswap V2)
-  fastify.register(
-    async (ammRouter) => {
-      await ammRouter.register(poolInfoRoute);
-      await ammRouter.register(positionInfoRoute);
-      await ammRouter.register(ammQuoteSwapRoute);
-      await ammRouter.register(quoteLiquidityRoute);
-      await ammRouter.register(ammExecuteSwapRoute);
-      await ammRouter.register(addLiquidityRoute);
-      await ammRouter.register(removeLiquidityRoute);
-    },
-    { prefix: '/amm' },
-  );
+// Swap routes (Universal Router)
+const uniswapSwapRoutes: FastifyPluginAsync = async (fastify) => {
+  await fastify.register(sensible);
 
-  // Register CLMM routes (Uniswap V3)
-  fastify.register(
-    async (clmmRouter) => {
-      await clmmRouter.register(require('./clmm-routes/poolInfo').default);
-      await clmmRouter.register(require('./clmm-routes/quoteSwap').default);
-      await clmmRouter.register(require('./clmm-routes/positionInfo').default);
-      await clmmRouter.register(
-        require('./clmm-routes/positionsOwned').default,
-      );
-      await clmmRouter.register(require('./clmm-routes/quotePosition').default);
-      await clmmRouter.register(require('./clmm-routes/openPosition').default);
-      await clmmRouter.register(require('./clmm-routes/executeSwap').default);
-      await clmmRouter.register(require('./clmm-routes/addLiquidity').default);
-      await clmmRouter.register(
-        require('./clmm-routes/removeLiquidity').default,
-      );
-      await clmmRouter.register(require('./clmm-routes/collectFees').default);
-      await clmmRouter.register(require('./clmm-routes/closePosition').default);
-    },
-    { prefix: '/clmm' },
-  );
+  await fastify.register(async (instance) => {
+    instance.addHook('onRoute', (routeOptions) => {
+      if (routeOptions.schema && routeOptions.schema.tags) {
+        routeOptions.schema.tags = ['uniswap'];
+      }
+    });
+
+    await instance.register(quoteSwapRoute);
+    await instance.register(executeSwapRoute);
+  });
+};
+
+// AMM routes (Uniswap V2)
+const uniswapAmmRoutes: FastifyPluginAsync = async (fastify) => {
+  await fastify.register(sensible);
+
+  await fastify.register(async (instance) => {
+    instance.addHook('onRoute', (routeOptions) => {
+      if (routeOptions.schema && routeOptions.schema.tags) {
+        routeOptions.schema.tags = ['uniswap/amm'];
+      }
+    });
+
+    await instance.register(poolInfoRoute);
+    await instance.register(positionInfoRoute);
+    await instance.register(ammQuoteSwapRoute);
+    await instance.register(quoteLiquidityRoute);
+    await instance.register(ammExecuteSwapRoute);
+    await instance.register(addLiquidityRoute);
+    await instance.register(removeLiquidityRoute);
+  });
+};
+
+// CLMM routes (Uniswap V3)
+const uniswapClmmRoutes: FastifyPluginAsync = async (fastify) => {
+  await fastify.register(sensible);
+
+  await fastify.register(async (instance) => {
+    instance.addHook('onRoute', (routeOptions) => {
+      if (routeOptions.schema && routeOptions.schema.tags) {
+        routeOptions.schema.tags = ['uniswap/clmm'];
+      }
+    });
+
+    await instance.register(clmmPoolInfoRoute);
+    await instance.register(clmmPositionInfoRoute);
+    await instance.register(positionsOwnedRoute);
+    await instance.register(quotePositionRoute);
+    await instance.register(clmmQuoteSwapRoute);
+    await instance.register(clmmExecuteSwapRoute);
+    await instance.register(openPositionRoute);
+    await instance.register(clmmAddLiquidityRoute);
+    await instance.register(clmmRemoveLiquidityRoute);
+    await instance.register(collectFeesRoute);
+    await instance.register(closePositionRoute);
+  });
+};
+
+// Export routes in the same pattern as other connectors
+export const uniswapRoutes = {
+  swap: uniswapSwapRoutes,
+  amm: uniswapAmmRoutes,
+  clmm: uniswapClmmRoutes,
 };
 
 export default uniswapRoutes;

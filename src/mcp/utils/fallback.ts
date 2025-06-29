@@ -76,7 +76,7 @@ export class FallbackDataProvider {
       const connectorMap: Record<string, any> = {
         uniswap: {
           chain: 'ethereum',
-          trading_types: ['swap', 'amm', 'clmm'],
+          trading_types: ['amm', 'clmm', 'swap'],
           networks: [
             'mainnet',
             'arbitrum',
@@ -96,12 +96,12 @@ export class FallbackDataProvider {
         },
         meteora: {
           chain: 'solana',
-          trading_types: ['clmm', 'swap'],
+          trading_types: ['clmm'],
           networks: ['mainnet-beta', 'devnet'],
         },
         raydium: {
           chain: 'solana',
-          trading_types: ['amm', 'clmm', 'swap'],
+          trading_types: ['amm', 'clmm'],
           networks: ['mainnet-beta', 'devnet'],
         },
       };

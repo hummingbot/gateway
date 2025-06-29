@@ -1,2 +1,42 @@
 nodeURL: https://api.devnet.solana.com
 nativeCurrencySymbol: SOL
+
+# Default compute units for a transaction
+# This sets the compute unit limit for transactions when not specified by the user
+defaultComputeUnits: 200000
+
+# Gas estimate interval in seconds
+# How often to update the cached gas price estimate (not used for transaction retry)
+gasEstimateInterval: 60
+
+# Maximum fee in SOL (now controlled by Hummingbot)
+# This is the absolute ceiling for transaction fees, including base fee + priority fee
+maxFee: 0.01
+
+# Minimum fee in SOL (now controlled by Hummingbot)
+# This is the minimum priority fee per compute unit (converted to lamports/CU)
+minFee: 0.0001
+
+# Number of retry attempts for transaction confirmation
+# Used for transaction submission retries with increasing fees (outer retry loop)
+retryCount: 3
+
+# Multiplier for increasing priority fee on retry (now controlled by Hummingbot)
+# When a transaction fails to confirm, multiply priority fee by this factor
+retryFeeMultiplier: 2.0
+
+# Retry interval in seconds
+# Wait time between transaction submission retries (outer retry loop)
+retryInterval: 2
+
+# Confirmation polling interval in seconds
+# How often to check if a submitted transaction has been confirmed (inner retry loop)
+confirmRetryInterval: 0.5
+
+# Number of confirmation polling attempts
+# How many times to poll for confirmation before considering the transaction unconfirmed
+confirmRetryCount: 10
+
+# Floor percentile of recent priority fee samples used to estimate gasPrice for a transaction
+# Use the Nth percentile of recent priority fees as the base fee (90 = 90th percentile)
+basePriorityFeePct: 90

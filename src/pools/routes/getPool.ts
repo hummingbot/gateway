@@ -1,11 +1,11 @@
+import { Type } from '@sinclair/typebox';
 import { FastifyPluginAsync } from 'fastify';
 
 import { PoolService } from '../../services/pool-service';
 import { PoolListResponseSchema } from '../schemas';
-import { Type } from '@sinclair/typebox';
 
 export const getPoolRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{ 
+  fastify.get<{
     Params: { tradingPair: string };
     Querystring: {
       connector: string;
@@ -38,10 +38,7 @@ export const getPoolRoute: FastifyPluginAsync = async (fastify) => {
             description: 'Network name (mainnet, mainnet-beta, etc)',
             examples: ['mainnet', 'mainnet-beta'],
           }),
-          type: Type.Union([
-            Type.Literal('amm'),
-            Type.Literal('clmm'),
-          ], {
+          type: Type.Union([Type.Literal('amm'), Type.Literal('clmm')], {
             description: 'Pool type',
           }),
         }),
@@ -64,13 +61,21 @@ export const getPoolRoute: FastifyPluginAsync = async (fastify) => {
       try {
         // Parse trading pair (e.g., "ETH-USDC" -> ["ETH", "USDC"])
         const [baseToken, quoteToken] = tradingPair.split('-');
-        
+
         if (!baseToken || !quoteToken) {
-          throw new Error('Invalid trading pair format. Expected: BASE-QUOTE (e.g., ETH-USDC)');
+          throw new Error(
+            'Invalid trading pair format. Expected: BASE-QUOTE (e.g., ETH-USDC)',
+          );
         }
 
-        const pool = await poolService.getPool(connector, network, type, baseToken, quoteToken);
-        
+        const pool = await poolService.getPool(
+          connector,
+          network,
+          type,
+          baseToken,
+          quoteToken,
+        );
+
         if (!pool) {
           throw fastify.httpErrors.notFound(
             `Pool for ${tradingPair} not found in ${connector} ${type} on ${network}`,

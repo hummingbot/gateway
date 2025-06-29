@@ -30,12 +30,11 @@ export function getSolanaConfig(
   chainName: string,
   networkName: string,
 ): Config {
+  const namespaceId = `${chainName}-${networkName}`;
   return {
     network: {
       name: networkName,
-      nodeURL: ConfigManagerV2.getInstance().get(
-        chainName + '.networks.' + networkName + '.nodeURL',
-      ),
+      nodeURL: ConfigManagerV2.getInstance().get(namespaceId + '.nodeURL'),
       tokenListType: 'FILE' as TokenListType,
       tokenListSource: path.join(
         rootPath(),
@@ -45,32 +44,32 @@ export function getSolanaConfig(
         `${networkName}.json`,
       ),
       nativeCurrencySymbol: ConfigManagerV2.getInstance().get(
-        chainName + '.networks.' + networkName + '.nativeCurrencySymbol',
+        namespaceId + '.nativeCurrencySymbol',
       ),
     },
     defaultComputeUnits: ConfigManagerV2.getInstance().get(
-      chainName + '.defaultComputeUnits',
+      namespaceId + '.defaultComputeUnits',
     ),
     gasEstimateInterval: ConfigManagerV2.getInstance().get(
-      chainName + '.gasEstimateInterval',
+      namespaceId + '.gasEstimateInterval',
     ),
-    maxFee: ConfigManagerV2.getInstance().get(chainName + '.maxFee'),
-    minFee: ConfigManagerV2.getInstance().get(chainName + '.minFee'),
-    retryCount: ConfigManagerV2.getInstance().get(chainName + '.retryCount'),
+    maxFee: ConfigManagerV2.getInstance().get(namespaceId + '.maxFee'),
+    minFee: ConfigManagerV2.getInstance().get(namespaceId + '.minFee'),
+    retryCount: ConfigManagerV2.getInstance().get(namespaceId + '.retryCount'),
     retryFeeMultiplier: ConfigManagerV2.getInstance().get(
-      chainName + '.retryFeeMultiplier',
+      namespaceId + '.retryFeeMultiplier',
     ),
     retryInterval: ConfigManagerV2.getInstance().get(
-      chainName + '.retryInterval',
+      namespaceId + '.retryInterval',
     ),
     confirmRetryInterval: ConfigManagerV2.getInstance().get(
-      chainName + '.confirmRetryInterval',
+      namespaceId + '.confirmRetryInterval',
     ),
     confirmRetryCount: ConfigManagerV2.getInstance().get(
-      chainName + '.confirmRetryCount',
+      namespaceId + '.confirmRetryCount',
     ),
     basePriorityFeePct: ConfigManagerV2.getInstance().get(
-      chainName + '.basePriorityFeePct',
+      namespaceId + '.basePriorityFeePct',
     ),
   };
 }

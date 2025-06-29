@@ -9,7 +9,9 @@ import {
 } from '../schemas';
 import { removeReadOnlyWallet } from '../utils';
 
-export const removeReadOnlyWalletRoute: FastifyPluginAsync = async (fastify) => {
+export const removeReadOnlyWalletRoute: FastifyPluginAsync = async (
+  fastify,
+) => {
   fastify.delete<{
     Body: RemoveReadOnlyWalletRequest;
     Reply: RemoveReadOnlyWalletResponse;

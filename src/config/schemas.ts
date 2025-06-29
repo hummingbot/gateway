@@ -4,19 +4,18 @@ import { Type, Static } from '@sinclair/typebox';
 export const ConfigUpdateRequestSchema = Type.Object({
   namespace: Type.String({
     description:
-      'Configuration namespace (e.g., "server", "ethereum", "solana", "uniswap")',
-    examples: ['server', 'ethereum', 'solana', 'uniswap', 'jupiter'],
+      'Configuration namespace (e.g., "server", "ethereum-mainnet", "solana-mainnet-beta", "uniswap")',
+    examples: [
+      'server',
+      'ethereum-mainnet',
+      'solana-mainnet-beta',
+      'uniswap',
+      'jupiter',
+    ],
   }),
-  network: Type.Optional(
-    Type.String({
-      description:
-        'Optional network name (e.g., "mainnet", "mainnet-beta"). Only used when namespace is a chain.',
-      examples: ['mainnet', 'mainnet-beta', 'devnet', 'arbitrum', 'optimism'],
-    }),
-  ),
   path: Type.String({
     description:
-      'Configuration path within the namespace/network (e.g., "nodeURL", "manualGasPrice")',
+      'Configuration path within the namespace (e.g., "nodeURL", "manualGasPrice")',
     examples: [
       'nodeURL',
       'nativeCurrencySymbol',
@@ -98,15 +97,13 @@ export const ConfigQuerySchema = Type.Object({
   namespace: Type.Optional(
     Type.String({
       description:
-        'Optional configuration namespace (e.g., "server", "ethereum", "solana", "uniswap", "jupiter")',
-      examples: ['server', 'ethereum', 'solana', 'uniswap'],
-    }),
-  ),
-  network: Type.Optional(
-    Type.String({
-      description:
-        'Optional network name (e.g., "mainnet", "mainnet-beta", "devnet"). Only used when namespace is a chain.',
-      examples: ['mainnet', 'mainnet-beta', 'devnet', 'arbitrum', 'optimism'],
+        'Optional configuration namespace (e.g., "server", "ethereum-mainnet", "solana-mainnet-beta", "uniswap")',
+      examples: [
+        'server',
+        'ethereum-mainnet',
+        'solana-mainnet-beta',
+        'uniswap',
+      ],
     }),
   ),
 });

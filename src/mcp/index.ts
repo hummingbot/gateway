@@ -11,8 +11,8 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 
-import { registerResources } from './resources';
 import { registerPrompts } from './prompts';
+import { registerResources } from './resources';
 import { registerCoinGeckoTools } from './tools/coingecko-gateway';
 import { registerConfigTools } from './tools/config';
 import { registerTradingTools } from './tools/trading';
@@ -72,18 +72,22 @@ async function main() {
 
   // Register resources for reading configs, tokens, and wallets
   registerResources(server, apiClient);
-  
+
   // Register prompts
   registerPrompts(server);
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  
+
   const totalTools = ToolRegistry.getAllTools().length;
   if (withCoinGecko) {
-    console.error(`Gateway MCP server v${GATEWAY_VERSION} running with ${totalTools} tools (5 Gateway + ${totalTools - 5} CoinGecko)`);
+    console.error(
+      `Gateway MCP server v${GATEWAY_VERSION} running with ${totalTools} tools (5 Gateway + ${totalTools - 5} CoinGecko)`,
+    );
   } else {
-    console.error(`Gateway MCP server v${GATEWAY_VERSION} running with ${totalTools} Gateway tools`);
+    console.error(
+      `Gateway MCP server v${GATEWAY_VERSION} running with ${totalTools} Gateway tools`,
+    );
   }
 }
 

@@ -1,11 +1,11 @@
 import { FastifyPluginAsync } from 'fastify';
 
+import { addReadOnlyWalletRoute } from './routes/addReadOnlyWallet';
 import { addWalletRoute } from './routes/addWallet';
 import { getWalletsRoute } from './routes/getWallets';
+import { removeReadOnlyWalletRoute } from './routes/removeReadOnlyWallet';
 import { removeWalletRoute } from './routes/removeWallet';
 import { signMessageRoute } from './routes/signMessage';
-import { addReadOnlyWalletRoute } from './routes/addReadOnlyWallet';
-import { removeReadOnlyWalletRoute } from './routes/removeReadOnlyWallet';
 
 export const walletRoutes: FastifyPluginAsync = async (fastify) => {
   // Register individual route handlers

@@ -22,9 +22,9 @@ import { meteoraRoutes } from './connectors/meteora/meteora.routes';
 import { raydiumRoutes } from './connectors/raydium/raydium.routes';
 import { uniswapRoutes } from './connectors/uniswap/uniswap.routes';
 import { getHttpsOptions } from './https';
+import { poolRoutes } from './pools/pools.routes';
 import { ConfigManagerV2 } from './services/config-manager-v2';
 import { logger } from './services/logger';
-import { poolRoutes } from './pools/pools.routes';
 import { tokensRoutes } from './tokens/tokens.routes';
 import { GATEWAY_VERSION } from './version';
 import { walletRoutes } from './wallet/wallet.routes';
@@ -202,16 +202,20 @@ const configureGatewayServer = () => {
     app.register(chainRoutes, { prefix: '/chains' });
 
     // Register DEX connector routes
+    // Jupiter - swap only
     app.register(jupiterRoutes.swap, { prefix: '/connectors/jupiter' });
 
-    // Meteora routes
+    // Meteora - clmm only
     app.register(meteoraRoutes.clmm, { prefix: '/connectors/meteora/clmm' });
 
-    // Raydium routes
-    app.register(raydiumRoutes.clmm, { prefix: '/connectors/raydium/clmm' });
+    // Raydium - amm and clmm
     app.register(raydiumRoutes.amm, { prefix: '/connectors/raydium/amm' });
+    app.register(raydiumRoutes.clmm, { prefix: '/connectors/raydium/clmm' });
 
-    app.register(uniswapRoutes, { prefix: '/connectors/uniswap' });
+    // Uniswap - swap, amm, and clmm
+    app.register(uniswapRoutes.swap, { prefix: '/connectors/uniswap' });
+    app.register(uniswapRoutes.amm, { prefix: '/connectors/uniswap/amm' });
+    app.register(uniswapRoutes.clmm, { prefix: '/connectors/uniswap/clmm' });
 
     // Register chain routes
     app.register(solanaRoutes, { prefix: '/chains/solana' });

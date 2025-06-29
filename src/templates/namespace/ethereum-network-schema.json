@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "chainID": { "type": "integer" },
+    "nodeURL": { "type": "string" },
+    "nativeCurrencySymbol": { "type": "string" },
+    "gasPriceRefreshInterval": { "type": "number" },
+    "gasLimitTransaction": { "type": "integer" },
+    "manualGasPrice": { "type": "integer" },
+    "defaultComputeUnits": { "type": "number" },
+    "gasEstimateInterval": { "type": "number" },
+    "maxFee": { "type": "number" },
+    "minFee": { "type": "number" },
+    "retryCount": { "type": "number" },
+    "retryFeeMultiplier": { "type": "number" },
+    "retryInterval": { "type": "number" }
+  },
+  "required": [
+    "chainID",
+    "nodeURL",
+    "nativeCurrencySymbol"
+  ],
+  "additionalProperties": false
+}

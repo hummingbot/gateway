@@ -27,13 +27,17 @@ export async function getSolanaBalances(
 ): Promise<BalanceResponseType> {
   try {
     const solana = await Solana.getInstance(network);
-    
+
     // Check if this is a read-only wallet
     const isReadOnly = await solana.isReadOnlyWallet(address);
-    
+
     if (isReadOnly) {
       // For read-only wallets, use the address-based balance fetching
-      const balances = await getOptimizedBalanceByAddress(solana, address, tokens);
+      const balances = await getOptimizedBalanceByAddress(
+        solana,
+        address,
+        tokens,
+      );
       return { balances };
     } else {
       // For regular wallets, use the existing logic
@@ -577,7 +581,7 @@ async function getOptimizedBalanceByAddress(
                   undefined,
                   programId,
                 ),
-                new Promise((_, reject) =>
+                new Promise<never>((_, reject) =>
                   setTimeout(
                     () => reject(new Error('Mint info timeout')),
                     1000,
@@ -610,7 +614,9 @@ async function getOptimizedBalanceByAddress(
             }
           }
         } catch (error) {
-          logger.warn(`Error processing token ${mintAddress}: ${error.message}`);
+          logger.warn(
+            `Error processing token ${mintAddress}: ${error.message}`,
+          );
         }
       }
     }

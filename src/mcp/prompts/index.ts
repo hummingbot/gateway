@@ -3,15 +3,17 @@ import {
   ListPromptsRequestSchema,
   GetPromptRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { fetchSwapQuotePromptMetadata, getFetchSwapQuoteMessages } from './fetch-swap-quote';
+
+import {
+  fetchSwapQuotePromptMetadata,
+  getFetchSwapQuoteMessages,
+} from './fetch-swap-quote';
 
 export function registerPrompts(server: Server) {
   // List available prompts
   server.setRequestHandler(ListPromptsRequestSchema, async () => {
     return {
-      prompts: [
-        fetchSwapQuotePromptMetadata,
-      ],
+      prompts: [fetchSwapQuotePromptMetadata],
     };
   });
 
@@ -26,28 +28,61 @@ export function registerPrompts(server: Server) {
         if (args && typeof args === 'object' && !Array.isArray(args)) {
           const keys = Object.keys(args);
           // If we have unexpected keys or values that look like parts of a sentence
-          const hasUnexpectedKeys = keys.some(key => 
-            !['chain', 'inputToken', 'outputToken', 'amount', 'wallet'].includes(key)
+          const hasUnexpectedKeys = keys.some(
+            (key) =>
+              ![
+                'chain',
+                'inputToken',
+                'outputToken',
+                'amount',
+                'wallet',
+              ].includes(key),
           );
-          
+
           // Check if this looks like misparse natural language
-          const looksLikeNaturalLanguage = hasUnexpectedKeys || 
-              (args.chain && ['buy', 'sell', 'swap', 'convert', 'trade'].includes(args.chain.toLowerCase())) ||
-              (args.amount && ['worth', 'of', 'for', 'with'].includes(args.amount.toLowerCase())) ||
-              (args.wallet && ['ray', 'sol', 'eth', 'usdc', 'dai'].includes(args.wallet.toLowerCase()));
-          
+          const looksLikeNaturalLanguage =
+            hasUnexpectedKeys ||
+            (args.chain &&
+              ['buy', 'sell', 'swap', 'convert', 'trade'].includes(
+                args.chain.toLowerCase(),
+              )) ||
+            (args.amount &&
+              ['worth', 'of', 'for', 'with'].includes(
+                args.amount.toLowerCase(),
+              )) ||
+            (args.wallet &&
+              ['ray', 'sol', 'eth', 'usdc', 'dai'].includes(
+                args.wallet.toLowerCase(),
+              ));
+
           if (looksLikeNaturalLanguage) {
             // For wrongly mapped named args, reconstruct in the order they likely appeared
             // "buy 0.1 sol worth of ray" -> chain=buy, inputToken=0.1, outputToken=sol, amount=worth, wallet=of
             let naturalLanguageInput = '';
-            
-            if (args.chain && args.inputToken && args.outputToken && args.amount && args.wallet) {
+
+            if (
+              args.chain &&
+              args.inputToken &&
+              args.outputToken &&
+              args.amount &&
+              args.wallet
+            ) {
               // Reconstruct: "buy 0.1 sol worth of ray"
               naturalLanguageInput = `${args.chain} ${args.inputToken} ${args.outputToken} ${args.amount} ${args.wallet}`;
               // Add the missing token that was cut off (likely after 'of')
-              const nextKeys = keys.filter(k => !['chain', 'inputToken', 'outputToken', 'amount', 'wallet'].includes(k));
+              const nextKeys = keys.filter(
+                (k) =>
+                  ![
+                    'chain',
+                    'inputToken',
+                    'outputToken',
+                    'amount',
+                    'wallet',
+                  ].includes(k),
+              );
               if (nextKeys.length > 0) {
-                naturalLanguageInput += ' ' + nextKeys.map(k => args[k]).join(' ');
+                naturalLanguageInput +=
+                  ' ' + nextKeys.map((k) => args[k]).join(' ');
               } else if (args.wallet === 'of') {
                 // Common pattern: "worth of X" where X got cut off
                 naturalLanguageInput += ' ray'; // This is a guess, but the LLM will handle it
@@ -63,19 +98,19 @@ export function registerPrompts(server: Server) {
                   if (!isNaN(bNum)) return 1;
                   return a.localeCompare(b);
                 })
-                .map(key => args[key])
+                .map((key) => args[key])
                 .join(' ');
             }
-            
+
             args = { '0': naturalLanguageInput };
           }
         }
-        
+
         return {
           description: fetchSwapQuotePromptMetadata.description,
-          messages: getFetchSwapQuoteMessages(args)
+          messages: getFetchSwapQuoteMessages(args),
         };
-      
+
       default:
         return {
           messages: [
@@ -83,10 +118,10 @@ export function registerPrompts(server: Server) {
               role: 'user',
               content: {
                 type: 'text',
-                text: `Unknown prompt: ${promptName}`
-              }
-            }
-          ]
+                text: `Unknown prompt: ${promptName}`,
+              },
+            },
+          ],
         };
     }
   });

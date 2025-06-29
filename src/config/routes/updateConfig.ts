@@ -21,15 +21,29 @@ export const updateConfigRoute: FastifyPluginAsync = async (fastify) => {
           ...ConfigUpdateRequestSchema,
           examples: [
             {
-              namespace: 'solana',
-              path: 'priorityFeeMultiplier',
-              value: 3,
+              namespace: 'solana-mainnet-beta',
+              path: 'maxFee',
+              value: 0.01,
             },
             {
-              namespace: 'ethereum',
-              network: 'mainnet',
+              namespace: 'ethereum-mainnet',
               path: 'nodeURL',
               value: 'https://eth-mainnet.g.alchemy.com/v2/your-api-key',
+            },
+            {
+              namespace: 'ethereum-mainnet',
+              path: 'gasLimitTransaction',
+              value: 3000000,
+            },
+            {
+              namespace: 'solana-devnet',
+              path: 'retryCount',
+              value: 5,
+            },
+            {
+              namespace: 'server',
+              path: 'port',
+              value: 15888,
             },
           ],
         },
@@ -39,7 +53,7 @@ export const updateConfigRoute: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request) => {
-      const { namespace, network, path, value } = request.body;
+      const { namespace, path, value } = request.body;
 
       try {
         // Validate namespace exists
@@ -52,29 +66,7 @@ export const updateConfigRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         // Build the full config path
-        let fullPath: string;
-        if (network) {
-          // Check if this namespace has networks property
-          if (!namespaceConfig.configuration.networks) {
-            throw fastify.httpErrors.badRequest(
-              `Network parameter '${network}' is not valid for '${namespace}'. The '${namespace}' namespace does not support network configurations.`,
-            );
-          }
-
-          // Check if the network exists
-          if (!namespaceConfig.configuration.networks[network]) {
-            const availableNetworks = Object.keys(
-              namespaceConfig.configuration.networks,
-            );
-            throw fastify.httpErrors.notFound(
-              `Network '${network}' not found for '${namespace}'. Available networks: ${availableNetworks.join(', ')}`,
-            );
-          }
-
-          fullPath = `${namespace}.networks.${network}.${path}`;
-        } else {
-          fullPath = `${namespace}.${path}`;
-        }
+        const fullPath = `${namespace}.${path}`;
 
         // Type conversion for string inputs
         let processedValue = value;
@@ -104,11 +96,7 @@ export const updateConfigRoute: FastifyPluginAsync = async (fastify) => {
         updateConfig(fastify, fullPath, processedValue);
 
         // Build descriptive message
-        let description = `'${namespace}`;
-        if (network) {
-          description += `.${network}`;
-        }
-        description += `.${path}'`;
+        const description = `'${namespace}.${path}'`;
 
         return {
           message: `Configuration updated successfully: ${description} set to ${JSON.stringify(processedValue)}`,

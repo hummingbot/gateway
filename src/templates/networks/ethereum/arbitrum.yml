@@ -2,3 +2,28 @@ chainID: 42161
 nodeURL: https://arb1.arbitrum.io/rpc
 nativeCurrencySymbol: ETH
 gasPriceRefreshInterval: 60
+
+# Gas parameters for transactions
+gasLimitTransaction: 3000000
+manualGasPrice: 33
+
+# Default compute units (gas limit) for transactions
+defaultComputeUnits: 200000
+
+# Gas estimate interval in seconds
+gasEstimateInterval: 60
+
+# Maximum fee in ETH (now controlled by Hummingbot)
+maxFee: 0.01
+
+# Minimum fee in ETH (now controlled by Hummingbot)
+minFee: 0.0001
+
+# Number of retry attempts for transaction confirmation
+retryCount: 3
+
+# Multiplier for increasing priority fee on retry (now controlled by Hummingbot)
+retryFeeMultiplier: 2.0
+
+# Retry interval in seconds
+retryInterval: 2

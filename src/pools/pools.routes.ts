@@ -8,7 +8,7 @@ import { removePoolRoute } from './routes/removePool';
 
 export const poolRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(sensible);
-  
+
   // Register pool routes
   await fastify.register(listPoolsRoute);
   await fastify.register(getPoolRoute);

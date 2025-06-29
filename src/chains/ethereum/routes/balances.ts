@@ -46,7 +46,7 @@ export async function getEthereumBalances(
     }
 
     // Always get native token balance
-    const nativeBalance = isReadOnly 
+    const nativeBalance = isReadOnly
       ? await ethereum.getNativeBalanceByAddress(address)
       : await ethereum.getNativeBalance(wallet!);
     // Convert string to number as required by schema

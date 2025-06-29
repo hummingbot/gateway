@@ -16,6 +16,8 @@ jest.mock('fs');
 jest.mock('js-yaml');
 
 // Import after mocking
+import * as yaml from 'js-yaml';
+
 import { configRoutes } from '../../src/config/config.routes';
 import {
   getDefaultPools,
@@ -25,8 +27,8 @@ import {
   getConfig,
 } from '../../src/config/utils';
 import { ConfigManagerV2 } from '../../src/services/config-manager-v2';
+
 import * as fs from 'fs';
-import * as yaml from 'js-yaml';
 
 describe('Config Routes V2 Tests', () => {
   let fastify: FastifyInstance;
@@ -388,32 +390,40 @@ describe('Config Routes V2 Tests', () => {
 
       // Setup mocks
       mockExistsSync.mockReturnValue(true);
-      mockReadFileSync.mockReturnValue('nodeURL: https://api.mainnet-beta.solana.com\nnativeCurrencySymbol: SOL');
+      mockReadFileSync.mockReturnValue(
+        'nodeURL: https://api.mainnet-beta.solana.com\nnativeCurrencySymbol: SOL',
+      );
       mockYamlLoad.mockReturnValue({
         nodeURL: 'https://api.mainnet-beta.solana.com',
-        nativeCurrencySymbol: 'SOL'
+        nativeCurrencySymbol: 'SOL',
       });
-      mockYamlDump.mockReturnValue('nodeURL: https://new-solana-rpc.com\nnativeCurrencySymbol: SOL');
+      mockYamlDump.mockReturnValue(
+        'nodeURL: https://new-solana-rpc.com\nnativeCurrencySymbol: SOL',
+      );
 
       // Mock the actual updateConfig implementation for this test
-      (updateConfig as jest.Mock).mockImplementation((_fastify, configPath, configValue) => {
-        // Simulate the network-specific file update logic
-        const pathParts = configPath.split('.');
-        if (pathParts[1] === 'networks' && pathParts.length >= 4) {
-          const namespace = pathParts[0];
-          const network = pathParts[2];
-          const chainNamespaces = ['ethereum', 'solana'];
-          
-          if (chainNamespaces.includes(namespace)) {
-            const networkConfigFile = `conf/networks/${namespace}/${network}.yml`;
-            const networkConfig = mockYamlLoad(mockReadFileSync(networkConfigFile));
-            networkConfig.nodeURL = configValue;
-            mockWriteFileSync(networkConfigFile, mockYamlDump(networkConfig));
+      (updateConfig as jest.Mock).mockImplementation(
+        (_fastify, configPath, configValue) => {
+          // Simulate the network-specific file update logic
+          const pathParts = configPath.split('.');
+          if (pathParts[1] === 'networks' && pathParts.length >= 4) {
+            const namespace = pathParts[0];
+            const network = pathParts[2];
+            const chainNamespaces = ['ethereum', 'solana'];
+
+            if (chainNamespaces.includes(namespace)) {
+              const networkConfigFile = `conf/networks/${namespace}/${network}.yml`;
+              const networkConfig = mockYamlLoad(
+                mockReadFileSync(networkConfigFile),
+              );
+              networkConfig.nodeURL = configValue;
+              mockWriteFileSync(networkConfigFile, mockYamlDump(networkConfig));
+            }
           }
-        }
-        // Also update runtime config
-        mockConfigManager.set(configPath, configValue);
-      });
+          // Also update runtime config
+          mockConfigManager.set(configPath, configValue);
+        },
+      );
 
       mockConfigManager.getNamespace.mockReturnValue({
         configuration: {
@@ -445,7 +455,7 @@ describe('Config Routes V2 Tests', () => {
       // Verify the network-specific file was written
       expect(mockWriteFileSync).toHaveBeenCalledWith(
         'conf/networks/solana/mainnet-beta.yml',
-        'nodeURL: https://new-solana-rpc.com\nnativeCurrencySymbol: SOL'
+        'nodeURL: https://new-solana-rpc.com\nnativeCurrencySymbol: SOL',
       );
     });
 
@@ -467,26 +477,28 @@ describe('Config Routes V2 Tests', () => {
       mockYamlDump.mockReturnValue('nodeURL: https://new-eth-rpc.com');
 
       // Mock the actual updateConfig implementation for this test
-      (updateConfig as jest.Mock).mockImplementation((_fastify, configPath, configValue) => {
-        // Simulate the network-specific file update logic
-        const pathParts = configPath.split('.');
-        if (pathParts[1] === 'networks' && pathParts.length >= 4) {
-          const namespace = pathParts[0];
-          const network = pathParts[2];
-          const chainNamespaces = ['ethereum', 'solana'];
-          
-          if (chainNamespaces.includes(namespace)) {
-            const networkConfigFile = `conf/networks/${namespace}/${network}.yml`;
-            const dirPath = `conf/networks/${namespace}`;
-            if (!mockExistsSync(dirPath)) {
-              mockMkdirSync(dirPath, { recursive: true });
+      (updateConfig as jest.Mock).mockImplementation(
+        (_fastify, configPath, configValue) => {
+          // Simulate the network-specific file update logic
+          const pathParts = configPath.split('.');
+          if (pathParts[1] === 'networks' && pathParts.length >= 4) {
+            const namespace = pathParts[0];
+            const network = pathParts[2];
+            const chainNamespaces = ['ethereum', 'solana'];
+
+            if (chainNamespaces.includes(namespace)) {
+              const networkConfigFile = `conf/networks/${namespace}/${network}.yml`;
+              const dirPath = `conf/networks/${namespace}`;
+              if (!mockExistsSync(dirPath)) {
+                mockMkdirSync(dirPath, { recursive: true });
+              }
+              const networkConfig = { nodeURL: configValue };
+              mockWriteFileSync(networkConfigFile, mockYamlDump(networkConfig));
             }
-            const networkConfig = { nodeURL: configValue };
-            mockWriteFileSync(networkConfigFile, mockYamlDump(networkConfig));
           }
-        }
-        mockConfigManager.set(configPath, configValue);
-      });
+          mockConfigManager.set(configPath, configValue);
+        },
+      );
 
       mockConfigManager.getNamespace.mockReturnValue({
         configuration: {
@@ -510,17 +522,16 @@ describe('Config Routes V2 Tests', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      
+
       // Verify directory was created
-      expect(mockMkdirSync).toHaveBeenCalledWith(
-        'conf/networks/ethereum',
-        { recursive: true }
-      );
-      
+      expect(mockMkdirSync).toHaveBeenCalledWith('conf/networks/ethereum', {
+        recursive: true,
+      });
+
       // Verify the file was written
       expect(mockWriteFileSync).toHaveBeenCalledWith(
         'conf/networks/ethereum/mainnet.yml',
-        'nodeURL: https://new-eth-rpc.com'
+        'nodeURL: https://new-eth-rpc.com',
       );
     });
   });

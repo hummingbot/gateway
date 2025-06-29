@@ -2,8 +2,8 @@ import sensible from '@fastify/sensible';
 import type { FastifyPluginAsync } from 'fastify';
 
 // Import routes
-import { executeSwapRoute } from './routes/executeSwap';
-import { quoteSwapRoute } from './routes/quoteSwap';
+import { executeSwapRoute } from './swap-routes/executeSwap';
+import { quoteSwapRoute } from './swap-routes/quoteSwap';
 
 // Main Jupiter routes
 const jupiterSwapRoutes: FastifyPluginAsync = async (fastify) => {

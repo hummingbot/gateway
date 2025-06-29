@@ -1,4 +1,7 @@
-import { PromptMessage, PromptArgument } from '@modelcontextprotocol/sdk/types.js';
+import {
+  PromptMessage,
+  PromptArgument,
+} from '@modelcontextprotocol/sdk/types.js';
 
 // Define the prompt argument type
 interface FetchSwapQuoteArgs {
@@ -12,7 +15,8 @@ interface FetchSwapQuoteArgs {
 // Prompt metadata for listing
 export const fetchSwapQuotePromptMetadata = {
   name: 'fetch-swap-quote',
-  description: 'Gather swap information and find the best pool with highest volume for a token swap',
+  description:
+    'Gather swap information and find the best pool with highest volume for a token swap',
   arguments: [
     {
       name: 'chain',
@@ -110,9 +114,14 @@ Show the user:
 Since all required information has been provided, proceed directly with the analysis.`;
 
 // Function to generate prompt messages with arguments
-export function getFetchSwapQuoteMessages(args?: FetchSwapQuoteArgs): PromptMessage[] {
+export function getFetchSwapQuoteMessages(
+  args?: FetchSwapQuoteArgs,
+): PromptMessage[] {
   // Handle case where args might be a string (natural language input)
-  if (typeof args === 'string' || (args && Object.keys(args).length === 1 && args['0'])) {
+  if (
+    typeof args === 'string' ||
+    (args && Object.keys(args).length === 1 && args['0'])
+  ) {
     // Natural language input detected
     const userInput = typeof args === 'string' ? args : args['0'];
     const naturalLanguagePrompt = `The user wants help with a token swap. They said: "${userInput}"
@@ -137,14 +146,14 @@ Be conversational and helpful in gathering this information.`;
         role: 'user',
         content: {
           type: 'text',
-          text: naturalLanguagePrompt
-        }
-      }
+          text: naturalLanguagePrompt,
+        },
+      },
     ];
   }
-  
+
   const { chain, inputToken, outputToken, amount, wallet } = args || {};
-  
+
   // Check what information is missing
   const missingFields: string[] = [];
   if (!chain) missingFields.push('chain');
@@ -152,7 +161,7 @@ Be conversational and helpful in gathering this information.`;
   if (!outputToken) missingFields.push('outputToken');
   if (!amount) missingFields.push('amount');
   if (!wallet) missingFields.push('wallet');
-  
+
   // If critical information is missing, return a user prompt that instructs the assistant to elicit
   if (missingFields.length > 0) {
     const elicitationInstruction = `The user wants help with a token swap but hasn't provided all the required information yet.
@@ -171,12 +180,12 @@ Ask the user to provide the missing information (${missingFields.join(', ')}) be
         role: 'user',
         content: {
           type: 'text',
-          text: elicitationInstruction
-        }
-      }
+          text: elicitationInstruction,
+        },
+      },
     ];
   }
-  
+
   // All information provided, return the full workflow prompt
   const fullPrompt = `User wants to swap tokens with the following information:
 - Chain: ${chain}
@@ -186,14 +195,14 @@ Ask the user to provide the missing information (${missingFields.join(', ')}) be
 - Wallet: ${wallet}
 
 ${basePromptText}`;
-  
+
   return [
     {
       role: 'user',
       content: {
         type: 'text',
-        text: fullPrompt
-      }
-    }
+        text: fullPrompt,
+      },
+    },
   ];
 }

@@ -1,13 +1,14 @@
-import Fastify, { FastifyInstance } from 'fastify';
-import fse from 'fs-extra';
 import path from 'path';
 
-import { walletRoutes } from '../../src/wallet/wallet.routes';
+import Fastify, { FastifyInstance } from 'fastify';
+import fse from 'fs-extra';
+
 import {
   getReadOnlyWalletAddresses,
   saveReadOnlyWalletAddresses,
   walletPath,
 } from '../../src/wallet/utils';
+import { walletRoutes } from '../../src/wallet/wallet.routes';
 
 // Mock dependencies
 jest.mock('../../src/services/logger', () => ({
@@ -184,7 +185,7 @@ describe('Read-Only Wallet Tests', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      
+
       // Verify directory was created
       const ethPath = path.join(testWalletPath, 'ethereum');
       expect(await fse.pathExists(ethPath)).toBe(true);
@@ -194,7 +195,10 @@ describe('Read-Only Wallet Tests', () => {
   describe('DELETE /wallet/remove-read-only', () => {
     beforeEach(async () => {
       // Add some test addresses
-      await saveReadOnlyWalletAddresses('ethereum', [TEST_ETH_ADDRESS, TEST_ETH_ADDRESS_2]);
+      await saveReadOnlyWalletAddresses('ethereum', [
+        TEST_ETH_ADDRESS,
+        TEST_ETH_ADDRESS_2,
+      ]);
       await saveReadOnlyWalletAddresses('solana', [TEST_SOL_ADDRESS]);
     });
 
@@ -271,16 +275,28 @@ describe('Read-Only Wallet Tests', () => {
   describe('GET /wallet', () => {
     beforeEach(async () => {
       // Add some read-only addresses
-      await saveReadOnlyWalletAddresses('ethereum', [TEST_ETH_ADDRESS, TEST_ETH_ADDRESS_2]);
-      await saveReadOnlyWalletAddresses('solana', [TEST_SOL_ADDRESS, TEST_SOL_ADDRESS_2]);
+      await saveReadOnlyWalletAddresses('ethereum', [
+        TEST_ETH_ADDRESS,
+        TEST_ETH_ADDRESS_2,
+      ]);
+      await saveReadOnlyWalletAddresses('solana', [
+        TEST_SOL_ADDRESS,
+        TEST_SOL_ADDRESS_2,
+      ]);
 
       // Create dummy regular wallet files
       const ethPath = path.join(testWalletPath, 'ethereum');
       const solPath = path.join(testWalletPath, 'solana');
       await fse.ensureDir(ethPath);
       await fse.ensureDir(solPath);
-      await fse.writeFile(path.join(ethPath, '0x1234567890123456789012345678901234567890.json'), 'dummy');
-      await fse.writeFile(path.join(solPath, '7J3gXM8j8Z7qYfDqVqnXzJLK6RnDHBPrTFhLMVNxfM5T.json'), 'dummy');
+      await fse.writeFile(
+        path.join(ethPath, '0x1234567890123456789012345678901234567890.json'),
+        'dummy',
+      );
+      await fse.writeFile(
+        path.join(solPath, '7J3gXM8j8Z7qYfDqVqnXzJLK6RnDHBPrTFhLMVNxfM5T.json'),
+        'dummy',
+      );
     });
 
     it('should return both regular and read-only wallets', async () => {
@@ -295,14 +311,18 @@ describe('Read-Only Wallet Tests', () => {
       // Find Ethereum wallets
       const ethWallets = body.find((w: any) => w.chain === 'ethereum');
       expect(ethWallets).toBeDefined();
-      expect(ethWallets.walletAddresses).toContain('0x1234567890123456789012345678901234567890');
+      expect(ethWallets.walletAddresses).toContain(
+        '0x1234567890123456789012345678901234567890',
+      );
       expect(ethWallets.readOnlyWalletAddresses).toContain(TEST_ETH_ADDRESS);
       expect(ethWallets.readOnlyWalletAddresses).toContain(TEST_ETH_ADDRESS_2);
 
       // Find Solana wallets
       const solWallets = body.find((w: any) => w.chain === 'solana');
       expect(solWallets).toBeDefined();
-      expect(solWallets.walletAddresses).toContain('7J3gXM8j8Z7qYfDqVqnXzJLK6RnDHBPrTFhLMVNxfM5T');
+      expect(solWallets.walletAddresses).toContain(
+        '7J3gXM8j8Z7qYfDqVqnXzJLK6RnDHBPrTFhLMVNxfM5T',
+      );
       expect(solWallets.readOnlyWalletAddresses).toContain(TEST_SOL_ADDRESS);
       expect(solWallets.readOnlyWalletAddresses).toContain(TEST_SOL_ADDRESS_2);
     });
@@ -343,7 +363,11 @@ describe('Read-Only Wallet Tests', () => {
       });
 
       it('should handle invalid JSON gracefully', async () => {
-        const filePath = path.join(testWalletPath, 'ethereum', 'read-only.json');
+        const filePath = path.join(
+          testWalletPath,
+          'ethereum',
+          'read-only.json',
+        );
         await fse.ensureDir(path.dirname(filePath));
         await fse.writeFile(filePath, 'invalid json');
 

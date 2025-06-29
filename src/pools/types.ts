@@ -18,8 +18,12 @@ export enum SupportedConnector {
   UNISWAP = 'uniswap',
 }
 
-export function isSupportedConnector(connector: string): connector is SupportedConnector {
-  return Object.values(SupportedConnector).includes(connector as SupportedConnector);
+export function isSupportedConnector(
+  connector: string,
+): connector is SupportedConnector {
+  return Object.values(SupportedConnector).includes(
+    connector as SupportedConnector,
+  );
 }
 
 export interface PoolListRequest {
@@ -29,7 +33,6 @@ export interface PoolListRequest {
   search?: string;
 }
 
-
 export interface PoolAddRequest {
   connector: string;
   type: 'amm' | 'clmm';
@@ -38,4 +41,3 @@ export interface PoolAddRequest {
   quoteSymbol: string;
   address: string;
 }
-

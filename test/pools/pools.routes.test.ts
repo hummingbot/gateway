@@ -36,7 +36,7 @@ jest.mock('@fastify/sensible', () => {
       },
     });
   });
-  
+
   // Return as default export
   return {
     __esModule: true,
@@ -46,8 +46,8 @@ jest.mock('@fastify/sensible', () => {
 
 // Import after mocking
 import { poolRoutes } from '../../src/pools/pools.routes';
-import { PoolService } from '../../src/services/pool-service';
 import { Pool } from '../../src/pools/types';
+import { PoolService } from '../../src/services/pool-service';
 
 describe('Pool Routes Tests', () => {
   let fastify: FastifyInstance;
@@ -294,16 +294,13 @@ describe('Pool Routes Tests', () => {
         'Pool WIF-SOL added successfully',
       );
 
-      expect(mockPoolService.addPool).toHaveBeenCalledWith(
-        'raydium',
-        {
-          type: 'amm',
-          network: 'mainnet-beta',
-          baseSymbol: 'WIF',
-          quoteSymbol: 'SOL',
-          address: 'EP2ib6dYdEeqD8MfE2ezHCxX3kP3K2eLKkirfPm5eyMx',
-        },
-      );
+      expect(mockPoolService.addPool).toHaveBeenCalledWith('raydium', {
+        type: 'amm',
+        network: 'mainnet-beta',
+        baseSymbol: 'WIF',
+        quoteSymbol: 'SOL',
+        address: 'EP2ib6dYdEeqD8MfE2ezHCxX3kP3K2eLKkirfPm5eyMx',
+      });
     });
 
     it('should return 400 for duplicate pool', async () => {

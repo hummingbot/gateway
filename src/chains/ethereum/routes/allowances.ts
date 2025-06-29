@@ -87,15 +87,15 @@ export async function getEthereumAllowances(
   try {
     const ethereum = await Ethereum.getInstance(network);
     await ethereum.init();
-    
+
     // Check if this is a read-only wallet
     const isReadOnly = await ethereum.isReadOnlyWallet(address);
     let wallet: ethers.Wallet | null = null;
-    
+
     if (!isReadOnly) {
       wallet = await ethereum.getWallet(address);
     }
-    
+
     const tokenInfoMap = await getTokensToTokenInfo(ethereum, tokens);
 
     // Check if any tokens were found

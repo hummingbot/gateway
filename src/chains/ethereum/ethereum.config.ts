@@ -38,51 +38,47 @@ export function getEthereumConfig(
   chainName: string,
   networkName: string,
 ): Config {
-  const network = networkName;
+  const namespaceId = `${chainName}-${networkName}`;
   return {
     network: {
-      name: network,
-      chainID: ConfigManagerV2.getInstance().get(
-        chainName + '.networks.' + network + '.chainID',
-      ),
-      nodeURL: ConfigManagerV2.getInstance().get(
-        chainName + '.networks.' + network + '.nodeURL',
-      ),
+      name: networkName,
+      chainID: ConfigManagerV2.getInstance().get(namespaceId + '.chainID'),
+      nodeURL: ConfigManagerV2.getInstance().get(namespaceId + '.nodeURL'),
       tokenListType: 'FILE' as TokenListType,
       tokenListSource: path.join(
         rootPath(),
         'conf',
         'tokens',
         chainName,
-        `${network}.json`,
+        `${networkName}.json`,
       ),
       gasPriceRefreshInterval: ConfigManagerV2.getInstance().get(
-        chainName + '.networks.' + network + '.gasPriceRefreshInterval',
+        namespaceId + '.gasPriceRefreshInterval',
       ),
     },
     nativeCurrencySymbol: ConfigManagerV2.getInstance().get(
-      chainName + '.networks.' + network + '.nativeCurrencySymbol',
+      namespaceId + '.nativeCurrencySymbol',
     ),
     manualGasPrice: ConfigManagerV2.getInstance().get(
-      chainName + '.manualGasPrice',
+      namespaceId + '.manualGasPrice',
     ),
     gasLimitTransaction: ConfigManagerV2.getInstance().get(
-      chainName + '.gasLimitTransaction',
+      namespaceId + '.gasLimitTransaction',
     ),
     defaultComputeUnits: ConfigManagerV2.getInstance().get(
-      chainName + '.defaultComputeUnits',
+      namespaceId + '.defaultComputeUnits',
     ),
     gasEstimateInterval: ConfigManagerV2.getInstance().get(
-      chainName + '.gasEstimateInterval',
+      namespaceId + '.gasEstimateInterval',
     ),
-    maxFee: ConfigManagerV2.getInstance().get(chainName + '.maxFee'),
-    minFee: ConfigManagerV2.getInstance().get(chainName + '.minFee'),
-    retryCount: ConfigManagerV2.getInstance().get(chainName + '.retryCount'),
+    maxFee: ConfigManagerV2.getInstance().get(namespaceId + '.maxFee'),
+    minFee: ConfigManagerV2.getInstance().get(namespaceId + '.minFee'),
+    retryCount: ConfigManagerV2.getInstance().get(namespaceId + '.retryCount'),
     retryFeeMultiplier: ConfigManagerV2.getInstance().get(
-      chainName + '.retryFeeMultiplier',
+      namespaceId + '.retryFeeMultiplier',
     ),
     retryInterval: ConfigManagerV2.getInstance().get(
-      chainName + '.retryInterval',
+      namespaceId + '.retryInterval',
     ),
   };
 }

@@ -4,17 +4,56 @@ configurations:
     configurationPath: server.yml
     schemaPath: server-schema.json
 
-  $namespace ethereum:
-    configurationPath: networks/ethereum.yml
-    schemaPath: ethereum-schema.json
+  # Ethereum networks
+  $namespace ethereum-mainnet:
+    configurationPath: networks/ethereum/mainnet.yml
+    schemaPath: ethereum-network-schema.json
 
+  $namespace ethereum-arbitrum:
+    configurationPath: networks/ethereum/arbitrum.yml
+    schemaPath: ethereum-network-schema.json
+
+  $namespace ethereum-optimism:
+    configurationPath: networks/ethereum/optimism.yml
+    schemaPath: ethereum-network-schema.json
+
+  $namespace ethereum-base:
+    configurationPath: networks/ethereum/base.yml
+    schemaPath: ethereum-network-schema.json
+
+  $namespace ethereum-sepolia:
+    configurationPath: networks/ethereum/sepolia.yml
+    schemaPath: ethereum-network-schema.json
+
+  $namespace ethereum-bsc:
+    configurationPath: networks/ethereum/bsc.yml
+    schemaPath: ethereum-network-schema.json
+
+  $namespace ethereum-avalanche:
+    configurationPath: networks/ethereum/avalanche.yml
+    schemaPath: ethereum-network-schema.json
+
+  $namespace ethereum-celo:
+    configurationPath: networks/ethereum/celo.yml
+    schemaPath: ethereum-network-schema.json
+
+  $namespace ethereum-polygon:
+    configurationPath: networks/ethereum/polygon.yml
+    schemaPath: ethereum-network-schema.json
+
+  # Solana networks
+  $namespace solana-mainnet-beta:
+    configurationPath: networks/solana/mainnet-beta.yml
+    schemaPath: solana-network-schema.json
+
+  $namespace solana-devnet:
+    configurationPath: networks/solana/devnet.yml
+    schemaPath: solana-network-schema.json
+
+  # Connectors
   $namespace uniswap:
     configurationPath: connectors/uniswap.yml
     schemaPath: uniswap-schema.json
-
-  $namespace solana:
-    configurationPath: networks/solana.yml
-    schemaPath: solana-schema.json
 
   $namespace jupiter:
     configurationPath: connectors/jupiter.yml

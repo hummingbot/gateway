@@ -1,8 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 
-import { PoolService } from '../../src/services/pool-service';
 import { Pool } from '../../src/pools/types';
+import { PoolService } from '../../src/services/pool-service';
 
 jest.mock('fs');
 jest.mock('../../src/services/logger', () => ({
@@ -46,9 +46,9 @@ describe('PoolService', () => {
         address: 'invalid-address',
       };
 
-      await expect(
-        poolService.validatePool('solana', pool),
-      ).rejects.toThrow('Invalid Solana pool address');
+      await expect(poolService.validatePool('solana', pool)).rejects.toThrow(
+        'Invalid Solana pool address',
+      );
     });
 
     it('should validate Ethereum pool with correct address', async () => {
@@ -74,9 +74,9 @@ describe('PoolService', () => {
         address: 'invalid-address',
       };
 
-      await expect(
-        poolService.validatePool('ethereum', pool),
-      ).rejects.toThrow('Invalid Ethereum pool address');
+      await expect(poolService.validatePool('ethereum', pool)).rejects.toThrow(
+        'Invalid Ethereum pool address',
+      );
     });
 
     it('should reject pool with missing base token symbol', async () => {
@@ -88,9 +88,9 @@ describe('PoolService', () => {
         address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
       };
 
-      await expect(
-        poolService.validatePool('solana', pool),
-      ).rejects.toThrow('Base token symbol is required');
+      await expect(poolService.validatePool('solana', pool)).rejects.toThrow(
+        'Base token symbol is required',
+      );
     });
 
     it('should reject pool with missing quote token symbol', async () => {
@@ -102,16 +102,21 @@ describe('PoolService', () => {
         address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
       };
 
-      await expect(
-        poolService.validatePool('solana', pool),
-      ).rejects.toThrow('Quote token symbol is required');
+      await expect(poolService.validatePool('solana', pool)).rejects.toThrow(
+        'Quote token symbol is required',
+      );
     });
   });
 
   describe('validateChainNetworkConnector', () => {
     it('should accept valid Solana connectors', async () => {
-      const solanaConnectors = ['raydium/amm', 'raydium/clmm', 'meteora/clmm', 'jupiter'];
-      
+      const solanaConnectors = [
+        'raydium/amm',
+        'raydium/clmm',
+        'meteora/clmm',
+        'jupiter',
+      ];
+
       for (const connector of solanaConnectors) {
         await expect(
           poolService.loadPoolList('solana', 'mainnet-beta', connector),
@@ -121,7 +126,7 @@ describe('PoolService', () => {
 
     it('should accept valid Ethereum connectors', async () => {
       const ethereumConnectors = ['uniswap/amm', 'uniswap/clmm'];
-      
+
       for (const connector of ethereumConnectors) {
         await expect(
           poolService.loadPoolList('ethereum', 'mainnet', connector),
@@ -153,9 +158,7 @@ describe('PoolService', () => {
       ];
 
       (fs.existsSync as jest.Mock).mockReturnValue(true);
-      (fs.readFileSync as jest.Mock).mockReturnValue(
-        JSON.stringify(mockPools),
-      );
+      (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockPools));
 
       const pools = await poolService.loadPoolList(
         'solana',
@@ -262,7 +265,12 @@ describe('PoolService', () => {
       (fs.unlinkSync as jest.Mock).mockImplementation();
 
       await expect(
-        poolService.savePoolList('solana', 'mainnet-beta', 'raydium/amm', pools),
+        poolService.savePoolList(
+          'solana',
+          'mainnet-beta',
+          'raydium/amm',
+          pools,
+        ),
       ).rejects.toThrow('Failed to save pool list');
 
       expect(fs.unlinkSync).toHaveBeenCalled();
@@ -282,9 +290,7 @@ describe('PoolService', () => {
       ];
 
       (fs.existsSync as jest.Mock).mockReturnValue(true);
-      (fs.readFileSync as jest.Mock).mockReturnValue(
-        JSON.stringify(mockPools),
-      );
+      (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockPools));
 
       const pools = await poolService.listPools(
         'solana',
@@ -346,9 +352,7 @@ describe('PoolService', () => {
       ];
 
       (fs.existsSync as jest.Mock).mockReturnValue(true);
-      (fs.readFileSync as jest.Mock).mockReturnValue(
-        JSON.stringify(mockPools),
-      );
+      (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockPools));
 
       const pools = await poolService.listPools(
         'solana',
@@ -375,9 +379,7 @@ describe('PoolService', () => {
       ];
 
       (fs.existsSync as jest.Mock).mockReturnValue(true);
-      (fs.readFileSync as jest.Mock).mockReturnValue(
-        JSON.stringify(mockPools),
-      );
+      (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockPools));
 
       const pool = await poolService.getPool(
         'solana',
@@ -402,9 +404,7 @@ describe('PoolService', () => {
       ];
 
       (fs.existsSync as jest.Mock).mockReturnValue(true);
-      (fs.readFileSync as jest.Mock).mockReturnValue(
-        JSON.stringify(mockPools),
-      );
+      (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockPools));
 
       const pool = await poolService.getPool(
         'solana',
@@ -570,9 +570,7 @@ describe('PoolService', () => {
       ];
 
       (fs.existsSync as jest.Mock).mockReturnValue(true);
-      (fs.readFileSync as jest.Mock).mockReturnValue(
-        JSON.stringify(mockPools),
-      );
+      (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockPools));
 
       const defaultPools = await poolService.getDefaultPools(
         'solana',

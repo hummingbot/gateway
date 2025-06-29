@@ -1,11 +1,11 @@
+import { Type } from '@sinclair/typebox';
 import { FastifyPluginAsync } from 'fastify';
 
 import { PoolService } from '../../services/pool-service';
 import { PoolSuccessResponseSchema } from '../schemas';
-import { Type } from '@sinclair/typebox';
 
 export const removePoolRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.delete<{ 
+  fastify.delete<{
     Params: { address: string };
     Querystring: {
       connector: string;
@@ -37,10 +37,7 @@ export const removePoolRoute: FastifyPluginAsync = async (fastify) => {
             description: 'Network name (mainnet, mainnet-beta, etc)',
             examples: ['mainnet', 'mainnet-beta'],
           }),
-          type: Type.Union([
-            Type.Literal('amm'),
-            Type.Literal('clmm'),
-          ], {
+          type: Type.Union([Type.Literal('amm'), Type.Literal('clmm')], {
             description: 'Pool type',
           }),
         }),

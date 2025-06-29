@@ -10,7 +10,7 @@ export const getConfigRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description:
-          "Get configuration settings. Returns all configurations if no parameters are specified. Use namespace to get a specific config (e.g., server, ethereum, solana, uniswap). Use network parameter with a chain namespace to get only that network's configuration.",
+          'Get configuration settings. Returns all configurations if no parameters are specified. Use namespace to get a specific config (e.g., server, ethereum-mainnet, solana-mainnet-beta, uniswap).',
         tags: ['system'],
         querystring: ConfigQuerySchema,
         response: {
@@ -23,8 +23,8 @@ export const getConfigRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { namespace, network } = request.query;
-        return getConfig(fastify, namespace, network);
+        const { namespace } = request.query;
+        return getConfig(fastify, namespace);
       } catch (error) {
         logger.error(`Config retrieval failed: ${error.message}`);
         // Re-throw the error if it's already a Fastify HTTP error
