@@ -61,7 +61,7 @@ async function executeSwap(
 
   // Use provided compute units or default
   const COMPUTE_UNITS = computeUnits || 300000;
-  
+
   // Use provided priority fee per CU or estimate default
   let finalPriorityFeePerCU: number;
   if (priorityFeePerCU !== undefined) {
@@ -69,129 +69,131 @@ async function executeSwap(
   } else {
     // Calculate default if not provided
     const currentPriorityFee = (await solana.estimateGas()) * 1e9 - BASE_FEE;
-    finalPriorityFeePerCU = Math.floor((currentPriorityFee * 1e6) / COMPUTE_UNITS);
+    finalPriorityFeePerCU = Math.floor(
+      (currentPriorityFee * 1e6) / COMPUTE_UNITS,
+    );
   }
-    let transaction: VersionedTransaction;
+  let transaction: VersionedTransaction;
 
-    // Get transaction based on pool type
-    if (poolInfo.poolType === 'amm') {
-      if (side === 'BUY') {
-        // AMM swap base out (exact output)
-        ({ transaction } = (await raydium.raydiumSDK.liquidity.swap({
-          poolInfo: quote.poolInfo,
-          poolKeys: quote.poolKeys,
-          amountIn: quote.maxAmountIn,
-          amountOut: new BN(quote.amountOut),
-          fixedSide: 'out',
-          inputMint: inputToken.address,
-          txVersion: raydium.txVersion,
-          computeBudgetConfig: {
-            units: COMPUTE_UNITS,
-            microLamports: finalPriorityFeePerCU,
-          },
-        })) as { transaction: VersionedTransaction });
-      } else {
-        // AMM swap (exact input)
-        ({ transaction } = (await raydium.raydiumSDK.liquidity.swap({
-          poolInfo: quote.poolInfo,
-          poolKeys: quote.poolKeys,
-          amountIn: new BN(quote.amountIn),
-          amountOut: quote.minAmountOut,
-          fixedSide: 'in',
-          inputMint: inputToken.address,
-          txVersion: raydium.txVersion,
-          computeBudgetConfig: {
-            units: COMPUTE_UNITS,
-            microLamports: finalPriorityFeePerCU,
-          },
-        })) as { transaction: VersionedTransaction });
-      }
-    } else if (poolInfo.poolType === 'cpmm') {
-      if (side === 'BUY') {
-        // CPMM swap base out (exact output)
-        ({ transaction } = (await raydium.raydiumSDK.cpmm.swap({
-          poolInfo: quote.poolInfo,
-          poolKeys: quote.poolKeys,
-          inputAmount: new BN(0), // not used when fixedOut is true
-          fixedOut: true,
-          swapResult: {
-            sourceAmountSwapped: quote.amountIn,
-            destinationAmountSwapped: new BN(quote.amountOut),
-          },
-          slippage: effectiveSlippage / 100,
-          baseIn: inputToken.address === quote.poolInfo.mintA.address,
-          txVersion: raydium.txVersion,
-          computeBudgetConfig: {
-            units: COMPUTE_UNITS,
-            microLamports: finalPriorityFeePerCU,
-          },
-        })) as { transaction: VersionedTransaction });
-      } else {
-        // CPMM swap (exact input)
-        ({ transaction } = (await raydium.raydiumSDK.cpmm.swap({
-          poolInfo: quote.poolInfo,
-          poolKeys: quote.poolKeys,
-          inputAmount: quote.amountIn,
-          swapResult: {
-            sourceAmountSwapped: quote.amountIn,
-            destinationAmountSwapped: quote.amountOut,
-          },
-          slippage: effectiveSlippage / 100,
-          baseIn: inputToken.address === quote.poolInfo.mintA.address,
-          txVersion: raydium.txVersion,
-          computeBudgetConfig: {
-            units: COMPUTE_UNITS,
-            microLamports: finalPriorityFeePerCU,
-          },
-        })) as { transaction: VersionedTransaction });
-      }
+  // Get transaction based on pool type
+  if (poolInfo.poolType === 'amm') {
+    if (side === 'BUY') {
+      // AMM swap base out (exact output)
+      ({ transaction } = (await raydium.raydiumSDK.liquidity.swap({
+        poolInfo: quote.poolInfo,
+        poolKeys: quote.poolKeys,
+        amountIn: quote.maxAmountIn,
+        amountOut: new BN(quote.amountOut),
+        fixedSide: 'out',
+        inputMint: inputToken.address,
+        txVersion: raydium.txVersion,
+        computeBudgetConfig: {
+          units: COMPUTE_UNITS,
+          microLamports: finalPriorityFeePerCU,
+        },
+      })) as { transaction: VersionedTransaction });
     } else {
-      throw new Error(`Unsupported pool type: ${poolInfo.poolType}`);
+      // AMM swap (exact input)
+      ({ transaction } = (await raydium.raydiumSDK.liquidity.swap({
+        poolInfo: quote.poolInfo,
+        poolKeys: quote.poolKeys,
+        amountIn: new BN(quote.amountIn),
+        amountOut: quote.minAmountOut,
+        fixedSide: 'in',
+        inputMint: inputToken.address,
+        txVersion: raydium.txVersion,
+        computeBudgetConfig: {
+          units: COMPUTE_UNITS,
+          microLamports: finalPriorityFeePerCU,
+        },
+      })) as { transaction: VersionedTransaction });
     }
+  } else if (poolInfo.poolType === 'cpmm') {
+    if (side === 'BUY') {
+      // CPMM swap base out (exact output)
+      ({ transaction } = (await raydium.raydiumSDK.cpmm.swap({
+        poolInfo: quote.poolInfo,
+        poolKeys: quote.poolKeys,
+        inputAmount: new BN(0), // not used when fixedOut is true
+        fixedOut: true,
+        swapResult: {
+          sourceAmountSwapped: quote.amountIn,
+          destinationAmountSwapped: new BN(quote.amountOut),
+        },
+        slippage: effectiveSlippage / 100,
+        baseIn: inputToken.address === quote.poolInfo.mintA.address,
+        txVersion: raydium.txVersion,
+        computeBudgetConfig: {
+          units: COMPUTE_UNITS,
+          microLamports: finalPriorityFeePerCU,
+        },
+      })) as { transaction: VersionedTransaction });
+    } else {
+      // CPMM swap (exact input)
+      ({ transaction } = (await raydium.raydiumSDK.cpmm.swap({
+        poolInfo: quote.poolInfo,
+        poolKeys: quote.poolKeys,
+        inputAmount: quote.amountIn,
+        swapResult: {
+          sourceAmountSwapped: quote.amountIn,
+          destinationAmountSwapped: quote.amountOut,
+        },
+        slippage: effectiveSlippage / 100,
+        baseIn: inputToken.address === quote.poolInfo.mintA.address,
+        txVersion: raydium.txVersion,
+        computeBudgetConfig: {
+          units: COMPUTE_UNITS,
+          microLamports: finalPriorityFeePerCU,
+        },
+      })) as { transaction: VersionedTransaction });
+    }
+  } else {
+    throw new Error(`Unsupported pool type: ${poolInfo.poolType}`);
+  }
 
-    transaction.sign([wallet]);
-    await solana.simulateTransaction(transaction as VersionedTransaction);
+  transaction.sign([wallet]);
+  await solana.simulateTransaction(transaction as VersionedTransaction);
 
-    const { confirmed, signature, txData } =
-      await solana.sendAndConfirmRawTransaction(transaction);
+  const { confirmed, signature, txData } =
+    await solana.sendAndConfirmRawTransaction(transaction);
 
-    // Return with status
-    if (confirmed && txData) {
-      // Transaction confirmed, return full data
-      const { baseTokenBalanceChange, quoteTokenBalanceChange } =
-        await solana.extractPairBalanceChangesAndFee(
-          signature,
-          await solana.getToken(poolInfo.baseTokenAddress),
-          await solana.getToken(poolInfo.quoteTokenAddress),
-          wallet.publicKey.toBase58(),
-        );
-
-      logger.info(
-        `Swap executed successfully: ${Math.abs(side === 'SELL' ? baseTokenBalanceChange : quoteTokenBalanceChange).toFixed(4)} ${inputToken.symbol} -> ${Math.abs(side === 'SELL' ? quoteTokenBalanceChange : baseTokenBalanceChange).toFixed(4)} ${outputToken.symbol}`,
+  // Return with status
+  if (confirmed && txData) {
+    // Transaction confirmed, return full data
+    const { baseTokenBalanceChange, quoteTokenBalanceChange } =
+      await solana.extractPairBalanceChangesAndFee(
+        signature,
+        await solana.getToken(poolInfo.baseTokenAddress),
+        await solana.getToken(poolInfo.quoteTokenAddress),
+        wallet.publicKey.toBase58(),
       );
 
-      return {
-        signature,
-        status: 1, // CONFIRMED
-        data: {
-          totalInputSwapped: Math.abs(
-            side === 'SELL' ? baseTokenBalanceChange : quoteTokenBalanceChange,
-          ),
-          totalOutputSwapped: Math.abs(
-            side === 'SELL' ? quoteTokenBalanceChange : baseTokenBalanceChange,
-          ),
-          fee: txData.meta.fee / 1e9,
-          baseTokenBalanceChange,
-          quoteTokenBalanceChange,
-        },
-      };
-    } else {
-      // Transaction pending, return for Hummingbot to handle retry
-      return {
-        signature,
-        status: 0, // PENDING
-      };
-    }
+    logger.info(
+      `Swap executed successfully: ${Math.abs(side === 'SELL' ? baseTokenBalanceChange : quoteTokenBalanceChange).toFixed(4)} ${inputToken.symbol} -> ${Math.abs(side === 'SELL' ? quoteTokenBalanceChange : baseTokenBalanceChange).toFixed(4)} ${outputToken.symbol}`,
+    );
+
+    return {
+      signature,
+      status: 1, // CONFIRMED
+      data: {
+        totalInputSwapped: Math.abs(
+          side === 'SELL' ? baseTokenBalanceChange : quoteTokenBalanceChange,
+        ),
+        totalOutputSwapped: Math.abs(
+          side === 'SELL' ? quoteTokenBalanceChange : baseTokenBalanceChange,
+        ),
+        fee: txData.meta.fee / 1e9,
+        baseTokenBalanceChange,
+        quoteTokenBalanceChange,
+      },
+    };
+  } else {
+    // Transaction pending, return for Hummingbot to handle retry
+    return {
+      signature,
+      status: 0, // PENDING
+    };
+  }
 }
 
 export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {

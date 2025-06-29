@@ -75,15 +75,15 @@ async function executeSwap(
 
   // Use provided compute units or default
   const finalComputeUnits = computeUnits || 150000;
-  
+
   // Note: Meteora SDK doesn't support custom compute budget configuration in swap methods
   // The priority fee will be handled by Solana's sendAndConfirmTransaction method internally
   // For now, we'll use the default behavior and document this limitation
-  
+
   logger.info(
     `Executing swap with ${finalComputeUnits} compute units${priorityFeePerCU ? ` and ${priorityFeePerCU} microlamports/CU priority fee` : ''}`,
   );
-  
+
   // Use the existing method - it will use estimateGas internally for fee calculation
   const { signature, fee } = await solana.sendAndConfirmTransaction(
     swapTx,
@@ -91,7 +91,7 @@ async function executeSwap(
     finalComputeUnits,
     priorityFeePerCU,
   );
-  
+
   const { baseTokenBalanceChange, quoteTokenBalanceChange } =
     await solana.extractPairBalanceChangesAndFee(
       signature,
@@ -99,11 +99,11 @@ async function executeSwap(
       await solana.getToken(dlmmPool.tokenY.publicKey.toBase58()),
       wallet.publicKey.toBase58(),
     );
-  
+
   logger.info(
     `Swap executed successfully: ${Math.abs(baseTokenBalanceChange).toFixed(4)} ${inputToken.symbol} -> ${Math.abs(quoteTokenBalanceChange).toFixed(4)} ${outputToken.symbol}`,
   );
-  
+
   return {
     signature,
     status: 1, // CONFIRMED

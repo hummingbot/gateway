@@ -47,14 +47,14 @@ async function closePosition(
             priorityFeePerCU,
             computeUnits,
           )) as RemoveLiquidityResponseType)
-        : { 
-            signature: '', 
-            status: 1, 
-            data: { 
-              baseTokenAmountRemoved: 0, 
-              quoteTokenAmountRemoved: 0, 
-              fee: 0 
-            } 
+        : {
+            signature: '',
+            status: 1,
+            data: {
+              baseTokenAmountRemoved: 0,
+              quoteTokenAmountRemoved: 0,
+              fee: 0,
+            },
           };
 
     // Remove liquidity if baseTokenFees or quoteTokenFees is greater than 0
@@ -68,14 +68,14 @@ async function closePosition(
             priorityFeePerCU,
             computeUnits,
           )) as CollectFeesResponseType)
-        : { 
-            signature: '', 
-            status: 1, 
-            data: { 
-              baseFeeAmountCollected: 0, 
-              quoteFeeAmountCollected: 0, 
-              fee: 0 
-            } 
+        : {
+            signature: '',
+            status: 1,
+            data: {
+              baseFeeAmountCollected: 0,
+              quoteFeeAmountCollected: 0,
+              fee: 0,
+            },
           };
 
     // Now close the position
@@ -109,7 +109,10 @@ async function closePosition(
       );
       const returnedSOL = Math.abs(balanceChange);
 
-      const totalFee = fee + (removeLiquidityResult.data?.fee || 0) + (collectFeesResult.data?.fee || 0);
+      const totalFee =
+        fee +
+        (removeLiquidityResult.data?.fee || 0) +
+        (collectFeesResult.data?.fee || 0);
 
       return {
         signature,
@@ -117,10 +120,14 @@ async function closePosition(
         data: {
           fee: totalFee,
           positionRentRefunded: returnedSOL,
-          baseTokenAmountRemoved: removeLiquidityResult.data?.baseTokenAmountRemoved || 0,
-          quoteTokenAmountRemoved: removeLiquidityResult.data?.quoteTokenAmountRemoved || 0,
-          baseFeeAmountCollected: collectFeesResult.data?.baseFeeAmountCollected || 0,
-          quoteFeeAmountCollected: collectFeesResult.data?.quoteFeeAmountCollected || 0,
+          baseTokenAmountRemoved:
+            removeLiquidityResult.data?.baseTokenAmountRemoved || 0,
+          quoteTokenAmountRemoved:
+            removeLiquidityResult.data?.quoteTokenAmountRemoved || 0,
+          baseFeeAmountCollected:
+            collectFeesResult.data?.baseFeeAmountCollected || 0,
+          quoteFeeAmountCollected:
+            collectFeesResult.data?.quoteFeeAmountCollected || 0,
         },
       };
     } catch (positionError) {
@@ -187,7 +194,13 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network, walletAddress, positionAddress, priorityFeePerCU, computeUnits } = request.body;
+        const {
+          network,
+          walletAddress,
+          positionAddress,
+          priorityFeePerCU,
+          computeUnits,
+        } = request.body;
         const networkToUse = network || 'mainnet-beta';
 
         return await closePosition(

@@ -211,7 +211,10 @@ async function addLiquidity(
     }
 
     // Add liquidity Token + ETH
-    const gasOptions = await ethereum.prepareGasOptions(priorityFeePerCU, computeUnits);
+    const gasOptions = await ethereum.prepareGasOptions(
+      priorityFeePerCU,
+      computeUnits,
+    );
     gasOptions.value = quote.rawQuoteTokenAmount;
 
     tx = await router.addLiquidityETH(
@@ -277,7 +280,10 @@ async function addLiquidity(
     }
 
     // Add liquidity Token + Token
-    const gasOptions = await ethereum.prepareGasOptions(priorityFeePerCU, computeUnits);
+    const gasOptions = await ethereum.prepareGasOptions(
+      priorityFeePerCU,
+      computeUnits,
+    );
 
     tx = await router.addLiquidity(
       quote.baseTokenObj.address,

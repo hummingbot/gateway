@@ -86,10 +86,10 @@ async function openPosition(
   );
 
   logger.info('Opening Raydium CLMM position...');
-  
+
   // Use provided compute units or quote's estimate
   const COMPUTE_UNITS = computeUnits || quotePositionResponse.computeUnits;
-  
+
   // Use provided priority fee per CU or estimate default
   let finalPriorityFeePerCU: number;
   if (priorityFeePerCU !== undefined) {
@@ -97,83 +97,85 @@ async function openPosition(
   } else {
     // Calculate default if not provided
     const currentPriorityFee = (await solana.estimateGas()) * 1e9 - BASE_FEE;
-    finalPriorityFeePerCU = Math.floor((currentPriorityFee * 1e6) / COMPUTE_UNITS);
+    finalPriorityFeePerCU = Math.floor(
+      (currentPriorityFee * 1e6) / COMPUTE_UNITS,
+    );
   }
-    const { transaction, extInfo } =
-      await raydium.raydiumSDK.clmm.openPositionFromBase({
-        poolInfo,
-        poolKeys,
-        tickUpper: Math.max(lowerTick, upperTick),
-        tickLower: Math.min(lowerTick, upperTick),
-        base: quotePositionResponse.baseLimited ? 'MintA' : 'MintB',
-        ownerInfo: { useSOLBalance: true },
-        baseAmount: quotePositionResponse.baseLimited
-          ? new BN(
-              quotePositionResponse.baseTokenAmount *
-                10 ** baseTokenInfo.decimals,
-            )
-          : new BN(
-              quotePositionResponse.quoteTokenAmount *
-                10 ** quoteTokenInfo.decimals,
-            ),
-        otherAmountMax: quotePositionResponse.baseLimited
-          ? new BN(
-              quotePositionResponse.quoteTokenAmountMax *
-                10 ** quoteTokenInfo.decimals,
-            )
-          : new BN(
-              quotePositionResponse.baseTokenAmountMax *
-                10 ** baseTokenInfo.decimals,
-            ),
-        txVersion: TxVersion.V0,
-        computeBudgetConfig: {
-          units: COMPUTE_UNITS,
-          microLamports: finalPriorityFeePerCU,
-        },
-      });
+  const { transaction, extInfo } =
+    await raydium.raydiumSDK.clmm.openPositionFromBase({
+      poolInfo,
+      poolKeys,
+      tickUpper: Math.max(lowerTick, upperTick),
+      tickLower: Math.min(lowerTick, upperTick),
+      base: quotePositionResponse.baseLimited ? 'MintA' : 'MintB',
+      ownerInfo: { useSOLBalance: true },
+      baseAmount: quotePositionResponse.baseLimited
+        ? new BN(
+            quotePositionResponse.baseTokenAmount *
+              10 ** baseTokenInfo.decimals,
+          )
+        : new BN(
+            quotePositionResponse.quoteTokenAmount *
+              10 ** quoteTokenInfo.decimals,
+          ),
+      otherAmountMax: quotePositionResponse.baseLimited
+        ? new BN(
+            quotePositionResponse.quoteTokenAmountMax *
+              10 ** quoteTokenInfo.decimals,
+          )
+        : new BN(
+            quotePositionResponse.baseTokenAmountMax *
+              10 ** baseTokenInfo.decimals,
+          ),
+      txVersion: TxVersion.V0,
+      computeBudgetConfig: {
+        units: COMPUTE_UNITS,
+        microLamports: finalPriorityFeePerCU,
+      },
+    });
 
-    transaction.sign([wallet]);
-    await solana.simulateTransaction(transaction);
+  transaction.sign([wallet]);
+  await solana.simulateTransaction(transaction);
 
-    const { confirmed, signature, txData } =
-      await solana.sendAndConfirmRawTransaction(transaction);
+  const { confirmed, signature, txData } =
+    await solana.sendAndConfirmRawTransaction(transaction);
 
-    // Return with status
-    if (confirmed && txData) {
-      // Transaction confirmed, return full data
-      const totalFee = txData.meta.fee;
-      const { balanceChange } = await solana.extractAccountBalanceChangeAndFee(
+  // Return with status
+  if (confirmed && txData) {
+    // Transaction confirmed, return full data
+    const totalFee = txData.meta.fee;
+    const { balanceChange } = await solana.extractAccountBalanceChangeAndFee(
+      signature,
+      0,
+    );
+    const positionRent = Math.abs(balanceChange);
+
+    const { baseTokenBalanceChange, quoteTokenBalanceChange } =
+      await solana.extractPairBalanceChangesAndFee(
         signature,
-        0,
+        baseTokenInfo,
+        quoteTokenInfo,
+        wallet.publicKey.toBase58(),
       );
-      const positionRent = Math.abs(balanceChange);
 
-      const { baseTokenBalanceChange, quoteTokenBalanceChange } =
-        await solana.extractPairBalanceChangesAndFee(
-          signature,
-          baseTokenInfo,
-          quoteTokenInfo,
-          wallet.publicKey.toBase58(),
-        );
-
-      return {
-        signature,
-        status: 1, // CONFIRMED
-        data: {
-          fee: totalFee / 1e9,
-          positionAddress: extInfo.nftMint.toBase58(),
-          positionRent,
-          baseTokenAmountAdded: baseTokenBalanceChange,
-          quoteTokenAmountAdded: quoteTokenBalanceChange,
-        },
-      };
-    } else {
-      // Transaction pending, return for Hummingbot to handle retry
-      return {
-        signature,
-        status: 0, // PENDING
-      };
-    }
+    return {
+      signature,
+      status: 1, // CONFIRMED
+      data: {
+        fee: totalFee / 1e9,
+        positionAddress: extInfo.nftMint.toBase58(),
+        positionRent,
+        baseTokenAmountAdded: baseTokenBalanceChange,
+        quoteTokenAmountAdded: quoteTokenBalanceChange,
+      },
+    };
+  } else {
+    // Transaction pending, return for Hummingbot to handle retry
+    return {
+      signature,
+      status: 0, // PENDING
+    };
+  }
 }
 
 export const openPositionRoute: FastifyPluginAsync = async (fastify) => {

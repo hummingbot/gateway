@@ -217,7 +217,10 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         let tx;
 
         // Prepare gas options
-        const gasOptions = await ethereum.prepareGasOptions(priorityFeePerCU, computeUnits || 300000);
+        const gasOptions = await ethereum.prepareGasOptions(
+          priorityFeePerCU,
+          computeUnits || 300000,
+        );
 
         // Check if one of the tokens is WETH
         if (baseTokenObj.symbol === 'WETH') {

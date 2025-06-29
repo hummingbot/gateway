@@ -149,10 +149,13 @@ export class Solana {
   ): Promise<void> {
     try {
       // Use TokenService to load tokens
-      const tokens = await TokenService.getInstance().loadTokenList('solana', this.network);
+      const tokens = await TokenService.getInstance().loadTokenList(
+        'solana',
+        this.network,
+      );
 
       // Convert to TokenInfo format (SPL token registry format)
-      this.tokenList = tokens.map(token => ({
+      this.tokenList = tokens.map((token) => ({
         address: token.address,
         symbol: token.symbol,
         name: token.name,
@@ -165,7 +168,9 @@ export class Solana {
         this._tokenMap[token.symbol] = token;
       });
 
-      logger.info(`Loaded ${this.tokenList.length} tokens for solana/${this.network}`);
+      logger.info(
+        `Loaded ${this.tokenList.length} tokens for solana/${this.network}`,
+      );
     } catch (error) {
       logger.error(
         `Failed to load token list for ${this.network}: ${error.message}`,
@@ -662,8 +667,7 @@ export class Solana {
           `Failed to fetch priority fees, using minimum fee: ${response.status}`,
         );
         return (
-          (this.config.minFee * 1_000_000) /
-          this.config.defaultComputeUnits
+          (this.config.minFee * 1_000_000) / this.config.defaultComputeUnits
         );
       }
 
@@ -780,7 +784,8 @@ export class Solana {
     priorityFeePerCU?: number,
   ): Promise<{ signature: string; fee: number }> {
     // Use provided priority fee or estimate it
-    const currentPriorityFee = priorityFeePerCU ?? await this.estimateGasPrice();
+    const currentPriorityFee =
+      priorityFeePerCU ?? (await this.estimateGasPrice());
     const computeUnitsToUse = computeUnits || this.config.defaultComputeUnits;
 
     const basePriorityFeeLamports = currentPriorityFee * computeUnitsToUse;
@@ -808,8 +813,9 @@ export class Solana {
 
     // Use the confirmation retry logic from sendAndConfirmRawTransaction
     const serializedTx = tx.serialize();
-    const { confirmed, signature, txData } = await this._sendAndConfirmRawTransaction(serializedTx);
-    
+    const { confirmed, signature, txData } =
+      await this._sendAndConfirmRawTransaction(serializedTx);
+
     if (confirmed && txData) {
       const actualFee = this.getFee(txData);
       logger.info(
@@ -817,8 +823,10 @@ export class Solana {
       );
       return { signature, fee: actualFee };
     }
-    
-    throw new Error(`Transaction failed to confirm after ${this.config.confirmRetryCount} attempts`);
+
+    throw new Error(
+      `Transaction failed to confirm after ${this.config.confirmRetryCount} attempts`,
+    );
   }
 
   private async prepareTx(

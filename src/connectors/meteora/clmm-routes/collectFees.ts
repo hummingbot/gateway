@@ -60,7 +60,7 @@ export async function collectFees(
 
   // Use provided compute units or default
   const finalComputeUnits = computeUnits || 300_000;
-  
+
   logger.info(
     `Executing collectFees with ${finalComputeUnits} compute units${priorityFeePerCU ? ` and ${priorityFeePerCU} lamports/CU priority fee` : ''}`,
   );

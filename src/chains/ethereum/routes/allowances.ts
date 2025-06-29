@@ -19,7 +19,7 @@ export async function getTokensToTokenInfo(
 
   for (let i = 0; i < tokens.length; i++) {
     const symbolOrAddress = tokens[i];
-    
+
     // First try to find the token in the list
     const tokenInfo = ethereum.getTokenBySymbol(symbolOrAddress);
     if (tokenInfo) {
@@ -32,7 +32,10 @@ export async function getTokensToTokenInfo(
         // If it's a valid address but not in our token list, we create a basic contract
         // and try to get its decimals, symbol, and name directly
         try {
-          const contract = ethereum.getContract(normalizedAddress, ethereum.provider);
+          const contract = ethereum.getContract(
+            normalizedAddress,
+            ethereum.provider,
+          );
           logger.info(
             `Token ${symbolOrAddress} not found in list but has valid address format. Fetching token info from chain...`,
           );
@@ -56,7 +59,7 @@ export async function getTokensToTokenInfo(
           // Use the contract symbol as the key, or the address if symbol is empty
           const key = symbol || normalizedAddress;
           tokenInfoMap[key] = tokenInfoObj;
-          
+
           logger.info(
             `Successfully fetched token info for ${normalizedAddress}: ${symbol} (${name})`,
           );
@@ -97,16 +100,25 @@ export async function getEthereumAllowances(
 
     // Log any tokens that couldn't be resolved
     if (foundSymbols.length < tokens.length) {
-      const resolvedAddresses = Object.values(tokenInfoMap).map(t => t.address.toLowerCase());
-      const resolvedSymbols = Object.values(tokenInfoMap).map(t => t.symbol.toUpperCase());
-      
-      const missingTokens = tokens.filter(t => {
+      const resolvedAddresses = Object.values(tokenInfoMap).map((t) =>
+        t.address.toLowerCase(),
+      );
+      const resolvedSymbols = Object.values(tokenInfoMap).map((t) =>
+        t.symbol.toUpperCase(),
+      );
+
+      const missingTokens = tokens.filter((t) => {
         const tLower = t.toLowerCase();
         const tUpper = t.toUpperCase();
-        return !resolvedAddresses.includes(tLower) && !resolvedSymbols.includes(tUpper);
+        return (
+          !resolvedAddresses.includes(tLower) &&
+          !resolvedSymbols.includes(tUpper)
+        );
       });
-      
-      logger.warn(`Some tokens could not be resolved: ${missingTokens.join(', ')}`);
+
+      logger.warn(
+        `Some tokens could not be resolved: ${missingTokens.join(', ')}`,
+      );
     }
 
     // Determine the spender address based on the input
@@ -209,13 +221,16 @@ export const allowancesRoute: FastifyPluginAsync = async (fastify) => {
             description:
               'Spender can be a connector name (e.g., uniswap/clmm, uniswap/amm, uniswap) or a direct contract address',
           }),
-          tokens: Type.Array(Type.String(), { 
+          tokens: Type.Array(Type.String(), {
             examples: [
               ['USDC', 'DAI'],
-              ['0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', '0x6B175474E89094C44Da98b954EedeAC495271d0F'],
-              ['USDC', '0xd0b53D9277642d899DF5C87A3966A349A798F224']
+              [
+                '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+                '0x6B175474E89094C44Da98b954EedeAC495271d0F',
+              ],
+              ['USDC', '0xd0b53D9277642d899DF5C87A3966A349A798F224'],
             ],
-            description: 'Array of token symbols or addresses' 
+            description: 'Array of token symbols or addresses',
           }),
         }),
         response: {

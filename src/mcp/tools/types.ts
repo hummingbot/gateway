@@ -1,5 +1,6 @@
-import { Tool } from "@modelcontextprotocol/sdk/types.js";
-import { GatewayApiClient } from "../utils/api-client";
+import { Tool } from '@modelcontextprotocol/sdk/types.js';
+
+import { GatewayApiClient } from '../utils/api-client';
 
 export type Metadata = {
   resource: string;
@@ -53,7 +54,11 @@ type ResourceContentBlock = {
       };
 };
 
-export type ContentBlock = TextContentBlock | ImageContentBlock | AudioContentBlock | ResourceContentBlock;
+export type ContentBlock =
+  | TextContentBlock
+  | ImageContentBlock
+  | AudioContentBlock
+  | ResourceContentBlock;
 
 export type ToolCallResult = {
   content: ContentBlock[];
@@ -71,15 +76,22 @@ export function asTextContentResult(result: Object): ToolCallResult {
   };
 }
 
-export function asErrorContentResult(error: string, details?: any): ToolCallResult {
+export function asErrorContentResult(
+  error: string,
+  details?: any,
+): ToolCallResult {
   return {
     content: [
       {
         type: 'text',
-        text: JSON.stringify({
-          error,
-          ...(details && { details }),
-        }, null, 2),
+        text: JSON.stringify(
+          {
+            error,
+            ...(details && { details }),
+          },
+          null,
+          2,
+        ),
       },
     ],
     isError: true,

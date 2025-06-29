@@ -51,15 +51,18 @@ async function closePosition(
       return {
         signature: removeLiquidityResponse.signature,
         status: removeLiquidityResponse.status,
-        data: removeLiquidityResponse.data ? {
-          fee: removeLiquidityResponse.data.fee,
-          positionRentRefunded: rentRefunded,
-          baseTokenAmountRemoved: removeLiquidityResponse.data.baseTokenAmountRemoved,
-          quoteTokenAmountRemoved:
-            removeLiquidityResponse.data.quoteTokenAmountRemoved,
-          baseFeeAmountCollected: 0,
-          quoteFeeAmountCollected: 0,
-        } : undefined,
+        data: removeLiquidityResponse.data
+          ? {
+              fee: removeLiquidityResponse.data.fee,
+              positionRentRefunded: rentRefunded,
+              baseTokenAmountRemoved:
+                removeLiquidityResponse.data.baseTokenAmountRemoved,
+              quoteTokenAmountRemoved:
+                removeLiquidityResponse.data.quoteTokenAmountRemoved,
+              baseFeeAmountCollected: 0,
+              quoteFeeAmountCollected: 0,
+            }
+          : undefined,
       };
     }
 
@@ -80,7 +83,7 @@ async function closePosition(
 
     // Use provided compute units or default
     const COMPUTE_UNITS = computeUnits || 200000;
-    
+
     // Use provided priority fee per CU or estimate default
     let finalPriorityFeePerCU: number;
     if (priorityFeePerCU !== undefined) {
@@ -88,7 +91,9 @@ async function closePosition(
     } else {
       // Calculate default if not provided
       const currentPriorityFee = (await solana.estimateGas()) * 1e9 - BASE_FEE;
-      finalPriorityFeePerCU = Math.floor((currentPriorityFee * 1e6) / COMPUTE_UNITS);
+      finalPriorityFeePerCU = Math.floor(
+        (currentPriorityFee * 1e6) / COMPUTE_UNITS,
+      );
     }
 
     const { signature, fee } = await solana.sendAndConfirmVersionedTransaction(
@@ -160,7 +165,13 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network, walletAddress, positionAddress, priorityFeePerCU, computeUnits } = request.body;
+        const {
+          network,
+          walletAddress,
+          positionAddress,
+          priorityFeePerCU,
+          computeUnits,
+        } = request.body;
         const networkToUse = network || 'mainnet-beta';
 
         return await closePosition(

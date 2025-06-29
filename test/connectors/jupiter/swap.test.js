@@ -47,11 +47,11 @@ function validateSwapExecution(response) {
     typeof response.status === 'number' && // Added: status field
     (response.status !== 1 || // If not CONFIRMED
       (response.data && // then data is optional
-       typeof response.data.totalInputSwapped === 'number' &&
-       typeof response.data.totalOutputSwapped === 'number' &&
-       typeof response.data.fee === 'number' &&
-       typeof response.data.baseTokenBalanceChange === 'number' &&
-       typeof response.data.quoteTokenBalanceChange === 'number'))
+        typeof response.data.totalInputSwapped === 'number' &&
+        typeof response.data.totalOutputSwapped === 'number' &&
+        typeof response.data.fee === 'number' &&
+        typeof response.data.baseTokenBalanceChange === 'number' &&
+        typeof response.data.quoteTokenBalanceChange === 'number'))
   );
 }
 
@@ -265,7 +265,8 @@ describe('Jupiter Swap Tests (Solana Mainnet)', () => {
       // Load mock responses
       const quoteResponse = loadMockResponse('quote-swap');
       const executeResponse = {
-        signature: '2XGwPTNGFvRjLb6HkBQq8qwsRZ8XNjEjvuehVeNDdz3TxxKnvYBfgMsYCQKNHMpDYzKcUfKdCwzBvkPvDz5aLfYc',
+        signature:
+          '2XGwPTNGFvRjLb6HkBQq8qwsRZ8XNjEjvuehVeNDdz3TxxKnvYBfgMsYCQKNHMpDYzKcUfKdCwzBvkPvDz5aLfYc',
         status: 1, // CONFIRMED
         data: {
           totalInputSwapped: 1.0,
@@ -329,7 +330,8 @@ describe('Jupiter Swap Tests (Solana Mainnet)', () => {
     test('returns successful swap execution with fee parameters', async () => {
       // Mock response with status-based format
       const executeResponse = {
-        signature: '3YHqPTNGFvRjLb6HkBQq8qwsRZ8XNjEjvuehVeNDdz3TxxKnvYBfgMsYCQKNHMpDYzKcUfKdCwzBvkPvDz5aLfYd',
+        signature:
+          '3YHqPTNGFvRjLb6HkBQq8qwsRZ8XNjEjvuehVeNDdz3TxxKnvYBfgMsYCQKNHMpDYzKcUfKdCwzBvkPvDz5aLfYd',
         status: 1, // CONFIRMED
         data: {
           totalInputSwapped: 1.0,
@@ -380,7 +382,8 @@ describe('Jupiter Swap Tests (Solana Mainnet)', () => {
     test('returns pending swap execution', async () => {
       // Mock response with PENDING status
       const executeResponse = {
-        signature: '4ZIrQTNGFvRjLb6HkBQq8qwsRZ8XNjEjvuehVeNDdz3TxxKnvYBfgMsYCQKNHMpDYzKcUfKdCwzBvkPvDz5aLfYe',
+        signature:
+          '4ZIrQTNGFvRjLb6HkBQq8qwsRZ8XNjEjvuehVeNDdz3TxxKnvYBfgMsYCQKNHMpDYzKcUfKdCwzBvkPvDz5aLfYe',
         status: 0, // PENDING
         // No data field when pending
       };

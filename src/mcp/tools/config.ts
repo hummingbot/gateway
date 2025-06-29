@@ -1,92 +1,44 @@
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
-import { z } from "zod";
-import { ToolRegistry } from "../utils/tool-registry";
-import { GatewayApiClient } from "../utils/api-client";
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { z } from 'zod';
 
-export function registerConfigTools(_server: Server, apiClient: GatewayApiClient) {
-  // Tool: get_config
-  ToolRegistry.registerTool(
-    {
-      name: "get_config",
-      description: "Get configuration settings for chains or connectors",
-      inputSchema: {
-        type: "object",
-        properties: {
-          namespace: {
-            type: "string",
-            description: "Optional: specific namespace (e.g., 'server', 'ethereum', 'solana', 'uniswap')"
-          },
-          network: {
-            type: "string",
-            description: "Optional: network name (e.g., 'mainnet', 'mainnet-beta'). Only used when namespace is a chain."
-          }
-        }
-      }
-    },
-    async (request) => {
-      try {
-        const args = request.params.arguments as { namespace?: string; network?: string };
-        
-        const params: any = {};
-        if (args.namespace) params.namespace = args.namespace;
-        if (args.network) params.network = args.network;
-        
-        const result = await apiClient.get("/config/", 
-          Object.keys(params).length > 0 ? params : undefined
-        );
-        
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(result, null, 2)
-            }
-          ]
-        };
-      } catch (error) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify({
-                error: "Failed to get configuration",
-                message: error instanceof Error ? error.message : String(error),
-                hint: "Gateway server must be running to fetch configuration"
-              })
-            }
-          ]
-        };
-      }
-    }
-  );
+import { GatewayApiClient } from '../utils/api-client';
+import { ToolRegistry } from '../utils/tool-registry';
 
+export function registerConfigTools(
+  _server: Server,
+  apiClient: GatewayApiClient,
+) {
   // Tool: update_config
   ToolRegistry.registerTool(
     {
-      name: "update_config",
-      description: "Update a specific configuration value",
+      name: 'update_config',
+      description:
+        'Update chain or connector configuration values and trigger Gateway server restart',
       inputSchema: {
-        type: "object",
+        type: 'object',
         properties: {
           namespace: {
-            type: "string",
-            description: "Configuration namespace (e.g., 'server', 'ethereum', 'solana', 'uniswap')"
+            type: 'string',
+            description:
+              "Configuration namespace (e.g., 'server', 'ethereum', 'solana', 'uniswap')",
           },
           network: {
-            type: "string",
-            description: "Optional: network name (e.g., 'mainnet', 'mainnet-beta'). Only used when namespace is a chain."
+            type: 'string',
+            description:
+              "Optional: network name (e.g., 'mainnet', 'mainnet-beta'). Only used when namespace is a chain.",
           },
           path: {
-            type: "string",
-            description: "Configuration path within the namespace/network (e.g., 'nodeURL', 'manualGasPrice')"
+            type: 'string',
+            description:
+              "Configuration path within the namespace/network (e.g., 'nodeURL', 'manualGasPrice')",
           },
           value: {
-            description: "New configuration value (string, number, boolean, object, or array)"
-          }
+            description:
+              'New configuration value (string, number, boolean, object, or array)',
+          },
         },
-        required: ["namespace", "path", "value"]
-      }
+        required: ['namespace', 'path', 'value'],
+      },
     },
     async (request) => {
       try {
@@ -96,211 +48,250 @@ export function registerConfigTools(_server: Server, apiClient: GatewayApiClient
           path: string;
           value: any;
         };
-        
+
         const body: any = {
           namespace: args.namespace,
           path: args.path,
-          value: args.value
+          value: args.value,
         };
         if (args.network) body.network = args.network;
-        
-        const result = await apiClient.post("/config/update", body);
-        
+
+        const result = await apiClient.post('/config/update', body);
+
         return {
           content: [
             {
-              type: "text",
-              text: JSON.stringify(result, null, 2)
-            }
-          ]
+              type: 'text',
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
         };
       } catch (error) {
         return {
           content: [
             {
-              type: "text",
+              type: 'text',
               text: JSON.stringify({
-                error: "Failed to update configuration",
+                error: 'Failed to update configuration',
                 message: error instanceof Error ? error.message : String(error),
-                hint: "Gateway server must be running to update configuration"
-              })
-            }
-          ]
+                hint: 'Gateway server must be running to update configuration',
+              }),
+            },
+          ],
         };
-      }
-    }
-  );
-
-  // Tool: get_pools
-  ToolRegistry.registerTool(
-    {
-      name: "get_pools",
-      description: "Get default pools for a specific connector",
-      inputSchema: {
-        type: "object",
-        properties: {
-          connector: {
-            type: "string",
-            description: "Connector name (e.g., 'raydium/amm', 'uniswap/clmm')"
-          }
-        },
-        required: ["connector"]
       }
     },
-    async (request) => {
-      try {
-        const args = request.params.arguments as { connector: string };
-        
-        const result = await apiClient.get("/config/pools", {
-          connector: args.connector
-        });
-        
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(result, null, 2)
-            }
-          ]
-        };
-      } catch (error) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify({
-                error: "Failed to get pools",
-                message: error instanceof Error ? error.message : String(error),
-                hint: "Gateway server must be running to fetch pool configuration"
-              })
-            }
-          ]
-        };
-      }
-    }
   );
 
-  // Tool: add_pool
+  // Tool: update_tokens
   ToolRegistry.registerTool(
     {
-      name: "add_pool",
-      description: "Add a default pool for a specific connector",
+      name: 'update_tokens',
+      description: 'Add, update, or remove tokens from a token list',
       inputSchema: {
-        type: "object",
+        type: 'object',
         properties: {
-          connector: {
-            type: "string",
-            description: "Connector name (e.g., 'raydium/amm', 'uniswap/clmm')"
+          action: {
+            type: 'string',
+            enum: ['add', 'update', 'remove'],
+            description: 'Action to perform on the token',
           },
-          baseToken: {
-            type: "string",
-            description: "Base token symbol"
+          chain: {
+            type: 'string',
+            description: 'Blockchain (ethereum, solana)',
           },
-          quoteToken: {
-            type: "string",
-            description: "Quote token symbol"
+          network: {
+            type: 'string',
+            description: 'Network name (mainnet, mainnet-beta, etc)',
           },
-          poolAddress: {
-            type: "string",
-            description: "Pool address"
-          }
+          symbol: {
+            type: 'string',
+            description: 'Token symbol',
+          },
+          name: {
+            type: 'string',
+            description: 'Token name (required for add/update)',
+          },
+          address: {
+            type: 'string',
+            description: 'Token contract address',
+          },
+          decimals: {
+            type: 'number',
+            description: 'Number of decimals (required for add/update)',
+          },
         },
-        required: ["connector", "baseToken", "quoteToken", "poolAddress"]
-      }
+        required: ['action', 'chain', 'network', 'symbol', 'address'],
+      },
     },
     async (request) => {
       try {
         const args = request.params.arguments as {
-          connector: string;
-          baseToken: string;
-          quoteToken: string;
-          poolAddress: string;
+          action: 'add' | 'update' | 'remove';
+          chain: string;
+          network: string;
+          symbol: string;
+          name?: string;
+          address: string;
+          decimals?: number;
         };
-        
-        const result = await apiClient.post("/config/pools/add", args);
-        
+
+        let result;
+
+        if (args.action === 'add' || args.action === 'update') {
+          // For add/update, we need all token details
+          if (!args.name || args.decimals === undefined) {
+            throw new Error(
+              'Name and decimals are required for add/update operations',
+            );
+          }
+
+          result = await apiClient.post('/tokens', {
+            chain: args.chain,
+            network: args.network,
+            symbol: args.symbol,
+            name: args.name,
+            address: args.address,
+            decimals: args.decimals,
+          });
+        } else {
+          // For remove, we only need the address
+          result = await apiClient.delete('/tokens', {
+            chain: args.chain,
+            network: args.network,
+            address: args.address,
+          });
+        }
+
         return {
           content: [
             {
-              type: "text",
-              text: JSON.stringify(result, null, 2)
-            }
-          ]
+              type: 'text',
+              text: JSON.stringify(
+                {
+                  success: true,
+                  action: args.action,
+                  token: args.symbol,
+                  result,
+                },
+                null,
+                2,
+              ),
+            },
+          ],
         };
       } catch (error) {
         return {
           content: [
             {
-              type: "text",
+              type: 'text',
               text: JSON.stringify({
-                error: "Failed to add pool",
+                error: 'Failed to update token',
                 message: error instanceof Error ? error.message : String(error),
-                hint: "Gateway server must be running to add pools"
-              })
-            }
-          ]
+                hint: 'Gateway server must be running to update tokens',
+              }),
+            },
+          ],
         };
       }
-    }
+    },
   );
 
-  // Tool: remove_pool
+  // Tool: update_wallets
   ToolRegistry.registerTool(
     {
-      name: "remove_pool",
-      description: "Remove a default pool for a specific connector",
+      name: 'update_wallets',
+      description: 'Add or remove wallets',
       inputSchema: {
-        type: "object",
+        type: 'object',
         properties: {
-          connector: {
-            type: "string",
-            description: "Connector name (e.g., 'raydium/amm', 'uniswap/clmm')"
+          action: {
+            type: 'string',
+            enum: ['add', 'remove'],
+            description: 'Action to perform',
           },
-          baseToken: {
-            type: "string",
-            description: "Base token symbol"
+          chain: {
+            type: 'string',
+            description: 'Blockchain network (ethereum, solana)',
           },
-          quoteToken: {
-            type: "string",
-            description: "Quote token symbol"
-          }
+          privateKey: {
+            type: 'string',
+            description: 'Private key in hex format (required for add)',
+          },
+          address: {
+            type: 'string',
+            description: 'Wallet address (required for remove)',
+          },
         },
-        required: ["connector", "baseToken", "quoteToken"]
-      }
+        required: ['action', 'chain'],
+      },
     },
     async (request) => {
       try {
         const args = request.params.arguments as {
-          connector: string;
-          baseToken: string;
-          quoteToken: string;
+          action: 'add' | 'remove';
+          chain: string;
+          privateKey?: string;
+          address?: string;
         };
-        
-        const result = await apiClient.post("/config/pools/remove", args);
-        
+
+        let result;
+
+        if (args.action === 'add') {
+          if (!args.privateKey) {
+            throw new Error('Private key is required for adding a wallet');
+          }
+
+          result = await apiClient.post('/wallet/add', {
+            chain: args.chain,
+            privateKey: args.privateKey,
+          });
+        } else {
+          if (!args.address) {
+            throw new Error('Address is required for removing a wallet');
+          }
+
+          await apiClient.delete('/wallet/remove', {
+            chain: args.chain,
+            address: args.address,
+          });
+
+          result = {
+            message: `Wallet ${args.address} removed from ${args.chain}`,
+          };
+        }
+
         return {
           content: [
             {
-              type: "text",
-              text: JSON.stringify(result, null, 2)
-            }
-          ]
+              type: 'text',
+              text: JSON.stringify(
+                {
+                  success: true,
+                  action: args.action,
+                  chain: args.chain,
+                  result,
+                },
+                null,
+                2,
+              ),
+            },
+          ],
         };
       } catch (error) {
         return {
           content: [
             {
-              type: "text",
+              type: 'text',
               text: JSON.stringify({
-                error: "Failed to remove pool",
+                error: 'Failed to update wallet',
                 message: error instanceof Error ? error.message : String(error),
-                hint: "Gateway server must be running to remove pools"
-              })
-            }
-          ]
+                hint: 'Gateway server must be running to manage wallets',
+              }),
+            },
+          ],
         };
       }
-    }
+    },
   );
-
 }

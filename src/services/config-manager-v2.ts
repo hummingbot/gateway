@@ -25,7 +25,10 @@ interface ConfigurationRoot {
 }
 const NamespaceTag: string = '$namespace ';
 // Schemas are always in dist/src/templates/namespace/
-const SchemasBaseDir: string = path.join(rootPath(), 'dist/src/templates/namespace');
+const SchemasBaseDir: string = path.join(
+  rootPath(),
+  'dist/src/templates/namespace',
+);
 
 export const ConfigRootSchemaPath: string = path.join(
   SchemasBaseDir,
@@ -166,13 +169,20 @@ export class ConfigurationNamespace {
 
   loadNetworkConfigs() {
     const chainName: string = this.#namespaceId;
-    const networkConfigDir: string = path.join(ConfigDir, 'networks', chainName);
+    const networkConfigDir: string = path.join(
+      ConfigDir,
+      'networks',
+      chainName,
+    );
     if (fs.existsSync(networkConfigDir)) {
       const networkConfigFiles: string[] = fs.readdirSync(networkConfigDir);
       for (const networkConfigFile of networkConfigFiles) {
         if (networkConfigFile.endsWith('.yml')) {
           const networkName: string = networkConfigFile.slice(0, -4);
-          const networkConfigPath: string = path.join(networkConfigDir, networkConfigFile);
+          const networkConfigPath: string = path.join(
+            networkConfigDir,
+            networkConfigFile,
+          );
           const networkConfig: Configuration = yaml.load(
             fs.readFileSync(networkConfigPath, 'utf8'),
           ) as Configuration;

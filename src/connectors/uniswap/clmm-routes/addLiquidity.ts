@@ -274,10 +274,16 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
 
         // Execute the transaction to increase liquidity
         // Use Ethereum's prepareGasOptions method
-        const txParams = await ethereum.prepareGasOptions(priorityFeePerCU, computeUnits);
+        const txParams = await ethereum.prepareGasOptions(
+          priorityFeePerCU,
+          computeUnits,
+        );
         txParams.value = BigNumber.from(value.toString());
 
-        const tx = await positionManagerWithSigner.multicall([calldata], txParams);
+        const tx = await positionManagerWithSigner.multicall(
+          [calldata],
+          txParams,
+        );
 
         // Wait for transaction confirmation
         const receipt = await tx.wait();

@@ -167,13 +167,19 @@ export class Ethereum {
     // Add EIP-1559 parameters if priorityFeePerCU is provided
     if (priorityFeePerCU !== undefined) {
       gasOptions.type = 2; // EIP-1559 transaction
-      const priorityFeePerGasWei = utils.parseUnits(priorityFeePerCU.toString(), 'gwei');
+      const priorityFeePerGasWei = utils.parseUnits(
+        priorityFeePerCU.toString(),
+        'gwei',
+      );
       gasOptions.maxPriorityFeePerGas = priorityFeePerGasWei;
-      
+
       // Get current base fee and add priority fee with 10% buffer
       const block = await this.provider.getBlock('latest');
       const baseFee = block.baseFeePerGas || BigNumber.from(0);
-      gasOptions.maxFeePerGas = baseFee.add(priorityFeePerGasWei).mul(110).div(100);
+      gasOptions.maxFeePerGas = baseFee
+        .add(priorityFeePerGasWei)
+        .mul(110)
+        .div(100);
     }
 
     return gasOptions;
@@ -233,17 +239,22 @@ export class Ethereum {
     );
     try {
       // Use TokenService to load tokens
-      const tokens = await TokenService.getInstance().loadTokenList('ethereum', this.network);
-      
+      const tokens = await TokenService.getInstance().loadTokenList(
+        'ethereum',
+        this.network,
+      );
+
       // Convert to TokenInfo format with chainId and normalize addresses
-      this.tokenList = tokens.map(token => ({
+      this.tokenList = tokens.map((token) => ({
         ...token,
         address: getAddress(token.address), // Normalize to checksummed address
         chainId: this.chainId,
       }));
 
       if (this.tokenList) {
-        logger.info(`Loaded ${this.tokenList.length} tokens for ethereum/${this.network}`);
+        logger.info(
+          `Loaded ${this.tokenList.length} tokens for ethereum/${this.network}`,
+        );
         // Build token map for faster lookups
         this.tokenList.forEach(
           (token: TokenInfo) => (this.tokenMap[token.symbol] = token),
@@ -254,7 +265,6 @@ export class Ethereum {
       throw error;
     }
   }
-
 
   /**
    * Get all tokens loaded from the token list

@@ -1,4 +1,5 @@
 import { Type, Static } from '@sinclair/typebox';
+
 import { TransactionStatus } from './chain-schema';
 
 export const GetSwapQuoteRequest = Type.Object(
@@ -48,30 +49,36 @@ export const ExecuteSwapRequest = Type.Object(
     slippagePct: Type.Optional(Type.Number()),
     poolAddress: Type.Optional(Type.String()),
     // New optional fee parameters
-    priorityFeePerCU: Type.Optional(Type.Number({
-      description: 'Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)'
-    })),
-    computeUnits: Type.Optional(Type.Number({
-      description: 'Compute units for transaction'
-    })),
+    priorityFeePerCU: Type.Optional(
+      Type.Number({
+        description:
+          'Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)',
+      }),
+    ),
+    computeUnits: Type.Optional(
+      Type.Number({
+        description: 'Compute units for transaction',
+      }),
+    ),
   },
   { $id: 'ExecuteSwapRequest' },
 );
 
 export type ExecuteSwapRequestType = Static<typeof ExecuteSwapRequest>;
 
-
 export const ExecuteSwapResponse = Type.Object({
   signature: Type.String(),
   status: Type.Number({ description: 'TransactionStatus enum value' }),
-  
+
   // Only included when status = CONFIRMED
-  data: Type.Optional(Type.Object({
-    totalInputSwapped: Type.Number(),
-    totalOutputSwapped: Type.Number(),
-    fee: Type.Number(),
-    baseTokenBalanceChange: Type.Number(),
-    quoteTokenBalanceChange: Type.Number(),
-  })),
+  data: Type.Optional(
+    Type.Object({
+      totalInputSwapped: Type.Number(),
+      totalOutputSwapped: Type.Number(),
+      fee: Type.Number(),
+      baseTokenBalanceChange: Type.Number(),
+      quoteTokenBalanceChange: Type.Number(),
+    }),
+  ),
 });
 export type ExecuteSwapResponseType = Static<typeof ExecuteSwapResponse>;

@@ -1,4 +1,7 @@
 import { FastifyInstance } from 'fastify';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as yaml from 'js-yaml';
 
 import { fromFractionString, toFractionString } from '../services/base';
 import { ConfigManagerV2 } from '../services/config-manager-v2';
@@ -42,9 +45,10 @@ export const validateAllowedSlippage = (
 };
 
 // Mutates the input value in place to convert to fraction string format
-export const updateAllowedSlippageToFraction = (
-  body: { configPath: string; configValue: any },
-): void => {
+export const updateAllowedSlippageToFraction = (body: {
+  configPath: string;
+  configValue: any;
+}): void => {
   if (body.configPath.endsWith('allowedSlippage')) {
     if (
       typeof body.configValue === 'number' ||
@@ -67,11 +71,9 @@ export const getConfig = (
     );
     const namespaceConfig =
       ConfigManagerV2.getInstance().getNamespace(namespace);
-    
+
     if (!namespaceConfig) {
-      throw fastify.httpErrors.notFound(
-        `Namespace '${namespace}' not found`,
-      );
+      throw fastify.httpErrors.notFound(`Namespace '${namespace}' not found`);
     }
 
     // If network is specified, return only that network's config
@@ -85,7 +87,9 @@ export const getConfig = (
 
       // Check if the network exists
       if (!namespaceConfig.configuration.networks[network]) {
-        const availableNetworks = Object.keys(namespaceConfig.configuration.networks);
+        const availableNetworks = Object.keys(
+          namespaceConfig.configuration.networks,
+        );
         throw fastify.httpErrors.notFound(
           `Network '${network}' not found for '${namespace}'. Available networks: ${availableNetworks.join(', ')}`,
         );
@@ -114,6 +118,64 @@ export const updateConfig = (
   validateAllowedSlippage(fastify, configPath, configValue);
 
   try {
+    // Check if this is a network-specific configuration for chains
+    const pathParts = configPath.split('.');
+    const namespace = pathParts[0];
+    
+    // Check if it's a chain namespace with network configuration
+    if (pathParts[1] === 'networks' && pathParts.length >= 4) {
+      const network = pathParts[2];
+      const networkConfigPath = pathParts.slice(3).join('.');
+      
+      // Check if we should save to a separate network file
+      const chainNamespaces = ['ethereum', 'solana']; // Add other chains as needed
+      if (chainNamespaces.includes(namespace)) {
+        // For chains, update the network-specific config file
+        const networkConfigFile = `conf/networks/${namespace}/${network}.yml`;
+        
+        try {
+          // Read existing network config or create new one
+          let networkConfig = {};
+          const fullPath = path.join(process.cwd(), networkConfigFile);
+          const dirPath = path.dirname(fullPath);
+          
+          // Ensure directory exists
+          if (!fs.existsSync(dirPath)) {
+            fs.mkdirSync(dirPath, { recursive: true });
+          }
+          
+          if (fs.existsSync(fullPath)) {
+            networkConfig = yaml.load(fs.readFileSync(fullPath, 'utf8')) || {};
+          }
+          
+          // Update the specific property in the network config
+          const updatePath = (obj: any, path: string[], value: any) => {
+            const key = path[0];
+            if (path.length === 1) {
+              obj[key] = value;
+            } else {
+              if (!obj[key]) obj[key] = {};
+              updatePath(obj[key], path.slice(1), value);
+            }
+          };
+          
+          updatePath(networkConfig, networkConfigPath.split('.'), configValue);
+          
+          // Save the network config file
+          fs.writeFileSync(fullPath, yaml.dump(networkConfig));
+          logger.info(`Successfully updated network configuration file: ${networkConfigFile}`);
+          
+          // Also update the runtime configuration
+          ConfigManagerV2.getInstance().set(configPath, configValue);
+          return;
+        } catch (fileError) {
+          logger.error(`Failed to update network config file: ${fileError.message}`);
+          // Fall back to updating only runtime config
+        }
+      }
+    }
+    
+    // Default behavior: update the namespace config file
     ConfigManagerV2.getInstance().set(configPath, configValue);
     logger.info(`Successfully updated configuration: ${configPath}`);
   } catch (error) {

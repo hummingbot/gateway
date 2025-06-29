@@ -236,7 +236,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           slippagePct,
         );
 
-        let computeUnits = 150000; // Default compute units for Meteora swaps
+        const computeUnits = 150000; // Default compute units for Meteora swaps
         try {
           // Note: estimateGasSolana returns feePerComputeUnit, not gasLimit
           // For Solana, we use a default compute units value for swaps

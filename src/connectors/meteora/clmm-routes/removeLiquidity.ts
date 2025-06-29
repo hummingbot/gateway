@@ -74,7 +74,7 @@ export async function removeLiquidity(
   }
   // Use provided compute units or default
   const finalComputeUnits = computeUnits || 1_000_000;
-  
+
   logger.info(
     `Executing removeLiquidity with ${finalComputeUnits} compute units${priorityFeePerCU ? ` and ${priorityFeePerCU} lamports/CU priority fee` : ''}`,
   );
@@ -156,8 +156,14 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network, walletAddress, positionAddress, percentageToRemove, priorityFeePerCU, computeUnits } =
-          request.body;
+        const {
+          network,
+          walletAddress,
+          positionAddress,
+          percentageToRemove,
+          priorityFeePerCU,
+          computeUnits,
+        } = request.body;
 
         const networkToUse = network || 'mainnet-beta';
 

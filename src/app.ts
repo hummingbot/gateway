@@ -10,7 +10,6 @@ import { Type } from '@sinclair/typebox';
 import Fastify, { FastifyInstance } from 'fastify';
 
 // Internal dependencies
-import { GATEWAY_VERSION } from './version';
 
 // Routes
 import { chainRoutes } from './chains/chain.routes';
@@ -26,6 +25,7 @@ import { getHttpsOptions } from './https';
 import { ConfigManagerV2 } from './services/config-manager-v2';
 import { logger } from './services/logger';
 import { tokensRoutes } from './tokens/tokens.routes';
+import { GATEWAY_VERSION } from './version';
 import { walletRoutes } from './wallet/wallet.routes';
 
 import { asciiLogo } from './index';

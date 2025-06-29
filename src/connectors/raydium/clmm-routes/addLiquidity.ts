@@ -54,10 +54,10 @@ async function addLiquidity(
   );
   console.log('quotePositionResponse', quotePositionResponse);
   logger.info('Adding liquidity to Raydium CLMM position...');
-  
+
   // Use provided compute units or quote's estimate
   const COMPUTE_UNITS = computeUnits || quotePositionResponse.computeUnits;
-  
+
   // Use provided priority fee or default to 0
   const finalPriorityFeePerCU = priorityFeePerCU || 0;
 
@@ -72,8 +72,7 @@ async function addLiquidity(
             quotePositionResponse.baseTokenAmount * 10 ** baseToken.decimals,
           )
         : new BN(
-            quotePositionResponse.quoteTokenAmount *
-              10 ** quoteToken.decimals,
+            quotePositionResponse.quoteTokenAmount * 10 ** quoteToken.decimals,
           ),
       otherAmountMax: quotePositionResponse.baseLimited
         ? new BN(
@@ -81,8 +80,7 @@ async function addLiquidity(
               10 ** quoteToken.decimals,
           )
         : new BN(
-            quotePositionResponse.baseTokenAmountMax *
-              10 ** baseToken.decimals,
+            quotePositionResponse.baseTokenAmountMax * 10 ** baseToken.decimals,
           ),
       txVersion: TxVersion.V0,
       computeBudgetConfig: {
@@ -96,7 +94,7 @@ async function addLiquidity(
 
   const { confirmed, signature, txData } =
     await solana.sendAndConfirmRawTransaction(transaction);
-    
+
   if (confirmed && txData) {
     const totalFee = txData.meta.fee;
     const { baseTokenBalanceChange, quoteTokenBalanceChange } =
@@ -113,7 +111,7 @@ async function addLiquidity(
         fee: totalFee / 1e9,
         baseTokenAmountAdded: baseTokenBalanceChange,
         quoteTokenAmountAdded: quoteTokenBalanceChange,
-      }
+      },
     };
   } else {
     // Return pending status for Hummingbot to handle retry

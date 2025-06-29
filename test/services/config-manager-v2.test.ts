@@ -114,7 +114,7 @@ describe('Configuration manager v2 tests', () => {
       newKeyPath,
     );
     expect(verifyConfigManager.get('ethereum.manualGasPrice')).toEqual(150);
-    
+
     // Note: Setting network-specific configs is not supported yet
     // as they are loaded from separate files but saveConfig() only saves the main file
     done();

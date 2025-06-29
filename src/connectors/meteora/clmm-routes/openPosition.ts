@@ -202,10 +202,10 @@ async function openPosition(
   logger.info(
     `Opening position in pool ${poolAddress} with price range ${lowerPrice.toFixed(4)} - ${upperPrice.toFixed(4)} ${tokenYSymbol}/${tokenXSymbol}`,
   );
-  
+
   // Use provided compute units or default
   const finalComputeUnits = computeUnits || 1_000_000;
-  
+
   const { signature, fee: txFee } = await solana.sendAndConfirmTransaction(
     createPositionTx,
     [wallet, newImbalancePosition],
@@ -213,13 +213,16 @@ async function openPosition(
     priorityFeePerCU,
   );
 
-  const { baseTokenBalanceChange, quoteTokenBalanceChange, fee: extractedFee } =
-    await solana.extractPairBalanceChangesAndFee(
-      signature,
-      tokenX,
-      tokenY,
-      wallet.publicKey.toBase58(),
-    );
+  const {
+    baseTokenBalanceChange,
+    quoteTokenBalanceChange,
+    fee: extractedFee,
+  } = await solana.extractPairBalanceChangesAndFee(
+    signature,
+    tokenX,
+    tokenY,
+    wallet.publicKey.toBase58(),
+  );
 
   // Calculate sentSOL based on which token is SOL
   const sentSOL =

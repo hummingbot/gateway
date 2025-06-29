@@ -5,32 +5,47 @@ const { spawn } = require('child_process');
 
 const testCommands = [
   // First, list all endpoints to find the correct ones
-  { jsonrpc: "2.0", id: 1, method: "tools/call", params: { 
-    name: "coingecko_list_api_endpoints", 
-    arguments: {} 
-  }},
+  {
+    jsonrpc: '2.0',
+    id: 1,
+    method: 'tools/call',
+    params: {
+      name: 'coingecko_list_api_endpoints',
+      arguments: {},
+    },
+  },
   // Get Bitcoin price
-  { jsonrpc: "2.0", id: 2, method: "tools/call", params: { 
-    name: "coingecko_invoke_api_endpoint", 
-    arguments: { 
-      endpoint_name: "simplePrice", 
-      args: {
-        ids: "bitcoin,ethereum",
-        vs_currencies: "usd",
-        include_market_cap: true,
-        include_24hr_vol: true,
-        include_24hr_change: true
-      }
-    } 
-  }},
+  {
+    jsonrpc: '2.0',
+    id: 2,
+    method: 'tools/call',
+    params: {
+      name: 'coingecko_invoke_api_endpoint',
+      arguments: {
+        endpoint_name: 'simplePrice',
+        args: {
+          ids: 'bitcoin,ethereum',
+          vs_currencies: 'usd',
+          include_market_cap: true,
+          include_24hr_vol: true,
+          include_24hr_change: true,
+        },
+      },
+    },
+  },
   // Get trending coins
-  { jsonrpc: "2.0", id: 3, method: "tools/call", params: { 
-    name: "coingecko_invoke_api_endpoint", 
-    arguments: { 
-      endpoint_name: "searchTrending",
-      args: {}
-    } 
-  }}
+  {
+    jsonrpc: '2.0',
+    id: 3,
+    method: 'tools/call',
+    params: {
+      name: 'coingecko_invoke_api_endpoint',
+      arguments: {
+        endpoint_name: 'searchTrending',
+        args: {},
+      },
+    },
+  },
 ];
 
 // Spawn the MCP server
@@ -38,8 +53,8 @@ const mcp = spawn('node', ['dist/mcp/index.js', '--tools=dynamic'], {
   env: {
     ...process.env,
     GATEWAY_URL: 'http://localhost:15888',
-    COINGECKO_DEMO_API_KEY: process.env.COINGECKO_DEMO_API_KEY || 'demo-key'
-  }
+    COINGECKO_DEMO_API_KEY: process.env.COINGECKO_DEMO_API_KEY || 'demo-key',
+  },
 });
 
 let buffer = '';
@@ -47,7 +62,7 @@ let currentCommand = 0;
 
 mcp.stdout.on('data', (data) => {
   buffer += data.toString();
-  
+
   // Try to parse complete JSON messages
   const lines = buffer.split('\n');
   for (let i = 0; i < lines.length - 1; i++) {
@@ -55,7 +70,7 @@ mcp.stdout.on('data', (data) => {
     if (line) {
       try {
         const msg = JSON.parse(line);
-        
+
         // Handle responses
         if (msg.id === 1) {
           console.log('✓ Listed CoinGecko endpoints');
@@ -64,23 +79,28 @@ mcp.stdout.on('data', (data) => {
               const content = JSON.parse(msg.result.content[0].text);
               if (content.endpoints) {
                 console.log(`  Total endpoints: ${content.endpoints.length}`);
-                
+
                 // Find trending-related endpoints
-                const trendingEndpoints = content.endpoints.filter(e => 
-                  e.name.toLowerCase().includes('trend') || 
-                  e.description.toLowerCase().includes('trend')
+                const trendingEndpoints = content.endpoints.filter(
+                  (e) =>
+                    e.name.toLowerCase().includes('trend') ||
+                    e.description.toLowerCase().includes('trend'),
                 );
-                console.log(`\n  Trending endpoints found: ${trendingEndpoints.length}`);
-                trendingEndpoints.slice(0, 3).forEach(e => {
+                console.log(
+                  `\n  Trending endpoints found: ${trendingEndpoints.length}`,
+                );
+                trendingEndpoints.slice(0, 3).forEach((e) => {
                   console.log(`    - ${e.name}: ${e.description}`);
                 });
-                
+
                 // Find price endpoints
-                const priceEndpoints = content.endpoints.filter(e => 
-                  e.name.toLowerCase().includes('price')
+                const priceEndpoints = content.endpoints.filter((e) =>
+                  e.name.toLowerCase().includes('price'),
                 );
-                console.log(`\n  Price endpoints found: ${priceEndpoints.length}`);
-                priceEndpoints.slice(0, 3).forEach(e => {
+                console.log(
+                  `\n  Price endpoints found: ${priceEndpoints.length}`,
+                );
+                priceEndpoints.slice(0, 3).forEach((e) => {
                   console.log(`    - ${e.name}: ${e.description}`);
                 });
               }
@@ -94,10 +114,14 @@ mcp.stdout.on('data', (data) => {
             try {
               const content = JSON.parse(msg.result.content[0].text);
               if (content.bitcoin) {
-                console.log(`  Bitcoin: $${content.bitcoin.usd} (24h: ${content.bitcoin.usd_24h_change?.toFixed(2)}%)`);
+                console.log(
+                  `  Bitcoin: $${content.bitcoin.usd} (24h: ${content.bitcoin.usd_24h_change?.toFixed(2)}%)`,
+                );
               }
               if (content.ethereum) {
-                console.log(`  Ethereum: $${content.ethereum.usd} (24h: ${content.ethereum.usd_24h_change?.toFixed(2)}%)`);
+                console.log(
+                  `  Ethereum: $${content.ethereum.usd} (24h: ${content.ethereum.usd_24h_change?.toFixed(2)}%)`,
+                );
               }
             } catch (e) {
               console.log('  Price data received');
@@ -111,7 +135,9 @@ mcp.stdout.on('data', (data) => {
               if (content.coins) {
                 console.log(`  Trending coins: ${content.coins.length}`);
                 content.coins.slice(0, 3).forEach((coin, i) => {
-                  console.log(`    ${i + 1}. ${coin.item.name} (${coin.item.symbol})`);
+                  console.log(
+                    `    ${i + 1}. ${coin.item.name} (${coin.item.symbol})`,
+                  );
                 });
               }
             } catch (e) {
@@ -121,11 +147,13 @@ mcp.stdout.on('data', (data) => {
           console.log('\n✅ CoinGecko integration working perfectly!');
           process.exit(0);
         }
-        
+
         if (msg.error) {
           console.error(`\n❌ Error in command ${msg.id}:`, msg.error.message);
           if (msg.error.message.includes('not found')) {
-            console.log('  Tip: The endpoint name might be different. Check command 1 output for correct names.');
+            console.log(
+              '  Tip: The endpoint name might be different. Check command 1 output for correct names.',
+            );
           }
           // Continue with next test
           if (currentCommand === msg.id) {

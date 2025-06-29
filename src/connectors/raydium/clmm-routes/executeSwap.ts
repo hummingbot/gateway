@@ -133,7 +133,7 @@ async function executeSwap(
 
   // Use provided compute units or default
   const COMPUTE_UNITS = computeUnits || 600000;
-  
+
   // Use provided priority fee per CU or estimate default
   let finalPriorityFeePerCU: number;
   if (priorityFeePerCU !== undefined) {
@@ -141,64 +141,66 @@ async function executeSwap(
   } else {
     // Calculate default if not provided
     const currentPriorityFee = (await solana.estimateGas()) * 1e9 - BASE_FEE;
-    finalPriorityFeePerCU = Math.floor((currentPriorityFee * 1e6) / COMPUTE_UNITS);
+    finalPriorityFeePerCU = Math.floor(
+      (currentPriorityFee * 1e6) / COMPUTE_UNITS,
+    );
   }
-  
+
   // Build transaction with SDK - pass parameters directly
   let transaction: VersionedTransaction;
   if (side === 'BUY') {
-      const exactOutResponse = response as ReturnTypeComputeAmountOutBaseOut;
-      const amountIn = convertAmountIn(
-        amount,
-        inputToken.decimals,
-        outputToken.decimals,
-        exactOutResponse.amountIn.amount,
-      );
-      const amountInWithSlippage =
-        amountIn * 10 ** inputToken.decimals * (1 + effectiveSlippage / 100);
-      // logger.info(`amountInWithSlippage: ${amountInWithSlippage}`);
-      ({ transaction } = (await raydium.raydiumSDK.clmm.swapBaseOut({
-        poolInfo,
-        poolKeys,
-        outputMint: outputToken.address,
-        amountInMax: new BN(Math.floor(amountInWithSlippage)),
-        amountOut: exactOutResponse.realAmountOut.amount,
-        observationId: clmmPoolInfo.observationId,
-        ownerInfo: {
-          useSOLBalance: true,
-        },
-        txVersion: raydium.txVersion,
-        remainingAccounts: exactOutResponse.remainingAccounts,
-        computeBudgetConfig: {
-          units: COMPUTE_UNITS,
-          microLamports: finalPriorityFeePerCU,  // Pass directly without transformation
-        },
-      })) as { transaction: VersionedTransaction });
-    } else {
-      const exactInResponse = response as ReturnTypeComputeAmountOutFormat;
-      ({ transaction } = (await raydium.raydiumSDK.clmm.swap({
-        poolInfo,
-        poolKeys,
-        inputMint: inputToken.address,
-        amountIn: exactInResponse.realAmountIn.amount.raw,
-        amountOutMin: exactInResponse.minAmountOut.amount.raw,
-        observationId: clmmPoolInfo.observationId,
-        ownerInfo: {
-          useSOLBalance: true,
-        },
-        remainingAccounts: exactInResponse.remainingAccounts,
-        txVersion: raydium.txVersion,
-        computeBudgetConfig: {
-          units: COMPUTE_UNITS,
-          microLamports: finalPriorityFeePerCU,  // Pass directly without transformation
-        },
-      })) as { transaction: VersionedTransaction });
-    }
+    const exactOutResponse = response as ReturnTypeComputeAmountOutBaseOut;
+    const amountIn = convertAmountIn(
+      amount,
+      inputToken.decimals,
+      outputToken.decimals,
+      exactOutResponse.amountIn.amount,
+    );
+    const amountInWithSlippage =
+      amountIn * 10 ** inputToken.decimals * (1 + effectiveSlippage / 100);
+    // logger.info(`amountInWithSlippage: ${amountInWithSlippage}`);
+    ({ transaction } = (await raydium.raydiumSDK.clmm.swapBaseOut({
+      poolInfo,
+      poolKeys,
+      outputMint: outputToken.address,
+      amountInMax: new BN(Math.floor(amountInWithSlippage)),
+      amountOut: exactOutResponse.realAmountOut.amount,
+      observationId: clmmPoolInfo.observationId,
+      ownerInfo: {
+        useSOLBalance: true,
+      },
+      txVersion: raydium.txVersion,
+      remainingAccounts: exactOutResponse.remainingAccounts,
+      computeBudgetConfig: {
+        units: COMPUTE_UNITS,
+        microLamports: finalPriorityFeePerCU, // Pass directly without transformation
+      },
+    })) as { transaction: VersionedTransaction });
+  } else {
+    const exactInResponse = response as ReturnTypeComputeAmountOutFormat;
+    ({ transaction } = (await raydium.raydiumSDK.clmm.swap({
+      poolInfo,
+      poolKeys,
+      inputMint: inputToken.address,
+      amountIn: exactInResponse.realAmountIn.amount.raw,
+      amountOutMin: exactInResponse.minAmountOut.amount.raw,
+      observationId: clmmPoolInfo.observationId,
+      ownerInfo: {
+        useSOLBalance: true,
+      },
+      remainingAccounts: exactInResponse.remainingAccounts,
+      txVersion: raydium.txVersion,
+      computeBudgetConfig: {
+        units: COMPUTE_UNITS,
+        microLamports: finalPriorityFeePerCU, // Pass directly without transformation
+      },
+    })) as { transaction: VersionedTransaction });
+  }
 
   // Sign and simulate transaction
   transaction.sign([wallet]);
   await solana.simulateTransaction(transaction as VersionedTransaction);
-  
+
   // Send and confirm - keep retry loop here for retrying same tx hash
   const { confirmed, signature, txData } =
     await solana.sendAndConfirmRawTransaction(transaction);
@@ -226,7 +228,7 @@ async function executeSwap(
         fee: txData.meta.fee / 1e9,
         baseTokenBalanceChange,
         quoteTokenBalanceChange,
-      }
+      },
     };
   } else {
     // Return pending for Hummingbot to handle retry

@@ -9,7 +9,7 @@ import { updateConfigRoute } from './routes/updateConfig';
 
 export const configRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(sensible);
-  
+
   // Register individual route handlers
   await fastify.register(getConfigRoute);
   await fastify.register(updateConfigRoute);

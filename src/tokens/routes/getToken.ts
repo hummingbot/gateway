@@ -1,19 +1,19 @@
 import { FastifyPluginAsync } from 'fastify';
 
-import { TokenService } from '../../services/token-service';
 import { logger } from '../../services/logger';
-import { 
-  TokenViewQuery, 
-  TokenViewQuerySchema, 
-  TokenResponse, 
-  TokenResponseSchema 
+import { TokenService } from '../../services/token-service';
+import {
+  TokenViewQuery,
+  TokenViewQuerySchema,
+  TokenResponse,
+  TokenResponseSchema,
 } from '../schemas';
 
 export const getTokenRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{ 
-    Params: { symbolOrAddress: string }; 
-    Querystring: TokenViewQuery; 
-    Reply: TokenResponse 
+  fastify.get<{
+    Params: { symbolOrAddress: string };
+    Querystring: TokenViewQuery;
+    Reply: TokenResponse;
   }>(
     '/:symbolOrAddress',
     {
@@ -42,11 +42,15 @@ export const getTokenRoute: FastifyPluginAsync = async (fastify) => {
 
       try {
         const tokenService = TokenService.getInstance();
-        const token = await tokenService.getToken(chain, network, symbolOrAddress);
+        const token = await tokenService.getToken(
+          chain,
+          network,
+          symbolOrAddress,
+        );
 
         if (!token) {
           throw fastify.httpErrors.notFound(
-            `Token ${symbolOrAddress} not found in ${chain}/${network}`
+            `Token ${symbolOrAddress} not found in ${chain}/${network}`,
           );
         }
 
@@ -57,22 +61,22 @@ export const getTokenRoute: FastifyPluginAsync = async (fastify) => {
         };
       } catch (error) {
         logger.error(`Failed to get token: ${error.message}`);
-        
+
         if (error.statusCode === 404) {
           throw error;
         }
-        
+
         if (error.message.includes('Unsupported chain')) {
           throw fastify.httpErrors.badRequest(error.message);
         }
-        
+
         if (error.message.includes('not found')) {
           throw fastify.httpErrors.notFound(error.message);
         }
-        
+
         throw fastify.httpErrors.internalServerError('Failed to get token');
       }
-    }
+    },
   );
 };
 

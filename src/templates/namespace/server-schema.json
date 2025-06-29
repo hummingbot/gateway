@@ -9,7 +9,25 @@
     "ipWhitelist": { "type": "array" },
     "GMTOffset": { "type": "number" },
     "logToStdOut": { "type": "boolean" },
-    "fastifyLogs": { "type": "boolean" }
+    "fastifyLogs": { "type": "boolean" },
+    "logLevel": { 
+      "type": "string",
+      "enum": ["debug", "info", "warn", "error"],
+      "default": "info"
+    },
+    "mcp": {
+      "type": "object",
+      "properties": {
+        "coingeckoTools": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of CoinGecko tools to load. Leave empty to load all tools."
+        }
+      },
+      "additionalProperties": false
+    }
   },
   "additionalProperties": false,
   "required": [

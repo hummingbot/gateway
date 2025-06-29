@@ -233,14 +233,23 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
 
         // Get the calldata using the SDK
         const { calldata, value } =
-          NonfungiblePositionManager.removeCallParameters(positionSDK, removeParams);
+          NonfungiblePositionManager.removeCallParameters(
+            positionSDK,
+            removeParams,
+          );
 
         // Execute the transaction to remove liquidity
         // Use Ethereum's prepareGasOptions method
-        const txParams = await ethereum.prepareGasOptions(priorityFeePerCU, computeUnits);
+        const txParams = await ethereum.prepareGasOptions(
+          priorityFeePerCU,
+          computeUnits,
+        );
         txParams.value = BigNumber.from(value.toString());
 
-        const tx = await positionManagerWithSigner.multicall([calldata], txParams);
+        const tx = await positionManagerWithSigner.multicall(
+          [calldata],
+          txParams,
+        );
 
         // Wait for transaction confirmation
         const receipt = await tx.wait();

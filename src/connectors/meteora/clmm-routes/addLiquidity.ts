@@ -142,7 +142,7 @@ async function addLiquidity(
 
   // Use provided compute units or default
   const finalComputeUnits = computeUnits || 800_000;
-  
+
   logger.info(
     `Executing addLiquidity with ${finalComputeUnits} compute units${priorityFeePerCU ? ` and ${priorityFeePerCU} lamports/CU priority fee` : ''}`,
   );
@@ -179,7 +179,7 @@ async function addLiquidity(
       baseTokenAmountAdded: Math.abs(tokenXAddedAmount),
       quoteTokenAmountAdded: Math.abs(tokenYAddedAmount),
       fee,
-    }
+    },
   };
 }
 

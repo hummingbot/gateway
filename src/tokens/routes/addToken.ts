@@ -1,12 +1,12 @@
 import { FastifyPluginAsync } from 'fastify';
 
-import { TokenService } from '../../services/token-service';
 import { logger } from '../../services/logger';
-import { 
-  TokenAddRequest, 
-  TokenAddRequestSchema, 
-  TokenOperationResponse, 
-  TokenOperationResponseSchema 
+import { TokenService } from '../../services/token-service';
+import {
+  TokenAddRequest,
+  TokenAddRequestSchema,
+  TokenOperationResponse,
+  TokenOperationResponseSchema,
 } from '../schemas';
 
 export const addTokenRoute: FastifyPluginAsync = async (fastify) => {
@@ -35,26 +35,29 @@ export const addTokenRoute: FastifyPluginAsync = async (fastify) => {
         };
       } catch (error) {
         logger.error(`Failed to add token: ${error.message}`);
-        
+
         if (error.message.includes('already exists')) {
           throw fastify.httpErrors.conflict(error.message);
         }
-        
-        if (error.message.includes('Invalid') || error.message.includes('required')) {
+
+        if (
+          error.message.includes('Invalid') ||
+          error.message.includes('required')
+        ) {
           throw fastify.httpErrors.badRequest(error.message);
         }
-        
+
         if (error.message.includes('Unsupported chain')) {
           throw fastify.httpErrors.badRequest(error.message);
         }
-        
+
         if (error.message.includes('not found')) {
           throw fastify.httpErrors.notFound(error.message);
         }
-        
+
         throw fastify.httpErrors.internalServerError('Failed to add token');
       }
-    }
+    },
   );
 };
 

@@ -278,14 +278,18 @@ export async function getRawSwapQuote(
 
   // Resolve tokens from symbols or addresses
   const solana = await Solana.getInstance(network);
-  
+
   let resolvedBaseToken = await solana.getToken(baseToken);
   let resolvedQuoteToken = await solana.getToken(quoteToken);
 
   if (!resolvedBaseToken || !resolvedQuoteToken) {
     // If tokens not found in list but we have pool info, create dummy token info
     // The swap quote doesn't need accurate symbol/decimals since it uses pool's on-chain data
-    if (!resolvedBaseToken && (baseToken === ammPoolInfo.baseTokenAddress || baseToken === ammPoolInfo.quoteTokenAddress)) {
+    if (
+      !resolvedBaseToken &&
+      (baseToken === ammPoolInfo.baseTokenAddress ||
+        baseToken === ammPoolInfo.quoteTokenAddress)
+    ) {
       resolvedBaseToken = {
         address: baseToken,
         symbol: baseToken.length > 10 ? baseToken.slice(0, 6) : baseToken,
@@ -294,8 +298,12 @@ export async function getRawSwapQuote(
         chainId: 0, // Solana mainnet
       };
     }
-    
-    if (!resolvedQuoteToken && (quoteToken === ammPoolInfo.baseTokenAddress || quoteToken === ammPoolInfo.quoteTokenAddress)) {
+
+    if (
+      !resolvedQuoteToken &&
+      (quoteToken === ammPoolInfo.baseTokenAddress ||
+        quoteToken === ammPoolInfo.quoteTokenAddress)
+    ) {
       resolvedQuoteToken = {
         address: quoteToken,
         symbol: quoteToken.length > 10 ? quoteToken.slice(0, 6) : quoteToken,
@@ -304,7 +312,7 @@ export async function getRawSwapQuote(
         chainId: 0, // Solana mainnet
       };
     }
-    
+
     // If still not resolved, throw error
     if (!resolvedBaseToken || !resolvedQuoteToken) {
       throw new Error(
@@ -586,7 +594,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
               'Either poolAddress or both baseToken and quoteToken must be provided',
             );
           }
-          
+
           poolAddress = await raydium.findDefaultPool(
             baseToken,
             quoteToken,
@@ -604,7 +612,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           if (!poolInfo) {
             throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
           }
-          
+
           // For AMM pools, baseToken is always the first token (SOL in SOL/MORI)
           // and quoteToken is always the second token (MORI in SOL/MORI)
           baseTokenToUse = poolInfo.baseTokenAddress;

@@ -97,11 +97,11 @@ function validateSwapExecution(response) {
     typeof response.status === 'number' &&
     (response.status !== 1 || // If not CONFIRMED
       (response.data &&
-       typeof response.data.totalInputSwapped === 'number' &&
-       typeof response.data.totalOutputSwapped === 'number' &&
-       typeof response.data.fee === 'number' &&
-       typeof response.data.baseTokenBalanceChange === 'number' &&
-       typeof response.data.quoteTokenBalanceChange === 'number'))
+        typeof response.data.totalInputSwapped === 'number' &&
+        typeof response.data.totalOutputSwapped === 'number' &&
+        typeof response.data.fee === 'number' &&
+        typeof response.data.baseTokenBalanceChange === 'number' &&
+        typeof response.data.quoteTokenBalanceChange === 'number'))
   );
 }
 
@@ -113,11 +113,11 @@ function validateOpenPosition(response) {
     typeof response.status === 'number' &&
     (response.status !== 1 || // If not CONFIRMED
       (response.data &&
-       typeof response.data.fee === 'number' &&
-       typeof response.data.positionAddress === 'string' &&
-       typeof response.data.positionRent === 'number' &&
-       typeof response.data.baseTokenAmountAdded === 'number' &&
-       typeof response.data.quoteTokenAmountAdded === 'number'))
+        typeof response.data.fee === 'number' &&
+        typeof response.data.positionAddress === 'string' &&
+        typeof response.data.positionRent === 'number' &&
+        typeof response.data.baseTokenAmountAdded === 'number' &&
+        typeof response.data.quoteTokenAmountAdded === 'number'))
   );
 }
 
@@ -129,9 +129,9 @@ function validateAddLiquidity(response) {
     typeof response.status === 'number' &&
     (response.status !== 1 || // If not CONFIRMED
       (response.data &&
-       typeof response.data.fee === 'number' &&
-       typeof response.data.baseTokenAmountAdded === 'number' &&
-       typeof response.data.quoteTokenAmountAdded === 'number'))
+        typeof response.data.fee === 'number' &&
+        typeof response.data.baseTokenAmountAdded === 'number' &&
+        typeof response.data.quoteTokenAmountAdded === 'number'))
   );
 }
 
@@ -143,9 +143,9 @@ function validateRemoveLiquidity(response) {
     typeof response.status === 'number' &&
     (response.status !== 1 || // If not CONFIRMED
       (response.data &&
-       typeof response.data.fee === 'number' &&
-       typeof response.data.baseTokenAmountRemoved === 'number' &&
-       typeof response.data.quoteTokenAmountRemoved === 'number'))
+        typeof response.data.fee === 'number' &&
+        typeof response.data.baseTokenAmountRemoved === 'number' &&
+        typeof response.data.quoteTokenAmountRemoved === 'number'))
   );
 }
 
@@ -157,12 +157,12 @@ function validateClosePosition(response) {
     typeof response.status === 'number' &&
     (response.status !== 1 || // If not CONFIRMED
       (response.data &&
-       typeof response.data.fee === 'number' &&
-       typeof response.data.positionRentRefunded === 'number' &&
-       typeof response.data.baseTokenAmountRemoved === 'number' &&
-       typeof response.data.quoteTokenAmountRemoved === 'number' &&
-       typeof response.data.baseFeeAmountCollected === 'number' &&
-       typeof response.data.quoteFeeAmountCollected === 'number'))
+        typeof response.data.fee === 'number' &&
+        typeof response.data.positionRentRefunded === 'number' &&
+        typeof response.data.baseTokenAmountRemoved === 'number' &&
+        typeof response.data.quoteTokenAmountRemoved === 'number' &&
+        typeof response.data.baseFeeAmountCollected === 'number' &&
+        typeof response.data.quoteFeeAmountCollected === 'number'))
   );
 }
 

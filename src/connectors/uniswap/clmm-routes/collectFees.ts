@@ -111,7 +111,6 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
           throw fastify.httpErrors.badRequest(error.message);
         }
 
-
         // Create position manager contract
         const positionManager = new Contract(
           positionManagerAddress,
@@ -165,7 +164,10 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
 
         // Execute the transaction to collect fees
         // Use Ethereum's prepareGasOptions method
-        const txParams = await ethereum.prepareGasOptions(priorityFeePerCU, computeUnits || 300000);
+        const txParams = await ethereum.prepareGasOptions(
+          priorityFeePerCU,
+          computeUnits || 300000,
+        );
         txParams.value = BigNumber.from(value.toString());
 
         const tx = await positionManager.multicall([calldata], txParams);

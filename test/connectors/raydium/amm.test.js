@@ -68,11 +68,11 @@ function validateSwapExecution(response) {
     typeof response.status === 'number' && // Added status field
     (response.status !== 1 || // If not CONFIRMED
       (response.data && // then data is optional
-       typeof response.data.totalInputSwapped === 'number' &&
-       typeof response.data.totalOutputSwapped === 'number' &&
-       typeof response.data.fee === 'number' &&
-       typeof response.data.baseTokenBalanceChange === 'number' &&
-       typeof response.data.quoteTokenBalanceChange === 'number'))
+        typeof response.data.totalInputSwapped === 'number' &&
+        typeof response.data.totalOutputSwapped === 'number' &&
+        typeof response.data.fee === 'number' &&
+        typeof response.data.baseTokenBalanceChange === 'number' &&
+        typeof response.data.quoteTokenBalanceChange === 'number'))
   );
 }
 

@@ -1,12 +1,12 @@
 import { FastifyPluginAsync } from 'fastify';
 
-import { TokenService } from '../../services/token-service';
 import { logger } from '../../services/logger';
-import { 
-  TokenListQuery, 
-  TokenListQuerySchema, 
-  TokenListResponse, 
-  TokenListResponseSchema 
+import { TokenService } from '../../services/token-service';
+import {
+  TokenListQuery,
+  TokenListQuerySchema,
+  TokenListResponse,
+  TokenListResponseSchema,
 } from '../schemas';
 
 export const listTokensRoute: FastifyPluginAsync = async (fastify) => {
@@ -34,29 +34,25 @@ export const listTokensRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         const tokenService = TokenService.getInstance();
-        const tokens = await tokenService.listTokens(
-          chain,
-          network,
-          search
-        );
+        const tokens = await tokenService.listTokens(chain, network, search);
 
         return {
           tokens,
         };
       } catch (error) {
         logger.error(`Failed to list tokens: ${error.message}`);
-        
+
         if (error.message.includes('Unsupported chain')) {
           throw fastify.httpErrors.badRequest(error.message);
         }
-        
+
         if (error.message.includes('not found')) {
           throw fastify.httpErrors.notFound(error.message);
         }
-        
+
         throw fastify.httpErrors.internalServerError('Failed to list tokens');
       }
-    }
+    },
   );
 };
 

@@ -374,7 +374,10 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         let tx;
         try {
           // Use Ethereum's prepareGasOptions method
-          const txParams = await ethereum.prepareGasOptions(priorityFeePerCU, computeUnits);
+          const txParams = await ethereum.prepareGasOptions(
+            priorityFeePerCU,
+            computeUnits,
+          );
           txParams.value = BigNumber.from(value.toString());
 
           tx = await positionManager.multicall([calldata], txParams);

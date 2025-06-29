@@ -1,7 +1,8 @@
+import path from 'path';
+
+import { rootPath } from '../../paths';
 import { TokenListType } from '../../services/base';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
-import { rootPath } from '../../paths';
-import path from 'path';
 
 export interface NetworkConfig {
   name: string;
@@ -53,7 +54,7 @@ export function getEthereumConfig(
         'conf',
         'tokens',
         chainName,
-        `${network}.json`
+        `${network}.json`,
       ),
       gasPriceRefreshInterval: ConfigManagerV2.getInstance().get(
         chainName + '.networks.' + network + '.gasPriceRefreshInterval',
@@ -74,12 +75,8 @@ export function getEthereumConfig(
     gasEstimateInterval: ConfigManagerV2.getInstance().get(
       chainName + '.gasEstimateInterval',
     ),
-    maxFee: ConfigManagerV2.getInstance().get(
-      chainName + '.maxFee',
-    ),
-    minFee: ConfigManagerV2.getInstance().get(
-      chainName + '.minFee',
-    ),
+    maxFee: ConfigManagerV2.getInstance().get(chainName + '.maxFee'),
+    minFee: ConfigManagerV2.getInstance().get(chainName + '.minFee'),
     retryCount: ConfigManagerV2.getInstance().get(chainName + '.retryCount'),
     retryFeeMultiplier: ConfigManagerV2.getInstance().get(
       chainName + '.retryFeeMultiplier',

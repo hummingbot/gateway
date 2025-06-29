@@ -1,9 +1,9 @@
 import sensible from '@fastify/sensible';
 import type { FastifyPluginAsync } from 'fastify';
 
-import { listTokensRoute } from './routes/listTokens';
-import { getTokenRoute } from './routes/getToken';
 import { addTokenRoute } from './routes/addToken';
+import { getTokenRoute } from './routes/getToken';
+import { listTokensRoute } from './routes/listTokens';
 import { removeTokenRoute } from './routes/removeToken';
 
 export const tokensRoutes: FastifyPluginAsync = async (fastify) => {

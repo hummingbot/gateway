@@ -1,4 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
+
 import { GatewayConfig } from '../types';
 
 export class GatewayApiClient {
@@ -25,7 +26,7 @@ export class GatewayApiClient {
           this.isGatewayRunning = false;
         }
         throw error;
-      }
+      },
     );
   }
 

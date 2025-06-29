@@ -1,65 +1,86 @@
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { ListResourcesRequestSchema, ReadResourceRequestSchema } from "@modelcontextprotocol/sdk/types.js";
-import { GatewayApiClient } from "../utils/api-client";
-import { FallbackDataProvider } from "../utils/fallback";
-import * as fs from "fs/promises";
-import * as path from "path";
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import {
+  ListResourcesRequestSchema,
+  ReadResourceRequestSchema,
+} from '@modelcontextprotocol/sdk/types.js';
+import { GatewayApiClient } from '../utils/api-client';
+
+async function scanDirectory(dir: string, baseUri: string, resources: any[]): Promise<void> {
+  try {
+    const entries = await fs.readdir(dir, { withFileTypes: true });
+    
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      const relativePath = path.relative('./conf', fullPath);
+      
+      if (entry.isDirectory()) {
+        // Recursively scan subdirectories
+        await scanDirectory(fullPath, baseUri, resources);
+      } else if (entry.isFile() && !entry.name.startsWith('.')) {
+        // Add files (skip hidden files like .DS_Store)
+        const ext = path.extname(entry.name);
+        if (ext === '.yml' || ext === '.yaml' || ext === '.json') {
+          const uri = `${baseUri}/${relativePath}`.replace(/\.(yml|yaml|json)$/, '');
+          const mimeType = ext === '.json' ? 'application/json' : 'text/yaml';
+          
+          // Create a user-friendly name
+          let name = relativePath;
+          if (relativePath.includes('wallets/')) {
+            name = `Wallet: ${entry.name.replace(ext, '')}`;
+          } else if (relativePath.includes('tokens/')) {
+            const parts = relativePath.split('/');
+            name = `Token List: ${parts[parts.length - 1].replace(ext, '')} (${parts[parts.length - 2]})`;
+          } else if (relativePath.includes('connectors/')) {
+            name = `Connector: ${entry.name.replace(ext, '')}`;
+          } else {
+            name = entry.name.replace(ext, '');
+            name = name.charAt(0).toUpperCase() + name.slice(1) + ' Configuration';
+          }
+          
+          resources.push({
+            uri,
+            name,
+            description: `Configuration file: ${relativePath}`,
+            mimeType,
+          });
+        }
+      }
+    }
+  } catch (error) {
+    // Directory might not exist
+  }
+}
 
 export function registerResources(server: Server, apiClient: GatewayApiClient) {
   // Handle resource list requests
   server.setRequestHandler(ListResourcesRequestSchema, async () => {
-    return {
-      resources: [
-        {
-          uri: "gateway://chains",
-          name: "Available Chains",
-          description: "List of supported blockchain networks",
-          mimeType: "application/json"
-        },
-        {
-          uri: "gateway://connectors",
-          name: "Available Connectors",
-          description: "List of DEX connectors and their capabilities",
-          mimeType: "application/json"
-        },
-        {
-          uri: "gateway://config/ethereum",
-          name: "Ethereum Configuration",
-          description: "Current Ethereum configuration settings",
-          mimeType: "application/json"
-        },
-        {
-          uri: "gateway://config/solana",
-          name: "Solana Configuration",
-          description: "Current Solana configuration settings",
-          mimeType: "application/json"
-        },
-        {
-          uri: "gateway://wallets",
-          name: "Wallet List",
-          description: "List of configured wallets across all chains",
-          mimeType: "application/json"
-        },
-        {
-          uri: "gateway://token-lists/ethereum-mainnet",
-          name: "Ethereum Mainnet Token List",
-          description: "Supported tokens on Ethereum mainnet",
-          mimeType: "application/json"
-        },
-        {
-          uri: "gateway://token-lists/solana-mainnet",
-          name: "Solana Mainnet Token List",
-          description: "Supported tokens on Solana mainnet",
-          mimeType: "application/json"
-        },
-        {
-          uri: "gateway://openapi",
-          name: "OpenAPI Specification",
-          description: "Complete Gateway API specification",
-          mimeType: "application/json"
-        }
-      ]
-    };
+    const resources = [];
+    
+    // Scan the entire conf directory recursively
+    await scanDirectory('./conf', 'gateway://conf', resources);
+    
+    // Add special wallet list resource (from API)
+    resources.push({
+      uri: 'gateway://wallet-list',
+      name: 'Active Wallets (from API)',
+      description: 'List of currently loaded wallets from Gateway API',
+      mimeType: 'application/json',
+    });
+    
+    // Add logs resource
+    resources.push({
+      uri: 'gateway://logs',
+      name: 'Gateway Logs',
+      description: 'Gateway server logs',
+      mimeType: 'text/plain',
+    });
+    
+    // Sort resources by URI for better organization
+    resources.sort((a, b) => a.uri.localeCompare(b.uri));
+    
+    return { resources };
   });
 
   // Handle resource read requests
@@ -67,52 +88,84 @@ export function registerResources(server: Server, apiClient: GatewayApiClient) {
     const uri = request.params.uri;
     
     try {
-      // Chains resource
-      if (uri === "gateway://chains") {
-        const data = await apiClient.get("/chains/")
-          .catch(() => FallbackDataProvider.getChains());
+      // Config file resources
+      if (uri.startsWith('gateway://conf/')) {
+        const configPath = uri.replace('gateway://conf/', '');
+        
+        // Try different extensions
+        const extensions = ['.yml', '.yaml', '.json'];
+        let content = null;
+        let mimeType = 'text/yaml';
+        
+        for (const ext of extensions) {
+          try {
+            const fullPath = path.join('./conf', `${configPath}${ext}`);
+            content = await fs.readFile(fullPath, 'utf-8');
+            mimeType = ext === '.json' ? 'application/json' : 'text/yaml';
+            break;
+          } catch {
+            // Try next extension
+          }
+        }
+        
+        if (!content) {
+          throw new Error(`Configuration file not found: ${configPath}`);
+        }
         
         return {
           contents: [{
             uri,
-            mimeType: "application/json",
-            text: JSON.stringify(data, null, 2)
+            mimeType,
+            text: content
           }]
         };
       }
-
-      // Connectors resource
-      if (uri === "gateway://connectors") {
-        const data = await apiClient.get("/connectors/")
-          .catch(() => FallbackDataProvider.getConnectors());
-        
-        return {
-          contents: [{
-            uri,
-            mimeType: "application/json",
-            text: JSON.stringify(data, null, 2)
-          }]
-        };
+      
+      // Logs resource
+      if (uri === 'gateway://logs') {
+        try {
+          // Try to read the most recent log file
+          const logsDir = './logs';
+          const files = await fs.readdir(logsDir);
+          const logFiles = files.filter(f => f.endsWith('.log')).sort().reverse();
+          
+          if (logFiles.length > 0) {
+            const latestLog = path.join(logsDir, logFiles[0]);
+            const content = await fs.readFile(latestLog, 'utf-8');
+            // Get last 1000 lines
+            const lines = content.split('\n');
+            const recentLines = lines.slice(-1000).join('\n');
+            
+            return {
+              contents: [{
+                uri,
+                mimeType: 'text/plain',
+                text: `Log file: ${logFiles[0]}\n\nLast 1000 lines:\n${recentLines}`
+              }]
+            };
+          } else {
+            return {
+              contents: [{
+                uri,
+                mimeType: 'text/plain',
+                text: 'No log files found in ./logs directory'
+              }]
+            };
+          }
+        } catch (error) {
+          return {
+            contents: [{
+              uri,
+              mimeType: 'text/plain',
+              text: `Failed to read logs: ${error instanceof Error ? error.message : String(error)}`
+            }]
+          };
+        }
       }
-
-      // Config resources
-      if (uri.startsWith("gateway://config/")) {
-        const configName = uri.replace("gateway://config/", "");
-        const data = await apiClient.get("/config/", { namespace: configName })
-          .catch(() => ({ error: "Configuration not available offline" }));
-        
-        return {
-          contents: [{
-            uri,
-            mimeType: "application/json",
-            text: JSON.stringify(data, null, 2)
-          }]
-        };
-      }
-
-      // Wallets resource
-      if (uri === "gateway://wallets") {
-        const data = await apiClient.get("/wallet/")
+      
+      // Special wallet list from API
+      if (uri === 'gateway://wallet-list') {
+        const data = await apiClient.get('/wallet/')
           .then((response: any) => {
             // Transform to a more readable format
             const wallets: any[] = [];
@@ -121,93 +174,32 @@ export function registerResources(server: Server, apiClient: GatewayApiClient) {
                 wallets.push({
                   address,
                   chain: item.chain,
-                  name: `${item.chain}-wallet`
+                  name: `${item.chain}-wallet`,
                 });
               }
             }
             return { wallets, count: wallets.length };
           })
-          .catch(async () => {
-            const wallets = await FallbackDataProvider.getWallets();
-            return { wallets, count: wallets.length };
+          .catch(() => {
+            // If API fails, return empty list
+            return { wallets: [], count: 0 };
           });
         
         return {
           contents: [{
             uri,
-            mimeType: "application/json",
+            mimeType: 'application/json',
             text: JSON.stringify(data, null, 2)
           }]
         };
       }
-
-      // Token lists
-      if (uri.startsWith("gateway://token-lists/")) {
-        const listName = uri.replace("gateway://token-lists/", "");
-        let chain = "";
-        let network = "";
-        
-        if (listName === "ethereum-mainnet") {
-          chain = "ethereum";
-          network = "mainnet";
-        } else if (listName === "solana-mainnet") {
-          chain = "solana";
-          network = "mainnet-beta";
-        }
-        
-        if (chain && network) {
-          const data = await apiClient.get(`/tokens`, { chain, network })
-            .catch(async () => {
-              // Try to read from local token list files
-              const tokenListPath = `./src/templates/tokens/${chain}/${network}.json`;
-              try {
-                const content = await fs.readFile(tokenListPath, 'utf-8');
-                return { tokens: JSON.parse(content) };
-              } catch {
-                return { error: "Token list not available offline" };
-              }
-            });
-          
-          return {
-            contents: [{
-              uri,
-              mimeType: "application/json",
-              text: JSON.stringify(data, null, 2)
-            }]
-          };
-        }
-      }
-
-      // OpenAPI spec
-      if (uri === "gateway://openapi") {
-        try {
-          const content = await fs.readFile("./openapi.json", 'utf-8');
-          return {
-            contents: [{
-              uri,
-              mimeType: "application/json",
-              text: content
-            }]
-          };
-        } catch {
-          return {
-            contents: [{
-              uri,
-              mimeType: "application/json",
-              text: JSON.stringify({
-                error: "OpenAPI spec not found",
-                hint: "Run 'pnpm generate:openapi' with Gateway server running"
-              }, null, 2)
-            }]
-          };
-        }
-      }
-
+      
+      
       // Unknown resource
       return {
         contents: [{
           uri,
-          mimeType: "text/plain",
+          mimeType: 'text/plain',
           text: `Unknown resource: ${uri}`
         }]
       };
@@ -216,9 +208,9 @@ export function registerResources(server: Server, apiClient: GatewayApiClient) {
       return {
         contents: [{
           uri,
-          mimeType: "application/json",
+          mimeType: 'application/json',
           text: JSON.stringify({
-            error: "Failed to read resource",
+            error: 'Failed to read resource',
             message: error instanceof Error ? error.message : String(error)
           }, null, 2)
         }]

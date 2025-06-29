@@ -286,12 +286,14 @@ export class Jupiter {
   }> {
     // Use provided priority fee per CU or default to minimum
     const finalPriorityFeePerCU = priorityFeePerCU || 0;
-    
+
     // Use provided compute units or default
     const computeUnitsToUse = computeUnits || 300000;
-    
+
     // Calculate total priority fee in lamports (priorityFeePerCU is in lamports/CU)
-    const currentPriorityFee = Math.floor(finalPriorityFeePerCU * computeUnitsToUse);
+    const currentPriorityFee = Math.floor(
+      finalPriorityFeePerCU * computeUnitsToUse,
+    );
 
     logger.info(
       `Sending swap with priority fee of ${finalPriorityFeePerCU} lamports/CU (${(currentPriorityFee / 1e9).toFixed(6)} SOL total)`,
@@ -359,7 +361,9 @@ export class Jupiter {
     };
 
     // If no signature obtained, throw error
-    throw new Error('Failed to execute swap - no transaction signature obtained');
+    throw new Error(
+      'Failed to execute swap - no transaction signature obtained',
+    );
   }
 
   async extractSwapBalances(

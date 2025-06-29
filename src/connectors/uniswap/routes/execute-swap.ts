@@ -210,12 +210,12 @@ export const executeSwapRoute: FastifyPluginAsync = async (
 
         // Prepare transaction with gas settings
         const gasLimit = computeUnits || quoteResult.gasLimit || 350000;
-        
-        let txOptions: any = {
+
+        const txOptions: any = {
           value: methodParameters.value === '0x' ? '0' : methodParameters.value,
           gasLimit,
         };
-        
+
         if (priorityFeePerCU !== undefined) {
           // Convert from Gwei to Wei (1 Gwei = 1e9 Wei)
           const gasPriceWei = BigNumber.from(priorityFeePerCU).mul(1e9);
@@ -228,7 +228,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (
             'gwei',
           );
         }
-        
+
         logger.info(`Using gas limit: ${gasLimit}`);
 
         // Execute the swap using the multicall function

@@ -48,68 +48,68 @@ export async function removeLiquidity(
   logger.info(
     `Removing ${percentageToRemove.toFixed(4)}% liquidity from position ${positionAddress}`,
   );
-  
+
   // Use provided compute units or default
   const COMPUTE_UNITS = computeUnits || 600000;
-  
+
   // Use provided priority fee or default to 0
   const finalPriorityFeePerCU = priorityFeePerCU || 0;
-    const { transaction } = await raydium.raydiumSDK.clmm.decreaseLiquidity({
-      poolInfo,
-      poolKeys,
-      ownerPosition: positionInfo,
-      ownerInfo: {
-        useSOLBalance: true,
-        closePosition: closePosition,
-      },
-      liquidity: liquidityToRemove,
-      amountMinA: new BN(0),
-      amountMinB: new BN(0),
-      txVersion: TxVersion.V0,
-      computeBudgetConfig: {
-        units: COMPUTE_UNITS,
-        microLamports: finalPriorityFeePerCU,
-      },
-    });
+  const { transaction } = await raydium.raydiumSDK.clmm.decreaseLiquidity({
+    poolInfo,
+    poolKeys,
+    ownerPosition: positionInfo,
+    ownerInfo: {
+      useSOLBalance: true,
+      closePosition: closePosition,
+    },
+    liquidity: liquidityToRemove,
+    amountMinA: new BN(0),
+    amountMinB: new BN(0),
+    txVersion: TxVersion.V0,
+    computeBudgetConfig: {
+      units: COMPUTE_UNITS,
+      microLamports: finalPriorityFeePerCU,
+    },
+  });
 
-    transaction.sign([wallet]);
-    await solana.simulateTransaction(transaction);
+  transaction.sign([wallet]);
+  await solana.simulateTransaction(transaction);
 
-    const { confirmed, signature, txData } =
-      await solana.sendAndConfirmRawTransaction(transaction);
+  const { confirmed, signature, txData } =
+    await solana.sendAndConfirmRawTransaction(transaction);
 
-    // Return with status
-    if (confirmed && txData) {
-      // Transaction confirmed, return full data
-      const { baseTokenBalanceChange, quoteTokenBalanceChange } =
-        await solana.extractPairBalanceChangesAndFee(
-          signature,
-          await solana.getToken(poolInfo.mintA.address),
-          await solana.getToken(poolInfo.mintB.address),
-          wallet.publicKey.toBase58(),
-        );
-
-      logger.info(
-        `Liquidity removed from position ${positionAddress}: ${Math.abs(baseTokenBalanceChange).toFixed(4)} ${poolInfo.mintA.symbol}, ${Math.abs(quoteTokenBalanceChange).toFixed(4)} ${poolInfo.mintB.symbol}`,
+  // Return with status
+  if (confirmed && txData) {
+    // Transaction confirmed, return full data
+    const { baseTokenBalanceChange, quoteTokenBalanceChange } =
+      await solana.extractPairBalanceChangesAndFee(
+        signature,
+        await solana.getToken(poolInfo.mintA.address),
+        await solana.getToken(poolInfo.mintB.address),
+        wallet.publicKey.toBase58(),
       );
 
-      const totalFee = txData.meta.fee;
-      return {
-        signature,
-        status: 1, // CONFIRMED
-        data: {
-          fee: totalFee / 1e9,
-          baseTokenAmountRemoved: Math.abs(baseTokenBalanceChange),
-          quoteTokenAmountRemoved: Math.abs(quoteTokenBalanceChange),
-        },
-      };
-    } else {
-      // Transaction pending, return for Hummingbot to handle retry
-      return {
-        signature,
-        status: 0, // PENDING
-      };
-    }
+    logger.info(
+      `Liquidity removed from position ${positionAddress}: ${Math.abs(baseTokenBalanceChange).toFixed(4)} ${poolInfo.mintA.symbol}, ${Math.abs(quoteTokenBalanceChange).toFixed(4)} ${poolInfo.mintB.symbol}`,
+    );
+
+    const totalFee = txData.meta.fee;
+    return {
+      signature,
+      status: 1, // CONFIRMED
+      data: {
+        fee: totalFee / 1e9,
+        baseTokenAmountRemoved: Math.abs(baseTokenBalanceChange),
+        quoteTokenAmountRemoved: Math.abs(quoteTokenBalanceChange),
+      },
+    };
+  } else {
+    // Transaction pending, return for Hummingbot to handle retry
+    return {
+      signature,
+      status: 0, // PENDING
+    };
+  }
 }
 
 export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
@@ -136,8 +136,14 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network, walletAddress, positionAddress, percentageToRemove, priorityFeePerCU, computeUnits } =
-          request.body;
+        const {
+          network,
+          walletAddress,
+          positionAddress,
+          percentageToRemove,
+          priorityFeePerCU,
+          computeUnits,
+        } = request.body;
 
         return await removeLiquidity(
           fastify,
