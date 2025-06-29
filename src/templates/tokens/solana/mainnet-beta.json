@@ -1,69 +1,6 @@
 [
   {
     "chainId": 101,
-    "name": "OFFICIAL TRUMP",
-    "symbol": "TRUMP",
-    "address": "6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN",
-    "decimals": 6
-  },
-  {
-    "chainId": 101,
-    "name": "Fartcoin",
-    "symbol": "FARTCOIN",
-    "address": "9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump",
-    "decimals": 6
-  },
-  {
-    "chainId": 101,
-    "name": "Aave Token (Portal)",
-    "symbol": "AAVE",
-    "address": "3vAs4D1WE6Na4tCgt4BApgFfENbm8WY7q4cSPD1yM4Cg",
-    "decimals": 8
-  },
-  {
-    "chainId": 101,
-    "name": "Akita Inu",
-    "symbol": "AKT",
-    "address": "hUoehiMy279k95UeSijKkjx7RUsb676KSDgJ2i3xYbW",
-    "decimals": 8
-  },
-  {
-    "chainId": 101,
-    "name": "Ape.lol",
-    "symbol": "APE",
-    "address": "DF5yCVTfhVwvS1VRfHETNzEeh1n6DjAqEBs3kj9frdAr",
-    "decimals": 9
-  },
-  {
-    "chainId": 101,
-    "name": "ARB Protocol",
-    "symbol": "ARB",
-    "address": "9tzZzEHsKnwFL1A3DyFJwj36KnZj3gZ7g4srWp9YTEoh",
-    "decimals": 6
-  },
-  {
-    "chainId": 101,
-    "name": "Athens",
-    "symbol": "ATH",
-    "address": "F9BqFoWRML4Red6YPiL3xJBP7u9g8f61AKJMEYDB3wBR",
-    "decimals": 9
-  },
-  {
-    "chainId": 101,
-    "name": "Avalanche (Wormhole)",
-    "symbol": "AVAX",
-    "address": "KgV1GvrHQmRBY8sHQQeUKwTm2r2h8t4C8qt12Cw1HVE",
-    "decimals": 8
-  },
-  {
-    "chainId": 101,
-    "name": "Binance Coin (Wormhole)",
-    "symbol": "BNB",
-    "address": "9gP2kCy3wA1ctvYWQk75guqXuHfrEomqydHLtcTCqiLa",
-    "decimals": 8
-  },
-  {
-    "chainId": 101,
     "name": "Bonk",
     "symbol": "BONK",
     "address": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
@@ -71,79 +8,9 @@
   },
   {
     "chainId": 101,
-    "name": "Brett",
-    "symbol": "BRETT",
-    "address": "DxtssVdyYe4wWE5f5zEgx2NqtDFbVL3ABGY62WCycHWg",
-    "decimals": 9
-  },
-  {
-    "chainId": 101,
-    "name": "batcat",
-    "symbol": "BTC",
-    "address": "EtBc6gkCvsB9c6f5wSbwG8wPjRqXMB5euptK6bqG1R4X",
-    "decimals": 6
-  },
-  {
-    "chainId": 101,
-    "name": "Compound (Portal)",
-    "symbol": "COMP",
-    "address": "AwEauVaTMQRB71WeDnwf1DWSBxaMKjEPuxyLr1uixFom",
-    "decimals": 8
-  },
-  {
-    "chainId": 101,
-    "name": "CORE",
-    "symbol": "CORE",
-    "address": "2maDvG9nXGVstjdnsCZoSsNtjoda1SsZTLrHBVRgLR5F",
-    "decimals": 9
-  },
-  {
-    "chainId": 101,
-    "name": "Dai Stablecoin (Portal)",
-    "symbol": "DAI",
-    "address": "EjmyN6qEC1Tf1JxiG1ae7UTJhUxSwk1TCWNWqxWV4J6o",
-    "decimals": 8
-  },
-  {
-    "chainId": 101,
-    "name": "DEEP",
-    "symbol": "DEEP",
-    "address": "6tfuMyZQWwHtnkjkdfQWdVMUBcQBLpN5FiooT4p2VMbV",
-    "decimals": 6
-  },
-  {
-    "chainId": 101,
-    "name": "dYdX (Wormhole)",
-    "symbol": "DYDX",
-    "address": "4Hx6Bj56eGyw8EJrrheM6LBQAvVYRikYCWsALeTrwyRU",
-    "decimals": 8
-  },
-  {
-    "chainId": 101,
     "name": "Ethereum (Wormhole)",
     "symbol": "ETH",
     "address": "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs",
-    "decimals": 8
-  },
-  {
-    "chainId": 101,
-    "name": "Flokiwifhat",
-    "symbol": "FLOKI",
-    "address": "FY4rNz7AqKEnEwyurmGVpoEBnSq7XqNn4YuXruvJhAXF",
-    "decimals": 6
-  },
-  {
-    "chainId": 101,
-    "name": "Flower Solana",
-    "symbol": "FLOW",
-    "address": "GqvM4xqeegtVgzY5mbEoq8Z9Wf8XpHuAxpg7gXN2dQ37",
-    "decimals": 9
-  },
-  {
-    "chainId": 101,
-    "name": "Graph Token (Portal)",
-    "symbol": "GRT",
-    "address": "HGsLG4PnZ28L8A4R5nPqKgZd86zUUdmfnkTRnuFJ5dAX",
     "decimals": 8
   },
   {
@@ -155,72 +22,9 @@
   },
   {
     "chainId": 101,
-    "name": "HypeProxy",
-    "symbol": "HYPE",
-    "address": "8TQdiAzdZZEtkWUR8Zj1tqDYGPv9TR1XjPqrew39Vq9V",
-    "decimals": 7
-  },
-  {
-    "chainId": 101,
-    "name": "Jupiter Perpetuals Liquidity Provider Token",
-    "symbol": "JLP",
-    "address": "27G8MtK7VtTcCHkpASjSDdkWWYfoqT6ggEuKidVJidD4",
-    "decimals": 6
-  },
-  {
-    "chainId": 101,
-    "name": "Jito",
-    "symbol": "JTO",
-    "address": "jtojtomepa8beP8AuQc6eXt5FriJwfFMwQx2v2f9mCL",
-    "decimals": 9
-  },
-  {
-    "chainId": 101,
     "name": "Jupiter",
     "symbol": "JUP",
     "address": "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
-    "decimals": 6
-  },
-  {
-    "chainId": 101,
-    "name": "Jupiter Staked SOL",
-    "symbol": "JUPSOL",
-    "address": "jupSoLaHXQiZZTSfEWMTRRgpnyFm8f6sZdosWBjx93v",
-    "decimals": 9
-  },
-  {
-    "chainId": 101,
-    "name": "Lido DAO (Wormhole)",
-    "symbol": "LDO",
-    "address": "HZRCwxP2Vq9PCpPXooayhJ2bxTpo5xfpQrwB1svh332p",
-    "decimals": 8
-  },
-  {
-    "chainId": 101,
-    "name": "ChainLink Token (Portal)",
-    "symbol": "LINK",
-    "address": "2wpTofQ8SkACrkZWrZDjXPitYa8AwWgX8AfxdeBRRVLX",
-    "decimals": 8
-  },
-  {
-    "chainId": 101,
-    "name": "Solleo",
-    "symbol": "Leo",
-    "address": "GmEvUrfkmWzJSqua5UkK3KZMUWjLieDK6iatBd7QzEAN",
-    "decimals": 9
-  },
-  {
-    "chainId": 101,
-    "name": "Decentraland (Wormhole)",
-    "symbol": "MANA",
-    "address": "7dgHoN8wBZCc5wbnQ2C47TDnBMAxG4Q5L3KjP67z8kNi",
-    "decimals": 8
-  },
-  {
-    "chainId": 101,
-    "name": "MOG",
-    "symbol": "MOG",
-    "address": "BR4qrJbhGMoGSaF7QtUMvSZRtWhzvMUk5dkgkRrnrn8A",
     "decimals": 6
   },
   {
@@ -232,65 +36,9 @@
   },
   {
     "chainId": 101,
-    "name": "NEAR (Allbridge from Near)",
-    "symbol": "NEAR",
-    "address": "BYPsjxa3YuZESQz1dKuBw1QSFCSpecsm8nCQhY5xbU1Z",
-    "decimals": 9
-  },
-  {
-    "chainId": 101,
-    "name": "NEO3D TOKEN",
-    "symbol": "NEO",
-    "address": "NEo3D6MXRXf2iAfaqvZYqSmFkfutLvNjm86xmfGWNh5",
-    "decimals": 9
-  },
-  {
-    "chainId": 101,
-    "name": "OUSG",
-    "symbol": "OUSG",
-    "address": "i7u4r16TcsJTgq1kAG8opmVZyVnAKBwLKu6ZPMwzxNc",
-    "decimals": 6
-  },
-  {
-    "chainId": 101,
-    "name": "Paxos Gold (Portal)",
-    "symbol": "PAXG",
-    "address": "C6oFsE8nXRDThzrMEQ5SxaNFGKoyyfWDDVPw37JKvPTe",
-    "decimals": 8
-  },
-  {
-    "chainId": 101,
-    "name": "Penguiana",
-    "symbol": "PENGU",
-    "address": "PENGEKyPYXYDnbXGKcjXaSfMsovhcrtPT8S7127tKcg",
-    "decimals": 6
-  },
-  {
-    "chainId": 101,
-    "name": "Next Gen PEPE",
-    "symbol": "PEPE",
-    "address": "2Zaq3WyDJj2ZkMcuqUiTBfAXCjqZtqihxcwUdwv9dyHA",
-    "decimals": 9
-  },
-  {
-    "chainId": 101,
-    "name": "Popcat",
-    "symbol": "POPCAT",
-    "address": "7GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr",
-    "decimals": 9
-  },
-  {
-    "chainId": 101,
     "name": "Pyth Network",
     "symbol": "PYTH",
     "address": "HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3",
-    "decimals": 6
-  },
-  {
-    "chainId": 101,
-    "name": "PayPal USD",
-    "symbol": "PYUSD",
-    "address": "2b1kV6DkPAnxd5ixfnxCpjxmKwqjjaYmCZfHsFu24GXo",
     "decimals": 6
   },
   {
@@ -302,48 +50,6 @@
   },
   {
     "chainId": 101,
-    "name": "Render",
-    "symbol": "RENDER",
-    "address": "rndrizKT3MK1iimdxRdWabcF7Zg7AR5T4nud4EkHBof",
-    "decimals": 8
-  },
-  {
-    "chainId": 101,
-    "name": "Soperme",
-    "symbol": "S",
-    "address": "8qnZbvQ6PvmuFrB7bUaQPybMX8JVybnoyYfMhfFaY4nV",
-    "decimals": 6
-  },
-  {
-    "chainId": 101,
-    "name": "The Sandbox (Wormhole)",
-    "symbol": "SAND",
-    "address": "49c7WuCZkQgc3M4qH8WuEUNXfgwupZf1xqWkDQ7gjRGt",
-    "decimals": 8
-  },
-  {
-    "chainId": 101,
-    "name": "Saros",
-    "symbol": "SAROS",
-    "address": "SarosY6Vscao718M4A778z4CGtvcwcGef5M9MEH1LGL",
-    "decimals": 6
-  },
-  {
-    "chainId": 101,
-    "name": "Solanium Ecosystem Index",
-    "symbol": "SEI",
-    "address": "CRkwd2QedqDi5u6W2w6jeAViAUd1pR4AXs2aKvh7GW7M",
-    "decimals": 6
-  },
-  {
-    "chainId": 101,
-    "name": "Shiba Inu (Wormhole)",
-    "symbol": "SHIB",
-    "address": "CiKu4eHsVrc1eueVQeHn7qhXTcVu95gSQmBpX4utjL9z",
-    "decimals": 8
-  },
-  {
-    "chainId": 101,
     "name": "Wrapped Solana",
     "symbol": "SOL",
     "address": "So11111111111111111111111111111111111111112",
@@ -351,30 +57,9 @@
   },
   {
     "chainId": 101,
-    "name": "SPX6900",
-    "symbol": "SPX",
-    "address": "J3NKxxXZcnNiMjKw9hYb2K4LUxgwB6t1FtPtQVsv3KFr",
-    "decimals": 8
-  },
-  {
-    "chainId": 101,
     "name": "tBTC",
     "symbol": "TBTC",
     "address": "6DNSN2BJsaPFdFFc1zP37kkeNe4Usc1Sqkzr9C9vPWcU",
-    "decimals": 8
-  },
-  {
-    "chainId": 101,
-    "name": "Bridged MAGA (Wormhole)",
-    "symbol": "TRUMP",
-    "address": "HaP8r3ksG76PhQLTqR8FYBeNiQpejcFbQmiHbg787Ut1",
-    "decimals": 8
-  },
-  {
-    "chainId": 101,
-    "name": "Uniswap (Wormhole)",
-    "symbol": "UNI",
-    "address": "8FU95xFJhUUkyyCLU13HSzDLs7oC4QZdXQHL6SCeab36",
     "decimals": 8
   },
   {
@@ -390,194 +75,5 @@
     "symbol": "USDT",
     "address": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
     "decimals": 6
-  },
-  {
-    "chainId": 101,
-    "name": "Ondo US Dollar Yield",
-    "symbol": "USDY",
-    "address": "A1KLoBrKBde8Ty9qtNQUtq3C2ortoC3u7twggz7sEto6",
-    "decimals": 6
-  },
-  {
-    "chainId": 101,
-    "name": "Wormhole",
-    "symbol": "W",
-    "address": "85VBFQZC9TZkfaptBWjvUw7YbZjy52A6mjtPGjstQAmQ",
-    "decimals": 6
-  },
-  {
-    "chainId": 101,
-    "name": "Wrapped BTC (Wormhole)",
-    "symbol": "WBTC",
-    "address": "3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh",
-    "decimals": 8
-  },
-  {
-    "chainId": 101,
-    "name": "dogwifhat",
-    "symbol": "WIF",
-    "address": "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm",
-    "decimals": 6
-  },
-  {
-    "chainId": 101,
-    "name": "Whitelist Drogo",
-    "symbol": "WLD",
-    "address": "WLDu1fuZ2dswJAizQg5BrN26oAKeCUiJ42x7uaep5WV",
-    "decimals": 0
-  },
-  {
-    "chainId": 101,
-    "name": "Wrapped XRP (Sollet)",
-    "symbol": "XRP",
-    "address": "Ga2AXHpfAF6mv2ekZwcsJFqu7wB4NV331qNH7fW9Nst8",
-    "decimals": 6
-  },
-  {
-    "chainId": 101,
-    "name": "Lido Staked ETH",
-    "symbol": "stETH",
-    "address": "H2mf9QNdU2Niq6QR7367Ua2trBsvscLyX5bz7R3Pw5sE",
-    "decimals": 8
-  },
-  {
-    "chainId": 101,
-    "name": "Lido Wrapped Staked ETH",
-    "symbol": "wstETH",
-    "address": "ZScHuTtqZukUrtZS43teTKGs2VqkKL8k4QCouR2n6Uo",
-    "decimals": 8
-  },
-  {
-    "chainId": 101,
-    "name": "A.I Agent kAia",
-    "symbol": "kaia",
-    "address": "7bD1RTKSZSsneDXDoMincSswED3uBnzuRyHi5tJ7ZjwN",
-    "decimals": 9
-  },
-  {
-    "chainId": 101,
-    "name": "Binance Staked SOL",
-    "symbol": "bnsol",
-    "address": "BNso1VUJnh4zcfpZa6986Ea66P6TCp59hvtNJ8b1X85",
-    "decimals": 9
-  },
-  {
-    "chainId": 101,
-    "name": "BlackRock USD Institutional Digital Liquidity Fund",
-    "symbol": "buidl",
-    "address": "GyWgeqpy5GueU2YbkE8xqUeVEokCMMCEeUrfbtMw6phr",
-    "decimals": 9
-  },
-  {
-    "chainId": 101,
-    "name": "buidl",
-    "symbol": "buidl",
-    "address": "3HfLqhtF5hR5dyBXh6BMtRaTm9qzStvEGuMa8Gx6pump",
-    "decimals": 9
-  },
-  {
-    "chainId": 101,
-    "name": "Coinbase Wrapped BTC",
-    "symbol": "cbbtc",
-    "address": "cbbtcf3aa214zXHbiAZQwf4122FBYbraNdFqgw4iMij",
-    "decimals": 9
-  },
-  {
-    "chainId": 101,
-    "name": "Department of Gov Efficiency",
-    "symbol": "doge",
-    "address": "9TY6DUg1VSssYH5tFE95qoq5hnAGFak4w3cn72sJNCoV",
-    "decimals": 9
-  },
-  {
-    "chainId": 101,
-    "name": "Department Of Government Efficiency",
-    "symbol": "doge",
-    "address": "KQijDbNJ6rPCqhtXrfH6gKa5cH3a39At8vHq34nnPbF",
-    "decimals": 9
-  },
-  {
-    "chainId": 101,
-    "name": "Department Of Government Efficiency",
-    "symbol": "doge",
-    "address": "B54Fyr1XrWNA5RsRRkovoVFwQwzwBfqaJPLoFR4pMoAX",
-    "decimals": 9
-  },
-  {
-    "chainId": 101,
-    "name": "Ethena USDe",
-    "symbol": "usde",
-    "address": "DEkqHyPN7GMRJ5cArtQFAWefqbZb33Hyf6s5iCwjEonT",
-    "decimals": 9
-  },
-  {
-    "chainId": 101,
-    "name": "First Digital USD",
-    "symbol": "fdusd",
-    "address": "9zNQRsGLjNKwCUU5Gq5LR8beUCPzQMVMqKAi3SSZh54u",
-    "decimals": 9
-  },
-  {
-    "chainId": 101,
-    "name": "Grass",
-    "symbol": "grass",
-    "address": "Grass7B4RdKfBCjTKgSqnXkqjwiGvQyFbuSCUJr3XXjs",
-    "decimals": 9
-  },
-  {
-    "chainId": 101,
-    "name": "Illusive AI",
-    "symbol": "kaia",
-    "address": "8Zk5n3pZotY83sZCMJ774HTyAfwpjueLHD3MrzoKpump",
-    "decimals": 9
-  },
-  {
-    "chainId": 101,
-    "name": "Mynth",
-    "symbol": "mnt",
-    "address": "MynthbcejYyY3yg8fzgPv2Y7NZrF2S4Y13wdGzAZPMv",
-    "decimals": 9
-  },
-  {
-    "chainId": 101,
-    "name": "Official FO",
-    "symbol": "fo",
-    "address": "JDzPbXboQYWVmdxXS3LbvjM52RtsV1QaSv2AzoCiai2o",
-    "decimals": 9
-  },
-  {
-    "chainId": 101,
-    "name": "One Play",
-    "symbol": "op",
-    "address": "HkzxcLMCFFCvsA1zfzfTWgpsCGAJW2n7eu6EVwPspump",
-    "decimals": 9
-  },
-  {
-    "chainId": 101,
-    "name": "The Anthropic Order",
-    "symbol": "tao",
-    "address": "9cYXqd1ggyMTjwZFWnbDuf5EfLEcLuumMG67jRkJpump",
-    "decimals": 9
-  },
-  {
-    "chainId": 101,
-    "name": "USDS",
-    "symbol": "usds",
-    "address": "USDSwr9ApdHk5bvJKMjzff41FfuX8bSxdKcR81vTwcA",
-    "decimals": 9
-  },
-  {
-    "chainId": 101,
-    "name": "Virtuals Protocol",
-    "symbol": "virtual",
-    "address": "3iQL8BFS2vE7mww4ehAqQHAsbmRNCrPxizWAT2Zfyr9y",
-    "decimals": 9
-  },
-  {
-    "chainId": 101,
-    "name": "XBANKING USDE",
-    "symbol": "usde",
-    "address": "8dt9fQhoRKuWCSAsYweG2UMF3rbcG9xzNCTWXXSmdmEi",
-    "decimals": 9
   }
 ]
