@@ -39,6 +39,7 @@ copy_configs () {
   cp -r $TEMPLATE_DIR/networks $HOST_CONF_PATH/
   cp -r $TEMPLATE_DIR/connectors $HOST_CONF_PATH/
   cp -r $TEMPLATE_DIR/tokens $HOST_CONF_PATH/
+  cp -r $TEMPLATE_DIR/pools $HOST_CONF_PATH/
   # Confirm that the files were copied
   if [ $? -eq 0 ]; then
     echo "Files successfully copied from $TEMPLATE_DIR to $HOST_CONF_PATH"
