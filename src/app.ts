@@ -24,6 +24,7 @@ import { uniswapRoutes } from './connectors/uniswap/uniswap.routes';
 import { getHttpsOptions } from './https';
 import { ConfigManagerV2 } from './services/config-manager-v2';
 import { logger } from './services/logger';
+import { poolRoutes } from './pools/pools.routes';
 import { tokensRoutes } from './tokens/tokens.routes';
 import { GATEWAY_VERSION } from './version';
 import { walletRoutes } from './wallet/wallet.routes';
@@ -59,6 +60,7 @@ const swaggerOptions = {
       { name: 'system', description: 'System configuration endpoints' },
       { name: 'wallet', description: 'Wallet management endpoints' },
       { name: 'tokens', description: 'Token management endpoints' },
+      { name: 'pools', description: 'Pool management endpoints' },
 
       // Chains
       { name: 'solana', description: 'Solana chain endpoints' },
@@ -191,6 +193,7 @@ const configureGatewayServer = () => {
     app.register(configRoutes, { prefix: '/config' });
     app.register(walletRoutes, { prefix: '/wallet' });
     app.register(tokensRoutes, { prefix: '/tokens' });
+    app.register(poolRoutes, { prefix: '/pools' });
 
     // Register connector list route
     app.register(connectorsRoutes, { prefix: '/connectors' });

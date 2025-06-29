@@ -1,0 +1,110 @@
+import { Type } from '@sinclair/typebox';
+
+// Pool list request
+export const PoolListRequestSchema = Type.Object({
+  connector: Type.String({
+    description: 'Connector (raydium, meteora, uniswap)',
+    examples: ['raydium', 'meteora', 'uniswap'],
+  }),
+  network: Type.Optional(Type.String({
+    description: 'Optional: filter by network (mainnet, mainnet-beta, etc)',
+    examples: ['mainnet', 'mainnet-beta', 'base'],
+  })),
+  type: Type.Optional(Type.Union([
+    Type.Literal('amm'),
+    Type.Literal('clmm'),
+  ], {
+    description: 'Optional: filter by pool type',
+  })),
+  search: Type.Optional(Type.String({
+    description: 'Optional: search by token symbol or address',
+  })),
+});
+
+// Pool list response
+export const PoolListResponseSchema = Type.Array(
+  Type.Object({
+    type: Type.Union([Type.Literal('amm'), Type.Literal('clmm')]),
+    network: Type.String(),
+    baseSymbol: Type.String(),
+    quoteSymbol: Type.String(),
+    address: Type.String(),
+  }),
+);
+
+// Get pool request
+export const PoolGetRequestSchema = Type.Object({
+  connector: Type.String({
+    description: 'Connector (raydium, meteora, uniswap)',
+    examples: ['raydium', 'meteora', 'uniswap'],
+  }),
+  network: Type.String({
+    description: 'Network name (mainnet, mainnet-beta, etc)',
+    examples: ['mainnet', 'mainnet-beta'],
+  }),
+  type: Type.Union([
+    Type.Literal('amm'),
+    Type.Literal('clmm'),
+  ], {
+    description: 'Pool type',
+  }),
+  tokenPair: Type.String({
+    description: 'Token pair (e.g., ETH-USDC, SOL-USDC)',
+    examples: ['ETH-USDC', 'SOL-USDC'],
+  }),
+});
+
+// Add pool request
+export const PoolAddRequestSchema = Type.Object({
+  connector: Type.String({
+    description: 'Connector (raydium, meteora, uniswap)',
+    examples: ['raydium', 'meteora', 'uniswap'],
+  }),
+  type: Type.Union([
+    Type.Literal('amm'),
+    Type.Literal('clmm'),
+  ], {
+    description: 'Pool type',
+  }),
+  network: Type.String({
+    description: 'Network name (mainnet, mainnet-beta, etc)',
+    examples: ['mainnet', 'mainnet-beta'],
+  }),
+  baseSymbol: Type.String({
+    description: 'Base token symbol',
+    examples: ['ETH', 'SOL'],
+  }),
+  quoteSymbol: Type.String({
+    description: 'Quote token symbol',
+    examples: ['USDC', 'USDT'],
+  }),
+  address: Type.String({
+    description: 'Pool contract address',
+  }),
+});
+
+// Remove pool request
+export const PoolRemoveRequestSchema = Type.Object({
+  connector: Type.String({
+    description: 'Connector (raydium, meteora, uniswap)',
+    examples: ['raydium', 'meteora', 'uniswap'],
+  }),
+  network: Type.String({
+    description: 'Network name (mainnet, mainnet-beta, etc)',
+    examples: ['mainnet', 'mainnet-beta'],
+  }),
+  type: Type.Union([
+    Type.Literal('amm'),
+    Type.Literal('clmm'),
+  ], {
+    description: 'Pool type',
+  }),
+  address: Type.String({
+    description: 'Pool contract address to remove',
+  }),
+});
+
+// Success response
+export const PoolSuccessResponseSchema = Type.Object({
+  message: Type.String(),
+});

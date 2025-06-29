@@ -1,0 +1,114 @@
+[
+  {
+    "type": "amm",
+    "network": "mainnet-beta",
+    "baseSymbol": "RAY",
+    "quoteSymbol": "SOL",
+    "address": "AVs9TA4nWDzfPJE9gGVNJMVhcQy3V9PGazuz33BfG2RA"
+  },
+  {
+    "type": "amm",
+    "network": "mainnet-beta",
+    "baseSymbol": "SOL",
+    "quoteSymbol": "USDC",
+    "address": "58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2"
+  },
+  {
+    "type": "amm",
+    "network": "mainnet-beta",
+    "baseSymbol": "RAY",
+    "quoteSymbol": "USDC",
+    "address": "6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg"
+  },
+  {
+    "type": "amm",
+    "network": "mainnet-beta",
+    "baseSymbol": "WIF",
+    "quoteSymbol": "SOL",
+    "address": "EP2ib6dYdEeqD8MfE2ezHCxX3kP3K2eLKkirfPm5eyMx"
+  },
+  {
+    "type": "amm",
+    "network": "mainnet-beta",
+    "baseSymbol": "POPCAT",
+    "quoteSymbol": "SOL",
+    "address": "FRhB8L7Y9Qq41qZXYLtC2nw8An1RJfLLxRF2x9RwLLMo"
+  },
+  {
+    "type": "amm",
+    "network": "mainnet-beta",
+    "baseSymbol": "SOL",
+    "quoteSymbol": "TRUMP",
+    "address": "HKuJrP5tYQLbEUdjKwjgnHs2957QKjR2iWhJKTtMa1xs"
+  },
+  {
+    "type": "amm",
+    "network": "mainnet-beta",
+    "baseSymbol": "LAYER",
+    "quoteSymbol": "USDC",
+    "address": "G6drsaPCR3pxsEmSTAc81kW1EL3kFAFwtSAkzUZXmgH3"
+  },
+  {
+    "type": "clmm",
+    "network": "mainnet-beta",
+    "baseSymbol": "SOL",
+    "quoteSymbol": "USDC",
+    "address": "3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv"
+  },
+  {
+    "type": "clmm",
+    "network": "mainnet-beta",
+    "baseSymbol": "RAY",
+    "quoteSymbol": "USDC",
+    "address": "61R1ndXxvsWXXkWSyNkCxnzwd3zUNB8Q2ibmkiLPC8ht"
+  },
+  {
+    "type": "clmm",
+    "network": "mainnet-beta",
+    "baseSymbol": "SOL",
+    "quoteSymbol": "USDT",
+    "address": "3nMFwZXwY1s1M5s8vYAHqd4wGs4iSxXE4LRoUMMYqEgF"
+  },
+  {
+    "type": "clmm",
+    "network": "mainnet-beta",
+    "baseSymbol": "SOL",
+    "quoteSymbol": "RAY",
+    "address": "2AXXcN6oN9bBT5owwmTH53C7QHUXvhLeu718Kqt8rvY2"
+  },
+  {
+    "type": "clmm",
+    "network": "mainnet-beta",
+    "baseSymbol": "USDC",
+    "quoteSymbol": "USDT",
+    "address": "BZtgQEyS6eXUXicYPHecYQ7PybqodXQMvkjUbP4R8mUU"
+  },
+  {
+    "type": "clmm",
+    "network": "mainnet-beta",
+    "baseSymbol": "SOL",
+    "quoteSymbol": "JITOSOL",
+    "address": "2uoKbPEidR7KAMYtY4x7xdkHXWqYib5k4CutJauSL3Mc"
+  },
+  {
+    "type": "clmm",
+    "network": "mainnet-beta",
+    "baseSymbol": "SOL",
+    "quoteSymbol": "TRUMP",
+    "address": "GQsPr4RJk9AZkkfWHud7v4MtotcxhaYzZHdsPCg9vNvW"
+  },
+  {
+    "type": "clmm",
+    "network": "mainnet-beta",
+    "baseSymbol": "LAYER",
+    "quoteSymbol": "USDC",
+    "address": "G6drsaPCR3pxsEmSTAc81kW1EL3kFAFwtSAkzUZXmgH3"
+  },
+  {
+    "type": "clmm",
+    "network": "mainnet-beta",
+    "baseSymbol": "TRUMP",
+    "quoteSymbol": "USDC",
+    "address": "7XzVsjqTebULfkUofTDH5gDdZDmxacPmPuTfHa1n9kuh"
+  }
+]

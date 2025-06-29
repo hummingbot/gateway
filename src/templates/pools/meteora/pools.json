@@ -1,0 +1,30 @@
+[
+  {
+    "type": "clmm",
+    "network": "mainnet-beta",
+    "baseSymbol": "SOL",
+    "quoteSymbol": "USDC",
+    "address": "5rCf1DM8LjKTw4YqhnoLcngyZYeNnQqztScTogYHAS6"
+  },
+  {
+    "type": "clmm",
+    "network": "mainnet-beta",
+    "baseSymbol": "TRUMP",
+    "quoteSymbol": "USDC",
+    "address": "9d9mb8kooFfaD3SctgZtkxQypkshx6ezhbKio89ixyy2"
+  },
+  {
+    "type": "clmm",
+    "network": "mainnet-beta",
+    "baseSymbol": "JITOSOL",
+    "quoteSymbol": "SOL",
+    "address": "BoeMUkCLHchTD31HdXsbDExuZZfcUppSLpYtV3LZTH6U"
+  },
+  {
+    "type": "clmm",
+    "network": "mainnet-beta",
+    "baseSymbol": "USDT",
+    "quoteSymbol": "USDC",
+    "address": "ARwi1S4DaiTG5DX7S4M4ZsrXqpMD1MrTmbu9ue2tpmEq"
+  }
+]
