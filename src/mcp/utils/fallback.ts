@@ -30,9 +30,6 @@ export class FallbackDataProvider {
                   'avalanche',
                   'celo',
                   'polygon',
-                  'blast',
-                  'zora',
-                  'worldchain',
                 ],
         })),
       };
@@ -52,9 +49,6 @@ export class FallbackDataProvider {
               'avalanche',
               'celo',
               'polygon',
-              'blast',
-              'zora',
-              'worldchain',
             ],
           },
           {
@@ -93,9 +87,6 @@ export class FallbackDataProvider {
             'avalanche',
             'celo',
             'polygon',
-            'blast',
-            'zora',
-            'worldchain',
           ],
         },
         jupiter: {

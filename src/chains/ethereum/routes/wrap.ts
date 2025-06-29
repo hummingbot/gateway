@@ -74,21 +74,6 @@ const WRAPPED_ADDRESSES: {
     symbol: 'WCELO',
     nativeSymbol: 'CELO',
   },
-  blast: {
-    address: '0x4300000000000000000000000000000000000004',
-    symbol: 'WETH',
-    nativeSymbol: 'ETH',
-  },
-  zora: {
-    address: '0x4200000000000000000000000000000000000006',
-    symbol: 'WETH',
-    nativeSymbol: 'ETH',
-  },
-  worldchain: {
-    address: '0x4300000000000000000000000000000000000004',
-    symbol: 'WETH',
-    nativeSymbol: 'ETH',
-  },
 };
 
 // Helper function to convert transaction to a format matching the CustomTransactionSchema
@@ -229,9 +214,6 @@ export const wrapRoute: FastifyPluginAsync = async (fastify) => {
               'avalanche',
               'celo',
               'polygon',
-              'blast',
-              'zora',
-              'worldchain',
             ],
           }),
           address: Type.String({ examples: [firstWalletAddress] }),

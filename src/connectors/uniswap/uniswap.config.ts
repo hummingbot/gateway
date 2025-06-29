@@ -26,9 +26,6 @@ export const uniswapAmmNetworks = [
   'avalanche',
   'celo',
   'polygon',
-  'blast',
-  'zora',
-  'worldchain',
 ];
 export const uniswapClmmNetworks = [
   'mainnet',
@@ -40,9 +37,6 @@ export const uniswapClmmNetworks = [
   'avalanche',
   'celo',
   'polygon',
-  'blast',
-  'zora',
-  'worldchain',
 ];
 
 export namespace UniswapConfig {
@@ -102,9 +96,6 @@ export namespace UniswapConfig {
           'avalanche',
           'celo',
           'polygon',
-          'blast',
-          'zora',
-          'worldchain',
         ],
       },
     ],

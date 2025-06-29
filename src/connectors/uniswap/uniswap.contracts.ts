@@ -132,42 +132,6 @@ export const contractAddresses: NetworkContractAddresses = {
       '0x61fFE014bA17989E743c5F6cB21bF9697530B21e',
     uniswapV3FactoryAddress: '0x1F98431c8aD98523631AE4a59f267346ea31F984',
   },
-  blast: {
-    // V2 contracts - Official Uniswap addresses
-    uniswapV2RouterAddress: '0xBB66Eb1c5e875933D44DAe661dbD80e5D9B03035',
-    uniswapV2FactoryAddress: '0x5C346464d33F90bABaf70dB6388507CC889C1070',
-    // V3 contracts - Using Ethereum mainnet addresses as fallback
-    uniswapV3SmartOrderRouterAddress:
-      '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45', // Default mainnet SwapRouter02
-    uniswapV3NftManagerAddress: '0xC36442b4a4522E871399CD717aBDD847Ab11FE88', // Default mainnet NonfungiblePositionManager
-    uniswapV3QuoterV2ContractAddress:
-      '0x61fFE014bA17989E743c5F6cB21bF9697530B21e', // Default mainnet QuoterV2
-    uniswapV3FactoryAddress: '0x1F98431c8aD98523631AE4a59f267346ea31F984', // Default mainnet factory
-  },
-  zora: {
-    // V2 contracts - Official Uniswap addresses
-    uniswapV2RouterAddress: '0xa00F34A632630EFd15223B1968358bA4845bEEC7',
-    uniswapV2FactoryAddress: '0x0F797dC7efaEA995bB916f268D919d0a1950eE3C',
-    // V3 contracts - Using Ethereum mainnet addresses as fallback
-    uniswapV3SmartOrderRouterAddress:
-      '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45', // Default mainnet SwapRouter02
-    uniswapV3NftManagerAddress: '0xC36442b4a4522E871399CD717aBDD847Ab11FE88', // Default mainnet NonfungiblePositionManager
-    uniswapV3QuoterV2ContractAddress:
-      '0x61fFE014bA17989E743c5F6cB21bF9697530B21e', // Default mainnet QuoterV2
-    uniswapV3FactoryAddress: '0x1F98431c8aD98523631AE4a59f267346ea31F984', // Default mainnet factory
-  },
-  worldchain: {
-    // V2 contracts - Official Uniswap addresses
-    uniswapV2RouterAddress: '0x541aB7c31A119441eF3575F6973277DE0eF460bd',
-    uniswapV2FactoryAddress: '0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f',
-    // V3 contracts - Official Uniswap addresses from address book
-    uniswapV3SmartOrderRouterAddress:
-      '0xf4305dd6256dc2b0d07caaf2953688defbc86e9d', // ApprovalSwap from address book
-    uniswapV3NftManagerAddress: '0xec12a9F9a09f50550686363766Cc153D03c27b5e', // Official Position Manager
-    uniswapV3QuoterV2ContractAddress:
-      '0x10158D43e6cc414deE1Bd1eB0EfC6a5cBCfF244c', // Official QuoterV2
-    uniswapV3FactoryAddress: '0x7a5028BDa40e7B173C278C5342087826455ea25a', // Official V3 Factory
-  },
 };
 
 /**
