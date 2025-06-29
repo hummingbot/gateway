@@ -19,6 +19,10 @@ import {
   SignMessageRequest,
   SignMessageResponse,
   GetWalletResponse,
+  AddReadOnlyWalletRequest,
+  AddReadOnlyWalletResponse,
+  RemoveReadOnlyWalletRequest,
+  RemoveReadOnlyWalletResponse,
 } from './schemas';
 
 export const walletPath = './conf/wallets';
@@ -314,9 +318,13 @@ export async function getWallets(
           }
         });
 
+      // Get read-only wallet addresses
+      const readOnlyAddresses = await getReadOnlyWalletAddresses(chain);
+
       responses.push({
         chain: safeChain,
         walletAddresses: safeWalletAddresses,
+        readOnlyWalletAddresses: readOnlyAddresses.length > 0 ? readOnlyAddresses : undefined,
       });
     }
 
@@ -326,4 +334,138 @@ export async function getWallets(
       `Failed to get wallets: ${error.message}`,
     );
   }
+}
+
+// Read-only wallet functions
+export function getReadOnlyWalletPath(chain: string): string {
+  const safeChain = sanitizePathComponent(chain.toLowerCase());
+  return `${walletPath}/${safeChain}/read-only.json`;
+}
+
+export async function getReadOnlyWalletAddresses(chain: string): Promise<string[]> {
+  try {
+    const filePath = getReadOnlyWalletPath(chain);
+    const exists = await fse.pathExists(filePath);
+    if (!exists) {
+      return [];
+    }
+    
+    const content = await fse.readFile(filePath, 'utf8');
+    const addresses = JSON.parse(content);
+    
+    if (!Array.isArray(addresses)) {
+      logger.warn(`Invalid read-only wallet file format for ${chain}`);
+      return [];
+    }
+    
+    return addresses;
+  } catch (error) {
+    logger.error(`Failed to read read-only wallets for ${chain}: ${error.message}`);
+    return [];
+  }
+}
+
+export async function saveReadOnlyWalletAddresses(chain: string, addresses: string[]): Promise<void> {
+  const filePath = getReadOnlyWalletPath(chain);
+  const dirPath = `${walletPath}/${sanitizePathComponent(chain.toLowerCase())}`;
+  
+  await mkdirIfDoesNotExist(dirPath);
+  await fse.writeFile(filePath, JSON.stringify(addresses, null, 2));
+}
+
+export async function addReadOnlyWallet(
+  fastify: FastifyInstance,
+  req: AddReadOnlyWalletRequest,
+): Promise<AddReadOnlyWalletResponse> {
+  logger.info(`Adding read-only wallet: ${req.address} for chain: ${req.chain}`);
+  
+  // Validate chain name
+  if (!validateChainName(req.chain)) {
+    throw fastify.httpErrors.badRequest(
+      `Unrecognized chain name: ${req.chain}`,
+    );
+  }
+  
+  // Validate the address based on chain type
+  let validatedAddress: string;
+  if (req.chain.toLowerCase() === 'ethereum') {
+    validatedAddress = Ethereum.validateAddress(req.address);
+  } else if (req.chain.toLowerCase() === 'solana') {
+    validatedAddress = Solana.validateAddress(req.address);
+  } else {
+    throw new Error(`Unsupported chain: ${req.chain}`);
+  }
+  
+  // Get existing read-only addresses
+  const addresses = await getReadOnlyWalletAddresses(req.chain);
+  
+  // Check if already exists
+  if (addresses.includes(validatedAddress)) {
+    throw fastify.httpErrors.badRequest(
+      `Read-only wallet ${validatedAddress} already exists for ${req.chain}`,
+    );
+  }
+  
+  // Check if it's already a regular wallet
+  const safeChain = sanitizePathComponent(req.chain.toLowerCase());
+  const safeAddress = sanitizePathComponent(validatedAddress);
+  const regularWalletPath = `${walletPath}/${safeChain}/${safeAddress}.json`;
+  
+  if (await fse.pathExists(regularWalletPath)) {
+    throw fastify.httpErrors.badRequest(
+      `Address ${validatedAddress} already exists as a regular wallet`,
+    );
+  }
+  
+  // Add to list and save
+  addresses.push(validatedAddress);
+  await saveReadOnlyWalletAddresses(req.chain, addresses);
+  
+  return {
+    message: `Read-only wallet ${validatedAddress} added successfully`,
+    address: validatedAddress,
+  };
+}
+
+export async function removeReadOnlyWallet(
+  fastify: FastifyInstance,
+  req: RemoveReadOnlyWalletRequest,
+): Promise<RemoveReadOnlyWalletResponse> {
+  logger.info(`Removing read-only wallet: ${req.address} from chain: ${req.chain}`);
+  
+  // Validate chain name
+  if (!validateChainName(req.chain)) {
+    throw fastify.httpErrors.badRequest(
+      `Unrecognized chain name: ${req.chain}`,
+    );
+  }
+  
+  // Validate the address based on chain type
+  let validatedAddress: string;
+  if (req.chain.toLowerCase() === 'ethereum') {
+    validatedAddress = Ethereum.validateAddress(req.address);
+  } else if (req.chain.toLowerCase() === 'solana') {
+    validatedAddress = Solana.validateAddress(req.address);
+  } else {
+    throw new Error(`Unsupported chain: ${req.chain}`);
+  }
+  
+  // Get existing read-only addresses
+  const addresses = await getReadOnlyWalletAddresses(req.chain);
+  
+  // Check if exists
+  const index = addresses.indexOf(validatedAddress);
+  if (index === -1) {
+    throw fastify.httpErrors.notFound(
+      `Read-only wallet ${validatedAddress} not found for ${req.chain}`,
+    );
+  }
+  
+  // Remove from list and save
+  addresses.splice(index, 1);
+  await saveReadOnlyWalletAddresses(req.chain, addresses);
+  
+  return {
+    message: `Read-only wallet ${validatedAddress} removed successfully`,
+  };
 }

@@ -45,6 +45,7 @@ import {
   walletPath,
   getSafeWalletFilePath,
   sanitizePathComponent,
+  getReadOnlyWalletAddresses,
 } from '../../wallet/utils';
 
 import { Config, getSolanaConfig } from './solana.config';
@@ -278,6 +279,19 @@ export class Solana {
         throw new Error(`Wallet not found for address: ${address}`);
       }
       throw error;
+    }
+  }
+
+  /**
+   * Check if an address is a read-only wallet
+   */
+  async isReadOnlyWallet(address: string): Promise<boolean> {
+    try {
+      const readOnlyAddresses = await getReadOnlyWalletAddresses('solana');
+      return readOnlyAddresses.includes(address);
+    } catch (error) {
+      logger.error(`Error checking read-only wallet status: ${error.message}`);
+      return false;
     }
   }
 

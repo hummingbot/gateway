@@ -1,5 +1,5 @@
 import { Type } from '@sinclair/typebox';
-import { utils } from 'ethers';
+import { utils, ethers } from 'ethers';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { getSpender } from '../../../connectors/uniswap/uniswap.contracts';
@@ -87,7 +87,15 @@ export async function getEthereumAllowances(
   try {
     const ethereum = await Ethereum.getInstance(network);
     await ethereum.init();
-    const wallet = await ethereum.getWallet(address);
+    
+    // Check if this is a read-only wallet
+    const isReadOnly = await ethereum.isReadOnlyWallet(address);
+    let wallet: ethers.Wallet | null = null;
+    
+    if (!isReadOnly) {
+      wallet = await ethereum.getWallet(address);
+    }
+    
     const tokenInfoMap = await getTokensToTokenInfo(ethereum, tokens);
 
     // Check if any tokens were found
@@ -148,12 +156,19 @@ export async function getEthereumAllowances(
           ethereum.provider,
         );
         approvals[symbol] = tokenValueToString(
-          await ethereum.getERC20Allowance(
-            contract,
-            wallet,
-            spenderAddress,
-            tokenInfoMap[symbol].decimals,
-          ),
+          isReadOnly
+            ? await ethereum.getERC20AllowanceByAddress(
+                contract,
+                address,
+                spenderAddress,
+                tokenInfoMap[symbol].decimals,
+              )
+            : await ethereum.getERC20Allowance(
+                contract,
+                wallet!,
+                spenderAddress,
+                tokenInfoMap[symbol].decimals,
+              ),
         );
       }),
     );

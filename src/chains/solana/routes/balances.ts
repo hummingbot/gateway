@@ -27,15 +27,24 @@ export async function getSolanaBalances(
 ): Promise<BalanceResponseType> {
   try {
     const solana = await Solana.getInstance(network);
-    const wallet = await solana.getWallet(address);
-
-    // Call our new optimized getBalance function
-    const balances = await getOptimizedBalance(solana, wallet, tokens);
-    return { balances };
+    
+    // Check if this is a read-only wallet
+    const isReadOnly = await solana.isReadOnlyWallet(address);
+    
+    if (isReadOnly) {
+      // For read-only wallets, use the address-based balance fetching
+      const balances = await getOptimizedBalanceByAddress(solana, address, tokens);
+      return { balances };
+    } else {
+      // For regular wallets, use the existing logic
+      const wallet = await solana.getWallet(address);
+      const balances = await getOptimizedBalance(solana, wallet, tokens);
+      return { balances };
+    }
   } catch (error) {
     logger.error(`Error getting balances: ${error.message}`);
     throw fastify.httpErrors.internalServerError(
-      `Failed to load wallet: ${error.message}`,
+      `Failed to get balances: ${error.message}`,
     );
   }
 }
@@ -290,6 +299,318 @@ async function getOptimizedBalance(
               );
             }
           }
+        }
+      }
+    }
+  })();
+
+  // Set a timeout for the entire token processing operation
+  const processingTimeout = new Promise<void>((resolve) => {
+    setTimeout(() => {
+      logger.warn('Token processing timed out, returning partial results');
+      resolve();
+    }, 20000); // 20 second timeout for entire processing
+  });
+
+  // Wait for processing to complete or timeout
+  await Promise.race([processTokensPromise, processingTimeout]);
+
+  // Filter out zero balances when no specific tokens are requested
+  if (!symbols || (symbols && symbols.length === 0)) {
+    const filteredBalances: Record<string, number> = {};
+
+    // Keep SOL balance regardless of its value
+    if ('SOL' in balances) {
+      filteredBalances['SOL'] = balances['SOL'];
+    }
+
+    // Filter other tokens with zero balances
+    Object.entries(balances).forEach(([key, value]) => {
+      if (key !== 'SOL' && value > 0) {
+        filteredBalances[key] = value;
+      }
+    });
+
+    return filteredBalances;
+  }
+
+  return balances;
+}
+
+/**
+ * Optimized getBalance function for read-only wallets (using address instead of keypair)
+ */
+async function getOptimizedBalanceByAddress(
+  solana: Solana,
+  address: string,
+  symbols?: string[],
+): Promise<Record<string, number>> {
+  const publicKey = new PublicKey(address);
+  const balances: Record<string, number> = {};
+
+  // Treat empty array as if no tokens were specified
+  const effectiveSymbols =
+    symbols && symbols.length === 0 ? undefined : symbols;
+
+  // Fetch SOL balance only if symbols is undefined or includes "SOL" (case-insensitive)
+  if (
+    !effectiveSymbols ||
+    effectiveSymbols.some((s) => s.toUpperCase() === 'SOL')
+  ) {
+    try {
+      const solBalance = await solana.connection.getBalance(publicKey);
+      const solBalanceInSol = solBalance * LAMPORT_TO_SOL;
+      balances['SOL'] = solBalanceInSol;
+    } catch (error) {
+      logger.error(`Error fetching SOL balance: ${error.message}`);
+      balances['SOL'] = 0; // Set SOL balance to 0 on error
+    }
+  }
+
+  // Return early if only SOL balance was requested
+  if (
+    effectiveSymbols &&
+    effectiveSymbols.length === 1 &&
+    effectiveSymbols[0].toUpperCase() === 'SOL'
+  ) {
+    return balances;
+  }
+
+  // Get all token accounts for the provided address with timeout
+  const tokenAccountsPromise = Promise.all([
+    solana.connection.getTokenAccountsByOwner(publicKey, {
+      programId: TOKEN_PROGRAM_ID,
+    }),
+    solana.connection.getTokenAccountsByOwner(publicKey, {
+      programId: TOKEN_2022_PROGRAM_ID,
+    }),
+  ]);
+
+  // Set a timeout for the token accounts request
+  const timeoutPromise = new Promise((_, reject) => {
+    setTimeout(
+      () => reject(new Error('Token accounts request timed out')),
+      10000,
+    );
+  });
+
+  let allAccounts = [];
+  try {
+    const [legacyAccounts, token2022Accounts] = (await Promise.race([
+      tokenAccountsPromise,
+      timeoutPromise,
+    ])) as any;
+
+    allAccounts = [...legacyAccounts.value, ...token2022Accounts.value];
+    logger.info(
+      `Found ${allAccounts.length} token accounts for address ${publicKey.toString()}`,
+    );
+  } catch (error) {
+    logger.error(`Error fetching token accounts: ${error.message}`);
+    // If we couldn't fetch token accounts, return at least SOL balance
+    return balances;
+  }
+
+  // Track tokens that were found and those that still need to be fetched
+  const foundTokens = new Set<string>();
+  const tokensToFetch = new Map<string, string>(); // Maps address -> display symbol
+
+  // Create a mapping of all mint addresses to their token accounts
+  const mintToAccount = new Map();
+  for (const value of allAccounts) {
+    try {
+      const programId = value.account.owner;
+      const parsedAccount = unpackAccount(
+        value.pubkey,
+        value.account,
+        programId,
+      );
+      const mintAddress = parsedAccount.mint.toBase58();
+      mintToAccount.set(mintAddress, { parsedAccount, value });
+    } catch (error) {
+      logger.warn(`Error unpacking account: ${error.message}`);
+      continue;
+    }
+  }
+
+  // Process tokens with timeout
+  const processTokensPromise = (async () => {
+    // Set up processing based on whether specific tokens are requested
+    if (effectiveSymbols) {
+      logger.info(
+        `Processing ${effectiveSymbols.length} specifically requested tokens`,
+      );
+
+      for (const symbol of effectiveSymbols) {
+        // Skip SOL as it's handled separately
+        if (symbol.toUpperCase() === 'SOL') {
+          foundTokens.add('SOL');
+          continue;
+        }
+
+        // Check if it's a token symbol in our list
+        const tokenBySymbol = solana.tokenList.find(
+          (t) => t.symbol.toUpperCase() === symbol.toUpperCase(),
+        );
+
+        if (tokenBySymbol) {
+          foundTokens.add(tokenBySymbol.symbol);
+
+          // Check if we have this token in the wallet
+          if (mintToAccount.has(tokenBySymbol.address)) {
+            const { parsedAccount } = mintToAccount.get(tokenBySymbol.address);
+            const amount = parsedAccount.amount;
+            const uiAmount =
+              Number(amount) / Math.pow(10, tokenBySymbol.decimals);
+            balances[tokenBySymbol.symbol] = uiAmount;
+            logger.debug(
+              `Found balance for ${tokenBySymbol.symbol}: ${uiAmount}`,
+            );
+          } else {
+            // Token not found in wallet, set balance to 0
+            balances[tokenBySymbol.symbol] = 0;
+            logger.debug(
+              `No balance found for ${tokenBySymbol.symbol}, setting to 0`,
+            );
+          }
+        }
+        // If it looks like a Solana address, check if it matches a token in our list
+        else if (symbol.length >= 32 && symbol.length <= 44) {
+          try {
+            const pubKey = new PublicKey(symbol);
+            const mintAddress = pubKey.toBase58();
+
+            // Find token in our list by address
+            const token = solana.tokenList.find(
+              (t) => t.address === mintAddress,
+            );
+
+            if (token) {
+              foundTokens.add(token.symbol);
+
+              // Check if we have this token in the wallet
+              if (mintToAccount.has(mintAddress)) {
+                const { parsedAccount } = mintToAccount.get(mintAddress);
+                const amount = parsedAccount.amount;
+                const uiAmount = Number(amount) / Math.pow(10, token.decimals);
+                balances[token.symbol] = uiAmount;
+                logger.debug(
+                  `Found balance for ${token.symbol} (${mintAddress}): ${uiAmount}`,
+                );
+              } else {
+                // Token not found in wallet, set balance to 0
+                balances[token.symbol] = 0;
+                logger.debug(
+                  `No balance found for ${token.symbol} (${mintAddress}), setting to 0`,
+                );
+              }
+            } else {
+              // If token not in our list, use a default 9 decimals (common for Solana SPL tokens)
+              if (mintToAccount.has(mintAddress)) {
+                const { parsedAccount } = mintToAccount.get(mintAddress);
+                const amount = parsedAccount.amount;
+                const uiAmount = Number(amount) / Math.pow(10, 9);
+                balances[mintAddress] = uiAmount;
+                logger.debug(
+                  `Found balance for unlisted token ${mintAddress}: ${uiAmount}`,
+                );
+              } else {
+                // Address not found in wallet, set balance to 0
+                balances[mintAddress] = 0;
+                logger.debug(
+                  `No balance found for unlisted token ${mintAddress}, setting to 0`,
+                );
+              }
+            }
+          } catch (e) {
+            logger.warn(`Invalid token address format: ${symbol}`);
+          }
+        } else {
+          logger.warn(
+            `Token not recognized: ${symbol} (not a known symbol or valid address)`,
+          );
+        }
+      }
+
+      // For all requested tokens that haven't been found, set balance to 0
+      for (const symbol of effectiveSymbols) {
+        if (
+          symbol.toUpperCase() !== 'SOL' &&
+          !Object.keys(balances).includes(symbol)
+        ) {
+          balances[symbol] = 0;
+          logger.debug(
+            `Token ${symbol} not found or recognized, setting balance to 0`,
+          );
+        }
+      }
+    } else {
+      // No specific tokens requested, process all token accounts
+      logger.info(`Processing ${mintToAccount.size} token accounts`);
+
+      // Batch process all token accounts
+      for (const [mintAddress, { parsedAccount, value }] of mintToAccount) {
+        try {
+          const programId = value.account.owner;
+
+          // Find token in our list
+          const token = solana.tokenList.find((t) => t.address === mintAddress);
+
+          if (token) {
+            const amount = parsedAccount.amount;
+            const uiAmount = Number(amount) / Math.pow(10, token.decimals);
+
+            // Only add tokens with non-zero balances
+            if (uiAmount > 0) {
+              balances[token.symbol] = uiAmount;
+              logger.debug(
+                `Found non-zero balance for ${token.symbol}: ${uiAmount}`,
+              );
+            }
+          } else {
+            // For unknown tokens, try to get mint info with a short timeout
+            try {
+              const mintInfo = await Promise.race([
+                getMint(
+                  solana.connection,
+                  new PublicKey(mintAddress),
+                  undefined,
+                  programId,
+                ),
+                new Promise((_, reject) =>
+                  setTimeout(
+                    () => reject(new Error('Mint info timeout')),
+                    1000,
+                  ),
+                ),
+              ]);
+
+              const amount = parsedAccount.amount;
+              const uiAmount = Number(amount) / Math.pow(10, mintInfo.decimals);
+
+              // Only add tokens with non-zero balances
+              if (uiAmount > 0) {
+                balances[mintAddress] = uiAmount;
+                logger.debug(
+                  `Found non-zero balance for unknown token ${mintAddress}: ${uiAmount}`,
+                );
+              }
+            } catch (e) {
+              // If we can't get mint info, use default 9 decimals
+              const amount = parsedAccount.amount;
+              const uiAmount = Number(amount) / Math.pow(10, 9);
+
+              // Only add tokens with non-zero balances
+              if (uiAmount > 0) {
+                balances[mintAddress] = uiAmount;
+                logger.debug(
+                  `Found non-zero balance for token ${mintAddress} (using default decimals): ${uiAmount}`,
+                );
+              }
+            }
+          }
+        } catch (error) {
+          logger.warn(`Error processing token ${mintAddress}: ${error.message}`);
         }
       }
     }

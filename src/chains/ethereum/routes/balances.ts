@@ -21,7 +21,8 @@ export async function getEthereumBalances(
     const ethereum = await Ethereum.getInstance(network);
     await ethereum.init();
 
-    let wallet: ethers.Wallet;
+    let wallet: ethers.Wallet | null = null;
+    let isReadOnly = false;
     const balances: Record<string, number> = {};
 
     // Treat empty array as if no tokens were specified
@@ -30,17 +31,24 @@ export async function getEthereumBalances(
     // If no tokens specified, check all tokens in the token list
     const checkAllTokens = !effectiveTokens;
 
-    try {
-      wallet = await ethereum.getWallet(address);
-    } catch (err) {
-      logger.error(`Failed to load wallet: ${err.message}`);
-      throw fastify.httpErrors.internalServerError(
-        `Failed to load wallet: ${err.message}`,
-      );
+    // Check if this is a read-only wallet
+    isReadOnly = await ethereum.isReadOnlyWallet(address);
+
+    if (!isReadOnly) {
+      try {
+        wallet = await ethereum.getWallet(address);
+      } catch (err) {
+        logger.error(`Failed to load wallet: ${err.message}`);
+        throw fastify.httpErrors.internalServerError(
+          `Failed to load wallet: ${err.message}`,
+        );
+      }
     }
 
     // Always get native token balance
-    const nativeBalance = await ethereum.getNativeBalance(wallet);
+    const nativeBalance = isReadOnly 
+      ? await ethereum.getNativeBalanceByAddress(address)
+      : await ethereum.getNativeBalance(wallet!);
     // Convert string to number as required by schema
     balances[ethereum.nativeTokenSymbol] = parseFloat(
       tokenValueToString(nativeBalance),
@@ -90,12 +98,19 @@ export async function getEthereumBalances(
                 token.address,
                 ethereum.provider,
               );
-              const balance = await ethereum.getERC20Balance(
-                contract,
-                wallet,
-                token.decimals,
-                3000, // 3 second timeout for better responsiveness
-              );
+              const balance = isReadOnly
+                ? await ethereum.getERC20BalanceByAddress(
+                    contract,
+                    address,
+                    token.decimals,
+                    3000, // 3 second timeout for better responsiveness
+                  )
+                : await ethereum.getERC20Balance(
+                    contract,
+                    wallet!,
+                    token.decimals,
+                    3000, // 3 second timeout for better responsiveness
+                  );
               // Parse balance to number
               const balanceNum = parseFloat(tokenValueToString(balance));
 
@@ -130,12 +145,19 @@ export async function getEthereumBalances(
               token.address,
               ethereum.provider,
             );
-            const balance = await ethereum.getERC20Balance(
-              contract,
-              wallet,
-              token.decimals,
-              5000, // 5 second timeout for specifically requested tokens
-            );
+            const balance = isReadOnly
+              ? await ethereum.getERC20BalanceByAddress(
+                  contract,
+                  address,
+                  token.decimals,
+                  5000, // 5 second timeout for specifically requested tokens
+                )
+              : await ethereum.getERC20Balance(
+                  contract,
+                  wallet!,
+                  token.decimals,
+                  5000, // 5 second timeout for specifically requested tokens
+                );
             // Convert string to number as required by schema
             balances[token.symbol] = parseFloat(tokenValueToString(balance));
           }

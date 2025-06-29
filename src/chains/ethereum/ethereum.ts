@@ -15,7 +15,7 @@ import { TokenListType, TokenValue } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { logger } from '../../services/logger';
 import { TokenService } from '../../services/token-service';
-import { walletPath } from '../../wallet/utils';
+import { walletPath, getReadOnlyWalletAddresses } from '../../wallet/utils';
 
 import { getEthereumConfig } from './ethereum.config';
 
@@ -392,6 +392,19 @@ export class Ethereum {
   }
 
   /**
+   * Check if an address is a read-only wallet
+   */
+  public async isReadOnlyWallet(address: string): Promise<boolean> {
+    try {
+      const readOnlyAddresses = await getReadOnlyWalletAddresses('ethereum');
+      return readOnlyAddresses.includes(address);
+    } catch (error) {
+      logger.error(`Error checking read-only wallet status: ${error.message}`);
+      return false;
+    }
+  }
+
+  /**
    * Encrypt a private key
    */
   public encrypt(privateKey: string, password: string): Promise<string> {
@@ -418,6 +431,14 @@ export class Ethereum {
    */
   public async getNativeBalance(wallet: Wallet): Promise<TokenValue> {
     const balance = await wallet.getBalance();
+    return { value: balance, decimals: 18 };
+  }
+
+  /**
+   * Get native token balance by address (for read-only wallets)
+   */
+  public async getNativeBalanceByAddress(address: string): Promise<TokenValue> {
+    const balance = await this.provider.getBalance(address);
     return { value: balance, decimals: 18 };
   }
 
@@ -451,6 +472,35 @@ export class Ethereum {
   }
 
   /**
+   * Get ERC-20 token balance by address (for read-only wallets)
+   */
+  public async getERC20BalanceByAddress(
+    contract: Contract,
+    address: string,
+    decimals: number,
+    timeoutMs: number = 5000, // Default 5 second timeout
+  ): Promise<TokenValue> {
+    // Add timeout to prevent hanging on problematic tokens
+    const balancePromise = contract.balanceOf(address);
+
+    // Create a timeout promise that rejects after specified timeout
+    const timeoutPromise = new Promise<BigNumber>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error('Token balance request timed out'));
+      }, timeoutMs);
+    });
+
+    // Race the balance request against the timeout
+    const balance: BigNumber = await Promise.race([
+      balancePromise,
+      timeoutPromise,
+    ]);
+
+    logger.debug(`Token balance for ${address}: ${balance.toString()}`);
+    return { value: balance, decimals: decimals };
+  }
+
+  /**
    * Get ERC-20 token allowance
    */
   public async getERC20Allowance(
@@ -460,6 +510,19 @@ export class Ethereum {
     decimals: number,
   ): Promise<TokenValue> {
     const allowance = await contract.allowance(wallet.address, spender);
+    return { value: allowance, decimals: decimals };
+  }
+
+  /**
+   * Get ERC-20 token allowance by address (for read-only wallets)
+   */
+  public async getERC20AllowanceByAddress(
+    contract: Contract,
+    ownerAddress: string,
+    spender: string,
+    decimals: number,
+  ): Promise<TokenValue> {
+    const allowance = await contract.allowance(ownerAddress, spender);
     return { value: allowance, decimals: decimals };
   }
 
