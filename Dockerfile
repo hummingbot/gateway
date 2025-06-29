@@ -5,7 +5,7 @@ FROM node:20-bookworm-slim
 WORKDIR /home/gateway
 
 # Create mount points
-RUN mkdir -p /home/gateway/conf /home/gateway/logs /home/gateway/db /home/gateway/certs
+RUN mkdir -p /home/gateway/conf /home/gateway/logs /home/gateway/certs
 
 # Install pnpm
 RUN npm install -g pnpm@latest
