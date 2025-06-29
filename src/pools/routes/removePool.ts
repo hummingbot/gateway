@@ -1,17 +1,49 @@
 import { FastifyPluginAsync } from 'fastify';
 
 import { PoolService } from '../../services/pool-service';
-import { PoolRemoveRequestSchema, PoolSuccessResponseSchema } from '../schemas';
-import { PoolRemoveRequest } from '../types';
+import { PoolSuccessResponseSchema } from '../schemas';
+import { Type } from '@sinclair/typebox';
 
 export const removePoolRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.delete<{ Body: PoolRemoveRequest }>(
-    '/',
+  fastify.delete<{ 
+    Params: { address: string };
+    Querystring: {
+      connector: string;
+      network: string;
+      type: 'amm' | 'clmm';
+    };
+  }>(
+    '/:address',
     {
       schema: {
         description: 'Remove a pool by address',
         tags: ['pools'],
-        body: PoolRemoveRequestSchema,
+        params: {
+          type: 'object',
+          properties: {
+            address: {
+              type: 'string',
+              description: 'Pool contract address to remove',
+            },
+          },
+          required: ['address'],
+        },
+        querystring: Type.Object({
+          connector: Type.String({
+            description: 'Connector (raydium, meteora, uniswap)',
+            examples: ['raydium', 'meteora', 'uniswap'],
+          }),
+          network: Type.String({
+            description: 'Network name (mainnet, mainnet-beta, etc)',
+            examples: ['mainnet', 'mainnet-beta'],
+          }),
+          type: Type.Union([
+            Type.Literal('amm'),
+            Type.Literal('clmm'),
+          ], {
+            description: 'Pool type',
+          }),
+        }),
         response: {
           200: PoolSuccessResponseSchema,
           404: {
@@ -24,7 +56,8 @@ export const removePoolRoute: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request) => {
-      const { connector, network, type, address } = request.body;
+      const { address } = request.params;
+      const { connector, network, type } = request.query;
       const poolService = PoolService.getInstance();
 
       try {

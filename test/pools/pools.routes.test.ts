@@ -111,20 +111,20 @@ describe('Pool Routes Tests', () => {
   });
 
   describe('GET /pools', () => {
-    it('should list all pools for a chain/network', async () => {
+    it('should list all pools for a connector', async () => {
       const mockPools: Pool[] = [
         {
-          baseTokenSymbol: 'SOL',
-          quoteTokenSymbol: 'USDC',
-          connector: 'raydium/amm',
+          type: 'amm',
           network: 'mainnet-beta',
+          baseSymbol: 'SOL',
+          quoteSymbol: 'USDC',
           address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
         },
         {
-          baseTokenSymbol: 'RAY',
-          quoteTokenSymbol: 'USDC',
-          connector: 'raydium/amm',
+          type: 'amm',
           network: 'mainnet-beta',
+          baseSymbol: 'RAY',
+          quoteSymbol: 'USDC',
           address: '6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg',
         },
       ];
@@ -133,27 +133,26 @@ describe('Pool Routes Tests', () => {
 
       const response = await fastify.inject({
         method: 'GET',
-        url: '/?chain=solana&network=mainnet-beta',
+        url: '/?connector=raydium&network=mainnet-beta',
       });
-
 
       expect(response.statusCode).toBe(200);
       expect(JSON.parse(response.payload)).toEqual(mockPools);
       expect(mockPoolService.listPools).toHaveBeenCalledWith(
-        'solana',
+        'raydium',
         'mainnet-beta',
         undefined,
         undefined,
       );
     });
 
-    it('should filter pools by connector', async () => {
+    it('should filter pools by type', async () => {
       const mockPools: Pool[] = [
         {
-          baseTokenSymbol: 'SOL',
-          quoteTokenSymbol: 'USDC',
-          connector: 'raydium/clmm',
+          type: 'clmm',
           network: 'mainnet-beta',
+          baseSymbol: 'SOL',
+          quoteSymbol: 'USDC',
           address: '3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv',
         },
       ];
@@ -162,15 +161,15 @@ describe('Pool Routes Tests', () => {
 
       const response = await fastify.inject({
         method: 'GET',
-        url: '/?chain=solana&network=mainnet-beta&connector=raydium/clmm',
+        url: '/?connector=raydium&network=mainnet-beta&type=clmm',
       });
 
       expect(response.statusCode).toBe(200);
       expect(JSON.parse(response.payload)).toEqual(mockPools);
       expect(mockPoolService.listPools).toHaveBeenCalledWith(
-        'solana',
+        'raydium',
         'mainnet-beta',
-        'raydium/clmm',
+        'clmm',
         undefined,
       );
     });
@@ -178,10 +177,10 @@ describe('Pool Routes Tests', () => {
     it('should search pools by token symbol', async () => {
       const mockPools: Pool[] = [
         {
-          baseTokenSymbol: 'SOL',
-          quoteTokenSymbol: 'USDC',
-          connector: 'raydium/amm',
+          type: 'amm',
           network: 'mainnet-beta',
+          baseSymbol: 'SOL',
+          quoteSymbol: 'USDC',
           address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
         },
       ];
@@ -190,14 +189,14 @@ describe('Pool Routes Tests', () => {
 
       const response = await fastify.inject({
         method: 'GET',
-        url: '/?chain=solana&network=mainnet-beta&search=SOL',
+        url: '/?connector=raydium&search=SOL',
       });
 
       expect(response.statusCode).toBe(200);
       expect(JSON.parse(response.payload)).toEqual(mockPools);
       expect(mockPoolService.listPools).toHaveBeenCalledWith(
-        'solana',
-        'mainnet-beta',
+        'raydium',
+        undefined,
         undefined,
         'SOL',
       );
@@ -205,27 +204,26 @@ describe('Pool Routes Tests', () => {
 
     it('should return 400 for invalid parameters', async () => {
       mockPoolService.listPools.mockRejectedValue(
-        new Error('Invalid chain name'),
+        new Error('Invalid connector name'),
       );
 
       const response = await fastify.inject({
         method: 'GET',
-        url: '/?chain=invalid&network=mainnet',
+        url: '/?connector=invalid&network=mainnet',
       });
-
 
       expect(response.statusCode).toBe(400);
       expect(JSON.parse(response.payload)).toHaveProperty('message');
     });
   });
 
-  describe('GET /pools/find', () => {
-    it('should find pool by token pair', async () => {
+  describe('GET /pools/:tradingPair', () => {
+    it('should find pool by trading pair', async () => {
       const mockPool: Pool = {
-        baseTokenSymbol: 'SOL',
-        quoteTokenSymbol: 'USDC',
-        connector: 'raydium/amm',
+        type: 'amm',
         network: 'mainnet-beta',
+        baseSymbol: 'SOL',
+        quoteSymbol: 'USDC',
         address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
       };
 
@@ -233,15 +231,15 @@ describe('Pool Routes Tests', () => {
 
       const response = await fastify.inject({
         method: 'GET',
-        url: '/find?chain=solana&network=mainnet-beta&connector=raydium/amm&tokenPair=SOL-USDC',
+        url: '/SOL-USDC?connector=raydium&network=mainnet-beta&type=amm',
       });
 
       expect(response.statusCode).toBe(200);
       expect(JSON.parse(response.payload)).toEqual(mockPool);
       expect(mockPoolService.getPool).toHaveBeenCalledWith(
-        'solana',
+        'raydium',
         'mainnet-beta',
-        'raydium/amm',
+        'amm',
         'SOL',
         'USDC',
       );
@@ -252,23 +250,23 @@ describe('Pool Routes Tests', () => {
 
       const response = await fastify.inject({
         method: 'GET',
-        url: '/find?chain=solana&network=mainnet-beta&connector=raydium/amm&tokenPair=UNKNOWN-TOKEN',
+        url: '/UNKNOWN-TOKEN?connector=raydium&network=mainnet-beta&type=amm',
       });
 
       expect(response.statusCode).toBe(404);
       expect(JSON.parse(response.payload)).toHaveProperty('message');
     });
 
-    it('should return 400 for invalid token pair format', async () => {
+    it('should return 400 for invalid trading pair format', async () => {
       const response = await fastify.inject({
         method: 'GET',
-        url: '/find?chain=solana&network=mainnet-beta&connector=raydium/amm&tokenPair=INVALIDFORMAT',
+        url: '/INVALIDFORMAT?connector=raydium&network=mainnet-beta&type=amm',
       });
 
       expect(response.statusCode).toBe(400);
       expect(JSON.parse(response.payload)).toHaveProperty('message');
       expect(JSON.parse(response.payload).message).toContain(
-        'Invalid token pair format',
+        'Invalid trading pair format',
       );
     });
   });
@@ -281,11 +279,11 @@ describe('Pool Routes Tests', () => {
         method: 'POST',
         url: '/',
         payload: {
-          chain: 'solana',
+          connector: 'raydium',
+          type: 'amm',
           network: 'mainnet-beta',
-          baseTokenSymbol: 'WIF',
-          quoteTokenSymbol: 'SOL',
-          connector: 'raydium/amm',
+          baseSymbol: 'WIF',
+          quoteSymbol: 'SOL',
           address: 'EP2ib6dYdEeqD8MfE2ezHCxX3kP3K2eLKkirfPm5eyMx',
         },
       });
@@ -297,13 +295,12 @@ describe('Pool Routes Tests', () => {
       );
 
       expect(mockPoolService.addPool).toHaveBeenCalledWith(
-        'solana',
-        'mainnet-beta',
+        'raydium',
         {
-          baseTokenSymbol: 'WIF',
-          quoteTokenSymbol: 'SOL',
-          connector: 'raydium/amm',
+          type: 'amm',
           network: 'mainnet-beta',
+          baseSymbol: 'WIF',
+          quoteSymbol: 'SOL',
           address: 'EP2ib6dYdEeqD8MfE2ezHCxX3kP3K2eLKkirfPm5eyMx',
         },
       );
@@ -318,11 +315,11 @@ describe('Pool Routes Tests', () => {
         method: 'POST',
         url: '/',
         payload: {
-          chain: 'solana',
+          connector: 'raydium',
+          type: 'amm',
           network: 'mainnet-beta',
-          baseTokenSymbol: 'SOL',
-          quoteTokenSymbol: 'USDC',
-          connector: 'raydium/amm',
+          baseSymbol: 'SOL',
+          quoteSymbol: 'USDC',
           address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
         },
       });
@@ -336,7 +333,7 @@ describe('Pool Routes Tests', () => {
         method: 'POST',
         url: '/',
         payload: {
-          chain: 'solana',
+          connector: 'raydium',
           network: 'mainnet-beta',
           // Missing other required fields
         },
@@ -346,19 +343,13 @@ describe('Pool Routes Tests', () => {
     });
   });
 
-  describe('DELETE /pools', () => {
+  describe('DELETE /pools/:address', () => {
     it('should remove pool successfully', async () => {
       mockPoolService.removePool.mockResolvedValue(undefined);
 
       const response = await fastify.inject({
         method: 'DELETE',
-        url: '/',
-        payload: {
-          chain: 'solana',
-          network: 'mainnet-beta',
-          connector: 'raydium/amm',
-          address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
-        },
+        url: '/58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2?connector=raydium&network=mainnet-beta&type=amm',
       });
 
       expect(response.statusCode).toBe(200);
@@ -368,9 +359,9 @@ describe('Pool Routes Tests', () => {
       );
 
       expect(mockPoolService.removePool).toHaveBeenCalledWith(
-        'solana',
+        'raydium',
         'mainnet-beta',
-        'raydium/amm',
+        'amm',
         '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
       );
     });
@@ -382,27 +373,18 @@ describe('Pool Routes Tests', () => {
 
       const response = await fastify.inject({
         method: 'DELETE',
-        url: '/',
-        payload: {
-          chain: 'solana',
-          network: 'mainnet-beta',
-          connector: 'raydium/amm',
-          address: 'NonExistent',
-        },
+        url: '/NonExistent?connector=raydium&network=mainnet-beta&type=amm',
       });
 
       expect(response.statusCode).toBe(404);
       expect(JSON.parse(response.payload)).toHaveProperty('message');
     });
 
-    it('should return 400 for missing required fields', async () => {
+    it('should return 400 for missing required parameters', async () => {
       const response = await fastify.inject({
         method: 'DELETE',
-        url: '/',
-        payload: {
-          chain: 'solana',
-          // Missing other required fields
-        },
+        url: '/58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2?connector=raydium',
+        // Missing network and type
       });
 
       expect(response.statusCode).toBe(400);

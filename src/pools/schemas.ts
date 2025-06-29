@@ -32,27 +32,6 @@ export const PoolListResponseSchema = Type.Array(
   }),
 );
 
-// Get pool request
-export const PoolGetRequestSchema = Type.Object({
-  connector: Type.String({
-    description: 'Connector (raydium, meteora, uniswap)',
-    examples: ['raydium', 'meteora', 'uniswap'],
-  }),
-  network: Type.String({
-    description: 'Network name (mainnet, mainnet-beta, etc)',
-    examples: ['mainnet', 'mainnet-beta'],
-  }),
-  type: Type.Union([
-    Type.Literal('amm'),
-    Type.Literal('clmm'),
-  ], {
-    description: 'Pool type',
-  }),
-  tokenPair: Type.String({
-    description: 'Token pair (e.g., ETH-USDC, SOL-USDC)',
-    examples: ['ETH-USDC', 'SOL-USDC'],
-  }),
-});
 
 // Add pool request
 export const PoolAddRequestSchema = Type.Object({
@@ -83,26 +62,6 @@ export const PoolAddRequestSchema = Type.Object({
   }),
 });
 
-// Remove pool request
-export const PoolRemoveRequestSchema = Type.Object({
-  connector: Type.String({
-    description: 'Connector (raydium, meteora, uniswap)',
-    examples: ['raydium', 'meteora', 'uniswap'],
-  }),
-  network: Type.String({
-    description: 'Network name (mainnet, mainnet-beta, etc)',
-    examples: ['mainnet', 'mainnet-beta'],
-  }),
-  type: Type.Union([
-    Type.Literal('amm'),
-    Type.Literal('clmm'),
-  ], {
-    description: 'Pool type',
-  }),
-  address: Type.String({
-    description: 'Pool contract address to remove',
-  }),
-});
 
 // Success response
 export const PoolSuccessResponseSchema = Type.Object({

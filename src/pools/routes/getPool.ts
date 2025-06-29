@@ -1,17 +1,50 @@
 import { FastifyPluginAsync } from 'fastify';
 
 import { PoolService } from '../../services/pool-service';
-import { PoolGetRequestSchema, PoolListResponseSchema } from '../schemas';
-import { PoolGetRequest } from '../types';
+import { PoolListResponseSchema } from '../schemas';
+import { Type } from '@sinclair/typebox';
 
 export const getPoolRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{ Querystring: PoolGetRequest }>(
-    '/find',
+  fastify.get<{ 
+    Params: { tradingPair: string };
+    Querystring: {
+      connector: string;
+      network: string;
+      type: 'amm' | 'clmm';
+    };
+  }>(
+    '/:tradingPair',
     {
       schema: {
-        description: 'Get a specific pool by token pair',
+        description: 'Get a specific pool by trading pair',
         tags: ['pools'],
-        querystring: PoolGetRequestSchema,
+        params: {
+          type: 'object',
+          properties: {
+            tradingPair: {
+              type: 'string',
+              description: 'Trading pair (e.g., ETH-USDC, SOL-USDC)',
+              examples: ['ETH-USDC', 'SOL-USDC'],
+            },
+          },
+          required: ['tradingPair'],
+        },
+        querystring: Type.Object({
+          connector: Type.String({
+            description: 'Connector (raydium, meteora, uniswap)',
+            examples: ['raydium', 'meteora', 'uniswap'],
+          }),
+          network: Type.String({
+            description: 'Network name (mainnet, mainnet-beta, etc)',
+            examples: ['mainnet', 'mainnet-beta'],
+          }),
+          type: Type.Union([
+            Type.Literal('amm'),
+            Type.Literal('clmm'),
+          ], {
+            description: 'Pool type',
+          }),
+        }),
         response: {
           200: PoolListResponseSchema.items,
           404: {
@@ -24,22 +57,23 @@ export const getPoolRoute: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request) => {
-      const { connector, network, type, tokenPair } = request.query;
+      const { tradingPair } = request.params;
+      const { connector, network, type } = request.query;
       const poolService = PoolService.getInstance();
 
       try {
-        // Parse token pair (e.g., "ETH-USDC" -> ["ETH", "USDC"])
-        const [baseToken, quoteToken] = tokenPair.split('-');
+        // Parse trading pair (e.g., "ETH-USDC" -> ["ETH", "USDC"])
+        const [baseToken, quoteToken] = tradingPair.split('-');
         
         if (!baseToken || !quoteToken) {
-          throw new Error('Invalid token pair format. Expected: BASE-QUOTE (e.g., ETH-USDC)');
+          throw new Error('Invalid trading pair format. Expected: BASE-QUOTE (e.g., ETH-USDC)');
         }
 
         const pool = await poolService.getPool(connector, network, type, baseToken, quoteToken);
         
         if (!pool) {
           throw fastify.httpErrors.notFound(
-            `Pool for ${tokenPair} not found in ${connector} ${type} on ${network}`,
+            `Pool for ${tradingPair} not found in ${connector} ${type} on ${network}`,
           );
         }
 

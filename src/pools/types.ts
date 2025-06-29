@@ -29,12 +29,6 @@ export interface PoolListRequest {
   search?: string;
 }
 
-export interface PoolGetRequest {
-  connector: string;
-  network: string;
-  type: 'amm' | 'clmm';
-  tokenPair: string;
-}
 
 export interface PoolAddRequest {
   connector: string;
@@ -45,9 +39,3 @@ export interface PoolAddRequest {
   address: string;
 }
 
-export interface PoolRemoveRequest {
-  connector: string;
-  network: string;
-  type: 'amm' | 'clmm';
-  address: string;
-}
