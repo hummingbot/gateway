@@ -30,11 +30,11 @@ describe('App Integration - Route Registration', () => {
         
         // Check swap routes
         if (trading_types.includes('swap')) {
-          // Direct swap routes should exist at connector root
-          expect(routes).toContain(`/connectors/${name}/quote`);
+          // Swap routes should exist under /swap prefix
+          expect(routes).toContain(`/connectors/${name}/swap/`);
         } else {
-          // No direct swap routes
-          expect(routes).not.toContain(`/connectors/${name}/quote`);
+          // No swap routes
+          expect(routes).not.toContain(`/connectors/${name}/swap/`);
         }
         
         // Check AMM routes
@@ -99,7 +99,7 @@ describe('App Integration - Route Registration', () => {
         if (!trading_types.includes('swap')) {
           const response = await fastify.inject({
             method: 'POST',
-            url: `/connectors/${name}/quote`,
+            url: `/connectors/${name}/swap/quote`,
             payload: {
               chain: connector.chain,
               network: connector.networks[0],

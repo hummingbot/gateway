@@ -69,7 +69,7 @@ export async function testConnectorRoutes(
   if (tradingTypes.includes('swap')) {
     const response = await fastify.inject({
       method: 'POST',
-      url: `/connectors/${name}/quote`,
+      url: `/connectors/${name}/swap/quote`,
       payload: {
         chain,
         network,
@@ -84,7 +84,7 @@ export async function testConnectorRoutes(
   } else {
     const response = await fastify.inject({
       method: 'POST',
-      url: `/connectors/${name}/quote`,
+      url: `/connectors/${name}/swap/quote`,
       payload: {},
     });
     expect(response.statusCode).toBe(404);

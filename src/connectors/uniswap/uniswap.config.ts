@@ -15,7 +15,17 @@ interface AvailableNetworks {
 }
 
 // Export network arrays at the module level for direct import
-export const uniswapNetworks = ['mainnet'];
+export const uniswapNetworks = [
+  'mainnet',
+  'arbitrum',
+  'optimism',
+  'base',
+  'sepolia',
+  'bsc',
+  'avalanche',
+  'celo',
+  'polygon',
+];
 export const uniswapAmmNetworks = [
   'mainnet',
   'arbitrum',

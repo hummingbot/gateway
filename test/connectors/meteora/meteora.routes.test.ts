@@ -57,10 +57,10 @@ describe('Meteora Routes Structure', () => {
       expect([200, 400, 500]).toContain(response.statusCode);
     });
 
-    it('should NOT have direct swap routes at /connectors/meteora', async () => {
+    it('should NOT have direct swap routes at /connectors/meteora/swap', async () => {
       const response = await fastify.inject({
         method: 'POST',
-        url: '/connectors/meteora/quote',
+        url: '/connectors/meteora/swap/quote',
         payload: {
           chain: 'solana',
           network: 'mainnet-beta',

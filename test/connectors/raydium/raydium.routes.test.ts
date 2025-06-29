@@ -82,10 +82,10 @@ describe('Raydium Routes Structure', () => {
       expect([200, 400, 500]).toContain(response.statusCode);
     });
 
-    it('should NOT have direct swap routes at /connectors/raydium', async () => {
+    it('should NOT have direct swap routes at /connectors/raydium/swap', async () => {
       const response = await fastify.inject({
         method: 'POST',
-        url: '/connectors/raydium/quote',
+        url: '/connectors/raydium/swap/quote',
         payload: {
           chain: 'solana',
           network: 'mainnet-beta',

@@ -40,10 +40,10 @@ describe('Uniswap Routes Structure', () => {
   });
 
   describe('Route Registration', () => {
-    it('should register Uniswap swap routes at /connectors/uniswap', async () => {
+    it('should register Uniswap swap routes at /connectors/uniswap/swap', async () => {
       const response = await fastify.inject({
         method: 'POST',
-        url: '/connectors/uniswap/quote',
+        url: '/connectors/uniswap/swap/quote',
         payload: {
           chain: 'ethereum',
           network: 'mainnet',

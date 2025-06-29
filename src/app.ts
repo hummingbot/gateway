@@ -201,19 +201,20 @@ const configureGatewayServer = () => {
     // Register chain list route
     app.register(chainRoutes, { prefix: '/chains' });
 
-    // Register DEX connector routes
-    // Jupiter - swap only
-    app.register(jupiterRoutes.swap, { prefix: '/connectors/jupiter' });
+    // Register DEX connector routes - organized by connector
 
-    // Meteora - clmm only
+    // Jupiter routes
+    app.register(jupiterRoutes.swap, { prefix: '/connectors/jupiter/swap' });
+
+    // Meteora routes
     app.register(meteoraRoutes.clmm, { prefix: '/connectors/meteora/clmm' });
 
-    // Raydium - amm and clmm
+    // Raydium routes
     app.register(raydiumRoutes.amm, { prefix: '/connectors/raydium/amm' });
     app.register(raydiumRoutes.clmm, { prefix: '/connectors/raydium/clmm' });
 
-    // Uniswap - swap, amm, and clmm
-    app.register(uniswapRoutes.swap, { prefix: '/connectors/uniswap' });
+    // Uniswap routes
+    app.register(uniswapRoutes.swap, { prefix: '/connectors/uniswap/swap' });
     app.register(uniswapRoutes.amm, { prefix: '/connectors/uniswap/amm' });
     app.register(uniswapRoutes.clmm, { prefix: '/connectors/uniswap/clmm' });
 

@@ -49,11 +49,11 @@ describe('Jupiter Routes Structure', () => {
   });
 
   describe('Route Registration', () => {
-    it('should register Jupiter swap routes at /connectors/jupiter', async () => {
+    it('should register Jupiter swap routes at /connectors/jupiter/swap', async () => {
       // Test quote endpoint
       const quoteResponse = await fastify.inject({
         method: 'POST',
-        url: '/connectors/jupiter/quote',
+        url: '/connectors/jupiter/swap/quote',
         payload: {
           chain: 'solana',
           network: 'mainnet-beta',
@@ -64,7 +64,7 @@ describe('Jupiter Routes Structure', () => {
         },
       });
 
-      // Jupiter routes should be available at /connectors/jupiter
+      // Jupiter routes should be available at /connectors/jupiter/swap
       // 400 is expected due to validation (missing wallet address)
       expect(quoteResponse.statusCode).toBe(400);
     });
