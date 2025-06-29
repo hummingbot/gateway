@@ -2,39 +2,8 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "properties": {
-    "allowedSlippage": { "type": "string" },
-    "networks": {
-      "type": "object",
-      "patternProperties": {
-        "^\\w+(-\\w+)?$": {
-          "type": "object",
-          "properties": {
-            "amm": {
-              "type": "object",
-              "patternProperties": {
-                "^[A-Za-z0-9.-]+-[A-Za-z0-9.-]+$": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
-            },
-            "clmm": {
-              "type": "object", 
-              "patternProperties": {
-                "^[A-Za-z0-9.-]+-[A-Za-z0-9.-]+$": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "required": ["amm", "clmm"],
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
-    }
+    "allowedSlippage": { "type": "string" }
   },
   "additionalProperties": false,
-  "required": ["allowedSlippage", "networks"]
+  "required": ["allowedSlippage"]
 }

@@ -50,13 +50,12 @@ export class PoolService {
       throw new Error(`Invalid connector name: ${connector}`);
     }
 
-    // Construct the path
+    // Construct the path - now using flat structure
     const poolListPath = path.join(
       rootPath(),
       'conf',
       'pools',
-      sanitizedConnector,
-      'pools.json',
+      `${sanitizedConnector}.json`,
     );
 
     // Ensure the resolved path is within the expected directory
@@ -80,8 +79,7 @@ export class PoolService {
       'src',
       'templates',
       'pools',
-      sanitizedConnector,
-      'pools.json',
+      `${sanitizedConnector}.json`,
     );
   }
 

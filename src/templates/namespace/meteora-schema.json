@@ -3,39 +3,8 @@
   "type": "object",
   "properties": {
     "allowedSlippage": { "type": "string" },
-    "strategyType": { "type": "number" },
-    "networks": {
-      "type": "object",
-      "patternProperties": {
-        "^\\w+(-\\w+)?$": {
-          "type": "object",
-          "properties": {
-            "amm": {
-              "type": "object",
-              "patternProperties": {
-                "^[A-Za-z0-9.-]+-[A-Za-z0-9.-]+$": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
-            },
-            "clmm": {
-              "type": "object", 
-              "patternProperties": {
-                "^[A-Za-z0-9.-]+-[A-Za-z0-9.-]+$": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "required": ["amm", "clmm"],
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
-    }
+    "strategyType": { "type": "number" }
   },
   "additionalProperties": false,
-  "required": ["allowedSlippage", "strategyType", "networks"]
+  "required": ["allowedSlippage", "strategyType"]
 }

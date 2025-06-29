@@ -3,39 +3,8 @@
   "type": "object",
   "properties": {
     "allowedSlippage": { "type": "string" },
-    "maximumHops": { "type": "integer" },
-    "networks": {
-      "type": "object",
-      "patternProperties": {
-        "^\\w+$": {
-          "type": "object",
-          "properties": {
-            "amm": {
-              "type": "object",
-              "patternProperties": {
-                "^[A-Za-z0-9.-]+-[A-Za-z0-9.-]+$": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
-            },
-            "clmm": {
-              "type": "object", 
-              "patternProperties": {
-                "^[A-Za-z0-9.-]+-[A-Za-z0-9.-]+$": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "required": ["amm", "clmm"],
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
-    }
+    "maximumHops": { "type": "integer" }
   },
   "additionalProperties": false,
-  "required": ["allowedSlippage", "maximumHops", "networks"]
+  "required": ["allowedSlippage", "maximumHops"]
 }
