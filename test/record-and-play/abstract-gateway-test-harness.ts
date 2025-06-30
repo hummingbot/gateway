@@ -153,14 +153,28 @@ export abstract class AbstractGatewayTestHarness<TInstance>
         errors[key] = new Error(`Spy for mock key "${key}" not found.`);
         continue;
       }
-      for (const [i, filename] of (Array.isArray(filenames)
-        ? filenames
-        : [filenames]
-      ).entries()) {
-        const result = dep.spy.mock.results[i];
+
+      const mockFilenames = Array.isArray(filenames) ? filenames : [filenames];
+      const numMocks = mockFilenames.length;
+      const numCalls = dep.spy.mock.calls.length;
+
+      let callIndexStart = 0;
+      if (numCalls > numMocks) {
+        // When there are more calls than mocks, we assume the dependency experienced retries
+        // before succeeding. In retry scenarios, the first calls typically fail (e.g., network
+        // timeouts, temporary errors) and only the final successful calls should be recorded
+        // as mocks. Therefore, we set callIndexStart to numCalls - numMocks to capture only
+        // the last numMocks calls, which represent the successful sequence that should be
+        // replayed during testing.
+        callIndexStart = numCalls - numMocks;
+      }
+
+      for (const [i, filename] of mockFilenames.entries()) {
+        const callIndex = callIndexStart + i;
+        const result = dep.spy.mock.results[callIndex];
         if (!result) {
           errors[key] = new Error(
-            `Spy for dependency "${key}" was only called ${dep.spy.mock.calls.length} time(s), but a mock was required for call number ${i + 1}.`,
+            `Spy for dependency "${key}" was only called ${numCalls} time(s), but a mock was required for call number ${callIndex + 1}.`,
           );
           continue;
         }
