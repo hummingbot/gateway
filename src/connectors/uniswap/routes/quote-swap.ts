@@ -348,52 +348,13 @@ export async function getUniswapQuote(
   }
   // For BUY (exactOut), the output is exact, input is estimated
   else {
-    // For EXACT_OUTPUT, check if the AlphaRouter is returning the correct trade type
-    if (route.trade && route.trade.tradeType === TradeType.EXACT_INPUT) {
-      logger.warn(`AlphaRouter returned EXACT_INPUT trade for a BUY order - this is a known issue`);
-      // The AlphaRouter might be using EXACT_INPUT internally even for EXACT_OUTPUT requests
-      // In this case, we need to recalculate based on the trade details
-      
-      // For BUY orders with EXACT_INPUT trades from AlphaRouter:
-      // - route.trade.outputAmount should be close to our requested amount (0.001 WETH)
-      // - route.trade.inputAmount is what we need to pay
-      estimatedAmountOut = Number(
-        formatTokenAmount(route.trade.outputAmount.quotient.toString(), outputToken.decimals),
-      );
-      estimatedAmountIn = Number(
-        formatTokenAmount(route.trade.inputAmount.quotient.toString(), inputToken.decimals),
-      );
-      
-      // Verify the output amount is close to what we requested
-      const outputDiff = Math.abs(estimatedAmountOut - amount) / amount;
-      if (outputDiff > 0.1) { // More than 10% difference
-        logger.error(`Output amount mismatch: requested ${amount}, got ${estimatedAmountOut} (${outputDiff * 100}% difference)`);
-        throw new Error(`Invalid route: output amount differs significantly from requested amount`);
-      }
-    } else if (route.trade) {
-      // Normal EXACT_OUTPUT trade
-      estimatedAmountIn = Number(
-        formatTokenAmount(route.trade.inputAmount.quotient.toString(), inputToken.decimals),
-      );
-      estimatedAmountOut = Number(
-        formatTokenAmount(route.trade.outputAmount.quotient.toString(), outputToken.decimals),
-      );
-    } else {
-      // Fallback to original logic
-      estimatedAmountOut = Number(
-        formatTokenAmount(tradeAmount.quotient.toString(), outputToken.decimals),
-      );
+    estimatedAmountOut = Number(
+      formatTokenAmount(tradeAmount.quotient.toString(), outputToken.decimals),
+    );
 
-      estimatedAmountIn = Number(
-        formatTokenAmount(route.quote.quotient.toString(), inputToken.decimals),
-      );
-    }
-    
-    // Sanity check for BUY orders
-    if (estimatedAmountIn > amount * 10000) {
-      logger.error(`BUY order sanity check failed: estimatedAmountIn (${estimatedAmountIn}) is unreasonably high for amount ${amount}`);
-      throw new Error(`Invalid quote: estimated input amount is unreasonably high`);
-    }
+    estimatedAmountIn = Number(
+      formatTokenAmount(route.quote.quotient.toString(), inputToken.decimals),
+    );
   }
 
   // Calculate min/max values with slippage
