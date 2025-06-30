@@ -153,7 +153,13 @@ export abstract class AbstractGatewayTestHarness<TInstance>
         ? filenames
         : [filenames]
       ).entries()) {
-        const data = await dep.spy.mock.results[i].value;
+        const result = dep.spy.mock.results[i];
+        if (!result) {
+          throw new Error(
+            `Spy for dependency "${key}" was only called ${dep.spy.mock.calls.length} time(s), but a mock was required for call number ${i + 1}.`,
+          );
+        }
+        const data = await result.value;
         this._saveMock(filename, data);
       }
     }
