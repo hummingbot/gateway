@@ -70,30 +70,9 @@ const swaggerOptions = {
 
       // Connectors
       { name: 'jupiter', description: 'Jupiter DEX aggregator (Solana)' },
-      {
-        name: 'raydium/amm',
-        description: 'Raydium Standard pool connector (Solana)',
-      },
-      {
-        name: 'raydium/clmm',
-        description: 'Raydium Concentrated pool connector (Solana)',
-      },
-      {
-        name: 'meteora/clmm',
-        description: 'Meteora DLMM pool connector (Solana)',
-      },
-      {
-        name: 'uniswap',
-        description: 'Uniswap router connector (Ethereum mainnet)',
-      },
-      {
-        name: 'uniswap/amm',
-        description: 'Uniswap V2 pool connector (Ethereum)',
-      },
-      {
-        name: 'uniswap/clmm',
-        description: 'Uniswap V3 pool connector (Ethereum)',
-      },
+      { name: 'meteora', description: 'Meteora DLMM DEX (Solana)' },
+      { name: 'raydium', description: 'Raydium DEX (Solana)' },
+      { name: 'uniswap', description: 'Uniswap DEX (Ethereum)' },
     ],
     components: {
       parameters: {

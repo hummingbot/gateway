@@ -25,7 +25,7 @@ export const namespaceRoutes: FastifyPluginAsync = async (fastify) => {
       schema: {
         description:
           'Returns a list of all configuration namespaces available in Gateway.',
-        tags: ['config'],
+        tags: ['system'],
         response: {
           200: NamespacesResponseSchema,
         },
