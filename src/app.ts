@@ -16,6 +16,7 @@ import { chainRoutes } from './chains/chain.routes';
 import { ethereumRoutes } from './chains/ethereum/ethereum.routes';
 import { solanaRoutes } from './chains/solana/solana.routes';
 import { configRoutes } from './config/config.routes';
+import { namespaceRoutes } from './config/namespace.routes';
 import { connectorsRoutes } from './connectors/connector.routes';
 import { jupiterRoutes } from './connectors/jupiter/jupiter.routes';
 import { meteoraRoutes } from './connectors/meteora/meteora.routes';
@@ -191,6 +192,7 @@ const configureGatewayServer = () => {
   const registerRoutes = async (app: FastifyInstance) => {
     // Register system routes
     app.register(configRoutes, { prefix: '/config' });
+    app.register(namespaceRoutes, { prefix: '/namespaces' });
     app.register(walletRoutes, { prefix: '/wallet' });
     app.register(tokensRoutes, { prefix: '/tokens' });
     app.register(poolRoutes, { prefix: '/pools' });
