@@ -143,11 +143,15 @@ export abstract class AbstractGatewayTestHarness<TInstance>
    * @param requiredMocks A map where keys are dependency contract aliases and
    * values are the filenames for the mocks to be saved.
    */
-  public async saveMocks(requiredMocks: Record<string, string | string[]>) {
+  public async saveMocks(
+    requiredMocks: Record<string, string | string[]>,
+  ): Promise<Record<string, Error>> {
+    const errors: Record<string, Error> = {};
     for (const [key, filenames] of Object.entries(requiredMocks)) {
       const dep = this.dependencyContracts[key];
       if (!dep.spy) {
-        throw new Error(`Spy for mock key "${key}" not found.`);
+        errors[key] = new Error(`Spy for mock key "${key}" not found.`);
+        continue;
       }
       for (const [i, filename] of (Array.isArray(filenames)
         ? filenames
@@ -155,14 +159,16 @@ export abstract class AbstractGatewayTestHarness<TInstance>
       ).entries()) {
         const result = dep.spy.mock.results[i];
         if (!result) {
-          throw new Error(
+          errors[key] = new Error(
             `Spy for dependency "${key}" was only called ${dep.spy.mock.calls.length} time(s), but a mock was required for call number ${i + 1}.`,
           );
+          continue;
         }
         const data = await result.value;
         this._saveMock(filename, data);
       }
     }
+    return errors;
   }
 
   /**
