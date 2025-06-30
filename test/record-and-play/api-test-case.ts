@@ -110,9 +110,23 @@ export class APITestCase<Harness extends AbstractGatewayTestHarness<any>>
 
   public assertStatusCode(response: LightMyRequestResponse) {
     if (response.statusCode !== this.expectedStatus) {
-      console.log('Response body:', response.body);
-      expect(response.statusCode).toBe(this.expectedStatus);
-      // TODO: check if it has a stack property to log
+      let body: any;
+      try {
+        body = JSON.parse(response.body);
+      } catch (e) {
+        // If parsing fails, body remains undefined and we'll use response.body directly
+      }
+
+      const reason = body?.message || response.body || 'Unexpected status code';
+      const message = `Test failed with status ${response.statusCode} (expected ${this.expectedStatus}).\nReason: ${reason}`;
+
+      const error = new Error(message);
+
+      if (body?.stack) {
+        error.stack = `Error: ${message}\n    --\n${body.stack}`;
+      }
+
+      throw error;
     }
   }
 }
