@@ -75,8 +75,12 @@ export class APITestCase<Harness extends AbstractGatewayTestHarness<any>>
     body: any;
   }> {
     const response = await harness.gatewayApp.inject(this);
+    // save mocks first so that we can move to replay for quicker testing if we got all the data we needed.
+    const saveMockErrors = await harness.saveMocks(this.requiredMocks);
     this.assertStatusCode(response);
-    await harness.saveMocks(this.requiredMocks);
+    for (const [_key, error] of Object.entries(saveMockErrors)) {
+      throw error;
+    }
     const body = JSON.parse(response.body);
     this.assertSnapshot(body);
     return { response, body };
