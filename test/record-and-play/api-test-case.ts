@@ -75,8 +75,8 @@ export class APITestCase<Harness extends AbstractGatewayTestHarness<any>>
     body: any;
   }> {
     const response = await harness.gatewayApp.inject(this);
-    await harness.saveMocks(this.requiredMocks);
     this.assertStatusCode(response);
+    await harness.saveMocks(this.requiredMocks);
     const body = JSON.parse(response.body);
     this.assertSnapshot(body);
     return { response, body };
