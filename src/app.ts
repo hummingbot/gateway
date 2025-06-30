@@ -59,6 +59,7 @@ const swaggerOptions = {
     tags: [
       // Main categories
       { name: 'system', description: 'System configuration endpoints' },
+      { name: 'config', description: 'Configuration management endpoints' },
       { name: 'wallet', description: 'Wallet management endpoints' },
       { name: 'tokens', description: 'Token management endpoints' },
       { name: 'pools', description: 'Pool management endpoints' },
