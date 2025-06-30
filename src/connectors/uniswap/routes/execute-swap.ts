@@ -239,69 +239,6 @@ export const executeSwapRoute: FastifyPluginAsync = async (
         logger.info('Generated method parameters successfully');
         logger.info(`Calldata length: ${methodParameters.calldata.length}`);
         logger.info(`Value: ${methodParameters.value}`);
-        
-        // Safety check: Decode and validate the swap parameters before executing
-        try {
-          const calldataHex = methodParameters.calldata;
-          const functionSelector = calldataHex.slice(0, 10);
-          
-          if (functionSelector === '0x5ae401dc') { // multicall
-            const innerFunctionSelector = '0x' + calldataHex.slice(266, 274);
-            
-            if (innerFunctionSelector === '0x5023b4df') { // exactInputSingle
-              try {
-                // The function takes a struct, so after the selector (10 chars), there's an offset (64 chars)
-                // Then the actual struct data starts
-                const structOffset = parseInt('0x' + calldataHex.slice(10 + 256, 10 + 320), 16) * 2 + 10;
-                
-                // Skip to amountIn field (5th field in the struct)
-                // tokenIn (64) + tokenOut (64) + fee (64) + recipient (64) + deadline (64) = 320
-                const amountInOffset = structOffset + 320;
-                
-                if (calldataHex.length > amountInOffset + 64) {
-                  const amountInHex = '0x' + calldataHex.slice(amountInOffset, amountInOffset + 64);
-                  const amountInBN = BigNumber.from(amountInHex);
-                  const formattedAmountIn = Number(formatTokenAmount(amountInBN.toString(), inputToken.decimals));
-                  
-                  logger.info(`Safety check - Amount in transaction: ${formattedAmountIn} ${inputToken.symbol}`);
-                  
-                  // Critical safety check: prevent 0 amount transactions
-                  if (amountInBN.isZero() || formattedAmountIn === 0) {
-                    logger.error(`CRITICAL: Transaction would swap 0 ${inputToken.symbol}!`);
-                    return reply.badRequest(
-                      `Safety check failed: Transaction contains 0 ${inputToken.symbol} as input. This indicates a quote generation error.`,
-                    );
-                  }
-                  
-                  // For SELL orders, verify the amount matches what was requested
-                  if (exactIn && Math.abs(formattedAmountIn - amount) > 0.0001) {
-                    logger.error(`CRITICAL: Amount mismatch! Requested ${amount}, but transaction contains ${formattedAmountIn}`);
-                    return reply.badRequest(
-                      `Safety check failed: Requested to sell ${amount} ${baseToken.symbol}, but transaction would sell ${formattedAmountIn} ${inputToken.symbol}`,
-                    );
-                  }
-                }
-              } catch (e) {
-                logger.warn(`Could not extract amount for safety check: ${e.message}`);
-              }
-            }
-          }
-        } catch (e) {
-          logger.warn(`Could not decode transaction for safety check: ${e.message}`);
-          // Continue with execution if we can't decode - the transaction will fail on-chain if invalid
-        }
-        
-        // Safety check: validate the amounts before executing
-        if (!exactIn) {
-          // For BUY orders, check if the input amount is reasonable
-          const maxReasonableInput = amount * 10000; // 10,000x the output amount
-          if (quoteResult.estimatedAmountIn > maxReasonableInput) {
-            logger.error(`Safety check failed: estimated input ${quoteResult.estimatedAmountIn} is too high for output ${amount}`);
-            return reply.badRequest(
-              `Safety check failed: Quote requires ${quoteResult.estimatedAmountIn} ${inputToken.symbol} which seems unreasonable for ${amount} ${outputToken.symbol}`,
-            );
-          }
-        }
 
         // Prepare transaction with gas settings from quote
         const txRequest = {
