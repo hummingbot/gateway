@@ -34,26 +34,42 @@ export const chainRoutes: FastifyPluginAsync = async (fastify) => {
     async () => {
       logger.info('Getting available blockchain networks');
 
-      // Get Ethereum networks
-      const ethereumNetworks = Object.keys(
-        ConfigManagerV2.getInstance().get('ethereum.networks') || {},
-      );
+      // With the new namespace structure, we need to look for namespaces
+      // that match the pattern {chain}-{network}
+      const configManager = ConfigManagerV2.getInstance();
+      const allNamespaces = Object.keys(configManager.namespaces);
+      
+      // Group networks by chain
+      const chainNetworks: { [chain: string]: string[] } = {};
+      
+      allNamespaces.forEach(namespace => {
+        // Skip non-network namespaces
+        if (!namespace.includes('-')) return;
+        
+        const [chain, ...networkParts] = namespace.split('-');
+        const network = networkParts.join('-'); // Handle networks like mainnet-beta
+        
+        // Only process known chains
+        if (['ethereum', 'solana'].includes(chain)) {
+          if (!chainNetworks[chain]) {
+            chainNetworks[chain] = [];
+          }
+          chainNetworks[chain].push(network);
+        }
+      });
 
-      // Get Solana networks
-      const solanaNetworks = Object.keys(
-        ConfigManagerV2.getInstance().get('solana.networks') || {},
-      );
+      // Ensure we have both chains even if no networks are loaded
+      if (!chainNetworks['ethereum']) {
+        chainNetworks['ethereum'] = [];
+      }
+      if (!chainNetworks['solana']) {
+        chainNetworks['solana'] = [];
+      }
 
-      const chains = [
-        {
-          chain: 'ethereum',
-          networks: ethereumNetworks,
-        },
-        {
-          chain: 'solana',
-          networks: solanaNetworks,
-        },
-      ];
+      const chains = Object.entries(chainNetworks).map(([chain, networks]) => ({
+        chain,
+        networks: networks.sort(),
+      }));
 
       logger.info(
         'Available chains: ' +
