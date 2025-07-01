@@ -14,36 +14,8 @@ interface AvailableNetworks {
   networks: Array<string>;
 }
 
-// Export network arrays at the module level for direct import
-export const uniswapNetworks = ['mainnet'];
-export const uniswapAmmNetworks = [
-  'mainnet',
-  'arbitrum',
-  'optimism',
-  'base',
-  'sepolia',
-  'bsc',
-  'avalanche',
-  'celo',
-  'polygon',
-  'blast',
-  'zora',
-  'worldchain',
-];
-export const uniswapClmmNetworks = [
-  'mainnet',
-  'arbitrum',
-  'optimism',
-  'base',
-  'sepolia',
-  'bsc',
-  'avalanche',
-  'celo',
-  'polygon',
-  'blast',
-  'zora',
-  'worldchain',
-];
+// Networks are fetched directly from Ethereum configuration
+// No need to maintain separate arrays
 
 export namespace UniswapConfig {
   export interface NetworkConfig {
@@ -78,6 +50,11 @@ export namespace UniswapConfig {
   }
   // Supported networks for the different Uniswap connectors
   export const chain = 'ethereum';
+  
+  // Get available networks from Ethereum configuration
+  export const networks: string[] = Object.keys(
+    ConfigManagerV2.getInstance().get('ethereum.networks') || {},
+  );
 
   export const config: RootConfig = {
     // Global configuration
