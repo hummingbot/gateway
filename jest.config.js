@@ -7,6 +7,7 @@ module.exports = {
   testEnvironment: 'node',
   forceExit: true,
   detectOpenHandles: false,
+
   coveragePathIgnorePatterns: [
     'src/app.ts',
     'src/https.ts',
@@ -20,7 +21,10 @@ module.exports = {
     'test/*',
   ],
   modulePathIgnorePatterns: ['<rootDir>/dist/'],
-  setupFilesAfterEnv: ['<rootDir>/test/jest-setup.js'],
+  setupFilesAfterEnv: [
+    '<rootDir>/test/jest-setup.js',
+    '<rootDir>/test/superjson-setup.ts',
+  ],
   testPathIgnorePatterns: [
     '/node_modules/',
     'test-helpers',
