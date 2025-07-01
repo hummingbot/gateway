@@ -674,6 +674,26 @@ export const POSITION_MANAGER_ABI = [
 ];
 
 /**
+ * Uniswap V2 Factory ABI for pair operations
+ */
+export const IUniswapV2FactoryABI = {
+  abi: [
+    {
+      constant: true,
+      inputs: [
+        { internalType: 'address', name: 'tokenA', type: 'address' },
+        { internalType: 'address', name: 'tokenB', type: 'address' },
+      ],
+      name: 'getPair',
+      outputs: [{ internalType: 'address', name: 'pair', type: 'address' }],
+      payable: false,
+      stateMutability: 'view',
+      type: 'function',
+    },
+  ],
+};
+
+/**
  * Standard ERC20 ABI for token operations
  */
 export const ERC20_ABI = [

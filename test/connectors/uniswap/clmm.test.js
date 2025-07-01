@@ -7,7 +7,6 @@ const axios = require('axios');
 // Constants for this test file
 const CONNECTOR = 'uniswap';
 const PROTOCOL = 'clmm';
-const CHAIN = 'ethereum';
 const NETWORK = 'base'; // Only test Base network
 const BASE_TOKEN = 'WETH';
 const QUOTE_TOKEN = 'USDC';
