@@ -168,7 +168,7 @@ describe('Ethereum Wallet Operations', () => {
         },
       });
 
-      expect(response.statusCode).toBe(500);
+      expect(response.statusCode).toBe(400);
     });
 
     it('should fail with missing parameters', async () => {
@@ -271,8 +271,8 @@ describe('Ethereum Wallet Operations', () => {
         },
       });
 
-      // Address validation happens and throws 500 on invalid format
-      expect(response.statusCode).toBe(500);
+      // Address validation happens and throws 400 on invalid format
+      expect(response.statusCode).toBe(400);
     });
   });
 
