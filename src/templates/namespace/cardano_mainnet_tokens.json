@@ -7,7 +7,7 @@
     {
       "policyId": "29d222ce763455e3d7a09a665ce554f00ac89d2e99a1a83d267170c6",
       "assetName": "4d494e",
-      "decimals": 0,
+      "decimals": 6,
       "name": "Minswap Token",
       "symbol": "MIN",
       "logoURI": "https://ibb.co/L1Tp0rQ",

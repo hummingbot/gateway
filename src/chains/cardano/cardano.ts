@@ -1,5 +1,5 @@
 import { Config, getCardanoConfig } from './cardano.config';
-import { Lucid, Blockfrost, C } from '@vespr-wallet/lucid-cardano';
+import { Lucid, Blockfrost, C, UTxO } from '@aiquant/lucid-cardano';
 import { TokenListType, TokenValue } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { walletPath } from '../../wallet/utils';
@@ -438,6 +438,36 @@ export class Cardano {
     } catch (error) {
       logger.error(`Error getting Cardano wallet address: ${error.message}`);
       return null;
+    }
+  }
+
+  /**
+   * Given a payment address, load its private key & select that
+   * wallet in Lucid, then return all UTxOs at that address.
+   */
+  public async getUtxos(address: string): Promise<UTxO[]> {
+    try {
+      // 1) derive the private key from your store (e.g. DB or seed)
+      const privateKey = await this.getWalletFromAddress(address);
+      if (!privateKey) {
+        throw new Error(`No private key found for address ${address}`);
+      }
+
+      // 2) tell Lucid to use that key for signing / UTxO queries
+      this.lucidInstance.selectWalletFromPrivateKey(privateKey);
+
+      // 3) fetch & return UTxOs
+      const utxos: UTxO[] = await this.lucidInstance.utxosAt(address);
+      return utxos;
+    } catch (error: any) {
+      // 4) log the failure for debugging
+      logger.error(
+        `Cardano.getUtxos failed for address ${address}: ${error.message || error}`,
+      );
+      // 5) rethrow a trimmed error
+      throw new Error(
+        `Unable to fetch UTxOs for ${address}: ${error.message || error}`,
+      );
     }
   }
 

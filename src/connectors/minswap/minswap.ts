@@ -1,5 +1,5 @@
 import { Cardano } from '../../chains/cardano/cardano';
-import { Data, PrivateKey } from '@vespr-wallet/lucid-cardano';
+import { Data, PrivateKey } from '@aiquant/lucid-cardano';
 import { BlockFrostAPI } from '@blockfrost/blockfrost-js';
 import { BlockfrostAdapter, NetworkId } from '@aiquant/minswap-sdk';
 

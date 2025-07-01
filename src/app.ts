@@ -98,6 +98,10 @@ const swaggerOptions = {
         description: 'Uniswap connector endpoints',
       },
       { name: '/connector/0x', description: '0x connector endpoints' },
+      {
+        name: 'minswap/amm',
+        description: 'Minswap pool connector (Cardano)',
+      },
     ],
     components: {
       parameters: {

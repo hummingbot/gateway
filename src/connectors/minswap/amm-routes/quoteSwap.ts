@@ -21,186 +21,128 @@ async function quoteAmmSwap(
   poolAddress: string,
   baseToken: CardanoTokenInfo,
   quoteToken: CardanoTokenInfo,
-  amount: number,
+  amount: number, // now always refers to quote‐token units
   side: 'BUY' | 'SELL',
 ): Promise<any> {
-  try {
-    // Get the V2 pair
-    const assetA: Asset = {
-      policyId: baseToken.policyId,
-      tokenName: baseToken.assetName,
-    };
+  // BUY: you want to RECEIVE `amount` of quoteToken, paying baseToken
+  // SELL: you want to SPEND `amount` of quoteToken, receiving baseToken
+  const exactIn = side === 'SELL';
 
-    const assetB: Asset = {
-      policyId: quoteToken.policyId,
-      tokenName: quoteToken.assetName,
-    };
+  // Figure out which asset is input vs. output
+  const inputToken = exactIn ? quoteToken : baseToken;
+  const outputToken = exactIn ? baseToken : quoteToken;
 
-    const pool = await minswap.blockfrostAdapter.getV2PoolByPair(
-      assetA,
-      assetB,
+  // Convert `amount` to smallest‐unit of the input token
+  const amountInSmallestUnit = BigNumber.from(
+    Math.floor(amount * 10 ** inputToken.decimals),
+  ).toBigInt();
+
+  // Fetch the pool
+  const assetA: Asset = {
+    policyId: baseToken.policyId,
+    tokenName: baseToken.assetName,
+  };
+  const assetB: Asset = {
+    policyId: quoteToken.policyId,
+    tokenName: quoteToken.assetName,
+  };
+  const pool = await minswap.blockfrostAdapter.getV2PoolByPair(assetA, assetB);
+  if (!pool)
+    throw new Error(
+      `Pool not found for ${baseToken.symbol}-${quoteToken.symbol}`,
     );
 
-    if (!pool) {
-      throw new Error(
-        `Pool not found for ${baseToken.symbol}-${quoteToken.symbol}`,
-      );
-    }
-
-    // Form full asset IDs for comparison
-    // if base token is ADA then take baseTokenAsset as lovelace
-    let baseTokenAsset: string;
-    if (baseToken.symbol === 'ADA') {
-      baseTokenAsset = 'lovelace';
-    } else {
-      baseTokenAsset = baseToken.policyId + baseToken.assetName;
-    }
-    const quoteTokenAsset = quoteToken.policyId + quoteToken.assetName;
-
-    // Determine which token is being traded
-    const exactIn = side === 'SELL';
-    const inputToken = exactIn ? baseToken : quoteToken;
-    const outputToken = exactIn ? quoteToken : baseToken;
-
-    // Convert amount to baseToken's smallest unit (since amount always refers to baseToken)
-    const amountInSmallestUnit = BigNumber.from(
-      Math.floor(amount * Math.pow(10, baseToken.decimals)),
-    ).toBigInt();
-
-    // Determine reserves and fee based on trading direction
-    let reserveIn: bigint;
-    let reserveOut: bigint;
-    let tradingFeeNumerator: bigint;
-
-    if (exactIn) {
-      // Selling baseToken (inputToken = baseToken)
-      console.log(pool);
-
-      console.log(
-        'pool.assetA' + pool.assetA,
-        'baseTokenAsset' + baseTokenAsset,
-      );
-
-      if (baseTokenAsset === pool.assetA) {
-        reserveIn = pool.reserveA;
-        reserveOut = pool.reserveB;
-        tradingFeeNumerator = pool.feeA[0]; // Fee for A->B
-      } else if (baseTokenAsset === pool.assetB) {
-        reserveIn = pool.reserveB;
-        reserveOut = pool.reserveA;
-        tradingFeeNumerator = pool.feeA[1]; // Fee for B->A
-      } else {
-        throw new Error('Base token not found in pool');
-      }
-    } else {
-      // Buying baseToken (inputToken = quoteToken)
-      if (quoteTokenAsset === pool.assetA) {
-        reserveIn = pool.reserveA;
-        reserveOut = pool.reserveB;
-        tradingFeeNumerator = pool.feeA[0]; // Fee for A->B
-      } else if (quoteTokenAsset === pool.assetB) {
-        reserveIn = pool.reserveB;
-        reserveOut = pool.reserveA;
-        tradingFeeNumerator = pool.feeA[1]; // Fee for B->A
-      } else {
-        throw new Error('Quote token not found in pool');
-      }
-    }
-
-    // Perform calculations
-    let inputAmount: bigint;
-    let outputAmount: bigint;
-    let priceImpact: number;
-
-    if (exactIn) {
-      inputAmount = amountInSmallestUnit;
-      const result = calculateSwapExactIn({
-        amountIn: inputAmount,
-        reserveIn,
-        reserveOut,
-      });
-      outputAmount = result.amountOut;
-      priceImpact = result.priceImpact.toNumber();
-    } else {
-      outputAmount = amountInSmallestUnit;
-      const result = calculateSwapExactOut({
-        exactAmountOut: outputAmount,
-        reserveIn,
-        reserveOut,
-      });
-      inputAmount = result.amountIn;
-      priceImpact = result.priceImpact.toNumber();
-    }
-
-    // Calculate slippage amounts (using 0.5% default slippage)
-    const slippagePercent = 0.5;
-    const slippageFactor = BigInt(Math.floor((100 - slippagePercent) * 100));
-    const slippageDenominator = 10000n;
-
-    const minAmountOut = exactIn
-      ? (outputAmount * slippageFactor) / slippageDenominator
-      : outputAmount;
-
-    const maxAmountIn = exactIn
-      ? inputAmount
-      : (inputAmount * BigInt(10000 + Math.floor(slippagePercent * 100))) /
-        slippageDenominator;
-
-    // Format amounts for display
-    const estimatedAmountIn = formatTokenAmount(
-      inputAmount.toString(),
-      inputToken.decimals,
-    );
-
-    const estimatedAmountOut = formatTokenAmount(
-      outputAmount.toString(),
-      outputToken.decimals,
-    );
-
-    const minAmountOutValue = formatTokenAmount(
-      minAmountOut.toString(),
-      outputToken.decimals,
-    );
-
-    const maxAmountInValue = formatTokenAmount(
-      maxAmountIn.toString(),
-      inputToken.decimals,
-    );
-
-    return {
-      poolAddress,
-      estimatedAmountIn,
-      estimatedAmountOut,
-      minAmountOut: minAmountOutValue,
-      maxAmountIn: maxAmountInValue,
-      priceImpact,
-      inputToken,
-      outputToken,
-      // Add raw values for execution
-      rawAmountIn: inputAmount.toString(),
-      rawAmountOut: outputAmount.toString(),
-      rawMinAmountOut: minAmountOut.toString(),
-      rawMaxAmountIn: maxAmountIn.toString(),
-      pathAddresses: [
-        inputToken.address || `${inputToken.policyId}.${inputToken.assetName}`,
-        outputToken.address ||
-          `${outputToken.policyId}.${outputToken.assetName}`,
-      ],
-    };
-  } catch (error) {
-    logger.error(`Error quoting AMM swap: ${error.message}`);
-    // Check for insufficient reserves error
-    if (
-      error.message?.includes('INSUFFICIENT_RESERVES') ||
-      error.message?.includes('insufficient') ||
-      error.name === 'InsufficientReservesError'
-    ) {
-      throw new Error(
-        `Insufficient liquidity in pool for ${baseToken.symbol}-${quoteToken.symbol}`,
-      );
-    }
-    throw error;
+  // Figure out reserves & fee depending on input/output
+  const idA = pool.assetA;
+  const idB = pool.assetB;
+  const assetIdIn =
+    inputToken.symbol === 'ADA'
+      ? 'lovelace'
+      : inputToken.policyId + inputToken.assetName;
+  let reserveIn: bigint, reserveOut: bigint, feeNum: bigint;
+  if (assetIdIn === idA) {
+    reserveIn = pool.reserveA;
+    reserveOut = pool.reserveB;
+    feeNum = pool.feeA[0];
+  } else if (assetIdIn === idB) {
+    reserveIn = pool.reserveB;
+    reserveOut = pool.reserveA;
+    feeNum = pool.feeA[1];
+  } else {
+    throw new Error(`Input token not in pool`);
   }
+
+  // Do the math
+  let inputAmount: bigint, outputAmount: bigint, priceImpact: number;
+  if (exactIn) {
+    inputAmount = amountInSmallestUnit;
+    const { amountOut, priceImpact: pi } = calculateSwapExactIn({
+      amountIn: inputAmount,
+      reserveIn,
+      reserveOut,
+    });
+    outputAmount = amountOut;
+    priceImpact = pi.toNumber();
+  } else {
+    outputAmount = amountInSmallestUnit; // you want exactly this many quote
+    const { amountIn, priceImpact: pi } = calculateSwapExactOut({
+      exactAmountOut: outputAmount,
+      reserveIn,
+      reserveOut,
+    });
+    inputAmount = amountIn;
+    priceImpact = pi.toNumber();
+  }
+
+  // Slippage
+  const slippagePct = 0.5;
+  const slipFactorNum = BigInt(Math.floor((100 - slippagePct) * 100)); // e.g. 99.5%→9950
+  const slipDenominator = 10000n;
+  const minAmountOut = exactIn
+    ? (outputAmount * slipFactorNum) / slipDenominator
+    : outputAmount;
+  const maxAmountIn = exactIn
+    ? inputAmount
+    : (inputAmount *
+        (slipDenominator + BigInt(Math.round(slippagePct * 100)))) /
+      slipDenominator;
+
+  // Format human‐readable
+  const estimatedIn = formatTokenAmount(
+    inputAmount.toString(),
+    inputToken.decimals,
+  );
+  const estimatedOut = formatTokenAmount(
+    outputAmount.toString(),
+    outputToken.decimals,
+  );
+  const minOutHuman = formatTokenAmount(
+    minAmountOut.toString(),
+    outputToken.decimals,
+  );
+  const maxInHuman = formatTokenAmount(
+    maxAmountIn.toString(),
+    inputToken.decimals,
+  );
+
+  return {
+    poolAddress,
+    estimatedAmountIn: estimatedIn,
+    estimatedAmountOut: estimatedOut,
+    minAmountOut: minOutHuman,
+    maxAmountIn: maxInHuman,
+    priceImpact,
+    inputToken,
+    outputToken,
+    rawAmountIn: inputAmount.toString(),
+    rawAmountOut: outputAmount.toString(),
+    rawMinAmountOut: minAmountOut.toString(),
+    rawMaxAmountIn: maxAmountIn.toString(),
+    pathAddresses: [
+      inputToken.address || `${inputToken.policyId}.${inputToken.assetName}`,
+      outputToken.address || `${outputToken.policyId}.${outputToken.assetName}`,
+    ],
+  };
 }
 
 export async function getMinswapAmmQuote(

@@ -19,6 +19,9 @@ importers:
 
   .:
     dependencies:
+      '@aiquant/lucid-cardano':
+        specifier: ^0.10.10
+        version: 0.10.11(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       '@aiquant/minswap-sdk':
         specifier: ^0.0.0
         version: 0.0.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
