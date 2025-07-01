@@ -35,15 +35,14 @@ export const executeSwapRoute: FastifyPluginAsync = async (
     '/execute-swap',
     {
       schema: {
-        description:
-          'Execute a swap using Uniswap V3 Smart Order Router',
+        description: 'Execute a swap using Uniswap V3 Smart Order Router',
         tags: ['uniswap'],
         body: {
           type: 'object',
           properties: {
-            network: { 
-              type: 'string', 
-              default: 'mainnet', 
+            network: {
+              type: 'string',
+              default: 'mainnet',
               enum: ethereumNetworks,
             },
             walletAddress: { type: 'string', examples: [firstWalletAddress] },
@@ -136,20 +135,30 @@ export const executeSwapRoute: FastifyPluginAsync = async (
           slippageTolerance,
           exactIn,
         } = quoteResult;
-        
+
         // Log trade direction for clarity
-        logger.info(`Trade direction: ${side} - ${exactIn ? 'EXACT_INPUT' : 'EXACT_OUTPUT'}`);
-        logger.info(`Input token: ${inputToken.symbol} (${inputToken.address})`);
-        logger.info(`Output token: ${outputToken.symbol} (${outputToken.address})`);
-        logger.info(`Estimated amounts: ${quoteResult.estimatedAmountIn} ${inputToken.symbol} -> ${quoteResult.estimatedAmountOut} ${outputToken.symbol}`);
+        logger.info(
+          `Trade direction: ${side} - ${exactIn ? 'EXACT_INPUT' : 'EXACT_OUTPUT'}`,
+        );
+        logger.info(
+          `Input token: ${inputToken.symbol} (${inputToken.address})`,
+        );
+        logger.info(
+          `Output token: ${outputToken.symbol} (${outputToken.address})`,
+        );
+        logger.info(
+          `Estimated amounts: ${quoteResult.estimatedAmountIn} ${inputToken.symbol} -> ${quoteResult.estimatedAmountOut} ${outputToken.symbol}`,
+        );
 
         // Get the router address using getSpender from contracts
         const { getSpender } = require('../uniswap.contracts');
         const routerAddress = getSpender(networkToUse, 'uniswap');
         logger.info(`Using Swap Router address: ${routerAddress}`);
-        
+
         // Check balance of input token
-        logger.info(`Checking balance of ${inputToken.symbol} for wallet ${walletAddress}`);
+        logger.info(
+          `Checking balance of ${inputToken.symbol} for wallet ${walletAddress}`,
+        );
         let inputTokenBalance;
         if (inputToken.symbol === 'ETH') {
           // For native ETH, use getNativeBalance
@@ -167,19 +176,36 @@ export const executeSwapRoute: FastifyPluginAsync = async (
             5000, // 5 second timeout
           );
         }
-        const inputBalanceFormatted = Number(formatTokenAmount(inputTokenBalance.value.toString(), inputToken.decimals));
+        const inputBalanceFormatted = Number(
+          formatTokenAmount(
+            inputTokenBalance.value.toString(),
+            inputToken.decimals,
+          ),
+        );
         logger.info(`${inputToken.symbol} balance: ${inputBalanceFormatted}`);
-        
+
         // Calculate required input amount
-        const requiredInputAmount = exactIn 
-          ? Number(formatTokenAmount(tradeAmount.quotient.toString(), inputToken.decimals))
-          : Number(formatTokenAmount(route.quote.quotient.toString(), inputToken.decimals));
-        
+        const requiredInputAmount = exactIn
+          ? Number(
+              formatTokenAmount(
+                tradeAmount.quotient.toString(),
+                inputToken.decimals,
+              ),
+            )
+          : Number(
+              formatTokenAmount(
+                route.quote.quotient.toString(),
+                inputToken.decimals,
+              ),
+            );
+
         // Check if balance is sufficient
         if (inputBalanceFormatted < requiredInputAmount) {
-          logger.error(`Insufficient ${inputToken.symbol} balance: have ${inputBalanceFormatted}, need ${requiredInputAmount}`);
+          logger.error(
+            `Insufficient ${inputToken.symbol} balance: have ${inputBalanceFormatted}, need ${requiredInputAmount}`,
+          );
           throw fastify.httpErrors.badRequest(
-            `Insufficient ${inputToken.symbol} balance. You have ${inputBalanceFormatted} ${inputToken.symbol} but need ${requiredInputAmount} ${inputToken.symbol} to complete this swap.`
+            `Insufficient ${inputToken.symbol} balance. You have ${inputBalanceFormatted} ${inputToken.symbol} but need ${requiredInputAmount} ${inputToken.symbol} to complete this swap.`,
           );
         }
 
@@ -246,7 +272,9 @@ export const executeSwapRoute: FastifyPluginAsync = async (
 
         // Execute the swap by sending the transaction directly
         logger.info(`Executing swap to router: ${routerAddress}`);
-        logger.info(`Transaction data length: ${methodParameters.calldata.length}`);
+        logger.info(
+          `Transaction data length: ${methodParameters.calldata.length}`,
+        );
         const tx = await wallet.sendTransaction(txRequest);
 
         // Wait for transaction confirmation

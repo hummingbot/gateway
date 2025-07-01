@@ -154,8 +154,16 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
             }
 
             // Calculate price range
-            const lowerPrice = tickToPrice(token0, token1, tickLower).toSignificant(6);
-            const upperPrice = tickToPrice(token0, token1, tickUpper).toSignificant(6);
+            const lowerPrice = tickToPrice(
+              token0,
+              token1,
+              tickLower,
+            ).toSignificant(6);
+            const upperPrice = tickToPrice(
+              token0,
+              token1,
+              tickUpper,
+            ).toSignificant(6);
 
             // Calculate current price
             const price = pool.token0Price.toSignificant(6);

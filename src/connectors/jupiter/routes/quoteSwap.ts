@@ -240,9 +240,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         baseTokenBalanceChange:
           side === 'SELL' ? -quote.estimatedAmountIn : quote.estimatedAmountOut,
         quoteTokenBalanceChange:
-          side === 'SELL'
-            ? quote.estimatedAmountOut
-            : -quote.estimatedAmountIn,
+          side === 'SELL' ? quote.estimatedAmountOut : -quote.estimatedAmountIn,
         price: quote.expectedPrice,
         gasPrice: gasEstimation?.gasPrice,
         gasLimit: gasEstimation?.gasLimit,

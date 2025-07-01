@@ -50,7 +50,7 @@ export namespace UniswapConfig {
   }
   // Supported networks for the different Uniswap connectors
   export const chain = 'ethereum';
-  
+
   // Get available networks from Ethereum configuration
   export const networks: string[] = Object.keys(
     ConfigManagerV2.getInstance().get('ethereum.networks') || {},

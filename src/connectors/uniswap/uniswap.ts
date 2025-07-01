@@ -1,16 +1,3 @@
-import { UniswapConfig } from './uniswap.config';
-import {
-  findPoolAddress,
-  isValidV2Pool,
-  isValidV3Pool,
-  isFractionString,
-} from './uniswap.utils';
-import { 
-  IUniswapV2PairABI, 
-  IUniswapV2FactoryABI,
-  IUniswapV2Router02ABI 
-} from './uniswap.contracts';
-
 // V3 (CLMM) imports
 import { Token, CurrencyAmount, Percent } from '@uniswap/sdk-core';
 import { AlphaRouter } from '@uniswap/smart-order-router';
@@ -25,6 +12,19 @@ import JSBI from 'jsbi';
 import { Ethereum } from '../../chains/ethereum/ethereum';
 import { percentRegexp } from '../../services/config-manager-v2';
 import { logger } from '../../services/logger';
+
+import { UniswapConfig } from './uniswap.config';
+import {
+  IUniswapV2PairABI,
+  IUniswapV2FactoryABI,
+  IUniswapV2Router02ABI,
+} from './uniswap.contracts';
+import {
+  findPoolAddress,
+  isValidV2Pool,
+  isValidV3Pool,
+  isFractionString,
+} from './uniswap.utils';
 
 export class Uniswap {
   private static _instances: { [name: string]: Uniswap };
@@ -105,7 +105,9 @@ export class Uniswap {
         this.config.uniswapV3NftManagerAddress(this.networkName),
         [
           {
-            inputs: [{ internalType: 'address', name: 'owner', type: 'address' }],
+            inputs: [
+              { internalType: 'address', name: 'owner', type: 'address' },
+            ],
             name: 'balanceOf',
             outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
             stateMutability: 'view',
