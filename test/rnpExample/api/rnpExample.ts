@@ -1,7 +1,9 @@
+import { BigNumber } from 'ethers';
+
 export class Dep1 {
   methodA = async () => 'real methodA-' + Math.random();
 
-  methodB = async () => 'real methodB-' + Math.random();
+  methodB = async () => BigNumber.from(Math.floor(Math.random() * 1000000));
 
   methodC = async () => 'real methodC-' + Math.random();
 
@@ -45,12 +47,15 @@ export class RnpExample {
     const a = await this.dep1.methodA();
     const b = await this.dep1.methodB();
     const c = await this.dep1.methodC();
-    return { a, b, c };
+    return { a, b: b.toString(), c };
   }
 
   async useB() {
     const b = await this.dep1.methodB();
-    return { b };
+    if (!BigNumber.isBigNumber(b)) {
+      throw new Error('b is not a BigNumber');
+    }
+    return { b: b.toString() };
   }
 
   async useDTwice() {

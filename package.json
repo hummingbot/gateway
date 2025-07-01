@@ -94,6 +94,7 @@
     "pino-pretty": "^11.3.0",
     "pnpm": "^10.10.0",
     "snake-case": "^4.0.0",
+    "superjson": "^1.12.2",
     "triple-beam": "^1.4.1",
     "tslib": "^2.8.1",
     "uuid": "^8.3.2",
@@ -152,9 +153,9 @@
     "supertest": "^7.1.0",
     "ts-jest": "^29.3.0",
     "ts-node": "^10.9.2",
+    "tsc-alias": "^1.8.8",
     "typescript": "^5.8.2",
-    "viem": "^0.3.50",
-    "tsc-alias": "^1.8.8"
+    "viem": "^0.3.50"
   },
   "resolutions": {
     "@types/bn.js": "5.1.6",

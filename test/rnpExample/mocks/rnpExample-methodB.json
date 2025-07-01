@@ -1,3 +1,11 @@
 {
-  "json": "real methodB-0.00816658738172471"
+  "json": "0x0e4e42",
+  "meta": {
+    "values": [
+      [
+        "custom",
+        "ethers.BigNumber"
+      ]
+    ]
+  }
 }
