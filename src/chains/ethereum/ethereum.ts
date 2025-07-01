@@ -7,6 +7,7 @@ import {
   Transaction,
   utils,
   Wallet,
+  ethers,
 } from 'ethers';
 import { getAddress } from 'ethers/lib/utils';
 import fse from 'fs-extra';
@@ -333,8 +334,7 @@ export class Ethereum {
   /**
    * Get the first available Ethereum wallet address
    */
-  public async getFirstWalletAddress(): Promise<string | null> {
-    // Specifically look in the ethereum subdirectory, not in any other chain's directory
+  public static async getFirstWalletAddress(): Promise<string | null> {
     const path = `${walletPath}/ethereum`;
     try {
       // Create directory if it doesn't exist
@@ -348,20 +348,19 @@ export class Ethereum {
         return null;
       }
 
-      // Return first wallet address (without .json extension)
+      // Get the first wallet address (without .json extension)
       const walletAddress = walletFiles[0].slice(0, -5);
 
-      // Validate it looks like an Ethereum address (0x followed by 40 hex chars)
-      if (!walletAddress.startsWith('0x') || walletAddress.length !== 42) {
+      try {
+        // Attempt to validate the address
+        return Ethereum.validateAddress(walletAddress);
+      } catch (e) {
         logger.warn(
           `Invalid Ethereum address found in wallet directory: ${walletAddress}`,
         );
         return null;
       }
-
-      return walletAddress;
-    } catch (error) {
-      logger.error(`Error getting Ethereum wallet address: ${error.message}`);
+    } catch (err) {
       return null;
     }
   }
@@ -635,5 +634,27 @@ export class Ethereum {
     // Create transaction to call deposit() function
     logger.info(`Wrapping ${utils.formatEther(amountInWei)} ETH to WETH`);
     return await wrappedContract.deposit(params);
+  }
+
+  public static async getWalletAddressExample(): Promise<string> {
+    const defaultAddress = '<ethereum-wallet-address>';
+    try {
+      const foundWallet = await this.getFirstWalletAddress();
+      if (foundWallet) {
+        return foundWallet;
+      }
+      logger.debug('No wallets found for examples in schema, using default.');
+      return defaultAddress;
+    } catch (error) {
+      logger.error(
+        `Error getting Ethereum wallet address for example: ${error.message}`,
+      );
+      return defaultAddress;
+    }
+  }
+
+  // Check if the address is a valid EVM address
+  public static isAddress(address: string): boolean {
+    return ethers.utils.isAddress(address);
   }
 }

@@ -1238,7 +1238,7 @@ export class Solana {
   }
 
   // Add new method to get first wallet address
-  public async getFirstWalletAddress(): Promise<string | null> {
+  public static async getFirstWalletAddress(): Promise<string | null> {
     // Specifically look in the solana subdirectory, not in any other chain's directory
     const safeChain = sanitizePathComponent('solana');
     const path = `${walletPath}/${safeChain}`;
@@ -1269,6 +1269,23 @@ export class Solana {
     } catch (error) {
       logger.error(`Error getting Solana wallet address: ${error.message}`);
       return null;
+    }
+  }
+
+  public static async getWalletAddressExample(): Promise<string> {
+    const defaultAddress = '<solana-wallet-address>';
+    try {
+      const foundWallet = await this.getFirstWalletAddress();
+      if (foundWallet) {
+        return foundWallet;
+      }
+      logger.debug('No wallets found for examples in schema, using default.');
+      return defaultAddress;
+    } catch (error) {
+      logger.error(
+        `Error getting Solana wallet address for example: ${error.message}`,
+      );
+      return defaultAddress;
     }
   }
 

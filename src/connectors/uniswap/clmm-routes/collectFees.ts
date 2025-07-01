@@ -25,7 +25,7 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
 
   try {
     firstWalletAddress =
-      (await ethereum.getFirstWalletAddress()) || firstWalletAddress;
+      (await Ethereum.getFirstWalletAddress()) || firstWalletAddress;
   } catch (error) {
     logger.warn('No wallets found for examples in schema');
   }
@@ -108,7 +108,6 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
           }
           throw fastify.httpErrors.badRequest(error.message);
         }
-
 
         // Create position manager contract
         const positionManager = new Contract(

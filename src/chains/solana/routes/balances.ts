@@ -329,15 +329,8 @@ async function getOptimizedBalance(
 }
 
 export const balancesRoute: FastifyPluginAsync = async (fastify) => {
-  // Get first wallet address for example - use a known Solana address as fallback
-  const solana = await Solana.getInstance('mainnet-beta');
-  let firstWalletAddress = '<solana-wallet-address>';
-
-  try {
-    firstWalletAddress = await solana.getFirstWalletAddress();
-  } catch (error) {
-    logger.warn('No wallets found for examples in schema');
-  }
+  // Get first wallet address for example
+  const firstWalletAddress = await Solana.getWalletAddressExample();
 
   // Example address for Solana tokens
   const USDC_MINT_ADDRESS = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'; // USDC on Solana
