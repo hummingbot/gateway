@@ -102,13 +102,10 @@ export async function getJupiterQuote(
         : Number(quote.outAmount) / 10 ** quoteTokenInfo.decimals; // Getting quote
 
     return {
-      estimatedAmountIn:
-        tradeSide === 'BUY' ? estimatedAmountOut : estimatedAmountIn, // Always in base token
-      estimatedAmountOut:
-        tradeSide === 'BUY' ? estimatedAmountIn : estimatedAmountOut, // Always in quote token
-      minAmountOut:
-        tradeSide === 'BUY' ? estimatedAmountIn : estimatedAmountOut,
-      maxAmountIn: tradeSide === 'BUY' ? estimatedAmountOut : estimatedAmountIn,
+      estimatedAmountIn, // Amount of input token (quote for BUY, base for SELL)
+      estimatedAmountOut, // Amount of output token (base for BUY, quote for SELL)
+      minAmountOut: estimatedAmountOut,
+      maxAmountIn: estimatedAmountIn,
       baseToken: baseTokenInfo,
       quoteToken: quoteTokenInfo,
       expectedPrice:
@@ -241,11 +238,11 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         minAmountOut: quote.minAmountOut,
         maxAmountIn: quote.maxAmountIn,
         baseTokenBalanceChange:
-          side === 'SELL' ? -quote.estimatedAmountIn : quote.estimatedAmountIn,
+          side === 'SELL' ? -quote.estimatedAmountIn : quote.estimatedAmountOut,
         quoteTokenBalanceChange:
           side === 'SELL'
             ? quote.estimatedAmountOut
-            : -quote.estimatedAmountOut,
+            : -quote.estimatedAmountIn,
         price: quote.expectedPrice,
         gasPrice: gasEstimation?.gasPrice,
         gasLimit: gasEstimation?.gasLimit,
