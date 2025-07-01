@@ -2,6 +2,8 @@ import sensible from '@fastify/sensible';
 import type { FastifyPluginAsync } from 'fastify';
 import { ammPoolInfoRoute } from './amm-routes/poolInfo';
 import { quoteSwapRoute as ammQuoteSwapRoute } from './amm-routes/quoteSwap';
+import quoteLiquidityRoute from './amm-routes/quoteLiquidity';
+import { executeSwapRoute as ammExecuteSwapRoute } from './amm-routes/executeSwap';
 
 // AMM routes including swap endpoints
 const minswapAmmRoutes: FastifyPluginAsync = async (fastify) => {
@@ -16,8 +18,8 @@ const minswapAmmRoutes: FastifyPluginAsync = async (fastify) => {
 
     await instance.register(ammPoolInfoRoute);
     await instance.register(ammQuoteSwapRoute);
-    // await instance.register(quoteLiquidityRoute);
-    // await instance.register(ammExecuteSwapRoute);
+    await instance.register(quoteLiquidityRoute);
+    await instance.register(ammExecuteSwapRoute);
     // await instance.register(ammAddLiquidityRoute);
     // await instance.register(ammRemoveLiquidityRoute);
   });

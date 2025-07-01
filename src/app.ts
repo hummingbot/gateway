@@ -93,6 +93,10 @@ const swaggerOptions = {
         name: 'uniswap/clmm',
         description: 'Uniswap V3 pool connector (Ethereum)',
       },
+      {
+        name: 'minswap/amm',
+        description: 'Minswap pool connector (Cardano)',
+      },
     ],
     components: {
       parameters: {
