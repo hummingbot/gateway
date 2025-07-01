@@ -16,7 +16,7 @@ if (process.env.START_SERVER === 'true') {
     console.error('Failed to start server:', error);
     process.exit(1);
   });
-} else {
+} else if (process.env.GATEWAY_TEST_MODE !== 'test') {
   console.log(asciiLogo);
   console.log('Use "pnpm start" to start the Gateway server');
 }
