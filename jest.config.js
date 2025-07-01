@@ -1,3 +1,6 @@
+const { pathsToModuleNameMapper } = require('ts-jest');
+const { compilerOptions } = require('./tsconfig.json');
+
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
@@ -18,7 +21,17 @@ module.exports = {
   ],
   modulePathIgnorePatterns: ['<rootDir>/dist/'],
   setupFilesAfterEnv: ['<rootDir>/test/jest-setup.js'],
-  moduleNameMapper: {
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    'test-helpers',
+    '<rootDir>/test-scripts/',
+  ],
+  testMatch: ['<rootDir>/test/**/*.test.ts', '<rootDir>/test/**/*.test.js'],
+  transform: {
+    '^.+\\.(t|j)s$': 'ts-jest',
   },
-  testPathIgnorePatterns: ['/node_modules/', 'test-helpers'],
+  transformIgnorePatterns: ['/node_modules/(?!.*superjson)'],
+  moduleNameMapper: pathsToModuleNameMapper(compilerOptions.paths, {
+    prefix: '<rootDir>/',
+  }),
 };

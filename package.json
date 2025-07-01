@@ -5,9 +5,13 @@
   "main": "index.js",
   "license": "Apache-2.0",
   "repository": "https://github.com/hummingbot/gateway",
+  "imports": {
+    "#src/*": "./src/*",
+    "#test/*": "./test/*"
+  },
   "scripts": {
     "prebuild": "rimraf dist && mkdir dist",
-    "build": "tsc --skipLibCheck --sourceMap --project ./ && pnpm run copy-files",
+    "build": "tsc --project tsconfig.build.json && pnpm run copy-files",
     "clean": "rm -rf ./node_modules && rm -rf ./coverage && rm -rf ./logs",
     "clean:config": "find ./conf -maxdepth 1 -type f -delete",
     "format": "prettier . --write",
@@ -16,6 +20,7 @@
     "start": "START_SERVER=true node dist/index.js",
     "copy-files": "copyfiles 'src/templates/json/*.json' 'src/templates/*.yml' 'src/templates/lists/*.json' dist",
     "test": "GATEWAY_TEST_MODE=dev jest --verbose",
+    "test:clear-cache": "jest --clearCache",
     "test:debug": "GATEWAY_TEST_MODE=dev jest --watch --runInBand",
     "test:unit": "GATEWAY_TEST_MODE=dev jest --runInBand ./test/",
     "test:cov": "GATEWAY_TEST_MODE=dev jest --runInBand --coverage ./test/",
@@ -118,6 +123,7 @@
     "eslint-config-prettier": "^9.1.0",
     "eslint-config-standard": "^17.1.0",
     "eslint-formatter-table": "^7.32.1",
+    "eslint-import-resolver-typescript": "^4.4.3",
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-n": "^16.6.2",
     "eslint-plugin-prettier": "^5.2.5",
