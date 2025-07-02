@@ -71,23 +71,11 @@ const swaggerOptions = {
       },
 
       // Connectors
-      {
-        name: '/connector/jupiter',
-        description: 'Jupiter connector endpoints',
-      },
-      {
-        name: '/connector/meteora',
-        description: 'Meteora connector endpoints',
-      },
-      {
-        name: '/connector/raydium',
-        description: 'Raydium connector endpoints',
-      },
-      {
-        name: '/connector/uniswap',
-        description: 'Uniswap connector endpoints',
-      },
-      { name: '/connector/0x', description: '0x connector endpoints' },
+      { name: 'jupiter', description: 'Jupiter connector endpoints' },
+      { name: 'meteora', description: 'Meteora connector endpoints' },
+      { name: 'raydium', description: 'Raydium connector endpoints' },
+      { name: 'uniswap', description: 'Uniswap connector endpoints' },
+      { name: 'etcswap', description: 'ETCSwap connector endpoints' },
     ],
     components: {
       parameters: {
@@ -361,24 +349,11 @@ export const startGateway = async () => {
     }
 
     // Single documentation log after server starts
-    const docsUrl = docsPort ? `http://localhost:${docsPort}` : `${protocol}://localhost:${port}/docs`;
+    // const docsUrl = docsPort
+    //   ? `http://localhost:${docsPort}`
+    //   : `${protocol}://localhost:${port}/docs`;
 
-    logger.info(`📓 Documentation available at ${docsUrl}`);
-
-    // Set up graceful shutdown
-    const shutdown = async () => {
-      logger.info('Shutting down gracefully...');
-
-      // Close server
-      await gatewayApp.close();
-
-      logger.info('Gateway stopped');
-      process.exit(0);
-    };
-
-    // Handle shutdown signals
-    process.on('SIGTERM', shutdown);
-    process.on('SIGINT', shutdown);
+    // logger.info(`📓 Documentation available at ${docsUrl}`);
   } catch (err) {
     logger.error(`Failed to start the server: ${err}`);
     process.exit(1);

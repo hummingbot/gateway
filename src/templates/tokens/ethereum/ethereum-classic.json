@@ -1,0 +1,138 @@
+[
+    {
+      "chainId": 61,
+      "address": "0x1953cab0E5bFa6D4a9BaD6E05fD46C1CC6527a5a",
+      "name": "Wrapped ETC",
+      "symbol": "WETC",
+      "decimals": 18,
+      "logoURI": "https://raw.githubusercontent.com/etcswap/tokens/main/ethereum-classic/chains/61/0x1953cab0E5bFa6D4a9BaD6E05fD46C1CC6527a5a/logo.png"
+    },
+    {
+      "chainId": 61,
+      "address": "0xbB2D194ABBac8834c833dcCd0ccb266670b0d3de",
+      "name": "2015 Relic: AyeAyeCoin",
+      "symbol": "WAACC",
+      "decimals": 0,
+      "logoURI": "https://raw.githubusercontent.com/etcswap/tokens/main/ethereum-classic/chains/61/0xbB2D194ABBac8834c833dcCd0ccb266670b0d3de/logo.png"
+    },
+    {
+      "chainId": 61,
+      "address": "0x80365F3f6d3C335C3f2b7D72cD7Fa8Eb56c933c9",
+      "name": "2015 Relic: bitcoin",
+      "symbol": "BTCC",
+      "decimals": 8,
+      "logoURI": "https://raw.githubusercontent.com/etcswap/tokens/main/ethereum-classic/chains/61/0x80365F3f6d3C335C3f2b7D72cD7Fa8Eb56c933c9/logo.png"
+    },
+    {
+      "chainId": 61,
+      "address": "0x271dc2DF1390a7b319CAE1711A454fa416D6A309",
+      "name": "BOB by TMWSTW",
+      "symbol": "BOB",
+      "decimals": 0,
+      "logoURI": "https://raw.githubusercontent.com/etcswap/tokens/main/ethereum-classic/chains/61/0x271dc2DF1390a7b319CAE1711A454fa416D6A309/logo.png"
+    },
+    {
+      "chainId": 61,
+      "address": "0xDE093684c796204224BC081f937aa059D903c52a",
+      "name": "Classic USD",
+      "symbol": "USC",
+      "decimals": 6,
+      "logoURI": "https://raw.githubusercontent.com/etcswap/tokens/main/ethereum-classic/chains/61/0xDE093684c796204224BC081f937aa059D903c52a/logo.png"
+    },
+    {
+      "chainId": 61,
+      "address": "0xAccc4ae3a58E8bC3115E67eE67852044069F154A",
+      "name": "Cypher by ETCMC",
+      "symbol": "CYPH",
+      "decimals": 18,
+      "logoURI": "https://raw.githubusercontent.com/etcswap/tokens/main/ethereum-classic/chains/61/0xAccc4ae3a58E8bC3115E67eE67852044069F154A/logo.png"
+    },
+    {
+      "chainId": 61,
+      "address": "0xc0364FB5498c17088A5B1d98F6FB3dB2Df9866a9",
+      "name": "Eco",
+      "symbol": "ECO",
+      "decimals": 18,
+      "logoURI": "https://raw.githubusercontent.com/etcswap/tokens/main/ethereum-classic/chains/61/0xc0364FB5498c17088A5B1d98F6FB3dB2Df9866a9/logo.png"
+    },
+    {
+      "chainId": 61,
+      "address": "0x6c3B413C461c42a88160Ed1B1B31d6f7b02a1C83",
+      "name": "ETCPOW by ETCMC",
+      "symbol": "ETCPOW",
+      "decimals": 18,
+      "logoURI": "https://raw.githubusercontent.com/etcswap/tokens/main/ethereum-classic/chains/61/0x6c3B413C461c42a88160Ed1B1B31d6f7b02a1C83/logo.png"
+    },
+    {
+      "chainId": 61,
+      "address": "0x152BAEFdc3b7E60985addF66FaB95e01089ba958",
+      "name": "GREASE by TMWSTW",
+      "symbol": "GREASE",
+      "decimals": 0,
+      "logoURI": "https://raw.githubusercontent.com/etcswap/tokens/main/ethereum-classic/chains/61/0x152BAEFdc3b7E60985addF66FaB95e01089ba958/logo.png"
+    },
+    {
+      "chainId": 61,
+      "address": "0x19b4343d272DA48779aB7A9a7436F95F63249871",
+      "name": "INK by TMWSTW",
+      "symbol": "INK",
+      "decimals": 0,
+      "logoURI": "https://raw.githubusercontent.com/etcswap/tokens/main/ethereum-classic/chains/61/0x19b4343d272DA48779aB7A9a7436F95F63249871/logo.png"
+    },
+    {
+      "chainId": 61,
+      "address": "0xa1Ccb330165cda264f35De7630De084e83d39134",
+      "name": "SLAG by TMWSTW",
+      "symbol": "SLAG",
+      "decimals": 0,
+      "logoURI": "https://raw.githubusercontent.com/etcswap/tokens/main/ethereum-classic/chains/61/0xa1Ccb330165cda264f35De7630De084e83d39134/logo.png"
+    },
+    {
+      "chainId": 61,
+      "address": "0xbf72BfEFA79957Fa944431f25e73a6aAEBC81798",
+      "name": "TMWSTW Profits",
+      "symbol": "TMWSTW",
+      "decimals": 0,
+      "logoURI": "https://raw.githubusercontent.com/etcswap/tokens/main/ethereum-classic/chains/61/0xbf72BfEFA79957Fa944431f25e73a6aAEBC81798/logo.png"
+    },
+    {
+      "chainId": 63,
+      "address": "0x1953cab0E5bFa6D4a9BaD6E05fD46C1CC6527a5a",
+      "name": "Wrapped ETC",
+      "symbol": "WETC",
+      "decimals": 18,
+      "logoURI": "https://raw.githubusercontent.com/etcswap/tokens/main/ethereum-classic/chains/63/0x1953cab0E5bFa6D4a9BaD6E05fD46C1CC6527a5a/logo.png"
+    },
+    {
+      "chainId": 63,
+      "address": "0xDE093684c796204224BC081f937aa059D903c52a",
+      "name": "Classic USD",
+      "symbol": "USC",
+      "decimals": 6,
+      "logoURI": "https://raw.githubusercontent.com/etcswap/tokens/main/ethereum-classic/chains/63/0xDE093684c796204224BC081f937aa059D903c52a/logo.png"
+    },
+    {
+      "chainId": 63,
+      "address": "0xD333787e69DbfC47E67C59441e392Eb530b3DC19",
+      "name": "USDC",
+      "symbol": "USDC",
+      "decimals": 6,
+      "logoURI": "https://raw.githubusercontent.com/etcswap/tokens/main/ethereum-classic/chains/63/0xD333787e69DbfC47E67C59441e392Eb530b3DC19/logo.png"
+    },
+    {
+      "chainId": 63,
+      "address": "0xfC95e5e3f912823eE531687E2Df137940ef3BA2c",
+      "name": "Tether",
+      "symbol": "USDT",
+      "decimals": 6,
+      "logoURI": "https://raw.githubusercontent.com/etcswap/tokens/main/ethereum-classic/chains/63/0xfC95e5e3f912823eE531687E2Df137940ef3BA2c/logo.png"
+    },
+    {
+      "chainId": 63,
+      "address": "0xbe147F327704d4F62dCA47172261585D7b12eEEC",
+      "name": "Wrapped Bitcoin",
+      "symbol": "WBTC",
+      "decimals": 8,
+      "logoURI": "https://raw.githubusercontent.com/etcswap/tokens/main/ethereum-classic/chains/63/0xbe147F327704d4F62dCA47172261585D7b12eEEC/logo.png"
+    }
+]

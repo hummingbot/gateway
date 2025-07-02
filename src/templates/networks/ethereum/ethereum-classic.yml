@@ -1,0 +1,4 @@
+chainID: 61
+nodeURL: https://etc.rivet.link
+nativeCurrencySymbol: ETC
+gasPriceRefreshInterval: 60
