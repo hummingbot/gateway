@@ -10,6 +10,7 @@ describe('App Integration - Route Registration', () => {
 
   beforeAll(async () => {
     fastify = gatewayApp;
+    await fastify.ready();
   });
 
   afterAll(async () => {

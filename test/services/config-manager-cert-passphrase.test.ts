@@ -1,3 +1,28 @@
+// Mock dependencies before importing ConfigManagerCertPassphrase
+jest.mock('../../src/services/config-manager-v2', () => ({
+  ConfigManagerV2: {
+    getInstance: jest.fn().mockReturnValue({
+      get: jest.fn().mockImplementation((key: string) => {
+        const mockConfig: Record<string, any> = {
+          'server.logToStdOut': false,
+          'logging.logPath': './logs',
+        };
+        return mockConfig[key];
+      }),
+      set: jest.fn(),
+    }),
+  },
+}));
+
+jest.mock('../../src/services/logger', () => ({
+  logger: {
+    info: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn(),
+  },
+}));
+
 import { ConfigManagerCertPassphrase } from '../../src/services/config-manager-cert-passphrase';
 
 import { patch, unpatch } from './patch';

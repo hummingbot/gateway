@@ -64,34 +64,44 @@ jest.mock('../../src/https', () => ({
 }));
 
 // Mock token lists
-jest.mock('fs', () => ({
-  ...jest.requireActual('fs'),
-  existsSync: jest.fn().mockReturnValue(true),
-  readFileSync: jest.fn().mockImplementation((path: string) => {
-    if (path.includes('tokens')) {
-      return JSON.stringify({
-        tokens: [
-          {
-            symbol: 'SOL',
-            address: 'So11111111111111111111111111111111111111112',
-            decimals: 9,
-          },
-          {
-            symbol: 'USDC',
-            address: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-            decimals: 6,
-          },
-          {
-            symbol: 'ETH',
-            address: '0x0000000000000000000000000000000000000000',
-            decimals: 18,
-          },
-        ],
-      });
-    }
-    return jest.requireActual('fs').readFileSync(path);
-  }),
-}));
+jest.mock('fs', () => {
+  const actualFs = jest.requireActual('fs');
+  return {
+    ...actualFs,
+    existsSync: jest.fn().mockImplementation((path: string) => {
+      // Only mock token list existence
+      if (path.includes('tokens') || path.includes('lists')) {
+        return true;
+      }
+      // For connector tests, check real file system
+      return actualFs.existsSync(path);
+    }),
+    readFileSync: jest.fn().mockImplementation((path: string) => {
+      if (path.includes('tokens') || path.includes('lists')) {
+        return JSON.stringify({
+          tokens: [
+            {
+              symbol: 'SOL',
+              address: 'So11111111111111111111111111111111111111112',
+              decimals: 9,
+            },
+            {
+              symbol: 'USDC',
+              address: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+              decimals: 6,
+            },
+            {
+              symbol: 'ETH',
+              address: '0x0000000000000000000000000000000000000000',
+              decimals: 18,
+            },
+          ],
+        });
+      }
+      return actualFs.readFileSync(path);
+    }),
+  };
+});
 
 // Export empty object to make this a module
 export {};

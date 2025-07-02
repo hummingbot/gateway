@@ -12,6 +12,7 @@ describe('Uniswap Routes Structure', () => {
 
   beforeAll(async () => {
     fastify = gatewayApp;
+    await fastify.ready();
   });
 
   afterAll(async () => {
