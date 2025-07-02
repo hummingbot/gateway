@@ -193,8 +193,7 @@ export async function wrapEthereum(
 }
 
 export const wrapRoute: FastifyPluginAsync = async (fastify) => {
-  // Get first wallet address for example
-  const firstWalletAddress = await Ethereum.getWalletAddressExample();
+  const walletAddressExample = await Ethereum.getWalletAddressExample();
 
   fastify.post<{
     Body: WrapRequestType;
@@ -223,7 +222,7 @@ export const wrapRoute: FastifyPluginAsync = async (fastify) => {
               'worldchain',
             ],
           }),
-          address: Type.String({ examples: [firstWalletAddress] }),
+          address: Type.String({ examples: [walletAddressExample] }),
           amount: Type.String({
             examples: ['0.1', '1.0'],
             description:

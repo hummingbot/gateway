@@ -257,10 +257,7 @@ export type MeteoraOpenPositionRequestType = Static<
 >;
 
 export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
-  const firstWalletAddress = await Solana.getWalletAddressExample();
-
-  // Update schema example
-  OpenPositionRequest.properties.walletAddress.examples = [firstWalletAddress];
+  const walletAddressExample = await Solana.getWalletAddressExample();
 
   fastify.post<{
     Body: MeteoraOpenPositionRequestType;
@@ -276,6 +273,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             ...OpenPositionRequest.properties,
             network: { type: 'string', default: 'mainnet-beta' },
+            walletAddress: { type: 'string', examples: [walletAddressExample] },
             lowerPrice: { type: 'number', examples: [100] },
             upperPrice: { type: 'number', examples: [180] },
             poolAddress: {

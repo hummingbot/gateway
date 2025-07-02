@@ -24,8 +24,7 @@ import { formatTokenAmount } from '../uniswap.utils';
 
 export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
   await fastify.register(require('@fastify/sensible'));
-  // Get first wallet address for example
-  const firstWalletAddress = await Ethereum.getWalletAddressExample();
+  const walletAddressExample = await Ethereum.getWalletAddressExample();
 
   fastify.get<{
     Querystring: GetPositionInfoRequestType;
@@ -45,7 +44,7 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
               description: 'Position NFT token ID',
               examples: ['1234'],
             },
-            walletAddress: { type: 'string', examples: [firstWalletAddress] },
+            walletAddress: { type: 'string', examples: [walletAddressExample] },
           },
         },
         response: {
