@@ -78,8 +78,12 @@ export class APITestCase<Harness extends AbstractGatewayTestHarness<any>>
     // save mocks first so that we can move to replay for quicker testing if we got all the data we needed.
     const saveMockErrors = await harness.saveMocks(this.requiredMocks);
     this.assertStatusCode(response);
-    for (const [_key, error] of Object.entries(saveMockErrors)) {
-      throw error;
+    const errorEntries = Object.entries(saveMockErrors);
+    if (errorEntries.length > 0) {
+      const errorMessages = errorEntries
+        .map(([key, error]) => `${key}: ${error.message}`)
+        .join('\n');
+      throw new Error(`Failed to save mocks:\n${errorMessages}`);
     }
     const body = JSON.parse(response.body);
     this.assertSnapshot(body);
