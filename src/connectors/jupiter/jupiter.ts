@@ -37,7 +37,7 @@ interface SwapResponse {
 export class Jupiter {
   private static _instances: { [name: string]: Jupiter };
   private solana: Solana;
-  public config: JupiterConfig.NetworkConfig;
+  public config: JupiterConfig.RootConfig;
   private httpClient: AxiosInstance;
 
   private constructor() {

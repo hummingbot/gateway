@@ -22,6 +22,7 @@ import {
 } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
+import { getUniswapV3NftManagerAddress } from '../uniswap.contracts';
 import { formatTokenAmount, parseFeeTier } from '../uniswap.utils';
 
 export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
@@ -287,7 +288,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
 
         // Get position manager address for allowance checks
         const positionManagerAddress =
-          uniswap.config.uniswapV3NftManagerAddress(networkToUse);
+          getUniswapV3NftManagerAddress(networkToUse);
 
         // Check token0 allowance if needed (including WETH)
         if (!token0Amount.equalTo(0)) {

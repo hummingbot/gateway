@@ -14,7 +14,10 @@ import {
 } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
-import { POSITION_MANAGER_ABI } from '../uniswap.contracts';
+import {
+  POSITION_MANAGER_ABI,
+  getUniswapV3NftManagerAddress,
+} from '../uniswap.contracts';
 import { formatTokenAmount } from '../uniswap.utils';
 
 export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
@@ -113,7 +116,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
 
         // Get position manager address
         const positionManagerAddress =
-          uniswap.config.uniswapV3NftManagerAddress(networkToUse);
+          getUniswapV3NftManagerAddress(networkToUse);
 
         // Check NFT ownership
         try {

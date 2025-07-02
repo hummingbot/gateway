@@ -18,7 +18,10 @@ describe('Raydium Routes Structure', () => {
 
   describe('Folder Structure', () => {
     it('should only have amm-routes and clmm-routes folders', () => {
-      const raydiumPath = path.join(__dirname, '../../../src/connectors/raydium');
+      const raydiumPath = path.join(
+        __dirname,
+        '../../../src/connectors/raydium',
+      );
       const ammRoutesPath = path.join(raydiumPath, 'amm-routes');
       const clmmRoutesPath = path.join(raydiumPath, 'clmm-routes');
       const swapRoutesPath = path.join(raydiumPath, 'swap-routes');
@@ -31,7 +34,10 @@ describe('Raydium Routes Structure', () => {
     });
 
     it('should have swap endpoints within AMM routes', () => {
-      const ammRoutesPath = path.join(__dirname, '../../../src/connectors/raydium/amm-routes');
+      const ammRoutesPath = path.join(
+        __dirname,
+        '../../../src/connectors/raydium/amm-routes',
+      );
       const files = fs.readdirSync(ammRoutesPath);
 
       expect(files).toContain('executeSwap.ts');
@@ -39,7 +45,10 @@ describe('Raydium Routes Structure', () => {
     });
 
     it('should have swap endpoints within CLMM routes', () => {
-      const clmmRoutesPath = path.join(__dirname, '../../../src/connectors/raydium/clmm-routes');
+      const clmmRoutesPath = path.join(
+        __dirname,
+        '../../../src/connectors/raydium/clmm-routes',
+      );
       const files = fs.readdirSync(clmmRoutesPath);
 
       expect(files).toContain('executeSwap.ts');

@@ -25,16 +25,16 @@ describe('Generic Connector Validation', () => {
       method: 'GET',
       url: '/connectors',
     });
-    
+
     const { connectors } = JSON.parse(response.body);
-    
+
     // Test each connector
     for (const connector of connectors) {
       const { name, trading_types } = connector;
-      
+
       // Validate folder structure
       validateConnectorFolderStructure(name, trading_types);
-      
+
       // Test routes match trading types
       await testConnectorRoutes({ name, fastify }, trading_types, connector);
     }

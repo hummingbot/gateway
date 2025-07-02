@@ -7,7 +7,7 @@ const axios = require('axios');
 // Constants for this test file
 const CONNECTOR = 'uniswap';
 const CHAIN = 'ethereum';
-const NETWORK = 'base'; // Only test Base network
+const NETWORK = 'base'; // Testing with Base network, but all Ethereum networks are supported
 const BASE_TOKEN = 'WETH';
 const QUOTE_TOKEN = 'USDC';
 const TEST_WALLET = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
@@ -51,6 +51,19 @@ function validateSwapQuote(response) {
     typeof response.quoteTokenBalanceChange === 'number' &&
     typeof response.price === 'number' &&
     typeof response.computeUnits === 'number' // Added computeUnits
+  );
+}
+
+// Function to validate gas parameters
+function validateGasParameters(response) {
+  return (
+    response &&
+    typeof response.gasPrice === 'number' &&
+    response.gasPrice > 0 &&
+    response.gasLimit === 300000 && // Fixed gas limit per implementation
+    typeof response.gasCost === 'number' &&
+    Math.abs(response.gasCost - response.gasPrice * response.gasLimit * 1e-9) <
+      1e-10 // Floating point precision
   );
 }
 
@@ -105,6 +118,7 @@ describe('Uniswap V3 Swap Router Tests (Base Network)', () => {
       // Validate the response
       expect(response.status).toBe(200);
       expect(validateSwapQuote(response.data)).toBe(true);
+      expect(validateGasParameters(response.data)).toBe(true);
 
       // Check expected mock values for a SELL
       expect(response.data.baseTokenBalanceChange).toBeLessThan(0); // SELL means negative base token change
@@ -154,8 +168,8 @@ describe('Uniswap V3 Swap Router Tests (Base Network)', () => {
           baseTokenBalanceChange: 1.0,
           quoteTokenBalanceChange: -1800.0,
           gasPrice: 5.0,
-          gasLimit: 250000,
-          gasCost: 0.00125,
+          gasLimit: 300000,
+          gasCost: 0.0015,
         };
       }
 
@@ -182,10 +196,95 @@ describe('Uniswap V3 Swap Router Tests (Base Network)', () => {
       // Validate the response
       expect(response.status).toBe(200);
       expect(validateSwapQuote(response.data)).toBe(true);
+      expect(validateGasParameters(response.data)).toBe(true);
 
       // Check expected mock values for a BUY
       expect(response.data.baseTokenBalanceChange).toBeGreaterThan(0); // BUY means positive base token change
       expect(response.data.quoteTokenBalanceChange).toBeLessThan(0); // BUY means negative quote token change
+    });
+
+    test('validates gas parameters for swap quotes', async () => {
+      // Create a mock response with specific gas values
+      const mockResponse = {
+        estimatedAmountIn: 0.001,
+        estimatedAmountOut: 2.49,
+        minAmountOut: 2.47,
+        maxAmountIn: 0.001,
+        price: 2490.0,
+        baseTokenBalanceChange: -0.001,
+        quoteTokenBalanceChange: 2.49,
+        gasPrice: 0.8, // Testing realistic mainnet gas price
+        gasLimit: 300000, // Fixed gas limit as per implementation
+        gasCost: 0.00024, // 0.8 GWEI * 300000 / 1e9
+      };
+
+      // Setup mock axios
+      axios.get.mockResolvedValueOnce({
+        status: 200,
+        data: mockResponse,
+      });
+
+      // Make the request
+      const response = await axios.get(
+        `http://localhost:15888/connectors/${CONNECTOR}/routes/quote-swap`,
+        {
+          params: {
+            network: 'mainnet',
+            baseToken: BASE_TOKEN,
+            quoteToken: QUOTE_TOKEN,
+            side: 'SELL',
+            amount: 0.001,
+          },
+        },
+      );
+
+      // Validate gas parameters
+      expect(response.status).toBe(200);
+      expect(response.data.gasLimit).toBe(300000); // Fixed gas limit
+      expect(response.data.gasPrice).toBeGreaterThan(0);
+      expect(response.data.gasCost).toBe(
+        response.data.gasPrice * response.data.gasLimit * 1e-9,
+      );
+    });
+
+    test('handles different networks correctly', async () => {
+      const networks = ['mainnet', 'arbitrum', 'optimism', 'base', 'polygon'];
+
+      for (const network of networks) {
+        const mockResponse = {
+          estimatedAmountIn: 1.0,
+          estimatedAmountOut: 1800.0,
+          minAmountOut: 1782.0,
+          maxAmountIn: 1.0,
+          price: 1800.0,
+          baseTokenBalanceChange: -1.0,
+          quoteTokenBalanceChange: 1800.0,
+          gasPrice: 5.0,
+          gasLimit: 300000,
+          gasCost: 0.0015,
+        };
+
+        axios.get.mockResolvedValueOnce({
+          status: 200,
+          data: mockResponse,
+        });
+
+        const response = await axios.get(
+          `http://localhost:15888/connectors/${CONNECTOR}/routes/quote-swap`,
+          {
+            params: {
+              network,
+              baseToken: BASE_TOKEN,
+              quoteToken: QUOTE_TOKEN,
+              side: 'SELL',
+              amount: 1.0,
+            },
+          },
+        );
+
+        expect(response.status).toBe(200);
+        expect(validateSwapQuote(response.data)).toBe(true);
+      }
     });
   });
 
@@ -260,6 +359,122 @@ describe('Uniswap V3 Swap Router Tests (Base Network)', () => {
           walletAddress: TEST_WALLET,
         }),
       );
+    });
+
+    test('executes BUY swap successfully', async () => {
+      // Create a BUY quote response
+      const buyQuoteResponse = {
+        estimatedAmountIn: 2500.0, // USDC needed
+        estimatedAmountOut: 1.0, // WETH to receive
+        minAmountOut: 1.0,
+        maxAmountIn: 2525.0, // with slippage
+        price: 2500.0,
+        baseTokenBalanceChange: 1.0,
+        quoteTokenBalanceChange: -2500.0,
+      };
+
+      // Mock a successful BUY execution response
+      const executeBuyResponse = {
+        signature:
+          '0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890',
+        totalInputSwapped: buyQuoteResponse.estimatedAmountIn,
+        totalOutputSwapped: buyQuoteResponse.estimatedAmountOut,
+        fee: 0.003,
+        baseTokenBalanceChange: buyQuoteResponse.baseTokenBalanceChange,
+        quoteTokenBalanceChange: buyQuoteResponse.quoteTokenBalanceChange,
+      };
+
+      axios.post.mockResolvedValueOnce({
+        status: 200,
+        data: executeBuyResponse,
+      });
+
+      const response = await axios.post(
+        `http://localhost:15888/connectors/${CONNECTOR}/routes/execute-swap`,
+        {
+          network: NETWORK,
+          baseToken: BASE_TOKEN,
+          quoteToken: QUOTE_TOKEN,
+          side: 'BUY',
+          amount: 1.0, // Want to buy 1 WETH
+          walletAddress: TEST_WALLET,
+        },
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.data.signature).toBeDefined();
+      expect(response.data.totalInputSwapped).toBe(2500.0); // USDC spent
+      expect(response.data.totalOutputSwapped).toBe(1.0); // WETH received
+      expect(response.data.baseTokenBalanceChange).toBe(1.0); // +1 WETH
+      expect(response.data.quoteTokenBalanceChange).toBe(-2500.0); // -2500 USDC
+    });
+
+    test('validates slippage parameters', async () => {
+      const executeResponse = {
+        signature: '0x123...',
+        totalInputSwapped: 1.0,
+        totalOutputSwapped: 1790.0,
+        fee: 0.003,
+        baseTokenBalanceChange: -1.0,
+        quoteTokenBalanceChange: 1790.0,
+      };
+
+      axios.post.mockResolvedValueOnce({
+        status: 200,
+        data: executeResponse,
+      });
+
+      const response = await axios.post(
+        `http://localhost:15888/connectors/${CONNECTOR}/routes/execute-swap`,
+        {
+          network: NETWORK,
+          baseToken: BASE_TOKEN,
+          quoteToken: QUOTE_TOKEN,
+          side: 'SELL',
+          amount: 1.0,
+          walletAddress: TEST_WALLET,
+          slippagePct: 1.0, // 1% slippage
+        },
+      );
+
+      expect(response.status).toBe(200);
+      // With 1% slippage, the output should be at least 99% of expected
+      expect(response.data.totalOutputSwapped).toBeGreaterThanOrEqual(1782.0);
+    });
+
+    test('handles multiple networks for execution', async () => {
+      const networks = ['mainnet', 'arbitrum', 'optimism', 'base'];
+
+      for (const network of networks) {
+        const executeResponse = {
+          signature: `0x${network}1234567890abcdef`,
+          totalInputSwapped: 1.0,
+          totalOutputSwapped: 1800.0,
+          fee: 0.003,
+          baseTokenBalanceChange: -1.0,
+          quoteTokenBalanceChange: 1800.0,
+        };
+
+        axios.post.mockResolvedValueOnce({
+          status: 200,
+          data: executeResponse,
+        });
+
+        const response = await axios.post(
+          `http://localhost:15888/connectors/${CONNECTOR}/routes/execute-swap`,
+          {
+            network,
+            baseToken: BASE_TOKEN,
+            quoteToken: QUOTE_TOKEN,
+            side: 'SELL',
+            amount: 1.0,
+            walletAddress: TEST_WALLET,
+          },
+        );
+
+        expect(response.status).toBe(200);
+        expect(response.data.signature).toContain(network);
+      }
     });
   });
 });

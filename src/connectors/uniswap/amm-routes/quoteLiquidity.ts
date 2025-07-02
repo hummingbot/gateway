@@ -11,7 +11,10 @@ import {
 } from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
-import { IUniswapV2PairABI } from '../uniswap.contracts';
+import {
+  IUniswapV2PairABI,
+  getUniswapV2RouterAddress,
+} from '../uniswap.contracts';
 import { formatTokenAmount } from '../uniswap.utils';
 
 export async function getUniswapAmmLiquidityQuote(
@@ -188,7 +191,7 @@ export async function getUniswapAmmLiquidityQuote(
   }
 
   // Get router address
-  const routerAddress = uniswap.config.uniswapV2RouterAddress(networkToUse);
+  const routerAddress = getUniswapV2RouterAddress(networkToUse);
 
   // Convert final amounts to raw values for execution
   const rawBaseTokenAmount = BigNumber.from(

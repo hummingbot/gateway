@@ -19,7 +19,11 @@ import {
 } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
-import { POSITION_MANAGER_ABI } from '../uniswap.contracts';
+import {
+  POSITION_MANAGER_ABI,
+  getUniswapV3NftManagerAddress,
+  getUniswapV3FactoryAddress,
+} from '../uniswap.contracts';
 import { formatTokenAmount } from '../uniswap.utils';
 
 export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
@@ -95,7 +99,7 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
 
         // Get the position manager contract address
         const positionManagerAddress =
-          uniswap.config.uniswapV3NftManagerAddress(networkToUse);
+          getUniswapV3NftManagerAddress(networkToUse);
 
         // Create the position manager contract instance
         const positionManager = new Contract(
@@ -188,7 +192,7 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
 
         // Get the actual pool address using computePoolAddress
         const poolAddress = computePoolAddress({
-          factoryAddress: uniswap.config.uniswapV3FactoryAddress(networkToUse),
+          factoryAddress: getUniswapV3FactoryAddress(networkToUse),
           tokenA: token0,
           tokenB: token1,
           fee,

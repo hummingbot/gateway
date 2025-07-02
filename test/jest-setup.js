@@ -11,9 +11,4 @@ jest.mock('brotli', () => ({
   isCompressed: jest.fn().mockReturnValue(false),
 }));
 
-// This prevents the error: process.exit called with "2"
-jest.mock('@oclif/core/lib/errors/handle', () => ({
-  handle: jest.fn(),
-}));
-
 console.log('Jest test environment configured with global mocks and settings');

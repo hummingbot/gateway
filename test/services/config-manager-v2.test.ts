@@ -41,12 +41,12 @@ describe('Configuration manager v2 tests', () => {
     tempDirPath = '';
 
     // Delete any default configs.
-    ConfigManagerV2.setDefaults('ethereum', {});
+    ConfigManagerV2.setDefaults('ethereum-mainnet', {});
   });
 
   it('loading a valid configuration root', (done) => {
     expect(configManager.get('server.certificatePath')).toBeDefined();
-    expect(configManager.get('ethereum.networks')).toBeDefined();
+    expect(configManager.get('ethereum-mainnet.networks')).toBeDefined();
     done();
   });
 
@@ -77,15 +77,21 @@ describe('Configuration manager v2 tests', () => {
 
   it('reading from config file', (done) => {
     expect(configManager.get('server.certificatePath')).toEqual('gateway.crt');
-    expect(configManager.get('ethereum.networks.mainnet.chainID')).toEqual(1);
     expect(
-      configManager.get('ethereum.networks.mainnet.nativeCurrencySymbol'),
+      configManager.get('ethereum-mainnet.networks.mainnet.chainID'),
+    ).toEqual(1);
+    expect(
+      configManager.get(
+        'ethereum-mainnet.networks.mainnet.nativeCurrencySymbol',
+      ),
     ).toEqual('ETH');
     done();
   });
 
   it('reading a non-existent config entry', (done) => {
-    expect(configManager.get('ethereum.sepolia.chainID')).toBeUndefined();
+    expect(
+      configManager.get('ethereum-mainnet.sepolia.chainID'),
+    ).toBeUndefined();
     expect(configManager.get('server.keyPath.keyPath')).toBeUndefined();
     done();
   });
@@ -103,9 +109,9 @@ describe('Configuration manager v2 tests', () => {
   it('writing a valid configuration', (done) => {
     const newKeyPath: string = 'new-gateway.crt';
     configManager.set('server.certificatePath', newKeyPath);
-    configManager.set('ethereum.manualGasPrice', 150);
+    configManager.set('ethereum-mainnet.manualGasPrice', 150);
     expect(configManager.get('server.certificatePath')).toEqual(newKeyPath);
-    expect(configManager.get('ethereum.manualGasPrice')).toEqual(150);
+    expect(configManager.get('ethereum-mainnet.manualGasPrice')).toEqual(150);
 
     const verifyConfigManager: ConfigManagerV2 = new ConfigManagerV2(
       path.join(tempDirPath, 'test1/root.yml'),
@@ -113,7 +119,9 @@ describe('Configuration manager v2 tests', () => {
     expect(verifyConfigManager.get('server.certificatePath')).toEqual(
       newKeyPath,
     );
-    expect(verifyConfigManager.get('ethereum.manualGasPrice')).toEqual(150);
+    expect(verifyConfigManager.get('ethereum-mainnet.manualGasPrice')).toEqual(
+      150,
+    );
 
     // Note: Setting network-specific configs is not supported yet
     // as they are loaded from separate files but saveConfig() only saves the main file
@@ -125,13 +133,13 @@ describe('Configuration manager v2 tests', () => {
       configManager.set('server.nonKeyPath', 'noSuchFile.txt');
     }).toThrow();
     expect(() => {
-      configManager.set('ethereum', {});
+      configManager.set('ethereum-mainnet', {});
     }).toThrow();
     done();
   });
 
   it('using default configurations', (done) => {
-    ConfigManagerV2.setDefaults('ethereum', {
+    ConfigManagerV2.setDefaults('ethereum-mainnet', {
       networks: {
         rinkeby: {
           chainID: 4,
@@ -139,7 +147,9 @@ describe('Configuration manager v2 tests', () => {
         },
       },
     });
-    expect(configManager.get('ethereum.networks.rinkeby.chainID')).toEqual(4);
+    expect(
+      configManager.get('ethereum-mainnet.networks.rinkeby.chainID'),
+    ).toEqual(4);
     done();
   });
 
@@ -205,7 +215,7 @@ describe('Configuration manager v2 tests', () => {
   it('Get all configuration', (done) => {
     const allConfigs = configManager.allConfigurations;
     expect(allConfigs.server.certificatePath).toEqual('gateway.crt');
-    expect(allConfigs.ethereum.networks.mainnet.chainID).toEqual(1);
+    expect(allConfigs['ethereum-mainnet'].networks.mainnet.chainID).toEqual(1);
     done();
   });
 

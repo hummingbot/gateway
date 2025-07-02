@@ -6,5 +6,8 @@
   "price": 1800.0,
   "baseTokenBalanceChange": -1.0,
   "quoteTokenBalanceChange": 1800.0,
-  "computeUnits": 250000
+  "computeUnits": 250000,
+  "gasPrice": 50000000000,
+  "gasLimit": 300000,
+  "gasCost": 0.015
 }

@@ -7,7 +7,11 @@ import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { PositionInfoSchema } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
-import { POSITION_MANAGER_ABI } from '../uniswap.contracts';
+import {
+  POSITION_MANAGER_ABI,
+  getUniswapV3NftManagerAddress,
+  getUniswapV3FactoryAddress,
+} from '../uniswap.contracts';
 import { formatTokenAmount } from '../uniswap.utils';
 
 // Define the request and response types
@@ -95,8 +99,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         // Get position manager address
-        const positionManagerAddress =
-          uniswap.config.uniswapV3NftManagerAddress(network);
+        const positionManagerAddress = getUniswapV3NftManagerAddress(network);
 
         // Create position manager contract with both enumerable and position ABIs
         const positionManager = new Contract(
@@ -214,7 +217,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
 
             // Get the actual pool address using computePoolAddress
             const poolAddress = computePoolAddress({
-              factoryAddress: uniswap.config.uniswapV3FactoryAddress(network),
+              factoryAddress: getUniswapV3FactoryAddress(network),
               tokenA: token0,
               tokenB: token1,
               fee,

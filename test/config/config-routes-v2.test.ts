@@ -21,8 +21,6 @@ import * as yaml from 'js-yaml';
 import { configRoutes } from '../../src/config/config.routes';
 import {
   getDefaultPools,
-  addDefaultPool,
-  removeDefaultPool,
   updateConfig,
   getConfig,
 } from '../../src/config/utils';
@@ -76,8 +74,6 @@ describe('Config Routes V2 Tests', () => {
 
     // Setup default mock implementations
     (getDefaultPools as jest.Mock).mockImplementation(() => ({}));
-    (addDefaultPool as jest.Mock).mockImplementation(() => {});
-    (removeDefaultPool as jest.Mock).mockImplementation(() => {});
     (updateConfig as jest.Mock).mockImplementation(() => {});
     (getConfig as jest.Mock).mockImplementation(
       (_fastify, namespace, network) => {

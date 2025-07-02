@@ -22,13 +22,11 @@ describe('MCP Fallback Data Provider', () => {
       ]);
 
       const result = await FallbackDataProvider.getConnectors();
-      
+
       expect(result.connectors).toBeDefined();
       expect(Array.isArray(result.connectors)).toBe(true);
 
-      const connectorMap = new Map(
-        result.connectors.map(c => [c.name, c])
-      );
+      const connectorMap = new Map(result.connectors.map((c) => [c.name, c]));
 
       // Jupiter - swap only
       const jupiter = connectorMap.get('jupiter');
@@ -64,14 +62,26 @@ describe('MCP Fallback Data Provider', () => {
         'uniswap.yml',
       ]);
 
-      const solanaConnectors = await FallbackDataProvider.getConnectors('solana');
-      const ethereumConnectors = await FallbackDataProvider.getConnectors('ethereum');
+      const solanaConnectors =
+        await FallbackDataProvider.getConnectors('solana');
+      const ethereumConnectors =
+        await FallbackDataProvider.getConnectors('ethereum');
 
-      expect(solanaConnectors.connectors.every(c => c.chain === 'solana')).toBe(true);
-      expect(ethereumConnectors.connectors.every(c => c.chain === 'ethereum')).toBe(true);
+      expect(
+        solanaConnectors.connectors.every((c) => c.chain === 'solana'),
+      ).toBe(true);
+      expect(
+        ethereumConnectors.connectors.every((c) => c.chain === 'ethereum'),
+      ).toBe(true);
 
-      expect(solanaConnectors.connectors.map(c => c.name).sort()).toEqual(['jupiter', 'meteora', 'raydium']);
-      expect(ethereumConnectors.connectors.map(c => c.name)).toEqual(['uniswap']);
+      expect(solanaConnectors.connectors.map((c) => c.name).sort()).toEqual([
+        'jupiter',
+        'meteora',
+        'raydium',
+      ]);
+      expect(ethereumConnectors.connectors.map((c) => c.name)).toEqual([
+        'uniswap',
+      ]);
     });
   });
 
@@ -85,13 +95,13 @@ describe('MCP Fallback Data Provider', () => {
       ]);
 
       const result = await FallbackDataProvider.getChains();
-      
+
       expect(result.chains).toBeDefined();
       expect(Array.isArray(result.chains)).toBe(true);
 
-      const ethereum = result.chains.find(c => c.chain === 'ethereum');
+      const ethereum = result.chains.find((c) => c.chain === 'ethereum');
       expect(ethereum).toBeDefined();
-      
+
       // Should not include zora, blast, or worldchain
       expect(ethereum?.networks).not.toContain('zora');
       expect(ethereum?.networks).not.toContain('blast');

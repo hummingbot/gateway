@@ -20,14 +20,14 @@ describe('App Integration - Route Registration', () => {
         method: 'GET',
         url: '/connectors',
       });
-      
+
       const { connectors } = JSON.parse(connectorsResponse.body);
       const routes = fastify.printRoutes();
-      
+
       // For each connector, verify routes match their trading types
       connectors.forEach((connector: any) => {
         const { name, trading_types } = connector;
-        
+
         // Check swap routes
         if (trading_types.includes('swap')) {
           // Swap routes should exist under /swap prefix
@@ -36,14 +36,14 @@ describe('App Integration - Route Registration', () => {
           // No swap routes
           expect(routes).not.toContain(`/connectors/${name}/swap/`);
         }
-        
+
         // Check AMM routes
         if (trading_types.includes('amm')) {
           expect(routes).toContain(`/connectors/${name}/amm/`);
         } else {
           expect(routes).not.toContain(`/connectors/${name}/amm/`);
         }
-        
+
         // Check CLMM routes
         if (trading_types.includes('clmm')) {
           expect(routes).toContain(`/connectors/${name}/clmm/`);
@@ -62,18 +62,18 @@ describe('App Integration - Route Registration', () => {
       });
 
       const data = JSON.parse(response.body);
-      
+
       // Validate all connectors have valid trading types
       data.connectors.forEach((connector: any) => {
         expect(connector.trading_types).toBeDefined();
         expect(Array.isArray(connector.trading_types)).toBe(true);
         expect(connector.trading_types.length).toBeGreaterThan(0);
-        
+
         // All trading types should be valid
         connector.trading_types.forEach((type: string) => {
           expect(['swap', 'amm', 'clmm']).toContain(type);
         });
-        
+
         // No duplicates
         const uniqueTypes = [...new Set(connector.trading_types)];
         expect(uniqueTypes.length).toBe(connector.trading_types.length);
@@ -88,13 +88,13 @@ describe('App Integration - Route Registration', () => {
         method: 'GET',
         url: '/connectors',
       });
-      
+
       const { connectors } = JSON.parse(connectorsResponse.body);
-      
+
       // Test that connectors without certain trading types return 404
       for (const connector of connectors) {
         const { name, trading_types } = connector;
-        
+
         // Test swap routes if not supported
         if (!trading_types.includes('swap')) {
           const response = await fastify.inject({
@@ -111,7 +111,7 @@ describe('App Integration - Route Registration', () => {
           });
           expect(response.statusCode).toBe(404);
         }
-        
+
         // Test AMM routes if not supported
         if (!trading_types.includes('amm')) {
           const response = await fastify.inject({
@@ -128,7 +128,7 @@ describe('App Integration - Route Registration', () => {
           });
           expect(response.statusCode).toBe(404);
         }
-        
+
         // Test CLMM routes if not supported
         if (!trading_types.includes('clmm')) {
           const response = await fastify.inject({

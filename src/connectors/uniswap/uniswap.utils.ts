@@ -83,45 +83,13 @@ export const parseFeeTier = (feeTier: string): FeeAmount => {
  * @returns The pool address if found, otherwise null
  */
 export const findPoolAddress = (
-  baseToken: string,
-  quoteToken: string,
-  poolType: 'amm' | 'clmm',
-  network: string,
+  _baseToken: string,
+  _quoteToken: string,
+  _poolType: 'amm' | 'clmm',
+  _network: string,
 ): string | null => {
-  const poolKey = `${baseToken}-${quoteToken}`;
-  const reversePoolKey = `${quoteToken}-${baseToken}`;
-
-  try {
-    // Check if we have network-specific pools configuration
-    if (
-      !UniswapConfig.config.networks ||
-      !UniswapConfig.config.networks[network]
-    ) {
-      logger.error(
-        `Network pools configuration not found for network: ${network}`,
-      );
-      return null;
-    }
-
-    const networkConfig = UniswapConfig.config.networks[network];
-
-    if (poolType === 'amm') {
-      // Check AMM pools for the given network
-      return (
-        networkConfig.amm[poolKey] || networkConfig.amm[reversePoolKey] || null
-      );
-    } else {
-      // Check CLMM pools for the given network
-      return (
-        networkConfig.clmm[poolKey] ||
-        networkConfig.clmm[reversePoolKey] ||
-        null
-      );
-    }
-  } catch (error) {
-    logger.error(`Error finding pool address: ${error}`);
-    return null;
-  }
+  // Pools are now managed separately, return null for dynamic pool discovery
+  return null;
 };
 
 /**

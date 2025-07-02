@@ -22,16 +22,16 @@ describe('Namespace Routes', () => {
 
       expect(response.statusCode).toBe(200);
       const data = JSON.parse(response.body);
-      
+
       expect(data).toHaveProperty('namespaces');
       expect(Array.isArray(data.namespaces)).toBe(true);
       expect(data.namespaces.length).toBeGreaterThan(0);
-      
+
       // Each namespace should be a string
       data.namespaces.forEach((namespace: any) => {
         expect(typeof namespace).toBe('string');
       });
-      
+
       // Check for some expected namespaces
       expect(data.namespaces).toContain('server');
       expect(data.namespaces).toContain('ethereum-mainnet');
@@ -48,10 +48,12 @@ describe('Namespace Routes', () => {
 
       const data = JSON.parse(response.body);
       const namespaces = data.namespaces;
-      
+
       // Check that namespaces are sorted alphabetically
       for (let i = 1; i < namespaces.length; i++) {
-        expect(namespaces[i].localeCompare(namespaces[i-1])).toBeGreaterThanOrEqual(0);
+        expect(
+          namespaces[i].localeCompare(namespaces[i - 1]),
+        ).toBeGreaterThanOrEqual(0);
       }
     });
   });

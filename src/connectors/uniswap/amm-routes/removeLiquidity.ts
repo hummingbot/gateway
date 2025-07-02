@@ -178,8 +178,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           .div(totalSupply);
 
         // Get the router contract with signer
-        const routerAddress =
-          uniswap.config.uniswapV2RouterAddress(networkToUse);
+        const routerAddress = getUniswapV2RouterAddress(networkToUse);
         const router = new Contract(
           routerAddress,
           IUniswapV2Router02ABI.abi,

@@ -24,24 +24,29 @@ describe('Jupiter Routes Structure', () => {
         method: 'GET',
         url: '/connectors',
       });
-      
+
       const { connectors } = JSON.parse(response.body);
-      const jupiterConfig = connectors.find((c: any) => c.name === CONNECTOR_NAME);
-      
+      const jupiterConfig = connectors.find(
+        (c: any) => c.name === CONNECTOR_NAME,
+      );
+
       expect(jupiterConfig).toBeDefined();
-      
-      const connectorPath = path.join(__dirname, `../../../src/connectors/${CONNECTOR_NAME}`);
-      
+
+      const connectorPath = path.join(
+        __dirname,
+        `../../../src/connectors/${CONNECTOR_NAME}`,
+      );
+
       // Check for swap-routes if swap is supported
       if (jupiterConfig.trading_types.includes('swap')) {
         const swapRoutesPath = path.join(connectorPath, 'swap-routes');
         expect(fs.existsSync(swapRoutesPath)).toBe(true);
-        
+
         // Verify it has the standard swap files
         const files = fs.readdirSync(swapRoutesPath);
-        expect(files.some(f => f.includes('Swap'))).toBe(true);
+        expect(files.some((f) => f.includes('Swap'))).toBe(true);
       }
-      
+
       // Ensure old 'routes' folder doesn't exist
       const oldRoutesPath = path.join(connectorPath, 'routes');
       expect(fs.existsSync(oldRoutesPath)).toBe(false);

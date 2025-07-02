@@ -16,6 +16,11 @@ jest.mock('../../src/services/logger', () => ({
   },
 }));
 
+jest.mock('../../src/wallet/utils', () => ({
+  ...jest.requireActual('../../src/wallet/utils'),
+  getReadOnlyWalletAddresses: jest.fn(),
+}));
+
 describe('Read-Only Wallet Integration Tests', () => {
   describe('Ethereum Chain Integration', () => {
     let ethereum: Ethereum;
@@ -25,7 +30,9 @@ describe('Read-Only Wallet Integration Tests', () => {
       ethereum = await Ethereum.getInstance('mainnet');
 
       // Mock getReadOnlyWalletAddresses to return our test address
-      jest.mocked(getReadOnlyWalletAddresses).mockResolvedValue([testAddress]);
+      (getReadOnlyWalletAddresses as jest.Mock).mockResolvedValue([
+        testAddress,
+      ]);
     });
 
     it('should identify read-only wallets correctly', async () => {
@@ -98,7 +105,9 @@ describe('Read-Only Wallet Integration Tests', () => {
       solana = await Solana.getInstance('mainnet-beta');
 
       // Mock getReadOnlyWalletAddresses to return our test address
-      jest.mocked(getReadOnlyWalletAddresses).mockResolvedValue([testAddress]);
+      (getReadOnlyWalletAddresses as jest.Mock).mockResolvedValue([
+        testAddress,
+      ]);
     });
 
     it('should identify read-only wallets correctly', async () => {

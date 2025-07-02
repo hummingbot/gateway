@@ -103,7 +103,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
 
         // Get position manager address
         const positionManagerAddress =
-          uniswap.config.uniswapV3NftManagerAddress(networkToUse);
+          getUniswapV3NftManagerAddress(networkToUse);
 
         // Create position manager contract
         const positionManager = new Contract(

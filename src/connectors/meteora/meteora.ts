@@ -17,13 +17,12 @@ export class Meteora {
   private static _instances: { [name: string]: Meteora };
   private static readonly MAX_BINS = 70;
   private solana: Solana;
-  public config: MeteoraConfig.NetworkConfig;
+  public config: MeteoraConfig.RootConfig;
   private dlmmPools: Map<string, DLMM> = new Map();
   private dlmmPoolPromises: Map<string, Promise<DLMM>> = new Map();
 
   private constructor() {
-    this.config =
-      MeteoraConfig.config as unknown as MeteoraConfig.NetworkConfig;
+    this.config = MeteoraConfig.config;
     this.solana = null; // Initialize as null since we need to await getInstance
   }
 
@@ -412,18 +411,10 @@ export class Meteora {
   }
 
   async findDefaultPool(
-    baseToken: string,
-    quoteToken: string,
+    _baseToken: string,
+    _quoteToken: string,
   ): Promise<string | null> {
-    // Get the network-specific pools
-    const network = this.solana.network;
-    const pools = MeteoraConfig.getNetworkPools(network, 'clmm');
-
-    if (!pools) return null;
-
-    const pairKey = this.getPairKey(baseToken, quoteToken);
-    const reversePairKey = this.getPairKey(quoteToken, baseToken);
-
-    return pools[pairKey] || pools[reversePairKey] || null;
+    // Pools are now managed separately, return null for dynamic pool discovery
+    return null;
   }
 }

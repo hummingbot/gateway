@@ -6,12 +6,7 @@ import { logger } from '../services/logger';
 import { JupiterConfig } from './jupiter/jupiter.config';
 import { MeteoraConfig } from './meteora/meteora.config';
 import { RaydiumConfig } from './raydium/raydium.config';
-import {
-  UniswapConfig,
-  uniswapNetworks,
-  uniswapAmmNetworks,
-  uniswapClmmNetworks,
-} from './uniswap/uniswap.config';
+import { UniswapConfig } from './uniswap/uniswap.config';
 
 // Define the schema using Typebox
 const ConnectorSchema = Type.Object({
@@ -68,7 +63,7 @@ export const connectorsRoutes: FastifyPluginAsync = async (fastify) => {
           name: 'uniswap',
           trading_types: ['amm', 'clmm', 'swap'],
           chain: 'ethereum',
-          networks: uniswapNetworks,
+          networks: UniswapConfig.networks,
         },
       ];
 

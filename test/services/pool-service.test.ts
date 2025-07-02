@@ -25,9 +25,9 @@ describe('PoolService', () => {
   describe('validatePool', () => {
     it('should validate Solana pool with correct address', async () => {
       const pool: Pool = {
-        baseTokenSymbol: 'SOL',
-        quoteTokenSymbol: 'USDC',
-        connector: 'raydium/amm',
+        type: 'amm',
+        baseSymbol: 'SOL',
+        quoteSymbol: 'USDC',
         network: 'mainnet-beta',
         address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
       };
@@ -39,9 +39,9 @@ describe('PoolService', () => {
 
     it('should reject Solana pool with invalid address', async () => {
       const pool: Pool = {
-        baseTokenSymbol: 'SOL',
-        quoteTokenSymbol: 'USDC',
-        connector: 'raydium/amm',
+        type: 'amm',
+        baseSymbol: 'SOL',
+        quoteSymbol: 'USDC',
         network: 'mainnet-beta',
         address: 'invalid-address',
       };
@@ -53,9 +53,9 @@ describe('PoolService', () => {
 
     it('should validate Ethereum pool with correct address', async () => {
       const pool: Pool = {
-        baseTokenSymbol: 'ETH',
-        quoteTokenSymbol: 'USDC',
-        connector: 'uniswap/amm',
+        type: 'amm',
+        baseSymbol: 'ETH',
+        quoteSymbol: 'USDC',
         network: 'mainnet',
         address: '0xb4e16d0168e52d35cacd2c6185b44281ec28c9dc',
       };
@@ -67,9 +67,9 @@ describe('PoolService', () => {
 
     it('should reject Ethereum pool with invalid address', async () => {
       const pool: Pool = {
-        baseTokenSymbol: 'ETH',
-        quoteTokenSymbol: 'USDC',
-        connector: 'uniswap/amm',
+        baseSymbol: 'ETH',
+        quoteSymbol: 'USDC',
+        type: 'amm',
         network: 'mainnet',
         address: 'invalid-address',
       };
@@ -81,9 +81,9 @@ describe('PoolService', () => {
 
     it('should reject pool with missing base token symbol', async () => {
       const pool: Pool = {
-        baseTokenSymbol: '',
-        quoteTokenSymbol: 'USDC',
-        connector: 'raydium/amm',
+        baseSymbol: '',
+        quoteSymbol: 'USDC',
+        type: 'amm',
         network: 'mainnet-beta',
         address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
       };
@@ -95,9 +95,9 @@ describe('PoolService', () => {
 
     it('should reject pool with missing quote token symbol', async () => {
       const pool: Pool = {
-        baseTokenSymbol: 'SOL',
-        quoteTokenSymbol: '',
-        connector: 'raydium/amm',
+        baseSymbol: 'SOL',
+        quoteSymbol: '',
+        type: 'amm',
         network: 'mainnet-beta',
         address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
       };
@@ -118,9 +118,9 @@ describe('PoolService', () => {
       ];
 
       for (const connector of solanaConnectors) {
-        await expect(
-          poolService.loadPoolList('solana', 'mainnet-beta', connector),
-        ).rejects.not.toThrow(/not supported on Solana/);
+        await expect(poolService.loadPoolList(connector)).rejects.not.toThrow(
+          /not supported on Solana/,
+        );
       }
     });
 
@@ -128,20 +128,17 @@ describe('PoolService', () => {
       const ethereumConnectors = ['uniswap/amm', 'uniswap/clmm'];
 
       for (const connector of ethereumConnectors) {
-        await expect(
-          poolService.loadPoolList('ethereum', 'mainnet', connector),
-        ).rejects.not.toThrow(/not supported on Ethereum/);
+        await expect(poolService.loadPoolList(connector)).rejects.not.toThrow(
+          /not supported on Ethereum/,
+        );
       }
     });
 
-    it('should reject invalid chain-connector combinations', async () => {
+    it('should handle invalid connectors', async () => {
+      // The validation logic has changed - now we just test loading
       await expect(
-        poolService.loadPoolList('solana', 'mainnet-beta', 'uniswap/amm'),
-      ).rejects.toThrow('Connector uniswap/amm is not supported on Solana');
-
-      await expect(
-        poolService.loadPoolList('ethereum', 'mainnet', 'raydium/amm'),
-      ).rejects.toThrow('Connector raydium/amm is not supported on Ethereum');
+        poolService.loadPoolList('invalid-connector'),
+      ).rejects.toThrow();
     });
   });
 
@@ -149,9 +146,9 @@ describe('PoolService', () => {
     it('should load pool list from file', async () => {
       const mockPools = [
         {
-          baseTokenSymbol: 'SOL',
-          quoteTokenSymbol: 'USDC',
-          connector: 'raydium/amm',
+          baseSymbol: 'SOL',
+          quoteSymbol: 'USDC',
+          type: 'amm',
           network: 'mainnet-beta',
           address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
         },
@@ -172,9 +169,9 @@ describe('PoolService', () => {
     it('should initialize from template if file does not exist', async () => {
       const mockTemplatePools = [
         {
-          baseTokenSymbol: 'SOL',
-          quoteTokenSymbol: 'USDC',
-          connector: 'raydium/amm',
+          baseSymbol: 'SOL',
+          quoteSymbol: 'USDC',
+          type: 'amm',
           network: 'mainnet-beta',
           address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
         },
@@ -214,9 +211,9 @@ describe('PoolService', () => {
       (fs.existsSync as jest.Mock).mockReturnValue(true);
       (fs.readFileSync as jest.Mock).mockReturnValue('invalid json');
 
-      await expect(
-        poolService.loadPoolList('solana', 'mainnet-beta', 'raydium/amm'),
-      ).rejects.toThrow('Invalid JSON in pool list file');
+      await expect(poolService.loadPoolList('raydium')).rejects.toThrow(
+        'Invalid JSON in pool list file',
+      );
     });
   });
 
@@ -224,9 +221,9 @@ describe('PoolService', () => {
     it('should save pool list with atomic write', async () => {
       const pools = [
         {
-          baseTokenSymbol: 'SOL',
-          quoteTokenSymbol: 'USDC',
-          connector: 'raydium/amm',
+          baseSymbol: 'SOL',
+          quoteSymbol: 'USDC',
+          type: 'amm',
           network: 'mainnet-beta',
           address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
         },
@@ -236,12 +233,7 @@ describe('PoolService', () => {
       (fs.writeFileSync as jest.Mock).mockImplementation();
       (fs.renameSync as jest.Mock).mockImplementation();
 
-      await poolService.savePoolList(
-        'solana',
-        'mainnet-beta',
-        'raydium/amm',
-        pools,
-      );
+      await poolService.savePoolList('raydium', pools);
 
       expect(fs.writeFileSync).toHaveBeenCalled();
       expect(fs.renameSync).toHaveBeenCalled();
@@ -250,9 +242,9 @@ describe('PoolService', () => {
     it('should clean up temp file on error', async () => {
       const pools = [
         {
-          baseTokenSymbol: 'SOL',
-          quoteTokenSymbol: 'USDC',
-          connector: 'raydium/amm',
+          baseSymbol: 'SOL',
+          quoteSymbol: 'USDC',
+          type: 'amm',
           network: 'mainnet-beta',
           address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
         },
@@ -264,14 +256,9 @@ describe('PoolService', () => {
       });
       (fs.unlinkSync as jest.Mock).mockImplementation();
 
-      await expect(
-        poolService.savePoolList(
-          'solana',
-          'mainnet-beta',
-          'raydium/amm',
-          pools,
-        ),
-      ).rejects.toThrow('Failed to save pool list');
+      await expect(poolService.savePoolList('raydium', pools)).rejects.toThrow(
+        'Failed to save pool list',
+      );
 
       expect(fs.unlinkSync).toHaveBeenCalled();
     });
@@ -281,9 +268,9 @@ describe('PoolService', () => {
     it('should list pools for specific connector', async () => {
       const mockPools = [
         {
-          baseTokenSymbol: 'SOL',
-          quoteTokenSymbol: 'USDC',
-          connector: 'raydium/amm',
+          baseSymbol: 'SOL',
+          quoteSymbol: 'USDC',
+          type: 'amm',
           network: 'mainnet-beta',
           address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
         },
@@ -304,18 +291,18 @@ describe('PoolService', () => {
     it('should list pools for all connectors when connector not specified', async () => {
       const rammPools = [
         {
-          baseTokenSymbol: 'SOL',
-          quoteTokenSymbol: 'USDC',
-          connector: 'raydium/amm',
+          baseSymbol: 'SOL',
+          quoteSymbol: 'USDC',
+          type: 'amm',
           network: 'mainnet-beta',
           address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
         },
       ];
       const rclmmPools = [
         {
-          baseTokenSymbol: 'SOL',
-          quoteTokenSymbol: 'USDC',
-          connector: 'raydium/clmm',
+          baseSymbol: 'SOL',
+          quoteSymbol: 'USDC',
+          type: 'clmm',
           network: 'mainnet-beta',
           address: '3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv',
         },
@@ -336,16 +323,16 @@ describe('PoolService', () => {
     it('should filter pools by search term', async () => {
       const mockPools = [
         {
-          baseTokenSymbol: 'SOL',
-          quoteTokenSymbol: 'USDC',
-          connector: 'raydium/amm',
+          baseSymbol: 'SOL',
+          quoteSymbol: 'USDC',
+          type: 'amm',
           network: 'mainnet-beta',
           address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
         },
         {
-          baseTokenSymbol: 'RAY',
-          quoteTokenSymbol: 'USDC',
-          connector: 'raydium/amm',
+          baseSymbol: 'RAY',
+          quoteSymbol: 'USDC',
+          type: 'amm',
           network: 'mainnet-beta',
           address: '6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg',
         },
@@ -362,7 +349,7 @@ describe('PoolService', () => {
       );
 
       expect(pools).toHaveLength(1);
-      expect(pools[0].baseTokenSymbol).toBe('SOL');
+      expect(pools[0].baseSymbol).toBe('SOL');
     });
   });
 
@@ -370,9 +357,9 @@ describe('PoolService', () => {
     it('should find pool by exact token pair', async () => {
       const mockPools = [
         {
-          baseTokenSymbol: 'SOL',
-          quoteTokenSymbol: 'USDC',
-          connector: 'raydium/amm',
+          baseSymbol: 'SOL',
+          quoteSymbol: 'USDC',
+          type: 'amm',
           network: 'mainnet-beta',
           address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
         },
@@ -395,9 +382,9 @@ describe('PoolService', () => {
     it('should find pool by reversed token pair', async () => {
       const mockPools = [
         {
-          baseTokenSymbol: 'SOL',
-          quoteTokenSymbol: 'USDC',
-          connector: 'raydium/amm',
+          baseSymbol: 'SOL',
+          quoteSymbol: 'USDC',
+          type: 'amm',
           network: 'mainnet-beta',
           address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
         },
@@ -436,9 +423,9 @@ describe('PoolService', () => {
   describe('addPool', () => {
     it('should add new pool successfully', async () => {
       const newPool: Pool = {
-        baseTokenSymbol: 'WIF',
-        quoteTokenSymbol: 'SOL',
-        connector: 'raydium/amm',
+        baseSymbol: 'WIF',
+        quoteSymbol: 'SOL',
+        type: 'amm',
         network: 'mainnet-beta',
         address: 'EP2ib6dYdEeqD8MfE2ezHCxX3kP3K2eLKkirfPm5eyMx',
       };
@@ -455,17 +442,17 @@ describe('PoolService', () => {
 
     it('should reject duplicate pool address', async () => {
       const existingPool = {
-        baseTokenSymbol: 'SOL',
-        quoteTokenSymbol: 'USDC',
-        connector: 'raydium/amm',
+        baseSymbol: 'SOL',
+        quoteSymbol: 'USDC',
+        type: 'amm',
         network: 'mainnet-beta',
         address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
       };
 
       const newPool: Pool = {
-        baseTokenSymbol: 'RAY',
-        quoteTokenSymbol: 'USDT',
-        connector: 'raydium/amm',
+        baseSymbol: 'RAY',
+        quoteSymbol: 'USDT',
+        type: 'amm',
         network: 'mainnet-beta',
         address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2', // Same address
       };
@@ -482,17 +469,17 @@ describe('PoolService', () => {
 
     it('should reject duplicate token pair', async () => {
       const existingPool = {
-        baseTokenSymbol: 'SOL',
-        quoteTokenSymbol: 'USDC',
-        connector: 'raydium/amm',
+        baseSymbol: 'SOL',
+        quoteSymbol: 'USDC',
+        type: 'amm',
         network: 'mainnet-beta',
         address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
       };
 
       const newPool: Pool = {
-        baseTokenSymbol: 'SOL',
-        quoteTokenSymbol: 'USDC',
-        connector: 'raydium/amm',
+        baseSymbol: 'SOL',
+        quoteSymbol: 'USDC',
+        type: 'amm',
         network: 'mainnet-beta',
         address: 'DifferentAddress',
       };
@@ -511,9 +498,9 @@ describe('PoolService', () => {
   describe('removePool', () => {
     it('should remove pool by address', async () => {
       const existingPool = {
-        baseTokenSymbol: 'SOL',
-        quoteTokenSymbol: 'USDC',
-        connector: 'raydium/amm',
+        baseSymbol: 'SOL',
+        quoteSymbol: 'USDC',
+        type: 'amm',
         network: 'mainnet-beta',
         address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
       };
@@ -554,16 +541,16 @@ describe('PoolService', () => {
     it('should return pools as key-value pairs', async () => {
       const mockPools = [
         {
-          baseTokenSymbol: 'SOL',
-          quoteTokenSymbol: 'USDC',
-          connector: 'raydium/amm',
+          baseSymbol: 'SOL',
+          quoteSymbol: 'USDC',
+          type: 'amm',
           network: 'mainnet-beta',
           address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
         },
         {
-          baseTokenSymbol: 'RAY',
-          quoteTokenSymbol: 'USDC',
-          connector: 'raydium/amm',
+          baseSymbol: 'RAY',
+          quoteSymbol: 'USDC',
+          type: 'amm',
           network: 'mainnet-beta',
           address: '6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg',
         },
@@ -600,26 +587,22 @@ describe('PoolService', () => {
   describe('path validation', () => {
     it('should reject path traversal attempts', async () => {
       await expect(
-        poolService.loadPoolList('../../etc', 'passwd', 'connector'),
+        poolService.loadPoolList('../../etc/passwd'),
       ).rejects.toThrow();
 
-      await expect(
-        poolService.loadPoolList('solana', '../../../etc', 'connector'),
-      ).rejects.toThrow();
+      await expect(poolService.loadPoolList('../../../etc')).rejects.toThrow();
 
-      await expect(
-        poolService.loadPoolList('solana', 'mainnet-beta', '../../../etc'),
-      ).rejects.toThrow();
+      await expect(poolService.loadPoolList('../../../etc')).rejects.toThrow();
     });
 
     it('should reject invalid characters in path components', async () => {
-      await expect(
-        poolService.loadPoolList('sol$ana', 'mainnet-beta', 'raydium/amm'),
-      ).rejects.toThrow('Invalid chain name');
+      await expect(poolService.loadPoolList('sol$ana')).rejects.toThrow(
+        'Invalid chain name',
+      );
 
-      await expect(
-        poolService.loadPoolList('solana', 'main@net', 'raydium/amm'),
-      ).rejects.toThrow('Invalid network name');
+      await expect(poolService.loadPoolList('main@net')).rejects.toThrow(
+        'Invalid network name',
+      );
     });
   });
 });

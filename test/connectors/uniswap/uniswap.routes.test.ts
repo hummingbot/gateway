@@ -18,7 +18,10 @@ describe('Uniswap Routes Structure', () => {
 
   describe('Folder Structure', () => {
     it('should have swap-routes, amm-routes, and clmm-routes folders', () => {
-      const uniswapPath = path.join(__dirname, '../../../src/connectors/uniswap');
+      const uniswapPath = path.join(
+        __dirname,
+        '../../../src/connectors/uniswap',
+      );
       const swapRoutesPath = path.join(uniswapPath, 'swap-routes');
       const ammRoutesPath = path.join(uniswapPath, 'amm-routes');
       const clmmRoutesPath = path.join(uniswapPath, 'clmm-routes');
@@ -31,7 +34,10 @@ describe('Uniswap Routes Structure', () => {
     });
 
     it('should have correct files in swap-routes folder', () => {
-      const swapRoutesPath = path.join(__dirname, '../../../src/connectors/uniswap/swap-routes');
+      const swapRoutesPath = path.join(
+        __dirname,
+        '../../../src/connectors/uniswap/swap-routes',
+      );
       const files = fs.readdirSync(swapRoutesPath);
 
       expect(files).toContain('execute-swap.ts');

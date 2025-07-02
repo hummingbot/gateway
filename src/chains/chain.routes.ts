@@ -38,17 +38,17 @@ export const chainRoutes: FastifyPluginAsync = async (fastify) => {
       // that match the pattern {chain}-{network}
       const configManager = ConfigManagerV2.getInstance();
       const allNamespaces = Object.keys(configManager.namespaces);
-      
+
       // Group networks by chain
       const chainNetworks: { [chain: string]: string[] } = {};
-      
-      allNamespaces.forEach(namespace => {
+
+      allNamespaces.forEach((namespace) => {
         // Skip non-network namespaces
         if (!namespace.includes('-')) return;
-        
+
         const [chain, ...networkParts] = namespace.split('-');
         const network = networkParts.join('-'); // Handle networks like mainnet-beta
-        
+
         // Only process known chains
         if (['ethereum', 'solana'].includes(chain)) {
           if (!chainNetworks[chain]) {

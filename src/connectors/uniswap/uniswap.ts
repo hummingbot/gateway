@@ -18,6 +18,12 @@ import {
   IUniswapV2PairABI,
   IUniswapV2FactoryABI,
   IUniswapV2Router02ABI,
+  getUniswapV2RouterAddress,
+  getUniswapV2FactoryAddress,
+  getUniswapV3SmartOrderRouterAddress,
+  getUniswapV3NftManagerAddress,
+  getUniswapV3QuoterV2ContractAddress,
+  getUniswapV3FactoryAddress,
 } from './uniswap.contracts';
 import {
   findPoolAddress,
@@ -82,27 +88,27 @@ export class Uniswap {
 
       // Initialize V2 (AMM) contracts
       this.v2Factory = new Contract(
-        this.config.uniswapV2FactoryAddress(this.networkName),
+        getUniswapV2FactoryAddress(this.networkName),
         IUniswapV2FactoryABI.abi,
         this.ethereum.provider,
       );
 
       this.v2Router = new Contract(
-        this.config.uniswapV2RouterAddress(this.networkName),
+        getUniswapV2RouterAddress(this.networkName),
         IUniswapV2Router02ABI.abi,
         this.ethereum.provider,
       );
 
       // Initialize V3 (CLMM) contracts
       this.v3Factory = new Contract(
-        this.config.uniswapV3FactoryAddress(this.networkName),
+        getUniswapV3FactoryAddress(this.networkName),
         IUniswapV3FactoryABI,
         this.ethereum.provider,
       );
 
       // Initialize NFT Manager with minimal ABI
       this.v3NFTManager = new Contract(
-        this.config.uniswapV3NftManagerAddress(this.networkName),
+        getUniswapV3NftManagerAddress(this.networkName),
         [
           {
             inputs: [
@@ -119,7 +125,7 @@ export class Uniswap {
 
       // Initialize Quoter with minimal ABI
       this.v3Quoter = new Contract(
-        this.config.quoterContractAddress(this.networkName),
+        getUniswapV3QuoterV2ContractAddress(this.networkName),
         [
           {
             inputs: [
@@ -527,7 +533,7 @@ export class Uniswap {
     walletAddress: string,
   ): Promise<void> {
     const nftContract = new Contract(
-      this.config.uniswapV3NftManagerAddress(this.networkName),
+      getUniswapV3NftManagerAddress(this.networkName),
       [
         {
           inputs: [
@@ -570,7 +576,7 @@ export class Uniswap {
     operatorAddress: string,
   ): Promise<void> {
     const nftContract = new Contract(
-      this.config.uniswapV3NftManagerAddress(this.networkName),
+      getUniswapV3NftManagerAddress(this.networkName),
       [
         {
           inputs: [

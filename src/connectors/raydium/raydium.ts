@@ -35,13 +35,12 @@ export class Raydium {
   private static _instances: { [name: string]: Raydium };
   public solana: Solana; // Changed to public for use in route handlers
   public raydiumSDK: RaydiumSDK;
-  public config: RaydiumConfig.NetworkConfig;
+  public config: RaydiumConfig.RootConfig;
   public txVersion: TxVersion;
   private owner?: Keypair;
 
   private constructor() {
-    this.config =
-      RaydiumConfig.config as unknown as RaydiumConfig.NetworkConfig;
+    this.config = RaydiumConfig.config;
     this.solana = null;
     this.txVersion = TxVersion.V0;
   }
@@ -394,19 +393,11 @@ export class Raydium {
   }
 
   async findDefaultPool(
-    baseToken: string,
-    quoteToken: string,
-    routeType: 'amm' | 'clmm',
+    _baseToken: string,
+    _quoteToken: string,
+    _routeType: 'amm' | 'clmm',
   ): Promise<string | null> {
-    // Get the network-specific pools
-    const network = this.solana.network;
-    const pools = RaydiumConfig.getNetworkPools(network, routeType);
-
-    if (!pools) return null;
-
-    const pairKey = this.getPairKey(baseToken, quoteToken);
-    const reversePairKey = this.getPairKey(quoteToken, baseToken);
-
-    return pools[pairKey] || pools[reversePairKey] || null;
+    // Pools are now managed separately, return null for dynamic pool discovery
+    return null;
   }
 }

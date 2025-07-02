@@ -22,7 +22,7 @@ describe('Connector Routes', () => {
 
       expect(response.statusCode).toBe(200);
       const data = JSON.parse(response.body);
-      
+
       expect(data).toHaveProperty('connectors');
       expect(Array.isArray(data.connectors)).toBe(true);
       expect(data.connectors.length).toBeGreaterThan(0);
@@ -33,17 +33,17 @@ describe('Connector Routes', () => {
         expect(connector).toHaveProperty('trading_types');
         expect(connector).toHaveProperty('chain');
         expect(connector).toHaveProperty('networks');
-        
+
         // Verify trading_types is an array with valid values
         expect(Array.isArray(connector.trading_types)).toBe(true);
         expect(connector.trading_types.length).toBeGreaterThan(0);
         connector.trading_types.forEach((type: string) => {
           expect(['swap', 'amm', 'clmm']).toContain(type);
         });
-        
+
         // Verify chain is valid
         expect(['ethereum', 'solana']).toContain(connector.chain);
-        
+
         // Verify networks is an array
         expect(Array.isArray(connector.networks)).toBe(true);
         expect(connector.networks.length).toBeGreaterThan(0);

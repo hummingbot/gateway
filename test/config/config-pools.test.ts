@@ -1,10 +1,6 @@
 import { FastifyInstance } from 'fastify';
 
-import {
-  getDefaultPools,
-  addDefaultPool,
-  removeDefaultPool,
-} from '../../src/config/utils';
+import { getDefaultPools } from '../../src/config/utils';
 import { ConfigManagerV2 } from '../../src/services/config-manager-v2';
 
 // Mock dependencies before importing functions
@@ -180,105 +176,6 @@ describe('Pool Configuration Tests', () => {
         expect.stringContaining(
           'Retrieved default pools for raydium/amm on network devnet',
         ),
-      );
-    });
-  });
-
-  describe('addDefaultPool', () => {
-    it('should throw an error if connector name is missing', () => {
-      expect(() => {
-        addDefaultPool(mockFastify, '', 'SOL', 'USDC', 'pool-address');
-      }).toThrow('Bad Request: Connector name is required');
-    });
-
-    it('should throw an error if connector type is missing', () => {
-      expect(() => {
-        addDefaultPool(mockFastify, 'raydium', 'SOL', 'USDC', 'pool-address');
-      }).toThrow('Bad Request: Connector type is required');
-    });
-
-    it('should throw an error if pool address is missing', () => {
-      expect(() => {
-        addDefaultPool(mockFastify, 'raydium/amm', 'SOL', 'USDC', undefined);
-      }).toThrow('Bad Request: Pool address is required');
-    });
-
-    it('should add a pool to the configuration', () => {
-      addDefaultPool(
-        mockFastify,
-        'raydium/amm',
-        'SOL',
-        'USDC',
-        'new-pool-address',
-      );
-      expect(mockSet).toHaveBeenCalledWith(
-        'raydium.networks.mainnet-beta.amm.SOL-USDC',
-        'new-pool-address',
-      );
-      expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining(
-          'Added default pool for raydium/amm: SOL-USDC (address: new-pool-address) on network mainnet-beta',
-        ),
-      );
-    });
-
-    it('should throw an error if configuration is not found', () => {
-      mockGetNamespace.mockReturnValue(null);
-
-      expect(() => {
-        addDefaultPool(
-          mockFastify,
-          'unknown/amm',
-          'SOL',
-          'USDC',
-          'pool-address',
-        );
-      }).toThrow(
-        'Internal Server Error: Failed to add default pool: Connector unknown configuration not found or missing networks',
-      );
-
-      expect(logger.error).toHaveBeenCalledWith(
-        expect.stringContaining('Failed to add default pool'),
-      );
-    });
-  });
-
-  describe('removeDefaultPool', () => {
-    it('should throw an error if connector name is missing', () => {
-      expect(() => {
-        removeDefaultPool(mockFastify, '', 'SOL', 'USDC');
-      }).toThrow('Bad Request: Connector name is required');
-    });
-
-    it('should throw an error if connector type is missing', () => {
-      expect(() => {
-        removeDefaultPool(mockFastify, 'raydium', 'SOL', 'USDC');
-      }).toThrow('Bad Request: Connector type is required');
-    });
-
-    it('should remove a pool from the configuration', () => {
-      removeDefaultPool(mockFastify, 'raydium/amm', 'SOL', 'USDC');
-      expect(mockDelete).toHaveBeenCalledWith(
-        'raydium.networks.mainnet-beta.amm.SOL-USDC',
-      );
-      expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining(
-          'Removed default pool for raydium/amm: SOL-USDC on network mainnet-beta',
-        ),
-      );
-    });
-
-    it('should throw an error if configuration is not found', () => {
-      mockGetNamespace.mockReturnValue(null);
-
-      expect(() => {
-        removeDefaultPool(mockFastify, 'unknown/amm', 'SOL', 'USDC');
-      }).toThrow(
-        'Internal Server Error: Failed to remove default pool: Connector unknown configuration not found or missing networks',
-      );
-
-      expect(logger.error).toHaveBeenCalledWith(
-        expect.stringContaining('Failed to remove default pool'),
       );
     });
   });

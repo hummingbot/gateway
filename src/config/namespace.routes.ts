@@ -31,9 +31,9 @@ export const namespaceRoutes: FastifyPluginAsync = async (fastify) => {
 
       const configManager = ConfigManagerV2.getInstance();
       const namespaces = Object.keys(configManager.namespaces).sort();
-      
+
       logger.info(
-        `Found ${namespaces.length} namespaces: ${namespaces.join(', ')}`
+        `Found ${namespaces.length} namespaces: ${namespaces.join(', ')}`,
       );
 
       return { namespaces };

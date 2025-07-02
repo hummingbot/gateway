@@ -3,11 +3,6 @@ import path from 'path';
 import Fastify, { FastifyInstance } from 'fastify';
 import fse from 'fs-extra';
 
-import {
-  getReadOnlyWalletAddresses,
-  saveReadOnlyWalletAddresses,
-  walletPath,
-} from '../../src/wallet/utils';
 import { walletRoutes } from '../../src/wallet/wallet.routes';
 
 // Mock dependencies
@@ -26,6 +21,24 @@ jest.mock('../../src/services/config-manager-cert-passphrase', () => ({
   },
 }));
 
+// Mock wallet utils with test path
+const testWalletPath = path.join(__dirname, 'test-wallets');
+jest.mock('../../src/wallet/utils', () => {
+  const actual = jest.requireActual('../../src/wallet/utils');
+  return {
+    ...actual,
+    walletPath: testWalletPath,
+    getReadOnlyWalletFilePath: (chain: string) =>
+      `${testWalletPath}/${chain.toLowerCase()}/read-only.json`,
+  };
+});
+
+// Import after mocking
+import {
+  getReadOnlyWalletAddresses,
+  saveReadOnlyWalletAddresses,
+} from '../../src/wallet/utils';
+
 // Test data
 const TEST_ETH_ADDRESS = '0x742d35Cc6634C0532925a3b844Bc9e7595f0Bfee';
 const TEST_ETH_ADDRESS_2 = '0x5aAeb6053f3E94C9b9A09f33669435E7Ef1BeAed';
@@ -34,15 +47,8 @@ const TEST_SOL_ADDRESS_2 = '11111111111111111111111111111111';
 
 describe('Read-Only Wallet Tests', () => {
   let fastify: FastifyInstance;
-  const testWalletPath = path.join(__dirname, 'test-wallets');
 
   beforeEach(async () => {
-    // Override wallet path for tests
-    Object.defineProperty(walletPath, 'valueOf', {
-      value: () => testWalletPath,
-      configurable: true,
-    });
-
     // Clean up test directory
     await fse.remove(testWalletPath);
     await fse.ensureDir(testWalletPath);
