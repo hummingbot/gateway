@@ -24,8 +24,8 @@ import positionsOwnedRoute from './clmm-routes/positionsOwned';
 import quotePositionRoute from './clmm-routes/quotePosition';
 import clmmQuoteSwapRoute from './clmm-routes/quoteSwap';
 import clmmRemoveLiquidityRoute from './clmm-routes/removeLiquidity';
-import executeSwapRoute from './swap-routes/execute-swap';
-import quoteSwapRoute from './swap-routes/quote-swap';
+import executeSwapRoute from './swap-routes/executeSwap';
+import quoteSwapRoute from './swap-routes/quoteSwap';
 
 // Swap routes (Universal Router)
 const uniswapSwapRoutes: FastifyPluginAsync = async (fastify) => {

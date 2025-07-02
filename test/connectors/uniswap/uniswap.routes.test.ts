@@ -43,8 +43,8 @@ describe('Uniswap Routes Structure', () => {
       );
       const files = fs.readdirSync(swapRoutesPath);
 
-      expect(files).toContain('execute-swap.ts');
-      expect(files).toContain('quote-swap.ts');
+      expect(files).toContain('executeSwap.ts');
+      expect(files).toContain('quoteSwap.ts');
     });
   });
 

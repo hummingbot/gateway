@@ -12,7 +12,7 @@ import { logger } from '../../../services/logger';
 import { UniswapConfig } from '../uniswap.config';
 import { formatTokenAmount } from '../uniswap.utils';
 
-import { getUniswapQuote } from './quote-swap';
+import { getUniswapQuote } from './quoteSwap';
 
 export const executeSwapRoute: FastifyPluginAsync = async (
   fastify,
