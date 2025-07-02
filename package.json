@@ -9,14 +9,14 @@
     "node": ">=20.0.0"
   },
   "imports": {
-    "#src": "./src",
+    "#src": "./src/index.ts",
     "#src/*": "./src/*",
     "#test": "./test",
     "#test/*": "./test/*"
   },
   "scripts": {
     "prebuild": "rimraf dist && mkdir dist",
-    "build": "tsc --project tsconfig.build.json && pnpm run copy-files",
+    "build": "tsc --project tsconfig.build.json && tsc-alias -p tsconfig.build.json && pnpm run copy-files",
     "clean": "rm -rf ./node_modules && rm -rf ./coverage && rm -rf ./logs",
     "clean:config": "find ./conf -maxdepth 1 -type f -delete",
     "format": "prettier . --write",
@@ -152,7 +152,8 @@
     "ts-jest": "^29.3.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.2",
-    "viem": "^0.3.50"
+    "viem": "^0.3.50",
+    "tsc-alias": "^1.8.8"
   },
   "resolutions": {
     "@types/bn.js": "5.1.6",
