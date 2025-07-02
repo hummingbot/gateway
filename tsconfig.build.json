@@ -3,6 +3,7 @@
   "compilerOptions": {
     "incremental": true,
     "composite": true,
+    "tsBuildInfoFile": "./dist/.tsbuildinfo",
     "skipLibCheck": true,
     "sourceMap": true,
     "inlineSourceMap": false
