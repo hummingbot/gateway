@@ -23,9 +23,7 @@ import { checkLPAllowance } from './positionInfo';
 
 export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   await fastify.register(require('@fastify/sensible'));
-
-  // Get first wallet address for example
-  const firstWalletAddress = await Ethereum.getWalletAddressExample();
+  const walletAddressExample = await Ethereum.getWalletAddressExample();
 
   fastify.post<{
     Body: RemoveLiquidityRequestType;
@@ -41,7 +39,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             ...RemoveLiquidityRequest.properties,
             network: { type: 'string', default: 'base' },
-            walletAddress: { type: 'string', examples: [firstWalletAddress] },
+            walletAddress: { type: 'string', examples: [walletAddressExample] },
             poolAddress: {
               type: 'string',
               examples: [''],

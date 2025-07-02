@@ -32,8 +32,7 @@ import {
 export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
   await fastify.register(require('@fastify/sensible'));
 
-  // Get first wallet address for example
-  const firstWalletAddress = await Ethereum.getWalletAddressExample();
+  const walletAddressExample = await Ethereum.getWalletAddressExample();
 
   fastify.post<{
     Body: OpenPositionRequestType;
@@ -49,7 +48,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             ...OpenPositionRequest.properties,
             network: { type: 'string', default: 'base' },
-            walletAddress: { type: 'string', examples: [firstWalletAddress] },
+            walletAddress: { type: 'string', examples: [walletAddressExample] },
             lowerPrice: { type: 'number', examples: [1000] },
             upperPrice: { type: 'number', examples: [4000] },
             poolAddress: { type: 'string', examples: [''] },

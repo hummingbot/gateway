@@ -5,7 +5,6 @@
     "module": "CommonJS",
     "allowJs": true,
     "inlineSourceMap": true,
-    "outDir": "./dist",
     "removeComments": true,
     "noImplicitAny": false,
     "strictFunctionTypes": true,
@@ -21,24 +20,15 @@
     "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
-      "#src/*": [
-        "src/*"
-      ],
-      "#test/*": [
-        "test/*"
-      ]
+      "#src": ["src/index.ts"],
+      "#src/*": ["src/*"],
+      "#test": ["test"],
+      "#test/*": ["test/*"]
     },
     "typeRoots": ["node_modules/@types", "src/@types"],
     "downlevelIteration": true,
     "skipLibCheck": true
   },
-  "exclude": [
-    "node_modules"
-  ],
-  "include": [
-    "src/**/*.ts",
-    "src/**/*.js",
-    "test/**/*.ts",
-    "test-scripts/**/*.ts"
-  ]
+  "exclude": ["node_modules", "dist", "coverage"],
+  "include": ["src/**/*.ts", "test/**/*.ts", "test-scripts/**/*.ts"]
 }

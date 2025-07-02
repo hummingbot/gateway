@@ -184,8 +184,7 @@ export async function getEthereumBalances(
 }
 
 export const balancesRoute: FastifyPluginAsync = async (fastify) => {
-  // Get first wallet address for example
-  const firstWalletAddress = await Ethereum.getWalletAddressExample();
+  const walletAddressExample = await Ethereum.getWalletAddressExample();
 
   fastify.post<{
     Body: BalanceRequestType;
@@ -215,7 +214,7 @@ export const balancesRoute: FastifyPluginAsync = async (fastify) => {
                 'polygon',
               ],
             },
-            address: { type: 'string', examples: [firstWalletAddress] },
+            address: { type: 'string', examples: [walletAddressExample] },
             tokens: {
               type: 'array',
               items: { type: 'string' },

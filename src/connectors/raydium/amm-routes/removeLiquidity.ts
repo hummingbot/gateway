@@ -247,13 +247,7 @@ async function removeLiquidity(
 }
 
 export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
-  // Get first wallet address for example
-  const firstWalletAddress = await Solana.getWalletAddressExample();
-
-  // Update schema example
-  RemoveLiquidityRequest.properties.walletAddress.examples = [
-    firstWalletAddress,
-  ];
+  const walletAddressExample = await Solana.getWalletAddressExample();
 
   fastify.post<{
     Body: RemoveLiquidityRequestType;

@@ -189,8 +189,7 @@ export async function getEthereumAllowances(
 }
 
 export const allowancesRoute: FastifyPluginAsync = async (fastify) => {
-  // Get first wallet address for example
-  const firstWalletAddress = await Ethereum.getWalletAddressExample();
+  const walletAddressExample = await Ethereum.getWalletAddressExample();
 
   fastify.post<{
     Body: AllowancesRequestType;
@@ -215,7 +214,7 @@ export const allowancesRoute: FastifyPluginAsync = async (fastify) => {
               'polygon',
             ],
           }),
-          address: Type.String({ examples: [firstWalletAddress] }),
+          address: Type.String({ examples: [walletAddressExample] }),
           spender: Type.String({
             examples: [
               'uniswap/clmm',

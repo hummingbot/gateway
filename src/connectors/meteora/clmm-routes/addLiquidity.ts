@@ -204,11 +204,7 @@ export type MeteoraAddLiquidityRequestType = Static<
 >;
 
 export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
-  // Get first wallet address for example
-  const firstWalletAddress = await Solana.getWalletAddressExample();
-
-  // Update schema example
-  AddLiquidityRequest.properties.walletAddress.examples = [firstWalletAddress];
+  const walletAddressExample = await Solana.getWalletAddressExample();
 
   fastify.post<{
     Body: MeteoraAddLiquidityRequestType;
@@ -224,6 +220,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             ...AddLiquidityRequest.properties,
             network: { type: 'string', default: 'mainnet-beta' },
+            walletAddress: { type: 'string', examples: [walletAddressExample] },
             slippagePct: { type: 'number', examples: [1] },
             strategyType: {
               type: 'number',

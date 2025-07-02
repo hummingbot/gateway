@@ -156,11 +156,7 @@ async function closePosition(
 }
 
 export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
-  // Get first wallet address for example
-  const firstWalletAddress = await Solana.getWalletAddressExample();
-
-  // Update schema example
-  ClosePositionRequest.properties.walletAddress.examples = [firstWalletAddress];
+  const walletAddressExample = await Solana.getWalletAddressExample();
 
   fastify.post<{
     Body: ClosePositionRequestType;
@@ -175,6 +171,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
           ...ClosePositionRequest,
           properties: {
             ...ClosePositionRequest.properties,
+            walletAddress: { type: 'string', examples: [walletAddressExample] },
             network: { type: 'string', default: 'mainnet-beta' },
             positionAddress: { type: 'string' },
           },

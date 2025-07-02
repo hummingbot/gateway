@@ -37,8 +37,7 @@ export async function checkLPAllowance(
 }
 
 export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
-  // Get first wallet address for example
-  const firstWalletAddress = await Ethereum.getWalletAddressExample();
+  const walletAddressExample = await Ethereum.getWalletAddressExample();
 
   fastify.get<{
     Querystring: GetPositionInfoRequestType;
@@ -53,7 +52,13 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
           ...GetPositionInfoRequest,
           properties: {
             network: { type: 'string', default: 'base' },
-            walletAddress: { type: 'string', examples: [firstWalletAddress] },
+            walletAddress: { type: 'string', examples: [walletAddressExample] },
+            poolAddress: {
+              type: 'string',
+              examples: [''],
+            },
+            baseToken: { type: 'string', examples: ['WETH'] },
+            quoteToken: { type: 'string', examples: ['USDC'] },
           },
         },
         response: {

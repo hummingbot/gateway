@@ -23,8 +23,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
   // Import the httpErrors plugin to ensure it's available
   await fastify.register(require('@fastify/sensible'));
 
-  // Get first wallet address for example
-  const firstWalletAddress = await Ethereum.getWalletAddressExample();
+  const walletAddressExample = await Ethereum.getWalletAddressExample();
 
   fastify.post<{
     Body: ExecuteSwapRequestType;
@@ -40,7 +39,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             ...ExecuteSwapRequest.properties,
             network: { type: 'string', default: 'base' },
-            walletAddress: { type: 'string', examples: [firstWalletAddress] },
+            walletAddress: { type: 'string', examples: [walletAddressExample] },
             baseToken: { type: 'string', examples: ['WETH'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
             amount: { type: 'number', examples: [0.001] },

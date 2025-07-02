@@ -22,7 +22,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (
   await fastify.register(require('@fastify/sensible'));
 
   // Get first wallet address for example
-  const firstWalletAddress = await Ethereum.getWalletAddressExample();
+  const walletAddressExample = await Ethereum.getWalletAddressExample();
 
   // Get available networks from Uniswap configuration
   const ethereumNetworks = UniswapConfig.networks;
@@ -45,7 +45,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (
               default: 'mainnet',
               enum: ethereumNetworks,
             },
-            walletAddress: { type: 'string', examples: [firstWalletAddress] },
+            walletAddress: { type: 'string', examples: [walletAddressExample] },
             baseToken: { type: 'string', examples: ['WETH'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
             amount: { type: 'number', examples: [0.001] },

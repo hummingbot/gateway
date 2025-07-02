@@ -181,8 +181,7 @@ export async function approveEthereumToken(
 }
 
 export const approveRoute: FastifyPluginAsync = async (fastify) => {
-  // Get first wallet address for example
-  const firstWalletAddress = await Ethereum.getWalletAddressExample();
+  const walletAddressExample = await Ethereum.getWalletAddressExample();
 
   fastify.post<{
     Body: ApproveRequestType;
@@ -207,7 +206,7 @@ export const approveRoute: FastifyPluginAsync = async (fastify) => {
               'polygon',
             ],
           }),
-          address: Type.String({ examples: [firstWalletAddress] }),
+          address: Type.String({ examples: [walletAddressExample] }),
           spender: Type.String({
             examples: [
               'uniswap/clmm',

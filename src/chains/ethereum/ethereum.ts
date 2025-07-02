@@ -34,6 +34,7 @@ export type NewDebugMsgHandler = (msg: any) => void;
 
 export class Ethereum {
   private static _instances: { [name: string]: Ethereum };
+  private static _walletAddressExample: string | null = null;
   public provider: providers.StaticJsonRpcProvider;
   public tokenList: TokenInfo[] = [];
   public tokenMap: Record<string, TokenInfo> = {};
@@ -311,9 +312,6 @@ export class Ethereum {
     return new Wallet(privateKey, this.provider);
   }
 
-  /**
-   * Get a wallet from stored encrypted key
-   */
   /**
    * Validate Ethereum address format
    * @param address The address to validate
@@ -709,14 +707,22 @@ export class Ethereum {
     return await wrappedContract.deposit(params);
   }
 
+  /**
+   * Get a wallet address example for schema documentation
+   */
   public static async getWalletAddressExample(): Promise<string> {
-    const defaultAddress = '<ethereum-wallet-address>';
+    if (Ethereum._walletAddressExample) {
+      return Ethereum._walletAddressExample;
+    }
+    const defaultAddress = '0x0000000000000000000000000000000000000000';
     try {
-      const foundWallet = await this.getFirstWalletAddress();
+      const foundWallet = await Ethereum.getFirstWalletAddress();
       if (foundWallet) {
+        Ethereum._walletAddressExample = foundWallet;
         return foundWallet;
       }
       logger.debug('No wallets found for examples in schema, using default.');
+      Ethereum._walletAddressExample = defaultAddress;
       return defaultAddress;
     } catch (error) {
       logger.error(

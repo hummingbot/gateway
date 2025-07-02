@@ -45,13 +45,7 @@ const ENUMERABLE_ABI = [
 
 export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
   await fastify.register(require('@fastify/sensible'));
-
-  // Get first wallet address for example
-  const firstWalletAddress = await Ethereum.getWalletAddressExample();
-
-  PositionsOwnedRequest.properties.walletAddress.examples = [
-    firstWalletAddress,
-  ];
+  const walletAddressExample = await Ethereum.getWalletAddressExample();
 
   fastify.get<{
     Querystring: typeof PositionsOwnedRequest.static;
@@ -62,7 +56,13 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Get all Uniswap V3 positions owned by a wallet',
         tags: ['uniswap/clmm'],
-        querystring: PositionsOwnedRequest,
+        querystring: {
+          ...PositionsOwnedRequest,
+          properties: {
+            ...PositionsOwnedRequest.properties,
+            walletAddress: { type: 'string', examples: [walletAddressExample] },
+          },
+        },
         response: {
           200: PositionsOwnedResponse,
         },
