@@ -1,24 +1,24 @@
 import { BigNumber } from 'ethers';
 
 export class Dep1 {
-  methodA = async () => 'real methodA-' + Math.random();
+  methodA = async () => `real methodA-${Math.random()}`;
 
   methodB = async () => BigNumber.from(Math.floor(Math.random() * 1000000));
 
-  methodC = async () => 'real methodC-' + Math.random();
+  methodC = async () => `real methodC-${Math.random()}`;
 
-  methodD = async () => 'real methodD-' + Math.random();
+  methodD = async () => `real methodD-${Math.random()}`;
 
-  methodUnmapped = async () => 'real methodUnmapped-' + Math.random();
+  methodUnmapped = async () => `real methodUnmapped-${Math.random()}`;
 }
 
 export class Dep2 {
-  methodZ = async () => 'real methodZ-' + Math.random();
+  methodZ = async () => `real methodZ-${Math.random()}`;
 }
 
 export class DepProto {
   async methodX() {
-    return 'real methodX-' + Math.random();
+    return `real methodX-${Math.random()}`;
   }
 }
 
