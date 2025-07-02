@@ -9,7 +9,9 @@
     "node": ">=20.0.0"
   },
   "imports": {
+    "#src": "./src",
     "#src/*": "./src/*",
+    "#test": "./test",
     "#test/*": "./test/*"
   },
   "scripts": {

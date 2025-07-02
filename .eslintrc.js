@@ -41,7 +41,7 @@ module.exports = {
     'import/no-duplicates': 'warn'
   },
   settings: {
-  'import/resolver': [
+    'import/resolver': [
       ['typescript', { alwaysTryTypes: true, project: './tsconfig.json' }],
       ['node', { extensions: ['.js', '.jsx', '.ts', '.tsx'] }],
     ],
