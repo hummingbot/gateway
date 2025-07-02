@@ -25,8 +25,8 @@
     "rebuild-bigint": "cd node_modules/bigint-buffer && npm run rebuild"
   },
   "dependencies": {
-    "@aiquant/lucid-cardano": "^0.10.10",
-    "@aiquant/minswap-sdk": "^1.0.0",
+    "@aiquant/lucid-cardano": "^0.10.11",
+    "@aiquant/minswap-sdk": "^0.0.0",
     "@blockfrost/blockfrost-js": "^5.7.0",
     "@coral-xyz/anchor": "^0.29.0",
     "@ethersproject/abstract-provider": "5.7.0",

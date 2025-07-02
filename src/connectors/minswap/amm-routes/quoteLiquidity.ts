@@ -1,6 +1,6 @@
 import { BigNumber } from 'ethers';
 import { FastifyPluginAsync } from 'fastify';
-import { Cardano } from '../../../chains/cardano/cardano';
+import { Cardano, CardanoTokenInfo } from '../../../chains/cardano/cardano';
 import {
   QuoteLiquidityRequestType,
   QuoteLiquidityRequest,
@@ -26,8 +26,8 @@ export async function getMinswapAmmLiquidityQuote(
   quoteTokenAmount: number;
   baseTokenAmountMax: number;
   quoteTokenAmountMax: number;
-  baseTokenObj: any;
-  quoteTokenObj: any;
+  baseTokenObj: CardanoTokenInfo;
+  quoteTokenObj: CardanoTokenInfo;
   poolAddress?: string;
   rawBaseTokenAmount: BigNumber;
   rawQuoteTokenAmount: BigNumber;
@@ -53,11 +53,15 @@ export async function getMinswapAmmLiquidityQuote(
     );
   }
 
-  let poolId = poolAddress;
+  let poolAddressToUse = poolAddress;
   let existingPool = true;
-  if (!poolId) {
-    poolId = await minswap.findDefaultPool(baseToken, quoteToken, 'amm');
-    if (!poolId) {
+  if (!poolAddressToUse) {
+    poolAddressToUse = await minswap.findDefaultPool(
+      baseToken,
+      quoteToken,
+      'amm',
+    );
+    if (!poolAddressToUse) {
       existingPool = false;
       logger.info(
         `No existing pool found for ${baseToken}-${quoteToken}, providing theoretical quote`,
@@ -78,7 +82,7 @@ export async function getMinswapAmmLiquidityQuote(
     );
     const poolState = await minswap.blockfrostAdapter.getV2PoolByPair(a, b);
     if (!poolState) {
-      throw new Error(`Unable to load pool ${poolId}`);
+      throw new Error(`Unable to load pool ${poolAddressToUse}`);
     }
 
     // ── 2) Pull reserves as bigints ────────────────────────
@@ -169,7 +173,7 @@ export async function getMinswapAmmLiquidityQuote(
     quoteTokenAmountMax: quoteTokenAmount ?? quoteTokenAmountOptimal,
     baseTokenObj,
     quoteTokenObj,
-    poolAddress: poolId,
+    poolAddress: poolAddressToUse,
     rawBaseTokenAmount,
     rawQuoteTokenAmount,
     routerAddress,
