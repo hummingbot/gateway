@@ -163,7 +163,10 @@
     "/src/commands"
   ],
   "lint-staged": {
-    "{src,test}/**/*.{ts,js}": "eslint --fix"
+    "{src,test}/**/*.{ts,js}": "eslint --fix",
+    "**/*.json": [
+      "prettier --write"
+    ]
   },
   "oclif": {
     "bin": "gateway",
