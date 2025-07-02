@@ -61,7 +61,8 @@ function validateGasParameters(response) {
     response.gasPrice > 0 &&
     response.gasLimit === 300000 && // Fixed gas limit per implementation
     typeof response.gasCost === 'number' &&
-    Math.abs(response.gasCost - (response.gasPrice * response.gasLimit * 1e-9)) < 1e-10 // Floating point precision
+    Math.abs(response.gasCost - response.gasPrice * response.gasLimit * 1e-9) <
+      1e-10 // Floating point precision
   );
 }
 
@@ -248,7 +249,7 @@ describe('Uniswap V3 Swap Router Tests (Base Network)', () => {
 
     test('handles different networks correctly', async () => {
       const networks = ['mainnet', 'arbitrum', 'optimism', 'base', 'polygon'];
-      
+
       for (const network of networks) {
         const mockResponse = {
           estimatedAmountIn: 1.0,
@@ -443,7 +444,7 @@ describe('Uniswap V3 Swap Router Tests (Base Network)', () => {
 
     test('handles multiple networks for execution', async () => {
       const networks = ['mainnet', 'arbitrum', 'optimism', 'base'];
-      
+
       for (const network of networks) {
         const executeResponse = {
           signature: `0x${network}1234567890abcdef`,

@@ -163,30 +163,7 @@ export async function getEthereumBalances(
 
 export const balancesRoute: FastifyPluginAsync = async (fastify) => {
   // Get first wallet address for example
-  const ethereum = await Ethereum.getInstance('base');
-
-  // Default Ethereum address for examples if no wallet is available
-  let firstWalletAddress = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
-
-  try {
-    // Try to get user's first Ethereum wallet if available
-    // getFirstWalletAddress specifically looks in the /ethereum directory
-    const userWallet = await ethereum.getFirstWalletAddress();
-    if (userWallet) {
-      // Make sure it's a valid Ethereum address (0x prefix and 42 chars)
-      const isValidEthAddress = /^0x[a-fA-F0-9]{40}$/i.test(userWallet);
-      if (isValidEthAddress) {
-        firstWalletAddress = userWallet;
-        logger.info(
-          `Using user's Ethereum wallet for examples: ${firstWalletAddress}`,
-        );
-      }
-    }
-  } catch (error) {
-    logger.warn('No Ethereum wallets found for examples in schema');
-  }
-
-  BalanceRequestSchema.properties.address.examples = [firstWalletAddress];
+  const firstWalletAddress = await Ethereum.getWalletAddressExample();
 
   fastify.post<{
     Body: BalanceRequestType;

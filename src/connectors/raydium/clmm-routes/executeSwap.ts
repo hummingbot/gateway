@@ -225,15 +225,7 @@ async function executeSwap(
 
 export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
   // Get first wallet address for example
-  const solana = await Solana.getInstance('mainnet-beta');
-  let firstWalletAddress = '<solana-wallet-address>';
-
-  try {
-    firstWalletAddress =
-      (await solana.getFirstWalletAddress()) || firstWalletAddress;
-  } catch (error) {
-    logger.warn('No wallets found for examples in schema');
-  }
+  const firstWalletAddress = await Solana.getWalletAddressExample();
 
   fastify.post<{
     Body: ExecuteSwapRequestType;

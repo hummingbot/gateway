@@ -67,7 +67,7 @@ export class Raydium {
       this.solana = await Solana.getInstance(network);
 
       // Load first wallet if available
-      const walletAddress = await this.solana.getFirstWalletAddress();
+      const walletAddress = await Solana.getFirstWalletAddress();
       if (walletAddress) {
         this.owner = await this.solana.getWallet(walletAddress);
       }

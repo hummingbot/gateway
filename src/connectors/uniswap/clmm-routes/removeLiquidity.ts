@@ -26,7 +26,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
 
   try {
     firstWalletAddress =
-      (await ethereum.getFirstWalletAddress()) || firstWalletAddress;
+      (await Ethereum.getFirstWalletAddress()) || firstWalletAddress;
   } catch (error) {
     logger.warn('No wallets found for examples in schema');
   }
@@ -228,7 +228,10 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
 
         // Get the calldata using the SDK
         const { calldata, value } =
-          NonfungiblePositionManager.removeCallParameters(positionSDK, removeParams);
+          NonfungiblePositionManager.removeCallParameters(
+            positionSDK,
+            removeParams,
+          );
 
         // Execute the transaction to remove liquidity
         const tx = await wallet.sendTransaction({
