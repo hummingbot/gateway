@@ -5,14 +5,19 @@
   "main": "index.js",
   "license": "Apache-2.0",
   "repository": "https://github.com/hummingbot/gateway",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "imports": {
+    "#src": "./src/index.ts",
     "#src/*": "./src/*",
+    "#test": "./test",
     "#test/*": "./test/*"
   },
   "scripts": {
     "prebuild": "rimraf dist && mkdir dist",
-    "build": "tsc --project tsconfig.build.json && pnpm run copy-files",
-    "clean": "rm -rf ./node_modules && rm -rf ./coverage && rm -rf ./logs",
+    "build": "tsc --project tsconfig.build.json && tsc-alias -p tsconfig.build.json && pnpm run copy-files",
+    "clean": "rm -rf ./node_modules && rm -rf ./coverage && rm -rf ./logs && rm -rf ./dist",
     "clean:config": "find ./conf -maxdepth 1 -type f -delete",
     "format": "prettier . --write",
     "lint": "eslint src test --format table --fix",
@@ -123,7 +128,7 @@
     "eslint-config-prettier": "^9.1.0",
     "eslint-config-standard": "^17.1.0",
     "eslint-formatter-table": "^7.32.1",
-    "eslint-import-resolver-typescript": "^4.4.3",
+    "eslint-import-resolver-typescript": "4.4.3",
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-n": "^16.6.2",
     "eslint-plugin-prettier": "^5.2.5",
@@ -147,7 +152,8 @@
     "ts-jest": "^29.3.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.2",
-    "viem": "^0.3.50"
+    "viem": "^0.3.50",
+    "tsc-alias": "^1.8.8"
   },
   "resolutions": {
     "@types/bn.js": "5.1.6",

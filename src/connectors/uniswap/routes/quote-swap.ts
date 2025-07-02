@@ -429,7 +429,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify, _options) => {
   await fastify.register(require('@fastify/sensible'));
 
   // Get first wallet address for example
-  const firstWalletAddress = await Ethereum.getWalletAddressExample();
+  const walletAddressExample = await Ethereum.getWalletAddressExample();
 
   // Get available networks from Ethereum configuration (same method as chain.routes.ts)
   const ethereumNetworks = Object.keys(
@@ -458,6 +458,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify, _options) => {
             amount: { type: 'number', examples: [0.001] },
             side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
             slippagePct: { type: 'number', examples: [0.5] },
+            walletAddress: { type: 'string', examples: [walletAddressExample] },
           },
           required: ['baseToken', 'quoteToken', 'amount', 'side'],
         },

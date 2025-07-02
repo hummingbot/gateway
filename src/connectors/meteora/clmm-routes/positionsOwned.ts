@@ -14,7 +14,6 @@ const INVALID_SOLANA_ADDRESS_MESSAGE = (address: string) =>
 const GetPositionsOwnedRequest = Type.Object({
   network: Type.Optional(Type.String({ default: 'mainnet-beta' })),
   walletAddress: Type.String({
-    description: 'Will use first available wallet if not specified',
     examples: [], // Will be populated during route registration
   }),
   poolAddress: Type.String({
@@ -28,12 +27,7 @@ type GetPositionsOwnedRequestType = Static<typeof GetPositionsOwnedRequest>;
 type GetPositionsOwnedResponseType = Static<typeof GetPositionsOwnedResponse>;
 
 export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
-  const firstWalletAddress = await Solana.getWalletAddressExample();
-
-  // Update schema example
-  GetPositionsOwnedRequest.properties.walletAddress.examples = [
-    firstWalletAddress,
-  ];
+  const walletAddressExample = await Solana.getWalletAddressExample();
 
   fastify.get<{
     Querystring: GetPositionsOwnedRequestType;
@@ -45,7 +39,13 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
         description:
           "Retrieve a list of positions owned by a user's wallet in a specific Meteora pool",
         tags: ['meteora/clmm'],
-        querystring: GetPositionsOwnedRequest,
+        querystring: {
+          ...GetPositionsOwnedRequest,
+          properties: {
+            ...GetPositionsOwnedRequest.properties,
+            walletAddress: { type: 'string', examples: [walletAddressExample] },
+          },
+        },
         response: {
           200: GetPositionsOwnedResponse,
         },

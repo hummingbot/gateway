@@ -216,10 +216,7 @@ async function addLiquidity(
 }
 
 export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
-  const firstWalletAddress = await Solana.getWalletAddressExample();
-
-  // Update schema example
-  AddLiquidityRequest.properties.walletAddress.examples = [firstWalletAddress];
+  const walletAddressExample = await Solana.getWalletAddressExample();
 
   fastify.post<{
     Body: AddLiquidityRequestType;
@@ -235,6 +232,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             ...AddLiquidityRequest.properties,
             network: { type: 'string', default: 'mainnet-beta' },
+            walletAddress: { type: 'string', examples: [walletAddressExample] },
             poolAddress: {
               type: 'string',
               examples: ['6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg'],
