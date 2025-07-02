@@ -19,6 +19,21 @@ importers:
 
   .:
     dependencies:
+      '@_etcswap/sdk-core':
+        specifier: ^4.0.10
+        version: 4.0.10
+      '@_etcswap/smart-order-router':
+        specifier: ^3.15.2
+        version: 3.15.2(bufferutil@4.0.9)(encoding@0.1.13)(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))(jsbi@3.2.5)(utf-8-validate@5.0.10)
+      '@_etcswap/v2-sdk':
+        specifier: ^4.2.2
+        version: 4.2.2
+      '@_etcswap/v3-core':
+        specifier: ^1.0.1
+        version: 1.0.1
+      '@_etcswap/v3-sdk':
+        specifier: ^3.10.2
+        version: 3.10.2(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))
       '@coral-xyz/anchor':
         specifier: ^0.29.0
         version: 0.29.0(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.8.3)(utf-8-validate@5.0.10)
@@ -331,6 +346,60 @@ importers:
         version: 5.8.3
 
 packages:
+
+  '@_etcswap/router-sdk@https://codeload.github.com/etcswap/router-sdk/tar.gz/e3b3e662d0cec84613790e1bff1359d4c846f064':
+    resolution: {tarball: https://codeload.github.com/etcswap/router-sdk/tar.gz/e3b3e662d0cec84613790e1bff1359d4c846f064}
+    version: 1.6.4
+
+  '@_etcswap/sdk-core@4.0.10':
+    resolution: {integrity: sha512-aa3KSclLQJC24MjnZ988ejV2CJxA3nkMYJHsgsD/pgk9keXimItgNvKF3+pmEkgfbQ8qiHNEXC7Mb1InTmOMtw==}
+    engines: {node: '>=10'}
+
+  '@_etcswap/sdk-core@https://codeload.github.com/etcswap/sdk-core/tar.gz/1662274116b501f9697e35da78dcf2e94edb8ef0':
+    resolution: {tarball: https://codeload.github.com/etcswap/sdk-core/tar.gz/1662274116b501f9697e35da78dcf2e94edb8ef0}
+    version: 4.0.10
+    engines: {node: '>=10'}
+
+  '@_etcswap/smart-order-router@3.15.2':
+    resolution: {integrity: sha512-/XlbjLeWtQEg4HfvebPU5CWbGbq2e9y19YQY2BXtKsjyHli1YNx4yvR3kawFZPhePgENdBYp7l8NFrq2Ovjbcw==}
+    engines: {node: '>=10'}
+    peerDependencies:
+      jsbi: ^3.2.0
+
+  '@_etcswap/universal-router-sdk@https://codeload.github.com/etcswap/universal-router-sdk/tar.gz/38df3f1e5c6c224f726ed9932ce1b7f814960335':
+    resolution: {tarball: https://codeload.github.com/etcswap/universal-router-sdk/tar.gz/38df3f1e5c6c224f726ed9932ce1b7f814960335}
+    version: 2.0.2
+    engines: {node: '>=14'}
+
+  '@_etcswap/v2-sdk@4.2.2':
+    resolution: {integrity: sha512-g8f5kjpo+zB+qSdUiiVxpKYU/PnE1e+A2X38qRK61eM1QB/JXEE+41JYmJsNbCvOEoDgV5Tou7idoUek9vKJuQ==}
+    engines: {node: '>=10'}
+
+  '@_etcswap/v2-sdk@https://codeload.github.com/etcswap/v2-sdk/tar.gz/f466988787bae2f04a2daa6792df4ef75a90bbab':
+    resolution: {tarball: https://codeload.github.com/etcswap/v2-sdk/tar.gz/f466988787bae2f04a2daa6792df4ef75a90bbab}
+    version: 4.2.2
+    engines: {node: '>=10'}
+
+  '@_etcswap/v3-core@1.0.1':
+    resolution: {integrity: sha512-ULZMEqK9d0FjjUb63TZVPJy5kJPS1YyFWacr/YBcfiJYRE5L7LlzGi7LdQOBlCGA3TwEW8kQqZvr8nPg2+ctkw==}
+    engines: {node: '>=10'}
+
+  '@_etcswap/v3-core@https://codeload.github.com/etcswap/v3-core/tar.gz/f82a39d83c8d89cca4d0c4da686156204be2768b':
+    resolution: {tarball: https://codeload.github.com/etcswap/v3-core/tar.gz/f82a39d83c8d89cca4d0c4da686156204be2768b}
+    version: 1.0.1
+    engines: {node: '>=10'}
+
+  '@_etcswap/v3-sdk@3.10.2':
+    resolution: {integrity: sha512-nde6dzIN03F5lMKTu4TKpvVwfYVvndnwTvbG/k/0XT/w991jquGqFk88fZG6KaYNZ43vx/wR1A7KfuZU/Hg9PA==}
+    engines: {node: '>=10'}
+
+  '@_etcswap/v3-sdk@https://codeload.github.com/etcswap/v3-sdk/tar.gz/f8a10d69e06b75c5b16d4ddf2f071bf4613a0cc2':
+    resolution: {tarball: https://codeload.github.com/etcswap/v3-sdk/tar.gz/f8a10d69e06b75c5b16d4ddf2f071bf4613a0cc2}
+    version: 3.10.2
+    engines: {node: '>=10'}
+
+  '@adraffy/ens-normalize@1.9.0':
+    resolution: {integrity: sha512-iowxq3U30sghZotgl4s/oJRci6WPBfNO5YYgk2cIOMCHr3LeGPcsZjCEr+33Q4N+oV3OABDAtA+pyvWjbvBifQ==}
 
   '@ampproject/remapping@2.3.0':
     resolution: {integrity: sha512-30iZtAPgz+LTIYoeivqYo853f02jBYSd5uGnGpkFV0M3xOt9aN73erkgYAmZU43x4VfqcnLxW9Kpg3R5LC4YYw==}
@@ -2135,6 +2204,11 @@ packages:
     resolution: {integrity: sha512-mh/YNbwKb7Mut96VuEtL+Z5bRe0xVIbjjiryn+iMMrK2sFKhR4duk/86mEz0UO5gSx4pQIw9G5276P5heY/7Rg==}
     engines: {node: '>=10'}
 
+  '@uniswap/swap-router-contracts@https://codeload.github.com/etcswap/swap-router-contracts/tar.gz/d02515054efae1c8c1c8843b437138cb7966ca2f':
+    resolution: {tarball: https://codeload.github.com/etcswap/swap-router-contracts/tar.gz/d02515054efae1c8c1c8843b437138cb7966ca2f}
+    version: 1.1.0
+    engines: {node: '>=10'}
+
   '@uniswap/token-lists@1.0.0-beta.34':
     resolution: {integrity: sha512-Hc3TfrFaupg0M84e/Zv7BoF+fmMWDV15mZ5s8ZQt2qZxUcNw2GQW+L6L/2k74who31G+p1m3GRYbJpAo7d1pqA==}
     engines: {node: '>=10'}
@@ -2143,8 +2217,8 @@ packages:
     resolution: {integrity: sha512-EB/NLIkuT2BCdKnh2wcXT0cmINjRoiskjibFclpheALHL49XSrB08H4k7KV3BP6+JNKLeTHekvTDdsMd9rs5TA==}
     engines: {node: '>=14'}
 
-  '@uniswap/universal-router-sdk@4.19.6':
-    resolution: {integrity: sha512-vBtHv4OzEn6Spkl1UgN/0TqO354w7RUdsE1uwAdqz2zfxhV48GOlKJWpe7LiI2ZukL/BMubLewtwC4q/RfjjJQ==}
+  '@uniswap/universal-router@1.5.1':
+    resolution: {integrity: sha512-+htTC/nHQXKfY/c+9C1XHMRs7Jz0bX9LQfYn9Hb7WZKZ/YHWhOsCZQylYhksieLYTRam5sQheow747hOZ+QpZQ==}
     engines: {node: '>=14'}
 
   '@uniswap/universal-router@1.6.0':
@@ -2179,6 +2253,11 @@ packages:
     resolution: {integrity: sha512-S4+m+wh8HbWSO3DKk4LwUCPZJTpCugIsHrWR86m/OrUyvSqGDTXKFfc2sMuGXCZrD1ZqO3rhQsKgdWg3Hbb2Kw==}
     engines: {node: '>=10'}
 
+  '@uniswap/v3-periphery@https://codeload.github.com/etcswap/v3-periphery/tar.gz/b6ce8ef8a553597d89b700a604096cac1d0c9485':
+    resolution: {tarball: https://codeload.github.com/etcswap/v3-periphery/tar.gz/b6ce8ef8a553597d89b700a604096cac1d0c9485}
+    version: 1.4.4
+    engines: {node: '>=10'}
+
   '@uniswap/v3-sdk@3.25.2':
     resolution: {integrity: sha512-0oiyJNGjUVbc958uZmAr+m4XBCjV7PfMs/OUeBv+XDl33MEYF/eH86oBhvqGDM8S/cYaK55tCXzoWkmRUByrHg==}
     engines: {node: '>=10'}
@@ -2187,6 +2266,11 @@ packages:
     resolution: {integrity: sha512-JV0Qc46Px5alvg6YWd+UIaGH9lDuYG/Js7ngxPit1SPaIP30AlVer1UYB7BRYeUVVxE+byUyIeN5jeQ7LLDjIw==}
     engines: {node: '>=10'}
     deprecated: Please upgrade to 1.0.1
+
+  '@uniswap/v3-staker@https://codeload.github.com/etcswap/v3-staker/tar.gz/615e09790d2ec9f2bc079756eb888a2bd2078be6':
+    resolution: {tarball: https://codeload.github.com/etcswap/v3-staker/tar.gz/615e09790d2ec9f2bc079756eb888a2bd2078be6}
+    version: 1.0.2
+    engines: {node: '>=10'}
 
   '@uniswap/v4-sdk@1.21.4':
     resolution: {integrity: sha512-so3c/CmaRmRSvgKFyrUWy6DCSogyzyVaoYCec/TJ4k2hXlJ8MK4vumcuxtmRr1oMnZ5KmaCPBS12Knb4FC3nsw==}
@@ -6624,6 +6708,129 @@ packages:
 
 snapshots:
 
+  '@_etcswap/router-sdk@https://codeload.github.com/etcswap/router-sdk/tar.gz/e3b3e662d0cec84613790e1bff1359d4c846f064(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))':
+    dependencies:
+      '@ethersproject/abi': 5.8.0
+      '@uniswap/sdk-core': '@_etcswap/sdk-core@https://codeload.github.com/etcswap/sdk-core/tar.gz/1662274116b501f9697e35da78dcf2e94edb8ef0'
+      '@uniswap/swap-router-contracts': https://codeload.github.com/etcswap/swap-router-contracts/tar.gz/d02515054efae1c8c1c8843b437138cb7966ca2f(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))
+      '@uniswap/v2-sdk': '@_etcswap/v2-sdk@https://codeload.github.com/etcswap/v2-sdk/tar.gz/f466988787bae2f04a2daa6792df4ef75a90bbab'
+      '@uniswap/v3-sdk': '@_etcswap/v3-sdk@https://codeload.github.com/etcswap/v3-sdk/tar.gz/f8a10d69e06b75c5b16d4ddf2f071bf4613a0cc2(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))'
+    transitivePeerDependencies:
+      - hardhat
+
+  '@_etcswap/sdk-core@4.0.10':
+    dependencies:
+      '@ethersproject/address': 5.7.0
+      big.js: 5.2.2
+      decimal.js-light: 2.5.1
+      jsbi: 3.2.5
+      tiny-invariant: 1.3.3
+      toformat: 2.0.0
+
+  '@_etcswap/sdk-core@https://codeload.github.com/etcswap/sdk-core/tar.gz/1662274116b501f9697e35da78dcf2e94edb8ef0':
+    dependencies:
+      '@ethersproject/address': 5.7.0
+      big.js: 5.2.2
+      decimal.js-light: 2.5.1
+      jsbi: 3.2.5
+      tiny-invariant: 1.3.3
+      toformat: 2.0.0
+
+  '@_etcswap/smart-order-router@3.15.2(bufferutil@4.0.9)(encoding@0.1.13)(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))(jsbi@3.2.5)(utf-8-validate@5.0.10)':
+    dependencies:
+      '@uniswap/default-token-list': 11.19.0
+      '@uniswap/permit2-sdk': 1.3.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+      '@uniswap/router-sdk': '@_etcswap/router-sdk@https://codeload.github.com/etcswap/router-sdk/tar.gz/e3b3e662d0cec84613790e1bff1359d4c846f064(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))'
+      '@uniswap/sdk-core': '@_etcswap/sdk-core@https://codeload.github.com/etcswap/sdk-core/tar.gz/1662274116b501f9697e35da78dcf2e94edb8ef0'
+      '@uniswap/swap-router-contracts': 1.3.1(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))
+      '@uniswap/token-lists': 1.0.0-beta.34
+      '@uniswap/universal-router': 1.6.0
+      '@uniswap/universal-router-sdk': '@_etcswap/universal-router-sdk@https://codeload.github.com/etcswap/universal-router-sdk/tar.gz/38df3f1e5c6c224f726ed9932ce1b7f814960335(bufferutil@4.0.9)(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)'
+      '@uniswap/v2-sdk': '@_etcswap/v2-sdk@https://codeload.github.com/etcswap/v2-sdk/tar.gz/f466988787bae2f04a2daa6792df4ef75a90bbab'
+      '@uniswap/v3-sdk': '@_etcswap/v3-sdk@https://codeload.github.com/etcswap/v3-sdk/tar.gz/f8a10d69e06b75c5b16d4ddf2f071bf4613a0cc2(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))'
+      async-retry: 1.3.3
+      await-timeout: 1.1.1
+      axios: 1.9.0
+      bunyan: 1.8.15
+      bunyan-blackhole: 1.1.1(bunyan@1.8.15)
+      ethers: 5.8.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+      graphql: 15.10.1
+      graphql-request: 3.7.0(encoding@0.1.13)(graphql@15.10.1)
+      jsbi: 3.2.5
+      lodash: 4.17.21
+      mnemonist: 0.38.5
+      node-cache: 5.1.2
+      stats-lite: 2.2.0
+    transitivePeerDependencies:
+      - bufferutil
+      - debug
+      - encoding
+      - hardhat
+      - utf-8-validate
+
+  '@_etcswap/universal-router-sdk@https://codeload.github.com/etcswap/universal-router-sdk/tar.gz/38df3f1e5c6c224f726ed9932ce1b7f814960335(bufferutil@4.0.9)(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)':
+    dependencies:
+      '@uniswap/permit2-sdk': 1.3.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+      '@uniswap/router-sdk': '@_etcswap/router-sdk@https://codeload.github.com/etcswap/router-sdk/tar.gz/e3b3e662d0cec84613790e1bff1359d4c846f064(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))'
+      '@uniswap/sdk-core': '@_etcswap/sdk-core@https://codeload.github.com/etcswap/sdk-core/tar.gz/1662274116b501f9697e35da78dcf2e94edb8ef0'
+      '@uniswap/universal-router': 1.5.1
+      '@uniswap/v2-sdk': '@_etcswap/v3-sdk@https://codeload.github.com/etcswap/v3-sdk/tar.gz/f8a10d69e06b75c5b16d4ddf2f071bf4613a0cc2(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))'
+      '@uniswap/v3-sdk': '@_etcswap/v3-sdk@https://codeload.github.com/etcswap/v3-sdk/tar.gz/f8a10d69e06b75c5b16d4ddf2f071bf4613a0cc2(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))'
+      bignumber.js: 9.3.0
+      ethers: 5.8.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+    transitivePeerDependencies:
+      - bufferutil
+      - hardhat
+      - utf-8-validate
+
+  '@_etcswap/v2-sdk@4.2.2':
+    dependencies:
+      '@ethersproject/address': 5.7.0
+      '@ethersproject/solidity': 5.7.0
+      '@uniswap/sdk-core': '@_etcswap/sdk-core@https://codeload.github.com/etcswap/sdk-core/tar.gz/1662274116b501f9697e35da78dcf2e94edb8ef0'
+      tiny-invariant: 1.3.3
+      tiny-warning: 1.0.3
+
+  '@_etcswap/v2-sdk@https://codeload.github.com/etcswap/v2-sdk/tar.gz/f466988787bae2f04a2daa6792df4ef75a90bbab':
+    dependencies:
+      '@ethersproject/address': 5.7.0
+      '@ethersproject/solidity': 5.7.0
+      '@uniswap/sdk-core': '@_etcswap/sdk-core@https://codeload.github.com/etcswap/sdk-core/tar.gz/1662274116b501f9697e35da78dcf2e94edb8ef0'
+      tiny-invariant: 1.3.3
+      tiny-warning: 1.0.3
+
+  '@_etcswap/v3-core@1.0.1': {}
+
+  '@_etcswap/v3-core@https://codeload.github.com/etcswap/v3-core/tar.gz/f82a39d83c8d89cca4d0c4da686156204be2768b': {}
+
+  '@_etcswap/v3-sdk@3.10.2(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))':
+    dependencies:
+      '@ethersproject/abi': 5.8.0
+      '@ethersproject/solidity': 5.7.0
+      '@uniswap/sdk-core': '@_etcswap/sdk-core@https://codeload.github.com/etcswap/sdk-core/tar.gz/1662274116b501f9697e35da78dcf2e94edb8ef0'
+      '@uniswap/swap-router-contracts': https://codeload.github.com/etcswap/swap-router-contracts/tar.gz/d02515054efae1c8c1c8843b437138cb7966ca2f(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))
+      '@uniswap/v3-periphery': https://codeload.github.com/etcswap/v3-periphery/tar.gz/b6ce8ef8a553597d89b700a604096cac1d0c9485
+      '@uniswap/v3-staker': https://codeload.github.com/etcswap/v3-staker/tar.gz/615e09790d2ec9f2bc079756eb888a2bd2078be6
+      tiny-invariant: 1.3.3
+      tiny-warning: 1.0.3
+    transitivePeerDependencies:
+      - hardhat
+
+  '@_etcswap/v3-sdk@https://codeload.github.com/etcswap/v3-sdk/tar.gz/f8a10d69e06b75c5b16d4ddf2f071bf4613a0cc2(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))':
+    dependencies:
+      '@ethersproject/abi': 5.8.0
+      '@ethersproject/solidity': 5.7.0
+      '@uniswap/sdk-core': '@_etcswap/sdk-core@https://codeload.github.com/etcswap/sdk-core/tar.gz/1662274116b501f9697e35da78dcf2e94edb8ef0'
+      '@uniswap/swap-router-contracts': https://codeload.github.com/etcswap/swap-router-contracts/tar.gz/d02515054efae1c8c1c8843b437138cb7966ca2f(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))
+      '@uniswap/v3-periphery': https://codeload.github.com/etcswap/v3-periphery/tar.gz/b6ce8ef8a553597d89b700a604096cac1d0c9485
+      '@uniswap/v3-staker': https://codeload.github.com/etcswap/v3-staker/tar.gz/615e09790d2ec9f2bc079756eb888a2bd2078be6
+      tiny-invariant: 1.3.3
+      tiny-warning: 1.0.3
+    transitivePeerDependencies:
+      - hardhat
+
+  '@adraffy/ens-normalize@1.9.0': {}
+
   '@ampproject/remapping@2.3.0':
     dependencies:
       '@jridgewell/gen-mapping': 0.3.8
@@ -9765,6 +9972,16 @@ snapshots:
     transitivePeerDependencies:
       - hardhat
 
+  '@uniswap/swap-router-contracts@https://codeload.github.com/etcswap/swap-router-contracts/tar.gz/d02515054efae1c8c1c8843b437138cb7966ca2f(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))':
+    dependencies:
+      '@openzeppelin/contracts': 4.9.6
+      '@uniswap/v2-core': 1.0.1
+      '@uniswap/v3-core': '@_etcswap/v3-core@https://codeload.github.com/etcswap/v3-core/tar.gz/f82a39d83c8d89cca4d0c4da686156204be2768b'
+      '@uniswap/v3-periphery': https://codeload.github.com/etcswap/v3-periphery/tar.gz/b6ce8ef8a553597d89b700a604096cac1d0c9485
+      hardhat-watcher: 2.5.0(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))
+    transitivePeerDependencies:
+      - hardhat
+
   '@uniswap/token-lists@1.0.0-beta.34': {}
 
   '@uniswap/universal-router-sdk@3.4.0(bufferutil@4.0.9)(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)':
@@ -9786,24 +10003,11 @@ snapshots:
       - hardhat
       - utf-8-validate
 
-  '@uniswap/universal-router-sdk@4.19.6(bufferutil@4.0.9)(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)':
+  '@uniswap/universal-router@1.5.1':
     dependencies:
       '@openzeppelin/contracts': 4.9.6
-      '@uniswap/permit2-sdk': 1.3.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
-      '@uniswap/router-sdk': 2.0.4(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))
-      '@uniswap/sdk-core': 7.7.2
-      '@uniswap/universal-router': 2.0.0-beta.2
       '@uniswap/v2-core': 1.0.1
-      '@uniswap/v2-sdk': 4.15.2
       '@uniswap/v3-core': 1.0.0
-      '@uniswap/v3-sdk': 3.25.2(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))
-      '@uniswap/v4-sdk': 1.21.4(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))
-      bignumber.js: 9.3.0
-      ethers: 5.8.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
-    transitivePeerDependencies:
-      - bufferutil
-      - hardhat
-      - utf-8-validate
 
   '@uniswap/universal-router@1.6.0':
     dependencies:
@@ -9845,6 +10049,14 @@ snapshots:
       '@uniswap/v3-core': 1.0.1
       base64-sol: 1.0.1
 
+  '@uniswap/v3-periphery@https://codeload.github.com/etcswap/v3-periphery/tar.gz/b6ce8ef8a553597d89b700a604096cac1d0c9485':
+    dependencies:
+      '@openzeppelin/contracts': 4.9.6
+      '@uniswap/lib': 4.0.1-alpha
+      '@uniswap/v2-core': 1.0.1
+      '@uniswap/v3-core': '@_etcswap/v3-core@https://codeload.github.com/etcswap/v3-core/tar.gz/f82a39d83c8d89cca4d0c4da686156204be2768b'
+      base64-sol: 1.0.1
+
   '@uniswap/v3-sdk@3.25.2(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))':
     dependencies:
       '@ethersproject/abi': 5.8.0
@@ -9863,6 +10075,12 @@ snapshots:
       '@openzeppelin/contracts': 4.9.6
       '@uniswap/v3-core': 1.0.0
       '@uniswap/v3-periphery': 1.4.4
+
+  '@uniswap/v3-staker@https://codeload.github.com/etcswap/v3-staker/tar.gz/615e09790d2ec9f2bc079756eb888a2bd2078be6':
+    dependencies:
+      '@openzeppelin/contracts': 4.9.6
+      '@uniswap/v3-core': '@_etcswap/v3-core@https://codeload.github.com/etcswap/v3-core/tar.gz/f82a39d83c8d89cca4d0c4da686156204be2768b'
+      '@uniswap/v3-periphery': https://codeload.github.com/etcswap/v3-periphery/tar.gz/b6ce8ef8a553597d89b700a604096cac1d0c9485
 
   '@uniswap/v4-sdk@1.21.4(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))':
     dependencies:

@@ -39,6 +39,11 @@
     "postinstall": "node scripts/postinstall.js"
   },
   "dependencies": {
+    "@_etcswap/sdk-core": "^4.0.10",
+    "@_etcswap/smart-order-router": "^3.15.2",
+    "@_etcswap/v2-sdk": "^4.2.2",
+    "@_etcswap/v3-core": "^1.0.1",
+    "@_etcswap/v3-sdk": "^3.10.2",
     "@coral-xyz/anchor": "^0.29.0",
     "@ethersproject/abstract-provider": "5.7.0",
     "@ethersproject/address": "5.7.0",
