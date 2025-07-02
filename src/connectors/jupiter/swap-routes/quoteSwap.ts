@@ -3,7 +3,8 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { estimateGasSolana } from '../../../chains/solana/routes/estimate-gas';
 import { Solana } from '../../../chains/solana/solana';
 import {
-  GetSwapQuoteRequestType,
+  GetAggregatorSwapQuoteRequest,
+  GetAggregatorSwapQuoteRequestType,
   GetSwapQuoteResponseType,
 } from '../../../schemas/swap-schema';
 import { logger } from '../../../services/logger';
@@ -153,7 +154,7 @@ export async function getJupiterQuote(
 
 export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
-    Querystring: GetSwapQuoteRequestType;
+    Querystring: GetAggregatorSwapQuoteRequestType;
     Reply: GetSwapQuoteResponseType;
   }>(
     '/quote-swap',
@@ -161,18 +162,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Get Jupiter swap quote',
         tags: ['jupiter'],
-        querystring: {
-          type: 'object',
-          properties: {
-            network: { type: 'string', examples: ['mainnet-beta'] },
-            baseToken: { type: 'string', examples: ['SOL'] },
-            quoteToken: { type: 'string', examples: ['USDC'] },
-            amount: { type: 'number', examples: [0.01] },
-            side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
-            slippagePct: { type: 'number', examples: [1] },
-          },
-          required: ['baseToken', 'quoteToken', 'amount', 'side'],
-        },
+        querystring: GetAggregatorSwapQuoteRequest,
         response: {
           200: {
             type: 'object',

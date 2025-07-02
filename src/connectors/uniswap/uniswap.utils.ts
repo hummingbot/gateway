@@ -1,3 +1,4 @@
+import { Contract } from '@ethersproject/contracts';
 import { Token } from '@uniswap/sdk-core';
 import { Pair as V2Pair } from '@uniswap/v2-sdk';
 import { FeeAmount, Pool as V3Pool } from '@uniswap/v3-sdk';
@@ -7,7 +8,9 @@ import JSBI from 'jsbi';
 import { TokenInfo, Ethereum } from '../../chains/ethereum/ethereum';
 import { logger } from '../../services/logger';
 
+import { Uniswap } from './uniswap';
 import { UniswapConfig } from './uniswap.config';
+import { IUniswapV2PairABI } from './uniswap.contracts';
 
 /**
  * Check if a string is a valid fraction (in the form of 'a/b')
@@ -197,4 +200,110 @@ export function getUniswapV3PoolWithTickProvider(
       },
     },
   );
+}
+
+/**
+ * Pool info interface for Uniswap pools
+ */
+export interface UniswapPoolInfo {
+  baseTokenAddress: string;
+  quoteTokenAddress: string;
+  poolType: 'amm' | 'clmm';
+}
+
+/**
+ * Get pool information for a Uniswap V2 (AMM) pool
+ * @param poolAddress The pool address
+ * @param network The network name
+ * @returns Pool information with base and quote token addresses
+ */
+export async function getV2PoolInfo(
+  poolAddress: string,
+  network: string,
+): Promise<UniswapPoolInfo | null> {
+  try {
+    const ethereum = await Ethereum.getInstance(network);
+    const uniswap = await Uniswap.getInstance(network);
+
+    // Create pair contract
+    const pairContract = new Contract(
+      poolAddress,
+      IUniswapV2PairABI.abi,
+      ethereum.provider,
+    );
+
+    // Get token addresses
+    const [token0Address, token1Address] = await Promise.all([
+      pairContract.token0(),
+      pairContract.token1(),
+    ]);
+
+    // By convention, use token0 as base and token1 as quote
+    return {
+      baseTokenAddress: token0Address,
+      quoteTokenAddress: token1Address,
+      poolType: 'amm',
+    };
+  } catch (error) {
+    logger.error(`Error getting V2 pool info: ${error.message}`);
+    return null;
+  }
+}
+
+/**
+ * Get pool information for a Uniswap V3 (CLMM) pool
+ * @param poolAddress The pool address
+ * @param network The network name
+ * @returns Pool information with base and quote token addresses
+ */
+export async function getV3PoolInfo(
+  poolAddress: string,
+  _network: string,
+): Promise<UniswapPoolInfo | null> {
+  try {
+    // For V3, we need to get the pool contract and extract token addresses
+    // This is a simplified approach - in production you'd use the pool contract ABI
+    // For now, we'll try to get the pool via the factory
+
+    // Note: This requires the pool to exist in the Uniswap instance's token list
+    // A more robust solution would directly query the pool contract
+
+    // For now, return null - V3 pool info extraction needs to be implemented
+    // with proper pool contract ABI
+    logger.warn(
+      `V3 pool info extraction not implemented for pool ${poolAddress}`,
+    );
+    return null;
+  } catch (error) {
+    logger.error(`Error getting V3 pool info: ${error.message}`);
+    return null;
+  }
+}
+
+/**
+ * Get pool information for any Uniswap pool (V2 or V3)
+ * @param poolAddress The pool address
+ * @param network The network name
+ * @param poolType Optional pool type hint
+ * @returns Pool information with base and quote token addresses
+ */
+export async function getUniswapPoolInfo(
+  poolAddress: string,
+  network: string,
+  poolType?: 'amm' | 'clmm',
+): Promise<UniswapPoolInfo | null> {
+  // If pool type is specified, use the appropriate method
+  if (poolType === 'amm') {
+    return getV2PoolInfo(poolAddress, network);
+  } else if (poolType === 'clmm') {
+    return getV3PoolInfo(poolAddress, network);
+  }
+
+  // Otherwise, try V2 first, then V3
+  const v2Info = await getV2PoolInfo(poolAddress, network);
+  if (v2Info) {
+    return v2Info;
+  }
+
+  return getV3PoolInfo(poolAddress, network);
 }

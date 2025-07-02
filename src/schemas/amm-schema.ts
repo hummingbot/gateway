@@ -24,9 +24,7 @@ export type PoolInfo = Static<typeof PoolInfoSchema>;
 export const GetPoolInfoRequest = Type.Object(
   {
     network: Type.Optional(Type.String()),
-    poolAddress: Type.Optional(Type.String()),
-    baseToken: Type.Optional(Type.String({ examples: ['SOL'] })),
-    quoteToken: Type.Optional(Type.String({ examples: ['USDC'] })),
+    poolAddress: Type.String(),
   },
   { $id: 'GetPoolInfoRequest' },
 );
@@ -36,9 +34,7 @@ export const AddLiquidityRequest = Type.Object(
   {
     network: Type.Optional(Type.String()),
     walletAddress: Type.String(),
-    poolAddress: Type.Optional(Type.String()),
-    baseToken: Type.Optional(Type.String({ examples: ['SOL'] })),
-    quoteToken: Type.Optional(Type.String({ examples: ['USDC'] })),
+    poolAddress: Type.String(),
     baseTokenAmount: Type.Number(),
     quoteTokenAmount: Type.Number(),
     slippagePct: Type.Optional(Type.Number({ minimum: 0, maximum: 100 })),
@@ -102,9 +98,7 @@ export const RemoveLiquidityRequest = Type.Object(
   {
     network: Type.Optional(Type.String()),
     walletAddress: Type.String({ examples: ['<solana-wallet-address>'] }),
-    poolAddress: Type.Optional(Type.String()),
-    baseToken: Type.Optional(Type.String({ examples: ['SOL'] })),
-    quoteToken: Type.Optional(Type.String({ examples: ['USDC'] })),
+    poolAddress: Type.String(),
     percentageToRemove: Type.Number({ minimum: 0, maximum: 100 }),
     priorityFeePerCU: Type.Optional(
       Type.Number({
@@ -160,9 +154,7 @@ export type PositionInfo = Static<typeof PositionInfoSchema>;
 export const GetPositionInfoRequest = Type.Object(
   {
     network: Type.Optional(Type.String()),
-    poolAddress: Type.Optional(Type.String()),
-    baseToken: Type.Optional(Type.String({ examples: ['SOL'] })),
-    quoteToken: Type.Optional(Type.String({ examples: ['USDC'] })),
+    poolAddress: Type.String(),
     walletAddress: Type.String(),
   },
   { $id: 'GetPositionInfoRequest' },

@@ -15,7 +15,7 @@ import {
   IUniswapV2PairABI,
   getUniswapV2RouterAddress,
 } from '../uniswap.contracts';
-import { formatTokenAmount } from '../uniswap.utils';
+import { formatTokenAmount, getUniswapPoolInfo } from '../uniswap.utils';
 
 export async function getUniswapAmmLiquidityQuote(
   network: string,
@@ -258,12 +258,27 @@ export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         const {
           network,
           poolAddress,
-          baseToken,
-          quoteToken,
           baseTokenAmount,
           quoteTokenAmount,
           slippagePct,
         } = request.query;
+
+        if (!poolAddress) {
+          throw fastify.httpErrors.badRequest('Pool address is required');
+        }
+
+        // Get pool information to determine tokens
+        const poolInfo = await getUniswapPoolInfo(
+          poolAddress,
+          network || 'base',
+          'amm',
+        );
+        if (!poolInfo) {
+          throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
+        }
+
+        const baseToken = poolInfo.baseTokenAddress;
+        const quoteToken = poolInfo.quoteTokenAddress;
 
         const quote = await getUniswapAmmLiquidityQuote(
           network,

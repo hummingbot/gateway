@@ -59,7 +59,6 @@ const swaggerOptions = {
     tags: [
       // Main categories
       { name: 'system', description: 'System configuration endpoints' },
-      { name: 'config', description: 'Configuration management endpoints' },
       { name: 'wallet', description: 'Wallet management endpoints' },
       { name: 'tokens', description: 'Token management endpoints' },
       { name: 'pools', description: 'Pool management endpoints' },
@@ -69,10 +68,10 @@ const swaggerOptions = {
       { name: 'ethereum', description: 'Ethereum chain endpoints' },
 
       // Connectors
-      { name: 'jupiter', description: 'Jupiter DEX aggregator (Solana)' },
-      { name: 'meteora', description: 'Meteora DLMM DEX (Solana)' },
-      { name: 'raydium', description: 'Raydium DEX (Solana)' },
-      { name: 'uniswap', description: 'Uniswap DEX (Ethereum)' },
+      { name: 'jupiter', description: 'Jupiter connector endpoints' },
+      { name: 'meteora', description: 'Meteora connector endpoints' },
+      { name: 'raydium', description: 'Raydium connector endpoints' },
+      { name: 'uniswap', description: 'Uniswap connector endpoints' },
     ],
     components: {
       parameters: {
@@ -173,15 +172,19 @@ const configureGatewayServer = () => {
     // Register system routes
     app.register(configRoutes, { prefix: '/config' });
     app.register(namespaceRoutes, { prefix: '/namespaces' });
+    app.register(connectorsRoutes, { prefix: '/connectors' });
+    app.register(chainRoutes, { prefix: '/chains' });
+
+    // Register wallet routes
     app.register(walletRoutes, { prefix: '/wallet' });
+    // Register token routes
     app.register(tokensRoutes, { prefix: '/tokens' });
+    // Register pool routes
     app.register(poolRoutes, { prefix: '/pools' });
 
-    // Register connector list route
-    app.register(connectorsRoutes, { prefix: '/connectors' });
-
-    // Register chain list route
-    app.register(chainRoutes, { prefix: '/chains' });
+    // Register chain routes
+    app.register(solanaRoutes, { prefix: '/chains/solana' });
+    app.register(ethereumRoutes, { prefix: '/chains/ethereum' });
 
     // Register DEX connector routes - organized by connector
 
@@ -199,10 +202,6 @@ const configureGatewayServer = () => {
     app.register(uniswapRoutes.swap, { prefix: '/connectors/uniswap/swap' });
     app.register(uniswapRoutes.amm, { prefix: '/connectors/uniswap/amm' });
     app.register(uniswapRoutes.clmm, { prefix: '/connectors/uniswap/clmm' });
-
-    // Register chain routes
-    app.register(solanaRoutes, { prefix: '/chains/solana' });
-    app.register(ethereumRoutes, { prefix: '/chains/ethereum' });
   };
 
   // Register routes on main server

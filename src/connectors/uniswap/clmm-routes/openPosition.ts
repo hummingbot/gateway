@@ -23,7 +23,11 @@ import {
 import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
 import { getUniswapV3NftManagerAddress } from '../uniswap.contracts';
-import { formatTokenAmount, parseFeeTier } from '../uniswap.utils';
+import {
+  formatTokenAmount,
+  parseFeeTier,
+  getUniswapPoolInfo,
+} from '../uniswap.utils';
 
 export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
   await fastify.register(require('@fastify/sensible'));
@@ -68,9 +72,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           walletAddress: requestedWalletAddress,
           lowerPrice,
           upperPrice,
-          poolAddress: requestedPoolAddress,
-          baseToken,
-          quoteToken,
+          poolAddress,
           baseTokenAmount,
           quoteTokenAmount,
           slippagePct,
@@ -84,8 +86,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         if (
           !lowerPrice ||
           !upperPrice ||
-          !baseToken ||
-          !quoteToken ||
+          !poolAddress ||
           (baseTokenAmount === undefined && quoteTokenAmount === undefined)
         ) {
           throw fastify.httpErrors.badRequest('Missing required parameters');
@@ -107,13 +108,26 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           logger.info(`Using first available wallet address: ${walletAddress}`);
         }
 
-        // Resolve tokens
-        const baseTokenObj = uniswap.getTokenBySymbol(baseToken);
-        const quoteTokenObj = uniswap.getTokenBySymbol(quoteToken);
+        // Get pool information to determine tokens
+        const poolInfo = await getUniswapPoolInfo(
+          poolAddress,
+          networkToUse,
+          'clmm',
+        );
+        if (!poolInfo) {
+          throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
+        }
+
+        const baseTokenObj = uniswap.getTokenByAddress(
+          poolInfo.baseTokenAddress,
+        );
+        const quoteTokenObj = uniswap.getTokenByAddress(
+          poolInfo.quoteTokenAddress,
+        );
 
         if (!baseTokenObj || !quoteTokenObj) {
           throw fastify.httpErrors.badRequest(
-            `Token not found: ${!baseTokenObj ? baseToken : quoteToken}`,
+            'Token information not found for pool',
           );
         }
 
@@ -121,22 +135,6 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         const wallet = await ethereum.getWallet(walletAddress);
         if (!wallet) {
           throw fastify.httpErrors.badRequest('Wallet not found');
-        }
-
-        // Find pool address if not provided
-        let poolAddress = requestedPoolAddress;
-        if (!poolAddress) {
-          poolAddress = await uniswap.findDefaultPool(
-            baseToken,
-            quoteToken,
-            'clmm',
-          );
-
-          if (!poolAddress) {
-            throw fastify.httpErrors.notFound(
-              `No CLMM pool found for pair ${baseToken}-${quoteToken}`,
-            );
-          }
         }
 
         // Get the V3 pool
@@ -148,7 +146,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         );
         if (!pool) {
           throw fastify.httpErrors.notFound(
-            `Pool not found for ${baseToken}-${quoteToken}`,
+            `Pool not found for ${baseTokenObj.symbol}-${quoteTokenObj.symbol}`,
           );
         }
 

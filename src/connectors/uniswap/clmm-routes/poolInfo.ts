@@ -10,7 +10,7 @@ import {
 } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
-import { formatTokenAmount } from '../uniswap.utils';
+import { formatTokenAmount, getUniswapPoolInfo } from '../uniswap.utils';
 
 export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
@@ -41,50 +41,42 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request): Promise<PoolInfo> => {
       try {
-        const { poolAddress, baseToken, quoteToken } = request.query;
+        const { poolAddress } = request.query;
         const network = request.query.network || 'base';
         const chain = 'ethereum'; // Default to ethereum
 
         const uniswap = await Uniswap.getInstance(network);
 
-        // Check if either poolAddress or both baseToken and quoteToken are provided
-        if (!poolAddress && (!baseToken || !quoteToken)) {
+        // Pool address is required
+        if (!poolAddress) {
+          throw fastify.httpErrors.badRequest('Pool address is required');
+        }
+
+        // Get pool information to determine tokens
+        const poolInfo = await getUniswapPoolInfo(poolAddress, network, 'clmm');
+        if (!poolInfo) {
+          throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
+        }
+
+        const baseTokenObj = uniswap.getTokenByAddress(
+          poolInfo.baseTokenAddress,
+        );
+        const quoteTokenObj = uniswap.getTokenByAddress(
+          poolInfo.quoteTokenAddress,
+        );
+
+        if (!baseTokenObj || !quoteTokenObj) {
           throw fastify.httpErrors.badRequest(
-            'Either poolAddress or both baseToken and quoteToken must be provided',
+            'Token information not found for pool',
           );
         }
 
-        let poolAddressToUse = poolAddress;
-
-        // If no pool address provided, find default pool using base and quote tokens
-        if (!poolAddressToUse) {
-          // Find pool using tokens
-          poolAddressToUse = await uniswap.findDefaultPool(
-            baseToken,
-            quoteToken,
-            'clmm',
-          );
-          if (!poolAddressToUse) {
-            throw fastify.httpErrors.notFound(
-              `No CLMM pool found for pair ${baseToken}-${quoteToken}`,
-            );
-          }
-        }
-
-        // Get base and quote token objects
-        const baseTokenObj = baseToken
-          ? uniswap.getTokenBySymbol(baseToken)
-          : null;
-        const quoteTokenObj = quoteToken
-          ? uniswap.getTokenBySymbol(quoteToken)
-          : null;
-
-        // Get V3 pool details - using null coalescing with type assertion to handle type checking
+        // Get V3 pool details
         const pool = await uniswap.getV3Pool(
-          baseTokenObj || (baseTokenObj as any),
-          quoteTokenObj || (quoteTokenObj as any),
+          baseTokenObj,
+          quoteTokenObj,
           undefined,
-          poolAddressToUse,
+          poolAddress,
         );
 
         if (!pool) {
@@ -133,7 +125,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
         const activeBinId = pool.tickCurrent;
 
         return {
-          address: poolAddressToUse,
+          address: poolAddress,
           baseTokenAddress: baseTokenObj.address,
           quoteTokenAddress: quoteTokenObj.address,
           binStep: tickSpacing,

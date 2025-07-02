@@ -17,7 +17,7 @@ import {
   IUniswapV2Router02ABI,
   IUniswapV2PairABI,
 } from '../uniswap.contracts';
-import { formatTokenAmount } from '../uniswap.utils';
+import { formatTokenAmount, getUniswapPoolInfo } from '../uniswap.utils';
 
 import { checkLPAllowance } from './positionInfo';
 
@@ -60,9 +60,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
       try {
         const {
           network,
-          poolAddress: requestedPoolAddress,
-          baseToken,
-          quoteToken,
+          poolAddress,
           percentageToRemove,
           walletAddress: requestedWalletAddress,
           priorityFeePerCU,
@@ -72,7 +70,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         const networkToUse = network || 'base';
 
         // Validate essential parameters
-        if (!baseToken || !quoteToken || !percentageToRemove) {
+        if (!poolAddress || !percentageToRemove) {
           throw fastify.httpErrors.badRequest('Missing required parameters');
         }
 
@@ -99,29 +97,27 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         // Resolve tokens
-        const baseTokenObj = uniswap.getTokenBySymbol(baseToken);
-        const quoteTokenObj = uniswap.getTokenBySymbol(quoteToken);
+        // Get pool information to determine tokens
+        const poolInfo = await getUniswapPoolInfo(
+          poolAddress,
+          networkToUse,
+          'amm',
+        );
+        if (!poolInfo) {
+          throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
+        }
+
+        const baseTokenObj = uniswap.getTokenByAddress(
+          poolInfo.baseTokenAddress,
+        );
+        const quoteTokenObj = uniswap.getTokenByAddress(
+          poolInfo.quoteTokenAddress,
+        );
 
         if (!baseTokenObj || !quoteTokenObj) {
           throw fastify.httpErrors.badRequest(
-            `Token not found: ${!baseTokenObj ? baseToken : quoteToken}`,
+            'Token information not found for pool',
           );
-        }
-
-        // Find pool address if not provided
-        let poolAddress = requestedPoolAddress;
-        if (!poolAddress) {
-          poolAddress = await uniswap.findDefaultPool(
-            baseToken,
-            quoteToken,
-            'amm',
-          );
-
-          if (!poolAddress) {
-            throw fastify.httpErrors.notFound(
-              `No AMM pool found for pair ${baseToken}-${quoteToken}`,
-            );
-          }
         }
 
         // Get the wallet

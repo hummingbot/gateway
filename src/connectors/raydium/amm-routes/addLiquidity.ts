@@ -88,8 +88,6 @@ async function addLiquidity(
   poolAddress: string,
   baseTokenAmount: number,
   quoteTokenAmount: number,
-  baseToken?: string,
-  quoteToken?: string,
   slippagePct?: number,
   priorityFeePerCU?: number,
   computeUnits?: number,
@@ -98,34 +96,15 @@ async function addLiquidity(
   const raydium = await Raydium.getInstance(network);
   const wallet = await solana.getWallet(walletAddress);
 
-  // If no pool address provided, find default pool using base and quote tokens
-  let poolAddressToUse = poolAddress;
-  if (!poolAddressToUse) {
-    if (!baseToken || !quoteToken) {
-      throw new Error(
-        'Either poolAddress or both baseToken and quoteToken must be provided',
-      );
-    }
-
-    poolAddressToUse = await raydium.findDefaultPool(
-      baseToken,
-      quoteToken,
-      'amm',
-    );
-    if (!poolAddressToUse) {
-      throw new Error(`No AMM pool found for pair ${baseToken}-${quoteToken}`);
-    }
-  }
-
-  const ammPoolInfo = await raydium.getAmmPoolInfo(poolAddressToUse);
+  const ammPoolInfo = await raydium.getAmmPoolInfo(poolAddress);
 
   // Get pool info and keys since they're no longer in quoteLiquidity response
-  const [poolInfo, poolKeys] = await raydium.getPoolfromAPI(poolAddressToUse);
+  const [poolInfo, poolKeys] = await raydium.getPoolfromAPI(poolAddress);
 
   const quoteResponse = (await quoteLiquidity(
     _fastify,
     network,
-    poolAddressToUse,
+    poolAddress,
     baseTokenAmount,
     quoteTokenAmount,
     slippagePct,
@@ -246,22 +225,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Add liquidity to a Raydium AMM/CPMM pool',
         tags: ['raydium/amm'],
-        body: {
-          ...AddLiquidityRequest,
-          properties: {
-            ...AddLiquidityRequest.properties,
-            network: { type: 'string', default: 'mainnet-beta' },
-            poolAddress: {
-              type: 'string',
-              examples: ['6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg'],
-            }, // AMM RAY-USDC
-            baseToken: { type: 'string', examples: ['SOL'] },
-            quoteToken: { type: 'string', examples: ['USDC'] },
-            slippagePct: { type: 'number', examples: [1] },
-            baseTokenAmount: { type: 'number', examples: [1] },
-            quoteTokenAmount: { type: 'number', examples: [1] },
-          },
-        },
+        body: AddLiquidityRequest,
         response: {
           200: AddLiquidityResponse,
         },
@@ -273,19 +237,10 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           network,
           walletAddress,
           poolAddress,
-          baseToken,
-          quoteToken,
           baseTokenAmount,
           quoteTokenAmount,
           slippagePct,
         } = request.body;
-
-        // Check if either poolAddress or both baseToken and quoteToken are provided
-        if (!poolAddress && (!baseToken || !quoteToken)) {
-          throw fastify.httpErrors.badRequest(
-            'Either poolAddress or both baseToken and quoteToken must be provided',
-          );
-        }
 
         return await addLiquidity(
           fastify,
@@ -294,8 +249,6 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           poolAddress,
           baseTokenAmount,
           quoteTokenAmount,
-          baseToken,
-          quoteToken,
           slippagePct,
           request.body.priorityFeePerCU,
           request.body.computeUnits,

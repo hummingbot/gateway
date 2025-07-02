@@ -181,19 +181,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Get swap quote for Meteora CLMM',
         tags: ['meteora/clmm'],
-        querystring: {
-          ...GetSwapQuoteRequest,
-          properties: {
-            ...GetSwapQuoteRequest.properties,
-            network: { type: 'string', default: 'mainnet-beta' },
-            baseToken: { type: 'string', examples: ['SOL'] },
-            quoteToken: { type: 'string', examples: ['USDC'] },
-            amount: { type: 'number', examples: [0.01] },
-            side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
-            // poolAddress: { type: 'string', examples: [''] },
-            slippagePct: { type: 'number', examples: [1] },
-          },
-        },
+        querystring: GetSwapQuoteRequest,
         response: {
           200: {
             properties: {
@@ -205,34 +193,42 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const {
-          network,
-          baseToken,
-          quoteToken,
-          amount,
-          side,
-          poolAddress,
-          slippagePct,
-        } = request.query;
+        const { network, baseToken, amount, side, poolAddress, slippagePct } =
+          request.query;
         const networkUsed = network || 'mainnet-beta';
         const meteora = await Meteora.getInstance(networkUsed);
-        const poolAddressUsed =
-          poolAddress || (await meteora.findDefaultPool(baseToken, quoteToken));
 
-        if (!poolAddressUsed) {
-          throw fastify.httpErrors.notFound(
-            `No pool found for ${baseToken}-${quoteToken} pair`,
+        // Get pool info to determine tokens
+        const poolInfo = await meteora.getPoolInfo(poolAddress);
+        if (!poolInfo) {
+          throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
+        }
+
+        let baseTokenToUse: string;
+        let quoteTokenToUse: string;
+
+        // Determine which token is base and which is quote based on the provided baseToken
+        if (baseToken === poolInfo.baseTokenAddress) {
+          baseTokenToUse = poolInfo.baseTokenAddress;
+          quoteTokenToUse = poolInfo.quoteTokenAddress;
+        } else if (baseToken === poolInfo.quoteTokenAddress) {
+          // User specified the quote token as base, so swap them
+          baseTokenToUse = poolInfo.quoteTokenAddress;
+          quoteTokenToUse = poolInfo.baseTokenAddress;
+        } else {
+          throw fastify.httpErrors.badRequest(
+            `Token ${baseToken} not found in pool ${poolAddress}`,
           );
         }
 
         const result = await formatSwapQuote(
           fastify,
           networkUsed,
-          baseToken,
-          quoteToken,
+          baseTokenToUse,
+          quoteTokenToUse,
           amount,
           side as 'BUY' | 'SELL',
-          poolAddressUsed,
+          poolAddress,
           slippagePct,
         );
 

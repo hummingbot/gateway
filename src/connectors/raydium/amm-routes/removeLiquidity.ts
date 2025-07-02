@@ -143,8 +143,6 @@ async function removeLiquidity(
   walletAddress: string,
   poolAddress: string,
   percentageToRemove: number,
-  baseToken?: string,
-  quoteToken?: string,
   priorityFeePerCU?: number,
   computeUnits?: number,
 ): Promise<RemoveLiquidityResponseType> {
@@ -152,27 +150,8 @@ async function removeLiquidity(
   const raydium = await Raydium.getInstance(network);
   const wallet = await solana.getWallet(walletAddress);
 
-  // If no pool address provided, find default pool using base and quote tokens
-  let poolAddressToUse = poolAddress;
-  if (!poolAddressToUse) {
-    if (!baseToken || !quoteToken) {
-      throw new Error(
-        'Either poolAddress or both baseToken and quoteToken must be provided',
-      );
-    }
-
-    poolAddressToUse = await raydium.findDefaultPool(
-      baseToken,
-      quoteToken,
-      'amm',
-    );
-    if (!poolAddressToUse) {
-      throw new Error(`No AMM pool found for pair ${baseToken}-${quoteToken}`);
-    }
-  }
-
-  const ammPoolInfo = await raydium.getAmmPoolInfo(poolAddressToUse);
-  const [poolInfo, poolKeys] = await raydium.getPoolfromAPI(poolAddressToUse);
+  const ammPoolInfo = await raydium.getAmmPoolInfo(poolAddress);
+  const [poolInfo, poolKeys] = await raydium.getPoolfromAPI(poolAddress);
 
   if (percentageToRemove <= 0 || percentageToRemove > 100) {
     throw new Error('Invalid percentageToRemove - must be between 0 and 100');
@@ -184,12 +163,12 @@ async function removeLiquidity(
     wallet,
     ammPoolInfo,
     poolInfo,
-    poolAddressToUse,
+    poolAddress,
     percentageToRemove,
   );
 
   logger.info(
-    `Removing ${percentageToRemove.toFixed(4)}% liquidity from pool ${poolAddressToUse}...`,
+    `Removing ${percentageToRemove.toFixed(4)}% liquidity from pool ${poolAddress}...`,
   );
   const DEFAULT_COMPUTE_UNITS = 600000;
 
@@ -247,7 +226,7 @@ async function removeLiquidity(
       );
 
     logger.info(
-      `Liquidity removed from pool ${poolAddressToUse}: ${Math.abs(baseTokenBalanceChange).toFixed(4)} ${poolInfo.mintA.symbol}, ${Math.abs(quoteTokenBalanceChange).toFixed(4)} ${poolInfo.mintB.symbol}`,
+      `Liquidity removed from pool ${poolAddress}: ${Math.abs(baseTokenBalanceChange).toFixed(4)} ${poolInfo.mintA.symbol}, ${Math.abs(quoteTokenBalanceChange).toFixed(4)} ${poolInfo.mintB.symbol}`,
     );
 
     return {
@@ -285,20 +264,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Remove liquidity from a Raydium AMM/CPMM pool',
         tags: ['raydium/amm'],
-        body: {
-          ...RemoveLiquidityRequest,
-          properties: {
-            ...RemoveLiquidityRequest.properties,
-            network: { type: 'string', default: 'mainnet-beta' },
-            poolAddress: {
-              type: 'string',
-              examples: ['6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg'],
-            }, // AMM RAY-USDC
-            baseToken: { type: 'string', examples: ['SOL'] },
-            quoteToken: { type: 'string', examples: ['USDC'] },
-            percentageToRemove: { type: 'number', examples: [100] },
-          },
-        },
+        body: RemoveLiquidityRequest,
         response: {
           200: RemoveLiquidityResponse,
         },
@@ -306,21 +272,8 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const {
-          network,
-          walletAddress,
-          poolAddress,
-          baseToken,
-          quoteToken,
-          percentageToRemove,
-        } = request.body;
-
-        // Check if either poolAddress or both baseToken and quoteToken are provided
-        if (!poolAddress && (!baseToken || !quoteToken)) {
-          throw fastify.httpErrors.badRequest(
-            'Either poolAddress or both baseToken and quoteToken must be provided',
-          );
-        }
+        const { network, walletAddress, poolAddress, percentageToRemove } =
+          request.body;
 
         return await removeLiquidity(
           fastify,
@@ -328,8 +281,6 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           walletAddress,
           poolAddress,
           percentageToRemove,
-          baseToken,
-          quoteToken,
           request.body.priorityFeePerCU,
           request.body.computeUnits,
         );

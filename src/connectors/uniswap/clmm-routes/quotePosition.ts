@@ -19,7 +19,7 @@ import {
 } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
-import { parseFeeTier } from '../uniswap.utils';
+import { parseFeeTier, getUniswapPoolInfo } from '../uniswap.utils';
 
 export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
@@ -59,9 +59,7 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
           network,
           lowerPrice,
           upperPrice,
-          poolAddress: requestedPoolAddress,
-          baseToken,
-          quoteToken,
+          poolAddress,
           baseTokenAmount,
           quoteTokenAmount,
         } = request.query;
@@ -73,8 +71,7 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
         if (
           !lowerPrice ||
           !upperPrice ||
-          !baseToken ||
-          !quoteToken ||
+          !poolAddress ||
           (baseTokenAmount === undefined && quoteTokenAmount === undefined)
         ) {
           throw fastify.httpErrors.badRequest('Missing required parameters');
@@ -84,30 +81,27 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
         const uniswap = await Uniswap.getInstance(networkToUse);
         const ethereum = await Ethereum.getInstance(networkToUse);
 
-        // Resolve tokens
-        const baseTokenObj = uniswap.getTokenBySymbol(baseToken);
-        const quoteTokenObj = uniswap.getTokenBySymbol(quoteToken);
+        // Get pool information to determine tokens
+        const poolInfo = await getUniswapPoolInfo(
+          poolAddress,
+          networkToUse,
+          'clmm',
+        );
+        if (!poolInfo) {
+          throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
+        }
+
+        const baseTokenObj = uniswap.getTokenByAddress(
+          poolInfo.baseTokenAddress,
+        );
+        const quoteTokenObj = uniswap.getTokenByAddress(
+          poolInfo.quoteTokenAddress,
+        );
 
         if (!baseTokenObj || !quoteTokenObj) {
           throw fastify.httpErrors.badRequest(
-            `Token not found: ${!baseTokenObj ? baseToken : quoteToken}`,
+            'Token information not found for pool',
           );
-        }
-
-        // Find pool address if not provided
-        let poolAddress = requestedPoolAddress;
-        if (!poolAddress) {
-          poolAddress = await uniswap.findDefaultPool(
-            baseToken,
-            quoteToken,
-            'clmm',
-          );
-
-          if (!poolAddress) {
-            throw fastify.httpErrors.notFound(
-              `No CLMM pool found for pair ${baseToken}-${quoteToken}`,
-            );
-          }
         }
 
         // Get the V3 pool
@@ -119,7 +113,7 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
         );
         if (!pool) {
           throw fastify.httpErrors.notFound(
-            `Pool not found for ${baseToken}-${quoteToken}`,
+            `Pool not found for ${baseTokenObj.symbol}-${quoteTokenObj.symbol}`,
           );
         }
 
@@ -144,14 +138,14 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
 
         console.log('DEBUG: isBaseToken0:', isBaseToken0);
         console.log(
-          'DEBUG: baseToken:',
-          baseToken,
+          'DEBUG: baseToken symbol:',
+          baseTokenObj.symbol,
           'address:',
           baseTokenObj.address,
         );
         console.log(
-          'DEBUG: quoteToken:',
-          quoteToken,
+          'DEBUG: quoteToken symbol:',
+          quoteTokenObj.symbol,
           'address:',
           quoteTokenObj.address,
         );
@@ -278,7 +272,9 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
           );
           console.log(
             '  This means the position will only contain',
-            pool.tickCurrent < lowerTick ? baseToken : quoteToken,
+            pool.tickCurrent < lowerTick
+              ? baseTokenObj.symbol
+              : quoteTokenObj.symbol,
           );
         }
 

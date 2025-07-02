@@ -17,7 +17,7 @@ import {
   getUniswapV2RouterAddress,
   IUniswapV2Router02ABI,
 } from '../uniswap.contracts';
-import { formatTokenAmount } from '../uniswap.utils';
+import { formatTokenAmount, getUniswapPoolInfo } from '../uniswap.utils';
 
 import { getUniswapAmmLiquidityQuote } from './quoteLiquidity';
 
@@ -361,9 +361,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
       try {
         const {
           network,
-          poolAddress: requestedPoolAddress,
-          baseToken,
-          quoteToken,
+          poolAddress,
           baseTokenAmount,
           quoteTokenAmount,
           slippagePct,
@@ -373,12 +371,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         } = request.body;
 
         // Validate essential parameters
-        if (
-          !baseToken ||
-          !quoteToken ||
-          !baseTokenAmount ||
-          !quoteTokenAmount
-        ) {
+        if (!poolAddress || !baseTokenAmount || !quoteTokenAmount) {
           throw fastify.httpErrors.badRequest('Missing required parameters');
         }
 
@@ -396,22 +389,19 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           logger.info(`Using first available wallet address: ${walletAddress}`);
         }
 
-        // Find pool address if not provided
+        // Get pool information to determine tokens
         const uniswap = await Uniswap.getInstance(networkToUse);
-        let poolAddress = requestedPoolAddress;
-        if (!poolAddress) {
-          poolAddress = await uniswap.findDefaultPool(
-            baseToken,
-            quoteToken,
-            'amm',
-          );
-
-          if (!poolAddress) {
-            throw fastify.httpErrors.notFound(
-              `No AMM pool found for pair ${baseToken}-${quoteToken}`,
-            );
-          }
+        const poolInfo = await getUniswapPoolInfo(
+          poolAddress,
+          networkToUse,
+          'amm',
+        );
+        if (!poolInfo) {
+          throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
         }
+
+        const baseToken = poolInfo.baseTokenAddress;
+        const quoteToken = poolInfo.quoteTokenAddress;
 
         return await addLiquidity(
           fastify,

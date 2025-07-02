@@ -4,9 +4,9 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import {
-  ExecuteSwapRequest,
+  ExecuteAggregatorSwapRequest,
+  ExecuteAggregatorSwapRequestType,
   ExecuteSwapResponse,
-  ExecuteSwapRequestType,
   ExecuteSwapResponseType,
 } from '../../../schemas/swap-schema';
 import { logger } from '../../../services/logger';
@@ -117,10 +117,12 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
   const firstWalletAddress = await Solana.getWalletAddressExample();
 
   // Update schema example
-  ExecuteSwapRequest.properties.walletAddress.examples = [firstWalletAddress];
+  ExecuteAggregatorSwapRequest.properties.walletAddress.examples = [
+    firstWalletAddress,
+  ];
 
   fastify.post<{
-    Body: ExecuteSwapRequestType;
+    Body: ExecuteAggregatorSwapRequestType;
     Reply: ExecuteSwapResponseType;
   }>(
     '/execute-swap',
@@ -128,20 +130,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Execute Jupiter swap',
         tags: ['jupiter'],
-        body: {
-          ...ExecuteSwapRequest,
-          properties: {
-            ...ExecuteSwapRequest.properties,
-            network: { type: 'string', default: 'mainnet-beta' },
-            walletAddress: { type: 'string', examples: [firstWalletAddress] },
-            baseToken: { type: 'string', examples: ['SOL'] },
-            quoteToken: { type: 'string', examples: ['USDC'] },
-            amount: { type: 'number', examples: [0.1] },
-            side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
-            slippagePct: { type: 'number', examples: [1] },
-            poolAddress: { type: 'string', examples: [''] },
-          },
-        },
+        body: ExecuteAggregatorSwapRequest,
         response: { 200: ExecuteSwapResponse },
       },
     },

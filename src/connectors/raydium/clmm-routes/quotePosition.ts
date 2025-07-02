@@ -250,19 +250,10 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
           lowerPrice,
           upperPrice,
           poolAddress,
-          baseToken,
-          quoteToken,
           baseTokenAmount,
           quoteTokenAmount,
           slippagePct,
         } = request.query;
-
-        // Check if either poolAddress or both baseToken and quoteToken are provided
-        if (!poolAddress && (!baseToken || !quoteToken)) {
-          throw fastify.httpErrors.badRequest(
-            'Either poolAddress or both baseToken and quoteToken must be provided',
-          );
-        }
 
         return await quotePosition(
           fastify,
@@ -273,8 +264,8 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
           baseTokenAmount,
           quoteTokenAmount,
           slippagePct,
-          baseToken,
-          quoteToken,
+          undefined, // baseToken not needed anymore
+          undefined, // quoteToken not needed anymore
         );
       } catch (e) {
         logger.error(e);

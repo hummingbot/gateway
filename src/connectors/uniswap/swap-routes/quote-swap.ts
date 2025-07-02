@@ -16,8 +16,9 @@ import {
 } from '../../../schemas/swap-schema';
 import { ConfigManagerV2 } from '../../../services/config-manager-v2';
 import { logger } from '../../../services/logger';
+import { Uniswap } from '../uniswap';
 import { UniswapConfig } from '../uniswap.config';
-import { formatTokenAmount } from '../uniswap.utils';
+import { formatTokenAmount, getUniswapPoolInfo } from '../uniswap.utils';
 
 // Removing the Protocol enum as it's causing type issues
 
@@ -472,24 +473,59 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify, _options) => {
           `Received quote-swap request: ${JSON.stringify(request.query)}`,
         );
 
-        const {
-          network,
-          baseToken: baseTokenSymbol,
-          quoteToken: quoteTokenSymbol,
-          amount,
-          side,
-          slippagePct,
-        } = request.query;
+        const { network, poolAddress, baseToken, amount, side, slippagePct } =
+          request.query;
 
         const networkToUse = network || 'mainnet';
 
         // Validate essential parameters
-        if (!baseTokenSymbol || !quoteTokenSymbol || !amount || !side) {
+        if (!poolAddress || !baseToken || !amount || !side) {
           logger.error('Missing required parameters in request');
           return reply.badRequest('Missing required parameters');
         }
 
         try {
+          // Get pool information to determine tokens
+          const uniswap = await Uniswap.getInstance(networkToUse);
+          const poolInfo = await getUniswapPoolInfo(poolAddress, networkToUse);
+          if (!poolInfo) {
+            throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
+          }
+
+          let baseTokenSymbol: string;
+          let quoteTokenSymbol: string;
+
+          // Determine which token is base and which is quote based on the provided baseToken
+          if (baseToken === poolInfo.baseTokenAddress) {
+            baseTokenSymbol = poolInfo.baseTokenAddress;
+            quoteTokenSymbol = poolInfo.quoteTokenAddress;
+          } else if (baseToken === poolInfo.quoteTokenAddress) {
+            // User specified the quote token as base, so swap them
+            baseTokenSymbol = poolInfo.quoteTokenAddress;
+            quoteTokenSymbol = poolInfo.baseTokenAddress;
+          } else {
+            // Try to resolve baseToken as symbol to address
+            const resolvedToken = uniswap.getTokenBySymbol(baseToken);
+
+            if (resolvedToken) {
+              if (resolvedToken.address === poolInfo.baseTokenAddress) {
+                baseTokenSymbol = poolInfo.baseTokenAddress;
+                quoteTokenSymbol = poolInfo.quoteTokenAddress;
+              } else if (resolvedToken.address === poolInfo.quoteTokenAddress) {
+                baseTokenSymbol = poolInfo.quoteTokenAddress;
+                quoteTokenSymbol = poolInfo.baseTokenAddress;
+              } else {
+                throw fastify.httpErrors.badRequest(
+                  `Token ${baseToken} not found in pool ${poolAddress}`,
+                );
+              }
+            } else {
+              throw fastify.httpErrors.badRequest(
+                `Token ${baseToken} not found in pool ${poolAddress}`,
+              );
+            }
+          }
+
           // Use our shared quote function
           const quoteResult = await getUniswapQuote(
             fastify,

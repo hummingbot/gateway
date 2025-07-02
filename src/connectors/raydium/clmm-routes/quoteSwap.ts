@@ -315,30 +315,49 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const {
-          network,
-          baseToken,
-          quoteToken,
-          amount,
-          side,
-          poolAddress: requestedPoolAddress,
-          slippagePct,
-        } = request.query;
+        const { network, baseToken, amount, side, poolAddress, slippagePct } =
+          request.query;
         const networkToUse = network || 'mainnet-beta';
 
         const raydium = await Raydium.getInstance(networkToUse);
-        let poolAddress = requestedPoolAddress;
 
-        if (!poolAddress) {
-          poolAddress = await raydium.findDefaultPool(
-            baseToken,
-            quoteToken,
-            'clmm',
-          );
+        // Get pool info to determine tokens
+        const poolInfo = await raydium.getClmmPoolInfo(poolAddress);
+        if (!poolInfo) {
+          throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
+        }
 
-          if (!poolAddress) {
-            throw fastify.httpErrors.notFound(
-              `No CLMM pool found for pair ${baseToken}-${quoteToken}`,
+        let baseTokenToUse: string;
+        let quoteTokenToUse: string;
+
+        // Determine which token is base and which is quote based on the provided baseToken
+        if (baseToken === poolInfo.baseTokenAddress) {
+          baseTokenToUse = poolInfo.baseTokenAddress;
+          quoteTokenToUse = poolInfo.quoteTokenAddress;
+        } else if (baseToken === poolInfo.quoteTokenAddress) {
+          // User specified the quote token as base, so swap them
+          baseTokenToUse = poolInfo.quoteTokenAddress;
+          quoteTokenToUse = poolInfo.baseTokenAddress;
+        } else {
+          // Try to resolve baseToken as symbol to address
+          const solana = await Solana.getInstance(networkToUse);
+          const resolvedToken = await solana.getToken(baseToken);
+
+          if (resolvedToken) {
+            if (resolvedToken.address === poolInfo.baseTokenAddress) {
+              baseTokenToUse = poolInfo.baseTokenAddress;
+              quoteTokenToUse = poolInfo.quoteTokenAddress;
+            } else if (resolvedToken.address === poolInfo.quoteTokenAddress) {
+              baseTokenToUse = poolInfo.quoteTokenAddress;
+              quoteTokenToUse = poolInfo.baseTokenAddress;
+            } else {
+              throw fastify.httpErrors.badRequest(
+                `Token ${baseToken} not found in pool ${poolAddress}`,
+              );
+            }
+          } else {
+            throw fastify.httpErrors.badRequest(
+              `Token ${baseToken} not found in pool ${poolAddress}`,
             );
           }
         }
@@ -346,8 +365,8 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         const result = await formatSwapQuote(
           fastify,
           networkToUse,
-          baseToken,
-          quoteToken,
+          baseTokenToUse,
+          quoteTokenToUse,
           amount,
           side as 'BUY' | 'SELL',
           poolAddress,

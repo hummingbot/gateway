@@ -53,12 +53,6 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
           ...GetPositionInfoRequest,
           properties: {
             network: { type: 'string', default: 'base' },
-            poolAddress: {
-              type: 'string',
-              examples: [''],
-            },
-            baseToken: { type: 'string', examples: ['WETH'] },
-            quoteToken: { type: 'string', examples: ['USDC'] },
             walletAddress: { type: 'string', examples: [firstWalletAddress] },
           },
         },
@@ -71,19 +65,15 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
       try {
         const {
           network,
-          poolAddress: requestedPoolAddress,
-          baseToken,
-          quoteToken,
+          poolAddress,
           walletAddress: requestedWalletAddress,
         } = request.query;
 
         const networkToUse = network || 'base';
 
         // Validate essential parameters
-        if (!requestedPoolAddress && (!baseToken || !quoteToken)) {
-          throw fastify.httpErrors.badRequest(
-            'Either pool address or both base token and quote token must be provided',
-          );
+        if (!poolAddress) {
+          throw fastify.httpErrors.badRequest('Pool address is required');
         }
 
         // Get Uniswap and Ethereum instances
@@ -102,35 +92,6 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
           logger.info(`Using first available wallet address: ${walletAddress}`);
         }
 
-        // Resolve tokens if provided
-        let baseTokenObj, quoteTokenObj;
-        if (baseToken && quoteToken) {
-          baseTokenObj = uniswap.getTokenBySymbol(baseToken);
-          quoteTokenObj = uniswap.getTokenBySymbol(quoteToken);
-
-          if (!baseTokenObj || !quoteTokenObj) {
-            throw fastify.httpErrors.badRequest(
-              `Token not found: ${!baseTokenObj ? baseToken : quoteToken}`,
-            );
-          }
-        }
-
-        // Find pool address if not provided
-        let poolAddress = requestedPoolAddress;
-        if (!poolAddress && baseTokenObj && quoteTokenObj) {
-          poolAddress = await uniswap.findDefaultPool(
-            baseToken,
-            quoteToken,
-            'amm',
-          );
-
-          if (!poolAddress) {
-            throw fastify.httpErrors.notFound(
-              `No AMM pool found for pair ${baseToken}-${quoteToken}`,
-            );
-          }
-        }
-
         // Get the pair contract
         const pairContract = new Contract(
           poolAddress,
@@ -141,13 +102,29 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
         // Get LP token balance for the wallet
         const lpBalance = await pairContract.balanceOf(walletAddress);
 
+        // Get token addresses from the pair
+        const [token0, token1] = await Promise.all([
+          pairContract.token0(),
+          pairContract.token1(),
+        ]);
+
+        // Get token objects by address
+        const baseTokenObj = uniswap.getTokenByAddress(token0);
+        const quoteTokenObj = uniswap.getTokenByAddress(token1);
+
+        if (!baseTokenObj || !quoteTokenObj) {
+          throw fastify.httpErrors.badRequest(
+            'Token information not found for pool',
+          );
+        }
+
         // If no position, return early
         if (lpBalance.isZero()) {
           return {
             poolAddress,
             walletAddress,
-            baseTokenAddress: '',
-            quoteTokenAddress: '',
+            baseTokenAddress: baseTokenObj.address,
+            quoteTokenAddress: quoteTokenObj.address,
             lpTokenAmount: 0,
             baseTokenAmount: 0,
             quoteTokenAmount: 0,
@@ -155,22 +132,11 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
           };
         }
 
-        // Get token addresses and reserves
-        const [token0, token1, totalSupply, reserves] = await Promise.all([
-          pairContract.token0(),
-          pairContract.token1(),
+        // Get total supply and reserves
+        const [totalSupply, reserves] = await Promise.all([
           pairContract.totalSupply(),
           pairContract.getReserves(),
         ]);
-
-        // If tokens were not provided, get them by address
-        if (!baseTokenObj) {
-          baseTokenObj = uniswap.getTokenByAddress(token0);
-        }
-
-        if (!quoteTokenObj) {
-          quoteTokenObj = uniswap.getTokenByAddress(token1);
-        }
 
         // Determine which token is base and which is quote
         const token0IsBase =

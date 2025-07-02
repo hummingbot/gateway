@@ -10,5 +10,3 @@ jest.mock('brotli', () => ({
   decompress: jest.fn().mockImplementation(() => Buffer.from([])),
   isCompressed: jest.fn().mockReturnValue(false),
 }));
-
-console.log('Jest test environment configured with global mocks and settings');

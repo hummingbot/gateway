@@ -572,51 +572,51 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const {
-          network,
-          poolAddress: requestedPoolAddress,
-          baseToken,
-          quoteToken,
-          amount,
-          side,
-          slippagePct,
-        } = request.query;
+        const { network, poolAddress, baseToken, amount, side, slippagePct } =
+          request.query;
         const networkToUse = network || 'mainnet-beta';
 
         const raydium = await Raydium.getInstance(networkToUse);
-        let poolAddress = requestedPoolAddress;
-        let baseTokenToUse = baseToken;
-        let quoteTokenToUse = quoteToken;
 
-        if (!poolAddress) {
-          if (!baseToken || !quoteToken) {
-            throw fastify.httpErrors.badRequest(
-              'Either poolAddress or both baseToken and quoteToken must be provided',
-            );
-          }
+        // Get pool info to determine tokens
+        const poolInfo = await raydium.getAmmPoolInfo(poolAddress);
+        if (!poolInfo) {
+          throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
+        }
 
-          poolAddress = await raydium.findDefaultPool(
-            baseToken,
-            quoteToken,
-            'amm',
-          );
+        let baseTokenToUse: string;
+        let quoteTokenToUse: string;
 
-          if (!poolAddress) {
-            throw fastify.httpErrors.notFound(
-              `No AMM pool found for pair ${baseToken}-${quoteToken}`,
-            );
-          }
-        } else if (!baseToken || !quoteToken) {
-          // If poolAddress is provided but not tokens, get them from pool info
-          const poolInfo = await raydium.getAmmPoolInfo(poolAddress);
-          if (!poolInfo) {
-            throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
-          }
-
-          // For AMM pools, baseToken is always the first token (SOL in SOL/MORI)
-          // and quoteToken is always the second token (MORI in SOL/MORI)
+        // Determine which token is base and which is quote based on the provided baseToken
+        if (baseToken === poolInfo.baseTokenAddress) {
           baseTokenToUse = poolInfo.baseTokenAddress;
           quoteTokenToUse = poolInfo.quoteTokenAddress;
+        } else if (baseToken === poolInfo.quoteTokenAddress) {
+          // User specified the quote token as base, so swap them
+          baseTokenToUse = poolInfo.quoteTokenAddress;
+          quoteTokenToUse = poolInfo.baseTokenAddress;
+        } else {
+          // Try to resolve baseToken as symbol to address
+          const solana = await Solana.getInstance(networkToUse);
+          const resolvedToken = await solana.getToken(baseToken);
+
+          if (resolvedToken) {
+            if (resolvedToken.address === poolInfo.baseTokenAddress) {
+              baseTokenToUse = poolInfo.baseTokenAddress;
+              quoteTokenToUse = poolInfo.quoteTokenAddress;
+            } else if (resolvedToken.address === poolInfo.quoteTokenAddress) {
+              baseTokenToUse = poolInfo.quoteTokenAddress;
+              quoteTokenToUse = poolInfo.baseTokenAddress;
+            } else {
+              throw fastify.httpErrors.badRequest(
+                `Token ${baseToken} not found in pool ${poolAddress}`,
+              );
+            }
+          } else {
+            throw fastify.httpErrors.badRequest(
+              `Token ${baseToken} not found in pool ${poolAddress}`,
+            );
+          }
         }
 
         const result = await formatSwapQuote(
