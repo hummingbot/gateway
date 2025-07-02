@@ -1,11 +1,6 @@
 {
-  "json": "0x072253",
+  "json": "0x0b383c",
   "meta": {
-    "values": [
-      [
-        "custom",
-        "ethers.BigNumber"
-      ]
-    ]
+    "values": [["custom", "ethers.BigNumber"]]
   }
 }

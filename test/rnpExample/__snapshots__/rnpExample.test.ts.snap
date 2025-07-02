@@ -2,15 +2,15 @@
 
 exports[`RnpExample useABC 1`] = `
 {
-  "a": "real methodA-0.20636781091534218",
-  "b": "937538",
+  "a": "real methodA-0.623159602411435",
+  "b": "624554",
   "c": Any<String>,
 }
 `;
 
 exports[`RnpExample useB 1`] = `
 {
-  "b": "467539",
+  "b": "735292",
 }
 `;
 
@@ -24,14 +24,14 @@ exports[`RnpExample useBUnloaded 1`] = `
 
 exports[`RnpExample useDTwice 1`] = `
 {
-  "d1": "real methodD-0.7450202811379858",
-  "d2": "real methodD-0.22170614534273492",
+  "d1": "real methodD-0.9962881775546952",
+  "d2": "real methodD-0.38055493047559086",
 }
 `;
 
 exports[`RnpExample useProtoDep 1`] = `
 {
-  "x": "real methodX-0.40755652551480015",
+  "x": "real methodX-0.10033756858188925",
 }
 `;
 
