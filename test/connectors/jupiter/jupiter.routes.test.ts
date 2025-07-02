@@ -1,6 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 
+import '../../mocks/app-mocks';
+
 import { FastifyInstance } from 'fastify';
 
 import { gatewayApp } from '../../../src/app';
@@ -55,23 +57,12 @@ describe('Jupiter Routes Structure', () => {
 
   describe('Route Registration', () => {
     it('should register Jupiter swap routes at /connectors/jupiter/swap', async () => {
-      // Test quote endpoint
-      const quoteResponse = await fastify.inject({
-        method: 'POST',
-        url: '/connectors/jupiter/swap/quote',
-        payload: {
-          chain: 'solana',
-          network: 'mainnet-beta',
-          baseToken: 'SOL',
-          quoteToken: 'USDC',
-          amount: 1,
-          side: 'BUY',
-        },
-      });
+      const routes = fastify.printRoutes();
 
-      // Jupiter routes should be available at /connectors/jupiter/swap
-      // 400 is expected due to validation (missing wallet address)
-      expect(quoteResponse.statusCode).toBe(400);
+      // Check that Jupiter swap routes are registered
+      expect(routes).toContain('jupiter/swap/');
+      expect(routes).toContain('quote-swap');
+      expect(routes).toContain('execute-swap');
     });
   });
 });

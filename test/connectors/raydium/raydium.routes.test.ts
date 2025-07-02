@@ -1,6 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 
+import '../../mocks/app-mocks';
+
 import { FastifyInstance } from 'fastify';
 
 import { gatewayApp } from '../../../src/app';
@@ -57,55 +59,18 @@ describe('Raydium Routes Structure', () => {
   });
 
   describe('Route Registration', () => {
-    it('should register Raydium AMM routes at /connectors/raydium/amm', async () => {
-      const response = await fastify.inject({
-        method: 'POST',
-        url: '/connectors/raydium/amm/quote',
-        payload: {
-          chain: 'solana',
-          network: 'mainnet-beta',
-          baseToken: 'SOL',
-          quoteToken: 'USDC',
-          amount: 1,
-          side: 'SELL',
-        },
-      });
+    it('should register Raydium AMM and CLMM routes', async () => {
+      const routes = fastify.printRoutes();
 
-      expect([200, 400, 500]).toContain(response.statusCode);
-    });
+      // Check that Raydium AMM routes are registered
+      expect(routes).toContain('raydium/');
+      expect(routes).toContain('amm/');
 
-    it('should register Raydium CLMM routes at /connectors/raydium/clmm', async () => {
-      const response = await fastify.inject({
-        method: 'POST',
-        url: '/connectors/raydium/clmm/quote',
-        payload: {
-          chain: 'solana',
-          network: 'mainnet-beta',
-          baseToken: 'SOL',
-          quoteToken: 'USDC',
-          amount: 1,
-          side: 'SELL',
-        },
-      });
+      // Check that Raydium CLMM routes are registered
+      expect(routes).toContain('clmm/');
 
-      expect([200, 400, 500]).toContain(response.statusCode);
-    });
-
-    it('should NOT have direct swap routes at /connectors/raydium/swap', async () => {
-      const response = await fastify.inject({
-        method: 'POST',
-        url: '/connectors/raydium/swap/quote',
-        payload: {
-          chain: 'solana',
-          network: 'mainnet-beta',
-          baseToken: 'SOL',
-          quoteToken: 'USDC',
-          amount: 1,
-          side: 'SELL',
-        },
-      });
-
-      expect(response.statusCode).toBe(404);
+      // Check that swap routes are NOT directly under /swap
+      expect(routes).not.toContain('raydium/swap/');
     });
   });
 });

@@ -1,3 +1,5 @@
+import '../mocks/app-mocks';
+
 import { FastifyInstance } from 'fastify';
 
 import { gatewayApp } from '../../src/app';

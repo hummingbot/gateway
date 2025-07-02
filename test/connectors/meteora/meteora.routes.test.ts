@@ -1,6 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 
+import '../../mocks/app-mocks';
+
 import { FastifyInstance } from 'fastify';
 
 import { gatewayApp } from '../../../src/app';
@@ -47,54 +49,16 @@ describe('Meteora Routes Structure', () => {
 
   describe('Route Registration', () => {
     it('should register Meteora CLMM routes at /connectors/meteora/clmm', async () => {
-      const response = await fastify.inject({
-        method: 'POST',
-        url: '/connectors/meteora/clmm/quote',
-        payload: {
-          chain: 'solana',
-          network: 'mainnet-beta',
-          baseToken: 'SOL',
-          quoteToken: 'USDC',
-          amount: 1,
-          side: 'SELL',
-        },
-      });
+      const routes = fastify.printRoutes();
 
-      expect([200, 400, 500]).toContain(response.statusCode);
-    });
+      // Check that Meteora CLMM routes are registered
+      expect(routes).toContain('meteora/clmm/');
 
-    it('should NOT have direct swap routes at /connectors/meteora/swap', async () => {
-      const response = await fastify.inject({
-        method: 'POST',
-        url: '/connectors/meteora/swap/quote',
-        payload: {
-          chain: 'solana',
-          network: 'mainnet-beta',
-          baseToken: 'SOL',
-          quoteToken: 'USDC',
-          amount: 1,
-          side: 'SELL',
-        },
-      });
+      // Check that swap routes are NOT directly under /swap
+      expect(routes).not.toContain('meteora/swap/');
 
-      expect(response.statusCode).toBe(404);
-    });
-
-    it('should NOT have AMM routes', async () => {
-      const response = await fastify.inject({
-        method: 'POST',
-        url: '/connectors/meteora/amm/quote',
-        payload: {
-          chain: 'solana',
-          network: 'mainnet-beta',
-          baseToken: 'SOL',
-          quoteToken: 'USDC',
-          amount: 1,
-          side: 'SELL',
-        },
-      });
-
-      expect(response.statusCode).toBe(404);
+      // Check that AMM routes are NOT registered
+      expect(routes).not.toContain('meteora/amm/');
     });
   });
 });

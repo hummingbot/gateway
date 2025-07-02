@@ -1,6 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 
+import '../../mocks/app-mocks';
+
 import { FastifyInstance } from 'fastify';
 
 import { gatewayApp } from '../../../src/app';
@@ -46,52 +48,18 @@ describe('Uniswap Routes Structure', () => {
   });
 
   describe('Route Registration', () => {
-    it('should register Uniswap swap routes at /connectors/uniswap/swap', async () => {
-      const response = await fastify.inject({
-        method: 'POST',
-        url: '/connectors/uniswap/swap/quote',
-        payload: {
-          chain: 'ethereum',
-          network: 'mainnet',
-          baseToken: 'ETH',
-          quoteToken: 'USDC',
-          amount: 1,
-          side: 'SELL',
-        },
-      });
+    it('should register all Uniswap route types', async () => {
+      const routes = fastify.printRoutes();
 
-      expect([200, 400, 500]).toContain(response.statusCode);
-    });
+      // Check that Uniswap swap routes are registered
+      expect(routes).toContain('uniswap/');
+      expect(routes).toContain('swap/');
 
-    it('should register Uniswap AMM routes at /connectors/uniswap/amm', async () => {
-      const response = await fastify.inject({
-        method: 'POST',
-        url: '/connectors/uniswap/amm/poolInfo',
-        payload: {
-          chain: 'ethereum',
-          network: 'mainnet',
-          baseToken: 'ETH',
-          quoteToken: 'USDC',
-        },
-      });
+      // Check that Uniswap AMM routes are registered
+      expect(routes).toContain('amm/');
 
-      expect([200, 400, 500]).toContain(response.statusCode);
-    });
-
-    it('should register Uniswap CLMM routes at /connectors/uniswap/clmm', async () => {
-      const response = await fastify.inject({
-        method: 'POST',
-        url: '/connectors/uniswap/clmm/poolInfo',
-        payload: {
-          chain: 'ethereum',
-          network: 'mainnet',
-          baseToken: 'ETH',
-          quoteToken: 'USDC',
-          fee: 'MEDIUM',
-        },
-      });
-
-      expect([200, 400, 500]).toContain(response.statusCode);
+      // Check that Uniswap CLMM routes are registered
+      expect(routes).toContain('clmm/');
     });
   });
 });

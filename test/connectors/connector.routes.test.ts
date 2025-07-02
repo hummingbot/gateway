@@ -1,5 +1,8 @@
 import { FastifyInstance } from 'fastify';
 
+// Import shared mocks before importing app
+import '../mocks/app-mocks';
+
 import { gatewayApp } from '../../src/app';
 
 describe('Connector Routes', () => {

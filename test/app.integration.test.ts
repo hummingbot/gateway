@@ -1,33 +1,7 @@
 import { FastifyInstance } from 'fastify';
 
-// Mock dependencies before importing app
-jest.mock('../src/services/logger', () => ({
-  logger: {
-    info: jest.fn(),
-    error: jest.fn(),
-    warn: jest.fn(),
-    debug: jest.fn(),
-  },
-}));
-
-jest.mock('../src/services/config-manager-v2', () => ({
-  ConfigManagerV2: {
-    getInstance: jest.fn().mockReturnValue({
-      get: jest.fn().mockImplementation((key: string) => {
-        const mockConfig: Record<string, any> = {
-          'server.port': 15888,
-          'server.docsPort': 19999,
-          'server.fastifyLogs': false,
-        };
-        return mockConfig[key];
-      }),
-    }),
-  },
-}));
-
-jest.mock('../src/https', () => ({
-  getHttpsOptions: jest.fn().mockReturnValue(null),
-}));
+// Import shared mocks before importing app
+import './mocks/app-mocks';
 
 import { gatewayApp } from '../src/app';
 
@@ -60,24 +34,24 @@ describe('App Integration - Route Registration', () => {
         // Check swap routes
         if (trading_types.includes('swap')) {
           // Swap routes should exist under /swap prefix
-          expect(routes).toContain(`/connectors/${name}/swap/`);
+          expect(routes).toContain(`/connectors/${name}/swap`);
         } else {
           // No swap routes
-          expect(routes).not.toContain(`/connectors/${name}/swap/`);
+          expect(routes).not.toContain(`/connectors/${name}/swap`);
         }
 
         // Check AMM routes
         if (trading_types.includes('amm')) {
-          expect(routes).toContain(`/connectors/${name}/amm/`);
+          expect(routes).toContain(`/connectors/${name}/amm`);
         } else {
-          expect(routes).not.toContain(`/connectors/${name}/amm/`);
+          expect(routes).not.toContain(`/connectors/${name}/amm`);
         }
 
         // Check CLMM routes
         if (trading_types.includes('clmm')) {
-          expect(routes).toContain(`/connectors/${name}/clmm/`);
+          expect(routes).toContain(`/connectors/${name}/clmm`);
         } else {
-          expect(routes).not.toContain(`/connectors/${name}/clmm/`);
+          expect(routes).not.toContain(`/connectors/${name}/clmm`);
         }
       });
     });

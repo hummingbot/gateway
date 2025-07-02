@@ -157,11 +157,7 @@ describe('PoolService', () => {
       (fs.existsSync as jest.Mock).mockReturnValue(true);
       (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockPools));
 
-      const pools = await poolService.loadPoolList(
-        'solana',
-        'mainnet-beta',
-        'raydium/amm',
-      );
+      const pools = await poolService.loadPoolList('raydium');
 
       expect(pools).toEqual(mockPools);
     });
@@ -186,11 +182,7 @@ describe('PoolService', () => {
       (fs.writeFileSync as jest.Mock).mockImplementation();
       (fs.renameSync as jest.Mock).mockImplementation();
 
-      const pools = await poolService.loadPoolList(
-        'solana',
-        'mainnet-beta',
-        'raydium/amm',
-      );
+      const pools = await poolService.loadPoolList('raydium');
 
       expect(pools).toEqual(mockTemplatePools);
     });
@@ -198,11 +190,7 @@ describe('PoolService', () => {
     it('should return empty array if no template exists', async () => {
       (fs.existsSync as jest.Mock).mockReturnValue(false);
 
-      const pools = await poolService.loadPoolList(
-        'solana',
-        'mainnet-beta',
-        'raydium/amm',
-      );
+      const pools = await poolService.loadPoolList('raydium');
 
       expect(pools).toEqual([]);
     });
@@ -219,7 +207,7 @@ describe('PoolService', () => {
 
   describe('savePoolList', () => {
     it('should save pool list with atomic write', async () => {
-      const pools = [
+      const pools: Pool[] = [
         {
           baseSymbol: 'SOL',
           quoteSymbol: 'USDC',
@@ -240,7 +228,7 @@ describe('PoolService', () => {
     });
 
     it('should clean up temp file on error', async () => {
-      const pools = [
+      const pools: Pool[] = [
         {
           baseSymbol: 'SOL',
           quoteSymbol: 'USDC',
