@@ -1,20 +1,11 @@
 import winston from 'winston';
 
-// Mock ConfigManagerV2 before importing logger
-const mockConfig: Record<string, any> = {
-  'server.logToStdOut': false,
-  'logging.logPath': './logs',
-};
+// Import shared mock components but don't setup all mocks
+import { mockConfigStorage, mockConfigManagerV2 } from '../mocks/shared-mocks';
 
+// Only mock ConfigManagerV2, not logger
 jest.mock('../../src/services/config-manager-v2', () => ({
-  ConfigManagerV2: {
-    getInstance: jest.fn().mockReturnValue({
-      get: jest.fn().mockImplementation((key: string) => mockConfig[key]),
-      set: jest.fn().mockImplementation((key: string, value: any) => {
-        mockConfig[key] = value;
-      }),
-    }),
-  },
+  ConfigManagerV2: mockConfigManagerV2,
 }));
 
 import { ConfigManagerV2 } from '../../src/services/config-manager-v2';

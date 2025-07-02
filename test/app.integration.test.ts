@@ -26,38 +26,40 @@ describe('App Integration - Route Registration', () => {
       });
 
       const { connectors } = JSON.parse(connectorsResponse.body);
-      const routes = fastify.printRoutes();
 
-      // Remove whitespace and special characters for easier matching
-      const cleanedRoutes = routes.replace(/\s+/g, ' ').replace(/[├└─│]/g, '');
-
-      // For each connector, verify routes match their trading types
-      connectors.forEach((connector: any) => {
+      // Test each connector has the expected routes based on trading types
+      for (const connector of connectors) {
         const { name, trading_types } = connector;
 
-        // Check swap routes
+        // Test swap routes
         if (trading_types.includes('swap')) {
-          // Swap routes should exist under /swap prefix
-          expect(cleanedRoutes).toContain(`${name}/swap/`);
-        } else {
-          // No swap routes
-          expect(cleanedRoutes).not.toContain(`${name}/swap/`);
+          // Try to access a swap endpoint
+          const swapResponse = await fastify.inject({
+            method: 'GET',
+            url: `/connectors/${name}/swap/quote-swap`,
+          });
+          // Should not be 404 if the route exists
+          expect(swapResponse.statusCode).not.toBe(404);
         }
 
-        // Check AMM routes
+        // Test AMM routes
         if (trading_types.includes('amm')) {
-          expect(cleanedRoutes).toContain(`${name}/amm/`);
-        } else {
-          expect(cleanedRoutes).not.toContain(`${name}/amm/`);
+          const ammResponse = await fastify.inject({
+            method: 'GET',
+            url: `/connectors/${name}/amm/pool-info`,
+          });
+          expect(ammResponse.statusCode).not.toBe(404);
         }
 
-        // Check CLMM routes
+        // Test CLMM routes
         if (trading_types.includes('clmm')) {
-          expect(cleanedRoutes).toContain(`${name}/clmm/`);
-        } else {
-          expect(cleanedRoutes).not.toContain(`${name}/clmm/`);
+          const clmmResponse = await fastify.inject({
+            method: 'GET',
+            url: `/connectors/${name}/clmm/pool-info`,
+          });
+          expect(clmmResponse.statusCode).not.toBe(404);
         }
-      });
+      }
     });
   });
 

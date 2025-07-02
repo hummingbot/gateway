@@ -3,21 +3,11 @@ import path from 'path';
 import Fastify, { FastifyInstance } from 'fastify';
 import fse from 'fs-extra';
 
-// Mock dependencies
-jest.mock('../../src/services/logger', () => ({
-  logger: {
-    info: jest.fn(),
-    error: jest.fn(),
-    warn: jest.fn(),
-    debug: jest.fn(),
-  },
-}));
+// Import shared mocks for common dependencies
+import { setupCommonMocks } from '../mocks/shared-mocks';
 
-jest.mock('../../src/services/config-manager-cert-passphrase', () => ({
-  ConfigManagerCertPassphrase: {
-    readPassphrase: jest.fn().mockReturnValue('test-passphrase'),
-  },
-}));
+// Setup common mocks
+setupCommonMocks();
 
 // Import path module at top level
 const testWalletPath = path.join(__dirname, 'test-wallets');

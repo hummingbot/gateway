@@ -1,48 +1,32 @@
 import { FastifyInstance } from 'fastify';
 
-import { getDefaultPools } from '../../src/config/utils';
-import { ConfigManagerV2 } from '../../src/services/config-manager-v2';
+// Import and setup shared mocks before other imports
+import {
+  setupCommonMocks,
+  resetAllMocks,
+  createMockFastify,
+  mockLogger,
+  mockConfigManagerV2,
+  mockPoolService,
+} from '../mocks/shared-mocks';
 
-// Mock dependencies before importing functions
-jest.mock('../../src/services/config-manager-v2');
-jest.mock('../../src/services/logger', () => ({
-  logger: {
-    info: jest.fn(),
-    error: jest.fn(),
-    warn: jest.fn(),
-    debug: jest.fn(),
-  },
-}));
+// Setup mocks before imports
+setupCommonMocks();
 
-// Mock PoolService
-const mockGetDefaultPools = jest.fn();
+// Mock PoolService separately as it's specific to this test
 jest.mock('../../src/services/pool-service', () => ({
   PoolService: {
-    getInstance: jest.fn().mockReturnValue({
-      getDefaultPools: mockGetDefaultPools,
-    }),
+    getInstance: jest.fn().mockReturnValue(mockPoolService),
   },
 }));
 
-// Import logger after mocking
+import { getDefaultPools } from '../../src/config/utils';
+import { ConfigManagerV2 } from '../../src/services/config-manager-v2';
 import { logger } from '../../src/services/logger';
 
-// Remove duplicate mock declarations
-
 describe('Pool Configuration Tests', () => {
-  // Mock fastify instance with httpErrors
-  const mockFastify = {
-    httpErrors: {
-      badRequest: jest.fn((msg: string) => {
-        const error = new Error(`Bad Request: ${msg}`);
-        throw error;
-      }),
-      internalServerError: jest.fn((msg: string) => {
-        const error = new Error(`Internal Server Error: ${msg}`);
-        throw error;
-      }),
-    },
-  } as unknown as FastifyInstance;
+  // Use shared mock factory
+  const mockFastify = createMockFastify() as unknown as FastifyInstance;
 
   // Mock connector configuration with networks structure
   const mockConnectorConfig = {
@@ -73,10 +57,10 @@ describe('Pool Configuration Tests', () => {
 
   beforeEach(() => {
     // Reset all mocks
-    jest.clearAllMocks();
+    resetAllMocks();
 
     // Reset PoolService mock
-    mockGetDefaultPools.mockReset();
+    mockPoolService.getDefaultPools.mockReset();
 
     // Setup ConfigManagerV2 mock
     (ConfigManagerV2 as jest.Mocked<typeof ConfigManagerV2>).getInstance = jest
@@ -146,7 +130,7 @@ describe('Pool Configuration Tests', () => {
 
     it('should return AMM pools for raydium/amm', async () => {
       // Mock PoolService return value
-      mockGetDefaultPools.mockResolvedValue({
+      mockPoolService.getDefaultPools.mockResolvedValue({
         'SOL-USDC': '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
         'RAY-USDC': '6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg',
       });
@@ -165,7 +149,7 @@ describe('Pool Configuration Tests', () => {
 
     it('should return CLMM pools for raydium/clmm', async () => {
       // Mock PoolService return value
-      mockGetDefaultPools.mockResolvedValue({
+      mockPoolService.getDefaultPools.mockResolvedValue({
         'SOL-USDC': '3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv',
         'RAY-USDC': '61R1ndXxvsWXXkWSyNkCxnzwd3zUNB8Q2ibmkiLPC8ht',
       });
@@ -201,7 +185,7 @@ describe('Pool Configuration Tests', () => {
       });
 
       // Mock PoolService return value
-      mockGetDefaultPools.mockResolvedValue({
+      mockPoolService.getDefaultPools.mockResolvedValue({
         'SOL-USDC': 'devnet-pool-address',
       });
 
