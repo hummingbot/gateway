@@ -51,7 +51,7 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       try {
         const { positionAddress, walletAddress } = request.query;
-        const network = request.query.network || 'mainnet-beta';
+        const network = request.query.network;
         const meteora = await Meteora.getInstance(network);
 
         try {

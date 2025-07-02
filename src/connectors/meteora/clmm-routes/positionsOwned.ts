@@ -54,7 +54,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       try {
         const { walletAddress, poolAddress } = request.query;
-        const network = request.query.network || 'mainnet-beta';
+        const network = request.query.network;
         const meteora = await Meteora.getInstance(network);
 
         // Validate addresses first

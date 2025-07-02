@@ -80,7 +80,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           computeUnits,
         } = request.body;
 
-        const networkToUse = network || 'base';
+        const networkToUse = network;
 
         // Validate essential parameters
         if (

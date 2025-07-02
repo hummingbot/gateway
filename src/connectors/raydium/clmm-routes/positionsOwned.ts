@@ -44,7 +44,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       try {
         const { poolAddress } = request.query;
-        const network = request.query.network || 'mainnet-beta';
+        const network = request.query.network;
         const raydium = await Raydium.getInstance(network);
 
         // Validate pool address only

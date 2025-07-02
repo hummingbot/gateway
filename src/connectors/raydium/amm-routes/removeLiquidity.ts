@@ -277,7 +277,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
 
         return await removeLiquidity(
           fastify,
-          network || 'mainnet-beta',
+          network,
           walletAddress,
           poolAddress,
           percentageToRemove,

@@ -157,7 +157,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           computeUnits,
         } = request.body;
 
-        const networkToUse = network || 'mainnet-beta';
+        const networkToUse = network;
 
         return await removeLiquidity(
           fastify,

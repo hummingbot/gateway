@@ -38,7 +38,7 @@ export async function getUniswapAmmLiquidityQuote(
   rawQuoteTokenAmount: BigNumber;
   routerAddress: string;
 }> {
-  const networkToUse = network || 'base';
+  const networkToUse = network;
 
   // Validate essential parameters
   if (!baseToken || !quoteToken) {
@@ -268,11 +268,7 @@ export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         // Get pool information to determine tokens
-        const poolInfo = await getUniswapPoolInfo(
-          poolAddress,
-          network || 'base',
-          'amm',
-        );
+        const poolInfo = await getUniswapPoolInfo(poolAddress, network, 'amm');
         if (!poolInfo) {
           throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
         }
@@ -291,7 +287,7 @@ export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         );
 
         // Use standard gas limit for liquidity operations
-        const ethereum = await Ethereum.getInstance(network || 'base');
+        const ethereum = await Ethereum.getInstance(network);
         const computeUnits = ethereum.gasLimitTransaction || 500000;
 
         return {

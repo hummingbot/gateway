@@ -37,7 +37,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       try {
         const { poolAddress } = request.query;
-        const network = request.query.network || 'mainnet-beta';
+        const network = request.query.network;
 
         const meteora = await Meteora.getInstance(network);
         if (!meteora) {

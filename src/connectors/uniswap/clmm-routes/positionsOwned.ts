@@ -71,7 +71,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       try {
         const { walletAddress: requestedWalletAddress } = request.query;
-        const network = request.query.network || 'base';
+        const network = request.query.network;
         const chain = 'ethereum'; // Default to ethereum
 
         // Get instances

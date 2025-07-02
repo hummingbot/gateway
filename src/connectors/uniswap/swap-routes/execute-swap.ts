@@ -76,7 +76,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (
           computeUnits,
         } = request.body;
 
-        const networkToUse = network || 'mainnet';
+        const networkToUse = network;
 
         // Validate essential parameters
         if (!baseTokenSymbol || !quoteTokenSymbol || !amount || !side) {

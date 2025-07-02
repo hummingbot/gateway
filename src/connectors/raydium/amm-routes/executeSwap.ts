@@ -240,22 +240,44 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           priorityFeePerCU,
           computeUnits,
         } = request.body;
-        const networkToUse = network || 'mainnet-beta';
+        const networkToUse = network;
 
         // If no pool address provided, find default pool
         let poolAddressToUse = poolAddress;
         if (!poolAddressToUse) {
-          const raydium = await Raydium.getInstance(networkToUse);
-          poolAddressToUse = await raydium.findDefaultPool(
-            baseToken,
-            quoteToken,
-            'amm',
-          );
-          if (!poolAddressToUse) {
-            throw fastify.httpErrors.notFound(
-              `No AMM pool found for pair ${baseToken}-${quoteToken}`,
+          const solana = await Solana.getInstance(networkToUse);
+
+          // Resolve token symbols to get proper symbols for pool lookup
+          const baseTokenInfo = await solana.getToken(baseToken);
+          const quoteTokenInfo = await solana.getToken(quoteToken);
+
+          if (!baseTokenInfo || !quoteTokenInfo) {
+            throw fastify.httpErrors.badRequest(
+              `Token not found: ${!baseTokenInfo ? baseToken : quoteToken}`,
             );
           }
+
+          // Use PoolService to find pool by token pair
+          const { PoolService } = await import(
+            '../../../services/pool-service'
+          );
+          const poolService = PoolService.getInstance();
+
+          const pool = await poolService.getPool(
+            'raydium',
+            networkToUse,
+            'amm',
+            baseTokenInfo.symbol,
+            quoteTokenInfo.symbol,
+          );
+
+          if (!pool) {
+            throw fastify.httpErrors.notFound(
+              `No AMM pool found for ${baseTokenInfo.symbol}-${quoteTokenInfo.symbol} on Raydium`,
+            );
+          }
+
+          poolAddressToUse = pool.address;
         }
 
         return await executeSwap(

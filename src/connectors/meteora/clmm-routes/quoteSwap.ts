@@ -193,42 +193,71 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network, baseToken, amount, side, poolAddress, slippagePct } =
-          request.query;
-        const networkUsed = network || 'mainnet-beta';
-        const meteora = await Meteora.getInstance(networkUsed);
+        const {
+          network,
+          baseToken,
+          quoteToken,
+          amount,
+          side,
+          poolAddress,
+          slippagePct,
+        } = request.query;
+        const networkUsed = network;
 
-        // Get pool info to determine tokens
-        const poolInfo = await meteora.getPoolInfo(poolAddress);
-        if (!poolInfo) {
-          throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
+        // Validate essential parameters
+        if (!baseToken || !quoteToken || !amount || !side) {
+          throw fastify.httpErrors.badRequest(
+            'baseToken, quoteToken, amount, and side are required',
+          );
         }
 
-        let baseTokenToUse: string;
-        let quoteTokenToUse: string;
+        const solana = await Solana.getInstance(networkUsed);
 
-        // Determine which token is base and which is quote based on the provided baseToken
-        if (baseToken === poolInfo.baseTokenAddress) {
-          baseTokenToUse = poolInfo.baseTokenAddress;
-          quoteTokenToUse = poolInfo.quoteTokenAddress;
-        } else if (baseToken === poolInfo.quoteTokenAddress) {
-          // User specified the quote token as base, so swap them
-          baseTokenToUse = poolInfo.quoteTokenAddress;
-          quoteTokenToUse = poolInfo.baseTokenAddress;
-        } else {
-          throw fastify.httpErrors.badRequest(
-            `Token ${baseToken} not found in pool ${poolAddress}`,
+        let poolAddressToUse = poolAddress;
+
+        // If poolAddress is not provided, look it up by token pair
+        if (!poolAddressToUse) {
+          // Resolve token symbols to get proper symbols for pool lookup
+          const baseTokenInfo = await solana.getToken(baseToken);
+          const quoteTokenInfo = await solana.getToken(quoteToken);
+
+          if (!baseTokenInfo || !quoteTokenInfo) {
+            throw fastify.httpErrors.badRequest(
+              `Token not found: ${!baseTokenInfo ? baseToken : quoteToken}`,
+            );
+          }
+
+          // Use PoolService to find pool by token pair
+          const { PoolService } = await import(
+            '../../../services/pool-service'
           );
+          const poolService = PoolService.getInstance();
+
+          const pool = await poolService.getPool(
+            'meteora',
+            networkUsed,
+            'clmm',
+            baseTokenInfo.symbol,
+            quoteTokenInfo.symbol,
+          );
+
+          if (!pool) {
+            throw fastify.httpErrors.notFound(
+              `No CLMM pool found for ${baseTokenInfo.symbol}-${quoteTokenInfo.symbol} on Meteora`,
+            );
+          }
+
+          poolAddressToUse = pool.address;
         }
 
         const result = await formatSwapQuote(
           fastify,
           networkUsed,
-          baseTokenToUse,
-          quoteTokenToUse,
+          baseToken,
+          quoteToken,
           amount,
           side as 'BUY' | 'SELL',
-          poolAddress,
+          poolAddressToUse,
           slippagePct,
         );
 

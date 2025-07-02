@@ -34,7 +34,7 @@ async function addLiquidity(
   priorityFeePerCU?: number,
   computeUnits?: number,
 ): Promise<AddLiquidityResponseType> {
-  const networkToUse = network || 'base';
+  const networkToUse = network;
 
   // Handle ETH->WETH wrapping if needed for baseToken
   let actualBaseToken = baseToken;
@@ -375,7 +375,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           throw fastify.httpErrors.badRequest('Missing required parameters');
         }
 
-        const networkToUse = network || 'base';
+        const networkToUse = network;
 
         // Get wallet address - either from request or first available
         let walletAddress = requestedWalletAddress;

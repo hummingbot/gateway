@@ -36,7 +36,7 @@ export const fetchPoolsRoute: FastifyPluginAsync = async (fastify) => {
     handler: async (request, _reply) => {
       try {
         const { limit, tokenA, tokenB } = request.query;
-        const network = request.query.network || 'mainnet-beta';
+        const network = request.query.network;
 
         const meteora = await Meteora.getInstance(network);
         const solana = await Solana.getInstance(network);

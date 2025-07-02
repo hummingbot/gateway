@@ -4,10 +4,13 @@ import { TransactionStatus } from './chain-schema';
 
 export const GetSwapQuoteRequest = Type.Object(
   {
-    network: Type.Optional(Type.String()),
-    poolAddress: Type.String(),
+    network: Type.String(),
+    poolAddress: Type.Optional(Type.String()),
     baseToken: Type.String({
       description: 'Token to determine swap direction',
+    }),
+    quoteToken: Type.String({
+      description: 'The other token in the pair',
     }),
     amount: Type.Number(),
     side: Type.String({
@@ -38,8 +41,9 @@ export type GetSwapQuoteResponseType = Static<typeof GetSwapQuoteResponse>;
 
 export const ExecuteSwapRequest = Type.Object(
   {
-    network: Type.Optional(Type.String()),
     walletAddress: Type.String(),
+    network: Type.String(),
+    poolAddress: Type.Optional(Type.String()),
     baseToken: Type.String(),
     quoteToken: Type.String(),
     amount: Type.Number(),
@@ -48,7 +52,6 @@ export const ExecuteSwapRequest = Type.Object(
       description: 'Trade direction',
     }),
     slippagePct: Type.Optional(Type.Number()),
-    poolAddress: Type.Optional(Type.String()),
     // New optional fee parameters
     priorityFeePerCU: Type.Optional(
       Type.Number({
@@ -83,53 +86,3 @@ export const ExecuteSwapResponse = Type.Object({
   ),
 });
 export type ExecuteSwapResponseType = Static<typeof ExecuteSwapResponse>;
-
-// Aggregator-specific schemas (for Jupiter, etc.)
-export const GetAggregatorSwapQuoteRequest = Type.Object(
-  {
-    network: Type.Optional(Type.String()),
-    baseToken: Type.String(),
-    quoteToken: Type.String(),
-    amount: Type.Number(),
-    side: Type.String({
-      enum: ['BUY', 'SELL'],
-      description: 'Trade direction',
-    }),
-    slippagePct: Type.Optional(Type.Number()),
-  },
-  { $id: 'GetAggregatorSwapQuoteRequest' },
-);
-export type GetAggregatorSwapQuoteRequestType = Static<
-  typeof GetAggregatorSwapQuoteRequest
->;
-
-export const ExecuteAggregatorSwapRequest = Type.Object(
-  {
-    network: Type.Optional(Type.String()),
-    walletAddress: Type.String(),
-    baseToken: Type.String(),
-    quoteToken: Type.String(),
-    amount: Type.Number(),
-    side: Type.String({
-      enum: ['BUY', 'SELL'],
-      description: 'Trade direction',
-    }),
-    slippagePct: Type.Optional(Type.Number()),
-    // New optional fee parameters
-    priorityFeePerCU: Type.Optional(
-      Type.Number({
-        description:
-          'Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)',
-      }),
-    ),
-    computeUnits: Type.Optional(
-      Type.Number({
-        description: 'Compute units for transaction',
-      }),
-    ),
-  },
-  { $id: 'ExecuteAggregatorSwapRequest' },
-);
-export type ExecuteAggregatorSwapRequestType = Static<
-  typeof ExecuteAggregatorSwapRequest
->;

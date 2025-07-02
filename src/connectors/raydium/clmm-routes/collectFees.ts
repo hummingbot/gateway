@@ -128,7 +128,7 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
         const { network, walletAddress, positionAddress } = request.body;
         return await collectFees(
           fastify,
-          network || 'mainnet-beta',
+          network,
           walletAddress,
           positionAddress,
         );

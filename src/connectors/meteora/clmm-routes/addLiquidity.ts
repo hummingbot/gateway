@@ -251,7 +251,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           priorityFeePerCU,
           computeUnits,
         } = request.body;
-        const network = request.body.network || 'mainnet-beta';
+        const network = request.body.network;
 
         return await addLiquidity(
           fastify,

@@ -3,8 +3,8 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { estimateGasSolana } from '../../../chains/solana/routes/estimate-gas';
 import { Solana } from '../../../chains/solana/solana';
 import {
-  GetAggregatorSwapQuoteRequest,
-  GetAggregatorSwapQuoteRequestType,
+  GetSwapQuoteRequest,
+  GetSwapQuoteRequestType,
   GetSwapQuoteResponseType,
 } from '../../../schemas/swap-schema';
 import { logger } from '../../../services/logger';
@@ -154,7 +154,7 @@ export async function getJupiterQuote(
 
 export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
-    Querystring: GetAggregatorSwapQuoteRequestType;
+    Querystring: GetSwapQuoteRequestType;
     Reply: GetSwapQuoteResponseType;
   }>(
     '/quote-swap',
@@ -162,7 +162,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Get Jupiter swap quote',
         tags: ['jupiter'],
-        querystring: GetAggregatorSwapQuoteRequest,
+        querystring: GetSwapQuoteRequest,
         response: {
           200: {
             type: 'object',
@@ -187,7 +187,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       const { network, baseToken, quoteToken, amount, side, slippagePct } =
         request.query;
-      const networkToUse = network || 'mainnet-beta';
+      const networkToUse = network;
 
       // Verify we have the needed parameters
       if (!baseToken || !quoteToken) {

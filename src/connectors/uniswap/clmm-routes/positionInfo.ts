@@ -65,7 +65,7 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
           walletAddress: requestedWalletAddress,
         } = request.query;
 
-        const networkToUse = network || 'base';
+        const networkToUse = network;
         const chain = 'ethereum'; // Default to ethereum
 
         // Validate essential parameters

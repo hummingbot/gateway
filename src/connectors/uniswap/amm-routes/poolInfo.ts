@@ -32,7 +32,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
     async (request): Promise<PoolInfo> => {
       try {
         const { poolAddress } = request.query;
-        const network = request.query.network || 'base';
+        const network = request.query.network;
 
         const ethereum = await Ethereum.getInstance(network);
         const uniswap = await Uniswap.getInstance(network);

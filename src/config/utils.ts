@@ -107,7 +107,7 @@ export const updateConfig = (
 export const getDefaultPools = async (
   fastify: FastifyInstance,
   connector: string,
-  network?: string,
+  network: string,
 ): Promise<Record<string, string>> => {
   // Import PoolService here to avoid circular dependency
   const { PoolService } = await import('../services/pool-service');
@@ -127,39 +127,6 @@ export const getDefaultPools = async (
   }
 
   try {
-    // If network not provided, determine default network
-    if (!network) {
-      // Get connector config to find active network
-      const connectorConfig =
-        ConfigManagerV2.getInstance().getNamespace(
-          baseConnector,
-        )?.configuration;
-
-      if (!connectorConfig || !connectorConfig.networks) {
-        logger.error(
-          `Connector ${baseConnector} configuration not found or missing networks`,
-        );
-        return {};
-      }
-
-      // Get active network
-      const activeNetworks = Object.keys(connectorConfig.networks);
-      if (activeNetworks.length === 0) {
-        return {};
-      }
-
-      // Determine chain based on connector
-      let defaultNetwork = 'mainnet';
-      if (['raydium', 'meteora'].includes(baseConnector)) {
-        defaultNetwork = 'mainnet-beta';
-      }
-
-      // Use default network or first available
-      network = connectorConfig.networks[defaultNetwork]
-        ? defaultNetwork
-        : activeNetworks[0];
-    }
-
     // Get pools from PoolService
     const poolService = PoolService.getInstance();
     const pools = await poolService.getDefaultPools(

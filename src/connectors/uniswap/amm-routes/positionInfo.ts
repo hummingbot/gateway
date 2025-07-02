@@ -69,7 +69,7 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
           walletAddress: requestedWalletAddress,
         } = request.query;
 
-        const networkToUse = network || 'base';
+        const networkToUse = network;
 
         // Validate essential parameters
         if (!poolAddress) {

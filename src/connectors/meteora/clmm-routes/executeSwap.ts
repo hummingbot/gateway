@@ -161,15 +161,45 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           priorityFeePerCU,
           computeUnits,
         } = request.body;
-        const networkUsed = network || 'mainnet-beta';
-        const meteora = await Meteora.getInstance(networkUsed);
-        const poolAddressUsed =
-          poolAddress || (await meteora.findDefaultPool(baseToken, quoteToken));
+        const networkUsed = network;
 
+        let poolAddressUsed = poolAddress;
+
+        // If poolAddress is not provided, look it up by token pair
         if (!poolAddressUsed) {
-          throw fastify.httpErrors.notFound(
-            `No pool found for ${baseToken}-${quoteToken} pair`,
+          const solana = await Solana.getInstance(networkUsed);
+
+          // Resolve token symbols to get proper symbols for pool lookup
+          const baseTokenInfo = await solana.getToken(baseToken);
+          const quoteTokenInfo = await solana.getToken(quoteToken);
+
+          if (!baseTokenInfo || !quoteTokenInfo) {
+            throw fastify.httpErrors.badRequest(
+              `Token not found: ${!baseTokenInfo ? baseToken : quoteToken}`,
+            );
+          }
+
+          // Use PoolService to find pool by token pair
+          const { PoolService } = await import(
+            '../../../services/pool-service'
           );
+          const poolService = PoolService.getInstance();
+
+          const pool = await poolService.getPool(
+            'meteora',
+            networkUsed,
+            'clmm',
+            baseTokenInfo.symbol,
+            quoteTokenInfo.symbol,
+          );
+
+          if (!pool) {
+            throw fastify.httpErrors.notFound(
+              `No CLMM pool found for ${baseTokenInfo.symbol}-${quoteTokenInfo.symbol} on Meteora`,
+            );
+          }
+
+          poolAddressUsed = pool.address;
         }
         logger.info(
           `Received swap request: ${amount} ${baseToken} -> ${quoteToken} in pool ${poolAddress}`,

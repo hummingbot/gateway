@@ -4,8 +4,8 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import {
-  ExecuteAggregatorSwapRequest,
-  ExecuteAggregatorSwapRequestType,
+  ExecuteSwapRequest,
+  ExecuteSwapRequestType,
   ExecuteSwapResponse,
   ExecuteSwapResponseType,
 } from '../../../schemas/swap-schema';
@@ -117,12 +117,10 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
   const firstWalletAddress = await Solana.getWalletAddressExample();
 
   // Update schema example
-  ExecuteAggregatorSwapRequest.properties.walletAddress.examples = [
-    firstWalletAddress,
-  ];
+  ExecuteSwapRequest.properties.walletAddress.examples = [firstWalletAddress];
 
   fastify.post<{
-    Body: ExecuteAggregatorSwapRequestType;
+    Body: ExecuteSwapRequestType;
     Reply: ExecuteSwapResponseType;
   }>(
     '/execute-swap',
@@ -130,7 +128,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Execute Jupiter swap',
         tags: ['jupiter'],
-        body: ExecuteAggregatorSwapRequest,
+        body: ExecuteSwapRequest,
         response: { 200: ExecuteSwapResponse },
       },
     },
@@ -161,7 +159,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
 
       return await executeJupiterSwap(
         fastify,
-        network || 'mainnet-beta',
+        network,
         walletAddress,
         baseToken,
         quoteToken,

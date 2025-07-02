@@ -4,7 +4,7 @@ import { TransactionStatus } from './chain-schema';
 
 export const FetchPoolsRequest = Type.Object(
   {
-    network: Type.Optional(Type.String()), // Network (defaults to mainnet)
+    network: Type.String(), // Network
     limit: Type.Optional(Type.Number({ minimum: 1 })), // Maximum number of pools to return
     tokenA: Type.Optional(Type.String()), // First token symbol or address
     tokenB: Type.Optional(Type.String()), // Second token symbol or address
@@ -59,7 +59,7 @@ export type MeteoraPoolInfo = Static<typeof MeteoraPoolInfoSchema>;
 
 export const GetPoolInfoRequest = Type.Object(
   {
-    network: Type.Optional(Type.String()),
+    network: Type.String(),
     poolAddress: Type.String(),
   },
   { $id: 'GetPoolInfoRequest' },
@@ -88,7 +88,7 @@ export type PositionInfo = Static<typeof PositionInfoSchema>;
 
 export const GetPositionInfoRequest = Type.Object(
   {
-    network: Type.Optional(Type.String()),
+    network: Type.String(),
     positionAddress: Type.String(),
     walletAddress: Type.String(),
   },
@@ -98,7 +98,7 @@ export type GetPositionInfoRequestType = Static<typeof GetPositionInfoRequest>;
 
 export const OpenPositionRequest = Type.Object(
   {
-    network: Type.Optional(Type.String()),
+    network: Type.String(),
     walletAddress: Type.String(),
     lowerPrice: Type.Number(),
     upperPrice: Type.Number(),
@@ -145,7 +145,7 @@ export type OpenPositionResponseType = Static<typeof OpenPositionResponse>;
 
 export const AddLiquidityRequest = Type.Object(
   {
-    network: Type.Optional(Type.String()),
+    network: Type.String(),
     walletAddress: Type.String(),
     positionAddress: Type.String(),
     baseTokenAmount: Type.Number(),
@@ -188,7 +188,7 @@ export type AddLiquidityResponseType = Static<typeof AddLiquidityResponse>;
 
 export const RemoveLiquidityRequest = Type.Object(
   {
-    network: Type.Optional(Type.String()),
+    network: Type.String(),
     walletAddress: Type.String(),
     positionAddress: Type.String(),
     percentageToRemove: Type.Number({ minimum: 0, maximum: 100 }),
@@ -231,7 +231,7 @@ export type RemoveLiquidityResponseType = Static<
 
 export const CollectFeesRequest = Type.Object(
   {
-    network: Type.Optional(Type.String()),
+    network: Type.String(),
     walletAddress: Type.String(),
     positionAddress: Type.String(),
     // New optional fee parameters
@@ -271,7 +271,7 @@ export type CollectFeesResponseType = Static<typeof CollectFeesResponse>;
 
 export const ClosePositionRequest = Type.Object(
   {
-    network: Type.Optional(Type.String()),
+    network: Type.String(),
     walletAddress: Type.String(),
     positionAddress: Type.String(),
     // New optional fee parameters

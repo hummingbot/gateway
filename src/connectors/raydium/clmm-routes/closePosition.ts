@@ -164,7 +164,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
           priorityFeePerCU,
           computeUnits,
         } = request.body;
-        const networkToUse = network || 'mainnet-beta';
+        const networkToUse = network;
 
         return await closePosition(
           fastify,

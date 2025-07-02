@@ -244,7 +244,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
 
         return await addLiquidity(
           fastify,
-          network || 'mainnet-beta',
+          network,
           walletAddress,
           poolAddress,
           baseTokenAmount,

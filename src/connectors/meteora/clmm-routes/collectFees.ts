@@ -132,7 +132,7 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       try {
         const { network, walletAddress, positionAddress } = request.body;
-        const networkToUse = network || 'mainnet-beta';
+        const networkToUse = network;
 
         const { priorityFeePerCU, computeUnits } = request.body;
         return await collectFees(

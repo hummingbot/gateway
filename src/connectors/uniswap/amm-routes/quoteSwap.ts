@@ -328,7 +328,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         const { network, poolAddress, baseToken, amount, side, slippagePct } =
           request.query;
 
-        const networkToUse = network || 'base';
+        const networkToUse = network;
 
         if (!poolAddress) {
           throw fastify.httpErrors.badRequest('Pool address is required');

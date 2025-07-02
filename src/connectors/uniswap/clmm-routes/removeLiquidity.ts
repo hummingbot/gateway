@@ -78,7 +78,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           computeUnits,
         } = request.body;
 
-        const networkToUse = network || 'base';
+        const networkToUse = network;
         const chain = 'ethereum'; // Default to ethereum
 
         // Validate essential parameters
