@@ -25,9 +25,14 @@ export abstract class TestDependencyContract<TInstance> {
     spy: jest.SpyInstance,
     provider: MockProvider<TInstance>,
     fileName: string,
+    isAsync = true,
   ): void {
     const mock = provider.getMock<TMock>(fileName);
-    spy.mockResolvedValueOnce(mock);
+    if (isAsync) {
+      spy.mockResolvedValueOnce(mock);
+    } else {
+      spy.mockReturnValueOnce(mock);
+    }
   }
 }
 
