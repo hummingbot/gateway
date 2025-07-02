@@ -72,7 +72,7 @@ export class PrototypeDependency<
   TObject,
 > extends TestDependencyContract<TInstance> {
   constructor(
-    private proto: { new (...args: any[]): TObject },
+    private ClassConstructor: { new (...args: any[]): TObject },
     public methodName: keyof TObject,
     public allowPassThrough = false,
   ) {
@@ -80,11 +80,11 @@ export class PrototypeDependency<
   }
 
   getObject(_provider: MockProvider<TInstance>) {
-    return this.proto.prototype;
+    return this.ClassConstructor.prototype;
   }
 
   setupSpy(_provider: MockProvider<TInstance>): jest.SpyInstance {
-    return jest.spyOn(this.proto.prototype, this.methodName as any);
+    return jest.spyOn(this.ClassConstructor.prototype, this.methodName as any);
   }
 }
 
