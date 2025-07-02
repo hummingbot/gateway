@@ -95,11 +95,7 @@ async function executeJupiterSwap(
 }
 
 export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
-  // Get first wallet address for example
-  const firstWalletAddress = await Solana.getWalletAddressExample();
-
-  // Update schema example
-  ExecuteSwapRequest.properties.walletAddress.examples = [firstWalletAddress];
+  const walletAddressExample = await Solana.getWalletAddressExample();
 
   fastify.post<{
     Body: ExecuteSwapRequestType;
@@ -115,7 +111,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             ...ExecuteSwapRequest.properties,
             network: { type: 'string', default: 'mainnet-beta' },
-            walletAddress: { type: 'string', examples: [firstWalletAddress] },
+            walletAddress: { type: 'string', examples: [walletAddressExample] },
             baseToken: { type: 'string', examples: ['SOL'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
             amount: { type: 'number', examples: [0.1] },

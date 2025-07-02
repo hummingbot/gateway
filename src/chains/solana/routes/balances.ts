@@ -329,8 +329,7 @@ async function getOptimizedBalance(
 }
 
 export const balancesRoute: FastifyPluginAsync = async (fastify) => {
-  // Get first wallet address for example
-  const firstWalletAddress = await Solana.getWalletAddressExample();
+  const walletAddressExample = await Solana.getWalletAddressExample();
 
   // Example address for Solana tokens
   const USDC_MINT_ADDRESS = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'; // USDC on Solana
@@ -351,7 +350,7 @@ export const balancesRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             ...BalanceRequestSchema.properties,
             network: { type: 'string', examples: ['mainnet-beta', 'devnet'] },
-            address: { type: 'string', examples: [firstWalletAddress] },
+            address: { type: 'string', examples: [walletAddressExample] },
             tokens: {
               type: 'array',
               items: { type: 'string' },
