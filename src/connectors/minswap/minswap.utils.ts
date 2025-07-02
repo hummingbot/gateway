@@ -38,12 +38,15 @@ export const findPoolAddress = (
  * @returns The formatted token amount
  */
 export const formatTokenAmount = (
-  amount: string | number,
+  amount: string | number | bigint,
   decimals: number,
 ): number => {
   try {
     if (typeof amount === 'string') {
       return parseFloat(amount) / Math.pow(10, decimals);
+    }
+    if (typeof amount === 'bigint') {
+      return Number(amount) / Math.pow(10, decimals);
     }
     return amount / Math.pow(10, decimals);
   } catch (error) {
@@ -51,3 +54,12 @@ export const formatTokenAmount = (
     return 0;
   }
 };
+
+/**
+ * Check if a string is a valid fraction (in the form of 'a/b')
+ * @param value The string to check
+ * @returns True if the string is a valid fraction, false otherwise
+ */
+export function isFractionString(value: string): boolean {
+  return value.includes('/') && value.split('/').length === 2;
+}

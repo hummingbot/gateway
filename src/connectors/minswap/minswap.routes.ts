@@ -4,6 +4,8 @@ import { ammPoolInfoRoute } from './amm-routes/poolInfo';
 import { quoteSwapRoute as ammQuoteSwapRoute } from './amm-routes/quoteSwap';
 import quoteLiquidityRoute from './amm-routes/quoteLiquidity';
 import { executeSwapRoute as ammExecuteSwapRoute } from './amm-routes/executeSwap';
+import { addLiquidityRoute as ammAddLiquidityRoute } from './amm-routes/addLiquidity';
+import { removeLiquidityRoute as ammRemoveLiquidityRoute } from './amm-routes/removeLiquidity';
 
 // AMM routes including swap endpoints
 const minswapAmmRoutes: FastifyPluginAsync = async (fastify) => {
@@ -20,8 +22,8 @@ const minswapAmmRoutes: FastifyPluginAsync = async (fastify) => {
     await instance.register(ammQuoteSwapRoute);
     await instance.register(quoteLiquidityRoute);
     await instance.register(ammExecuteSwapRoute);
-    // await instance.register(ammAddLiquidityRoute);
-    // await instance.register(ammRemoveLiquidityRoute);
+    await instance.register(ammAddLiquidityRoute);
+    await instance.register(ammRemoveLiquidityRoute);
   });
 };
 

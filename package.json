@@ -37,7 +37,7 @@
     "prepare": "pnpm husky"
   },
   "dependencies": {
-    "@aiquant/lucid-cardano": "^0.10.10",
+    "@aiquant/lucid-cardano": "^0.10.11",
     "@aiquant/minswap-sdk": "^0.0.0",
     "@blockfrost/blockfrost-js": "^5.7.0",
     "@coral-xyz/anchor": "^0.29.0",
