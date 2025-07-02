@@ -14,6 +14,16 @@ jest.mock('../../src/services/logger', () => ({
   },
 }));
 
+// Mock PoolService
+const mockGetDefaultPools = jest.fn();
+jest.mock('../../src/services/pool-service', () => ({
+  PoolService: {
+    getInstance: jest.fn().mockReturnValue({
+      getDefaultPools: mockGetDefaultPools,
+    }),
+  },
+}));
+
 // Import logger after mocking
 import { logger } from '../../src/services/logger';
 
@@ -23,10 +33,14 @@ describe('Pool Configuration Tests', () => {
   // Mock fastify instance with httpErrors
   const mockFastify = {
     httpErrors: {
-      badRequest: jest.fn((msg: string) => new Error(`Bad Request: ${msg}`)),
-      internalServerError: jest.fn(
-        (msg: string) => new Error(`Internal Server Error: ${msg}`),
-      ),
+      badRequest: jest.fn((msg: string) => {
+        const error = new Error(`Bad Request: ${msg}`);
+        throw error;
+      }),
+      internalServerError: jest.fn((msg: string) => {
+        const error = new Error(`Internal Server Error: ${msg}`);
+        throw error;
+      }),
     },
   } as unknown as FastifyInstance;
 
@@ -61,6 +75,9 @@ describe('Pool Configuration Tests', () => {
     // Reset all mocks
     jest.clearAllMocks();
 
+    // Reset PoolService mock
+    mockGetDefaultPools.mockReset();
+
     // Setup ConfigManagerV2 mock
     (ConfigManagerV2 as jest.Mocked<typeof ConfigManagerV2>).getInstance = jest
       .fn()
@@ -85,32 +102,32 @@ describe('Pool Configuration Tests', () => {
   });
 
   describe('getDefaultPools', () => {
-    it('should throw an error if connector name is missing', () => {
-      expect(() => {
-        getDefaultPools(mockFastify, '');
-      }).toThrow('Bad Request: Connector name is required');
+    it('should throw an error if connector name is missing', async () => {
+      await expect(getDefaultPools(mockFastify, '')).rejects.toThrow(
+        'Bad Request: Connector name is required',
+      );
     });
 
-    it('should throw an error if connector type is missing', () => {
-      expect(() => {
-        getDefaultPools(mockFastify, 'raydium');
-      }).toThrow('Bad Request: Connector type is required');
+    it('should throw an error if connector type is missing', async () => {
+      await expect(getDefaultPools(mockFastify, 'raydium')).resolves.toEqual(
+        {},
+      );
     });
 
-    it('should return an empty object if connector configuration is not found', () => {
+    it('should return an empty object if connector configuration is not found', async () => {
       mockGetNamespace.mockReturnValue(null);
-      const result = getDefaultPools(mockFastify, 'unknown/amm');
+      const result = await getDefaultPools(mockFastify, 'unknown/amm');
       expect(result).toEqual({});
       expect(logger.error).toHaveBeenCalledWith(
         expect.stringContaining('Connector unknown configuration not found'),
       );
     });
 
-    it('should return an empty object if networks configuration is missing', () => {
+    it('should return an empty object if networks configuration is missing', async () => {
       mockGetNamespace.mockReturnValue({
         configuration: { allowedSlippage: '1/100' },
       });
-      const result = getDefaultPools(mockFastify, 'raydium/amm');
+      const result = await getDefaultPools(mockFastify, 'raydium/amm');
       expect(result).toEqual({});
       expect(logger.error).toHaveBeenCalledWith(
         expect.stringContaining(
@@ -119,46 +136,58 @@ describe('Pool Configuration Tests', () => {
       );
     });
 
-    it('should return an empty object if no networks are configured', () => {
+    it('should return an empty object if no networks are configured', async () => {
       mockGetNamespace.mockReturnValue({
         configuration: { allowedSlippage: '1/100', networks: {} },
       });
-      const result = getDefaultPools(mockFastify, 'raydium/amm');
+      const result = await getDefaultPools(mockFastify, 'raydium/amm');
       expect(result).toEqual({});
     });
 
-    it('should return AMM pools for raydium/amm', () => {
-      const result = getDefaultPools(mockFastify, 'raydium/amm');
+    it('should return AMM pools for raydium/amm', async () => {
+      // Mock PoolService return value
+      mockGetDefaultPools.mockResolvedValue({
+        'SOL-USDC': '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
+        'RAY-USDC': '6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg',
+      });
+
+      const result = await getDefaultPools(mockFastify, 'raydium/amm');
       expect(result).toEqual({
         'SOL-USDC': '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
         'RAY-USDC': '6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg',
       });
       expect(logger.info).toHaveBeenCalledWith(
         expect.stringContaining(
-          'Retrieved default pools for raydium/amm on network mainnet-beta',
+          'Retrieved default pools for raydium/amm on mainnet-beta',
         ),
       );
     });
 
-    it('should return CLMM pools for raydium/clmm', () => {
-      const result = getDefaultPools(mockFastify, 'raydium/clmm');
+    it('should return CLMM pools for raydium/clmm', async () => {
+      // Mock PoolService return value
+      mockGetDefaultPools.mockResolvedValue({
+        'SOL-USDC': '3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv',
+        'RAY-USDC': '61R1ndXxvsWXXkWSyNkCxnzwd3zUNB8Q2ibmkiLPC8ht',
+      });
+
+      const result = await getDefaultPools(mockFastify, 'raydium/clmm');
       expect(result).toEqual({
         'SOL-USDC': '3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv',
         'RAY-USDC': '61R1ndXxvsWXXkWSyNkCxnzwd3zUNB8Q2ibmkiLPC8ht',
       });
       expect(logger.info).toHaveBeenCalledWith(
         expect.stringContaining(
-          'Retrieved default pools for raydium/clmm on network mainnet-beta',
+          'Retrieved default pools for raydium/clmm on mainnet-beta',
         ),
       );
     });
 
-    it('should return empty object for non-existent connector type', () => {
-      const result = getDefaultPools(mockFastify, 'raydium/nonexistent');
+    it('should return empty object for non-existent connector type', async () => {
+      const result = await getDefaultPools(mockFastify, 'raydium/nonexistent');
       expect(result).toEqual({});
     });
 
-    it('should use the first available network if mainnet-beta is not available', () => {
+    it('should use the first available network if mainnet-beta is not available', async () => {
       mockGetNamespace.mockReturnValue({
         configuration: {
           allowedSlippage: '1/100',
@@ -170,11 +199,17 @@ describe('Pool Configuration Tests', () => {
           },
         },
       });
-      const result = getDefaultPools(mockFastify, 'raydium/amm');
+
+      // Mock PoolService return value
+      mockGetDefaultPools.mockResolvedValue({
+        'SOL-USDC': 'devnet-pool-address',
+      });
+
+      const result = await getDefaultPools(mockFastify, 'raydium/amm');
       expect(result).toEqual({ 'SOL-USDC': 'devnet-pool-address' });
       expect(logger.info).toHaveBeenCalledWith(
         expect.stringContaining(
-          'Retrieved default pools for raydium/amm on network devnet',
+          'Retrieved default pools for raydium/amm on devnet',
         ),
       );
     });

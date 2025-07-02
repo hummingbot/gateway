@@ -1,0 +1,2103 @@
+
+> gateway@dev-2.8.0 test /Users/feng/gateway
+> GATEWAY_TEST_MODE=dev jest --verbose
+
+  console.log
+    Jest test environment configured with global mocks and settings
+
+      at Object.<anonymous> (test/jest-setup.js:14:9)
+
+  console.warn
+    bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+
+    > 1 | import { DecimalUtil } from '@orca-so/common-sdk';
+        | ^
+      2 | import { Decimal } from 'decimal.js';
+      3 | import { BigNumber } from 'ethers';
+      4 | import { format, fraction, number } from 'mathjs';
+
+      at Object.<anonymous> (node_modules/.pnpm/bigint-buffer@1.1.5/node_modules/bigint-buffer/dist/node.js:10:17)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+buffer-layout-utils@0.2.0_bufferutil@4.0.9_encoding@0.1.13_typescript@5.8.3_utf-8-validate@5.0.10/node_modules/@solana/buffer-layout-utils/src/bigint.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+buffer-layout-utils@0.2.0_bufferutil@4.0.9_encoding@0.1.13_typescript@5.8.3_utf-8-validate@5.0.10/node_modules/@solana/buffer-layout-utils/src/index.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/instructions/amountToUiAmount.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/actions/amountToUiAmount.ts:4:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/actions/index.ts:1:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/index.ts:1:1)
+      at Object.<anonymous> (node_modules/.pnpm/@orca-so+common-sdk@0.6.11_@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4._637c9e9994ea5f512d2c71d149c9c974/node_modules/@orca-so/common-sdk/src/web3/ata-util.ts:1:1)
+      at Object.<anonymous> (node_modules/.pnpm/@orca-so+common-sdk@0.6.11_@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4._637c9e9994ea5f512d2c71d149c9c974/node_modules/@orca-so/common-sdk/src/web3/index.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@orca-so+common-sdk@0.6.11_@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4._637c9e9994ea5f512d2c71d149c9c974/node_modules/@orca-so/common-sdk/src/index.ts:2:1)
+      at Object.<anonymous> (src/services/base.ts:1:1)
+      at Object.<anonymous> (src/config/utils.ts:7:1)
+      at Object.<anonymous> (src/config/routes/getConfig.ts:5:1)
+      at Object.<anonymous> (src/config/config.routes.ts:4:1)
+      at Object.<anonymous> (test/config/config-routes-v2.test.ts:21:1)
+
+  console.log
+    Jest test environment configured with global mocks and settings
+
+      at Object.<anonymous> (test/jest-setup.js:14:9)
+
+  console.log
+    Jest test environment configured with global mocks and settings
+
+      at Object.<anonymous> (test/jest-setup.js:14:9)
+
+  console.log
+    Jest test environment configured with global mocks and settings
+
+      at Object.<anonymous> (test/jest-setup.js:14:9)
+
+  console.log
+    Jest test environment configured with global mocks and settings
+
+      at Object.<anonymous> (test/jest-setup.js:14:9)
+
+  console.log
+    Jest test environment configured with global mocks and settings
+
+      at Object.<anonymous> (test/jest-setup.js:14:9)
+
+  console.log
+    Jest test environment configured with global mocks and settings
+
+      at Object.<anonymous> (test/jest-setup.js:14:9)
+
+  console.log
+    Jest test environment configured with global mocks and settings
+
+      at Object.<anonymous> (test/jest-setup.js:14:9)
+
+FAIL test/connectors/uniswap/swap.test.js
+  Uniswap V3 Swap Router Tests (Base Network)
+    Quote Swap Endpoint
+      ✕ returns and validates swap quote for SELL (14 ms)
+      ✕ returns and validates swap quote for BUY (1 ms)
+      ✓ validates gas parameters for swap quotes (1 ms)
+      ✕ handles different networks correctly
+    Execute Swap Endpoint
+      ✓ returns successful swap execution with Uniswap V3 Swap Router (1 ms)
+      ✓ executes BUY swap successfully (1 ms)
+      ✓ validates slippage parameters
+      ✓ handles multiple networks for execution (1 ms)
+
+  ● Uniswap V3 Swap Router Tests (Base Network) › Quote Swap Endpoint › returns and validates swap quote for SELL
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+      119 |       expect(response.status).toBe(200);
+      120 |       expect(validateSwapQuote(response.data)).toBe(true);
+    > 121 |       expect(validateGasParameters(response.data)).toBe(true);
+          |                                                    ^
+      122 |
+      123 |       // Check expected mock values for a SELL
+      124 |       expect(response.data.baseTokenBalanceChange).toBeLessThan(0); // SELL means negative base token change
+
+      at Object.<anonymous> (test/connectors/uniswap/swap.test.js:121:52)
+
+  ● Uniswap V3 Swap Router Tests (Base Network) › Quote Swap Endpoint › returns and validates swap quote for BUY
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+      197 |       expect(response.status).toBe(200);
+      198 |       expect(validateSwapQuote(response.data)).toBe(true);
+    > 199 |       expect(validateGasParameters(response.data)).toBe(true);
+          |                                                    ^
+      200 |
+      201 |       // Check expected mock values for a BUY
+      202 |       expect(response.data.baseTokenBalanceChange).toBeGreaterThan(0); // BUY means positive base token change
+
+      at Object.<anonymous> (test/connectors/uniswap/swap.test.js:199:52)
+
+  ● Uniswap V3 Swap Router Tests (Base Network) › Quote Swap Endpoint › handles different networks correctly
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+      284 |
+      285 |         expect(response.status).toBe(200);
+    > 286 |         expect(validateSwapQuote(response.data)).toBe(true);
+          |                                                  ^
+      287 |       }
+      288 |     });
+      289 |   });
+
+      at Object.<anonymous> (test/connectors/uniswap/swap.test.js:286:50)
+
+  console.log
+    Jest test environment configured with global mocks and settings
+
+      at Object.<anonymous> (test/jest-setup.js:14:9)
+
+  console.warn
+    bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+
+    > 1 | import { DecimalUtil } from '@orca-so/common-sdk';
+        | ^
+      2 | import { Decimal } from 'decimal.js';
+      3 | import { BigNumber } from 'ethers';
+      4 | import { format, fraction, number } from 'mathjs';
+
+      at Object.<anonymous> (node_modules/.pnpm/bigint-buffer@1.1.5/node_modules/bigint-buffer/dist/node.js:10:17)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+buffer-layout-utils@0.2.0_bufferutil@4.0.9_encoding@0.1.13_typescript@5.8.3_utf-8-validate@5.0.10/node_modules/@solana/buffer-layout-utils/src/bigint.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+buffer-layout-utils@0.2.0_bufferutil@4.0.9_encoding@0.1.13_typescript@5.8.3_utf-8-validate@5.0.10/node_modules/@solana/buffer-layout-utils/src/index.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/instructions/amountToUiAmount.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/actions/amountToUiAmount.ts:4:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/actions/index.ts:1:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/index.ts:1:1)
+      at Object.<anonymous> (node_modules/.pnpm/@orca-so+common-sdk@0.6.11_@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4._637c9e9994ea5f512d2c71d149c9c974/node_modules/@orca-so/common-sdk/src/web3/ata-util.ts:1:1)
+      at Object.<anonymous> (node_modules/.pnpm/@orca-so+common-sdk@0.6.11_@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4._637c9e9994ea5f512d2c71d149c9c974/node_modules/@orca-so/common-sdk/src/web3/index.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@orca-so+common-sdk@0.6.11_@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4._637c9e9994ea5f512d2c71d149c9c974/node_modules/@orca-so/common-sdk/src/index.ts:2:1)
+      at Object.<anonymous> (src/services/base.ts:1:1)
+      at Object.<anonymous> (src/config/utils.ts:7:1)
+      at Object.<anonymous> (test/config/update-config-network-files.test.ts:7:1)
+
+  console.log
+    Jest test environment configured with global mocks and settings
+
+      at Object.<anonymous> (test/jest-setup.js:14:9)
+
+  console.log
+    Jest test environment configured with global mocks and settings
+
+      at Object.<anonymous> (test/jest-setup.js:14:9)
+
+  console.warn
+    bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+
+      31 |   VersionedTransactionResponse,
+      32 | } from '@solana/web3.js';
+    > 33 | import {
+         | ^
+      34 |   TOKEN_PROGRAM_ID,
+      35 |   TOKEN_2022_PROGRAM_ID,
+      36 |   unpackAccount,
+
+      at Object.<anonymous> (node_modules/.pnpm/bigint-buffer@1.1.5/node_modules/bigint-buffer/dist/node.js:10:17)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+buffer-layout-utils@0.2.0_bufferutil@4.0.9_encoding@0.1.13_typescript@5.8.3_utf-8-validate@5.0.10/node_modules/@solana/buffer-layout-utils/src/bigint.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+buffer-layout-utils@0.2.0_bufferutil@4.0.9_encoding@0.1.13_typescript@5.8.3_utf-8-validate@5.0.10/node_modules/@solana/buffer-layout-utils/src/index.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/instructions/amountToUiAmount.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/actions/amountToUiAmount.ts:4:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/actions/index.ts:1:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/index.ts:1:1)
+      at Object.<anonymous> (src/chains/solana/solana.ts:33:1)
+      at Object.<anonymous> (src/wallet/utils.ts:5:1)
+      at test/wallet/read-only-integration.test.ts:20:11
+      at Object.<anonymous> (src/chains/ethereum/ethereum.ts:18:1)
+      at Object.<anonymous> (test/wallet/read-only-integration.test.ts:5:1)
+
+  console.warn
+    bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+
+    > 1 | import { DecimalUtil } from '@orca-so/common-sdk';
+        | ^
+      2 | import { Decimal } from 'decimal.js';
+      3 | import { BigNumber } from 'ethers';
+      4 | import { format, fraction, number } from 'mathjs';
+
+      at Object.<anonymous> (node_modules/.pnpm/bigint-buffer@1.1.5/node_modules/bigint-buffer/dist/node.js:10:17)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+buffer-layout-utils@0.2.0_bufferutil@4.0.9_encoding@0.1.13_typescript@5.8.3_utf-8-validate@5.0.10/node_modules/@solana/buffer-layout-utils/src/bigint.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+buffer-layout-utils@0.2.0_bufferutil@4.0.9_encoding@0.1.13_typescript@5.8.3_utf-8-validate@5.0.10/node_modules/@solana/buffer-layout-utils/src/index.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/instructions/amountToUiAmount.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/actions/amountToUiAmount.ts:4:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/actions/index.ts:1:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/index.ts:1:1)
+      at Object.<anonymous> (node_modules/.pnpm/@orca-so+common-sdk@0.6.11_@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4._637c9e9994ea5f512d2c71d149c9c974/node_modules/@orca-so/common-sdk/src/web3/ata-util.ts:1:1)
+      at Object.<anonymous> (node_modules/.pnpm/@orca-so+common-sdk@0.6.11_@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4._637c9e9994ea5f512d2c71d149c9c974/node_modules/@orca-so/common-sdk/src/web3/index.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@orca-so+common-sdk@0.6.11_@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4._637c9e9994ea5f512d2c71d149c9c974/node_modules/@orca-so/common-sdk/src/index.ts:2:1)
+      at Object.<anonymous> (src/services/base.ts:1:1)
+      at Object.<anonymous> (src/chains/ethereum/routes/allowances.ts:10:1)
+      at Object.<anonymous> (src/chains/ethereum/ethereum.routes.ts:3:1)
+      at Object.<anonymous> (src/app.ts:16:1)
+      at Object.<anonymous> (test/connectors/meteora/meteora.routes.test.ts:8:1)
+
+  console.warn
+    bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+
+    > 1 | import { DecimalUtil } from '@orca-so/common-sdk';
+        | ^
+      2 | import { Decimal } from 'decimal.js';
+      3 | import { BigNumber } from 'ethers';
+      4 | import { format, fraction, number } from 'mathjs';
+
+      at Object.<anonymous> (node_modules/.pnpm/bigint-buffer@1.1.5/node_modules/bigint-buffer/dist/node.js:10:17)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+buffer-layout-utils@0.2.0_bufferutil@4.0.9_encoding@0.1.13_typescript@5.8.3_utf-8-validate@5.0.10/node_modules/@solana/buffer-layout-utils/src/bigint.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+buffer-layout-utils@0.2.0_bufferutil@4.0.9_encoding@0.1.13_typescript@5.8.3_utf-8-validate@5.0.10/node_modules/@solana/buffer-layout-utils/src/index.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/instructions/amountToUiAmount.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/actions/amountToUiAmount.ts:4:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/actions/index.ts:1:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/index.ts:1:1)
+      at Object.<anonymous> (node_modules/.pnpm/@orca-so+common-sdk@0.6.11_@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4._637c9e9994ea5f512d2c71d149c9c974/node_modules/@orca-so/common-sdk/src/web3/ata-util.ts:1:1)
+      at Object.<anonymous> (node_modules/.pnpm/@orca-so+common-sdk@0.6.11_@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4._637c9e9994ea5f512d2c71d149c9c974/node_modules/@orca-so/common-sdk/src/web3/index.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@orca-so+common-sdk@0.6.11_@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4._637c9e9994ea5f512d2c71d149c9c974/node_modules/@orca-so/common-sdk/src/index.ts:2:1)
+      at Object.<anonymous> (src/services/base.ts:1:1)
+      at Object.<anonymous> (src/chains/ethereum/routes/allowances.ts:10:1)
+      at Object.<anonymous> (src/chains/ethereum/ethereum.routes.ts:3:1)
+      at Object.<anonymous> (src/app.ts:16:1)
+      at Object.<anonymous> (test/app.integration.test.ts:6:1)
+
+FAIL test/services/config-manager-v2.test.ts
+  Configuration manager v2 tests
+    ✕ loading a valid configuration root (88 ms)
+    ✕ loading an invalid configuration root (35 ms)
+    ✕ loading an invalid config file (42 ms)
+    ✕ reading from config file (41 ms)
+    ✕ reading a non-existent config entry (41 ms)
+    ✕ reading invalid config keys (37 ms)
+    ✕ writing a valid configuration (150 ms)
+    ✕ writing an invalid configuration (29 ms)
+    ✕ using default configurations (30 ms)
+    ✕ getting namespace objects (28 ms)
+    ✕ Test upgradability (29 ms)
+    ✕ Dummy test to attempt migration (36 ms)
+    ✕ Test deep copy (32 ms)
+    ✕ Get all configuration (39 ms)
+    ○ skipped Get instance
+  Sample configurations
+    ○ skipped Read sample schemas
+
+  ● Configuration manager v2 tests › loading a valid configuration root
+
+    Failed to load configuration for ethereum-mainnet: Failed to validate or merge with template: Template file not found: /Users/feng/gateway/dist/src/templates/networks/ethereum.yml
+
+      211 |       this.#configuration = configCandidate;
+      212 |     } catch (err) {
+    > 213 |       throw new Error(
+          |             ^
+      214 |         `Failed to load configuration for ${this.id}: ${err.message}`,
+      215 |       );
+      216 |     }
+
+      at ConfigurationNamespace.loadConfig (src/services/config-manager-v2.ts:213:13)
+      at new ConfigurationNamespace (src/services/config-manager-v2.ts:146:10)
+      at ConfigManagerV2.addNamespace (src/services/config-manager-v2.ts:404:28)
+      at ConfigManagerV2.loadConfigRoot (src/services/config-manager-v2.ts:500:12)
+      at new ConfigManagerV2 (src/services/config-manager-v2.ts:357:10)
+      at Object.<anonymous> (test/services/config-manager-v2.test.ts:33:21)
+
+  ● Configuration manager v2 tests › loading an invalid configuration root
+
+    Failed to load configuration for ethereum-mainnet: Failed to validate or merge with template: Template file not found: /Users/feng/gateway/dist/src/templates/networks/ethereum.yml
+
+      211 |       this.#configuration = configCandidate;
+      212 |     } catch (err) {
+    > 213 |       throw new Error(
+          |             ^
+      214 |         `Failed to load configuration for ${this.id}: ${err.message}`,
+      215 |       );
+      216 |     }
+
+      at ConfigurationNamespace.loadConfig (src/services/config-manager-v2.ts:213:13)
+      at new ConfigurationNamespace (src/services/config-manager-v2.ts:146:10)
+      at ConfigManagerV2.addNamespace (src/services/config-manager-v2.ts:404:28)
+      at ConfigManagerV2.loadConfigRoot (src/services/config-manager-v2.ts:500:12)
+      at new ConfigManagerV2 (src/services/config-manager-v2.ts:357:10)
+      at Object.<anonymous> (test/services/config-manager-v2.test.ts:33:21)
+
+  ● Configuration manager v2 tests › loading an invalid config file
+
+    Failed to load configuration for ethereum-mainnet: Failed to validate or merge with template: Template file not found: /Users/feng/gateway/dist/src/templates/networks/ethereum.yml
+
+      211 |       this.#configuration = configCandidate;
+      212 |     } catch (err) {
+    > 213 |       throw new Error(
+          |             ^
+      214 |         `Failed to load configuration for ${this.id}: ${err.message}`,
+      215 |       );
+      216 |     }
+
+      at ConfigurationNamespace.loadConfig (src/services/config-manager-v2.ts:213:13)
+      at new ConfigurationNamespace (src/services/config-manager-v2.ts:146:10)
+      at ConfigManagerV2.addNamespace (src/services/config-manager-v2.ts:404:28)
+      at ConfigManagerV2.loadConfigRoot (src/services/config-manager-v2.ts:500:12)
+      at new ConfigManagerV2 (src/services/config-manager-v2.ts:357:10)
+      at Object.<anonymous> (test/services/config-manager-v2.test.ts:33:21)
+
+  ● Configuration manager v2 tests › reading from config file
+
+    Failed to load configuration for ethereum-mainnet: Failed to validate or merge with template: Template file not found: /Users/feng/gateway/dist/src/templates/networks/ethereum.yml
+
+      211 |       this.#configuration = configCandidate;
+      212 |     } catch (err) {
+    > 213 |       throw new Error(
+          |             ^
+      214 |         `Failed to load configuration for ${this.id}: ${err.message}`,
+      215 |       );
+      216 |     }
+
+      at ConfigurationNamespace.loadConfig (src/services/config-manager-v2.ts:213:13)
+      at new ConfigurationNamespace (src/services/config-manager-v2.ts:146:10)
+      at ConfigManagerV2.addNamespace (src/services/config-manager-v2.ts:404:28)
+      at ConfigManagerV2.loadConfigRoot (src/services/config-manager-v2.ts:500:12)
+      at new ConfigManagerV2 (src/services/config-manager-v2.ts:357:10)
+      at Object.<anonymous> (test/services/config-manager-v2.test.ts:33:21)
+
+  ● Configuration manager v2 tests › reading a non-existent config entry
+
+    Failed to load configuration for ethereum-mainnet: Failed to validate or merge with template: Template file not found: /Users/feng/gateway/dist/src/templates/networks/ethereum.yml
+
+      211 |       this.#configuration = configCandidate;
+      212 |     } catch (err) {
+    > 213 |       throw new Error(
+          |             ^
+      214 |         `Failed to load configuration for ${this.id}: ${err.message}`,
+      215 |       );
+      216 |     }
+
+      at ConfigurationNamespace.loadConfig (src/services/config-manager-v2.ts:213:13)
+      at new ConfigurationNamespace (src/services/config-manager-v2.ts:146:10)
+      at ConfigManagerV2.addNamespace (src/services/config-manager-v2.ts:404:28)
+      at ConfigManagerV2.loadConfigRoot (src/services/config-manager-v2.ts:500:12)
+      at new ConfigManagerV2 (src/services/config-manager-v2.ts:357:10)
+      at Object.<anonymous> (test/services/config-manager-v2.test.ts:33:21)
+
+  ● Configuration manager v2 tests › reading invalid config keys
+
+    Failed to load configuration for ethereum-mainnet: Failed to validate or merge with template: Template file not found: /Users/feng/gateway/dist/src/templates/networks/ethereum.yml
+
+      211 |       this.#configuration = configCandidate;
+      212 |     } catch (err) {
+    > 213 |       throw new Error(
+          |             ^
+      214 |         `Failed to load configuration for ${this.id}: ${err.message}`,
+      215 |       );
+      216 |     }
+
+      at ConfigurationNamespace.loadConfig (src/services/config-manager-v2.ts:213:13)
+      at new ConfigurationNamespace (src/services/config-manager-v2.ts:146:10)
+      at ConfigManagerV2.addNamespace (src/services/config-manager-v2.ts:404:28)
+      at ConfigManagerV2.loadConfigRoot (src/services/config-manager-v2.ts:500:12)
+      at new ConfigManagerV2 (src/services/config-manager-v2.ts:357:10)
+      at Object.<anonymous> (test/services/config-manager-v2.test.ts:33:21)
+
+  ● Configuration manager v2 tests › writing a valid configuration
+
+    Failed to load configuration for ethereum-mainnet: Failed to validate or merge with template: Template file not found: /Users/feng/gateway/dist/src/templates/networks/ethereum.yml
+
+      211 |       this.#configuration = configCandidate;
+      212 |     } catch (err) {
+    > 213 |       throw new Error(
+          |             ^
+      214 |         `Failed to load configuration for ${this.id}: ${err.message}`,
+      215 |       );
+      216 |     }
+
+      at ConfigurationNamespace.loadConfig (src/services/config-manager-v2.ts:213:13)
+      at new ConfigurationNamespace (src/services/config-manager-v2.ts:146:10)
+      at ConfigManagerV2.addNamespace (src/services/config-manager-v2.ts:404:28)
+      at ConfigManagerV2.loadConfigRoot (src/services/config-manager-v2.ts:500:12)
+      at new ConfigManagerV2 (src/services/config-manager-v2.ts:357:10)
+      at Object.<anonymous> (test/services/config-manager-v2.test.ts:33:21)
+
+  ● Configuration manager v2 tests › writing an invalid configuration
+
+    Failed to load configuration for ethereum-mainnet: Failed to validate or merge with template: Template file not found: /Users/feng/gateway/dist/src/templates/networks/ethereum.yml
+
+      211 |       this.#configuration = configCandidate;
+      212 |     } catch (err) {
+    > 213 |       throw new Error(
+          |             ^
+      214 |         `Failed to load configuration for ${this.id}: ${err.message}`,
+      215 |       );
+      216 |     }
+
+      at ConfigurationNamespace.loadConfig (src/services/config-manager-v2.ts:213:13)
+      at new ConfigurationNamespace (src/services/config-manager-v2.ts:146:10)
+      at ConfigManagerV2.addNamespace (src/services/config-manager-v2.ts:404:28)
+      at ConfigManagerV2.loadConfigRoot (src/services/config-manager-v2.ts:500:12)
+      at new ConfigManagerV2 (src/services/config-manager-v2.ts:357:10)
+      at Object.<anonymous> (test/services/config-manager-v2.test.ts:33:21)
+
+  ● Configuration manager v2 tests › using default configurations
+
+    Failed to load configuration for ethereum-mainnet: Failed to validate or merge with template: Template file not found: /Users/feng/gateway/dist/src/templates/networks/ethereum.yml
+
+      211 |       this.#configuration = configCandidate;
+      212 |     } catch (err) {
+    > 213 |       throw new Error(
+          |             ^
+      214 |         `Failed to load configuration for ${this.id}: ${err.message}`,
+      215 |       );
+      216 |     }
+
+      at ConfigurationNamespace.loadConfig (src/services/config-manager-v2.ts:213:13)
+      at new ConfigurationNamespace (src/services/config-manager-v2.ts:146:10)
+      at ConfigManagerV2.addNamespace (src/services/config-manager-v2.ts:404:28)
+      at ConfigManagerV2.loadConfigRoot (src/services/config-manager-v2.ts:500:12)
+      at new ConfigManagerV2 (src/services/config-manager-v2.ts:357:10)
+      at Object.<anonymous> (test/services/config-manager-v2.test.ts:33:21)
+
+  ● Configuration manager v2 tests › getting namespace objects
+
+    Failed to load configuration for ethereum-mainnet: Failed to validate or merge with template: Template file not found: /Users/feng/gateway/dist/src/templates/networks/ethereum.yml
+
+      211 |       this.#configuration = configCandidate;
+      212 |     } catch (err) {
+    > 213 |       throw new Error(
+          |             ^
+      214 |         `Failed to load configuration for ${this.id}: ${err.message}`,
+      215 |       );
+      216 |     }
+
+      at ConfigurationNamespace.loadConfig (src/services/config-manager-v2.ts:213:13)
+      at new ConfigurationNamespace (src/services/config-manager-v2.ts:146:10)
+      at ConfigManagerV2.addNamespace (src/services/config-manager-v2.ts:404:28)
+      at ConfigManagerV2.loadConfigRoot (src/services/config-manager-v2.ts:500:12)
+      at new ConfigManagerV2 (src/services/config-manager-v2.ts:357:10)
+      at Object.<anonymous> (test/services/config-manager-v2.test.ts:33:21)
+
+  ● Configuration manager v2 tests › Test upgradability
+
+    Failed to load configuration for ethereum-mainnet: Failed to validate or merge with template: Template file not found: /Users/feng/gateway/dist/src/templates/networks/ethereum.yml
+
+      211 |       this.#configuration = configCandidate;
+      212 |     } catch (err) {
+    > 213 |       throw new Error(
+          |             ^
+      214 |         `Failed to load configuration for ${this.id}: ${err.message}`,
+      215 |       );
+      216 |     }
+
+      at ConfigurationNamespace.loadConfig (src/services/config-manager-v2.ts:213:13)
+      at new ConfigurationNamespace (src/services/config-manager-v2.ts:146:10)
+      at ConfigManagerV2.addNamespace (src/services/config-manager-v2.ts:404:28)
+      at ConfigManagerV2.loadConfigRoot (src/services/config-manager-v2.ts:500:12)
+      at new ConfigManagerV2 (src/services/config-manager-v2.ts:357:10)
+      at Object.<anonymous> (test/services/config-manager-v2.test.ts:33:21)
+
+  ● Configuration manager v2 tests › Dummy test to attempt migration
+
+    Failed to load configuration for ethereum-mainnet: Failed to validate or merge with template: Template file not found: /Users/feng/gateway/dist/src/templates/networks/ethereum.yml
+
+      211 |       this.#configuration = configCandidate;
+      212 |     } catch (err) {
+    > 213 |       throw new Error(
+          |             ^
+      214 |         `Failed to load configuration for ${this.id}: ${err.message}`,
+      215 |       );
+      216 |     }
+
+      at ConfigurationNamespace.loadConfig (src/services/config-manager-v2.ts:213:13)
+      at new ConfigurationNamespace (src/services/config-manager-v2.ts:146:10)
+      at ConfigManagerV2.addNamespace (src/services/config-manager-v2.ts:404:28)
+      at ConfigManagerV2.loadConfigRoot (src/services/config-manager-v2.ts:500:12)
+      at new ConfigManagerV2 (src/services/config-manager-v2.ts:357:10)
+      at Object.<anonymous> (test/services/config-manager-v2.test.ts:33:21)
+
+  ● Configuration manager v2 tests › Test deep copy
+
+    Failed to load configuration for ethereum-mainnet: Failed to validate or merge with template: Template file not found: /Users/feng/gateway/dist/src/templates/networks/ethereum.yml
+
+      211 |       this.#configuration = configCandidate;
+      212 |     } catch (err) {
+    > 213 |       throw new Error(
+          |             ^
+      214 |         `Failed to load configuration for ${this.id}: ${err.message}`,
+      215 |       );
+      216 |     }
+
+      at ConfigurationNamespace.loadConfig (src/services/config-manager-v2.ts:213:13)
+      at new ConfigurationNamespace (src/services/config-manager-v2.ts:146:10)
+      at ConfigManagerV2.addNamespace (src/services/config-manager-v2.ts:404:28)
+      at ConfigManagerV2.loadConfigRoot (src/services/config-manager-v2.ts:500:12)
+      at new ConfigManagerV2 (src/services/config-manager-v2.ts:357:10)
+      at Object.<anonymous> (test/services/config-manager-v2.test.ts:33:21)
+
+  ● Configuration manager v2 tests › Get all configuration
+
+    Failed to load configuration for ethereum-mainnet: Failed to validate or merge with template: Template file not found: /Users/feng/gateway/dist/src/templates/networks/ethereum.yml
+
+      211 |       this.#configuration = configCandidate;
+      212 |     } catch (err) {
+    > 213 |       throw new Error(
+          |             ^
+      214 |         `Failed to load configuration for ${this.id}: ${err.message}`,
+      215 |       );
+      216 |     }
+
+      at ConfigurationNamespace.loadConfig (src/services/config-manager-v2.ts:213:13)
+      at new ConfigurationNamespace (src/services/config-manager-v2.ts:146:10)
+      at ConfigManagerV2.addNamespace (src/services/config-manager-v2.ts:404:28)
+      at ConfigManagerV2.loadConfigRoot (src/services/config-manager-v2.ts:500:12)
+      at new ConfigManagerV2 (src/services/config-manager-v2.ts:357:10)
+      at Object.<anonymous> (test/services/config-manager-v2.test.ts:33:21)
+
+  console.log
+    Jest test environment configured with global mocks and settings
+
+      at Object.<anonymous> (test/jest-setup.js:14:9)
+
+  console.warn
+    bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+
+    > 1 | import { DecimalUtil } from '@orca-so/common-sdk';
+        | ^
+      2 | import { Decimal } from 'decimal.js';
+      3 | import { BigNumber } from 'ethers';
+      4 | import { format, fraction, number } from 'mathjs';
+
+      at Object.<anonymous> (node_modules/.pnpm/bigint-buffer@1.1.5/node_modules/bigint-buffer/dist/node.js:10:17)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+buffer-layout-utils@0.2.0_bufferutil@4.0.9_encoding@0.1.13_typescript@5.8.3_utf-8-validate@5.0.10/node_modules/@solana/buffer-layout-utils/src/bigint.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+buffer-layout-utils@0.2.0_bufferutil@4.0.9_encoding@0.1.13_typescript@5.8.3_utf-8-validate@5.0.10/node_modules/@solana/buffer-layout-utils/src/index.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/instructions/amountToUiAmount.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/actions/amountToUiAmount.ts:4:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/actions/index.ts:1:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/index.ts:1:1)
+      at Object.<anonymous> (node_modules/.pnpm/@orca-so+common-sdk@0.6.11_@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4._637c9e9994ea5f512d2c71d149c9c974/node_modules/@orca-so/common-sdk/src/web3/ata-util.ts:1:1)
+      at Object.<anonymous> (node_modules/.pnpm/@orca-so+common-sdk@0.6.11_@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4._637c9e9994ea5f512d2c71d149c9c974/node_modules/@orca-so/common-sdk/src/web3/index.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@orca-so+common-sdk@0.6.11_@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4._637c9e9994ea5f512d2c71d149c9c974/node_modules/@orca-so/common-sdk/src/index.ts:2:1)
+      at Object.<anonymous> (src/services/base.ts:1:1)
+      at Object.<anonymous> (src/chains/ethereum/routes/allowances.ts:10:1)
+      at Object.<anonymous> (src/chains/ethereum/ethereum.routes.ts:3:1)
+      at Object.<anonymous> (src/app.ts:16:1)
+      at Object.<anonymous> (test/connectors/raydium/raydium.routes.test.ts:8:1)
+
+  console.warn
+    bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+
+    > 1 | import { DecimalUtil } from '@orca-so/common-sdk';
+        | ^
+      2 | import { Decimal } from 'decimal.js';
+      3 | import { BigNumber } from 'ethers';
+      4 | import { format, fraction, number } from 'mathjs';
+
+      at Object.<anonymous> (node_modules/.pnpm/bigint-buffer@1.1.5/node_modules/bigint-buffer/dist/node.js:10:17)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+buffer-layout-utils@0.2.0_bufferutil@4.0.9_encoding@0.1.13_typescript@5.8.3_utf-8-validate@5.0.10/node_modules/@solana/buffer-layout-utils/src/bigint.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+buffer-layout-utils@0.2.0_bufferutil@4.0.9_encoding@0.1.13_typescript@5.8.3_utf-8-validate@5.0.10/node_modules/@solana/buffer-layout-utils/src/index.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/instructions/amountToUiAmount.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/actions/amountToUiAmount.ts:4:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/actions/index.ts:1:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/index.ts:1:1)
+      at Object.<anonymous> (node_modules/.pnpm/@orca-so+common-sdk@0.6.11_@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4._637c9e9994ea5f512d2c71d149c9c974/node_modules/@orca-so/common-sdk/src/web3/ata-util.ts:1:1)
+      at Object.<anonymous> (node_modules/.pnpm/@orca-so+common-sdk@0.6.11_@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4._637c9e9994ea5f512d2c71d149c9c974/node_modules/@orca-so/common-sdk/src/web3/index.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@orca-so+common-sdk@0.6.11_@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4._637c9e9994ea5f512d2c71d149c9c974/node_modules/@orca-so/common-sdk/src/index.ts:2:1)
+      at Object.<anonymous> (src/services/base.ts:1:1)
+      at Object.<anonymous> (src/chains/ethereum/routes/allowances.ts:10:1)
+      at Object.<anonymous> (src/chains/ethereum/ethereum.routes.ts:3:1)
+      at Object.<anonymous> (src/app.ts:16:1)
+      at Object.<anonymous> (test/connectors/uniswap/uniswap.routes.test.ts:8:1)
+
+FAIL test/wallet/read-only-integration.test.ts
+  Read-Only Wallet Integration Tests
+    Ethereum Chain Integration
+      ✕ should identify read-only wallets correctly (41 ms)
+      ✕ should get native balance for read-only wallet (12 ms)
+      ✕ should get ERC20 balance for read-only wallet (20 ms)
+      ✕ should get ERC20 allowance for read-only wallet (13 ms)
+    Solana Chain Integration
+      ✕ should identify read-only wallets correctly (6 ms)
+      ✕ should validate the address is a valid Solana address (4 ms)
+    Balance Route Integration
+      ✓ should handle read-only wallets in Ethereum balance requests (1 ms)
+      ✓ should handle read-only wallets in Solana balance requests
+
+  ● Read-Only Wallet Integration Tests › Ethereum Chain Integration › should identify read-only wallets correctly
+
+    Failed to load configuration for ethereum-mainnet: Failed to validate or merge with template: ethereum-mainnet config file seems to be outdated/broken due to additional property "chainID". Kindly fix manually.
+
+      211 |       this.#configuration = configCandidate;
+      212 |     } catch (err) {
+    > 213 |       throw new Error(
+          |             ^
+      214 |         `Failed to load configuration for ${this.id}: ${err.message}`,
+      215 |       );
+      216 |     }
+
+      at ConfigurationNamespace.loadConfig (src/services/config-manager-v2.ts:213:13)
+      at new ConfigurationNamespace (src/services/config-manager-v2.ts:146:10)
+      at ConfigManagerV2.addNamespace (src/services/config-manager-v2.ts:404:28)
+      at ConfigManagerV2.loadConfigRoot (src/services/config-manager-v2.ts:500:12)
+      at new ConfigManagerV2 (src/services/config-manager-v2.ts:357:10)
+      at Function.getInstance (src/services/config-manager-v2.ts:348:35)
+      at getEthereumConfig (src/chains/ethereum/ethereum.config.ts:45:32)
+      at new Ethereum (src/chains/ethereum/ethereum.ts:55:37)
+      at Function.getInstance (src/chains/ethereum/ethereum.ts:75:24)
+      at Object.<anonymous> (test/wallet/read-only-integration.test.ts:30:33)
+
+  ● Read-Only Wallet Integration Tests › Ethereum Chain Integration › should get native balance for read-only wallet
+
+    Failed to load configuration for ethereum-mainnet: Failed to validate or merge with template: ethereum-mainnet config file seems to be outdated/broken due to additional property "chainID". Kindly fix manually.
+
+      211 |       this.#configuration = configCandidate;
+      212 |     } catch (err) {
+    > 213 |       throw new Error(
+          |             ^
+      214 |         `Failed to load configuration for ${this.id}: ${err.message}`,
+      215 |       );
+      216 |     }
+
+      at ConfigurationNamespace.loadConfig (src/services/config-manager-v2.ts:213:13)
+      at new ConfigurationNamespace (src/services/config-manager-v2.ts:146:10)
+      at ConfigManagerV2.addNamespace (src/services/config-manager-v2.ts:404:28)
+      at ConfigManagerV2.loadConfigRoot (src/services/config-manager-v2.ts:500:12)
+      at new ConfigManagerV2 (src/services/config-manager-v2.ts:357:10)
+      at Function.getInstance (src/services/config-manager-v2.ts:348:35)
+      at getEthereumConfig (src/chains/ethereum/ethereum.config.ts:45:32)
+      at new Ethereum (src/chains/ethereum/ethereum.ts:55:37)
+      at Function.getInstance (src/chains/ethereum/ethereum.ts:75:24)
+      at Object.<anonymous> (test/wallet/read-only-integration.test.ts:30:33)
+
+  ● Read-Only Wallet Integration Tests › Ethereum Chain Integration › should get ERC20 balance for read-only wallet
+
+    Failed to load configuration for ethereum-mainnet: Failed to validate or merge with template: ethereum-mainnet config file seems to be outdated/broken due to additional property "chainID". Kindly fix manually.
+
+      211 |       this.#configuration = configCandidate;
+      212 |     } catch (err) {
+    > 213 |       throw new Error(
+          |             ^
+      214 |         `Failed to load configuration for ${this.id}: ${err.message}`,
+      215 |       );
+      216 |     }
+
+      at ConfigurationNamespace.loadConfig (src/services/config-manager-v2.ts:213:13)
+      at new ConfigurationNamespace (src/services/config-manager-v2.ts:146:10)
+      at ConfigManagerV2.addNamespace (src/services/config-manager-v2.ts:404:28)
+      at ConfigManagerV2.loadConfigRoot (src/services/config-manager-v2.ts:500:12)
+      at new ConfigManagerV2 (src/services/config-manager-v2.ts:357:10)
+      at Function.getInstance (src/services/config-manager-v2.ts:348:35)
+      at getEthereumConfig (src/chains/ethereum/ethereum.config.ts:45:32)
+      at new Ethereum (src/chains/ethereum/ethereum.ts:55:37)
+      at Function.getInstance (src/chains/ethereum/ethereum.ts:75:24)
+      at Object.<anonymous> (test/wallet/read-only-integration.test.ts:30:33)
+
+  ● Read-Only Wallet Integration Tests › Ethereum Chain Integration › should get ERC20 allowance for read-only wallet
+
+    Failed to load configuration for ethereum-mainnet: Failed to validate or merge with template: ethereum-mainnet config file seems to be outdated/broken due to additional property "chainID". Kindly fix manually.
+
+      211 |       this.#configuration = configCandidate;
+      212 |     } catch (err) {
+    > 213 |       throw new Error(
+          |             ^
+      214 |         `Failed to load configuration for ${this.id}: ${err.message}`,
+      215 |       );
+      216 |     }
+
+      at ConfigurationNamespace.loadConfig (src/services/config-manager-v2.ts:213:13)
+      at new ConfigurationNamespace (src/services/config-manager-v2.ts:146:10)
+      at ConfigManagerV2.addNamespace (src/services/config-manager-v2.ts:404:28)
+      at ConfigManagerV2.loadConfigRoot (src/services/config-manager-v2.ts:500:12)
+      at new ConfigManagerV2 (src/services/config-manager-v2.ts:357:10)
+      at Function.getInstance (src/services/config-manager-v2.ts:348:35)
+      at getEthereumConfig (src/chains/ethereum/ethereum.config.ts:45:32)
+      at new Ethereum (src/chains/ethereum/ethereum.ts:55:37)
+      at Function.getInstance (src/chains/ethereum/ethereum.ts:75:24)
+      at Object.<anonymous> (test/wallet/read-only-integration.test.ts:30:33)
+
+  ● Read-Only Wallet Integration Tests › Solana Chain Integration › should identify read-only wallets correctly
+
+    Failed to load configuration for ethereum-mainnet: Failed to validate or merge with template: ethereum-mainnet config file seems to be outdated/broken due to additional property "chainID". Kindly fix manually.
+
+      211 |       this.#configuration = configCandidate;
+      212 |     } catch (err) {
+    > 213 |       throw new Error(
+          |             ^
+      214 |         `Failed to load configuration for ${this.id}: ${err.message}`,
+      215 |       );
+      216 |     }
+
+      at ConfigurationNamespace.loadConfig (src/services/config-manager-v2.ts:213:13)
+      at new ConfigurationNamespace (src/services/config-manager-v2.ts:146:10)
+      at ConfigManagerV2.addNamespace (src/services/config-manager-v2.ts:404:28)
+      at ConfigManagerV2.loadConfigRoot (src/services/config-manager-v2.ts:500:12)
+      at new ConfigManagerV2 (src/services/config-manager-v2.ts:357:10)
+      at Function.getInstance (src/services/config-manager-v2.ts:348:35)
+      at getSolanaConfig (src/chains/solana/solana.config.ts:37:32)
+      at new Solana (src/chains/solana/solana.ts:105:34)
+      at Function.getInstance (src/chains/solana/solana.ts:117:24)
+      at Object.<anonymous> (test/wallet/read-only-integration.test.ts:105:29)
+
+  ● Read-Only Wallet Integration Tests › Solana Chain Integration › should validate the address is a valid Solana address
+
+    Failed to load configuration for ethereum-mainnet: Failed to validate or merge with template: ethereum-mainnet config file seems to be outdated/broken due to additional property "chainID". Kindly fix manually.
+
+      211 |       this.#configuration = configCandidate;
+      212 |     } catch (err) {
+    > 213 |       throw new Error(
+          |             ^
+      214 |         `Failed to load configuration for ${this.id}: ${err.message}`,
+      215 |       );
+      216 |     }
+
+      at ConfigurationNamespace.loadConfig (src/services/config-manager-v2.ts:213:13)
+      at new ConfigurationNamespace (src/services/config-manager-v2.ts:146:10)
+      at ConfigManagerV2.addNamespace (src/services/config-manager-v2.ts:404:28)
+      at ConfigManagerV2.loadConfigRoot (src/services/config-manager-v2.ts:500:12)
+      at new ConfigManagerV2 (src/services/config-manager-v2.ts:357:10)
+      at Function.getInstance (src/services/config-manager-v2.ts:348:35)
+      at getSolanaConfig (src/chains/solana/solana.config.ts:37:32)
+      at new Solana (src/chains/solana/solana.ts:105:34)
+      at Function.getInstance (src/chains/solana/solana.ts:117:24)
+      at Object.<anonymous> (test/wallet/read-only-integration.test.ts:105:29)
+
+  console.log
+    Jest test environment configured with global mocks and settings
+
+      at Object.<anonymous> (test/jest-setup.js:14:9)
+
+FAIL test/config/config-routes-v2.test.ts (5.141 s)
+  Config Routes V2 Tests
+    POST /update
+      ✕ should update nodeURL for ethereum mainnet (114 ms)
+      ✕ should update nodeURL for solana mainnet-beta (77 ms)
+      ✓ should update namespace-level config without network (35 ms)
+      ✓ should convert string numbers to numbers based on current type (27 ms)
+      ✓ should convert string booleans to booleans based on current type (25 ms)
+      ✓ should return 404 for non-existent namespace (17 ms)
+      ✕ should return 400 when network provided for non-chain namespace (18 ms)
+      ✕ should return 404 for non-existent network (14 ms)
+      ✓ should handle allowedSlippage special case (31 ms)
+      ✓ should return 400 for missing required fields (14 ms)
+      ✓ should return 500 when updateConfig throws an error (34 ms)
+      ✕ should save network-specific nodeURL to separate file for Solana (21 ms)
+      ✕ should create network directory if it does not exist (14 ms)
+    GET /
+      ✓ should get all configurations when no parameters provided (15 ms)
+      ✓ should get namespace configuration (29 ms)
+      ✕ should get network-specific configuration (13 ms)
+      ✓ should return 404 for non-existent namespace (34 ms)
+      ✕ should return 404 for non-existent network (18 ms)
+    Pool management routes
+      ✕ should get pools for a connector (12 ms)
+      ✕ should add a pool (26 ms)
+      ✕ should remove a pool (15 ms)
+
+  ● Config Routes V2 Tests › POST /update › should update nodeURL for ethereum mainnet
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+    -   "message": "Configuration updated successfully: 'ethereum.mainnet.nodeURL' set to \"https://eth-mainnet.g.alchemy.com/v2/your-api-key\"",
+    +   "message": "Configuration updated successfully: 'ethereum.nodeURL' set to \"https://eth-mainnet.g.alchemy.com/v2/your-api-key\"",
+      }
+
+      128 |
+      129 |       expect(response.statusCode).toBe(200);
+    > 130 |       expect(JSON.parse(response.payload)).toEqual({
+          |                                            ^
+      131 |         message: `Configuration updated successfully: 'ethereum.mainnet.nodeURL' set to "https://eth-mainnet.g.alchemy.com/v2/your-api-key"`,
+      132 |       });
+      133 |
+
+      at Object.<anonymous> (test/config/config-routes-v2.test.ts:130:44)
+
+  ● Config Routes V2 Tests › POST /update › should update nodeURL for solana mainnet-beta
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+    -   "message": "Configuration updated successfully: 'solana.mainnet-beta.nodeURL' set to \"https://solana-api.projectserum.com\"",
+    +   "message": "Configuration updated successfully: 'solana.nodeURL' set to \"https://solana-api.projectserum.com\"",
+      }
+
+      163 |
+      164 |       expect(response.statusCode).toBe(200);
+    > 165 |       expect(JSON.parse(response.payload)).toEqual({
+          |                                            ^
+      166 |         message: `Configuration updated successfully: 'solana.mainnet-beta.nodeURL' set to "https://solana-api.projectserum.com"`,
+      167 |       });
+      168 |     });
+
+      at Object.<anonymous> (test/config/config-routes-v2.test.ts:165:44)
+
+  ● Config Routes V2 Tests › POST /update › should return 400 when network provided for non-chain namespace
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 200
+
+      283 |       });
+      284 |
+    > 285 |       expect(response.statusCode).toBe(400);
+          |                                   ^
+      286 |       expect(JSON.parse(response.payload).message).toContain(
+      287 |         'does not support network configurations',
+      288 |       );
+
+      at Object.<anonymous> (test/config/config-routes-v2.test.ts:285:35)
+
+  ● Config Routes V2 Tests › POST /update › should return 404 for non-existent network
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 404
+    Received: 200
+
+      309 |       });
+      310 |
+    > 311 |       expect(response.statusCode).toBe(404);
+          |                                   ^
+      312 |       expect(JSON.parse(response.payload).message).toContain(
+      313 |         "Network 'goerli' not found",
+      314 |       );
+
+      at Object.<anonymous> (test/config/config-routes-v2.test.ts:311:35)
+
+  ● Config Routes V2 Tests › POST /update › should save network-specific nodeURL to separate file for Solana
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+    -   "message": "Configuration updated successfully: 'solana.mainnet-beta.nodeURL' set to \"https://new-solana-rpc.com\"",
+    +   "message": "Configuration updated successfully: 'solana.nodeURL' set to \"https://new-solana-rpc.com\"",
+      }
+
+      445 |
+      446 |       expect(response.statusCode).toBe(200);
+    > 447 |       expect(JSON.parse(response.payload)).toEqual({
+          |                                            ^
+      448 |         message: `Configuration updated successfully: 'solana.mainnet-beta.nodeURL' set to "https://new-solana-rpc.com"`,
+      449 |       });
+      450 |
+
+      at Object.<anonymous> (test/config/config-routes-v2.test.ts:447:44)
+
+  ● Config Routes V2 Tests › POST /update › should create network directory if it does not exist
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: "conf/networks/ethereum", {"recursive": true}
+
+    Number of calls: 0
+
+      521 |
+      522 |       // Verify directory was created
+    > 523 |       expect(mockMkdirSync).toHaveBeenCalledWith('conf/networks/ethereum', {
+          |                             ^
+      524 |         recursive: true,
+      525 |       });
+      526 |
+
+      at Object.<anonymous> (test/config/config-routes-v2.test.ts:523:29)
+
+  ● Config Routes V2 Tests › GET / › should get network-specific configuration
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 0
+    + Received  + 4
+
+      Object {
+    +   "networks": Object {
+    +     "mainnet-beta": Object {
+            "nativeCurrencySymbol": "SOL",
+            "nodeURL": "https://api.mainnet-beta.solana.com",
+    +     },
+    +   },
+      }
+
+      565 |
+      566 |       expect(response.statusCode).toBe(200);
+    > 567 |       expect(JSON.parse(response.payload)).toEqual({
+          |                                            ^
+      568 |         nodeURL: 'https://api.mainnet-beta.solana.com',
+      569 |         nativeCurrencySymbol: 'SOL',
+      570 |       });
+
+      at Object.<anonymous> (test/config/config-routes-v2.test.ts:567:44)
+
+  ● Config Routes V2 Tests › GET / › should return 404 for non-existent network
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 404
+    Received: 200
+
+      586 |       });
+      587 |
+    > 588 |       expect(response.statusCode).toBe(404);
+          |                                   ^
+      589 |     });
+      590 |   });
+      591 |
+
+      at Object.<anonymous> (test/config/config-routes-v2.test.ts:588:35)
+
+  ● Config Routes V2 Tests › Pool management routes › should get pools for a connector
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      602 |       });
+      603 |
+    > 604 |       expect(response.statusCode).toBe(200);
+          |                                   ^
+      605 |       expect(JSON.parse(response.payload)).toEqual(mockPools);
+      606 |     });
+      607 |
+
+      at Object.<anonymous> (test/config/config-routes-v2.test.ts:604:35)
+
+  ● Config Routes V2 Tests › Pool management routes › should add a pool
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      618 |       });
+      619 |
+    > 620 |       expect(response.statusCode).toBe(200);
+          |                                   ^
+      621 |       expect(JSON.parse(response.payload)).toEqual({
+      622 |         message: 'Default pool added for SOL-USDC',
+      623 |       });
+
+      at Object.<anonymous> (test/config/config-routes-v2.test.ts:620:35)
+
+  ● Config Routes V2 Tests › Pool management routes › should remove a pool
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      635 |       });
+      636 |
+    > 637 |       expect(response.statusCode).toBe(200);
+          |                                   ^
+      638 |       expect(JSON.parse(response.payload)).toEqual({
+      639 |         message: 'Default pool removed for SOL-USDC',
+      640 |       });
+
+      at Object.<anonymous> (test/config/config-routes-v2.test.ts:637:35)
+
+PASS test/pools/pools.routes.test.ts (5.092 s)
+  Pool Routes Tests
+    GET /pools
+      ✓ should list all pools for a connector (119 ms)
+      ✓ should filter pools by type (44 ms)
+      ✓ should search pools by token symbol (55 ms)
+      ✓ should return 400 for invalid parameters (30 ms)
+    GET /pools/:tradingPair
+      ✓ should find pool by trading pair (26 ms)
+      ✓ should return 404 if pool not found (30 ms)
+      ✓ should return 400 for invalid trading pair format (45 ms)
+    POST /pools
+      ✓ should add new pool successfully (24 ms)
+      ✓ should return 400 for duplicate pool (21 ms)
+      ✓ should return 400 for missing required fields (28 ms)
+    DELETE /pools/:address
+      ✓ should remove pool successfully (26 ms)
+      ✓ should return 404 if pool not found (42 ms)
+      ✓ should return 400 for missing required parameters (27 ms)
+
+  console.log
+    Jest test environment configured with global mocks and settings
+
+      at Object.<anonymous> (test/jest-setup.js:14:9)
+
+PASS test/tokens/token-service.test.ts
+  TokenService
+    validateToken
+      ✓ should validate Ethereum token with correct address checksum (2 ms)
+      ✓ should reject Ethereum token with invalid address (5 ms)
+      ✓ should validate Solana token with valid base58 address
+      ✓ should reject token with invalid decimals (1 ms)
+      ✓ should reject unsupported chain
+
+  console.log
+    Jest test environment configured with global mocks and settings
+
+      at Object.<anonymous> (test/jest-setup.js:14:9)
+
+  console.log
+    Jest test environment configured with global mocks and settings
+
+      at Object.<anonymous> (test/jest-setup.js:14:9)
+
+PASS test/tokens/tokens.routes.test.ts
+  Token Routes
+    GET /tokens
+      ✓ should return empty list when no chain/network specified (125 ms)
+      ✓ should return tokens when chain and network specified (38 ms)
+      ✓ should return 404 when token list not found (44 ms)
+    GET /tokens/:symbolOrAddress
+      ✓ should return token when found (20 ms)
+      ✓ should return 404 when token not found (62 ms)
+    POST /tokens
+      ✓ should add token successfully (16 ms)
+      ✓ should return 400 for invalid token data (36 ms)
+    DELETE /tokens/:address
+      ✓ should remove token successfully (34 ms)
+      ✓ should return 404 when token not found (42 ms)
+
+  console.warn
+    bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+
+    > 1 | import { DecimalUtil } from '@orca-so/common-sdk';
+        | ^
+      2 | import { Decimal } from 'decimal.js';
+      3 | import { BigNumber } from 'ethers';
+      4 | import { format, fraction, number } from 'mathjs';
+
+      at Object.<anonymous> (node_modules/.pnpm/bigint-buffer@1.1.5/node_modules/bigint-buffer/dist/node.js:10:17)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+buffer-layout-utils@0.2.0_bufferutil@4.0.9_encoding@0.1.13_typescript@5.8.3_utf-8-validate@5.0.10/node_modules/@solana/buffer-layout-utils/src/bigint.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+buffer-layout-utils@0.2.0_bufferutil@4.0.9_encoding@0.1.13_typescript@5.8.3_utf-8-validate@5.0.10/node_modules/@solana/buffer-layout-utils/src/index.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/instructions/amountToUiAmount.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/actions/amountToUiAmount.ts:4:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/actions/index.ts:1:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/index.ts:1:1)
+      at Object.<anonymous> (node_modules/.pnpm/@orca-so+common-sdk@0.6.11_@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4._637c9e9994ea5f512d2c71d149c9c974/node_modules/@orca-so/common-sdk/src/web3/ata-util.ts:1:1)
+      at Object.<anonymous> (node_modules/.pnpm/@orca-so+common-sdk@0.6.11_@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4._637c9e9994ea5f512d2c71d149c9c974/node_modules/@orca-so/common-sdk/src/web3/index.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@orca-so+common-sdk@0.6.11_@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4._637c9e9994ea5f512d2c71d149c9c974/node_modules/@orca-so/common-sdk/src/index.ts:2:1)
+      at Object.<anonymous> (src/services/base.ts:1:1)
+      at Object.<anonymous> (src/chains/ethereum/routes/allowances.ts:10:1)
+      at Object.<anonymous> (src/chains/ethereum/ethereum.routes.ts:3:1)
+      at Object.<anonymous> (src/app.ts:16:1)
+      at Object.<anonymous> (test/chains/chain.routes.test.ts:6:1)
+
+  console.log
+    Jest test environment configured with global mocks and settings
+
+      at Object.<anonymous> (test/jest-setup.js:14:9)
+
+FAIL test/config/update-config-network-files.test.ts (5.273 s)
+  updateConfig - Network-specific file updates
+    Network-specific configuration updates
+      ✕ should save Solana network config to separate file (30 ms)
+      ✕ should save Ethereum network config to separate file
+      ✕ should create network directory if it does not exist (1 ms)
+      ✕ should handle nested configuration paths correctly
+      ✓ should not save to network file for non-chain namespaces (1 ms)
+      ✓ should not save to network file for non-network configurations
+      ✓ should handle file write errors gracefully
+    Non-network configuration updates
+      ✓ should update connector configuration normally (2 ms)
+
+  ● updateConfig - Network-specific file updates › Network-specific configuration updates › should save Solana network config to separate file
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: "/mock/project/conf/networks/solana/mainnet-beta.yml", "nodeURL: https://new-rpc.com
+    nativeCurrencySymbol: SOL"
+
+    Number of calls: 0
+
+      93 |
+      94 |       // Verify network config file was written
+    > 95 |       expect(mockFs.writeFileSync).toHaveBeenCalledWith(
+         |                                    ^
+      96 |         '/mock/project/conf/networks/solana/mainnet-beta.yml',
+      97 |         'nodeURL: https://new-rpc.com\nnativeCurrencySymbol: SOL',
+      98 |       );
+
+      at Object.<anonymous> (test/config/update-config-network-files.test.ts:95:36)
+
+  ● updateConfig - Network-specific file updates › Network-specific configuration updates › should save Ethereum network config to separate file
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: "/mock/project/conf/networks/ethereum/mainnet.yml", "chainID: 1
+    nodeURL: https://eth-mainnet.alchemyapi.io"
+
+    Number of calls: 0
+
+      127 |
+      128 |       // Verify network config file was written
+    > 129 |       expect(mockFs.writeFileSync).toHaveBeenCalledWith(
+          |                                    ^
+      130 |         '/mock/project/conf/networks/ethereum/mainnet.yml',
+      131 |         'chainID: 1\nnodeURL: https://eth-mainnet.alchemyapi.io',
+      132 |       );
+
+      at Object.<anonymous> (test/config/update-config-network-files.test.ts:129:36)
+
+  ● updateConfig - Network-specific file updates › Network-specific configuration updates › should create network directory if it does not exist
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: "/mock/project/conf/networks/solana", {"recursive": true}
+
+    Number of calls: 0
+
+      162 |
+      163 |       // Verify directory was created
+    > 164 |       expect(mockFs.mkdirSync).toHaveBeenCalledWith(
+          |                                ^
+      165 |         '/mock/project/conf/networks/solana',
+      166 |         { recursive: true },
+      167 |       );
+
+      at Object.<anonymous> (test/config/update-config-network-files.test.ts:164:32)
+
+  ● updateConfig - Network-specific file updates › Network-specific configuration updates › should handle nested configuration paths correctly
+
+    TypeError: Cannot read properties of undefined (reading '0')
+
+      199 |
+      200 |       // Verify the updatePath function correctly updated nested property
+    > 201 |       const yamlDumpCall = (mockYaml.dump as jest.Mock).mock.calls[0][0];
+          |                                                                      ^
+      202 |       expect(yamlDumpCall).toEqual({
+      203 |         rpc: {
+      204 |           endpoints: {
+
+      at Object.<anonymous> (test/config/update-config-network-files.test.ts:201:70)
+
+  console.log
+    Jest test environment configured with global mocks and settings
+
+      at Object.<anonymous> (test/jest-setup.js:14:9)
+
+  console.warn
+    bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+
+    > 1 | import { DecimalUtil } from '@orca-so/common-sdk';
+        | ^
+      2 | import { Decimal } from 'decimal.js';
+      3 | import { BigNumber } from 'ethers';
+      4 | import { format, fraction, number } from 'mathjs';
+
+      at Object.<anonymous> (node_modules/.pnpm/bigint-buffer@1.1.5/node_modules/bigint-buffer/dist/node.js:10:17)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+buffer-layout-utils@0.2.0_bufferutil@4.0.9_encoding@0.1.13_typescript@5.8.3_utf-8-validate@5.0.10/node_modules/@solana/buffer-layout-utils/src/bigint.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+buffer-layout-utils@0.2.0_bufferutil@4.0.9_encoding@0.1.13_typescript@5.8.3_utf-8-validate@5.0.10/node_modules/@solana/buffer-layout-utils/src/index.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/instructions/amountToUiAmount.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/actions/amountToUiAmount.ts:4:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/actions/index.ts:1:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/index.ts:1:1)
+      at Object.<anonymous> (node_modules/.pnpm/@orca-so+common-sdk@0.6.11_@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4._637c9e9994ea5f512d2c71d149c9c974/node_modules/@orca-so/common-sdk/src/web3/ata-util.ts:1:1)
+      at Object.<anonymous> (node_modules/.pnpm/@orca-so+common-sdk@0.6.11_@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4._637c9e9994ea5f512d2c71d149c9c974/node_modules/@orca-so/common-sdk/src/web3/index.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@orca-so+common-sdk@0.6.11_@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4._637c9e9994ea5f512d2c71d149c9c974/node_modules/@orca-so/common-sdk/src/index.ts:2:1)
+      at Object.<anonymous> (src/services/base.ts:1:1)
+      at Object.<anonymous> (src/chains/ethereum/routes/allowances.ts:10:1)
+      at Object.<anonymous> (src/chains/ethereum/ethereum.routes.ts:3:1)
+      at Object.<anonymous> (src/app.ts:16:1)
+      at Object.<anonymous> (test/connectors/jupiter/jupiter.routes.test.ts:8:1)
+
+PASS test/connectors/uniswap/tick-data-provider.test.js
+  Uniswap Tick Data Provider Tests
+    Pool with tick data provider
+      ✓ creates a V3 pool with a working tick data provider (1 ms)
+      ✓ tick data provider returns the expected formats (25 ms)
+
+PASS test/connectors/meteora/clmm.test.js
+  Meteora CLMM Tests (Solana Mainnet)
+    Pool Info Endpoint
+      ✓ returns and validates pool info (1 ms)
+      ✓ handles error for non-existent pool
+    Quote Swap Endpoint
+      ✓ returns and validates swap quote for SELL
+      ✓ returns and validates swap quote for BUY (1 ms)
+      ✓ handles insufficient liquidity error
+    Execute Swap Endpoint
+      ✓ returns successful swap execution (1 ms)
+      ✓ handles transaction simulation error
+    Position Info Endpoint
+      ✓ returns and validates position info
+      ✓ handles position not found error
+    Positions Owned Endpoint
+      ✓ returns list of owned positions (12 ms)
+      ✓ handles empty positions list
+    Quote Position Endpoint
+      ✓ returns and validates quote for new position (1 ms)
+      ✓ handles invalid tick range error (10 ms)
+      ✓ handles ticks not aligned with tick spacing error (1 ms)
+    Open Position Endpoint
+      ✓ returns successful position opening (1 ms)
+      ✓ handles insufficient balance error
+    Add Liquidity Endpoint
+      ✓ returns successful liquidity addition to existing position (1 ms)
+      ✓ handles position not found error
+    Remove Liquidity Endpoint
+      ✓ returns successful liquidity removal
+      ✓ handles invalid liquidity amount error
+    Close Position Endpoint
+      ✓ returns successful position closure
+      ✓ handles position already closed error
+    Collect Fees Endpoint
+      ✓ returns successful fee collection (1 ms)
+      ✓ handles no fees to collect
+
+  console.log
+    Jest test environment configured with global mocks and settings
+
+      at Object.<anonymous> (test/jest-setup.js:14:9)
+
+  console.log
+    Jest test environment configured with global mocks and settings
+
+      at Object.<anonymous> (test/jest-setup.js:14:9)
+
+PASS test/chains/solana/solana.test.js
+  Solana Chain Tests (Mainnet Beta)
+    Balance Endpoint
+      ✓ returns and validates wallet balances with token symbols (1 ms)
+      ✓ returns and validates wallet balances with token addresses (1 ms)
+      ✓ returns and validates wallet balances with mixed token symbols and addresses
+      ✓ handles error response for invalid wallet
+      ✓ handles error response for invalid token address
+    Tokens Endpoint
+      ✓ returns and validates token list (1 ms)
+    Status Endpoint
+      ✓ returns and validates chain status
+
+  console.warn
+    bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+
+    > 1 | import { DecimalUtil } from '@orca-so/common-sdk';
+        | ^
+      2 | import { Decimal } from 'decimal.js';
+      3 | import { BigNumber } from 'ethers';
+      4 | import { format, fraction, number } from 'mathjs';
+
+      at Object.<anonymous> (node_modules/.pnpm/bigint-buffer@1.1.5/node_modules/bigint-buffer/dist/node.js:10:17)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+buffer-layout-utils@0.2.0_bufferutil@4.0.9_encoding@0.1.13_typescript@5.8.3_utf-8-validate@5.0.10/node_modules/@solana/buffer-layout-utils/src/bigint.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+buffer-layout-utils@0.2.0_bufferutil@4.0.9_encoding@0.1.13_typescript@5.8.3_utf-8-validate@5.0.10/node_modules/@solana/buffer-layout-utils/src/index.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/instructions/amountToUiAmount.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/actions/amountToUiAmount.ts:4:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/actions/index.ts:1:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/index.ts:1:1)
+      at Object.<anonymous> (node_modules/.pnpm/@orca-so+common-sdk@0.6.11_@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4._637c9e9994ea5f512d2c71d149c9c974/node_modules/@orca-so/common-sdk/src/web3/ata-util.ts:1:1)
+      at Object.<anonymous> (node_modules/.pnpm/@orca-so+common-sdk@0.6.11_@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4._637c9e9994ea5f512d2c71d149c9c974/node_modules/@orca-so/common-sdk/src/web3/index.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@orca-so+common-sdk@0.6.11_@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4._637c9e9994ea5f512d2c71d149c9c974/node_modules/@orca-so/common-sdk/src/index.ts:2:1)
+      at Object.<anonymous> (src/services/base.ts:1:1)
+      at Object.<anonymous> (src/chains/ethereum/routes/allowances.ts:10:1)
+      at Object.<anonymous> (src/chains/ethereum/ethereum.routes.ts:3:1)
+      at Object.<anonymous> (src/app.ts:16:1)
+      at Object.<anonymous> (test/connectors/connector.routes.test.ts:6:1)
+
+PASS test/connectors/jupiter/swap.test.js
+  Jupiter Swap Tests (Solana Mainnet)
+    Quote Swap Endpoint
+      ✓ returns and validates swap quote for SELL (1 ms)
+      ✓ returns and validates swap quote for BUY
+      ✓ handles error with invalid token
+      ✓ handles missing required parameters
+      ✓ returns quote with custom slippage
+    Execute Swap Endpoint
+      ✓ returns successful swap execution (1 ms)
+      ✓ returns successful swap execution with fee parameters
+      ✓ returns pending swap execution (4 ms)
+      ✓ handles execution errors (1 ms)
+
+  console.log
+    Jest test environment configured with global mocks and settings
+
+      at Object.<anonymous> (test/jest-setup.js:14:9)
+
+PASS test/connectors/raydium/clmm.test.js
+  Raydium CLMM Tests (Solana Mainnet)
+    Pool Info Endpoint
+      ✓ returns and validates pool info (1 ms)
+      ✓ handles error for non-existent pool
+    Quote Swap Endpoint
+      ✓ returns and validates swap quote for SELL
+      ✓ returns and validates swap quote for BUY (1 ms)
+    Execute Swap Endpoint
+      ✓ returns successful swap execution
+    Position Info Endpoint
+      ✓ returns and validates position info
+      ✓ handles position not found error (1 ms)
+    Positions Owned Endpoint
+      ✓ returns list of owned positions
+    Quote Position Endpoint
+      ✓ returns and validates quote for new position
+      ✓ handles invalid tick range error
+    Open Position Endpoint
+      ✓ returns successful position opening (1 ms)
+      ✓ handles insufficient balance error
+    Add Liquidity Endpoint
+      ✓ returns successful liquidity addition to existing position
+    Remove Liquidity Endpoint
+      ✓ returns successful liquidity removal
+    Close Position Endpoint
+      ✓ returns successful position closure
+    Collect Fees Endpoint
+      ✓ returns successful fee collection (1 ms)
+
+  console.log
+    Jest test environment configured with global mocks and settings
+
+      at Object.<anonymous> (test/jest-setup.js:14:9)
+
+  console.log
+    Jest test environment configured with global mocks and settings
+
+      at Object.<anonymous> (test/jest-setup.js:14:9)
+
+PASS test/connectors/raydium/amm.test.js
+  Raydium AMM Tests (Solana Mainnet)
+    Pool Info Endpoint
+      ✓ returns and validates pool info (1 ms)
+      ✓ handles error for non-existent pool
+    Quote Swap Endpoint
+      ✓ returns and validates swap quote for SELL (1 ms)
+      ✓ returns and validates swap quote for BUY
+      ✓ handles insufficient liquidity error (1 ms)
+    Execute Swap Endpoint
+      ✓ returns successful swap execution (1 ms)
+      ✓ handles transaction simulation error
+    Quote Liquidity Endpoint
+      ✓ returns and validates liquidity quote (1 ms)
+    Position Info Endpoint
+      ✓ returns and validates position info
+    Add Liquidity Endpoint
+      ✓ returns successful liquidity addition
+      ✓ handles insufficient balance error
+    Remove Liquidity Endpoint
+      ✓ returns successful liquidity removal
+      ✓ handles insufficient LP token balance error (1 ms)
+
+PASS test/connectors/uniswap/amm.test.js
+  Uniswap AMM Tests (Base Network)
+    Pool Info Endpoint
+      ✓ returns and validates pool info (1 ms)
+      ✓ handles error for non-existent pool
+    Quote Swap Endpoint
+      ✓ returns and validates swap quote for SELL
+      ✓ returns and validates swap quote for BUY
+    Execute Swap Endpoint
+      ✓ returns successful swap execution (12 ms)
+      ✓ handles transaction simulation error (1 ms)
+    Quote Liquidity Endpoint
+      ✓ returns and validates liquidity quote
+      ✓ handles imbalanced liquidity error (2 ms)
+    Position Info Endpoint
+      ✓ returns and validates position info
+    Add Liquidity Endpoint
+      ✓ returns successful liquidity addition
+      ✓ handles insufficient balance error
+    Remove Liquidity Endpoint
+      ✓ returns successful liquidity removal (1 ms)
+      ✓ handles insufficient LP token balance error
+
+  console.log
+    Jest test environment configured with global mocks and settings
+
+      at Object.<anonymous> (test/jest-setup.js:14:9)
+
+PASS test/mcp/fallback.test.ts
+  MCP Fallback Data Provider
+    getConnectors
+      ✓ should return connectors with correct trading types
+      ✓ should filter connectors by chain (1 ms)
+    getChains
+      ✓ should return supported chains without removed networks
+
+  console.log
+    Jest test environment configured with global mocks and settings
+
+      at Object.<anonymous> (test/jest-setup.js:14:9)
+
+  console.log
+    Jest test environment configured with global mocks and settings
+
+      at Object.<anonymous> (test/jest-setup.js:14:9)
+
+PASS test/chains/ethereum/ethereum.test.js
+  Ethereum Chain Tests (Base Network)
+    Balance Endpoint
+      ✓ returns and validates wallet balances (1 ms)
+      ✓ handles error response for invalid wallet
+    Tokens Endpoint
+      ✓ returns and validates token list (1 ms)
+    Status Endpoint
+      ✓ returns and validates chain status
+    Allowances Endpoint
+      ✓ returns allowances using token symbols (1 ms)
+      ✓ returns allowances using token addresses
+      ✓ handles error when no tokens are found
+    Approve Endpoint
+      ✓ approves token using token symbol (1 ms)
+      ✓ approves token using token address
+      ✓ approves token with custom amount
+      ✓ handles error for invalid token
+      ✓ handles error for invalid token address (1 ms)
+
+  console.warn
+    bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+
+    > 1 | import { DecimalUtil } from '@orca-so/common-sdk';
+        | ^
+      2 | import { Decimal } from 'decimal.js';
+      3 | import { BigNumber } from 'ethers';
+      4 | import { format, fraction, number } from 'mathjs';
+
+      at Object.<anonymous> (node_modules/.pnpm/bigint-buffer@1.1.5/node_modules/bigint-buffer/dist/node.js:10:17)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+buffer-layout-utils@0.2.0_bufferutil@4.0.9_encoding@0.1.13_typescript@5.8.3_utf-8-validate@5.0.10/node_modules/@solana/buffer-layout-utils/src/bigint.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+buffer-layout-utils@0.2.0_bufferutil@4.0.9_encoding@0.1.13_typescript@5.8.3_utf-8-validate@5.0.10/node_modules/@solana/buffer-layout-utils/src/index.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/instructions/amountToUiAmount.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/actions/amountToUiAmount.ts:4:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/actions/index.ts:1:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/index.ts:1:1)
+      at Object.<anonymous> (node_modules/.pnpm/@orca-so+common-sdk@0.6.11_@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4._637c9e9994ea5f512d2c71d149c9c974/node_modules/@orca-so/common-sdk/src/web3/ata-util.ts:1:1)
+      at Object.<anonymous> (node_modules/.pnpm/@orca-so+common-sdk@0.6.11_@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4._637c9e9994ea5f512d2c71d149c9c974/node_modules/@orca-so/common-sdk/src/web3/index.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@orca-so+common-sdk@0.6.11_@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4._637c9e9994ea5f512d2c71d149c9c974/node_modules/@orca-so/common-sdk/src/index.ts:2:1)
+      at Object.<anonymous> (src/services/base.ts:1:1)
+      at Object.<anonymous> (src/chains/ethereum/routes/allowances.ts:10:1)
+      at Object.<anonymous> (src/chains/ethereum/ethereum.routes.ts:3:1)
+      at Object.<anonymous> (src/app.ts:16:1)
+      at Object.<anonymous> (test/config/namespace.routes.test.ts:5:1)
+
+  console.log
+    Jest test environment configured with global mocks and settings
+
+      at Object.<anonymous> (test/jest-setup.js:14:9)
+
+PASS test/chains/ethereum/wrap.test.js
+  Ethereum Wrap Native Token Tests (Base Network)
+    Wrap Endpoint
+      ✓ wraps native token to wrapped token successfully (1 ms)
+      ✓ handles error for invalid wallet address (1 ms)
+      ✓ handles error for invalid amount
+      ✓ handles error for insufficient funds
+
+PASS test/connectors/uniswap/clmm.test.js
+  Uniswap CLMM Tests (Base Network)
+    Pool Info Endpoint
+      ✓ returns and validates pool info (1 ms)
+      ✓ handles error for non-existent pool
+    Quote Swap Endpoint
+      ✓ returns and validates swap quote for SELL (1 ms)
+      ✓ returns and validates swap quote for BUY
+    Execute Swap Endpoint
+      ✓ returns successful swap execution (1 ms)
+    Position Info Endpoint
+      ✓ returns and validates position info
+      ✓ handles position not found error
+    Positions Owned Endpoint
+      ✓ returns list of owned positions
+    Quote Position Endpoint
+      ✓ returns and validates quote for new position
+      ✓ handles invalid tick range error
+    Open Position Endpoint
+      ✓ returns successful position opening (1 ms)
+      ✓ handles insufficient balance error
+    Add Liquidity Endpoint
+      ✓ returns successful liquidity addition to existing position
+    Remove Liquidity Endpoint
+      ✓ returns successful liquidity removal
+    Close Position Endpoint
+      ✓ returns successful position closure
+    Collect Fees Endpoint
+      ✓ returns successful fee collection
+
+  console.log
+    Jest test environment configured with global mocks and settings
+
+      at Object.<anonymous> (test/jest-setup.js:14:9)
+
+  console.log
+    Jest test environment configured with global mocks and settings
+
+      at Object.<anonymous> (test/jest-setup.js:14:9)
+
+FAIL test/chains/solana/wallet.test.ts
+  ● Test suite failed to run
+
+    Failed to load configuration for ethereum-mainnet: Failed to validate or merge with template: ethereum-mainnet config file seems to be outdated/broken due to additional property "chainID". Kindly fix manually.
+
+      211 |       this.#configuration = configCandidate;
+      212 |     } catch (err) {
+    > 213 |       throw new Error(
+          |             ^
+      214 |         `Failed to load configuration for ${this.id}: ${err.message}`,
+      215 |       );
+      216 |     }
+
+      at ConfigurationNamespace.loadConfig (src/services/config-manager-v2.ts:213:13)
+      at new ConfigurationNamespace (src/services/config-manager-v2.ts:146:10)
+      at ConfigManagerV2.addNamespace (src/services/config-manager-v2.ts:404:28)
+      at ConfigManagerV2.loadConfigRoot (src/services/config-manager-v2.ts:500:12)
+      at new ConfigManagerV2 (src/services/config-manager-v2.ts:357:10)
+      at Function.getInstance (src/services/config-manager-v2.ts:348:35)
+      at getLogPath (src/services/logger.ts:81:38)
+      at Object.<anonymous> (src/services/logger.ts:87:16)
+      at Object.<anonymous> (src/chains/chain.routes.ts:5:1)
+      at Object.<anonymous> (src/app.ts:15:1)
+      at Object.<anonymous> (test/chains/solana/wallet.test.ts:8:1)
+
+  console.log
+    Jest test environment configured with global mocks and settings
+
+      at Object.<anonymous> (test/jest-setup.js:14:9)
+
+FAIL test/chains/ethereum/wallet.test.ts
+  ● Test suite failed to run
+
+    Failed to load configuration for ethereum-mainnet: Failed to validate or merge with template: ethereum-mainnet config file seems to be outdated/broken due to additional property "chainID". Kindly fix manually.
+
+      211 |       this.#configuration = configCandidate;
+      212 |     } catch (err) {
+    > 213 |       throw new Error(
+          |             ^
+      214 |         `Failed to load configuration for ${this.id}: ${err.message}`,
+      215 |       );
+      216 |     }
+
+      at ConfigurationNamespace.loadConfig (src/services/config-manager-v2.ts:213:13)
+      at new ConfigurationNamespace (src/services/config-manager-v2.ts:146:10)
+      at ConfigManagerV2.addNamespace (src/services/config-manager-v2.ts:404:28)
+      at ConfigManagerV2.loadConfigRoot (src/services/config-manager-v2.ts:500:12)
+      at new ConfigManagerV2 (src/services/config-manager-v2.ts:357:10)
+      at Function.getInstance (src/services/config-manager-v2.ts:348:35)
+      at getLogPath (src/services/logger.ts:81:38)
+      at Object.<anonymous> (src/services/logger.ts:87:16)
+      at Object.<anonymous> (src/chains/chain.routes.ts:5:1)
+      at Object.<anonymous> (src/app.ts:15:1)
+      at Object.<anonymous> (test/chains/ethereum/wallet.test.ts:6:1)
+
+  console.log
+    Jest test environment configured with global mocks and settings
+
+      at Object.<anonymous> (test/jest-setup.js:14:9)
+
+FAIL test/wallet/read-only-wallets.test.ts
+  ● Test suite failed to run
+
+    ReferenceError: Cannot access 'testWalletPath' before initialization
+
+      28 |   return {
+      29 |     ...actual,
+    > 30 |     walletPath: testWalletPath,
+         |                 ^
+      31 |     getReadOnlyWalletFilePath: (chain: string) =>
+      32 |       `${testWalletPath}/${chain.toLowerCase()}/read-only.json`,
+      33 |   };
+
+      at test/wallet/read-only-wallets.test.ts:30:17
+      at Object.<anonymous> (src/chains/ethereum/ethereum.ts:18:1)
+      at Object.<anonymous> (src/wallet/utils.ts:4:1)
+      at test/wallet/read-only-wallets.test.ts:27:23
+      at Object.<anonymous> (src/wallet/routes/addReadOnlyWallet.ts:10:1)
+      at Object.<anonymous> (src/wallet/wallet.routes.ts:3:1)
+      at Object.<anonymous> (test/wallet/read-only-wallets.test.ts:6:1)
+
+  console.log
+    Jest test environment configured with global mocks and settings
+
+      at Object.<anonymous> (test/jest-setup.js:14:9)
+
+  console.log
+    
+    ╔██████╗  █████╗ ████████╗███████╗██╗    ██╗ █████╗ ██╗   ██╗
+    ██╔════╝ ██╔══██╗╚══██╔══╝██╔════╝██║    ██║██╔══██╗╚██╗ ██╔╝
+    ██║  ███╗███████║   ██║   █████╗  ██║ █╗ ██║███████║ ╚████╔╝ 
+    ██║   ██║██╔══██║   ██║   ██╔══╝  ██║███╗██║██╔══██║  ╚██╔╝  
+    ╚██████╔╝██║  ██║   ██║   ███████╗╚███╔███╔╝██║  ██║   ██║   
+     ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚══╝╚══╝ ╚═╝  ╚═╝   ╚═╝
+
+      at Object.<anonymous> (src/index.ts:20:11)
+
+  console.log
+    Use "pnpm start" to start the Gateway server
+
+      at Object.<anonymous> (src/index.ts:21:11)
+
+FAIL test/services/logger.test.ts
+  ● Test suite failed to run
+
+    Failed to load configuration for ethereum-mainnet: Failed to validate or merge with template: ethereum-mainnet config file seems to be outdated/broken due to additional property "chainID". Kindly fix manually.
+
+      211 |       this.#configuration = configCandidate;
+      212 |     } catch (err) {
+    > 213 |       throw new Error(
+          |             ^
+      214 |         `Failed to load configuration for ${this.id}: ${err.message}`,
+      215 |       );
+      216 |     }
+
+      at ConfigurationNamespace.loadConfig (src/services/config-manager-v2.ts:213:13)
+      at new ConfigurationNamespace (src/services/config-manager-v2.ts:146:10)
+      at ConfigManagerV2.addNamespace (src/services/config-manager-v2.ts:404:28)
+      at ConfigManagerV2.loadConfigRoot (src/services/config-manager-v2.ts:500:12)
+      at new ConfigManagerV2 (src/services/config-manager-v2.ts:357:10)
+      at Function.getInstance (src/services/config-manager-v2.ts:348:35)
+      at getLogPath (src/services/logger.ts:81:38)
+      at Object.<anonymous> (src/services/logger.ts:87:16)
+      at Object.<anonymous> (test/services/logger.test.ts:4:1)
+
+  console.log
+    Jest test environment configured with global mocks and settings
+
+      at Object.<anonymous> (test/jest-setup.js:14:9)
+
+FAIL test/services/config-manager-cert-passphrase.test.ts
+  ● Test suite failed to run
+
+    Failed to load configuration for ethereum-mainnet: Failed to validate or merge with template: ethereum-mainnet config file seems to be outdated/broken due to additional property "chainID". Kindly fix manually.
+
+      211 |       this.#configuration = configCandidate;
+      212 |     } catch (err) {
+    > 213 |       throw new Error(
+          |             ^
+      214 |         `Failed to load configuration for ${this.id}: ${err.message}`,
+      215 |       );
+      216 |     }
+
+      at ConfigurationNamespace.loadConfig (src/services/config-manager-v2.ts:213:13)
+      at new ConfigurationNamespace (src/services/config-manager-v2.ts:146:10)
+      at ConfigManagerV2.addNamespace (src/services/config-manager-v2.ts:404:28)
+      at ConfigManagerV2.loadConfigRoot (src/services/config-manager-v2.ts:500:12)
+      at new ConfigManagerV2 (src/services/config-manager-v2.ts:357:10)
+      at Function.getInstance (src/services/config-manager-v2.ts:348:35)
+      at getLogPath (src/services/logger.ts:81:38)
+      at Object.<anonymous> (src/services/logger.ts:87:16)
+      at Object.<anonymous> (src/services/config-manager-cert-passphrase.ts:1:1)
+      at Object.<anonymous> (test/services/config-manager-cert-passphrase.test.ts:1:1)
+
+  console.log
+    Jest test environment configured with global mocks and settings
+
+      at Object.<anonymous> (test/jest-setup.js:14:9)
+
+FAIL test/connectors/generic-connector.test.ts
+  ● Test suite failed to run
+
+    Failed to load configuration for ethereum-mainnet: Failed to validate or merge with template: ethereum-mainnet config file seems to be outdated/broken due to additional property "chainID". Kindly fix manually.
+
+      211 |       this.#configuration = configCandidate;
+      212 |     } catch (err) {
+    > 213 |       throw new Error(
+          |             ^
+      214 |         `Failed to load configuration for ${this.id}: ${err.message}`,
+      215 |       );
+      216 |     }
+
+      at ConfigurationNamespace.loadConfig (src/services/config-manager-v2.ts:213:13)
+      at new ConfigurationNamespace (src/services/config-manager-v2.ts:146:10)
+      at ConfigManagerV2.addNamespace (src/services/config-manager-v2.ts:404:28)
+      at ConfigManagerV2.loadConfigRoot (src/services/config-manager-v2.ts:500:12)
+      at new ConfigManagerV2 (src/services/config-manager-v2.ts:357:10)
+      at Function.getInstance (src/services/config-manager-v2.ts:348:35)
+      at getLogPath (src/services/logger.ts:81:38)
+      at Object.<anonymous> (src/services/logger.ts:87:16)
+      at Object.<anonymous> (src/chains/chain.routes.ts:5:1)
+      at Object.<anonymous> (src/app.ts:15:1)
+      at Object.<anonymous> (test/connectors/generic-connector.test.ts:3:1)
+
+  console.log
+    Jest test environment configured with global mocks and settings
+
+      at Object.<anonymous> (test/jest-setup.js:14:9)
+
+  console.log
+    
+    ╔██████╗  █████╗ ████████╗███████╗██╗    ██╗ █████╗ ██╗   ██╗
+    ██╔════╝ ██╔══██╗╚══██╔══╝██╔════╝██║    ██║██╔══██╗╚██╗ ██╔╝
+    ██║  ███╗███████║   ██║   █████╗  ██║ █╗ ██║███████║ ╚████╔╝ 
+    ██║   ██║██╔══██║   ██║   ██╔══╝  ██║███╗██║██╔══██║  ╚██╔╝  
+    ╚██████╔╝██║  ██║   ██║   ███████╗╚███╔███╔╝██║  ██║   ██║   
+     ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚══╝╚══╝ ╚═╝  ╚═╝   ╚═╝
+
+      at Object.<anonymous> (src/index.ts:20:11)
+
+  console.log
+    Use "pnpm start" to start the Gateway server
+
+      at Object.<anonymous> (src/index.ts:21:11)
+
+  console.log
+    
+    ╔██████╗  █████╗ ████████╗███████╗██╗    ██╗ █████╗ ██╗   ██╗
+    ██╔════╝ ██╔══██╗╚══██╔══╝██╔════╝██║    ██║██╔══██╗╚██╗ ██╔╝
+    ██║  ███╗███████║   ██║   █████╗  ██║ █╗ ██║███████║ ╚████╔╝ 
+    ██║   ██║██╔══██║   ██║   ██╔══╝  ██║███╗██║██╔══██║  ╚██╔╝  
+    ╚██████╔╝██║  ██║   ██║   ███████╗╚███╔███╔╝██║  ██║   ██║   
+     ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚══╝╚══╝ ╚═╝  ╚═╝   ╚═╝
+
+      at Object.<anonymous> (src/index.ts:20:11)
+
+  console.log
+    Use "pnpm start" to start the Gateway server
+
+      at Object.<anonymous> (src/index.ts:21:11)
+
+  console.log
+    
+    ╔██████╗  █████╗ ████████╗███████╗██╗    ██╗ █████╗ ██╗   ██╗
+    ██╔════╝ ██╔══██╗╚══██╔══╝██╔════╝██║    ██║██╔══██╗╚██╗ ██╔╝
+    ██║  ███╗███████║   ██║   █████╗  ██║ █╗ ██║███████║ ╚████╔╝ 
+    ██║   ██║██╔══██║   ██║   ██╔══╝  ██║███╗██║██╔══██║  ╚██╔╝  
+    ╚██████╔╝██║  ██║   ██║   ███████╗╚███╔███╔╝██║  ██║   ██║   
+     ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚══╝╚══╝ ╚═╝  ╚═╝   ╚═╝
+
+      at Object.<anonymous> (src/index.ts:20:11)
+
+  console.log
+    Use "pnpm start" to start the Gateway server
+
+      at Object.<anonymous> (src/index.ts:21:11)
+
+  console.warn
+    bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+
+    > 1 | import { DecimalUtil } from '@orca-so/common-sdk';
+        | ^
+      2 | import { Decimal } from 'decimal.js';
+      3 | import { BigNumber } from 'ethers';
+      4 | import { format, fraction, number } from 'mathjs';
+
+      at Object.<anonymous> (node_modules/.pnpm/bigint-buffer@1.1.5/node_modules/bigint-buffer/dist/node.js:10:17)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+buffer-layout-utils@0.2.0_bufferutil@4.0.9_encoding@0.1.13_typescript@5.8.3_utf-8-validate@5.0.10/node_modules/@solana/buffer-layout-utils/src/bigint.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+buffer-layout-utils@0.2.0_bufferutil@4.0.9_encoding@0.1.13_typescript@5.8.3_utf-8-validate@5.0.10/node_modules/@solana/buffer-layout-utils/src/index.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/instructions/amountToUiAmount.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/actions/amountToUiAmount.ts:4:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/actions/index.ts:1:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/index.ts:1:1)
+      at Object.<anonymous> (node_modules/.pnpm/@orca-so+common-sdk@0.6.11_@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4._637c9e9994ea5f512d2c71d149c9c974/node_modules/@orca-so/common-sdk/src/web3/ata-util.ts:1:1)
+      at Object.<anonymous> (node_modules/.pnpm/@orca-so+common-sdk@0.6.11_@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4._637c9e9994ea5f512d2c71d149c9c974/node_modules/@orca-so/common-sdk/src/web3/index.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@orca-so+common-sdk@0.6.11_@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4._637c9e9994ea5f512d2c71d149c9c974/node_modules/@orca-so/common-sdk/src/index.ts:2:1)
+      at Object.<anonymous> (src/services/base.ts:1:1)
+      at Object.<anonymous> (src/config/utils.ts:7:1)
+      at Object.<anonymous> (test/config/config-pools.test.ts:3:1)
+
+  console.log
+    
+    ╔██████╗  █████╗ ████████╗███████╗██╗    ██╗ █████╗ ██╗   ██╗
+    ██╔════╝ ██╔══██╗╚══██╔══╝██╔════╝██║    ██║██╔══██╗╚██╗ ██╔╝
+    ██║  ███╗███████║   ██║   █████╗  ██║ █╗ ██║███████║ ╚████╔╝ 
+    ██║   ██║██╔══██║   ██║   ██╔══╝  ██║███╗██║██╔══██║  ╚██╔╝  
+    ╚██████╔╝██║  ██║   ██║   ███████╗╚███╔███╔╝██║  ██║   ██║   
+     ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚══╝╚══╝ ╚═╝  ╚═╝   ╚═╝
+
+      at Object.<anonymous> (src/index.ts:20:11)
+
+  console.log
+    Use "pnpm start" to start the Gateway server
+
+      at Object.<anonymous> (src/index.ts:21:11)
+
+  console.log
+    
+    ╔██████╗  █████╗ ████████╗███████╗██╗    ██╗ █████╗ ██╗   ██╗
+    ██╔════╝ ██╔══██╗╚══██╔══╝██╔════╝██║    ██║██╔══██╗╚██╗ ██╔╝
+    ██║  ███╗███████║   ██║   █████╗  ██║ █╗ ██║███████║ ╚████╔╝ 
+    ██║   ██║██╔══██║   ██║   ██╔══╝  ██║███╗██║██╔══██║  ╚██╔╝  
+    ╚██████╔╝██║  ██║   ██║   ███████╗╚███╔███╔╝██║  ██║   ██║   
+     ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚══╝╚══╝ ╚═╝  ╚═╝   ╚═╝
+
+      at Object.<anonymous> (src/index.ts:20:11)
+
+  console.log
+    Use "pnpm start" to start the Gateway server
+
+      at Object.<anonymous> (src/index.ts:21:11)
+
+  console.log
+    
+    ╔██████╗  █████╗ ████████╗███████╗██╗    ██╗ █████╗ ██╗   ██╗
+    ██╔════╝ ██╔══██╗╚══██╔══╝██╔════╝██║    ██║██╔══██╗╚██╗ ██╔╝
+    ██║  ███╗███████║   ██║   █████╗  ██║ █╗ ██║███████║ ╚████╔╝ 
+    ██║   ██║██╔══██║   ██║   ██╔══╝  ██║███╗██║██╔══██║  ╚██╔╝  
+    ╚██████╔╝██║  ██║   ██║   ███████╗╚███╔███╔╝██║  ██║   ██║   
+     ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚══╝╚══╝ ╚═╝  ╚═╝   ╚═╝
+
+      at Object.<anonymous> (src/index.ts:20:11)
+
+  console.log
+    Use "pnpm start" to start the Gateway server
+
+      at Object.<anonymous> (src/index.ts:21:11)
+
+  console.log
+    
+    ╔██████╗  █████╗ ████████╗███████╗██╗    ██╗ █████╗ ██╗   ██╗
+    ██╔════╝ ██╔══██╗╚══██╔══╝██╔════╝██║    ██║██╔══██╗╚██╗ ██╔╝
+    ██║  ███╗███████║   ██║   █████╗  ██║ █╗ ██║███████║ ╚████╔╝ 
+    ██║   ██║██╔══██║   ██║   ██╔══╝  ██║███╗██║██╔══██║  ╚██╔╝  
+    ╚██████╔╝██║  ██║   ██║   ███████╗╚███╔███╔╝██║  ██║   ██║   
+     ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚══╝╚══╝ ╚═╝  ╚═╝   ╚═╝
+
+      at Object.<anonymous> (src/index.ts:20:11)
+
+  console.log
+    Use "pnpm start" to start the Gateway server
+
+      at Object.<anonymous> (src/index.ts:21:11)
+
+FAIL test/connectors/meteora/meteora.routes.test.ts (7.329 s)
+  Meteora Routes Structure
+    Folder Structure
+      ✓ should only have clmm-routes folder (2 ms)
+      ✓ should have swap endpoints within CLMM routes
+    Route Registration
+      ✕ should register Meteora CLMM routes at /connectors/meteora/clmm (2 ms)
+
+  ● Meteora Routes Structure › Route Registration › should register Meteora CLMM routes at /connectors/meteora/clmm
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected substring: "meteora/clmm/"
+    Received string:    "└── / (GET, HEAD)
+        └── restart (POST)
+    "
+
+      53 |
+      54 |       // Check that Meteora CLMM routes are registered
+    > 55 |       expect(routes).toContain('meteora/clmm/');
+         |                      ^
+      56 |
+      57 |       // Check that swap routes are NOT directly under /swap
+      58 |       expect(routes).not.toContain('meteora/swap/');
+
+      at Object.<anonymous> (test/connectors/meteora/meteora.routes.test.ts:55:22)
+
+/Users/feng/gateway/test/config/config-pools.test.ts:22
+            badRequest: jest.fn((msg) => new Error(`Bad Request: ${msg}`)),
+                                         ^
+
+Error: Bad Request: Connector name is required
+    at Object.<anonymous> (/Users/feng/gateway/test/config/config-pools.test.ts:26:44)
+    at /Users/feng/gateway/node_modules/.pnpm/jest-mock@29.7.0/node_modules/jest-mock/build/index.js:397:39
+    at Object.<anonymous> (/Users/feng/gateway/node_modules/.pnpm/jest-mock@29.7.0/node_modules/jest-mock/build/index.js:404:13)
+    at Object.mockConstructor [as badRequest] (/Users/feng/gateway/node_modules/.pnpm/jest-mock@29.7.0/node_modules/jest-mock/build/index.js:103:19)
+    at getDefaultPools (/Users/feng/gateway/src/config/utils.ts:112:34)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+Node.js v20.13.1
+FAIL test/connectors/uniswap/uniswap.routes.test.ts (7.596 s)
+  Uniswap Routes Structure
+    Folder Structure
+      ✓ should have swap-routes, amm-routes, and clmm-routes folders (2 ms)
+      ✓ should have correct files in swap-routes folder (33 ms)
+    Route Registration
+      ✕ should register all Uniswap route types (5 ms)
+
+  ● Uniswap Routes Structure › Route Registration › should register all Uniswap route types
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected substring: "uniswap/"
+    Received string:    "└── / (GET, HEAD)
+        └── restart (POST)
+    "
+
+      53 |
+      54 |       // Check that Uniswap swap routes are registered
+    > 55 |       expect(routes).toContain('uniswap/');
+         |                      ^
+      56 |       expect(routes).toContain('swap/');
+      57 |
+      58 |       // Check that Uniswap AMM routes are registered
+
+      at Object.<anonymous> (test/connectors/uniswap/uniswap.routes.test.ts:55:22)
+
+FAIL test/connectors/raydium/raydium.routes.test.ts (7.673 s)
+  Raydium Routes Structure
+    Folder Structure
+      ✓ should only have amm-routes and clmm-routes folders (2 ms)
+      ✓ should have swap endpoints within AMM routes (1 ms)
+      ✓ should have swap endpoints within CLMM routes
+    Route Registration
+      ✕ should register Raydium AMM and CLMM routes (1 ms)
+
+  ● Raydium Routes Structure › Route Registration › should register Raydium AMM and CLMM routes
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected substring: "raydium/"
+    Received string:    "└── / (GET, HEAD)
+        └── restart (POST)
+    "
+
+      64 |
+      65 |       // Check that Raydium AMM routes are registered
+    > 66 |       expect(routes).toContain('raydium/');
+         |                      ^
+      67 |       expect(routes).toContain('amm/');
+      68 |
+      69 |       // Check that Raydium CLMM routes are registered
+
+      at Object.<anonymous> (test/connectors/raydium/raydium.routes.test.ts:66:22)
+
+FAIL test/app.integration.test.ts (7.771 s)
+  App Integration - Route Registration
+    Connector Route Structure
+      ✕ should register routes based on connector trading types (978 ms)
+    Trading Type Validation
+      ✓ should return valid trading types for all connectors (2 ms)
+    Route Structure Validation
+      ✓ should return 404 for unsupported trading type routes (10 ms)
+
+  ● App Integration - Route Registration › Connector Route Structure › should register routes based on connector trading types
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected substring: "raydium/amm/"
+    Received string:    " / (GET, HEAD)  restart (POST)  c   on    fig (GET, HEAD)     / (GET, HEAD)     update (POST)    nectors (GET, HEAD)    / (GET, HEAD)    jupiter/swap/     quote-swap (GET, HEAD)     execute-swap (POST)    meteora/clmm/     fetch-pools (GET, HEAD)     po      ol-info (GET, HEAD)      sition      s-owned (GET, HEAD)      -info (GET, HEAD)     quote-swap (GET, HEAD)     execute-swap (POST)     open-position (POST)     add-liquidity (POST)     remove-liquidity (POST)     c     ollect-fees (POST)     lose-position (POST)    raydium/     amm/      po       ol-info (GET, HEAD)       sition-info (GET, HEAD)      quote-       liquidity (GET, HEAD)       swap (GET, HEAD)      execute-swap (POST)      add-liquidity (POST)      remove-liquidity (POST)     clmm/     po      ol-info (GET, HEAD)      sition      s-owned (GET, HEAD)      -info (GET, HEAD)     quote-      position (GET, HEAD)      swap (GET, HEAD)     execute-swap (POST)     open-position (POST)     add-liquidity (POST)     remove-liquidity (POST)     c     ollect-fees (POST)     lose-position (POST)    uniswap/    swap/     quote-swap (GET, HEAD)     execute-swap (POST)    amm/     po      ol-info (GET, HEAD)      sition-info (GET, HEAD)     quote-      swap (GET, HEAD)      liquidity (GET, HEAD)     execute-swap (POST)     add-liquidity (POST)     remove-liquidity (POST)    clmm/    po     ol-info (GET, HEAD)     sition     -info (GET, HEAD)     s-owned (GET, HEAD)    quote-     position (GET, HEAD)     swap (GET, HEAD)    execute-swap (POST)    open-position (POST)    add-liquidity (POST)    remove-liquidity (POST)    c    ollect-fees (POST)    lose-position (POST)   hains (GET, HEAD)   / (GET, HEAD)   solana/    status (GET, HEAD)    balances (POST)    poll (POST)    estimate-gas (POST)   ethereum/   status (GET, HEAD)   balances (POST)   poll (POST)   a    llowances (POST)    pprove (POST)   estimate-gas (POST)   wrap (POST)  namespaces (GET, HEAD)   / (GET, HEAD)  wallet (GET, HEAD)   / (GET, HEAD)   add (POST)    -read-only (POST)   remove (DELETE)    -read-only (DELETE)   sign (POST)  tokens (GET, HEAD, POST)   / (GET, HEAD, POST)   :symbolOrAddress|:address (GET, HEAD, DELETE)  pools (GET, HEAD, POST)  / (GET, HEAD, POST)  :tradingPair|:address (GET, HEAD, DELETE) "
+
+      46 |         // Check AMM routes
+      47 |         if (trading_types.includes('amm')) {
+    > 48 |           expect(cleanedRoutes).toContain(`${name}/amm/`);
+         |                                 ^
+      49 |         } else {
+      50 |           expect(cleanedRoutes).not.toContain(`${name}/amm/`);
+      51 |         }
+
+      at test/app.integration.test.ts:48:33
+          at Array.forEach (<anonymous>)
+      at Object.<anonymous> (test/app.integration.test.ts:34:18)
+
+PASS test/connectors/jupiter/jupiter.routes.test.ts
+  Jupiter Routes Structure
+    Folder Structure
+      ✓ should have appropriate route folders based on trading types (873 ms)
+    Route Registration
+      ✓ should register Jupiter swap routes at /connectors/jupiter/swap (4 ms)
+
+PASS test/connectors/connector.routes.test.ts
+  Connector Routes
+    GET /connectors
+      ✓ should return the correct list of connectors with proper trading types (700 ms)
+
+PASS test/chains/chain.routes.test.ts
+  Chain Routes
+    GET /chains
+      ✓ should return the list of supported chains and networks (1009 ms)
+
+PASS test/config/namespace.routes.test.ts
+  Namespace Routes
+    GET /namespaces
+      ✓ should return the list of all namespaces (768 ms)
+      ✓ should return namespaces sorted alphabetically (7 ms)
+
+  console.log
+    Jest test environment configured with global mocks and settings
+
+      at Object.<anonymous> (test/jest-setup.js:14:9)
+
+  console.warn
+    bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+
+    > 1 | import { DecimalUtil } from '@orca-so/common-sdk';
+        | ^
+      2 | import { Decimal } from 'decimal.js';
+      3 | import { BigNumber } from 'ethers';
+      4 | import { format, fraction, number } from 'mathjs';
+
+      at Object.<anonymous> (node_modules/.pnpm/bigint-buffer@1.1.5/node_modules/bigint-buffer/dist/node.js:10:17)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+buffer-layout-utils@0.2.0_bufferutil@4.0.9_encoding@0.1.13_typescript@5.8.3_utf-8-validate@5.0.10/node_modules/@solana/buffer-layout-utils/src/bigint.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+buffer-layout-utils@0.2.0_bufferutil@4.0.9_encoding@0.1.13_typescript@5.8.3_utf-8-validate@5.0.10/node_modules/@solana/buffer-layout-utils/src/index.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/instructions/amountToUiAmount.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/actions/amountToUiAmount.ts:4:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/actions/index.ts:1:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/index.ts:1:1)
+      at Object.<anonymous> (node_modules/.pnpm/@orca-so+common-sdk@0.6.11_@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4._637c9e9994ea5f512d2c71d149c9c974/node_modules/@orca-so/common-sdk/src/web3/ata-util.ts:1:1)
+      at Object.<anonymous> (node_modules/.pnpm/@orca-so+common-sdk@0.6.11_@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4._637c9e9994ea5f512d2c71d149c9c974/node_modules/@orca-so/common-sdk/src/web3/index.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@orca-so+common-sdk@0.6.11_@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4._637c9e9994ea5f512d2c71d149c9c974/node_modules/@orca-so/common-sdk/src/index.ts:2:1)
+      at Object.<anonymous> (src/services/base.ts:1:1)
+      at Object.<anonymous> (src/config/utils.ts:7:1)
+      at Object.<anonymous> (test/config/config-pools.test.ts:3:1)
+
+/Users/feng/gateway/test/config/config-pools.test.ts:22
+            badRequest: jest.fn((msg) => new Error(`Bad Request: ${msg}`)),
+                                         ^
+
+Error: Bad Request: Connector name is required
+    at Object.<anonymous> (/Users/feng/gateway/test/config/config-pools.test.ts:26:44)
+    at /Users/feng/gateway/node_modules/.pnpm/jest-mock@29.7.0/node_modules/jest-mock/build/index.js:397:39
+    at Object.<anonymous> (/Users/feng/gateway/node_modules/.pnpm/jest-mock@29.7.0/node_modules/jest-mock/build/index.js:404:13)
+    at Object.mockConstructor [as badRequest] (/Users/feng/gateway/node_modules/.pnpm/jest-mock@29.7.0/node_modules/jest-mock/build/index.js:103:19)
+    at getDefaultPools (/Users/feng/gateway/src/config/utils.ts:112:34)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+Node.js v20.13.1
+  console.log
+    Jest test environment configured with global mocks and settings
+
+      at Object.<anonymous> (test/jest-setup.js:14:9)
+
+  console.warn
+    bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+
+    > 1 | import { DecimalUtil } from '@orca-so/common-sdk';
+        | ^
+      2 | import { Decimal } from 'decimal.js';
+      3 | import { BigNumber } from 'ethers';
+      4 | import { format, fraction, number } from 'mathjs';
+
+      at Object.<anonymous> (node_modules/.pnpm/bigint-buffer@1.1.5/node_modules/bigint-buffer/dist/node.js:10:17)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+buffer-layout-utils@0.2.0_bufferutil@4.0.9_encoding@0.1.13_typescript@5.8.3_utf-8-validate@5.0.10/node_modules/@solana/buffer-layout-utils/src/bigint.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+buffer-layout-utils@0.2.0_bufferutil@4.0.9_encoding@0.1.13_typescript@5.8.3_utf-8-validate@5.0.10/node_modules/@solana/buffer-layout-utils/src/index.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/instructions/amountToUiAmount.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/actions/amountToUiAmount.ts:4:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/actions/index.ts:1:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/index.ts:1:1)
+      at Object.<anonymous> (node_modules/.pnpm/@orca-so+common-sdk@0.6.11_@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4._637c9e9994ea5f512d2c71d149c9c974/node_modules/@orca-so/common-sdk/src/web3/ata-util.ts:1:1)
+      at Object.<anonymous> (node_modules/.pnpm/@orca-so+common-sdk@0.6.11_@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4._637c9e9994ea5f512d2c71d149c9c974/node_modules/@orca-so/common-sdk/src/web3/index.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@orca-so+common-sdk@0.6.11_@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4._637c9e9994ea5f512d2c71d149c9c974/node_modules/@orca-so/common-sdk/src/index.ts:2:1)
+      at Object.<anonymous> (src/services/base.ts:1:1)
+      at Object.<anonymous> (src/config/utils.ts:7:1)
+      at Object.<anonymous> (test/config/config-pools.test.ts:3:1)
+
+/Users/feng/gateway/test/config/config-pools.test.ts:22
+            badRequest: jest.fn((msg) => new Error(`Bad Request: ${msg}`)),
+                                         ^
+
+Error: Bad Request: Connector name is required
+    at Object.<anonymous> (/Users/feng/gateway/test/config/config-pools.test.ts:26:44)
+    at /Users/feng/gateway/node_modules/.pnpm/jest-mock@29.7.0/node_modules/jest-mock/build/index.js:397:39
+    at Object.<anonymous> (/Users/feng/gateway/node_modules/.pnpm/jest-mock@29.7.0/node_modules/jest-mock/build/index.js:404:13)
+    at Object.mockConstructor [as badRequest] (/Users/feng/gateway/node_modules/.pnpm/jest-mock@29.7.0/node_modules/jest-mock/build/index.js:103:19)
+    at getDefaultPools (/Users/feng/gateway/src/config/utils.ts:112:34)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+Node.js v20.13.1
+  console.log
+    Jest test environment configured with global mocks and settings
+
+      at Object.<anonymous> (test/jest-setup.js:14:9)
+
+  console.warn
+    bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+
+    > 1 | import { DecimalUtil } from '@orca-so/common-sdk';
+        | ^
+      2 | import { Decimal } from 'decimal.js';
+      3 | import { BigNumber } from 'ethers';
+      4 | import { format, fraction, number } from 'mathjs';
+
+      at Object.<anonymous> (node_modules/.pnpm/bigint-buffer@1.1.5/node_modules/bigint-buffer/dist/node.js:10:17)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+buffer-layout-utils@0.2.0_bufferutil@4.0.9_encoding@0.1.13_typescript@5.8.3_utf-8-validate@5.0.10/node_modules/@solana/buffer-layout-utils/src/bigint.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+buffer-layout-utils@0.2.0_bufferutil@4.0.9_encoding@0.1.13_typescript@5.8.3_utf-8-validate@5.0.10/node_modules/@solana/buffer-layout-utils/src/index.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/instructions/amountToUiAmount.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/actions/amountToUiAmount.ts:4:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/actions/index.ts:1:1)
+      at Object.<anonymous> (node_modules/.pnpm/@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4.0.9_encoding@0.1.13_typescr_9ce76422c1e5f7890136ead3e5fb4282/node_modules/@solana/spl-token/src/index.ts:1:1)
+      at Object.<anonymous> (node_modules/.pnpm/@orca-so+common-sdk@0.6.11_@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4._637c9e9994ea5f512d2c71d149c9c974/node_modules/@orca-so/common-sdk/src/web3/ata-util.ts:1:1)
+      at Object.<anonymous> (node_modules/.pnpm/@orca-so+common-sdk@0.6.11_@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4._637c9e9994ea5f512d2c71d149c9c974/node_modules/@orca-so/common-sdk/src/web3/index.ts:2:1)
+      at Object.<anonymous> (node_modules/.pnpm/@orca-so+common-sdk@0.6.11_@solana+spl-token@0.4.8_@solana+web3.js@1.98.2_bufferutil@4._637c9e9994ea5f512d2c71d149c9c974/node_modules/@orca-so/common-sdk/src/index.ts:2:1)
+      at Object.<anonymous> (src/services/base.ts:1:1)
+      at Object.<anonymous> (src/config/utils.ts:7:1)
+      at Object.<anonymous> (test/config/config-pools.test.ts:3:1)
+
+/Users/feng/gateway/test/config/config-pools.test.ts:22
+            badRequest: jest.fn((msg) => new Error(`Bad Request: ${msg}`)),
+                                         ^
+
+Error: Bad Request: Connector name is required
+    at Object.<anonymous> (/Users/feng/gateway/test/config/config-pools.test.ts:26:44)
+    at /Users/feng/gateway/node_modules/.pnpm/jest-mock@29.7.0/node_modules/jest-mock/build/index.js:397:39
+    at Object.<anonymous> (/Users/feng/gateway/node_modules/.pnpm/jest-mock@29.7.0/node_modules/jest-mock/build/index.js:404:13)
+    at Object.mockConstructor [as badRequest] (/Users/feng/gateway/node_modules/.pnpm/jest-mock@29.7.0/node_modules/jest-mock/build/index.js:103:19)
+    at getDefaultPools (/Users/feng/gateway/src/config/utils.ts:112:34)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+Node.js v20.13.1
+FAIL test/config/config-pools.test.ts
+  ● Test suite failed to run
+
+    Jest worker encountered 4 child process exceptions, exceeding retry limit
+
+      at ChildProcessWorker.initialize (node_modules/.pnpm/jest-worker@29.7.0/node_modules/jest-worker/build/workers/ChildProcessWorker.js:181:21)
+
