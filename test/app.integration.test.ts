@@ -27,6 +27,9 @@ describe('App Integration - Route Registration', () => {
       const { connectors } = JSON.parse(connectorsResponse.body);
       const routes = fastify.printRoutes();
 
+      // Remove whitespace and special characters for easier matching
+      const cleanedRoutes = routes.replace(/\s+/g, ' ').replace(/[├└─│]/g, '');
+
       // For each connector, verify routes match their trading types
       connectors.forEach((connector: any) => {
         const { name, trading_types } = connector;
@@ -34,24 +37,24 @@ describe('App Integration - Route Registration', () => {
         // Check swap routes
         if (trading_types.includes('swap')) {
           // Swap routes should exist under /swap prefix
-          expect(routes).toContain(`/connectors/${name}/swap`);
+          expect(cleanedRoutes).toContain(`${name}/swap/`);
         } else {
           // No swap routes
-          expect(routes).not.toContain(`/connectors/${name}/swap`);
+          expect(cleanedRoutes).not.toContain(`${name}/swap/`);
         }
 
         // Check AMM routes
         if (trading_types.includes('amm')) {
-          expect(routes).toContain(`/connectors/${name}/amm`);
+          expect(cleanedRoutes).toContain(`${name}/amm/`);
         } else {
-          expect(routes).not.toContain(`/connectors/${name}/amm`);
+          expect(cleanedRoutes).not.toContain(`${name}/amm/`);
         }
 
         // Check CLMM routes
         if (trading_types.includes('clmm')) {
-          expect(routes).toContain(`/connectors/${name}/clmm`);
+          expect(cleanedRoutes).toContain(`${name}/clmm/`);
         } else {
-          expect(routes).not.toContain(`/connectors/${name}/clmm`);
+          expect(cleanedRoutes).not.toContain(`${name}/clmm/`);
         }
       });
     });
