@@ -4,27 +4,47 @@
 
 ## Introduction
 
-Hummingbot Gateway is an API/CLI client that exposes standardized REST endponts to perform actions and fetch data from **blockchain networks** (wallet, node & chain interaction) and their **decentralized exchanges (DEX)** (pricing, trading & liquidity provision).
+Hummingbot Gateway is a REST API that provides a unified interface for interacting with **blockchain networks** (wallet, node & chain operations) and **decentralized exchanges (DEX)** (trading, liquidity provision, and market data).
 
-### API Overview
+Gateway abstracts the complexity of interacting with different blockchain protocols by providing standardized endpoints that work consistently across different chains and DEXs. Built with TypeScript to leverage native blockchain SDKs, it offers a language-agnostic API that can be integrated into any trading system.
 
-- GET /chains - List all available blockchain networks and their supported networks
-- GET /connectors - List all available DEX connectors and their supported networks
-- GET /ethereum/... - Ethereum chain endpoints (balances, tokens, allowances)
-- GET /solana/... - Solana chain endpoints (balances, tokens)
-- GET /jupiter/... - Jupiter Aggregator swap endpoints
-- GET /uniswap/... - Uniswap swap, AMM, and CLMM endpoints
-- GET /uniswap/routes/quote-swap - Get price quote using Uniswap V3 Swap Router (recommended for token swapping)
-- GET /uniswap/routes/execute-swap - Execute swap using Uniswap V3 Swap Router (recommended for token swapping)
-- GET /raydium/amm/... - Raydium AMM endpoints
-- GET /raydium/clmm/... - Raydium CLMM endpoints
-- GET /meteora/clmm/... - Meteora CLMM endpoints
+### Key Features
 
-Gateway is written in Typescript in order to use Javascript-based SDKs provided by blockchains and DEX protocols. The advantage of using Gateway is it provides a standardized, language-agnostic approach to interacting with these protocols.
+- **Multi-Chain Support**: Ethereum (and EVM-compatible chains) and Solana
+- **DEX Integration**: Jupiter, Uniswap, Raydium, and Meteora
+- **Trading Types**: Simple swaps, AMM (V2-style), and CLMM (V3-style concentrated liquidity)
+- **Wallet Management**: Secure wallet storage and transaction signing
+- **Swagger Documentation**: Auto-generated interactive API docs at `/docs`
+- **TypeBox Validation**: Type-safe request/response schemas
 
-Gateway may be used alongside the main [Hummingbot client](https://github.com/hummingbot/hummingbot) to enable trading and market making on DEXs, or as a standalone command line interface (CLI).
+### Supported Networks
 
-Gateway uses [Swagger](https://swagger.io/) for API documentation. When Gateway is started in HTTP mode, it automatically generates interactive Swagger API docs at: <http://localhost:15888/docs>
+#### Ethereum & EVM Networks
+- Ethereum Mainnet
+- Arbitrum
+- Avalanche
+- Base
+- BSC (Binance Smart Chain)
+- Celo
+- Optimism
+- Polygon
+- World Chain
+- Sepolia (testnet)
+
+#### Solana Networks
+- Solana Mainnet
+- Solana Devnet
+
+### Supported DEX Protocols
+
+| Protocol | Chain | Swap | AMM | CLMM |
+|----------|-------|------|-----|------|
+| Jupiter | Solana | ✅ | ❌ | ❌ |
+| Meteora | Solana | ✅ | ❌ | ✅ |
+| Raydium | Solana | ✅ | ✅ | ✅ |
+| Uniswap | Ethereum/EVM | ✅ | ✅ | ✅ |
+
+Gateway uses [Swagger](https://swagger.io/) for API documentation. When running in development mode, access the interactive API documentation at: <http://localhost:15888/docs>
 
 
 ## Installation from Source
@@ -145,37 +165,58 @@ docker run --name gateway \
 Afterwards, client may connect to Gateway at: <http://localhost:15888> and you can access the Swagger documentation UI at: <http://localhost:15888/docs>
 
 
-## CLI Commands
+## API Endpoints Overview
 
-When running Gateway from source, it provides a CLI interface for interacting with chains and DEXs. After installing from source, you can enable the `gateway` command by linking the CLI globally:
-```bash
-pnpm link --global
-```
+### System Endpoints
+- `GET /` - Health check
+- `GET /chains` - List supported blockchains
+- `GET /connectors` - List supported DEX connectors
 
-Afterwards, you can use the `gateway` command to see available commands:
-```bash
-gateway
-```
+### Configuration Management
+- `GET /config` - Get configuration
+- `POST /config/update` - Update configuration
 
-Sample commands:
-```bash
-# Check wallet balances (requires running server)
-gateway balance --chain solana --wallet <WALLET_ADDRESS>
+### Wallet Management
+- `GET /wallet` - List all wallets
+- `POST /wallet/add` - Add new wallet
+- `DELETE /wallet/remove` - Remove wallet
+- `POST /wallet/sign` - Sign message
 
-# Build project from source (same as pnpm build)
-gateway build
+### Chain Operations
 
-# Start the API server (same as pnpm start)
-gateway start --passphrase=<PASSPHRASE> [--dev]
+#### Ethereum/EVM (`/chains/ethereum`)
+- `GET /status` - Chain connection status
+- `GET /tokens` - Get token information
+- `GET /balances` - Get wallet balances
+- `GET /allowances` - Check token allowances
+- `POST /approve` - Approve token spending
+- `GET /poll` - Poll transaction status
 
-# Get command help
-gateway help [COMMAND]
-```
+#### Solana (`/chains/solana`)
+- `GET /status` - Chain connection status
+- `GET /tokens` - Get token information
+- `GET /balances` - Get wallet balances
+- `GET /poll` - Poll transaction status
 
-**Note:** Similar to the server, CLI commands require a `passphrase` argument used to encrypt and decrypt wallets used in executing transactions. Set the passphrase using the `--passphrase` argument when starting the server or by setting the `GATEWAY_PASSPHRASE` environment variable:
-```bash
-export GATEWAY_PASSPHRASE=<PASSPHRASE>
-```
+### DEX Trading Endpoints
+
+#### Simple Swaps
+- `GET /connectors/{dex}/quote-swap` - Get swap quote
+- `POST /connectors/{dex}/execute-swap` - Execute swap
+
+#### AMM Operations (Uniswap V2, Raydium)
+- `GET /connectors/{dex}/amm/pool-info` - Pool information
+- `GET /connectors/{dex}/amm/position-info` - LP position details
+- `POST /connectors/{dex}/amm/add-liquidity` - Add liquidity
+- `POST /connectors/{dex}/amm/remove-liquidity` - Remove liquidity
+
+#### CLMM Operations (Uniswap V3, Raydium, Meteora)
+- `GET /connectors/{dex}/clmm/pool-info` - Pool information
+- `GET /connectors/{dex}/clmm/positions-owned` - List positions
+- `POST /connectors/{dex}/clmm/open-position` - Open position
+- `POST /connectors/{dex}/clmm/add-liquidity` - Add to position
+- `POST /connectors/{dex}/clmm/remove-liquidity` - Remove from position
+- `POST /connectors/{dex}/clmm/collect-fees` - Collect fees
 
 ## Contribution
 
@@ -201,39 +242,65 @@ Here are some ways that you can contribute to Gateway:
 
 ## Architecture
 
-Gateway follows a modular architecture with clear separation of concerns between chains, connectors, configuration, and wallet management:
+Gateway follows a modular architecture with clear separation between chains, connectors, and core services:
 
-- **Chains**: Blockchain network implementations
-  - [src/chains/chain.routes.ts](./src/chains/chain.routes.ts): List of supported chains and networks
-  - [src/chains/ethereum/ethereum.ts](./src/chains/ethereum/ethereum.ts): Core Ethereum chain operations
-  - [src/chains/solana/solana.ts](./src/chains/solana/solana.ts): Core Solana chain operations
+### Directory Structure
 
-- **Connectors**: DEX protocol implementations
-  - [src/connectors/connector.routes.ts](./src/connectors/connector.routes.ts): List of available DEX connectors
-  - [src/connectors/jupiter/jupiter.ts](./src/connectors/jupiter/jupiter.ts): Jupiter DEX connector for Solana
-  - [src/connectors/raydium/raydium.ts](./src/connectors/raydium/raydium.ts): Raydium DEX connector for Solana (AMM, CLMM)
-  - [src/connectors/uniswap/uniswap.ts](./src/connectors/uniswap/uniswap.ts): Uniswap DEX connector for Ethereum
-  - [src/connectors/uniswap/routes/quote-swap.ts](./src/connectors/uniswap/routes/quote-swap.ts): Uniswap V3 Swap Router for quote generation
-  - [src/connectors/uniswap/routes/execute-swap.ts](./src/connectors/uniswap/routes/execute-swap.ts): Uniswap V3 Swap Router for swap execution
-  - [src/connectors/uniswap/uniswap.contracts.ts](./src/connectors/uniswap/uniswap.contracts.ts): Contract addresses for Uniswap on all networks
+```
+src/
+├── chains/              # Blockchain implementations
+│   ├── ethereum/        # Ethereum and EVM chains
+│   │   ├── ethereum.ts  # Core chain class
+│   │   ├── routes/      # Individual route handlers
+│   │   └── ethereum.routes.ts
+│   └── solana/          # Solana chain
+│       ├── solana.ts
+│       ├── routes/
+│       └── solana.routes.ts
+├── connectors/          # DEX implementations
+│   ├── jupiter/         # Jupiter aggregator (Solana)
+│   ├── meteora/         # Meteora CLMM (Solana)
+│   ├── raydium/         # Raydium AMM/CLMM (Solana)
+│   └── uniswap/         # Uniswap V2/V3 (Ethereum)
+├── schemas/             # TypeBox schemas
+│   ├── trading-types/   # AMM, CLMM, Swap schemas
+│   └── json/            # JSON schemas
+├── services/            # Core services
+├── wallet/              # Wallet management
+└── config/              # Configuration management
+```
 
-- **Configuration**: Configuration management
-  - [src/config/config.routes.ts](./src/config/config.routes.ts): Configuration endpoints
-  - [src/config/utils.ts](./src/config/utils.ts): Configuration utilities
+### Design Patterns
 
-- **Wallet**: Wallet management
-  - [src/wallet/wallet.routes.ts](./src/wallet/wallet.routes.ts): Wallet endpoints
-  - [src/wallet/utils.ts](./src/wallet/utils.ts): Wallet utilities
+- **Singleton Pattern**: Chains and connectors use singleton instances per network
+- **Route Organization**: Each module has a dedicated routes folder with operation-specific files
+- **Schema Validation**: All API requests/responses validated with TypeBox schemas
+- **Error Handling**: Consistent error responses using Fastify's httpErrors
 
-- **Schemas**: Common type definitions and schemas
-  - [src/schemas/trading-types/clmm-schema.ts](./src/schemas/trading-types/clmm-schema.ts): Standard schemas for CLMM operations
-  - [src/schemas/trading-types/amm-schema.ts](./src/schemas/trading-types/amm-schema.ts): Standard schemas for AMM operations
-  - [src/schemas/trading-types/swap-schema.ts](./src/schemas/trading-types/swap-schema.ts): Standard schemas for swap operations
+### Key Components
 
-- **Services**: Core functionality and utilities
-  - [src/services/config-manager-v2.ts](./src/services/config-manager-v2.ts): Configuration management
-  - [src/services/logger.ts](./src/services/logger.ts): Logging utilities
-  - [src/services/base.ts](./src/services/base.ts): Base service functionality
+#### Chains
+Handle blockchain interactions including:
+- Wallet balance queries
+- Token information and lists
+- Transaction submission and monitoring
+- Gas estimation
+- Token approvals (EVM only)
+
+#### Connectors
+Implement DEX-specific logic for:
+- Price quotes and routing
+- Swap execution
+- Liquidity pool operations
+- Position management (CLMM)
+- Fee collection
+
+#### Services
+Provide shared functionality:
+- Configuration management with YAML/JSON schemas
+- Structured logging with Winston
+- Database operations with LevelDB
+- API server setup with Fastify
 
 ## Testing
 
@@ -283,78 +350,77 @@ The test directory is organized as follows:
 
 For more details on the test setup and structure, see [Test README](./test/README.md).
 
-## Adding a New Chain or Connector
+## Development Guide
 
 ### Adding a New Chain
 
-1. Create chain implementation files:
-   ```bash
-   mkdir -p src/chains/yourchain/routes
-   touch src/chains/yourchain/yourchain.ts
-   touch src/chains/yourchain/yourchain.config.ts
-   touch src/chains/yourchain/yourchain.routes.ts
-   touch src/chains/yourchain/yourchain.utils.ts
+1. **Create chain implementation**:
+   ```typescript
+   // src/chains/mychain/mychain.ts
+   export class MyChain extends ChainBase {
+     private static instances: Record<string, MyChain> = {};
+     
+     public static getInstance(network: string): MyChain {
+       if (!MyChain.instances[network]) {
+         MyChain.instances[network] = new MyChain(network);
+       }
+       return MyChain.instances[network];
+     }
+   }
    ```
 
-2. Create test mock files:
-   ```bash
-   mkdir -p test/mocks/chains/yourchain
-   touch test/mocks/chains/yourchain/balance.json
-   touch test/mocks/chains/yourchain/status.json
-   touch test/mocks/chains/yourchain/tokens.json
-   ```
+2. **Implement required methods**:
+   - `getWallet(address: string)`
+   - `getBalance(address: string)`
+   - `getTokens(tokenSymbols: string[])`
+   - `getStatus()`
 
-3. Create chain test file:
-   ```bash
-   touch test/chains/yourchain.test.js
-   ```
+3. **Create route handlers** in `src/chains/mychain/routes/`
+
+4. **Add configuration**:
+   - Create `src/templates/mychain.yml`
+   - Add JSON schema in `src/templates/json/mychain-schema.json`
+
+5. **Register the chain** in `src/chains/chain.routes.ts`
 
 ### Adding a New Connector
 
-1. Create connector implementation files:
-   ```bash
-   mkdir -p src/connectors/yourconnector/routes
-   touch src/connectors/yourconnector/yourconnector.ts
-   touch src/connectors/yourconnector/yourconnector.config.ts
-   touch src/connectors/yourconnector/yourconnector.routes.ts
+1. **Choose the appropriate base class**:
+   - For AMM: Extend from AMM base functionality
+   - For CLMM: Implement CLMM interface
+   - For simple swaps: Implement basic swap methods
+
+2. **Create connector class**:
+   ```typescript
+   // src/connectors/mydex/mydex.ts
+   export class MyDex {
+     private static instances: Record<string, MyDex> = {};
+     
+     public static getInstance(chain: string, network: string): MyDex {
+       const key = `${chain}:${network}`;
+       if (!MyDex.instances[key]) {
+         MyDex.instances[key] = new MyDex(chain, network);
+       }
+       return MyDex.instances[key];
+     }
+   }
    ```
 
-2. If the connector supports AMM, create these files:
-   ```bash
-   mkdir -p src/connectors/yourconnector/amm-routes
-   touch src/connectors/yourconnector/amm-routes/executeSwap.ts
-   touch src/connectors/yourconnector/amm-routes/poolInfo.ts
-   touch src/connectors/yourconnector/amm-routes/quoteSwap.ts
-   # Add other AMM operation files as needed
-   ```
+3. **Implement trading methods** based on supported operations
 
-3. If the connector supports CLMM, create these files:
-   ```bash
-   mkdir -p src/connectors/yourconnector/clmm-routes
-   touch src/connectors/yourconnector/clmm-routes/executeSwap.ts
-   touch src/connectors/yourconnector/clmm-routes/poolInfo.ts
-   touch src/connectors/yourconnector/clmm-routes/quoteSwap.ts
-   touch src/connectors/yourconnector/clmm-routes/openPosition.ts
-   # Add other CLMM operation files as needed
-   ```
+4. **Create route files** following the pattern:
+   - Swap routes in `routes/`
+   - AMM routes in `amm-routes/`
+   - CLMM routes in `clmm-routes/`
 
-4. Create test mock files:
-   ```bash
-   mkdir -p test/mocks/connectors/yourconnector
-   touch test/mocks/connectors/yourconnector/amm-pool-info.json
-   touch test/mocks/connectors/yourconnector/amm-quote-swap.json
-   touch test/mocks/connectors/yourconnector/clmm-pool-info.json
-   touch test/mocks/connectors/yourconnector/clmm-quote-swap.json
-   # Add other mock response files as needed
-   ```
+5. **Add configuration and register** in `src/connectors/connector.routes.ts`
 
-5. Create connector test files:
-   ```bash
-   mkdir -p test/connectors/yourconnector
-   touch test/connectors/yourconnector/amm.test.js
-   touch test/connectors/yourconnector/clmm.test.js
-   touch test/connectors/yourconnector/swap.test.js
-   ```
+### Testing Requirements
+
+- Minimum 75% code coverage for new features
+- Create mock responses in `test/mocks/`
+- Write unit tests for all route handlers
+- Test error cases and edge conditions
 
 ## Linting and Formatting
 
