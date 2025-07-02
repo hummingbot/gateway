@@ -280,9 +280,9 @@ describe('PoolService', () => {
       (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockPools));
 
       const pools = await poolService.listPools(
-        'solana',
+        'raydium',
         'mainnet-beta',
-        'raydium/amm',
+        'amm',
       );
 
       expect(pools).toEqual(mockPools);
@@ -314,7 +314,7 @@ describe('PoolService', () => {
         .mockReturnValueOnce(JSON.stringify(rclmmPools))
         .mockReturnValue('[]');
 
-      const pools = await poolService.listPools('solana', 'mainnet-beta');
+      const pools = await poolService.listPools('raydium', 'mainnet-beta');
 
       expect(pools).toHaveLength(2);
       expect(pools).toEqual([...rammPools, ...rclmmPools]);
@@ -342,9 +342,9 @@ describe('PoolService', () => {
       (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockPools));
 
       const pools = await poolService.listPools(
-        'solana',
+        'raydium',
         'mainnet-beta',
-        'raydium/amm',
+        'amm',
         'SOL',
       );
 
@@ -369,9 +369,9 @@ describe('PoolService', () => {
       (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockPools));
 
       const pool = await poolService.getPool(
-        'solana',
+        'raydium',
         'mainnet-beta',
-        'raydium/amm',
+        'amm',
         'SOL',
         'USDC',
       );
@@ -394,9 +394,9 @@ describe('PoolService', () => {
       (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockPools));
 
       const pool = await poolService.getPool(
-        'solana',
+        'raydium',
         'mainnet-beta',
-        'raydium/amm',
+        'amm',
         'USDC',
         'SOL',
       );
@@ -409,9 +409,9 @@ describe('PoolService', () => {
       (fs.readFileSync as jest.Mock).mockReturnValue('[]');
 
       const pool = await poolService.getPool(
-        'solana',
+        'raydium',
         'mainnet-beta',
-        'raydium/amm',
+        'amm',
         'SOL',
         'USDC',
       );
@@ -435,7 +435,7 @@ describe('PoolService', () => {
       (fs.writeFileSync as jest.Mock).mockImplementation();
       (fs.renameSync as jest.Mock).mockImplementation();
 
-      await poolService.addPool('solana', 'mainnet-beta', newPool);
+      await poolService.addPool('raydium', newPool);
 
       expect(fs.writeFileSync).toHaveBeenCalled();
     });
@@ -462,9 +462,9 @@ describe('PoolService', () => {
         JSON.stringify([existingPool]),
       );
 
-      await expect(
-        poolService.addPool('solana', 'mainnet-beta', newPool),
-      ).rejects.toThrow('Pool with address');
+      await expect(poolService.addPool('raydium', newPool)).rejects.toThrow(
+        'Pool with address',
+      );
     });
 
     it('should reject duplicate token pair', async () => {
@@ -489,9 +489,9 @@ describe('PoolService', () => {
         JSON.stringify([existingPool]),
       );
 
-      await expect(
-        poolService.addPool('solana', 'mainnet-beta', newPool),
-      ).rejects.toThrow('Pool for SOL-USDC already exists');
+      await expect(poolService.addPool('raydium', newPool)).rejects.toThrow(
+        'Pool for SOL-USDC already exists',
+      );
     });
   });
 
@@ -513,9 +513,9 @@ describe('PoolService', () => {
       (fs.renameSync as jest.Mock).mockImplementation();
 
       await poolService.removePool(
-        'solana',
+        'raydium',
         'mainnet-beta',
-        'raydium/amm',
+        'amm',
         '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
       );
 
@@ -528,9 +528,9 @@ describe('PoolService', () => {
 
       await expect(
         poolService.removePool(
-          'solana',
+          'raydium',
           'mainnet-beta',
-          'raydium/amm',
+          'amm',
           'NonExistentAddress',
         ),
       ).rejects.toThrow('Pool with address NonExistentAddress not found');
@@ -560,9 +560,9 @@ describe('PoolService', () => {
       (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockPools));
 
       const defaultPools = await poolService.getDefaultPools(
-        'solana',
+        'raydium',
         'mainnet-beta',
-        'raydium/amm',
+        'amm',
       );
 
       expect(defaultPools).toEqual({
@@ -575,9 +575,9 @@ describe('PoolService', () => {
       (fs.existsSync as jest.Mock).mockReturnValue(false);
 
       const defaultPools = await poolService.getDefaultPools(
-        'solana',
+        'raydium',
         'mainnet-beta',
-        'raydium/amm',
+        'amm',
       );
 
       expect(defaultPools).toEqual({});
@@ -597,11 +597,11 @@ describe('PoolService', () => {
 
     it('should reject invalid characters in path components', async () => {
       await expect(poolService.loadPoolList('sol$ana')).rejects.toThrow(
-        'Invalid chain name',
+        'Invalid connector name',
       );
 
       await expect(poolService.loadPoolList('main@net')).rejects.toThrow(
-        'Invalid network name',
+        'Invalid connector name',
       );
     });
   });

@@ -1,5 +1,34 @@
 import { FastifyInstance } from 'fastify';
 
+// Mock dependencies before importing app
+jest.mock('../../src/services/logger', () => ({
+  logger: {
+    info: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn(),
+  },
+}));
+
+jest.mock('../../src/services/config-manager-v2', () => ({
+  ConfigManagerV2: {
+    getInstance: jest.fn().mockReturnValue({
+      get: jest.fn().mockImplementation((key: string) => {
+        const mockConfig: Record<string, any> = {
+          'server.port': 15888,
+          'server.docsPort': 19999,
+          'server.fastifyLogs': false,
+        };
+        return mockConfig[key];
+      }),
+    }),
+  },
+}));
+
+jest.mock('../../src/https', () => ({
+  getHttpsOptions: jest.fn().mockReturnValue(null),
+}));
+
 import { gatewayApp } from '../../src/app';
 
 describe('Chain Routes', () => {
