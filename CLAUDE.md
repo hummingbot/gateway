@@ -4,15 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Build & Command Reference
 - Build: `pnpm build`
-- Start server: `pnpm start`
-- Start in dev mode: `pnpm start --dev` (HTTP mode, no SSL)
+- Start server: `pnpm start --passphrase=<PASSPHRASE>`
+- Start in dev mode: `pnpm start --passphrase=<PASSPHRASE> --dev` (HTTP mode, no SSL)
 - Run all tests: `pnpm test`
 - Run specific test file: `GATEWAY_TEST_MODE=dev jest --runInBand path/to/file.test.ts`
 - Run tests with coverage: `pnpm test:cov`
 - Lint code: `pnpm lint`
 - Format code: `pnpm format`
 - Type check: `pnpm typecheck`
-- Initial setup: `pnpm setup` (creates configs and generates certificates)
+- Initial setup: `pnpm setup` (creates configs and copies certificates)
+- Clean install: `pnpm clean` (removes node_modules, coverage, logs, dist)
 
 ## Architecture Overview
 
@@ -88,5 +89,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Token lists: `src/templates/lists/{network}.json`
 - All configs validated against JSON schemas in `src/templates/json/`
 
+## Supported Networks
+### Ethereum Networks
+- Mainnet, Sepolia, Arbitrum, Avalanche, Base, BSC, Celo, Optimism, Polygon, World Chain
+
+### Solana Networks
+- Mainnet, Devnet
+
+## Supported DEX Connectors
+- **Jupiter** (Solana): Token swaps via aggregator
+- **Meteora** (Solana): CLMM operations
+- **Raydium** (Solana): AMM and CLMM operations
+- **Uniswap** (Ethereum/EVM): V2 AMM, V3 CLMM, and Universal Router swaps
+
+## Environment Variables
+- `GATEWAY_PASSPHRASE`: Set passphrase for wallet encryption
+- `GATEWAY_TEST_MODE=dev`: Run tests in development mode
+- `START_SERVER=true`: Required to start the server
+- `DEV=true`: Run in HTTP mode (Docker)
+
 ## Hummingbot Gateway Endpoint Standardization
-- This repo standardized DEX and chain endpoints that are used by Hummingbot strategies. See this branch for the matching code, especially the Gateway connector classes https://github.com/hummingbot/hummingbot/tree/feat/gateway-2.6
+- This repo standardized DEX and chain endpoints that are used by Hummingbot strategies. See this branch for the matching code, especially the Gateway connector classes https://github.com/hummingbot/hummingbot/tree/development
