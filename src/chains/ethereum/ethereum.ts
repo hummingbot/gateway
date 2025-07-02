@@ -593,6 +593,26 @@ export class Ethereum {
       symbol: 'WCELO',
       nativeSymbol: 'CELO',
     },
+    blast: {
+      address: '0x4300000000000000000000000000000000000004',
+      symbol: 'WETH',
+      nativeSymbol: 'ETH',
+    },
+    zora: {
+      address: '0x4200000000000000000000000000000000000006',
+      symbol: 'WETH',
+      nativeSymbol: 'ETH',
+    },
+    worldchain: {
+      address: '0x4300000000000000000000000000000000000004',
+      symbol: 'WETH',
+      nativeSymbol: 'ETH',
+    },
+    'ethereum-classic': {
+      address: '0x1953cab0E5bFa6D4a9BaD6E05fD46C1CC6527a5a',
+      symbol: 'WETC',
+      nativeSymbol: 'ETC',
+    },
   };
 
   /**
