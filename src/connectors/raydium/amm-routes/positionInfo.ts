@@ -79,8 +79,7 @@ async function calculateLpAmount(
 }
 
 export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
-  // Get first wallet address for example
-  const firstWalletAddress = await Solana.getWalletAddressExample();
+  const walletAddressExample = await Solana.getWalletAddressExample();
 
   fastify.get<{
     Querystring: GetPositionInfoRequestType;
@@ -95,16 +94,13 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
           ...GetPositionInfoRequest,
           properties: {
             network: { type: 'string', examples: ['mainnet-beta'] },
+            walletAddress: { type: 'string', examples: [walletAddressExample] },
             poolAddress: {
               type: 'string',
               examples: ['AVs9TA4nWDzfPJE9gGVNJMVhcQy3V9PGazuz33BfG2RA'],
             },
             baseToken: { type: 'string', examples: ['SOL'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
-            walletAddress: {
-              type: 'string',
-              examples: [firstWalletAddress],
-            },
           },
         },
         response: {
