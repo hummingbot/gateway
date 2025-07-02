@@ -4,7 +4,15 @@ import Fastify, { FastifyInstance } from 'fastify';
 
 import { Ethereum } from '../../src/chains/ethereum/ethereum';
 import { Solana } from '../../src/chains/solana/solana';
+import { ConfigManagerCertPassphrase } from '../../src/services/config-manager-cert-passphrase';
 import { getReadOnlyWalletAddresses } from '../../src/wallet/utils';
+
+// Ensure the mock is properly typed
+const mockedGetReadOnlyWalletAddresses =
+  getReadOnlyWalletAddresses as jest.MockedFunction<
+    typeof getReadOnlyWalletAddresses
+  >;
+import { patch, unpatch } from '../services/patch';
 
 // Mock dependencies
 jest.mock('../../src/services/logger', () => ({
@@ -16,12 +24,13 @@ jest.mock('../../src/services/logger', () => ({
   },
 }));
 
-jest.mock('../../src/wallet/utils', () => ({
-  ...jest.requireActual('../../src/wallet/utils'),
-  getReadOnlyWalletAddresses: jest.fn(),
-}));
+jest.mock('../../src/wallet/utils');
 
 describe('Read-Only Wallet Integration Tests', () => {
+  afterEach(() => {
+    unpatch();
+  });
+
   describe('Ethereum Chain Integration', () => {
     let ethereum: Ethereum;
     const testAddress = '0x742d35Cc6634C0532925a3b844Bc9e7595f0Bfee';
@@ -30,9 +39,7 @@ describe('Read-Only Wallet Integration Tests', () => {
       ethereum = await Ethereum.getInstance('mainnet');
 
       // Mock getReadOnlyWalletAddresses to return our test address
-      (getReadOnlyWalletAddresses as jest.Mock).mockResolvedValue([
-        testAddress,
-      ]);
+      mockedGetReadOnlyWalletAddresses.mockResolvedValue([testAddress]);
     });
 
     it('should identify read-only wallets correctly', async () => {
@@ -102,12 +109,16 @@ describe('Read-Only Wallet Integration Tests', () => {
     const testAddress = 'DRpaJDurGtinzUPWSYnripFsJTBXm4HG7AC3LSgJNtNB';
 
     beforeEach(async () => {
+      // Clear all mocks before each test
+      jest.clearAllMocks();
+
+      // Patch ConfigManagerCertPassphrase which Solana needs
+      patch(ConfigManagerCertPassphrase, 'readPassphrase', () => 'a');
+
       solana = await Solana.getInstance('mainnet-beta');
 
       // Mock getReadOnlyWalletAddresses to return our test address
-      (getReadOnlyWalletAddresses as jest.Mock).mockResolvedValue([
-        testAddress,
-      ]);
+      mockedGetReadOnlyWalletAddresses.mockResolvedValue([testAddress]);
     });
 
     it('should identify read-only wallets correctly', async () => {

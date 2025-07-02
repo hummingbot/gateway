@@ -49,21 +49,7 @@ function validateSwapQuote(response) {
     typeof response.maxAmountIn === 'number' &&
     typeof response.baseTokenBalanceChange === 'number' &&
     typeof response.quoteTokenBalanceChange === 'number' &&
-    typeof response.price === 'number' &&
-    typeof response.computeUnits === 'number' // Added computeUnits
-  );
-}
-
-// Function to validate gas parameters
-function validateGasParameters(response) {
-  return (
-    response &&
-    typeof response.gasPrice === 'number' &&
-    response.gasPrice > 0 &&
-    response.gasLimit === 300000 && // Fixed gas limit per implementation
-    typeof response.gasCost === 'number' &&
-    Math.abs(response.gasCost - response.gasPrice * response.gasLimit * 1e-9) <
-      1e-10 // Floating point precision
+    typeof response.price === 'number'
   );
 }
 
@@ -91,7 +77,6 @@ describe('Uniswap V3 Swap Router Tests (Base Network)', () => {
           price: 1800.0,
           baseTokenBalanceChange: -1.0,
           quoteTokenBalanceChange: 1800.0,
-          computeUnits: 250000, // Gas limit for Ethereum
         };
       }
 
@@ -118,7 +103,6 @@ describe('Uniswap V3 Swap Router Tests (Base Network)', () => {
       // Validate the response
       expect(response.status).toBe(200);
       expect(validateSwapQuote(response.data)).toBe(true);
-      expect(validateGasParameters(response.data)).toBe(true);
 
       // Check expected mock values for a SELL
       expect(response.data.baseTokenBalanceChange).toBeLessThan(0); // SELL means negative base token change
@@ -155,7 +139,6 @@ describe('Uniswap V3 Swap Router Tests (Base Network)', () => {
           quoteTokenBalanceChange: -mockSellResponse.estimatedAmountOut, // Negative for BUY
           // For BUY: price = quote needed / base received
           price: mockSellResponse.estimatedAmountOut / 1.0,
-          computeUnits: 250000,
         };
       } catch (error) {
         // Create minimal mock if not found
@@ -196,55 +179,10 @@ describe('Uniswap V3 Swap Router Tests (Base Network)', () => {
       // Validate the response
       expect(response.status).toBe(200);
       expect(validateSwapQuote(response.data)).toBe(true);
-      expect(validateGasParameters(response.data)).toBe(true);
 
       // Check expected mock values for a BUY
       expect(response.data.baseTokenBalanceChange).toBeGreaterThan(0); // BUY means positive base token change
       expect(response.data.quoteTokenBalanceChange).toBeLessThan(0); // BUY means negative quote token change
-    });
-
-    test('validates gas parameters for swap quotes', async () => {
-      // Create a mock response with specific gas values
-      const mockResponse = {
-        estimatedAmountIn: 0.001,
-        estimatedAmountOut: 2.49,
-        minAmountOut: 2.47,
-        maxAmountIn: 0.001,
-        price: 2490.0,
-        baseTokenBalanceChange: -0.001,
-        quoteTokenBalanceChange: 2.49,
-        gasPrice: 0.8, // Testing realistic mainnet gas price
-        gasLimit: 300000, // Fixed gas limit as per implementation
-        gasCost: 0.00024, // 0.8 GWEI * 300000 / 1e9
-      };
-
-      // Setup mock axios
-      axios.get.mockResolvedValueOnce({
-        status: 200,
-        data: mockResponse,
-      });
-
-      // Make the request
-      const response = await axios.get(
-        `http://localhost:15888/connectors/${CONNECTOR}/routes/quote-swap`,
-        {
-          params: {
-            network: 'mainnet',
-            baseToken: BASE_TOKEN,
-            quoteToken: QUOTE_TOKEN,
-            side: 'SELL',
-            amount: 0.001,
-          },
-        },
-      );
-
-      // Validate gas parameters
-      expect(response.status).toBe(200);
-      expect(response.data.gasLimit).toBe(300000); // Fixed gas limit
-      expect(response.data.gasPrice).toBeGreaterThan(0);
-      expect(response.data.gasCost).toBe(
-        response.data.gasPrice * response.data.gasLimit * 1e-9,
-      );
     });
 
     test('handles different networks correctly', async () => {

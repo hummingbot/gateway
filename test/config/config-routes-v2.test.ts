@@ -19,11 +19,7 @@ jest.mock('js-yaml');
 import * as yaml from 'js-yaml';
 
 import { configRoutes } from '../../src/config/config.routes';
-import {
-  getDefaultPools,
-  updateConfig,
-  getConfig,
-} from '../../src/config/utils';
+import { updateConfig, getConfig } from '../../src/config/utils';
 import { ConfigManagerV2 } from '../../src/services/config-manager-v2';
 
 import * as fs from 'fs';
@@ -36,28 +32,30 @@ describe('Config Routes V2 Tests', () => {
     // Create a new Fastify instance for each test
     fastify = Fastify();
 
-    // Setup ConfigManagerV2 mock
+    // Setup ConfigManagerV2 mock with new namespace structure
     mockConfigManager = {
       get: jest.fn(),
       set: jest.fn(),
       getNamespace: jest.fn(),
       allConfigurations: {
-        server: { port: 15888 },
-        ethereum: {
-          networks: {
-            mainnet: {
-              nodeURL: 'https://mainnet.infura.io/v3/',
-              nativeCurrencySymbol: 'ETH',
-            },
-          },
+        server: {
+          port: 15888,
+          certificatePath: 'gateway.crt',
+          keyPath: 'gateway.key',
         },
-        solana: {
-          networks: {
-            'mainnet-beta': {
-              nodeURL: 'https://api.mainnet-beta.solana.com',
-              nativeCurrencySymbol: 'SOL',
-            },
-          },
+        'ethereum-mainnet': {
+          chainID: 1,
+          nodeURL: 'https://mainnet.infura.io/v3/',
+          nativeCurrencySymbol: 'ETH',
+          manualGasPrice: 110,
+        },
+        'solana-mainnet-beta': {
+          nodeURL: 'https://api.mainnet-beta.solana.com',
+          nativeCurrencySymbol: 'SOL',
+        },
+        uniswap: {
+          allowedSlippage: '2/100',
+          ttl: 300,
         },
       },
     };
@@ -73,7 +71,6 @@ describe('Config Routes V2 Tests', () => {
     jest.clearAllMocks();
 
     // Setup default mock implementations
-    (getDefaultPools as jest.Mock).mockImplementation(() => ({}));
     (updateConfig as jest.Mock).mockImplementation(() => {});
     (getConfig as jest.Mock).mockImplementation(
       (_fastify, namespace, network) => {
@@ -106,12 +103,8 @@ describe('Config Routes V2 Tests', () => {
     it('should update nodeURL for ethereum mainnet', async () => {
       mockConfigManager.getNamespace.mockReturnValue({
         configuration: {
-          networks: {
-            mainnet: {
-              nodeURL: 'https://mainnet.infura.io/v3/',
-              nativeCurrencySymbol: 'ETH',
-            },
-          },
+          nodeURL: 'https://mainnet.infura.io/v3/',
+          nativeCurrencySymbol: 'ETH',
         },
       });
 
@@ -119,8 +112,7 @@ describe('Config Routes V2 Tests', () => {
         method: 'POST',
         url: '/update',
         payload: {
-          namespace: 'ethereum',
-          network: 'mainnet',
+          namespace: 'ethereum-mainnet',
           path: 'nodeURL',
           value: 'https://eth-mainnet.g.alchemy.com/v2/your-api-key',
         },
@@ -128,12 +120,12 @@ describe('Config Routes V2 Tests', () => {
 
       expect(response.statusCode).toBe(200);
       expect(JSON.parse(response.payload)).toEqual({
-        message: `Configuration updated successfully: 'ethereum.mainnet.nodeURL' set to "https://eth-mainnet.g.alchemy.com/v2/your-api-key"`,
+        message: `Configuration updated successfully: 'ethereum-mainnet.nodeURL' set to "https://eth-mainnet.g.alchemy.com/v2/your-api-key"`,
       });
 
       expect(updateConfig).toHaveBeenCalledWith(
         expect.anything(),
-        'ethereum.networks.mainnet.nodeURL',
+        'ethereum-mainnet.nodeURL',
         'https://eth-mainnet.g.alchemy.com/v2/your-api-key',
       );
     });
@@ -141,12 +133,8 @@ describe('Config Routes V2 Tests', () => {
     it('should update nodeURL for solana mainnet-beta', async () => {
       mockConfigManager.getNamespace.mockReturnValue({
         configuration: {
-          networks: {
-            'mainnet-beta': {
-              nodeURL: 'https://api.mainnet-beta.solana.com',
-              nativeCurrencySymbol: 'SOL',
-            },
-          },
+          nodeURL: 'https://api.mainnet-beta.solana.com',
+          nativeCurrencySymbol: 'SOL',
         },
       });
 
@@ -154,8 +142,7 @@ describe('Config Routes V2 Tests', () => {
         method: 'POST',
         url: '/update',
         payload: {
-          namespace: 'solana',
-          network: 'mainnet-beta',
+          namespace: 'solana-mainnet-beta',
           path: 'nodeURL',
           value: 'https://solana-api.projectserum.com',
         },
@@ -163,7 +150,7 @@ describe('Config Routes V2 Tests', () => {
 
       expect(response.statusCode).toBe(200);
       expect(JSON.parse(response.payload)).toEqual({
-        message: `Configuration updated successfully: 'solana.mainnet-beta.nodeURL' set to "https://solana-api.projectserum.com"`,
+        message: `Configuration updated successfully: 'solana-mainnet-beta.nodeURL' set to "https://solana-api.projectserum.com"`,
       });
     });
 
@@ -266,43 +253,36 @@ describe('Config Routes V2 Tests', () => {
       );
     });
 
-    it('should return 400 when network provided for non-chain namespace', async () => {
+    it('should update server config without network', async () => {
       mockConfigManager.getNamespace.mockReturnValue({
-        configuration: { port: 15888 }, // No networks property
+        configuration: { port: 15888 },
       });
+      mockConfigManager.get.mockReturnValue(15888); // Current value is a number
 
       const response = await fastify.inject({
         method: 'POST',
         url: '/update',
         payload: {
           namespace: 'server',
-          network: 'mainnet',
           path: 'port',
           value: 16000,
         },
       });
 
-      expect(response.statusCode).toBe(400);
-      expect(JSON.parse(response.payload).message).toContain(
-        'does not support network configurations',
-      );
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.payload)).toEqual({
+        message: `Configuration updated successfully: 'server.port' set to 16000`,
+      });
     });
 
-    it('should return 404 for non-existent network', async () => {
-      mockConfigManager.getNamespace.mockReturnValue({
-        configuration: {
-          networks: {
-            mainnet: {},
-          },
-        },
-      });
+    it('should return 404 for non-existent network namespace', async () => {
+      mockConfigManager.getNamespace.mockReturnValue(null);
 
       const response = await fastify.inject({
         method: 'POST',
         url: '/update',
         payload: {
-          namespace: 'ethereum',
-          network: 'goerli',
+          namespace: 'ethereum-goerli',
           path: 'nodeURL',
           value: 'https://goerli.infura.io/v3/',
         },
@@ -310,10 +290,7 @@ describe('Config Routes V2 Tests', () => {
 
       expect(response.statusCode).toBe(404);
       expect(JSON.parse(response.payload).message).toContain(
-        "Network 'goerli' not found",
-      );
-      expect(JSON.parse(response.payload).message).toContain(
-        'Available networks: mainnet',
+        "Namespace 'ethereum-goerli' not found",
       );
     });
 
@@ -375,60 +352,11 @@ describe('Config Routes V2 Tests', () => {
       );
     });
 
-    it('should save network-specific nodeURL to separate file for Solana', async () => {
-      // Mock filesystem operations
-      const mockExistsSync = fs.existsSync as jest.Mock;
-      const mockMkdirSync = fs.mkdirSync as jest.Mock;
-      const mockReadFileSync = fs.readFileSync as jest.Mock;
-      const mockWriteFileSync = fs.writeFileSync as jest.Mock;
-      const mockYamlLoad = yaml.load as jest.Mock;
-      const mockYamlDump = yaml.dump as jest.Mock;
-
-      // Setup mocks
-      mockExistsSync.mockReturnValue(true);
-      mockReadFileSync.mockReturnValue(
-        'nodeURL: https://api.mainnet-beta.solana.com\nnativeCurrencySymbol: SOL',
-      );
-      mockYamlLoad.mockReturnValue({
-        nodeURL: 'https://api.mainnet-beta.solana.com',
-        nativeCurrencySymbol: 'SOL',
-      });
-      mockYamlDump.mockReturnValue(
-        'nodeURL: https://new-solana-rpc.com\nnativeCurrencySymbol: SOL',
-      );
-
-      // Mock the actual updateConfig implementation for this test
-      (updateConfig as jest.Mock).mockImplementation(
-        (_fastify, configPath, configValue) => {
-          // Simulate the network-specific file update logic
-          const pathParts = configPath.split('.');
-          if (pathParts[1] === 'networks' && pathParts.length >= 4) {
-            const namespace = pathParts[0];
-            const network = pathParts[2];
-            const chainNamespaces = ['ethereum', 'solana'];
-
-            if (chainNamespaces.includes(namespace)) {
-              const networkConfigFile = `conf/networks/${namespace}/${network}.yml`;
-              const networkConfig = mockYamlLoad(
-                mockReadFileSync(networkConfigFile),
-              );
-              networkConfig.nodeURL = configValue;
-              mockWriteFileSync(networkConfigFile, mockYamlDump(networkConfig));
-            }
-          }
-          // Also update runtime config
-          mockConfigManager.set(configPath, configValue);
-        },
-      );
-
+    it('should update Solana mainnet-beta configuration', async () => {
       mockConfigManager.getNamespace.mockReturnValue({
         configuration: {
-          networks: {
-            'mainnet-beta': {
-              nodeURL: 'https://api.mainnet-beta.solana.com',
-              nativeCurrencySymbol: 'SOL',
-            },
-          },
+          nodeURL: 'https://api.mainnet-beta.solana.com',
+          nativeCurrencySymbol: 'SOL',
         },
       });
 
@@ -436,8 +364,7 @@ describe('Config Routes V2 Tests', () => {
         method: 'POST',
         url: '/update',
         payload: {
-          namespace: 'solana',
-          network: 'mainnet-beta',
+          namespace: 'solana-mainnet-beta',
           path: 'nodeURL',
           value: 'https://new-solana-rpc.com',
         },
@@ -445,89 +372,13 @@ describe('Config Routes V2 Tests', () => {
 
       expect(response.statusCode).toBe(200);
       expect(JSON.parse(response.payload)).toEqual({
-        message: `Configuration updated successfully: 'solana.mainnet-beta.nodeURL' set to "https://new-solana-rpc.com"`,
+        message: `Configuration updated successfully: 'solana-mainnet-beta.nodeURL' set to "https://new-solana-rpc.com"`,
       });
 
-      // Verify the network-specific file was written
-      expect(mockWriteFileSync).toHaveBeenCalledWith(
-        'conf/networks/solana/mainnet-beta.yml',
-        'nodeURL: https://new-solana-rpc.com\nnativeCurrencySymbol: SOL',
-      );
-    });
-
-    it('should create network directory if it does not exist', async () => {
-      // Mock filesystem operations
-      const mockExistsSync = fs.existsSync as jest.Mock;
-      const mockMkdirSync = fs.mkdirSync as jest.Mock;
-      const mockReadFileSync = fs.readFileSync as jest.Mock;
-      const mockWriteFileSync = fs.writeFileSync as jest.Mock;
-      const mockYamlLoad = yaml.load as jest.Mock;
-      const mockYamlDump = yaml.dump as jest.Mock;
-
-      // Setup mocks - directory doesn't exist
-      mockExistsSync.mockImplementation((path: string) => {
-        if (path.includes('conf/networks/ethereum')) return false;
-        return true;
-      });
-      mockYamlLoad.mockReturnValue({});
-      mockYamlDump.mockReturnValue('nodeURL: https://new-eth-rpc.com');
-
-      // Mock the actual updateConfig implementation for this test
-      (updateConfig as jest.Mock).mockImplementation(
-        (_fastify, configPath, configValue) => {
-          // Simulate the network-specific file update logic
-          const pathParts = configPath.split('.');
-          if (pathParts[1] === 'networks' && pathParts.length >= 4) {
-            const namespace = pathParts[0];
-            const network = pathParts[2];
-            const chainNamespaces = ['ethereum', 'solana'];
-
-            if (chainNamespaces.includes(namespace)) {
-              const networkConfigFile = `conf/networks/${namespace}/${network}.yml`;
-              const dirPath = `conf/networks/${namespace}`;
-              if (!mockExistsSync(dirPath)) {
-                mockMkdirSync(dirPath, { recursive: true });
-              }
-              const networkConfig = { nodeURL: configValue };
-              mockWriteFileSync(networkConfigFile, mockYamlDump(networkConfig));
-            }
-          }
-          mockConfigManager.set(configPath, configValue);
-        },
-      );
-
-      mockConfigManager.getNamespace.mockReturnValue({
-        configuration: {
-          networks: {
-            mainnet: {
-              nodeURL: 'https://old-eth-rpc.com',
-            },
-          },
-        },
-      });
-
-      const response = await fastify.inject({
-        method: 'POST',
-        url: '/update',
-        payload: {
-          namespace: 'ethereum',
-          network: 'mainnet',
-          path: 'nodeURL',
-          value: 'https://new-eth-rpc.com',
-        },
-      });
-
-      expect(response.statusCode).toBe(200);
-
-      // Verify directory was created
-      expect(mockMkdirSync).toHaveBeenCalledWith('conf/networks/ethereum', {
-        recursive: true,
-      });
-
-      // Verify the file was written
-      expect(mockWriteFileSync).toHaveBeenCalledWith(
-        'conf/networks/ethereum/mainnet.yml',
-        'nodeURL: https://new-eth-rpc.com',
+      expect(updateConfig).toHaveBeenCalledWith(
+        expect.anything(),
+        'solana-mainnet-beta.nodeURL',
+        'https://new-solana-rpc.com',
       );
     });
   });
@@ -546,21 +397,33 @@ describe('Config Routes V2 Tests', () => {
     });
 
     it('should get namespace configuration', async () => {
+      // Update mock to have ethereum-mainnet instead of ethereum
+      mockConfigManager.allConfigurations['ethereum-mainnet'] = {
+        nodeURL: 'https://mainnet.infura.io/v3/',
+        nativeCurrencySymbol: 'ETH',
+      };
+
       const response = await fastify.inject({
         method: 'GET',
-        url: '/?namespace=ethereum',
+        url: '/?namespace=ethereum-mainnet',
       });
 
       expect(response.statusCode).toBe(200);
       expect(JSON.parse(response.payload)).toEqual(
-        mockConfigManager.allConfigurations.ethereum,
+        mockConfigManager.allConfigurations['ethereum-mainnet'],
       );
     });
 
     it('should get network-specific configuration', async () => {
+      // Update mock to have solana-mainnet-beta
+      mockConfigManager.allConfigurations['solana-mainnet-beta'] = {
+        nodeURL: 'https://api.mainnet-beta.solana.com',
+        nativeCurrencySymbol: 'SOL',
+      };
+
       const response = await fastify.inject({
         method: 'GET',
-        url: '/?namespace=solana&network=mainnet-beta',
+        url: '/?namespace=solana-mainnet-beta',
       });
 
       expect(response.statusCode).toBe(200);
@@ -579,65 +442,23 @@ describe('Config Routes V2 Tests', () => {
       expect(response.statusCode).toBe(404);
     });
 
-    it('should return 404 for non-existent network', async () => {
+    it('should return 404 for non-existent network namespace', async () => {
+      (getConfig as jest.Mock).mockImplementation((_fastify, namespace) => {
+        if (namespace === 'ethereum-invalid') {
+          throw {
+            statusCode: 404,
+            message: `Namespace 'ethereum-invalid' not found`,
+          };
+        }
+        return mockConfigManager.allConfigurations[namespace];
+      });
+
       const response = await fastify.inject({
         method: 'GET',
-        url: '/?namespace=ethereum&network=invalid',
+        url: '/?namespace=ethereum-invalid',
       });
 
       expect(response.statusCode).toBe(404);
-    });
-  });
-
-  describe('Pool management routes', () => {
-    it('should get pools for a connector', async () => {
-      const mockPools = {
-        'SOL-USDC': '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
-      };
-      (getDefaultPools as jest.Mock).mockReturnValue(mockPools);
-
-      const response = await fastify.inject({
-        method: 'GET',
-        url: '/pools?connector=raydium/amm',
-      });
-
-      expect(response.statusCode).toBe(200);
-      expect(JSON.parse(response.payload)).toEqual(mockPools);
-    });
-
-    it('should add a pool', async () => {
-      const response = await fastify.inject({
-        method: 'POST',
-        url: '/pools/add',
-        payload: {
-          connector: 'raydium/amm',
-          baseToken: 'SOL',
-          quoteToken: 'USDC',
-          poolAddress: 'new-pool-address',
-        },
-      });
-
-      expect(response.statusCode).toBe(200);
-      expect(JSON.parse(response.payload)).toEqual({
-        message: 'Default pool added for SOL-USDC',
-      });
-    });
-
-    it('should remove a pool', async () => {
-      const response = await fastify.inject({
-        method: 'POST',
-        url: '/pools/remove',
-        payload: {
-          connector: 'raydium/amm',
-          baseToken: 'SOL',
-          quoteToken: 'USDC',
-        },
-      });
-
-      expect(response.statusCode).toBe(200);
-      expect(JSON.parse(response.payload)).toEqual({
-        message: 'Default pool removed for SOL-USDC',
-      });
     });
   });
 });

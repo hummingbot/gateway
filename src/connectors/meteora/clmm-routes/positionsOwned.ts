@@ -28,16 +28,7 @@ type GetPositionsOwnedRequestType = Static<typeof GetPositionsOwnedRequest>;
 type GetPositionsOwnedResponseType = Static<typeof GetPositionsOwnedResponse>;
 
 export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
-  // Get first wallet address for example
-  const solana = await Solana.getInstance('mainnet-beta');
-  let firstWalletAddress = '<solana-wallet-address>';
-
-  const foundWallet = await solana.getFirstWalletAddress();
-  if (foundWallet) {
-    firstWalletAddress = foundWallet;
-  } else {
-    logger.debug('No wallets found for examples in schema');
-  }
+  const firstWalletAddress = await Solana.getWalletAddressExample();
 
   // Update schema example
   GetPositionsOwnedRequest.properties.walletAddress.examples = [

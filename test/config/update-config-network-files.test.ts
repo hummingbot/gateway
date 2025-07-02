@@ -25,7 +25,7 @@ jest.mock('../../src/services/config-manager-v2');
 const mockFs = fs as jest.Mocked<typeof fs>;
 const mockYaml = yaml as jest.Mocked<typeof yaml>;
 
-describe('updateConfig - Network-specific file updates', () => {
+describe('updateConfig - Configuration updates', () => {
   let mockConfigManager: any;
   let mockFastify: any;
   let originalCwd: string;
@@ -69,146 +69,82 @@ describe('updateConfig - Network-specific file updates', () => {
     process.cwd = () => originalCwd;
   });
 
-  describe('Network-specific configuration updates', () => {
-    it('should save Solana network config to separate file', () => {
-      // Setup mocks
-      (mockFs.existsSync as jest.Mock).mockReturnValue(true);
-      (mockFs.readFileSync as jest.Mock).mockReturnValue(
-        'nodeURL: https://api.mainnet-beta.solana.com\nnativeCurrencySymbol: SOL',
-      );
-      (mockYaml.load as jest.Mock).mockReturnValue({
-        nodeURL: 'https://api.mainnet-beta.solana.com',
-        nativeCurrencySymbol: 'SOL',
-      });
-      (mockYaml.dump as jest.Mock).mockReturnValue(
-        'nodeURL: https://new-rpc.com\nnativeCurrencySymbol: SOL',
-      );
-
+  describe('Configuration updates', () => {
+    it('should update Solana network config through ConfigManagerV2', () => {
       // Call updateConfig
       updateConfig(
         mockFastify as unknown as FastifyInstance,
-        'solana.networks.mainnet-beta.nodeURL',
+        'solana-mainnet-beta.nodeURL',
         'https://new-rpc.com',
       );
 
-      // Verify network config file was written
-      expect(mockFs.writeFileSync).toHaveBeenCalledWith(
-        '/mock/project/conf/networks/solana/mainnet-beta.yml',
-        'nodeURL: https://new-rpc.com\nnativeCurrencySymbol: SOL',
-      );
-
-      // Verify runtime config was also updated
+      // Verify runtime config was updated
       expect(mockConfigManager.set).toHaveBeenCalledWith(
-        'solana.networks.mainnet-beta.nodeURL',
+        'solana-mainnet-beta.nodeURL',
         'https://new-rpc.com',
       );
+
+      // Verify no file operations occurred (handled by ConfigManagerV2)
+      expect(mockFs.writeFileSync).not.toHaveBeenCalled();
     });
 
-    it('should save Ethereum network config to separate file', () => {
-      // Setup mocks
-      (mockFs.existsSync as jest.Mock).mockReturnValue(true);
-      (mockFs.readFileSync as jest.Mock).mockReturnValue(
-        'chainID: 1\nnodeURL: https://mainnet.infura.io',
-      );
-      (mockYaml.load as jest.Mock).mockReturnValue({
-        chainID: 1,
-        nodeURL: 'https://mainnet.infura.io',
-      });
-      (mockYaml.dump as jest.Mock).mockReturnValue(
-        'chainID: 1\nnodeURL: https://eth-mainnet.alchemyapi.io',
-      );
-
+    it('should update Ethereum network config through ConfigManagerV2', () => {
       // Call updateConfig
       updateConfig(
         mockFastify as unknown as FastifyInstance,
-        'ethereum.networks.mainnet.nodeURL',
+        'ethereum-mainnet.nodeURL',
         'https://eth-mainnet.alchemyapi.io',
       );
 
-      // Verify network config file was written
-      expect(mockFs.writeFileSync).toHaveBeenCalledWith(
-        '/mock/project/conf/networks/ethereum/mainnet.yml',
-        'chainID: 1\nnodeURL: https://eth-mainnet.alchemyapi.io',
-      );
-
-      // Verify runtime config was also updated
+      // Verify runtime config was updated
       expect(mockConfigManager.set).toHaveBeenCalledWith(
-        'ethereum.networks.mainnet.nodeURL',
+        'ethereum-mainnet.nodeURL',
         'https://eth-mainnet.alchemyapi.io',
       );
+
+      // Verify no file operations occurred
+      expect(mockFs.writeFileSync).not.toHaveBeenCalled();
     });
 
-    it('should create network directory if it does not exist', () => {
-      // Setup mocks - directory doesn't exist
-      (mockFs.existsSync as jest.Mock).mockImplementation(
-        (path: fs.PathLike) => {
-          const pathStr = path.toString();
-          if (pathStr.includes('/conf/networks/solana')) return false;
-          return pathStr.includes('.yml'); // File exists
-        },
-      );
-      (mockFs.readFileSync as jest.Mock).mockReturnValue('');
-      (mockYaml.load as jest.Mock).mockReturnValue({});
-      (mockYaml.dump as jest.Mock).mockReturnValue(
-        'nodeURL: https://new-rpc.com',
-      );
-
+    it('should handle configuration updates without file operations', () => {
       // Call updateConfig
       updateConfig(
         mockFastify as unknown as FastifyInstance,
-        'solana.networks.devnet.nodeURL',
+        'solana-devnet.nodeURL',
         'https://new-rpc.com',
       );
 
-      // Verify directory was created
-      expect(mockFs.mkdirSync).toHaveBeenCalledWith(
-        '/mock/project/conf/networks/solana',
-        { recursive: true },
+      // Verify runtime config was updated
+      expect(mockConfigManager.set).toHaveBeenCalledWith(
+        'solana-devnet.nodeURL',
+        'https://new-rpc.com',
       );
 
-      // Verify file was written
-      expect(mockFs.writeFileSync).toHaveBeenCalledWith(
-        '/mock/project/conf/networks/solana/devnet.yml',
-        'nodeURL: https://new-rpc.com',
-      );
+      // Verify no directory or file operations occurred
+      expect(mockFs.mkdirSync).not.toHaveBeenCalled();
+      expect(mockFs.writeFileSync).not.toHaveBeenCalled();
     });
 
     it('should handle nested configuration paths correctly', () => {
-      // Setup mocks
-      (mockFs.existsSync as jest.Mock).mockReturnValue(true);
-      (mockFs.readFileSync as jest.Mock).mockReturnValue(
-        'rpc:\n  endpoints:\n    primary: https://old-rpc.com',
-      );
-      (mockYaml.load as jest.Mock).mockReturnValue({
-        rpc: {
-          endpoints: {
-            primary: 'https://old-rpc.com',
-          },
-        },
-      });
-      (mockYaml.dump as jest.Mock).mockReturnValue(
-        'rpc:\n  endpoints:\n    primary: https://new-rpc.com',
-      );
-
       // Call updateConfig with nested path
       updateConfig(
         mockFastify as unknown as FastifyInstance,
-        'solana.networks.mainnet-beta.rpc.endpoints.primary',
+        'solana-mainnet-beta.rpc.endpoints.primary',
         'https://new-rpc.com',
       );
 
-      // Verify the updatePath function correctly updated nested property
-      const yamlDumpCall = (mockYaml.dump as jest.Mock).mock.calls[0][0];
-      expect(yamlDumpCall).toEqual({
-        rpc: {
-          endpoints: {
-            primary: 'https://new-rpc.com',
-          },
-        },
-      });
+      // Verify runtime config was updated with nested path
+      expect(mockConfigManager.set).toHaveBeenCalledWith(
+        'solana-mainnet-beta.rpc.endpoints.primary',
+        'https://new-rpc.com',
+      );
+
+      // Verify no file operations occurred
+      expect(mockFs.writeFileSync).not.toHaveBeenCalled();
+      expect(mockYaml.dump).not.toHaveBeenCalled();
     });
 
-    it('should not save to network file for non-chain namespaces', () => {
+    it('should update non-chain namespaces through ConfigManagerV2', () => {
       // Call updateConfig for a non-chain namespace
       updateConfig(
         mockFastify as unknown as FastifyInstance,
@@ -223,7 +159,7 @@ describe('updateConfig - Network-specific file updates', () => {
       expect(mockConfigManager.set).toHaveBeenCalledWith('server.port', 15889);
     });
 
-    it('should not save to network file for non-network configurations', () => {
+    it('should update chain-level configurations through ConfigManagerV2', () => {
       // Call updateConfig for a chain namespace but not a network config
       updateConfig(
         mockFastify as unknown as FastifyInstance,
@@ -231,42 +167,43 @@ describe('updateConfig - Network-specific file updates', () => {
         'solana-tx',
       );
 
-      // Verify no network file was written
+      // Verify no file operations occurred
       expect(mockFs.writeFileSync).not.toHaveBeenCalled();
 
-      // Verify only runtime config was updated
+      // Verify runtime config was updated
       expect(mockConfigManager.set).toHaveBeenCalledWith(
         'solana.transactionLabelPrefix',
         'solana-tx',
       );
     });
 
-    it('should handle file write errors gracefully', () => {
-      // Setup mocks
-      (mockFs.existsSync as jest.Mock).mockReturnValue(true);
-      (mockFs.readFileSync as jest.Mock).mockReturnValue(
-        'nodeURL: https://api.mainnet-beta.solana.com',
-      );
-      (mockYaml.load as jest.Mock).mockReturnValue({
-        nodeURL: 'https://api.mainnet-beta.solana.com',
-      });
-      (mockFs.writeFileSync as jest.Mock).mockImplementation(() => {
-        throw new Error('Permission denied');
+    it('should handle ConfigManagerV2 errors gracefully', () => {
+      // Setup mock to throw error
+      mockConfigManager.set.mockImplementation(() => {
+        throw new Error('Configuration error');
       });
 
-      // Call updateConfig - should not throw
+      // Mock httpErrors.internalServerError to throw
+      mockFastify.httpErrors.internalServerError.mockImplementation(
+        (msg: string) => {
+          const error = new Error(msg);
+          (error as any).statusCode = 500;
+          throw error;
+        },
+      );
+
+      // Call updateConfig - should throw HTTP error
       expect(() => {
         updateConfig(
           mockFastify as unknown as FastifyInstance,
-          'solana.networks.mainnet-beta.nodeURL',
+          'solana-mainnet-beta.nodeURL',
           'https://new-rpc.com',
         );
-      }).not.toThrow();
+      }).toThrow('Failed to update configuration: Configuration error');
 
-      // Verify runtime config was still updated despite file error
-      expect(mockConfigManager.set).toHaveBeenCalledWith(
-        'solana.networks.mainnet-beta.nodeURL',
-        'https://new-rpc.com',
+      // Verify fastify error was called
+      expect(mockFastify.httpErrors.internalServerError).toHaveBeenCalledWith(
+        'Failed to update configuration: Configuration error',
       );
     });
   });

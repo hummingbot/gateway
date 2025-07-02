@@ -29,7 +29,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
 
   try {
     firstWalletAddress =
-      (await ethereum.getFirstWalletAddress()) || firstWalletAddress;
+      (await Ethereum.getFirstWalletAddress()) || firstWalletAddress;
   } catch (error) {
     logger.warn('No wallets found for examples in schema');
   }
