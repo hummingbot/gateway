@@ -559,7 +559,8 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify, _options) => {
         if (e.stack) {
           logger.debug(`Error stack: ${e.stack}`);
         }
-        return reply.internalServerError(`Failed to get quote: ${e.message}`);
+        logger.error('Failed to get quote:', e);
+        return reply.internalServerError('Failed to get quote');
       }
     },
   );

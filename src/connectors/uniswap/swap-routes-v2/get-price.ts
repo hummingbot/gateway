@@ -15,6 +15,7 @@ import {
   GetPriceResponse,
 } from '../../../schemas/swap-schema';
 import { logger } from '../../../services/logger';
+import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Uniswap } from '../uniswap';
 
 import { UniswapGetPriceRequest } from './schemas';
@@ -37,7 +38,10 @@ async function getPrice(
 
   if (!baseTokenInfo || !quoteTokenInfo) {
     throw fastify.httpErrors.badRequest(
-      `Token not found: ${!baseTokenInfo ? baseToken : quoteToken}`,
+      sanitizeErrorMessage(
+        'Token not found: {}',
+        !baseTokenInfo ? baseToken : quoteToken,
+      ),
     );
   }
 

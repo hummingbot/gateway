@@ -9,6 +9,7 @@ import {
   ExecuteSwapRequestType,
 } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
+import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Meteora } from '../meteora';
 
 import { getRawSwapQuote } from './quoteSwap';
@@ -189,7 +190,10 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
 
           if (!baseTokenInfo || !quoteTokenInfo) {
             throw fastify.httpErrors.badRequest(
-              `Token not found: ${!baseTokenInfo ? baseToken : quoteToken}`,
+              sanitizeErrorMessage(
+                'Token not found: {}',
+                !baseTokenInfo ? baseToken : quoteToken,
+              ),
             );
           }
 

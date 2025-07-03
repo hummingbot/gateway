@@ -109,9 +109,9 @@ export async function pollEthereumTransaction(
               txReceipt.logs,
             );
           } catch (e) {
-            logger.error(`Error with connector: ${e.message}`);
+            logger.error('Error with connector:', e);
             throw fastify.httpErrors.internalServerError(
-              `Failed to decode logs: ${e.message}`,
+              'Failed to decode logs',
             );
           }
         }

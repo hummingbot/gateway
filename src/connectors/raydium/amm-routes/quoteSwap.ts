@@ -17,6 +17,7 @@ import {
   QuoteSwapRequest,
 } from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
+import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Raydium } from '../raydium';
 
 async function quoteAmmSwap(
@@ -458,7 +459,7 @@ async function formatSwapQuote(
   // Get pool info
   const poolInfo = await raydium.getAmmPoolInfo(poolAddress);
   if (!poolInfo) {
-    throw new Error(`Pool not found: ${poolAddress}`);
+    throw new Error(sanitizeErrorMessage('Pool not found: {}', poolAddress));
   }
 
   logger.info(
@@ -607,7 +608,10 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
 
           if (!baseTokenInfo || !quoteTokenInfo) {
             throw fastify.httpErrors.badRequest(
-              `Token not found: ${!baseTokenInfo ? baseToken : quoteToken}`,
+              sanitizeErrorMessage(
+                'Token not found: {}',
+                !baseTokenInfo ? baseToken : quoteToken,
+              ),
             );
           }
 

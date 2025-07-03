@@ -215,15 +215,19 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify, _options) => {
         if (e.message.includes('0x API Error:')) {
           // Handle specific 0x API errors
           if (e.message.includes('Invalid token')) {
-            return reply.notFound(e.message);
+            logger.error('Not found error:', e);
+            return reply.notFound('Resource not found');
           }
           if (e.message.includes('Insufficient liquidity')) {
-            return reply.badRequest(e.message);
+            logger.error('Request error:', e);
+            return reply.badRequest('Invalid request');
           }
-          return reply.badRequest(e.message);
+          logger.error('Request error:', e);
+          return reply.badRequest('Invalid request');
         }
 
-        return reply.internalServerError(`Failed to get quote: ${e.message}`);
+        logger.error('Unexpected error getting quote:', e);
+        return reply.internalServerError('Failed to get quote');
       }
     },
   );

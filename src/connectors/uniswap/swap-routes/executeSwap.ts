@@ -350,9 +350,8 @@ export const executeSwapRoute: FastifyPluginAsync = async (
           );
         }
 
-        return reply.internalServerError(
-          `Failed to execute swap: ${e.message}`,
-        );
+        logger.error('Unexpected error executing swap:', e);
+        return reply.internalServerError('Failed to execute swap');
       }
     },
   );

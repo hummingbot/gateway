@@ -13,6 +13,7 @@ import {
   GetSwapQuoteRequest,
 } from '../../../schemas/swap-schema';
 import { logger } from '../../../services/logger';
+import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Meteora } from '../meteora';
 
 export async function getRawSwapQuote(
@@ -223,7 +224,10 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
 
           if (!baseTokenInfo || !quoteTokenInfo) {
             throw fastify.httpErrors.badRequest(
-              `Token not found: ${!baseTokenInfo ? baseToken : quoteToken}`,
+              sanitizeErrorMessage(
+                'Token not found: {}',
+                !baseTokenInfo ? baseToken : quoteToken,
+              ),
             );
           }
 

@@ -21,6 +21,7 @@ import {
   OpenPositionResponse,
 } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
+import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Uniswap } from '../uniswap';
 import { getUniswapV3NftManagerAddress } from '../uniswap.contracts';
 import {
@@ -114,7 +115,9 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           'clmm',
         );
         if (!poolInfo) {
-          throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
+          throw fastify.httpErrors.notFound(
+            sanitizeErrorMessage('Pool not found: {}', poolAddress),
+          );
         }
 
         const baseTokenObj = uniswap.getTokenByAddress(
@@ -470,7 +473,8 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           e.message.includes('Insufficient') &&
           e.message.includes('allowance')
         ) {
-          throw fastify.httpErrors.badRequest(e.message);
+          logger.error('Request error:', e);
+          throw fastify.httpErrors.badRequest('Invalid request');
         }
 
         // Handle insufficient funds errors
@@ -484,9 +488,8 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         // Generic error
-        throw fastify.httpErrors.internalServerError(
-          `Failed to open position: ${e.message || 'Unknown error'}`,
-        );
+        logger.error('Unexpected error opening position:', e);
+        throw fastify.httpErrors.internalServerError('Failed to open position');
       }
     },
   );

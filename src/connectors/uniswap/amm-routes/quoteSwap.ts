@@ -410,21 +410,25 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
 
         // Check for specific error types
         if (e.message?.includes('Insufficient liquidity')) {
-          throw fastify.httpErrors.badRequest(e.message);
+          logger.error('Request error:', e);
+          throw fastify.httpErrors.badRequest('Invalid request');
         }
         if (
           e.message?.includes('Pool not found') ||
           e.message?.includes('No AMM pool found')
         ) {
-          throw fastify.httpErrors.notFound(e.message);
+          logger.error('Not found error:', e);
+          throw fastify.httpErrors.notFound('Resource not found');
         }
         if (e.message?.includes('token not found')) {
-          throw fastify.httpErrors.badRequest(e.message);
+          logger.error('Request error:', e);
+          throw fastify.httpErrors.badRequest('Invalid request');
         }
 
-        // Default to internal server error with the actual error message
+        // Default to internal server error
+        logger.error('Unexpected error getting swap quote:', e);
         throw fastify.httpErrors.internalServerError(
-          `Error getting swap quote: ${e.message || 'Unknown error'}`,
+          'Error getting swap quote',
         );
       }
     },

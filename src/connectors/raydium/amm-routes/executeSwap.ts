@@ -9,6 +9,7 @@ import {
   ExecuteSwapRequestType,
 } from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
+import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Raydium } from '../raydium';
 
 import { getRawSwapQuote } from './quoteSwap';
@@ -34,7 +35,9 @@ async function executeSwap(
   // Get pool info from address
   const poolInfo = await raydium.getAmmPoolInfo(poolAddress);
   if (!poolInfo) {
-    throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
+    throw fastify.httpErrors.notFound(
+      sanitizeErrorMessage('Pool not found: {}', poolAddress),
+    );
   }
 
   // Use configured slippage if not provided
@@ -267,7 +270,10 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
 
           if (!baseTokenInfo || !quoteTokenInfo) {
             throw fastify.httpErrors.badRequest(
-              `Token not found: ${!baseTokenInfo ? baseToken : quoteToken}`,
+              sanitizeErrorMessage(
+                'Token not found: {}',
+                !baseTokenInfo ? baseToken : quoteToken,
+              ),
             );
           }
 

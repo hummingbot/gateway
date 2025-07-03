@@ -8,6 +8,7 @@ import {
   SwapExecuteResponse,
 } from '../../../schemas/swap-schema';
 import { logger } from '../../../services/logger';
+import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { ZeroX } from '../0x';
 import { ZeroXExecuteSwapRequest } from '../schemas';
 
@@ -35,7 +36,10 @@ async function executeSwap(
 
   if (!baseTokenInfo || !quoteTokenInfo) {
     throw fastify.httpErrors.badRequest(
-      `Token not found: ${!baseTokenInfo ? baseToken : quoteToken}`,
+      sanitizeErrorMessage(
+        'Token not found: {}',
+        !baseTokenInfo ? baseToken : quoteToken,
+      ),
     );
   }
 

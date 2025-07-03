@@ -311,8 +311,8 @@ describe('0x executeSwap route', () => {
         console.error('Insufficient balance response:', response.body);
       }
       expect(response.statusCode).toBe(400);
-      expect(JSON.parse(response.body).message).toContain(
-        'Insufficient WETH balance',
+      expect(JSON.parse(response.body).message).toBe(
+        'Insufficient token balance to complete this swap',
       );
     });
 
@@ -345,11 +345,8 @@ describe('0x executeSwap route', () => {
       });
 
       expect(response.statusCode).toBe(400);
-      expect(JSON.parse(response.body).message).toContain(
-        'Insufficient allowance',
-      );
-      expect(JSON.parse(response.body).message).toContain(
-        mockQuoteResponse.allowanceTarget,
+      expect(JSON.parse(response.body).message).toBe(
+        'Insufficient token allowance. Please approve the token for the 0x Exchange Proxy using the /ethereum/approve endpoint',
       );
     });
 

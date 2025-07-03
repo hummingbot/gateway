@@ -7,6 +7,7 @@ import {
   GetQuoteResponseType,
 } from '../../../schemas/swap-schema';
 import { logger } from '../../../services/logger';
+import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Jupiter } from '../jupiter';
 import { JupiterGetQuoteRequest, JupiterGetQuoteResponse } from '../schemas';
 
@@ -49,7 +50,10 @@ async function getQuote(
 
   if (!baseTokenInfo || !quoteTokenInfo) {
     throw fastify.httpErrors.badRequest(
-      `Token not found: ${!baseTokenInfo ? baseToken : quoteToken}`,
+      sanitizeErrorMessage(
+        'Token not found: {}',
+        !baseTokenInfo ? baseToken : quoteToken,
+      ),
     );
   }
 

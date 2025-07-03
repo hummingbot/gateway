@@ -109,10 +109,12 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
         } else if (e.message && e.message.includes('invalid address')) {
           throw fastify.httpErrors.badRequest(`Invalid pool address`);
         } else if (e.message && e.message.includes('not found')) {
-          throw fastify.httpErrors.notFound(e.message);
+          logger.error('Not found error:', e);
+          throw fastify.httpErrors.notFound('Resource not found');
         } else {
+          logger.error('Unexpected error fetching pool info:', e);
           throw fastify.httpErrors.internalServerError(
-            `Failed to fetch pool info: ${e.message}`,
+            'Failed to fetch pool info',
           );
         }
       }

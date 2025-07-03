@@ -194,7 +194,7 @@ describe('0x quoteSwap route', () => {
       });
 
       expect(response.statusCode).toBe(404);
-      expect(JSON.parse(response.body).message).toContain('0x API Error');
+      expect(JSON.parse(response.body).message).toBe('Resource not found');
     });
 
     it('should return 400 when there is insufficient liquidity', async () => {
@@ -215,9 +215,7 @@ describe('0x quoteSwap route', () => {
       });
 
       expect(response.statusCode).toBe(400);
-      expect(JSON.parse(response.body).message).toContain(
-        'Insufficient liquidity',
-      );
+      expect(JSON.parse(response.body).message).toBe('Invalid request');
     });
 
     it('should use default slippage when not provided', async () => {

@@ -14,6 +14,7 @@ import {
   GetQuoteResponse,
 } from '../../../schemas/swap-schema';
 import { logger } from '../../../services/logger';
+import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Uniswap } from '../uniswap';
 
 import { UniswapGetQuoteRequest, UniswapGetQuoteResponse } from './schemas';
@@ -67,7 +68,10 @@ async function getQuote(
 
   if (!baseTokenInfo || !quoteTokenInfo) {
     throw fastify.httpErrors.notFound(
-      `Token not found: ${!baseTokenInfo ? baseToken : quoteToken}`,
+      sanitizeErrorMessage(
+        'Token not found: {}',
+        !baseTokenInfo ? baseToken : quoteToken,
+      ),
     );
   }
 

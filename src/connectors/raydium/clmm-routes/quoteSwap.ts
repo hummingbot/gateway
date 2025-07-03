@@ -18,6 +18,7 @@ import {
   QuoteSwapRequest,
 } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
+import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Raydium } from '../raydium';
 
 import { RaydiumClmmQuoteSwapRequest } from './schemas';
@@ -67,7 +68,9 @@ export async function getSwapQuote(
 
   const [poolInfo] = await raydium.getClmmPoolfromAPI(poolAddress);
   if (!poolInfo) {
-    throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
+    throw fastify.httpErrors.notFound(
+      sanitizeErrorMessage('Pool not found: {}', poolAddress),
+    );
   }
 
   // For buy orders, we're swapping quote token for base token (ExactOut)
@@ -395,7 +398,10 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
 
           if (!baseTokenInfo || !quoteTokenInfo) {
             throw fastify.httpErrors.badRequest(
-              `Token not found: ${!baseTokenInfo ? baseToken : quoteToken}`,
+              sanitizeErrorMessage(
+                'Token not found: {}',
+                !baseTokenInfo ? baseToken : quoteToken,
+              ),
             );
           }
 

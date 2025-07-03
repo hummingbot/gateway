@@ -196,7 +196,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (
             `Insufficient ${inputToken.symbol} balance: have ${inputBalanceFormatted}, need ${requiredInputAmount}`,
           );
           throw fastify.httpErrors.badRequest(
-            `Insufficient ${inputToken.symbol} balance. You have ${inputBalanceFormatted} ${inputToken.symbol} but need ${requiredInputAmount} ${inputToken.symbol} to complete this swap.`,
+            'Insufficient token balance to complete this swap',
           );
         }
 
@@ -224,7 +224,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (
           if (currentAllowance.lt(amountNeeded)) {
             logger.error(`Insufficient allowance for ${inputToken.symbol}`);
             return reply.badRequest(
-              `Insufficient allowance for ${inputToken.symbol}. Please approve at least ${zeroX.formatTokenAmount(amountNeeded.toString(), inputToken.decimals)} ${inputToken.symbol} for the 0x Exchange Proxy (${quoteResponse.allowanceTarget}) using the /ethereum/approve endpoint`,
+              'Insufficient token allowance. Please approve the token for the 0x Exchange Proxy using the /ethereum/approve endpoint',
             );
           } else {
             logger.info(
@@ -318,29 +318,27 @@ export const executeSwapRoute: FastifyPluginAsync = async (
           );
         }
 
-        // Check if it's a Fastify HTTP error
-        if (e.statusCode && e.statusCode >= 400 && e.statusCode < 500) {
-          return reply.code(e.statusCode).send({
-            statusCode: e.statusCode,
-            error: e.name || 'Bad Request',
-            message: e.message,
-          });
+        // Check if it's a Fastify HTTP error - if so, re-throw to preserve the message
+        if (e.statusCode) {
+          throw e;
         }
 
         if (e.message.includes('0x API Error:')) {
           // Handle specific 0x API errors
           if (e.message.includes('Invalid token')) {
-            return reply.notFound(e.message);
+            logger.error('Not found error:', e);
+            return reply.notFound('Resource not found');
           }
           if (e.message.includes('Insufficient liquidity')) {
-            return reply.badRequest(e.message);
+            logger.error('Request error:', e);
+            return reply.badRequest('Invalid request');
           }
-          return reply.badRequest(e.message);
+          logger.error('Request error:', e);
+          return reply.badRequest('Invalid request');
         }
 
-        return reply.internalServerError(
-          `Failed to execute swap: ${e.message}`,
-        );
+        logger.error('Unexpected error executing swap:', e);
+        return reply.internalServerError('Failed to execute swap');
       }
     },
   );

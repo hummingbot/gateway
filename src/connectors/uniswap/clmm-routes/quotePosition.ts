@@ -18,6 +18,7 @@ import {
   QuotePositionResponse,
 } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
+import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Uniswap } from '../uniswap';
 import { parseFeeTier, getUniswapPoolInfo } from '../uniswap.utils';
 
@@ -88,7 +89,9 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
           'clmm',
         );
         if (!poolInfo) {
-          throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
+          throw fastify.httpErrors.notFound(
+            sanitizeErrorMessage('Pool not found: {}', poolAddress),
+          );
         }
 
         const baseTokenObj = uniswap.getTokenByAddress(

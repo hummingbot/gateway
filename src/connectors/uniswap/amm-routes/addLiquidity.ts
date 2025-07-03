@@ -422,7 +422,8 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
 
         // Handle specific user-actionable errors
         if (e.message && e.message.includes('Insufficient allowance')) {
-          throw fastify.httpErrors.badRequest(e.message);
+          logger.error('Request error:', e);
+          throw fastify.httpErrors.badRequest('Invalid request');
         }
 
         // Handle insufficient funds errors

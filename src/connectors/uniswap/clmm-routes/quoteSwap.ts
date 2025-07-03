@@ -18,6 +18,7 @@ import {
   QuoteSwapResponse,
 } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
+import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Uniswap } from '../uniswap';
 import {
   formatTokenAmount,
@@ -179,12 +180,16 @@ export async function getUniswapClmmQuote(
 
   if (!baseTokenObj) {
     logger.error(`Base token not found: ${baseToken}`);
-    throw new Error(`Base token not found: ${baseToken}`);
+    throw new Error(
+      sanitizeErrorMessage('Base token not found: {}', baseToken),
+    );
   }
 
   if (!quoteTokenObj) {
     logger.error(`Quote token not found: ${quoteToken}`);
-    throw new Error(`Quote token not found: ${quoteToken}`);
+    throw new Error(
+      sanitizeErrorMessage('Quote token not found: {}', quoteToken),
+    );
   }
 
   logger.info(
@@ -371,7 +376,9 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           'clmm',
         );
         if (!poolInfo) {
-          throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
+          throw fastify.httpErrors.notFound(
+            sanitizeErrorMessage('Pool not found: {}', poolAddress),
+          );
         }
 
         let baseTokenToUse: string;
@@ -423,8 +430,9 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         if (e.statusCode) {
           throw e;
         }
+        logger.error('Unexpected error getting swap quote:', e);
         throw fastify.httpErrors.internalServerError(
-          `Error getting swap quote: ${e.message}`,
+          'Error getting swap quote',
         );
       }
     },
