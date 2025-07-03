@@ -47,6 +47,9 @@ describe('Raydium SDK v0.1.141-alpha Integration Tests', () => {
   };
 
   beforeAll(async () => {
+    // Set passphrase for wallet access
+    process.env.GATEWAY_PASSPHRASE = 'a';
+
     // Initialize real instances
     solana = await Solana.getInstance('mainnet-beta');
     raydium = await Raydium.getInstance('mainnet-beta');
@@ -56,6 +59,8 @@ describe('Raydium SDK v0.1.141-alpha Integration Tests', () => {
   });
 
   afterAll(async () => {
+    // Clean up
+    delete process.env.GATEWAY_PASSPHRASE;
     // await Solana.shutdown();
   });
 
