@@ -23,16 +23,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
   // Import the httpErrors plugin to ensure it's available
   await fastify.register(require('@fastify/sensible'));
 
-  // Get first wallet address for example
-  const ethereum = await Ethereum.getInstance('base');
-  let firstWalletAddress = '<ethereum-wallet-address>';
-
-  try {
-    firstWalletAddress =
-      (await ethereum.getFirstWalletAddress()) || firstWalletAddress;
-  } catch (error) {
-    logger.warn('No wallets found for examples in schema');
-  }
+  const walletAddressExample = await Ethereum.getWalletAddressExample();
 
   fastify.post<{
     Body: ExecuteSwapRequestType;
@@ -48,7 +39,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             ...ExecuteSwapRequest.properties,
             network: { type: 'string', default: 'base' },
-            walletAddress: { type: 'string', examples: [firstWalletAddress] },
+            walletAddress: { type: 'string', examples: [walletAddressExample] },
             baseToken: { type: 'string', examples: ['WETH'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
             amount: { type: 'number', examples: [0.001] },
@@ -85,11 +76,10 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         // Get wallet address - either from request or first available
         let walletAddress = requestedWalletAddress;
         if (!walletAddress) {
-          const ethereum = await Ethereum.getInstance(networkToUse);
-          walletAddress = await ethereum.getFirstWalletAddress();
+          walletAddress = await Ethereum.getFirstWalletAddress();
           if (!walletAddress) {
             throw fastify.httpErrors.badRequest(
-              'No wallet address provided and no default wallet found',
+              'No wallet address provided and no wallets found.',
             );
           }
           logger.info(`Using first available wallet address: ${walletAddress}`);
@@ -186,6 +176,38 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         logger.info(`Output token: ${outputTokenAddress}`);
         logger.info(`Side: ${side}`);
         logger.info(`Fee tier: ${quote.feeTier}`);
+
+        // Check allowance for input token (including WETH)
+        const tokenContract = ethereum.getContract(inputTokenAddress, wallet);
+        const allowance = await ethereum.getERC20Allowance(
+          tokenContract,
+          wallet,
+          routerAddress,
+          quote.inputToken.decimals,
+        );
+
+        const amountNeeded =
+          side === 'SELL' ? quote.rawAmountIn : quote.rawMaxAmountIn;
+        const currentAllowance = BigNumber.from(allowance.value);
+
+        logger.info(
+          `Current allowance: ${formatTokenAmount(currentAllowance.toString(), quote.inputToken.decimals)} ${quote.inputToken.symbol}`,
+        );
+        logger.info(
+          `Amount needed: ${formatTokenAmount(amountNeeded, quote.inputToken.decimals)} ${quote.inputToken.symbol}`,
+        );
+
+        // Check if allowance is sufficient
+        if (currentAllowance.lt(amountNeeded)) {
+          logger.error(`Insufficient allowance for ${quote.inputToken.symbol}`);
+          throw fastify.httpErrors.badRequest(
+            `Insufficient allowance for ${quote.inputToken.symbol}. Please approve at least ${formatTokenAmount(amountNeeded, quote.inputToken.decimals)} ${quote.inputToken.symbol} (${inputTokenAddress}) for the Uniswap SwapRouter02 (${routerAddress})`,
+          );
+        } else {
+          logger.info(
+            `Sufficient allowance exists: ${formatTokenAmount(currentAllowance.toString(), quote.inputToken.decimals)} ${quote.inputToken.symbol}`,
+          );
+        }
 
         // Build swap parameters
         const swapParams = {

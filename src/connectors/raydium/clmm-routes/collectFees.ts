@@ -95,17 +95,7 @@ export async function collectFees(
 }
 
 export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
-  const solana = await Solana.getInstance('mainnet-beta');
-  let firstWalletAddress = '<solana-wallet-address>';
-
-  try {
-    firstWalletAddress =
-      (await solana.getFirstWalletAddress()) || firstWalletAddress;
-  } catch (error) {
-    logger.debug('No wallets found for examples in schema');
-  }
-
-  CollectFeesRequest.properties.walletAddress.examples = [firstWalletAddress];
+  const walletAddressExample = await Solana.getWalletAddressExample();
 
   fastify.post<{
     Body: CollectFeesRequestType;
@@ -121,6 +111,7 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             ...CollectFeesRequest.properties,
             network: { type: 'string', default: 'mainnet-beta' },
+            walletAddress: { type: 'string', examples: [walletAddressExample] },
           },
         },
         response: { 200: CollectFeesResponse },

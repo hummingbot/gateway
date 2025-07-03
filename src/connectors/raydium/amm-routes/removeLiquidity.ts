@@ -257,21 +257,7 @@ async function removeLiquidity(
 }
 
 export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
-  // Get first wallet address for example
-  const solana = await Solana.getInstance('mainnet-beta');
-  let firstWalletAddress = '<solana-wallet-address>';
-
-  const foundWallet = await solana.getFirstWalletAddress();
-  if (foundWallet) {
-    firstWalletAddress = foundWallet;
-  } else {
-    logger.debug('No wallets found for examples in schema');
-  }
-
-  // Update schema example
-  RemoveLiquidityRequest.properties.walletAddress.examples = [
-    firstWalletAddress,
-  ];
+  const walletAddressExample = await Solana.getWalletAddressExample();
 
   fastify.post<{
     Body: RemoveLiquidityRequestType;
@@ -287,6 +273,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             ...RemoveLiquidityRequest.properties,
             network: { type: 'string', default: 'mainnet-beta' },
+            walletAddress: { type: 'string', examples: [walletAddressExample] },
             poolAddress: {
               type: 'string',
               examples: ['6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg'],

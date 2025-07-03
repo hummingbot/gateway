@@ -1,3 +1,6 @@
+const { pathsToModuleNameMapper } = require('ts-jest');
+const { compilerOptions } = require('./tsconfig.json');
+
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
@@ -12,13 +15,21 @@ module.exports = {
     'src/connectors/uniswap/uniswap.ts',
     'src/connectors/uniswap/uniswap.lp.helper.ts',
     'src/network/network.controllers.ts',
-    'src/services/ethereum-base.ts',
-    'src/services/telemetry-transport.ts',
     'test/*',
   ],
   modulePathIgnorePatterns: ['<rootDir>/dist/'],
   setupFilesAfterEnv: ['<rootDir>/test/jest-setup.js'],
-  moduleNameMapper: {
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    'test-helpers',
+    '<rootDir>/test-scripts/',
+  ],
+  testMatch: ['<rootDir>/test/**/*.test.ts', '<rootDir>/test/**/*.test.js'],
+  transform: {
+    '^.+\\.tsx?$': 'ts-jest',
   },
-  testPathIgnorePatterns: ['/node_modules/', 'test-helpers'],
+  transformIgnorePatterns: ['/node_modules/(?!.*superjson)'],
+  moduleNameMapper: pathsToModuleNameMapper(compilerOptions.paths, {
+    prefix: '<rootDir>/',
+  }),
 };

@@ -165,19 +165,7 @@ async function openPosition(
 }
 
 export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
-  // Get first wallet address for example
-  const solana = await Solana.getInstance('mainnet-beta');
-  let firstWalletAddress = '<solana-wallet-address>';
-
-  const foundWallet = await solana.getFirstWalletAddress();
-  if (foundWallet) {
-    firstWalletAddress = foundWallet;
-  } else {
-    logger.debug('No wallets found for examples in schema');
-  }
-
-  // Update schema example
-  OpenPositionRequest.properties.walletAddress.examples = [firstWalletAddress];
+  const walletAddressExample = await Solana.getWalletAddressExample();
 
   fastify.post<{
     Body: OpenPositionRequestType;
@@ -193,6 +181,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             ...OpenPositionRequest.properties,
             network: { type: 'string', default: 'mainnet-beta' },
+            walletAddress: { type: 'string', examples: [walletAddressExample] },
             lowerPrice: { type: 'number', examples: [100] },
             upperPrice: { type: 'number', examples: [180] },
             poolAddress: {

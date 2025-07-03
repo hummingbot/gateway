@@ -1,6 +1,6 @@
 import { Contract } from '@ethersproject/contracts';
-import { Percent } from '@uniswap/sdk-core';
-import { NonfungiblePositionManager } from '@uniswap/v3-sdk';
+import { Percent, CurrencyAmount } from '@uniswap/sdk-core';
+import { NonfungiblePositionManager, Position } from '@uniswap/v3-sdk';
 import { BigNumber } from 'ethers';
 import { FastifyPluginAsync } from 'fastify';
 import JSBI from 'jsbi';
@@ -14,14 +14,14 @@ import {
 } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
-import {
-  getUniswapV3NftManagerAddress,
-  POSITION_MANAGER_ABI,
-  ERC20_ABI,
-} from '../uniswap.contracts';
+import { POSITION_MANAGER_ABI } from '../uniswap.contracts';
 import { formatTokenAmount } from '../uniswap.utils';
 
 export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
+  await fastify.register(require('@fastify/sensible'));
+
+  const walletAddressExample = await Ethereum.getWalletAddressExample();
+
   fastify.post<{
     Body: RemoveLiquidityRequestType;
     Reply: RemoveLiquidityResponseType;
@@ -36,10 +36,11 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             ...RemoveLiquidityRequest.properties,
             network: { type: 'string', default: 'base' },
-            walletAddress: { type: 'string', examples: ['0x...'] },
+            walletAddress: { type: 'string', examples: [walletAddressExample] },
             positionAddress: {
               type: 'string',
               description: 'Position NFT token ID',
+              examples: ['1234'],
             },
             percentageToRemove: {
               type: 'number',
@@ -103,6 +104,16 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         const positionManagerAddress =
           uniswap.config.uniswapV3NftManagerAddress(networkToUse);
 
+        // Check NFT ownership
+        try {
+          await uniswap.checkNFTOwnership(positionAddress, walletAddress);
+        } catch (error: any) {
+          if (error.message.includes('is not owned by')) {
+            throw fastify.httpErrors.forbidden(error.message);
+          }
+          throw fastify.httpErrors.badRequest(error.message);
+        }
+
         // Create position manager contract
         const positionManager = new Contract(
           positionManagerAddress,
@@ -117,10 +128,11 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         const token0 = uniswap.getTokenByAddress(position.token0);
         const token1 = uniswap.getTokenByAddress(position.token1);
 
-        // Determine base and quote tokens
-        const baseTokenSymbol =
-          token0.symbol === 'WETH' ? token0.symbol : token1.symbol;
-        const isBaseToken0 = token0.symbol === baseTokenSymbol;
+        // Determine base and quote tokens - WETH or lower address is base
+        const isBaseToken0 =
+          token0.symbol === 'WETH' ||
+          (token1.symbol !== 'WETH' &&
+            token0.address.toLowerCase() < token1.address.toLowerCase());
 
         // Get current liquidity
         const currentLiquidity = position.liquidity;
@@ -136,110 +148,87 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           throw fastify.httpErrors.notFound('Pool not found for position');
         }
 
-        // Calculate expected token amounts based on liquidity to remove
-        // This is a crude approximation - actual amounts will be calculated by the contract
-        const sqrtRatioX96 = BigNumber.from(pool.sqrtRatioX96.toString());
-        const liquidity = BigNumber.from(liquidityToRemove.toString());
+        // Create a Position instance to calculate expected amounts
+        const positionSDK = new Position({
+          pool,
+          tickLower: position.tickLower,
+          tickUpper: position.tickUpper,
+          liquidity: currentLiquidity.toString(),
+        });
 
-        // Calculate token amounts using Uniswap V3 formulas (simplified)
-        const Q96 = BigNumber.from(2).pow(96);
-        let amount0, amount1;
+        // Calculate the amounts that will be withdrawn
+        const liquidityPercentage = new Percent(
+          Math.floor(percentageToRemove * 100),
+          10000,
+        );
+        const partialPosition = new Position({
+          pool,
+          tickLower: position.tickLower,
+          tickUpper: position.tickUpper,
+          liquidity: JSBI.divide(
+            JSBI.multiply(
+              JSBI.BigInt(currentLiquidity.toString()),
+              JSBI.BigInt(liquidityPercentage.numerator.toString()),
+            ),
+            JSBI.BigInt(liquidityPercentage.denominator.toString()),
+          ),
+        });
 
-        if (
-          position.tickLower < pool.tickCurrent &&
-          pool.tickCurrent < position.tickUpper
-        ) {
-          // Position straddles current tick
-          amount0 = liquidity
-            .mul(Q96)
-            .mul(BigNumber.from(Math.sqrt(2 ** 96)).sub(sqrtRatioX96))
-            .div(sqrtRatioX96)
-            .div(Q96);
+        // Get the expected amounts
+        const amount0 = partialPosition.amount0;
+        const amount1 = partialPosition.amount1;
 
-          amount1 = liquidity
-            .mul(sqrtRatioX96.sub(BigNumber.from(Math.sqrt(2 ** 96))))
-            .div(Q96);
-        } else if (pool.tickCurrent <= position.tickLower) {
-          // Position is below current tick
-          amount0 = liquidity.mul(BigNumber.from(2).pow(96 / 2)).div(Q96);
-          amount1 = BigNumber.from(0);
-        } else {
-          // Position is above current tick
-          amount0 = BigNumber.from(0);
-          amount1 = liquidity.mul(BigNumber.from(2).pow(96 / 2)).div(Q96);
-        }
+        // Apply slippage tolerance
+        const slippageTolerance = new Percent(100, 10000); // 1% slippage
+        const amount0Min = amount0.multiply(
+          new Percent(1).subtract(slippageTolerance),
+        ).quotient;
+        const amount1Min = amount1.multiply(
+          new Percent(1).subtract(slippageTolerance),
+        ).quotient;
+
+        // Also add any fees that have been collected to the expected amounts
+        const totalAmount0 = CurrencyAmount.fromRawAmount(
+          token0,
+          JSBI.add(
+            amount0.quotient,
+            JSBI.BigInt(position.tokensOwed0.toString()),
+          ),
+        );
+        const totalAmount1 = CurrencyAmount.fromRawAmount(
+          token1,
+          JSBI.add(
+            amount1.quotient,
+            JSBI.BigInt(position.tokensOwed1.toString()),
+          ),
+        );
 
         // Create parameters for removing liquidity
         const removeParams = {
           tokenId: positionAddress,
-          liquidityPercentage: new Percent(
-            Math.floor(percentageToRemove * 100),
-            10000,
-          ),
-          slippageTolerance: new Percent(100, 10000), // 1% slippage tolerance
+          liquidityPercentage,
+          slippageTolerance,
           deadline: Math.floor(Date.now() / 1000) + 60 * 20, // 20 minutes from now
           burnToken: false,
           collectOptions: {
-            expectedCurrencyOwed0: amount0,
-            expectedCurrencyOwed1: amount1,
+            expectedCurrencyOwed0: totalAmount0,
+            expectedCurrencyOwed1: totalAmount1,
             recipient: walletAddress,
           },
         };
 
-        // For the sake of simplicity, we'll use a different approach
-        // We'd normally use NonfungiblePositionManager.removeCallParameters, but it may need custom parameters
-        // Here we'll construct a basic calldata for decreaseLiquidity and collect operations
-
-        // Simplified approach to create calldata for removing some liquidity
-        const liquidityToRemoveStr = liquidityToRemove.toString();
-
-        const { calldata, value } = {
-          calldata: JSON.stringify([
-            {
-              method: 'decreaseLiquidity',
-              params: {
-                tokenId: positionAddress,
-                liquidity: liquidityToRemoveStr,
-                amount0Min: amount0.toString(),
-                amount1Min: amount1.toString(),
-                deadline: Math.floor(Date.now() / 1000) + 60 * 20,
-              },
-            },
-            {
-              method: 'collect',
-              params: {
-                tokenId: positionAddress,
-                recipient: walletAddress,
-                amount0Max: amount0.toString(),
-                amount1Max: amount1.toString(),
-              },
-            },
-          ]),
-          value: '0',
-        };
-
-        // Initialize position manager with multicall interface
-        const positionManagerWithSigner = new Contract(
-          positionManagerAddress,
-          [
-            {
-              inputs: [
-                { internalType: 'bytes[]', name: 'data', type: 'bytes[]' },
-              ],
-              name: 'multicall',
-              outputs: [
-                { internalType: 'bytes[]', name: 'results', type: 'bytes[]' },
-              ],
-              stateMutability: 'payable',
-              type: 'function',
-            },
-          ],
-          wallet,
-        );
+        // Get the calldata using the SDK
+        const { calldata, value } =
+          NonfungiblePositionManager.removeCallParameters(
+            positionSDK,
+            removeParams,
+          );
 
         // Execute the transaction to remove liquidity
-        const tx = await positionManagerWithSigner.multicall([calldata], {
-          value: BigNumber.from(value.toString()),
+        const tx = await wallet.sendTransaction({
+          to: positionManagerAddress,
+          data: calldata,
+          value: BigNumber.from(value),
           gasLimit: 500000,
         });
 
@@ -252,13 +241,13 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           18, // ETH has 18 decimals
         );
 
-        // Calculate token amounts removed (approximate)
+        // Calculate token amounts removed including fees
         const token0AmountRemoved = formatTokenAmount(
-          amount0.toString(),
+          totalAmount0.quotient.toString(),
           token0.decimals,
         );
         const token1AmountRemoved = formatTokenAmount(
-          amount1.toString(),
+          totalAmount1.quotient.toString(),
           token1.decimals,
         );
 

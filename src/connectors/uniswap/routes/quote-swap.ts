@@ -5,7 +5,7 @@ import {
   SwapRoute,
   SwapType,
 } from '@uniswap/smart-order-router';
-import { ethers } from 'ethers';
+import { ethers, BigNumber } from 'ethers';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
@@ -14,6 +14,7 @@ import {
   GetSwapQuoteResponse,
   GetSwapQuoteRequestType,
 } from '../../../schemas/swap-schema';
+import { ConfigManagerV2 } from '../../../services/config-manager-v2';
 import { logger } from '../../../services/logger';
 import { formatTokenAmount } from '../uniswap.utils';
 
@@ -81,15 +82,42 @@ export async function getUniswapQuote(
     : [quoteToken, baseToken];
 
   // Convert amount to token units with decimals - ensure proper precision
-  // For BUY orders with USDC as input, we need to ensure proper decimal handling
-  const scaleFactor = Math.pow(10, inputToken.decimals);
-  const scaledAmount = amount * scaleFactor;
-  const rawAmount = Math.floor(scaledAmount).toString();
+  // For BUY orders, amount represents the desired output (baseToken to buy)
+  // For SELL orders, amount represents the input (baseToken to sell)
+  let tradeAmount;
+  if (exactIn) {
+    // SELL: amount is the input amount (baseToken)
+    const scaleFactor = Math.pow(10, inputToken.decimals);
+    const scaledAmount = amount * scaleFactor;
+    const rawAmount = Math.floor(scaledAmount).toString();
+    logger.info(
+      `SELL - Amount conversion for ${inputToken.symbol} (decimals: ${inputToken.decimals}): ${amount} -> ${scaledAmount} -> ${rawAmount}`,
+    );
+    tradeAmount = CurrencyAmount.fromRawAmount(inputToken, rawAmount);
 
-  logger.info(
-    `Amount conversion for ${inputToken.symbol} (decimals: ${inputToken.decimals}): ${amount} -> ${scaledAmount} -> ${rawAmount}`,
-  );
-  const inputAmount = CurrencyAmount.fromRawAmount(inputToken, rawAmount);
+    // Debug: Verify the tradeAmount was created correctly
+    logger.info(`SELL - tradeAmount verification:
+    - toExact(): ${tradeAmount.toExact()}
+    - quotient: ${tradeAmount.quotient.toString()}
+    - currency.symbol: ${tradeAmount.currency.symbol}
+    - currency.address: ${tradeAmount.currency.address}`);
+  } else {
+    // BUY: amount is the desired output amount (baseToken to buy)
+    const scaleFactor = Math.pow(10, outputToken.decimals);
+    const scaledAmount = amount * scaleFactor;
+    const rawAmount = Math.floor(scaledAmount).toString();
+    logger.info(
+      `BUY - Amount conversion for ${outputToken.symbol} (decimals: ${outputToken.decimals}): ${amount} -> ${scaledAmount} -> ${rawAmount}`,
+    );
+    tradeAmount = CurrencyAmount.fromRawAmount(outputToken, rawAmount);
+
+    // Debug: Verify the tradeAmount was created correctly
+    logger.info(`BUY - tradeAmount verification:
+    - toExact(): ${tradeAmount.toExact()}
+    - quotient: ${tradeAmount.quotient.toString()}
+    - currency.symbol: ${tradeAmount.currency.symbol}
+    - currency.address: ${tradeAmount.currency.address}`);
+  }
 
   // Calculate slippage tolerance
   const slippageTolerance = slippagePct
@@ -107,14 +135,14 @@ export async function getUniswapQuote(
     type: SwapType.SWAP_ROUTER_02, // Explicitly use SwapRouter02
     recipient, // Add recipient from parameter
     slippageTolerance,
-    deadline: Math.floor(Date.now() / 1000) + 1800, // 30 minutes
+    deadline: Math.floor(Date.now() / 1000) + 1800, // 30 minutes from now
   };
 
   // Log the parameters being sent to the alpha router
   logger.info(`Alpha router params:
   - Input token: ${inputToken.symbol} (${inputToken.address})
   - Output token: ${outputToken.symbol} (${outputToken.address})
-  - Input amount: ${inputAmount.toExact()} (${rawAmount} in raw units)
+  - Trade amount: ${tradeAmount.toExact()} ${exactIn ? inputToken.symbol : outputToken.symbol}
   - Trade type: ${exactIn ? 'EXACT_INPUT' : 'EXACT_OUTPUT'}
   - Slippage tolerance: ${slippageTolerance.toFixed(2)}%
   - Chain ID: ${ethereum.chainId}`);
@@ -123,7 +151,7 @@ export async function getUniswapQuote(
   // Add extra validation to ensure tokens are correctly formed
   // Simple logging, similar to v2.2.0
   logger.info(
-    `Converting amount for ${inputToken.symbol} (decimals: ${inputToken.decimals}): ${amount} -> ${inputAmount.toExact()} -> ${rawAmount}`,
+    `Converting amount for ${exactIn ? inputToken.symbol : outputToken.symbol} (decimals: ${exactIn ? inputToken.decimals : outputToken.decimals}): ${amount} -> ${tradeAmount.toExact()}`,
   );
 
   let route;
@@ -133,25 +161,32 @@ export async function getUniswapQuote(
       `Fetching trade data for ${baseToken.address}-${quoteToken.address}`,
     );
 
-    // Only support mainnet for alpha router routes
-    if (network !== 'mainnet') {
-      throw fastify.httpErrors.badRequest(
-        `Alpha router quotes are only supported on mainnet. Current network: ${network}`,
-      );
-    }
+    // Log the network being used
+    logger.info(`Using AlphaRouter for network: ${network}`);
 
-    // For mainnet, just eliminate splits which seems to be causing issues
-    const routingConfig = {
-      maxSplits: 0, // Disable splits for simplicity
-      distributionPercent: 100, // Use 100% for a single route
-    };
+    // Let the AlphaRouter use its default configuration
+    // This will automatically select the best pools based on liquidity and price
+
+    // For EXACT_OUTPUT, we need to specify the currency we want to receive
+    // The tradeAmount should be the output currency amount
+    const currencyAmount = tradeAmount;
+    const otherCurrency = exactIn ? outputToken : inputToken;
+
+    logger.info(`Calling alphaRouter.route with:
+    - currencyAmount: ${currencyAmount.toExact()} ${currencyAmount.currency.symbol}
+    - otherCurrency: ${otherCurrency.symbol}
+    - tradeType: ${exactIn ? 'EXACT_INPUT' : 'EXACT_OUTPUT'}`);
+
+    // Debug the raw values being passed
+    logger.info(
+      `Debug currencyAmount raw: ${currencyAmount.quotient.toString()}`,
+    );
 
     route = await alphaRouter.route(
-      inputAmount,
-      outputToken,
+      currencyAmount,
+      otherCurrency,
       exactIn ? TradeType.EXACT_INPUT : TradeType.EXACT_OUTPUT,
       swapOptions,
-      routingConfig,
     );
   } catch (routeError) {
     // Simple error logging like v2.2.0
@@ -177,10 +212,140 @@ export async function getUniswapQuote(
     `Route generation successful - has method parameters: ${!!route.methodParameters}`,
   );
 
+  // Log pool selection details to debug fee tier issues
+  if (route.route && route.route.length > 0) {
+    route.route.forEach((pool, index) => {
+      if ('fee' in pool) {
+        logger.info(
+          `Route pool ${index + 1}: ${pool.token0.symbol}/${pool.token1.symbol} - Fee: ${pool.fee} (${pool.fee / 10000}%)`,
+        );
+      }
+    });
+  }
+
+  // Debug: Log the methodParameters for all orders
+  if (route.methodParameters) {
+    logger.info(`${side} order methodParameters:
+    - calldata length: ${route.methodParameters.calldata.length}
+    - value: ${route.methodParameters.value}
+    - to: ${route.methodParameters.to}`);
+
+    // Try to decode the calldata to see what function is being called
+    const calldataHex = route.methodParameters.calldata;
+    const functionSelector = calldataHex.slice(0, 10);
+    logger.info(`Function selector in calldata: ${functionSelector}`);
+
+    // Common Uniswap V3 function selectors:
+    // 0x5ae401dc = multicall(uint256 deadline, bytes[] data)
+    // 0x5023b4df = exactInputSingle
+    // 0xdb3e2198 = exactOutputSingle
+
+    // The amount should be somewhere in the calldata
+    if (calldataHex.length > 200 && functionSelector === '0x5ae401dc') {
+      // This is a multicall, need to decode the inner call
+      // For multicall(deadline, bytes[] data), the actual swap function is deeper in the calldata
+      // Let's trace through the calldata structure
+
+      // Multicall parameters:
+      // 0x5ae401dc = multicall selector (4 bytes = 8 hex chars)
+      // deadline (32 bytes = 64 hex chars) starts at position 8
+      // offset to data array (32 bytes = 64 hex chars) starts at position 72
+
+      const deadline = '0x' + calldataHex.slice(8, 72);
+      logger.info(`Deadline: ${parseInt(deadline, 16)}`);
+
+      // The actual swap data starts later in the calldata
+      // Look for common swap function selectors in the data
+      const exactInputSingleSelector = '04e45aaf';
+      const exactOutputSingleSelector = 'db3e2198';
+
+      const exactInputPos = calldataHex.indexOf(exactInputSingleSelector);
+      const exactOutputPos = calldataHex.indexOf(exactOutputSingleSelector);
+
+      if (exactInputPos > -1) {
+        logger.info(`Found exactInputSingle at position ${exactInputPos}`);
+        const innerFunctionSelector =
+          '0x' + calldataHex.slice(exactInputPos, exactInputPos + 8);
+        logger.info(`Inner function selector: ${innerFunctionSelector}`);
+
+        if (innerFunctionSelector === '0x04e45aaf') {
+          // exactInputSingle structure:
+          // tokenIn, tokenOut, fee, recipient, amountIn, amountOutMinimum, sqrtPriceLimitX96
+          // Each param is 32 bytes (64 hex chars)
+
+          const paramStart = exactInputPos + 8; // Skip function selector
+          let offset = paramStart;
+
+          const tokenIn = '0x' + calldataHex.slice(offset + 24, offset + 64);
+          offset += 64;
+          const tokenOut = '0x' + calldataHex.slice(offset + 24, offset + 64);
+          offset += 64;
+          const fee = parseInt(
+            '0x' + calldataHex.slice(offset + 56, offset + 64),
+            16,
+          );
+          offset += 64;
+          const recipient = '0x' + calldataHex.slice(offset + 24, offset + 64);
+          offset += 64;
+          const amountInHex = '0x' + calldataHex.slice(offset, offset + 64);
+          offset += 64;
+          const minAmountOutHex = '0x' + calldataHex.slice(offset, offset + 64);
+
+          logger.info(`exactInputSingle parameters:
+          - tokenIn: ${tokenIn}
+          - tokenOut: ${tokenOut}  
+          - fee: ${fee} (${fee / 10000}%)
+          - recipient: ${recipient}
+          - amountIn: ${amountInHex} = ${BigNumber.from(amountInHex).toString()}
+          - minAmountOut: ${minAmountOutHex} = ${BigNumber.from(minAmountOutHex).toString()}`);
+
+          // Check the actual amount being swapped
+          const amountInWei = BigNumber.from(amountInHex);
+          const amountInEther = Number(
+            formatTokenAmount(amountInWei.toString(), 18),
+          );
+          logger.info(`Amount being swapped: ${amountInEther} WETH`);
+
+          if (amountInEther === 0) {
+            logger.error(`CRITICAL: Swap amount is 0 WETH!`);
+          }
+
+          if (exactIn) {
+            logger.info(`SELL order using exactInputSingle (expected)`);
+          } else {
+            logger.warn(
+              `BUY order is using exactInputSingle instead of exactOutputSingle!`,
+            );
+          }
+        }
+      } else if (exactOutputPos > -1) {
+        logger.info(`Found exactOutputSingle at position ${exactOutputPos}`);
+        const innerFunctionSelector =
+          '0x' + calldataHex.slice(exactOutputPos, exactOutputPos + 8);
+        logger.info(`Inner function selector: ${innerFunctionSelector}`);
+      }
+    }
+
+    // Log the trade details from the route
+    if (route.trade) {
+      logger.info(`Route trade details:
+      - inputAmount: ${route.trade.inputAmount.toExact()} ${route.trade.inputAmount.currency.symbol}
+      - outputAmount: ${route.trade.outputAmount.toExact()} ${route.trade.outputAmount.currency.symbol}
+      - tradeType: ${route.trade.tradeType}`);
+    }
+  }
+
   // Simple route logging, similar to v2.2.0
   logger.info(
-    `Best trade for ${baseToken.address}-${quoteToken.address}: ${route.quote.toExact()}${outputToken.symbol}.`,
+    `Best trade for ${baseToken.address}-${quoteToken.address}: ${route.quote.toExact()} ${exactIn ? outputToken.symbol : inputToken.symbol}`,
   );
+
+  // Additional debug logging for BUY orders
+  if (!exactIn) {
+    logger.info(
+      `BUY order debug - tradeAmount: ${tradeAmount.toExact()} ${outputToken.symbol}, route.quote: ${route.quote.toExact()} ${inputToken.symbol}`,
+    );
+  }
 
   // Calculate amounts
   let estimatedAmountIn, estimatedAmountOut;
@@ -188,7 +353,7 @@ export async function getUniswapQuote(
   // For SELL (exactIn), we know the exact input amount, output is estimated
   if (exactIn) {
     estimatedAmountIn = Number(
-      formatTokenAmount(inputAmount.quotient.toString(), inputToken.decimals),
+      formatTokenAmount(tradeAmount.quotient.toString(), inputToken.decimals),
     );
 
     estimatedAmountOut = Number(
@@ -198,7 +363,7 @@ export async function getUniswapQuote(
   // For BUY (exactOut), the output is exact, input is estimated
   else {
     estimatedAmountOut = Number(
-      formatTokenAmount(inputAmount.quotient.toString(), outputToken.decimals),
+      formatTokenAmount(tradeAmount.quotient.toString(), outputToken.decimals),
     );
 
     estimatedAmountIn = Number(
@@ -228,9 +393,13 @@ export async function getUniswapQuote(
   const quoteTokenBalanceChange =
     side === 'BUY' ? -estimatedAmountIn : estimatedAmountOut;
 
-  // Get gas estimate
-  const gasLimit = route.estimatedGasUsed?.toNumber() || 350000;
+  // Use fixed gas limit for Uniswap V3 swaps
+  const gasLimit = 300000;
+  logger.info(`Gas limit: using fixed ${gasLimit} for Uniswap V3 swap`);
+
   const gasPrice = await ethereum.estimateGasPrice(); // Use ethereum's estimateGasPrice method
+  logger.info(`Gas price: ${gasPrice} GWEI from ethereum.estimateGasPrice()`);
+
   const gasCost = gasPrice * gasLimit * 1e-9; // Convert to ETH
 
   return {
@@ -239,7 +408,7 @@ export async function getUniswapQuote(
     quoteToken,
     inputToken,
     outputToken,
-    inputAmount,
+    tradeAmount,
     exactIn,
     estimatedAmountIn,
     estimatedAmountOut,
@@ -260,15 +429,12 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify, _options) => {
   await fastify.register(require('@fastify/sensible'));
 
   // Get first wallet address for example
-  const ethereum = await Ethereum.getInstance('mainnet');
-  let firstWalletAddress = '<ethereum-wallet-address>';
+  const walletAddressExample = await Ethereum.getWalletAddressExample();
 
-  try {
-    firstWalletAddress =
-      (await ethereum.getFirstWalletAddress()) || firstWalletAddress;
-  } catch (error) {
-    logger.warn('No wallets found for examples in schema');
-  }
+  // Get available networks from Ethereum configuration (same method as chain.routes.ts)
+  const ethereumNetworks = Object.keys(
+    ConfigManagerV2.getInstance().get('ethereum.networks') || {},
+  );
 
   fastify.get<{
     Querystring: GetSwapQuoteRequestType;
@@ -277,18 +443,22 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify, _options) => {
     '/quote-swap',
     {
       schema: {
-        description:
-          'Get a swap quote using Uniswap AlphaRouter (mainnet only)',
+        description: 'Get a swap quote using Uniswap AlphaRouter',
         tags: ['uniswap'],
         querystring: {
           type: 'object',
           properties: {
-            network: { type: 'string', default: 'mainnet', enum: ['mainnet'] },
+            network: {
+              type: 'string',
+              default: 'mainnet',
+              enum: ethereumNetworks,
+            },
             baseToken: { type: 'string', examples: ['WETH'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
             amount: { type: 'number', examples: [0.001] },
             side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
             slippagePct: { type: 'number', examples: [0.5] },
+            walletAddress: { type: 'string', examples: [walletAddressExample] },
           },
           required: ['baseToken', 'quoteToken', 'amount', 'side'],
         },
