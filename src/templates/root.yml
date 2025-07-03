@@ -66,3 +66,7 @@ configurations:
   $namespace raydium:
     configurationPath: connectors/raydium.yml
     schemaPath: raydium-schema.json
+
+  $namespace 0x:
+    configurationPath: connectors/0x.yml
+    schemaPath: 0x-schema.json

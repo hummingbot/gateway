@@ -1,0 +1,32 @@
+# Configuration for 0x DEX Aggregator
+
+# Configuration for 0x Networks
+
+# example of 0x configuration
+
+# Allowed slippage for swap transactions (as a decimal)
+# Default: 0.01 (1%)
+allowedSlippage: 0.01
+
+# API key for 0x API (required)
+# Get your API key from https://dashboard.0x.org
+apiKey: ''
+
+# Gas price buffer multiplier for transactions
+# Default: 1.2 (20% buffer)
+gasPriceBuffer: 1.2
+
+# Transaction retry settings
+retryOptions:
+  # Number of retries for failed requests
+  retries: 3
+  # Minimum wait time between retries (ms)
+  minTimeout: 1000
+  # Maximum wait time between retries (ms)
+  maxTimeout: 5000
+
+# Request timeout for API calls (ms)
+requestTimeout: 30000
+
+# Enable/disable request logging
+enableLogging: false

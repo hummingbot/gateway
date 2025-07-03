@@ -3,6 +3,7 @@ import { FastifyPluginAsync } from 'fastify';
 
 import { logger } from '../services/logger';
 
+import { ZeroXConfig } from './0x/0x.config';
 import { JupiterConfig } from './jupiter/jupiter.config';
 import { MeteoraConfig } from './meteora/meteora.config';
 import { RaydiumConfig } from './raydium/raydium.config';
@@ -64,6 +65,12 @@ export const connectorsRoutes: FastifyPluginAsync = async (fastify) => {
           trading_types: ['amm', 'clmm', 'swap'],
           chain: 'ethereum',
           networks: UniswapConfig.networks,
+        },
+        {
+          name: '0x',
+          trading_types: ['swap'],
+          chain: 'ethereum',
+          networks: ZeroXConfig.networks.mainnet.availableNetworks,
         },
       ];
 

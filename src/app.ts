@@ -17,6 +17,7 @@ import { ethereumRoutes } from './chains/ethereum/ethereum.routes';
 import { solanaRoutes } from './chains/solana/solana.routes';
 import { configRoutes } from './config/config.routes';
 import { namespaceRoutes } from './config/namespace.routes';
+import { register0xRoutes } from './connectors/0x/0x.routes';
 import { connectorsRoutes } from './connectors/connector.routes';
 import { jupiterRoutes } from './connectors/jupiter/jupiter.routes';
 import { meteoraRoutes } from './connectors/meteora/meteora.routes';
@@ -72,6 +73,7 @@ const swaggerOptions = {
       { name: 'meteora', description: 'Meteora connector endpoints' },
       { name: 'raydium', description: 'Raydium connector endpoints' },
       { name: 'uniswap', description: 'Uniswap connector endpoints' },
+      { name: '0x', description: '0x connector endpoints' },
     ],
     components: {
       parameters: {
@@ -202,6 +204,9 @@ const configureGatewayServer = () => {
     app.register(uniswapRoutes.swap, { prefix: '/connectors/uniswap/swap' });
     app.register(uniswapRoutes.amm, { prefix: '/connectors/uniswap/amm' });
     app.register(uniswapRoutes.clmm, { prefix: '/connectors/uniswap/clmm' });
+
+    // 0x routes
+    app.register(register0xRoutes);
   };
 
   // Register routes on main server
