@@ -21,3 +21,4 @@ package-lock.json
 # Compiled JS files in src (TypeScript source)
 src/**/*.js
 src/**/*.js.map
+*.log
