@@ -20,12 +20,12 @@ describe('Uniswap Routes Structure', () => {
   });
 
   describe('Folder Structure', () => {
-    it('should have swap-routes, amm-routes, and clmm-routes folders', () => {
+    it('should have swap-routes-v2, amm-routes, and clmm-routes folders', () => {
       const uniswapPath = path.join(
         __dirname,
         '../../../src/connectors/uniswap',
       );
-      const swapRoutesPath = path.join(uniswapPath, 'swap-routes');
+      const swapRoutesPath = path.join(uniswapPath, 'swap-routes-v2');
       const ammRoutesPath = path.join(uniswapPath, 'amm-routes');
       const clmmRoutesPath = path.join(uniswapPath, 'clmm-routes');
       const oldRoutesPath = path.join(uniswapPath, 'routes');
