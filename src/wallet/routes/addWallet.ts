@@ -15,7 +15,7 @@ export const addWalletRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Add a new wallet using a private key',
-        tags: ['wallet'],
+        tags: ['/wallet'],
         body: {
           ...AddWalletRequestSchema,
           examples: [

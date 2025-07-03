@@ -192,7 +192,7 @@ export const wrapRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description:
           'Wrap native token to wrapped token (e.g., ETH to WETH, BNB to WBNB)',
-        tags: ['ethereum'],
+        tags: ['/chain/ethereum'],
         body: Type.Object({
           network: Type.String({
             examples: [

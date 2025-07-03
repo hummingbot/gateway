@@ -444,7 +444,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify, _options) => {
     {
       schema: {
         description: 'Get a swap quote using Uniswap AlphaRouter',
-        tags: ['uniswap'],
+        tags: ['/connector/uniswap'],
         querystring: {
           type: 'object',
           properties: {

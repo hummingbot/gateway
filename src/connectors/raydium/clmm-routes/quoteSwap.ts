@@ -12,13 +12,15 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { estimateGasSolana } from '../../../chains/solana/routes/estimate-gas';
 import { Solana } from '../../../chains/solana/solana';
 import {
-  GetSwapQuoteResponseType,
-  GetSwapQuoteResponse,
-  GetSwapQuoteRequestType,
-  GetSwapQuoteRequest,
-} from '../../../schemas/swap-schema';
+  QuoteSwapResponseType,
+  QuoteSwapResponse,
+  QuoteSwapRequestType,
+  QuoteSwapRequest,
+} from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
+
+import { RaydiumClmmQuoteSwapRequest } from './schemas';
 
 /**
  * Helper function to convert amount for buy orders in Raydium CLMM
@@ -133,7 +135,7 @@ async function formatSwapQuote(
   side: 'BUY' | 'SELL',
   poolAddress: string,
   slippagePct?: number,
-): Promise<GetSwapQuoteResponseType> {
+): Promise<QuoteSwapResponseType> {
   const { inputToken, outputToken, response } = await getSwapQuote(
     fastify,
     network,
@@ -242,16 +244,43 @@ async function formatSwapQuote(
 
     const price = estimatedAmountIn / estimatedAmountOut;
 
+    // Calculate price impact percentage
+    const priceImpactPct = exactOutResponse.priceImpact
+      ? Number(exactOutResponse.priceImpact) * 100
+      : 0;
+
+    // Get current price/tick
+    const activeBinId = exactOutResponse.currentPrice
+      ? Number(exactOutResponse.currentPrice)
+      : 0;
+
+    // Determine token addresses for computed fields
+    const tokenIn = inputToken.address;
+    const tokenOut = outputToken.address;
+    const tokenInAmount = estimatedAmountIn;
+    const tokenOutAmount = estimatedAmountOut;
+
+    // Calculate fee
+    const fee = exactOutResponse.fee
+      ? exactOutResponse.fee.toNumber() / 10 ** outputToken.decimals
+      : 0;
+
     return {
       poolAddress,
       estimatedAmountIn,
       estimatedAmountOut,
       maxAmountIn,
       minAmountOut: estimatedAmountOut,
-      baseTokenBalanceChange: estimatedAmountOut,
-      quoteTokenBalanceChange: -estimatedAmountIn,
       price,
+      priceImpactPct,
+      fee,
       computeUnits: 600000, // CLMM swaps typically need 600k compute units
+      activeBinId,
+      // Computed fields for clarity
+      tokenIn,
+      tokenOut,
+      tokenInAmount,
+      tokenOutAmount,
     };
   } else {
     const exactInResponse = response as ReturnTypeComputeAmountOutFormat;
@@ -267,34 +296,61 @@ async function formatSwapQuote(
 
     const price = estimatedAmountOut / estimatedAmountIn;
 
+    // Calculate price impact percentage
+    const priceImpactPct = exactInResponse.priceImpact
+      ? Number(exactInResponse.priceImpact) * 100
+      : 0;
+
+    // Get current price/tick
+    const activeBinId = exactInResponse.currentPrice
+      ? Number(exactInResponse.currentPrice)
+      : 0;
+
+    // Determine token addresses for computed fields
+    const tokenIn = inputToken.address;
+    const tokenOut = outputToken.address;
+    const tokenInAmount = estimatedAmountIn;
+    const tokenOutAmount = estimatedAmountOut;
+
+    // Calculate fee
+    const fee = exactInResponse.fee
+      ? Number(exactInResponse.fee) / 10 ** outputToken.decimals
+      : 0;
+
     return {
       poolAddress,
       estimatedAmountIn,
       estimatedAmountOut,
       minAmountOut,
       maxAmountIn: estimatedAmountIn,
-      baseTokenBalanceChange: -estimatedAmountIn,
-      quoteTokenBalanceChange: estimatedAmountOut,
       price,
+      priceImpactPct,
+      fee,
       computeUnits: 600000, // CLMM swaps typically need 600k compute units
+      activeBinId,
+      // Computed fields for clarity
+      tokenIn,
+      tokenOut,
+      tokenInAmount,
+      tokenOutAmount,
     };
   }
 }
 
 export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
-    Querystring: GetSwapQuoteRequestType;
-    Reply: GetSwapQuoteResponseType;
+    Querystring: QuoteSwapRequestType;
+    Reply: QuoteSwapResponseType;
   }>(
     '/quote-swap',
     {
       schema: {
         description: 'Get swap quote for Raydium CLMM',
-        tags: ['raydium/clmm'],
+        tags: ['/connector/raydium'],
         querystring: {
-          ...GetSwapQuoteRequest,
+          ...RaydiumClmmQuoteSwapRequest,
           properties: {
-            ...GetSwapQuoteRequest.properties,
+            ...RaydiumClmmQuoteSwapRequest.properties,
             network: { type: 'string', default: 'mainnet-beta' },
             baseToken: { type: 'string', examples: ['SOL'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
@@ -304,13 +360,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
             slippagePct: { type: 'number', examples: [1] },
           },
         },
-        response: {
-          200: {
-            properties: {
-              ...GetSwapQuoteResponse.properties,
-            },
-          },
-        },
+        response: { 200: QuoteSwapResponse },
       },
     },
     async (request) => {
@@ -323,7 +373,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           side,
           poolAddress,
           slippagePct,
-        } = request.query;
+        } = request.query as typeof RaydiumClmmQuoteSwapRequest._type;
         const networkToUse = network;
 
         // Validate essential parameters

@@ -6,13 +6,13 @@ import {
   ExecuteSwapRequestType,
   ExecuteSwapResponseType,
   ExecuteSwapResponse,
-  ExecuteSwapRequest,
 } from '../../../schemas/swap-schema';
 import { logger } from '../../../services/logger';
 import { UniswapConfig } from '../uniswap.config';
 import { formatTokenAmount } from '../uniswap.utils';
 
 import { getUniswapQuote } from './quoteSwap';
+import { UniswapExecuteSwapRequest } from './schemas';
 
 export const executeSwapRoute: FastifyPluginAsync = async (
   fastify,
@@ -35,11 +35,11 @@ export const executeSwapRoute: FastifyPluginAsync = async (
     {
       schema: {
         description: 'Execute a swap using Uniswap V3 Smart Order Router',
-        tags: ['uniswap'],
+        tags: ['/connector/uniswap'],
         body: {
-          ...ExecuteSwapRequest,
+          ...UniswapExecuteSwapRequest,
           properties: {
-            ...ExecuteSwapRequest.properties,
+            ...UniswapExecuteSwapRequest.properties,
             network: {
               type: 'string',
               default: 'mainnet',
@@ -74,7 +74,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (
           slippagePct,
           priorityFeePerCU,
           computeUnits,
-        } = request.body;
+        } = request.body as typeof UniswapExecuteSwapRequest._type;
 
         const networkToUse = network;
 

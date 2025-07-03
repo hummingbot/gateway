@@ -189,7 +189,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Open a new Raydium CLMM position',
-        tags: ['raydium/clmm'],
+        tags: ['/connector/raydium'],
         body: {
           ...OpenPositionRequest,
           properties: {

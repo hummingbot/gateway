@@ -11,11 +11,11 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { estimateGasSolana } from '../../../chains/solana/routes/estimate-gas';
 import { Solana } from '../../../chains/solana/solana';
 import {
-  GetSwapQuoteResponseType,
-  GetSwapQuoteResponse,
-  GetSwapQuoteRequestType,
-  GetSwapQuoteRequest,
-} from '../../../schemas/swap-schema';
+  QuoteSwapResponseType,
+  QuoteSwapResponse,
+  QuoteSwapRequestType,
+  QuoteSwapRequest,
+} from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
 
@@ -430,7 +430,7 @@ async function formatSwapQuote(
   amount: number,
   side: 'BUY' | 'SELL',
   slippagePct?: number,
-): Promise<GetSwapQuoteResponseType> {
+): Promise<QuoteSwapResponseType> {
   logger.info(
     `formatSwapQuote: poolAddress=${poolAddress}, baseToken=${baseToken}, quoteToken=${quoteToken}, amount=${amount}, side=${side}`,
   );
@@ -525,48 +525,52 @@ async function formatSwapQuote(
       ? estimatedAmountOut / estimatedAmountIn
       : estimatedAmountIn / estimatedAmountOut;
 
+  // Determine tokenIn and tokenOut based on side
+  const tokenIn =
+    side === 'SELL' ? resolvedBaseToken.address : resolvedQuoteToken.address;
+  const tokenOut =
+    side === 'SELL' ? resolvedQuoteToken.address : resolvedBaseToken.address;
+  const tokenInAmount = estimatedAmountIn;
+  const tokenOutAmount = estimatedAmountOut;
+
+  // Calculate fee and price impact
+  const fee = quote.fee
+    ? new Decimal(quote.fee.toString())
+        .div(10 ** inputToken.decimals)
+        .toNumber()
+    : 0;
+  const priceImpactPct = quote.priceImpact ? quote.priceImpact * 100 : 0;
+
   return {
     poolAddress,
     estimatedAmountIn,
     estimatedAmountOut,
     minAmountOut,
-    maxAmountIn: estimatedAmountIn,
-    baseTokenBalanceChange,
-    quoteTokenBalanceChange,
+    maxAmountIn,
     price,
+    priceImpactPct,
+    fee,
     computeUnits: 300000, // Default compute units for AMM swaps
+    tokenIn,
+    tokenOut,
+    tokenInAmount,
+    tokenOutAmount,
   };
 }
 
 export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
-    Querystring: GetSwapQuoteRequestType;
-    Reply: GetSwapQuoteResponseType;
+    Querystring: QuoteSwapRequestType;
+    Reply: QuoteSwapResponseType;
   }>(
     '/quote-swap',
     {
       schema: {
         description: 'Get swap quote for Raydium AMM',
-        tags: ['raydium/amm'],
-        querystring: {
-          ...GetSwapQuoteRequest,
-          properties: {
-            ...GetSwapQuoteRequest.properties,
-            network: { type: 'string', default: 'mainnet-beta' },
-            baseToken: { type: 'string', examples: ['SOL'] },
-            quoteToken: { type: 'string', examples: ['USDC'] },
-            amount: { type: 'number', examples: [0.01] },
-            side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
-            poolAddress: { type: 'string', examples: [''] },
-            slippagePct: { type: 'number', examples: [1] },
-          },
-        },
+        tags: ['/connector/raydium'],
+        querystring: QuoteSwapRequest,
         response: {
-          200: {
-            properties: {
-              ...GetSwapQuoteResponse.properties,
-            },
-          },
+          200: QuoteSwapResponse,
         },
       },
     },
@@ -655,6 +659,12 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         logger.error(e);
         if (e.statusCode) {
           throw e;
+        }
+        if (e.message?.includes('Pool not found')) {
+          throw fastify.httpErrors.notFound(e.message);
+        }
+        if (e.message?.includes('Token not found')) {
+          throw fastify.httpErrors.badRequest(e.message);
         }
         throw fastify.httpErrors.internalServerError('Internal server error');
       }

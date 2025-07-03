@@ -231,7 +231,7 @@ export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Get liquidity quote for a Uniswap V2 pool',
-        tags: ['uniswap/amm'],
+        tags: ['/connector/uniswap'],
         querystring: {
           ...QuoteLiquidityRequest,
           properties: {

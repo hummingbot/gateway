@@ -40,7 +40,7 @@ export const estimateGasRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Estimate gas prices for Solana transactions',
-        tags: ['solana'],
+        tags: ['/chain/solana'],
         body: {
           ...EstimateGasRequestSchema,
           properties: {

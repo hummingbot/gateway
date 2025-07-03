@@ -112,7 +112,7 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Collect fees from a Meteora position',
-        tags: ['meteora/clmm'],
+        tags: ['/connector/meteora'],
         body: {
           ...CollectFeesRequest,
           properties: {

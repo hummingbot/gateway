@@ -4,11 +4,11 @@ import { FastifyPluginAsync } from 'fastify';
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { wrapEthereum } from '../../../chains/ethereum/routes/wrap';
 import {
-  ExecuteSwapRequestType,
   ExecuteSwapRequest,
-  ExecuteSwapResponseType,
+  ExecuteSwapRequestType,
   ExecuteSwapResponse,
-} from '../../../schemas/swap-schema';
+  ExecuteSwapResponseType,
+} from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
 import {
@@ -33,18 +33,18 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Execute a swap on Uniswap V3 CLMM using SwapRouter02',
-        tags: ['uniswap/clmm'],
+        tags: ['/connector/uniswap'],
         body: {
           ...ExecuteSwapRequest,
           properties: {
             ...ExecuteSwapRequest.properties,
-            network: { type: 'string', default: 'base' },
             walletAddress: { type: 'string', examples: [walletAddressExample] },
+            network: { type: 'string', default: 'base' },
+            poolAddress: { type: 'string', examples: [''] },
             baseToken: { type: 'string', examples: ['WETH'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
             amount: { type: 'number', examples: [0.001] },
             side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
-            poolAddress: { type: 'string', examples: [''] },
             slippagePct: { type: 'number', examples: [1] },
           },
         },
@@ -327,6 +327,15 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           ? `swap:${receipt.transactionHash},wrap:${wrapTxHash}`
           : receipt.transactionHash;
 
+        // Get current tick from pool
+        const activeBinId = quote.currentTick || 0;
+
+        // Determine token addresses for computed fields
+        const tokenIn = quote.inputToken.address;
+        const tokenOut = quote.outputToken.address;
+        const tokenInAmount = totalInputSwapped;
+        const tokenOutAmount = totalOutputSwapped;
+
         return {
           signature: txSignature,
           status: 1, // CONFIRMED
@@ -336,6 +345,12 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
             fee: gasFee,
             baseTokenBalanceChange,
             quoteTokenBalanceChange,
+            activeBinId,
+            // Computed fields for clarity
+            tokenIn,
+            tokenOut,
+            tokenInAmount,
+            tokenOutAmount,
           },
         };
       } catch (error) {

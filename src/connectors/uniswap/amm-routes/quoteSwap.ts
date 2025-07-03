@@ -9,11 +9,11 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import {
-  GetSwapQuoteResponseType,
-  GetSwapQuoteResponse,
-  GetSwapQuoteRequestType,
-  GetSwapQuoteRequest,
-} from '../../../schemas/swap-schema';
+  QuoteSwapRequestType,
+  QuoteSwapResponseType,
+  QuoteSwapRequest,
+  QuoteSwapResponse,
+} from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
 import { formatTokenAmount, getUniswapPoolInfo } from '../uniswap.utils';
@@ -211,7 +211,7 @@ async function formatSwapQuote(
   amount: number,
   side: 'BUY' | 'SELL',
   slippagePct?: number,
-): Promise<GetSwapQuoteResponseType> {
+): Promise<QuoteSwapResponseType> {
   logger.info(
     `formatSwapQuote: poolAddress=${poolAddress}, baseToken=${baseToken}, quoteToken=${quoteToken}, amount=${amount}, side=${side}, network=${network}`,
   );
@@ -268,16 +268,33 @@ async function formatSwapQuote(
     const gasPriceGwei = formatTokenAmount(gasPrice.toString(), 9); // Convert to Gwei
     logger.info(`Gas price in Gwei: ${gasPriceGwei}`);
 
+    // Calculate price impact percentage
+    const priceImpactPct = quote.priceImpact;
+
+    // Determine token addresses for computed fields
+    const tokenIn = quote.inputToken.address;
+    const tokenOut = quote.outputToken.address;
+    const tokenInAmount = quote.estimatedAmountIn;
+    const tokenOutAmount = quote.estimatedAmountOut;
+
+    // Calculate fee (V2 has 0.3% fixed fee)
+    const fee = quote.estimatedAmountIn * 0.003;
+
     return {
       poolAddress,
       estimatedAmountIn: quote.estimatedAmountIn,
       estimatedAmountOut: quote.estimatedAmountOut,
       minAmountOut: quote.minAmountOut,
       maxAmountIn: quote.maxAmountIn,
-      baseTokenBalanceChange,
-      quoteTokenBalanceChange,
       price,
+      priceImpactPct,
+      fee,
       computeUnits: estimatedGasValue, // Use gas limit as compute units for Ethereum
+      // Computed fields for clarity
+      tokenIn,
+      tokenOut,
+      tokenInAmount,
+      tokenOutAmount,
     };
   } catch (error) {
     logger.error(`Error formatting swap quote: ${error.message}`);
@@ -293,18 +310,18 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
   await fastify.register(require('@fastify/sensible'));
 
   fastify.get<{
-    Querystring: GetSwapQuoteRequestType;
-    Reply: GetSwapQuoteResponseType;
+    Querystring: QuoteSwapRequestType;
+    Reply: QuoteSwapResponseType;
   }>(
     '/quote-swap',
     {
       schema: {
         description: 'Get swap quote for Uniswap V2 AMM',
-        tags: ['uniswap/amm'],
+        tags: ['/connector/uniswap'],
         querystring: {
-          ...GetSwapQuoteRequest,
+          ...QuoteSwapRequest,
           properties: {
-            ...GetSwapQuoteRequest.properties,
+            ...QuoteSwapRequest.properties,
             network: { type: 'string', default: 'base' },
             baseToken: { type: 'string', examples: ['WETH'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
@@ -314,13 +331,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
             slippagePct: { type: 'number', examples: [1] },
           },
         },
-        response: {
-          200: {
-            properties: {
-              ...GetSwapQuoteResponse.properties,
-            },
-          },
-        },
+        response: { 200: QuoteSwapResponse },
       },
     },
     async (request) => {

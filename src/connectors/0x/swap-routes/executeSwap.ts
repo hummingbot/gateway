@@ -33,7 +33,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (
     {
       schema: {
         description: 'Execute a swap using 0x DEX aggregator',
-        tags: ['0x'],
+        tags: ['/connector/0x'],
         body: {
           ...ExecuteSwapRequest,
           properties: {

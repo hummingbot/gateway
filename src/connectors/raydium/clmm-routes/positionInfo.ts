@@ -15,7 +15,7 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Get info about a Raydium CLMM position',
-        tags: ['raydium/clmm'],
+        tags: ['/connector/raydium'],
         querystring: {
           type: 'object',
           properties: {

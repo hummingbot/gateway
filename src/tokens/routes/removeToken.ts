@@ -19,7 +19,7 @@ export const removeTokenRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Remove a token from a token list by address',
-        tags: ['tokens'],
+        tags: ['/tokens'],
         params: {
           type: 'object',
           properties: {

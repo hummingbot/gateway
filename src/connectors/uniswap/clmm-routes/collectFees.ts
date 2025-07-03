@@ -31,7 +31,7 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Collect fees from a Uniswap V3 position',
-        tags: ['uniswap/clmm'],
+        tags: ['/connector/uniswap'],
         body: {
           ...CollectFeesRequest,
           properties: {

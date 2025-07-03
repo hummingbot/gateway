@@ -44,7 +44,7 @@ export const statusRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Get Solana network status',
-        tags: ['solana'],
+        tags: ['/chain/solana'],
         querystring: {
           ...StatusRequestSchema,
           properties: {

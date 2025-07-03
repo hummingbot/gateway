@@ -215,7 +215,7 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Quote amounts for a new Raydium CLMM position',
-        tags: ['raydium/clmm'],
+        tags: ['/connector/raydium'],
         querystring: {
           ...QuotePositionRequest,
           properties: {

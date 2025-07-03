@@ -280,7 +280,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Open a new Meteora position',
-        tags: ['meteora/clmm'],
+        tags: ['/connector/meteora'],
         body: {
           ...OpenPositionRequest,
           properties: {

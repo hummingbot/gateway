@@ -671,7 +671,7 @@ export const balancesRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description:
           'Get token balances for a Solana address. If no tokens specified or empty array provided, returns non-zero balances for tokens from the token list that are found in the wallet (includes SOL even if zero). If specific tokens are requested, returns those exact tokens with their balances, including zeros.',
-        tags: ['solana'],
+        tags: ['/chain/solana'],
         body: {
           ...BalanceRequestSchema,
           properties: {

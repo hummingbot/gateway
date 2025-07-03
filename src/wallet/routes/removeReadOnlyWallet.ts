@@ -20,7 +20,7 @@ export const removeReadOnlyWalletRoute: FastifyPluginAsync = async (
     {
       schema: {
         description: 'Remove a read-only wallet address',
-        tags: ['wallet'],
+        tags: ['/wallet'],
         body: RemoveReadOnlyWalletRequestSchema,
         response: {
           200: RemoveReadOnlyWalletResponseSchema,

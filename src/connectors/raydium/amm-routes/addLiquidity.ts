@@ -244,7 +244,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Add liquidity to a Raydium AMM/CPMM pool',
-        tags: ['raydium/amm'],
+        tags: ['/connector/raydium'],
         body: AddLiquidityRequest,
         response: {
           200: AddLiquidityResponse,

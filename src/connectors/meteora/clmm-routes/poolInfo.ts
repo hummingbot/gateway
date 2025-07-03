@@ -18,7 +18,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Get pool information for a Meteora pool',
-        tags: ['meteora/clmm'],
+        tags: ['/connector/meteora'],
         querystring: {
           ...GetPoolInfoRequest,
           properties: {

@@ -56,7 +56,7 @@ export const statusRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Get Ethereum chain status',
-        tags: ['ethereum'],
+        tags: ['/chain/ethereum'],
         querystring: {
           ...StatusRequestSchema,
           properties: {

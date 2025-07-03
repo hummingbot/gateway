@@ -6,13 +6,13 @@ import { Solana } from '../../../chains/solana/solana';
 import {
   ExecuteSwapResponseType,
   ExecuteSwapResponse,
-  ExecuteSwapRequest,
   ExecuteSwapRequestType,
-} from '../../../schemas/swap-schema';
+} from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Meteora } from '../meteora';
 
 import { getRawSwapQuote } from './quoteSwap';
+import { MeteoraClmmExecuteSwapRequest } from './schemas';
 
 async function executeSwap(
   fastify: FastifyInstance,
@@ -104,15 +104,30 @@ async function executeSwap(
     `Swap executed successfully: ${Math.abs(baseTokenBalanceChange).toFixed(4)} ${inputToken.symbol} -> ${Math.abs(quoteTokenBalanceChange).toFixed(4)} ${outputToken.symbol}`,
   );
 
+  // Determine total amounts swapped
+  const totalInputSwapped =
+    side === 'SELL'
+      ? Math.abs(baseTokenBalanceChange)
+      : Math.abs(quoteTokenBalanceChange);
+  const totalOutputSwapped =
+    side === 'SELL'
+      ? Math.abs(quoteTokenBalanceChange)
+      : Math.abs(baseTokenBalanceChange);
+
   return {
     signature,
     status: 1, // CONFIRMED
     data: {
-      totalInputSwapped: Math.abs(baseTokenBalanceChange),
-      totalOutputSwapped: Math.abs(quoteTokenBalanceChange),
+      totalInputSwapped,
+      totalOutputSwapped,
       fee,
       baseTokenBalanceChange,
       quoteTokenBalanceChange,
+      tokenIn: inputToken.address,
+      tokenOut: outputToken.address,
+      tokenInAmount: totalInputSwapped,
+      tokenOutAmount: totalOutputSwapped,
+      activeBinId: 0, // Meteora doesn't provide this in the same way
     },
   };
 }
@@ -128,11 +143,11 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Execute a token swap on Meteora',
-        tags: ['meteora/clmm'],
+        tags: ['/connector/meteora'],
         body: {
-          ...ExecuteSwapRequest,
+          ...MeteoraClmmExecuteSwapRequest,
           properties: {
-            ...ExecuteSwapRequest.properties,
+            ...MeteoraClmmExecuteSwapRequest.properties,
             network: { type: 'string', default: 'mainnet-beta' },
             walletAddress: { type: 'string', examples: [walletAddressExample] },
             baseToken: { type: 'string', examples: ['SOL'] },
@@ -159,7 +174,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           slippagePct,
           priorityFeePerCU,
           computeUnits,
-        } = request.body;
+        } = request.body as typeof MeteoraClmmExecuteSwapRequest._type;
         const networkUsed = network;
 
         let poolAddressUsed = poolAddress;

@@ -33,7 +33,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Remove liquidity from a Uniswap V2 pool',
-        tags: ['uniswap/amm'],
+        tags: ['/connector/uniswap'],
         body: {
           ...RemoveLiquidityRequest,
           properties: {

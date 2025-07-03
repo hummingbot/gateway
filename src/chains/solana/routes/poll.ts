@@ -88,7 +88,7 @@ export const pollRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Poll for the status of a Solana transaction',
-        tags: ['solana'],
+        tags: ['/chain/solana'],
         body: {
           ...PollRequestSchema,
           properties: {

@@ -148,7 +148,7 @@ export const pollRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Poll Ethereum transaction status',
-        tags: ['ethereum'],
+        tags: ['/chain/ethereum'],
         body: {
           ...PollRequestSchema,
           properties: {

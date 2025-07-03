@@ -30,7 +30,7 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Get a quote for opening a position on Uniswap V3',
-        tags: ['uniswap/clmm'],
+        tags: ['/connector/uniswap'],
         querystring: {
           ...QuotePositionRequest,
           properties: {

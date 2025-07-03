@@ -161,7 +161,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Get Jupiter swap quote',
-        tags: ['jupiter'],
+        tags: ['/connector/jupiter'],
         querystring: GetSwapQuoteRequest,
         response: {
           200: {

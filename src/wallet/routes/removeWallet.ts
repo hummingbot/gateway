@@ -10,7 +10,7 @@ export const removeWalletRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Remove a wallet by its address',
-        tags: ['wallet'],
+        tags: ['/wallet'],
         body: {
           ...RemoveWalletRequestSchema,
           examples: [

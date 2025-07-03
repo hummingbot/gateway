@@ -33,10 +33,10 @@ describe('App Integration - Route Registration', () => {
 
         // Test swap routes
         if (trading_types.includes('swap')) {
-          // Try to access a swap endpoint
+          // Try to access a swap endpoint - aggregators use get-price
           const swapResponse = await fastify.inject({
             method: 'GET',
-            url: `/connectors/${name}/swap/quote-swap`,
+            url: `/connectors/${name}/swap/get-price`,
           });
           // Should not be 404 if the route exists
           expect(swapResponse.statusCode).not.toBe(404);

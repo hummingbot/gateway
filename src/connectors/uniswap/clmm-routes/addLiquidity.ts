@@ -35,7 +35,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Add liquidity to an existing Uniswap V3 position',
-        tags: ['uniswap/clmm'],
+        tags: ['/connector/uniswap'],
         body: {
           ...AddLiquidityRequest,
           properties: {

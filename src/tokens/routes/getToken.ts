@@ -19,7 +19,7 @@ export const getTokenRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Get a specific token by symbol or address',
-        tags: ['tokens'],
+        tags: ['/tokens'],
         params: {
           type: 'object',
           properties: {

@@ -24,22 +24,20 @@ import positionsOwnedRoute from './clmm-routes/positionsOwned';
 import quotePositionRoute from './clmm-routes/quotePosition';
 import clmmQuoteSwapRoute from './clmm-routes/quoteSwap';
 import clmmRemoveLiquidityRoute from './clmm-routes/removeLiquidity';
-import executeSwapRoute from './swap-routes/executeSwap';
-import quoteSwapRoute from './swap-routes/quoteSwap';
+import { uniswapSwapV2Routes } from './swap-routes-v2';
 
-// Swap routes (Universal Router)
+// Swap routes (Universal Router with 4 endpoints)
 const uniswapSwapRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(sensible);
 
   await fastify.register(async (instance) => {
     instance.addHook('onRoute', (routeOptions) => {
       if (routeOptions.schema && routeOptions.schema.tags) {
-        routeOptions.schema.tags = ['uniswap'];
+        routeOptions.schema.tags = ['/connector/uniswap'];
       }
     });
 
-    await instance.register(quoteSwapRoute);
-    await instance.register(executeSwapRoute);
+    await instance.register(uniswapSwapV2Routes);
   });
 };
 
@@ -50,7 +48,7 @@ const uniswapAmmRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(async (instance) => {
     instance.addHook('onRoute', (routeOptions) => {
       if (routeOptions.schema && routeOptions.schema.tags) {
-        routeOptions.schema.tags = ['uniswap'];
+        routeOptions.schema.tags = ['/connector/uniswap'];
       }
     });
 
@@ -71,7 +69,7 @@ const uniswapClmmRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(async (instance) => {
     instance.addHook('onRoute', (routeOptions) => {
       if (routeOptions.schema && routeOptions.schema.tags) {
-        routeOptions.schema.tags = ['uniswap'];
+        routeOptions.schema.tags = ['/connector/uniswap'];
       }
     });
 

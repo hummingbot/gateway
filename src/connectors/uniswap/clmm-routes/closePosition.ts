@@ -29,7 +29,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description:
           'Close a Uniswap V3 position by removing all liquidity and collecting fees',
-        tags: ['uniswap/clmm'],
+        tags: ['/connector/uniswap'],
         body: {
           ...ClosePositionRequest,
           properties: {

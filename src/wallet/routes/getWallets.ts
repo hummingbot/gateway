@@ -10,7 +10,7 @@ export const getWalletsRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Get all wallets across different chains',
-        tags: ['wallet'],
+        tags: ['/wallet'],
         response: {
           200: {
             type: 'array',

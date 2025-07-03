@@ -55,7 +55,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Get all Uniswap V3 positions owned by a wallet',
-        tags: ['uniswap/clmm'],
+        tags: ['/connector/uniswap'],
         querystring: {
           ...PositionsOwnedRequest,
           properties: {

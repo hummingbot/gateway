@@ -334,3 +334,104 @@ export const QuotePositionResponse = Type.Object(
   { $id: 'QuotePositionResponse' },
 );
 export type QuotePositionResponseType = Static<typeof QuotePositionResponse>;
+
+// ========================================
+// CLMM Swap Types
+// ========================================
+
+export const QuoteSwapRequest = Type.Object(
+  {
+    network: Type.String(),
+    poolAddress: Type.String(),
+    baseToken: Type.String({
+      description: 'Token to determine swap direction',
+    }),
+    quoteToken: Type.String({
+      description: 'The other token in the pair',
+    }),
+    amount: Type.Number(),
+    side: Type.Enum(
+      { BUY: 'BUY', SELL: 'SELL' },
+      {
+        description: 'Trade direction',
+      },
+    ),
+    slippagePct: Type.Number({ minimum: 0, maximum: 100 }),
+  },
+  { $id: 'ClmmQuoteSwapRequest' },
+);
+export type QuoteSwapRequestType = Static<typeof QuoteSwapRequest>;
+
+export const QuoteSwapResponse = Type.Object(
+  {
+    poolAddress: Type.String(),
+    estimatedAmountIn: Type.Number(),
+    estimatedAmountOut: Type.Number(),
+    minAmountOut: Type.Number(),
+    maxAmountIn: Type.Number(),
+    price: Type.Number(),
+    priceImpactPct: Type.Number(),
+    fee: Type.Number(),
+    computeUnits: Type.Number(),
+    activeBinId: Type.Number(),
+    // Computed fields for clarity
+    tokenIn: Type.String(),
+    tokenOut: Type.String(),
+    tokenInAmount: Type.Number(),
+    tokenOutAmount: Type.Number(),
+  },
+  { $id: 'ClmmQuoteSwapResponse' },
+);
+export type QuoteSwapResponseType = Static<typeof QuoteSwapResponse>;
+
+export const ExecuteSwapRequest = Type.Object(
+  {
+    walletAddress: Type.String(),
+    network: Type.String(),
+    poolAddress: Type.String(),
+    baseToken: Type.String(),
+    quoteToken: Type.String(),
+    amount: Type.Number(),
+    side: Type.Enum({ BUY: 'BUY', SELL: 'SELL' }),
+    slippagePct: Type.Number({ minimum: 0, maximum: 100 }),
+    priorityFeePerCU: Type.Optional(
+      Type.Number({
+        description:
+          'Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)',
+      }),
+    ),
+    computeUnits: Type.Optional(
+      Type.Number({
+        description: 'Compute units for transaction',
+      }),
+    ),
+  },
+  { $id: 'ClmmExecuteSwapRequest' },
+);
+export type ExecuteSwapRequestType = Static<typeof ExecuteSwapRequest>;
+
+export const ExecuteSwapResponse = Type.Object(
+  {
+    signature: Type.String(),
+    status: Type.Number({ description: 'TransactionStatus enum value' }),
+
+    // Only included when status = CONFIRMED
+    data: Type.Optional(
+      Type.Object({
+        totalInputSwapped: Type.Number(),
+        totalOutputSwapped: Type.Number(),
+        fee: Type.Number(),
+        baseTokenBalanceChange: Type.Number(),
+        quoteTokenBalanceChange: Type.Number(),
+        activeBinId: Type.Number(),
+        // Computed fields for clarity
+        tokenIn: Type.String(),
+        tokenOut: Type.String(),
+        tokenInAmount: Type.Number(),
+        tokenOutAmount: Type.Number(),
+      }),
+    ),
+  },
+  { $id: 'ClmmExecuteSwapResponse' },
+);
+export type ExecuteSwapResponseType = Static<typeof ExecuteSwapResponse>;

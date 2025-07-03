@@ -15,7 +15,7 @@ export const addTokenRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Add a new token to a token list',
-        tags: ['tokens'],
+        tags: ['/tokens'],
         body: TokenAddRequestSchema,
         response: {
           200: TokenOperationResponseSchema,

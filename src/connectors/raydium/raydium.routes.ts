@@ -30,7 +30,7 @@ const raydiumClmmRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(async (instance) => {
     instance.addHook('onRoute', (routeOptions) => {
       if (routeOptions.schema && routeOptions.schema.tags) {
-        routeOptions.schema.tags = ['raydium'];
+        routeOptions.schema.tags = ['/connector/raydium'];
       }
     });
 
@@ -55,7 +55,7 @@ const raydiumAmmRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(async (instance) => {
     instance.addHook('onRoute', (routeOptions) => {
       if (routeOptions.schema && routeOptions.schema.tags) {
-        routeOptions.schema.tags = ['raydium'];
+        routeOptions.schema.tags = ['/connector/raydium'];
       }
     });
 

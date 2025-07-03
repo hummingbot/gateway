@@ -2,28 +2,25 @@ import sensible from '@fastify/sensible';
 import type { FastifyPluginAsync } from 'fastify';
 
 // Import routes
-import { executeSwapRoute } from './swap-routes/executeSwap';
-import { quoteSwapRoute } from './swap-routes/quoteSwap';
+import { jupiterSwapV2Routes } from './swap-routes-v2';
 
-// Main Jupiter routes
-const jupiterSwapRoutes: FastifyPluginAsync = async (fastify) => {
+// Jupiter routes with 4 endpoints
+const jupiterSwapRoutesWrapper: FastifyPluginAsync = async (fastify) => {
   await fastify.register(sensible);
 
-  // We'll use a plugin to modify the tags
   await fastify.register(async (instance) => {
     // Decorate the instance with a hook to modify route options
     instance.addHook('onRoute', (routeOptions) => {
       if (routeOptions.schema && routeOptions.schema.tags) {
-        routeOptions.schema.tags = ['jupiter'];
+        routeOptions.schema.tags = ['/connector/jupiter'];
       }
     });
 
-    await instance.register(quoteSwapRoute);
-    await instance.register(executeSwapRoute);
+    await instance.register(jupiterSwapV2Routes);
   });
 };
 
 // Export routes in the same pattern as Raydium
 export const jupiterRoutes = {
-  swap: jupiterSwapRoutes,
+  swap: jupiterSwapRoutesWrapper,
 };

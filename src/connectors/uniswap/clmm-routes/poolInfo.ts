@@ -21,7 +21,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Get CLMM pool information from Uniswap V3',
-        tags: ['uniswap/clmm'],
+        tags: ['/connector/uniswap'],
         querystring: {
           ...GetPoolInfoRequest,
           properties: {

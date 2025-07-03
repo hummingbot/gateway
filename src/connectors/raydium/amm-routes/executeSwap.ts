@@ -6,13 +6,13 @@ import { Solana, BASE_FEE } from '../../../chains/solana/solana';
 import {
   ExecuteSwapResponse,
   ExecuteSwapResponseType,
-  ExecuteSwapRequest,
   ExecuteSwapRequestType,
-} from '../../../schemas/swap-schema';
+} from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
 
 import { getRawSwapQuote } from './quoteSwap';
+import { RaydiumAmmExecuteSwapRequest } from './schemas';
 
 async function executeSwap(
   fastify: FastifyInstance,
@@ -172,19 +172,34 @@ async function executeSwap(
       `Swap executed successfully: ${Math.abs(side === 'SELL' ? baseTokenBalanceChange : quoteTokenBalanceChange).toFixed(4)} ${inputToken.symbol} -> ${Math.abs(side === 'SELL' ? quoteTokenBalanceChange : baseTokenBalanceChange).toFixed(4)} ${outputToken.symbol}`,
     );
 
+    // Calculate actual amounts swapped based on side
+    const totalInputSwapped = Math.abs(
+      side === 'SELL' ? baseTokenBalanceChange : quoteTokenBalanceChange,
+    );
+    const totalOutputSwapped = Math.abs(
+      side === 'SELL' ? quoteTokenBalanceChange : baseTokenBalanceChange,
+    );
+
+    // Determine token addresses for computed fields
+    const tokenIn = inputToken.address;
+    const tokenOut = outputToken.address;
+    const tokenInAmount = totalInputSwapped;
+    const tokenOutAmount = totalOutputSwapped;
+
     return {
       signature,
       status: 1, // CONFIRMED
       data: {
-        totalInputSwapped: Math.abs(
-          side === 'SELL' ? baseTokenBalanceChange : quoteTokenBalanceChange,
-        ),
-        totalOutputSwapped: Math.abs(
-          side === 'SELL' ? quoteTokenBalanceChange : baseTokenBalanceChange,
-        ),
+        totalInputSwapped,
+        totalOutputSwapped,
         fee: txData.meta.fee / 1e9,
         baseTokenBalanceChange,
         quoteTokenBalanceChange,
+        // Computed fields for clarity
+        tokenIn,
+        tokenOut,
+        tokenInAmount,
+        tokenOutAmount,
       },
     };
   } else {
@@ -207,11 +222,11 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Execute a swap on Raydium AMM or CPMM',
-        tags: ['raydium/amm'],
+        tags: ['/connector/raydium'],
         body: {
-          ...ExecuteSwapRequest,
+          ...RaydiumAmmExecuteSwapRequest,
           properties: {
-            ...ExecuteSwapRequest.properties,
+            ...RaydiumAmmExecuteSwapRequest.properties,
             network: { type: 'string', default: 'mainnet-beta' },
             walletAddress: { type: 'string', examples: [walletAddressExample] },
             baseToken: { type: 'string', examples: ['SOL'] },
@@ -238,7 +253,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           slippagePct,
           priorityFeePerCU,
           computeUnits,
-        } = request.body;
+        } = request.body as typeof RaydiumAmmExecuteSwapRequest._type;
         const networkToUse = network;
 
         // If no pool address provided, find default pool

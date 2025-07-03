@@ -60,20 +60,38 @@ const swaggerOptions = {
     tags: [
       // Main categories
       { name: 'system', description: 'System configuration endpoints' },
-      { name: 'wallet', description: 'Wallet management endpoints' },
-      { name: 'tokens', description: 'Token management endpoints' },
-      { name: 'pools', description: 'Pool management endpoints' },
+      { name: '/wallet', description: 'Wallet management endpoints' },
+      { name: '/tokens', description: 'Token management endpoints' },
+      { name: '/pools', description: 'Pool management endpoints' },
 
       // Chains
-      { name: 'solana', description: 'Solana chain endpoints' },
-      { name: 'ethereum', description: 'Ethereum chain endpoints' },
+      {
+        name: '/chain/solana',
+        description: 'Solana and SVM-based chain endpoints',
+      },
+      {
+        name: '/chain/ethereum',
+        description: 'Ethereum and EVM-based chain endpoints',
+      },
 
       // Connectors
-      { name: 'jupiter', description: 'Jupiter connector endpoints' },
-      { name: 'meteora', description: 'Meteora connector endpoints' },
-      { name: 'raydium', description: 'Raydium connector endpoints' },
-      { name: 'uniswap', description: 'Uniswap connector endpoints' },
-      { name: '0x', description: '0x connector endpoints' },
+      {
+        name: '/connector/jupiter',
+        description: 'Jupiter connector endpoints',
+      },
+      {
+        name: '/connector/meteora',
+        description: 'Meteora connector endpoints',
+      },
+      {
+        name: '/connector/raydium',
+        description: 'Raydium connector endpoints',
+      },
+      {
+        name: '/connector/uniswap',
+        description: 'Uniswap connector endpoints',
+      },
+      { name: '/connector/0x', description: '0x connector endpoints' },
     ],
     components: {
       parameters: {

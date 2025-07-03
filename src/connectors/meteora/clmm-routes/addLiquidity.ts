@@ -214,7 +214,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Add liquidity to a Meteora position',
-        tags: ['meteora/clmm'],
+        tags: ['/connector/meteora'],
         body: {
           ...AddLiquidityRequest,
           properties: {

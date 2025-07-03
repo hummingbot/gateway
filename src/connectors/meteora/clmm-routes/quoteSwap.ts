@@ -180,7 +180,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Get swap quote for Meteora CLMM',
-        tags: ['meteora/clmm'],
+        tags: ['/connector/meteora'],
         querystring: GetSwapQuoteRequest,
         response: {
           200: {

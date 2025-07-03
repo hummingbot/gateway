@@ -30,7 +30,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify, _options) => {
     {
       schema: {
         description: 'Get a swap quote from 0x DEX aggregator',
-        tags: ['0x'],
+        tags: ['/connector/0x'],
         querystring: {
           ...GetSwapQuoteRequest,
           properties: {

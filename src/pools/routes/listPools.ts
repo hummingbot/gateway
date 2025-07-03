@@ -11,7 +11,7 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description:
           'List all pools for a connector, optionally filtered by network, type, or search term',
-        tags: ['pools'],
+        tags: ['/pools'],
         querystring: PoolListRequestSchema,
         response: {
           200: PoolListResponseSchema,

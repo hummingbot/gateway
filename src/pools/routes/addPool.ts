@@ -10,7 +10,7 @@ export const addPoolRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Add a new pool',
-        tags: ['pools'],
+        tags: ['/pools'],
         body: PoolAddRequestSchema,
         response: {
           200: PoolSuccessResponseSchema,

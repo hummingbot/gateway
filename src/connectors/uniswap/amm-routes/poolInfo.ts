@@ -22,7 +22,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Get AMM pool information from Uniswap V2',
-        tags: ['uniswap/amm'],
+        tags: ['/connector/uniswap'],
         querystring: GetPoolInfoRequest,
         response: {
           200: PoolInfoSchema,

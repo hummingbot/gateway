@@ -332,7 +332,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Add liquidity to a Uniswap V2 pool',
-        tags: ['uniswap/amm'],
+        tags: ['/connector/uniswap'],
         body: {
           ...AddLiquidityRequest,
           properties: {

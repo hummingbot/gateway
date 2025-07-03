@@ -12,6 +12,8 @@ import {
 import { logger } from '../../../services/logger';
 import { Jupiter } from '../jupiter';
 
+import { JupiterExecuteSwapRequest } from './schemas';
+
 async function executeJupiterSwap(
   fastify: FastifyInstance,
   network: string,
@@ -123,8 +125,8 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Execute Jupiter swap',
-        tags: ['jupiter'],
-        body: ExecuteSwapRequest,
+        tags: ['/connector/jupiter'],
+        body: JupiterExecuteSwapRequest,
         response: { 200: ExecuteSwapResponse },
       },
     },
@@ -139,7 +141,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         slippagePct,
         priorityFeePerCU,
         computeUnits,
-      } = request.body;
+      } = request.body as typeof JupiterExecuteSwapRequest._type;
 
       // Verify we have the needed parameters
       if (!baseToken || !quoteToken) {

@@ -15,7 +15,7 @@ export const listTokensRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'List tokens from token lists with optional filtering',
-        tags: ['tokens'],
+        tags: ['/tokens'],
         querystring: TokenListQuerySchema,
         response: {
           200: TokenListResponseSchema,

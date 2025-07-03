@@ -4,11 +4,11 @@ import { FastifyPluginAsync } from 'fastify';
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { wrapEthereum } from '../../../chains/ethereum/routes/wrap';
 import {
-  ExecuteSwapRequestType,
   ExecuteSwapRequest,
-  ExecuteSwapResponseType,
+  ExecuteSwapRequestType,
   ExecuteSwapResponse,
-} from '../../../schemas/swap-schema';
+  ExecuteSwapResponseType,
+} from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
 import {
@@ -32,24 +32,22 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Execute a swap on Uniswap V2 AMM using Router02',
-        tags: ['uniswap/amm'],
+        tags: ['/connector/uniswap'],
         body: {
           ...ExecuteSwapRequest,
           properties: {
             ...ExecuteSwapRequest.properties,
-            network: { type: 'string', default: 'base' },
             walletAddress: { type: 'string', examples: [walletAddressExample] },
+            network: { type: 'string', default: 'base' },
+            poolAddress: { type: 'string', examples: [''] },
             baseToken: { type: 'string', examples: ['WETH'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
             amount: { type: 'number', examples: [0.001] },
             side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
-            poolAddress: { type: 'string', examples: [''] },
             slippagePct: { type: 'number', examples: [1] },
           },
         },
-        response: {
-          200: ExecuteSwapResponse,
-        },
+        response: { 200: ExecuteSwapResponse },
       },
     },
     async (request) => {
@@ -302,6 +300,12 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           ? `swap:${receipt.transactionHash},wrap:${wrapTxHash}`
           : receipt.transactionHash;
 
+        // Determine token addresses for computed fields
+        const tokenIn = quote.inputToken.address;
+        const tokenOut = quote.outputToken.address;
+        const tokenInAmount = totalInputSwapped;
+        const tokenOutAmount = totalOutputSwapped;
+
         return {
           signature: txSignature,
           status: 1, // CONFIRMED
@@ -311,6 +315,11 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
             fee: gasFee,
             baseTokenBalanceChange,
             quoteTokenBalanceChange,
+            // Computed fields for clarity
+            tokenIn,
+            tokenOut,
+            tokenInAmount,
+            tokenOutAmount,
           },
         };
       } catch (error) {

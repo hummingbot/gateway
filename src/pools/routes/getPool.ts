@@ -17,7 +17,7 @@ export const getPoolRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Get a specific pool by trading pair',
-        tags: ['pools'],
+        tags: ['/pools'],
         params: {
           type: 'object',
           properties: {

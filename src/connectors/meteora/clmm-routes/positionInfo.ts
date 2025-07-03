@@ -22,7 +22,7 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Get details for a specific Meteora position',
-        tags: ['meteora/clmm'],
+        tags: ['/connector/meteora'],
         querystring: {
           ...GetPositionInfoRequest,
           properties: {

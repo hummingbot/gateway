@@ -108,7 +108,7 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Collect fees from a Raydium CLMM position',
-        tags: ['raydium/clmm'],
+        tags: ['/connector/raydium'],
         body: {
           ...CollectFeesRequest,
           properties: {

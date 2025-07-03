@@ -38,7 +38,7 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Get position information for a Uniswap V3 position',
-        tags: ['uniswap/clmm'],
+        tags: ['/connector/uniswap'],
         querystring: {
           ...GetPositionInfoRequest,
           properties: {

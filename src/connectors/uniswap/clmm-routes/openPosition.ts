@@ -42,7 +42,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Open a new liquidity position in a Uniswap V3 pool',
-        tags: ['uniswap/clmm'],
+        tags: ['/connector/uniswap'],
         body: {
           ...OpenPositionRequest,
           properties: {

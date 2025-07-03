@@ -15,7 +15,7 @@ export const signMessageRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Sign a message with a specific wallet',
-        tags: ['wallet'],
+        tags: ['/wallet'],
         body: {
           ...SignMessageRequestSchema,
           examples: [

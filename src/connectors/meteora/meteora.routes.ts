@@ -20,7 +20,7 @@ const meteoraClmmRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(async (instance) => {
     instance.addHook('onRoute', (routeOptions) => {
       if (routeOptions.schema && routeOptions.schema.tags) {
-        routeOptions.schema.tags = ['meteora'];
+        routeOptions.schema.tags = ['/connector/meteora'];
       }
     });
 

@@ -42,7 +42,7 @@ export const estimateGasRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Estimate gas prices for Ethereum transactions',
-        tags: ['ethereum'],
+        tags: ['/chain/ethereum'],
         body: {
           ...EstimateGasRequestSchema,
           properties: {

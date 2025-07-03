@@ -18,7 +18,7 @@ export const addReadOnlyWalletRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Add a read-only wallet address for monitoring',
-        tags: ['wallet'],
+        tags: ['/wallet'],
         body: AddReadOnlyWalletRequestSchema,
         response: {
           200: AddReadOnlyWalletResponseSchema,

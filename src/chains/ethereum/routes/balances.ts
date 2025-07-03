@@ -195,7 +195,7 @@ export const balancesRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description:
           'Get Ethereum balances. If no tokens specified or empty array provided, returns native token (ETH) and only non-zero balances for tokens from the token list. If specific tokens are requested, returns those exact tokens with their balances, including zeros.',
-        tags: ['ethereum'],
+        tags: ['/chain/ethereum'],
         body: {
           ...BalanceRequestSchema,
           properties: {

@@ -17,7 +17,7 @@ export const removePoolRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Remove a pool by address',
-        tags: ['pools'],
+        tags: ['/pools'],
         params: {
           type: 'object',
           properties: {
