@@ -9,7 +9,7 @@ import {
 } from '@raydium-io/raydium-sdk-v2';
 import { VersionedTransaction, Transaction } from '@solana/web3.js';
 import BN from 'bn.js';
-import Decimal from 'decimal.js';
+import { Decimal } from 'decimal.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Solana, BASE_FEE } from '../../../chains/solana/solana';
@@ -37,21 +37,43 @@ async function createAddLiquidityTransaction(
   computeBudgetConfig: { units: number; microLamports: number },
 ): Promise<VersionedTransaction | Transaction> {
   if (ammPoolInfo.poolType === 'amm') {
+    const amountInA = new TokenAmount(
+      toToken(poolInfo.mintA),
+      new Decimal(baseTokenAmountAdded)
+        .mul(10 ** poolInfo.mintA.decimals)
+        .toFixed(0),
+    );
+    const amountInB = new TokenAmount(
+      toToken(poolInfo.mintB),
+      new Decimal(quoteTokenAmountAdded)
+        .mul(10 ** poolInfo.mintB.decimals)
+        .toFixed(0),
+    );
+
+    // Calculate otherAmountMin based on slippage
+    // Convert Percent to decimal (e.g., 1% = 0.01)
+    const slippageDecimal = slippage.numerator.toNumber() / slippage.denominator.toNumber();
+    const slippageMultiplier = new Decimal(1).minus(slippageDecimal);
+    const otherAmountMin = baseLimited
+      ? new TokenAmount(
+          toToken(poolInfo.mintB),
+          new Decimal(amountInB.raw.toString())
+            .mul(slippageMultiplier)
+            .toFixed(0),
+        )
+      : new TokenAmount(
+          toToken(poolInfo.mintA),
+          new Decimal(amountInA.raw.toString())
+            .mul(slippageMultiplier)
+            .toFixed(0),
+        );
+
     const response = await raydium.raydiumSDK.liquidity.addLiquidity({
       poolInfo: poolInfo as ApiV3PoolInfoStandardItem,
       poolKeys: poolKeys as AmmV4Keys,
-      amountInA: new TokenAmount(
-        toToken(poolInfo.mintA),
-        new Decimal(baseTokenAmountAdded)
-          .mul(10 ** poolInfo.mintA.decimals)
-          .toFixed(0),
-      ),
-      amountInB: new TokenAmount(
-        toToken(poolInfo.mintB),
-        new Decimal(quoteTokenAmountAdded)
-          .mul(10 ** poolInfo.mintB.decimals)
-          .toFixed(0),
-      ),
+      amountInA,
+      amountInB,
+      otherAmountMin,
       fixedSide: baseLimited ? 'a' : 'b',
       txVersion: raydium.txVersion,
       computeBudgetConfig,
@@ -211,7 +233,7 @@ async function addLiquidity(
 }
 
 export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
-  const walletAddressExample = await Solana.getWalletAddressExample();
+  // const walletAddressExample = await Solana.getWalletAddressExample();
 
   fastify.post<{
     Body: AddLiquidityRequestType;

@@ -7,18 +7,17 @@ import {
   DEV_CREATE_CPMM_POOL_PROGRAM,
 } from '@raydium-io/raydium-sdk-v2';
 
-import { RaydiumConfig } from './raydium.config';
 
 const VALID_AMM_PROGRAM_ID = new Set([
   AMM_V4.toBase58(),
   AMM_STABLE.toBase58(),
-  DEVNET_PROGRAM_ID.AmmV4.toBase58(),
-  DEVNET_PROGRAM_ID.AmmStable.toBase58(),
+  DEVNET_PROGRAM_ID.AMM_V4.toBase58(),
+  DEVNET_PROGRAM_ID.AMM_STABLE.toBase58(),
 ]);
 
 const VALID_CLMM_PROGRAM_ID = new Set([
   CLMM_PROGRAM_ID.toBase58(),
-  DEVNET_PROGRAM_ID.CLMM.toBase58(),
+  DEVNET_PROGRAM_ID.CLMM_PROGRAM_ID.toBase58(),
 ]);
 
 const VALID_CPMM_PROGRAM_ID = new Set([

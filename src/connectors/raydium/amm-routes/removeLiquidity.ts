@@ -7,7 +7,7 @@ import {
 } from '@raydium-io/raydium-sdk-v2';
 import { VersionedTransaction, Transaction, PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
-import Decimal from 'decimal.js';
+import { Decimal } from 'decimal.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Solana, BASE_FEE } from '../../../chains/solana/solana';
@@ -58,11 +58,18 @@ async function createRemoveLiquidityTransaction(
   computeBudgetConfig: { units: number; microLamports: number },
 ): Promise<VersionedTransaction | Transaction> {
   if (ammPoolInfo.poolType === 'amm') {
+    // Use a small slippage for minimum amounts (1%)
+    // const slippage = 0.01;
+    const baseAmountMin = new BN(0); // We'll accept any amount due to slippage
+    const quoteAmountMin = new BN(0); // We'll accept any amount due to slippage
+
     const response: AMMRemoveLiquiditySDKResponse =
       await raydium.raydiumSDK.liquidity.removeLiquidity({
         poolInfo: poolInfo as ApiV3PoolInfoStandardItem,
         poolKeys: poolKeys as AmmV4Keys,
-        amountIn: lpAmount,
+        lpAmount: lpAmount,
+        baseAmountMin,
+        quoteAmountMin,
         txVersion: raydium.txVersion,
         computeBudgetConfig,
       });
@@ -247,7 +254,7 @@ async function removeLiquidity(
 }
 
 export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
-  const walletAddressExample = await Solana.getWalletAddressExample();
+  // const walletAddressExample = await Solana.getWalletAddressExample();
 
   fastify.post<{
     Body: RemoveLiquidityRequestType;

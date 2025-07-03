@@ -22,10 +22,7 @@ import {
   PoolInfo as ClmmPoolInfo,
   PositionInfo,
 } from '../../schemas/clmm-schema';
-import {
-  percentRegexp,
-  ConfigManagerV2,
-} from '../../services/config-manager-v2';
+import { percentRegexp } from '../../services/config-manager-v2';
 import { logger } from '../../services/logger';
 
 import { RaydiumConfig } from './raydium.config';
@@ -390,6 +387,36 @@ export class Raydium {
 
   private getPairKey(baseToken: string, quoteToken: string): string {
     return `${baseToken}-${quoteToken}`;
+  }
+
+  /**
+   * Execute a transaction using the SDK V2 execute pattern
+   * This provides a unified way to handle transaction execution
+   * 
+   * @param executeFunc The execute function returned by SDK methods
+   * @returns Transaction ID
+   */
+  async executeTransaction(executeFunc: () => Promise<{ txId: string }>): Promise<string> {
+    try {
+      const result = await executeFunc();
+      logger.info(`Transaction executed successfully: ${result.txId}`);
+      return result.txId;
+    } catch (error: any) {
+      logger.error('Transaction execution failed:', error);
+      
+      // Handle common Solana errors
+      if (error.message?.includes('insufficient funds')) {
+        throw new Error('Insufficient SOL balance for transaction fees');
+      }
+      if (error.message?.includes('slippage')) {
+        throw new Error('Transaction failed due to slippage. Try increasing slippage tolerance.');
+      }
+      if (error.message?.includes('blockhash')) {
+        throw new Error('Transaction expired. Please try again.');
+      }
+      
+      throw error;
+    }
   }
 
   async findDefaultPool(
