@@ -2,11 +2,11 @@ import { Type } from '@sinclair/typebox';
 
 import {
   GetPriceRequest,
-  GetQuoteRequest,
+  QuoteSwapRequest,
   ExecuteQuoteRequest,
   ExecuteSwapRequest,
   GetPriceResponse,
-  GetQuoteResponse,
+  QuoteSwapResponse,
 } from '../../../schemas/swap-schema';
 
 // 0x-specific extensions
@@ -27,8 +27,8 @@ export const ZeroXGetPriceRequest = Type.Intersect([
   }),
 ]);
 
-export const ZeroXGetQuoteRequest = Type.Intersect([
-  GetQuoteRequest,
+export const ZeroXQuoteSwapRequest = Type.Intersect([
+  QuoteSwapRequest,
   Type.Object({
     gasPrice: Type.Optional(Type.String({ description: 'Gas price in wei' })),
     excludedSources: Type.Optional(
@@ -77,4 +77,4 @@ export const ZeroXExecuteSwapRequest = Type.Intersect([
 ]);
 
 export const ZeroXGetPriceResponse = GetPriceResponse;
-export const ZeroXGetQuoteResponse = GetQuoteResponse;
+export const ZeroXQuoteSwapResponse = QuoteSwapResponse;

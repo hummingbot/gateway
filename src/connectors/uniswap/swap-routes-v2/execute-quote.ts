@@ -10,7 +10,7 @@ import {
 import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
 
-import { quoteCache } from './get-quote';
+import { quoteCache } from './quote-swap';
 import { UniswapExecuteQuoteRequest } from './schemas';
 
 async function executeQuote(

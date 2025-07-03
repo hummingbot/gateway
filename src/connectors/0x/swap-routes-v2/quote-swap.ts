@@ -3,13 +3,13 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import {
-  GetQuoteRequestType,
-  GetQuoteResponseType,
+  QuoteSwapRequestType,
+  QuoteSwapResponseType,
 } from '../../../schemas/swap-schema';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { ZeroX, ZeroXQuoteResponse } from '../0x';
-import { ZeroXGetQuoteRequest, ZeroXGetQuoteResponse } from '../schemas';
+import { ZeroXQuoteSwapRequest, ZeroXQuoteSwapResponse } from '../schemas';
 
 // In-memory cache for quotes (with 30 second TTL)
 const quoteCache = new Map<
@@ -28,7 +28,7 @@ setInterval(() => {
   }
 }, 10000); // Run every 10 seconds
 
-async function getQuote(
+async function quoteSwap(
   fastify: FastifyInstance,
   network: string,
   baseToken: string,
@@ -41,7 +41,7 @@ async function getQuote(
   _includedSources?: string[],
   skipValidation?: boolean,
   takerAddress?: string,
-): Promise<GetQuoteResponseType> {
+): Promise<QuoteSwapResponseType> {
   const ethereum = await Ethereum.getInstance(network);
   const zeroX = await ZeroX.getInstance(network);
 
@@ -162,22 +162,22 @@ async function getQuote(
   };
 }
 
-export const getQuoteRoute: FastifyPluginAsync = async (fastify) => {
+export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
   const walletAddressExample = await Ethereum.getWalletAddressExample();
 
   fastify.get<{
-    Querystring: GetQuoteRequestType;
-    Reply: GetQuoteResponseType;
+    Querystring: QuoteSwapRequestType;
+    Reply: QuoteSwapResponseType;
   }>(
-    '/get-quote',
+    '/quote-swap',
     {
       schema: {
         description: 'Get an executable swap quote from 0x',
         tags: ['/connector/0x'],
         querystring: {
-          ...ZeroXGetQuoteRequest,
+          ...ZeroXQuoteSwapRequest,
           properties: {
-            ...ZeroXGetQuoteRequest.properties,
+            ...ZeroXQuoteSwapRequest.properties,
             network: { type: 'string', default: 'mainnet' },
             baseToken: { type: 'string', examples: ['WETH'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
@@ -187,7 +187,7 @@ export const getQuoteRoute: FastifyPluginAsync = async (fastify) => {
             takerAddress: { type: 'string', examples: [walletAddressExample] },
           },
         },
-        response: { 200: ZeroXGetQuoteResponse },
+        response: { 200: ZeroXQuoteSwapResponse },
       },
     },
     async (request) => {
@@ -204,9 +204,9 @@ export const getQuoteRoute: FastifyPluginAsync = async (fastify) => {
           includedSources,
           skipValidation,
           takerAddress,
-        } = request.query as typeof ZeroXGetQuoteRequest._type;
+        } = request.query as typeof ZeroXQuoteSwapRequest._type;
 
-        return await getQuote(
+        return await quoteSwap(
           fastify,
           network,
           baseToken,
@@ -232,4 +232,4 @@ export const getQuoteRoute: FastifyPluginAsync = async (fastify) => {
 // Export quote cache for use in execute-quote
 export { quoteCache };
 
-export default getQuoteRoute;
+export default quoteSwapRoute;

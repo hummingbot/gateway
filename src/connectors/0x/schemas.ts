@@ -12,9 +12,9 @@ export const ZeroXGetPriceRequest = Type.Intersect([
   }),
 ]);
 
-// 0x-specific extensions for get-quote
-export const ZeroXGetQuoteRequest = Type.Intersect([
-  Base.GetQuoteRequest,
+// 0x-specific extensions for quote-swap
+export const ZeroXQuoteSwapRequest = Type.Intersect([
+  Base.QuoteSwapRequest,
   Type.Object({
     gasPrice: Type.Optional(Type.String()),
     excludedSources: Type.Optional(Type.Array(Type.String())),
@@ -24,9 +24,9 @@ export const ZeroXGetQuoteRequest = Type.Intersect([
   }),
 ]);
 
-// 0x-specific extensions for get-quote response
-export const ZeroXGetQuoteResponse = Type.Intersect([
-  Base.GetQuoteResponse,
+// 0x-specific extensions for quote-swap response
+export const ZeroXQuoteSwapResponse = Type.Intersect([
+  Base.QuoteSwapResponse,
   Type.Object({
     sources: Type.Optional(Type.Array(Type.Any())),
     allowanceTarget: Type.Optional(Type.String()),

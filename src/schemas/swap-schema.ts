@@ -4,6 +4,7 @@ import { Type, Static } from '@sinclair/typebox';
 // Base Request/Response Types for Aggregators
 // ========================================
 
+// Get-price is only for 0x connector
 export const GetPriceRequest = Type.Object(
   {
     network: Type.String(),
@@ -41,7 +42,8 @@ export const GetPriceResponse = Type.Object(
 );
 export type GetPriceResponseType = Static<typeof GetPriceResponse>;
 
-export const GetQuoteRequest = Type.Object(
+// Quote-swap replaces get-quote for all connectors
+export const QuoteSwapRequest = Type.Object(
   {
     network: Type.String(),
     baseToken: Type.String({
@@ -59,11 +61,11 @@ export const GetQuoteRequest = Type.Object(
     ),
     slippagePct: Type.Number({ minimum: 0, maximum: 100 }),
   },
-  { $id: 'GetQuoteRequest' },
+  { $id: 'QuoteSwapRequest' },
 );
-export type GetQuoteRequestType = Static<typeof GetQuoteRequest>;
+export type QuoteSwapRequestType = Static<typeof QuoteSwapRequest>;
 
-export const GetQuoteResponse = Type.Object(
+export const QuoteSwapResponse = Type.Object(
   {
     quoteId: Type.String(),
     estimatedAmountIn: Type.Number(),
@@ -81,9 +83,9 @@ export const GetQuoteResponse = Type.Object(
     tokenInAmount: Type.Number(),
     tokenOutAmount: Type.Number(),
   },
-  { $id: 'GetQuoteResponse' },
+  { $id: 'QuoteSwapResponse' },
 );
-export type GetQuoteResponseType = Static<typeof GetQuoteResponse>;
+export type QuoteSwapResponseType = Static<typeof QuoteSwapResponse>;
 
 export const ExecuteQuoteRequest = Type.Object(
   {

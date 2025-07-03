@@ -3,13 +3,13 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { Solana } from '../../../chains/solana/solana';
 import {
-  GetQuoteRequestType,
-  GetQuoteResponseType,
+  QuoteSwapRequestType,
+  QuoteSwapResponseType,
 } from '../../../schemas/swap-schema';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Jupiter } from '../jupiter';
-import { JupiterGetQuoteRequest, JupiterGetQuoteResponse } from '../schemas';
+import { JupiterQuoteSwapRequest, JupiterQuoteSwapResponse } from '../schemas';
 
 // In-memory cache for quotes (with 30 second TTL)
 const quoteCache = new Map<
@@ -28,7 +28,7 @@ setInterval(() => {
   }
 }, 10000); // Run every 10 seconds
 
-async function getQuote(
+async function quoteSwap(
   fastify: FastifyInstance,
   network: string,
   baseToken: string,
@@ -40,7 +40,7 @@ async function getQuote(
   asLegacyTransaction?: boolean,
   _maxAccounts?: number,
   priorityFeeLamports?: number,
-): Promise<GetQuoteResponseType> {
+): Promise<QuoteSwapResponseType> {
   const solana = await Solana.getInstance(network);
   const jupiter = await Jupiter.getInstance(network);
 
@@ -145,20 +145,20 @@ async function getQuote(
   };
 }
 
-export const getQuoteRoute: FastifyPluginAsync = async (fastify) => {
+export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
-    Querystring: GetQuoteRequestType;
-    Reply: GetQuoteResponseType;
+    Querystring: QuoteSwapRequestType;
+    Reply: QuoteSwapResponseType;
   }>(
-    '/get-quote',
+    '/quote-swap',
     {
       schema: {
         description: 'Get an executable swap quote from Jupiter',
         tags: ['jupiter/swap'],
         querystring: {
-          ...JupiterGetQuoteRequest,
+          ...JupiterQuoteSwapRequest,
           properties: {
-            ...JupiterGetQuoteRequest.properties,
+            ...JupiterQuoteSwapRequest.properties,
             network: { type: 'string', default: 'mainnet-beta' },
             baseToken: { type: 'string', examples: ['SOL'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
@@ -167,7 +167,7 @@ export const getQuoteRoute: FastifyPluginAsync = async (fastify) => {
             slippagePct: { type: 'number', examples: [1] },
           },
         },
-        response: { 200: JupiterGetQuoteResponse },
+        response: { 200: JupiterQuoteSwapResponse },
       },
     },
     async (request) => {
@@ -183,9 +183,9 @@ export const getQuoteRoute: FastifyPluginAsync = async (fastify) => {
           asLegacyTransaction,
           maxAccounts,
           priorityFeeLamports,
-        } = request.query as typeof JupiterGetQuoteRequest._type;
+        } = request.query as typeof JupiterQuoteSwapRequest._type;
 
-        return await getQuote(
+        return await quoteSwap(
           fastify,
           network,
           baseToken,
@@ -210,4 +210,4 @@ export const getQuoteRoute: FastifyPluginAsync = async (fastify) => {
 // Export quote cache for use in execute-quote
 export { quoteCache };
 
-export default getQuoteRoute;
+export default quoteSwapRoute;

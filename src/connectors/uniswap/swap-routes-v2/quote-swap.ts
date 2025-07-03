@@ -9,15 +9,15 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import {
-  GetQuoteRequestType,
-  GetQuoteResponseType,
-  GetQuoteResponse,
+  QuoteSwapRequestType,
+  QuoteSwapResponseType,
+  QuoteSwapResponse,
 } from '../../../schemas/swap-schema';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Uniswap } from '../uniswap';
 
-import { UniswapGetQuoteRequest, UniswapGetQuoteResponse } from './schemas';
+import { UniswapQuoteSwapRequest, UniswapQuoteSwapResponse } from './schemas';
 
 // Simple in-memory cache for quotes
 export const quoteCache = new Map<
@@ -40,7 +40,7 @@ setInterval(() => {
   }
 }, 300000);
 
-async function getQuote(
+async function quoteSwap(
   fastify: FastifyInstance,
   network: string,
   walletAddress: string,
@@ -51,7 +51,7 @@ async function getQuote(
   slippagePct: number,
   protocols?: string[],
 ): Promise<
-  GetQuoteResponseType & {
+  QuoteSwapResponseType & {
     route: string[];
     routePath: string;
     protocols: string[];
@@ -239,23 +239,23 @@ async function getQuote(
   };
 }
 
-export const getQuoteRoute: FastifyPluginAsync = async (fastify) => {
+export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
   const walletAddressExample = await Ethereum.getWalletAddressExample();
 
   fastify.get<{
-    Querystring: GetQuoteRequestType;
-    Reply: GetQuoteResponseType;
+    Querystring: QuoteSwapRequestType;
+    Reply: QuoteSwapResponseType;
   }>(
-    '/get-quote',
+    '/quote-swap',
     {
       schema: {
         description:
           'Get an executable swap quote from Uniswap Smart Order Router',
         tags: ['/connector/uniswap'],
         querystring: {
-          ...UniswapGetQuoteRequest,
+          ...UniswapQuoteSwapRequest,
           properties: {
-            ...UniswapGetQuoteRequest.properties,
+            ...UniswapQuoteSwapRequest.properties,
             walletAddress: { type: 'string', examples: [walletAddressExample] },
             network: { type: 'string', default: 'mainnet' },
             baseToken: { type: 'string', examples: ['WETH'] },
@@ -265,7 +265,7 @@ export const getQuoteRoute: FastifyPluginAsync = async (fastify) => {
             slippagePct: { type: 'number', examples: [1] },
           },
         },
-        response: { 200: UniswapGetQuoteResponse },
+        response: { 200: UniswapQuoteSwapResponse },
       },
     },
     async (request) => {
@@ -280,9 +280,9 @@ export const getQuoteRoute: FastifyPluginAsync = async (fastify) => {
           slippagePct,
           protocols,
           enableUniversalRouter,
-        } = request.query as typeof UniswapGetQuoteRequest._type;
+        } = request.query as typeof UniswapQuoteSwapRequest._type;
 
-        return await getQuote(
+        return await quoteSwap(
           fastify,
           network,
           walletAddress,
@@ -302,4 +302,4 @@ export const getQuoteRoute: FastifyPluginAsync = async (fastify) => {
   );
 };
 
-export default getQuoteRoute;
+export default quoteSwapRoute;

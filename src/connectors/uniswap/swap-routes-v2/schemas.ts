@@ -2,22 +2,9 @@ import { Type } from '@sinclair/typebox';
 
 import * as Base from '../../../schemas/swap-schema';
 
-// Uniswap-specific request extensions
-export const UniswapGetPriceRequest = Type.Intersect([
-  Base.GetPriceRequest,
-  Type.Object({
-    // Uniswap-specific options
-    protocols: Type.Optional(
-      Type.Array(Type.String(), {
-        description: 'Protocols to use (v2, v3, mixed)',
-        examples: [['v2', 'v3']],
-      }),
-    ),
-  }),
-]);
-
-export const UniswapGetQuoteRequest = Type.Intersect([
-  Base.GetQuoteRequest,
+// Uniswap-specific request extensions for quote-swap
+export const UniswapQuoteSwapRequest = Type.Intersect([
+  Base.QuoteSwapRequest,
   Type.Object({
     walletAddress: Type.String({
       description: 'Wallet address for the swap',
@@ -59,24 +46,9 @@ export const UniswapExecuteQuoteRequest = Type.Intersect([
   }),
 ]);
 
-// Response extensions
-export const UniswapGetPriceResponse = Type.Intersect([
-  Base.GetPriceResponse,
-  Type.Object({
-    route: Type.Array(Type.String(), {
-      description: 'Token symbols in the routing path',
-    }),
-    routePath: Type.String({
-      description: 'Detailed routing path through pools',
-    }),
-    protocols: Type.Array(Type.String(), {
-      description: 'Protocols used in the route',
-    }),
-  }),
-]);
-
-export const UniswapGetQuoteResponse = Type.Intersect([
-  Base.GetQuoteResponse,
+// Response extensions for quote-swap
+export const UniswapQuoteSwapResponse = Type.Intersect([
+  Base.QuoteSwapResponse,
   Type.Object({
     route: Type.Array(Type.String()),
     routePath: Type.String(),

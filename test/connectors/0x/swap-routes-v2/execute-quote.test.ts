@@ -2,7 +2,7 @@ import { BigNumber } from 'ethers';
 
 import { Ethereum } from '../../../../src/chains/ethereum/ethereum';
 import { ZeroX } from '../../../../src/connectors/0x/0x';
-import { quoteCache } from '../../../../src/connectors/0x/swap-routes-v2/get-quote';
+import { quoteCache } from '../../../../src/connectors/0x/swap-routes-v2/quote-swap';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
 
 jest.mock('../../../../src/chains/ethereum/ethereum');

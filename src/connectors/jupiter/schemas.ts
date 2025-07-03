@@ -2,18 +2,9 @@ import { Type } from '@sinclair/typebox';
 
 import * as Base from '../../schemas/swap-schema';
 
-// Jupiter-specific extensions for get-price
-export const JupiterGetPriceRequest = Type.Intersect([
-  Base.GetPriceRequest,
-  Type.Object({
-    onlyDirectRoutes: Type.Optional(Type.Boolean()),
-    asLegacyTransaction: Type.Optional(Type.Boolean()),
-  }),
-]);
-
-// Jupiter-specific extensions for get-quote
-export const JupiterGetQuoteRequest = Type.Intersect([
-  Base.GetQuoteRequest,
+// Jupiter-specific extensions for quote-swap
+export const JupiterQuoteSwapRequest = Type.Intersect([
+  Base.QuoteSwapRequest,
   Type.Object({
     onlyDirectRoutes: Type.Optional(Type.Boolean()),
     asLegacyTransaction: Type.Optional(Type.Boolean()),
@@ -22,9 +13,9 @@ export const JupiterGetQuoteRequest = Type.Intersect([
   }),
 ]);
 
-// Jupiter-specific extensions for get-quote response
-export const JupiterGetQuoteResponse = Type.Intersect([
-  Base.GetQuoteResponse,
+// Jupiter-specific extensions for quote-swap response
+export const JupiterQuoteSwapResponse = Type.Intersect([
+  Base.QuoteSwapResponse,
   Type.Object({
     routePlan: Type.Optional(Type.Array(Type.Any())),
     contextSlot: Type.Optional(Type.Number()),

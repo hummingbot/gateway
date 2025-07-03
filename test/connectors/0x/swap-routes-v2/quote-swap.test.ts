@@ -8,10 +8,10 @@ jest.mock('../../../../src/connectors/0x/0x');
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { getQuoteRoute } = await import(
-    '../../../../src/connectors/0x/swap-routes-v2/get-quote'
+  const { quoteSwapRoute } = await import(
+    '../../../../src/connectors/0x/swap-routes-v2/quote-swap'
   );
-  await server.register(getQuoteRoute);
+  await server.register(quoteSwapRoute);
   return server;
 };
 
@@ -42,7 +42,7 @@ const mockQuoteResponse = {
   value: '0',
 };
 
-describe('GET /get-quote', () => {
+describe('GET /quote-swap', () => {
   let server: any;
 
   beforeAll(async () => {
@@ -82,7 +82,7 @@ describe('GET /get-quote', () => {
 
     const response = await server.inject({
       method: 'GET',
-      url: '/get-quote',
+      url: '/quote-swap',
       query: {
         network: 'mainnet',
         baseToken: 'WETH',
@@ -140,7 +140,7 @@ describe('GET /get-quote', () => {
 
     const response = await server.inject({
       method: 'GET',
-      url: '/get-quote',
+      url: '/quote-swap',
       query: {
         network: 'mainnet',
         baseToken: 'WETH',
@@ -171,7 +171,7 @@ describe('GET /get-quote', () => {
 
     const response = await server.inject({
       method: 'GET',
-      url: '/get-quote',
+      url: '/quote-swap',
       query: {
         network: 'mainnet',
         baseToken: 'INVALID',

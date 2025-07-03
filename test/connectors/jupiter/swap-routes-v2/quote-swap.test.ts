@@ -8,10 +8,15 @@ jest.mock('../../../../src/connectors/jupiter/jupiter');
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { getPriceRoute } = await import(
-    '../../../../src/connectors/jupiter/swap-routes-v2/get-price'
-  );
-  await server.register(getPriceRoute);
+  try {
+    const { quoteSwapRoute } = await import(
+      '../../../../src/connectors/jupiter/swap-routes-v2/quote-swap'
+    );
+    await server.register(quoteSwapRoute);
+  } catch (error) {
+    console.error('Failed to import route:', error);
+    throw error;
+  }
   return server;
 };
 
@@ -35,22 +40,29 @@ const mockQuoteResponse = {
   slippageBps: 50,
 };
 
-describe('GET /get-price', () => {
+describe('GET /quote-swap', () => {
   let server: any;
 
   beforeAll(async () => {
-    server = await buildApp();
+    try {
+      server = await buildApp();
+    } catch (error) {
+      console.error('Failed to build app:', error);
+      throw error;
+    }
   });
 
   afterAll(async () => {
-    await server.close();
+    if (server) {
+      await server.close();
+    }
   });
 
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('should return a price quote for SELL side', async () => {
+  it('should return a swap quote for SELL side', async () => {
     const mockSolanaInstance = {
       getToken: jest
         .fn()
@@ -66,22 +78,32 @@ describe('GET /get-price', () => {
 
     const response = await server.inject({
       method: 'GET',
-      url: '/get-price',
+      url: '/quote-swap',
       query: {
         network: 'mainnet-beta',
         baseToken: 'SOL',
         quoteToken: 'USDC',
         amount: '0.1',
         side: 'SELL',
+        slippagePct: '0.5',
       },
     });
 
+    if (response.statusCode !== 200) {
+      console.log('Response error:', JSON.parse(response.body));
+    }
     expect(response.statusCode).toBe(200);
     const body = JSON.parse(response.body);
+    expect(body).toHaveProperty('quoteId');
     expect(body).toHaveProperty('estimatedAmountIn', 0.1);
     expect(body).toHaveProperty('estimatedAmountOut', 15);
+    expect(body).toHaveProperty('minAmountOut');
+    expect(body).toHaveProperty('maxAmountIn');
     expect(body).toHaveProperty('price', 150);
     expect(body).toHaveProperty('priceImpactPct', 0.001);
+    expect(body).toHaveProperty('slippagePct', 0.5);
+    expect(body).toHaveProperty('gasEstimate');
+    expect(body).toHaveProperty('expirationTime');
     expect(body).toHaveProperty('tokenIn', mockSOL.address);
     expect(body).toHaveProperty('tokenOut', mockUSDC.address);
     expect(body).toHaveProperty('tokenInAmount', 0.1);
@@ -110,22 +132,29 @@ describe('GET /get-price', () => {
 
     const response = await server.inject({
       method: 'GET',
-      url: '/get-price',
+      url: '/quote-swap',
       query: {
         network: 'mainnet-beta',
         baseToken: 'SOL',
         quoteToken: 'USDC',
         amount: '0.1',
         side: 'BUY',
+        slippagePct: '0.5',
       },
     });
 
     expect(response.statusCode).toBe(200);
     const body = JSON.parse(response.body);
+    expect(body).toHaveProperty('quoteId');
     expect(body).toHaveProperty('estimatedAmountIn', 15);
     expect(body).toHaveProperty('estimatedAmountOut', 0.1);
+    expect(body).toHaveProperty('minAmountOut');
+    expect(body).toHaveProperty('maxAmountIn');
     expect(body).toHaveProperty('price', 150);
     expect(body).toHaveProperty('priceImpactPct', 0.001);
+    expect(body).toHaveProperty('slippagePct', 0.5);
+    expect(body).toHaveProperty('gasEstimate');
+    expect(body).toHaveProperty('expirationTime');
     expect(body).toHaveProperty('tokenIn', mockUSDC.address);
     expect(body).toHaveProperty('tokenOut', mockSOL.address);
   });
@@ -141,7 +170,7 @@ describe('GET /get-price', () => {
 
     const response = await server.inject({
       method: 'GET',
-      url: '/get-price',
+      url: '/quote-swap',
       query: {
         network: 'mainnet-beta',
         baseToken: 'INVALID',
@@ -171,13 +200,14 @@ describe('GET /get-price', () => {
 
     const response = await server.inject({
       method: 'GET',
-      url: '/get-price',
+      url: '/quote-swap',
       query: {
         network: 'mainnet-beta',
         baseToken: 'SOL',
         quoteToken: 'USDC',
         amount: '0.1',
         side: 'SELL',
+        slippagePct: '0.5',
       },
     });
 

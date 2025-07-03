@@ -1,29 +1,15 @@
 import { Type } from '@sinclair/typebox';
 
 import {
-  GetPriceRequest,
-  GetQuoteRequest,
+  QuoteSwapRequest,
   ExecuteQuoteRequest,
   ExecuteSwapRequest,
-  GetPriceResponse,
-  GetQuoteResponse,
+  QuoteSwapResponse,
 } from '../../../schemas/swap-schema';
 
-// Jupiter-specific extensions
-export const JupiterGetPriceRequest = Type.Intersect([
-  GetPriceRequest,
-  Type.Object({
-    onlyDirectRoutes: Type.Optional(
-      Type.Boolean({ description: 'Only use direct routes' }),
-    ),
-    asLegacyTransaction: Type.Optional(
-      Type.Boolean({ description: 'Use legacy transaction format' }),
-    ),
-  }),
-]);
-
-export const JupiterGetQuoteRequest = Type.Intersect([
-  GetQuoteRequest,
+// Jupiter-specific extensions for quote-swap
+export const JupiterQuoteSwapRequest = Type.Intersect([
+  QuoteSwapRequest,
   Type.Object({
     onlyDirectRoutes: Type.Optional(
       Type.Boolean({ description: 'Only use direct routes' }),
@@ -73,5 +59,4 @@ export const JupiterExecuteSwapRequest = Type.Intersect([
   }),
 ]);
 
-export const JupiterGetPriceResponse = GetPriceResponse;
-export const JupiterGetQuoteResponse = GetQuoteResponse;
+export const JupiterQuoteSwapResponse = QuoteSwapResponse;
