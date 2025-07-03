@@ -13,6 +13,8 @@ The Gateway MCP server provides simplified access to essential DEX trading and c
 ```
 src/mcp/
 ├── index.ts                    # Main server entry point
+├── version.ts                  # Version constant
+├── types.ts                    # TypeScript type definitions
 ├── config/                     # MCP configuration files
 │   └── coingecko-tools-subset.json  # Curated CoinGecko tools list
 ├── resources/                  # Resource handlers for read-only data
@@ -26,6 +28,7 @@ src/mcp/
 │   └── fetch-swap-quote.ts    # Swap quote finder workflow
 └── utils/                      # Utility functions
     ├── api-client.ts          # Gateway API client
+    ├── fallback.ts            # Offline fallback data
     └── tool-registry.ts       # Tool registration system
 ```
 
@@ -35,6 +38,8 @@ src/mcp/
 - **Curated CoinGecko Integration**: 12 DEX market data tools for use with Gateway
 - **Resource-Based Configuration**: All configs accessible via gateway:// URIs
 - **Full Lifecycle Management**: Automatic CoinGecko subprocess handling
+- **Reduced Permission Requests**: Resources provide read-only access without permissions
+- **Offline Support**: Fallback data when Gateway isn't running
 
 ## Available Resources, Tools, and Prompts
 
@@ -449,7 +454,16 @@ node test/mcp/test-api-resources.js
 
 # Test fetch-swap-quote prompt
 node test/mcp/test-fetch-swap-quote-prompt.js
+
+# Legacy test suite
+node test-mcp-tools.js
 ```
+
+Expected test output:
+- ✅ Tools available (5 Gateway + 12 CoinGecko when enabled)
+- ✅ Resources accessible
+- ✅ Prompts ready
+- ✅ Fallback data works offline
 
 ## Troubleshooting
 
@@ -493,7 +507,7 @@ claude mcp add --scope project gateway node -- /path/to/gateway/dist/mcp/index.j
 - `COINGECKO_PRO_API_KEY`: Pro API key for pro-api.coingecko.com (higher rate limits, takes precedence over Demo key)
 
 ### Command Line Arguments
-- `--with-coingecko`: Include CoinGecko integration with 46 tools (default: false)
+- `--with-coingecko`: Include CoinGecko integration with 12 curated tools (default: false)
 
 ## Security Best Practices
 
@@ -503,6 +517,10 @@ claude mcp add --scope project gateway node -- /path/to/gateway/dist/mcp/index.j
 - API keys are passed securely via environment
 - Use test networks for development
 - Monitor transaction logs regularly
+- Private keys never exposed through MCP
+- All signing happens within Gateway
+- Resources are read-only
+- Tools validate inputs
 
 ## Additional Resources
 

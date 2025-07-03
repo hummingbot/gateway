@@ -110,3 +110,20 @@ This file provides guidance to AI coding assistants when working with code in th
 
 ## Hummingbot Gateway Endpoint Standardization
 - This repo standardized DEX and chain endpoints that are used by Hummingbot strategies. See this branch for the matching code, especially the Gateway connector classes https://github.com/hummingbot/hummingbot/tree/development
+
+## MCP (Model Context Protocol) Support
+Gateway includes comprehensive MCP support for AI agents and Claude Desktop integration:
+
+- **Gateway MCP Documentation**: See [GATEWAY-MCP.md](./GATEWAY-MCP.md) for complete details on:
+  - Installation and setup with Claude Desktop
+  - Available resources, tools, and prompts
+  - Configuration and customization options
+  - Integration with CoinGecko tools
+
+- **CoinGecko MCP Documentation**: See [COINGECKO-MCP.md](./COINGECKO-MCP.md) for:
+  - Complete list of 46 available CoinGecko tools
+  - Pool endpoints comparison with Gateway
+  - Usage examples and best practices
+  - Integration via Gateway MCP
+
+**For AI Agents**: When asked about MCP functionality, tools, or integration, please read the above documentation files for complete context and accurate information.
