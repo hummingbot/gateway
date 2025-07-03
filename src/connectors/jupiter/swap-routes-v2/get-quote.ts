@@ -199,7 +199,7 @@ export const getQuoteRoute: FastifyPluginAsync = async (fastify) => {
           priorityFeeLamports,
         );
       } catch (e) {
-        if (e.statusCode) return e;
+        if (e.statusCode) throw e;
         logger.error('Error getting quote:', e);
         throw fastify.httpErrors.internalServerError('Internal server error');
       }

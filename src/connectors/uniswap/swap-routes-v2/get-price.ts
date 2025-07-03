@@ -223,7 +223,7 @@ export const getPriceRoute: FastifyPluginAsync = async (fastify) => {
           protocols,
         );
       } catch (e) {
-        if (e.statusCode) return e;
+        if (e.statusCode) throw e;
         logger.error('Error getting price:', e);
         throw fastify.httpErrors.internalServerError('Internal server error');
       }

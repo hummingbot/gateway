@@ -270,7 +270,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           maxGas,
         );
       } catch (e) {
-        if (e.statusCode) return e;
+        if (e.statusCode) throw e;
         logger.error('Error executing swap:', e);
         throw fastify.httpErrors.internalServerError('Internal server error');
       }
