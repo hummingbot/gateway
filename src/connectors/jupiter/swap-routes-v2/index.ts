@@ -1,8 +1,8 @@
 import { FastifyPluginAsync } from 'fastify';
 
-import executeQuoteRoute from './execute-quote';
-import executeSwapRoute from './execute-swap';
-import quoteSwapRoute from './quote-swap';
+import executeQuoteRoute from './executeQuote';
+import executeSwapRoute from './executeSwap';
+import quoteSwapRoute from './quoteSwap';
 
 export const jupiterSwapV2Routes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(quoteSwapRoute);

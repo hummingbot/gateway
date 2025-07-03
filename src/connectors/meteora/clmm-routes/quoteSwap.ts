@@ -7,11 +7,11 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { estimateGasSolana } from '../../../chains/solana/routes/estimate-gas';
 import { Solana } from '../../../chains/solana/solana';
 import {
-  GetSwapQuoteResponseType,
-  GetSwapQuoteResponse,
-  GetSwapQuoteRequestType,
-  GetSwapQuoteRequest,
-} from '../../../schemas/swap-schema';
+  QuoteSwapResponseType,
+  QuoteSwapResponse,
+  QuoteSwapRequestType,
+  QuoteSwapRequest,
+} from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Meteora } from '../meteora';
@@ -86,7 +86,7 @@ async function formatSwapQuote(
   side: 'BUY' | 'SELL',
   poolAddress: string,
   slippagePct?: number,
-): Promise<GetSwapQuoteResponseType> {
+): Promise<QuoteSwapResponseType> {
   const { inputToken, outputToken, quote, dlmmPool } = await getRawSwapQuote(
     fastify,
     network,
@@ -130,10 +130,15 @@ async function formatSwapQuote(
       estimatedAmountOut: amountOut,
       maxAmountIn,
       minAmountOut: amountOut,
-      baseTokenBalanceChange: amountOut,
-      quoteTokenBalanceChange: -estimatedAmountIn,
       price,
+      priceImpactPct: 0, // TODO: Calculate actual price impact
+      fee: 0.3, // Default fee percentage
       computeUnits: 0,
+      activeBinId: 0, // TODO: Get active bin ID
+      tokenIn: inputToken.address,
+      tokenOut: outputToken.address,
+      tokenInAmount: estimatedAmountIn,
+      tokenOutAmount: amountOut,
     };
   } else {
     const exactInQuote = quote as SwapQuote;
@@ -164,29 +169,34 @@ async function formatSwapQuote(
       estimatedAmountOut,
       minAmountOut,
       maxAmountIn: estimatedAmountIn,
-      baseTokenBalanceChange: baseTokenChange,
-      quoteTokenBalanceChange: quoteTokenChange,
       price,
+      priceImpactPct: 0, // TODO: Calculate actual price impact
+      fee: 0.3, // Default fee percentage
       computeUnits: 0,
+      activeBinId: 0, // TODO: Get active bin ID
+      tokenIn: inputToken.address,
+      tokenOut: outputToken.address,
+      tokenInAmount: estimatedAmountIn,
+      tokenOutAmount: estimatedAmountOut,
     };
   }
 }
 
 export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
-    Querystring: GetSwapQuoteRequestType;
-    Reply: GetSwapQuoteResponseType;
+    Querystring: QuoteSwapRequestType;
+    Reply: QuoteSwapResponseType;
   }>(
     '/quote-swap',
     {
       schema: {
         description: 'Get swap quote for Meteora CLMM',
         tags: ['/connector/meteora'],
-        querystring: GetSwapQuoteRequest,
+        querystring: QuoteSwapRequest,
         response: {
           200: {
             properties: {
-              ...GetSwapQuoteResponse.properties,
+              ...QuoteSwapResponse.properties,
             },
           },
         },

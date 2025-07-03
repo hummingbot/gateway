@@ -36,15 +36,16 @@ describe('Uniswap Routes Structure', () => {
       expect(fs.existsSync(oldRoutesPath)).toBe(false);
     });
 
-    it('should have correct files in swap-routes folder', () => {
+    it('should have correct files in swap-routes-v2 folder', () => {
       const swapRoutesPath = path.join(
         __dirname,
-        '../../../src/connectors/uniswap/swap-routes',
+        '../../../src/connectors/uniswap/swap-routes-v2',
       );
       const files = fs.readdirSync(swapRoutesPath);
 
       expect(files).toContain('executeSwap.ts');
       expect(files).toContain('quoteSwap.ts');
+      expect(files).toContain('executeQuote.ts');
     });
   });
 

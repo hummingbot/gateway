@@ -11,7 +11,7 @@ import { logger } from '../../../services/logger';
 import { Jupiter } from '../jupiter';
 import { JupiterExecuteQuoteRequest } from '../schemas';
 
-import { quoteCache } from './quote-swap';
+import { quoteCache } from './quoteSwap';
 
 async function executeQuote(
   fastify: FastifyInstance,

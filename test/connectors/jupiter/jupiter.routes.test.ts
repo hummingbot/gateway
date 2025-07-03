@@ -40,14 +40,14 @@ describe('Jupiter Routes Structure', () => {
         `../../../src/connectors/${CONNECTOR_NAME}`,
       );
 
-      // Check for swap-routes if swap is supported
+      // Check for swap-routes-v2 if swap is supported
       if (jupiterConfig.trading_types.includes('swap')) {
-        const swapRoutesPath = path.join(connectorPath, 'swap-routes');
+        const swapRoutesPath = path.join(connectorPath, 'swap-routes-v2');
         expect(fs.existsSync(swapRoutesPath)).toBe(true);
 
         // Verify it has the standard swap files
         const files = fs.readdirSync(swapRoutesPath);
-        expect(files.some((f) => f.includes('Swap'))).toBe(true);
+        expect(files.some((f) => f.toLowerCase().includes('swap'))).toBe(true);
       }
 
       // Ensure old 'routes' folder doesn't exist

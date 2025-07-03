@@ -8,10 +8,10 @@ import {
   SwapExecuteResponse,
 } from '../../../schemas/swap-schema';
 import { logger } from '../../../services/logger';
-import { ZeroX } from '../0x';
-import { ZeroXExecuteQuoteRequest } from '../schemas';
+import { Uniswap } from '../uniswap';
 
-import { quoteCache } from './quote-swap';
+import { quoteCache } from './quoteSwap';
+import { UniswapExecuteQuoteRequest } from './schemas';
 
 async function executeQuote(
   fastify: FastifyInstance,
@@ -28,35 +28,52 @@ async function executeQuote(
   }
 
   const { quote, request } = cached;
-  const { sellToken, buyToken, side, amount, baseTokenInfo, quoteTokenInfo } =
-    request;
+  const {
+    baseTokenInfo,
+    quoteTokenInfo,
+    inputToken,
+    outputToken,
+    side,
+    amount,
+  } = request;
 
   const ethereum = await Ethereum.getInstance(network);
   const wallet = await ethereum.getWallet(walletAddress);
-  const zeroX = await ZeroX.getInstance(network);
+  const uniswap = await Uniswap.getInstance(network);
 
   logger.info(
-    `Executing quote ${quoteId} for ${amount} ${side === 'SELL' ? baseTokenInfo.symbol : quoteTokenInfo.symbol} -> ${side === 'SELL' ? quoteTokenInfo.symbol : baseTokenInfo.symbol}`,
+    `Executing quote ${quoteId} for ${amount} ${inputToken.symbol} -> ${outputToken.symbol}`,
   );
 
   // Check and approve allowance if needed
-  const sellTokenInfo = side === 'SELL' ? baseTokenInfo : quoteTokenInfo;
-  if (sellTokenInfo.address !== ethereum.nativeTokenSymbol) {
-    const tokenContract = ethereum.getContract(sellTokenInfo.address, wallet);
+  if (inputToken.address !== ethereum.nativeTokenSymbol) {
+    const tokenContract = ethereum.getContract(inputToken.address, wallet);
+    const spender = quote.methodParameters.to; // Router address
     const allowance = await ethereum.getERC20Allowance(
       tokenContract,
       wallet,
-      quote.allowanceTarget,
-      sellTokenInfo.decimals,
+      spender,
+      inputToken.decimals,
     );
 
-    const requiredAllowance = BigNumber.from(quote.sellAmount);
+    // Calculate required allowance based on side
+    const requiredAmount =
+      side === 'SELL'
+        ? amount
+        : quote.quote
+          ? parseFloat(quote.quote.toExact())
+          : 0;
+    const scaleFactor = Math.pow(10, inputToken.decimals);
+    const requiredAllowance = BigNumber.from(
+      Math.floor(requiredAmount * scaleFactor).toString(),
+    );
+
     if (BigNumber.from(allowance.value).lt(requiredAllowance)) {
-      logger.info(`Approving ${sellTokenInfo.symbol} for 0x swap`);
+      logger.info(`Approving ${inputToken.symbol} for Uniswap router`);
       await ethereum.approveERC20(
         tokenContract,
         wallet,
-        quote.allowanceTarget,
+        spender,
         requiredAllowance,
       );
     }
@@ -64,10 +81,11 @@ async function executeQuote(
 
   // Execute the swap transaction
   const txData = {
-    to: quote.to,
-    data: quote.data,
-    value: quote.value,
-    gasLimit: maxGas || parseInt(quote.estimatedGas || quote.gas),
+    to: quote.methodParameters.to,
+    data: quote.methodParameters.calldata,
+    value: quote.methodParameters.value,
+    gasLimit:
+      maxGas || parseInt(quote.estimatedGasUsed?.toString() || '500000'),
     ...(gasPrice && { gasPrice: BigNumber.from(gasPrice) }),
   };
 
@@ -79,44 +97,33 @@ async function executeQuote(
   }
 
   // Calculate fee from gas used
-  const fee = parseFloat(
-    zeroX.formatTokenAmount(
-      txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice).toString(),
-      18,
-    ),
-  );
+  const fee =
+    parseFloat(txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice).toString()) /
+    1e18;
 
-  // For now, use the quote amounts as the actual amounts
-  // In a real implementation, you would extract actual amounts from events
+  // Calculate actual amounts (for now use quote amounts)
   const baseTokenBalanceChange =
     side === 'SELL'
-      ? -parseFloat(
-          zeroX.formatTokenAmount(quote.sellAmount, baseTokenInfo.decimals),
-        )
-      : parseFloat(
-          zeroX.formatTokenAmount(quote.buyAmount, baseTokenInfo.decimals),
-        );
+      ? -amount
+      : quote.quote
+        ? parseFloat(quote.quote.toExact())
+        : 0;
   const quoteTokenBalanceChange =
     side === 'SELL'
-      ? parseFloat(
-          zeroX.formatTokenAmount(quote.buyAmount, quoteTokenInfo.decimals),
-        )
-      : -parseFloat(
-          zeroX.formatTokenAmount(quote.sellAmount, quoteTokenInfo.decimals),
-        );
+      ? quote.quote
+        ? parseFloat(quote.quote.toExact())
+        : 0
+      : -amount;
 
-  // Calculate actual amounts swapped
-  const totalInputSwapped =
-    side === 'SELL'
-      ? Math.abs(baseTokenBalanceChange)
-      : Math.abs(quoteTokenBalanceChange);
-  const totalOutputSwapped =
-    side === 'SELL'
-      ? Math.abs(quoteTokenBalanceChange)
-      : Math.abs(baseTokenBalanceChange);
+  const totalInputSwapped = Math.abs(
+    side === 'SELL' ? baseTokenBalanceChange : quoteTokenBalanceChange,
+  );
+  const totalOutputSwapped = Math.abs(
+    side === 'SELL' ? quoteTokenBalanceChange : baseTokenBalanceChange,
+  );
 
   logger.info(
-    `Swap executed successfully: ${totalInputSwapped.toFixed(4)} ${side === 'SELL' ? baseTokenInfo.symbol : quoteTokenInfo.symbol} -> ${totalOutputSwapped.toFixed(4)} ${side === 'SELL' ? quoteTokenInfo.symbol : baseTokenInfo.symbol}`,
+    `Swap executed successfully: ${totalInputSwapped} ${inputToken.symbol} -> ${totalOutputSwapped} ${outputToken.symbol}`,
   );
 
   // Remove quote from cache after successful execution
@@ -131,8 +138,8 @@ async function executeQuote(
       fee,
       baseTokenBalanceChange,
       quoteTokenBalanceChange,
-      tokenIn: sellToken,
-      tokenOut: buyToken,
+      tokenIn: inputToken.address,
+      tokenOut: outputToken.address,
       tokenInAmount: totalInputSwapped,
       tokenOutAmount: totalOutputSwapped,
     },
@@ -149,12 +156,12 @@ export const executeQuoteRoute: FastifyPluginAsync = async (fastify) => {
     '/execute-quote',
     {
       schema: {
-        description: 'Execute a previously fetched quote from 0x',
-        tags: ['/connector/0x'],
+        description: 'Execute a previously fetched quote from Uniswap',
+        tags: ['/connector/uniswap'],
         body: {
-          ...ZeroXExecuteQuoteRequest,
+          ...UniswapExecuteQuoteRequest,
           properties: {
-            ...ZeroXExecuteQuoteRequest.properties,
+            ...UniswapExecuteQuoteRequest.properties,
             walletAddress: { type: 'string', examples: [walletAddressExample] },
             network: { type: 'string', default: 'mainnet' },
             quoteId: {
@@ -169,7 +176,7 @@ export const executeQuoteRoute: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       try {
         const { walletAddress, network, quoteId, gasPrice, maxGas } =
-          request.body as typeof ZeroXExecuteQuoteRequest._type;
+          request.body as typeof UniswapExecuteQuoteRequest._type;
 
         return await executeQuote(
           fastify,
