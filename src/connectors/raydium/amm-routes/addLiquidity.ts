@@ -52,7 +52,8 @@ async function createAddLiquidityTransaction(
 
     // Calculate otherAmountMin based on slippage
     // Convert Percent to decimal (e.g., 1% = 0.01)
-    const slippageDecimal = slippage.numerator.toNumber() / slippage.denominator.toNumber();
+    const slippageDecimal =
+      slippage.numerator.toNumber() / slippage.denominator.toNumber();
     const slippageMultiplier = new Decimal(1).minus(slippageDecimal);
     const otherAmountMin = baseLimited
       ? new TokenAmount(
