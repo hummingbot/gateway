@@ -1,32 +1,61 @@
 import { z } from 'zod';
 
+// NOTE: Gateway uses TypeBox (@sinclair/typebox) for schemas throughout the codebase.
+// MCP uses Zod for its schemas. We maintain separate schemas here to avoid:
+// 1. Adding TypeBox as a dependency to MCP
+// 2. Complex type conversions between TypeBox and Zod
+// 3. Tight coupling between MCP and Gateway's internal schemas
+//
+// These values MUST match the actual supported chains/networks/connectors in Gateway.
+// When Gateway adds new chains/networks/connectors, update these enums accordingly.
+
 // Chain parameter schemas
+// Only two top-level chains are supported:
+// - 'ethereum' for all EVM-compatible chains (mainnet, polygon, arbitrum, etc.)
+// - 'solana' for Solana networks
 export const ParamChain = z
+  .enum(['ethereum', 'solana'])
+  .describe(
+    'The blockchain to use (ethereum for all EVM chains, solana for Solana)',
+  );
+
+// Network schemas - these match the actual networks supported by each chain
+// Sources:
+// - Ethereum networks: src/connectors/uniswap/uniswap.config.ts
+// - Solana networks: src/connectors/jupiter/jupiter.config.ts
+export const ParamEthereumNetwork = z
   .enum([
-    'ethereum',
-    'polygon',
+    'mainnet',
+    'sepolia',
     'arbitrum',
     'avalanche',
-    'optimism',
     'base',
     'bsc',
     'celo',
-    'worldchain',
-    'solana',
+    'optimism',
+    'polygon',
   ])
-  .describe('The blockchain network to use');
+  .describe('Network for Ethereum/EVM chains');
 
+export const ParamSolanaNetwork = z
+  .enum(['mainnet-beta', 'devnet'])
+  .describe('Network for Solana');
+
+// Union network type that accepts both
 export const ParamNetwork = z
-  .enum(['mainnet', 'sepolia', 'devnet'])
+  .union([ParamEthereumNetwork, ParamSolanaNetwork])
   .describe(
-    'The specific network for the chain (e.g., mainnet, sepolia for Ethereum, or mainnet, devnet for Solana)',
+    'The specific network for the chain (e.g., mainnet, arbitrum for Ethereum, or mainnet-beta for Solana)',
   );
 
+// Connector schemas - these match the actual DEX connectors in Gateway
+// Source: src/connectors/connector.routes.ts
 export const ParamConnector = z
-  .enum(['uniswap', 'jupiter', 'meteora', 'raydium'])
+  .enum(['0x', 'uniswap', 'jupiter', 'meteora', 'raydium'])
   .describe('The DEX connector to use for trading operations');
 
 // Address schemas
+// Note: Gateway has wallet schemas in src/wallet/schemas.ts using TypeBox
 export const ParamAddress = z
   .string()
   .trim()
@@ -54,6 +83,8 @@ export const ParamAmount = z
   .describe('The amount of tokens (as a string to preserve precision)');
 
 // Swap parameters
+// Note: Gateway has comprehensive trading schemas in src/schemas/router-schema.ts
+// We define simplified versions here for MCP tool parameters
 export const ParamSlippage = z
   .number()
   .min(0)
@@ -117,6 +148,16 @@ export const ChainNetworkParams = {
   network: ParamNetwork,
 };
 
+// Helper to validate chain/network combinations
+export function validateChainNetwork(chain: string, network: string): boolean {
+  if (chain === 'ethereum') {
+    return ParamEthereumNetwork.safeParse(network).success;
+  } else if (chain === 'solana') {
+    return ParamSolanaNetwork.safeParse(network).success;
+  }
+  return false;
+}
+
 export const SwapBaseParams = {
   chain: ParamChain,
   network: ParamNetwork,
@@ -134,3 +175,9 @@ export const GasParams = {
   maxPriorityFeePerGas: ParamMaxPriorityFeePerGas,
   nonce: ParamNonce,
 };
+
+// FUTURE IMPROVEMENTS:
+// 1. Consider creating a shared schema package that can convert between TypeBox and Zod
+// 2. Implement runtime validation to ensure MCP schemas stay in sync with Gateway
+// 3. Generate these schemas from Gateway's TypeBox schemas using code generation
+// 4. Add unit tests that verify these enums match Gateway's actual supported values

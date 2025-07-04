@@ -1,4 +1,4 @@
-import { spawn, ChildProcess } from 'child_process';
+import { ChildProcess } from 'child_process';
 
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
@@ -118,78 +118,60 @@ export class CoinGeckoGateway {
   }
 
   private async registerAllTools() {
-    // Load the curated subset of tools from server config
+    // Load the predefined tools from server config
     let toolSubset: string[] = [];
     try {
       const configManager = ConfigManagerV2.getInstance();
       const serverConfig = configManager.get('server.mcp.coingeckoTools');
       toolSubset = serverConfig || [];
 
-      if (toolSubset.length > 0) {
-        console.error(
-          `Loading curated subset of ${toolSubset.length} CoinGecko tools from server config`,
-        );
-      } else {
-        console.error(
-          'No CoinGecko tools specified in server config, loading all tools',
-        );
-      }
+      console.error(
+        `Loading predefined ${toolSubset.length} CoinGecko tools from server config`,
+      );
     } catch (error) {
       console.error(
         'Failed to load CoinGecko tools from server config:',
         error,
       );
-      console.error('Loading all tools');
+      return; // Don't register any tools if config fails
     }
 
-    // List all available tools from CoinGecko
-    try {
-      const toolsResponse = await this.coingeckoClient!.listTools();
-
-      // Filter tools if we have a subset defined
-      const toolsToRegister =
-        toolSubset.length > 0
-          ? toolsResponse.tools.filter((tool) => toolSubset.includes(tool.name))
-          : toolsResponse.tools;
-
-      console.error(`Registering ${toolsToRegister.length} CoinGecko tools...`);
-
-      // Register each tool with coingecko_ prefix
-      for (const tool of toolsToRegister) {
-        const prefixedName = `coingecko_${tool.name}`;
-
-        ToolRegistry.registerTool(
-          {
-            name: prefixedName,
-            description: tool.description,
-            inputSchema: tool.inputSchema,
-          },
-          async (request) => {
-            await this.ensureConnected();
-
-            try {
-              console.error(
-                `Calling CoinGecko tool: ${tool.name} with args:`,
-                JSON.stringify(request.params.arguments || {}),
-              );
-              const result = await this.coingeckoClient!.callTool({
-                name: tool.name,
-                arguments: request.params.arguments || {},
-              });
-              console.error(`CoinGecko tool ${tool.name} response received`);
-              return result;
-            } catch (error: any) {
-              console.error(`CoinGecko tool ${tool.name} error:`, error);
-              throw new Error(`CoinGecko API error: ${error.message}`);
-            }
-          },
-        );
-      }
-
-      console.error(`Registered ${toolsToRegister.length} CoinGecko tools`);
-    } catch (error) {
-      console.error('Failed to register CoinGecko tools:', error);
+    if (toolSubset.length === 0) {
+      console.error('No CoinGecko tools configured in server.yml');
+      return;
     }
+
+    // Update handlers for the predefined tools only
+    console.error(
+      `Updating handlers for ${toolSubset.length} CoinGecko tools...`,
+    );
+
+    for (const toolName of toolSubset) {
+      const prefixedName = `coingecko_${toolName}`;
+
+      // Update the existing tool handler (already registered in server.ts)
+      ToolRegistry.updateHandler(prefixedName, async (request) => {
+        await this.ensureConnected();
+
+        try {
+          console.error(
+            `Calling CoinGecko tool: ${toolName} with args:`,
+            JSON.stringify(request.params.arguments || {}),
+          );
+          const result = await this.coingeckoClient!.callTool({
+            name: toolName,
+            arguments: request.params.arguments || {},
+          });
+          console.error(`CoinGecko tool ${toolName} response received`);
+          return result;
+        } catch (error: any) {
+          console.error(`CoinGecko tool ${toolName} error:`, error);
+          throw new Error(`CoinGecko API error: ${error.message}`);
+        }
+      });
+    }
+
+    console.error(`Updated handlers for ${toolSubset.length} CoinGecko tools`);
   }
 
   private async ensureConnected() {

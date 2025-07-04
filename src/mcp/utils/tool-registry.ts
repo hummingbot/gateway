@@ -36,6 +36,13 @@ export class ToolRegistry {
     return this.handlers.get(name);
   }
 
+  static updateHandler(name: string, handler: (request: any) => Promise<any>) {
+    if (!this.handlers.has(name)) {
+      console.error(`Warning: Updating handler for non-existent tool: ${name}`);
+    }
+    this.handlers.set(name, handler);
+  }
+
   static clear() {
     this.tools = [];
     this.handlers.clear();

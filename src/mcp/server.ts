@@ -12,7 +12,10 @@ import { z } from 'zod';
 import { PROMPT_DEFINITIONS } from './promptDefinitions';
 import { PROMPT_HANDLERS } from './prompts';
 import { getAllResources, handleResource } from './resources';
-import { TOOL_DEFINITIONS } from './toolDefinitions';
+import {
+  TOOL_DEFINITIONS,
+  COINGECKO_TOOL_DEFINITIONS,
+} from './toolDefinitions';
 import { TOOL_HANDLERS } from './tools';
 import { GatewayApiClient } from './utils/api-client';
 import { ToolRegistry } from './utils/tool-registry';
@@ -34,9 +37,13 @@ export async function configureServer({
   server: Server;
   context: ServerContext;
 }) {
-  // Register tools
+  // Register Gateway tools
   for (const toolDef of TOOL_DEFINITIONS) {
     const handler = TOOL_HANDLERS[toolDef.name];
+    if (!handler) {
+      console.error(`Warning: No handler found for tool ${toolDef.name}`);
+      continue;
+    }
 
     // Convert params schema to JSON schema for MCP SDK
     const paramsSchema = toolDef.paramsSchema || {};
@@ -189,8 +196,47 @@ export async function configureServer({
 
   // Register CoinGecko tools if enabled
   if (context.withCoinGecko) {
+    // Register CoinGecko tool definitions with ToolRegistry
+    // The actual implementation will be handled by the CoinGecko subprocess
+    for (const toolDef of COINGECKO_TOOL_DEFINITIONS) {
+      // Convert params schema to JSON schema
+      const paramsSchema = toolDef.paramsSchema || {};
+      const properties: Record<string, any> = {};
+      const required: string[] = [];
+
+      for (const [key, schema] of Object.entries(paramsSchema)) {
+        const zodSchema = schema as z.ZodTypeAny;
+        properties[key] = zodToJsonSchema(zodSchema);
+
+        if (!zodSchema.isOptional()) {
+          required.push(key);
+        }
+      }
+
+      const inputSchema = {
+        type: 'object' as const,
+        properties,
+        required: required.length > 0 ? required : undefined,
+      };
+
+      // Register the tool definition - handler will be set by coingecko-gateway
+      ToolRegistry.registerTool(
+        {
+          name: toolDef.name,
+          description: toolDef.description,
+          inputSchema,
+        },
+        async () => {
+          throw new Error(
+            `CoinGecko tool ${toolDef.name} handler not initialized. Is the CoinGecko subprocess running?`,
+          );
+        },
+      );
+    }
+
+    // Now initialize the CoinGecko subprocess which will update the handlers
     const { registerCoinGeckoTools } = await import(
-      './tools/coingecko-gateway'
+      './utils/coingecko-gateway'
     );
     await registerCoinGeckoTools(server, context.apiClient);
   }

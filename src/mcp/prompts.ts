@@ -8,7 +8,7 @@ interface PromptContext {
 // Type for individual prompt handler
 type PromptHandler<T extends PromptName> = (
   context: PromptContext,
-  params: PromptParams<T>
+  params: PromptParams<T>,
 ) => Promise<string>;
 
 // Type for all handlers
@@ -19,7 +19,7 @@ type PromptHandlers = {
 export const PROMPT_HANDLERS: PromptHandlers = {
   fetch_swap_quote: async (context, params) => {
     const missingParams = [];
-    
+
     // Check which parameters are missing
     if (!params.chain) missingParams.push('chain');
     if (!params.network) missingParams.push('network');
@@ -37,9 +37,11 @@ export const PROMPT_HANDLERS: PromptHandlers = {
         `Missing parameters: ${missingParams.join(', ')}`,
         '',
         'Please provide:',
-        '- **Chain**: ethereum, polygon, arbitrum, avalanche, optimism, base, bsc, celo, worldchain, or solana',
-        '- **Network**: mainnet, sepolia (for Ethereum), or devnet (for Solana)',
-        '- **Connector**: uniswap (EVM chains) or jupiter/meteora/raydium (Solana)',
+        '- **Chain**: ethereum (for all EVM chains) or solana',
+        '- **Network**: For ethereum: mainnet, sepolia, arbitrum, avalanche, base, bsc, celo, optimism, polygon',
+        '                For solana: mainnet-beta, devnet',
+        '- **Connector**: For ethereum: uniswap, 0x',
+        '                 For solana: jupiter, meteora, raydium',
         '- **Wallet address**: Your wallet address',
         '- **Base token**: The token you want to trade (e.g., WETH, USDC)',
         '- **Quote token**: The token to price against (e.g., USDC, USDT)',
@@ -62,7 +64,7 @@ export const PROMPT_HANDLERS: PromptHandlers = {
       `- **Wallet**: ${params.address}`,
       `- **Slippage**: ${params.slippage || 1}%`,
       '',
-      'Now I\'ll get you a quote using the quote_swap tool.',
+      'Now I will get you a quote using the quote_swap tool.',
       '',
       'The quote will include:',
       '- Expected output amount',
@@ -74,7 +76,7 @@ export const PROMPT_HANDLERS: PromptHandlers = {
 
   execute_token_swap: async (context, params) => {
     const missingParams = [];
-    
+
     // Check required parameters
     if (!params.chain) missingParams.push('chain');
     if (!params.network) missingParams.push('network');
@@ -96,12 +98,12 @@ export const PROMPT_HANDLERS: PromptHandlers = {
     }
 
     return [
-      'I\'ll help you execute this token swap.',
+      'I will help you execute this token swap.',
       '',
       '## Swap Execution Process',
       '',
       '### Step 1: Get Quote',
-      'First, I\'ll fetch a current quote for your swap to ensure you get the best price.',
+      'First, I will fetch a current quote for your swap to ensure you get the best price.',
       '',
       '### Step 2: Review Details',
       `- **Trade**: ${params.side} ${params.amount} ${params.side === 'BUY' ? params.quote : params.base} for ${params.side === 'BUY' ? params.base : params.quote}`,
@@ -115,10 +117,10 @@ export const PROMPT_HANDLERS: PromptHandlers = {
       '3. Check network gas prices',
       '',
       '### Step 4: Execute Swap',
-      'Once confirmed, I\'ll execute the swap using the execute_swap tool.',
+      'Once confirmed, I will execute the swap using the execute_swap tool.',
       '',
       '### Step 5: Monitor Transaction',
-      'After execution, I\'ll help you track the transaction status.',
+      'After execution, I will help you track the transaction status.',
       '',
       '**Important**: Make sure your Gateway server is running and your wallet is properly configured.',
     ].join('\n');
@@ -127,7 +129,7 @@ export const PROMPT_HANDLERS: PromptHandlers = {
   check_wallet_portfolio: async (context, params) => {
     if (!params.address) {
       return [
-        'I\'ll help you check your wallet portfolio.',
+        'I will help you check your wallet portfolio.',
         '',
         'Please provide:',
         '- **Wallet address**: Your wallet address (0x... for EVM chains, or Solana address)',
@@ -142,21 +144,25 @@ export const PROMPT_HANDLERS: PromptHandlers = {
     const network = params.network || 'mainnet';
 
     return [
-      'I\'ll check your wallet portfolio.',
+      'I will check your wallet portfolio.',
       '',
       `**Address**: ${params.address}`,
       `**Chain**: ${chain}`,
       `**Network**: ${network}`,
       '',
-      'I\'ll use the get_balances tool to fetch your token holdings.',
+      'I will use the get_balances tool to fetch your token holdings.',
       '',
       'The report will include:',
       '- Token symbols and balances',
       '- Contract addresses',
       '- Native token balance',
       '',
-      params.chain ? '' : 'To check all chains, I\'ll query each supported chain individually.',
-    ].join('\n').trim();
+      params.chain
+        ? ''
+        : 'To check all chains, I will query each supported chain individually.',
+    ]
+      .join('\n')
+      .trim();
   },
 
   configure_gateway: async (context, params) => {
@@ -164,7 +170,7 @@ export const PROMPT_HANDLERS: PromptHandlers = {
 
     if (action === 'view') {
       return [
-        'I\'ll help you view Gateway configurations.',
+        'I will help you view Gateway configurations.',
         '',
         '## Available Configuration Files',
         '',
@@ -200,11 +206,11 @@ export const PROMPT_HANDLERS: PromptHandlers = {
       }
 
       return [
-        `I'll help you update the ${params.configFile} configuration.`,
+        `I will help you update the ${params.configFile} configuration.`,
         '',
         '## Update Process',
         '',
-        '1. First, I'll read the current configuration',
+        '1. First, I will read the current configuration',
         '2. Show you the current structure',
         '3. Help you identify the setting to change',
         '4. Update the configuration with your new value',
@@ -215,7 +221,7 @@ export const PROMPT_HANDLERS: PromptHandlers = {
 
     if (action === 'setup') {
       return [
-        'I'll guide you through setting up Gateway.',
+        'I will guide you through setting up Gateway.',
         '',
         '## Gateway Setup Steps',
         '',

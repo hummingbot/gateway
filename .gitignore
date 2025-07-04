@@ -22,3 +22,6 @@ package-lock.json
 src/**/*.js
 src/**/*.js.map
 *.log
+
+# MCP servers configuration
+.mcp.json

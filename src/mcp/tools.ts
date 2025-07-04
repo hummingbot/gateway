@@ -18,12 +18,13 @@ type ToolHandler<T extends ToolName> = (
   params: ToolParams<T>,
 ) => Promise<string>;
 
-// Type for all handlers
+// Type for all handlers - partial to allow CoinGecko tools to be added dynamically
 type ToolHandlers = {
-  [K in ToolName]: ToolHandler<K>;
+  [K in ToolName]?: ToolHandler<K>;
 };
 
-export const TOOL_HANDLERS: ToolHandlers = {
+// Gateway tool handlers
+const GATEWAY_HANDLERS: Partial<ToolHandlers> = {
   quote_swap: async (context, params) => {
     const {
       chain,
@@ -362,27 +363,16 @@ function getExplorerUrl(
     ethereum: {
       mainnet: 'https://etherscan.io/tx/',
       sepolia: 'https://sepolia.etherscan.io/tx/',
-    },
-    polygon: {
-      mainnet: 'https://polygonscan.com/tx/',
-    },
-    arbitrum: {
-      mainnet: 'https://arbiscan.io/tx/',
-    },
-    optimism: {
-      mainnet: 'https://optimistic.etherscan.io/tx/',
-    },
-    base: {
-      mainnet: 'https://basescan.org/tx/',
-    },
-    bsc: {
-      mainnet: 'https://bscscan.com/tx/',
-    },
-    avalanche: {
-      mainnet: 'https://snowtrace.io/tx/',
+      polygon: 'https://polygonscan.com/tx/',
+      arbitrum: 'https://arbiscan.io/tx/',
+      optimism: 'https://optimistic.etherscan.io/tx/',
+      base: 'https://basescan.org/tx/',
+      bsc: 'https://bscscan.com/tx/',
+      avalanche: 'https://snowtrace.io/tx/',
+      celo: 'https://celoscan.io/tx/',
     },
     solana: {
-      mainnet: 'https://solscan.io/tx/',
+      'mainnet-beta': 'https://solscan.io/tx/',
       devnet: 'https://solscan.io/tx/',
     },
   };
@@ -391,4 +381,20 @@ function getExplorerUrl(
   return explorerBase
     ? `${explorerBase}${txHash}`
     : `Unknown explorer for ${chain} ${network}`;
+}
+
+// Export combined handlers (Gateway + CoinGecko)
+export const TOOL_HANDLERS: ToolHandlers = {
+  ...GATEWAY_HANDLERS,
+};
+
+// CoinGecko tool handler factory - creates a handler that proxies to the subprocess
+export function createCoinGeckoHandler(toolName: string): ToolHandler<any> {
+  return async (_context, _params) => {
+    // This handler will be called by the server.ts when a CoinGecko tool is invoked
+    // The actual implementation is handled by the CoinGecko subprocess via ToolRegistry
+    throw new Error(
+      `CoinGecko handler for ${toolName} should be handled by ToolRegistry, not called directly`,
+    );
+  };
 }
