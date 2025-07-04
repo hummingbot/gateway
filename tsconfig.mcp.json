@@ -3,8 +3,8 @@
     "target": "ES2020",
     "module": "commonjs",
     "lib": ["ES2020"],
-    "outDir": "./dist/mcp",
-    "rootDir": "./src/mcp",
+    "outDir": "./dist",
+    "rootDir": "./src",
     "strict": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -14,6 +14,6 @@
     "allowSyntheticDefaultImports": true,
     "noImplicitAny": false
   },
-  "include": ["src/mcp/**/*"],
+  "include": ["src/mcp/**/*", "src/services/config-manager-v2.ts", "src/paths.ts"],
   "exclude": ["node_modules", "dist"]
 }

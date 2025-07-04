@@ -16,6 +16,7 @@ export class FallbackDataProvider {
 
       return {
         chains: chainConfigs.map((chain) => ({
+          name: chain.charAt(0).toUpperCase() + chain.slice(1),
           chain: chain,
           networks:
             chain === 'solana'
@@ -38,6 +39,7 @@ export class FallbackDataProvider {
       return {
         chains: [
           {
+            name: 'Ethereum',
             chain: 'ethereum',
             networks: [
               'mainnet',
@@ -52,6 +54,7 @@ export class FallbackDataProvider {
             ],
           },
           {
+            name: 'Solana',
             chain: 'solana',
             networks: ['mainnet-beta', 'devnet'],
           },
@@ -108,13 +111,11 @@ export class FallbackDataProvider {
 
       let connectors = connectorConfigs.map((name) => ({
         name,
-        trading_types: connectorMap[name]?.trading_types || ['swap'],
-        chain: connectorMap[name]?.chain || 'ethereum',
-        networks: connectorMap[name]?.networks || ['mainnet'],
+        chains: [connectorMap[name]?.chain || 'ethereum'],
       }));
 
       if (chain) {
-        connectors = connectors.filter((c) => c.chain === chain);
+        connectors = connectors.filter((c) => c.chains.includes(chain));
       }
 
       return { connectors };
@@ -142,7 +143,6 @@ export class FallbackDataProvider {
                 wallets.push({
                   address,
                   chain: chainName,
-                  name: `${chainName}-wallet`,
                 });
               }
             }

@@ -41,6 +41,14 @@ export class ToolRegistry {
     this.handlers.clear();
   }
 
+  static async callTool(name: string, request: any) {
+    const handler = this.handlers.get(name);
+    if (handler) {
+      return await handler(request);
+    }
+    throw new Error(`Unknown tool: ${name}`);
+  }
+
   static setupHandlers(server: Server) {
     // Set up the call handler
     server.setRequestHandler(CallToolRequestSchema, async (request) => {

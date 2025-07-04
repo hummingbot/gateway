@@ -1,12 +1,15 @@
 import axios, { AxiosInstance } from 'axios';
 
-import { GatewayConfig } from '../types';
+export interface GatewayApiConfig {
+  url: string;
+  timeout?: number;
+}
 
 export class GatewayApiClient {
   private client: AxiosInstance;
   private isGatewayRunning: boolean = true;
 
-  constructor(config: GatewayConfig) {
+  constructor(config: GatewayApiConfig) {
     this.client = axios.create({
       baseURL: config.url,
       timeout: config.timeout || 5000,
@@ -47,5 +50,27 @@ export class GatewayApiClient {
 
   isRunning(): boolean {
     return this.isGatewayRunning;
+  }
+
+  // Trading methods
+  async quoteSwap(params: any): Promise<any> {
+    const path = `/connectors/${params.connector}/${params.chain}/swap`;
+    return this.post(path, params);
+  }
+
+  async executeSwap(params: any): Promise<any> {
+    const path = `/connectors/${params.connector}/${params.chain}/swap`;
+    return this.post(path, { ...params, execute: true });
+  }
+
+  // Chain methods
+  async getBalances(params: any): Promise<any> {
+    const path = `/chains/${params.chain}/balances/${params.address}`;
+    return this.get(path, { network: params.network });
+  }
+
+  async getTransactionStatus(params: any): Promise<any> {
+    const path = `/chains/${params.chain}/transactions/${params.txHash}`;
+    return this.get(path, { network: params.network });
   }
 }
